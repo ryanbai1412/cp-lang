@@ -294,9 +294,9 @@ Every public signature's doc comment states its cost as LaTeX math:
 `/// cost: \(O(\log n)\)` (the math convention in `spec/README.md`).
 `cpl explain` and hover show it. Libraries declare lints with
 `@lint(name, from: "...", to: "...")` on the fn they suggest (R06.4.9),
-and `#on_unimplemented("...")` messages on traits. `assert` runs in checked
+and `@on_unimplemented("...")` messages on traits. `assert` runs in checked
 builds and, opted in as `asserts`, in release (chapter 9). Status: `@lint`
-implemented; costs are a doc convention; `#on_unimplemented` planned.
+implemented; costs are a doc convention; `@on_unimplemented` implemented (decision 28.11).
 
 ## W13. Modules, pins and codemods (P13)
 

@@ -6,29 +6,6 @@
 //! `first_ge`/`first_gt`/`last_le`/`last_lt`; a search inside a range
 //! structure is its `right_while`/`left_while`.
 
-/// Fixed-iteration binary search on `[lo, hi]` for a monotone `ok` (false then true): the least
-/// `x` with `ok(x)`, to within `(hi - lo) / 2^steps`, or `None` when `not ok(hi)`.
-///
-/// It first calls `ok(hi)`; then `steps` times it tests the midpoint `m` of `[lo, hi]` and keeps
-/// `[lo, m]` when `ok(m)`, else `[m, hi]`. The result is the final `hi`, so `ok` holds there.
-///
-/// cost: `steps + 1` calls of `ok`
-/// ties: none: a monotone `ok` has one flip
-/// traps: when `lo > hi` or `steps < 0`
-/// example: `abs(bsearch_real(0.0, 2.0, x => x * x >= 2.0)! - 1.4142135623730951) <= 1e-9`
-/// example: `bsearch_real(0.0, 8.0, x => x >= 3.0, steps: 3) == Some(3.0)`
-/// example: `bsearch_real(0.0, 1.0, x => x > 2.0) == None`
-pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64:
-    assert lo <= hi and steps >= 0
-    if not ok(hi): return None
-    var a = lo
-    var b = hi
-    for _ in 0..steps:
-        let m = (a + b) / 2.0
-        if ok(m): b = m
-        else: a = m
-    Some(b)
-
 fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     let n = r.len
     if n == 0: return None
@@ -41,8 +18,8 @@ fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     if k > 2:
         var x1 = l + fib[k - 2]
         var x2 = l + fib[k - 1]
-        var v1: ?K = if x1 < n: Some(f(r[x1])) else: None
-        var v2: ?K = if x2 < n: Some(f(r[x2])) else: None
+        var v1: ?K = if x1 < n: Some(f(r.nth(x1))) else: None
+        var v2: ?K = if x2 < n: Some(f(r.nth(x2))) else: None
         while k > 2:
             var right = false
             if let a = v1:
@@ -54,20 +31,20 @@ fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
                 x1 = x2
                 v1 = v2
                 x2 = l + fib[k - 1]
-                v2 = if x2 < n: Some(f(r[x2])) else: None
+                v2 = if x2 < n: Some(f(r.nth(x2))) else: None
             else:
                 x2 = x1
                 v2 = v1
                 x1 = l + fib[k - 2]
-                v1 = if x1 < n: Some(f(r[x1])) else: None
+                v1 = if x1 < n: Some(f(r.nth(x1))) else: None
     var best = max(l + 1, 0)
-    var bv = f(r[best])
+    var bv = f(r.nth(best))
     for x in best + 1..min(l + fib[k], n):
-        let v = f(r[x])
+        let v = f(r.nth(x))
         if (larger and bv < v) or (not larger and v < bv):
             best = x
             bv = v
-    Some(r[best])
+    Some(r.nth(best))
 
 fn golden_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int, larger: Bool) -> F64:
     assert lo <= hi and steps >= 0
@@ -101,8 +78,8 @@ fn golden_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int, larger: Bool) -> F64
 /// assume. A non-unimodal `f` gives an unspecified position of `r`.
 ///
 /// cost: \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`
-/// empty: `None`
-/// ties: the first position of the plateau
+/// empty: `ternary_max(0..0, i => i) == None`
+/// ties: `let f = [0, 2, 2, 2, 1]; ternary_max(0..5, i => f[i]) == Some(1)`
 /// traps: never
 /// example: `ternary_max(0..6, i => -(i - 3) * (i - 3)) == Some(3)`
 /// example: `let f = [0, 1, 2, 2, 1]; ternary_max(0..5, i => f[i]) == Some(2)`
@@ -118,44 +95,14 @@ pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
 /// assume. A non-unimodal `f` gives an unspecified position of `r`.
 ///
 /// cost: \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`
-/// empty: `None`
-/// ties: the first position of the plateau
+/// empty: `ternary_min(0..0, i => i) == None`
+/// ties: `let f = [3, 1, 1, 1, 2]; ternary_min(0..5, i => f[i]) == Some(1)`
 /// traps: never
 /// example: `ternary_min(0..6, i => (i - 4) * (i - 4)) == Some(4)`
 /// example: `let f = [3, 1, 1, 2]; ternary_min(0..4, i => f[i]) == Some(1)`
 /// example: `ternary_min(5..5, i => i) == None`
 pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I:
     golden_pick(r, f, larger: false)
-
-/// A point of `[lo, hi]` where a continuous unimodal `f` is largest, by golden-section search,
-/// within `(hi - lo) * 0.618^steps` of the maximizer.
-///
-/// Two interior probes start the search; each of the `steps` rounds keeps the side holding the
-/// larger probe and adds one probe. The result is the midpoint of the final bracket.
-///
-/// cost: `steps + 2` calls of `f`
-/// empty: `lo` when `lo == hi`
-/// ties: on a plateau at the maximum, whichever plateau point the bracket closes on
-/// traps: when `lo > hi` or `steps < 0`
-/// example: `abs(ternary_max_real(0.0, 4.0, x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
-/// example: `ternary_max_real(2.0, 2.0, x => x) == 2.0`
-pub fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64:
-    golden_real(lo, hi, f, steps, larger: true)
-
-/// A point of `[lo, hi]` where a continuous unimodal `f` is smallest, by golden-section search,
-/// within `(hi - lo) * 0.618^steps` of the minimizer.
-///
-/// Two interior probes start the search; each of the `steps` rounds keeps the side holding the
-/// smaller probe and adds one probe. The result is the midpoint of the final bracket.
-///
-/// cost: `steps + 2` calls of `f`
-/// empty: `lo` when `lo == hi`
-/// ties: on a plateau at the minimum, whichever plateau point the bracket closes on
-/// traps: when `lo > hi` or `steps < 0`
-/// example: `abs(ternary_min_real(-3.0, 3.0, x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`
-/// example: `ternary_min_real(1.5, 1.5, x => x) == 1.5`
-pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64:
-    golden_real(lo, hi, f, steps, larger: false)
 
 /// Many binary searches over one timeline `r` at once: `out[q]` is the first `t` of `r` such
 /// that `ok(q)` holds once every event of `r` up to and including `t` is applied, or `None`
@@ -167,7 +114,7 @@ pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F6
 /// `r` in increasing order, and `ok` once per open query, between the right `apply` calls.
 ///
 /// cost: \(O((n + \mathit{queries}) \log n)\) calls of `apply` and `ok`, \(O(n + \mathit{queries})\) memory, for n = `r.len`
-/// empty: every entry `None` when `r` is empty; `[]` when `queries == 0`
+/// empty: `(parallel_bsearch(2, 0..0, reset: () => (), apply: _ => (), ok: _ => true), parallel_bsearch(0, 0..4, reset: () => (), apply: _ => (), ok: _ => true)) == ([None, None], [])`
 /// order: `out[q]` answers query `q`, for `q` in `0..queries`
 /// traps: when `queries < 0`
 /// example: `let need = [2, 9]; var c = 0; parallel_bsearch(2, 0..4, reset: () => c = 0, apply: _ => c += 1, ok: q => c >= need[q]) == [Some(1), None]`
@@ -210,7 +157,7 @@ pub fn parallel_bsearch<I>(
         reset()
         var p = 0
         for t in 0..n:
-            apply(r[t])
+            apply(r.nth(t))
             while p < placed and (lo[order[p]] + hi[order[p]]) / 2 == t:
                 let q = order[p]
                 if ok(q): hi[q] = t
@@ -218,7 +165,7 @@ pub fn parallel_bsearch<I>(
                 p += 1
     var out = List<?I>()
     for q in 0..queries:
-        if lo[q] < n: out.push(Some(r[lo[q]]))
+        if lo[q] < n: out.push(Some(r.nth(lo[q])))
         else: out.push(None)
     out
 
@@ -272,13 +219,14 @@ pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) 
 /// `best(g, r)` is the top value over a non-empty `r` and the position of `r` that gives it.
 ///
 /// A queue holds one entry per non-empty group range. Taking the top entry `(g, r)` with value
-/// `t` at position `p` yields `t` and queues the non-empty pieces `r.start..p` and `p.next..r.end`
+/// `t` at position `p` yields `t` and queues the non-empty pieces before and after `p`
 /// with their own `best`. So the k best cost \(O(k \log(n + k))\) `best` calls, n the number of
 /// groups: the k largest subarray sums, Super Piano, k smallest pair sums (with negated values).
+/// Equal values come out in group order, then left piece before right piece.
 ///
 /// cost: \(O(n + k)\) calls of `best` and \(O((n + k) \log(n + k))\) queue work for the first k values
-/// empty: yields nothing when `groups` is empty or every range is empty
-/// ties: equal values come out in group order, then left piece before right piece
+/// empty: `split_best([0..0, 2..2], range: g => g, best: (_, r) => (0, r.start)).collect() == []`
+/// ties: `split_best([0..2, 0..1], range: g => g, best: (_, r) => (7, r.start)).collect() == [7, 7, 7]`
 /// order: decreasing `T`
 /// traps: when `best` returns a position outside the range it was given
 /// example: `let a = [3, 1, 2]; split_best([0..3], range: g => g, best: (_, r) => r.map(i => (a[i], i)).max()!).collect() == [3, 2, 1]`
@@ -288,7 +236,6 @@ pub fn split_best<G, D, T: Ord>(
     range: G -> Range<D>,
     best: (G, Range<D>) -> (T, D),
 ) -> yields T:
-    with lint(unproven_list_index: allow)
     var g_list: List<G> = []
     var r_list: List<Range<D>> = []
     var p_list: List<D> = []
@@ -306,7 +253,7 @@ pub fn split_best<G, D, T: Ord>(
     fn push_entry(g: G, r: Range<D>, gi: Int):
         if r.len == 0: return
         let (val, pos) = best(g, r)
-        assert r.l <= pos < r.r, "split_best: best returned position outside range"
+        assert pos in r, "split_best: best returned position outside range"
         let id = v_list.len
         g_list.push(g)
         r_list.push(r)
@@ -355,19 +302,45 @@ pub fn split_best<G, D, T: Ord>(
         let r = r_list[top]
         let p = p_list[top]
         let g_idx = gi_list[top]
-        if r.l < p:
-            push_entry(g, r.l..p, g_idx)
-        let after = p + 1
-        if after < r.r:
-            push_entry(g, after..r.r, g_idx)
+        let at = p..=p
+        push_entry(g, r.l..at.l, g_idx)
+        push_entry(g, at.r..r.r, g_idx)
+
+/// Fixed-iteration binary search on `self` for a monotone `ok` (false then true): the least
+/// `x` with `ok(x)`, to within `(hi - lo) / 2^steps`, or `None` when `not ok(hi)`: the real
+/// `bsearch`, picked by the range's element type (decision 419).
+///
+/// It first calls `ok(hi)`; then `steps` times it tests the midpoint `m` of `[lo, hi]` and keeps
+/// `[lo, m]` when `ok(m)`, else `[m, hi]`. The result is the final `hi`, so `ok` holds there. A
+/// monotone `ok` has one flip.
+///
+/// cost: \(O(\mathit{steps})\) calls of `ok`, exactly `steps + 1`
+/// empty: `(2.0..2.0).bsearch(x => true, steps: 5) == Some(2.0)`
+/// ties: `(0.0..8.0).bsearch(x => x >= 2.0, steps: 2) == Some(2.0)`
+/// traps: when the range is written backwards or `steps < 0`
+/// example: `abs((0.0..2.0).bsearch(x => x * x >= 2.0, steps: 100)! - 1.4142135623730951) <= 1e-9`
+/// example: `(0.0..8.0).bsearch(x => x >= 3.0, steps: 3) == Some(3.0)`
+/// example: `(0.0..1.0).bsearch(x => x > 2.0, steps: 100) == None`
+pub fn bsearch(self: Range<F64>, ok: F64 -> Bool, steps: Int = 100) -> ?F64:
+    assert self.start <= self.end and steps >= 0
+    if not ok(self.end): return None
+    var a = self.start
+    var b = self.end
+    for _ in 0..steps:
+        let m = (a + b) / 2.0
+        if ok(m): b = m
+        else: a = m
+    Some(b)
 
 /// A point of `self` where a continuous unimodal `by` is largest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the maximizer: the real `peak`, picked by the range's
 /// element type (decision 419).
 ///
-/// cost: `steps + 2` calls of `by`
-/// empty: `self.start` when `self.start == self.end`
-/// ties: on a plateau at the maximum, whichever plateau point the bracket closes on
+/// On a plateau at the maximum it is whichever plateau point the bracket closes on.
+///
+/// cost: \(O(\mathit{steps})\) calls of `by`, exactly `steps + 2`
+/// empty: `(2.0..2.0).peak(by: x => x) == 2.0`
+/// ties: `let x = (0.0..4.0).peak(by: t => min(t, 2.0) - max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
 /// traps: when the range is written backwards or `steps < 0`
 /// example: `abs((0.0..4.0).peak(by: x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
 pub fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
@@ -376,9 +349,11 @@ pub fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
 /// A point of `self` where a continuous unimodal `by` is smallest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the minimizer.
 ///
-/// cost: `steps + 2` calls of `by`
-/// empty: `self.start` when `self.start == self.end`
-/// ties: on a plateau at the minimum, whichever plateau point the bracket closes on
+/// On a plateau at the minimum it is whichever plateau point the bracket closes on.
+///
+/// cost: \(O(\mathit{steps})\) calls of `by`, exactly `steps + 2`
+/// empty: `(2.0..2.0).valley(by: x => x) == 2.0`
+/// ties: `let x = (0.0..4.0).valley(by: t => max(2.0 - t, 0.0) + max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
 /// traps: when the range is written backwards or `steps < 0`
 /// example: `abs((-3.0..3.0).valley(by: x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`
 pub fn valley(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =

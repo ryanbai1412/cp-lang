@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.graph.{euler_walk}
 domain V = 0..4
 domain E = 0..2
 let es: [E](u: V, v: V) = [(u: V(0), v: V(1)), (u: V(2), v: V(3))]

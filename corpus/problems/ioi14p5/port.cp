@@ -8,6 +8,7 @@
 //   allowed), 2 like adjacent twins (at most one). O(n).
 // input: n, the n confidences, then `host protocol` for persons 1..n-1
 // original: corpus/submissions/6567598.cpp
+// Bounds: n: 2..=1e5; conf: 1..=1e4; joins.host: 0..=n - 1; joins.how: 0..=2
 let n: 2..=1e5 = read()
 domain P = 0..n
 domain Joiner = 1..n  // the people who joined, 1..n-1

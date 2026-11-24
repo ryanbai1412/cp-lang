@@ -1,6 +1,7 @@
 // Codeforces 2138 D, tuned: port.cp with the inverses 1/k for k <= q read
 // from a table made once per test, as orig.cpp's inv_val, instead of
-// `comb.inv` (two loads and a product) inside the O(n q) loop.
+// `comb.inv` (two loads and a product) inside the O(n q) loop, and the
+// span length times the count taken as one Int before the reduction.
 //
 // Codeforces 2138 D: Antiamuny Wants to Learn Swap.
 // `n` sliders sit at strictly increasing positions `raw_a[i]` in `1..=l`; each
@@ -22,7 +23,7 @@ let comb = Comb<Z>()
 fn span_expect(lo: Int, hi: Int, ai: Int, num_left: Int, num_right: Int, inv: List<Z>) -> Z:
     if hi <= lo: return 0
     if num_left + num_right == 0: Z(min(max(ai, lo), hi) - lo)
-    else: Z(hi - lo) * Z(num_right) * inv[num_left + num_right]
+    else: Z((hi - lo) * num_right) * inv[num_left + num_right]
 
 @!multitest
 let (n, l, q): (1..=5000, 1..=1_000_000_000, 1..=5000) = read()

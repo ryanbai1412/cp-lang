@@ -18,7 +18,12 @@ def ints(n, seed):
     return f"{n}\n" + " ".join(str(rng.randint(-10**9, 10**9)) for _ in range(n)) + "\n"
 
 
-BENCHES = {"read_ints": lambda: ints(6 * 10**6, 1)}
+def positive(n, seed):
+    rng = random.Random(seed)
+    return f"{n}\n" + " ".join(str(rng.randint(1, 10**6)) for _ in range(n)) + "\n"
+
+
+BENCHES = {"read_ints": lambda: ints(6 * 10**6, 1), "read_range": lambda: positive(6 * 10**6, 2)}
 
 
 def best(exe, inp, runs):

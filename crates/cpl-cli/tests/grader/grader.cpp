@@ -1,9 +1,9 @@
 #include <cstdio>
 #include <string>
-#include <tuple>
+#include <utility>
 #include <vector>
 int find(int n);
-std::tuple<int, std::vector<int>> stats(int scale);
+std::pair<int, std::vector<int>> stats(int scale);
 static int hidden;
 int compare(int x) { return x < hidden ? -1 : x > hidden; }
 void note(std::vector<int> tries, std::string label) { printf("%s after %zu\n", label.c_str(), tries.size()); }

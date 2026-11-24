@@ -5,6 +5,7 @@
 //   speeds as exact `Ratio`s and print the largest rounded to 5 decimals with `fixed` (no
 //   floats). O(n log n).
 // original: corpus/submissions/4323572.cpp
+// Bounds: n: 2..=1e5; seen.t, seen.x: -1e9..=1e9
 let n: 2..=1e5 = read()
 let seen: [n](t: -1e9..=1e9, x: -1e9..=1e9) = read()
 let speeds = [(dx: abs(b.x - a.x), dt: b.t - a.t) for (a, b) in seen.sorted(by: o => o.t).adjacent]

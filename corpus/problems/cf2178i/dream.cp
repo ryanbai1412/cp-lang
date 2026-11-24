@@ -7,7 +7,6 @@
 // `stay` = |adj(b) - out| + 1 ways. With b in T, any outsider next to b may
 // pick it, each outsider at most once: dp[s] counts the ways in which exactly
 // the outsiders in s have picked, and the zeta over adj(b) & out adds b's picks.
-use std.graph.{two_color}
 type Z = Mod<998_244_353>
 
 @!multitest

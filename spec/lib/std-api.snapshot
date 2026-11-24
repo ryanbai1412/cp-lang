@@ -80,6 +80,7 @@ std/bag.cp: BucketCount.add(mut self, x: Int, delta: Int = 1)
 std/bag.cp: BucketCount.clear(mut self)
 std/bag.cp: BucketCount.count(self, x: Int) -> Int
 std/bag.cp: BucketCount.count_lt(self, x: Int) -> Int
+std/bag.cp: BucketCount.each(self) -> yields Int
 std/bag.cp: BucketCount.is_empty(self) -> Bool
 std/bag.cp: BucketCount.kth(self, k: Int) -> Int
 std/bag.cp: BucketCount.len(self) -> Int
@@ -125,6 +126,7 @@ std/bag.cp: SortedBag.range(self, r: Range<K>) -> lends SortedRange<K>
 std/bag.cp: SortedBag.rank(self, k: K) -> Int
 std/bag.cp: SortedBag.remove(mut self, x: K) -> Bool
 std/bag.cp: SortedBag.remove_all(mut self, x: K) -> Int
+std/bag.cp: SortedBag.remove_at(mut self, c: BagCursor)
 std/bag.cp: SortedBag.reserve(mut self, cap: Int)
 std/bag.cp: SortedBag.split_at(mut self, k: K) -> SortedBag<K>
 std/bag.cp: SortedBag.sum(self) -> K
@@ -203,12 +205,12 @@ std/beats.cp: BeatsSegTree.chdiv(mut self, r: Range<D>, d: Int)
 std/beats.cp: BeatsSegTree.chmax(mut self, r: Range<D>, x: Int)
 std/beats.cp: BeatsSegTree.chmin(mut self, r: Range<D>, x: Int)
 std/beats.cp: BeatsSegTree.chmod(mut self, r: Range<D>, m: Int)
-std/beats.cp: BeatsSegTree.get(mut self, i: D) -> Int
-std/beats.cp: BeatsSegTree.max_val(mut self, r: Range<D>) -> ?Int
-std/beats.cp: BeatsSegTree.min_val(mut self, r: Range<D>) -> ?Int
+std/beats.cp: BeatsSegTree.get(self, i: D) -> Int
+std/beats.cp: BeatsSegTree.max_val(self, r: Range<D>) -> ?Int
+std/beats.cp: BeatsSegTree.min_val(self, r: Range<D>) -> ?Int
 std/beats.cp: BeatsSegTree.new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D>
 std/beats.cp: BeatsSegTree.set(mut self, i: D, x: Int)
-std/beats.cp: BeatsSegTree.sum(mut self, r: Range<D>) -> Int
+std/beats.cp: BeatsSegTree.sum(self, r: Range<D>) -> Int
 std/beats.cp: HistoricBeatsSegTree.add(mut self, r: Range<D>, x: Int)
 std/beats.cp: HistoricBeatsSegTree.chmax(mut self, r: Range<D>, x: Int)
 std/beats.cp: HistoricBeatsSegTree.chmin(mut self, r: Range<D>, x: Int)
@@ -217,14 +219,17 @@ std/beats.cp: HistoricBeatsSegTree.hist_sum(mut self, r: Range<D>) -> Int
 std/beats.cp: HistoricBeatsSegTree.max_val(mut self, r: Range<D>) -> ?Int
 std/beats.cp: HistoricBeatsSegTree.new(a: ?[D]Int = None, fill: ?Int = None) -> HistoricBeatsSegTree<D>
 std/beats.cp: HistoricBeatsSegTree.sum(mut self, r: Range<D>) -> Int
-std/bitset.cp: BitTrie.absorb(mut self, mut other: BitTrie<W>)
-std/bitset.cp: BitTrie.add(mut self, x: Int)
-std/bitset.cp: BitTrie.count(self, x: Int) -> Int
+std/bitset.cp: BitTrie.absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>)
+std/bitset.cp: BitTrie.add(mut self, mut ar: BitTrieArena<W>, x: Int)
+std/bitset.cp: BitTrie.count(self, ar: BitTrieArena<W>, x: Int) -> Int
+std/bitset.cp: BitTrie.each(self, ar: BitTrieArena<W>) -> yields Int
 std/bitset.cp: BitTrie.is_empty(self) -> Bool
-std/bitset.cp: BitTrie.len(self) -> Int
+std/bitset.cp: BitTrie.len(self, ar: BitTrieArena<W>) -> Int
 std/bitset.cp: BitTrie.new() -> BitTrie<W>
-std/bitset.cp: BitTrie.of(x: Int) -> BitTrie<W>
-std/bitset.cp: BitTrie.walk(self, x: Int) -> yields (bit: Int, count: Int)
+std/bitset.cp: BitTrie.of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>
+std/bitset.cp: BitTrie.walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int)
+std/bitset.cp: BitTrieArena.new(cap: Int = 0) -> BitTrieArena<W>
+std/bitset.cp: BitTrieArena.node_count(self) -> Int
 std/bitset.cp: Bitset.add(mut self, i: D) -> Bool
 std/bitset.cp: Bitset.any(self, pred: D -> Bool) -> Bool
 std/bitset.cp: Bitset.bitand(self, o: Bitset<D>) -> Bitset<D>
@@ -305,6 +310,7 @@ std/bitset.cp: XorTrie.clear(mut self)
 std/bitset.cp: XorTrie.contains(self, x: Int) -> Bool
 std/bitset.cp: XorTrie.count(self, x: Int) -> Int
 std/bitset.cp: XorTrie.count_xor_less(self, x: Int, limit: Int) -> Int
+std/bitset.cp: XorTrie.each(self) -> yields Int
 std/bitset.cp: XorTrie.is_empty(self) -> Bool
 std/bitset.cp: XorTrie.kth_xor(self, x: Int, k: Int) -> ?Int
 std/bitset.cp: XorTrie.len(self) -> Int
@@ -368,8 +374,12 @@ std/dp.cp: LiChao.new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K>
 std/dp.cp: Line.at(self, x: Int) -> Int
 std/dp.cp: LineContainer.add(mut self, line: Line)
 std/dp.cp: LineContainer.at(self, x: Int) -> ?Int
+std/dp.cp: LineContainer.each(self) -> yields Line
+std/dp.cp: LineContainer.is_empty(self) -> Bool
 std/dp.cp: LineContainer.len(self) -> Int
 std/dp.cp: LineContainer.line_at(self, x: Int) -> ?Line
+std/dp.cp: MongePath.is_empty(self) -> Bool
+std/dp.cp: MongePath.items(self) -> yields (Int, K)
 std/dp.cp: MongePath.len(self) -> Int
 std/dp.cp: MongePath.next(mut self) -> (val: K, prev: Int)
 std/dp.cp: MongePath.val(self, i: Int) -> K
@@ -378,6 +388,8 @@ std/dp.cp: MonotoneHull.at(self, x: Int) -> ?Int
 std/dp.cp: MonotoneHull.at_next(mut self, x: Int) -> ?Int
 std/dp.cp: MonotoneHull.best_next(mut self, x: Int) -> ?(val: Int, tag: P)
 std/dp.cp: MonotoneHull.clear(mut self)
+std/dp.cp: MonotoneHull.is_empty(self) -> Bool
+std/dp.cp: MonotoneHull.items(self) -> yields (Line, P)
 std/dp.cp: MonotoneHull.len(self) -> Int
 std/dp.cp: Step.prune(mut self)
 std/dp.cp: aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L
@@ -434,6 +446,10 @@ std/dsu.cp: PersistentDsu.new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>
 std/dsu.cp: PersistentDsu.same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool
 std/dsu.cp: PersistentDsu.size(self, ar: PArena<DsuNode<V>>, v: V) -> Int
 std/dsu.cp: PersistentDsu.unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>
+std/dsu.cp: PersistentDsu.within(self, ar: PArena<DsuNode<V>>) -> lends PersistentDsuWithin<V>
+std/dsu.cp: PersistentDsuWithin.is_empty(self) -> Bool
+std/dsu.cp: PersistentDsuWithin.items(self) -> yields (V, V)
+std/dsu.cp: PersistentDsuWithin.len(self) -> Int
 std/dsu.cp: PotentialDsu.components(self) -> Int
 std/dsu.cp: PotentialDsu.consistent(self) -> Bool
 std/dsu.cp: PotentialDsu.diff(self, a: V, b: V) -> ?W
@@ -522,6 +538,8 @@ std/flow.cp: Matching.augment(mut self, from: L) -> Bool
 std/flow.cp: Matching.augment_all(mut self) -> Int
 std/flow.cp: Matching.back(self, r: R) -> ?L
 std/flow.cp: Matching.cover(self) -> (left: [L]Bool, right: [R]Bool)
+std/flow.cp: Matching.is_empty(self) -> Bool
+std/flow.cp: Matching.items(self) -> yields (L, R)
 std/flow.cp: Matching.len(self) -> Int
 std/flow.cp: Matching.mate(self, l: L) -> ?R
 std/flow.cp: Matching.new() -> Matching<L, R>
@@ -565,6 +583,8 @@ std/geometry.cp: Plane3.project(self, p: Vec3) -> Vec3
 std/geometry.cp: Plane3.through(a: Vec3, b: Vec3, c: Vec3, eps: F64 = 1e-9) -> ?Plane3
 std/geometry.cp: PointSet.contains(self, i: Int) -> Bool
 std/geometry.cp: PointSet.drain(mut self, x: Range<Int>, y: Range<Int>) -> List<Int>
+std/geometry.cp: PointSet.each(self) -> yields Int
+std/geometry.cp: PointSet.is_empty(self) -> Bool
 std/geometry.cp: PointSet.len(self) -> Int
 std/geometry.cp: PointSet.of(pts: List<Pt>) -> PointSet
 std/geometry.cp: PointSet.remove(mut self, i: Int) -> Bool
@@ -706,7 +726,7 @@ std/graph.cp: Functional.root_of(self, v: V) -> V
 std/graph.cp: Graph.at(self, u: V) -> lends Slice<A>
 std/graph.cp: Graph.contains(self, u: V, v: V) -> Bool
 std/graph.cp: Graph.deg(self, u: V) -> Int
-std/graph.cp: Graph.directed<E, R: (u: V, v: V, ..)
+std/graph.cp: Graph.directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..)
 std/graph.cp: Graph.edges<E>(self) -> yields Edge<V, E> where A: Edged<E>
 std/graph.cp: Graph.hops(self) -> [V, V]Int
 std/graph.cp: Graph.lists(self) -> [V]List<V>
@@ -717,7 +737,7 @@ std/graph.cp: Graph.only(self, keep: V -> Bool = v => true, from: V -> Bool = v 
 std/graph.cp: Graph.out(self, u: V) -> yields A
 std/graph.cp: Graph.peel(self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None) -> List<V>
 std/graph.cp: Graph.transpose(self) -> Graph<V, A>
-std/graph.cp: Graph.undirected<E, R: (u: V, v: V, ..)
+std/graph.cp: Graph.undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..)
 std/graph.cp: Graph.weighted<E, W>(self, f: A -> W) -> Reweighted<V, E, A, W> where A: Edged<E>
 std/graph.cp: IncrementalBridges.add(mut self, u: V, v: V)
 std/graph.cp: IncrementalBridges.new() -> IncrementalBridges<V>
@@ -863,6 +883,7 @@ std/hashmap.cp: FlatMap.values(self) -> yields V
 std/hashmap.cp: pop<K>(mut self: Counter<K, Int>, x: K)
 std/hashmap.cp: push<K>(mut self: Counter<K, Int>, x: K)
 std/heap.cp: ErasableHeap.clear(mut self)
+std/heap.cp: ErasableHeap.each(self) -> yields T
 std/heap.cp: ErasableHeap.is_empty(self) -> Bool
 std/heap.cp: ErasableHeap.len(self) -> Int
 std/heap.cp: ErasableHeap.new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>
@@ -873,6 +894,7 @@ std/heap.cp: ErasableHeap.remove(mut self, x: T)
 std/heap.cp: ErasableHeap.take(mut self) -> ErasableHeap<T>
 std/heap.cp: Heap.clear(mut self)
 std/heap.cp: Heap.drain(mut self) -> yields T
+std/heap.cp: Heap.each(self) -> yields T
 std/heap.cp: Heap.is_empty(self) -> Bool
 std/heap.cp: Heap.len(self) -> Int
 std/heap.cp: Heap.new<K>(by: ?(T -> K) = None) -> Heap<T>
@@ -888,6 +910,7 @@ std/heap.cp: Heap.take(mut self) -> Heap<T>
 std/heap.cp: IndexedHeap.clear(mut self)
 std/heap.cp: IndexedHeap.contains(self, v: D) -> Bool
 std/heap.cp: IndexedHeap.decrease(mut self, v: D, k: K) -> Bool
+std/heap.cp: IndexedHeap.each(self) -> yields (D, K)
 std/heap.cp: IndexedHeap.get(self, v: D) -> ?K
 std/heap.cp: IndexedHeap.increase(mut self, v: D, k: K) -> Bool
 std/heap.cp: IndexedHeap.is_empty(self) -> Bool
@@ -899,6 +922,7 @@ std/heap.cp: IndexedHeap.remove(mut self, v: D) -> ?K
 std/heap.cp: IndexedHeap.set(mut self, v: D, k: K)
 std/heap.cp: MaxHeap.clear(mut self)
 std/heap.cp: MaxHeap.drain(mut self) -> yields T
+std/heap.cp: MaxHeap.each(self) -> yields T
 std/heap.cp: MaxHeap.is_empty(self) -> Bool
 std/heap.cp: MaxHeap.len(self) -> Int
 std/heap.cp: MaxHeap.new() -> MaxHeap<T>
@@ -917,6 +941,7 @@ std/heap.cp: MeldHeap.absorb(mut self, mut other: MeldHeap<T>)
 std/heap.cp: MeldHeap.add_all(mut self, delta: T)
 std/heap.cp: MeldHeap.clear(mut self)
 std/heap.cp: MeldHeap.drain(mut self) -> List<T>
+std/heap.cp: MeldHeap.each(self) -> yields T
 std/heap.cp: MeldHeap.is_empty(self) -> Bool
 std/heap.cp: MeldHeap.len(self) -> Int
 std/heap.cp: MeldHeap.meld(mut self, other: MeldHeap<T>)
@@ -939,6 +964,7 @@ std/heap.cp: MeldHeaps.push_all(mut self, mut h: Meld<T>, items: Seq<T>)
 std/heap.cp: MeldHeaps.reserve(mut self, nodes: Int)
 std/heap.cp: MeldHeaps.top(self, h: Meld<T>) -> ?T
 std/heap.cp: MinMaxHeap.clear(mut self)
+std/heap.cp: MinMaxHeap.each(self) -> yields T
 std/heap.cp: MinMaxHeap.first(self) -> ?T
 std/heap.cp: MinMaxHeap.is_empty(self) -> Bool
 std/heap.cp: MinMaxHeap.last(self) -> ?T
@@ -1010,7 +1036,7 @@ std/lazy.cp: LazyTreap.insert(mut self, x: T)
 std/lazy.cp: LazyTreap.insert_at(mut self, pos: Int, x: T)
 std/lazy.cp: LazyTreap.is_empty(self) -> Bool
 std/lazy.cp: LazyTreap.len(self) -> Int
-std/lazy.cp: LazyTreap.new(apply: (T, Int, F) -> T, compose: (F, F) -> F, split: (F, Int) -> (F, F) = (f, _) => (f, f), before: (T, T) -> Bool = (_, _) => false) -> LazyTreap<T, F>
+std/lazy.cp: LazyTreap.new(apply: (T, Int, F) -> T, compose: (F, F) -> F, split: (F, Int) -> (F, F) = (f, _) => (f, f), before: (T, T) -> Bool = (_, _) => false, mirror: (F, Int) -> F = (f, _) => f) -> LazyTreap<T, F>
 std/lazy.cp: LazyTreap.push(mut self, x: T)
 std/lazy.cp: LazyTreap.reserve(mut self, n: Int)
 std/lazy.cp: LazyTreap.reverse(mut self, r: Range<Int>)
@@ -1025,17 +1051,30 @@ std/lazy.cp: Rope.query_path<R>(mut self, i: D, f: (mut T) -> ?R) -> ?R
 std/lazy.cp: Rope.reverse(mut self, r: Range<D>)
 std/lazy.cp: Rope.set(mut self, i: D, x: T)
 std/lazy.cp: Rope.to_array(mut self) -> [D]T
+std/lazy.cp: SeqFold.apply(mut self, r: Range<Int>, f: F)
+std/lazy.cp: SeqFold.fold(mut self, r: Range<Int>) -> T
+std/lazy.cp: SeqFold.get(mut self, pos: Int) -> T
+std/lazy.cp: SeqFold.insert_at(mut self, pos: Int, x: T)
+std/lazy.cp: SeqFold.is_empty(self) -> Bool
+std/lazy.cp: SeqFold.items(self) -> yields T
+std/lazy.cp: SeqFold.len(self) -> Int
+std/lazy.cp: SeqFold.new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>
+std/lazy.cp: SeqFold.push(mut self, x: T)
+std/lazy.cp: SeqFold.reverse(mut self, r: Range<Int>)
+std/lazy.cp: SeqFold.total(self) -> T
 std/lazy.cp: flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>
 std/marks.cp: Arena.alloc(mut self, x: T) -> Id<T>
 std/marks.cp: Arena.clear(mut self)
 std/marks.cp: Arena.get(self, id: Id<T>) -> T
 std/marks.cp: Arena.is_empty(self) -> Bool
+std/marks.cp: Arena.items(self) -> yields (Id<T>, T)
 std/marks.cp: Arena.len(self) -> Int
 std/marks.cp: Arena.new(cap: Int = 0) -> Arena<T>
 std/marks.cp: Arena.reserve(mut self, cap: Int)
 std/marks.cp: Arena.set(mut self, id: Id<T>, x: T)
 std/marks.cp: Interner.clear(mut self)
 std/marks.cp: Interner.contains(self, k: K) -> Bool
+std/marks.cp: Interner.each(self) -> yields K
 std/marks.cp: Interner.get(self, k: K) -> ?Int
 std/marks.cp: Interner.id(mut self, k: K) -> Int
 std/marks.cp: Interner.is_empty(self) -> Bool
@@ -1047,6 +1086,7 @@ std/marks.cp: MarkMap.clear(mut self)
 std/marks.cp: MarkMap.contains(self, v: D) -> Bool
 std/marks.cp: MarkMap.get(self, v: D) -> ?T
 std/marks.cp: MarkMap.is_empty(self) -> Bool
+std/marks.cp: MarkMap.items(self) -> yields (D, T)
 std/marks.cp: MarkMap.len(self) -> Int
 std/marks.cp: MarkMap.new(default_val: T) -> MarkMap<D, T>
 std/marks.cp: MarkMap.remove(mut self, v: D) -> ?T
@@ -1054,6 +1094,7 @@ std/marks.cp: MarkMap.set(mut self, v: D, val: T)
 std/marks.cp: Marks.add(mut self, v: D) -> Bool
 std/marks.cp: Marks.clear(mut self)
 std/marks.cp: Marks.contains(self, v: D) -> Bool
+std/marks.cp: Marks.each(self) -> yields D
 std/marks.cp: Marks.is_empty(self) -> Bool
 std/marks.cp: Marks.len(self) -> Int
 std/marks.cp: Marks.new() -> Marks<D>
@@ -1233,6 +1274,7 @@ std/ntt.cp: RelaxedConvolve.push(mut self, ai: Mod<P>, bi: Mod<P>) -> Mod<P>
 std/ntt.cp: SemiRelaxedConvolve.new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P>
 std/ntt.cp: SemiRelaxedConvolve.push(mut self, ai: Mod<P>) -> Mod<P>
 std/ntt.cp: convolve<T: Add + Sub + Mul, O, R>(a: List<T>, b: List<T>, on: O = +, over: R = Semiring(+, *), shape: ?Curved = None, cyclic: Bool = false) -> List<T>
+std/ntt.cp: convolve_2d<P>(a: List<List<Mod<P>>>, b: List<List<Mod<P>>>) -> List<List<Mod<P>>>
 std/ntt.cp: convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>
 std/ntt.cp: fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false)
 std/ntt.cp: ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
@@ -1258,7 +1300,11 @@ std/persistent.cp: PMultiset.empty() -> PMultiset<D>
 std/persistent.cp: PMultiset.is_empty(self) -> Bool
 std/persistent.cp: PMultiset.len(self) -> Int
 std/persistent.cp: PMultiset.with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>
+std/persistent.cp: PMultiset.within(self, ar: PArena<PMultiset<D>>) -> lends PMultisetWithin<D>
 std/persistent.cp: PMultiset.without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>
+std/persistent.cp: PMultisetWithin.each(self) -> yields D
+std/persistent.cp: PMultisetWithin.is_empty(self) -> Bool
+std/persistent.cp: PMultisetWithin.len(self) -> Int
 std/persistent.cp: PersistentArray.base(self) -> Version<PersistentArray<D, T>>
 std/persistent.cp: PersistentArray.get(self, v: Version<PersistentArray<D, T>>, i: D) -> T
 std/persistent.cp: PersistentArray.new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>
@@ -1294,7 +1340,9 @@ std/poly.cp: Poly.exp(self, n: Int) -> Poly<T>
 std/poly.cp: Poly.from_int(v: Int) -> Poly<T>
 std/poly.cp: Poly.integral(self) -> Poly<T>
 std/poly.cp: Poly.inv(self, n: Int) -> Poly<T>
+std/poly.cp: Poly.is_empty(self) -> Bool
 std/poly.cp: Poly.is_zero(self) -> Bool
+std/poly.cp: Poly.items(self) -> yields (Int, T)
 std/poly.cp: Poly.len(self) -> Int
 std/poly.cp: Poly.log(self, n: Int) -> Poly<T>
 std/poly.cp: Poly.new(c: List<T>) -> Poly<T>
@@ -1313,6 +1361,7 @@ std/poly.cp: SubproductTree.interpolate(self, ys: List<Mod<P>>) -> List<Mod<P>>
 std/poly.cp: SubproductTree.new(xs: List<Mod<P>>, keep: Int = -1) -> SubproductTree<P>
 std/poly.cp: bell_table<P>(n: Int) -> List<Mod<P>>
 std/poly.cp: bernoulli_table<P>(n: Int) -> List<Mod<P>>
+std/poly.cp: binomial_transform<P>(a: List<Mod<P>>, inverse: Bool = false) -> List<Mod<P>>
 std/poly.cp: bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P>
 std/poly.cp: chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Int) -> List<Mod<P>>
 std/poly.cp: compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>
@@ -1398,7 +1447,9 @@ std/rand.cp: Rng.pick<S: Indexed, T>(mut self, xs: S) -> ?T
 std/rand.cp: Rng.sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>
 std/rand.cp: Rng.shuffle<S: IndexedMut>(mut self, mut a: S)
 std/range.cp: RingRange.contains(self, i: D) -> Bool
+std/range.cp: RingRange.each(self) -> yields D
 std/range.cp: RingRange.end(self) -> D
+std/range.cp: RingRange.is_empty(self) -> Bool
 std/range.cp: RingRange.keys(self) -> yields D
 std/range.cp: RingRange.len(self) -> Int
 std/range.cp: RingRange.start(self) -> D
@@ -1411,17 +1462,16 @@ std/range.cp: l<D>(self: Range<D>) -> Cut<D>
 std/range.cp: last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D
 std/range.cp: mid<D>(self: Range<D>) -> Cut<D>
 std/range.cp: r<D>(self: Range<D>) -> Cut<D>
+std/range.cp: shift<D>(self: D, r: Range<Int>) -> Range<D>
 std/range.cp: splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)
-std/search.cp: bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
+std/search.cp: bsearch(self: Range<F64>, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 std/search.cp: dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64
 std/search.cp: gallop_first<I: Add>(from: I, ok: I -> Bool) -> ?I
 std/search.cp: parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (), apply: I -> (), ok: Int -> Bool) -> List<?I>
 std/search.cp: peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64
 std/search.cp: split_best<G, D, T: Ord>(groups: Seq<G>, range: G -> Range<D>, best: (G, Range<D>) -> (T, D)) -> yields T
 std/search.cp: ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I
-std/search.cp: ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
 std/search.cp: ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I
-std/search.cp: ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
 std/search.cp: valley(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64
 std/segtree.cp: DynamicOrderTree.count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int
 std/segtree.cp: DynamicOrderTree.count_lt(self, r: Range<D>, x: T) -> Int
@@ -1442,6 +1492,13 @@ std/segtree.cp: MergeSortTree.count_lt(self, r: Range<D>, x: T) -> Int
 std/segtree.cp: MergeSortTree.first_ge(self, r: Range<D>, x: T) -> ?T
 std/segtree.cp: MergeSortTree.last_le(self, r: Range<D>, x: T) -> ?T
 std/segtree.cp: MergeSortTree.new(a: [D]T) -> MergeSortTree<D, T>
+std/segtree.cp: MergeTrees.get(self, t: MergeTree<D>, x: D) -> Z
+std/segtree.cp: MergeTrees.merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D>
+std/segtree.cp: MergeTrees.new() -> MergeTrees<D, Z>
+std/segtree.cp: MergeTrees.scale(mut self, t: MergeTree<D>, k: Z)
+std/segtree.cp: MergeTrees.set(mut self, mut t: MergeTree<D>, x: D, v: Z)
+std/segtree.cp: MergeTrees.sum(self, t: MergeTree<D>, r: Range<D>) -> Z
+std/segtree.cp: MergeTrees.total(self, t: MergeTree<D>) -> Z
 std/segtree.cp: SegTree.all(self) -> T
 std/segtree.cp: SegTree.apply(mut self, r: Range<D>, f: F)
 std/segtree.cp: SegTree.apply_all(mut self, f: F)
@@ -1451,7 +1508,7 @@ std/segtree.cp: SegTree.fold(self, r: Range<D>) -> T
 std/segtree.cp: SegTree.get(self, i: D) -> T
 std/segtree.cp: SegTree.left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>
 std/segtree.cp: SegTree.monoid(self) -> Monoid<T>
-std/segtree.cp: SegTree.new<M, A>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: ?Range<Int> = None) -> SegTree<D, T, F>
+std/segtree.cp: SegTree.new<M, A, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>
 std/segtree.cp: SegTree.of<M>(op: M, f: D -> T) -> SegTree<D, T, F>
 std/segtree.cp: SegTree.refresh(mut self, i: D)
 std/segtree.cp: SegTree.right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>
@@ -1478,6 +1535,8 @@ std/seq.cp: Compressed.first_ge(self, val: T) -> ?D
 std/seq.cp: Compressed.first_gt(self, val: T) -> ?D
 std/seq.cp: Compressed.get(self, i: D) -> T
 std/seq.cp: Compressed.index_of(self, val: T) -> D
+std/seq.cp: Compressed.is_empty(self) -> Bool
+std/seq.cp: Compressed.items(self) -> yields (D, T)
 std/seq.cp: Compressed.last_le(self, val: T) -> ?D
 std/seq.cp: Compressed.last_lt(self, val: T) -> ?D
 std/seq.cp: Compressed.len(self) -> Int
@@ -1485,6 +1544,7 @@ std/seq.cp: Compressed.slice(self, r: Range<D>) -> List<T>
 std/seq.cp: Compressed.try_index_of(self, val: T) -> ?D
 std/seq.cp: MonoStack.clear(mut self)
 std/seq.cp: MonoStack.is_empty(self) -> Bool
+std/seq.cp: MonoStack.items(self) -> yields (D, T)
 std/seq.cp: MonoStack.len(self) -> Int
 std/seq.cp: MonoStack.mark(self) -> Int
 std/seq.cp: MonoStack.push(mut self, i: D, x: T) -> ?D
@@ -1492,6 +1552,7 @@ std/seq.cp: MonoStack.top(self) -> ?(index: D, val: T)
 std/seq.cp: MonoStack.undo_to(mut self, m: Int)
 std/seq.cp: OnlineLis.clear(mut self)
 std/seq.cp: OnlineLis.is_empty(self) -> Bool
+std/seq.cp: OnlineLis.items(self) -> yields (Int, T)
 std/seq.cp: OnlineLis.len(self) -> Int
 std/seq.cp: OnlineLis.mark(self) -> Int
 std/seq.cp: OnlineLis.push(mut self, x: T) -> Int
@@ -1511,18 +1572,23 @@ std/seq.cp: Ring.next(self, i: D) -> D
 std/seq.cp: Ring.prev(self, i: D) -> D
 std/seq.cp: Ring.span(self, start: D, len: Int) -> RingRange<D>
 std/seq.cp: Ring.step(self, i: D, d: Int) -> D
-std/seq.cp: Ring.windows(self, k: Int) -> yields RingSlice<D, T>
+std/seq.cp: Ring.windows(self, k: Int) -> RingWindows<D, T>
+std/seq.cp: RingSlice.each(self) -> yields D
 std/seq.cp: RingSlice.end(self) -> D
+std/seq.cp: RingSlice.is_empty(self) -> Bool
 std/seq.cp: RingSlice.keys(self) -> yields D
 std/seq.cp: RingSlice.len(self) -> Int
 std/seq.cp: RingSlice.range(self) -> RingRange<D>
 std/seq.cp: RingSlice.start(self) -> D
 std/seq.cp: Slice.is_empty(self) -> Bool
+std/seq.cp: Slice.items<K, T>(self) -> yields (K, T)
 std/seq.cp: Slice.keys<K>(self) -> Range<K>
 std/seq.cp: Slice.len(self) -> Int
 std/seq.cp: StepKeys.contains<K>(self, i: K) -> Bool
 std/seq.cp: StepKeys.len(self) -> Int
 std/seq.cp: Stepped.at<K>(self, i: K) -> T
+std/seq.cp: Stepped.each(self) -> yields T
+std/seq.cp: Stepped.is_empty(self) -> Bool
 std/seq.cp: Stepped.keys(self) -> StepKeys
 std/seq.cp: Stepped.len(self) -> Int
 std/seq.cp: Stepped.nth(self, j: Int) -> T
@@ -1530,7 +1596,7 @@ std/seq.cp: SubseqStep.prune(mut self)
 std/seq.cp: adjacent<S: Seq, T>(self: S) -> yields (T, T)
 std/seq.cp: adjacent_diff<S: Seq, T>(self: S) -> List<T>
 std/seq.cp: all<S: Seq, T>(self: S, p: T -> Bool) -> Bool
-std/seq.cp: all_some<S: Seq, T>(self: S) -> ?List<T>
+std/seq.cp: all_some<S: Seq<?U>, U>(self: S) -> ?List<U>
 std/seq.cp: any<S: Seq, T>(self: S, p: T -> Bool) -> Bool
 std/seq.cp: argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
 std/seq.cp: argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
@@ -1565,9 +1631,10 @@ std/seq.cp: find<S: Seq, T>(self: S, p: T -> Bool) -> ?T
 std/seq.cp: first<S: Seq, T>(self: S) -> ?T
 std/seq.cp: first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D
 std/seq.cp: first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U
-std/seq.cp: flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V
-std/seq.cp: flatten<S: Seq, U: Seq, T>(self: S) -> yields T
-std/seq.cp: fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc
+std/seq.cp: flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V
+std/seq.cp: flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T
+std/seq.cp: fold<S: Seq<T>, T, M>(self: S, op: M) -> T
+std/seq.cp: fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc
 std/seq.cp: get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V
 std/seq.cp: group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>
 std/seq.cp: index_pairs<D>(self: Range<D>) -> yields (D, D)
@@ -1620,14 +1687,14 @@ std/seq.cp: permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<
 std/seq.cp: pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>)
 std/seq.cp: pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T
 std/seq.cp: pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>
-std/seq.cp: present<S: Seq, T>(self: S) -> yields T
+std/seq.cp: present<S: Seq<?U>, U>(self: S) -> yields U
 std/seq.cp: prev_permutation<S: IndexedMut>(mut self: S) -> Bool
 std/seq.cp: prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D
 std/seq.cp: prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D
 std/seq.cp: prod<S: Seq, T>(self: S) -> T
 std/seq.cp: product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)
 std/seq.cp: radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x)
-std/seq.cp: rebase<S: Indexed>(self: S) -> Rebased<S>
+std/seq.cp: rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>
 std/seq.cp: record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D
 std/seq.cp: reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T
 std/seq.cp: rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T
@@ -1643,8 +1710,8 @@ std/seq.cp: rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>
 std/seq.cp: rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>
 std/seq.cp: runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 std/seq.cp: select<S: IndexedMut, T, K>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)
-std/seq.cp: sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x)
-std/seq.cp: sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>
+std/seq.cp: sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x)
+std/seq.cp: sorted<S: Seq, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
 std/seq.cp: sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
 std/seq.cp: sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
 std/seq.cp: sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
@@ -1671,8 +1738,8 @@ std/seq.cp: windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>
 std/seq.cp: with_domain<T>(self: List<T>) -> (domain I, [I]T)
 std/seq.cp: with_next<S: Seq, T>(self: S) -> yields (T, ?T)
 std/seq.cp: with_prev<S: Seq, T>(self: S) -> yields (?T, T)
-std/seq.cp: zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)
-std/seq.cp: zip_exact<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)
+std/seq.cp: zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)
+std/seq.cp: zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)
 std/slope.cp: Concave.add_abs(mut self, a: Int)
 std/slope.cp: Concave.add_const(mut self, c: Int)
 std/slope.cp: Concave.add_left(mut self, a: Int)
@@ -1782,6 +1849,7 @@ std/strings.cp: KmpAutomaton.step(self, state: Int, a: A) -> Int
 std/strings.cp: Palindromes.count(self) -> Int
 std/strings.cp: Palindromes.is_empty(self) -> Bool
 std/strings.cp: Palindromes.is_palindrome<R>(self, r: R) -> Bool
+std/strings.cp: Palindromes.items(self) -> yields (Int, (odd: Int, even: Int))
 std/strings.cp: Palindromes.len(self) -> Int
 std/strings.cp: Palindromes.longest(self) -> (l: Int, r: Int)
 std/strings.cp: Palindromes.longest_at<K>(self, i: K) -> Int
@@ -1827,17 +1895,18 @@ std/strings.cp: RollingHash61.new<S: Seq>(seq: S, base: ?U64 = None) -> RollingH
 std/strings.cp: RollingHash61.pop(mut self)
 std/strings.cp: RollingHash61.push<T: Hashable>(mut self, x: T)
 std/strings.cp: SuffixArray.compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int
-std/strings.cp: SuffixArray.count<P: Indexed>(self, pat: P) -> Int
+std/strings.cp: SuffixArray.count<P: Indexed<J, T>, J>(self, pat: P) -> Int
 std/strings.cp: SuffixArray.distinct(self) -> Int
-std/strings.cp: SuffixArray.find_all<P: Indexed>(self, pat: P) -> yields Int
+std/strings.cp: SuffixArray.each(self) -> yields Int
+std/strings.cp: SuffixArray.find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int
 std/strings.cp: SuffixArray.is_empty(self) -> Bool
 std/strings.cp: SuffixArray.kth_distinct(self, k: Int) -> ?Range<Int>
 std/strings.cp: SuffixArray.lcp_between(self, i: Int, j: Int) -> Int
 std/strings.cp: SuffixArray.lcp_of_ranks(self, r: Range<Int>) -> Int
 std/strings.cp: SuffixArray.lcp_range(self, i: Int, len: Int) -> Range<Int>
 std/strings.cp: SuffixArray.len(self) -> Int
-std/strings.cp: SuffixArray.new<S: Indexed>(s: S) -> SuffixArray
-std/strings.cp: SuffixArray.rank_range<P: Indexed>(self, pat: P) -> Range<Int>
+std/strings.cp: SuffixArray.new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>
+std/strings.cp: SuffixArray.rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>
 std/strings.cp: SuffixArray.split(self, r: Range<Int>) -> Int
 std/strings.cp: SuffixAutomaton.add_word<S: Seq>(mut self, word: S)
 std/strings.cp: SuffixAutomaton.contains<S: Seq>(self, word: S) -> Bool
@@ -1866,12 +1935,14 @@ std/strings.cp: Trie.contains<S: Seq>(self, word: S) -> Bool
 std/strings.cp: Trie.count<S: Seq>(self, word: S) -> Int
 std/strings.cp: Trie.count_less<S: Seq>(self, word: S) -> Int
 std/strings.cp: Trie.count_prefix<S: Seq>(self, prefix: S) -> Int
+std/strings.cp: Trie.each(self) -> yields List<A>
 std/strings.cp: Trie.ends_at(self, node: Int) -> Int
 std/strings.cp: Trie.find<S: Seq>(self, word: S) -> ?Int
 std/strings.cp: Trie.is_empty(self) -> Bool
 std/strings.cp: Trie.kth(self, k: Int) -> ?List<A>
 std/strings.cp: Trie.len(self) -> Int
 std/strings.cp: Trie.new() -> Trie<A>
+std/strings.cp: Trie.nodes(self) -> Int
 std/strings.cp: Trie.pass_at(self, node: Int) -> Int
 std/strings.cp: Trie.remove<S: Seq>(mut self, word: S) -> Bool
 std/strings.cp: Trie.root(self) -> Int
@@ -1913,7 +1984,7 @@ std/strings.cp: shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self:
 std/strings.cp: split_once(self: Str, sep: Char) -> ?(Str, Str)
 std/strings.cp: split_whitespace(self: Str) -> List<Str>
 std/strings.cp: starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
-std/strings.cp: suffix_array<S: Indexed>(s: S) -> SuffixArray
+std/strings.cp: suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>
 std/strings.cp: suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>
 std/strings.cp: to_lower(self: Str) -> Str
 std/strings.cp: to_upper(self: Str) -> Str
@@ -2091,7 +2162,7 @@ std/tree.cp: Rooted.size(self, v: V) -> Int
 std/tree.cp: Rooted.sub(self, v: V) -> Range<Pre>
 std/tree.cp: Rooted.sub_at(self, v: V, root: V) -> yields Range<Pre>
 std/tree.cp: Rooted.subtree(self, v: V) -> yields V
-std/tree.cp: Rooted.subtree_sizes(self) -> [V]Int
+std/tree.cp: Rooted.subtree_sizes(self) -> [V]1..
 std/tree.cp: Rooted.top(self, v: V) -> V
 std/tree.cp: Rooted.tour(self) -> yields Visit<V, V>
 std/tree.cp: Rooted.try_from_parents(par: [V]?V) -> ?Rooted<V, _, _>
@@ -2100,7 +2171,7 @@ std/tree.cp: Rooted.up_arc(self, v: V) -> ?A
 std/tree.cp: Rooted.virtual(self, keys: List<V>) -> VirtualTree<V, _>
 std/tree.cp: Rooted.w(self, v: V) -> Int
 std/tree.cp: cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D]?D
-std/tree.cp: dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _, _>, tree_edge: [E]Bool) where A: Edged<E>
+std/tree.cp: dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (
 std/tree.cp: from_prufer<V>(code: List<V>) -> Tree<V>
 std/tree.cp: kruskal_tree<V, E, W, R: (u: V, v: V, ..)
 std/tree.cp: prufer<V, E, R: (u: V, v: V, ..)
@@ -2115,6 +2186,8 @@ std/window.cp: Undoing.pop(mut self, x: T)
 std/window.cp: Undoing.push(mut self, x: T)
 std/window.cp: Undoing.state(self) -> S
 std/window.cp: Window.all(self) -> ?T
+std/window.cp: Window.is_empty(self) -> Bool
+std/window.cp: Window.items(self) -> yields T
 std/window.cp: Window.len(self) -> Int
 std/window.cp: Window.new(op: M) -> Window<T, M>
 std/window.cp: Window.pop(mut self, x: T)

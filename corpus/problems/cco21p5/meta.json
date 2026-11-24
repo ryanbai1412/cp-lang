@@ -26,5 +26,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "SegTree(min, act: add) over 0..=n; the block end is a left-moving cut pointer because low.rev.scan(min) and V.cuts.first_true don't type yet (research/frictions/cco21p5.md)."
+ "notes": "SegTree(min, act: add) over 0..=n; the block end is a left-moving cut pointer because low.rev.scan(min) and V.cuts.first_true don't type yet (research/frictions/cco21p5.md).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 9,
+  "sha": "14d311beea52e29f766e81c3a911dddcf609e167"
+ }
 }

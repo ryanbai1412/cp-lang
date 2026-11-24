@@ -59,7 +59,7 @@ These came from the catalogue walk and idioms' review:
 - **Ties belong to `max` and `min`.** `a.keys.max(by: i => a[i], ties:
   last)` is argmax; `argmax()` stays as its short form, with the same
   `ties:`.
-- **A fold's seed is `init:`.** `a.fold(f, init: 0)`, matching the lint
+- **A fold's seed is `init:`.** `a.fold_from(0, f)`, matching the lint
   that suggests it.
 - **One separator.** `print(a, sep: ", ")` prints any sequence; `join`
   takes any printable sequence and builds the same text.

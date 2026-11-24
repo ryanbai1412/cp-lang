@@ -61,6 +61,9 @@ impl<'p> Emitter<'p> {
         self.mark_moved_entry(place, op, value);
         let whole = value;
         let value = self.flatten(value, out);
+        if matches!(op, AssignOp::Set) && self.let_lent_main(place, value, out) {
+            return;
+        }
         if matches!(op, AssignOp::Set) && self.store_pinned(place, value, out) {
             return;
         }
@@ -126,6 +129,13 @@ impl<'p> Emitter<'p> {
                 && !matches!(value.ty, Ty::Fn(..))
             {
                 v.text = format!("std::move({})", v.text);
+            }
+        }
+        if let (AssignOp::Set, ExprKind::Some(inner)) = (op, &value.kind) {
+            if last && std::ptr::eq(value, whole) {
+                if let Some(text) = self.some_moved(inner, &value.ty) {
+                    v.text = text;
+                }
             }
         }
         // Handle map/hashmap fold-on-missing-key (`max=`, `min=`, `*=`, `+=`, `-=`, `|=`, `^=`, `&=`).
@@ -224,7 +234,7 @@ impl<'p> Emitter<'p> {
                         return;
                     }
                     let positive =
-                        self.facts.sign(self.fn_id, value) == crate::ranges::Sign::Positive;
+                        self.facts.sign(self.facts_home(), value) == crate::ranges::Sign::Positive;
                     let helper = match (positive, bop == BinOp::Div) {
                         (true, true) => "divp",
                         (true, false) => "modp",
@@ -257,6 +267,10 @@ impl<'p> Emitter<'p> {
                 (Ty::Int | Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
                     let f = self.overflow_checked(&place.ty, bop);
                     twice(self, out, &|p, v| format!("{p} = {f}({p}, {v});"));
+                }
+                (Ty::Int, BinOp::Shl) if self.facts.within(self.facts_home(), value, 64) => {
+                    self.need("ishl");
+                    twice(self, out, &|p, v| format!("{p} = cpl::ishl({p}, {v});"));
                 }
                 (Ty::Int, BinOp::Shl) => {
                     self.need("ishl");

@@ -9,6 +9,7 @@
 //   over offsets 0..len in closed form: write d = 2^l * odd, collapse the offsets to
 //   g_hi = len / odd + ((len % odd) & 1), and a pattern of period 2^(l+2) in g_hi gives the
 //   bits. A series is prefix_xor(r - c + 1) ^ prefix_xor(l - c): O(1) each.
+// Bounds: n: 1..=200_000
 
 fn prefix_xor(len: Int, d0: Int) -> Int:
     let l = ctz(d0)

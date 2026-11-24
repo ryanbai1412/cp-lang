@@ -11,6 +11,7 @@
 // The judge sends N, answers each `try S` with the first closed door (or -1) and takes
 //   `answer S D` (interactor.py).
 // original: corpus/submissions/4687973.cpp
+// Bounds: n: 1..=5000
 let n: 1..=5000 = read()
 domain Switch = 0..n
 domain Door = 0..n
@@ -20,22 +21,22 @@ fn try_combination(s: [Switch]0..=1) -> ?Door:
     Door.at(first)
 
 fn explore_cave() -> ([Switch]0..=1, [Switch]Door):
-    var open: [Switch]0..=1 = 0
+    // s is the next try: settled switches stay in their open position, and
+    // `opens` sets only the free ones.
+    var s: [Switch]0..=1 = 0
     var door: [Switch]?Door = None
     for d in Door:
-        // Settled switches hold their doors open; `free` are the rest, lent to `opens`.
         let free = [w for w in Switch if door[w] == None]
         let m = free.len
-        fn opens(free: List<Switch>, k: Int, to: 0..=1) -> Bool:
-            var s = [Switch] w => if door[w] != None: open[w] else: 1 - to
-            for w in free[..k]: s[w] = to
+        fn opens(k: Int, to: 0..=1) -> Bool:
+            for (j, w) in free.items: s[w] = if j < k: to else: 1 - to
             if let first_closed = try_combination(s): first_closed > d else: true
         // Which position opens door d, then which free switch carries it.
-        let to = if opens(free, m, 0): 0 else: 1
-        let k = (1..=m).first_true(k => opens(free, k, to))!
-        open[free[k - 1]] = to
+        let to = if opens(m, 0): 0 else: 1
+        let k = (1..=m).first_true(k => opens(k, to))!
+        s[free[k - 1]] = to
         door[free[k - 1]] = Some(d)
-    (open, [Switch] w => door[w]!)
+    (s, [Switch] w => door[w]!)
 
 let (found_open, found_door) = explore_cave()
 print("answer", found_open, found_door)

@@ -6,6 +6,7 @@
 // Solution: an operation moves max down and min up by at most 1 each, so max - min shrinks by
 //   at most 2 and ceil((max - min) / 2) operations are needed; picking x strictly between the
 //   extremes (x = min once they are 1 apart) reaches it. O(n) per test.
+// Bounds: n: 2..=1000; a: 1..=1000
 
 @!multitest
 let n: 2..=1000 = read()

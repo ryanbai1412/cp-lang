@@ -1,4 +1,4 @@
-use std.geometry.{Vec, polygon_area, polygon_cut}
+use std.geometry.{Vec}
 
 let n: Int = read()
 var poly = [

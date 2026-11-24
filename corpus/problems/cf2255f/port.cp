@@ -9,6 +9,7 @@
 //   e_k of a with prod_linear, takes v2[k] = e_k * e_(n-k) for k <= n/2, composes v2 with
 //   x * C(x) (C the Catalan series), multiplies by C(x)^-n, weights term k by k!^2 / (2k)!
 //   and the total by 2 (n - 1)!. NTT compose and pow: O(n log^2 n).
+// Bounds: n: 1..=200_000
 
 use std.poly.{compose, pow, prod_linear}
 

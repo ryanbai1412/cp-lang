@@ -5,6 +5,7 @@
 // carries data, filled from the high end. Flipping node p also swaps its two
 // subtrees, and `untwist` undoes that: below a 1 the children are read in
 // swapped order.
+// copies: 1
 let op: Str = read()
 
 fn size(h: Int) -> Int = (1 << h) - 1

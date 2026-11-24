@@ -1,4 +1,3 @@
-use std.geometry.{area2}
 let n: 3..=1000 = read()
 let xs: [0..n]Int = read()
 let ys: [0..n]Int = read()

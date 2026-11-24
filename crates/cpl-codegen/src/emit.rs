@@ -10,6 +10,15 @@ use std::collections::{BTreeMap, BTreeSet};
 mod layout;
 pub mod lowered;
 mod reach;
+
+/// The closures no code that runs makes (see [`reach::Reach`]).
+pub(crate) fn unreached_closures(program: &Program) -> std::collections::BTreeSet<usize> {
+    let same: Vec<usize> = (0..program.closures.len()).collect();
+    let reached = reach::Reach::of(program, &same).closures;
+    (0..program.closures.len())
+        .filter(|c| !reached.contains(c))
+        .collect()
+}
 mod text;
 
 use text::{header, inline_hint, names, Proto};
@@ -88,6 +97,9 @@ pub(crate) struct Emitter<'p> {
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
+    /// Closures that live only through the call they are written in, as a
+    /// sort key does: only their own writes can change what they read.
+    pub call_scoped: BTreeSet<usize>,
     /// Why each capture of a borrowing closure that may not borrow owns
     /// its copy, by (closure, captured slot).
     pub capture_owns: std::collections::BTreeMap<(usize, usize), &'static str>,
@@ -119,6 +131,8 @@ pub(crate) struct Emitter<'p> {
     /// Temporaries a view lends from, each written as the local holding it.
     pub pinned: Vec<(*const Expr, String)>,
     pub hoisted: BTreeSet<usize>,
+    /// Top-level `let`s of `main` bound by reference ([`Emitter::lends_main_let`]).
+    pub lent_main: BTreeSet<usize>,
     /// The slot the next emitted closure is bound to when it names itself.
     pub rec_slot: Option<usize>,
     /// Globals stored once, with a literal: emitted as `static constexpr`.
@@ -141,6 +155,10 @@ pub(crate) struct Emitter<'p> {
     /// Per fn, the parameters it takes by value to move into its result:
     /// see [`crate::scope::sunk_params`].
     pub sunk: Vec<BTreeSet<usize>>,
+    /// Per fn, the `?T` slots held as a `cpl::Lent`: see [`crate::lentopt::lent_opts`].
+    pub lent_opts: Vec<BTreeSet<usize>>,
+    /// Struct fields that point to a lent value: see [`crate::lent_fields`].
+    pub lent_fields: crate::lent_fields::LentFields,
     /// Set while the call a `return` makes is written: its local arguments
     /// are at their last use.
     pub last_use_call: bool,
@@ -156,7 +174,13 @@ pub(crate) struct Emitter<'p> {
     /// The statement being written stores a local read for the last time,
     /// or `let`s a variable the next statements set before reading it.
     pub moves_last: bool,
+    /// Items of the struct or tuple a `let` builds that read a place the
+    /// next statements set before reading it (`let out = T(xs); xs = []`):
+    /// each is moved in, not copied.
+    pub taken_items: BTreeSet<*const Expr>,
     pub pushers: BTreeMap<usize, usize>,
+    /// The pushers that run to their end, never feeding a loop.
+    pub eager: BTreeSet<usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
     /// The loops over a `yields` fn being written as its callback, innermost last.
@@ -165,6 +189,8 @@ pub(crate) struct Emitter<'p> {
     pub fused_pushes: Vec<(usize, crate::fuse::FusedPush)>,
     /// Fns with a `cpl_sink_f` form (`crate::sink`), and the slot it sinks.
     pub sinks: BTreeMap<usize, usize>,
+    /// The pure fns a closure handed to a sunk call may call.
+    pub sink_pure: BTreeSet<usize>,
     pub sinking: Option<usize>,
     /// Emitting what is above `@!multitest`, where a top-level `return`
     /// ends the program.
@@ -226,6 +252,13 @@ impl<'p> Emitter<'p> {
         let rows = crate::scope::rows(program, &facts);
         let narrow_elems = crate::scope::narrow_elems(program, &rows);
         let fixed_arrays = crate::scope::fixed_arrays(program, &narrow_elems);
+        let lent_fields = crate::lent_fields::lent_fields(program, &|s, i| {
+            rows.contains_key(&(s, i)) || narrow_elems.contains_key(&cpl_ir::ElemLoc::Field(s, i))
+        });
+        let mut sunk = crate::scope::sunk_params(program);
+        for &(f, p) in &lent_fields.by_ref {
+            sunk[f].remove(&p);
+        }
         let mut emitter = Emitter {
             program,
             facts,
@@ -234,6 +267,7 @@ impl<'p> Emitter<'p> {
             direct: BTreeSet::new(),
             written: Default::default(),
             borrow_closures: BTreeSet::new(),
+            call_scoped: BTreeSet::new(),
             capture_owns: Default::default(),
             copies: Vec::new(),
             niche_types: std::cell::Cell::new(0),
@@ -251,6 +285,7 @@ impl<'p> Emitter<'p> {
             names: Vec::new(),
             pinned: Vec::new(),
             hoisted: BTreeSet::new(),
+            lent_main: BTreeSet::new(),
             rec_slot: None,
             const_globals: BTreeSet::new(),
             tail: None,
@@ -267,14 +302,19 @@ impl<'p> Emitter<'p> {
             narrow_elems,
             fixed_arrays,
             rows,
-            sunk: crate::scope::sunk_params(program),
+            sunk,
+            lent_opts: crate::lentopt::lent_opts(program),
+            lent_fields,
             last_use_call: false,
             give_ref: false,
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,
+            taken_items: BTreeSet::new(),
             pushers: BTreeMap::new(),
+            eager: BTreeSet::new(),
             sinks: BTreeMap::new(),
+            sink_pure: BTreeSet::new(),
             sinking: None,
             pushing: None,
             bodies: Vec::new(),
@@ -289,7 +329,14 @@ impl<'p> Emitter<'p> {
             target: target.clone(),
             chunks: Vec::new(),
         };
-        let feeds = cpl_ir::pushed::Feeds::of(program);
+        let mut feeds = cpl_ir::pushed::Feeds::candidates(program);
+        let checks = emitter.target.checks != crate::Checks::None;
+        let sinks = crate::sink::sinks(program, &emitter.devirt, &feeds.pushers, checks);
+        let mut also = sinks.producers.clone();
+        also.extend(feeds.counted(program));
+        feeds.keep_fed(program, &also);
+        emitter.sinks = sinks.fns;
+        emitter.sink_pure = sinks.pure;
         emitter.summaries = feeds.summaries;
         emitter.uses = crate::uses::Uses::of(
             program,
@@ -297,11 +344,7 @@ impl<'p> Emitter<'p> {
             emitter.target.checks != crate::Checks::None,
         );
         emitter.pushers = feeds.pushers;
-        emitter.sinks = crate::sink::sinks(
-            program,
-            &emitter.devirt,
-            emitter.target.checks != crate::Checks::None,
-        );
+        emitter.eager = feeds.eager;
         emitter
     }
 
@@ -558,6 +601,9 @@ impl<'p> Emitter<'p> {
                 }
                 let cpp =
                     self.ty_for_loc(ty, cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot));
+                if self.lent_opts[id].contains(&slot) {
+                    return format!("{cpp} {name}");
+                }
                 if self.devirt.param_known(id, slot) {
                     format!("[[maybe_unused]] const {cpp}& {name}")
                 } else if !named.contains(&slot) && !param.mutable {
@@ -571,6 +617,8 @@ impl<'p> Emitter<'p> {
                     format!("[[maybe_unused]] {by} {name}")
                 } else if param.mutable {
                     format!("{cpp}& {name}")
+                } else if self.lent_fields.by_ref.contains(&(id, slot)) {
+                    format!("const {cpp}& {name}")
                 } else if ty.is_scalar()
                     || self.facts.stores((Some(id), false, slot)) > 2
                     || self.sunk[id].contains(&slot)
@@ -588,20 +636,71 @@ impl<'p> Emitter<'p> {
             let args: Vec<String> = (0..tparams.len()).map(|i| format!("class F{i}")).collect();
             format!("template <{}>\n", args.join(", "))
         };
-        format!(
-            "{prefix}{} {}({})",
-            self.ty_with_elem_layout(&f.ret, self.elem_layout(cpl_ir::ElemLoc::FnRet(id))),
-            fn_name(&f.name),
-            params.join(", ")
-        )
+        let mut ret =
+            self.ty_with_elem_layout(&f.ret, self.elem_layout(cpl_ir::ElemLoc::FnRet(id)));
+        let by_ref: Vec<usize> = (0..f.params.len())
+            .filter(|&slot| f.locals[slot].ty != Ty::Unit)
+            .zip(&params)
+            .filter(|(_, p)| p.contains("const ") && p.contains("& "))
+            .map(|(slot, _)| slot)
+            .collect();
+        if self.lends_its_result(id, f, &by_ref) {
+            ret = format!("const {ret}&");
+        }
+        format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "))
+    }
+
+    /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
+    /// is, like a `@get` of a stored list, lends it: the caller reads it in place and copies
+    /// it only where it keeps it.
+    fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> bool {
+        use cpl_ir::{ElemLoc, ExprKind, NarrowLayout};
+        let [Stmt::Return(Some(e))] = f.body.stmts.as_slice() else {
+            return false;
+        };
+        if f.ret.is_scalar()
+            || f.ret == Ty::Unit
+            || e.ty != f.ret
+            || self.caches_on_read(&f.ret)
+            || self.expr_elem_layout(e) != self.elem_layout(ElemLoc::FnRet(id))
+        {
+            return false;
+        }
+        let mut at = e;
+        loop {
+            at = match &at.kind {
+                ExprKind::Field(base, _) if matches!(base.ty, Ty::Struct(_)) => base,
+                ExprKind::Index(base, _)
+                    if matches!(base.ty, Ty::List(_) | Ty::Array { .. })
+                        && matches!(
+                            self.expr_elem_layout(base),
+                            None | Some(NarrowLayout::Seq(_))
+                        ) =>
+                {
+                    base
+                }
+                ExprKind::Local(slot) => return !std::ptr::eq(at, e) && by_ref.contains(slot),
+                _ => return false,
+            };
+        }
     }
 
     /// The fn as the judge's grader declares it.
-    fn judge_signature(&self, f: &Function) -> String {
+    fn judge_signature(
+        &self,
+        f: &Function,
+        sides: &[cpl_ir::JudgeTy],
+        ret: &cpl_ir::JudgeTy,
+    ) -> String {
         let params: Vec<String> = (0..f.params.len())
-            .map(|slot| format!("{} {}", judge_ty(&f.locals[slot].ty), self.names[slot]))
+            .map(|slot| format!("{} {}", judge_ty(&sides[slot]), self.names[slot]))
             .collect();
-        format!("{} {}({})", judge_ty(&f.ret), f.name, params.join(", "))
+        format!("{} {}({})", judge_ty(ret), f.name, params.join(", "))
+    }
+
+    /// `cpl::Judge<T, J>`: a `T` of the program's to a `J` of the grader's.
+    fn judge_conv(&self, ty: &Ty, side: &cpl_ir::JudgeTy) -> String {
+        format!("cpl::Judge<{}, {}>", self.ty(ty), judge_ty(side))
     }
 
     /// Declarations of the locals that could not be declared where they
@@ -802,6 +901,10 @@ impl<'p> Emitter<'p> {
                 self.zero_init(&global.ty)
             };
             if !is_fixed && !shared_globals.contains(&id) && read_in_main.contains(&id) {
+                if self.lends_main_let(id) {
+                    self.lent_main.insert(id);
+                    continue;
+                }
                 solve_locals.push_str(&format!(
                     "  {} {}{};\n",
                     cpp,
@@ -844,40 +947,35 @@ impl<'p> Emitter<'p> {
                     .push((part, f.name.clone(), fns[start..].to_string()));
                 continue;
             }
-            if program.judge_fns.contains(&id) {
+            let judge = program.judge_sides(id);
+            if let Some((sides, ret)) = judge.filter(|_| program.judge_fns.contains(&id)) {
                 // The judge's fn, declared at the top of the file, behind
                 // a fn of the program's own types.
                 self.need("judge");
-                judge_decls.push_str(&format!("{};\n", self.judge_signature(f)));
+                judge_decls.push_str(&format!("{};\n", self.judge_signature(f, sides, ret)));
                 let args: Vec<String> = (0..f.params.len())
                     .map(|slot| {
-                        format!(
-                            "cpl::Judge<{}>::to({})",
-                            self.ty(&f.locals[slot].ty),
-                            self.names[slot]
-                        )
+                        let conv = self.judge_conv(&f.locals[slot].ty, &sides[slot]);
+                        format!("{conv}::to({})", self.names[slot])
                     })
                     .collect();
                 let call = format!("::{}({})", f.name, args.join(", "));
                 let body = match f.ret {
                     Ty::Unit => format!("{call};"),
-                    _ => format!("return cpl::Judge<{}>::from({call});", self.ty(&f.ret)),
+                    _ => format!("return {}::from({call});", self.judge_conv(&f.ret, ret)),
                 };
                 fns.push_str(&format!("\n{signature} {{\n    {body}\n}}\n"));
                 self.chunks
                     .push((part, f.name.clone(), fns[start..].to_string()));
                 continue;
             }
-            if program.entry_fns.contains(&id) {
+            if let Some((sides, ret)) = judge.filter(|_| program.entry_fns.contains(&id)) {
                 // What the judge's grader calls: the same fn in its types.
                 self.need("judge");
                 let args: Vec<String> = (0..f.params.len())
                     .map(|slot| {
-                        format!(
-                            "cpl::Judge<{}>::from({})",
-                            self.ty(&f.locals[slot].ty),
-                            self.names[slot]
-                        )
+                        let conv = self.judge_conv(&f.locals[slot].ty, &sides[slot]);
+                        format!("{conv}::from({})", self.names[slot])
                     })
                     .collect();
                 let call = format!("prog::{}({})", fn_name(&f.name), args.join(", "));
@@ -885,13 +983,13 @@ impl<'p> Emitter<'p> {
                 let body = match f.ret {
                     Ty::Unit => format!("{call};\n    cpl::flush();"),
                     _ => format!(
-                        "auto result = cpl::Judge<{}>::to({call});\n    cpl::flush();\n    return result;",
-                        self.ty(&f.ret)
+                        "auto cpl_result = {}::to({call});\n    cpl::flush();\n    return cpl_result;",
+                        self.judge_conv(&f.ret, ret)
                     ),
                 };
                 entries.push_str(&format!(
                     "\n{} {{\n    cpl_start();\n    {body}\n}}\n",
-                    self.judge_signature(f)
+                    self.judge_signature(f, sides, ret)
                 ));
             }
             let def_at = fns.len();
@@ -1099,6 +1197,9 @@ impl<'p> Emitter<'p> {
         if self.used.contains("str_view") {
             out.push_str("#include <string_view>\n");
         }
+        if self.used.contains("hashcore") {
+            out.push_str("#if defined(__linux__)\n#include <sys/mman.h>\n#endif\n");
+        }
         if self.used.contains("deque") {
             out.push_str("#include <deque>\n");
         }
@@ -1302,7 +1403,7 @@ impl<'p> Emitter<'p> {
             ));
         } else if program.multitest {
             out.push_str(&format!(
-                "    if (prog::setup()) for (ll tests = cpl::read_int(); tests > 0; tests--) {case}\n",
+                "    if (prog::setup()) for (ll cpl_tests = cpl::read_int(); cpl_tests > 0; cpl_tests--) {case}\n",
             ));
         } else {
             out.push_str("    prog::solve();\n");
@@ -1354,7 +1455,7 @@ impl<'p> Emitter<'p> {
             | ExprKind::DomainLo(_) => true,
             ExprKind::Local(slot) => {
                 (e.ty.is_scalar() || matches!(e.ty, Ty::Fn(..)))
-                    && self.facts.stable((self.fn_id, false, *slot))
+                    && self.facts.stable(self.facts_local(*slot))
             }
             ExprKind::Global(id) => e.ty.is_scalar() && self.facts.stable((None, true, *id)),
             ExprKind::Cast(_, inner) | ExprKind::Unary(_, inner) => self.is_fixed(inner),

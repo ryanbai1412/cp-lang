@@ -34,8 +34,8 @@
  "spec": "draft",
  "notes": "SparseTable over (prefix, cut) pairs; heap of end-range groups split around the argmax.",
  "dream_stress": {
-  "ok": false,
-  "cases": 0,
-  "sha": "3e8c82d33836b9a30bc20b76b65f74959dbea04a"
+  "ok": true,
+  "cases": 21,
+  "sha": "4bf5436a6c70d01dc7c57c72894220afaa776742"
  }
 }

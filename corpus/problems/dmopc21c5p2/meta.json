@@ -19,5 +19,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "chain([1, 3, 2], 4..=n).take(n) prints a constructed permutation."
+ "notes": "chain([1, 3, 2], 4..=n).take(n) prints a constructed permutation.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "4d57c78b98ab6f7ccc5e1e45b5fb5653f919e097"
+ }
 }

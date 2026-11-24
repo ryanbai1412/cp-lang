@@ -6,6 +6,7 @@
 // Solution: the answer is components(A) - components(A + B). Offline: each edge is present
 //   over an interval of query times; a segment tree over time adds edges to two union-finds
 //   with rollback on the way down and undoes them on the way up. O(q log q log n).
+// Bounds: n: 2..=4e5; q: 1..=4e5; qs.x, qs.y: 1..=n
 use std.dsu.{Mark}
 use std.timetree.{TimeTree}
 

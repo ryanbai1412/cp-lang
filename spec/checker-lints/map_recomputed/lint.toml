@@ -1,6 +1,6 @@
 code = "L0603"
 level = "warn"
 group = "perf"
-title = "`.map` view read by index many times"
-summary = "`.map(f)` read by index in a loop calls `f` on every read"
+title = "`.map` or `.filter` view read on every pass"
+summary = "`.map(f)` or `.filter(p)` indexed or walked in a loop reruns `f` on every read"
 family = "C. Complexity"

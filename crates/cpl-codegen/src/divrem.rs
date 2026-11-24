@@ -25,27 +25,8 @@ impl<'p> Emitter<'p> {
         b: &Code,
         both_narrow: bool,
     ) -> Code {
-        let dividend = self.facts.sign(self.fn_id, l);
-        let divisor = self.facts.sign(self.fn_id, r);
-        if dividend != Sign::Unknown && divisor == Sign::Positive {
-            // Nothing is negative: C++'s own operator agrees, and in 32
-            // bits when both fit, where division is several times faster.
-            let sym = if div { "/" } else { "%" };
-            if !both_narrow
-                && !matches!(r.kind, ExprKind::Int(_))
-                && self.facts.fits_u32(self.fn_id, l)
-                && self.facts.fits_u32(self.fn_id, r)
-            {
-                let int = self.ty(&cpl_ir::Ty::Int);
-                return Code::primary(format!(
-                    "{int}(uint32_t({}) {sym} uint32_t({}))",
-                    a.text, b.text
-                ));
-            }
-            let mut code = infix(a, sym, b, MUL);
-            code.narrow = both_narrow;
-            return code;
-        }
+        // Floor and Euclidean agree for a positive divisor, and a shift or
+        // mask is that floor whatever the dividend's sign.
         if let Some(shift) = pow2(r) {
             return match (div, shift) {
                 (true, 0) => a.clone(),
@@ -59,6 +40,27 @@ impl<'p> Emitter<'p> {
                     ..Code::new(format!("{} & {}", a.at(MUL), (1i64 << shift) - 1), BIT)
                 },
             };
+        }
+        let dividend = self.facts.sign(self.facts_home(), l);
+        let divisor = self.facts.sign(self.facts_home(), r);
+        if dividend != Sign::Unknown && divisor == Sign::Positive {
+            // Nothing is negative: C++'s own operator agrees, and in 32
+            // bits when both fit, where division is several times faster.
+            let sym = if div { "/" } else { "%" };
+            if !both_narrow
+                && !matches!(r.kind, ExprKind::Int(_))
+                && self.facts.fits_u32(self.facts_home(), l)
+                && self.facts.fits_u32(self.facts_home(), r)
+            {
+                let int = self.ty(&cpl_ir::Ty::Int);
+                return Code::primary(format!(
+                    "{int}(uint32_t({}) {sym} uint32_t({}))",
+                    a.text, b.text
+                ));
+            }
+            let mut code = infix(a, sym, b, MUL);
+            code.narrow = both_narrow;
+            return code;
         }
         let helper = match (divisor == Sign::Positive, div) {
             (true, true) => "divp",

@@ -9,6 +9,7 @@
 //   the right side 1 or n - r + 1. Hamid takes the cheaper side. On day 1 Mani can wall the empty
 //   cell next to Hamid, making that side cost p + 1 (left) or n - p (right) when that is more;
 //   the answer is the best of Mani's options. O(n).
+// Bounds: n: 1..=200_000; x: 1..=n
 
 @!multitest
 let n: 1..=200_000 = read()

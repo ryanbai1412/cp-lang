@@ -54,20 +54,31 @@ pub struct ExprFacts {
     pub instantiations: Vec<(Span, Vec<(String, Ty)>)>,
     /// The `m` of each `alias.m` naming a module's member.
     pub module_members: Vec<Span>,
+    /// The `m` of each `x.m(..)` that calls a fn of the name because the
+    /// built-in member `m` takes fewer arguments: `a.contains(i, x)`.
+    pub past_rows: Vec<Span>,
 }
 
 impl ExprFacts {
-    pub(crate) fn mark(&self) -> [usize; 4] {
+    pub(crate) fn mark(&self) -> [usize; 5] {
         let (t, c) = (self.types.len(), self.calls.len());
-        [t, c, self.instantiations.len(), self.module_members.len()]
+        let rows = self.past_rows.len();
+        [
+            t,
+            c,
+            self.instantiations.len(),
+            self.module_members.len(),
+            rows,
+        ]
     }
 
     /// Forgets what was recorded since `mark`, as a quiet probe does.
-    pub(crate) fn truncate(&mut self, [t, c, i, m]: [usize; 4]) {
+    pub(crate) fn truncate(&mut self, [t, c, i, m, r]: [usize; 5]) {
         self.types.truncate(t);
         self.calls.truncate(c);
         self.instantiations.truncate(i);
         self.module_members.truncate(m);
+        self.past_rows.truncate(r);
     }
 }
 
@@ -128,7 +139,9 @@ impl Facts {
             }
         }
         // By end, then start: `place_type` looks a place up by its end.
-        facts.types.sort_by_key(|(s, _)| (s.end, s.start));
+        cpl_diag::sort_by_key(&mut facts.types, |(s, _)| {
+            (s.end as u64) << 32 | s.start as u64
+        });
         let (mut callees, mut instantiations) = (Vec::new(), Vec::new());
         for &(offset, check) in items {
             add_calls(offset, check, &mut callees, &mut instantiations);

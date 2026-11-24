@@ -14,7 +14,7 @@ fn cnt(x: Int, lo: Int, hi: Int) -> Int:
     if lo > hi:
         return 0
     if let ps = pos.get(x):
-        return ps.partition_point(p => p > hi) - ps.partition_point(p => p >= lo)
+        return ps.bsearch(p => p > hi) - ps.bsearch(p => p >= lo)
     0
 
 let base = cnt(0, 1, n - 1)

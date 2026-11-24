@@ -63,7 +63,7 @@ fn erased(program: &Program, ty: &Ty, reason: &str) -> ClosureMode {
         t => t,
     };
     match fn_ty {
-        Ty::Fn(args, _) if crate::names::fn_pointer(program, args.len()) => ClosureMode::FnPointer,
+        Ty::Fn(args, ret) if crate::names::fn_pointer(program, args, ret) => ClosureMode::FnPointer,
         _ => ClosureMode::DynamicStdFunction {
             reason: reason.to_string(),
         },
@@ -484,6 +484,14 @@ impl<'p> Devirt<'p> {
 
     pub fn unread_field(&self, struct_id: usize, index: usize) -> bool {
         self.unread_fields.contains(&(struct_id, index))
+    }
+
+    /// A field the C++ struct leaves out: never read, or `()`-typed (an op
+    /// value like `+` holds nothing). Declaration, literals and reads all
+    /// ask this one question, so they drop the field together.
+    pub fn dropped_field(&self, struct_id: usize, index: usize) -> bool {
+        self.unread_field(struct_id, index)
+            || self.program.structs[struct_id].fields[index].1 == Ty::Unit
     }
 
     /// Count only the struct literals in `fns` and `closures`, the code the

@@ -8,6 +8,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/egoi22p7/orig.cpp"
+  ],
   "port": [
    "corpus/problems/egoi22p7/port.cp"
   ]

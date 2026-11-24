@@ -9,6 +9,7 @@
 //   b_i b_{i+1} back when the value changes. stay[v] is the best ending on v, fresh the best after
 //   a paid change; only values present in a neighbour row are touched, and `best` (max stay)
 //   only rises. O(n m) hash operations per test.
+// Bounds: n, m: 2..=200_000
 @!multitest
 let (n, m, k): (2..=200_000, 2..=200_000, Int) = read()
 domain R = 0..n

@@ -6,6 +6,7 @@
 //   cells are <= x. Each check fills a 2D prefix sum of [rank <= x] and tests every h x w
 //   window in O(1): O(rc log(rc)) total.
 // original: corpus/problems/ioi10p3/orig.cpp
+// Bounds: r, c, h, w: 1..=3000; rank: 1..=9e6
 
 let (r, c, h, w): (1..=3000, 1..=3000, 1..=3000, 1..=3000) = read()
 domain Row = 0..r

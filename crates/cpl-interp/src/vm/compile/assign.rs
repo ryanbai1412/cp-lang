@@ -1068,8 +1068,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     /// A path to `place`, through map entries too. A path that ends at a
-    /// map entry is only for an op that walks it whole (`key_leaf`): the
-    /// ops that store to the last step take list and array cells.
+    /// map entry is only for an op that walks it whole (`key_leaf`) or puts
+    /// the entry back whole (`StorePlaceV`): the other ops that store to
+    /// the last step take list and array cells.
     pub(super) fn compile_place_path_to(
         &mut self,
         place: &'p Place,

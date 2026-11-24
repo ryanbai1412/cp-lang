@@ -7,6 +7,7 @@
 //   [0, s]. Scan a keeping the interval of prefix sums still reachable; when it empties,
 //   one inserted element before a_i resets it to all of [0, s]. b must end at s, which may
 //   cost one more element. O(n).
+// Bounds: n: 1..=3e6; a: -1e9..=1e9
 @!multitest
 let n: 1..=3e6 = read()
 let a: [0..n]-1e9..=1e9 = read()

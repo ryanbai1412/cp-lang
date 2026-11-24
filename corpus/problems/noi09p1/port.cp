@@ -9,6 +9,7 @@
 //   positions in order, the first unassigned edge of a cycle takes its smaller value, which
 //   orients the whole cycle. O(n).
 // original: corpus/submissions/5102817.cpp
+// Bounds: n: 1..=1e4; dist: 0..=n - 1
 
 let n: 1..=1e4 = read()
 domain Pos = 0..n

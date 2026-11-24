@@ -1675,22 +1675,9 @@ impl<'a> Checker<'a> {
     }
 
     fn field(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
-        // R04b.1.7: `let t = w.rebase` names its fresh domain `t.Idx`.
         if let ExprKind::Name(view) = &base.kind {
-            if name.text == "Idx" {
-                let own = format!("{view}.Idx");
-                if let Some(Ty::Array { index, .. }) = self.local(view).map(|l| l.ty.clone()) {
-                    if matches!(index.as_slice(), [Ty::Pos(d)] if *d == own) {
-                        return Ty::Domain(own);
-                    }
-                }
-                if let Some(def) = self.global(view) {
-                    if let Ty::Array { index, .. } = def.value_ty(view) {
-                        if matches!(index.as_slice(), [Ty::Pos(d)] if *d == own) {
-                            return Ty::Domain(own);
-                        }
-                    }
-                }
+            if let Some(domain) = self.value_domain(view, &name.text) {
+                return Ty::Domain(domain);
             }
         }
         // `treap.merge` after `use lib.treap`: a public name of a module.
@@ -1730,7 +1717,7 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.library_domain_member(expr, base, name) {
             return ty;
         }
-        let base_ty = self.infer(base);
+        let base_ty = self.infer_base(base);
         self.note_method(&base_ty, name);
         if self.member_advice(&base_ty, name) {
             return Ty::Error;
@@ -1738,7 +1725,8 @@ impl<'a> Checker<'a> {
         if self.private_member(&base_ty, name) {
             return Ty::Error;
         }
-        let ty = self.member_ty(expr, name, base_ty.clone());
+        let ty = self.member_or_getter(expr, name, base_ty.clone());
+        let ty = self.through_value(base, &base_ty, ty);
         let base_ty = base_ty.rev_source().cloned().unwrap_or(base_ty);
         let built_in = matches!(
             &base_ty,
@@ -1762,7 +1750,7 @@ impl<'a> Checker<'a> {
             && !self.old_copy_spelling(&base_ty, name)
         {
             let message = Self::no_method(&base_ty, name);
-            let suggestion = self.member_typo(&base_ty, &name.text).zip(Some(self.src));
+            let suggestion = self.member_typo(&base_ty, &name.text);
             let twin = self.method_twin(base, name, &base_ty);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             let pair = super::advice::iterator_pair_fix(self.src, base.span, name.span);
@@ -1792,9 +1780,9 @@ impl<'a> Checker<'a> {
                         _ => help.to_string(),
                     });
                     diag.fixes.extend(pair.or(position));
-                } else if let Some((s, src)) = suggestion {
-                    super::advice::suggest_member(diag, src, name.span, s, base_ty == Ty::Str);
-                } else if let Some(help) = super::advice::foreign_call(&name.text)
+                } else if let Some(s) = suggestion {
+                    diag.suggest(name.span, s);
+                } else if let Some(help) = habits::help(habits::Kind::Call, &name.text)
                     .or_else(|| super::advice::foreign_method(&name.text))
                 {
                     diag.help = Some(help.to_string());
@@ -2427,30 +2415,12 @@ impl<'a> Checker<'a> {
                 })
             }
             Ty::Param(param) => {
-                let bounds: Vec<String> = self
-                    .param_bounds
-                    .iter()
-                    .filter(|(p, _)| p == param)
-                    .flat_map(|(_, ts)| ts.iter().cloned())
-                    .collect();
-                for trait_name in bounds {
-                    if let Some(Def::Trait { methods, .. }) = self.type_def(&trait_name).as_deref()
-                    {
-                        if let Some(m) = methods.iter().find(|m| m.name == name.text) {
-                            let mut on = crate::ty::Bindings::default();
-                            on.insert("Self".into(), Ty::Param(param.clone()));
-                            return match &m.ty.subst(&on) {
-                                Ty::Fn { params, ret }
-                                    if !self.in_call_callee && params.is_empty() =>
-                                {
-                                    (**ret).clone()
-                                }
-                                other => other.clone(),
-                            };
-                        }
+                return match self.bound_method(param, &name.text) {
+                    Some(Ty::Fn { params, ret }) if !self.in_call_callee && params.is_empty() => {
+                        *ret
                     }
-                }
-                return Ty::Unknown;
+                    other => other.unwrap_or(Ty::Unknown),
+                };
             }
             // The members of a domain that give positions or ranges back.
             Ty::Domain(domain) => {
@@ -2805,6 +2775,11 @@ impl<'a> Checker<'a> {
         let prev_piece = std::mem::replace(&mut self.expected_piece, true);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
         self.expected_piece = prev_piece;
+        if let (Ty::Param(param), [_]) = (&base_ty, indices) {
+            if let Some(Ty::Fn { ret, .. }) = self.bound_method(param, "at") {
+                return *ret;
+            }
+        }
         if let (ExprKind::Name(base_name), Some(idx_expr)) = (&base.kind, indices.first()) {
             let idx_owner = match &idx_expr.kind {
                 ExprKind::Call { callee, .. } => match &callee.kind {
@@ -3184,9 +3159,6 @@ impl<'a> Checker<'a> {
                 self.note_view(expr, "slice");
                 ty.clone()
             }
-            Ty::Named { name, args } if name == "Rebased" && args.len() == 1 => {
-                self.element_ty(&args[0])
-            }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => {
                 self.list_index_by_position(base, indices, &index_tys);
                 args[0].clone()
@@ -3426,16 +3398,16 @@ impl<'a> Checker<'a> {
         }
     }
 
-    pub(crate) fn expect_fits(
+    pub(super) fn expect_fits_by(
         &mut self,
         got: &Ty,
         want: &Ty,
         at: &Expr,
-        message: impl FnOnce(&Self, &Ty, &Ty) -> String,
+        message: &mut dyn FnMut(&Self, &Ty, &Ty) -> String,
     ) -> bool {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
-        let got = &self.narrowed(got, want);
+        let got = &self.read_narrowed(got, want, at);
         // §124: `j..=i` over cuts never converts to `Range<D>`.
         if let ExprKind::Range {
             hi: Some(hi),

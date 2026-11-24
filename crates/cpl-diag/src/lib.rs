@@ -5,6 +5,7 @@
 //! editor (`plan/30-compiler.md` 3.7).
 
 mod fix;
+pub mod habits;
 pub mod json;
 pub mod plain;
 pub mod registry;
@@ -30,6 +31,12 @@ pub struct Span {
 impl Span {
     pub const fn new(start: u32, end: u32) -> Span {
         Span { start, end }
+    }
+
+    /// The span's place in source order, by `start` then `end`, as one
+    /// [`sort_by_key`] key.
+    pub const fn order(self) -> u64 {
+        (self.start as u64) << 32 | self.end as u64
     }
 
     /// An empty span at `at`.
@@ -99,6 +106,44 @@ pub struct Code(pub &'static str);
 /// `E02xx`, types and domains are `E03xx`, ownership is `E04xx`. The back
 /// ends report `E05xx` for what they can't run, lends, projections and
 /// impls are `E06xx`, and a program that fails while it runs gets the `R` code of its trap (`R0001` when uncatalogued).
+/// Sorts `v` stably by a `u64` key, such as [`Span::order`]. The sort itself is one
+/// function for every caller: a std `sort_by_key` copies the whole stable sort, about 4 KB
+/// of wasm, into each call site whose element holds a `Span`.
+pub fn sort_by_key<T>(v: &mut [T], key: impl Fn(&T) -> u64) {
+    let order = sorted_order(v.iter().map(key).collect());
+    permute(order, &mut |i, j| v.swap(i, j));
+}
+
+/// The indices of `keys`, sorted by key and then by index, so that equal keys keep their
+/// order. Each key is split into its high and low halves so the sort is std's
+/// `sort_unstable` of `(u32, u32, u32)`, which cpl.wasm already has from cpl-check, and so
+/// adds no code to `core`.
+fn sorted_order(keys: Vec<u64>) -> Vec<u32> {
+    let mut at: Vec<(u32, u32, u32)> = keys
+        .into_iter()
+        .zip(0..)
+        .map(|(k, i)| ((k >> 32) as u32, k as u32, i))
+        .collect();
+    at.sort_unstable();
+    at.into_iter().map(|(_, _, i)| i).collect()
+}
+
+/// Puts the element at `order[i]` at `i`, one cycle at a time.
+fn permute(mut order: Vec<u32>, swap: &mut dyn FnMut(usize, usize)) {
+    for start in 0..order.len() {
+        let mut at = start;
+        while order[at] != u32::MAX {
+            let from = order[at] as usize;
+            order[at] = u32::MAX;
+            if from == start {
+                break;
+            }
+            swap(at, from);
+            at = from;
+        }
+    }
+}
+
 pub mod codes {
     use super::Code;
 
@@ -225,6 +270,8 @@ pub mod codes {
     /// A fixed-width integer type name; widths come from ranges.
     pub const NO_NARROW_INT: Code = Code("E0901");
     pub const RANGE_STORE_CONST: Code = Code("E0902");
+    /// The peak at the input bounds is over the judge's memory limit. (R03.1.9)
+    pub const MEMORY_OVER_PROFILE: Code = Code("E0904");
 
     /// A captured variable moved while a closure or nested fn capturing it is still live.
     pub const MOVED_WHILE_CAPTURED: Code = Code("E0607");
@@ -232,6 +279,8 @@ pub mod codes {
     pub const USE_AFTER_MOVE: Code = Code("E0608");
     pub const OVERLOAD_BY_TYPE: Code = Code("E0702");
 
+    /// A position of a per-test domain kept in a name declared above `@!multitest`. (R02.9.2)
+    pub const FRESH_TYPE_LEAKS_TEST: Code = Code("E0805");
     /// A context value that is not a compile-time constant. (R09.1.2)
     pub const CONTEXT_NOT_CONSTANT: Code = Code("E0801");
     /// A bare `with` line after another statement of its block. (R09.1.1)
@@ -508,7 +557,7 @@ impl Sink {
     /// file uses it, so only its first use is kept; a later use's fix, the
     /// same rename, joins the first one's edits.
     pub fn finish(mut self) -> Vec<Diagnostic> {
-        self.diags.sort_by_key(|d| (d.span.start, d.span.end));
+        sort_by_key(&mut self.diags, |d| d.span.order());
         let mut planned: Vec<String> = Vec::new();
         self.diags.retain(|d| {
             if d.code != codes::NOT_IMPLEMENTED {
@@ -568,6 +617,25 @@ fn unresolved_name(diag: &Diagnostic) -> Option<&str> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn sort_by_key_is_stable_and_matches_std() {
+        let mut seed = 7u64;
+        for n in 0..60 {
+            let v: Vec<(u64, usize)> = (0..n)
+                .map(|i| {
+                    seed = seed
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    (seed >> 61, i)
+                })
+                .collect();
+            let (mut ours, mut std) = (v.clone(), v);
+            super::sort_by_key(&mut ours, |p| p.0);
+            std.sort_by_key(|p| p.0);
+            assert_eq!(ours, std);
+        }
+    }
+
     use super::*;
 
     #[test]

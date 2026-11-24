@@ -9,6 +9,7 @@
 //   pair differs at bit d, and raising its lower one to the shared high bits, 0 at d and all
 //   ones below reaches that bound. So take, over unequal adjacent (x, y), the max of
 //   x | (2^bit_width(x ^ y) - 1), or a[0] when all are equal; O(n).
+// Bounds: n: 1..=200_000; a: 0..=2 ** 30 - 1
 
 @!multitest
 let n: 1..=200_000 = read()

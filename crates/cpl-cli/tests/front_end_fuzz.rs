@@ -159,12 +159,7 @@ fn mutated_programs_never_crash_and_report_deterministically() {
         .ok()
         .and_then(|r| r.parse().ok())
         .unwrap_or(12);
-    let mut paths: Vec<PathBuf> = std::fs::read_dir(root().join("corpus/problems"))
-        .unwrap()
-        .flatten()
-        .map(|e| e.path().join("spec.cp"))
-        .filter(|p| p.exists())
-        .collect();
+    let mut paths: Vec<PathBuf> = cpl_corpus::files(&root(), "spec.cp");
     paths.sort();
     std::panic::set_hook(Box::new(|_| {}));
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
@@ -246,12 +241,7 @@ fn mutated_programs_never_crash_and_report_deterministically() {
 #[test]
 fn a_broken_copy_checks_within_10_percent_of_its_original() {
     use std::time::{Duration, Instant};
-    let mut paths: Vec<PathBuf> = std::fs::read_dir(root().join("corpus/problems"))
-        .unwrap()
-        .flatten()
-        .map(|e| e.path().join("spec.cp"))
-        .filter(|p| p.exists())
-        .collect();
+    let mut paths: Vec<PathBuf> = cpl_corpus::files(&root(), "spec.cp");
     paths.sort();
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let (clean, broken, copies) = std::thread::scope(|scope| {

@@ -44,6 +44,12 @@ fn an_impl_method_wins_over_a_library_fn_whose_bound_fails() {
 }
 
 #[test]
+fn a_walkable_structs_own_method_wins_over_the_seq_op_of_its_name() {
+    let src = "use std.deque.{LinkedList}\nvar a = LinkedList<Int>.new()\na.push(1)\na.reverse()\nprint(a.len)\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+}
+
+#[test]
 fn a_method_call_takes_the_fn_its_receiver_fits_from_any_module() {
     let modules = [
         (

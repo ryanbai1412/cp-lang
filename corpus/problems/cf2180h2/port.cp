@@ -12,6 +12,7 @@
 //   positions >= 2, mod 4, indexes ODD_D_GRUNDY = [0, 2, 3, 1]; even d gives 0 for even len,
 //   else with g = len / d + 2 it is 0 when ctz(g) is odd, else 2 or 1 by popcount parity.
 //   XOR everything: O(1) per series.
+// Bounds: n: 1..=200_000
 
 const EVEN_BITS_FROM_2 = 0x5555555555555554
 const ODD_D_GRUNDY = [0, 2, 3, 1]

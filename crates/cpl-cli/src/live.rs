@@ -98,10 +98,11 @@ fn say(text: std::fmt::Arguments) {
 
 fn watch(path: &str, recorded: Option<Vec<u8>>, live: &Live, record: Record) -> ! {
     let mut last = recorded;
+    let mut files = cpl_wait::files::Watch::new(Duration::from_millis(200), || vec![path.into()]);
     loop {
-        std::thread::sleep(Duration::from_millis(200));
         let now = std::fs::read(path).ok();
         if now.is_none() || now == last {
+            files.changed();
             continue;
         }
         last = now;
@@ -155,12 +156,7 @@ fn answer(stream: TcpStream, live: &Live, run: &Run, record: Record) {
         .and_then(|n| n.parse::<u64>().ok());
     let posted = request.starts_with("POST ");
     let (kind, body) = if let (Some(from), "/trace.json") = (from, target) {
-        let document = record(Some(from)).unwrap_or_else(|error| {
-            format!(
-                "{{\"error\":{}}}",
-                cpl_json::escape_script_safe_string(error.trim_end())
-            )
-        });
+        let document = record(Some(from)).unwrap_or_else(|error| error_json(&error));
         ("application/json", document)
     } else if posted && target == "/replay" {
         let mut body = vec![0; length.min(1 << 24)];
@@ -191,17 +187,12 @@ fn answer(stream: TcpStream, live: &Live, run: &Run, record: Record) {
             }
             "/trace.json" => ("application/json", shown.document.clone()),
             "/live" => {
-                let error = shown
-                    .error
-                    .as_deref()
-                    .map_or("null".to_string(), cpl_json::escape_script_safe_string);
-                (
-                    "application/json",
-                    format!(
-                        "{{\"version\":{},\"changes\":{},\"error\":{error}}}",
-                        shown.version, shown.changes
-                    ),
-                )
+                let body = cpl_json::write_with(|w| {
+                    w.object().key("version").int(shown.version);
+                    w.key("changes").int(shown.changes);
+                    w.key("error").opt_str(shown.error.as_deref()).end();
+                });
+                ("application/json", body)
             }
             _ => ("text/plain", String::new()),
         }
@@ -219,18 +210,20 @@ fn answer(stream: TcpStream, live: &Live, run: &Run, record: Record) {
     );
 }
 
+/// `{"error": message}`, the message without its trailing newline.
+fn error_json(message: &str) -> String {
+    cpl_json::write_with(|w| {
+        w.object().key("error").str(message.trim_end()).end();
+    })
+}
+
 /// `{original, edited, step, frame}`: the call open at `step` (0-based) of
 /// the run of `original`, replayed with the fns of `edited`, or of the file
 /// on disk when `edited` is null. The answer is [`cpl_interp::replay::Replay::json`],
 /// or `{"error": ...}`.
 fn replay(run: &Run, body: &str) -> String {
     use crate::dap::Json;
-    let error = |message: &str| {
-        format!(
-            "{{\"error\":{}}}",
-            cpl_json::escape_script_safe_string(message.trim_end())
-        )
-    };
+    let error = error_json;
     let Ok(request) = cpl_json::parse(body) else {
         return error("the replay request is not JSON");
     };

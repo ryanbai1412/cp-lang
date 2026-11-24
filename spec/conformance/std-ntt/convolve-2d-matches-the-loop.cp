@@ -1,7 +1,6 @@
 // expect: ok, output "YES\n1 1\n2 2\n0"
 // `convolve_2d` is the 2D product of ragged row lists (a missing entry is zero), equal to the
 // quadruple loop, in both engines; an input with no entries gives `[]`.
-use std.ntt.{convolve_2d}
 type Z = Mod<998_244_353>
 let a: List<List<Z>> = [[1, 2, 3], [4], [], [5, 6]]
 let b: List<List<Z>> = [[7, 8], [9, 10, 11]]

@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 7 P1 (Bob and Balance), https://dmoj.ca/problem/dmopc20c7p1
+// limits: 2000 ms, 256 MB
 // Problem: 2n weights (n <= 5e5, masses <= 1e9) go on n two-plate scales, one weight per plate.
 //   Maximise the tipped scales (unequal masses); print that number, then each scale's two
 //   weight indices.
@@ -6,6 +7,7 @@
 //   held by f <= n weights cannot fill both ends, so only a mass with f > n balances, f - n
 //   scales, which no pairing avoids. O(n log n).
 // original: corpus/submissions/3686504.cpp
+// Bounds: n: 1..=5e5; mass: 1..=1e9
 let n: 1..=5e5 = read()
 domain Weight = 1..=2 * n
 let mass: [Weight]1..=1e9 = read()

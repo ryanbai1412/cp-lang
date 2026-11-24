@@ -107,8 +107,17 @@ One version of a persistent disjoint-set union over domain `V`: an immutable val
 - `fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>` — \(O(n)\) time and \(2n - 1\) arena nodes; The version where every position of `V` is alone, built in `ar`.
 - `fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V` — \(O(\log^2 n)\); The representative of `v`'s set, chosen by union by size as in [`Dsu.find`](Dsu.find).
 - `fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool` — \(O(\log^2 n)\); Whether `a` and `b` are in the same set.
+- `fn within(self, ar: PArena<DsuNode<V>>) -> lends PersistentDsuWithin<V>` — \(O(1)\)
 - `fn size(self, ar: PArena<DsuNode<V>>, v: V) -> Int` — \(O(\log^2 n)\); The number of positions in `v`'s set, `v` included.
 - `fn unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>` — \(O(\log^2 n)\) time and \(O(\log n)\) arena nodes; A new version with the sets of `a` and `b` merged; `self` is unchanged.
+
+## `struct PersistentDsuWithin<V>(ar: PArena<DsuNode<V>>, dsu: PersistentDsu<V>)`
+
+A `PersistentDsu` version read through its `PArena`, from `d.within(ar)`.
+
+- `@get fn len(self) -> Int` — \(O(1)\); The number of positions, `V.count`.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether `V` has no position.
+- `@get fn items(self) -> yields (V, V)` — \(O(n \log^2 n)\); Visit every position with its set's representative, as `find` gives it.
 
 ## Example
 

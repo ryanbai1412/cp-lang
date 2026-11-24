@@ -9,44 +9,28 @@
 //   position, keep the consistent ones and advance each by its own v, until one remains:
 //   O(log bN) more looks, O(bN log bN) work in all as the candidates halve.
 // original: corpus/submissions/5120565.cpp
+use std.rand.{Rng}
+
 let n: 2..=1e5 = ask("GetSize")
-let bsize = min(n, max(2, 2_000_000 / n))
+let block = min(n, max(2, 2_000_000 / n))
 
 fn look(l: Int, r: Int) -> Bool:
-    let tok: Str = ask("Look", l, r)
-    tok == "True"
+    let answer: Str = ask("Look", l, r)
+    answer == "True"
 
-var rng_state = 1412
-fn next_rand(bound: Int) -> Int:
-    rng_state = (rng_state * 1_103_515_245 + 12_345) % 2_147_483_648
-    rng_state % bound
+var rng = Rng.new(1412)
+fn random_block() -> Int = rng.int(0, (n - 1) / block) * block
 
-struct State:
-    p: Int
-    v: Int
+var lo = random_block()
+while not look(lo, min(n, lo + block) - 1): lo = random_block()
 
-let blocks = (n + bsize - 1) / bsize
-var (lo, hi) = (0, 0)
-while true:
-    lo = next_rand(blocks) * bsize
-    hi = min(n, lo + bsize)
-    if look(lo, hi - 1): break
-
-var cands: List<State> = []
-for v in 0..n:
-    for x in lo..hi:
-        cands.push(State((x + v) % n, v))
-
+type Guess = (p: Int, v: Int)  // where the particle is now, and its velocity
+var cands: List<Guess> = [(p: (x + v) % n, v:) for v in 0..n for x in lo..min(n, lo + block)]
 while cands.len > 1:
     cands.sort()
     let mid = cands[(cands.len - 1) / 2].p
     let hit = look(0, mid)
-    var nxt: List<State> = []
-    for idx in 0..cands.len:
-        let c = cands[idx]
-        if (hit and c.p <= mid) or (not hit and c.p > mid):
-            nxt.push(State((c.p + c.v) % n, c.v))
-    cands = nxt
+    cands = [(p: (c.p + c.v) % n, v: c.v) for c in cands if (c.p <= mid) == hit]
 
-let final_st = cands[0]
-print("Guess", final_st.v, final_st.p)
+let last = cands[0]
+print("Guess", last.v, last.p)

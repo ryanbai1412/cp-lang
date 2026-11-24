@@ -5,6 +5,7 @@
 // Solution: repeat d = x mod r, x = x div r with Euclidean division: the remainder is already a
 //   digit in 0..|r|-1 whatever the sign of the base. Print the digits reversed. O(log |x|).
 // original: corpus/submissions/5067849.cpp
+// Bounds: x: -32768..=32767; base: -20..=-2
 let x: -32768..=32767 = read()
 let base: -20..=-2 = read()
 

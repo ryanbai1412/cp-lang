@@ -15,6 +15,34 @@ impl<'p> Emitter<'p> {
             .collect()
     }
 
+    /// The argument for a parameter held as a `cpl::Lent` (see
+    /// [`crate::lentopt`]): a pointer to the value, or to a copy when the
+    /// call also changes it through a `mut` argument.
+    fn lend_arg(
+        &mut self,
+        id: usize,
+        slot: usize,
+        value: &Expr,
+        text: &str,
+        lent: &[(bool, usize)],
+    ) -> String {
+        self.need("lent");
+        let shared = crate::lend::given_root(value).is_some_and(|root| {
+            lent.contains(&root) || (root.0 && self.uses.effects(id).writes.contains(&root.1))
+        });
+        match &value.kind {
+            ExprKind::None => {
+                let loc = cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot);
+                let ty = &self.program.fns[id].locals[slot].ty;
+                format!("{}{{nullptr}}", self.ty_for_loc(ty, loc))
+            }
+            ExprKind::Some(inner) if shared => format!("cpl::lend({}({text}))", self.ty(&inner.ty)),
+            ExprKind::Some(_) => format!("cpl::lend({text})"),
+            _ if shared => format!("cpl::lend_opt({}({text}))", self.ty(&value.ty)),
+            _ => format!("cpl::lend_opt({text})"),
+        }
+    }
+
     pub(super) fn call(&mut self, e: &Expr, id: usize, args: &[Arg]) -> Code {
         let last_use = std::mem::take(&mut self.last_use_call);
         if let Some(code) = self
@@ -33,7 +61,12 @@ impl<'p> Emitter<'p> {
                     if self.devirt.param_elidable(id, slot) && self.devirt.skippable_value(value) {
                         None
                     } else {
-                        Some(value)
+                        match &value.kind {
+                            ExprKind::Some(inner) if self.lent_opts[id].contains(&slot) => {
+                                Some(&**inner)
+                            }
+                            _ => Some(value),
+                        }
                     }
                 }
                 Arg::Mut(_) => None,
@@ -81,6 +114,10 @@ impl<'p> Emitter<'p> {
                             if code.text != "(void)0" {
                                 ran.push(code.text);
                             }
+                            continue;
+                        }
+                        if this.lent_opts[id].contains(&slot) {
+                            texts.push(this.lend_arg(id, slot, value, &code.text, &lent));
                             continue;
                         }
                         // A parameter taken by reference must not see the

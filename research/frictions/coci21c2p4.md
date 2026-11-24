@@ -1,10 +1,8 @@
 # Friction report: coci21c2p4
 
-spec.cp declared `domain State = (comps: 0..=n, used: 0..l, ends: 0..=2)`, the
-named-factor form spec/core/04-indices.md shows, and every run was E0501. It
-now walks a product of two named domains, `domain State = (Blocks, Cells)`,
-and rolls `[State]Z` per magnet (smallest radius first), which also drops the
-78M-state dense memo the old top-down form needed at n = 50, l = 1e4.
+Rethought. The v0.2 port left n and l untyped (the bounds were a comment) and kept the table as nested lists. The v0.3 port types n, l and every radius (`1..=l`) from the statement and keeps the table as a `[0..=n, 0..=l]Z` grid. It skips zero states with a filtered loop and sums the answer with `sum`. l stays `1..=1e4` rather than `n..=1e4` because one package case has l < n (answer 0).
+
+dream.cp is a memo over a `State` product domain whose out-of-range moves fall to 0 through `State.at(..)`. The port keeps the forward table and bounds-checks each move by hand (`k + r <= l`), because that product domain does not build yet:
 
 ## Named product factors over inline ranges are E0501
 
@@ -18,3 +16,7 @@ and rolls `[State]Z` per magnet (smallest radius first), which also drops the
   `domain State = (blocks: B, cells: C)` over named `B`, `C` works.
 - **General fix:** lower a product whose factors are inline ranges by
   interning an anonymous domain per factor, as named factors already do.
+
+## Measurements
+
+gen.py --max (n = 50, l = 1e4): port 0.06 s, accepted C++ 0.93 s, same output.

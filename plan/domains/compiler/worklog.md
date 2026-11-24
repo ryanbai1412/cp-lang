@@ -2,6 +2,16 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-24
+- 2026-11-24 landed (VM-stmt, tree-walker deletion): `xs.sort()` and `xs.sort(by: ..)` over an element or key type with a user `<` run on the VM (`Op::SortPlaceCmp`, `Op::SortByKeysPlaceCmp`): the VM takes the place (and computes the keys) itself and sorts through the interpreter's one stable merge sort with the frame synced, so the `<` can run. `traced` and `untraced stmt:Expr(Sort)` leave vm_fallbacks.txt (16 to 14); tests: operator_fns.cp, sort_stable_ord_ties.cp.
+- 2026-11-24 landed (VM-stmt, tree-walker deletion): a range loop whose variable is an enum (a table over `[A, Dir]`) counts the tag in an integer register and sets the variable from it each round (`Op::EnumOfTagI`, vm/compile/range_loop.rs), as the tree-walker's `wrap` does. `traced` and `untraced stmt:For(Range)` leave vm_fallbacks.txt (14 to 12); test: table_unpacks_product.cp.
+- 2026-11-24 landed (VM-stmt, tree-walker deletion): `xs.sort()` and `xs.sort(by: ..)` over an element or key type with a user `<` run on the VM (`Op::SortPlaceCmp`, `Op::SortByKeysPlaceCmp`): the VM takes the place (and computes the keys) itself and sorts through the interpreter's one stable merge sort with the frame synced, so the `<` can run. `untraced stmt:Expr(Sort)` leaves vm_fallbacks.txt (16 to 15); tests: operator_fns.cp, sort_stable_ord_ties.cp.
+- 2026-11-24 landed (VM-stmt, tree-walker deletion): a call's `mut` args may be any places that provably never overlap (different roots, fields or literal keys; `disjoint` in vm/compile/call_mix.rs), scalar ones included, each taken by path and written back after the call; a path that ends at a map entry stores through it (`Op::StorePlaceV`). `swap(mut xs[0], mut xs[4])` (functions.cp) and `adj[3].reverse()` (vm_map_key_place.cp) run on the VM; cpl-interp's `vm_walks_map_entries_itself`, red on main, passes again.
+- 2026-11-24 landed (VM-stmt, tree-walker deletion): a mutation of a struct, enum or a container of them with no fn inside (`owned` in vm/compile/apply.rs) runs on the VM by `Op::MutatePlace` through the shared `mutation::mutate_cell`, as plain data did; `batch19_list_plus` and `modulus_from_a_local_let` no longer fall back.
+
+## 2026-11-24
+- 2026-11-24 landed (from Core, cpl-lsp red `a_personal_library_gets_what_std_gets`): three general getter fixes. (1) db.rs no longer stores a def cut short by a cycle over the one being worked out, so `ring_mine` stopped coming back with return type Error. (2) A written `@get fn` (Def::Fn `getter`) read as a field, `xs.wrap_mine`, is the call `wrap_mine(xs)` from any module, not only std's prelude list. (3) A free method's generics are bound from the receiver and from the receiver's impl of each bound (`bind_bound_params`), so `last<S: Bidir, T>` on a struct that is `Bidir<Int>` gives `?Int`, not `?T`. A built-in row of the same name still answers first. Cases: std-seq/a-bidir-struct-of-its-own-has-last (E0606 on main), cpl-check `a_getter_its_own_struct_reads_types_the_same_on_every_read`. Conformance matches main's 12 fails. Open in the same test: `SteppedMine.each` (the copy's `step` isn't renamed, so it is E0701 beside std's) and `shift_mine` (`V(0).l_mine` is E0302 because std's `V(0).l` goes through a built-in row the copy can't use).
+
 ## 2026-11-23
 - 2026-11-23 landed (from site): the outline drops the doc lines again (they cost 55 KB gz of the 113 KB lazy-std freed). A completion item from a std module not given yet carries `data: {module, owner?}`; the LSP now resolves completion items (`completionItem/resolve`), and once the host has given that module the reply carries the item's full docs. Test: lazy_std.rs.
 - 2026-11-23 landed (from parent and site): a std module that hasn't been given reads as its outline until it is. The check still reports E0206 and `needs`, and hover, completion (including `.` methods: `m.is_some_and`, `xs.sorted().scan`) and types use the outline's signatures. The outline also keeps each item's first `///` line just above the item, so hover shows it. That costs about 55 KB gz: the lazy cpl.wasm is 1,817,929 B gz, 57 KB under the cap. Tests: lazy_std.rs (hover and `.` completion before the module is given), outline doc placement. bfs_named_product in wasm was already fixed by 80eb62d81. Open: cut_beside_walk_order.cp (b3501f224) fails with E0301 natively and in wasm on main.
@@ -980,3 +990,70 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   backing hash map. The C++ `unordered_map` reserves; a sorted map, and the interpreter's
   tree map, have no capacity, so it only checks `n >= 0` there.
 - Case: core-10/map-reserve-keeps-entries.
+- The `Char` tests `is_digit` `is_lower` `is_upper` `is_alpha` `is_space` lower from their
+  std bodies in std/strings.cp; their five arms in lower/call/field.rs are gone
+  (`ir_builtin_derived` 38 -> 33). std.mod and std.math, which can't import std.strings,
+  compare the digit range directly. Case: std-strings/char-tests-run-std-bodies.
+- Deleted the `(lo..hi).clamp(D)` arm in lower/call/value_method.rs: the checker has no
+  `clamp` on a range (E0203) and no spec section names it, so nothing reached it
+  (`ir_builtin_derived` 33 -> 32).
+- `reverse` and `Str.join` lower from their std bodies (std/seq.cp, std/strings.cp): the
+  compiler arms in lower/call/value_method.rs are gone, with a both-backend case over lists,
+  strings, tables and slices (`ir_builtin_derived` 32 -> 30).
+- An enum whose tags are all one letter reads its tag as a `Char` (lower/call/prelude.rs
+  `tagged_read`), so `[Game]Outcome` reads `WLW` as well as `W L W`, in both backends
+  (R10.2.3). Regression: programs/packed_letter_enum_read; cases/ergo/columns now runs.
+
+### VM-traced lane (2026-11-24): traced statements run on the VM
+
+- A traced chunk reports a write an expression does in place (`xs.pop()`, `take(x)`)
+  through one hook in `compile_expr_{v,i,opt_i}` (vm/compile/traced_effects.rs), right
+  after it runs, so `let`, `=`, `assert`, `print` and `while` holding one no longer walk;
+  the per-form `note_take`/`trace_takes` reports are gone.
+- `let x: T` with no value declares its local (`TracePoint::Declared`), as the
+  tree-walker's zero does; a `do` block in a loop's iterable no longer opens the loop's
+  round, which showed a never-run loop's variable.
+- 8 fallback kinds gone (`vm_fallbacks` 24 -> 16). Regression:
+  tests/programs/vm_traced_statements.cp with its saved trace.
+- VM-memory: `Value` 48 -> 24 bytes. `I128` is held as `Wide` (an `i128` at 8-byte alignment) and `Range128` behind an `Rc`, so no variant forces 16-byte alignment; every list cell, register and stack slot halves. Peaks on the six `interp_memory` inputs: cco24p1 1203 -> 809 MB, yac7p3 918 -> 555, dmopc21c4p2 720 -> 418, sac22cc2p5 605 -> 403, cco21p4 333 -> 230, dmopc20c4p4 329 -> 245. Regression: `a_value_is_three_words` (cpl-interp tests); I128 behaviour stays covered by `wide_ints`, `range_with_i128_ends` and the other `wide_*` programs. Next: lists keep `Vec<Value>` and boxed tuples (heaptrack: cco24p1's 3M `(V, Int)` adjacency tuples are 250 MB); give `List` the typed cell store `Array` has.
+- VM-memory: drop `Array::first`/`last`, left unused by the `Value` shrink (clippy dead code on main).
+
+### VM-traced lane (2026-11-24): re-record traces of views that gained Show
+
+- fa066f2eb gave Stepped a `Show`, so the trace shows `a.step(2)` by its text, as it shows
+  every value with a `show` fn; index_by_at, rev_call and step_walk still held the field
+  form and failed trace_goldens on both engines. Re-recorded: only those values change, and
+  rev_call fits two more steps under its 8 KB cut.
+- An `if let`/`is` whose binding branch gives a view (`s[..q]`) no longer takes that view
+  as the `if`'s type when it is read first (9d04d7c0e): an owned `else` met it with E0302,
+  red on corpus cf2187d. The view copies to the owned type, as before. Case:
+  core-01/if-is-branch-view-meets-owned-else.
+
+### VM-expr lane (2026-11-24): map-entry `mut` args run on the VM
+
+- A `mut` arg that is a map entry (`adj[3].reverse()`, now a std fn after `reverse` moved to
+  std/seq.cp) is taken by its place path and put back whole by `StorePlaceV`, as a field or
+  nested place already was (vm/compile/call_mix.rs), instead of the call walking.
+  Regression: cpl-interp `vm_walks_map_entries_itself` (programs/vm_map_key_place).
+
+### VM-traced lane (2026-11-24): traced sorts run on the VM
+
+- A traced `xs.sort(..)` of a quiet place compiles on the VM (`traced_quiet`), and a keyed
+  sort declares its key's local each round (`TracePoint::Declared`), as the tree-walker
+  leaves the last element there. The traced `stmt:Expr(Sort)` kind remains only where the
+  same sort falls back untraced (an `Ord` impl's sort, operator fns).
+- Regression: tests/programs/vm_traced_statements.cp sorts a local by key and a global.
+- A call's value registers are made in place, not cloned from a `Value::Unit` one by one
+  (vm/exec/mod.rs `take_regs_v`): that clone was 37% of corpus ccc18s4 04.in (30M memo
+  calls), now gone from the profile; the run takes 5.9 s, from 7.3 s.
+
+### VM-traced lane (2026-11-24): recording a step stops allocating
+
+- trace_log `tracing_stays_cheap_enough_to_leave_on` was red in debug (recording 14-17x an
+  untraced run, bound 13x). Each recorded step built a fresh `HashMap` (`mem::take` of the
+  fn display names, a `RandomState` per step) and a `Vec` of its call stack in `frame_of`;
+  `Log::frame` now walks the stack as an iterator and returns the top frame when nothing
+  changed, and the per-step path and int buffers are filled without generic `extend`.
+  Recording is about 10x an untraced run in debug (from 14x), 6.5x in release.
+- VM-memory: `ArrayData` becomes `value::Cells` in its own module, the typed cell store an `Array` derefs to, so lists can share it instead of a second packed store.
+- VM-memory: `List` keeps its cells in `value::Cells`, the typed store arrays use: a list of `Int`, `Bool`, `Char`, `?Int`, `Float`, one-int structs or 2..=4-field scalar tuples is packed (8 bytes a scalar field) and boxed only when read; an empty list takes its first cell's kind and a cell of another kind turns it back to boxed values. Peaks: cco24p1 809 -> 406 MB, yac7p3 555 -> 427, dmopc21c4p2 418 -> 395, sac22cc2p5 403 -> 368, cco21p4 230 -> 179, dmopc20c4p4 245 -> 223 (the last two under 256 MB). Regressions: `a_list_of_scalars_is_packed`, program `packed_lists`.

@@ -1,27 +1,25 @@
-# cco20p4 friction
+# Friction report: cco20p4
 
-## The road table can't be read as `[Pair<V>]Char`
+## Dream
 
-- **Where:** `spec.cp` reads `rows = read<[n - 1]Str>()` and `is_red(u, v)` picks the row of
-  the later town by hand (`rows[hi.ord - 1][lo.ord]`).
-- **What felt wrong:** the input is exactly a lower triangle, which `std/pair.cp` documents as
-  `read<[Pair<V>]T>()` with `road[u, v] == road[v, u]`; today that is E0204 "an array is
-  indexed by a domain or a length".
-- **Goal it hurts:** express (one fact, the symmetric road colour, needs index bookkeeping).
-- **Ideal code:** `let road = read<[Pair<V>]Char>()` then `road[u, v] == 'R'`.
-- **Repro:** `domain V = 0..4` / `let a: [Pair<V>]Int = read()` -> E0204 (also
-  `spec/conformance/matrix/index/pair--read.cp`).
-- **General fix:** already owned: `Domain` as a trait any type implements, arrays packed by
-  `ord` (compiler `PLAN.md`, `std/GAPS.md` pair entries).
-- **Severity:** low (a two-line accessor).
+`dream.cp` (unverified, unchanged) reads the roads as `read lower_triangle [V, V]Colour` and
+looks for an Euler tour per colour. The port keeps the proven per-start construction, which
+is O(n^2) in all.
 
-## The corpus tests took a partial-score reference
+## Changes
 
-- **Where:** `scripts/corpus-tests.py` `accepted_cpp` takes the first submission marked `AC`,
-  here 4801875, which prints the 2n - 2 Euler walk; `checker.py` (route length n) rejects it
-  on every test. The other three AC submissions print length n.
-- **Fix here:** `tests/*.ans` are now 6416816's answers, and `spec.cp` follows its insertion
-  order so the exact token compare passes.
-- **General fix:** let `meta.json` pin the reference submission (a hand-written field the
-  generator keeps), and have `make`/`verify` run `checker.py` on the reference answers.
-- **Severity:** medium (a test set that rewards a wrong answer).
+The v0.2 port stored `red: [City, City]Bool` and the part colour as a `Bool` (`x`, "red when
+true"). The rewrite reads into `[City, City]Colour` with an enum, so every comparison names
+the colour, iterates `City if u != s` instead of `if u == s: continue`, binds the junction
+with `if let a = first.last` instead of `first.len > 0` plus `first.last!`, and prints the
+first part with `first.rev` instead of draining it.
+
+## Remaining friction
+
+- No reader for a lower-triangular matrix: each row is read as a `Str` and mirrored by hand.
+- An enum cannot declare a method, so flipping a colour is spelled inline.
+
+## Verification
+
+30 random cases agree with the v0.2 port and 30 with the accepted C++ (by the checker).
+Corpus tests pass.

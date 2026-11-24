@@ -26,5 +26,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "SortedSet.absorb is small-to-large; out[f].absorb(mut out[v]) would overlap two mut lends of out, so take() first."
+ "notes": "SortedSet.absorb is small-to-large; out[f].absorb(mut out[v]) would overlap two mut lends of out, so take() first.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "6c283d82c574d6e3a58c7c766b6541c92c705159"
+ }
 }

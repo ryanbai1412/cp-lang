@@ -538,6 +538,10 @@ options:
   --checks LEVEL    with --release: what that build traps on, as
                     `cpl build --checks` takes it (none, traps, all)
   --time-limit MS   stop the run after MS milliseconds
+  --grader FILE     link the judge's grader FILE (a .cpp with the `main`) into
+                    the --release build and run that: how a file of
+                    `@grader` fns runs. A grader.cpp beside the file's tests
+                    is linked without the flag
 ";
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every

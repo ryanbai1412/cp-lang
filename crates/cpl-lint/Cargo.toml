@@ -17,5 +17,6 @@ cpl-syntax.workspace = true
 cpl-prover.workspace = true
 
 [dev-dependencies]
+cpl-corpus.workspace = true
 cpl-fmt.workspace = true
 cpl-ir.workspace = true

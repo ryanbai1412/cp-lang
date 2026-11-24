@@ -8,48 +8,35 @@
 //   cube root of unity, stored as two Int arrays), cube every value, sum the real parts and
 //   divide by 3^k. Remove the n triples x = y = z (the only degenerate ones), divide by 6.
 //   O(k 3^k).
-// Today-form: the record of two Ints is two arrays, the stepped range is a `while`, and
-// the cube sum is a plain Int (it is at most 3^k * n^2 < 2^58).
 // original: corpus/submissions/4106618.cpp
-let n: Int = read()
-let k: Int = read()
-var size = 1
-for _ in 0..k: size *= 3
-var re: [size]Int = 0
-var w: [size]Int = 0
+// Bounds: n: 1..=531441; k: 1..=12
+
+let (n, k): (1..=531441, 1..=12) = read()  // n <= 3^k
+let size = 3 ** k
+
+// r + w ω, with ω a cube root of unity (ω² = -1 - ω)
+type Eis = (r: Int, w: Int)
+fn turn(x: Eis) -> Eis = (r: -x.w, w: x.r - x.w)  // ω x
+fn plus(x: Eis, y: Eis, z: Eis) -> Eis = (r: x.r + y.r + z.r, w: x.w + y.w + z.w)
+
+var f: [size]Eis = (r: 0, w: 0)
 for _ in 0..n:
     let card: [k]Char = read()
     var code = 0
-    for i in 0..k: code = code * 3 + (card[i] - '1')
-    re[code] += 1
+    for c in card: code = 3 * code + (c - '1')
+    f[code].r += 1
 
-var stride = 1
-while stride < size:
-    var base = 0
-    while base < size:
+// the DFT over Z_3^k, one digit at a time
+for d in 0..k:
+    let stride = 3 ** d
+    for base in (0..size).step(3 * stride):
         for i in base..base + stride:
-            let j = i + stride
-            let l = j + stride
-            let xr = re[i]
-            let xw = w[i]
-            let yr = re[j]
-            let yw = w[j]
-            let zr = re[l]
-            let zw = w[l]
-            // omega * (r, w) = (-w, r - w); omega^2 * (r, w) = (w - r, -r)
-            re[i] = xr + yr + zr
-            w[i] = xw + yw + zw
-            re[j] = xr - yw + zw - zr
-            w[j] = xw + yr - yw - zr
-            re[l] = xr + yw - yr - zw
-            w[l] = xw - yr + zr - zw
-        base += 3 * stride
-    stride *= 3
+            let (x, y, z) = (f[i], f[i + stride], f[i + 2 * stride])
+            f[i] = plus(x, y, z)
+            f[i + stride] = plus(x, turn(y), turn(turn(z)))
+            f[i + 2 * stride] = plus(x, turn(turn(y)), turn(z))
 
-// real part of (r + w * omega)^3 = r^3 + w^3 - 3 r w^2
-var cubes = 0
-for c in 0..size:
-    let r = re[c]
-    let v = w[c]
-    cubes += r * r * r + v * v * v - 3 * r * v * v
+// ordered triples x + y + z = 0: the real part of the sum of cubes over 3^k;
+// (r + w ω)³ has real part r³ + w³ - 3 r w²
+let cubes = sum(x.r * x.r * x.r + x.w * x.w * x.w - 3 * x.r * x.w * x.w for x in f)
 print((cubes / size - n) / 6)

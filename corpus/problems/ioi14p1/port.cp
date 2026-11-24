@@ -17,6 +17,7 @@
 //   arrays (E0501).
 // original: corpus/problems/ioi14p1/orig.cpp (submission 4691718 plus the sample grader)
 // original: corpus/submissions/4691718.cpp
+// Bounds: n: 1..=5000; at: 0..=1_000_000 - 1; real_kind: 1..=2
 
 domain Block = 0..1_000_000
 

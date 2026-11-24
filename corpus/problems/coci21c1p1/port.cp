@@ -6,6 +6,7 @@
 // Solution: keep each player's last spray time (None before the first); a spray scores
 //   150 if t - last <= 10, else 100, and goes to the team of the player number. O(n).
 // original: corpus/submissions/4080824.cpp
+// Bounds: n: 1..=100; sprays.who, sprays.hit: 1..=8
 let n: 1..=100 = read()
 domain Player = 1..=8
 domain Team = 0..2

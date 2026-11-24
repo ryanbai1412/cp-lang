@@ -36,10 +36,10 @@ chapters' main tables (decision 150), so a contestant never writes a
 ## 11.2 `use`
 
 ```cp
-use std.segtree                  // the stdlib: `segtree.SegTree`
 use std.graph.{dijkstra, Paths}
-use lib.treap                    // the contestant's library root, from cp.toml
+use std.segtree  // the stdlib: `segtree.SegTree`
 use lib.flow as fl
+use lib.treap  // the contestant's library root, from cp.toml
 ```
 
 - Paths are module names, not files on a search path: `std` is the

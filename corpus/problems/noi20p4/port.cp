@@ -9,6 +9,7 @@
 //   each hold (size - 1) * k grams: a subset of offsets d_i - k summing to -k, found by a
 //   subset-sum bitset per prefix, O(n * n * k / 64), traced back; then greedy on each.
 // original: corpus/submissions/3890337.cpp
+// Bounds: n: 1..=500; m, k: 1..=5000; d: 1..=m * k
 @multitest
 let (n, m, k): (1..=500, 1..=5000, 1..=5000) = read()
 domain Ing = 0..n

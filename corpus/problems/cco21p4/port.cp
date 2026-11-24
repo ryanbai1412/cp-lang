@@ -8,6 +8,7 @@
 //   road left is cheaper and money never drops), so it offers its start r; then the road is
 //   gone and the peeling goes on. Each road is dropped once: O((n + m) log m).
 // original: corpus/submissions/6419583.cpp
+// Bounds: n, m: 1..=2e5; roads.u, roads.v: 1..=n; roads.r, roads.p: 0..=1e9
 let (n, m): (1..=2e5, 1..=2e5) = read()
 domain City = 1..=n
 domain Road = 0..m

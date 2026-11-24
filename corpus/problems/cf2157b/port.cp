@@ -6,6 +6,7 @@
 // Solution: the black set is a Minkowski sum, so order does not matter: c8 '8' steps make a
 //   Chebyshev square and each of the c4 = n - c8 '4' steps adds one Manhattan unit. So (x, y) is
 //   black iff max(0, |x| - c8) + max(0, |y| - c8) <= c4. Count the '8's, O(n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let (n, x0, y0): (1..=200_000, -10 ** 9..=10 ** 9, -10 ** 9..=10 ** 9) = read()

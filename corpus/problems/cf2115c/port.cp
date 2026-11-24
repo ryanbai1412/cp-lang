@@ -9,6 +9,7 @@
 //   k = 0, where a miss opens a new layer (s - 1, n - 1) or waits for a shine, or at s = 0, where
 //   only k misses are needed: two DPs over rounds left, read off on their diagonals, cost
 //   O(m (s0 n + k0)).
+// Bounds: n: 1..=20; m: 1..=4_000; p100: 0..=100; hp: 1..=400
 @!multitest
 let n: 1..=20 = read()
 let m: 1..=4_000 = read()

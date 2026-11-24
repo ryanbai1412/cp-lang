@@ -1,5 +1,5 @@
 // CSES 1735 Range Updates and Sums: range add, range assign, range sum.
-use std.algebra.{Monoid, Action}
+use std.algebra.{Monoid}
 use std.lazy.LazySegTree
 let (n, q): (1..=2e5, 1..=2e5) = read()
 domain I = 1..=n

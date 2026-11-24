@@ -1028,7 +1028,7 @@ m[20] -= 3
 let g1 = m.get(10) ?? -1
 let g2 = m.get(99) ?? -1
 let has10 = 10 in m
-let rem = m.remove(20)
+let rem = m.remove(20)!
 var s = Set<Int>()
 let ins1 = s.insert(4)
 let ins2 = s.insert(4)
@@ -1609,4 +1609,33 @@ fn only_a_closure_made_off_the_vm_syncs_the_whole_frame_around_calls() {
     let (by_ref, slots) = syncs(closure, Some("run"));
     assert!(by_ref);
     assert_eq!(slots.map(|s| s.len()), Some(1));
+}
+
+#[test]
+fn a_value_is_three_words() {
+    // Every list cell, register and stack slot is a Value; at 48 bytes a
+    // List<Int> cost six times the C++ vector<long long>.
+    assert_eq!(std::mem::size_of::<crate::value::Value>(), 24);
+}
+
+#[test]
+fn a_list_of_scalars_is_packed() {
+    use crate::value::{Cells, TupleVal, Value};
+    // A List<Int> cell is 8 bytes and a list of (Int, Int) 16, as in the
+    // C++, not a 24-byte Value (or a boxed tuple) each.
+    let ints = Cells::from((0..4).map(Value::Int).collect::<Vec<_>>());
+    assert!(matches!(ints, Cells::Int(_)));
+    let mut pairs = Cells::default();
+    for i in 0..3 {
+        pairs.push(Value::tuple(vec![Value::Int(i), Value::Int(-i)]));
+    }
+    assert!(matches!(pairs, Cells::SmallIntTuple { stride: 2, .. }));
+    assert_eq!(
+        pairs.pop(),
+        Some(Value::tuple(vec![Value::Int(2), Value::Int(-2)]))
+    );
+    // A cell of another kind keeps every value, boxed.
+    pairs.push(Value::Tuple(TupleVal::OneInt(7)));
+    assert!(matches!(pairs, Cells::Values(_)));
+    assert_eq!(pairs.len(), 3);
 }

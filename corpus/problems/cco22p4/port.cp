@@ -9,6 +9,7 @@
 //   at u, multiply binomials for which balls go where and falling factorials for their order
 //   among the arrivals; when both children fill, one ball stops at u. Memoized over (u, k).
 // original: corpus/submissions/4801884.cpp
+// Bounds: n: 1..=4000; m: 0..=4000; kids.l, kids.r: 0..=n
 let (n, m): (1..=4000, 0..=4000) = read()
 domain Node = 1..=n
 type Z = Mod<1_000_000_007>

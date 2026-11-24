@@ -8,6 +8,7 @@
 //   Take indices by decreasing a (ties left to right) on a linked list of survivors: i is
 //   removed by its nearest surviving left neighbour p when a[p] = a[i] - 1, in every subarray
 //   holding both, (p + 1)(n - i) of them; then unlink i. O(n log n) for the sort.
+// Bounds: n: 1..=300_000; a: 1..=10 ** 9
 
 @!multitest
 let n: 1..=300_000 = read()

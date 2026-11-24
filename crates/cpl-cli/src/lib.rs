@@ -399,6 +399,8 @@ struct RunArgs<'a> {
     live: bool,
     /// `--time-limit MS`: how long the run may take before it is stopped.
     time_limit: Option<std::time::Duration>,
+    /// `--grader FILE`: the judge's grader, linked in to run `@grader` fns.
+    grader: Option<&'a str>,
 }
 
 fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
@@ -459,6 +461,7 @@ impl<'a> RunArgs<'a> {
             checks: None,
             live: false,
             time_limit: None,
+            grader: None,
         };
         let mut paths = Vec::new();
         let mut iter = rest.iter().copied().peekable();
@@ -559,6 +562,11 @@ impl<'a> RunArgs<'a> {
                     }
                 }
                 "--live" => args.live = true,
+                "--grader" => {
+                    args.grader = Some(iter.next().ok_or(
+                        "`--grader` names the judge's grader: `cpl run a.cp --grader grader.cpp`",
+                    )?);
+                }
                 "--time-limit" => {
                     let ms = iter.next().and_then(|ms| ms.parse::<u64>().ok()).ok_or(
                         "`--time-limit` takes milliseconds: `cpl run a.cp --time-limit 2000`",
@@ -609,6 +617,9 @@ impl<'a> RunArgs<'a> {
         }
         if args.release && (args.trace || args.format.is_some()) {
             return Err("`--release` runs the built C++, which records no trace: drop `--trace` and `--format`".into());
+        }
+        if args.grader.is_some() && (args.trace || args.brute || args.format.is_some()) {
+            return Err("`--grader` runs the C++ linked with the judge's grader, which records no trace and has no brute".into());
         }
         if args.live && (!args.trace || args.format.is_some()) {
             return Err(
@@ -1013,15 +1024,17 @@ fn next_after_test(file: &str, code: u8) -> String {
 /// `cpl run --release`: the file's C++, built as a judge builds it.
 fn run_release(
     args: &RunArgs,
+    grader: Option<std::path::PathBuf>,
     input: Input,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
     let path = std::path::Path::new(args.file);
-    let built = match (args.brute, args.checks) {
-        (true, _) => cpl_stress::Program::resolve_brute(path, "the brute"),
-        (false, Some(checks)) => cpl_stress::Program::resolve_checks(path, checks),
-        (false, None) => cpl_stress::Program::resolve(path),
+    let built = match (&grader, args.brute, args.checks) {
+        (Some(grader), _, _) => cpl_stress::Program::resolve_with_grader(path, grader),
+        (None, true, _) => cpl_stress::Program::resolve_brute(path, "the brute"),
+        (None, false, Some(checks)) => cpl_stress::Program::resolve_checks(path, checks),
+        (None, false, None) => cpl_stress::Program::resolve(path),
     };
     let program = match built {
         Ok(program) => program,
@@ -1033,7 +1046,7 @@ fn run_release(
     crate::submit::warn_interpreted(args.file, "`--release`", stderr);
     // An interactive problem with its judge in the file: the input is the
     // hidden test, which the judge reads, as without `--release`.
-    if !args.brute {
+    if !args.brute && grader.is_none() {
         match release_judge(args.file, stderr) {
             Ok(Some((name, judge, text))) => {
                 return run_release_judged(
@@ -1086,6 +1099,38 @@ fn run_release(
     }
 }
 
+/// The judge's grader to link the file against: `--grader`, else a
+/// `grader.cpp` found where `cpl test` finds one. A file of `@grader` fns
+/// with neither has no `main` to run, which is an error, not an empty run.
+fn graded(args: &RunArgs, stderr: &mut String) -> Result<Option<std::path::PathBuf>, u8> {
+    let path = std::path::Path::new(args.file);
+    if let Some(grader) = args.grader {
+        return Ok(Some(grader.into()));
+    }
+    if args.brute || args.trace || args.format.is_some() {
+        return Ok(None);
+    }
+    // Only a file that says `@grader` can have a fn the grader calls.
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    if !text.contains("@grader") {
+        return Ok(None);
+    }
+    if let Some(grader) = cpl_contest::problem::find_grader(path) {
+        return Ok(Some(grader));
+    }
+    let compiled = compile(args.file, stderr)?;
+    let program = &compiled.program;
+    if let Some(&id) = program.entry_fns.first() {
+        *stderr += &format!(
+            "cpl: the judge's grader calls `{}`, and `{}` has no `main` without it: \
+             run it with `--grader grader.cpp`, or put grader.cpp beside its tests\n",
+            program.fns[id].name, args.file
+        );
+        return Err(EXIT_USAGE);
+    }
+    Ok(None)
+}
+
 /// What `cpl run` reads: a file, or standard input as it arrives.
 enum Input<'a> {
     Whole(Vec<u8>),
@@ -1118,8 +1163,12 @@ fn run_file(
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
-    if args.release {
-        return run_release(args, input, stdout, stderr);
+    let grader = match graded(args, stderr) {
+        Ok(grader) => grader,
+        Err(code) => return code,
+    };
+    if args.release || grader.is_some() {
+        return run_release(args, grader, input, stdout, stderr);
     }
     let path = args.file;
     let side = if args.brute {
@@ -1133,7 +1182,7 @@ fn run_file(
     };
     // An `@cpp` body is C++ only, so the program runs as its C++ build.
     if !compiled.program.cpp_bodies.is_empty() && !args.trace {
-        return run_release(args, input, stdout, stderr);
+        return run_release(args, None, input, stdout, stderr);
     }
     let json = args.format == Some("json");
     if args.trace || json {
@@ -1142,7 +1191,8 @@ fn run_file(
     // An interactive problem with its judge in the file: the input is
     // the hidden test, and the two talk to each other.
     if let Some((name, judge)) = &compiled.judge {
-        let ruling = interact::run(&compiled.program, judge, &input.whole(), stdout);
+        let hidden = input.whole();
+        let ruling = interact::run(&compiled.program, judge, &hidden, stdout);
         // A side that stops leaves the other with nothing to read: that
         // second failure only follows from the first.
         let starved = |trap: &cpl_interp::Trap| {
@@ -1172,6 +1222,11 @@ fn run_file(
         if let Some(trap) = &judge_trap {
             *stderr += &format!("cpl: the interactor `{name}` rejected the run\n");
             *stderr += &render_trap(path, &compiled.text, trap);
+            if let Some(read) =
+                interact::last_read(&compiled.program, judge, &hidden, &compiled.text)
+            {
+                *stderr += &format!("cpl: the solution last read {read}\n");
+            }
         }
         return EXIT_FAILED;
     }

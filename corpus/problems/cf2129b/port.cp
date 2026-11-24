@@ -6,6 +6,7 @@
 //   pair is an inversion iff i stays and j is left of i, or i mirrors and j is right of it. So
 //   each i picks alone: the answer is the sum over i of min(larger before i, larger after i),
 //   counted directly in O(n^2).
+// Bounds: p: 1..=5_000
 
 @!multitest
 domain I = read(1..=5_000)

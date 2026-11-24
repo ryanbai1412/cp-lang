@@ -7,6 +7,7 @@
 //   of groups of vertices sharing the same smallest string; a group sends its unvisited
 //   out-neighbours to buckets by digit 1..9, and the buckets in order form the next layer's
 //   groups. A vertex's value is its group's value * 10 + digit: O(N + M).
+// Bounds: n: 2..=2e5; m: 1..=2e5; edges.u, edges.v: 1..=n; edges.w: 1..=9
 
 type Z = Mod<998_244_353>
 

@@ -6,13 +6,17 @@ Segment tree over a domain, for any associative operation: point or range update
 
 In prelude (no `use` needed): `SegTree`.
 
-## `struct SegTree<D, T, F = Int>(m: Monoid<T>)`
+## `trait Positions`
+
+The positions a `SegTree` runs over.
+
+## `struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>)`
 
 Point update and range fold.
 
 Fields: `t: List<T>`, `lz: List<F>`, `has_lz: List<Bool>`, `span: List<Int>`, `size: Int`, `log: Int`, `act: ?Action<T, F>`.
 
-- `fn new<M, A>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: ?Range<Int> = None) -> SegTree<D, T, F>` — \(O(\lvert D \rvert)\); \(O(1)\) with `over:`; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`
+- `fn new<M, A, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>` — \(O(\lvert D \rvert)\); \(O(\log(hi - lo))\) with `over: lo..hi`, which then makes at; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`; a tree
 - `fn apply(mut self, r: Range<D>, f: F)` — \(O(\log \lvert D \rvert)\); Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f` applied, through the action given to `act:`.; traps: when a non-empty `r` reaches outside `D`
 - `fn apply_all(mut self, f: F)` — \(O(1)\) amortized when the tags commute, else \(O(\lvert D \rvert)\); Apply tag `f` to every position; `apply(D.all, f)`.
 - `fn fold(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.; traps: when a non-empty `r` reaches outside `D`
@@ -62,7 +66,7 @@ Fields: `t: List<T>`.
 
 \(O(\lvert D \rvert \log V)\) build and memory.
 
-Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `cnt: List<Int>`, `zsum: List<Int>`.
+Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `words: List<U64>`, `before: List<Int>`, `zsum: List<Int>`.
 
 - `fn new(a: [D]Int) -> WaveletMatrix<D>` — \(O(\lvert D \rvert \log V)\) time and memory; A wavelet matrix over the non-negative values of `a`, with one bit level per bit of the largest value (`V` below is that value plus one).; traps: when some value is negative
 - `fn kth(self, r: Range<D>, k: Int) -> ?Int` — \(O(\log V)\); The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
@@ -99,6 +103,24 @@ A pool of mergeable sets of positions of `D`, each stored as a sparse binary seg
 - `fn first_alive(mut self, mut s: MergeSeg<D>, alive: D -> Bool) -> ?D` — \(O(\log \lvert D \rvert)\) amortized; The smallest position `x` in `s` with `alive(x)`, or `None`.
 - `fn first_ge(self, s: MergeSeg<D>, x: D) -> ?D` — \(O(\log \lvert D \rvert)\); The smallest position of `s` at or after `x`, or `None`.
 - `fn any_in(self, s: MergeSeg<D>, r: Range<D>) -> Bool` — \(O(\log \lvert D \rvert)\); Whether `s` holds a position in `r`.
+
+## `struct MergeTree<D>`
+
+One tree of values in a `MergeTrees<D, Z>` pool: a handle, so copying it is O(1).
+
+## `struct MergeTrees<D, Z: Add + Mul>`
+
+A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
+
+Fields: `ls: List<Int>`, `rs: List<Int>`, `sm: List<Z>`, `tag: List<Z>`.
+
+- `fn new() -> MergeTrees<D, Z>` — \(O(1)\); An empty pool.
+- `fn set(mut self, mut t: MergeTree<D>, x: D, v: Z)` — \(O(\log \lvert D \rvert)\) time and new nodes; Sets position `x` of `t` to `v`.
+- `fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z` — \(O(\log \lvert D \rvert)\); The sum of `t` over the positions in `r`.
+- `fn get(self, t: MergeTree<D>, x: D) -> Z` — \(O(\log \lvert D \rvert)\); The value of `t` at `x`.
+- `fn total(self, t: MergeTree<D>) -> Z` — \(O(1)\); The sum of every value of `t`.
+- `fn scale(mut self, t: MergeTree<D>, k: Z)` — \(O(1)\); Multiplies every value of `t` by `k`.
+- `fn merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D>` — \(O(\log \lvert D \rvert)\) amortized per `set`, over a sequence of merges whose results; The tree holding `leaf(a[x], b[x], pre_a, pre_b)` at each position `x`; it uses up `a` and `b`.
 
 ## Example
 

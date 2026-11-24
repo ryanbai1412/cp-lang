@@ -142,11 +142,21 @@ fn the_prelude_names_are_the_ones_a_file_can_use() {
         );
     }
     // Only what `std/prelude.cp` lists.
-    let std = names
+    let prelude =
+        std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std/prelude.cp"))
+            .unwrap();
+    let listed: std::collections::HashSet<&str> = prelude
+        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .collect();
+    let std: Vec<_> = names
         .iter()
         .filter(|(_, kind)| matches!(kind, PreludeKind::Std(_)))
-        .count();
-    assert!((1..=250).contains(&std), "{std} names from the prelude");
+        .map(|(name, _)| *name)
+        .collect();
+    assert!(!std.is_empty());
+    for name in &std {
+        assert!(listed.contains(name), "`{name}` is not in std/prelude.cp");
+    }
     assert!(!names.iter().any(|(name, _)| *name == "INF"));
     let mut seen = std::collections::HashSet::new();
     // `List` is a type and, called, a value: once of each kind.

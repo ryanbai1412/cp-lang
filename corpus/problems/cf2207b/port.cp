@@ -8,6 +8,7 @@
 //   animatronics that can still matter, at most (flashes left + 1) of them. Simulate with the
 //   values kept in non-increasing order: increment the first minimum, and at a flash drop the
 //   first value and add a 0 while the count allows. O(l * min(m, n + 1)).
+// Bounds: n, m: 1..=2e5; l: n..=2e5 / m; a: 1..=l
 
 @!multitest
 let (n, m): (1..=2e5, 1..=2e5) = read()

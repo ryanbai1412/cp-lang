@@ -9,6 +9,7 @@
 //   two values, except n = 11, 36, 311, whose last three values are n, n - 2, n - 1.
 // original: corpus/submissions/4218397.cpp
 // win[i]: the player to move wins a pile of i when a move removes a prime.
+// Bounds: n: 1..=MAX_N
 
 const MAX_N = 1e5
 let sieve = Sieve.new(MAX_N)

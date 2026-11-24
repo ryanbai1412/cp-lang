@@ -37,6 +37,14 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(cmd[-4:], ["--test-tool", "nextest", "--profile", "ci"])
         self.assertNotIn("--test-tool", ms.mutants_command("cpl-lint", Path("o"), "3", []))
 
+    def test_files_and_test_targets_narrow_the_run(self) -> None:
+        cmd = ms.mutants_command("cpl-cli", Path("o"), "2", [], files=["crates/cpl-cli/src/dap.rs"],
+                                 tests=["dap"])
+        self.assertIn("-f", cmd)
+        self.assertEqual(cmd[cmd.index("-f") + 1], "crates/cpl-cli/src/dap.rs")
+        self.assertEqual(cmd[-3:], ["--", "--test", "dap"])
+        self.assertNotIn("--", ms.mutants_command("cpl-cli", Path("o"), "2", []))
+
 
 if __name__ == "__main__":
     unittest.main()

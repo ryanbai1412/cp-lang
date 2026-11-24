@@ -21,6 +21,7 @@ mod io;
 mod mutation;
 mod read;
 mod show_hook;
+mod sort;
 use io::draw_below;
 use io::Feed;
 pub use io::{Choices, Io};
@@ -51,7 +52,7 @@ pub use stop::{Limits, Stop, CANCELLED, OUT_OF_TIME};
 pub use threads::{run_for, run_on_this_thread, run_with_on_this_thread};
 use value::{
     show, zero, Array, CaptureVal, ListViewVal, MutViewVal, OptVal, Part, Step, StrViewVal,
-    TupleVal, Value,
+    TupleVal, Value, Wide,
 };
 
 /// Name of this crate.
@@ -846,10 +847,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn view_in<'s>(&'s self, mut locals: Vec<(&'s str, &'s Ty, &'s Value)>) -> trace::View<'s> {
         // The map shortens the locals' `'p` to `'s`.
         #[allow(clippy::map_identity)]
-        locals.extend(
-            self.named_locals()
-                .map(|(name, ty, value)| (name, ty, value)),
-        );
+        locals.extend(self.named_locals().map(|(n, t, v)| (n, t, v)));
         trace::View {
             program: self.program,
             globals: &self.globals,
@@ -859,6 +857,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             depth: self.call_frames.len(),
             call_frames: &self.call_frames,
             shown: &self.trace_shown,
+            read: self.input.cursor(),
         }
     }
 
@@ -1153,11 +1152,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         }
                     }
                 }
-                Value::Range128(lo, hi) if lo < hi => {
+                Value::Range128(r) if r.0 < r.1 => {
+                    let (lo, hi) = *r;
                     if *rev {
                         let mut v = hi - 1;
                         while v >= lo {
-                            round!(Value::I128(v));
+                            round!(Value::I128(v.into()));
                             if v == lo {
                                 break;
                             }
@@ -1166,7 +1166,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     } else {
                         let mut v = lo;
                         while v < hi {
-                            round!(Value::I128(v));
+                            round!(Value::I128(v.into()));
                             v += 1;
                         }
                     }
@@ -1257,7 +1257,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(items) => {
                         let n = items.len();
                         for k in checkpoint::rounds(n, *rev, from) {
-                            round!(items[k].clone());
+                            round!(items.get_unchecked_val(k));
                         }
                     }
                     Value::ListView(view) => {
@@ -1381,7 +1381,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     };
                     let target = self.part_mut(&mv.target, span)?;
                     return match target {
-                        Value::List(items) => Ok(&mut Rc::make_mut(items)[mv.lo + i]),
+                        Value::List(items) => Ok(Rc::make_mut(items).cell_mut(mv.lo + i)),
                         Value::Array(arr) => Ok(&mut Rc::make_mut(arr).as_mut_values()[mv.lo + i]),
                         Value::Moved => trap(span, LENT),
                         _ => trap(span, "internal: mutable view target is not a list or array"),
@@ -1471,12 +1471,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 (Step::Index(indices), Value::Array(array)) => {
                     let at = array_offset(&array.dims, indices.iter(), Span::new(0, 0)).ok()?;
                     match &array.data {
-                        value::ArrayData::Values(v) => v.get(at)?,
+                        value::Cells::Values(v) => v.get(at)?,
                         _ => return None,
                     }
                 }
                 (Step::Index(indices), Value::List(items)) => {
-                    items.get(usize::try_from(indices.first()?.int()).ok()?)?
+                    items.stored(usize::try_from(indices.first()?.int()).ok()?)?
                 }
                 (Step::Index(indices), Value::Map(entries)) => entries.get(indices.first()?)?,
                 _ => return None,
@@ -1490,24 +1490,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     pub(crate) fn seq_end(&self, seq: &Value, last: bool, span: Span) -> Res<Option<Value>> {
         let pick = |len: usize| len.checked_sub(1).map(|l| if last { l } else { 0 });
         Ok(match seq {
-            Value::List(items) => pick(items.len()).map(|i| items[i].clone()),
-            Value::ListView(view) => pick(view.len).and_then(|i| view.get(i)).cloned(),
+            Value::List(items) => pick(items.len()).map(|i| items.get_unchecked_val(i)),
+            Value::ListView(view) => pick(view.len).and_then(|i| view.get(i)),
             Value::MutView(mv) => match pick(mv.len) {
                 Some(i) => Some(self.mut_view_get(mv, i, span)?),
                 None => None,
             },
             Value::Str(bytes) => pick(bytes.len()).map(|i| Value::Char(bytes[i])),
             Value::StrView(view) => pick(view.len).and_then(|i| view.get(i)).map(Value::Char),
-            Value::Array(array) => {
-                if last {
-                    array.last()
-                } else {
-                    array.first()
-                }
-            }
+            Value::Array(array) => pick(array.len()).and_then(|i| array.get(i)),
             Value::Range(lo, hi) => (lo < hi).then(|| Value::Int(if last { hi - 1 } else { *lo })),
-            Value::Range128(lo, hi) => {
-                (lo < hi).then(|| Value::I128(if last { hi - 1 } else { *lo }))
+            Value::Range128(r) => {
+                (r.0 < r.1).then(|| Value::I128((if last { r.1 - 1 } else { r.0 }).into()))
             }
             other => return trap(span, format!("internal: `first`/`last` of {other:?}")),
         })
@@ -1521,7 +1515,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             );
         }
         match self.part(&mv.target) {
-            Some(Value::List(items)) => Ok(items[mv.lo + idx].clone()),
+            Some(Value::List(items)) => Ok(items.get_unchecked_val(mv.lo + idx)),
             Some(Value::Array(arr)) => Ok(arr.get_unchecked_val(mv.lo + idx)),
             Some(Value::Moved) => trap(span, LENT),
             _ => trap(span, "internal: mutable view target is not a list or array"),
@@ -1530,7 +1524,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     fn mut_view_to_vec(&self, mv: &MutViewVal, span: Span) -> Res<Vec<Value>> {
         match self.part(&mv.target) {
-            Some(Value::List(items)) => Ok(items[mv.lo..mv.lo + mv.len].to_vec()),
+            Some(Value::List(items)) => Ok(items.values_in(mv.lo, mv.lo + mv.len)),
             Some(Value::Array(arr)) => {
                 let mut out = Vec::with_capacity(mv.len);
                 for i in 0..mv.len {
@@ -1585,7 +1579,7 @@ fn cell_mut<'s>(
             let index = indices.next().map_or(0, Value::int);
             let len = items.len();
             match usize::try_from(index).ok().filter(|i| *i < len) {
-                Some(i) => Ok(&mut Rc::make_mut(items)[i]),
+                Some(i) => Ok(Rc::make_mut(items).cell_mut(i)),
                 None => trap(
                     span,
                     format!("index {index} is outside a list of length {len}"),
@@ -1746,7 +1740,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(items) if n == 1 => {
                         let len = items.len();
                         match usize::try_from(i0).ok().filter(|i| *i < len) {
-                            Some(i) => &mut Rc::make_mut(items)[i],
+                            Some(i) => Rc::make_mut(items).cell_mut(i),
                             None => {
                                 return trap(
                                     span,
@@ -2026,7 +2020,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::Float) {
                     Value::RangeF(self.eval(lo)?.float(), self.eval(hi)?.float())
                 } else if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
-                    Value::Range128(self.eval(lo)?.i128(), self.eval(hi)?.i128())
+                    Value::range128(self.eval(lo)?.i128(), self.eval(hi)?.i128())
                 } else {
                     let lo = self.eval(lo)?.int();
                     let hi = self.eval(hi)?.int();
@@ -2085,13 +2079,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 let (mut items_vec, kind) = match taken {
                     Value::List(items) => {
-                        let v = Rc::try_unwrap(items).unwrap_or_else(|r| (*r).clone());
+                        let v = value::Cells::unwrap_values(items);
                         (v, SortKind::List)
                     }
                     Value::Array(arr) => {
                         let a = Rc::try_unwrap(arr).unwrap_or_else(|r| (*r).clone());
                         let dims = a.dims.clone();
-                        (a.into_values(), SortKind::Array(dims))
+                        (a.data.into_values(), SortKind::Array(dims))
                     }
                     Value::Str(bytes) => {
                         let v = bytes.iter().copied().map(Value::Char).collect();
@@ -2151,7 +2145,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             Value::List(items) => {
                                 let dst = Rc::make_mut(items);
                                 for (k, item) in items_vec.into_iter().enumerate() {
-                                    dst[mv.lo + k] = item;
+                                    dst.set(mv.lo + k, item);
                                 }
                             }
                             Value::Array(arr) => {
@@ -2168,8 +2162,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             Value::Array(Rc::new(Array::from_values(dims, items_vec)));
                     }
                     SortKind::List => {
-                        *self.resolve(place, &mut indices.iter())? =
-                            Value::List(Rc::new(items_vec));
+                        *self.resolve(place, &mut indices.iter())? = Value::list(items_vec);
                     }
                     SortKind::Str => {
                         let bytes: Vec<u8> = items_vec
@@ -2492,7 +2485,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn cast(&mut self, cast: Cast, value: Value, span: Span) -> Res<Value> {
         Ok(match cast {
             Cast::IntToFloat => Value::Float(value.int() as f64),
-            Cast::IntToI128 => Value::I128(i128::from(value.int())),
+            Cast::IntToI128 => Value::I128(i128::from(value.int()).into()),
             Cast::IntToU64 => Value::U64(value.int() as u64),
             Cast::I128ToInt => match (&value, i64::try_from(value.i128())) {
                 (_, Ok(v)) if v != i64::MIN => Value::Int(v),
@@ -2506,7 +2499,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Ok(v) => Value::U64(v),
                 Err(_) => return trap(span, format!("{} does not fit in a `U64`", value.i128())),
             },
-            Cast::U64ToI128 => Value::I128(i128::from(value.u64())),
+            Cast::U64ToI128 => Value::I128(i128::from(value.u64()).into()),
             Cast::I128ToFloat => Value::Float(value.i128() as f64),
             Cast::U64ToFloat => Value::Float(value.u64() as f64),
             Cast::FloatToInt => {
@@ -2883,7 +2876,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         return Ok(false);
                     }
                     for (lv, rv) in ls.iter().zip(rs.iter()) {
-                        if !self.eq_ty_val(elem, lv, rv, span)? {
+                        if !self.eq_ty_val(elem, &lv, &rv, span)? {
                             return Ok(false);
                         }
                     }
@@ -2972,7 +2965,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Ty::List(elem) => {
                 if let (Value::List(ls), Value::List(rs)) = (l, r) {
                     for (lv, rv) in ls.iter().zip(rs.iter()) {
-                        let o = self.cmp_ty_val(elem, lv, rv, span)?;
+                        let o = self.cmp_ty_val(elem, &lv, &rv, span)?;
                         if o != Ordering::Equal {
                             return Ok(o);
                         }
@@ -2999,161 +2992,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             },
             _ => Ok(l.cmp(r)),
         }
-    }
-
-    fn merge_sort_ty(
-        &mut self,
-        mut xs: Vec<Value>,
-        ty: &Ty,
-        desc: bool,
-        span: Span,
-    ) -> Res<Vec<Value>> {
-        if xs.len() <= 1 {
-            return Ok(xs);
-        }
-        let mid = xs.len() / 2;
-        let right = self.merge_sort_ty(xs.split_off(mid), ty, desc, span)?;
-        let left = self.merge_sort_ty(xs, ty, desc, span)?;
-        let mut out = Vec::with_capacity(left.len() + right.len());
-        let (mut i, mut j) = (0, 0);
-        while i < left.len() && j < right.len() {
-            // One `<` per step, as in the C++: the right goes first when smaller (`desc`: larger).
-            let (a, b) = [(&right[j], &left[i]), (&left[i], &right[j])][desc as usize];
-            if self.less_ty_val(ty, a, b, span)? {
-                out.push(right[j].clone());
-                j += 1;
-            } else {
-                out.push(left[i].clone());
-                i += 1;
-            }
-        }
-        out.extend_from_slice(&left[i..]);
-        out.extend_from_slice(&right[j..]);
-        Ok(out)
-    }
-
-    fn merge_sort_keyed(
-        &mut self,
-        mut xs: Vec<(Value, Value)>,
-        key_ty: &Ty,
-        desc: bool,
-        span: Span,
-    ) -> Res<Vec<(Value, Value)>> {
-        if xs.len() <= 1 {
-            return Ok(xs);
-        }
-        let mid = xs.len() / 2;
-        let right = self.merge_sort_keyed(xs.split_off(mid), key_ty, desc, span)?;
-        let left = self.merge_sort_keyed(xs, key_ty, desc, span)?;
-        let mut out = Vec::with_capacity(left.len() + right.len());
-        let (mut i, mut j) = (0, 0);
-        while i < left.len() && j < right.len() {
-            let (a, b) = [(&right[j].0, &left[i].0), (&left[i].0, &right[j].0)][desc as usize];
-            if self.less_ty_val(key_ty, a, b, span)? {
-                out.push(right[j].clone());
-                j += 1;
-            } else {
-                out.push(left[i].clone());
-                i += 1;
-            }
-        }
-        out.extend_from_slice(&left[i..]);
-        out.extend_from_slice(&right[j..]);
-        Ok(out)
-    }
-
-    fn checked_merge_sort_by(
-        &mut self,
-        xs: Vec<Value>,
-        cmp: &Value,
-        desc: bool,
-        span: Span,
-    ) -> Res<Vec<Value>> {
-        for x in &xs {
-            let pair = vec![x.clone(), x.clone()];
-            if self
-                .quietly(|run| run.call_value(cmp.clone(), pair, span))?
-                .bool()
-            {
-                return trap(
-                    span,
-                    "sort `cmp:` comparator is not a strict weak order: cmp(x, x) is true",
-                );
-            }
-        }
-        let out = self.merge_sort_by(xs, cmp, desc, span)?;
-        for i in 1..out.len() {
-            let checks = [
-                (&out[i], &out[i - 1]),
-                (&out[i], &out[0]),
-                (&out[out.len() - 1], &out[i - 1]),
-            ];
-            for (lhs, rhs) in checks {
-                let pair = if desc {
-                    vec![rhs.clone(), lhs.clone()]
-                } else {
-                    vec![lhs.clone(), rhs.clone()]
-                };
-                if self
-                    .quietly(|run| run.call_value(cmp.clone(), pair, span))?
-                    .bool()
-                {
-                    return trap(
-                        span,
-                        "sort `cmp:` comparator is not a strict weak order: result is not ordered",
-                    );
-                }
-            }
-        }
-        Ok(out)
-    }
-
-    fn merge_sort_by(
-        &mut self,
-        mut xs: Vec<Value>,
-        cmp: &Value,
-        desc: bool,
-        span: Span,
-    ) -> Res<Vec<Value>> {
-        if xs.len() <= 1 {
-            return Ok(xs);
-        }
-        let mid = xs.len() / 2;
-        let right = xs.split_off(mid);
-        let left = self.merge_sort_by(xs, cmp, desc, span)?;
-        let right = self.merge_sort_by(right, cmp, desc, span)?;
-        let mut out = Vec::with_capacity(left.len() + right.len());
-        let (mut i, mut j) = (0, 0);
-        while i < left.len() && j < right.len() {
-            let (first, second) = if desc {
-                (&left[i], &right[j])
-            } else {
-                (&right[j], &left[i])
-            };
-            let lt = self
-                .call_value(cmp.clone(), vec![first.clone(), second.clone()], span)?
-                .bool();
-            if lt {
-                let pair = vec![second.clone(), first.clone()];
-                if self
-                    .quietly(|run| run.call_value(cmp.clone(), pair, span))?
-                    .bool()
-                {
-                    return trap(
-                        span,
-                        "sort `cmp:` comparator is not a strict weak order: both cmp(a, b) and cmp(b, a) are true",
-                    );
-                }
-                out.push(right[j].clone());
-                j += 1;
-            } else {
-                out.push(left[i].clone());
-                i += 1;
-            }
-        }
-        out.extend_from_slice(&left[i..]);
-        out.extend_from_slice(&right[j..]);
-        Ok(out)
     }
 
     /// Renders a format string; `vals` holds one value per non-text piece, in order.
@@ -3235,7 +3073,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return Ok(());
         }
         if let Value::MutView(mv) = value {
-            let items = Value::List(Rc::new(self.mut_view_to_vec(mv, span)?));
+            let items = Value::list(self.mut_view_to_vec(mv, span)?);
             show(out, &items, ty, digits, self.program, &self.domains);
             return Ok(());
         }
@@ -3405,7 +3243,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return Ok(match (op, target) {
                 (_, Value::Moved) => return trap(span, LENT),
                 (Mutation::Reverse, Value::List(items)) => {
-                    Rc::make_mut(items)[mv.lo..mv.lo + mv.len].reverse();
+                    Rc::make_mut(items).reverse_range(mv.lo, mv.lo + mv.len);
                     Value::Unit
                 }
                 (Mutation::Reverse, Value::Array(arr)) => {
@@ -3448,7 +3286,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::Unit
                 }
                 (Mutation::Fill, Value::List(items)) => {
-                    Rc::make_mut(items)[mv.lo..mv.lo + mv.len].fill(arg);
+                    Rc::make_mut(items).fill_range(mv.lo, mv.lo + mv.len, arg);
                     Value::Unit
                 }
                 (Mutation::Fill, Value::Array(arr)) => {
@@ -3612,7 +3450,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 }
             }
         }
-        (Value::I128(a), Value::I128(b)) => {
+        (Value::I128(Wide(a)), Value::I128(Wide(b))) => {
             let result = match op {
                 BinOp::Add => a.checked_add(b),
                 BinOp::Sub => a.checked_sub(b),
@@ -3642,7 +3480,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 _ => None,
             };
             match result {
-                Some(value) => Value::I128(value),
+                Some(value) => Value::I128(value.into()),
                 None => {
                     return trap(
                         span,
@@ -3654,7 +3492,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 }
             }
         }
-        (Value::I128(a), Value::Int(b)) => {
+        (Value::I128(Wide(a)), Value::Int(b)) => {
             if !(0..128).contains(&b) {
                 return trap(span, format!("a shift by {b} is outside 0..128"));
             }
@@ -3664,7 +3502,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 }
                 BinOp::Shl => {
                     match Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a) {
-                        Some(value) => Value::I128(value),
+                        Some(value) => Value::I128(value.into()),
                         None => {
                             return trap(
                                 span,
@@ -3675,7 +3513,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                         }
                     }
                 }
-                _ => Value::I128(a >> b),
+                _ => Value::I128((a >> b).into()),
             }
         }
         // A `U64` is the 64 bits: what does not fit is dropped.

@@ -6,6 +6,7 @@
 //   for disk i - 1 in the current tangent chain: across gap d it is clamped below d and
 //   reflected to d - r, counting a tangent pair. If it empties, start over with disk i free in
 //   (0, d) and no new pair. O(n).
+// Bounds: n: 1..=2_000_000; x: 0..=10 ** 9
 
 @!multitest
 let n: 1..=2_000_000 = read()

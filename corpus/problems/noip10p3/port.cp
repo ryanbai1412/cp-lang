@@ -7,6 +7,7 @@
 //   be in the other one: separating a and b unites b with foe[a] and a with foe[b]. The first
 //   feud whose pair is already united is the answer. O(M log M) for the sort.
 // original: corpus/submissions/5205348.cpp
+// Bounds: n: 2..=20000; m: 1..=100000; feuds.a, feuds.b: 1..=n; feuds.anger: 1..=1e9
 let (n, m): (2..=20000, 1..=100000) = read()
 domain V = 1..=n
 let feuds: [0..m](a: V, b: V, anger: 1..=1e9) = read()

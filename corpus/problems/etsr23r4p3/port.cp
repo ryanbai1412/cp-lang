@@ -1,4 +1,5 @@
 // Source: DMOJ ETSR '23 R4 P3 (ZJOI 2016 Small Stars), https://dmoj.ca/problem/etsr23r4p3
+// limits: 1000 ms, 512 MB
 // Problem: a simple graph with n <= 17 vertices and m <= n(n-1)/2 edges, and a tree on the
 //   same n labels. Count the bijections from tree vertices to graph vertices that send every
 //   tree edge to a graph edge.
@@ -8,6 +9,7 @@
 //   onto maps: O(2^n n^3). The map counts reach 17^17 > 2^64, so they wrap in U64; the
 //   answer itself is at most 17!, so the wrapped sum is exact.
 // original: corpus/submissions/5635626.cpp
+// Bounds: n: 1..=17; m: 0..=n * (n - 1) / 2; tree_edges.u, tree_edges.v: 1..=n; u, v: 1..=n
 
 let n: 1..=17 = read()
 let m: 0..=n * (n - 1) / 2 = read()

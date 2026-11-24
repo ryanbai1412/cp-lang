@@ -1,6 +1,6 @@
 //! C++ names for the program's names, and C++ types for its types.
 
-use cpl_ir::{Program, Ty};
+use cpl_ir::{JudgeTy, Program, Ty};
 
 /// Names the emitted file can't give to the user's things: C++ keywords,
 /// macros of the headers it includes, and the names the file itself uses.
@@ -123,6 +123,8 @@ const RESERVED: &[&str] = &[
     "SEEK_CUR",
     "SEEK_END",
     "EXIT_SUCCESS",
+    "LOCAL",
+    "CPL_LINKED",
     "EXIT_FAILURE",
     "M_PI",
     "M_E",
@@ -233,6 +235,11 @@ pub(crate) fn struct_niche(program: &Program, id: usize) -> Option<&str> {
 }
 
 /// The C++ type of a value of type `ty`.
+/// `?()`: only presence is left, a `bool` (see `cty`).
+pub(crate) fn is_flag_opt(ty: &Ty) -> bool {
+    matches!(ty, Ty::Opt(inner) if **inner == Ty::Unit)
+}
+
 pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
     match ty {
         Ty::Unit | Ty::Error => "void".into(),
@@ -333,7 +340,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         ),
         Ty::Mut(of) => format!("{}&", cty(program, niches, of)),
         Ty::Fn(args, ret) => {
-            let pointer = fn_pointer(program, args.len());
+            let pointer = fn_pointer(program, args, ret);
             let ps: Vec<String> = args
                 .iter()
                 .map(|t| match t {
@@ -365,7 +372,9 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
 /// `std::vector<bool>` packs bits and hands out proxies, not references.
 pub(crate) fn elem_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
     match ty {
+        // `std::vector<bool>` hands out proxies, not references.
         Ty::Bool => "char".into(),
+        flag if is_flag_opt(flag) => "char".into(),
         other => value_ty(program, niches, other),
     }
 }
@@ -379,25 +388,22 @@ pub(crate) fn value_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
     }
 }
 
-/// A type as the judge's grader writes it: what `cpl::Judge<T>::type` is.
-pub(crate) fn judge_ty(ty: &Ty) -> String {
+/// A type as the judge's grader writes it (R10.1.4).
+pub(crate) fn judge_ty(ty: &JudgeTy) -> String {
     match ty {
-        Ty::Unit => "void".into(),
-        Ty::Int => "int".into(),
-        Ty::Float => "double".into(),
-        Ty::Bool => "bool".into(),
-        Ty::Char => "char".into(),
-        Ty::Str => "std::string".into(),
-        Ty::StrView => "cpl::StrView".into(),
-        Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
-        Ty::ListView(elem, _) => format!("cpl::ListView<{}>", judge_ty(elem)),
-        Ty::Keyed(elem, _) => format!("cpl::Keyed<{}>", judge_ty(elem)),
-        Ty::MutView(elem, _) => format!("cpl::MutView<{}>", judge_ty(elem)),
-        Ty::Tuple(items) => {
+        JudgeTy::Int => "int".into(),
+        JudgeTy::Long => "long long".into(),
+        JudgeTy::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
+        JudgeTy::Tuple(items) => {
             let items: Vec<String> = items.iter().map(judge_ty).collect();
-            format!("std::tuple<{}>", items.join(", "))
+            let of = if items.len() == 2 { "pair" } else { "tuple" };
+            format!("std::{of}<{}>", items.join(", "))
         }
-        _ => unreachable!("lowering lets only these types cross to the judge"),
+        JudgeTy::Void => "void".into(),
+        JudgeTy::Double => "double".into(),
+        JudgeTy::Bool => "bool".into(),
+        JudgeTy::Char => "char".into(),
+        JudgeTy::Str => "std::string".into(),
     }
 }
 
@@ -442,14 +448,22 @@ fn pos_path(ty: &Ty) -> Option<Vec<usize>> {
     })
 }
 
-/// Whether a fn value of this arity lowers to a plain function pointer: every
-/// closure of that arity in the whole program captures nothing, so each value
-/// that can reach the slot is a captureless lambda.
-pub(crate) fn fn_pointer(program: &Program, arity: usize) -> bool {
-    program
-        .closures
-        .iter()
-        .all(|c| c.params.len() != arity || c.captures.is_empty())
+/// Whether a fn value of this signature lowers to a plain function pointer:
+/// every closure of that signature the program can make captures nothing, so
+/// each value that can reach the slot is a captureless lambda.
+pub(crate) fn fn_pointer(program: &Program, args: &[Ty], ret: &Ty) -> bool {
+    let same = |param: &Ty, arg: &Ty| param == arg || matches!(arg, Ty::Mut(of) if **of == *param);
+    program.closures.iter().enumerate().all(|(cid, c)| {
+        c.captures.is_empty()
+            || program.unreached_closures.contains(&cid)
+            || c.ret != *ret
+            || c.params.len() != args.len()
+            || !c
+                .params
+                .iter()
+                .zip(args)
+                .all(|(&p, a)| same(&c.locals[p].ty, a))
+    })
 }
 
 /// Whether reading a value may fill a cache: a struct with a `@cache`

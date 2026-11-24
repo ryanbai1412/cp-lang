@@ -1,0 +1,30 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "3\n4 6 4\n2 3 4\n"
+
+[[case]]
+input = "3\n4 6 3\n3 3 2\n"
+
+[[case]]
+seed = 3
+size = 4
+
+[[case]]
+seed = 4
+size = 8
+
+[[case]]
+seed = 5
+size = 16
+
+[[case]]
+seed = 6
+size = 32
+
+[[case]]
+seed = 7
+size = 1000
+
+[[case]]
+args = ["--max"]

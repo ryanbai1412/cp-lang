@@ -26,26 +26,153 @@ fn takes_self(def: &Def) -> bool {
         if params.first().is_some_and(|p| p.name == "self" && !p.named_only))
 }
 
+/// Whether `def` takes `n` positional arguments after `self`: one never
+/// binds a named-only parameter, so `xs.sorted(x => -x)` isn't `sorted(by:)`.
+fn takes_positionals(def: &Def, n: usize) -> bool {
+    matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
+        if params.iter().skip(1).filter(|p| !p.named_only).count() >= n)
+}
+
+fn self_ty(def: &Def) -> Option<Ty> {
+    match def {
+        Def::Fn {
+            ty: Ty::Fn { params, .. },
+            ..
+        } => params.first().map(|p| p.ty.clone()),
+        _ => None,
+    }
+}
+
+/// Whether `to` is `from` with its type parameters bound: `Range<D>` to
+/// `Range<F64>`.
+fn instance_of(to: &Ty, from: &Ty) -> bool {
+    let mut bindings = crate::ty::Bindings::default();
+    from.unify(to, &mut bindings);
+    from.subst(&bindings) == *to
+}
+
+/// R08.1.4: `a` is more specific than `b` when `b`'s `self` binds to
+/// `a`'s and not the other way. A bare `self: S` is no shape, so it is
+/// never more or less specific than another.
+fn more_specific(a: &Option<Ty>, b: &Option<Ty>) -> bool {
+    let (Some(a), Some(b)) = (a, b) else {
+        return false;
+    };
+    !matches!(a, Ty::Param(_))
+        && !matches!(b, Ty::Param(_))
+        && instance_of(a, b)
+        && !instance_of(b, a)
+}
+
+/// A candidate's module, and its `#k` among one module's overloads.
+type Origin = (Option<String>, Option<String>);
+
 impl Checker<'_> {
     /// Every top-level `fn name(self: ..)` in reach, by the name it is
     /// imported under, one per module.
     pub(super) fn method_candidates(&mut self, name: &str) -> Vec<(String, Arc<Def>)> {
-        let mut out: Vec<(String, Arc<Def>, Option<String>)> = Vec::new();
+        let mut out: Vec<(String, Arc<Def>, Origin)> = Vec::new();
         let keys = std::iter::once(name.to_string()).chain(self.env.method_keys(name));
         for key in keys {
             let Some(def) = self.global(&key).filter(|d| takes_self(d)) else {
                 continue;
             };
-            let origin = if self.local_defs.contains_key(&key) {
+            let module = if self.local_defs.contains_key(&key) {
                 None
             } else {
                 self.env.origin(&key)
             };
+            let overload = prelude::overload_part(&key).map(|(_, k)| k.to_string());
+            let origin = (module, overload);
             if !out.iter().any(|(_, _, o)| *o == origin) {
                 out.push((key, def, origin));
             }
         }
         out.into_iter().map(|(k, d, _)| (k, d)).collect()
+    }
+
+    /// R08.1.4: a later `fn name(self: ..)` of this module whose `self` is
+    /// neither more nor less specific than an earlier one's is E0702.
+    pub(super) fn overload_clash(&mut self, f: &ast::FnDecl) {
+        let Some(here) = self.env.item_index() else {
+            return;
+        };
+        let name = &f.name.text;
+        let own: Vec<String> = std::iter::once(name.clone())
+            .chain(self.env.method_keys(name))
+            .filter(|k| {
+                k == name
+                    || prelude::overload_part(k)
+                        .is_some_and(|(_, m)| k.ends_with(&format!(" of {m}")))
+            })
+            .collect();
+        let at = |c: &mut Self, k: &str| c.env.decl_order(k);
+        let Some(mine) = own.iter().find(|k| at(self, k) == Some(here)).cloned() else {
+            return;
+        };
+        let Some(this) = self.global(&mine).map(|d| self_ty(&d)) else {
+            return;
+        };
+        for key in own.iter().filter(|k| **k != mine) {
+            if !at(self, key).is_some_and(|i| i < here) {
+                continue;
+            }
+            let Some(that) = self.global(key).map(|d| self_ty(&d)) else {
+                continue;
+            };
+            if !more_specific(&this, &that) && !more_specific(&that, &this) {
+                self.error(
+                    codes::OVERLOAD_BY_TYPE,
+                    f.name.span,
+                    format!("a second `fn {name}` whose `self` is no more and no less specific than the first one's: fns are not overloaded by their other parameters"),
+                );
+                return;
+            }
+        }
+    }
+
+    /// The base of a field read is a value, not the callee, even of
+    /// `xs.ring.windows(2)`.
+    pub(super) fn infer_base(&mut self, base: &Expr) -> Ty {
+        let callee = std::mem::replace(&mut self.in_call_callee, false);
+        let ty = self.infer(base);
+        self.in_call_callee = callee;
+        ty
+    }
+
+    /// `base.name`'s type: a member, else a `@get fn` of that name.
+    pub(super) fn member_or_getter(&mut self, expr: &Expr, name: &ast::Name, base: Ty) -> Ty {
+        match self.member_ty(expr, name, base) {
+            Ty::Unknown if !self.in_call_callee => self.getter_fn_read(expr).unwrap_or(Ty::Unknown),
+            ty => ty,
+        }
+    }
+
+    /// `xs.ring`: a field read naming a `@get fn` is the call `ring(xs)`.
+    pub(super) fn getter_fn_read(&mut self, expr: &Expr) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &expr.kind else {
+            return None;
+        };
+        let base_ty = self.quietly(|c| c.infer(base));
+        let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
+            return None;
+        };
+        if !matches!(&*def, Def::Fn { getter: true, .. }) {
+            return None;
+        }
+        // A call giving a value of a struct leaves its type in `shapes`.
+        let read = |c: &mut Self| {
+            let ty = c.method_form_call(expr, expr, &[]);
+            ty.or_else(|| {
+                let shape = c.shapes.iter().rev().find(|(at, _)| *at == expr.span);
+                shape.map(|(_, ty)| ty.clone())
+            })
+        };
+        let settled = self.quietly(|c| {
+            read(c).filter(|t| c.sink.is_empty() && !t.has_vague() && !names_param(t))
+        });
+        settled.as_ref()?;
+        read(self)
     }
 
     /// Whether `base` can be the `self` of the fn `def`: it fits the
@@ -85,7 +212,9 @@ impl Checker<'_> {
         let mut bindings = crate::ty::Bindings::default();
         first.ty.unify(base, &mut bindings);
         let takes = first.ty.subst(&bindings);
-        same_shape || (!matches!(first.ty, Ty::Named { .. }) && self.fits(base, &takes))
+        // `self: Range<F64>` has `Range<Int>`'s shape but doesn't take it.
+        let named = matches!(first.ty, Ty::Named { .. });
+        (same_shape && (!named || self.fits(base, &takes))) || (!named && self.fits(base, &takes))
     }
 
     /// The candidate `base` fits; of several, one whose `self` is a type of
@@ -101,25 +230,23 @@ impl Checker<'_> {
         if base.is_vague() || matches!(base, Ty::Param(_) | Ty::Error) {
             return Pick::Unsettled;
         }
-        let mut fit: Vec<(String, Arc<Def>, bool)> = Vec::new();
+        let mut fit: Vec<(String, Arc<Def>)> = Vec::new();
         for (key, def) in self.method_candidates(name) {
             if self.self_fits(base, &def) && args.is_none_or(|args| takes_shapes(&def, args)) {
-                let own_type = !matches!(&*def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
-                    if matches!(params[0].ty, Ty::Param(_)));
-                fit.push((key, def, own_type));
+                fit.push((key, def));
             }
         }
-        if fit.iter().any(|f| f.2) {
-            fit.retain(|f| f.2);
-        }
-        // The file's own fn of the name stands in front of the library's.
-        if fit.iter().any(|f| self.env.origin(&f.0).is_none()) {
-            fit.retain(|f| self.env.origin(&f.0).is_none());
-        }
+        // R08.1.4: of the candidates, those no other is more specific than.
+        let selfs: Vec<Option<Ty>> = fit.iter().map(|f| self_ty(&f.1)).collect();
+        let beaten: Vec<bool> = (0..fit.len())
+            .map(|b| (0..fit.len()).any(|a| more_specific(&selfs[a], &selfs[b])))
+            .collect();
+        let mut beaten = beaten.into_iter();
+        fit.retain(|_| !beaten.next().unwrap_or(false));
         match fit.len() {
             0 => Pick::NoFit,
             1 => {
-                let (key, def, _) = fit.pop().unwrap();
+                let (key, def) = fit.pop().unwrap();
                 Pick::One(key, def)
             }
             _ => Pick::Ambiguous(fit.into_iter().map(|f| f.0).collect()),
@@ -130,7 +257,7 @@ impl Checker<'_> {
     pub(super) fn method_def(&mut self, base: &Ty, name: &str) -> Option<Arc<Def>> {
         match self.pick_method(base, name) {
             Pick::One(_, def) => Some(def),
-            _ => self.method_candidates(name).into_iter().next().map(|c| c.1),
+            _ => self.only_candidate(name),
         }
     }
 
@@ -148,12 +275,15 @@ impl Checker<'_> {
             .filter(|d| takes_self(d))
         {
             Some(def) => Some(def),
-            None => self
-                .method_candidates(&name.text)
-                .into_iter()
-                .next()
-                .map(|c| c.1),
+            None => self.only_candidate(&name.text),
         }
+    }
+
+    /// The fn `x.name` calls when the receiver can't pick: the only
+    /// candidate, never the first of several by declaration order.
+    fn only_candidate(&mut self, name: &str) -> Option<Arc<Def>> {
+        let mut candidates = self.method_candidates(name);
+        (candidates.len() == 1).then(|| candidates.remove(0).1)
     }
 
     /// The top-level fn `name` whose `self` the struct, record or tuple
@@ -178,16 +308,27 @@ impl Checker<'_> {
         };
         let Def::Fn {
             ty: Ty::Fn { params, ret },
+            generics,
+            bounds,
             ..
         } = &*def
         else {
             return None;
         };
+        // `w.last` on a `Two`: `S` is `Two`, and `T` what its `Bidir` gives.
+        let mut bindings = crate::ty::Bindings::default();
+        // Beside a built-in member of the name, the built-in answers.
+        let builtin = super::call::catalog_owner(base)
+            .is_some_and(|owner| crate::builtins::builtin_member(owner, name).is_some());
+        if let Some(first) = params.first().filter(|_| !builtin) {
+            first.ty.unify(base, &mut bindings);
+        }
+        self.bind_bound_params(generics, bounds, &mut bindings);
         let ty = Ty::Fn {
             params: params[1..].to_vec(),
             ret: ret.clone(),
         };
-        Some((key, ty))
+        Some((key, ty.subst(&bindings)))
     }
 
     /// Records which candidate `base.name` calls, when its receiver says.
@@ -271,6 +412,13 @@ impl<'a> Checker<'a> {
                 self.ambiguous_candidates(base, name, keys);
                 return Some(Ty::Error);
             }
+            // `(m.get(0) ?? []).bsearch(f)` before the receiver is known: no
+            // candidate is chosen by the order the fns were declared in.
+            Pick::Unsettled
+                if base_ty.is_vague() && self.method_candidates(&name.text).len() > 1 =>
+            {
+                return None;
+            }
             Pick::Unsettled | Pick::NoFit => {
                 self.method_candidates(&name.text).into_iter().next()?.0
             }
@@ -353,7 +501,7 @@ impl<'a> Checker<'a> {
             return None;
         }
         // Arguments the fn doesn't take are the receiver's own member's,
-        // `xs.fold(+)` beside `xs.fold(f, init: 0)`.
+        // `xs.fold(+)` beside `xs.fold_from(0, f)`.
         if own_member && free_failed {
             self.chosen_methods.retain(|r| r.0 != name.span);
             return None;
@@ -398,7 +546,7 @@ impl Checker<'_> {
     /// Whether the type `base` declares a fn `name` of its own, in its body,
     /// an impl or a trait it implements: that member, not a top-level fn
     /// of the name, is what `base.name` calls.
-    fn declares_member(&mut self, base: &Ty, name: &str) -> bool {
+    pub(super) fn declares_member(&mut self, base: &Ty, name: &str) -> bool {
         let Ty::Named { name: owner, .. } = base else {
             return false;
         };
@@ -428,7 +576,7 @@ impl Checker<'_> {
 
     /// Whether `base.name(args)` gives arguments its built-in member's row
     /// doesn't take while a library fn fits the receiver: then the call is
-    /// the library's, `xs.fold(f, init: 0)` beside the built-in `xs.fold(+)`.
+    /// the library's, `xs.fold_from(0, f)` beside the built-in `xs.fold(+)`.
     /// `s.split(" ")`: a `Str` splits on a `Char` or a `Char -> Bool` (`Sep<T>`), so a one-char
     /// `Str` separator is fixed to its `Char`. True when it reported.
     fn split_on_str(&mut self, args: &[Arg]) -> bool {
@@ -476,16 +624,18 @@ impl Checker<'_> {
             return false;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        if !matches!(self.pick_method(&base_ty, &name.text), Pick::One(..)) {
+        let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
             return false;
-        }
+        };
         let params = row_params(row.params);
         let takes_fn = |ty: &str| ty.contains("->") || (ty.len() == 1 && ty != "T");
         let positional = args.iter().filter(|a| a.name.is_none()).count();
-        positional > params.len()
-            || (args.iter()).any(|a| {
-                (a.name.as_ref()).is_some_and(|n| !params.iter().any(|(p, _)| *p == n.text))
-            })
+        if positional > params.len() && takes_positionals(&def, positional) {
+            self.exprs.past_rows.push(name.span);
+            return true;
+        }
+        (args.iter())
+            .any(|a| (a.name.as_ref()).is_some_and(|n| !params.iter().any(|(p, _)| *p == n.text)))
             || (args.iter().zip(&params)).any(|(a, (_, ty))| {
                 matches!(a.value.kind, ExprKind::Lambda { .. }) && !takes_fn(ty)
             })
@@ -668,4 +818,14 @@ impl Members {
             .zip(args.iter().cloned())
             .collect()
     }
+}
+
+/// True when a type parameter (`D`) is left in `ty`: it was not worked out.
+fn names_param(ty: &Ty) -> bool {
+    let mut found = false;
+    ty.map(&mut |t| {
+        found |= matches!(t, Ty::Param(_));
+        found.then(|| t.clone())
+    });
+    found
 }

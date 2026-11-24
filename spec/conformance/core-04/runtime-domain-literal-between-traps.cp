@@ -1,4 +1,4 @@
-// expect: R0101 (checked)
+// expect: R0102 (checked)
 // rule: 04.4.25
 // input: "2\n"
 domain V = 1..=read<1..=5>()

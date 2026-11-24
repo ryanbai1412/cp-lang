@@ -5,6 +5,7 @@
 //   best[s] = max over nonempty subsets g of s of score[g] + best[s - g], g being the group
 //   that stays together; walking the subsets of every subset costs O(3^n).
 // original: corpus/submissions/4131872.cpp
+// Bounds: n: 1..=16; a: -1e9..=1e9
 let n: 1..=16 = read()
 domain R = 0..n
 type Group = Subset<R>

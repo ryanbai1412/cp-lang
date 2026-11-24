@@ -1,4 +1,3 @@
-use std.dp.{knuth}
 let n: 1..=3000 = read()
 let a: [0..n]1..=1e9 = read()
 var pre = [0]

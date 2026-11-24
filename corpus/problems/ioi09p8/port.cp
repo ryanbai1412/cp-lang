@@ -9,6 +9,7 @@
 //   the day's fairs once downstream and once upstream, then store the better of the two at each
 //   fair. The answer is reach(home); O((n + L) log L).
 // original: corpus/submissions/4811954.cpp
+// Bounds: n: 1..=500000; up, down: 1..=10; home: 1..=500001
 let n: 1..=500000 = read()
 let up: 1..=10 = read()
 let down: 1..=10 = read()
@@ -19,46 +20,32 @@ struct Fair:
     day: 1..=500000
     at: Loc
     profit: 1..=4000
-let fairs: [n]Fair = read()
+var fairs: [n]Fair = read()
 
-fn most() -> Int:
-    let never = -1e18
-    var from_above = SegTree<Loc, Int>(max, fill: never)  // best[y] + down * y
-    var from_below = SegTree<Loc, Int>(max, fill: never)  // best[y] - up * y
+// best[y] is above -U * 5e5 for every y stood on and at most 4000 n; the empty fold is -1e10.
+type Money = -1e10..=1e10
+var from_above = SegTree<Loc, Money>(max)  // best[y] + down * y where y is stood on
+var from_below = SegTree<Loc, Money>(max)  // best[y] - up * y
 
-    fn reach(x: Loc) -> Int:
-        max(
-            from_above.fold(Loc.first!..=x) - down * x.label,
-            from_below.fold(x..=Loc.last!) + up * x.label,
-        )
+// Home is stood on from the start, so one side always reaches x with a real value.
+fn reach(x: Loc) -> Int = max(from_above.fold(..=x) - down * x.label, from_below.fold(x..) + up * x.label)
 
-    fn stand(x: Loc, money: Int):
-        from_above.set(x, max(from_above.fold(x..=x), money + down * x.label))
-        from_below.set(x, max(from_below.fold(x..=x), money - up * x.label))
+fn stand(x: Loc, money: Int):
+    from_above.at(x) max= money + down * x.label
+    from_below.at(x) max= money - up * x.label
 
-    stand(home, 0)
-    let order = fairs.sorted(by: f => (f.day, f.at))
-    var i = 0
-    while i < n:
-        var j = i
-        while j < n and order[j].day == order[i].day: j += 1
-        // Fairs i..j share a day, sorted by location.
-        let g = j - i
-        let arrive = [reach(order[i + t].at) for t in 0..g]
-        var going_down = arrive.clone()
-        var going_up = arrive
-        for t in 0..g:
-            if t > 0:
-                let gap = order[i + t].at.label - order[i + t - 1].at.label
-                going_down[t] max= going_down[t - 1] - down * gap
-            going_down[t] += order[i + t].profit
-        for t in (0..g).rev:
-            if t + 1 < g:
-                let gap = order[i + t + 1].at.label - order[i + t].at.label
-                going_up[t] max= going_up[t + 1] - up * gap
-            going_up[t] += order[i + t].profit
-        for t in 0..g: stand(order[i + t].at, max(going_down[t], going_up[t]))
-        i = j
-    reach(home)
-
-print(most())
+stand(home, 0)
+fairs.sort(by: f => (f.day, f.at))
+for day in fairs.runs(by: f => f.day):
+    let stops = [(at: f.at, gain: reach(f.at) + f.profit, profit: f.profit) for f in day]
+    let k = stops.len
+    var going_down = [s.gain for s in stops]
+    for t in 1..k:
+        let gap = stops[t].at.label - stops[t - 1].at.label
+        going_down[t] max= going_down[t - 1] - down * gap + stops[t].profit
+    var going_up = [s.gain for s in stops]
+    for t in (0..k - 1).rev:
+        let gap = stops[t + 1].at.label - stops[t].at.label
+        going_up[t] max= going_up[t + 1] - up * gap + stops[t].profit
+    for t in 0..k: stand(stops[t].at, max(going_down[t], going_up[t]))
+print(reach(home))

@@ -8,6 +8,7 @@
 //   chains ending at its children (plus their up-road; a chain of length >= k is a track),
 //   that reaches k, found by binary search, used ones skipped by path compression) and
 // original: corpus/submissions/4002963.cpp
+// Bounds: n: 2..=5e4; m: 1..=5e4; roads.u, roads.v: 1..=n; roads.len: 1..=1e4
 let (n, m): (2..=5e4, 1..=5e4) = read()
 domain Junction = 1..=n
 domain Road = 1..n

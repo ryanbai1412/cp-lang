@@ -976,12 +976,7 @@ fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
         ExprKind::Field { name, .. } => hover_at(item, name.span)?.clone(),
         ExprKind::Generic { base, .. } => return type_of(item, base),
         ExprKind::Call { callee, .. } => call_type(item, callee)?,
-        ExprKind::Index { base, .. } => match type_of(item, base)? {
-            Ty::Array { elem, .. } => *elem,
-            Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
-            Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
-            _ => return None,
-        },
+        ExprKind::Index { base, .. } => type_of(item, base)?.index_value()?,
         ExprKind::Unwrap(inner) | ExprKind::Try(inner) => match type_of(item, inner)? {
             Ty::Optional(inner) => *inner,
             _ => return None,
@@ -1060,12 +1055,17 @@ fn generics_of(header: &str) -> Vec<String> {
 fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)> {
     let mut out = own_members_of_ty(cursor, std, ty);
     let mut seen: HashSet<String> = out.iter().map(|(e, _)| e.name.clone()).collect();
-    // A domain named as a value walks its positions; a type with `each` is a Seq.
+    // A domain named as a value walks its positions; a type with `iter` (Seq's one method) is a Seq.
     let ty = match ty {
         Ty::TypeName(name) if is_domain(cursor.analysis, name) => &Ty::Domain(name.clone()),
         ty => ty,
     };
-    let walks = seen.contains("each");
+    // `impl Seq` gives `iter` even where a library keeps it out of the list.
+    let walks = seen.contains("iter")
+        || seen.contains("each")
+        || matches!(ty, Ty::Named { name, .. } if outlines_for(cursor, std, name)
+            .iter()
+            .any(|o| o.members_of(name).any(|m| m.instance && m.name == "iter")));
     let imported = cursor.analysis.imports();
     for entry in std_methods(cursor, std) {
         // A `fn f<T>(self: T)` a `use` names is everyone's member; unnamed, it would crowd every list.
@@ -1105,8 +1105,7 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
         .into_iter()
         .map(|(e, _)| e)
         .find(|e| e.name == text[start..end])?;
-    let cost = cpl_syntax::doc::DocText::parse(&entry.doc)
-        .facts
+    let cost = cpl_syntax::doc::Facts::parse(&entry.doc)
         .cost
         .filter(|c| c.starts_with("O("))
         .map(|c| cpl_diag::plain::text(&c));
@@ -1189,7 +1188,7 @@ fn self_type(detail: &str) -> Option<&str> {
     let (_, rest) = detail
         .split_once("(self: ")
         .or_else(|| detail.split_once("(mut self: "))?;
-    let end = rest.find([',', ')']).unwrap_or(rest.len());
+    let end = rest.find([',', ';', ')']).unwrap_or(rest.len());
     Some(rest[..end].trim())
 }
 
@@ -1504,6 +1503,8 @@ fn scope_completion(
         // A local the checker could not type is still in scope.
         let (kind, detail) = match keyword {
             "domain" => (Kind::Domain, format!("domain {name}")),
+            "type" => (Kind::Alias, format!("type {name}")),
+            "field" => (Kind::Field, format!("{name}: {ty}")),
             _ if ty.has_vague() => (Kind::Value, name.clone()),
             _ => (Kind::Value, format!("{name}: {ty}")),
         };
@@ -1632,18 +1633,32 @@ fn whole_words(text: &str, word: &str) -> usize {
 }
 
 /// The fn bodies of an item: a local declared in one is seen only in it.
-/// Also its comprehensions, whose `for` names are seen in the body before them.
-struct FnSpans(Vec<cpl_diag::Span>, Vec<cpl_diag::Span>);
+/// Also its comprehensions, whose `for` names are seen in the body before them,
+/// each fn's generics (seen in its signature too) and the struct methods, which
+/// see the struct's fields without `self.`.
+#[derive(Default)]
+struct FnSpans {
+    fns: Vec<cpl_diag::Span>,
+    comprehensions: Vec<cpl_diag::Span>,
+    generics: Vec<(cpl_diag::Span, String)>,
+    methods: Vec<cpl_diag::Span>,
+}
 
 impl Visitor for FnSpans {
     fn stmt(&mut self, stmt: &Stmt) {
-        if let StmtKind::Fn(_) = stmt.kind {
-            self.0.push(stmt.span);
+        match &stmt.kind {
+            StmtKind::Fn(f) => {
+                self.fns.push(stmt.span);
+                let names = f.generics.iter().map(|g| (stmt.span, g.text.clone()));
+                self.generics.extend(names);
+            }
+            StmtKind::Struct(s) => self.methods.extend(s.methods.iter().map(|m| m.span)),
+            _ => {}
         }
     }
     fn expr(&mut self, expr: &Expr) {
         if let ExprKind::Comprehension { .. } = expr.kind {
-            self.1.push(expr.span);
+            self.comprehensions.push(expr.span);
         }
     }
 }
@@ -1654,17 +1669,18 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
         return Vec::new();
     };
     let rel = cursor.offset - item.offset;
-    let mut fns = FnSpans(Vec::new(), Vec::new());
+    let mut fns = FnSpans::default();
     for stmt in &item.syntax.parsed.stmts {
         walk_stmt(stmt, &mut fns);
     }
+    let within = |s: &cpl_diag::Span| s.start <= rel && rel <= s.end;
     let in_same_comprehension = |at: u32| {
-        fns.1
+        fns.comprehensions
             .iter()
             .any(|c| c.start <= at && at <= c.end && c.start <= rel && rel <= c.end)
     };
     let innermost = |at: u32| {
-        fns.0
+        fns.fns
             .iter()
             .filter(|s| s.start <= at && at <= s.end)
             .min_by_key(|s| s.end - s.start)
@@ -1687,11 +1703,11 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
         let owner = match entry.keyword {
             "fn" => {
                 let mut around: Vec<_> = fns
-                    .0
+                    .fns
                     .iter()
                     .filter(|s| s.start <= entry.span.start && entry.span.start <= s.end)
                     .collect();
-                around.sort_by_key(|s| s.end - s.start);
+                cpl_diag::sort_by_key(&mut around, |s| (s.end - s.start) as u64);
                 around.get(1).map(|outer| **outer)
             }
             _ => innermost(entry.span.start),
@@ -1701,6 +1717,16 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
         }
         out.retain(|(name, _, _)| *name != entry.name);
         out.push((entry.name.clone(), entry.ty.clone(), entry.keyword));
+    }
+    if fns.methods.iter().any(within) {
+        for entry in &item.check.hovers {
+            if entry.keyword == "field" && entry.decl == Some(entry.span) {
+                out.insert(0, (entry.name.clone(), entry.ty.clone(), "field"));
+            }
+        }
+    }
+    for (_, name) in fns.generics.iter().filter(|(span, _)| within(span)) {
+        out.insert(0, (name.clone(), Ty::TypeName(name.clone()), "type"));
     }
     out.reverse();
     out

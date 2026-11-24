@@ -7,6 +7,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/apio09p1/orig.cpp"
+  ],
   "port": [
    "corpus/problems/apio09p1/port.cp"
   ]

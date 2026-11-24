@@ -3,6 +3,7 @@
 //! (`std.heap`) pops the largest with the same costs. The heap is labelled
 //! so the fact table keeps the finding only on a min-heap (`typed.rs`).
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, NEGATED_HEAP};
 use cpl_diag::Diagnostic;
@@ -32,7 +33,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 &unparen(&arg.value).kind,
                 ExprKind::Unary { op: UnOp::Neg, .. }
             );
-            if method.text != "push" || !negated || !self.seen.insert(h.to_string()) {
+            if method.text != std_fn::PUSH || !negated || !self.seen.insert(h.to_string()) {
                 return;
             }
             let diag = Diagnostic::warning(

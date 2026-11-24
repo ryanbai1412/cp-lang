@@ -8,6 +8,7 @@
 //   tree parents first hands each child its interval, and `count_in` counts the sorted skills
 //   inside: O((n + k) log).
 // original: corpus/submissions/4239862.cpp
+// Bounds: n, k: 1..=2e5; hills.u, hills.v: 1..=n; hills.d: 1..=1e9
 let (n, k): (1..=2e5, 1..=2e5) = read()
 domain V = 1..=n
 let hills: [n - 1](u: V, v: V, d: 1..=1e9) = read()

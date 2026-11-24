@@ -16,7 +16,6 @@
 //        or step into a child of b (`b - first[b] - kids[b]` per b in (i, u],
 //        plus `kids[first[b]]` when b < u for paths through first[b]).
 //      * dist 3: all remaining pairs in (i, u].
-use std.algebra.{desc}
 use std.seq.*
 
 @!multitest

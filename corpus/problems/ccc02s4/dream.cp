@@ -1,14 +1,22 @@
-# CCC 2002 S4 Bridge Crossing: people cross in order, groups of at most m at a time, a group takes
-# as long as its slowest member. Minimize the total and print the groups.
-let m = read Int
-let people = read [n] (name: Str, t: Int)
+// CCC 2002 S4 Bridge Crossing: people cross in order, groups of at most m at a time, a group takes
+// as long as its slowest member. Minimize the total and print the groups.
+let (m, n) = read<(1..=20, 1..=100)>()
+domain P = 0..n
+let people = read<[P](name: Str, t: 1..=1000)>()
 
-# cost[c]: the least time to get everyone from cut c onward across.
+let times = [p.t for p in people]
+let names = [p.name for p in people]
+
+// best(c): the least time to get everyone from position c onward across, and where c's group ends.
 @memo(array)
-fn cost(c: people.cuts) -> (total: Int, group: Range) =
-    if c == people.cuts.last: (total: 0, group: c..c)
-    else: min(for g in people[c..].prefixes(max_len: m): (total: g.max(of: .t) + cost(g.end).total, group: g.range))
+fn best(c: 0..=100) -> (total: Int, end: Int):
+    if c == n:
+        return (total: 0, end: n)
+    [(total: times[c..e].max()! + best(e).total, end: e) for e in c + 1..=min(c + m, n)].min()!
 
-print("Total Time: {cost(people.cuts.first).total}")
-for g in iterate(people.cuts.first, c => cost(c).group.end).until(people.cuts.last).map(c => cost(c).group):
-    print(people[g].map(.name))
+print("Total Time:", best(0).total)
+var c = 0
+while c != n:
+    let e = best(c).end
+    print(names[c..e])
+    c = e

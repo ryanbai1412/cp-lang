@@ -69,7 +69,7 @@ impl Written {
         for stmt in stmts {
             walk_stmt(stmt, &mut out);
         }
-        out.types.sort_by_key(|t| (t.span.start, t.span.end));
+        cpl_diag::sort_by_key(&mut out.types, |t| t.span.order());
         out.types.dedup_by_key(|t| t.span);
         out
     }
@@ -229,6 +229,25 @@ fn meaning(ty: &Type, src: &str) -> Option<String> {
         TypeKind::Fn { .. } => "a function type: parameter types `->` result".to_string(),
         TypeKind::Mut(inner) => format!("a `{}` the function may change", text(inner, src)),
         TypeKind::Yields(inner) => format!("a generator yielding `{}`", text(inner, src)),
+        TypeKind::Value(_) => {
+            "a value given as a type argument, fixed when the program is compiled".to_string()
+        }
+        TypeKind::ConstrainedStr { alphabet, len } => {
+            let chars = alphabet
+                .as_deref()
+                .map(|a| format!(" whose characters are all in `\"{a}\"`"));
+            let len = len
+                .as_deref()
+                .map(|l| format!(" whose length is in `{}`", text(l, src)));
+            format!(
+                "a `Str`{}",
+                [chars, len]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .join(" and")
+            )
+        }
         TypeKind::Named { name, args } if !args.is_empty() => format!(
             "`{}` with type argument{} {}",
             name.text,

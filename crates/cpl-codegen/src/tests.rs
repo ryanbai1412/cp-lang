@@ -147,6 +147,12 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     assert!(cpp.contains("struct CpHash"), "{cpp}");
     assert!(cpp.contains("splitmix64"), "{cpp}");
     assert!(cpp.contains("steady_clock"), "{cpp}");
+    // Fingerprinted slots at a load of at most 7/8, sized exactly, freeing the old table as a rehash walks it.
+    assert!(
+        cpp.contains("n + (n + 6) / 7") && cpp.contains("release_pages"),
+        "{cpp}"
+    );
+    assert!(!cpp.contains("2 * (n + 1)"), "{cpp}");
     assert!(cpp.len() < 65536, "{} bytes", cpp.len());
 }
 
@@ -222,15 +228,50 @@ fn a_fn_of_the_judges_grader_is_declared_in_its_types() {
         assert!(cpp[..runtime].contains(decl), "{cpp}");
     }
     assert!(
-        cpp.contains("return cpl::Judge<std::vector<ll>>::from(::ask(cpl::Judge<ll>::to(i)));"),
+        cpp.contains("return cpl::Judge<std::vector<ll>, std::vector<int>>::from(::ask(cpl::Judge<ll, int>::to(i)));"),
         "{cpp}"
     );
     // The fn the grader calls, in its types, and no `main` beside the grader's.
     assert!(
-        cpp.contains("\nstd::tuple<int, std::vector<int>> best(int n) {\n  cpl_start();"),
+        cpp.contains("\nstd::pair<int, std::vector<int>> best(int n) {\n  cpl_start();"),
         "{cpp}"
     );
     assert!(!cpp.contains("int main()"), "{cpp}");
+}
+
+#[test]
+fn a_grader_fn_crosses_in_the_narrowest_type_its_declared_range_fits() {
+    // IOI 2025 souvenirs: `std::pair<std::vector<int>, long long>
+    // transaction(long long M)` and `void buy_souvenirs(int N, long long P0)`.
+    let out = cpp(
+        "@grader fn transaction(m: 1..=1e15) -> (List<0..100>, 0..=1e15)\n\
+         @grader\nfn buy_souvenirs(count: 2..=100, p0: 1..=1e15):\n    let (got, back) = transaction(p0 - 1)\n    print(got.len, back, count)\n",
+    );
+    let runtime = out.find("namespace cpl").expect("a runtime");
+    assert!(
+        out[..runtime].contains("std::pair<std::vector<int>, long long> transaction(long long m);"),
+        "{out}"
+    );
+    assert!(
+        out.contains("\nvoid buy_souvenirs(int count, long long p0) {"),
+        "{out}"
+    );
+    assert!(
+        out.contains("cpl::Judge<std::tuple<std::vector<ll>, ll>, std::pair<std::vector<int>, long long>>::from"),
+        "{out}"
+    );
+    let wide = cpp("@grader\nfn f(a: (Int, Int, 0..=1e12)) -> Int = a.0\n");
+    assert!(
+        wide.contains("\nint f(std::tuple<int, int, long long> a) {"),
+        "{wide}"
+    );
+    let widths = cpp(
+        "@grader\nfn f(a: -2_147_483_648..=2_147_483_647, b: -9e18..=9e18, c: 0..=2_147_483_648) -> Int = 0\n",
+    );
+    assert!(
+        widths.contains("\nint f(int a, long long b, long long c) {"),
+        "{widths}"
+    );
 }
 
 #[test]
@@ -794,4 +835,31 @@ fn char_array_reads_fill_in_one_pass() {
         body.contains("cpl::read_chars(") && !body.contains("read_char()"),
         "a [D]Char read should fill the array in one pass:\n{body}"
     );
+}
+
+#[test]
+fn a_local_fn_guards_the_runtime_domains_it_declares() {
+    let out = cpp("for t in 0..2:
+    fn depth(n: Int) -> Int:
+        if n == 0: return 0
+        domain D = 0..n
+        let inner = [D] d => if d.ord == 0: depth(n - 1) else: 0
+        D.count * 10 + inner[D(0)]
+    print(depth(3 + t))
+");
+    assert!(out.contains("cpl::DomGuard"), "{out}");
+}
+
+#[test]
+fn an_element_a_mut_call_may_move_is_copied_whatever_its_index() {
+    let out = cpp("struct T<K>:
+    var keys: List<K>
+    fn grow(mut self, x: K) -> Int:
+        for _ in 0..1000: keys.push(x)
+        keys.len
+    fn dup(mut self, i: Int) -> Int = self.grow(keys[i * 2])
+var t = T<(Int, Int)>([(1, 2)])
+print(t.dup(0))
+");
+    assert!(out.contains("_grow(self, std::tuple<ll, ll>("), "{out}");
 }

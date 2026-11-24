@@ -7,6 +7,7 @@
 //   w = (top - a[u]) * size(u) that any drain in the subtree takes, and below a[u] the child
 //   subtrees are independent. So one drain gets the best child's one-drain total plus w, and two
 //   drains get w plus one drain in each of two children or both in one child. O(n).
+// Bounds: n: 1..=2000; h: 1..=10 ** 9; a: 1..=h
 
 @!multitest
 use std.tree.{cartesian_tree}

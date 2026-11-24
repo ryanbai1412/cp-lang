@@ -159,7 +159,7 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
 struct Edge: u: V, v: V, w: Int
 
 struct Tally:
-    var top = 0                     // typed by its default
+    var top = 0  // typed by its default
     var sum = 0
     name: Str = ""
     fn add(mut self, x: Int):
@@ -176,7 +176,10 @@ struct Tally:
   Subset<R>`, then `for s in G` walks the subsets. On its right side the
   alias's own name means what it means outside it, so `type Mod =
   Mod<998244353>` names std's `Mod`; an alias defined by itself (`type A =
-  List<A>`, or `type A = B` with `type B = A`) is E0323. There are no
+  List<A>`, or `type A = B` with `type B = A`) is E0323. An alias of a
+  range type has that range's `.MIN`, `.MAX` and `.count`: after `type M =
+  -10..=10`, `M.MIN == -10`, `M.MAX == 10` and `M.count == 21`, as a generic
+  `T` bound to `M` sees (decision 538). There are no
   constructor side effects and no destructors. (R02.6.2)
 - **Two kinds of constructor, one rule each.** A generated constructor
   (`Edge(a, b, 5)`, a struct literal) stores its arguments, so it takes
@@ -203,7 +206,7 @@ struct Tally:
 
 <!-- given: domain V = 0..4 -->
 ```cp
-enum Dir = L | R | U | D            // payload-free: an index type
+enum Dir = L | R | U | D  // payload-free: an index type
 enum Ev:
     Add(v: V)
     Ask(l: V, r: V)
@@ -260,7 +263,7 @@ A binding can introduce a type whose identity is the binding:
 ```cp
 domain V = 1..=read<1..=2e5>()
 let (domain Piece, piece_of) = components(t)
-type Z = Mod(read<2..=1e9 + 7>())   // runtime modulus
+type Z = Mod(read<2..=1e9 + 7>())  // runtime modulus
 ```
 
 - Two fresh types are never equal, even from the same expression. (R02.9.1)

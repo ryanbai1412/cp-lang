@@ -3,6 +3,7 @@
 //! minimum or maximum (`sliding_min_by_hand`), and depths stepped from the
 //! parent's (`depth_by_hand`).
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, Lint, CYCLE_BY_COLORS, DEPTH_BY_HAND, SLIDING_MIN_BY_HAND};
 use cpl_diag::{Diagnostic, Span};
@@ -14,15 +15,48 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandGraph {
         src: file.src,
         base: 0,
+        structs: file
+            .top_level()
+            .filter_map(|(base, s)| match &s.kind {
+                StmtKind::Struct(decl) => Some((
+                    s.span.shift(base),
+                    decl.fields.iter().map(|f| f.name.text.clone()).collect(),
+                )),
+                _ => None,
+            })
+            .collect(),
+        compared: Vec::new(),
+        depths: Vec::new(),
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
+    v.base = 0;
+    for (t, at) in std::mem::take(&mut v.depths) {
+        if v.compared.contains(&t) {
+            v.warn(
+                &DEPTH_BY_HAND,
+                at,
+                format!("`{t}` steps each depth from the parent's by hand"),
+                "`Rooted.from_parents(par)` (`par: [V]?V`, `None` at the root) or `Rooted.new(adj, root)` knows `t.depth(v)`, `t.parent(v)` and `t.lca(u, v)`".to_string(),
+            );
+        }
+    }
     v.out
 }
 
 struct HandGraph<'a> {
     src: &'a str,
     base: u32,
+    /// Each struct and its fields: a depth table that is a struct's own
+    /// field (std's `Rooted`, `JumpTree`) is how that type answers depths.
+    structs: Vec<(Span, Vec<String>)>,
+    /// Tables read at two places in one comparison or difference,
+    /// `depth[u] > depth[v]`, `depth[u] - depth[a]`: the depths feed a walk
+    /// up the tree or a distance, which `Rooted` answers. Depths read only
+    /// as values are one pass by hand, cheaper than building the tree.
+    compared: Vec<String>,
+    /// Each table stepped from the parent's, and where.
+    depths: Vec<(String, Span)>,
     out: Vec<Finding>,
 }
 
@@ -167,7 +201,7 @@ impl HandGraph<'_> {
         };
         let Some(at) = body.stmts.iter().position(|s| {
             matches!(&s.kind, StmtKind::While { body, .. }
-                if body.stmts.len() == 1 && method_call(&body.stmts[0], "pop").is_some())
+                if body.stmts.len() == 1 && method_call(&body.stmts[0], std_fn::POP).is_some())
         }) else {
             return;
         };
@@ -179,11 +213,11 @@ impl HandGraph<'_> {
         else {
             return;
         };
-        let (q, _) = method_call(&pops.stmts[0], "pop").unwrap();
+        let (q, _) = method_call(&pops.stmts[0], std_fn::POP).unwrap();
         let pushes_i = body
             .stmts
             .get(at + 1)
-            .and_then(|s| method_call(s, "push"))
+            .and_then(|s| method_call(s, std_fn::PUSH))
             .is_some_and(|(r, args)| {
                 r == q && matches!(args, [a] if name(&a.value) == Some(i.as_str()))
             });
@@ -216,7 +250,7 @@ impl HandGraph<'_> {
         if !has_followed(self.text(body.span), i, "-") {
             return;
         }
-        let m = if keeps_min { "min" } else { "max" };
+        let m = if keeps_min { std_fn::MIN } else { std_fn::MAX };
         self.warn(
             &SLIDING_MIN_BY_HAND,
             stmt.span,
@@ -236,13 +270,16 @@ impl HandGraph<'_> {
                 Some((t, _)) => (t, value),
                 None => return,
             },
-            _ => match method_call(stmt, "push") {
+            _ => match method_call(stmt, std_fn::PUSH) {
                 Some((t, [a])) => (t, &a.value),
                 _ => return,
             },
         };
         let lower = t.to_ascii_lowercase();
-        if !["dep", "level", "lvl"].iter().any(|w| lower.contains(w)) {
+        if !["dep", std_fn::LEVEL, "lvl"]
+            .iter()
+            .any(|w| lower.contains(w))
+        {
             return;
         }
         let ExprKind::Binary {
@@ -257,12 +294,13 @@ impl HandGraph<'_> {
         if int(rhs) != Some(1) || index1(lhs).map(|(b, _)| b) != Some(t) {
             return;
         }
-        self.warn(
-            &DEPTH_BY_HAND,
-            stmt.span,
-            format!("`{t}` steps each depth from the parent's by hand"),
-            "`Rooted.from_parents(par)` (`par: [V]?V`, `None` at the root) or `Rooted.new(adj, root)` knows `t.depth(v)`, `t.parent(v)` and `t.lca(u, v)`".to_string(),
-        );
+        let at = stmt.span.shift(self.base);
+        if self.structs.iter().any(|(s, fields)| {
+            s.start <= at.start && at.end <= s.end && fields.iter().any(|f| f == t)
+        }) {
+            return;
+        }
+        self.depths.push((t.to_string(), at));
     }
 }
 
@@ -273,5 +311,23 @@ impl Visitor for HandGraph<'_> {
         }
         self.deque(stmt);
         self.depth(stmt);
+    }
+    fn expr(&mut self, expr: &Expr) {
+        let pair = match &unparen(expr).kind {
+            ExprKind::Binary {
+                op: BinOp::Sub,
+                lhs,
+                rhs,
+                ..
+            } => Some((&**lhs, &**rhs)),
+            _ => compare(expr).map(|(a, _, b)| (a, b)),
+        };
+        if let Some((a, b)) = pair {
+            if let (Some((x, _)), Some((y, _))) = (index1(a), index1(b)) {
+                if x == y {
+                    self.compared.push(x.to_string());
+                }
+            }
+        }
     }
 }

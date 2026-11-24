@@ -23,6 +23,10 @@ pub struct FnSummary {
     /// It yields fn values: they may write its locals, so a loop over it
     /// must run as it yields (R06.3.4), whatever else the body does.
     pub yields_fns: bool,
+    /// The fns whose frames a closure it may call writes by reference
+    /// (`None`: the program's top level). Only another fn's frame makes it
+    /// `opaque` to a loop it feeds.
+    pub lent_from: BTreeSet<Option<usize>>,
     pub reads: BTreeSet<usize>,
     pub writes: BTreeSet<usize>,
 }
@@ -66,8 +70,13 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
         .map(|f| direct_of(&f.body, false))
         .collect();
     let mut all = (FnSummary::default(), BTreeSet::new(), false);
-    for c in &program.closures {
-        let (summary, calls, through) = direct_of(&c.body, c.captures.iter().any(|cap| cap.by_ref));
+    let owners = closure_owners(program);
+    for (c, owner) in program.closures.iter().zip(owners) {
+        let by_ref = c.captures.iter().any(|cap| cap.by_ref);
+        let (mut summary, calls, through) = direct_of(&c.body, by_ref);
+        if by_ref {
+            summary.lent_from.insert(owner);
+        }
         all.0.merge(&summary);
         all.1.extend(calls);
         all.2 |= through;
@@ -95,12 +104,50 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
     }
 }
 
+/// The fn each closure is made in, through the closures it is made in
+/// (`None`: the top level).
+fn closure_owners(program: &Program) -> Vec<Option<usize>> {
+    #[derive(Clone, Copy)]
+    enum Made {
+        Top,
+        Fn(usize),
+        In(usize),
+    }
+    let mut made = vec![Made::Top; program.closures.len()];
+    let mut mark = |body: &Block, by: Made| {
+        walk::deep_exprs(body, &mut |e| {
+            if let ExprKind::Closure(c) = e.kind {
+                made[c] = by;
+            }
+        })
+    };
+    for (id, f) in program.fns.iter().enumerate() {
+        mark(&f.body, Made::Fn(id));
+    }
+    for (id, c) in program.closures.iter().enumerate() {
+        mark(&c.body, Made::In(id));
+    }
+    (0..made.len())
+        .map(|mut c| {
+            for _ in 0..made.len() {
+                match made[c] {
+                    Made::Top => return None,
+                    Made::Fn(id) => return Some(id),
+                    Made::In(outer) => c = outer,
+                }
+            }
+            None
+        })
+        .collect()
+}
+
 impl FnSummary {
     pub(crate) fn merge(&mut self, other: &FnSummary) {
         self.io |= other.io;
         self.opaque |= other.opaque;
         self.calls_values |= other.calls_values;
         self.sizes |= other.sizes;
+        self.lent_from.extend(other.lent_from.iter().copied());
         self.reads.extend(other.reads.iter().copied());
         self.writes.extend(other.writes.iter().copied());
     }
@@ -113,9 +160,16 @@ impl FnSummary {
 /// of the body, in both back ends alike. It must not change an argument
 /// other than through a `mut` parameter, size a domain or call a fn value
 /// that writes a variable it captured by reference.
-fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
-    let acc = f.locals.iter().position(|local| local.name == "__yields")?;
-    if acc < f.params.len() || summary.sizes || (!summary.yields_fns && summary.opaque) {
+///
+/// A fn returning a list it only makes, pushes to and returns is one too,
+/// but it runs to its end whatever takes its values: only a reducer that
+/// takes every value is fed by it, never a loop that may stop early.
+fn pusher(id: usize, f: &Function, summary: &FnSummary) -> Option<usize> {
+    let yields = f.locals.iter().position(|local| local.name == "__yields");
+    let acc = yields.or_else(|| returned_list(f))?;
+    // A closure it makes writing its own locals is part of its own run.
+    let opaque = summary.lent_from.iter().any(|&owner| owner != Some(id));
+    if acc < f.params.len() || summary.sizes || (!summary.yields_fns && opaque) {
         return None;
     }
     let is_acc = |e: &Expr| matches!(e.kind, ExprKind::Local(slot) if slot == acc);
@@ -132,12 +186,63 @@ fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
         Stmt::Return(_) => odd = true,
         _ => {}
     });
-    let (mut named, mut filled) = (0, 0);
+    let mut empty = false;
+    let (mut named, mut filled, mut stored) = (0, 0, 0);
+    let at_acc = |place: &crate::Place| walk::root(place) == (false, acc);
+    walk::deep_stmts(&f.body, &mut |stmt| match stmt {
+        Stmt::Let(slot, Some(init)) if *slot == acc => {
+            empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
+        }
+        Stmt::Assign(place, ..) => stored += usize::from(at_acc(place)),
+        _ => {}
+    });
     walk::deep_exprs(&f.body, &mut |e| {
         named += usize::from(is_acc(e));
         filled += usize::from(fills(e));
+        match &e.kind {
+            ExprKind::Mutate(_, place, _)
+            | ExprKind::MutSlice(place, ..)
+            | ExprKind::Sort(place, ..) => stored += usize::from(at_acc(place)),
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                stored += args
+                    .iter()
+                    .filter(|a| matches!(a, Arg::Mut(place) if at_acc(place)))
+                    .count()
+            }
+            _ => {}
+        }
     });
-    (!odd && lets == 1 && named == returns && filled == pushes).then_some(acc)
+    // A list it starts with values in, or changes past pushing, is not what it yields.
+    (!odd && lets == 1 && empty && named == returns && filled == pushes && stored == filled)
+        .then_some(acc)
+}
+
+/// Whether a closure `f` makes captures its local `slot`: its body runs
+/// elsewhere, where a push to the list cannot become a call of the loop body.
+fn captured(program: &Program, f: &Function, slot: usize) -> bool {
+    let mut seen = false;
+    walk::deep_exprs(&f.body, &mut |e| {
+        if let ExprKind::Closure(c) = e.kind {
+            seen |= program.closures[c]
+                .captures
+                .iter()
+                .any(|cap| !cap.is_global && cap.outer == slot);
+        }
+    });
+    seen
+}
+
+/// The local a fn returns when it is a list it made itself.
+fn returned_list(f: &Function) -> Option<usize> {
+    let mut acc = None;
+    walk::deep_stmts(&f.body, &mut |stmt| {
+        if let Stmt::Return(Some(e)) = stmt {
+            if let ExprKind::Local(slot) = e.kind {
+                acc = acc.or(Some(slot));
+            }
+        }
+    });
+    acc.filter(|&slot| slot >= f.params.len() && matches!(f.locals[slot].ty, crate::Ty::List(_)))
 }
 
 /// The summaries of a program's fns and its `yields` fns that can feed a
@@ -146,17 +251,42 @@ fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
 pub struct Feeds {
     pub summaries: Vec<FnSummary>,
     pub pushers: BTreeMap<usize, usize>,
+    /// The pushers that are not `yields` fns: they run to their end.
+    pub eager: BTreeSet<usize>,
 }
 
 impl Feeds {
     pub fn of(program: &Program) -> Feeds {
+        let mut feeds = Feeds::candidates(program);
+        feeds.keep_fed(program, &BTreeSet::new());
+        feeds
+    }
+
+    /// Every `yields` fn that could feed a loop, fed or not yet.
+    pub fn candidates(program: &Program) -> Feeds {
         let summaries = summarize(program);
-        let pushers = (0..program.fns.len())
-            .filter_map(|id| Some((id, pusher(&program.fns[id], &summaries[id])?)))
-            .collect();
-        let mut feeds = Feeds { summaries, pushers };
-        // Only a fn some loop is fed by gets the form that feeds it.
-        let mut fed = BTreeSet::new();
+        // Inserted in key order: collecting a BTreeMap sorts, a copy of std's stable sort.
+        let mut pushers = BTreeMap::new();
+        let mut eager = BTreeSet::new();
+        for (id, f) in program.fns.iter().enumerate() {
+            if let Some(p) = pusher(id, f, &summaries[id]).filter(|&p| !captured(program, f, p)) {
+                pushers.insert(id, p);
+                if f.locals[p].name != "__yields" {
+                    eager.insert(id);
+                }
+            }
+        }
+        Feeds {
+            summaries,
+            pushers,
+            eager,
+        }
+    }
+
+    /// Keeps the fns some loop is fed by, and `also`: only they get the form that feeds.
+    pub fn keep_fed(&mut self, program: &Program, also: &BTreeSet<usize>) {
+        let feeds = &*self;
+        let mut fed = also.clone();
         let bodies = [&program.main, &program.setup]
             .into_iter()
             .chain(program.fns.iter().map(|f| &f.body))
@@ -170,8 +300,40 @@ impl Feeds {
                 }
             });
         }
-        feeds.pushers.retain(|id, _| fed.contains(id));
-        feeds
+        self.pushers.retain(|id, _| fed.contains(id));
+        self.eager.retain(|id| fed.contains(id));
+    }
+
+    /// The pushers whose values a `.len` only counts: the count is taken
+    /// as they are made, with no list.
+    pub fn counted(&self, program: &Program) -> BTreeSet<usize> {
+        let mut counted = BTreeSet::new();
+        let bodies = [&program.main, &program.setup]
+            .into_iter()
+            .chain(program.fns.iter().map(|f| &f.body))
+            .chain(program.closures.iter().map(|c| &c.body));
+        for body in bodies {
+            walk::deep_exprs(body, &mut |e| {
+                if let Some(callee) = self.counts(e) {
+                    counted.insert(callee);
+                }
+            });
+        }
+        counted
+    }
+
+    /// The pusher `e` takes the length of, `f(..).len`.
+    pub fn counts(&self, e: &Expr) -> Option<usize> {
+        match &e.kind {
+            ExprKind::Builtin(crate::Builtin::Len, of) => match of.as_slice() {
+                [Expr {
+                    kind: ExprKind::Call(callee, _),
+                    ..
+                }] if self.pushers.contains_key(callee) => Some(*callee),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     /// The fn and the slot of its list when the loop `id` over `seq`
@@ -182,6 +344,9 @@ impl Feeds {
             return None;
         };
         let acc = *self.pushers.get(callee)?;
+        if self.eager.contains(callee) {
+            return None;
+        }
         // The body must not change what the fn is still reading or
         // changing: a global it touches, or a list handed to it.
         let summary = &self.summaries[*callee];

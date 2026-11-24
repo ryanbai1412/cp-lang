@@ -287,23 +287,23 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   enum Dir = L | R | U | D
   let dir = Dir.L -->
 ```cp
-if c: a elif d: b else: e           // inline form is an expression
-(if c: a else: b) >> i              // it binds loosest: `else:` takes the rest unless parenthesized
-if let v = m.get(k), v > 0: todo    // header binders, comma conditions
+if c: a elif d: b else: e         // inline form is an expression
+(if c: a else: b) >> i            // it binds loosest: `else:` takes the rest unless parenthesized
+if let v = m.get(k), v > 0: todo  // header binders, comma conditions
 while let x = q.pop(): todo
-while let (d, u) = h.pop(): todo    // any pattern binds, tuples included
+while let (d, u) = h.pop(): todo  // any pattern binds, tuples included
 for v in V: todo
-for i in V, j in V.after(i) if ok(i, j): todo   // clauses nest; `if` filters each element as it comes, after earlier bodies ran
+for i in V, j in V.after(i) if ok(i, j): todo  // clauses nest; `if` filters each element as it comes, after earlier bodies ran
 'outer: for r in Row:
     for c in Col:
         if g[r, c] == '#': break 'outer
 else:
-    print("none")                   // loop else: runs when no break
+    print("none")  // loop else: runs when no break
 match op:
     Add(l, r) => st[l] += 1
     Ask(i) =>
         print(st[i])
-match dir: L => -1, R => 1, U => 0, D => 0   // one-line match
+match dir: L => -1, R => 1, U => 0, D => 0  // one-line match
 ```
 
 - `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is
@@ -371,14 +371,14 @@ match dir: L => -1, R => 1, U => 0, D => 0   // one-line match
   impl Op<Mat> for MatMul:
       fn op(self, a: Mat, b: Mat) -> Mat = Mat(v: a.v * b.v) -->
 ```cp
-use std.segtree.{SegTree}                 // imports; prelude is implicit
+use std.segtree.{SegTree}  // imports; prelude is implicit
 pub fn f<D, T: Ord, K>(xs: [D]T, by: T -> K = x => x) -> ?D = todo
-domain V = 1..=n                          // a fresh index type
-struct Edge: u: V, v: V, w: Int           // one-line struct
+domain V = 1..=n                 // a fresh index type
+struct Edge: u: V, v: V, w: Int  // one-line struct
 struct Tally:
-    var top = 0                           // var fields may change
+    var top = 0  // var fields may change
     var total: Int = 0
-    name: Str = ""                        // a fixed field
+    name: Str = ""  // a fixed field
     fn add(mut self, x: Int):
         self.top max= x
         self.total += x
@@ -393,9 +393,9 @@ impl Unit<Mat> for MatMul:
     @get fn id(self) -> Mat = Mat(v: 1)
 type Grid = [V, V]Char
 @memo(array) fn ways(i: V.cuts) -> Mod<P>: todo
-mod geometry:                             // inline module
+mod geometry:  // inline module
     fn area() -> Int = 0
-extern fn ask(i: Int) -> Int              // provided by the judge
+extern fn ask(i: Int) -> Int  // provided by the judge
 ```
 
 Decorators are `@name` or `@name(args)` on the next item; the set is

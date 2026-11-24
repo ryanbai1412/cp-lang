@@ -6,6 +6,7 @@
 // Solution: binary search the threshold v (feasibility only falls as v grows). A column scores +1
 //   if both values are >= v, -1 if both are below, 0 otherwise; drop the zeros and merge runs of
 //   -1 into one. v is reachable iff the +1 columns outnumber the -1 runs. O(n log n).
+// Bounds: n: 1..=1e5; a0, a1: 1..=2 * n
 
 @!multitest
 let n: 1..=1e5 = read()

@@ -10,6 +10,7 @@
 //   per interior cell (mid_w) and an end bonus. Over the n - l + 1 shifts a cell is
 //   interior a trapezoid number of times, summed in O(1) from prefix sums of a and c*a[c]:
 //   O(n) per test after factorials; l = 1 adds n * sum(a).
+// Bounds: n: 1..=200_000; raw: 0..=1_000_000_000
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()

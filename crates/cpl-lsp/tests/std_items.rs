@@ -4,8 +4,8 @@
 //! signature with every declared parameter name (`by:`, `cmp:`), hover the
 //! documented cost, and completion must offer the item with a detail naming
 //! the same parameters. The program is the item's first doc `example:` that
-//! uses it. Each check's pass count is a floor that only goes up; failures
-//! are printed as the backlog.
+//! uses it. Each check's failure count has a ceiling that only goes down, and
+//! a check with no ceiling allows none; failures are printed as the backlog.
 //!
 //! Enforces `handbook/guidelines/commands-checklist.md#r11-ask-the-analysis`
 //! and `handbook/guidelines/commands-checklist.md#r14-measured-over-the-corpus`.
@@ -550,22 +550,38 @@ fn run_all(cases: &[Case], uri: &str) -> Tally {
     all
 }
 
-fn report(name: &str, tally: &Tally, floors: &[(&str, usize)]) {
+fn print(name: &str, tally: &Tally) {
     for (what, fails) in &tally.fails {
         for f in fails.iter().take(400) {
             println!("{name} fails {what}: {f:.240}");
         }
     }
-    let mut low = Vec::new();
     for (what, all) in &tally.all {
         let pass = tally.pass.get(what).copied().unwrap_or(0);
         println!("{name} {what}: {pass}/{all}");
-        let floor = floors.iter().find(|(w, _)| w == what).map_or(0, |f| f.1);
-        if pass < floor {
-            low.push(format!("{what}: {pass} below {floor}"));
+    }
+}
+
+/// Gates each check's failures, not its passes, so deleting an item never
+/// trips it and a new failing item always does.
+fn report(name: &str, tally: &Tally, ceilings: &[(&str, usize)]) {
+    print(name, tally);
+    let mut over = Vec::new();
+    for (what, all) in &tally.all {
+        let fails = all - tally.pass.get(what).copied().unwrap_or(0);
+        let ceiling = ceilings.iter().find(|(w, _)| w == what).map_or(0, |c| c.1);
+        if fails > ceiling {
+            over.push(format!("{what}: {fails} failures, ceiling {ceiling}"));
+        } else if fails < ceiling {
+            println!("{name} {what}: {fails} failures, lower the ceiling from {ceiling}");
         }
     }
-    assert!(low.is_empty(), "{name} fell below its floors: {low:?}");
+    for (what, _) in ceilings {
+        if !tally.all.contains_key(*what) {
+            over.push(format!("{what}: a ceiling for a check that never ran"));
+        }
+    }
+    assert!(over.is_empty(), "{name} went over its ceilings: {over:?}");
 }
 
 #[test]
@@ -576,13 +592,13 @@ fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
         "std",
         &tally,
         &[
-            ("hover", 1934),
-            ("hover names every parameter", 1916),
-            ("hover shows the documented cost", 1786),
-            ("signature help names every parameter", 1568),
-            ("signature help shows the active named option", 6),
-            ("completion offers it", 1785),
-            ("completion detail names every parameter", 1710),
+            ("hover", 34),
+            ("hover names every parameter", 19),
+            ("hover shows the documented cost", 214),
+            ("signature help names every parameter", 60),
+            ("completion offers it", 69),
+            ("completion detail names every parameter", 90),
+            ("definition reaches its module", 87),
         ],
     );
 }
@@ -594,13 +610,8 @@ fn every_builtin_member_hovers_signs_and_completes_with_its_parameters() {
         "builtin",
         &tally,
         &[
-            ("hover", 150),
-            ("hover names every parameter", 147),
-            ("hover shows the documented cost", 105),
-            ("signature help names every parameter", 121),
-            ("signature help shows the active named option", 5),
-            ("completion offers it", 149),
-            ("completion detail names every parameter", 146),
+            ("hover names every parameter", 3),
+            ("completion detail names every parameter", 3),
         ],
     );
 }
@@ -694,7 +705,7 @@ fn a_personal_library_gets_what_std_gets() {
     println!("mine cases: {}", cases.len());
     assert!(cases.len() >= 1900, "only {} library cases", cases.len());
     let mine = run_all(&cases, &uri);
-    report("mine", &mine, &[]);
+    print("mine", &mine);
     let mut only = Vec::new();
     for (what, fails) in &mine.fails {
         let theirs: Vec<&str> = std.fails.get(what).map_or(vec![], |f| {

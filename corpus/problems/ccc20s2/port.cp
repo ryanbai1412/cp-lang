@@ -5,6 +5,7 @@
 // Solution: search over the numbers: holding x leads to every value written on a cell
 //   whose coordinates multiply to x, and the exit is reached once a held value is M * N.
 //   Bucket the cell values by r * c and BFS from the value at (1, 1). O(MN + 1e6).
+// Bounds: rows, cols: 1..=1000; room: 1..=1000000
 
 // original: corpus/submissions/4323590.cpp
 with io(answers: ("yes", "no"))

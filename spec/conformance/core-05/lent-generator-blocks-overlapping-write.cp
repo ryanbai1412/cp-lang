@@ -1,4 +1,4 @@
-// expect: E0608
+// expect: E0602
 // rule: 05.9.1
 // A lent generator over `a` is live for the walk, so the body may not write `a` (spec/core/05-ownership.md exercise 33).
 domain V = 0..8

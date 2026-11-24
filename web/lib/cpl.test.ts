@@ -60,15 +60,20 @@ describe('inOrder', () => {
   it('starts each task only after the one before it settles, failed or not', async () => {
     const queue = inOrder();
     const log: string[] = [];
-    const task = (name: string, ms: number, fail = false) => () =>
-      new Promise<string>((done, reject) => {
-        log.push(`start ${name}`);
-        setTimeout(() => (log.push(`end ${name}`), fail ? reject(new Error(name)) : done(name)), ms);
-      });
-    const didChange = queue(task('didChange', 20, true));
-    const request = queue(task('signatureHelp', 0));
+    let settle: (() => void) | undefined;
+    const didChange = queue(
+      () =>
+        new Promise<string>((_, reject) => {
+          log.push('start didChange');
+          settle = () => (log.push('end didChange'), reject(new Error('didChange')));
+        }),
+    );
+    const request = queue(async () => (log.push('start signatureHelp'), 'signatureHelp'));
+    await Promise.resolve();
+    expect(log).toEqual(['start didChange']);
+    settle?.();
     await expect(didChange).rejects.toThrow('didChange');
     expect(await request).toBe('signatureHelp');
-    expect(log).toEqual(['start didChange', 'end didChange', 'start signatureHelp', 'end signatureHelp']);
+    expect(log).toEqual(['start didChange', 'end didChange', 'start signatureHelp']);
   });
 });

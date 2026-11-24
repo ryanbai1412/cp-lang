@@ -8,6 +8,7 @@
 //   X / 2^(l-1) keeps the largest window sum per range (assigned in ascending sum); ranges high to
 //   low meet queries by descending k, binary-searching X in the first range that fits.
 //   O(31 (n + q) log).
+// Bounds: n, q: 1..=50_000; a, ks: 1..=1e9
 
 @!multitest
 use std.interval.IntervalMap

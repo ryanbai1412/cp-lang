@@ -45,7 +45,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// `over` may be written half-open (`0..n`) or closed (`0..=hi`); the coordinates are its points.
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty `over` traps
+    /// empty: `LiChao(min, over: 0..0).at(0) == None` (traps R0401)
     /// order: no sequence is returned; coordinates run in `over`'s order
     /// traps: when `over` is empty
     /// example: `LiChao(min, over: 0..=10).at(5) == None`
@@ -66,7 +66,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// covers `x` (nothing added yet, or only segments that miss `x`).
     ///
     /// cost: \(O(\log n)\) for n = `over.len`
-    /// ties: equal values are one value; which line produced it does not matter
+    /// ties: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 4)); t.at(2) == Some(2)`
     /// traps: when `x` is not in `over`
     /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.at(1) == Some(1) and t.at(5) == Some(1)`
     pub fn at(self, x: Int) -> ?K:
@@ -93,8 +93,10 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// When several lines tie at `x` any of them may be returned; make `K` carry a tie-breaking second
     /// field (as with `at` returning `(cost, used)`) when the choice matters.
     ///
+    /// Among lines with equal values at `x`, which one it returns is unspecified; break ties through `K`.
+    ///
     /// cost: \(O(\log n)\) for n = `over.len`
-    /// ties: unspecified among lines with equal values at `x`; break ties through `K`
+    /// ties: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 4)); let l = t.line_at(2); l == Some(Line(1, 0)) or l == Some(Line(-1, 4))`
     /// traps: when `x` is not in `over`
     /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.line_at(8) == Some(Line(-1, 6))`
     pub fn line_at(self, x: Int) -> ?L:
@@ -122,7 +124,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// functions whose difference changes sign at most once).
     ///
     /// cost: \(O(\log n)\) for a whole line, \(O(\log^2 n)\) on a segment, for n = `over.len`; at most one new cell per level
-    /// empty: an empty `on` adds nothing
+    /// empty: `var t = LiChao(max, over: 0..=10); t.add(Line(0, 5), on: 3..3); t.at(3) == None`
     /// traps: when `on` reaches outside `over`
     /// example: `var t = LiChao(max, over: 0..=10); t.add(Line(0, 5), on: 2..=4); t.at(3) == Some(5) and t.at(5) == None`
     pub fn add(mut self, line: L, on: ?Range<Int> = None):
@@ -187,8 +189,8 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
 /// `f` is called only inside the columns the law allows; it must be pure.
 ///
 /// cost: \(O((\mathit{rows} + \mathit{cols}) \log \mathit{rows})\) calls of `f`, \(O(\mathit{rows})\) memory
-/// empty: `rows == 0` gives `[]`; `cols == 0` gives `None` for every row
-/// ties: the leftmost `col` among equal minima
+/// empty: `monotone_minima(0, 3, (i, j) => Some(j)) == [] and monotone_minima(2, 0, (i, j) => Some(j)) == [None, None]`
+/// ties: `monotone_minima(1, 3, (i, j) => Some(0)) == [Some((val: 0, at: 0))]`
 /// order: one entry per row, row order
 /// traps: when `rows < 0` or `cols < 0`
 /// example: `monotone_minima(2, 3, (i, j) => Some((j - i) * (j - i))) == [Some((val: 0, at: 0)), Some((val: 0, at: 1))]`
@@ -219,8 +221,8 @@ pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(va
 /// `j` moves right with `i`. `cost` is called only for `j < i` with `prev[j]` present.
 ///
 /// cost: \(O(n \log n)\) calls of `cost` for n = `prev.len`
-/// empty: `[]` gives `[]`
-/// ties: only the value is kept; which `j` attains it does not matter
+/// empty: `dnc_layer([], (j, i) => 0) == []`
+/// ties: `dnc_layer([Some(0), Some(0), None], (j, i) => 1) == [None, Some(1), Some(1)]`
 /// order: same length and index order as `prev`
 /// traps: never
 /// example: `dnc_layer([Some(0), None, None], (j, i) => (i - j) * (i - j)) == [None, Some(1), Some(4)]`
@@ -257,8 +259,8 @@ const TWO_31 = 2_147_483_648
 /// lies between those of `[i, j - 1)` and `[i + 1, j)`.
 ///
 /// cost: \(O(n^2)\) time, memory and calls of `cost`
-/// empty: `n == 0` gives `[[0]]`
-/// ties: only the value is kept; which split attains it does not matter
+/// empty: `knuth(0, (i, j) => j - i) == [[0]]`
+/// ties: `knuth(3, (i, j) => 1)[0][3] == 2`
 /// order: `dp[i][j]` is row `i`, column `j`
 /// traps: when `n < 0`
 /// example: `knuth(2, (i, j) => j - i)[0][2] == 2`
@@ -298,10 +300,12 @@ pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
 /// Without `lambdas` the range is found by doubling out from `-1..=1`; pass it when `λ * k` could
 /// overflow `L`.
 ///
+/// Among counts with equal penalized value, `solve` must report the least; `aliens` relies on it.
+///
 /// cost: \(O(\log \mathit{lambdas}.\mathit{len})\) calls of `solve` (fewer once a count is exactly `k`); \(O(\log \lvert λ \cdot \rvert)\) more without `lambdas`
-/// empty: an empty `lambdas` traps
+/// empty: `aliens(1, lam => (val: lam, count: 0), lambdas: 0..0) == 0` (traps R0401)
 /// order: `lambdas` is searched as an increasing range; one value is returned
-/// ties: among counts with equal penalized value, `solve` must report the least; `aliens` relies on it
+/// ties: `aliens(2, lam => (0..=4).map(c => (val: (c - 2) * (c - 2) + lam * c, count: c)).min(by: p => (p.val, p.count))!) == 0`
 /// traps: when `k < 0`, when `lambdas` is empty, or when no `λ` in `lambdas` gives a count of at most `k`
 /// example: `aliens(5, lam => (0..=10).map(c => (val: (c - 3) * (c - 3) + lam * c, count: c)).min(by: p => (p.val, p.count))!) == 4`
 pub fn aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L:
@@ -314,7 +318,11 @@ pub fn aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lamb
         hi = r.last!
     else:
         while solve(hi).count > k: hi *= 2
-        while solve(lo).count <= k: lo *= 2
+        while true:
+            let at = solve(lo)
+            if at.count == k: return at.val - lo * k
+            if at.count > k: break
+            lo *= 2
     assert solve(hi).count <= k
     while lo < hi:
         let mid = lo + (hi - lo) / 2
@@ -328,7 +336,7 @@ pub fn aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lamb
 /// meet-in-the-middle. Built by merging, not by sorting.
 ///
 /// cost: \(O(2^n)\) time and memory for n = `xs.len`
-/// empty: `[]` gives `[0]`
+/// empty: `subset_sums([]) == [0]`
 /// order: ascending; equal sums are indistinguishable
 /// traps: when a sum overflows `Int`
 /// example: `subset_sums([1, 2]) == [0, 1, 2, 3]`
@@ -361,9 +369,12 @@ struct Counted(k: Int, m: Int, used: Int):
 /// Law: `cost` is Monge along `nodes`, `cost(a, c) + cost(b, d) <= cost(a, d) + cost(b, c)` for
 /// `a <= b <= c <= d` (`std.spec.monge_break`). A single node is a path of no edges, total `0`.
 ///
+/// One node gives `(val: 0, count: 0)`.
+/// Among paths of equal total it returns the one LARSCH finds, not necessarily the fewest edges.
+///
 /// cost: \(O(n)\) calls of `cost` (online LARSCH), \(O(n)\) memory, for n = `nodes.len`
-/// empty: an empty `nodes` traps; one node gives `(val: 0, count: 0)`
-/// ties: among paths of equal total the one found by LARSCH, not necessarily the fewest edges
+/// empty: `let e: List<Int> = []; monge_path(e, (a, b) => b - a).val == 0` (traps R0401)
+/// ties: `monge_path([0, 1, 2], (a, b) => b - a).val == 2`
 /// traps: when `nodes` is empty
 /// example: `monge_path([0, 1, 2], (a, b) => (b - a) * (b - a)) == (val: 2, count: 2)`
 pub fn monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: Int):
@@ -379,9 +390,11 @@ pub fn monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: In
 ///
 /// Same law as `monge_path`; follow `prev` back from `i` to recover a path.
 ///
+/// Among equal totals `prev[i]` is the predecessor LARSCH finds.
+///
 /// cost: \(O(n)\) calls of `cost` (online LARSCH), \(O(n)\) memory, for n = `nodes.len`
-/// empty: an empty `nodes` traps
-/// ties: among equal totals `prev[i]` is the predecessor found by LARSCH
+/// empty: `let e: List<Int> = []; monge_paths(e, (a, b) => b - a).val == []` (traps R0401)
+/// ties: `monge_paths([0, 1, 2], (a, b) => b - a).val == [0, 1, 2]`
 /// order: both lists are indexed like `nodes`
 /// traps: when `nodes` is empty
 /// example: `monge_paths([0, 1, 2], (a, b) => (b - a) * (b - a)) == (val: [0, 1, 2], prev: [0, 0, 1])`
@@ -428,8 +441,10 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     /// grow `len` by one. `cost` may read values already reached through `val`, so the weights can
     /// depend on earlier optima.
     ///
+    /// Among equal totals the predecessor is the one LARSCH finds.
+    ///
     /// cost: \(O(1)\) amortized calls of `cost`
-    /// ties: among equal totals the predecessor found by LARSCH
+    /// ties: `var p = MongePath([0, 1, 2], (a, b) => b - a); p.next(); p.next().val == 2`
     /// traps: when every node has been reached (`len == nodes.len`)
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.next() == (val: 2, prev: 1)`
     pub fn next(mut self) -> (val: K, prev: Int):
@@ -515,6 +530,23 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     @get pub fn len(self) -> Int:
         if reached > 1: reached else: 1
 
+    /// Never: the first node is reached before any `next()`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `not MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)).is_empty`
+    @get pub fn is_empty(self) -> Bool = false
+
+    /// \(O(\mathit{len})\). Visit `(i, val(i))` for every node reached so far.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)).items.collect() == [(0, 0)]`
+    /// order: increasing node index
+    /// traps: never
+    /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.next(); p.items.collect() == [(0, 0), (1, 1), (2, 2)]`
+    @get pub fn items(self) -> yields (Int, K):
+        for i in 0..self.len: yield (i, self.val(i))
+
 fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: List<Int>):
     if rows.is_empty: return
     var kept: List<Int> = []
@@ -547,9 +579,11 @@ fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: Lis
 /// Law: `f` is totally monotone (true when Monge; `std.spec.monge_break` checks that). Prefer
 /// `monotone_minima` when `f` may be `None`: it needs only monotone argmins.
 ///
+/// With `cols == 0` and `rows > 0` it traps: a row has no minimum.
+///
 /// cost: \(O(\mathit{rows} + \mathit{cols})\) calls of `f`
-/// empty: `rows == 0` gives `[]`; `cols == 0` traps (a row has no minimum)
-/// ties: the leftmost `col` among equal minima
+/// empty: `smawk(0, 3, (i, j) => j) == []`
+/// ties: `smawk(1, 3, (i, j) => 0) == [(val: 0, at: 0)]`
 /// order: one entry per row, row order
 /// traps: when `rows < 0`, or `cols <= 0` with `rows > 0`
 /// example: `smawk(2, 3, (i, j) => (j - i) * (j - i)) == [(val: 0, at: 0), (val: 0, at: 1)]`
@@ -613,7 +647,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// between calls (a pointer walks the hull). `None` when empty.
     ///
     /// cost: \(O(1)\) amortized
-    /// ties: equal values go to the smaller tag (the rule `aliens` needs)
+    /// ties: `var h = MonotoneHull<Int>(min); h.add(Line(1, 0), tag: 7); h.add(Line(-1, 2), tag: 3); h.best_next(1) == Some((val: 1, tag: 3))`
     /// traps: when `x` is less than the previous `best_next` or `at_next` argument
     /// example: `var h = MonotoneHull<Int>(min); h.add(Line(1, 0), tag: 7); h.add(Line(-1, 2), tag: 3); h.best_next(1) == Some((val: 1, tag: 3))`
     pub fn best_next(mut self, x: Int) -> ?(val: Int, tag: P):
@@ -628,7 +662,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// The best value at any `x`, by binary search on the hull; `None` when empty.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: only the value is kept
+    /// ties: `var h = MonotoneHull<()>(min); h.add(Line(1, 0)); h.add(Line(-1, 2)); h.at(1) == Some(1)`
     /// traps: never
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.at(5) == Some(-2)`
     pub fn at(self, x: Int) -> ?Int:
@@ -638,7 +672,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// `at(x)` for an `x` that never decreases between calls; `None` when empty.
     ///
     /// cost: \(O(1)\) amortized
-    /// ties: only the value is kept
+    /// ties: `var h = MonotoneHull<()>(min); h.add(Line(1, 0)); h.add(Line(-1, 2)); h.at_next(1) == Some(1)`
     /// traps: when `x` is less than the previous `best_next` or `at_next` argument
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.at_next(0) == Some(0) and h.at_next(2) == Some(1)`
     pub fn at_next(mut self, x: Int) -> ?Int:
@@ -650,6 +684,25 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.len == 2`
     @get pub fn len(self) -> Int:
         ks.len
+
+    /// Whether the hull has no line.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MonotoneHull<()>(min); let e = h.is_empty; h.add(Line(2, 0)); e and not h.is_empty`
+    @get pub fn is_empty(self) -> Bool = ks.len == 0
+
+    /// \(O(\mathit{len})\). Visit the kept lines with their tags; dominated lines are gone.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `MonotoneHull<()>(min).items.collect() == []`
+    /// order: the order they were added, so slope order
+    /// traps: never
+    /// example: `var h = MonotoneHull<Int>(min); h.add(Line(2, 0), tag: 1); h.add(Line(-1, 3), tag: 2); h.items.collect() == [(Line(2, 0), 1), (Line(-1, 3), 2)]`
+    @get pub fn items(self) -> yields (Line, P):
+        let s = self.sign()
+        for i in 0..ks.len: yield (Line(s * ks[i], s * ms[i]), tags[i])
+
     /// Remove every line and reset the `at_next` pointer, keeping `pick`.
     ///
     /// cost: \(O(1)\)
@@ -797,7 +850,7 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// The best value at `x`, or `None` when empty.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: only the value is kept
+    /// ties: `var c = LineContainer(min); c.add(Line(1, 0)); c.add(Line(-1, 2)); c.at(1) == Some(1)`
     /// traps: never
     /// example: `var c = LineContainer(min); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.at(0) == Some(0) and c.at(3) == Some(1)`
     pub fn at(self, x: Int) -> ?Int:
@@ -805,8 +858,10 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
         if t < 0: None else: Some(self.sign() * (ks[t] * x + ms[t]))
     /// The line attaining `at(x)`, or `None` when empty.
     ///
+    /// Among lines with equal values at `x`, which one it returns is unspecified.
+    ///
     /// cost: \(O(\log n)\)
-    /// ties: unspecified among lines with equal values at `x`
+    /// ties: `var c = LineContainer(min); c.add(Line(1, 0)); c.add(Line(-1, 2)); let l = c.line_at(1); l == Some(Line(1, 0)) or l == Some(Line(-1, 2))`
     /// traps: never
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.line_at(3) == Some(Line(1, 0))`
     pub fn line_at(self, x: Int) -> ?Line:
@@ -819,12 +874,43 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.len == 2`
     @get pub fn len(self) -> Int = count
 
+    /// Whether no line is kept.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var c = LineContainer(max); let e = c.is_empty; c.add(Line(1, 0)); e and not c.is_empty`
+    @get pub fn is_empty(self) -> Bool = count == 0
+
+    /// \(O(\mathit{len})\). Visit the kept lines; dominated lines are gone.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `LineContainer(max).each().collect() == []`
+    /// order: ascending slope
+    /// traps: never
+    /// example: `var c = LineContainer(min); c.add(Line(-1, 4)); c.add(Line(1, 0)); c.each().collect() == [Line(-1, 4), Line(1, 0)]`
+    pub fn each(self) -> yields Line:
+        // In-order is ascending stored slope; `min` stores negated lines, so it walks back.
+        var order: List<Int> = []
+        var stack: List<Int> = []
+        var t = root
+        while t >= 0 or stack.len > 0:
+            while t >= 0:
+                stack.push(t)
+                t = ls[t]
+            let u = stack.pop()!
+            order.push(u)
+            t = rs[u]
+        let sg = self.sign()
+        for j in 0..order.len:
+            let u = if sg < 0: order[order.len - 1 - j] else: order[j]
+            yield Line(sg * ks[u], sg * ms[u])
+
 /// The length of the longest increasing subsequence ending at each position, compared by `by`;
 /// `strict: false` allows equal neighbours (non-decreasing). `xs.lis_ends().max()` is the LIS
 /// length; `xs.lis()` in `std.seq` gives one.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory, one `by` call per element
-/// empty: an empty array gives an empty array
+/// empty: `let e: List<Int> = []; e.lis_ends() == []`
 /// order: same domain and positions as `self`
 /// traps: never
 /// example: `[3, 1, 4, 1, 5].lis_ends() == [1, 1, 2, 1, 3]`
@@ -844,7 +930,7 @@ pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -
 /// Every mask of `bits` bits containing `m`, increasing from `m` to `2^bits - 1`.
 ///
 /// cost: \(O(2^(\mathit{bits} - \mathit{popcount}(m)))\)
-/// empty: never empty; `m` itself comes first
+/// empty: `supermasks(0, 0).collect() == [0]`
 /// order: increasing
 /// traps: when `bits < 0` or `m` is not in `0..2^bits`
 /// example: `supermasks(0b01, 2).collect() == [1, 3]`
@@ -860,7 +946,7 @@ pub fn supermasks(m: Int, bits: Int) -> yields Int:
 /// Every mask of `bits` bits with exactly `k` bits set, increasing (Gosper's hack).
 ///
 /// cost: \(O(C(\mathit{bits}, k))\)
-/// empty: nothing when `k > bits`; `k == 0` yields only `0`
+/// empty: `masks_of_size(2, 3).collect() == [] and masks_of_size(2, 0).collect() == [0]`
 /// order: increasing
 /// traps: when `bits < 0` or `k < 0`
 /// example: `masks_of_size(3, 2).collect() == [3, 5, 6]`
@@ -882,7 +968,7 @@ pub fn masks_of_size(bits: Int, k: Int) -> yields Int:
 /// `out[0]` is `op`'s identity (W10).
 ///
 /// cost: \(O(2^n)\) time and memory, one `op` call per non-empty mask, for n = `xs.len`
-/// empty: `[]` gives `[identity]`
+/// empty: `let e: List<Int> = []; subset_folds(e, +) == [0]`
 /// order: indexed by mask; within a mask, elements fold in increasing index
 /// traps: never
 /// example: `subset_folds([1, 2, 4], +) == [0, 1, 2, 3, 4, 5, 6, 7]`
@@ -1051,3 +1137,45 @@ fn monge_paths_match_the_quadratic_dp():
             best.push((0..i).map(j => best[j] + w(j, i)).min()!)
         assert got.val == best
         for i in 1..n: assert best[got.prev[i]] + w(got.prev[i], i) == best[i]
+
+@test
+fn hulls_and_monge_path_walk_and_show():
+    var p = MongePath([0, 1, 3], (a, b) => (b - a) * (b - a))
+    p.next()
+    p.next()
+    assert [v for (_, v) in p.items] == [0, 1, 5] and "{p}" == "0 1 5" and not p.is_empty
+    var h = MonotoneHull<()>(min)
+    h.add(Line(2, 0))
+    h.add(Line(0, 5))
+    h.add(Line(-1, 3))
+    assert [l for (l, _) in h.items] == [Line(2, 0), Line(-1, 3)] and "{h}" == "2x + 0, -1x + 3"
+    var c = LineContainer(max)
+    for l in [Line(-1, 4), Line(0, 0), Line(1, 0)]: c.add(l)
+    assert c.each().collect() == [Line(-1, 4), Line(1, 0)] and "{c}" == "-1x + 4, 1x + 0"
+    var d = LineContainer(min)
+    for l in [Line(1, 0), Line(-1, 4), Line(0, 9)]: d.add(l)
+    assert d.each().collect() == [Line(-1, 4), Line(1, 0)]
+
+impl Show for MongePath<N, K>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for MonotoneHull<P>:
+    fn show(v):
+        var out = ""
+        for (l, _) in v.items:
+            if not out.is_empty: out += ", "
+            out += "{l.k}x + {l.m}"
+        out
+
+impl Show for LineContainer:
+    fn show(v):
+        var out = ""
+        for l in v.each():
+            if not out.is_empty: out += ", "
+            out += "{l.k}x + {l.m}"
+        out

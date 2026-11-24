@@ -8,6 +8,7 @@
 //   with bound n before a, go from the last bound to the first, push onto a stack every value
 //   not yet pushed up to the current bound, and pop the top as the next b (the first pop is
 //   discarded). The bounds keep the stack non-empty. O(n).
+// Bounds: n: 1..=200_000; a: 0..=10 ** 9
 
 @!multitest
 let n: 1..=200_000 = read()

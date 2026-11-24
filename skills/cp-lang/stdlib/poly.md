@@ -4,7 +4,7 @@
 
 Formal power series operations over NTT-friendly `Mod<P>`.  Series are plain `List<Mod<P>>` (lowest degree first: `a[k]` is `[x^k] a(x)`), matching `std.ntt.convolve`. Every truncated operation takes an explicit output length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).
 
-In prelude (no `use` needed): `eval`.
+In prelude (no `use` needed): `binomial_transform`, `eval`.
 
 ## `struct Poly<T: Div>(pub c: List<T>)`
 
@@ -16,18 +16,20 @@ In prelude (no `use` needed): `eval`.
 - `@get fn one() -> Poly<T>` — \(O(1)\); The constant polynomial `1`.
 - `@get fn x() -> Poly<T>` — \(O(1)\); The indeterminate `x`: coefficients `[0, 1]`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of stored coefficients, trailing zeros included.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no coefficient is stored; `Poly.new([])` is the zero polynomial.
+- `@get fn items(self) -> yields (Int, T)` — \(O(\mathit{len})\)
 - `fn deg(self) -> ?Int` — \(O(1)\) plus the number of stored trailing zeros; The degree: the highest index with a nonzero coefficient, `None` for the zero polynomial.
 - `fn is_zero(self) -> Bool` — \(O(1)\) plus the number of stored trailing zeros; Whether all coefficients are zero (including when there are None).
 - `fn at(self, i: Int) -> T` — \(O(1)\); Read coefficient `i` (0 when `i >= self.len`).; traps: when `i < 0`
 - `fn set(mut self, i: Int, v: T)` — \(O(1)\), or \(O(i)\) when it grows; Write coefficient `i`, growing with zeros if needed.; traps: when `i < 0`
 - `fn deriv(self) -> Poly<T>` — \(O(n)\); The formal derivative `f'(x)`, as the free `deriv` does on the coefficients.
-- `fn integral(self) -> Poly<T>` — \(O(n)\); The formal integral with zero constant term, as the free `integral`.; traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
-- `fn transposed_mul(self, b: Poly<T>) -> Poly<T>` — one `*`, which is `convolve`'s product: \(O((n + m) \log (n + m))\) for a `FastProduct` `T` (as `Mod<P>`, `Int`), else \(O(n m)\); The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums).
+- `fn integral(self) -> Poly<T>` — \(O(n)\); The formal integral with zero constant term, as the free `integral` (the zero polynomial stays `[]`).; traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
+- `fn transposed_mul(self, b: Poly<T>) -> Poly<T>` — one `*`, which is `convolve`'s product: \(O((n + m) \log (n + m))\) for a `FastProduct` `T` (as `Mod<P>`, `Int`), else \(O(n m)\); The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums; `[]` when `b` is empty).
 - `fn truncated(self, n: Int) -> Poly<T>` — \(O(n)\); Truncate or zero-pad to exactly `n` coefficients (mod `x^n`).; traps: when `n < 0`
 - `fn inv(self, n: Int) -> Poly<T>` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.; traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
 - `fn log(self, n: Int) -> Poly<T>` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The formal logarithm mod `x^n` (`self[0] == 1`), as the free `log`.; traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
 - `fn exp(self, n: Int) -> Poly<T>` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.; traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
-- `fn pow(self, k: Int, n: Int) -> Poly<T>` — \(O(\log k)\) truncated `*`: \(O(n \log n \log k)\) for a `FastProduct` `T`, else \(O(n^2 \log k)\); the free `pow` on `List<Mod<P>>` is \(O(n \log n)\) by `exp(k log)`; The formal power `self(x)^k mod x^n`, as the free `pow`.; traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
+- `fn pow(self, k: Int, n: Int) -> Poly<T>` — \(O(n \log n \log k)\) for a `FastProduct` `T` (\(O(\log k)\) truncated `*`), else \(O(n^2 \log k)\); the free `pow` on `List<Mod<P>>` is \(O(n \log n)\) by `exp(k log)`; The formal power `self(x)^k mod x^n`, as the free `pow`.; traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
 - `fn sqrt(self, n: Int) -> ?Poly<T>` — Newton doubling over `*` and `inv`: \(O(n \log n)\) for a `FastProduct` `T`, else \(O(n^2 \log n)\), plus one `T.sqrt()`; The formal square root mod `x^n`, or `None`, as the free `sqrt`.; traps: when `n < 0`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
 - `fn eval(self, x: T) -> T` — \(O(n)\); The value at `x` by Horner's rule.
 - `fn shift(self, c: T) -> Poly<T>` — \(O(n \log^2 n)\) for a `FastProduct` `T`, else \(O(n^2)\); The Taylor shift `self(x + c)`, as `taylor_shift`.; traps: over `Int`, when a coefficient of some `(x + c)^m` or a partial sum overflows, even if
@@ -56,13 +58,13 @@ Fields: `keep: Int`, `nodes: List<List<Mod<P>>>`.
 - `fn div_mod<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> (q: List<Mod<P>>, r: List<Mod<P>>)` — \(O(a.\mathit{len} \log a.\mathit{len})\); Euclidean polynomial division `(q, r)` with `a = q * b + r` and `r.len < b.len`.; traps: when `b` is zero (empty or all zeros)
 - `fn prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>>` — \(O(n \log^2 n)\); The monic polynomial `prod_{r in roots} (x - r)`, of length `roots.len + 1`.
 - `fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>` — \(O(n \log n)\); The Taylor shift `a(x + c)`, of length `a.len`.; traps: when `a.len > P` (it needs inverse factorials below `a.len`)
-- `fn binomial_transform<P>(a: List<Mod<P>>, inverse: Bool = false) -> List<Mod<P>>` — \(O(n \log n)\); The binomial transform `b[i] = sum_{j <= i} C(i, j) a[j]`, of length `a.len`; with `inverse: true` its inverse `a[i] = sum_{j <= i} (-1)^(i - j) C(i, j) b[j]`, which undoes "count with a labelled subset" sums like `exact[h] = labelled[h] - sum_{g < h} C(h, g) exact[g]`.; traps: when `a.len > P` (it needs inverse factorials below `a.len`)
+- `fn binomial_transform<P>(a: List<Mod<P>>, inverse: Bool = false) -> List<Mod<P>>` — \(O(n \log n)\); The binomial transform `b[i] = sum_{j <= i} C(i, j) a[j]`, of length `a.len`, or with `inverse: true` its inverse.; traps: when `a.len > P` (it needs inverse factorials below `a.len`)
 - `fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>` — \(O((a.\mathit{len} + \mathit{xs}.\mathit{len}) \log^2 \mathit{xs}.\mathit{len})\); Multipoint evaluation `[a(x) for x in xs]` via transposed subproduct tree.; traps: when a transform length exceeds what `P` supports
 - `fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>` — \(O(n \log^2 n)\); The formal power series composition `f(g(x)) mod x^n` via Kinoshita-Li, of length `n`.; traps: when `n < 0`; when a transform length exceeds what `P` supports
 - `fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P>` — \(O(\mathit{ys}.\mathit{len})\); The value at `x` of the unique polynomial of degree `< ys.len` passing through `(i, ys[i])` for `i in 0..ys.len`.; traps: when `ys.len > P` (the sample points `0..ys.len` collide mod `P`)
-- `fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>` — \(O(n^2)\) for `n <= 64`, \(O(n \log^2 n)\) above; The unique polynomial `f` of degree `< xs.len` with `f(xs[i]) = ys[i]` for distinct `xs`, as exactly `xs.len` coefficients (trailing zeros kept).; traps: when `xs.len != ys.len`, or two `xs` are equal
+- `fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>` — \(O(n \log^2 n)\), by the direct \(O(n^2)\) for `n <= 64`; The unique polynomial `f` of degree `< xs.len` with `f(xs[i]) = ys[i]` for distinct `xs`, as exactly `xs.len` coefficients (trailing zeros kept).; traps: when `xs.len != ys.len`, or two `xs` are equal
 - `fn bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P>` — \(O(k \log k \log n)\) for `k = max(p.len, q.len)`; The exact coefficient `[x^n] (P(x) / Q(x))` via Bostan-Mori (`q[0] != 0`): the `n`-th term of the linear recurrence with denominator `q` and numerator `p`.; traps: when `n < 0`, or `q` is empty or `q[0] == 0`
-- `fn transposed_mul<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>` — \(O((n + m) \log(n + m))\); The transposed (middle) product: `out[i] = sum_j a[i + j] * b[j]` over `j in 0..b.len`, for each `i` in `0..max(0, a.len - b.len + 1)` (only complete sums).; traps: when a transform length exceeds what `P` supports
+- `fn transposed_mul<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>` — \(O((n + m) \log(n + m))\); The transposed (middle) product: `out[i] = sum_j a[i + j] * b[j]` over `j in 0..b.len`, for each `i` in `0..max(0, a.len - b.len + 1)` (only complete sums; `[]` when `b` is empty).; traps: when a transform length exceeds what `P` supports
 - `fn compose_inv<P>(f: List<Mod<P>>, n: Int) -> List<Mod<P>>` — \(O(n \log^2 n)\); The compositional inverse `g` with `f(g(x)) == x (mod x^n)` (`f[0] == 0, f[1] != 0`), of length `n`; `g[0] == 0`.; traps: when `n < 0`; when `n > 0` and `f.len < 2`, `f[0] != 0` or `f[1] == 0`
 - `fn pow_mod_poly<P>(a: List<Mod<P>>, k: Int, mod_p: List<Mod<P>>) -> List<Mod<P>>` — \(O(d \log d \log k)\); The polynomial power `a(x)^k mod mod_p(x)` where `d = mod_p.len`, by binary powering with `div_mod`.; traps: when `k < 0`, or `mod_p` is zero
 - `fn gcd_poly<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>` — \(O(n \log^2 n)\); The monic polynomial GCD via half-GCD, with trailing zeros trimmed; the gcd of two zero polynomials is the zero polynomial `[]`.

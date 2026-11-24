@@ -126,8 +126,8 @@ pub struct Var {
     /// The type as the file would write it.
     pub ty: String,
     pub kind: &'static str,
-    /// More fields of the descriptor, as JSON members with a leading comma.
-    pub extra: String,
+    /// More fields of the descriptor, in the order the file writes them.
+    pub extra: Vec<(&'static str, cpl_json::Value)>,
     /// Compared between the solution and the brute.
     pub compare: bool,
     /// Too large to keep whole at some step, so drawn by a window of its first cells.
@@ -180,6 +180,8 @@ pub struct Assigned {
     pub line: u32,
     pub name: String,
     pub value: String,
+    /// Bytes of input the run had read when it was given.
+    pub read: usize,
 }
 
 /// What a run left behind.
@@ -286,10 +288,11 @@ impl Recording {
         let Some(step) = self.step(step) else {
             return BTreeMap::new();
         };
-        step.values
-            .into_iter()
-            .map(|(var, json)| (self.vars[var].id.clone(), json.to_string()))
-            .collect()
+        let mut out = BTreeMap::new();
+        for (var, json) in step.values {
+            out.insert(self.vars[var].id.clone(), json.to_string());
+        }
+        out
     }
 
     /// How many bytes the recording holds.
@@ -426,6 +429,8 @@ pub(crate) struct View<'a> {
     pub call_frames: &'a [(&'a str, Span)],
     /// What each value of a type with an `impl Show` shows as.
     pub shown: &'a ShowTexts,
+    /// Bytes of input read so far.
+    pub read: usize,
 }
 
 impl Tracer {
@@ -509,7 +514,7 @@ impl Tracer {
                 name: "stdout".into(),
                 ty: "what the program printed, a line at a time".into(),
                 kind: "json",
-                extra: String::new(),
+                extra: Vec::new(),
                 compare: true,
                 window: false,
             },
@@ -1052,6 +1057,7 @@ impl Tracer {
             line,
             name: name.to_string(),
             value: text,
+            read: view.read,
         });
     }
 
@@ -1094,7 +1100,7 @@ impl Tracer {
                         name: format!("debug({name})"),
                         ty: format!("line {line}"),
                         kind: "json",
-                        extra: String::new(),
+                        extra: Vec::new(),
                         compare: true,
                         window: false,
                     },
@@ -1191,7 +1197,7 @@ impl Tracer {
             }
             if self.tree[var] {
                 self.rec.vars[var].kind = "tree";
-                self.rec.vars[var].extra = String::new();
+                self.rec.vars[var].extra.clear();
                 self.rec.log.draw_as_tree(var);
             }
         }
@@ -1206,10 +1212,12 @@ mod tests {
         let ints = |n: i64| Value::List(std::rc::Rc::new((0..n).map(Value::Int).collect()));
         assert_eq!(cells(&ints(5)), 6);
         assert_eq!(
-            cells(&Value::List(std::rc::Rc::new(vec![ints(2), ints(3)]))),
+            cells(&Value::List(std::rc::Rc::new(
+                vec![ints(2), ints(3)].into()
+            ))),
             1 + 3 + 4
         );
-        assert_eq!(cells(&Value::List(std::rc::Rc::new(Vec::new()))), 1);
+        assert_eq!(cells(&Value::List(std::rc::Rc::default())), 1);
     }
 
     use super::*;
@@ -1222,6 +1230,7 @@ mod tests {
                     line,
                     name: name.to_string(),
                     value: value.to_string(),
+                    read: 0,
                 })
                 .collect(),
             ..Recording::default()

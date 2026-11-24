@@ -15,6 +15,9 @@
   "dream": [
    "corpus/problems/ioi13p3/dream.cp"
   ],
+  "original": [
+   "corpus/problems/ioi13p3/orig.cpp"
+  ],
   "port": [
    "corpus/problems/ioi13p3/port.cp"
   ]
@@ -23,5 +26,10 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "",
+ "dream_stress": {
+  "ok": true,
+  "cases": 4,
+  "sha": "776a656fb18d8eb06758aa1f41b368bd635cd505"
+ }
 }

@@ -232,18 +232,21 @@ function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared =
     for (const [n, t, d] of params) lines.push(`| ${cell(n)} | ${cell(t)} | ${d ? cell(d) : 'required'} |`);
     lines.push('');
   }
-  if (facts.length) {
+  // What spec/lib/inventory.md says it is called in C++, Python, Rust or ACL.
+  const elsewhere = (item.aliases ?? []).map(cell).join(', ');
+  if (facts.length || elsewhere) {
     lines.push('| | |', '|---|---|');
     for (const [k, v] of facts)
       lines.push(`| **${k[0].toUpperCase()}${k.slice(1)}** | ${linked(ctx.math(v, name, k === 'cost'), item.links ?? []).replace(/\|/g, '\\|')} |`);
+    if (elsewhere) lines.push(`| **Elsewhere** | ${elsewhere} |`);
     lines.push('');
   }
   if (examples.length) {
     lines.push(examples.length > 1 ? 'Examples:' : 'Example:', '');
     for (const e of examples) lines.push(...renderExample(e, module, shared, ctx.ran, ctx.failing, `${module}.${name}`));
   }
-  lines.push(`[Source](${blob}/std/${module}.cp#L${item.line})`, '');
-  if (item.kind === 'fn' || item.kind === 'struct' || item.kind === 'enum' || item.kind === 'trait') {
+  lines.push(`[Source](${blob}/${ctx.paths[module]}${item.line ? `#L${item.line}` : ''})`, '');
+  if (['fn', 'struct', 'enum', 'trait', 'builtin'].includes(item.kind)) {
     index.push({ name, module, kind: item.kind, cost: facts.find(([k]) => k === 'cost')?.[1] ?? '' });
   }
   const memberShared = item.members?.length ? commonSetup(memberExamples(item)) : [];
@@ -305,7 +308,10 @@ async function runInTurn(tries) {
 }
 
 const index = [];
-const modules = std.modules.filter((m) => m.items.some((i) => /^pub\b/.test(i.signature))).sort((a, b) => a.name.localeCompare(b.name));
+// What a program can name: std's `pub` items, and the types the language
+// itself declares (the `builtin` module, from the compiler's catalog).
+const isPublic = (i) => i.kind === 'builtin' || /^pub\b/.test(i.signature);
+const modules = std.modules.filter((m) => m.items.some(isPublic)).sort((a, b) => a.name.localeCompare(b.name));
 // Each example's programs, in the order renderExample tries them.
 const tries = [];
 const collect = (item, module, parentDoc, shared) => {
@@ -322,14 +328,15 @@ const ctx = {
   failing: [],
   unstructured: [],
   anchors: [],
+  paths: Object.fromEntries(std.modules.map((m) => [m.name, m.path])),
   math(text, where, cost = false) {
     return checkMath(where, texSpans(text, { legacyCost: cost }));
   },
 };
 for (const m of modules) {
-  const fields = m.items.filter((i) => i.kind === 'field' || (i.kind !== 'impl' && !/^pub\b/.test(i.signature)));
+  const fields = m.items.filter((i) => i.kind === 'field' || (i.kind !== 'impl' && !isPublic(i)));
   const body = [
-    `Generated from [std/${m.name}.cp](${blob}/std/${m.name}.cp) by \`cpl doc --format json\`.`,
+    `Generated from [${m.path}](${blob}/${m.path}) by \`cpl doc --format json\`.`,
     '',
     linked(m.doc, m.links ?? []),
     '',
@@ -378,23 +385,11 @@ for (const [module, list] of Object.entries(items)) {
 const failingFile = join(web, 'node_modules/.cache/doc-examples-failing.txt');
 writeFileSync(failingFile, ctx.failing.join('\n') + '\n');
 console.log(`ref: ${specPages} spec pages, ${modules.length} library modules, ${index.length} items; examples: ${ctx.ran.size} programs, ${ctx.failing.length} shown static (listed in ${failingFile.slice(repo.length + 1)})`);
-// handbook/guidelines/site-checklist.md site/R1: a std example that does not
-// run is shown static only while it is listed here; the list only shrinks.
-const knownFile = join(web, 'scripts/doc-examples-failing.txt');
-const knownStatic = new Set(readFileSync(knownFile, 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#')));
-const failingNow = new Set(ctx.failing);
-const newlyFailing = ctx.failing.filter((f) => !knownStatic.has(f));
-const nowRunning = [...knownStatic].filter((f) => !failingNow.has(f));
-if (newlyFailing.length) console.error(`gen-ref: ${newlyFailing.length} std doc examples don't run (fix them, or the std docs):\n${newlyFailing.join('\n')}`);
-// An example that runs now tightens the list in place instead of failing the
-// build (ci/R30): the change that fixed it commits the shorter list.
-if (nowRunning.length) {
-  const keep = readFileSync(knownFile, 'utf8').split('\n').filter((l) => !nowRunning.includes(l));
-  writeFileSync(knownFile, keep.join('\n'));
-  console.error(`gen-ref: ${nowRunning.length} std doc examples run now; dropped from ${knownFile.slice(repo.length + 1)}, commit it:\n${nowRunning.join('\n')}`);
-}
+// handbook/guidelines/site-checklist.md site/R1: every std example runs; one
+// that can't is a std bug to fix, or an example rewritten to show its trap.
+if (ctx.failing.length) console.error(`gen-ref: ${ctx.failing.length} std doc examples don't run (fix them, or the std docs):\n${ctx.failing.join('\n')}`);
 if (ctx.unstructured.length) console.error(`gen-ref: ${ctx.unstructured.length} std entries don't render as structure (site/R4):\n${ctx.unstructured.slice(0, 20).join('\n')}`);
-if (newlyFailing.length || ctx.unstructured.length) process.exit(1);
+if (ctx.failing.length || ctx.unstructured.length) process.exit(1);
 if (mathErrors.length) {
   console.error(`gen-ref: ${mathErrors.length} math spans KaTeX can't render:\n${mathErrors.slice(0, 20).join('\n')}`);
   process.exit(1);

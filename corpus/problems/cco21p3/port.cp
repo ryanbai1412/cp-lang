@@ -1,4 +1,5 @@
 // Source: CCO 2021 P3 (Through Another Maze Darkly), https://dmoj.ca/problem/cco21p3
+// limits: 8000 ms, 1024 MB
 // Problem: a tree of n <= 8e5 rooms, each listing its neighbours clockwise, with a pointer at the
 //   first. A step turns the current room's pointer clockwise to the next corridor and walks it.
 //   For each of q <= 8e5 independent queries k <= 1e15, print the room reached after k steps
@@ -10,6 +11,7 @@
 //   Prefix sums of pass sizes find a query's pass (past the last, the full tour repeats); offline
 //   by pass, a Fenwick over tour steps holds the joined steps and `kth` finds the k-th one.
 //   O((n + q) log n).
+// Bounds: n: 2..=8e5; q: 1..=8e5; k: 1..=1e15
 let (n, q): (2..=8e5, 1..=8e5) = read()
 domain Room = 1..=n
 // The pointer starts at the first corridor, so the first step from a room takes the second.

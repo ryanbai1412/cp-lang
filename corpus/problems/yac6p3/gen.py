@@ -6,7 +6,7 @@ tests/NN.case are hidden cases; NN.in / NN.ans are transcripts of spec.cp agains
 import random, sys
 
 g = random.Random(int(sys.argv[1]))
-side = int(sys.argv[2]) if len(sys.argv) > 2 else 10**9
+side = max(2, int(sys.argv[2])) if len(sys.argv) > 2 else 10**9
 pick = lambda: g.randint(1, side) if g.random() < 0.7 else g.randint(1, min(side, 6))
 while True:
     n, m = pick(), pick()

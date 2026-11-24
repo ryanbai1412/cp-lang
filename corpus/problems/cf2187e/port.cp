@@ -9,6 +9,7 @@
 //   max(a_i, dp[k]) + max(1, 2k - 1), or spend one of k + 1 keys: dp[k+1] + 2k + 1. States
 //   worse than n + 1 + max a (waiting everywhere) are popped, so O(sqrt(n + max a)) remain:
 //   O(n sqrt(n + max a)). The answer for i is dp[0].
+// Bounds: n: 1..=200_000; a: 0..=10 ** 9
 
 @!multitest
 let n: 1..=200_000 = read()
@@ -16,11 +17,11 @@ let a: [0..n]0..=10 ** 9 = read()
 let s: Str = read()
 
 let t_inf = n + 1 + a.max()!
-var dp: List<Int> = [0]
+var dp = Deque.of([0])
 var ans: [0..n]Int = 0
 
 for i in 0..n:
-    if s[i] == '1': dp.insert(0, dp[0])
+    if s[i] == '1': dp.push_front(dp[0])
     for k in 0..dp.len:
         var best = max(a[i], dp[k]) + 1 + 2 * max(k - 1, 0)
         if k + 1 < dp.len:

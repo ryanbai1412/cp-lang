@@ -5,6 +5,7 @@
 //! says `K` is 20, and `domain V = 1..=n` then has at most 200000 values.
 //! Anything this cannot see through is `None`, and the caller stays quiet.
 
+use crate::std_fn;
 use crate::File;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, StmtKind, Type, TypeKind, UnOp};
 use std::collections::{HashMap, HashSet};
@@ -190,7 +191,7 @@ impl Bounds {
                     alias,
                 } => {
                     if *glob {
-                        for name in ["min", "max", "abs"] {
+                        for name in [std_fn::MIN, std_fn::MAX, std_fn::ABS] {
                             bounds.declare_fn(name);
                         }
                     }
@@ -440,10 +441,10 @@ impl Bounds {
                                     self.change(n, at);
                                     if let ExprKind::Name(n) = &base.kind {
                                         match (name.text.as_str(), args.len()) {
-                                            ("push", 1) => {
+                                            (std_fn::PUSH, 1) => {
                                                 *self.pushes.entry(n.clone()).or_default() += 1
                                             }
-                                            ("pop", 0) => {
+                                            (std_fn::POP, 0) => {
                                                 *self.pops.entry(n.clone()).or_default() += 1
                                             }
                                             _ => {}
@@ -460,7 +461,7 @@ impl Bounds {
                             self.change_row(&a.value, at);
                         }
                     }
-                    ExprKind::Field { base, name } if name.text == "len" => {
+                    ExprKind::Field { base, name } if name.text == std_fn::LEN => {
                         if let Some(n) = root(base) {
                             self.seqs.insert(n.to_string());
                         }
@@ -485,7 +486,7 @@ impl Bounds {
                     fn expr(&mut self, e: &Expr) {
                         match &e.kind {
                             ExprKind::Name(n) => self.names.push(n.clone()),
-                            ExprKind::Field { name, .. } if name.text == "len" => {
+                            ExprKind::Field { name, .. } if name.text == std_fn::LEN => {
                                 self.has_len = true;
                             }
                             _ => {}
@@ -583,7 +584,7 @@ impl Bounds {
         match &e.kind {
             ExprKind::Name(n) => Some(n.clone()),
             ExprKind::Paren(inner) => self.atom(inner),
-            ExprKind::Field { base, name } if name.text == "len" => match &base.kind {
+            ExprKind::Field { base, name } if name.text == std_fn::LEN => match &base.kind {
                 ExprKind::Name(n) if self.file.tracked.contains(n) => Some(format!("{n}.len")),
                 ExprKind::Index { base, indices } => match (&base.kind, &indices[..]) {
                     (ExprKind::Name(g), [row]) => match &row.kind {
@@ -608,7 +609,7 @@ impl Bounds {
             fn expr(&mut self, e: &Expr) {
                 self.1 |= match &e.kind {
                     ExprKind::Name(n) => self.0.file.long.contains(n),
-                    ExprKind::Field { name, .. } => name.text == "len",
+                    ExprKind::Field { name, .. } => name.text == std_fn::LEN,
                     _ => false,
                 };
             }
@@ -900,7 +901,7 @@ impl Bounds {
                     .map(|a| self.expr(&a.value))
                     .collect::<Option<Vec<_>>>()?;
                 match (name.as_str(), values.as_slice()) {
-                    ("abs", [x]) => Some(if x.lo >= 0 {
+                    (std_fn::ABS, [x]) => Some(if x.lo >= 0 {
                         *x
                     } else if x.hi <= 0 {
                         Interval {
@@ -913,13 +914,13 @@ impl Bounds {
                             hi: x.lo.checked_neg()?.max(x.hi),
                         }
                     }),
-                    ("max", [first, rest @ ..]) if !rest.is_empty() => {
+                    (std_fn::MAX, [first, rest @ ..]) if !rest.is_empty() => {
                         Some(rest.iter().fold(*first, |a, b| Interval {
                             lo: a.lo.max(b.lo),
                             hi: a.hi.max(b.hi),
                         }))
                     }
-                    ("min", [first, rest @ ..]) if !rest.is_empty() => {
+                    (std_fn::MIN, [first, rest @ ..]) if !rest.is_empty() => {
                         Some(rest.iter().fold(*first, |a, b| Interval {
                             lo: a.lo.min(b.lo),
                             hi: a.hi.min(b.hi),
@@ -1072,7 +1073,7 @@ pub(crate) fn keeps_len(method: &str) -> bool {
     use cpl_check::{builtin_members, Receiver};
     // The catalog only says whether a method mutates; these only move or
     // overwrite elements.
-    const IN_PLACE: [&str; 4] = ["sort", "reverse", "swap", "fill"];
+    const IN_PLACE: [&str; 4] = [std_fn::SORT, std_fn::REVERSE, "swap", "fill"];
     let mut members = [Receiver::List, Receiver::Str]
         .into_iter()
         .flat_map(builtin_members)

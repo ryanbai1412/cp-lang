@@ -251,7 +251,23 @@ impl<'p> Emitter<'p> {
                 }
             }
             SortBy::Fn { func, is_order } => {
+                // The sort only calls its key, so a closure written there lends
+                // what it captures (see `crate::lend::only_called`).
+                // (E0602 keeps the list being sorted out of the key.)
+                let lent = match func.kind {
+                    ExprKind::Closure(cid) => {
+                        self.call_scoped.insert(cid);
+                        self.borrow_closures.insert(cid).then_some(cid)
+                    }
+                    _ => None,
+                };
                 let f_text = self.expr(func).text;
+                if let ExprKind::Closure(cid) = func.kind {
+                    self.call_scoped.remove(&cid);
+                }
+                if let Some(cid) = lent {
+                    self.borrow_closures.remove(&cid);
+                }
                 let kf = self.temp();
                 self.line(out, &format!("auto {kf} = {f_text};"));
                 let desc = desc.clone().unwrap_or_else(|| "false".to_string());
@@ -430,11 +446,12 @@ impl<'p> Emitter<'p> {
                     && self.closure_id.is_none()
                     && !self.hoisted.contains(slot)
                     && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_rec(*slot, cid))
-                    && self.facts.stores((self.fn_id, false, *slot)) <= 1 =>
+                    && self.facts.stores(self.facts_local(*slot)) <= 1 =>
             {
                 let ExprKind::Closure(cid) = init.kind else {
                     unreachable!()
                 };
+                self.borrow_if_named_closure(*slot, Some(init));
                 self.need("rec");
                 self.rec_slot = Some(*slot);
                 let text = self.emit_closure(cid, false).text;
@@ -593,7 +610,7 @@ impl<'p> Emitter<'p> {
                     }
                     _ => text,
                 };
-                let stores = self.facts.stores((self.fn_id, false, *slot));
+                let stores = self.facts.stores(self.facts_local(*slot));
                 let auto = matches!(ty, Ty::Fn(..))
                     && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.let_auto(self.closure_id, *slot, cid, stores));
                 // Slots are per fn: one another fn lent says nothing of this one.
@@ -649,7 +666,10 @@ impl<'p> Emitter<'p> {
                     let rekeyed = (is_return && self.closure_id.is_none())
                         .then(|| self.rekeyed_local(value))
                         .flatten();
-                    let mut text = if is_return && self.closure_id.is_none() {
+                    let moved_some = is_return.then(|| self.moved_some(value));
+                    let mut text = if let Some(Some(text)) = moved_some {
+                        text
+                    } else if is_return && self.closure_id.is_none() {
                         if let ExprKind::Tuple(items) = &value.kind {
                             if !items.is_empty()
                                 && !matches!(
@@ -666,7 +686,7 @@ impl<'p> Emitter<'p> {
                                 };
                                 let dropped: Vec<bool> = (0..items.len())
                                     .map(|idx| {
-                                        struct_id.is_some_and(|s| self.devirt.unread_field(s, idx))
+                                        struct_id.is_some_and(|s| self.devirt.dropped_field(s, idx))
                                     })
                                     .collect();
                                 let rendered: Vec<String> = items
@@ -679,6 +699,9 @@ impl<'p> Emitter<'p> {
                                                 && self.devirt.skippable_value(item)
                                         }) {
                                             return "false".to_string();
+                                        }
+                                        if let Some(lent) = self.lent_item(struct_id, idx, item) {
+                                            return lent;
                                         }
                                         if let Some(sid) = struct_id {
                                             if let Some(&k) = self.rows.get(&(sid, idx)) {
@@ -725,10 +748,8 @@ impl<'p> Emitter<'p> {
                                             return self.expr_with_elem_layout(item, Some(&l)).text;
                                         }
                                         let v = self.expr(item).text;
-                                        match struct_id
-                                            .and_then(|s| self.narrow_ints.get(&(s, idx)))
-                                        {
-                                            Some(w) => format!("{}({v})", w.cpp()),
+                                        match struct_id {
+                                            Some(s) => self.narrow_field_store(s, idx, &v),
                                             None => v,
                                         }
                                     })

@@ -33,7 +33,11 @@ function editorClass(tag: string | null): Class {
 test('the editor colours words as the grammar does', async () => {
   const grammar = { ...JSON.parse(readFileSync(join(repo, 'editors/vscode/syntaxes/cp.tmLanguage.json'), 'utf8')), name: 'cp' };
   const hl = await createHighlighter({ themes: ['github-light'], langs: [grammar] });
-  const files = execFileSync('git', ['ls-files', 'std/*.cp', 'corpus/problems/*/port.cp'], { cwd: repo, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const listed = (cmd: string, args: string[]) => execFileSync(cmd, args, { cwd: repo, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const files = [
+    ...listed('git', ['ls-files', 'std/*.cp']),
+    ...listed('uv', ['run', '--quiet', 'python', 'scripts/corpus.py', 'ls', '--file', 'port.cp']),
+  ];
   const differ = new Map<string, number>();
   const example = new Map<string, string>();
   let words = 0;

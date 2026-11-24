@@ -28,5 +28,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "@!multitest; compress binds domain X for the Dsu."
+ "notes": "@!multitest; compress binds domain X for the Dsu.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "9b45fd3daa73d8080b473c3a24a8dfd6420a6ea1"
+ }
 }

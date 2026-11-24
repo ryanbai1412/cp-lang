@@ -70,12 +70,12 @@ Fields: `bits: List<Int>`.
 - `fn identity(n: Int) -> BitMat` — \(O(n^2 / 64)\) time and space; The `n x n` GF(2) identity matrix.; traps: when `n < 0`
 - `fn get(self, r: Int, c: Int) -> Bool` — \(O(1)\); Read bit `(r, c)`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn set(mut self, r: Int, c: Int, v: Bool)` — \(O(1)\); Write bit `(r, c)`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
-- `fn det(self) -> Bool` — \(O(n^3 / 64)\); The determinant over GF(2): `true` iff the matrix is invertible.; traps: when the matrix is not square
-- `fn rank(self) -> Int` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\); The rank over GF(2).
-- `fn solve(self, b: List<Bool>) -> ?List<Bool>` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\); Any solution to `self * x == b` over GF(2), or `None`: the one with every free (non-pivot) variable `false`, as in `Mat.solve`.; traps: when `b.len != rows`
-- `fn solve_space(self, b: List<Bool>) -> ?(x0: List<Bool>, basis: List<List<Bool>>)` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\); One solution `x0` and a nullspace basis over GF(2), or `None`.; traps: when `b.len != rows`
-- `fn inverse(self) -> ?BitMat` — \(O(n^3 / 64)\); The inverse of a square GF(2) matrix, or `None` when it is singular.; traps: when the matrix is not square
-- `fn mul(self, o: BitMat) -> BitMat` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot o.\mathit{cols} / 64)\); The matrix product `self * o` over GF(2) (AND for multiply, XOR for add).; traps: when `self.cols != o.rows`
+- `fn det(self) -> Bool` — \(O(n^2 + n^3 / 64)\); The determinant over GF(2): `true` iff the matrix is invertible.; traps: when the matrix is not square
+- `fn rank(self) -> Int` — \(O(\mathit{rows} \cdot \mathit{cols} + \mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\); The rank over GF(2).
+- `fn solve(self, b: List<Bool>) -> ?List<Bool>` — \(O(\mathit{rows} \cdot \mathit{cols} + \mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\); Any solution to `self * x == b` over GF(2), or `None`: the one with every free (non-pivot) variable `false`, as in `Mat.solve`.; traps: when `b.len != rows`
+- `fn solve_space(self, b: List<Bool>) -> ?(x0: List<Bool>, basis: List<List<Bool>>)` — \(O(\mathit{rows} \cdot \mathit{cols} + \mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\); One solution `x0` and a nullspace basis over GF(2), or `None`.; traps: when `b.len != rows`
+- `fn inverse(self) -> ?BitMat` — \(O(n^2 + n^3 / 64)\); The inverse of a square GF(2) matrix, or `None` when it is singular.; traps: when the matrix is not square
+- `fn mul(self, o: BitMat) -> BitMat` — \(O(\mathit{rows} \cdot \mathit{cols} + \mathit{rows} \cdot \mathit{cols} \cdot o.\mathit{cols} / 64)\); The matrix product `self * o` over GF(2) (AND for multiply, XOR for add).; traps: when `self.cols != o.rows`
 
 ## `struct PrefixXorBasis`
 
@@ -93,7 +93,7 @@ Fields: `vecs: List<Int>`, `from: List<Int>`.
 
 - `fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>` — \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space; The determinant of a sparse `n x n` matrix via Wiedemann's algorithm.; traps: when `n < 0` or a row or column is not in `0..n`
 - `fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>` — \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space; Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in `sparse_det`.; traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
-- `fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>)` — \(O(\mathit{poly}(n, m))\) typical (exponential in the worst case); \(O(\mathit{rows} \cdot \mathit{cols})\) space; Maximize `c .; traps: when `b.len != a.rows` or `c.len != a.cols`
+- `fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>)` — \(O(\mathit{pivots} \cdot \mathit{rows} \cdot \mathit{cols})\) time, the pivots typically \(O(\mathit{rows} + \mathit{cols})\) and exponential in the worst case; \(O(\mathit{rows} \cdot \mathit{cols})\) space; Maximize `c .; traps: when `b.len != a.rows` or `c.len != a.cols`
 
 ## Example
 

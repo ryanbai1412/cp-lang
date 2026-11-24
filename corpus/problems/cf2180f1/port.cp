@@ -9,6 +9,7 @@
 //   for each cell, the weighted ways to arrive split by whether the floor and the right wall
 //   are already shut; stops are weighted 4^-(corners chosen) and summed as 2D prefix sums, so
 //   a query is 4^((n+1)(m+1)) * stopped[n-1, m-1]. One table for the largest n, m: O(NM).
+// Bounds: q.n, q.m: 1..=5000
 type Z = Mod<1_000_000_007>
 
 let q: [0..read(1..=10_000)](n: 1..=5000, m: 1..=5000) = read()

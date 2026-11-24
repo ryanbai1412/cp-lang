@@ -1,4 +1,3 @@
-use std.math.{is_prime}
 
 @!multitest
 let n: 1..=100 = read()

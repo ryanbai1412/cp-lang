@@ -21,16 +21,44 @@
 - **General fix:** infer `V` from the closure's parameter use (routed in GAPS.md).
 - **Severity:** low.
 
-## `Lift<V, ()>` does not compile to C++
-- **Where:** the same `Lift<I, ()>.of(...)` line.
-- **What felt wrong:** `cpl build` emits a `[](void, void) -> void` lambda for the unit op, so
-  the solution runs in `cpl run` but cannot be submitted.
-- **Goal it hurts:** submission.
-- **General fix:** lower `()` to an empty struct in codegen (compiler worklog 2026-11-23).
-- **Severity:** blocker for submission.
-
 ## Measurements
-- Interpreter vs AC C++ (`corpus/submissions/5536701.cpp`, g++ -O2): 10/10 tests, 300/300
-  `gen.py` cases at n <= 12 and 60/60 at n <= 2000 agree.
-- n = 2e5 (ends up to s + 2e4): AC C++ 0.23 s; `cpl run` 12 min 2 s, same output; no native
-  build (unit codegen gap above).
+- port.cp (spec.cp's algorithm) vs AC C++ (`corpus/submissions/5536701.cpp`) and the v0.2
+  port: 60/60 `gen.py` cases each agree; `--max` (n = 2e5): native 0.36 s, 38 MB, AC C++ 0.29 s,
+  same output.
+
+## Dream
+
+```cp
+let n = read<1..=2e5>()
+domain I = 1..=n
+domain X = 1..=1e9
+let iv = read<[I]Range<X>>()
+
+let by_start = I.sorted(by: i => iv[i].l)
+let soonest = by_start.rev.scan(min(by: i => iv[i].r))
+fn first_from(c: Cut<X>) -> ?I = soonest[by_start.bsearch(i => iv[i].l < c).r?]
+let chain = Lift(i => first_from(iv[i].r))
+fn fit(gap: Range<X>) -> Int:
+    let u = first_from(gap.l) ?? return 0
+    if iv[u].r > gap.r:
+        return 0
+    1 + chain.climb(u, ok: v => iv[v].r <= gap.r).steps
+
+var gaps = IntervalMap<X, ?Int>(init: None)
+gaps.assign(X.range, fit(X.range))
+var picked = List<I>()
+for i in I:
+    let (gap, best) = gaps.run_at(iv[i].first!)
+    let best = best ?? continue
+    if not gap.contains(iv[i]):
+        continue
+    let (left, right) = (gap.l..iv[i].l, iv[i].r..gap.r)
+    let (a, b) = (fit(left), fit(right))
+    if a + 1 + b == best:
+        picked.push(i)
+        gaps.assign(left, a)
+        gaps.assign(iv[i], None)
+        gaps.assign(right, b)
+print(picked.len)
+print(picked)
+```

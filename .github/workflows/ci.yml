@@ -58,7 +58,8 @@ jobs:
         run: g++ --version | head -1 && rustc --version
       # scripts/cxx-cache.py keys binaries on source, flags, compiler and
       # system headers; a cold cache costs the conform part about 6 min of g++.
-      - uses: actions/cache@v4
+      # Saved after the gate even when it fails, so a cold cache warms once.
+      - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/cpl/cxx
           key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}
@@ -67,9 +68,10 @@ jobs:
             cxx-${{ runner.os }}-${{ startsWith(matrix.part, 'conform:diff') && 'conform:diff' || matrix.part }}
             cxx-${{ runner.os }}-
       # scripts/corpus.py make writes each package's tests.toml cases here,
-      # stamp-cached by content; cold, it compiles every accepted C++ (~1 min).
-      - uses: actions/cache@v4
-        if: matrix.part == 'conform:corpus+docs'
+      # stamp-cached by content; cold, it runs every gen.py and accepted C++.
+      # Saved even when the gate fails, so a cold cache warms once.
+      - uses: actions/cache/restore@v4
+        if: startsWith(matrix.part, 'conform:')
         with:
           path: target/corpus-tests
           key: corpus-tests-${{ github.run_id }}
@@ -82,14 +84,38 @@ jobs:
           path: target/conform-prev.json
           key: conform-prev-${{ matrix.part }}-${{ github.run_id }}
           restore-keys: conform-prev-${{ matrix.part }}-
+      # debt-ratchet.py fails a baseline raised above the tip main had before
+      # this push (on main, HEAD is origin/main).
+      - name: Fetch the tip before this push
+        id: before
+        if: matrix.part == 'checks' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if git fetch -q --depth=1 origin "${{ github.event.before }}"; then
+            echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Fast gate
         # A hung test holds main's only run slot; a shard takes about 5 min.
         timeout-minutes: 12
         env:
           CPL_GATE_PART: ${{ matrix.part }}
+          CPL_RATCHET_BASE: ${{ steps.before.outputs.sha }}
           CPL_CONFORM_PREV: ${{ startsWith(matrix.part, 'conform:') && 'target/conform-prev.json' || '' }}
           CPL_DERIVED_HEALED: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '' }}
-        run: scripts/check.sh --fast
+        # The shell timeout fails the step and leaves the cache saves below to run;
+        # the step's own timeout cancels the job and skips them.
+        run: |
+          timeout 680 scripts/check.sh --fast || { s=$?; [ "$s" != 124 ] \
+            || echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; exit "$s"; }
+      - uses: actions/cache/save@v4
+        if: ${{ always() && matrix.part == 'conform:corpus+docs' }}
+        with:
+          path: target/corpus-tests
+          key: corpus-tests-${{ github.run_id }}
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.cache/cpl/cxx
+          key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}
       - name: Keep this green run's scoreboard
         if: ${{ success() && github.ref == 'refs/heads/main' && startsWith(matrix.part, 'conform:') }}
         run: "[ ! -f target/conform-prev.json.new ] || mv target/conform-prev.json.new target/conform-prev.json"
@@ -190,6 +216,12 @@ jobs:
           restore-keys: |
             cxx-${{ runner.os }}-tests-
             cxx-${{ runner.os }}-
+      # The cases scripts/corpus.py make wrote in the conform part (interp_memory, fix_behavior).
+      - uses: actions/cache/restore@v4
+        with:
+          path: target/corpus-tests
+          key: corpus-tests-${{ github.run_id }}
+          restore-keys: corpus-tests-
       - uses: actions/download-artifact@v4
         with:
           name: nextest-archive
@@ -260,6 +292,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      # The corpus test lists the corpus with scripts/corpus.py.
+      - uses: astral-sh/setup-uv@v6
       - name: Build cpl
         run: cargo build -p cpl-cli
       - name: Extension tests
@@ -447,14 +481,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - uses: actions/cache@v4
+      # corpus.py caches each built reference under CXX_CACHE; save it even
+      # when the audit fails or times out, so the next run starts warm.
+      - uses: actions/cache/restore@v4
         with:
-          path: target/corpus-audit
-          key: corpus-audit-${{ github.run_id }}
-          restore-keys: corpus-audit-
+          path: ~/.cache/cpl/cxx/corpus
+          key: corpus-audit-cxx-${{ github.run_id }}
+          restore-keys: corpus-audit-cxx-
       - name: Audit every problem package
         timeout-minutes: 12
         run: uv run --quiet python scripts/corpus.py verify --only package -j "$(nproc)"
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.cache/cpl/cxx/corpus
+          key: corpus-audit-cxx-${{ github.run_id }}
 
   site:
     name: site build
@@ -465,6 +506,7 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           target: release
+      - uses: astral-sh/setup-uv@v6
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:

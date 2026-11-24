@@ -1,4 +1,5 @@
 // Source: IOI 2022 Day 2 P1, Digital Circuit, https://dmoj.ca/problem/ioi22p4
+// limits: 2000 ms, 512 MB
 // Problem: a tree of N threshold gates and M source gates (N, M <= 1e5, P[i] < i); a gate with
 //   c inputs takes a parameter p in 1..=c and is 1 iff at least p inputs are 1. Q <= 1e5 times,
 //   toggle sources L..=R and count parameter assignments making gate 0 output 1, mod 1000002022.
@@ -10,6 +11,7 @@
 // original: corpus/submissions/4783516.cpp (grader functions init / count_ways)
 // stdin: n m q, the n + m parents (-1 for gate 0), the m source states, then
 // q lines l r. stdout: the count after each toggle.
+// Bounds: n, m: 1..=100_000; q: 0..=100_000; parent: -1..=n - 1; lit: 0..=1; l, r: n..n + m
 use std.lazy.{flip_action}
 
 type Z = Mod<1_000_002_022>

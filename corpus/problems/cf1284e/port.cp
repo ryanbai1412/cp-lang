@@ -10,7 +10,7 @@
 //   direction swaps its two adjacent ends, and the segment at positions (lo, lo + 1) then crosses
 //   every segment from the lo points before it to the n - 2 - lo after. One angle sort of all
 //   n^2 / 2 segments, O(n^2 log n).
-use std.math.choose
+// Bounds: n: 5..=2500
 
 // Every segment runs from its lexicographically smaller end, so all directions lie in one
 // half-plane and `cross` alone orders them.

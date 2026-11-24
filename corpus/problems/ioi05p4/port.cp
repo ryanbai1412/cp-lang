@@ -7,6 +7,7 @@
 //   middle of the shortest arc holding them all, n minus the largest gap, so the answer is
 //   (n - gap + 1) / 2. Take the better of p and its mirror. O(n log n).
 // original: corpus/submissions/5044895.cpp
+// Bounds: n: 1..=1e6
 use std.rand.{Rng}
 
 let n: 1..=1e6 = read()

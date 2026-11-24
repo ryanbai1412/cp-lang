@@ -89,6 +89,24 @@ jobs:
           name: mutation-score
           path: target/mutants.md
 
+  # The debugger suites catch real debugger bugs: every viable mutant of
+  # the DAP adapter must fail tests/dap.rs (handbook/domains/debugger.md).
+  dap-mutants:
+    name: dap mutation score
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/setup-rust
+        with:
+          shared-key: mutants
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mutants
+      - name: DAP mutation score
+        run: uv run --quiet python scripts/mutation-score.py -p cpl-cli -f crates/cpl-cli/src/dap.rs --test dap --min 1.0 -o target/dap-mutants | tee -a "$GITHUB_STEP_SUMMARY"
+
   # The editor's latency budgets on each OS, in the optimized build people
   # run. Its own job, so its release build doesn't lengthen the cli job.
   lsp-latency:

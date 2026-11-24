@@ -24,5 +24,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "Binary search with first_true over a huge Int range; recursive nested visit over Rooted.children and t.w(c); ?Int near with min=; '??' needs parentheses next to arithmetic."
+ "notes": "Binary search with first_true over a huge Int range; recursive nested visit over Rooted.children and t.w(c); ?Int near with min=; '??' needs parentheses next to arithmetic.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "38f4d358c1e09523d4d82cb96ba723c3c992b505"
+ }
 }

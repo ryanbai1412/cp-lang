@@ -37,7 +37,7 @@ Tuples, records, structs and enums get `Eq`, `Ord`, `Hash`, `Show` and `Read` st
 every field has them: fields compare in declaration order. Writing your own impl replaces the
 derived one, so a fraction can compare by value instead of field by field:
 
-```cp status=spec
+```cp run
 struct Frac:
     p: Int
     q: Int

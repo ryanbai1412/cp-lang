@@ -12,7 +12,8 @@
 // covers every interior row of all rectangles of height >= l in O(n * m).
 
 @!multitest
-let (n0, m0): (2..=250_000, 2..=250_000) = read()
+let n0: 2..=125_000 = read()
+let m0: 2..=250_000 / n0 = read()
 let rows: [0..n0]Str = read()
 let tr = n0 > m0
 let (n, m) = if tr: (m0, n0) else: (n0, m0)

@@ -65,10 +65,12 @@ impl<'p> Emitter<'p> {
         let feeds = cpl_ir::pushed::Feeds {
             summaries: std::mem::take(&mut self.summaries),
             pushers: std::mem::take(&mut self.pushers),
+            eager: std::mem::take(&mut self.eager),
         };
         let fed = feeds.feeds(id, seq, body);
         self.summaries = feeds.summaries;
         self.pushers = feeds.pushers;
+        self.eager = feeds.eager;
         if fed.is_none() {
             return false;
         }
@@ -144,7 +146,7 @@ impl<'p> Emitter<'p> {
             self.elem_layout(cpl_ir::ElemLoc::Local(self.current_scope(), slot)),
         );
         let name = self.names[slot].clone();
-        let stable = self.facts.stable((self.fn_id, false, slot));
+        let stable = self.facts.stable(self.facts_local(slot));
         let hoisted = self.hoisted.contains(&slot);
         let enum_range = matches!(ty, Ty::Enum(_)) && matches!(iter, Iter::Range { .. });
         // The loop's own counter, when the body may change the variable.
@@ -235,7 +237,7 @@ impl<'p> Emitter<'p> {
                             // of its type: `<=` ends the loop.
                             None if cpp == "int"
                                 || hi_code.narrow
-                                || self.facts.below_max(self.fn_id, hi) =>
+                                || self.facts.below_max(self.facts_home(), hi) =>
                             {
                                 format!(
                                     "for ({cpp} {var} = {start}{extra}; {var} <= {bound}; {var}++) {{"
@@ -484,6 +486,15 @@ impl<'p> Emitter<'p> {
                         } else {
                             (format!("const {cpp}& {var}"), &first)
                         };
+                    let mut read = !pushed_first.is_empty();
+                    crate::walk::deep_exprs(body, &mut |e| {
+                        read |= matches!(e.kind, ExprKind::Local(s) if s == slot)
+                    });
+                    let decl = if read {
+                        decl
+                    } else {
+                        format!("[[maybe_unused]] {decl}")
+                    };
                     if self.pushed_loop(id, &decl, pushed_first, seq, body, out) {
                         return;
                     }

@@ -89,6 +89,12 @@ pub(crate) enum Op {
         dst_i: u16,
         src_v: u16,
     },
+    /// The payload-free variant with tag `src_i`: an enum loop variable
+    /// counted in an integer register.
+    EnumOfTagI {
+        dst_v: u16,
+        src_i: u16,
+    },
     BoxOptI {
         dst_v: u16,
         val: u16,
@@ -1245,6 +1251,23 @@ pub(crate) enum Op {
         path: u16,
         desc_r: u16,
     },
+    /// `SortPlace` for an element type with a user `<`: a stable merge
+    /// sort through the interpreter's comparison, the frame synced so the
+    /// `<` can run. `idx`: the sort expression, in `applies`.
+    SortPlaceCmp {
+        idx: u32,
+        path: u16,
+        desc_r: u16,
+    },
+    /// `SortByKeysPlace` for a key type with a user `<` (`idx`: the sort
+    /// expression, in `applies`).
+    SortByKeysPlaceCmp {
+        idx: u32,
+        path: u16,
+        seq_v: u16,
+        keys_v: u16,
+        desc_r: u16,
+    },
 
     // Closure construction, Take mutation, and fed `yields` loops
     MakeClosure {
@@ -1506,6 +1529,11 @@ pub(crate) enum TracePoint<'p> {
     Loop(Slot, Span),
     /// After the loop the variable keeps its last value, not one past the end.
     LoopEnd(Slot),
+    /// A sort of a global, which the next step shows.
+    Sorted,
+    /// A `let` without a value: the local holds its zero, shown from then
+    /// on, with no step of its own.
+    Declared(Slot),
     /// The back edge of a `while`: a loop that writes nothing still meets the time limit.
     Tick,
 }

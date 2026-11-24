@@ -299,11 +299,12 @@ impl<'a> Lowerer<'a> {
                         return self.method_call(fn_id, None, &[], span);
                     }
                 }
-                // A range type's ends are its `MIN` and `MAX` (R02.2.1).
-                if let Some(GenArg::Range(lo, hi)) = self.gen_env.get(type_name).cloned() {
+                // A range type, or a `T` bound to one, has its ends as `MIN` and `MAX` (R02.6.2).
+                if let Some(GenArg::Range(lo, hi)) = self.named_gen_arg(type_name) {
                     let v = match name.text.as_str() {
                         "MIN" => Some(lo.unwrap_or(INT_MIN)),
                         "MAX" => Some(hi.unwrap_or(i64::MAX)),
+                        "count" => lo.zip(hi).map(|(lo, hi)| (hi - lo + 1).max(0)),
                         "zero" => Some(0),
                         "one" => Some(1),
                         _ => None,
@@ -353,6 +354,12 @@ impl<'a> Lowerer<'a> {
         let builtin = |lw: &mut Self, op: Builtin, args: Vec<Expr>, ty: Ty| {
             lw.mk(ExprKind::Builtin(op, args), ty, span)
         };
+        // A domain reached through a value (`vt.K`) has a named domain's members.
+        if let ExprKind::DomainVal(id) = value.kind {
+            if !matches!(name.text.as_str(), "len" | "size" | "count") {
+                return self.domain_field(id, name, hint, span);
+            }
+        }
         match (&ty, name.text.as_str()) {
             (Ty::Error, _) => value,
             (Ty::Struct(id), method) if self.structs[*id].methods.contains_key(method) => {
@@ -498,6 +505,12 @@ impl<'a> Lowerer<'a> {
                 match inner {
                     Ty::Pos(d) | Ty::Bound(d) => self.cast(Cast::Trust, hi, Ty::Bound(d)),
                     _ => hi,
+                }
+            }
+            (Ty::Struct(id), field_name) if self.per_value_domain(*id, field_name) => {
+                match self.value_domain(value.clone(), field_name, span) {
+                    Some(d) => self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),
+                    None => self.err_expr(span),
                 }
             }
             (Ty::Struct(id), field_name)
@@ -829,159 +842,12 @@ impl<'a> Lowerer<'a> {
                 self.len_of(map_expr, span)
             }
             (Ty::Char, "ord" | "idx") => self.cast(Cast::CharToInt, value, Ty::Int),
-            (Ty::Char, "is_digit") => {
-                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
-                let lo = self.int_lit(b'0' as i64, span);
-                let hi = self.int_lit(b'9' as i64, span);
-                let ge = self.mk(
-                    ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(lo)),
-                    Ty::Bool,
-                    span,
-                );
-                let le = self.mk(
-                    ExprKind::Cmp(CmpOp::Le, Box::new(ord), Box::new(hi)),
-                    Ty::Bool,
-                    span,
-                );
-                self.mk(
-                    ExprKind::Binary(BinOp::And, Box::new(ge), Box::new(le)),
-                    Ty::Bool,
-                    span,
-                )
-            }
-            (Ty::Char, "is_lower") => {
-                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
-                let lo = self.int_lit(b'a' as i64, span);
-                let hi = self.int_lit(b'z' as i64, span);
-                let ge = self.mk(
-                    ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(lo)),
-                    Ty::Bool,
-                    span,
-                );
-                let le = self.mk(
-                    ExprKind::Cmp(CmpOp::Le, Box::new(ord), Box::new(hi)),
-                    Ty::Bool,
-                    span,
-                );
-                self.mk(
-                    ExprKind::Binary(BinOp::And, Box::new(ge), Box::new(le)),
-                    Ty::Bool,
-                    span,
-                )
-            }
-            (Ty::Char, "is_upper") => {
-                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
-                let lo = self.int_lit(b'A' as i64, span);
-                let hi = self.int_lit(b'Z' as i64, span);
-                let ge = self.mk(
-                    ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(lo)),
-                    Ty::Bool,
-                    span,
-                );
-                let le = self.mk(
-                    ExprKind::Cmp(CmpOp::Le, Box::new(ord), Box::new(hi)),
-                    Ty::Bool,
-                    span,
-                );
-                self.mk(
-                    ExprKind::Binary(BinOp::And, Box::new(ge), Box::new(le)),
-                    Ty::Bool,
-                    span,
-                )
-            }
-            (Ty::Char, "is_alpha") => {
-                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
-                let a = self.int_lit(b'a' as i64, span);
-                let z = self.int_lit(b'z' as i64, span);
-                let cap_a = self.int_lit(b'A' as i64, span);
-                let cap_z = self.int_lit(b'Z' as i64, span);
-                let lo1 = self.mk(
-                    ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(a)),
-                    Ty::Bool,
-                    span,
-                );
-                let hi1 = self.mk(
-                    ExprKind::Cmp(CmpOp::Le, Box::new(ord.clone()), Box::new(z)),
-                    Ty::Bool,
-                    span,
-                );
-                let is_lo = self.mk(
-                    ExprKind::Binary(BinOp::And, Box::new(lo1), Box::new(hi1)),
-                    Ty::Bool,
-                    span,
-                );
-                let lo2 = self.mk(
-                    ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(cap_a)),
-                    Ty::Bool,
-                    span,
-                );
-                let hi2 = self.mk(
-                    ExprKind::Cmp(CmpOp::Le, Box::new(ord), Box::new(cap_z)),
-                    Ty::Bool,
-                    span,
-                );
-                let is_hi = self.mk(
-                    ExprKind::Binary(BinOp::And, Box::new(lo2), Box::new(hi2)),
-                    Ty::Bool,
-                    span,
-                );
-                self.mk(
-                    ExprKind::Binary(BinOp::Or, Box::new(is_lo), Box::new(is_hi)),
-                    Ty::Bool,
-                    span,
-                )
-            }
-            (Ty::Char, "is_space") => {
-                let ord = self.cast(Cast::CharToInt, value, Ty::Int);
-                let sp = self.int_lit(b' ' as i64, span);
-                let tab = self.int_lit(b'\t' as i64, span);
-                let nl = self.int_lit(b'\n' as i64, span);
-                let cr = self.int_lit(b'\r' as i64, span);
-                let e1 = self.mk(
-                    ExprKind::Cmp(CmpOp::Eq, Box::new(ord.clone()), Box::new(sp)),
-                    Ty::Bool,
-                    span,
-                );
-                let e2 = self.mk(
-                    ExprKind::Cmp(CmpOp::Eq, Box::new(ord.clone()), Box::new(tab)),
-                    Ty::Bool,
-                    span,
-                );
-                let e3 = self.mk(
-                    ExprKind::Cmp(CmpOp::Eq, Box::new(ord.clone()), Box::new(nl)),
-                    Ty::Bool,
-                    span,
-                );
-                let e4 = self.mk(
-                    ExprKind::Cmp(CmpOp::Eq, Box::new(ord), Box::new(cr)),
-                    Ty::Bool,
-                    span,
-                );
-                let o1 = self.mk(
-                    ExprKind::Binary(BinOp::Or, Box::new(e1), Box::new(e2)),
-                    Ty::Bool,
-                    span,
-                );
-                let o2 = self.mk(
-                    ExprKind::Binary(BinOp::Or, Box::new(e3), Box::new(e4)),
-                    Ty::Bool,
-                    span,
-                );
-                self.mk(
-                    ExprKind::Binary(BinOp::Or, Box::new(o1), Box::new(o2)),
-                    Ty::Bool,
-                    span,
-                )
-            }
             (Ty::Pos(d), "len" | "count") => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
             (Ty::DomainVal, "first") => {
-                let dom_id = match value.kind {
-                    ExprKind::DomainVal(id) => Some(id),
-                    _ => self.gen_env.values().find_map(|ga| match ga {
-                        GenArg::Domain(id) => Some(*id),
-                        _ => None,
-                    }),
-                };
+                let dom_id = self.gen_env.values().find_map(|ga| match ga {
+                    GenArg::Domain(id) => Some(*id),
+                    _ => None,
+                });
                 if let Some(id) = dom_id {
                     self.mk(
                         ExprKind::Cast(Cast::Trust, Box::new(self.int_lit(0, span))),
@@ -993,13 +859,10 @@ impl<'a> Lowerer<'a> {
                 }
             }
             (Ty::DomainVal, "last") => {
-                let dom_id = match value.kind {
-                    ExprKind::DomainVal(id) => Some(id),
-                    _ => self.gen_env.values().find_map(|ga| match ga {
-                        GenArg::Domain(id) => Some(*id),
-                        _ => None,
-                    }),
-                };
+                let dom_id = self.gen_env.values().find_map(|ga| match ga {
+                    GenArg::Domain(id) => Some(*id),
+                    _ => None,
+                });
                 if let Some(id) = dom_id {
                     let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                     let last = self.int_add(len, -1);
@@ -1181,6 +1044,14 @@ impl<'a> Lowerer<'a> {
         keys.sort();
         let keyed = keys.into_iter().filter_map(|k| self.get_sym(k));
         self.get_sym(name).into_iter().chain(keyed).collect()
+    }
+
+    /// Whether the checker sent `x.name(..)` past the built-in member of the
+    /// name, whose parameters can't take the call's arguments.
+    pub(in crate::lower) fn past_builtin_row(&self, name: Span) -> bool {
+        let items = &self.mods[self.cur_mod].items;
+        (items.binary_search_by_key(&self.offset, |i| i.offset).ok())
+            .is_some_and(|at| items[at].check.exprs.past_rows.contains(&name))
     }
 
     /// The fn the checker resolved `base.name(..)` to: the `Resolved` at

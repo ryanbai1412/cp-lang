@@ -519,18 +519,21 @@ impl Log {
 
     /// The frame of a step whose stack is `stack`: `(fn, line it was
     /// called from)`, outermost first.
-    pub fn frame(&mut self, stack: &[(&str, u32)]) -> u32 {
+    pub fn frame<'a>(&mut self, stack: impl Iterator<Item = (&'a str, u32)> + Clone) -> u32 {
         let kept = self
             .stack
             .iter()
-            .zip(stack)
+            .zip(stack.clone())
             .take_while(|(&(at, _, line, _), (name, called))| {
                 at == name.as_ptr() as usize && line == *called
             })
             .count();
+        if kept == self.stack.len() && stack.clone().nth(kept).is_none() {
+            return self.stack.last().map_or(NONE, |top| top.3);
+        }
         self.stack.truncate(kept);
         let mut parent = self.stack.last().map_or(NONE, |top| top.3);
-        for (name, line) in &stack[kept..] {
+        for (name, line) in stack.skip(kept) {
             let id = match self.names.iter().position(|known| known == name) {
                 Some(id) => id as u32,
                 None => {
@@ -546,11 +549,11 @@ impl Log {
             self.frames.push(Frame {
                 parent,
                 name: id,
-                line: *line,
+                line,
                 depth,
             });
             parent = self.frames.len() as u32 - 1;
-            self.stack.push((name.as_ptr() as usize, id, *line, parent));
+            self.stack.push((name.as_ptr() as usize, id, line, parent));
         }
         parent
     }

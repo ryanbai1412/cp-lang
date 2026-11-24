@@ -1,6 +1,7 @@
 //! `peek_then_pop` (L0525): `let x = s.last!` then `s.pop()` reads the top
 //! and then throws it away; `let x = s.pop()!` takes it in one step.
 
+use crate::std_fn;
 use crate::walk::Visitor;
 use crate::{File, Finding, PEEK_THEN_POP};
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -50,7 +51,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             else {
                 return;
             };
-            if (name.text.as_str(), pop_name.text.as_str()) != ("last", "pop") || !args.is_empty() {
+            if (name.text.as_str(), pop_name.text.as_str()) != (std_fn::LAST, std_fn::POP)
+                || !args.is_empty()
+            {
                 return;
             }
             let text = |e: &Expr| e.span.shift(self.base).text(self.src);

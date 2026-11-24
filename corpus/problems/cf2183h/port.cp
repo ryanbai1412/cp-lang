@@ -7,6 +7,7 @@
 //   elements each lower its cost. Past it the cost (P_i - P_j)(i - j) is Monge, so f(k) is
 //   convex: Aliens over a Monge shortest path (edges scaled by n + 1 plus 1, which breaks
 //   ties toward fewer groups). O(n log C) Monge path computations.
+// Bounds: n: 1..=2e5; k: 1..=n
 use std.dp.{MongePath}
 @!multitest
 let n: 1..=2e5 = read()

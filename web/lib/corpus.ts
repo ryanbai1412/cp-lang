@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Status } from '@/components/status-badge';
 
@@ -49,7 +49,8 @@ export function corpus(): Entry[] {
   if (cache) return cache;
   const dir = join(repo, 'corpus/problems');
   const status = JSON.parse(readFileSync(join(process.cwd(), '.gate/corpus.json'), 'utf8')) as Record<string, Status>;
-  cache = readdirSync(dir)
+  // The ids the site gate checked, which it listed with scripts/corpus.py.
+  cache = Object.keys(status)
     .filter((p) => existsSync(join(dir, p, 'meta.json')))
     .map((p) => JSON.parse(readFileSync(join(dir, p, 'meta.json'), 'utf8')) as Meta)
     .filter((m) => m.spec && m.spec !== 'none' && m.artifacts.spec?.length)

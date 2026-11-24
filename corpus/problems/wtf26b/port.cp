@@ -15,6 +15,7 @@
 //   (x = y + 1) or shrinks it (x <= y), raising cut to k - x - 1 and resolving once
 //   cut >= k - 1. Each step sums over the next value y >= x - 1 for x < a[i] only, so the cost
 //   follows a: O(N^5) at worst, far less on small a.
+// Bounds: n: 2..=50; a: 1..=n
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

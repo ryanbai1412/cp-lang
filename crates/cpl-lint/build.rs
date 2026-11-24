@@ -13,14 +13,16 @@
 //! it is not shown; `replaces = "structure"` also names a std structure, so it
 //! is quiet in a library module, where such structures are written.
 //! `namesake = "quiet"` marks a lint whose message names the call to write,
-//! so it is quiet inside a fn of that name.
+//! so it is quiet inside a fn of that name. `on = "Heap | MaxHeap"` names
+//! the types the lint is about, as `Ty::is_one_of` reads them: a finding
+//! stands only where the checker types its first label as one.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 const KEYS: [&str; 6] = ["code", "level", "title", "summary", "group", "rule"];
-const OPTIONAL: [&str; 6] = [
-    "no_fix", "family", "practice", "removed", "replaces", "namesake",
+const OPTIONAL: [&str; 7] = [
+    "no_fix", "family", "practice", "removed", "replaces", "namesake", "on",
 ];
 const FILES: [(&str, &str); 4] = [
     ("explanation", "explain.md"),
@@ -77,6 +79,57 @@ fn main() {
     }
     out.push_str("];\n");
     let dest = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo")).join("lints.rs");
+    std::fs::write(dest, out).expect("a writable OUT_DIR");
+    std_fns(&manifest);
+}
+
+/// `std_fn.rs`: a constant for every name a top-level std module declares
+/// `pub fn`, so a lint names std's API only through it and a std rename
+/// fails the lint build instead of quietly turning a lint off.
+fn std_fns(manifest: &std::path::Path) {
+    let dir = manifest.join("../../std");
+    println!("cargo:rerun-if-changed={}", dir.display());
+    let mut names: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("std: {e}"))
+        .map(|e| e.expect("a readable std/").path())
+        .filter(|p| p.extension().is_some_and(|x| x == "cp"))
+        .collect();
+    files.sort();
+    for path in files {
+        println!("cargo:rerun-if-changed={}", path.display());
+        let stem = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let module = if stem == "prelude" {
+            stem
+        } else {
+            format!("std.{stem}")
+        };
+        let text =
+            std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        for line in text.lines() {
+            let Some(rest) = line.trim_start().strip_prefix("pub fn ") else {
+                continue;
+            };
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            let modules = names.entry(name).or_default();
+            if !modules.contains(&module) {
+                modules.push(module.clone());
+            }
+        }
+    }
+    let mut out = String::new();
+    for name in names.keys() {
+        writeln!(out, "pub const {}: &str = {name:?};", name.to_uppercase()).unwrap();
+    }
+    out.push_str("\n/// Each name and the std modules that declare it, by name.\npub const DECLARED_IN: &[(&str, &[&str])] = &[\n");
+    for (name, modules) in &names {
+        writeln!(out, "    ({name:?}, &{modules:?}),").unwrap();
+    }
+    out.push_str("];\n");
+    let dest = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo")).join("std_fn.rs");
     std::fs::write(dest, out).expect("a writable OUT_DIR");
 }
 
@@ -177,6 +230,18 @@ fn lint((code, name, fields, dir): &Record, texts: bool) -> String {
         "{name}: `namesake` is \"quiet\" or absent"
     );
     writeln!(out, "    quiet_in_namesake: {},", namesake == "quiet").unwrap();
+    let on: Vec<&str> = match fields.get(12).map_or("", |v| v.as_str()) {
+        "" => Vec::new(),
+        on => on.split('|').map(str::trim).collect(),
+    };
+    for ty in &on {
+        assert!(
+            ty.starts_with(|c: char| c.is_ascii_uppercase())
+                && ty.matches('<').count() == ty.matches('>').count(),
+            "{name}: `on` is types separated by `|`, `List | Map<_, Int>`"
+        );
+    }
+    writeln!(out, "    on: &{on:?},").unwrap();
     for (field, file) in FILES {
         let path = dir.join(file);
         println!("cargo:rerun-if-changed={}", path.display());

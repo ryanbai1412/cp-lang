@@ -153,13 +153,15 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// maps it to something else; `keep` runs once per arc at build and what it returns is
     /// stored.
     ///
+    /// An empty `V` gives the empty graph.
+    ///
     /// cost: \(O(n + m)\) time and memory, plus `m` calls of `keep`
-    /// empty: no edges gives every vertex no arcs; an empty `V` gives the empty graph
+    /// empty: `domain V = 0..2; domain E = 0..0; let es: [E](u: V, v: V) = []; let g = Graph.directed(es); g.deg(0) == 0 and g.deg(1) == 0`
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es, keep: a => (to: a.to)).out(0).collect() == [(to: 2), (to: 1)]`
-    pub fn directed<E, R: (u: V, v: V, ..), B: Target<V>>(
-        edges: [E]R,
+    pub fn directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
+        edges: S,
         keep: EdgeArc<V,
         E,
         R> -> B = a => a,
@@ -185,12 +187,12 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// arcs are adjacent. `keep` runs once per stored arc, so `2m` times.
     ///
     /// cost: \(O(n + m)\) time and memory, plus `2m` calls of `keep`
-    /// empty: no edges gives every vertex no arcs
+    /// empty: `domain V = 0..2; domain E = 0..0; let es: [E](u: V, v: V) = []; let g = Graph.undirected(es); g.deg(0) == 0 and g.deg(1) == 0`
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; Graph.undirected(es).out(1).collect() == [(to: 0, e: 0), (to: 2, e: 1)]`
     /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
-    pub fn undirected<E, R: (u: V, v: V, ..), B: Target<V>>(
-        edges: [E]R,
+    pub fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
+        edges: S,
         keep: EdgeArc<V,
         E,
         R> -> B = a => a,
@@ -217,7 +219,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// the other builders reduce to.
     ///
     /// cost: \(O(n + m)\)
-    /// empty: no pairs gives every vertex no arcs
+    /// empty: `domain V = 0..2; let g = Graph.of(List<(from: V, arc: V)>()); g.next(0).count() == 0 and g.next(1).count() == 0`
     /// order: each vertex's arcs in the order the pairs come
     /// traps: never
     /// example: `domain V = 0..2; let g = Graph.of([(from: V(1), arc: V(0)), (from: V(0), arc: V(1)), (from: V(1), arc: V(1))]); g.next(1).collect() == [0, 1]`
@@ -264,7 +266,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// zero itself.
     ///
     /// cost: \(O(n^2 + m)\) time, \(O(n^2)\) memory
-    /// ties: parallel arcs keep the least weight
+    /// ties: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 1, w: 3)]; Graph.directed(es).matrix()[0, 1] == Some(3)`
     /// traps: never
     /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 1, w: 3), (u: 1, v: 0, w: 4)]; let d = Graph.directed(es).matrix(); d[0, 1] == Some(3) and d[1, 0] == Some(4) and d[0, 0] == None`
     pub fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W>:
@@ -370,7 +372,8 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// undirected one stores the same two arcs for `(u, v)` and `(v, u)`, so `u` is the end that
     /// comes first in `V` (decision 248). Needs arcs that keep `e`.
     ///
-    /// cost: \(O(1)\) to make, \(O(1)\) per edge
+    /// cost: \(O(n + m)\) for the whole walk, all of it before the first edge: it marks every edge
+    /// to yield each once, in `e` order
     /// order: increasing `e`
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 1, v: 0), (u: 0, v: 2)]; Graph.undirected(es).edges().collect() == [Edge(0, 0, 1), Edge(1, 0, 2)] and Graph.directed(es).edges().collect() == [Edge(0, 1, 0), Edge(1, 0, 2)]`
@@ -454,7 +457,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
         let tarcs = src.map(i => reversed_arc(arcs[i], from[i])).collect()
         Graph<V, A>(start: tstart, arcs: tarcs)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the
 /// vertices in removal order.
 ///
@@ -469,9 +471,11 @@ pub struct Graph<V: Domain, A: Target<V>>:
 /// is removed at most once. For a vertexless closure graph, pass the domain: `peel::<V>(u =>
 /// ...)`.
 ///
+/// Ties go FIFO: the initial vertices in vertex order, later ones in the order their last arc is walked.
+///
 /// cost: \(O(n + m)\) plus the calls of `ready` and `on_remove`
-/// empty: an empty `V` gives `[]`
-/// ties: FIFO; the initial vertices in vertex order, later ones in the order their last arc is walked
+/// empty: `domain V = 0..0; let g: [V]List<V> = []; peel(g) == []`
+/// ties: `domain V = 0..4; let g: [V]List<V> = [[3], [2], [], []]; peel(g) == [0, 1, 3, 2]`
 /// order: removal order
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; peel(g) == [0, 1, 2, 3]`
@@ -518,9 +522,11 @@ pub fn peel<V, G: Next<V>>(
 /// cycle: a `peel` that removed every vertex. For a vertexless closure graph, pass the
 /// domain: `topo::<V>(u => ...)`.
 ///
+/// Ties are those of `peel` (FIFO, in-degree-zero vertices in vertex order); `smallest_topo` gives the least order.
+///
 /// cost: \(O(n + m)\)
-/// empty: an empty `V` gives `Some([])`
-/// ties: those of `peel` (FIFO, in-degree-zero vertices in vertex order); `smallest_topo` gives the least order
+/// empty: `domain V = 0..0; let g: [V]List<V> = []; topo(g) == Some([])`
+/// ties: `domain V = 0..4; let g: [V]List<V> = [[3], [2], [], []]; topo(g) == Some([0, 1, 3, 2])`
 /// order: topological
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], [0]]; topo(g) == Some([1, 2, 0])`
@@ -539,7 +545,6 @@ pub fn topo<V>(g: Next<V>) -> ?List<V>:
             if indeg[a.to] == 0: order.push(a.to)
     if order.len == V.count: order else: None
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The strongly connected components, as a fresh domain `C` and each vertex's component.
 /// `C` is a topological order of the condensation: every arc goes from a component to the
 /// same or a later one.
@@ -548,7 +553,7 @@ pub fn topo<V>(g: Next<V>) -> ?List<V>:
 /// order; components are numbered in reverse order of completion.
 ///
 /// cost: \(O(n + m)\)
-/// ties: components with no path between them come in reverse completion order of that search
+/// ties: `domain V = 0..2; let g: [V]List<V> = [[], []]; let (domain C, comp) = scc(g); comp[0].ord == 1 and comp[1].ord == 0`
 /// order: `comp` is keyed by `V`
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0], [0]]; let (domain C, comp) = scc(g); C.count == 2 and comp[0] == comp[1] and comp[2] < comp[0]`
@@ -610,7 +615,7 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
 /// target vertex itself.
 ///
 /// cost: \(O(n + m)\)
-/// empty: `[]` gives every vertex no arcs
+/// empty: `domain V = 0..2; directed_of_pairs(List<(V, V)>()) == [[], []]`
 /// order: each vertex's arcs in input order
 /// traps: never
 /// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))])[0] == [2, 1]`
@@ -623,7 +628,7 @@ pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// each arc the target vertex itself.
 ///
 /// cost: \(O(n + m)\)
-/// empty: `[]` gives every vertex no arcs
+/// empty: `domain V = 0..2; undirected_of_pairs(List<(V, V)>()) == [[], []]`
 /// order: each vertex's arcs in the order of their pairs
 /// traps: never
 /// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))])[1] == [0, 2]`
@@ -644,7 +649,7 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// cost: \(O(1)\)
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.deg(0) == 2 and g.deg(2) == 0`
-/// empty: 0 for a vertex with no arcs
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; g.deg(1) == 0`
 pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 
 /// Where `u`'s arcs lead in an adjacency list, as `Graph.next` is for a `Graph`: each entry's
@@ -654,7 +659,7 @@ pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 /// order: list order
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[2, 1], [2], []]; g.next(0).collect() == [2, 1] and g.next(2).count() == 0`
-/// empty: nothing for a vertex with no arcs
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; g.next(1).count() == 0`
 pub fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V:
     for a in self[u]: yield a.to
 
@@ -664,14 +669,13 @@ pub fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V:
 /// order: each list ascending by source vertex
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.transpose() == [[], [0], [0, 1]]`
-/// empty: an empty list at each vertex no arc enters
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[0], [0]]; g.transpose()[1] == []`
 pub fn transpose<V>(self: [V]List<V>) -> [V]List<V>:
     var t: [V]List<V> = []
     for u in V:
         for v in self[u]: t[v].push(u)
     t
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The connected components of an undirected graph, as a fresh domain `C` and each vertex's
 /// component.
 ///
@@ -719,7 +723,7 @@ pub fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C):
 /// of `u` that leaves its component. Arcs inside a component are dropped; repeats are kept.
 ///
 /// cost: \(O(n + m)\)
-/// empty: an empty `V` gives every component no arcs
+/// empty: `domain V = 0..0; domain C = 0..2; let g: [V]List<V> = []; let comp: [V]C = []; condense(g, comp) == [[], []]`
 /// order: keyed by `C`; each list by source vertex in vertex order, then arc order
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0], [0, 1]]; let (domain C, comp) = scc(g); let h = condense(g, comp); h[comp[2]] == [(to: comp[0]), (to: comp[0])] and h[comp[0]] == []`
@@ -732,7 +736,6 @@ pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>:
             if cu != cv: out[cu].push((to: cv))
     out
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The two-edge-connected components (bridge blocks) of an undirected graph, as a fresh domain `C`
 /// and each vertex's component.
 ///
@@ -1165,7 +1168,7 @@ pub struct Paths<V, W: Add, A>:
     /// by the arc that first gave its vertex the final distance.
     ///
     /// cost: \(O(\text{path length})\)
-    /// ties: the path through the arc that first reached each vertex at its final distance
+    /// ties: `domain V = 0..4; let g: [V]List<V> = [[2, 1], [3], [3], []]; bfs(g, from: [V(0)]).path(3) == Some([0, 2, 3])`
     /// order: from the source to `t`
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)]).path(3) == Some([0, 1, 3])`
@@ -1184,7 +1187,7 @@ pub struct Paths<V, W: Add, A>:
     /// unreachable.
     ///
     /// cost: \(O(\text{path length})\)
-    /// ties: as `path`
+    /// ties: `domain V = 0..4; let g: [V]List<V> = [[2, 1], [3], [3], []]; bfs(g, from: [V(0)]).arcs(3) == Some([2, 3])`
     /// order: from the source to `t`
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)]).arcs(3) == Some([1, 3])`
@@ -1198,7 +1201,6 @@ pub struct Paths<V, W: Add, A>:
         reverse(mut out)
         out
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Fewest arcs from any vertex of `from` to each vertex, by breadth-first search.
 ///
 /// The sources start at distance 0 in the order given (repeats ignored). A vertex is
@@ -1209,8 +1211,8 @@ pub struct Paths<V, W: Add, A>:
 /// tables in hash maps for unbounded `V`.
 ///
 /// cost: \(O(n + m)\) dense; \(O(\mathit{reached} + \text{arcs scanned})\) expected `hashed`
-/// empty: an empty `from` reaches nothing
-/// ties: FIFO; a vertex's back pointer is the first arc to discover it
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; let p = bfs(g, from: List<V>()); p[0] == None and p[1] == None`
+/// ties: `domain V = 0..4; let g: [V]List<V> = [[2, 1], [3], [3], []]; let p = bfs(g, from: [V(0)]); p.iter().collect() == [(v: 0, d: 0), (v: 2, d: 1), (v: 1, d: 1), (v: 3, d: 2)] and p.path(3) == Some([0, 2, 3])`
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)])[3] == Some(2)`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)], enter: (v, d) => v != 1).path(3) == Some([0, 2, 3])`
@@ -1253,14 +1255,13 @@ pub fn bfs<V, G: Next<V>>(
                     break
     Paths(dist:, back:, order:)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances when every weight is 0 or 1, from every vertex of `from` at distance
 /// 0: a deque, with 0-arcs pushed to the front. `until: t` stops once `t` is settled
 /// (popped with its final distance).
 ///
 /// cost: \(O(n + m)\)
-/// empty: an empty `from` reaches nothing
-/// ties: a vertex's back pointer is the first arc to give it its final distance
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 0)]; let p = bfs01(Graph.directed(es), from: List<V>()); p[0] == None and p[1] == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 0), (u: 0, v: 2, w: 1), (u: 1, v: 2, w: 1)]; bfs01(Graph.directed(es), from: [V(0)]).path(2) == Some([0, 2])`
 /// traps: on an arc whose weight is not 0 or 1, when it is read
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 0), (u: 2, v: 1, w: 0)]; let p = bfs01(Graph.directed(es), from: [V(0)]); p[1] == Some(0) and p.path(1) == Some([0, 2, 1])`
 pub fn bfs01<V, G: WeightedNext<V, Int>>(
@@ -1303,8 +1304,8 @@ pub fn bfs01<V, G: WeightedNext<V, Int>>(
 /// deletion; `until: t` stops once `t` is settled.
 ///
 /// cost: \(O((n + m) \log m)\)
-/// empty: an empty `from` reaches nothing
-/// ties: a vertex's back pointer is the first arc to give it its final distance (only strict improvements replace it)
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; let p = dijkstra(Graph.directed(es), from: List<(V, Int)>()); p[0] == None and p[1] == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 2), (u: 1, v: 2, w: 1)]; dijkstra(Graph.directed(es), from: [(V(0), 0)]).path(2) == Some([0, 2])`
 /// traps: when an arc makes a path cheaper (a negative weight under `+`), when it is read
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; let p = dijkstra(Graph.directed(es), from: [(V(0), 0)]); p[1] == Some(3) and p.path(1) == Some([0, 2, 1])`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; dijkstra(Graph.directed(es), from: [(V(0), 10)])[1] == Some(14)`
@@ -1353,8 +1354,8 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
 /// distance. The back pointer is `(from: s, via: mv)`.
 ///
 /// cost: \(O(\lvert S \rvert \lvert \mathit{moves} \rvert)\) time, \(O(\lvert S \rvert)\) memory
-/// empty: an empty `from` reaches nothing; no moves settles only the sources
-/// ties: equal candidates go to the earlier move in `moves`
+/// empty: `domain S = 0..3; let none = fixed_cost_paths(List<S>(), [1], cost: m => m, step: (m, s) => if Int(s) + m < 3: Some(S(Int(s) + m)) else: None); let still = fixed_cost_paths([S(0)], List<Int>(), cost: m => m, step: (m, s) => Some(s)); none[0] == None and still[0] == Some(0) and still[1] == None`
+/// ties: `domain S = 0..3; let p = fixed_cost_paths([S(0)], [10, 20], cost: m => 1, step: (m, s) => if s == S(0): Some(S(2)) else: None); p.arcs(2) == Some([10])`
 /// traps: on a negative cost
 /// example: `domain S = 0..5; let p = fixed_cost_paths([S(0)], [1, 2], cost: m => if m == 1: 1 else: 3, step: (m, s) => if Int(s) + m < 5: Some(S(Int(s) + m)) else: None); p[4] == Some(4) and p[2] == Some(2)`
 pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
@@ -1397,7 +1398,6 @@ pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
         if until == t: break
     Paths(dist, back, order)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances with any weights, from `(vertex, starting distance)` pairs, or `None`
 /// when a source reaches a negative cycle (cycles no source reaches are ignored).
 ///
@@ -1406,8 +1406,8 @@ pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
 /// `order` lists each reached vertex after its parent.
 ///
 /// cost: \(O(n m)\)
-/// empty: an empty `from` gives `Some` of a search that reaches nothing
-/// ties: a vertex's back pointer is the arc of its last strict improvement
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; let p = bellman_ford(Graph.directed(es), from: List<(V, Int)>())!; p[0] == None and p[1] == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 2, w: 2), (u: 0, v: 1, w: 1), (u: 1, v: 2, w: 1)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)])!.path(2) == Some([0, 2])`
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)])![1] == Some(2)`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)]) == None`
@@ -1450,7 +1450,6 @@ pub fn bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(
             order.push(chain[k])
     Some(Paths(dist, back, order))
 
-// blocked: operation-value defaults typed as `Int` (GAPS.md ntt `convolve`)
 /// All-pairs shortest distances, in place: `d[u, v]` starts as the direct weight (`None`:
 /// no edge, usually from `g.matrix()`) and ends as the distance. Returns `false` if there
 /// is a negative cycle, and `d` is then unspecified.
@@ -1495,13 +1494,12 @@ pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> B
             if add.op(dv, one) != one: return false
     true
 
-// blocked: operation-value defaults typed as `Int` (GAPS.md ntt `convolve`)
 /// The value form of `floyd_warshall`, as `sorted` is to `sort`: a new matrix closed under
 /// `over:`, or `None` on a negative cycle. A matrix is already closed when
 /// `d.closure(over: r) == Some(d)`.
 ///
 /// cost: \(O(n^3)\) time, \(O(n^2)\) memory
-/// empty: `Some` of the empty matrix
+/// empty: `domain V = 0..0; let d: [V, V]?Int = None; d.closure() == Some(d)`
 /// traps: never
 /// example: `domain V = 0..2; var d: [V, V]?Int = None; d[0, 1] = Some(2); let c = d.closure()!; c[0, 1] == Some(2) and c[0, 0] == Some(0) and c[1, 0] == None`
 pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W:
@@ -1516,7 +1514,7 @@ pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W
 /// loop gives a one-vertex cycle.
 ///
 /// cost: \(O(n + m)\)
-/// ties: the first cycle that DFS closes
+/// ties: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [0], [3], [2]]; find_cycle(g) == Some([0, 1])`
 /// order: walking order, starting at the vertex the closing arc enters
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1], [2], [3], [1]]; find_cycle(g) == Some([1, 2, 3])`
@@ -1549,7 +1547,6 @@ pub fn find_cycle<V>(g: Next<V>) -> ?List<V>:
                 path.pop()
     None
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Which edges are bridges: removing one disconnects its ends. Arcs carry `e` (a
 /// `Graph.undirected`), so a parallel edge is not mistaken for the way back and is never a
 /// bridge. A loop is never a bridge.
@@ -1637,7 +1634,7 @@ pub struct Walk<V, E>:
 /// (the arcs of `Graph.directed` / `Graph.undirected` on `edges`).
 ///
 /// cost: \(O(n + m)\)
-/// empty: no edges gives `Some` walk at `V.first` with no arcs
+/// empty: `domain V = 0..2; domain E = 0..0; let es: [E](u: V, v: V) = []; euler_walk(es, directed: false)!.vertices.collect() == [0]`
 /// traps: when `edges` is empty and `V` is empty
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2, 0]`
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 2, v: 1), (u: 1, v: 0)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2]`
@@ -1734,7 +1731,7 @@ pub struct TwoSat<X>:
     /// `solve`'s result.
     ///
     /// cost: \(O(k)\) amortized
-    /// empty: `[]` adds nothing
+    /// empty: `domain X = 0..1; var s = TwoSat<X>(); s.at_most_one([]); s.solve() != None`
     /// traps: never
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.at_most_one([Lit(X(0), true), Lit(X(1), true)]); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
     pub fn at_most_one(mut self, lits: List<Lit<X>>):
@@ -2003,7 +2000,6 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 
 // ---- Spec surface without implementations yet ----------------------------
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// A depth-first walk from each vertex of `from` in turn, yielding `Enter(v, via:)` when `v` is
 /// discovered, `Again(from, via)` for an arc into an already discovered vertex, and `Exit(v, via:)`
 /// when `v` is finished.
@@ -2018,7 +2014,7 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 /// after `Enter(v)` (its `Exit` still comes); `break` and `return` end the walk. `Again` events give custom low-link.
 ///
 /// cost: \(O(n + m)\) total, \(O(1)\) per step
-/// empty: an empty `from` yields nothing
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; dfs(g, from: List<V>()).count() == 0`
 /// order: `Enter` in preorder, `Exit` in postorder, `Again` when its arc is scanned, interleaved as the walk goes
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Exit(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(0, None)]`
@@ -2093,7 +2089,7 @@ fn dfs_walk<V, G: Next<V>>(
 /// arcs, pass `g` filtered (`v => g.next(v).filter(a => ok(a))`).
 ///
 /// cost: \(O(n)\) for `seen`, then \(O(1)\) per reached vertex and per arc out of one
-/// empty: an empty `from` yields nothing
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; reachable(g, from: List<V>()).count() == 0`
 /// order: discovery order, the order of `dfs`'s `Enter` events; over a `Complement`, the
 ///   order of its unvisited-set walk (each vertex's newly reached vertices together, ascending)
 /// traps: never
@@ -2140,7 +2136,6 @@ pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
 /// discovered `v` (`None` for a source); `Again(from, via)` is an arc into a discovered vertex.
 pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, via: A)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances for integer weights in `0..=max_w` with a bucket queue (Dial), from
 /// every vertex of `from` at distance 0. Same result shape as `dijkstra`; `until: t` stops
 /// once `t` is settled.
@@ -2149,8 +2144,8 @@ pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, 
 /// distances is \(O(\mathit{d\_max})\), the largest distance reached (at most `(n - 1) * max_w`).
 ///
 /// cost: \(O(n + m + \mathit{max\_w} + \mathit{d\_max})\)
-/// empty: an empty `from` reaches nothing
-/// ties: FIFO within a bucket; a vertex's back pointer is the first arc to give it its final distance
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; let p = dial(Graph.directed(es), from: List<V>(), max_w: 4); p[0] == None and p[1] == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 2), (u: 1, v: 2, w: 1)]; dial(Graph.directed(es), from: [V(0)], max_w: 2).path(2) == Some([0, 2])`
 /// traps: on a weight outside `0..=max_w`, when it is read
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; dial(Graph.directed(es), from: [V(0)], max_w: 5)[1] == Some(3)`
 pub fn dial<V, G: WeightedNext<V, Int>>(
@@ -2192,7 +2187,6 @@ pub fn dial<V, G: WeightedNext<V, Int>>(
                 in_q += 1
     Paths(dist, back, order)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// All-pairs shortest distances with negative arcs: one Bellman-Ford from a virtual source joined
 /// to every vertex, then a Dijkstra per vertex on the reweighted arcs.
 ///
@@ -2233,13 +2227,12 @@ pub fn johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W:
                 res[s, v] = Some(dv - h[s] + h[v])
     Some(res)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The lengths of the `k` shortest walks from any vertex of `from` to `to` (Eppstein).
 /// Walks may repeat vertices and arcs; the empty walk counts when `to` is a source. Fewer
 /// than `k` when fewer walks exist.
 ///
 /// cost: \(O((n + m) \log n + k \log k)\)
-/// empty: an empty `from` or `k <= 0` gives `[]`
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 7)]; let g = Graph.directed(es); k_shortest(g, from: List<V>(), to: V(1), k: 3) == [] and k_shortest(g, from: [V(0)], to: V(1), k: 0) == []`
 /// order: ascending, repeats kept
 /// traps: on a negative weight
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 1)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [1, 3, 5]`
@@ -2282,7 +2275,6 @@ pub fn k_shortest<V, W: Add>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int)
                 pq.push((nd + hv, nd, a.to))
     ans
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Some cycle of negative total weight, as its arcs in walking order, or `None`.
 ///
 /// Bellman-Ford from every vertex at distance 0 (vertices in vertex order, arcs in arc
@@ -2290,7 +2282,7 @@ pub fn k_shortest<V, W: Add>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int)
 /// cycle, which is returned starting with the arc leaving that vertex.
 ///
 /// cost: \(O(n m)\)
-/// ties: the cycle that search lands on
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: -1), (u: 1, v: 0, w: -1), (u: 2, v: 2, w: -1)]; [a.e for a in negative_cycle(Graph.directed(es))!] == [0, 1]`
 /// order: walking order
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 2, v: 0, w: 1), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; negative_cycle(Graph.directed(es))!.len == 2`
@@ -2323,13 +2315,12 @@ pub fn negative_cycle<V, W: Add, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
     reverse(mut cyc)
     Some(cyc)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The least mean weight over all directed cycles, as `(sum, len)` of a cycle achieving it
 /// (Karp), or `None` on an acyclic graph. Among cycles of least mean the shortest is
 /// reported, so `(sum, len)` is unique.
 ///
 /// cost: \(O(n m)\)
-/// ties: the fewest arcs among cycles of least mean
+/// ties: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 1), (u: 1, v: 1, w: 1)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 1, len: 1))`
 /// traps: never
 /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3), (u: 1, v: 1, w: 5)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 4, len: 2))`
 /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 0, w: 2), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 2, len: 1))`
@@ -2365,24 +2356,22 @@ pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int):
     let g_val = gcd(abs(b.num), b.den)
     let p = b.num / g_val
     let q = b.den / g_val
-    var best_len = n + 1
-    for s in V:
-        var cur: [V]?Int = None
-        cur[s] = Some(0)
-        for step in 1..=n:
-            if step >= best_len: break
-            var nxt: [V]?Int = None
-            for u in V:
-                if let du = cur[u]:
-                    for a in g.out(u):
-                        let nd = du + q * a.w - p
-                        if nxt[a.to] == None or nd < nxt[a.to]!:
-                            nxt[a.to] = Some(nd)
-            cur = nxt
-            if cur[s] == Some(0):
-                best_len = step
-                break
-    Some((sum: p * (best_len / q), len: best_len))
+    // Under weights q w - p no cycle is negative and those of least mean are the zero ones:
+    // with shortest distances as potentials they are the cycles of tight arcs, and the
+    // shortest of them is the tight subgraph's girth.
+    var pot: [V]Int = 0
+    for _ in 0..n:
+        var changed = false
+        for u in V:
+            for a in g.out(u):
+                let nd = pot[u] + q * a.w - p
+                if nd < pot[a.to]:
+                    pot[a.to] = nd
+                    changed = true
+        if not changed: break
+    let tight = [V] u => [a.to for a in g.out(u) if pot[u] + q * a.w - p == pot[a.to]]
+    let len = girth(tight, directed: true)!
+    Some((sum: p * (len / q), len:))
 
 /// The length of a shortest cycle (the girth), or `None` if there is None.
 ///
@@ -2440,7 +2429,6 @@ pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
             if indeg[a.to] == 0: ready.push(a.to)
     if order.len == V.count: order else: None
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// DP over a DAG in topological order.
 ///
 /// Each vertex starts at `init(v)`; then, for `u` in `topo` order and each arc `a` of `u` in arc
@@ -2461,13 +2449,12 @@ pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, 
             val[a.to] = k.op(val[a.to], step(val[u], a))
     Some(val)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The number of paths from a vertex of `from` to every `v` of a DAG, in `T` (a modular
 /// type keeps it exact). A source has its empty path; a repeated source counts once.
 /// `None` if the graph has a cycle anywhere.
 ///
 /// cost: \(O(n + m)\)
-/// empty: an empty `from` gives all zeros
+/// empty: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; count_paths::<Int>(g, from: List<V>()) == Some([0, 0, 0])`
 /// order: keyed by `V`
 /// traps: on overflow of `T`, as its arithmetic does
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; count_paths::<Int>(g, from: [V(0)]) == Some([1, 1, 1, 2])`
@@ -2479,7 +2466,6 @@ pub fn count_paths<T: Add, V>(g: Next<V>, from: Seq<V>) -> ?[V]T:
         for a in g.out(u): dp[a.to] += dp[u]
     Some(dp)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Reachability of every pair as bitset rows: `r[u].contains(v)` when some path of zero or
 /// more arcs leads from `u` to `v`, so every `u` reaches itself. Computed through the
 /// condensation in reverse topological order.
@@ -2715,7 +2701,6 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
         solve(0, m - 1, active)
     ans
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The block-cut tree of an undirected simple graph: `B` numbers the blocks as the DFS (roots
 /// in vertex order, arcs in arc order) closes them, deepest first, as `blocks` does, and `links` joins each block to the cut vertices it contains.
 ///
@@ -2788,7 +2773,6 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
                 links.push((b: bi, v:))
     (B:, links:)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The biconnected block of every edge: edges, not vertices, are partitioned, so a cut vertex lies
 /// in several blocks and parallel edges share one.
 ///
@@ -2962,7 +2946,6 @@ pub fn odd_cycle<V>(g: Next<V>) -> ?List<V>:
                     return cyc
     None
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The immediate dominator of every vertex reachable from `root` (Lengauer-Tarjan): the
 /// last vertex other than `v` that every path from `root` to `v` passes. `None` for `root`
 /// and unreachable vertices.
@@ -3105,8 +3088,8 @@ fn clique_rec<V: Ord>(
 /// pivoting); `n` up to about 64 in contests.
 ///
 /// cost: \(O(3^{n/3})\) worst case
-/// empty: an empty `V` gives `[]`
-/// ties: the lexicographically least of the maximum cliques, each read ascending
+/// empty: `domain V = 0..0; let adj: [V]Bitset<V> = [V] _ => Bitset.empty(); max_clique(adj) == []`
+/// ties: `domain V = 0..4; let adj: [V]Bitset<V> = [Bitset.of([V(1)]), Bitset.of([V(0)]), Bitset.of([V(3)]), Bitset.of([V(2)])]; max_clique(adj) == [0, 1]`
 /// order: ascending
 /// traps: never
 /// example: `domain V = 0..4; let adj: [V]Bitset<V> = [Bitset.of([V(1), V(2)]), Bitset.of([V(0), V(2)]), Bitset.of([V(0), V(1), V(3)]), Bitset.of([V(2)])]; max_clique(adj) == [0, 1, 2]`
@@ -3120,7 +3103,7 @@ pub fn max_clique<V: Ord>(adj: [V]Bitset<V>) -> List<V>:
 /// inclusion-exclusion over independent sets.
 ///
 /// cost: \(O(2^n n)\)
-/// empty: an empty `V` gives `0`
+/// empty: `domain V = 0..0; let adj: [V]Bitset<V> = [V] _ => Bitset.empty(); chromatic_number(adj) == 0`
 /// traps: never
 /// example: `domain V = 0..3; let adj: [V]Bitset<V> = [Bitset.of([V(1), V(2)]), Bitset.of([V(0), V(2)]), Bitset.of([V(0), V(1)])]; chromatic_number(adj) == 3`
 /// example: `domain V = 0..3; let adj: [V]Bitset<V> = [Bitset.empty(), Bitset.empty(), Bitset.empty()]; chromatic_number(adj) == 1`
@@ -3176,8 +3159,8 @@ pub fn de_bruijn(k: Int, n: Int) -> List<Int>:
 /// one; loops are never taken.
 ///
 /// cost: \(O(m \log m)\)
-/// empty: no edges give `(total: W.zero, take: [])`
-/// ties: equal `by` keys go in edge key order
+/// empty: `domain V = 0..2; domain E = 0..0; let es: [E](u: V, v: V, w: Int) = []; kruskal(es) == (total: 0, take: [])`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 2, w: 1), (u: 0, v: 1, w: 1), (u: 1, v: 2, w: 1)]; kruskal(es).take == [true, true, false]`
 /// order: `take` keyed by `E`
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es) == (total: 3, take: [true, true, false])`
@@ -3202,8 +3185,8 @@ pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(
 /// `V.first`; `None` if it is disconnected. `w[u, v]` is read with `u` in the tree.
 ///
 /// cost: \(O(n^2)\)
-/// empty: an empty `V` gives `Some((total: 0, parent: []))`
-/// ties: the smallest vertex among equally cheap ones joins first; its parent is the tree vertex that first offered that cost
+/// empty: `domain V = 0..0; let w: [V, V]?Int = None; prim(w) == Some((total: 0, parent: []))`
+/// ties: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[0, 2] = Some(1); w[2, 0] = Some(1); w[1, 2] = Some(1); w[2, 1] = Some(1); prim(w) == Some((total: 2, parent: [None, Some(0), Some(0)]))`
 /// traps: never
 /// example: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[1, 2] = Some(2); w[2, 1] = Some(2); w[0, 2] = Some(5); w[2, 0] = Some(5); prim(w) == Some((total: 3, parent: [None, Some(0), Some(1)]))`
 pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
@@ -3240,8 +3223,8 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
 /// returned edge joining two different components is taken; rounds end when one component remains
 /// or no edge is taken.
 ///
-/// cost: \(O(\log n)\) rounds, each \(O(n)\) plus the call of `cheapest`
-/// empty: an empty `V` gives total 0 and no edges
+/// cost: \(O(n \log n)\) plus the calls of `cheapest`: \(O(\log n)\) rounds, each \(O(n)\)
+/// empty: `domain V = 0..0; let r = boruvka<V, Int, Int>(comp => []); r.total == 0 and r.edges == []`
 /// traps: when `cheapest` returns a list whose length is not the number of components
 ///
 /// ```cp
@@ -3283,13 +3266,15 @@ pub fn boruvka<V, C, W>(
         if not merged: break
     (total:, edges:)
 
-/// A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with a skew heap):
+/// A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with leftist heaps):
 /// `parent[v]` is the edge entering `v`, `None` at `root`. `None` if some vertex is
 /// unreachable from `root`. Loops are ignored.
 ///
+/// `total` is unique; when several arborescences reach it, which one `parent` describes is left open.
+///
 /// cost: \(O(m \log n)\)
-/// empty: with no edges, `Some` with `total` zero when `root` is the only vertex, else `None`
-/// ties: `total` is unique; when several arborescences reach it, which one `parent` describes is left open
+/// empty: `domain E = 0..0; domain V = 0..1; domain W = 0..2; let es: [E](u: V, v: V, w: Int) = []; let fs: [E](u: W, v: W, w: Int) = []; arborescence(es, root: V(0))!.total == 0 and arborescence(fs, root: W(0)) == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 2), (u: 1, v: 2, w: 1)]; arborescence(es, root: V(0))!.total == 2`
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 1), (u: 1, v: 2, w: 1)]; arborescence(es, root: V(0)) == Some((total: 2, parent: [None, Some(2), Some(1)]))`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 1, v: 0, w: 1)]; arborescence(es, root: V(0)) == None`
@@ -3297,133 +3282,216 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
     total: W,
     parent: [V]?E,
 ):
-    let n0 = V.count
-    var cur_n = n0
-    var cur_root = root.ord
-    var cur_u = List<Int>()
-    var cur_v = List<Int>()
-    var cur_w = List<W>()
-    var cur_orig = List<E>()
+    // Tarjan's form of Chu-Liu/Edmonds: from each vertex, walk back along the lightest arc
+    // entering its contracted component, contracting every cycle the walk closes by merging
+    // the cycle's heaps. The heaps are leftist with a lazy weight offset; the components are
+    // a rollback DSU, so the arcs a cycle replaced can be restored afterwards.
+    let n = V.count
+    var es = List<E>()
     for e in E:
-        let r = edges[e]
-        if r.u != r.v and r.v != root:
-            cur_u.push(r.u.ord)
-            cur_v.push(r.v.ord)
-            cur_w.push(r.w)
-            cur_orig.push(e)
-
+        if edges[e].u != edges[e].v and edges[e].v != root: es.push(e)
+    let m = es.len
+    var h = ArbHeap<W>(
+        w: [edges[es[i]].w for i in 0..m],
+        lazy: [W.zero for _ in 0..m],
+        l: [-1 for _ in 0..m],
+        r: [-1 for _ in 0..m],
+        rank: [1 for _ in 0..m],
+    )
+    var heap = [-1 for _ in 0..n]
+    for i in 0..m:
+        let b = edges[es[i]].v.ord
+        heap[b] = arb_merge(mut h, heap[b], i)
+    var up = [-1 for _ in 0..n]
+    var size = [1 for _ in 0..n]
+    var joins = List<Int>()
     var total = W.zero
-    var hist_n = List<Int>()
-    var hist_root = List<Int>()
-    var hist_id = List<List<Int>>()
-    var hist_in_idx = List<List<Int>>()
-    var hist_prev_idx = List<List<Int>>()
-    var hist_v_of = List<List<Int>>()
-    var hist_orig_e = List<List<E>>()
-
-    while true:
-        var has_in = [false for _ in 0..cur_n]
-        var in_w = [W.zero for _ in 0..cur_n]
-        var in_u = [-1 for _ in 0..cur_n]
-        var in_idx = [-1 for _ in 0..cur_n]
-        for i in 0..cur_u.len:
-            let v = cur_v[i]
-            if v == cur_root: continue
-            if not has_in[v] or cur_w[i] < in_w[v]:
-                has_in[v] = true
-                in_w[v] = cur_w[i]
-                in_u[v] = cur_u[i]
-                in_idx[v] = i
-        for v in 0..cur_n:
-            if v != cur_root and not has_in[v]:
-                return None
-        for v in 0..cur_n:
-            if v != cur_root:
-                total += in_w[v]
-        var vis = [-1 for _ in 0..cur_n]
-        var id: List<?Int> = List.filled(cur_n, None)
-        var cnt = 0
-        for i in 0..cur_n:
-            var v = i
-            while vis[v] != i and id[v] == None and v != cur_root:
-                vis[v] = i
-                v = in_u[v]
-            if v != cur_root and id[v] == None:
-                var x = in_u[v]
-                while x != v:
-                    id[x] = cnt
-                    x = in_u[x]
-                id[v] = cnt
-                cnt += 1
-        hist_n.push(cur_n)
-        hist_root.push(cur_root)
-        hist_in_idx.push(in_idx)
-        hist_v_of.push(cur_v.clone())
-        hist_orig_e.push(cur_orig.clone())
-        if cnt == 0:
-            hist_id.push((0..cur_n).collect())
-            hist_prev_idx.push(List<Int>())
-            break
-        for i in 0..cur_n:
-            if id[i] == None:
-                id[i] = cnt
-                cnt += 1
-        let ids = [x! for x in id]
-        hist_id.push(ids.clone())
-        var nxt_u = List<Int>()
-        var nxt_v = List<Int>()
-        var nxt_w = List<W>()
-        var nxt_orig = List<E>()
-        var prev_idx = List<Int>()
-        for i in 0..cur_u.len:
-            let nu = ids[cur_u[i]]
-            let nv = ids[cur_v[i]]
-            if nu != nv:
-                nxt_u.push(nu)
-                nxt_v.push(nv)
-                nxt_w.push(cur_w[i] - in_w[cur_v[i]])
-                nxt_orig.push(cur_orig[i])
-                prev_idx.push(i)
-        hist_prev_idx.push(prev_idx)
-        cur_n = cnt
-        cur_root = ids[cur_root]
-        cur_u = nxt_u
-        cur_v = nxt_v
-        cur_w = nxt_w
-        cur_orig = nxt_orig
-
-    let rounds = hist_n.len
-    var chosen = List<Int>()
-    let last = rounds - 1
-    for v in 0..hist_n[last]:
-        if v != hist_root[last]:
-            chosen.push(hist_in_idx[last][v])
-    var r = last
-    while r > 0:
-        r -= 1
-        let prev_map = hist_prev_idx[r]
-        let v_of = hist_v_of[r]
-        let in_idx = hist_in_idx[r]
-        var covered = [false for _ in 0..hist_n[r]]
-        var next_chosen = List<Int>()
-        for ci in chosen:
-            let pe = prev_map[ci]
-            next_chosen.push(pe)
-            covered[v_of[pe]] = true
-        for v in 0..hist_n[r]:
-            if v != hist_root[r] and not covered[v]:
-                next_chosen.push(in_idx[v])
-        chosen = next_chosen
+    var seen = [-1 for _ in 0..n]
+    seen[root.ord] = root.ord
+    var into = [-1 for _ in 0..n]
+    var cycle_arcs = List<Int>()
+    var cycles = List<(u: Int, joins: Int, lo: Int, hi: Int)>()
+    for s in 0..n:
+        var u = s
+        var q = List<Int>()
+        var path = List<Int>()
+        while seen[u] < 0:
+            if heap[u] < 0: return None
+            let top = heap[u]
+            arb_push(mut h, top)
+            let w = h.w[top]
+            if h.l[top] >= 0: h.lazy[h.l[top]] -= w
+            if h.r[top] >= 0: h.lazy[h.r[top]] -= w
+            heap[u] = arb_merge(mut h, h.l[top], h.r[top])
+            q.push(top)
+            path.push(u)
+            seen[u] = s
+            total += w
+            u = arb_find(up, edges[es[top]].u.ord)
+            if seen[u] == s:
+                var cyc = -1
+                let t = joins.len
+                let lo = cycle_arcs.len
+                var joined = true
+                while joined:
+                    let x = path.pop()!
+                    cycle_arcs.push(q.pop()!)
+                    cyc = arb_merge(mut h, cyc, heap[x])
+                    let (a, b) = (arb_find(up, u), arb_find(up, x))
+                    joined = a != b
+                    if joined:
+                        let (big, small) = if size[a] < size[b]: (b, a) else: (a, b)
+                        up[small] = big
+                        size[big] += size[small]
+                        joins.push(small)
+                u = arb_find(up, u)
+                heap[u] = cyc
+                seen[u] = -1
+                cycles.push((u:, joins: t, lo:, hi: cycle_arcs.len))
+        for i in q:
+            into[arb_find(up, edges[es[i]].v.ord)] = i
+    var c = cycles.len
+    while c > 0:
+        c -= 1
+        let cy = cycles[c]
+        while joins.len > cy.joins:
+            let small = joins.pop()!
+            size[up[small]] -= size[small]
+            up[small] = -1
+        let enter = into[cy.u]
+        for i in cy.lo..cy.hi:
+            into[arb_find(up, edges[es[cycle_arcs[i]]].v.ord)] = cycle_arcs[i]
+        into[arb_find(up, edges[es[enter]].v.ord)] = enter
     var parent: [V]?E = None
-    let orig0 = hist_orig_e[0]
-    for ci in chosen:
-        let e = orig0[ci]
-        parent[edges[e].v] = Some(e)
+    for v in V:
+        if into[v.ord] >= 0: parent[v] = Some(es[into[v.ord]])
     Some((total:, parent:))
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
-/// A spanning forest of an undirected graph as chosen edges: a BFS from each unvisited
-/// vertex in vertex order takes the arc that discovers each vertex.
+// The leftist min-heaps of `arborescence`: node `i` is arc `i`, keyed by `w[i]` plus the
+// pending offsets `lazy` on the path from its root.
+struct ArbHeap<W>:
+    var w: List<W>
+    var lazy: List<W>
+    var l: List<Int>
+    var r: List<Int>
+    var rank: List<Int>
+
+fn arb_push<W: Add + Sub>(mut h: ArbHeap<W>, a: Int):
+    let d = h.lazy[a]
+    h.w[a] += d
+    if h.l[a] >= 0: h.lazy[h.l[a]] += d
+    if h.r[a] >= 0: h.lazy[h.r[a]] += d
+    h.lazy[a] = W.zero
+
+fn arb_merge<W: Add + Sub>(mut h: ArbHeap<W>, a: Int, b: Int) -> Int:
+    if a < 0: return b
+    if b < 0: return a
+    arb_push(mut h, a)
+    arb_push(mut h, b)
+    let (x, y) = if h.w[b] < h.w[a]: (b, a) else: (a, b)
+    let merged = arb_merge(mut h, h.r[x], y)
+    h.r[x] = merged
+    let left = if h.l[x] >= 0: h.rank[h.l[x]] else: 0
+    if left < h.rank[h.r[x]]:
+        let t = h.l[x]
+        h.l[x] = h.r[x]
+        h.r[x] = t
+    h.rank[x] = (if h.r[x] >= 0: h.rank[h.r[x]] else: 0) + 1
+    x
+
+fn arb_find(up: List<Int>, x: Int) -> Int:
+    var y = x
+    while up[y] >= 0: y = up[y]
+    y
+
+@test
+fn arborescence_matches_trying_every_parent_choice():
+    domain V = 0..5
+    domain E = 0..10
+    for _ in 0..80:
+        let ar = random_edges<V, E>()
+        let es: [E](u: V, v: V, w: Int) = [E] e => (u: ar[e].u, v: ar[e].v, w: rand(-3, 9))
+        let root = V.nth(rand(0, V.count - 1))
+        let want = brute_arborescence(es, root)
+        if let r = arborescence(es, root:):
+            assert r.total == want!
+            assert r.parent[root] == None and rooted_at(es, r.parent, root)
+            var sum = 0
+            for v in V:
+                if v != root:
+                    assert es[r.parent[v]!].v == v
+                    sum += es[r.parent[v]!].w
+            assert sum == r.total
+        else:
+            assert want == None
+
+/// Does following `pick` from every vertex lead to `root`?
+fn rooted_at<V, E>(es: [E](u: V, v: V, w: Int), pick: [V]?E, root: V) -> Bool:
+    for v in V:
+        var x = v
+        var steps = 0
+        while x != root and steps <= V.count:
+            if let e = pick[x]:
+                x = es[e].u
+            else:
+                return false
+            steps += 1
+        if x != root: return false
+    true
+
+@test
+fn min_mean_cycle_matches_every_closed_walk():
+    domain V = 0..5
+    domain E = 0..9
+    for _ in 0..80:
+        let ar = random_edges<V, E>()
+        let es: [E](u: V, v: V, w: Int) = [E] e => (u: ar[e].u, v: ar[e].v, w: rand(-3, 9))
+        let g = Graph.directed(es)
+        // the least sum of a closed walk of exactly `len` arcs from each `s`, for len 1..=n
+        var best: ?(sum: Int, len: Int) = None
+        for len in 1..=V.count:
+            for s in V:
+                var cur: [V]?Int = None
+                cur[s] = Some(0)
+                for _ in 0..len:
+                    var nxt: [V]?Int = None
+                    for u in V:
+                        if let du = cur[u]:
+                            for a in g.out(u):
+                                if nxt[a.to] == None or du + a.w < nxt[a.to]!: nxt[a.to] = Some(du + a.w)
+                    cur = nxt
+                if let c = cur[s]:
+                    if best.is_none_or(b => c * b.len < b.sum * len): best = (sum: c, len:)
+        assert min_mean_cycle(g) == best
+
+/// The lightest arborescence by trying every choice of entering arc.
+fn brute_arborescence<V, E>(es: [E](u: V, v: V, w: Int), root: V) -> ?Int:
+    var best: ?Int = None
+    var pick: [V]?E = None
+    brute_pick(es, root, 0, mut pick, mut best)
+    best
+
+fn brute_pick<V, E>(es: [E](u: V, v: V, w: Int), root: V, i: Int, mut pick: [V]?E, mut best: ?Int):
+    if i == V.count:
+        if rooted_at(es, pick, root):
+            var w = 0
+            for v in V:
+                if v != root: w += es[pick[v]!].w
+            if best == None or w < best!: best = Some(w)
+        return
+    let v = V.nth(i)
+    if v == root:
+        brute_pick(es, root, i + 1, mut pick, mut best)
+        return
+    for e in E:
+        if es[e].v == v and es[e].u != v:
+            pick[v] = Some(e)
+            brute_pick(es, root, i + 1, mut pick, mut best)
+    pick[v] = None
+
+/// A spanning forest of an undirected graph as chosen edges: vertices in vertex order, each
+/// vertex's arcs in arc order, taking every arc that joins two trees (Kruskal order without
+/// weights, by a `Dsu`).
 ///
 /// cost: \(O(n + m)\)
 /// order: keyed by `E`
@@ -3454,7 +3522,7 @@ pub struct Functional<V>:
     /// tails and one jump pointer per vertex (`O(n)` memory, `O(log n)` walks).
     ///
     /// cost: \(O(n)\)
-    /// empty: an empty `V` gives an empty graph
+    /// empty: `domain V = 0..0; let nx: [V]V = []; Functional(nx).next == []`
     /// traps: never
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
     pub fn new(next: [V]V) -> Functional<V>:
@@ -3750,7 +3818,7 @@ pub struct Edge<V, E>(pub e: E, pub u: V, pub v: V)
 /// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
 ///
 /// cost: \(O(n + m)\)
-/// empty: `[]` gives every vertex no arcs
+/// empty: `domain V = 0..2; adjacency(List<(u: V, v: V)>()) == [[], []]`
 /// order: each vertex's arcs in input order
 /// traps: never
 /// example: `domain V = 0..3; adjacency([(u: V(0), v: V(2)), (u: V(0), v: V(1))])[0] == [2, 1]`
@@ -3792,7 +3860,7 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
 
     /// The number of arcs out of `u` the view keeps.
     ///
-    /// cost: O(deg u in `g`)
+    /// cost: \(O(\deg u)\) in `g`
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).deg(0) == 1`
     pub fn deg(self, u: V) -> Int:

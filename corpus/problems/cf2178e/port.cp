@@ -6,6 +6,7 @@
 //   shorter half holds a maximum. Binary search for the first prefix with sum >= half the
 //   total to find the split, then move into the shorter half, which at least halves the length:
 //   O(log^2 n) queries; the last block's sum is the answer.
+// Bounds: n: 1..=100_000
 
 @!interactive
 

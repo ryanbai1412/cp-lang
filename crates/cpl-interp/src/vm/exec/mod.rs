@@ -19,7 +19,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         }
         let mut v = self.vm_pool_v.pop().unwrap_or_default();
         v.clear();
-        v.resize(n, Value::Unit);
+        // Built in place: `resize` would call `Value::clone` per register.
+        v.extend(std::iter::repeat_with(|| Value::Unit).take(n));
         v
     }
 
@@ -391,6 +392,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 Op::UnboxI { dst_i, src_v } => {
                     regs_i[dst_i as usize] = ScalarKind::unbox_val(&regs_v[src_v as usize]);
+                }
+                Op::EnumOfTagI { dst_v, src_i } => {
+                    regs_v[dst_v as usize] =
+                        Value::Enum(regs_i[src_i as usize] as u32, Rc::new(Vec::new()));
                 }
                 Op::BoxOptI {
                     dst_v,
@@ -1252,7 +1257,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
+                            regs_i[dst as usize] =
+                                ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
                         _ => return trap(spans[cur_pc], "internal: expected array"),
                     }
@@ -1281,7 +1287,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            let slot = &mut Rc::make_mut(list)[idx as usize];
+                            let slot = &mut Rc::make_mut(list).as_mut_values()[idx as usize];
                             *slot = match slot {
                                 Value::Bool(_) => Value::Bool(val != 0),
                                 Value::Char(_) => Value::Char(val as u8),
@@ -1597,7 +1603,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
+                            regs_i[dst as usize] =
+                                ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
                         Value::ListView(view) => {
                             let len = view.len as i64;
@@ -1608,7 +1615,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 );
                             }
                             regs_i[dst as usize] =
-                                ScalarKind::unbox_val(view.get(idx as usize).unwrap());
+                                ScalarKind::unbox_val(&view.get(idx as usize).unwrap());
                         }
                         _ => return trap(spans[cur_pc], "internal: expected list"),
                     }
@@ -1629,7 +1636,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        Rc::make_mut(list)[idx as usize] = kind.box_val(val);
+                        Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                     } else {
                         return trap(spans[cur_pc], "internal: expected list");
                     }
@@ -1645,7 +1652,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
+                            regs_i[dst as usize] =
+                                ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
                         Value::ListView(view) => {
                             let len = view.len as i64;
@@ -1656,7 +1664,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 );
                             }
                             regs_i[dst as usize] =
-                                ScalarKind::unbox_val(view.get(idx as usize).unwrap());
+                                ScalarKind::unbox_val(&view.get(idx as usize).unwrap());
                         }
                         _ => return trap(spans[cur_pc], "internal: expected list"),
                     }
@@ -1677,7 +1685,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        Rc::make_mut(list)[idx as usize] = kind.box_val(val);
+                        Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                     } else {
                         return trap(spans[cur_pc], "internal: expected list");
                     }
@@ -1772,7 +1780,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            regs_v[dst as usize] = list[idx as usize].clone();
+                            regs_v[dst as usize] = list.get_unchecked_val(idx as usize);
                         }
                         _ => return trap(spans[cur_pc], "internal: expected array"),
                     }
@@ -1805,7 +1813,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            Rc::make_mut(list)[idx as usize] = val;
+                            Rc::make_mut(list).set(idx as usize, val);
                         }
                         _ => return trap(spans[cur_pc], "internal: expected array"),
                     }

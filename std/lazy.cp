@@ -1,4 +1,4 @@
-//! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
+//! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `SeqFold`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
 use std.algebra.{Action, MaxCount, MinCount, Monoid, add, affine, assign}
 use std.rand.Rng
 use std.segtree.{SegTree}
@@ -403,7 +403,8 @@ struct TreapNode<T, F>:
 /// `apply_range`, `get`).
 /// `apply(v, left_sz, f)` updates a node's value given its left subtree size;
 /// `split(f, left_sz)` splits a tag `f` for the left and right subtrees (default `(f, f)`);
-/// `compose(new_f, old_f)` applies `old_f` first then `new_f`.
+/// `compose(new_f, old_f)` applies `old_f` first then `new_f`;
+/// `mirror(f, n)` is `f` re-ranked for a run of `n` elements read backwards (default `f`).
 /// `insert`, `insert_at`, `push`, `apply_range`, `get` are \(O(\log n)\) expected; `apply_all` is \(O(1)\);
 /// `take(k)` is \(O(k + \log n)\); `to_list` is \(O(n)\). Memory is \(O(n)\) in a contiguous node arena;
 /// sizes and priorities are `0..2^31`, so a treap holds fewer than 2^31 elements.
@@ -412,6 +413,7 @@ pub struct LazyTreap<T, F>(
     split_fn: (F, Int) -> (F, F),
     compose_fn: (F, F) -> F,
     before_fn: (T, T) -> Bool,
+    mirror_fn: (F, Int) -> F,
 ):
     var nodes: List<TreapNode<T, F>>
     var root: ?Int
@@ -424,10 +426,15 @@ pub struct LazyTreap<T, F>(
     /// `compose(new_f, old_f)` is `old_f` then `new_f`; `split(f, k)` gives the tags for the left
     /// child and for the right child of a node with `k` elements on its left (default `(f, f)`, for
     /// tags that ignore rank; a rank-dependent tag needs a `split` that shifts the right child's ranks
-    /// by `k + 1`); `before(x, y)` orders value insertion (default never, so `insert` appends).
+    /// by `k + 1`); `mirror(f, n)` is the tag that gives the element at rank `k` of a run of `n`
+    /// what `f` gives rank `n - 1 - k`, which `reverse` needs (default `f`, for tags that ignore
+    /// rank; for `a + d * k` it is `a + d * (n - 1) - d * k`); `before(x, y)` orders value
+    /// insertion (default never, so `insert` appends).
+    ///
+    /// example: `var t = LazyTreap<Int, (a: Int, d: Int)>(apply: (v, k, f) => v + f.a + f.d * k, compose: (g, f) => (a: g.a + f.a, d: g.d + f.d), split: (f, k) => (f, (a: f.a + f.d * (k + 1), d: f.d)), mirror: (f, n) => (a: f.a + f.d * (n - 1), d: -f.d)); for x in [0, 0, 0]: t.push(x); t.apply_all((a: 0, d: 1)); t.reverse(0..3); t.apply_all((a: 0, d: 10)); t.to_list() == [2, 11, 20]`
     ///
     /// cost: \(O(1)\)
-    /// empty: the new treap is empty
+    /// empty: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).to_list() == []`
     /// traps: never
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).len == 0`
     pub fn new(
@@ -435,8 +442,9 @@ pub struct LazyTreap<T, F>(
         compose: (F, F) -> F,
         split: (F, Int) -> (F, F) = (f, _) => (f, f),
         before: (T, T) -> Bool = (_, _) => false,
+        mirror: (F, Int) -> F = (f, _) => f,
     ) -> LazyTreap<T, F>:
-        LazyTreap(apply, split, compose, before, [], None, Rng(48))
+        LazyTreap(apply, split, compose, before, mirror, [], None, Rng(48))
 
     fn priority(mut self) -> Int = Int(rng.next() >> 33)
 
@@ -456,9 +464,11 @@ pub struct LazyTreap<T, F>(
     /// A smaller `n` than the current capacity changes nothing.
     ///
     /// cost: \(O(n)\) when it grows, else \(O(1)\)
-    /// traps: when `n >= 2^31` (the size bound)
+    /// traps: when `n < 0` or `n >= 2^31` (the size bound)
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.reserve(10); t.len == 0`
-    pub fn reserve(mut self, n: Int) = root == None
+    pub fn reserve(mut self, n: Int):
+        assert 0 <= n < TWO_31, "`reserve` needs `0 <= n < 2^31`"
+        nodes.reserve(n)
 
     /// Whether the treap holds no elements.
     ///
@@ -468,7 +478,8 @@ pub struct LazyTreap<T, F>(
     @get pub fn is_empty(self) -> Bool = root == None
 
     // A node's subtree reads as its children in stored order, reversed when `rev` is set, then
-    // `tag` applied over that order. `tag` is always the newer of the two.
+    // `tag` applied over that order. `tag` is always the newer of the two, so flipping `rev`
+    // mirrors `tag`, and `down` undoes `rev` before it splits `tag`.
     fn put(mut self, u: ?Int, f: F):
         if let i = u:
             unchecked:
@@ -482,22 +493,18 @@ pub struct LazyTreap<T, F>(
     fn push_tag(mut self, i: Int):
         unchecked:
             if let f = nodes[i].tag:
-                let (a, b) = if nodes[i].rev: (nodes[i].r, nodes[i].l) else: (
-                    nodes[i].l,
-                    nodes[i].r,
-                )
-                let (fa, fb) = split_fn(f, self.sz_of(a))
-                self.put(a, fa)
-                self.put(b, fb)
+                let (fa, fb) = split_fn(f, self.sz_of(nodes[i].l))
+                self.put(nodes[i].l, fa)
+                self.put(nodes[i].r, fb)
                 nodes[i].tag = None
 
     fn toggle(mut self, u: ?Int):
         if let i = u:
-            self.push_tag(i)
-            unchecked: nodes[i].rev = not nodes[i].rev
+            unchecked:
+                if let f = nodes[i].tag: nodes[i].tag = mirror_fn(f, nodes[i].sz)
+                nodes[i].rev = not nodes[i].rev
 
     fn down(mut self, i: Int):
-        self.push_tag(i)
         unchecked:
             if nodes[i].rev:
                 let l = nodes[i].l
@@ -506,6 +513,7 @@ pub struct LazyTreap<T, F>(
                 nodes[i].rev = false
                 self.toggle(nodes[i].l)
                 self.toggle(nodes[i].r)
+        self.push_tag(i)
 
     fn pull(mut self, i: Int):
         unchecked: nodes[i].sz = 1 + self.sz_of(nodes[i].l) + self.sz_of(nodes[i].r)
@@ -578,7 +586,7 @@ pub struct LazyTreap<T, F>(
     /// elements equal to it.
     ///
     /// cost: \(O(\log n)\) expected
-    /// ties: after every equal element
+    /// ties: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f, before: (x, y) => x / 10 < y / 10); t.insert(12); t.insert(11); t.to_list() == [12, 11]`
     /// traps: when the treap already holds `2^31 - 1` elements
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f, before: (x, y) => x < y); t.insert(3); t.insert(1); t.insert(2); t.to_list() == [1, 2, 3]`
     pub fn insert(mut self, x: T):
@@ -612,7 +620,7 @@ pub struct LazyTreap<T, F>(
     /// Apply tag `f` to every element, as one tag on the root; ranks `k` count from the first element.
     ///
     /// cost: \(O(1)\)
-    /// empty: changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.apply_all(10); t.to_list() == []`
     /// traps: never
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply_all(10); t.to_list() == [11, 12]`
     pub fn apply_all(mut self, f: F):
@@ -621,7 +629,7 @@ pub struct LazyTreap<T, F>(
     /// Apply tag `f` to the elements at positions `lo..hi`; ranks `k` count from position `lo`.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: `lo == hi` changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.apply_range(1, 1, 5); t.to_list() == [1]`
     /// traps: when `lo < 0`, `hi > len` or `lo > hi`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(0); t.push(0); t.push(0); t.apply_range(1, 3, 5); t.to_list() == [0, 5, 5]`
     pub fn apply_range(mut self, lo: Int, hi: Int, f: F):
@@ -635,7 +643,7 @@ pub struct LazyTreap<T, F>(
     /// Apply tag `f` to the elements at the positions of `r`; `apply_range` with a range.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.apply(1..1, 10); t.to_list() == [1]`
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply(1..2, 10); t.to_list() == [1, 12]`
     pub fn apply(mut self, r: Range<Int>, f: F):
@@ -645,7 +653,7 @@ pub struct LazyTreap<T, F>(
     /// on the elements they reached; a later tag sees the new order.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.reverse(1..1); t.to_list() == [1, 2]`
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.reverse(0..2); t.to_list() == [2, 1, 3]`
     pub fn reverse(mut self, r: Range<Int>):
@@ -672,7 +680,7 @@ pub struct LazyTreap<T, F>(
     /// Remove the elements at positions `r`; later elements move down by `r.len`.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.erase_range(1..1); t.to_list() == [1, 2]`
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.erase_range(0..2); t.to_list() == [3]`
     pub fn erase_range(mut self, r: Range<Int>):
@@ -694,7 +702,7 @@ pub struct LazyTreap<T, F>(
         assert 0 <= k <= self.len, "`split_at` position out of range"
         let (a, b) = self.split_pos(root, k)
         root = a
-        var out = LazyTreap(apply_fn, split_fn, compose_fn, before_fn, [], None, Rng(48))
+        var out = LazyTreap(apply_fn, split_fn, compose_fn, before_fn, mirror_fn, [], None, Rng(48))
         out.root = out.copy_from(self, b)
         out
 
@@ -710,7 +718,7 @@ pub struct LazyTreap<T, F>(
     /// treaps must use the same functions; `self`'s are kept.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: an empty `other` changes nothing
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); t.splice_back(mut u); t.to_list() == [1]`
     /// traps: when the total reaches `2^31` elements
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.splice_back(mut u); t.to_list() == [1, 5] and u.is_empty`
     pub fn splice_back(mut self, mut other: LazyTreap<T, F>):
@@ -745,27 +753,27 @@ pub struct LazyTreap<T, F>(
             return nodes[0].val
 
     // A read leaves the tree as it is: what `down` would push into a node rides along instead,
-    // as the tag `pend` put on it and whether it is toggled (`tog`) after that.
+    // as whether it is toggled (`tog`) and the tag `pend` put on it after that.
     fn walk(self, u: ?Int, pend: ?F, tog: Bool, lim: Int, mut out: List<T>):
         if out.len >= lim: return
         let i = u ?? return
         unchecked:
             let n = nodes[i]
-            let a = if n.rev: n.r else: n.l
-            let ls = self.sz_of(a)
+            let flip = n.rev != tog
+            let (first, last) = if flip: (n.r, n.l) else: (n.l, n.r)
+            let ls = self.sz_of(first)
             var v = n.val
             var t = n.tag
+            if tog:
+                if let f = t: t = mirror_fn(f, n.sz)
             if let p = pend:
                 v = apply_fn(v, ls, p)
                 if let old = t: t = compose_fn(p, old) else: t = p
-            var (fa, fb): (?F, ?F) = (None, None)
+            var (f1, f2): (?F, ?F) = (None, None)
             if let f = t:
                 let (x, y) = split_fn(f, ls)
-                fa = x
-                fb = y
-            let flip = n.rev != tog
-            let (fl, fr) = if n.rev: (fb, fa) else: (fa, fb)
-            let (first, f1, last, f2) = if flip: (n.r, fr, n.l, fl) else: (n.l, fl, n.r, fr)
+                f1 = x
+                f2 = y
             self.walk(first, f1, flip, lim, mut out)
             if out.len < lim:
                 out.push(v)
@@ -775,7 +783,7 @@ pub struct LazyTreap<T, F>(
     /// tags, so the tree is unchanged.
     ///
     /// cost: \(O(k + \log n)\)
-    /// empty: `[]` when `k == 0` or the treap is empty
+    /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); let e = t.take(2); t.push(1); e == [] and t.take(0) == []`
     /// order: sequence order
     /// traps: when `k < 0`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.take(2) == [1, 2]`
@@ -788,7 +796,7 @@ pub struct LazyTreap<T, F>(
     /// Every element in order, with pending tags applied; `take(len)`.
     ///
     /// cost: \(O(n)\)
-    /// empty: `[]`
+    /// empty: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).to_list() == []`
     /// order: sequence order
     /// traps: never
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).to_list() == []`
@@ -899,7 +907,7 @@ pub struct Rope<D, T>:
     /// not positions.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty `D` builds an empty rope
+    /// empty: `var r = Rope<0..0, Int>(fill: 7); r.to_array() == []`
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: when neither or both of `a` and `fill` are given
     /// example: `var t = Rope([1, 2, 3]); t.to_array() == [1, 2, 3]`
@@ -942,7 +950,7 @@ pub struct Rope<D, T>:
     /// no `merge` was given. Stored lazily on the covering nodes.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var r = Rope([1, 2, 3]); r.apply(1..1, 7); r.to_array() == [1, 2, 3]`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var r = Rope([1, 2, 3], merge: (t, x) => t + x); r.apply(1..3, 10); r.to_array() == [1, 12, 13]`
     /// example: `var r = Rope([1, 2, 3]); r.apply(0..2, 7); r.to_array() == [7, 7, 3]`
@@ -957,7 +965,7 @@ pub struct Rope<D, T>:
     /// Reverse the order of the values at positions `r`; pending tags stay with their values.
     ///
     /// cost: \(O(\log n)\) expected
-    /// empty: changes nothing
+    /// empty: `var r = Rope([1, 2, 3]); r.reverse(1..1); r.to_array() == [1, 2, 3]`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..3); r.get(0) == 3`
     pub fn reverse(mut self, r: Range<D>):
@@ -997,7 +1005,7 @@ pub struct Rope<D, T>:
     /// good), so a query that would otherwise merge tags costs only the walk.
     ///
     /// cost: \(O(\log n)\) expected calls of `f`
-    /// empty: `None` when `f` gives `None` on every piece
+    /// empty: `var r = Rope([1, 2]); r.query_path(1, (mut x) => if x > 5: Some(x) else: None) == None`
     /// order: the value at `i` first, then pending tags from the deepest up to the root
     /// traps: when `i` is outside `D`
     /// example: `var r = Rope([1, 2], merge: (t, x) => t + x); r.apply(0..2, 10); r.query_path(1, (mut x) => if x > 5: Some(x) else: None) == Some(10)`
@@ -1015,7 +1023,7 @@ pub struct Rope<D, T>:
     /// The current values in position order, with every pending tag merged in.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty array for an empty `D`
+    /// empty: `var r = Rope<0..0, Int>(fill: 7); r.to_array() == []`
     /// order: position order of `D`
     /// traps: never
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..2); r.to_array() == [2, 1, 3]`
@@ -1025,6 +1033,240 @@ pub struct Rope<D, T>:
         self.emit(root, mut out, mut k)
         out
 
+/// A sequence of `T` that folds any run with a monoid, under lazy range tags and range reversal:
+/// an implicit treap whose nodes keep each subtree's fold in both directions, so `reverse` is a
+/// swap of the two even when `op` does not commute. Positions are 0-based.
+///
+/// Tags come from an `Action<T, F>` whose `apply(f, x, span)` acts on each element independently
+/// (it is a homomorphism of the fold, as every `Action` is), so a tag and a reversal commute.
+pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
+    lc: List<Int>
+    rc: List<Int>
+    pri: List<Int>
+    sz: List<Int>
+    val: List<T>
+    fwd: List<T>
+    bwd: List<T>
+    tag: List<?F>
+    rev: List<Bool>
+    var root: Int
+    rng: Rng
+
+    /// The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a
+    /// `Monoid(id, op)`, which need not commute. `act:` adds range tags (`apply`), such as
+    /// `flip_action(op)` or an `Action` of your own over the same monoid.
+    ///
+    /// cost: \(O(n \log n)\) expected
+    /// empty: `SeqFold<Str>(Monoid("", (a, b) => a + b), []).total == ""`
+    /// traps: never
+    /// example: `SeqFold<Int>(+, [1, 2, 3]).total == 6`
+    /// example: `SeqFold<Int>(+).total == 0`
+    pub fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>:
+        let m = Monoid<T>.of(op)
+        var s = SeqFold<T, F>(m, act, [0], [0], [0], [0], [m.id], [m.id], [m.id], [None], [false], 0, Rng(48))
+        for x in xs: s.push(x)
+        s
+
+    /// The number of elements.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `SeqFold<Int>(+).len == 0`
+    /// traps: never
+    /// example: `SeqFold<Int>(+, [4, 5]).len == 2`
+    @get pub fn len(self) -> Int = sz[root]
+
+    /// Whether the sequence has no elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `SeqFold<Int>(+).is_empty and not SeqFold<Int>(+, [1]).is_empty`
+    @get pub fn is_empty(self) -> Bool = sz[root] == 0
+
+    /// Each element in position order, with every tag and reversal applied; the treap is unchanged.
+    ///
+    /// cost: \(O(n)\) to make, \(O(1)\) per step
+    /// empty: `SeqFold<Int>(+).items.collect().len == 0`
+    /// order: positions `0..len`
+    /// traps: never
+    /// example: `var s = SeqFold<Int, Int>(+, [1, 2, 3], act: Action<Int, Int>.of(add, +)); s.apply(0..2, 10); s.reverse(0..3); s.items.collect() == [3, 12, 11]`
+    @get pub fn items(self) -> yields T:
+        var out: List<T> = []
+        self.emit(root, None, false, mut out)
+        for x in out: yield x
+
+    /// The fold of every element in order, with every tag and reversal applied.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `SeqFold<Int>(min).total == Int.MAX`
+    /// traps: never
+    /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b", "c"]); s.reverse(0..2); s.total == "bac"`
+    @get pub fn total(self) -> T = fwd[root]
+
+    /// Append `x` at the end.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: never
+    /// example: `var s = SeqFold<Int>(max); s.push(3); s.push(7); s.total == 7`
+    pub fn push(mut self, x: T):
+        root = self.join(root, self.leaf(x))
+
+    /// Insert `x` so that it becomes the element at position `pos`; `pos == len` appends.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `pos < 0` or `pos > len`
+    /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "c"]); s.insert_at(1, "b"); s.total == "abc"`
+    pub fn insert_at(mut self, pos: Int, x: T):
+        assert 0 <= pos <= self.len, "`insert_at` position out of range"
+        let (a, b) = self.cut(root, pos)
+        root = self.join(self.join(a, self.leaf(x)), b)
+
+    /// The element at position `pos`, with every tag and reversal applied.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `pos < 0` or `pos >= len`
+    /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); s.reverse(0..3); s.get(0) == 3`
+    pub fn get(mut self, pos: Int) -> T:
+        assert 0 <= pos < self.len, "`get` position out of range"
+        self.fold(pos..pos + 1)
+
+    /// The fold of the elements at positions `r`, in order. Splits and rejoins the treap, so it
+    /// takes `mut self`; the sequence is unchanged.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// empty: `var s = SeqFold<Int>(+, [1, 2]); s.fold(1..1) == 0`
+    /// traps: when a non-empty `r` reaches outside `0..len`
+    /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b", "c", "d"]); s.fold(1..3) == "bc"`
+    pub fn fold(mut self, r: Range<Int>) -> T:
+        let (lo, hi) = (r.start, r.start + r.len)
+        if lo == hi: return m.id
+        assert 0 <= lo <= hi <= self.len, "`fold` out of range"
+        let (a, bc) = self.cut(root, lo)
+        let (b, c) = self.cut(bc, hi - lo)
+        let out = fwd[b]
+        root = self.join(self.join(a, b), c)
+        out
+
+    /// Apply tag `f` to every element at positions `r`.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// empty: `var s = SeqFold<Int, Int>(+, [1, 2], act: Action<Int, Int>.of(add, +)); s.apply(1..1, 10); s.total == 3`
+    /// traps: when the sequence was built without `act:`, or a non-empty `r` reaches outside `0..len`
+    /// example: `var s = SeqFold<Int, Int>(+, [1, 2, 3], act: Action<Int, Int>.of(add, +)); s.apply(1..3, 10); s.total == 26`
+    pub fn apply(mut self, r: Range<Int>, f: F):
+        assert act != None, "`apply` needs a sequence built with `act:`"
+        let (lo, hi) = (r.start, r.start + r.len)
+        if lo == hi: return
+        assert 0 <= lo <= hi <= self.len, "`apply` out of range"
+        let (a, bc) = self.cut(root, lo)
+        let (b, c) = self.cut(bc, hi - lo)
+        self.put(b, f)
+        root = self.join(self.join(a, b), c)
+
+    /// Reverse the order of the elements at positions `r`.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// empty: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b"]); s.reverse(1..1); s.total == "ab"`
+    /// traps: when a non-empty `r` reaches outside `0..len`
+    /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b", "c", "d"]); s.reverse(1..4); s.total == "adcb"`
+    pub fn reverse(mut self, r: Range<Int>):
+        let (lo, hi) = (r.start, r.start + r.len)
+        if lo == hi: return
+        assert 0 <= lo <= hi <= self.len, "`reverse` out of range"
+        let (a, bc) = self.cut(root, lo)
+        let (b, c) = self.cut(bc, hi - lo)
+        self.flip(b)
+        root = self.join(self.join(a, b), c)
+
+    // Walks `u` in order as if every pending tag `f` and reversal `flip` above it were pushed down.
+    fn emit(self, u: Int, f: ?F, flip: Bool, mut out: List<T>):
+        if u == 0: return
+        let r = flip != rev[u]
+        var g = f
+        if let a = act:
+            if let t = tag[u]:
+                g = if let h = f: Some(a.compose(h, t)) else: Some(t)
+        let (first, second) = if r: (rc[u], lc[u]) else: (lc[u], rc[u])
+        self.emit(first, g, r, mut out)
+        out.push(if let a = act: (if let h = f: a.apply(h, val[u], 1) else: val[u]) else: val[u])
+        self.emit(second, g, r, mut out)
+
+    fn leaf(mut self, x: T) -> Int:
+        lc.push(0)
+        rc.push(0)
+        pri.push(Int(rng.next() >> 33))
+        sz.push(1)
+        val.push(x)
+        fwd.push(x)
+        bwd.push(x)
+        tag.push(None)
+        rev.push(false)
+        lc.len - 1
+
+    // Node 0 is the empty subtree: size 0, folds the identity, and never takes a tag or a flip.
+    fn put(mut self, u: Int, f: F):
+        if u == 0: return
+        let a = act!
+        val[u] = a.apply(f, val[u], 1)
+        fwd[u] = a.apply(f, fwd[u], sz[u])
+        bwd[u] = a.apply(f, bwd[u], sz[u])
+        tag[u] = if let old = tag[u]: Some(a.compose(f, old)) else: Some(f)
+
+    fn flip(mut self, u: Int):
+        if u == 0: return
+        rev[u] = not rev[u]
+        let t = fwd[u]
+        fwd[u] = bwd[u]
+        bwd[u] = t
+
+    fn down(mut self, u: Int):
+        if rev[u]:
+            let t = lc[u]
+            lc[u] = rc[u]
+            rc[u] = t
+            self.flip(lc[u])
+            self.flip(rc[u])
+            rev[u] = false
+        if let f = tag[u]:
+            self.put(lc[u], f)
+            self.put(rc[u], f)
+            tag[u] = None
+
+    fn pull(mut self, u: Int):
+        let (a, b) = (lc[u], rc[u])
+        sz[u] = 1 + sz[a] + sz[b]
+        fwd[u] = m.op(m.op(fwd[a], val[u]), fwd[b])
+        bwd[u] = m.op(m.op(bwd[b], val[u]), bwd[a])
+
+    fn cut(mut self, u: Int, k: Int) -> (Int, Int):
+        if u == 0: return (0, 0)
+        self.down(u)
+        let ls = sz[lc[u]]
+        if k <= ls:
+            let (a, b) = self.cut(lc[u], k)
+            lc[u] = b
+            self.pull(u)
+            return (a, u)
+        let (a, b) = self.cut(rc[u], k - ls - 1)
+        rc[u] = a
+        self.pull(u)
+        (u, b)
+
+    fn join(mut self, a: Int, b: Int) -> Int:
+        if a == 0: return b
+        if b == 0: return a
+        if pri[a] < pri[b]:
+            self.down(a)
+            rc[a] = self.join(rc[a], b)
+            self.pull(a)
+            return a
+        self.down(b)
+        lc[b] = self.join(a, lc[b])
+        self.pull(b)
+        b
+
+impl Show for SeqFold<T, F>:
+    fn show(s) = "{s.len} elements"
+
 @test
 fn lazy_treap_slope_trick_and_implicit_ops_match_brute():
     // 1. Descending ordered treap with position-dependent affine tag (slope trick).
@@ -1033,6 +1275,7 @@ fn lazy_treap_slope_trick_and_implicit_ops_match_brute():
         compose: (nf, of) => (nf.0 + of.0, nf.1 + of.1),
         split: (f, ls) => (f, (f.0 + (ls + 1) * f.1, f.1)),
         before: (a, b) => a >= b,
+        mirror: (f, n) => (f.0 + (n - 1) * f.1, -f.1),
     )
     var ref: List<Int> = []
     for _ in 0..40:

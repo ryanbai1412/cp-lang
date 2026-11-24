@@ -9,6 +9,7 @@
 //   sum of 0 is the diamond. About sqrt(n) log n asks.
 // Stdin: n, then the hidden prize kinds (0 the diamond; a smaller kind is rarer).
 // original: corpus/submissions/5659145.cpp
+// Bounds: n: 3..=200_000; kind: 0..=n - 1
 let n: 3..=200_000 = read()
 domain Box = 0..n
 domain Kind = 0..n

@@ -311,7 +311,10 @@ impl<'a> Checker<'a> {
             // `xs.D`: the domain a value brought with it, as `compress`
             // does. Lowering knows which one it is.
             if head.starts_with(|c: char| c.is_ascii_lowercase()) {
-                return Ty::Unknown;
+                return match self.value_domain(head, member) {
+                    Some(domain) => Ty::Pos(domain),
+                    None => Ty::Unknown,
+                };
             }
             let head_ty = self.named_type(head, head_span, Vec::new());
             if !matches!(head_ty, Ty::Pos(_) | Ty::Param(_) | Ty::Error | Ty::Unknown) {
@@ -340,6 +343,11 @@ impl<'a> Checker<'a> {
                 Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {
                     Some(Ty::Domain(domain)) => Ty::Pos(domain),
                     Some(_) => Ty::Unknown,
+                    // `Letter.subsets` for a type that is its own domain is `Subset<Letter>`.
+                    None if member == "subsets" => {
+                        let owner_ty = self.named_type(&owner, head_span, Vec::new());
+                        self.named_type("Subset", span, vec![owner_ty])
+                    }
                     None => {
                         let member_span = Span::new(head_span.end + 1, span.end);
                         let message = format!("`{owner}` declares no domain `{member}`");
@@ -824,6 +832,38 @@ impl<'a> Checker<'a> {
         (sigs, getters, mutators, selves)
     }
 
+    /// `f`'s bounds: the record rows (`R: (u: V, ..)`) and the traits (`T: Ord`) its type
+    /// parameters must meet.
+    pub(crate) fn fn_bounds(
+        &mut self,
+        f: &ast::FnDecl,
+    ) -> (crate::def::RowBounds, Vec<(String, String)>) {
+        let outer = self.generics.len();
+        self.generics
+            .extend(f.generics.iter().map(|g| g.text.clone()));
+        let mut rows = Vec::new();
+        let mut traits = Vec::new();
+        for b in &f.bounds {
+            for t in &b.traits {
+                match &t.kind {
+                    TypeKind::Row(fields) => {
+                        let resolved = fields
+                            .iter()
+                            .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
+                            .collect();
+                        rows.push((b.name.text.clone(), resolved));
+                    }
+                    TypeKind::Named { name: tname, .. } => {
+                        traits.push((b.name.text.clone(), tname.text.clone()));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        self.generics.truncate(outer);
+        (rows, traits)
+    }
+
     /// The definitions a top-level statement gives to the names it declares.
     pub(crate) fn defs_of(&mut self, stmt: &ast::Stmt) -> Vec<(String, Def)> {
         use ast::StmtKind as S;
@@ -967,25 +1007,7 @@ impl<'a> Checker<'a> {
                         },
                     ));
                 }
-                let mut row_bounds = Vec::new();
-                let mut trait_bounds = Vec::new();
-                for b in &f.bounds {
-                    for t in &b.traits {
-                        match &t.kind {
-                            TypeKind::Row(fields) => {
-                                let resolved = fields
-                                    .iter()
-                                    .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
-                                    .collect();
-                                row_bounds.push((b.name.text.clone(), resolved));
-                            }
-                            TypeKind::Named { name: tname, .. } => {
-                                trait_bounds.push((b.name.text.clone(), tname.text.clone()));
-                            }
-                            _ => {}
-                        }
-                    }
-                }
+                let (row_bounds, trait_bounds) = self.fn_bounds(f);
                 out.push((
                     f.name.text.clone(),
                     Def::Fn {
@@ -996,6 +1018,9 @@ impl<'a> Checker<'a> {
                         row_bounds,
                         trait_bounds,
                         droppable: stmt.decorators.iter().any(|d| d.name.text == "droppable"),
+                        // An unwritten getter is still answered by lowering.
+                        getter: stmt.decorators.iter().any(|d| d.name.text == "get")
+                            && !crate::check::unwritten(f),
                     },
                 ));
                 out
@@ -1034,6 +1059,20 @@ impl<'a> Checker<'a> {
                     .collect();
                 let (methods, getters, mutators, selves) =
                     self.method_sigs_and_selves(&s.methods, &self_ty);
+                let method_rows = (s.methods.iter())
+                    .filter_map(|m| match &m.kind {
+                        ast::StmtKind::Fn(f) => {
+                            let rows = self.fn_bounds(f).0;
+                            let outer = self.generics.len();
+                            (self.generics).extend(f.generics.iter().map(|g| g.text.clone()));
+                            let through = self.quietly(|c| c.bound_args(&f.bounds));
+                            self.generics.truncate(outer);
+                            Some((f.name.text.clone(), rows, through))
+                                .filter(|(_, rows, _)| !rows.is_empty())
+                        }
+                        _ => None,
+                    })
+                    .collect();
                 self.leave_body(body);
                 // `fn new(..)` without `self` says how the struct is built.
                 let ctor = s.methods.iter().find_map(|m| match &m.kind {
@@ -1073,7 +1112,15 @@ impl<'a> Checker<'a> {
                         mutators,
                         receivers,
                         selves,
+                        method_rows,
                         owned,
+                        value_domains: value_domains(
+                            &s.fields
+                                .iter()
+                                .map(|f| f.name.text.as_str())
+                                .collect::<Vec<_>>(),
+                            &s.methods,
+                        ),
                         projections: self.projections(&s.methods),
                         cached_fields: s
                             .fields
@@ -1189,6 +1236,7 @@ impl<'a> Checker<'a> {
                 vec![(
                     name.text.clone(),
                     Def::Trait {
+                        generics: generics.clone(),
                         supers: supers.iter().filter_map(type_head).collect(),
                         methods,
                         fields,
@@ -1203,7 +1251,7 @@ impl<'a> Checker<'a> {
                 bounds,
                 body,
             } => {
-                let Some(target_name) = impl_target_head(target) else {
+                let Some(target_name) = impl_file_head(target, bounds) else {
                     return Vec::new();
                 };
                 let generics = self.impl_generics(trait_name.as_ref(), target, bounds);
@@ -1566,10 +1614,11 @@ impl<'a> Checker<'a> {
                 "Ord" => stack.push("Eq".into()),
                 "IndexedMut" => stack.push("Indexed".into()),
                 "Indexed" => {
-                    stack.push("Sized".into());
+                    stack.push("Positional".into());
                     stack.push("Bidir".into());
                     stack.push("Keyed".into());
                 }
+                "Positional" => stack.push("Sized".into()),
                 "Sized" | "Bidir" | "Keyed" => stack.push("Seq".into()),
                 _ => {}
             }
@@ -1599,7 +1648,7 @@ impl<'a> Checker<'a> {
         self.implements_trait_inner(ty, trait_name, &mut seen)
     }
 
-    fn implements_trait_inner(
+    pub(super) fn implements_trait_inner(
         &mut self,
         ty: &Ty,
         trait_name: &str,
@@ -1635,9 +1684,12 @@ impl<'a> Checker<'a> {
             Ty::Char => Some("Char"),
             Ty::Str => Some("Str"),
             Ty::Fn { .. } => Some("fn"),
+            Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
             _ => None,
         };
-        if impl_key.is_some_and(|name| self.has_impl(name, trait_name)) {
+        if impl_key.is_some_and(|name| self.has_impl(name, trait_name))
+            || self.rev_has(ty, trait_name, seen)
+        {
             return true;
         }
         match trait_name {
@@ -1646,6 +1698,7 @@ impl<'a> Checker<'a> {
             "Seq" => ty.is_seq() || self.walks_by_each(ty),
             "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
+            "Positional" => ty.rev_source().unwrap_or(ty).is_indexed(),
             super::views::INDEXED_BY_WALK => ty.rev_source().unwrap_or(ty).is_indexed(),
             "Bidir" => ty.is_bidir(),
             "Keyed" => ty.is_keyed(),
@@ -1972,4 +2025,17 @@ impl<'a> Checker<'a> {
             }
         }
     }
+}
+
+/// The domains a struct body declares from its `fields`
+/// (`domain Idx = 0..src.len`): each value of the struct has its own.
+fn value_domains(fields: &[&str], body: &[ast::Stmt]) -> Vec<String> {
+    body.iter()
+        .filter_map(|stmt| match &stmt.kind {
+            ast::StmtKind::Domain { name, def } if cpl_syntax::visit::mentions_any(def, fields) => {
+                Some(name.text.clone())
+            }
+            _ => None,
+        })
+        .collect()
 }

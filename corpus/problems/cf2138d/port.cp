@@ -9,6 +9,7 @@
 //   force a'_i < y; in a random order the last of these decides, so P(a'_i >= y) =
 //   right / (left + right), or [a_i >= y] if none. Sweep y over the sorted op values and
 //   integrate to get E[a'_i]; undo the shift and multiply by q!. O(n q) per test.
+// Bounds: n, q: 1..=5000; l: 1..=1_000_000_000
 
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z>()

@@ -10,6 +10,7 @@
 //   holds the baton passes it to f) and any cell except lane f after j. A plan works when
 //   max(L, forced) <= min(R, forced + optional). O(nm).
 // original: corpus/submissions/4140376.cpp
+// Bounds: n, m: 1..=2000; s, f, pass: 1..=n; l: 0..=n * m; r: l..=n * m
 let (n, m): (1..=2000, 1..=2000) = read()
 domain Lane = 1..=n
 domain Hurdle = 1..=m

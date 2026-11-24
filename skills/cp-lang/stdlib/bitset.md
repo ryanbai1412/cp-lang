@@ -98,9 +98,10 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 \(O(\mathit{bits})\) per op.
 
 - `fn new(bits: Int = 60) -> XorTrie` — \(O(1)\); Create an empty `XorTrie` over `bits`-bit non-negative integers (default 60): values in `0..2^bits`.; traps: when `bits` is not in `1..=62`
-- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\) time and space; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0`
+- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0`
 - `@get fn len(self) -> Int` — \(O(1)\); The total number of stored integers, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the trie holds no integers.
+- `fn each(self) -> yields Int` — \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element; \(O(\mathit{bits})\) per element.
 - `fn add(mut self, x: Int)` — \(O(\mathit{bits})\) time, up to `bits` new nodes; Insert one copy of `x`.; traps: when `x` is not in `0..2^bits`
 - `fn remove(mut self, x: Int) -> Bool` — \(O(\mathit{bits})\); Remove one copy of `x`; returns `false` if absent, leaving the trie unchanged.
 - `fn contains(self, x: Int) -> Bool` — \(O(\mathit{bits})\); Whether `x` is present at least once.
@@ -113,18 +114,28 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 - `fn mex_xor(self, x: Int = 0) -> Int` — \(O(\mathit{bits})\); The smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`); `2^bits` when every value is present.; traps: when `x` is not in `0..2^bits`
 - `fn clear(mut self)` — \(O(1)\); Remove all elements and the global mask, keeping `bits` and the reserved pool.
 
+## `struct BitTrieArena<W>`
+
+The node store shared by every `BitTrie<W>` built in it: one `List` of nodes, each a count and two optional children.
+
+Fields: `nodes: List<BitTrieNode>`.
+
+- `fn new(cap: Int = 0) -> BitTrieArena<W>` — \(O(1)\); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
+- `@get fn node_count(self) -> Int` — \(O(1)\); The number of nodes held, over every trie built in the arena.
+
 ## `struct BitTrie<W>`
 
 \(O(W)\) per op.
 
-- `fn new() -> BitTrie<W>` — \(O(1)\); An empty `BitTrie<W>`.
-- `fn of(x: Int) -> BitTrie<W>` — \(O(W)\); The trie holding `x` once: one path of `W + 1` nodes.; traps: when `x` is not in `0..2^W`
-- `@get fn len(self) -> Int` — \(O(1)\); The number of stored integers, with multiplicity.
+- `fn new() -> BitTrie<W>` — \(O(1)\); An empty `BitTrie<W>`; it holds no node until the first `add`.
+- `fn of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>` — \(O(W)\); The trie holding `x` once: one path of `W + 1` new nodes in `ar`.; traps: when `x` is not in `0..2^W`
+- `fn len(self, ar: BitTrieArena<W>) -> Int` — \(O(1)\); The number of stored integers, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the trie holds no integers.
-- `fn add(mut self, x: Int)` — \(O(W)\) time, up to `W` new nodes; Insert one copy of `x`.; traps: when `x` is not in `0..2^W`
-- `fn count(self, x: Int) -> Int` — \(O(W)\); The multiplicity of `x`; zero when absent or out of range.
-- `fn walk(self, x: Int) -> yields (bit: Int, count: Int)` — \(O(W)\) for the whole walk, \(O(1)\) per step; The path of `x` from the top bit down: for each bit `b` from `W - 1` to 0, while some stored `y` agrees with `x` on bits `b` and above, yields `b` and how many do.; traps: when `x` is not in `0..2^W`
-- `fn absorb(mut self, mut other: BitTrie<W>)` — \(O(\min(\mathit{nodes}(\mathit{self}), \mathit{nodes}(\mathit{other})))\); Add every integer of `other` into `self`, with multiplicity, leaving `other` empty.
+- `fn each(self, ar: BitTrieArena<W>) -> yields Int` — \(O(\mathit{nodes} + \mathit{len})\)
+- `fn add(mut self, mut ar: BitTrieArena<W>, x: Int)` — \(O(W)\) time, up to `W + 1` new nodes in `ar`; Insert one copy of `x`.; traps: when `x` is not in `0..2^W`
+- `fn count(self, ar: BitTrieArena<W>, x: Int) -> Int` — \(O(W)\); The multiplicity of `x`; zero when absent or out of range.
+- `fn walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int)` — \(O(W)\) for the whole walk, \(O(1)\) per step; The path of `x` from the top bit down: for each bit `b` from `W - 1` to 0, while some stored `y` agrees with `x` on bits `b` and above, yields `b` and how many do.; traps: when `x` is not in `0..2^W`
+- `fn absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>)` — \(O(\min(\mathit{nodes}(\mathit{self}), \mathit{nodes}(\mathit{other})))\), no node copied; Add every integer of `other` into `self`, with multiplicity, leaving `other` empty.
 
 ## Example
 

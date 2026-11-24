@@ -9,6 +9,7 @@
 //   or |dy|) or walks along his street to the new junction's other street, landing on it at the
 //   old street's coordinate (one min over the array). O(n * 2001).
 // original: corpus/submissions/4171535.cpp
+// Bounds: n: 1..=20000; lights.x, lights.y: -1000..=1000
 let n: 1..=20000 = read()
 domain Coord = -1000..=1000
 let lights: [n](x: Coord, y: Coord) = read()

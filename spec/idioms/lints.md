@@ -150,7 +150,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine |
 |---|---|---|---|---|---|
 | lower_bound_on_list | search a sorted list for first `>= x` | `xs.first_ge(x)` | fix | #1 | loop |
-| real_bsearch_iters | fixed-iteration float bisection | `bsearch_real` | fix? | #1 | loop |
+| real_bsearch_iters | fixed-iteration float bisection | `(lo..hi).bsearch(ok, steps:)` | fix? | #1 | loop |
 | ternary_loop | two-probe narrowing loop | `ternary_max` / `ternary_min` | fix? | #1 | loop |
 | mid_overflow | `(lo + hi) / 2` on wide values | `bsearch` (also P0: overflow) | fix? | #1 | syn |
 | parallel_bsearch_by_hand | rounds of per-query midpoints | `parallel_bsearch` | warn | #1 | loop |
@@ -419,7 +419,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine |
 |---|---|---|---|---|---|
-| hand_rolled_ternary_real | fixed-iteration `100` loop trisecting a `Float` range | `ternary_max_real` / `ternary_min_real` | fix? | #1 | loop |
+| hand_rolled_ternary_real | fixed-iteration `100` loop trisecting a `Float` range | `(lo..hi).peak(by:)` / `.valley(by:)` | fix? | #1 | loop |
 | hand_rolled_gallop_search | exponential step `1, 2, 4, ...` then binary search | `gallop_first` | fix? | #1 | loop |
 | hand_rolled_split_best | binary search on monotone split point minimizing `max(f(i), g(i))` | `split_best` | warn | #1 | loop |
 

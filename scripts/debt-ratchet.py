@@ -2,9 +2,10 @@
 """Tech-debt ratchet: architecture counts that may only go down.
 
 Every count below is measured from the tree and compared with
-`scripts/debt-ratchet.json`. A count above its baseline fails the gate; the
-only way past is `--update` in the same commit plus a `decisions.md` line
-saying why. Lower counts pass and print a hint to tighten the baseline.
+`scripts/debt-ratchet.json`. A count above its baseline fails the gate, and
+a baseline above main's fails too unless the same change rewrites the code
+that measures it (`unexplained_bumps`): new debt is removed, never admitted.
+Lower counts pass and print a hint to tighten the baseline.
 Why these ratchets exist: handbook/process/quality.md#accountability.
 
   rs_file_size_allowlist  `.rs` files under `crates/` over `max_rs_lines` (2000);
@@ -28,6 +29,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import difflib
 import fnmatch
 import functools
@@ -269,6 +271,17 @@ def lint_std_names(root: Path) -> list[str]:
     return [f"{_rel(root, p)}:{i} {name}" for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False)
             for i, line in enumerate(_lines(p), 1) for name in re.findall(r'"([a-z_]\w*)"', line)
             if name in public]
+
+
+def lint_name_matchers(root: Path) -> list[str]:
+    """Lint rule lines that decide what a call is by comparing its written name
+    against a std fn (`method.text == std_fn::PUSH`, a `std_fn::SORT =>` arm)
+    instead of asking the checker which fn it calls (`Facts::callee`): a
+    user's own `push` fires them. Names a lint writes into its help or fix
+    don't count. `lint_std_names` keeps every such name on `std_fn`."""
+    matcher = re.compile(r"(==|!=)\s*std_fn::|std_fn::\w+\s*(==|!=|=>|\|)|\|\s*std_fn::|matches!\(.*std_fn::|contains\(std_fn::")
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False)
+            for i, line in enumerate(_lines(p), 1) if matcher.search(line)]
 
 
 def lint_type_syntax(root: Path) -> list[str]:
@@ -539,6 +552,19 @@ def browser_lsp_gaps(root: Path) -> list[str]:
     return sorted(advertised - used)
 
 
+def site_spec_snippets(root: Path) -> list[str]:
+    """Site programs the compiler doesn't accept yet: `*.spec.cp` files and `status=spec`
+    fences under web/content (web/scripts/gate.mjs). Each is a checker or std bug to fix."""
+    out = []
+    for rel in _git(root, "ls-files", "web/content"):
+        if rel.endswith(".spec.cp"):
+            out.append(rel)
+        elif rel.endswith((".md", ".mdx")) and (root / rel).is_file():
+            out += [f"{rel}:{i}" for i, line in enumerate(_lines(root / rel), 1)
+                    if re.match(r"\s*```cp\b.*\bstatus=spec\b", line)]
+    return out
+
+
 def _crate_edges(root: Path, kind: str = "dependencies") -> set[tuple[str, str]]:
     edges = set()
     for toml in sorted((root / "crates").glob("*/Cargo.toml")):
@@ -760,6 +786,19 @@ def conformance_failing(root: Path) -> list[str]:
     return [f"{c}: {v}" for c, v in sorted(board.get("cases", {}).items()) if v != "pass"]
 
 
+def interp_max_over_20s(root: Path) -> list[str]:
+    """Corpus packages whose interpreter runs a tests.toml `--max` case past 20 s (owner: Core).
+
+    `cpl-conform corpus --write` times each max case and records the slow packages in
+    research/scoreboard.json (decision 556); a board without the list counts, so the gate
+    can't pass blind."""
+    p = root / SCOREBOARD
+    board = json.loads(p.read_text()).get("suites", {}).get("corpus") if p.is_file() else None
+    if board is None or "interp_max_over_20s" not in board:
+        return [f"{SCOREBOARD}: no corpus max-case times; run `cpl-conform corpus --write`"]
+    return list(board["interp_max_over_20s"])
+
+
 def conformance_wrong_output(root: Path) -> list[str]:
     """Conformance cases research/scoreboard.json records as printing the wrong output.
 
@@ -824,6 +863,19 @@ def own_databases(root: Path) -> list[str]:
     return out
 
 
+IR_REINFER_RE = re.compile(r"\.probe_expr(?:_ty)?\(")
+
+
+def ir_reinfer(root: Path) -> list[str]:
+    """Lowering lowering an expression only to learn its type: `probe_expr` calls in
+    cpl-ir. The checker's facts already say it (`Facts::type_of`)."""
+    out = []
+    for p in _rs_files(root, "crates/cpl-ir/src", tests=False):
+        rel = _rel(root, p)
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if IR_REINFER_RE.search(line)]
+    return out
+
+
 def stress_hand_json(root: Path) -> list[str]:
     """JSON assembled by hand in the stress engine and its browser entry; `cpl_json` values render it."""
     out = []
@@ -855,19 +907,45 @@ def helper_env_vars(root: Path) -> list[str]:
 
 
 def _copy_baseline(root: Path, name: str) -> list[str]:
-    """The `read_only_copies` test's shrink-only count `name` over the corpus C++, one item per unit."""
+    """The `read_only_copies` test's shrink-only corpus total `name`, one item per unit."""
     path = root / "crates/cpl-cli/tests/read_only_copies.rs"
     text = path.read_text() if path.is_file() else ""
     m = re.search(rf'\("{name}",\s*\w+,\s*(\d+)\)', text)
     return [f"{name} {i}" for i in range(int(m.group(1)))] if m else []
 
 
+def _header_counts(root: Path, key: str) -> list[str]:
+    """The `// <key>: N` header lines of the programs `read_only_copies` builds (the
+    `.cp` files one directory down from corpus/problems and spec/conformance), one
+    item per unit: the test holds each program's C++ to its own header, this sums them."""
+    out = []
+    for base in ("corpus/problems", "spec/conformance"):
+        for path in sorted((root / base).glob("*/*.cp")):
+            for line in path.read_text().splitlines():
+                rest = line.strip()
+                if not rest.startswith("//"):
+                    break
+                m = re.fullmatch(rf"//\s*{key}:\s*(\d+)\s*", rest)
+                if m:
+                    rel = path.relative_to(root)
+                    out += [f"{rel} {i}" for i in range(int(m.group(1)))]
+    return out
+
+
 def cpp_deep_copies(root: Path) -> list[str]:
-    return _copy_baseline(root, "deep_copies")
+    return _header_counts(root, "copies")
+
+
+def cpp_optional_copies(root: Path) -> list[str]:
+    return _header_counts(root, "optional_copies")
 
 
 def cpp_std_functions(root: Path) -> list[str]:
     return _copy_baseline(root, "std_functions")
+
+
+def cpp_sunk_copies(root: Path) -> list[str]:
+    return _copy_baseline(root, "sunk_copies")
 
 
 _RUNS_CODE = re.compile(r"ExprKind::(Call|CallExpr)\(\.\.\)|ExprKind::Closure\(_\)")
@@ -930,6 +1008,8 @@ def stale_arch_paths(root: Path) -> list[str]:
                     found.append((f"{_rel(root, d)}:{i}", path))
     me = root / "scripts/debt-ratchet.py"
     for i, line in enumerate(_lines(me) if me.is_file() else [], 1):
+        if '"deleted: ' in line:
+            continue  # a LISTS row for a list that is gone on purpose
         for m in re.finditer(r'"(crates/[\w./-]+)"', line):
             path = m.group(1).rstrip("/.")
             if "*" not in path and not (root / path).exists():
@@ -971,6 +1051,37 @@ def _array_items(text: str) -> int:
             pending = True
         i += 1
     return items + pending
+
+
+def corpus_no_max(root: Path) -> list[str]:
+    """Non-interactive problem packages with a port.cp but no `gen.py --max`.
+
+    Rule: problem-packages/R6 (handbook/guidelines/problem-packages-checklist.md#r6):
+    every package has an input at the statement's bounds, which `scripts/corpus.py
+    verify` (`max`) judges; an interactive package's gen.py prints the interactor's data.
+    """
+    problems = root / "corpus" / "problems"
+    found = []
+    for d in sorted(problems.iterdir()) if problems.is_dir() else ():
+        if not (d / "port.cp").is_file() or (d / "interactor.py").is_file():
+            continue
+        g = d / "gen.py"
+        if not g.is_file() or "--max" not in g.read_text(encoding="utf-8", errors="replace"):
+            found.append(d.relative_to(root).as_posix())
+    return found
+
+
+def corpus_no_tests(root: Path) -> list[str]:
+    """Problem packages with no tests.toml (owner: Content, idioms).
+
+    Rule: problem-packages/R9 (handbook/guidelines/problem-packages-checklist.md#r9):
+    every package's cases are statement samples inline plus gen.py seeds and `--max`,
+    made by `scripts/corpus.py make` with answers from the accepted C++.
+    """
+    problems = root / "corpus" / "problems"
+    return [d.relative_to(root).as_posix() for d in sorted(problems.iterdir()) if problems.is_dir()
+            and d.is_dir() and (d / "meta.json").is_file() and not (d / "tests.toml").is_file()] \
+        if problems.is_dir() else []
 
 
 def corpus_test_files(root: Path) -> list[str]:
@@ -1169,9 +1280,9 @@ def uncited_rules(root: Path) -> list[str]:
         text = "".join((d / f).read_text(encoding="utf-8") for f in ("lint.toml", "explain.md") if (d / f).is_file())
         if not _cites_guideline(root, text):
             found.append(f"lint {d.name}")
-    check = root / "scripts/check.sh"
-    gates = sorted(set(re.findall(r"scripts/[\w-]+\.(?:py|sh|mjs)", check.read_text(encoding="utf-8")))) \
-        if check.is_file() else []
+    runners = [root / "scripts/check.sh", root / "scripts/ci.py"]
+    gates = sorted({g for f in runners if f.is_file()
+                    for g in re.findall(r"scripts/[\w-]+\.(?:py|sh|mjs)", f.read_text(encoding="utf-8"))})
     for g in gates:
         name = Path(g).name
         if name.startswith("test_") or name in ("check.sh", "gate-env.sh") or not (root / g).is_file():
@@ -1321,7 +1432,8 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
 
 def corpus_known(root: Path) -> list[str]:
     """Entries of any corpus/*-known.txt: ports a corpus check skips."""
-    return _registered_entries(root, "corpus_known")
+    lists = sorted(p.relative_to(root).as_posix() for p in (root / "corpus").rglob("*-known.txt"))
+    return [rel for rel in lists for _ in range(_list_entries(root, rel))]
 
 
 def known_lists(root: Path) -> list[str]:
@@ -1330,13 +1442,18 @@ def known_lists(root: Path) -> list[str]:
 
 
 def prelude_gaps(root: Path) -> list[str]:
-    """Entries of spec/conformance/prelude-gaps.txt: prelude names with no conformance case."""
+    """Entries of spec/conformance/prelude-gaps.txt, deleted: every lib-table fn is a prelude name."""
     return _registered_entries(root, "prelude_gaps")
 
 
 def rule_gaps(root: Path) -> list[str]:
     """Entries of spec/conformance/rule-gaps.txt, deleted: every rule has the cases it needs."""
     return _registered_entries(root, "rule_gaps")
+
+
+def generate_gaps(root: Path) -> list[str]:
+    """Entries of crates/cpl-stress/tests/generate-gaps.txt, deleted: stress generates every readable input."""
+    return _registered_entries(root, "generate_gaps")
 
 
 def sig_gaps(root: Path) -> list[str]:
@@ -1352,6 +1469,16 @@ def trait_gaps(root: Path) -> list[str]:
 def idiom_lint_gaps(root: Path) -> list[str]:
     """Entries of spec/idioms/lints-known.txt, deleted: the lint catalog names only real APIs."""
     return _registered_entries(root, "idiom_lint_gaps")
+
+
+def std_lint_findings(root: Path) -> list[str]:
+    """Entries of scripts/std-lint-baseline.txt, deleted: std-lint-ratchet.py fails on any hit."""
+    return _registered_entries(root, "std_lint_findings")
+
+
+def corpus_lint_warnings(root: Path) -> list[str]:
+    """Entries of crates/cpl-lint/corpus_warnings.txt, deleted: the corpus test fails on any warning."""
+    return _registered_entries(root, "corpus_lint_warnings")
 
 
 def permits(root: Path) -> list[str]:
@@ -1384,6 +1511,11 @@ def allow_attrs(root: Path) -> list[str]:
     return _grep_all(root, r"#!?\[allow\(", "crates/**/*.rs")
 
 
+def std_lint_allows(root: Path) -> list[str]:
+    """`with lint(...: allow)` in std: a lint silenced instead of answered."""
+    return _grep_all(root, r"with lint\([^)]*: *allow", "std")
+
+
 def unsafe_blocks(root: Path) -> list[str]:
     """`unsafe {`, `unsafe fn`, `unsafe impl` in crates."""
     return _grep_all(root, r"\bunsafe (\{|fn\b|impl\b)", "crates/**/*.rs")
@@ -1403,15 +1535,60 @@ def test_sleeps(root: Path) -> list[str]:
 def ci_retries(root: Path) -> list[str]:
     """Retries in workflows, scripts and the justfile outside the one helper,
     scripts/retry.sh and retry.py: a `--retry`/`--retries` flag or a hand-rolled retry loop.
-    nextest's `--retries N --flaky-result fail` isn't one: the flake still fails."""
+    Tests get none, even with `--flaky-result fail`: a retry costs the run and a flake fails once."""
     hits = _git(root, "grep", "-n", "-E", "-e", RETRY_RE, "--", ".github", "scripts", "justfile",
                 ":!scripts/retry.sh", ":!scripts/retry.py", ":!scripts/test_*.py",
                 ":!scripts/debt-ratchet.py", ":!scripts/test_debt_ratchet.py")
-    return [":".join(h.split(":", 2)[:2]) for h in hits if not FLAKE_FAILS_RE.search(h)]
+    return [":".join(h.split(":", 2)[:2]) for h in hits]
+
+
+# What the retry helper may wrap: a fetch over the network or a push that races
+# another lane, by name. The retried command must start with one of these.
+RETRY_FETCHES = {
+    "apt": r"(timeout \d+ )?sudo apt-get install ",
+    "curl": r"(timeout \d+ )?(sh -c ['\"])?curl(_page)? ",
+    "npm": r"(timeout \d+ )?npm install ",
+    "gh api": r"gh api ",
+    "gh release": r"gh release view ",
+    "gh run": r"gh run view ",
+    "micromamba": r"\"?\S*/micromamba\"? create ",
+    "git push race": r"(sh -c 'git pull -q --rebase origin main && git push |push( |$)|push_reservation,)",
+    "chat completion": r"post_chat,",
+}
+_RETRIED = re.compile(r"(?:^|[\s$(=])retry[ (](.*)")
+
+
+def retry_calls(root: Path) -> list[str]:
+    """Calls of the one retry helper (`retry ...` in shell, `retry(` in Python) in
+    workflows and scripts whose command is not a named fetch in `RETRY_FETCHES`: a
+    retry may only cover the network or a push race, never a flaky step of our own."""
+    hits = _git(root, "grep", "-n", "-E", "-e", r"(^|[[:space:]$(=])retry( |\()", "--", ".github", "scripts", "justfile",
+                ":!scripts/retry.sh", ":!scripts/retry.py", ":!scripts/test_*.py",
+                ":!scripts/debt-ratchet.py", ":!scripts/test_debt_ratchet.py")
+    out = []
+    for h in hits:
+        rel, i, line = h.split(":", 2)
+        if line.lstrip().startswith("#") or " import retry" in line:
+            continue
+        retried = _RETRIED.search(line)
+        if not (retried and any(re.match(p, retried.group(1)) for p in RETRY_FETCHES.values())):
+            out.append(f"{rel}:{i}")
+    return out
+
+
+# The two sleeps a blocking wait can't replace without a crate: the file-change
+# poll and the judge's rate limit. Every other caller reuses one of them.
+SLEEP_OWNERS = ("crates/cpl-wait/src/files.rs", "crates/cpl-wait/src/pace.rs")
+
+
+def poll_sleeps(root: Path) -> list[str]:
+    """`thread::sleep` in shipped Rust outside cpl-wait's file watch and rate limiter:
+    a poll or backoff where `cpl_wait::on_exit`, a channel or a lock belongs."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if "thread::sleep" in line and rel not in SLEEP_OWNERS]
 
 
 RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
-FLAKE_FAILS_RE = re.compile(r"--retries [0-9]+ --flaky-result fail")
 
 
 def hardcoded_codes(root: Path) -> list[str]:
@@ -1453,13 +1630,55 @@ HABIT_FILES = ("crates/cpl-syntax/src/parser/foreign.rs", "crates/cpl-syntax/src
                "crates/cpl-check/src/check/advice.rs")
 
 
+HABIT_REGISTRY = "crates/cpl-diag/src/habits.rs"
+HABIT_MISTAKES = "crates/cpl-cli/tests/habits"
+_HABIT_TEXT = re.compile(r'(with_help|\.help\s*=\s*Some|\.fix|with_fix)\(|\b(?:title|help):\s*|\blet (?:help|title)\s*=\s*')
+
+
+def _first_arg(text: str, i: int) -> str:
+    """The expression starting at `text[i]`, up to its `,`, `;` or closing bracket."""
+    depth, j = 0, i
+    while j < len(text):
+        c = text[j]
+        if c == '"':
+            j += 1
+            while j < len(text) and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}":
+            if depth == 0:
+                break
+            depth -= 1
+        elif c in ",;" and depth == 0:
+            break
+        j += 1
+    return text[i:j]
+
+
 def habit_matchers(root: Path) -> list[str]:
-    """`fn` items in hand-written habit matchers: the named files and any crates file named
-    foreign/habit/advice (Consumers; a generated habit table replaces them)."""
-    files = {rel for rel in _git(root, "ls-files", "crates/**/*.rs")
-             if rel in HABIT_FILES or re.search(r"foreign|habit|advice", Path(rel).name)}
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
-            if rel in files and re.match(r"\s*(pub(\([^)]*\))?\s+)?fn\s", line)]
+    """Help or fix-title text in foreign/advice/habit code that doesn't come from a
+    `cpl_diag::habits` row (a help or fix call, `title:`/`help:`, or `let help`/`let title`
+    whose value holds a string literal), plus rows with no mistake program in
+    crates/cpl-cli/tests/habits. The generated test in crates/cpl-cli/tests/diagnostics.rs
+    fails any row whose mistake doesn't show it or whose fix doesn't check (Consumers; this
+    replaces the count of `fn` items in those files)."""
+    files = [rel for rel in _git(root, "ls-files", "crates/**/*.rs")
+             if (rel in HABIT_FILES or re.search(r"foreign|habit|advice", Path(rel).name))
+             and rel != HABIT_REGISTRY and not rel.endswith("tests.rs")]
+    found = []
+    for rel in files:
+        text = (root / rel).read_text()
+        for m in _HABIT_TEXT.finditer(text):
+            line = text[text.rfind("\n", 0, m.start()) + 1:m.start()]
+            arg = _first_arg(text, m.end())
+            if not line.lstrip().startswith("//") and '"' in arg and "habits::" not in arg:
+                found.append(f"{rel}:{text.count(chr(10), 0, m.start()) + 1}")
+    registry = (root / HABIT_REGISTRY).read_text() if (root / HABIT_REGISTRY).is_file() else ""
+    for key in re.findall(r'\b(?:call|value|shape)\(\s*"(\w+)"', registry):
+        if not (root / HABIT_MISTAKES / f"{key}.cp").is_file():
+            found.append(f"{HABIT_REGISTRY}:{key}")
+    return found
 
 
 FIX_GATE = ("crates/cpl-ir/src/fix.rs", "crates/cpl-lint/src/typed.rs")
@@ -1479,7 +1698,13 @@ def unchecked_fix_paths(root: Path) -> list[str]:
 
 def stress_engines(root: Path) -> list[str]:
     """Stress-case runners picking a verdict: `fn run_case|stress_source|judge_case`
-    definitions in cpl-stress, plus files besides judge.rs constructing `Verdict::`."""
+    definitions in cpl-stress, plus files besides judge.rs constructing `Verdict::`.
+
+    Its floor is 2 (decision 545): `judge_case`, the one verdict path, and
+    `stress_source`, the in-process front end the browser runs. The CLI's
+    front end builds C++ and runs external programs (`--brute`, `--checker`,
+    `--interactor`, `--gen`, `--fast`) as processes, which wasm can't; both
+    share `stress_with`, `judge_case`, `traced::retrace` and `Verdict`."""
     lines = list(_src_lines(root, "crates/cpl-stress/src"))
     defs = [f"{rel}:{i}" for rel, i, line in lines if re.search(r"\bfn (run_case|stress_source|judge_case)\b", line)]
     files = sorted({rel for rel, _, line in lines
@@ -1499,6 +1724,46 @@ def trace_engine_refs(root: Path) -> list[str]:
 
 STRUCT_RE = re.compile(r"pub struct (\w+)")
 FIELD_RE = re.compile(r"(?:@\w+ )*(?:var )?(pub )?(\w+): ")
+
+
+EDGE_LABEL_RE = re.compile(r"^\s*/// (empty|ties): (.*)$")
+EDGE_CLAIM_RE = re.compile(r"^`([^`]+)`((?:\s+\((?:stdin `[^`]*`|empty stdin|traps R\d+|error E\d+)\))*)\s*$")
+
+
+def std_model_gaps(root: Path) -> list[str]:
+    """Std types and pub std fns no spec/conformance/std-models/ case checks against a brute force
+    (scripts/std-models.py --list)."""
+    import importlib.util
+    if not (root / "scripts/std-models.py").exists():
+        return []
+    spec = importlib.util.spec_from_file_location("std_models", root / "scripts/std-models.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.gaps(mod.std_texts(root), mod.case_texts(root))
+
+
+def edge_labels_unrun(root: Path) -> list[str]:
+    """std `empty:`/`ties:` labels `cpl-conform docs` can't run: prose, or a bare value
+    rather than a claim (`docs.rs` `runnable_label`), so no case checks that edge (Content)."""
+    found = []
+    for rel in _git(root, "ls-files", "std/*.cp"):
+        for i, line in enumerate((root / rel).read_text(encoding="utf-8").split("\n"), 1):
+            if not (m := EDGE_LABEL_RE.match(line)):
+                continue
+            c = EDGE_CLAIM_RE.match(m.group(2).strip())
+            last = c.group(1).split(";")[-1].strip() if c else ""
+            if not (c and (re.search(r" (==|!=) ", last) or last.startswith("not ") or c.group(2))):
+                found.append(f"{rel}:{i}")
+    return found
+
+
+def std_trait_matrix(root: Path) -> list[str]:
+    """std containers missing `Show`, a walk or `is_empty` (std-api/R12, scripts/std-trait-matrix.py; Content)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("std_trait_matrix", Path(__file__).with_name("std-trait-matrix.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return [f"{rel}:{line} {name} {trait}" for rel, line, name, missing in mod.matrix(str(root)) for trait in missing]
 
 
 def std_types_shown_empty(root: Path) -> list[str]:
@@ -1611,10 +1876,14 @@ def std_shadowed(root: Path) -> list[str]:
     off the decision-266 floor: (1) a fn the lowering string-matches by name whose receiver a
     built-in arm can catch (a free fn, or a `self` that is a type parameter, list, string, map,
     set, range or array); (2) a type the checker, IR, interpreter or emitter names in a string
-    literal, whose methods it may answer too."""
+    literal, whose methods it may answer too; (3) a fn the checker's known-call arms
+    (`crates/cpl-check/src/check/known.rs`) type or check by name instead of its signature."""
     floor = _builtin_floor(root)
     arms = set(ir_builtin_names(root))
     named = _compiler_strings(root)
+    known = root / "crates/cpl-check/src/check/known.rs"
+    checked = set(re.findall(r'^\s*\(\s*"(\w+)"', known.read_text(encoding="utf-8"), re.M)) \
+        if known.is_file() else set()
     out: set[str] = set()
     for p in sorted((root / "std").glob("*.cp")):
         for line in _lines(p):
@@ -1626,6 +1895,8 @@ def std_shadowed(root: Path) -> list[str]:
                 if not indent and name in named and name not in floor:
                     out.add(name)
                 continue
+            if not indent and name in checked and name not in floor:
+                out.add(name)
             if name not in arms or name in floor:
                 continue
             if indent:
@@ -1678,19 +1949,26 @@ def _names_corpus_set(line: str) -> bool:
     the files git says changed."""
     if GIT_CHANGED_RE.search(line):
         return False
-    return bool(re.search(r"[\"']problems[\"']", line)) or "corpus/problems" in ONE_PROBLEM_RE.sub("", line)
+    return bool(re.search(r"(?<![\[&])[\"']problems[\"']", line)) or "corpus/problems" in ONE_PROBLEM_RE.sub("", line)
+
+
+# A comment can name the corpus but can't walk it.
+COMMENT_RE = re.compile(r"\s*(?://|#(?!!)|\*)")
+
+# The walker, its test's fixture corpus, and this detector and its test.
+CORPUS_OWN = {"scripts/corpus.py", "crates/cpl-corpus/src/lib.rs", "scripts/test_corpus.py", "scripts/debt-ratchet.py", "scripts/test_debt_ratchet.py"}
 
 
 def corpus_walkers(root: Path) -> list[str]:
     """Files besides scripts/corpus.py that list corpus/problems themselves: a second corpus walker."""
     found = []
     for rel in _git(root, "ls-files", "*.py", "*.sh", "*.rs", "*.js", "*.mjs", "*.ts", "justfile"):
-        if rel == "scripts/corpus.py" or rel.startswith(("research/", "corpus/problems/")) \
+        if rel in CORPUS_OWN or rel.startswith(("research/", "corpus/problems/")) \
                 or "node_modules/" in rel or not (root / rel).is_file():
             continue
         lines = _lines(root / rel)
         for i, line in enumerate(lines):
-            if _names_corpus_set(line):
+            if _names_corpus_set(line) and not COMMENT_RE.match(line):
                 if any(WALK_RE.search(l) and not GIT_CHANGED_RE.search(l) for l in lines[max(0, i - 3):i + 4]):
                     found.append(rel)
                     break
@@ -1701,6 +1979,15 @@ def _outside(rel: str, owners: tuple[str, ...]) -> bool:
 
 
 JSON_FORMAT_RE = re.compile(r'format!\("(?:\{\{\\"|[^"]*\\":)')
+# A JSON key inside any string literal: `{{\"` (a format brace before a key) or a
+# compact `\":`, whether the literal is a format!/write! argument on its own line
+# or a push_str piece.
+JSON_LITERAL_RE = re.compile(r'\{\{\\"|\\":(?! )')
+
+
+def _hand_json(line: str) -> bool:
+    return bool(JSON_FORMAT_RE.search(line)) or any(
+        JSON_LITERAL_RE.search(lit) for lit in RUST_LITERAL_RE.findall(line))
 
 
 def json_outside_cpl_json(root: Path) -> list[str]:
@@ -1709,7 +1996,7 @@ def json_outside_cpl_json(root: Path) -> list[str]:
     found = [rel for rel in _git(root, "ls-files", "Cargo.toml", "crates/*/Cargo.toml")
              if _outside(rel, ("crates/cpl-json/",)) and "serde_json" in (root / rel).read_text(encoding="utf-8")]
     return found + [f"{rel}:{i}" for rel, i, line in _src_lines(root)
-                    if _outside(rel, ("crates/cpl-json/",)) and JSON_FORMAT_RE.search(line)]
+                    if _outside(rel, ("crates/cpl-json/",)) and _hand_json(line)]
 
 
 # The one config module, named by its owner (Consumers' tools child) once it exists.
@@ -1769,17 +2056,17 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-cli/tests/std-check-errors.txt": ("known_lists", "stdlib", "kept empty"),
     "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "close each gap"),
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
-    "crates/cpl-lint/corpus_warnings.txt": ("known_lists", "lint-fmt", "fix or accept each warning"),
-    "crates/cpl-stress/tests/generate-gaps.txt": ("skip_lists", "stress", "generate each shape"),
+    "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
+    "crates/cpl-stress/tests/generate-gaps.txt": ("generate_gaps", "stress", "deleted: readable_shapes.rs fails on any shape stress can't generate"),
     "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
-    "scripts/std-lint-baseline.txt": ("known_lists", "stdlib", "fix each std lint finding"),
+    "scripts/std-lint-baseline.txt": ("std_lint_findings", "stdlib", "deleted: std-lint-ratchet.py fails on any hit"),
     "spec/conformance/permits.txt": ("permits", "spec", "a case per permit"),
-    "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "a case per prelude name"),
+    "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "deleted: spec-gate.py prelude fails on any prelude gap"),
     "spec/conformance/rule-gaps.txt": ("rule_gaps", "spec", "deleted: spec-gate.py coverage fails on any rule gap"),
     "spec/conformance/sig-gaps.txt": ("sig_gaps", "spec", "deleted: spec-gate.py sigs fails on any mismatch"),
     "spec/conformance/trait-gaps.txt": ("trait_gaps", "spec", "deleted: spec-gate.py traits fails on any missing case"),
     "spec/idioms/lints-known.txt": ("idiom_lint_gaps", "idioms", "deleted: idioms-catalog.py fails on any finding"),
-    "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "fix each example"),
+    "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "deleted: gen-ref.mjs fails on any std example that doesn't run"),
     "web/scripts/practice-mutants-equivalent.txt": ("known_lists", "site", "data: equivalent mutants"),
     "web/tests/a11y-known.txt": ("xfail_markers", "site", "deleted: a11y.mjs fails on any violation"),
     "web/tests/completion-known.txt": ("known_lists", "site", "deleted: completion-parity.mjs fails on any miss"),
@@ -1856,8 +2143,10 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "bench_lists", "scaling_mismatches", "corpus_test_files", "corpus_known",
-    "own_databases", "module_loaders", "web_skip_only", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
+    "habit_matchers", "lint_std_names",
+    "corpus_walkers", "poll_sleeps", "retry_calls",
+    "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
+    "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
@@ -1867,12 +2156,21 @@ HARD_ZERO = frozenset({
     "permits", "written_twice",
     "plan_delta_lines",
     "trait_gaps",
+    "std_trait_matrix",
+    "edge_labels_unrun",
+    "std_model_gaps",
     "idiom_lint_gaps",
     "rule_gaps",
     "direct_python",
     "sig_gaps",
+    "std_lint_findings",
+    "corpus_lint_warnings",
+    "std_lint_allows",
+    "generate_gaps",
     "xfail_markers",
     "std_doc_parsers",
+    "prelude_gaps",
+    "json_outside_cpl_json",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
@@ -1886,12 +2184,16 @@ COUNTERS = {
     "bench_lists": ("entries in bench/*.txt exemption lists (scoreboard K5)", bench_lists, True),
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
+    "corpus_no_max": ("non-interactive problem packages without a gen.py --max", corpus_no_max, True),
+    "corpus_no_tests": ("problem packages without a tests.toml (Content)", corpus_no_tests, True),
+    "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
     "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
-    "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),
+    "lint_std_names": ("std fn names as string literals in lint rules, not through std_fn", lint_std_names, True),
+    "lint_name_matchers": ("lint rule lines matching a call by its written std fn name, not its callee", lint_name_matchers, True),
     "lint_type_syntax": ("lint rule lines reading a written type instead of checker facts", lint_type_syntax, True),
     "idioms_evidenced_unlinted": ("non-idiomatic spots with evidence that no lint teaches", idioms_evidenced_unlinted, True),
     "dup_fn_bodies": ("copied fn bodies across files", dup_fn_bodies, True),
@@ -1899,6 +2201,7 @@ COUNTERS = {
     "consumer_rederived": ("tool sites re-deriving checker facts", consumer_rederived, True),
     "site_rederived": ("web/ sources re-deriving tool data", site_rederived, True),
     "browser_lsp_gaps": ("language-server capabilities the browser editor never asks for", browser_lsp_gaps, True),
+    "site_spec_snippets": ("site programs the compiler doesn't accept yet (.spec.cp, status=spec)", site_spec_snippets, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
@@ -1914,13 +2217,17 @@ COUNTERS = {
                                  conformance_wrong_output, True),
     "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
+    "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
-    "cpp_deep_copies": ("deep copies in the corpus C++ (read_only_copies)", cpp_deep_copies, True),
+    "cpp_deep_copies": ("`// copies:` header sum over the corpus (read_only_copies)", cpp_deep_copies, True),
+    "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
+                            cpp_optional_copies, True),
     "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
+    "cpp_sunk_copies": ("places copied into a by-value param a fn moves into its struct (read_only_copies)", cpp_sunk_copies, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
-    "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, False),
+    "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, True),
     "crate_edges": ("shipped crate edges", crate_edges, False),
     "dev_crate_edges": ("test-only crate edges", dev_crate_edges, False),
     "spec_std_refs": ("spec/std references", spec_std_refs, False),
@@ -1933,29 +2240,41 @@ COUNTERS = {
     "lsp_string_types": ("LSP lines reading types out of rendered text", lsp_string_types, True),
     "lint_post_filters": ("entries of cpl-lint after-the-fact tables", lint_post_filters, True),
     "known_lists": ("entries of known-finding lists", known_lists, True),
-    "prelude_gaps": ("prelude names with no conformance case", prelude_gaps, True),
+    "prelude_gaps": ("entries of spec/conformance/prelude-gaps.txt", prelude_gaps, True),
     "permits": ("entries of spec/conformance/permits.txt", permits, True),
     "trait_gaps": ("entries of spec/conformance/trait-gaps.txt", trait_gaps, True),
     "rule_gaps": ("entries of spec/conformance/rule-gaps.txt", rule_gaps, True),
     "sig_gaps": ("entries of spec/conformance/sig-gaps.txt", sig_gaps, True),
+    "generate_gaps": ("entries of crates/cpl-stress/tests/generate-gaps.txt", generate_gaps, True),
     "idiom_lint_gaps": ("entries of spec/idioms/lints-known.txt", idiom_lint_gaps, True),
+    "std_lint_findings": ("entries of scripts/std-lint-baseline.txt", std_lint_findings, True),
+    "corpus_lint_warnings": ("entries of crates/cpl-lint/corpus_warnings.txt", corpus_lint_warnings, True),
     "or_true": ("`|| true` anywhere (scoreboard CI2)", or_true, True),
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
     "std_types_shown_empty": ("std types a trace shows as `{}`: no pub field, no Show (Content)",
                               std_types_shown_empty, True),
+    "std_trait_matrix": ("std containers missing Show, a walk or is_empty (std-api/R12, Content)",
+                         std_trait_matrix, True),
+    "std_model_gaps": ("std types and pub std fns with no seeded model case against a brute force (Content)",
+                       std_model_gaps, True),
+    "edge_labels_unrun": ("std empty:/ties: labels that are not a claim cpl-conform docs runs (Content)",
+                          edge_labels_unrun, True),
     "corpus_known": ("entries of corpus/*-known.txt (scoreboard K6, Content)", corpus_known, True),
     "allow_attrs": ("#[allow(...)] in crates (Core, Consumers)", allow_attrs, True),
+    "std_lint_allows": ("with lint(...: allow) in std (Content)", std_lint_allows, True),
     "unsafe_blocks": ("unsafe blocks, fns and impls in crates (Core)", unsafe_blocks, True),
     "cpl_env_reads": ("CPL_* env reads outside the config module (Consumers)", cpl_env_reads, True),
     "test_sleeps": ("sleeps in tests (Factory)", test_sleeps, True),
     "ci_retries": ("--retry/--retries in CI and scripts (Factory)", ci_retries, True),
+    "retry_calls": ("retry calls in CI and scripts wrapping no named network fetch or push race (Factory)", retry_calls, True),
+    "poll_sleeps": ("thread::sleep in shipped Rust (Factory)", poll_sleeps, True),
     "hardcoded_codes": ("E0xxx literals outside cpl-check and cpl-diag (Consumers)", hardcoded_codes, True),
     "xfail_markers": ("xfail/known-fail markers and lists (Content)", xfail_markers, True),
     "todo_fixme": ("TODO/FIXME in std, web and scripts", todo_fixme, True),
     "web_skip_only": ("web .skip(/.only( (Factory)", web_skip_only, True),
     "ts_ignore": ("web @ts-ignore (Factory)", ts_ignore, True),
-    "habit_matchers": ("fns in hand-written habit matchers (Consumers)", habit_matchers, True),
+    "habit_matchers": ("habit help/fix text outside cpl_diag::habits rows, and rows without a mistake (Consumers)", habit_matchers, True),
     "rust_idiom_lints": ("idiom lints in Rust a std @lint from/to could state (Consumers)", rust_idiom_lints, True),
     "unchecked_fix_paths": ("fix appliers outside the re-checking gate (Consumers)", unchecked_fix_paths, True),
     "stress_engines": ("stress-case runners picking a verdict (Consumers)", stress_engines, True),
@@ -2016,7 +2335,9 @@ def improved(actual: dict, baseline: dict) -> list[str]:
     if any(n < baseline.get("register_rows_by_domain", {}).get(d, n)
            for d, n in actual.get("register_rows_by_domain", {}).items()):
         names.append("register_rows_by_domain")
-    if set(baseline.get("crate_edges", [])) - set(actual.get("crate_edges", [])):
+    known, now = set(baseline.get("crate_edges", [])), set(actual.get("crate_edges", []))
+    added = now - known
+    if known - now or (added and added <= set(actual.get("a4_edges", []))):
         names.append("crate_edges")
     if set(baseline.get("rs_near_cap", [])) - set(actual.get("rs_near_cap", [])):
         names.append("rs_near_cap")
@@ -2104,33 +2425,82 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
     return errors, warnings, notes
 
 
-def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> list[str]:
-    """Baseline entries raised above `ref`'s without a decisions.md line naming them.
+# Files besides this script that define what a counter counts. The bound a
+# counter reads (read_only_copies.rs) is not one: raising it is the bump.
+MEASURED_BY = {
+    "cpp_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+    "cpp_optional_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+    "cpp_std_functions": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+}
 
-    A bump is a decision: the added decisions.md lines must name the counter
-    (e.g. `ir_builtin_names`) or the allowlisted file.
+
+def _measuring_code(text: str, fn: str) -> str:
+    """The source of `fn` in `text` and of every top-level def or constant it reaches."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return text
+    defs: dict[str, ast.AST] = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            defs[node.name] = node
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            for t in node.targets if isinstance(node, ast.Assign) else [node.target]:
+                if isinstance(t, ast.Name):
+                    defs[t.id] = node
+    seen, todo = set(), [fn]
+    while todo:
+        name = todo.pop()
+        if name in seen or name not in defs:
+            continue
+        seen.add(name)
+        todo += [n.id for n in ast.walk(defs[name]) if isinstance(n, ast.Name)]
+    return "\n".join(ast.get_source_segment(text, defs[n]) or "" for n in sorted(seen))
+
+
+def remeasured(root: Path, base: str, name: str) -> bool:
+    """Whether the code that measures `name` differs between `base` and the tree."""
+    fn = {"rs_file_size_allowlist": "rs_over_cap", "rs_near_cap": "rs_near_cap"}.get(name)
+    fn = fn or (COUNTERS[name][1].__name__ if name in COUNTERS else None)
+    if fn is None:
+        return False
+    script = root / "scripts/debt-ratchet.py"
+    now = script.read_text(encoding="utf-8") if script.is_file() else ""
+    then = "\n".join(_git(root, "show", f"{base}:scripts/debt-ratchet.py"))
+    if _measuring_code(now, fn) != _measuring_code(then, fn):
+        return True
+    paths = MEASURED_BY.get(name, ())
+    return bool(paths) and bool(_git(root, "diff", "--name-only", base, "--", *paths))
+
+
+def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> list[str]:
+    """Baseline entries raised above `ref`'s.
+
+    A raise passes only when the same change rewrites the code that measures
+    that entry (a new definition of the count, re-measured); never on a
+    decisions.md line or a Skipped: trailer. New debt is removed, not admitted.
     """
     shown = _git(root, "show", f"{ref}:scripts/debt-ratchet.json")
     if not shown:
         return []
     old = json.loads("\n".join(shown))
-    raised = [n for n, (_, _, g) in COUNTERS.items()
-              if g and n in old and int(baseline.get(n, 0)) > int(old[n])]
+    raised = [(n, n) for n, v in baseline.items()
+              if n in old and isinstance(v, int) and isinstance(old[n], int) and v > old[n]]
     old_allow = old.get("rs_file_size_allowlist", {})
-    raised += [rel for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
+    raised += [(rel, "rs_file_size_allowlist") for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
                if cap > old_allow.get(rel, 0)]
     if "rs_near_cap" in old and set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow):
-        raised.append("rs_near_cap")
-    zero = [n for n in raised if n in COUNTERS and int(old.get(n, 1)) == 0]
+        raised.append(("rs_near_cap", "rs_near_cap"))
+    zero = [n for n, _ in raised if n in COUNTERS and int(old.get(n, 1)) == 0]
     if zero:
         return [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
     if not raised:
         return []
     base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
-    added = "\n".join(l for l in _git(root, "diff", base, "--", "decisions.md")
-                      if l.startswith("+") and not l.startswith("+++"))
-    return [f"{n}: baseline raised above {ref} without a decisions.md line naming it "
-            f"(a bump is a decision; add one, or remove the debt)" for n in raised if n not in added]
+    return [f"{n}: baseline raised above {ref} ({old.get(n, old_allow.get(n))} -> "
+            f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); remove the new debt "
+            f"instead (only a change to the code that measures it may re-measure it)"
+            for n, key in raised if not remeasured(root, base, key)]
 
 
 def inherited_baseline(baseline: dict, upstream: dict) -> dict:
@@ -2248,7 +2618,8 @@ def main(argv: list[str] | None = None) -> int:
     baseline = json.loads(args.ratchet.read_text(encoding="utf-8"))
     actual = measure(args.root, max_lines)
     errors, warnings, notes = evaluate(actual, baseline)
-    errors += unexplained_bumps(args.root, baseline)
+    # On main, HEAD is origin/main: CI names the tip it last saw instead.
+    bumps = unexplained_bumps(args.root, baseline, os.environ.get("CPL_RATCHET_BASE") or "origin/main")
     if errors:
         try:
             upstream = measure_upstream(args.root, max_lines)
@@ -2262,6 +2633,7 @@ def main(argv: list[str] | None = None) -> int:
             warnings += [f"already on main, not from this change (infra fixes it): {e}"
                          for e in errors if e not in mine]
             errors = mine
+    errors += bumps
 
     # Name the last commits to touch a grown file, so its owner is pinged
     # rather than whoever pushes next.
@@ -2284,12 +2656,14 @@ def main(argv: list[str] | None = None) -> int:
         f"(allowlist {len(baseline.get('rs_file_size_allowlist', {}))}), {counts}"
     )
     if errors:
-        print("debt-ratchet: a deliberate increase needs `--update` in the same commit and a decisions.md line",
+        print("debt-ratchet: remove the new debt; a baseline rises only with a change to the code that measures it",
               file=sys.stderr)
     if notes:
+        for n in notes:
+            print(f"debt-ratchet: {n}")
         names = " ".join(improved(actual, baseline))
         print(f"debt-ratchet: {len(notes)} item(s) improved; tighten with "
-              f"`python3 scripts/debt-ratchet.py --update {names}`")
+              f"`uv run --quiet python scripts/debt-ratchet.py --update {names}`")
     return 1 if errors else 0
 
 

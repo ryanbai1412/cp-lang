@@ -27,10 +27,12 @@ pub enum Def {
         generics: Vec<String>,
         bounds: Vec<(String, Vec<String>)>,
         lends: bool,
-        row_bounds: Vec<(String, Vec<(String, Ty)>)>,
+        row_bounds: RowBounds,
         trait_bounds: Vec<(String, String)>,
         /// `@droppable`: its result may be dropped without W0101.
         droppable: bool,
+        /// A written `@get`: `x.name` reads it as the call `name(x)` (R02.6.6).
+        getter: bool,
     },
     Struct {
         generics: Vec<String>,
@@ -52,8 +54,15 @@ pub enum Def {
         /// The receiver type a method writes, `self: Rev<[D]T>`: its own
         /// type parameters bind from the value it is called on.
         selves: Vec<(String, Ty)>,
+        /// Each method's row bounds, `R: (u: V, v: V, ..)`: a `T.name(..)` call checks them.
+        /// With them, the bounds that give a trait arguments, `S: Indexed<E, R>`, through
+        /// which `R` binds.
+        method_rows: Vec<(String, RowBounds, Vec<(String, String, Vec<Ty>)>)>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
+        /// The owned domains sized from fields (`domain Idx = 0..src.len`):
+        /// each value has its own, `t.Idx` (R04b.1.7).
+        value_domains: Vec<String>,
         projections: Vec<Projection>,
         cached_fields: Vec<String>,
     },
@@ -78,6 +87,8 @@ pub enum Def {
         generics: Vec<String>,
     },
     Trait {
+        /// `trait Indexed<D, T>` lists `D` and `T`.
+        generics: Vec<String>,
         /// `trait Seq: Index + Ord` lists `Index` and `Ord`.
         supers: Vec<String>,
         methods: Vec<TraitMethod>,
@@ -160,6 +171,9 @@ pub struct DomainInfo {
     /// Factor types for product domains (`domain State = (V, K)` or `(r: R, s: K)`).
     pub factors: Vec<(Option<String>, Ty)>,
 }
+
+/// `R: (u: V, v: V, ..)` per type parameter: the fields a record argument must have.
+pub type RowBounds = Vec<(String, Vec<(String, Ty)>)>;
 
 impl Def {
     /// The type of a variant of enum `of` used as a value.
@@ -276,6 +290,7 @@ impl Def {
                 row_bounds,
                 trait_bounds,
                 droppable,
+                getter,
                 ..
             } => Def::Fn {
                 ty: Ty::Error,
@@ -285,6 +300,7 @@ impl Def {
                 row_bounds,
                 trait_bounds,
                 droppable,
+                getter,
             },
             Def::Value {
                 mutable,

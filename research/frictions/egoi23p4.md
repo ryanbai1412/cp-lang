@@ -1,23 +1,9 @@
 # Friction report: egoi23p4
 
-spec.cp no longer checked: it read the two triangles as `read<[Pair<V>]Int>()` and typed a
-parameter as the bare `Semiring`. It now reads each triangle with a two-line loop and takes the
-path algebra as a generic `R`; the rest (closures, both Kruskals) is unchanged.
+Rethought from spec.cp. The v0.2 port kept both matrices as `[V, V]Int` with `1_000_000_000` and `-1` on the diagonal as sentinels, copied a Floyd-Warshall closure twice (`matches_mn`, `matches_mx`) and ran Kruskal by hand over `(w, u, v)` tuples with Dsu in both directions. The v0.3 port reads each lower triangle straight into a `[V, V]?Int` in bike-lane terms, so the diagonal is `None`. It checks closure with `closure(over: Semiring(max, min))` and `Semiring(min, max)` and keeps the union of `kruskal(edges)` and `kruskal(edges, by: e => desc(e.w))`.
 
-## The triangles can't be read as `[Pair<V>]Int`
+No language gap.
 
-- **Severity:** low (a five-line reader)
-- **Status:** already owned (compiler `PLAN.md` `Domain` trait item, `std/GAPS.md` pair
-  entries, cco20p4)
-- **Repro:** `domain V = 0..4` / `let a: [Pair<V>]Int = read()` -> E0204 "an array is indexed
-  by a domain or a length".
-- **Ideal code:** `read<[Pair<V>]0..=k>().map(c => Some(k - c)).symmetric(diag: None)`.
+## Measurements
 
-## The corpus suite ignores `checker.py`
-
-- **Severity:** medium
-- **Status:** already routed to spec (`plan/domains/spec/worklog.md`, from aac5p4)
-- **What happened:** any network is accepted, but `cpl-conform corpus` compares tokens, so
-  `tests/*.ans` hold spec.cp's own networks (each passes `checker.py`, with the accepted C++'s
-  YES/NO). The C++ prints both spanning forests with shared streets twice, so its answers differ
-  on 4 of the 12 tests and can't be the `.ans`.
+gen.py --max (n = 500, 2023 streets): port 0.50 s / 19 MB, v0.2 port 0.39 s, accepted C++ 0.37 s. checker.py accepts all three, with 997, 998 and 998 streets.

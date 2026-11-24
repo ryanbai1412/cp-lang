@@ -16,10 +16,10 @@ Fields: `s: List<Int>`, `mx1: List<Int>`, `mx2: List<Int>`, `mx_c: List<Int>`, `
 - `fn chmin(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`; Replace every `a[i]` in `r` with `min(a[i], x)`.; traps: when a non-empty `r` reaches outside `D`
 - `fn chmax(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`; Replace every `a[i]` in `r` with `max(a[i], x)`; the mirror of `chmin`.; traps: when a non-empty `r` reaches outside `D`
 - `fn add(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\); Add `x` to every `a[i]` in `r`.; traps: when a non-empty `r` reaches outside `D` (overflow wraps in release, traps in debug)
-- `fn sum(mut self, r: Range<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum of the current values in `r`.; traps: when a non-empty `r` reaches outside `D`
-- `fn min_val(mut self, r: Range<D>) -> ?Int` — \(O(\log \lvert D \rvert)\); The least current value in `r`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
-- `fn max_val(mut self, r: Range<D>) -> ?Int` — \(O(\log \lvert D \rvert)\); The greatest current value in `r`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
-- `fn get(mut self, i: D) -> Int` — \(O(\log \lvert D \rvert)\); The current value at position `i`.; traps: when `i` is outside `D`
+- `fn sum(self, r: Range<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum of the current values in `r`.; traps: when a non-empty `r` reaches outside `D`
+- `fn min_val(self, r: Range<D>) -> ?Int` — \(O(\log \lvert D \rvert)\); The least current value in `r`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
+- `fn max_val(self, r: Range<D>) -> ?Int` — \(O(\log \lvert D \rvert)\); The greatest current value in `r`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
+- `fn get(self, i: D) -> Int` — \(O(\log \lvert D \rvert)\); The current value at position `i`.; traps: when `i` is outside `D`
 - `fn set(mut self, i: D, x: Int)` — \(O(\log \lvert D \rvert)\); Assign `a[i] = x`, replacing whatever earlier updates left there.; traps: when `i` is outside `D`
 - `fn assign(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; Overwrite every position in `r` with `x`.; traps: when a non-empty `r` reaches outside `D`
 - `fn chdiv(mut self, r: Range<D>, d: Int)` — \(O(\log \lvert D \rvert \log V)\) amortized; Replace every `a[i]` in `r` with `a[i] / d`, rounding toward negative infinity.; traps: when `d <= 0`, or a non-empty `r` reaches outside `D`

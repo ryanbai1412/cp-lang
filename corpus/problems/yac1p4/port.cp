@@ -9,10 +9,11 @@
 //   shifts up, so each total is stored lifted by the worth of the letters seen: skipping a
 //   letter shifts by w, adding it as a left end by 2w, as a right end by 0. O(n^2 W / 64),
 //   W = 2 * total worth.
+// Bounds: n: 1..=250
 // original: corpus/submissions/4376742.cpp
 
-let n = read<1..=250>()
-let word = read<Str>()
+let n: 1..=250 = read()
+let word: Str = read()
 let worth = [(c - 'A' + 1) * (c - 'A' + 1) for c in word]
 let whole = worth.sum()
 
@@ -20,16 +21,14 @@ domain Open = 0..=n
 domain Lifted = 0..=2 * whole
 var reach = [Open] _ => Bitset<Lifted>.new()
 reach[Open.first!].add(Lifted.first!)
-// In place, opens ascending: `below` keeps the step's old `reach[open - 1]`.
+// In place, opens ascending: after the swap `below` is the step's old
+// `reach[open]`, and `reach[open]` starts from the old `reach[open - 1]`.
 for (i, w) in worth.items.rev:
     var below = Bitset<Lifted>.new()
     for open in Open.first!..=Open(min(i, n - i)):
-        var b = if let more = Open.at(open + 1): reach[more].shifted(w) else: Bitset<Lifted>.new()
-        b.union(reach[open])
-        b.shift_up(w)
-        b.union(below)
         swap(mut below, mut reach[open])
-        reach[open] = b
+        reach[open].union_shifted(below, w)
+        if let more = Open.at(open + 1): reach[open].union_shifted(reach[more], 2 * w)
 
 let totals = reach[Open.first!]
 print(totals.len)

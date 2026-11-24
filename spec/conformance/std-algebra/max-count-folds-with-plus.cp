@@ -2,7 +2,6 @@
 // rule: std.algebra.MaxCount
 // `MaxCount` has `+` (its `join`) and the identity `zero`, so a fold or a `SegTree` takes `+` alone.
 use std.algebra.{MaxCount}
-use std.segtree.{SegTree}
 let m = [3, 1, 3].map(v => MaxCount.of(v)).fold(+)
 print(m.val, m.count)
 domain D = 0..4

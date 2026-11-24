@@ -8,7 +8,9 @@ var t = XorTrie()
 for i in 0..n:
     let x = i * 2654435761 % (1 << 40)
     t.add(x) // timed: bitset.XorTrie.add
-for i in 0..6 * n:
+for r in 0..2:
+    for x in t.each(): acc += x % 7 // timed: bitset.XorTrie.each
+for i in 0..8 * n:
     acc += t.len // timed: bitset.XorTrie.len
     if t.is_empty: acc += 1 // timed: bitset.XorTrie.is_empty
     t.xor_all(i % 8) // timed: bitset.XorTrie.xor_all
@@ -23,9 +25,11 @@ for i in 0..n:
     acc += t.mex_xor(x) // timed: bitset.XorTrie.mex_xor
 for i in 0..n:
     if t.remove(i * 2654435761 % (1 << 40)): acc += 1 // timed: bitset.XorTrie.remove
-for r in 0..256:
-    var u = XorTrie()
-    u.reserve(64 * n) // timed: bitset.XorTrie.reserve
+var full = XorTrie()
+for i in 0..n / 16: full.add(i * 2654435761 % (1 << 40))
+for r in 0..64:
+    var u = copy(full)
+    u.reserve(8 * n) // timed: bitset.XorTrie.reserve
     acc += u.len
 var u = XorTrie()
 for r in 0..6 * n:

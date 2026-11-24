@@ -8,6 +8,7 @@
 //   it, one swap per shoe still standing between them, plus one swap if the pair is the wrong
 //   way round, then forget both. A SegTree of standing shoes counts them: O(n log n).
 // original: corpus/submissions/5661847.cpp
+// Bounds: n: 1..=100_000; s: -n..=n
 let n = read<1..=100_000>()
 domain P = [2 * n]
 domain Shoe = -n..=n

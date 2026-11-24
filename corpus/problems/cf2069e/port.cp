@@ -8,6 +8,7 @@
 //   Spend the free pairs, then if one side's supply exceeds its cap, convert its largest
 //   runs to the other kind one by one (each loses one pair) and check the total reaches
 //   need. O(|s| log |s|) for the sort.
+// Bounds: a, b, ab, ba: 0..=500_000
 
 @!multitest
 let s: Str = read()

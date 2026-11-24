@@ -1,5 +1,5 @@
 // expect: ok, output "2 1 0\n0 1 2\nYES\nYES\nYES"
-use std.mo.{mo_order_hilbert, mo_rollback, mo_with_updates, mo}
+use std.mo.{mo_order_hilbert, mo_rollback, mo_with_updates}
 use std.rand.{Rng}
 domain P = 0..4
 print(mo_order_hilbert([P(1)..P(1), P(0)..P(1), P(0)..P(0)]))

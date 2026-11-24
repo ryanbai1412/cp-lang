@@ -10,6 +10,7 @@
 //   avoid s: one such vertex takes a slot unused one layer down; several swap their
 //   forbidden slots by a cyclic rotation. The rest take free slots among the first sz,
 //   where at most sz - (rest) are taken. O(n).
+// Bounds: n: 2..=200_000
 
 @!multitest
 let n: 2..=200_000 = read()

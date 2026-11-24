@@ -26,5 +26,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "kruskal_tree binds its node domain; Rooted.up subtree min; online decode."
+ "notes": "kruskal_tree binds its node domain; Rooted.up subtree min; online decode.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "7d0b472f03a56175118e839434aab0345fc18806"
+ }
 }

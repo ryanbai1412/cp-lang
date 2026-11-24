@@ -160,21 +160,19 @@ impl DocText {
     pub fn parse(doc: &str) -> DocText {
         let mut out = DocText::default();
         let mut prose = Vec::new();
-        // A label line is a fact only where a paragraph could start: first,
-        // after a blank line, or after another fact or `example:`. A line
-        // under a fact continues it.
-        let (mut block_open, mut fact): (bool, Option<&str>) = (true, None);
-        // (code start, indent, lines, whether it is CP code)
-        let mut fence: Option<(u32, usize, Vec<&str>, bool)> = None;
-        for (at, line) in doc.lines().enumerate() {
-            let at = at as u32;
-            let marker = line.trim();
-            if let Some((start, indent, code, cp)) = &mut fence {
-                prose.push(line);
-                if marker == "```" && !*cp {
-                    fence = None;
-                    block_open = true;
-                } else if marker == "```" {
+        // (code start, indent, lines) of an open CP fence
+        let mut fence: Option<(u32, usize, Vec<&str>)> = None;
+        read(doc, &mut out.facts, &mut |at, line, kind| {
+            if kind == Line::Example {
+                return out.examples.push(one_line(line, at));
+            }
+            prose.push(line);
+            match (kind, &mut fence) {
+                (Line::Open, _) => {
+                    fence = Some((at + 1, line.len() - line.trim_start().len(), Vec::new()))
+                }
+                (Line::Code, Some((_, _, code))) => code.push(line),
+                (Line::Close, Some((start, indent, code))) => {
                     let code: Vec<&str> = code
                         .iter()
                         .map(|l| l.get(*indent..).unwrap_or(l.trim_start()))
@@ -189,27 +187,78 @@ impl DocText {
                         expect: None,
                     });
                     fence = None;
-                    block_open = true;
-                } else {
-                    code.push(line);
                 }
-                continue;
+                _ => {}
             }
-            if let Some(language) = marker.strip_prefix("```") {
-                (fact, block_open) = (None, false);
-                let cp = matches!(language.trim(), "" | "cp");
-                fence = Some((at + 1, line.len() - line.trim_start().len(), Vec::new(), cp));
-                prose.push(line);
-                continue;
+        });
+        out.prose = prose.join("\n").trim().to_string();
+        out
+    }
+}
+
+impl Facts {
+    /// Only the facts of `doc`, as [`DocText::parse`] reads them.
+    pub fn parse(doc: &str) -> Facts {
+        let mut facts = Facts::default();
+        read(doc, &mut facts, &mut |_, _, _| {});
+        facts
+    }
+}
+
+/// What a doc line that is not a fact is to [`DocText::parse`].
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Line {
+    Prose,
+    /// The text after `example:`.
+    Example,
+    /// The fence opening a CP code block, its code lines, its closing fence;
+    /// all three are prose too.
+    Open,
+    Code,
+    Close,
+}
+
+/// Reads `doc` once: its facts into `facts`, every other line to `each`.
+fn read<'a>(doc: &'a str, facts: &mut Facts, each: &mut dyn FnMut(u32, &'a str, Line)) {
+    // A label line is a fact only where a paragraph could start: first,
+    // after a blank line, or after another fact or `example:`. A line
+    // under a fact continues it.
+    let (mut block_open, mut fact): (bool, Option<&str>) = (true, None);
+    // Whether a fence is open, and whether it holds CP code.
+    let mut fence: Option<bool> = None;
+    for (at, line) in doc.lines().enumerate() {
+        let at = at as u32;
+        let marker = line.trim();
+        let kind = if let Some(cp) = fence {
+            match (marker == "```", cp) {
+                (true, cp) => {
+                    (fence, block_open) = (None, true);
+                    if cp {
+                        Line::Close
+                    } else {
+                        Line::Prose
+                    }
+                }
+                (false, true) => Line::Code,
+                (false, false) => Line::Prose,
             }
-            if let Some(rest) = marker.strip_prefix("example:") {
-                out.examples.push(one_line(rest.trim(), at));
-                (fact, block_open) = (None, true);
-                continue;
+        } else if let Some(language) = marker.strip_prefix("```") {
+            (fact, block_open) = (None, false);
+            let cp = matches!(language.trim(), "" | "cp");
+            fence = Some(cp);
+            if cp {
+                Line::Open
+            } else {
+                Line::Prose
             }
+        } else if let Some(rest) = marker.strip_prefix("example:") {
+            (fact, block_open) = (None, true);
+            each(at, rest.trim(), Line::Example);
+            continue;
+        } else {
             if block_open {
                 if let Some((label, text)) = fact_line(line) {
-                    if let Some(slot) = out.facts.slot(label).filter(|slot| slot.is_none()) {
+                    if let Some(slot) = facts.slot(label).filter(|slot| slot.is_none()) {
                         *slot = Some(text.to_string());
                         fact = Some(label);
                         continue;
@@ -217,22 +266,22 @@ impl DocText {
                 }
             }
             match fact
-                .and_then(|label| out.facts.slot(label))
+                .and_then(|label| facts.slot(label))
                 .and_then(Option::as_mut)
             {
                 Some(text) if !marker.is_empty() && fact_line(line).is_none() => {
                     text.push(' ');
                     text.push_str(marker);
+                    continue;
                 }
                 _ => {
-                    prose.push(line);
                     fact = None;
                     block_open = marker.is_empty();
+                    Line::Prose
                 }
             }
-        }
-        out.prose = prose.join("\n").trim().to_string();
-        out
+        };
+        each(at, line, kind);
     }
 }
 
@@ -341,6 +390,7 @@ mod tests {
         assert_eq!(d.facts.traps.as_deref(), Some("never"));
         assert_eq!(d.facts.ties.as_deref(), Some("none here: really and more"));
         assert_eq!(d.facts.order, None);
+        assert_eq!(Facts::parse(doc), d.facts);
         assert!(d.prose.contains("\ntrap: `x`\n"));
         assert_eq!(
             d.facts.stated().iter().map(|f| f.0).collect::<Vec<_>>(),

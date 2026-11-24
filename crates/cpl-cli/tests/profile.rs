@@ -108,6 +108,29 @@ fn profile_charges_library_code_to_the_line_that_calls_it() {
 }
 
 #[test]
+fn a_sort_makes_the_same_comparisons_natively() {
+    // 20 and 13 elements: runs short enough to insertion-sort, then merges.
+    let file = scratch(
+        "sort_runs.cp",
+        "struct M(v: Int)\nimpl Ord for M:\n    fn lt(a, b) = a.v % 7 < b.v % 7\n\
+         impl Eq for M:\n    fn eq(a, b) = a.v % 7 == b.v % 7\n\
+         var ys = [M((k * 5) % 23) for k in 0..20]\nys.sort()\n\
+         let zs = [(k * 3) % 17 for k in 0..13].sorted(by: k => desc(M(k)))\n\
+         print([y.v for y in ys], zs)\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        assert!(hits(&out).contains(&(3, 107)), "{engine:?}: {out}");
+    }
+}
+
+#[test]
 fn profile_runs_on_the_vm_and_counts_bodies_it_would_inline() {
     // `mod5` is a modular op and a pure leaf, both of which the VM would
     // otherwise run without its statement.
@@ -159,6 +182,68 @@ fn a_lines_starts_count_its_entries_and_made_closures_add_no_hits() {
             [(2, 3), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)],
             "{engine:?}"
         );
+    }
+}
+
+#[test]
+fn a_reduce_lowered_inline_starts_its_line_once() {
+    // `all` lowers to a loop whose statements carry the call's span: the
+    // line starts once a run however many elements the loop tests.
+    let file = scratch(
+        "reduce.cp",
+        "let xs = [i for i in 0..50]\nlet pos = (x: Int) => x >= 0\n\
+         for _ in 0..3:\n    let every = xs.all(pos)\n    let some = xs.any(pos)\n    print(Int(every) + Int(some))\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        let starts = field(&out, "start_count");
+        assert_eq!(&starts[3..5], [(4, 3), (5, 3)], "{engine:?}");
+    }
+}
+
+#[test]
+fn a_loop_binding_a_tuple_starts_its_line_once() {
+    let file = scratch(
+        "tuple_for.cp",
+        "let xs = [i for i in 0..5]\nvar s = 0\nfor (a, b) in xs.adjacent:\n    s += a ^ b\nprint(s)\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        let starts = field(&out, "start_count");
+        assert_eq!(&starts[2..4], [(3, 1), (4, 4)], "{engine:?}");
+    }
+}
+
+#[test]
+fn a_loop_fused_onto_a_library_walk_counts_its_body() {
+    // `rg.from(r)` builds its list in a loop the consumer is fused onto,
+    // which writes the body from a copy of it.
+    let file = scratch(
+        "fused_for.cp",
+        "let ys = [i for i in 0..5]\nlet rg = ys.ring\nvar s = 0\nfor r in 0..2:\n    for i in rg.from(r):\n        s += i\nprint(s)\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        let starts = field(&out, "start_count");
+        assert_eq!(&starts[3..6], [(4, 1), (5, 2), (6, 10)], "{engine:?}");
     }
 }
 

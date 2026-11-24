@@ -7,6 +7,8 @@
 //   Taps are an unbounded knapsack: sweep h upward with next[min(h + up, m)] min= min(taps[h],
 //   next[h]) + 1, then add the drops, then clear the heights outside the pipe's gap. If a
 //   column has no reachable height, print the pipes before it. O(n m).
+// Bounds: n: 1..=10000; m, moves.up, moves.down: 1..=1000; k: 0..=10000; pipes.at: 1..=n;
+//   pipes.low, pipes.high: 0..=1000
 let (n, m, k): (1..=10000, 1..=1000, 0..=10000) = read()
 domain X = 1..=n  // the column being arrived at
 domain H = 1..=m

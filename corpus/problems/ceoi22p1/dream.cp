@@ -8,13 +8,11 @@
 // contiguously once its leader surfaces, the active runs remain sorted by
 // increasing leader card; each shuffle only splits the single run straddling
 // `n / 2` into its prefix of length `keep` and the sub-runs of its suffix
-// (found via `deck.next_greater()`). Once the cut falls between runs, the deck
+// (found via `deck.next_smaller(by: c => -c.ord)`). Once the cut falls between runs, the deck
 // is a fixed point (`cur_t = none`).
 //
 // Sort queries offline by `t`, maintain active run lengths in `Fenwick<Card, Int>`,
 // and locate position `i` with `bit.first_ge`.
-
-use std.seq.{next_greater}
 
 let (n, q): (2..=200_000, 1..=1_000_000) = read()
 domain Pos = 1..=n
@@ -25,7 +23,7 @@ struct Query(t: 0..=1_000_000_000, i: Pos)
 let qs: [Q]Query = read()
 
 let pos_of = deck.inverse()
-let nxt_gt = deck.next_greater()
+let nxt_gt = deck.next_smaller(by: c => -c.ord)
 
 var bit = Fenwick<Card, Int>()
 var run_len: [Card]Int = 0
@@ -40,7 +38,7 @@ fn insert_runs(lo: Pos, hi: Pos):
         bit.add(leader, len)
         cur = end_p.next
 
-insert_runs(Pos.first, Pos.last)
+insert_runs(Pos.first!, Pos.last!)
 
 let order = [qi for qi in Q].sorted(by: qi => qs[qi].t)
 let half = n / 2

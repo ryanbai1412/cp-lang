@@ -7,6 +7,7 @@
 //   partner(i) = (position of b[i] in a) must be an involution with at most one fixed point,
 //   which goes to the middle; otherwise -1. Send the k-th couple to slots k and n+1-k, giving
 //   a target permutation; each of its cycles takes len - 1 swaps with its first element. O(n).
+// Bounds: n: 2..=200_000; a, b: 1..=n
 
 use std.seq.{compose, perm_cycles}
 

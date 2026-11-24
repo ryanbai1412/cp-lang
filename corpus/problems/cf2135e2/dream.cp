@@ -20,7 +20,6 @@
 // moves) is never possible, and period 2 only when n is even: an odd walk in
 // a width-1 band always ends at max + min. Period 1 appears in i iff i is
 // odd and period 2 iff i ≡ 2 (mod 4). A brute force agrees for n <= 12.
-use std.math.{sieve_multiplicative}
 
 type M = Mod<998_244_353>
 

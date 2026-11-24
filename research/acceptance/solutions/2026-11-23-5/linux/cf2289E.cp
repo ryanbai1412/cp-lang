@@ -1,4 +1,3 @@
-use std.bag.{SortedSet}
 
 @!multitest
 let (n, d): (2..=2e5, 1..=2e5) = read()

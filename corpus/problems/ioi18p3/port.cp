@@ -10,6 +10,8 @@
 //   (human preorder, wolf preorder): one offline sweep with a Fenwick tree, O((n + m + q) log n).
 // original: corpus/submissions/4727179.cpp (the grader interface; check.py
 // wraps it in the stdin/stdout main of the DMOJ version)
+// Bounds: n: 2..=2e5; m: 1..=4e5; q: 1..=2e5;
+//   roads.u, roads.v, trips.s, trips.e, trips.l, trips.r: 0..=n - 1
 
 let (n, m, q): (2..=2e5, 1..=4e5, 1..=2e5) = read()
 domain V = 0..n

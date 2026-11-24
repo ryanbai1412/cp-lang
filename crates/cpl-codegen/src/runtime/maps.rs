@@ -67,10 +67,9 @@ struct CpHash {
         return s;
     }
     // Full salted splitmix64 so both prime-mod and power-of-two open-addressing tables stay hack-resistant.
-    size_t operator()(ll x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
-    size_t operator()(int x) const { return (*this)((ll)x); }
-    size_t operator()(u8 x) const { return (*this)((ll)x); }
-    size_t operator()(bool x) const { return (*this)((ll)x); }
+    // Every integer width, signed or not (`Hash61` is a `U64`), hashes as its 64-bit value.
+    template <class I, std::enable_if_t<std::is_integral_v<I>, int> = 0>
+    size_t operator()(I x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
     size_t operator()(double x) const { return (*this)((ll)std::hash<double>()(x)); }
     size_t operator()(const std::string& s) const {
         uint64_t h = salt();
@@ -110,88 +109,160 @@ struct CpHash {
 ",
     },
     Piece {
-        name: "cphashmap",
-        needs: &["cphash", "fail"],
+        name: "hashcore",
+        needs: &["fail"],
         code: "\
-// Open-addressing hash map with 7-bit fingerprints and backward-shift deletion.
-template <class K, class V, class H = CpHash> struct HashMap {
-    using key_type = K; using mapped_type = V; using value_type = std::pair<K, V>;
-    std::vector<uint8_t> st; std::vector<value_type> kv; size_t n = 0;
-    template <bool C> struct It {
-        using P = std::conditional_t<C, const value_type, value_type>;
-        const uint8_t* s; P* p; size_t i, cap;
-        void skip() { while (i < cap && !s[i]) ++i; }
-        P& operator*() const { return p[i]; }
-        P* operator->() const { return p + i; }
-        It& operator++() { ++i; skip(); return *this; }
-        bool operator==(const It& o) const { return i == o.i; }
-        bool operator!=(const It& o) const { return i != o.i; }
-    };
-    using Iter = It<false>; using CIter = It<true>;
-    size_t size() const { return n; }
-    bool empty() const { return n == 0; }
+// Hands the whole pages inside [p, p + bytes) back to the OS, so a rehash frees the old table behind it.
+inline void release_pages(void* p, size_t bytes) {
+#if defined(__linux__)
+    uintptr_t a = ((uintptr_t)p + 4095) & ~(uintptr_t)4095, b = ((uintptr_t)p + bytes) & ~(uintptr_t)4095;
+    if (b > a) ::madvise((void*)a, b - a, MADV_DONTNEED);
+#else
+    (void)p; (void)bytes;
+#endif
+}
+// The fewest slots that hold n entries at a load of at most 7/8 (at least 8).
+inline size_t hash_cap(size_t n) { return std::max<size_t>(8, n + (n + 6) / 7); }
+// The top 64 bits of a * b: maps a hash onto [0, cap) in order, for any cap.
+inline uint64_t mulhi(uint64_t a, uint64_t b) {
+#if defined(__SIZEOF_INT128__)
+    return (uint64_t)(((unsigned __int128)a * b) >> 64);
+#else
+    uint64_t al = (uint32_t)a, ah = a >> 32, bl = (uint32_t)b, bh = b >> 32, m = ah * bl + ((al * bl) >> 32);
+    return ah * bh + (m >> 32) + ((al * bh + (uint32_t)m) >> 32);
+#endif
+}
+// Open addressing with linear probing over packed slots: a state byte (0 empty, else 0x80 and 7 bits
+// of the hash) and the entry, built only in a full slot, so a probe reads an entry only when the
+// fingerprint matches. The load stays at most 7/8 and `reserve` sizes exactly. An entry's home grows
+// with its hash, so a rehash walks the old table in the new one's order and frees it as it goes.
+template <class E, class K, class KeyOf, class H> struct HashTable {
+    uint8_t* st = nullptr; E* e = nullptr; size_t cap = 0, n = 0;
+    HashTable() = default;
+    HashTable(const HashTable& o) { copy(o); }
+    HashTable(HashTable&& o) noexcept { steal(o); }
+    HashTable& operator=(const HashTable& o) { if (this != &o) { drop(); copy(o); } return *this; }
+    HashTable& operator=(HashTable&& o) noexcept { if (this != &o) { drop(); steal(o); } return *this; }
+    ~HashTable() { drop(); }
+    void steal(HashTable& o) { st = o.st; e = o.e; cap = o.cap; n = o.n; o.st = nullptr; o.e = nullptr; o.cap = o.n = 0; }
+    void alloc(size_t c) {
+        st = (uint8_t*)calloc(c, 1); e = (E*)calloc(c, sizeof(E));
+        if (!st || !e) fail(\"out of memory\");
+        cap = c;
+    }
+    void copy(const HashTable& o) {
+        if (!o.cap) return;
+        alloc(o.cap);
+        for (size_t i = 0; i < cap; ++i) if (o.st[i]) { new (e + i) E(o.e[i]); st[i] = o.st[i]; }
+        n = o.n;
+    }
+    void kill(size_t i) { if constexpr (!std::is_trivially_destructible_v<E>) e[i].~E(); st[i] = 0; }
+    void drop() {
+        if (!cap) return;
+        for (size_t i = 0; i < cap; ++i) if (st[i]) kill(i);
+        free(st); free(e); st = nullptr; e = nullptr; cap = n = 0;
+    }
     void clear() {
         if (!n) return;
-        if (st.size() > 64 && n * 8 < st.size()) { st.clear(); kv.clear(); }
-        else std::fill(st.begin(), st.end(), 0);
+        if (cap > 64 && n * 8 < cap) { drop(); return; }
+        for (size_t i = 0; i < cap; ++i) if (st[i]) kill(i);
         n = 0;
     }
-    void rehash(size_t cap) {
-        std::vector<uint8_t> ns(cap, 0); std::vector<value_type> nk(cap); size_t m = cap - 1;
-        for (size_t i = 0; i < st.size(); ++i) if (st[i]) {
-            size_t j = H{}(kv[i].first) & m;
-            while (ns[j]) j = (j + 1) & m;
-            ns[j] = st[i]; nk[j] = std::move(kv[i]);
+    // The salted hash, mixed again so a 32-bit size_t still fills the top bits the home is taken from.
+    uint64_t hash(const K& k) const { return (uint64_t)H{}(k) * 0x9e3779b97f4a7c15ULL; }
+    static uint8_t fp(uint64_t h) { return (uint8_t)(0x80 | (h & 0x7f)); }
+    size_t home(uint64_t h) const { return (size_t)mulhi(h, cap); }
+    size_t next(size_t i) const { return i + 1 == cap ? 0 : i + 1; }
+    size_t locate(const K& k) const { return n ? locate(k, hash(k)) : cap; }
+    size_t locate(const K& k, uint64_t h) const {
+        if (!n) return cap;
+        uint8_t f = fp(h);
+        for (size_t i = home(h); st[i]; i = next(i)) if (st[i] == f && KeyOf{}(e[i]) == k) return i;
+        return cap;
+    }
+    // Rehashes into c slots, walking the old slots in order and freeing each page once it is moved out.
+    void grow(size_t c) {
+        HashTable t; t.alloc(c);
+        const size_t chunk = 1 << 14; size_t done = 0;
+        for (size_t i = 0; i < cap; ++i) {
+            if (st[i]) { t.put(std::move(e[i])); kill(i); }
+            if constexpr (std::is_trivially_destructible_v<E>) if (i + 1 - done == chunk) {
+                release_pages(st + done, chunk); release_pages(e + done, chunk * sizeof(E)); done = i + 1;
+            }
         }
-        st.swap(ns); kv.swap(nk);
+        n = 0; drop(); steal(t);
     }
-    size_t locate(const K& k) const {
-        if (st.empty()) return 0;
-        size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
-        while (st[i]) { if (st[i] == fp && kv[i].first == k) return i; i = (i + 1) & m; }
-        return st.size();
+    void reserve(size_t want) { size_t c = hash_cap(want); if (c > cap) grow(c); }
+    // Puts an entry whose key is absent; returns its slot.
+    size_t put(E x) { uint64_t h = hash(KeyOf{}(x)); return put(std::move(x), h); }
+    size_t put(E x, uint64_t h) {
+        if (cap < hash_cap(n + 1)) grow(std::max(hash_cap(n + 1), cap + cap / 2));
+        size_t i = home(h);
+        while (st[i]) i = next(i);
+        new (e + i) E(std::move(x)); st[i] = fp(h); ++n; return i;
     }
-    std::pair<size_t, bool> slot(const K& k) {
-        if (2 * (n + 1) > st.size()) { K kc = k; rehash(st.empty() ? 8 : st.size() * 2); return slot(kc); }
-        size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
-        while (st[i]) { if (st[i] == fp && kv[i].first == k) return {i, false}; i = (i + 1) & m; }
-        st[i] = fp; kv[i].first = k; ++n; return {i, true};
+    // The slot of key k, putting mk() there when k is absent, in one walk: {slot, put}.
+    template <class Mk> std::pair<size_t, bool> slot(const K& k, uint64_t h, Mk&& mk) {
+        if (cap < hash_cap(n + 1)) { size_t i = locate(k, h); if (i != cap) return {i, false}; return {put(mk(), h), true}; }
+        uint8_t f = fp(h); size_t i = home(h);
+        for (; st[i]; i = next(i)) if (st[i] == f && KeyOf{}(e[i]) == k) return {i, false};
+        new (e + i) E(mk()); st[i] = f; ++n; return {i, true};
     }
-    Iter begin() { Iter it{st.data(), kv.data(), 0, st.size()}; it.skip(); return it; }
-    Iter end() { return {st.data(), kv.data(), st.size(), st.size()}; }
-    CIter begin() const { CIter it{st.data(), kv.data(), 0, st.size()}; it.skip(); return it; }
-    CIter end() const { return {st.data(), kv.data(), st.size(), st.size()}; }
-    Iter find(const K& k) { return {st.data(), kv.data(), locate(k), st.size()}; }
-    CIter find(const K& k) const { return {st.data(), kv.data(), locate(k), st.size()}; }
-    size_t count(const K& k) const { return locate(k) != st.size() ? 1 : 0; }
-    V& at(const K& k) { size_t i = locate(k); if (i == st.size()) fail(\"key not in map\"); return kv[i].second; }
-    const V& at(const K& k) const { size_t i = locate(k); if (i == st.size()) fail(\"key not in map\"); return kv[i].second; }
-    V& operator[](const K& k) { auto [i, nw] = slot(k); if (nw) kv[i].second = V{}; return kv[i].second; }
-    std::pair<Iter, bool> emplace(const K& k, const V& v) {
-        if (2 * (n + 1) > st.size()) { K kc = k; V vc = v; rehash(st.empty() ? 8 : st.size() * 2); return emplace(kc, vc); }
-        auto [i, nw] = slot(k); if (nw) kv[i].second = v;
-        return {{st.data(), kv.data(), i, st.size()}, nw};
-    }
+    // Removes slot i, moving back each later entry of its run whose home allows it.
     void erase_at(size_t i) {
-        --n; size_t m = st.size() - 1, j = i;
-        for (;;) {
-            j = (j + 1) & m; if (!st[j]) break;
-            size_t home = H{}(kv[j].first) & m;
-            if (((j - home) & m) >= ((j - i) & m)) { st[i] = st[j]; kv[i] = std::move(kv[j]); i = j; }
+        auto gap = [&](size_t a, size_t b) { return b >= a ? b - a : b + cap - a; };
+        for (size_t j = next(i); st[j]; j = next(j)) {
+            if (gap(home(hash(KeyOf{}(e[j]))), j) >= gap(i, j)) { e[i] = std::move(e[j]); st[i] = st[j]; i = j; }
         }
-        st[i] = 0; kv[i] = {};
+        kill(i); --n;
     }
-    void erase(Iter it) { erase_at(it.i); }
-    size_t erase(const K& k) {
-        size_t i = locate(k); if (i == st.size()) return 0;
-        erase_at(i); return 1;
+};
+template <class E, bool C> struct SlotIter {
+    using P = std::conditional_t<C, const E, E>;
+    const uint8_t* s; P* p; size_t i, cap;
+    void skip() { while (i < cap && !s[i]) ++i; }
+    P& operator*() const { return p[i]; }
+    P* operator->() const { return p + i; }
+    SlotIter& operator++() { ++i; skip(); return *this; }
+    bool operator==(const SlotIter& o) const { return i == o.i; }
+    bool operator!=(const SlotIter& o) const { return i != o.i; }
+};
+",
+    },
+    Piece {
+        name: "cphashmap",
+        needs: &["cphash", "hashcore"],
+        code: "\
+template <class K, class V, class H = CpHash> struct HashMap {
+    using key_type = K; using mapped_type = V; using value_type = std::pair<K, V>;
+    struct First { const K& operator()(const value_type& x) const { return x.first; } };
+    HashTable<value_type, K, First, H> t;
+    using Iter = SlotIter<value_type, false>; using CIter = SlotIter<value_type, true>;
+    Iter it(size_t i) { return {t.st, t.e, i, t.cap}; }
+    CIter it(size_t i) const { return {t.st, t.e, i, t.cap}; }
+    size_t size() const { return t.n; }
+    bool empty() const { return t.n == 0; }
+    void clear() { t.clear(); }
+    void reserve(size_t n) { t.reserve(n); }
+    Iter begin() { Iter i = it(0); i.skip(); return i; }
+    Iter end() { return it(t.cap); }
+    CIter begin() const { CIter i = it(0); i.skip(); return i; }
+    CIter end() const { return it(t.cap); }
+    Iter find(const K& k) { return it(t.locate(k)); }
+    CIter find(const K& k) const { return it(t.locate(k)); }
+    size_t count(const K& k) const { return t.locate(k) != t.cap ? 1 : 0; }
+    V& at(const K& k) { size_t i = t.locate(k); if (i == t.cap) fail(\"key not in map\"); return t.e[i].second; }
+    const V& at(const K& k) const { size_t i = t.locate(k); if (i == t.cap) fail(\"key not in map\"); return t.e[i].second; }
+    V& operator[](const K& k) { size_t i = t.slot(k, t.hash(k), [&] { return value_type(k, V{}); }).first; return t.e[i].second; }
+    std::pair<Iter, bool> emplace(const K& k, const V& v) {
+        auto [i, put] = t.slot(k, t.hash(k), [&] { return value_type(k, v); });
+        return {it(i), put};
     }
+    void erase(Iter i) { t.erase_at(i.i); }
+    size_t erase(const K& k) { size_t i = t.locate(k); if (i == t.cap) return 0; t.erase_at(i); return 1; }
     bool operator==(const HashMap& o) const {
-        if (n != o.n) return false;
-        for (size_t i = 0; i < st.size(); ++i) if (st[i]) {
-            size_t j = o.locate(kv[i].first);
-            if (j == o.st.size() || !(o.kv[j].second == kv[i].second)) return false;
-        }
+        if (t.n != o.t.n) return false;
+        for (const auto& [k, v] : *this) { size_t j = o.t.locate(k); if (j == o.t.cap || !(o.t.e[j].second == v)) return false; }
         return true;
     }
     bool operator!=(const HashMap& o) const { return !(*this == o); }
@@ -200,67 +271,30 @@ template <class K, class V, class H = CpHash> struct HashMap {
     },
     Piece {
         name: "cphashset",
-        needs: &["cphash"],
+        needs: &["cphash", "hashcore"],
         code: "\
-// Open-addressing hash set with 7-bit fingerprints and backward-shift deletion.
 template <class K, class H = CpHash> struct HashSet {
     using key_type = K; using value_type = K;
-    std::vector<uint8_t> st; std::vector<std::array<K, 1>> ks; size_t n = 0;
-    struct CIter {
-        const uint8_t* s; const std::array<K, 1>* p; size_t i, cap;
-        void skip() { while (i < cap && !s[i]) ++i; }
-        const K& operator*() const { return p[i][0]; }
-        const K* operator->() const { return &p[i][0]; }
-        CIter& operator++() { ++i; skip(); return *this; }
-        bool operator==(const CIter& o) const { return i == o.i; }
-        bool operator!=(const CIter& o) const { return i != o.i; }
-    };
-    size_t size() const { return n; }
-    bool empty() const { return n == 0; }
-    void clear() {
-        if (!n) return;
-        if (st.size() > 64 && n * 8 < st.size()) { st.clear(); ks.clear(); }
-        else std::fill(st.begin(), st.end(), 0);
-        n = 0;
-    }
-    void rehash(size_t cap) {
-        std::vector<uint8_t> ns(cap, 0); std::vector<std::array<K, 1>> nk(cap); size_t m = cap - 1;
-        for (size_t i = 0; i < st.size(); ++i) if (st[i]) {
-            size_t j = H{}(ks[i][0]) & m;
-            while (ns[j]) j = (j + 1) & m;
-            ns[j] = st[i]; nk[j][0] = std::move(ks[i][0]);
-        }
-        st.swap(ns); ks.swap(nk);
-    }
-    size_t locate(const K& k) const {
-        if (st.empty()) return 0;
-        size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
-        while (st[i]) { if (st[i] == fp && ks[i][0] == k) return i; i = (i + 1) & m; }
-        return st.size();
-    }
-    CIter begin() const { CIter it{st.data(), ks.data(), 0, st.size()}; it.skip(); return it; }
-    CIter end() const { return {st.data(), ks.data(), st.size(), st.size()}; }
-    CIter find(const K& k) const { return {st.data(), ks.data(), locate(k), st.size()}; }
-    size_t count(const K& k) const { return locate(k) != st.size() ? 1 : 0; }
+    struct Self { const K& operator()(const K& x) const { return x; } };
+    HashTable<K, K, Self, H> t;
+    using CIter = SlotIter<K, true>;
+    CIter it(size_t i) const { return {t.st, t.e, i, t.cap}; }
+    size_t size() const { return t.n; }
+    bool empty() const { return t.n == 0; }
+    void clear() { t.clear(); }
+    void reserve(size_t n) { t.reserve(n); }
+    CIter begin() const { CIter i = it(0); i.skip(); return i; }
+    CIter end() const { return it(t.cap); }
+    CIter find(const K& k) const { return it(t.locate(k)); }
+    size_t count(const K& k) const { return t.locate(k) != t.cap ? 1 : 0; }
     std::pair<CIter, bool> insert(const K& k) {
-        if (2 * (n + 1) > st.size()) { K kc = k; rehash(st.empty() ? 8 : st.size() * 2); return insert(kc); }
-        size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
-        while (st[i]) { if (st[i] == fp && ks[i][0] == k) return {{st.data(), ks.data(), i, st.size()}, false}; i = (i + 1) & m; }
-        st[i] = fp; ks[i][0] = k; ++n; return {{st.data(), ks.data(), i, st.size()}, true};
+        auto [i, put] = t.slot(k, t.hash(k), [&] { return K(k); });
+        return {it(i), put};
     }
-    size_t erase(const K& k) {
-        size_t i = locate(k); if (i == st.size()) return 0;
-        --n; size_t m = st.size() - 1, j = i;
-        for (;;) {
-            j = (j + 1) & m; if (!st[j]) break;
-            size_t home = H{}(ks[j][0]) & m;
-            if (((j - home) & m) >= ((j - i) & m)) { st[i] = st[j]; ks[i][0] = std::move(ks[j][0]); i = j; }
-        }
-        st[i] = 0; ks[i][0] = K{}; return 1;
-    }
+    size_t erase(const K& k) { size_t i = t.locate(k); if (i == t.cap) return 0; t.erase_at(i); return 1; }
     bool operator==(const HashSet& o) const {
-        if (n != o.n) return false;
-        for (size_t i = 0; i < st.size(); ++i) if (st[i] && !o.count(ks[i][0])) return false;
+        if (t.n != o.t.n) return false;
+        for (const K& k : *this) if (!o.count(k)) return false;
         return true;
     }
     bool operator!=(const HashSet& o) const { return !(*this == o); }
@@ -278,7 +312,7 @@ template <class M, class Q> auto map_get(const M& m, const Q& k) -> std::optiona
 ",
     },
     Piece {
-        name: "map_lend",
+        name: "lent",
         needs: &[],
         code: "\
 template <class V> struct Lent {
@@ -289,6 +323,15 @@ template <class V> struct Lent {
     const V* operator->() const { return p; }
     operator std::optional<V>() const { return p ? std::optional<V>(*p) : std::nullopt; }
 };
+template <class V> Lent<V> lend(const V& v) { return {&v}; }
+template <class V> Lent<V> lend_opt(const std::optional<V>& o) { return {o ? &*o : nullptr}; }
+template <class V> Lent<V> lend_opt(Lent<V> l) { return l; }
+",
+    },
+    Piece {
+        name: "map_lend",
+        needs: &["lent"],
+        code: "\
 template <class M, class Q> Lent<typename M::mapped_type> map_lend(const M& m, const Q& k) {
     auto it = m.find(k); return {it == m.end() ? nullptr : &it->second};
 }

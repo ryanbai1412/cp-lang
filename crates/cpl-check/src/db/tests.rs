@@ -199,3 +199,29 @@ fn an_imported_body_is_checked_when_its_facts_are_asked_for() {
         .expect("the body is checked");
     assert_eq!(facts.type_of(body), Some(&Ty::Int));
 }
+
+/// A getter whose struct's methods read it again is cut short while it is
+/// worked out; the cut-short def must not be the one kept.
+#[test]
+fn a_getter_its_own_struct_reads_types_the_same_on_every_read() {
+    let lib = "pub struct Wrap<S>(pub src: S)\n\
+               @get pub fn wrap<S>(self: S) -> Wrap<S> = Wrap(self)\n\
+               impl Wrap<S>:\n    pub fn twice(self) -> Wrap<Wrap<S>> = self.wrap\n    pub fn size(self) -> Int = 1\n";
+    let mut db = Database::with_loader(Box::new(MapLoader(vec![(
+        "lib.w".into(),
+        "lib/w.cp".into(),
+        lib.into(),
+    )])));
+    let main = "use lib.w.{Wrap, wrap}\nlet n: Str = [1, 2].wrap.size()\n";
+    for _ in 0..2 {
+        db.set_file("main.cp", main);
+        let got = db.analyze("main.cp").unwrap();
+        let messages: Vec<_> = got.diagnostics.iter().map(|d| d.message.clone()).collect();
+        assert!(
+            messages.iter().any(|m| m.contains("is an Int")),
+            "{messages:?}"
+        );
+        db.set_file("main.cp", "use lib.w.{wrap}\nlet m = [1].wrap.twice()\n");
+        db.analyze("main.cp").unwrap();
+    }
+}

@@ -10,6 +10,9 @@
  ],
  "cpp_ac": 3,
  "artifacts": {
+  "original": [
+   "corpus/problems/noi04p1/orig.cpp"
+  ],
   "port": [
    "corpus/problems/noi04p1/port.cp"
   ]
@@ -18,5 +21,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the AC submission corpus/submissions/3738402.cpp: the AC submissions 3738382 and 3738392 count hires below the floor as leavers, which the statement excludes."
 }

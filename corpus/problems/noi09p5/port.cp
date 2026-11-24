@@ -8,6 +8,7 @@
 //   both take an equal marble (4 choices). Reading the pipes from the left instead pairs the
 //   reversed outputs, the same count. O((n + m) n^2), one layer kept.
 // original: corpus/submissions/5108100.cpp
+// Bounds: n, m: 1..=500
 type Z = Mod<1024523>
 
 let (n, m): (1..=500, 1..=500) = read()

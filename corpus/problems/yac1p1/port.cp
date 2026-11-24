@@ -7,6 +7,7 @@
 //   the top pair's larger side is the most anything gains, so every increment goes to the top
 //   pair: first level its two sides, then split the rest evenly. Sort: O(n log n).
 // original: corpus/submissions/4376122.cpp
+// Bounds: n: 1..=2e5; k: 0..=1e9
 
 type Z = Mod<1_000_000_007>
 

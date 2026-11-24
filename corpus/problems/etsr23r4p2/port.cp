@@ -7,6 +7,7 @@
 //   raisings for every s up to that length, a node keeps those sums, and a range raise shifts
 //   them by one, saturating at the settled value. O((n + q) log n log p).
 // original: corpus/submissions/5529698.cpp
+// Bounds: n, q: 1..=5e4; p, base: 1..=1e8; a: 0..=1e8; kind: 0..=1; l, r: 1..=n
 
 let (n, q, p, base): (1..=5e4, 1..=5e4, 1..=1e8, 1..=1e8) = read()
 type Z = Mod<p>
@@ -22,16 +23,33 @@ fn modulus(depth: Int) -> Int = moduli[min(depth, moduli.len - 1)]
 
 // base^e mod modulus(depth), and whether the true power reaches it; `big` says e itself
 // reached modulus(depth + 1) = phi(modulus(depth)), so the true exponent is e + that.
-fn power(e: Int, big: Bool, depth: Int) -> (big: Bool, val: Int):
-    let m = modulus(depth)
-    let exp = if big: e + modulus(depth + 1) else: e
-    var (reached, acc) = (m <= 1, 1)
-    for _ in 0..min(exp, 64):
-        acc = min(acc * base, m)
-        reached = reached or acc >= m
-    (big: reached or (exp > 64 and base > 1), val: pow_mod(base, exp, m))
+// base^e mod modulus(d) as low[d][e % step] * high[d][e / step]; e < 2 * modulus(d + 1)
+let step = 1 << 15
+let low = [[pow_mod(base, e, modulus(d)) for e in 0..step] for d in 0..moduli.len]
+let high = [
+    [
+        pow_mod(base, h * step, modulus(d)) for h in 0..=2 * modulus(d + 1) / step
+    ] for d in 0..moduli.len
+]
 
-// x raised s times, mod modulus(depth).
+// the least k with base^k >= modulus(d), None when base^k never gets there
+fn reach_of(m: Int) -> ?Int:
+    if m <= 1: return 0
+    if base == 1: return None
+    var (k, acc) = (0, 1)
+    while acc < m:
+        acc *= base
+        k += 1
+    k
+
+let reach = [reach_of(modulus(d)) for d in 0..moduli.len]
+
+fn power(e: Int, big: Bool, depth: Int) -> (big: Bool, val: Int):
+    let exp = if big: e + modulus(depth + 1) else: e
+    let d = min(depth, moduli.len - 1)
+    let reached = if let k = reach[d]: exp >= k else: false
+    (big: reached, val: low[d][exp % step] * high[d][exp / step] % moduli[d])
+
 fn tower(s: Int, x: Int, depth: Int) -> (big: Bool, val: Int):
     if s == 0: return (big: x >= modulus(depth), val: x % modulus(depth))
     let below = tower(s - 1, x, depth + 1)

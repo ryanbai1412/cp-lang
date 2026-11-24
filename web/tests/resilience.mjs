@@ -1,6 +1,6 @@
 // handbook/guidelines/site-checklist.md site/R17: when a service the site
 // calls fails, the page degrades and says so instead of breaking.
-import { base, done, open } from './browser.mjs';
+import { base, done, open, until } from './browser.mjs';
 
 const { page, errors } = await open();
 const fail = (m) => {
@@ -34,8 +34,8 @@ await page.route('**/*.wasm', (r) => r.abort());
 await page.goto(base + '/play');
 await page.getByRole('button', { name: 'Run' }).click();
 const status = page.getByRole('status').first();
-await page.waitForTimeout(8000);
-const said = (await status.innerText().catch(() => '')).trim();
+let said = '';
+await until(async () => /load|network|fetch/i.test((said = (await status.innerText().catch(() => '')).trim())), 8000);
 console.log(`wasm down: Run shows ${JSON.stringify(said.slice(0, 200))}`);
 if (!/load|network|fetch/i.test(said)) fail('Run with no cpl.wasm does not say the compiler failed to load');
 await page.unroute('**/*.wasm');

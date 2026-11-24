@@ -16,7 +16,7 @@ for _ in 0..64:
     s += LinearRmq<V, Int>(a).best(V(0)..V(1)) // timed: sparse.LinearRmq.new
 for _ in 0..32:
     s += SparseTable2D<R, C, Int>(max, g).get(R(0), C(0)) // timed: sparse.SparseTable2D.new
-for _ in 0..256:
+for _ in 0..512:
     if idempotent<Int>(gcd, xs): s += 1 // timed: sparse.idempotent
 let st = SparseTable<V, Int>(min, a)
 let ds = DisjointSparseTable<V, Int>(+, a)

@@ -6,6 +6,7 @@
 // Solution: wins[s] (player to move with s stones wins) holds iff some a_i <= s leads to a
 //   losing wins[s - a_i] = false; fill s = 0..k upward. O(nk).
 // original: corpus/submissions/4131775.cpp
+// Bounds: n: 1..=100; k: 1..=1e5; a: 1..=k
 let n: 1..=100 = read()
 let k: 1..=1e5 = read()
 let a: [n]1..=k = read()

@@ -8,6 +8,7 @@
 //   where the first is an ancestor of the second. A SegTree over preorder keeps (ends, first,
 //   last) per segment for both the monster set and its complement (`Flip`); a subtree query flips
 //   one preorder range, swapping the two sides. O((n + q) log n).
+// Bounds: n: 2..=250_000; flag: 0..=1
 
 @!multitest
 use std.lazy.{Flip, flip_action}

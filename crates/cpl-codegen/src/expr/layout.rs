@@ -155,6 +155,9 @@ impl<'p> Emitter<'p> {
                 k.at(PRIMARY)
             );
         }
+        if crate::names::is_flag_opt(&x.ty) {
+            return self.expr(x).at(PRIMARY);
+        }
         format!("{}.has_value()", self.expr(x).at(PRIMARY))
     }
 

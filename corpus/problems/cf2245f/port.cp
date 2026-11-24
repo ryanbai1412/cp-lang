@@ -8,6 +8,7 @@
 //   position into states: a known count c is a chain of c + 1 states, an unknown one a single
 //   self-loop. dp[i, s] sums subtrees on [i, owner(s)); splitting at j glues [i, j] to
 //   [j + 1, owner(k)) times 1 / (owner(k) - i). O(n) states, O(n^3); answer dp * n!.
+// Bounds: n: 1..=500
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 

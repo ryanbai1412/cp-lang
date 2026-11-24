@@ -4,7 +4,7 @@
 
 Flows, cuts and matchings: Dinic's max flow and min cut, min-cost flow, maximum closure, bipartite and general matching (weighted too), assignment, bounded flows, Gomory-Hu and global min cut.  Two networks, `FlowGraph` and `CostFlow`, share `Arc` and the accessors `flow`, `cap`, `source`, `target`. Everything whose input is a table or an edge list is a function over the caller's domains: a matching is `[L]?R`, a bounded flow is `[E]Int`.
 
-In prelude (no `use` needed): `Arc`, `FlowGraph`, `max_closure`.
+In prelude (no `use` needed): `Arc`, `FlowGraph`, `circulation`, `general_matching`, `global_min_cut`, `gomory_hu`, `max_bounded_flow`, `max_closure`, `max_matching`, `max_weight_general_matching`, `max_weight_matching`, `min_bounded_flow`, `min_vertex_cover`, `min_weight_matching`.
 
 ## `struct Arc(pub id: 0..2_147_483_648)`
 
@@ -32,7 +32,7 @@ Fields: `head: [V]List<Arc>`, `to: List<V>`, `left: List<Int>`, `cap0: List<Int>
 - `fn residual(self, a: Arc) -> Int` — \(O(1)\); The capacity left on `a` in the residual network: `cap(a) - flow(a)`.
 - `@get fn arcs(self) -> yields Arc` — \(O(E)\) for the whole walk; Every arc `add` or `add_both` returned, lazily; never a reverse arc.
 - `fn out(self, u: V) -> yields Arc` — \(O(\deg u)\) for the whole walk; The arcs `add` or `add_both` returned whose source is `u`, lazily; never a reverse arc.
-- `fn cut_arcs(self, s: V) -> List<Arc>` — \(O(V + E)\); The added arcs crossing the minimum cut `min_cut(s)` from the source side to the other, after `max_flow(s, t)` ran to completion.; traps: like `min_cut`, when the flow from `s` is missing or stale
+- `fn cut_arcs(self, s: V) -> List<Arc>` — \(O(V + E)\); The added arcs crossing the minimum cut `min_cut(s)` from the source side to the other, after `max_flow(s, t)` ran to completion, in arc order; an `add_both` arc crossing from its `v` side comes back as its `rev`.; traps: like `min_cut`, when the flow from `s` is missing or stale
 - `fn paths(self, s: V, t: V) -> yields (arcs: List<Arc>, amount: Int)` — \(O(P (V + E))\) for P paths; The current `s`-`t` flow split into paths, each with the amount it carries; the amounts sum to the net flow out of `s`.; traps: when `s == t`
 - `fn push_relabel(mut self, s: V, t: V) -> Int` — \(O(V^2 \sqrt E)\); The same maximum flow amount as `max_flow(s, t)` by push-relabel (highest label, gap heuristic), often several times faster than Dinic on dense or unit-capacity grids.; traps: when `s == t`
 
@@ -69,6 +69,8 @@ Fields: `adj: [L]List<R>`.
 - `fn mate(self, l: L) -> ?R` — \(O(1)\); `l`'s partner, `None` when unmatched.
 - `fn back(self, r: R) -> ?L` — \(O(1)\); `r`'s partner, `None` when unmatched.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of matched pairs.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no pair is matched.
+- `@get fn items(self) -> yields (L, R)` — \(O(\lvert L \rvert)\)
 - `fn cover(self) -> (left: [L]Bool, right: [R]Bool)` — \(O(V + E)\); The König vertex cover of the current matching, built as in [`min_vertex_cover`](min_vertex_cover); a minimum cover when the matching is maximum.
 
 ## `trait Matroid<E>`
@@ -101,9 +103,9 @@ Fields: `color: [E]C`, `limit: [C]Int`, `used: [C]Int`.
 - `fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V)` — \(O(V³)\); A maximum matching in the undirected graph `adj` (each edge listed from both ends): its `size` and each vertex's partner, `None` when unmatched.
 - `fn max_weight_general_matching<V, E>(edges: [E](u: V, v: V, w: Int)) -> (total: Int, mate: [V]?V)` — \(O(V³)\) time, \(O(V^2)\) memory, by Edmonds' weighted blossom algorithm with dual labels; A maximum-weight matching in the undirected graph `edges`: no vertex in two chosen edges, maximizing `total`, the sum of chosen `w`, not necessarily of largest size.
 - `fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int` — \(O(V^2 (V + E))\), one `max_flow` on V + 2 vertices and E + V arcs; A flow `f` with `lo <= f[e] <= hi` on every arc that is conserved at every vertex, or `None` when there is None.; traps: when some `lo > hi`
-- `fn max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V) -> ?(value: Int, flow: [E]Int)` — \(O(V^2 (V + E))\), two `max_flow`s on V + 2 vertices and E + V + 1 arcs; The largest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex but `s` and `t`, or `None` when no such flow exists.; traps: when some `lo > hi`, or `s == t`
+- `fn max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V) -> ?(value: Int, flow: [E]Int)` — \(O(V^2 (V + E))\), two `max_flow`s on V + 2 vertices and E + V + 1 arcs; The largest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex but `s` and `t`, never sending more back into `s` than leaves it (`value >= 0`), or `None` when no such flow exists.; traps: when some `lo > hi`, or `s == t`
 - `fn min_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V) -> ?(value: Int, flow: [E]Int)` — as `max_bounded_flow`; The smallest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex but `s` and `t`, never sending more back into `s` than leaves it (`value >= 0`), or `None` when no such flow exists.; traps: when some `lo > hi`, or `s == t`
-- `fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: Int)>` — \(O(V^3 E)\): `V.count - 1` max flows on one reused network, each \(O(V^2 E)\); A Gomory-Hu tree of the undirected graph `edges`: `V.count - 1` edges on `V` such that for every `s != t` the minimum `s`-`t` cut of `edges` is the smallest `w` on the tree path from `s` to `t`.; traps: when some `w` is negative
+- `fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: Int)>` — \(O(V \cdot \mathit{flow})\) for flow the cost of one max flow on the network: `V.count - 1` of them, each \(O(V^2 E)\), so \(O(V^3 E)\) worst case; A Gomory-Hu tree of the undirected graph `edges`: `V.count - 1` edges on `V` such that for every `s != t` the minimum `s`-`t` cut of `edges` is the smallest `w` on the tree path from `s` to `t`.; traps: when some `w` is negative
 - `fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int)) -> (w: Int, side: [V]Bool)` — \(O(V³)\) time, \(O(V^2)\) memory; A minimum cut of the undirected graph `edges` over all vertex pairs: its weight `w` and one side of it, the side without `V.first`.; traps: when `V` has fewer than two positions, or some `w` is negative
 - `fn best_matching<L, R, E>(edges: [E](l: L, r: R, w: Int), size: ?Int = None, min: Bool = false) -> ?(total: Int, mate: [L]?R, used: [E]Bool)` — \(O(F E \log V)\), F = matching size; The maximum (or, with `min: true`, minimum) total-weight matching among the listed edges, not necessarily perfect: sparse weights through min-cost flow, where `max_weight_matching` needs every pair's weight.; traps: when `size` is negative, or a weight times `L.count + 1` overflows
 - `fn stable_matching<L, R>(pref_l: [L]List<R>, pref_r: [R]List<L>) -> [L]?R` — \(O(L R)\); Gale-Shapley stable matching with proposals from `L`: `pref_l[l]` lists the `R`s `l` accepts, best first, and likewise `pref_r`.; traps: when a preference list names the same vertex twice

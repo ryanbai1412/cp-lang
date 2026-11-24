@@ -123,7 +123,7 @@ fn a_sum_whose_of_may_trap_keeps_the_list_only_at_that_call() {
 #[test]
 fn a_reducer_that_hands_its_list_on_builds_no_list() {
     let cpp = cpp(concat!(
-        "fn total(xs: List<Int>) -> Int = xs.fold((acc, x) => acc ^ x, 0)\n",
+        "fn total(xs: List<Int>) -> Int = xs.fold_from(0, (acc, x) => acc ^ x)\n",
         "fn twice(xs: List<Int>) -> Int = total(xs)\n",
         "let n: 1..=1000 = read()\n",
         "print(twice([i * j for i in 0..n for j in i..n if (i + j) % 3 == 0]))\n",
@@ -132,4 +132,95 @@ fn a_reducer_that_hands_its_list_on_builds_no_list() {
     assert!(solve.contains("cpl_sink_"), "{solve}");
     assert!(!solve.contains("push_back"), "{solve}");
     assert!(cpp.contains("(cpl_g"), "{cpp}");
+}
+
+const SUBSET_LOOP: &str = concat!(
+    "domain B = 0..20\n",
+    "let n: 1..=20 = read()\n",
+    "var t = 0\n",
+    "for k in 0..1000:\n",
+    "    let s = Subset<B>.single(B(n % 20)).with(B(1))\n",
+);
+
+#[test]
+fn a_reducer_over_a_yields_getter_runs_on_its_callback_form() {
+    for reduce in [
+        "    t += s.items.sum(of: b => b.ord * k)\n",
+        "    t += s.items.fold_from(0, (a, b) => a + b.ord)\n",
+    ] {
+        let cpp = cpp(&format!("{SUBSET_LOOP}{reduce}print(t)\n"));
+        let solve = &cpp[cpp.find("void solve()").unwrap()..];
+        assert!(solve.contains("cpl_sink_"), "{solve}");
+        assert!(solve.contains("cpl_each_Subset_"), "{solve}");
+        assert!(!solve.contains("_items(s)"), "{solve}");
+        assert!(!solve.contains("std::vector"), "{solve}");
+    }
+}
+
+#[test]
+fn a_closure_reading_a_var_keeps_the_list() {
+    let cpp = cpp(&format!(
+        "{SUBSET_LOOP}    var w = k\n    t += s.items.sum(of: b => b.ord * w)\n    w += 1\nprint(t)\n"
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(!solve.contains("cpl_sink_"), "{solve}");
+}
+
+const TAKE_EVENS: &str = concat!(
+    "fn take_evens(mut xs: List<Int>) -> List<Int>:\n",
+    "    var out: List<Int> = []\n",
+    "    while let x = xs.pop():\n",
+    "        if x % 2 == 0: out.push(x)\n",
+    "    out\n",
+    "let n: 1..=1000 = read()\n",
+    "var xs = [i for i in 0..n]\n",
+);
+
+#[test]
+fn the_len_of_a_list_a_fn_only_pushes_to_counts_with_no_list() {
+    let cpp = cpp(&format!(
+        "{TAKE_EVENS}print(take_evens(mut xs).len, xs.len)\n"
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(solve.contains("cpl_each_take_evens(xs, "), "{solve}");
+    assert!(!solve.contains("take_evens(xs).size()"), "{solve}");
+}
+
+#[test]
+fn a_loop_that_may_stop_early_runs_a_list_fn_to_its_end() {
+    let cpp = cpp(&format!(
+        "{TAKE_EVENS}for x in take_evens(mut xs): break\nprint(xs.len)\n"
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(!solve.contains("cpl_each_take_evens"), "{solve}");
+}
+
+#[test]
+fn the_len_of_a_list_a_fn_starts_with_values_keeps_the_list() {
+    let cpp = cpp(concat!(
+        "fn halves(n: Int) -> List<Int>:\n",
+        "    var out = [i for i in 0..n]\n",
+        "    out.push(n)\n",
+        "    out\n",
+        "let n: 1..=1000 = read()\n",
+        "print(halves(n).len)\n",
+    ));
+    assert!(!cpp.contains("cpl_each_halves"), "{cpp}");
+}
+
+#[test]
+fn a_list_a_local_fn_pushes_to_is_built_not_fed() {
+    let cpp = cpp(concat!(
+        "let n: 1..=9 = read()\n",
+        "fn picks(limit: Int) -> List<Int>:\n",
+        "    var open: List<Int> = []\n",
+        "    fn visit(v: Int):\n",
+        "        if v < n:\n",
+        "            visit(v + 1)\n",
+        "            if v > limit: open.push(v)\n",
+        "    visit(0)\n",
+        "    open\n",
+        "print(picks(2).len, picks(n).len)\n",
+    ));
+    assert!(!cpp.contains("cpl_each_picks"), "{cpp}");
 }

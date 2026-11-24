@@ -6,6 +6,7 @@
 //   column's size; a merge hangs i's root under j's at distance size(j). Path compression adds
 //   up distances, so a query is |d_i - d_j| - 1. O((T + n) alpha(n)).
 // original: corpus/submissions/4793930.cpp
+// Bounds: t: 1..=500_000
 domain Ship = 1..=30000
 enum Cmd = M(i: Ship, j: Ship) | C(i: Ship, j: Ship)
 var line = PotentialDsu<Ship>()

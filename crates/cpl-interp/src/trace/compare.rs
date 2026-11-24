@@ -1,6 +1,6 @@
 //! Two runs of a file side by side: where they first part ways.
 
-use super::{string, Assigned, Recording, Shown};
+use super::{Assigned, Recording, Shown};
 use std::collections::HashMap;
 
 /// A checkpoint both runs reached, with what each showed there.
@@ -127,65 +127,52 @@ pub fn stages(fast: &Recording, slow: &Recording) -> Vec<Stage> {
 
 /// One run of a trace document: `{"label": .., "steps": [..]}`.
 pub(super) fn run_json(
+    w: &mut cpl_json::Writer,
     label: &str,
     rec: &Recording,
     ids: &[String],
     dropped: &dyn Fn(&str) -> bool,
-) -> String {
-    let mut out = String::from("{\"label\":");
-    string(&mut out, label);
+) {
+    w.object().key("label").str(label);
     if rec.skipped > 0 {
-        out += &format!(",\"firstStep\":{}", rec.skipped);
+        w.key("firstStep").int(rec.skipped);
     }
     if rec.truncated {
-        out.push_str(",\"truncated\":true");
+        w.key("truncated").bool(true);
     }
-    out.push_str(",\"steps\":[");
+    w.key("steps").array();
     for (index, step) in rec.steps(0..rec.len()).enumerate() {
-        if index > 0 {
-            out.push(',');
+        w.object().key("id").int(index).key("line").int(step.line);
+        w.key("label")
+            .str(&step.label)
+            .key("stage")
+            .str(&step.stage);
+        w.key("values").object();
+        for (var, json) in step.values.iter() {
+            w.key(&ids[*var]).json(json);
         }
-        out += &format!("{{\"id\":{index},\"line\":{},\"label\":", step.line);
-        string(&mut out, &step.label);
-        out.push_str(",\"stage\":");
-        string(&mut out, &step.stage);
-        out.push_str(",\"values\":{");
-        for (i, (var, json)) in step.values.iter().enumerate() {
-            if i > 0 {
-                out.push(',');
-            }
-            string(&mut out, &ids[*var]);
-            out.push(':');
-            out.push_str(json);
-        }
-        out.push_str("},\"locals\":");
-        out.push_str(&step.locals);
+        w.end().key("locals").json(&step.locals);
         if let Some(checkpoint) = step.checkpoint.as_deref().filter(|name| !dropped(name)) {
-            out.push_str(",\"checkpoint\":");
-            string(&mut out, checkpoint);
+            w.key("checkpoint").str(checkpoint);
         }
         if !step.frames.is_empty() {
-            out.push_str(",\"frames\":[");
-            for (i, (name, line)) in step.frames.iter().enumerate() {
-                if i > 0 {
-                    out.push(',');
-                }
-                out.push_str("{\"fn\":");
-                string(&mut out, name);
-                out += &format!(",\"line\":{line}}}");
+            w.key("frames").array();
+            for (name, line) in &step.frames {
+                w.object().key("fn").str(name).key("line").int(*line).end();
             }
-            out.push(']');
+            w.end();
         }
         if let Some((var, path)) = &step.focus {
-            out.push_str(",\"focus\":{\"variable\":");
-            string(&mut out, &ids[*var]);
-            let path: Vec<String> = path.iter().map(usize::to_string).collect();
-            out += &format!(",\"path\":[{}]}}", path.join(","));
+            w.key("focus").object().key("variable").str(&ids[*var]);
+            w.key("path").array();
+            for i in path {
+                w.int(*i);
+            }
+            w.end().end();
         }
-        out.push('}');
+        w.end();
     }
-    out.push_str("]}");
-    out
+    w.end().end();
 }
 
 /// With no variable both runs name going wrong, where the solution's output

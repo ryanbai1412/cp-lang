@@ -10,6 +10,7 @@
 //   (A group, B group), updated for the houses a merge or an undo moves (union by size, so each
 //   house moves O(log N) times). After each A line drop B lines while the count stays >= K; the
 //   last B line dropped prices B. O(N log^2 N + A + B) expected.
+// Bounds: n: 1..=2e5; ma, mb: 0..=2e5; k: 0..=2e10
 use std.dsu.{Mark}
 
 let (n, ma, mb): (1..=2e5, 0..=2e5, 0..=2e5) = read()

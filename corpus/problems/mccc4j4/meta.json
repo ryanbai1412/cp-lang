@@ -23,5 +23,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "tagged enum read (parser gap); row sort through a partial-index place."
+ "notes": "tagged enum read (parser gap); row sort through a partial-index place.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "da8be62b122596f9fed6e77616dbc25b8f9ac4ab"
+ }
 }

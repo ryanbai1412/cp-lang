@@ -11,6 +11,7 @@
 // checker: corpus/problems/ioi20p3/checker.py
 // stdin here: n m k, then the n x m ticket values (each row sorted).
 // stdout: the prize, then the n x m allocation (round index or -1).
+// Bounds: n: 2..=1500; m: 1..=1500; k: 1..=m; x: 0..=1_000_000_000
 let n: 2..=1500 = read()
 assert n % 2 == 0
 let m: 1..=1500 = read()

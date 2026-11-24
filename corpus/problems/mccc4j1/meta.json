@@ -19,5 +19,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "zip of two read arrays."
+ "notes": "zip of two read arrays.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "cd017060d1e304f2c12c09782a5712d6ac488864"
+ }
 }

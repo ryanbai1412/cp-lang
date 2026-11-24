@@ -1,4 +1,5 @@
 // Source: IOI 2019 Day 1 P2, Split the Attractions, https://dmoj.ca/problem/ioi19p2
+// limits: 1000 ms, 1024 MB
 // Problem: a connected graph, n <= 1e5 vertices, m <= 2e5 edges, and a + b + c = n. Split the
 //   vertices into sets of sizes a, b, c, at least two of them connected; print each vertex's
 //   set (1, 2, 3), or all zeros if impossible. Here stdin gives n m a b, then the edges.
@@ -9,6 +10,8 @@
 //   fits the middle set (a BFS patch from the hub). No such group: all zeros. O((n + m) α(n)).
 // original: corpus/submissions/5661848.cpp (grader function find_split)
 // checker: corpus/problems/ioi19p2/checker.py
+// Bounds: n: 3..=100_000; m: n - 1..=200_000; a: 1..=n - 2; b: 1..=n - 1 - a;
+//   links.u, links.v: 0..=n - 1
 let n: 3..=100_000 = read()
 let m: n - 1..=200_000 = read()
 let a: 1..=n - 2 = read()

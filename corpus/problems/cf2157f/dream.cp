@@ -19,7 +19,6 @@
 // every member after the group's first position `start` jumping forward to
 // `start`, merging all `n` positions in exact budget.
 
-use std.math.{choose}
 
 const LAYER_COST = 1000
 

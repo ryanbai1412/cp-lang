@@ -161,6 +161,12 @@ pub fn find_interactor(source: &Path) -> Option<PathBuf> {
     find_judge(source, "interactor.py")
 }
 
+/// The judge's grader, `grader.cpp`, for a program of `@grader` fns: it
+/// has the `main` and calls them. Found where `find_checker` looks.
+pub fn find_grader(source: &Path) -> Option<PathBuf> {
+    find_judge(source, "grader.cpp")
+}
+
 fn find_judge(source: &Path, file: &str) -> Option<PathBuf> {
     let cases = find_tests_dir(source);
     let beside = match cases.file_name() {

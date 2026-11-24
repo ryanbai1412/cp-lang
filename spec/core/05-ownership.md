@@ -1038,7 +1038,7 @@ for x in a.filter(x => x > 0): a2[l] += x
   let r = V(5)
   let queries = [(V(0), V(2))] -->
 ```python
-var best: ?[V]Int = None
+var best: ?Slice<[V]Int> = None
 for (l2, r2) in queries:
     best = a[l2..r2]
 print(best!.sum())

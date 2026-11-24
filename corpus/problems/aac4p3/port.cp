@@ -6,6 +6,7 @@
 // Solution: reduce each slope to lowest terms with a positive denominator, so equal slopes
 //   coincide. Points on one line of slope a / b share b * y - a * x, so per distinct slope tally
 //   the points by that key and add c choose 2 per line: O(m n) expected.
+// Bounds: n: 2..=1e5; m: 1..=20; points.x, points.y: 1..=1e9; slopes.k, slopes.d: -1e9..=1e9
 let (n, m): (2..=1e5, 1..=20) = read()
 let points: [n](x: 1..=1e9, y: 1..=1e9) = read()
 let slopes: [m](k: -1e9..=1e9, d: -1e9..=1e9) = read()

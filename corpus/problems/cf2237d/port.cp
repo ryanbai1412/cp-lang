@@ -7,6 +7,7 @@
 //   For each end i, count earlier prefixes with another residue (cnt[r] of prefix sums mod 3),
 //   then drop the odd alternating suffixes of length >= 3 inside the alternating run ending at i,
 //   (run - 1) / 2 of them (even ones already weigh 0). O(n).
+// Bounds: n: 1..=1_000_000
 
 @!multitest
 let n: 1..=1_000_000 = read()

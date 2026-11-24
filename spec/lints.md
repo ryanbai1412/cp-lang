@@ -125,7 +125,7 @@ those, then run `just gen`. `cpl explain <code>` prints a lint's page.
 | L0599 | int_div_possible_zero | `a / b` or `a % b` where `b`'s declared range includes 0: guard it or narrow the range |
 | L0601 | same_place_read_write | `xs[0] = xs.pop()!`: the right side changes the place being written |
 | L0602 | chain_walked_twice | a `.filter`/`.map` chain kept in a `let` and walked twice redoes the work |
-| L0603 | map_recomputed | `.map(f)` read by index in a loop calls `f` on every read |
+| L0603 | map_recomputed | `.map(f)` or `.filter(p)` indexed or walked in a loop reruns `f` on every read |
 | L0604 | mut_generator_rewalked | a generator called with a `mut` argument and walked twice |
 | L0605 | literal_slice_index | `w[0]` on a slice that keeps its source's keys: `w.first!` or `w.nth(0)` |
 | L0606 | wide_array | a large `[n]Int` whose every write fits a narrower range |

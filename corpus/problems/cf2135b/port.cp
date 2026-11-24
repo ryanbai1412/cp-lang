@@ -5,6 +5,7 @@
 // Solution: after U, U, R, R by 1e9 the robot is north-east of every anchor, so the answer is
 //   X + Y + 4e9 - max(x + y); after four L moves it is north-west of all of them, so the
 //   answer is -X + Y + 4e9 - max(-x + y). Solve the two sums for X and Y: 8 moves, O(n).
+// Bounds: n: 1..=100
 
 @!interactive
 

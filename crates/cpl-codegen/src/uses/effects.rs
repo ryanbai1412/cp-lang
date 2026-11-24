@@ -212,3 +212,19 @@ pub(crate) fn pure_closure(program: &Program, cid: usize) -> bool {
         && c.captures.is_empty()
         && cpl_ir::effects::pure_body(&c.body, true, &|_| false)
 }
+
+/// A pure closure that may read locals it copied when made (`let`s, never `var`s
+/// or globals) and call pure fns, so nothing the producer writes can reach it.
+pub(crate) fn value_closure(
+    program: &Program,
+    devirt: &Devirt,
+    pure: &BTreeSet<usize>,
+    cid: usize,
+) -> bool {
+    let c = &program.closures[cid];
+    let call_ok = |e: &Expr| pure_call(program, devirt, pure, None, true, e);
+    pure_closure(program, cid)
+        || c.muts.is_empty()
+            && c.captures.iter().all(|cap| !cap.by_ref && !cap.is_global)
+            && cpl_ir::effects::pure_body(&c.body, true, &call_ok)
+}

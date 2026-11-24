@@ -7,6 +7,7 @@
 //   (2n + 1)(2m + 1) = 2(p + 2q) + 1. Try the odd divisors 2n + 1 >= 3 up to the square root
 //   (n <= m); each L uses one horizontal and one vertical segment, so the pair fits iff
 //   q <= nm + n, the smaller orientation count. O(sqrt(p + q)).
+// Bounds: p, q: 0..=10 ** 9
 
 @!multitest
 let (p, q): (0..=10 ** 9, 0..=10 ** 9) = read()

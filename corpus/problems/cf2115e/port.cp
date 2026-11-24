@@ -10,6 +10,8 @@
 //   below C^2: an unbounded knapsack carried along the DAG. Larger budgets: for each pivot p,
 //   only paths through p and traders no better than p; best[v, j mod c_p] is their power minus
 //   w_p per c_p coins, relaxed around the residue cycles. O((n + m) C^2 + nq) total.
+// Bounds: n, item.cost: 1..=200; m: 1..=2000; item.worth, queries.budget: 1..=1e9;
+//   arcs.u, arcs.v, queries.at: 1..=n; q: 1..=200_000
 let (n, m): (1..=200, 1..=2000) = read()
 domain V = 1..=n
 let item: [V](cost: 1..=200, worth: 1..=1e9) = read()

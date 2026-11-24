@@ -8,6 +8,7 @@
 //   over column c -> (c + 1, Behind(z)). Behind(z): a closing L -> (c + 2, Flush), or two
 //   staggered bars -> (c + 3, Behind(z)) when the bar on other(z) fits (c + 4 <= n).
 //   Memoized best over (c, front): O(n).
+// Bounds: n: 3..=100_000
 
 @!multitest
 let n: 3..=100_000 = read()

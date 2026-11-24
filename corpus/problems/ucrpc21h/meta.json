@@ -57,5 +57,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "dijkstra.dist; product-domain knapsack with Split.rev and Split.at(tuple) (checker gap)"
+ "notes": "dijkstra.dist; product-domain knapsack with Split.rev and Split.at(tuple) (checker gap)",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "af17747c671d17d064261a8fd2429640c1ddbe74"
+ }
 }

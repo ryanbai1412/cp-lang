@@ -7,6 +7,7 @@
 //   by value), and "1" is next_less of "2". Sweeping the "4" positions, the "2"s whose "1" is
 //   already passed sit in a max SegTree by value; the best "2" below "3" updates best at "5".
 //   O(n log n).
+// Bounds: n: 1..=1_000_000; a: 1..=n
 
 @!multitest
 let n: 1..=1_000_000 = read()

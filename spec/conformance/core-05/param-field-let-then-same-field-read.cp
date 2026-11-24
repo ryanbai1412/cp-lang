@@ -1,5 +1,6 @@
 // expect: ok, output "3 1\n1"
 // The case 8c5b0e71a moves reads only another field (`m.n`); reading `m.xs` itself at the end keeps it a copy.
+// copies: 1
 struct S:
     xs: List<Int>
     n: Int

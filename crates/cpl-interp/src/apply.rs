@@ -91,11 +91,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let mut vals = vals.into_iter();
                 let (l, r) = (vals.next().unwrap(), vals.next().unwrap());
                 let l = match l {
-                    Value::MutView(mv) => Value::List(Rc::new(self.mut_view_to_vec(&mv, span)?)),
+                    Value::MutView(mv) => Value::List(Rc::new(crate::value::Cells::from(
+                        self.mut_view_to_vec(&mv, span)?,
+                    ))),
                     other => other,
                 };
                 let r = match r {
-                    Value::MutView(mv) => Value::List(Rc::new(self.mut_view_to_vec(&mv, span)?)),
+                    Value::MutView(mv) => Value::List(Rc::new(crate::value::Cells::from(
+                        self.mut_view_to_vec(&mv, span)?,
+                    ))),
                     other => other,
                 };
                 match (&l, &r) {
@@ -184,7 +188,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     return Ok(Value::Tuple(TupleVal::Boxed(Rc::new(vec![v]))));
                 }
                 match &e.ty {
-                    Ty::List(_) => Value::List(Rc::new(values)),
+                    Ty::List(_) => Value::List(Rc::new(crate::value::Cells::from(values))),
                     Ty::Set(_) | Ty::HashSet(_) => {
                         Value::Set(Rc::new(values.into_iter().collect()))
                     }
@@ -211,8 +215,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         )
                     }
                 },
-                (UnOp::Neg, Value::I128(v)) => match v.checked_neg() {
-                    Some(v) => Value::I128(v),
+                (UnOp::Neg, Value::I128(v)) => match v.get().checked_neg() {
+                    Some(v) => Value::I128(v.into()),
                     None => {
                         return trap(
                             span,
@@ -227,7 +231,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
                 (UnOp::Pos, v) => v,
                 (UnOp::BitNot, Value::Int(v)) => Value::Int(!v),
-                (UnOp::BitNot, Value::I128(v)) => Value::I128(!v),
+                (UnOp::BitNot, Value::I128(v)) => Value::I128((!v.get()).into()),
                 (UnOp::BitNot, Value::U64(v)) => Value::U64(!v),
                 (_, other) => other,
             },

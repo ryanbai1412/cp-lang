@@ -1,5 +1,5 @@
 // expect: ok, output "YES"
-use std.graph.{fixed_cost_paths, bfs01, blocks}
+use std.graph.{fixed_cost_paths}
 fn vertexless_closure_graphs_with_turbofish():
     domain V = 0..6
     // arcs u -> u + 1 and u -> u + 2, given only as a closure

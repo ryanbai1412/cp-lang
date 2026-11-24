@@ -50,7 +50,7 @@ pub struct Bitset<D>:
     /// The set of positions where `a` is true.
     ///
     /// cost: \(O(K)\) time, \(O(K / 64)\) space
-    /// empty: the empty set when no element is true
+    /// empty: `domain D = 0..10; Bitset<D>.from([D] v => false).len == 0`
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.from([D] v => Int(v) % 4 == 0).each().collect() == [D(0), D(4), D(8)]`
     pub fn from(a: [D]Bool) -> Bitset<D>:
@@ -62,7 +62,7 @@ pub struct Bitset<D>:
     /// Build a bitset from a list or generator of positions `D`. Repeated positions are set once.
     ///
     /// cost: \(O(K / 64 + \mathit{xs}.\mathit{len})\) time, \(O(K / 64)\) space
-    /// empty: the empty set
+    /// empty: `domain D = 0..10; Bitset<D>.of([]).len == 0`
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(3), D(1), D(3)]).each().collect() == [D(1), D(3)]`
     pub fn of(xs: List<D>) -> Bitset<D>:
@@ -161,7 +161,7 @@ pub struct Bitset<D>:
     /// at the first that satisfies it.
     ///
     /// cost: \(O(K / 64 + \mathit{visited})\) words scanned and calls of `pred`
-    /// empty: `false`
+    /// empty: `domain D = 0..10; not Bitset<D>().any(d => true)`
     /// traps: never (beyond what `pred` traps on)
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).any(d => Int(d) > 5)`
     /// example: `domain D = 0..10; not Bitset<D>().any(d => true)`
@@ -195,8 +195,8 @@ pub struct Bitset<D>:
     /// The smallest position in the set, or `None`.
     ///
     /// cost: \(O(K / 64)\)
-    /// empty: `None`
-    /// ties: None possible; positions are distinct
+    /// empty: `domain D = 0..10; Bitset<D>().first() == None`
+    /// ties: `domain D = 0..10; Bitset<D>.of([D(3), D(3)]).first() == Some(D(3))`
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).first() == Some(D(1))`
     pub fn first(self) -> ?D = self.find(_ => true)
@@ -205,8 +205,8 @@ pub struct Bitset<D>:
     /// visited in increasing order, so `pred` is called only up to the answer.
     ///
     /// cost: \(O(K / 64 + \mathit{visited})\)
-    /// empty: `None`
-    /// ties: None possible; the smallest qualifying position wins
+    /// empty: `domain D = 0..10; Bitset<D>().find(d => true) == None`
+    /// ties: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).find(d => Int(d) > 0) == Some(D(1))`
     /// traps: never (beyond what `pred` traps on)
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).find(d => Int(d) > 2) == Some(D(3))`
     pub fn find(self, pred: D -> Bool) -> ?D:
@@ -223,8 +223,8 @@ pub struct Bitset<D>:
     /// visited in decreasing order.
     ///
     /// cost: \(O(K / 64 + \mathit{visited})\)
-    /// empty: `None`
-    /// ties: None possible; the largest qualifying position wins
+    /// empty: `domain D = 0..10; Bitset<D>().rfind(d => true) == None`
+    /// ties: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).rfind(d => Int(d) < 9) == Some(D(8))`
     /// traps: never (beyond what `pred` traps on)
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).rfind(d => Int(d) < 8) == Some(D(3))`
     pub fn rfind(self, pred: D -> Bool) -> ?D:
@@ -405,7 +405,7 @@ pub struct Bitset<D>:
     /// The positions in the set, in increasing order; `for v in b` walks the same sequence.
     ///
     /// cost: \(O(K / 64 + \mathit{len})\) to walk, \(O(1)\) per member amortized
-    /// empty: yields nothing
+    /// empty: `domain D = 0..10; Bitset<D>().each().collect() == []`
     /// order: increasing
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(8), D(1)]).each().collect() == [D(1), D(8)]`
@@ -420,7 +420,7 @@ pub struct Bitset<D>:
     /// The first position in the set at or after `i`, or `None`.
     ///
     /// cost: \(O(K / 64)\)
-    /// empty: `None`
+    /// empty: `domain D = 0..10; Bitset<D>().next(D(0)) == None`
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).next(D(3)) == Some(D(3))`
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).next(D(4)) == Some(D(8))`
@@ -437,7 +437,7 @@ pub struct Bitset<D>:
     /// The last position in the set at or before `i`, or `None` (the mirror of `next`).
     ///
     /// cost: \(O(K / 64)\)
-    /// empty: `None`
+    /// empty: `domain D = 0..10; Bitset<D>().prev(D(9)) == None`
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(3)) == Some(D(3))`
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(2)) == Some(D(1))`
@@ -455,7 +455,7 @@ pub struct Bitset<D>:
     /// The number of positions in the set strictly before `i`.
     ///
     /// cost: \(O(K / 64)\)
-    /// empty: zero
+    /// empty: `domain D = 0..10; Bitset<D>().count_below(D(9)) == 0`
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count_below(D(8)) == 2`
     pub fn count_below(self, i: D) -> Int:
@@ -472,7 +472,7 @@ pub struct Bitset<D>:
     /// duplicate weights with binary carries so the work is \(O(K \sqrt{S} / 64)\).
     ///
     /// cost: \(O(K \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(K / 64)\) space
-    /// empty: `{D.first}` (just the sum 0), or the empty set when `D` is empty
+    /// empty: `domain S = 0..=10; domain E = 0..0; Bitset<S>.subset_sums([]).each().map(s => Int(s)).collect() == [0] and Bitset<E>.subset_sums([]).len == 0`
     /// traps: when a weight is negative
     /// example: `domain S = 0..=10; Bitset<S>.subset_sums([3, 5, 5]).each().map(s => Int(s)).collect() == [0, 3, 5, 8, 10]`
     pub fn subset_sums(weights: List<Int>) -> Bitset<D>:
@@ -507,7 +507,7 @@ pub struct Bitset<D>:
     /// Count set bits in `r` (accepts cut ranges via decision 124).
     ///
     /// cost: \(O(r.\mathit{len} / 64 + 1)\)
-    /// empty: zero
+    /// empty: `domain D = 0..10; Bitset<D>.of([D(1), D(3)]).count_range(3..3) == 0`
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count_range(1..8) == 2`
     pub fn count_range(self, r: Range<D>) -> Int:
@@ -520,7 +520,7 @@ pub struct Bitset<D>:
     /// Set (or, with `on: false`, clear) every bit in `r` in place.
     ///
     /// cost: \(O(r.\mathit{len} / 64 + 1)\)
-    /// empty: no effect
+    /// empty: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3)]); b.set_range(2..2); b.set_range(3..3, on: false); b.each().collect() == [D(1), D(3)]`
     /// traps: never
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.set_range(2..5); b.len == 5`
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.set_range(0..4, on: false); b.each().collect() == [D(8)]`
@@ -536,7 +536,7 @@ pub struct Bitset<D>:
     /// Flip every bit in `r` in place.
     ///
     /// cost: \(O(r.\mathit{len} / 64 + 1)\)
-    /// empty: no effect
+    /// empty: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3)]); b.flip_range(2..2); b.each().collect() == [D(1), D(3)]`
     /// traps: never
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.flip_range(0..4); b.each().collect() == [D(0), D(2), D(8)]`
     pub fn flip_range(mut self, r: Range<D>):
@@ -551,7 +551,7 @@ pub struct Bitset<D>:
     /// The `k`-th set position (0-based, in increasing order), or `None` if `k >= len`.
     ///
     /// cost: \(O(K / 64)\)
-    /// empty: `None`
+    /// empty: `domain D = 0..10; Bitset<D>().nth(0) == None`
     /// traps: when `k < 0`
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).nth(2) == Some(D(8))`
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).nth(3) == None`
@@ -570,7 +570,7 @@ pub struct Bitset<D>:
     /// The set positions in descending order.
     ///
     /// cost: \(O(K / 64 + \mathit{len})\) to walk
-    /// empty: yields nothing
+    /// empty: `domain D = 0..10; Bitset<D>().each_rev().collect() == []`
     /// order: decreasing
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).each_rev().collect() == [D(8), D(3), D(1)]`
@@ -737,8 +737,8 @@ pub struct DynBitset:
     /// The smallest set bit index, or `None` if empty.
     ///
     /// cost: \(O(\mathit{cap} / 64)\)
-    /// empty: `None`
-    /// ties: None possible; the smallest index wins
+    /// empty: `DynBitset(10).first() == None`
+    /// ties: `var d = DynBitset(10); d.add(3); d.add(3); d.add(8); d.first() == Some(3)`
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(8); d.add(3); d.first() == Some(3)`
     /// example: `DynBitset(10).first() == None`
@@ -747,8 +747,8 @@ pub struct DynBitset:
     /// The largest set bit index, or `None` if empty.
     ///
     /// cost: \(O(\mathit{cap} / 64)\)
-    /// empty: `None`
-    /// ties: None possible; the largest index wins
+    /// empty: `DynBitset(10).last() == None`
+    /// ties: `var d = DynBitset(10); d.add(8); d.add(8); d.add(3); d.last() == Some(8)`
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(8); d.add(3); d.last() == Some(8)`
     pub fn last(self) -> ?Int:
@@ -758,7 +758,7 @@ pub struct DynBitset:
     /// The smallest set bit `>= i`, or `None`.
     ///
     /// cost: \(O(\mathit{cap} / 64)\)
-    /// empty: `None`
+    /// empty: `DynBitset(10).next(0) == None`
     /// traps: when `i` is not in `0..=cap`
     /// example: `var d = DynBitset(10); d.add(3); d.add(8); d.next(3) == Some(3) and d.next(4) == Some(8) and d.next(9) == None`
     pub fn next(self, i: Int) -> ?Int:
@@ -776,7 +776,7 @@ pub struct DynBitset:
     /// The largest set bit `<= i`, or `None`; `i` itself counts, as in `Bitset.prev`.
     ///
     /// cost: \(O(\mathit{cap} / 64)\)
-    /// empty: `None`
+    /// empty: `DynBitset(10).prev(9) == None`
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.prev(3) == Some(3) and d.prev(2) == Some(1) and d.prev(0) == None`
     pub fn prev(self, i: Int) -> ?Int:
@@ -793,7 +793,7 @@ pub struct DynBitset:
     /// The number of set bits strictly below `i`.
     ///
     /// cost: \(O(\mathit{cap} / 64)\)
-    /// empty: zero
+    /// empty: `DynBitset(10).count_below(10) == 0`
     /// traps: when `i` is not in `0..=cap`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_below(8) == 2`
     pub fn count_below(self, i: Int) -> Int:
@@ -803,7 +803,7 @@ pub struct DynBitset:
     /// The number of set bits in `r`.
     ///
     /// cost: \(O(r.\mathit{len} / 64 + 1)\)
-    /// empty: zero
+    /// empty: `var d = DynBitset(10); d.add(3); d.count_range(3..3) == 0`
     /// traps: when `r` is non-empty and reaches outside `0..cap`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_range(1..8) == 2`
     pub fn count_range(self, r: Range<Int>) -> Int:
@@ -816,7 +816,7 @@ pub struct DynBitset:
     /// The `k`-th set bit index (0-based, in increasing order), or `None` if `k >= len`.
     ///
     /// cost: \(O(\mathit{cap} / 64)\)
-    /// empty: `None`
+    /// empty: `DynBitset(10).nth(0) == None`
     /// traps: when `k < 0`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.nth(1) == Some(3) and d.nth(3) == None`
     pub fn nth(self, k: Int) -> ?Int:
@@ -938,7 +938,7 @@ pub struct DynBitset:
     /// The set bit indices in ascending order; `for i in d` walks the same sequence.
     ///
     /// cost: \(O(\mathit{cap} / 64 + \mathit{len})\) to walk
-    /// empty: yields nothing
+    /// empty: `DynBitset(10).each().collect() == []`
     /// order: increasing
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each().collect() == [1, 8]`
@@ -953,7 +953,7 @@ pub struct DynBitset:
     /// The set bit indices in descending order.
     ///
     /// cost: \(O(\mathit{cap} / 64 + \mathit{len})\) to walk
-    /// empty: yields nothing
+    /// empty: `DynBitset(10).each_rev().collect() == []`
     /// order: decreasing
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each_rev().collect() == [8, 1]`
@@ -972,7 +972,7 @@ pub struct DynBitset:
     /// Duplicate weights are grouped with binary carries, as in `Bitset.subset_sums`.
     ///
     /// cost: \(O(\mathit{cap} \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(\mathit{cap} / 64)\) space
-    /// empty: just bit 0 (None when `cap == 0`)
+    /// empty: `DynBitset.subset_sums(5, []).each().collect() == [0] and DynBitset.subset_sums(0, []).each().collect() == []`
     /// traps: when `cap < 0` or a weight is negative
     /// example: `DynBitset.subset_sums(11, [3, 5, 5]).each().collect() == [0, 3, 5, 8, 10]`
     pub fn subset_sums(cap: Int, weights: List<Int>) -> DynBitset:
@@ -1042,7 +1042,7 @@ pub struct XorTrie:
     /// Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the
     /// contents are unchanged.
     ///
-    /// cost: \(O(\mathit{nodes})\) time and space
+    /// cost: \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise
     /// traps: when `nodes < 0`
     /// example: `var t = XorTrie(3); t.reserve(100); t.len == 0`
     pub fn reserve(mut self, nodes: Int):
@@ -1065,6 +1065,17 @@ pub struct XorTrie:
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.remove(5); t.is_empty`
     @get pub fn is_empty(self) -> Bool = _cnt[0] == 0
+
+    /// \(O(\mathit{bits})\) per element. Visit every stored value as it reads now, with the
+    /// `xor_all` mask applied, one per copy.
+    ///
+    /// cost: \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element
+    /// empty: `XorTrie(3).each().collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.add(1); t.add(5); t.xor_all(1); t.each().collect() == [0, 4, 4]`
+    pub fn each(self) -> yields Int:
+        for k in 0.._cnt[0]: yield self.kth_xor(0, k)!
 
     /// Insert one copy of `x`. `x` is stored as given, after any earlier `xor_all`: the mask applies
     /// only to elements already present.
@@ -1117,8 +1128,8 @@ pub struct XorTrie:
     /// The maximum value of `x ^ y` over stored `y`, or `None` if empty.
     ///
     /// cost: \(O(\mathit{bits})\)
-    /// empty: `None`
-    /// ties: None possible; the value is unique even when several `y` reach it
+    /// empty: `XorTrie(3).max_xor(2) == None`
+    /// ties: `var t = XorTrie(3); t.add(5); t.add(5); t.max_xor(2) == Some(7)`
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.max_xor(2) == Some(7)`
     /// example: `XorTrie(3).max_xor(2) == None`
@@ -1127,8 +1138,8 @@ pub struct XorTrie:
     /// The minimum value of `x ^ y` over stored `y`, or `None` if empty.
     ///
     /// cost: \(O(\mathit{bits})\)
-    /// empty: `None`
-    /// ties: None possible; the value is unique even when several `y` reach it
+    /// empty: `XorTrie(3).min_xor(2) == None`
+    /// ties: `var t = XorTrie(3); t.add(5); t.add(5); t.min_xor(5) == Some(0)`
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.min_xor(2) == Some(3)`
     pub fn min_xor(self, x: Int) -> ?Int = self.extreme_xor(x, 0)
@@ -1161,8 +1172,8 @@ pub struct XorTrie:
     /// `k >= len`.
     ///
     /// cost: \(O(\mathit{bits})\)
-    /// empty: `None`
-    /// ties: equal values `x ^ y` (copies of one `y`) each take their own rank
+    /// empty: `XorTrie(3).kth_xor(2, 0) == None`
+    /// ties: `var t = XorTrie(3); t.add(5); t.add(5); t.kth_xor(2, 0) == Some(7) and t.kth_xor(2, 1) == Some(7)`
     /// traps: when `k < 0` or `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 1) == Some(4)`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 3) == None`
@@ -1189,7 +1200,7 @@ pub struct XorTrie:
     /// when every value is present.
     ///
     /// cost: \(O(\mathit{bits})\)
-    /// empty: zero
+    /// empty: `XorTrie(3).mex_xor() == 0 and XorTrie(3).mex_xor(5) == 0`
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.mex_xor() == 0 and t.mex_xor(1) == 1`
     pub fn mex_xor(self, x: Int = 0) -> Int:
@@ -1245,77 +1256,131 @@ struct BitTrieNode:
     var cnt: Int
     kid: [0..2]?Int
 
+/// The node store shared by every `BitTrie<W>` built in it: one `List` of nodes, each a count
+/// and two optional children. Tries are root handles into it, so `absorb` links one trie's
+/// nodes under another's instead of copying them. Pass it to every trie call, as `PArena` is
+/// passed to `PMultiset`.
+pub struct BitTrieArena<W>:
+    nodes: List<BitTrieNode>
+
+    /// An empty arena with room for `cap` nodes before it reallocates. The room is allocated,
+    /// not filled: `add` touches each node's memory as it uses it.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `cap < 0`
+    /// example: `BitTrieArena<3>.new(cap: 8).node_count == 0`
+    pub fn new(cap: Int = 0) -> BitTrieArena<W>:
+        var nodes: List<BitTrieNode> = []
+        nodes.reserve(cap)
+        BitTrieArena(nodes)
+
+    /// The number of nodes held, over every trie built in the arena.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = BitTrieArena<3>(); BitTrie<3>.of(mut ar, 5); ar.node_count == 4`
+    @get pub fn node_count(self) -> Int = nodes.len
+
+    fn alloc(mut self) -> Int:
+        nodes.push(BitTrieNode(0, [0..2] _ => None))
+        nodes.len - 1
+
+impl Show for BitTrieArena<W>:
+    fn show(v): "{v.node_count} nodes"
+
 /// \(O(W)\) per op. A multiset of `W`-bit integers (values in `0..2^W`) as a binary trie with
 /// a count per node, read from the top bit down. Unlike `XorTrie`, two tries of one width merge:
 /// `absorb` adds another trie's counts into this one, so tries kept per group of indices (DSU,
 /// small-to-large over a tree, runs of equal keys) combine as the groups do.
-/// Layout: one `List` of nodes, the root at 0, each node a count and two optional children.
+/// Layout: a root handle into a `BitTrieArena<W>`, which every call that reads or adds nodes takes.
 pub struct BitTrie<W>:
-    var nodes: List<BitTrieNode>
+    var root: ?Int
 
-    fn leaf() -> BitTrieNode = BitTrieNode(0, [0..2] _ => None)
-
-    /// An empty `BitTrie<W>`.
+    /// An empty `BitTrie<W>`; it holds no node until the first `add`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `BitTrie<3>.new().is_empty`
-    pub fn new() -> BitTrie<W> = BitTrie([BitTrie.leaf()])
+    pub fn new() -> BitTrie<W> = BitTrie(None)
 
-    /// The trie holding `x` once: one path of `W + 1` nodes.
+    /// The trie holding `x` once: one path of `W + 1` new nodes in `ar`.
     ///
     /// cost: \(O(W)\)
     /// traps: when `x` is not in `0..2^W`
-    /// example: `BitTrie<3>.of(5).count(5) == 1`
-    pub fn of(x: Int) -> BitTrie<W>:
-        assert 0 <= x < 1 << W
-        BitTrie([BitTrieNode(1, [0..2] side => if d < W and side == (x >> (W - 1 - d)) & 1: Some(d + 1) else: None) for d in 0..=W])
+    /// example: `var ar = BitTrieArena<3>(); BitTrie<3>.of(mut ar, 5).count(ar, 5) == 1`
+    pub fn of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>:
+        var t = BitTrie<W>.new()
+        t.add(mut ar, x)
+        t
 
     /// The number of stored integers, with multiplicity.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `var t = BitTrie<3>.of(5); t.add(5); t.len == 2`
-    @get pub fn len(self) -> Int = nodes[0].cnt
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 5); t.len(ar) == 2`
+    pub fn len(self, ar: BitTrieArena<W>) -> Int = if let r = root: ar.nodes[r].cnt else: 0
 
     /// True when the trie holds no integers.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `BitTrie<3>.new().is_empty and not BitTrie<3>.of(0).is_empty`
-    @get pub fn is_empty(self) -> Bool = nodes[0].cnt == 0
+    /// example: `var ar = BitTrieArena<3>(); BitTrie<3>.new().is_empty and not BitTrie<3>.of(mut ar, 0).is_empty`
+    @get pub fn is_empty(self) -> Bool = root == None
+
+    /// \(O(\mathit{nodes} + \mathit{len})\). Visit every stored value, one per copy.
+    ///
+    /// cost: \(O(\mathit{nodes} + \mathit{len})\)
+    /// empty: `BitTrie<3>.new().each(BitTrieArena<3>()).collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 1); t.add(mut ar, 5); t.each(ar).collect() == [1, 5, 5]`
+    pub fn each(self, ar: BitTrieArena<W>) -> yields Int:
+        guard let r = root else: return
+        // A node with copies and no child is a full-width leaf.
+        var stack = [(node: r, value: 0)]
+        while let top = stack.pop():
+            let n = ar.nodes[top.node]
+            if n.cnt == 0: continue
+            if n.kid[0] == None and n.kid[1] == None:
+                for _ in 0..n.cnt: yield top.value
+                continue
+            for side in [1, 0]:
+                if let c = n.kid[side]: stack.push((node: c, value: top.value * 2 + side))
 
     /// Insert one copy of `x`.
     ///
-    /// cost: \(O(W)\) time, up to `W` new nodes
+    /// cost: \(O(W)\) time, up to `W + 1` new nodes in `ar`
     /// traps: when `x` is not in `0..2^W`
-    /// example: `var t = BitTrie<3>.new(); t.add(5); t.add(5); t.count(5) == 2`
-    pub fn add(mut self, x: Int):
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.new(); t.add(mut ar, 5); t.add(mut ar, 5); t.count(ar, 5) == 2`
+    pub fn add(mut self, mut ar: BitTrieArena<W>, x: Int):
         assert 0 <= x < 1 << W
-        var t = 0
-        nodes[0].cnt += 1
-        for b in (0..W).rev:
-            let side = (x >> b) & 1
-            if let c = nodes[t].kid[side]:
-                t = c
-            else:
-                nodes[t].kid[side] = nodes.len
-                t = nodes.len
-                nodes.push(BitTrie.leaf())
-            nodes[t].cnt += 1
+        var t = if let r = root: r else: ar.alloc()
+        root = Some(t)
+        unchecked:
+            ar.nodes[t].cnt += 1
+            for b in (0..W).rev:
+                let side = (x >> b) & 1
+                if let c = ar.nodes[t].kid[side]:
+                    t = c
+                else:
+                    let c = ar.alloc()
+                    ar.nodes[t].kid[side] = c
+                    t = c
+                ar.nodes[t].cnt += 1
 
     /// The multiplicity of `x`; zero when absent or out of range.
     ///
     /// cost: \(O(W)\)
     /// traps: never
-    /// example: `var t = BitTrie<3>.of(5); t.add(1); t.count(5) == 1 and t.count(4) == 0`
-    pub fn count(self, x: Int) -> Int:
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 1); t.count(ar, 5) == 1 and t.count(ar, 4) == 0`
+    pub fn count(self, ar: BitTrieArena<W>, x: Int) -> Int:
         if x < 0 or x >= 1 << W: return 0
-        var t = 0
+        guard let r = root else: return 0
+        var t = r
         for b in (0..W).rev:
-            guard let c = nodes[t].kid[(x >> b) & 1] else: return 0
+            guard let c = ar.nodes[t].kid[(x >> b) & 1] else: return 0
             t = c
-        nodes[t].cnt
+        ar.nodes[t].cnt
 
     /// The path of `x` from the top bit down: for each bit `b` from `W - 1` to 0, while some
     /// stored `y` agrees with `x` on bits `b` and above, yields `b` and how many do. Stops at the
@@ -1325,48 +1390,47 @@ pub struct BitTrie<W>:
     /// `x` first at `b` number the previous count minus this one (`len` above the top bit).
     ///
     /// cost: \(O(W)\) for the whole walk, \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `List(BitTrie<3>().walk(BitTrieArena<3>(), 5)) == []`
     /// order: bits from `W - 1` down
     /// traps: when `x` is not in `0..2^W`
-    /// example: `var t = BitTrie<3>.of(5); t.add(4); t.add(1); List(t.walk(5)) == [(bit: 2, count: 2), (bit: 1, count: 2), (bit: 0, count: 1)]`
-    pub fn walk(self, x: Int) -> yields (bit: Int, count: Int):
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 4); t.add(mut ar, 1); List(t.walk(ar, 5)) == [(bit: 2, count: 2), (bit: 1, count: 2), (bit: 0, count: 1)]`
+    pub fn walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int):
         assert 0 <= x < 1 << W
-        var t = 0
+        guard let r = root else: return
+        var t = r
         for b in (0..W).rev:
             unchecked:
-                guard let c = nodes[t].kid[(x >> b) & 1] else: return
+                guard let c = ar.nodes[t].kid[(x >> b) & 1] else: return
                 t = c
-                yield (bit: b, count: nodes[t].cnt)
+                yield (bit: b, count: ar.nodes[t].cnt)
 
-    // Adds the subtree of `other` at `y` into the one of `self` at `x`, returning `x`, or a
-    // copy of `other`'s subtree when `x` is `None`.
-    fn merge(mut self, x: ?Int, other: BitTrie<W>, y: Int) -> Int:
-        let into = if let v = x: v else:
-            nodes.push(BitTrie.leaf())
-            nodes.len - 1
+    // Adds the subtree at `y` into the one at `x`: counts add where both have a node, and
+    // `y`'s child is linked in, not copied, wherever `x` has none.
+    fn link(mut ar: BitTrieArena<W>, x: Int, y: Int):
         unchecked:
-            nodes[into].cnt += other.nodes[y].cnt
-            for side in 0..2 if let c = other.nodes[y].kid[side]:
-                nodes[into].kid[side] = self.merge(nodes[into].kid[side], other, c)
-        into
+            ar.nodes[x].cnt += ar.nodes[y].cnt
+            for side in 0..2 if let c = ar.nodes[y].kid[side]:
+                if let d = ar.nodes[x].kid[side]: BitTrie.link(mut ar, d, c)
+                else: ar.nodes[x].kid[side] = c
 
     /// Add every integer of `other` into `self`, with multiplicity, leaving `other` empty.
+    /// `other`'s nodes become part of `self`; a copy of `other` made before is no longer valid.
     ///
-    /// The smaller trie's nodes are walked into the larger, whichever side that is, so a
-    /// sequence of absorbs that only ever merges disjoint groups costs \(O(N W \log N)\) over
-    /// `N` insertions.
+    /// Only nodes both tries have are visited, and each visit retires one of `other`'s nodes,
+    /// so any sequence of absorbs costs \(O(N W)\) in total over `N` insertions.
     ///
-    /// cost: \(O(\min(\mathit{nodes}(\mathit{self}), \mathit{nodes}(\mathit{other})))\)
-    /// empty: an empty `other` leaves `self` unchanged
+    /// cost: \(O(\min(\mathit{nodes}(\mathit{self}), \mathit{nodes}(\mathit{other})))\), no node copied
+    /// empty: `var ar = BitTrieArena<3>(); var a = BitTrie<3>.of(mut ar, 5); var b = BitTrie<3>(); a.absorb(mut ar, mut b); a.count(ar, 5) == 1 and a.len(ar) == 1`
     /// traps: never
-    /// example: `var a = BitTrie<3>.of(5); var b = BitTrie<3>.of(5); b.add(2); a.absorb(mut b); a.count(5) == 2 and a.len == 3 and b.is_empty`
-    pub fn absorb(mut self, mut other: BitTrie<W>):
-        if nodes.len < other.nodes.len:
-            var mine = nodes.take_all()
-            nodes = other.nodes.take_all()
-            other.nodes = mine.take_all()
-        self.merge(Some(0), other, 0)
-        other.nodes = [BitTrie.leaf()]
+    /// example: `var ar = BitTrieArena<3>(); var a = BitTrie<3>.of(mut ar, 5); var b = BitTrie<3>.of(mut ar, 5); b.add(mut ar, 2); a.absorb(mut ar, mut b); a.count(ar, 5) == 2 and a.len(ar) == 3 and b.is_empty`
+    pub fn absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>):
+        if let y = other.root:
+            if let x = root: BitTrie.link(mut ar, x, y)
+            else: root = Some(y)
+        other.root = None
+
+impl Show for BitTrie<W>:
+    fn show(v): if let r = v.root: "root {r}" else: "empty"
 
 /// `a - b`: the positions in `a` that are not in `b`.
 impl Sub for Bitset<D>:
@@ -1378,6 +1442,19 @@ impl Sub for Bitset<D>:
 
 /// Index of the highest set bit in non-zero `x` (0..64).
 fn msb(x: U64) -> Int = bit_width(x) - 1
+
+@test
+fn bit_tries_walk_ascending_and_show():
+    var x = XorTrie(3)
+    for v in [5, 1, 5, 6]: x.add(v)
+    assert x.each().collect() == [1, 5, 5, 6] and "{x}" == "1 5 5 6"
+    x.xor_all(3)
+    assert x.each().collect() == [2, 5, 6, 6]
+    var ar = BitTrieArena<3>()
+    var b = BitTrie<3>.new()
+    assert "{b}" == "empty"
+    for v in [5, 1, 5, 6, 0, 7]: b.add(mut ar, v)
+    assert b.each(ar).collect() == [0, 1, 5, 5, 6, 7] and "{b}" == "root 0" and "{ar}" == "{ar.node_count} nodes"
 
 impl Show for Bitset<D>:
     fn show(a):
@@ -1546,4 +1623,12 @@ impl Show for DynBitset:
         for v in a.each():
             if not out.is_empty: out += " "
             out += "{v}"
+        out
+
+impl Show for XorTrie:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
         out

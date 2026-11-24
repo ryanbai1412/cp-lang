@@ -8,6 +8,7 @@
 //   One left-to-right DP: ending_at[i] (best with i kept), at_boundary (its prefix max, to
 //   open a paint at st), after_block (a whole paint already ended) and last_with_start[st]
 //   (the previous kept index of the same paint). Print n - best; O(n).
+// Bounds: n: 1..=500_000; m: 1..=n; a: 1..=m
 
 @!multitest
 let n: 1..=500_000 = read()

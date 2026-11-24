@@ -55,10 +55,20 @@ fn sites(src: &str) -> Vec<(usize, usize, Kind)> {
         let code = line.split("//").next().unwrap_or("");
         let bytes = code.as_bytes();
         let (mut i, mut quoted, mut prev_word) = (0, false, "");
+        // Between `let`/`var`/`for` and its `=` or `in`, the words in `(..)` are bound there.
+        let (mut binding, mut pattern) = (false, 0usize);
         while i < bytes.len() {
             let c = bytes[i];
             if c == b'"' {
                 quoted = !quoted;
+            }
+            if !quoted {
+                match c {
+                    b'(' if binding || pattern > 0 => pattern += 1,
+                    b')' if pattern > 0 => pattern -= 1,
+                    b'=' if pattern == 0 => binding = false,
+                    _ => {}
+                }
             }
             // A letter right after a digit is part of a number (`1_000`, `2e5`).
             let in_number = i > 0 && bytes[i - 1].is_ascii_digit();
@@ -82,7 +92,13 @@ fn sites(src: &str) -> Vec<(usize, usize, Kind)> {
             let word = &code[start..i];
             let before = |k: usize| start.checked_sub(k).map(|j| bytes[j]);
             let rest = code[i..].trim_start();
+            if matches!(word, "let" | "var" | "for") {
+                binding = true;
+            } else if word == "in" && pattern == 0 {
+                binding = false;
+            }
             let declared = DECLARES.contains(&prev_word)
+                || pattern > 0
                 || rest.starts_with("=>")
                 || (rest.starts_with(':') && !rest.starts_with(":="))
                 || lambda_param(&code[i..]);

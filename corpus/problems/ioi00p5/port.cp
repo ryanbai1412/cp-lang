@@ -1,4 +1,5 @@
 // Source: IOI 2000 (Post Office), https://dmoj.ca/problem/ioi00p5
+// limits: 1000 ms, 16 MB
 // Problem: V <= 300 villages at distinct positions <= 1e4 on a line. Build P <= 30 post
 //   offices in villages, minimising the sum of each village's distance to its nearest office.
 //   Print the sum, then the office positions in increasing order.
@@ -7,6 +8,7 @@
 //   i..=j of serve(i, j) + best(j + 1, k - 1), both memoised; then follow the optimal choices
 //   to print the medians. O(V^2 P), plus O(V^3) for serve.
 // original: corpus/submissions/4811886.cpp
+// Bounds: n: 1..=300; m: 1..=30; spots: 1..=10000
 let n: 1..=300 = read()
 let m: 1..=30 = read()
 let spots: [n]1..=10000 = read()

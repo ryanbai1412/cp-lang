@@ -54,7 +54,7 @@ fn solve(span: Range<Int>, is_max: Bool, known_m: ?Int = None) -> List<Int>:
         x[outer].reverse()
         if moved_left: core = join(core, right.pop()!, not is_max)
         else: core = join(left.pop()!, core, is_max)
-    left + [right.rev.fold((c, b) => join(c, b, not is_max), core)]
+    left + [right.rev.fold_from(core, (c, b) => join(c, b, not is_max))]
 
 let win_up = probe()
 x.reverse()

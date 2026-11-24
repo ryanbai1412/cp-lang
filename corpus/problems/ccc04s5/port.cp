@@ -10,6 +10,7 @@
 //   bottom row). O(m^2 n) per test.
 // Buildable today-form.
 // original: corpus/submissions/4806811.cpp
+// Bounds: m, n: 0..=100
 fn solve_case(rows: Int, cols: Int):
     domain R = 0..rows
     domain C = 0..cols

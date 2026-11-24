@@ -6,6 +6,7 @@
 //   and every way to share a digit's total among that many non-empty runs is reachable.
 //   By stars and bars that is C(total - 1, blocks - 1) per digit; the answer is the product
 //   over the digits that occur. One pass over `s.runs()`, O(n).
+// Bounds: n: 1..=1e6
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()

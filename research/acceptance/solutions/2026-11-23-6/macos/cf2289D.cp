@@ -1,4 +1,3 @@
-use std.seq.{inversions}
 @!multitest
 let n: 2..=2e5 = read()
 let a: [0..n]-1e9..=1e9 = read()

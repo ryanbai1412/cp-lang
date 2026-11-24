@@ -24,5 +24,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Deque cache with membership test."
+ "notes": "Deque cache with membership test.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "e9b9c5882fc64451c040506ae1be6d7361c14b88"
+ }
 }

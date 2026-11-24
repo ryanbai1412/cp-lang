@@ -37,7 +37,7 @@ fn bit_reverse<T>(mut a: List<T>):
 /// engine.
 ///
 /// cost: \(O(n \log n)\)
-/// empty: traps (0 is not a power of two)
+/// empty: `var a: List<Mod<17>> = []; ntt(mut a); a == []` (traps R0401)
 /// order: in place; natural frequency order unless `bit_reversed: true`
 /// traps: when `a.len` is not a power of two dividing `P - 1`, or `P` is not prime
 /// example: `type Z = Mod<17>; var a = [Z(1), Z(0), Z(0), Z(0)]; ntt(mut a); a == [Z(1), Z(1), Z(1), Z(1)]`
@@ -122,7 +122,7 @@ pub const subset = Disjoint()
 /// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
 ///
 /// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; three NTT primes for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
-/// empty: `[]` for the linear product when either input is empty
+/// empty: `let e: List<Int> = []; convolve([1, 2], e) == [] and convolve(e, [1, 2]) == []`
 /// order: by output index `0..len`; a new `List`, keyed from 0
 /// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
 /// example: `convolve([1, 2], [3, 4]) == [3, 10, 8]`
@@ -141,7 +141,6 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
     shape: ?Curved = None,
     cyclic: Bool = false,
 ) -> List<T>:
-    with lint(unproven_list_index: allow)
     let na = a.len
     let nb = b.len
     if cyclic:
@@ -270,7 +269,6 @@ fn residues<P>(_: Mod<P>, a: List<Int>, b: List<Int>) -> ?List<Mod<P>> =
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
 fn semiring_convolve<T: Add + Sub, R>(a: List<T>, b: List<T>, over: R, shape: ?Curved) -> List<T>:
-    with lint(unproven_list_index: allow)
     if a.is_empty or b.is_empty: return []
     let add = Monoid<T>.of(over.add)
     let mul = Monoid<T>.of(over.mul)
@@ -308,7 +306,7 @@ pub enum SosOver = Sub | Sup
 /// `IndexedMut` of power-of-two length works.
 ///
 /// cost: \(O(k 2^k)\)
-/// empty: traps (0 is not a power of two)
+/// empty: `var a: List<Int> = []; sos(mut a); a == []` (traps R0401)
 /// order: in place, indexed by mask
 /// traps: when `a.len` is not a power of two
 /// example: `var a = [1, 2, 3, 4]; sos(mut a); a == [1, 3, 4, 10]`
@@ -343,7 +341,7 @@ pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false):
 /// (`List<T>`, `[D]T`, mutable slices).
 ///
 /// cost: \(O(n \log n)\)
-/// empty: traps (0 is not a power of two)
+/// empty: `var a: List<Int> = []; fwht(mut a); a == []` (traps R0401)
 /// order: in place, indexed by mask
 /// traps: when `a.len` is not a power of two; with `inverse: true` on `Int`, when an entry is not divisible by `n`
 /// example: `var a = [1, 2]; fwht(mut a); a == [3, -1]`
@@ -434,7 +432,7 @@ pub struct SemiRelaxedConvolve<P>:
     /// makes every `c[k]` zero.
     ///
     /// cost: \(O(b.\mathit{len})\)
-    /// empty: every pushed `c[k]` is zero
+    /// empty: `type Z = Mod<17>; let e: List<Z> = []; var sc = SemiRelaxedConvolve<17>(e); sc.push(Z(5)); sc.push(Z(3)) == Z(0)`
     /// traps: never
     /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>([Z(1), Z(2)]); sc.push(Z(1)) == Z(1)`
     /// example: `type Z = Mod<17>; let e: List<Z> = []; var sc = SemiRelaxedConvolve<17>(e); sc.push(Z(5)) == Z(0)`
@@ -463,7 +461,7 @@ pub struct SemiRelaxedConvolve<P>:
 /// so the result is `[]`.
 ///
 /// cost: \(O(S \log^2 S)\) for total length `S`
-/// empty: `[1]`
+/// empty: `type Z = Mod<17>; let e: List<List<Z>> = []; convolve_all(e) == [Z(1)]`
 /// order: lowest degree first; a new `List`, keyed from 0
 /// traps: when the product outgrows the largest NTT length `P` supports
 /// example: `type Z = Mod<17>; convolve_all([[Z(1), Z(1)], [Z(1), Z(1)]]) == [Z(1), Z(2), Z(1)]`
@@ -482,13 +480,14 @@ pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>:
         layer = up
     layer[0]
 
-/// The 2D product of `a` and `b`, rows by rows: `out[i][j]` sums `a[r][c] * b[i - r][j - c]`. Rows may
-/// differ in length (a missing entry is zero); every output row is `wa + wb - 1` long for the widest
+/// The 2D product of `a` and `b`: `out[i][j]` sums `a[r][c] * b[i - r][j - c]`.
+///
+/// Rows may differ in length (a missing entry is zero); every output row is `wa + wb - 1` long for the widest
 /// rows `wa` of `a` and `wb` of `b`. One `convolve` of the rows laid end to end, `wa + wb - 1` apart,
 /// so no row's product spills into the next.
 ///
 /// cost: \(O(S \log S)\) for `S = (a.len + b.len) (wa + wb)`
-/// empty: `[]` when either input has no entries
+/// empty: `type Z = Mod<17>; let e: List<List<Z>> = []; convolve_2d([[Z(1)]], e) == [] and convolve_2d(e, [[Z(1)]]) == []`
 /// order: rows then columns, lowest degree first; new `List`s, keyed from 0
 /// traps: when the product outgrows the largest NTT length `P` supports
 /// example: `type Z = Mod<17>; convolve_2d([[Z(1), Z(1)]], [[Z(1)], [Z(2)]]) == [[Z(1), Z(1)], [Z(2), Z(2)]]`
@@ -516,7 +515,7 @@ pub fn convolve_2d<P>(a: List<List<Mod<P>>>, b: List<List<Mod<P>>>) -> List<List
 /// `sum_n a^n / n!` and the inverse of `subset_log`.
 ///
 /// cost: \(O(k^2 2^k)\)
-/// empty: traps (0 is not a power of two)
+/// empty: `let a: List<Mod<17>> = []; subset_exp(a) == []` (traps R0401)
 /// order: indexed by mask; a new `List`, keyed from 0
 /// traps: when `a.len` is not a power of two, or `a[0] != 0`
 /// example: `type Z = Mod<17>; subset_exp([Z(0), Z(1), Z(1), Z(0)]) == [Z(1), Z(1), Z(1), Z(1)]`
@@ -530,7 +529,7 @@ pub fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>>:
 /// `subset_exp`, so `subset_exp(subset_log(a)) == a`.
 ///
 /// cost: \(O(k^2 2^k)\)
-/// empty: traps (0 is not a power of two)
+/// empty: `let a: List<Mod<17>> = []; subset_log(a) == []` (traps R0401)
 /// order: indexed by mask; a new `List`, keyed from 0
 /// traps: when `a.len` is not a power of two, or `a[0] != 1`
 /// example: `type Z = Mod<17>; subset_log([Z(1), Z(1), Z(1), Z(2)]) == [Z(0), Z(1), Z(1), Z(1)]`
@@ -541,13 +540,11 @@ pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>:
     ranked(a, false)
 
 fn window<P>(x: List<Mod<P>>, s: Int, w: Int) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     [x[s + t] for t in 0..min(w, x.len - s)]
 
 // Takes the windows rather than the whole lists: a whole `self` list beside `mut self.c` is copied
 // at the call.
 fn add_block<P>(mut c: List<Mod<P>>, xa: List<Mod<P>>, ya: List<Mod<P>>, base: Int, at: Int):
-    with lint(unproven_list_index: allow)
     if xa.is_empty or ya.is_empty: return
     let prod = times(xa, ya)
     while c.len < base + prod.len: c.push(Mod<P>(0))
@@ -556,7 +553,6 @@ fn add_block<P>(mut c: List<Mod<P>>, xa: List<Mod<P>>, ya: List<Mod<P>>, base: I
             if base + t >= at: c[base + t] += prod[t]
 
 fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     if a.is_empty or b.is_empty: return []
     let n = a.len + b.len - 1
     if min(a.len, b.len) <= 32:
@@ -580,7 +576,6 @@ fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     fa
 
 fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     let n = a.len
     let k = ctz(n)
     var f = List.filled((k + 1) * n, Mod<P>(0))

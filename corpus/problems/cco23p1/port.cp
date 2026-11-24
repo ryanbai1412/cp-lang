@@ -8,6 +8,7 @@
 //   one value: no string; spanning two: forced (first bit 1 iff some offset is -1); else free.
 //   The first window then says how many free chains are 1: C(free, total[0] - forced). O(n).
 // original: corpus/submissions/5579927.cpp
+// Bounds: n: 1..=1e6; k: 1..=n; total: 0..=k
 type Z = Mod<1_000_003>
 let (n, k): (1..=1e6, 1..=n) = read()
 domain Window = 0..n - k + 1

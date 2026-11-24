@@ -40,5 +40,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Prefix counts over s + s per letter; a [3, 3] mismatch matrix; 2-cycles then 3-cycles."
+ "notes": "Prefix counts over s + s per letter; a [3, 3] mismatch matrix; 2-cycles then 3-cycles.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "1bc7588fae6e27cfff3e949af78cfd2256683015"
+ }
 }

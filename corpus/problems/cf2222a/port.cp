@@ -5,6 +5,7 @@
 // Solution: a total of 1 needs a subtask worth 1, so some a[i] = 100; with one, its 100 unit
 //   subtasks make any remainder while every other problem scores 0 or 100. Check whether
 //   some a[i] == 100, O(n).
+// Bounds: n: 1..=100; a: 1..=10 ** 9
 
 @!multitest
 let n: 1..=100 = read()

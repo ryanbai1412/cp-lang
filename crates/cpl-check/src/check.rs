@@ -9,6 +9,7 @@ pub(crate) mod advice;
 mod alias;
 mod arms;
 mod assoc;
+mod bound_args;
 mod bounded_str;
 mod built_from_param;
 mod def_type;
@@ -19,6 +20,7 @@ mod callee;
 mod cuts;
 mod decls;
 mod domain_use;
+mod expect;
 mod expr;
 mod extension;
 mod fall_through;
@@ -41,11 +43,13 @@ mod storage;
 mod tuple_bound;
 mod variant;
 mod views;
+use cpl_diag::habits::{self, Kind};
 pub(crate) use stmt::runs;
 use views::{binding_kw, Keep};
 mod types;
+mod value_domain;
 
-pub(crate) use impl_head::impl_target_head;
+pub(crate) use impl_head::impl_file_head;
 pub(crate) use pattern::domain_binding;
 pub(crate) use types::{memo_table, own_domains, trait_impl_key, type_head};
 
@@ -113,6 +117,10 @@ pub(crate) trait Env {
     }
     /// Where top-level `name` comes in this file's order of items.
     fn decl_order(&mut self, _name: &str) -> Option<usize> {
+        None
+    }
+    /// The item being checked, in the file's order of items.
+    fn item_index(&mut self) -> Option<usize> {
         None
     }
     /// True if this file declares `name` as a struct or enum, even while its
@@ -207,6 +215,9 @@ pub(crate) struct Checker<'a> {
     defining_aliases: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
     pub(crate) param_bounds: Vec<(String, Vec<String>)>,
+    /// The arguments a bound gives its trait, `(param, trait, args)`:
+    /// `S: Indexed<E, R>` is `("S", "Indexed", [E, R])`.
+    pub(crate) param_bound_args: Vec<(String, String, Vec<Ty>)>,
     hovers: Vec<HoverEntry>,
     /// The optionals a test has shown to hold a value here, by name.
     present: Vec<String>,
@@ -315,6 +326,7 @@ impl<'a> Checker<'a> {
             generics: Vec::new(),
             defining_aliases: Vec::new(),
             param_bounds: Vec::new(),
+            param_bound_args: Vec::new(),
             hovers: Vec::new(),
             present: Vec::new(),
             as_written: false,
@@ -919,7 +931,10 @@ impl<'a> Checker<'a> {
                 top_level: self.in_fn == 0,
                 in_lambda: self.in_fn == 0 && !self.fns.is_empty(),
             });
-            let module = self.env.origin(name).unwrap_or_default();
+            let mut module = self.env.origin(name).unwrap_or_default();
+            if let Some((_, k)) = prelude::overload_part(name) {
+                module.push_str(k);
+            }
             let resolved = Resolved {
                 module,
                 name: name.into(),
@@ -1030,8 +1045,8 @@ impl<'a> Checker<'a> {
             && (suggestion.is_none() || near_builtin)
             && field_of_self.is_none()
             && name.chars().nth(1).is_some()
-            && advice::foreign_call(name).is_none()
-            && advice::foreign_value(name).is_none()
+            && habits::find(Kind::Call, name).is_none()
+            && habits::find(Kind::Value, name).is_none()
             && !matches!(name, "enumerate" | "range")
             && prelude::std_module(name).is_none()
             && cpl_syntax::removed_keyword(name).is_none();
@@ -1098,13 +1113,10 @@ impl<'a> Checker<'a> {
                     let fix = cpl_syntax::removed_keyword(name).unwrap_or_default();
                     diag.help = Some(format!("`{name}` was removed in CP Lang 0.2.2: {fix}"));
                 }
-                _ if advice::foreign_call(name).is_some() => {
-                    diag.help = advice::foreign_call(name).map(str::to_string);
-                    let own = match name {
-                        "ord" => "Int",
-                        "chr" => "Char",
-                        _ => "",
-                    };
+                _ if habits::find(Kind::Call, name).is_some() => {
+                    let habit = habits::find(Kind::Call, name);
+                    diag.help = habit.map(|h| h.help.to_string());
+                    let own = habit.map_or("", |h| h.fix);
                     if !own.is_empty() {
                         diag.fixes.clear();
                         diag.fix(format!("write `{own}`"), span, own);
@@ -1142,9 +1154,9 @@ impl<'a> Checker<'a> {
                         edits: vec![(Span::point(0), format!("{import}\n"))],
                     });
                 }
-                _ if advice::foreign_value(name).is_some() => {
-                    let s = advice::foreign_value(name).unwrap_or_default();
-                    diag.help = Some(format!("CP Lang spells it `{s}`"));
+                _ if habits::find(Kind::Value, name).is_some() => {
+                    let s = habits::find(Kind::Value, name).map_or("", |h| h.fix);
+                    diag.help = habits::help(Kind::Value, name).map(str::to_string);
                     diag.fix(format!("change to `{s}`"), span, s);
                 }
                 Some(s) => diag.suggest(span, s),
@@ -1209,17 +1221,8 @@ impl<'a> Checker<'a> {
     /// L0610: a `mut` parameter the body never changes. Its callers must
     /// pass a place as `mut` for nothing.
     pub(crate) fn unchanged_mut_params(&mut self, f: &cpl_syntax::ast::FnDecl) {
-        // A body still ending in `todo` is unwritten: what it will change is
-        // not known yet.
-        let is_todo = |e: &cpl_syntax::ast::Expr| matches!(&e.kind, cpl_syntax::ast::ExprKind::Name(n) if n == "todo");
-        let unwritten = match &f.body {
-            cpl_syntax::ast::FnBody::Expr(e) => is_todo(e),
-            cpl_syntax::ast::FnBody::Block(b) => b.stmts.last().is_some_and(
-                |s| matches!(&s.kind, cpl_syntax::ast::StmtKind::Expr(e) if is_todo(e)),
-            ),
-            cpl_syntax::ast::FnBody::None => false,
-        };
-        if unwritten {
+        // What an unwritten body will change is not known yet.
+        if unwritten(f) {
             return;
         }
         let lends_mut = |name: &str| {
@@ -1727,7 +1730,12 @@ pub(crate) fn suggest_rename(
 }
 
 /// The candidate closest to `name`, if it is close enough to be a typo.
-pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Option<String> {
+pub fn closest<'c>(name: &str, mut candidates: impl Iterator<Item = &'c str>) -> Option<String> {
+    closest_of(name, &mut candidates)
+}
+
+/// `closest`'s body, behind `dyn` so its two dozen callers share one copy.
+fn closest_of(name: &str, candidates: &mut dyn Iterator<Item = &str>) -> Option<String> {
     let limit = match name.chars().count() {
         0 | 1 => return None,
         2..=4 => 1,
@@ -1737,25 +1745,23 @@ pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Opt
     // a slip, unless only the capital differs (`vec` for `Vec`).
     let upper = |s: &str| s.chars().next().is_some_and(char::is_uppercase);
     let head = |s: &str| s.chars().next().map(|c| c.to_ascii_lowercase());
-    candidates
-        .filter(|c| *c != name)
-        .filter(|c| upper(c) == upper(name) || head(c) == head(name))
-        .map(|c| (edit_distance(name, c), c))
+    let mut best: Option<(usize, bool, &str)> = None;
+    for c in candidates {
+        if c == name || (upper(c) != upper(name) && head(c) != head(name)) {
+            continue;
+        }
+        let mut d = edit_distance(name, c);
         // `pri` is `print` stopped short, a closer match than `prim` is a typo.
-        .map(|(d, c)| {
-            (
-                if c.starts_with(name) && name.len() >= 3 && c.len() <= name.len() + 2 {
-                    d.min(limit)
-                } else {
-                    d
-                },
-                c,
-            )
-        })
-        .filter(|(d, _)| *d <= limit)
+        if c.starts_with(name) && name.len() >= 3 && c.len() <= name.len() + 2 {
+            d = d.min(limit);
+        }
         // A word stopped short (`sorte`) means the longer name.
-        .min_by_key(|(d, c)| (*d, !c.starts_with(name), c.to_string()))
-        .map(|(_, c)| c.to_string())
+        let key = (d, !c.starts_with(name), c);
+        if d <= limit && best.is_none_or(|b| key < b) {
+            best = Some(key);
+        }
+    }
+    best.map(|(_, _, c)| c.to_string())
 }
 
 use cpl_diag::edit_distance;
@@ -1793,6 +1799,19 @@ pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static s
     }
 }
 
+/// A body still ending in `todo` is unwritten.
+pub(crate) fn unwritten(f: &cpl_syntax::ast::FnDecl) -> bool {
+    let is_todo = |e: &cpl_syntax::ast::Expr| matches!(&e.kind, cpl_syntax::ast::ExprKind::Name(n) if n == "todo");
+    match &f.body {
+        cpl_syntax::ast::FnBody::Expr(e) => is_todo(e),
+        cpl_syntax::ast::FnBody::Block(b) => b
+            .stmts
+            .last()
+            .is_some_and(|s| matches!(&s.kind, cpl_syntax::ast::StmtKind::Expr(e) if is_todo(e))),
+        cpl_syntax::ast::FnBody::None => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1809,5 +1828,13 @@ mod tests {
         assert_eq!(closest("m", names.iter().copied()), None);
         assert_eq!(closest("dits", names.iter().copied()), Some("dist".into()));
         assert_eq!(edit_distance("kitten", "sitting"), 3);
+    }
+
+    #[test]
+    fn ties_go_to_the_longer_word_then_the_first_in_order() {
+        let names = ["sort", "sorted"];
+        assert_eq!(closest("sorte", names.into_iter()), Some("sorted".into()));
+        let names = ["cot", "cbt"];
+        assert_eq!(closest("cat", names.into_iter()), Some("cbt".into()));
     }
 }

@@ -1,6 +1,7 @@
 // Codeforces 2183 E, tuned: port.cp's DP with the rows over `0..=m`, as
 // orig.cpp stores them, so `x` is its own index, the sweep `unchecked:`, and
-// the divisor loop innermost, as orig.cpp orders it.
+// the divisor loop innermost, as orig.cpp orders it, stepping both indices
+// by addition instead of multiplying them out.
 type Z = Mod<998_244_353>
 
 @!multitest
@@ -13,7 +14,10 @@ for i in 1..n:
     next.fill(0)
     unchecked:
         for j in 1..m:
-            for d in 1..=m / (j + 1): next[(j + 1) * d] += ways[j * d]
+            var (from, to) = (j, j + 1)
+            while to <= m:
+                next[to] += ways[from]
+                (from, to) = (from + j, to + j + 1)
     if a[i] != 0:
         for x in 1..=m if x != a[i]: next[x] = 0
     swap(mut ways, mut next)

@@ -23,5 +23,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Rank by a tuple key and count those strictly before."
+ "notes": "Rank by a tuple key and count those strictly before.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "20802fd8d8d4f18e6997b02de09dd6b3b5f094c2"
+ }
 }

@@ -302,6 +302,16 @@ pub(crate) const WHOLE: &str = "a `let` of a whole variable is a second value, n
 
 impl crate::emit::Emitter<'_> {
     /// Where the code being written binds its locals.
+    /// The key `Facts` has for the body being emitted.
+    pub(crate) fn facts_home(&self) -> Option<usize> {
+        self.facts.key(self.home())
+    }
+
+    /// The variable local `slot` of the body being emitted is to `Facts`.
+    pub(crate) fn facts_local(&self, slot: usize) -> crate::ranges::Var {
+        self.facts.local(self.facts_home(), slot)
+    }
+
     pub(crate) fn home(&self) -> Home {
         match (self.closure_id, self.fn_id) {
             (Some(cid), _) => Home::Closure(cid),
@@ -326,7 +336,10 @@ impl crate::emit::Emitter<'_> {
                 | ExprKind::Index(..)
                 | ExprKind::Unwrap(..) => true,
                 // The optional an `if let` or `while let` tests.
-                ExprKind::Local(_) | ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
+                ExprKind::Local(src) => {
+                    self.locals()[slot].name.is_empty() || self.locals()[src].name.is_empty()
+                }
+                ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
                 _ => false,
             }
             && self.source_change(slot, init, tail).is_none()
@@ -390,8 +403,7 @@ impl crate::emit::Emitter<'_> {
             return Some(SOURCE_CALLED);
         };
         let home = self.home();
-        if self.uses.of_binding(home, slot).mutated
-            || self.facts.stores((self.fn_id, false, slot)) > 1
+        if self.uses.of_binding(home, slot).mutated || self.facts.stores(self.facts_local(slot)) > 1
         {
             return Some(SET_AGAIN);
         }
@@ -402,7 +414,7 @@ impl crate::emit::Emitter<'_> {
             // it apart, and a reference it holds was checked for all the
             // statements after it, which cover this name.
             return changed(self.spent.contains(&root), SOURCE_MOVED).or(changed(
-                self.facts.stores((self.fn_id, false, root)) != 1,
+                self.facts.stores(self.facts_local(root)) != 1,
                 SOURCE_SET,
             ));
         }
@@ -481,11 +493,26 @@ impl crate::emit::Emitter<'_> {
 }
 
 /// True when statement `k` of `block` reads a heap variable for the last
-/// time and may move it: `x = y` or `let x = y` with `y` dead after it
+/// time and may move it: `x = y` or `let x = y` (or `Some(y)`) with `y` dead after it
 /// (`uses::dead_after`), or a `let` whose source is set again before
 /// anything reads it.
 pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
+    if let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] {
+        if let ExprKind::Some(inner) = &value.kind {
+            if let ExprKind::Local(slot) = inner.kind {
+                return walk::root(place) != (false, slot) && dead_after(program, block, k, slot);
+            }
+        }
+    }
     if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
+        let init = match &init.kind {
+            ExprKind::Some(inner) => &**inner,
+            ExprKind::If(_, a, b) => match some_local(a).or(some_local(b)) {
+                Some(slot) => return dead_after(program, block, k, slot),
+                None => init,
+            },
+            _ => init,
+        };
         return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
             || place_dies(program, block, k, in_place(init));
     }
@@ -498,6 +525,17 @@ pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
         return false;
     };
     walk::root(place) != (false, *slot) && dead_after(program, block, k, *slot)
+}
+
+/// The local `y` of `Some(y)`.
+fn some_local(e: &Expr) -> Option<usize> {
+    match &e.kind {
+        ExprKind::Some(inner) => match inner.kind {
+            ExprKind::Local(slot) => Some(slot),
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 /// The local a place expression starts from and the fields it follows:
@@ -603,14 +641,33 @@ fn dying_lets(program: &Program, block: &Block, k: usize) -> Vec<*const Stmt> {
             Stmt::Let(_, Some(init)) => {
                 crate::lend::holds_heap(program, &init.ty)
                     && !matches!(init.ty, Ty::Fn(..))
-                    && walk::path_root(in_place(init))
-                        .filter(|_| walk::is_simple(in_place(init)))
+                    && walk::path_root(moved_source(init))
+                        .filter(|_| walk::is_simple(moved_source(init)))
                         .is_some_and(|src| dies_in(program, block, k, src, None))
             }
             _ => false,
         })
         .map(|stmt| stmt as *const Stmt)
         .collect()
+}
+
+/// The variable a `let` takes whole: `src` of `let x = src`, of
+/// `let x = Some(src)` and of `let x = if c: Some(src) else: None`.
+fn moved_source(init: &Expr) -> &Expr {
+    fn some(e: &Expr) -> Option<&Expr> {
+        match &e.kind {
+            ExprKind::Some(inner) if matches!(inner.kind, ExprKind::Local(_)) => Some(inner),
+            _ => None,
+        }
+    }
+    match &init.kind {
+        ExprKind::Some(_) => some(init).unwrap_or(init),
+        ExprKind::If(_, a, b) => match (some(a), some(b)) {
+            (Some(src), None) | (None, Some(src)) => src,
+            _ => init,
+        },
+        _ => in_place(init),
+    }
 }
 
 /// A read of the whole variable `src`.
@@ -630,7 +687,7 @@ fn once_lets<'s>(stmt: &'s Stmt, out: &mut Vec<&'s Stmt>) {
         for inner in &block.stmts {
             if let Stmt::Let(_, Some(init)) = inner {
                 if matches!(
-                    in_place(init).kind,
+                    moved_source(init).kind,
                     ExprKind::Local(_) | ExprKind::Global(_)
                 ) {
                     out.push(inner);

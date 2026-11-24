@@ -7,6 +7,7 @@
 //   the count of each x is a multiple of x. One pass: a position with b_i = x joins the open
 //   group of x, opening one with a fresh label when there is none, and the group closes once
 //   it holds x positions; a exists iff no group is left open. O(n).
+// Bounds: n: 1..=200_000; b: 1..=n
 
 @!multitest
 let n: 1..=200_000 = read()

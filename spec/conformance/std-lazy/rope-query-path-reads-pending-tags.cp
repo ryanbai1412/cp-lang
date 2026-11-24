@@ -1,6 +1,7 @@
 // expect: ok, output "400 400\n3"
 // `query_path` sees every piece of a position's value (its stored value, then the tags pending
 // above it) without pushing tags down, and a piece `f` changes stays changed.
+// optional_copies: 1
 use std.lazy.{Rope}
 domain V = 0..30
 var seed = 11

@@ -7,6 +7,7 @@
 //   position p is the second copy of res: record it and move p to oth. Then cur and oth each
 //   hold one copy of every value, so asking oth plus one p of cur names p's value. 2n + n
 //   queries of O(n) indices each.
+// Bounds: n: 1..=300
 
 @!interactive
 

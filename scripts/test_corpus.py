@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import types
 import unittest
@@ -15,6 +16,7 @@ from pathlib import Path
 _SPEC = importlib.util.spec_from_file_location("corpus", Path(__file__).resolve().parent / "corpus.py")
 assert _SPEC and _SPEC.loader
 corpus = importlib.util.module_from_spec(_SPEC)
+sys.modules["corpus"] = corpus  # make's worker processes find its functions by name
 _SPEC.loader.exec_module(corpus)
 
 GEN = "import sys\nprint(1)\nprint(sys.argv[1])\n"
@@ -78,6 +80,13 @@ class ProblemsTest(Corpus):
         out = subprocess.run([corpus.binary(src)], capture_output=True, text=True).stdout
         self.assertEqual(out, "0 4 3\n")
 
+    def test_a_gen_that_fails_at_a_small_size_is_a_finding(self):
+        gen = "import random, sys\nprint(random.randint(1, int(sys.argv[2]) - 1))\n"
+        pkg = corpus.Package.at(self.package("p", gen_py=gen, tests_toml="[[case]]\nseed = 1\nsize = 0\n"))
+        found = corpus.check_package(pkg, corpus.Context("cpl", run=False))
+        self.assertIn("size-below-1 p 1", found)
+        self.assertIn("gen-fails p size=1", corpus.check_package(pkg, corpus.Context("cpl", run=True)))
+
     def test_a_gxx_older_than_14_is_not_the_reference(self):
         old = self.root / "g++"
         old.write_text("#!/bin/sh\necho 13.3.0\n")
@@ -128,6 +137,28 @@ class ProblemsTest(Corpus):
                 mock.patch("subprocess.run", cxx):
             exe = corpus.binary(src)
         self.assertEqual((seen, os.path.basename(exe)), ([False], key))
+
+    def test_parallel_checks_run_one_binary_while_it_is_built(self):
+        # A compiler that writes its output in two steps: run early, a binary is
+        # busy (ETXTBSY) or half-written; every caller must still run a whole one.
+        cxx = self.root / "slow-cxx"
+        cxx.write_text('#!/bin/sh\nout=$2\nprintf "#!/bin/sh\\n" > "$out"\nchmod +x "$out"\n'
+                       'sleep 0.2\nprintf "echo whole\\n" >> "$out"\n')
+        cxx.chmod(0o755)
+        src = self.root / "a.cpp"
+        src.write_text("int main(){}\n")
+        self.addCleanup(setattr, corpus, "CXX_CACHE", corpus.CXX_CACHE)
+        corpus.CXX_CACHE = str(self.root / "cxx")
+
+        def check(_):
+            exe = corpus.binary(src)
+            return subprocess.run([exe], capture_output=True, text=True).stdout.strip()
+
+        import concurrent.futures
+        with mock.patch.object(corpus, "reference_cxx", lambda: ([str(cxx)], "14.4.0")), \
+                concurrent.futures.ThreadPoolExecutor(16) as pool:
+            got = list(pool.map(check, range(64)))
+        self.assertEqual(set(got), {"whole"})
 
     def test_a_reference_with_an_avx2_pragma_before_its_includes_builds(self):
         calls = []
@@ -278,6 +309,55 @@ class CheckTestsTest(Corpus):
         self.assertEqual(found, ["cpl-test-no-cases p -"])
 
 
+    def test_a_reference_crash_on_a_made_case_is_a_finding(self):
+        d = self.package("p", port_cp="print(1)\n", tests_toml="")
+        with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
+                mock.patch.object(corpus, "make_cases", mock.Mock(side_effect=corpus.ReferenceFails("03", -11))):
+            self.assertEqual(corpus.check_tests(corpus.Package.at(d), mock.Mock(cpl="cpl")), ["reference-fails p 03"])
+
+
+class MakeTest(Corpus):
+    def test_make_changed_makes_only_the_changed_packages(self):
+        for pid in ("p1", "p2"):
+            self.package(pid, tests_toml='[[case]]\ninput = "1"\n')
+        made = []
+        with mock.patch.object(corpus, "changed_ids", return_value=["p2", "gone"]), \
+                mock.patch.object(corpus, "make_one", side_effect=lambda job: made.append(job[0])), \
+                mock.patch("concurrent.futures.ProcessPoolExecutor", lambda *a, **k: mock.MagicMock(
+                    __enter__=lambda s: type("P", (), {"map": staticmethod(lambda f, js: [f(j) for j in js])})(),
+                    __exit__=lambda *a: False)):
+            corpus.make(type("A", (), {"ids": [], "set": None, "out": None, "j": 1, "changed": "staged"}))
+        self.assertEqual(made, ["p2"])
+
+    def test_makes_every_package_in_worker_processes(self):
+        for pid in ("p1", "p2", "p3"):
+            self.package(pid, port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "%s"\n' % pid)
+        out = self.root / "out"
+        args = mock.Mock(set=None, ids=[], out=str(out), j=2, changed=None)
+        self.assertEqual(corpus.make(args), 0)
+        self.assertEqual([(out / pid / "01.in").read_text() for pid in ("p1", "p2", "p3")], ["p1\n", "p2\n", "p3\n"])
+
+    def test_concurrent_makes_of_one_package_both_succeed(self):
+        import concurrent.futures, multiprocessing
+        self.package("p", port_cp="", interactor_py="", tests_toml="".join(f'[[case]]\ninput = "{i}"\n\n' for i in range(200)))
+        out = str(self.root / "out")
+        with concurrent.futures.ProcessPoolExecutor(4, mp_context=multiprocessing.get_context("fork")) as pool:
+            self.assertEqual(list(pool.map(corpus.make_one, [("p", out)] * 8)), [None] * 8)
+        self.assertEqual(len(list((self.root / "out" / "p").glob("*.in"))), 200)
+
+    def test_a_failed_make_keeps_the_last_cases_whole(self):
+        d = self.package("p", port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "a"\n')
+        out = self.root / "out"
+        corpus.make_cases(next(corpus.problems()), str(out))
+        (d / "tests.toml").write_text('[[case]]\ninput = "b"\n\n[[case]]\ninput = "c"\n')
+        pkg = next(corpus.problems())
+        with mock.patch.object(corpus.Package, "case_input", side_effect=["b\n", RuntimeError("gen.py fails")]):
+            with self.assertRaises(RuntimeError):
+                corpus.make_cases(pkg, str(out))
+        self.assertEqual(sorted(f.name for f in out.iterdir() if not f.name.endswith(".lock")), ["p"])
+        self.assertEqual(sorted(f.name for f in (out / "p").iterdir()), [".stamp", "01.in"])
+        self.assertEqual((out / "p" / "01.in").read_text(), "a\n")
+
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
         d = self.package("p", port_cp="", interactor_py="")
@@ -291,6 +371,67 @@ class CommittedInputsTest(Corpus):
         (d / "tests").mkdir()
         (d / "tests" / "01.in").write_text("1")
         self.assertEqual(corpus.committed_inputs(corpus.Package.at(d)), [("01.in", "1")])
+
+
+class BoundsTest(unittest.TestCase):
+    """`// Bounds:` states the statement's input bounds; the read() types must take them all."""
+
+    PORT = ("// Source: x\n// Bounds: n: 2..=1e5; a.x, a.y: 1..=1e9;\n//   q: 1..=n\n"
+            "domain Q = 1..=n\nlet n: 2..=100_000 = read()  // items\nlet a: [n](x: 1..=1e9, y: {y}) = read()\n"
+            "let q: Q = read()\n")
+
+    def test_bounds_the_reads_take_are_clean(self):
+        self.assertEqual(corpus.bounds_findings("p", self.PORT.format(y="1..=1e9")), [])
+
+    def test_a_narrower_read_is_a_finding(self):
+        self.assertEqual(corpus.bounds_findings("p", self.PORT.format(y="1..=1e6")),
+                         ["bounds-narrow p a.y: reads 1..=1e6, statement 1..=1e9"])
+
+    def test_a_wider_read_and_an_exclusive_end_pass(self):
+        port = "// Bounds: n: 1..=10; k: 0..=n - 1\nlet n: 0..=1e9 = read()\nlet k: 0..n = read()\n"
+        self.assertEqual(corpus.bounds_findings("p", port), [])
+
+    def test_a_ranged_read_needs_the_header_and_every_read_in_it(self):
+        self.assertEqual(corpus.bounds_findings("p", "let n: 1..=9 = read()\n"), ["no-header-bounds p -"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\nlet n: 1..=9 = read()\nlet m: 1..=9 = read()\n"),
+                         ["bounds-undeclared p m"])
+        self.assertEqual(corpus.bounds_findings("p", "let n: Int = read()\n"), [])
+
+    def test_a_read_of_lists_in_an_array_is_checked(self):
+        got = corpus.port_ranges("type City = 1..=n\nlet roads: [0..n]List<(u: City, v: 1..=n)> = read()\n")
+        self.assertEqual((got["roads.u"], got["roads.v"]), (("1", "n"), ("1", "n")))
+
+    def test_bounds_end_at_the_next_header_key(self):
+        text = "// Bounds: n: 1..=9\n// limits: 1000 ms, 256 MB\n//   q: 1..=5\nlet n: 1..=9 = read()\n"
+        self.assertEqual(corpus.declared_bounds(text), {"n": ("1", "9")})
+
+    def test_a_read_spelled_read_of_a_type_or_indented_is_checked(self):
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\nlet n = read<1..=5>()\n"),
+                         ["bounds-narrow p n: reads 1..=5, statement 1..=9"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: k: 0..=1\nlet k: 0..=1 = read()\nif k:\n    let m: 1..=5 = read()\n"),
+                         ["bounds-undeclared p m"])
+        self.assertEqual(corpus.bounds_findings("p", "let v: List<Int> = read<List<Int>>()\n"), [])
+
+    def test_a_read_through_a_type_alias_is_checked(self):
+        port = ("// Bounds: weak: 1..=2e9; toys.weight, toys.size: 1..=2e9\ntype Limit = 1..=2e9\n"
+                "let weak: [3]Limit = read()\nlet toys: [3](weight: Limit, size: Limit) = read()\n")
+        self.assertEqual(corpus.bounds_findings("p", port), [])
+        self.assertEqual(corpus.bounds_findings("p", port.replace("type Limit = 1..=2e9", "type Limit = 1..=1e9")),
+                         ["bounds-narrow p weak: reads 1..=1e9, statement 1..=2e9",
+                          "bounds-narrow p toys.weight: reads 1..=1e9, statement 1..=2e9",
+                          "bounds-narrow p toys.size: reads 1..=1e9, statement 1..=2e9"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: qs.t: 0..=1e9; a: 0..=2^30\nstruct Query(t: 0..=1e9, i: Pos)\n"
+                                                     "type Coord = 0..=2^30\nlet qs: [Q]Query = read()\nlet a: [n]Coord = read()\n"), [])
+
+    def test_a_second_bounds_line_is_a_finding(self):
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\n// Bounds: n: 1..=9\nlet n: 1..=9 = read()\n"),
+                         ["bounds-twice p -"])
+
+    def test_a_stated_bound_nothing_reads_is_a_finding(self):
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9; m\nlet n: 1..=9 = read()\n"),
+                         ["bounds-unparsed p m"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n, m: 1..=9\nlet n: 1..=9 = read()\n"),
+                         ["bounds-unread p m"])
 
 
 class InteractedTest(Corpus):
@@ -321,7 +462,9 @@ class InteractedTest(Corpus):
         (port, a), (cxx, b) = calls
         self.assertTrue(port.endswith("port.cp") and cxx.endswith("p.cpp"))
         self.assertEqual(a, b)
-        self.assertEqual(a, ("--tests", str(cases), "--interactor", str(d / "interactor.py")))
+        limits = tuple(corpus.package_limits(corpus.Package.at(d)))
+        self.assertEqual(a, ("--tests", str(cases), "--interactor", str(d / "interactor.py"), *limits))
+        self.assertEqual(limits[0], "--time-limit")
 
     def test_verdicts_that_disagree_are_a_differ(self):
         found, *_ = self.judge(["ok", "ok"], ["ok", "WA"])
@@ -364,6 +507,33 @@ class StaticModesTest(Corpus):
         self.assertEqual(corpus.check_package(pkg, self.ctx("")), ["no-reference p1 -"])
 
 
+    def test_orig_cpp_alone_is_the_reference(self):
+        sub = self.root / "narrow.cpp"
+        sub.write_text("int main(){}\n")
+        meta = '{"submissions": [{"file": "%s", "result": "AC"}]}' % sub
+        pkg = corpus.Package.at(self.package("p1", orig_cpp="int main(){}\n", meta_json=meta))
+        self.assertEqual(corpus.accepted_cpps(pkg), [pkg.orig])
+        pkg2 = corpus.Package.at(self.package("p2", meta_json=meta))
+        self.assertEqual(corpus.accepted_cpps(pkg2), [sub])
+
+    def test_a_reference_that_changes_on_a_rerun_does_not_ask_for_a_checker(self):
+        refs = [self.root / "a.cpp", self.root / "b.cpp", self.root / "c.cpp"]
+        for r in refs:
+            r.write_text("int main(){}\n")
+        pkg = corpus.Package.at(self.package("p1", tests_toml='[[case]]\ninput = "1"\n', meta_json="{}"))
+        flips = iter([b"no", b"yes"] * 4)
+        outs = {"a": lambda: b"yes", "b": lambda: next(flips), "c": lambda: b"yes"}
+        ctx = self.ctx("")
+        ctx.run = True
+        with mock.patch.object(corpus, "accepted_cpps", return_value=refs), \
+                mock.patch.object(corpus, "built", side_effect=lambda src: src.stem), \
+                mock.patch.object(corpus, "run_out", side_effect=lambda e, d: outs[e]()):
+            self.assertEqual(corpus.check_package(pkg, ctx), [])
+            outs["c"] = lambda: b"no"
+            self.assertEqual(corpus.check_package(pkg, ctx), ["needs-checker p1 1"])
+            outs["c"] = lambda: None
+            self.assertEqual(corpus.check_package(pkg, ctx), ["reference-fails p1 1"])
+
 class SeedTest(Corpus):
     def setUp(self):
         super().setUp()
@@ -402,6 +572,12 @@ class SeedTest(Corpus):
         out = self.root / "out" / "p3"
         self.assertEqual([(out / f"0{i}.ans").read_text() for i in (1, 2)], ["5\n", "7\n"])
 
+    def test_make_marks_the_max_cases(self):
+        gen = "import sys\nprint(9 if sys.argv[1] == '--max' else sys.argv[1])\n"
+        d = self.package("p4", gen_py=gen, orig_cpp=ECHO_CPP, tests_toml='[[case]]\nseed = 7\nsize = 1\n\n[[case]]\nargs = ["--max"]\n')
+        corpus.make_cases(corpus.Package.at(d), str(self.root / "out"))
+        self.assertEqual(sorted(p.name for p in (self.root / "out" / "p4").glob("*.max")), ["02.max"])
+
 
 class AtMax(unittest.TestCase):
     """`at_max` on scripted runs: the checked C++ first, then three judge runs, then three accepted runs."""
@@ -424,6 +600,10 @@ class AtMax(unittest.TestCase):
     def test_over_the_time_limit(self):
         self.assertIn("over-limit p --max", self.findings((0, b"1\n", 1, 10), (0, b"1\n", 2.5, 10), (0, b"1\n", 2.4, 10)))
 
+    def test_a_box_slower_than_the_judge_measures_against_the_accepted_cpp(self):
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 2.2, 10), (0, b"1\n", 2.4, 10)), [])
+        self.assertIn("over-limit p --max", self.findings((0, b"1\n", 1, 10), (0, b"1\n", 2.5, 10), (0, b"1\n", 2.4, 10)))
+
     def test_over_the_memory_limit(self):
         self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 300)), ["over-limit p --max"])
 
@@ -435,6 +615,10 @@ class AtMax(unittest.TestCase):
 
     def test_slow_against_the_accepted_cpp(self):
         self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.5, 10), (0, b"1\n", 0.2, 10)), ["slow p --max"])
+
+    def test_an_accepted_cpp_that_fails_the_max_is_a_finding(self):
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 10), (139, b"", 0.01, 10)), ["reference-fails p --max"])
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 10), None), ["reference-fails p --max"])
 
 
 class Limits(unittest.TestCase):

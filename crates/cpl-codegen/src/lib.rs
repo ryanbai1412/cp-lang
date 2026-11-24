@@ -15,6 +15,9 @@ mod fuse;
 mod globals;
 mod inline;
 mod lend;
+mod lent_fields;
+mod lentopt;
+mod main_lend;
 mod names;
 mod niche;
 mod optfn;
@@ -197,6 +200,7 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     split::split(&mut program);
     // A param `optfn` knows is `None` can leave a field only ever `None`.
     prune::prune(&mut program, target.checks != Checks::None);
+    program.unreached_closures = emit::unreached_closures(&program);
     program
 }
 

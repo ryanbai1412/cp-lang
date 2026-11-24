@@ -8,6 +8,7 @@
 //   value: bit 0 is end(i) mod 2, plus a random tag when it is odd, XOR the values of earlier
 //   crossing chords (XorFenwick prefix XORs at both endpoints). The XOR of all values cancels
 //   tag j iff start(j) is even, so the prefix is tight-knit iff no tag is left. O(n log n).
+// Bounds: n: 2..=500_000; chords.a, chords.b: 1..=2 * n
 
 use std.fenwick.{XorFenwick}
 use std.rand.Rng

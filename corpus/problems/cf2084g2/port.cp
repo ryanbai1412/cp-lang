@@ -11,6 +11,7 @@
 //   1..n in order; dp(c) is concave: each step adds the concave quadratic gain(k, .), then a free
 //   value takes max(dp(c), dp(c - 1)) (max-convolve with a flat 0..=1) and a fixed one shifts by
 //   its parity. Slope trick (Concave, a lazy treap of slopes): O(n log n); answer at c = n / 2.
+// Bounds: n: 1..=500_000
 @!multitest
 use std.slope.{Concave}
 
@@ -31,8 +32,8 @@ dp.reserve(n)
 for k in 0..n:
     dp.add_quadratic(c => gain(k, c))
     if let is_even = fixed_even[k + 1]:
-        dp.max_convolve(Concave.point(Int(is_even)))
+        dp.shift(Int(is_even))
     else:
-        dp.max_convolve(Concave.flat(0..=1))
+        dp.slide_max(0, 1)
 
 print((dp.at(half) + n * (n + 1) * (n + 1) / 2) / 2)

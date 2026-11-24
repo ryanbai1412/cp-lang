@@ -61,7 +61,9 @@ class WorkflowTest(unittest.TestCase):
     def test_the_conform_corpus_part_caches_generated_tests(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             ci = f.read()
-        self.assertRegex(ci, r"if: matrix.part == 'conform:corpus\+docs'\n\s+with:\n\s+path: target/corpus-tests")
+        # Every conform part reads the cases; the corpus part saves them even when red.
+        self.assertRegex(ci, r"cache/restore@v4\n\s+if: startsWith\(matrix.part, 'conform:'\)\n\s+with:\n\s+path: target/corpus-tests")
+        self.assertRegex(ci, r"cache/save@v4\n\s+if: \$\{\{ always\(\) && matrix.part == 'conform:corpus\+docs' \}\}\n\s+with:\n\s+path: target/corpus-tests")
 
     def test_site_selection_skips_superseded_runs(self):
         # Superseded ci runs end `cancelled` ~100 times an hour and ran no job;
@@ -164,7 +166,7 @@ class WorkflowTest(unittest.TestCase):
         m = re.search(r'slow-timeout = \{ period = "(\d+)s", terminate-after = (\d+) \}', gate.group(0))
         self.assertIsNotNone(m, "[profile.gate] needs a slow-timeout with terminate-after")
         with open(os.path.join(ROOT, "scripts", "check.sh"), encoding="utf-8") as f:
-            self.assertRegex(f.read(), r"nextest run [^\n]*--profile gate [^\n]*--retries 1 --flaky-result fail --partition")
+            self.assertRegex(f.read(), r"nextest run [^\n]*--profile gate --no-fail-fast --partition")
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             cap = int(re.search(r"^    timeout-minutes: (\d+)", job_block(f.read(), "gate"), re.M).group(1))
         # Both tries of a hung test end with minutes left for the build.

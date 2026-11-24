@@ -9,6 +9,7 @@
 //   fewest on a..s and s..b. The best cut is monotone in a and b (Knuth), as the accepted
 //   solution uses, so each column is O(n^2): O(m n^2) overall.
 // original: corpus/submissions/4155900.cpp
+// Bounds: n: 1..=1000; m: 1..=50
 let n: 1..=1000 = read()
 let m: 1..=50 = read()
 domain Row = 0..n

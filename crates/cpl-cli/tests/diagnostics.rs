@@ -405,3 +405,113 @@ fn real_mistakes_name_the_place_the_rule_and_a_fix() {
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
+
+/// Whether `text` is `template` with each `{}` hole filled.
+fn says(template: &str, text: &str) -> bool {
+    let shown = template.replace("{{", "{").replace("}}", "}");
+    let mut parts = shown.split("{}");
+    let first = parts.next().unwrap_or_default();
+    let Some(mut rest) = text.strip_prefix(first) else {
+        return false;
+    };
+    let parts: Vec<&str> = parts.collect();
+    for (i, part) in parts.iter().enumerate() {
+        if i + 1 == parts.len() {
+            return rest.len() > part.len() && rest.ends_with(part);
+        }
+        match rest.get(1..).and_then(|r| r.find(part)) {
+            Some(at) => rest = &rest[1 + at + part.len()..],
+            None => return false,
+        }
+    }
+    rest.is_empty()
+}
+
+/// Every `cpl_diag::habits` row, run on its mistake program
+/// `tests/habits/<key>.cp`: an error of the row's code on the line marked
+/// `// <- here` (or named by a `// here: N` line) gives the row's help or fix title, and `cpl fix` leaves the
+/// mistake checking unless the row says why no one edit is right.
+#[test]
+fn every_habit_row_gives_its_help_where_its_mistake_is() {
+    let rows = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/habits");
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("habit-rows");
+    let _ = fs::remove_dir_all(&scratch);
+    fs::create_dir_all(&scratch).unwrap();
+    let cpl = |args: &[&str]| {
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(args)
+            .current_dir(&scratch)
+            .env("NO_COLOR", "1")
+            .output()
+            .expect("cpl starts");
+        String::from_utf8_lossy(&out.stdout).to_string()
+    };
+    let mut keys = std::collections::BTreeSet::new();
+    let mut wrong = Vec::new();
+    for row in cpl_diag::habits::all() {
+        assert!(keys.insert(row.key), "two rows are keyed `{}`", row.key);
+        let file = format!("{}.cp", row.key);
+        let Ok(mistake) = fs::read_to_string(rows.join(&file)) else {
+            wrong.push(format!("{}: no tests/habits/{file}", row.key));
+            continue;
+        };
+        fs::write(scratch.join(&file), &mistake).unwrap();
+        let here = (mistake.lines().find_map(|l| l.strip_prefix("// here: ")))
+            .and_then(|n| n.trim().parse().ok())
+            .or_else(|| {
+                mistake
+                    .lines()
+                    .position(|l| l.ends_with("// <- here"))
+                    .map(|i| i as i64 + 1)
+            });
+        let shown = cpl_json::parse(&cpl(&["check", "--json", &file])).expect("cpl check --json");
+        let diags = shown.at(&["files"]).as_array().unwrap_or_default()[0].at(&["diagnostics"]);
+        let gives = diags.as_array().unwrap_or_default().iter().any(|d| {
+            let texts = std::iter::once(d.at(&["help"])).chain(
+                d.at(&["fixes"])
+                    .as_array()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|f| f.at(&["title"])),
+            );
+            d.at(&["code"]).as_str() == Some(row.code.0)
+                && d.at(&["start", "line"]).as_i64() == here
+                && texts.filter_map(|t| t.as_str()).any(|t| says(row.help, t))
+        });
+        let mut misses = Vec::new();
+        if !gives {
+            misses.push(format!(
+                "no {} with the row's text on the `// <- here` line",
+                row.code.0
+            ));
+        }
+        cpl(&["fix", &file]);
+        let fixed = cpl_json::parse(&cpl(&["check", "--json", &file])).is_ok_and(|v| {
+            v.at(&["files"]).as_array().unwrap_or_default()[0]
+                .at(&["ok"])
+                .as_bool()
+                == Some(true)
+        });
+        if row.no_fix.is_empty() && !fixed {
+            misses.push("`cpl fix` leaves errors".to_string());
+        }
+        if !row.no_fix.is_empty() && fixed {
+            misses.push("`cpl fix` mends it, so drop `no_fix`".to_string());
+        }
+        if !misses.is_empty() {
+            wrong.push(format!("{}: {}", row.key, misses.join(", ")));
+        }
+    }
+    for entry in fs::read_dir(&rows).unwrap() {
+        let name = entry.unwrap().file_name().to_string_lossy().to_string();
+        if !keys.contains(name.trim_end_matches(".cp")) {
+            wrong.push(format!("tests/habits/{name} has no row"));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "{} row(s) wrong:\n{}",
+        wrong.len(),
+        wrong.join("\n")
+    );
+}

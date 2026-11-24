@@ -10,6 +10,7 @@
 //   (0.5, d.y - 0.5). Odd m = 2k + 1: three opening operations reach t - (k - 1) t.unit on
 //   the ray, then k - 1 unit rungs; the bridge point is taken from the 1/64 grid in [-1, 1]^2,
 //   which always holds a point within [1/2, 1] of the five anchors. O(m) per test.
+// Bounds: p, q: 1..=10_000; m: 3..=28_285
 
 use std.geometry.Vec
 

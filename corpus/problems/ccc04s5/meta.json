@@ -23,5 +23,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Per-column down/up sweeps with ?Int max (None = blocked/unreachable); input ends at '0 0' (multitest has only count/until_eof, a while loop is fine). Nested generator fns are E0501 (compiler worklog)."
+ "notes": "Per-column down/up sweeps with ?Int max (None = blocked/unreachable); input ends at '0 0' (multitest has only count/until_eof, a while loop is fine). Nested generator fns are E0501 (compiler worklog).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "06ca1cdc2facad1ee962bbccc702986e21ba68fc"
+ }
 }

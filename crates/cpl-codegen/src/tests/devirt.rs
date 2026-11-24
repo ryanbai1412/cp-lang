@@ -313,3 +313,137 @@ fn a_local_read_only_as_a_direct_callee_is_not_declared() {
         "the `act!` check stays:\n{out}"
     );
 }
+
+#[test]
+fn a_capturing_closure_of_another_signature_leaves_a_monoid_op_a_fn_pointer() {
+    let out = cpp("use std.algebra.{Monoid}
+struct Qs(m: Monoid<Int>)
+fn tag(s: Str):
+    let f = (t: Str, n: Int) => s + t + \"{n}\"
+    print(f(\"a\", 1))
+let q = Qs(Monoid(0, (a, b) => min(a, b)))
+let f = q.m.op
+tag(read<Str>())
+print(f(3, 4))
+");
+    assert!(
+        out.contains("std::add_pointer_t<ll(ll, ll)>"),
+        "only closures of `op`'s own signature decide its representation:\n{out}"
+    );
+}
+
+#[test]
+fn a_capturing_closure_no_running_code_makes_leaves_a_monoid_op_a_fn_pointer() {
+    let out = cpp("use std.algebra.{Monoid}
+struct Qs(m: Monoid<Int>)
+fn unused(k: Int) -> Int:
+    let g = (a: Int, b: Int) => a + b + k
+    g(1, 2)
+let q = Qs(Monoid(0, (a, b) => min(a, b)))
+let f = q.m.op
+print(f(3, read<Int>()))
+");
+    assert!(
+        out.contains("std::add_pointer_t<ll(ll, ll)>") && !out.contains("std::function<"),
+        "a closure in a fn nothing calls decides no representation:\n{out}"
+    );
+}
+
+#[test]
+fn an_optional_fn_field_only_none_fills_is_no_std_function() {
+    let out = cpp("domain D = 0..4
+let init = [D] _ => 0
+var st = SegTree<D, Int, Int>(min, act: add, a: init)
+fn first_le(mut st: SegTree<D, Int, Int>, t: Int) -> Int = (0..4).first_true(m => st.get(D(m)) <= t) ?? 4
+st.apply(0..2, 1)
+print(first_le(mut st, 1))
+");
+    assert!(
+        !out.contains("std::function"),
+        "`source` is None in every tree the program builds:\n{out}"
+    );
+}
+
+#[test]
+fn an_optional_fn_field_of_tuple_t_only_none_fills_is_no_std_function() {
+    let out = cpp("domain D = 0..4
+type P = (a: Int, b: Int)
+let onto = Action<P, Int>(
+    id: 0,
+    compose: (newer, older) => newer + older,
+    apply: (f, p, _) => (a: p.a + f, b: p.b),
+    over: Monoid((a: 0, b: 0), (x, _) => x),
+)
+let init = [D] _ => (a: 0, b: 0)
+var st = SegTree<D, P, Int>(act: onto, a: init)
+fn first_le(mut st: SegTree<D, P, Int>, t: Int) -> Int = (0..4).first_true(m => st.get(D(m)).a <= t) ?? 4
+st.apply(0..2, 1)
+print(first_le(mut st, 1))
+");
+    assert!(
+        !out.contains("std::function"),
+        "`source` holds tuples but is None in every tree the program builds:\n{out}"
+    );
+}
+
+#[test]
+fn a_dropped_field_at_a_product_position_drops_its_local_and_stores() {
+    let out = cpp(concat!(
+        "use std.graph.{fixed_cost_paths}\n",
+        "domain R = 0..5\n",
+        "domain T = 0..3\n",
+        "let p = fixed_cost_paths([(R(0), Subset<T>.empty)], [1, 2], cost: m => m, ",
+        "step: (m, s) => if Int(s.0) + m < 5: Some((R(Int(s.0) + m), s.1)) else: None)\n",
+        "print(p[(R(4), Subset<T>.empty)])\n",
+    ));
+    assert!(
+        !out.contains(" back(") && !out.contains("back["),
+        "nothing reads `Paths.back`, so neither its array nor a store into it is written:\n{out}"
+    );
+}
+
+#[test]
+fn a_closure_named_to_keep_argument_order_is_no_std_function() {
+    let out = cpp("use std.search.{parallel_bsearch}
+let n = read<Int>()
+let off = n - 1
+let w = [n for _ in 0..n]
+let need = [n for _ in 0..n]
+var cnt = 0
+print(yes(parallel_bsearch(need.len, off..off + n, reset: () => cnt = 0, apply: i => cnt += w[i - off], ok: q => cnt >= need[q]) == []))
+");
+    assert!(
+        !out.contains("std::function"),
+        "a closure argument named before the call keeps its lambda type:\n{out}"
+    );
+}
+
+#[test]
+fn an_op_value_field_is_left_out_of_declaration_literal_and_tie() {
+    let out = cpp("use std.window.{Window}
+var w = Window(+)
+for x in [3, 5, 2]: w.push(x)
+print(w)
+");
+    assert!(
+        !out.contains("void op"),
+        "an op value holds nothing:\n{out}"
+    );
+    assert!(
+        !out.contains("{(void)0,"),
+        "the literal drops the field too:\n{out}"
+    );
+}
+
+#[test]
+fn a_closure_calling_a_known_field_of_a_returned_struct_is_no_std_function() {
+    let out = cpp("use std.lazy.{Flip}
+let m = Flip.op(+)
+let x = m.op(Flip(3, 7), m.id)
+print(x.now, x.flipped, m.id.now)
+");
+    assert!(
+        !out.contains("std::function"),
+        "`Flip.op(+)` captures a Monoid whose `op` is one known fn, so its own `op` is static:\n{out}"
+    );
+}

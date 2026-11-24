@@ -10,7 +10,7 @@ use std.mod.{Mod}
 /// `i >= 1` with `xs[i] < xs[i - 1]`, or `None` when `xs` never decreases.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
+/// empty: `decrease(List<Int>()) == None`
 /// traps: never
 /// example: `decrease([1, 2, 2, 5]) == None`
 /// example: `decrease([1, 3, 2, 1]) == Some(2)`
@@ -23,7 +23,7 @@ pub fn decrease<T>(xs: List<T>) -> ?Int:
 /// `i >= 1` with `xs[i] > xs[i - 1]`, or `None` when `xs` never increases.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
+/// empty: `increase(List<Int>()) == None`
 /// traps: never
 /// example: `increase([5, 2, 2, 1]) == None`
 /// example: `increase([3, 1, 2, 0]) == Some(2)`
@@ -35,8 +35,10 @@ pub fn increase<T>(xs: List<T>) -> ?Int:
 /// The first position where `xs` is not convex: `Some(i)` for the smallest `i` with
 /// `xs[i - 1] + xs[i + 1] < 2 * xs[i]`, or `None` when every second difference is at least 0.
 ///
+/// Fewer than 3 elements cannot break the law, so they give `None`.
+///
 /// cost: \(O(n)\)
-/// empty: `None` (fewer than 3 elements cannot break the law)
+/// empty: `convexity_break([]) == None`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `convexity_break([4, 1, 0, 1, 4]) == None`
 /// example: `convexity_break([0, 1, 3, 4]) == Some(2)`
@@ -48,8 +50,10 @@ pub fn convexity_break(xs: List<Int>) -> ?Int:
 /// The first position where `xs` is not concave: `Some(i)` for the smallest `i` with
 /// `xs[i - 1] + xs[i + 1] > 2 * xs[i]`, or `None` when every second difference is at most 0.
 ///
+/// Fewer than 3 elements cannot break the law, so they give `None`.
+///
 /// cost: \(O(n)\)
-/// empty: `None` (fewer than 3 elements cannot break the law)
+/// empty: `concavity_break([]) == None`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `concavity_break([0, 3, 4, 3]) == None`
 /// example: `concavity_break([0, 3, 4, 7]) == Some(2)`
@@ -65,7 +69,7 @@ pub fn concavity_break(xs: List<Int>) -> ?Int:
 /// check the negated values.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
+/// empty: `unimodality_break([]) == None`
 /// traps: never
 /// example: `unimodality_break([1, 3, 5, 5, 2]) == None`
 /// example: `unimodality_break([1, 2, 2, 3, 1]) == Some(3)`
@@ -91,7 +95,7 @@ pub fn unimodality_break(xs: List<Int>) -> ?Int:
 /// Adjacent blocks suffice: the law for any `a < b`, `c < d` is a sum of them.
 ///
 /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) calls of `cost`
-/// empty: `None` when `rows < 2` or `cols < 2`
+/// empty: `let f = (i: Int, j: Int) => i * j; [monge_break(f, 1, 3), monge_break(f, 3, 1)] == [None, None]`
 /// traps: never
 /// example: `monge_break((i, j) => (i - j) * (i - j), 4, 4) == None`
 /// example: `monge_break((i, j) => i * j, 3, 3) == Some((0, 0))`
@@ -108,8 +112,8 @@ pub fn monge_break(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> ?(Int, Int)
 /// force: the reference that SMAWK, divide and conquer and Knuth's speed-up must reproduce.
 ///
 /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) calls of `cost`
-/// empty: `[]` when `rows == 0`
-/// ties: the leftmost minimal column
+/// empty: `argmins((i, j) => 0, 0, 4) == []`
+/// ties: `argmins((i, j) => if j == 0: 1 else: 0, 1, 3) == [1]`
 /// order: one column per row, in row order
 /// traps: when `rows > 0` and `cols < 1`
 /// example: `argmins((i, j) => (i - j) * (i - j), 3, 4) == [0, 1, 2]`
@@ -133,7 +137,7 @@ pub fn argmins(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> List<Int>:
 /// only for `j < i`.
 ///
 /// cost: \(O(n^2)\) calls of `cost`
-/// empty: `None` when `n < 4`
+/// empty: `dnc_break((j, i) => 0 - (i - j) * (i - j), 3) == None`
 /// traps: never
 /// example: `dnc_break((j, i) => (i - j) * (i - j), 6) == None`
 /// example: `dnc_break((j, i) => 0 - (i - j) * (i - j), 4) == Some((0, 2))`
@@ -153,7 +157,7 @@ pub fn dnc_break(cost: (Int, Int) -> Int, n: Int) -> ?(Int, Int):
 /// `opt` is asked only for `j - i >= 2`.
 ///
 /// cost: \(O(n^2)\) calls of `opt`
-/// empty: `None` when `n < 3`
+/// empty: `knuth_break((i, j) => if i == 0 and j == 3: 0 else: i + 1, 2) == None`
 /// traps: never
 /// example: `knuth_break((i, j) => (i + j) / 2, 6) == None`
 /// example: `knuth_break((i, j) => if i == 0 and j == 3: 0 else: i + 1, 4) == Some((0, 3))`
@@ -168,7 +172,7 @@ pub fn knuth_break(opt: (Int, Int) -> Int, n: Int) -> ?(Int, Int):
 /// The differences of neighbours, `[xs[i + 1] - xs[i] for i in 0..xs.len - 1]`.
 ///
 /// cost: \(O(n)\)
-/// empty: `[]` for fewer than 2 elements
+/// empty: `differences([5]) == []`
 /// order: by `i`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `differences([1, 4, 9, 16]) == [3, 5, 7]`
@@ -180,7 +184,7 @@ pub fn differences(xs: List<Int>) -> List<Int>:
 /// `0..xs.len`.
 ///
 /// cost: \(O(n^2)\)
-/// empty: `[]`
+/// empty: `newton([]) == []`
 /// order: by `k`, from the 0th differences
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `newton([1, 4, 9, 16]) == [1, 3, 2, 0]`
@@ -199,7 +203,7 @@ pub fn newton(xs: List<Int>) -> List<Int>:
 /// difference to confirm it (so `xs.len >= d + 2`). A zero sequence has degree 0.
 ///
 /// cost: \(O(n^2)\)
-/// empty: `None` for fewer than 2 elements
+/// empty: `poly_degree([5]) == None`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `poly_degree([1, 4, 9, 16]) == Some(2)`
 /// example: `poly_degree([7, 7]) == Some(0)`
@@ -217,7 +221,7 @@ pub fn poly_degree(xs: List<Int>) -> ?Int:
 /// `0..xs.len`, from its Newton coefficients; `n` may lie outside `0..xs.len` or be negative.
 ///
 /// cost: \(O(\mathit{len}^2)\) for `len = xs.len`
-/// empty: `0` when `xs` is empty
+/// empty: `poly_at([], 10) == 0`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `poly_at([1, 4, 9, 16], 10) == 121`
 /// example: `poly_at([1, 4, 9, 16], -2) == 1`
@@ -236,8 +240,10 @@ pub fn poly_at(xs: List<Int>, n: Int) -> Int:
 /// Exact over the field `Mod<P>` (`P` prime); with `xs.len >= 2 * c.len` it is the only one that
 /// short.
 ///
+/// An empty or all-zero `xs` satisfies the empty recurrence, so gives `[]`.
+///
 /// cost: \(O(n^2)\) for `n = xs.len`
-/// empty: `[]` (no terms satisfy the empty recurrence; so does an all-zero `xs`)
+/// empty: `type Z = Mod<998244353>; berlekamp_massey(List<Z>()) == []`
 /// order: `c[0]` multiplies the term just before
 /// traps: never
 /// example: `type Z = Mod<998244353>; berlekamp_massey([Z(1), Z(1), Z(2), Z(3), Z(5), Z(8)]) == [Z(1), Z(1)]`
@@ -292,8 +298,10 @@ fn mul_rec<P>(a: List<Mod<P>>, b: List<Mod<P>>, c: List<Mod<P>>) -> List<Mod<P>>
 /// terms `init`: `init[n]` for `n < c.len`, else by Kitamasa, `x^n` modulo the characteristic
 /// polynomial.
 ///
+/// An empty `c` makes every term zero.
+///
 /// cost: \(O(k^2 \log n)\) for `k = c.len`
-/// empty: `0` when `c` is empty (the recurrence makes every term zero)
+/// empty: `type Z = Mod<998244353>; recurrence_at(List<Z>(), [], 5) == Z(0)`
 /// traps: when `n < 0` or `init.len != c.len`
 /// example: `type Z = Mod<998244353>; recurrence_at([Z(1), Z(1)], [Z(0), Z(1)], 10) == Z(55)`
 /// example: `type Z = Mod<998244353>; recurrence_at([Z(2)], [Z(3)], 4) == Z(48)`
@@ -322,7 +330,7 @@ pub fn recurrence_at<P>(c: List<Mod<P>>, init: List<Mod<P>>, n: Int) -> Mod<P>:
 /// Pass more terms for more confidence. `xs[n]` itself when `n < xs.len`.
 ///
 /// cost: \(O(\mathit{xs}.\mathit{len}^2 + k^2 \log n)\) for the recurrence length `k`
-/// empty: `None` when `xs` is empty
+/// empty: `type Z = Mod<998244353>; guess_at(List<Z>(), 3) == None`
 /// traps: when `n < 0`
 /// example: `type Z = Mod<998244353>; guess_at([Z(1), Z(1), Z(2), Z(3), Z(5)], 9) == Some(Z(55))`
 /// example: `type Z = Mod<998244353>; guess_at([Z(1), Z(2), Z(4), Z(8)], 2) == Some(Z(4))`

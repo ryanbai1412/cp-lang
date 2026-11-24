@@ -6,6 +6,7 @@
 //   other; a pick whose rows disagree is dropped at once, and lists stop at m - 1 words.
 //   Exponential in the worst case, but m * n <= 40 keeps it small.
 // original: corpus/submissions/5025769.cpp
+// Bounds: m, n: 1..=40
 let (m, n): (1..=40, 1..=40) = read()
 assert m * n <= 40
 domain Pair = 1..=n

@@ -5,6 +5,7 @@
 // Solution: weights are huge but the total value is at most 100 * 1000 = 1e5, so index by
 //   value: lightest[t] is the least weight reaching value exactly t (None if no subset does),
 //   a 0/1 knapsack going down over t. Print the largest t with lightest[t] <= W. O(n * sum v).
+// Bounds: n: 1..=100; cap, items.w: 1..=1e9; items.v: 1..=1000
 let (n, cap): (1..=100, 1..=1e9) = read()
 let items: [n](w: 1..=1e9, v: 1..=1000) = read()
 

@@ -23,5 +23,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Wire; ternary_min is golden-section with probe reuse; scores cached in a HashMap (a memo may not do I/O). tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case."
+ "notes": "Wire; ternary_min is golden-section with probe reuse; scores cached in a HashMap (a memo may not do I/O). tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 18,
+  "sha": "ad755340cbd04d8535b2adfd5af6466424cda307"
+ }
 }

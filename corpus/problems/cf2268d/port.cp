@@ -8,6 +8,7 @@
 //   spine edge i -> u in closed form: pairs crossing it, pairs leaving (i, u) to the right
 //   (1 step via u's other children, else 2), and pairs inside (i, u] at distance 1, 2 or 3,
 //   counted from up[], first child and child counts. Every block is O(its length): O(n).
+// Bounds: n: 1..=1e6; p: 1..=n
 use std.seq.*
 
 @!multitest

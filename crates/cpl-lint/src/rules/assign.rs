@@ -2,13 +2,14 @@
 //! (L0523): `x = max(x, e)` and `if e > x: x = e` are `x max= e`; one place written once instead of
 //! two copies that must agree.
 
+use crate::std_fn;
 use crate::walk::{walk_expr, Visitor};
 use crate::{File, Finding, CHMIN_CHMAX_IF, COMPOUND_SELF_REF};
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::{AssignOp, BinOp, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
 
 /// The calls `min=` and `max=` stand for (R01.6.4).
-const MIN_MAX: [&str; 2] = ["min", "max"];
+const MIN_MAX: [&str; 2] = [std_fn::MIN, std_fn::MAX];
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Assigns<'a> {

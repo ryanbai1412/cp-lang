@@ -1,6 +1,7 @@
 //! L0516 `hand_rolled_string_algo`: KMP, Z-function, polynomial hash, trie.
 
 use super::*;
+use crate::std_fn;
 
 /// Flags hand-rolled KMP prefix-function, Z-function, polynomial rolling-hash,
 /// and trie insertion loops that duplicate `std.strings`.
@@ -90,7 +91,7 @@ pub(super) fn seq_index_parts(e: &Expr) -> Option<(&str, &Expr)> {
         }
         ExprKind::Call { callee, args } if args.len() == 1 => {
             if let ExprKind::Field { base, name } = &walk::unparen(callee).kind {
-                if name.text == "at" {
+                if name.text == std_fn::AT {
                     return Some((shapes::name(base)?, &args[0].value));
                 }
             }

@@ -1,5 +1,3 @@
-use std.math.{splitmix64}
-
 let n: Int = read()
 var x: U64 = 0
 for i in 0..n:

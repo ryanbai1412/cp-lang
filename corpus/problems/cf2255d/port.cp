@@ -8,6 +8,7 @@
 //   most one too large. fewer() checks ans - 1 directly: step i goes to the largest non-empty
 //   level, splitting its smallest value when it sits at level i + 1.
 //   O(n + log^2 max a) per test.
+// Bounds: n: 1..=2e5
 let max_a = 1e9
 
 fn level(x: 1..=max_a) -> Int = bit_width(x - 1)

@@ -686,10 +686,48 @@ impl Database {
                         .iter()
                         .any(|d| d.code == codes::UNRESOLVED_MODULE)
                 });
+                // A std module the host has not given yet: the name stays
+                // imported from its outline, and the wait is reported where
+                // the file first uses it, as for a `use` of it.
+                let parts: Vec<String> = module.iter().map(|n| n.text.clone()).collect();
+                let waiting = !diags.is_empty()
+                    && crate::modules::unloaded(&parts)
+                    && diags.iter().all(|d| d.code == codes::UNRESOLVED_MODULE);
+                if waiting {
+                    let first_use = ranges.iter().enumerate().find_map(|(index, range)| {
+                        lexed.tokens[range.tokens.0..range.tokens.1]
+                            .iter()
+                            .find(|tok| {
+                                tok.kind == cpl_syntax::TokenKind::Ident
+                                    && text[tok.span.start as usize..tok.span.end as usize]
+                                        == name.text
+                            })
+                            .map(|tok| {
+                                let base = range.span.start;
+                                (index, Span::new(tok.span.start - base, tok.span.end - base))
+                            })
+                    });
+                    let reported = import_diags
+                        .iter()
+                        .any(|(_, d)| d.message == diags[0].message);
+                    if let (Some((index, span)), false) = (first_use, reported) {
+                        let mut diag = diags.swap_remove(0);
+                        diag.span = span;
+                        import_diags.push((index, diag));
+                    }
+                    if let Some(bare) = bare {
+                        scope.imports.insert(name.text.clone(), bare);
+                    }
+                    if let Some(import) = scope.imports.remove(&name.text) {
+                        scope.imports.insert(key.clone(), import);
+                    }
+                    continue;
+                }
                 let import = scope.imports.remove(&name.text);
                 if cycled || !diags.is_empty() {
                     self.cycle_hits = hits_before;
                     scope.modules.truncate(mods_before);
+                    scope.imports.retain(|_, i| i.module < mods_before);
                 } else if let Some(import) = import {
                     scope.imports.insert(key.clone(), import);
                 }
@@ -1026,16 +1064,14 @@ impl Database {
                         .with_help("store it as `Packed<S>` (data only, unaligned loads) or with `layout: columns` (one array per field)"),
                     );
             }
-            if let Some((name, at, reads)) = map_recomputed(&items, index) {
-                let at = at.shift(range.span.start);
-                sink.push(
-                        Diagnostic::warning(
-                            codes::MAP_RECOMPUTED,
-                            at,
-                            format!("`{name}` is a `.map` view read {reads} times by index, and each read reruns the function"),
-                        )
-                        .with_help(format!("copy it once with `List(...)` so each `{name}[i]` is a plain read (R07.2.11)")),
-                    );
+            let types = checks.get(index).map_or(&[][..], |c| &c.exprs.types[..]);
+            let is_view = |at: Span| {
+                types
+                    .iter()
+                    .any(|(span, ty)| *span == at && !matches!(ty, Ty::Optional(_)))
+            };
+            for reread in view_rereads(&items, index, &is_view) {
+                sink.push(reread.diagnostic(range.span.start));
             }
         }
 
@@ -1184,7 +1220,7 @@ impl Database {
 
         let has_syntax_errors =
             !lexed.diagnostics.is_empty() || items.iter().any(|i| !i.parsed.diagnostics.is_empty());
-        let analysis = Arc::new(crate::labels::labelled(Analysis {
+        let mut analysis = crate::labels::labelled(Analysis {
             text: text.clone(),
             lines,
             has_syntax_errors,
@@ -1210,7 +1246,12 @@ impl Database {
             scope,
             facts: Default::default(),
             revision: crate::Revision(self.edits),
-        }));
+        });
+        if imports_ok && !imported_module {
+            self.memory_over_profile(path, &mut analysis);
+            self.per_test_leaks(&mut analysis);
+        }
+        let analysis = Arc::new(analysis);
         self.collect_garbage(items.len());
         // A cycle through a file that imports this one cut names out of it:
         // right for this import, wrong for anyone else's.
@@ -1295,6 +1336,7 @@ impl Database {
                             name: name.text.clone(),
                         },
                     );
+                    scoping::add_overloads(scope, index, &name.text);
                 }
                 Some(_) => diags.push(
                     Diagnostic::error(
@@ -1656,9 +1698,12 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
             // An impl is filed under a name of its own, so it is found,
             // memoized and reported twice like any other definition.
             StmtKind::Impl {
-                trait_name, target, ..
+                trait_name,
+                target,
+                bounds,
+                ..
             } => {
-                if let Some(target_name) = crate::check::impl_target_head(target) {
+                if let Some(target_name) = crate::check::impl_file_head(target, bounds) {
                     let trait_head = trait_name.as_ref().and_then(crate::check::trait_impl_key);
                     out.push(Decl {
                         name: impl_name(trait_head.as_deref(), &target_name),
@@ -1744,7 +1789,8 @@ impl FileCtx<'_> {
         }
         let item = self.items[index].clone();
         let revision = self.db.revision;
-        let key = (self.file, item.hash, rebind::base(name).to_string());
+        let base = crate::prelude::overload_part(name).map_or(rebind::base(name), |(n, _)| n);
+        let key = (self.file, item.hash, base.to_string());
         if let Some(memo) = self.db.defs.get_mut(&key) {
             memo.last_used = revision;
             if memo.verified_at == revision {
@@ -1796,12 +1842,14 @@ impl FileCtx<'_> {
         let mut found = (None, 0);
         let mut stored: Vec<String> = Vec::new();
         for (def_name, def) in defs {
-            if stored.contains(&def_name) {
+            // A name being worked out further out was cut short here, and
+            // that computation stores its own whole def.
+            if stored.contains(&def_name) || self.in_progress.contains(&def_name) {
                 continue;
             }
             let fingerprint = def.fingerprint();
             let def = Arc::new(def);
-            if def_name == rebind::base(name) {
+            if def_name == base {
                 found = (Some(def.clone()), fingerprint);
             }
             stored.push(def_name.clone());
@@ -2209,7 +2257,7 @@ fn declare_with_var(
 
 mod cycles;
 mod top_level;
-use top_level::{map_recomputed, padded_array, rewalk_kind, wide_array};
+use top_level::{padded_array, rewalk_kind, view_rereads, wide_array};
 mod env;
 mod fields;
 mod rebind;

@@ -8,6 +8,7 @@
 //   ways(n-1, m-mx) * (mx - average) and the n-2 interior copies add (n-2) * ways(n-2, m-2mx) *
 //   (mx - average), where ways counts tuples in 0..=mx with a given sum by inclusion-exclusion
 //   over entries above mx. All mx together cost O(m log m) (harmonic sum).
+// Bounds: n: 2..=200_000; m: 0..=200_000
 
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z>()

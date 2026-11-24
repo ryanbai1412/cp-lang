@@ -7,6 +7,7 @@
 //   falls as x grows: binary search (`first_true`) the least x in 1..=1e9 with
 //   sum ceil(c / x) <= n, O(m log 1e9).
 // original: corpus/submissions/5245322.cpp
+// Bounds: kids, marbles: 1..=1e9; m: 1..=3e5
 let kids: 1..=1e9 = read()
 let m: 1..=3e5 = read()
 assert m <= kids

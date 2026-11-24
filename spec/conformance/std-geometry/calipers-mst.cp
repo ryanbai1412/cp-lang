@@ -1,5 +1,5 @@
 // expect: ok, output "YES\nYES\nYES\nYES\nYES\nYES YES YES"
-use std.geometry.{convex_hull, farthest_pair, hull_line_intersect, manhattan_mst}
+use std.geometry.{farthest_pair, hull_line_intersect, manhattan_mst}
 domain D3 = 0..3
 domain D2 = 0..2
 domain K = 0..8

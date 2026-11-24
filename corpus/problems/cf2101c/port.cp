@@ -6,6 +6,7 @@
 //   free values, a DSU whose set labels point at the free value below); the t-th index that gets one is the best t-th left end. The same scan from
 //   the right gives the right ends. Pair the t-th left with the t-th right and add the
 //   spans while positive. O(n α(n)).
+// Bounds: n: 1..=200_000; a: 1..=n
 
 @!multitest
 let n: 1..=200_000 = read()

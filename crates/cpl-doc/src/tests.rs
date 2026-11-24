@@ -415,9 +415,9 @@ fn json_carries_every_field_and_escapes_strings() {
          {\"kind\":\"fn\",\"name\":\"hi\",\"signature\":\"fn hi()\",\"doc\":\"Says \\\"hi\\\"\\\\n.\",\
          \"summary\":\"Says \\\"hi\\\"\\\\n.\",\"cost\":\"O(1)\",\
          \"facts\":{\"cost\":null,\"empty\":null,\"order\":null,\"ties\":null,\"traps\":null},\
-         \"prose\":\"Says \\\"hi\\\"\\\\n.\",\"line\":3,\"examples\":[],\"links\":[],\"members\":[]}]}]}\n"
+         \"prose\":\"Says \\\"hi\\\"\\\\n.\",\"line\":3,\"examples\":[],\"links\":[],\"aliases\":[],\"members\":[]}]}]}\n"
     );
-    assert_eq!(json::string("a\tb\u{1}"), "\"a\\tb\\u0001\"");
+    assert_eq!(cpl_json::escape_string("a\tb\u{1}"), "\"a\\tb\\u0001\"");
     assert_eq!(json::render(&[]), "{\"modules\":[]}\n");
 }
 
@@ -473,6 +473,88 @@ fn extracts_the_whole_corpus() {
     assert!(files >= 40 && items >= 40, "{files} files, {items} items");
 }
 
+#[test]
+fn inventory_rows_name_what_they_spell() {
+    let rows = crate::aliases::rows(
+        "| C++ | `lower_bound` | `a.first_ge(x)` |\n\
+         | ACL | `lazy_segtree` | `SegTree(op, a, act: f)`, `a.scan(+)` |\n\
+         | Rust | `iter().rev()` | `a.rev` |\n\
+         | Python | `pow(a, b, m)` | `pow(a, b)` over `Mod` |\n\
+         | Rust | `retain` | none |\n\
+         | From | Operation | CP Lang |\n",
+    );
+    let got: Vec<(&[String], &[String])> =
+        rows.iter().map(|r| (&r.from[..], &r.names[..])).collect();
+    let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+    let want = [
+        (s(&["lower_bound"]), s(&["first_ge"])),
+        (s(&["lazy_segtree"]), s(&["SegTree", "scan"])),
+        (s(&["iter.rev"]), s(&["rev"])),
+        (s(&["pow"]), s(&["pow", "Mod"])),
+        (s(&["retain"]), s(&[])),
+    ];
+    let want: Vec<(&[String], &[String])> = want.iter().map(|(f, n)| (&f[..], &n[..])).collect();
+    assert_eq!(got, want);
+    assert_eq!(rows[0].line, 1);
+    // `sum, min, max` beside `a.sum(), a.min(), a.max()` pair up; one
+    // spelling for two names takes both.
+    let of = crate::aliases::of;
+    assert_eq!(of("first_gt"), ["upper_bound", "bisect_right"]);
+    assert_eq!(of("sum"), ["accumulate"]);
+    assert!(of("bsearch").contains(&"binary_search".to_string()));
+    assert!(of("bsearch").contains(&"partition_point".to_string()));
+}
+
+/// handbook/domains/stdlib.md, "Findable without knowing the name": every
+/// row of spec/lib/inventory.md spells its operation with names std
+/// documents, and each of its names elsewhere, typed into the page filter,
+/// finds one of them.
+#[test]
+fn every_inventory_name_finds_its_std_spelling() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let modules = crate::cli::load(&[root.join("std")]).unwrap();
+    let documented: std::collections::HashSet<&str> = (modules.iter())
+        .flat_map(|m| m.all_items())
+        .map(|(_, item)| item.name.split('<').next().unwrap_or(&item.name))
+        .collect();
+    let site = html::render(&modules, &html::Options::default());
+    let filtered: Vec<&str> = (site.iter())
+        .flat_map(|(_, page)| page.split("data-name=\"").skip(1))
+        .filter_map(|rest| rest.split('"').next())
+        .collect();
+    let rows = crate::aliases::rows(crate::aliases::INVENTORY);
+    assert!(rows.len() >= 70, "{} rows", rows.len());
+    let mut wrong = Vec::new();
+    for row in &rows {
+        let at = format!("spec/lib/inventory.md:{}: {}", row.line, row.lib);
+        if row.names.is_empty() {
+            wrong.push(format!("{at} {:?} has no CP Lang spelling", row.from));
+        }
+        for name in row
+            .names
+            .iter()
+            .filter(|n| !documented.contains(n.as_str()))
+        {
+            wrong.push(format!("{at} `{name}` is not a documented std name"));
+        }
+        for from in &row.from {
+            let query = from.to_lowercase();
+            let finds = filtered.iter().any(|row_name| {
+                let mut words = row_name.split(' ');
+                let name = words.next().unwrap_or("").rsplit('.').next().unwrap_or("");
+                words.any(|w| w == query) && row.names.iter().any(|n| n.to_lowercase() == name)
+            });
+            if !finds && row.names.iter().all(|n| n != from) {
+                wrong.push(format!(
+                    "{at} a search for `{from}` finds none of {:?}",
+                    row.names
+                ));
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
 mod cli {
     use crate::cli::run;
     use std::path::PathBuf;
@@ -518,6 +600,28 @@ mod cli {
         assert!(std::fs::read_to_string(out.join("index.html"))
             .unwrap()
             .contains("<h1>Sample</h1>"));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn documenting_the_prelude_documents_the_built_in_types() {
+        let dir = scratch("builtins");
+        let lib = dir.join("lib");
+        let (_, alone, _) = doc(&["--format", "json", lib.to_str().unwrap()]);
+        assert!(!alone.contains("\"builtin\""), "{alone}");
+        std::fs::write(lib.join("prelude.cp"), "use std.prefix.{Prefix}\n").unwrap();
+        let (code, json, stderr) = doc(&["--format", "json", lib.to_str().unwrap()]);
+        assert_eq!(code, 0, "{stderr}");
+        let builtin = json.split("{\"name\":\"prefix\"").next().unwrap();
+        for want in [
+            "\"name\":\"builtin\"",
+            "\"name\":\"HashMap\",\"signature\":\"type HashMap\\u003cK, V>\"",
+            "unordered_map",
+            "\"name\":\"HashSet\"",
+            "\"name\":\"push\",\"signature\":\"fn push(x: T)\"",
+        ] {
+            assert!(builtin.contains(want), "{want} in {builtin}");
+        }
         std::fs::remove_dir_all(dir).unwrap();
     }
 

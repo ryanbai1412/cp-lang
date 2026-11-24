@@ -1,46 +1,35 @@
-# Friction Report: cco20p5
+# Friction report: cco20p5
 
-## 1. Offline segment tree over time (`TimeSegTree<Q, T>`)
+## Dream
 
-- **Area:** stdlib
-- **Goal:** express
-- **Severity:** medium
-- **Dream:** `proto/ports/scout_batch_36/dream/cco20p5.cp:42,51,55,80-103`
-- **Port:** `proto/ports/scout_batch_36/cco20p5.cp:42-50,101-131`
+`dream.cp` (unchanged) keeps the offline timeline. The port goes further and is online:
 
-Dynamic-connectivity / add-remove-over-time problems map each element's `[start, end]` lifetime onto `O(log q)` nodes of a segment tree over time and DFS with rollback. Because `stdlib/` has no `TimeSegTree`, the port hand-rolls `seg[o * 2]` and `dfs`.
+```cp
+var gaps = SegTree<X, Gaps>(Monoid(Gaps.none, Gaps.join))
+for e in events:
+    (if e.op == 'A': add else: remove)(e)
+    gaps.set(e.l, at(e.l)); gaps.set(e.r, at(e.r))
+    print(min(overlap_best(), (overlap: 0, span: gaps.all.span?)).span)
+```
 
-## 2. Rollback-capable prefix-max `Fenwick` (`RollbackFenwick<Coord, Max>`)
+## Offline segment tree over time becomes online std structures
 
-- **Area:** stdlib
-- **Goal:** express
-- **Severity:** medium
-- **Dream:** `proto/ports/scout_batch_36/dream/cco20p5.cp:57-64,101-102`
-- **Port:** `proto/ports/scout_batch_36/cco20p5.cp:68-85,127-129`
+The v0.2 port packed each event into an `l * width + r` key, put every interval copy on
+O(log Q) nodes of a hand segment tree over time, and walked it with hand Fenwick prefix-max
+trees, three undo-log lists, pairs packed into one `Int` by `(x + b) * w + y` and `1e9` /
+`pinf` sentinels. The rewrite answers online: std `SortedBag`s of `(r, l)`, `(l, r)` and the
+lengths give the best overlapping pair and the shortest interval, and a std `SegTree` over
+positions with a `Gaps` monoid (greatest l ending in the range, least r starting in it,
+shortest disjoint span) gives the best disjoint pair. No packing, no undo, no sentinels:
+missing values are `?Int`. O(Q log C).
 
-`std.fenwick.Fenwick` supports additive groups (`+`/`-`) without rollback; prefix-max with checkpoint/rollback forces a hand-written `i -= i & -i` / `j += j & -j` tree and `log: List<Undo>`.
+## Remaining friction
 
-## 3. No `HashMap.entry` (default-insert) in `cpl run`
+- No `min` over `?Int` that skips `None` (`max` works because `None` sorts first), so the
+  port writes a two-line `least`.
+- The C++ is about 54 KB (W0201 over the 32 KB target): the `SegTree` and `SortedBag`
+  templates are large. It still runs the max case in 1.7 s of the 3.5 s limit.
 
-- **Area:** stdlib
-- **Goal:** express
-- **Severity:** low
-- **Dream:** `proto/ports/scout_batch_36/dream/cco20p5.cp:48` (`active.entry(key).push(i)`).
-- **Actual:** `proto/ports/scout_batch_36/cco20p5.cp:58-59` writes `if not active.contains(key): active[key] = []` before each push.
-- **Error:** `E0203: a HashMap<(Int, Int), List<Q>> has no method entry that cpl run knows`.
-- **Ask:** one default-insert spelling on `HashMap`/`Map` (`entry(k)` or a `default:` constructor option), so accumulating into a keyed list is one line.
+## Verification
 
-## 4. An enum with domain-element payload fields doesn't read by tag
-
-- **Where:** `enum Op = @tag("A") Add(l: X, r: X) | @tag("R") Remove(l: X, r: X)` over
-  `domain X = 1..=1e6`; `read<[q]Op>()` on `A 1 5` is R0501 "expected a number, found `A`"
-  in `cpl run`, and the C++ build stops with "something else where a number was expected".
-  With `Int` or `1..=1e6` fields both engines read it (R10.2.3).
-- **Repro:** `domain X = 1..=10` / `enum Op = @tag("A") Add(l: X, r: X) | @tag("R") Remove(l: X, r: X)`
-  / `for op in read<[1]Op>(): match op: ...` on input `A 1 5`.
-- **Goal it hurts:** express (the statement's bound is written twice: once as the domain the
-  segment tree is over, once as the payload range).
-- **General fix:** the tagged-enum reader reads a domain-typed payload field like `read<X>()`.
-  Already routed to compiler (`plan/domains/compiler/worklog.md`, from noi02p1).
-- **Workaround:** payload fields are `1..=1e6` and the segment tree is indexed with `X(p)`.
-- **Status:** open (compiler).
+30 random cases agree with the v0.2 port and 30 with the accepted C++. Corpus tests (9) pass.

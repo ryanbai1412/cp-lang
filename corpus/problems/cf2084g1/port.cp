@@ -10,6 +10,7 @@
 //   (2c - k)(2(n / 2 - c) - (n - k)), the product of the small and large values' even-minus-odd
 //   imbalances. DP over (k, c), a known value forced to its parity; the beauty is
 //   (best + n(n + 1)^2 / 2) / 2. O(n^2).
+// Bounds: n: 1..=5000
 @!multitest
 let n: 1..=5000 = read()
 domain P = 1..=n

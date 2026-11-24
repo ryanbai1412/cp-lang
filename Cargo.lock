@@ -17,6 +17,7 @@ name = "cpl-check"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
+ "cpl-judge",
  "cpl-syntax",
 ]
 
@@ -27,6 +28,7 @@ dependencies = [
  "cpl-check",
  "cpl-codegen",
  "cpl-contest",
+ "cpl-corpus",
  "cpl-diag",
  "cpl-doc",
  "cpl-fmt",
@@ -38,6 +40,7 @@ dependencies = [
  "cpl-lsp",
  "cpl-stress",
  "cpl-syntax",
+ "cpl-wait",
  "mimalloc",
 ]
 
@@ -56,13 +59,16 @@ version = "0.3.0"
 dependencies = [
  "cpl-check",
  "cpl-codegen",
+ "cpl-corpus",
  "cpl-diag",
  "cpl-fmt",
  "cpl-interp",
  "cpl-ir",
  "cpl-json",
  "cpl-lint",
+ "cpl-stress",
  "cpl-syntax",
+ "cpl-wait",
 ]
 
 [[package]]
@@ -78,7 +84,12 @@ dependencies = [
  "cpl-lint",
  "cpl-stress",
  "cpl-syntax",
+ "cpl-wait",
 ]
+
+[[package]]
+name = "cpl-corpus"
+version = "0.3.0"
 
 [[package]]
 name = "cpl-diag"
@@ -91,6 +102,7 @@ dependencies = [
 name = "cpl-doc"
 version = "0.3.0"
 dependencies = [
+ "cpl-check",
  "cpl-diag",
  "cpl-json",
  "cpl-syntax",
@@ -100,6 +112,7 @@ dependencies = [
 name = "cpl-fmt"
 version = "0.3.0"
 dependencies = [
+ "cpl-corpus",
  "cpl-diag",
  "cpl-syntax",
 ]
@@ -136,6 +149,7 @@ name = "cpl-lint"
 version = "0.3.0"
 dependencies = [
  "cpl-check",
+ "cpl-corpus",
  "cpl-diag",
  "cpl-fmt",
  "cpl-ir",
@@ -149,6 +163,7 @@ name = "cpl-lsp"
 version = "0.3.0"
 dependencies = [
  "cpl-check",
+ "cpl-corpus",
  "cpl-diag",
  "cpl-doc",
  "cpl-fmt",
@@ -177,6 +192,7 @@ dependencies = [
  "cpl-judge",
  "cpl-lint",
  "cpl-syntax",
+ "cpl-wait",
 ]
 
 [[package]]
@@ -185,6 +201,10 @@ version = "0.3.0"
 dependencies = [
  "cpl-diag",
 ]
+
+[[package]]
+name = "cpl-wait"
+version = "0.3.0"
 
 [[package]]
 name = "cpl-wasm"

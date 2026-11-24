@@ -7,13 +7,14 @@
 //   latest[all] exists, O(2^m * m). For m >= 22 the accepted C++ answers NO without the table
 //   (2^22 cuts would not fit; |s| is too short to hold that many orderings).
 // original: corpus/submissions/5494303.cpp
+// Bounds: m: 1..=26
 @!multitest
 let m: 1..=26 = read()
 let s: Str = read()
+domain Letter = 0..m
+domain Pos = 0..s.len
 
 fn solve() -> Bool:
-    domain Letter = 0..m
-    domain Pos = 0..s.len
     // before[c][x]: the last x in s before cut c.
     var before: [Pos.cuts][Letter]?Pos = None
     for p in Pos:

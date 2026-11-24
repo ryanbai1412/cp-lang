@@ -16,3 +16,6 @@ size = 1000
 [[case]]
 seed = 4
 size = 20000
+
+[[case]]
+args = ["--max"]

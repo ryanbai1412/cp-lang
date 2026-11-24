@@ -450,14 +450,7 @@ fn lints_the_whole_corpus() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut seen = 0;
     let mut files = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(root.join("corpus/problems")) {
-        for entry in entries.flatten() {
-            let port = entry.path().join("port.cp");
-            if port.exists() {
-                files.push(port);
-            }
-        }
-    }
+    files.extend(cpl_corpus::files(&root, "port.cp"));
     for dir in [
         "crates/cpl-cli/tests/cases/ok",
         "crates/cpl-cli/tests/cases/lend",
@@ -799,6 +792,12 @@ fn symmetric_writes_from_noip18p4_and_noi07p1() {
     assert_eq!(taste_codes(pushes), ["L0503"]);
     let cells = "var ways: [0..3, 0..3]Int = 0\nlet (u, v) = (0, 2)\nways[u, v] = 1\nways[v, u] = 1\nprint(ways[0, 2])\n";
     assert_eq!(taste_codes(cells), ["L0503"]);
+    // A matrix is built by `symmetric`, so std's own `symmetric` may mirror.
+    let help = lint(cells, &Config::default())
+        .into_iter()
+        .find_map(|d| (d.code == SYMMETRIC_WRITE.code).then_some(d.help?))
+        .unwrap();
+    assert!(help.contains(".symmetric(diag: ..)"), "{help}");
     let weighted = "var adj: [0..3]List<(Int, Int)> = []\nlet (u, v) = (0, 2)\nadj[u].push((v, 5))\nadj[v].push((u, 5))\nprint(adj[0].len)\n";
     assert_eq!(taste_codes(weighted), ["L0503"]);
     // Different facts, or a self-loop, are not one fact twice.
@@ -1469,10 +1468,10 @@ fn a_library_keeps_its_prelude_imports() {
 #[test]
 fn dropping_a_prelude_import_keeps_its_comment() {
     let src =
-        "use std.geometry.{Pt, convex_hull}  // WISH F1\nuse std.mod.{Mod}  // a note\nlet x = 1\n";
+        "use std.geometry.{Pt, turn_eps}  // WISH F1\nuse std.mod.{Mod}  // a note\nlet x = 1\n";
     assert_eq!(
         fixed(src),
-        "use std.geometry.{convex_hull}  // WISH F1\n// a note\nlet x = 1\n"
+        "use std.geometry.{turn_eps}  // WISH F1\n// a note\nlet x = 1\n"
     );
 }
 
@@ -1495,12 +1494,12 @@ fn a_call_fold_loop_teaches_fold() {
     assert!(
         f.help
             .as_deref()
-            .is_some_and(|h| h.contains("`a.fold(g, 0)`")),
+            .is_some_and(|h| h.contains("`a.fold_from(0, g)`")),
         "{:?}",
         f.help
     );
     let after =
-        "let a: List<Int> = read()\nfn g(x: Int, y: Int) -> Int = x + y\nprint(a.fold(g, 0))\n";
+        "let a: List<Int> = read()\nfn g(x: Int, y: Int) -> Int = x + y\nprint(a.fold_from(0, g))\n";
     assert!(crate::fix_tests::checker_errors(after).is_empty());
     let flipped = src.replace("g(r, x)", "g(x, r)");
     assert!(
@@ -1755,4 +1754,63 @@ fn a_library_search_helper_of_first_true_is_part_of_its_definition() {
     };
     assert!(!codes(&lib("first_true")).contains(&"L0520"));
     assert!(codes(&lib("cut")).contains(&"L0520"));
+}
+
+#[test]
+fn every_lint_is_on_types_std_or_the_compiler_declares() {
+    let std_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let mut known: Vec<String> = cpl_check::BUILTIN_TYPES
+        .iter()
+        .map(|t| t.name.to_string())
+        .collect();
+    known.push("Array".into());
+    for entry in std::fs::read_dir(&std_dir).unwrap() {
+        let text = std::fs::read_to_string(entry.unwrap().path()).unwrap_or_default();
+        for line in text.lines() {
+            let Some(rest) = line.trim_start().strip_prefix("pub ") else {
+                continue;
+            };
+            let Some(rest) = ["struct ", "enum ", "type ", "trait "]
+                .iter()
+                .find_map(|k| rest.strip_prefix(k))
+            else {
+                continue;
+            };
+            known.push(
+                rest.chars()
+                    .take_while(|c| c.is_alphanumeric() || *c == '_')
+                    .collect(),
+            );
+        }
+    }
+    let mut checked = 0;
+    for lint in crate::LINTS {
+        for ty in lint.on {
+            for name in ty
+                .split(['<', '>', ','])
+                .map(str::trim)
+                .filter(|n| !n.is_empty() && *n != "_")
+            {
+                assert!(
+                    known.iter().any(|k| k == name),
+                    "{}: `on` names `{name}`, which nothing declares",
+                    lint.name
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked >= 13, "only {checked} `on` types");
+}
+
+#[test]
+fn std_fn_names_what_std_declares_and_where() {
+    assert_eq!(crate::std_fn::FIRST_GE, "first_ge");
+    assert!(crate::std_fn::declared_in(crate::std_fn::FIRST_GE).contains(&"std.seq"));
+    assert!(crate::std_fn::declared_in("no_such_std_fn").is_empty());
+    let names: Vec<&str> = crate::std_fn::DECLARED_IN.iter().map(|(n, _)| *n).collect();
+    assert!(
+        names.windows(2).all(|w| w[0] < w[1]),
+        "DECLARED_IN is sorted for its binary search"
+    );
 }

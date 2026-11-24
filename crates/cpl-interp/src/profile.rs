@@ -68,7 +68,7 @@ impl Profiler {
     pub fn finish(mut self) -> Profile {
         self.charge(Instant::now());
         let mut sites: Vec<_> = self.sites.into_iter().collect();
-        sites.sort_by_key(|(span, _)| (span.start, span.end));
+        cpl_diag::sort_by_key(&mut sites, |(span, _)| span.order());
         Profile { sites }
     }
 }

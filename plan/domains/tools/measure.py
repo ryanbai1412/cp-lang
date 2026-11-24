@@ -12,6 +12,8 @@ Uses $CPL, else target/release/cpl (build it first: cargo build --release -p cpl
 import glob, json, os, re, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from corpus import problems as corpus_problems  # noqa: E402
 CPL = os.environ.get("CPL", os.path.join(ROOT, "target/release/cpl"))
 
 
@@ -45,7 +47,7 @@ def json_():
 
 def corpus():
     rows = []
-    for f in sorted(glob.glob(os.path.join(ROOT, "corpus/problems/*/port.cp"))):
+    for f in (str(p.port) for p in corpus_problems() if p.port):
         t = time.perf_counter()
         ok = cpl("check", f).returncode == 0
         ms = (time.perf_counter() - t) * 1000

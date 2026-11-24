@@ -55,8 +55,48 @@ fn scalar_decl(line: &str) -> Option<&str> {
 /// initialised from a place (`std::vector<ll> row = cpl::at(rows, i);`), a
 /// tuple of containers built from a pair's fields, and a by-value lambda
 /// capture of a name declared as a container.
+/// `std::optional<std::vector<ll>>(a)`: a container copied into an
+/// optional, as a `?T` argument used to be. Counted apart from
+/// [`deep_copies`], under its own `// optional_copies:` header.
+pub fn optional_copies(cpp: &str) -> usize {
+    cpp.lines()
+        .map(|l| optional_copies_on(l.trim(), &is_container))
+        .sum()
+}
+
+pub fn is_container(ty: &str) -> bool {
+    CONTAINERS.iter().any(|c| ty.starts_with(c))
+}
+
+fn optional_copies_on(line: &str, container: &dyn Fn(&str) -> bool) -> usize {
+    let mut count = 0;
+    let mut rest = line;
+    while let Some(at) = rest.find("std::optional<") {
+        rest = &rest[at + "std::optional<".len()..];
+        let mut depth = 1;
+        let Some(end) = rest.char_indices().find_map(|(i, c)| {
+            depth += match c {
+                '<' => 1,
+                '>' => -1,
+                _ => 0,
+            };
+            (depth == 0).then_some(i)
+        }) else {
+            break;
+        };
+        let (held, after) = (&rest[..end], &rest[end + 1..]);
+        let arg = after
+            .strip_prefix('(')
+            .and_then(|a| a.find(')').map(|close| &a[..close]));
+        if container(held) && arg.is_some_and(is_place) {
+            count += 1;
+        }
+    }
+    count
+}
+
 pub fn deep_copies(cpp: &str) -> usize {
-    let container = |ty: &str| CONTAINERS.iter().any(|c| ty.starts_with(c));
+    let container = is_container;
     let mut held = std::collections::BTreeSet::new();
     let mut count = 0;
     for line in cpp.lines() {
@@ -84,7 +124,9 @@ pub fn deep_copies(cpp: &str) -> usize {
             let name = head.rsplit([' ', '&']).next().unwrap_or("");
             if !name.is_empty() && name.len() < head.len() {
                 held.insert(name.to_string());
-                let by_value = !head[..head.len() - name.len()].trim_end().ends_with('&');
+                let by_value = !head[..head.len() - name.len()]
+                    .trim_end()
+                    .ends_with(['&', '*']);
                 let rhs = decl[end..]
                     .strip_prefix('=')
                     .and_then(|r| r.strip_suffix(';'));

@@ -589,10 +589,10 @@ fn p95_budget() -> Duration {
 /// loaded machine doesn't fail it.
 #[test]
 fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() {
-    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
+    let repo = cpl_corpus::root();
     let mut files = Vec::new();
-    for author in std::fs::read_dir(&ports).unwrap().flatten() {
-        let Ok(entries) = std::fs::read_dir(author.path()) else {
+    for dir in cpl_corpus::packages(&repo) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
             continue;
         };
         for file in entries.flatten() {
@@ -603,7 +603,7 @@ fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() 
             }
         }
     }
-    for path in corpus_programs::v02_snapshot_ports(&ports.join("../..")) {
+    for path in corpus_programs::v02_snapshot_ports(&repo) {
         let src = std::fs::read_to_string(&path).unwrap();
         files.push((src.lines().count(), path, src));
     }
@@ -687,10 +687,10 @@ fn line_col_of(src: &str, offset: usize) -> (u32, u32) {
 /// bytes).
 #[test]
 fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
-    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
+    let repo = cpl_corpus::root();
     let mut files = Vec::new();
-    for problem in std::fs::read_dir(&ports).unwrap().flatten() {
-        let Ok(entries) = std::fs::read_dir(problem.path()) else {
+    for dir in cpl_corpus::packages(&repo) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
             continue;
         };
         for file in entries.flatten() {
@@ -701,7 +701,7 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
             }
         }
     }
-    for path in corpus_programs::v02_snapshot_ports(&ports.join("../..")) {
+    for path in corpus_programs::v02_snapshot_ports(&repo) {
         let src = std::fs::read_to_string(&path).unwrap();
         files.push((src.lines().count(), src.len(), path, src));
     }

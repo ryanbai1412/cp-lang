@@ -8,6 +8,7 @@
 //   tail[i, r], 0 to k stars after i and then a sequence. A prefix count of the positions that
 //   can't be stars answers "is this run all stars" in O(1). O(n^3).
 // original: corpus/submissions/4819734.cpp
+// Bounds: n: 1..=500; k: 1..=n
 type Z = Mod<1_000_000_007>
 let n: 1..=500 = read()
 let k: 1..=n = read()

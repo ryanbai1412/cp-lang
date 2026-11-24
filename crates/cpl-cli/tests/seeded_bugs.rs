@@ -5,8 +5,9 @@
 //! that minimal counterexample is printed per bug, with the median.
 //!
 //! What passes is decided by the input alone: a fixed seed and case
-//! count, and a run time limit no loaded machine reaches. The times are
-//! printed, never asserted, so a busy gate can't fail it.
+//! count, and a run time limit no loaded machine reaches. How fast a bug
+//! is found is asserted in cases, the same on any machine; the seconds
+//! are printed, never asserted, so a busy gate can't fail it.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -151,7 +152,7 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
     let bugs = bugs();
     assert!(bugs.len() >= 21, "only {} seeded bugs", bugs.len());
     let scratch = scratch("seeded_bugs");
-    let run = |bug: &PathBuf| -> (String, Duration, Option<String>) {
+    let run = |bug: &PathBuf| -> (String, Duration, Option<i64>, Option<String>) {
         let name = bug.file_stem().unwrap().to_string_lossy().to_string();
         let minimal = std::fs::read_to_string(bug.with_extension("min")).unwrap();
         let start = Instant::now();
@@ -159,19 +160,22 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
         let took = start.elapsed();
         let json = String::from_utf8_lossy(&out.stdout).to_string();
         let found = string_field(&json, "raw_input");
+        let case = (cpl_json::parse(&json).ok())
+            .and_then(|root| root.get("counterexample")?.get("case")?.as_i64());
         let wrong = (found.as_deref() != Some(minimal.as_str())).then(|| {
             format!(
                 "{name}: wanted\n{minimal}got {found:?}\n{json}{}",
                 String::from_utf8_lossy(&out.stderr)
             )
         });
-        (name, took, wrong)
+        (name, took, case, wrong)
     };
     let mut results = each(&bugs, run);
     results.sort_by(|a, b| a.0.cmp(&b.0));
     let mut times = Vec::new();
+    let mut cases = Vec::new();
     let mut wrong = Vec::new();
-    for (name, took, failure) in results {
+    for (name, took, case, failure) in results {
         let verdict = if failure.is_some() {
             "WRONG"
         } else {
@@ -184,10 +188,12 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
         )
         .unwrap_or_default();
         println!(
-            "{name:<32} {class:<16} {:>6.2} s  {verdict}",
-            took.as_secs_f64()
+            "{name:<32} {class:<16} {:>6.2} s  case {:>4}  {verdict}",
+            took.as_secs_f64(),
+            case.unwrap_or(0)
         );
         times.push(took);
+        cases.push((case.unwrap_or(i64::MAX), name));
         wrong.extend(failure);
     }
     times.sort();
@@ -198,7 +204,22 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
         times.len()
     );
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    // How fast a bug is found, in the cases it takes: the same on any machine.
+    cases.sort();
+    let (median, slowest) = (cases[cases.len() / 2].0, cases.last().unwrap());
+    println!("found at case {median} (median), {} at most", slowest.0);
+    assert!(
+        median <= CASES_TO_BUG_MEDIAN && slowest.0 <= CASES_TO_BUG_MAX,
+        "the median bug is found at case {median} (at most {CASES_TO_BUG_MEDIAN}), {} at case {} (at most {CASES_TO_BUG_MAX})",
+        slowest.1,
+        slowest.0
+    );
 }
+
+/// The case a seeded bug is found at: the median and the slowest. Lower
+/// them as stress finds bugs sooner; they may never rise.
+const CASES_TO_BUG_MEDIAN: i64 = 1;
+const CASES_TO_BUG_MAX: i64 = 170;
 
 /// How many seeded bugs `cpl stress --explain` points at the very line
 /// the bug was planted on, the line ending in `// planted`. Raise it when
@@ -412,5 +433,156 @@ fn explain_names_the_line_of_mutants_it_was_not_tuned_on() {
     assert!(
         named >= MUTANTS_NAMED,
         "only {named} named, down from {MUTANTS_NAMED}"
+    );
+}
+
+/// How many mutants of each corpus port are stressed, spread over its lines.
+const PER_PORT: usize = 8;
+
+/// How many of those mutants stress kills. Raise it as stress finds more;
+/// it may never drop.
+const CORPUS_MUTANTS_KILLED: usize = 10;
+
+/// Mutants of a corpus port whose solution has an `@alt`: one mutation
+/// each, outside the `@alt` fn, at most [`PER_PORT`] spread evenly.
+fn port_mutants(port: &PathBuf) -> Vec<(String, String)> {
+    let source = std::fs::read_to_string(port).unwrap();
+    let lines: Vec<&str> = source.lines().collect();
+    let Some(alt) = lines.iter().position(|l| l.starts_with("@alt")) else {
+        return Vec::new();
+    };
+    let brute = fn_lines(&lines, alt + 1);
+    let id = port
+        .parent()
+        .unwrap()
+        .file_name()
+        .unwrap()
+        .to_string_lossy();
+    let mut all = Vec::new();
+    for (k, line) in lines.iter().enumerate() {
+        let code = line.split("//").next().unwrap();
+        if k == alt || brute.contains(&k) || code.trim_start().starts_with('@') {
+            continue;
+        }
+        for (was, now) in MUTATIONS {
+            for (at, _) in code.match_indices(was) {
+                let next = code[at + was.len()..].chars().next();
+                if was.ends_with('1') && next.is_some_and(|c| c.is_ascii_alphanumeric()) {
+                    continue;
+                }
+                let mut file: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
+                file[k] = format!("{}{now}{}", &line[..at], &line[at + was.len()..]);
+                all.push(file.join("\n") + "\n");
+            }
+        }
+    }
+    let step = all.len().div_ceil(PER_PORT).max(1);
+    (all.into_iter().step_by(step).enumerate())
+        .map(|(i, source)| (format!("{id}-m{i}"), source))
+        .collect()
+}
+
+/// Bugs nobody planted: one-token mutants of every corpus port that has
+/// an `@alt` to check it against, and the share of them stress kills.
+#[test]
+fn stress_kills_mutants_of_corpus_ports_with_an_alt() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let listed = Command::new("uv")
+        .args([
+            "run",
+            "--quiet",
+            "python",
+            "scripts/corpus.py",
+            "ls",
+            "--file",
+            "port.cp",
+        ])
+        .current_dir(&root)
+        .output()
+        .expect("uv runs scripts/corpus.py ls");
+    assert!(
+        listed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&listed.stderr)
+    );
+    let ports: Vec<PathBuf> = (String::from_utf8_lossy(&listed.stdout).lines())
+        .map(|line| root.join(line))
+        .filter(|port| {
+            std::fs::read_to_string(port).is_ok_and(|s| s.lines().any(|l| l.starts_with("@alt")))
+        })
+        .collect();
+    let scratch = scratch("corpus_mutants");
+    let args = ["--seed", "1", "--cases", "300", "--time-limit", "2000"];
+    // Whether stress fails the file; `None` when it can't run it at all.
+    let caught = |path: &PathBuf, name: &str| -> Option<bool> {
+        let dir = scratch.join(name);
+        std::fs::create_dir_all(&dir).unwrap();
+        let out = stress(path, &dir, &args);
+        match (
+            out.status.code(),
+            String::from_utf8_lossy(&out.stdout).contains("FAIL"),
+        ) {
+            (_, true) => Some(true),
+            (Some(0), false) => Some(false),
+            _ => None,
+        }
+    };
+    let id = |port: &PathBuf| {
+        port.parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string()
+    };
+    let passing: Vec<PathBuf> = each(&ports, |port| (port.clone(), caught(port, &id(port))))
+        .into_iter()
+        .filter_map(|(port, caught)| match caught {
+            Some(false) => Some(port),
+            _ => {
+                println!(
+                    "{}: fails its own @alt unmutated, so it isn't mutated",
+                    id(&port)
+                );
+                None
+            }
+        })
+        .collect();
+    assert!(
+        passing.len() >= 4,
+        "only {} of {} ports pass",
+        passing.len(),
+        ports.len()
+    );
+    let sources = scratch.join("mutants");
+    std::fs::create_dir_all(&sources).unwrap();
+    let mutants: Vec<PathBuf> = (passing.iter().flat_map(port_mutants))
+        .map(|(name, source)| {
+            let path = sources.join(format!("{name}.cp"));
+            std::fs::write(&path, source).unwrap();
+            path
+        })
+        .collect();
+    let mut results = each(&mutants, |path| {
+        let name = path.file_stem().unwrap().to_string_lossy().to_string();
+        let caught = caught(path, &name);
+        (name, caught)
+    });
+    results.sort();
+    let run: Vec<(String, bool)> = (results.into_iter())
+        .filter_map(|(name, caught)| Some((name, caught?)))
+        .collect();
+    for (name, killed) in &run {
+        println!("{name:<28} {}", if *killed { "killed" } else { "survived" });
+    }
+    let killed = run.iter().filter(|(_, killed)| *killed).count();
+    println!(
+        "stress killed {killed} of {} mutants of {} corpus ports",
+        run.len(),
+        passing.len()
+    );
+    assert!(
+        killed >= CORPUS_MUTANTS_KILLED,
+        "only {killed} mutants killed, down from {CORPUS_MUTANTS_KILLED}"
     );
 }

@@ -1297,6 +1297,65 @@ assert d.diff(V(0), V(2)) == before
 """
 out = "0:0 0:6 0:5 3:0"
 
+[case."Show/MergeSeg/show"]
+rule = "std.segtree MergeSeg prints its root node in the pool, #0 for the empty set"
+code = """
+use std.segtree.{MergeSeg, MergeSegs}
+domain D = 0..8
+var q = MergeSegs<D>()
+let s = q.singleton(D(2))
+print(MergeSeg<D>(), s)
+"""
+out = "#0 #4"
+
+[case."Show/MergeSegs/show"]
+rule = "std.segtree MergeSegs prints its node count, past the shared empty node"
+code = """
+use std.segtree.{MergeSegs}
+domain D = 0..8
+var q = MergeSegs<D>()
+print(q)
+let s = q.singleton(D(2))
+print(q)
+"""
+out = "0 nodes\n4 nodes"
+
+[case."Show/MergeTree/show"]
+rule = "std.segtree MergeTree prints its root node in the pool, #0 for the all-zero tree"
+code = """
+use std.segtree.{MergeTree, MergeTrees}
+domain D = 0..8
+var p = MergeTrees<D, Int>()
+var t = MergeTree<D>()
+print(t)
+p.set(mut t, D(3), 5)
+print(t)
+"""
+out = "#0\n#1"
+
+[case."Show/MergeTrees/show"]
+rule = "std.segtree MergeTrees prints its node count, past the shared empty node"
+code = """
+use std.segtree.{MergeTree, MergeTrees}
+domain D = 0..8
+var p = MergeTrees<D, Int>()
+var t = MergeTree<D>()
+p.set(mut t, D(3), 5)
+print(p)
+"""
+out = "4 nodes"
+
+[case."Show/SeqFold/show"]
+rule = "std.lazy SeqFold prints its element count"
+code = """
+use std.lazy.{SeqFold}
+var s = SeqFold<Int>(+, [1, 2, 3])
+print(s)
+s.push(4)
+print(s)
+"""
+out = "3 elements\n4 elements"
+
 [case."Show/Dsu/show"]
 rule = "std.dsu Dsu prints each vertex's root in V order, without compressing paths"
 code = """
@@ -1464,3 +1523,618 @@ evict(mut b, 3)
 print(b.to_list())
 """
 out = "1 3"
+
+[case."Show/Marks/show"]
+code = """
+use std.marks.{Marks}
+var m = Marks<0..5>()
+m.add(3)
+m.add(1)
+print(m)
+"""
+out = "1 3"
+
+[case."Show/MarkMap/show"]
+code = """
+use std.marks.{MarkMap}
+var m = MarkMap<0..5, Int>(0)
+m.set(3, 7)
+m.set(1, 9)
+print(m)
+"""
+out = "1=9, 3=7"
+
+[case."Show/SparseSet/show"]
+code = """
+use std.marks.{SparseSet}
+var s = SparseSet<0..5>()
+s.add(2)
+s.add(0)
+print(s)
+"""
+out = "2 0"
+
+[case."Show/Arena/show"]
+code = """
+use std.marks.{Arena}
+var a = Arena<Str>()
+a.alloc("p")
+a.alloc("q")
+print(a)
+"""
+out = "p q"
+
+[case."Show/ErasableHeap/show"]
+code = """
+use std.heap.{ErasableHeap}
+var h: ErasableHeap<Int> = ErasableHeap()
+for x in [3, 1, 2]: h.push(x)
+h.remove(2)
+print("{h}", h.len)
+"""
+out = "1 3 2"
+
+[case."Show/IndexedHeap/show"]
+code = """
+use std.heap.{IndexedHeap}
+domain V = 0..4
+var h: IndexedHeap<V, Int> = IndexedHeap()
+h.set(V(2), 5)
+h.set(V(0), 9)
+print(h)
+"""
+out = "2=5, 0=9"
+
+[case."Show/MinMaxHeap/show"]
+code = """
+use std.heap.{MinMaxHeap}
+let h = MinMaxHeap.of([2, 7, 4])
+print("{h}", h.len)
+"""
+out = "2 4 7 3"
+
+[case."Show/MeldHeap/show"]
+code = """
+use std.heap.{MeldHeap}
+let h = MeldHeap.of([3, 1, 2])
+print("{h}", h.len)
+"""
+out = "1 2 3 3"
+
+[case."Show/MaxHeap/show"]
+code = """
+use std.heap.{MaxHeap}
+let h = MaxHeap.of([1, 3, 2])
+print("{h}", h.len)
+"""
+out = "3 2 1 3"
+
+[case."Show/Slice/show"]
+code = """
+let a = [5, 6, 7, 8]
+print(a[1..3])
+"""
+out = "6 7"
+
+[case."Show/Stepped/show"]
+code = """
+print([3, 1, 2, 4, 5].step(2))
+"""
+out = "3 2 5"
+
+[case."Show/Compressed/show"]
+code = """
+let (domain C, xs) = compress([30, 10, 30])
+print(xs)
+"""
+out = "10 30"
+
+[case."Show/OnlineLis/show"]
+code = """
+use std.seq.{OnlineLis}
+var t = OnlineLis<Int>()
+for x in [3, 1, 2]: t.push(x)
+print(t)
+"""
+out = "1 2"
+
+[case."Show/MonoStack/show"]
+code = """
+use std.seq.{MonoStack}
+var s = MonoStack<Int, Int>()
+s.push(0, 5)
+s.push(1, 3)
+s.push(2, 4)
+print(s)
+"""
+out = "0=5, 2=4"
+
+[case."Show/RingSlice/show"]
+code = """
+print([1, 2, 3].ring.windows(2).last!)
+"""
+out = "2 0"
+
+[case."Show/RingRange/show"]
+code = """
+print([1, 2, 3].ring.span(2, 2))
+"""
+out = "2 0"
+
+[case."Show/SortedMap/show"]
+code = """
+var m: SortedMap<Int, Str> = SortedMap()
+m.set(3, "c")
+m.set(1, "a")
+print(m)
+"""
+out = "1=a, 3=c"
+
+[case."Show/AugSortedBag/show"]
+code = """
+use std.bag.{AugSortedBag}
+var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k)
+for x in [3, 1, 3]: b.add(x)
+print(b)
+"""
+out = "1 3 3"
+
+[case."Show/AugSortedSet/show"]
+code = """
+use std.bag.{AugSortedSet}
+var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k)
+for x in [3, 1, 3]: s.add(x)
+print(s)
+"""
+out = "1 3"
+
+[case."Show/BucketCount/show"]
+code = """
+use std.bag.{BucketCount}
+var c = BucketCount(0..10)
+c.add(7, 2)
+c.add(3)
+print(c)
+"""
+out = "3 7 7"
+
+[case."Show/SortedRange/show"]
+code = """
+print(SortedBag.of([1, 3, 3, 7]).range(2..))
+"""
+out = "3 3 7"
+
+[case."Show/XorTrie/show"]
+code = """
+use std.bitset.{XorTrie}
+var t = XorTrie(3)
+t.add(5)
+t.add(1)
+t.xor_all(1)
+print(t)
+"""
+out = "0 4"
+
+[case."Show/BitTrie/show"]
+code = """
+use std.bitset.{BitTrie, BitTrieArena}
+var ar = BitTrieArena<3>()
+var t = BitTrie<3>.of(mut ar, 5)
+t.add(mut ar, 1)
+t.add(mut ar, 5)
+print(t, ar)
+"""
+out = "root 0 7 nodes"
+
+[case."Show/MongePath/show"]
+code = """
+use std.dp.{MongePath}
+var p = MongePath([0, 1, 3], (a, b) => (b - a) * (b - a))
+p.next()
+p.next()
+print(p)
+"""
+out = "0 1 5"
+
+[case."Show/MonotoneHull/show"]
+code = """
+use std.dp.{MonotoneHull, Line}
+var h = MonotoneHull<()>(min)
+h.add(Line(2, 0))
+h.add(Line(-1, 3))
+print(h)
+"""
+out = "2x + 0, -1x + 3"
+
+[case."Show/LineContainer/show"]
+code = """
+use std.dp.{LineContainer, Line}
+var c = LineContainer(max)
+c.add(Line(1, 0))
+c.add(Line(-1, 4))
+print(c)
+"""
+out = "-1x + 4, 1x + 0"
+
+[case."Show/Matching/show"]
+code = """
+use std.flow.{Matching}
+var m = Matching<0..2, 0..2>()
+m.add(0, 1)
+m.add(1, 0)
+m.augment_all()
+print(m)
+"""
+out = "0-1, 1-0"
+
+[case."Show/Fenwick/show"]
+code = """
+use std.fenwick.{Fenwick}
+var f = Fenwick([1, 2, 3])
+f.add(0, 4)
+print(f)
+"""
+out = "5 2 3"
+
+[case."Show/Fenwick2D/show"]
+code = """
+use std.fenwick.{Fenwick2D}
+domain R = 0..2
+domain C = 0..3
+var f = Fenwick2D<R, C, Int>()
+f.add(R(1), C(2), 5)
+print(f)
+"""
+out = "0 0 0\\n0 0 5"
+
+[case."Show/DualFenwick/show"]
+code = """
+use std.fenwick.{DualFenwick}
+var d = DualFenwick([1, 2, 3])
+d.add(1..3, 5)
+print(d)
+"""
+out = "1 7 8"
+
+[case."Show/RangeFenwick/show"]
+code = """
+use std.fenwick.{RangeFenwick}
+var f = RangeFenwick([1, 2, 3])
+f.add(0..2, 4)
+print(f)
+"""
+out = "5 6 3"
+
+[case."Show/XorFenwick/show"]
+code = """
+use std.fenwick.{XorFenwick}
+var f = XorFenwick([1, 2, 3])
+f.add(2, 1)
+print(f)
+"""
+out = "1 2 2"
+
+[case."Show/SparseFenwick2D/show"]
+code = """
+use std.fenwick.{SparseFenwick2D}
+var f = SparseFenwick2D<Int>()
+f.add_point(1, 2)
+f.add_point(3, 0)
+print(f)
+f.build()
+f.add(1, 2, 7)
+print(f)
+"""
+out = "1 2, 3 0\\n1 2: 7, 3 0: 0"
+
+[case."Show/Window/show"]
+code = """
+var w = Window(+)
+for x in [3, 5, 2]: w.push(x)
+print(w)
+"""
+out = "3 elements"
+
+[case."Show/SparseTable/show"]
+code = """
+use std.sparse.{SparseTable}
+print(SparseTable(max, [4, 1, 5]))
+"""
+out = "4 1 5"
+
+[case."Show/DisjointSparseTable/show"]
+code = """
+use std.sparse.{DisjointSparseTable}
+print(DisjointSparseTable((x, y) => x * y, [2, 3, 4]))
+"""
+out = "2 3 4"
+
+[case."Show/SparseTable2D/show"]
+code = """
+use std.sparse.{SparseTable2D}
+print(SparseTable2D(min, [2, 3] (r, c) => r * 3 + c))
+"""
+out = "0 1 2\\n3 4 5"
+
+[case."Show/LinearRmq/show"]
+code = """
+use std.sparse.{LinearRmq}
+print(LinearRmq([5, 2, 7], before: (x, y) => x > y))
+"""
+out = "5 2 7"
+
+[case."Show/Mark/show"]
+code = """
+use std.dsu.{RollbackArray}
+var a = RollbackArray<0..2, Int>(init: _ => 0)
+a.set(0, 5)
+a.set(1, 6)
+print(a.mark())
+"""
+out = "mark 2"
+
+[case."Show/RollbackArray/show"]
+code = """
+use std.dsu.{RollbackArray}
+var a = RollbackArray<0..3, Int>(init: i => Int(i))
+let m = a.mark()
+a.set(2, 9)
+print(a)
+a.undo_to(m)
+print(a)
+"""
+out = "0 1 9\\n0 1 2"
+
+[case."Show/DsuNode/show"]
+code = """
+use std.dsu.{DsuNode}
+print(DsuNode<0..3>(_parent: 2, _size: 3))
+"""
+out = "parent 2, size 3"
+
+[case."Show/PersistentDsu/show"]
+code = """
+use std.dsu.{DsuNode, PersistentDsu}
+use std.persistent.{PArena}
+domain V = 0..2
+var ar = PArena<DsuNode<V>>()
+print(PersistentDsu<V>.new(mut ar))
+"""
+out = "version at node 2"
+
+[case."Show/OnlineHull/show"]
+code = """
+use std.geometry.{OnlineHull, Pt}
+var h = OnlineHull()
+for p in [Pt(0, 4), Pt(4, 0), Pt(0, 0)]: h.add(p)
+print(h.len, yes("{h}" == "{Pt(0, 0)} {Pt(4, 0)} {Pt(0, 4)}"))
+"""
+out = "3 YES"
+
+[case."Show/PointSet/show"]
+code = """
+use std.geometry.{PointSet, Pt}
+var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3)])
+s.remove(1)
+print(s)
+"""
+out = "0 2"
+
+[case."Show/FlatMap/show"]
+code = """
+use std.hashmap.{FlatMap}
+var m = FlatMap(0)
+m.set(7, 70)
+m.set(-2, 5)
+print(m)
+"""
+out = "-2=5, 7=70"
+
+[case."Show/Poly/show"]
+code = """
+use std.poly.{Poly}
+print(Poly<Int>([1, 0, 3]))
+"""
+out = "1 0 3"
+
+[case."Show/Palindromes/show"]
+code = """
+print(manacher("abba"))
+"""
+out = "1/0 1/0 1/2 1/0"
+
+[case."Show/SuffixArray/show"]
+code = """
+use std.strings.{SuffixArray}
+print(SuffixArray.new("banana"))
+"""
+out = "5 3 1 0 4 2"
+
+
+[case."Show/Trie/show"]
+code = """
+use std.strings.{Trie}
+var t = Trie<Char>()
+for w in ["b", "ab", "a", "b"]: t.add(w)
+print(t)
+"""
+out = "a ab b b"
+
+[case."Show/PMultisetWithin/show"]
+code = """
+use std.persistent.{PArena, PMultiset}
+var ar = PArena<PMultiset<0..10>>()
+let s = PMultiset<0..10>.empty().with(mut ar, 7).with(mut ar, 2).with(mut ar, 7)
+print(s.within(ar))
+"""
+out = "2 7 7"
+
+[case."Show/PersistentDsuWithin/show"]
+code = """
+use std.dsu.{DsuNode, PersistentDsu}
+use std.persistent.{PArena}
+domain V = 0..3
+var ar = PArena<DsuNode<V>>()
+let d = PersistentDsu<V>.new(mut ar).unite(mut ar, 2, 1)
+print(d.within(ar))
+"""
+out = "0 2 2"
+
+
+[case."Show/Dir4/show"]
+code = """
+use std.grid.{Dir4}
+print(Dir4.left, Dir4.up.cw)
+"""
+out = "left right"
+
+[case."Show/Dir8/show"]
+code = """
+use std.grid.{Dir8}
+print(Dir8.all()[7], Dir8.all()[1].back)
+"""
+out = "up-left down-left"
+
+[case."Show/Rng/show"]
+code = """
+use std.rand.{Rng}
+var r = Rng(1)
+print(r)
+"""
+out = "rng state 1"
+
+[case."Show/ByAngle/show"]
+code = """
+use std.geometry.{Pt, arg}
+print(arg(Pt(-3, 4)))
+"""
+out = "by angle -3 4"
+
+[case."Show/ByAngleFrom/show"]
+code = """
+use std.geometry.{Pt, ByAngleFrom}
+print(ByAngleFrom(Pt(0, 1), Pt(2, 5)))
+"""
+out = "by angle 2 5 from 0 1"
+
+[case."Show/HalfPlane/show"]
+code = """
+use std.geometry.{Vec, HalfPlane}
+print(HalfPlane.through(Vec(1.0, 2.0), Vec(1.0, 3.0)))
+"""
+out = "left of 1.0000000000 2.0000000000 along 0.0000000000 1.0000000000"
+
+[case."Show/Concave/show"]
+code = """
+use std.slope.{Concave}
+var f = Concave.flat(0..3)
+f.add_left(2)
+print(f)
+"""
+out = "concave on 0..=2: -2 -1 0"
+
+[case."Show/Convex/show"]
+code = """
+use std.slope.{Convex}
+print(Convex.point(4))
+"""
+out = "convex on 4..=4: 0"
+
+[case."Show/StepKeys/show"]
+code = """
+print([5, 6, 7, 8, 9, 10, 11].step(3).keys)
+"""
+out = "0 3 6"
+
+[case."Show/BagCursor/show"]
+code = """
+use std.bag.{SortedBag}
+let b = SortedBag.of([4])
+print(b.cursor_first()!)
+"""
+out = "cursor at node 0"
+
+[case."Show/IntervalMap/show"]
+code = """
+use std.interval.{IntervalMap}
+var m = IntervalMap<0..4, Int>(1)
+m.assign(2..3, 9)
+print(m)
+"""
+out = "0..2: 1, 2..3: 9, 3..4: 1"
+
+[case."Show/IntervalSet/show"]
+code = """
+use std.interval.{IntervalSet}
+var s = IntervalSet<0..8>()
+s.add(4..6)
+print(s)
+"""
+out = "4..6"
+
+[case."Show/SparseIntervalSet/show"]
+code = """
+use std.interval.{SparseIntervalSet}
+print(SparseIntervalSet())
+"""
+out = "empty"
+
+[case."Show/Comb/show"]
+code = """
+use std.mod.{Mod, Comb}
+type Z = Mod<11>
+print(Comb<Z>(5))
+"""
+out = "factorials up to 5"
+
+[case."Show/PrimePowerComb/show"]
+code = """
+use std.mod.{PrimePowerComb}
+print(PrimePowerComb(3, 2))
+"""
+out = "choose mod 3^2"
+
+[case."Show/XorBasis/show"]
+code = """
+use std.matrix.{XorBasis}
+var b = XorBasis()
+b.add(4)
+print(b)
+"""
+out = "rank 1: 4"
+
+[case."Show/Hash61/show"]
+code = """
+use std.strings.{RollingHash61}
+let h = RollingHash61("xyxy")
+let same = "{h.get(0..2)}" == "{h.get(2..4)}"
+print(if same and "{h.get(0..1)}".starts_with("hash "): "ok" else: "bad")
+"""
+out = "ok"
+
+[case."Show/Settle/show"]
+code = """
+use std.heap.{Settle}
+var s: Settle<Int, Int> = Settle()
+s.offer(1, 4)
+s.offer(2, 6)
+s.offer(3, 1)
+s.pop()
+print(s)
+"""
+out = "1 settled, 2 open"
+
+[case."Show/BitTrieArena/show"]
+code = """
+use std.bitset.{BitTrie, BitTrieArena}
+var ar = BitTrieArena<3>()
+BitTrie<3>.of(mut ar, 5)
+print(ar)
+"""
+out = "4 nodes"
+
+[case."Sized/RingWindows/len"]
+code = """
+print([1, 2, 3, 4].ring.windows(2).len)
+"""
+out = "4"

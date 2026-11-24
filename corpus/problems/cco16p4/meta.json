@@ -24,5 +24,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Canonical form by 2x2 toggles; chain + fold to a mask; tally().values() pair count."
+ "notes": "Canonical form by 2x2 toggles; chain + fold to a mask; tally().values() pair count.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "a9ff21b178e313bf88f69fe02e03fe5277dcab2c"
+ }
 }

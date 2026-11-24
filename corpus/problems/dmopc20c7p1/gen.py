@@ -1,6 +1,7 @@
 """gen.py seed size: DMOPC '20 C7 P1. 1 <= n <= 5e5, masses 1..=1e9.
 size >= 5e5 gives n = 5e5: by seed, distinct masses, few masses, or one mass on most weights."""
 import random, sys
+if sys.argv[1:] == ["--max"]: sys.argv[1:] = ["3", "500000"]  # the hardest big case
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 big = size >= 5 * 10 ** 5

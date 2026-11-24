@@ -12,9 +12,9 @@ type Z = Mod<1_000_000_007>
 let s: Str = read()
 let pi = prefix_function(s)
 
-domain Len = 0..=s.len
-// the border tree: prefix j hangs under its longest border; its depth counts j's borders
-let borders = Rooted.from_parents([Len] j => if j.ord == 0: None else: Some(Len(pi[j.ord - 1])))
+// depth[j]: prefix j's borders, itself included; it hangs under its longest border pi[j - 1] < j
+var depth: List<Int> = [0]
+for j in 1..=s.len: depth.push(depth[pi[j - 1]] + 1)
 var half = 0
 var answer: Z = 1
 for i in 0..s.len:
@@ -22,5 +22,5 @@ for i in 0..s.len:
         while half > 0 and s[half] != s[i]: half = pi[half - 1]
         if s[half] == s[i]: half += 1
         while 2 * half > i + 1: half = pi[half - 1]
-    answer *= borders.depth(Len(half)) + 1
+    answer *= depth[half] + 1
 print(answer)

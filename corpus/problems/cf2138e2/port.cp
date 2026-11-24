@@ -9,6 +9,7 @@
 //   that is the subtractive Euclid walk run backwards, so `walk` reaches x from (z, x - z)
 //   iff gcd(x, z) = 1. Trying z outward from x / phi finds a walk of length <= MAX_N = 50
 //   for every x <= 1e7 (exhaustively verified); x <= 1 is [x]. O(MAX_N) per candidate z.
+// Bounds: x: 0..=10_000_000
 const MAX_N = 50
 
 // The diagonal built by the walk from (z, x - z) down to (1, 1), if it fits in `room`.

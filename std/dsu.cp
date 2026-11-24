@@ -52,8 +52,10 @@ pub struct Dsu<V>:
     /// Halves the path it walks through `@cache`, so a read-only `Dsu` answers it too; from the
     /// first `mark` on, paths are left alone.
     ///
+    /// The representative is fixed by the merges: the larger set's root, `a`'s root on equal sizes.
+    ///
     /// cost: \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`
-    /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
+    /// ties: `var d = Dsu<0..3>(); d.unite(1, 2); d.unite(0, 1); d.find(2) == 1 and d.find(0) == 1`
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(2, 3); d.find(3) == 2 and d.find(0) == 0`
     pub fn find(self, v: V) -> V = V.nth(self.find_ord(v.ord))
@@ -149,7 +151,7 @@ pub struct Dsu<V>:
     /// The representative of each set, once each, lazily.
     ///
     /// cost: \(O(n)\) for the whole walk, no allocation
-    /// empty: yields nothing when `V` is empty
+    /// empty: `Dsu<0..0>().roots().count() == 0`
     /// order: increasing positions of `V`
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(3, 1); d.roots().collect() == [0, 2, 3]`
@@ -161,7 +163,7 @@ pub struct Dsu<V>:
     /// Every set as a list of its positions, each position in exactly one list.
     ///
     /// cost: \(O(n \alpha(n))\); allocates the lists
-    /// empty: `[]` when `V` is empty
+    /// empty: `Dsu<0..0>().groups() == []`
     /// order: lists by their least position, positions increasing within each
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(3, 1); d.groups() == [[0], [1, 3], [2]]`
@@ -206,8 +208,10 @@ pub struct DsuOf<V, T>:
     /// The representative of `v`'s set, as for [`Dsu.find`](Dsu.find). Halves paths through
     /// `@cache` until the first `mark`.
     ///
+    /// The representative is fixed by the merges: the larger set's root, `a`'s root on equal sizes.
+    ///
     /// cost: \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`
-    /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
+    /// ties: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(1, 2); d.unite(0, 1); d.find(2) == 1 and d.find(0) == 1`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(1, 2); d.find(2) == 1`
     pub fn find(self, v: V) -> V:
@@ -300,7 +304,7 @@ pub struct DsuOf<V, T>:
     /// The representative of each set, once each, lazily.
     ///
     /// cost: \(O(n)\) for the whole walk, no allocation
-    /// empty: yields nothing when `V` is empty
+    /// empty: `DsuOf<0..0, Int>(init: v => Int(v), join: (x, y) => x + y).roots().count() == 0`
     /// order: increasing positions of `V`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(2, 0); d.roots().collect() == [1, 2]`
@@ -312,7 +316,7 @@ pub struct DsuOf<V, T>:
     /// [`roots`](DsuOf.roots). \(O(1)\) to make.
     ///
     /// cost: \(O(n)\) for the whole walk, no allocation
-    /// empty: yields nothing when `V` is empty
+    /// empty: `DsuOf<0..0, Int>(init: v => Int(v), join: (x, y) => x + y).values.count() == 0`
     /// order: by representative, increasing positions of `V`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v + 1, join: (x, y) => x + y); d.unite(2, 0); d.values.collect() == [2, 4]`
@@ -349,7 +353,7 @@ pub struct DsuOf<V, T>:
     /// Every set as a list of its positions, as `Dsu.groups`; values are read with `get`.
     ///
     /// cost: \(O(n \alpha(n))\); allocates the lists
-    /// empty: `[]` when `V` is empty
+    /// empty: `var d = DsuOf<0..0, Int>(init: v => Int(v), join: (x, y) => x + y); d.groups() == []`
     /// order: lists by their least position, positions increasing within each
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(2, 0); d.groups() == [[0, 2], [1]]`
@@ -389,8 +393,10 @@ pub struct ParityDsu<V>:
 
     /// The representative of `v`'s set and whether `v` is on the other side from it.
     ///
+    /// The representative is fixed by the merges: the larger set's root, `a`'s root on equal sizes.
+    ///
     /// cost: \(O(\log n)\)
-    /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
+    /// ties: `var d = ParityDsu<0..3>(); d.unite(1, 2); d.unite(0, 1); d.find(2).root == 1 and d.find(0).root == 1`
     /// traps: never
     /// example: `var d = ParityDsu<0..3>(); d.unite(0, 1); d.find(1) == (root: 0, flip: true)`
     /// example: `let d = ParityDsu<0..3>(); d.find(2) == (root: 2, flip: false)`
@@ -464,7 +470,7 @@ pub struct ParityDsu<V>:
     /// Every set as a list of its positions, each position in exactly one list.
     ///
     /// cost: \(O(n \log n)\); allocates the lists
-    /// empty: `[]` when `V` is empty
+    /// empty: `ParityDsu<0..0>().groups() == []`
     /// order: lists by their least position, positions increasing within each
     /// traps: never
     /// example: `var d = ParityDsu<0..4>(); d.unite(3, 1); d.groups() == [[0], [1, 3], [2]]`
@@ -540,8 +546,10 @@ pub struct PotentialDsu<V, W = Int>:
 
     /// The representative of `v`'s set and `val[v] - val[root]`.
     ///
+    /// The representative is fixed by the merges: the larger set's root, `a`'s root on equal sizes.
+    ///
     /// cost: \(O(\log n)\)
-    /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
+    /// ties: `var d = PotentialDsu<0..3>(); d.unite(1, 2, 0); d.unite(0, 1, 0); d.find(2).root == 1 and d.find(0).root == 1`
     /// traps: never
     /// example: `var d = PotentialDsu<0..3>(); d.unite(0, 1, 5); d.find(1) == (root: 0, offset: 5)`
     /// example: `let d = PotentialDsu<0..3>(); d.find(2) == (root: 2, offset: 0)`
@@ -737,7 +745,7 @@ pub struct PersistentDsu<V>:
     /// The representative of `v`'s set, chosen by union by size as in [`Dsu.find`](Dsu.find).
     ///
     /// cost: \(O(\log^2 n)\)
-    /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
+    /// ties: `use std.persistent.{PArena}; domain V = 0..2; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); d.unite(mut ar, 0, 1).find(ar, 1) == 0`
     /// traps: never
     /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); let e = d.unite(mut ar, 2, 1); e.find(ar, 1) == 2 and d.find(ar, 1) == 1`
     pub fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V = V.nth(self.root_ord(ar, v.ord))
@@ -749,6 +757,14 @@ pub struct PersistentDsu<V>:
     /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); let e = d.unite(mut ar, 0, 1); e.same(ar, 0, 1) and not d.same(ar, 0, 1)`
     pub fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool =
         self.root_ord(ar, a.ord) == self.root_ord(ar, b.ord)
+
+    /// \(O(1)\). This version read through the arena it lives in: a lent view that walks and
+    /// prints its sets like any container.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar).unite(mut ar, 2, 1); "{d.within(ar)}" == "0 2 2"`
+    pub fn within(self, ar: PArena<DsuNode<V>>) -> lends PersistentDsuWithin<V> = PersistentDsuWithin(ar, self)
 
     /// The number of positions in `v`'s set, `v` included.
     ///
@@ -1094,3 +1110,70 @@ fn parity_dsu_components_and_groups_track_merges_and_undo():
     assert d.components == 2
     d.undo_to(m)
     assert d.components == 3 and d.groups().len == 3
+
+impl Show for Mark:
+    /// The number of logged writes it remembers, as `mark k`.
+    ///
+    /// example: `var a = RollbackArray<0..2, Int>(init: _ => 0); a.set(0, 5); "{a.mark()}" == "mark 1"`
+    fn show(m) = "mark {m.at}"
+
+impl Show for RollbackArray<D, T>:
+    /// The current values in key order, space-separated.
+    ///
+    /// example: `var a = RollbackArray<0..3, Int>(init: i => Int(i)); a.set(1, 7); "{a}" == "0 7 2"`
+    fn show(a):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{a.data[i]}"
+        out
+
+impl Show for DsuNode<V>:
+    /// Its parent position and set size, as `parent p, size s`.
+    ///
+    /// example: `"{DsuNode<0..2>()}" == "parent 0, size 0"`
+    fn show(n) = "parent {n._parent}, size {n._size}"
+
+/// A `PersistentDsu` version read through its `PArena`, from `d.within(ar)`. It lends both, so it
+/// lives no longer than either and copies nothing.
+pub struct PersistentDsuWithin<V>(ar: PArena<DsuNode<V>>, dsu: PersistentDsu<V>):
+    /// The number of positions, `V.count`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); PersistentDsu<V>.new(mut ar).within(ar).len == 3`
+    @get pub fn len(self) -> Int = V.count
+
+    /// Whether `V` has no position.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); not PersistentDsu<V>.new(mut ar).within(ar).is_empty`
+    @get pub fn is_empty(self) -> Bool = V.count == 0
+
+    /// Visit every position with its set's representative, as `find` gives it.
+    ///
+    /// cost: \(O(n \log^2 n)\)
+    /// order: increasing position
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar).unite(mut ar, 0, 2); d.within(ar).items.collect() == [(0, 0), (1, 1), (2, 0)]`
+    @get pub fn items(self) -> yields (V, V):
+        for v in V: yield (v, dsu.find(ar, v))
+
+impl Show for PersistentDsuWithin<V>:
+    /// Each position's representative, in position order, as `Dsu` prints.
+    ///
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); "{PersistentDsu<V>.new(mut ar).within(ar)}" == "0 1 2"`
+    fn show(w):
+        var out = ""
+        for (_, r) in w.items:
+            if not out.is_empty: out += " "
+            out += "{r}"
+        out
+
+impl Show for PersistentDsu<V>:
+    /// The arena node this version's tree is rooted at, as `version at node i`; read a version's
+    /// sets with `find(ar, v)`, which needs the arena.
+    ///
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); "{PersistentDsu<V>.new(mut ar)}" == "version at node 4"`
+    fn show(d) = "version at node {d._root.raw}"

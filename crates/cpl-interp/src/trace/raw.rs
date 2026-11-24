@@ -27,7 +27,9 @@ impl Tracer {
             std::mem::take(&mut self.local_ints),
         );
         ints.clear();
-        ints.extend(raw.iter().map(|&(_, v)| v));
+        for &(_, v) in raw {
+            ints.push(v);
+        }
         let at = raw
             .iter()
             .map(|(name, _)| (name.as_ptr() as usize, name.len()));

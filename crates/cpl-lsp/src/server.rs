@@ -1222,7 +1222,7 @@ fn semantic_tokens(analysis: &cpl_check::Analysis) -> Vec<u32> {
             tokens.push((span, kind, modifiers));
         }
     }
-    tokens.sort_by_key(|(span, ..)| (span.start, span.end));
+    cpl_diag::sort_by_key(&mut tokens, |(span, ..)| span.order());
     tokens.dedup_by_key(|(span, ..)| span.start);
     let (mut line, mut col) = (0, 0);
     let mut data = Vec::with_capacity(tokens.len() * 5);
@@ -1905,11 +1905,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
     if has_tests {
         lenses.push(("Test".into(), vec!["test".into(), path.into()]));
     }
-    // `@check` also matches the older `@checker`.
-    if ["@alt", "@check", "@interactor"]
-        .iter()
-        .any(|d| text.contains(d))
-    {
+    if cpl_ir::has_stress_target(text) {
         lenses.push(("Stress".into(), vec!["stress".into(), path.into()]));
     }
     lenses

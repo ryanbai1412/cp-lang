@@ -7,7 +7,6 @@
 //   that is a multiple of p: for each run and half w = p, 2p, ... add the intervals of starts
 //   and of ends to difference arrays. Runs from lyndon_runs; O(n log n) per string.
 // original: corpus/submissions/4797772.cpp
-use std.strings.{lyndon_runs}
 
 @!multitest
 let s: Str = read()

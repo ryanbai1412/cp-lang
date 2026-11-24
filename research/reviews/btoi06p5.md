@@ -1,7 +1,8 @@
 # btoi06p5
 
-Score: 4/5
-Dream: 4/5
+Score: pending
+
+## Earlier review (of the previous port)
 
 Baseline review, cold, on main 96359635. The header (lines 1-5) states the DP table and the four operations it needs, and the port does build them as one `LazySegTree` with an assign-then-add `Action` (lines 33-39). It falls short on the cost formulas, which are never derived. No dream exists, so the score is capped at 3.
 

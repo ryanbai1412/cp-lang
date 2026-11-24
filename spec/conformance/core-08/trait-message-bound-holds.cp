@@ -1,7 +1,7 @@
 // expect: ok, output "7"
 // rule: 08.1.8
 // A trait's attached message changes nothing when the bound holds.
-#on_unimplemented("Scorer needs fn score(self) -> Int")
+@on_unimplemented("Scorer needs fn score(self) -> Int")
 trait Scorer:
     fn score(self) -> Int
 struct P:

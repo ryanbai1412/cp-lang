@@ -22,6 +22,7 @@ pub const FLOAT_DIGITS: u32 = 10;
 pub mod pushed;
 mod show;
 pub mod sites;
+pub mod stress_target;
 pub mod walk;
 
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
@@ -69,26 +70,28 @@ pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
         d.code == cpl_diag::codes::NOT_IMPLEMENTED && d.message.contains("(see design/")
     };
     // A library module is lowered only through the programs that use it,
-    // where its generic code has its types.
+    // where its generic code has its types. A `@grader` fn runs: the
+    // judge's grader calls it.
     let runs = analysis
         .items
         .iter()
         .flat_map(|item| &item.syntax.parsed.stmts)
         .any(|stmt| {
-            !matches!(
-                stmt.kind,
-                cpl_syntax::ast::StmtKind::Fn(_)
-                    | cpl_syntax::ast::StmtKind::Struct { .. }
-                    | cpl_syntax::ast::StmtKind::Enum { .. }
-                    | cpl_syntax::ast::StmtKind::Domain { .. }
-                    | cpl_syntax::ast::StmtKind::TypeAlias { .. }
-                    | cpl_syntax::ast::StmtKind::Trait { .. }
-                    | cpl_syntax::ast::StmtKind::Impl { .. }
-                    | cpl_syntax::ast::StmtKind::Law { .. }
-                    | cpl_syntax::ast::StmtKind::Use { .. }
-                    | cpl_syntax::ast::StmtKind::Const { .. }
-                    | cpl_syntax::ast::StmtKind::Context { .. }
-            )
+            stmt.decorators.iter().any(|d| d.name.text == "grader")
+                || !matches!(
+                    stmt.kind,
+                    cpl_syntax::ast::StmtKind::Fn(_)
+                        | cpl_syntax::ast::StmtKind::Struct { .. }
+                        | cpl_syntax::ast::StmtKind::Enum { .. }
+                        | cpl_syntax::ast::StmtKind::Domain { .. }
+                        | cpl_syntax::ast::StmtKind::TypeAlias { .. }
+                        | cpl_syntax::ast::StmtKind::Trait { .. }
+                        | cpl_syntax::ast::StmtKind::Impl { .. }
+                        | cpl_syntax::ast::StmtKind::Law { .. }
+                        | cpl_syntax::ast::StmtKind::Use { .. }
+                        | cpl_syntax::ast::StmtKind::Const { .. }
+                        | cpl_syntax::ast::StmtKind::Context { .. }
+                )
         });
     let mut out = if runs {
         check(analysis)
@@ -106,6 +109,7 @@ pub use lower::{
     lower_test,
 };
 pub use show::{sep_of, Sep};
+pub use stress_target::{has_cpp_body, has_stress_target, STRESS_DECORATORS};
 
 use cpl_diag::Span;
 
@@ -1198,6 +1202,9 @@ pub struct Function {
 #[derive(Clone, PartialEq, Debug)]
 pub struct ParamDef {
     pub mutable: bool,
+    /// The declared range of a ranged `Int` param (`x: 0..=1e9`), a
+    /// [`Spec::Int`]: every call checks its argument into it (R04.4.24).
+    pub range: Option<Spec>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -1222,6 +1229,25 @@ pub struct ClosureDef {
     pub locals: Vec<Local>,
     pub ret: Ty,
     pub body: Block,
+}
+
+/// A value as the judge's grader holds it, from the type the `@grader`
+/// fn declares (R10.1.4).
+#[derive(Clone, PartialEq, Debug)]
+pub enum JudgeTy {
+    /// `void`: a fn's `()` result.
+    Void,
+    /// `int`: a bare `Int`, or a range an `int` holds.
+    Int,
+    /// `long long`: a range past `int`.
+    Long,
+    Double,
+    Bool,
+    Char,
+    Str,
+    List(Box<JudgeTy>),
+    /// `std::pair` for two, `std::tuple` for more.
+    Tuple(Vec<JudgeTy>),
 }
 
 /// Narrow storage width for a ranged `Int` field or ranged-`Int` array/list element.
@@ -1420,6 +1446,9 @@ pub struct Program {
     /// code generator.
     pub unordered_maps: Vec<Ty>,
     pub unordered_sets: Vec<Ty>,
+    /// Closures no code that runs can make, so they decide no fn value's
+    /// representation. Filled in by the code generator.
+    pub unreached_closures: std::collections::BTreeSet<ClosureId>,
     pub structs: Vec<StructDef>,
     /// Each struct's name as the file writes it, `MinHeap<(Int, V)>`.
     pub struct_shown: Vec<String>,
@@ -1473,6 +1502,9 @@ pub struct Program {
     /// `@grader fn` with a body: the judge's grader calls these. A program
     /// with one has no `main` of its own in the emitted C++.
     pub entry_fns: Vec<FnId>,
+    /// How each fn of `judge_fns` and `entry_fns` writes its parameters
+    /// and result on the grader's side.
+    pub judge_tys: Vec<(FnId, Vec<JudgeTy>, JudgeTy)>,
     /// Lists whose every index the lowering has already tested (the flat
     /// tables of `@memo`): a back end may index them unchecked.
     pub raw_lists: Vec<GlobalId>,
@@ -1482,6 +1514,14 @@ pub struct Program {
 }
 
 impl Program {
+    /// The parameters and result of a fn that crosses to the judge's
+    /// grader, as the grader holds them.
+    pub fn judge_sides(&self, id: FnId) -> Option<(&[JudgeTy], &JudgeTy)> {
+        (self.judge_tys.iter())
+            .find(|(of, ..)| *of == id)
+            .map(|(_, sides, ret)| (&sides[..], ret))
+    }
+
     /// A type as the user would write it.
     pub fn show_ty(&self, ty: &Ty) -> String {
         if self.struct_shown.len() != self.structs.len() {

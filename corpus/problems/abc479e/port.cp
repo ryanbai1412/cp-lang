@@ -4,6 +4,7 @@
 // Solution: root at 1. The edge above c (`lower`) adds i to sub(c) when size(c) > N - size(c),
 //   else to everything outside sub(c): add i to a base and -i at c. Pushing the offsets down in
 //   preorder gives every x in O(N).
+// Bounds: n: 3..=2e5; edges.u, edges.v: 1..=n
 
 let n: 3..=2e5 = read()
 domain V = 1..=n

@@ -5,6 +5,7 @@
 // Solution: Huffman: always merging the two lightest piles is optimal. A MinHeap pops two,
 //   adds their sum to the cost and pushes it back, n - 1 times: O(n log n).
 // original: corpus/submissions/5117099.cpp
+// Bounds: n: 1..=10000; piles: 1..=20000
 let n: 1..=10000 = read()
 let piles: [0..n]1..=20000 = read()
 

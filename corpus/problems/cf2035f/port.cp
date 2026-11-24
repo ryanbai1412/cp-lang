@@ -7,6 +7,7 @@
 //   a surplus only cancels in pairs) is 0 at the root. If t works so does t + 2n, so each
 //   residue mod 2n binary-searches its number of rounds; print the least t found.
 //   O(n^2 log(n + max a)) per test.
+// Bounds: n: 1..=2000; root: 1..=n; a: 0..=1e9
 @!multitest
 let n: 1..=2000 = read()
 domain V = 1..=n

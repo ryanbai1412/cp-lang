@@ -6,6 +6,7 @@
 //   O(1); sort all (N - K + 1)(M - K + 1) of them and count the distinct ones. O(N M log(N M)),
 //   collisions ignored.
 // original: corpus/submissions/4575631.cpp
+// Bounds: n, m, k: 1..=5_000
 use std.strings.{Hash2D}
 
 let (n, m, k): (1..=5_000, 1..=5_000, 1..=5_000) = read()

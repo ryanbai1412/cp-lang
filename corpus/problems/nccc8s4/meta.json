@@ -7,8 +7,11 @@
   {"id": "3381207", "language": "JAVA", "result": "TLE", "time": 2.29630431, "memory_kb": 75460.0, "file": "corpus/submissions/3381207.java"},
   {"id": "3381215", "language": "JAVA", "result": "AC", "time": 14.211277899, "memory_kb": 69020.0, "file": "corpus/submissions/3381215.java"}
  ],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/nccc8s4/orig.cpp"
+  ],
   "port": [
    "corpus/problems/nccc8s4/port.cp"
   ]

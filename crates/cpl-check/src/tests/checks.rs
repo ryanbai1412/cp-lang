@@ -38,7 +38,7 @@ fn a_tree_reads_without_a_use() {
 /// The tree dreams that the stdlib covers check clean, so a change that breaks
 /// their spelling (`t.up(+, finish:)`, `t.virtual`, `t.below`) fails here.
 #[test]
-#[ignore = "corpus/problems/*/dream.cp are v0.2; ported with the corpus"]
+#[ignore = "these dreams are v0.2; ported with the corpus"]
 fn the_tree_dreams_check() {
     for dream in ["cf2035f", "cf2124i", "cf2183d2", "cf2237i1"] {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -97,12 +97,9 @@ fn an_import_joins_its_module_line_or_the_file_header() {
         assert_eq!(got, want);
     }
     // The checker's quick fix uses it, wherever in the file the name is.
-    let src = "use std.math.{gcd}\nlet a = gcd(4, 6)\nprint(floor_sum(a, 3, 1, 0))\n";
+    let src = "use std.math.{gcd}\nlet a = gcd(4, 6)\nprint(jacobi(a, 3))\n";
     let fix = &one(src).fixes[0];
-    assert_eq!(
-        fix.edits,
-        vec![(Span::point(17), ", floor_sum".to_string())]
-    );
+    assert_eq!(fix.edits, vec![(Span::point(17), ", jacobi".to_string())]);
 }
 
 /// `STD_NAMES` is what the hint for a missing `use` is read from. It is

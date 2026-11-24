@@ -2,13 +2,20 @@
 
 use super::*;
 
+/// A `?Int` field, which a narrow width stores as `cpl::OptI32`.
+pub(crate) fn is_opt_int(ty: Option<&Ty>) -> bool {
+    matches!(ty, Some(Ty::Opt(inner)) if **inner == Ty::Int)
+}
+
 /// Ranged `Int` struct fields that can be stored as 32-bit integers (`uint32_t`/`int32_t`).
 /// Fields passed by `mut` reference or updated with a compound operator stay `ll`.
 pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir::IntWidth> {
     let mut narrow = BTreeMap::new();
     for (id, def) in program.structs.iter().enumerate() {
         for (field, width) in &def.narrow_ints {
-            if matches!(def.fields.get(*field).map(|(_, t)| t), Some(Ty::Int)) {
+            if matches!(def.fields.get(*field).map(|(_, t)| t), Some(Ty::Int))
+                || is_opt_int(def.fields.get(*field).map(|(_, t)| t))
+            {
                 narrow.insert((id, *field), *width);
             }
         }

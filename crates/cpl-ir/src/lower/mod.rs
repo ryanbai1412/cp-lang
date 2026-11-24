@@ -15,9 +15,11 @@ mod calls;
 mod capture;
 mod collect;
 mod comprehension;
+mod consts;
 mod contains;
 mod declare;
 mod declared_keys;
+mod domain_impl;
 mod expr;
 mod float_fn;
 mod fn_impl;
@@ -27,8 +29,10 @@ mod hoist;
 mod impl_bounds;
 mod index_set;
 mod instance;
+mod judge;
 mod keyed;
 mod lambda_infer;
+mod later_calls;
 mod lexical_ctx;
 mod library_domain;
 mod memo;
@@ -45,16 +49,17 @@ mod shown;
 mod stmt;
 mod type_call;
 mod typo;
+mod unify_ast;
 mod views;
 mod yields;
 pub use call::lower_sampling_laws;
+pub(crate) use collect::is_cpp;
 
 use crate::*;
 use calls::*;
 use cpl_check::Analysis;
 use cpl_diag::{codes, Diagnostic, Span};
-use cpl_syntax::ast;
-use cpl_syntax::narrow;
+use cpl_syntax::{ast, narrow};
 use mono::*;
 use prefix::prefix_shape_struct;
 use range::*;
@@ -399,7 +404,7 @@ impl Lowerer<'_> {
             lw.diags.retain(|d| !in_library.contains(&d.message));
         }
         if !lw.diags.is_empty() {
-            lw.diags.sort_by_key(|d| (d.span.start, d.span.end));
+            cpl_diag::sort_by_key(&mut lw.diags, |d| d.span.order());
             // One error per place, as `Sink::push` keeps for the checker.
             lw.diags.dedup_by(|b, a| {
                 a.span == b.span && (a.code == b.code || a.severity == b.severity)
@@ -439,7 +444,7 @@ impl Lowerer<'_> {
                 f
             })
             .collect();
-        lw.warnings.sort_by_key(|d| (d.span.start, d.span.end));
+        cpl_diag::sort_by_key(&mut lw.warnings, |d| d.span.order());
         lw.warnings.dedup();
         for (&gid, info) in &lw.global_ranges {
             if let Some(g) = lw.globals.get(gid).filter(|g| is_narrowable_elem_ty(&g.ty)) {
@@ -460,16 +465,15 @@ impl Lowerer<'_> {
             })
             .collect();
         let lines = &lw.mods[0].lines;
-        let user_line_starts = (0..lines.line_count())
-            .map(|l| lines.line_start(l))
-            .collect();
+        let user_line_starts = (0..lines.line_count()).map(|l| lines.line_start(l));
         let program = Program {
-            user_line_starts,
+            user_line_starts: user_line_starts.collect(),
             warnings: lw.warnings,
             struct_shown,
             unordered_maps: Vec::new(),
             wide_domains: Vec::new(),
             unordered_sets: Vec::new(),
+            unreached_closures: Default::default(),
             structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
             enums: lw.enums,
             domains: lw.domains,
@@ -490,6 +494,7 @@ impl Lowerer<'_> {
             judge_fns,
             cpp_bodies,
             entry_fns,
+            judge_tys: lw.judge_tys,
             raw_lists: lw.raw_lists,
             narrow_elems: lw.narrow_elems,
         };
@@ -820,6 +825,8 @@ struct Lowerer<'a> {
     /// The empty struct each bare operator value has as its type (`op_value`).
     op_types: Vec<(BareOp, StructId)>,
     struct_insts: HashMap<(GenStructId, Vec<GenArg>), StructId>,
+    /// `w.Idx` by the place of `w` and the struct's own `Idx`.
+    value_domain_ids: HashMap<((bool, usize), DomainId), DomainId>,
     /// The domains made for arrays indexed by a plain range (`[0..n]T`,
     /// `[1..=n]T`) where a fn asks for a `[D]T`, with their first index.
     /// One per call and generic name; its size is set where the array is
@@ -874,6 +881,10 @@ struct Lowerer<'a> {
     char_domains: HashSet<DomainId>,
     /// Declared integer range bounds for globals and struct fields.
     global_ranges: HashMap<GlobalId, RangeInfo>,
+    /// Declared ranges of each top-level fn's parameters and result, for
+    /// the types a `@grader` fn gives the grader.
+    sig_ranges: HashMap<FnId, (Vec<Option<RangeInfo>>, Option<RangeInfo>)>,
+    judge_tys: Vec<(FnId, Vec<JudgeTy>, JudgeTy)>,
     struct_field_ranges: HashMap<(StructId, usize), RangeInfo>,
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays/grids/lists/tuples.
     narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
@@ -964,6 +975,7 @@ struct Lowerer<'a> {
     /// The structs `counts(xs)` makes, by the type counted, and back.
     counter_structs: HashMap<Ty, StructId>,
     counter_key: HashMap<StructId, Ty>,
+    later_calls: Option<later_calls::LaterCalls>,
 }
 
 impl<'a> Lowerer<'a> {
@@ -982,6 +994,7 @@ impl<'a> Lowerer<'a> {
             gen_structs: Vec::new(),
             op_types: Vec::new(),
             struct_insts: HashMap::new(),
+            value_domain_ids: HashMap::new(),
             range_domains: HashMap::new(),
             range_domain_sites: HashMap::new(),
             range_domains_shared: HashSet::new(),
@@ -1014,6 +1027,8 @@ impl<'a> Lowerer<'a> {
             domain_lens: HashMap::new(),
             char_domains: HashSet::new(),
             global_ranges: HashMap::new(),
+            sig_ranges: HashMap::new(),
+            judge_tys: Vec::new(),
             struct_field_ranges: HashMap::new(),
             narrow_elems: std::collections::BTreeMap::new(),
             const_ints: HashMap::new(),
@@ -1084,6 +1099,7 @@ impl<'a> Lowerer<'a> {
             filled: HashSet::new(),
             counter_structs: HashMap::new(),
             counter_key: HashMap::new(),
+            later_calls: None,
         }
     }
 
@@ -1095,69 +1111,6 @@ impl<'a> Lowerer<'a> {
         self.diags
             .iter()
             .any(|d| d.severity == cpl_diag::Severity::Error)
-    }
-
-    /// The fns that cross to the judge's grader: those it supplies (no
-    /// body) and those it calls (`@grader fn` with a body), each checked
-    /// to take and give only what a grader can.
-    fn grader_fns(&mut self, analysis: &'a Analysis) -> (Vec<FnId>, Vec<FnId>) {
-        let entries: Vec<&ast::FnDecl> = analysis
-            .items
-            .iter()
-            .flat_map(|item| &item.syntax.parsed.stmts)
-            .filter_map(|stmt| match &stmt.kind {
-                ast::StmtKind::Fn(decl)
-                    if stmt.decorators.iter().any(|d| d.name.text == "grader") =>
-                {
-                    Some(decl)
-                }
-                _ => None,
-            })
-            .collect();
-        let (mut judge_fns, mut entry_fns) = (Vec::new(), Vec::new());
-        for id in 0..self.sigs.len() {
-            let Some(f) = &self.bodies[id] else { continue };
-            let decl = self.sigs[id].decl;
-            let top_level = self.sigs[id].mod_id == 0 && self.sigs[id].owner.is_none();
-            if matches!(decl.body, ast::FnBody::None) {
-                judge_fns.push(id);
-            } else if top_level && entries.iter().any(|entry| std::ptr::eq(*entry, decl)) {
-                entry_fns.push(id);
-            } else {
-                continue;
-            }
-            let name = &decl.name.text;
-            let changed = f.params.iter().position(|p| p.mutable);
-            let odd = (f
-                .locals
-                .iter()
-                .take(f.params.len())
-                .map(|l| &l.ty)
-                .chain([&f.ret]))
-            .find(|ty| !ty.crosses_to_judge())
-            .cloned();
-            let saved = (self.cur_mod, self.offset);
-            (self.cur_mod, self.offset) = (self.sigs[id].mod_id, self.sigs[id].offset);
-            if let Some(at) = changed {
-                let param = decl.params[at].name.text.clone();
-                self.error(
-                    codes::UNSUPPORTED,
-                    decl.params[at].name.span,
-                    format!("the judge's grader can't lend `{param}` to `{name}` to change"),
-                );
-                self.help(format!("take `{param}` by value and return what changed"));
-            } else if let Some(ty) = odd {
-                let shown = self.show(&ty);
-                self.error(
-                    codes::UNSUPPORTED,
-                    decl.name.span,
-                    format!("a `{shown}` can't cross to the judge's grader in `{name}`"),
-                );
-                self.help("a `@grader fn` takes and gives `Int`, `F64`, `Bool`, `Char`, `Str`, and lists and tuples of them");
-            }
-            (self.cur_mod, self.offset) = saved;
-        }
-        (judge_fns, entry_fns)
     }
 
     fn help(&mut self, help: impl Into<String>) {
@@ -1303,20 +1256,14 @@ impl<'a> Lowerer<'a> {
         def: &ast::Expr,
     ) -> Option<Vec<(Option<String>, ProductFactor)>> {
         match &def.kind {
-            ast::ExprKind::Tuple(items) if items.len() >= 2 => {
-                let mut out = Vec::with_capacity(items.len());
-                for item in items {
-                    out.push((None, self.resolve_product_factor(item)?));
-                }
-                Some(out)
-            }
-            ast::ExprKind::Record(fields) if fields.len() >= 2 => {
-                let mut out = Vec::with_capacity(fields.len());
-                for (fname, fval) in fields {
-                    out.push((Some(fname.text.clone()), self.resolve_product_factor(fval)?));
-                }
-                Some(out)
-            }
+            ast::ExprKind::Tuple(items) if items.len() >= 2 => items
+                .iter()
+                .map(|item| Some((None, self.resolve_product_factor(item)?)))
+                .collect(),
+            ast::ExprKind::Record(fields) if fields.len() >= 2 => fields
+                .iter()
+                .map(|(n, v)| Some((Some(n.text.clone()), self.resolve_product_factor(v)?)))
+                .collect(),
             _ => None,
         }
     }
@@ -1653,10 +1600,9 @@ impl<'a> Lowerer<'a> {
 
     /// The product domain whose grid is `dims`, a declared one before an anonymous one.
     pub(super) fn product_of_grid(&self, dims: &[Dim]) -> Option<DomainId> {
-        let mut ids: Vec<_> = self.product_domains.keys().copied().collect();
-        ids.sort_by_key(|id| (self.anon_product_domain_set.contains(id), *id));
-        ids.into_iter()
-            .find(|&id| self.product_grid(id).as_deref() == Some(dims))
+        (self.product_domains.keys().copied())
+            .filter(|&id| self.product_grid(id).as_deref() == Some(dims))
+            .min_by_key(|id| (self.anon_product_domain_set.contains(id), *id))
     }
 
     /// Registers the product domain each `V` of an `[V, V]T` parameter is when given an
@@ -1908,12 +1854,11 @@ impl<'a> Lowerer<'a> {
     /// `x.method()` on a value of it.
     fn attach_impls_for_builtins(&mut self) {
         for idx in 0..self.impls.len() {
-            let (m, offset, target, body) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].target,
-                self.impls[idx].body,
-            );
+            let imp = &self.impls[idx];
+            let (m, offset, target, body) = (imp.mod_id, imp.offset, imp.target, imp.body);
+            if self.domain_blanket_param(idx).is_some() {
+                continue;
+            }
             // `impl Pick for Int -> Bool`: fn values of that type get its methods.
             let head = match &target.kind {
                 ast::TypeKind::Named { name, args } => {
@@ -2695,8 +2640,7 @@ impl<'a> Lowerer<'a> {
         let list_ty = Ty::list(elem);
         let acc = self.temp(list_ty.clone());
         let at = self.temp(Ty::Int);
-        let id = self.next_loop;
-        self.next_loop += 1;
+        let id = self.fresh_loop();
         let push = |lw: &mut Self, value: Expr| {
             Stmt::Expr(lw.mk(
                 ExprKind::Mutate(
@@ -2740,22 +2684,6 @@ impl<'a> Lowerer<'a> {
         ));
         stmts.push(Stmt::Give(self.local(acc, span)));
         self.mk(ExprKind::Do(Block { stmts }), list_ty, span)
-    }
-
-    /// The domain `rest` that `prefix` holds: `D` of `let xs = compress(all)`, `t.Idx` of a rebase.
-    fn domain_of_value(&mut self, prefix: &str, rest: &str) -> Option<DomainId> {
-        let owner = ast::Expr {
-            kind: ast::ExprKind::Name(prefix.to_string()),
-            span: Span::point(0),
-        };
-        let ty = self.probe_ty_silent(&owner)?;
-        let Ty::Struct(sid) = ty else {
-            return self.rebased_domain(&ty, rest);
-        };
-        match self.structs[sid].env.get(rest) {
-            Some(GenArg::Domain(id)) | Some(GenArg::Ty(Ty::Pos(id))) => Some(*id),
-            _ => self.structs[sid].owned_domains.get(rest).copied(),
-        }
     }
 
     /// A struct's fields as they are read from input: with their ranges.
@@ -2924,12 +2852,8 @@ impl<'a> Lowerer<'a> {
                         return Some(DimSpec::Sym(id));
                     }
                 }
-                if let Some(domain) = name.text.strip_suffix(".subsets") {
-                    if let Some(id) = self.resolve_domain_name(domain) {
-                        if let Ty::Struct(sid) = self.subset_ty(id, name.span) {
-                            return self.structs[sid].index_domain.map(DimSpec::Pos);
-                        }
-                    }
+                if let Some(dim) = self.subsets_dim(&name.text, name.span, values) {
+                    return dim;
                 }
             } else if name.text == "Cut" && args.len() == 1 {
                 if let Ty::Pos(id) = self.resolve_ty(&args[0]) {
@@ -3561,7 +3485,10 @@ impl<'a> Lowerer<'a> {
                 cx.mut_slots.insert(0);
             }
             cx.receiver = Some((0, owner));
-            params.push(ParamDef { mutable });
+            params.push(ParamDef {
+                mutable,
+                range: None,
+            });
         }
         for param in &self.sigs[id].params {
             let slot = cx.locals.len();
@@ -3575,6 +3502,7 @@ impl<'a> Lowerer<'a> {
             });
             params.push(ParamDef {
                 mutable: param.mutable,
+                range: None,
             });
         }
         for ast_p in &decl.params {
@@ -3613,21 +3541,32 @@ impl<'a> Lowerer<'a> {
             }
         }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
-        self.bind_param_facts(decl);
+        self.bind_param_facts(decl, &mut params);
+        if self.sigs[id].mod_id == 0
+            && self.sigs[id].owner.is_none()
+            && self.sigs[id].params.iter().all(|p| p.ty.crosses_to_judge())
+            && !matches!(&self.sigs[id].ret, Some(ret) if !ret.crosses_to_judge())
+        {
+            let declared = (0..decl.params.len())
+                .map(|slot| self.cx.local_ranges.get(&slot).cloned())
+                .collect();
+            let ret = decl.ret.as_ref().and_then(|t| self.range_info_from_ast(t));
+            self.sig_ranges.insert(id, (declared, ret));
+        }
         let mut out = Vec::new();
 
         // If this is a constructor/static method of a struct with owned domains (e.g. `Rooted<V>.Pre`),
         // initialize those owned domains at the start of the method.
+        // A method on a value sets the domains sized from its fields.
         if let Some(owner) = self.sigs[id].owner {
-            if self.sigs[id].receiver.is_none() {
-                let inits = self.structs[owner].owned_domain_inits.clone();
-                for init in inits {
-                    let sm = std::mem::replace(&mut self.cur_mod, init.mod_id);
-                    let so = std::mem::replace(&mut self.offset, init.offset);
-                    self.init_domain_id(init.id, init.def, &mut out);
-                    self.cur_mod = sm;
-                    self.offset = so;
-                }
+            let receiver = self.sigs[id].receiver.is_some();
+            let inits = self.structs[owner].owned_domain_inits.clone();
+            for init in inits.into_iter().filter(|i| i.per_value == receiver) {
+                let sm = std::mem::replace(&mut self.cur_mod, init.mod_id);
+                let so = std::mem::replace(&mut self.offset, init.offset);
+                self.init_domain_id(init.id, init.def, &mut out);
+                self.cur_mod = sm;
+                self.offset = so;
             }
         }
 
@@ -4317,8 +4256,7 @@ impl<'a> Lowerer<'a> {
             Ty::Unit,
             span,
         ));
-        let id = self.next_loop;
-        self.next_loop += 1;
+        let id = self.fresh_loop();
         out.push(Stmt::For(
             id,
             item,
@@ -4686,7 +4624,7 @@ impl<'a> Lowerer<'a> {
             Ok(done) => return Ok(done),
             Err(e) => e,
         };
-        if same_cells(want, &e.ty) {
+        if same_cells(want, &e.ty) || self.same_value_domain(want, &e.ty) {
             return Ok(Expr {
                 ty: want.clone(),
                 ..e
@@ -4694,7 +4632,7 @@ impl<'a> Lowerer<'a> {
         }
         // A sequence view where a walked sequence is wanted gives what it walks.
         if matches!(want, Ty::List(_)) && matches!(e.ty, Ty::Struct(_)) {
-            let walked = self.walked_struct(e);
+            let walked = self.shown_struct(e);
             return if matches!(walked.ty, Ty::List(_)) {
                 self.try_coerce(walked, want)
             } else {

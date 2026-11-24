@@ -1,4 +1,7 @@
 # The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+# Many answers are right: the statement takes any network of at most 2023 streets with the
+# given car and bike bottlenecks, and checker.py judges exactly that (NO only when the
+# reference says NO), so the output need not match the C++.
 
 [[case]]
 input = "2 1\n1\n1\n"

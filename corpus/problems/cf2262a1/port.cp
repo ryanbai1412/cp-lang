@@ -6,6 +6,7 @@
 // Solution: f(B, k) = a_k needs no y in the bucket [a_k k, (a_k + 1) k) and every lower bucket
 //   hit. B = every y in 0..n outside all those forbidden buckets contains the valid A, so it
 //   hits every bucket A hits. Mark the buckets, clamped to 0..=n, in a difference array: O(n).
+// Bounds: n: 1..=200_000; a: 0..=10 ** 9
 
 @!multitest
 let n: 1..=200_000 = read()

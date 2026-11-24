@@ -192,8 +192,8 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Quality | Metric | Mechanism |
 |---|---|---|
 | Correct on hand-picked cases | std conformance cases failing | hand-written suite `spec/conformance/std-*/` in `cpl-conform all --check` |
-| Correct on every input, not just picked ones | containers and algorithms with no random test against a brute-force model (`SortedBag` against a sorted `List`, `Fenwick` against prefix sums, `dijkstra` against Bellman-Ford) | `missing` (model-based property suite, seeded and shrinking, run on both engines) |
-| Correct at the edges: empty, one element, all equal, max n, max value | public fns with no case for each edge their doc names (`empty:`, `ties:`, `traps:`) | rule `std-docs/R2`; `missing` (generated edge-case suite driven by the doc labels) |
+| Correct on every input, not just picked ones | containers and algorithms with no random test against a brute-force model (`SortedBag` against a sorted `List`, `Fenwick` against prefix sums, `dijkstra` against Bellman-Ford) | `scripts/std-models.py` (seeded op-sequence cases in `spec/conformance/std-models/`, both engines, shrinking; `std_model_gaps` ratchet over every std type and pub std fn) |
+| Correct at the edges: empty, one element, all equal, max n, max value | public fns with no case for each edge their doc names (`empty:`, `ties:`, `traps:`) | rule `std-docs/R2`; `cpl-conform docs` runs each `empty:`/`ties:` claim on both engines; `edge_labels_unrun` ratchet counter |
 | Algebraic laws hold | ops in `std/algebra.cp` whose laws are unproved | `crates/cpl-prover/src/laws.rs` |
 | A fold of a monoid is `T`, and any op works with a `?T` fold | std folds or `Window.all` returning `?T` for a monoid; structures rejecting an op with no identity | rule `std-api/R5`; `Monoid.of` examples in `cpl-conform docs`; `missing` for `Window.all` and the `?T` lifting helper |
 | No overflow inside std for inputs in the declared range | std bodies with an unproved intermediate | `missing` (overflow-proof report over std bodies) |
@@ -218,9 +218,9 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Keys and indices keep their index space (positions, cuts, vertices, edges) | fns that take or return a bare `Int` where a domain exists | rule `std-api/R9`; `scripts/std-api-lint.py` (at 0) |
 | Every container has the common traits (`Show`, `Eq`, `Seq`, `len`, `is_empty`) | (type, expected trait) pairs missing | rule `std-api/R12`; `scripts/std-trait-matrix.py` (in `scripts/check.sh`, shrink-only) |
 | Spec and std agree on names and named arguments | unmatched `f(k: v)` in spec blocks | rule `std-api/R6`; `scripts/spec-gate.py sigs`, gap list only shrinks |
-| Each type's common tasks are one short call | journeys per type with a tested example (`SortedBag`: insert, erase one, erase at cursor, predecessor, successor, range) | rule `std-api/R13`; `missing` (usage-journey suite, first for `SortedBag`/`SortedSet`) |
+| Each type's common tasks are one short call | journeys per type with a tested example (`SortedBag`: insert, erase one, erase at cursor, predecessor, successor, range) | rule `std-api/R13`; `scripts/std-api-lint.py` R13 (each journey has a case in `spec/conformance/std-journeys/`) |
 | Composes: views, keys and ops pass through each other | pairs of std features that fail together (`.rev` into `zip`, `Window` into `maximal`) | rule `std-api/R14`; `missing` (pairwise composition suite) |
-| Every common operation from the C++ STL, Python, Rust and the AtCoder Library has a spelling | inventory operations with no spelling and no listed gap | rule `std-api/R15`; `missing` (comparative inventory checked against `cpl doc --format json std`) |
+| Every common operation from the C++ STL, Python, Rust and the AtCoder Library has a spelling | inventory operations with no spelling and no listed gap | rule `std-api/R15`; `crates/cpl-doc/src/tests.rs` (`every_inventory_name_finds_its_std_spelling`: every spelling in `spec/lib/inventory.md` is a name `cpl doc` documents for std) |
 | The obvious code is the fast code | std calls that look O(1) and are not | rule `std-api/R16`; `bench/scaling.py --check` (time per call at n and 4n against the `cost:` line; `scaling_mismatches` hard zero, `std_fns_unscaled` only shrinks) |
 
 ### Discoverable (J2, J5)
@@ -229,7 +229,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 |---|---|---|
 | Any value a program gets, it can name without a `use` | std types named by prelude signatures but not exported | rule `std-api/R18`; `scripts/prelude-signatures.py` (in `scripts/check.sh`) |
 | Spec tables and the prelude agree | missing prelude names | `scripts/spec-gate.py prelude`; `scripts/spec-gate.py std-docs` the other way |
-| Findable without knowing the name (`lower_bound` finds `first_ge`) | common C++/Python names with no alias line in docs | `missing` (alias table checked against the docs index) |
+| Findable without knowing the name (`lower_bound` finds `first_ge`) | inventory names whose search finds no std spelling | `cpl doc` reads `spec/lib/inventory.md` into each std item's `aliases` (page filter, the site's Elsewhere row); `crates/cpl-doc/src/tests.rs` (`every_inventory_name_finds_its_std_spelling`, every row) |
 | Hover and completion show the full signature, options and bounds | std fns whose `cpl doc --format json` lacks bounds or defaults | rule `std-docs/R5`; `scripts/test_std_doc_json.py` (every public fn's bounds and defaults in its doc JSON signature) |
 | Go-to-definition opens readable std source | std files over the size cap, fns with no doc | `scripts/debt-ratchet.py` caps; `scripts/spec-gate.py std-docs --audit` |
 
@@ -237,7 +237,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 
 | Quality | Metric | Mechanism |
 |---|---|---|
-| Every doc example compiles and runs | failing `example:` lines | rule `std-docs/R6`; `cpl-conform docs`, ratcheted by the scoreboard; `web/scripts/gen-ref.mjs` fails the site build on a newly failing example (`site/R1`, shrink-only `web/scripts/doc-examples-failing.txt`) |
+| Every doc example compiles and runs | failing `example:` lines | rule `std-docs/R6`; `cpl-conform docs`, a hard gate on every example; `web/scripts/gen-ref.mjs` fails the site build on any example that doesn't run (`site/R1`) |
 | Every spec/lib example compiles and runs | failing code blocks in `spec/lib/*.md` | `crates/cpl-conform/src/spec_blocks.rs` in `cpl-conform all --check` |
 | Every public fn states cost, traps and edge cases | fns missing a required label | rule `std-docs/R1`; `scripts/spec-gate.py std-docs --audit` |
 | The documented cost is the real cost | fns slower than their `cost:` | rule `std-docs/R3`; `bench/scaling.py --check` (one `bench/scaling/*.cp` case per fn, time at n and 4n; `scaling_mismatches`, `std_fns_unscaled`) |
@@ -276,7 +276,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Modules import without cycles | explicit import cycles | `crates/cpl-check/tests/std_acyclic.rs`; `measure.py cycles` for the graph |
 | Public API changes are never silent | signature changes with no codemod or release note | rule `std-api/R20`; `scripts/std-api-snapshot.py` (`spec/lib/std-api.snapshot`; a removed name needs a codemod or CHANGELOG line) |
 | Old solutions keep building | corpus ports broken by a std change | corpus in `cpl-conform all --check` |
-| Lint-clean std | lint hits in std (`L0301` float equality and others) | rule `std-api/R21`; `scripts/std-lint-ratchet.py` (in `scripts/check.sh`, per file and code, shrink-only) |
+| Lint-clean std | lint hits in std (`L0301` float equality and others) | rule `std-api/R21`; `scripts/std-lint-ratchet.py` (in `scripts/check.sh`, fails on any hit) |
 
 ## Review rubric
 

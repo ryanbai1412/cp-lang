@@ -4,6 +4,9 @@ use cpl_ir::{BinOp, Builtin, Expr, ExprKind, Mutation, PlaceKind, Ty};
 
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_expr_opt_i(&mut self, expr: &'p Expr) -> (u16, u16) {
+        if let Some(place) = self.reported_write(expr) {
+            return self.reporting_write(expr, place, |c| c.compile_expr_opt_i(expr));
+        }
         let span = expr.span;
         if let Some((fn_id, args)) = self.traced_call(expr) {
             let src_v = self.emit_traced_call(expr, fn_id, args, false);
@@ -861,7 +864,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     dst_some,
                     exits: Vec::new(),
                 });
-                self.compile_stmts(&block.stmts);
+                self.compile_do_stmts(&block.stmts);
                 let mut target = self.give_targets.pop().unwrap();
                 self.pinned_v = prev_pinned;
                 let end_pc = self.ops.len() as u32;
@@ -890,7 +893,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             },
                             span,
                         );
-                        self.note_take(place, span);
                         return (dst_val, dst_some);
                     }
                 }
@@ -898,7 +900,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     Some(path) => {
                         let dst = self.alloc_v();
                         self.emit(Op::TakePlaceV { dst, path }, span);
-                        self.note_take(place, span);
                         dst
                     }
                     None => self.emit_fallback_expr_v(expr),

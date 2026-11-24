@@ -2,6 +2,9 @@ import sys, random
 # usage: gen.py seed size; a hidden case for the interactor: "N K Q T", then per tree its
 # parents (-1 at the root) and its edge weights (0 at the root), then T pairs of indices
 # 1..=K into the chosen labels. size >= 1e6 gives N = 1e6, K = T = 1e5.
+# --max: N = 1e6, K = T = 1e5, tree 1 a star and tree 2 a path of weight-2000 edges (distances near 2e9).
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "1000000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 if S >= 1000000: n, k = 1000000, 100000
 else:

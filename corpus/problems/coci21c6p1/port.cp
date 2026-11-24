@@ -6,21 +6,19 @@
 // Solution: best place: they get 500 and everyone else 0; worst: they get 0 and everyone else
 //   500. Each place is 1 + the number ranked ahead, counted directly: O(n^2).
 // original: corpus/submissions/4529987.cpp
-let n: Int = read()
-var name: List<Str> = []
-var total: List<Int> = []
-for _ in 0..n:
-    let who: Str = read()
-    let rounds: [5]Int = read()
-    name.push(who)
-    total.push(rounds.sum())
+// Bounds: n: 1..=500; rounds: 0..=500
 
-fn place(i: Int, mine: Int, theirs: Int) -> Int:
-    let me = total[i] + mine
-    var ahead = 0
-    for j in 0..n:
-        let them = total[j] + theirs
-        if j != i and (them > me or (them == me and name[j] < name[i])): ahead += 1
-    1 + ahead
+let n: 1..=500 = read()
+domain Keeper = 0..n
+var name: [Keeper]Str = ""
+var total: [Keeper]Int = 0
+for k in Keeper:
+    name[k] = read()
+    let rounds: [5]0..=500 = read()
+    total[k] = rounds.sum()
 
-for i in 0..n: print(place(i, 500, 0), place(i, 0, 500))
+// ahead ranks first: the higher total, then the smaller name
+fn place(me: Keeper, mine: Int, theirs: Int) -> Int =
+    1 + Keeper.count(o => o != me and (total[o] + theirs, desc(name[o])) > (total[me] + mine, desc(name[me])))
+
+for k in Keeper: print(place(k, 500, 0), place(k, 0, 500))

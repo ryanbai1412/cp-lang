@@ -219,7 +219,7 @@ pub(crate) fn mutate_cell(
         (Mutation::Extend, Value::List(items)) => {
             let v = Rc::make_mut(items);
             match arg {
-                Value::List(other) => v.extend(other.iter().cloned()),
+                Value::List(other) => v.extend(other.iter()),
                 Value::Array(arr) => v.extend((0..arr.len()).map(|i| arr.get_unchecked_val(i))),
                 Value::Str(bytes) => v.extend(bytes.iter().copied().map(Value::Char)),
                 Value::Set(set) => v.extend(set.iter().cloned()),

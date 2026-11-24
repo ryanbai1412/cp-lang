@@ -8,6 +8,7 @@
 //   at '(' is always valid (2^i of them); ending at ')' gives 1 + ways_open + ways_close valid
 //   ones, which also join ways_close. Once pref < 2 no pending prefix ending in '(' can take a
 //   later ')', so ways_open resets to 0. O(n).
+// Bounds: n: 2..=300_000
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

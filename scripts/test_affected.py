@@ -39,6 +39,12 @@ class AffectedTest(unittest.TestCase):
         s = self.sel("scripts/land.sh", "scripts/affected.py", ".githooks/pre-commit")
         self.assertEqual(s["script_tests"], ["scripts/test_affected.py", "scripts/test_check_cache.py"])
 
+    def test_a_checking_script_selects_its_own_step_not_the_fast_gate(self):
+        s = self.sel("scripts/std-trait-matrix.py", "bench/sizes.py", "scripts/debt-ratchet.py")
+        self.assertFalse(s["all"])
+        self.assertEqual(s["steps"], ["bench/sizes.py", "scripts/debt-ratchet.py", "scripts/std-trait-matrix.py"])
+        self.assertEqual(s["script_tests"], ["scripts/test_debt_ratchet.py"])
+
     def test_a_script_only_ci_runs_selects_nothing(self):
         self.assertFalse(self.sel("scripts/site-deployable.sh")["all"])
         self.assertTrue(self.sel("scripts/gen-unmapped-thing.py")["all"])

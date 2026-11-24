@@ -8,6 +8,7 @@
 //   two swaps each. O(n + q).
 // original: corpus/submissions/4698075.cpp (grader functions init / get_distance)
 // stdin: n q, a, b, then q queries x y. stdout: the answer per query.
+// Bounds: n, q: 1..=100_000; x, y: 0..n
 let (n, q): (1..=100_000, 1..=100_000) = read()
 domain Pos = 0..n
 domain Base = 0..3
@@ -16,8 +17,9 @@ let (a, b): (Str, Str) = read()
 assert a.len == n and b.len == n
 
 // count[s, t]: prefix counts of the places where a has s and b has t
+let at = [Pos] i => (base(a[Int(i)]), base(b[Int(i)]))
 let count: [Base, Base]Prefix<Pos, Int> = [Base, Base] (s, t) =>
-    Prefix<Pos, Int>([Pos] i => if base(a[Int(i)]) == s and base(b[Int(i)]) == t: 1 else: 0)
+    Prefix<Pos, Int>([Pos] i => if at[i] == (s, t): 1 else: 0)
 
 for _ in 0..q:
     let (x, y): (Pos, Pos) = read()

@@ -20,6 +20,7 @@
 //    - If `v` is a power of 2, `nv = if v == 1: 3 else: v + 1` is a 2-bit
 //      strict supermask of `v`: `nv | v == nv` gives `ask('Q', nv) == 1`,
 //      whereas `nv ^ v == nv - v < nv` leaves no element `>= nv` (`0 != 1`).
+// Bounds: n: 2..=60
 
 @!interactive
 

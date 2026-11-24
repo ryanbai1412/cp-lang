@@ -1,4 +1,5 @@
 // Source: NOIP 2019 Senior P2 (Brackets on a Tree), https://www.luogu.com.cn/problem/P5658
+// limits: 1000 ms, 250 MB
 // Problem: a tree of n <= 5e5 vertices rooted at 1 (parent f_u < u), each vertex holding '(' or
 //   ')'. k_i counts the substrings (by position) of the root-to-i string that are balanced.
 //   Print the xor of i * k_i over all i.
@@ -6,37 +7,25 @@
 //   unmatched. A ')' at v closes j = open[parent]: the balanced strings ending at v are j..v plus
 //   one per balanced string ending at j's parent, and open[v] becomes open[j's parent]. k[v] is
 //   k[parent] plus those. Everything comes from the parent and j's parent: one preorder, O(n).
+// Bounds: n: 1..=5e5; boss: 1..=n
 // original: corpus/submissions/5127828.cpp
-
 let n: 1..=5e5 = read()
 domain V = 1..=n
-// WISH TR9: `let s: [V]Char = read()`; the interpreter reads a `[V]Char` as n
-// separate tokens, so the string is read as `Str` and indexed by position.
-let s: Str = read()
-var boss: [V]?V = None
-for v in V:
-    if v == V.first: continue
-    let b: V = read()
-    boss[v] = b
-let t = Rooted.from_parents(boss)
+domain Child = 2..=n
+let s: [V]Char = read()
+let boss: [Child]V = read()
+let t = Rooted.from_parents([V] v => if v.label >= 2: boss[Child(v.label)] else: None)
 
-var open: [V]?V = [V] _ => None
-var ending: [V]Int = 0  // balanced substrings that end exactly at v
+var open: [V]?V = None   // the nearest '(' on the path to v still unmatched
+var ending: [V]Int = 0   // balanced substrings that end exactly at v
 var k: [V]Int = 0
-var ans = 0
 for v in t.at:
-    let above = t.parent(v)
-    if let a = above:
-        open[v] = open[a]
-        k[v] = k[a]
-    if s[v.ord] == '(':
-        open[v] = v
+    let up = t.parent(v)
+    open[v] = up.and_then(a => open[a])
+    if s[v] == '(': open[v] = v
     elif let j = open[v]:
-        ending[v] = 1
-        open[v] = None
-        if let b = t.parent(j):
-            ending[v] += ending[b]
-            open[v] = open[b]
-    k[v] += ending[v]
-    ans ^= v.label * k[v]
-print(ans)
+        let before = t.parent(j)
+        ending[v] = 1 + (ending[before?] ?? 0)
+        open[v] = before.and_then(b => open[b])
+    k[v] = (k[up?] ?? 0) + ending[v]
+print(([V] v => v.label * k[v]).fold(^))

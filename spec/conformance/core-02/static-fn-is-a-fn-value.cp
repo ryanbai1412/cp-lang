@@ -6,4 +6,4 @@ struct P:
     fn mk(v: Int) -> P = P(v)
     fn add(a: P, b: P) -> P = P(a.x + b.x)
 let f = P.mk
-print(f(3).x, [1, 2].map(P.mk)[1].x, [2, 3].map(P.mk).fold(P.add)!.x)
+print(f(3).x, [1, 2].map(P.mk)[1].x, [2, 3].map(P.mk).reduce(P.add)!.x)

@@ -312,6 +312,12 @@ impl<'a> Lowerer<'a> {
         if let Some(piece) = self.map_view_piece(whole, None) {
             return piece;
         }
+        // `w.Idx(2)`: a position of the domain the value `w` sized from its fields.
+        if let ast::ExprKind::Field { base: owner, name } = &callee.kind {
+            if let Some(id) = self.value_domain_named(owner, &name.text) {
+                return self.domain_call(id, &name.text, args, span);
+            }
+        }
         match &callee.kind {
             ast::ExprKind::Paren(inner) => self.call(whole, inner, args, hint),
             ast::ExprKind::Field { name, .. }
@@ -347,7 +353,7 @@ impl<'a> Lowerer<'a> {
                 if let Some(decl) = self.cx.local_gen_fns.get(name).cloned() {
                     return self.call_local_gen_fn(&decl, args, span);
                 }
-                if let Some(&op) = self.cx.op_locals.get(name) {
+                if let Some(op) = self.op_local(name) {
                     if let Some(e) = self.bare_op_call(op, callee.span, args, span, hint) {
                         return e;
                     }
@@ -1532,9 +1538,12 @@ impl<'a> Lowerer<'a> {
                             .params
                             .get(at)
                             .and_then(|p| p.ty.as_ref());
-                        lowered.push(Arg::Value(
-                            self.expect_declared(&arg.value, &param.ty, declared),
-                        ));
+                        let value = self.expect_declared(&arg.value, &param.ty, declared);
+                        let value = match declared.and_then(|t| self.const_param_range(id, t)) {
+                            Some(b) => self.check_range(value, &b, arg.value.span),
+                            None => value,
+                        };
+                        lowered.push(Arg::Value(value));
                     }
                 }
                 None => match param.default {

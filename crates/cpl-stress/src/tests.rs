@@ -531,6 +531,26 @@ fn an_accepted_interactive_solution_finishing_slowly_is_not_killed_as_re() {
     assert_eq!(judged.verdict, Verdict::Accepted);
 }
 
+/// Judges charge a solution its CPU time: a turn it spends blocked (here
+/// asleep) is not time it used, so a 1 s limit passes a 1.5 s nap. Only
+/// twice the limit blocked on its turn is idle.
+#[cfg(target_os = "linux")]
+#[test]
+fn an_interactive_solution_is_charged_its_cpu_time_not_its_turns() {
+    let interactor = Judge::Interactor(sh("echo 7; read ans; [ \"$ans\" = 8 ]"), Launch::Stdio);
+    let limit = Duration::from_millis(1000);
+    let run = |solution: &str| interactor.run(&sh(solution), "", None, limit).unwrap();
+    let napping = run("read q; sleep 1.5; echo $((q + 1))");
+    assert_eq!(napping.verdict, Verdict::Accepted, "{napping:?}");
+    assert!(napping.outcome.elapsed < limit, "{napping:?}");
+    let stuck = run("read q; sleep 5");
+    assert_eq!(stuck.verdict, Verdict::TimeLimit, "{stuck:?}");
+    assert!(stuck.outcome.elapsed > limit * 2, "{stuck:?}");
+    let spinning = run("read q; while :; do :; done");
+    assert_eq!(spinning.verdict, Verdict::TimeLimit, "{spinning:?}");
+    assert!(spinning.outcome.elapsed > limit, "{spinning:?}");
+}
+
 #[test]
 fn declared_judges_are_found_with_their_lines() {
     let src = "@check\nfn valid():\n    let out: Int = read_output()\n    assert out > 0\n\n@interactor(Guess)\nfn judge():\n    0\nfn plain() = 1\n";
@@ -1496,5 +1516,146 @@ fn a_time_limit_case_spends_a_bounded_number_of_full_limit_runs() {
             runs <= 2 + crate::run::TLE_RUNS,
             "{runs} full-limit runs (stuck over {stuck_over} bytes)"
         );
+    }
+}
+
+#[test]
+fn each_verdict_names_the_program_whose_trap_explains_it() {
+    use crate::judge::Trapped;
+    let named = [
+        (Verdict::Accepted, None),
+        (Verdict::Wrong("4 vs 5".into()), None),
+        (Verdict::TimeLimit, None),
+        (Verdict::MemoryLimit, None),
+        (
+            Verdict::RuntimeError("crashed".into()),
+            Some(Trapped::Solution),
+        ),
+        (Verdict::BruteError("crashed".into()), Some(Trapped::Brute)),
+        (
+            Verdict::JudgeError("checker", "R0101".into()),
+            Some(Trapped::Checker),
+        ),
+        (
+            Verdict::JudgeError("interactor", "R0101".into()),
+            Some(Trapped::Interactor),
+        ),
+    ];
+    for (verdict, trapped) in named {
+        assert_eq!(verdict.trapped(), trapped, "{verdict:?}");
+        let helper = matches!(
+            trapped,
+            Some(Trapped::Brute | Trapped::Checker | Trapped::Interactor)
+        );
+        assert_eq!(verdict.helper_failed(), helper, "{verdict:?}");
+        assert_eq!(
+            verdict.stopped(),
+            matches!(verdict, Verdict::RuntimeError(_) | Verdict::TimeLimit)
+        );
+    }
+}
+
+#[test]
+fn every_stress_decorator_gives_the_file_a_judge_and_a_mention_does_not() {
+    for name in crate::STRESS_DECORATORS {
+        let src = format!("let n: 1..=9 = read()\n@{name}\nfn other():\n    print(n)\nprint(n)\n");
+        assert!(crate::stress_targets(&src), "@{name}");
+        let mut db = cpl_check::Session::new();
+        db.set_file("s.cp", src.as_str());
+        let analysis = db.analyze("s.cp").unwrap();
+        let judged = cpl_ir::brute(&analysis).is_some()
+            || cpl_ir::checker(&analysis).is_some()
+            || cpl_ir::interactor(&analysis).is_some();
+        assert!(judged, "@{name} names no judge `cpl stress` runs");
+    }
+    let mentioned = "// @alt, @brute and @interactor\nlet s = \"@check\"\nprint(s)\n";
+    assert!(!crate::stress_targets(mentioned));
+}
+
+/// The edges a bug hides at: an empty array, one element, the largest
+/// size asked for, the lowest and the highest value, and all-equal values.
+#[test]
+fn generated_cases_reach_every_edge_shape() {
+    let src = "let n: 0..=8 = read()\nlet a: [0..n]1..=1e9 = read()\nprint(n)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let mut seen = HashSet::new();
+    for seed in 0..400 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
+        let Value::Seq(a) = &case.values[1] else {
+            panic!("{case:?}")
+        };
+        let a: Vec<i128> = a.iter().filter_map(Value::number).collect();
+        let edges = [
+            ("empty", a.is_empty()),
+            ("one", a.len() == 1),
+            ("max size", a.len() == 8),
+            ("lowest value", a.contains(&1)),
+            ("highest value", a.contains(&1_000_000_000)),
+            ("all equal", a.len() >= 2 && a.iter().all(|&x| x == a[0])),
+        ];
+        seen.extend(
+            edges
+                .into_iter()
+                .filter(|(_, hit)| *hit)
+                .map(|(name, _)| name),
+        );
+    }
+    let all = [
+        "empty",
+        "one",
+        "max size",
+        "lowest value",
+        "highest value",
+        "all equal",
+    ];
+    let missed: Vec<_> = all.iter().filter(|edge| !seen.contains(*edge)).collect();
+    assert!(missed.is_empty(), "no case in 400 seeds is {missed:?}");
+}
+
+/// A shrunk case is a local minimum: shrinking it again, with every
+/// delete and decrement the shrinker knows, finds nothing smaller that
+/// still fails.
+#[test]
+fn a_shrunk_case_shrinks_no_further() {
+    let spec = spec();
+    let numbers = |case: &Case, field: usize| -> Vec<i128> {
+        match &case.values[field] {
+            Value::Seq(items) => items.iter().filter_map(Value::number).collect(),
+            other => panic!("{other:?}"),
+        }
+    };
+    let backwards = |case: &Case| match &case.values[2] {
+        Value::Seq(queries) => queries.iter().any(|q| match q {
+            Value::Tuple(ends) => ends[0].number() > ends[1].number(),
+            _ => false,
+        }),
+        _ => false,
+    };
+    type Bug<'a> = (&'a str, &'a dyn Fn(&Case) -> bool);
+    let bugs: [Bug; 3] = [
+        ("a value of 5 or more", &|case| {
+            numbers(case, 1).iter().any(|&x| x >= 5)
+        }),
+        ("a sum over 20", &|case| {
+            numbers(case, 1).iter().sum::<i128>() > 20
+        }),
+        ("a backwards query", &backwards),
+    ];
+    for (bug, fails) in bugs {
+        for seed in 0..40 {
+            let Some(start) = generate(&spec, &mut Rng::new(seed), Size::Small(8)) else {
+                continue;
+            };
+            if !fails(&start) {
+                continue;
+            }
+            let smallest = shrink(&spec, &start, 5000, &mut |case: &Case| fails(case));
+            assert!(fails(&smallest), "{bug}: shrunk to a passing {smallest:?}");
+            let again = shrink(&spec, &smallest, 5000, &mut |case: &Case| fails(case));
+            assert_eq!(
+                again, smallest,
+                "{bug} (seed {seed}): one more shrink still fails"
+            );
+        }
     }
 }

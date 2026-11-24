@@ -1,5 +1,7 @@
 # btoi15p3 friction
 
+Rethought from dream.cp. The v0.2 port picked the root with a `var` loop and spelled `Graph<V, E>.undirected` and `Rooted(u => g.out(u), ..)`. The v0.3 port is the dream: `V.find(v => g.deg(v) > 1)`, `Rooted(g, ..)`, and `half` named once. `g.deg` on `Graph.undirected` now works, so that earlier friction is gone.
+
 ## The corpus suite cannot accept a second optimal answer
 
 - **Where:** `cpl-conform corpus btoi15p3`. Any set of ceil(L / 2) links that leaves no
@@ -16,10 +18,6 @@
   Routed to spec (owner of `crates/cpl-conform`).
 - **Status:** open.
 
-## `Graph.undirected` of a `Tree<V>` has no `deg`
+## Measurements
 
-- **Where:** the old `spec.cp`: `Graph.undirected(read<[n - 1](u: V, v: V)>())` (and
-  `read<Tree<V>>()`) is typed `[V]List<V>`, so `g.deg(v)` is E0203; `std/README.md` §4.11
-  promises `deg` on what `Graph.undirected` returns. Already routed to stdlib (worklog
-  2026-11-23, rebuild 25 F1). `spec.cp` uses `g[v].len` meanwhile.
-- **Status:** open (stdlib).
+gen.py --max: port 0.26 s. The accepted C++ recurses and dies (signal 11) under an 8 MB stack; with an unlimited stack it takes 0.27 s. checker.py accepts the port's links.

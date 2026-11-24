@@ -27,5 +27,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "Connected-component DP as @memo(array) over four bounded params; a guarded inner fn replaces bounds checks."
+ "notes": "Connected-component DP as @memo(array) over four bounded params; a guarded inner fn replaces bounds checks.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "82b3d2354de6ae11e3fb5884af0fd02a477a49c1"
+ }
 }

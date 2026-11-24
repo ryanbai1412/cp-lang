@@ -7,6 +7,7 @@
 //   Otherwise a binary search (last_true) finds the last k with light(k) = light(0), so
 //   light(k + 1) differs; print k ones, x, then zeros. O((n + m) log n).
 // original: corpus/submissions/5142110.cpp
+// Bounds: n: 1..=1e5; m: 1..=2e5; gates.a, gates.b: 1..=n + m
 let n: 1..=1e5 = read()
 let m: 1..=2e5 = read()
 domain Wire = 1..=n + m

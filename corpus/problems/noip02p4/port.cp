@@ -10,6 +10,7 @@
 //   y1 < y <= y2 at point coordinates, in both turning directions; each arm is a quadrant, so
 //   precomputed quadrant areas price a hole in O(1). O(n^4) for the pinwheels.
 // original: corpus/submissions/5096459.cpp (k <= 3)
+// Bounds: n: 1..=50; k: 1..=4; given.x, given.y: 0..=500
 let n: 1..=50 = read()
 let k: 1..=4 = read()
 let given: [n](x: 0..=500, y: 0..=500) = read()

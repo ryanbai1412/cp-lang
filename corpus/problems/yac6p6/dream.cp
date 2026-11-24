@@ -59,7 +59,8 @@ for id in Q:
     let (x1, y1, x2, y2, kv): (Row, Col, Row, Col, KDom) = read()
     if x2.ord - x1.ord <= 3 and y2.ord - y1.ord <= 3:
         backward_dp(x1, y1, x2, y2)
-        qans[id] = dp[x1, y1, kv]
+        let start = dp[x1, y1]
+        qans[id] = start[kv]
     else:
         let rem = (x2.ord + y2.ord) % 3
         for dx in 0..=rem:
@@ -82,12 +83,13 @@ for cx in Row:
                         if let pc = dc.prev: cell = relax(cell, dp2[dr, pc], cost)
                         dp2[dr, dc] = cell
 
-        backward_dp(Row.first, Col.first, cx, cy)
+        backward_dp(Row.first!, Col.first!, cx, cy)
 
         for qr in buckets[cx, cy]:
-            let dr = D3.first.offset(qr.x2.ord - cx.ord)!
-            let dc = D3.first.offset(qr.y2.ord - cy.ord)!
+            let dr = D3.first!.offset(qr.x2.ord - cx.ord)!
+            let dc = D3.first!.offset(qr.y2.ord - cy.ord)!
             for k in 0..=qr.kv.ord:
-                qans[qr.id] min= dp[qr.x1, qr.y1, KDom(k)] + dp2[dr, dc, qr.kv.offset(-k)!]
+                let (head, tail) = (dp[qr.x1, qr.y1], dp2[dr, dc])
+                qans[qr.id] min= head[KDom(k)] + tail[qr.kv.offset(-k)!]
 
 for id in Q: print(qans[id]!)

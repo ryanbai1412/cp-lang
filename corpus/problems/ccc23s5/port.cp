@@ -7,6 +7,7 @@
 //   until a remainder repeats (Floyd's cycle walk, no set); a digit 1 is fine only when
 //   nothing follows it.
 // original: corpus/submissions/5350810.cpp
+// Bounds: n: 2..=1e9
 let n: 2..=1e9 = read()
 
 fn in_cantor(x: 0..=n) -> Bool:

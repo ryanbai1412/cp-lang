@@ -12,9 +12,6 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "dream": [
-   "corpus/problems/btoi06p5/dream.cp"
-  ],
   "port": [
    "corpus/problems/btoi06p5/port.cp"
   ]
@@ -23,5 +20,10 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "e41af3199cffab694116f7dfdff6ac0804e9fab1"
+ }
 }

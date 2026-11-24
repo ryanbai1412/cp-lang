@@ -94,12 +94,12 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0802 | with_not_first | a bare `with` line must come first in its block |
 | E0803 | question_in_condition | `x?` in a condition; write `... ?? false` |
 | E0804 | dropped_question | a `?` whose result is dropped |
-| E0805 | fresh_type_leaks_test *(0.3)* | a position of a per-test domain stored above `@!multitest` |
+| E0805 | fresh_type_leaks_test | a position of a per-test domain stored above `@!multitest` |
 | E0806 | inference_needs_annotation | `var x = None`; annotate `?Int` |
 | E0901 | no_u8 | `U8` is not a type; use `0..=255` |
 | E0902 | range_store_unprovable_const | a constant out of the range type |
 | E0903 | int128_unavailable *(0.3)* | `I128` on a judge without `__int128` |
-| E0904 | memory_over_profile *(0.3)* | peak memory at the input bounds exceeds the judge's limit (with the largest arrays) |
+| E0904 | memory_over_profile | peak memory at the input bounds exceeds the judge's limit (with the largest arrays) |
 | E9998 | internal_unsupported *(retired)* | never emitted; unsupported constructs are E0501 |
 | E9999 | internal | internal error in cpl while handling `textDocument/hover`: ...; this is a bug in cpl, not in your code |
 

@@ -243,6 +243,100 @@ pub(super) fn values(
     values
 }
 
+/// What each bare `read()` and `ask(..)` in `src` reads, by its file
+/// span: the type checker facts give it from where its value goes
+/// (R10.2.1), written as `let _: T = read()` for [`Builder::shape`].
+pub(super) fn read_types(src: &str) -> HashMap<Span, String> {
+    let mut db = cpl_check::Session::new();
+    db.set_file("input.cp", src);
+    let Some(facts) = db.facts("input.cp") else {
+        return HashMap::new();
+    };
+    let whole = Span::new(0, src.len() as u32);
+    facts
+        .types_in(whole)
+        .filter(|(span, ty)| {
+            let text = &src[span_range(*span)];
+            let called = |name: &str| {
+                text.strip_prefix(name)
+                    .is_some_and(|rest| rest.trim_start().starts_with('('))
+            };
+            (text == "read()" || called("ask")) && !ty.is_vague() && **ty != cpl_check::Ty::Error
+        })
+        .map(|(span, ty)| (span, format!("let _: {ty} = read()")))
+        .collect()
+}
+
+/// Each `fn f(..) -> T = body` whose body reads, which reads for its
+/// caller wherever it is called: a call inlines its arguments' reads,
+/// then the body's.
+pub(super) fn bodies<'a>(
+    src: &str,
+    items: &'a [(u32, cpl_syntax::ParsedItem)],
+) -> HashMap<&'a str, (u32, &'a Expr)> {
+    let mut bodies = HashMap::new();
+    for (base, item) in items {
+        for stmt in &item.stmts {
+            let StmtKind::Fn(decl) = &stmt.kind else {
+                continue;
+            };
+            let FnBody::Expr(body) = &decl.body else {
+                continue;
+            };
+            let code = &src[span_range(body.span.shift(*base))];
+            let tokens = cpl_syntax::lex(code).tokens;
+            let asks = (0..tokens.len()).any(|at| {
+                tokens[at].kind == cpl_syntax::TokenKind::Ident
+                    && &code[span_range(tokens[at].span)] == "ask"
+                    && (at == 0 || tokens[at - 1].kind != cpl_syntax::TokenKind::Dot)
+            });
+            if decl.generics.is_empty()
+                && stmt.decorators.is_empty()
+                && (reads_inside(code) || asks)
+            {
+                bodies.insert(decl.name.text.as_str(), (*base, body));
+            }
+        }
+    }
+    bodies
+}
+
+/// Each `fn f() -> yields T` that reads in a `while true:` loop, its last
+/// statement and the only one that reads: the loop, which [`Builder::stream`]
+/// reads until its sentinel `return`.
+pub(super) fn streams<'a>(
+    src: &str,
+    items: &'a [(u32, cpl_syntax::ParsedItem)],
+) -> HashMap<&'a str, (u32, &'a Stmt)> {
+    let mut streams = HashMap::new();
+    for (base, item) in items {
+        for stmt in &item.stmts {
+            let StmtKind::Fn(decl) = &stmt.kind else {
+                continue;
+            };
+            let (FnBody::Block(block), Some(TypeKind::Yields(_))) =
+                (&decl.body, decl.ret.as_ref().map(|ty| &ty.kind))
+            else {
+                continue;
+            };
+            let code = |stmt: &Stmt| &src[span_range(stmt.span.shift(*base))];
+            let Some((looped, before)) = block.stmts.split_last() else {
+                continue;
+            };
+            if decl.params.is_empty()
+                && decl.generics.is_empty()
+                && stmt.decorators.is_empty()
+                && matches!(looped.kind, StmtKind::While { .. })
+                && reads_inside(code(looped))
+                && !before.iter().any(|stmt| reads_inside(code(stmt)))
+            {
+                streams.insert(decl.name.text.as_str(), (*base, looped));
+            }
+        }
+    }
+    streams
+}
+
 /// The fns whose reads are their callers': no parameters, no `return`, and
 /// every call a whole top-level statement or a `let`'s whole value, so each
 /// call reads the body's input right there, in order.

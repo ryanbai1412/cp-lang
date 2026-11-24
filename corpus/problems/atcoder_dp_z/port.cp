@@ -7,6 +7,7 @@
 //   lowest of a set of lines at x = h[i]. A `LiChao` over the heights 1..=1e6 keeps that lower
 //   envelope: O(n log 1e6).
 // original: corpus/submissions/4133674.cpp
+// Bounds: n: 2..=2e5; c: 1..=1e12; h: 1..=1e6
 let n: 2..=2e5 = read()
 let c: 1..=1e12 = read()
 domain Stone = 1..=n

@@ -8,6 +8,7 @@
 //   wrapped '(': k + stack size. Else keep the longest top part of the stack whose span holds
 //   <= 2k matched characters; that count falls along the stack, so binary search it. Answer
 //   capped at n/2. O(n log n).
+// Bounds: n: 2..=4e5; k: 0..=n / 2
 
 @!multitest
 let n: 2..=4e5 = read()

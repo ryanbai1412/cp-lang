@@ -8,6 +8,7 @@
 //   gcd(y, g) < g, doubling its weight. By Mobius, the weight landing on gcd h | y is
 //   sum over d | y/h of mu(d) above[h d] (above[x] = weight of sets whose gcd x divides), minus
 //   at[h], the sets already at gcd h. Cost: a divisor-of-divisor sum per y, O(m log^2 m) per test.
+// Bounds: m: 1..=100_000
 @!multitest
 type Z = Mod<998_244_353>
 let m: 1..=100_000 = read()

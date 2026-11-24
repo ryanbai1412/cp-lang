@@ -25,5 +25,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Convex piecewise-linear cost checked at breakpoints: sorted().scan(+) and first_gt(i) ?? n."
+ "notes": "Convex piecewise-linear cost checked at breakpoints: sorted().scan(+) and first_gt(i) ?? n.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "031b2a603d947c1ba8b9b45fdc3b7b41b6127306"
+ }
 }

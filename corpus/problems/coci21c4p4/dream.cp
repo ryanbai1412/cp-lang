@@ -1,26 +1,31 @@
 // COCI 2021/22 C4 P4 Parkovi: put parks on exactly k vertices of a weighted tree to minimise
 // the largest distance from any vertex to its nearest park. Print that distance and the parks.
-domain V = [read Int]
-let k = read Int
-let t = Rooted(Graph.undirected(read [V.len - 1](u: V, v: V, w: Int)), root: V.first!)
+let n: 1..=2e5 = read()
+let k: 1..=n = read()
+domain V = 1..=n
+let t = Rooted(Graph.undirected(read<[1..n](u: V, v: V, w: 1..=1e9)>()), root: V.first!)
 
-// Greedy for radius r, bottom up: open a park at a child as soon as the uncovered vertex
+// Greedy for radius r, bottom up: open a park at a vertex as soon as the uncovered vertex
 // furthest below it would be out of reach from its parent.
 fn parks(r: Int) -> List<V>:
-    var open = []
-    let state = t.up(leaf: v => (far: Some(0), near: inf), (v, kids) =>
-        let near = kids.min(of: (a, s) => if a.to in open: a.w else: s.near + a.w) ?? inf
-        var far = Some(0)
-        for (a, s) in kids:
-            if s.far.is_some_and(f => f + a.w > r):
-                open.push(a.to)
-            elif s.far is Some(f):
-                far = Some(max(far!, f + a.w))
-        (far: if far! + near <= r: None else: far, near))
-    if state[t.root].far is Some(_): open.push(t.root)
+    var open: List<V> = []
+    var far: [V]?Int = 0      // furthest uncovered vertex at or below v
+    var near: [V]?Int = None  // nearest park at or below v
+    for v in t.order.rev:
+        if let f = far[v], let d = near[v], f + d <= r: far[v] = None
+        if let p = t.parent(v):
+            if let f = far[v], f + t.w(v) > r:
+                open.push(v)
+                near[v] = 0
+                far[v] = None
+            if let f = far[v]: far[p] max= f + t.w(v)
+            if let d = near[v]: near[p] min= d + t.w(v)
+        elif far[v] != None:
+            open.push(v)
     open
 
-let r = first_true(0..=inf, r => parks(r).len <= k)!
-let chosen = parks(r)
+let r = (0..=2e14).first_true(r => parks(r).len <= k)!
+var chosen = parks(r)
+let park = V.mask(chosen)
 print(r)
-print(chosen ++ V.filter(v => v not in chosen).take(k - chosen.len))
+print(chosen + V.filter(v => not park[v]).take(k - chosen.len).collect())

@@ -1,4 +1,4 @@
-use std.geometry.{Vec, HalfPlane, half_plane_intersect, polygon_area}
+use std.geometry.{Vec, HalfPlane}
 
 let n: Int = read()
 var planes: List<HalfPlane> = []

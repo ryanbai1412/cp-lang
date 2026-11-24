@@ -26,7 +26,7 @@ fn a_fix_outside_the_source_is_skipped() {
 fn a_reversed_else_if_fix_from_the_parser_is_left_alone() {
     // From corpus/problems/coci21c4p4/dream.cp: inside a closure the parser's
     // `else if` fix spans 142..133 (plan/domains/compiler/worklog.md).
-    let src = "let xs = [1, 2]\nlet s = xs.fold(0, (acc, x) =>\n    var far = 0\n    for y in xs:\n        if y > 1:\n            far = 1\n        else if y > 0:\n            far = 2\n    far)\nprint(s)\n";
+    let src = "let xs = [1, 2]\nlet s = xs.fold_from(0, (acc, x) =>\n    var far = 0\n    for y in xs:\n        if y > 1:\n            far = 1\n        else if y > 0:\n            far = 2\n    far)\nprint(s)\n";
     let (out, _) = fix(src, &Config::default());
     assert!(out == src || out.contains("        elif y > 0:\n"), "{out}");
 }
@@ -89,9 +89,40 @@ fn a_fix_that_would_add_a_checker_error_is_not_applied() {
     let good = finding(at(8, 9), "2");
     let bad = finding(at(16, 17), "y");
     let mut db = cpl_check::Session::new();
-    let (out, n) =
-        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad.clone(), good.clone()], &[]);
+    let (out, n) = crate::typed::safe_fixes(
+        &mut db,
+        "<t>.cp",
+        text,
+        &[bad.clone(), good.clone()],
+        &[],
+        &cpl_ir::check,
+    );
     assert_eq!((out.as_str(), n), ("let x = 2\nprint(x)\n", 1));
-    let (out, n) = crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad], &[]);
+    let (out, n) = crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad], &[], &cpl_ir::check);
     assert_eq!((out.as_str(), n), (text, 0));
+}
+
+#[test]
+fn a_fix_that_lowering_rejects_is_not_applied() {
+    // noi15p3: an `s.any(..)` rewrite the checker took but lowering
+    // rejected. The fix gate asks the complete check it is given.
+    let text = "let x = 1\nprint(x)\n";
+    let span = Span { start: 8, end: 9 };
+    let finding =
+        Diagnostic::warning(crate::LOOP_REDUCTION.code, span, "test").with_fix("fix", span, "2");
+    let lowering_rejects_2 = move |a: &cpl_check::Analysis| {
+        let mut out = a.diagnostics.clone();
+        if a.text.contains("= 2") {
+            out.push(Diagnostic::error(Code("E0302"), span, "lowering"));
+        }
+        out
+    };
+    let mut db = cpl_check::Session::new();
+    let findings = [finding];
+    let (out, n) =
+        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &findings, &[], &lowering_rejects_2);
+    assert_eq!((out.as_str(), n), (text, 0));
+    let (out, n) =
+        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &findings, &[], &cpl_ir::check);
+    assert_eq!((out.as_str(), n), ("let x = 2\nprint(x)\n", 1));
 }

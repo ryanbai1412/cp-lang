@@ -76,7 +76,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// is 0.
     ///
     /// cost: \(O(\log^2 P)\)
-    /// ties: the root with the smaller value
+    /// ties: `Mod<11>(5).sqrt() == Some(Mod<11>(4))`
     /// traps: when `P` is not prime
     /// example: `Mod<7>(2).sqrt() == Some(Mod<7>(3))`
     /// example: `Mod<7>(3).sqrt() == None`
@@ -91,7 +91,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// `x.log(one)` is `Some(0)` for every `x`.
     ///
     /// cost: \(O(\sqrt P)\)
-    /// ties: the least `k`
+    /// ties: `Mod<7>(2).log(Mod<7>(2)) == Some(1)`
     /// traps: never
     /// example: `Mod<7>(3).log(Mod<7>(6)) == Some(3)`
     /// example: `Mod<7>(3).log(Mod<7>(1)) == Some(0)`
@@ -101,7 +101,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// The inverse of every element of `xs`, with one `inv` in all (Montgomery's trick).
     ///
     /// cost: \(O(n + \log P)\)
-    /// empty: `[]`
+    /// empty: `Mod<7>.inv_all([]) == []`
     /// order: same order as `xs`; a new `List`, keyed from 0
     /// traps: when any element has `gcd(v, P) != 1` (in particular 0)
     /// example: `Mod<7>.inv_all([Mod<7>(1), Mod<7>(2), Mod<7>(3)]) == [Mod<7>(1), Mod<7>(4), Mod<7>(5)]`
@@ -155,7 +155,7 @@ impl Read for Mod<P>:
         var r = 0
         for c in s:
             if c != '-':
-                assert c.is_digit, "`read<Mod<P>>()` reads an integer token"
+                assert '0' <= c <= '9', "`read<Mod<P>>()` reads an integer token"
                 r = (r * 10 + Int(c) - Int('0')) % P
         return Mod(if s[0] == '-' and r > 0: P - r else: r)
 
@@ -333,7 +333,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// result is exact modulo `P` even when `sum ks >= M.MOD`.
     ///
     /// cost: \(O(\mathit{ks}.\mathit{len})\) amortized
-    /// empty: 1 (the empty multinomial)
+    /// empty: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([]) == Z(1)`
     /// traps: never
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([2, 1]) == Z(3)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([1, 1, 1]) == Z(6)`
@@ -567,3 +567,15 @@ fn comb_multinomial():
     let cs = Comb<Mod<7>>()
     assert cs.multinomial([3, 3, 3]) == cs.choose(9, 3) * cs.choose(6, 3)
     assert cs.multinomial([5, 5]) == cs.choose(10, 5)
+
+impl Show for Comb<M>:
+    /// How far its tables reach, as `factorials up to n`.
+    ///
+    /// example: `type Z = Mod<7>; "{Comb<Z>(3)}" == "factorials up to 3"`
+    fn show(c) = "factorials up to {c.f.len - 1}"
+
+impl Show for PrimePowerComb:
+    /// Its modulus, as `choose mod p^e`.
+    ///
+    /// example: `"{PrimePowerComb(2, 3)}" == "choose mod 2^3"`
+    fn show(c) = "choose mod {c.p}^{c.e}"

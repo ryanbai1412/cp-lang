@@ -6,6 +6,7 @@
 //   pairs[g] * (2g - 1), pairs[g] the plants with gcd exactly g: (n / g)(m / g) minus
 //   pairs[] of the larger multiples of g, filled from g = min(n, m) down. O(k log k).
 // original: corpus/submissions/5670455.cpp
+// Bounds: n, m: 1..=100_000
 let n: 1..=100_000 = read()
 let m: 1..=100_000 = read()
 let k = min(n, m)

@@ -8,6 +8,7 @@
 //   as gcd(a, b) = 1 this visits every value once. N = 1 prints 1, N = 2, 3 print -1, and
 //   N = 4 is 3 1 4 2. One sieve to 1e6, then O(N) per test plus the prime scan.
 // original: corpus/submissions/4223525.cpp
+// Bounds: n: 1..=1e6
 
 let sieve = Sieve.new(1e6)
 

@@ -9,6 +9,7 @@
 //   O(N + Q).
 // original: corpus/submissions/4452915.cpp
 // Node 0 is the head sentinel; `top + 1` is the first node no splice can move.
+// Bounds: n: 1..=1e6; q: 1..=5e5; ops.l, ops.r, ops.k: 0..=n
 
 let n: 1..=1e6 = read()
 let q: 1..=5e5 = read()

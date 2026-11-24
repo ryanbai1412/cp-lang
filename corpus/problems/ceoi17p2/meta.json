@@ -24,5 +24,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "sorted(by: desc).scan(+); first_true over Prefix cuts; F64 print precision."
+ "notes": "sorted(by: desc).scan(+); first_true over Prefix cuts; F64 print precision.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 11,
+  "sha": "fb3dc04c6715e5e287f7a4c5fea93fef2b541506"
+ }
 }

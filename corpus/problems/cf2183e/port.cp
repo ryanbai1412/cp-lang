@@ -8,6 +8,7 @@
 //   a good sequence starts at 1 and every step goes x -> x + d with d | x. ways[x] counts
 //   prefixes ending at x; a step pushes ways[j * d] to (j + 1) * d for every d and j
 //   (O(m log m)), then zeroes all but a_i if it is given. O(n m log m) per test.
+// Bounds: n, m: 2..=3000; a: 0..=m
 type Z = Mod<998_244_353>
 
 @!multitest

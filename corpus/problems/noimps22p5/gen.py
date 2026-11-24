@@ -10,7 +10,7 @@ if sys.argv[1] == "--max":
 # usage: gen.py seed size; prints "n x y", the 2n brackets, then the n weights
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = 400000 if S >= 400000 else r.randint(2, max(2, S))
-x, y = r.randint(0, 1), r.randint(0, 1)
+x, y = r.choice([(0, 1), (1, 0), (1, 1)])  # the judge never has x = y = 0
 shape = r.choice(["random", "flat", "deep", "comb"])
 s = []
 if shape == "flat": s = ["()"] * n

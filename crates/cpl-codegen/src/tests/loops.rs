@@ -65,6 +65,21 @@ fn explain_names_each_table_stored_as_a_hash_table() {
 }
 
 #[test]
+fn a_stepped_range_walked_by_a_loop_or_generator_is_a_counted_loop() {
+    let out = cpp("let (n, g): (1..=100_000_000, 1..=100) = read()
+print(sum(a for a in (g..=n).step(g) if a % 3 == 0))
+var t = 0
+for a in (0..n).step(g): t += a
+print(t)
+");
+    assert!(
+        !out.contains("steps.push_back"),
+        "`.step(g)` must not list the range first:\n{out}"
+    );
+    assert!(out.contains("cpl::steps(a, n, g, true)"), "{out}");
+}
+
+#[test]
 fn a_reversed_range_find_stops_at_the_first_hit() {
     let out = cpp("var xs = [1, 2, 3, 4]
 xs.push(5)
@@ -93,5 +108,20 @@ fn a_grid_read_and_written_at_product_positions_indexes_the_cell_by_ordinal() {
     assert!(
         !out.contains("emod((ll)i"),
         "no position is taken apart: {out}"
+    );
+}
+
+#[test]
+fn a_callback_loop_that_never_reads_its_item_marks_it_unused() {
+    // `deg` counts the arcs `out` yields; g++ -Wextra must stay quiet.
+    let out = cpp(concat!(
+        "let n: Int = read()\n",
+        "domain V = 0..n\n",
+        "let es: [V](u: V, v: V) = [(u: v, v: V((v.ord + 1) % n)) for v in V]\n",
+        "print(Graph.undirected(es).only(keep: v => v.ord != 1).deg(V(0)))\n",
+    ));
+    assert!(
+        out.contains("[&]([[maybe_unused]] const std::tuple<"),
+        "{out}"
     );
 }

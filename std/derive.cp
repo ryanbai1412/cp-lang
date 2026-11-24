@@ -7,7 +7,7 @@
 /// `a == b` field by field, in declaration order, stopping at the first field that differs.
 ///
 /// cost: \(O(\mathit{fields})\)
-/// empty: `true` for a struct with no fields
+/// empty: `struct E(); eq_fields(E(), E()) == true`
 /// traps: never
 /// example: `struct P(a: Int, b: Int); eq_fields(P(1, 2), P(1, 2)) == true`
 /// example: `struct P(a: Int, b: Int); eq_fields(P(1, 2), P(1, 3)) == false`
@@ -19,8 +19,8 @@ pub fn eq_fields<T>(a: T, b: T) -> Bool:
 /// `a < b` by the first field that differs, in declaration order (lexicographic).
 ///
 /// cost: \(O(\mathit{fields})\)
-/// empty: `false` for a struct with no fields
-/// ties: `false` when every field is equal
+/// empty: `struct E(); lt_fields(E(), E()) == false`
+/// ties: `struct P(a: Int, b: Int); lt_fields(P(1, 2), P(1, 2)) == false`
 /// traps: never
 /// example: `struct P(a: Int, b: Int); lt_fields(P(1, 2), P(1, 3)) == true`
 /// example: `struct P(a: Int, b: Int); lt_fields(P(2, 0), P(1, 3)) == false`
@@ -32,7 +32,7 @@ pub fn lt_fields<T>(a: T, b: T) -> Bool:
 /// The fields of `a` in declaration order, one space apart, each shown as `print` would.
 ///
 /// cost: \(O(\mathit{fields})\) plus the length of the result
-/// empty: `""` for a struct with no fields
+/// empty: `struct E(); show_fields(E()) == ""`
 /// order: declaration order
 /// traps: never
 /// example: `struct P(a: Int, b: Int); show_fields(P(3, 4)) == "3 4"`
@@ -48,7 +48,7 @@ pub fn show_fields<T>(a: T) -> Str:
 /// declaration order: `read_fields<Edge>()` with no `impl` of its own.
 ///
 /// cost: \(O(\mathit{fields})\) plus the tokens read
-/// empty: reads nothing for a struct with no fields
+/// empty: `struct E(); let e = read_fields<E>(); read<Int>() == 4` (stdin `4`)
 /// order: declaration order
 /// traps: when input runs out or a token does not parse as its field's type
 /// example: `struct P(a: Int, b: Int); read_fields<P>().b == 5` (stdin `4 5`)
@@ -96,7 +96,7 @@ impl Hash for Str:
 /// reordered field values usually do not.
 ///
 /// cost: \(O(\mathit{fields})\) plus what each field's `hash` costs
-/// empty: the same fixed value for every struct with no fields
+/// empty: `struct E(); struct F(); hash_fields(E()) == hash_fields(F())`
 /// order: declaration order
 /// traps: never
 /// example: `struct P(a: Int, b: Int); hash_fields(P(1, 2)) == hash_fields(P(1, 2))`

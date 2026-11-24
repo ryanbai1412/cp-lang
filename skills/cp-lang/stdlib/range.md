@@ -4,13 +4,15 @@
 
 Ranges of positions: boundary cuts, halving, binary search and the cyclic `RingRange`. Nothing here imports another std module, so `seq`, `prefix` and every other module can use it.
 
-Import: `use std.range.{...}`.
+In prelude (no `use` needed): `RingRange`.
 
 ## `struct RingRange<D>()`
 
 A run of positions of `D` read cyclically, possibly wrapping past the last position, at most `D.count` of them.
 
 - `@get fn len(self) -> Int` — \(O(1)\); The number of positions in the run.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the span covers no position.
+- `fn each(self) -> yields D` — \(O(\mathit{len})\)
 - `@get fn start(self) -> D` — \(O(1)\)
 - `@get fn end(self) -> D` — \(O(1)\); traps: on an empty span
 - `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
@@ -27,4 +29,5 @@ A run of positions of `D` read cyclically, possibly wrapping past the last posit
 - `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the first element or `None`; \(O(\log n)\) calls to `ok`.; traps: when `ok` is true at the start and false at the end; any other `ok` that is not
 - `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the last element or `None`; \(O(\log n)\) calls to `ok`.; traps: when `ok` is false at the start and true at the end; any other `ok` that is not
 - `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end of `r`; The cut where `ok` flips: false then true along `r` by default, true then false with `last: true`.; traps: when `ok` flips the other way (true then false by default, false then true with
+- `fn shift<D>(self: D, r: Range<Int>) -> Range<D>` — \(O(1)\); The elements at distances `r` after `self`, clipped to its domain and possibly empty.
 - `@get fn ends<D>(self: Range<D>) -> (Int, Int)` — \(O(1)\); The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.; traps: when the range is written backwards

@@ -1,5 +1,4 @@
 // Hungarian on a dense 1500 x 1500 matrix with weights up to 10^9.
-use std.flow.{min_weight_matching}
 
 domain I = 0..1500
 var seed = 1

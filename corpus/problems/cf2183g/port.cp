@@ -8,6 +8,7 @@
 //   resolve them right to left: next to a speed-0 snake at a[i] + 1, it is ambiguous (-1)
 //   when a speed-0 snake also sits at a[i] - 1, else speed 1 iff "L" left a snake at
 //   a[i] - 1; otherwise its speed is 2. O(n) per test.
+// Bounds: n: 1..=200_000; a: 1..=4 * n
 
 @!interactive
 

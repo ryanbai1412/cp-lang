@@ -8,6 +8,7 @@
 //   whose linear extensions number (n - 1)! / (product of subtree sizes). Scanning v upward, a
 //   stack of (last vertex, size) blocks pops every block above P_v into v's subtree, whose size
 //   joins the product. O(n).
+// Bounds: n: 2..=250_000; p: 1..=n - 1
 const P = 998_244_353
 type Z = Mod<P>
 let comb = Comb<Z>()

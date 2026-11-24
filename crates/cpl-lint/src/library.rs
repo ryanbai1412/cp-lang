@@ -19,37 +19,65 @@ pub(crate) struct Declared {
     decl: LibraryLint,
     /// `std.seq`; empty for the file itself.
     module: String,
-    /// The tokens of each statement `from` spans; one for an expression.
-    from: Vec<Vec<(K, String)>>,
+    /// The tokens of `from`, and where each statement it spans ends; one
+    /// statement for an expression.
+    from: Vec<(K, String)>,
+    ends: Vec<usize>,
     /// Names `from` binds itself (lambda parameters, loop and `let`/`var`
     /// variables).
     bound: Vec<String>,
+    /// The module's public names `to` uses, each as the linted file spells
+    /// it (`sq` -> `geo.sq` under `use mylib.geo`).
+    spell: Vec<(String, String)>,
 }
 
 /// The usable `@lint` declarations of `analysis`'s file and every module it uses.
 pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
     let mut out = Vec::new();
-    let mut add = |a: &Analysis, module: &str| {
+    let mut add = |a: &Analysis, module: &str, spell: &dyn Fn(&str) -> Option<String>| {
         for item in &a.items {
             for stmt in &item.syntax.parsed.stmts {
                 for decl in library_lint::declared(stmt, item.offset).0 {
-                    let Some(from) = library_lint::run(&decl.from) else {
+                    let Some((from, ends)) = library_lint::run(&decl.from) else {
                         continue;
                     };
+                    let spell = (library_lint::tokens(&decl.to).iter())
+                        .map(|t| &decl.to[t.span.start as usize..t.span.end as usize])
+                        .filter_map(|w| Some((w.to_string(), spell(w)?)))
+                        .collect();
                     out.push(Declared {
+                        spell,
                         lint: intern(&decl.name),
-                        bound: bound_names(&from.concat()),
+                        bound: bound_names(&from),
                         decl,
                         module: module.to_string(),
                         from,
+                        ends,
                     });
                 }
             }
         }
     };
-    add(analysis, "");
-    for m in analysis.modules() {
-        add(&m.analysis, &m.name);
+    add(analysis, "", &|_| None);
+    for (i, m) in analysis.modules().iter().enumerate() {
+        let public = |w: &str| {
+            (m.analysis.items.iter())
+                .flat_map(|item| &item.syntax.decls)
+                .any(|d| d.public && d.name == w)
+        };
+        let spell = |w: &str| {
+            if !public(w) {
+                return None;
+            }
+            if let Some((local, _)) =
+                (analysis.imports().iter()).find(|(_, imp)| imp.module == i && imp.name == w)
+            {
+                return (local != w).then(|| local.clone());
+            }
+            let (alias, _) = analysis.aliases().iter().find(|(_, &at)| at == i)?;
+            Some(format!("{alias}.{w}"))
+        };
+        add(&m.analysis, &m.name, &spell);
     }
     out
 }
@@ -82,6 +110,7 @@ pub(crate) fn intern(name: &str) -> &'static Lint {
         replaces_whole: false,
         std_structure: false,
         quiet_in_namesake: false,
+        on: &[],
         no_fix: None,
         removed: None,
         family: None,
@@ -182,17 +211,19 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         .chain(&spans.stmts)
         .filter_map(|s| Some((*by_start.get(&s.start)?, *by_end.get(&s.end)?, *s)))
         .collect();
-    candidates.sort_by_key(|c| (c.0, std::cmp::Reverse(c.1)));
+    cpl_diag::sort_by_key(&mut candidates, |c| {
+        (c.0 as u64) << 32 | (u32::MAX as usize - c.1) as u64
+    });
     candidates.dedup_by_key(|c| (c.0, c.1));
     // A statement's span can run past its last token (a block's newline).
+    let before = |at: u32| toks.partition_point(|t| t.span.start < at);
     let tok_range = |s: &Span| {
-        let start = toks.partition_point(|t| t.span.start < s.start);
-        let stop = toks.partition_point(|t| t.span.end <= s.end);
+        let (start, stop) = (before(s.start), before(s.end));
         (start < stop).then_some((start, stop))
     };
     let mut out = Vec::new();
     for d in declared {
-        let all = d.from.concat();
+        let all = &d.from;
         let repeated: Vec<bool> = (d.decl.holes.iter())
             .map(|h| all.iter().filter(|(_, t)| t == h).count() > 1)
             .collect();
@@ -207,15 +238,18 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             by_end: &by_end,
             repeated: repeated.clone(),
         };
-        let parts: Vec<Matcher> = d.from.iter().map(|p| matcher(p.as_slice())).collect();
+        let mut start = 0;
+        let parts: Vec<Matcher> = (d.ends.iter())
+            .map(|&end| matcher(&d.from[std::mem::replace(&mut start, end)..end]))
+            .collect();
         // A run of statements matches statement by statement, in one block.
-        let sites: Vec<Vec<Span>> = match d.from.len() {
+        let sites: Vec<Vec<Span>> = match d.ends.len() {
             1 => candidates.iter().map(|c| vec![c.2]).collect(),
             k => {
                 let mut runs: Vec<Vec<Span>> = (spans.blocks.iter())
                     .flat_map(|b| b.windows(k).map(<[Span]>::to_vec))
                     .collect();
-                runs.sort_by_key(|r| (r[0].start, r[k - 1].end));
+                cpl_diag::sort_by_key(&mut runs, |r| Span::new(r[0].start, r[k - 1].end).order());
                 runs.dedup();
                 runs
             }
@@ -247,7 +281,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                     ))
                 })
                 .collect();
-            let fix = fill(&d.decl.to, &got, &names);
+            let fix = fill(&d.decl.to, &got, &names, &d.spell);
             let from = if d.module.is_empty() {
                 "this file".to_string()
             } else {
@@ -370,7 +404,12 @@ fn pure(kinds: &[K]) -> bool {
 
 /// `to` with each hole replaced by what it matched, in brackets where the
 /// code around it would otherwise bind tighter.
-fn fill(to: &str, got: &HashMap<&str, &str>, names: &[(String, String)]) -> String {
+fn fill(
+    to: &str,
+    got: &HashMap<&str, &str>,
+    names: &[(String, String)],
+    spell: &[(String, String)],
+) -> String {
     let toks = library_lint::tokens(to);
     let mut out = String::new();
     let mut last = 0;
@@ -392,6 +431,11 @@ fn fill(to: &str, got: &HashMap<&str, &str>, names: &[(String, String)]) -> Stri
             }
         } else if let Some((_, user)) = names.iter().find(|(n, _)| n == word) {
             user.clone()
+        } else if let Some((_, spelled)) = (spell.iter())
+            .find(|(n, _)| n == word)
+            .filter(|_| i == 0 || toks[i - 1].kind != K::Dot)
+        {
+            spelled.clone()
         } else {
             continue;
         };

@@ -12,6 +12,7 @@
 // checker: corpus/problems/ioi22p2/checker.py
 // stdin: n. stdout: the number of states, then per state the bag it opens and the action for
 //   each count 1..=n (-1 / -2 name bag A / B as smaller, else the state to write).
+// Bounds: n: 2..=5000
 let n: 2..=5000 = read()
 domain Count = 1..=n
 let fanout = [3, 3, 3, 3, 3, 2, 2, 1]

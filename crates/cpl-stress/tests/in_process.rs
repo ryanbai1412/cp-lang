@@ -174,3 +174,86 @@ fn an_interactor_that_traps_is_an_interactor_re_with_its_trap() {
     assert_eq!(error.at(&["code"]).as_str(), Some("R0101"), "{error:?}");
     assert_eq!(error.at(&["start", "line"]).as_i64(), Some(16), "{error:?}");
 }
+
+/// Under `--explain`, an answer the interactor rejects is explained as
+/// `cpl stress` explains it: the `print` that gave it and the lines behind
+/// it (`cpl_stress::judge::explaining` makes the choice for both).
+#[test]
+fn an_interactive_failure_is_explained_by_the_answer_it_printed() {
+    let source = include_str!("../../../bench/stress/guess-unread-verdict.cp");
+    let options = Options {
+        cases: 30,
+        size: 8,
+        seed: 1,
+        jobs: 1,
+        limit: std::time::Duration::from_millis(1000),
+        ..Options::default()
+    };
+    let result = stress_source("g.cp", source, &options, Some(1 << 26), true).unwrap();
+    let json = cpl_json::parse(&result.render()).unwrap();
+    let divergence = json.at(&["counterexample", "explain", "divergence"]);
+    assert_eq!(
+        divergence.at(&["name"]).as_str(),
+        Some("answer"),
+        "{json:?}"
+    );
+    assert_eq!(
+        divergence.at(&["fast", "line"]).as_i64(),
+        Some(14),
+        "{json:?}"
+    );
+    let blame = divergence.at(&["blame"]).as_array().unwrap();
+    assert!(
+        blame.iter().any(|b| b.at(&["line"]).as_i64() == Some(7)),
+        "{json:?}"
+    );
+}
+
+/// Against `@alt(f)` parts, `--explain` names the innermost wrong call of
+/// a part, as `cpl stress` does (`cpl_stress::calls::first_call_divergence`).
+#[test]
+fn a_parts_wrong_call_is_explained_as_the_cli_explains_it() {
+    let cases = [
+        (
+            include_str!("../../cpl-cli/tests/debugger/part_planted.cp"),
+            "tri(k: 1)",
+            1,
+        ),
+        (
+            include_str!("../../cpl-cli/tests/debugger/part_recursive.cp"),
+            "fib(k: 3)",
+            2,
+        ),
+    ];
+    for (source, name, nth) in cases {
+        let options = Options {
+            jobs: 1,
+            ..Options::default()
+        };
+        let result = stress_source("p.cp", source, &options, Some(1 << 26), true).unwrap();
+        let json = cpl_json::parse(&result.render()).unwrap();
+        let divergence = json.at(&["counterexample", "explain", "divergence"]);
+        assert_eq!(divergence.at(&["name"]).as_str(), Some(name), "{json:?}");
+        assert_eq!(divergence.at(&["call"]).as_bool(), Some(true), "{json:?}");
+        assert_eq!(divergence.at(&["nth"]).as_i64(), Some(nth), "{json:?}");
+    }
+}
+
+#[test]
+fn a_part_brute_that_traps_is_reported_at_its_trap() {
+    let source = "let n: 1..=9 = read()\n\nfn tri(k: Int) -> Int = k * (k + 1) / 2\n\n@alt(tri)\nfn tri_slow(k: Int) -> Int = [0][k]\n\nprint(tri(n))\n";
+    let options = Options {
+        jobs: 1,
+        ..Options::default()
+    };
+    let result = stress_source("p.cp", source, &options, Some(1 << 26), false).unwrap();
+    let json = cpl_json::parse(&result.render()).unwrap();
+    let counterexample = json.at(&["counterexample"]);
+    assert_eq!(
+        counterexample.at(&["verdict"]).as_str(),
+        Some("brute RE"),
+        "{json:?}"
+    );
+    let error = counterexample.at(&["error"]);
+    assert!(error.at(&["code"]).as_str().is_some(), "{json:?}");
+}

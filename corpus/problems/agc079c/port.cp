@@ -41,6 +41,7 @@
 // touch to match `active` avoids any avoidable flip; thereafter every push and
 // forced pop fixes the required end, so flipping only when needed (ignoring
 // free 1-element flips) achieves the exact minimum reversal count.
+// Bounds: n: 1..=250_000; a: 1..=n
 
 enum Side: Back | Front
 

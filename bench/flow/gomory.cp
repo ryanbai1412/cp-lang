@@ -1,5 +1,4 @@
 // Gomory-Hu (Gusfield): 500 vertices, 5000 random undirected edges, weights up to 100.
-use std.flow.{gomory_hu}
 
 domain V = 0..500
 var seed = 1

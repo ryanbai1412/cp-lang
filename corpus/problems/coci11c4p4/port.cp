@@ -1,4 +1,5 @@
 // Source: COCI 2011/2012 Contest 4 #4 (Ograda), https://dmoj.ca/problem/coci11c4p4
+// limits: 1000 ms, 32 MB
 // Problem: Slavko's fence of n <= 3e5 boards of distinct heights, and n distinct new boards
 //   (heights < 1e9). Arrange the new boards so every neighbour pair compares as in Slavko's
 //   fence, maximizing the sum of |height differences| of neighbours; print it and the fence.
@@ -8,6 +9,7 @@
 //   0) only keep the slope: rising slopes get theirs left to right, then falling ones right
 //   to left. O(n log n).
 // original: corpus/submissions/5325112.cpp
+// Bounds: n: 2..=3e5; old, boards: 1..=1e9
 let n: 2..=3e5 = read()
 domain I = 1..=n
 let old: [I]1..=1e9 = read()
@@ -26,8 +28,7 @@ fn rank(i: I) -> Rank:
     let falling = pull > 0 or (pull == 0 and old[i.prev!] > old[i])
     (pull, falling, if falling: -i.idx else: i.idx)
 
-var pile = sorted(boards.collect(), by: b => -b)  // the shortest board is on top
 var fence: [I]Int = 0
-for i in sorted([i for i in I], by: i => rank(i)): fence[i] = pile.pop()!
+for (i, b) in zip(I.collect().sorted(by: rank), boards.sorted()): fence[i] = b
 print(sum(abs(fence[i] - fence[j]) for i in I if let j = I.at(i + 1)))
 print(fence)

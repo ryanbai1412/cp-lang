@@ -9,6 +9,7 @@
 //   Shrinking l only frees vertices, so binary search l. The subset sum is a Bitset over level
 //   sizes grouped by size (O(sqrt n) distinct), each group split into powers of two:
 //   O(n sqrt(n) log n / 64) per check.
+// Bounds: n: 2..=1000; k: 0..=1000; raw_par: 1..=n
 
 @!multitest
 let (n, k): (2..=1000, 0..=1000) = read()

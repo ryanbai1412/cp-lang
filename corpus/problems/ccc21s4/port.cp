@@ -6,6 +6,8 @@
 //   dist from one BFS from N over reversed walkways. A min SegTree over route positions
 //   rewrites the two swapped ones each day: O(N + W + D log N).
 // original: corpus/submissions/4323468.cpp
+// Bounds: n: 3..=2e5; w: 0..=2e5; d: 1..=2e5;
+//   walkways.from, walkways.to, swaps.x, swaps.y: 1..=n
 
 let n: 3..=2e5 = read()
 let w: 0..=2e5 = read()

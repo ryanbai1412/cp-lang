@@ -21,7 +21,7 @@ for i in 0..reps:
     if d.same(V((i) % n), V((i * 7 + 3) % n)): s += 1 // timed: dsu.Dsu.same
     s += d.size(V((i * 11) % n)) // timed: dsu.Dsu.size
     s += d.components // timed: dsu.Dsu.components
-for _ in 0..500:
+for _ in 0..1500:
     for r in d.roots(): s += r.ord // timed: dsu.Dsu.roots
 for _ in 0..60:
     s += d.groups().len // timed: dsu.Dsu.groups
@@ -45,7 +45,7 @@ for i in 0..reps:
     if o.same(V((i) % n), V((i * 7 + 3) % n)): s += 1 // timed: dsu.DsuOf.same
     s += o.size(V((i * 11) % n)) // timed: dsu.DsuOf.size
     s += o.components // timed: dsu.DsuOf.components
-for _ in 0..500:
+for _ in 0..1500:
     for x in o.roots(): s += x.ord // timed: dsu.DsuOf.roots
     for x in o.values: s += x // timed: dsu.DsuOf.values
 for _ in 0..60:
@@ -71,6 +71,10 @@ for i in 0..reps:
     let m = p.mark() // timed: dsu.ParityDsu.mark
     p.unite(V((i) % n), V((i * 7 + 1) % n))
     p.undo_to(m) // timed: dsu.ParityDsu.undo_to
+for i in 0..reps:
+    s += p.components // timed: dsu.ParityDsu.components
+for _ in 0..30:
+    s += p.groups().len // timed: dsu.ParityDsu.groups
 
 for _ in 0..250:
     s += PotentialDsu<V>().components // timed: dsu.PotentialDsu.new

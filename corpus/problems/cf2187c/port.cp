@@ -9,6 +9,7 @@
 //   smaller of the two depths below p. Sum it by merging depth tables up the tree, the
 //   shorter into the longer (each bucket keeps a count and a subtree-size sum, so one pass
 //   over the shorter table adds every cross pair). O(n) by long-path merging.
+// Bounds: n: 2..=200_000; m: 0..=200_000; edges.u, edges.v: 1..=n
 
 struct Bucket(cnt: Int, sum: Int)
 

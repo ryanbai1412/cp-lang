@@ -36,15 +36,6 @@ builds both by hand.
   associated values. Routed to Core with the next batch.
 - **Severity:** low.
 
-## Subset table sized at top level even when unreached
-- **Where:** with `domain Letter = 0..m` at top level, a `[Subset<Letter>]`
-  local in a fn that is called only for m < 22 traps for m = 26 (R0401
-  "Subset over 26 values: at most 25" at the declaration; the fn body never
-  runs). The port declares `Letter` and `Pos` inside `solve()`. Repro sent to
-  Core.
-- **Goal it hurts:** correct (a guarded path traps).
-- **Severity:** medium (silent until a large m test).
-
 ## Dream
 
 Kept here until the std features above exist (a dream.cp must pass `scripts/corpus.py verify`).

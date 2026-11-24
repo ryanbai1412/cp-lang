@@ -9,6 +9,7 @@
 //   walk the suffix maxima j > i by rising a[j], getting the gain by binary search and the loss
 //   from suffix sums, and stop once a[i] + a[j] reaches the cap pref_min[i - 1]. The walks
 //   telescope to O(n) steps, O(n log n) in all.
+// Bounds: n: 1..=1_000_000; a: 0..=2_000_000
 
 
 @!multitest

@@ -128,7 +128,7 @@ fn hold_cli(cpl: Option<PathBuf>) {
 }
 
 /// The `cpl` a case execs: `CPL_CONFORM_CLI`, else the one beside cpl-conform.
-fn cli_binary() -> Result<PathBuf, String> {
+pub(crate) fn cli_binary() -> Result<PathBuf, String> {
     if let Some(held) = held_cli() {
         return Ok(held);
     }
@@ -176,6 +176,16 @@ fn case_limit(text: &str) -> u64 {
 
 /// An `@cpp` body is C++ only, so the program runs as its C++ build, as
 /// `cpl run` runs it.
+/// The directory C++ builds of `what` are cached in: under `CPL_CXX_CACHE_DIR`, else the temp dir.
+pub(crate) fn cxx_cache(what: &str) -> std::path::PathBuf {
+    let cache = match std::env::var_os("CPL_CXX_CACHE_DIR") {
+        Some(dir) => std::path::PathBuf::from(dir).join(format!("conform-{what}")),
+        None => std::env::temp_dir().join(format!("cpl-conform-{what}")),
+    };
+    let _ = std::fs::create_dir_all(&cache);
+    cache
+}
+
 fn run_cpp_build(
     program: &cpl_ir::Program,
     path: &str,
@@ -183,11 +193,7 @@ fn run_cpp_build(
     input: &[u8],
 ) -> Result<Ran, String> {
     let cpp = cpl_codegen::emit(program, path, Some(text));
-    let cache = match std::env::var_os("CPL_CXX_CACHE_DIR") {
-        Some(dir) => std::path::PathBuf::from(dir).join("conform-cpp-body"),
-        None => std::env::temp_dir().join("cpl-conform-cpp-body"),
-    };
-    let _ = std::fs::create_dir_all(&cache);
+    let cache = cxx_cache("cpp-body");
     let bin = crate::diff::compile_cpp(&cpp, &cache).map_err(|e| match e {
         crate::diff::CppCompileError::Cxx(m) | crate::diff::CppCompileError::Infra(m) => m,
     })?;
@@ -268,7 +274,7 @@ fn unmet_has_lacks(text: &str, out: &str) -> Option<String> {
         })
 }
 
-fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
+pub(crate) fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
     let mut out = Vec::new();
     for line in text.lines() {
         let Some(rest) = line.trim_start().strip_prefix("//") else {
@@ -281,7 +287,7 @@ fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
     out
 }
 
-fn unquote(v: &str) -> String {
+pub(crate) fn unquote(v: &str) -> String {
     let body = v
         .strip_prefix('"')
         .and_then(|q| q.strip_suffix('"'))

@@ -35,7 +35,7 @@ impl RangeBounds {
             .then_some(NarrowLayout::OptI32)
     }
 
-    fn limits(&self) -> Option<(i64, i64)> {
+    pub(super) fn limits(&self) -> Option<(i64, i64)> {
         let lo_min = self
             .lo_const
             .or_else(|| self.lo.as_ref().and_then(expr_limits).map(|(lo, _)| lo))?;
@@ -53,6 +53,63 @@ impl RangeBounds {
             .hi_const
             .or_else(|| self.hi.as_ref().and_then(expr_limits).map(|(_, hi)| hi))?;
         IntWidth::of(lo_min, hi_max)
+    }
+}
+
+/// `ty` as the judge's grader holds it, from its declared range `info`
+/// (R10.1.4): `int` unless the range is past it, so a value never
+/// narrows on the way; `Err` is the spelling of a range with an open end.
+/// Why a declared type can't cross to the judge's grader.
+pub(super) enum Uncrossable {
+    /// A range with an open end, as spelled.
+    Open(String),
+    /// A type the grader has no spelling for.
+    Type(Ty),
+}
+
+/// The grader's side of `ty`, declared with ranges `info`.
+pub(super) fn judge_ty(ty: &Ty, info: Option<&RangeInfo>) -> Result<JudgeTy, Uncrossable> {
+    side(ty, info).map_err(|why| match why {
+        Uncrossable::Type(_) => Uncrossable::Type(ty.clone()),
+        open => open,
+    })
+}
+
+fn side(ty: &Ty, info: Option<&RangeInfo>) -> Result<JudgeTy, Uncrossable> {
+    match (ty, info) {
+        (Ty::Int, Some(RangeInfo::Scalar(b))) => {
+            let open = |e: &Option<Expr>, c: Option<i64>| e.is_none() && c.is_none();
+            if open(&b.lo, b.lo_const) || open(&b.hi, b.hi_const) {
+                return Err(Uncrossable::Open(b.text.clone()));
+            }
+            let int = i64::from(i32::MIN)..=i64::from(i32::MAX);
+            Ok(match b.limits() {
+                Some((lo, hi)) if !int.contains(&lo) || !int.contains(&hi) => JudgeTy::Long,
+                _ => JudgeTy::Int,
+            })
+        }
+        (Ty::Int, _) => Ok(JudgeTy::Int),
+        (Ty::Unit, _) => Ok(JudgeTy::Void),
+        (Ty::Float, _) => Ok(JudgeTy::Double),
+        (Ty::Bool, _) => Ok(JudgeTy::Bool),
+        (Ty::Char, _) => Ok(JudgeTy::Char),
+        (Ty::Str, _) => Ok(JudgeTy::Str),
+        (Ty::List(elem), info) if **elem != Ty::Unit => {
+            let inner = match info {
+                Some(RangeInfo::Elem(e)) => Some(&**e),
+                _ => None,
+            };
+            Ok(JudgeTy::List(Box::new(side(elem, inner)?)))
+        }
+        (Ty::Tuple(items), info) if !items.contains(&Ty::Unit) => {
+            let at = |i: usize| match info {
+                Some(RangeInfo::Tuple(infos)) => infos.get(i).and_then(Option::as_ref),
+                _ => None,
+            };
+            let items = items.iter().enumerate().map(|(i, t)| side(t, at(i)));
+            Ok(JudgeTy::Tuple(items.collect::<Result<_, _>>()?))
+        }
+        (ty, _) => Err(Uncrossable::Type(ty.clone())),
     }
 }
 
@@ -95,6 +152,16 @@ fn expr_limits(e: &Expr) -> Option<(i64, i64)> {
 }
 
 impl RangeInfo {
+    /// A scalar range as the [`Spec::Int`] the IR carries.
+    pub(super) fn spec(&self) -> Option<Spec> {
+        let b = self.scalar()?;
+        Some(Spec::Int {
+            lo: b.lo.clone().map(Box::new),
+            hi: b.hi.clone().map(Box::new),
+            text: b.text.clone(),
+        })
+    }
+
     pub(super) fn scalar(&self) -> Option<&RangeBounds> {
         match self {
             RangeInfo::Scalar(b) => Some(b),
@@ -246,6 +313,70 @@ pub(super) fn is_narrowable_elem_ty(ty: &Ty) -> bool {
 }
 
 impl<'a> Lowerer<'a> {
+    pub(super) fn narrow_range_width(&self, ty: &ast::Type) -> Option<IntWidth> {
+        self.static_range_limits(ty)
+            .and_then(|(lo, hi)| IntWidth::of(lo, hi))
+    }
+
+    /// The ends of a range type known while lowering, through a local alias.
+    fn static_range_limits(&self, ty: &ast::Type) -> Option<(i64, i64)> {
+        // `type Sign = -1..=1`: a field of the alias narrows as its range would.
+        if let ast::TypeKind::Named { .. } = &ty.kind {
+            return self
+                .local_alias_target(ty)
+                .and_then(|aliased| self.static_range_limits(aliased));
+        }
+        let ast::TypeKind::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            inclusive,
+        } = &ty.kind
+        else {
+            return None;
+        };
+        let (lo_min, _) = self.range_bound_limits(lo)?;
+        let (_, hi_raw) = self.range_bound_limits(hi)?;
+        let hi_max = if *inclusive {
+            hi_raw
+        } else {
+            hi_raw.checked_sub(1)?
+        };
+        Some((lo_min, hi_max))
+    }
+
+    /// The ranged `Int`, `?Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.
+    pub(super) fn narrow_int_fields(
+        &self,
+        decl: &ast::StructDecl,
+    ) -> std::collections::BTreeMap<usize, IntWidth> {
+        let mut narrow = std::collections::BTreeMap::new();
+        for (at, field) in decl.fields.iter().enumerate() {
+            let width = match &field.ty.kind {
+                ast::TypeKind::Range { .. } => self.narrow_range_width(&field.ty),
+                ast::TypeKind::Named { args, .. } if args.is_empty() => {
+                    self.narrow_range_width(&field.ty)
+                }
+                ast::TypeKind::Array { index, elem } if index.len() == 1 => {
+                    self.narrow_range_width(elem)
+                }
+                ast::TypeKind::Named { name, args }
+                    if (name.text == "List" || name.text == "ListView") && args.len() == 1 =>
+                {
+                    self.narrow_range_width(&args[0])
+                }
+                // `?lo..hi` inside an `int32_t` above INT32_MIN, which is `none`.
+                ast::TypeKind::Optional(inner) => (self.static_range_limits(inner))
+                    .filter(|&(lo, hi)| lo > i64::from(i32::MIN) && hi <= i64::from(i32::MAX))
+                    .map(|_| IntWidth::I32),
+                _ => None,
+            };
+            if let Some(w) = width {
+                narrow.insert(at, w);
+            }
+        }
+        narrow
+    }
+
     pub(super) fn record_narrow_locals(
         &mut self,
         scope: ScopeId,
@@ -405,6 +536,25 @@ impl<'a> Lowerer<'a> {
         } else {
             info
         }
+    }
+
+    /// The range of fn `id`'s param declared `ty`, read in `id`'s own
+    /// module, when its ends are constants and so mean the same at the call.
+    pub(super) fn const_param_range(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeBounds> {
+        let saved_m = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
+        let saved_off = std::mem::replace(&mut self.offset, self.sigs[id].offset);
+        let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
+        let saved_diags = self.diags.len();
+        let info = self.range_info_from_ast(ty);
+        let had_err = self.diags.len() > saved_diags;
+        self.diags.truncate(saved_diags);
+        self.gen_env = saved_env;
+        self.cur_mod = saved_m;
+        self.offset = saved_off;
+        let b = info.filter(|_| !had_err)?.scalar()?.clone();
+        let fixed =
+            (b.lo.is_none() || b.lo_const.is_some()) && (b.hi.is_none() || b.hi_const.is_some());
+        fixed.then_some(b)
     }
 
     /// Records `RangeInfo` for every binding introduced by `pat`.
@@ -1130,5 +1280,175 @@ impl<'a> Lowerer<'a> {
             Block { stmts: vec![set] },
             Block::default(),
         ));
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// `(lo..hi).step(k)` written out walks as a counted loop, not a built list.
+    pub(super) fn stepped_range_iter(&mut self, e: &ast::Expr) -> Option<(Iter, Ty)> {
+        if let ast::ExprKind::Call { callee, args } = &e.kind {
+            if let (ast::ExprKind::Field { base, name }, [k]) = (&callee.kind, args.as_slice()) {
+                let mut range = &**base;
+                while let ast::ExprKind::Paren(inner) = &range.kind {
+                    range = inner;
+                }
+                if name.text == "step"
+                    && k.name.is_none()
+                    && !k.mutable
+                    && matches!(
+                        range.kind,
+                        ast::ExprKind::Range {
+                            lo: Some(_),
+                            hi: Some(_),
+                            step: None,
+                            ..
+                        }
+                    )
+                    && matches!(self.probe_ty_silent(range), Some(Ty::Range(inner)) if *inner == Ty::Int)
+                {
+                    let (
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: None,
+                            rev: false,
+                            closed,
+                        },
+                        ty,
+                    ) = self.iter(range)
+                    else {
+                        return None;
+                    };
+                    let step = self.expect(&k.value, &Ty::Int);
+                    return Some((
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: Some(step),
+                            rev: false,
+                            closed,
+                        },
+                        ty,
+                    ));
+                }
+            }
+        }
+        None
+    }
+}
+
+/// Slices `a[lo..hi]` made from their bounds: views of lists, strings and arrays, sub-ranges of ranges.
+impl<'a> Lowerer<'a> {
+    /// `base[lo..hi]` in key terms on a view and positions otherwise.
+    pub(super) fn slice_builtin(&mut self, base: Expr, lo: Expr, hi: Expr, span: Span) -> Expr {
+        let keyed = Self::keyed_view(&base.ty);
+        let (op, ty) = match &base.ty {
+            Ty::Str | Ty::StrView => (
+                if keyed {
+                    Builtin::KeySlice
+                } else {
+                    Builtin::StrSlice
+                },
+                Ty::StrView,
+            ),
+            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => (
+                if keyed {
+                    Builtin::KeySlice
+                } else {
+                    Builtin::ListSlice
+                },
+                Ty::ListView(e.clone(), base.ty.seq_key().unwrap_or(Dim::Int)),
+            ),
+            // R04b.1.2: a slice of an array keeps its positions as keys.
+            Ty::Array { elem, dims } => (Builtin::KeySlice, Ty::ListView(elem.clone(), dims[0])),
+            _ => unreachable!(),
+        };
+        self.mk(ExprKind::Builtin(op, vec![base, lo, hi]), ty, span)
+    }
+
+    /// `r[lo..hi]` of a `Range`: the keys `lo..hi`, which must lie inside `r`.
+    pub(super) fn slice_range(
+        &mut self,
+        base: Expr,
+        lo: Option<&ast::Expr>,
+        hi: Option<&ast::Expr>,
+        inclusive: bool,
+        span: Span,
+    ) -> Expr {
+        let range_ty = base.ty.clone();
+        let elem = range_ty.seq_elem().unwrap_or(Ty::Int);
+        self.do_expr(Some(&range_ty), span, |lw, out| {
+            let src_slot = lw.temp(range_ty.clone());
+            out.push(Stmt::Let(src_slot, Some(base)));
+            let src = lw.local(src_slot, span);
+            let src_lo = lw.mk(
+                ExprKind::Builtin(Builtin::RangeLo, vec![src.clone()]),
+                Ty::Int,
+                span,
+            );
+            let src_hi = lw.mk(
+                ExprKind::Builtin(Builtin::RangeHi, vec![src]),
+                Ty::Int,
+                span,
+            );
+            let key = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
+                let v = lw.expr(e, Some(&elem));
+                let v = match v.ty {
+                    Ty::Int => v,
+                    Ty::Pos(_) => lw.cast(Cast::Ord, v, Ty::Int),
+                    _ => lw.coerce(v, &Ty::Int, e.span),
+                };
+                lw.int_add(v, i64::from(is_end && inclusive))
+            };
+            let lo_e = match lo {
+                Some(l) => key(lw, l, false),
+                None => src_lo.clone(),
+            };
+            let hi_e = match hi {
+                Some(h) => key(lw, h, true),
+                None => src_hi.clone(),
+            };
+            let (lo_slot, hi_slot) = (lw.temp(Ty::Int), lw.temp(Ty::Int));
+            out.push(Stmt::Let(lo_slot, Some(lo_e)));
+            out.push(Stmt::Let(hi_slot, Some(hi_e)));
+            let (lo_e, hi_e) = (lw.local(lo_slot, span), lw.local(hi_slot, span));
+            let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
+                lw.mk(
+                    ExprKind::Cmp(op, Box::new(l.clone()), Box::new(r.clone())),
+                    Ty::Bool,
+                    span,
+                )
+            };
+            let or = |lw: &mut Self, l: Expr, r: Expr| {
+                lw.mk(
+                    ExprKind::Binary(BinOp::Or, Box::new(l), Box::new(r)),
+                    Ty::Bool,
+                    span,
+                )
+            };
+            let below = cmp(lw, CmpOp::Lt, &lo_e, &src_lo);
+            let reversed = cmp(lw, CmpOp::Lt, &hi_e, &lo_e);
+            let beyond = cmp(lw, CmpOp::Gt, &hi_e, &src_hi);
+            let bad = or(lw, below, reversed);
+            let bad = or(lw, bad, beyond);
+            let message =
+                "a slice `r[lo..hi]` of a range needs r.first <= lo <= hi <= r.end".to_string();
+            out.push(Stmt::If(
+                bad,
+                Block {
+                    stmts: vec![Stmt::Trap(message, lw.span(span))],
+                },
+                Block::default(),
+            ));
+            let res = lw.mk(
+                ExprKind::Range {
+                    lo: Box::new(lo_e),
+                    hi: Box::new(hi_e),
+                },
+                range_ty.clone(),
+                span,
+            );
+            out.push(Stmt::Give(res));
+        })
     }
 }

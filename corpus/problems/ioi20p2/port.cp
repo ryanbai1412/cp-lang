@@ -9,6 +9,7 @@
 // original: corpus/submissions/4724578.cpp (grader function construct, which calls build)
 // stdin here, as the IOI sample grader: n, then the n x n matrix p.
 // stdout: 0, or 1 followed by the bridge matrix.
+// Bounds: n: 1..=1000; p: 0..=3
 let n: 1..=1000 = read()
 domain V = 0..n
 let p: [V, V]0..=3 = read()

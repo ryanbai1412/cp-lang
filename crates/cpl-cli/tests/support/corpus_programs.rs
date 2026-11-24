@@ -16,10 +16,7 @@ pub fn v02_snapshot_ports(repo: &Path) -> Vec<PathBuf> {
     };
     for dir in dirs.flatten() {
         let old = dir.path().join("port.cp");
-        let live = repo
-            .join("corpus/problems")
-            .join(dir.file_name())
-            .join("port.cp");
+        let live = cpl_corpus::package(repo, &dir.file_name().to_string_lossy()).join("port.cp");
         if old.is_file() && std::fs::read(&old).ok() != std::fs::read(&live).ok() {
             out.push(old);
         }
@@ -34,7 +31,7 @@ pub fn problem_dir(port: &Path) -> PathBuf {
     let dir = port.parent().unwrap();
     match (dir.parent(), dir.file_name()) {
         (Some(snap), Some(id)) if snap.ends_with("tests/v02-snapshot") => {
-            snap.join("../../corpus/problems").join(id)
+            cpl_corpus::package(&snap.join("../.."), &id.to_string_lossy())
         }
         _ => dir.to_path_buf(),
     }
@@ -55,17 +52,16 @@ pub fn corpus_and_conformance(repo: &Path) -> Vec<PathBuf> {
 /// rewritten to meet today's taste.
 pub fn shipped(repo: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
-    for root in ["corpus/problems", "spec/conformance"] {
-        for dir in std::fs::read_dir(repo.join(root)).expect("source root exists") {
-            let dir = dir.unwrap().path();
-            if !dir.is_dir() {
-                continue;
-            }
-            for file in std::fs::read_dir(dir).unwrap() {
-                let path = file.unwrap().path();
-                if path.extension().is_some_and(|ext| ext == "cp") {
-                    found.push(path);
-                }
+    let conformance =
+        std::fs::read_dir(repo.join("spec/conformance")).expect("spec/conformance exists");
+    let dirs = conformance
+        .map(|d| d.unwrap().path())
+        .filter(|d| d.is_dir());
+    for dir in cpl_corpus::packages(repo).into_iter().chain(dirs) {
+        for file in std::fs::read_dir(dir).unwrap() {
+            let path = file.unwrap().path();
+            if path.extension().is_some_and(|ext| ext == "cp") {
+                found.push(path);
             }
         }
     }

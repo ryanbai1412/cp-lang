@@ -189,7 +189,7 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::BAD_OPERANDS, body.span, message);
                     return self.err_expr(span);
                 }
-                if let Some(inner) = self.desc_key(&key) {
+                if let Some(inner) = self.reversed_key(&key) {
                     let turned = self.mk(ExprKind::Bool(true), Ty::Bool, body.span);
                     let by = SortBy::Key(slot, Box::new(inner));
                     let kind = ExprKind::Sort(Box::new(place), by, Some(Box::new(turned)));
@@ -286,10 +286,10 @@ impl<'a> Lowerer<'a> {
         };
         self.mk(ExprKind::Sort(Box::new(place), key, None), Ty::Unit, span)
     }
-
-    /// `by: x => desc(k)`: the whole key reversed is `k` asked the other way
-    /// round, the same stable order without a `Desc` per element.
-    fn desc_key(&self, key: &Expr) -> Option<Expr> {
+    /// `by: x => w(k)`, where `w` wraps its one argument in a one-field struct whose `Ord` asks
+    /// that field the other way round (`lt(a, b) = b.f < a.f`, as std's `desc` does): the same
+    /// stable order is `k` sorted descending, without a wrapper per element.
+    fn reversed_key(&self, key: &Expr) -> Option<Expr> {
         let ExprKind::Call(fid, args) = &key.kind else {
             return None;
         };
@@ -299,9 +299,40 @@ impl<'a> Lowerer<'a> {
         let Ty::Struct(sid) = key.ty else {
             return None;
         };
-        let desc = self.view_struct("Desc")?;
-        let made = self.structs[sid].origin_gen.as_ref()?.0 == desc;
-        (made && self.sigs[*fid].decl.name.text == "desc").then(|| inner.clone())
+        let gid = self.structs[sid].origin_gen.as_ref()?.0;
+        let tpl = &self.gen_structs[gid];
+        let [field] = &tpl.decl.fields[..] else {
+            return None;
+        };
+        let wrap = self.sigs[*fid].decl;
+        let ([param], ast::FnBody::Expr(made)) = (&wrap.params[..], &wrap.body) else {
+            return None;
+        };
+        let is_name = |e: &ast::Expr, n: &str| matches!(&e.kind, ast::ExprKind::Name(m) if m == n);
+        let field_of = |e: &ast::Expr, n: &str| matches!(&e.kind, ast::ExprKind::Field { base, name } if is_name(base, n) && name.text == field.name.text);
+        let ast::ExprKind::Call { callee, args } = &made.kind else {
+            return None;
+        };
+        let wraps = is_name(callee, &tpl.decl.name.text)
+            && matches!(&args[..], [arg] if arg.name.is_none() && is_name(&arg.value, &param.name.text));
+        let reversed = self.impls.iter().any(|imp| {
+            imp.mod_id == tpl.mod_id
+                && imp.trait_name.as_deref() == Some("Ord")
+                && matches!(&imp.target.kind, ast::TypeKind::Named { name, .. } if name.text == tpl.decl.name.text)
+                && imp.body.stmts.iter().any(|st| match &st.kind {
+                    ast::StmtKind::Fn(lt) => match (&lt.params[..], &lt.body) {
+                        ([a, b], ast::FnBody::Expr(e)) if lt.name.text == "lt" => matches!(
+                            &e.kind,
+                            ast::ExprKind::Compare { first, rest }
+                                if field_of(first, &b.name.text)
+                                    && matches!(&rest[..], [(ast::CmpOp::Lt, r)] if field_of(r, &a.name.text))
+                        ),
+                        _ => false,
+                    },
+                    _ => false,
+                })
+        });
+        (wraps && reversed).then(|| inner.clone())
     }
 
     pub(in crate::lower) fn array_filled(
@@ -1581,5 +1612,64 @@ impl<'a> Lowerer<'a> {
             );
             out.push(Stmt::Give(res));
         })
+    }
+}
+
+impl Lowerer<'_> {
+    /// The zero-arg `each(self)` (such as `Bitset<D>`'s), or the `iter(self)` of its
+    /// `impl Seq`, that walks a struct, and the element it yields.
+    pub(in crate::lower) fn struct_walk(
+        &mut self,
+        sid: StructId,
+        span: Span,
+    ) -> Option<(FnId, Ty)> {
+        let f = ["each", "iter"].into_iter().find_map(|m| {
+            let f = *self.structs[sid].methods.get(m)?;
+            self.sigs[f].params.is_empty().then_some(f)
+        })?;
+        self.queue_fn(f);
+        match self.ret_of(f, span) {
+            Ty::List(elem) => Some((f, *elem)),
+            _ => None,
+        }
+    }
+
+    /// What a `for` over a `ty` binds: a built-in sequence's or set's element, or
+    /// what a struct's walk yields.
+    pub(in crate::lower) fn walk_elem(&mut self, ty: &Ty, span: Span) -> Option<Ty> {
+        match ty {
+            Ty::Set(elem) | Ty::HashSet(elem) => Some((**elem).clone()),
+            Ty::Struct(sid) => self.struct_walk(*sid, span).map(|(_, elem)| elem),
+            _ => ty.seq_elem(),
+        }
+    }
+
+    /// `seq` as a built-in sequence a loop walks: a struct becomes the call of its walk.
+    pub(in crate::lower) fn walked_struct(&mut self, seq: Expr) -> Expr {
+        let Ty::Struct(sid) = seq.ty else {
+            return seq;
+        };
+        let span = seq.span;
+        match self.struct_walk(sid, span) {
+            Some((f, elem)) => self.mk(
+                ExprKind::Call(f, vec![Arg::Value(seq)]),
+                Ty::List(Box::new(elem)),
+                span,
+            ),
+            None => seq,
+        }
+    }
+}
+
+impl Lowerer<'_> {
+    /// The element of the first bound generic that is walkable.
+    pub(in crate::lower) fn inferred_elem(&mut self, inferred: &GenEnv, span: Span) -> Option<Ty> {
+        let tys: Vec<Ty> = (inferred.values())
+            .filter_map(|ga| match ga {
+                GenArg::Ty(t) => Some(t.clone()),
+                _ => None,
+            })
+            .collect();
+        tys.iter().find_map(|t| self.walk_elem(t, span))
     }
 }

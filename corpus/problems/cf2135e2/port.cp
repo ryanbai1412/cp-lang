@@ -11,7 +11,7 @@
 //   g(i) = sum of p | i with i/p odd, less periods 1 (always) and 2 (n odd) that hold no bad
 //   walk. One multiplicative sieve of odd-divisor sums to max n, then O(n) per test.
 // A brute force agrees for n <= 12.
-use std.math.{sieve_multiplicative}
+// Bounds: t: 1..=10_000; ns: 1..=20_000_000
 
 type M = Mod<998_244_353>
 
@@ -33,9 +33,10 @@ for n in ns:
             let narrow = (if i % 2 == 1: 1 else: 0) + (if n % 2 == 1 and i % 4 == 2: 2 else: 0)
             M(odd_div_sum[i] - narrow)
 
-    let bad = sum(
-        2 * (
-            2 * g(d) - g(d - 1) - g(d + 1)
-        ) * comb.choose(n, (n + d) / 2) for d in (n % 2..=n).step(2)
-    )
-    print(M(2) ** n - bad)
+    var below = g(n % 2 - 1)
+    var bad: M = 0
+    for d in (n % 2..=n).step(2):
+        let (at, above) = (g(d), g(d + 1))
+        bad += (2 * at - below - above) * comb.inv_fact((n + d) / 2) * comb.inv_fact((n - d) / 2)
+        below = above
+    print(M(2) ** n - 2 * bad * comb.fact(n))

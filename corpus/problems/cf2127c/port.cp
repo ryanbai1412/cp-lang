@@ -8,6 +8,7 @@
 //   then re-picks an overlapping pair at no cost, so k does not matter: sort the intervals, and
 //   the answer is the total length plus the least max(0, 2 (q.lo - p.hi)) over adjacent pairs.
 //   O(n log n).
+// Bounds: n: 2..=200_000; _k: 1..=200_000; a, b: 1..=10 ** 9
 
 @!multitest
 let (n, _k): (2..=200_000, 1..=200_000) = read()

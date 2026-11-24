@@ -7,6 +7,7 @@
 //   the length is k + i, and so can its mirror a[n - 1 - i]: at most one of each such pair goes.
 //   Counting the n - k + 1 removals, the best score is the middle block a[k - 1..n - k + 1] (empty
 //   when 2 k - 2 > n) plus max(a[i], a[n - 1 - i]) for i < min(k - 1, n - k + 1). O(n).
+// Bounds: n: 1..=200_000; k: 1..=n; a: 1..=10 ** 9
 
 @!multitest
 let (n, k): (1..=200_000, 1..=n) = read()

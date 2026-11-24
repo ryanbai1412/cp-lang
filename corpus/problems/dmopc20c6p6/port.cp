@@ -10,6 +10,7 @@
 //   and it is the next full source, and the probe it overflowed, now empty, is the next cur.
 //   O(N) operations.
 // original: corpus/submissions/5200785.cpp
+// Bounds: n: 2..=4e4; m: 1..=1e4
 let wire = Wire()
 let n: 2..=4e4 = read()
 let m: 1..=1e4 = read()

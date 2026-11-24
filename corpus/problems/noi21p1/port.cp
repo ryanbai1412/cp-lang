@@ -1,58 +1,59 @@
 // Source: NOI 2021 P1 (Light and Heavy Edges), https://dmoj.ca/problem/noi21p1
+// limits: 1000 ms, 1024 MB
 // Problem: a tree of n <= 1e5 vertices, every edge light. m <= 1e5 operations: "1 a b" makes
 //   every edge with an endpoint on the a-b path light, then the path's edges heavy; "2 a b"
 //   prints the number of heavy edges on the a-b path. Multitest, T <= 3.
-// Solution: an edge is heavy iff both ends were last stamped by the same update (stamp 0 =
-//   never), so an update stamps its path. On a heavy-light layout, a stamp tree holds each
-//   vertex's stamp and a tied tree marks edges to the parent inside one chain range: an update
-//   sets its ranges tied, then unties each range's first cell and the cell after it. A query sums
-//   tied over its ranges and compares stamps across each range's top edge. O(m log^2 n).
+// Solution: an edge is heavy iff both ends were last coloured by the same update, so an update
+//   colours its path with its number and every vertex starts with a colour of its own. On a
+//   heavy-light layout one lazy tree folds a range to its end colours and the number of equal
+//   neighbours (heavy edges inside the range); a query adds those over its ranges and compares
+//   colours across each range's top edge. O(m log^2 n).
 // original: corpus/submissions/3859087.cpp
-let t: 1..=3 = read()
-for _ in 0..t:
-    let n: 1..=1e5 = read()
-    let m: 1..=1e5 = read()
-    domain V = 1..=n
-    domain E = 1..n
+// Bounds: n, m: 1..=1e5; kind: 1..=2; a, b: 1..=n
 
-    fn random_tree() -> [E](u: V, v: V):
-        [E] e => (V(rand(1, e.label)), V(e.label + 1))
+// A range's colours at both ends and its count of equal neighbours; the empty range is `None`.
+type Run = (l: Int, r: Int, ties: Int)
 
-    let edges: [E](u: V, v: V) = read(gen: random_tree)
-    let tree = Rooted(Graph.undirected(edges), V.first!)
+fn join(a: ?Run, b: ?Run) -> ?Run:
+    if let x = a and let y = b: Some((x.l, y.r, x.ties + y.ties + (if x.r == y.l: 1 else: 0)))
+    else: a ?? b
 
-    // Stamp the vertices of each "1" path with the number of the command.
-    // An edge is heavy when its two ends carry the same stamp, because any
-    // later path through just one of them stamps it differently.
-    // The tree is laid out so that a path is a few ranges of cells. Inside
-    // a range, also keep one bit per cell: is the edge to the cell before
-    // heavy? Only where two ranges of a path meet are stamps compared.
-    var stamp = SegTree(+, [tree.Pre] _ => 0, act: assign)
-    var tied = SegTree(+, [tree.Pre] _ => 0, act: assign)
-    var who: [tree.Pre]V = V.first!
-    for v in V: who[tree.sub(v).first!] = v
+let runs = Monoid<?Run>(None, join)
+let paint = Action<?Run, ?Int>(
+    id: None,
+    compose: (new_c, old_c) => new_c ?? old_c,
+    apply: (c, run, span) => if let c = c: Some((c, c, span - 1)) else: run,
+    over: runs,
+)
 
-    for now in 1..=m:
-        let kind: 1..=2 = read()
-        let a: V = read()
-        let b: V = read()
-        if kind == 1:
-            for chain in tree.chains(a, b):
-                let c = chain.range
-                let (l, r) = (c.first!, c.last!)
-                stamp.apply(c, Some(now))
-                tied.apply(c, Some(1))
-                tied.set(l, 0)
-                if r != tree.Pre.last: tied.set(tree.Pre.nth(r.ord + 1), 0)
-        else:
-            let peak = tree.sub(tree.lca(a, b)).first!
-            var heavy = 0
-            for chain in tree.chains(a, b):
-                let c = chain.range
-                let l = c.first!
-                heavy += tied.fold(c) - tied[l]
-                // every range but the highest hangs from the path by one more edge
-                if l != peak:
-                    let above = tree.sub(tree.parent(who[l])!).first!
-                    if stamp[l] != 0 and stamp[l] == stamp[above]: heavy += 1
-            print(heavy)
+@!multitest
+let n: 1..=1e5 = read()
+let m: 1..=1e5 = read()
+domain V = 1..=n
+domain E = 1..n
+
+fn random_tree() -> [E](u: V, v: V):
+    [E] e => (V(rand(1, e.label)), V(e.label + 1))
+
+let edges: [E](u: V, v: V) = read(gen: random_tree)
+let tree = Rooted(Graph.undirected(edges), V.first!)
+let own: [tree.Pre]?Run = [tree.Pre] p => Some((-p.ord - 1, -p.ord - 1, 0))
+var colour = SegTree(runs, own, act: paint)
+
+for now in 1..=m:
+    let kind: 1..=2 = read()
+    let a: V = read()
+    let b: V = read()
+    if kind == 1:
+        for chain in tree.chains(a, b): colour.apply(chain.range, Some(now))
+    else:
+        let peak = tree.sub(tree.lca(a, b)).first!
+        var heavy = 0
+        for chain in tree.chains(a, b):
+            let l = chain.range.first!
+            heavy += colour.fold(chain.range)!.ties
+            // every range but the highest hangs from the path by one more edge
+            if l != peak:
+                let above = tree.sub(tree.parent(tree.at[l])!).first!
+                if colour[l]!.l == colour[above]!.l: heavy += 1
+        print(heavy)

@@ -9,6 +9,7 @@
 //   best split i, with or without a lap over the k teams after it. O(n).
 // original: corpus/submissions/5723345.cpp (grader function delivery)
 // stdin here, as the IOI sample grader: n k l, then the n positions in order.
+// Bounds: n: 1..=10_000_000; k: 1..=n; l: 1..=1_000_000_000; pos: 0..=l - 1
 let n: 1..=10_000_000 = read()
 let k: 1..=n = read()
 let l: 1..=1_000_000_000 = read()

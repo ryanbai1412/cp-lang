@@ -23,10 +23,9 @@ impl<'a> Lowerer<'a> {
         const RANGE_MEMBERS: [&str; 10] = [
             "end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step",
         ];
-        const DOMAIN_MEMBERS: [&str; 22] = [
+        const DOMAIN_MEMBERS: [&str; 21] = [
             "after", "all", "any", "at", "before", "count", "cuts", "first", "is_empty", "last",
             "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "subsets", "sum",
-            "windows",
         ];
         const SEQ_EXTRA: [&str; 6] = [
             "adjacent", "inverse", "items", "resized", "reverse", "reversed",
@@ -688,22 +687,9 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// `xs.sort(x => -x)`, `reverse: true` or the dropped `desc: true`: the
-    /// key goes by name, and largest first is a descending key,
-    /// `by: x => desc(x)` (decision 290).
+    /// `reverse: true` or the dropped `desc: true`: largest first is a
+    /// descending key, `by: x => desc(x)` (decision 290).
     pub(super) fn sort_reverse_arg(&mut self, args: &[ast::Arg]) -> bool {
-        if let [arg] = args {
-            if arg.name.is_none() && matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
-                let message = "a sort takes its key by name: `by: x => ..`";
-                self.error(codes::WRONG_ARG_COUNT, arg.value.span, message);
-                let at = self.span(arg.value.span);
-                let title = format!("write `by: {}`", self.source(arg.value.span));
-                if let Some(last) = self.diags.last_mut() {
-                    last.fix(title, Span::new(at.start, at.start), "by: ");
-                }
-                return true;
-            }
-        }
         let Some((name, value)) = args.iter().find_map(|a| {
             (a.name.as_ref())
                 .filter(|n| matches!(n.text.as_str(), "reverse" | "desc"))

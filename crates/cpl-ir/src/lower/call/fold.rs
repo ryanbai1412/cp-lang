@@ -233,6 +233,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let seq = self.expr(seq_ast, None);
+                let seq = self.walked_struct(seq);
                 let elem = match seq.ty.seq_elem().or_else(|| match &seq.ty {
                     Ty::Array { elem, .. } | Ty::Set(elem) | Ty::HashSet(elem) => {
                         Some((**elem).clone())
@@ -593,6 +594,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let seq = self.expr(arg, None);
+                let seq = self.walked_struct(seq);
                 let elem = match seq.ty.seq_elem().or_else(|| match &seq.ty {
                     Ty::Array { elem, .. } | Ty::Set(elem) | Ty::HashSet(elem) => {
                         Some((**elem).clone())
@@ -940,6 +942,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let seq = self.expr(base, None);
+                let seq = self.walked_struct(seq);
                 let elem = match seq.ty.seq_elem().or_else(|| match &seq.ty {
                     Ty::Array { elem, .. } | Ty::Set(elem) | Ty::HashSet(elem) => {
                         Some((**elem).clone())
@@ -1352,6 +1355,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let seq = self.expr(arg, None);
+                let seq = self.walked_struct(seq);
                 let elem = match seq.ty.seq_elem().or_else(|| match &seq.ty {
                     Ty::Array { elem, .. } | Ty::Set(elem) | Ty::HashSet(elem) => {
                         Some((**elem).clone())

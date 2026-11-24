@@ -17,7 +17,9 @@ ends, `.first`/`.last` are optional.
 3. **Laziness is explicit.** A chain reruns on every walk. Allocation happens
    only at `.collect()`, a comprehension or `List(...)`. Lint flags a chain
    walked twice (sharper when it holds a `mut` lend) and side-effecting
-   closures. (R07.1.3)
+   closures. A generator runs only as far as its consumer pulls: `take(k)`,
+   `first`, `any`, `break` and `return` stop it, and the values it never
+   makes, side effects included, never happen. (R07.1.3)
 4. **Identity everywhere.** Every slice keeps its source's keys
    (`a[l..=r][i] == a[i]`, `s[2..5][3] == s[3]`), and library functions
    answer in the keys they were given. `first`, `nth(k)` and `rebase` cover
@@ -106,7 +108,8 @@ a.items           // (i, a[i]) pairs with a's own indices
 | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `Indexed`, `s.rev`, `s.filter(p)`, `s.take_while(p)`, `Map`, `g.keyed()`, `g.keyed(by: f)` (R07.3.2) |
 | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps (R07.3.3) |
 | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorted sets, deques, `filter` over a `Bidir` (R07.3.4) |
-| `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices (`a[r]`, `take`/`drop`, `windows`, `chunks`, `runs`, `split`), `.map(f)`, `zip(a, b)`; not `.rev` or `filter` (R07.3.5) |
+| `Positional<T>` | `Seq` + `Sized` + `s.nth(k)`, the element `k` steps into the walk, in \(O(1)\) | everything `Indexed`, `s.rev` of an `Indexed`, a domain (R07.3.7) |
+| `Indexed<D, T>` | `Keyed` + `Positional` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices (`a[r]`, `take`/`drop`, `windows`, `chunks`, `runs`, `split`), `.map(f)`, `zip(a, b)`; not `.rev` or `filter` (R07.3.5) |
 | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment | `[D]T`, `List`, `Str`, `mut` slices (R07.3.6) |
 
 **Cost rule.** Views are \(O(1)\) to make and allocate nothing. A
@@ -284,8 +287,8 @@ for d in divisors(n):
   This is ordinary library code; any user generator can do it. (R07.6.3)
 - **No lockstep.** Two generators can't be walked in step, because each
   wants to own the loop. Materialize one (`List(g)`), or zip indexed
-  sequences. `zip`'s first argument is `Indexed` and keys the pairs; each
-  later one is `Indexed` or the `.rev` of an `Indexed`, read by walk
+  sequences. `zip`'s first argument keys the pairs; each later one is
+  `Positional` (an `Indexed`, the `.rev` of one, or a domain), read by walk
   position, so `zip(a, a.rev)` pairs each element with its mirror. (R07.6.4)
 
 ## Adapters (each makes a view: \(O(1)\), lazy)
@@ -356,8 +359,9 @@ since the second walk reruns against what the first wrote.
 | Form | Result | Cost |
 |---|---|---|
 | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\) (R07.9.1) |
-| `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | \(O(n)\) (R07.9.2) |
-| `s.fold(f, init: a)` | `Acc`: a left fold into any accumulator, `init` when empty | \(O(n)\) (R07.9.2) |
+| `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bounded type, `gcd`, a `Monoid`), and a plain fn is E0706 with a fix to `reduce` | \(O(n)\) (R07.9.2) |
+| `s.reduce(f)` | `?T`: a fold by a fn without an identity, `None` when empty | \(O(n)\) (R07.9.2) |
+| `s.fold_from(a, f)` | `Acc`: a left fold into any accumulator, init first, `a` when empty; `cpl fix` rewrites the old `s.fold(f, init: a)` | \(O(n)\) (R07.9.2) |
 | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty; first on ties, the last with `ties: Ties.Last` | \(O(n)\) (R07.9.3) |
 | `s.min_k(k, by: f)`, `s.max_k(k, by: f)` | `List<T>`, the `k` smallest or largest (every element when `k >= n`) in no set order; earlier wins ties | \(O(n)\) expected (R07.9.3) |
 | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Bool>` it is an error naming `count(x => x)` (the trues) and `len` (decision 378) | `Int`, `Bool` | \(O(n)\) (R07.9.4) |

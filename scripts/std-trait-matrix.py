@@ -10,8 +10,11 @@ container is a `pub struct` in std/*.cp with `pub fn len(self) -> Int`.
 - `is_empty` beside `len`.
 - `Eq` is structural for every struct (core 12-powers), so it isn't listed.
 
-A struct whose doc says `not a container: <why>` is skipped. Shrink-only:
-`--max` in scripts/check.sh is today's count of missing (type, trait) pairs.
+A struct whose doc says `not a container: <why>` is skipped. A type whose
+nodes live in an arena it is passed (`PMultiset` in a `PArena`) walks and
+prints through `x.within(ar) -> lends V`: `V` is checked as a container, so
+the type itself needs only `is_empty`. Hard zero: `--max 0` in scripts/ci.py
+and `std_trait_matrix` in scripts/debt-ratchet.py.
 
     uv run python scripts/std-trait-matrix.py [--max N]
 """
@@ -21,19 +24,21 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STRUCT = re.compile(r"((?:^///[^\n]*\n)*)^pub struct (\w+)(?:<[^>]*>)?[^\n]*\n((?:(?:    [^\n]*)?\n)*)", re.M)
 
 
-def matrix():
-    for path in sorted(glob.glob(os.path.join(ROOT, "std", "*.cp"))):
+def matrix(root=ROOT):
+    for path in sorted(glob.glob(os.path.join(root, "std", "*.cp"))):
         text = open(path).read()
-        rel = os.path.relpath(path, ROOT)
+        rel = os.path.relpath(path, root)
         for m in STRUCT.finditer(text):
             doc, name, body = m.groups()
             if not re.search(r"pub fn len\(self\) -> Int\b", body) or "not a container:" in doc:
                 continue
             line = text.count("\n", 0, m.start(2)) + 1
             missing = []
-            if not re.search(rf"^impl(?:<[^>]*>)? Show for {name}\b", text, re.M):
+            view = re.search(r"pub fn within\(self, [^)]*\) -> lends (\w+)", body)
+            viewed = view and re.search(rf"^pub struct {view.group(1)}\b", text, re.M)
+            if not viewed and not re.search(rf"^impl(?:<[^>]*>)? Show for {name}\b", text, re.M):
                 missing.append("Show")
-            if not re.search(r"pub fn (?:each|iter|items)\(self\)[^\n]*yields", body):
+            if not viewed and not re.search(r"pub fn (?:each|iter|items)(?:<[^>]*>)?\(self\)[^\n]*yields", body):
                 missing.append("walk")
             if not re.search(r"pub fn is_empty\(self\)", body):
                 missing.append("is_empty")

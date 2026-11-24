@@ -1,4 +1,5 @@
 // Source: CEOI 2022 P3 (Prize), https://dmoj.ca/problem/ceoi22p3
+// limits: 20000 ms, 1024 MB
 // Problem: interactive. Two rooted trees on the same 2 <= N <= 1e6 labels with hidden edge
 //   weights 1..=2000. Print 2 <= K <= 1e5 chosen labels on one line, ask Q questions (a, b),
 //   each answered by the distances of a and b to their LCA in both trees; then answer
@@ -10,6 +11,7 @@
 //   tree, in tree 1 they are chosen vertices, and both tie graphs are connected. One BFS per tree
 //   fixes the depths up to a shift; then d(p, q) = dep p + dep q - 2 dep lca. O((N + T) log N).
 // original: corpus/submissions/4728198.cpp
+// Bounds: n: 2..=1_000_000; k: 2..=100_000; _, t: 1..=100_000; pairs.a, pairs.b: 1..=n
 
 let (n, k, _, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read()
 domain V = 1..=n
@@ -21,7 +23,7 @@ let two = Rooted.from_parents(read<[V]?V>(none: -1))
 var picked: List<V> = [one.at[one.Pre.at(i)!] for i in 0..k]
 print(picked)
 picked.sort(by: v => two.tin[v].ord)
-let ask_pairs = [(a, b) for (a, b) in picked.adjacent]
+let ask_pairs = picked.adjacent.collect()
 for (a, b) in ask_pairs: print("?", a, b)
 print("!")
 

@@ -1,6 +1,7 @@
 """gen.py seed size: DMOPC '20 C7 P4. 1 <= N, Q <= 2e5, a tree; "1 u" toggles, "2 u v" asks.
 size >= 2e5 gives N = Q = 2e5: by seed, a random tree, a path, or a star."""
 import random, sys
+if sys.argv[1:] == ["--max"]: sys.argv[1:] = ["1", "200000"]  # the hardest big case
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 big = size >= 2 * 10 ** 5

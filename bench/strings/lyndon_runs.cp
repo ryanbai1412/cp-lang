@@ -1,4 +1,3 @@
-use std.strings.{lyndon_runs}
 
 let n = 100_000
 var s = List.filled(n, 0)

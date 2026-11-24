@@ -8,6 +8,8 @@
 //   corners in a difference grid, take running sums along both axes and add the area of every cell dark enough: O(n^2)
 //   cells, no data structure (the original sweeps x over a sqrt-decomposed y axis).
 // original: corpus/submissions/5672281.cpp
+// Bounds: n: 1..=1000; need, panes.tint: 1..=1e9;
+//   panes.x0, panes.y0, panes.x1, panes.y1: 0..=1e9
 let n: 1..=1000 = read()
 let need: 1..=1e9 = read()
 let panes: [n](x0: 0..=1e9, y0: 0..=1e9, x1: 0..=1e9, y1: 0..=1e9, tint: 1..=1e9) = read()

@@ -312,7 +312,7 @@ fn eval_one(root: &Path, db: &mut Session, block: &SpecBlock) -> (String, (CaseO
     let source = match &block.marker {
         Marker::Invalid(why) => return (id, (outcome(Some(why.clone())), false)),
         Marker::Signatures(file) => {
-            let failure = against_std(root, file, |std| signatures_unmet(&block.code, std));
+            let failure = against_std(root, file, |std| signatures_unmet(&block.code, std, file));
             let ok = failure.is_none();
             return (id, (outcome(failure), ok));
         }
@@ -486,12 +486,26 @@ fn header_name(h: &str) -> &str {
     &rest[..end]
 }
 
-/// Why a `signatures:` block disagrees with std, or `None`.
-pub fn signatures_unmet(block: &str, std: &str) -> Option<String> {
+/// A `fn m.name` header with `m` one of the `files`' modules, as its module
+/// declares it: `fn name`. A free fn whose name a prelude fn already takes is
+/// reached qualified, so the spec spells it that way.
+fn as_declared(h: &str, files: &str) -> String {
+    files
+        .split_whitespace()
+        .filter_map(|f| f.strip_prefix("std/")?.strip_suffix(".cp"))
+        .find_map(|m| Some(format!("fn {}", h.strip_prefix(&format!("fn {m}."))?)))
+        .unwrap_or_else(|| h.to_string())
+}
+
+/// Why a `signatures:` block disagrees with the std `files`, or `None`.
+pub fn signatures_unmet(block: &str, std: &str, files: &str) -> Option<String> {
     let std_headers = decl_headers(std);
     let have: std::collections::HashSet<String> =
         std_headers.iter().map(|h| header_key(h)).collect();
-    let wanted = decl_headers(block);
+    let wanted: Vec<String> = decl_headers(block)
+        .iter()
+        .map(|h| as_declared(h, files))
+        .collect();
     if wanted.is_empty() {
         return Some("a `signatures:` block declares nothing".into());
     }

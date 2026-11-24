@@ -12,6 +12,7 @@
 //   sizes are taken greedily from h down, then the walk steps toward t with the largest size
 //   left on that side, which keeps the piece on the board. O(n).
 // original: corpus/submissions/4239900.cpp
+// Bounds: n: 1..=1e6; x: 1..=n
 
 let n: 1..=1e6 = read()
 let x: 1..=n = read()

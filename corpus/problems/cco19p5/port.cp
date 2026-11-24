@@ -6,6 +6,7 @@
 //   but joining the lowest f in S to the rest suffices, as f's own turn then joins those
 //   among themselves. So count |S|, remove f and absorb S into f's SortedSet (smaller into
 //   larger). O((N + M) log^2).
+// Bounds: n, m: 1..=1e5; sticks.lo, sticks.hi: 1..=n
 let n: 1..=1e5 = read()
 let m: 1..=1e5 = read()
 domain V = 1..=n

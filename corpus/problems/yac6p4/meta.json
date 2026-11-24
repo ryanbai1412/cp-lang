@@ -24,5 +24,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "map/fold xor; (1..=m).find(..) ?? -1"
+ "notes": "map/fold xor; (1..=m).find(..) ?? -1",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "fd72ef404ec254d69341e911df0387abbfcacc81"
+ }
 }

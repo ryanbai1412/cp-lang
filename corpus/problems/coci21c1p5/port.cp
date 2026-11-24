@@ -8,6 +8,7 @@
 //   one left of the chain top is thrown away for good; one with a smaller value than the top
 //   means the top can never be extended, so the top is thrown away; otherwise it goes on the
 //   chain. Each index is pushed or thrown away once: O(n log n).
+// Bounds: n: 1..=1e6; p: 1..=n
 let n: 1..=1e6 = read()
 domain Pos = 1..=n
 let p: [Pos]1..=n = read()

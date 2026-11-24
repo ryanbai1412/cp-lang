@@ -8,6 +8,7 @@
 //   weighing x; block b goes under any tower with x <= s_b, a 0/1 knapsack scanned downward
 //   over x. A tower never weighs more than max(s + w) <= 2e4. O(N * max s).
 // original: corpus/submissions/4133420.cpp
+// Bounds: n: 1..=1000; blocks.w, blocks.s: 1..=1e4; blocks.v: 1..=1e9
 let n: 1..=1000 = read()
 let blocks: [n](w: 1..=1e4, s: 1..=1e4, v: 1..=1e9) = read()
 

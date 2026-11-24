@@ -37,6 +37,28 @@ impl<'a> Checker<'a> {
         self.io_fixed(&ty)
     }
 
+    /// A bare `read()` or an `ask(..)` takes its type from where its value
+    /// goes (R10.2.1): record that type as the call's, so its facts say
+    /// what it reads.
+    pub(crate) fn note_read(&mut self, value: &Expr, want: &Ty) {
+        let ExprKind::Call { callee, args } = &value.kind else {
+            return;
+        };
+        let ExprKind::Name(name) = &callee.kind else {
+            return;
+        };
+        let reads = (name == "read" && args.is_empty()) || name == "ask";
+        if reads && self.local(name).is_none() && !want.is_vague() && *want != Ty::Error {
+            self.exprs.types.push((value.span, want.clone()));
+        }
+    }
+
+    /// [`Checker::narrowed`], after [`Checker::note_read`] on `at`.
+    pub(crate) fn read_narrowed(&mut self, got: &Ty, want: &Ty, at: &Expr) -> Ty {
+        self.note_read(at, want);
+        self.narrowed(got, want)
+    }
+
     /// Whether a value of `ty` is read or written in a bounded number of
     /// characters: a fixed-size value, a position in a domain of integers,
     /// a variant of an enum without fields, or a tuple of them.
@@ -205,6 +227,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        self.sort_key_by_position(callee, args);
         let past_row = self.past_builtin_row(callee, args);
         let library = past_row
             .then(|| self.method_form_call(call, callee, args))
@@ -935,12 +958,13 @@ impl<'a> Checker<'a> {
         }
         // Sequence higher-order operations: `map`, `filter`, `partition`,
         // `group`, `first(pred)`, `sorted`, through one unified `seq_elem()` path.
+        // A struct's own method of the name wins: `LinkedList.reverse` is not `seq.reverse`.
         let seq_elem: Option<Ty> = base_ty.seq_elem().or_else(|| match &base_ty {
-            Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Bitset" | "Set" | "HashSet") && args.len() == 1 =>
-            {
-                Some(args[0].clone())
-            }
+            Ty::Named { .. } if self.declares_member(&base_ty, &name.text) => None,
+            Ty::Named { .. } => match self.element_ty(&base_ty) {
+                Ty::Unknown | Ty::Error => None,
+                elem => Some(elem),
+            },
             _ => None,
         });
         if let Some(elem) = seq_elem {
@@ -1044,15 +1068,17 @@ impl<'a> Checker<'a> {
         }
         if name.text == "fold" {
             if let ExprKind::Call { args, .. } = &call.kind {
-                if args.len() == 1
-                    && args[0].name.is_none()
-                    && matches!(&args[0].value.kind, ExprKind::Lambda { params, .. } if params.len() == 2)
-                    && self.text(args[0].value.span).contains("=>")
-                {
-                    let elem = self.element_ty(&base_ty);
-                    if !matches!(elem, Ty::Unknown | Ty::Error) {
-                        self.infer(&args[0].value);
-                        return Some(Ty::Optional(Box::new(elem)));
+                if let Some(acc) = self.seeded_fold(&base_ty, name, args) {
+                    return Some(acc);
+                }
+                if let [arg] = args.as_slice() {
+                    if arg.name.is_none() && self.fold_without_identity(&arg.value) {
+                        let elem = self.element_ty(&base_ty);
+                        if !matches!(elem, Ty::Unknown | Ty::Error) {
+                            self.infer(&arg.value);
+                            self.fold_is_reduce(name);
+                            return Some(Ty::Optional(Box::new(elem)));
+                        }
                     }
                 }
             }
@@ -1159,6 +1185,115 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Each `R: (u: V, ..)` bound holds of what `R` bound to, or the call is E0704.
+    fn rows_hold(
+        &mut self,
+        call: &Expr,
+        callee_text: &str,
+        args: &[Arg],
+        row_bounds: crate::def::RowBounds,
+        bindings: &Bindings,
+    ) {
+        for (param, req_fields) in row_bounds {
+            let Some(actual) = bindings.get(&param) else {
+                continue;
+            };
+            match actual {
+                Ty::Record(actual_fs) => {
+                    for (req_name, req_ty) in &req_fields {
+                        let found = actual_fs.iter().find(|(n, _)| n == req_name);
+                        match found {
+                            Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
+                            _ => {
+                                let diag = self.error(
+                                    codes::ROW_MISSING_FIELD,
+                                    call.span,
+                                    format!(
+                                        "`{callee_text}` needs a record with `{req_name}: {req_ty}`, but `{actual}` {}",
+                                        found.map_or(format!("has no `{req_name}`"), |(_, t)| format!("has `{req_name}: {t}`"))
+                                    ),
+                                );
+                                suggest_rename(diag, args, actual_fs, &req_fields);
+                            }
+                        }
+                    }
+                }
+                Ty::Error | Ty::Unknown | Ty::Param(_) => {}
+                other => {
+                    self.error(
+                        codes::ROW_MISSING_FIELD,
+                        call.span,
+                        format!(
+                            "`{callee_text}` needs a record for `{param}`, but this is `{other}`"
+                        ),
+                    );
+                }
+            }
+        }
+    }
+
+    /// `Graph.directed(flights)`: a static method's row bounds, read off its declared
+    /// parameters, as `rows_hold` checks a free fn's.
+    fn static_rows_hold(
+        &mut self,
+        call: &Expr,
+        callee_text: &str,
+        base: &Expr,
+        method: &str,
+        args: &[Arg],
+    ) {
+        let ty_name = match &base.kind {
+            ExprKind::Generic { base, .. } => match &base.kind {
+                ExprKind::Name(n) => n,
+                _ => return,
+            },
+            ExprKind::Name(n) => n,
+            _ => return,
+        };
+        if self.local(ty_name).is_some() {
+            return;
+        }
+        let Some(Def::Struct {
+            methods,
+            method_rows,
+            ..
+        }) = self.type_def(ty_name).as_deref().cloned()
+        else {
+            return;
+        };
+        let Some((_, rows, through)) = method_rows.into_iter().find(|(m, _, _)| m == method) else {
+            return;
+        };
+        let Some((_, Ty::Fn { params, .. })) = methods.into_iter().find(|(m, _)| m == method)
+        else {
+            return;
+        };
+        let mut bindings = Bindings::default();
+        let mut positional = params.iter().filter(|p| !p.named_only);
+        for arg in args {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name == n.text),
+                None => positional.next(),
+            };
+            if let Some(param) = param {
+                let got = self.quietly(|c| c.infer(&arg.value));
+                param.ty.unify(&got, &mut bindings);
+            }
+        }
+        // `S: Indexed<E, R>`: `R` is what the `S` given holds.
+        for (param, trait_name, trait_args) in &through {
+            let holds = matches!(trait_name.as_str(), "Indexed" | "Seq" | "Positional");
+            let elem = bindings.get(param).and_then(|t| t.seq_elem());
+            if let (true, Some(elem), Some(last)) = (holds, elem, trait_args.last()) {
+                last.unify(&elem, &mut bindings);
+            }
+        }
+        // A tuple argument (`Graph.directed(pairs)`) is read by another path; only a record
+        // can miss a field.
+        bindings.retain(|_, t| matches!(t, Ty::Record(_)));
+        self.rows_hold(call, callee_text, args, rows, &bindings);
+    }
+
     fn call_kind(&mut self, call: &Expr, callee: &Expr, callee_ty: Ty, args: &[Arg]) -> Ty {
         let callee_text = self.quote(callee.span);
         match callee_ty {
@@ -1249,43 +1384,11 @@ impl<'a> Checker<'a> {
                                 _ => {}
                             }
                         }
-                        for (param, req_fields) in row_bounds {
-                            let Some(actual) = bindings.get(&param) else {
-                                continue;
-                            };
-                            match actual {
-                                Ty::Record(actual_fs) => {
-                                    for (req_name, req_ty) in &req_fields {
-                                        let found = actual_fs.iter().find(|(n, _)| n == req_name);
-                                        match found {
-                                            Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
-                                            _ => {
-                                                let diag = self.error(
-                                                    codes::ROW_MISSING_FIELD,
-                                                    call.span,
-                                                    format!(
-                                                        "`{callee_text}` needs a record with `{req_name}: {req_ty}`, but `{actual}` {}",
-                                                        found.map_or(format!("has no `{req_name}`"), |(_, t)| format!("has `{req_name}: {t}`"))
-                                                    ),
-                                                );
-                                                suggest_rename(diag, args, actual_fs, &req_fields);
-                                            }
-                                        }
-                                    }
-                                }
-                                Ty::Error | Ty::Unknown | Ty::Param(_) => {}
-                                other => {
-                                    self.error(
-                                        codes::ROW_MISSING_FIELD,
-                                        call.span,
-                                        format!(
-                                            "`{callee_text}` needs a record for `{param}`, but this is `{other}`"
-                                        ),
-                                    );
-                                }
-                            }
-                        }
+                        self.rows_hold(call, &callee_text, args, row_bounds, &bindings);
                     }
+                }
+                if let ExprKind::Field { base, name } = &callee.kind {
+                    self.static_rows_hold(call, &callee_text, base, &name.text, args);
                 }
                 self.record_instantiation(call, &bindings);
                 self.settle(&ret.subst(&bindings))
@@ -1434,7 +1537,7 @@ impl Checker<'_> {
             .map_or_else(|| vec![takes], split_top);
         takes
             .iter()
-            .map(|t| catalog_ty(t, &elem).unwrap_or(Ty::Unknown))
+            .map(|t| catalog_ty(t, &elem, &[]).unwrap_or(Ty::Unknown))
             .collect()
     }
 
@@ -1465,6 +1568,13 @@ impl Checker<'_> {
             return None;
         };
         let (member, elem) = self.catalog_row(base, &name.text)?;
+        // `m.get(k, 0)` is not the row `get(k)`: its arity error says so.
+        let arity = split_top(member.params)
+            .into_iter()
+            .filter(|p| !p.trim().is_empty());
+        if args.len() > arity.count() {
+            return None;
+        }
         // `xs.find(x => x > 1)` is the element, not the row's index.
         if args
             .iter()
@@ -1472,9 +1582,14 @@ impl Checker<'_> {
         {
             return None;
         }
+        // `m.get(k)` on a `Map<K, V>` is a `?V`.
+        let key_value = match self.quietly(|c| c.infer(base)) {
+            Ty::Named { name, args } if matches!(name.as_str(), "Map" | "HashMap") => args,
+            _ => Vec::new(),
+        };
         let ret = match (name.text.as_str(), elem) {
             ("min" | "max", Some(elem)) if member.ret == "?T" => Ty::min_max_of(elem),
-            (_, elem) => catalog_ty(member.ret, &elem)?,
+            (_, elem) => catalog_ty(member.ret, &elem, &key_value)?,
         };
         // A sum of `1..=1e9`s leaves that range, and may not hold its `0`.
         if name.text == "sum" && matches!(ret, Ty::Range { .. }) {
@@ -1509,18 +1624,25 @@ impl Checker<'_> {
 }
 
 /// A catalog type string the checker can read without the row's generics.
-fn catalog_ty(text: &str, elem: &Option<Ty>) -> Option<Ty> {
+/// A catalog row's type `text`, with `T` the element and, for a map's rows,
+/// `K` and `V` its `key_value` arguments.
+fn catalog_ty(text: &str, elem: &Option<Ty>, key_value: &[Ty]) -> Option<Ty> {
     if let Some(inner) = text.trim().strip_prefix('?') {
-        return Some(Ty::Optional(Box::new(catalog_ty(inner, elem)?)));
+        return Some(Ty::Optional(Box::new(catalog_ty(inner, elem, key_value)?)));
     }
-    match text.trim() {
+    match (text.trim(), key_value) {
+        ("K", [k, _]) => Some(k.clone()),
+        ("V", [_, v]) => Some(v.clone()),
+        _ => None,
+    }
+    .or_else(|| match text.trim() {
         "T" => elem.clone(),
         "Char" => Some(Ty::Char),
         "Int" => Some(Ty::Int),
         "Bool" => Some(Ty::Bool),
         "Str" => Some(Ty::Str),
         _ => None,
-    }
+    })
 }
 
 /// `a: Int, f: (T, T) -> Bool` split at its top-level commas.

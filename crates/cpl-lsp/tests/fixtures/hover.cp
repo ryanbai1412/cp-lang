@@ -1,5 +1,5 @@
 // lsp: hover
-use std.math.{splitmix64}
+// every prelude name is in scope without a `use`
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let xs: [V]Int = read()

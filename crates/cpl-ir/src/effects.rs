@@ -253,7 +253,21 @@ pub fn trap_free_with(e: &Expr, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) ->
         | ExprKind::IsSome(x)
         | ExprKind::IsVariant(x, _)
         | ExprKind::Unwrap(x, false)
-        | ExprKind::Cast(Cast::IntToFloat | Cast::IntToI128 | Cast::IntToU64, x) => free(x),
+        | ExprKind::Cast(
+            Cast::IntToFloat
+            | Cast::IntToI128
+            | Cast::IntToU64
+            | Cast::U64ToI128
+            | Cast::I128ToFloat
+            | Cast::U64ToFloat
+            | Cast::CharToInt
+            | Cast::EnumOrd(_)
+            | Cast::EnumVal(_)
+            | Cast::Ord
+            | Cast::Label(_)
+            | Cast::Trust,
+            x,
+        ) => free(x),
         ExprKind::Unary(op, x) => *op != UnOp::Neg && free(x),
         ExprKind::Binary(op, l, r) => {
             let safe = match op {
@@ -292,7 +306,7 @@ pub fn in_domain(ty: &Ty, idxs: &[Expr]) -> bool {
 pub fn pure_path(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Local(_) | ExprKind::Global(_) => true,
-        ExprKind::Field(base, _) => pure_path(base),
+        ExprKind::Field(base, _) | ExprKind::Cast(Cast::Trust, base) => pure_path(base),
         _ => false,
     }
 }
@@ -476,6 +490,7 @@ impl Table {
             seen: Some((self, program)),
             home,
             target,
+            by_type: true,
         }
         .expr(e)
     }
@@ -493,6 +508,7 @@ impl Table {
             seen: Some((self, program)),
             home,
             target,
+            by_type: true,
         }
         .block(block)
     }
@@ -506,6 +522,7 @@ impl Table {
             seen: Some((self, program)),
             home: None,
             target: &|_, _| None,
+            by_type: true,
         }
         .closure(cid)
     }
@@ -517,6 +534,9 @@ struct Reader<'a> {
     seen: Option<(&'a Table, &'a Program)>,
     home: Option<FnId>,
     target: Target<'a>,
+    /// Reads a call of a fn value no `target` names through every closure
+    /// the program can make of its type.
+    by_type: bool,
 }
 
 impl Reader<'_> {
@@ -525,6 +545,7 @@ impl Reader<'_> {
             seen: None,
             home: None,
             target: &|_, _| None,
+            by_type: false,
         }
     }
 
@@ -558,7 +579,10 @@ impl Reader<'_> {
             ExprKind::CallExpr(callee, args) => {
                 touch.values = true;
                 let cid = self.seen.and((self.target)(self.home, callee));
-                touch.run(cid.and_then(|c| self.closure(c)));
+                touch.run(match cid {
+                    Some(c) => self.closure(c),
+                    None => self.any_closure(&callee.ty),
+                });
                 mut_args(args, &mut touch);
             }
             ExprKind::Closure(c) => {
@@ -624,6 +648,54 @@ impl Reader<'_> {
         t
     }
 
+    /// What calling a fn value of type `ty` can touch beyond its own
+    /// captures: the globals and I/O of every closure of that type the
+    /// program makes (monomorphized, so a known finite set). A capture is a
+    /// copy the closure owns, so what it does to one touches no variable of
+    /// the caller; one captured by reference makes the call opaque, as does
+    /// a closure that itself calls a fn value no target names.
+    fn any_closure(&self, ty: &Ty) -> Option<Access> {
+        let (_, program) = self.seen?;
+        let Ty::Fn(args, ret) = ty else {
+            return None;
+        };
+        if !self.by_type {
+            return None;
+        }
+        let once = Reader {
+            seen: self.seen,
+            home: None,
+            target: &|_, _| None,
+            by_type: false,
+        };
+        let same =
+            |param: &Ty, arg: &Ty| param == arg || matches!(arg, Ty::Mut(of) if **of == *param);
+        let mut found = false;
+        let mut t = Access::default();
+        for (cid, c) in program.closures.iter().enumerate() {
+            if program.unreached_closures.contains(&cid)
+                || c.ret != **ret
+                || c.params.len() != args.len()
+                || !c
+                    .params
+                    .iter()
+                    .zip(args)
+                    .all(|(&p, a)| same(&c.locals[p].ty, a))
+            {
+                continue;
+            }
+            if c.captures.iter().any(|cap| cap.by_ref && !cap.is_global) {
+                return None;
+            }
+            let mut got = once.closure(cid)?;
+            got.reads.retain(|v| v.0);
+            got.writes.retain(|v| v.0);
+            t.merge(got);
+            found = true;
+        }
+        found.then_some(t)
+    }
+
     fn closure(&self, cid: ClosureId) -> Option<Access> {
         let (_, program) = self.seen?;
         let c = &program.closures[cid];
@@ -631,6 +703,7 @@ impl Reader<'_> {
             seen: self.seen,
             home: None,
             target: &|_, _| None,
+            by_type: self.by_type,
         }
         .block(&c.body);
         if inner.opaque {

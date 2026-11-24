@@ -1,5 +1,5 @@
 use super::ir::*;
-use crate::value::{Array, ArrayData, TupleVal, Value};
+use crate::value::{Array, Cells, TupleVal, Value};
 use crate::{trap, Res, LENT};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
@@ -216,11 +216,11 @@ fn slot_from_stack(
 pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
     unsafe {
         match &arr.data {
-            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => *v.get_unchecked(at),
-            ArrayData::Bool(v) | ArrayData::Char(v) => i64::from(*v.get_unchecked(at)),
-            ArrayData::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
-            ArrayData::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
-            ArrayData::Float(_) | ArrayData::SmallIntTuple { .. } => 0,
+            Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked(at),
+            Cells::Bool(v) | Cells::Char(v) => i64::from(*v.get_unchecked(at)),
+            Cells::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
+            Cells::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
+            Cells::Float(_) | Cells::SmallIntTuple { .. } => 0,
         }
     }
 }
@@ -229,10 +229,10 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
 pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
     unsafe {
         match &mut arr.data {
-            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => *v.get_unchecked_mut(at) = val,
-            ArrayData::Bool(v) => *v.get_unchecked_mut(at) = u8::from(val != 0),
-            ArrayData::Char(v) => *v.get_unchecked_mut(at) = val as u8,
-            ArrayData::Values(v) => {
+            Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked_mut(at) = val,
+            Cells::Bool(v) => *v.get_unchecked_mut(at) = u8::from(val != 0),
+            Cells::Char(v) => *v.get_unchecked_mut(at) = val as u8,
+            Cells::Values(v) => {
                 // Keeps the element's shape: a `[D]Mod<M>` built boxed holds structs.
                 match v.get_unchecked_mut(at) {
                     Value::Tuple(TupleVal::OneInt(x)) => *x = val,
@@ -242,8 +242,8 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
                     slot => *slot = Value::Int(val),
                 }
             }
-            ArrayData::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
-            ArrayData::Float(_) | ArrayData::SmallIntTuple { .. } => {}
+            Cells::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
+            Cells::Float(_) | Cells::SmallIntTuple { .. } => {}
         }
     }
 }
@@ -252,11 +252,11 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
 pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
     unsafe {
         match &arr.data {
-            ArrayData::OptInt(v) => match *v.get_unchecked(at) {
+            Cells::OptInt(v) => match *v.get_unchecked(at) {
                 Some(x) => (x, 1),
                 None => (0, 0),
             },
-            ArrayData::Values(v) => ScalarKind::unbox_opt(v.get_unchecked(at)),
+            Cells::Values(v) => ScalarKind::unbox_opt(v.get_unchecked(at)),
             _ => (0, 0),
         }
     }
@@ -265,10 +265,10 @@ pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
 #[inline(always)]
 pub(super) fn write_array_opt_i(arr: &mut Array, at: usize, val: i64, some: i64, kind: ScalarKind) {
     match &mut arr.data {
-        ArrayData::OptInt(v) if kind == ScalarKind::Int => unsafe {
+        Cells::OptInt(v) if kind == ScalarKind::Int => unsafe {
             *v.get_unchecked_mut(at) = if some != 0 { Some(val) } else { None };
         },
-        ArrayData::Values(v) => unsafe {
+        Cells::Values(v) => unsafe {
             *v.get_unchecked_mut(at) = kind.box_opt(val, some);
         },
         _ => {
@@ -438,7 +438,7 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
     };
     let mut order: Vec<usize> = (0..keys.len()).collect();
     order.sort_by(|&a, &b| {
-        let o = keys[a].cmp(&keys[b]);
+        let o = keys.get_unchecked_val(a).cmp(&keys.get_unchecked_val(b));
         if desc {
             o.reverse()
         } else {
@@ -447,7 +447,7 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
     });
     match seq {
         Value::List(items) => Ok(Value::List(Rc::new(
-            order.iter().map(|&k| items[k].clone()).collect(),
+            order.iter().map(|&k| items.get_unchecked_val(k)).collect(),
         ))),
         Value::Array(arr) => {
             let values = order.iter().map(|&k| arr.get_unchecked_val(k)).collect();
@@ -460,6 +460,26 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
     }
 }
 
+/// The elements of a list or an array, with the array's dims.
+pub(super) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i64>>)> {
+    match seq {
+        Value::List(items) => Ok((crate::value::Cells::unwrap_values(items), None)),
+        Value::Array(arr) => Ok((
+            (0..arr.len()).map(|k| arr.get_unchecked_val(k)).collect(),
+            Some(arr.dims.clone()),
+        )),
+        _ => trap(span, LENT),
+    }
+}
+
+/// The inverse of `seq_items`.
+pub(super) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
+    match dims {
+        None => Value::list(items),
+        Some(dims) => Value::Array(Rc::new(Array::from_values(dims, items))),
+    }
+}
+
 pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res<()> {
     fn sort_ord<T: Ord>(v: &mut [T], desc: bool) {
         v.sort_unstable();
@@ -468,23 +488,29 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
         }
     }
     match target {
-        Value::List(items) => sort_ord(Rc::make_mut(items).as_mut_slice(), desc),
+        Value::List(items) => {
+            let items = Rc::make_mut(items);
+            items.sort_unstable();
+            if desc {
+                items.reverse();
+            }
+        }
         Value::Str(bytes) => sort_ord(Rc::make_mut(bytes).as_mut_slice(), desc),
         Value::Array(arr) => {
             let a = Rc::make_mut(arr);
             match &mut a.data {
-                ArrayData::Int(v) | ArrayData::OneIntStruct(v) => sort_ord(v, desc),
-                ArrayData::OptInt(v) => sort_ord(v, desc),
-                ArrayData::Bool(v) => sort_ord(v, desc),
-                ArrayData::Char(v) => sort_ord(v, desc),
-                ArrayData::Values(v) => sort_ord(v, desc),
-                ArrayData::Float(v) => {
+                Cells::Int(v) | Cells::OneIntStruct(v) => sort_ord(v, desc),
+                Cells::OptInt(v) => sort_ord(v, desc),
+                Cells::Bool(v) => sort_ord(v, desc),
+                Cells::Char(v) => sort_ord(v, desc),
+                Cells::Values(v) => sort_ord(v, desc),
+                Cells::Float(v) => {
                     v.sort_unstable_by(f64::total_cmp);
                     if desc {
                         v.reverse();
                     }
                 }
-                ArrayData::SmallIntTuple { .. } => {
+                Cells::SmallIntTuple { .. } => {
                     let mut boxed: Vec<Value> =
                         (0..a.len()).map(|i| a.get_unchecked_val(i)).collect();
                     sort_ord(&mut boxed, desc);
@@ -702,7 +728,7 @@ pub(super) fn with_place_cell<R>(
     {
         let container = walk_place_mut(root, prefix, regs_i, keys, span)?;
         if let Value::Array(arr) = container {
-            if !matches!(arr.data, ArrayData::Values(_)) {
+            if !matches!(arr.data, Cells::Values(_)) {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 let mut cell = a.get(flat).expect("index checked");
@@ -752,13 +778,13 @@ pub(super) fn walk_place_mut<'a>(
                             format!("index {idx} is outside a list of length {len}"),
                         );
                     }
-                    cur = &mut Rc::make_mut(items)[idx as usize];
+                    cur = &mut Rc::make_mut(items).as_mut_values()[idx as usize];
                 }
                 Value::Array(arr) => {
                     let flat = array_flat_index(arr, step, regs_i, span)?;
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
-                        ArrayData::Values(vs) => cur = &mut vs[flat],
+                        Cells::Values(vs) => cur = &mut vs[flat],
                         _ => return trap(span, "internal: expected boxed array element"),
                     }
                 }
@@ -769,7 +795,7 @@ pub(super) fn walk_place_mut<'a>(
                     let flat = array_flat_index(arr, step, regs_i, span)?;
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
-                        ArrayData::Values(vs) => cur = &mut vs[flat],
+                        Cells::Values(vs) => cur = &mut vs[flat],
                         _ => return trap(span, "internal: expected boxed array element"),
                     }
                 }
@@ -809,10 +835,10 @@ pub(super) fn store_place_leaf_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v[flat] = raw,
-                    ArrayData::Bool(v) => v[flat] = u8::from(raw != 0),
-                    ArrayData::Char(v) => v[flat] = raw as u8,
-                    ArrayData::Values(v) => v[flat] = kind.box_val(raw),
+                    Cells::Int(v) | Cells::OneIntStruct(v) => v[flat] = raw,
+                    Cells::Bool(v) => v[flat] = u8::from(raw != 0),
+                    Cells::Char(v) => v[flat] = raw as u8,
+                    Cells::Values(v) => v[flat] = kind.box_val(raw),
                     _ => a.set(flat, kind.box_val(raw)),
                 }
                 Ok(())
@@ -826,7 +852,7 @@ pub(super) fn store_place_leaf_scalar(
                         format!("index {idx} is outside a list of length {len}"),
                     );
                 }
-                Rc::make_mut(items)[idx as usize] = kind.box_val(raw);
+                Rc::make_mut(items).set(idx as usize, kind.box_val(raw));
                 Ok(())
             }
             _ => trap(span, "internal: expected array or list"),
@@ -836,10 +862,10 @@ pub(super) fn store_place_leaf_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v[flat] = raw,
-                    ArrayData::Bool(v) => v[flat] = u8::from(raw != 0),
-                    ArrayData::Char(v) => v[flat] = raw as u8,
-                    ArrayData::Values(v) => v[flat] = kind.box_val(raw),
+                    Cells::Int(v) | Cells::OneIntStruct(v) => v[flat] = raw,
+                    Cells::Bool(v) => v[flat] = u8::from(raw != 0),
+                    Cells::Char(v) => v[flat] = raw as u8,
+                    Cells::Values(v) => v[flat] = kind.box_val(raw),
                     _ => a.set(flat, kind.box_val(raw)),
                 }
                 Ok(())
@@ -875,8 +901,8 @@ pub(super) fn store_place_leaf_opt_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
-                    ArrayData::Values(v) => v[flat] = kind.box_opt(raw, some),
+                    Cells::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
+                    Cells::Values(v) => v[flat] = kind.box_opt(raw, some),
                     _ => a.set(flat, kind.box_opt(raw, some)),
                 }
                 Ok(())
@@ -890,7 +916,7 @@ pub(super) fn store_place_leaf_opt_scalar(
                         format!("index {idx} is outside a list of length {len}"),
                     );
                 }
-                Rc::make_mut(items)[idx as usize] = kind.box_opt(raw, some);
+                Rc::make_mut(items).set(idx as usize, kind.box_opt(raw, some));
                 Ok(())
             }
             _ => trap(span, "internal: expected array or list"),
@@ -900,8 +926,8 @@ pub(super) fn store_place_leaf_opt_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
-                    ArrayData::Values(v) => v[flat] = kind.box_opt(raw, some),
+                    Cells::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
+                    Cells::Values(v) => v[flat] = kind.box_opt(raw, some),
                     _ => a.set(flat, kind.box_opt(raw, some)),
                 }
                 Ok(())
@@ -945,7 +971,7 @@ pub(super) fn store_place_leaf_val(
                         format!("index {idx} is outside a list of length {len}"),
                     );
                 }
-                Rc::make_mut(items)[idx as usize] = val;
+                Rc::make_mut(items).set(idx as usize, val);
                 Ok(())
             }
             _ => trap(span, "internal: expected array or list"),
@@ -1124,10 +1150,10 @@ pub(super) fn assign_place_leaf_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => {
+                    Cells::Int(v) | Cells::OneIntStruct(v) => {
                         v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
                     }
-                    ArrayData::Values(v) => {
+                    Cells::Values(v) => {
                         let cur = ScalarKind::unbox_val(&v[flat]);
                         let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                         v[flat] = kind.box_val(next);
@@ -1146,9 +1172,9 @@ pub(super) fn assign_place_leaf_scalar(
                     );
                 }
                 let slice = Rc::make_mut(items);
-                let cur = ScalarKind::unbox_val(&slice[idx as usize]);
+                let cur = ScalarKind::unbox_val(&slice.get_unchecked_val(idx as usize));
                 let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
-                slice[idx as usize] = kind.box_val(next);
+                slice.set(idx as usize, kind.box_val(next));
                 Ok(())
             }
             _ => trap(span, "internal: expected array or list"),
@@ -1158,10 +1184,10 @@ pub(super) fn assign_place_leaf_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => {
+                    Cells::Int(v) | Cells::OneIntStruct(v) => {
                         v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
                     }
-                    ArrayData::Values(v) => {
+                    Cells::Values(v) => {
                         let cur = ScalarKind::unbox_val(&v[flat]);
                         let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                         v[flat] = kind.box_val(next);
@@ -1225,42 +1251,31 @@ impl VmStats {
             .collect();
         loop_entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
         if std::env::var("CPL_VM_STATS").ok().as_deref() == Some("json") {
-            let mut s = format!(
-                "{{\"total_fallbacks\":{},\"loop_fallbacks\":{},\"hot_loop_fallbacks\":{},\"walked\":{},\"top\":[",
-                self.total_fallbacks, self.loop_fallbacks, self.hot_loop_fallbacks, self.walked
-            );
-            for (i, (k, v)) in entries.iter().take(20).enumerate() {
-                if i > 0 {
-                    s.push(',');
-                }
-                let escaped = cpl_json::escape_string(k);
-                s.push_str(&format!("[{escaped},{v}]"));
-            }
-            s.push_str("],\"loop_top\":[");
-            for (i, (k, v)) in loop_entries.iter().take(20).enumerate() {
-                if i > 0 {
-                    s.push(',');
-                }
-                let escaped = cpl_json::escape_string(k);
-                s.push_str(&format!("[{escaped},{v}]"));
-            }
             let mut walked: Vec<_> = self.walked_counts.iter().collect();
             walked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-            s.push_str("],\"walked_top\":[");
-            for (i, (k, v)) in walked.iter().take(20).enumerate() {
-                if i > 0 {
-                    s.push(',');
+            let walked: Vec<(&str, u64)> = walked.iter().map(|(k, &v)| (k.as_str(), v)).collect();
+            let s = cpl_json::write_with(|w| {
+                w.object().key("total_fallbacks").int(self.total_fallbacks);
+                w.key("loop_fallbacks").int(self.loop_fallbacks);
+                w.key("hot_loop_fallbacks").int(self.hot_loop_fallbacks);
+                w.key("walked").int(self.walked);
+                for (key, top) in [
+                    ("top", &entries),
+                    ("loop_top", &loop_entries),
+                    ("walked_top", &walked),
+                ] {
+                    w.key(key).array();
+                    for (k, v) in top.iter().take(20) {
+                        w.array().str(k).int(*v).end();
+                    }
+                    w.end();
                 }
-                s.push_str(&format!("[{},{v}]", cpl_json::escape_string(k)));
-            }
-            s.push_str("],\"kinds\":[");
-            for (i, (k, _)) in entries.iter().enumerate() {
-                if i > 0 {
-                    s.push(',');
+                w.key("kinds").array();
+                for (k, _) in &entries {
+                    w.str(k);
                 }
-                s.push_str(&cpl_json::escape_string(k));
-            }
-            s.push_str("]}");
+                w.end().end();
+            });
             eprintln!("{s}");
         } else {
             eprintln!(

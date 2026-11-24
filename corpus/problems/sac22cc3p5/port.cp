@@ -5,13 +5,14 @@
 // Solution: lowercase the words and drop repeats, build an Aho-Corasick automaton over them, and
 //   count the distinct words among each message's matches. O(total length + matches), at most
 //   25 matches per message position.
+// Bounds: n: 1..=5e4; m: 1..=1000
 // original: corpus/submissions/4331687.cpp
 use std.strings.{AhoCorasick}
 
 domain Letter = 'a'..='z'
 fn letters(s: Str) -> List<Letter> = [Letter(c.lower) for c in s]
 
-let (n, m) = read<(1..=5e4, 1..=1000)>()
+let (n, m): (1..=5e4, 1..=1000) = read()
 let words = read<[n]Str>().distinct(by: w => w.to_lower)
 let ac = AhoCorasick<Letter>.new([letters(w) for w in words])
 for _ in 0..m:

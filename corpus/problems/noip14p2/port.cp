@@ -7,6 +7,7 @@
 // Solution: a pair at distance 2 is two neighbours of a middle vertex. Per middle vertex, the
 //   ordered sum over its neighbours is (sum of w)^2 - sum of w^2, and the best product is the
 //   top two neighbour weights. O(n).
+// Bounds: n: 2..=2e5; w: 1..=10000
 const P = 10007
 type Z = Mod<P>
 let n: 2..=2e5 = read()

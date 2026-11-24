@@ -1,4 +1,3 @@
-use std.geometry.{convex_hull}
 
 let n: Int = read()
 var pts: List<Pt> = []

@@ -92,7 +92,9 @@ pub(crate) fn session(
         let wanted = value.at(&["id"]).as_u64() == Some(2)
             || value.at(&["method"]).as_str() == Some("textDocument/publishDiagnostics");
         if wanted {
-            stdout.push_str(&cpl_json::to_string(&value).replace(&uri, "<case>"));
+            stdout.push_str(
+                &unescape_script_safe(&cpl_json::to_string(&value)).replace(&uri, "<case>"),
+            );
             stdout.push('\n');
         }
     }
@@ -102,6 +104,37 @@ pub(crate) fn session(
         stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
         rewritten: String::new(),
     })
+}
+
+/// cpl_json writes `<`, U+2028 and U+2029 as `\u` escapes so its output is
+/// safe inside a script tag; a case's needles name the characters themselves.
+fn unescape_script_safe(json: &str) -> String {
+    let mut out = String::with_capacity(json.len());
+    let mut rest = json;
+    while let Some(at) = rest.find('\\') {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        let plain = [
+            ("\\u003c", '<'),
+            ("\\u2028", '\u{2028}'),
+            ("\\u2029", '\u{2029}'),
+        ]
+        .into_iter()
+        .find(|(e, _)| tail.starts_with(e));
+        match plain {
+            Some((e, c)) => {
+                out.push(c);
+                rest = &tail[e.len()..];
+            }
+            None => {
+                let next = tail[1..].chars().next().map_or(0, char::len_utf8);
+                out.push_str(&tail[..1 + next]);
+                rest = &tail[1 + next..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 fn message(id: Option<u32>, method: &str, params: Value) -> String {
@@ -158,4 +191,17 @@ pub(crate) fn frames(bytes: &[u8]) -> Result<Vec<String>, String> {
         rest = &rest[end + 4 + len..];
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unescape_script_safe;
+
+    #[test]
+    fn needles_see_the_characters_cpl_json_escapes() {
+        let label = cpl_json::to_string(&": List<Int>\u{2028}".into());
+        assert_eq!(unescape_script_safe(&label), "\": List<Int>\u{2028}\"");
+        let slash = cpl_json::to_string(&"\\u003c".into());
+        assert_eq!(unescape_script_safe(&slash), slash);
+    }
 }

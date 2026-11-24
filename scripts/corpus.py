@@ -21,7 +21,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
+import argparse, functools, hashlib, importlib.util, inspect, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,7 +31,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUBS = os.path.join(ROOT, "corpus", "submissions")
 PROBLEMS = os.path.join(ROOT, "corpus", "problems")
 SETS = os.path.join(ROOT, "corpus", "sets")
-CXX_CACHE = os.path.join(ROOT, "target", "corpus-cxx")
+# Under ~/.cache/cpl/cxx, which CI caches across runs; the key holds the source and compiler.
+CXX_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "cpl", "cxx", "corpus")
 HAND = {"tags": [], "difficulty": None, "dream": "none", "spec": "none", "notes": ""}
 RECORDED = ("dream_stress",)
 STATUSES = {"none", "draft", "reviewed", "gold"}
@@ -151,7 +152,7 @@ class InfraError(Exception):
 
 
 def binary(src):
-    """`src` built with reference_cxx(), cached by content and compiler under target/corpus-cxx/."""
+    """`src` built with reference_cxx(), cached by content and compiler under CXX_CACHE."""
     os.makedirs(CXX_CACHE, exist_ok=True)
     cxx, version = reference_cxx()
     data = Path(src).read_bytes()
@@ -385,6 +386,8 @@ def record(pkg, field, value):
 
 HEADER_FIELDS = ("Source", "Problem", "Solution")
 HEADER_LINE = re.compile(r"//\s*(Source|Problem|Solution|Bounds):")
+# Any `// key:` header line, which ends the one before; an indented line continues it.
+HEADER_KEY = re.compile(r"// ?([A-Za-z][\w-]*):")
 TIMEOUT = 20
 SLOWER, FLOOR = 1.5, 0.1
 TARGET_BYTES = 32 * 1024
@@ -408,11 +411,133 @@ def header_fields(text):
     return found
 
 
+READ_LINE = re.compile(r"^\s*(?:let|var) (?:(.+?): (.+) = read\(\)|([^:=]+?) = read<(.+)>\(\))\s*$")
+DOMAIN_LINE = re.compile(r"^(?:domain|type) (\w+) = (.+?)\s*$")
+STRUCT_LINE = re.compile(r"^struct (\w+)(\(.*\))\s*$")
+READ_RANGE = re.compile(r"^(-?[\w.]+(?:\s*[-+*/^]\s*[\w.]+)*)\s*\.\.(=?)\s*(.+)$")
+def split_top(s):
+    out, depth, cur = [], 0, ""
+    for ch in s:
+        if ch in "([": depth += 1
+        if ch in ")]": depth -= 1
+        if ch == "," and depth == 0: out.append(cur.strip()); cur = ""
+        else: cur += ch
+    return out + [cur.strip()] if cur.strip() else out
+def strip_index(t):
+    while t.startswith("["):
+        d = 0
+        for i, ch in enumerate(t):
+            d += ch == "["; d -= ch == "]"
+            if d == 0: t = t[i+1:].strip(); break
+    return t
+def read_ranges(names, t, domains):
+    """name -> (lo, hi) text for every ranged leaf of read type t."""
+    t = strip_index(t.strip())
+    while m := re.fullmatch(r"List<(.*)>", t):
+        t = strip_index(m.group(1).strip())
+    t = domains.get(t, t)
+    if t.startswith("(") and t.endswith(")"):
+        parts = split_top(t[1:-1]); out = {}
+        if len(names) == len(parts):
+            for n, p in zip(names, parts): out.update(read_ranges([n], p, domains))
+        elif len(names) == 1:
+            for p in parts:
+                if ":" in p and not p.split(":")[0].strip().count(" "):
+                    f, ft = p.split(":", 1); out.update(read_ranges([f"{names[0]}.{f.strip()}"], ft, domains))
+        return out
+    t = domains.get(t, t)
+    m = READ_RANGE.match(t)
+    if not m: return {}
+    hi = m.group(3).strip()
+    return {n: (m.group(1).strip(), hi if m.group(2) else f"{hi} - 1") for n in names}
+def port_ranges(text):
+    """name (a field as name.field) -> (lo, hi) text of each ranged `read()` in the port."""
+    domains, out = {}, {}
+    for line in text.split("\n"):
+        line = line.split("//")[0].rstrip()
+        m = DOMAIN_LINE.match(line.strip()) or STRUCT_LINE.match(line.strip())
+        if m: domains[m.group(1)] = m.group(2)
+        m = READ_LINE.match(line)
+        if m:
+            pat = (m.group(1) or m.group(3)).strip()
+            names = split_top(pat[1:-1]) if pat.startswith("(") else [pat]
+            out.update(read_ranges(names, m.group(2) or m.group(4), domains))
+    return out
+
+
+def declared_bounds(text):
+    """The header's `// Bounds:` in `cpl new --constraints` form, as name -> (lo, hi)
+    text, or None without one; a part it can't read maps to None."""
+    lines, on = [], False
+    for line in text.split("\n"):
+        if not line.startswith("//"):
+            break
+        m = HEADER_KEY.match(line)
+        if m:
+            on = m.group(1) == "Bounds"
+            if on:
+                lines.append(line.split(":", 1)[1])
+        elif on and line.startswith("//   "):
+            lines.append(line[2:])
+    if not lines:
+        return None
+    out = {}
+    for part in " ".join(lines).split(";"):
+        if not part.strip():
+            continue
+        names, _, t = part.partition(":")
+        if not t:
+            out[part.strip()] = None
+            continue
+        got = read_ranges(["_"], t, {})
+        for n in split_top(names):
+            out[n] = got.get("_")
+    return out
+
+
+def bound_value(text):
+    """A bound as a number, or None when it names an input (`n`, `n * m`)."""
+    t = text.replace("_", "").replace("^", "**").replace(" ", "")
+    if not re.fullmatch(r"[-+*/().0-9e]+", t) or re.search(r"[a-df-z]", t):
+        return None
+    try:
+        return eval(t, {"__builtins__": {}})
+    except (SyntaxError, ZeroDivisionError, TypeError):
+        return None
+
+
+def bounds_findings(pid, text):
+    """Each ranged read the header's Bounds doesn't state, and each stated bound
+    the port reads narrower or differently: a valid judge input it would reject."""
+    declared, read = declared_bounds(text), port_ranges(text)
+    if declared is None:
+        return [f"no-header-bounds {pid} -"] if read else []
+    header = text.split("\n")[:next((i for i, l in enumerate(text.split("\n")) if not l.startswith("//")), None)]
+    if sum(1 for l in header if re.match(r"//\s*Bounds:", l)) > 1:
+        return [f"bounds-twice {pid} -"]
+    found = [f"bounds-unparsed {pid} {n}" for n, r in declared.items() if r is None]
+    found += [f"bounds-unread {pid} {n}" for n in declared if declared[n] and n not in read]
+    found += [f"bounds-undeclared {pid} {n}" for n in read if n not in declared]
+    for n, want in declared.items():
+        if not want or n not in read:
+            continue
+        got = read[n]
+        nums = [bound_value(x) for x in (*got, *want)]
+        if None in nums:
+            narrow = [" ".join(a.split()) for a in got] != [" ".join(b.split()) for b in want]
+        else:
+            narrow = nums[0] > nums[2] or nums[1] < nums[3]
+        if narrow:
+            found.append(f"bounds-narrow {pid} {n}: reads {got[0]}..={got[1]}, statement {want[0]}..={want[1]}")
+    return found
+
+
 def check_header(pkg, ctx):
     if not pkg.port:
         return []
     have = header_fields(pkg.port.read_text(errors="replace"))
-    return [f"no-header-{f.lower()} {pkg.id} -" for f in HEADER_FIELDS if f not in have]
+    missing = [f"no-header-{f.lower()} {pkg.id} -" for f in HEADER_FIELDS if f not in have]
+    return missing + bounds_findings(pkg.id, pkg.port.read_text(errors="replace"))
 
 
 def check_check(pkg, ctx):
@@ -442,7 +567,12 @@ def run_out(exe, data):
 
 
 def accepted_cpps(pkg):
-    out = [pkg.orig] if pkg.orig else []
+    """orig.cpp alone when the package has one: it is the reference the answers
+    come from, and an AC submission may cover only the judge's narrower data.
+    Otherwise every AC C++ submission."""
+    if pkg.orig:
+        return [pkg.orig]
+    out = []
     for s in pkg.read_meta().get("submissions", []):
         f = s.get("file") or ""
         p = Path(ROOT, f)
@@ -466,6 +596,14 @@ def check_package(pkg, ctx):
         found.append(f"interactor-no-gen {pkg.id} -")
     if pkg.dir.joinpath("tests").exists():
         found.append(f"committed-tests {pkg.id} -")
+    # gen.py SEED SIZE takes any size >= 1: tests.toml may grow a case down to 1.
+    found += [f"size-below-1 {pkg.id} {i}" for i, c in enumerate(pkg.cases(), 1) if "size" in c and c["size"] < 1]
+    for size in range(1, 6) if pkg.gen and ctx.run else ():
+        try:
+            pkg.case_input({"seed": 1, "size": size})
+        except (subprocess.SubprocessError, OSError):
+            found.append(f"gen-fails {pkg.id} size={size}")
+            break
     if pkg.dream and pkg.spec:
         code = lambda p: [l.split("//")[0].rstrip() for l in p.read_text(errors="replace").splitlines() if l.split("//")[0].strip()]
         if code(pkg.dream) != code(pkg.spec) and not (pkg.read_meta().get("notes") or "").strip() \
@@ -487,8 +625,14 @@ def check_package(pkg, ctx):
             exes = [e for e in map(built, srcs) if e]
             for i, case in enumerate(pkg.cases(), 1) if len(exes) > 1 else ():
                 data = pkg.case_input(case).encode()
-                outs = {tuple(tokens(o)) for o in (run_out(e, data) for e in exes) if o is not None}
-                if len(outs) > 1:
+                outs = {e: run_out(e, data) for e in exes}
+                if None in outs.values():
+                    found.append(f"reference-fails {pkg.id} {i}")
+                    break
+                if len({tuple(tokens(o)) for o in outs.values()}) > 1:
+                    # A reference whose output changes on a rerun (seeded from the clock) can't say.
+                    outs = {e: o for e, o in outs.items() if tokens(run_out(e, data) or b"") == tokens(o)}
+                if len({tuple(tokens(o)) for o in outs.values()}) > 1:
                     found.append(f"needs-checker {pkg.id} {i}")
                     break
     return found
@@ -525,6 +669,8 @@ def check_tests(pkg, ctx):
         return [f"no-reference {pkg.id} -"]
     try:
         make_cases(pkg)
+    except ReferenceFails as e:
+        return [f"reference-fails {pkg.id} {e.case}"]
     except (RuntimeError, subprocess.SubprocessError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
     cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg), *package_limits(pkg))
@@ -754,16 +900,21 @@ def at_max(pkg, cpl, exe, orig, data):
     runs = [measure(exe, data, 2 * ms / 1000 + 1) for _ in range(3)]
     if any(r is None or r[0] != 0 for r in runs):
         return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
-    if min(r[2] for r in runs) > ms / 1000 or min(r[3] for r in runs) > mb:
-        found.append(f"over-limit {pid} --max")
+    mine, theirs = min(r[2] for r in runs), None
     if orig:
         wants = [measure(orig, data, 4 * ms / 1000 + 1) for _ in range(3)]
         if all(w is not None and w[0] == 0 for w in wants):
             if not agrees(pkg, data, runs[0][1], wants[0][1]):
                 found.append(f"disagrees {pid} --max")
-            mine, theirs = min(r[2] for r in runs), min(w[2] for w in wants)
+            theirs = min(w[2] for w in wants)
             if mine >= FLOOR and mine > SLOWER * max(theirs, FLOOR):
                 found.append(f"slow {pid} --max")
+        else:
+            found.append(f"reference-fails {pid} --max")
+    # On a box slower than the judge the accepted C++ itself runs past the
+    # limit; the port then answers to the accepted C++'s time instead.
+    if mine > max(ms / 1000, theirs or 0) or min(r[3] for r in runs) > mb:
+        found.append(f"over-limit {pid} --max")
     return found
 
 
@@ -775,7 +926,7 @@ def interacted(pkg, ctx):
     cases = generated(pkg)
     if not cases:
         return []
-    judge = ("--tests", str(cases[0].parent), "--interactor", str(pkg.interactor))
+    judge = ("--tests", str(cases[0].parent), "--interactor", str(pkg.interactor), *package_limits(pkg))
     ours = cpl_cases(ctx.cpl, pkg.port, *judge)
     if isinstance(ours, str):
         return [f"{ours} {pkg.id} -"]
@@ -903,46 +1054,87 @@ INLINE = 200
 
 
 def stamp(pkg, ref):
-    """What a package's generated cases depend on; `make` skips one whose stamp is unchanged."""
-    h = hashlib.sha256()
+    """What a package's generated cases depend on, `made` itself included; `make` skips one
+    whose stamp is unchanged."""
+    h = hashlib.sha256(inspect.getsource(made).encode())
     for f in (pkg.tests, pkg.gen, ref):
         if f:
             h.update(Path(f).read_bytes())
     return h.hexdigest()
 
 
+class ReferenceFails(RuntimeError):
+    """The accepted C++ crashes on a case tests.toml makes: the case or the reference is wrong."""
+    def __init__(self, case, code):
+        super().__init__(f"accepted C++ exits {code} on case {case}")
+        self.case = case
+
+
 def make_cases(pkg, out=OUT):
     """Write <out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++
-    (an interactive package's NN.in is the interactor's hidden data, with no answer)."""
+    (an interactive package's NN.in is the interactor's hidden data, with no answer),
+    and an empty NN.max beside each `args = ["--max"]` case."""
     ref = None if pkg.interactor else pkg.reference()
     if not pkg.interactor and ref is None:
         raise RuntimeError("no accepted C++ to make answers")
     tests = os.path.join(out, pkg.id)
+    os.makedirs(out, exist_ok=True)
+    # One make of a package at a time, so concurrent makers (nextest runs each
+    # test in its own process) wait for the first and then find it made.
+    with open(os.path.join(out, f".{pkg.id}.lock"), "w") as lock:
+        import fcntl  # POSIX only; `ls` and the walkers run on Windows too
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        made(pkg, ref, tests, out)
+
+
+def made(pkg, ref, tests, out):
     key = os.path.join(tests, ".stamp")
     if os.path.exists(key) and open(key).read() == stamp(pkg, ref):
         return
     exe = binary(ref) if ref else None
-    shutil.rmtree(tests, ignore_errors=True)
-    os.makedirs(tests)
-    for i, case in enumerate(pkg.cases(), 1):
-        text = pkg.case_input(case)
-        Path(tests, f"{i:02}.in").write_text(text)
-        if exe:
-            r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=TIMEOUT, preexec_fn=judge_stack)
-            if r.returncode:
-                raise RuntimeError(f"accepted C++ exits {r.returncode} on case {i}")
-            Path(tests, f"{i:02}.ans").write_text(r.stdout)
-    Path(key).write_text(stamp(pkg, ref))
+    # Made aside and renamed in, so a test reading the cases never sees half of them.
+    aside = tempfile.mkdtemp(prefix=f".{pkg.id}.", dir=out)
+    try:
+        for i, case in enumerate(pkg.cases(), 1):
+            text = pkg.case_input(case)
+            Path(aside, f"{i:02}.in").write_text(text)
+            if "--max" in case.get("args", []):
+                Path(aside, f"{i:02}.max").touch()
+            if exe:
+                r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=TIMEOUT, preexec_fn=judge_stack)
+                if r.returncode:
+                    raise ReferenceFails(f"{i:02}", r.returncode)
+                Path(aside, f"{i:02}.ans").write_text(r.stdout)
+        Path(aside, ".stamp").write_text(stamp(pkg, ref))
+        shutil.rmtree(tests, ignore_errors=True)
+        os.rename(aside, tests)
+    finally:
+        shutil.rmtree(aside, ignore_errors=True)
+
+
+def make_one(job):
+    """Make one package's cases in a worker process: its id and error, or None."""
+    pid, out = job
+    try:
+        make_cases(next(problems(ids=[pid])), out)
+    except (RuntimeError, subprocess.SubprocessError, OSError) as e:
+        return f"{pid}: {e!s:.160}"
+    return None
 
 
 def make(args):
-    wanted = [p for p in problems(sets=args.set or None, ids=args.ids or None) if p.tests]
-    failed = []
-    for pkg in wanted:
-        try:
-            make_cases(pkg, args.out or OUT)
-        except (RuntimeError, subprocess.SubprocessError, OSError) as e:
-            failed.append(f"{pkg.id}: {e!s:.160}")
+    """Make the cases of every package with a tests.toml, -j at a time. Processes,
+    not threads: make_cases runs the accepted C++ with a preexec_fn."""
+    import concurrent.futures, multiprocessing
+    ids = list(args.ids)
+    if getattr(args, "changed", None):
+        ids = [p.id for p in problems(ids=changed_ids(args.changed))]
+        if not ids:
+            return 0
+    wanted = [p for p in problems(sets=args.set or None, ids=ids or None) if p.tests]
+    jobs = [(p.id, args.out or OUT) for p in wanted]
+    with concurrent.futures.ProcessPoolExecutor(max(1, args.j), mp_context=multiprocessing.get_context("fork")) as pool:
+        failed = [f for f in pool.map(make_one, jobs) if f]
     for f in failed:
         print(f, file=sys.stderr)
     print(f"corpus: cases for {len(wanted) - len(failed)} of {len(wanted)} packages")
@@ -1193,7 +1385,9 @@ def cli(argv):
     m = sub.add_parser("make")
     m.add_argument("ids", nargs="*")
     m.add_argument("--set", action="append")
+    m.add_argument("--changed", metavar="BASE", help="only packages changed since BASE (a commit, or `staged`)")
     m.add_argument("--out")
+    m.add_argument("-j", type=int, default=os.cpu_count() or 4)
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
     ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")

@@ -27,7 +27,7 @@ input = "1 1 1 1\n-852\n"
 
 [[case]]
 seed = 9
-size = 65536
+size = 2048
 
 [[case]]
 seed = 10

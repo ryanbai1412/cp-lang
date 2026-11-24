@@ -10,6 +10,7 @@
 //   halved. Each round, in every centroid piece bucket w at max_budget[w] - depth(w), keep
 //   suffix maxima of the deepest w in two different branches, and query each u at its depth.
 //   O(n log^2 n).
+// Bounds: n: 1..=70_000; edges.u, edges.v: 1..=n
 
 use std.tree.Centroids
 

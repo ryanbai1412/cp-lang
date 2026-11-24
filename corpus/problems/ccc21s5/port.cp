@@ -7,6 +7,7 @@
 //   z, a difference array over the cuts marks the covered positions (O(16 n)); then a gcd
 //   SegTree checks every requirement, O(m log n).
 // original: corpus/submissions/4323513.cpp
+// Bounds: n, m: 1..=150_000; reqs.l, reqs.r: 1..=n; reqs.z: 1..=16
 let (n, m): (1..=150_000, 1..=150_000) = read()
 domain I = 1..=n
 let reqs: [m](l: I, r: I, z: 1..=16) = read()

@@ -1,6 +1,6 @@
 use crate::checkpoint::Body;
 use crate::observe::Observer;
-use crate::value::{Array, ArrayData, OptVal, TupleVal, Value};
+use crate::value::{Array, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{trap, Interp, Res};
@@ -75,7 +75,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {}", list.len()),
                             );
                         }
-                        regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
+                        regs_i[dst as usize] =
+                            ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                     } else {
                         return trap(spans[cur_pc], "internal: expected list field");
                     }
@@ -209,7 +210,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 for k in 0..n {
                     items.push(std::mem::replace(&mut regs_v[b + k], Value::Unit));
                 }
-                regs_v[dst as usize] = Value::List(Rc::new(items));
+                regs_v[dst as usize] = Value::List(Rc::new(crate::value::Cells::from(items)));
             }
             Op::ListFilled { dst, r_n, val_v } => {
                 let n = regs_i[r_n as usize];
@@ -220,13 +221,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     );
                 }
                 let val = regs_v[val_v as usize].clone();
-                regs_v[dst as usize] = Value::List(Rc::new(vec![val; n as usize]));
+                regs_v[dst as usize] =
+                    Value::List(Rc::new(crate::value::Cells::from(vec![val; n as usize])));
             }
             Op::ToList { dst, src_v } => {
                 regs_v[dst as usize] = match &regs_v[src_v as usize] {
-                    Value::Array(arr) => Value::List(Rc::new(arr.to_values())),
+                    Value::Array(arr) => {
+                        Value::List(Rc::new(crate::value::Cells::from(arr.to_values())))
+                    }
                     Value::List(items) => Value::List(Rc::new((**items).clone())),
-                    Value::ListView(view) => Value::List(Rc::new(view.to_vec())),
+                    Value::ListView(view) => {
+                        Value::List(Rc::new(crate::value::Cells::from(view.to_vec())))
+                    }
                     other => other.clone(),
                 };
             }
@@ -333,9 +339,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
-                        ArrayData::Values(vs) => {
-                            std::mem::replace(&mut vs[idx as usize], Value::Unit)
-                        }
+                        Cells::Values(vs) => std::mem::replace(&mut vs[idx as usize], Value::Unit),
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
                 } else {
@@ -355,9 +359,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
-                        ArrayData::Values(vs) => {
-                            std::mem::replace(&mut vs[idx as usize], Value::Unit)
-                        }
+                        Cells::Values(vs) => std::mem::replace(&mut vs[idx as usize], Value::Unit),
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
                 } else {
@@ -375,7 +377,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             format!("index {idx} is outside a list of length {len}"),
                         );
                     }
-                    std::mem::replace(&mut Rc::make_mut(items)[idx as usize], Value::Unit)
+                    std::mem::replace(
+                        &mut Rc::make_mut(items).as_mut_values()[idx as usize],
+                        Value::Unit,
+                    )
                 } else {
                     return trap(spans[cur_pc], "internal: expected list");
                 };
@@ -391,7 +396,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             format!("index {idx} is outside a list of length {len}"),
                         );
                     }
-                    std::mem::replace(&mut Rc::make_mut(items)[idx as usize], Value::Unit)
+                    std::mem::replace(
+                        &mut Rc::make_mut(items).as_mut_values()[idx as usize],
+                        Value::Unit,
+                    )
                 } else {
                     return trap(spans[cur_pc], "internal: expected list");
                 };

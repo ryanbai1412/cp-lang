@@ -69,8 +69,8 @@ print(a.len)
 ```cp
 domain V = 0..8
 var a: [V]Int = 0
-let w = a[V(2)..V(5)]        // w is a view: a lend of a
-a[V(2)] = 5                  // error E0602: a is lent to w until the next line
+let w = a[V(2)..V(5)]  // w is a view: a lend of a
+a[V(2)] = 5            // error E0602: a is lent to w until the next line
 print(w.sum())
 ```
 
@@ -258,7 +258,7 @@ storing it in a top-level `var` from a fn (R05.7.8 to R05.7.10).
 var rows = [[1, 2], [3]]
 var best = List<Int>()
 for r in rows:
-    if r.len > best.len: best = r      // error E0603: r is lent for one iteration; write r.clone()
+    if r.len > best.len: best = r  // error E0603: r is lent for one iteration; write r.clone()
 ```
 
 **Lost:** first-class references with inferred lifetimes. They would let
@@ -362,7 +362,7 @@ fn paint(mut x: [V]Int, mut y: [V]Int):
     for k in y.keys: y[k] = 2
 var a: [V]Int = 0
 let c = V(3).l
-paint(mut a[..c], mut a[c..])          // the ranges meet at c and can't overlap
+paint(mut a[..c], mut a[c..])  // the ranges meet at c and can't overlap
 print(a[V(2)], a[V(3)])
 ```
 
@@ -442,7 +442,7 @@ returned past that state:
 ```cp
 fn counter() -> (() -> Int):
     var c = 0
-    () => c                  // error E0603: the lambda captures local c
+    () => c  // error E0603: the lambda captures local c
 ```
 
 **An `Int` parameter is copied in (decision 471).** `fn adder(n: Int) ->

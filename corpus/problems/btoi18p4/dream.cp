@@ -1,39 +1,85 @@
 // BOI 2018 "Alternating Current": wires cover wrapping arcs of a ring of n
 // segments; give each wire a direction so both directions cover the ring.
-let (n, m) = read<(3..=1e5, 2..=1e5)>()
+// A wire inside another takes the opposite direction of its outermost holder.
+// The k outermost wires alternate round the ring; when k is odd, two adjacent
+// outermost wires share a direction, which works when the opposite side still
+// covers their union from their own nested wires and their two neighbours.
+let n: 1..=1e5 = read()
+let m: 1..=1e5 = read()
 domain Seg = 1..=n
-domain Wire = [m]
-let arc = read<[Wire]RingRange<Seg>>()
+domain Wire = 0..m
+let ends: [Wire](a: Seg, b: Seg) = read()
+let lo = [Wire] w => Int(ends[w].a)
+let hi = [Wire] w => Int(ends[w].b) + (if ends[w].b < ends[w].a: n else: 0)
 
-let nest = Seg.ring.nesting(arc)
-let tops = nest.tops
-let k = tops.len
+// Whether the arcs `on`, each repeated one lap either way, cover segments lo..=hi.
+// O(s log s) in the number of arcs, never O(n), so the per-top checks stay O(m log m) in total.
+fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
+    var upto = part.lo - 1
+    for (l, h) in [(lo[w] + s, hi[w] + s) for w in on for s in [-n, 0, n]].sorted():
+        if upto >= part.hi:
+            break
+        if l > upto + 1:
+            return false
+        upto max= h
+    upto >= part.hi
 
-fn covers(arcs: Seq<RingRange<Seg>>, part: RingRange<Seg>) -> Bool =
-    Seg.ring.coverage(arcs).min_over(part) > 0
+let whole = (lo: 1, hi: n)
+var holder: [Wire]?Wire = None
+var reach: ?(end: Int, by: Wire) = None
+let copies = [(start: lo[w] + s, end: hi[w] + s, w:) for w in Wire for s in [0, n]]
+for c in copies.sorted(by: c => (c.start, desc(c.end))):
+    match reach:
+        Some(r) if c.end <= r.end and r.by != c.w => holder[c.w] = holder[c.w] ?? Some(r.by)
+        _ => reach = Some((end: c.end, by: c.w))
+let top = [Wire] w =>
+    var u = w
+    while let h = holder[u]: u = h
+    u
+let tops = Wire.filter(w => holder[w] == None).collect().sorted(by: w => lo[w])
+domain T = [tops.len]
+var rank: [Wire]?T = None
+for t in T:
+    rank[tops[Int(t)]] = Some(t)
+let inside = Wire.filter(w => holder[w] != None).collect().group(by: w => top[w])
+fn kids(t: T) -> List<Wire> = inside.get(tops[Int(t)]) ?? List()
 
-fn spread(top_dir: tops.keys -> Bool) -> ?[Wire]Bool:
-    let dir = [Wire] w => if nest.is_top(w): top_dir(nest.top(w)) else: not top_dir(nest.top(w))
-    let both = [false, true].all(d => covers(Wire.filter(w => dir[w] == d).map(w => arc[w]), Seg.ring.all))
-    both.then(dir)
+fn spread(side: T -> Bool) -> ?[Wire]Bool:
+    let dir = [Wire] w => if holder[w] == None: side(rank[w]!) else: not side(rank[top[w]]!)
+    let both = [false, true].all(d => covers(Wire.filter(w => dir[w] == d).collect(), whole))
+    if both: Some(dir) else: None
+
+// Top t can share its neighbour's direction when its own nested wires and its two neighbouring
+// tops still cover it from the other side.
+fn alone(t: T) -> Bool =
+    covers(
+        kids(t) + [tops[Int(T.wrap(t.ord - 1))], tops[Int(T.wrap(t.ord + 1))]],
+        (lo: lo[tops[Int(t)]], hi: hi[tops[Int(t)]]),
+    )
 
 let answer: ?[Wire]Bool =
-    if k % 2 == 0 or k == 1:
-        spread(t => t.is_odd())
-    elif k <= 3:
-        tops.keys.find_map(s => spread(t => tops.ring.dist(s, t).is_even()))
-    elif not covers(arc.values, Seg.ring.all):
+    if T.count % 2 == 0 or T.count == 1:
+        spread(t => Int(t) % 2 == 1)
+    elif T.count == 3:
+        T.first_some(b => spread(t => T.wrap(t.ord - b.ord).ord % 2 == 0))
+    elif not covers(Wire.collect(), whole):
         None
     else:
-        let alone = [tops.keys] t => covers(chain(nest.inside(t).map(w => arc[w]), [arc[tops.ring.prev(t)], arc[tops.ring.next(t)]]), arc[t])
-        let good = alone.count()
-        tops.ring.windows(4).find_map(w =>
-            let (a, b, c, d) = (w[0], w[1], w[2], w[3])
-            let pair = chain(nest.inside(b), nest.inside(c)).map(x => arc[x])
-            if good - alone[b].int - alone[c].int == k - 2 and covers(chain(pair, [arc[a], arc[d]]), arc[b].hull(arc[c])):
-                spread(t => if t == c: tops.ring.dist(b, t).is_odd() else: tops.ring.dist(b, t).is_even())
-            else: None)
+        let free = [T] t => alone(t)
+        let good = T.filter(t => free[t]).collect().len
+        T.first_some(b =>
+            let c = T.wrap(b.ord + 1)
+            let (wb, wc) = (tops[Int(b)], tops[Int(c)])
+            let pair = (lo: lo[wb], hi: hi[wc] + (if lo[wc] < lo[wb]: n else: 0))
+            let others = [tops[Int(T.wrap(b.ord - 1))], tops[Int(T.wrap(c.ord + 1))]]
+            if good - Int(free[b]) - Int(free[c]) == T.count - 2 and covers(
+                kids(b) + kids(c) + others,
+                pair,
+            ):
+                spread(t => T.wrap(t.ord - c.ord).ord % 2 == 0)
+            else: None
+        )
 
 match answer:
-    Some(dir) => print(dir.map(d => d.int), sep: "")
+    Some(dir) => print(dir.map(d => Int(d)), sep: "")
     None => print("impossible")

@@ -1,4 +1,4 @@
-use std.mod.{Mod, Comb}
+use std.mod.{Mod}
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z>()
 

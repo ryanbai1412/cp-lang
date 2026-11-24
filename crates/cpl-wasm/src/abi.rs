@@ -142,6 +142,13 @@ pub extern "C" fn cpl_provide_std() {
     command(|playground, name, text, _, _| playground.provide_std(name, text).to_string());
 }
 
+/// Gives this module `TEXT`, a JSON object of path to text, as the files
+/// beside the one it checks.
+#[no_mangle]
+pub extern "C" fn cpl_set_files() {
+    command(|playground, _, text, _, _| playground.set_files(text).to_string());
+}
+
 /// Checks `TEXT`.
 #[no_mangle]
 pub extern "C" fn cpl_check() {
@@ -198,10 +205,18 @@ pub extern "C" fn cpl_trace(stack: u32) {
 /// Runs `cpl stress --explain --format json` on `TEXT` in-process.
 #[cfg(feature = "build")]
 #[no_mangle]
-pub extern "C" fn cpl_stress(cases: u32, seed_lo: u32, seed_hi: u32, size: u32, stack: u32) {
+pub extern "C" fn cpl_stress(
+    cases: u32,
+    seed_lo: u32,
+    seed_hi: u32,
+    size: u32,
+    stack: u32,
+    time_ms: u32,
+) {
     let seed = u64::from(seed_lo) | (u64::from(seed_hi) << 32);
     command(|playground, name, text, _, _| {
-        playground.stress_with_stack(name, text, cases, seed, size, stack)
+        let limits = crate::StressLimits { stack, time_ms };
+        playground.stress_with_stack(name, text, cases, seed, size, limits)
     });
 }
 

@@ -9,6 +9,7 @@
 //   ways(w) = C(n - w + m, m - 1), the arrays constant on a fixed window of w cells. Halving
 //   leaves at most two segment lengths per depth (`Layer`), so each of the O(log n) depths costs
 //   O(1) with factorials: O(n + m) per test.
+// Bounds: n, m: 3..=1_000_000
 
 type Z = Mod<676_767_677>
 

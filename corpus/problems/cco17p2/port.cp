@@ -7,6 +7,7 @@
 //   n x 2n district. Euclid-like depth, memoised on (n, m); an impossible split is None, and the answer
 //   joins dp(N, M) and dp(M, N).
 // original: corpus/submissions/6416978.cpp
+// Bounds: n, m: 1..=1e8
 let n: 1..=1e8 = read()
 let m: 1..=1e8 = read()
 

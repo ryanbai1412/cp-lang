@@ -29,7 +29,7 @@ pub fn render(diag: &Diagnostic, path: &str, text: &str, lines: &LineIndex) -> S
     for label in &diag.labels {
         marks.push((label.span, '-', &label.message));
     }
-    marks.sort_by_key(|m| m.0.start);
+    crate::sort_by_key(&mut marks, |m| m.0.start as u64);
 
     let width = marks
         .iter()

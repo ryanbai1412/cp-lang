@@ -5,6 +5,7 @@
 // Solution: the product P = a b is fixed and x + P / x grows toward the extremes, so take the
 //   largest k with matching parities. Both odd: k = b gives a b + 1. b even and 4 | a b: k = b / 2
 //   gives a b / 2 + 2. Otherwise one side is odd for every k: -1. O(1).
+// Bounds: a, b: 1..=10 ** 18
 
 @!multitest
 let (a, b): (1..=10 ** 18, 1..=10 ** 18) = read()

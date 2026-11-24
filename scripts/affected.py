@@ -8,7 +8,8 @@ Rule: handbook/guidelines/ci-checklist.md#cir3.
 
 A path under a crate selects that crate and, through nextest's `rdeps()`,
 every crate that depends on it. Prose selects nothing. Any path this file
-does not know selects the whole fast gate, so a new kind of input can only
+does not know selects the whole fast gate, a checking script that
+scripts/ci.py runs selects its own step, so a new kind of input can only
 make the commit tier slower, never let it miss a test. The land tier
 (`scripts/check.sh --land`) selects the same way over a train's diff; CI's
 `--fast` on every main tip always runs everything.
@@ -21,6 +22,12 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci  # noqa: E402
+import corpus  # noqa: E402
+
+PACKAGES = corpus.rel(corpus.PROBLEMS)
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Read by no crate, test or script check (scripts/check_cache.py's excludes).
@@ -32,11 +39,11 @@ EVERY_CRATE = ["Cargo.toml", "Cargo.lock", "rust-toolchain*", ".cargo/*",
                ".config/nextest.toml", "std/*", "clippy.toml", "rustfmt.toml"]
 SITE = ["web/*", "docs/*"]
 # Data files and the nextest filter of the tests that read them.
-DATA_TESTS = [(f"corpus/problems/*/{leaf}", "package(cpl-lint) & test(/corpus_warnings/)")
+DATA_TESTS = [(f"{PACKAGES}/*/{leaf}", "package(cpl-lint) & test(/corpus_warnings/)")
               for leaf in ("spec.cp", "port.cp")]
 # Editor files a crate embeds or its tests read; the rest are CI's editor jobs'.
 # Programs no test reads but that must still pass `cpl check`.
-CHECK_ONLY = ["research/acceptance/solutions/*.cp", "corpus/problems/*/perf.cp"]
+CHECK_ONLY = ["research/acceptance/solutions/*.cp", f"{PACKAGES}/*/perf.cp"]
 # Owner-named tests a touched path runs ahead of the rest of the commit tier,
 # each under SLICE_LIMIT_S warm (ci/R39): name, owner, paths, nextest
 # `binary_id[ test]` entries.
@@ -145,10 +152,11 @@ def run_slices(names):
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
            "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
-           "check_files": [], "audit": False, "idioms_catalog": False, "slices": []}
-    packages, tests, data = set(), set(), []
+           "check_files": [], "audit": False, "idioms_catalog": False, "slices": [], "steps": []}
+    packages, tests, data, steps = set(), set(), [], set()
+    step_scripts = ci.step_scripts()
     for path in paths:
-        if path.startswith("corpus/problems/"):
+        if path.startswith(PACKAGES + "/"):
             sel["audit"] = True
         if path.startswith(("spec/idioms/", "std/", "crates/cpl-check/src/")):
             sel["idioms_catalog"] = True
@@ -174,6 +182,10 @@ def select(paths, dirs):
             packages.update(dirs.values())
         elif matches(path, SITE):
             sel["site"] = True
+        elif path in step_scripts:
+            steps.add(path)
+            if t := script_test(path):
+                tests.add(t)
         elif path.startswith("scripts/") and (t := script_test(path)):
             tests.add(t)
         elif path.startswith("scripts/") and ci_only(path):
@@ -188,6 +200,7 @@ def select(paths, dirs):
     sel["slices"] = [name for name, _, globs, _ in SLICES if any(matches(p, globs) for p in paths)]
     sel["packages"] = sorted(packages)
     sel["script_tests"] = sorted(tests)
+    sel["steps"] = sorted(steps)
     sel["data_filter"] = " | ".join(f"({e})" for e in data)
     return sel
 
@@ -231,6 +244,7 @@ def main(argv):
     print(f"audit={int(sel['audit'])}")
     print(f"idioms_catalog={int(sel['idioms_catalog'])}")
     print("slices=" + " ".join(sel["slices"]))
+    print("steps=" + " ".join(sel["steps"]))
     print("slice_filter=" + slice_filter(sel["slices"]))
     return 0
 

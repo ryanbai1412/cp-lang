@@ -1,28 +1,48 @@
 //! Spellings std removed, met in user code: the error carries the rewrite, so `cpl fix`
 //! migrates the call (decisions 456 and 511). A row only matches a name that no longer
-//! resolves, so a user's own definition of that name is never rewritten.
+//! resolves, so a user's own definition of that name is never rewritten; a `respelled` row is a
+//! name std still has, matched only when the call has the arity std removed.
 
 use super::*;
 use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 /// A removed call and how it is written now. In `to`, `{0}`, `{1}`, .. are the positional
 /// arguments, `{self}` is a method's receiver and `{named}` the named arguments, each written
-/// `, name: value`.
+/// `, name: value` (without the first `, ` right after `(`). `kept` is a named argument whose
+/// default the new spelling dropped, written when the call doesn't give it.
 pub(crate) struct Removed {
     pub name: &'static str,
     pub method: bool,
     pub arity: usize,
     pub to: &'static str,
     pub why: &'static str,
+    pub kept: Option<(&'static str, &'static str)>,
+    /// std still has the name; the row matches a call std rejects for its arity.
+    pub respelled: bool,
+    /// Named arguments that fill the positional holes after the positional ones.
+    pub slots: &'static [&'static str],
 }
 
 pub(crate) const REMOVED: &[Removed] = &[
+    Removed {
+        name: "fold",
+        method: true,
+        arity: 2,
+        to: "{self}.fold_from({1}, {0})",
+        why: "`fold(op)` takes only an op with an identity; a seeded fold is `fold_from(init, f)` (R07.9.2)",
+        kept: None,
+        respelled: true,
+        slots: &["init"],
+    },
     Removed {
         name: "suffix_fold",
         method: false,
         arity: 2,
         to: "{1}.rev.scan({0})",
         why: "a suffix fold is the scan of the reversed view (R07.4.16)",
+        kept: None,
+        respelled: false,
+        slots: &[],
     },
     Removed {
         name: "bsearch_real",
@@ -30,6 +50,9 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 3,
         to: "({0}..{1}).bsearch({2}{named})",
         why: "a real binary search is a method of its range",
+        kept: None,
+        respelled: false,
+        slots: &[],
     },
     Removed {
         name: "ternary_max_real",
@@ -37,6 +60,9 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 3,
         to: "({0}..{1}).peak(by: {2}{named})",
         why: "the peak of a unimodal function is a method of its range",
+        kept: None,
+        respelled: false,
+        slots: &[],
     },
     Removed {
         name: "ternary_min_real",
@@ -44,6 +70,9 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 3,
         to: "({0}..{1}).valley(by: {2}{named})",
         why: "the valley of a unimodal function is a method of its range",
+        kept: None,
+        respelled: false,
+        slots: &[],
     },
     Removed {
         name: "skip_while",
@@ -51,6 +80,89 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 1,
         to: "{self}.drop_while({0})",
         why: "`skip_while` is spelled `drop_while`",
+        kept: None,
+        respelled: false,
+        slots: &[],
+    },
+    Removed {
+        name: "det_real",
+        method: false,
+        arity: 1,
+        to: "{0}.det({named})",
+        why: "an elimination over `F64` is `Mat.det` with `eps:`",
+        kept: Some(("eps", "1e-9")),
+        respelled: false,
+        slots: &[],
+    },
+    Removed {
+        name: "det_real",
+        method: false,
+        arity: 2,
+        to: "{0}.det(eps: {1}{named})",
+        why: "an elimination over `F64` is `Mat.det` with `eps:`",
+        kept: None,
+        respelled: false,
+        slots: &[],
+    },
+    Removed {
+        name: "rank_real",
+        method: false,
+        arity: 1,
+        to: "{0}.rank({named})",
+        why: "an elimination over `F64` is `Mat.rank` with `eps:`",
+        kept: Some(("eps", "1e-9")),
+        respelled: false,
+        slots: &[],
+    },
+    Removed {
+        name: "rank_real",
+        method: false,
+        arity: 2,
+        to: "{0}.rank(eps: {1}{named})",
+        why: "an elimination over `F64` is `Mat.rank` with `eps:`",
+        kept: None,
+        respelled: false,
+        slots: &[],
+    },
+    Removed {
+        name: "inverse_real",
+        method: false,
+        arity: 1,
+        to: "{0}.inverse({named})",
+        why: "an elimination over `F64` is `Mat.inverse` with `eps:`",
+        kept: Some(("eps", "1e-9")),
+        respelled: false,
+        slots: &[],
+    },
+    Removed {
+        name: "inverse_real",
+        method: false,
+        arity: 2,
+        to: "{0}.inverse(eps: {1}{named})",
+        why: "an elimination over `F64` is `Mat.inverse` with `eps:`",
+        kept: None,
+        respelled: false,
+        slots: &[],
+    },
+    Removed {
+        name: "solve_real",
+        method: false,
+        arity: 2,
+        to: "{0}.solve({1}{named})",
+        why: "an elimination over `F64` is `Mat.solve` with `eps:`",
+        kept: Some(("eps", "1e-9")),
+        respelled: false,
+        slots: &[],
+    },
+    Removed {
+        name: "solve_real",
+        method: false,
+        arity: 3,
+        to: "{0}.solve({1}, eps: {2}{named})",
+        why: "an elimination over `F64` is `Mat.solve` with `eps:`",
+        kept: None,
+        respelled: false,
+        slots: &[],
     },
 ];
 
@@ -59,7 +171,7 @@ const PREFIX_EXCL: &str = "prefix_excl";
 
 /// Whether std removed `name`, so a `use` of it goes too.
 pub(crate) fn is_removed(name: &str) -> bool {
-    name == PREFIX_EXCL || REMOVED.iter().any(|r| r.name == name)
+    name == PREFIX_EXCL || REMOVED.iter().any(|r| r.name == name && !r.respelled)
 }
 
 /// `to` with its holes filled; a hole followed by `.` gets parentheses unless it is an atom.
@@ -78,6 +190,7 @@ fn fill(
         rest = rest.get(close + 1..).unwrap_or("");
         let hole = match key {
             "self" => receiver,
+            "named" if out.ends_with('(') => Some((named.trim_start_matches(", "), true)),
             "named" => Some((named, true)),
             k => k
                 .parse::<usize>()
@@ -204,7 +317,12 @@ impl Checker<'_> {
             ),
             _ => return false,
         };
-        let callee_error = |d: &cpl_diag::Diagnostic| d.code == code && d.span == at;
+        let respelled = REMOVED
+            .iter()
+            .any(|r| r.respelled && r.name == name && r.method == receiver.is_some());
+        let callee_error = |d: &cpl_diag::Diagnostic| {
+            d.span == at && (d.code == code || (respelled && d.code == codes::WRONG_ARG_COUNT))
+        };
         let Some(mut diag) = self
             .sink
             .diagnostics()
@@ -225,31 +343,41 @@ impl Checker<'_> {
                 "everything but `i` folds the scans before and after it (R07.4.16)",
             )
         } else {
-            let Some(row) = REMOVED
-                .iter()
-                .find(|r| r.name == name && r.method == receiver.is_some())
-            else {
+            let slotted = |r: &Removed, a: &Arg| {
+                (a.name.as_ref()).is_some_and(|n| r.slots.contains(&n.text.as_str()))
+            };
+            let unnamed = args.iter().filter(|a| a.name.is_none()).count();
+            let Some(row) = REMOVED.iter().find(|r| {
+                r.name == name
+                    && r.method == receiver.is_some()
+                    && r.arity == unnamed + args.iter().filter(|a| slotted(r, a)).count()
+            }) else {
                 return false;
             };
             let positional: Vec<(&str, bool)> = (args.iter())
                 .filter(|a| a.name.is_none())
+                .chain(args.iter().filter(|a| slotted(row, a)))
                 .map(|a| {
                     let t = self.text(a.value.span);
                     (t, is_atom(&a.value, t))
                 })
                 .collect();
-            if positional.len() != row.arity {
-                return false;
-            }
-            let named: String = (args.iter())
-                .filter_map(|a| {
+            let given = |key: &str| {
+                args.iter()
+                    .any(|a| a.name.as_ref().is_some_and(|n| n.text == key))
+            };
+            let kept = (row.kept.filter(|(key, _)| !given(key)))
+                .map(|(key, value)| format!(", {key}: {value}"));
+            let named: String = kept
+                .into_iter()
+                .chain(args.iter().filter(|a| !slotted(row, a)).filter_map(|a| {
                     let n = a.name.as_ref()?;
                     Some(format!(
                         ", {}: {}",
                         self.text(n.span),
                         self.text(a.value.span)
                     ))
-                })
+                }))
                 .collect();
             let receiver = receiver.map(|r| {
                 let t = self.text(r.span);
@@ -383,6 +511,28 @@ mod tests {
         assert_eq!(
             fill(row("skip_while").to, Some(x("xs")), &[x("p")], ""),
             "xs.drop_while(p)"
+        );
+        let det = |arity: usize| {
+            REMOVED
+                .iter()
+                .find(|r| r.name == "det_real" && r.arity == arity)
+                .unwrap()
+        };
+        assert_eq!(
+            fill(det(1).to, None, &[x("m")], ", eps: 1e-9"),
+            "m.det(eps: 1e-9)"
+        );
+        assert_eq!(
+            fill(det(2).to, None, &[x("m"), x("e")], ""),
+            "m.det(eps: e)"
+        );
+        let solve = REMOVED
+            .iter()
+            .find(|r| r.name == "solve_real" && r.arity == 2)
+            .unwrap();
+        assert_eq!(
+            fill(solve.to, None, &[x("m"), x("b")], ", eps: 1e-6"),
+            "m.solve(b, eps: 1e-6)"
         );
         let sum = [x("+"), ("a + b", false)];
         assert_eq!(

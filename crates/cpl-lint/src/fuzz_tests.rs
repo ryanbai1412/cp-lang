@@ -29,12 +29,7 @@ fn cp_files(dir: &Path, out: &mut Vec<PathBuf>) {
 fn sources(root: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     cp_files(&root.join(crate::STD_DIR), &mut out);
-    for entry in std::fs::read_dir(root.join("corpus/problems")).unwrap() {
-        let spec = entry.unwrap().path().join("spec.cp");
-        if spec.is_file() {
-            out.push(spec);
-        }
-    }
+    out.extend(cpl_corpus::files(root, "spec.cp"));
     for entry in std::fs::read_dir(root.join("spec/lints")).unwrap() {
         let path = entry.unwrap().path();
         if path.is_dir() {

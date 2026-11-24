@@ -10,6 +10,7 @@
 // original: corpus/submissions/4522631.cpp
 // Per parity class: how many columns are fully blank, how many constrain the
 // column sum, and a difference array of the sums each constraint allows.
+// Bounds: n, m: 1..=1e6; top, bot: 0..=m
 
 const MOD = 1_000_000_007
 type Z = Mod<MOD>

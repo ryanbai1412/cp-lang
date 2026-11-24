@@ -9,6 +9,7 @@
 //   over l < p of pref[l] (day one: l = p, so -pref[p]). One sweep keeps both running
 //   extremes; left ends are the same sweep from the right with pref negated. Every cut is
 //   reached from one side or the other because m >= 3. O(nm).
+// Bounds: n: 1..=200_000; m: 3..=200_000
 @!multitest
 let (n, m): (1..=200_000, 3..=200_000) = read()
 domain Drink = 0..m

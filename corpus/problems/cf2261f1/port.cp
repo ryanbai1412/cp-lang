@@ -10,6 +10,7 @@
 //   The table is R for S = 0, L for S = 1, else D when S mod n < 2 and U otherwise, so the
 //   count of ones (missing ones mark the wall row and gate) steers the rectangle onto the
 //   target. O(n^4) output.
+// Bounds: n: 3..=20
 let n: 3..=20 = read()  // the judge only has n = 3 and n = 20
 
 if n == 3:

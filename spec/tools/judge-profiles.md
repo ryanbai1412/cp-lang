@@ -40,7 +40,8 @@ answers = ["YES", "NO"]
   breaks the file down by part (decision 188) (Rjudge.4).
 - `time_ms` and `memory_mb` are a problem's limits when its `cp.toml`
   has no `[limits]`. (Rjudge.6)
-- `memory_mb` feeds `cpl explain`'s peak-memory check and the LSP's
-  code lens; `time_ms` feeds `cpl bench`. (Rjudge.7)
+- `memory_mb` is the limit of the peak-memory error E0904 (R03.1.9), and
+  feeds `cpl explain`'s peak line and the LSP's code lens; `time_ms`
+  feeds `cpl bench`. (Rjudge.7)
 - Local release runs build with the profile's flags and run under its
   stack (`ulimit -s`), so judge-only crashes reproduce locally. (Rjudge.8)

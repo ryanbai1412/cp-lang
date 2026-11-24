@@ -10,6 +10,7 @@
 //   is a persistent segment tree over keys (set[u] = set[l] + key[r]) with random-weighted hashes;
 //   compare by descending to the largest key whose subtrees hash apart, O(log n). Sorting each
 //   generation: O(n log^2 n).
+// Bounds: n: 1..=MAX_N
 
 use std.marks.{Arena, Id}
 use std.rand.{Rng}

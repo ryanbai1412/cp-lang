@@ -25,5 +25,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "Explicit two-pointer loop over SegTree(max, act: add) on compressed coords (a coverage Track would let maximal() do it); Lift.climb added for greedy jump counts; Lift, LcaTable, JumpTree join the prelude."
+ "notes": "Explicit two-pointer loop over SegTree(max, act: add) on compressed coords (a coverage Track would let maximal() do it); Lift.climb added for greedy jump counts; Lift, LcaTable, JumpTree join the prelude.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "203adf90a994894c2d5d2d4992b29a3a66994d10"
+ }
 }

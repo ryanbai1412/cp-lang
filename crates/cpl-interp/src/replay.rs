@@ -5,7 +5,7 @@
 //! input cursor exactly, whatever their types. The run stops when the call
 //! returns, and what the call did is compared with the recording.
 
-use crate::trace::{first_change_in, string, Call, Change, Recording, TraceConfig};
+use crate::trace::{first_change_in, Call, Change, Recording, TraceConfig};
 use crate::{observe_on_this_thread, run_observed, Io, Limits, Observed, Stop, Trap};
 use cpl_ir::{Program, Ty};
 
@@ -228,83 +228,79 @@ impl Replay {
     /// The report as JSON, for the trace viewer: values are the trace's
     /// JSON, `null` when there is none.
     pub fn json(&self) -> String {
-        let raw =
-            |out: &mut String, json: &Option<String>| *out += json.as_deref().unwrap_or("null");
-        let text = |out: &mut String, text: Option<&str>| match text {
-            Some(text) => string(out, text),
-            None => *out += "null",
-        };
         let call = &self.recorded;
-        let mut out = String::from("{\"call\":{\"name\":");
-        string(&mut out, &call.name);
-        out += &format!(
-            ",\"ordinal\":{},\"entry\":{},\"exit\":{},\"args\":{}}}",
-            call.ordinal, call.entry, call.exit, call.args
-        );
-        out += ",\"fallback\":";
-        text(&mut out, self.fallback.as_deref());
-        out += &format!(
-            ",\"replayed\":{},\"returned\":{{\"before\":",
-            self.replayed.is_some()
-        );
-        raw(&mut out, &self.before.returned);
-        out += ",\"after\":";
-        raw(&mut out, &self.after.returned);
-        out += "},\"writes\":[";
-        let mut ids: Vec<&str> = self
-            .before
-            .writes
-            .iter()
-            .chain(&self.after.writes)
-            .map(|(id, _)| id.as_str())
-            .collect();
-        ids.sort_unstable();
-        ids.dedup();
-        for (i, id) in ids.into_iter().enumerate() {
-            let get = |writes: &[(String, String)]| {
-                writes.iter().find(|(w, _)| w == id).map(|(_, v)| v.clone())
-            };
-            out += if i == 0 { "{\"id\":" } else { ",{\"id\":" };
-            string(&mut out, id);
-            out += ",\"before\":";
-            raw(&mut out, &get(&self.before.writes));
-            out += ",\"after\":";
-            raw(&mut out, &get(&self.after.writes));
-            out += "}";
-        }
-        out += "],\"change\":";
-        match &self.change {
-            None => out += "null",
-            Some(change) => {
-                out += &format!(
-                    "{{\"step\":{},\"line\":{},\"variable\":",
-                    change.step, change.line
-                );
-                text(&mut out, change.variable.as_deref());
-                // With no variable, `before` and `after` are step labels, not values.
-                for (key, value) in [("before", &change.before), ("after", &change.after)] {
-                    out += &format!(",\"{key}\":");
-                    match change.variable {
-                        Some(_) => raw(&mut out, value),
-                        None => text(&mut out, value.as_deref()),
+        cpl_json::write_with(|w| {
+            w.object().key("call").object();
+            w.key("name")
+                .str(&call.name)
+                .key("ordinal")
+                .int(call.ordinal);
+            w.key("entry").int(call.entry).key("exit").int(call.exit);
+            w.key("args").json(&call.args).end();
+            w.key("fallback").opt_str(self.fallback.as_deref());
+            w.key("replayed").bool(self.replayed.is_some());
+            w.key("returned").object();
+            w.key("before").opt_json(self.before.returned.as_deref());
+            w.key("after")
+                .opt_json(self.after.returned.as_deref())
+                .end();
+            let mut ids: Vec<&str> = self
+                .before
+                .writes
+                .iter()
+                .chain(&self.after.writes)
+                .map(|(id, _)| id.as_str())
+                .collect();
+            ids.sort_unstable();
+            ids.dedup();
+            fn get<'w>(writes: &'w [(String, String)], id: &str) -> Option<&'w str> {
+                writes
+                    .iter()
+                    .find(|(w, _)| w == id)
+                    .map(|(_, v)| v.as_str())
+            }
+            w.key("writes").array();
+            for id in ids {
+                w.object().key("id").str(id);
+                w.key("before").opt_json(get(&self.before.writes, id));
+                w.key("after").opt_json(get(&self.after.writes, id)).end();
+            }
+            w.end().key("change");
+            match &self.change {
+                None => w.null(),
+                Some(change) => {
+                    w.object()
+                        .key("step")
+                        .int(change.step)
+                        .key("line")
+                        .int(change.line);
+                    w.key("variable").opt_str(change.variable.as_deref());
+                    // With no variable, `before` and `after` are step labels, not values.
+                    for (key, value) in [("before", &change.before), ("after", &change.after)] {
+                        w.key(key);
+                        match change.variable {
+                            Some(_) => w.opt_json(value.as_deref()),
+                            None => w.opt_str(value.as_deref()),
+                        };
                     }
+                    w.end()
                 }
-                out += "}";
-            }
-        }
-        out += ",\"earlier\":";
-        match &self.earlier {
-            None => out += "null",
-            Some(change) => {
-                out += &format!("{{\"step\":{},\"line\":{}}}", change.step, change.line)
-            }
-        }
-        out += ",\"trap\":";
-        text(
-            &mut out,
-            self.trap.as_ref().map(|trap| trap.message.as_str()),
-        );
-        out + "}"
+            };
+            w.key("earlier");
+            match &self.earlier {
+                None => w.null(),
+                Some(change) => w
+                    .object()
+                    .key("step")
+                    .int(change.step)
+                    .key("line")
+                    .int(change.line)
+                    .end(),
+            };
+            w.key("trap")
+                .opt_str(self.trap.as_ref().map(|trap| trap.message.as_str()));
+            w.end();
+        })
     }
 }
 

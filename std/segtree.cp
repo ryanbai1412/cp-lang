@@ -8,15 +8,35 @@ type Pos = 0..=2_000_000_000
 
 struct NoAction
 struct NoOp
+struct NoOver
 fn same<A, B>(a: A, b: B) -> Bool = a == b
+
+/// The positions a `SegTree` runs over. A domain brings its own; `Int` has none, so a
+/// `SegTree<Int, T>` takes them from `over: lo..hi`.
+pub trait Positions:
+    fn count() -> Int
+    fn at(k: Int) -> Self
+    fn cut(k: Int) -> Cut<Self>
+
+impl<D: Domain> Positions for D:
+    fn count() -> Int = D.count
+    fn at(k: Int) -> D = D.nth(k)
+    fn cut(k: Int) -> Cut<D> = D.cuts.nth(k)
+
+impl Positions for Int:
+    fn count() -> Int = 0
+    fn at(k: Int) -> Int = k
+    fn cut(k: Int) -> Int = k
 
 /// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
 /// `min`, `max`, `gcd`) or your own `Monoid(id, op)`: `SegTree<V, Int>(max, a)`,
 /// `SegTree<V, Int>(+)`, `SegTree<V, Run>(Monoid(Run.empty, Run.join), a)`.
 /// `set` and `fold` are \(O(\log n)\), and so are `right_while` and `left_while`; memory is
 /// 2 * bit_ceil(n) values. The fold keeps the order of the positions, so
-/// non-commutative operations work.
-pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
+/// non-commutative operations work. `SegTree<Int, T>(op, over: lo..hi)` covers a huge range
+/// instead, making nodes on first touch: every call is \(O(\log(hi - lo))\) and makes at most
+/// \(2 \log_2(hi - lo)\) nodes, so memory grows with the positions touched, not with `hi - lo`.
+pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     t: List<T>
     lz: List<F>
     has_lz: List<Bool>
@@ -27,70 +47,179 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// What each position holds, for a tree built with `of`.
     pub var source: ?(D -> T)
     var dual: Bool = false
+    // The `over:` layout: node 0 stands for every untouched node, node 1 is the root over
+    // `0..size`, and `lc`/`rc` hold each node's children, made on first touch.
+    lc: List<Int> = []
+    rc: List<Int> = []
+    blank: List<T> = []
+    part: List<T> = []
+    base: Int = 0
+    n: Int = 0
 
     /// A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity
     /// everywhere when neither is given. `op` is a bare operator (`+`, `*`, `^`, `&`, `|`, `min`,
     /// `max`, `gcd`) or a `Monoid(id, op)`.
+    /// For an op with no identity, build over `op.opt()` and `Some` cells; each fold is then `None` when empty.
     ///
     /// `act:` adds range tags (`apply`, `apply_all`); with `act:` and no `op` the tree applies tags
     /// and reads points only. When the action commutes (the stock `add`, or `commutes: true`) `apply`
     /// skips push-down, which changes speed, never answers. `over: lo..hi` covers a huge `Int` range instead, making nodes
     /// on first touch; positions outside the touched ones hold `fill` or the identity.
     ///
-    /// cost: \(O(\lvert D \rvert)\); \(O(1)\) with `over:`
-    /// empty: an empty `D` gives a tree whose every fold is the identity; for an op with no
-    /// identity, build over `op.opt()` and `Some` cells, and each fold is `None` when empty
+    /// cost: \(O(\lvert D \rvert)\); \(O(\log(hi - lo))\) with `over: lo..hi`, which then makes at
+    /// most \(2 \log_2(hi - lo)\) nodes per call
+    /// empty: `domain E = 0..0; SegTree<E, Int>(+).all == 0`
     /// order: positions keep the domain `D` of `a`
-    /// traps: when both `a` and `fill` are given, or `over:` is given together with `a`
+    /// traps: when both `a` and `fill` are given, or `over:` is given together with `a`; a tree
+    /// built `over: lo..hi` traps on any position outside `lo..hi`
     /// example: `SegTree(+, [1, 2, 3]).all == 6`
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-    pub fn new<M, A>(
+    pub fn new<M, A, O>(
         op: M = NoOp(),
         a: ?[D]T = None,
         fill: ?T = None,
         act: A = NoAction(),
-        over: ?Range<Int> = None,
+        over: O = NoOver(),
     ) -> SegTree<D, T, F>:
-        if over != None: todo
+        if same(over, NoOver()): return SegTree<D, T, F>.on_domain(op, a, fill, act)
+        assert a == None, "pass either `a` or `over:`, not both"
+        if same(op, NoOp()):
+            assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
+            let left = Monoid<T>(fill!, (x, _) => x)
+            var st = SegTree<D, T, F>.sparse(left, over, fill, Some(Action<T, F>.of(act, left)))
+            st.dual = true
+            return st
+        let m = Monoid<T>.of(op)
+        if same(act, NoAction()): return SegTree<D, T, F>.sparse(m, over, fill, None)
+        SegTree<D, T, F>.sparse(m, over, fill, Some(Action<T, F>.of(act, op)))
+
+    fn on_domain<M, A>(op: M, a: ?[D]T, fill: ?T, act: A) -> SegTree<D, T, F>:
         if same(op, NoOp()):
             // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
             // values, so `apply` runs on leaves only.
             assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
-            let seed = if let init = a: init[D.first!] else: fill!
+            let seed = if let init = a: init[D.at(0)] else: fill!
             let left = Monoid<T>(seed, (x, _) => x)
             var st = SegTree<D, T, F>.build_lazy(left, a, fill, Action<T, F>.of(act, left))
             st.dual = true
             return st
         let m = Monoid<T>.of(op)
-        if same(act, NoAction()):
-            return SegTree<D, T, F>.build(m, a, fill)
-        else:
-            let resolved = Action<T, F>.of(act, op)
-            return SegTree<D, T, F>.build_lazy(m, a, fill, resolved)
+        if same(act, NoAction()): return SegTree<D, T, F>.build(m, a, fill)
+        SegTree<D, T, F>.build_lazy(m, a, fill, Action<T, F>.of(act, op))
+
+    fn sparse(m: Monoid<T>, over: Range<Int>, fill: ?T, act: ?Action<T, F>) -> SegTree<D, T, F>:
+        let (lo, hi) = over.ends
+        let size = bit_ceil(max(hi - lo, 1))
+        var st = SegTree<D, T, F>(m, [], [], [], [], size, ctz(size), act, None) with base: lo, n: hi - lo
+        st.seed(fill)
+        st
+
+    // Reset the `over:` layout to one untouched root. `blank[k]` is the fold of `2^k` fill values
+    // and `part[k]` the fold of the `n mod 2^k` fill values under the node of width `2^k` that
+    // straddles `n`, so an untouched node's value is known without making it.
+    fn seed(mut self, fill: ?T):
+        let v = fill ?? m.id
+        blank = [v]
+        part = [m.id]
+        for k in 0..log:
+            blank.push(m.op(blank[k], blank[k]))
+            part.push(if n.bit(k): m.op(blank[k], part[k]) else: part[k])
+        t = [m.id]
+        lc = [0]
+        rc = [0]
+        if let f = act:
+            lz = [f.id]
+            has_lz = [false]
+        let _ = self.grow(0, size)
+
+    fn blank_at(self, nl: Int, nr: Int) -> T:
+        if nr <= n: return blank[ctz(nr - nl)]
+        if nl >= n: return m.id
+        part[ctz(nr - nl)]
+
+    fn grow(mut self, nl: Int, nr: Int) -> Int:
+        t.push(self.blank_at(nl, nr))
+        lc.push(0)
+        rc.push(0)
+        if let f = act:
+            lz.push(f.id)
+            has_lz.push(false)
+        t.len - 1
+
+    // The positions of `D` under node `p`, which covers `nl..nr`.
+    fn width(self, p: Int, nl: Int, nr: Int) -> Int:
+        if lc.len == 0: return span[p]
+        max(0, min(nr, n) - nl)
+
+    fn kid(self, p: Int, right: Bool) -> Int:
+        if lc.len == 0: return if right: 2 * p + 1 else: 2 * p
+        if right: rc[p] else: lc[p]
+
+    @get fn count(self) -> Int = if lc.len > 0: n else: D.count()
+
+    fn slot(self, x: Int) -> Int:
+        let y = x - base
+        assert y in 0..n, "the position is outside the tree's `over:` range"
+        y
+
+    // Make node `p`'s children if they are untouched, then hand them its pending tag.
+    fn open_node(mut self, p: Int, nl: Int, nr: Int):
+        let mid = (nl + nr) / 2
+        if lc[p] == 0:
+            let c = self.grow(nl, mid)
+            lc[p] = c
+        if rc[p] == 0:
+            let c = self.grow(mid, nr)
+            rc[p] = c
+        if act != None: self.push(p, lc[p], rc[p], self.width(0, nl, mid), self.width(0, mid, nr), nr - nl == 2)
+
+    fn apply_at(mut self, p: Int, nl: Int, nr: Int, lo: Int, hi: Int, f: F):
+        if hi <= nl or nr <= lo: return
+        if lo <= nl and nr <= hi:
+            self.put(p, f, self.width(p, nl, nr), nr - nl == 1)
+            return
+        self.open_node(p, nl, nr)
+        let mid = (nl + nr) / 2
+        self.apply_at(lc[p], nl, mid, lo, hi, f)
+        self.apply_at(rc[p], mid, nr, lo, hi, f)
+        self.pull_node(p, lc[p], rc[p], self.width(p, nl, nr))
+
+    fn fold_at(self, p: Int, nl: Int, nr: Int, lo: Int, hi: Int, pend: ?F) -> T:
+        if hi <= nl or nr <= lo: return m.id
+        if lo <= nl and nr <= hi: return self.seen(pend, p, nl, nr)
+        let down = self.below(pend, p)
+        let mid = (nl + nr) / 2
+        m.op(self.fold_at(self.kid(p, false), nl, mid, lo, hi, down), self.fold_at(self.kid(p, true), mid, nr, lo, hi, down))
+
+    fn pull_path(mut self, p: Int, nl: Int, nr: Int, x: Int):
+        if nr - nl == 1: return
+        let mid = (nl + nr) / 2
+        if x < mid: self.pull_path(lc[p], nl, mid, x) else: self.pull_path(rc[p], mid, nr, x)
+        self.pull_node(p, lc[p], rc[p], self.width(p, nl, nr))
 
     fn build(m: Monoid<T>, a: ?[D]T, fill: ?T) -> SegTree<D, T, F>:
-        let size = bit_ceil(D.count)
+        let size = bit_ceil(D.count())
         var t = List.filled(2 * size, m.id)
         if let init = a:
             assert fill == None, "pass either `a` or `fill`, not both"
-            for i in D: t[size + i.ord] = init[i]
+            for i in 0..D.count(): t[size + i] = init[D.at(i)]
         elif let v = fill:
-            for i in 0..D.count: t[size + i] = v
+            for i in 0..D.count(): t[size + i] = v
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
         SegTree(m, t, [], [], [], size, 0, None, None)
 
     fn build_lazy(m: Monoid<T>, a: ?[D]T, fill: ?T, resolved: Action<T, F>) -> SegTree<D, T, F>:
-        let size = bit_ceil(D.count)
+        let size = bit_ceil(D.count())
         var t = List.filled(2 * size, m.id)
         var span = List.filled(2 * size, 0)
-        for i in 0..D.count: span[size + i] = 1
+        for i in 0..D.count(): span[size + i] = 1
         if let init = a:
             assert fill == None, "pass either `a` or `fill`, not both"
-            for i in D: t[size + i.ord] = init[i]
+            for i in 0..D.count(): t[size + i] = init[D.at(i)]
         elif let v = fill:
-            for i in 0..D.count: t[size + i] = v
+            for i in 0..D.count(): t[size + i] = v
         for p in (1..size).rev:
             t[p] = m.op(t[2 * p], t[2 * p + 1])
             span[p] = span[2 * p] + span[2 * p + 1]
@@ -106,32 +235,38 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
             None,
         )
 
-    fn put(mut self, p: Int, f: F):
+    fn put(mut self, p: Int, f: F, w: Int, leaf: Bool):
         unchecked:
-            if span[p] == 0: return
-            if p >= size or not dual: t[p] = act!.apply(f, t[p], span[p])
-            if p < size:
+            if w == 0: return
+            if leaf or not dual: t[p] = act!.apply(f, t[p], w)
+            if not leaf:
                 lz[p] = act!.compose(f, lz[p])
                 has_lz[p] = true
 
-    fn push(mut self, p: Int):
+    // Hand node `p`'s pending tag to its children `l` and `r`, holding `wl` and `wr` positions.
+    fn push(mut self, p: Int, l: Int, r: Int, wl: Int, wr: Int, leaf: Bool):
         unchecked:
             if not has_lz[p]: return
-            self.put(2 * p, lz[p])
-            self.put(2 * p + 1, lz[p])
+            self.put(l, lz[p], wl, leaf)
+            self.put(r, lz[p], wr, leaf)
             lz[p] = act!.id
             has_lz[p] = false
 
+    fn push_at(mut self, p: Int):
+        self.push(p, 2 * p, 2 * p + 1, span[2 * p], span[2 * p + 1], 2 * p >= size)
+
     fn open(mut self, l: Int, h: Int):
         for i in (1..=log).rev:
-            if ((l >> i) << i) != l: self.push(l >> i)
-            if ((h >> i) << i) != h: self.push((h - 1) >> i)
+            if ((l >> i) << i) != l: self.push_at(l >> i)
+            if ((h >> i) << i) != h: self.push_at((h - 1) >> i)
 
     // Node `p`'s value with `pend`, the tags its ancestors hold, applied.
-    fn seen(self, pend: ?F, p: Int) -> T:
+    fn seen(self, pend: ?F, p: Int, nl: Int, nr: Int) -> T:
+        let v = if p == 0: self.blank_at(nl, nr) else: t[p]
         if let f = pend:
-            if span[p] > 0: return act!.apply(f, t[p], span[p])
-        t[p]
+            let w = self.width(p, nl, nr)
+            if w > 0: return act!.apply(f, v, w)
+        v
 
     // The tags pending above `p`'s children: `pend`, after `p`'s own.
     fn below(self, pend: ?F, p: Int) -> ?F:
@@ -144,26 +279,26 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     fn right_from(self, p: Int, nl: Int, nr: Int, from: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
         if nr <= from: return (-1, acc)
         if from <= nl:
-            let w = m.op(acc, self.seen(pend, p))
+            let w = m.op(acc, self.seen(pend, p, nl, nr))
             if ok(w): return (-1, w)
-            if p >= size: return (nl, acc)
+            if nr - nl == 1: return (nl, acc)
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
-        let (at, x) = self.right_from(2 * p, nl, mid, from, down, acc, ok)
+        let (at, x) = self.right_from(self.kid(p, false), nl, mid, from, down, acc, ok)
         if at >= 0: return (at, x)
-        self.right_from(2 * p + 1, mid, nr, from, down, x, ok)
+        self.right_from(self.kid(p, true), mid, nr, from, down, x, ok)
 
     fn left_from(self, p: Int, nl: Int, nr: Int, to: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
         if nl >= to: return (-1, acc)
         if nr <= to:
-            let w = m.op(self.seen(pend, p), acc)
+            let w = m.op(self.seen(pend, p, nl, nr), acc)
             if ok(w): return (-1, w)
-            if p >= size: return (nr, acc)
+            if nr - nl == 1: return (nr, acc)
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
-        let (at, x) = self.left_from(2 * p + 1, mid, nr, to, down, acc, ok)
+        let (at, x) = self.left_from(self.kid(p, true), mid, nr, to, down, acc, ok)
         if at >= 0: return (at, x)
-        self.left_from(2 * p, nl, mid, to, down, x, ok)
+        self.left_from(self.kid(p, false), nl, mid, to, down, x, ok)
 
     // `x`, folded over `n` leaves under node `p`, with the tags of `p`'s ancestors applied.
     fn lift(self, x: T, n: Int, p: Int) -> T:
@@ -175,16 +310,16 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
                 if has_lz[q]: v = act!.apply(lz[q], v, n)
         v
 
-    fn pull_node(mut self, p: Int):
+    fn pull_node(mut self, p: Int, l: Int, r: Int, w: Int):
         unchecked:
-            t[p] = m.op(t[2 * p], t[2 * p + 1])
-            if has_lz[p]: t[p] = act!.apply(lz[p], t[p], span[p])
+            t[p] = m.op(t[l], t[r])
+            if act != None and has_lz[p]: t[p] = act!.apply(lz[p], t[p], w)
 
     /// Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f`
     /// applied, through the action given to `act:`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: changes nothing
+    /// empty: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..1, 10); s.all == 6`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(0..2, 10); s.all == 26`
     /// example: `var s = SegTree(max, [1, 2, 3], act: add); s.apply(0..1, 5); s.all == 6`
@@ -193,43 +328,48 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         assert act != None, "apply requires `act:` on SegTree"
         let (lo, hi) = r.ends
         if lo >= hi: return
+        if lc.len > 0:
+            self.apply_at(1, 0, size, self.slot(lo), self.slot(hi - 1) + 1, f)
+            return
         let (l0, h0) = (lo + size, hi + size)
         if dual or not act!.commutes: self.open(l0, h0)
         var (l, h) = (l0, h0)
         unchecked:
             while l < h:
                 if l % 2 == 1:
-                    self.put(l, f)
+                    self.put(l, f, span[l], l >= size)
                     l += 1
                 if h % 2 == 1:
                     h -= 1
-                    self.put(h, f)
+                    self.put(h, f, span[h], h >= size)
                 l /= 2
                 h /= 2
         if dual: return
         for i in 1..=log:
-            if ((l0 >> i) << i) != l0: self.pull_node(l0 >> i)
-            if ((h0 >> i) << i) != h0: self.pull_node((h0 - 1) >> i)
+            let (a, b) = (l0 >> i, (h0 - 1) >> i)
+            if ((l0 >> i) << i) != l0: self.pull_node(a, 2 * a, 2 * a + 1, span[a])
+            if ((h0 >> i) << i) != h0: self.pull_node(b, 2 * b, 2 * b + 1, span[b])
 
     /// Apply tag `f` to every position; `apply(D.all, f)`.
     ///
     /// cost: \(O(1)\) amortized when the tags commute, else \(O(\lvert D \rvert)\)
-    /// empty: changes nothing for an empty `D`
+    /// empty: `var s = SegTree<0..0, Int, Int>(+, act: add); s.apply_all(5); s.all == 0`
     /// traps: never
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply_all(1); s.all == 9`
     pub fn apply_all(mut self, f: F):
         assert act != None, "apply_all requires `act:` on SegTree"
-        if D.count > 0: self.put(1, f)
+        if self.count > 0: self.put(1, f, self.width(1, 0, size), size == 1)
 
     /// The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: the identity
+    /// empty: `SegTree(min, [1, 2]).fold(1..1) == Int.MAX`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..3, 1); s.fold(1..3) == 7`
     pub fn fold(self, r: Range<D>) -> T:
         let (lo, hi) = r.ends
         if lo >= hi: return m.id
+        if lc.len > 0: return self.fold_at(1, 0, size, self.slot(lo), self.slot(hi - 1) + 1, None)
         var (l, h) = (lo + size, hi + size)
         var (a, b) = (m.id, m.id)
         if act == None:
@@ -269,40 +409,42 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// itself always qualifies. Replaces `max_right`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// ties: the rightmost qualifying cut
+    /// ties: `SegTree(+, [1, 0, 0, 5]).right_while((0..0).r, s => s <= 1) == (0..3).r`
     /// traps: when `ok(identity)` is false
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..0).r, s => s <= 3) == (0..2).r`
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..1).r, s => s <= 5) == (0..3).r`
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..0).r, s => s <= 100) == (0..4).r`
     pub fn right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
         assert ok(m.id), "`ok` must hold on the identity"
-        let n = D.count
-        if from.ord == n: return from
-        let (at, _) = self.right_from(1, 0, size, from.ord, None, m.id, ok)
-        D.cuts.nth(if at < 0: n else: at)
+        let k = self.count
+        let x = from.ord - base
+        if x == k: return from
+        let (at, _) = self.right_from(1, 0, size, x, None, m.id, ok)
+        D.cut(base + (if at < 0: k else: at))
 
     /// The first cut `d` at or left of `to` such that `ok(fold(d..to))` holds. `ok` must be
     /// monotone (once false it stays false as `d` moves left) and true on the identity, so `to`
     /// itself always qualifies. Replaces `min_left`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// ties: the leftmost qualifying cut
+    /// ties: `SegTree(+, [5, 0, 0, 1]).left_while((0..4).r, s => s <= 1) == (0..1).r`
     /// traps: when `ok(identity)` is false
     /// example: `SegTree(+, [1, 2, 3, 4]).left_while((0..4).r, s => s <= 7) == (0..2).r`
     /// example: `SegTree(+, [1, 2, 3, 4]).left_while((0..4).r, s => s <= 3) == (0..4).r`
     pub fn left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
         assert ok(m.id), "`ok` must hold on the identity"
-        if to.ord == 0: return to
-        let (at, _) = self.left_from(1, 0, size, to.ord, None, m.id, ok)
-        D.cuts.nth(if at < 0: 0 else: at)
+        let x = to.ord - base
+        if x == 0: return to
+        let (at, _) = self.left_from(1, 0, size, x, None, m.id, ok)
+        D.cut(base + (if at < 0: 0 else: at))
 
     /// A tree whose position `i` holds `f(i)`. `f` is kept: when something it reads changes,
     /// `refresh(i)` recomputes position `i`, so the formula is written once instead of at every
     /// update site.
+    /// For an op with no identity, build over `op.opt()` and `Some` cells; each fold is then `None` when empty.
     ///
     /// cost: \(O(\lvert D \rvert)\), calling `f` once per position in key order
-    /// empty: an empty `D` gives a tree whose every fold is the identity; for an op with no
-    /// identity, build over `op.opt()` and `Some` cells, and each fold is `None` when empty
+    /// empty: `SegTree<0..0, Int>.of(+, i => 1).all == 0`
     /// order: position `i` holds `f(i)`
     /// traps: never
     ///
@@ -341,6 +483,20 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree(+, [4, 5, 6]).get(1) == 5`
     /// example: `var s = SegTree(act: assign, a: [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
     pub fn get(self, i: D) -> T:
+        if lc.len > 0:
+            let x = self.slot(i.ord)
+            var (p, nl, nr) = (1, 0, size)
+            var pend: ?F = None
+            while nr - nl > 1:
+                pend = self.below(pend, p)
+                let mid = (nl + nr) / 2
+                if x < mid:
+                    p = self.kid(p, false)
+                    nr = mid
+                else:
+                    p = self.kid(p, true)
+                    nl = mid
+            return self.seen(pend, p, nl, nr)
         let p = size + i.ord
         if act == None: return t[p]
         var v = t[p]
@@ -355,9 +511,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.set(0, 10); s.all == 15`
     pub fn set(mut self, i: D, x: T):
-        let p = size + i.ord
-        if act != None:
-            for k in (1..=log).rev: self.push(p >> k)
+        let p = self.place(i)
         t[p] = x
         self.pull(i)
 
@@ -368,13 +522,34 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.at(0) += 5; s.all == 11`
     pub fn at(mut self, i: D) -> lends mut T:
-        let p = size + i.ord
-        if act != None:
-            for k in (1..=log).rev: self.push(p >> k)
+        let p = self.place(i)
         lend mut t[p]
         self.pull(i)
 
+    // The leaf for `i`, with every tag above it pushed down (and, with `over:`, its path made).
+    fn place(mut self, i: D) -> Int:
+        if lc.len == 0:
+            let p = size + i.ord
+            if act != None:
+                for k in (1..=log).rev: self.push_at(p >> k)
+            return p
+        let x = self.slot(i.ord)
+        var (p, nl, nr) = (1, 0, size)
+        while nr - nl > 1:
+            self.open_node(p, nl, nr)
+            let mid = (nl + nr) / 2
+            if x < mid:
+                p = lc[p]
+                nr = mid
+            else:
+                p = rc[p]
+                nl = mid
+        p
+
     fn pull(mut self, i: D):
+        if lc.len > 0:
+            self.pull_path(1, 0, size, self.slot(i.ord))
+            return
         var p = i.ord + size
         unchecked:
             while p > 1:
@@ -392,7 +567,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// The fold of every position, left to right.
     ///
     /// cost: \(O(1)\)
-    /// empty: the identity for an empty `D` (`None` on an `op.opt()` tree)
+    /// empty: `SegTree<0..0, Int>(+).all == 0 and SegTree<0..0, ?Int>(max.opt()).all == None`
     /// traps: never
     /// example: `SegTree(max, [3, 9, 4]).all == 9`
     @get pub fn all(self) -> T = t[1]
@@ -408,7 +583,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// sentinel.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: `None`
+    /// empty: `SegTree(+, [1, 2]).try_fold(2..2) == None`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `SegTree(+, [1, 2]).try_fold(0..2) == Some(3)`
     /// example: `SegTree(+, [1, 2]).try_fold(1..1) == None`
@@ -421,26 +596,47 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// tags; the storage is reused. A tree built with `of` keeps its formula.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: nothing to reset for an empty `D`
+    /// empty: `var s = SegTree<0..0, Int>(+); s.clear(fill: 2); s.all == 0`
     /// traps: never
     /// example: `var s = SegTree(+, [1, 2, 3]); s.clear(); s.all == 0`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.clear(fill: 2); s.all == 6`
     pub fn clear(mut self, fill: ?T = None):
+        if lc.len > 0:
+            self.seed(fill)
+            return
         let v = fill ?? m.id
-        for i in 0..size: t[size + i] = if i < D.count: v else: m.id
+        if let f = act:
+            for p in 0..has_lz.len:
+                lz[p] = f.id
+                has_lz[p] = false
+        for i in 0..size: t[size + i] = if i < D.count(): v else: m.id
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
 
     /// The values of the canonical nodes that exactly cover `r`: the maximal aligned blocks of the
     /// tree's `bit_ceil(|D|)` leaves inside `r`. Their fold, left to right, is `fold(r)`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: yields nothing
+    /// empty: `SegTree(+, [1, 2, 3, 4]).walk(2..2).collect() == []`
     /// order: left to right; at most `2 * log2(bit_ceil(|D|))` values
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `SegTree(+, [1, 2, 3, 4]).walk(0..3).collect() == [3, 3]`
     /// example: `SegTree(+, [1, 2, 3, 4]).walk(1..4).collect() == [2, 7]`
     pub fn walk(self, r: Range<D>) -> yields T:
         let (lo, hi) = r.ends
+        if lc.len > 0 or act != None:
+            if lo >= hi: return
+            let (l, h) = if lc.len > 0: (self.slot(lo), self.slot(hi - 1) + 1) else: (lo, hi)
+            var stack: List<(Int, Int, Int, ?F)> = [(1, 0, size, None)]
+            while let (p, nl, nr, pend) = stack.pop():
+                if h <= nl or nr <= l: continue
+                if l <= nl and nr <= h:
+                    yield self.seen(pend, p, nl, nr)
+                    continue
+                let down = self.below(pend, p)
+                let mid = (nl + nr) / 2
+                stack.push((self.kid(p, true), mid, nr, down))
+                stack.push((self.kid(p, false), nl, mid, down))
+            return
         var (l, h) = (lo + size, hi + size)
         var right: List<T> = []
         while l < h:
@@ -573,6 +769,32 @@ fn fill_option_initializes_leaves_without_array():
     let summed = SegTree<V, Int>(+, fill: 7)
     assert summed.all == 35 and summed.fold(V(2)..=V(4)) == 21
 
+@test
+fn over_matches_a_plain_array():
+    domain P = 0..=100
+    for (lo, hi) in [(0, 1), (3, 10), (7, 40), (0, 33), (50, 100)]:
+        let k = hi - lo
+        let v = rand(-3, 3)
+        var a = List.filled(k, v)
+        var s = SegTree<P, Int>(+, fill: v, act: add, over: lo..hi)
+        var top = SegTree<P, Int>(max, fill: v, over: lo..hi)
+        for _ in 0..80:
+            let l = rand(0, k - 1)
+            let h = rand(l + 1, k)
+            let x = rand(-9, 9)
+            if rand(0, 1) == 0:
+                a[l] = x
+                s.set(P(lo + l), x)
+                top.set(P(lo + l), x)
+            else:
+                for j in l..h: a[j] += x
+                s.apply(P(lo + l)..P(lo + h), x)
+                for j in l..h: top.set(P(lo + j), a[j])
+            assert s.fold(P(lo + l)..P(lo + h)) == sum(a[j] for j in l..h)
+            assert top.fold(P(lo + l)..P(lo + h)) == [a[j] for j in l..h].max()!
+            assert s.get(P(lo + l)) == a[l] and top.get(P(lo + h - 1)) == a[h - 1]
+            assert s.all == a.sum() and top.all == a.max()!
+
 /// Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
 /// Build in \(O(n \log n)\) time and memory; answer value-range counts over any `Range<D>` in \(O(\log^2 n)\).
 pub struct MergeSortTree<D, T>:
@@ -584,7 +806,7 @@ pub struct MergeSortTree<D, T>:
     /// A static tree over `a` whose nodes hold their values sorted, for counting values in a range.
     ///
     /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory
-    /// empty: an empty `a` gives a tree where every count is 0
+    /// empty: `MergeSortTree<0..0, Int>([]).count_le(0..0, 3) == 0`
     /// order: positions keep the domain `D` of `a`
     /// traps: never
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_lt(0..5, 3) == 2`
@@ -643,7 +865,7 @@ pub struct MergeSortTree<D, T>:
     /// The number of positions in `r` whose value is `< x`.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: 0
+    /// empty: `MergeSortTree([3, 1, 4]).count_lt(1..1, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_lt(0..5, 3) == 2`
     pub fn count_lt(self, r: Range<D>, x: T) -> Int:
@@ -664,7 +886,7 @@ pub struct MergeSortTree<D, T>:
     /// The number of positions in `r` whose value is `<= x`.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: 0
+    /// empty: `MergeSortTree([3, 1, 4]).count_le(1..1, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_le(0..5, 3) == 3`
     pub fn count_le(self, r: Range<D>, x: T) -> Int:
@@ -685,7 +907,7 @@ pub struct MergeSortTree<D, T>:
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: 0
+    /// empty: `MergeSortTree([3, 1, 4]).count_in(1..1, 0, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_in(1..4, 1, 4) == 3`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_in(0..5, 4, 3) == 0`
@@ -696,7 +918,7 @@ pub struct MergeSortTree<D, T>:
     /// The number of positions in `r` whose value is `> x`.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: 0
+    /// empty: `MergeSortTree([3, 1, 4]).count_gt(1..1, 0) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_gt(0..5, 3) == 2`
     pub fn count_gt(self, r: Range<D>, x: T) -> Int:
@@ -706,7 +928,7 @@ pub struct MergeSortTree<D, T>:
     /// The number of positions in `r` whose value is `>= x`.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: 0
+    /// empty: `MergeSortTree([3, 1, 4]).count_ge(1..1, 0) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_ge(0..5, 4) == 2`
     pub fn count_ge(self, r: Range<D>, x: T) -> Int:
@@ -714,10 +936,11 @@ pub struct MergeSortTree<D, T>:
         (hi - lo) - self.count_lt(r, x)
 
     /// The smallest value in `r` that is `>= x`, or `None`.
+    /// It returns a value, so equal values are interchangeable.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: `None`
-    /// ties: equal values are interchangeable; the value is returned, not a position
+    /// empty: `MergeSortTree([3, 1, 4]).first_ge(1..1, 0) == None`
+    /// ties: `MergeSortTree([3, 1, 3]).first_ge(0..3, 2) == Some(3)`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).first_ge(0..3, 2) == Some(3)`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).first_ge(0..3, 5) == None`
@@ -740,10 +963,11 @@ pub struct MergeSortTree<D, T>:
         best
 
     /// The largest value in `r` that is `<= x`, or `None`.
+    /// It returns a value, so equal values are interchangeable.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: `None`
-    /// ties: equal values are interchangeable; the value is returned, not a position
+    /// empty: `MergeSortTree([3, 1, 4]).last_le(1..1, 9) == None`
+    /// ties: `MergeSortTree([1, 4, 1]).last_le(0..3, 2) == Some(1)`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).last_le(2..5, 3) == Some(1)`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).last_le(2..5, 0) == None`
@@ -789,7 +1013,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// row-blocks and column-blocks rather than in one order.
     ///
     /// cost: \(O(\lvert R \rvert \cdot \lvert C \rvert)\)
-    /// empty: an empty `R` or `C` gives a tree whose every fold is the identity
+    /// empty: `SegTree2D<0..0, 0..3, Int>(+).all == 0`
     /// order: cells keep the domains `R` and `C` of `a`
     /// traps: when both `a` and `fill` are given
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).all == 9`
@@ -857,7 +1081,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// The fold of every cell in rows `rows` and columns `cols`.
     ///
     /// cost: \(O(\log \lvert R \rvert \cdot \log \lvert C \rvert)\)
-    /// empty: the identity when `rows` or `cols` is empty
+    /// empty: `let g = SegTree2D<0..3, 0..3, Int>(min, fill: 1); g.fold(1..1, 0..3) == Int.MAX and g.fold(0..3, 2..2) == Int.MAX`
     /// traps: when a non-empty range reaches outside its domain
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).fold(0..2, 1..3) == 4`
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).fold(0..2, 1..1) == 0`
@@ -880,7 +1104,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// The fold of every cell.
     ///
     /// cost: \(O(1)\)
-    /// empty: the identity for an empty grid
+    /// empty: `SegTree2D<0..2, 0..0, Int>(+).all == 0`
     /// traps: never
     /// example: `var g = SegTree2D<0..2, 0..2, Int>(max, fill: 0); g.set(1, 0, 8); g.all == 8`
     @get pub fn all(self) -> T:
@@ -892,10 +1116,15 @@ pub struct WaveletMatrix<D>:
     bits: Int
     n: Int
     zs: List<Int>
-    cnt: List<Int>
+    // Level `l`'s bits packed 64 to a word, with the count of ones before each word, so a
+    // query's rank lookups touch a few hot words instead of a full Int per position.
+    words: List<U64>
+    before: List<Int>
     zsum: List<Int>
 
-    fn ones(self, l: Int, i: Int) -> Int = cnt[l * (n + 1) + i]
+    fn ones(self, l: Int, i: Int) -> Int:
+        let at = l * (n / 64 + 1) + i / 64
+        before[at] + popcount(words[at] & ((U64(1) << (i % 64)) - U64(1)))
 
     fn below(self, lo0: Int, hi0: Int, x: Int) -> Int:
         if x <= 0: return 0
@@ -914,7 +1143,7 @@ pub struct WaveletMatrix<D>:
     /// largest value (`V` below is that value plus one).
     ///
     /// cost: \(O(\lvert D \rvert \log V)\) time and memory
-    /// empty: an empty `a` gives a matrix where every count is 0
+    /// empty: `WaveletMatrix<0..0>([]).count_lt(0..0, 3) == 0`
     /// order: positions keep the domain `D` of `a`
     /// traps: when some value is negative
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 2) == Some(3)`
@@ -931,23 +1160,26 @@ pub struct WaveletMatrix<D>:
             bits,
             n,
             [],
-            List.filled(bits * (n + 1), 0),
+            List.filled(bits * (n / 64 + 1), U64(0)),
+            List.filled(bits * (n / 64 + 1), 0),
             List.filled(bits * (n + 1), 0),
         )
         for l in 0..bits:
             let b = bits - 1 - l
             let base = l * (n + 1)
+            let wbase = l * (n / 64 + 1)
             var (zero, one): (List<Int>, List<Int>) = ([], [])
             for i in 0..n:
                 let v = cur[i]
                 if v.bit(b):
-                    w.cnt[base + i + 1] = w.cnt[base + i] + 1
+                    w.words[wbase + i / 64] |= U64(1) << (i % 64)
                     w.zsum[base + i + 1] = w.zsum[base + i]
                     one.push(v)
                 else:
-                    w.cnt[base + i + 1] = w.cnt[base + i]
                     w.zsum[base + i + 1] = w.zsum[base + i] + v
                     zero.push(v)
+            for k in 1..n / 64 + 1:
+                w.before[wbase + k] = w.before[wbase + k - 1] + popcount(w.words[wbase + k - 1])
             w.zs.push(zero.len)
             for v in one: zero.push(v)
             cur = zero
@@ -957,8 +1189,8 @@ pub struct WaveletMatrix<D>:
     /// `k >= r.len`.
     ///
     /// cost: \(O(\log V)\)
-    /// empty: `None`
-    /// ties: equal values are counted once each
+    /// empty: `WaveletMatrix([3, 1, 4]).kth(1..1, 0) == None`
+    /// ties: `let w = WaveletMatrix([2, 1, 2]); w.kth(0..3, 1) == Some(2) and w.kth(0..3, 2) == Some(2)`
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 0) == Some(1)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).kth(0..5, 2) == Some(3)`
@@ -982,7 +1214,7 @@ pub struct WaveletMatrix<D>:
     /// The number of positions in `r` holding exactly `x`; 0 for any `x` outside `0..V`.
     ///
     /// cost: \(O(\log V)\)
-    /// empty: 0
+    /// empty: `WaveletMatrix([3, 1, 4]).rank(1..1, 1) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).rank(0..5, 1) == 2`
     pub fn rank(self, r: Range<D>, x: Int) -> Int:
@@ -993,7 +1225,7 @@ pub struct WaveletMatrix<D>:
     /// The number of positions in `r` whose value is `< x`.
     ///
     /// cost: \(O(\log V)\)
-    /// empty: 0
+    /// empty: `WaveletMatrix([3, 1, 4]).count_lt(1..1, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).count_lt(0..5, 4) == 3`
     pub fn count_lt(self, r: Range<D>, x: Int) -> Int:
@@ -1003,7 +1235,7 @@ pub struct WaveletMatrix<D>:
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
     /// cost: \(O(\log V)\)
-    /// empty: 0
+    /// empty: `WaveletMatrix([3, 1, 4]).count_in(1..1, 0, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).count_in(0..5, 1, 3) == 3`
     pub fn count_in(self, r: Range<D>, lo_v: Int, hi_v: Int) -> Int:
@@ -1012,10 +1244,11 @@ pub struct WaveletMatrix<D>:
         self.below(lo, hi, hi_v + 1) - self.below(lo, hi, lo_v)
 
     /// The largest value in `r` that is `< x`, or `None`.
+    /// It returns a value, so equal values are interchangeable.
     ///
     /// cost: \(O(\log V)\)
-    /// empty: `None`
-    /// ties: equal values are interchangeable; the value is returned, not a position
+    /// empty: `WaveletMatrix([3, 1, 4]).prev_val(1..1, 9) == None`
+    /// ties: `WaveletMatrix([1, 4, 1]).prev_val(0..3, 3) == Some(1)`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).prev_val(0..5, 3) == Some(1)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).prev_val(0..5, 1) == None`
@@ -1025,10 +1258,11 @@ pub struct WaveletMatrix<D>:
         if c == 0: None else: self.kth(r, c - 1)
 
     /// The smallest value in `r` that is `> x`, or `None`.
+    /// It returns a value, so equal values are interchangeable.
     ///
     /// cost: \(O(\log V)\)
-    /// empty: `None`
-    /// ties: equal values are interchangeable; the value is returned, not a position
+    /// empty: `WaveletMatrix([3, 1, 4]).next_val(1..1, 0) == None`
+    /// ties: `WaveletMatrix([4, 1, 4]).next_val(0..3, 3) == Some(4)`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).next_val(0..5, 3) == Some(4)`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).next_val(0..5, 5) == None`
@@ -1038,10 +1272,11 @@ pub struct WaveletMatrix<D>:
         if c >= hi - lo: None else: self.kth(r, c)
 
     /// The sum of the `k` smallest values in `r`, with repeats.
+    /// On an empty `r` only `k == 0` is allowed.
     ///
     /// cost: \(O(\log V)\)
-    /// empty: 0 (only `k == 0` is allowed)
-    /// ties: equal values are counted once each
+    /// empty: `WaveletMatrix([3, 1, 4]).quantile_sum(1..1, 0) == 0`
+    /// ties: `WaveletMatrix([2, 1, 2]).quantile_sum(0..3, 3) == 5`
     /// traps: when `k` is outside `0..=r.len`, or a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).quantile_sum(0..5, 3) == 5`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).quantile_sum(1..3, 0) == 0`
@@ -1099,7 +1334,7 @@ pub struct DynamicOrderTree<D, T>:
     /// are reassigned.
     ///
     /// cost: \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) time and memory
-    /// empty: an empty `a` gives a tree where every count is 0
+    /// empty: `DynamicOrderTree<0..0, Int>([]).count_lt(0..0, 3) == 0`
     /// order: positions keep the domain `D` of `a`
     /// traps: never
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
@@ -1133,7 +1368,7 @@ pub struct DynamicOrderTree<D, T>:
     /// The number of positions in `r` whose value is `< x`.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: 0
+    /// empty: `DynamicOrderTree([3, 1, 4]).count_lt(1..1, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(1..3, 4) == 1`
     pub fn count_lt(self, r: Range<D>, x: T) -> Int = self.span_count(r, x, false)
@@ -1141,7 +1376,7 @@ pub struct DynamicOrderTree<D, T>:
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
     /// cost: \(O(\log^2 \lvert D \rvert)\)
-    /// empty: 0
+    /// empty: `DynamicOrderTree([3, 1, 4]).count_in(1..1, 0, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).count_in(0..3, 1, 3) == 2`
     pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int:
@@ -1152,8 +1387,8 @@ pub struct DynamicOrderTree<D, T>:
     /// `k >= r.len`.
     ///
     /// cost: \(O(\log^3 \lvert D \rvert)\): a binary search over all stored values, counting each in `r`
-    /// empty: `None`
-    /// ties: equal values are counted once each
+    /// empty: `DynamicOrderTree([3, 1, 4]).kth(1..1, 0) == None`
+    /// ties: `let t = DynamicOrderTree([2, 1, 2]); t.kth(0..3, 1) == Some(2) and t.kth(0..3, 2) == Some(2)`
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 1) == Some(3)`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 3) == None`
@@ -1188,7 +1423,6 @@ pub struct MergeSegs<D>:
         self.node(0, self.build(k, mid, hi))
 
     fn cat(mut self, a: Int, b: Int, lo: Int, hi: Int) -> Int:
-        with lint(unproven_list_index: allow)
         if a == 0: return b
         if b == 0 or lo + 1 == hi: return a
         let mid = (lo + hi) / 2
@@ -1197,7 +1431,6 @@ pub struct MergeSegs<D>:
         self.node(l, r)
 
     fn prune(mut self, u: Int, lo: Int, hi: Int, alive: D -> Bool) -> (Int, ?D):
-        with lint(unproven_list_index: allow)
         if u == 0: return (0, None)
         if lo + 1 == hi:
             let x = D.nth(lo)
@@ -1211,7 +1444,6 @@ pub struct MergeSegs<D>:
         if let x = b: (u, Some(x)) else: (0, None)
 
     fn first_from(self, u: Int, lo: Int, hi: Int, k: Int) -> ?Int:
-        with lint(unproven_list_index: allow)
         if u == 0 or hi <= k: return None
         if lo + 1 == hi: return Some(lo)
         let mid = (lo + hi) / 2
@@ -1240,7 +1472,7 @@ pub struct MergeSegs<D>:
     /// monotone over time: a position never comes back to life.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) amortized
-    /// ties: the smallest position in key order
+    /// ties: `var p = MergeSegs<0..10>(); var m = p.merge(p.singleton(7), p.singleton(3)); p.first_alive(mut m, x => true) == Some(3)`
     /// traps: never
     /// example: `var p = MergeSegs<0..10>(); var m = p.merge(p.singleton(3), p.singleton(7)); p.first_alive(mut m, x => x > 5) == Some(7)`
     /// example: `var p = MergeSegs<0..10>(); var m = p.merge(p.singleton(3), p.singleton(7)); p.first_alive(mut m, x => x > 5); p.first_alive(mut m, x => true) == Some(7)`
@@ -1253,7 +1485,7 @@ pub struct MergeSegs<D>:
     /// its nodes stay as they are.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// ties: the smallest position in key order
+    /// ties: `var p = MergeSegs<0..10>(); let m = p.merge(p.singleton(7), p.singleton(3)); p.first_ge(m, 2) == Some(3)`
     /// traps: never
     /// example: `var p = MergeSegs<0..10>(); let m = p.merge(p.singleton(3), p.singleton(7)); p.first_ge(m, 4) == Some(7)`
     /// example: `var p = MergeSegs<0..10>(); let m = p.merge(p.singleton(3), p.singleton(7)); p.first_ge(m, 8) == None`
@@ -1261,14 +1493,172 @@ pub struct MergeSegs<D>:
         if let k = self.first_from(s.root, 0, D.count, x.ord): Some(D.nth(k)) else: None
 
     /// Whether `s` holds a position in `r`. Read-only, as `first_ge` is.
+    /// An empty `s` or `r` gives `false`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// empty: false for an empty `s` or `r`
+    /// empty: `var p = MergeSegs<0..10>(); let m = p.singleton(3); not p.any_in(m, 3..3)`
     /// traps: never
     /// example: `var p = MergeSegs<0..10>(); let m = p.merge(p.singleton(3), p.singleton(7)); p.any_in(m, 4..8) and not p.any_in(m, 4..7)`
     pub fn any_in(self, s: MergeSeg<D>, r: Range<D>) -> Bool:
         let (lo, hi) = r.ends
         if let k = self.first_from(s.root, 0, D.count, lo): k < hi else: false
+
+/// One tree of values in a `MergeTrees<D, Z>` pool: a handle, so copying it is O(1).
+/// `MergeTree<D>()` holds `Z.zero` at every position.
+pub struct MergeTree<D>:
+    var root: Int = 0
+
+/// A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
+/// `merge` combines two trees position by position through a hook that sees both values and both
+/// trees' sums left of the position, the segment-tree merge that DP over a tree uses for a max- or
+/// min-convolution. A tree costs nodes only where it has been `set`.
+pub struct MergeTrees<D, Z: Add + Mul>:
+    ls: List<Int>
+    rs: List<Int>
+    sm: List<Z>
+    tag: List<Z>
+
+    /// An empty pool.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
+    pub fn new() -> MergeTrees<D, Z> = MergeTrees([0], [0], [Z.zero], [Z.one])
+
+    fn node(mut self) -> Int:
+        ls.push(0)
+        rs.push(0)
+        sm.push(Z.zero)
+        tag.push(Z.one)
+        ls.len - 1
+
+    fn scale_node(mut self, u: Int, k: Z):
+        if u == 0: return
+        sm[u] *= k
+        tag[u] *= k
+
+    fn down(mut self, u: Int):
+        self.scale_node(ls[u], tag[u])
+        self.scale_node(rs[u], tag[u])
+        tag[u] = Z.one
+
+    fn put(mut self, u0: Int, lo: Int, hi: Int, k: Int, v: Z) -> Int:
+        let u = if u0 == 0: self.node() else: u0
+        if lo + 1 == hi:
+            sm[u] = v
+            return u
+        self.down(u)
+        let mid = (lo + hi) / 2
+        if k < mid:
+            let l = self.put(ls[u], lo, mid, k, v)
+            ls[u] = l
+        else:
+            let r = self.put(rs[u], mid, hi, k, v)
+            rs[u] = r
+        sm[u] = sm[ls[u]] + sm[rs[u]]
+        u
+
+    fn part(self, u: Int, lo: Int, hi: Int, a: Int, b: Int) -> Z:
+        if u == 0 or b <= lo or hi <= a: return Z.zero
+        if a <= lo and hi <= b: return sm[u]
+        let mid = (lo + hi) / 2
+        (self.part(ls[u], lo, mid, a, b) + self.part(rs[u], mid, hi, a, b)) * tag[u]
+
+    fn join(mut self, a: Int, b: Int, lo: Int, hi: Int, pa: Z, pb: Z, leaf: (Z, Z, Z, Z) -> Z) -> Int:
+        if b == 0:
+            self.scale_node(a, leaf(Z.one, Z.zero, pa, pb))
+            return a
+        if a == 0:
+            self.scale_node(b, leaf(Z.zero, Z.one, pa, pb))
+            return b
+        if lo + 1 == hi:
+            sm[a] = leaf(sm[a], sm[b], pa, pb)
+            return a
+        self.down(a)
+        self.down(b)
+        let mid = (lo + hi) / 2
+        let la = sm[ls[a]]
+        let lb = sm[ls[b]]
+        let l = self.join(ls[a], ls[b], lo, mid, pa, pb, leaf)
+        let r = self.join(rs[a], rs[b], mid, hi, pa + la, pb + lb, leaf)
+        ls[a] = l
+        rs[a] = r
+        sm[a] = sm[l] + sm[r]
+        a
+
+    /// Sets position `x` of `t` to `v`.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\) time and new nodes
+    /// traps: never
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.set(mut t, D(6), 2); p.total(t) == 7`
+    pub fn set(mut self, mut t: MergeTree<D>, x: D, v: Z):
+        t.root = self.put(t.root, 0, D.count, x.ord, v)
+
+    /// The sum of `t` over the positions in `r`.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\)
+    /// empty: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.sum(t, D(3)..D(3)) == 0`
+    /// traps: never
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.set(mut t, D(6), 2); p.sum(t, D(0)..D(4)) == 5 and p.sum(t, D(4)..D(4)) == 0`
+    pub fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z:
+        let (lo, hi) = r.ends
+        self.part(t.root, 0, D.count, lo, hi)
+
+    /// The value of `t` at `x`.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\)
+    /// traps: never
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.get(t, D(3)) == 5 and p.get(t, D(4)) == 0`
+    pub fn get(self, t: MergeTree<D>, x: D) -> Z = self.part(t.root, 0, D.count, x.ord, x.ord + 1)
+
+    /// The sum of every value of `t`.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
+    /// traps: never
+    /// example: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
+    pub fn total(self, t: MergeTree<D>) -> Z = sm[t.root]
+
+    /// Multiplies every value of `t` by `k`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.scale(t, 3); p.get(t, D(3)) == 15`
+    pub fn scale(mut self, t: MergeTree<D>, k: Z) = self.scale_node(t.root, k)
+
+    /// The tree holding `leaf(a[x], b[x], pre_a, pre_b)` at each position `x`; it uses up `a` and `b`.
+    ///
+    /// `pre_a` and `pre_b` are the sums of `a` and `b` over the positions before `x`, plus the
+    /// `pre_a:` and `pre_b:` arguments (0 by default). The result owns the nodes of both inputs.
+    ///
+    /// A subtree only `a` reaches is scaled by `leaf(Z.one, Z.zero, pre_a, pre_b)` at its first
+    /// position, and one only `b` reaches by `leaf(Z.zero, Z.one, pre_a, pre_b)`. That is exact when
+    /// `leaf(v, 0, pa, pb)` is `v` times a factor free of `pa`, and `leaf(0, v, pa, pb)` is `v` times
+    /// a factor free of `pb`, as for `(va, vb, pa, pb) => va * (pb + vb) + vb * pa` (a max-convolution:
+    /// the result at `x` counts pairs whose larger position is `x`).
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\) amortized per `set`, over a sequence of merges whose results
+    /// replace their inputs; \(O(\text{overlap})\) for one merge
+    /// traps: never
+    /// example: `domain D = 0..4; var p = MergeTrees<D, Int>(); var a = MergeTree<D>(); var b = MergeTree<D>(); p.set(mut a, D(1), 2); p.set(mut b, D(2), 3); let m = p.merge(a, b, (va, vb, pa, pb) => va * (pb + vb) + vb * pa); p.get(m, D(1)) == 0 and p.get(m, D(2)) == 6`
+    pub fn merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D> =
+        MergeTree(self.join(a.root, b.root, 0, D.count, pre_a, pre_b, leaf))
+
+impl Show for MergeSeg<D>:
+    /// The handle's root node in its pool, `#0` for the empty set.
+    fn show(s) = "#{s.root}"
+
+impl Show for MergeSegs<D>:
+    /// The pool's node count, past the shared empty node.
+    fn show(p) = "{p.ls.len - 1} nodes"
+
+impl Show for MergeTree<D>:
+    /// The handle's root node in its pool, `#0` for the all-zero tree.
+    fn show(t) = "#{t.root}"
+
+impl Show for MergeTrees<D, Z>:
+    /// The pool's node count, past the shared empty node.
+    fn show(p) = "{p.ls.len - 1} nodes"
 
 @test
 fn merge_sort_and_sparse_segtree_match_brute():

@@ -1,6 +1,6 @@
 use crate::checkpoint::Body;
 use crate::observe::Observer;
-use crate::value::{ArrayData, CaptureVal, OptVal, TupleVal, Value};
+use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{trap, Flow, Interp, Res};
@@ -112,8 +112,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
-                let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
-                store_place_leaf_val(container, last, val, regs_i, spans[cur_pc])?;
+                // A map entry (a `mut` arg taken by its path) is put back whole.
+                if let PlaceStep::Key(_) = last {
+                    *walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])? = val;
+                } else {
+                    let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
+                    store_place_leaf_val(container, last, val, regs_i, spans[cur_pc])?;
+                }
             }
             Op::AssignPlaceI {
                 path,
@@ -205,6 +210,101 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 exec_sort_place(target, desc, spans[cur_pc])?;
             }
+            Op::SortPlaceCmp { idx, path, desc_r } => {
+                let span = spans[cur_pc];
+                let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
+                let cpl_ir::ExprKind::Sort(place, _, _) = &chunk.applies[idx as usize].expr.kind
+                else {
+                    return trap(span, "internal: not a sort");
+                };
+                let (cpl_ir::Ty::List(elem) | cpl_ir::Ty::Array { elem, .. }) = &place.ty else {
+                    return trap(span, "internal: not a sequence sort");
+                };
+                let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                let seq = std::mem::replace(
+                    walk_place_mut(root, &pp.steps, regs_i, &keys, span)?,
+                    Value::Unit,
+                );
+                let (items, dims) = seq_items(seq, span)?;
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                sync_to_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    self.base,
+                    chunk.traced,
+                );
+                self.show_lent();
+                let sorted = self.merge_sort_ty(items, elem, desc, span);
+                self.hide_lent();
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                sync_from_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    self.base,
+                    chunk.traced,
+                );
+                let sorted = seq_of_items(sorted?, dims);
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                *walk_place_mut(root, &pp.steps, regs_i, &keys, span)? = sorted;
+            }
+            Op::SortByKeysPlaceCmp {
+                idx,
+                path,
+                seq_v,
+                keys_v,
+                desc_r,
+            } => {
+                let span = spans[cur_pc];
+                let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
+                let key_ty = match &chunk.applies[idx as usize].expr.kind {
+                    cpl_ir::ExprKind::Sort(_, cpl_ir::SortBy::Key(_, key), _) => &key.ty,
+                    cpl_ir::ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => match &func.ty
+                    {
+                        cpl_ir::Ty::Fn(_, ret) => &**ret,
+                        _ => return trap(span, "internal: not a key fn"),
+                    },
+                    _ => return trap(span, "internal: not a keyed sort"),
+                };
+                let seq = std::mem::replace(&mut regs_v[seq_v as usize], Value::Unit);
+                let Value::List(by) = std::mem::replace(&mut regs_v[keys_v as usize], Value::Unit)
+                else {
+                    return trap(span, "internal: expected the sort keys");
+                };
+                let (items, dims) = seq_items(seq, span)?;
+                let keyed: Vec<(Value, Value)> = by.iter().zip(items).collect();
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                sync_to_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    self.base,
+                    chunk.traced,
+                );
+                self.show_lent();
+                let sorted = self.merge_sort_keyed(keyed, key_ty, desc, span);
+                self.hide_lent();
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                sync_from_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    self.base,
+                    chunk.traced,
+                );
+                let sorted = seq_of_items(sorted?.into_iter().map(|(_, x)| x).collect(), dims);
+                let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                *walk_place_mut(root, &pp.steps, regs_i, &keys, span)? = sorted;
+            }
             Op::RangeCheckI {
                 dst,
                 val,
@@ -278,7 +378,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_v[dst as usize] = if float {
                     Value::RangeF(lo.float(), hi.float())
                 } else {
-                    Value::Range128(lo.i128(), hi.i128())
+                    Value::range128(lo.i128(), hi.i128())
                 };
             }
             Op::ContainsV { dst, src_v, key_v } => {
@@ -490,6 +590,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 } else {
                     &regs_v[root as usize]
                 };
+                let b = dst_base as usize;
+                let n = len as usize;
                 let elem = match list_val {
                     Value::List(list) => {
                         let n_len = list.len() as i64;
@@ -499,7 +601,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {n_len}"),
                             );
                         }
-                        &list[idx as usize]
+                        list.get_small_tuple(idx as usize, n, &mut regs_i[b..b + n]);
+                        return Ok(None);
                     }
                     Value::ListView(view) => {
                         let n_len = view.len as i64;
@@ -513,8 +616,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     _ => return trap(spans[cur_pc], "internal: expected list"),
                 };
-                let b = dst_base as usize;
-                let n = len as usize;
                 if let Value::Tuple(TupleVal::Boxed(fs)) = elem {
                     for (k, f) in fs.iter().take(n).enumerate() {
                         regs_i[b + k] = ScalarKind::unbox_val(f);
@@ -548,7 +649,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let i1 = regs_i[r_j as usize];
                         let arr_mut = Rc::make_mut(arr);
-                        let ArrayData::Values(rows) = &mut arr_mut.data else {
+                        let Cells::Values(rows) = &mut arr_mut.data else {
                             return trap(spans[cur_pc], "internal: expected nested array");
                         };
                         let Value::Array(row_arr) = &mut rows[i0 as usize] else {
@@ -563,7 +664,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let row_mut = Rc::make_mut(row_arr);
                         match &mut row_mut.data {
-                            ArrayData::OptInt(v) => {
+                            Cells::OptInt(v) => {
                                 let slot = unsafe { v.get_unchecked_mut(i1 as usize) };
                                 let replace = match *slot {
                                     None => true,
@@ -623,7 +724,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     };
                     let arr_mut = Rc::make_mut(arr);
                     match &mut arr_mut.data {
-                        ArrayData::OptInt(v) => {
+                        Cells::OptInt(v) => {
                             let slot = unsafe { v.get_unchecked_mut(flat) };
                             let replace = match *slot {
                                 None => true,
@@ -675,7 +776,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {i} is outside a list of length {len}"),
                             );
                         }
-                        &list[i as usize]
+                        &list.get_unchecked_val(i as usize)
                     }
                     Value::Array(arr) => {
                         let len = arr.dims[0];
@@ -686,7 +787,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::Values(v) => &v[i as usize],
+                            Cells::Values(v) => &v[i as usize],
                             _ => return trap(spans[cur_pc], "internal: expected struct element"),
                         }
                     }
@@ -715,7 +816,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {j} is outside a list of length {len}"),
                             );
                         }
-                        match &list[j as usize] {
+                        match &list.get_unchecked_val(j as usize) {
                             Value::Opt(OptVal::Int(n)) => (*n, 1),
                             Value::Opt(OptVal::None) => (0, 0),
                             Value::Opt(OptVal::Boxed(b)) => (ScalarKind::unbox_val(b), 1),
@@ -752,7 +853,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::Values(v) => &v[i as usize],
+                            Cells::Values(v) => &v[i as usize],
                             _ => return trap(spans[cur_pc], "internal: expected nested array"),
                         }
                     }
@@ -764,7 +865,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {i} is outside a list of length {len}"),
                             );
                         }
-                        &list[i as usize]
+                        &list.get_unchecked_val(i as usize)
                     }
                     _ => return trap(spans[cur_pc], "internal: expected array or list"),
                 };
@@ -808,7 +909,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::Values(v) => &v[i as usize],
+                            Cells::Values(v) => &v[i as usize],
                             _ => return trap(spans[cur_pc], "internal: expected nested array"),
                         }
                     }
@@ -820,7 +921,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {i} is outside a list of length {len}"),
                             );
                         }
-                        &list[i as usize]
+                        &list.get_unchecked_val(i as usize)
                     }
                     _ => return trap(spans[cur_pc], "internal: expected array or list"),
                 };
@@ -862,7 +963,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::Values(v) => &v[i as usize],
+                            Cells::Values(v) => &v[i as usize],
                             _ => return trap(spans[cur_pc], "internal: expected sequence element"),
                         }
                     }
@@ -874,7 +975,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {i} is outside a list of length {len}"),
                             );
                         }
-                        &list[i as usize]
+                        &list.get_unchecked_val(i as usize)
                     }
                     _ => return trap(spans[cur_pc], "internal: expected array or list"),
                 };
@@ -1208,7 +1309,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     .as_deref_mut()
                     .expect("FeedYieldExtend outside fed call");
                 let items: Vec<Value> = match seq {
-                    Value::List(xs) => xs.iter().cloned().collect(),
+                    Value::List(xs) => xs.iter().collect(),
                     Value::Array(arr) => (0..arr.len()).map(|i| arr.get_unchecked_val(i)).collect(),
                     _ => {
                         return trap(

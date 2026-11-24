@@ -4,60 +4,43 @@
 //   "#undef name" print an empty line; other lines print with each maximal [A-Za-z0-9_] run
 //   naming a defined macro replaced by its content, expanded again, except names already being
 //   expanded (no recursion). Output lines have at most 1000 chars.
-// Solution: keep macros in a Map. expand(line, active) copies non-identifier characters, cuts
-//   each maximal identifier and, if it is a macro not in the active Set, appends its body
-//   expanded with the name added to active; otherwise copies it. The bounds are tiny.
+// Solution: keep macros in a Map. expand(line) walks the line's runs of identifier
+//   and other characters; a run naming a macro not being expanded becomes its body,
+//   expanded with the name marked active until it returns; every other run is copied. The bounds are tiny.
 // Original C++: corpus/submissions/4533698.cpp (116 LOC raw, ~76 LOC stripped)
-
-// WISH B19-9: `read_line()` reads verbatim up to '\n' (preserving leading/trailing spaces and
-// empty lines) and plays cleanly with header integers via `read_line().parse_int()!` or `read_ln()`.
 let n: 1..=100 = read_line().parse_int()!
 let lines: List<Str> = [read_line() for _ in 0..n]
 
-fn is_ident(ch: Char) -> Bool =
-    ('a' <= ch <= 'z') or ('A' <= ch <= 'Z') or ('0' <= ch <= '9') or ch == '_'
+fn is_ident(ch: Char) -> Bool = ch.is_alnum or ch == '_'
 
 var macros: Map<Str, Str> = Map()
 
-fn expand(line: Str, active: Set<Str>) -> Str:
+var active = Set<Str>()  // the macros being expanded right now
+
+fn expand(line: Str) -> Str:
     var out = ""
-    var i = 0
-    while i < line.len:
-        // Copy non-identifier characters (spaces, punctuation, operators) verbatim
-        let sep_start = i
-        while i < line.len and not is_ident(line[i]):
-            i += 1
-        out += line[sep_start..i].to_str()
-        if i == line.len: break
-
-        // Extract maximal [A-Za-z0-9_]+ token
-        let tok_start = i
-        while i < line.len and is_ident(line[i]):
-            i += 1
-        let tok = line[tok_start..i]
-
-        if tok not in active:
-            if let body = macros.get(tok):
-                var next_active = active
-                next_active.insert(tok.to_str())
-                out += expand(body, next_active)
-                continue
-        out += tok.to_str()
+    for run in line.runs(by: is_ident):
+        let word = run.to_str()
+        if let body = macros.get(word) and word not in active:
+            active.insert(word)
+            out += expand(body)
+            active.remove(run.to_str())
+        else:
+            out += word
     out
 
+let (define, undef) = ("#define ", "#undef ")
 for line in lines:
-    if line.starts_with("#define "):
-        // Format: `#define <name> <replacement>` (replacement may contain spaces, empty, or punctuation)
-        let rest = line[8..].trim_start()
+    if line.starts_with(define):
+        let rest = line[define.len..].trim_start()
         let (name, body) = rest.split_once(' ') ?? (rest, "")
         macros[name] = body.trim_start()
-        print("")  // directive lines output an empty line
-    elif line.starts_with("#undef "):
-        let name = line[7..].trim()
-        macros.remove(name)
+        print("")
+    elif line.starts_with(undef):
+        macros.remove(line[undef.len..].trim())
         print("")
     else:
-        print(expand(line, Set()))
+        print(expand(line))
 
 // Valid preprocessor programs: never `#undef` an undefined macro; recursive and mutual
 // macro cycles, multi-space indentation and empty lines all occur.
@@ -65,10 +48,10 @@ for line in lines:
 fn input():
     let pool = ["A", "B", "C", "FOO", "BAR", "x_1", "y_2"]
     fn any() -> Str = pool[rand(0, pool.len - 1)]
-    let n = rand(1, 40)
+    let count = rand(1, 40)
     var defined = Set<Str>()
-    print(n)
-    for _ in 0..n:
+    print(count)
+    for _ in 0..count:
         let kind = rand(0, 3)
         if kind == 0:
             let name = any()

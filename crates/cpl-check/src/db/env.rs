@@ -32,6 +32,10 @@ impl Env for FileCtx<'_> {
         self.field_decl_at(ty, field)
     }
 
+    fn item_index(&mut self) -> Option<usize> {
+        self.current
+    }
+
     fn decl_order(&mut self, name: &str) -> Option<usize> {
         self.record(DEP_NAMES, self.scope.names_fp);
         self.scope.names.get(name).copied()
@@ -105,7 +109,9 @@ impl Env for FileCtx<'_> {
     fn method_keys(&mut self, name: &str) -> Vec<String> {
         self.record(DEP_IMPORTS, self.scope.imports_fp);
         let prefix = crate::prelude::method_key(name, "");
-        let mut keys: Vec<String> = (self.scope.imports.keys())
+        self.record(DEP_NAMES, self.scope.names_fp);
+        let own = (self.scope.names.keys()).filter(|k| crate::prelude::overload_part(k).is_some());
+        let mut keys: Vec<String> = (self.scope.imports.keys().chain(own))
             .filter(|k| k.starts_with(&prefix))
             .cloned()
             .collect();

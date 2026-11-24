@@ -281,9 +281,9 @@ writeFileSync(
     .join('\n') + '\n',
 );
 const corpus = {};
-for (const e of readdirSync(join(repo, 'corpus/problems'), { withFileTypes: true })) {
-  const spec = join(repo, 'corpus/problems', e.name, 'spec.cp');
-  if (e.isDirectory() && existsSync(spec)) corpus[e.name] = sh(['check', spec]).status === 0 ? 'checks' : 'spec';
+const specs = execFileSync('uv', ['run', '--quiet', 'python', 'scripts/corpus.py', 'ls', '--file', 'spec.cp'], { cwd: repo, encoding: 'utf8' });
+for (const spec of specs.split('\n').filter(Boolean)) {
+  corpus[spec.split('/').at(-2)] = sh(['check', join(repo, spec)]).status === 0 ? 'checks' : 'spec';
 }
 writeFileSync(join(web, '.gate/corpus.json'), JSON.stringify(corpus, null, 2) + '\n');
 const counts = Object.values(results).reduce((c, r) => ((c[r.status] = (c[r.status] ?? 0) + 1), c), {});

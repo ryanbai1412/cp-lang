@@ -7,6 +7,7 @@
 //   first such j (none: -1). Fill positions left to right: bubble the nearest remaining pile with
 //   slot <= i to i, paying its distance; this keeps the others in order, and an exchange argument
 //   makes it optimal. O(n^2).
+// Bounds: n: 1..=5_000; a_in, b: 1..=10 ** 9
 
 @!multitest
 let n: 1..=5_000 = read()

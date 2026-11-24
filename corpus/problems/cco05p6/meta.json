@@ -6,10 +6,13 @@
   {"id": "5150819", "language": "CPP17", "result": "WA", "time": 0.87310817, "memory_kb": 102956.0, "file": "corpus/submissions/5150819.cpp"},
   {"id": "5150823", "language": "CPP17", "result": "AC", "time": 3.435807998, "memory_kb": 5176.0, "file": "corpus/submissions/5150823.cpp"},
   {"id": "5150852", "language": "CPP17", "result": "RTE", "time": 0.056448481, "memory_kb": 4008.0, "file": "corpus/submissions/5150852.cpp"},
-  {"id": "5150853", "language": "CPP17", "result": "AC", "time": 0.941925747, "memory_kb": 102888.0, "file": "corpus/submissions/5150853.cpp"}
+  {"id": "5150853", "language": "CPP17", "result": "AC", "time": 0.941925747, "memory_kb": 102888.0, "file": null}
  ],
- "cpp_ac": 2,
+ "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/cco05p6/orig.cpp"
+  ],
   "port": [
    "corpus/problems/cco05p6/port.cp"
   ]
@@ -18,5 +21,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "5150853 passed the judge's data but segfaults on a valid input at the statement's bounds (n = m = 5e4), so it is no reference; its file is gone and this record stays."
 }

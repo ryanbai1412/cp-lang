@@ -207,18 +207,20 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | Crate | Job |
 |---|---|
 | `cpl-syntax` | operator table, lexer, error-tolerant parser, lossless tree |
-| `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries |
+| `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries. Reads the judge's memory limit from `cpl-judge` for E0904 |
 | `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout |
 | `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place |
 | `cpl-interp` | the one interpreter: register VM, event stream, traces, replay, profiler; WASM build |
 | `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles |
 | `cpl-diag` | diagnostic model and renderers; its JSON shape is printed with `cpl-json`. `plain` turns doc text's LaTeX math and intra-doc links into terminal text for hover, the CLI and lint (`cpl_doc::plain` re-exports it) |
-| `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap` |
-| `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries ; `cpl-lint` prints its registry (`cpl lint --list --json`) with `cpl-json`; `cpl-stress` runs `cpl-lint` so a clean report can name the bound lints whose witnesses its small cases miss |
+| `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap`; `cpl run --live` waits on file changes with `cpl-wait` |
+| `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries ; `cpl-lint` prints its registry (`cpl lint --list --json`) with `cpl-json`; `cpl-stress` runs `cpl-lint` so a clean report can name the bound lints whose witnesses its small cases miss, and waits on its programs with `cpl-wait` |
 | `cpl-lsp` | the language server. `lib.rs` only re-exports `Server` and `serve`; dispatch is in `server.rs`. Hover facts come from `cpl-check/src/hover.rs`; the LSP renders them as markdown. Uses `cpl-check`, `cpl-lint`, `cpl-fmt`, `cpl-judge`, `cpl-ir`, and `cpl-doc` for doc text without Markdown math or links (`cpl_doc::plain`). `transport` framing is shared with the DAP in `cpl-cli/src/dap.rs`. `build.rs` lists the std modules for `use std.` completion |
-| `cpl-conform` | one harness: conformance, corpus, doc examples (read by cpl-syntax's doc parser), differential, fuzzing, rewrites (cpl-lint fixes and cpl-fmt keep output), scoreboard |
-| `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`) |
+| `cpl-conform` | one harness: conformance, corpus, doc examples (read by cpl-syntax's doc parser), differential, fuzzing, rewrites (cpl-lint fixes and cpl-fmt keep output), scoreboard; lists the corpus with `cpl-corpus`, judges an interactive corpus case with `cpl-stress`'s interactor judge (decision 556), and waits on its children and on another worker's build with `cpl-wait` |
+| `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`); `cpl watch`, the benchmark's runs and the fetcher's page rate wait with `cpl-wait` |
 | `cpl-json` | one dependency-free JSON value and printer, shared by every tool that speaks JSON |
+| `cpl-corpus` | the one dependency-free Rust corpus walker: the problem packages under `corpus/problems`, listed as `scripts/corpus.py ls` lists them |
+| `cpl-wait` | the one dependency-free place a tool waits: a child's exit (a thread owns `Child::wait`, the caller blocks with a deadline), a file change, a rate limit; debt-ratchet's `poll_sleeps` fails a sleep anywhere else |
 | `cpl-wasm` | browser bindings over `cpl-check`, `cpl-interp`, `cpl-codegen`, `cpl-lint` and `cpl-lsp`; no logic of its own |
 
 ### Crate rules

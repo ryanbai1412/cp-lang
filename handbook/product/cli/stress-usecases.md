@@ -44,9 +44,9 @@ Evidence: `crates/cpl-cli/tests/stress_inputs.rs` (every generated case is accep
 
 ### stress/U8: an input shape stress can't make
 Need: know why no cases come, and what to write instead.
-Design: the error names the `read()` and its type and suggests `@gen fn`; the shapes not made yet are listed.
-Milestone: M1-critical. Status: partial (30 corpus programs read a shape stress can't make)
-Evidence: `crates/cpl-stress/tests/readable_shapes.rs`, list `crates/cpl-stress/tests/generate-gaps.txt`
+Design: the error names the `read()` and its type and suggests `@gen fn`; every corpus, conformance and saved-trace program's input is generated, with no list of exceptions.
+Milestone: M1-critical. Status: supported (every program in the repo that reads input gets cases)
+Evidence: `crates/cpl-stress/tests/readable_shapes.rs`
 
 ### stress/U9: a custom distribution
 Need: cases the types don't describe (a guaranteed answer exists, a special structure).

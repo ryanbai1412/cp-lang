@@ -142,7 +142,7 @@ Evidence: program `spec/conformance/std-seq/seq-u18-aggregates-every-shape.cp`.
 
 ### seq/U9: a fold with a seed and a custom step
 Need: count something with state as you walk.
-Design: `a.fold((acc, x) => .., init: v)`: the seed is a named option.
+Design: `a.fold_from(v, (acc, x) => ..)`: the seed is a named option.
 Milestone: M1-critical. Status: supported
 Evidence: program `spec/conformance/std-seq/seq-u9-fold-seed.cp`.
 

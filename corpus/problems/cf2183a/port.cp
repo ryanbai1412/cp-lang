@@ -7,6 +7,7 @@
 //   elements (which hold a 0) to 1, leaving [1, 1], which Bob must turn into [0]. If both ends
 //   are 0, collapsing everything gives 1 and any shorter move keeps a 0 at an end, so Bob then
 //   collapses all to 1. Alice iff a[0] or a[n - 1] is 1: O(1).
+// Bounds: n: 3..=100; a: 0..=1
 
 @!multitest
 let n: 3..=100 = read()

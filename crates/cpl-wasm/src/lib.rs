@@ -54,6 +54,15 @@ pub const EXIT_FAILED: u8 = 3;
 /// own error, which has a source span.
 pub const MAX_STACK: u32 = 3 << 20;
 
+/// How far a browser stress run may go.
+#[derive(Clone, Copy, Debug)]
+pub struct StressLimits {
+    /// Bytes the interpreter's calls may take on WebAssembly.
+    pub stack: u32,
+    /// Milliseconds each run may take (`cpl stress --time-limit`); 0 keeps its default.
+    pub time_ms: u32,
+}
+
 /// One compiler session. It keeps the incremental database between calls,
 /// so checking a file again after an edit redoes only the items the edit
 /// touched.
@@ -115,6 +124,25 @@ impl Playground {
             }
             Err(error) => obj([("error", error.into())]),
         }
+    }
+
+    /// Gives the compiler the files beside the one it checks, by path
+    /// (`{"cp.toml": "...", "kit/m.cp": "..."}`), for every command after:
+    /// a `use kit.m` finds `kit/m.cp` as `cpl` finds it on disk.
+    pub fn set_files(&mut self, files: &str) -> Value {
+        let parsed = json::parse(files).ok();
+        let Some(members) = parsed.as_ref().and_then(Value::as_object) else {
+            return obj([("error", "files are an object of path to text".into())]);
+        };
+        let mut given = Vec::new();
+        for (path, text) in members {
+            let Some(text) = text.as_str() else {
+                return obj([("error", format!("{path}: a file's text is a string").into())]);
+            };
+            given.push((path.clone(), text.to_string()));
+        }
+        self.db = Session::with_loader(Box::new(cpl_check::GivenFiles::new(given)));
+        obj([])
     }
 
     /// `cpl check`: every diagnostic in `source`.
@@ -265,9 +293,15 @@ impl Playground {
             }
         };
         // The trace is JSON text already: it goes in as it is.
-        let mut json = result.to_string();
-        json.pop();
-        json += &format!(",\"debug\":{},\"trace\":{trace}}}", Value::from(debug));
+        let json = cpl_json::write_with(|w| {
+            w.object();
+            if let Some(members) = result.as_object() {
+                for (key, value) in members {
+                    w.key(key).value(value);
+                }
+            }
+            w.key("debug").str(&debug).key("trace").json(&trace).end();
+        });
         (stdout, json)
     }
 
@@ -338,11 +372,14 @@ impl Playground {
     /// with the same generator, shrinker and JSON report as the CLI.
     #[cfg(feature = "build")]
     pub fn stress(&mut self, name: &str, source: &str, cases: u32, seed: u64, size: u32) -> String {
-        self.stress_with_stack(name, source, cases, seed, size, MAX_STACK)
+        let limits = StressLimits {
+            stack: MAX_STACK,
+            time_ms: 0,
+        };
+        self.stress_with_stack(name, source, cases, seed, size, limits)
     }
 
-    /// [`stress`](Self::stress), stopping the interpreter when its calls take
-    /// more than `stack` bytes on WebAssembly.
+    /// [`stress`](Self::stress) within `limits`.
     #[cfg(feature = "build")]
     pub fn stress_with_stack(
         &mut self,
@@ -351,14 +388,20 @@ impl Playground {
         cases: u32,
         seed: u64,
         size: u32,
-        stack: u32,
+        limits: StressLimits,
     ) -> String {
+        let StressLimits { stack, time_ms } = limits;
+        let defaults = cpl_stress::run::Options::default();
         let options = cpl_stress::run::Options {
             cases: cases.max(1) as usize,
             size: i128::from(size.max(1)),
             seed,
             jobs: 1,
-            ..cpl_stress::run::Options::default()
+            limit: match time_ms {
+                0 => defaults.limit,
+                ms => std::time::Duration::from_millis(u64::from(ms)),
+            },
+            ..defaults
         };
         #[cfg(target_family = "wasm")]
         let stack_limit = Some(stack);

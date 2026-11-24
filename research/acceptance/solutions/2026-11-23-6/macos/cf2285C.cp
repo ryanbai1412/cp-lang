@@ -1,4 +1,3 @@
-use std.math.{pow_mod}
 const P = 1_000_000_007
 @!multitest
 let n: 1..=2e5 = read()

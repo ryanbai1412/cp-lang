@@ -210,8 +210,7 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
     let mut storage = 0;
     let mut defs = Definitions::default();
     for pid in &ids {
-        let src =
-            std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
+        let src = std::fs::read_to_string(cpl_corpus::package(&root, pid).join("spec.cp")).unwrap();
         storage += usize::from(walk(
             &mut server,
             &mut id,
@@ -267,7 +266,9 @@ fn cp_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
 fn every_corpus_program_and_conformance_case_is_served() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut files = Vec::new();
-    cp_files(&root.join("corpus/problems"), &mut files);
+    for dir in cpl_corpus::packages(&root) {
+        cp_files(&dir, &mut files);
+    }
     files.extend(corpus_programs::v02_snapshot_ports(&root));
     let corpus = files.len();
     cp_files(&root.join("spec/conformance"), &mut files);

@@ -7,6 +7,7 @@
 //   so delete each edge in turn, keep the walks that reach all n towns and print the
 //   smallest: O(n m).
 // original: corpus/submissions/4004140.cpp
+// Bounds: n: 1..=5000; m: n - 1..=n; edges.u, edges.v: 1..=n
 let n: 1..=5000 = read()
 let m: n - 1..=n = read()
 domain V = 1..=n

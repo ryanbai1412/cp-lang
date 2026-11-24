@@ -9,6 +9,7 @@
 //   is cyc(B + x) - 2 cyc(B), where cyc(B) = [x^n] x B'(x) / (1 - B(x)) counts the ways to cut the
 //   n-cycle into blocks, a block of size i weighted [x^i] B. cyc inverts 1 - B as a power series
 //   and sums i b_i g_(n-i): O(n log n) per test. k = 1 leaves B empty and the answer cyc(x) = 1.
+// Bounds: n: 2..=2e5; k: 1..=n - 1
 use std.poly.{inv}
 
 type Z = Mod<998_244_353>

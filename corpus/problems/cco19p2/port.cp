@@ -1,61 +1,39 @@
 // Source: CCO 2019 P2 (Sirtet), https://dmoj.ca/problem/cco19p2
+// limits: 1000 ms, 1024 MB
 // Problem: an N x M grid (NM <= 1e6) of '.' and '#'; side-connected '#' cells form rigid objects
 //   that all fall straight down at the same speed, each stopping on the bottom row or on top of
 //   another object. Print the final grid.
-// Solution: label objects by flood fill. In each column, consecutive '#' cells from the bottom
-//   give an edge from the object below (the floor is node 0) to the one above, weighted by the
-//   empty cells between them. An object falls by its shortest distance from the floor
-//   (Dijkstra): O(NM log NM).
+// Solution: a Dsu over cells joins touching '#' cells into objects, named by their root cell. In
+//   each column the lowest '#' starts its object at its height above the floor, and each next
+//   '#' up gives an arc from the object below to its own, weighted by the empty cells between.
+//   An object falls by its shortest distance (multi-source Dijkstra): O(NM log NM).
 // original: corpus/submissions/3613676.cpp
-let n: 1..=1e6 = read()
-let m: 1..=1e6 = read()
+// Bounds: n, m: 1..=1e6
+let (n, m): (1..=1e6, 1..=1e6) = read()
+let cells: 1..=1e6 = n * m
 domain Row = 0..n
 domain Col = 0..m
-type Cell = (Row, Col)
+domain Cell = (Row, Col)
 let g: [Row, Col]Char = read()
 
-// Label the shapes 1, 2, ...; 0 is the floor.
-var shape: [Row, Col]Int = 0
-var shapes = 0
-for r in Row:
-    for c in Col:
-        if g[r, c] != '#' or shape[r, c] != 0: continue
-        shapes += 1
-        shape[r, c] = shapes
-        var stack: List<Cell> = [(r, c)]
-        while let p = stack.pop():
-            for q in p.adj4:
-                if g[q] == '#' and shape[q] == 0:
-                    shape[q] = shapes
-                    stack.push(q)
+var objects = Dsu<Cell>()
+for p in Cell if g[p] == '#':
+    for q in p.adj4 if g[q] == '#': objects.unite(p, q)
+fn object(p: Cell) -> Cell = objects.find(p)
 
-domain S = 0..=shapes
-var gaps: [S]List<(S, Int)> = []
+// in each column the lowest '#' is its height above the floor, each next one `w` rows above the last
+var floor: List<(Cell, Int)> = []
+var rests: List<(u: Cell, v: Cell, w: Int)> = []
 for c in Col:
-    var below = S(0)
-    var below_row = n
-    for i in 0..n:
-        let r = Row(n - 1 - i)
-        if g[r, c] == '#':
-            let s = S(shape[r, c])
-            gaps[below].push((s, below_row - (n - 1 - i) - 1))
-            below = s
-            below_row = n - 1 - i
-
-var drop: [S]?Int = None
-var pq = MinHeap<(Int, S)>()
-drop[S(0)] = 0
-pq.push((0, S(0)))
-while let (d, u) = pq.pop():
-    if drop[u] != d: continue
-    for (v, w) in gaps[u]:
-        if drop[v] == None or d + w < drop[v]!:
-            drop[v] = d + w
-            pq.push((d + w, v))
+    var below: ?Row = None
+    for r in Row.rev if g[r, c] == '#':
+        if let b = below: rests.push((u: object((b, c)), v: object((r, c)), w: b.ord - r.ord - 1))
+        else: floor.push((object((r, c)), n - 1 - r.ord))
+        below = Some(r)
+domain Rest = 0..rests.len
+let arcs: [Rest](u: Cell, v: Cell, w: Int) = [Rest] e => rests[e.ord]
+let fall = dijkstra(Graph.directed(arcs), from: floor)
 
 var out: [Row, Col]Char = '.'
-for r in Row:
-    for c in Col:
-        if g[r, c] == '#':
-            out[Row.at(r + drop[S(shape[r, c])]!)!, c] = '#'
+for (r, c) in Cell if g[r, c] == '#': out[Row(r.ord + fall[object((r, c))]!), c] = '#'
 for r in Row: print(out[r, ..])

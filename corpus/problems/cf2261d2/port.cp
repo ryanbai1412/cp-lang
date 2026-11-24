@@ -9,6 +9,7 @@
 //   left (carry the nearest later partner, cut where it is next door) gives the fewest cuts.
 //   Pair cut i with cut i + half as one segment, adding cut 0 when the outermost bad pair still
 //   collides and cut n to make the count even. O((n + m) log n).
+// Bounds: n: 1..=2e5; m: 0..=2e5; l, r: 1..=n
 
 @!multitest
 let (n, m): (1..=2e5, 0..=2e5) = read()
@@ -23,7 +24,7 @@ let hash = [xors.prefix(i + 1) for i in 0..n]
 
 var next: [0..n]?Int = None
 var (first_bad, last_bad): (?Int, ?Int) = (None, None)
-let order = (0..n).sorted(by: i => (hash[i], i))
+let order = (0..n).sorted(by: i => hash[i])
 for (a, b) in order.adjacent if hash[a] == hash[b]:
     next[a] min= b
     first_bad min= a

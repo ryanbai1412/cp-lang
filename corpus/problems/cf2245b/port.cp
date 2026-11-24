@@ -6,6 +6,7 @@
 // Solution: every operation scores one element minus c, and at most n / 2 elements can be eaten
 //   silently by a larger partner. So in sorted order the top n - n / 2 always score x - c,
 //   and each of the n / 2 smallest scores max(x - c, 0) (eaten when x <= c). O(n log n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let (n, c): (1..=200_000, -10 ** 9..=10 ** 9) = read()

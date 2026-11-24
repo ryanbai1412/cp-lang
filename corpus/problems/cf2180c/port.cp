@@ -6,6 +6,7 @@
 //   elements already below n (free on lower bits) while the rest still match n. A set bit of n
 //   goes to k - 1 elements: the one left out is newly freed, or the last one when all are free.
 //   A clear bit goes to the largest even number of free elements. O(31 k).
+// Bounds: n: 1..=10 ** 9; k: 1..=100_000
 
 const MAX_BIT = 30
 

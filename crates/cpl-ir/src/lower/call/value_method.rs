@@ -43,6 +43,11 @@ impl<'a> Lowerer<'a> {
                 return self.find_first(range, elem, &test.value, method == "find", span);
             }
         }
+        if self.past_builtin_row(name.span) {
+            if let Some(res) = self.try_ufcs_call(method, base, args, span, Some(recv_mark), hint) {
+                return res;
+            }
+        }
         match (&ty, method) {
             // `s.set(v, on)` is `s.with(v)` when `on` holds and `s.without(v)`
             // when it does not.
@@ -111,13 +116,6 @@ impl<'a> Lowerer<'a> {
                     ),
                     None => self.err_expr(span),
                 }
-            }
-            (Ty::Str, "join") => {
-                let Some(exprs) = self.positional_any("join", args, 1, span) else {
-                    return self.err_expr(span);
-                };
-                let items = self.expr(exprs[0], None);
-                self.join(value, items, None, exprs[0].span)
             }
             (ty, "get") if ty.is_indexed() => {
                 let elem = ty.seq_elem().unwrap();
@@ -775,12 +773,6 @@ impl<'a> Lowerer<'a> {
                 Some(_) => mutate(self, Mutation::Clear, Vec::new(), Ty::Unit),
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "reverse") => {
-                match self.positional_any(method, args, 0, span) {
-                    Some(_) => mutate(self, Mutation::Reverse, Vec::new(), Ty::Unit),
-                    None => self.err_expr(span),
-                }
-            }
             (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "sort") => {
                 self.sort(base, &elem, args, span)
             }
@@ -1033,89 +1025,6 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::DomainVal, "windows") => {
-                let Some(k_expr) = self.one_arg(method, args, &Ty::Int, span) else {
-                    return self.err_expr(span);
-                };
-                let dom_id = match value.kind {
-                    ExprKind::DomainVal(d) => Some(d),
-                    _ => None,
-                };
-                let range_ty = match dom_id {
-                    Some(d) => Ty::Range(Box::new(Ty::Pos(d))),
-                    None => Ty::Range(Box::new(Ty::Int)),
-                };
-                let list_ty = Ty::list(range_ty.clone());
-                let list_ty_hint = list_ty.clone();
-                self.do_expr(Some(&list_ty_hint), span, |lw, out| {
-                    let k_slot = lw.temp(Ty::Int);
-                    out.push(Stmt::Let(k_slot, Some(k_expr)));
-                    let k_ref = lw.local(k_slot, span);
-                    let n_expr = match dom_id {
-                        Some(d) => lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
-                        None => lw.mk(ExprKind::Builtin(Builtin::Len, vec![value]), Ty::Int, span),
-                    };
-                    let n_slot = lw.temp(Ty::Int);
-                    out.push(Stmt::Let(n_slot, Some(n_expr)));
-                    let n_ref = lw.local(n_slot, span);
-                    let acc_slot = lw.temp(list_ty.clone());
-                    out.push(Stmt::Let(
-                        acc_slot,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
-                    ));
-                    let lim = lw.mk(
-                        ExprKind::Binary(BinOp::Sub, Box::new(n_ref), Box::new(k_ref.clone())),
-                        Ty::Int,
-                        span,
-                    );
-                    let hi_loop = lw.int_add(lim, 1);
-                    let i_slot = lw.temp(Ty::Int);
-                    let i_ref = lw.local(i_slot, span);
-                    let end_e = lw.mk(
-                        ExprKind::Binary(BinOp::Add, Box::new(i_ref.clone()), Box::new(k_ref)),
-                        Ty::Int,
-                        span,
-                    );
-                    let rng = lw.mk(
-                        ExprKind::Range {
-                            lo: Box::new(i_ref),
-                            hi: Box::new(end_e),
-                        },
-                        range_ty,
-                        span,
-                    );
-                    let push = lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Push,
-                            Box::new(Place {
-                                kind: PlaceKind::Local(acc_slot),
-                                ty: list_ty.clone(),
-                                span,
-                            }),
-                            vec![rng],
-                        ),
-                        Ty::Unit,
-                        span,
-                    );
-                    let lid = lw.next_loop;
-                    lw.next_loop += 1;
-                    out.push(Stmt::For(
-                        lid,
-                        i_slot,
-                        Iter::Range {
-                            lo: lw.int_lit(0, span),
-                            hi: hi_loop,
-                            step: None,
-                            rev: false,
-                            closed: false,
-                        },
-                        Block {
-                            stmts: vec![Stmt::Expr(push)],
-                        },
-                    ));
-                    out.push(Stmt::Give(lw.local(acc_slot, span)));
-                })
-            }
             // `xs.find(x => x > 3)` is the first element the test holds
             // for; `xs.find(3)` is where the value 3 is. Handled uniformly across
             // every `Indexed` sequence (`List`, `ListView`, 1D `[D]T`, `Str`, `StrView`, `Range`).
@@ -1351,79 +1260,6 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
-            // `(lo..hi).clamp(D)`: the part of an Int range that lies in
-            // `D`, as a range of D's positions; empty when none does.
-            (Ty::Range(inner), "clamp") if **inner == Ty::Int && args.len() == 1 => {
-                let domain = match &args[0].value.kind {
-                    ast::ExprKind::Name(name) if self.lookup(name).is_none() => {
-                        match (self.gen_env.get(name.as_str()), self.get_sym(name)) {
-                            (Some(GenArg::Domain(id)), _) => Some(*id),
-                            (_, Some(Sym::Domain(id))) => Some(id),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                };
-                let Some(d) = domain else {
-                    self.error(
-                        codes::TYPE_MISMATCH,
-                        args[0].value.span,
-                        "`clamp` takes a domain",
-                    );
-                    self.help("write the domain the range is cut to: `(l..=r).clamp(V)`");
-                    return self.err_expr(span);
-                };
-                let range_ty = Ty::Range(Box::new(Ty::Pos(d)));
-                self.do_expr(Some(&range_ty.clone()), span, |lw, out| {
-                    let range = lw.new_slot("range", value.ty.clone());
-                    out.push(Stmt::Let(range, Some(value)));
-                    // An end of the range as an ordinal of `D`, kept in 0..=len.
-                    let end = |lw: &mut Self, which| {
-                        let range = lw.local(range, span);
-                        let at = lw.mk(ExprKind::Builtin(which, vec![range]), Ty::Int, span);
-                        let first = lw.mk(ExprKind::DomainLo(d), Ty::Int, span);
-                        let ord = lw.mk(
-                            ExprKind::Binary(BinOp::Sub, Box::new(at), Box::new(first)),
-                            Ty::Int,
-                            span,
-                        );
-                        let len = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                        let zero = lw.int_lit(0, span);
-                        let capped = lw.mk(
-                            ExprKind::Builtin(Builtin::Min, vec![ord, len]),
-                            Ty::Int,
-                            span,
-                        );
-                        lw.mk(
-                            ExprKind::Builtin(Builtin::Max, vec![capped, zero]),
-                            Ty::Int,
-                            span,
-                        )
-                    };
-                    let lo = lw.new_slot("lo", Ty::Int);
-                    let from = end(lw, Builtin::RangeLo);
-                    out.push(Stmt::Let(lo, Some(from)));
-                    let to = end(lw, Builtin::RangeHi);
-                    // An empty range stays empty: its end is not before its start.
-                    let lo_again = lw.local(lo, span);
-                    let hi = lw.mk(
-                        ExprKind::Builtin(Builtin::Max, vec![to, lo_again]),
-                        Ty::Int,
-                        span,
-                    );
-                    let lo = lw.local(lo, span);
-                    let cut = lw.mk(
-                        ExprKind::Range {
-                            lo: Box::new(lo),
-                            hi: Box::new(hi),
-                        },
-                        range_ty.clone(),
-                        span,
-                    );
-                    out.push(Stmt::Give(cut));
-                })
-            }
-            // `r.drop(k)` / `r.take(k)` on `Range<Int>` or `Range<D>`: sub-range.
             (Ty::Range(inner), "drop" | "take" | "drop_last" | "take_last")
                 if **inner != Ty::I128 =>
             {

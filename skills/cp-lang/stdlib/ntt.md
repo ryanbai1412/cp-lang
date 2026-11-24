@@ -4,7 +4,7 @@
 
 Number-theoretic transform, exact and modular convolution, SOS, and bitwise transforms.  Polynomials are coefficient lists, lowest degree first (`p[k]` is the coefficient of `x^k`). There is one `convolve`: `on:` says how indices combine and `over:` which semiring the values live in; the value type picks the algorithm (NTT for an NTT-prime `Mod<P>`, three primes and CRT for any other `Mod` or `Int`, FFT for `F64`), and `cpl explain` names it. `cyclic: Bool = false`: - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty) - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 
-In prelude (no `use` needed): `Curved`, `convolve`.
+In prelude (no `use` needed): `Curved`, `convolve`, `convolve_2d`, `ntt`, `sos`.
 
 ## Types & Constants
 
@@ -55,7 +55,7 @@ Fields: `b: List<Mod<P>>`, `a: List<Mod<P>>`, `c: List<Mod<P>>`.
 - `fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false)` — \(O(k 2^k)\); In-place sum-over-subsets (zeta) transform of `a`, length `2^k`, or its Mobius inverse.; traps: when `a.len` is not a power of two
 - `fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false)` — \(O(n \log n)\); In-place Walsh-Hadamard (XOR) transform of `a`, length `2^k`.; traps: when `a.len` is not a power of two; with `inverse: true` on `Int`, when an entry is not divisible by `n`
 - `fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>` — \(O(S \log^2 S)\) for total length `S`; The product of every polynomial in `polys`, multiplied as a balanced tree.; traps: when the product outgrows the largest NTT length `P` supports
-- `fn convolve_2d<P>(a: List<List<Mod<P>>>, b: List<List<Mod<P>>>) -> List<List<Mod<P>>>` — \(O(S \log S)\) for `S = (a.len + b.len) (wa + wb)`; The 2D product of `a` and `b`, rows by rows: `out[i][j]` sums `a[r][c] * b[i - r][j - c]`.; traps: when the product outgrows the largest NTT length `P` supports
+- `fn convolve_2d<P>(a: List<List<Mod<P>>>, b: List<List<Mod<P>>>) -> List<List<Mod<P>>>` — \(O(S \log S)\) for `S = (a.len + b.len) (wa + wb)`; The 2D product of `a` and `b`: `out[i][j]` sums `a[r][c] * b[i - r][j - c]`.; traps: when the product outgrows the largest NTT length `P` supports
 - `fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>>` — \(O(k^2 2^k)\); The set power series exponential of `a`, length `2^k`, with `a[0] == 0`.; traps: when `a.len` is not a power of two, or `a[0] != 0`
 - `fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>` — \(O(k^2 2^k)\); The set power series logarithm of `a`, length `2^k`, with `a[0] == 1`: the inverse of `subset_exp`, so `subset_exp(subset_log(a)) == a`.; traps: when `a.len` is not a power of two, or `a[0] != 1`
 

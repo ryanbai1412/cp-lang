@@ -10,7 +10,6 @@
 // forced value (neither an odd cycle nor a pre-assigned vertex) contributes a
 // factor of `lim` to the count; any conflict sets `ans = 0`.
 
-use std.graph.{two_edge_components}
 
 type Z = Mod<998_244_353>
 

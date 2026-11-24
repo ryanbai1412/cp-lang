@@ -248,7 +248,13 @@ an `Ord`, the same two concepts:
 
 <!-- signatures: std/graph.cp -->
 ```cp
-fn dijkstra<V, W, G: WeightedNext<V, W>, M>(g: G, from: Seq<(V, W)>, step: M = (+), until: ?V = None, hashed: Bool = false, ) -> Paths<V, W, G.Arc>
+fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
+    g: G,
+    from: Seq<(V, W)>,
+    step: M = (+),
+    until: ?V = None,
+    hashed: Bool = false,
+) -> Paths<V, W, G.Arc>
 ```
 
 <!-- given:
@@ -259,9 +265,9 @@ fn dijkstra<V, W, G: WeightedNext<V, W>, M>(g: G, from: Seq<(V, W)>, step: M = (
   let g = Graph.directed(es)
   let s = V(0) -->
 ```cp
-let d = dijkstra(g, from: [(s, 0)])                  // sum of weights
-let b = dijkstra(g, from: [(s, 0)], step: max)       // bottleneck path
-let c = dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))], step: each(+, +))   // cost, then hops
+let d = dijkstra(g, from: [(s, 0)])                                                 // sum of weights
+let b = dijkstra(g, from: [(s, 0)], step: max)                                      // bottleneck path
+let c = dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))], step: each(+, +))  // cost, then hops
 ```
 
 - Correctness needs one law: extending a path never makes it better,
@@ -285,7 +291,13 @@ tags.op(old, new)`. With add-3 then assign-5, both give assign-5.
 <!-- signatures: std/algebra.cp -->
 ```cp
 // a value, not a trait (decision 42.6); T is the folded value, F the tag
-pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>, commutes: Bool = false)
+pub struct Action<T, F>(
+    id: F,
+    compose: (F, F) -> F,
+    apply: (F, T, Int) -> T,
+    over: Monoid<T>,
+    commutes: Bool = false,
+)
 // hom:  apply(f, over.op(a, b), 2) == over.op(apply(f, a, 1), apply(f, b, 1))
 // comp: apply(compose(g, f), x, 1) == apply(g, apply(f, x, 1), 1)
 ```
@@ -311,10 +323,11 @@ A custom action, written inline:
   domain Cut = 0..=8
   struct Low: cover: Int, l: Cut, r: Cut, len: Int
   impl Low:
-      fn join(a: Low, b: Low) -> Low = todo -->
+      fn join(a: Low, b: Low) -> Low = todo
+  let lows = Monoid(Low(Int.MAX, Cut.first!, Cut.first!, 0), Low.join) -->
 ```cp
-let shift = Action(compose: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d))
-var low = SegTree(Low.join, [Cut] c => Low(0, c, c, 0), act: shift)
+let shift = Action(compose: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d), over: lows)
+var low = SegTree(lows, [Cut] c => Low(0, c, c, 0), act: shift)
 ```
 
 `n` is computed from the node, never stored, so an action that ignores it
@@ -327,15 +340,15 @@ algebras and convolutions are generic over.
 
 <!-- signatures: std/algebra.cp -->
 ```cp
-pub struct Semiring<A, M>(add: A, mul: M)   // a value (decision 42.6)
+pub struct Semiring<A, M>(add: A, mul: M)  // a value (decision 42.6)
 // distrib: mul(a, add(b, c)) == add(mul(a, b), mul(a, c))
 // absorb:  mul(add.id, a) == add.id
 
-Semiring(+, *)            // counting; the default for numbers
-Semiring(min, +)          // shortest paths (tropical)
-Semiring(max, +)          // longest paths, best scores
-Semiring(or, and)         // reachability
-Semiring(max, min)        // bottleneck
+Semiring(+, *)      // counting; the default for numbers
+Semiring(min, +)    // shortest paths (tropical)
+Semiring(max, +)    // longest paths, best scores
+Semiring(or, and)   // reachability
+Semiring(max, min)  // bottleneck
 ```
 
 The pair is written with the ops themselves, so the names
@@ -481,7 +494,7 @@ is decided when the fn is instantiated:
 ```cp
 pub fn apply(mut self, r: Range<D>, f: F):
     if A.Tags: Commutative<F>:
-        self.mark(r, f)          // no push
+        self.mark(r, f)  // no push
     else:
         self.push_path(r)
         self.mark(r, f)
@@ -583,13 +596,13 @@ One fn, two choices: how indices combine, and which semiring values live in.
   use std.ntt.{convolve, subset, Curved}
   let (a, b) = ([1, 2, 3], [4, 5, 6]) -->
 ```cp
-convolve(a, b)                       // c[i + j] += a[i] * b[j]
-convolve(a, b, on: ^)                // c[i ^ j]  (Walsh–Hadamard)
-convolve(a, b, on: |)                // c[i | j]  (subset-sum transform)
-convolve(a, b, on: &)                // c[i & j]
-convolve(a, b, on: subset)           // i | j with i & j == 0
-convolve(a, b, on: gcd)              // c[gcd(i, j)]  (Dirichlet-style)
-convolve(a, b, over: Semiring(max, +), shape: Curved.Right)   // max-plus, b concave
+convolve(a, b)                                               // c[i + j] += a[i] * b[j]
+convolve(a, b, on: ^)                                        // c[i ^ j]  (Walsh–Hadamard)
+convolve(a, b, on: |)                                        // c[i | j]  (subset-sum transform)
+convolve(a, b, on: &)                                        // c[i & j]
+convolve(a, b, on: subset)                                   // i | j with i & j == 0
+convolve(a, b, on: gcd)                                      // c[gcd(i, j)]  (Dirichlet-style)
+convolve(a, b, over: Semiring(max, +), shape: Curved.Right)  // max-plus, b concave
 ```
 
 - The index op is an operation value (`on:`), so the eight
@@ -655,12 +668,13 @@ if cover.fold(s.a..=s.b) == 0: todo
   struct Side: ends: Int
   impl Side:
       fn join(a: Side, b: Side) -> Side = todo
+  let sides = Monoid(Side(0), Side.join)
   let t = Rooted.from_parents([V] v => if v == V.first!: None else: Some(V.first!))
   let init: [V]Flip<Side> = todo
   let v = V(2) -->
 ```cp
 // cf2152g: flip a subtree, read the root
-var st = SegTree(Side.join, t.reorder(init), act: flip)
+var st = SegTree(Flip<Side>.op(sides), t.reorder(init), act: flip)
 st.apply(t.sub(v), true)
 print(st.all.now.ends)
 ```

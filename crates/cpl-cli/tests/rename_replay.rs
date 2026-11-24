@@ -8,6 +8,9 @@ use cpl_lsp::Server;
 use std::path::Path;
 use std::process::Command;
 
+#[path = "support/corpus_cases.rs"]
+mod corpus_cases;
+
 /// Renames known to change meaning or be refused wrongly, `port word`; the
 /// checker's causes are with compiler. Only shrinks: a fixed one fails the
 /// test until it is removed here.
@@ -264,7 +267,9 @@ fn renaming_every_name_keeps_each_port_checking_clean_and_printing_the_same() {
     // A debug build replays every fourth port; release replays them all.
     let step = if cfg!(debug_assertions) { 4 } else { 1 };
     let (mut renamed, mut ran, mut broken, mut seen) = (0, 0, Vec::new(), Vec::new());
-    for pid in ids.iter().step_by(step) {
+    let replayed: Vec<&str> = ids.iter().step_by(step).map(String::as_str).collect();
+    corpus_cases::make(&root, &replayed);
+    for pid in replayed {
         let problem = root.join("corpus/problems").join(pid);
         let src = std::fs::read_to_string(problem.join("spec.cp")).unwrap();
         let mut server = Server::new();
@@ -293,7 +298,7 @@ fn renaming_every_name_keeps_each_port_checking_clean_and_printing_the_same() {
             }
             seen.push(key);
         }
-        let input = problem.join("tests/01.in");
+        let input = cpl_contest::problem::find_tests_dir(&problem.join("spec.cp")).join("01.in");
         if input.is_file() {
             let (before, now) = (
                 run(&dir, "a.cp", &src, &input),

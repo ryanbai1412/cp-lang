@@ -1,0 +1,27 @@
+# Seeded random cases from gen.py (SEED SIZE), then the --max case.
+[[case]]
+seed = 1
+size = 4
+
+[[case]]
+seed = 2
+size = 16
+
+[[case]]
+seed = 3
+size = 64
+
+[[case]]
+seed = 4
+size = 300
+
+[[case]]
+seed = 5
+size = 3000
+
+[[case]]
+seed = 6
+size = 40000
+
+[[case]]
+args = ["--max"]

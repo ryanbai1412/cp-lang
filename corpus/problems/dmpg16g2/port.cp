@@ -8,6 +8,7 @@
 //   the last occurrence of a letter drops out; free runs merge in a Dsu per S, which keeps the
 //   count of column spans inside free runs. O(32 N^2) Dsu steps.
 // original: corpus/submissions/4653887.cpp
+// Bounds: n: 1..=1000
 
 const M = 5
 const MASKS = 32

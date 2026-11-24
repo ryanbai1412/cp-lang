@@ -14,7 +14,11 @@ export interface Judge {
   details: string[];
 }
 
-export const tools = cli as { version: string; commands: Command[]; judges: Judge[] };
+export const tools = cli as { version: string; commands: Command[]; judges: Judge[]; stressDecorators: string[] };
+
+const stressLine = new RegExp(`^(${tools.stressDecorators.join('|')})\\b`, 'm');
+/** Whether `source` has a line starting with a decorator `cpl stress` runs against. */
+export const hasStressTarget = (source: string) => stressLine.test(source);
 
 export const groups: { title: string; names: string[] }[] = [
   { title: 'Write and run', names: ['check', 'fix', 'run', 'fmt', 'lint', 'explain'] },

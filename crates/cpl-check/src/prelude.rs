@@ -58,6 +58,19 @@ pub fn method_key(name: &str, module: &str) -> String {
     format!("{name} of {module}")
 }
 
+/// The key of the `k`th `fn name(self: ..)` of one module, after the
+/// first (R08.1.4): `bsearch of #2`.
+pub fn overload_key(name: &str, k: usize) -> String {
+    method_key(name, &format!("#{k}"))
+}
+
+/// The name and `#k` of an overload's key, `bsearch of #2` or the
+/// imported `bsearch of std.range#2`.
+pub fn overload_part(key: &str) -> Option<(&str, &str)> {
+    let (name, module) = key.split_once(" of ")?;
+    Some((name, &module[module.find('#')?..]))
+}
+
 /// What the method `name` of the std `module` is imported under: its
 /// `method_key` beside the file's own `name` or another module's.
 pub fn import_key(module: &[ast::Name], name: &str, own: bool) -> String {
@@ -830,21 +843,56 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
 }
 
 /// Every public name of the standard library and its module, sorted by
-/// name. `build.rs` reads it off the files; when std is read from disk
-/// (`modules::modules`), it is read off those files instead.
+/// name, read off the outlines (`modules::std_index`), which keep every
+/// top-level line: nothing embeds a table of them.
 pub fn std_names() -> &'static [(&'static str, &'static str)] {
-    static FROM_DISK: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
+    static NAMES: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
         std::sync::OnceLock::new();
-    if !crate::modules::std_from_disk() {
-        return include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
-    }
-    FROM_DISK.get_or_init(|| {
+    NAMES.get_or_init(|| {
         let leak = |s: String| &*Box::leak(s.into_boxed_str());
-        crate::std_files::public_names(crate::modules::modules().iter().copied())
+        public_names(crate::modules::std_index().iter().copied())
             .into_iter()
             .map(|(name, module)| (leak(name), leak(module)))
             .collect()
     })
+}
+
+/// Every public name that exactly one module declares, with that module,
+/// sorted by name: what the hint for a missing `use` reads. It is read off
+/// the files, so a new `pub fn` needs no second edit.
+pub(crate) fn public_names<'a>(
+    modules: impl IntoIterator<Item = (&'a str, &'a str)>,
+) -> Vec<(String, String)> {
+    let mut found: std::collections::BTreeMap<String, Vec<&str>> = Default::default();
+    for (module, text) in modules {
+        for line in text.lines() {
+            let mut words = line.split_whitespace();
+            let public = !line.starts_with(' ') && words.next() == Some("pub");
+            let declares = matches!(
+                words.next(),
+                Some("fn" | "struct" | "enum" | "trait" | "type" | "const" | "domain")
+            );
+            if !public || !declares {
+                continue;
+            }
+            let name: String = words
+                .next()
+                .unwrap_or_default()
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            if !name.starts_with('_') {
+                found.entry(name).or_default().push(module);
+            }
+        }
+    }
+    found
+        .into_iter()
+        .filter_map(|(name, modules)| match modules.as_slice() {
+            [module] => Some((name, module.to_string())),
+            _ => None,
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -918,10 +966,12 @@ mod tests {
         }
     }
 
-    /// The outlines `build.rs` writes are the ones read off std/ itself.
+    /// The outlines `build.rs` writes are the ones read off the std text it
+    /// put in. A dev build reads std/ from disk and is not rerun by a std
+    /// edit, so the disk may be newer than the built outlines.
     #[test]
     fn the_built_outlines_are_the_outlines_of_std() {
-        let read: Vec<(&str, String)> = crate::modules::std_modules()
+        let read: Vec<(&str, String)> = crate::modules::BUNDLED
             .iter()
             .map(|(name, text)| (*name, crate::std_files::outline(text)))
             .collect();
@@ -930,6 +980,23 @@ mod tests {
             .map(|(n, t)| (*n, t.to_string()))
             .collect();
         assert_eq!(read, built);
+    }
+
+    /// A module `build.rs` borrows by `#[path]` reruns it when edited, or the outlines go stale.
+    #[test]
+    fn the_build_script_reruns_on_every_module_it_borrows() {
+        let build = include_str!("../build.rs");
+        for line in build.lines() {
+            let Some(path) = line.trim().strip_prefix("#[path = \"") else {
+                continue;
+            };
+            let path = path.trim_end_matches("\"]");
+            let rerun = format!("cargo:rerun-if-changed={path}");
+            assert!(
+                build.contains(&rerun),
+                "build.rs borrows {path} without `{rerun}`"
+            );
+        }
     }
 
     #[test]

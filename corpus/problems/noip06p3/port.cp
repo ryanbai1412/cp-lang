@@ -6,6 +6,7 @@
 //   For each step scan t upward from the job's ready time until [t, t + d) is free on its
 //   machine, then mark it. O(n m * horizon * 20) worst case, tiny here.
 // original: corpus/submissions/5165783.cpp
+// Bounds: m, n, dur: 1..=20; order: 1..=n; machine: 1..=m
 let m: 1..=20 = read()
 let n: 1..=20 = read()
 domain Machine = 1..=m

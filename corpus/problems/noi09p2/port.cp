@@ -7,6 +7,7 @@
 //   finds every shortest path in O(N). Compared in F64; the total is printed exactly from
 //   the lines of the path.
 // original: corpus/submissions/5108899.cpp
+// Bounds: n: 1..=1e5; l: 1..=3e6; p: 1..=10
 
 use std.dp.{monge_paths}
 

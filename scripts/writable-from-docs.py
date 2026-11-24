@@ -207,7 +207,7 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
             },
             method="POST",
         )
-        def once() -> tuple[str, str]:
+        def post_chat() -> tuple[str, str]:
             with urllib.request.urlopen(req, timeout=300) as resp:
                 if payload.get("stream"):
                     return mdl, parse_openai_sse(resp)
@@ -219,7 +219,7 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
                 return exc.code in (429, 500, 502, 503, 504)
             return isinstance(exc, (http.client.HTTPException, urllib.error.URLError, TimeoutError, OSError))
 
-        return retry(once, transient=transient)
+        return retry(post_chat, transient=transient)
 
     raise RuntimeError("No ANTHROPIC_API_KEY or OPENAI_API_KEY in environment")
 

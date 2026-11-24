@@ -10,6 +10,7 @@
 //   mix as (i - 1) : (i - k - 1). dp[k, p] = expected matches of the player p turns after the
 //   mover; rows grow with i, k downward so row k - 1 is still the previous round, and each
 //   uniform turn shift is a cyclic window sum over a doubled prefix array: O((l + k) k n).
+// Bounds: n: 1..=100; l: 1..=5_000; k_max: 0..=25
 
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z>()

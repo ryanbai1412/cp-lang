@@ -16,46 +16,32 @@
 // A stop in `(i, j)` has chosen `2(i + j) + 3` corners, so each choice carries
 // weight `(1 / 4) ** (2(i + j) + 3)`; the car stops inside `n x m` iff
 // `i < n` and `j < m`.
-
 type Z = Mod<1_000_000_007>
-struct Shut(floor: Bool, wall: Bool)
-fn odds(shut: Bool, open: Int) -> Int = if shut: 1 else: open
 
-// stops[i, j]: the share of corner choices whose car stops in cell (i, j).
-pub fn stops<domain I, domain J>() -> [I, J]Z:
-    var ways: [J][Shut]Z = 0
-    ways[J.first] = [s => odds(s.floor, 3) * odds(s.wall, 3)]
-    let weight: [0..I.len + J.len]Z = [d => (Z(1) / 4) ** (2 * d + 3)]
+// A cell's state is whether its floor and its wall are shut; the four masses are kept by name
+// until a struct can key an array (Core: struct-as-domain).
+type Ways = (open: Z, walled: Z, shut: Z, boxed: Z)
+fn state(open: Z, shut: Z, floor: Int, wall: Int) -> Ways =
+    (open * floor * wall, open * floor, shut * wall, shut)
+
+fn stops<domain I, domain J>() -> [I, J]Z:
+    var ways: [J]Ways = (0, 0, 0, 0)
+    ways[J.first!] = state(1, 1, floor: 3, wall: 3)
+    let weight = [(Z(1) / 4) ** (2 * d + 3) for d in 0..I.len + J.len]
     var out: [I, J]Z = 0
     for i in I:
-        var side: [Shut]Z = 0
+        var side: Ways = (0, 0, 0, 0)
         for j in J:
-            let here = ways[j] + side
-            var fall_mass: Z = 0
-            var slide_open: Z = 0
-            var slide_shut: Z = 0
-            var stop_mass: Z = 0
-            for (s, w) in here.items:
-                match s:
-                    Shut(false, false) =>
-                        fall_mass += w
-                        slide_open += w
-                    Shut(false, true) =>
-                        fall_mass += w
-                        stop_mass += w
-                    Shut(true, false) =>
-                        slide_open += 2 * w
-                        slide_shut += w
-                        stop_mass += w
-                    Shut(true, true) =>
-                        stop_mass += 4 * w
-            ways[j] = [s => fall_mass * odds(s.wall, 2) * odds(s.floor, 3)]
-            side = [s => (if s.floor: slide_shut else: slide_open) * odds(s.wall, 3)]
-            out[i, j] = stop_mass * weight[i + j]
+            let w = ways[j]
+            let (open, walled, shut) = (w.open + side.open, w.walled + side.walled, w.shut + side.shut)
+            out[i, j] = (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.ord + j.ord]
+            let falls = open + walled
+            ways[j] = state(falls, falls, floor: 3, wall: 2)
+            side = state(open + 2 * shut, shut, floor: 1, wall: 3)
     out
 
 let q: [0..read(1..=10_000)](n: 1..=5000, m: 1..=5000) = read()
-domain I = 0..max(q.n)
-domain J = 0..max(q.m)
-let inside = prefix(stops<I, J>())
-for (n, m) in q: print(Z(4) ** ((n + 1) * (m + 1)) * inside[..n, ..m])
+domain I = 0..q.map(x => x.n).max()!
+domain J = 0..q.map(x => x.m).max()!
+let inside = Prefix(stops<I, J>())
+for (n, m) in q: print(Z(4) ** ((n + 1) * (m + 1)) * inside.prefix(I.cuts(n), J.cuts(m)))

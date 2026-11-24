@@ -277,6 +277,46 @@ pub fn transcript(solution: &cpl_ir::Program, judge: &cpl_ir::Program, input: &[
     .0
 }
 
+/// The last thing the solution read from `judge` on the hidden test
+/// `input`: what the judge sent, the line that read it and the variable
+/// it went into, as `\`<\` at line 6, into \`answer\``.
+pub fn last_read(
+    solution: &cpl_ir::Program,
+    judge: &cpl_ir::Program,
+    input: &[u8],
+    source: &str,
+) -> Option<String> {
+    let sent = transcript(solution, judge, input);
+    let config = cpl_interp::trace::TraceConfig {
+        source: source.into(),
+        assignments: true,
+        ..Default::default()
+    };
+    let observed = cpl_interp::run_observed(
+        solution,
+        cpl_interp::Io::fixed(&sent),
+        &mut std::io::sink(),
+        Some(config),
+    );
+    let assigned = observed.recording?.assigned;
+    let mut before = 0;
+    let mut last = None;
+    for a in &assigned {
+        if a.read > before {
+            last = Some((before, a));
+            before = a.read;
+        }
+    }
+    let (from, a) = last?;
+    let heard = String::from_utf8_lossy(sent.get(from..a.read)?);
+    Some(format!(
+        "`{}` at line {}, into `{}`",
+        heard.trim(),
+        a.line,
+        a.name
+    ))
+}
+
 /// `side`, the solution's run on the `Io` it is given, against `judge` on
 /// the hidden test `input`, and why the judge rejected the run, if it did.
 fn against<T>(

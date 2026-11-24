@@ -1,6 +1,7 @@
 //! L0517-L0522: DSU, sieve, binary lifting, prefix sums, copy-sort-writeback.
 
 use super::*;
+use crate::std_fn;
 
 /// Flags hand-rolled union-find (L0517), prime/SPF sieve (L0518), and
 /// binary-lifting tables (L0519) that duplicate `std.dsu`, `std.math`, and
@@ -851,7 +852,7 @@ pub(super) fn prefix_zero_decl<'a>(
                 return None;
             };
             if shapes::name(recv) == Some("List")
-                && mname.text == "filled"
+                && mname.text == std_fn::FILLED
                 && args.len() == 2
                 && is_zero_init(&args[1].value)
             {
@@ -1020,10 +1021,10 @@ pub(super) fn match_in_place_mut_stmt(
         return None;
     }
     let m = match method.text.as_str() {
-        "sort" => "sort",
-        "reverse" => "reverse",
-        "rotate_left" => "rotate_left",
-        "rotate_right" => "rotate_right",
+        std_fn::SORT => std_fn::SORT,
+        std_fn::REVERSE => std_fn::REVERSE,
+        std_fn::ROTATE_LEFT => std_fn::ROTATE_LEFT,
+        std_fn::ROTATE_RIGHT => std_fn::ROTATE_RIGHT,
         "scan_in_place" => "scan_in_place",
         "suffix_scan_in_place" => "suffix_scan_in_place",
         _ => return None,
@@ -1276,7 +1277,7 @@ fn push_call(e: &Expr) -> Option<(&str, &Expr)> {
         return None;
     };
     match args.as_slice() {
-        [arg] if name.text == "push" && arg.name.is_none() => {
+        [arg] if name.text == std_fn::PUSH && arg.name.is_none() => {
             Some((shapes::name(base)?, &arg.value))
         }
         _ => None,
@@ -1286,13 +1287,13 @@ fn push_call(e: &Expr) -> Option<(&str, &Expr)> {
 /// `e` is `table[table.len - 1]` or `table.last!`.
 fn is_last_of(e: &Expr, table: &str) -> bool {
     match &walk::unparen(e).kind {
-        ExprKind::Unwrap(inner) => is_field_of(inner, table, "last"),
+        ExprKind::Unwrap(inner) => is_field_of(inner, table, std_fn::LAST),
         ExprKind::Index { base, indices } => {
             shapes::name(base) == Some(table)
                 && matches!(indices.as_slice(), [i] if matches!(
                     &walk::unparen(i).kind,
                     ExprKind::Binary { op: BinOp::Sub, lhs, rhs, .. }
-                        if is_field_of(lhs, table, "len") && is_int_lit(rhs, 1)
+                        if is_field_of(lhs, table, std_fn::LEN) && is_int_lit(rhs, 1)
                 ))
         }
         _ => false,

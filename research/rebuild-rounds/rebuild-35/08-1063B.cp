@@ -1,5 +1,4 @@
 // CF 1063B Labyrinth: 0-1 BFS on cells, left moves cost 1; rights follow from the column.
-use std.graph.{bfs01}
 let n: 1..=2000 = read()
 let m: 1..=2000 = read()
 domain R = 1..=n

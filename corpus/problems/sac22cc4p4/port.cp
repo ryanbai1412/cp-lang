@@ -6,6 +6,7 @@
 //   end, the smallest left end that keeps max - min <= t, with the max and the min of the window
 //   in two sliding `Window`s. The answer is count(T) - count(B - 1) (0 when B = 0), O(n).
 // original: corpus/submissions/4411200.cpp
+// Bounds: n: 1..=1e6; lo_gap: 0..=2e9; hi_gap: lo_gap..=2e9; a: -1e9..=1e9
 
 let n: 1..=1e6 = read()
 let lo_gap: 0..=2e9 = read()

@@ -6,7 +6,10 @@
 //   ends. Every edge costs 2 except those on the path to the last word, so end on a longest
 //   word: at each node visit the child on that word's path last and never delete it.
 //   O(total letters * 26).
+// limits: 600 ms, 64 MB
 // original: corpus/submissions/5034409.cpp
+// Bounds: n: 1..=25_000
+// optional_copies: 1
 use std.strings.{Trie}
 
 domain Letter = 'a'..='z'
@@ -16,11 +19,8 @@ var trie = Trie<Letter>.new()
 let n: 1..=25_000 = read()
 domain Word = 1..=n
 let words: [Word]Str = read()
-var longest = ""
-for w in Word:
-    let word = words[w]
-    trie.add([Letter(c) for c in word])
-    if word.len > longest.len: longest = word.to_str()
+for word in words: trie.add([Letter(c) for c in word])
+let longest = words.max(by: w => w.len)!
 
 var on_longest: Set<Int> = Set()
 var at = trie.root

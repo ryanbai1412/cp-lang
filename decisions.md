@@ -4431,6 +4431,10 @@ entries were renumbered to 169–178. 133 itself is now §169.
     calls instead of `main`, as in IOI. Functions the judge provides are
     declared, not defined: `extern fn transaction(m: Int) -> (List<T>, Int)`.
     The judge profile supplies the harness; local runs use a generated stub.
+    Amended: the local harness is the judge's own grader, linked into the
+    C++ build by `cpl test`/`cpl run` (`--grader grader.cpp`, or a
+    `grader.cpp` beside the tests); an entry fn with no grader is an error
+    naming `--grader`, never an empty run.
   - Types (`struct`, `enum`, `domain`, `type`) declared inside a fn body are
     scoped to that block and may use its runtime domains.
   - A lambda body may be an indented block after a line-ending `=>`; its
@@ -7268,6 +7272,8 @@ out again with chains off. Both cases are tests in `cpl-fmt`.
 Formerly 326 (renumbered: the number was taken twice).
 
 Ryan rejected an O(1) special case for `(3..m).step(2).sum()`. The rule is general: an operation's cost belongs to the receiver's type, through ordinary method resolution. The generic folds (`sum`, `prod`, `count`, `min`, `max`, `fold`, `contains`, `last`, `nth`) are default methods of the capability trait that gives them. A type overrides one in its `impl`, in CP Lang, with its documented cost: `impl Seq for Range` gives closed forms, as `Prefix.fold` is O(1) and `Bitset.len` is a popcount. R08.1.4 stays as written (inherent methods first, then traits), and generic code calls the receiver's impl, so an override holds through generics (`core-08/trait-default-overridden-through-generic.cp`, which passes). A free extension function is final: a concrete `self: Range<Int>` and a generic `self: S` of one name are E0701. Today the compiler silently picks the generic one (`core-08/extension-concrete-and-generic-ambiguous.cp`). Parens still mean "may do work" (decision 140). Hover and `cpl explain` show the resolved method. The compiler's `range_sum` intrinsic (`crates/cpl-ir/src/lower/call.rs` `try_range_int_sum`) goes once std overrides `sum` on ranges. Lost: compiler pattern matching of pipelines (a privilege user types can't have, and the next fold needs another special case); "most specific `self` wins" over extension functions (that is specialization: concrete and generic calls on one type would differ). Reverse: allow concrete extensions to shadow generic ones at concrete receivers.
+
+Amended 2026-11-24 (Core, for decision 419 and Content's `Range<F64>.bsearch`): extension fns of one name choose by receiver specificity, one relation in R08.1.4 used within a module and across modules. A candidate's `self` fits the receiver and its parameters take the arguments; a built-in member that can't take them falls through (`a.contains(i, x)`). `A` is more specific than `B` when `B`'s `self` binds to `A`'s and not the other way (`Range<F64>` over `Range<D>`, `[V]List<V>` over `[D]T`). A bare `self: S` is never more specific, so `core-08/extension-concrete-and-generic-ambiguous.cp` stays E0701, and two equally specific candidates stay E0701 (E0702 in one module). A list never calls `self: Range<D>` (`core-08/list-bsearch-never-picks-range-bsearch.cp`). This drops the earlier rule that the file's own fn stands in front of the library's.
 ## 334. Three hand-written graph and window algorithms teach their std names: L0565-L0567; `lint_std_names` 152 -> 159 (2026-11-22)
 
 `cycle_by_colors` (L0565): a fn that sets `c[u] = 1` first, `c[u] = 2` last and
@@ -8870,4 +8876,82 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** The table listed 66 of 161 names, so 95 privileged names had no class and nothing stopped a new one. Now a new string-matched name fails the ratchet unless it gets an intrinsic row, which needs a line here. `std_shadowed` excludes floor names, so it falls from 81 to 62 by this reclassification alone, not by moved bodies.
 - **Reverse.** Drop `ir_builtin_derived` from `scripts/debt-ratchet.py` and the added intrinsic rows from the floor table.
 
-## 536. (reserved, factory)
+## 536. `cpp_deep_copies` is 34, the count main measures (factory, 2026-11-24)
+
+- **Call.** The `cpp_deep_copies` bound (read_only_copies and `scripts/debt-ratchet.json`) is 34, not 31. 6525aa9fc lowered it from 35 to 31, but that tree and its parent 4698e6f19 both measure 34 in clean worktrees (`cargo nextest run -p cpl-cli --test read_only_copies`), so main was red from the commit that set it. A correction, not a weakening; the 3 copies go to perf, and a bound only drops to what a clean worktree of main measures.
+- **Reverse.** Set the bound back to 31 once those 3 copies are gone.
+
+## 538. A range alias has its range's `.MIN`, `.MAX` and `.count` (spec, 2026-11-24)
+
+- **Call.** After `type M = -10..=10`, `M.MIN == -10`, `M.MAX == 10` and `M.count == 21` (R02.6.2), the same values a generic `T` bound to `M` already reads since cdde42a75.
+- **Why.** An alias is the type it names everywhere (R02.6.2), and the range's ends were visible through a generic but not through the alias's own name, which was E0302. One type should answer `.MIN` the same way in both places.
+- **Reverse.** Drop the sentence from R02.6.2; `M.MIN` goes back to E0302, and generic code keeps the range's ends.
+
+## 540. Every free fn a lib chapter's table names is a prelude name (stdlib, 2026-11-24)
+
+- **Call.** `std/prelude.cp` imports every free `pub fn` a `spec/lib` table or signature block names bare. A name that means two things is written qualified in the chapter (`fn poly.inv`, `poly.exp`, `poly.sqrt`: they share names with the float builtins and `pow`) and is never imported bare. `scripts/spec-gate.py prelude` fails on any miss; `prelude-gaps.txt` is deleted and `prelude_gaps` is a hard-zero counter.
+- **Why.** The tables promised 96 names a program could not call without a `use` it had to guess, and the known list let that grow. Methods (a `self` first parameter) need no import, so they are not counted.
+- **Reverse.** Drop the added imports from `std/prelude.cp` and give each chapter row its `use` line.
+
+## 542. `cpl fix` rewrites `partition_point` to `bsearch` of the negated test (compiler, 2026-11-24)
+
+- **Call.** `a.partition_point(p)` (C++, Rust: the first position where `p` turns false) gets a machine-applicable fix to `a.bsearch(x => not (...))` (or `x => not p(x)` for a named test), not only "did you mean `bsearch`?". `habit_matchers` goes from 123 to 124 for its matcher in `check/advice.rs`; it moves into the generated habit table with the other foreign-name rows (owner: diagnostics).
+- **Why.** The two tests have opposite polarity, so a rename alone is a silent wrong answer; ports and `regress.py`'s `cpl fix` migration had to rewrite it by hand (cf2285D).
+- **Reverse.** Drop the matcher; the help goes back to naming `bsearch`.
+
+## 543. `Positional<T>` is the walk-position read `zip`'s later arguments take (stdlib, 2026-11-24)
+
+- **Call.** `Positional<T>: Seq<T> + Sized` gives `nth(k)`, the element `k` steps into the walk (R07.3.7). `Indexed<D, T>` is `Keyed + Positional + Bidir`, `Rev<S: Indexed>` is `Positional` by reading `nth` from the end, and a domain is one too. `zip` and `zip_exact` bound their later argument `Positional<U>` (R07.6.4). `std_shadowed` also counts the checker's known-call arms (`check/known.rs`), and goes to 62: `Positional`, a core trait the checker names as it names `Indexed`, and `zip`, whose arm stays only for the domain-mismatch error (R04b.1.3) until a same-key bound can state it (asked of Core).
+- **Why.** R07.6.4 reads the later arguments by walk position, and the checker granted that only by quietly rewriting their `Indexed` bound to "Indexed (or its .rev)". A named trait says it in the signature. `Rev` keeps its keys, as its doc says, so it is `Positional` rather than an `Indexed` with reversed keys.
+- **Reverse.** Delete `Positional`, bound `zip`'s later arguments `Indexed` again, and drop known.rs from `std_shadowed`.
+
+## 545. Stress keeps two front ends over one engine (debugger, 2026-11-24)
+
+- **Call.** `stress_engines` stops at 2: `case.rs` `judge_case`, the one place a case gets its verdict, and `engine.rs` `stress_source`, the in-process front end `cpl-wasm` runs. Everything after the build is shared by `cpl stress` and the browser: the `stress_with` loop, `judge_case`, `traced::retrace` for `--explain`, `judge::explaining`, and `Verdict::trapped` for the reported trap. Verdicts are built and matched only in `judge.rs`.
+- **Why.** The CLI's front end builds the file to C++ and runs `--brute`, `--checker`, `--interactor`, `--gen` and `--fast` programs (`.cpp`, `.py`, executables) as processes, at native speed over 1000 cases. The browser can't spawn processes, so it lowers the file to IR and interprets it. Merging the two would mean either interpreting in the CLI or spawning in wasm. Splitting `stress_source` only to rename it would drop the count without removing anything.
+- **Reverse.** Once the CLI's in-file path runs the IR at C++ speed, build the CLI on `stress_source`'s front end and take the counter to 1.
+
+## 546. (reserved, unknown)
+
+## 550. `fold(op)` needs an identity; `reduce(f)` and `fold_from(init, f)` are the other folds (spec, 2026-11-24)
+
+- **Call.** `s.fold(op)` is `T` and takes only an op `Monoid.of` gives an identity for. A plain fn is E0706 with a fix to `s.reduce(f)`, which is `?T`. The seeded fold is `s.fold_from(init, f)`, init first as in Rust and Kotlin, and `cpl fix` rewrites `s.fold(f, init)` and `s.fold(f, init: a)` to it (R07.9.2).
+- **Why.** std states every fold as an ordinary fn, so the compiler's `fold` rows can go. One `fold` couldn't do that: fns are not overloaded (E0702), and the three forms return `T`, `?T` and `Acc`, so no single signature types them.
+- **Reverse.** Give std one `fold` whose result type comes from `op` (a checker power), and drop the `fold` row of the removed-spelling table.
+
+## 549. One Rust corpus walker crate, `cpl-corpus` (infra, 2026-11-24)
+
+- **Call.** Rust code lists the problem packages only through `cpl_corpus::{packages, files, package}`, a dependency-free crate every tool and test can reach. `scripts/corpus.py` stays the walker for everything else; `corpus_walkers` counts any other file that lists `corpus/problems` itself.
+- **Why.** Twenty Rust suites each had their own `read_dir("corpus/problems")`, so a layout change (generated tests, a moved package) had to be made twenty times. No existing crate sits below `cpl-check`, `cpl-fmt`, `cpl-lint` and `cpl-conform` without a cycle, so the walker gets its own leaf crate.
+- **Reverse.** If a Rust tool can run `scripts/corpus.py ls` everywhere it runs, read that listing and delete the crate.
+## 548. A read-only `?T` container param is lent, and optional copies get their own counter (codegen, 2026-11-24)
+
+- **Call.** A `?T` param holding a container that its fn never stores, mutates or captures is passed as `cpl::Lent<T>`, a `const T*` with None as nullptr, not a `std::optional<T>` built by copying the argument (`Fenwick.new(a)` copied `a`). `Some(local)` at the local's last read moves it. The C++ counters now see `std::optional<C>(place)`, a container copied into an optional, and count it under its own `// optional_copies:` header and the `cpp_optional_copies` ratchet (9), apart from `cpp_deep_copies`, which does not change. The 9 are needed copies: `Rope.new` storing its base list (7 ropes built from one list in the two std-lazy conformance files), and `find`/`max` keeping an element they return (egoi23p3, ioi08p1, ucup5s05e, core-12 generic folds).
+- **Why.** The copy was invisible to `cpp_deep_copies`, so the ratchet could not see it come back. Folding the newly visible copies into `cpp_deep_copies` would raise that count; a separate counter keeps it from going up and makes this pattern drop on its own as codegen learns to move or lend these.
+- **Reverse.** Emit `std::optional<T>` params again and fold `optional_copies` into `deep_copies`.
+
+## 551. (reserved, content)
+
+## 552. (reserved, compiler)
+
+## 554. `BitTrie<W>` is a root handle into a `BitTrieArena<W>` (stdlib, 2026-11-24)
+
+- **Call.** `BitTrieArena<W>.new(cap: Int = 0)` owns the nodes of every `BitTrie<W>` built in it, and each trie is a root handle. Every call that reads or adds nodes takes the arena, as `PMultiset` takes its `PArena`: `of(mut ar, x)`, `add(mut ar, x)`, `count(ar, x)`, `len(ar)`, `each(ar)`, `walk(ar, x)`, `absorb(mut ar, mut other)`; `new()` and `is_empty` need none. `absorb` adds counts where both tries have a node and links `other`'s child in wherever `self` has none, so no node is copied, and `other` is left empty. A trie shows as its root (`root 3`, `empty`), an arena as its node count.
+- **Why.** Each trie owned its own node `List`, so `absorb` copied the smaller trie node by node. On cf2261g's max that copy and the list growth were a third of the port's time, 1.8x the accepted C++, which merges tries in one shared pool. With shared nodes, each node visited by `absorb` retires one of `other`'s nodes, so any sequence of absorbs costs O(N W) in total instead of O(N W log N), and `cap` reserves the pool once.
+- **Reverse.** Give `BitTrie<W>` its own `nodes` list again, drop `BitTrieArena` and the arena parameters, and make `absorb` walk the smaller trie's nodes into the larger.
+
+## 555. (reserved, content)
+
+## 556. The conform corpus ratchet times the max cases instead of judging them (idioms, 2026-11-24)
+
+- **Call.** `cpl-conform corpus` judges each package's tests.toml cases in the interpreter, except the `args = ["--max"]` ones, which `corpus.py make` marks with an empty `NN.max`. A package with an `interactor.py` is judged by it talking to `cpl run spec.cp`, as `cpl test --interactor` does, so its cases need no `.ans`. The max cases are only timed: `interp_max_over_20s` in research/scoreboard.json, a shrink-only debt-ratchet counter owned by Core, lists the packages whose interpreter runs one past the 20 s case timeout.
+- **Why.** The ratchet measures interpreter correctness. Max cases are judge workloads, and `corpus.py verify` (`max`, `stress`) already judges them on the C++. In the interpreter they turned eight passes into timeouts that said nothing about correctness. Dropping them would have hidden the interpreter's speed; a counter keeps it visible and owned.
+- **Reverse.** Once `interp_max_over_20s` is 0, judge the max cases in the ratchet too and delete the counter.
+
+## 557. One place to wait, `cpl-wait`; no other sleep in shipped Rust (infra, 2026-11-24)
+
+- **Call.** Shipped Rust waits only through `cpl-wait`: `on_exit` hands a child to a thread that owns `Child::wait`, so the caller blocks with a deadline (or a sampling tick) and an exit wakes it at once; `kill` stops a child and its process group; `files::Watch` is the file-change wait `cpl watch` and `cpl run --live` share; `Pace` is the judge fetcher's one-page-a-second rate limit. A worker building a C++ binary another worker is building waits on that binary's lock file. `poll_sleeps` counts `thread::sleep` outside `files.rs` and `pace.rs` and is a hard zero.
+- **Why.** Nine `thread::sleep` polls (four `try_wait` loops, a memory watcher, a g++ backoff, two file watchers, a rate limit) each slept on their own schedule and lagged the event they waited for. A portable blocking file-change wait needs a crate, and external_crates is gated, so the file watch keeps its poll in one module, and the rate limit's sleep is the limit itself.
+- **Reverse.** If a file-notification crate is admitted, replace `files.rs`'s poll with it and drop it from `SLEEP_OWNERS`.
+
+## 558. (reserved, content)

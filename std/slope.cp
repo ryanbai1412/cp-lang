@@ -11,6 +11,7 @@ fn falling() -> LazyTreap<Int, Slide> = LazyTreap<Int, Slide>(
     compose: (f, g) => Slide(f.base + g.base, f.step + g.step),
     split: (f, left) => (f, Slide(f.base + (left + 1) * f.step, f.step)),
     before: (x, y) => x >= y,
+    mirror: (f, n) => Slide(f.base + (n - 1) * f.step, -f.step),
 )
 
 /// \(O(\log n)\) expected per slope operation, for n slopes.
@@ -30,7 +31,7 @@ pub struct Concave(start: Int, base: Int):
     /// `r` and `hi` the last.
     ///
     /// cost: \(O(\lvert r \rvert \log \lvert r \rvert)\) expected
-    /// empty: traps
+    /// empty: `Concave.flat(0..0).lo == 0` (traps R0301)
     /// traps: when `r` is empty
     /// example: `let f = Concave.flat(2..5); f.lo == 2 and f.hi == 4`
     /// example: `var f = Concave.flat(0..=1); f.max() == 0`
@@ -45,7 +46,7 @@ pub struct Concave(start: Int, base: Int):
     /// cost: \(O(n)\)
     /// traps: when `n < 0`
     /// example: `var f = Concave.flat(0..=3); f.reserve(100); f.at(2) == 0`
-    pub fn reserve(mut self, n: Int) = start
+    pub fn reserve(mut self, n: Int) = slopes.reserve(n)
 
     /// The first point of the domain.
     ///
@@ -64,9 +65,10 @@ pub struct Concave(start: Int, base: Int):
     /// Replace `f` with `c => max over a + b == c of f(a) + g(b)`. The domain becomes
     /// `lo + g.lo ..= hi + g.hi` and the two slope multisets merge, so the result stays concave.
     /// Pass the smaller function as `g`: the cost is in its size.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(\lvert g \rvert \log n)\) expected, for `|g|` slopes in `g`
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Concave.flat(0..=1); f.max_convolve(Concave.flat(0..=1)); f.at(1) == 0`
     /// traps: never
     /// example: `var f = Concave.point(0); f.add_const(3); f.max_convolve(Concave.flat(0..=2)); f.hi == 2 and f.at(1) == 3`
     /// example: `var f = Concave.flat(0..=2); f.add_abs(1); var g = Concave.flat(0..=1); g.add_linear(-5); f.max_convolve(g); f.at(3) == -6`
@@ -100,9 +102,10 @@ pub struct Concave(start: Int, base: Int):
         base + slopes.take(c - start).sum()
 
     /// The largest value of `f` over its domain.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(\log n)\) expected (\(O(n)\) in the current implementation)
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Concave.flat(0..=2); f.max() == 0`
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(1); f.add_const(5); f.max() == 5`
     pub fn max(mut self) -> Int:
@@ -155,9 +158,10 @@ pub struct Concave(start: Int, base: Int):
         slopes.apply_all(Slide(k, 0))
     /// Replace `f(x)` with the largest `f(y)` over `y <= x` in the domain; the domain is unchanged
     /// and every falling slope becomes 0.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(\log n)\) expected (\(O(n \log n)\) in the current implementation)
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Concave.flat(0..=4); f.add_left(2); f.prefix_max(); f.at(3) == 0`
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.prefix_max(); f.at(0) == -2 and f.at(4) == 0`
     pub fn prefix_max(mut self):
@@ -167,9 +171,10 @@ pub struct Concave(start: Int, base: Int):
         for _ in 0..m: slopes.insert(0)
     /// Replace `f(x)` with the largest `f(y)` over `y >= x` in the domain; the domain is unchanged
     /// and every rising slope becomes 0.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(\log n)\) expected (\(O(n \log n)\) in the current implementation)
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Concave.flat(0..=4); f.add_right(2); f.suffix_max(); f.at(1) == 0`
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.suffix_max(); f.at(0) == 0 and f.at(4) == -2`
     pub fn suffix_max(mut self):
@@ -187,9 +192,10 @@ pub struct Concave(start: Int, base: Int):
         start += d
     /// Replace `f(x)` with the largest old `f(y)` over `x - b <= y <= x - a`; the domain becomes
     /// `lo + a ..= hi + b`. The same as `max_convolve(Concave.flat(a..=b))`.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(b - a + \log n)\) expected
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Concave.flat(0..=1); f.slide_max(0, 1); f.at(1) == 0`
     /// traps: when `a > b`
     /// example: `var f = Concave.point(0); f.add_const(1); f.slide_max(-1, 2); f.lo == -1 and f.hi == 2 and f.at(2) == 1`
     pub fn slide_max(mut self, a: Int, b: Int):
@@ -201,7 +207,7 @@ pub struct Concave(start: Int, base: Int):
     ///
     /// cost: \(O(\log n)\) expected (\(O(n)\) in the current implementation)
     /// order: ascending points
-    /// ties: every maximizing point is included
+    /// ties: `var f = Concave.flat(0..=4); f.add_left(2); f.argmax() == 2..5`
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.argmax() == 2..3`
     /// example: `var t = Concave.flat(0..=4); t.argmax() == 0..5`
@@ -229,7 +235,7 @@ pub struct Convex(neg: Concave):
     /// The function that is 0 on every point of `r`; its domain is `r`.
     ///
     /// cost: \(O(\lvert r \rvert \log \lvert r \rvert)\) expected
-    /// empty: traps
+    /// empty: `Convex.flat(0..0).lo == 0` (traps R0301)
     /// traps: when `r` is empty
     /// example: `let f = Convex.flat(2..5); f.lo == 2 and f.hi == 4`
     pub fn flat(r: Range<Int>) -> Convex = Convex(Concave.flat(r))
@@ -250,9 +256,10 @@ pub struct Convex(neg: Concave):
 
     /// Replace `f` with `c => min over a + b == c of f(a) + g(b)`. The domain becomes
     /// `lo + g.lo ..= hi + g.hi` and the slope multisets merge. Pass the smaller function as `g`.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(\lvert g \rvert \log n)\) expected, for `|g|` slopes in `g`
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Convex.flat(0..=1); f.min_convolve(Convex.flat(0..=1)); f.at(1) == 0`
     /// traps: never
     /// example: `var f = Convex.point(0); f.add_const(3); f.min_convolve(Convex.flat(0..=2)); f.hi == 2 and f.at(1) == 3`
     pub fn min_convolve(mut self, g: Convex) = neg.max_convolve(g.neg)
@@ -273,9 +280,10 @@ pub struct Convex(neg: Concave):
     pub fn at(mut self, c: Int) -> Int = -neg.at(c)
 
     /// The smallest value of `f` over its domain.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(\log n)\) expected (\(O(n)\) in the current implementation)
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Convex.flat(0..=2); f.min() == 0`
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(1); f.add_const(5); f.min() == 5`
     pub fn min(mut self) -> Int = -neg.max()
@@ -311,16 +319,18 @@ pub struct Convex(neg: Concave):
     /// example: `var f = Convex.flat(0..=4); f.add_linear(-2); f.at(3) == -6`
     pub fn add_linear(mut self, k: Int) = neg.add_linear(-k)
     /// Replace `f(x)` with the smallest `f(y)` over `y <= x` in the domain; the domain is unchanged.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(\log n)\) expected (\(O(n \log n)\) in the current implementation)
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Convex.flat(0..=4); f.add_right(2); f.prefix_min(); f.at(3) == 0`
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(2); f.prefix_min(); f.at(0) == 2 and f.at(4) == 0`
     pub fn prefix_min(mut self) = neg.prefix_max()
     /// Replace `f(x)` with the smallest `f(y)` over `y >= x` in the domain; the domain is unchanged.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(\log n)\) expected (\(O(n \log n)\) in the current implementation)
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Convex.flat(0..=4); f.add_left(2); f.suffix_min(); f.at(1) == 0`
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(2); f.suffix_min(); f.at(0) == 0 and f.at(4) == 2`
     pub fn suffix_min(mut self) = neg.suffix_max()
@@ -333,9 +343,10 @@ pub struct Convex(neg: Concave):
     pub fn shift(mut self, d: Int) = neg.shift(d)
     /// Replace `f(x)` with the smallest old `f(y)` over `x - b <= y <= x - a`; the domain becomes
     /// `lo + a ..= hi + b`. The same as `min_convolve(Convex.flat(a..=b))`.
+    /// On a tie only the value is kept; which point attains it does not matter.
     ///
     /// cost: \(O(b - a + \log n)\) expected
-    /// ties: only the value is kept; which point attains it does not matter
+    /// ties: `var f = Convex.flat(0..=1); f.slide_min(0, 1); f.at(1) == 0`
     /// traps: when `a > b`
     /// example: `var f = Convex.point(0); f.add_const(1); f.slide_min(-1, 2); f.lo == -1 and f.hi == 2 and f.at(-1) == 1`
     pub fn slide_min(mut self, a: Int, b: Int) = neg.slide_max(a, b)
@@ -344,7 +355,7 @@ pub struct Convex(neg: Concave):
     ///
     /// cost: \(O(\log n)\) expected (\(O(n)\) in the current implementation)
     /// order: ascending points
-    /// ties: every minimizing point is included
+    /// ties: `var f = Convex.flat(0..=4); f.add_left(2); f.argmin() == 2..5`
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(2); f.argmin() == 2..3`
     pub fn argmin(mut self) -> Range<Int> = neg.argmax()
@@ -388,3 +399,28 @@ fn convex_mirrors_concave():
             g.max_convolve(Concave.flat(0..=w))
         for c in f.lo..=f.hi: assert f.at(c) == -g.at(c)
         assert f.min() == -g.max()
+
+impl Show for Concave:
+    /// Its domain and its value at each point, as `concave on lo..=hi: f(lo) ... f(hi)`.
+    ///
+    /// example: `var f = Concave.flat(2..5); f.add_left(3); "{f}" == "concave on 2..=4: -1 0 0"`
+    fn show(f):
+        var out = "concave on {f.lo}..={f.hi}: {f.base}"
+        var v = f.base
+        for s in f.slopes.to_list():
+            v += s
+            out += " {v}"
+        out
+
+impl Show for Convex:
+    /// Its domain and its value at each point, as `convex on lo..=hi: f(lo) ... f(hi)`.
+    ///
+    /// example: `"{Convex.flat(2..5)}" == "convex on 2..=4: 0 0 0"`
+    fn show(f):
+        var out = "convex on {f.lo}..={f.hi}:"
+        var v = -f.neg.base
+        out += " {v}"
+        for s in f.neg.slopes.to_list():
+            v -= s
+            out += " {v}"
+        out

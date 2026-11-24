@@ -1,5 +1,6 @@
 //! Readers of statement and expression shapes the taste rules share.
 
+use crate::std_fn;
 use crate::walk::{self, Visitor};
 use cpl_syntax::ast::*;
 
@@ -84,7 +85,9 @@ pub(super) fn pushed_onto<'e>(e: &'e Expr, name: &str) -> Option<&'e Expr> {
         return None;
     };
     match (&base.kind, &args[..]) {
-        (ExprKind::Name(n), [arg]) if n == name && method.text == "push" && arg.name.is_none() => {
+        (ExprKind::Name(n), [arg])
+            if n == name && method.text == std_fn::PUSH && arg.name.is_none() =>
+        {
             Some(&arg.value)
         }
         _ => None,

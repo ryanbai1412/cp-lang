@@ -3,4 +3,5 @@ let par: [0..n - 1]1..=n = read()
 var depth: List<Int> = [0, 0]
 for v in 2..=n:
     depth.push(depth[par[v - 2]] + 1)
-print(depth.max()!)
+let (a, b): (1..=n, 1..=n) = read()
+print(if depth[a] >= depth[b]: a else: b)

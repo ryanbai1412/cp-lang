@@ -75,14 +75,6 @@ tier = "pre-commit"
 
 
 [[gen]]
-name = "prelude"
-files = ["spec/conformance/prelude-gaps.txt"]
-inputs = ["spec/lib/*.md", "std/prelude.cp"]
-write = ["scripts/spec-gate.py", "prelude", "--write"]
-check = ["scripts/spec-gate.py", "prelude"]
-tier = "pre-commit"
-
-[[gen]]
 name = "corpus-index"
 # Only the generated fields of each meta.json; tags, dream, notes are hand-written.
 files = ["corpus/index.json"]

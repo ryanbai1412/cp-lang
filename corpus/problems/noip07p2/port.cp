@@ -7,6 +7,7 @@
 //   `shown` applying p1, reverse it for p3 = 2 and push each character p2 times; otherwise copy
 //   the character. O(output length).
 // original: corpus/submissions/5184882.cpp
+// Bounds: p1: 1..=3; p2: 1..=8; p3: 1..=2
 let (p1, p2, p3): (1..=3, 1..=8, 1..=2) = read()
 let s: Str = read()
 

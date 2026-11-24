@@ -9,6 +9,7 @@
 //   attractor of the non-good stations loses for Arezou: remove it, update live out-degrees
 //   and repeat. Marks give O(1) clears; O(n (n + m)) in all.
 // original: corpus/submissions/5656304.cpp
+// Bounds: n: 1..=5000; m: n..=20_000; owner, charge: 0..=1; tracks.from, tracks.to: 0..=n - 1
 let n: 1..=5000 = read()
 let m: n..=20_000 = read()
 domain V = 0..n

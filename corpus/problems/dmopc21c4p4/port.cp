@@ -8,6 +8,7 @@
 //   length i there are C(N, i) * (i - 1)! candidate cycles, each present with probability
 //   (N - 1)^-i. Sum over i = 2..=N with factorial tables and one modular inverse; O(N).
 // original: corpus/submissions/4131060.cpp
+// Bounds: n: 2..=1e6
 
 const MOD = 1_000_000_007
 type Z = Mod<MOD>

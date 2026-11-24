@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """ZJOI 2016 Small Stars: n <= 17, a simple graph with m <= n(n-1)/2 edges, a tree on 1..n."""
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # n = 17, the complete graph (m = 136), a random tree: all 2^17 vertex sets, full DP each
+    sys.argv[1:] = ["2", "1000"]
+
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 if size >= 1000:

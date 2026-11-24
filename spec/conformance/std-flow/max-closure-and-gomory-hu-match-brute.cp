@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.flow.{gomory_hu}
 fn mc():
     domain V = 0..6
     for _ in 0..40:

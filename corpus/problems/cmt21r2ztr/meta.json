@@ -19,6 +19,9 @@
   "dream": [
    "corpus/problems/cmt21r2ztr/dream.cp"
   ],
+  "original": [
+   "corpus/problems/cmt21r2ztr/orig.cpp"
+  ],
   "port": [
    "corpus/problems/cmt21r2ztr/port.cp"
   ],
@@ -33,5 +36,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "TwoSat<(P, Side)> over a tuple of a list-key domain and an enum; at_most_one + add_xor; TwoSat and Lit join the prelude."
+ "notes": "TwoSat<(P, Side)> over a tuple of a list-key domain and an enum; at_most_one + add_xor; TwoSat and Lit join the prelude.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 11,
+  "sha": "6a406fb94b03dda385542b2fc4f1114c3243c1f5"
+ }
 }

@@ -23,6 +23,7 @@ mod fx;
 mod hover;
 mod labels;
 mod modules;
+mod multitest;
 mod nav;
 mod prelude;
 mod session;
@@ -32,7 +33,8 @@ mod ty;
 pub use builtins::{
     builtin_member, builtin_members, char_literal, foreign_iter_call, foreign_member,
     foreign_str_fn, list_end_help, prelude_names, split_params as split_builtin_params,
-    BuiltinMember, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS, ITERATOR_POSITION_HELP,
+    BuiltinMember, BuiltinType, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES,
+    ITERATOR_POSITION_HELP,
 };
 pub use check::{closest, GlobalRef, HoverEntry, Resolved, TypedIndex};
 pub use db::{
@@ -44,11 +46,11 @@ pub use hover::{Definition, Hover, Representation, Symbol};
 pub use modules::{
     bundled_std, carry_only_embedded_std, configured_libraries, dev_std_problem, file_path,
     home_dir, provide_std, std_calls, std_from_disk, std_needed, std_needed_with, std_outline,
-    take_std_needs, FsLoader, Loader,
+    take_std_needs, FsLoader, GivenFiles, Loader,
 };
 pub use prelude::{
-    import_edit, method_key, method_module, methods as std_methods, set_domain, std_module,
-    std_names, std_self_heads, SetDomain,
+    import_edit, method_key, method_module, methods as std_methods, overload_key, overload_part,
+    set_domain, std_module, std_names, std_self_heads, SetDomain,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};

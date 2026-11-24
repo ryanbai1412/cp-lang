@@ -164,7 +164,7 @@ fn a_named_map_get_lends_when_every_read_takes_a_lent_entry() {
         !lent.contains("map_get("),
         "reads that take a lent entry never copy it: {lent}"
     );
-    let printed = cpp(&src("    print(o)\n"));
+    let printed = cpp(&src("    print(o!)\n"));
     assert!(
         printed.contains("cpl::map_get(m_2, k)"),
         "a read that needs the optional itself keeps the copy: {printed}"
@@ -178,7 +178,7 @@ fn a_map_entry_read_through_a_closure_and_a_domain_block_is_never_copied() {
         "m[0] = [1, 5, 9]\n",
         "var s = 0\n",
         "for hi in 0..4:\n",
-        "    let l = m.get(0) ?? []\n",
+        "    let l: List<Int> = m.get(0) ?? []\n",
         "    s += l.bsearch(x => x >= hi)\n",
         "print(s)\n",
     ));
@@ -478,6 +478,36 @@ for v in 0..n:
 }
 
 #[test]
+fn a_local_fn_called_by_itself_or_another_local_fn_borrows_its_captures() {
+    let head =
+        "let xs = read<List<Int>>()\nfn f(k: Int) -> Int:\n    let ys = [x * k for x in xs]\n";
+    for body in [
+        "    fn walk(i: Int) -> Int:\n        if i >= ys.len: return 0\n        ys[i] + walk(i + 1)\n    walk(0)\n",
+        "    fn at(i: Int) -> Int = ys[i]\n    fn g(n: Int) -> Int:\n        var s = 0\n        for i in 0..n: s += at(i)\n        s\n    g(ys.len)\n",
+    ] {
+        let out = cpp(&format!("{head}{body}print(f(2))\n"));
+        assert!(
+            out.contains("&ys_2 = ys"),
+            "the local fn is only ever called, so `ys` is borrowed:\n{out}"
+        );
+    }
+    let kept = cpp(concat!(
+        "let xs = read<List<Int>>()\n",
+        "fn f(k: Int) -> Int:\n",
+        "    let ys = [x * k for x in xs]\n",
+        "    fn at(i: Int) -> Int = ys[i]\n",
+        "    var h = (i: Int) => at(i)\n",
+        "    if k > 1: h = (i: Int) => i\n",
+        "    h(0)\n",
+        "print(f(2))\n",
+    ));
+    assert!(
+        !kept.contains("&ys_2 = ys"),
+        "a closure stored in a var keeps `at`, so `at` owns `ys`:\n{kept}"
+    );
+}
+
+#[test]
 fn sorted_at_the_last_read_sorts_the_list_itself() {
     let out = cpp(concat!(
         "let es: [0..3](a: Int, w: Int) = read()\n",
@@ -612,4 +642,124 @@ fn a_top_level_list_sorted_at_its_last_read_moves_after_a_comprehension() {
         "print(head.len, tall.len)\n",
     ));
     assert!(!viewed.contains("std::move(cords)"), "{viewed}");
+}
+
+#[test]
+fn a_closure_handed_to_a_fn_that_recurses_with_it_borrows_its_captures() {
+    let out = cpp(concat!(
+        "fn walk(n: Int, f: Int -> Int) -> Int:\n",
+        "    if n == 0: return f(0)\n",
+        "    f(n) + walk(n - 1, f)\n",
+        "let n: 1..=9 = read()\n",
+        "for k in 0..n:\n",
+        "    let b = [i * k for i in 0..n]\n",
+        "    let f = (i: Int) => b[i % n]\n",
+        "    print(walk(n, f), f(1))\n",
+    ));
+    assert!(out.contains("&b_2 = b"), "{out}");
+    assert!(!out.contains("[b_2 = b]"), "{out}");
+}
+
+#[test]
+fn a_method_value_sort_key_lends_its_receiver() {
+    let out = cpp(concat!(
+        "struct Ranks(r: List<Int>):\n",
+        "    fn pos(self, i: Int) -> Int = r[i]\n",
+        "let t = Ranks([read<Int>(), 1, 2])\n",
+        "let xs = [0, 1, 2]\n",
+        "print(xs.sorted(by: t.pos))\n",
+        "print(t.r.len)\n",
+    ));
+    assert!(
+        !out.contains("self = t]") && !out.contains("self = t4]"),
+        "a key only called inside the sort must not copy its receiver:\n{out}"
+    );
+}
+
+#[test]
+fn a_local_fn_another_local_fn_only_calls_lends_its_captures() {
+    let out = cpp(concat!(
+        "fn solve(n: Int):\n",
+        "    let t = [read<Int>() for _ in 0..n]\n",
+        "    fn get(i: Int) -> Int = t[i]\n",
+        "    fn walk(i: Int):\n",
+        "        if i < n:\n",
+        "            print(get(i))\n",
+        "            walk(i + 1)\n",
+        "    walk(0)\n",
+        "solve(read<Int>())\n",
+    ));
+    assert!(
+        !out.contains("[t_2 = t") && !out.contains(", t_2 = t"),
+        "`get` is only called, by `walk` which is only called, so it borrows `t`:\n{out}"
+    );
+}
+
+#[test]
+fn a_local_fn_inside_a_local_fn_borrows_what_it_only_reads() {
+    let out = cpp(concat!(
+        "fn f(k: Int) -> Int:\n",
+        "    fn outer(n: Int) -> Int:\n",
+        "        let ys = [i * k for i in 0..n]\n",
+        "        fn at(i: Int) -> Int = ys[i]\n",
+        "        at(0) + at(n - 1)\n",
+        "    outer(3)\n",
+        "print(f(read()))\n",
+    ));
+    assert!(
+        !out.contains("[ys_2 = ys") && !out.contains(" ys_2 = ys"),
+        "a nested local fn that is only called must not copy its capture:\n{out}"
+    );
+}
+
+#[test]
+fn a_match_binding_of_a_read_string_lends_the_scrutinee() {
+    let out = cpp(concat!(
+        "let q: 1..=10 = read()\n",
+        "var n = 0\n",
+        "for _ in 0..q:\n",
+        "    match read<Str>():\n",
+        "        \"ADD\" => n += 1\n",
+        "        kind =>\n",
+        "            let l: 1..=10 = read()\n",
+        "            if kind == \"SUB\": n -= l else: n += l\n",
+        "print(n)\n",
+    ));
+    assert!(
+        !out.contains("std::string kind ="),
+        "a name bound to a scrutinee it only reads must not copy it:\n{out}"
+    );
+}
+
+#[test]
+fn a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it() {
+    // R05.4.4 / R13.4: `H(xs)` in a `lends` fn lends `xs` to the struct.
+    let lent = cpp(concat!(
+        "struct H: xs: List<Int>\n",
+        "fn wrap(xs: List<Int>) -> lends H = H(xs)\n",
+        "let a = [i for i in 0..read()]\n",
+        "var s = 0\n",
+        "for _ in 0..3: s += wrap(a).xs.len\n",
+        "print(s, a.len)\n",
+    ));
+    assert!(
+        lent.contains("const std::vector<ll>* xs = nullptr;"),
+        "the lent field is a pointer: {lent}"
+    );
+    assert!(
+        lent.contains("H wrap(const std::vector<ll>& xs) {") && lent.contains("return H{&xs};"),
+        "the param is taken by reference, not copied in: {lent}"
+    );
+    assert!(lent.contains("(*::prog::wrap(a).xs).size()"), "{lent}");
+    // A literal of a local owns it, and so does every value of that struct;
+    // so does one a temporary feeds, which the C++ would destroy first.
+    for owned in [
+        "fn own(n: Int) -> H = H([i for i in 0..n])\nlet w = wrap([1])\nprint(own(2).xs.len, w.xs.len)\n",
+        "let h = wrap([i for i in 0..read()])\nprint(h.xs.len)\n",
+        "var hs: List<H> = []\nlet a = [1, 2]\nhs.push(wrap(a))\nprint(hs[0].xs.len)\n",
+    ] {
+        let src = format!("struct H: xs: List<Int>\nfn wrap(xs: List<Int>) -> lends H = H(xs)\n{owned}");
+        let out = cpp(&src);
+        assert!(out.contains("  std::vector<ll> xs;"), "{src}\n{out}");
+    }
 }

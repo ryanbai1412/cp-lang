@@ -1,4 +1,5 @@
 // Source: New Year's '18 P7 (Tree of Life), https://dmoj.ca/problem/year2018p7
+// limits: 1000 ms, 256 MB
 // Problem: a tree rooted at 1 with N <= 20000 vertices, each with a DNA word (total length S
 //   <= 1e5). Two vertices are distant when neither is an ancestor of the other. Print the
 //   longest common substring of the words of two distant vertices, or -1 if no pair exists.
@@ -8,9 +9,10 @@
 //   shared block (a vertex's own blocks join after its children, unchecked). Length 0 tests
 //   whether a distant pair exists. O(S log S log S) expected.
 // original: corpus/submissions/4899354.cpp
+// Bounds: n: 1..=20000; parent: 1..=n
 use std.strings.{HashVal}
 
-let n: Int = read()
+let n: 1..=20000 = read()
 domain V = 1..=n
 var kids: [V]List<V> = [V] v => []
 for v in 2..=n:

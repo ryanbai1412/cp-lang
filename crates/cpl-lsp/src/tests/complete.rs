@@ -339,15 +339,15 @@ fn bare_names_include_the_compiler_prelude() {
         "{items:?}"
     );
     // A stdlib fn that needs a `use` comes with it, after what is in scope.
-    let reply = ask_at("textDocument/completion", "floor_s|\n");
+    let reply = ask_at("textDocument/completion", "jaco|\n");
     let z = reply
         .at(&["items"])
         .as_array()
         .unwrap_or(&[])
         .iter()
-        .find(|i| i.at(&["label"]).as_str() == Some("floor_sum"))
+        .find(|i| i.at(&["label"]).as_str() == Some("jacobi"))
         .cloned()
-        .expect("floor_sum is offered");
+        .expect("jacobi is offered");
     assert!(
         z.at(&["sortText"]).as_str().unwrap().starts_with('5'),
         "{z:?}"
@@ -356,7 +356,7 @@ fn bare_names_include_the_compiler_prelude() {
         z.at(&["additionalTextEdits"]).as_array().unwrap_or(&[])[0]
             .at(&["newText"])
             .as_str(),
-        Some("use std.math.{floor_sum}\n")
+        Some("use std.math.{jacobi}\n")
     );
 }
 

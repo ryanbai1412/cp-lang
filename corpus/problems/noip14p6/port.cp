@@ -7,6 +7,7 @@
 //   Horner's rule (`eval`); x is reported when the value is 0, which a nonzero value
 //   passes only by bad luck (about n / 2^61 per x). O(n m).
 // original: corpus/submissions/5445671.cpp
+// Bounds: n: 1..=100; m: 1..=1e6
 let n: 1..=100 = read()
 let m: 1..=1e6 = read()
 
@@ -20,7 +21,7 @@ fn random_number() -> List<Char>:
 // The numbers are far too long to hold, so keep each one modulo a large prime.
 type Z = Mod<2305843009213693951>
 fn residue(s: [domain S]Char) -> Z:
-    let v = s.fold((v, c) => if c == '-': v else: v * Z(10) + Z(c - '0'), Z(0))
+    let v = s.fold_from(Z(0), (v, c) => if c == '-': v else: v * Z(10) + Z(c - '0'))
     if s[S.first!] == '-': -v else: v
 let coef = [residue(read(gen: random_number)) for _ in 0..=n]
 

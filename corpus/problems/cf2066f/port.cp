@@ -10,6 +10,7 @@
 //   largest first, a DP came[segment cut, b cut, free used] matches the pieces; a tame piece
 //   only needs the latest reachable start. Replay in decreasing sum, the free one by [x] and
 //   then by its piece. O(n^2 m).
+// Bounds: a, b: -1e6..=1e6
 @!multitest
 use std.algebra.{MaxSub, MaxSubAt}
 domain PosA = read(1..=500)

@@ -8,6 +8,7 @@
 //   (the spine) form a path: no spine vertex has 3 spine neighbours. With a spine edge there
 //   are 4 ways to orient the spine and pick the start bank, times (leaves at v)! per spine
 //   vertex v; a star gives 2 (n - 1)!. Degree counts and factorials: O(n + m).
+// Bounds: n: 2..=200_000; m: 1..=200_000; edges.u, edges.v: 1..=n
 
 const MOD = 1_000_000_007
 type Z = Mod<MOD>

@@ -3,6 +3,7 @@
 
 use super::*;
 use std::collections::HashSet;
+mod probe;
 
 pub(super) type ModId = usize;
 pub(super) type GenStructId = usize;
@@ -135,13 +136,7 @@ pub(super) struct LawInfo<'a> {
     pub body: &'a ast::Expr,
 }
 
-#[derive(Clone)]
-pub(super) struct OwnedDomainInit<'a> {
-    pub id: DomainId,
-    pub def: &'a ast::Expr,
-    pub offset: u32,
-    pub mod_id: ModId,
-}
+pub(super) use super::keyed::OwnedDomainInit;
 
 #[derive(Clone)]
 pub(super) struct StructConst<'a> {
@@ -152,48 +147,6 @@ pub(super) struct StructConst<'a> {
 }
 
 impl<'a> Lowerer<'a> {
-    /// Whether `ty` has an `impl` of the library trait `name`. A name that is not a trait declared
-    /// in a module (a structural one), or an `impl` over a generic type, is taken as met.
-    pub(super) fn implements(&mut self, ty: &Ty, name: &str) -> bool {
-        let Some(Sym::Trait(tid)) = self.get_sym(name) else {
-            return true;
-        };
-        if let Some(supers) = self.traits[tid].alias_of.clone() {
-            return supers.iter().all(|s| self.implements(ty, s));
-        }
-        for idx in 0..self.impls.len() {
-            if self.impls[idx].trait_name.as_deref() != Some(name) {
-                continue;
-            }
-            let (m, offset, target) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].target,
-            );
-            if matches!(&target.kind, ast::TypeKind::Named { args, .. } if !args.is_empty()) {
-                match ty {
-                    Ty::Struct(sid) => {
-                        if self.impl_env_for(idx, *sid).is_some() {
-                            return true;
-                        }
-                        continue;
-                    }
-                    _ => return true,
-                }
-            }
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
-            let got = self.resolve_ty(target);
-            (self.cur_mod, self.offset) = saved;
-            if got == *ty || got == Ty::Error {
-                return true;
-            }
-        }
-        false
-    }
-
     /// Collects the transitive module graph starting from the root `Analysis` (`ModId = 0`).
     pub(super) fn load_modules(&mut self, root: &'a Analysis) {
         self.mods.push(root);
@@ -460,72 +413,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Evaluates a compile-time integer expression (for `Mod<998244353>`, `Mod<P>`, etc.).
-    pub(super) fn eval_const_int(&self, e: &ast::Expr) -> Option<i64> {
-        cpl_syntax::const_int::eval(e, &|n| self.const_name(n))
-    }
-
-    pub(super) fn const_name(&self, n: &str) -> Option<i64> {
-        if let Some(GenArg::Int(v)) = self.gen_env.get(n) {
-            return Some(*v);
-        }
-        if let Some(Sym::ModConst(cid)) = self.get_sym(n) {
-            return self.eval_const_int(self.mod_consts[cid].init);
-        }
-        self.const_ints.get(n).copied()
-    }
-
-    /// Evaluates the test of an `if const`: comparisons of compile-time
-    /// integers, joined by `and`, `or` and `not`.
-    pub(super) fn eval_const_bool(&self, e: &ast::Expr) -> Option<bool> {
-        match &e.kind {
-            ast::ExprKind::Bool(b) => Some(*b),
-            // `const FAST = true`, then `if const FAST:`.
-            ast::ExprKind::Name(name) => match self.get_sym(name) {
-                Some(Sym::ModConst(cid)) => self.eval_const_bool(self.mod_consts[cid].init),
-                _ => self.const_bools.get(name).copied(),
-            },
-            ast::ExprKind::Paren(inner) => self.eval_const_bool(inner),
-            ast::ExprKind::Unary {
-                op: UnOp::Not,
-                expr,
-            } => Some(!self.eval_const_bool(expr)?),
-            ast::ExprKind::Binary {
-                op: BinOp::And,
-                lhs,
-                rhs,
-                ..
-            } => Some(self.eval_const_bool(lhs)? && self.eval_const_bool(rhs)?),
-            ast::ExprKind::Binary {
-                op: BinOp::Or,
-                lhs,
-                rhs,
-                ..
-            } => Some(self.eval_const_bool(lhs)? || self.eval_const_bool(rhs)?),
-            ast::ExprKind::Compare { first, rest } => {
-                let mut left = self.eval_const_int(first)?;
-                for (op, next) in rest {
-                    let right = self.eval_const_int(next)?;
-                    let holds = match op {
-                        ast::CmpOp::Eq => left == right,
-                        ast::CmpOp::Ne => left != right,
-                        ast::CmpOp::Lt => left < right,
-                        ast::CmpOp::Le => left <= right,
-                        ast::CmpOp::Gt => left > right,
-                        ast::CmpOp::Ge => left >= right,
-                        _ => return None,
-                    };
-                    if !holds {
-                        return Some(false);
-                    }
-                    left = right;
-                }
-                Some(true)
-            }
-            _ => None,
-        }
-    }
-
     /// Resolves a list of AST type arguments into concrete `GenArg`s.
     pub(super) fn resolve_gen_args(&mut self, args: &[ast::Type]) -> Vec<GenArg> {
         args.iter().map(|t| self.resolve_gen_arg(t)).collect()
@@ -706,7 +593,7 @@ impl<'a> Lowerer<'a> {
     /// written as numbers: `kid: [0..2]?Int`, `cnt: [1..=26]Int`.
     /// What a zero-argument alias declared in this module names: `Sign` in
     /// `type Sign = -1..=1` is the range `-1..=1`.
-    fn local_alias_target(&self, ty: &ast::Type) -> Option<&'a ast::Type> {
+    pub(super) fn local_alias_target(&self, ty: &ast::Type) -> Option<&'a ast::Type> {
         let ast::TypeKind::Named { name, args } = &ty.kind else {
             return None;
         };
@@ -800,60 +687,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    pub(super) fn narrow_range_width(&self, ty: &ast::Type) -> Option<IntWidth> {
-        // `type Sign = -1..=1`: a field of the alias narrows as its range would.
-        if let ast::TypeKind::Named { .. } = &ty.kind {
-            return self
-                .local_alias_target(ty)
-                .and_then(|aliased| self.narrow_range_width(aliased));
-        }
-        let ast::TypeKind::Range {
-            lo: Some(lo),
-            hi: Some(hi),
-            inclusive,
-        } = &ty.kind
-        else {
-            return None;
-        };
-        let (lo_min, _) = self.range_bound_limits(lo)?;
-        let (_, hi_raw) = self.range_bound_limits(hi)?;
-        let hi_max = if *inclusive {
-            hi_raw
-        } else {
-            hi_raw.checked_sub(1)?
-        };
-        IntWidth::of(lo_min, hi_max)
-    }
-
-    /// The ranged `Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.
-    pub(super) fn narrow_int_fields(
-        &self,
-        decl: &ast::StructDecl,
-    ) -> std::collections::BTreeMap<usize, IntWidth> {
-        let mut narrow = std::collections::BTreeMap::new();
-        for (at, field) in decl.fields.iter().enumerate() {
-            let width = match &field.ty.kind {
-                ast::TypeKind::Range { .. } => self.narrow_range_width(&field.ty),
-                ast::TypeKind::Named { args, .. } if args.is_empty() => {
-                    self.narrow_range_width(&field.ty)
-                }
-                ast::TypeKind::Array { index, elem } if index.len() == 1 => {
-                    self.narrow_range_width(elem)
-                }
-                ast::TypeKind::Named { name, args }
-                    if (name.text == "List" || name.text == "ListView") && args.len() == 1 =>
-                {
-                    self.narrow_range_width(&args[0])
-                }
-                _ => None,
-            };
-            if let Some(w) = width {
-                narrow.insert(at, w);
-            }
-        }
-        narrow
-    }
-
     /// Instantiates a generic struct template with concrete `args`, memoized.
     pub(super) fn instantiate_struct(
         &mut self,
@@ -930,6 +763,7 @@ impl<'a> Lowerer<'a> {
         let saved_self = self.self_struct.replace(id);
 
         // 1. Collect struct-owned domains (e.g. `domain Pre = 0..V.K` in `Rooted<V>`).
+        let field_names: Vec<&str> = decl.fields.iter().map(|f| f.name.text.as_str()).collect();
         for item in &decl.methods {
             if let ast::StmtKind::Domain { name, def } = &item.kind {
                 let dom_id = self.domains.len();
@@ -943,6 +777,7 @@ impl<'a> Lowerer<'a> {
                     def,
                     offset: tpl_offset,
                     mod_id: tpl_mod,
+                    per_value: cpl_syntax::visit::mentions_any(def, &field_names),
                 });
                 self.gen_env
                     .insert(name.text.clone(), GenArg::Domain(dom_id));
@@ -1628,18 +1463,25 @@ impl<'a> Lowerer<'a> {
                         // `A: Indexed<K, U>` names its element `U`, not `T`.
                         let is_seq_bound = b.traits.iter().any(|tr| {
                             matches!(&tr.kind, ast::TypeKind::Named { name, args }
-                                if matches!(name.text.as_str(), "Seq" | "Keyed" | "Bidir" | "Indexed" | "IndexedMut")
+                                if matches!(name.text.as_str(), "Seq" | "Keyed" | "Bidir" | "Positional" | "Indexed" | "IndexedMut")
                                     && args.last().is_none_or(|a| ty_mentions(a, "T")))
                         });
                         if !is_seq_bound {
                             return None;
                         }
-                        match inferred.get(&b.name.text).cloned() {
-                            Some(GenArg::Ty(t)) => self.seq_elem_of(&t),
+                        // `S: Seq<?T>` names the element `?T`: unify against it, not `T` itself.
+                        let pat = b.traits.iter().find_map(|tr| match &tr.kind {
+                            ast::TypeKind::Named { args, .. } => args.last(),
+                            _ => None,
+                        });
+                        let elem = match inferred.get(&b.name.text).cloned() {
+                            Some(GenArg::Ty(t)) => self.walk_elem(&t, span),
                             Some(GenArg::Domain(d)) => Some(Ty::Pos(d)),
                             _ => None,
-                        }
+                        };
+                        elem.map(|e| (e, pat))
                     });
+                    let (elem_ty, mut pat) = elem_ty.map_or((None, None), |(e, p)| (Some(e), p));
                     // `flatten<S: Seq, U: Seq, T>(self: S)`: a `Seq` generic no parameter
                     // names is the element of `S`, and `T` is the element of that.
                     let inner = decl.bounds.iter().find(|b| {
@@ -1649,14 +1491,21 @@ impl<'a> Lowerer<'a> {
                     });
                     let elem_ty = match (inner, elem_ty) {
                         (Some(u), Some(ety)) => {
-                            let inner_elem = self.seq_elem_of(&ety);
+                            pat = None;
+                            let inner_elem = self.walk_elem(&ety, span);
                             inferred.insert(u.name.text.clone(), GenArg::Ty(ety));
                             inner_elem
                         }
                         (_, ety) => ety,
                     };
-                    if let Some(ety) = elem_ty {
-                        inferred.insert("T".to_string(), GenArg::Ty(ety));
+                    match (elem_ty, pat) {
+                        (Some(ety), Some(p)) => {
+                            self.unify_ast_ty(p, &ety, tpl_mod, &gen_names, &mut inferred)
+                        }
+                        (Some(ety), None) => {
+                            inferred.insert("T".to_string(), GenArg::Ty(ety));
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -1717,15 +1566,8 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 }
             });
-            let key = key.and_then(|t| self.seq_key_of(&t));
-            match key {
-                Some(Dim::Pos(d)) => {
-                    inferred.insert("D".to_string(), GenArg::Domain(d));
-                }
-                Some(Dim::Int | Dim::IntFrom(_)) => {
-                    inferred.insert("D".to_string(), GenArg::Ty(Ty::Int));
-                }
-                _ => {}
+            if let Some(arg) = key.and_then(|t| self.seq_key_of(&t)).and_then(GenArg::of_key) {
+                inferred.insert("D".to_string(), arg);
             }
         }
 
@@ -1744,7 +1586,8 @@ impl<'a> Lowerer<'a> {
                 let ast::TypeKind::Named { name, args: targs } = &tr.kind else {
                     continue;
                 };
-                if !matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut") {
+                let named = name.text.as_str();
+                if !matches!(named, "Keyed" | "Indexed" | "IndexedMut" | "Positional") {
                     continue;
                 }
                 let free = |t: Option<&ast::Type>| match t.map(|t| &t.kind) {
@@ -1757,15 +1600,13 @@ impl<'a> Lowerer<'a> {
                     }
                     _ => None,
                 };
-                let (k, t) = (free(targs.first()), free(targs.get(1)));
-                match (k, key) {
-                    (Some(k), Some(Dim::Pos(d))) => {
-                        inferred.insert(k, GenArg::Domain(d));
-                    }
-                    (Some(k), Some(Dim::Int | Dim::IntFrom(_))) => {
-                        inferred.insert(k, GenArg::Ty(Ty::Int));
-                    }
-                    _ => {}
+                let (k, t) = if named == "Positional" {
+                    (None, free(targs.first()))
+                } else {
+                    (free(targs.first()), free(targs.get(1)))
+                };
+                if let (Some(k), Some(arg)) = (k, key.and_then(GenArg::of_key)) {
+                    inferred.insert(k, arg);
                 }
                 if let (Some(t), Some(elem)) = (t, elem.clone()) {
                     inferred.insert(t, GenArg::Ty(elem));
@@ -1932,24 +1773,13 @@ impl<'a> Lowerer<'a> {
                 let tpl = (tpl_mod, tpl_offset);
                 self.unify_lambda_ret(pty, lparams, lbody, tpl, &gen_names, &mut inferred, false);
             }
+            self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
             if inferred.len() == before {
                 // Only after ready lambdas have had a chance to infer `T` (e.g. `init: V -> T`),
                 // fall back to deducing an unbound `T`/`E`/`X` from a bound container generic `S`.
                 for g in &gen_names {
                     if !inferred.contains_key(g) && (g == "T" || g == "E" || g == "X") {
-                        let containers: Vec<Ty> = inferred
-                            .values()
-                            .filter_map(|ga| match ga {
-                                GenArg::Ty(t) => Some(t.clone()),
-                                _ => None,
-                            })
-                            .collect();
-                        let elem_ty = containers.iter().find_map(|t| {
-                            self.seq_elem_of(t).or_else(|| match t {
-                                Ty::Set(e) | Ty::HashSet(e) => Some((**e).clone()),
-                                _ => None,
-                            })
-                        });
+                        let elem_ty = self.inferred_elem(&inferred, span);
                         if let Some(ety) = elem_ty {
                             inferred.insert(g.clone(), GenArg::Ty(ety));
                         }
@@ -2018,10 +1848,7 @@ impl<'a> Lowerer<'a> {
             if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
                 if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text)
                 {
-                    let elem_from_container = inferred.values().find_map(|ga| match ga {
-                        GenArg::Ty(t) => t.seq_elem(),
-                        _ => None,
-                    });
+                    let elem_from_container = self.inferred_elem(&inferred, span);
                     if let Some(elem_ty) = elem_from_container {
                         inferred.insert(rn.text.clone(), GenArg::Ty(elem_ty));
                     }
@@ -2085,13 +1912,9 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        let mut final_args = Vec::with_capacity(gen_names.len());
-        for g in &gen_names {
-            match inferred.get(g) {
-                Some(a) => final_args.push(a.clone()),
-                None => final_args.push(GenArg::Ty(Ty::Int)),
-            }
-        }
+        self.bind_from_later_calls(decl, span, tpl_mod, &gen_names, &mut inferred);
+        let open = |g| inferred.get(g).cloned().unwrap_or(GenArg::Ty(Ty::Int));
+        let mut final_args: Vec<GenArg> = gen_names.iter().map(open).collect();
         // A fn written for the `Map<K, V>` or `Set<T>` it is called on is
         // the same fn for the hashed kind: it gets its own copy, whose
         // `self` is the `HashMap` or `HashSet` given.
@@ -2602,17 +2425,6 @@ impl<'a> Lowerer<'a> {
 
     /// Lowers `e` only to learn about it: the statements it would hoist ahead of its
     /// statement and the errors it would report are dropped, so the probe never runs.
-    pub(super) fn probe_expr(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
-        let saved_diags = self.diags.len();
-        let saved_cx = self.cx.clone();
-        let saved_outer = self.outer_cxs.clone();
-        let val = self.expr(e, hint);
-        self.diags.truncate(saved_diags);
-        self.cx = saved_cx;
-        self.outer_cxs = saved_outer;
-        val
-    }
-
     fn probe_expr_ty(
         &mut self,
         e: &ast::Expr,
@@ -2729,336 +2541,6 @@ impl<'a> Lowerer<'a> {
                 }
             }
             _ => false,
-        }
-    }
-
-    /// Unifies an AST type pattern `pat` against a concrete `Ty` to bind generic parameters.
-    #[allow(clippy::only_used_in_recursion)]
-    pub(super) fn unify_bounds(
-        &self,
-        bounds: &[ast::Bound],
-        tpl_mod: ModId,
-        gen_names: &[String],
-        env: &mut GenEnv,
-    ) {
-        for _ in 0..2 {
-            let before = env.len();
-            for bound in bounds {
-                let concrete = match env.get(&bound.name.text) {
-                    Some(GenArg::Ty(t)) => t.clone(),
-                    Some(GenArg::Domain(d)) => Ty::Pos(*d),
-                    _ => continue,
-                };
-                for tr in &bound.traits {
-                    self.unify_ast_ty(tr, &concrete, tpl_mod, gen_names, env);
-                }
-            }
-            if env.len() == before {
-                break;
-            }
-        }
-    }
-
-    pub(super) fn unify_ast_ty(
-        &self,
-        pat: &ast::Type,
-        concrete: &Ty,
-        tpl_mod: ModId,
-        gen_names: &[String],
-        env: &mut GenEnv,
-    ) {
-        if *concrete == Ty::Error {
-            return;
-        }
-        match &pat.kind {
-            ast::TypeKind::Named { name, args }
-                if args.is_empty() && gen_names.contains(&name.text) =>
-            {
-                env.entry(name.text.clone())
-                    .or_insert_with(|| match concrete {
-                        Ty::Pos(d) => GenArg::Domain(*d),
-                        other => GenArg::Ty(other.clone()),
-                    });
-            }
-            ast::TypeKind::Named { name, args } => match (name.text.as_str(), concrete) {
-                (
-                    "List" | "Iter" | "Seq",
-                    Ty::List(elem)
-                    | Ty::ListView(elem, _)
-                    | Ty::Keyed(elem, _)
-                    | Ty::MutView(elem, _)
-                    | Ty::Range(elem),
-                ) if args.len() == 1 => {
-                    self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
-                }
-                ("List" | "Iter" | "Seq", Ty::Str | Ty::StrView) if args.len() == 1 => {
-                    self.unify_ast_ty(&args[0], &Ty::Char, tpl_mod, gen_names, env);
-                }
-                ("List" | "Iter" | "Seq", Ty::Array { elem, .. }) if args.len() == 1 => {
-                    self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
-                }
-                ("Set" | "HashSet", Ty::Set(elem) | Ty::HashSet(elem)) if args.len() == 1 => {
-                    self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
-                }
-                ("Map" | "HashMap", Ty::Map(k, v) | Ty::HashMap(k, v)) if args.len() == 2 => {
-                    self.unify_ast_ty(&args[0], k, tpl_mod, gen_names, env);
-                    self.unify_ast_ty(&args[1], v, tpl_mod, gen_names, env);
-                }
-                ("Range", Ty::Range(inner)) if args.len() == 1 => {
-                    let inner = match inner.as_ref() {
-                        Ty::Bound(d) => Ty::Pos(*d),
-                        other => other.clone(),
-                    };
-                    self.unify_ast_ty(&args[0], &inner, tpl_mod, gen_names, env);
-                }
-                ("Cut", Ty::Bound(d)) if args.len() == 1 => {
-                    self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);
-                }
-                (_, Ty::Struct(sid)) => {
-                    if let Some((_, actual_args)) = &self.structs[*sid].origin_gen {
-                        if args.len() == 2
-                            && matches!(name.text.as_str(), "EdgedNext" | "WeightedNext")
-                            && actual_args.len() >= 2
-                        {
-                            match &actual_args[0] {
-                                GenArg::Ty(t) => {
-                                    self.unify_ast_ty(&args[0], t, tpl_mod, gen_names, env)
-                                }
-                                GenArg::Domain(d) => self.unify_ast_ty(
-                                    &args[0],
-                                    &Ty::Pos(*d),
-                                    tpl_mod,
-                                    gen_names,
-                                    env,
-                                ),
-                                _ => {}
-                            }
-                            let field_name = if name.text == "EdgedNext" { "e" } else { "w" };
-                            if let GenArg::Ty(Ty::Record(rfields)) = &actual_args[1] {
-                                if let Some((_, fty)) =
-                                    rfields.iter().find(|(fnm, _)| fnm == field_name)
-                                {
-                                    self.unify_ast_ty(&args[1], fty, tpl_mod, gen_names, env);
-                                }
-                            }
-                        } else {
-                            // Also allow structural subtype `Group<T>` -> `Monoid<T>` -> `Semigroup<T>`:
-                            // their first generic arg is `T`!
-                            for (pa, actual) in args.iter().zip(actual_args) {
-                                match actual {
-                                    GenArg::Ty(t) => {
-                                        self.unify_ast_ty(pa, t, tpl_mod, gen_names, env)
-                                    }
-                                    GenArg::Domain(d) => {
-                                        self.unify_ast_ty(pa, &Ty::Pos(*d), tpl_mod, gen_names, env)
-                                    }
-                                    GenArg::Int(v) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::Int(*v));
-                                            }
-                                        } else if let ast::TypeKind::Value(e) = &pa.kind {
-                                            if let ast::ExprKind::Name(n) = &e.kind {
-                                                if gen_names.contains(n) {
-                                                    env.entry(n.clone()).or_insert(GenArg::Int(*v));
-                                                }
-                                            }
-                                        }
-                                    }
-                                    GenArg::RuntimeInt(gid) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::RuntimeInt(*gid));
-                                            }
-                                        }
-                                    }
-                                    GenArg::Op(op) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::Op(*op));
-                                            }
-                                        }
-                                    }
-                                    GenArg::Range(lo, hi) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::Range(*lo, *hi));
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                (_, Ty::Array { dims, elem })
-                    if !args.is_empty()
-                        && matches!(
-                            self.mod_syms[tpl_mod].get(&name.text),
-                            Some(Sym::Trait(_))
-                        ) =>
-                {
-                    let is_domain_indexed = matches!(
-                        (dims.as_slice(), elem.as_ref()),
-                        ([Dim::Pos(_) | Dim::Sym(_)], Ty::List(_))
-                    );
-                    let trait_takes_pos = match self.mod_syms[tpl_mod].get(&name.text) {
-                        Some(Sym::Trait(tid)) => self.traits[*tid]
-                            .methods
-                            .iter()
-                            .any(|m| m.params.len() >= 2),
-                        _ => false,
-                    };
-                    if is_domain_indexed && trait_takes_pos {
-                        if let [Dim::Pos(d) | Dim::Sym(d)] = dims.as_slice() {
-                            self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);
-                        }
-                        if args.len() == 2
-                            && matches!(name.text.as_str(), "EdgedNext" | "WeightedNext")
-                        {
-                            let field_name = if name.text == "EdgedNext" { "e" } else { "w" };
-                            if let Some(Ty::Record(rfields)) = elem.seq_elem() {
-                                if let Some((_, fty)) =
-                                    rfields.iter().find(|(fnm, _)| fnm == field_name)
-                                {
-                                    self.unify_ast_ty(&args[1], fty, tpl_mod, gen_names, env);
-                                }
-                            }
-                        }
-                    } else if args.len() == 1 {
-                        self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
-                    }
-                }
-                ("Edged" | "Weighted" | "Target", Ty::Record(rfields)) if args.len() == 1 => {
-                    let field_name = match name.text.as_str() {
-                        "Edged" => "e",
-                        "Weighted" => "w",
-                        _ => "to",
-                    };
-                    if let Some((_, fty)) = rfields.iter().find(|(fnm, _)| fnm == field_name) {
-                        self.unify_ast_ty(&args[0], fty, tpl_mod, gen_names, env);
-                    }
-                }
-                (_, Ty::Fn(ps, _)) if self.fn_meets_trait_over(&name.text, args, tpl_mod, ps) => {
-                    self.unify_ast_ty(&args[0], &ps[0], tpl_mod, gen_names, env);
-                }
-                (_, concrete_seq)
-                    if args.len() == 1
-                        && matches!(
-                            self.mod_syms[tpl_mod].get(&name.text),
-                            Some(Sym::Trait(_))
-                        ) =>
-                {
-                    if let Some(elem) = concrete_seq.seq_elem() {
-                        self.unify_ast_ty(&args[0], &elem, tpl_mod, gen_names, env);
-                    }
-                }
-                _ => {
-                    if let Some(Sym::GenAlias(gaid)) = self
-                        .mod_syms
-                        .get(tpl_mod)
-                        .and_then(|m| m.get(&name.text).copied())
-                        .or_else(|| self.get_sym(&name.text))
-                    {
-                        let ga = &self.gen_aliases[gaid];
-                        let alias_names: Vec<String> =
-                            ga.generics.iter().map(|g| g.text.clone()).collect();
-                        let mut alias_env = HashMap::new();
-                        self.unify_ast_ty(ga.ty, concrete, ga.mod_id, &alias_names, &mut alias_env);
-                        for (param_name, arg_ast) in alias_names.iter().zip(args) {
-                            match alias_env.get(param_name) {
-                                Some(GenArg::Ty(t)) => {
-                                    self.unify_ast_ty(arg_ast, t, tpl_mod, gen_names, env);
-                                }
-                                Some(GenArg::Domain(d)) => {
-                                    self.unify_ast_ty(
-                                        arg_ast,
-                                        &Ty::Pos(*d),
-                                        tpl_mod,
-                                        gen_names,
-                                        env,
-                                    );
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            },
-            ast::TypeKind::Array { index, elem } => {
-                if let Ty::Array { dims, elem: ce } = concrete {
-                    self.unify_array_dims(index, dims, tpl_mod, gen_names, env);
-                    self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
-                } else if let (
-                    Ty::List(ce) | Ty::ListView(ce, _) | Ty::Keyed(ce, _) | Ty::MutView(ce, _),
-                    [_],
-                ) = (concrete, index.as_slice())
-                {
-                    self.unify_view_dim(index, concrete, tpl_mod, gen_names, env);
-                    self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
-                } else if let (Ty::Str | Ty::StrView, [_]) = (concrete, index.as_slice()) {
-                    self.unify_ast_ty(elem, &Ty::Char, tpl_mod, gen_names, env);
-                }
-            }
-            ast::TypeKind::Optional(inner) => {
-                if let Ty::Opt(ci) = concrete {
-                    self.unify_ast_ty(inner, ci, tpl_mod, gen_names, env);
-                } else {
-                    self.unify_ast_ty(inner, concrete, tpl_mod, gen_names, env);
-                }
-            }
-            ast::TypeKind::Tuple(items) => {
-                let cfields = concrete.fields().or_else(|| match concrete {
-                    Ty::Pos(d) => Some(
-                        self.product_domains
-                            .get(d)?
-                            .iter()
-                            .map(|(_, f)| self.product_factor_ty(f))
-                            .collect(),
-                    ),
-                    _ => None,
-                });
-                for (p, c) in items.iter().zip(cfields.iter().flatten()) {
-                    self.unify_ast_ty(p, c, tpl_mod, gen_names, env);
-                }
-            }
-            ast::TypeKind::Record(fields) | ast::TypeKind::Row(fields) => {
-                if let Ty::Record(cfields) = concrete {
-                    for (pname, p) in fields {
-                        if let Some((_, c)) = cfields.iter().find(|(cn, _)| cn == &pname.text) {
-                            self.unify_ast_ty(p, c, tpl_mod, gen_names, env);
-                        }
-                    }
-                } else if let Some(cfields) = concrete.fields() {
-                    for ((_, p), c) in fields.iter().zip(&cfields) {
-                        self.unify_ast_ty(p, c, tpl_mod, gen_names, env);
-                    }
-                }
-            }
-            ast::TypeKind::Mut(inner) => {
-                let c = match concrete {
-                    Ty::Mut(c) => c.as_ref(),
-                    c => c,
-                };
-                self.unify_ast_ty(inner, c, tpl_mod, gen_names, env);
-            }
-            ast::TypeKind::Fn { params, ret } => {
-                if let Ty::Fn(cp, cr) = concrete {
-                    for (p, c) in params.iter().zip(cp) {
-                        self.unify_ast_ty(p, c, tpl_mod, gen_names, env);
-                    }
-                    self.unify_ast_ty(ret, cr, tpl_mod, gen_names, env);
-                }
-            }
-            _ => {}
         }
     }
 
@@ -3300,18 +2782,14 @@ impl<'a> Lowerer<'a> {
             .collect();
         let ret = self.ret_of(fn_id, span);
         let fn_ty = Ty::Fn(params.clone(), Box::new(ret.clone()));
-        self.do_expr(Some(&fn_ty), span, |lw, out| {
-            let outer_recv = lw.temp(recv_ty.clone());
-            out.push(Stmt::Let(outer_recv, Some(recv)));
+        let build = |lw: &mut Self, outer_recv: usize, is_global: bool| -> Expr {
             let mut locals = Vec::new();
-            let mut p_slots = Vec::new();
             let mut call_args = Vec::new();
             for (i, ty) in params.iter().enumerate() {
                 locals.push(Local {
                     name: format!("a{i}"),
                     ty: ty.clone(),
                 });
-                p_slots.push(i);
             }
             let inner_recv = locals.len();
             locals.push(Local {
@@ -3342,23 +2820,28 @@ impl<'a> Lowerer<'a> {
             };
             let cid = lw.closures.len();
             lw.closures.push(ClosureDef {
-                params: p_slots,
+                params: (0..params.len()).collect(),
                 muts: Vec::new(),
                 captures: vec![Capture {
                     outer: outer_recv,
                     inner: inner_recv,
-                    is_global: false,
+                    is_global,
                     by_ref: false,
                 }],
                 locals,
                 ret: ret.clone(),
                 body: Block { stmts },
             });
-            out.push(Stmt::Give(lw.mk(
-                ExprKind::Closure(cid),
-                fn_ty.clone(),
-                span,
-            )));
+            lw.mk(ExprKind::Closure(cid), fn_ty.clone(), span)
+        };
+        // A variable receiver is captured itself, so a key can lend it.
+        if let ExprKind::Local(slot) | ExprKind::Global(slot) = recv.kind {
+            return build(self, slot, matches!(recv.kind, ExprKind::Global(_)));
+        }
+        self.do_expr(Some(&fn_ty), span, |lw, out| {
+            let temp = lw.temp(recv_ty.clone());
+            out.push(Stmt::Let(temp, Some(recv)));
+            out.push(Stmt::Give(build(lw, temp, false)));
         })
     }
 

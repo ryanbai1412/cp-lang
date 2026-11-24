@@ -1,13 +1,15 @@
 // Source: COCI 2020/2021 Contest 6 P5 (Index), https://dmoj.ca/problem/coci20c6p5
+// limits: 2500 ms, 512 MB
 // Problem: n <= 2e5 papers with citation counts p_i <= 2e5, and q <= 2e5 questions l r: print
 //   the h-index of papers l..r, the largest h with at least h of them cited at least h times.
 // Solution: Mo's algorithm (blocks of sqrt n, alternating right-end order). Adding or removing a
 //   paper changes h by at most one, so the window keeps counts by citations (capped at n), h and
 //   how many papers have at least h citations, fixing h in O(1) per step: O((n + q) sqrt n).
-let (n, q): (Int, Int) = read()
+// Bounds: n, q: 1..=2e5; cites: 0..=2e5; asks.l, asks.r: 1..=n
+let (n, q): (1..=2e5, 1..=2e5) = read()
 domain Paper = 1..=n
 domain Ask = 0..q
-let cites: [Paper]Int = read()
+let cites: [Paper]0..=2e5 = read()
 let asks: [Ask](l: Paper, r: Paper) = read()
 
 domain Count = 0..=n      // a paper cited more than n times counts as n

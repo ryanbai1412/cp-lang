@@ -5,6 +5,7 @@
 // Solution: project selection: each city has profit -b_i, each road profit p and requires both
 //   its cities, so the answer is the maximum-weight closure of that dependency graph
 //   (`std.flow.max_closure`, a min cut) over N + M nodes.
+// Bounds: n: 1..=500; m: 0..=500; fee, roads.toll: 0..=1e9; roads.u, roads.v: 1..=n
 
 // original: corpus/submissions/4370353.cpp
 let n: 1..=500 = read()

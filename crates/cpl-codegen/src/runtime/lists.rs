@@ -72,12 +72,14 @@ template <class O, std::enable_if_t<!std::is_lvalue_reference<O>::value, int> = 
 // An array with K dimensions, stored flat in row-major order.
 template <class T, int K> struct Grid {
     std::vector<T> d;
-    ll n[K] = {};
-    template <class... I> size_t at(I... i) const { ll ix[K] = {(ll)i...}; ll p = 0; for (int k = 0; k < K; k++) p = p * n[k] + ix[k]; return (size_t)p; }
+    // size_t, not ll: a store to an `ll` cell can't alias the sizes, so a
+    // loop over cells keeps them in registers and can vectorise.
+    size_t n[K] = {};
+    template <class... I> size_t at(I... i) const { size_t ix[K] = {(size_t)(ll)i...}; size_t p = 0; for (int k = 0; k < K; k++) p = p * n[k] + ix[k]; return p; }
     template <class... I> T& operator()(I... i) { return d[at(i...)]; }
     template <class... I> const T& operator()(I... i) const { return d[at(i...)]; }
     // Indexed by an `Int` that nothing has proved in range.
-    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}, p = 0; bool bad = 0; for (int k = 0; k < K; k++) bad |= (unsigned long long)ix[k] >= (unsigned long long)n[k], p = p * n[k] + ix[k]; if (bad) fail(\"index outside the array\"); return p; }
+    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}, p = 0; bool bad = 0; for (int k = 0; k < K; k++) bad |= (unsigned long long)ix[k] >= (unsigned long long)n[k], p = p * (ll)n[k] + ix[k]; if (bad) fail(\"index outside the array\"); return p; }
     template <class... I> T& ck(I... i) { return d[in(i...)]; }
     template <class... I> const T& ck(I... i) const { return d[in(i...)]; }
     bool operator==(const Grid& o) const { return d == o.d; }
@@ -85,7 +87,7 @@ template <class T, int K> struct Grid {
 };
 template <class T, int K> Grid<T, K> grid(std::array<ll, K> n, const T& fill) {
     Grid<T, K> g; ll cells = 1;
-    for (int k = 0; k < K; k++) { g.n[k] = n[k]; cells *= n[k]; }
+    for (int k = 0; k < K; k++) { g.n[k] = (size_t)n[k]; cells *= n[k]; }
     g.d.assign((size_t)cells, fill);
     return g;
 }
@@ -126,9 +128,10 @@ template <class T, class U> bool has(const std::vector<T>& v, const U& x) { retu
         name: "sorted",
         needs: &[],
         code: "\
-template <class It, class V, class L> void merge_sort(It a, size_t n, std::vector<V>& buf, L& lt) { if (n <= 1) return; size_t m = n / 2, i = 0, j = m, k = 0; merge_sort(a + m, n - m, buf, lt); merge_sort(a, m, buf, lt); while (i < m && j < n) buf[k++] = lt(a[j], a[i]) ? std::move(a[j++]) : std::move(a[i++]); while (i < m) buf[k++] = std::move(a[i++]); std::move(buf.begin(), buf.begin() + k, a); }
 // The interpreter's merge sort, so `cpl profile` counts the same comparisons natively.
-template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; std::vector<V> buf(b, e); merge_sort(b, (size_t)(e - b), buf, lt); }
+// Each level merges from one array into the other, so no level copies back.
+template <class S, class D, class L> void merge_sort(S src, D dst, size_t lo, size_t hi, L& lt) { if (hi - lo <= 7) { for (size_t i = lo + 1; i < hi; i++) { auto x = std::move(dst[i]); size_t j = i; for (; j > lo && lt(x, dst[j - 1]); j--) dst[j] = std::move(dst[j - 1]); dst[j] = std::move(x); } return; } size_t m = lo + (hi - lo) / 2; merge_sort(dst, src, m, hi, lt); merge_sort(dst, src, lo, m, lt); auto i = src + lo, im = src + m, j = im, jm = src + hi; auto k = dst + lo; for (; i != im && j != jm; ++k) { if (lt(*j, *i)) { *k = std::move(*j); ++j; } else { *k = std::move(*i); ++i; } } std::move(j, jm, std::move(i, im, k)); }
+template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; std::vector<V> buf(b, e); merge_sort(buf.begin(), b, 0, buf.size(), lt); }
 template <class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
 template <class T> std::vector<T> sorted(std::vector<T> v) { sort_seq(v.begin(), v.end()); return v; }
 template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }

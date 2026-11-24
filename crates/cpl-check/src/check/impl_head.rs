@@ -13,6 +13,21 @@ pub(crate) fn impl_target_head(ty: &ast::Type) -> Option<String> {
     }
 }
 
+/// The name an impl is filed under: `impl<D: Domain> Tr for D` is every domain's, `domain`.
+pub(crate) fn impl_file_head(ty: &ast::Type, bounds: &[ast::Bound]) -> Option<String> {
+    if let TypeKind::Named { name, args } = &ty.kind {
+        let domain = |t: &ast::Type| type_head(t).as_deref() == Some("Domain");
+        if args.is_empty()
+            && bounds
+                .iter()
+                .any(|b| b.name.text == name.text && b.traits.iter().any(domain))
+        {
+            return Some("domain".into());
+        }
+    }
+    impl_target_head(ty)
+}
+
 impl<'a> Checker<'a> {
     /// The type an impl is for, with the type parameters its header names:
     /// `impl Add for Mod<P>` is generic over `P`, and `impl<T: Add> Add for ?T`
@@ -108,5 +123,54 @@ impl<'a> Checker<'a> {
                 "move the methods into the type's module, or declare a trait and `impl` it for `{shown}`"
             ));
         }
+    }
+}
+
+impl Checker<'_> {
+    /// R08.1.3: `impl Sub for T` requires `impl Super for T`, with the impl's own `bounds` in scope.
+    pub(crate) fn impl_supertraits(
+        &mut self,
+        tr: &ast::Type,
+        target: &ast::Type,
+        bounds: &[ast::Bound],
+    ) {
+        let TypeKind::Named { name, .. } = &tr.kind else {
+            return;
+        };
+        // An alias has no impl of its own: that is E0501, not a missing supertrait.
+        let Some(Def::Trait {
+            supers,
+            alias: false,
+            ..
+        }) = self.global(&name.text).as_deref().cloned()
+        else {
+            return;
+        };
+        let outer = self.param_bounds.len();
+        self.param_bounds
+            .extend(super::types::extract_bounds(bounds));
+        let target_ty = self.resolve_type(target);
+        for sup in supers {
+            if !self.implements_trait(&target_ty, &sup) {
+                let (tr_text, target_text) = (self.quote(tr.span), self.quote(target.span));
+                let message = format!(
+                    "`impl {tr_text} for {target_text}` requires `impl {sup} for {target_text}`"
+                );
+                self.error(codes::MISSING_IMPL, tr.span, message);
+            }
+        }
+        self.param_bounds.truncate(outer);
+    }
+
+    /// A `.rev` view walks, sizes and reads by position as its source does (R07.3.5).
+    pub(super) fn rev_has(&mut self, ty: &Ty, trait_name: &str, seen: &mut Vec<String>) -> bool {
+        let need = match trait_name {
+            "Seq" | "Bidir" => "Bidir",
+            "Sized" => "Sized",
+            "Positional" => "Indexed",
+            _ => return false,
+        };
+        ty.rev_source()
+            .is_some_and(|src| self.implements_trait_inner(&src.clone(), need, seen))
     }
 }

@@ -7,6 +7,7 @@
 //   or want >= 2^b when n is a power of two. Else put the other values in decreasing order,
 //   then 0, want (or 0, want ^ (n - 1), n - 1 when want has bit b): the suffix minima are
 //   those values and zeros. O(n).
+// Bounds: n: 1..=200_000; k: 0..=10 ** 9
 
 @!multitest
 let (n, k): (1..=200_000, 0..=10 ** 9) = read()

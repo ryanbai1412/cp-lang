@@ -8,6 +8,7 @@
 //   levels not yet taken (fresh ones past 2n when it is empty); the copies of v take the
 //   nearest ones, and the pile is down to k on the level of its (cnt - k + 1)-th copy, after
 //   slot - v operations. Print the max over v: O(n).
+// Bounds: n, k: 1..=200_000; a: 1..=2 * n
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

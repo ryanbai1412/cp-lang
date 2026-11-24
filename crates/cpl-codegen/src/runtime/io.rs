@@ -141,32 +141,32 @@ inline unsigned long long to_u64(__int128 x) { if (x < 0 || x > (__int128)~0ULL)
         name: "judge",
         needs: &["fail"],
         code: "\
-// A value as the judge's grader holds it, and back: an Int is an `int`
-// there and a Char a `char`. An Int too large for an `int` stops the program.
-template <class T> struct Judge {
-    using type = T;
-    static T to(const T& v) { return v; }
-    static T from(const T& v) { return v; }
+// A `T` of the program's as the `J` the judge's grader holds, and back:
+// `J` comes from the declared type (R10.1.4), so only an `Int` the
+// declared type does not bound can be too large for its `int`.
+template <class T, class J> struct Judge {
+    static J to(const T& v) { return J(v); }
+    static T from(const J& v) { return T(v); }
 };
-template <> struct Judge<ll> {
-    using type = int;
+template <> struct Judge<ll, int> {
     static int to(ll v) { if (v != (int)v) fail(\"an Int given to the judge's grader does not fit in an int\"); return (int)v; }
     static ll from(int v) { return v; }
 };
-template <> struct Judge<u8> {
-    using type = char;
+template <> struct Judge<u8, char> {
     static char to(u8 v) { return (char)v; }
     static u8 from(char v) { return (u8)v; }
 };
-template <class T> struct Judge<std::vector<T>> {
-    using type = std::vector<typename Judge<T>::type>;
-    static type to(const std::vector<T>& v) { type r; r.reserve(v.size()); for (const T& x : v) r.push_back(Judge<T>::to(x)); return r; }
-    static std::vector<T> from(const type& v) { std::vector<T> r; r.reserve(v.size()); for (const auto& x : v) r.push_back(Judge<T>::from(x)); return r; }
+template <class T, class J> struct Judge<std::vector<T>, std::vector<J>> {
+    static std::vector<J> to(const std::vector<T>& v) { std::vector<J> r; r.reserve(v.size()); for (const T& x : v) r.push_back(Judge<T, J>::to(x)); return r; }
+    static std::vector<T> from(const std::vector<J>& v) { std::vector<T> r; r.reserve(v.size()); for (const J& x : v) r.push_back(Judge<T, J>::from(x)); return r; }
 };
-template <class... T> struct Judge<std::tuple<T...>> {
-    using type = std::tuple<typename Judge<T>::type...>;
-    static type to(const std::tuple<T...>& v) { return std::apply([](const T&... x) { return type(Judge<T>::to(x)...); }, v); }
-    static std::tuple<T...> from(const type& v) { return std::apply([](const typename Judge<T>::type&... x) { return std::tuple<T...>(Judge<T>::from(x)...); }, v); }
+template <class A, class B, class JA, class JB> struct Judge<std::tuple<A, B>, std::pair<JA, JB>> {
+    static std::pair<JA, JB> to(const std::tuple<A, B>& v) { return {Judge<A, JA>::to(std::get<0>(v)), Judge<B, JB>::to(std::get<1>(v))}; }
+    static std::tuple<A, B> from(const std::pair<JA, JB>& v) { return {Judge<A, JA>::from(v.first), Judge<B, JB>::from(v.second)}; }
+};
+template <class... T, class... J> struct Judge<std::tuple<T...>, std::tuple<J...>> {
+    static std::tuple<J...> to(const std::tuple<T...>& v) { return std::apply([](const T&... x) { return std::tuple<J...>(Judge<T, J>::to(x)...); }, v); }
+    static std::tuple<T...> from(const std::tuple<J...>& v) { return std::apply([](const J&... x) { return std::tuple<T...>(Judge<T, J>::from(x)...); }, v); }
 };
 ",
     },
@@ -240,7 +240,28 @@ inline ll read_int() {
         name: "read_in",
         needs: &["read_int", "fail"],
         code: "\
-inline ll read_in(ll lo, ll hi) { ll x = read_int(); if (x < lo || x > hi) fail(\"a number in the input is outside its range\"); return x; }
+// A range that starts at 0 or above has no sign to read and no -2^63 to
+// guard: up to 19 digits with a space after them, already in the buffer,
+// are read in one scan. Anything else takes `read_int`, which traps.
+inline ll read_in(ll lo, ll hi) {
+    if (lo >= 0) {
+        while (in_at < in.size() && is_space(in[in_at])) in_at++;
+        if (in.size() - in_at >= 32 && digit(in[in_at])) {
+            const char* p = in.data() + in_at;
+            const char* e = p + 19;
+            unsigned long long x = 0;
+            while (p < e && digit(*p)) x = x * 10 + (unsigned long long)(*p++ - '0');
+            if (is_space(*p)) {
+                if (x < (unsigned long long)lo || x > (unsigned long long)hi) fail(\"a number in the input is outside its range\");
+                in_at = (size_t)(p - in.data());
+                return (ll)x;
+            }
+        }
+    }
+    ll x = read_int();
+    if (x < lo || x > hi) fail(\"a number in the input is outside its range\");
+    return x;
+}
 ",
     },
     Piece {

@@ -9,6 +9,7 @@
 //   rounds: in round t swap wherever those two values now sit (`0 0` once sorted). O((n + m) log m).
 // original: corpus/submissions/5723358.cpp (grader function findSwapPairs)
 // stdin here, as the IOI sample grader: n, the permutation, m, then Ermek's m swaps.
+// Bounds: n: 1..=200_000; start, ermek.x, ermek.y: 0..=n - 1; m: 1..=600_000
 use std.seq.{perm_cycles}
 
 let n: 1..=200_000 = read()

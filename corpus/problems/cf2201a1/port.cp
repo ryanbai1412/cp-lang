@@ -8,6 +8,7 @@
 //   when the live element just before it is one smaller (everything larger between them has
 //   already gone). Keep the live elements in a doubly linked list; the answer is n minus the
 //   removals. O(n log n) for the sort.
+// Bounds: n: 1..=300_000; a: 1..=10 ** 9
 
 @!multitest
 let n: 1..=300_000 = read()

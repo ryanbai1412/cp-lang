@@ -9,6 +9,7 @@
 //   2. s[0] = 0 and s[last] = 1: 0?chain(...):1.
 //   3. Otherwise some '1' at even i must be followed by a '1' at odd j > i: leading 0s skip
 //      to s[i], whose true branch is (s[i+1]?chain:s[j]) = 1; no such pair means No. O(n).
+// Bounds: half: 1..=200_000
 
 @!multitest
 let half: 1..=200_000 = read()

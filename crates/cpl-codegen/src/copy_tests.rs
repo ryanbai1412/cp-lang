@@ -4,6 +4,25 @@
 use crate::tests::cpp;
 
 #[test]
+fn an_optional_list_a_fn_only_reads_is_lent_not_copied() {
+    let cpp = cpp(concat!(
+        "use std.fenwick.Fenwick\n",
+        "let n: Int = read()\n",
+        "domain V = 0..n\n",
+        "let a: [V]Int = [V] v => Int(v) % 5\n",
+        "let f = Fenwick<V, Int>.new(a)\n",
+        "let g = Fenwick<V, Int>.new()\n",
+        "print(f.all + g.all)\n",
+    ));
+    assert!(!cpp.contains("std::optional<std::vector<ll>>(a)"), "{cpp}");
+    assert!(cpp.contains("_new(cpl::lend(a))"), "{cpp}");
+    assert!(
+        cpp.contains("_new(cpl::Lent<std::vector<ll>>{nullptr})"),
+        "{cpp}"
+    );
+}
+
+#[test]
 fn a_returned_rekey_moves_its_local_list() {
     let cpp = cpp(concat!(
         "use std.strings.{z_function, prefix_function}\n",
@@ -297,4 +316,39 @@ fn a_closure_takes_a_struct_holding_a_cache_by_value() {
     // `x.d.components` may halve `x.d`'s paths: a `const Holder&` can't call it.
     let cpp = cpp("struct Holder(pub d: Dsu<V>)\ndomain V = 0..3\nlet h = Holder(Dsu<V>(rollback: true))\nlet ok = (x: Holder) => x.d.components >= 2\nprint(yes(ok(h)))\n");
     assert!(!cpp.contains("const Holder&"), "{cpp}");
+}
+
+#[test]
+fn a_top_level_let_of_a_list_element_is_a_reference() {
+    let cpp = cpp(concat!(
+        "let rows: List<List<Int>> = [[1, 2], [3, 4]]\n",
+        "let r = rows[1]\n",
+        "print(r.sum())\n",
+    ));
+    assert!(cpp.contains("const std::vector<ll>& r = "), "{cpp}");
+    assert!(!cpp.contains("std::vector<ll> r;"), "{cpp}");
+}
+
+#[test]
+fn an_inlined_lambda_parameter_is_a_reference() {
+    let cpp = cpp(concat!(
+        "struct W(n: Int):\n",
+        "    pub fn each(self) -> yields Str:\n",
+        "        yield \"a\"\n",
+        "        yield \"bb\"\n",
+        "let w = W(1)\n",
+        "print(max(w, by: s => s.len)!)\n",
+    ));
+    assert!(cpp.contains("const std::string& s = "), "{cpp}");
+    assert!(!cpp.contains("std::string s = "), "{cpp}");
+}
+
+#[test]
+fn a_match_arm_binding_of_a_temporary_is_a_reference() {
+    let cpp = cpp(concat!(
+        "match read<Str>():\n",
+        "    \"A\" => print(1)\n",
+        "    kind => print(kind.len)\n",
+    ));
+    assert!(cpp.contains("const std::string& kind = "), "{cpp}");
 }

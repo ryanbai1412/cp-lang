@@ -8,6 +8,7 @@
 //   multiply their children's ways. Down a decreasing chain, ends(v)[k] counts v's ways with k
 //   single-vertex right children still free to climb; each such leaf adds a slot and lets every
 //   open one move up (a prefix sum). O(n^2).
+// Bounds: n: 2..=5000; a, b: 1..=n
 use std.tree.{PermTree, PermKind}
 
 type Z = Mod<998_244_353>
@@ -28,8 +29,8 @@ fn ends<Node>(v: Node) -> List<Z>:
     var res = ends(l)
     res.push(0)
     if t.kind[r] == PermKind.Leaf:
-        let pre = res.scan(+)
-        [pre.prefix(i + 1) for i in res.keys]
+        for i in 1..res.len: res[i] += res[i - 1]
+        res
     else:
         let wr = ways(r)
         res.map(e => e * wr)

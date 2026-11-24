@@ -6,6 +6,7 @@
 //   max(a[first] - lead[r without first], a[last] - lead[r without last]). `I.ranges` goes by
 //   length, so both smaller ranges are done first: O(n^2) states, O(1) each.
 // original: corpus/submissions/4131776.cpp
+// Bounds: n: 1..=3000; a: 1..=1e9
 let n: 1..=3000 = read()
 domain I = 0..n
 let a: [I]1..=1e9 = read()

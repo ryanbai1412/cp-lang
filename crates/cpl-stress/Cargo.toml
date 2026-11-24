@@ -13,6 +13,7 @@ cpl-diag.workspace = true
 cpl-interp.workspace = true
 cpl-ir.workspace = true
 cpl-json.workspace = true
+cpl-wait.workspace = true
 cpl-judge.workspace = true
 cpl-lint.workspace = true
 cpl-syntax.workspace = true

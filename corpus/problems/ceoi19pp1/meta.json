@@ -23,5 +23,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "pairs() + tally(); HashMap.get(k) ?? 0."
+ "notes": "pairs() + tally(); HashMap.get(k) ?? 0.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 7,
+  "sha": "c7cdcc1ff550bba59087ffbe319a4e89795c0ec5"
+ }
 }

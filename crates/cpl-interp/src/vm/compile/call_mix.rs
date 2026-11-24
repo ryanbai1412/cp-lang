@@ -25,8 +25,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
         {
             return None;
         }
-        // Check that all mut args are simple local/global places or a single 1D indexed V place.
-        let mut idx_mut_count = 0usize;
+        // Several `mut` args must be places that never overlap: each is
+        // taken in turn and written back after the call.
+        let muts: Vec<&Place> = (args.iter())
+            .filter_map(|a| match a {
+                Arg::Mut(p) => Some(p),
+                Arg::Value(_) => None,
+            })
+            .collect();
+        let multi = muts.len() > 1;
+        if (muts.iter().enumerate()).any(|(k, a)| muts[k + 1..].iter().any(|b| !disjoint(a, b))) {
+            return None;
+        }
+        // A mut arg is a local or global, a 1D indexed V place, or any other
+        // place walked by path.
         let mut via_path = vec![false; args.len()];
         for (i, a) in args.iter().enumerate() {
             match a {
@@ -47,51 +59,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         }
                         PlaceKind::Global(_) => {}
                         PlaceKind::Index(base, indices)
-                            if indices.len() == 1
-                                && idx_mut_count == 0
+                            if !multi
+                                && indices.len() == 1
                                 && ScalarKind::of_ty(&indices[0].ty, self.program).is_some()
                                 && ScalarKind::of_ty(&f.locals[i].ty, self.program).is_none()
                                 && ScalarKind::of_opt_ty(&f.locals[i].ty, self.program)
-                                    .is_none() =>
-                        {
-                            let base_ok = match &base.kind {
-                                PlaceKind::Local(slot) => {
-                                    matches!(self.slot_loc(*slot), SlotLoc::V(_))
-                                }
-                                PlaceKind::Global(_) => true,
-                                _ => false,
-                            };
-                            let container_ok = match &base.ty {
-                                Ty::Array { dims, .. } => {
-                                    dims.len() == 1
-                                        && !matches!(
-                                            dims[0],
-                                            cpl_ir::Dim::IntFrom(_) | cpl_ir::Dim::Sym(_)
-                                        )
-                                }
-                                Ty::List(_) => true,
-                                _ => false,
-                            };
-                            if !base_ok || !container_ok {
-                                return None;
-                            }
-                            idx_mut_count += 1;
-                        }
+                                    .is_none()
+                                && self.indexes_1d_v(base) => {}
                         PlaceKind::Index(..) | PlaceKind::Field(..)
-                            if ScalarKind::of_ty(&f.locals[i].ty, self.program).is_none()
-                                && ScalarKind::of_opt_ty(&f.locals[i].ty, self.program)
-                                    .is_none() =>
+                            if ScalarKind::of_opt_ty(&f.locals[i].ty, self.program).is_none() =>
                         {
                             via_path[i] = true;
-                            idx_mut_count += 1;
                         }
                         _ => return None,
                     }
                 }
             }
-        }
-        if idx_mut_count > 0 && args.iter().filter(|a| matches!(a, Arg::Mut(_))).count() > 1 {
-            return None;
         }
         let mut ni = 0usize;
         let mut nv = 0usize;
@@ -160,6 +143,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 path: u16,
                 arg_off: u16,
             },
+            PlaceI {
+                path: u16,
+                kind: ScalarKind,
+                arg_off: u16,
+            },
         }
         let mut i_args: Vec<u16> = vec![0; ni];
         let mut v_args: Vec<(u16, bool)> = vec![(0, false); nv];
@@ -213,6 +201,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     };
                     let r = self.alloc_v();
                     self.emit(Op::TakePlaceV { dst: r, path }, place.span);
+                    if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
+                        let dst_i = self.alloc_i();
+                        self.emit(Op::UnboxI { dst_i, src_v: r }, place.span);
+                        i_args[off] = dst_i;
+                        writebacks.push(WriteBack::PlaceI {
+                            path,
+                            kind,
+                            arg_off: off as u16,
+                        });
+                        continue;
+                    }
                     writebacks.push(WriteBack::Place {
                         path,
                         arg_off: off as u16,
@@ -389,6 +388,24 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::StorePlaceV { path, r_val }, span);
                     self.emit(Op::ClearV { reg: r_val }, span);
                 }
+                WriteBack::PlaceI {
+                    path,
+                    kind,
+                    arg_off,
+                } => {
+                    let r_val = self.alloc_v();
+                    let src_i = arg_base_i + arg_off;
+                    self.emit(
+                        Op::BoxI {
+                            dst_v: r_val,
+                            src_i,
+                            kind,
+                        },
+                        span,
+                    );
+                    self.emit(Op::StorePlaceV { path, r_val }, span);
+                    self.emit(Op::ClearV { reg: r_val }, span);
+                }
                 WriteBack::LocalI { dst, arg_off } => {
                     let src = arg_base_i + arg_off;
                     if dst != src {
@@ -509,4 +526,74 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         Some((dst_i, dst_v, dst_some))
     }
+
+    /// Whether `base[i]` is a 1D list or array the VM indexes in a value
+    /// register or global directly.
+    fn indexes_1d_v(&self, base: &Place) -> bool {
+        let root_ok = match &base.kind {
+            PlaceKind::Local(slot) => matches!(self.slot_loc(*slot), SlotLoc::V(_)),
+            PlaceKind::Global(_) => true,
+            _ => false,
+        };
+        root_ok
+            && match &base.ty {
+                Ty::Array { dims, .. } => {
+                    dims.len() == 1
+                        && !matches!(dims[0], cpl_ir::Dim::IntFrom(_) | cpl_ir::Dim::Sym(_))
+                }
+                Ty::List(_) => true,
+                _ => false,
+            }
+    }
+}
+
+/// Whether `a` and `b` are never the same value nor one inside the other:
+/// different roots, or a step where they take different fields or
+/// different literal keys.
+fn disjoint(a: &Place, b: &Place) -> bool {
+    fn steps(p: &Place) -> (&Place, Vec<&Place>) {
+        let mut path = vec![p];
+        let mut at = p;
+        while let PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) =
+            &at.kind
+        {
+            at = base;
+            path.push(at);
+        }
+        path.reverse();
+        (at, path)
+    }
+    let ((ra, pa), (rb, pb)) = (steps(a), steps(b));
+    match (&ra.kind, &rb.kind) {
+        (PlaceKind::Local(x), PlaceKind::Local(y)) if x != y => return true,
+        (PlaceKind::Global(x), PlaceKind::Global(y)) if x != y => return true,
+        (PlaceKind::Local(_), PlaceKind::Global(_))
+        | (PlaceKind::Global(_), PlaceKind::Local(_)) => return true,
+        _ => {}
+    }
+    for (x, y) in pa.iter().zip(&pb).skip(1) {
+        match (&x.kind, &y.kind) {
+            (PlaceKind::Field(_, f), PlaceKind::Field(_, g)) if f != g => return true,
+            (PlaceKind::Index(_, xi), PlaceKind::Index(_, yi)) => {
+                let lit = |e: &Expr| match e.kind {
+                    ExprKind::Int(v) => Some(v),
+                    _ => None,
+                };
+                let differ = (xi.iter().zip(yi))
+                    .any(|(p, q)| matches!((lit(p), lit(q)), (Some(m), Some(n)) if m != n));
+                let same = (xi.iter().zip(yi))
+                    .all(|(p, q)| matches!((lit(p), lit(q)), (Some(m), Some(n)) if m == n));
+                if differ {
+                    return true;
+                }
+                if !same {
+                    return false;
+                }
+            }
+            (PlaceKind::Field(..), PlaceKind::Field(..))
+            | (PlaceKind::Some(_), PlaceKind::Some(_)) => {}
+            _ => return false,
+        }
+    }
+    false
 }

@@ -7,6 +7,7 @@
 //   around the centre keeps every prefix 0..k - 1 in the smallest central box, so every term
 //   is maximal. rank orders rows (and columns) outward from the centre, alternating sides;
 //   shell k (cells with larger rank k) gets k^2.. : its row k first, then its column k. O(n^2).
+// Bounds: n: 1..=500
 @!multitest
 let n: 1..=500 = read()
 domain Coord = 0..n

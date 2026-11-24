@@ -10,6 +10,7 @@
 //   B's (skew heaps), and the whole component with boundary D lifts F to max(F, l - D); when
 //   D < min B, pop breakpoints while F lies below that line and push the crossing ones. The
 //   answer is l * k - (sum of the k breakpoints < l): O((n + q) log n).
+// Bounds: n: 2..=250_000; edges.u, edges.v: 1..=n; edges.w, asks: 1..=1e9; q: 1..=250_000
 
 // Multisets of breakpoints as skew heaps in one arena of nodes; a set is its ?root.
 struct Breaks:

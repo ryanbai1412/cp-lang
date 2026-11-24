@@ -23,5 +23,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Shared Sieve above @!multitest."
+ "notes": "Shared Sieve above @!multitest.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 9,
+  "sha": "0d014d27deabafcba7b5d45b4d5906733a84c784"
+ }
 }

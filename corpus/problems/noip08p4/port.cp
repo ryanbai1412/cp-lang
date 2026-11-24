@@ -1,4 +1,5 @@
 // Source: NOIP 2008 Senior P4 (Two-Stack Sorting), https://www.luogu.com.cn/problem/P1155
+// limits: 1000 ms, 128 MB
 // Problem: a permutation of 1..n, n <= 1000, is sorted onto the output with two stacks:
 //   a pushes the next input onto stack 1, b pops stack 1 to the output, c and d do the same
 //   for stack 2. Print the lexicographically least op sequence (space-separated), or 0.
@@ -7,7 +8,7 @@
 //   component with its earliest position on stack 1, then simulate: before each push pop
 //   every due value (stack 1 first), then push onto the colour's stack. O(n^2).
 // original: corpus/submissions/5185830.cpp
-use std.graph.{two_color}
+// Bounds: n: 1..=1000; a: 1..=n
 
 let n: 1..=1000 = read()
 domain Pos = 0..n

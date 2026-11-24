@@ -7,6 +7,7 @@
 //   block out. The top bit where l and r + 1 differ splits the range at an aligned midpoint,
 //   and flipping it works iff both halves are equally long. So the answer is
 //   (1 or 2) * 2^b - 1, excluding x = 0. O(1).
+// Bounds: l, r0: 1..=2 ** 60
 
 @!multitest
 let (l, r0): (1..=2 ** 60, 1..=2 ** 60) = read()

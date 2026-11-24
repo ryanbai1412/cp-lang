@@ -1,5 +1,4 @@
 // expect: ok, output "YES"
-use std.math.{mod_sqrt, is_prime}
 var ok = true
 for p in 2..200:
     if not is_prime(p): continue

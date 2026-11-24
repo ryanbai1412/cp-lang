@@ -12,6 +12,6 @@ fn turns(c: V, m: V) -> F64:
     let c2 = toward(toward(c, m), m)
     if c2 == m:
         return 1.0
-    1.0 + chain([m], g.next(m)).mean(of: m2 => turns(c2, m2))
+    1.0 + chain([m], g.next(m)).mean(of: m2 => turns(c2, m2))!
 
 print(turns(cat, mouse), precision: 3)

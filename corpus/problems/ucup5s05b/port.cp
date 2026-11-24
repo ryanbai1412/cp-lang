@@ -11,6 +11,7 @@
 //   each piece folds to a straight diagonal segment: it meets the line in one lattice point or,
 //   if parallel and on it, in a whole x-interval. The answer is the length of the union of
 //   these x-intervals (sorted sweep); O(1) pieces, so O(1) per query up to the sort.
+// Bounds: n: 2..=1e9; px, py: 1..=1e9; q: 1..=2e5
 
 // Reflect a coordinate back into 0..=m.
 fn fold(v: Int, m: Int) -> Int:

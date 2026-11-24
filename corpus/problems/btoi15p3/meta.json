@@ -24,5 +24,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Rethought: leaves in preorder, pair i with i + ceil(L/2)."
+ "notes": "Rethought: leaves in preorder, pair i with i + ceil(L/2).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "e69bdd5e5b18cdc8e31f19aa4ea165bd4d2585cd"
+ }
 }

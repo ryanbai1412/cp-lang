@@ -7,6 +7,7 @@
 //   covered by its group's minimum already). O(J log J).
 // original: corpus/submissions/4125290.cpp
 // Ascending order: keep x unless one of its divisors was kept already.
+// Bounds: n: 1..=2e6; size: 1..=5e6
 
 let n: 1..=2e6 = read()
 let size: [n]1..=5e6 = read()

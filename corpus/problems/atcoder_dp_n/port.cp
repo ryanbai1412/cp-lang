@@ -6,6 +6,7 @@
 // Solution: the last merge on a range r joins its two halves at some split, so
 //   cost[r] = min over splits (x, y) of cost[x] + cost[y], plus the total size of r.
 //   `I.ranges` goes by length, so the halves are done first: O(n^3).
+// Bounds: n: 1..=400; a: 1..=1e9
 let n: 1..=400 = read()
 domain I = 1..=n
 let a: [I]1..=1e9 = read()

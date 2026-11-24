@@ -27,5 +27,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Exact slopes as Ratio; ?Ratio min=/max= start from none."
+ "notes": "Exact slopes as Ratio; ?Ratio min=/max= start from none.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "418c94fc04bb97cd237ab88e53a7375dda27ba23"
+ }
 }

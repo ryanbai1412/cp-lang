@@ -3,6 +3,7 @@ squares where (x + y) % 4 == 0, forming one polygon without holes. Each column o
 run of y that overlaps the next column's run, so the union is connected and has no holes.
 size >= 2e5 gives N near 2e5: by seed, a tall column strip or a wide one, offset near 1e9."""
 import random, sys
+if sys.argv[1:] == ["--max"]: sys.argv[1:] = ["1", "200000"]  # the hardest big case
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 big = size >= 2 * 10 ** 5

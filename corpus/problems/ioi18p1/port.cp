@@ -7,6 +7,7 @@
 //   takes one press of s+a + s+b+a + s+b+b + s+b+c (length 4|s| + 6 <= 4N), which scores |s| + 1
 //   for a, |s| + 2 for b, |s| for c. The last letter takes two presses again: N + 2 in all.
 // original: corpus/submissions/4707803.cpp
+// Bounds: n: 1..=2000
 let n: 1..=2000 = read()
 fn press(p: Str) -> Int = ask("press", p)
 

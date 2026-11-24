@@ -6,6 +6,7 @@
 //   pos and pos + 1, where the max n needs pos | n + 1 and pos + 1 | n + 1. Odd n takes
 //   pos = 1 ([n, 1, ..., n - 1]); for even n, n + 1 is odd so no such pos exists, and -1
 //   is the answer. Search pos, then print: O(n) per test.
+// Bounds: n: 2..=100
 
 @!multitest
 let n: 2..=100 = read()

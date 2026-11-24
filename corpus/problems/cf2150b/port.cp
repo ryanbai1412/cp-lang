@@ -7,6 +7,7 @@
 //   Going up from the bottom row, row i (0-based) unlocks the freq[i] columns whose deepest
 //   allowed row is i and picks its a_i cells among the cur unused unlocked ones: C(cur, a_i)
 //   ways. The answer is the product, or 0 if some cur < a_i or columns are left. O(n).
+// Bounds: n: 1..=200_000; a: 0..=200_000
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

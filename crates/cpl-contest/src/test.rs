@@ -12,8 +12,8 @@
 //! ```
 
 use crate::problem::{
-    cases_in, find_checker, find_interactor, find_tests_dir, hidden_cases_in, source_path,
-    tests_dir, Limits, TestCase,
+    cases_in, find_checker, find_grader, find_interactor, find_tests_dir, hidden_cases_in,
+    source_path, tests_dir, Limits, TestCase,
 };
 use cpl_diag::Shown;
 use cpl_stress::args::Args;
@@ -30,7 +30,8 @@ Runs the solution on every case in <problem>.tests/ (or a sibling tests/
 folder). A contest folder (`cpl fetch <contest page>`) runs each problem in it
 with cases, then says how many pass. A case is N.in with an optional N.out or
 N.ans; without one, the output is shown instead of judged. A checker.py or
-interactor.py in the cases folder (or beside a sibling tests/) judges each case.
+interactor.py in the cases folder (or beside a sibling tests/) judges each case,
+and a grader.cpp there is linked in as --grader links it.
 
 options:
   --tests DIR        read cases from DIR instead of <problem>.tests/
@@ -38,6 +39,9 @@ options:
   --add FILE         add FILE (`-`: standard input) as the next numbered case,
                      then run it; with --expect OUT, OUT is its answer
   --fast PROG        run this instead of building the problem
+  --grader FILE      link the judge's grader FILE (a .cpp with the `main`,
+                     beside the headers it includes) into the build: how a
+                     program of `@grader` fns runs
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts; with a
                      `# interactor: spawn` comment, `PROG <input> -- <solution>`
@@ -254,6 +258,7 @@ pub(crate) const VALUED: &[&str] = &[
     "--interactor",
     "--time-limit",
     "--memory-limit",
+    "--grader",
 ];
 
 /// Writes the next numbered case into `dir`: `from` (a file, or `-` for
@@ -315,8 +320,20 @@ pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, Stri
     if let Some(mb) = args.number("--memory-limit")? {
         limits.memory_kb = mb * 1024;
     }
+    if path("--fast").is_some() && path("--grader").is_some() {
+        return Err("`--fast` runs a program as it is, so it takes no `--grader`".to_string());
+    }
+    let grader = match path("--grader") {
+        Some(grader) => Some(grader.to_path_buf()),
+        None if path("--fast").is_none() => find_grader(source),
+        None => None,
+    };
+    let solution = match grader {
+        Some(grader) => Program::resolve_with_grader(source, &grader).map_err(|e| e.to_string())?,
+        None => solution(source, path("--fast"))?,
+    };
     Ok(Ready {
-        solution: solution(source, path("--fast"))?,
+        solution,
         judge,
         limits,
     })
@@ -354,15 +371,11 @@ fn run_folder(
         passed += usize::from(code == 0);
         let out = String::from_utf8_lossy(&out);
         if json {
-            rows.push(format!(
-                "{{\"path\":{},\"report\":{}}}",
-                cpl_json::escape_string(&source.shown()),
-                if out.trim().is_empty() {
-                    "null"
-                } else {
-                    out.trim()
-                }
-            ));
+            let report = Some(out.trim()).filter(|report| !report.is_empty());
+            rows.push(cpl_json::write_with(|w| {
+                w.object().key("path").str(&source.shown());
+                w.key("report").opt_json(report).end();
+            }));
         } else {
             let _ = writeln!(stdout, "{}:", source.shown());
             let _ = write!(stdout, "{out}");
@@ -370,11 +383,15 @@ fn run_folder(
     }
     let total = sources.len();
     if json {
-        let _ = writeln!(
-            stdout,
-            "{{\"problems\":[{}],\"passed_count\":{passed},\"problem_count\":{total}}}",
-            rows.join(",")
-        );
+        let json = cpl_json::write_with(|w| {
+            w.object().key("problems").array();
+            for row in &rows {
+                w.json(row);
+            }
+            w.end().key("passed_count").int(passed);
+            w.key("problem_count").int(total).end();
+        });
+        let _ = writeln!(stdout, "{json}");
     } else {
         let _ = writeln!(stdout, "{passed} of {total} problems pass every case");
     }

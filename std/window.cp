@@ -14,7 +14,7 @@ use std.seq.{Track, collect}
 /// keeps two stacks.
 ///
 /// cost: \(O(n)\) amortized calls of `op`
-/// empty: yields nothing; so does `k > self.len`
+/// empty: `[List<Int>().window_fold(1, max).collect(), [1, 2].window_fold(3, max).collect()] == [[], []]`
 /// order: by window start, left to right
 /// traps: when `k < 1`
 /// example: `[3, 1, 4, 1, 5].window_fold(2, max).collect() == [3, 4, 4, 5]`
@@ -67,7 +67,7 @@ pub struct Window<T, M>(op: M):
     /// `x3`), so a non-commutative op folds in push order; `None` when empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `Window<Int, (Int, Int) -> Int>(+).all == None`
     /// traps: never
     /// example: `var w = Window(+); w.push(2); w.push(3); w.all == Some(5)`
     /// example: `var w = Window(+); w.push(2); w.pop(2); w.all == None`
@@ -84,6 +84,24 @@ pub struct Window<T, M>(op: M):
     /// example: `var w = Window(+); w.push(2); w.push(3); w.pop(2); w.len == 1`
     @get pub fn len(self) -> Int:
         front.len + q.len
+
+    /// Whether the window holds no elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var w = Window(+); w.push(2); w.pop(2); w.is_empty`
+    @get pub fn is_empty(self) -> Bool = self.len == 0
+
+    /// The elements in the window, oldest first.
+    ///
+    /// cost: \(O(1)\) to make, \(O(1)\) per step
+    /// empty: `var w = Window(+); w.push(2); w.pop(2); w.items.collect().len == 0`
+    /// order: push order, oldest first
+    /// traps: never
+    /// example: `var w = Window(+); w.push(1); w.push(2); w.push(3); w.pop(1); w.push(4); w.items.collect() == [2, 3, 4]`
+    @get pub fn items(self) -> yields T:
+        for i in head..olds.len: yield olds[i]
+        for x in q: yield x
 
     fn push_back(mut self, x: T):
         q.push(x)
@@ -107,6 +125,9 @@ pub struct Window<T, M>(op: M):
         assert olds[head] == x, "`pop(x)` is passed the oldest element, and `x` is not it"
         head += 1
         front.pop()
+
+impl Show for Window<T, M>:
+    fn show(w) = "{w.len} elements"
 
 /// `push(x)` and `pop(x)` are `Window`'s own `push(x)` and `pop(x)`.
 impl Track<T> for Window<T, M>:
@@ -145,7 +166,7 @@ pub fn track<S, T>(
 pub struct Tracked<S, T>(pub state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()):
     /// Apply `x` at the back: one call of `add(state, x)`.
     ///
-    /// cost: one call of `add`
+    /// cost: \(O(1)\) plus one call of `add`
     /// traps: never (beyond what `add` traps on)
     /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.state == 3`
     pub fn push(mut self, x: T):
@@ -153,7 +174,7 @@ pub struct Tracked<S, T>(pub state: S, add: (mut S, T) -> (), remove: (mut S, T)
     /// Take the front element `x` back out: one call of `remove(state, x)`. `x` is passed through
     /// as given; nothing checks that it is the oldest element.
     ///
-    /// cost: one call of `remove`
+    /// cost: \(O(1)\) plus one call of `remove`
     /// traps: never (beyond what `remove` traps on)
     /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.push(4); t.pop(3); t.state == 4`
     pub fn pop(mut self, x: T):
@@ -285,7 +306,7 @@ pub struct Sweep<D, S>(pub state: S):
     /// first cut of `D`; with `start`, each position of `start` is pushed in increasing order.
     ///
     /// cost: \(O(1)\), plus `start.len` pushes when `start` is given
-    /// empty: an empty `start` is the same as None, but sits at `start`'s cut
+    /// empty: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(), start: Some(3..3)); s.range == D(3)..D(3)`
     /// traps: never (beyond what `state.push` traps on)
     /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.range.len == 0`
     /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(), start: Some(1..3)); s.range == 1..3`
@@ -303,26 +324,30 @@ pub struct Sweep<D, S>(pub state: S):
     /// with Mo the state's answer must ignore order.
     ///
     /// cost: \(O(\lvert \mathit{dl} \rvert + \lvert \mathit{dr} \rvert)\) pushes and pops, where `dl` and `dr` are the moves of the two ends
-    /// empty: moving to an empty `to` pops everything
+    /// empty: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(1..4); s.move(2..2); (s.range.len, s.state.total()) == (0, 0)`
     /// traps: never (beyond what the state traps on)
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(1..4); s.move(2..5); s.range == 2..5`
     pub fn move(mut self, to: Range<D>):
-        let keys = D.collect()
-        var (l, r) = (0, 0)
-        if not to.is_empty:
-            l = Int(to.first!) - Int(keys[0])
-            r = Int(to.last!) - Int(keys[0]) + 1
+        if to.is_empty:
+            while hi > lo:
+                hi -= 1
+                state.pop(D.nth(hi))
+            lo = Int(to.l) - Int(D.cuts.nth(0))
+            hi = lo
+            return
+        let l = Int(to.first!) - Int(D.nth(0))
+        let r = Int(to.last!) - Int(D.nth(0)) + 1
         while hi < r:
-            state.push(keys[hi])
+            state.push(D.nth(hi))
             hi += 1
         while lo > l:
             lo -= 1
-            state.push(keys[lo])
+            state.push(D.nth(lo))
         while hi > r:
             hi -= 1
-            state.pop(keys[hi])
+            state.pop(D.nth(hi))
         while lo < l:
-            state.pop(keys[lo])
+            state.pop(D.nth(lo))
             lo += 1
 
     /// The current interval: the positions whose pushes the state holds.
@@ -332,5 +357,4 @@ pub struct Sweep<D, S>(pub state: S):
     /// order: increasing positions of `D`
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(0..2); s.range.len == 2`
     @get pub fn range(self) -> Range<D>:
-        let keys = D.collect()
-        if lo < hi: keys[lo]..=keys[hi - 1] else: keys[0]..keys[0]
+        if lo < hi: D.nth(lo)..=D.nth(hi - 1) else: D.cuts.nth(lo)..D.cuts.nth(lo)

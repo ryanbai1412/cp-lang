@@ -7,6 +7,7 @@
 //   (q - 1 digits) plus a check digit making the digit sum 0 mod 3; 2p - 1 takes the code
 //   (+1 Left, -1 Right, 0 Off), 2p its negation, and an odd n the zero code. Codes differ in >= 2
 //   digits, so the one number matching every known answer is x. O(n q).
+// Bounds: n: 2..=200_000
 
 @!interactive
 

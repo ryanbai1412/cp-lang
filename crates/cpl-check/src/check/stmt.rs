@@ -1381,6 +1381,7 @@ impl<'a> Checker<'a> {
                 }
 
                 if let Some(trait_name) = trait_name {
+                    self.impl_supertraits(trait_name, target, bounds);
                     self.impl_matches_trait(trait_name, target, &body.stmts);
                     if type_head(trait_name).as_deref() == Some("Index") {
                         self.index_size(&body.stmts);
@@ -1458,9 +1459,7 @@ impl<'a> Checker<'a> {
                 }
                 let target_ty = self.assign_target(target);
                 let prev_bounds_range = self.expected_bounds_range;
-                if Self::expects_bounds_range(&target_ty) {
-                    self.expected_bounds_range = true;
-                }
+                self.expected_bounds_range |= Self::expects_bounds_range(&target_ty);
                 self.assigning_name = prev_assigning;
                 let value_ty = match self.part_map(target, *op, value) {
                     Some(ty) => ty,
@@ -1468,6 +1467,7 @@ impl<'a> Checker<'a> {
                 };
                 self.expected_bounds_range = prev_bounds_range;
                 if *op == AssignOp::Set {
+                    self.note_read(value, &target_ty);
                     if let ExprKind::Name(tname) = &target.kind {
                         self.moved.remove(tname);
                         if let ExprKind::Name(sname) = &value.kind {
@@ -1939,27 +1939,19 @@ impl<'a> Checker<'a> {
             match &method.kind {
                 StmtKind::Fn(f) => self.fn_decl(f, Some(self_ty), false, memo_of(method)),
                 StmtKind::Law { name, .. } => {
-                    self.push_scope();
-                    for field in &fields {
-                        self.scopes.last_mut().unwrap().insert(
-                            field.name.clone(),
-                            Local {
-                                ty: field.ty.clone(),
-                                mutable: false,
-                                span: name.span,
-                                keyword: "self",
-                            },
-                        );
-                    }
+                    self.field_scope(&fields, name.span);
                     self.stmt(method, false);
                     self.pop_scope();
                 }
                 // Owned domains and constants were declared on entry; this
                 // checks their values.
+                // A domain may size itself from the fields: `domain Idx = 0..src.len`.
                 StmtKind::Domain { def, .. } => {
+                    self.field_scope(&fields, def.span);
                     if !self.domain_sum(def) {
                         self.infer(def);
                     }
+                    self.pop_scope();
                 }
                 StmtKind::Const {
                     init: Some(init), ..
@@ -2048,21 +2040,6 @@ impl<'a> Checker<'a> {
                 diag.help = Some(format!("write {impls} instead"));
             }
             return;
-        }
-        // Check supertrait requirements (R08.1.3): `impl Sub for T` requires `impl Super for T`.
-        if let ast::TypeKind::Named { name, .. } = &trait_ty.kind {
-            if let Some(Def::Trait { supers, .. }) = self.global(&name.text).as_deref().cloned() {
-                let target_ty = self.resolve_type(target);
-                for sup in supers {
-                    if !self.implements_trait(&target_ty, &sup) {
-                        let target_text = self.quote(target.span);
-                        let message = format!(
-                            "`impl {trait_text} for {target_text}` requires `impl {sup} for {target_text}`"
-                        );
-                        self.error(codes::MISSING_IMPL, trait_ty.span, message);
-                    }
-                }
-            }
         }
         let defined: Vec<&ast::Name> = body
             .iter()
@@ -2370,11 +2347,9 @@ impl<'a> Checker<'a> {
             }
         }
         let outer = self.generics.len();
-        let outer_bounds = self.param_bounds.len();
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
-        self.param_bounds.extend(super::domain_use::body_bounds(f));
-        self.bounds_exist(&f.bounds);
+        let outer_bounds = self.enter_fn_bounds(f);
         self.in_fn += 1;
         // A move is a fact about one body: a later fn may name a field or global again.
         let outer_moved = std::mem::take(&mut self.moved);
@@ -2556,7 +2531,7 @@ impl<'a> Checker<'a> {
         self.in_fn -= 1;
         self.moved = outer_moved;
         self.generics.truncate(outer);
-        self.param_bounds.truncate(outer_bounds);
+        self.leave_bounds(outer_bounds);
         self.row_bounds = saved_row_bounds;
     }
 }

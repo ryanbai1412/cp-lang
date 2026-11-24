@@ -10,6 +10,7 @@
 //   dp(x) = min dp(i) + dp(x - i) over K + 1 splits. The weights needed at each depth form a window of about 2K
 //   around N / 2^d, filled bottom-up as one list per depth: O(K^2 log N).
 // original: corpus/submissions/4533533.cpp
+// Bounds: n: 3..=1e9; k: 2..=3000
 
 let n: 3..=1e9 = read()
 let k: 2..=3000 = read()

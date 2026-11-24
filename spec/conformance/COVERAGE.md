@@ -7,31 +7,31 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3464 (3427 passing). Rules: 616.
+Cases: 3749 (3602 passing). Rules: 618.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 57 rules, 187 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 164 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 195 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 96 rules, 251 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 31 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 57 rules, 189 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 163 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 198 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 26 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 266 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 31 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 20 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 21 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 33 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 5 rules, 7 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rjudge (judge-profiles.md): 8 rules, 14 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rjudge (judge-profiles.md): 8 rules, 15 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rlsp (lsp.md): 9 rules, 11 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rlsp (lsp.md): 9 rules, 13 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 2 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rtrace (trace-debug.md): 6 rules, 9 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
@@ -54,10 +54,10 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 26 | 26 (100%) | 18 | 18 (100%) | 26 (100%) |
-| R07 | 96 | 96 (100%) | 32 | 32 (100%) | 96 (100%) |
+| R07 | 97 | 97 (100%) | 33 | 33 (100%) | 97 (100%) |
 | R08 | 31 | 31 (100%) | 12 | 12 (100%) | 31 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
-| R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
+| R10 | 21 | 21 (100%) | 12 | 12 (100%) | 21 (100%) |
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | Rlsp | 9 | 9 (100%) | 2 | 2 (100%) | 9 (100%) |
 | Rstress | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rtrace | 6 | 6 (100%) | 4 | 4 (100%) | 6 (100%) |
-| all | 616 | 616 (100%) | 256 | 256 (100%) | 616 (100%) |
+| all | 618 | 618 (100%) | 259 | 259 (100%) | 618 (100%) |
 
 ## Rules
 
@@ -116,7 +116,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.6.5 [2+ 0-]: `return e` exists for early exits; a block's value is its last expression. At top level `r...
 - R01.6.6 [1+ 1-]: `assert cond` and `assert cond, "message {x}"`: checked builds only, unless opted in for r...
 - R01.6.7 [3+ 3-]: `todo` is an expression of any type that traps when run; library stubs use it as a body.
-- R01.7.1 [9+ 2-]: `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is the value-position...
+- R01.7.1 [11+ 2-]: `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is the value-position...
 - R01.7.2 [4+ 1-]: `for` and `while` (there is no `loop`: `while true:` with a `break` is the loop that exits...
 - R01.7.3 [4+ 3-]: `match` is exhaustive over enums, literal unions, `Bool` and `?T`. Arms may have guards `p...
 - R01.7.4 [1+ 0-]: Loops over library generators support `break`, `continue`, `return`, labels and `else` exa...
@@ -147,7 +147,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.3.1 [1+ 0-]: `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence capabilities of ...
 - R02.3.2 [4+ 2-]: `Str of "01?"` is a string whose characters come from the literal's alphabet. The alphabet...
 - R02.3.3 [3+ 0-]: `+` concatenates (allocating; the cost is visible as a new value); either side may be a sl...
-- R02.4.1 [4+ 1-]: `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`); `x.is_none_o...
+- R02.4.1 [4+ 0-]: `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`); `x.is_none_o...
 - R02.4.2 [2+ 1-]: `T` converts to `?T` implicitly; the other way is explicit: `x ?? d` (lazy fallback), `x!`...
 - R02.4.3 [1+ 0-]: When `T` has a spare value (a niche), `?T` takes no more bytes than `T` (chapter 3). Other...
 - R02.4.4 [1+ 2-]: **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`, `None` if either side i...
@@ -200,7 +200,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.1.5 [2+ 2-]: **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is one byte per elemen...
 - R03.1.6 [3+ 0-]: **Narrow arithmetic when proven.** Semantically every operation is in `Int`. When the rang...
 - R03.1.7 [6+ 1-]: To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every node write is t...
-- R03.1.9 [1+ 1-]: A static peak above the judge profile's memory limit is an error (E0904) naming the three ...
+- R03.1.9 [2+ 1-]: A static peak above the judge profile's memory limit is an error (E0904) naming the three ...
 - R03.1.8 [3+ 1-]: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
 - R03.2.1 [1+ 0-]: Every type has a fixed set of **spare values**: bit patterns of its storage that no valid ...
 - R03.2.2 [3+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
@@ -225,7 +225,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.25 [1+ 0-]: An array's axes may also be plain ranges, one per dimension: `[0..=n, 0..=k]Int` is indexe...
 - R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | \(O(1)\)
-- R04.2.20 [6+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
+- R04.2.20 [7+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
 - R04.2.3 [2+ 4-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [2+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | \(O(1)\)
@@ -236,7 +236,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.9 [3+ 0-]: | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` d...
 - R04.2.10 [12+ 3-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [3+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
-- R04.2.11 [10+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
+- R04.2.11 [11+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [2+ 1-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
 - R04.2.13 [4+ 0-]: | `V.wrap(x)` | integer to position, Euclidean mod `V.count` (`V.wrap(-1)` is the last pos...
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\)
@@ -263,7 +263,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.11 [1+ 1-]: | `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]`
 - R04.4.22 [2+ 1-]: The language's implicit conversions are this closed list, none user-extensible. Each appli...
 - R04.4.23 [1+ 0-]: **`T` to `?T`.** `u != from` with `from: ?V` compares `Some(u)` with `from`. Free.
-- R04.4.24 [2+ 1-]: .
+- R04.4.24 [2+ 2-]: .
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [3+ 1-]: **Value to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wit...
@@ -332,7 +332,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04a.9.7 [1+ 0-]: | `.items` | `(key, x)` | `(offset, x)`
 - R04a.11.1 [3+ 0-]: **Order-based pairing** for every operation that combines two sequences (group A).
 - R04a.11.2 [2+ 1-]: **`.items` gives keys; `.keyed().items` gives a 0-based counter.** Use `.items` when the i...
-- R04a.11.3 [1+ 1-]: **`w.rebase`**: an \(O(1)\) view of `w` keyed `0..w.len`, for the rare relative case (D3, ...
+- R04a.11.3 [1+ 2-]: **`w.rebase`**: an \(O(1)\) view of `w` keyed `0..w.len`, for the rare relative case (D3, ...
 - R04a.11.4 [1+ 1-]: **Per-element results are keyed like their input** (`[S.keys]T`), so `z_function(s[l..])[i...
 - R04a.11.5 [1+ 2-]: **Diagnostics:** a literal index into a slice is a lint ("`w` starts at `l`; use `w.first`...
 - R04a.11.6 [1+ 1-]: **Copies count from 0:** `List(w)`, `Str(w)` and `.collect()` build fresh sequences, keyed...
@@ -345,7 +345,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.3 [4+ 1-]: **Combining two sequences pairs them by walk order, never by key.** This covers `==`, `<`,...
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
-- R04b.1.7 [6+ 3-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
+- R04b.1.7 [9+ 4-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
 - R04b.1.8 [1+ 1-]: , so `a.sorted().rev[0]` is an error whose fix is `.nth(0)`.
 - R04b.1.9 [2+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [3+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
@@ -366,7 +366,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.5.6 [1+ 0-]: | `Palindromes.longest_at(i)` | `i: Int` | `i: K`
 - R04b.5.7 [1+ 0-]: | `period`, `borders`, `common_prefix_len`, `overlap` | `Int` lengths | unchanged
 - R04b.5.8 [1+ 1-]: | `seq.cp` | `nth_element` | renamed `select(k)`, so `nth` means one thing
-- R04b.5.9 [3+ 0-]: | `seq.cp` | none | `nth`, `rebase`, `rekey` added
+- R04b.5.9 [4+ 0-]: | `seq.cp` | none | `nth`, `rebase`, `rekey` added
 
 ### R05: 05-ownership.md
 
@@ -417,7 +417,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.10.9 [1+ 1-]: **C1. No lend escapes.** No `lends` result, projection or stored value borrows the field, ...
 - R05.10.10 [2+ 1-]: **C2. Only the struct's own methods write it.** Outside code can't, even through `mut`.
 - R05.10.11 [2+ 1-]: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
-- R05.10.12 [1+ 1-]: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
+- R05.10.12 [2+ 1-]: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
 - R05.10.13 [2+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
 - R05.10.14 [1+ 0-]: **P1. Cache writes change no answer.** Every sequence of public calls gives the same resul...
 
@@ -431,11 +431,11 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.6 [2+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [6+ 1-]: .
 - R06.1.8 [7+ 1-]: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
-- R06.2.1 [6+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
+- R06.2.1 [7+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [2+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
 - R06.2.4 [1+ 1-]: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
-- R06.2.5 [2+ 1-]: Function types are `(A, B) -> R`. Every call with a known function value is specialized; t...
+- R06.2.5 [3+ 1-]: Function types are `(A, B) -> R`. Every call with a known function value is specialized; t...
 - R06.3.1 [3+ 1-]: A generator **value** is a recipe: a call with every argument but the loop body filled in....
 - R06.3.2 [2+ 1-]: A generator value built from lent arguments holds those lends until its last use, like a s...
 - R06.3.3 [2+ 0-]: The loop body may `break`, `continue`, `return`, use labels and loop `else`, even when the...
@@ -453,7 +453,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R07: 07-sequences.md
 
 - R07.5.3 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]` on a slice whose keys start elsewhere...
-- R07.3.5 [8+ 3-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
+- R07.3.5 [9+ 4-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
 - R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [2+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has \(O(1)\) `.len`; ...
 - R07.1.3 [3+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
@@ -483,13 +483,14 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.3.2 [3+ 0-]: | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `...
 - R07.3.3 [2+ 0-]: | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps
 - R07.3.4 [1+ 0-]: | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorte...
+- R07.3.7 [1+ 0-]: | `Positional<T>` | `Seq` + `Sized` + `s.nth(k)`, the element `k` steps into the walk, in ...
 - R07.3.6 [1+ 0-]: | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment |...
 - R07.4.1 [3+ 0-]: **Keys in, keys out.** Library functions answer in the keys they were given: `s[l..].searc...
-- R07.4.2 [1+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
+- R07.4.2 [3+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
 - R07.4.3 [1+ 0-]: **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys equal-length cell...
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.14 [2+ 1-]: **Cuts in walk order.** On any keyed view with cuts (`[D]T`, `List`, `Str`, slices, `.rev`...
-- R07.4.5 [5+ 12-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
+- R07.4.5 [6+ 12-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
 - R07.4.7 [5+ 2-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\)
@@ -512,25 +513,25 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.6.1 [2+ 0-]: **Push, not pull.** The generator runs and the `for` body runs at each `yield`, so a non-r...
 - R07.6.2 [2+ 2-]: **A generator value is a closure you walk instead of call.** `let g = divisors(n)` stores ...
 - R07.6.3 [2+ 0-]: **Steering.** The yielded item may carry methods the generator reads after `yield` returns...
-- R07.6.4 [3+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
+- R07.6.4 [4+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
 - R07.7.1 [1+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
 - R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.drop_while(p)` | `Seq` |
-- R07.7.3 [5+ 0-]: | `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consumi...
-- R07.7.4 [3+ 1-]: | `chain(a, b, ...)` | `Seq` of each argument in turn, any number of them, as `min` and `m...
+- R07.7.3 [6+ 0-]: | `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consumi...
+- R07.7.4 [4+ 1-]: | `chain(a, b, ...)` | `Seq` of each argument in turn, any number of them, as `min` and `m...
 - R07.7.5 [1+ 0-]: | `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, \(O(1)\) per step
 - R07.7.6 [1+ 0-]: | `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | \(O(n^2)\) to walk, so a call
 - R07.7.7 [1+ 0-]: | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the fir...
 - R07.7.8 [1+ 0-]: | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings
 - R07.7.12 [1+ 1-]: | `product(a, b)` | `Seq<(T, U)>`, every `(x, y)` with `x` from `a` and `y` from `b`, `a` ...
-- R07.7.9 [3+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
+- R07.7.9 [4+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
 - R07.7.11 [4+ 1-]: | `s.step(k)` | every k-th element, a `Stepped` view | ranges and indexed
 - R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
-- R07.9.2 [5+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
-- R07.9.3 [5+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty...
+- R07.9.2 [8+ 1-]: | `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bo...
+- R07.9.3 [6+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty...
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
-- R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
+- R07.9.5 [4+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [5+ 4-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.4.16 [4+ 3-]: **One spelling for suffix and all-but-one folds.** A suffix fold is `a.rev.scan(op)` and t...
 - R07.11.1 [5+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
@@ -542,7 +543,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.12.2 [1+ 0-]: | `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order...
 - R07.12.3 [1+ 0-]: | `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | \(O(1)...
 - R07.12.4 [1+ 0-]: | `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | \(O(n)\)
-- R07.12.5 [3+ 1-]: | `a.bsearch(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` tu...
+- R07.12.5 [4+ 1-]: | `a.bsearch(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` tu...
 - R07.12.6 [1+ 0-]: | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in...
 - R07.12.7 [1+ 0-]: | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rot...
 - R07.12.8 [1+ 0-]: | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ...
@@ -552,9 +553,9 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R08: 08-traits-generics.md
 
 - R08.5.2 [1+ 4-]: **Floats** are the other literals with a `.` or an exponent: `0.5`, `2.0`, `1.5e-9`. A lit...
-- R08.1.4 [3+ 2-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
+- R08.1.4 [7+ 4-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
 - R08.1.1 [14+ 2-]: A trait declares methods (with optional default bodies), associated types, field requireme...
-- R08.1.2 [4+ 2-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
+- R08.1.2 [5+ 2-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 2-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
 - R08.1.5 [2+ 1-]: Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with `Rhs` and `Out`, `Neg`...
 - R08.1.6 [1+ 1-]: **Derived impls are structural**: tuples, records, structs and enums get `Eq`, `Ord` (lexi...
@@ -562,7 +563,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.1.8 [1+ 1-]: Library-authored diagnostics: a trait may attach a message to "not implemented" and to eac...
 - R08.2.7 [1+ 0-]: **An impl chooses each associated type** its trait declares, with `type Name = T` in its b...
 - R08.2.2 [2+ 2-]: , and its body is checked against the bound alone
-- R08.1.9 [4+ 3-]: , so a type has one choice.
+- R08.1.9 [6+ 3-]: , so a type has one choice.
 - R08.2.1 [2+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
 - R08.2.10 [1+ 1-]: A generic fn may not reach itself, directly or mutually, at a type that grows on every cal...
@@ -575,7 +576,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.3.2 [1+ 0-]: Laws are never assumed by the type checker. They select documented, answer-preserving spec...
 - R08.3.3 [1+ 0-]: `cpl stress` samples laws on the values a program actually builds; `laws_hold(op, samples)...
 - R08.3.4 [1+ 0-]: A false law gives wrong answers, never undefined behaviour.
-- R08.4.1 [2+ 1-]: `(f: T, ..)` is a bound: any record with at least those fields, in any order. `R` names th...
+- R08.4.1 [2+ 2-]: `(f: T, ..)` is a bound: any record with at least those fields, in any order. `R` names th...
 - R08.4.2 [1+ 1-]: There is no subtyping: a record with more fields is not usable where fewer are expected un...
 - R08.4.3 [1+ 0-]: Row-polymorphic functions are monomorphized per record type.
 - R08.4.4 [1+ 4-]: Nine safety rules (decision 146): no hidden heap copies, no field reordering visible to th...
@@ -617,11 +618,12 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R10: 10-io.md
 
 - R10.3.7 [1+ 2-]: `?T` is not a `Seq`: `for v in x` on a `?Int` is E0302 naming `if let`. A sequence prints ...
-- R10.1.1 [14+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
+- R10.1.1 [16+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
-- R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
+- R10.1.3 [2+ 1-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
+- R10.1.4 [1+ 1-]: A value crossing to the judge's grader takes its C++ type from the type the `@grader` fn d...
 - R10.2.1 [7+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
-- R10.2.2 [9+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
+- R10.2.2 [10+ 2-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
 - R10.2.3 [21+ 5-]: Arrays `[D]T` read `D.count` values; `[R, C]T` reads `R.count * C.count` tokens row-major,...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
@@ -648,8 +650,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.2.3 [7+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
 - R11.2.4 [1+ 1-]: Everything is inlined into the one output file and tree-shaken: only called functions and ...
 - R11.3.1 [5+ 1-]: Only programs get the prelude; library modules `use` what they need, so a library never de...
-- R11.3.2 [4+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
-- R11.3.3 [9+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
+- R11.3.2 [5+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
+- R11.3.3 [10+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
 - R11.3.4 [2+ 1-]: A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and `p.adj4` find the method...
 - R11.3.5 [2+ 1-]: The LSP offers an import quick fix for any non-prelude stdlib name, and `cpl fmt` sorts `u...
 - R11.4.1 [1+ 0-]: The first line of a solution is a compiler stamp, added by the formatter: `// cpl 0.3.0`, ...
@@ -726,7 +728,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rjudge.3 [2+ 2-]: `I128` on a profile without `__int128` is an error naming the judge
 - Rjudge.4 [2+ 1-]: Size: a warning above 32 KB (or half of a smaller `source_kb`), an error above 64 KB or `s...
 - Rjudge.6 [2+ 2-]: `time_ms` and `memory_mb` are a problem's limits when its `cp.toml` has no `[limits]`.
-- Rjudge.7 [1+ 0-]: `memory_mb` feeds `cpl explain`'s peak-memory check and the LSP's code lens; `time_ms` fee...
+- Rjudge.7 [2+ 1-]: , and feeds `cpl explain`'s peak line and the LSP's code lens; `time_ms` feeds `cpl bench`...
 - Rjudge.8 [2+ 1-]: Local release runs build with the profile's flags and run under its stack (`ulimit -s`), s...
 
 ### Rlint: fmt-lint.md
@@ -740,7 +742,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rlsp.6 [1+ 1-]: **Hover**: the type, where `None` lives, storage width and peak bytes, proven ranges, the ...
 - Rlsp.7 [1+ 1-]: **Storage sizes** (decision 149): hover on a type or variable gives its size, field storag...
 - Rlsp.8 [1+ 0-]: **Inlay hints**: inferred types, parameter names past two positional arguments, opt-in liv...
-- Rlsp.2 [2+ 1-]: **Completion** ranked by type (positions of `V` inside `a[` for `a: [V]T`, operation value...
+- Rlsp.2 [4+ 1-]: **Completion** ranked by type (positions of `V` inside `a[` for `a: [V]T`, operation value...
 - Rlsp.3 [1+ 0-]: **Navigation and refactoring**: definition, references, rename, extract nested fn, inline,...
 - Rlsp.9 [1+ 0-]: **Editors**: a VS Code extension (highlighting, run/test/stress buttons, debugger, trace p...
 - Rlsp.4 [1+ 1-]: **Formatting**: `textDocument/formatting` returns exactly what `cpl fmt` writes, so an edi...
@@ -786,16 +788,16 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0112 `let ... else` block falls through: 1 case(s)
 - E0201 Unresolved name: 14 case(s)
 - E0202 Duplicate definition: 4 case(s)
-- E0203 Unknown field or method: 19 case(s)
+- E0203 Unknown field or method: 18 case(s)
 - E0204 Unknown type: 4 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 3 case(s)
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
-- E0301 Wrong index domain: 17 case(s)
+- E0301 Wrong index domain: 18 case(s)
 - E0302 Type mismatch: 64 case(s)
-- E0303 Wrong number of arguments: 20 case(s)
+- E0303 Wrong number of arguments: 21 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
@@ -825,35 +827,35 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0407 Duplicate enum variant tag: 1 case(s)
 - E0408 Assign into a range: 2 case(s)
 - E0409 Fn can end without a value: 2 case(s)
-- E0501 Unsupported construct in backend: 10 case(s)
+- E0501 Unsupported construct in backend: 11 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 13 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0505 Library lint that cannot be used: 7 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
-- E0602 Variable mutated while lent: 50 case(s)
+- E0602 Variable mutated while lent: 51 case(s)
 - E0603 Lent value escapes its scope: 39 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
 - E0606 Missing trait implementation for operator: 32 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
-- E0608 Use of moved value: 16 case(s)
+- E0608 Use of moved value: 15 case(s)
 - E0701 Ambiguous trait method: 2 case(s)
-- E0702 Overload by type: 2 case(s)
+- E0702 Overload by type: 3 case(s)
 - E0703 Operator tuple: 1 case(s)
-- E0704 Record misses a row field: 2 case(s)
+- E0704 Record misses a row field: 3 case(s)
 - E0705 Unsupported specialization: 1 case(s)
 - E0706 Fold without an identity: 1 case(s)
 - E0801 Context value is not a constant: 1 case(s)
 - E0802 Bare `with` after another statement: 2 case(s)
 - E0803 `?` used directly in a condition: 2 case(s)
 - E0804 `?` whose result is dropped: 1 case(s)
-- E0805 fresh_type_leaks_test *(0.3)*: 1 case(s)
+- E0805 Per-test position kept across test cases: 1 case(s)
 - E0806 Type annotation required for inference: 4 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
 - E0902 Range store not provable: 9 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
-- E0904 memory_over_profile *(0.3)*: 1 case(s)
+- E0904 Memory over the judge's limit: 1 case(s)
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
 - L0001 unknown_lint: 2 case(s)
@@ -975,7 +977,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0599 int_div_possible_zero: **no case**
 - L0601 Right side changes the place it assigns: 3 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
-- L0603 `.map` view read many times by index: 1 case(s)
+- L0603 `.map` or `.filter` view read on every pass: 3 case(s)
 - L0604 Generator holding a `mut` lend walked twice: 2 case(s)
 - L0605 Literal index into a slice that keeps source keys: 2 case(s)
 - L0606 Wide array of `Int`: 1 case(s)
@@ -983,17 +985,17 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
-- R0001 Runtime trap: 12 case(s)
-- R0101 Index out of range: 36 case(s)
-- R0102 Value outside a domain: 6 case(s)
-- R0201 Range store out of range: 10 case(s)
+- R0001 Runtime trap: 13 case(s)
+- R0101 Index out of range: 35 case(s)
+- R0102 Value outside a domain: 7 case(s)
+- R0201 Range store out of range: 11 case(s)
 - R0202 Integer overflow: 48 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
 - R0401 Assertion failed: 93 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
-- R0502 Input outside its read contract: 4 case(s)
+- R0502 Input outside its read contract: 5 case(s)
 - R0601 Stack exhausted: 1 case(s)
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
@@ -1016,7 +1018,7 @@ prepends it.
   - line 373: `use std.segtree.{SegTree}`
   - line 415: `file := (directive | item)*`
 - 02-values-types.md: 3 blocks, 2 with a case, 0 spec-only, 1 neither
-  - line 260: `domain V = 1..=read<1..=2e5>()`
+  - line 263: `domain V = 1..=read<1..=2e5>()`
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 8 blocks, 1 with a case, 0 spec-only, 7 neither
   - line 24: `domain V = 1..=n`
@@ -1054,31 +1056,31 @@ prepends it.
 - 06-control-functions.md: 3 blocks, 0 with a case, 0 spec-only, 3 neither
   - line 23: `fn dist(a: P, b: P) -> Int = abs(a.x - b.x) + abs(a.y - b.y)`
   - line 75: `fn go(v: V):`
-  - line 110: `fn divisors(n: Int) -> yields Int:`
+  - line 111: `fn divisors(n: Int) -> yields Int:`
 - 07-sequences.md: 7 blocks, 0 with a case, 0 spec-only, 7 neither
-  - line 92: `a[l..=r]`
-  - line 132: `let w = a[l..=r]`
-  - line 215: `a[l..=r]`
-  - line 260: `fn divisors(n: Int) -> yields Int:`
-  - line 329: `[f(x) for x in s if p(x)]`
-  - line 393: `a.keys.min(by: i => a[i])!`
-  - line 410: `let pre = a.scan(+)`
+  - line 94: `a[l..=r]`
+  - line 135: `let w = a[l..=r]`
+  - line 218: `a[l..=r]`
+  - line 263: `fn divisors(n: Int) -> yields Int:`
+  - line 332: `[f(x) for x in s if p(x)]`
+  - line 397: `a.keys.min(by: i => a[i])!`
+  - line 414: `let pre = a.scan(+)`
 - 08-traits-generics.md: 5 blocks, 0 with a case, 0 spec-only, 5 neither
   - line 20: `trait Next<V>:`
   - line 29: `trait Rank(Eq):`
-  - line 101: `fn best<S: Indexed<K, T>, K, T, B: Ord>(s: S, by: T -> B = x`
-  - line 136: `trait Op<T>:`
-  - line 157: `fn arcs<V, R: (u: V, v: V, ..)>(edges: List<R>) -> List<(to:`
+  - line 110: `fn best<S: Indexed<K, T>, K, T, B: Ord>(s: S, by: T -> B = x`
+  - line 145: `trait Op<T>:`
+  - line 166: `fn arcs<V, R: (u: V, v: V, ..)>(edges: List<R>) -> List<(to:`
 - 09-contexts-checks.md: 3 blocks, 0 with a case, 0 spec-only, 3 neither
   - line 26: `pub context io:`
   - line 37: `fn solve():`
   - line 127: `with checks(ranges: on, overflow: on, bounds: on):`
 - 10-io.md: 4 blocks, 1 with a case, 0 spec-only, 3 neither
-  - line 52: `let n: 1..=2e5 = read()`
-  - line 174: `let n: Int = read(base: 1)`
-  - line 182: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
+  - line 65: `let n: 1..=2e5 = read()`
+  - line 188: `let n: Int = read(base: 1)`
+  - line 196: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 0 spec-only, 1 neither
-  - line 38: `use std.segtree`
+  - line 38: `use std.graph.{dijkstra, Paths}`
 
 57 of 112 blocks have neither a case nor a spec-only reason.
 
@@ -1088,69 +1090,59 @@ Every `pub` item in `std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (58/69 named by a case)
-  - uncovered: `Monoid.commutative`, `Comm`, `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
-- **bag** (157/164 named by a case)
-  - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
-- **beats** (24/25 named by a case)
-  - uncovered: `BeatsSegTree.min_val`
-- **bitset** (99/102 named by a case)
-  - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
+- **algebra** (61/69 named by a case)
+  - uncovered: `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
+- **bag** (166/166 named by a case)
+- **beats** (25/25 named by a case)
+- **bitset** (106/107 named by a case)
+  - uncovered: `BitTrieArena.node_count`
 - **deque** (42/42 named by a case)
-- **derive** (5/6 named by a case)
-  - uncovered: `read_fields`
-- **dp** (39/39 named by a case)
-- **dsu** (64/64 named by a case)
+- **derive** (6/6 named by a case)
+- **dp** (45/45 named by a case)
+- **dsu** (69/69 named by a case)
 - **fenwick** (42/42 named by a case)
-- **flow** (57/65 named by a case)
-  - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
-- **geometry** (159/164 named by a case)
-  - uncovered: `ByAngle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (115/127 named by a case)
-  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `Lit.neg`, `TwoSat.add_or`, `Complement`
+- **flow** (66/67 named by a case)
+  - uncovered: `Matroid`
+- **geometry** (165/166 named by a case)
+  - uncovered: `ByAngle`
+- **graph** (120/127 named by a case)
+  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`
 - **grid** (39/39 named by a case)
 - **hashmap** (37/37 named by a case)
-- **heap** (102/102 named by a case)
+- **heap** (108/108 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
-- **lazy** (31/31 named by a case)
-- **marks** (46/46 named by a case)
+- **lazy** (43/43 named by a case)
+- **marks** (50/50 named by a case)
 - **math** (83/83 named by a case)
 - **matrix** (60/60 named by a case)
-- **mo** (5/6 named by a case)
-  - uncovered: `mo_steps`
+- **mo** (6/6 named by a case)
 - **mod** (29/29 named by a case)
-- **ntt** (19/20 named by a case)
-  - uncovered: `SosOver`
+- **ntt** (20/20 named by a case)
 - **opt** (3/3 named by a case)
 - **pair** (5/5 named by a case)
-- **persistent** (45/47 named by a case)
-  - uncovered: `RangeKth`, `RangeKth.new`
-- **poly** (57/58 named by a case)
-  - uncovered: `prod_linear`
-- **prefix** (46/58 named by a case)
-  - uncovered: `FillPrefix`, `Prefix.of_rev_scan`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
+- **persistent** (52/52 named by a case)
+- **poly** (60/60 named by a case)
+- **prefix** (50/58 named by a case)
+  - uncovered: `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
-- **range** (15/16 named by a case)
-  - uncovered: `RingRange`
-- **search** (11/11 named by a case)
-- **segtree** (57/57 named by a case)
-- **seq** (218/225 named by a case)
-  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rebased`, `StepKeys`, `SubseqStep`, `Ring`
+- **range** (19/19 named by a case)
+- **search** (9/9 named by a case)
+- **segtree** (67/67 named by a case)
+- **seq** (234/237 named by a case)
+  - uncovered: `Filtered`, `Mapped`, `RingWindows`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
-- **spec** (8/16 named by a case)
-  - uncovered: `concavity_break`, `argmins`, `knuth_break`, `differences`, `newton`, `poly_degree`, `poly_at`, `recurrence_at`
-- **strings** (179/193 named by a case)
-  - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
+- **spec** (16/16 named by a case)
+- **strings** (195/197 named by a case)
+  - uncovered: `Hashable`, `_gen_str`
 - **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (160/176 named by a case)
-  - uncovered: `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
-- **window** (21/22 named by a case)
-  - uncovered: `Undo`
+- **tree** (172/176 named by a case)
+  - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
+- **window** (24/24 named by a case)
 
-2286 of 2398 std items are named by a case.
+2443 of 2478 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
@@ -1164,6 +1156,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-02/lowercase-none-local-beside-none-named-arg.cp
 - core-02/none-names-a-param-and-a-field.cp
 - core-02/optional-min-assign-skips-none.cp
+- core-02/range-alias-has-its-ranges-ends.cp
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp
 - core-02/str-from-slice-copies.cp
@@ -1192,6 +1185,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-05/field-let-after-closure-captures-struct.cp
 - core-05/field-let-then-whole-struct-passed.cp
 - core-05/field-read-in-a-loop-is-not-moved.cp
+- core-05/mut-call-copies-an-element-it-may-grow.cp
 - core-05/mut-cell-of-2d-array-as-argument.cp
 - core-05/nested-field-let-then-parent-read.cp
 - core-05/param-field-let-then-same-field-read.cp
@@ -1201,6 +1195,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-06/code-after-a-sometimes-leaving-statement-runs.cp
 - core-07/in-on-a-list-fixes-to-contains.cp
 - core-07/list-literal-of-range-is-one-element.cp
+- core-07/yielded-closure-in-struct-field-writes-generator-local.cp
 - core-07/yielded-closure-in-struct-writes-generator-local.cp
 - core-07/yielded-closure-writes-generator-local.cp
 - core-08/has-bound-generic-impl.cp

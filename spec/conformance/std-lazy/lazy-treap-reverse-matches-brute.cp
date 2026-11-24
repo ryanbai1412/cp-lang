@@ -8,6 +8,7 @@ for trial in 0..60:
         apply: (v, k, f) => v + f.a + f.d * k,
         compose: (g, f) => (a: g.a + f.a, d: g.d + f.d),
         split: (f, k) => (f, (a: f.a + f.d * (k + 1), d: f.d)),
+        mirror: (f, n) => (a: f.a + f.d * (n - 1), d: -f.d),
     )
     var b: List<Int> = []
     for step in 0..40:

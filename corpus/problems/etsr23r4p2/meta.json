@@ -40,5 +40,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "SegTree of [Slot]Mod<p> nodes, shift action; totient chain"
+ "notes": "SegTree of [Slot]Mod<p> nodes, shift action; totient chain",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "5d9a3caa5836dc85534b16c3f2e48f5b88fdf4de"
+ }
 }

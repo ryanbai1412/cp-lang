@@ -26,6 +26,7 @@
 // - v in {2, 4} (gcd = 2) -> multiply k by 3;
 // - v = 3       (gcd = 3) -> multiply k by 2.
 // If residue 6 (p0) fails, no multiple of k can fix it (return none).
+// Bounds: n0, n1: 1..=50; q: 1..=100; queries: 1..=10 ** 18
 
 fn covers(k: I128, v: I128, segs: List<(Int, Int)>, t: I128) -> Bool:
     let k6 = I128(6) * k

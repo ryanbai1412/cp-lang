@@ -9,6 +9,7 @@
 //   below a[low] must be done first (low gets Sweep, bound shrinks), a cell with a[i] < a[low] is
 //   a Detour of low. Then simulate from low: each cell goes Detour(t) -> Sweep -> Finish, choosing
 //   Inc or Jump from its phase; O(n^2) ops and time.
+// Bounds: n: 1..=2000; a, b: 1..=n
 enum Op: Inc = 1, Jump = 2
 
 @!multitest

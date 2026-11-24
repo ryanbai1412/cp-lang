@@ -131,6 +131,29 @@ pub(super) fn add_methods(scope: &mut Scope, index: usize) {
         }
     }
     for (key, name) in found {
+        add_overloads(scope, index, &name);
+        scope.imports.entry(key).or_insert(Import {
+            module: index,
+            name,
+        });
+    }
+}
+
+/// The later `fn name(self: ..)`s of the module at `index`, each under
+/// its own key beside the first: `bsearch of std.range#2` (R08.1.4).
+pub(super) fn add_overloads(scope: &mut Scope, index: usize, name: &str) {
+    let module = &scope.modules[index];
+    let found: Vec<(String, String)> = (2..)
+        .map(|k| (k, crate::prelude::overload_key(name, k)))
+        .take_while(|(_, key)| module.analysis.scope.names.contains_key(key))
+        .map(|(k, key)| {
+            (
+                crate::prelude::method_key(name, &format!("{}#{k}", module.name)),
+                key,
+            )
+        })
+        .collect();
+    for (key, name) in found {
         scope.imports.entry(key).or_insert(Import {
             module: index,
             name,
@@ -140,7 +163,7 @@ pub(super) fn add_methods(scope: &mut Scope, index: usize) {
 
 /// What the library's `name` of `module` is imported under: its
 /// `method_key` beside a name the file declares, or another module's of
-/// the name (seq's `xs.fold(f, init)` beside the listed free
+/// the name (seq's `xs.fold_from(init, f)` beside the listed free
 /// `std.algebra.fold`), so a call picks among them (R11.3.4).
 pub(super) fn import_key(
     scope: &Scope,

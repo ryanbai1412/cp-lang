@@ -28,5 +28,21 @@ class Summarize(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(bench.ROOT, "bench", "unmatched.txt")))
 
 
+class CollectItems(unittest.TestCase):
+    def cp_of(self, **kw):
+        [item] = bench.collect_items({"corpus"}, {"mccc6s3"}, "/nonexistent", **kw)
+        return os.path.relpath(item[2], bench.ROOT)
+
+    def test_the_series_times_the_frozen_copy(self):
+        self.assertEqual(self.cp_of(), "tests/v02-snapshot/mccc6s3/port.cp")
+
+    def test_live_times_the_port_as_it_is_now(self):
+        self.assertEqual(self.cp_of(live=True), "corpus/problems/mccc6s3/port.cp")
+
+    def test_a_package_without_orig_cpp_is_timed_against_its_ac_submission(self):
+        [item] = bench.collect_items({"corpus"}, {"996warmup8p3"}, "/nonexistent", live=True)
+        self.assertEqual(os.path.relpath(item[3], bench.ROOT), "corpus/submissions/5324670.cpp")
+
+
 if __name__ == "__main__":
     unittest.main()

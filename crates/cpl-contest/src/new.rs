@@ -581,12 +581,15 @@ fn report(
         Ok(created) => {
             let samples = scaffold.samples.len();
             if json {
-                let _ = writeln!(
-                    stdout,
-                    "{{\"path\":{},\"created\":true,\"tests\":{},\"sample_count\":{samples}}}",
-                    cpl_json::escape_string(&created[0].shown()),
-                    cpl_json::escape_string(&created[1].shown()),
-                );
+                let json = cpl_json::write_with(|w| {
+                    w.object().key("path").str(&created[0].shown());
+                    w.key("created")
+                        .bool(true)
+                        .key("tests")
+                        .str(&created[1].shown());
+                    w.key("sample_count").int(samples).end();
+                });
+                let _ = writeln!(stdout, "{json}");
                 return 0;
             }
             let _ = writeln!(stdout, "  created {}", created[0].shown());

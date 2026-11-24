@@ -35,6 +35,18 @@ mod library;
 mod recheck;
 mod rules;
 mod session;
+/// The names std declares `pub fn`, generated from `std/*.cp`: lint rules
+/// name std's API through these, never a string literal.
+pub mod std_fn {
+    include!(concat!(env!("OUT_DIR"), "/std_fn.rs"));
+
+    /// The std modules that declare `name`, empty for a name std lacks.
+    pub fn declared_in(name: &str) -> &'static [&'static str] {
+        DECLARED_IN
+            .binary_search_by(|(n, _)| (*n).cmp(name))
+            .map_or(&[], |i| DECLARED_IN[i].1)
+    }
+}
 mod typed;
 mod walk;
 
@@ -46,7 +58,9 @@ pub(crate) use checker::{checked, checker_lints};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
 pub use session::Session;
-pub use typed::{apply_lint_fixes, lint_analysis, refine_with_analysis};
+pub use typed::{
+    apply_lint_fixes, apply_lint_fixes_where, lint_analysis, refine_with_analysis, Errors,
+};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
 use cpl_syntax::ast::{Block, ExprKind, Stmt, StmtKind};
@@ -152,6 +166,9 @@ pub struct Lint {
     /// Its message names the call to write, so it is quiet inside a fn of
     /// that name.
     pub quiet_in_namesake: bool,
+    /// The types it is about, from its record's `on`: a finding stands only
+    /// where the checker types its first label as one (`Ty::is_one_of`).
+    pub on: &'static [&'static str],
     pub no_fix: Option<&'static str>,
     /// The checker error `trigger` shows because it uses a removed spelling;
     /// `None` when it passes `cpl check`.
@@ -917,7 +934,13 @@ pub(crate) fn fix_at(
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<fix>.cp".to_string());
-    fix_in(&mut cpl_check::Session::new(), &key, src, config)
+    fix_in(
+        &mut cpl_check::Session::new(),
+        &key,
+        src,
+        config,
+        &cpl_ir::check,
+    )
 }
 
 /// [`fix`] on the file `key` in a warm `db`, leaving `db` holding the result.
@@ -926,13 +949,14 @@ pub fn fix_in(
     key: &str,
     src: &str,
     config: &Config,
+    check: &Errors,
 ) -> (String, usize) {
     let (src, total) = fix_removed_syntax(src);
     if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
         return (src, total);
     }
     let (src, checked) = fix_checked_removed_syntax_in(db, key, &src);
-    let (src, linted) = apply_lint_fixes(db, key, src, config);
+    let (src, linted) = apply_lint_fixes(db, key, src, config, check);
     (src, total + checked + linted)
 }
 

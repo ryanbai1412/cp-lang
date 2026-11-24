@@ -4,6 +4,7 @@
 //! read in one go, over a vertex domain.
 
 use crate::facts::Facts;
+use crate::std_fn;
 use crate::walk::{unparen, walk_pattern, walk_stmt, Bind, Visitor};
 use crate::{File, Finding, MANUAL_ADJACENCY_LIST};
 use cpl_check::Ty;
@@ -73,7 +74,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                             let ExprKind::Field { base, name } = &callee.kind else {
                                 return;
                             };
-                            if name.text != "push" {
+                            if name.text != std_fn::PUSH {
                                 return;
                             }
                             if let ExprKind::Index { base, indices } = &base.kind {
@@ -130,7 +131,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 }
 
 fn is_list(ty: &Ty) -> bool {
-    matches!(ty, Ty::Named { name, .. } if name == "List")
+    ty.is_list()
 }
 
 fn is_empty_list(e: &Expr) -> bool {

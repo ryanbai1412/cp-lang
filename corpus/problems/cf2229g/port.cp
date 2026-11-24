@@ -10,6 +10,7 @@
 //   increasing value across both sides (merge_sorted); r is reached from the previous record on
 //   its side or from an already-met record on the other side through x (whose value both prefix
 //   sums count, hence - v[x]); a pointer per side visits each candidate once: O(n).
+// Bounds: n: 1..=200_000; k: 1..=1_000_000_000; x: 1..=n
 use std.seq.{merge_sorted}
 
 enum Side: Left | Right

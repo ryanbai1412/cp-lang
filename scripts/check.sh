@@ -26,7 +26,8 @@
 #         7. the site's snippet gate (node web/scripts/gate.mjs): every
 #            program on the site is at least at its declared status,
 #            and the trace viewer's node tests (tools/trace/*.test.cjs)
-# --full  8. the prover's products fuzzer, and 100 random programs
+# --full  (the steps are scripts/ci.py STEPS["full"])
+#         8. the prover's products fuzzer, and 100 random programs
 #            (scripts/gen-programs.py) against an independent model
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
@@ -273,9 +274,14 @@ case "$gate_kind" in
         esac
         step "cpl-conform ratchet ($conform_suites --check against research/scoreboard.json)"
         cargo build -q -p cpl-cli -p cpl-conform
-        # Seeded problems (problem-packages/R9) read their cases from target/corpus-tests/.
-        uv run --quiet python scripts/corpus.py make >/dev/null \
-            || fail "scripts/corpus.py make failed; rerun it to see which package"
+        # Seeded problems (problem-packages/R9) read their cases from target/corpus-tests/;
+        # only the corpus suite reads them.
+        case " $conform_suites " in
+            *" all "* | *" corpus "*)
+                uv run --quiet python scripts/corpus.py make >/dev/null \
+                    || fail "scripts/corpus.py make failed; rerun it to see which package"
+                ;;
+        esac
         # shellcheck disable=SC2086
         # CI keeps main's last green run in $CPL_CONFORM_PREV, so a case newer than
         # research/scoreboard.json still can't regress unseen (ci.yml).
@@ -300,13 +306,10 @@ case "$gate_kind" in
         [ -z "${CPL_NEXTEST_ARCHIVE:-}" ] \
             || from=(--archive-file "$CPL_NEXTEST_ARCHIVE" --workspace-remap . --extract-to . --extract-overwrite)
         step "cargo nextest run --partition $part (without the --full tests)"
-        # A test that passes only on its retry fails the run as flaky, and
-        # flaky.py names it (ci/R35): flakes surface instead of hiding.
-        nextest_log="$(mktemp)"
-        cargo nextest run "${from[@]}" --profile gate --no-fail-fast --retries 1 --flaky-result fail --partition "$part" -E "not ($slow_filter)" \
-            2>&1 | tee "$nextest_log" || tests_status=$?
-        uv run --quiet python scripts/flaky.py "$nextest_log"
-        [ "${tests_status:-0}" = 0 ] || fail "a test failed or was flaky; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'"
+        # No retries: a flaky test fails on its first run (ci/R35).
+        cargo nextest run "${from[@]}" --profile gate --no-fail-fast --partition "$part" -E "not ($slow_filter)" \
+            || tests_status=$?
+        [ "${tests_status:-0}" = 0 ] || fail "a test failed; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'"
         step_end
         printf '\ncheck: test partition %s passed in %ss\n' "$part" "$(( $(date +%s) - gate_t0 ))"
         exit 0
@@ -347,16 +350,16 @@ if [ "$mode" = land ] || [ "$mode" = commit ]; then
     fi
 fi
 if [ "$mode" = commit ]; then
-    step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
-    uv run --quiet python scripts/debt-ratchet.py --check \
-        || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
-    step "use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)"
-    uv run --quiet python scripts/check-usecases.py --check >/dev/null || fail "use-case catalogue check failed; see above"
+    step "checking scripts (scripts/ci.py steps commit)"
+    uv run --quiet python scripts/ci.py steps commit --cpl "$cpl" || exit 1
     step "generated files current: skill pages, COVERAGE.md, gap lists (scripts/gen.py --check)"
     # CI's regen job regenerates stale files on main, so a commit isn't
     # blocked by staleness it may not have caused.
-    uv run --quiet python scripts/gen.py --check \
-        || echo "WARNING: generated files are stale; run: just gen (CI's regen job also fixes them)" >&2
+    # Only the summary line: the per-file lines are CI's regen job's to act on.
+    if ! gen_out=$(uv run --quiet python scripts/gen.py --check 2>&1); then
+        printf '%s\n' "$gen_out" | tail -n 1
+        echo "note: not blocking; CI's regen job rewrites these on main (details: uv run scripts/gen.py --check)"
+    fi
     if [ -n "${sel_slices:-}" ]; then
         step "touched-path slices: $sel_slices (scripts/affected.py, each under 20 s)"
         uv run --quiet python scripts/affected.py --run-slices $sel_slices \
@@ -396,8 +399,8 @@ if [ "$mode" = commit ]; then
     if [ "${sel_audit:-0}" = 1 ]; then
         step "staged corpus packages pass every mode (scripts/corpus.py verify --changed staged)"
         cargo build -q -p cpl-cli
-        uv run --quiet python scripts/corpus.py make >/dev/null \
-            || fail "scripts/corpus.py make failed; rerun it to see which package"
+        uv run --quiet python scripts/corpus.py make --changed staged >/dev/null \
+            || fail "scripts/corpus.py make --changed staged failed; rerun it to see which package"
         uv run --quiet python scripts/corpus.py verify --changed staged --skip dream --cpl "$cpl" \
             || fail "a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
         mapfile -t dreams < <(git diff --cached --name-only --diff-filter=AMR -- 'corpus/problems/*/dream.cp' \
@@ -412,6 +415,11 @@ if [ "$mode" = commit ]; then
         step "lint catalog names only real APIs (scripts/idioms-catalog.py --check)"
         uv run --quiet python scripts/idioms-catalog.py --check \
             || fail "a spec/idioms/lints.md row names an API std doesn't define; the finding above names the lint and the name"
+    fi
+    if [ -n "${sel_steps:-}" ]; then
+        step "touched checking scripts (scripts/ci.py steps touched $sel_steps)"
+        read -ra touched <<<"$sel_steps"
+        uv run --quiet python scripts/ci.py steps touched --cpl "$cpl" "${touched[@]}" || exit 1
     fi
     if [ -n "$sel_script_tests" ]; then
         step "script unit tests: $sel_script_tests"
@@ -494,7 +502,7 @@ cleanup() {
         # kill exits 1 when the job already finished.
         if kill -0 "$pid" 2>/dev/null; then kill "$pid" 2>/dev/null || [ $? = 1 ]; fi
     done
-    rm -rf "$lib_logs" "$manifest" "$manifest.reads" ${tmp:+"$tmp"}
+    rm -rf "$lib_logs" "$manifest" "$manifest.reads"
 }
 trap cleanup EXIT
 
@@ -544,7 +552,9 @@ fi
 # Run the recovery scoreboard in parallel with the remaining fast checks
 # (nextest, doctests, and LSP latency tests have finished, so no Cargo lock contention).
 recovery_cached=0
-if cache_hit recovery; then
+if [ "$gate_part" = checks ]; then
+    recovery_cached=2
+elif cache_hit recovery; then
     recovery_cached=1
 else
     cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
@@ -573,110 +583,9 @@ else
     cache_save fmt_corpus
 fi
 
-# Tech-debt ratchet: .rs file-size cap allowlist (shrink-only) + stdlib todo / #[ignore] / pending counts.
-step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
-uv run --quiet python scripts/debt-ratchet.py --check \
-    || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
-
-step "handbook reads for an outsider (scripts/check-handbook.py)"
-uv run --quiet python scripts/check-handbook.py || fail "handbook doc leans on shared context; see above"
-step "use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)"
-uv run --quiet python scripts/check-usecases.py --check >/dev/null || fail "use-case catalogue check failed; see above"
-
-# On a main push CI sets CPL_DERIVED_HEALED=1: the regen job in the same run
-# commits these files (and goes red if it can't), so staleness only warns.
-derived() {
-    if [ "${CPL_DERIVED_HEALED:-}" = 1 ]; then
-        echo "warning: $1 (the regen job commits the fix)" >&2
-    else
-        fail "$1"
-    fi
-}
-step "bundled skill (scripts/skill-gen.py --check)"
-uv run python scripts/skill-gen.py --check --cpl "$cpl" \
-    || derived "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check"
-step "skill prose uses current spellings (scripts/skill-prose.py)"
-uv run --quiet python scripts/skill-prose.py --cpl "$cpl" \
-    || fail "inline code in the skill's prose uses a removed spelling; the finding above names the span and its current form"
-
-step "emitted C++ fits 32 KB and every bench program builds (bench/sizes.py --check)"
-sizes_status=0
-uv run --quiet python bench/sizes.py --check --cpl "$cpl" >"$target/sizes.log" 2>&1 || sizes_status=1
-grep -v ': warning: ' "$target/sizes.log"
-[ "$sizes_status" -eq 0 ] \
-    || fail "a program is over the 32 KB bar or a bench program stopped building; see above"
-step "g++ -O2 compile time of the bench programs within its bars (bench/compile_time.py --check)"
-uv run --quiet python bench/compile_time.py --check --cpl "$cpl" \
-    || fail "the bench programs' g++ -O2 time is over a bar in bench/compile_time.py; see above"
-step "every std fn with a case grows as its cost: says (bench/scaling.py --check)"
-uv run --quiet python bench/scaling.py --check --cpl "$cpl" \
-    || fail "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"
-
-step "conformance coverage: COVERAGE.md current, no new rule gaps"
-uv run --quiet python scripts/spec-gate.py coverage ||
-    derived "rule coverage gate failed; see above, then rerun: uv run scripts/spec-gate.py coverage"
-
-step "conformance gaps: SUBSET.md generated from the board (scripts/spec-gate.py subset)"
-uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"
-
-step "conformance matrix: generated cases current, every cell a case or n/a"
-uv run --quiet python scripts/spec-gate.py matrix || fail "matrix gate failed; see above"
-uv run --quiet python scripts/spec-gate.py widths || fail "spec/conformance/widths/ is stale; run: uv run scripts/spec-gate.py widths --write"
-uv run --quiet python scripts/spec-gate.py ownership || fail "spec/conformance/ownership/ is stale; run: uv run scripts/spec-gate.py ownership --write"
-uv run --quiet python scripts/spec-gate.py xref || fail "a rule id names no rule in spec/core; see above"
-uv run --quiet python scripts/spec-gate.py changelog || fail "a spelling the spec removes has no changelog line; see above"
-uv run --quiet python scripts/spec-gate.py tool-rules || fail "a tool feature in spec/tools/ has no rule id; see above"
-uv run --quiet python scripts/spec-gate.py std-signatures || fail "a spec/lib chapter and std disagree on a return type; see above"
-uv run --quiet python scripts/spec-gate.py decisions-explained || fail "a decision cited in spec/ has no handbook explanation; see above"
-
-step "conformance traits: every claimed trait method has a case or a gap line"
-uv run --quiet python scripts/spec-gate.py traits || fail "trait gate failed; see above"
-
-step "conformance sigs: named args in spec/core and spec/lib exist in std"
-uv run --quiet python scripts/spec-gate.py sigs || fail "sig gate failed; see above"
-
-step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"
-uv run --quiet python scripts/spec-gate.py prelude || fail "prelude gate failed; see above"
-
-step "std containers print, walk and have is_empty (scripts/std-trait-matrix.py)"
-uv run --quiet python scripts/std-trait-matrix.py --max 76 \
-    || fail "a std container lacks a common trait; see above"
-
-step "std docs follow the std-docs checklist (scripts/std-docs-lint.py)"
-uv run --quiet python scripts/std-docs-lint.py --max 0 \
-    || fail "a std doc breaks a std-docs rule; see above"
-
-step "every public std fn has its required doc labels (scripts/spec-gate.py std-docs --audit)"
-uv run --quiet scripts/spec-gate.py std-docs --audit > /dev/null \
-    || { uv run --quiet scripts/spec-gate.py std-docs --audit; fail "a public std fn lacks a required doc label; see above"; }
-
-step "std, spec and lints use only GLOSSARY spellings (scripts/spec-gate.py vocab)"
-uv run --quiet python scripts/spec-gate.py vocab || fail "a spelling spec/GLOSSARY.md bans; see above"
-
-step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
-uv run --quiet python scripts/std-api-lint.py --max 0 \
-    || fail "a std signature breaks a std-api rule; see above"
-
-step "std's public signatures match their snapshot (scripts/std-api-snapshot.py)"
-uv run --quiet python scripts/std-api-snapshot.py \
-    || fail "std's public API changed; review the diff above and run scripts/std-api-snapshot.py --write"
-
-step "std is lint-clean, shrink-only (scripts/std-lint-ratchet.py)"
-uv run --quiet python scripts/std-lint-ratchet.py --cpl "$cpl" \
-    || fail "std gained a lint hit; fix it or mark it with lint(...: allow)"
-
-step "prelude exports what its fns return (scripts/prelude-signatures.py)"
-uv run --quiet python scripts/prelude-signatures.py \
-    || fail "a prelude fn returns a std type the prelude does not export; see above"
-
-step "std trap examples trap (scripts/std-trap-examples.py)"
-uv run --quiet python scripts/std-trap-examples.py --cpl "$cpl" \
-    || fail "a std \`trap:\` doc example did not trap; see above"
-
-# Taste reviews: always run (fast, checks working-tree/staged ports).
-step "taste reviews (scripts/review-check.py --check)"
-uv run --quiet python scripts/review-check.py --check \
-    || fail "taste review gate failed; see research/reviews/README.md"
+# The checking scripts and spec gates, in order (scripts/ci.py STEPS).
+step "checking scripts (scripts/ci.py steps checks)"
+uv run --quiet python scripts/ci.py steps checks --cpl "$cpl" || exit 1
 
 step "site snippet gate (node web/scripts/gate.mjs)"
 if [ -n "$site_gate_pid" ]; then
@@ -722,7 +631,10 @@ elif [ -n "${scoreboard_pid:-}" ]; then
     cache_save scoreboard_fast
 fi
 
-if [ "$recovery_cached" -eq 1 ]; then
+if [ "$recovery_cached" -eq 2 ]; then
+    step "cargo test: the recovery scoreboard"
+    echo "skipped: the CI test partitions run it (CPL_GATE_PART=checks)"
+elif [ "$recovery_cached" -eq 1 ]; then
     step "cargo test: the recovery scoreboard"
     echo "cached (tree unchanged outside its excludes)"
 elif [ -n "${recovery_pid:-}" ]; then
@@ -735,55 +647,9 @@ elif [ -n "${recovery_pid:-}" ]; then
     cache_save recovery
 fi
 if [ "$mode" = full ]; then
-    need node "the wasm smoke test and the VS Code tests run on it"
-    need npm "the VS Code tests run on it"
-    need g++ "the judge-profile test compiles the ports with it"
-
-    tmp="$(mktemp -d)"
-
-    step "cargo test: the prover fuzzer"
-    cargo test -p cpl-prover --test fuzz -- --exact products_and_variable_divisors_are_never_decided_wrongly
-
-    step "random programs: interpreter, C++ and sanitized C++ match an independent model (conformance/R6)"
-    uv run scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
-        --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
-    uv run --quiet python scripts/spec-gate.py metamorphic || fail "a meaning-preserving edit changed a case's output; see above"
-    uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
-    uv run --quiet python scripts/spec-gate.py speed || fail "the conformance and spec-block suites went over their CPU budget; see above"
-    uv run --quiet python scripts/spec-gate.py explain-copies --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
-    uv run scripts/spec-gate.py tool-vocab || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
-    uv run --quiet python scripts/spec-gate.py flakes --runs 2 || fail "a conformance case changed verdict between runs; see above"
-
-    step "cargo test: every port compiled with every judge profile's flags"
-    cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags
-
-    step "cargo test: budget, then the front-end latency, each on its own"
-    cargo test -p cpl-cli --test budget -- --test-threads=1
-    cargo test -p cpl-lsp --test latency -- --exact front_end_check_is_under_50_ms
-
-    step "wasm build and crates/cpl-wasm/tests/smoke.mjs"
-    scripts/build-wasm.sh --smoke --out "$tmp/wasm"
-
-    step "scripts/site-check.sh: site build, cpl.wasm size cap, browser smoke"
-    CPL="$cpl" scripts/site-check.sh --no-cache
-
-    step "editors/vscode: npm test"
-    cargo build -q -p cpl-cli    # the LSP test starts target/debug/cpl
-    (
-        cd editors/vscode
-        [ -d node_modules ] || npm ci --no-audit --no-fund
-        npm test
-        if [ -n "${DISPLAY:-}" ]; then
-            npm run test:integration
-        elif command -v xvfb-run >/dev/null; then
-            xvfb-run -a npm run test:integration
-        else
-            echo "editors/vscode: SKIPPED extension-host tests (no display and no xvfb-run)"
-        fi
-    )
-
-    step "editors/smoke.sh: the other editor setups against cpl lsp"
-    editors/smoke.sh
+    # The slow suites and the full tier's spec gates, in order (scripts/ci.py STEPS["full"]).
+    step "the --full suites (scripts/ci.py steps full)"
+    uv run --quiet python scripts/ci.py steps full --cpl "$cpl" || exit 1
 fi
 
 # The Trap Parity Gate's open register: wrong programs that `cpl run`, the

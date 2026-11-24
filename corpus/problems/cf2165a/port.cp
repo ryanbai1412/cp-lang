@@ -5,6 +5,7 @@
 // Solution: each of the n ring edges (x, y) costs at least max(x, y) once, except that one edge
 //   at the global maximum is never paid; merging the smallest element into its smaller
 //   neighbour first achieves it. Answer: sum of max over cyclic adjacent pairs minus max(a), O(n).
+// Bounds: n: 2..=200_000; a: 0..=10 ** 9
 
 @!multitest
 let n: 2..=200_000 = read()

@@ -26,8 +26,8 @@ def chain(x):
     return k
 
 
-# The accepted C++ caches phi below 1e7 and keeps 11 tower levels, so the judge's p are
-# below 1e7 with a totient chain of at most 10 moduli.
+# The accepted C++ caches phi below 1e7 and keeps 11 tower levels, so seeded p stay below 1e7
+# with a totient chain of at most 10 moduli; --max takes the statement's p <= 1e8.
 def modulus(hi):
     while True:
         p = r.randint(1, hi)
@@ -35,9 +35,10 @@ def modulus(hi):
             return p
 
 
-p = modulus(10**7) if MAX else r.choice([1, 2, 6, 127, modulus(1000), modulus(10**7)])
+# 95440805 = 5 * 17 * 257 * 4369 has the longest totient chain below 1e8 (28 moduli)
+p = 95440805 if MAX else r.choice([1, 2, 6, 127, modulus(1000), modulus(10**7)])
 # the accepted C++ loops forever on c = 1, so the judge's tests have c >= 2
-c = r.randint(2, 10**8) if MAX else r.choice([2, 3, r.randint(2, 50), r.randint(2, 10**8)])
+c = r.randint(2, p - 1) if MAX else r.choice([2, 3, r.randint(2, 50), r.randint(2, 10**8)])
 a = [r.randint(0, p - 1) for _ in range(n)]
 out = [f"{n} {q} {p} {c}", " ".join(map(str, a))]
 for _ in range(q):

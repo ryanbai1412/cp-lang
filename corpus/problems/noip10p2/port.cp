@@ -7,6 +7,7 @@
 //   Memoised best(a, b, c, d) = this square's score + the max over each kind still left of
 //   best with that count lowered; at most 41^4 states, 4 moves each.
 // original: corpus/submissions/5445662.cpp
+// Bounds: n: 1..=350; m: 1..=120; score: 0..=100; cards: 1..=4
 let n: 1..=350 = read()
 let m: 1..=120 = read()
 let score: [n]0..=100 = read()

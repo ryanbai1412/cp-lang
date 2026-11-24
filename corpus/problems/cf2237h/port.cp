@@ -10,6 +10,7 @@
 //   it costs a Move (`missing`, the answer). Chunks in decreasing t_old take from the newest
 //   eligible bucket (older cells serve more vertices, so this is optimal by exchange) and matched
 //   cells move to bucket t_now: about O((n + q) log^2 n).
+// Bounds: n, m: 2..=100_000; q: 1..=100_000; init: 1..=n
 
 @!multitest
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()

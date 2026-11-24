@@ -8,6 +8,7 @@
 //   (r, c) is an edge from value r * c to the value it holds. Group those arcs by source in a CSR
 //   array (a counting sort) and walk from the value of (1, 1); holding MN means (M, N) is reachable. O(MN).
 // original: corpus/submissions/4324075.cpp
+// Bounds: rows, cols: 1..=4000; room: 0..=rows * cols
 with io(answers: ("yes", "no"))
 let rows: 1..=4000 = read()
 let cols: 1..=4000 = read()

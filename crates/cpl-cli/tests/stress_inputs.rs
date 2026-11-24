@@ -24,12 +24,7 @@ fn programs() -> Vec<PathBuf> {
         .map(|e| e.unwrap().path())
         .filter(|p| p.extension().is_some_and(|x| x == "cp"))
         .collect();
-    for problem in std::fs::read_dir(root.join("corpus/problems")).unwrap() {
-        let spec = problem.unwrap().path().join("spec.cp");
-        if spec.is_file() {
-            found.push(spec);
-        }
-    }
+    found.extend(cpl_corpus::files(&root, "spec.cp"));
     found.sort();
     found
 }

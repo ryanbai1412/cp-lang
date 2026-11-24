@@ -2,9 +2,9 @@
 
 # std.seq
 
-Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.  - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`). - Binary & unimodal search: moved to `std.search` (`bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`). - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`. - Runs, chunking & windows: `runs` (with `by:` or `link:`), `buckets`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`. - Scans & folds: `scan` (`.rev.scan` for suffixes); the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over `a.scan(op)` and `a.rev.scan(op)`. - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`. - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`. - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.window_fold(k, op)` or `Window(op)` (`std.window`). - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
+Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.  - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`). - Binary & unimodal search: moved to `std.search` (`ternary_max`/`ternary_min`, `Range<F64>.bsearch`/`peak`/`valley`, `parallel_bsearch`). - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`. - Runs, chunking & windows: `runs` (with `by:` or `link:`), `buckets`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`. - Scans & folds: `scan` (`.rev.scan` for suffixes); the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over `a.scan(op)` and `a.rev.scan(op)`. - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`. - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`. - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.window_fold(k, op)` or `Window(op)` (`std.window`). - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `Rev`, `RingSlice`, `Slice`, `Stepped`, `Ties`, `Track`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `prev_permutation`, `prod`, `product`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `span`, `step`, `sum`, `take_while`, `tally`, `windows`, `zip`.
+In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `Positional`, `Rev`, `RingSlice`, `Slice`, `Stepped`, `Ties`, `Track`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `prev_permutation`, `prod`, `product`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `span`, `step`, `sum`, `take_while`, `tally`, `windows`, `zip`.
 
 ## Types & Constants
 
@@ -21,6 +21,8 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 - `fn get(self, i: D) -> T` — \(O(1)\)
 - `fn slice(self, r: Range<D>) -> List<T>` — \(O(r.\mathit{len})\); The compressed values over a range `r` of `xs.D`, as a list.
 - `@get fn len(self) -> Int` — \(O(1)\); How many distinct values there are.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no value was compressed.
+- `@get fn items(self) -> yields (D, T)` — \(O(\mathit{len})\)
 - `fn index_of(self, val: T) -> D` — \(O(\log n)\); The index of `val`, which must be one of the compressed values.; traps: when `val` was not compressed
 - `fn try_index_of(self, val: T) -> ?D` — \(O(\log n)\); The index of `val` if it was compressed, or `None`.
 - `fn contains(self, val: T) -> Bool` — \(O(\log n)\); Whether `val` is one of the compressed values.
@@ -45,7 +47,11 @@ A sequence with an \(O(1)\) length (R07.3.3).
 
 A `Seq` that can also walk from its end, which is what `.rev` needs.
 
-## `trait Indexed<D, T>: Keyed<D, T> + Sized + Bidir<T>`
+## `trait Positional<T>: Seq<T> + Sized`
+
+A sized sequence read in \(O(1)\) by walk position: `s.nth(k)` is the element `k` steps into the walk.
+
+## `trait Indexed<D, T>: Keyed<D, T> + Positional<T> + Bidir<T>`
 
 A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
 
@@ -83,16 +89,19 @@ Fields: `f: T -> U,`.
 - `@get fn keys<K>(self) -> Range<K>` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the slice.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the slice has no elements.
+- `@get fn items<K, T>(self) -> yields (K, T)` — \(O(\mathit{len})\)
 
-## `struct Rebased<S>(pub src: S)`
+## `struct Rebased<S, Idx>(pub src: S, idx: Range<Idx>)`
 
-The view `rebase` returns.
+The view `rebase` returns: `src` keyed by `Idx`, a fresh domain `0..src.len` of its own.
 
 ## `struct Stepped<S, T>(pub src: S, pub k: Int, pub from: Int = 0)`
 
 \(O(1)\) to make.
 
 - `@get fn len(self) -> Int` — \(O(1)\)
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the stepped view has no elements.
+- `fn each(self) -> yields T` — \(O(\mathit{len})\)
 - `fn nth(self, j: Int) -> T` — \(O(1)\); traps: unless `0 <= j < self.len`
 - `fn at<K>(self, i: K) -> T` — \(O(1)\); traps: unless `i` is a key the stride visits (`first`, `first + k`, ...), naming them
 - `@get fn keys(self) -> StepKeys` — \(O(1)\)
@@ -121,6 +130,7 @@ The view `keyed` returns.
 - `fn push(mut self, x: T) -> Int` — \(O(\log n)\)
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
+- `@get fn items(self) -> yields (Int, T)` — \(O(\mathit{len})\)
 - `fn clear(mut self)` — \(O(1)\)
 - `fn reconstruct(self) -> List<Int>` — \(O(n)\), \(O(n)\) memory
 - `fn mark(self) -> Int` — \(O(1)\)
@@ -134,6 +144,7 @@ The view `keyed` returns.
 - `@get fn top(self) -> ?(index: D, val: T)` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
+- `@get fn items(self) -> yields (D, T)` — \(O(\mathit{len})\)
 - `fn clear(mut self)` — \(O(1)\)
 - `fn mark(self) -> Int` — \(O(1)\)
 - `fn undo_to(mut self, m: Int)` — \(O(1)\) amortized per undone push; \(O(1)\) amortized.; traps: when `m` is not a live mark of this stack
@@ -159,16 +170,22 @@ State a window can add to at the back and remove from at the front.
 - `fn prev(self, i: D) -> D` — \(O(1)\); The position before `i`, wrapping.
 - `fn from(self, i: D) -> yields D` — \(O(1)\) per step; All n positions, starting at `i` and wrapping.
 - `fn span(self, start: D, len: Int) -> RingRange<D>` — \(O(1)\); The `len` positions from `start` on, wrapping (`len <= n`).; traps: when `len` is not in `0..=n`
-- `fn windows(self, k: Int) -> yields RingSlice<D, T>` — \(O(1)\) per window; The n windows of `k` elements, one starting at each position, wrapping.; traps: when `k` is not in `1..=n`
+- `fn windows(self, k: Int) -> RingWindows<D, T>` — \(O(1)\) to build, \(O(1)\) per window walked; The n windows of `k` elements, one starting at each position, wrapping.; traps: when `k` is not in `1..=n`
 - `fn maximal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; Two pointers round the cycle: for each position as the last element, the longest wrapping piece (at most n elements) ending there that is `ok`, fed through `state: Track`.
 - `fn minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; For each position as the last element, the shortest wrapping piece ending there that is `ok`, or None.
 
-## `struct RingSlice<D, T>()`
+## `struct RingWindows<D, T>(pub src: Ring<D, T>, k: Int)`
 
 A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
 
+Fields: `k: Int,`.
+
+## `struct RingSlice<D, T>()`
+
 - `@get fn range(self) -> RingRange<D>` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the window covers no position.
+- `fn each(self) -> yields D` — \(O(\mathit{len})\)
 - `@get fn start(self) -> D` — \(O(1)\)
 - `@get fn end(self) -> D` — \(O(1)\)
 - `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
@@ -192,8 +209,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn first<S: Seq, T>(self: S) -> ?T` — \(O(1)\)
 - `@get fn last<S: Bidir, T>(self: S) -> ?T` — \(O(1)\)
 - `fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T` — \(O(n)\) calls of `p` at most; The last element satisfying `p`, `None` if None does; walks backwards and stops there.; traps: never (beyond what `p` traps on)
-- `fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x)` — \(O(n \log n)\) comparisons, \(O(n)\) extra space; Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`.; traps: never (beyond what `by` traps on)
-- `fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>` — \(O(n \log n)\) comparisons, \(O(n)\) space; The elements of `self` sorted by `by`: the value form of `sort`.; traps: never (beyond what `by` traps on)
+- `fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x)` — \(O(n \log n)\) comparisons, \(O(n)\) extra space; Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`.; traps: never (beyond what `by` traps on)
+- `fn sorted<S: Seq, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>` — \(O(n \log n)\) comparisons, \(O(n)\) space; The elements of `self` sorted by `by`: the value form of `sort`.; traps: never (beyond what `by` traps on)
 - `fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None)` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).; traps: when `range` falls outside the keys
 - `fn dedup<T>(mut self: List<T>)` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
 - `fn deduped<S: Seq, T>(self: S) -> List<T>` — \(O(n)\); `self` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
@@ -208,7 +225,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn pairs<S: Seq, T>(self: S) -> yields (T, T)` — \(O(n^2)\) to walk, \(O(1)\) per pair; Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`, `(20, 30)`.
 - `@get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T)` — \(O(1)\) per step; Every element paired with the one before it, starting with `(None, first)`: `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`.
 - `fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Every element with the one after it, the last with the first: the sides of a polygon, the links of a ring.
-- `fn zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(\min(\lvert a \rvert, \lvert b \rvert))\); The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
+- `fn zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)` — \(O(\min(\lvert a \rvert, \lvert b \rvert))\); The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
 - `fn unzip<S: Seq<(A, B)>, A, B>(self: S) -> (List<A>, List<B>)` — \(O(n)\), two new lists; The first and second halves of each pair, as two lists: the inverse of `zip`.
 - `fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V` — \(O(\log n)\); The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)` gives each new name the next id.
 - `fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)` — \(O(\log n)\), plus one call of `f`; Replace the value under `k` by `f` of it, starting from `init` when `m` holds none: `cnt.update(x, 0, c => c + 1)`.
@@ -226,8 +243,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>)` — \(O(n \log n)\); Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the duplicates and binds a fresh domain `C` for them.
 - `fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>)` — \(O(k \log k)\) for k cuts; Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the non-empty pieces between consecutive cuts, with `piece[p]` the `Range<D>` that piece covers.; traps: when a cut lies outside the range
 - `fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>` — \(O(\log k)\); The range of pieces exactly covering `r`, whose ends must be among the cuts the pieces were made from (traps otherwise).; traps: when an end of `r` is not one of the cuts
-- `fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U` — \(O(1)\) per element walked, stopping at the first `Some`; The first `f(x)` that is not `None`, stopping there; `None` if every one is.
-- `fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T` — \(O(\text{position found})\) calls of `p`; The first element satisfying `p`, `None` if None does; stops there.
+- `fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U` — \(O(n)\), \(O(1)\) per element walked, stopping at the first `Some`; The first `f(x)` that is not `None`, stopping there; `None` if every one is.
+- `fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T` — \(O(k)\) calls of `p` for a first match at position \(k\); The first element satisfying `p`, `None` if None does; stops there.
 - `fn with_domain<T>(self: List<T>) -> (domain I, [I]T)` — \(O(1)\); moves the list; Gives the items of a list a fresh domain, so arrays over them are index-safe: `let (domain Arc, arcs) = [...].with_domain()`.
 - `fn cycle<D>(self: [D]D, from: D) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; The cycle of a permutation through `from`: `from`, `perm[from]`, ...; traps: never; a non-permutation that never returns to `from` walks forever
 - `fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); First index in sorted `self` with `by(self[i]) > target`, or `None`.; traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
@@ -241,7 +258,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T>` — \(O(n)\); `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of `[if i < a.len: a[i] else: Z(0) for i in 0..size]`.; traps: when `n < 0`
 - `fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T` — \(O(1)\)
 - `fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>` — \(O(\mathit{popped})\)
-- `fn clone<T>(self: T) -> T` — \(O(\text{size of the value})\), allocates for heap values; \(O(n)\), allocates.
+- `fn clone<T>(self: T) -> T` — \(O(n)\) for a value of size \(n\), allocates for heap values; \(O(n)\), allocates.
 - `fn take_all<T>(mut self: List<T>) -> List<T>` — \(O(1)\); Move all elements out of `self` in \(O(1)\), leaving it empty.
 - `fn insert<T>(mut self: List<T>, i: Int, x: T)` — \(O(n - i)\); Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one.; traps: when `i` is not in `0..=self.len`
 - `fn remove<T>(mut self: List<T>, i: Int) -> T` — \(O(n - i)\); \(O(n)\).; traps: when `i` is not in `0..self.len`
@@ -250,7 +267,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn take<S: Indexed>(self: S, k: Int) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn nth<S: Indexed, T>(self: S, k: Int) -> T` — \(O(1)\); traps: when `k` is not in `0..self.len`
-- `@get fn rebase<S: Indexed>(self: S) -> Rebased<S>` — \(O(1)\)
+- `@get fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>` — \(O(1)\)
 - `fn step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).; traps: when `k < 1`
 - `@get fn even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
 - `@get fn odd<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
@@ -260,18 +277,19 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T` — \(O(1)\) per step
 - `fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T` — \(O(1)\) per step
 - `fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U` — \(O(1)\) per step
-- `fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V` — \(O(1)\) per yielded element
-- `fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T` — \(O(1)\) per yielded element
-- `fn present<S: Seq, T>(self: S) -> yields T` — \(O(1)\) per step
-- `fn all_some<S: Seq, T>(self: S) -> ?List<T>` — \(O(n)\), \(O(n)\) memory
+- `fn flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V` — \(O(1)\) per yielded element
+- `fn flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T` — \(O(1)\) per yielded element
+- `fn present<S: Seq<?U>, U>(self: S) -> yields U` — \(O(1)\) per step
+- `fn all_some<S: Seq<?U>, U>(self: S) -> ?List<U>` — \(O(n)\), \(O(n)\) memory
 - `fn chain<Ss, T>(..seqs: Ss) -> yields T` — \(O(1)\) per step
 - `fn product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step, \(O(\lvert a \rvert \cdot \lvert b \rvert)\) to walk; \(O(1)\) per step.
 - `fn iterate<T>(from: ?T, step: T -> ?T) -> yields T` — \(O(1)\) per step plus one call of `step`; \(O(1)\) per step.
 - `fn with_next<S: Seq, T>(self: S) -> yields (T, ?T)` — \(O(1)\) per step
-- `fn zip_exact<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step; traps: when `a.len != b.len`
+- `fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step; traps: when `a.len != b.len`
 - `fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>` — \(O(k)\) per chunk; \(O(n)\).; traps: when `k < 1`
 - `fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T` — \(O(n)\) calls of `f`; \(O(n)\).
-- `fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc` — \(O(n)\) calls of `f`; \(O(n)\).
+- `fn fold<S: Seq<T>, T, M>(self: S, op: M) -> T` — \(O(n)\) calls of `op`; \(O(n)\).; traps: never (an `op` without a known identity is a compile-time error)
+- `fn fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc` — \(O(n)\) calls of `f`; \(O(n)\).
 - `fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)` — at most \(\lfloor 3n/2 \rfloor\) calls of `eq`; \(O(n)\) memory; The value held by more than half the elements, with its count, or `None`.

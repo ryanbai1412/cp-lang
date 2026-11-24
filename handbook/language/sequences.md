@@ -45,10 +45,10 @@ indexable by walk position, which is easy to confuse with the source index.
   let a: [I]Int = [I] i => Int(i) % 3
   let (l, r, k) = (I(1), I(4), 3) -->
 ```cp
-let w = a[l..=r]                  // a view: O(1), keeps a's keys
-let i = w.keys.max(by: k => a[k])! // a key of a, usable as a[i]
-let pre = a.scan(+)                // pre[c] folds left of cut c
-for x in a.rev: print(x)           // walks backwards; a.rev[k] is an error, a.rev.nth(k) isn't
+let w = a[l..=r]                    // a view: O(1), keeps a's keys
+let i = w.keys.max(by: k => a[k])!  // a key of a, usable as a[i]
+let pre = a.scan(+)                 // pre[c] folds left of cut c
+for x in a.rev: print(x)            // walks backwards; a.rev[k] is an error, a.rev.nth(k) isn't
 let longest = a.maximal(Window(+), ok: win => (win.all ?? 0) <= k).max(by: p => p.len)!
 ```
 

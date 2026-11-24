@@ -3,7 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'nod
 import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { covers, hashFiles, repo, undeclared, web } from './cache.mjs';
+import { covers, dependencies, hashFiles, repo, undeclared, web } from './cache.mjs';
+import { stages } from './stages.mjs';
 
 let dir, rel;
 beforeEach(() => {
@@ -55,5 +56,21 @@ describe('prebuild cache', () => {
     const seen = readFileSync(trace, 'utf8').split('\n');
     expect(seen).toContain(join(dir, 'a.cp'));
     expect(seen).toContain(join(dir, 'sub/b.cp'));
+  });
+
+  it('runs a stage after every stage whose outputs it reads', () => {
+    const deps = dependencies(stages);
+    const after = (name) => deps.get(name).map((s) => s.name);
+    expect(after('gate')).toEqual(expect.arrayContaining(['wasm', 'gen-ref', 'lint-inputs', 'practice']));
+    expect(after('lint-inputs')).toEqual(['wasm']);
+    expect(after('facts')).toEqual(expect.arrayContaining(['gen-ref', 'releases']));
+    expect(after('wasm')).toEqual([]);
+  });
+
+  it('fails on stages that read each other\'s outputs', () => {
+    const a = { name: 'a', inputs: [`${rel}/x`], outputs: [`${rel}/y`] };
+    const b = { name: 'b', inputs: [`${rel}/y/z`], outputs: [`${rel}/x`] };
+    expect(() => dependencies([a, b])).toThrow('a -> b -> a');
+    expect(dependencies([a, { ...b, outputs: [] }]).get('b').map((s) => s.name)).toEqual(['a']);
   });
 });

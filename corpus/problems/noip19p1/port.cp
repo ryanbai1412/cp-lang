@@ -5,6 +5,7 @@
 // Solution: string number k is k ^ (k >> 1): print bit i of k xor bit i + 1, most significant
 //   first. O(n).
 // original: corpus/submissions/5127723.cpp
+// Bounds: n: 1..=64
 let n: 1..=64 = read()
 let k: U64 = read()
 let gray = k ^ (k >> 1)

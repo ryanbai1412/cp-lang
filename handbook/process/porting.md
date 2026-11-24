@@ -91,8 +91,8 @@ on a max input needs a performance friction.
 
 ## The header
 
-Every `port.cp` opens with three comment blocks, then `// original:` if
-there is one:
+Every `port.cp` opens with three comment blocks, a `// Bounds:` line when
+it reads a ranged type, then `// original:` if there is one:
 
 ```cp
 // Source: Codeforces 2147F, https://codeforces.com/contest/2147/problem/F
@@ -100,10 +100,17 @@ there is one:
 //   enough to solve it without opening the statement>
 // Solution: <a 2-6 line sketch: the key observation, then the algorithm and its cost,
 //   enough to picture the solution and follow the code>
+// Bounds: n, q: 1..=1e5; p: 0..=n
 ```
 
+`// Bounds:` is the statement's input bounds in `cpl new --constraints`
+form, a struct field as `name.field`. Each must be taken by the port's
+`read()` type of that name, and each ranged read must be stated, so a port
+can't read narrower than the statement (it would reject a valid judge
+input) without a header that visibly disagrees with the statement.
 `uv run python scripts/corpus.py verify --only header` names every port
-missing one of the three; `scripts/check.sh` blocks on any.
+missing a block or reading narrower than its Bounds; `scripts/check.sh`
+blocks on any.
 
 ## Taste checklist
 

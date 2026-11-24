@@ -95,8 +95,8 @@ pub struct Subset<B>(bits: U64):
     /// for the empty subset. Peels one member per step in a mask DP: `s.first()` then `s.without(b)`.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
-    /// ties: None possible; members are distinct, and the least in `B`'s order wins
+    /// empty: `domain B = 0..4; Subset<B>.empty.first() == None`
+    /// ties: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).with(B(1)).first() == Some(B(1))`
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).first() == Some(B(1))`
     /// example: `domain B = 0..4; Subset<B>.empty.first() == None`
@@ -107,7 +107,7 @@ pub struct Subset<B>(bits: U64):
     /// The members in `B`'s order; `for b in s` walks the same sequence.
     ///
     /// cost: \(O(1)\) per member
-    /// empty: yields nothing
+    /// empty: `domain B = 0..4; Subset<B>.empty.items.collect() == []`
     /// order: increasing in `B`'s order (increasing bit index)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).items.collect() == [B(1), B(3)]`
@@ -120,7 +120,7 @@ pub struct Subset<B>(bits: U64):
     /// What `for b in s` walks: the members, as `s.items`.
     ///
     /// cost: \(O(1)\) per member
-    /// empty: yields nothing
+    /// empty: `domain B = 0..4; Subset<B>.empty.each().collect() == []`
     /// order: increasing in `B`'s order (increasing bit index)
     /// traps: never
     /// example: `domain B = 0..4; [b for b in Subset<B>.single(B(3)).with(B(1))] == [B(1), B(3)]`
@@ -134,7 +134,7 @@ pub struct Subset<B>(bits: U64):
     /// `g = (g - 1) & self`, so the masks come in decreasing order as words. `2^s.len` subsets.
     ///
     /// cost: \(O(1)\) per subset, `2^s.len` subsets
-    /// empty: `Subset<B>.empty.subsets` yields the empty subset once
+    /// empty: `domain B = 0..3; Subset<B>.empty.subsets.collect() == [Subset<B>.empty]`
     /// order: decreasing as words: `self` first, the empty subset last
     /// traps: never
     /// example: `domain B = 0..3; let s = Subset<B>.single(B(0)).with(B(1)); s.subsets.map(g => g.first()).collect() == [Some(B(0)), Some(B(1)), Some(B(0)), None]`
@@ -150,7 +150,7 @@ pub struct Subset<B>(bits: U64):
     /// supersets.
     ///
     /// cost: \(O(1)\) per superset, `2^(|B| - s.len)` supersets
-    /// empty: `Subset<B>.empty.supersets` yields every subset of `B`, the empty one first
+    /// empty: `domain B = 0..2; Subset<B>.empty.supersets.collect() == [Subset<B>.empty, Subset<B>.single(B(0)), Subset<B>.single(B(1)), Subset<B>.full]`
     /// order: increasing as words: `self` first, `Subset<B>.full` last
     /// traps: never
     /// example: `domain B = 0..3; Subset<B>.single(B(1)).supersets.map(g => g.len).collect() == [1, 2, 2, 3]`

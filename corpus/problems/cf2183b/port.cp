@@ -7,6 +7,7 @@
 // Solution: k - 1 elements have mex <= k - 1 and deleting never supplies a missing value, so the
 //   answer is at most min(mex(a), k - 1), and that bound is reached. Mark the values below k - 1
 //   and print the first unmarked one, else k - 1; O(n).
+// Bounds: n, k: 2..=200_000; a: 0..=n
 
 @!multitest
 let (n, k): (2..=200_000, 2..=200_000) = read()

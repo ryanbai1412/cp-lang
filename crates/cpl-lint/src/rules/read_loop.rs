@@ -1,6 +1,7 @@
 //! A list filled by a loop that reads one item per step (`read_loop`): one
 //! typed `read()` takes every item and checks its bounds.
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, READ_LOOP};
 use cpl_diag::{Diagnostic, Span};
@@ -43,7 +44,9 @@ fn push(stmt: &Stmt) -> Option<(&str, &Expr)> {
         return None;
     };
     match args.as_slice() {
-        [arg] if method.text == "push" && arg.name.is_none() => Some((name(base)?, &arg.value)),
+        [arg] if method.text == std_fn::PUSH && arg.name.is_none() => {
+            Some((name(base)?, &arg.value))
+        }
         _ => None,
     }
 }

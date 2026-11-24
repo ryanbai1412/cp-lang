@@ -10,6 +10,7 @@
 // original: corpus/submissions/3949962.cpp
 // Group equal adjacent elements into (val, cnt) runs.
 // States: 0 = Neutral, 1 = Push, 2 = Pull.
+// Bounds: n: 1..=1e6; k: 1..=n; height: 0..=1e9
 
 let n: 1..=1e6 = read()
 let k: 1..=n = read()

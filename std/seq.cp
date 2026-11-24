@@ -1,7 +1,7 @@
 //! Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.
 //!
 //! - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`).
-//! - Binary & unimodal search: moved to `std.search` (`bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`).
+//! - Binary & unimodal search: moved to `std.search` (`ternary_max`/`ternary_min`, `Range<F64>.bsearch`/`peak`/`valley`, `parallel_bsearch`).
 //! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
 //! - Runs, chunking & windows: `runs` (with `by:` or `link:`), `buckets`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
 //! - Scans & folds: `scan` (`.rev.scan` for suffixes); the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over `a.scan(op)` and `a.rev.scan(op)`.
@@ -10,6 +10,7 @@
 //! - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.window_fold(k, op)` or `Window(op)` (`std.window`).
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
+use std.algebra.{Monoid}
 use std.hashmap.{Counter}
 use std.prefix.{Prefix}
 use std.range.{RingRange, ends, first_true, last_true}
@@ -20,7 +21,7 @@ pub type Perm<V> = [V]V
 /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`.
 ///
 /// cost: \(O(n)\)
-/// empty: `T.one`
+/// empty: `let a: List<Int> = []; a.prod() == 1`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[2, 3, 4].prod() == 24`
 pub fn prod<S: Seq, T>(self: S) -> T:
@@ -32,7 +33,7 @@ pub fn prod<S: Seq, T>(self: S) -> T:
 /// element first (`xs.sum(of: x => x * x)`). \(O(n)\).
 ///
 /// cost: \(O(n)\)
-/// empty: `U.zero`
+/// empty: `let a: List<Int> = []; a.sum() == 0`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
 pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U:
@@ -43,7 +44,7 @@ pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U:
 /// The average of `of` over the elements as `F64`; `None` when empty.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
+/// empty: `let a: List<Int> = []; a.mean() == None`
 /// traps: never
 /// example: `[1, 2].mean() == Some(1.5)`
 pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
@@ -65,8 +66,8 @@ pub enum Ties = First | Last
 /// is argmin. \(O(n)\).
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: the first in sequence order; the last with `ties: Ties.Last`
+/// empty: `let a: List<Int> = []; a.min() == None`
+/// ties: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
 /// traps: never
 /// example: `[3, 1, 1].min() == Some(1)`
 /// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
@@ -84,8 +85,8 @@ pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) 
 /// when empty.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: the first in sequence order; the last with `ties: Ties.Last`
+/// empty: `let a: List<Int> = []; a.max() == None`
+/// ties: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
 /// traps: never
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0, ties: Ties.Last) == Some((2, 'b'))`
@@ -104,8 +105,8 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) 
 /// A method call (`s.minmax()`) picks this fold; a plain call with two values (`minmax(a, b)`) orders the pair. \(O(n)\).
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: the first in sequence order, for both ends
+/// empty: `let a: List<Int> = []; a.minmax() == None`
+/// ties: `[(1, 'a'), (2, 'b'), (1, 'c'), (2, 'd')].minmax(by: .0) == Some(((1, 'a'), (2, 'b')))`
 /// traps: never
 /// example: `[5, 1, 4].minmax() == Some((1, 5))`
 /// example: `[(2, 'a'), (1, 'b'), (2, 'c')].minmax(by: .0) == Some(((1, 'b'), (2, 'a')))`
@@ -121,7 +122,7 @@ pub fn minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T):
 /// How many elements satisfy `p` (every element without `p`).
 ///
 /// cost: \(O(n)\)
-/// empty: `0`
+/// empty: `let a: List<Int> = []; a.count() == 0`
 /// traps: never
 /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
 /// example: `[1, 2, 3].pairs().count() == 3`
@@ -134,7 +135,7 @@ pub fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int:
 /// Whether some element satisfies `p`; stops at the first.
 ///
 /// cost: \(O(n)\), stopping at the first match
-/// empty: `false`
+/// empty: `let a: List<Int> = []; not a.any(x => x > 0)`
 /// traps: never
 /// example: `[1, 2].any(x => x > 1) == true`
 pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
@@ -145,7 +146,7 @@ pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
 /// Whether every element satisfies `p`; stops at the first that doesn't.
 ///
 /// cost: \(O(n)\), stopping at the first failure
-/// empty: `true`
+/// empty: `let a: List<Int> = []; a.all(x => x > 0) == true`
 /// traps: never
 /// example: `[1, 2].all(x => x > 1) == false`
 pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
@@ -154,9 +155,10 @@ pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool:
     true
 
 /// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`.
+/// A single element is sorted too.
 ///
 /// cost: \(O(n)\)
-/// empty: `true`; a single element is sorted too
+/// empty: `let a: List<Int> = []; a.is_sorted() == true`
 /// traps: never
 /// example: `[1, 1, 2].is_sorted() == true`
 pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool:
@@ -176,7 +178,7 @@ pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool:
 /// Bidirectional when `self` is.
 ///
 /// cost: \(O(1)\) to make; \(O(n)\) calls of `p` per walk
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.filter(x => x > 0).collect() == []`
 /// order: source order
 /// traps: never (beyond what `p` traps on)
 /// example: `[1, 2, 3, 4].filter(x => x % 2 == 0).collect() == [2, 4]`
@@ -187,7 +189,7 @@ pub fn filter<S: Seq<T>, T>(self: S, p: T -> Bool) -> Filtered<S, T> = Filtered(
 /// keys: `a.map(f)[i]` is `f(a[i])`, calling `f` on every read (`collect()` once to cache).
 ///
 /// cost: \(O(1)\) to make; one call of `f` per element read
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.map(x => x * x).collect() == []`
 /// order: source order, source keys
 /// traps: never (beyond what `f` traps on)
 /// example: `[1, 2, 3].map(x => x * x).collect() == [1, 4, 9]`
@@ -199,7 +201,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// element (decision 496).
 ///
 /// cost: \(O(1)\)
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.rev.collect() == []`
 /// order: reverse source order, source keys
 /// traps: never
 /// example: `[1, 2, 3].rev.collect() == [3, 2, 1]`
@@ -208,7 +210,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// \(O(1)\). A view of `(key, element)` pairs with the source's own keys.
 ///
 /// cost: \(O(1)\)
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.items.collect() == []`
 /// order: source order
 /// traps: never
 /// example: `[5, 6][1..].items.collect() == [(1, 6)]`
@@ -216,10 +218,11 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 
 /// \(O(1)\). The first element, `None` when empty. For the first element satisfying a predicate,
 /// use `find(p)`; for its key, `keys.find(p)`.
+/// Ties don't apply: position decides.
 ///
 /// cost: \(O(1)\)
-/// empty: `None`
-/// ties: not applicable; position decides
+/// empty: `let a: List<Int> = []; a.first == None`
+/// ties: `[(1, 'a'), (1, 'b')].first == Some((1, 'a'))`
 /// traps: never
 /// example: `[4, 5].first == Some(4)`
 @get pub fn first<S: Seq, T>(self: S) -> ?T:
@@ -228,10 +231,11 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 
 /// \(O(1)\). The last element, `None` when empty. For the last element satisfying a predicate,
 /// use `rfind(p)`.
+/// Ties don't apply: position decides.
 ///
 /// cost: \(O(1)\)
-/// empty: `None`
-/// ties: not applicable; position decides
+/// empty: `let a: List<Int> = []; a.last == None`
+/// ties: `[(1, 'a'), (1, 'b')].last == Some((1, 'b'))`
 /// traps: never
 /// example: `[4, 5].last == Some(5)`
 @get pub fn last<S: Bidir, T>(self: S) -> ?T:
@@ -241,8 +245,8 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// The last element satisfying `p`, `None` if None does; walks backwards and stops there.
 ///
 /// cost: \(O(n)\) calls of `p` at most
-/// empty: `None`
-/// ties: the last in sequence order
+/// empty: `let a: List<Int> = []; a.rfind(x => x > 0) == None`
+/// ties: `[(2, 'a'), (2, 'b')].rfind(p => p.0 == 2) == Some((2, 'b'))`
 /// traps: never (beyond what `p` traps on)
 /// example: `[1, 4, 2, 5].rfind(x => x % 2 == 0) == Some(2)`
 pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
@@ -254,12 +258,12 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
 /// Works on any `IndexedMut`, including slices: `a[l..=r].sort()`.
 ///
 /// cost: \(O(n \log n)\) comparisons, \(O(n)\) extra space
-/// empty: does nothing
-/// ties: stable; equal keys keep their relative order
+/// empty: `var a: List<Int> = []; a.sort(); a == []`
+/// ties: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
 /// traps: never (beyond what `by` traps on)
 /// example: `var a = [3, 1, 2]; a.sort(); a == [1, 2, 3]`
 /// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
-pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x):
+pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x):
     let n = self.len
     let ks = self.keys
     var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
@@ -299,15 +303,16 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int):
 
 /// The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed from 0;
 /// to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
+/// Stable: equal keys keep their relative order.
 ///
 /// cost: \(O(n \log n)\) comparisons, \(O(n)\) space
-/// empty: `[]`
-/// ties: stable; equal keys keep their relative order
+/// empty: `let a: List<Int> = []; a.sorted() == []`
+/// ties: `[(1, 'b'), (0, 'z'), (1, 'a')].sorted(by: p => p.0) == [(0, 'z'), (1, 'b'), (1, 'a')]`
 /// order: increasing `by` (decreasing with `by: x => desc(x)`), keyed from 0
 /// traps: never (beyond what `by` traps on)
 /// example: `[3, 1, 2].sorted() == [1, 2, 3]`
 /// example: `[3, 1, 2].sorted(by: x => desc(x)) == [3, 2, 1]`
-pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>:
+pub fn sorted<S: Seq, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>:
     var out: List<T> = self.collect()
     sort(mut out, by:)
     out
@@ -316,7 +321,7 @@ pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>:
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).
 ///
 /// cost: \(O(n)\), \(O(1)\) extra space
-/// empty: does nothing
+/// empty: `var a: List<Int> = []; a.reverse(); a == []`
 /// traps: when `range` falls outside the keys
 /// example: `var a = [1, 2, 3]; a.reverse(); a == [3, 2, 1]`
 pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None):
@@ -333,10 +338,11 @@ pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None):
         j -= 1
 
 /// \(O(n)\). Drop each value equal to the one before it, in place: a sorted list keeps one of each.
+/// Each run of equal values keeps its first.
 ///
 /// cost: \(O(n)\), \(O(1)\) extra space
-/// empty: does nothing
-/// ties: keeps the first of each run of equal values
+/// empty: `var a: List<Int> = []; a.dedup(); a == []`
+/// ties: `var a = [2, 2, 2, 1, 1]; a.dedup(); a == [2, 1]`
 /// traps: never
 /// example: `var a = [1, 1, 2, 1]; a.dedup(); a == [1, 2, 1]`
 pub fn dedup<T>(mut self: List<T>):
@@ -351,7 +357,7 @@ pub fn dedup<T>(mut self: List<T>):
 /// Works on any `Seq`. \(O(n)\) time without hashing.
 ///
 /// cost: \(O(n)\)
-/// empty: `[]`
+/// empty: `let a: List<Int> = []; a.deduped() == []`
 /// order: first of each run, in input order; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 1, 2, 1].deduped() == [1, 2, 1]`
@@ -366,8 +372,8 @@ pub fn deduped<S: Seq, T>(self: S) -> List<T>:
 /// each one greater than everything before it. `record_highs(by: f)` compares `f(x)`.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing
-/// ties: an equal value is not a new high
+/// empty: `let a: List<Int> = []; a.record_highs().collect() == []`
+/// ties: `[2, 2, 3].record_highs().collect() == [0, 2]`
 /// order: increasing keys of `self`
 /// traps: never
 /// example: `[3, 1, 4, 4, 5].record_highs().collect() == [0, 2, 4]`
@@ -386,8 +392,8 @@ pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D:
 /// `distinct` drops duplicates anywhere in the sequence.
 ///
 /// cost: \(O(n)\) expected, \(O(n)\) extra space
-/// empty: `[]`
-/// ties: keeps the first occurrence of each key
+/// empty: `let a: List<Int> = []; a.distinct() == []`
+/// ties: `[(1, 'a'), (2, 'b'), (1, 'c')].distinct(by: .0) == [(1, 'a'), (2, 'b')]`
 /// order: first-seen order; a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 1, 3, 2, 1].distinct() == [3, 1, 2]`
@@ -399,7 +405,7 @@ pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>:
 /// The values of `self` that `keep` holds for, then the ones it does not, each in the order they came.
 ///
 /// cost: \(O(n)\)
-/// empty: `([], [])`
+/// empty: `let a: List<Int> = []; a.partition(x => x > 0) == ([], [])`
 /// order: each list keeps input order
 /// traps: never
 /// example: `[1, 2, 3, 4].partition(x => x % 2 == 0) == ([2, 4], [1, 3])`
@@ -413,9 +419,11 @@ pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
 /// \(O(n)\) expected, \(O(n \log n)\) worst case, \(O(1)\) extra space. Introselect partitioning `self` in place
 /// so `self.nth(k)` holds the element that would sit at `k` in sorted order (by `by:` or `cmp:`).
 ///
+/// Equal elements may land in any order on either side of `k`.
+///
 /// cost: \(O(n)\) expected, \(O(n \log n)\) worst case, \(O(1)\) extra space
-/// empty: traps (no `k` is valid)
-/// ties: equal elements may land in any order on either side of `k`
+/// empty: `var a: List<Int> = []; a.select(0); a == []` (traps R0401)
+/// ties: `var a = [2, 1, 2, 1]; a.select(2); a.nth(2) == 2`
 /// traps: when `k` is not in `0..self.len`
 /// example: `var a = [5, 1, 4, 2]; a.select(1); a.nth(1) == 2`
 pub fn select<S: IndexedMut, T, K>(
@@ -482,9 +490,11 @@ fn sift_down<S: IndexedMut, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T
 /// \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory. Stable merge of two sorted sequences (keyed by `by:`),
 /// taking from `a` before `b` on ties. Works on any `Indexed` sequences.
 ///
+/// Within each input, input order is kept (stable).
+///
 /// cost: \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
-/// empty: the other input, copied
-/// ties: `a` before `b`; within each input, input order (stable)
+/// empty: `let e: List<Int> = []; merge_sorted([1, 2], e) == [1, 2] and merge_sorted(e, [3]) == [3]`
+/// ties: `merge_sorted([(1, 'a')], [(1, 'b')], by: .0) == [(1, 'a'), (1, 'b')]`
 /// order: non-decreasing by `by`; a new `List`, keyed from 0
 /// traps: never; unsorted inputs give an unspecified interleaving
 /// example: `merge_sorted([1, 3], [2, 3]) == [1, 2, 3, 3]`
@@ -509,7 +519,7 @@ pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(self: A, b: B, by: T -> K = x 
 /// \(O(1)\) per window. Borrowed length-`k` sliding slice views, left to right. Nothing when `k > self.len`.
 ///
 /// cost: \(O(1)\) per window
-/// empty: yields nothing; so does `k > self.len`
+/// empty: `let a: List<Int> = []; a.windows(2).count() == 0`
 /// order: left to right; each window keeps the keys of `self`
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].windows(2).map(w => w.sum()).collect() == [3, 5]`
@@ -520,7 +530,7 @@ pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 /// \(O(1)\) per chunk. Borrowed non-overlapping slice views of length `k` (the last may be shorter).
 ///
 /// cost: \(O(1)\) per chunk
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.chunks(2).count() == 0`
 /// order: left to right; each chunk keeps the keys of `self`, the last may be shorter
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks(2).map(c => c.len).collect() == [2, 1]`
@@ -533,9 +543,10 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives
 /// `(10, 20)` then `(20, 30)`. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). \(O(1)\) per step.
+/// A single element yields nothing too.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing; so does a single element
+/// empty: `let a: List<Int> = []; a.adjacent.count() == 0`
 /// order: left to right
 /// traps: never
 /// example: `[10, 20, 30].adjacent.collect() == [(10, 20), (20, 30)]`
@@ -549,7 +560,7 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 /// `(20, 30)`. \(O(n^2)\) to walk; for adjacent pairs use `adjacent`.
 ///
 /// cost: \(O(n^2)\) to walk, \(O(1)\) per pair
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.pairs().count() == 0`
 /// order: by the first element's position, then the second's
 /// traps: never
 /// example: `[1, 2, 3].pairs().count() == 3`
@@ -563,7 +574,7 @@ pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
 /// `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`. \(O(1)\) per step.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.with_prev.count() == 0`
 /// order: left to right, starting with `(None, first)`
 /// traps: never
 /// example: `[10, 20].with_prev.collect() == [(None, 10), (Some(10), 20)]`
@@ -580,7 +591,7 @@ pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
 ///     for (u, v) in poly.cyclic_pairs(): area += cross(u, v)
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing; a single element yields `(x, x)`
+/// empty: `let a: List<Int> = []; a.cyclic_pairs().count() == 0`
 /// order: left to right, then `(last, first)`
 /// traps: never
 /// example: `[1, 2, 3].cyclic_pairs().collect() == [(1, 2), (2, 3), (3, 1)]`
@@ -596,19 +607,20 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
 
 /// The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
 /// Works on any `Indexed` sequences (`List`, `[D]T`, `Str`, `Range`, views). \(O(\min(\lvert a \rvert, \lvert b \rvert))\).
+/// Either input empty yields nothing.
 ///
 /// cost: \(O(\min(\lvert a \rvert, \lvert b \rvert))\)
-/// empty: yields nothing when either input is empty
+/// empty: `let a: List<Int> = []; zip(a, "ab").count() == 0`
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U):
+pub fn zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U):
     for i in 0..min(a.len, b.len): yield (a.nth(i), b.nth(i))
 
 /// The first and second halves of each pair, as two lists: the inverse of `zip`.
 ///
 /// cost: \(O(n)\), two new lists
-/// empty: `([], [])`
+/// empty: `let a: List<(Int, Char)> = []; a.unzip() == ([], [])`
 /// order: the order of `self`, keyed from 0
 /// traps: never
 /// example: `[(1, 'a'), (2, 'b')].unzip() == ([1, 2], ['a', 'b'])`
@@ -641,7 +653,7 @@ pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
 /// Add every element of `o` to `self` in place: `self | o`, named as on `Bitset`.
 ///
 /// cost: \(O(m \log(n + m))\) for `m` elements in `o`
-/// empty: an empty `o` leaves `self` unchanged
+/// empty: `var s: Set<Int> = Set(); s.insert(1); let t: Set<Int> = Set(); s.union(t); s.sorted() == [1]`
 /// traps: never
 /// example: `var s: Set<Int> = Set(); s.insert(1); var t: Set<Int> = Set(); t.insert(2); s.union(t); s.sorted() == [1, 2]`
 pub fn union<T>(mut self: Set<T>, o: Set<T>):
@@ -650,7 +662,7 @@ pub fn union<T>(mut self: Set<T>, o: Set<T>):
 /// Keep only the elements of `self` that are also in `o`, in place: `self & o`, named as on `Bitset`.
 ///
 /// cost: \(O(n \log m)\) for `m` elements in `o`
-/// empty: an empty `o` empties `self`
+/// empty: `var s: Set<Int> = Set(); s.insert(1); let t: Set<Int> = Set(); s.intersect(t); s.sorted() == []`
 /// traps: never
 /// example: `var s: Set<Int> = Set(); s.insert(1); s.insert(2); var t: Set<Int> = Set(); t.insert(2); s.intersect(t); s.sorted() == [2]`
 pub fn intersect<T>(mut self: Set<T>, o: Set<T>):
@@ -660,7 +672,7 @@ pub fn intersect<T>(mut self: Set<T>, o: Set<T>):
 /// Take every element of `o` out of `self` in place: `self - o`, named as on `Bitset`.
 ///
 /// cost: \(O(m \log n)\) for `m` elements in `o`
-/// empty: an empty `o` leaves `self` unchanged
+/// empty: `var s: Set<Int> = Set(); s.insert(1); let t: Set<Int> = Set(); s.subtract(t); s.sorted() == [1]`
 /// traps: never
 /// example: `var s: Set<Int> = Set(); s.insert(1); s.insert(2); var t: Set<Int> = Set(); t.insert(2); s.subtract(t); s.sorted() == [1]`
 pub fn subtract<T>(mut self: Set<T>, o: Set<T>):
@@ -673,7 +685,7 @@ pub fn subtract<T>(mut self: Set<T>, o: Set<T>):
 /// rotates right. Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). \(O(n)\), \(O(1)\) extra space.
 ///
 /// cost: \(O(n)\), \(O(1)\) extra space
-/// empty: does nothing
+/// empty: `var a: List<Int> = []; a.rotate_left(3); a == []`
 /// traps: when `range` falls outside the keys
 /// example: `var a = [1, 2, 3, 4]; a.rotate_left(1); a == [2, 3, 4, 1]`
 pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None):
@@ -694,7 +706,7 @@ pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None
 /// Rotate `self` right by `k` in place (or only the subrange `range` when given). Works on any `IndexedMut`.
 ///
 /// cost: \(O(n)\), \(O(1)\) extra space
-/// empty: does nothing
+/// empty: `var a: List<Int> = []; a.rotate_right(3); a == []`
 /// traps: when `range` falls outside the keys
 /// example: `var a = [1, 2, 3, 4]; a.rotate_right(1); a == [4, 1, 2, 3]`
 pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None):
@@ -704,7 +716,7 @@ pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = Non
 /// Signed Euclidean `k`: negative `k` rotates right. Works on any `Seq`. \(O(n)\).
 ///
 /// cost: \(O(n)\)
-/// empty: `[]` for any `k`
+/// empty: `let a: List<Int> = []; a.rotated_left(3) == [] and a.rotated_left(-2) == []`
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 3].rotated_left(-1) == [3, 1, 2]`
@@ -728,7 +740,7 @@ pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>:
 /// A new list rotated right by `k`. Works on any `Seq`.
 ///
 /// cost: \(O(n)\)
-/// empty: `[]` for any `k`
+/// empty: `let a: List<Int> = []; a.rotated_right(3) == [] and a.rotated_right(-2) == []`
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 3].rotated_right(1) == [3, 1, 2]`
@@ -738,9 +750,11 @@ pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>:
 /// Step `self` to the next arrangement in sorted order, in place. Returns false, leaving `self`
 /// sorted ascending, when it was the last one. Works on any `IndexedMut`. \(O(n)\), amortized \(O(1)\).
 ///
+/// Equal elements are one arrangement, so `[1, 1, 2]` has three.
+///
 /// cost: \(O(n)\) worst case, amortized \(O(1)\) over all arrangements
-/// empty: returns `false` and does nothing
-/// ties: equal elements are one arrangement, so `[1, 1, 2]` has three
+/// empty: `var a: List<Int> = []; not a.next_permutation() and a == []`
+/// ties: `var a = [1, 2, 1]; a.next_permutation() and a == [2, 1, 1]`
 /// traps: never
 /// example: `var a = [1, 2, 3]; a.next_permutation() and a == [1, 3, 2]`
 pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool:
@@ -762,9 +776,11 @@ pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// Step `self` to the previous arrangement in sorted order, in place. Returns false, leaving `self`
 /// sorted descending, when it was the first (ascending) one. Works on any `IndexedMut`. \(O(n)\), amortized \(O(1)\).
 ///
+/// Equal elements are one arrangement.
+///
 /// cost: \(O(n)\) worst case, amortized \(O(1)\) over all arrangements
-/// empty: returns `false` and does nothing
-/// ties: equal elements are one arrangement
+/// empty: `var a: List<Int> = []; not a.prev_permutation() and a == []`
+/// ties: `var a = [2, 1, 1]; a.prev_permutation() and a == [1, 2, 1]`
 /// traps: never
 /// example: `var a = [1, 3, 2]; a.prev_permutation() and a == [1, 2, 3]`
 pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
@@ -792,7 +808,7 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// `runs(link: (x, y) => key(x) == key(y))`. \(O(1)\) to make, \(O(n)\) to walk.
 ///
 /// cost: \(O(1)\) to make, \(O(n)\) to walk
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.runs().count() == 0`
 /// order: left to right; each run is a slice keeping the keys of `self`
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
@@ -825,7 +841,7 @@ pub fn runs<S: Indexed, T, K>(
 /// \(O(\lvert D \rvert + \lvert K \rvert)\) time and memory.
 ///
 /// cost: \(O(\lvert D \rvert + \lvert K \rvert)\) time and memory
-/// empty: every bucket is empty
+/// empty: `domain D = 0..0; domain K = 0..2; let a: [D]K = []; a.buckets() == [[], []]`
 /// order: each bucket lists keys of `self` in increasing order; the result is keyed by `K`
 /// traps: never
 /// example: `domain D = 0..3; domain K = 0..2; let a: [D]K = [1, 0, 1]; a.buckets() == [[1], [0, 2]]`
@@ -848,7 +864,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// The compressed values over a range `r` of `xs.D`, as a list.
     ///
     /// cost: \(O(r.\mathit{len})\)
-    /// empty: `[]` for an empty `r`
+    /// empty: `let (domain C, xs) = compress([3, 1, 2]); xs.slice(C.first!..C.first!) == []`
     /// order: increasing values; a new `List`, keyed from 0
     /// traps: never
     /// example: `let (domain C, xs) = compress([3, 1, 2]); xs.slice(C.all) == [1, 2, 3]`
@@ -861,10 +877,28 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `compress([5, 5, 7]).1.len == 2`
     @get pub fn len(self) -> Int = vals.len
 
+    /// Whether no value was compressed.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `let e: List<Int> = []; compress(e).1.is_empty and not compress([4]).1.is_empty`
+    @get pub fn is_empty(self) -> Bool = vals.len == 0
+
+    /// \(O(\mathit{len})\). Visit every compressed index with its value.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `let e: List<Int> = []; compress(e).1.items.collect() == []`
+    /// order: increasing index, so increasing value
+    /// traps: never
+    /// example: `let (domain C, xs) = compress([30, 10, 30]); [v for (_, v) in xs.items] == [10, 30]`
+    @get pub fn items(self) -> yields (D, T):
+        for i in D: yield (i, vals[i])
+
     /// The index of `val`, which must be one of the compressed values.
+    /// Ties can't arise: the compressed values are distinct.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: none: values are distinct
+    /// ties: `let (domain C, xs) = compress([30, 10, 30]); xs.index_of(30) == C.last!`
     /// traps: when `val` was not compressed
     /// example: `let (domain C, xs) = compress([30, 10]); xs.index_of(30) == C.last!`
     pub fn index_of(self, val: T) -> D:
@@ -889,33 +923,37 @@ pub struct Compressed<D, T>(vals: [D]T):
     pub fn contains(self, val: T) -> Bool = self.try_index_of(val) != None
 
     /// The first index whose value is `>= val`, or `None`.
+    /// Ties can't arise: the compressed values are distinct.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: none: values are distinct
+    /// ties: `let (domain C, xs) = compress([10, 30, 30]); xs.first_ge(30) == Some(C.last!)`
     /// traps: never
     /// example: `let (domain C, xs) = compress([10, 30]); xs.first_ge(20) == Some(C.last!)`
     pub fn first_ge(self, val: T) -> ?D = vals.first_ge(val)
 
     /// The first index whose value is `> val`, or `None`.
+    /// Ties can't arise: the compressed values are distinct.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: none: values are distinct
+    /// ties: `let (domain C, xs) = compress([10, 10, 30]); xs.first_gt(10) == Some(C.last!)`
     /// traps: never
     /// example: `let (domain C, xs) = compress([10, 30]); xs.first_gt(30) == None`
     pub fn first_gt(self, val: T) -> ?D = vals.first_gt(val)
 
     /// The last index whose value is `<= val`, or `None`.
+    /// Ties can't arise: the compressed values are distinct.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: none: values are distinct
+    /// ties: `let (domain C, xs) = compress([10, 30, 30]); xs.last_le(30) == Some(C.last!)`
     /// traps: never
     /// example: `let (domain C, xs) = compress([10, 30]); xs.last_le(20) == Some(C.first!)`
     pub fn last_le(self, val: T) -> ?D = vals.last_le(val)
 
     /// The last index whose value is `< val`, or `None`.
+    /// Ties can't arise: the compressed values are distinct.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: none: values are distinct
+    /// ties: `let (domain C, xs) = compress([10, 10, 30]); xs.last_lt(30) == Some(C.first!)`
     /// traps: never
     /// example: `let (domain C, xs) = compress([10, 30]); xs.last_lt(10) == None`
     pub fn last_lt(self, val: T) -> ?D = vals.last_lt(val)
@@ -927,12 +965,11 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// index of one compression cannot be used in another. Works on any `Seq`. \(O(n \log n)\).
 ///
 /// cost: \(O(n \log n)\)
-/// empty: binds an empty domain `C`
+/// empty: `let e: List<Int> = []; let (domain C, xs) = compress(e); C.count == 0 and xs.is_empty`
 /// order: increasing values, indexed by the fresh domain `C`
 /// traps: never
 /// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.index_of(30) == C.last!`
 pub fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>):
-    with lint(unproven_list_index: allow)
     var raw: List<T> = self.collect()
     raw.sort()
     var uniq: List<T> = []
@@ -950,12 +987,11 @@ pub fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>):
 /// \(O(k \log k)\) for k cuts.
 ///
 /// cost: \(O(k \log k)\) for k cuts
-/// empty: an empty range binds an empty `P`
+/// empty: `let (domain P, piece) = (0..0).pieces(cuts: [0]); P.count == 0`
 /// order: pieces left to right; `piece` is keyed by the fresh domain `P`
 /// traps: when a cut lies outside the range
 /// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); [piece[p].len for p in P] == [3, 4, 3]`
 pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>):
-    with lint(unproven_list_index: allow)
     let a = self.l
     let b = self.r
     if self.is_empty:
@@ -979,7 +1015,7 @@ pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>
 /// made from (traps otherwise). `t.apply(piece.covering(a..=b), x)`. \(O(\log k)\).
 ///
 /// cost: \(O(\log k)\)
-/// empty: an empty `r` gives an empty range of pieces
+/// empty: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..3).len == 0`
 /// traps: when an end of `r` is not one of the cuts
 /// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); piece.covering(3..10).len == 2`
 /// order: pieces left to right, keyed by `P`
@@ -997,9 +1033,9 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
 /// The first `f(x)` that is not `None`, stopping there; `None` if every one is.
 /// \(O(1)\) per element walked.
 ///
-/// cost: \(O(1)\) per element walked, stopping at the first `Some`
-/// empty: `None`
-/// ties: the first in sequence order
+/// cost: \(O(n)\), \(O(1)\) per element walked, stopping at the first `Some`
+/// empty: `let a: List<Int> = []; a.first_some(x => Some(x)) == None`
+/// ties: `[1, 2].first_some(x => Some(x * 10)) == Some(10)`
 /// traps: never
 /// example: `[1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)`
 pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U:
@@ -1009,11 +1045,11 @@ pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U:
     None
 
 /// The first element satisfying `p`, `None` if None does; stops there. `(1..=m).find(ok)` is the
-/// least `ok` integer. \(O(\text{position found})\).
+/// least `ok` integer. \(O(k)\) for a first match at position \(k\).
 ///
-/// cost: \(O(\text{position found})\) calls of `p`
-/// empty: `None`
-/// ties: the first in sequence order
+/// cost: \(O(k)\) calls of `p` for a first match at position \(k\)
+/// empty: `let a: List<Int> = []; a.find(x => x > 0) == None`
+/// ties: `[(1, 'a'), (1, 'b')].find(p => p.0 == 1) == Some((1, 'a'))`
 /// traps: never
 /// example: `(1..=10).find(x => x * x > 20) == Some(5)`
 pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T:
@@ -1025,7 +1061,7 @@ pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T:
 /// `let (domain Arc, arcs) = [...].with_domain()`. Moves the list, \(O(1)\).
 ///
 /// cost: \(O(1)\); moves the list
-/// empty: binds an empty domain
+/// empty: `let e: List<Int> = []; let (domain I, xs) = e.with_domain(); I.count == 0`
 /// order: the list's order, keyed by the fresh domain
 /// traps: never
 /// example: `let (domain I, xs) = [7, 8].with_domain(); xs[I.first!] == 7`
@@ -1035,12 +1071,13 @@ pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T):
 
 /// The cycle of a permutation through `from`: `from`, `perm[from]`, ... until it
 /// returns to `from`. \(O(1)\) to make, \(O(\text{cycle length})\) to walk.
+/// Never empty: it yields at least `from`.
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per step
 /// order: `from`, `self[from]`, ... stopping before `from` comes back
 /// traps: never; a non-permutation that never returns to `from` walks forever
 /// example: `[1, 2, 0].cycle(from: 0).collect() == [0, 1, 2]`
-/// empty: never empty: yields at least `from`
+/// empty: `[0].cycle(from: 0).collect() == [0]`
 pub fn cycle<D>(self: [D]D, from: D) -> yields D:
     var x = from
     while true:
@@ -1053,8 +1090,8 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D:
 /// First index in sorted `self` with `by(self[i]) > target`, or `None`.
 ///
 /// cost: \(O(\log n)\)
-/// empty: `None`
-/// ties: the first key past every equal value
+/// empty: `let a: List<Int> = []; a.first_gt(3) == None`
+/// ties: `[3, 3, 4].first_gt(3) == Some(2)`
 /// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 /// otherwise unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].first_gt(3) == Some(3)`
@@ -1065,8 +1102,8 @@ pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
 /// Last index in sorted `self` with `by(self[i]) < target`, or `None`.
 ///
 /// cost: \(O(\log n)\)
-/// empty: `None`
-/// ties: the last key before every equal value
+/// empty: `let a: List<Int> = []; a.last_lt(3) == None`
+/// ties: `[2, 3, 3].last_lt(3) == Some(0)`
 /// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 /// otherwise unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].last_lt(3) == Some(0)`
@@ -1080,7 +1117,7 @@ pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
 /// Traps if `self` is not a bijection. \(O(\lvert I \rvert)\).
 ///
 /// cost: \(O(\lvert I \rvert)\)
-/// empty: an empty array
+/// empty: `domain D = 0..0; let p: [D]D = []; p.inverse() == []`
 /// order: keyed by `V`
 /// traps: when `self` is not a bijection
 /// example: `[2, 0, 1].inverse() == [1, 2, 0]`
@@ -1096,7 +1133,7 @@ pub fn inverse<I, V>(self: [I]V) -> [V]I:
 /// Function composition: `compose(f, g)[a] == g[f[a]]`.
 ///
 /// cost: \(O(\lvert A \rvert)\)
-/// empty: an empty array
+/// empty: `domain D = 0..0; let f: [D]D = []; let g: [D]Int = []; compose(f, g) == []`
 /// order: keyed by `A`
 /// traps: never
 /// example: `domain D = 0..2; let f: [D]D = [1, 0]; let g: [D]Int = [5, 6]; compose(f, g) == [6, 5]`
@@ -1105,7 +1142,7 @@ pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = [A] a => g[f[a]]
 /// Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.
 ///
 /// cost: \(O(\lvert V \rvert)\)
-/// empty: `[]`
+/// empty: `domain D = 0..0; let p: [D]D = []; perm_cycles(p) == []`
 /// order: cycles by smallest element; each starts there and follows `p`
 /// traps: when `p` is not a permutation
 /// example: `perm_cycles([1, 0, 2]) == [[0, 1], [2]]`
@@ -1128,7 +1165,7 @@ pub fn perm_cycles<V>(self: [V]V) -> List<List<V>>:
 /// `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.
 ///
 /// cost: \(O(\lvert V \rvert)\)
-/// empty: an empty array
+/// empty: `domain D = 0..0; let p: [D]D = []; perm_pow(p, 5) == []`
 /// order: keyed by `V`
 /// traps: when `k < 0` or `p` is not a permutation
 /// example: `perm_pow([1, 2, 0], 2) == [2, 0, 1]`
@@ -1145,8 +1182,8 @@ pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
 /// Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`. Works on any `Seq`.
 ///
 /// cost: \(O(n \log n)\)
-/// empty: `0`
-/// ties: equal values are not an inversion
+/// empty: `let a: List<Int> = []; a.inversions() == 0`
+/// ties: `[2, 2, 1].inversions() == 2`
 /// traps: never
 /// example: `[3, 1, 2].inversions() == 2`
 /// example: `inversions([3, 1, 2]) == 2`
@@ -1177,11 +1214,12 @@ pub fn inversions<S: Seq, T>(self: S) -> Int:
     total
 
 /// Swap two positions of a domain array in place; safely a no-op when `i == j`.
+/// An empty array has no key, so no call is possible.
 ///
 /// cost: \(O(1)\)
 /// traps: never
 /// example: `var a = [1, 2]; a.swap_at(0, 1); a == [2, 1]`
-/// empty: no key exists, so no call is possible
+/// empty: `domain D = 0..0; var a: [D]Int = []; a.swap_at(D.first!, D.first!); a == []` (traps R0301)
 pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
     if i == j: return
     let t = self[i]
@@ -1192,7 +1230,7 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
 /// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. Works on any `Indexed` sequence. \(O(n)\).
 ///
 /// cost: \(O(n)\)
-/// empty: `n` copies of `fill`
+/// empty: `let a: List<Int> = []; a.resized(2, 7) == [7, 7]`
 /// order: a new `List`, keyed from 0
 /// traps: when `n < 0`
 /// example: `[1, 2, 3].resized(5, 0) == [1, 2, 3, 0, 0]`
@@ -1204,7 +1242,7 @@ pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [
 /// A monotonic stack is `while let top = st.pop_if(t => t.h >= h): ...`.
 ///
 /// cost: \(O(1)\)
-/// empty: `None`
+/// empty: `var s: List<Int> = []; s.pop_if(x => x > 3) == None`
 /// traps: never
 /// example: `var s = [1, 5]; s.pop_if(x => x > 3) == Some(5)`
 pub fn pop_if<T>(
@@ -1216,7 +1254,7 @@ pub fn pop_if<T>(
 /// elements, last first. The back twin of `Deque.pop_front_while`.
 ///
 /// cost: \(O(\mathit{popped})\)
-/// empty: `[]`
+/// empty: `var s: List<Int> = []; s.pop_while(x => x > 3) == []`
 /// order: last element first
 /// traps: never
 /// example: `var s = [1, 4, 5]; s.pop_while(x => x > 3) == [5, 4] and s == [1]`
@@ -1227,7 +1265,7 @@ pub fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>:
 
 /// \(O(n)\), allocates. A separate copy: `let b = a` moves, `let b = a.clone()` copies.
 ///
-/// cost: \(O(\text{size of the value})\), allocates for heap values
+/// cost: \(O(n)\) for a value of size \(n\), allocates for heap values
 /// traps: never
 /// example: `let a = [1]; var b = a.clone(); b.push(2); a == [1]`
 pub fn clone<T>(self: T) -> T = copy(self)
@@ -1235,18 +1273,19 @@ pub fn clone<T>(self: T) -> T = copy(self)
 /// Move all elements out of `self` in \(O(1)\), leaving it empty.
 ///
 /// cost: \(O(1)\)
-/// empty: `[]`
+/// empty: `var a: List<Int> = []; a.take_all() == [] and a == []`
 /// order: unchanged; `self` is left empty
 /// traps: never
 /// example: `var a = [1, 2]; a.take_all() == [1, 2] and a == []`
 pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 
 /// Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one.
+/// On an empty list `i` must be 0.
 ///
 /// cost: \(O(n - i)\)
 /// traps: when `i` is not in `0..=self.len`
 /// example: `var a = [1, 3]; a.insert(1, 2); a == [1, 2, 3]`
-/// empty: `i` must be 0
+/// empty: `var a: List<Int> = []; a.insert(0, 5); a == [5]`
 pub fn insert<T>(mut self: List<T>, i: Int, x: T):
     assert 0 <= i <= self.len
     self.push(x)
@@ -1260,7 +1299,7 @@ pub fn insert<T>(mut self: List<T>, i: Int, x: T):
 /// cost: \(O(n - i)\)
 /// traps: when `i` is not in `0..self.len`
 /// example: `var a = [1, 2, 3]; a.remove(1) == 2 and a == [1, 3]`
-/// empty: always traps
+/// empty: `var a: List<Int> = []; a.remove(0) == 0` (traps R0401)
 pub fn remove<T>(mut self: List<T>, i: Int) -> T:
     assert 0 <= i < self.len
     for j in i..self.len - 1:
@@ -1295,8 +1334,53 @@ pub trait Bidir<T>: Seq<T>:
     /// Walks the sequence from its end.
     fn iter_rev(self) -> yields T
 
+impl Seq<T> for List<T>:
+    fn iter(self) -> yields T:
+        for x in self: yield x
+
+impl Bidir<T> for List<T>:
+    fn iter_rev(self) -> yields T:
+        var i = self.len - 1
+        while i >= 0:
+            yield self[i]
+            i -= 1
+
+impl Seq<D> for Range<D>:
+    fn iter(self) -> yields D:
+        for x in self: yield x
+
+impl Bidir<D> for Range<D>:
+    fn iter_rev(self) -> yields D:
+        for x in self.rev: yield x
+
+impl Seq<Char> for Str:
+    fn iter(self) -> yields Char:
+        for c in self: yield c
+
+impl Bidir<Char> for Str:
+    fn iter_rev(self) -> yields Char:
+        var i = self.len - 1
+        while i >= 0:
+            yield self[i]
+            i -= 1
+
+impl Seq<T> for [D]T:
+    fn iter(self) -> yields T:
+        for x in self: yield x
+
+impl Bidir<T> for [D]T:
+    fn iter_rev(self) -> yields T:
+        for x in self.rev: yield x
+
+/// A sized sequence read in \(O(1)\) by walk position: `s.nth(k)` is the element `k` steps into
+/// the walk. Every `Indexed` is one, and so is the `.rev` of one, which is what `zip`'s later
+/// arguments need (R07.6.4).
+pub trait Positional<T>: Seq<T> + Sized:
+    /// The element `k` steps into the walk, 0-based; traps unless `0 <= k < len`.
+    fn nth(self, k: Int) -> T
+
 /// A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
-pub trait Indexed<D, T>: Keyed<D, T> + Sized + Bidir<T>:
+pub trait Indexed<D, T>: Keyed<D, T> + Positional<T> + Bidir<T>:
     type Taken = Slice<Self>
     /// The element at key `i`.
     fn at(self, i: D) -> T
@@ -1310,7 +1394,7 @@ pub struct Filtered<S, T>(
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `let a = [1, 2]; a.filter(x => x > 1).src == a`
+    /// example: `let a = [1, 2]; filter(a, x => x > 1).src == a`
     pub src: S,
     p: T -> Bool,
 )
@@ -1336,7 +1420,7 @@ pub struct Mapped<S, T, U>(
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `let a = [1, 2]; a.map(x => x * 2).src == a`
+    /// example: `let a = [1, 2]; map(a, x => x * 2).src == a`
     pub src: S,
     f: T -> U,
 )
@@ -1355,6 +1439,9 @@ impl Sized for Mapped<S: Sized, T, U>:
 impl Bidir<U> for Mapped<S: Bidir<T>, T, U>:
     fn iter_rev(self) -> yields U:
         for x in src.rev: yield f(x)
+
+impl Positional<U> for Mapped<S: Indexed<D, T>, T, U>:
+    fn nth(self, k: Int) -> U = f(src.nth(k))
 
 impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     fn at(self, i: D) -> U = f(src.at(i))
@@ -1381,7 +1468,7 @@ pub struct Rev<S>(
     /// the source's last `k`, walked backwards.
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty view
+    /// empty: `let a: List<Int> = []; List(a.rev.take(2)) == []`
     /// order: walk order of `self`; keeps the source's keys
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.take(2)) == [3, 2]`
@@ -1391,7 +1478,7 @@ pub struct Rev<S>(
     /// the source without its last `k`, walked backwards.
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty view
+    /// empty: `let a: List<Int> = []; List(a.rev.drop(1)) == []`
     /// order: walk order of `self`; keeps the source's keys
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.drop(1)) == [2, 1]`
@@ -1401,7 +1488,7 @@ pub struct Rev<S>(
     /// the source's first `k`, walked backwards.
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty view
+    /// empty: `let a: List<Int> = []; List(a.rev.take_last(2)) == []`
     /// order: walk order of `self`; keeps the source's keys
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.take_last(2)) == [2, 1]`
@@ -1411,7 +1498,7 @@ pub struct Rev<S>(
     /// the source without its first `k`, walked backwards.
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty view
+    /// empty: `let a: List<Int> = []; List(a.rev.drop_last(1)) == []`
     /// order: walk order of `self`; keeps the source's keys
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
@@ -1432,13 +1519,16 @@ impl Keyed<D, T> for Rev<S: Indexed<D, T>>:
     fn items(self) -> yields (D, T):
         for (k, x) in Items(src).iter_rev(): yield (k, x)
 
+impl Positional<T> for Rev<S: Indexed<D, T>>:
+    fn nth(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
+
 /// \(O(1)\) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
 pub struct Items<S>(
     /// \(O(1)\). The source sequence whose items this view walks.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `let a = [1, 2]; a.items.src == a`
+    /// example: `let r = 0..3; r.items.src == r`
     pub src: S,
 )
 
@@ -1456,6 +1546,11 @@ impl Keyed<D, (D, T)> for Items<S: Indexed<D, T>>:
 impl Bidir<(D, T)> for Items<S: Indexed<D, T>>:
     fn iter_rev(self) -> yields (D, T):
         for k in src.keys.rev: yield (k, src.at(k))
+
+impl Positional<(D, T)> for Items<S: Indexed<D, T>>:
+    fn nth(self, k: Int) -> (D, T):
+        let i = src.keys[k]
+        (i, src.at(i))
 
 impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
     fn at(self, i: D) -> (D, T) = (i, src.at(i))
@@ -1487,11 +1582,22 @@ pub struct Slice<S>():
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = todo
 
+    /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
+    /// same elements without the keys.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2][2..].items.collect() == []`
+    /// order: increasing key
+    /// traps: never
+    /// example: `[5, 6, 7][1..].items.collect() == [(1, 6), (2, 7)]`
+    @get pub fn items<K, T>(self) -> yields (K, T):
+        for k in self.keys: yield (k, self.at(k))
+
 /// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0`). Consuming a view
 /// from the front is `w = w.drop(1)`.
 ///
 /// cost: \(O(1)\)
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.drop(1).collect() == []`
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop(1).collect() == [2, 3]`
@@ -1504,7 +1610,7 @@ pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(
 /// \(O(1)\). The view without its last `k` elements, clamped (traps if `k < 0`).
 ///
 /// cost: \(O(1)\)
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.drop_last(1).collect() == []`
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop_last(2).collect() == [1]`
@@ -1517,7 +1623,7 @@ pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(
 /// \(O(1)\). The first `min(k, len)` elements, as a view (traps if `k < 0`).
 ///
 /// cost: \(O(1)\)
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.take(2).collect() == []`
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].take(5).collect() == [1, 2, 3]`
@@ -1526,7 +1632,7 @@ pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(self, 0, clamp_coun
 /// \(O(1)\). The last `min(k, len)` elements, as a view (traps if `k < 0`).
 ///
 /// cost: \(O(1)\)
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.take_last(2).collect() == []`
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].take_last(2).collect() == [2, 3]`
@@ -1540,7 +1646,7 @@ pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(
 /// `s[l + k]`, `w.nth(0)` is `w.first!`. Traps when `k` is outside `0..len`.
 ///
 /// cost: \(O(1)\)
-/// empty: traps for every `k`
+/// empty: `let a: List<Int> = []; a.nth(0) == 0` (traps R0101)
 /// traps: when `k` is not in `0..self.len`
 /// example: `[5, 6, 7][1..].nth(0) == 6`
 pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
@@ -1549,20 +1655,44 @@ pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 /// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
 ///
 /// cost: \(O(1)\)
-/// empty: an empty view over an empty domain
+/// empty: `let a: List<Int> = []; a.rebase.len == 0`
 /// order: same elements, keyed `0..len` by a fresh domain
 /// traps: never
 /// example: `[5, 6, 7][1..].rebase.nth(1) == 7`
-@get pub fn rebase<S: Indexed>(self: S) -> Rebased<S> = todo
+@get pub fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>:
+    domain Idx = 0..self.len
+    Rebased<S, Idx>(self, Idx.all)
 
-/// The view `rebase` returns.
-pub struct Rebased<S>(pub src: S)
+/// The view `rebase` returns: `src` keyed by `Idx`, a fresh domain `0..src.len` of its own.
+pub struct Rebased<S, Idx>(pub src: S, idx: Range<Idx>)
+
+impl Seq<T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn iter(self) -> yields T:
+        for x in src: yield x
+
+impl Sized for Rebased<S: Sized, Idx>:
+    @get fn len(self) -> Int = src.len
+
+impl Keyed<Idx, T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn items(self) -> yields (Idx, T):
+        for i in idx: yield (i, src.nth(i.ord))
+
+impl Bidir<T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn iter_rev(self) -> yields T:
+        for x in src.rev: yield x
+
+impl Positional<T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn nth(self, k: Int) -> T = src.nth(k)
+
+impl Indexed<Idx, T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn at(self, i: Idx) -> T = src.nth(i.ord)
+    @get fn keys(self) -> Range<Idx> = idx
 
 /// \(O(1)\). Every `k`-th element of `self`, starting with the first: `[3, 1, 2, 4].step(2)` walks
 /// `3, 2`. Keys survive (R04a.9.3): `a.step(2)[i]` reads `a[i]`, and a key the stride skips traps.
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per step
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.step(2).len == 0`
 /// order: source order, every `k`-th; source keys
 /// traps: when `k < 1`
 /// example: `[3, 1, 2, 4, 5].step(2).nth(2) == 5`
@@ -1573,7 +1703,7 @@ pub fn step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>:
 /// \(O(1)\). Every other element, starting with the first: `s.step(2)`, with source keys.
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per step
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.even.len == 0`
 /// order: source order, every other element; source keys
 /// traps: never
 /// example: `[3, 1, 2, 4, 5].even.len == 3 and [3, 1, 2, 4, 5].even.nth(1) == 2`
@@ -1582,7 +1712,7 @@ pub fn step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>:
 /// \(O(1)\). Every other element, starting with the second: `s.even`'s complement, with source keys.
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per step
-/// empty: an empty view when `s` has fewer than two elements
+/// empty: `let a: List<Int> = []; a.odd.len == 0 and [7].odd.len == 0`
 /// order: source order, every other element; source keys
 /// traps: never
 /// example: `[3, 1, 2, 4, 5].odd.len == 2 and [3, 1, 2, 4, 5].odd.nth(1) == 4`
@@ -1597,6 +1727,23 @@ pub struct Stepped<S, T>(pub src: S, pub k: Int, pub from: Int = 0):
     /// traps: never
     /// example: `[3, 1, 2, 4, 5].step(2).len == 3`
     @get pub fn len(self) -> Int = if from >= src.len: 0 else: (src.len - from + k - 1) / k
+
+    /// Whether the stepped view has no elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `[1, 2][2..].step(2).is_empty and not [1].step(3).is_empty`
+    @get pub fn is_empty(self) -> Bool = self.len == 0
+
+    /// \(O(\mathit{len})\). Visit the elements `src.nth(from)`, `src.nth(from + k)`, ...
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2][2..].step(2).each().collect() == []`
+    /// order: increasing position in `src`
+    /// traps: never
+    /// example: `[3, 1, 2, 4, 5].step(2).each().collect() == [3, 2, 5]`
+    pub fn each(self) -> yields T:
+        for j in 0..self.len: yield self.nth(j)
 
     /// \(O(1)\). The element `j` steps into the walk: `src`'s element `from + j * k`.
     ///
@@ -1648,7 +1795,7 @@ pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
 /// a table computed on offsets handed back in the caller's keys, `z.rekey(s.keys)`.
 ///
 /// cost: \(O(n)\), allocates
-/// empty: valid only with empty `keys`
+/// empty: `let a: List<Int> = []; a.rekey(5..5).len == 0`
 /// order: same cells, keyed by `keys`
 /// traps: when `keys.len != self.len`
 /// example: `[4, 5].rekey(10..12)[11] == 5`
@@ -1663,7 +1810,7 @@ pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T:
 /// The same operation as `List(s)`; the postfix form is for chains.
 ///
 /// cost: \(O(n)\), allocates
-/// empty: an empty container
+/// empty: `let a: List<Int> = []; a.collect() == []`
 /// order: input order; the container the context expects, else a `List`
 /// traps: never
 /// example: `(1..4).map(x => x * x).collect() == [1, 4, 9]`
@@ -1679,7 +1826,7 @@ pub fn collect<S: Seq, T>(self: S) -> List<T>:
 /// each key is `by(x)` (`dfs(s).keyed(by: v => v)`). Passing both is an error. \(O(1)\) to make.
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per step
-/// empty: an empty view
+/// empty: `let a: List<Int> = []; a.keyed().items.collect() == []`
 /// order: input order, with the k-th key of `keys` or `by(x)`
 /// traps: when both `keys` and `by` are given; when `keys` runs out first
 /// example: `"ab".keyed().items.collect() == [(0, 'a'), (1, 'b')]`
@@ -1707,7 +1854,7 @@ impl Keyed<K, T> for Keys<S, I, T, K>:
 /// \(O(1)\) per step. Yield leading elements while `keep(x)` holds, stopping at the first failure.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.take_while(x => x < 3).count() == 0`
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 5, 1].take_while(x => x < 3).collect() == [1, 2]`
@@ -1719,7 +1866,7 @@ pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T:
 /// \(O(1)\) per step. Skip leading elements while `drop(x)` holds, then yield the rest.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.drop_while(x => x < 3).count() == 0`
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 5, 1].drop_while(x => x < 3).collect() == [5, 1]`
@@ -1734,7 +1881,7 @@ pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T:
 /// `dag[c].filter_map(a => best(a.to)).max()`.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.filter_map(x => Some(x)).count() == 0`
 /// order: input order
 /// traps: never
 /// example: `[1, 2, 3].filter_map(x => if x != 2: Some(x * 10) else: None).collect() == [10, 30]`
@@ -1745,45 +1892,45 @@ pub fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U:
 /// \(O(1)\) per yielded element. Lazily map each element to a sequence and yield all inner elements in order.
 ///
 /// cost: \(O(1)\) per yielded element
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.flat_map(x => 0..x).count() == 0`
 /// order: outer order, then each inner sequence's order
 /// traps: never
 /// example: `[1, 2].flat_map(x => 0..x).collect() == [0, 0, 1]`
-pub fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V:
+pub fn flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V:
     for x in self:
         for y in f(x): yield y
 
 /// \(O(1)\) per yielded element. Lazily concatenate a sequence of sequences.
 ///
 /// cost: \(O(1)\) per yielded element
-/// empty: yields nothing
+/// empty: `let a: List<List<Int>> = []; a.flatten().count() == 0`
 /// order: outer order, then inner order
 /// traps: never
 /// example: `[[1], [], [2, 3]].flatten().collect() == [1, 2, 3]`
-pub fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T:
+pub fn flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T:
     for xs in self:
         for x in xs: yield x
 
 /// \(O(1)\) per step. Yield the `Some` values of a sequence of `?T`, skipping `None`.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing
+/// empty: `let a: List<?Int> = []; a.present().count() == 0`
 /// order: input order
 /// traps: never
 /// example: `[Some(1), None, Some(3)].present().collect() == [1, 3]`
-pub fn present<S: Seq, T>(self: S) -> yields T:
+pub fn present<S: Seq<?U>, U>(self: S) -> yields U:
     for x in self:
         if let y = x: yield y
 
 /// \(O(n)\), \(O(n)\) memory. Unwrap every `?T` into a `List<T>`, or return `None` if any element is `None`.
 ///
 /// cost: \(O(n)\), \(O(n)\) memory
-/// empty: `Some([])`
+/// empty: `let a: List<?Int> = []; a.all_some() == Some([])`
 /// order: input order
 /// traps: never
 /// example: `[Some(1), None].all_some() == None`
-pub fn all_some<S: Seq, T>(self: S) -> ?List<T>:
-    var out: List<T> = []
+pub fn all_some<S: Seq<?U>, U>(self: S) -> ?List<U>:
+    var out: List<U> = []
     for x in self:
         if let y = x: out.push(y)
         else: return None
@@ -1793,7 +1940,7 @@ pub fn all_some<S: Seq, T>(self: S) -> ?List<T>:
 /// (R07.7.4), as free `min` and `max` take any number of values.
 ///
 /// cost: \(O(1)\) per step
-/// empty: the sequences that are not empty, in turn
+/// empty: `let e: List<Int> = []; chain(e, [1], e, [2]).collect() == [1, 2]`
 /// order: all of the first sequence, then all of the next, and so on
 /// traps: never
 /// example: `chain([1], [2, 3]).collect() == [1, 2, 3]`
@@ -1805,7 +1952,7 @@ pub fn chain<Ss, T>(..seqs: Ss) -> yields T:
 /// \(O(1)\) per step. Cartesian product `(x, y)` for `x in a`, `y in b` in lexicographic order.
 ///
 /// cost: \(O(1)\) per step, \(O(\lvert a \rvert \cdot \lvert b \rvert)\) to walk
-/// empty: yields nothing when either is empty
+/// empty: `let e: List<Int> = []; product(e, "xy").count() == 0 and product([1, 2], "").count() == 0`
 /// order: lexicographic, `a` outer
 /// traps: never
 /// example: `product([1, 2], "xy").count() == 4`
@@ -1816,7 +1963,7 @@ pub fn product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U
 /// \(O(1)\) per step. One-shot stream `from, step(from), step(step(from)), ...` until `None`.
 ///
 /// cost: \(O(1)\) per step plus one call of `step`
-/// empty: yields nothing when `from` is `None`
+/// empty: `let s: ?Int = None; iterate(s, x => Some(x + 1)).count() == 0`
 /// order: `from`, `step(from)`, ... until `None`
 /// traps: never
 /// example: `iterate(Some(1), x => if x < 8: Some(2 * x) else: None).collect() == [1, 2, 4, 8]`
@@ -1829,7 +1976,7 @@ pub fn iterate<T>(from: ?T, step: T -> ?T) -> yields T:
 /// \(O(1)\) per step. Every element paired with the next one, ending with `(last, None)`.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.with_next().count() == 0`
 /// order: left to right, ending `(last, None)`
 /// traps: never
 /// example: `[1, 2].with_next().collect() == [(1, Some(2)), (2, None)]`
@@ -1843,18 +1990,18 @@ pub fn with_next<S: Seq, T>(self: S) -> yields (T, ?T):
 /// \(O(1)\) per step. Zero-alloc zipped view of equal-length sequences; traps if `a.len != b.len`.
 ///
 /// cost: \(O(1)\) per step
-/// empty: yields nothing when both are empty
+/// empty: `let a: List<Int> = []; zip_exact(a, "").count() == 0`
 /// order: position by position
 /// traps: when `a.len != b.len`
 /// example: `zip_exact([1, 2], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip_exact<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U):
+pub fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U):
     assert a.len == b.len
     for i in 0..a.len: yield (a.nth(i), b.nth(i))
 
 /// \(O(n)\). Non-overlapping length-`k` chunks, padding the last chunk with `pad` when shorter.
 ///
 /// cost: \(O(k)\) per chunk
-/// empty: yields nothing
+/// empty: `let a: List<Int> = []; a.chunks_padded(2, 0).count() == 0`
 /// order: left to right
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks_padded(2, 0).collect() == [[1, 2], [3, 0]]`
@@ -1871,7 +2018,7 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
 /// \(O(n)\). Seedless left fold returning `None` on empty (never traps).
 ///
 /// cost: \(O(n)\) calls of `f`
-/// empty: `None`
+/// empty: `let a: List<Int> = []; a.reduce((x, y) => x * y) == None`
 /// traps: never
 /// example: `[3, 4].reduce((a, b) => a * b) == Some(12)`
 pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T:
@@ -1881,13 +2028,29 @@ pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T:
         else: acc = Some(x)
     acc
 
-/// \(O(n)\). Seeded left fold into an arbitrary accumulator `Acc`.
+/// \(O(n)\). The elements folded left to right with `op`: `op(op(op(id, x0), x1), x2)`. `op` is
+/// anything `Monoid.of` accepts (`+`, `*`, `^`, `|`, `&`, `max`, `min`, `gcd`, `or`, `and`, a
+/// `Monoid`), so the empty fold is its identity. A fn without an identity is `reduce(f)`, and a fold
+/// into another type is `fold_from(init, f)` (decision 550).
+///
+/// cost: \(O(n)\) calls of `op`
+/// empty: `let a: List<Int> = []; a.fold(+) == 0`
+/// traps: never (an `op` without a known identity is a compile-time error)
+/// example: `[1, 2, 3].fold(+) == 6`
+/// example: `[3, 9, 6].fold(gcd) == 3`
+pub fn fold<S: Seq<T>, T, M>(self: S, op: M) -> T:
+    let m = Monoid<T>.of(op)
+    var acc = m.id
+    for x in self: acc = m.op(acc, x)
+    acc
+
+/// \(O(n)\). Seeded left fold into an arbitrary accumulator `Acc`, `init` first.
 ///
 /// cost: \(O(n)\) calls of `f`
-/// empty: `init`
+/// empty: `let a: List<Int> = []; a.fold_from(7, (s, x) => s * 10 + x) == 7`
 /// traps: never
-/// example: `[1, 2, 3].fold((s, x) => s * 10 + x, 0) == 123`
-pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc:
+/// example: `[1, 2, 3].fold_from(0, (s, x) => s * 10 + x) == 123`
+pub fn fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc:
     var acc = init
     for x in self: acc = f(acc, x)
     acc
@@ -1895,8 +2058,8 @@ pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc:
 /// \(O(n)\). Maximum element (under `by:`) together with its multiplicity, or `None` when empty.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: `val` is the first maximal element; `count` counts every element with an equal key
+/// empty: `let a: List<Int> = []; a.max_count() == None`
+/// ties: `[(3, 'a'), (1, 'b'), (3, 'c')].max_count(by: .0) == Some((val: (3, 'a'), count: 2))`
 /// traps: never
 /// example: `[3, 1, 3].max_count() == Some((val: 3, count: 2))`
 pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
@@ -1917,8 +2080,8 @@ pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
 /// \(O(n)\). Minimum element (under `by:`) together with its multiplicity, or `None` when empty.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: `val` is the first minimal element; `count` counts every element with an equal key
+/// empty: `let a: List<Int> = []; a.min_count() == None`
+/// ties: `[(1, 'a'), (3, 'b'), (1, 'c')].min_count(by: .0) == Some((val: (1, 'a'), count: 2))`
 /// traps: never
 /// example: `[1, 2, 1].min_count() == Some((val: 1, count: 2))`
 pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
@@ -1942,7 +2105,7 @@ pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
 /// pass builds a chain with no two neighbours equal, a second counts its last value).
 ///
 /// cost: at most \(\lfloor 3n/2 \rfloor\) calls of `eq`; \(O(n)\) memory
-/// empty: `None`
+/// empty: `let a: List<Int> = []; a.majority() == None`
 /// traps: never
 /// example: `[2, 1, 2].majority() == Some((val: 2, count: 2))`
 pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int):
@@ -1970,7 +2133,7 @@ pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(
 /// \(O(n)\) expected, \(O(\mathit{distinct})\) memory. How many times each key `by(x)` occurs across `self`, as a `Counter`, so a key that never occurs reads 0.
 ///
 /// cost: \(O(n)\) expected, \(O(\mathit{distinct})\) memory
-/// empty: an empty counter
+/// empty: `let a: List<Char> = []; a.tally()['a'] == 0`
 /// traps: never
 /// example: `"abca".tally()['a'] == 2`
 /// example: `[1, 1, 2].tally()[7] == 0`
@@ -1983,7 +2146,7 @@ pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
 /// \(O(n \log n)\), \(O(n)\) memory. Group elements by an ordered key; `of:` keeps a projection of each element (`pairs.group(by: .0, of: .1)`). When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
 ///
 /// cost: \(O(n \log n)\), \(O(n)\) memory
-/// empty: an empty map
+/// empty: `let a: List<(Int, Char)> = []; a.group(by: p => p.0).len == 0`
 /// order: keys ascending; each group keeps input order
 /// traps: never
 /// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)[1] == ['a', 'c']`
@@ -1998,8 +2161,8 @@ pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K
 /// \(O(n)\) expected, \(O(k)\) memory. `k` smallest elements under `by:` (unordered; ties to earlier index).
 ///
 /// cost: \(O(n)\) expected, \(O(k)\) memory
-/// empty: `[]`
-/// ties: earlier elements win
+/// empty: `let a: List<Int> = []; a.min_k(2) == []`
+/// ties: `[(1, 'a'), (1, 'b'), (1, 'c')].min_k(2, by: .0).sorted() == [(1, 'a'), (1, 'b')]`
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
@@ -2013,8 +2176,8 @@ pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
 /// \(O(n)\) expected, \(O(k)\) memory. `k` largest elements under `by:` (unordered; ties to earlier index).
 ///
 /// cost: \(O(n)\) expected, \(O(k)\) memory
-/// empty: `[]`
-/// ties: earlier elements win
+/// empty: `let a: List<Int> = []; a.max_k(2) == []`
+/// ties: `[(1, 'a'), (1, 'b'), (1, 'c')].max_k(2, by: .0).sorted() == [(1, 'a'), (1, 'b')]`
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
@@ -2032,7 +2195,7 @@ pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
 /// \(O(n)\). Unstable in-place partition moving `keep(x)` elements to `0..mid`; returns `mid`.
 ///
 /// cost: \(O(n)\), \(O(1)\) extra space
-/// empty: returns `0`
+/// empty: `var a: List<Int> = []; a.partition_in_place(x => x > 0) == 0`
 /// order: kept elements in `0..mid`, the rest after, each side in unspecified order
 /// traps: never
 /// example: `var a = [1, 2, 3, 4]; a.partition_in_place(x => x % 2 == 0) == 2`
@@ -2047,7 +2210,7 @@ pub fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int
 /// \(O(n)\), \(O(n)\) memory. Stable in-place partition preserving relative order in both halves; returns `mid`.
 ///
 /// cost: \(O(n)\), \(O(n)\) memory
-/// empty: returns `0`
+/// empty: `var a: List<Int> = []; a.stable_partition_in_place(x => x > 0) == 0`
 /// order: kept elements in `0..mid`, the rest after, each side in input order
 /// traps: never
 /// example: `var a = [1, 2, 3, 4]; a.stable_partition_in_place(x => x % 2 == 0); a == [2, 4, 1, 3]`
@@ -2067,7 +2230,7 @@ pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool)
 /// \(O(n)\), \(O(n)\) memory. `[a[0], a[1] - a[0], ...]` (inverse of `scan(+)`).
 ///
 /// cost: \(O(n)\), \(O(n)\) memory
-/// empty: `[]`
+/// empty: `let a: List<Int> = []; a.adjacent_diff() == []`
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 5, 4].adjacent_diff() == [3, 2, -1]`
@@ -2096,13 +2259,14 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
 /// default, true then false with `last: true`, as `Range.bsearch` is for positions (total; never `None`).
 ///
 /// An `ok` that flips the other way (C++'s `partition_point` habit) stops a checked build.
+/// Ties can't arise: a monotone `ok` flips once.
 ///
 /// cost: \(O(\log n)\) calls of `ok`, plus one when the cut is an end
-/// empty: the only cut
+/// empty: `let a: List<Int> = []; a.bsearch(x => x > 2).r == 0`
 /// traps: when `ok` flips the other way; any other `ok` that is not monotone gives an
 /// unspecified answer
 /// example: `[1, 3, 5].bsearch(x => x > 2).r == 1`
-/// ties: none: a monotone `ok` has one flip
+/// ties: `[1, 3, 3, 5].bsearch(x => x >= 3).r == 1`
 pub fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>:
     let at = m => ok(self[D.nth(m)])
     D.cuts.nth(if last: ((0..D.count).last_true(at) ?? -1) + 1 else: (0..D.count).first_true(at) ?? D.count)
@@ -2110,7 +2274,7 @@ pub fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>:
 /// \(O(\log n)\). Contiguous range of elements in sorted `self` with `by(x) == target` (empty at insertion cut if absent).
 ///
 /// cost: \(O(\log n)\)
-/// empty: an empty range
+/// empty: `let a: List<Int> = []; a.equal_range(3) == 0..0`
 /// order: the keys of `self` holding `target`, increasing
 /// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 /// otherwise unsorted input gives an unspecified range
@@ -2123,7 +2287,7 @@ pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range
 /// \(O(\log n)\). How many elements of sorted `self` have `by(x)` in the half-open `r`.
 ///
 /// cost: \(O(\log n)\)
-/// empty: 0, as for an empty `r`
+/// empty: `let a: List<Int> = []; a.count_in(3..6) == 0 and [1, 3].count_in(3..3) == 0`
 /// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 /// otherwise unsorted input gives an unspecified count
 /// example: `[1, 3, 3, 5, 8].count_in(3..6) == 3`
@@ -2137,8 +2301,8 @@ pub fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int:
 /// \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory. Sorted deduplicated union of two sorted sequences.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
-/// empty: the other input, deduplicated
-/// ties: one copy of each value
+/// empty: `let e: List<Int> = []; e.sorted_union([2, 2, 3]) == [2, 3]`
+/// ties: `[1, 1, 3].sorted_union([1, 3, 3]) == [1, 3]`
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 3].sorted_union([2, 3]) == [1, 2, 3]`
@@ -2153,10 +2317,11 @@ pub fn sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
     out
 
 /// The values in both of two sorted sequences, merged in one pass.
+/// Each value is kept min(count in `self`, count in `b`) times.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
-/// empty: `[]`
-/// ties: each value kept min(count in `self`, count in `b`) times
+/// empty: `let e: List<Int> = []; e.sorted_intersect([2, 2]) == []`
+/// ties: `[2, 2, 2].sorted_intersect([2, 2]) == [2, 2]`
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 2, 3].sorted_intersect([2, 2, 4]) == [2, 2]`
@@ -2173,10 +2338,11 @@ pub fn sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
     out
 
 /// \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory. Sorted elements in `self` not in `b`.
+/// Each value is kept (count in `self` − count in `b`) times, at least 0.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
-/// empty: `self`, copied, when `b` is empty
-/// ties: each value kept (count in `self` − count in `b`) times, at least 0
+/// empty: `let e: List<Int> = []; [1, 1, 2].sorted_diff(e) == [1, 1, 2]`
+/// ties: `[2, 2, 3].sorted_diff([2, 2, 2]) == [3]`
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 2, 3].sorted_diff([2]) == [1, 2, 3]`
@@ -2191,10 +2357,11 @@ pub fn sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
     out
 
 /// \(O(N \log k)\), \(O(N)\) memory. Merge `k` sorted sequences via min-heap.
+/// On ties the earlier list comes first (stable).
 ///
 /// cost: \(O(N \log k)\), \(O(N)\) memory
-/// empty: `[]`
-/// ties: the earlier list first (stable)
+/// empty: `let e: List<List<Int>> = []; kway_merge(e) == []`
+/// ties: `kway_merge([[1, 2], [1]]) == [1, 1, 2]`
 /// order: non-decreasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `kway_merge([[1, 4], [2], [3]]) == [1, 2, 3, 4]`
@@ -2214,8 +2381,8 @@ pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>:
 /// \(O(n)\), \(O(n)\) memory. Stable LSD radix sort in place by integer key `by:` (signed `Int` supported).
 ///
 /// cost: \(O(n)\) passes over 8-bit digits of the key, \(O(n)\) memory
-/// empty: does nothing
-/// ties: stable
+/// empty: `var a: List<Int> = []; a.radix_sort(); a == []`
+/// ties: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.radix_sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
 /// traps: never
 /// example: `var a = [3, -1, 2]; a.radix_sort(); a == [-1, 2, 3]`
 pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
@@ -2254,8 +2421,8 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
 /// ```
 ///
 /// cost: \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory
-/// empty: does nothing
-/// ties: stable
+/// empty: `domain K = 0..2; var a: List<(k: K, s: Str)> = []; a.counting_sort(by: p => p.k); a == []`
+/// ties: `domain K = 0..2; var a = [(k: K(1), s: "b"), (k: K(1), s: "a")]; a.counting_sort(by: p => p.k); [p.s for p in a] == ["b", "a"]`
 /// traps: never
 pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K):
     let n = self.len
@@ -2280,7 +2447,7 @@ pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K):
 /// \(O(n)\) expected, \(O(n)\) memory. Whether `self` and `b` hold the same multiset of elements; `p.is_permutation(p.keys)` asks whether `p` is a permutation of its own keys.
 ///
 /// cost: \(O(n)\) expected, \(O(n)\) memory
-/// empty: `true` when both are empty
+/// empty: `let e: List<Int> = []; e.is_permutation(e) == true`
 /// traps: never
 /// example: `[1, 2, 2].is_permutation([2, 1, 2]) == true`
 /// example: `[2, 0, 1].is_permutation(0..3) == true`
@@ -2301,7 +2468,7 @@ pub fn is_permutation<A: Seq, B: Seq, T>(self: A, b: B) -> Bool:
 /// \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\). Whether `self` occurs as a subsequence of `of`.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\)
-/// empty: `true` for an empty `self`
+/// empty: `"".is_subsequence("abc") == true`
 /// traps: never
 /// example: `"ace".is_subsequence("abcde") == true`
 pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool:
@@ -2317,7 +2484,7 @@ pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool:
 /// \(O(n \log n)\), \(O(n)\) memory. Lexicographic rank of permutation `p` in `0..|V|!` (`|V| <= 20`).
 ///
 /// cost: \(O(n \log n)\), \(O(n)\) memory
-/// empty: `0`
+/// empty: `domain V = 0..0; let p: [V]V = []; perm_rank(p) == 0`
 /// traps: when `|V| > 20` or `p` is not a permutation
 /// example: `perm_rank([1, 0, 2]) == 2`
 /// trap: `perm_rank([0, 0, 1])`
@@ -2347,7 +2514,7 @@ pub fn perm_rank<V>(self: [V]V) -> Int:
 /// \(O(n \log n)\), \(O(n)\) memory. The `rank`-th lexicographic permutation of `V` (`0 <= rank < |V|!`).
 ///
 /// cost: \(O(n \log n)\), \(O(n)\) memory
-/// empty: the empty permutation for `rank == 0`
+/// empty: `domain V = 0..0; perm_unrank<V>(0) == []`
 /// order: keyed by `V`
 /// traps: when `rank` is not in `0..|V|!`
 /// example: `domain V = 0..3; perm_unrank<V>(2) == [1, 0, 2]`
@@ -2365,7 +2532,7 @@ pub fn perm_unrank<V>(rank: Int) -> [V]V:
         if j + (j & -j) <= n: bit[j + (j & -j)] += bit[j]
     var top = 1
     while top * 2 <= n: top *= 2
-    var out: [V]V = V.nth(0)
+    var out: [V]V = [V] v => v
     for k in 0..n:
         var (pos, need, step) = (0, digits[k] + 1, top)
         while step > 0:
@@ -2383,7 +2550,7 @@ pub fn perm_unrank<V>(rank: Int) -> [V]V:
 /// \(O(n)\), \(O(n)\) memory. Sign/parity of permutation `p` (`+1` even, `-1` odd).
 ///
 /// cost: \(O(n)\), \(O(n)\) memory
-/// empty: `1`
+/// empty: `domain V = 0..0; let p: [V]V = []; perm_sign(p) == 1`
 /// traps: when `p` is not a permutation
 /// example: `perm_sign([1, 0, 2]) == -1`
 /// trap: `perm_sign([0, 0, 1])`
@@ -2404,7 +2571,7 @@ pub fn perm_sign<V>(self: [V]V) -> Int:
 /// \(O(n)\), \(O(n)\) memory. Order of permutation `p` (LCM of disjoint cycle lengths).
 ///
 /// cost: \(O(n)\), \(O(n)\) memory
-/// empty: `1`
+/// empty: `domain V = 0..0; let p: [V]V = []; perm_order(p) == 1`
 /// traps: never; the order can overflow `Int` past about |V| = 400
 /// example: `perm_order([1, 0, 3, 4, 2]) == 6`
 pub fn perm_order<V>(self: [V]V) -> Int:
@@ -2425,7 +2592,7 @@ pub fn perm_order<V>(self: [V]V) -> Int:
 /// \(O(\lvert I \rvert + \lvert V \rvert)\), \(O(\lvert I \rvert + \lvert V \rvert)\) memory. Inverse of partial injection `self: [I]?V -> [V]?I` (traps on duplicate non-`None` images).
 ///
 /// cost: \(O(\lvert I \rvert + \lvert V \rvert)\), \(O(\lvert I \rvert + \lvert V \rvert)\) memory
-/// empty: every entry `None`
+/// empty: `domain I = 0..0; domain V = 0..2; let p: [I]?V = []; p.partial_inverse() == [None, None]`
 /// order: keyed by `V`
 /// traps: when two keys map to the same value
 /// example: `domain I = 0..3; let p: [I]?I = [Some(2), None, Some(0)]; p.partial_inverse() == [Some(2), None, Some(0)]`
@@ -2440,7 +2607,7 @@ pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
 /// \(O(k)\) per combination. All `k`-element combinations in lexicographic index order (`k = 2` is unordered pairs).
 ///
 /// cost: \(O(k)\) per combination
-/// empty: one empty combination when `k == 0`, else nothing
+/// empty: `let e: List<Int> = []; e.combinations(0).collect() == [[]] and e.combinations(1).count() == 0`
 /// order: lexicographic by position
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].combinations(2).collect() == [[1, 2], [1, 3], [2, 3]]`
@@ -2460,7 +2627,7 @@ pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T>:
 /// \(O(1)\) per pair. Zero-alloc unordered index pairs `(i, j)` with `i < j` over `self: Range<D>`.
 ///
 /// cost: \(O(1)\) per pair
-/// empty: yields nothing
+/// empty: `(0..0).index_pairs().count() == 0`
 /// order: by the first key, then the second
 /// traps: never
 /// example: `(0..3).index_pairs().collect() == [(0, 1), (0, 2), (1, 2)]`
@@ -2469,10 +2636,11 @@ pub fn index_pairs<D>(self: Range<D>) -> yields (D, D):
         for j in i + 1..self.len: yield (self.nth(i), self.nth(j))
 
 /// \(O(k)\) per permutation. All `k`-permutations of `self` (default `k = self.len`).
+/// Equal elements give repeated permutations; dedup the input's arrangements with `next_permutation`.
 ///
 /// cost: \(O(k)\) per permutation
-/// empty: one empty permutation
-/// ties: equal elements give repeated permutations; dedup the input's arrangements with `next_permutation`
+/// empty: `let e: List<Int> = []; e.permutations().collect() == [[]]`
+/// ties: `[1, 1].permutations().collect() == [[1, 1], [1, 1]]`
 /// order: lexicographic by position
 /// traps: when `k` is not in `0..=self.len`
 /// example: `[1, 2].permutations().collect() == [[1, 2], [2, 1]]`
@@ -2512,7 +2680,7 @@ pub struct SubseqStep<T>(pub items: List<T>, pruned: Bool = false):
 /// \(O(k)\) per subsequence. All subsequences of `self` in lex order; supports `step.prune()` (decision 126, W6).
 ///
 /// cost: \(O(k)\) per subsequence
-/// empty: one empty subsequence
+/// empty: `let e: List<Int> = []; e.subsequences().map(s => s.items).collect() == [[]]`
 /// order: lexicographic by position, the empty one first; `prune` skips every extension of the current one
 /// traps: never
 /// example: `[1, 2].subsequences().map(s => s.items).collect() == [[], [1], [1, 2], [2]]`
@@ -2536,9 +2704,11 @@ pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>:
 /// `strict: false` allows equal neighbours. Longest non-increasing is `by: desc`-style `x => -x`
 /// with `strict: false`.
 ///
+/// Among longest subsequences it gives the one whose positions are lexicographically greatest from the end (the patience-sorting choice).
+///
 /// cost: \(O(n \log n)\), \(O(n)\) memory
-/// empty: `[]`
-/// ties: among longest subsequences, the one whose positions are lexicographically greatest from the end (the patience-sorting choice)
+/// empty: `let e: List<Int> = []; e.lis() == []`
+/// ties: `[2, 1, 3].lis() == [1, 2]`
 /// order: increasing positions of `self`
 /// traps: never
 /// example: `[3, 1, 2, 2, 5].lis() == [1, 2, 4]`
@@ -2566,9 +2736,11 @@ pub fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> Lis
 
 /// \(O(\lvert a \rvert \cdot \lvert b \rvert)\), \(O(\lvert a \rvert \cdot \lvert b \rvert)\) memory. Longest common subsequence of `a` and `b` as matched `(i, j)` index pairs.
 ///
+/// Among longest it gives the one the standard backward walk finds, preferring to step in `a` first.
+///
 /// cost: \(O(\lvert a \rvert \cdot \lvert b \rvert)\), \(O(\lvert a \rvert \cdot \lvert b \rvert)\) memory
-/// empty: `[]`
-/// ties: among longest, the one the standard backward walk finds, preferring to step in `a` first
+/// empty: `lcs("", "abc") == []`
+/// ties: `lcs("ab", "ba") == [(0, 1)]`
 /// order: increasing `(i, j)`
 /// traps: never
 /// example: `lcs("abc", "acb").len == 2`
@@ -2593,8 +2765,8 @@ pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>:
 /// \(O(n)\), \(O(n)\) memory. Min-heap (or max-heap when `min_root: false`) Cartesian tree in one monotone-stack pass.
 ///
 /// cost: \(O(n)\), \(O(n)\) memory
-/// empty: `root` is `None` and every array is empty
-/// ties: the earlier position is the ancestor
+/// empty: `let e: List<Int> = []; let t = e.cartesian_tree(); t.root == None and t.left == [] and t.parent == []`
+/// ties: `[1, 1].cartesian_tree().root == Some(0)`
 /// order: arrays keyed by `D`
 /// traps: never
 /// example: `[3, 1, 2].cartesian_tree().root == Some(1)`
@@ -2672,6 +2844,19 @@ pub struct OnlineLis<T>(strict: Bool = true):
     /// traps: never
     /// example: `OnlineLis<Int>().is_empty == true`
     @get pub fn is_empty(self) -> Bool = vals.len == 0
+
+    /// \(O(\mathit{len})\). Visit one longest increasing subsequence as `(push index, value)`
+    /// pairs: the one `reconstruct` returns, with its values.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `OnlineLis<Int>().items.collect() == []`
+    /// ties: `var t = OnlineLis<Int>(); for x in [1, 3, 2]: t.push(x); t.items.collect() == [(0, 1), (2, 2)]`
+    /// order: increasing push index
+    /// traps: never
+    /// example: `var t = OnlineLis<Int>(); for x in [3, 1, 2]: t.push(x); t.items.collect() == [(1, 1), (2, 2)]`
+    @get pub fn items(self) -> yields (Int, T):
+        for i in self.reconstruct(): yield (i, vals[i])
+
     /// \(O(1)\). Reset all state.
     ///
     /// cost: \(O(1)\)
@@ -2689,8 +2874,8 @@ pub struct OnlineLis<T>(strict: Bool = true):
     /// \(O(n)\), \(O(n)\) memory. Reconstruct one global LIS as 0-based push indices.
     ///
     /// cost: \(O(n)\), \(O(n)\) memory
-    /// empty: `[]`
-    /// ties: the subsequence ending at the latest push of maximal length
+    /// empty: `OnlineLis<Int>().reconstruct() == []`
+    /// ties: `var t = OnlineLis<Int>(); for x in [1, 3, 2]: t.push(x); t.reconstruct() == [0, 2]`
     /// order: increasing push indices
     /// traps: never
     /// example: `var t = OnlineLis<Int>(); for x in [3, 1, 2]: t.push(x); t.reconstruct() == [1, 2]`
@@ -2747,7 +2932,7 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
     /// \(O(1)\) amortized. Push `(i, x)`, pop dominated entries, and return the nearest dominating index (or `None`).
     ///
     /// cost: \(O(1)\) amortized
-    /// ties: equal values pop unless `strict: false`
+    /// ties: `var s = MonoStack<Int, Int>(); s.push(0, 5); var t = MonoStack<Int, Int>(strict: false); t.push(0, 5); s.push(1, 5) == None and t.push(1, 5) == Some(0)`
     /// traps: never
     /// example: `var s = MonoStack<Int, Int>(); s.push(0, 5); s.push(1, 3) == Some(0)`
     pub fn push(mut self, i: D, x: T) -> ?D:
@@ -2762,11 +2947,12 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
         vals.push(x)
         below
     /// \(O(1)\). Current top `(index, val)`, or `None` when empty.
+    /// Ties don't apply: the stack has one top.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s = MonoStack<Int, Int>(); s.push(3, 8); s.top == Some((index: 3, val: 8))`
-    /// ties: none: the stack has one top
+    /// ties: `var s = MonoStack<Int, Int>(strict: false); s.push(0, 5); s.push(1, 5); s.top == Some((index: 1, val: 5))`
     @get pub fn top(self) -> ?(index: D, val: T):
         if idx.len == 0: None else: Some((index: idx.last!, val: vals.last!))
     /// \(O(1)\). Current stack depth.
@@ -2781,6 +2967,17 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
     /// traps: never
     /// example: `MonoStack<Int, Int>().is_empty == true`
     @get pub fn is_empty(self) -> Bool = idx.len == 0
+
+    /// \(O(\mathit{len})\). Visit the kept `(index, val)` entries, bottom of the stack first.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `MonoStack<Int, Int>().items.collect() == []`
+    /// order: push order, bottom to top
+    /// traps: never
+    /// example: `var s = MonoStack<Int, Int>(); s.push(0, 5); s.push(1, 3); s.push(2, 4); s.items.collect() == [(0, 5), (2, 4)]`
+    @get pub fn items(self) -> yields (D, T):
+        for j in 0..idx.len: yield (idx[j], vals[j])
+
     /// \(O(1)\). Empty the stack and rollback log.
     ///
     /// cost: \(O(1)\)
@@ -3061,8 +3258,8 @@ fn cyclic_pairs_close_the_ring():
 /// `List<T>`, a `[1..=n]T`, a `[V]T` or a filtered view of one alike. \(O(n)\).
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: the first in key order; the last with `ties: Ties.Last`
+/// empty: `let a: List<Int> = []; a.argmax() == None`
+/// ties: `[(9, 'a'), (9, 'b')].argmax(by: .0) == Some(0)`
 /// traps: never
 /// example: `[3, 9, 2, 9].argmax() == Some(1)`
 /// example: `[3, 9, 2, 9].argmax(ties: Ties.Last) == Some(3)`
@@ -3080,8 +3277,8 @@ pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties
 /// The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: the first in key order; the last with `ties: Ties.Last`
+/// empty: `let a: List<Int> = []; a.argmin() == None`
+/// ties: `[(1, 'a'), (1, 'b')].argmin(by: .0) == Some(0)`
 /// traps: never
 /// example: `[3, 1, 1].argmin() == Some(1)`
 /// example: `[3, 1, 1].argmin(ties: Ties.Last) == Some(2)`
@@ -3326,7 +3523,7 @@ impl Rev<[D]T>:
     /// need `f` to be `+`.
     ///
     /// cost: \(O(n)\) calls of `f`; \(O(n)\) space
-    /// empty: one cut, holding `from` or the identity
+    /// empty: `domain D = 0..0; let a: [D]Int = []; a.rev.scan(+).all == 0`
     /// order: keyed by `D.cuts`, right to left
     /// traps: never (beyond what `f` traps on); see `fold` for range reads
     /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(*).at(D(1).l) == 12`
@@ -3351,7 +3548,7 @@ impl Sep<Int> for Int:
 /// `Str` each piece is a view that prints and compares as a string; `Str(p)` copies it.
 ///
 /// cost: \(O(n)\)
-/// empty: yields one empty piece
+/// empty: `"".split(',').count() == 1`
 /// order: left to right; each piece keeps the keys of `self`
 /// traps: never
 /// example: `[p.len for p in [1, 0, 0, 2].split(x => x == 0)] == [1, 0, 1]`
@@ -3403,10 +3600,11 @@ impl Track<K> for Counter<K, Int>:
 /// Read the piece as `a[w]`, like [`spans`](spans). `ok` must be
 /// monotone under shrinking. `anchor: Anchor.Start` keys by left
 /// end instead: the longest piece starting at each position, as greedy jumps want. \(O(n)\) amortized.
+/// Ties can't arise: each key has one longest piece.
 ///
 /// cost: \(O(n)\) amortized pushes and pops on `state`
-/// empty: an empty array
-/// ties: none: each key has one longest piece
+/// empty: `let e: List<Int> = []; e.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 1) == []`
+/// ties: `[5, 5].maximal(state: Counter<Int, Int>(), ok: c => c.len <= 1).map(w => w.len) == [1, 2]`
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never in release; debug traps when `ok` fails on a single element after a shrink
 /// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
@@ -3416,7 +3614,6 @@ pub fn maximal<D, T, St: Track<T>>(
     ok: St -> Bool,
     anchor: Anchor = Anchor.End,
 ) -> [D]Range<D>:
-    with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
     var out: [D]Range<D> = D.cuts.nth(0)..D.cuts.nth(0)
@@ -3445,10 +3642,11 @@ pub fn maximal<D, T, St: Track<T>>(
 /// For each right end, the shortest piece ending there that is `ok` (its positions), or None,
 /// keyed by that
 /// end like the ring forms; `anchor: Anchor.Start` keys by left end. \(O(n)\) amortized.
+/// Ties can't arise: each key has one shortest piece.
 ///
 /// cost: \(O(n)\) amortized pushes and pops on `state`
-/// empty: an empty array
-/// ties: none: each key has one shortest piece
+/// empty: `let sum = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); let e: List<Int> = []; e.minimal(state: sum, ok: w => w.state >= 3) == []`
+/// ties: `let sum = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); [3, 3].minimal(state: sum, ok: w => w.state >= 3).map(w => w.map(.len)) == [Some(1), Some(1)]`
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never
 ///
@@ -3463,7 +3661,6 @@ pub fn minimal<D, T, St: Track<T>>(
     ok: St -> Bool,
     anchor: Anchor = Anchor.End,
 ) -> [D]?Range<D>:
-    with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
     var out: [D]?Range<D> = None
@@ -3492,7 +3689,7 @@ pub fn minimal<D, T, St: Track<T>>(
 /// element is still a position of `a`. Replaces doubling the array.
 ///
 /// cost: \(O(1)\)
-/// empty: a ring with no positions
+/// empty: `let e: List<Int> = []; e.ring.src.len == 0`
 /// traps: never
 /// example: `[1, 2, 3].ring.next(2) == 0`
 @get pub fn ring<D, T>(self: [D]T) -> Ring<D, T> = Ring(self)
@@ -3522,9 +3719,10 @@ pub struct Ring<D, T>(pub src: [D]T):
     pub fn prev(self, i: D) -> D = self.step(i, -1)
 
     /// All n positions, starting at `i` and wrapping. \(O(n)\) to walk.
+    /// An empty ring has no position, so no call is possible.
     ///
     /// cost: \(O(1)\) per step
-    /// empty: yields nothing on an empty ring
+    /// empty: `domain D = 0..0; let e: [D]Int = []; e.ring.from(D.first!).count() == 0` (traps R0301)
     /// order: `i`, then each next position, n in all
     /// traps: never
     /// example: `[1, 2, 3].ring.from(1).collect() == [1, 2, 0]`
@@ -3534,7 +3732,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// The `len` positions from `start` on, wrapping (`len <= n`).
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty span when `len == 0`
+    /// empty: `[1, 2, 3].ring.span(2, 0).len == 0`
     /// traps: when `len` is not in `0..=n`
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
     pub fn span(self, start: D, len: Int) -> RingRange<D>:
@@ -3542,26 +3740,31 @@ pub struct Ring<D, T>(pub src: [D]T):
         RingRange<D>(at: Some(start), n: len)
 
     /// The n windows of `k` elements, one starting at each position, wrapping. \(O(n)\) to walk.
+    /// An empty ring traps for every `k`: no `k` is in `1..=n`.
     ///
-    /// cost: \(O(1)\) per window
-    /// empty: yields nothing
+    /// A lazy view: walking it, either way, is \(O(1)\) per window, and `.last` is the window
+    /// starting at the last position.
+    ///
+    /// cost: \(O(1)\) to build, \(O(1)\) per window walked
+    /// empty: `let e: List<Int> = []; e.ring.windows(1).count() == 0` (traps R0401)
     /// order: by start position, increasing
     /// traps: when `k` is not in `1..=n`
     /// example: `[1, 2, 3].ring.windows(2).count() == 3`
-    pub fn windows(self, k: Int) -> yields RingSlice<D, T>:
+    pub fn windows(self, k: Int) -> RingWindows<D, T>:
         assert 1 <= k <= D.count
-        for i in D: yield RingSlice<D, T>(rr: self.span(i, k))
+        RingWindows(self, k)
 
     /// Two pointers round the cycle: for each position as the last element, the longest
     /// wrapping piece (at most n elements) ending there that is `ok`, fed through
     /// `state: Track`. \(O(n)\) pushes and pops (two laps).
+    /// Ties can't arise: each last element has one longest piece.
     ///
     /// cost: \(O(n)\) pushes and pops on `state`
-    /// empty: an empty array
+    /// empty: `let e: List<Int> = []; e.ring.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 2) == []`
     /// order: keyed by `D`, by last element
     /// traps: never
     /// example: `[1, 1, 2].ring.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 2).map(w => w.len) == [3, 3, 3]`
-    /// ties: none: each last element has one longest piece
+    /// ties: `[5, 5].ring.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 1).map(w => w.len) == [2, 2]`
     pub fn maximal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>:
         let n = D.count
         var st = state
@@ -3577,13 +3780,14 @@ pub struct Ring<D, T>(pub src: [D]T):
 
     /// For each position as the last element, the shortest wrapping piece ending there that is
     /// `ok`, or None. \(O(n)\) pushes and pops (two laps).
+    /// Ties can't arise: each last element has one shortest piece.
     ///
     /// cost: \(O(n)\) pushes and pops on `state`
-    /// empty: an empty array
+    /// empty: `let e: List<Int> = []; e.ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 3) == []`
     /// order: keyed by `D`, by last element
     /// traps: never
     /// example: `[2, 0, 1].ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 3).map(w => w.map(.len)) == [Some(2), Some(3), Some(3)]`
-    /// ties: none: each last element has one shortest piece
+    /// ties: `[3, 3].ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 3).map(w => w.map(.len)) == [Some(1), Some(1)]`
     pub fn minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>:
         let n = D.count
         var st = state
@@ -3604,6 +3808,23 @@ pub struct Ring<D, T>(pub src: [D]T):
         out
 
 /// A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
+/// The windows of `k` elements round a `Ring`, one per start position: `r.windows(k)`.
+pub struct RingWindows<D, T>(
+    pub src: Ring<D, T>,
+    k: Int,
+)
+
+impl Seq<RingSlice<D, T>> for RingWindows<D, T>:
+    fn iter(self) -> yields RingSlice<D, T>:
+        for i in D: yield RingSlice<D, T>(rr: src.span(i, k))
+
+impl Bidir<RingSlice<D, T>> for RingWindows<D, T>:
+    fn iter_rev(self) -> yields RingSlice<D, T>:
+        for j in (0..D.count).rev: yield RingSlice<D, T>(rr: src.span(D.nth(j), k))
+
+impl Sized for RingWindows<D, T>:
+    @get fn len(self) -> Int = D.count
+
 pub struct RingSlice<D, T>():
     rr: RingRange<D> = RingRange<D>()
 
@@ -3620,6 +3841,24 @@ pub struct RingSlice<D, T>():
     /// traps: never
     /// example: `[w.len for w in [1, 2, 3].ring.windows(2)] == [2, 2, 2]`
     @get pub fn len(self) -> Int = rr.len
+
+    /// Whether the window covers no position.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `not [1, 2, 3].ring.windows(2).first!.is_empty`
+    @get pub fn is_empty(self) -> Bool = rr.len == 0
+
+    /// \(O(\mathit{len})\). Visit the window's positions in the source; read its elements as
+    /// `a[k]`. Same walk as `keys`.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2, 3].ring.windows(0).all(w => w.each().collect() == [])`
+    /// order: ring order from `start`, wrapping past the last position
+    /// traps: never
+    /// example: `[1, 2, 3].ring.windows(2).last!.each().collect() == [2, 0]`
+    pub fn each(self) -> yields D:
+        for k in rr.keys: yield k
 
     /// \(O(1)\). The first position.
     ///
@@ -3651,7 +3890,7 @@ pub struct RingSlice<D, T>():
 /// the "walls" shape of grid problems such as IOI 2019 Rectangles. \(O(n)\) to walk.
 ///
 /// cost: \(O(n)\) to walk
-/// empty: yields nothing
+/// empty: `let e: List<Int> = []; e.valleys().count() == 0`
 /// order: left ends ascending, then shorter first
 /// traps: never
 /// example: `[3, 1, 2, 5].valleys().collect() == [1..2, 1..3]`
@@ -3673,8 +3912,8 @@ pub fn valleys<D, T>(self: [D]T) -> yields Range<D>:
 /// extends). \(O(n)\).
 ///
 /// cost: \(O(n)\)
-/// empty: an empty array
-/// ties: the left of two equal minima extends over the right; the right stops at the left
+/// empty: `let e: List<Int> = []; e.spans() == []`
+/// ties: `[1, 1].spans() == [0..2, 1..2]`
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 1].spans() == [0..1, 0..3, 2..3]`
@@ -3688,8 +3927,8 @@ pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>:
 /// Nearest earlier position with a smaller key (`strict: false`: smaller or equal).
 ///
 /// cost: \(O(n)\)
-/// empty: an empty array
-/// ties: equal keys do not count unless `strict: false`
+/// empty: `let e: List<Int> = []; e.prev_smaller() == []`
+/// ties: `[1, 1].prev_smaller() == [None, None] and [1, 1].prev_smaller(strict: false) == [None, Some(0)]`
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 3].prev_smaller() == [None, None, Some(1)]`
@@ -3708,8 +3947,8 @@ pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 /// Nearest later position with a smaller key.
 ///
 /// cost: \(O(n)\)
-/// empty: an empty array
-/// ties: equal keys do not count unless `strict: false`
+/// empty: `let e: List<Int> = []; e.next_smaller() == []`
+/// ties: `[1, 1].next_smaller() == [None, None] and [1, 1].next_smaller(strict: false) == [Some(1), None]`
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 3].next_smaller() == [Some(1), None, None]`
@@ -3729,7 +3968,7 @@ pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 /// Nearest earlier position with an equal key.
 ///
 /// cost: \(O(n)\) expected
-/// empty: an empty array
+/// empty: `let e: List<Int> = []; e.prev_same() == []`
 /// order: keyed by `D`
 /// traps: never
 /// example: `[1, 2, 1].prev_same() == [None, None, Some(0)]`
@@ -3745,7 +3984,7 @@ pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
 /// Nearest later position with an equal key.
 ///
 /// cost: \(O(n)\) expected
-/// empty: an empty array
+/// empty: `let e: List<Int> = []; e.next_same() == []`
 /// order: keyed by `D`
 /// traps: never
 /// example: `[1, 2, 1].next_same() == [Some(2), None, None]`
@@ -3763,8 +4002,8 @@ pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
 /// keep one. The usual first step of interval DP over covers. \(O(n \log n)\).
 ///
 /// cost: \(O(n \log n)\)
-/// empty: `[]`
-/// ties: equal ranges keep the first
+/// empty: `let e: List<Range<Int>> = []; e.outermost() == []`
+/// ties: `[1..3, 0..1, 1..3].outermost() == [0..1, 1..3]`
 /// order: by left end; a new `List`, keyed from 0
 /// traps: never
 /// example: `[0..5, 1..3, 4..8].outermost() == [0..5, 4..8]`
@@ -3780,7 +4019,7 @@ pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>:
 /// \(O(1)\). A list's keys: `0..xs.len`, in increasing order.
 ///
 /// cost: \(O(1)\)
-/// empty: `0..0`
+/// empty: `let e: List<Int> = []; e.keys == 0..0`
 /// order: increasing
 /// traps: never
 /// example: `[5, 6, 7].keys == 0..3`
@@ -3815,3 +4054,86 @@ fn gen_perm<V>() -> Perm<V>:
     var p: [V]V = [V] v => v
     shuffle(mut p)
     p
+
+@test
+fn views_and_trackers_walk_and_show():
+    let a = [5, 6, 7, 8]
+    assert a[1..3].items.collect() == [(1, 6), (2, 7)]
+    assert "{a[1..3]}" == "6 7"
+    let st = a.step(2)
+    assert st.each().collect() == [5, 7] and not st.is_empty
+    assert "{st}" == "5 7"
+    assert a[4..].step(2).is_empty
+    let (domain C, xs) = compress([30, 10, 30])
+    assert [v for (_, v) in xs.items] == [10, 30] and "{xs}" == "10 30"
+    var t = OnlineLis<Int>()
+    for x in [3, 1, 2]: t.push(x)
+    assert "{t}" == "1 2"
+    var s = MonoStack<Int, Int>()
+    s.push(0, 5)
+    s.push(1, 3)
+    s.push(2, 4)
+    assert s.items.collect() == [(0, 5), (2, 4)] and "{s}" == "0=5, 2=4"
+    let w = [1, 2, 3].ring.windows(2).last!
+    assert w.each().collect() == [2, 0] and "{w}" == "2 0" and not w.is_empty
+    let r = [1, 2, 3].ring.span(2, 2)
+    assert r.each().collect() == [2, 0] and "{r}" == "2 0" and not r.is_empty
+
+impl Show for Slice<S>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Stepped<S, T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Compressed<D, T>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for OnlineLis<T>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for MonoStack<D, T>:
+    fn show(v):
+        var out = ""
+        for (i, x) in v.items:
+            if not out.is_empty: out += ", "
+            out += "{i}={x}"
+        out
+
+impl Show for RingSlice<D, T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for StepKeys:
+    /// The positions the walk visits, in order, space-separated.
+    ///
+    /// example: `"{[3, 1, 2, 4, 5].step(2).keys}" == "0 2 4"`
+    fn show(s):
+        var out = ""
+        for j in 0..s.len:
+            if not out.is_empty: out += " "
+            out += "{s.first + s.from + j * s.k}"
+        out

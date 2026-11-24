@@ -28,7 +28,7 @@ fn interactive_flushes_after_each_print() {
 
 #[test]
 fn a_shift_not_proved_in_range_traps_in_a_checked_build() {
-    let out = cpp("let k: 0..=63 = read()\nvar x = 3\nx <<= k\nprint(1 << k, x)\n");
+    let out = cpp("let k: Int = read()\nvar x = 3\nx <<= k\nprint(1 << k, x)\n");
     assert!(out.contains("cpl::ishl(1, "), "{out}");
     assert!(
         out.contains("x = cpl::ishl(x, cpl::shamt(k, 64));"),

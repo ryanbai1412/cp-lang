@@ -4,7 +4,7 @@
 
 String algorithms. They only compare elements, so they work on a `Str` (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
-In prelude (no `use` needed): `Palindromes`, `RollingHash`, `SuffixArray`, `borders`, `common_prefix_len`, `common_suffix_len`, `digit`, `ends_with`, `find_all`, `lower`, `lyndon_factorization`, `manacher`, `min_rotation`, `overlap`, `period`, `prefix_function`, `repeat`, `starts_with`, `upper`, `z_function`.
+In prelude (no `use` needed): `Palindromes`, `RollingHash`, `SuffixArray`, `borders`, `common_prefix_len`, `common_suffix_len`, `digit`, `ends_with`, `find_all`, `is_palindrome`, `lower`, `lyndon_factorization`, `lyndon_runs`, `manacher`, `min_rotation`, `overlap`, `period`, `prefix_function`, `repeat`, `starts_with`, `suffix_array`, `upper`, `z_function`.
 
 ## `struct KmpAutomaton<A>`
 
@@ -24,6 +24,7 @@ Fields: `alpha: Count`, `goto: List<Count>`, `pi: List<Count>`.
 
 - `@get fn len(self) -> Int` — \(O(1)\); The length of the sequence the radii were computed for.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the sequence the radii were computed for is empty.
+- `@get fn items(self) -> yields (Int, (odd: Int, even: Int))` — \(O(\mathit{len})\)
 - `fn longest_at<K>(self, i: K) -> Int` — \(O(1)\); The length of the longest odd-length palindrome centred on the element at key `i` of the sequence the radii were computed for, so a slice is asked in its own keys (R04b.5.6).; traps: when `i` is not one of the sequence's keys
 - `fn longest_between(self, i: Int) -> Int` — \(O(1)\); The length of the longest even-length palindrome centred on the cut `i` (between positions `i - 1` and `i`), `2 * even[i]`; `0` at the cuts `0` and `self.len`.; traps: when `i` is outside `0..=self.len`
 - `fn is_palindrome<R>(self, r: R) -> Bool` — \(O(1)\); True when the positions `r` (`l..r`, `l..=r`, or a `Range<D>`) of the original sequence form a palindrome: `p.is_palindrome(l..r) == is_palindrome(s[l..r])`.; traps: when `r` reaches outside `0..=self.len`
@@ -32,20 +33,21 @@ Fields: `alpha: Count`, `goto: List<Count>`, `pi: List<Count>`.
 
 ## `struct SuffixArray<T: Ord>`
 
-\(O(n)\) SA-IS + Kasai LCP (\(O(n \log n)\) with RMQ).
+\(O(n)\) SA-IS + Kasai LCP + block RMQ.
 
-Fields: `rank: List<Int>`, `rmq: List<Int>`, `bits: Int`, `dcum: List<Int>`, `src: List<T>`.
+Fields: `rank: List<Int>`, `mask: List<U64>`, `top: List<Int>`, `dcum: List<Int>`, `src: List<T>`.
 
-- `fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>` — \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise; The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
+- `fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>` — \(O(n)\) time and memory for `Str` and small integer alphabets (SA-IS, Kasai, a block RMQ); other element types add an \(O(n \log n)\) sort to rank them; The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
 - `@get fn len(self) -> Int` — \(O(1)\); The length `n` of the sequence the suffix array was built over.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the suffix array was built over an empty sequence.
+- `fn each(self) -> yields Int` — \(O(n)\)
 - `fn lcp_between(self, i: Int, j: Int) -> Int` — \(O(1)\); The length of the longest common prefix of the suffixes starting at `i` and `j`.; traps: when `i` or `j` is outside `0..=self.len`
 - `fn rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>` — \(O(\lvert \mathit{pat} \rvert \log n)\); The ranks `lo..hi` of the suffixes that start with `pat`.
 - `fn find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int` — \(O(\lvert \mathit{pat} \rvert \log n + \mathit{occurrences})\); The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.
 - `fn count<P: Indexed<J, T>, J>(self, pat: P) -> Int` — \(O(\lvert \mathit{pat} \rvert \log n)\); The number of occurrences of `pat`, overlapping ones included: `rank_range(pat).len`.
 - `fn lcp_range(self, i: Int, len: Int) -> Range<Int>` — \(O(\log n)\); The ranks `lo..hi` of the suffixes whose LCP with the suffix at `i` is at least `len`; always contains `rank[i]`.; traps: when `i` is outside `0..n` or `len` outside `0..=n - i`
 - `fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int` — \(O(1)\); The lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: `-1`, `0` or `1`.; traps: when a range is not within `0..=n` or has its end before its start
-- `fn distinct(self) -> Int` — \(O(n)\); The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
+- `fn distinct(self) -> Int` — \(O(1)\); The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
 - `fn lcp_of_ranks(self, r: Range<Int>) -> Int` — \(O(1)\); The longest prefix common to every suffix with rank in `r`: the minimum of `lcp[j]` for `j in r.start..r.end - 1`, or the suffix's own length when `r` holds one rank.; traps: when `r` is empty or reaches outside `0..n`
 - `fn split(self, r: Range<Int>) -> Int` — \(O(1)\); Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are the first child and the rest.; traps: when `r.len < 2` or `r` reaches outside `0..n`
 - `fn kth_distinct(self, k: Int) -> ?Range<Int>` — \(O(\log n)\); The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the positions `l..r` of one occurrence, or `None` when `k >= distinct()`.; traps: when `k < 0`
@@ -101,7 +103,7 @@ Fields: `stride: Int`, `pre1: List<Int>`, `pre2: List<Int>`, `pow_r1: List<Int>`
 
 \(O(n)\) build, \(O(1)\) query.
 
-Fields: `base: U64`, `pre: List<U64>`, `pow: List<U64>`.
+Fields: `pre: List<U64>`, `pow: List<U64>`.
 
 - `fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61` — \(O(n)\); A single-modulus polynomial rolling hash of `seq` modulo the Mersenne prime `2^61 - 1`; call it as `RollingHash61(seq)`.; traps: when a given base is outside `2..2^61 - 1`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements hashed.
@@ -120,7 +122,7 @@ Fields: `base: U64`, `pre: List<U64>`, `pow: List<U64>`.
 
 Fields: `bases: (Int, Int)`, `tok1: List<Int>`, `tok2: List<Int>`, `fwd1: List<Int>`, `fwd2: List<Int>`, `bwd1: List<Int>`, `bwd2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`, `inv1: List<Int>`, `inv2: List<Int>`.
 
-- `fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>` — \(O(n)\); A double-modulus rolling hash of `seq` that supports point updates, kept forwards and backwards in a segment tree; call it as `DynamicHash(seq)`.; traps: when a given base is outside `2..M`
+- `fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>` — \(O(n \log n)\); A double-modulus rolling hash of `seq` that supports point updates, kept forwards and backwards in a segment tree; call it as `DynamicHash(seq)`.; traps: when a given base is outside `2..M`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of hashed positions, `D.count`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when there are no positions.
 - `@get fn all(self) -> HashVal` — \(O(1)\); The hash of the whole sequence, `self.get(..)`.
@@ -131,13 +133,13 @@ Fields: `bases: (Int, Int)`, `tok1: List<Int>`, `tok2: List<Int>`, `fwd1: List<I
 
 ## `struct SuffixAutomaton<A>`
 
-\(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push.
+\(O(n \cdot \lvert A \rvert)\) space, \(O(\lvert A \rvert)\) amortized push.
 
-Fields: `alpha: Count`, `next: List<Slot>`, `links: List<Slot>`, `max_len: List<Count>`, `first_end: List<Slot>`, `prefix: List<Bool>`, `letters: List<?A>`.
+Fields: `alpha: Count`, `next: List<Slot>`, `links: List<Slot>`, `max_len: List<Count>`, `first_end: List<Slot>`, `prefix: List<Count>`, `letters: List<?A>`.
 
 - `fn new() -> SuffixAutomaton<A>` — \(O(\lvert A \rvert)\); An empty suffix automaton over the alphabet domain `A`: only the root state `0`.
-- `fn of<S: Seq>(s: S) -> SuffixAutomaton<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time; The suffix automaton of `s`: `SuffixAutomaton<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
-- `fn push(mut self, a: A)` — \(O(1)\) amortized (\(O(\lvert A \rvert)\) for a cloned state); Appends the letter `a` to the string the automaton recognises the substrings of.; traps: never (`a` is an `A`)
+- `fn of<S: Seq>(s: S) -> SuffixAutomaton<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert \cdot \lvert A \rvert)\) time; The suffix automaton of `s`: `SuffixAutomaton<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
+- `fn push(mut self, a: A)` — \(O(\lvert A \rvert)\) amortized (each push makes one or two states of \(\lvert A \rvert\) slots); Appends the letter `a` to the string the automaton recognises the substrings of.; traps: never (`a` is an `A`)
 - `@get fn root(self) -> Int` — \(O(1)\); The root state, for the empty string: always `0`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of states, the root included; at most `max(1, 2n - 1)`.
 - `fn step(self, state: Int, a: A) -> ?Int` — \(O(1)\); The state reached from `state` by the letter `a`, or `None` when that extension is not a substring.; traps: when `state` is outside `0..self.len`
@@ -159,13 +161,13 @@ Fields: `alpha: Count`, `next: List<Slot>`, `links: List<Slot>`, `max_len: List<
 
 ## `struct PalindromicTree<A>`
 
-\(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push.
+\(O(n \cdot \lvert A \rvert)\) space, \(O(\lvert A \rvert)\) amortized push.
 
 Fields: `alpha: Count`, `next: List<Slot>`, `slink: List<Count>`, `plen: List<Slot>`, `diff_val: List<Count>`, `ser_link: List<Count>`, `cnt: List<Count>`, `chars: List<A>`, `last: Count`, `front: List<A>`, `first: Count`, `undo: List<Count>`, `made: List<Count>`, `firsts: List<Count>`, `barrier: Int`.
 
 - `fn new() -> PalindromicTree<A>` — \(O(\lvert A \rvert)\); An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the even root `1`.
-- `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
-- `fn push(mut self, a: A) -> Int` — \(O(1)\) amortized; Appends the letter `a` and returns the state of the longest palindromic suffix of the new string, creating it if it is new.; traps: never (`a` is an `A`)
+- `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert \cdot \lvert A \rvert)\) time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
+- `fn push(mut self, a: A) -> Int` — \(O(\lvert A \rvert)\) amortized (a new state takes \(\lvert A \rvert\) slots); Appends the letter `a` and returns the state of the longest palindromic suffix of the new string, creating it if it is new.; traps: never (`a` is an `A`)
 - `fn at(self, i: Int) -> A` — \(O(1)\); The character at position `i` of the current string, counting from the front.; traps: unless `0 <= i` and `i` is less than the current string's length
 - `@get fn len(self) -> Int` — \(O(1)\); The number of states, both roots included: `distinct + 2`.
 - `@get fn distinct(self) -> Int` — \(O(1)\); The number of distinct non-empty palindromic substrings, `len - 2`; at most `n`.
@@ -175,7 +177,7 @@ Fields: `alpha: Count`, `next: List<Slot>`, `slink: List<Count>`, `plen: List<Sl
 - `fn diff(self, state: Int) -> Int` — \(O(1)\); The difference `pal_len(state) - pal_len(link(state))`, the period that groups palindromic suffixes into series; `0` at both roots.; traps: when `state` is outside `0..self.len`
 - `fn series_link(self, state: Int) -> Int` — \(O(1)\); The nearest state up the suffix links whose `diff` differs from `state`'s: `link(state)` when the diffs differ, else `series_link(link(state))`.; traps: when `state` is outside `0..self.len`
 - `fn occ_counts(self) -> List<Int>` — \(O(\mathit{states})\); For each state, how many times its palindrome occurs in the pushed string, overlaps included; `0` at both roots.
-- `fn push_front(mut self, a: A) -> Int` — \(O(1)\) amortized; Prepends the letter `a` (a double-ended tree) and returns the state of the longest palindromic prefix of the new string, creating it if it is new.; traps: never (`a` is an `A`)
+- `fn push_front(mut self, a: A) -> Int` — \(O(\lvert A \rvert)\) amortized (a new state takes \(\lvert A \rvert\) slots); Prepends the letter `a` (a double-ended tree) and returns the state of the longest palindromic prefix of the new string, creating it if it is new.; traps: never (`a` is an `A`)
 - `fn pop(mut self)` — \(O(1)\) amortized; Undoes the most recent `push` not yet undone, removing the state it created if any, so a DFS over a tree of strings can back out.; traps: when there is no `push` to undo
 - `@get fn last_state(self) -> Int` — \(O(1)\); The state of the longest palindromic suffix of the current string; the even root `1` when the string is empty.
 - `fn contains<S: Seq>(self, word: S) -> Bool` — \(O(\lvert \mathit{word} \rvert)\); True when `word` is a palindrome occurring in the pushed string, that is, a state of the tree.
@@ -189,18 +191,20 @@ Fields: `alpha: Count`, `next: List<Slot>`, `ends: List<Count>`, `pass: List<Cou
 
 - `fn new() -> Trie<A>` — \(O(\lvert A \rvert)\); An empty trie over the alphabet domain `A`: one root node `0`, no words.
 - `@get fn root(self) -> Int` — \(O(1)\); The root node, for the empty word: always `0`.
-- `@get fn len(self) -> Int` — \(O(1)\); The number of nodes, the root included.
+- `@get fn nodes(self) -> Int` — \(O(1)\); The number of nodes, the root included: node ids are `0..nodes`, so a per-node table has this length.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of stored words, counting copies.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when no words are stored (every count is zero), whatever nodes remain.
-- `fn step(self, node: Int, a: A) -> ?Int` — \(O(1)\); The child of `node` along `a`, or `None` when it was never created.; traps: when `node` is outside `0..self.len`
+- `fn each(self) -> yields List<A>` — \(O(\mathit{nodes} \cdot \lvert A \rvert)\) plus the letters yielded; \(O(\mathit{nodes} \cdot \lvert A \rvert + \mathit{letters})\).
+- `fn step(self, node: Int, a: A) -> ?Int` — \(O(1)\); The child of `node` along `a`, or `None` when it was never created.; traps: when `node` is outside `0..self.nodes`
 - `fn find<S: Seq>(self, word: S) -> ?Int` — \(O(\lvert \mathit{word} \rvert)\); The node of `word`, or `None` when no stored word starts with `word` (`count_prefix(word) == 0`).
-- `fn add<S: Seq>(mut self, word: S) -> Int` — \(O(\lvert \mathit{word} \rvert)\); Inserts one copy of `word` and returns its terminal node; `count(word)` and `count_prefix(p)` for every prefix `p` of `word` grow by one.
+- `fn add<S: Seq>(mut self, word: S) -> Int` — \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\) (a new node takes \(\lvert A \rvert\) slots); Inserts one copy of `word` and returns its terminal node; `count(word)` and `count_prefix(p)` for every prefix `p` of `word` grow by one.
 - `fn remove<S: Seq>(mut self, word: S) -> Bool` — \(O(\lvert \mathit{word} \rvert)\); Removes one copy of `word`, reversing one `add`, and returns `true`; returns `false` and changes nothing when `count(word) == 0`.
 - `fn count<S: Seq>(self, word: S) -> Int` — \(O(\lvert \mathit{word} \rvert)\); The number of copies of exactly `word` stored.
 - `fn count_prefix<S: Seq>(self, prefix: S) -> Int` — \(O(\lvert \mathit{prefix} \rvert)\); The number of stored words (with multiplicity) that start with `prefix`.
-- `fn ends_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that end at `node`.; traps: when `node` is outside `0..self.len`
-- `fn pass_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that pass through or end at `node`; at the root, all of them.; traps: when `node` is outside `0..self.len`
+- `fn ends_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that end at `node`.; traps: when `node` is outside `0..self.nodes`
+- `fn pass_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that pass through or end at `node`; at the root, all of them.; traps: when `node` is outside `0..self.nodes`
 - `fn contains<S: Seq>(self, word: S) -> Bool` — \(O(\lvert \mathit{word} \rvert)\); True when at least one copy of exactly `word` is stored: `count(word) > 0`.
-- `fn clear(mut self)` — \(O(1)\); Removes every word and node, leaving just the root.
+- `fn clear(mut self)` — \(O(\lvert A \rvert)\); Removes every word and node, leaving just the root.
 - `fn kth(self, k: Int) -> ?List<A>` — \(O(\mathit{depth} \cdot \lvert A \rvert)\); The `k`-th (0-based) stored word in lexicographic order, copies counted, as its letters; `None` when fewer than `k + 1` words are stored.; traps: when `k < 0`
 - `fn count_less<S: Seq>(self, word: S) -> Int` — \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\); The number of stored words (with multiplicity) lexicographically smaller than `word`.
 
@@ -210,7 +214,7 @@ Fields: `alpha: Count`, `next: List<Slot>`, `ends: List<Count>`, `pass: List<Cou
 
 Fields: `alpha: Count`, `goto: List<Slot>`, `fail: List<Count>`, `ends: List<List<Count>>`, `exit: List<Slot>`, `order: List<Count>`, `lens: List<Count>`, `pat_state: List<Count>`.
 
-- `fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>` — \(O(\mathit{sum} \lvert p \rvert \cdot \lvert A \rvert)\); The Aho-Corasick automaton of `patterns`; call it as `AhoCorasick<A>(patterns)`.; traps: when an element of a pattern is not in `A`
+- `fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>` — \(O(\sum_p \lvert p \rvert \cdot \lvert A \rvert)\); The Aho-Corasick automaton of `patterns`; call it as `AhoCorasick<A>(patterns)`.; traps: when an element of a pattern is not in `A`
 - `@get fn root(self) -> Int` — \(O(1)\); The root state, before any letter is read: always `0`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of states, the root included.
 - `fn step(self, state: Int, a: A) -> Int` — \(O(1)\); The state after reading `a` in `state`: the longest pattern prefix that is a suffix of what has been read.; traps: when `state` is outside `0..self.len`
@@ -219,7 +223,7 @@ Fields: `alpha: Count`, `goto: List<Slot>`, `fail: List<Count>`, `ends: List<Lis
 - `fn words_at(self, state: Int) -> List<Int>` — \(O(\mathit{output})\); Every pattern that ends at `state` or up its failure links, by index.; traps: when `state` is outside `0..self.len`
 - `fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int)` — \(O(\lvert \mathit{text} \rvert + \mathit{output})\); Every occurrence of every pattern in `text`, as `(at, pattern)` with `at` the 0-based start: exactly the pairs with `text[at..at + patterns[pattern].len] == patterns[pattern]`.; traps: when an element of `text` is not in `A`
 - `fn counts<S: Seq>(self, text: S) -> List<Int>` — \(O(\lvert \mathit{text} \rvert + \mathit{states})\); For each pattern, how many times it occurs in `text`, overlaps included: the number of `find_all` pairs with that index.; traps: when an element of `text` is not in `A`
-- `fn fail_order(self) -> List<Int>` — \(O(\mathit{states})\); Every state in BFS order of the trie (root first, then by depth, equal depths by state number), so each state comes after its failure link; iterate backwards for bottom-up DP.
+- `fn fail_order(self) -> List<Int>` — \(O(\mathit{states})\); Every state in BFS order of the trie (root first, then by depth, equal depths by their parents' places in the order, then by letter), so each state comes after its failure link; iterate backwards for bottom-up DP.
 - `fn exit_link(self, state: Int) -> ?Int` — \(O(1)\); The nearest state strictly up the failure links of `state` at which a pattern ends, or `None` when there is None.; traps: when `state` is outside `0..self.len`
 - `fn pattern_state(self, pattern: Int) -> Int` — \(O(1)\); The state where `patterns[pattern]` ends.; traps: when `pattern` is outside `0..patterns.len`
 
@@ -259,7 +263,7 @@ Fields: `alpha: Count`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBu
 - `fn trim_end(self: Str) -> Str` — \(O(\lvert \mathit{self} \rvert)\); A copy of `self` with trailing whitespace (`Char.is_space`) removed.
 - `fn split_once(self: Str, sep: Char) -> ?(Str, Str)` — \(O(\lvert \mathit{self} \rvert)\); `self` cut at the first `sep` into `(before, after)`, neither holding that `sep`; `None` when `sep` does not occur.
 - `fn split_whitespace(self: Str) -> List<Str>` — \(O(\lvert \mathit{self} \rvert)\); The maximal runs of non-whitespace characters of `self` (`Char.is_space` separates), as new strings.
-- `fn join<S: Seq>(self: Str, parts: S) -> Str` — \(O(\text{total output length})\); The elements of `parts` in order with `self` between each adjacent pair: `", ".join(xs)`.
+- `fn join<S: Seq>(self: Str, parts: S) -> Str` — \(O(\lvert \mathit{output} \rvert)\); The elements of `parts` in order with `self` between each adjacent pair: `", ".join(xs)`.
 - `fn replace(self: Str, from: Str, to: Str) -> Str` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{output} \rvert)\); A copy of `self` with every occurrence of `from` replaced by `to`.; traps: when `from` is empty
 - `fn parse_int(self: Str, base: Int = 10) -> ?Int` — \(O(\lvert \mathit{self} \rvert)\); `self` read as a signed integer in `base`, or `None` if malformed or out of `Int` range.; traps: when `base` is outside `2..=36`
 - `fn parse<T: Read>(self: Str) -> ?T` — \(O(\lvert \mathit{self} \rvert)\); `self` read as a `T` by the same rules as `read<T>()` (core 10.2), or `None` if a token is malformed, out of `T`'s range, missing, or left over.
@@ -276,13 +280,13 @@ Fields: `alpha: Count`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBu
 - `fn lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>` — \(O(n)\); The start key of each factor of the Lyndon factorization of `s` (Duval): the unique way to cut `s` into Lyndon words `w1 >= w2 >= ...` in lexicographic order.
 - `fn min_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K` — \(O(n)\); The key at which the lexicographically smallest cyclic rotation of `s` starts (Booth).
 - `fn max_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K` — \(O(n)\); The key at which the lexicographically greatest cyclic rotation of `s` starts.
-- `fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K` — \(O(\lvert \mathit{self} \rvert \cdot \mathit{ceil}(\lvert \mathit{pat} \rvert / 64))\); The start position of every occurrence of `pat` in `self`, overlapping ones included, by bit-parallel Shift-And.
+- `fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K` — \(O(\lvert \mathit{self} \rvert \cdot \lceil \lvert \mathit{pat} \rvert / 64 \rceil + \lvert \mathit{pat} \rvert)\) expected; The start position of every occurrence of `pat` in `self`, overlapping ones included, by bit-parallel Shift-And: one bit per pattern position, \(\lceil \lvert \mathit{pat} \rvert / 64 \rceil\) words of state stepped per element.
 - `fn find_all_wildcard<S: Indexed<K, Char>, P: Indexed<L, Char>, K, L>(self: S, pat: P, wildcard: Char = '?') -> yields K` — \(O(\lvert \mathit{self} \rvert \cdot \lvert \mathit{pat} \rvert)\) worst case, comparing directly; The start key of every place where `pat` matches `self` when each `wildcard` in `pat` matches any one element.
 - `fn manacher<S: Indexed>(s: S) -> Palindromes` — \(O(n)\); The palindrome radii of `s` by Manacher's algorithm: `odd[i]` is the largest `k` with `s[i - k + 1..i + k]` a palindrome, and `even[i]` the largest `k` with `s[i - k..i + k]` one.
-- `fn suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>` — \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise; The suffix array of `s`; the same as `SuffixArray(s)`.
+- `fn suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>` — \(O(n \log n)\) time and memory (the LCP sparse table; the suffix sort itself is \(O(n)\) for `Str` and small integer alphabets); The suffix array of `s`; the same as `SuffixArray(s)`.
 - `fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>` — \(O(n)\); Every edge of the compressed suffix tree of `s` (built from the suffix array and LCP array), one `SuffixTreeEdge` per edge of non-zero length.
 - `fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>` — \(O(n \log n)\) time and memory; Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)` is a half-open range `s[l..r]` with smallest period `period`, `r - l >= 2 * period`, that cannot be extended left or right with the same period.
-- `fn lcs_all<A, S: Seq>(words: List<S>) -> Int` — \(O(\mathit{sum} \lvert w \rvert \cdot \lvert A \rvert)\); The length of the longest sequence that is a substring of every word in `words`.
+- `fn lcs_all<A, S: Seq>(words: List<S>) -> Int` — \(O(\sum_w \lvert w \rvert \cdot \log n)\) expected, `n` the shortest word's length; The length of the longest sequence that is a substring of every word in `words`.
 - `fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str` — \(O(\mathit{hi})\); `gen<Str of alphabet>(len: lo..=hi)`.; traps: when `lo > hi` or `alphabet` is empty
 
 ## Example

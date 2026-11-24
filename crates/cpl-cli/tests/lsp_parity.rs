@@ -40,13 +40,7 @@ fn v03_files() -> Vec<PathBuf> {
     let mut files = Vec::new();
     cp_files(&root.join("spec/conformance"), &mut files);
     cp_files(&root.join("examples"), &mut files);
-    let ports = std::fs::read_dir(root.join("corpus/problems")).unwrap();
-    files.extend(
-        ports
-            .flatten()
-            .map(|p| p.path().join("spec.cp"))
-            .filter(|p| p.is_file()),
-    );
+    files.extend(cpl_corpus::files(&root, "spec.cp"));
     files.sort();
     files
 }

@@ -7,6 +7,7 @@
 // Solution: sliding a window by one forces b_i = a_i outside the middle [n - k, k). Middle
 //   positions lie in every window, so the known b there must fit in a's middle multiset:
 //   add a_i, subtract b_i, and check no count goes negative. O(n).
+// Bounds: n, k: 1..=200_000; a: 1..=n
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

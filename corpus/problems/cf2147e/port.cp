@@ -7,6 +7,7 @@
 //   every missing bit x from b down to 0 by raising the element with the largest
 //   a & (2^x - 1) until bit x turns on (cost 2^x minus those low bits). Record the running
 //   (cost, popcount) after each b, O(31^2 n) per test; a query binary-searches the costs.
+// Bounds: n, q: 1..=100_000; queries: 0..=10 ** 9
 
 use std.seq.{argmax}
 

@@ -1458,9 +1458,10 @@ def g_cco20p5(p, big, _):
     active = []
     lines = [q]
     for _ in range(q):
-        if not active or (len(active) < 50000 and rng.random() < 0.65):
-            l = rng.randint(1, 500_000)
-            r = rng.randint(l, min(500_000, l + 50_000))
+        # 1 <= l < r, and a removal never empties the collection
+        if len(active) < 2 or (len(active) < 50000 and rng.random() < 0.65):
+            l = rng.randint(1, 499_999)
+            r = rng.randint(l + 1, min(500_000, l + 50_000))
             active.append((l, r))
             lines.append(f"A {l} {r}")
         else:

@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 6 P3 (Bread Merchant), https://dmoj.ca/problem/dmopc20c6p3
+// limits: 2000 ms, 256 MB
 // Problem: directed graph, N, M <= 5e5 (self-loops allowed); some cities have police
 //   (p_i = 1). The robber must leave any city with an out-route: police pick the route,
 //   elsewhere the robber picks. He is caught on reaching a city with no out-route. For each
@@ -8,6 +9,7 @@
 //   once all of them do (`free` counts routes not yet known to lead in). Every other city
 //   lets the robber stay out forever. O(N + M).
 // original: corpus/submissions/3917634.cpp
+// Bounds: n, m: 1..=5e5; police: 0..=1; routes.u, routes.v: 1..=n
 let n: 1..=5e5 = read()
 let m: 1..=5e5 = read()
 domain City = 1..=n

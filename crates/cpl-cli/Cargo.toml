@@ -21,6 +21,7 @@ cpl-interp.workspace = true
 cpl-judge.workspace = true
 cpl-ir.workspace = true
 cpl-json.workspace = true
+cpl-wait.workspace = true
 cpl-lint.workspace = true
 cpl-lsp.workspace = true
 cpl-stress.workspace = true
@@ -29,3 +30,6 @@ cpl-syntax.workspace = true
 # The allocator the `cpl` binary ships with (decisions.md: mimalloc).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 mimalloc = { workspace = true }
+
+[dev-dependencies]
+cpl-corpus.workspace = true

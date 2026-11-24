@@ -8,6 +8,7 @@
 //   some A_i: sort the powers descending, keep the count and sum of those above, and try each. O(N
 //   log N).
 // original: corpus/submissions/3946478.cpp
+// Bounds: n, h, p: 1..=1e6; boss: 0..=1e6
 let n: 1..=1e6 = read()
 let h: 1..=1e6 = read()
 let p: 1..=1e6 = read()

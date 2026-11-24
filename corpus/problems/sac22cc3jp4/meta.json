@@ -20,5 +20,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Str.parse_int(base:) and Int.to_str(base:)."
+ "notes": "Str.parse_int(base:) and Int.to_str(base:).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "466855ab43d9e54112524ef6f1a3d29aac64d2b8"
+ }
 }

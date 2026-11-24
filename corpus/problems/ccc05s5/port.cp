@@ -5,6 +5,7 @@
 // Solution: keep the earlier scores in an ordered multiset; the number above s is
 //   len - (count below s + 1). Sum 1 + that and print the exact average with `fixed`
 //   (no floats). O(t log t).
+// Bounds: t: 1..=1e5; scores: 0..=1e9
 let t: 1..=1e5 = read()
 let scores: [t]0..=1e9 = read()
 

@@ -1,4 +1,4 @@
-use std.geometry.{Vec, Circle, circles_union_area}
+use std.geometry.{Vec, Circle}
 
 let n: Int = read()
 var cs: List<Circle> = []

@@ -7,6 +7,7 @@
 //   s' <= (3s + 1) / 2, so s grows by half each round, updated in place: O(n^2 log k).
 //   Then sum best over the apexes of the side-k triangles.
 // original: corpus/submissions/4327508.cpp
+// Bounds: n: 1..=3000; k: 1..=n
 let n: 1..=3000 = read()
 let k: 1..=n = read()
 // best[i, j] (j <= i): the largest entry of the current-side triangle with apex (i, j)

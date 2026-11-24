@@ -7,6 +7,8 @@
 //   any subset of its accessories (at most 4); a grouped 0/1 knapsack over money, descending,
 //   takes at most one option per group: O(n * m * 4).
 // original: corpus/submissions/5165705.cpp
+// Bounds: budget: 1..=32000; n: 1..=60; items.price: 0..=10000; items.weight: 1..=5;
+//   items.main: 0..=n
 let budget: 1..=32000 = read()
 let n: 1..=60 = read()
 domain Item = 1..=n

@@ -7,7 +7,7 @@ if sys.argv[1:] == ["--max"]:
 # first k letters, made by a few random swaps of one base order so long councils exist.
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 N = 10 ** 4
-n = N if S >= N else r.randint(1, S)
+n = N if S >= N else r.randint(1, max(1, S))
 k = 26 if S >= N else r.randint(1, min(26, S + 2))
 base = [chr(65 + i) for i in range(k)]; r.shuffle(base)
 swaps = r.choice([0, 1, 2, k])

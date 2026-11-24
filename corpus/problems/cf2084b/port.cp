@@ -6,6 +6,7 @@
 //   suffix must have gcd mn: all its elements are multiples of mn, and adding more multiples
 //   only pulls the gcd down toward mn. So the answer is Yes iff the gcd of every multiple of mn
 //   other than one copy of mn equals mn. One pass, O(n log a).
+// Bounds: n: 2..=100_000; a: 1..=10 ** 18
 
 @!multitest
 let n: 2..=100_000 = read()

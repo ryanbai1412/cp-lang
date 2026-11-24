@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -160,19 +160,13 @@ pub fn run_piped(
     let out = drain(child.stdout.take());
     let err = drain(child.stderr.take());
     let deadline = Instant::now() + Duration::from_secs(limit);
-    let status = loop {
-        if let Some(status) = child
-            .try_wait()
-            .map_err(|e| format!("{name} failed: {e}"))?
-        {
-            break status;
-        }
-        if Instant::now() > deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(format!("timed out after {limit}s"));
-        }
-        std::thread::sleep(Duration::from_millis(5));
+    let mut exit = cpl_wait::on_exit(child);
+    let Some(status) = exit
+        .by(deadline)
+        .map_err(|e| format!("{name} failed: {e}"))?
+    else {
+        let _ = exit.kill();
+        return Err(format!("timed out after {limit}s"));
     };
     let _ = writer.join();
     Ok(std::process::Output {
@@ -278,11 +272,11 @@ where
 {
     let workers = workers.clamp(1, items.len().max(1));
     let next = AtomicUsize::new(0);
-    let done = AtomicBool::new(false);
+    let (done, finished) = std::sync::mpsc::channel::<()>();
     let results: Mutex<BTreeMap<String, R>> = Mutex::new(BTreeMap::new());
     *RUNNING.lock().unwrap() = vec![String::new(); workers];
     std::thread::scope(|s| {
-        s.spawn(|| watch_memory(&done));
+        s.spawn(move || watch_memory(&finished));
         let handles: Vec<_> = (0..workers)
             .map(|w| {
                 let (next, results, work) = (&next, &results, &work);
@@ -305,7 +299,7 @@ where
             })
             .collect();
         let joined: Vec<_> = handles.into_iter().map(|h| h.join()).collect();
-        done.store(true, Ordering::Relaxed);
+        drop(done);
         for j in joined {
             if let Err(panic) = j {
                 std::panic::resume_unwind(panic);
@@ -332,13 +326,14 @@ pub fn running(name: &str) {
 
 /// Stops the process once its resident memory passes the limit, naming the
 /// cases in flight: past the machine's memory the OOM killer would take the
-/// run without a word, and a CI runner with it.
-fn watch_memory(done: &AtomicBool) {
+/// run without a word, and a CI runner with it. It samples every 100 ms and
+/// stops the moment `finished` disconnects.
+fn watch_memory(finished: &std::sync::mpsc::Receiver<()>) {
     let Some(limit) = memory_limit_mb() else {
         return;
     };
-    while !done.load(Ordering::Relaxed) {
-        std::thread::sleep(std::time::Duration::from_millis(100));
+    let tick = std::time::Duration::from_millis(100);
+    while let Err(std::sync::mpsc::RecvTimeoutError::Timeout) = finished.recv_timeout(tick) {
         let Some(rss) = proc_kb("/proc/self/status", "VmRSS:").map(|kb| kb / 1024) else {
             return;
         };

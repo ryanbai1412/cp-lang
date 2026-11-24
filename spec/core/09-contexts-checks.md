@@ -36,10 +36,10 @@ Any block sets one:
 <!-- given: let xs = [1, 2, 3] -->
 ```cp
 fn solve():
-    with io(base: 1)              // bare line at the top of a block: the rest of it
-    with checks(bounds: off):     // block form
+    with io(base: 1)           // bare line at the top of a block: the rest of it
+    with checks(bounds: off):  // block form
         for x in xs: todo
-    let n: Int = read(base: 0)    // a call argument beats every context
+    let n: Int = read(base: 0)  // a call argument beats every context
 ```
 
 - Precedence: call argument, then the innermost `with`, then outer ones,
@@ -125,11 +125,11 @@ checked builds and, like other checks, skipped in release unless
 ## 9.4 Turning checks on and off
 
 ```cp
-with checks(ranges: on, overflow: on, bounds: on):   // also in release
+with checks(ranges: on, overflow: on, bounds: on):  // also in release
     todo
-with checks(overflow: off):                          // also in checked builds
+with checks(overflow: off):  // also in checked builds
     todo
-unchecked:                                           // every check off, every build
+unchecked:  // every check off, every build
     todo
 ```
 

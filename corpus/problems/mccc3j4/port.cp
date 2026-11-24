@@ -6,6 +6,7 @@
 //   thrower order before appending any. Round one throws at every first target, so the last
 //   target starts as it. Each round appends at most N entries: O(N T).
 // original: corpus/submissions/4223440.cpp
+// Bounds: n, t: 1..=2000; first: 1..=n
 
 let (n, t): (1..=2000, 1..=2000) = read()
 domain Player = 1..=n

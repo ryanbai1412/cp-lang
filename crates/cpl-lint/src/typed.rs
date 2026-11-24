@@ -7,11 +7,8 @@
 
 use crate::facts::Facts;
 use crate::{
-    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, CONTAINS_THEN_ADD, COPY_COMPREHENSION,
-    COUNTER_BY_MAP, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, LOOP_REDUCTION,
-    MANUAL_BIT_TEST, MANUAL_STARTS_WITH, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP,
-    PEEK_THEN_POP, POP_MIN_LOOP, PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP,
-    UNPROVEN_LIST_INDEX,
+    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY,
+    FLOAT_SQRT_FOR_INT, LOOP_REDUCTION, MANUAL_BIT_TEST, NEG_MOD_FIXUP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
@@ -113,7 +110,7 @@ fn fix_checks(d: &Diagnostic, facts: &Facts) -> bool {
         // generic fn `cpl run` has no `Range.collect` yet (std `sa_order`).
         c if c == COPY_COMPREHENSION.code => d.labels.first().is_some_and(|l| {
             matches!(facts.place_type(l.span), Some(Ty::Array { .. }))
-                || matches!(facts.place_type(l.span), Some(Ty::Named { name, .. }) if name == "List")
+                || facts.place_type(l.span).is_some_and(|t| t.is_list())
         }),
         _ => true,
     }
@@ -122,12 +119,24 @@ fn fix_checks(d: &Diagnostic, facts: &Facts) -> bool {
 /// Whether `facts` leave the finding `d` standing.
 fn keep(d: &Diagnostic, facts: &Facts) -> bool {
     let label = || d.labels.first().map(|l| facts.place_type(l.span));
+    // A lint whose record names the types it is `on` keeps a finding only
+    // where the checker types its first label as one of them.
+    let on = crate::LINTS
+        .iter()
+        .find(|l| l.code == d.code)
+        .map_or(&[][..], |l| l.on);
+    if !on.is_empty() {
+        return if d.code == UNPROVEN_LIST_INDEX.code {
+            // A label names a list only where the checker's type for it is one.
+            facts.typed_index(d.span).is_none()
+                && label().is_none_or(|ty| ty.is_some_and(|t| t.is_one_of(on)))
+        } else {
+            label().is_some_and(|ty| ty.is_some_and(|t| t.is_one_of(on)))
+        };
+    }
     match d.code {
         c if c == CHMIN_CHMAX_IF.code => scalar_place(d, facts),
         c if c == COMPOUND_SELF_REF.code => plain_place(d, facts),
-        c if c == PEEK_THEN_POP.code || c == REVERSE_INDEX.code => {
-            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
-        }
         c if c == CEIL_DIV_FORMULA.code => match label() {
             None => true,
             Some(ty) => matches!(ty, Some(Ty::Range { lo: Some(lo), .. }) if *lo >= 1),
@@ -142,31 +151,6 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         c if c == MANUAL_BIT_TEST.code => {
             matches!(label(), Some(Some(Ty::Int | Ty::Range { .. })))
         }
-        c if c == LAST_VIA_LEN.code => {
-            matches!(label(), Some(Some(Ty::Str | Ty::Array { .. })))
-                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
-        }
-        // Slices take keys and `starts_with` positions: they agree on `Str` and `List`.
-        c if c == MANUAL_STARTS_WITH.code => {
-            matches!(label(), Some(Some(Ty::Str)))
-                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
-        }
-        c if c == STALE_ENTRY_SKIP.code => matches!(label(), Some(Some(Ty::Named { name, .. }))
-            if ["Heap", "MaxHeap", "MinMaxHeap", "ErasableHeap", "MeldHeap"].contains(&name.as_str())),
-        // A label names a list only the checker's type for it shows is one.
-        c if c == UNPROVEN_LIST_INDEX.code => {
-            facts.typed_index(d.span).is_none()
-                && label()
-                    .is_none_or(|ty| matches!(ty, Some(Ty::Named { name, .. }) if name == "List"))
-        }
-        c if c == MAP_AS_MULTISET.code => matches!(label(), Some(Some(Ty::Named { name, args }))
-            if name == "Map" && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }])),
-        c if c == SORT_FOR_EXTREME.code => {
-            matches!(label(), Some(Some(Ty::Array { .. })))
-                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
-        }
-        c if c == COUNTER_BY_MAP.code => matches!(label(), Some(Some(Ty::Named { name, args }))
-            if (name == "Map" || name == "HashMap") && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }])),
         // Kept unless the checker types the operand read as a float as an
         // integer (std/geometry.cp: `Pt.x` is an `Int`, `Vec.x` an `F64`).
         c if c == FLOAT_EQUALITY.code => !matches!(label(), Some(Some(ty)) if ty.is_int()),
@@ -174,20 +158,6 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         // none. Domains, generic `S: Seq` and generators are `Seq` too.
         c if c == COPY_COMPREHENSION.code => {
             !matches!(label(), Some(Some(ty @ Ty::Named { .. })) if !ty.is_seq())
-        }
-        c if c == CONTAINS_THEN_ADD.code => {
-            matches!(label(), Some(Some(Ty::Named { name, args }))
-                if (name == "Map" || name == "HashMap") && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }]))
-                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Counter")
-        }
-        c if c == POP_MIN_LOOP.code => {
-            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "SortedBag" || name == "SortedSet")
-        }
-        c if c == PUSH_POP_PAIR.code => {
-            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Heap" || name == "MaxHeap")
-        }
-        c if c == NEGATED_HEAP.code => {
-            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Heap")
         }
         _ => true,
     }
@@ -218,23 +188,43 @@ fn plain_type(ty: Option<&Ty>) -> bool {
     ty.is_some_and(|ty| !ty.has_vague() && !matches!(ty, Ty::Optional(_)))
 }
 
+/// What `cpl check` reports for an analysis. `cpl-lint` can't lower to IR,
+/// so the caller hands it in (`cpl_ir::check`), and a fix is judged by the
+/// errors `cpl check` would show, lowering's included.
+pub type Errors = dyn Fn(&cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic>;
+
 /// `text` with the lint fixes `cpl lint --fix` would make under `config`,
 /// and how many; each round lints the analysis `db` has, so a clean file is
-/// checked once. `cpl fix` and the playground's `fix` share it. A round is
-/// re-checked: a fix that would add a checker error is not applied.
+/// checked once. `cpl fix`, `cpl lint --fix` and the playground share it. A
+/// round is re-checked: a fix after which `check` reports an error the text
+/// lacked is not applied.
 pub fn apply_lint_fixes(
+    db: &mut cpl_check::Session,
+    path: &str,
+    text: String,
+    config: &crate::Config,
+    check: &Errors,
+) -> (String, usize) {
+    apply_lint_fixes_where(db, path, text, config, check, &|_| true)
+}
+
+/// [`apply_lint_fixes`] with only the findings `keep` takes.
+pub fn apply_lint_fixes_where(
     db: &mut cpl_check::Session,
     path: &str,
     mut text: String,
     config: &crate::Config,
+    check: &Errors,
+    keep: &dyn Fn(&cpl_diag::Diagnostic) -> bool,
 ) -> (String, usize) {
     let mut applied = 0;
     for _ in 0..8 {
         db.set_file(path, text.as_str());
         let analysis = db.analyze(path).expect("the file was just set");
-        let findings = lint_analysis(&analysis, config);
-        let errors = error_codes(&analysis.diagnostics);
-        let (next, n) = safe_fixes(db, path, &text, &findings, &errors);
+        let mut findings = lint_analysis(&analysis, config);
+        findings.retain(|d| keep(d));
+        let errors = error_codes(&check(&analysis));
+        let (next, n) = safe_fixes(db, path, &text, &findings, &errors, check);
         if n == 0 {
             break;
         }
@@ -257,13 +247,19 @@ fn error_codes(diagnostics: &[cpl_diag::Diagnostic]) -> Vec<&'static str> {
 }
 
 /// Whether `text` as `path` has no checker error beyond `errors`.
-fn adds_no_error(db: &mut cpl_check::Database, path: &str, text: &str, errors: &[&str]) -> bool {
+fn adds_no_error(
+    db: &mut cpl_check::Database,
+    path: &str,
+    text: &str,
+    errors: &[&str],
+    check: &Errors,
+) -> bool {
     db.set_file(path, text);
     let Some(analysis) = db.analyze(path) else {
         return false;
     };
     let mut left = errors.to_vec();
-    for code in error_codes(&analysis.diagnostics) {
+    for code in error_codes(&check(&analysis)) {
         match left.iter().position(|c| *c == code) {
             Some(at) => {
                 left.remove(at);
@@ -283,9 +279,10 @@ pub(crate) fn safe_fixes(
     text: &str,
     findings: &[cpl_diag::Diagnostic],
     errors: &[&str],
+    check: &Errors,
 ) -> (String, usize) {
     let (all, n) = crate::apply_fixes(text, findings);
-    if n == 0 || adds_no_error(db, path, &all, errors) {
+    if n == 0 || adds_no_error(db, path, &all, errors, check) {
         return (all, n);
     }
     let safe: Vec<_> = findings
@@ -293,13 +290,39 @@ pub(crate) fn safe_fixes(
         .filter(|f| !f.fixes.is_empty())
         .filter(|f| {
             let (alone, n) = crate::apply_fixes(text, std::slice::from_ref(*f));
-            n > 0 && adds_no_error(db, path, &alone, errors)
+            n > 0 && adds_no_error(db, path, &alone, errors, check)
         })
         .cloned()
         .collect();
     let (kept, n) = crate::apply_fixes(text, &safe);
-    if n == 0 || adds_no_error(db, path, &kept, errors) {
+    if n == 0 || adds_no_error(db, path, &kept, errors, check) {
         return (kept, n);
     }
     crate::apply_fixes(text, &safe[..1])
+}
+
+#[cfg(test)]
+mod own_state_tests {
+    use crate::tests::all_on;
+
+    #[test]
+    fn a_struct_steps_the_depths_it_keeps() {
+        let code = crate::DEPTH_BY_HAND.code.0;
+        let values = "domain V = 0..4\nvar dep: [V]Int = 0\nfor v in V:\n    if v.ord > 0:\n        dep[v] = dep[V(v.ord - 1)] + 1\nprint(dep[V(3)])\n";
+        assert!(
+            !crate::lint(values, &all_on())
+                .iter()
+                .any(|d| d.code.0 == code),
+            "{values}"
+        );
+        let by_hand = "domain V = 0..4\nvar dep: [V]Int = 0\nfor v in V:\n    if v.ord > 0:\n        dep[v] = dep[V(v.ord - 1)] + 1\nprint(dep[V(3)] > dep[V(1)])\n";
+        assert!(crate::lint(by_hand, &all_on())
+            .iter()
+            .any(|d| d.code.0 == code));
+        let own = "domain V = 0..4\nstruct Depths:\n    var dep: [V]Int = 0\n    pub fn add(mut self, v: V, p: V):\n        dep[v] = dep[p] + 1\n    pub fn depth(self, v: V) -> Int = dep[v]\nvar d = Depths()\nd.add(V(1), V(0))\nprint(d.depth(V(1)))\n";
+        assert!(
+            !crate::lint(own, &all_on()).iter().any(|d| d.code.0 == code),
+            "{own}"
+        );
+    }
 }

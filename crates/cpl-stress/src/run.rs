@@ -5,7 +5,7 @@ use crate::case::{Failed, Ruling, Transcript, Wrong};
 use crate::choices::{self, Drawn};
 use crate::engine::{ChoiceSource, Engine, ProcessChoices, ProcessEngine};
 use crate::gen::{generate, Case, Size};
-use crate::judge::{Judge, Verdict};
+use crate::judge::{Judge, Trapped, Verdict};
 use crate::program::Program;
 use crate::rng::Rng;
 use crate::shrink::shrink;
@@ -107,22 +107,20 @@ pub struct Failure {
 
 impl Failure {
     fn new(case: usize, seed: u64, input: String, failed: Failed, saved: bool) -> Failure {
-        let mut failure = Failure {
+        Failure {
             case,
             seed,
             input,
             described: None,
-            expected: String::new(),
-            got: String::new(),
-            verdict: Verdict::Accepted,
+            expected: failed.expected,
+            got: failed.got,
+            verdict: failed.verdict,
             shrunk: None,
             saved,
-            transcript: None,
-            ruling: None,
-            trap: None,
-        };
-        failure.take(failed);
-        failure
+            transcript: failed.transcript,
+            ruling: failed.ruling,
+            trap: failed.trap,
+        }
     }
 
     /// Takes the run of a smaller input that fails the same way.
@@ -195,18 +193,14 @@ fn tried(
     ran: Result<Wrong, StressError>,
 ) -> Result<Tried, StressError> {
     match ran {
-        Ok(Some(
-            failed @ Failed {
-                verdict: Verdict::RuntimeError(_) | Verdict::TimeLimit,
-                ..
-            },
-        )) if !engine.has_brute() => Ok(Tried::Stopped(Some(Some(failed)))),
-        Ok(Some(
-            failed @ Failed {
-                verdict: Verdict::BruteError(_),
-                ..
-            },
-        )) if engine.stops(input) => Ok(Tried::Stopped(Some(Some(failed)))),
+        Ok(Some(failed)) if failed.verdict.stopped() && !engine.has_brute() => {
+            Ok(Tried::Stopped(Some(Some(failed))))
+        }
+        Ok(Some(failed))
+            if failed.verdict.trapped() == Some(Trapped::Brute) && engine.stops(input) =>
+        {
+            Ok(Tried::Stopped(Some(Some(failed))))
+        }
         Ok(wrong) => Ok(Tried::Judged(wrong)),
         Err(_) if engine.stops(input) => Ok(Tried::Stopped(None)),
         Err(e) => Err(e),
@@ -258,7 +252,10 @@ impl<'e> Runs<'e> {
             return Ok(wrong.clone());
         }
         let wrong = self.engine.run_within(input, limit)?;
-        if matches!(&wrong, Some(failed) if failed.verdict == Verdict::TimeLimit) {
+        if wrong
+            .as_ref()
+            .is_some_and(|failed| failed.verdict.timed_out())
+        {
             self.timeouts.set(self.timeouts.get() + 1);
         }
         self.knows(input, &wrong);
@@ -522,7 +519,7 @@ pub fn stress_with(
                 // Same bug only: a candidate must fail the same way.
                 let kind = std::mem::discriminant(&failure.verdict);
                 let fails_as = |verdict: &Verdict| std::mem::discriminant(verdict) == kind;
-                let limits = shrink_limits(engine, matches!(failure.verdict, Verdict::TimeLimit));
+                let limits = shrink_limits(engine, failure.verdict.timed_out());
                 if let (InputSource::Typed(spec), Made::Typed(case)) = (&current, &case) {
                     let mut smallest = case.clone();
                     for &within in &limits {

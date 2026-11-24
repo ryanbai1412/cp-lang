@@ -1,4 +1,3 @@
-use std.geometry.{min_bounding_box}
 
 let n: Int = read()
 var hull: List<Pt> = []

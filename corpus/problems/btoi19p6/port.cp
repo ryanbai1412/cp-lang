@@ -1,4 +1,5 @@
 // Source: Baltic OI 2019 P6 (Olympiads), https://dmoj.ca/problem/btoi19p6
+// limits: 2000 ms, 256 MB
 // Problem: n <= 500 contestants score 0..=1e6 in each of k <= 6 events. A team is k distinct
 //   contestants scoring the sum over events of its best member there. Print the c-th best
 //   team score (c <= 2000, teams differ as sets; at least c teams exist).
@@ -8,6 +9,7 @@
 //   slot i that keeps slots before i and bans slot i's member. The c-th pop is the answer.
 //   O(c k^2 n) time, O(c k n) memory.
 // original: corpus/submissions/4475247.cpp
+// Bounds: n: 1..=500; k: 1..=6; c: 1..=2000; score: 0..=1_000_000
 let n: 1..=500 = read()
 let k: 1..=6 = read()
 let c: 1..=2000 = read()

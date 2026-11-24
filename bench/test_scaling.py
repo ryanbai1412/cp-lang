@@ -22,12 +22,48 @@ class Growth(unittest.TestCase):
         self.assertAlmostEqual(scaling.growth("k 2^k", let={"k": r"\log n"}), 4 * 16 / 14, places=3)
         self.assertAlmostEqual(scaling.growth(r"\min(k, n - k)", let={"k": "n / 2"}), 4.0, places=3)
 
+    def test_an_exponential_cost_reads_n_as_a_let(self):
+        self.assertAlmostEqual(scaling.growth("2^n n", let={"n": r"\log n"}), 4 * 16 / 14, places=3)
+        self.assertAlmostEqual(scaling.growth("k^n", let={"k": "2", "n": r"\log n"}), 4.0, places=3)
+
+    def test_a_bare_alpha_is_constant_and_text_is_one_symbol(self):
+        self.assertEqual(scaling.growth(r"(n + m) \alpha"), 4.0)
+        self.assertEqual(scaling.growth(r"\text{path length}", fixed=("path_length",)), 1.0)
+        self.assertEqual(scaling.growth(r"\text{path length}"), 4.0)
+
     def test_function_arguments_logs_and_bases(self):
         for formula, want in [(r"\log \max(\lvert x \rvert, \lvert y \rvert)", 16 / 14),
                               (r"(n + m) \log(n + m)", 4 * 17 / 15), (r"\log \log n", math.log2(16) / math.log2(14)),
                               (r"\mathit{log\_P} n", 16 / 14), (r"\min(\mathit{nodes}(\mathit{self}), m)", 4.0),
                               (r"\lvert \mathit{from} \rvert", 4.0)]:
             self.assertAlmostEqual(scaling.growth(formula, fixed=("P",)), want, places=3, msg=formula)
+
+    def test_a_unicode_symbol_is_one_symbol(self):
+        cost = r"\lvert Δ\mathit{start} \rvert + \lvert Δ\mathit{end} \rvert"
+        self.assertEqual(scaling.growth(cost), 4.0)
+        self.assertEqual(scaling.growth(cost, fixed=("Δstart", "Δend")), 1.0)
+
+    def test_stdin_lines_follow_n(self):
+        self.assertEqual(scaling.stdin_text(3), "3\n")
+        self.assertEqual(scaling.stdin_text(3, 2), "3\n0 1 2 -1\n0 1 2 -1\n")
+        self.assertEqual(scaling.header("// stdin: 2\nlet n = 1\n"), {"stdin": "2"})
+
+    def test_a_bare_deg_is_a_symbol(self):
+        self.assertAlmostEqual(scaling.growth(r"(n + \deg) \log^2 n", fixed=("deg",), n=16.0),
+                               (64 + 1) * 36 / ((16 + 1) * 16), places=6)
+        self.assertAlmostEqual(scaling.growth(r"(\deg f + m) \log m"),
+                               scaling.growth(r"(f + m) \log m"), places=6)
+
+    def test_a_binomial_grows_as_its_value(self):
+        self.assertAlmostEqual(scaling.growth("C(n, k)", let={"k": "2"}, n=15.0), 1770 / 105, places=3)
+        self.assertAlmostEqual(scaling.growth("C(n, k)", fixed=("k",)), 4.0, places=3)
+
+    def test_a_ceiling_grows_as_its_value(self):
+        f = r"\lvert s \rvert \cdot \lceil \lvert p \rvert / 64 \rceil"
+        self.assertAlmostEqual(scaling.growth(f, n=512.0), 16.0, places=3)
+        self.assertAlmostEqual(scaling.growth(f, fixed=("p",), n=512.0), 4.0, places=3)
+        self.assertAlmostEqual(scaling.growth(f, fixed=("s",), n=8.0), 1.0, places=3)
+        self.assertAlmostEqual(scaling.growth(f, fixed=("s",), n=200.0), 13 / 4, places=3)
 
     def test_a_sum_grows_as_its_term_times_its_bound(self):
         self.assertEqual(scaling.growth(r"\sum_i p_i^{e_i}", fixed=("p_i", "e_i")), 1.0)
@@ -60,7 +96,70 @@ class Judge(unittest.TestCase):
             self.assertTrue(scaling.judge(measured, documented))
 
 
+class Env(unittest.TestCase):
+    def test_runs_pin_the_malloc_thresholds(self):
+        self.assertEqual(scaling.profile_env({"A": "1"}),
+                         {"A": "1", "GLIBC_TUNABLES": scaling.MALLOC_TUNABLES})
+
+    def test_a_callers_tunables_are_kept(self):
+        env = scaling.profile_env({"GLIBC_TUNABLES": "glibc.cpu.x=1"})
+        self.assertEqual(env["GLIBC_TUNABLES"], "glibc.cpu.x=1:" + scaling.MALLOC_TUNABLES)
+
+
+class Runs(unittest.TestCase):
+    def test_runs_alternate_between_the_sizes(self):
+        import json
+        import tempfile
+        from unittest import mock
+        order = []
+
+        def run(cmd, **_):
+            order.append(int(open(cmd[4]).read()))
+            out = {"lines": [{"line": 1, "time_ns": scaling.MIN_NS * order[-1], "start_count": 1}]}
+            return mock.Mock(returncode=0, stdout=json.dumps(out), stderr="")
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(scaling.subprocess, "run", run):
+            best, short = scaling.per_hit("cpl", "case.cp", (1, 4), {"f": {1}}, tmp)
+        self.assertEqual(order, [1, 4] * scaling.RUNS)
+        self.assertEqual(best, {1: {"f": scaling.MIN_NS}, 4: {"f": 4 * scaling.MIN_NS}})
+        self.assertEqual(short, {})
+
+    def test_a_fn_under_the_time_floor_fails_alone(self):
+        import json
+        import tempfile
+        from unittest import mock
+        out = {"lines": [{"line": 1, "time_ns": scaling.MIN_NS, "start_count": 1},
+                         {"line": 2, "time_ns": 2 * scaling.MIN_NS, "start_count": 1}]}
+        run = mock.Mock(return_value=mock.Mock(returncode=0, stdout=json.dumps(out), stderr=""))
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(scaling.subprocess, "run", run):
+            _, short = scaling.per_hit("cpl", "case.cp", (1,), {"f": {1}, "g": {2}}, tmp)
+            self.assertEqual(short, {})
+            _, short = scaling.per_hit("cpl", "case.cp", (1,), {"f": {1}, "g": {2}}, tmp,
+                                       floor=1.5 * scaling.MIN_NS)
+            self.assertEqual(list(short), ["f"])
+
+
+class Merge(unittest.TestCase):
+    def test_a_rerun_replaces_its_cases_and_keeps_the_others(self):
+        case = lambda fn, ok=True: {"fn": fn, "ok": ok}
+        old = {"cases": {"bench/scaling/dsu.cp::dsu.Dsu.find": case("dsu.Dsu.find"),
+                         "bench/scaling/rooted.cp::tree.Rooted.lca": case("tree.Rooted.lca", ok=False),
+                         "bench/scaling/rooted.cp::tree.Rooted.gone": case("tree.Rooted.gone"),
+                         "bench/scaling/no_such_case.cp::x.y": case("x.y")}}
+        results = {"bench/scaling/rooted.cp::tree.Rooted.lca": case("tree.Rooted.lca")}
+        board = scaling.merge(old, results, [os.path.join(scaling.ROOT, "bench/scaling/rooted.cp")],
+                              ["dsu.Dsu.find", "tree.Rooted.lca", "tree.Rooted.gone", "x.y"])
+        self.assertEqual(sorted(board["cases"]), ["bench/scaling/dsu.cp::dsu.Dsu.find",
+                                                  "bench/scaling/rooted.cp::tree.Rooted.lca"])
+        self.assertTrue(board["cases"]["bench/scaling/rooted.cp::tree.Rooted.lca"]["ok"])
+        self.assertEqual(board["unscaled"], ["tree.Rooted.gone", "x.y"])
+
+
 class Alias(unittest.TestCase):
+    def test_an_impls_owner_is_named_without_its_generics(self):
+        out = {"name": "out", "facts": {"cost": r"\\(O(1)\\)"}}
+        doc = {"modules": [{"name": "graph", "items": [{"name": "Complement<V, G>", "members": [out]}]}]}
+        self.assertEqual(list(scaling.costs_of(doc)), ["graph.Complement.out"])
+
     def test_a_cost_as_another_fn_reads_its_cost(self):
         costs = {"m.T.f": r"\(O(\log n)\)", "m.T.g": "as `f`", "m.U.h": "as [`T.g`](T.g), plus one call",
                  "m.T.k": "as `nope`"}
@@ -78,9 +177,21 @@ class Header(unittest.TestCase):
         text = "// scaling: a.f\nx // timed\ny\nz // timed: b.g\nw // timed: b.g\n"
         self.assertEqual(scaling.timed_lines(text, "a.f"), {"a.f": {2}, "b.g": {4, 5}})
 
+    def test_a_formula_zero_at_n_asks_for_a_fixed_symbol(self):
+        with self.assertRaisesRegex(ValueError, "fixed"):
+            scaling.growth(r"n - i")
+        self.assertAlmostEqual(scaling.growth(r"n - i", fixed=("i",)), (4 * scaling.N - 1) / (scaling.N - 1))
+
     def test_a_within_line_names_the_fn_its_time_counts_to(self):
         text = "let f = x => x // within: a.f\nx // timed: a.f\n// within: a.f is prose\n"
         self.assertEqual(scaling.within_lines(text), {"a.f": {1}})
+
+    def test_a_timed_line_may_give_its_fn_its_own_symbols(self):
+        text = ("x // timed: a.f [fixed: s, t]\ny // timed: a.g [let: k = \\log n; d = 2] [fixed: u]\n"
+                "z // timed: a.f\nw // timed: a.h\n")
+        self.assertEqual(scaling.timed_lines(text, None), {"a.f": {1, 3}, "a.g": {2}, "a.h": {4}})
+        self.assertEqual(scaling.overrides(text, None),
+                         {"a.f": ({"s", "t"}, {}), "a.g": ({"u"}, {"k": r"\log n", "d": "2"})})
 
     def test_every_case_times_a_named_fn(self):
         for f in sorted(os.listdir(scaling.CASES)):

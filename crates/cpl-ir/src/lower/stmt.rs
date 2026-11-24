@@ -572,6 +572,7 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         self.collect_mut_slices_stmt(stmt, rest);
+        self.note_later_calls(stmt, rest);
         // `let u = o ?? return -1`: the test and the way out go ahead of
         // the statement, which then reads the value that is there.
         let root = match &stmt.kind {
@@ -2246,52 +2247,6 @@ impl<'a> Lowerer<'a> {
             len
         };
         out.push(Stmt::DefDomain { id, lo, len });
-    }
-
-    fn peek_list_elem_type(&mut self, var_name: &str, rest: &[ast::Stmt]) -> Option<Ty> {
-        fn find_push<'a>(var_name: &str, stmts: &'a [ast::Stmt]) -> Option<&'a ast::Expr> {
-            for s in stmts {
-                match &s.kind {
-                    ast::StmtKind::Expr(e) => {
-                        if let ast::ExprKind::Call { callee, args } = &e.kind {
-                            if let ast::ExprKind::Field { base, name } = &callee.kind {
-                                if name.text == "push"
-                                    && matches!(&base.kind, ast::ExprKind::Name(n) if n == var_name)
-                                    && args.len() == 1
-                                {
-                                    return Some(&args[0].value);
-                                }
-                            }
-                        }
-                        if let ast::ExprKind::If {
-                            branches,
-                            otherwise,
-                        } = &e.kind
-                        {
-                            for (_, b) in branches {
-                                if let Some(e) = find_push(var_name, &b.stmts) {
-                                    return Some(e);
-                                }
-                            }
-                            if let Some(b) = otherwise {
-                                if let Some(e) = find_push(var_name, &b.stmts) {
-                                    return Some(e);
-                                }
-                            }
-                        }
-                    }
-                    ast::StmtKind::While { body, .. } | ast::StmtKind::For { body, .. } => {
-                        if let Some(e) = find_push(var_name, &body.stmts) {
-                            return Some(e);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            None
-        }
-        let arg = find_push(var_name, rest)?;
-        self.probe_ty_silent(arg)
     }
 
     /// Infers the full type of `var x = List.filled(..., none)` (or `var x = none`)
@@ -5363,10 +5318,46 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::If(cond, then, Block { stmts: els }));
             }
             ast::Cond::Let { .. } | ast::Cond::Guard { .. } => {
+                if self.given_ty(tail).is_some_and(|t| t.is_none()) {
+                    self.probe_given_ty(cond, body, tail);
+                }
                 let mut els = Vec::new();
                 self.if_chain(rest, otherwise, tail, &mut els);
                 self.clause_chain(cond, body, tail, &els, out);
             }
+        }
+    }
+
+    /// `if o is Some(x): [x] else: []`: the `else` is lowered before the branch that binds
+    /// `x`, so the branch is read first for the type the `if` gives.
+    fn probe_given_ty(&mut self, cond: &ast::Cond, body: &ast::Block, tail: Tail) {
+        let diag_len = self.diags.len();
+        let saved_cx = self.cx.clone();
+        let saved_outer = self.outer_cxs.clone();
+        self.clause_chain(cond, body, tail, &[], &mut Vec::new());
+        // A view from the branch (`s[..q]`) is no type for the `if`: the
+        // `else` may give an owned value, and the view copies to meet it.
+        let ty = (self.given_ty(tail).flatten()).filter(|t| *t != Ty::Error && !t.holds_view());
+        self.cx = saved_cx;
+        self.outer_cxs = saved_outer;
+        self.diags.truncate(diag_len);
+        match tail {
+            Tail::Return => self.cx.ret = ty,
+            _ => self
+                .cx
+                .dos
+                .last_mut()
+                .into_iter()
+                .for_each(|f| f.ty = ty.clone()),
+        }
+    }
+
+    /// The type a value-giving tail gives so far: `Some(None)` while not yet known.
+    fn given_ty(&self, tail: Tail) -> Option<Option<Ty>> {
+        match tail {
+            Tail::Give => self.cx.dos.last().map(|f| f.ty.clone()),
+            Tail::Return => Some(self.cx.ret.clone()),
+            _ => None,
         }
     }
 

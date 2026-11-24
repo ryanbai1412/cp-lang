@@ -25,3 +25,13 @@
 ```cp
 `0..n`: an `Int` known to lie in `0..n` (the upper end excluded)
 ```
+
+== hover @ 8:18
+```cp
+`1e9 + 7`: a value given as a type argument, fixed when the program is compiled
+```
+
+== hover @ 9:15
+```cp
+`Str of "ABC"`: a `Str` whose characters are all in `"ABC"`
+```

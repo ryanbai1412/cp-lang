@@ -6,6 +6,7 @@
 // Solution: an operation toggles two bulbs in each of columns x, x + 1 and two on each of the
 //   diagonals x + y, x + y + 1, so the XOR of x and the XOR of x + y over lit bulbs never
 //   change: they give the treasure's x and x + y. O(n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let n: 1..=200_000 = read()

@@ -25,5 +25,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "print(range, sep:) covers 'one per line'."
+ "notes": "print(range, sep:) covers 'one per line'.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "258c834ccad1a08ddf6c8e881565773fda1b7476"
+ }
 }

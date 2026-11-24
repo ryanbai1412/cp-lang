@@ -14,7 +14,7 @@ Fields: `buf: List<T>`, `head: Int`, `n: Int`, `mask: Int`, `want: Int`.
 
 - `fn new() -> Deque<T>` — \(O(1)\); nothing is allocated until the first push; Create an empty `Deque<T>`.
 - `fn of(xs: List<T>) -> Deque<T>` — \(O(n)\); A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`, then `while let u = q.pop_front(): ...`.
-- `fn reserve(mut self, cap: Int)` — \(O(1)\) when empty, \(O(\mathit{cap})\) otherwise; Reserve capacity for at least `cap` elements without reallocating.
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\); \(O(1)\) when empty; Reserve capacity for at least `cap` elements without reallocating.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the deque.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the deque is empty.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements from the deque.
@@ -53,8 +53,8 @@ Fields: `head: Int`, `tail: Int`, `nx: List<Int>`, `pv: List<Int>`, `val: List<T
 - `fn push_front(mut self, x: T)` — \(O(1)\); Prepend `x` to the front.
 - `fn pop(mut self) -> ?T` — \(O(1)\); Remove and return the back element, or `None` if empty.
 - `fn pop_front(mut self) -> ?T` — \(O(1)\); Remove and return the front element, or `None` if empty.
-- `fn splice_back(mut self, other: LinkedList<T>)` — \(O(1)\); Splice all elements of `other` onto the back of `self`, consuming `other`.
-- `fn splice_front(mut self, other: LinkedList<T>)` — \(O(1)\); Splice all elements of `other` onto the front of `self`, consuming `other`.
+- `fn splice_back(mut self, other: LinkedList<T>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\); Splice all elements of `other` onto the back of `self`, consuming `other`.
+- `fn splice_front(mut self, other: LinkedList<T>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\); Splice all elements of `other` onto the front of `self`, consuming `other`.
 - `fn reverse(mut self)` — \(O(1)\); Reverse the list in place.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
 - `fn each(self) -> yields T` — \(O(1)\) per step; Yield elements front to back.

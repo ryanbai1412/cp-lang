@@ -144,7 +144,7 @@ impl<'a> Lowerer<'a> {
                     .into_iter()
                     .map(|(value, at)| {
                         let value = self.in_base(value, at);
-                        (self.walked_struct(value), at)
+                        (self.shown_struct(value), at)
                     })
                     .collect();
                 // A range is a `Seq`: it prints its elements (R10.3.1).
@@ -852,7 +852,7 @@ impl<'a> Lowerer<'a> {
 
     pub(in crate::lower) fn convert(&mut self, to: &str, value: Expr, span: Span) -> Expr {
         let value = if to == "Str" {
-            self.walked_struct(value)
+            self.shown_struct(value)
         } else {
             value
         };
@@ -1676,11 +1676,17 @@ impl<'a> Lowerer<'a> {
             Ty::Pos(d) => Some(d),
             _ => None,
         };
+        // Tags of one letter each read as a `Char`, so a column of them
+        // reads packed (`WLW`) or spaced (`W L W`), as `[V]Char` does.
+        let letters = tokens
+            .iter()
+            .all(|t| t.len() == 1 && !t.as_bytes()[0].is_ascii_digit());
+        let tok_ty = if letters { Ty::Char } else { Ty::Str };
         Some(self.do_expr(Some(&ty), span, |lw, out| {
-            let token = lw.temp(Ty::Str);
+            let token = lw.temp(tok_ty.clone());
             let read = lw.mk(
-                ExprKind::Read(Box::new(Spec::Plain(Ty::Str))),
-                Ty::Str,
+                ExprKind::Read(Box::new(Spec::Plain(tok_ty.clone()))),
+                tok_ty.clone(),
                 span,
             );
             out.push(Stmt::Let(token, Some(read)));
@@ -1688,7 +1694,10 @@ impl<'a> Lowerer<'a> {
                 let tags = [tokens[tag].clone()];
                 let mut cond: Option<Expr> = None;
                 for text in tags {
-                    let lit = lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span);
+                    let lit = match letters {
+                        true => lw.mk(ExprKind::Char(text.as_bytes()[0]), Ty::Char, span),
+                        false => lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span),
+                    };
                     let tok = lw.local(token, span);
                     let eq = lw.mk(
                         ExprKind::Cmp(CmpOp::Eq, Box::new(tok), Box::new(lit)),
@@ -1789,7 +1798,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let value = self.in_base(value, span);
-        let value = self.walked_struct(value);
+        let value = self.shown_struct(value);
         let value = match value.ty {
             Ty::Pos(d) if self.product_domains.contains_key(&d) => {
                 self.product_parts(d, value, span)

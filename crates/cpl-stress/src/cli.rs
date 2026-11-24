@@ -1,6 +1,6 @@
 //! `cpl stress`.
 
-use crate::judge::{declared, Judge, Launch};
+use crate::judge::{declared, Judge, Launch, Trapped};
 use crate::program::Program;
 use crate::run::{save, stress_with_cold, Options, Source};
 use crate::spec::InputSpec;
@@ -45,6 +45,7 @@ options:
                      the shrunk case in the debug interpreter and name the
                      first value they give a variable differently, with its line
   --format json      print the result as JSON, for an editor
+  --list [--json]    print the decorators that give a file a judge, and stop
 ";
 
 /// One checkpoint both the solution and the brute reached on the failing
@@ -71,9 +72,14 @@ pub struct Traced {
 /// Runs a `.cp` file and its `@alt(program)` fn on an input in the debug
 /// interpreter. `cpl` passes its own; this crate does not link one.
 /// The `bool` asks for [`Traced::divergence`].
-/// Traces the file on a failing input: the input, `--explain`, and whether
-/// the solution ran out of time on it.
-pub type Tracer<'a> = &'a dyn Fn(&Path, &str, bool, bool) -> Result<Traced, String>;
+/// Traces the file on a failing input: the input, `--explain`, and what
+/// [`crate::judge::explaining`] chose to explain.
+pub type Tracer<'a> = &'a dyn Fn(
+    &Path,
+    &str,
+    bool,
+    Option<&Result<crate::judge::Explaining, String>>,
+) -> Result<Traced, String>;
 
 struct Args {
     file: PathBuf,
@@ -433,7 +439,7 @@ fn build_stamp(args: &Args, src: &str) -> Option<String> {
 }
 
 fn toolchain_bug(args: &Args, failure: &crate::run::Failure) -> bool {
-    matches!(failure.verdict, crate::Verdict::Wrong(_))
+    failure.verdict.wrong()
         && args.fast.is_none()
         && crate::explain::runtime_error(&args.file, &failure.input).is_none()
         && crate::explain::interpreted_output(&args.file, &failure.input).is_some_and(|out| {
@@ -454,6 +460,36 @@ fn indent(text: &str) -> String {
     out.join("\n")
 }
 
+/// `cpl stress --list [--json]`: the decorators that give a file a judge.
+fn list_decorators(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    // A file `cpl` fills in for the command, or one given, changes nothing.
+    let given: Vec<&str> = (args.iter().map(String::as_str))
+        .filter(|arg| arg.starts_with('-') || *arg == "json")
+        .collect();
+    let json = match given.as_slice() {
+        ["--list"] => false,
+        ["--list", "--json"] | ["--list", "--format", "json"] => true,
+        _ => {
+            let given = given.join(" ");
+            let _ = write!(
+                stderr,
+                "cpl: `--list` takes only `--json`, not `{given}`\n\n{USAGE}"
+            );
+            return 2;
+        }
+    };
+    let names = crate::STRESS_DECORATORS.map(|name| format!("@{name}"));
+    let _ = match json {
+        true => {
+            let list = names.iter().map(|name| name.as_str().into()).collect();
+            let report = cpl_json::obj([("decorators", cpl_json::Value::Array(list))]);
+            writeln!(stdout, "{}", cpl_json::to_string(&report))
+        }
+        false => writeln!(stdout, "{}", names.join("\n")),
+    };
+    0
+}
+
 /// Runs `cpl stress`. Returns the exit code: 0 when every case agreed, 1
 /// when one did not or the run could not start, 2 for a usage error.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
@@ -470,6 +506,9 @@ pub fn run_with(
     if args.iter().any(|arg| arg == "-h" || arg == "--help") {
         let _ = write!(stdout, "{USAGE}");
         return 0;
+    }
+    if args.iter().any(|arg| arg == "--list") {
+        return list_decorators(args, stdout, stderr);
     }
     let args = match parse(args) {
         Ok(args) => args,
@@ -693,12 +732,7 @@ pub fn run_with(
     };
     // A case the brute, checker or interactor fails on is no test of the
     // solution: it isn't saved.
-    let helper_failed = |failure: &crate::run::Failure| {
-        matches!(
-            failure.verdict,
-            crate::Verdict::BruteError(_) | crate::Verdict::JudgeError(..)
-        )
-    };
+    let helper_failed = |failure: &crate::run::Failure| failure.verdict.helper_failed();
     let saved = (report.failure.as_ref())
         .filter(|failure| !helper_failed(failure))
         .and_then(|failure| match failure.saved {
@@ -718,8 +752,12 @@ pub fn run_with(
         || part_brute.is_some()
         || (args.brute.is_none() && judge != Judge::Tokens);
     // Not a case the solution never finished: run again, it would only be stopped again.
-    let finished =
-        |failure: &crate::run::Failure| !matches!(failure.verdict, crate::Verdict::TimeLimit);
+    let finished = |failure: &crate::run::Failure| !failure.verdict.timed_out();
+    let how = (report.failure.as_ref()).and_then(|failure| {
+        let interactive = matches!(judge, Judge::Interactor(..));
+        let brute = own_brute.is_some() || part_brute.is_some();
+        crate::judge::explaining(&failure.verdict, interactive, brute)
+    });
     let traced = match (&report.failure, tracer) {
         (Some(failure), Some(tracer))
             if args.fast.is_none()
@@ -731,7 +769,7 @@ pub fn run_with(
                 &args.file,
                 &failure.input,
                 args.explain,
-                !finished(failure),
+                how.as_ref(),
             ))
         }
         _ => None,
@@ -740,23 +778,18 @@ pub fn run_with(
         Some(Ok(traced)) => (traced.stages.as_slice(), Some(traced.html.as_str())),
         _ => (&[][..], None),
     };
-    let explained = match (&report.failure, &traced) {
-        (Some(failure), _) if helper_failed(failure) => None,
-        (Some(_), Some(Ok(traced)))
-            if (part_brute.is_some()
-                || (args.explain && matches!(judge, Judge::Interactor(..))))
-                && traced.divergence.is_some() =>
-        {
+    let explained = match (&report.failure, &traced, how) {
+        (Some(_), _, None) => None,
+        // A part's wrong call is shown without `--explain`: calls are always kept.
+        (Some(_), Some(Ok(traced)), _) if part_brute.is_some() && traced.divergence.is_some() => {
             Some(Ok(traced.divergence.clone()))
         }
-        (Some(_), Some(Ok(traced)))
-            if args.explain && (own_brute.is_some() || part_brute.is_some()) =>
-        {
-            Some(Ok(traced.divergence.clone()))
-        }
-        (Some(_), Some(Err(why))) if args.explain => Some(Err(why.clone())),
-        (Some(_), _) if args.explain => Some(Err(
-            "`--explain` runs the file against its own `@alt` fns".to_string(),
+        _ if !args.explain => None,
+        (Some(_), Some(Ok(traced)), Some(Ok(_))) => Some(Ok(traced.divergence.clone())),
+        (Some(_), Some(Err(why)), Some(Ok(_))) => Some(Err(why.clone())),
+        (Some(_), _, Some(Err(why))) => Some(Err(why)),
+        (Some(_), ..) => Some(Err(
+            "`--explain` runs the file against its own `@alt` fns".to_string()
         )),
         _ => None,
     };
@@ -799,12 +832,12 @@ pub fn run_with(
     // The trap a debug run stops at, in the shape `cpl check --format json` gives.
     let trap_json = (report.failure.as_ref())
         .filter(|_| args.json && args.fast.is_none())
-        .and_then(|failure| match failure.verdict {
-            crate::Verdict::RuntimeError(_) => {
+        .and_then(|failure| match failure.verdict.trapped()? {
+            Trapped::Solution => {
                 crate::explain::trap_report(&args.file, &failure.input, false).map(|t| t.json())
             }
-            crate::Verdict::BruteError(_) => brute_trap(&failure.input).map(|t| t.json()),
-            crate::Verdict::JudgeError("interactor", _) => match &judge {
+            Trapped::Brute => brute_trap(&failure.input).map(|t| t.json()),
+            Trapped::Interactor => match &judge {
                 Judge::Interactor(interactor, _) => crate::judge::interactor_trap_json(
                     &fast,
                     interactor,
@@ -814,19 +847,16 @@ pub fn run_with(
                 .and_then(|json| cpl_json::parse(&json).ok()),
                 _ => None,
             },
-            crate::Verdict::JudgeError("checker", _) => {
-                std::fs::read_to_string(&args.file).ok().and_then(|text| {
-                    crate::explain::checker_trap_in(
-                        &args.file,
-                        &text,
-                        &failure.input,
-                        &failure.got,
-                        None,
-                    )
-                    .map(|t| t.json())
-                })
-            }
-            _ => None,
+            Trapped::Checker => std::fs::read_to_string(&args.file).ok().and_then(|text| {
+                crate::explain::checker_trap_in(
+                    &args.file,
+                    &text,
+                    &failure.input,
+                    &failure.got,
+                    None,
+                )
+                .map(|t| t.json())
+            }),
         });
     if args.json {
         let toolchain_bug = (report.failure.as_ref()).is_some_and(|f| toolchain_bug(&args, f));
@@ -952,19 +982,18 @@ pub fn run_with(
     }
     // A wrong answer or a crash of the built C++ can stop the debug
     // interpreter at its cause: an overflow, an index out of range.
+    let verdict = &failure.verdict;
     let trapped = (args.fast.is_none()
-        && matches!(
-            failure.verdict,
-            crate::Verdict::Wrong(_) | crate::Verdict::RuntimeError(_)
-        ))
+        && (verdict.wrong() || verdict.trapped() == Some(Trapped::Solution)))
     .then(|| crate::explain::runtime_error(&args.file, &failure.input))
     .flatten();
-    match &failure.verdict {
+    let why = verdict.why();
+    match verdict.trapped() {
         // A checker alone rules on the output: there is no answer to show.
-        crate::Verdict::Wrong(why) if failure.expected.is_empty() => {
+        None if verdict.wrong() && failure.expected.is_empty() => {
             let _ = writeln!(stdout, "  got:\n{}\n  {why}", indent(&failure.got));
         }
-        crate::Verdict::Wrong(why) => {
+        None if verdict.wrong() => {
             let _ = writeln!(
                 stdout,
                 "  expected:\n{}\n  got:\n{}\n  {why}",
@@ -985,7 +1014,7 @@ pub fn run_with(
                 );
             }
         }
-        crate::Verdict::BruteError(why) => {
+        Some(Trapped::Brute) => {
             let brute_name = brute.as_ref().map_or("brute", |b| b.name.as_str());
             let trap = brute_trap(&failure.input).map(|t| t.text());
             let _ = match trap {
@@ -1004,15 +1033,16 @@ pub fn run_with(
                 "  fix the brute, or narrow the input it is meant for, then `cpl stress` again"
             );
         }
-        crate::Verdict::JudgeError(kind, trap) => {
+        Some(kind @ (Trapped::Checker | Trapped::Interactor)) => {
+            let kind = kind.name();
             let _ = writeln!(
                 stdout,
                 "  the {kind} failed, so the run can't be judged:\n{}",
-                indent(trap.trim_end())
+                indent(why.trim_end())
             );
             let _ = writeln!(stdout, "  fix the {kind}, then `cpl stress` again");
         }
-        crate::Verdict::RuntimeError(why) => match &trapped {
+        Some(Trapped::Solution) => match &trapped {
             Some(explained) => {
                 let _ = writeln!(
                     stdout,

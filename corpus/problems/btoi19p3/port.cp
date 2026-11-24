@@ -9,6 +9,7 @@
 //   offline in preorder, where a table over depth holds the path to E, so the minimum is one
 //   SegTree range fold: O((n + q) log n).
 // original: corpus/submissions/4456164.cpp
+// Bounds: n: 2..=1e5; s, exit, shops, asks.from: 1..=n; q: 1..=1e5; asks.closed: 1..=n - 1
 let n: 2..=1e5 = read()
 let s: 1..=n = read()
 let q: 1..=1e5 = read()
@@ -16,10 +17,11 @@ domain V = 1..=n
 domain Road = 1..n
 domain Ask = 1..=q
 let exit: V = read()
-type Link = (u: V, v: V, w: 1..=1e9)
+const LONGEST = 1e9
+type Link = (u: V, v: V, w: 1..=LONGEST)
 
 fn valley() -> [Road]Link:
-    [Road] r => (V(rand(1, r.label)), V(r.label + 1), rand(1, 1e9))
+    [Road] r => (V(rand(1, r.label)), V(r.label + 1), rand(1, LONGEST))
 
 let roads: [Road]Link = read(gen: valley)
 let shops: [s]V = read()  // distinct in the statement; nothing here says so
@@ -48,22 +50,21 @@ for a in Ask: asked_at[asks[a].from].push(a)
 domain Depth = 0..n
 var turn: [Depth]?Int = None
 var best_turn = SegTree<Depth, ?Int>.of(min, d => turn[d])
-var escaped: [Ask]Bool = false
-var nearest: [Ask]?Int = None
+enum Fate: Escaped | Shop(d: Int) | Stuck
+var fate: [Ask]Fate = Escaped
 for v in tree.at:
     let here = Depth(tree.depth(v))
-    turn[here] = None
-    if let d = shop_under[v]: turn[here] = d - 2 * far[v]
+    turn[here] = shop_under[v].map(d => d - 2 * far[v])
     best_turn.refresh(here)
     for a in asked_at[v]:
         let (u, w, _) = roads[asks[a].closed]
         let cut = if tree.parent(u) == w: u else: w
         if tree.is_anc(cut, v):
-            if let t = best_turn.fold(Depth(tree.depth(cut))..=here): nearest[a] = far[v] + t
-        else:
-            escaped[a] = true
+            fate[a] = Stuck
+            if let t = best_turn.fold(Depth(tree.depth(cut))..=here): fate[a] = Shop(far[v] + t)
 
 for a in Ask:
-    if escaped[a]: print("escaped")
-    elif let d = nearest[a]: print(d)
-    else: print("oo")
+    match fate[a]:
+        Escaped => print("escaped")
+        Shop(d) => print(d)
+        Stuck => print("oo")

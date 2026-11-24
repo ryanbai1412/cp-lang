@@ -7,6 +7,7 @@
 //   with three counters finds every candidate; each one's exact count comes from a binary
 //   search in its sorted piece list. O((n + q) log n).
 // original: corpus/submissions/4253124.cpp
+// Bounds: n, m, q: 1..=2e5; flavour: 1..=m; asks.l, asks.r: 1..=n
 
 let n: 1..=2e5 = read()
 let m: 1..=2e5 = read()

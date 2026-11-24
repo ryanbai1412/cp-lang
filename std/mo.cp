@@ -4,16 +4,16 @@ use std.math.{isqrt}
 use std.seq.{map}
 
 /// The order in which to visit `queries` so a sliding window moves its endpoints
-/// \(O((n + q) \sqrt n)\) times, as a permutation of `0..queries.len`.
+/// \(O(n \sqrt q)\) times, as a permutation of `0..queries.len`.
 ///
-/// Let `lo` be the least start and `n` the distance from `lo` to the greatest end over all
-/// queries, and `b = max(1, isqrt(n))`. Query `i` falls in block `(queries[i].start - lo) / b`.
+/// Let `n` be the greatest end over all `q` queries and `b = max(1, n / isqrt(q))`. Query `i`
+/// falls in block `queries[i].start / b`.
 /// Blocks are visited in increasing order; within an even block queries go by increasing end,
 /// within an odd block by decreasing end (the snake that saves the return sweep).
 ///
 /// cost: \(O(q \log q)\)
-/// empty: `[]`
-/// ties: equal block and end keep the earlier query first
+/// empty: `mo_order(List<Range<Int>>()) == []`
+/// ties: `mo_order([2..4, 0..1, 2..4]) == [1, 0, 2]`
 /// order: increasing block, then end increasing in even blocks and decreasing in odd ones
 /// traps: never
 /// example: `mo_order([0..3, 2..4, 0..1, 3..4]) == [2, 0, 1, 3]`
@@ -43,7 +43,7 @@ pub fn mo_order<D>(queries: List<Range<D>>) -> List<Int>:
 /// increasing), then the right end moves left (leaving, decreasing).
 ///
 /// cost: \(O(\lvert Δ\mathit{start} \rvert + \lvert Δ\mathit{end} \rvert)\)
-/// empty: `[]` when `from == to`
+/// empty: `mo_steps(1..3, 1..3) == []`
 /// order: left growth, right growth, left shrink, right shrink, each outward-to-inward as above
 /// traps: never
 /// example: `mo_steps(1..3, 0..2) == [(pos: 0, entering: true), (pos: 2, entering: false)]`
@@ -76,7 +76,7 @@ pub fn mo_steps<D>(from: Range<D>, to: Range<D>) -> List<(pos: D, entering: Bool
 /// results.
 ///
 /// cost: \(O((n + q) \sqrt n)\) calls to `add` and `remove`, `q` calls to `answer`, plus \(O(q \log q)\)
-/// empty: `[]`, calling nothing
+/// empty: `var calls = 0; let r = mo(List<Range<Int>>(), add: _ => calls += 1, remove: _ => calls += 1, answer: _ => calls); (r.len, calls) == (0, 0)`
 /// order: `result[i]` answers `queries[i]`
 /// traps: never; traps raised by the callbacks propagate
 /// example: `let a = [1, 2, 3]; var s = 0; mo([0..2, 1..3], add: i => s += a[i], remove: i => s -= a[i], answer: _ => s) == [3, 5]`
@@ -133,8 +133,8 @@ pub fn mo<D, R>(
 /// `xy2d` construction that starts at `(0, 0)`, visits `(0, 1)` second and ends at `(2^k - 1, 0)`).
 ///
 /// cost: \(O(q \log q + q \log n)\)
-/// empty: `[]`
-/// ties: equal keys (equal ranges) keep the earlier query first
+/// empty: `mo_order_hilbert(List<Range<Int>>()) == []`
+/// ties: `mo_order_hilbert([0..2, 1..1, 0..2]) == [1, 0, 2]`
 /// order: increasing Hilbert key
 /// traps: never
 /// example: `mo_order_hilbert([1..1, 0..1, 0..0]) == [2, 1, 0]`
@@ -183,12 +183,13 @@ pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int>:
 ///
 /// Blocks are as in [`mo_order`](mo_order). A query that lies inside one block is answered on
 /// its own: `m = mark()`, add its positions, answer, `undo(m)`. The other queries of a block go
-/// by increasing end: `reset()` once at the block's first such query, the right part grows from
-/// the block's end with `add`, and each query's left part is added between a `mark()` and the
-/// matching `undo`. Results come back in the original query order.
+/// by increasing end, the right part growing from the block's end with `add`, and each query's
+/// left part is added between a `mark()` and the matching `undo`. Entering a block whose predecessor grew a right part calls `reset()` first,
+/// so in-block queries never see the previous block's positions. Results come back in the
+/// original query order.
 ///
-/// cost: \(O((n + q) \sqrt n)\) calls to `add`, no removals, one `reset` per block
-/// empty: `[]`, calling nothing
+/// cost: \(O((n + q) \sqrt n)\) calls to `add`, no removals, at most one `reset` per block
+/// empty: `domain P = 0..3; var calls = 0; let r = mo_rollback(List<Range<P>>(), mark: () => calls, add: _ => calls += 1, answer: _ => calls, undo: _ => calls += 1, reset: () => calls += 1); (r.len, calls) == (0, 0)`
 /// order: `result[i]` answers `queries[i]`
 /// traps: never; traps raised by the callbacks propagate
 ///
@@ -270,8 +271,8 @@ pub fn mo_rollback<D, M, R>(
 /// original query order.
 ///
 /// cost: \(O(n^{5/3} + q \log q)\) window moves and updates for `q ~ n` queries
-/// empty: `[]`, calling nothing
-/// ties: equal keys keep the earlier query first
+/// empty: `var calls = 0; let r = mo_with_updates(List<(range: Range<Int>, time: Int)>(), List<Int>(), add: _ => calls += 1, remove: _ => calls += 1, apply_update: (_, _) => calls += 1, undo_update: (_, _) => calls += 1, answer: _ => calls); (r.len, calls) == (0, 0)`
+/// ties: `var seen: List<Int> = []; let qs = [(range: 0..2, time: 0), (range: 0..2, time: 0)]; mo_with_updates(qs, List<Int>(), add: _ => (), remove: _ => (), apply_update: (_, _) => (), undo_update: (_, _) => (), answer: qi => seen.push(qi)); seen == [0, 1]`
 /// order: `result[i]` answers `queries[i]`
 /// traps: when a `time` is outside `0..=updates.len`
 /// example: `var a = [1, 2, 3]; let qs = [(range: 0..2, time: 1), (range: 1..3, time: 0)]; mo_with_updates(qs, [(pos: 1, by: 10)], add: _ => (), remove: _ => (), apply_update: (u, _) => a[u.pos] += u.by, undo_update: (u, _) => a[u.pos] -= u.by, answer: qi => a[qs[qi].range].sum()) == [13, 5]`

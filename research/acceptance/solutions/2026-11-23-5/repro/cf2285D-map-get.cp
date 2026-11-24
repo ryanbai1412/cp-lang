@@ -1,7 +1,7 @@
 // Blocker repro map-get-copies-list (run 5, Windows draft shape): `at.get(h) ?? []` on a
 // Map<Int, List<Int>> plus `partition_point` on the result. Over 20 s on max.py before
 // 1b76f05c4; must stay AC.
-use std.mod.{Mod, Comb}
+use std.mod.{Mod}
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z>()
 
@@ -19,7 +19,7 @@ for x in 1..n:
 fn count(h: Int, lo: Int, hi: Int) -> Int:
     if lo > hi: return 0
     let ps = at.get(h) ?? []
-    return ps.partition_point(p => p > hi) - ps.partition_point(p => p >= lo)
+    return ps.bsearch(p => p > hi) - ps.bsearch(p => p >= lo)
 for _ in 0..q:
     let (i, v): (1..=n, -1e9..=1e9) = read()
     let (blo, bhi) = (i, n - i)

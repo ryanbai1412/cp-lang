@@ -602,9 +602,14 @@ impl InputSpec {
     pub fn from_source(src: &str) -> Result<InputSpec, SpecError> {
         let parsed = cpl_syntax::parse_file(src);
         let lines = cpl_diag::LineIndex::new(src);
+        let read_types = read_types(src);
         let mut builder = Builder {
             src,
             base: 0,
+            read_types: &read_types,
+            bodies: bodies(src, &parsed.items),
+            streams: streams(src, &parsed.items),
+            inlining: Vec::new(),
             domains: HashMap::new(),
             products: HashMap::new(),
             variants: HashMap::new(),
@@ -922,7 +927,10 @@ impl InputSpec {
                     }
                 }
                 StmtKind::For { .. } if (in_judge || judge.is_none()) && builder.reads(stmt) => {
-                    let Some(shape) = builder.pass(stmt, &HashSet::new())? else {
+                    let Some(shape) = builder
+                        .stream(stmt)?
+                        .or(builder.pass(stmt, &HashSet::new())?)
+                    else {
                         if let Some(shapes) = builder.inlined(stmt)? {
                             let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
                             let fields = shapes.into_iter().map(|shape| Field {
@@ -958,6 +966,8 @@ impl InputSpec {
                     if (in_judge || judge.is_none())
                         && !readers.contains_key(decl.name.text.as_str())
                         && !builder.values.contains_key(&decl.name.text)
+                        && !builder.bodies.contains_key(decl.name.text.as_str())
+                        && !builder.streams.contains_key(decl.name.text.as_str())
                         && stmt
                             .decorators
                             .iter()

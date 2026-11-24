@@ -1,6 +1,7 @@
 """nccc10s4 generator: 3 <= n <= 12 distinct lines, each through two distinct lattice points.
 
-usage: gen.py SEED [MAXN] [C]: n in 3..=MAXN (default 7, small enough for the interpreter),
+usage: gen.py SEED [SIZE] [C]: n in 3..=SIZE / 7, at most 12 (default 7, small enough for the
+interpreter),
 coordinates in -C..=C (default a small C, so many lines cross at shared points).
 """
 import math
@@ -12,7 +13,7 @@ if sys.argv[1:] == ["--max"]:
     sys.argv[1:] = ["2022", "12", "2000"]
 seed = int(sys.argv[1])
 rng = random.Random(seed)
-max_n = int(sys.argv[2]) if len(sys.argv) > 2 else 7
+max_n = max(3, min(12, int(sys.argv[2]) // 7)) if len(sys.argv) > 2 else 7
 c = int(sys.argv[3]) if len(sys.argv) > 3 else rng.choice([2, 3, 5, 2000])
 n = 12 if sys.argv[1:] == ["2022", "12", "2000"] else rng.randint(3, max_n)
 seen = set()

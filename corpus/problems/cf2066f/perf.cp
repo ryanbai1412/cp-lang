@@ -59,10 +59,10 @@ fn plan(x: Int) -> ?Plan:
         came[spent, k, j] != None or (k == Seg.cuts.first and j == PosB.cuts.first and not spent)
     for s in Seg:
         if total[s] < x:
-            for spent in [false, true]:
-                for j in PosB.cuts:
-                    if let k = matches(j, s) and fit(s.l, j, spent):
-                        came[spent, s.r, k] = Some(j)
+            for j in PosB.cuts:
+                if let k = matches(j, s):
+                    for spent in [false, true]:
+                        if fit(s.l, j, spent): came[spent, s.r, k] = Some(j)
         else:
             for spent in [false, true]:
                 var latest: ?PosB.cuts = None
@@ -81,7 +81,7 @@ fn plan(x: Int) -> ?Plan:
     var free: ?Seg = None
     for s in Seg.rev:
         let from = came[spent, s.r, at]!
-        piece[s] = (from: from, to: at)
+        piece[s] = (from:, to: at)
         if spent and freed[s.r, at]: (free, spent) = (Some(s), false)
         at = from
     Plan(piece, free!)

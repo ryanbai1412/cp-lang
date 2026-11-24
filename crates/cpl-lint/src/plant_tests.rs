@@ -92,10 +92,9 @@ fn rename_words(s: &str, bound: &HashSet<String>) -> String {
 
 /// The three shortest corpus specs that lint clean.
 pub(crate) fn hosts() -> Vec<String> {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
-    let mut srcs: Vec<String> = std::fs::read_dir(root)
-        .unwrap()
-        .filter_map(|e| std::fs::read_to_string(e.unwrap().path().join("spec.cp")).ok())
+    let mut srcs: Vec<String> = cpl_corpus::files(&cpl_corpus::root(), "spec.cp")
+        .into_iter()
+        .filter_map(|p| std::fs::read_to_string(p).ok())
         .filter(|s| s.ends_with('\n'))
         .collect();
     srcs.sort_by_key(|s| (s.len(), s.clone()));

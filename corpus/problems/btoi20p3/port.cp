@@ -8,6 +8,7 @@
 //   compression): each level adds the edges its halves share, then undoes them.
 //   O(m log m log n).
 // original: corpus/submissions/4656866.cpp
+// Bounds: edges.u, edges.v: 1..=n; queries.l, queries.r: 1..=m
 
 let (n, m, q): (Int, Int, Int) = read()
 domain V = 1..=n

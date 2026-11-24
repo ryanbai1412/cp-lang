@@ -327,6 +327,18 @@ fn a_counting_loop_over_one_sequence_is_its_count_method() {
 }
 
 #[test]
+fn a_loop_that_leaves_on_none_is_no_reduction() {
+    // wossoly21s3: `sum(walk(k) ?? return None for k in 0..4)` fails E0501,
+    // since `?? return` must be a whole right side.
+    for exit in ["return None", "break", "continue"] {
+        let src = format!(
+            "fn walk(k: Int) -> ?Int:\n    if k > 2:\n        return None\n    k\n\nfn total() -> ?Int:\n    var steps = 0\n    for k in 0..4: steps += walk(k) ?? {exit}\n    steps\n\nprint(total() ?? -1)\n"
+        );
+        assert!(!codes(&src).contains(&"L0504"), "{src}\n{:?}", codes(&src));
+    }
+}
+
+#[test]
 fn a_counting_loop_over_a_map_keeps_the_generator() {
     let src = "let m: Map<Int, Int> = [1: 2, 30: 4]\nvar big = 0\nfor kv in m:\n    if kv.0 > 10:\n        big += 1\nprint(big)\n";
     let d = lint_one(src, "L0504");
@@ -585,14 +597,14 @@ fn chmin_chmax_needs_a_scalar() {
 }
 
 /// A fold through a fn that widens the element (`Pos` into `?Pos`) is
-/// suggested as a typed lambda, which checks; `fold(merge, None)` would not.
+/// suggested as a typed lambda, which checks; `fold_from(None, merge)` would not.
 /// Rule: `lints/R9`.
 #[test]
 fn loop_reduction_keeps_a_widening_call_in_a_typed_lambda() {
     let src = "domain Pos = 0..4\nfn merge(a: ?Pos, b: ?Pos) -> ?Pos = if let x = a: x else: b\nvar root: ?Pos = None\nfor p in Pos:\n    root = merge(root, p)\nprint(root)\n";
     let found = format!("{:?}", crate::lint(src, &crate::Config::default()));
     assert!(
-        found.contains("Pos.fold((root: ?Pos, p: Pos) => merge(root, p), None)"),
+        found.contains("Pos.fold_from(None, (root: ?Pos, p: Pos) => merge(root, p))"),
         "{found}"
     );
 }

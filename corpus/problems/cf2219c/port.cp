@@ -8,6 +8,7 @@
 //   is red first, dp1[u] when u turns red before it, from a child. Sort the children by
 //   dp1 - dp0 and switch the cheapest k to dp1: u then waits deg / (k + 1) with the parent,
 //   deg / k without. O(n log n).
+// Bounds: n: 1..=2e5; edges.u, edges.v: 1..=n
 
 @!multitest
 let n: 1..=2e5 = read()

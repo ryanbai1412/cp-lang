@@ -1,4 +1,5 @@
 // Source: IOI 2004 P2 (Hermes, hard), https://dmoj.ca/problem/ioi04p2hard
+// limits: 3000 ms, 1024 MB
 // Problem: from (0, 0), Hermes visits n <= 1e6 junctions (x_i, y_i) in order (|coords| <=
 //   1e9), but serving one only needs reaching its row y = y_i or its column x = x_i. Print
 //   the least total walking distance.
@@ -8,10 +9,10 @@
 //   split the absolute value into below/above, and keep the best base -/+ coord per side in
 //   monotone staircase maps keyed by coordinate. O(n log n).
 // original: corpus/submissions/4182973.cpp
-let n: Int = read()
-type Stop = (x: Int, y: Int)
-var stop: [0..=n]Stop = (0, 0)
-for i in 1..=n: stop[i] = read()
+// Bounds: n: 1..=1e6; junction.x, junction.y: -1e9..=1e9
+let n: 1..=1e6 = read()
+let junction: [n](x: -1e9..=1e9, y: -1e9..=1e9) = read()
+let stop: [0..=n](x: Int, y: Int) = [0..=n] i => if i == 0: (x: 0, y: 0) else: junction[i - 1]  // stop 0 is the start
 
 var walk_x: [0..=n]Int = 0
 var walk_y: [0..=n]Int = 0

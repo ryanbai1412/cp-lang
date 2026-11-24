@@ -27,7 +27,11 @@ const judges = JSON.parse(run('judges', '--json')).judges.map((j) => ({
   ],
 }));
 
+// What makes a program stressable (`cpl stress --list --json`): the playground
+// offers Stress on it before cpl.wasm is loaded to ask the language server.
+const { decorators: stressDecorators } = JSON.parse(run('stress', '--list', '--json'));
+
 const version = run('--version').trim();
 mkdirSync('content/generated', { recursive: true });
-writeFileSync('content/generated/cli.json', `${JSON.stringify({ version, commands, judges }, null, 2)}\n`);
+writeFileSync('content/generated/cli.json', `${JSON.stringify({ version, commands, judges, stressDecorators }, null, 2)}\n`);
 console.log(`gen-tools: ${commands.length} commands, ${judges.length} judges (${version})`);

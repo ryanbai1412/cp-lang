@@ -3,7 +3,7 @@ use crate::bench::{bench, worst_case, WorstShape};
 use crate::new::{reads, Scaffold};
 use crate::problem::{cases, source_path, Limits};
 use crate::test::{render, run_cases};
-use crate::watch::{Stamp, Watch};
+use crate::watch::{watched, Watch};
 use cpl_json::{self as json, Value as Json};
 use cpl_stress::{InputSpec, Judge, Program, Verdict};
 use std::path::{Path, PathBuf};
@@ -689,21 +689,16 @@ fn the_bench_command_prints_a_report_or_json() {
 }
 
 #[test]
-fn a_stamp_changes_when_a_file_changes_appears_or_disappears() {
+fn a_watch_follows_the_source_its_tests_and_its_fast_program() {
     let dir = scratch("stamp");
     let source = problem(&dir);
-    let before = Stamp::of(&source, &[]);
-    assert_eq!(before, Stamp::of(&source, &[]));
+    let before = watched(&source, &[]);
+    assert!(before.contains(&source));
     std::fs::write(dir.join("d.tests/3.in"), "1\n1\n").unwrap();
-    let added = Stamp::of(&source, &[]);
-    assert_ne!(before, added);
-    std::fs::remove_file(dir.join("d.tests/3.in")).unwrap();
-    assert_eq!(before, Stamp::of(&source, &[]));
-    // A `--fast` program is watched too.
+    assert!(watched(&source, &[]).contains(&dir.join("d.tests/3.in")));
+    // A `--fast` program is watched too, before it exists.
     let fast = dir.join("d.cpp");
-    let absent = Stamp::of(&source, std::slice::from_ref(&fast));
-    std::fs::write(&fast, "int main() {}\n").unwrap();
-    assert_ne!(absent, Stamp::of(&source, std::slice::from_ref(&fast)));
+    assert!(watched(&source, std::slice::from_ref(&fast)).contains(&fast));
     std::fs::remove_dir_all(dir).unwrap();
 }
 
@@ -1143,7 +1138,7 @@ fn a_problems_interactor_py_judges_each_case_once() {
         dir.join("interactor.py"),
         format!(
             "import sys\nsys.path.insert(0, {lib:?})\nfrom interactor_lib import run_interactor\n\
-             def drive(case, io):\n    open({runs:?}, 'a').write('run\\n')\n    secret = int(case)\n\
+             def drive(case, io):\n    open({runs:?}, 'a', newline='').write('run\\n')\n    secret = int(case)\n\
              \x20   kind, g = io.recv_line().split()\n    assert kind == 'guess'\n\
              \x20   io.send(str(secret - int(g)))\n    kind, x = io.recv_line().split()\n\
              \x20   if kind != 'answer' or int(x) != secret:\n        sys.exit('wrong answer ' + x)\n\

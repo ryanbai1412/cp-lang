@@ -10,6 +10,7 @@
 //   lie left / right of a person in the node) and the best pair inside, joined by shifting with
 //   counts. O((N + M) log(N + M)).
 // original: corpus/submissions/4733784.cpp
+// Bounds: n: 0..=200_000; m: 1..=200_000; d, at: 1..=1e9
 let n: 0..=200_000 = read()
 let m: 1..=200_000 = read()
 let d: 1..=1e9 = read()

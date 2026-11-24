@@ -1,4 +1,5 @@
 // Source: IOI 2014 Day 2 Holiday, https://dmoj.ca/problem/ioi14p6
+// limits: 1800 ms, 256 MB
 // Problem: n <= 1e5 cities on a line with attraction[i] <= 1e9 and a start city; each of d <=
 //   2n + n/2 days either moves to a neighbouring city or visits the current one (a city counts
 //   once). Print the most attractions visited.
@@ -8,7 +9,7 @@
 //   monotone_minima finds it, with WaveletMatrix top-k sums: O((n + d) log^2 n). Combine both
 //   sides over every split of the days, visiting the start city or not.
 // original: corpus/submissions/4691210.cpp (a grader function)
-use std.dp.{monotone_minima}
+// Bounds: n: 1..=1e5; start: 0..=n - 1; days: 0..=250000; fun: 0..=1e9
 use std.segtree.{WaveletMatrix}
 
 let (n, start, days): (1..=1e5, 0..n, 0..=250000) = read()
@@ -38,6 +39,6 @@ fn best(first: List<Int>, second: List<Int>) -> Int:
             (1, fun[home]),
         ] for t in 0..=days - spent].max()!
 
-let left = [fun[c] for c in City if c < home].rev
-let right = [fun[c] for c in City if c > home]
+let left = fun[..home].rev.collect()
+let right = fun[home..].drop(1).collect()
 print(max(best(right, left), best(left, right)))

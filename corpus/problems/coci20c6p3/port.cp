@@ -5,20 +5,17 @@
 // Solution: anagrams form classes (keyed by letter counts) and only class sizes matter: taking
 //   t words of a class of size s makes t(t - 1)/2 pairs in C(s, t) ways. A knapsack over classes
 //   on the pair count 0..=k, stopping a class once t(t - 1)/2 passes k: O(n k).
+// Bounds: n: 1..=2000; k: 0..=2000
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=2000 = read()
 let k: 0..=2000 = read()
-domain Letter = 'a'..='z'
 domain Pairs = 0..=k
+let words: [n]Str = read()
 
 // words that are anagrams of each other form a class; only class sizes matter
-var class_size: Map<[Letter]Int, Int> = []
-for _ in 0..n:
-    let word: Str = read()
-    var letters: [Letter]Int = 0
-    for c in word: letters[Letter(c)] += 1
-    class_size[letters] += 1
+var class_size: Map<Str, Int> = []
+for w in words: class_size[w.sorted()] += 1
 
 let comb = Comb<Z>(n)
 

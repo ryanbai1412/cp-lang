@@ -9,6 +9,7 @@
 // original: corpus/submissions/4686581.cpp (grader function find_subset)
 // checker: corpus/problems/ioi16p1/checker.py
 // stdin here: n l u, then the n weights; stdout: the subset's size, then its 0-based indices.
+// Bounds: n: 1..=200_000; l: 1..=2_147_483_647; u: l..=2_147_483_647; w: 1..=u
 let n: 1..=200_000 = read()
 let l: 1..=2_147_483_647 = read()
 let u: l..=2_147_483_647 = read()

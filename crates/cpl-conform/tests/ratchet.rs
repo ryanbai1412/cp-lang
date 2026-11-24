@@ -181,9 +181,30 @@ fn ratchet_fails_on_planted_regression() {
     let imp_report = check_ratchet(&baseline, &improved, false);
     assert!(
         imp_report.regressions.is_empty(),
-        "improvements must pass the ratchet"
+        "a newly passing case is no regression"
     );
-    assert_eq!(imp_report.improvements.len(), 1);
+    assert_eq!(
+        imp_report.stale.len(),
+        1,
+        "a recorded failure that passes is stale"
+    );
+    assert!(imp_report.stale[0].contains("c.cp"));
+    let added = make_board(
+        "conformance",
+        &[
+            ("a.cp", "pass"),
+            ("b.cp", "pass"),
+            ("c.cp", "fail"),
+            ("d.cp", "pass"),
+        ],
+    );
+    let add_report = check_ratchet(&baseline, &added, false);
+    assert!(add_report.stale.is_empty());
+    assert_eq!(
+        add_report.improvements.len(),
+        1,
+        "a case new to the board is an improvement"
+    );
 }
 
 #[test]
@@ -258,13 +279,20 @@ fn spec_blocks_std_markers() {
     assert_eq!(
         signatures_unmet(
             "fn scan<D, T>(self: [D]T, from: ?T = None) -> Prefix<D, T>\nstruct Pt(x: Int, y: Int)",
-            std
+            std,
+            "std/seq.cp"
         ),
         None
     );
-    let why = signatures_unmet("fn scan<D>(self: [D]Int) -> Int", std).unwrap();
+    let why = signatures_unmet("fn scan<D>(self: [D]Int) -> Int", std, "std/seq.cp").unwrap();
     assert!(why.contains("std has `fn scan<D, T>("), "{why}");
-    assert!(signatures_unmet("// nothing", std).is_some());
+    assert!(signatures_unmet("// nothing", std, "std/seq.cp").is_some());
+    let qualified = "fn seq.scan<D, T>(self: [D]T, from: ?T = None) -> Prefix<D, T>";
+    assert_eq!(
+        signatures_unmet(qualified, std, "std/heap.cp std/seq.cp"),
+        None
+    );
+    assert!(signatures_unmet(qualified, std, "std/heap.cp").is_some());
     assert_eq!(
         excerpt_unmet("pub struct Pt(pub x: Int, y: Int)  // a point", std),
         None
@@ -537,4 +565,21 @@ fn snapshot_outlives_a_relinked_binary() {
     assert_eq!(held.file_name().unwrap(), "cpl");
     assert_eq!(std::fs::read_to_string(&held).unwrap(), "old");
     std::fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn filtered_write_records_only_the_cases_that_ran() {
+    let mut board = make_board(
+        "conformance",
+        &[("a.cp", "pass"), ("b.cp", "fail"), ("c.cp", "fail")],
+    );
+    board.merge_cases_from(&make_board("conformance", &[("b.cp", "pass")]));
+    let suite = &board.suites["conformance"];
+    assert_eq!(suite.cases["b.cp"], "pass");
+    assert_eq!(
+        suite.cases["c.cp"], "fail",
+        "a case the filter skipped keeps its record"
+    );
+    assert_eq!((suite.total, suite.passed), (3, 2));
+    assert_eq!(suite.counts["fail"], 1);
 }

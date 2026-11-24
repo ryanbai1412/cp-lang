@@ -8,6 +8,7 @@
 //   latest prefix, so the DP is O(n + m).
 // original: corpus/submissions/5724153.cpp (grader function min_total_length)
 // stdin: n m, the n red positions, the m blue positions (each sorted, all distinct).
+// Bounds: n, m: 1..=100_000; red, blue: 0..=1_000_000_000 - 1
 let n: 1..=100_000 = read()
 let m: 1..=100_000 = read()
 let red: [n]0..1_000_000_000 = read()

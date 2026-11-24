@@ -1,6 +1,5 @@
 // Tuned: mo.cp with the sizes as `const`, so `a` and `freq` are stored in
 // 32 bits (a `let` bound to a literal does not narrow; see perf PLAN.md).
-use std.mo.{mo}
 
 const n = 100_000
 const q = 100_000

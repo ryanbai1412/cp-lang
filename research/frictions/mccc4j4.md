@@ -7,3 +7,7 @@
 - **Ideal code:** `print(groups.rows.map(g => g.sorted(by: t => (desc(pts[t]), t))[k - 1]))` on `read<[n / m, m]Team>()`.
 - **General fix:** implement `g.rows`/`g.cols` views for every `[R, C]T` (stdlib lane; `spec/conformance/core-04/grid-rows-cols-views.cp` already a known gap in SUBSET.md). Helps every grid/group port.
 - **Severity:** low (named domain workaround is one line).
+
+## Dream copies
+
+- `g.sorted(by:)` on a row lent by `groups.map` copied the row implicitly; the dream writes `List(g).sorted(by:)` so the one copy sorting needs is visible.

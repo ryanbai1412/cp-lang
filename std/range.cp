@@ -4,7 +4,7 @@
 /// Left boundary cut of a range (valid even when empty).
 ///
 /// cost: \(O(1)\)
-/// empty: the same cut as `r`
+/// empty: `(2..2).l == (2..2).r`
 /// traps: never
 /// example: `(2..5).l.r == Some(2)`
 @get pub fn l<D>(self: Range<D>) -> Cut<D> = self.start
@@ -12,7 +12,7 @@
 /// Right boundary cut of a range (valid even when empty).
 ///
 /// cost: \(O(1)\)
-/// empty: the same cut as `l`
+/// empty: `(2..2).r == (2..2).l`
 /// traps: never
 /// example: `(2..5).r.l == Some(4)`
 @get pub fn r<D>(self: Range<D>) -> Cut<D> = self.end
@@ -21,7 +21,7 @@
 /// `let (left, right) = r.halve() else: base` is the divide-and-conquer base case.
 ///
 /// cost: \(O(1)\)
-/// empty: `None`, as for one element
+/// empty: `(3..3).halve() == None`
 /// traps: never
 /// example: `(0..5).halve() == Some((0..2, 2..5))`
 /// order: left half first
@@ -37,7 +37,7 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 /// `V.ranges` folds over them, and every piece is already done when its range comes up.
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per pair, nothing allocated
-/// empty: yields nothing, as for one element
+/// empty: `(3..3).splits.collect() == []`
 /// order: by the cut, left to right
 /// traps: never
 /// example: `(0..4).splits.map((l, r) => (l.len, r.len)).collect() == [(1, 3), (2, 2), (3, 1)]`
@@ -50,7 +50,7 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 /// middle element only when `r` is non-empty, so guard with `if r.is_empty` first.
 ///
 /// cost: \(O(1)\)
-/// empty: `r.l`
+/// empty: `(3..3).mid == (3..3).l`
 /// traps: never
 /// example: `(0..5).mid.r == Some(2)`
 @get pub fn mid<D>(self: Range<D>) -> Cut<D>:
@@ -61,45 +61,45 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 /// \(O(1)\). The positions in both ranges.
 ///
 /// cost: \(O(1)\)
-/// empty: an empty range when they do not meet
+/// empty: `(0..2).clip(5..9).len == 0`
 /// traps: never
 /// example: `(0..5).clip(3..9) == 3..5`
 /// order: increasing, a sub-range of both
 pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>:
     if self.is_empty: return self
     if other.is_empty: return other
-    let lo = if self.first! < other.first!: other.first! else: self.first!
-    let hi = if self.last! < other.last!: self.last! else: other.last!
-    if hi < lo: lo..lo else: lo..=hi
+    let lo = max(self.l, other.l)
+    let hi = min(self.r, other.r)
+    if hi < lo: lo..lo else: lo..hi
 
 /// \(O(\log n)\) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
-/// `None` when it never does.
+/// `None` when it never does. A monotone `ok` has one first true position.
 ///
 /// An `ok` that is true at the start and false at the end (C++'s `lower_bound` habit) stops a
 /// checked build; it costs one more call of `ok` when the answer is an end of `r`.
 ///
 /// cost: \(O(\log n)\) calls of `ok`, plus one when the answer is the first element or `None`
-/// empty: `None`
+/// empty: `(0..0).first_true(x => true) == None`
 /// traps: when `ok` is true at the start and false at the end; any other `ok` that is not
 /// false-then-true gives an unspecified answer
 /// example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
-/// ties: none: a monotone `ok` has one first true position
+/// ties: `(0..5).first_true(x => x >= 2) == Some(2)`
 pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
     let lo = flip_at(self.len, m => ok(self.nth(m)), "`ok` is true at the start and false at the end, but this search wants false then true; for true then false use `last_true`")
     if lo < self.len: Some(self.nth(lo)) else: None
 
 /// \(O(\log n)\) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
-/// `None` when it never does.
+/// `None` when it never does. A monotone `ok` has one last true position.
 ///
 /// An `ok` that is false at the start and true at the end stops a checked build; it costs one
 /// more call of `ok` when the answer is an end of `r`.
 ///
 /// cost: \(O(\log n)\) calls of `ok`, plus one when the answer is the last element or `None`
-/// empty: `None`
+/// empty: `(0..0).last_true(x => true) == None`
 /// traps: when `ok` is false at the start and true at the end; any other `ok` that is not
 /// true-then-false gives an unspecified answer
 /// example: `(0..100).last_true(x => x * x <= 50) == Some(7)`
-/// ties: none: a monotone `ok` has one last true position
+/// ties: `(0..5).last_true(x => x <= 2) == Some(2)`
 pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
     let lo = flip_at(self.len, m => not (ok(self.nth(m))), "`ok` is false at the start and true at the end, but `last_true` wants true then false; for false then true use `first_true`")
     if lo > 0: Some(self.nth(lo - 1)) else: None
@@ -129,11 +129,11 @@ fn flip_at(n: Int, ok: Int -> Bool, wrong_way: Str) -> Int:
 ///
 /// By default it is `r.l` when `ok` always holds and `r.r` when it never does; with
 /// `last: true` it is `r.r` when `ok` always holds. `first_true(ok)` is `.r` of it; `last_true(ok)` is
-/// `bsearch(ok, last: true).l`.
+/// `bsearch(ok, last: true).l`. A monotone `ok` has one flip.
 ///
 /// cost: \(O(\log n)\) calls of `ok`, plus one when the cut is an end of `r`
-/// empty: `r.l`
-/// ties: none: a monotone `ok` has one flip
+/// empty: `(3..3).bsearch(x => true) == (3..3).l`
+/// ties: `(0..5).bsearch(x => x >= 2).r == 2`
 /// traps: when `ok` flips the other way (true then false by default, false then true with
 /// `last: true`)
 /// example: `(0..100).bsearch(x => x * x >= 50).r == 8`
@@ -143,12 +143,29 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
     let lo = flip_at(n, m => ok(self.nth(m)) != last, wrong_way)
     if lo < n: (self.nth(lo)..self.nth(lo)).l else: self.r
 
+/// The elements at distances `r` after `self`, clipped to its domain and possibly empty. One
+/// definition for positions and cuts, since `V.cuts` is a domain: the chords of length `lo..=hi`
+/// from a cut `c` end in `c.shift(lo..=hi)`, and `v.shift(-1..=1)` is `v` and its neighbours.
+///
+/// cost: \(O(1)\)
+/// empty: `domain V = 0..3; V.cuts.last!.shift(1..=5).len == 0`
+/// order: increasing
+/// traps: never
+/// example: `domain V = 0..6; V(0).l.shift(2..=3).len == 2 and V(0).l.shift(2..=3).first!.ord == 2`
+/// example: `domain V = 0..6; V(4).shift(-2..=9).len == 4`
+pub fn shift<D>(self: D, r: Range<Int>) -> Range<D>:
+    let n = D.count
+    let lo = min(max(self.ord + r.start, 0), n)
+    let hi = min(max(self.ord + r.start + r.len, lo), n)
+    if lo == hi: return D.nth(0)..D.nth(0)
+    D.nth(lo)..=D.nth(hi - 1)
+
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
 /// as if it were empty. `l..l` is in order and empty.
 ///
 /// cost: \(O(1)\)
-/// empty: `(lo, lo)`
+/// empty: `(3..3).ends == (3, 3)`
 /// traps: when the range is written backwards
 /// example: `(2..5).ends == (2, 5)`
 @get pub fn ends<D>(self: Range<D>) -> (Int, Int):
@@ -169,6 +186,23 @@ pub struct RingRange<D>():
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).len == 2`
     @get pub fn len(self) -> Int = n
+
+    /// Whether the span covers no position.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `not [1, 2, 3].ring.span(2, 2).is_empty`
+    @get pub fn is_empty(self) -> Bool = n == 0
+
+    /// \(O(\mathit{len})\). Visit the span's positions. Same walk as `keys`.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2, 3].ring.span(1, 0).each().collect() == []`
+    /// order: ring order from `start`, wrapping past the last position
+    /// traps: never
+    /// example: `[1, 2, 3].ring.span(2, 2).each().collect() == [2, 0]`
+    pub fn each(self) -> yields D:
+        for k in self.keys: yield k
 
     /// \(O(1)\). The first position.
     ///
@@ -201,3 +235,11 @@ pub struct RingRange<D>():
     pub fn contains(self, i: D) -> Bool:
         if n == 0: return false
         (i.ord - at!.ord + D.count) % D.count < n
+
+impl Show for RingRange<D>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

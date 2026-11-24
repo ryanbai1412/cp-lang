@@ -1,7 +1,7 @@
 // handbook/guidelines/site-checklist.md site/R18: a contestant who describes
 // the task, not the item's name, finds the item in the first results.
 import { existsSync } from 'node:fs';
-import { base, done, open } from './browser.mjs';
+import { base, done, open, until } from './browser.mjs';
 
 // Task phrasing -> the pages that answer it (any one counts): the std module
 // or the topic page in /docs/ref/lib.
@@ -35,6 +35,9 @@ const tasks = [
   ['knapsack', ['/docs/ref/std/dp', '/docs/ref/lib/search-dp']],
   ['check my solution against a brute force', ['/docs/guides/stress', '/docs/ref/lib/random-stress']],
   ['convert from c++', ['/docs/guides/cpp-guide']],
+  // A name from another language finds the std spelling (spec/lib/inventory.md).
+  ['lower_bound', ['/docs/ref/std/seq', '/docs/ref/std/bag', '/docs/ref/std/prefix']],
+  ['unordered_map', ['/docs/ref/std/builtin', '/docs/ref/std/hashmap']],
 ];
 const TOP = 5;
 // An answer page that no longer exists fails here, so this list can't go stale.
@@ -50,11 +53,17 @@ await page.goto(base + '/docs/guides/tour');
 await page.getByRole('button', { name: /^Search/ }).first().click();
 const box = page.getByRole('combobox', { name: 'Search' });
 const misses = [];
+let shown = '';
 for (const [query, want] of tasks) {
   await box.fill(query);
-  await page.waitForTimeout(400);
-  await page.locator('[role=option]').first().waitFor({ timeout: 10000 }).catch(() => {});
-  const ids = await page.locator('[role=option]').evaluateAll((os) => os.map((o) => o.id.replace('fd-search-option-', '')));
+  // The answer to this query, not the list still showing the last one's.
+  let ids = [];
+  const fresh = async () => {
+    ids = await page.locator('[role=option]').evaluateAll((os) => os.map((o) => o.id.replace('fd-search-option-', '')));
+    return ids.length && ids.join() !== shown;
+  };
+  await until(fresh, shown ? 3000 : 10000);
+  shown = ids.join();
   const pages = [...new Set(ids.map((id) => id.replace(/-\d+$/, '')))].slice(0, TOP);
   const rank = pages.findIndex((p) => want.some((w) => p === w || p.startsWith(w + '/')));
   if (rank < 0) misses.push(query);

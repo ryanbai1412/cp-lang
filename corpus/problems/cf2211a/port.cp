@@ -6,6 +6,7 @@
 // Solution: an operation needs 3 elements, so lengths stop at 2, and any window has a minimum and
 //   a maximum, one of them not p[i], so p[i] survives down to length 2. Print 2 for every i, or 1
 //   when n = 1; O(n).
+// Bounds: n: 1..=100; _: 1..=n
 
 @!multitest
 let n: 1..=100 = read()

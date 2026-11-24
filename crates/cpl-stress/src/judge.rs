@@ -76,9 +76,72 @@ pub enum Verdict {
     JudgeError(&'static str, String),
 }
 
+/// The program a failing case stopped in with an error of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Trapped {
+    Solution,
+    Brute,
+    Checker,
+    Interactor,
+}
+
+impl Trapped {
+    pub fn name(self) -> &'static str {
+        match self {
+            Trapped::Solution => "solution",
+            Trapped::Brute => "brute",
+            Trapped::Checker => "checker",
+            Trapped::Interactor => "interactor",
+        }
+    }
+}
+
 impl Verdict {
     pub fn accepted(&self) -> bool {
         *self == Verdict::Accepted
+    }
+
+    /// A wrong answer, as the brute, checker or interactor rules it.
+    pub fn wrong(&self) -> bool {
+        matches!(self, Verdict::Wrong(_))
+    }
+
+    pub fn timed_out(&self) -> bool {
+        *self == Verdict::TimeLimit
+    }
+
+    /// The solution itself never finished cleanly: a crash or the time limit.
+    pub fn stopped(&self) -> bool {
+        matches!(self, Verdict::RuntimeError(_) | Verdict::TimeLimit)
+    }
+
+    /// Which program's own error the case stopped at: whose trap the
+    /// debug run that explains it shows.
+    pub fn trapped(&self) -> Option<Trapped> {
+        match self {
+            Verdict::RuntimeError(_) => Some(Trapped::Solution),
+            Verdict::BruteError(_) => Some(Trapped::Brute),
+            Verdict::JudgeError("checker", _) => Some(Trapped::Checker),
+            Verdict::JudgeError(..) => Some(Trapped::Interactor),
+            _ => None,
+        }
+    }
+
+    /// The brute, checker or interactor failed, not the solution: the case
+    /// is no test of it.
+    pub fn helper_failed(&self) -> bool {
+        self.trapped().is_some_and(|t| t != Trapped::Solution)
+    }
+
+    /// What the verdict says of the run, or `""` when it says nothing more.
+    pub fn why(&self) -> &str {
+        match self {
+            Verdict::Wrong(why)
+            | Verdict::RuntimeError(why)
+            | Verdict::BruteError(why)
+            | Verdict::JudgeError(_, why) => why,
+            _ => "",
+        }
     }
 
     /// The two letters judges use.
@@ -289,6 +352,34 @@ pub(crate) fn failure(outcome: &Outcome) -> Option<Verdict> {
     }
 }
 
+/// What an interpreted run that trapped is called.
+pub(crate) fn interp_failure(trap: cpl_interp::Trap) -> Verdict {
+    match trap.message.as_str() {
+        cpl_interp::OUT_OF_TIME => Verdict::TimeLimit,
+        _ => Verdict::RuntimeError(trap.message),
+    }
+}
+
+/// How a run with `@cache` off, `cold`, rules on the cached run's output `got`.
+pub(crate) fn recheck(cold: &Outcome, got: &str) -> Option<crate::case::Failed> {
+    let why = match cold.ok() {
+        false => format!(
+            "@cache cold run failed ({:?}) while cached run succeeded",
+            cold.exit
+        ),
+        true => format!(
+            "@cache changed the output ({})",
+            first_difference(&cold.stdout, got)?
+        ),
+    };
+    let wrong = Verdict::Wrong(why);
+    Some(crate::case::Failed::new(
+        wrong,
+        cold.stdout.clone(),
+        got.to_string(),
+    ))
+}
+
 /// One judged run: the verdict and what the solution printed and cost.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Judged {
@@ -479,8 +570,7 @@ pub(crate) fn interact(
     {
         Ok(contestant) => contestant,
         Err(e) => {
-            crate::program::kill_group(judge.id());
-            let _ = judge.kill();
+            cpl_wait::kill(judge.id());
             let _ = judge.wait();
             return Err(e);
         }
@@ -497,6 +587,7 @@ pub(crate) fn interact(
         piped(judge.stderr.take())?,
     );
     let (heard, to_solution, said, to_judge, solution_err, judge_err) = pipes;
+    let (mut contestant, mut judge) = (cpl_wait::on_exit(contestant), cpl_wait::on_exit(judge));
     let (statuses, own, timed_out, solution_stdout, solution_stderr, judge_stderr) =
         std::thread::scope(|scope| {
             let (clock, transcript) = (&clock, &transcript);
@@ -512,14 +603,26 @@ pub(crate) fn interact(
             });
             let solution_stderr = scope.spawn(move || drain(solution_err));
             let judge_stderr = scope.spawn(move || drain(judge_err));
-            let wall = judge_limit(limit);
+            // A slow interactor that keeps talking is given up on at `wall`.
+            let wall = judge_limit(limit) * 3;
+            let mut idled = false;
             let mut own = None;
+            let mut cpu = None;
             let mut timed_out = false;
             let mut reject_deadline: Option<Instant> = None;
+            // The solution is charged its own CPU time, as judges do; where
+            // the system doesn't say, the wall clock while it has the turn.
+            let spent = |cpu: Option<Duration>| cpu.unwrap_or_else(|| locked(clock).own());
             let statuses = loop {
-                let (a, b) = (contestant.try_wait()?, judge.try_wait()?);
+                if own.is_none() {
+                    cpu = crate::program::cpu_time(contestant.pid()).or(cpu);
+                }
+                // The solution's exit wakes this at once; the interactor's within a tick.
+                let tick = Instant::now() + Duration::from_micros(300);
+                let a = contestant.by(tick)?;
+                let b = judge.by(if a.is_some() { tick } else { Instant::now() })?;
                 if a.is_some() && own.is_none() {
-                    own = Some(locked(clock).own());
+                    own = Some(spent(cpu));
                 }
                 if let (Some(a), Some(b)) = (a, b) {
                     break (a, b);
@@ -534,20 +637,20 @@ pub(crate) fn interact(
                             .get_or_insert_with(|| Instant::now() + Duration::from_millis(200));
                     }
                 }
-                let expired =
-                    own.unwrap_or_else(|| locked(clock).own()) >= limit || start.elapsed() >= wall;
+                // A solution blocked on its turn for twice its limit is idle.
+                let busy = own.unwrap_or_else(|| spent(cpu)) > limit;
+                idled = locked(clock).own() > limit * 2;
+                let expired = busy || idled || start.elapsed() >= wall;
                 let grace_over = reject_deadline.is_some_and(|d| Instant::now() >= d);
                 if expired || grace_over {
                     timed_out = expired;
-                    crate::program::kill_group(contestant.id());
-                    crate::program::kill_group(judge.id());
-                    let _ = contestant.kill();
-                    let _ = judge.kill();
-                    break (contestant.wait()?, judge.wait()?);
+                    break (contestant.kill()?, judge.kill()?);
                 }
-                std::thread::sleep(Duration::from_micros(300));
             };
-            let own = own.unwrap_or_else(|| locked(clock).own());
+            let own = match idled {
+                true => locked(clock).own(),
+                false => own.unwrap_or_else(|| spent(cpu)),
+            };
             std::io::Result::Ok((
                 statuses,
                 own,
@@ -702,23 +805,16 @@ fn spawned(
         .spawn()?;
     let pid = judge.id();
     let mut pipe = piped(judge.stderr.take())?;
+    let mut judge = cpl_wait::on_exit(judge);
     let said = std::thread::spawn(move || {
         let mut text = String::new();
         let _ = pipe.read_to_string(&mut text);
         text
     });
-    let (done, exited) = std::sync::mpsc::channel();
-    let waiter = std::thread::spawn(move || {
-        let status = judge.wait();
-        let _ = done.send(());
-        status
-    });
-    let timed_out = exited.recv_timeout(judge_limit(limit)).is_err();
+    let timed_out = judge.within(judge_limit(limit))?.is_none();
     // Whatever it started and left running ends with it.
-    crate::program::kill_group(pid);
-    let status = waiter
-        .join()
-        .map_err(|_| std::io::Error::other("the interactor's waiter panicked"))??;
+    cpl_wait::kill(pid);
+    let status = judge.kill()?;
     let judge_stderr = said.join().unwrap_or_default();
     let outcome = Outcome {
         stdout: String::new(),
@@ -773,4 +869,34 @@ mod toolchain_tests {
         );
         assert!(!toolchain_differs("3", "3", "3\n"), "no difference at all");
     }
+}
+
+/// What `--explain` shows of a failing case: one choice, made here for
+/// both `cpl stress` and the browser's in-process stress.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Explaining {
+    /// The `print` whose answer the file's `@interactor` rejected.
+    Answer,
+    /// The step a run that never finished goes round.
+    Stuck,
+    /// The first value the solution and its own brute give differently.
+    Versus,
+}
+
+/// What `--explain` shows of a case failing with `verdict`, for an
+/// `interactive` solution or one with a `brute` in its file, or why it
+/// shows nothing. A case the brute, checker or interactor failed on is no
+/// test of the solution: nothing explains it.
+pub fn explaining(
+    verdict: &Verdict,
+    interactive: bool,
+    brute: bool,
+) -> Option<Result<Explaining, String>> {
+    Some(match verdict {
+        _ if verdict.helper_failed() => return None,
+        _ if interactive => Ok(Explaining::Answer),
+        Verdict::TimeLimit => Ok(Explaining::Stuck),
+        _ if brute => Ok(Explaining::Versus),
+        _ => Err("`--explain` runs the file against its own `@alt` fns".to_string()),
+    })
 }

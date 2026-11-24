@@ -7,6 +7,7 @@
 //   minus the number of prefixes whose sum is a multiple of T, and is optimal. dp[s] is the most
 //   such prefixes over orders of the cakes in s (rem[s] = sum mod T); answer M - dp[full].
 //   O(2^N N).
+// Bounds: n: 1..=20; m: 1..=100; a: 1..=1e9
 
 let (n, m): (1..=20, 1..=100) = read()
 domain I = 0..n

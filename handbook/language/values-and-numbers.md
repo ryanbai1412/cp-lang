@@ -77,8 +77,8 @@ names `.clone()`. The full model is in
 ```cp
 struct Bag: xs: List<Int>
 let a = [1, 2]
-let b = Bag(a)               // a moves into the Bag
-print(a.len, b.xs.len)       // error E0608: a was moved
+let b = Bag(a)          // a moves into the Bag
+print(a.len, b.xs.len)  // error E0608: a was moved
 ```
 
 ### Constructors: generated ones store, custom ones lend (decision 147)
@@ -157,7 +157,7 @@ print(s)
 
 <!-- rejects: E0901 -->
 ```cp
-let a: [4]U8 = [1, 2, 3, 4]             // error E0901: write 0..=255
+let a: [4]U8 = [1, 2, 3, 4]  // error E0901: write 0..=255
 ```
 
 **Lost:** explicit width types (C++, Rust): a width says nothing about

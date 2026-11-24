@@ -6,6 +6,7 @@
 //   component is a contradiction; otherwise A is the longest path (from 1) in the condensation.
 //   `scc` numbers components in topological order, so relaxing the arcs sorted by source component
 //   sets a[to] max= a[from] + t in one pass, O(n + q log q); values stay <= the component count.
+// Bounds: n, q: 1..=2e5; conds.t: 0..=1; conds.u, conds.v: 1..=n
 
 let (n, q): (1..=2e5, 1..=2e5) = read()
 domain V = 1..=n

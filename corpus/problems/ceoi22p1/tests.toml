@@ -1,0 +1,28 @@
+# Cases for scripts/corpus.py make (problem-packages/R9).
+
+[[case]]
+seed = 1
+size = 2
+
+[[case]]
+seed = 2
+size = 4
+
+[[case]]
+seed = 3
+size = 6
+
+[[case]]
+seed = 4
+size = 10
+
+[[case]]
+seed = 5
+size = 40
+
+[[case]]
+seed = 6
+size = 1000
+
+[[case]]
+args = ["--max"]

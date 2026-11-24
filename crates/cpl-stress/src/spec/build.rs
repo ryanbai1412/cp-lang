@@ -30,6 +30,15 @@ pub(super) struct Builder<'a> {
     /// The element type of each array declared once with its type, so
     /// `a[i] = read()` reads one of them ([`elems`]).
     pub(super) elems: HashMap<String, (u32, Type)>,
+    /// What each bare `read()` or `ask(..)` reads, from checker facts,
+    /// as the source of a `let _: T = read()` ([`read_types`]).
+    pub(super) read_types: &'a HashMap<Span, String>,
+    /// Each `fn f(..) -> T = body` whose body reads ([`bodies`]).
+    pub(super) bodies: HashMap<&'a str, (u32, &'a Expr)>,
+    /// Each `fn f() -> yields T` that reads until a sentinel ([`streams`]).
+    pub(super) streams: HashMap<&'a str, (u32, &'a Stmt)>,
+    /// The fns of [`Builder::bodies`] being inlined, outermost first.
+    pub(super) inlining: Vec<&'a str>,
     pub(super) spec: InputSpec,
 }
 
@@ -586,6 +595,37 @@ impl Builder<'_> {
     /// 0 and b == 0: break` once the reads before it bind `a` and `b`:
     /// rows of what the body reads, ended by those values.
     pub(super) fn until(&mut self, stmt: &Stmt) -> Result<Option<Shape>, SpecError> {
+        self.until_exit(stmt, false)
+    }
+
+    /// `for x in f():` over a fn of [`Builder::streams`], its own body
+    /// reading nothing: what the stream's loop reads, until its sentinel
+    /// `return`s.
+    pub(super) fn stream(&mut self, stmt: &Stmt) -> Result<Option<Shape>, SpecError> {
+        let StmtKind::For { iter, body, .. } = &stmt.kind else {
+            return Ok(None);
+        };
+        let ExprKind::Call { callee, args } = &iter.kind else {
+            return Ok(None);
+        };
+        let ExprKind::Name(name) = &callee.kind else {
+            return Ok(None);
+        };
+        let Some(&(base, looped)) = self.streams.get(name.as_str()) else {
+            return Ok(None);
+        };
+        if !args.is_empty() || body.stmts.iter().any(|stmt| self.reads(stmt)) {
+            return Ok(None);
+        }
+        let outer = std::mem::replace(&mut self.base, base);
+        let shape = self.until_exit(looped, true);
+        self.base = outer;
+        shape
+    }
+
+    /// [`Builder::until`], where `returns` lets a `return` leave as a
+    /// `break` does.
+    fn until_exit(&mut self, stmt: &Stmt, returns: bool) -> Result<Option<Shape>, SpecError> {
         let StmtKind::While {
             cond: Cond::Expr(cond),
             body,
@@ -612,7 +652,7 @@ impl Builder<'_> {
         let Some((at, tests)) = stmts
             .iter()
             .enumerate()
-            .find_map(|(at, stmt)| sentinel(stmt).map(|tests| (at, tests)))
+            .find_map(|(at, stmt)| sentinel(stmt, returns).map(|tests| (at, tests)))
         else {
             return Ok(None);
         };
@@ -898,17 +938,25 @@ impl Builder<'_> {
             out.push(self.shape(&ty)?);
             return Ok(true);
         }
-        if matches!(&expr.kind, ExprKind::Call { callee, .. } if matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
-        {
-            return Ok(false);
+        if let ExprKind::Call { callee, args } = &expr.kind {
+            if let ExprKind::Name(name) = &callee.kind {
+                if let Some(read) = self.called(name, args, expr.span, out)? {
+                    return Ok(read);
+                }
+            }
         }
         if let Some(ty) = self.read_as(expr) {
             out.push(self.shape(&ty)?);
             return Ok(true);
         }
         if let ExprKind::Call { callee, args } = &expr.kind {
-            if let (ExprKind::Name(name), []) = (&callee.kind, args.as_slice()) {
+            if let ExprKind::Name(name) = &callee.kind {
                 if let Some((base, types)) = self.values.get(name).cloned() {
+                    for arg in args {
+                        if !self.inline(&arg.value, out)? {
+                            return Ok(false);
+                        }
+                    }
                     let outer = std::mem::replace(&mut self.base, base);
                     let shapes: Result<Vec<_>, _> = types.iter().map(|ty| self.shape(ty)).collect();
                     self.base = outer;
@@ -1044,21 +1092,89 @@ impl Builder<'_> {
         }
     }
 
+    /// What a call of `name` reads, when `name` is `read`, `ask` or a
+    /// fn that reads for its caller: its arguments' reads, then its own.
+    /// `None` for any other fn.
+    fn called(
+        &mut self,
+        name: &str,
+        args: &[cpl_syntax::ast::Arg],
+        at: Span,
+        out: &mut Vec<Shape>,
+    ) -> Result<Option<bool>, SpecError> {
+        let builtin = matches!(name, "read" | "ask");
+        let body = self
+            .bodies
+            .get_key_value(name)
+            .map(|(&name, &body)| (name, body));
+        if self.streams.contains_key(name) || (name == "read" && !args.is_empty()) {
+            return Ok(Some(false));
+        }
+        if !builtin && body.is_none() {
+            return Ok(None);
+        }
+        for arg in args {
+            if !self.inline(&arg.value, out)? {
+                return Ok(Some(false));
+            }
+        }
+        if let Some((name, (base, body))) = body {
+            if self.inlining.contains(&name) {
+                return Ok(Some(false));
+            }
+            self.inlining.push(name);
+            let outer = std::mem::replace(&mut self.base, base);
+            let read = self.inline(body, out);
+            self.base = outer;
+            self.inlining.pop();
+            return read.map(Some);
+        }
+        let Some(snippet) = self.read_types.get(&at.shift(self.base)) else {
+            return Ok(Some(false));
+        };
+        let parsed = cpl_syntax::parse_file(snippet);
+        let typed = parsed
+            .items
+            .first()
+            .and_then(|(base, item)| match item.stmts.first() {
+                Some(Stmt {
+                    kind: StmtKind::Let { ty: Some(ty), .. },
+                    ..
+                }) if parsed.diagnostics.is_empty() => Some((*base, ty.clone())),
+                _ => None,
+            });
+        let Some((base, ty)) = typed else {
+            return Ok(Some(false));
+        };
+        let (src, outer) = (
+            std::mem::replace(&mut self.src, snippet),
+            std::mem::replace(&mut self.base, base),
+        );
+        let shape = self.shape(&ty);
+        (self.src, self.base) = (src, outer);
+        out.push(shape?);
+        Ok(Some(true))
+    }
+
     pub(super) fn reads_in(&self, expr: &Expr) -> bool {
         self.reads_code(&self.src[span_range(expr.span.shift(self.base))])
     }
 
     /// True when `code` reads: it calls `read`, or a fn of [`values`].
     pub(super) fn reads_code(&self, code: &str) -> bool {
-        reads_inside(code)
-            || (!self.values.is_empty()
-                && cpl_syntax::lex(code).tokens.windows(2).any(|pair| {
-                    pair[0].kind == cpl_syntax::TokenKind::Ident
-                        && pair[1].kind == cpl_syntax::TokenKind::LParen
-                        && self.values.contains_key(
-                            &code[pair[0].span.start as usize..pair[0].span.end as usize],
-                        )
-                }))
+        reads_inside(code) || {
+            let tokens = cpl_syntax::lex(code).tokens;
+            (0..tokens.len().saturating_sub(1)).any(|at| {
+                let name = &code[span_range(tokens[at].span)];
+                (at == 0 || tokens[at - 1].kind != cpl_syntax::TokenKind::Dot)
+                    && tokens[at].kind == cpl_syntax::TokenKind::Ident
+                    && tokens[at + 1].kind == cpl_syntax::TokenKind::LParen
+                    && (name == "ask"
+                        || self.values.contains_key(name)
+                        || self.bodies.contains_key(name)
+                        || self.streams.contains_key(name))
+            })
+        }
     }
 
     /// True when `whole` reads after its part `first` ends.
@@ -1741,7 +1857,7 @@ impl Builder<'_> {
 }
 
 /// The names and values `if a == 0 and b == -1: break` leaves a loop at.
-fn sentinel(stmt: &Stmt) -> Option<Vec<(String, i128)>> {
+fn sentinel(stmt: &Stmt, returns: bool) -> Option<Vec<(String, i128)>> {
     let StmtKind::Expr(Expr {
         kind: ExprKind::If {
             branches,
@@ -1755,14 +1871,16 @@ fn sentinel(stmt: &Stmt) -> Option<Vec<(String, i128)>> {
     let [(Cond::Expr(cond), then)] = branches.as_slice() else {
         return None;
     };
-    if !matches!(
-        then.stmts.as_slice(),
+    match then.stmts.as_slice() {
         [Stmt {
             kind: StmtKind::Break(None),
             ..
-        }]
-    ) {
-        return None;
+        }] => {}
+        [Stmt {
+            kind: StmtKind::Return(None),
+            ..
+        }] if returns => {}
+        _ => return None,
     }
     fn tests(cond: &Expr, out: &mut Vec<(String, i128)>) -> Option<()> {
         match &cond.kind {

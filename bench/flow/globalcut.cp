@@ -1,5 +1,4 @@
 // Stoer-Wagner: 600 vertices, 20000 random undirected edges, weights up to 100.
-use std.flow.{global_min_cut}
 
 domain V = 0..600
 var seed = 1

@@ -9,8 +9,8 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 
 | Domain | Metrics | Unchecked rows | Open questions |
 |---|---|---|---|
-| [compiler](domains/compiler/README.md) | 15 | 1 | 2 |
-| [debugger](domains/debugger/README.md) | 19 | 11 | 0 |
+| [compiler](domains/compiler/README.md) | 15 | 0 | 2 |
+| [debugger](domains/debugger/README.md) | 19 | 1 | 0 |
 | [diagnostics](domains/diagnostics/README.md) | 20 | 0 | 0 |
 | [idioms](domains/idioms/README.md) | 13 | 1 | 3 |
 | [infra](domains/infra/README.md) | 15 | 0 | 0 |
@@ -18,7 +18,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | [perf](domains/perf/README.md) | 19 | 3 | 0 |
 | [site](domains/site/README.md) | 17 | 0 | 3 |
 | [spec](domains/spec/README.md) | 21 | 0 | 0 |
-| [stdlib](domains/stdlib/README.md) | 19 | 24 | 6 |
+| [stdlib](domains/stdlib/README.md) | 19 | 9 | 6 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
 | [tools](domains/tools/README.md) | 18 | 11 | 0 |
 
@@ -221,7 +221,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | reverted compiler fixes caught (probe P2) | 23/25 measurable fixes (92%), 3 of 28 fix commits do not build | >= 90% |
 | banned spellings in spec | 0 | 0 |
 | suite wall time, 2 cores | 8.7 s | < 20 s |
-| chapter-table fns missing from the prelude (R11.3.2) | 106 (geometry 36, math 31, flows 11, graphs-trees 11, strings 8, search-dp 7, ops-ranges 1, sequence-patterns 1) | 0 |
+| chapter-table fns missing from the prelude (R11.3.2) | 0 (hard gate, no known list) | 0 |
 | known-gap cases in spec/SUBSET.md (shrink only) | see command (2026-11-23) | 0 for Milestone 2 |
 | wrong cases found by implementers (per day; register row: every case is itself right) | 3 commits, 10 cases (2026-11-23) | 0; each one traced to a missing check |
 | cases failing interpreter vs sanitized C++ (register row: no undefined behaviour) | not yet run over the whole suite | 0 |
@@ -322,8 +322,8 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 | lint | 20 | 16 | 3 | 1 | 0 | 0 | 2 |
 | play | 12 | 7 | 5 | 0 | 0 | 1 | 1 |
 | seq | 67 | 57 | 6 | 3 | 0 | 2 | 6 |
-| stress | 34 | 29 | 5 | 0 | 0 | 1 | 1 |
-| all | 189 | 160 | 22 | 6 | 0 | 4 | 11 |
+| stress | 34 | 30 | 4 | 0 | 0 | 0 | 0 |
+| all | 189 | 161 | 21 | 6 | 0 | 3 | 10 |
 
 ## Skipped process (`Skipped:` trailers per lane per day)
 
@@ -332,7 +332,9 @@ Process costing more than 10% of a change is skipped with a trailer
 
 | Day | Lane | Skipped |
 |---|---|---|
-| 2026-11-24 | compiler | 1 |
+| 2026-11-24 | stdlib | 1 |
+| 2026-11-24 | infra | 3 |
+| 2026-11-24 | compiler | 2 |
 | 2026-11-23 | perf | 1 |
 | 2026-11-23 | debugger | 1 |
 

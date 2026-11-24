@@ -96,7 +96,7 @@ print(diffs, jumps)
 
 Range structures accept bare associative operators (`+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd`) directly, or a custom `Monoid(id: identity, op: combine)`. A segment tree with range updates takes `act:`, either a stock action (`add`, `assign`, `affine`, `flip`) or a custom `Action(id:, compose:, apply:, over:)`. Name the fields to make each callback's role clear:
 
-```cp status=spec
+```cp
 use std.algebra.{Monoid, Action}
 
 domain V = 1..=4
@@ -118,7 +118,7 @@ let aff = Action<Int, (Int, Int)>(
     apply: (f, val, span) => f.0 * val + f.1 * span,
     over: Monoid<Int>(id: 0, op: (x, y) => x + y),
 )
-var affine = SegTree<V, Int>(+, a, act: aff)
+var affine = SegTree<V, Int, (Int, Int)>(+, a, act: aff)
 affine.apply(V(1)..=V(4), (2, 1))
 print(bit.fold(V(1)..=V(4)), rmq.fold(V(1)..=V(4)), st.all, mx.all.value, lz.all, affine.all)
 ```

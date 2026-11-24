@@ -5,6 +5,7 @@
 //   print any such arrangement. Multitest (t <= 500).
 // Solution: fill from the right, keeping the unused lengths as an interval [lo, hi]: all of
 //   them go earlier, so '>' takes hi and '<' takes lo. The value left over goes first. O(n).
+// Bounds: n: 2..=100
 
 @!multitest
 let n: 2..=100 = read()

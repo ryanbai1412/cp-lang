@@ -158,12 +158,12 @@ Every container and range structure lists its journeys below, each one short cal
 
 - **Why:** this is where contestants feel the library, mid-contest.
 - **Example:** removing one copy from a `SortedBag` is `bag.remove(x)`, not a find then an erase.
-- **Enforced by:** `missing` (usage-journey suite, `SortedBag` and `SortedSet` first).
+- **Enforced by:** `scripts/std-api-lint.py` (every journey below has a `// journey:` line in `spec/conformance/std-journeys/<type>.cp`, which the `std-journeys` conformance suite runs).
 
 | Type | Journeys |
 |---|---|
 | `SortedBag<T>` | add, remove one copy, remove at a cursor, predecessor, successor, count in a range, k-th smallest, walk a range in order |
-| `SortedSet<T>` | the same, with `add` returning whether it was new |
+| `SortedSet<T>` | add returning whether it was new, remove one copy, predecessor, successor, count in a range, k-th smallest, walk a range in order (a set's key is its own cursor) |
 | `HashMap<K, V>` / `Counter<K, V>` | count occurrences (`tally`), read with a default, add to a value, walk in a fixed order |
 | `SegTree` / `LazySegTree` | point set, point update, range fold, range apply, first index where a prefix holds (`max_right`) |
 | `Fenwick` | add at a point, prefix sum, range sum, first prefix reaching a bound |
@@ -185,7 +185,7 @@ Every common operation in the C++ STL, Python builtins and `itertools`, Rust's i
 
 - **Why:** a contestant arrives knowing one of these, and a missing operation costs a hand-written loop mid-contest.
 - **Example:** `itertools.accumulate` is `a.scan(+)`, `collections.Counter` is `xs.tally()`, Rust's `windows(2)` is `a.windows(2)`.
-- **Enforced by:** `missing` (comparative inventory table checked against `cpl doc --format json std`).
+- **Enforced by:** cpl-doc's `every_inventory_name_finds_its_std_spelling` checks every spelling in `spec/lib/inventory.md` against what `cpl doc` documents for std, and that each name elsewhere finds it.
 
 ## Cost
 
@@ -233,11 +233,11 @@ Renaming a public item ships a `cpl fix` codemod and a checker error on the old 
 
 ### R21. std is lint-clean
 
-std passes `cpl lint` like a contestant's program does; a hit that is right is marked `with lint(name: allow)` where it sits.
+std passes `cpl lint` like a contestant's program does, with no hits.
 
 - **Why:** std is read and copied as the model of good code, and a lint that fires on std teaches people to ignore it.
-- **Example:** an `L0301` float equality in std is a real comparison bug or an `allow` with its reason.
-- **Enforced by:** `scripts/std-lint-ratchet.py` (in `scripts/check.sh`): hits per file and code only go down.
+- **Example:** an `L0301` float equality in std is a real comparison bug to fix, or a lint false positive to fix in the lint.
+- **Enforced by:** `scripts/std-lint-ratchet.py` (in `scripts/check.sh`): any hit fails.
 
 ## Review
 

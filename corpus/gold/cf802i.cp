@@ -1,7 +1,6 @@
 // Σ over distinct substrings p of occ(p)². occ(p)² counts ordered pairs of suffixes that both
 // start with p, so the answer is Σ LCP over ordered pairs of suffixes: n(n+1)/2 on the diagonal,
 // plus twice the sum of minima over every window of the suffix array's adjacent-LCP array.
-use std.strings.{suffix_array}
 @!multitest
 let s: Str = read()
 let n = s.len

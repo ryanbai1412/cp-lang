@@ -10,6 +10,7 @@
 //   unused old pipe of cost <= D that reconnects the tree without its dearest new pipes can
 //   replace one of them at no cost: one day less. O(M log M).
 // original: corpus/submissions/4899336.cpp
+// Bounds: n: 1..=1e5; m: 1..=2e5; d: 0..=1e9; pipes.u, pipes.v: 1..=n; pipes.w: 1..=1e9
 let n: 1..=1e5 = read()
 let m: 1..=2e5 = read()
 let d: 0..=1e9 = read()

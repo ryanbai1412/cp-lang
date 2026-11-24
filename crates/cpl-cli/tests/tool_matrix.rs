@@ -12,18 +12,19 @@ use std::path::{Path, PathBuf};
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_stmt, Visitor};
 
-/// Each tool and the programs its suite runs it on.
+/// Each tool and the programs its suite runs it on; `@corpus` is every problem
+/// package, `@corpus/<leaf>` each package's leaf file.
 const SUITES: [(&str, &str); 5] = [
     // `cpl-conform diff`: conformance cases and corpus ports.
-    ("cpp", "spec/conformance corpus/problems"),
+    ("cpp", "spec/conformance @corpus"),
     // `every_corpus_program_and_conformance_case_is_served`.
-    ("lsp", "spec/conformance corpus/problems"),
+    ("lsp", "spec/conformance @corpus"),
     // `scripts/fmt_check.py`: every tracked `.cp` file.
     ("fmt", "spec corpus std crates/cpl-cli/tests"),
     // The saved-trace programs, traced and untraced.
     ("trace", "crates/cpl-cli/tests/programs"),
     // Lint records, `std/` and the corpus specs.
-    ("lint", "spec/lints std corpus/problems/*/spec.cp"),
+    ("lint", "spec/lints std @corpus/spec.cp"),
 ];
 
 fn root() -> PathBuf {
@@ -49,6 +50,17 @@ fn cp_files(dir: &Path, leaf: Option<&str>, out: &mut Vec<PathBuf>) {
 fn suite_files(dirs: &str) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for dir in dirs.split(' ') {
+        if let Some(rest) = dir.strip_prefix("@corpus") {
+            match rest.strip_prefix('/') {
+                Some(leaf) => out.extend(cpl_corpus::files(&root(), leaf)),
+                None => {
+                    for package in cpl_corpus::packages(&root()) {
+                        cp_files(&package, None, &mut out);
+                    }
+                }
+            }
+            continue;
+        }
         match dir.split_once("/*/") {
             Some((parent, leaf)) => cp_files(&root().join(parent), Some(leaf), &mut out),
             None => cp_files(&root().join(dir), None, &mut out),

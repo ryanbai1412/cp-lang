@@ -3,6 +3,7 @@
 //! checker owns; it moves to `cpl-check` with the fact table.
 
 use super::bounds;
+use crate::std_fn;
 use crate::File;
 
 mod cost;
@@ -177,7 +178,7 @@ fn in_bounds(index: &cpl_syntax::ast::Expr, len: &str, bounds: &bounds::Bounds) 
 fn len_of(seq: &cpl_syntax::ast::Expr) -> cpl_syntax::ast::Expr {
     use cpl_syntax::ast::{Expr, ExprKind, Name};
     let name = Name {
-        text: "len".to_string(),
+        text: std_fn::LEN.to_string(),
         span: seq.span,
     };
     Expr {
@@ -481,7 +482,7 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
             }
         }
         ExprKind::Call { callee, args } => {
-            if matches!(&callee.kind, ExprKind::Name(n) if n == "print" || n == "ask") {
+            if matches!(&callee.kind, ExprKind::Name(n) if n == "print" || n == std_fn::ASK) {
                 for arg in args {
                     if let ExprKind::Name(name) = &arg.value.kind {
                         let at = (base + arg.value.span.start, base + arg.value.span.end);
@@ -506,7 +507,7 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
                     }
                     if bounds.pushes(name).is_some() {
                         out.pushed_calls.push((at, name.clone()));
-                        if method.text == "push" {
+                        if method.text == std_fn::PUSH {
                             let call = (base + expr.span.start, base + expr.span.end);
                             out.pushes
                                 .insert(call, (name.clone(), out.around, out.factors.clone()));

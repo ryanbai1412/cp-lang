@@ -1,17 +1,17 @@
 // IOI 2009 "Mecho": bees spread one cell a minute from the hives; Mecho eats
 // for w minutes, then walks up to s cells a minute to home. Largest safe w:
 // binary search, with a BFS that only enters cells before the bees do.
-enum Cell = 'T' Tree | 'G' Grass | 'M' Mecho | 'D' Home | 'H' Hive
-let (n, s) = read<(1..=800, 1..=1000)>()
-domain P = ([n], [n])
-let field = read<[P]Cell>()
-let moves = grid4(P)
-let bee = bfs(moves.only(p => field[p] in [Grass, Mecho, Hive]), from: P.filter(p => field[p] == Hive)).dist
-let (start, home) = (field.find(Mecho)!, field.find(Home)!)
+let (n, s) = read<(1..=800, 1..=1_000)>()
+domain I = [n]
+domain P = (I, I)
+let field = read<[P]Char>()
+let at = (c: Char) => P.find(p => field[p] == c)!
+let (start, home) = (at('M'), at('D'))
+let bee = bfs(p => p.adj4.filter(q => field[q] in "GM"), from: P.filter(p => field[p] == 'H'))
 
 fn safe(w: Int) -> Bool:
-    let walk = bfs(moves.only(p => field[p] != Tree and field[p] != Hive), from: [start],
-        enter: (p, steps) => p == home or bee[p].is_none_or(b => w + steps / s < b))
-    bee[start].is_none_or(b => w < b) and walk.dist[home].is_some()
+    let ahead = (p: P, steps: Int) => bee[p].is_none_or(b => w + steps / s < b)
+    let walk = bfs(p => p.adj4.filter(q => field[q] in "GD"), from: [start], until: home, enter: ahead)
+    ahead(start, 0) and walk.reached(home)
 
-print((0..=n * n).last_true(safe) ?? -1)
+print((0..n * n).last_true(safe) ?? -1)

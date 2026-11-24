@@ -246,6 +246,19 @@ fn a_yields_fn_no_loop_walks_has_no_callback_form() {
 }
 
 #[test]
+fn a_getter_generator_take_stops_after_k_like_a_call() {
+    let cpp = cpp(
+        "struct W:\n    xs: List<Int>\n    @get pub fn evens(self) -> yields Int:\n        for x in xs:\n            if x % 2 == 0: yield x\n\
+         let n: Int = read()\nlet w = W([i for i in 0..n])\nprint(w.evens.take(8).count())\n",
+    );
+    assert!(cpp.contains("cpl_each_W_evens"), "{cpp}");
+    assert!(
+        !cpp.contains("std::vector<ll> W_evens("),
+        "the whole getter is built: {cpp}"
+    );
+}
+
+#[test]
 fn a_yields_loop_whose_body_calls_a_fn_value_runs_as_the_fn_yields() {
     let src = |closure: &str| {
         format!(
@@ -336,4 +349,187 @@ fn explain_names_closure_params_and_top_level_fn_vars() {
         reasons.iter().any(|r| r == "fn parameter of a closure"),
         "{reasons:?}"
     );
+}
+
+#[test]
+fn a_closure_param_has_no_range_from_the_maker_slot_it_shares() {
+    // Closure slot 0 is `a` and top-level slot 0 is `n`: `a`'s facts are
+    // its own, so `a * b` is not taken to fit 32 bits from `n`'s range.
+    let out = cpp(concat!(
+        "let (n, m): (1..=1e5, 2..=1e9) = read()\n",
+        "domain V = 1..=n\n",
+        "let tree = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first!)\n",
+        "let ways = tree.reroot(Monoid(1, (a, b) => a * b % m), (x, _, _) => (x + 1) % m, (u, _) => u)\n",
+        "for v in V: print(ways[v])\n",
+    ));
+    assert!(!out.contains("uint32_t(a * b)"), "{out}");
+}
+
+#[test]
+fn a_by_value_capture_keeps_the_facts_of_what_it_copies() {
+    let out = cpp(concat!(
+        "fn go(m: 1..=1000) -> Int:\n",
+        "    let f = (x: 0..=1000) => (x * 7 + 1) % m\n",
+        "    f(read()) + f(read())\n",
+        "print(go(read()))\n",
+    ));
+    assert!(!out.contains("cpl::emod("), "{out}");
+}
+
+#[test]
+fn the_emitter_asks_facts_only_through_its_own_key() {
+    // A body's slots are keyed by `facts_home`: `self.fn_id` is the
+    // enclosing fn's key inside a closure, and its slots are other variables.
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut bad = Vec::new();
+    let mut stack = vec![src];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                if !path.ends_with("tests") {
+                    stack.push(path);
+                }
+            } else if path.extension().is_some_and(|e| e == "rs") && !path.ends_with("tests.rs") {
+                let text = std::fs::read_to_string(&path).unwrap();
+                for (i, line) in text.lines().enumerate() {
+                    if line.contains("self.facts.") && line.contains("self.fn_id") {
+                        bad.push(format!("{}:{}", path.display(), i + 1));
+                    }
+                }
+            }
+        }
+    }
+    assert!(bad.is_empty(), "use facts_home/facts_local: {bad:?}");
+}
+
+/// A C++ local a template declares around interpolated code can hide the
+/// user's local of that name (`size_t at` in a print block hid `at`), so
+/// every such name is `cpl_*`, which `names::ident` never gives a user's.
+#[test]
+fn every_local_a_template_declares_is_cpl_prefixed() {
+    const TYPES: [&str; 7] = ["auto", "auto&", "auto&&", "size_t", "ll", "int", "bool"];
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut stack = vec![root];
+    let mut bad = Vec::new();
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).expect("src dir") {
+            let path = entry.expect("entry").path();
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            if path.is_dir() {
+                if name != "tests" && name != "runtime" {
+                    stack.push(path);
+                }
+                continue;
+            }
+            if !name.ends_with(".rs") || name.ends_with("tests.rs") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).expect("source");
+            let lines = text.lines().take_while(|l| l.trim() != "#[cfg(test)]");
+            for (n, line) in lines.enumerate() {
+                for lit in line.split('"').skip(1).step_by(2) {
+                    let interpolates = lit.replace("{{", "").contains('{');
+                    let spaced = lit.replace("\\n", " ");
+                    let words: Vec<&str> = spaced.split_whitespace().collect();
+                    for (k, w) in words.windows(3).enumerate() {
+                        let next = words.get(k + 3).copied().unwrap_or("");
+                        let decl = TYPES.contains(&w[1]) && !matches!(w[0], "inline" | "static");
+                        let id: String = w[2]
+                            .chars()
+                            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                            .collect();
+                        let rest = &w[2][id.len()..];
+                        let ends = rest.starts_with([';', '=', ':'])
+                            || rest.is_empty() && next.starts_with(['=', ':']);
+                        let temp =
+                            id.starts_with('t') && id[1..].chars().all(|c| c.is_ascii_digit());
+                        if decl
+                            && interpolates
+                            && ends
+                            && !id.is_empty()
+                            && !id.starts_with("cpl_")
+                            && !temp
+                        {
+                            bad.push(format!("{}:{}: {id}", path.display(), n + 1));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!(bad.is_empty(), "name these cpl_*:\n{}", bad.join("\n"));
+}
+
+/// A macro the emitted file defines rewrites any user name spelled the
+/// same, so `names::ident` gives no user name the spelling of one.
+#[test]
+fn no_user_name_is_spelled_like_an_emitted_macro() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut stack = vec![root];
+    let mut macros = Vec::new();
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).expect("src dir") {
+            let path = entry.expect("entry").path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).unwrap_or_default();
+            let text = text.split("#[cfg(test)]").next().unwrap_or_default();
+            for part in text.split("#define ").skip(1) {
+                let name: String = part
+                    .chars()
+                    .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                    .collect();
+                macros.push(name);
+            }
+        }
+    }
+    assert!(macros.iter().any(|m| m == "LOCAL"), "found {macros:?}");
+    let clash: Vec<&String> = macros
+        .iter()
+        .filter(|m| crate::names::ident(m) == **m)
+        .collect();
+    assert!(clash.is_empty(), "add to names::RESERVED: {clash:?}");
+}
+
+#[test]
+fn a_yields_fn_whose_own_closures_write_its_locals_feeds_a_loop() {
+    let cpp = cpp(concat!(
+        "fn halves(n: Int) -> yields Int:\n",
+        "    var todo: List<Int> = []\n",
+        "    fn add(x: Int):\n",
+        "        todo.push(x)\n",
+        "    add(n)\n",
+        "    while let x = todo.pop():\n",
+        "        yield x\n",
+        "        if x > 1: add(x / 2)\n",
+        "let n: 1..=1000000 = read()\n",
+        "for x in halves(n):\n",
+        "    if x < n: break\n",
+        "    print(x)\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(solve.contains("cpl_each_halves(n, "), "{solve}");
+}
+
+#[test]
+fn a_value_if_of_different_closures_joins_at_the_erased_fn() {
+    let out = cpp(concat!(
+        "let m = read<Int>()\n",
+        "fn go(flip: Bool) -> Int:\n",
+        "    fn low(t: Int) -> Int = t + m\n",
+        "    let side = if flip: (t: Int) => m - low(t) else: low\n",
+        "    side(3)\n",
+        "print(go(true), go(false))\n",
+    ));
+    assert!(
+        out.contains("side = flip ? std::function<ll(ll)>("),
+        "{out}"
+    );
+    assert!(out.contains(" : std::function<ll(ll)>(low)"), "{out}");
 }

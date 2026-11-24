@@ -99,7 +99,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         // A big value is a fact each time it is written, but `-1e9..=1e9`
         // is one: a range's two ends count once. A small one counts by line:
         // `m + 1000, q - 1000` on one line is arithmetic, not a fact.
-        spans.sort_by_key(|s| s.start);
+        cpl_diag::sort_by_key(&mut spans, |s| s.start as u64);
         let big = value >= 1_000_000;
         spans.dedup_by(|hi, lo| {
             let between = file.src.get(lo.end as usize..hi.start as usize);

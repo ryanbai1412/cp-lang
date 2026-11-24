@@ -49,12 +49,19 @@ impl<'p> Emitter<'p> {
                 }
                 if cap.is_global {
                     let gname = crate::names::global_ident(self.program, cap.outer);
-                    if cap.by_ref
-                        || (borrow_immutable
-                            && non_scalar
-                            && self.const_globals.contains(&cap.outer))
-                    {
-                        let constant = if self.const_globals.contains(&cap.outer) {
+                    // A closure that lives only through its call reads in
+                    // place a global it does not write itself.
+                    let scoped = self.call_scoped.contains(&cid)
+                        && self
+                            .uses
+                            .table
+                            .closure_access(self.program, cid)
+                            .is_some_and(|a| !a.writes.contains(&(true, cap.outer)));
+                    let lent = borrow_immutable
+                        && non_scalar
+                        && (self.const_globals.contains(&cap.outer) || scoped);
+                    if cap.by_ref || lent {
+                        let constant = if lent || self.const_globals.contains(&cap.outer) {
                             "const "
                         } else {
                             ""
@@ -147,6 +154,17 @@ impl<'p> Emitter<'p> {
                 self.ty(ty),
                 self.names[slot],
                 self.zero_init(ty)
+            ));
+        }
+        // A local fn can re-enter (recursion, or through a callee), so a
+        // runtime domain it declares is saved and restored per frame.
+        for d in self.program.fn_guarded_domains(&def.ret, &def.body) {
+            self.need("dom_guard");
+            let dn = crate::names::dom_ident(self.program, d);
+            let g = self.temp();
+            text.push_str(&format!(
+                "{}cpl::DomGuard {g}({dn}_lo, {dn}_len);\n",
+                pad(self.indent)
             ));
         }
         self.block(&def.body, &mut text);

@@ -4,6 +4,7 @@
 //   After any number of spins, print the largest section reachable. l, b <= 5000. Multitest.
 // Solution: the multiples of b mod l are exactly the multiples of g = gcd(l, b), so the
 //   reachable sections are those congruent to a mod g; the largest is l - g + a % g. O(log l).
+// Bounds: l, b: 1..=5_000; a: 0..=5_000
 
 @!multitest
 let (l, a, b): (1..=5_000, 0..=5_000, 1..=5_000) = read()

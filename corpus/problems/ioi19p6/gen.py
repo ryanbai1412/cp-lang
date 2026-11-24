@@ -5,7 +5,7 @@ import random, sys
 
 r = random.Random(int(sys.argv[1]))
 big = int(sys.argv[2]) if len(sys.argv) > 2 else r.choice([5, 10, 30, 200])
-n = r.randint(2, big)
+n = r.randint(2, max(2, big))
 m = r.randint(1, big)
 xs = sorted(r.sample(range(r.choice([n, 3 * n, 10**9 + 1])), n))
 hmax = r.choice([3, 10, 1000, 10**9])

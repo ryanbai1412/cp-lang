@@ -8,6 +8,7 @@
 //   cut unit edge, up -> cell or cell -> left, with a missing upper neighbour played by the source
 //   and a missing left one by the sink, so the answer is the min cut: push-relabel max flow on
 //   n m + 2 nodes with 2 edges per black cell.
+// Bounds: n, m: 1..=200
 
 let (n, m): (1..=200, 1..=200) = read()
 domain Row = 0..n

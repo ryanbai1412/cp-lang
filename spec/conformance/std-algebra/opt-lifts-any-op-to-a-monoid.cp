@@ -1,7 +1,7 @@
 // expect: ok, output "1 3 1\n12 3"
 // rule: std.algebra.opt std.algebra.Semigroup.opt
 // `op.opt()` lifts an op with no identity to `?T` with `None` as identity, so a closure builds a SegTree whose folds say "nothing here" as `None` (ops-ranges.md section 2).
-use std.algebra.{Semigroup, opt, fold}
+use std.algebra.{Semigroup, opt}
 domain V = 0..4
 let ws: [V]Int = [3, 1, 4, 1]
 let lighter = (i: V, j: V) => if ws[i] <= ws[j]: i else: j

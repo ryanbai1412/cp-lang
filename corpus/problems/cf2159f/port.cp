@@ -8,6 +8,7 @@
 //   rises. Per l, query each stride's ends and binary-search the valley, pushing each probed
 //   value as the head of a monotone run into a MinHeap. Pop the m smallest, querying a run's
 //   next value only when its head pops: O(n log^2 n + m) queries.
+// Bounds: n: 1..=500; m: 1..=250_000; a: 1..=n * n
 
 @!interactive
 

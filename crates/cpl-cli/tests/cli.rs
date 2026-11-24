@@ -68,7 +68,7 @@ fn lsp_serves_diagnostics_and_hover_over_stdio() {
     );
     assert!(
         stdout.contains(
-            r"dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 B per element, 1.6 MB max"
+            r"dist: [V]?Int\n  domain V = 1..=n, n \u003c= 2e5\n  storage: 8 B per element, 1.6 MB max"
         ),
         "{stdout}"
     );
@@ -514,6 +514,23 @@ fn run_reports_the_interactor_rejecting_a_wrong_answer() {
         "{stderr}"
     );
     assert!(stderr.contains("assertion failed: x == secret"), "{stderr}");
+}
+
+#[test]
+fn a_rejected_run_says_what_the_solution_last_read() {
+    // The solution reads the judge's `<` as "go higher".
+    let source = GUESS
+        .replace("LIMIT", "10")
+        .replace("ANSWER", "lo")
+        .replace("if answer == \"<\"", "if answer == \">=\"");
+    let path = scratch("interactor-misread", "guess.cp", source.as_bytes());
+    let out = cpl(&["run".as_ref(), path.as_os_str()], b"8 3\n");
+    assert_eq!(out.status.code(), Some(3));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("the solution last read `<` at line 6, into `answer`"),
+        "{stderr}"
+    );
 }
 
 #[test]

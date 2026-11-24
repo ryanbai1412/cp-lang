@@ -8,6 +8,7 @@
 //   queues for the max of row maxima and the min of row minima find, for every top row, the
 //   lowest bottom row that keeps the spread <= C. O(U * 100 * V).
 // original: corpus/submissions/4899527.cpp
+// Bounds: m, n: 1..=700; k: 0..=10; h: -30_000..=30_000
 let (m, n, k): (1..=700, 1..=700, 0..=10) = read()
 domain Col = 0..m
 domain Row = 0..n

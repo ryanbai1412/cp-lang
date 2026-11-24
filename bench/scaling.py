@@ -9,12 +9,20 @@ need, and marks each line whose time is a fn's with `// timed: <fn>`, the
 fn named as `cpl doc --format json std` does (`bag.SortedBag.add`); one
 case may time several fns. A header may name the fn a bare `// timed`
 means (`// scaling: bag.SortedBag.add`), hold symbols at a constant
-(`// fixed: K`), give one as a formula in n (`// let: k = \\log n; d = \\sqrt n`,
-for a fn whose cost names a size the case derives from n) or set the base size (`// n: 4096`, default N). Each case runs under `cpl profile --native`, the
+(`// fixed: K`), feed it input after `n` (`// stdin: 3`, three lines of `0 1 .. n-1 -1`
+for a fn that reads input), give one as a formula in n (`// let: k = \\log n; d = \\sqrt n`,
+for a fn whose cost names a size the case derives from n) or set the base size (`// n: 4096`, default N). A
+timed line may give its fn's symbols their own meaning after the mark,
+`// timed: strings.repeat [fixed: self]` or `[let: k = \\log n]`, when one fn
+in the case reads a symbol differently from the rest. Each case runs under `cpl profile --native`, the
 judge's C++ with a counter per statement, RUNS times at n and at 4n; the
 time per hit of the timed lines (the fastest run) gives the measured growth.
+The runs pin glibc's malloc thresholds (MALLOC_TUNABLES): left dynamic, a
+list over the threshold at 4n but not at n is handed back to the OS on
+each free and faulted in again on each call, a cost of the allocator's
+size class, not of the fn.
 The documented growth is the `cost:` formula evaluated at 4n over n, every
-symbol but the fixed ones standing for n; a cost written ``as `fn` ``
+symbol but the fixed ones standing for n (`C(n, k)` is the binomial); a cost written ``as `fn` ``
 reads that fn's. A callback the fn calls is written on its own line, out
 of the timed one, and marked `// within: <fn>`: a profile charges a
 callback's time to its own line, which counts to the fn's time but not
@@ -23,7 +31,8 @@ growth is over SLACK times the documented one (the fn is slower than its
 docs) or under it by SLACK squared (the docs overstate it).
 
 --write records every case and the std fns with a `cost:` and no case in
-research/perf/scaling.json, which scripts/debt-ratchet.py reads
+research/perf/scaling.json, which scripts/debt-ratchet.py reads; with CASEs
+it reruns only those and keeps the other cases' recorded results
 (`scaling_mismatches` is a hard zero; `std_fns_unscaled` only shrinks).
 --check fails on a mismatch and when that file is stale. Enforces the
 stdlib register's "The obvious code is the fast code" and "The documented
@@ -39,23 +48,36 @@ CASES = os.path.join(ROOT, "bench", "scaling")
 BOARD = os.path.join(ROOT, "research", "perf", "scaling.json")
 N, RUNS, SLACK = 1 << 14, 3, 2.0
 MIN_NS = 2_000_000
+MALLOC_TUNABLES = "glibc.malloc.mmap_threshold=33554432:glibc.malloc.trim_threshold=1073741824"
+
+
+def profile_env(environ):
+    """`environ` with MALLOC_TUNABLES added to any GLIBC_TUNABLES it sets."""
+    have = environ.get("GLIBC_TUNABLES")
+    return dict(environ, GLIBC_TUNABLES=f"{have}:{MALLOC_TUNABLES}" if have else MALLOC_TUNABLES)
 
 
 def std_costs(cpl):
     """`module.Owner.fn` -> its `cost:` text, for every std item that has one."""
     out = subprocess.run([cpl, "doc", "--format", "json", "std"], cwd=ROOT,
                          capture_output=True, text=True, check=True).stdout
+    return costs_of(json.loads(out))
+
+
+def costs_of(doc):
+    """`module.Owner.fn` -> its `cost:` text, from `cpl doc --format json`'s output."""
     costs = {}
 
     def walk(items, prefix):
         for it in items:
-            name = f"{prefix}.{it['name']}"
+            # an impl's owner is named without its generics: `Complement<V, G>` is `Complement`
+            name = f"{prefix}.{re.sub(r'<.*', '', it['name'])}"
             cost = (it.get("facts") or {}).get("cost")
             if cost:
                 costs[name] = cost
             walk(it.get("members") or [], name)
 
-    for m in json.loads(out)["modules"]:
+    for m in doc["modules"]:
         walk(m["items"], m["name"])
     for name, cost in costs.items():
         costs[name] = alias(name, cost, costs)
@@ -81,7 +103,7 @@ def big_o(cost):
     return m.group(1) if m else None
 
 
-BUILTINS = ("lg", "sqrt", "min", "max")
+BUILTINS = ("lg", "sqrt", "min", "max", "C", "ceil")
 
 
 def _arg(f, i):
@@ -105,16 +127,21 @@ def python(formula):
     symbols, each spelt `v_<symbol>`."""
     f = formula
     f = re.sub(r"\\lvert\s*(.*?)\s*\\rvert", r"(\1)", f)
+    f = re.sub(r"\\lceil\s*(.*?)\s*\\rceil", r"ceil(\1)", f)
     f = f.replace("\\_", "_").replace("³", "^3").replace("²", "^2")
     f = re.sub(r"\\mathit\{(\w+)\}", r"\1", f)
     f = re.sub(r"(\w+)\.(\w+)", r"\1_\2", f)
-    f = re.sub(r"\\deg\s*", "", f)
+    # `\deg f` is the symbol f; a bare `\deg` (`(n + \deg)`) is a symbol of its own
+    f = re.sub(r"\\deg\s*(?=[A-Za-z(\\])", "", f)
+    f = re.sub(r"\\deg\b", "deg", f)
     f = re.sub(r"\\(?:operatorname|mathrm)\{(\w+)\}", r"\1", f)
     f = re.sub(r"\\sqrt\{([^}]*)\}", r"sqrt(\1)", f)
     # a sum grows as its term times its upper bound, or as its term when it names none
     f = re.sub(r"\\sum_(?:\{[^}]*\}|\w+)\^(\{[^}]*\}|\w+)\s*", r"\1 ", f)
     f = re.sub(r"\\sum_(?:\{[^}]*\}|\w+)\s*", "", f)
-    f = re.sub(r"\\alpha\s*\(([^)]*)\)", "1", f)
+    f = re.sub(r"\\alpha\b\s*(?:\([^)]*\))?", "1", f)
+    # a size named in words (`\text{path length}`) is one symbol
+    f = re.sub(r"\\text\{([^}]*)\}", lambda m: "_".join(m.group(1).split()), f)
     f = f.replace("\\min", "min").replace("\\max", "max")
     # `\log^k x`, `\log x`, `log_b x` and `\sqrt x`, innermost (rightmost) first
     op = re.compile(r"\\log\^(\d+)\s*|\\log\s*|\blog_(\w+)\s*|\\sqrt\s*")
@@ -134,82 +161,126 @@ def python(formula):
     f = f.replace("\\cdot", "*").replace("\\times", "*")
     f = f.replace("^", "**").replace("{", "(").replace("}", ")").replace("\\,", "")
     # a symbol written as a function of others (`\mathit{nodes}(\mathit{self})`, `d(x)`) is one symbol
-    while m := re.search(r"\b(?!(?:%s)\()([A-Za-z_]\w*)\(" % "|".join(BUILTINS), f):
+    while m := re.search(r"\b(?!(?:%s)\()([^\W\d]\w*)\(" % "|".join(BUILTINS), f):
         end = _arg(f, m.start())
         f = f[:m.start()] + m.group(1) + f[end:]
+    # a symbol may be spelt in Unicode (`Δ\mathit{start}` is one symbol)
     f = re.sub(r"([\w)])\s+(?=[\w(])", r"\1*", f)
     if "\\" in f:
         raise ValueError(f"can't read the cost formula {formula!r}")
-    return re.sub(r"\b(?!(?:%s)\()([A-Za-z_]\w*)" % "|".join(BUILTINS), r"v_\1", f)
+    return re.sub(r"\b(?!(?:%s)\()([^\W\d]\w*)" % "|".join(BUILTINS), r"v_\1", f)
 
 
 def growth(formula, fixed=(), k=4.0, n=float(N), let=None):
     """f(k n) / f(n) for a cost formula in the docs' TeX. A symbol in `fixed`
     stands for 1, one in `let` for its formula in `n` (`k = \\log n` when the
-    case's n is 2^k), and every other symbol for n."""
+    case's n is 2^k; `n = \\log n` for a cost exponential in n), and every
+    other symbol for n."""
     let = {s: python(e) for s, e in (let or {}).items()}
     env = {"__builtins__": {}, "lg": lambda v: math.log2(max(v, 2.0)),
-           "sqrt": math.sqrt, "min": min, "max": max}
+           "sqrt": math.sqrt, "min": min, "max": max, "ceil": math.ceil,
+           "C": lambda a, b: math.exp(math.lgamma(a + 1) - math.lgamma(b + 1) - math.lgamma(a - b + 1))}
 
-    def at(x, f):
+    def at(x, f, inner=False):
         names = {}
         for v in set(re.findall(r"\bv_\w+", f)):
             s = v[2:]
-            names[v] = 1.0 if s in fixed else at(x, let[s]) if s in let and s != "n" else x
+            names[v] = 1.0 if s in fixed else at(x, let[s], inner=True) if s in let and not inner else x
         try:
             return float(eval(f, env, names))
         except (ArithmeticError, TypeError, SyntaxError, NameError) as e:
             raise ValueError(f"can't evaluate the cost formula {formula!r}: {e}") from e
 
     f = python(formula)
-    return at(k * n, f) / at(n, f)
+    if not (base := at(n, f)):
+        raise ValueError(f"the cost formula {formula!r} is 0 at n; hold a symbol with `// fixed:`")
+    return at(k * n, f) / base
 
 
 def header(text):
     """The case's `// key: value` header lines."""
     out = {}
     for line in text.splitlines():
-        m = re.match(r"//\s*(scaling|fixed|let|n):\s*(.*)", line)
+        m = re.match(r"//\s*(scaling|fixed|let|n|stdin):\s*(.*)", line)
         if not m:
             break
         out[m.group(1)] = m.group(2).strip()
     return out
 
 
-def per_hit(cpl, case, n, groups, tmp, within=None):
-    """fn -> fastest nanoseconds per hit of its timed lines over RUNS runs at size n, with the
-    time (not the hits) of its `within` lines."""
+def stdin_text(n, lines=0):
+    """The input of a run at `n`: `n`, then `lines` lines of `0 1 .. n-1` each ended by `-1`,
+    a sentinel a `read_all(until: ...)` can stop at."""
+    row = " ".join(map(str, range(n))) + " -1\n"
+    return f"{n}\n" + row * lines
+
+
+def per_hit(cpl, case, sizes, groups, tmp, within=None, floor=MIN_NS, lines=0):
+    """(size -> fn -> fastest nanoseconds per hit of its timed lines over RUNS runs, with the
+    time (not the hits) of its `within` lines; fn -> why its lines take too little time to
+    judge). Runs alternate between the sizes, so a busy machine slows every size alike
+    instead of skewing their ratio."""
     within = within or {}
-    inp = os.path.join(tmp, f"{os.path.basename(case)}.{n}.in")
-    with open(inp, "w") as f:
-        f.write(f"{n}\n")
-    best = {}
+    inputs = {}
+    for n in sizes:
+        inputs[n] = os.path.join(tmp, f"{os.path.basename(case)}.{n}.in")
+        with open(inputs[n], "w") as f:
+            f.write(stdin_text(n, lines))
+    best, short = {n: {} for n in sizes}, {}
     for _ in range(RUNS):
-        run = subprocess.run([cpl, "profile", "--native", case, inp, "--format", "json"],
-                             cwd=ROOT, capture_output=True, text=True, timeout=300)
-        if run.returncode != 0:
-            raise RuntimeError(run.stderr.strip().splitlines()[0] if run.stderr.strip() else "profile failed")
-        by_line = {l["line"]: l for l in json.loads(run.stdout)["lines"]}
-        for fn, timed in groups.items():
-            lines = [by_line[i] for i in timed if i in by_line]
-            ns, hits = sum(l["time_ns"] for l in lines), sum(l["start_count"] for l in lines)
-            ns += sum(by_line[i]["time_ns"] for i in within.get(fn, ()) if i in by_line)
-            if not hits:
-                raise RuntimeError(f"no line timing {fn} ran")
-            if ns < MIN_NS:
-                raise RuntimeError(f"the lines timing {fn} take {ns} ns at n={n}, under {MIN_NS}; raise `// n:`")
-            best[fn] = min(best.get(fn, math.inf), ns / hits)
-    return best
+        for n in sizes:
+            run = subprocess.run([cpl, "profile", "--native", case, inputs[n], "--format", "json"],
+                                 cwd=ROOT, capture_output=True, text=True, timeout=300,
+                                 env=profile_env(os.environ))
+            if run.returncode != 0:
+                raise RuntimeError(run.stderr.strip().splitlines()[0] if run.stderr.strip() else "profile failed")
+            by_line = {l["line"]: l for l in json.loads(run.stdout)["lines"]}
+            for fn, timed in groups.items():
+                lines = [by_line[i] for i in timed if i in by_line]
+                ns, hits = sum(l["time_ns"] for l in lines), sum(l["start_count"] for l in lines)
+                ns += sum(by_line[i]["time_ns"] for i in within.get(fn, ()) if i in by_line)
+                if not hits:
+                    raise RuntimeError(f"no line timing {fn} ran")
+                if ns < floor:
+                    short.setdefault(fn, f"its lines take {ns} ns at n={n}, under {floor:.0f}; time more calls")
+                best[n][fn] = min(best[n].get(fn, math.inf), ns / hits)
+    return best, short
+
+
+TIMED = re.compile(r"//\s*timed(?::\s*([\w.]+))?((?:\s*\[[^\]]*\])*)\s*$")
 
 
 def timed_lines(text, default):
     """fn -> the line numbers marked `// timed` (the header's fn) or `// timed: fn`."""
     groups = {}
     for i, line in enumerate(text.splitlines(), 1):
-        m = re.search(r"//\s*timed(?::\s*(\S+))?\s*$", line)
+        m = TIMED.search(line)
         if m:
             groups.setdefault(m.group(1) or default, set()).add(i)
     return groups
+
+
+def lets(text):
+    """`k = \\log n; d = 2` as {symbol: formula}."""
+    return dict((p.strip() for p in d.split("=", 1)) for d in text.split(";") if d.strip())
+
+
+def overrides(text, default):
+    """fn -> (fixed, let) from `[fixed: a, b]` and `[let: k = \\log n]` after its `// timed`
+    marks: the meaning a symbol has in this fn's cost alone, when it differs from the
+    case's header (`self` a fixed-length string for `repeat`, scaled for `trim`)."""
+    out = {}
+    for line in text.splitlines():
+        m = TIMED.search(line)
+        if not m or not m.group(2).strip():
+            continue
+        fixed, let = out.setdefault(m.group(1) or default, (set(), {}))
+        for key, val in re.findall(r"\[\s*(fixed|let)\s*:\s*([^\]]*)\]", m.group(2)):
+            if key == "fixed":
+                fixed.update(s.strip() for s in val.split(",") if s.strip())
+            else:
+                let.update(lets(val))
+    return out
 
 
 def within_lines(text):
@@ -238,29 +309,46 @@ def run_case(cpl, case, costs, tmp):
         return [(f"{rel}::", {"fn": None, "ok": False, "why": "no line is marked `// timed`"})]
     n = int(head.get("n", N))
     fixed = tuple(s.strip() for s in head.get("fixed", "").split(",") if s.strip())
-    let = dict((p.strip() for p in d.split("=", 1)) for d in head.get("let", "").split(";") if d.strip())
+    let = lets(head.get("let", ""))
+    own = overrides(text, head.get("scaling"))
     out, documented = [], {}
     for fn in groups:
+        own_fixed, own_let = own.get(fn, ((), {}))
+        fn_let = {s: e for s, e in let.items() if s not in own_fixed} | own_let
+        fn_fixed = tuple(s for s in fixed if s not in own_let) + tuple(own_fixed)
         formula = big_o(costs[fn]) if fn in costs else None
         try:
             if fn not in costs:
                 raise ValueError(f"`{fn}` is no std fn with a cost")
             if not formula:
                 raise ValueError(f"no O(...) in its cost: {costs[fn]}")
-            documented[fn] = (formula, growth(formula, fixed, n=float(n), let=let))
+            documented[fn] = (formula, growth(formula, fn_fixed, n=float(n), let=fn_let))
         except ValueError as e:
             out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}))
     try:
         within = within_lines(text)
-        small = per_hit(cpl, case, n, groups, tmp, within)
-        big = per_hit(cpl, case, 4 * n, groups, tmp, within)
+        timed, short = per_hit(cpl, case, (n, 4 * n), groups, tmp, within,
+                               lines=int(head.get("stdin", 0)))
+        small, big = timed[n], timed[4 * n]
     except (RuntimeError, subprocess.TimeoutExpired) as e:
         return out + [(f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}) for fn in documented]
     for fn, (formula, want) in documented.items():
+        if fn in short:
+            out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": short[fn]}))
+            continue
         measured = big[fn] / small[fn]
         out.append((f"{rel}::{fn}", {"fn": fn, "cost": formula, "n": n, "documented": round(want, 2),
                                       "measured": round(measured, 2), "ok": judge(measured, want)}))
     return out
+
+
+def merge(old, results, cases, costs):
+    """The board with `cases` rerun as `results` and every other existing case kept as `old` records it."""
+    rerun = {os.path.relpath(os.path.abspath(c), ROOT) for c in cases}
+    kept = {k: r for k, r in old.get("cases", {}).items()
+            if k.split("::")[0] not in rerun and os.path.exists(os.path.join(ROOT, k.split("::")[0]))}
+    merged = {**kept, **results}
+    return {"cases": merged, "unscaled": sorted(set(costs) - {r["fn"] for r in merged.values()})}
 
 
 def main():
@@ -295,7 +383,13 @@ def main():
             print(f"scaling: {rel}: {r['fn']} {why}", file=sys.stderr)
     print(f"scaling: {len(results) - bad} of {len(results)} cases agree with the docs; "
           f"{len(board['unscaled'])} std fns with a cost have no case")
-    if args.write and not args.cases:
+    if args.write:
+        if args.cases:
+            try:
+                old = json.load(open(BOARD))
+            except (OSError, ValueError):
+                old = {}
+            board = merge(old, results, cases, costs)
         with open(BOARD, "w") as f:
             json.dump(board, f, indent=1, sort_keys=True)
             f.write("\n")

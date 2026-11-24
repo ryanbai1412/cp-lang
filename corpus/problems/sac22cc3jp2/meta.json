@@ -19,5 +19,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "inline if/elif expression."
+ "notes": "inline if/elif expression.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "8ee94e1dac8230d47eb103d24bce8ad6fd400b17"
+ }
 }

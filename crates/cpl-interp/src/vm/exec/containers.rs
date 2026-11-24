@@ -1,5 +1,5 @@
 use crate::observe::Observer;
-use crate::value::{ArrayData, OptVal, TupleVal, Value};
+use crate::value::{Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{trap, Interp, Res};
@@ -37,8 +37,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                     },
-                    Value::Range128(lo, hi) if lo >= hi => 0,
-                    Value::Range128(lo, hi) => {
+                    Value::Range128(r) if r.0 >= r.1 => 0,
+                    Value::Range128(r) => {
+                        let (lo, hi) = (&r.0, &r.1);
                         match hi.checked_sub(*lo).and_then(|d| i64::try_from(d).ok()) {
                             Some(d) => d,
                             None => {
@@ -130,7 +131,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let ArrayData::SmallIntTuple { stride, data, .. } = &mut a.data {
+                    if let Cells::SmallIntTuple { stride, data, .. } = &mut a.data {
                         let off = idx as usize * (*stride as usize);
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
@@ -182,7 +183,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let ArrayData::SmallIntTuple { stride, data, .. } = &mut a.data {
+                    if let Cells::SmallIntTuple { stride, data, .. } = &mut a.data {
                         let off = idx as usize * (*stride as usize);
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
@@ -527,7 +528,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            Rc::make_mut(list)[idx as usize] = kind.box_val(val);
+                            Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                         }
                         _ => return trap(spans[cur_pc], "internal: expected array or list"),
                     }
@@ -567,7 +568,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            Rc::make_mut(list)[idx as usize] = val;
+                            Rc::make_mut(list).set(idx as usize, val);
                         }
                         _ => return trap(spans[cur_pc], "internal: expected array or list"),
                     }
@@ -606,7 +607,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     format!("index {idx} is outside a list of length {len}"),
                                 );
                             }
-                            Rc::make_mut(list)[idx as usize] = kind.box_opt(v, s);
+                            Rc::make_mut(list).set(idx as usize, kind.box_opt(v, s));
                         }
                         _ => return trap(spans[cur_pc], "internal: expected array or list"),
                     }
@@ -682,7 +683,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             format!("index {idx} is outside a list of length {len}"),
                         );
                     }
-                    Rc::make_mut(list)[idx as usize] = val;
+                    Rc::make_mut(list).set(idx as usize, val);
                 } else {
                     return trap(spans[cur_pc], "internal: expected list");
                 }
@@ -702,7 +703,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             format!("index {idx} is outside a list of length {len}"),
                         );
                     }
-                    Rc::make_mut(list)[idx as usize] = val;
+                    Rc::make_mut(list).set(idx as usize, val);
                 } else {
                     return trap(spans[cur_pc], "internal: expected list");
                 }
@@ -717,7 +718,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             format!("index {idx} is outside a list of length {len}"),
                         );
                     }
-                    regs_v[dst as usize] = list[idx as usize].clone();
+                    regs_v[dst as usize] = list.get_unchecked_val(idx as usize);
                 } else {
                     return trap(spans[cur_pc], "internal: expected list");
                 }
@@ -733,7 +734,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        regs_v[dst as usize] = list[idx as usize].clone();
+                        regs_v[dst as usize] = list.get_unchecked_val(idx as usize);
                     }
                     Value::ListView(view) => {
                         let len = view.len as i64;
@@ -743,8 +744,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        regs_v[dst as usize] =
-                            view.get(idx as usize).cloned().unwrap_or(Value::Unit);
+                        regs_v[dst as usize] = view.get(idx as usize).unwrap_or(Value::Unit);
                     }
                     _ => return trap(spans[cur_pc], "internal: expected list"),
                 }
@@ -765,7 +765,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        ScalarKind::unbox_opt(&list[idx as usize])
+                        ScalarKind::unbox_opt(&list.get_unchecked_val(idx as usize))
                     }
                     Value::ListView(view) => {
                         let len = view.len as i64;
@@ -775,7 +775,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        ScalarKind::unbox_opt(view.get(idx as usize).unwrap_or(&Value::Unit))
+                        ScalarKind::unbox_opt(&view.get(idx as usize).unwrap_or(Value::Unit))
                     }
                     _ => return trap(spans[cur_pc], "internal: expected list"),
                 };
@@ -794,7 +794,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         .collect(),
                     _ => return trap(spans[cur_pc], "internal: expected a set, map or table"),
                 };
-                regs_v[dst as usize] = Value::List(Rc::new(items));
+                regs_v[dst as usize] = Value::List(Rc::new(crate::value::Cells::from(items)));
             }
             Op::ListPopFieldOptIL {
                 dst_val,
@@ -890,10 +890,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::SmallIntTuple { stride, data, .. } => {
+                            Cells::SmallIntTuple { stride, data, .. } => {
                                 data[idx as usize * (*stride as usize) + field as usize]
                             }
-                            ArrayData::Values(vs) => match &vs[idx as usize] {
+                            Cells::Values(vs) => match &vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     ScalarKind::unbox_val(&fs[field as usize])
                                 }
@@ -911,7 +911,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        match &list[idx as usize] {
+                        match &list.get_unchecked_val(idx as usize) {
                             Value::Tuple(TupleVal::Boxed(fs)) => {
                                 ScalarKind::unbox_val(&fs[field as usize])
                             }
@@ -945,10 +945,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let a = Rc::make_mut(arr);
                         match &mut a.data {
-                            ArrayData::SmallIntTuple { stride, data, .. } => {
+                            Cells::SmallIntTuple { stride, data, .. } => {
                                 data[idx as usize * (*stride as usize) + field as usize] = raw;
                             }
-                            ArrayData::Values(vs) => match &mut vs[idx as usize] {
+                            Cells::Values(vs) => match &mut vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
                                 }
@@ -966,7 +966,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        match &mut Rc::make_mut(list)[idx as usize] {
+                        match &mut Rc::make_mut(list).as_mut_values()[idx as usize] {
                             Value::Tuple(TupleVal::Boxed(fs)) => {
                                 Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
                             }
@@ -996,10 +996,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::SmallIntTuple { stride, data, .. } => {
+                            Cells::SmallIntTuple { stride, data, .. } => {
                                 data[idx as usize * (*stride as usize) + field as usize]
                             }
-                            ArrayData::Values(vs) => match &vs[idx as usize] {
+                            Cells::Values(vs) => match &vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     ScalarKind::unbox_val(&fs[field as usize])
                                 }
@@ -1017,7 +1017,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        match &list[idx as usize] {
+                        match &list.get_unchecked_val(idx as usize) {
                             Value::Tuple(TupleVal::Boxed(fs)) => {
                                 ScalarKind::unbox_val(&fs[field as usize])
                             }
@@ -1051,10 +1051,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let a = Rc::make_mut(arr);
                         match &mut a.data {
-                            ArrayData::SmallIntTuple { stride, data, .. } => {
+                            Cells::SmallIntTuple { stride, data, .. } => {
                                 data[idx as usize * (*stride as usize) + field as usize] = raw;
                             }
-                            ArrayData::Values(vs) => match &mut vs[idx as usize] {
+                            Cells::Values(vs) => match &mut vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
                                 }
@@ -1072,7 +1072,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {len}"),
                             );
                         }
-                        match &mut Rc::make_mut(list)[idx as usize] {
+                        match &mut Rc::make_mut(list).as_mut_values()[idx as usize] {
                             Value::Tuple(TupleVal::Boxed(fs)) => {
                                 Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
                             }

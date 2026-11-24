@@ -4,6 +4,7 @@
 //   1 <= k, x <= 20, print any possible start. Multitest.
 // Solution: start at x * 2^k: every value on the way is even, so each step halves it. Print
 //   `x << k` (at most 20 * 2^20, no overflow), O(1).
+// Bounds: k, x: 1..=20
 
 @!multitest
 let (k, x): (1..=20, 1..=20) = read()

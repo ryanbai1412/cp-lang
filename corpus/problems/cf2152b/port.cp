@@ -9,6 +9,7 @@
 //   rD turns to get there), to row n when rK > rD (n - rD turns), 0 when level; columns
 //   likewise. The answer is the larger of the two axes, O(1). It is at most n, so the Krug
 //   never survives forever and -1 is never printed.
+// Bounds: n: 1..=10 ** 9; rk, ck, rd, cd: 0..=n
 
 @!multitest
 let n: 1..=10 ** 9 = read()

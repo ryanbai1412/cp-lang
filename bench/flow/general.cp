@@ -1,5 +1,4 @@
 // Edmonds blossom: 10000 vertices, 15000 random undirected edges.
-use std.flow.{general_matching}
 
 domain V = 0..10000
 var seed = 1

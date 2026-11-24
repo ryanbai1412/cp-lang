@@ -4,6 +4,7 @@
 //! change what the program does.
 
 use super::shapes;
+use crate::std_fn;
 use crate::walk::{self, Bind, Visitor};
 use crate::{
     File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
@@ -263,7 +264,7 @@ impl<'a> Taste<'a> {
         // An interactive search's queries are counted: `first_true` asks at
         // the ends too.
         if self.unchecked.iter().any(|&(a, b)| a <= start && start < b)
-            || self.idents.contains("ask")
+            || self.idents.contains(std_fn::ASK)
             || self.idents.contains("flush")
         {
             return;
@@ -273,7 +274,11 @@ impl<'a> Taste<'a> {
         if mentions(pred_text, found.lo) || mentions(pred_text, found.hi) || has_try(stmt) {
             return;
         }
-        let call = if found.up { "last_true" } else { "first_true" };
+        let call = if found.up {
+            std_fn::LAST_TRUE
+        } else {
+            std_fn::FIRST_TRUE
+        };
         let mut diag = Diagnostic::warning(
             HAND_ROLLED_ANSWER_SEARCH.code,
             stmt.span,
@@ -437,8 +442,8 @@ impl<'a> Taste<'a> {
                         format!("let {} = {expr}", found.arr),
                     )];
                     let read = match &found.kind {
-                        PrefixLoopKind::RangeZero { .. } => "cut",
-                        _ => "prefix",
+                        PrefixLoopKind::RangeZero { .. } => std_fn::CUT,
+                        _ => std_fn::PREFIX,
                     };
                     for (rb, idx_expr_span, ix_span) in reads {
                         let ix_text = at(rb, ix_span);
@@ -559,10 +564,10 @@ impl<'a> Taste<'a> {
                     extract_contiguous_slice(self.src, first_base, base)
                 {
                     let in_place = match name.text.as_str() {
-                        "sorted" => Some("sort"),
-                        "reversed" => Some("reverse"),
-                        "rotated_left" => Some("rotate_left"),
-                        "rotated_right" => Some("rotate_right"),
+                        std_fn::SORTED => Some(std_fn::SORT),
+                        "reversed" => Some(std_fn::REVERSE),
+                        std_fn::ROTATED_LEFT => Some(std_fn::ROTATE_LEFT),
+                        std_fn::ROTATED_RIGHT => Some(std_fn::ROTATE_RIGHT),
                         _ => None,
                     };
                     if let Some(method) = in_place {
@@ -578,7 +583,7 @@ impl<'a> Taste<'a> {
                         });
                     }
                     // Form 2a (3 statements): `var sub = xs[l..r].to_list()` + `sub.sort(..)` + writeback
-                    if name.text == "to_list" && args.is_empty() {
+                    if name.text == std_fn::TO_LIST && args.is_empty() {
                         if let Some((method, args)) =
                             match_in_place_mut_stmt(self.src, stmts.get(i + 1)?, sub_name)
                         {
@@ -712,6 +717,7 @@ impl<'a> Taste<'a> {
 
     /// `a[u, v] = e` then `a[v, u] = e`; `g[u].push(v)` then `g[v].push(u)`.
     fn symmetric(&mut self, a: &Stmt, b: &Stmt) {
+        let cells = matches!(a.kind, StmtKind::Assign { .. });
         let mirrored = match (&a.kind, &b.kind) {
             (
                 StmtKind::Assign {
@@ -767,9 +773,11 @@ impl<'a> Taste<'a> {
             self.pair_span(a.span, b.span),
             "one fact written twice, once for each order",
         )
-        .with_help(
-            "keep it in one place: build the graph with `Graph.undirected(..)`, or loop over both orders",
-        );
+        .with_help(if cells {
+            "keep it in one place: key it by `Pair<V>` and build the matrix with `.symmetric(diag: ..)`"
+        } else {
+            "keep it in one place: build the graph with `Graph.undirected(..)`, or loop over both orders"
+        });
         self.push(&SYMMETRIC_WRITE, diag);
     }
 
@@ -789,7 +797,7 @@ impl<'a> Taste<'a> {
         else {
             return None;
         };
-        if name.text != "push" || indices.len() != 1 || args.len() != 1 {
+        if name.text != std_fn::PUSH || indices.len() != 1 || args.len() != 1 {
             return None;
         }
         let (v, rest) = match &walk::unparen(&args[0].value).kind {
@@ -835,9 +843,9 @@ impl<'a> Taste<'a> {
             Some((call, text)) => (call, Some(text)),
             None => (
                 match init_text {
-                    "None" | "none" => "first",
-                    "false" => "any",
-                    _ => "all",
+                    "None" | "none" => std_fn::FIRST,
+                    "false" => std_fn::ANY,
+                    _ => std_fn::ALL,
                 },
                 None,
             ),
@@ -899,7 +907,7 @@ impl<'a> Taste<'a> {
             return None;
         }
         Some(match (init, v) {
-            ("None" | "none", _) => ("first", format!("first({v} for {p} in {it} if {c})")),
+            ("None" | "none", _) => (std_fn::FIRST, format!("first({v} for {p} in {it} if {c})")),
             (lit, _)
                 if forms::write_once(&body.stmts, name).is_none()
                     && lit
@@ -908,15 +916,18 @@ impl<'a> Taste<'a> {
                         .all(|ch| ch.is_ascii_digit() || ch == '_') =>
             {
                 (
-                    "first",
+                    std_fn::FIRST,
                     format!("first({v} for {p} in {it} if {c}) ?? {lit}"),
                 )
             }
-            ("false", "true") => ("any", format!("{}.any({p} => {c})", receiver(&it))),
+            ("false", "true") => (std_fn::ANY, format!("{}.any({p} => {c})", receiver(&it))),
             ("true", "false") => {
                 let holds =
                     negated(cond, |e| self.ntext(e.span)).unwrap_or_else(|| format!("not ({c})"));
-                ("all", format!("{}.all({p} => {holds})", receiver(&it)))
+                (
+                    std_fn::ALL,
+                    format!("{}.all({p} => {holds})", receiver(&it)),
+                )
             }
             _ => return None,
         })
@@ -1046,7 +1057,7 @@ impl<'a> Taste<'a> {
         // `xs.first` is the first element; the element a test holds for is
         // `xs.find(x => ..)` (decisions.md §182).
         if let (ExprKind::Field { name: method, .. }, [test]) = (&callee.kind, &args[..]) {
-            if method.text == "first"
+            if method.text == std_fn::FIRST
                 && test.name.is_none()
                 && matches!(test.value.kind, ExprKind::Lambda { .. })
             {
@@ -1058,7 +1069,7 @@ impl<'a> Taste<'a> {
                 .with_help("write `.find(..)`");
                 diag.fixes.push(Fix {
                     title: "use `.find`".to_string(),
-                    edits: vec![(method.span, "find".to_string())],
+                    edits: vec![(method.span, std_fn::FIND.to_string())],
                 });
                 self.push(&FREE_FOLD, diag);
             }
@@ -1078,25 +1089,27 @@ impl<'a> Taste<'a> {
         }
         let positional = args.iter().all(|a| a.name.is_none() && !a.mutable);
         let fits = match name.as_str() {
-            "sum" | "prod" => args.len() == 1 && !seq.mutable,
-            "min" | "max" => {
+            std_fn::SUM | std_fn::PROD => args.len() == 1 && !seq.mutable,
+            std_fn::MIN | std_fn::MAX => {
                 !seq.mutable
                     && (args.len() == 1
                         || (args.len() == 2
                             && args[1].name.as_ref().map(|n| n.text.as_str()) == Some("by")))
             }
-            "count" | "all" | "any" | "first" => {
+            std_fn::COUNT | std_fn::ALL | std_fn::ANY | std_fn::FIRST => {
                 args.len() == 2 && positional && is_test(&args[1].value)
             }
-            "sorted" => !seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
-            "sort" => seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
+            std_fn::SORTED => !seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
+            std_fn::SORT => seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
             _ => false,
         };
         // `sorted(V, by: k)` walks a domain, not a value; `min([a, b, c])`
         // is a list literal rather than a named sequence.
         let skip = match &seq.value.kind {
             ExprKind::Name(n) => n.starts_with(char::is_uppercase),
-            ExprKind::List(_) => matches!(name.as_str(), "min" | "max") && args.len() == 1,
+            ExprKind::List(_) => {
+                matches!(name.as_str(), std_fn::MIN | std_fn::MAX) && args.len() == 1
+            }
             _ => false,
         };
         if !fits || skip {
@@ -1122,8 +1135,8 @@ impl<'a> Taste<'a> {
             _ => "",
         };
         // The method form of `first(xs, p)` is `xs.find(p)` (decisions.md §182).
-        let method = if name == "first" {
-            "find"
+        let method = if name == std_fn::FIRST {
+            std_fn::FIND
         } else {
             name.as_str()
         };
@@ -1157,7 +1170,7 @@ impl<'a> Taste<'a> {
             return;
         }
         let to = match name.text.as_str() {
-            "preorder" => "at",
+            std_fn::PREORDER => std_fn::AT,
             "postorder" | "post_order" => "at.rev",
             _ => return,
         };
@@ -1184,7 +1197,7 @@ impl<'a> Taste<'a> {
         let ExprKind::Field { base, name: method } = &callee.kind else {
             return;
         };
-        if method.text == "sorted" {
+        if method.text == std_fn::SORTED {
             if let ExprKind::Name(n) = &base.kind {
                 if n.chars().next().is_some_and(char::is_uppercase) {
                     let mut diag = Diagnostic::warning(
@@ -1195,14 +1208,14 @@ impl<'a> Taste<'a> {
                     .with_help("domains sort with `.sort(by:)`, matching `xs.sort(by:)`");
                     diag.fixes.push(Fix {
                         title: "rename to `sort`".into(),
-                        edits: vec![(method.span, "sort".into())],
+                        edits: vec![(method.span, std_fn::SORT.into())],
                     });
                     self.push(&DOMAIN_SPELLING, diag);
                     return;
                 }
             }
         }
-        if method.text == "first" && args.len() == 1 {
+        if method.text == std_fn::FIRST && args.len() == 1 {
             if let Some(arg_name) = &args[0].name {
                 if arg_name.text == "where" {
                     let label_span = Span {
@@ -1219,7 +1232,10 @@ impl<'a> Taste<'a> {
                     );
                     diag.fixes.push(Fix {
                         title: "use `.find(p)`".into(),
-                        edits: vec![(method.span, "find".into()), (label_span, String::new())],
+                        edits: vec![
+                            (method.span, std_fn::FIND.into()),
+                            (label_span, String::new()),
+                        ],
                     });
                     self.push(&DOMAIN_SPELLING, diag);
                 }
@@ -1240,6 +1256,11 @@ impl<'a> Taste<'a> {
         decl: &Stmt,
         next: &Stmt,
     ) {
+        // `x ?? return None` must be a whole right side (E0501), so a
+        // generator can't hold it.
+        if leaves(value) || cond.is_some_and(leaves) {
+            return;
+        }
         let (p, it, v, i) = (
             self.ntext(pat.span),
             iter_text(iter, self.ntext(iter.span)),
@@ -1278,7 +1299,7 @@ impl<'a> Taste<'a> {
                 format!("a loop that only folds `{name}` through `{f}` is one `fold`"),
             )
             .with_help(format!(
-                "write `{seq}.fold({folded}, {i})`; one call says what the loop computes, with the start value next to it"
+                "write `{seq}.fold_from({i}, {folded})`; one call says what the loop computes, with the start value first"
             ));
             self.push(&LOOP_REDUCTION, diag);
             return;
@@ -1306,7 +1327,7 @@ impl<'a> Taste<'a> {
                 // A lambda can't write what it captures; a generator can.
                 let writes = cond.is_some_and(writes_place);
                 (
-                    "count",
+                    std_fn::COUNT,
                     Some(if one_name && !stepped && !writes {
                         generator = Some(format!("count({c} for {p} in {it})"));
                         format!("{}.count({p} => {c})", receiver(&it))
@@ -1326,18 +1347,18 @@ impl<'a> Taste<'a> {
                         ExprKind::Range { step: Some(_), .. } | ExprKind::By { .. }
                     ) =>
             {
-                ("sum", Some(format!("{}.sum()", receiver(&it))))
+                (std_fn::SUM, Some(format!("{}.sum()", receiver(&it))))
             }
             AssignOp::Binary(BinOp::Add) => (
-                "sum",
+                std_fn::SUM,
                 Some(if i == "0" {
                     format!("sum({v} for {p} in {it}{filter})")
                 } else {
                     format!("{i} + sum({v} for {p} in {it}{filter})")
                 }),
             ),
-            AssignOp::Max => ("max", None),
-            AssignOp::Min => ("min", None),
+            AssignOp::Max => (std_fn::MAX, None),
+            AssignOp::Min => (std_fn::MIN, None),
             _ => return,
         };
         // `let sum = sum(..)` names itself.
@@ -1462,7 +1483,7 @@ fn zero_indexed_list(iter: &Expr) -> Option<&str> {
             hi: Some(hi),
             inclusive: false,
             step: None,
-        } if matches!(lo.kind, ExprKind::Int(0)) => len_of(hi, "len"),
+        } if matches!(lo.kind, ExprKind::Int(0)) => len_of(hi, std_fn::LEN),
         _ => len_of(iter, "indices"),
     }
 }
@@ -1603,4 +1624,20 @@ fn param_type<'s>(src: &'s str, f: &str, n: usize) -> Option<&'s str> {
 fn is_type_name(s: &str) -> bool {
     s.starts_with(|c: char| c.is_ascii_uppercase())
         && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// Whether `e` holds a `return`, `break` or `continue` (`x ?? break`).
+fn leaves(e: &Expr) -> bool {
+    struct Leaves(bool);
+    impl cpl_syntax::visit::Visitor for Leaves {
+        fn stmt(&mut self, s: &Stmt) {
+            self.0 |= matches!(
+                s.kind,
+                StmtKind::Return(_) | StmtKind::Break(_) | StmtKind::Continue(_)
+            );
+        }
+    }
+    let mut v = Leaves(false);
+    cpl_syntax::visit::walk_expr(e, &mut v);
+    v.0
 }

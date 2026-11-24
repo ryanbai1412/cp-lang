@@ -13,17 +13,16 @@
 
 use crate::case::{judge_case, Ran, Ruling, Sides, Talked, Wrong};
 use crate::choices::{self, Drawn};
-use crate::cli::{swap_in_part_brutes, Stage};
-use crate::judge::{first_difference, Judge, Verdict};
+use crate::cli::swap_in_part_brutes;
+use crate::judge::{explaining, Explaining};
+use crate::judge::{Judge, Trapped};
 use crate::program::Program;
 use crate::report::StressResult;
 use crate::run::StressError as Error;
 use crate::run::{stress_with, InputSource, Options, StressError};
 use crate::spec::InputSpec;
+use crate::traced::retrace;
 use cpl_diag::Severity;
-use cpl_interp::trace::{
-    explain_divergence, stages as trace_stages, stuck_divergence, TraceConfig,
-};
 use std::time::Duration;
 
 /// Runs the solution (and optional brute / judge) on one input.
@@ -134,21 +133,7 @@ impl Sides for ProcessEngine<'_> {
         let cold_out = cold
             .run(input, crate::case::brute_limit(limit))
             .map_err(unrunnable(cold))?;
-        let wrong = |why: String| {
-            Some(crate::case::Failed::new(
-                Verdict::Wrong(why),
-                cold_out.stdout.clone(),
-                got.to_string(),
-            ))
-        };
-        if !cold_out.ok() {
-            return Ok(wrong(format!(
-                "@cache cold run failed ({:?}) while cached run succeeded",
-                cold_out.exit
-            )));
-        }
-        Ok(first_difference(&cold_out.stdout, got)
-            .and_then(|why| wrong(format!("@cache changed the output ({why})"))))
+        Ok(crate::judge::recheck(&cold_out, got))
     }
 }
 
@@ -218,7 +203,7 @@ static ENGINES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new
 impl InterpEngine {
     /// [`run_ir`] on the calling thread, from the state `program` reaches
     /// before it first reads, once a first run has found it.
-    fn run_case(
+    fn run_resumed(
         &self,
         role: Role,
         program: &cpl_ir::Program,
@@ -293,41 +278,13 @@ fn run_ir(
     }
 }
 
-/// How long the traced run that explains a counterexample may take.
-const TRACE_LIMIT: Duration = Duration::from_secs(10);
-
-/// The first steps of a run that never finishes: enough to see it go round.
-pub const STUCK_STEPS: usize = 100_000;
-
-fn observe_ir(
-    program: &cpl_ir::Program,
-    input: &[u8],
-    stack_limit: Option<u32>,
-    config: TraceConfig,
-) -> cpl_interp::Observed {
-    let mut sink = Vec::new();
-    let io = cpl_interp::Io::fixed(input).until(cpl_interp::Stop::after(TRACE_LIMIT));
-    match stack_limit {
-        Some(bytes) => cpl_interp::observe_on_this_thread(
-            program,
-            io,
-            &mut sink,
-            cpl_interp::Limits {
-                stack_bytes: bytes as usize,
-            },
-            Some(config),
-        ),
-        None => cpl_interp::run_observed(program, io, &mut sink, Some(config)),
-    }
-}
-
 impl Engine for InterpEngine {
     fn has_brute(&self) -> bool {
         self.brute.is_some()
     }
 
     fn stops(&self, input: &str) -> bool {
-        self.run_case(Role::Fast, &self.fast, input, self.limit)
+        self.run_resumed(Role::Fast, &self.fast, input, self.limit)
             .is_err()
     }
 
@@ -346,10 +303,7 @@ fn ran(run: Result<String, (String, cpl_interp::Trap)>) -> Ran {
         Ok(out) => Ran { out, stop: None },
         Err((out, trap)) => Ran {
             out,
-            stop: Some(match trap.message.as_str() {
-                cpl_interp::OUT_OF_TIME => Verdict::TimeLimit,
-                _ => Verdict::RuntimeError(trap.message),
-            }),
+            stop: Some(crate::judge::interp_failure(trap)),
         },
     }
 }
@@ -369,11 +323,11 @@ impl Sides for InterpEngine {
         Ok(self
             .brute
             .as_ref()
-            .map(|brute| ran(self.run_case(Role::Brute, brute, input, limit))))
+            .map(|brute| ran(self.run_resumed(Role::Brute, brute, input, limit))))
     }
 
     fn solution(&self, input: &str, limit: Duration) -> Result<Ran, Error> {
-        Ok(ran(self.run_case(Role::Fast, &self.fast, input, limit)))
+        Ok(ran(self.run_resumed(Role::Fast, &self.fast, input, limit)))
     }
 
     fn check(
@@ -622,90 +576,59 @@ pub fn stress_source(
     single.jobs = 1;
     let report = stress_with(&input_source, &engine, &single)?;
 
-    let config = |assignments: bool| TraceConfig {
-        source: source.to_string(),
-        assignments,
-        ..TraceConfig::default()
+    let failed = report.failure.as_ref();
+    let programs = crate::traced::Programs {
+        fast: &engine.fast,
+        brute: engine.brute.as_ref(),
+        interactor: engine.interactor.as_ref().map(|i| &i.program),
     };
-    let mut stages = Vec::new();
-    let mut explained = None;
-    let timed_out = |failure: &crate::run::Failure| matches!(failure.verdict, Verdict::TimeLimit);
-    if let (Some(failure), true) = (&report.failure, explain) {
-        if timed_out(failure) {
-            let rec = observe_ir(
-                &engine.fast,
-                failure.input.as_bytes(),
+    let interactive = programs.interactor.is_some();
+    let how = failed.and_then(|f| explaining(&f.verdict, interactive, programs.brute.is_some()));
+    let retraced = match (failed, &how) {
+        (Some(failure), Some(how)) if explain || matches!(how, Ok(Explaining::Versus)) => {
+            let input = &failure.input;
+            Some(retrace(
+                source,
+                programs,
+                input,
+                Some(how),
+                explain,
                 stack_limit,
-                TraceConfig {
-                    max_steps: Some(STUCK_STEPS),
-                    stop_when_full: true,
-                    record_frames: true,
-                    ..config(false)
-                },
-            )
-            .recording
-            .unwrap_or_default();
-            explained = Some(stuck_divergence(source, &rec).map(Some).ok_or(format!(
-                "the solution never finishes, and none of its first {STUCK_STEPS} steps repeats an earlier one"
-            )));
+            ))
         }
-    }
-    if let (Some(failure), Some(brute_prog)) = (&report.failure, &engine.brute) {
-        let brute_failed = matches!(failure.verdict, Verdict::BruteError(_));
-        if own_brute.is_some() && !timed_out(failure) && !brute_failed {
-            let fast_rec = observe_ir(
-                &engine.fast,
-                failure.input.as_bytes(),
-                stack_limit,
-                config(explain),
-            )
-            .recording
-            .unwrap_or_default();
-            let slow_rec = observe_ir(
-                brute_prog,
-                failure.input.as_bytes(),
-                stack_limit,
-                config(explain),
-            )
-            .recording
-            .unwrap_or_default();
-            stages = trace_stages(&fast_rec, &slow_rec)
-                .into_iter()
-                .map(|s| Stage {
-                    name: s.name,
-                    line: s.line,
-                    fast: s.fast,
-                    brute: s.brute,
-                })
-                .collect();
-            if explain {
-                explained = Some(Ok(explain_divergence(source, &fast_rec, &slow_rec)));
-            }
-        }
-    }
+        _ => None,
+    };
+    let (stages, explained) = match (retraced, how) {
+        (Some(retraced), Some(how)) => (
+            retraced.stages,
+            explain.then(|| how.and(retraced.divergence)),
+        ),
+        _ => (Vec::new(), None),
+    };
 
     let error = report.failure.as_ref().and_then(|failure| {
         if failure.trap.is_some() || failure.transcript.is_some() {
             return failure.trap.clone();
         }
         let path = std::path::Path::new(name);
-        let brute = match failure.verdict {
-            Verdict::RuntimeError(_) => false,
-            Verdict::BruteError(_) if own_brute.is_some() => true,
-            Verdict::JudgeError("checker", _) => {
-                return crate::explain::checker_trap_in(
-                    path,
-                    source,
-                    &failure.input,
-                    &failure.got,
-                    stack_limit,
-                )
-                .map(|t| t.json());
+        let input = &failure.input;
+        match failure.verdict.trapped()? {
+            Trapped::Solution => {
+                crate::explain::trap_report_in(path, source, input, false, stack_limit)
             }
-            _ => return None,
-        };
-        crate::explain::trap_report_in(path, source, &failure.input, brute, stack_limit)
-            .map(|t| t.json())
+            Trapped::Brute if own_brute.is_some() => {
+                crate::explain::trap_report_in(path, source, input, true, stack_limit)
+            }
+            Trapped::Brute => {
+                let swapped = swap_in_part_brutes(source)?;
+                crate::explain::trap_report_in(path, &swapped, input, false, stack_limit)
+            }
+            Trapped::Checker => {
+                crate::explain::checker_trap_in(path, source, input, &failure.got, stack_limit)
+            }
+            Trapped::Interactor => None,
+        }
+        .map(|t| t.json())
     });
     Ok(StressResult {
         stages,

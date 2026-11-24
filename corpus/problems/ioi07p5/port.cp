@@ -9,74 +9,51 @@
 //   grid: the same window over u, with the v's of the window in a Fenwick tree, O(n log m).
 //   cube: each layer z is a small turned grid with 2D prefix sums; an animal asks every layer
 //     how many stand in its box there, counting each pair twice and itself once, O(m^3 + n m).
+//   Boxes are clipped to the turned board, so no window leaves it.
 // original: corpus/submissions/3505539.cpp
+// Bounds: dims: 1..=3; n: 1..=1e5; d: 1..=1e8; m: 1..=7.5e7; xs, at.x, at.y, at.z: 1..=m
 
-let dims: Int = read()
-let n: Int = read()
-let d: Int = read()
-let m: Int = read()
+let (dims, n, d, m): (1..=3, 1..=1e5, 1..=1e8, 1..=7.5e7) = read()
 
 fn line() -> Int:
-    var xs: List<Int> = []
-    for _ in 0..n:
-        let x: Int = read()
-        xs.push(x)
-    xs.sort()
+    let xs: [n]1..=m = read()
+    let row = xs.sorted()
     var (pairs, from) = (0, 0)
-    for i in 0..n:
-        while xs[i] - xs[from] > d: from += 1
+    for (i, x) in row.items:
+        while x - row[from] > d: from += 1
         pairs += i - from
     pairs
 
 fn grid() -> Int:
     domain V = 1 - m..=m - 1
-    var at: List<(u: Int, v: Int)> = []
-    for _ in 0..n:
-        let x: Int = read()
-        let y: Int = read()
-        at.push((u: x + y, v: x - y))
-    at.sort()
+    let at: [n](x: 1..=m, y: 1..=m) = read()
+    let turned = at.map(a => (u: a.x + a.y, v: V(a.x - a.y))).sorted()
     var near = Fenwick<V, Int>()
     var (pairs, from) = (0, 0)
-    for a in at:
-        while a.u - at[from].u > d:
-            near.add(V(at[from].v), -1)
+    for a in turned:
+        while a.u - turned[from].u > d:
+            near.add(turned[from].v, -1)
             from += 1
-        pairs += near.fold(V(max(a.v - d, 1 - m))..=V(min(a.v + d, m - 1)))
-        near.add(V(a.v), 1)
+        pairs += near.fold((a.v.prev(d) ?? V.first!)..=(a.v.next(d) ?? V.last!))
+        near.add(a.v, 1)
     pairs
 
 fn cube() -> Int:
     domain Z = 1..=m
-    domain U = 1..=2 * m      // x + y is 2..=2m; row 1 stays empty
-    domain V = 0..=2 * m - 1  // x - y + m is 1..=2m-1; column 0 stays empty
-    var at: List<(z: Int, u: Int, v: Int)> = []
+    domain U = 2..=2 * m
+    domain V = 1 - m..=m - 1
+    let at: [n](x: 1..=m, y: 1..=m, z: 1..=m) = read()
     var seen: [Z, U, V]Int = 0
-    for _ in 0..n:
-        let x: Int = read()
-        let y: Int = read()
-        let z: Int = read()
-        at.push((z:, u: x + y, v: x - y + m))
-        seen[Z(z), U(x + y), V(x - y + m)] += 1
-    for z in Z:
-        for u in U:
-            for v in V:
-                if u.label > 1 and v.label > 0:
-                    seen[z, u, v] += seen[z, u.prev!, v] + seen[z, u, v.prev!] - seen[
-                        z,
-                        u.prev!,
-                        v.prev!,
-                    ]
-    // animals of layer z with u in (u0..=u1) and v in (v0..=v1), all clamped to the board
-    fn boxed(z: Z, u0: Int, u1: Int, v0: Int, v1: Int) -> Int:
-        let (a, b) = (U(max(u0 - 1, 1)), U(min(u1, 2 * m)))
-        let (c, e) = (V(max(v0 - 1, 0)), V(min(v1, 2 * m - 1)))
-        seen[z, b, e] - seen[z, a, e] - seen[z, b, c] + seen[z, a, c]
+    for (x, y, z) in at: seen[Z(z), U(x + y), V(x - y)] += 1
+    let layer = [Prefix<U, V, Int>([U, V] (u, v) => seen[z, u, v]) for z in Z]
     var twice = 0
-    for p in at:
-        for z in Z:
-            let r = d - abs(z.label - p.z)
-            if r >= 0: twice += boxed(z, p.u - r, p.u + r, p.v - r, p.v + r)
+    for (x, y, z) in at:
+        for w in Z:
+            let r = d - abs(w.label - z)
+            if r >= 0:
+                let (u, v) = (U(x + y), V(x - y))
+                let rows = (u.prev(r) ?? U.first!)..=(u.next(r) ?? U.last!)
+                twice += layer[w.ord].fold(rows, (v.prev(r) ?? V.first!)..=(v.next(r) ?? V.last!))
     (twice - n) / 2
 
 print(if dims == 1: line() elif dims == 2: grid() else: cube())

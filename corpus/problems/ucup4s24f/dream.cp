@@ -11,7 +11,6 @@
 // O(1) amortized time. Finally, the first chosen position must lie in
 // `1..=first_0` where `first_0 = last_occ.get(0) ?? (n + 1)`.
 
-use std.window.{Window}
 
 @!multitest
 let (n, r): (1..=500_000, 1..=500_000) = read()

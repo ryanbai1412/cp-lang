@@ -7,6 +7,9 @@
 use std::collections::BTreeMap;
 use std::fmt::{self, Write};
 
+mod writer;
+pub use writer::{write_with, Number, Writer};
+
 const MAX_DEPTH: usize = 128;
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -199,44 +202,25 @@ impl From<BTreeMap<String, Value>> for Value {
 }
 
 /// Builds a `Value::Object` from an array of `(key, value)` pairs.
+/// Inlined into a call of one non-generic builder, so each array length
+/// costs a few bytes of wasm rather than a copy of the map building.
+#[inline]
 pub fn obj<const N: usize>(members: [(&str, Value); N]) -> Value {
-    Value::Object(
-        members
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v))
-            .collect(),
-    )
+    object(&mut members.into_iter())
 }
 
-/// Writes `s` as a quoted, RFC 8259-escaped JSON string.
-pub fn write_string(out: &mut impl Write, s: &str) -> fmt::Result {
-    out.write_char('"')?;
-    for c in s.chars() {
-        match c {
-            '"' => out.write_str("\\\"")?,
-            '\\' => out.write_str("\\\\")?,
-            '\x08' => out.write_str("\\b")?,
-            '\x0c' => out.write_str("\\f")?,
-            '\n' => out.write_str("\\n")?,
-            '\r' => out.write_str("\\r")?,
-            '\t' => out.write_str("\\t")?,
-            c if (c as u32) < 0x20 => write!(out, "\\u{:04x}", c as u32)?,
-            c => out.write_char(c)?,
-        }
+fn object(members: &mut dyn Iterator<Item = (&str, Value)>) -> Value {
+    let mut map = BTreeMap::new();
+    for (k, v) in members {
+        map.insert(k.to_string(), v);
     }
-    out.write_char('"')
+    Value::Object(map)
 }
 
-/// Returns `s` as a quoted, RFC 8259-escaped JSON string.
-pub fn escape_string(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    let _ = write_string(&mut out, s);
-    out
-}
-
-/// Writes `s` as a quoted JSON string safe to embed inside an HTML `<script>` tag
-/// (also escapes `<`, U+2028, and U+2029).
-pub fn write_script_safe_string(out: &mut impl fmt::Write, s: &str) -> fmt::Result {
+/// Writes `s` as a quoted, RFC 8259-escaped JSON string, safe to embed
+/// inside an HTML `<script>` tag too: `<`, U+2028 and U+2029 are escaped.
+/// The one escaper of every JSON the toolchain writes.
+pub fn write_string(out: &mut dyn Write, s: &str) -> fmt::Result {
     out.write_char('"')?;
     for c in s.chars() {
         match c {
@@ -257,10 +241,10 @@ pub fn write_script_safe_string(out: &mut impl fmt::Write, s: &str) -> fmt::Resu
     out.write_char('"')
 }
 
-/// Returns `s` as a quoted JSON string safe to embed inside an HTML `<script>` tag.
-pub fn escape_script_safe_string(s: &str) -> String {
+/// Returns `s` as a quoted, escaped JSON string ([`write_string`]).
+pub fn escape_string(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
-    let _ = write_script_safe_string(&mut out, s);
+    let _ = write_string(&mut out, s);
     out
 }
 
@@ -833,7 +817,7 @@ mod tests {
     #[test]
     fn script_safe_escaping_escapes_script_breakers_and_roundtrips() {
         let s = "</script>\u{2028}\u{2029}\n\t\"\\";
-        let escaped = escape_script_safe_string(s);
+        let escaped = escape_string(s);
         assert!(!escaped.contains('<'));
         assert!(!escaped.contains('\u{2028}'));
         assert!(!escaped.contains('\u{2029}'));

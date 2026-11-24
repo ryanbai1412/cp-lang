@@ -375,6 +375,10 @@ impl Lowerer<'_> {
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
+        let elem = match hint {
+            Some(Ty::Array { elem, .. }) => Some((**elem).clone()),
+            _ => None,
+        };
         // `[P, P] (u, v) => …` with `type P = (A, B)`: each name is a tuple
         // of its factor positions, over one loop per factor.
         let mut dims = Vec::new();
@@ -396,17 +400,13 @@ impl Lowerer<'_> {
         }
         if groups.len() < dims.len() {
             let whole = Whole::Tuples(groups);
-            return self.build_table(dims, params, body, None, None, span, whole);
+            return self.build_table(dims, params, body, elem.as_ref(), None, span, whole);
         }
         // `[A, B] p => …`: one name over a product is the cell tuple (R04.2.11).
         if params.len() == 1 && dims.len() > 1 {
             let whole = Whole::Tuples(vec![dims.len()]);
-            return self.build_table(dims, params, body, None, None, span, whole);
+            return self.build_table(dims, params, body, elem.as_ref(), None, span, whole);
         }
-        let elem = match hint {
-            Some(Ty::Array { elem, .. }) => Some((**elem).clone()),
-            _ => None,
-        };
         // `[P] p => f(p)` where an `[A, B]T` is wanted fills the grid.
         if let (Some(Ty::Array { dims: want, .. }), [DimSpec::Pos(p)], [_]) =
             (hint, dims.as_slice(), params)

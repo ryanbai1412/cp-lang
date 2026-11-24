@@ -28,7 +28,7 @@ fn fixed(db: &mut Session, path: &str, text: &str) -> String {
         return fixed;
     }
     let (config, _) = cpl_lint::Config::discover(Path::new(path));
-    cpl_lint::fix_in(db, path, &fixed, &config).0
+    cpl_lint::fix_in(db, path, &fixed, &config, &cpl_ir::check).0
 }
 
 fn rewrite(db: &mut Session, how: &str, path: &str, text: &str) -> String {

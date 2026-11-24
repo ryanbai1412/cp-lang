@@ -9,6 +9,9 @@
   "dream": [
    "corpus/problems/dmopc21c4p1/dream.cp"
   ],
+  "original": [
+   "corpus/problems/dmopc21c4p1/orig.cpp"
+  ],
   "spec": [
    "corpus/problems/dmopc21c4p1/spec.cp"
   ]
@@ -20,5 +23,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "locate(poly, p) != Location.Outside; Location and locate join the prelude."
+ "notes": "locate(poly, p) != Location.Outside; Location and locate join the prelude.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 14,
+  "sha": "3c442799ddfc4eed11ecbba029a0c50796a5f727"
+ }
 }

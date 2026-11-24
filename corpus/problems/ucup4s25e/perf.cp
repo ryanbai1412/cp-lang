@@ -1,0 +1,69 @@
+// Tuned: port.cp with every level writing into one best-by-length array instead of returning
+// lists, and the hulls and their Minkowski merge done inline with Int cross products, as
+// orig.cpp does with int64_t, not std's I128-checked hull helpers.
+// Source: Universal Cup 4 Stage 25 (Zagreb) E
+// Problem: for each of q <= 5e5 queries v, print the maximum of sum(a[i..j]) + (j - i)
+//   * v over all non-empty subarrays a[i..j] of a (n <= 5e5).
+// Solution: every subarray is a point Pt(j - i, sum(a[i..j])) and a query is a dot with
+//   Pt(v, 1), so only the upper hull of all such points matters. Divide and conquer:
+//   the cross-boundary points are the Minkowski sum of the negated left prefix hull and
+//   the right prefix hull, O(n log n); then each query is a binary search on the hull.
+// limits: 4000 ms, 1024 MB
+//
+// over all non-empty subarrays a[i..j] (0 <= i < j <= n).
+//
+// Represent each prefix as Pt(i, sum(a[..i])). For a split at md:
+// - negating left prefixes in reverse order `(lo..md).rev` gives
+//   `-pref[i] = Pt(-i, -sum(a[..i]))` with strictly increasing x = -i;
+// - right prefixes `pref[j]` (`md..hi`) have strictly increasing x = j;
+// - every Minkowski sum point `(-pref[i]) + pref[j]` is `Pt(j - i, sum(a[i..j]))`,
+//   so `minkowski_upper` of the two upper hulls yields all cross-boundary hull
+//   maxima in O(hi - lo) time.
+// Taking the upper hull of the per-length maxima and maximizing `dot(p, Pt(v, 1))`
+// answers each query in O(log n).
+// Bounds: n, q: 1..=500_000
+
+@!multitest
+let (n, q): (1..=500_000, 1..=500_000) = read()
+let a: [0..n]Int = read()
+
+var pref: [0..=n]Pt = Pt(0, 0)
+for i in 0..n: pref[i + 1] = Pt(i + 1, pref[i].y + a[i])
+
+var best: [0..n]?Int = None  // best[len - 1]: the best sum of any window of that length
+
+fn upper(pts: List<Pt>) -> List<Pt>:
+    var h: List<Pt> = []
+    for p in pts:
+        while h.len >= 2:
+            if cross(h.last! - h[h.len - 2], p - h[h.len - 2]) < 0: break
+            h.pop()
+        h.push(p)
+    h
+
+fn solve_dc(lo: Int, hi: Int):
+    if hi - lo - 1 <= 0: return
+    let md = (lo + hi) / 2
+    solve_dc(lo, md)
+    solve_dc(md, hi)
+    let los = upper([-pref[i] for i in (lo..md).rev])
+    let his = upper([pref[j] for j in md..hi])
+    var (i, j) = (0, 0)
+    best[los[0].x + his[0].x - 1] max= los[0].y + his[0].y
+    while i + 1 < los.len or j + 1 < his.len:
+        let ea = if i + 1 < los.len: los[i + 1] - los[i] else: Pt(0, 0)
+        let eb = if j + 1 < his.len: his[j + 1] - his[j] else: Pt(0, 0)
+        if i + 1 < los.len and (j + 1 == his.len or cross(ea, eb) < 0): i += 1
+        else: j += 1
+        best[los[i].x + his[j].x - 1] max= los[i].y + his[j].y
+
+solve_dc(0, n + 1)
+var hull = upper_hull([Pt(i + 1, y) for (i, v) in best.items if let y = v])
+hull.reverse()
+
+fn answer(v: Int) -> Int:
+    let dir = Pt(v, 1)
+    dot(hull[hull_extreme(hull, dir)], dir)
+
+let qs: [0..q]Int = read()
+print([answer(v) for v in qs])

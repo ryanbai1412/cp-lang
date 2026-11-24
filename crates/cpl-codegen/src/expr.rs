@@ -174,10 +174,14 @@ impl<'p> Emitter<'p> {
                 } else {
                     this.note_operand_copy(e);
                     let name = this.temp();
+                    // A closure keeps its own lambda type: the callee takes it as written.
+                    let ty = match e.kind {
+                        ExprKind::Closure(_) => "auto".to_string(),
+                        _ => this.ty(&e.ty),
+                    };
                     out.push_str(&format!(
-                        "{}{} {name} = {};\n",
+                        "{}{ty} {name} = {};\n",
                         pad(this.indent),
-                        this.ty(&e.ty),
                         code.text
                     ));
                     codes.push(Code::primary(name));
@@ -226,8 +230,9 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("((void)({inner}), true)"))
             }
             ExprKind::Some(inner) => {
-                let inner = self.expr(inner).text;
-                Code::primary(format!("{}({inner})", self.ty(&e.ty)))
+                let text = self.expr(inner).text;
+                self.note_some_copy(inner, &text);
+                Code::primary(format!("{}({text})", self.ty(&e.ty)))
             }
             ExprKind::Local(_) if e.ty == Ty::Unit => Code::primary("void()"),
             ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),
@@ -607,6 +612,12 @@ impl<'p> Emitter<'p> {
                     }
                 })
             }
+            ExprKind::Field(base, index)
+                if matches!(base.ty, Ty::Struct(id) if self.devirt.dropped_field(id, *index)
+                    && e.ty == Ty::Unit) =>
+            {
+                Code::primary("(void)0")
+            }
             ExprKind::Field(base, index) => {
                 let b = self.expr(base);
                 match &base.ty {
@@ -618,10 +629,12 @@ impl<'p> Emitter<'p> {
                             b.at(PRIMARY),
                             ident(&program.structs[*id].fields[*index].0),
                         );
-                        if self.rows.contains_key(&(*id, *index)) {
+                        if self.lent_fields.is_lent(*id, *index) {
+                            Code::primary(format!("(*{access})"))
+                        } else if self.rows.contains_key(&(*id, *index)) {
                             Code::primary(format!("{access}.vec()"))
                         } else if self.narrow_ints.contains_key(&(*id, *index)) {
-                            Code::primary(format!("ll({access})"))
+                            Code::primary(self.narrow_field_load(*id, *index, &access))
                         } else {
                             Code::primary(access)
                         }
@@ -642,7 +655,7 @@ impl<'p> Emitter<'p> {
                             _ => None,
                         };
                         let dropped: Vec<bool> = (0..items.len())
-                            .map(|idx| struct_id.is_some_and(|s| self.devirt.unread_field(s, idx)))
+                            .map(|idx| struct_id.is_some_and(|s| self.devirt.dropped_field(s, idx)))
                             .collect();
                         let items: Vec<String> = items
                             .iter()
@@ -654,6 +667,9 @@ impl<'p> Emitter<'p> {
                                         && self.devirt.skippable_value(item)
                                 }) {
                                     return "false".to_string();
+                                }
+                                if let Some(lent) = self.lent_item(struct_id, idx, item) {
+                                    return lent;
                                 }
                                 if let Some(sid) = struct_id {
                                     if let Some(&k) = self.rows.get(&(sid, idx)) {
@@ -677,9 +693,12 @@ impl<'p> Emitter<'p> {
                                 {
                                     return self.expr_with_elem_layout(item, Some(&l)).text;
                                 }
-                                let v = self.braced(item);
-                                match struct_id.and_then(|s| self.narrow_ints.get(&(s, idx))) {
-                                    Some(w) => format!("{}({v})", w.cpp()),
+                                let mut v = self.braced(item);
+                                if self.taken_items.contains(&(item as *const Expr)) {
+                                    v = format!("std::move({v})");
+                                }
+                                match struct_id {
+                                    Some(s) => self.narrow_field_store(s, idx, &v),
                                     None => v,
                                 }
                             })
@@ -741,6 +760,15 @@ impl<'p> Emitter<'p> {
             ExprKind::IsSome(value) => Code::primary(self.has_value(value)),
             // The user's `!` is an assertion: on `none` it stops the
             // program, as it does in `cpl run`. After a test it is a plain read.
+            ExprKind::Unwrap(value, checked) if crate::names::is_flag_opt(&value.ty) => {
+                let code = self.expr(value);
+                let flag = code.at(COND);
+                Code::primary(if *checked {
+                    format!("({flag} ? cpl::Unit() : (cpl::fail(\"`!` on `None`: there is no value here\"), cpl::Unit()))")
+                } else {
+                    format!("((void){flag}, cpl::Unit())")
+                })
+            }
             ExprKind::Unwrap(value, true) => {
                 self.need("have");
                 let code = self.expr(value);
@@ -784,6 +812,15 @@ impl<'p> Emitter<'p> {
                         b.text
                     ));
                 }
+                // Each closure is its own C++ type, so a join of fns meets at the
+                // fn's one erased representation, as a `var` of that type does.
+                let (a, b) = if matches!(e.ty, Ty::Fn(..)) {
+                    let erased = self.ty(&e.ty);
+                    let join = |x: Code| Code::primary(format!("{erased}({})", x.text));
+                    (join(a), join(b))
+                } else {
+                    (a, b)
+                };
                 Code {
                     text: format!("{} ? {} : {}", c.at(COND + 1), a.at(COND + 1), b.at(COND)),
                     prec: COND,
@@ -872,6 +909,9 @@ impl<'p> Emitter<'p> {
                 if self.moved_entry.remove(&(e as *const _ as usize)) =>
             {
                 self.moved_entry_code(&args[0])
+            }
+            ExprKind::Builtin(Builtin::Len, args) if matches!(&args[0].kind, ExprKind::Call(f, _) if self.pushers.contains_key(f)) => {
+                self.count_pushed(&args[0])
             }
             ExprKind::Builtin(op, args) => {
                 let operands: Vec<&Expr> = args.iter().collect();

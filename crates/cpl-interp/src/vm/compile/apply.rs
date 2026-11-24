@@ -6,7 +6,7 @@ use super::Compiler;
 use crate::apply::{applies, operands};
 use crate::vm::helpers::quiet;
 use crate::vm::ir::*;
-use cpl_ir::{Dim, Expr, ExprKind, Mutation, Ty};
+use cpl_ir::{Dim, Expr, ExprKind, Mutation, Program, Ty};
 
 /// Whether comparing values of `ty` never runs user code (a struct's `eq`
 /// or `lt`), so the frame can stay in registers.
@@ -31,6 +31,21 @@ fn plain(ty: &Ty) -> bool {
         Ty::Record(fs) => fs.iter().all(|(_, t)| plain(t)),
         Ty::Map(k, v) | Ty::HashMap(k, v) => plain(k) && plain(v),
         _ => false,
+    }
+}
+
+/// Whether a value of `ty` is owned data with no fn in it: a mutation of it
+/// (`crate::mutation::mutate_cell`) runs no user code and holds no frame.
+fn owned(ty: &Ty, program: &Program) -> bool {
+    match ty {
+        Ty::Struct(_) | Ty::Enum(_) => !ty.has_fn(program),
+        Ty::Opt(t) | Ty::List(t) | Ty::Range(t) | Ty::Set(t) | Ty::HashSet(t) => owned(t, program),
+        Ty::ListView(t, Dim::Int) => owned(t, program),
+        Ty::Array { elem, .. } => owned(elem, program),
+        Ty::Tuple(ts) => ts.iter().all(|t| owned(t, program)),
+        Ty::Record(fs) => fs.iter().all(|(_, t)| owned(t, program)),
+        Ty::Map(k, v) | Ty::HashMap(k, v) => owned(k, program) && owned(v, program),
+        _ => plain(ty),
     }
 }
 
@@ -78,13 +93,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     /// The mutation `expr` into a fresh value register by
-    /// `Op::MutatePlace`, when the VM can walk to its place and the change
-    /// runs no user code.
+    /// `Op::MutatePlace`, when the VM can walk to its place and the values
+    /// are [`owned`].
     pub(super) fn try_compile_mutate_place(&mut self, expr: &'p Expr) -> Option<u16> {
         let ExprKind::Mutate(op, place, args) = &expr.kind else {
             return None;
         };
-        if *op == Mutation::Shuffle || !plain(&place.ty) || !args.iter().all(|a| plain(&a.ty)) {
+        let program = self.program;
+        if *op == Mutation::Shuffle
+            || !owned(&place.ty, program)
+            || !args.iter().all(|a| owned(&a.ty, program))
+        {
             return None;
         }
         let saved = (self.ops.len(), self.spans.len(), self.places.len());

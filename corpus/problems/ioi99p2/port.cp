@@ -13,6 +13,7 @@
 //   a span limit of 1000 letters means i - start < 1000. Walk the choices back to print.
 //   O(|text| * matching letter slots).
 // original: corpus/submissions/4896839.cpp
+// Bounds: m: 1..=100
 const SPAN = 1000
 let m: 1..=100 = read()
 domain Word = 0..m

@@ -10,6 +10,7 @@
 //   >= i. ways[i] counts valid sets whose smallest element is i (ways[n] = 1 means none left):
 //   the next element lies in i+1 ..< need_suf[i], a window kept as a running sum `tot` while
 //   scanning i down. The buckets total sum ceil(n / k) = O(n log n).
+// Bounds: n: 1..=1e5; a: 0..=n
 
 
 const MOD = 1e9 + 7

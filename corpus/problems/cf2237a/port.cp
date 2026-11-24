@@ -7,6 +7,7 @@
 //   its prefix minimum; operating left to right gets every tower there (tower i, already at
 //   the prefix minimum, cuts tower i + 1 if it is taller). Print the sum of prefix minima:
 //   `a.scan(min)` holds them, O(n).
+// Bounds: n: 1..=100; a: 1..=1000
 
 @!multitest
 let n: 1..=100 = read()

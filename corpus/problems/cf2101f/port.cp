@@ -9,6 +9,7 @@
 //   alone. If layer d holds both colours the score is 2d, else it is all red (x2 for blue) and
 //   scores d + d' for the outermost blue depth d', summed by a running scan over d. O(n) per
 //   centre, O(n^2) total; halve for the subdivision.
+// Bounds: n: 1..=3000; u, v: 1..2 * n
 
 type Z = Mod<998_244_353>
 
@@ -32,22 +33,28 @@ fn red_and_blue(c: Int) -> Z = pow3[c] - pow2[c] * 2 + 1
 
 let depths = Node.count
 var ans: Z = 0
+var branch: [0..depths]Int = 0
 for centre in Node:
     var total: [0..depths]Int = 0
     if is_vertex(centre): total[0] = 1
     var red: [0..depths]Z = 0
     var both: [0..depths]Z = 0
+    var reach = 0
     for c in adj[centre]:
-        var branch: [0..depths]Int = 0
+        var deepest = 0
         fn count(v: Node, from: Node, depth: Int):
-            if is_vertex(v): branch[depth] += 1
+            if is_vertex(v):
+                branch[depth] += 1
+                deepest max= depth
             for w in adj[v] if w != from: count(w, v, depth + 1)
         count(c, centre, 1)
-        for d in 0..depths:
+        for d in 0..=deepest:
             total[d] += branch[d]
             red[d] -= some_red(branch[d])
             both[d] -= red_and_blue(branch[d])
-    for d in 0..depths:
+            branch[d] = 0
+        reach max= deepest
+    for d in 0..=reach:
         red[d] += some_red(total[d])
         both[d] += red_and_blue(total[d])
 
@@ -56,7 +63,7 @@ for centre in Node:
     var inside: Z = 1
     var blue_inside: Z = 0
     var blue_depths: Z = 0
-    for d in 0..depths:
+    for d in 0..=reach:
         let c = total[d]
         ans += inside * both[d] * (2 * d)
         ans += (blue_depths + blue_inside * d) * red[d] * 2

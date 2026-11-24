@@ -1,19 +1,14 @@
 //! The source line a step is shown at.
 
 use super::{Tracer, View};
-use cpl_diag::Span;
+use cpl_diag::{LineIndex, Span};
 use cpl_ir::Program;
+use std::cell::Cell;
 use std::collections::HashMap;
 
 impl Tracer {
     pub fn line(&self, span: Span) -> u32 {
-        let (start, line) = self.last_line.get();
-        if start == span.start {
-            return line;
-        }
-        let line = self.lines.line_of(span.start) + 1;
-        self.last_line.set((span.start, line));
-        line
+        line_at(&self.lines, &self.last_line, span)
     }
 
     /// The line of `span` as the file shows it. An imported module's fn is
@@ -35,6 +30,17 @@ impl Tracer {
     }
 }
 
+/// The line of `span` in `lines`, the last one asked for kept in `last`.
+fn line_at(lines: &LineIndex, last: &Cell<(u32, u32)>, span: Span) -> u32 {
+    let (start, line) = last.get();
+    if start == span.start {
+        return line;
+    }
+    let line = lines.line_of(span.start) + 1;
+    last.set((span.start, line));
+    line
+}
+
 /// A fn's source name by its lowered one, where they differ.
 pub(super) fn shown_names(program: &Program) -> HashMap<String, String> {
     (program.fns.iter().zip(&program.fn_display))
@@ -46,20 +52,11 @@ pub(super) fn shown_names(program: &Program) -> HashMap<String, String> {
 impl Tracer {
     /// The step's call stack, under the names the source gives its fns.
     pub(super) fn frame_of(&mut self, view: &View) -> u32 {
-        // Taken out so the names it lends outlive the borrow of `self`;
-        // its strings stay where they are, which `Log::frame` relies on.
-        let shown = std::mem::take(&mut self.shown);
-        let stack: Vec<(&str, u32)> = view
-            .call_frames
-            .iter()
-            .map(|(name, at)| {
-                let name = shown.get(*name).map_or(*name, String::as_str);
-                (name, self.line(*at).max(1))
-            })
-            .collect();
-        let frame = self.rec.log.frame(&stack);
-        drop(stack);
-        self.shown = shown;
-        frame
+        let (shown, lines, last_line) = (&self.shown, &self.lines, &self.last_line);
+        let stack = view.call_frames.iter().map(|(name, at)| {
+            let name = shown.get(*name).map_or(*name, String::as_str);
+            (name, line_at(lines, last_line, *at).max(1))
+        });
+        self.rec.log.frame(stack)
     }
 }

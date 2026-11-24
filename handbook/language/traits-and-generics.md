@@ -50,7 +50,7 @@ trait Ord(Eq):
 impl Ord for Frac:
     fn cmp(self, o: Frac) -> Ordering = (self.p * o.q).cmp(o.p * self.q)
 fn argmax<S: Keyed + Seq, K: Ord>(s: S, by: S.Item -> K = x => x) -> ?S.Key = todo
-let st = SegTree(max, a)        // the operation is a value; its laws are known
+let st = SegTree(max, a)  // the operation is a value; its laws are known
 ```
 
 What a contestant holds in their head:

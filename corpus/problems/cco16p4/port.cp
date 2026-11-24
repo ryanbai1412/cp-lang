@@ -6,6 +6,7 @@
 //   2n - 1 independent parities are all it keeps ((n-1)^2 squares span the rest). So key each
 //   grid by its row and column parities and count equal pairs with a Counter: O(G n^2).
 // original: corpus/submissions/3605322.cpp
+// Bounds: n: 2..=10; g: 2..=10_000
 let n: 2..=10 = read()
 let g: 2..=10_000 = read()
 domain Row = 0..n

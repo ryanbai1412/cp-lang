@@ -10,6 +10,7 @@
 //   and highest score; a merge adds size(a) * size(b) pairs and the best of the four corner
 //   products. O(n log n).
 // original: corpus/submissions/3927929.cpp
+// Bounds: n: 1..=3e5; score: -1e9..=1e9
 
 let n: 1..=3e5 = read()
 let s: Str = read()

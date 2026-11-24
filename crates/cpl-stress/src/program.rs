@@ -189,7 +189,30 @@ fn starts_with_std(text: &[u8]) -> bool {
 /// standard headers only, and no macro of its own comes before them.
 fn compile_cpp(source: &Path, ours: bool) -> Result<String, BuildError> {
     let flags = CXX_FLAGS.map(String::from);
-    compile_with(source, ours, "g++", &flags)
+    compile_with(source, ours, "g++", &flags, None)
+}
+
+/// The judge's grader and the headers beside it, which it includes: what
+/// a build linked against it depends on.
+fn grader_bytes(grader: &Path) -> Result<Vec<u8>, BuildError> {
+    let read = |path: &Path| {
+        std::fs::read(path).map_err(|e| BuildError(format!("can't read {}: {e}", path.shown())))
+    };
+    let mut bytes = read(grader)?;
+    let dir = grader
+        .parent()
+        .filter(|d| !d.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut headers: Vec<PathBuf> = std::fs::read_dir(dir)
+        .map(|entries| entries.flatten().map(|e| e.path()).collect())
+        .unwrap_or_default();
+    headers.retain(|p| p.extension().is_some_and(|e| e == "h" || e == "hpp"));
+    headers.sort();
+    for header in headers {
+        bytes.push(0);
+        bytes.extend(read(&header)?);
+    }
+    Ok(bytes)
 }
 
 fn compile_with(
@@ -197,11 +220,16 @@ fn compile_with(
     ours: bool,
     compiler: &str,
     flags: &[String],
+    grader: Option<&Path>,
 ) -> Result<String, BuildError> {
     let mut text = std::fs::read(source)
         .map_err(|e| BuildError(format!("can't read {}: {e}", source.shown())))?;
     let usual = compiler == "g++" && flags.iter().eq(CXX_FLAGS.iter());
     let source_len = text.len();
+    if let Some(grader) = grader {
+        text.extend(b"\0grader\0");
+        text.extend(grader_bytes(grader)?);
+    }
     if !usual {
         text.extend(format!("\0{compiler} {}", flags.join(" ")).bytes());
     }
@@ -228,22 +256,26 @@ fn compile_with(
         if cfg!(windows) {
             build.arg(WINDOWS_STACK);
         }
-        if usual && (ours || starts_with_std(&text[..source_len])) {
+        // The grader is a second file the header would be forced into.
+        if usual && grader.is_none() && (ours || starts_with_std(&text[..source_len])) {
             if let Some(header) = std_header() {
                 build.arg("-include").arg(header);
             }
         }
-        let output = build
-            .arg("-o")
-            .arg(&partial)
-            .arg(source)
-            .output()
-            .map_err(|e| {
-                BuildError(format!(
-                    "can't run {compiler} to build {}: {e}",
-                    source.shown()
-                ))
-            })?;
+        build.arg("-o").arg(&partial).arg(source);
+        if let Some(grader) = grader {
+            let dir = grader.parent().filter(|d| !d.as_os_str().is_empty());
+            build
+                .arg("-I")
+                .arg(dir.unwrap_or(Path::new(".")))
+                .arg(grader);
+        }
+        let output = build.output().map_err(|e| {
+            BuildError(format!(
+                "can't run {compiler} to build {}: {e}",
+                source.shown()
+            ))
+        })?;
         if !output.status.success() {
             let errors = String::from_utf8_lossy(&output.stderr);
             let shown: Vec<&str> = errors.lines().take(20).collect();
@@ -422,12 +454,31 @@ fn build_judged(
     part: Part,
     checks: cpl_codegen::Checks,
 ) -> Result<Vec<String>, BuildError> {
+    build_linked(source, text, part, checks, None)
+}
+
+/// [`build_judged`], linked against the judge's `grader` when there is one.
+fn build_linked(
+    source: &Path,
+    text: Option<&str>,
+    part: Part,
+    checks: cpl_codegen::Checks,
+    grader: Option<&Path>,
+) -> Result<Vec<String>, BuildError> {
     let (cpp, profile) = emit_cpp(source, text, part, checks)?;
     let host = profile.host();
     if !found(&host.compiler) {
+        if let Some(grader) = grader {
+            return Err(BuildError(format!(
+                "{} runs under the judge's grader {}, which needs a C++ compiler, and there is no {} here",
+                source.shown(),
+                grader.shown(),
+                host.compiler
+            )));
+        }
         return interpreted(source, text, part, &host.compiler);
     }
-    let binary = compile_with(&cpp, true, &host.compiler, &host.flags)?;
+    let binary = compile_with(&cpp, true, &host.compiler, &host.flags, grader)?;
     let stack = profile.ulimit();
     // Off Unix there is no `ulimit`: the stack is the one it was linked with.
     if cfg!(not(unix)) || current_stack().as_deref() == Some(stack.as_str()) {
@@ -684,6 +735,20 @@ impl Program {
         })
     }
 
+    /// The `.cp` file at `path` linked against the judge's `grader` (a
+    /// `.cpp` with the `main`, beside the headers it includes): how a
+    /// program of `@grader` fns runs here as it does on the judge.
+    pub fn resolve_with_grader(path: &Path, grader: &Path) -> Result<Program, BuildError> {
+        if !grader.is_file() {
+            return Err(BuildError(format!("there is no grader {}", grader.shown())));
+        }
+        Ok(Program {
+            name: path.shown(),
+            argv: build_linked(path, None, Part::Solution, LOCAL, Some(grader))?,
+            env: Vec::new(),
+        })
+    }
+
     /// The `.cp` source `text`, built as if it were the file `path`, which
     /// need not exist: its imports and judge resolve from beside `path`.
     pub fn resolve_source(path: &Path, text: &str) -> Result<Program, BuildError> {
@@ -823,7 +888,7 @@ impl Program {
                 let _ = stderr.read_to_end(&mut buffer);
                 buffer
             });
-            let ended = supervise(&mut child, start, limit);
+            let ended = supervise(child, start, limit);
             (out.join().unwrap(), err.join().unwrap(), ended)
         });
         Ok(Outcome {
@@ -872,7 +937,7 @@ impl Program {
                 let _ = stderr.read_to_end(&mut buffer);
                 buffer
             });
-            let ended = supervise(&mut child, start, limit);
+            let ended = supervise(child, start, limit);
             (err.join().unwrap(), ended)
         });
         Ok(Outcome {
@@ -886,25 +951,21 @@ impl Program {
 }
 
 /// Waits for `child` to end, stopping it after `limit`, and samples its
-/// peak memory meanwhile.
-fn supervise(
-    child: &mut std::process::Child,
-    start: Instant,
-    limit: Duration,
-) -> (Exit, Option<u64>) {
+/// peak memory meanwhile; its exit wakes the wait at once.
+fn supervise(child: std::process::Child, start: Instant, limit: Duration) -> (Exit, Option<u64>) {
     let pid = child.id();
+    let mut child = cpl_wait::on_exit(child);
     let mut peak = None;
     loop {
         peak = peak_memory(pid).max(peak);
-        match child.try_wait() {
+        let tick = (Instant::now() + Duration::from_micros(300)).min(start + limit);
+        match child.by(tick) {
             Ok(Some(status)) => return (status.code().map_or(Exit::Signal, Exit::Code), peak),
             Ok(None) if start.elapsed() >= limit => {
-                kill_group(pid);
                 let _ = child.kill();
-                let _ = child.wait();
                 return (Exit::TimedOut, peak);
             }
-            Ok(None) => std::thread::sleep(Duration::from_micros(300)),
+            Ok(None) => {}
             Err(_) => return (Exit::Signal, peak),
         }
     }
@@ -958,25 +1019,18 @@ fn peak_memory(pid: u32) -> Option<u64> {
     line.split_whitespace().nth(1)?.parse().ok()
 }
 
-/// Stops a program and everything it started. A shell script's children
-/// would otherwise keep its pipes open after the script is killed.
-pub(crate) fn kill_group(pid: u32) {
-    #[cfg(unix)]
-    let _ = Command::new("kill")
-        .args(["-KILL", "--", &format!("-{pid}")])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-    // `py -3` runs the script in a child python.exe, which `Child::kill`
-    // leaves running with the pipes open.
-    #[cfg(windows)]
-    let _ = Command::new("taskkill")
-        .args(["/F", "/T", "/PID", &pid.to_string()])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-    #[cfg(not(any(unix, windows)))]
-    let _ = pid;
+/// The CPU time a running process has spent, user and system, with that
+/// of the children it has waited for: what a judge charges it. `None`
+/// where the system doesn't say (no `/proc`) or once it is gone.
+pub(crate) fn cpu_time(pid: u32) -> Option<Duration> {
+    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    // Fields after the parenthesized name: utime, stime, cutime and cstime
+    // are the 12th to the 15th, in ticks of 1/100 s (USER_HZ).
+    let after = &stat[stat.rfind(')')? + 1..];
+    let ticks: u64 = (after.split_whitespace().skip(11).take(4))
+        .map(|field| field.parse::<u64>().ok())
+        .sum::<Option<u64>>()?;
+    Some(Duration::from_millis(ticks * 10))
 }
 
 #[cfg(test)]

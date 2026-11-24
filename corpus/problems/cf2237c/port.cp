@@ -7,6 +7,7 @@
 //   stays and becomes the maximum; a pile x < cur must pass the largest pile at some point, making
 //   it cur + x, and nothing then exceeds that. So cur becomes x if x >= cur, else cur + x; print
 //   cur, O(n).
+// Bounds: n: 1..=200_000; a: 1..=10 ** 9
 
 @!multitest
 let n: 1..=200_000 = read()

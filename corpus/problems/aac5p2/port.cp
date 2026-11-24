@@ -4,6 +4,7 @@
 // Solution: ask the N - 1 neighbour products a_g a_(g+1). Then try each first value dividing the
 //   first product: dividing along the chain fixes every value, and the first try that stays
 //   a permutation is printed. O(N) per try.
+// Bounds: n: 3..=1e5
 let n: 3..=1e5 = read()
 domain I = 1..=n
 domain Gap = 1..n  // between positions g and g + 1

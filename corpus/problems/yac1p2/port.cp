@@ -6,6 +6,7 @@
 //   subtree with b black and w white nodes (both below 3). Children up: before merging child
 //   c into u, pair c's paths with u's so far whose counts still sum below 3. O(81 n).
 // original: corpus/submissions/4376253.cpp
+// Bounds: n: 3..=200_000
 
 let n: 3..=200_000 = read()
 domain V = 1..=n

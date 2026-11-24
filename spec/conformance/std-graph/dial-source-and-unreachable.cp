@@ -1,5 +1,4 @@
 // expect: ok, output "YES YES"
-use std.graph.{dial}
 domain V = 0..3
 domain E = 0..1
 let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 2)]

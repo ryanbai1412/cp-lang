@@ -7,6 +7,7 @@ use crate::emit::{Code, Emitter, COND};
 use crate::uses::effects::{may_touch, Touch};
 use crate::walk;
 use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
+use std::collections::BTreeSet;
 
 /// A container argument that is no place: a temporary C++ destroys at the
 /// end of the statement.
@@ -194,7 +195,19 @@ pub(crate) fn given_root(value: &Expr) -> Option<(bool, usize)> {
             root
         }
         ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => given_root(of.first()?),
-        _ => walk::path_root(value),
+        _ => storage_root(value),
+    }
+}
+
+/// The variable whose storage a place lives in, whatever its indices
+/// compute: `self.keys[i * 2]` is in `self`.
+fn storage_root(e: &Expr) -> Option<(bool, usize)> {
+    match &e.kind {
+        ExprKind::Field(base, _)
+        | ExprKind::Index(base, _)
+        | ExprKind::Unwrap(base, _)
+        | ExprKind::Payload(base, ..) => storage_root(base),
+        _ => walk::path_root(e),
     }
 }
 
@@ -257,23 +270,22 @@ impl<'p> Emitter<'p> {
         slot: usize,
         cid: usize,
     ) -> Option<Vec<(usize, &'static str)>> {
-        if self.closure_id.is_some() {
-            return None;
-        }
+        use crate::uses::Home;
         let program = self.program;
-        let blocks: Vec<&Block> = match self.fn_id {
-            Some(id) => vec![&program.fns[id].body],
-            None => vec![&program.setup, &program.main],
+        let (blocks, home): (Vec<&Block>, _) = match (self.closure_id, self.fn_id) {
+            (Some(c), _) => (vec![&program.closures[c].body], Home::Closure(c)),
+            (None, Some(id)) => (vec![&program.fns[id].body], Home::Fn(id)),
+            (None, None) => (vec![&program.setup, &program.main], Home::Top),
         };
-        if self.facts.stores((self.fn_id, false, slot)) > 1
+        if self.facts.stores(self.facts_local(slot)) > 1
             || !blocks.iter().all(|b| only_called(program, b, slot, 3))
         {
             return None;
         }
-        let home = self
+        let sunk = self
             .fn_id
-            .map_or(crate::uses::Home::Top, crate::uses::Home::Fn);
-        let sunk = self.fn_id.map(|id| &self.sunk[id]);
+            .filter(|_| self.closure_id.is_none())
+            .map(|id| &self.sunk[id]);
         let def = &program.closures[cid];
         let owners = def
             .captures
@@ -821,12 +833,30 @@ fn moved_while_live(body: &Block, slot: usize, capture: usize) -> bool {
 }
 
 pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
+    only_called_in(program, body, slot, depth, None)
+}
+
+/// [`only_called`] for the body of fn `this.0`, whose param `this.1` is
+/// `slot`: handing it to the fn's own call as that param is a call too.
+fn only_called_in(
+    program: &cpl_ir::Program,
+    body: &Block,
+    slot: usize,
+    depth: u8,
+    this: Option<(usize, usize)>,
+) -> bool {
     let (mut uses, mut calls, mut escapes) = (0usize, 0usize, false);
     let mut passed_on = std::collections::BTreeSet::new();
-    walk::deep_stmts(body, &mut |stmt| {
-        if let Stmt::Assign(place, _, _) = stmt {
-            escapes |= walk::root(place) == (false, slot);
+    // A closure bound by `let` is kept only as long as that name is.
+    let mut bound = std::collections::BTreeMap::new();
+    walk::deep_stmts(body, &mut |stmt| match stmt {
+        Stmt::Assign(place, _, _) => escapes |= walk::root(place) == (false, slot),
+        Stmt::Let(s, Some(init)) => {
+            if let ExprKind::Closure(cid) = init.kind {
+                bound.insert(cid, *s);
+            }
         }
+        _ => {}
     });
     let lent = |args: &[Arg]| {
         args.iter()
@@ -845,10 +875,15 @@ pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, 
                 let onward = || depth > 0 && fn_param_only_called_at(program, *f, j, depth - 1);
                 match value.kind {
                     ExprKind::Closure(cid) if onward() => _ = passed_on.insert(cid),
-                    ExprKind::Local(s) if s == slot && onward() => calls += 1,
+                    ExprKind::Local(s) if s == slot && (this == Some((*f, j)) || onward()) => {
+                        calls += 1
+                    }
                     _ => {}
                 }
             }
+        }
+        ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => {
+            calls += usize::from(matches!(func.kind, ExprKind::Local(s) if s == slot));
         }
         ExprKind::Closure(cid) => {
             let def = &program.closures[*cid];
@@ -857,13 +892,30 @@ pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, 
                 .iter()
                 .filter(|c| !c.is_global && c.outer == slot)
             {
-                escapes |= !passed_on.contains(cid)
-                    || !only_called(program, &def.body, cap.inner, depth.saturating_sub(1));
+                let held = passed_on.contains(cid)
+                    || closure_name(body, *cid).is_some_and(|s| {
+                        s == slot || (depth > 0 && only_called(program, body, s, depth - 1))
+                    });
+                escapes |=
+                    !held || !only_called(program, &def.body, cap.inner, depth.saturating_sub(1));
             }
         }
         _ => {}
     });
     !escapes && uses == calls
+}
+
+/// The slot of the `let f = closure` that names closure `cid` in `body`.
+fn closure_name(body: &Block, cid: usize) -> Option<usize> {
+    let mut name = None;
+    walk::deep_stmts(body, &mut |stmt| {
+        if let Stmt::Let(s, Some(init)) = stmt {
+            if matches!(init.kind, ExprKind::Closure(c) if c == cid) {
+                name = Some(*s);
+            }
+        }
+    });
+    name
 }
 
 fn fn_param_only_called_at(
@@ -873,7 +925,9 @@ fn fn_param_only_called_at(
     depth: u8,
 ) -> bool {
     let f = &program.fns[fn_id];
-    slot < f.params.len() && !f.params[slot].mutable && only_called(program, &f.body, slot, depth)
+    slot < f.params.len()
+        && !f.params[slot].mutable
+        && only_called_in(program, &f.body, slot, depth, Some((fn_id, slot)))
 }
 
 /// The C++ naming map entry `e` (`it.` or `it->`) as loop variable `var`:
@@ -891,6 +945,9 @@ pub(crate) enum Copied {
     Let(cpl_diag::Span, &'static str),
     Capture(usize, String, &'static str),
 }
+
+/// Why `Some(xs)` of a place copies.
+const SOME_COPY: &str = "an optional holds its own value";
 
 /// Whether `e` reads part of a named value: `a.f`, `xs[i]!`. Part of a
 /// call's result (`xs.pop()!`, `s.parse()!.0`) is a temporary the C++
@@ -912,6 +969,69 @@ const CAPTURE_MOVED: &str = "the captured name is moved later, so the closure ow
 pub(crate) const KEPT: &str = "the closure may be kept (stored, returned or passed where it is kept), so it owns what it reads";
 
 impl Emitter<'_> {
+    /// `return Some(xs)`, or `return if c: Some(xs) else: None`, for a
+    /// local `xs` the fn or closure owns: the optional takes `xs` by move,
+    /// as `return xs` would.
+    pub(crate) fn moved_some(&mut self, value: &Expr) -> Option<String> {
+        if let ExprKind::If(cond, then, otherwise) = &value.kind {
+            let (a, b) = (self.moved_some(then), self.moved_some(otherwise));
+            if a.is_none() && b.is_none() {
+                return None;
+            }
+            let c = self.expr(cond).text;
+            let a = a.unwrap_or_else(|| self.expr(then).text);
+            let b = b.unwrap_or_else(|| self.expr(otherwise).text);
+            return Some(format!("({c} ? {a} : {b})"));
+        }
+        let ExprKind::Some(inner) = &value.kind else {
+            return None;
+        };
+        let ExprKind::Local(slot) = inner.kind else {
+            return None;
+        };
+        let borrowed = match self.closure_id {
+            Some(cid) => {
+                let c = &self.program.closures[cid];
+                slot < c.params.len() || c.captures.iter().any(|cap| cap.inner == slot)
+            }
+            None => self
+                .fn_id
+                .is_some_and(|id| slot < self.program.fns[id].params.len()),
+        };
+        if borrowed {
+            return None;
+        }
+        self.some_moved(inner, &value.ty)
+    }
+
+    /// `Some(xs)` taking the local `xs` by move, when it is read for the
+    /// last time and owns its value; the copy noted for it is not made.
+    pub(crate) fn some_moved(&mut self, inner: &Expr, ty: &Ty) -> Option<String> {
+        let ExprKind::Local(slot) = inner.kind else {
+            return None;
+        };
+        if self.ref_bound.contains(&slot) || !holds_heap(self.program, &inner.ty) {
+            return None;
+        }
+        self.copies.retain(
+            |c| !matches!(c, Copied::Let(span, why) if *span == inner.span && *why == SOME_COPY),
+        );
+        Some(format!("{}(std::move({}))", self.ty(ty), self.names[slot]))
+    }
+
+    /// Records the copy `Some(xs)` makes when `xs` is a place holding a
+    /// heap value: the `std::optional` holds a value of its own.
+    pub(crate) fn note_some_copy(&mut self, inner: &Expr, text: &str) {
+        let place = matches!(inner.kind, ExprKind::Local(_) | ExprKind::Global(_))
+            || (matches!(
+                inner.kind,
+                ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
+            ) && rooted_in_a_name(inner));
+        if place && holds_heap(self.program, &inner.ty) && !moved(text) {
+            self.copies.push(Copied::Let(inner.span, SOME_COPY));
+        }
+    }
+
     /// Records the copy naming operand `e` before a later one runs makes,
     /// when `e` is a place holding a heap value: `up[find(u)]` with a
     /// `find` that writes `up` reads `up` as it was before the call.
@@ -1075,8 +1195,8 @@ pub(crate) fn copy_sites(
             }
         })
         .collect();
-    sites.sort_by_key(|(span, what, _)| (span.start, what.clone()));
-    sites.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
+    sites.sort_by_key(|(span, what, why)| (span.start, what.clone(), *why));
+    sites.dedup_by(|a, b| a == b);
     sites
 }
 
@@ -1087,8 +1207,68 @@ impl Emitter<'_> {
         self.moves_last = crate::uses::last_read(self.program, block, k)
             || self.takes_sunk_param(block, k)
             || self.dies_here(&block.stmts[k]);
+        self.taken_items = self.taken_items(&block.stmts[k], &block.stmts[k + 1..]);
+        if self.reads_held(&block.stmts[k]) {
+            self.moves_last = false;
+            self.taken_items.clear();
+        }
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
+        self.taken_items.clear();
+    }
+
+    /// Whether `stmt` reads a variable a lent struct field may point to,
+    /// which must then never be moved from.
+    fn reads_held(&self, stmt: &Stmt) -> bool {
+        let (held, globals) = (&self.lent_fields.held, &self.lent_fields.held_globals);
+        if held.is_empty() && globals.is_empty() {
+            return false;
+        }
+        let scope = match (self.closure_id, self.fn_id) {
+            (Some(c), _) => cpl_ir::ScopeId::Closure(c),
+            (None, Some(f)) => cpl_ir::ScopeId::Fn(f),
+            (None, None) => cpl_ir::ScopeId::Main,
+        };
+        let mut reads = false;
+        let mut read = |e: &Expr| {
+            reads |= match e.kind {
+                ExprKind::Local(s) => held.contains(&(scope, s)),
+                ExprKind::Global(g) => globals.contains(&g),
+                _ => false,
+            };
+        };
+        walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, &mut read));
+        walk::stmt_blocks(stmt, &mut |b| walk::deep_exprs(b, &mut read));
+        reads
+    }
+
+    /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets
+    /// before reading it, which nothing later in the literal reads either:
+    /// moving them in leaves only the value `rest` overwrites.
+    fn taken_items(&self, stmt: &Stmt, rest: &[Stmt]) -> BTreeSet<*const Expr> {
+        let Stmt::Let(_, Some(init)) = stmt else {
+            return BTreeSet::new();
+        };
+        let ExprKind::Tuple(items) = &init.kind else {
+            return BTreeSet::new();
+        };
+        items
+            .iter()
+            .enumerate()
+            .filter(|&(i, item)| {
+                let Some(path) = path_of(item) else {
+                    return false;
+                };
+                !item.ty.is_scalar()
+                    && !matches!(item.ty, Ty::Fn(..))
+                    && !(!path.0 .0 && self.ref_bound.contains(&path.0 .1))
+                    && !items[i + 1..]
+                        .iter()
+                        .any(|later| touches(&Stmt::Expr(later.clone()), &path))
+                    && overwritten_before_read(item, rest)
+            })
+            .map(|(_, item)| item as *const Expr)
+            .collect()
     }
 
     /// A `let` an enclosing statement found reads its source for the last
@@ -1109,6 +1289,15 @@ impl Emitter<'_> {
     /// `let old_k = ks; ks = List.filled(..)` takes the list, not a copy.
     pub(crate) fn take_if_overwritten(&mut self, init: &Expr, text: String) -> String {
         let taken = std::mem::take(&mut self.moves_last);
+        if let ExprKind::Some(inner) = &init.kind {
+            return match taken {
+                true => self.some_moved(inner, &init.ty).unwrap_or(text),
+                false => text,
+            };
+        }
+        if let (ExprKind::If(..), true) = (&init.kind, taken) {
+            return self.moved_some(init).unwrap_or(text);
+        }
         // A `const T&` name cannot be moved from; `std::move` of it only copies.
         let lent =
             path_of(init).is_some_and(|((global, s), _)| !global && self.ref_bound.contains(&s));

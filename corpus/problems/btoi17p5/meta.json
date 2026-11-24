@@ -7,6 +7,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/btoi17p5/orig.cpp"
+  ],
   "port": [
    "corpus/problems/btoi17p5/port.cp"
   ]

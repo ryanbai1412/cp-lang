@@ -7,6 +7,7 @@
 //   1 + MIS(T - r). Bottom-up greedy (take a node iff no child is taken) is an optimal MIS on a
 //   tree; `reroot` gives its (count, root taken) for every root in O(n), and MIS(T - r) is that
 //   count minus 1 if r was taken.
+// Bounds: n: 2..=200_000
 @!multitest
 let n: 2..=200_000 = read()
 domain V = 1..=n

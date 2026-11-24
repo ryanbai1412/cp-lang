@@ -175,7 +175,7 @@ impl<'a> Lowerer<'a> {
                     _ => value,
                 }
             }
-            ast::ExprKind::Compare { first, rest } => self.compare(first, rest, span),
+            ast::ExprKind::Compare { first, rest } => self.settled_compare(first, rest, span),
             ast::ExprKind::Range {
                 lo,
                 hi,
@@ -2448,7 +2448,7 @@ impl<'a> Lowerer<'a> {
 
     /// A comparison. One that tests for `none` reads its names as the
     /// optionals they were declared as.
-    fn compare(&mut self, first: &ast::Expr, rest: &[(CmpOp, ast::Expr)], span: Span) -> Expr {
+    pub(super) fn compare(&mut self, first: &ast::Expr, rest: &consts::Chain, span: Span) -> Expr {
         if !narrow::tests_none(first, rest) {
             return self.compare_sides(first, rest, span);
         }
@@ -2552,7 +2552,7 @@ impl<'a> Lowerer<'a> {
                 self.expr(e, None)
             };
             // A view compares by what it walks, and its walk is the next operand's hint.
-            let value = self.walked_struct(value);
+            let value = self.shown_struct(value);
             operands.push((value, e.span));
         }
         if rest.len() == 1 {
@@ -3285,33 +3285,6 @@ impl<'a> Lowerer<'a> {
         !wants(|t, d| matches!(t, Ty::Pos(ed) if *ed == d))
     }
 
-    /// `base[lo..hi]` in key terms on a view and positions otherwise.
-    fn slice_builtin(&mut self, base: Expr, lo: Expr, hi: Expr, span: Span) -> Expr {
-        let keyed = Self::keyed_view(&base.ty);
-        let (op, ty) = match &base.ty {
-            Ty::Str | Ty::StrView => (
-                if keyed {
-                    Builtin::KeySlice
-                } else {
-                    Builtin::StrSlice
-                },
-                Ty::StrView,
-            ),
-            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => (
-                if keyed {
-                    Builtin::KeySlice
-                } else {
-                    Builtin::ListSlice
-                },
-                Ty::ListView(e.clone(), base.ty.seq_key().unwrap_or(Dim::Int)),
-            ),
-            // R04b.1.2: a slice of an array keeps its positions as keys.
-            Ty::Array { elem, dims } => (Builtin::KeySlice, Ty::ListView(elem.clone(), dims[0])),
-            _ => unreachable!(),
-        };
-        self.mk(ExprKind::Builtin(op, vec![base, lo, hi]), ty, span)
-    }
-
     pub(super) fn hoist_view_base(&mut self, base: Expr, span: Span) -> Expr {
         if matches!(
             base.ty,
@@ -3695,6 +3668,12 @@ impl<'a> Lowerer<'a> {
                 return self.slice_builtin(base, lo_e, hi_e, span);
             }
         }
+        // R07.3.1: a range is keyed by its values, so its slice is the sub-range between two keys.
+        if let Ty::Range(elem) = &base.ty {
+            if matches!(**elem, Ty::Int | Ty::Pos(_)) {
+                return self.slice_range(base, lo.as_deref(), hi.as_deref(), *inclusive, span);
+            }
+        }
         let is_str = base.ty == Ty::Str;
         // `a[2..=4]` of a `[1..=4]T` is said in the array's own indices.
         let first = match &base.ty {
@@ -4070,7 +4049,10 @@ impl<'a> Lowerer<'a> {
         if let Some(alias) = self.subsets_alias(e) {
             return self.iter(&alias);
         }
-        if let Some(res) = self.sorted_view_iter(e, span) {
+        if let Some(res) = self
+            .sorted_view_iter(e, span)
+            .or_else(|| self.stepped_range_iter(e))
+        {
             return res;
         }
         // Direct zero-overhead range iteration for `V.after(pos)` and `V.before(pos)`.
@@ -4622,21 +4604,13 @@ impl<'a> Lowerer<'a> {
                 // A struct with a zero-arg `each(self)` (such as `Bitset<D>`), or the
                 // `iter(self)` of its `impl Seq`, walks what that call gives.
                 if let Ty::Struct(sid) = value.ty {
-                    let walk = ["each", "iter"].into_iter().find_map(|m| {
-                        let f = *self.structs[sid].methods.get(m)?;
-                        self.sigs[f].params.is_empty().then_some(f)
-                    });
-                    if let Some(each_fn) = walk {
-                        self.queue_fn(each_fn);
-                        let ret = self.ret_of(each_fn, span);
-                        if let Ty::List(elem) = ret {
-                            let call = self.mk(
-                                ExprKind::Call(each_fn, vec![Arg::Value(value)]),
-                                Ty::List(elem.clone()),
-                                span,
-                            );
-                            return (Iter::Seq(call, false), *elem);
-                        }
+                    if let Some((each_fn, elem)) = self.struct_walk(sid, span) {
+                        let call = self.mk(
+                            ExprKind::Call(each_fn, vec![Arg::Value(value)]),
+                            Ty::List(Box::new(elem.clone())),
+                            span,
+                        );
+                        return (Iter::Seq(call, false), elem);
                     }
                     // A struct with `len` and `nth(self, j)` (an `Indexed` view such
                     // as `Stepped<S>`) walks `nth(j)` for `j` in `0..len`.

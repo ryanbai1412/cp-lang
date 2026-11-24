@@ -6,6 +6,7 @@
 //   is free (border or rabbit beside it), and then every 0 of the run can be placed; a run
 //   1010...1 has only isolated 0s, which must pair up facing a shared 1, so it needs an even
 //   number of 0s. YES iff no run starts with 1 and has length 3 mod 4: one `runs` pass, O(n).
+// Bounds: _n: 1..=200_000
 @!multitest
 let _n: 1..=200_000 = read()
 let s: Str = read()

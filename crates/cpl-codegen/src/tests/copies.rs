@@ -86,7 +86,7 @@ fn an_if_let_payload_nothing_changes_is_a_reference_not_a_copy() {
         "print(total(5, Some([1, 2, 3])), swap())\n",
     ));
     assert!(
-        cpp.contains("const std::optional<std::vector<ll>>& t0 = end;"),
+        cpp.contains("const cpl::Lent<std::vector<ll>>& t0 = end;"),
         "{cpp}"
     );
     assert!(cpp.contains("const std::vector<ll>& e = *t0;"), "{cpp}");
@@ -306,5 +306,50 @@ fn a_local_read_for_the_last_time_moves_into_its_place() {
     assert!(
         !read.contains("dp = std::move(next);"),
         "next is read after the store: {read}"
+    );
+}
+
+#[test]
+fn a_field_a_literal_reads_before_it_is_reset_moves_in() {
+    let src = |reset: &str| {
+        format!(
+            "struct Box:\n    xs: List<Int> = []\n    k: Int = 0\n\n    fn take(mut self) -> Box:\n        let out = Box(xs, k)\n{reset}        out\n\nvar b = Box(xs: [1, 2, 3], k: 2)\nlet c = b.take()\nprint(c.xs.len, b.xs.len)\n"
+        )
+    };
+    let moved = cpp(&src("        xs = []\n        k = 0\n"));
+    assert!(moved.contains("Box{std::move(self.xs), self.k}"), "{moved}");
+    let kept = cpp(&src("        k = 0\n"));
+    assert!(
+        !kept.contains("std::move(self.xs)"),
+        "xs is never set again: {kept}"
+    );
+}
+
+#[test]
+fn a_get_of_a_stored_field_or_an_element_of_one_lends_it() {
+    let out = cpp("struct H:
+    xs: List<Int>
+    g: [0..2]List<Int>
+    @get pub fn items(self) -> List<Int> = xs
+    @get pub fn row(self) -> List<Int> = g[1]
+    @get pub fn fresh(self) -> List<Int> = [x + 1 for x in xs]
+let n: Int = read()
+let h = H([i for i in 0..n], [[1], [2]])
+var t = 0
+for k in 0..n: t += h.items[k] + h.row[0] + h.fresh[k]
+for v in H([n], [[1], [2]]).items: t += v
+print(t)
+");
+    assert!(
+        out.contains("inline const std::vector<ll>& H_items(const H& self)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("inline const std::vector<ll>& H_row(const H& self)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("inline std::vector<ll> H_fresh(const H& self)"),
+        "{out}"
     );
 }

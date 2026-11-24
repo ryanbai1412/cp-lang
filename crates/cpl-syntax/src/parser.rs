@@ -550,22 +550,30 @@ impl<'a> Parser<'a> {
             if self.eat(T::Comma) {
                 continue;
             }
-            if self.at(close) {
-                break;
-            }
-            let expected = format!("`,` or {} in {what}", close.describe());
-            self.error_expected(codes::EXPECTED_TOKEN, &expected, None);
-            self.skip_to(close);
-            if self.pos == before && !self.at(close) && !self.at_line_end() {
-                self.bump();
-            }
-            if !self.eat(T::Comma) {
+            if self.at(close) || !self.recover_list_item(close, what, before) {
                 break;
             }
         }
+        self.close_list(close, what);
+        out
+    }
+
+    /// After an item of a `comma_list` that a `,` or `close` doesn't follow: report it, skip
+    /// ahead, and say whether another item follows. Kept out of the generic `comma_list`, so
+    /// its half dozen copies share it.
+    fn recover_list_item(&mut self, close: TokenKind, what: &str, before: usize) -> bool {
+        let expected = format!("`,` or {} in {what}", close.describe());
+        self.error_expected(codes::EXPECTED_TOKEN, &expected, None);
+        self.skip_to(close);
+        if self.pos == before && !self.at(close) && !self.at_line_end() {
+            self.bump();
+        }
+        self.eat(T::Comma)
+    }
+
+    fn close_list(&mut self, close: TokenKind, what: &str) {
         let expected = format!("{} to close {what}", close.describe());
         self.expect(close, &expected);
-        out
     }
 
     /// Reports `span` as planned syntax. The parser has read it, so it is

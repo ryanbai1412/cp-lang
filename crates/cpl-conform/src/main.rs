@@ -11,8 +11,9 @@ usage: cpl-conform [conformance|corpus|docs|spec-blocks|diff|rewrites|all]... [o
 
 suites:
   conformance     spec/conformance/**/*.cp cases
-  corpus          corpus/problems/<id>/spec.cp on tests/*.in vs *.ans
-  docs            /// example: lines in std/*.cp
+  corpus          each corpus problem's spec.cp on its tests' .in vs .ans
+  docs            /// example: lines in std/*.cp; a hard gate: every example runs
+                  or says how it stops with `(traps RXXXX)` / `(error EXXXX)`
   spec-blocks     fenced cp blocks in spec/core, spec/lib, spec/tools and handbook/language
   diff            interpreter vs g++ -O2 -std=c++17 differential, with
                   side-effect variants of corpus ports (variant/*)
@@ -27,6 +28,7 @@ suites:
 options:
   --check         fail if any suite's pass count drops or a passing case regresses
   --write         update the scoreboard JSON with the suites that were run
+                  (with a filter, only the cases that ran)
   --shard N/M     diff runs only every Mth target, starting at the Nth
   --scoreboard P  scoreboard JSON path (default: research/scoreboard.json)
   --prev P        with --check, also fail on a case that passed in scoreboard P
@@ -35,6 +37,7 @@ options:
   --causes        group failing cases by root cause, sorted by count
   --rules         check spec/core rule coverage against spec/conformance
   --strict        fail on unmet conformance cases (or uncovered rules with --rules)
+  --manifest P    write the conformance cases the filter selects as the I/O contract's JSON to P
   --verbose       print failing case details
   -h, --help      show this help
 ";
@@ -61,6 +64,7 @@ fn main() -> ExitCode {
     let mut prev_path: Option<PathBuf> = None;
     let mut save_path: Option<PathBuf> = None;
     let mut filter: Option<String> = None;
+    let mut manifest_path: Option<PathBuf> = None;
 
     if args.first().map(String::as_str) == Some("fuzz") {
         return fuzz(&args[1..]);
@@ -104,6 +108,14 @@ fn main() -> ExitCode {
                     &mut save_path
                 };
                 *slot = Some(PathBuf::from(path));
+            }
+            "--manifest" => {
+                i += 1;
+                let Some(path) = args.get(i) else {
+                    eprintln!("cpl-conform: --manifest needs a path");
+                    return ExitCode::from(2);
+                };
+                manifest_path = Some(PathBuf::from(path));
             }
             "--scoreboard" | "--out" | "--baseline" => {
                 i += 1;
@@ -155,6 +167,25 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+
+    if let Some(path) = manifest_path {
+        if suites.iter().any(|&s| s != Suite::Conformance) {
+            eprintln!("cpl-conform: --manifest lists conformance cases only");
+            return ExitCode::from(2);
+        }
+        let json = match cpl_conform::manifest::manifest(&root, filter.as_deref()) {
+            Ok(json) => json,
+            Err(e) => {
+                eprintln!("cpl-conform: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
+        if let Err(e) = std::fs::write(&path, json + "\n") {
+            eprintln!("cpl-conform: cannot write {}: {e}", path.display());
+            return ExitCode::FAILURE;
+        }
+        return ExitCode::SUCCESS;
+    }
 
     if rules_only {
         let cov = conformance::check_rules(&root);
@@ -212,7 +243,7 @@ fn main() -> ExitCode {
         }
         if verbose {
             for (case_id, status) in &report.cases {
-                if status != "pass" && status != "untested" && status != "skip" {
+                if status != "pass" && status != "untested" {
                     let detail = report
                         .details
                         .get(case_id)
@@ -232,6 +263,23 @@ fn main() -> ExitCode {
             exit_fail = true;
         }
         if strict && report.passed < report.total {
+            exit_fail = true;
+        }
+        // A std doc example is the contestant's first contact: every one runs, or its
+        // `(traps ..)` / `(error ..)` tag says how it stops. No baseline, no ratchet.
+        if suite == Suite::Docs && report.passed < report.total {
+            eprintln!(
+                "cpl-conform: docs is a hard gate: {} std doc example(s) do not run as written:",
+                report.total - report.passed
+            );
+            for (case_id, status) in report.cases.iter().filter(|(_, s)| *s != "pass") {
+                let detail = report
+                    .details
+                    .get(case_id)
+                    .map(String::as_str)
+                    .unwrap_or("");
+                eprintln!("  {case_id}: {status}: {detail}");
+            }
             exit_fail = true;
         }
     }
@@ -284,6 +332,16 @@ fn main() -> ExitCode {
                 println!("  ... and {} more", ratchet.improvements.len() - 20);
             }
         }
+        if !ratchet.stale.is_empty() {
+            eprintln!(
+                "cpl-conform: {} case(s) research/scoreboard.json records as failing now pass; record them: cargo run -p cpl-conform -- <suite> --write",
+                ratchet.stale.len()
+            );
+            for s in &ratchet.stale {
+                eprintln!("  - {s}");
+            }
+            exit_fail = true;
+        }
         if !ratchet.regressions.is_empty() {
             eprintln!(
                 "cpl-conform: RATCHET FAILED ({} regression(s)):",
@@ -306,12 +364,12 @@ fn main() -> ExitCode {
     }
 
     if write {
-        if filter.is_some() {
-            eprintln!("cpl-conform: refusing --write with a filter");
-            return ExitCode::from(2);
-        }
         let mut merged = Scoreboard::load(&sb_path).unwrap_or_default();
-        merged.merge_from(&current);
+        if filter.is_some() {
+            merged.merge_cases_from(&current);
+        } else {
+            merged.merge_from(&current);
+        }
         if let Err(e) = merged.save(&sb_path) {
             eprintln!("cpl-conform: {e}");
             return ExitCode::FAILURE;

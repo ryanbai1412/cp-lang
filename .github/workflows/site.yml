@@ -57,6 +57,7 @@ jobs:
         with:
           ref: ${{ needs.select.outputs.sha }}
       - uses: ./.github/actions/setup-rust
+      - uses: astral-sh/setup-uv@v6
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -81,8 +82,8 @@ jobs:
       - name: Smoke
         run: |
           . scripts/retry.sh
-          ok() { code=$(curl -s -o /dev/null -w '%{http_code}' "https://cp-lang.org$1"); echo "$1 $code"; test "$code" = 200; }
-          for path in / /docs/ /play/ /install.sh; do RETRY_TRIES=5 retry ok "$path"; done
+          curl_page() { code=$(curl -s -o /dev/null -w '%{http_code}' "https://cp-lang.org$1"); echo "$1 $code"; test "$code" = 200; }
+          for path in / /docs/ /play/ /install.sh; do RETRY_TRIES=5 retry curl_page "$path"; done
   fresh:
     # The alert for a stale site (ci/R25): on the schedule only, after the
     # deploy, so it never holds one up. Red when a passing commit has waited

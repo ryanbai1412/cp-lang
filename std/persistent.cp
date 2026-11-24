@@ -88,7 +88,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// keep it as `base`. Every later write returns a new `Version`; no version is ever changed.
     ///
     /// cost: \(O(n)\) time and memory with `a:` or `fill:`, \(O(1)\) otherwise, for n = `|D|`
-    /// empty: an empty `D` gives a tree whose every fold is the identity
+    /// empty: `var t = PersistentSegTree<0..0, Int>(min); t.all(t.base) == Int.MAX`
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.all(t.base) == 6`
     pub fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>:
@@ -206,7 +206,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// position order.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: the monoid identity
+    /// empty: `var t = PersistentSegTree(min, a: [1, 2]); t.fold(t.base, 1..1) == Int.MAX`
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.fold(t.base, 1..3) == 5`
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.fold(t.base, 2..2) == 0`
@@ -218,7 +218,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// The fold of every position in version `v`, read from its root.
     ///
     /// cost: \(O(1)\)
-    /// empty: the monoid identity when `D` is empty
+    /// empty: `var t = PersistentSegTree<0..0, Int>(+); t.all(t.base) == 0`
     /// traps: when `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 0, 0); t.all(v) == 5`
     pub fn all(self, v: Version<PersistentSegTree<D, T>>) -> T = val[v.root]
@@ -241,7 +241,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// Law: `ok` is monotone (once false, false for every longer range) and `ok(identity)` holds.
     ///
     /// cost: \(O(\log n)\) calls of `ok`
-    /// ties: the rightmost qualifying cut
+    /// ties: `var t = PersistentSegTree(+, a: [1, 0, 0, 5]); t.right_while(t.base, 0, s => s <= 1) == 3`
     /// traps: when `from` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.right_while(t.base, 0, s => s <= 3) == 2`
     pub fn right_while(
@@ -271,7 +271,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// Law: `ok` is monotone (once false, false for every longer range) and `ok(identity)` holds.
     ///
     /// cost: \(O(\log n)\) calls of `ok`
-    /// ties: the leftmost qualifying cut
+    /// ties: `var t = PersistentSegTree(+, a: [5, 0, 0, 1]); t.left_while(t.base, 4, s => s <= 1) == 1`
     /// traps: when `to` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.left_while(t.base, 3, s => s <= 5) == 1`
     pub fn left_while(
@@ -298,13 +298,14 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// For a tree of counts under `+`, the position of the `k`-th item (1-based) in the difference
     /// `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the
     /// difference holds at most `k` items.
+    /// Items at one position are interchangeable; the position is returned.
     ///
     /// A position with count `c` holds `c` items.
     ///
     /// Law: `hi` was derived from `lo` by adding counts, so no position of `hi - lo` is negative.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: items at one position are interchangeable; the position is returned
+    /// ties: `var t = PersistentSegTree(+, a: [0, 0]); let v = t.set(t.base, 1, 2); t.diff_kth(v, t.base, 0) == Some(1) and t.diff_kth(v, t.base, 1) == Some(1)`
     /// traps: when `k < 0`, or a version did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, t.base, 1) == Some(3) and t.diff_kth(v2, t.base, 3) == None`
     /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, v1, 0) == Some(3)`
@@ -331,34 +332,33 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
                 nl = mid
         Some(D.nth(nl))
 
+struct KthNode(left: 0..=2_000_000_000, right: 0..=2_000_000_000, cnt: 0..=2_000_000_000)
+
 /// Static range k-th smallest and range rank queries over `[D]T`.
 /// Built in \(O(n \log n)\) using prefix versions of a persistent count tree; queries run in \(O(\log n)\).
 pub struct RangeKth<D, T>:
     vals: List<T>
-    left: List<0..=2_000_000_000>
-    right: List<0..=2_000_000_000>
-    cnt: List<0..=2_000_000_000>
+    // One list of nodes, so a query step reads one cache line per version, not three.
+    nodes: List<KthNode>
     roots: List<0..=2_000_000_000>
 
     /// Build the static structure over `a`: one persistent count tree over the sorted distinct values
     /// per prefix of `a`. `a` is copied; later changes to it are not seen.
     ///
     /// cost: \(O(n \log n)\) time and memory for n = `a.len`
-    /// empty: an empty `a` builds; every query range is then empty
+    /// empty: `RangeKth<0..0, Int>([]).count_le(0..0, 5) == 0`
     /// order: queries take ranges of `a`'s domain
     /// traps: never
     /// example: `RangeKth([5, 1, 4, 2]).kth(0..4, 0) == 1`
     pub fn new(a: [D]T) -> RangeKth<D, T>:
         let vals = deduped(sorted([a[i] for i in D]))
         let m = vals.len
-        var rk = RangeKth(vals, [0], [0], [0], [0])
+        var rk = RangeKth(vals, [KthNode(0, 0, 0)], [0])
         if m == 0:
             for _ in 0..D.count: rk.roots.push(0)
             return rk
         let nodes = 1 + D.count * (bit_width(m - 1) + 1)
-        rk.left.reserve(nodes)
-        rk.right.reserve(nodes)
-        rk.cnt.reserve(nodes)
+        rk.nodes.reserve(nodes)
         rk.roots.reserve(D.count + 1)
         for i in D:
             let prev = rk.roots.last!
@@ -387,32 +387,31 @@ pub struct RangeKth<D, T>:
 
     fn inc(mut self, root: Int, m: Int, pos: Int) -> Int:
         unchecked:
-            let new_root = cnt.len
+            let new_root = nodes.len
             var (u, nl, nr) = (root, 0, m)
             while true:
-                let id = cnt.len
-                let lu = left[u]
-                let ru = right[u]
-                left.push(lu)
-                right.push(ru)
-                cnt.push(cnt[u] + 1)
-                if nr - nl == 1: break
+                let next = nodes.len + 1
+                let (lu, ru, c) = (nodes[u].left, nodes[u].right, nodes[u].cnt + 1)
+                if nr - nl == 1:
+                    nodes.push(KthNode(lu, ru, c))
+                    break
                 let mid = (nl + nr) / 2
                 if pos < mid:
-                    left[id] = id + 1
+                    nodes.push(KthNode(next, ru, c))
                     u = lu
                     nr = mid
                 else:
-                    right[id] = id + 1
+                    nodes.push(KthNode(lu, next, c))
                     u = ru
                     nl = mid
             return new_root
 
     /// The `k`-th smallest element (0-based) of `a` over `r`, counting repeats.
+    /// Equal values are indistinguishable; the value is returned.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: traps (no `k` is in range)
-    /// ties: equal values are indistinguishable; the value is returned
+    /// empty: `RangeKth([5, 1, 4]).kth(1..1, 0) == 0` (traps R0401)
+    /// ties: `let k = RangeKth([2, 1, 2]); k.kth(0..3, 1) == 2 and k.kth(0..3, 2) == 2`
     /// traps: when `k < 0` or `k >= r.len`, or `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).kth(1..4, 1) == 2`
     pub fn kth(self, r: Range<D>, k: Int) -> T:
@@ -422,30 +421,30 @@ pub struct RangeKth<D, T>:
             var (u, v, nl, nr, rem) = (roots[lo], roots[hi], 0, vals.len, k)
             while nr - nl > 1:
                 let mid = (nl + nr) / 2
-                let left_cnt = cnt[left[v]] - cnt[left[u]]
+                let left_cnt = nodes[nodes[v].left].cnt - nodes[nodes[u].left].cnt
                 if rem < left_cnt:
-                    u = left[u]
-                    v = left[v]
+                    u = nodes[u].left
+                    v = nodes[v].left
                     nr = mid
                 else:
                     rem -= left_cnt
-                    u = right[u]
-                    v = right[v]
+                    u = nodes[u].right
+                    v = nodes[v].right
                     nl = mid
             return vals[nl]
 
     fn count_prefix(self, u: Int, v: Int, nl: Int, nr: Int, limit: Int) -> Int:
         if limit <= nl or (u == 0 and v == 0): return 0
-        if nr <= limit: return cnt[v] - cnt[u]
+        if nr <= limit: return nodes[v].cnt - nodes[u].cnt
         let mid = (nl + nr) / 2
-        let lc = self.count_prefix(left[u], left[v], nl, mid, limit)
-        let rc = self.count_prefix(right[u], right[v], mid, nr, limit)
+        let lc = self.count_prefix(nodes[u].left, nodes[v].left, nl, mid, limit)
+        let rc = self.count_prefix(nodes[u].right, nodes[v].right, mid, nr, limit)
         lc + rc
 
     /// The number of elements of `a` over `r` that are at most `x`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: 0
+    /// empty: `RangeKth([5, 1, 4]).count_le(1..1, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_le(0..4, 4) == 3`
     pub fn count_le(self, r: Range<D>, x: T) -> Int:
@@ -457,7 +456,7 @@ pub struct RangeKth<D, T>:
     /// The number of elements of `a` over `r` that are less than `x`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: 0
+    /// empty: `RangeKth([5, 1, 4]).count_lt(1..1, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_lt(0..4, 4) == 2`
     pub fn count_lt(self, r: Range<D>, x: T) -> Int:
@@ -469,7 +468,7 @@ pub struct RangeKth<D, T>:
     /// `lo_v > hi_v`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: 0
+    /// empty: `RangeKth([5, 1, 4]).count_in(1..1, 0, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_in(0..4, 2, 5) == 3`
     /// example: `RangeKth([5, 1, 4, 2]).count_in(0..4, 5, 2) == 0`
@@ -537,7 +536,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// older version.
     ///
     /// cost: \(O(n)\) time and memory with `a:` or `fill:`, \(O(1)\) otherwise, for n = `|D|`
-    /// empty: an empty `D` gives a tree whose every fold is the identity
+    /// empty: `var t = PersistentLazySegTree<0..0, Int, Int>(Action<Int, Int>(apply: (d, x, span) => x + d * span)); t.all(t.base) == 0`
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.all(t.base) == 6`
     pub fn new(
@@ -564,7 +563,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// A new version equal to `v` with the tag `f` applied to every position of `r`.
     ///
     /// cost: \(O(\log n)\) time and memory
-    /// empty: an empty `r` returns a version equal to `v`
+    /// empty: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 1..1, 10); t.all(v) == 6 and t.fold(v, 0..3) == 6`
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..2, 10); t.all(v) == 26 and t.all(t.base) == 6`
     pub fn apply(
@@ -593,7 +592,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// The fold of `r` in version `v`, left to right, with every applied tag accounted for.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: the monoid identity
+    /// empty: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.fold(t.base, 1..1) == 0`
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 1..3, 1); t.fold(v, 1..3) == 7`
     pub fn fold(self, v: Version<PersistentLazySegTree<D, T, F>>, r: Range<D>) -> T:
@@ -612,7 +611,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// The fold of every position in version `v`, read from its root.
     ///
     /// cost: \(O(1)\)
-    /// empty: the monoid identity when `D` is empty
+    /// empty: `var t = PersistentLazySegTree<0..0, Int, Int>(Action<Int, Int>(apply: (d, x, span) => x + d * span)); t.all(t.base) == 0`
     /// traps: when `v` did not come from this tree
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..3, 2); t.all(v) == 12`
     pub fn all(self, v: Version<PersistentLazySegTree<D, T, F>>) -> T:
@@ -652,7 +651,7 @@ pub struct PersistentArray<D, T>:
     /// Build version 0 over `D` from `a:` or a uniform `fill:`, and keep it as `base`.
     ///
     /// cost: \(O(n)\) time and memory for n = `|D|`
-    /// empty: an empty `D` gives an array with no positions
+    /// empty: `domain E = 0..0; var p = PersistentArray<E, Int>(fill: 7); [p.get(p.base, i) for i in E] == []`
     /// traps: when both or neither of `a:` and `fill:` are given
     /// example: `var p = PersistentArray<0..3, Int>(fill: 7); p.get(p.base, 0) == 7`
     pub fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>:
@@ -743,6 +742,14 @@ pub struct PMultiset<D>:
     /// example: `PMultiset<0..10>.empty().is_empty`
     @get pub fn is_empty(self) -> Bool = _len == 0
 
+    /// \(O(1)\). The multiset read through the arena it lives in: a lent view that walks, counts
+    /// and prints like any container. This is the walk of a `PMultiset`, since its nodes are in `ar`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 1); s.within(ar).each().collect() == [1, 3]`
+    pub fn within(self, ar: PArena<PMultiset<D>>) -> lends PMultisetWithin<D> = PMultisetWithin(ar, self)
+
     /// A new multiset with one more copy of `x`; `self` is unchanged.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) time and arena nodes
@@ -781,11 +788,12 @@ pub struct PMultiset<D>:
 
     /// Compare the elements of `self` and `other` as sorted sequences, lexicographically: ascending,
     /// or largest first with `desc: true`. A proper prefix is smaller. Returns `-1`, `0` or `1`.
+    /// It returns `0` only for equal multisets.
     ///
     /// The walk goes down the side where the two first differ by hash, so it reads one path.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
-    /// ties: `0` only for equal multisets
+    /// ties: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 2).with(mut ar, 5); let b = e.with(mut ar, 5).with(mut ar, 2); a.cmp(ar, b) == 0`
     /// traps: never
     /// example: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 1).with(mut ar, 3); let b = e.with(mut ar, 2); a.cmp(ar, b) == -1`
     /// example: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 1).with(mut ar, 3); let b = e.with(mut ar, 2); a.cmp(ar, b, desc: true) == 1`
@@ -824,6 +832,41 @@ pub struct PMultiset<D>:
         if k < mid: n._l = Some(ar.alloc(kid(ar, _l).step(mut ar, k, d, lo, mid)))
         else: n._r = Some(ar.alloc(kid(ar, _r).step(mut ar, k, d, mid, hi)))
         n
+
+/// A `PMultiset` read through its `PArena`, from `s.within(ar)`. It lends both, so it lives no
+/// longer than either and copies nothing.
+pub struct PMultisetWithin<D>(ar: PArena<PMultiset<D>>, set: PMultiset<D>):
+    /// The number of elements, counting copies.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 3); s.within(ar).len == 2`
+    @get pub fn len(self) -> Int = set.len
+
+    /// Whether the multiset has no element.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); PMultiset<0..10>.empty().within(ar).is_empty`
+    @get pub fn is_empty(self) -> Bool = set.is_empty
+
+    /// Visit every element, one per copy, skipping empty subtrees.
+    ///
+    /// cost: \(O(\min(\mathit{len}, \lvert D \rvert) \log \lvert D \rvert + \mathit{len})\)
+    /// empty: `var ar = PArena<PMultiset<0..10>>(); PMultiset<0..10>.empty().within(ar).each().collect() == []`
+    /// order: ascending `D` order, each element repeated by its count
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 7).with(mut ar, 2).with(mut ar, 7); s.within(ar).each().collect() == [2, 7, 7]`
+    pub fn each(self) -> yields D:
+        var stack = [(node: set, lo: 0, hi: D.count)]
+        while let top = stack.pop():
+            if top.node._len == 0: continue
+            if top.hi - top.lo == 1:
+                for _ in 0..top.node._len: yield D.nth(top.lo)
+                continue
+            let mid = top.lo + (top.hi - top.lo) / 2
+            stack.push((node: kid(ar, top.node._r), lo: mid, hi: top.hi))
+            stack.push((node: kid(ar, top.node._l), lo: top.lo, hi: mid))
 
 impl<D> Eq for PMultiset<D>:
     fn eq(a, b) = a._len == b._len and a._hash == b._hash
@@ -874,3 +917,21 @@ fn persistent_segtree_and_range_kth_match_brute():
             for k in 0..s.len: assert rk.kth(rng, k) == s[k]
             for x in [-20, -5, 0, 5, 20]:
                 assert rk.count_le(rng, x) == s.count(y => y <= x)
+
+@test
+fn pmultiset_within_walks_and_shows():
+    var ar = PArena<PMultiset<0..8>>()
+    let e = PMultiset<0..8>.empty()
+    let s = e.with(mut ar, 5).with(mut ar, 0).with(mut ar, 5).with(mut ar, 7)
+    let t = s.without(mut ar, 5)
+    assert s.within(ar).each().collect() == [0, 5, 5, 7] and "{s.within(ar)}" == "0 5 5 7"
+    assert t.within(ar).each().collect() == [0, 5, 7] and t.within(ar).len == 3
+    assert e.within(ar).is_empty and "{e.within(ar)}" == ""
+
+impl Show for PMultisetWithin<D>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

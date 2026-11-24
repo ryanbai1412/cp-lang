@@ -8,6 +8,7 @@
 //   -m..=m + 1, scored in O(1) by closed form. Scanning the rest keeps the reachable ends as
 //   {2i + p0, 2i + p1} over subset sums i of half-gaps added at each '?' (they total <= m), so a
 //   bitset subset sum lists them; the distinct scores go into a set and are summed.
+// Bounds: n: 1..=100_000; x, y: 1..=1_000_000
 
 type Z = Mod<998_244_353>
 
@@ -17,7 +18,8 @@ let s: Str = read()
 fn step(c: Int, ch: Char) -> Int = if ch == '0': x + c else: y - c
 
 let first_q = s.find('?')
-let head = if let q = first_q: s[..q] else: s
+let cut = first_q ?? s.len
+let head = s[..cut]
 var c0 = 0
 var f = 0
 for ch in head:

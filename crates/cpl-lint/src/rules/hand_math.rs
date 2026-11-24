@@ -6,6 +6,7 @@
 //! array (`diff_by_hand`) and counting components by DFS
 //! (`components_by_dfs`).
 
+use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{
     File, Finding, Lint, BINOM_BY_HAND, COMPONENTS_BY_DFS, CROSS_BY_HAND, DIFF_BY_HAND,
@@ -316,7 +317,7 @@ impl HandMath<'_> {
         };
         for &(f, a) in hits {
             for (i, &(g, b)) in hits.iter().enumerate() {
-                let inverse = g.contains("inv") || g == format!("i{f}");
+                let inverse = g.contains(std_fn::INV) || g == format!("i{f}");
                 if g == f || !inverse {
                     continue;
                 }

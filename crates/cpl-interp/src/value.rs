@@ -9,6 +9,9 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
+mod cells;
+pub(crate) use cells::{Cells, SmallFieldKind};
+
 #[derive(Clone, Debug)]
 pub(crate) enum CaptureVal {
     Val(Value),
@@ -177,13 +180,45 @@ impl PartialEq for TupleVal {
 
 impl Eq for TupleVal {}
 
+/// An `I128` kept at 8-byte alignment: a bare `i128` would make every
+/// [`Value`] 16-byte aligned and twice the size.
+#[derive(Clone, Copy)]
+#[repr(C, packed(8))]
+pub(crate) struct Wide(pub i128);
+
+impl Wide {
+    #[inline(always)]
+    pub fn get(self) -> i128 {
+        self.0
+    }
+}
+
+impl From<i128> for Wide {
+    #[inline(always)]
+    fn from(v: i128) -> Wide {
+        Wide(v)
+    }
+}
+
+impl std::fmt::Debug for Wide {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.get(), f)
+    }
+}
+
+impl std::fmt::Display for Wide {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.get(), f)
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) enum Value {
     #[default]
     Unit,
     /// Integers, and positions and bounds as their ordinals.
     Int(i64),
-    I128(i128),
+    I128(Wide),
     U64(u64),
     Float(f64),
     Bool(bool),
@@ -195,7 +230,7 @@ pub(crate) enum Value {
     /// A half-open range `(lo, hi)`.
     Range(i64, i64),
     /// A half-open 128-bit integer range `(lo, hi)`.
-    Range128(i128, i128),
+    Range128(Rc<(i128, i128)>),
     /// An interval of reals `(lo, hi)`: searched, never walked.
     RangeF(f64, f64),
     /// A runtime domain handle `(lo, len)`.
@@ -212,7 +247,7 @@ pub(crate) enum Value {
     Tuple(TupleVal),
     Enum(u32, Rc<Vec<Value>>),
     Array(Rc<Array>),
-    List(Rc<Vec<Value>>),
+    List(Rc<Cells>),
     /// O(1) read-only view (slice or reverse) into a `List<T>`.
     ListView(Rc<ListViewVal>),
     /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
@@ -346,7 +381,7 @@ pub(crate) struct MutViewVal {
 /// O(1) read-only slice/reverse view into a `List<T>`'s backing `Vec`.
 #[derive(Clone, Debug)]
 pub(crate) struct ListViewVal {
-    pub base: Rc<Vec<Value>>,
+    pub base: Rc<Cells>,
     pub lo: usize,
     pub len: usize,
     pub rev: bool,
@@ -359,7 +394,7 @@ impl ListViewVal {
         self.lo as i64 + self.shift
     }
 
-    pub fn whole(base: Rc<Vec<Value>>, rev: bool) -> ListViewVal {
+    pub fn whole(base: Rc<Cells>, rev: bool) -> ListViewVal {
         let len = base.len();
         ListViewVal {
             base,
@@ -371,7 +406,7 @@ impl ListViewVal {
     }
 
     #[inline]
-    pub fn get(&self, idx: usize) -> Option<&Value> {
+    pub fn get(&self, idx: usize) -> Option<Value> {
         if idx >= self.len {
             return None;
         }
@@ -380,7 +415,12 @@ impl ListViewVal {
         } else {
             self.lo + idx
         };
-        Some(&self.base[pos])
+        Some(self.base.get_unchecked_val(pos))
+    }
+
+    /// The cells in walk order.
+    pub fn iter(&self) -> impl Iterator<Item = Value> + '_ {
+        (0..self.len).map(move |i| self.get(i).unwrap())
     }
 
     /// The cells `rel` counted in storage order from `lo`, whatever the walk direction.
@@ -421,126 +461,20 @@ impl ListViewVal {
     }
 
     pub fn to_vec(&self) -> Vec<Value> {
-        let slice = &self.base[self.lo..self.lo + self.len];
-        if self.rev {
-            slice.iter().rev().cloned().collect()
-        } else {
-            slice.to_vec()
-        }
+        self.iter().collect()
     }
 
-    pub fn cmp_slice(&self, other: &[Value]) -> Ordering {
-        if !self.rev {
-            return self.base[self.lo..self.lo + self.len].cmp(other);
-        }
-        let n = self.len.min(other.len());
-        for i in 0..n {
-            let ord = self.base[self.lo + self.len - 1 - i].cmp(&other[i]);
-            if ord != Ordering::Equal {
-                return ord;
-            }
-        }
-        self.len.cmp(&other.len())
+    pub fn cmp_slice(&self, other: &Cells) -> Ordering {
+        self.iter().cmp(other.iter())
     }
 
     pub fn cmp_view(&self, other: &ListViewVal) -> Ordering {
-        if !self.rev && !other.rev {
-            return self.base[self.lo..self.lo + self.len]
-                .cmp(&other.base[other.lo..other.lo + other.len]);
-        }
-        let n = self.len.min(other.len);
-        for i in 0..n {
-            let ord = self.get(i).unwrap().cmp(other.get(i).unwrap());
-            if ord != Ordering::Equal {
-                return ord;
-            }
-        }
-        self.len.cmp(&other.len)
+        self.iter().cmp(other.iter())
     }
 
     pub fn contains(&self, needle: &Value) -> bool {
-        self.base[self.lo..self.lo + self.len].contains(needle)
+        self.iter().any(|v| &v == needle)
     }
-}
-
-/// Kind of each scalar field inside a packed [`ArrayData::SmallIntTuple`].
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) enum SmallFieldKind {
-    Int,
-    OneIntStruct,
-    Bool,
-    Char,
-}
-
-impl SmallFieldKind {
-    #[inline]
-    pub fn try_unbox(v: &Value) -> Option<(Self, i64)> {
-        match v {
-            Value::Int(x) => Some((Self::Int, *x)),
-            Value::Tuple(TupleVal::OneInt(x)) => Some((Self::OneIntStruct, *x)),
-            Value::Bool(b) => Some((Self::Bool, i64::from(*b))),
-            Value::Char(c) => Some((Self::Char, i64::from(*c))),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    pub fn box_val(self, v: i64) -> Value {
-        match self {
-            Self::Int => Value::Int(v),
-            Self::OneIntStruct => Value::Tuple(TupleVal::OneInt(v)),
-            Self::Bool => Value::Bool(v != 0),
-            Self::Char => Value::Char(v as u8),
-        }
-    }
-}
-
-fn try_unbox_small_tuple(v: &Value) -> Option<(u8, [SmallFieldKind; 4], [i64; 4])> {
-    let Value::Tuple(TupleVal::Boxed(fs)) = v else {
-        return None;
-    };
-    let len = fs.len();
-    if !(2..=4).contains(&len) {
-        return None;
-    }
-    let mut kinds = [SmallFieldKind::Int; 4];
-    let mut vals = [0i64; 4];
-    for (i, f) in fs.iter().enumerate() {
-        let (k, x) = SmallFieldKind::try_unbox(f)?;
-        kinds[i] = k;
-        vals[i] = x;
-    }
-    Some((len as u8, kinds, vals))
-}
-
-#[inline]
-fn box_small_tuple(stride: u8, kinds: &[SmallFieldKind; 4], slice: &[i64]) -> Value {
-    let n = stride as usize;
-    let mut fs = Vec::with_capacity(n);
-    for i in 0..n {
-        fs.push(kinds[i].box_val(slice[i]));
-    }
-    Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
-}
-
-/// Typed flat backing storage for [`Array`] cells so primitive arrays
-/// (`Int`, `Pos`, `Bound`, 1-field `Int` structs like `Mod<P>`, `Bool`,
-/// `Char`, `Float`, and 2..=4-field scalar tuples/structs) avoid 24-byte
-/// `Value` tagging and `Rc`/`Clone`/`Drop` overhead.
-#[derive(Clone, Debug)]
-pub(crate) enum ArrayData {
-    Int(Vec<i64>),
-    OneIntStruct(Vec<i64>),
-    OptInt(Vec<Option<i64>>),
-    Bool(Vec<u8>),
-    Char(Vec<u8>),
-    Float(Vec<f64>),
-    SmallIntTuple {
-        stride: u8,
-        kinds: [SmallFieldKind; 4],
-        data: Vec<i64>,
-    },
-    Values(Vec<Value>),
 }
 
 #[derive(Clone, Debug)]
@@ -548,443 +482,37 @@ pub(crate) struct Array {
     /// Length of each dimension.
     pub dims: Vec<i64>,
     /// Cells in row-major order.
-    pub data: ArrayData,
+    pub data: Cells,
 }
 
 impl Array {
     pub fn filled(dims: Vec<i64>, fill: Value) -> Array {
         let cells = dims.iter().product::<i64>() as usize;
-        let data = match fill {
-            Value::Int(v) => ArrayData::Int(vec![v; cells]),
-            Value::Tuple(TupleVal::OneInt(v)) => ArrayData::OneIntStruct(vec![v; cells]),
-            Value::Opt(OptVal::None) => ArrayData::OptInt(vec![None; cells]),
-            Value::Opt(OptVal::Int(v)) => ArrayData::OptInt(vec![Some(v); cells]),
-            Value::Bool(b) => ArrayData::Bool(vec![u8::from(b); cells]),
-            Value::Char(c) => ArrayData::Char(vec![c; cells]),
-            Value::Float(f) => ArrayData::Float(vec![f; cells]),
-            other => {
-                if let Some((stride, kinds, vals)) = try_unbox_small_tuple(&other) {
-                    let s = stride as usize;
-                    let mut data = Vec::with_capacity(cells * s);
-                    for _ in 0..cells {
-                        data.extend_from_slice(&vals[..s]);
-                    }
-                    ArrayData::SmallIntTuple {
-                        stride,
-                        kinds,
-                        data,
-                    }
-                } else {
-                    ArrayData::Values(vec![other; cells])
-                }
-            }
-        };
+        let data = Cells::filled(cells, fill);
         Array { dims, data }
     }
 
     pub fn empty(dims: Vec<i64>) -> Array {
-        Array {
-            dims,
-            data: ArrayData::Values(Vec::new()),
-        }
-    }
-
-    pub fn from_values(dims: Vec<i64>, values: Vec<Value>) -> Array {
-        let data = match values.first() {
-            Some(Value::Int(_)) if values.iter().all(|v| matches!(v, Value::Int(_))) => {
-                ArrayData::Int(values.into_iter().map(|v| v.int()).collect())
-            }
-            Some(Value::Tuple(TupleVal::OneInt(_)))
-                if values
-                    .iter()
-                    .all(|v| matches!(v, Value::Tuple(TupleVal::OneInt(_)))) =>
-            {
-                ArrayData::OneIntStruct(
-                    values
-                        .into_iter()
-                        .map(|v| match v {
-                            Value::Tuple(TupleVal::OneInt(x)) => x,
-                            _ => unreachable!(),
-                        })
-                        .collect(),
-                )
-            }
-            Some(Value::Bool(_)) if values.iter().all(|v| matches!(v, Value::Bool(_))) => {
-                ArrayData::Bool(values.into_iter().map(|v| u8::from(v.bool())).collect())
-            }
-            Some(Value::Char(_)) if values.iter().all(|v| matches!(v, Value::Char(_))) => {
-                ArrayData::Char(
-                    values
-                        .into_iter()
-                        .map(|v| match v {
-                            Value::Char(c) => c,
-                            _ => unreachable!(),
-                        })
-                        .collect(),
-                )
-            }
-            Some(Value::Float(_)) if values.iter().all(|v| matches!(v, Value::Float(_))) => {
-                ArrayData::Float(values.into_iter().map(|v| v.float()).collect())
-            }
-            Some(first) if try_unbox_small_tuple(first).is_some() => {
-                let (stride, kinds, _) = try_unbox_small_tuple(first).unwrap();
-                let s = stride as usize;
-                let mut data = Vec::with_capacity(values.len() * s);
-                let mut ok = true;
-                for v in &values {
-                    match try_unbox_small_tuple(v) {
-                        Some((st, ks, vals)) if st == stride && ks[..s] == kinds[..s] => {
-                            data.extend_from_slice(&vals[..s]);
-                        }
-                        _ => {
-                            ok = false;
-                            break;
-                        }
-                    }
-                }
-                if ok {
-                    ArrayData::SmallIntTuple {
-                        stride,
-                        kinds,
-                        data,
-                    }
-                } else {
-                    ArrayData::Values(values)
-                }
-            }
-            _ => ArrayData::Values(values),
-        };
+        let data = Cells::Values(Vec::new());
         Array { dims, data }
     }
 
-    pub fn len(&self) -> usize {
-        match &self.data {
-            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v.len(),
-            ArrayData::OptInt(v) => v.len(),
-            ArrayData::Bool(v) | ArrayData::Char(v) => v.len(),
-            ArrayData::Float(v) => v.len(),
-            ArrayData::SmallIntTuple { stride, data, .. } => data.len() / (*stride as usize),
-            ArrayData::Values(v) => v.len(),
-        }
+    pub fn from_values(dims: Vec<i64>, values: Vec<Value>) -> Array {
+        let data = Cells::from_values(values);
+        Array { dims, data }
     }
+}
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+impl std::ops::Deref for Array {
+    type Target = Cells;
+    fn deref(&self) -> &Cells {
+        &self.data
     }
+}
 
-    #[inline]
-    pub fn get_int(&self, idx: usize) -> Option<i64> {
-        match &self.data {
-            ArrayData::Int(v) => v.get(idx).copied(),
-            _ => match self.get(idx)? {
-                Value::Int(v) => Some(v),
-                _ => None,
-            },
-        }
-    }
-
-    pub fn get(&self, idx: usize) -> Option<Value> {
-        match &self.data {
-            ArrayData::Int(v) => v.get(idx).copied().map(Value::Int),
-            ArrayData::OneIntStruct(v) => v
-                .get(idx)
-                .copied()
-                .map(|x| Value::Tuple(TupleVal::OneInt(x))),
-            ArrayData::OptInt(v) => v.get(idx).copied().map(|o| match o {
-                Some(x) => Value::Opt(OptVal::Int(x)),
-                None => Value::Opt(OptVal::None),
-            }),
-            ArrayData::Bool(v) => v.get(idx).copied().map(|b| Value::Bool(b != 0)),
-            ArrayData::Char(v) => v.get(idx).copied().map(Value::Char),
-            ArrayData::Float(v) => v.get(idx).copied().map(Value::Float),
-            ArrayData::SmallIntTuple {
-                stride,
-                kinds,
-                data,
-            } => {
-                let s = *stride as usize;
-                let off = idx.checked_mul(s)?;
-                let slice = data.get(off..off + s)?;
-                Some(box_small_tuple(*stride, kinds, slice))
-            }
-            ArrayData::Values(v) => v.get(idx).cloned(),
-        }
-    }
-
-    #[inline]
-    pub fn get_unchecked_val(&self, idx: usize) -> Value {
-        match &self.data {
-            ArrayData::Int(v) => Value::Int(v[idx]),
-            ArrayData::OneIntStruct(v) => Value::Tuple(TupleVal::OneInt(v[idx])),
-            ArrayData::OptInt(v) => match v[idx] {
-                Some(x) => Value::Opt(OptVal::Int(x)),
-                None => Value::Opt(OptVal::None),
-            },
-            ArrayData::Bool(v) => Value::Bool(v[idx] != 0),
-            ArrayData::Char(v) => Value::Char(v[idx]),
-            ArrayData::Float(v) => Value::Float(v[idx]),
-            ArrayData::SmallIntTuple {
-                stride,
-                kinds,
-                data,
-            } => {
-                let s = *stride as usize;
-                let off = idx * s;
-                box_small_tuple(*stride, kinds, &data[off..off + s])
-            }
-            ArrayData::Values(v) => v[idx].clone(),
-        }
-    }
-
-    #[inline]
-    pub fn get_small_tuple(&self, idx: usize, len: usize, out: &mut [i64]) {
-        match &self.data {
-            ArrayData::SmallIntTuple { stride, data, .. } if *stride as usize == len => {
-                let off = idx * len;
-                out[..len].copy_from_slice(&data[off..off + len]);
-            }
-            _ => {
-                if let Some(Value::Tuple(TupleVal::Boxed(fs))) = self.get(idx) {
-                    for (i, f) in fs.iter().take(len).enumerate() {
-                        out[i] = SmallFieldKind::try_unbox(f).map_or(0, |(_, x)| x);
-                    }
-                }
-            }
-        }
-    }
-
-    #[inline]
-    pub fn set_small_tuple(
-        &mut self,
-        idx: usize,
-        len: usize,
-        vals: &[i64],
-        kinds: &[SmallFieldKind; 4],
-    ) {
-        match &mut self.data {
-            ArrayData::SmallIntTuple { stride, data, .. } if *stride as usize == len => {
-                let off = idx * len;
-                data[off..off + len].copy_from_slice(&vals[..len]);
-            }
-            _ => {
-                let v = box_small_tuple(len as u8, kinds, &vals[..len]);
-                self.set(idx, v);
-            }
-        }
-    }
-
-    #[inline]
-    pub fn set(&mut self, idx: usize, val: Value) {
-        match (&mut self.data, val) {
-            (ArrayData::Int(v), Value::Int(x)) => v[idx] = x,
-            (ArrayData::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v[idx] = x,
-            (ArrayData::OptInt(v), Value::Opt(OptVal::None)) => v[idx] = None,
-            (ArrayData::OptInt(v), Value::Opt(OptVal::Int(x))) => v[idx] = Some(x),
-            (ArrayData::Bool(v), Value::Bool(b)) => v[idx] = u8::from(b),
-            (ArrayData::Char(v), Value::Char(c)) => v[idx] = c,
-            (ArrayData::Float(v), Value::Float(f)) => v[idx] = f,
-            (
-                ArrayData::SmallIntTuple {
-                    stride,
-                    kinds,
-                    data,
-                },
-                other,
-            ) => {
-                let s = *stride as usize;
-                if let Some((st, ks, vals)) = try_unbox_small_tuple(&other) {
-                    if st == *stride && ks[..s] == kinds[..s] {
-                        let off = idx * s;
-                        data[off..off + s].copy_from_slice(&vals[..s]);
-                        return;
-                    }
-                }
-                self.as_mut_values()[idx] = other;
-            }
-            (ArrayData::Values(v), other) => v[idx] = other,
-            (_, other) => {
-                self.as_mut_values()[idx] = other;
-            }
-        }
-    }
-
-    pub fn first(&self) -> Option<Value> {
-        self.get(0)
-    }
-
-    pub fn last(&self) -> Option<Value> {
-        self.len().checked_sub(1).and_then(|i| self.get(i))
-    }
-
-    pub fn contains(&self, needle: &Value) -> bool {
-        match (&self.data, needle) {
-            (ArrayData::Int(v), Value::Int(x)) => v.contains(x),
-            (ArrayData::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v.contains(x),
-            (ArrayData::OptInt(v), Value::Opt(OptVal::None)) => v.contains(&None),
-            (ArrayData::OptInt(v), Value::Opt(OptVal::Int(x))) => v.contains(&Some(*x)),
-            (ArrayData::Bool(v), Value::Bool(b)) => v.contains(&u8::from(*b)),
-            (ArrayData::Char(v), Value::Char(c)) => v.contains(c),
-            (ArrayData::Float(v), Value::Float(f)) => {
-                v.iter().any(|x| x.total_cmp(f) == Ordering::Equal)
-            }
-            (ArrayData::Values(v), _) => v.contains(needle),
-            _ => (0..self.len()).any(|i| &self.get_unchecked_val(i) == needle),
-        }
-    }
-
-    pub fn reverse(&mut self) {
-        match &mut self.data {
-            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v.reverse(),
-            ArrayData::OptInt(v) => v.reverse(),
-            ArrayData::Bool(v) | ArrayData::Char(v) => v.reverse(),
-            ArrayData::Float(v) => v.reverse(),
-            ArrayData::SmallIntTuple { stride, data, .. } => {
-                let s = *stride as usize;
-                let n = data.len() / s;
-                for i in 0..n / 2 {
-                    let a = i * s;
-                    let b = (n - 1 - i) * s;
-                    for k in 0..s {
-                        data.swap(a + k, b + k);
-                    }
-                }
-            }
-            ArrayData::Values(v) => v.reverse(),
-        }
-    }
-
-    pub fn swap(&mut self, i: usize, j: usize) {
-        match &mut self.data {
-            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v.swap(i, j),
-            ArrayData::OptInt(v) => v.swap(i, j),
-            ArrayData::Bool(v) | ArrayData::Char(v) => v.swap(i, j),
-            ArrayData::Float(v) => v.swap(i, j),
-            ArrayData::SmallIntTuple { stride, data, .. } => {
-                let s = *stride as usize;
-                let a = i * s;
-                let b = j * s;
-                for k in 0..s {
-                    data.swap(a + k, b + k);
-                }
-            }
-            ArrayData::Values(v) => v.swap(i, j),
-        }
-    }
-
-    pub fn fill(&mut self, val: Value) {
-        match (&mut self.data, val) {
-            (ArrayData::Int(v), Value::Int(x)) => v.fill(x),
-            (ArrayData::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v.fill(x),
-            (ArrayData::OptInt(v), Value::Opt(OptVal::None)) => v.fill(None),
-            (ArrayData::OptInt(v), Value::Opt(OptVal::Int(x))) => v.fill(Some(x)),
-            (ArrayData::Bool(v), Value::Bool(b)) => v.fill(u8::from(b)),
-            (ArrayData::Char(v), Value::Char(c)) => v.fill(c),
-            (ArrayData::Float(v), Value::Float(f)) => v.fill(f),
-            (
-                ArrayData::SmallIntTuple {
-                    stride,
-                    kinds,
-                    data,
-                },
-                other,
-            ) => {
-                let s = *stride as usize;
-                if let Some((st, ks, vals)) = try_unbox_small_tuple(&other) {
-                    if st == *stride && ks[..s] == kinds[..s] {
-                        for chunk in data.chunks_exact_mut(s) {
-                            chunk.copy_from_slice(&vals[..s]);
-                        }
-                        return;
-                    }
-                }
-                self.as_mut_values().fill(other);
-            }
-            (ArrayData::Values(v), other) => v.fill(other),
-            (_, other) => {
-                self.as_mut_values().fill(other);
-            }
-        }
-    }
-
-    pub fn to_values(&self) -> Vec<Value> {
-        match &self.data {
-            ArrayData::Int(v) => v.iter().copied().map(Value::Int).collect(),
-            ArrayData::OneIntStruct(v) => v
-                .iter()
-                .copied()
-                .map(|x| Value::Tuple(TupleVal::OneInt(x)))
-                .collect(),
-            ArrayData::OptInt(v) => v
-                .iter()
-                .copied()
-                .map(|o| match o {
-                    Some(x) => Value::Opt(OptVal::Int(x)),
-                    None => Value::Opt(OptVal::None),
-                })
-                .collect(),
-            ArrayData::Bool(v) => v.iter().copied().map(|b| Value::Bool(b != 0)).collect(),
-            ArrayData::Char(v) => v.iter().copied().map(Value::Char).collect(),
-            ArrayData::Float(v) => v.iter().copied().map(Value::Float).collect(),
-            ArrayData::SmallIntTuple {
-                stride,
-                kinds,
-                data,
-            } => {
-                let s = *stride as usize;
-                data.chunks_exact(s)
-                    .map(|chunk| box_small_tuple(*stride, kinds, chunk))
-                    .collect()
-            }
-            ArrayData::Values(v) => v.clone(),
-        }
-    }
-
-    pub fn into_values(self) -> Vec<Value> {
-        match self.data {
-            ArrayData::Values(v) => v,
-            _ => self.to_values(),
-        }
-    }
-
-    pub fn as_mut_values(&mut self) -> &mut Vec<Value> {
-        if !matches!(self.data, ArrayData::Values(_)) {
-            let vals = self.to_values();
-            self.data = ArrayData::Values(vals);
-        }
-        match &mut self.data {
-            ArrayData::Values(v) => v,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn cmp_data(&self, other: &Array) -> Ordering {
-        match (&self.data, &other.data) {
-            (ArrayData::Int(a), ArrayData::Int(b))
-            | (ArrayData::OneIntStruct(a), ArrayData::OneIntStruct(b)) => a.cmp(b),
-            (ArrayData::Bool(a), ArrayData::Bool(b)) | (ArrayData::Char(a), ArrayData::Char(b)) => {
-                a.cmp(b)
-            }
-            (ArrayData::Float(a), ArrayData::Float(b)) => {
-                for (x, y) in a.iter().zip(b.iter()) {
-                    let ord = x.total_cmp(y);
-                    if ord != Ordering::Equal {
-                        return ord;
-                    }
-                }
-                a.len().cmp(&b.len())
-            }
-            (ArrayData::Values(a), ArrayData::Values(b)) => a.cmp(b),
-            _ => {
-                let n = self.len().min(other.len());
-                for i in 0..n {
-                    let ord = self.get_unchecked_val(i).cmp(&other.get_unchecked_val(i));
-                    if ord != Ordering::Equal {
-                        return ord;
-                    }
-                }
-                self.len().cmp(&other.len())
-            }
-        }
+impl std::ops::DerefMut for Array {
+    fn deref_mut(&mut self) -> &mut Cells {
+        &mut self.data
     }
 }
 
@@ -998,7 +526,7 @@ impl Value {
 
     pub fn i128(&self) -> i128 {
         match self {
-            Value::I128(v) => *v,
+            Value::I128(v) => v.get(),
             _ => 0,
         }
     }
@@ -1021,8 +549,16 @@ impl Value {
         matches!(self, Value::Bool(true))
     }
 
+    pub fn range128(lo: i128, hi: i128) -> Value {
+        Value::Range128(Rc::new((lo, hi)))
+    }
+
     pub fn some(value: Value) -> Value {
         Value::Opt(OptVal::some(value))
+    }
+
+    pub fn list(items: Vec<Value>) -> Value {
+        Value::List(Rc::new(Cells::from(items)))
     }
 
     pub fn tuple(fields: Vec<Value>) -> Value {
@@ -1063,7 +599,7 @@ impl Ord for Value {
     fn cmp(&self, other: &Value) -> Ordering {
         match (self, other) {
             (Value::Int(a), Value::Int(b)) => a.cmp(b),
-            (Value::I128(a), Value::I128(b)) => a.cmp(b),
+            (Value::I128(a), Value::I128(b)) => a.get().cmp(&b.get()),
             (Value::U64(a), Value::U64(b)) => a.cmp(b),
             (Value::Float(a), Value::Float(b)) => {
                 a.partial_cmp(b).unwrap_or_else(|| a.total_cmp(b))
@@ -1076,7 +612,7 @@ impl Ord for Value {
             (Value::Str(a), Value::StrView(b)) => b.cmp_bytes(a).reverse(),
             (Value::Opt(a), Value::Opt(b)) => a.cmp(b),
             (Value::Range(a1, a2), Value::Range(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
-            (Value::Range128(a1, a2), Value::Range128(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
+            (Value::Range128(a), Value::Range128(b)) => a.cmp(b),
             (Value::RangeF(a1, a2), Value::RangeF(b1, b2)) => {
                 a1.total_cmp(b1).then_with(|| a2.total_cmp(b2))
             }
@@ -1115,7 +651,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
     match ty {
         Ty::Unit | Ty::Error => Value::Unit,
         Ty::Int | Ty::Pos(_) | Ty::Bound(_) => Value::Int(0),
-        Ty::I128 => Value::I128(0),
+        Ty::I128 => Value::I128(0.into()),
         Ty::U64 => Value::U64(0),
         Ty::Float => Value::Float(0.0),
         Ty::Bool => Value::Bool(false),
@@ -1123,7 +659,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Str => Value::Str(Rc::new(Vec::new())),
         Ty::StrView => Value::StrView(Rc::new(StrViewVal::whole(Rc::new(Vec::new()), false))),
         Ty::Opt(_) => Value::Opt(OptVal::None),
-        Ty::Range(inner) if **inner == Ty::I128 => Value::Range128(0, 0),
+        Ty::Range(inner) if **inner == Ty::I128 => Value::range128(0, 0),
         Ty::Range(_) => Value::Range(0, 0),
         Ty::DomainVal => Value::DomainVal(0, 0),
         Ty::Fn(..) | Ty::Mut(_) => Value::Unit,
@@ -1145,10 +681,11 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
             Value::Enum(0, Rc::new(payload))
         }
         Ty::Array { dims, .. } => Value::Array(Rc::new(Array::empty(vec![0; dims.len()]))),
-        Ty::List(_) => Value::List(Rc::new(Vec::new())),
-        Ty::ListView(_, _) | Ty::Keyed(_, _) => {
-            Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false)))
-        }
+        Ty::List(_) => Value::List(Rc::new(crate::value::Cells::from(Vec::new()))),
+        Ty::ListView(_, _) | Ty::Keyed(_, _) => Value::ListView(Rc::new(ListViewVal::whole(
+            Rc::new(crate::value::Cells::from(Vec::new())),
+            false,
+        ))),
         Ty::MutView(..) => Value::Unit,
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
@@ -1222,7 +759,7 @@ pub(crate) fn strip_cached(val: &Value, ty: &Ty, program: &Program) -> Value {
             Value::Opt(OptVal::Boxed(Rc::new(strip_cached(inner, t, program))))
         }
         (Value::List(items), Ty::List(t)) => Value::List(Rc::new(
-            items.iter().map(|v| strip_cached(v, t, program)).collect(),
+            items.iter().map(|v| strip_cached(&v, t, program)).collect(),
         )),
         _ => val.clone(),
     }
@@ -1350,7 +887,7 @@ pub(crate) fn show(
                 if i > 0 {
                     out.extend_from_slice(sep.bytes());
                 }
-                rec(out, item, elem);
+                rec(out, &item, elem);
             }
         }
         (Value::ListView(view), Ty::ListView(elem, _) | Ty::Keyed(elem, _)) => {
@@ -1359,7 +896,7 @@ pub(crate) fn show(
                 if i > 0 {
                     out.extend_from_slice(sep.bytes());
                 }
-                rec(out, view.get(i).unwrap(), elem);
+                rec(out, &view.get(i).unwrap(), elem);
             }
         }
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {
@@ -1385,9 +922,10 @@ pub(crate) fn show(
             }
         }
         // A range is a `Seq`: it shows its elements (R10.3.1).
-        (Value::Range128(lo, hi), Ty::Range(_)) => {
-            for i in *lo..*hi {
-                if i > *lo {
+        (Value::Range128(r), Ty::Range(_)) => {
+            let (lo, hi) = (r.0, r.1);
+            for i in lo..hi {
+                if i > lo {
                     out.push(b' ');
                 }
                 let _ = write!(out, "{i}");

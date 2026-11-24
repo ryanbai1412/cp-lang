@@ -7,6 +7,7 @@
 //   first k must face R and the last k face L. If n >= 2 k that suffices (every middle pig pairs
 //   with one whole end), else print -1. The answer is the mismatches in s[0..k] and s[n - k..n],
 //   O(n).
+// Bounds: n, k: 1..=200_000
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

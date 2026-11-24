@@ -8,30 +8,28 @@
 //   q^-v_q(phi(m)); the p^(k-1) parts of phi fold into the start prod (p - 1) / m over the primes
 //   p | m, leaving e = v_q(prod (p - 1)). Otherwise q | a has probability 0 if q | m, else 1/q by
 //   CRT. Factor x, y, z and each p - 1: a product over the primes q.
-
-use std.math.{factor}
+// Bounds: xs: 1..=10 ** 6
 
 const MOD = 998_244_353
 type Z = Mod<MOD>
 
+let sieve = Sieve(10 ** 6)
+
 @!multitest
 let xs: [0..3]1..=10 ** 6 = read()
-var pset: Set<Int> = Set()
-for x in xs:
-    for (p, _) in factor(x):
-        pset.insert(p)
+let pset = [p for x in xs for (p, _) in sieve.factor(x)].sorted().deduped()
 
 var tot: Z = 1
 var tot_qs: Map<Int, Int> = Map()
 for p in pset:
     tot *= p - 1
-    for (q, eq) in factor(p - 1):
+    for (q, eq) in sieve.factor(p - 1):
         tot_qs[q] += eq
 
 for x in xs: tot /= x
 for (q, e) in tot_qs:
     let inv_q = Z(q).inv()
     let prob_no_q = inv_q ** e
-    let has_q = xs.any(x => x % q == 0)
+    let has_q = pset.contains(q)
     tot *= prob_no_q + (1 - prob_no_q) * (if has_q: 0 else: inv_q)
 print(tot)

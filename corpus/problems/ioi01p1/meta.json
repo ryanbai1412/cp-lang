@@ -25,5 +25,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Fenwick2D over one domain X; command loop with while/break."
+ "notes": "Fenwick2D over one domain X; command loop with while/break.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "32e09c62e75f3d55fff1449560ca8072683e5780"
+ }
 }

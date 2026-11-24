@@ -1,4 +1,3 @@
-use std.mo.{mo}
 
 let n = 100_000
 let q = 100_000

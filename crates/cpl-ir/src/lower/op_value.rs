@@ -196,17 +196,31 @@ impl Lowerer<'_> {
 }
 
 impl Lowerer<'_> {
+    /// The operator a local names, seen through the closures it is captured into.
+    pub(super) fn op_local(&self, n: &str) -> Option<BareOp> {
+        if let Some(&op) = self.cx.op_locals.get(n) {
+            return Some(op);
+        }
+        if !self.cx.is_closure || self.cx.scopes.iter().any(|s| s.contains_key(n)) {
+            return None;
+        }
+        let cx = self.outer_cxs.iter().rev().find(|cx| {
+            cx.op_locals.contains_key(n) || cx.scopes.iter().any(|s| s.contains_key(n))
+        })?;
+        cx.op_locals.get(n).copied()
+    }
+
     /// Recognizes a bare operator expression (`+`, `*`, `^`, `|`, `&`, `max`, `min`, `gcd`, `lcm`)
     /// or a local variable bound to a `BareOp` generic parameter.
     pub(super) fn detect_bare_op(&self, e: &ast::Expr) -> Option<BareOp> {
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.detect_bare_op(inner),
             ast::ExprKind::Unwrap(inner) => match &inner.kind {
-                ast::ExprKind::Name(n) => self.cx.op_locals.get(n).copied(),
+                ast::ExprKind::Name(n) => self.op_local(n),
                 _ => None,
             },
             ast::ExprKind::Name(n) => {
-                if let Some(&op) = self.cx.op_locals.get(n) {
+                if let Some(op) = self.op_local(n) {
                     return Some(op);
                 }
                 if self.lookup(n).is_some() {

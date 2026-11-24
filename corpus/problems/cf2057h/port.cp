@@ -7,6 +7,7 @@
 //   greedily right leaves 1s except a stack of 0 positions: each arriving student moves the
 //   nearest 0 one step on, carrying one student, until it reaches i; with no 0s, i + 1 students
 //   make a full lap. `inflow` keeps that stack and counts laps by division: O(n) amortised.
+// Bounds: n: 1..=1_000_000; a: 0..=1e9
 
 @!multitest
 let n: 1..=1_000_000 = read()

@@ -8,6 +8,7 @@
 //   Such an LCA without a color takes this one; one colored differently is cutie anyway and
 //   pays. Every vertex still uncolored copies its parent (the root takes 1), which makes no new
 //   cutie vertex. Sorting plus LCA queries, O(n log n).
+// Bounds: n: 2..=200_000; k: 1..=200_000; w: 1..=10 ** 9; edges.u, edges.v: 1..=n
 
 @!multitest
 let (n, k): (2..=200_000, 1..=200_000) = read()

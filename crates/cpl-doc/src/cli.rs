@@ -68,27 +68,13 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     if paths.is_empty() {
         paths.push(PathBuf::from("."));
     }
-    let mut files = Vec::new();
-    for path in &paths {
-        if let Err(e) = collect(path, &mut files) {
-            let _ = writeln!(stderr, "cpl: can't read {}: {e}", path.display());
+    let modules = match load(&paths) {
+        Ok(modules) => modules,
+        Err(message) => {
+            let _ = writeln!(stderr, "cpl: {message}");
             return 1;
         }
-    }
-    files.sort();
-    files.dedup();
-
-    let mut modules: Vec<Module> = Vec::new();
-    for file in &files {
-        match std::fs::read_to_string(file) {
-            Ok(src) => modules.push(extract(&src, &file.display().to_string())),
-            Err(e) => {
-                let _ = writeln!(stderr, "cpl: can't read {}: {e}", file.display());
-                return 1;
-            }
-        }
-    }
-
+    };
     let broken = links::unresolved(&modules);
     for link in &broken {
         let _ = writeln!(
@@ -130,6 +116,34 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         out_dir.join("index.html").display()
     );
     0
+}
+
+/// What `cpl doc` documents for `paths`: every .cp file under them and,
+/// when they hold std's prelude, the built-in types and each item's names
+/// elsewhere.
+pub fn load(paths: &[PathBuf]) -> Result<Vec<Module>, String> {
+    let mut files = Vec::new();
+    for path in paths {
+        collect(path, &mut files).map_err(|e| format!("can't read {}: {e}", path.display()))?;
+    }
+    files.sort();
+    files.dedup();
+    let mut modules = Vec::new();
+    for file in &files {
+        let src = std::fs::read_to_string(file)
+            .map_err(|e| format!("can't read {}: {e}", file.display()))?;
+        modules.push(extract(&src, &file.display().to_string()));
+    }
+    // std's prelude is what every program has without a `use`; the types
+    // the language declares are the rest of it.
+    if files
+        .iter()
+        .any(|f| f.file_name() == Some("prelude.cp".as_ref()))
+    {
+        modules.insert(0, crate::builtins());
+        crate::aliases::attach(&mut modules);
+    }
+    Ok(modules)
 }
 
 fn plural(n: usize, word: &str) -> String {

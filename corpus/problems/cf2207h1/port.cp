@@ -9,6 +9,7 @@
 //   other one, recursively; the two chains of subtrees hanging off m are zipped by asking, with
 //   the outermost pair of spans reversed, whether the output moves left of m's subtree. About 2n
 //   asks; each judge input is evaluated on the tree in O(n).
+// Bounds: n: 1..=5000
 
 struct Node:
     span: Range<Int>

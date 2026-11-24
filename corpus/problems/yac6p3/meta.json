@@ -23,5 +23,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Wire, then print/read. tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case."
+ "notes": "Wire, then print/read. tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 13,
+  "sha": "05ca15152717d58ed5ccffd9d48f0a00d27aacde"
+ }
 }

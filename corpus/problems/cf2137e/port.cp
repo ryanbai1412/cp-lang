@@ -6,6 +6,7 @@
 //   base >= n - 1 the array becomes the permutation 0..n. If base is duplicated and k == 1,
 //   unique values below the full MEX stay and the rest become the MEX. Otherwise the n - base
 //   others all equal one value alternating base, base + 1 with k's parity. O(n).
+// Bounds: n: 1..=200_000; k: 1..=10 ** 9; a: 0..=n
 
 @!multitest
 let (n, k): (1..=200_000, 1..=10 ** 9) = read()

@@ -9,6 +9,7 @@
 //   sizes (O(sqrt n) distinct). For the rest the value is max(k[u], k[v]), k[w] being the largest
 //   piece hanging off the path rt..w; histograms of k on the two sides and prefix sums count
 //   them. O(n sqrt n) worst case for the size pairs, O(n) otherwise.
+// Bounds: n: 1..=200_000; edges.u, edges.v: 1..=n
 use std.prefix.*
 
 @!multitest

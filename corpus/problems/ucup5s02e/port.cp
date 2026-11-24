@@ -14,6 +14,7 @@
 // their 0-based position in `rank[y]`. Because both rankings are bijections on
 // `P`, the first `i + 1` elements of `rank[z]` occupy `{0, ..., i}` in `rank[y]`
 // iff their maximum position `reach[i] = max_{j <= i} place[rank[z][j]]` equals `i`.
+// Bounds: n: 1..=200_000; rank: 1..=n
 
 @!multitest
 let n: 1..=200_000 = read()

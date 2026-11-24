@@ -8,11 +8,11 @@ side = min(int(sys.argv[2]), 200) if len(sys.argv) > 2 else r.choice([3, 10, 40,
 while True:
     shape = r.choice(["row", "col", "square", "wide", "any", "max"])
     if shape == "row":
-        h, w = 1, r.randint(2, side)
+        h, w = 1, r.randint(2, max(2, side))
     elif shape == "col":
-        h, w = r.randint(2, side), 1
+        h, w = r.randint(2, max(2, side)), 1
     elif shape == "square":
-        h = w = r.randint(2, side)
+        h = w = r.randint(2, max(2, side))
     elif shape == "wide":
         h, w = r.randint(1, max(1, side // 10)), r.randint(1, side)
     elif shape == "max":

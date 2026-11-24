@@ -171,6 +171,27 @@ pub fn walk_stmt(stmt: &Stmt, v: &mut dyn Visitor) {
     }
 }
 
+/// Whether `expr` names any of `names` anywhere inside it.
+pub fn mentions_any(expr: &Expr, names: &[&str]) -> bool {
+    struct Find<'a> {
+        names: &'a [&'a str],
+        found: bool,
+    }
+    impl Visitor for Find<'_> {
+        fn expr(&mut self, expr: &Expr) {
+            if let ExprKind::Name(n) = &expr.kind {
+                self.found |= self.names.contains(&n.as_str());
+            }
+        }
+    }
+    let mut find = Find {
+        names,
+        found: false,
+    };
+    walk_expr(expr, &mut find);
+    find.found
+}
+
 pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
     v.expr(expr);
     match &expr.kind {

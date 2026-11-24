@@ -235,3 +235,38 @@ fn a_checker_lint_fires_the_same_renamed_and_planted() {
     }
     assert!(misses.is_empty(), "{}", misses.join("\n\n"));
 }
+
+/// L0603 (R07.2.11): a lazy `.map` or `.filter` view read on every pass of
+/// a loop or lambda warns, at the top level or in a fn, with a fix that
+/// copies it once; a single pass and an optional's eager `.map` stay quiet.
+#[test]
+fn a_lazy_view_read_on_every_pass_warns_with_a_copy_fix() {
+    let fires = [
+        // noip14p6's first spelling: the filter's lambda walks the map view per `x`.
+        "type A = Mod<1_000_000_007>\nlet coef = [\"1\", \"2\"]\nlet under_a = coef.map(s => s.parse<A>()!)\nlet roots = (1..=3).filter(x => under_a.eval(A(x)) == A(0)).collect()\nprint(roots.len)\n",
+        "let a = [3, 1, 4]\nlet big = a.filter(x => x > 2)\nfor i in 0..3:\n    print(big.sum() + i)\n",
+        "fn main():\n    let a = [3, 1, 4]\n    let sq = a.map(x => x * x)\n    for i in 0..a.len:\n        for j in 0..a.len:\n            print(sq[i] + sq[j])\nmain()\n",
+    ];
+    for src in fires {
+        let lints = checker_lints(None, src, &Config::default());
+        let Some(d) = lints.iter().find(|d| d.code.0 == "L0603") else {
+            panic!("{src}{lints:?}");
+        };
+        assert!(d.message.contains("each read reruns `"), "{d:?}");
+        let (fixed, n) = crate::apply_fixes(src, std::slice::from_ref(d));
+        assert!(n == 1 && fixed.contains("= List("), "{fixed}");
+        let after = checker_lints(None, &fixed, &Config::default());
+        assert!(
+            after.iter().all(|d| d.code.0 != "L0603"),
+            "{fixed}{after:?}"
+        );
+    }
+    let quiet = [
+        "let a = [3, 1, 4]\nlet sq = a.map(x => x * x)\nfor i in 0..a.len:\n    print(sq[i])\n",
+        "fn f(o: ?Int):\n    let p = o.map(x => x + 1)\n    for i in 0..3:\n        if p.is_some_and(x => x > i): print(i)\nf(Some(1))\n",
+    ];
+    for src in quiet {
+        let lints = checker_lints(None, src, &Config::default());
+        assert!(lints.iter().all(|d| d.code.0 != "L0603"), "{src}{lints:?}");
+    }
+}

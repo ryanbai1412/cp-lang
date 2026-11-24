@@ -5,7 +5,6 @@
 // labelled positions into blocks, a block of size i weighted by [x^i] B. With
 // B = sum of Catalan(i - 1) x^i over 1 <= i < k, the editorial's answer is
 // cyc(B + x) - 2 cyc(B). For k = 1, B is empty and the answer is cyc(x) = 1.
-use std.ntt.{convolve}
 use std.poly.{deriv, inv}
 
 type Z = Mod<998_244_353>
