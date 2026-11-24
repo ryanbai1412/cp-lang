@@ -18,20 +18,16 @@ domain G = 0..q
 let flights: [F](a: City, b: City, cost: 1..=1e8) = read()
 let portals: [G](a: Planet, b: Planet, cost: 1..=1e8) = read()
 
-// a link packs (cost, k): k < p is flight k, else portal k - p (p + q < 2^18)
+enum Link: Flight(F) | Portal(G)
 let links = (
-    [flights[f].cost << 18 | f.ord for f in F] + [portals[g].cost << 18 | p + g.ord for g in G]
-).sorted()
+    [(flights[f].cost, Flight(f)) for f in F] + [(portals[g].cost, Portal(g)) for g in G]
+).sorted(by: l => l.0)
 
 var cities = Dsu<City>()
 var planets = Dsu<Planet>()
 var kept = 0
-for key in links:
-    let (cost, k) = (key >> 18, key % (1 << 18))
-    if k < p:
-        let f = F(k)
-        if cities.unite(flights[f].a, flights[f].b): kept += cost * planets.components
-    else:
-        let g = G(k - p)
-        if planets.unite(portals[g].a, portals[g].b): kept += cost * cities.components
+for (cost, link) in links:
+    match link:
+        Flight(f): if cities.unite(flights[f].a, flights[f].b): kept += cost * planets.components
+        Portal(g): if planets.unite(portals[g].a, portals[g].b): kept += cost * cities.components
 print(n * sum(f.cost for f in flights) + m * sum(g.cost for g in portals) - kept)
