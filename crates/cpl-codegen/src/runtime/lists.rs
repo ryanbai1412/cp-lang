@@ -106,6 +106,8 @@ template <class T, int K> struct Grid {
     template <class... I> const T& ck(I... i) const { return d[in(i...)]; }
     bool operator==(const Grid& o) const { return d == o.d; }
     bool operator<(const Grid& o) const { return d < o.d; }
+    // As std::vector's: `decltype(g)().swap(g)` frees the cells.
+    void swap(Grid& o) { d.swap(o.d); std::swap(n, o.n); }
 };
 template <class T, int K> Grid<T, K> grid(std::array<ll, K> n, const T& fill) {
     Grid<T, K> g; ll cells = 1;

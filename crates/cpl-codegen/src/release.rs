@@ -27,8 +27,16 @@ impl Emitter<'_> {
                 self.main_only.contains(g)
                     && !self.lent_fields.held_globals.contains(g)
                     && matches!(self.program.globals[*g].ty, Ty::List(_) | Ty::Array { .. })
+                    && self.owns_heap_storage(*g)
             })
             .collect()
+    }
+
+    /// Whether global `g` is laid out on the heap (a `std::vector` or a
+    /// `cpl::Grid`), not in a fixed `std::array` that holds nothing to free.
+    fn owns_heap_storage(&self, g: usize) -> bool {
+        self.fixed_array_len(cpl_ir::ElemLoc::Global(g)).is_none()
+            && self.ty_fixed_len(&self.program.globals[g].ty).is_none()
     }
 
     /// After a loop over a list [`Emitter::released_at`] found: empty it.
