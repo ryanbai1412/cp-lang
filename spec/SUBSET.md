@@ -53,7 +53,7 @@ documented.
 | R03.3 | 3. Operations on niche types | supported |  |
 | R03.4 | 4. Overflow, in one table | supported |  |
 | R03.5 | 5. Modular numbers | supported |  |
-| R04.2 | The model in one paragraph | supported | 1 known gap |
+| R04.2 | The model in one paragraph | supported | 2 known gaps |
 | R04.3 | Positions and cuts move the same way | supported |  |
 | R04.4 | Two kinds of range, one type | supported | 1 known gap |
 | R04.7 | Middle of a range | supported |  |
@@ -85,7 +85,7 @@ documented.
 | R07.12 | More vocabulary | supported |  |
 | R08.1 | Folds | supported | 3 known gaps |
 | R08.2 | 8.1 Traits and impls | supported |  |
-| R08.3 | 8.3 Laws | supported |  |
+| R08.3 | 8.3 Laws | supported | 1 known gap |
 | R08.4 | 8.4 Record row types (trial) | supported |  |
 | R08.5 | 1.4 Literals | supported |  |
 | R09.1 | 9.1 Contexts | supported |  |
@@ -137,7 +137,7 @@ documented.
 | std-fenwick | library: fenwick | supported |  |
 | std-flow | library: flow | documented | stdlib: outside the Milestone 1 contest staples |
 | std-geometry | library: geometry | documented | stdlib: outside the Milestone 1 contest staples |
-| std-graph | library: graph | supported |  |
+| std-graph | library: graph | supported | 1 known gap |
 | std-grid | library: grid | supported |  |
 | std-hashmap | library: hashmap | supported |  |
 | std-heap | library: heap | supported |  |
@@ -178,6 +178,7 @@ documented.
 - core-04/grid-rows-is-a-getter.cp: compiler 2026-11-24T05Z
 - core-04/keyed-counter-is-not-a-key.cp: compiler 2026-11-24T05Z
 - core-04/list-of-domain-array-loses-domain.cp: compiler 2026-11-24T05Z
+- core-04/named-product-domain-runs.cp: compiler 2026-11-24T04Z
 - core-04/rebased-str-indexes-from-zero.cp: stdlib 2026-11-24T05Z
 - core-04/runtime-domain-literal-between-traps.cp: compiler 2026-11-24T05Z
 - core-04/zip-keyed-by-first.cp: compiler 2026-11-24T05Z
@@ -191,6 +192,7 @@ documented.
 - core-07/chain-takes-any-number.cp: stdlib 2026-11-24T05Z
 - core-07/prefix-scan-cuts.cp: compiler 2026-11-24T05Z
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler 2026-11-24T05Z
+- core-08/law-calls-trait-method.cp: compiler 2026-11-24T04Z
 - core-08/trait-message-bound-holds.cp: compiler 2026-11-24T05Z
 - core-09/release-list-index-unchecked.cp: perf 2026-11-24T05Z
 - core-10/test-position-stored-above-multitest.cp: compiler 2026-11-24T05Z
@@ -198,6 +200,7 @@ documented.
 - diagnostics/graph-edge-field-names.cp: diagnostics 2026-11-24T05Z
 - diagnostics/is-empty-fixed-to-len-zero.cp: diagnostics 2026-11-24T05Z
 - std-algebra/max-sub-of-is-a-fn-value.cp: compiler 2026-11-24T05Z
+- std-graph/undirected-takes-list-of-records.cp: stdlib 2026-11-24T04Z
 - std-prefix/rev-scan-folds-right-of-each-cut.cp: stdlib 2026-11-24T05Z
 - std-prefix/rev-scan-is-suffix-fold.cp: compiler 2026-11-24T05Z
 - std-search/real-bsearch-is-a-range-method.cp: stdlib 2026-11-24T05Z
@@ -205,5 +208,7 @@ documented.
 - std-segtree/closure-op-picks-index.cp: stdlib 2026-11-24T05Z
 - std-seq/keyed-by-answers-with-the-key.cp: compiler 2026-11-24T05Z
 - std-seq/seq-u37-suffix-folds.cp: stdlib 2026-11-24T05Z
+- std-subset/empty-braces-is-empty-subset.cp: compiler 2026-11-24T04Z
+- std-subset/enum-subsets-is-a-domain.cp: compiler 2026-11-24T04Z
 - std-window/track-infers-element-from-sequence.cp: compiler 2026-11-24T05Z
 - tools-bundle/vendor-copies-pinned-libraries.cp: tools 2026-11-24T05Z
