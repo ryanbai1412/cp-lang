@@ -57,7 +57,7 @@ pub enum Def {
         /// Each method's row bounds, `R: (u: V, v: V, ..)`: a `T.name(..)` call checks them.
         /// With them, the bounds that give a trait arguments, `S: Indexed<E, R>`, through
         /// which `R` binds.
-        method_rows: Vec<(String, RowBounds, Vec<(String, String, Vec<Ty>)>)>,
+        method_rows: Vec<MethodRows>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
         /// The owned domains sized from fields (`domain Idx = 0..src.len`):
@@ -174,6 +174,10 @@ pub struct DomainInfo {
 
 /// `R: (u: V, v: V, ..)` per type parameter: the fields a record argument must have.
 pub type RowBounds = Vec<(String, Vec<(String, Ty)>)>;
+
+/// A method's name, its row bounds, and its bounds that give a trait arguments
+/// (`S: Indexed<E, R>` as `("S", "Indexed", [E, R])`).
+pub type MethodRows = (String, RowBounds, Vec<(String, String, Vec<Ty>)>);
 
 impl Def {
     /// The type of a variant of enum `of` used as a value.
