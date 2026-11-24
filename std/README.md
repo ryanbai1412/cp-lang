@@ -399,18 +399,12 @@ fn parallel_bsearch<I>(
 ) -> List<?I>
 // O((r.len + queries) log r.len) calls; out[q] is the first t with
 // ok(q) after apply on every t' <= t, ok monotone in the prefix
-fn first_gt<D, T>(self: [D]T, target: T) -> ?D                    // O(log n)
-fn first_gt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D  // O(log n)
-fn last_lt<D, T>(self: [D]T, target: T) -> ?D                     // O(log n)
-fn last_lt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D   // O(log n)
+fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D  // O(log n)
+fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D   // O(log n)
 
-// Monotone stack and fixed-window sliding extrema
-fn prev_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D     // O(n)
-fn next_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D     // O(n)
-fn prev_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D  // O(n)
-fn next_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D  // O(n)
-fn sliding_min<D, T>(self: [D]T, k: Int) -> List<T>              // O(n)
-fn sliding_max<D, T>(self: [D]T, k: Int) -> List<T>              // O(n)
+// Monotone stack: nearest smaller (or, with `by: x => -x`, greater) neighbour
+fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D  // O(n)
+fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D  // O(n)
 ```
 ```
 
