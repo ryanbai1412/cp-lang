@@ -806,12 +806,7 @@ fn listen_takes_a_problem_posted_by_the_extension() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let client = std::thread::spawn(move || {
-        let mut stream = loop {
-            match std::net::TcpStream::connect(("127.0.0.1", port)) {
-                Ok(stream) => break stream,
-                Err(_) => std::thread::sleep(std::time::Duration::from_millis(20)),
-            }
-        };
+        let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
         // A stray request first: it is ignored, and the listener keeps waiting.
         stream.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
         drop(stream);

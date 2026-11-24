@@ -56,10 +56,7 @@ fn a_run_past_its_deadline_traps_traced_or_not() {
 fn a_cancel_from_another_thread_ends_the_run() {
     let stop = Stop::new();
     let canceller = stop.clone();
-    std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(100));
-        canceller.cancel();
-    });
+    std::thread::spawn(move || canceller.cancel());
     assert_eq!(
         ends_at(NEVER_ENDS[0], stop, false).as_deref(),
         Some(CANCELLED)

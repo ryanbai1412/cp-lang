@@ -181,7 +181,7 @@
   "allow_attrs": 42,
   "unsafe_blocks": 26,
   "cpl_env_reads": 45,
-  "test_sleeps": 23,
+  "test_sleeps": 18,
   "ci_retries": 0,
   "hardcoded_codes": 1,
   "xfail_markers": 0,

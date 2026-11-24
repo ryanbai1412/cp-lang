@@ -1215,8 +1215,17 @@ fn no_file_named_reads_the_newest_cp_file() {
         text(&out.stderr)
     );
     std::fs::write(dir.join("a.cp"), "print(1)\n").unwrap();
-    std::thread::sleep(std::time::Duration::from_millis(20));
     std::fs::write(dir.join("b.cp"), "print(2)\n").unwrap();
+    let a_time = std::fs::metadata(dir.join("a.cp"))
+        .unwrap()
+        .modified()
+        .unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(dir.join("b.cp"))
+        .unwrap()
+        .set_modified(a_time + std::time::Duration::from_secs(1))
+        .unwrap();
     let out = cpl(&dir, &["check"]);
     assert_eq!(
         text(&out.stdout),

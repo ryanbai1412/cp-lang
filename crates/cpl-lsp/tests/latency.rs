@@ -499,12 +499,19 @@ fn time_cpu<T>(f: impl FnOnce() -> T) -> (T, Duration) {
 #[test]
 fn the_keystroke_clock_does_not_count_time_off_the_cpu() {
     let Some(before) = on_cpu() else { return };
-    std::thread::sleep(Duration::from_millis(200));
-    let slept = on_cpu().unwrap() - before;
+    let busy = std::thread::spawn(|| {
+        let start = Instant::now();
+        let mut x = 0u64;
+        while start.elapsed() < Duration::from_millis(200) {
+            x = std::hint::black_box(x.wrapping_mul(31).wrapping_add(7));
+        }
+    });
+    busy.join().unwrap();
+    let waited = on_cpu().unwrap() - before;
     assert!(
-        slept < Duration::from_millis(20),
-        "sleeping 200 ms took {} on the CPU",
-        ms(slept)
+        waited < Duration::from_millis(20),
+        "waiting 200 ms on another thread took {} on the CPU",
+        ms(waited)
     );
     let before = on_cpu().unwrap();
     let start = Instant::now();
