@@ -29,7 +29,7 @@ A fn that can see empty input says what it returns; one that picks among equals 
 
 - **Why:** these are the edge cases contestants get wrong.
 - **Example:** ``empty: `SortedBag<Int>().first == None` ``, ``ties: `[3, 1, 1].argmin() == 1` ``, `order: increasing key`. An `empty:` or `ties:` label is a claim (`a == b`, `a != b`, `not a`, or code tagged `(traps R0401)`), so it runs as a case.
-- **Enforced by:** `scripts/std-docs-lint.py` fails a public fn over a `[D]T` with no `empty:`; `cpl-conform docs` runs every claim label (`crates/cpl-conform/src/docs.rs` `runnable_label`); the `edge_labels_unrun` ratchet counts the labels that are still prose or a bare value.
+- **Enforced by:** `scripts/std-docs-lint.py` fails a public fn over a `[D]T` with no `empty:`; `cpl-conform docs` runs every claim label in the interpreter and in the C++ build (`crates/cpl-conform/src/docs.rs` `runnable_label`, `native_labels`); the `edge_labels_unrun` ratchet counts the labels that are still prose or a bare value.
 
 ### R3. The cost names its variables and every phase
 

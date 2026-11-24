@@ -176,6 +176,16 @@ fn case_limit(text: &str) -> u64 {
 
 /// An `@cpp` body is C++ only, so the program runs as its C++ build, as
 /// `cpl run` runs it.
+/// The directory C++ builds of `what` are cached in: under `CPL_CXX_CACHE_DIR`, else the temp dir.
+pub(crate) fn cxx_cache(what: &str) -> std::path::PathBuf {
+    let cache = match std::env::var_os("CPL_CXX_CACHE_DIR") {
+        Some(dir) => std::path::PathBuf::from(dir).join(format!("conform-{what}")),
+        None => std::env::temp_dir().join(format!("cpl-conform-{what}")),
+    };
+    let _ = std::fs::create_dir_all(&cache);
+    cache
+}
+
 fn run_cpp_build(
     program: &cpl_ir::Program,
     path: &str,
@@ -183,11 +193,7 @@ fn run_cpp_build(
     input: &[u8],
 ) -> Result<Ran, String> {
     let cpp = cpl_codegen::emit(program, path, Some(text));
-    let cache = match std::env::var_os("CPL_CXX_CACHE_DIR") {
-        Some(dir) => std::path::PathBuf::from(dir).join("conform-cpp-body"),
-        None => std::env::temp_dir().join("cpl-conform-cpp-body"),
-    };
-    let _ = std::fs::create_dir_all(&cache);
+    let cache = cxx_cache("cpp-body");
     let bin = crate::diff::compile_cpp(&cpp, &cache).map_err(|e| match e {
         crate::diff::CppCompileError::Cxx(m) | crate::diff::CppCompileError::Infra(m) => m,
     })?;

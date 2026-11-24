@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
 use cpl_check::Session;
@@ -323,7 +323,112 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
                 });
         (ex.id.clone(), outcome)
     });
+    let mut outcomes = outcomes;
+    native_labels(root, &examples, &mut outcomes);
     SuiteReport::from_outcomes(outcomes)
+}
+
+/// The `empty:`/`ties:` claims that passed in the interpreter run again in the C++ build, one
+/// program per std module, so an edge holds on both engines (std-docs/R2). A module whose
+/// program does not build or traps runs its claims one by one to name the failing one.
+fn native_labels(
+    root: &Path,
+    examples: &[DocExample],
+    outcomes: &mut BTreeMap<String, CaseOutcome>,
+) {
+    let mut by_module: BTreeMap<&str, Vec<&DocExample>> = BTreeMap::new();
+    for ex in examples {
+        let label = ex.id.ends_with(":empty") || ex.id.ends_with(":ties");
+        let passed = outcomes.get(&ex.id).is_some_and(|o| o.status == "pass");
+        if label && passed && ex.expect.is_none() && ex.snippet.is_some() {
+            by_module.entry(ex.module.as_str()).or_default().push(ex);
+        }
+    }
+    let groups: Vec<Vec<&DocExample>> = by_module.into_values().collect();
+    let failed = runner::parallel_with_db(&groups, |db, group| {
+        let key = group.first().map_or_else(String::new, |ex| ex.id.clone());
+        let whole = [claims_program(group, false), claims_program(group, true)]
+            .into_iter()
+            .any(|src| native_run(db, root, &key, &src).is_ok());
+        let fails: Vec<(String, CaseOutcome)> = if whole {
+            Vec::new()
+        } else {
+            group
+                .iter()
+                .filter_map(|ex| {
+                    let one = std::slice::from_ref(ex);
+                    let mut last = String::new();
+                    for src in [claims_program(one, false), claims_program(one, true)] {
+                        match native_run(db, root, &ex.id, &src) {
+                            Ok(()) => return None,
+                            Err(e) => last = e,
+                        }
+                    }
+                    Some((
+                        ex.id.clone(),
+                        CaseOutcome {
+                            status: "fail".into(),
+                            detail: format!(
+                                "passes in the interpreter, not in the C++ build: {last}"
+                            ),
+                        },
+                    ))
+                })
+                .collect()
+        };
+        (key, fails)
+    });
+    for (id, outcome) in failed.into_values().flatten() {
+        outcomes.insert(id, outcome);
+    }
+}
+
+/// One program asserting every claim of `group`, each in its own fn so their names stay apart.
+fn claims_program(group: &[&DocExample], import_module: bool) -> String {
+    let mut lines = Vec::new();
+    let module = group.first().map_or("", |ex| ex.module.as_str());
+    if import_module && !module.is_empty() && module != "prelude" && module != "core" {
+        lines.push(format!("use std.{module}.*"));
+    }
+    for (k, ex) in group.iter().enumerate() {
+        let code = ex.snippet.as_deref().unwrap_or_default();
+        lines.push(format!("fn claim_{k}():"));
+        for line in build_example_program(ex, code, false).lines() {
+            lines.push(format!("    {line}"));
+        }
+    }
+    lines.extend((0..group.len()).map(|k| format!("claim_{k}()")));
+    lines.join("\n") + "\n"
+}
+
+/// Builds `source` to C++ and runs it; `Err` says why it did not build or finish.
+fn native_run(db: &mut Session, root: &Path, id: &str, source: &str) -> Result<(), String> {
+    let safe: String = id
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+        .collect();
+    let path = root
+        .join(format!("__cpl_conform_doc_native_{safe}.cp"))
+        .to_string_lossy()
+        .to_string();
+    let compiled = runner::compile_program(db, &path, source);
+    db.remove_file(&path);
+    let compiled =
+        compiled.map_err(|CompileError::Diagnostics(d)| runner::first_line_trimmed(&d, 160))?;
+    let cpp = cpl_codegen::emit(&compiled.program, &path, Some(source));
+    let cache = crate::conformance::cxx_cache("docs");
+    let bin = crate::diff::compile_cpp(&cpp, &cache).map_err(|e| match e {
+        crate::diff::CppCompileError::Cxx(m) | crate::diff::CppCompileError::Infra(m) => m,
+    })?;
+    let out = runner::run_piped(std::process::Command::new(bin), b"", 10)?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        Err(runner::first_line_trimmed(
+            &String::from_utf8_lossy(&out.stderr),
+            160,
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -354,6 +459,24 @@ mod tests {
                 "bag.cp#first:empty".to_string(),
                 "`SortedBag<Int>().first == None`".to_string()
             )]
+        );
+        let docs: Vec<super::DocExample> = ["`[1].len == 1`", "`let a = [2]; a.first == Some(2)`"]
+            .into_iter()
+            .enumerate()
+            .map(|(k, code)| super::DocExample {
+                id: format!("seq.cp#f:{k}"),
+                module: "seq".into(),
+                snippet: Some(code.trim_matches('`').into()),
+                stdin: String::new(),
+                block: false,
+                expect: None,
+            })
+            .collect();
+        let group: Vec<_> = docs.iter().collect();
+        assert_eq!(
+            super::claims_program(&group, true),
+            "use std.seq.*\nfn claim_0():\n    assert([1].len == 1)\nfn claim_1():\n    \
+             let a = [2]\n    assert(a.first == Some(2))\nclaim_0()\nclaim_1()\n"
         );
         assert!(super::runnable_label("`[].max()` (traps R0401)"));
         assert!(!super::runnable_label("`0`"));
