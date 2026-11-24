@@ -485,6 +485,20 @@ fn copy_comprehension_needs_a_seq() {
 }
 
 #[test]
+fn copy_comprehension_writes_a_range_as_a_list() {
+    // std/rand.cp: `collect` is std.seq's, which imports std.rand, so a
+    // range copy is written `List(a..b)`, which needs no import.
+    let src = "let n = 5\nprint([i for i in 0..n], [i for i in 1..=n by 2])\n";
+    let d = lint(src, &all_on());
+    let fixes: Vec<_> = d
+        .iter()
+        .filter(|d| d.code.0 == "L0549")
+        .map(|d| d.fixes[0].edits[0].1.as_str())
+        .collect();
+    assert_eq!(fixes, ["List(0..n)", "List(1..=n by 2)"], "{d:#?}");
+}
+
+#[test]
 fn split_range_check_fixes_to_a_chain() {
     // corpus noi14p5 and ioi19p6: the two comparisons become one chain.
     let src = "let (x, n): (Int, 1..=100) = read()\nif x < n and x >= 0:\n    print(1)\nif not (0 < x and x < n):\n    print(2)\n";

@@ -49,30 +49,38 @@ impl HandLoops<'_> {
             return;
         }
         let it = self.text(iter.span);
-        let it = match iter.kind {
-            ExprKind::Name(_)
-            | ExprKind::Field { .. }
-            | ExprKind::Index { .. }
-            | ExprKind::Call { .. }
-            | ExprKind::Paren(_)
-            | ExprKind::List(_) => it.to_string(),
-            _ => format!("({it})"),
+        let range = matches!(iter.kind, ExprKind::Range { .. });
+        // A range copies with `List(a..b)`, which needs no import: `collect`
+        // lives in std.seq, out of reach in the std modules it imports
+        // (std/rand.cp).
+        let copy = if range {
+            format!("List({it})")
+        } else {
+            match iter.kind {
+                ExprKind::Name(_)
+                | ExprKind::Field { .. }
+                | ExprKind::Index { .. }
+                | ExprKind::Call { .. }
+                | ExprKind::Paren(_)
+                | ExprKind::List(_) => format!("{it}.collect()"),
+                _ => format!("({it}).collect()"),
+            }
         };
         let mut diag = lint_rules::COPY_COMPREHENSION
             .warning(expr.span.shift(self.base), &[&self.text(expr.span)])
             .with_help(format!(
-                "write `{it}.collect()`: it copies any sequence into a new `List`"
+                "write `{copy}`: it copies any sequence into a new `List`"
             ));
         // `collect` takes a `Seq`; `typed.rs` drops the finding where the
         // checker types the iterable as something else. A range always is one.
-        if !matches!(iter.kind, ExprKind::Range { .. }) {
+        if !range {
             diag = diag.with_label(iter.span.shift(self.base), "the iterable");
         }
         // `typed.rs` keeps the fix only where both spellings are a `List` of
         // the same elements.
         diag.fixes.push(Fix {
-            title: format!("write `{it}.collect()`"),
-            edits: vec![(expr.span.shift(self.base), format!("{it}.collect()"))],
+            title: format!("write `{copy}`"),
+            edits: vec![(expr.span.shift(self.base), copy)],
         });
         self.out.push(Finding {
             lint: &COPY_COMPREHENSION,
