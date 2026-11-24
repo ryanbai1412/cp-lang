@@ -79,9 +79,8 @@ Fields: `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
 - `fn slice(self, l: Int, r: Int) -> HashVal` — \(O(1)\); The hash of the half-open slice `l..r` (0-based); `HashVal(0, 0)` when `l == r`.; traps: when `l > r`, `l < 0` or `r > self.len`
 - `fn get<R>(self, r: R) -> HashVal` — \(O(1)\); The hash of a range of positions: `l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when the hash was built over a `[D]T`.; traps: when the range reaches outside the hashed sequence
 - `fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal` — \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` per modulus.; traps: when `b_len < 0`
-- `fn lcp(self, a: Int, b: Int) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes starting at `a` and `b`, by binary search on hashes (so it can be wrong on a collision).; traps: when `a` or `b` is outside `0..=self.len`
+- `fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on hashes (so it can be wrong on a collision); `of: other` puts `b` in `other`, built with the same bases.; traps: when `a` is outside `0..=self.len`, `b` outside `0..=` the len of `of` (or `self`), or
 - `fn lcs(self, a: Int, b: Int) -> Int` — \(O(\log n)\); The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary search on hashes.; traps: when `a` or `b` is outside `0..=self.len`
-- `fn lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int` — \(O(\log \min(\lvert \mathit{self} \rvert - a, \lvert \mathit{other} \rvert - b))\); The length of the longest common prefix of `self[a..]` and `other[b..]`, by binary search on hashes.; traps: when the bases differ, `a` is outside `0..=self.len` or `b` outside `0..=other.len`
 
 ## `struct Hash2D<R, C>(bases: (Int, Int))`
 
@@ -110,9 +109,8 @@ Fields: `base: U64`, `pre: List<U64>`, `pow: List<U64>`.
 - `fn combine(self, a: Hash61, b: Hash61, b_len: Int) -> Hash61` — \(O(1)\) amortized (the power table grows past `len` on demand); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` modulo `2^61 - 1`.; traps: when `b_len < 0`
 - `fn push<T: Hashable>(mut self, x: T)` — \(O(1)\) amortized; Appends `x` to the end of the hashed sequence.
 - `fn pop(mut self)` — \(O(1)\); Removes the last element of the hashed sequence.; traps: when the hash is empty
-- `fn lcp(self, a: Int, b: Int) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes starting at `a` and `b`, by binary search on hashes.; traps: when `a` or `b` is outside `0..=self.len`
+- `fn lcp(self, a: Int, b: Int, of: ?RollingHash61 = None) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on hashes; `of: other` puts `b` in `other`, built with the same bases.; traps: when `a` is outside `0..=self.len`, `b` outside `0..=` the len of `of` (or `self`), or
 - `fn lcs(self, a: Int, b: Int) -> Int` — \(O(\log n)\); The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary search on hashes.; traps: when `a` or `b` is outside `0..=self.len`
-- `fn lcp_with(self, a: Int, other: RollingHash61, b: Int) -> Int` — \(O(\log \min(\lvert \mathit{self} \rvert - a, \lvert \mathit{other} \rvert - b))\); The length of the longest common prefix of `self[a..]` and `other[b..]`, by binary search on hashes.; traps: when the bases differ, `a` is outside `0..=self.len` or `b` outside `0..=other.len`
 
 ## `struct DynamicHash<D>`
 
