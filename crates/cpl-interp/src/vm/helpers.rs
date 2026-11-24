@@ -739,7 +739,9 @@ pub(super) fn array_flat_index(
     span: Span,
 ) -> Res<usize> {
     match step {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) | PlaceStep::Some => {
+            trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]))
+        }
         PlaceStep::Index1(r_i) => {
             let idx = regs_i[r_i as usize];
             let len = arr.dims[0];
@@ -907,6 +909,7 @@ pub(super) fn walk_place_mut<'a>(
                 },
                 _ => return bug(span, "expected map"),
             },
+            PlaceStep::Some => cur = crate::assign::inside_mut(cur, span)?,
             PlaceStep::Field(f) => match cur {
                 Value::Tuple(TupleVal::Boxed(fs)) => {
                     cur = &mut crate::value::Shared::make_mut(fs)[f as usize];
@@ -962,6 +965,10 @@ pub(super) fn store_place_leaf_scalar(
 ) -> Res<()> {
     match last {
         PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Some => {
+            *crate::assign::inside_mut(container, span)? = kind.box_val(raw);
+            Ok(())
+        }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 crate::value::Shared::make_mut(fs)[f as usize] = kind.box_val(raw);
@@ -998,6 +1005,15 @@ pub(super) fn store_place_leaf_scalar(
                 Rc::make_mut(items).set(idx as usize, kind.box_val(raw));
                 Ok(())
             }
+            Value::Str(bytes) => {
+                let (idx, len) = (regs_i[r_i as usize], bytes.len());
+                let Some(i) = usize::try_from(idx).ok().filter(|i| *i < len) else {
+                    let msg = cpl_diag::msgs::interp::INDEX_OUTSIDE_STRING_LENGTH;
+                    return trap(span, msg.at(&[&idx, &len]));
+                };
+                Rc::make_mut(bytes)[i] = raw as u8;
+                Ok(())
+            }
             _ => bug(span, "expected array or list"),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
@@ -1030,6 +1046,10 @@ pub(super) fn store_place_leaf_opt_scalar(
 ) -> Res<()> {
     match last {
         PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Some => {
+            *crate::assign::inside_mut(container, span)? = kind.box_opt(raw, some);
+            Ok(())
+        }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 crate::value::Shared::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
@@ -1088,6 +1108,10 @@ pub(super) fn store_place_leaf_val(
 ) -> Res<()> {
     match last {
         PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Some => {
+            *crate::assign::inside_mut(container, span)? = val;
+            Ok(())
+        }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 crate::value::Shared::make_mut(fs)[f as usize] = val;
@@ -1283,6 +1307,12 @@ pub(super) fn assign_place_leaf_scalar(
 ) -> Res<()> {
     match last {
         PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Some => {
+            let cell = crate::assign::inside_mut(container, span)?;
+            let next = apply_scalar_assign_op(ScalarKind::unbox_val(cell), rhs, op, kind, span)?;
+            *cell = kind.box_val(next);
+            Ok(())
+        }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 let slice = crate::value::Shared::make_mut(fs);
@@ -1305,12 +1335,19 @@ pub(super) fn assign_place_leaf_scalar(
                     Cells::Int(v) | Cells::OneIntStruct(v) => {
                         v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
                     }
-                    Cells::Values(v) => {
-                        let cur = ScalarKind::unbox_val(&v[flat]);
-                        let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
-                        v[flat] = kind.box_val(next);
+                    cells => {
+                        let Some(cur) = cells.get(flat) else {
+                            return bug(span, "unsupported array assign");
+                        };
+                        let next = apply_scalar_assign_op(
+                            ScalarKind::unbox_val(&cur),
+                            rhs,
+                            op,
+                            kind,
+                            span,
+                        )?;
+                        cells.set(flat, kind.box_val(next));
                     }
-                    _ => return bug(span, "unsupported array assign"),
                 }
                 Ok(())
             }
@@ -1339,12 +1376,19 @@ pub(super) fn assign_place_leaf_scalar(
                     Cells::Int(v) | Cells::OneIntStruct(v) => {
                         v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
                     }
-                    Cells::Values(v) => {
-                        let cur = ScalarKind::unbox_val(&v[flat]);
-                        let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
-                        v[flat] = kind.box_val(next);
+                    cells => {
+                        let Some(cur) = cells.get(flat) else {
+                            return bug(span, "unsupported array assign");
+                        };
+                        let next = apply_scalar_assign_op(
+                            ScalarKind::unbox_val(&cur),
+                            rhs,
+                            op,
+                            kind,
+                            span,
+                        )?;
+                        cells.set(flat, kind.box_val(next));
                     }
-                    _ => return bug(span, "unsupported array assign"),
                 }
                 Ok(())
             }

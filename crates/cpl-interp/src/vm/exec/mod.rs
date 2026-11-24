@@ -1861,9 +1861,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::ListPopDiscardL { .. }
             | Op::ListPopDiscardG { .. }
             | Op::LoadGlobalVMove { .. }
-            | Op::StoreLFieldI { .. }
-            | Op::StoreLFieldV { .. }
-            | Op::StoreLFieldOptI { .. }
             | Op::StoreLFieldIdx1I { .. }
             | Op::StoreLFieldIdx1V { .. }
             | Op::LoadFieldList1SmallTuple { .. }

@@ -459,55 +459,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_v[dst as usize] =
                     std::mem::replace(&mut self.globals[gid as usize], Value::Unit);
             }
-            Op::StoreLFieldI {
-                obj_v,
-                field,
-                src_i,
-                kind,
-            } => {
-                let val = kind.box_val(regs_i[src_i as usize]);
-                match &mut regs_v[obj_v as usize] {
-                    Value::Tuple(TupleVal::Boxed(fs)) => {
-                        crate::value::Shared::make_mut(fs)[field as usize] = val;
-                    }
-                    Value::Tuple(TupleVal::OneInt(v)) if field == 0 => {
-                        *v = regs_i[src_i as usize];
-                    }
-                    _ => return bug(spans[cur_pc], "expected tuple/struct"),
-                }
-            }
-            Op::StoreLFieldV {
-                obj_v,
-                field,
-                src_v,
-            } => {
-                let val = if (src_v as usize) >= chunk.num_local_v {
-                    std::mem::replace(&mut regs_v[src_v as usize], Value::Unit)
-                } else {
-                    regs_v[src_v as usize].clone()
-                };
-                match &mut regs_v[obj_v as usize] {
-                    Value::Tuple(TupleVal::Boxed(fs)) => {
-                        crate::value::Shared::make_mut(fs)[field as usize] = val;
-                    }
-                    _ => return bug(spans[cur_pc], "expected tuple/struct"),
-                }
-            }
-            Op::StoreLFieldOptI {
-                obj_v,
-                field,
-                val,
-                some,
-                kind,
-            } => {
-                let boxed = kind.box_opt(regs_i[val as usize], regs_i[some as usize]);
-                match &mut regs_v[obj_v as usize] {
-                    Value::Tuple(TupleVal::Boxed(fs)) => {
-                        crate::value::Shared::make_mut(fs)[field as usize] = boxed;
-                    }
-                    _ => return bug(spans[cur_pc], "expected tuple/struct"),
-                }
-            }
             Op::StoreLFieldIdx1I {
                 obj_v,
                 field,

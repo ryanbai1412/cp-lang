@@ -47,6 +47,8 @@ pub(crate) enum PlaceStep {
     IndexN(u16, u16),
     /// A map entry, keyed by the `n`th of the path's `keys`.
     Key(u16),
+    /// The value inside an optional.
+    Some,
 }
 
 #[derive(Clone, Debug)]
@@ -946,24 +948,6 @@ pub(crate) enum Op {
         dst: u16,
         gid: u16,
     },
-    StoreLFieldI {
-        obj_v: u16,
-        field: u16,
-        src_i: u16,
-        kind: ScalarKind,
-    },
-    StoreLFieldV {
-        obj_v: u16,
-        field: u16,
-        src_v: u16,
-    },
-    StoreLFieldOptI {
-        obj_v: u16,
-        field: u16,
-        val: u16,
-        some: u16,
-        kind: ScalarKind,
-    },
     StoreLFieldIdx1I {
         obj_v: u16,
         field: u16,
@@ -1475,7 +1459,7 @@ pub(crate) enum Op {
         key_v: u16,
         val_v: u16,
         op: AssignOp,
-        val_ty: u16,
+        map_ty: u16,
     },
     SetMapBoundV {
         dst: u16,

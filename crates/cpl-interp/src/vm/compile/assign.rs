@@ -63,16 +63,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 _ => false,
             },
-            // The one field of a struct held as its only Int is that register.
-            (PlaceKind::Field(obj, 0), op, Some(_), _)
+            // A field of a local held in integer registers is its register.
+            (PlaceKind::Field(obj, f), op, Some(_), _)
                 if (op == AssignOp::Set || place.ty == Ty::Int)
-                    && matches!(&obj.kind, PlaceKind::Local(slot)
-                        if matches!(self.slot_loc(*slot), SlotLoc::I(_, ScalarKind::OneIntStruct))) =>
+                    && self.field_reg(obj, *f).is_some() =>
             {
-                let PlaceKind::Local(slot) = obj.kind else {
-                    return false;
-                };
-                let SlotLoc::I(dst, _) = self.slot_loc(slot) else {
+                let Some(dst) = self.field_reg(obj, *f) else {
                     return false;
                 };
                 let r = self.compile_expr_i(value);
@@ -998,89 +994,23 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 true
             }
-            (PlaceKind::Field(obj_place, field), op, Some(kind), _) => {
-                if op != AssignOp::Set && kind != ScalarKind::Int {
-                    return false;
-                }
-                let PlaceKind::Local(slot) = obj_place.kind else {
-                    return false;
-                };
-                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
-                    return false;
-                };
-                let src_i = if op == AssignOp::Set {
-                    self.compile_expr_i(value)
-                } else {
-                    let r_rhs = self.compile_expr_i(value);
-                    let cur = self.alloc_i();
-                    self.emit(
-                        Op::FieldI {
-                            dst: cur,
-                            obj_v,
-                            field: *field as u16,
-                        },
-                        place.span,
-                    );
-                    if !self.emit_assign_op_i(cur, cur, r_rhs, op, place.span) {
-                        return false;
-                    }
-                    cur
-                };
-                self.emit(
-                    Op::StoreLFieldI {
-                        obj_v,
-                        field: *field as u16,
-                        src_i,
-                        kind,
-                    },
-                    place.span,
-                );
-                true
-            }
-            (PlaceKind::Field(obj_place, field), AssignOp::Set, None, Some(kind)) => {
-                let PlaceKind::Local(slot) = obj_place.kind else {
-                    return false;
-                };
-                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
-                    return false;
-                };
-                let (val, some) = self.compile_expr_opt_i(value);
-                self.emit(
-                    Op::StoreLFieldOptI {
-                        obj_v,
-                        field: *field as u16,
-                        val,
-                        some,
-                        kind,
-                    },
-                    place.span,
-                );
-                true
-            }
-            (PlaceKind::Field(obj_place, field), AssignOp::Set, None, None) => {
-                let PlaceKind::Local(slot) = obj_place.kind else {
-                    return false;
-                };
-                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
-                    return false;
-                };
-                let src_v = self.compile_expr_v(value);
-                self.emit(
-                    Op::StoreLFieldV {
-                        obj_v,
-                        field: *field as u16,
-                        src_v,
-                    },
-                    place.span,
-                );
-                true
-            }
             _ => false,
         }
     }
 
     pub(super) fn compile_place_path(&mut self, place: &'p Place) -> Option<u16> {
         self.compile_place_path_to(place, false)
+    }
+
+    fn field_reg(&self, obj: &Place, f: usize) -> Option<u16> {
+        let PlaceKind::Local(slot) = obj.kind else {
+            return None;
+        };
+        match self.slot_loc(slot) {
+            SlotLoc::I(r, ScalarKind::OneIntStruct) if f == 0 => Some(r),
+            SlotLoc::SmallTuple { base, len, .. } if f < usize::from(len) => Some(base + f as u16),
+            _ => None,
+        }
     }
 
     fn keyed_map(&self, ty: &Ty) -> bool {
@@ -1096,6 +1026,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
         place: &'p Place,
         key_leaf: bool,
     ) -> Option<u16> {
+        self.place_path_rooted(place, key_leaf, None)
+    }
+
+    /// The path to `place`, from `boxed_root` when its local is boxed there.
+    pub(super) fn place_path_rooted(
+        &mut self,
+        place: &'p Place,
+        key_leaf: bool,
+        boxed_root: Option<u16>,
+    ) -> Option<u16> {
         if let PlaceKind::Index(base, indices) = &place.kind {
             if !key_leaf && indices.len() == 1 && self.keyed_map(&base.ty) {
                 return None;
@@ -1105,12 +1045,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let mut cur = place;
         let root = loop {
             match &cur.kind {
-                PlaceKind::Local(slot) => match self.slot_loc(*slot) {
-                    SlotLoc::V(v) => break PlaceRoot::LocalV(v),
+                PlaceKind::Local(slot) => match (boxed_root, self.slot_loc(*slot)) {
+                    (Some(v), _) | (None, SlotLoc::V(v)) => break PlaceRoot::LocalV(v),
                     _ => return None,
                 },
                 PlaceKind::Global(gid) => break PlaceRoot::Global(*gid as u16),
-                PlaceKind::Field(base, _) => {
+                PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
                     chain.push(cur);
                     cur = base;
                 }
@@ -1121,12 +1061,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     cur = base;
                 }
                 PlaceKind::Index(base, indices)
-                    if matches!(base.ty, Ty::Array { .. } | Ty::List(_))
+                    if matches!(base.ty, Ty::Array { .. } | Ty::List(_) | Ty::Str)
                         && (indices.len() == 1
                             || indices.len() == 2
                             || Self::indexes_nd_cell(&base.ty, indices)) =>
                 {
-                    if matches!(base.ty, Ty::List(_)) && indices.len() != 1 {
+                    if matches!(base.ty, Ty::List(_) | Ty::Str) && indices.len() != 1 {
                         return None;
                     }
                     chain.push(cur);
@@ -1136,6 +1076,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
         };
         if chain.is_empty()
+            && boxed_root.is_none()
             && !matches!(
                 place.ty,
                 Ty::List(_)
@@ -1158,6 +1099,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     keys.push(self.compile_expr_v(&indices[0]));
                 }
                 PlaceKind::Field(_, field) => steps.push(PlaceStep::Field(*field as u16)),
+                PlaceKind::Some(_) => steps.push(PlaceStep::Some),
                 PlaceKind::Index(_, indices) if indices.len() == 1 => {
                     let r_i = self.compile_expr_i(&indices[0]);
                     steps.push(PlaceStep::Index1(r_i));
@@ -1186,9 +1128,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         value: &'p Expr,
     ) -> bool {
         if let PlaceKind::Index(map_place, indices) = &place.kind {
-            if matches!(&map_place.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program) && !crate::value::keys::user_ordered(kty, self.program))
-                && indices.len() == 1
-            {
+            if matches!(&map_place.ty, Ty::Map(..) | Ty::HashMap(..)) && indices.len() == 1 {
                 let saved_ops = self.ops.len();
                 let saved_spans = self.spans.len();
                 let saved_places = self.places.len();
@@ -1196,15 +1136,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if let Some(path) = self.compile_place_path(map_place) {
                     let key_v = self.compile_expr_v(&indices[0]);
                     let val_v = self.compile_expr_v(value);
-                    let val_ty = self.fill_tys.len() as u16;
-                    self.fill_tys.push(&place.ty);
+                    let map_ty = self.fill_tys.len() as u16;
+                    self.fill_tys.push(&map_place.ty);
                     self.emit(
                         Op::MapPlaceAssign {
                             path,
                             key_v,
                             val_v,
                             op,
-                            val_ty,
+                            map_ty,
                         },
                         place.span,
                     );
@@ -1224,11 +1164,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let val_kind = ScalarKind::of_ty(&place.ty, self.program);
         let opt_kind = ScalarKind::of_opt_ty(&place.ty, self.program);
-        if val_kind == Some(ScalarKind::U64) && op != AssignOp::Set {
+        if val_kind == Some(ScalarKind::U64) && matches!(op, AssignOp::Binary(_)) {
             match &place.kind {
                 PlaceKind::Local(slot) => {
                     let SlotLoc::I(dst, _) = self.slot_loc(*slot) else {
-                        return false;
+                        return self.try_compile_assign_op_v(place, op, value);
                     };
                     let r_rhs = self.compile_expr_i(value);
                     return self.emit_assign_op_u64(dst, dst, r_rhs, op, place.span);
@@ -1266,7 +1206,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             match place.kind {
                 PlaceKind::Local(slot) => {
                     let SlotLoc::OptI { val, some, .. } = self.slot_loc(slot) else {
-                        return false;
+                        return self.try_compile_assign_op_v(place, op, value);
                     };
                     let (b_val, b_some) = self.compile_expr_opt_i(value);
                     let max = Op::MaxOptI {
@@ -1307,7 +1247,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
         }
         if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) {
-            return false;
+            return self.try_compile_assign_op_v(place, op, value);
         }
         let saved_ops = self.ops.len();
         let saved_spans = self.spans.len();
@@ -1316,7 +1256,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             self.ops.truncate(saved_ops);
             self.spans.truncate(saved_spans);
             self.places.truncate(saved_places);
-            return false;
+            return self.try_compile_assign_op_v(place, op, value);
         };
         match (op, val_kind, opt_kind) {
             (AssignOp::Set, Some(kind), _) => {
@@ -1385,7 +1325,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.ops.truncate(saved_ops);
                 self.spans.truncate(saved_spans);
                 self.places.truncate(saved_places);
-                false
+                self.try_compile_assign_op_v(place, op, value)
             }
         }
     }

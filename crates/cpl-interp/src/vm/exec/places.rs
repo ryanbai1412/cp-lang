@@ -5,7 +5,7 @@ use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{bug, trap, Flow, Interp, Res};
-use cpl_ir::{AssignOp, BinOp, CmpOp, LoopId};
+use cpl_ir::{CmpOp, LoopId};
 use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
@@ -536,52 +536,74 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 key_v,
                 val_v,
                 op,
-                val_ty,
+                map_ty,
             } => {
-                let key = regs_v[key_v as usize].clone();
+                let span = spans[cur_pc];
+                let (cpl_ir::Ty::Map(kty, vty) | cpl_ir::Ty::HashMap(kty, vty)) =
+                    chunk.fill_tys[map_ty as usize]
+                else {
+                    return bug(span, "expected map");
+                };
+                let program = self.program;
+                let key = crate::value::strip_cached(&regs_v[key_v as usize], kty, program);
                 let value = regs_v[val_v as usize].clone();
+                let start = || crate::zero(vty, program);
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
-                if let Value::Map(entries) = target {
-                    let map = Rc::make_mut(entries);
-                    if op == AssignOp::Set {
-                        map.insert(key, value, &mut tree_only(spans[cur_pc]))?;
-                    } else {
-                        let next = if let Some(old) =
-                            map.get(&key, &mut tree_only(spans[cur_pc]))?.cloned()
-                        {
-                            crate::combine(op, old, value, spans[cur_pc])?
-                        } else {
-                            match op {
-                                AssignOp::Max
-                                | AssignOp::Min
-                                | AssignOp::Binary(
-                                    BinOp::Add
-                                    | BinOp::Mul
-                                    | BinOp::BitOr
-                                    | BinOp::BitXor
-                                    | BinOp::BitAnd,
-                                ) => value,
-                                AssignOp::Binary(BinOp::Sub) => crate::combine(
-                                    op,
-                                    crate::zero(chunk.fill_tys[val_ty as usize], self.program),
-                                    value,
-                                    spans[cur_pc],
-                                )?,
-                                _ => {
-                                    return trap(
-                                        spans[cur_pc],
-                                        cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]),
-                                    );
-                                }
-                            }
-                        };
-                        map.insert(key, next, &mut tree_only(spans[cur_pc]))?;
-                    }
+                let holder = walk_place_mut(root, &pp.steps, regs_i, &keys, span)?;
+                let Value::Map(entries) = holder else {
+                    return bug(span, "expected map");
+                };
+                if !entries.is_sorted_by_user() {
+                    let cmp = &mut tree_only(span);
+                    crate::assign::assign_entry(
+                        Rc::make_mut(entries),
+                        key,
+                        op,
+                        value,
+                        start,
+                        span,
+                        cmp,
+                    )?;
                 } else {
-                    return bug(spans[cur_pc], "expected map");
+                    // The key's `Ord` runs user code, so the map is out of its place meanwhile.
+                    let mut held = std::mem::replace(holder, Value::Moved);
+                    let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    sync_to_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        chunk.traced,
+                    );
+                    self.show_lent()?;
+                    let done = match &mut held {
+                        Value::Map(entries) => crate::assign::assign_entry(
+                            Rc::make_mut(entries),
+                            key,
+                            op,
+                            value,
+                            start,
+                            span,
+                            &mut |t, a, b| self.cmp_ty_val(t, a, b, span),
+                        ),
+                        _ => bug(span, "expected map"),
+                    };
+                    self.hide_lent()?;
+                    let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    sync_from_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        chunk.traced,
+                    );
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                    *walk_place_mut(root, &pp.steps, regs_i, &keys, span)? = held;
+                    done?;
                 }
             }
             Op::SetMapBoundV {

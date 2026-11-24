@@ -24,7 +24,7 @@ fn opt_inside_mut(opt: &mut OptVal, span: Span) -> Res<&mut Value> {
     }
 }
 
-pub(super) fn inside_mut(holder: &mut Value, span: Span) -> Res<&mut Value> {
+pub(crate) fn inside_mut(holder: &mut Value, span: Span) -> Res<&mut Value> {
     match holder {
         Value::Opt(opt) => opt_inside_mut(opt, span),
         Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
@@ -496,7 +496,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
 /// Stores `value` under `k` in `map` by `op`; a compound op on a missing key starts from
 /// `start()` or from the op's own identity.
-fn assign_entry(
+pub(crate) fn assign_entry(
     map: &mut KeyMap,
     k: Value,
     op: AssignOp,

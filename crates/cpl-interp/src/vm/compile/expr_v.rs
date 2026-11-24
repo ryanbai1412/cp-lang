@@ -46,6 +46,63 @@ impl<'p, 'f> Compiler<'p, 'f> {
         dst
     }
 
+    /// A local's value in a value register, boxed from its integer registers.
+    pub(super) fn box_slot(&mut self, loc: SlotLoc, span: Span) -> u16 {
+        match loc {
+            SlotLoc::V(r) => r,
+            SlotLoc::I(src_i, kind) => {
+                let dst_v = self.alloc_v();
+                self.emit(Op::BoxI { dst_v, src_i, kind }, span);
+                dst_v
+            }
+            SlotLoc::OptI { val, some, kind } => {
+                let dst_v = self.alloc_v();
+                self.emit(
+                    Op::BoxOptI {
+                        dst_v,
+                        val,
+                        some,
+                        kind,
+                    },
+                    span,
+                );
+                dst_v
+            }
+            SlotLoc::SmallTuple { base, len, kinds } => {
+                let dst_v = self.alloc_v();
+                self.emit(
+                    Op::BoxSmallTuple {
+                        dst_v,
+                        src_base: base,
+                        len,
+                        kinds,
+                    },
+                    span,
+                );
+                dst_v
+            }
+        }
+    }
+
+    /// Unboxes `src_v` back into the registers that hold a local.
+    pub(super) fn unbox_slot(&mut self, loc: SlotLoc, src_v: u16, span: Span) {
+        let op = match loc {
+            SlotLoc::I(dst_i, _) => Op::UnboxI { dst_i, src_v },
+            SlotLoc::OptI { val, some, .. } => Op::UnboxOptI {
+                dst_val: val,
+                dst_some: some,
+                src_v,
+            },
+            SlotLoc::SmallTuple { base, len, .. } => Op::UnboxSmallTuple {
+                dst_base: base,
+                len,
+                src_v,
+            },
+            SlotLoc::V(dst) => Op::MoveV { dst, src: src_v },
+        };
+        self.emit(op, span);
+    }
+
     pub(super) fn compile_expr_v(&mut self, expr: &'p Expr) -> u16 {
         if let Some(place) = self.reported_write(expr) {
             return self.reporting_write(expr, place, |c| c.compile_expr_v(expr));
@@ -90,40 +147,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::ConstV { dst, idx }, span);
                 dst
             }
-            ExprKind::Local(slot) => match self.slot_loc(*slot) {
-                SlotLoc::V(r) => r,
-                SlotLoc::I(src_i, kind) => {
-                    let dst_v = self.alloc_v();
-                    self.emit(Op::BoxI { dst_v, src_i, kind }, span);
-                    dst_v
-                }
-                SlotLoc::OptI { val, some, kind } => {
-                    let dst_v = self.alloc_v();
-                    self.emit(
-                        Op::BoxOptI {
-                            dst_v,
-                            val,
-                            some,
-                            kind,
-                        },
-                        span,
-                    );
-                    dst_v
-                }
-                SlotLoc::SmallTuple { base, len, kinds } => {
-                    let dst_v = self.alloc_v();
-                    self.emit(
-                        Op::BoxSmallTuple {
-                            dst_v,
-                            src_base: base,
-                            len,
-                            kinds,
-                        },
-                        span,
-                    );
-                    dst_v
-                }
-            },
+            ExprKind::Local(slot) => self.box_slot(self.slot_loc(*slot), span),
             ExprKind::Global(gid) => {
                 let dst = self.alloc_v();
                 self.emit(

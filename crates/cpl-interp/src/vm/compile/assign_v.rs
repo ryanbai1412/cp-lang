@@ -3,49 +3,53 @@ use crate::vm::ir::*;
 use cpl_ir::{AssignOp, Expr, Place, PlaceKind};
 
 impl<'p> Compiler<'p, '_> {
-    /// `place op= value` for a boxed value (a float, a wide int, a list, a
-    /// string): one `AssignPlaceV` on the place's path.
+    /// `place op= value` through the place's boxed value: one `AssignPlaceV`
+    /// on its path. A local held in integer registers is boxed for it.
     pub(super) fn try_compile_assign_op_v(
         &mut self,
         place: &'p Place,
         op: AssignOp,
         value: &'p Expr,
     ) -> bool {
-        let root = match place.kind {
-            PlaceKind::Local(slot) => match self.slot_loc(slot) {
-                SlotLoc::V(v) => Some(PlaceRoot::LocalV(v)),
-                _ => return false,
-            },
-            PlaceKind::Global(gid) => Some(PlaceRoot::Global(gid as u16)),
-            _ => None,
-        };
-        let path = match root {
-            Some(root) => {
-                let Ok(idx) = u16::try_from(self.places.len()) else {
-                    return false;
-                };
-                self.places.push(PlacePath {
-                    root,
-                    steps: Vec::new(),
-                    keys: Vec::new(),
-                });
-                idx
+        let (ops, spans, places) = (self.ops.len(), self.spans.len(), self.places.len());
+        let (global, slot) = cpl_ir::walk::root(place);
+        let (root, held) = if global {
+            (PlaceRoot::Global(slot as u16), None)
+        } else {
+            match self.slot_loc(slot) {
+                SlotLoc::V(v) => (PlaceRoot::LocalV(v), None),
+                loc => {
+                    let v = self.box_slot(loc, place.span);
+                    (PlaceRoot::LocalV(v), Some((loc, v)))
+                }
             }
-            None => {
-                let (ops, spans, places) = (self.ops.len(), self.spans.len(), self.places.len());
-                let Some(path) = self.compile_place_path(place) else {
+        };
+        let path = if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) {
+            let Ok(idx) = u16::try_from(self.places.len()) else {
+                return false;
+            };
+            let (steps, keys) = (Vec::new(), Vec::new());
+            self.places.push(PlacePath { root, steps, keys });
+            idx
+        } else {
+            match self.place_path_rooted(place, false, held.map(|h| h.1)) {
+                Some(path) => path,
+                None => {
                     self.ops.truncate(ops);
                     self.spans.truncate(spans);
                     self.places.truncate(places);
                     return false;
-                };
-                path
+                }
             }
         };
         let r_val = self.compile_expr_v(value);
         self.emit(Op::AssignPlaceV { path, r_val, op }, place.span);
         if r_val >= self.num_local_v {
             self.emit(Op::ClearV { reg: r_val }, place.span);
+        }
+        if let Some((loc, v)) = held {
+            self.unbox_slot(loc, v, place.span);
+            self.emit(Op::ClearV { reg: v }, place.span);
         }
         true
     }
