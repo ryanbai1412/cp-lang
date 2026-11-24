@@ -220,7 +220,7 @@ impl<'a> Parser<'a> {
 
     /// What follows `??`: a default, or a way out of the fn or the loop
     /// (`o ?? return -1`, `st.pop() ?? break`, `v + 1 ?? continue`).
-    fn coalesce_rhs(&mut self) -> Expr {
+    pub(super) fn coalesce_rhs(&mut self) -> Expr {
         if !matches!(self.peek(), T::Return | T::Break | T::Continue) {
             return self.coalesce();
         }

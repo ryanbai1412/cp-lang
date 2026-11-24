@@ -35,6 +35,7 @@ mod memo;
 mod mono;
 mod names;
 mod op_value;
+mod or_pattern;
 mod prefix;
 mod product;
 mod range;
@@ -614,6 +615,8 @@ struct DoFrame {
 #[derive(Clone, Default)]
 struct FnCx {
     locals: Vec<Local>,
+    /// Inside an alternative of a `|` pattern: the names it binds, declared once after all.
+    or_binds: Option<Vec<(String, Expr)>>,
     /// Local fns an earlier fn in the same block calls, by name: their slots.
     predeclared: HashMap<String, usize>,
     /// The optionals a test has shown to hold a value here, by name.

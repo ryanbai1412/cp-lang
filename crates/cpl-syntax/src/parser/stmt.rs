@@ -1543,7 +1543,7 @@ impl<'a> Parser<'a> {
         // binding or condition on what the pattern bound. After `,` or
         // `where` the condition is whole, `or` and all; after `and` an
         // `or` would read two ways.
-        let value = self.not();
+        let value = self.let_value();
         let and = if self.eat(T::Comma) {
             Some(Box::new(if self.at(T::Let) {
                 self.bump();
@@ -1587,6 +1587,23 @@ impl<'a> Parser<'a> {
             None
         };
         Cond::Let { pat, value, and }
+    }
+
+    /// The value of `if let pat = value`: it ends before `and`, but takes a `??`, as in
+    /// `elif let c = a ?? b:`.
+    fn let_value(&mut self) -> Expr {
+        let start = self.start();
+        let lhs = self.not();
+        if !self.at(T::QuestionQuestion) {
+            return lhs;
+        }
+        self.binary(start, BinOp::Coalesce, lhs, |p| {
+            if matches!(p.peek(), T::Return | T::Break | T::Continue) {
+                p.coalesce_rhs()
+            } else {
+                p.let_value()
+            }
+        })
     }
 
     /// True when the upcoming tokens form `pat = ...` (without a leading

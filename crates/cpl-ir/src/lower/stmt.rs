@@ -5389,20 +5389,18 @@ impl<'a> Lowerer<'a> {
                 });
             }
         }
-        if let ast::PatternKind::Variant { path, args } = &pat.kind {
-            if path.len() == 1 && path[0].text == "some" && args.len() == 1 && refutable(&args[0]) {
-                let value_expr = self.expr(value, None);
-                if value_expr.ty == Ty::Error {
-                    return None;
-                }
-                let tmp = self.temp(value_expr.ty.clone());
-                before.push(Stmt::Let(tmp, Some(value_expr)));
-                let local = self.local(tmp, value.span);
-                let test = self.pattern(pat, &local, binds);
-                return Some(
-                    test.unwrap_or_else(|| self.mk(ExprKind::Bool(true), Ty::Bool, value.span)),
-                );
+        // `if let some(Seeking) = x` and `if let (some(l), some(r)) = (a, b)` test the whole value.
+        let whole = match &pat.kind {
+            ast::PatternKind::Variant { path, args } => {
+                path.len() == 1 && path[0].text == "some" && args.len() == 1 && refutable(&args[0])
             }
+            ast::PatternKind::Tuple(_) | ast::PatternKind::Record { .. } => refutable(pat),
+            _ => false,
+        };
+        if whole {
+            return self.whole_cond(pat, value, before, binds);
+        }
+        if let ast::PatternKind::Variant { path, args } = &pat.kind {
             // R04.2.14: `if let V(j) = x` is the pattern form of `V.at(x)`.
             if let ([name], [arg]) = (&path[..], &args[..]) {
                 if let Some(id) = self.resolve_domain_name(&name.text) {
@@ -5730,7 +5728,12 @@ impl<'a> Lowerer<'a> {
 
     /// The test that `value` fits `pat` (`None` when it always does), with
     /// the statements that bind the pattern's names once it has.
-    fn pattern(&mut self, pat: &ast::Pattern, value: &Expr, binds: &mut Vec<Stmt>) -> Option<Expr> {
+    pub(super) fn pattern(
+        &mut self,
+        pat: &ast::Pattern,
+        value: &Expr,
+        binds: &mut Vec<Stmt>,
+    ) -> Option<Expr> {
         let span = self.span(pat.span);
         let and = |a: Option<Expr>, b: Option<Expr>| match (a, b) {
             (Some(a), Some(b)) => Some(Expr {
@@ -5745,7 +5748,7 @@ impl<'a> Lowerer<'a> {
                 None
             }
             ast::PatternKind::Name(name) => {
-                self.declare(name, value.clone(), false, binds);
+                self.bind_name(name, value.clone(), binds);
                 None
             }
             ast::PatternKind::Var(inner) => self.pattern(inner, value, binds),
@@ -5902,33 +5905,7 @@ impl<'a> Lowerer<'a> {
                 }
                 test
             }
-            ast::PatternKind::Or(alts) => {
-                let mut test: Option<Expr> = None;
-                let mut always = false;
-                for alt in alts {
-                    let mut names = Vec::new();
-                    let one = self.pattern(alt, value, &mut names);
-                    if !names.is_empty() {
-                        self.unsupported(alt.span, "names bound inside a `|` pattern");
-                    }
-                    match (one, test.take()) {
-                        (None, _) => always = true,
-                        (Some(one), None) => test = Some(one),
-                        (Some(one), Some(prev)) => {
-                            test = Some(Expr {
-                                kind: ExprKind::Binary(BinOp::Or, Box::new(prev), Box::new(one)),
-                                ty: Ty::Bool,
-                                span,
-                            })
-                        }
-                    }
-                }
-                if always {
-                    None
-                } else {
-                    test
-                }
-            }
+            ast::PatternKind::Or(alts) => self.or_pattern(alts, value, binds, span),
         }
     }
 }
