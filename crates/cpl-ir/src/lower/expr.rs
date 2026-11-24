@@ -605,8 +605,8 @@ impl<'a> Lowerer<'a> {
                 }
                 self.do_expr(hint, span, |lw, out| lw.tail(e, Tail::Give, out))
             }
-            ast::ExprKind::HasBound { param, trait_name } => {
-                let has = self.has_bound(&param.text, &trait_name.text);
+            ast::ExprKind::HasBound { param, bound } => {
+                let has = self.has_bound_test(&param.text, bound);
                 self.mk(ExprKind::Bool(has), Ty::Bool, span)
             }
             ast::ExprKind::Without {

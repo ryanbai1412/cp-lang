@@ -1390,19 +1390,40 @@ impl<'a> Parser<'a> {
         !line.trim().is_empty()
     }
 
+    /// At `T: Trait:` or `T: Trait<..>:`, the head of a bound test.
+    fn bound_test_ahead(&self) -> bool {
+        if self.peek_n(3) != T::Lt {
+            return self.peek_n(3) == T::Colon;
+        }
+        let mut depth = 0i32;
+        for k in 3..64 {
+            match self.peek_n(k) {
+                T::Lt => depth += 1,
+                T::Gt => depth -= 1,
+                T::Shr => depth -= 2,
+                T::Colon | T::Eof => return false,
+                _ => {}
+            }
+            if depth <= 0 {
+                return depth == 0 && self.peek_n(k + 1) == T::Colon;
+            }
+        }
+        false
+    }
+
     pub(super) fn cond(&mut self) -> Cond {
         if self.at(T::Ident)
             && self.peek_n(1) == T::Colon
             && self.peek_n(2) == T::Ident
-            && self.peek_n(3) == T::Colon
+            && self.bound_test_ahead()
         {
             let start = self.start();
             let param = self.name();
             self.bump();
-            let trait_name = self.name();
+            let bound = self.ty();
             let span = self.span_from(start);
             return Cond::Expr(Expr {
-                kind: ExprKind::HasBound { param, trait_name },
+                kind: ExprKind::HasBound { param, bound },
                 span,
             });
         }

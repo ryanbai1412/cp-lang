@@ -615,10 +615,11 @@ pub enum ExprKind {
         base: Box<Expr>,
         removed: Vec<Name>,
     },
-    /// `if T: Trait:` compile-time trait bound test.
+    /// `if T: Trait:` or `if M: Selective<T>:`, a compile-time trait bound test.
     HasBound {
         param: Name,
-        trait_name: Name,
+        /// The trait with its args, a `TypeKind::Named`.
+        bound: Type,
     },
     /// Postfix `?`.
     Try(Box<Expr>),

@@ -657,7 +657,10 @@ impl<'a> Checker<'a> {
                 }
                 ty
             }
-            ExprKind::HasBound { .. } => Ty::Bool,
+            ExprKind::HasBound { bound, .. } => {
+                self.trait_exists(bound);
+                Ty::Bool
+            }
             ExprKind::Without {
                 prefix,
                 base,

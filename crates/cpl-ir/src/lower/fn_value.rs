@@ -137,7 +137,25 @@ impl<'a> Lowerer<'a> {
     /// leaves without a body is a field of `A` (a record arc `(to: V, w: Int)` is `Weighted`).
     /// `if T: Tr`: `T` has an `impl Tr` (for its own struct, or the generic struct it instantiates),
     /// or is a record or tuple with `Tr`'s shape.
-    pub(super) fn has_bound(&mut self, param: &str, trait_name: &str) -> bool {
+    /// `if M: Tr<A..>:` in this instance: `M`'s type implements `Tr`, at the args given.
+    pub(super) fn has_bound_test(&mut self, param: &str, bound: &ast::Type) -> bool {
+        match &bound.kind {
+            ast::TypeKind::Named { name, args } => self.has_bound(param, &name.text, args),
+            _ => false,
+        }
+    }
+
+    pub(super) fn has_bound(&mut self, param: &str, trait_name: &str, args: &[ast::Type]) -> bool {
+        if !args.is_empty() {
+            let Some(GenArg::Ty(ty)) = self.gen_env.get(param).cloned() else {
+                return false;
+            };
+            let want: Vec<Ty> = args.iter().map(|t| self.resolve_ty(t)).collect();
+            let known: Vec<Option<Ty>> = want.iter().cloned().map(Some).collect();
+            return self
+                .impl_trait_args(&ty, trait_name, &known)
+                .is_some_and(|(got, _)| got == want);
+        }
         let by_impl = match self.gen_env.get(param) {
             Some(GenArg::Ty(Ty::Struct(sid))) => self.impls.iter().any(|imp| {
                 let ast::TypeKind::Named { name, .. } = &imp.target.kind else {
@@ -200,8 +218,8 @@ impl<'a> Lowerer<'a> {
     /// An `if const` test, or an `if T: Tr` one, settled at compile time; `None` (reported) when
     /// the `if const` test is not a compile-time constant.
     pub(super) fn settle_bool(&mut self, e: &ast::Expr) -> Option<bool> {
-        if let ast::ExprKind::HasBound { param, trait_name } = &e.kind {
-            return Some(self.has_bound(&param.text, &trait_name.text));
+        if let ast::ExprKind::HasBound { param, bound } = &e.kind {
+            return Some(self.has_bound_test(&param.text, bound));
         }
         let got = self.eval_const_bool(e);
         if got.is_none() {

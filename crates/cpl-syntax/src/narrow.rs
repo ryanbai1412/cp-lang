@@ -377,9 +377,17 @@ pub fn after<'a>(stmt: &'a Stmt, rest: &[Stmt], calls: &mut Calls) -> Vec<&'a st
 pub fn tested_bounds(cond: &Cond) -> Vec<(String, Vec<String>)> {
     match cond {
         Cond::Expr(Expr {
-            kind: ExprKind::HasBound { param, trait_name },
+            kind:
+                ExprKind::HasBound {
+                    param,
+                    bound:
+                        Type {
+                            kind: TypeKind::Named { name, .. },
+                            ..
+                        },
+                },
             ..
-        }) => vec![(param.text.clone(), vec![trait_name.text.clone()])],
+        }) => vec![(param.text.clone(), vec![name.text.clone()])],
         Cond::Guard { test, and } => {
             let mut out = tested_bounds(&Cond::Expr(test.clone()));
             out.extend(tested_bounds(and));

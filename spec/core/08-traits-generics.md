@@ -135,8 +135,11 @@ struct Pair<A, B = Int>: a: A, b: B
 - Return-type dispatch: a call may be resolved by its expected type
   (`read<T>()`). (R08.2.8)
 - **Conditional code** on a bound: `if T: Commutative: ... else: ...`
-  chooses at compile time; it is how laws select a specialization
-  (`lib/ops-ranges.md`). `if const cond:` branches on a compile-time
+  chooses at compile time, per instance, with no run-time test; it is how
+  laws select a specialization (`lib/ops-ranges.md`). A trait's args are
+  part of the bound tested: inside `fn pick<T, M: Op<T>>`,
+  `if M: Selective<T>:` holds only when `M` implements `Selective` at this
+  `T`, and the branch it guards sees `M: Selective<T>`. `if const cond:` branches on a compile-time
   value. (R08.2.9)
 
 ## 8.3 Laws

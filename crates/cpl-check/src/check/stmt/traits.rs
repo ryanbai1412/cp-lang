@@ -83,7 +83,7 @@ impl<'a> Checker<'a> {
 
     /// Reports a trait name that is not a trait. Returns the trait's
     /// methods when it is declared in cp source.
-    pub(super) fn trait_exists(
+    pub(crate) fn trait_exists(
         &mut self,
         trait_ty: &ast::Type,
     ) -> Option<Vec<crate::def::TraitMethod>> {
