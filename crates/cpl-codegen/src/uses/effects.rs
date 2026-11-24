@@ -12,7 +12,9 @@ use crate::devirt::Devirt;
 use crate::lend::{whole_reads, Tail};
 use crate::walk;
 
-pub(crate) use cpl_ir::effects::{in_domain, known_where, pure_path, trap_free_stmts, Effects};
+pub(crate) use cpl_ir::effects::{
+    in_domain, known_where, pure_path, trap_free_stmts, trap_free_with, Effects,
+};
 
 /// [`cpl_ir::effects::pure_fns`], knowing the closures `devirt` resolves.
 pub(crate) fn pure_fns(program: &Program, devirt: &Devirt, traps: bool) -> BTreeSet<usize> {
@@ -199,4 +201,14 @@ impl crate::emit::Emitter<'_> {
             .then(|| self.devirt.target(home, callee))
             .flatten()
     }
+}
+
+/// A closure that captures nothing and whose body calls nothing and cannot trap,
+/// even unchecked (a division by zero still faults):
+/// running it interleaved with a producer cannot be told from running it after.
+pub(crate) fn pure_closure(program: &Program, cid: usize) -> bool {
+    let c = &program.closures[cid];
+    c.muts.is_empty()
+        && c.captures.is_empty()
+        && cpl_ir::effects::pure_body(&c.body, true, &|_| false)
 }

@@ -13,7 +13,7 @@ use cpl_ir::{Arg, Expr, ExprKind, Iter, Program, Stmt, Ty};
 use crate::devirt::Devirt;
 use crate::emit::{Code, Emitter};
 use crate::fuse::{producer, FusedPush};
-use crate::uses::effects::{pure_call, pure_fns, trap_free_stmts};
+use crate::uses::effects::{pure_call, pure_closure, pure_fns, trap_free_stmts, trap_free_with};
 use crate::walk;
 
 /// Each fn called with an inline list it can sink, and that list parameter.
@@ -71,7 +71,17 @@ fn sink_param(
         walk::deep_stmts(body, &mut |s| {
             escapes |= matches!(s, Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(_));
         });
-        let call_ok = |e: &Expr| pure_call(program, devirt, pure, Some(fid), traps, e);
+        let pure_call = |e: &Expr| pure_call(program, devirt, pure, Some(fid), traps, e);
+        // A call of a fn-valued parameter devirt can't pin is as pure as the closure
+        // each sunk call passes for it, which `sinkable_args` checks there.
+        let call_ok = |e: &Expr| {
+            pure_call(e)
+                || matches!(&e.kind, ExprKind::CallExpr(callee, args)
+                    if matches!(callee.kind, ExprKind::Local(p) if p < f.params.len() && p != slot
+                        && devirt.param_target(fid, p).is_none())
+                        && args.iter().all(|a| matches!(a,
+                            Arg::Value(v) if trap_free_with(v, traps, &pure_call))))
+        };
         let mut global = false;
         walk::deep_exprs(&f.body, &mut |e| {
             global |= matches!(e.kind, ExprKind::Global(_))
@@ -85,8 +95,8 @@ fn sink_param(
     })
 }
 
-/// The list argument is a producer and every other argument a constant,
-/// so nothing the producer writes can reach the fn.
+/// The list argument is a producer and every other argument a constant or a
+/// pure closure, so nothing the producer writes can reach the fn.
 fn sinkable_args(
     program: &Program,
     devirt: &Devirt,
@@ -101,6 +111,7 @@ fn sinkable_args(
                 v.kind,
                 ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Char(_)
             ) || (devirt.param_elidable(fid, s) && devirt.skippable_value(v))
+                || matches!(v.kind, ExprKind::Closure(cid) if pure_closure(program, cid))
                 || program.fns[fid].locals[s].ty == Ty::Unit && matches!(v.kind, ExprKind::Unit)
         }
         _ => false,

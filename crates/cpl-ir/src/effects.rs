@@ -134,7 +134,7 @@ pub fn pure_fns(program: &Program, traps: bool, target: Target) -> BTreeSet<FnId
 
 /// Trap-free statements up to a `return` of a trap-free value, reading no
 /// global; of an `if` decided at compile time only the branch taken counts.
-fn pure_body(body: &Block, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
+pub fn pure_body(body: &Block, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
     let mut global = false;
     walk::deep_exprs(body, &mut |e| {
         global |= matches!(e.kind, ExprKind::Global(_))
@@ -253,7 +253,7 @@ pub fn trap_free_with(e: &Expr, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) ->
         | ExprKind::IsSome(x)
         | ExprKind::IsVariant(x, _)
         | ExprKind::Unwrap(x, false)
-        | ExprKind::Cast(Cast::IntToFloat, x) => free(x),
+        | ExprKind::Cast(Cast::IntToFloat | Cast::IntToI128 | Cast::IntToU64, x) => free(x),
         ExprKind::Unary(op, x) => *op != UnOp::Neg && free(x),
         ExprKind::Binary(op, l, r) => {
             let safe = match op {

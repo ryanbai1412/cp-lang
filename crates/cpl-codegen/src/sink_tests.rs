@@ -86,3 +86,36 @@ fn explain_names_a_sunk_reduction() {
     let report = crate::explain::report("t.cp", source, &program);
     assert!(report.contains("[sunk] 2:7  sum(..)"), "{report}");
 }
+
+#[test]
+fn a_u64_sum_with_a_default_of_builds_no_list_at_each_call() {
+    let cpp = cpp(concat!(
+        "let n: 1..=17 = read()\n",
+        "domain V = 1..=n\n",
+        "var adj: [V]Subset<V> = Subset<V>.empty\n",
+        "var dp: [V]U64 = 1\n",
+        "var ways: U64 = 1\n",
+        "for mask in Subset<V>:\n",
+        "    for v1 in mask:\n",
+        "        ways *= sum(dp[v2] for v2 in adj[v1] & mask)\n",
+        "print(ways, sum(dp[v] for v in V))\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(
+        !solve.contains("std::vector<unsigned long long>()"),
+        "{solve}"
+    );
+    assert!(!solve.contains("push_back"), "{solve}");
+}
+
+#[test]
+fn a_sum_whose_of_may_trap_keeps_the_list_only_at_that_call() {
+    let cpp = cpp(concat!(
+        "let n: 1..=1000 = read()\n",
+        "print(sum([i for i in 0..n if i % 2 == 0], of: x => 100 / x))\n",
+        "print(sum([i for i in 1..n], of: x => x * 2))\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert_eq!(solve.matches("push_back").count(), 1, "{solve}");
+    assert!(solve.contains("cpl_sink_"), "{solve}");
+}
