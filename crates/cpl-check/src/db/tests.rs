@@ -187,7 +187,7 @@ fn an_imported_body_is_checked_when_its_facts_are_asked_for() {
     let at = lib.find("x * 2").unwrap() as u32;
     let body = Span::new(at, at + 5);
     let imported = (db.files.get("lib/a.cp"))
-        .and_then(|f| f.analysis.clone())
+        .and_then(|f| f.module.clone())
         .expect("main imports lib.a");
     assert_eq!(
         imported.facts().type_of(body),
@@ -246,4 +246,69 @@ fn an_unknown_type_with_no_error_there_is_a_silent_unknown() {
     assert!(reported.is_empty() && errors > 0, "{reported:?}");
     let callee = "fn g(xs: List<Int>) -> Int:\n    xs.map(x => x * 2).sum()\nprint(g([1]))\n";
     assert_eq!(silent_unknowns_of(callee), (vec![], 0));
+}
+
+#[test]
+fn a_def_cut_by_its_own_cycle_does_not_replace_the_whole_one() {
+    let lib = "@get pub fn boxed(self: Int) -> Boxed = Boxed(self)\n\n/// A box.\npub struct Boxed(pub v: Int):\n    pub fn get(self) -> Int = self.v\n";
+    let mut db = Database::with_loader(Box::new(MapLoader(vec![(
+        "lib.b".into(),
+        "lib/b.cp".into(),
+        lib.into(),
+    )])));
+    let src = "use lib.b.{boxed}\nlet b = 3.boxed\nlet got: Int = b.get()\n";
+    let at = src.find("boxed\n").unwrap() as u32 + 1;
+    db.set_file("a.cp", src);
+    let first = db.hover("a.cp", at).map(|h| h.text);
+    db.set_file("b.cp", src);
+    let second = db.hover("b.cp", at).map(|h| h.text);
+    assert!(
+        first
+            .as_deref()
+            .is_some_and(|t| t.starts_with("boxed: Boxed")),
+        "{first:?}"
+    );
+    assert_eq!(first, second);
+    assert!(
+        db.diagnostics("b.cp").is_empty(),
+        "{:?}",
+        db.diagnostics("b.cp")
+    );
+}
+
+/// Jumping to a std method's definition analyzes std's module; a getter it
+/// was cut short on must still type on the next file.
+#[test]
+fn a_std_getter_types_the_same_after_jumping_into_std() {
+    let mut db = Database::new();
+    let src = "let xs = [1, 2, 3]\nlet r = xs.ring\nlet s = xs.sorted()\nprint(r.windows(2).len, s.len)\n";
+    let ring = src.find("ring").unwrap() as u32 + 1;
+    let sorted = src.find("sorted").unwrap() as u32 + 1;
+    db.set_file("a.cp", src);
+    assert!(
+        db.diagnostics("a.cp").is_empty(),
+        "{:?}",
+        db.diagnostics("a.cp")
+    );
+    let first = db.hover("a.cp", ring).map(|h| h.text);
+    assert!(
+        first
+            .as_deref()
+            .is_some_and(|t| t.starts_with("ring: Ring<Int, Int>")),
+        "{first:?}"
+    );
+    for at in [ring, sorted] {
+        let def = db.definition_location("a.cp", at);
+        assert!(
+            def.as_ref().is_some_and(|d| d.path.ends_with("seq.cp")),
+            "{def:?}"
+        );
+    }
+    db.set_file("b.cp", src);
+    assert_eq!(db.hover("b.cp", ring).map(|h| h.text), first);
+    assert!(
+        db.diagnostics("b.cp").is_empty(),
+        "{:?}",
+        db.diagnostics("b.cp")
+    );
 }

@@ -1810,3 +1810,66 @@ fn every_renamed_spelling_carries_its_rewrite() {
         assert_eq!(d.fixes[0].edits, vec![(d.span, new.to_string())], "{src}");
     }
 }
+
+#[test]
+fn a_library_fn_called_as_a_method_hovers_its_doc_and_cost_and_jumps_home() {
+    let lib = "/// The head.\n///\n/// cost: \\(O(1)\\)\n@get pub fn head_of<S: Seq, T>(self: S) -> ?T:\n    for x in self: return Some(x)\n    None\n";
+    let mut db = Database::with_loader(Box::new(Modules(vec![("lib.m", lib)])));
+    let src = "use lib.m.{head_of}\nlet got = [4, 5].head_of == Some(4)\nvar s = Set<Int>()\nlet added = s.add(1)\n";
+    db.set_file("a.cp", src);
+    assert!(
+        db.diagnostics("a.cp").is_empty(),
+        "{:?}",
+        messages(&db.diagnostics("a.cp"))
+    );
+    let at = |needle: &str| src.find(needle).unwrap() as u32;
+    let def = db.definition_location("a.cp", at("head_of ==")).unwrap();
+    assert_eq!(def.path, "lib.m.cp");
+    let hover = db.hover("a.cp", at("head_of ==")).unwrap();
+    assert_eq!(hover.cost.as_deref(), Some("O(1)"));
+    let hover = db.hover("a.cp", at("add(1)")).unwrap();
+    assert!(
+        hover
+            .cost
+            .as_deref()
+            .is_some_and(|c| c.starts_with("O(log")),
+        "{hover:?}"
+    );
+}
+
+#[test]
+fn a_method_a_use_imports_stands_in_front_of_the_preludes() {
+    let lib = "pub fn step<S>(self: S, k: Int) -> Int = k\n";
+    let mut db = Database::with_loader(Box::new(Modules(vec![("lib.m", lib)])));
+    let src = "use lib.m.{step}\nlet got: Int = [1, 2, 3].step(2)\n";
+    db.set_file("a.cp", src);
+    assert!(
+        db.diagnostics("a.cp").is_empty(),
+        "{:?}",
+        messages(&db.diagnostics("a.cp"))
+    );
+    let at = src.find("step(2)").unwrap() as u32;
+    assert_eq!(db.definition_location("a.cp", at).unwrap().path, "lib.m.cp");
+}
+
+#[test]
+fn a_library_view_built_in_method_form_hovers_its_own_methods() {
+    let lib = "pub struct StepX<S, T>(pub src: S, pub k: Int):\n    /// Each.\n    ///\n    /// cost: \\(O(1)\\)\n    pub fn each(self) -> yields T:\n        for x in self.src: yield x\n    pub fn pick(self, ok: Int -> Bool) -> Int = self.k\n\npub fn stepx<S: Seq<T>, T>(self: S, k: Int) -> StepX<S, T> = StepX(self, k)\n";
+    let mut db = Database::with_loader(Box::new(Modules(vec![("lib.m", lib)])));
+    let src = "use lib.m.{StepX, stepx}\nlet got = [4, 5].stepx(2).each()\nlet b = [4, 5].stepx(2).pick(ok: w => w > 1)\n";
+    db.set_file("a.cp", src);
+    assert!(
+        db.diagnostics("a.cp").is_empty(),
+        "{:?}",
+        messages(&db.diagnostics("a.cp"))
+    );
+    let at = |needle: &str| src.find(needle).unwrap() as u32;
+    let each = db.hover("a.cp", at("each(")).unwrap();
+    assert_eq!(each.cost.as_deref(), Some("O(1)"));
+    let pick = db.hover("a.cp", at("pick(")).unwrap();
+    assert!(pick.text.contains("ok: (Int) -> Bool"), "{pick:?}");
+    assert_eq!(
+        db.definition_location("a.cp", at("pick(")).unwrap().path,
+        "lib.m.cp"
+    );
+}

@@ -15,6 +15,11 @@ impl Env for FileCtx<'_> {
         Some(self.scope.modules[module].name.clone())
     }
 
+    fn chosen(&mut self, name: &str) -> bool {
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        self.scope.chosen.contains(name)
+    }
+
     fn global(&mut self, name: &str) -> Option<Arc<Def>> {
         let name = &self.rebound(name);
         let (def, fingerprint) = self.def(name);

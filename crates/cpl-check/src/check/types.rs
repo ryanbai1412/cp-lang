@@ -1799,6 +1799,11 @@ impl<'a> Checker<'a> {
                 if trait_name == "Ord" && matches!(name.as_str(), "HashMap" | "HashSet") {
                     return false;
                 }
+                // A cut or range compares by position, whatever its domain
+                // holds, as `Ty::Pos` and `Ty::Range` do.
+                if matches!(name.as_str(), "Cut" | "Range") {
+                    return true;
+                }
                 match self.type_def(name).as_deref().cloned() {
                     Some(Def::Struct {
                         generics, fields, ..

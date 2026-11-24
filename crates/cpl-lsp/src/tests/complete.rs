@@ -28,6 +28,14 @@ fn dot_completion_after_a_method_call_lists_what_it_returns() {
 }
 
 #[test]
+fn dot_completion_on_a_list_literal_of_tuples_lists_its_methods() {
+    let items = completions("let got = [(1, 'a'), (1, 'b')].|\n");
+    assert!(labels(&items).contains(&"sorted"), "{items:?}");
+    let items = completions("let got = [(1.5, 2)].|\n");
+    assert!(labels(&items).contains(&"sorted"), "{items:?}");
+}
+
+#[test]
 fn dot_completion_works_on_a_line_that_does_not_parse_yet() {
     // The item ends mid-expression: the checker still types `r`.
     let items = completions(&format!("{ROAD}let r = Road(1, 2)\nlet x = r.|\n"));

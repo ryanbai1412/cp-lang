@@ -71,6 +71,10 @@ pub(crate) trait Env {
     fn origin(&mut self, _name: &str) -> Option<String> {
         None
     }
+    /// True if a `use` line imports the top-level `name` by name.
+    fn chosen(&mut self, _name: &str) -> bool {
+        false
+    }
     /// The struct or enum behind the type of a value, which may come from
     /// a module this file reaches without importing the type by name.
     fn type_def(&mut self, name: &str) -> Option<Arc<Def>>;

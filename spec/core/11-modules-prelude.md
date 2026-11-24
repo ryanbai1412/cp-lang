@@ -46,8 +46,11 @@ use lib.treap  // the contestant's library root, from cp.toml
   pinned stdlib, `lib` is the roots named in `cp.toml`. (R11.2.1)
 - Modules form an acyclic graph; two modules that need each other are
   one module. (R11.2.2)
-- A local name shadows a prelude name; a `use` that collides with a
-  local name is an error naming both. (R11.2.3)
+- A local name shadows a prelude name, and so does a name a `use`
+  imports, in method form too: after `use lib.mine.{step}`,
+  `xs.step(2)` calls the library's `step` even where the prelude's also
+  fits. A `use` that collides with a local name is an error naming
+  both. (R11.2.3)
 - Everything is inlined into the one output file and tree-shaken: only
   called functions and used generic instances cost bytes
   (`tools/bundle.md`). Library code is specialized where it is used, so

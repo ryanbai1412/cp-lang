@@ -964,6 +964,8 @@ fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
         ExprKind::Str(_) => Ty::Str,
         ExprKind::Int(_) => Ty::Int,
         ExprKind::Bool(_) => Ty::Bool,
+        ExprKind::Char(_) => Ty::Char,
+        ExprKind::Float(_) => Ty::Float,
         ExprKind::Tuple(parts) => Ty::Tuple(
             parts
                 .iter()

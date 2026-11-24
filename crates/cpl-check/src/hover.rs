@@ -9,7 +9,7 @@
 //! ```
 
 use crate::builtins::builtin_member;
-use crate::check::HoverEntry;
+use crate::check::{HoverEntry, Resolved};
 use crate::db::{Analysis, Database};
 use crate::def::{DeclKind, Def};
 use crate::ty::{has_niche, human_bytes, human_int, size_of, struct_layout, struct_size, Ty};
@@ -186,27 +186,55 @@ impl Database {
             _ => render(entry, &mut lookup),
         };
         let signature = builtin.is_none() && shows_signature(entry, &mut lookup);
-        let doc = self.definition_location(path, offset).and_then(|def| {
-            let source = if def.path == path {
-                analysis.text.clone()
-            } else {
-                self.file_text(&def.path)?
-            };
-            doc_above(&source, def.span.start)
+        // A catalog member std also writes (`xs.sorted`) keeps the catalog's
+        // doc, whose cost the hover scales; a library's own fn keeps its own.
+        let catalog = builtin.filter(|_| {
+            item.check
+                .resolved
+                .iter()
+                .find(|(s, _)| *s == entry.span)
+                .is_none_or(|(_, r)| r.module == "prelude" || r.module.starts_with("std."))
         });
-        let doc = doc.or_else(|| builtin.map(|m| m.doc.to_string()));
-        // A member of a type with no declaration of its own (`xs.rev`) is
-        // std's top-level fn of that name.
+        let doc = match catalog {
+            Some(member) => Some(member.doc.to_string()),
+            None => self.definition_location(path, offset).and_then(|def| {
+                let source = if def.path == path {
+                    analysis.text.clone()
+                } else {
+                    self.file_text(&def.path)?
+                };
+                doc_above(&source, def.span.start)
+            }),
+        };
+        // A member its receiver's type does not declare (`xs.rev`) is the
+        // top-level fn the checker picked for it; one it picked none for is
+        // std's of that name.
         let undeclared = entry.keyword == "field"
             && entry.owner.as_ref().is_some_and(|owner| {
                 !analysis.imports().contains_key(owner) && analysis.decl_span(owner).is_none()
             });
-        let doc = doc.or_else(|| {
-            let def = undeclared
-                .then(|| self.std_method(path, &entry.name))
-                .flatten()?;
-            doc_above(&self.file_text(&def.path)?, def.span.start)
-        });
+        let picked = (entry.keyword == "field")
+            .then(|| item.check.resolved.iter().find(|(s, _)| *s == entry.span))
+            .flatten()
+            .map(|(_, r)| r.clone());
+        let prelude = picked
+            .as_ref()
+            .is_none_or(|p| p.module == "prelude" || p.module.starts_with("std."));
+        let picked_doc = |db: &mut Self| {
+            let def = match &picked {
+                Some(picked) => db.picked_method(path, &analysis, picked),
+                None if undeclared => db.std_method(path, &entry.name),
+                None => None,
+            }?;
+            doc_above(&db.file_text(&def.path)?, def.span.start)
+        };
+        let doc = match doc {
+            Some(doc) => Some(doc),
+            None if !prelude => picked_doc(self),
+            None => builtin
+                .map(|m| m.doc.to_string())
+                .or_else(|| picked_doc(self)),
+        };
         let receiver = item
             .check
             .hovers
@@ -337,22 +365,32 @@ impl Database {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
         let entry = innermost(&item.check.hovers, at)?;
-        if let (Some(owner), "field") = (&entry.owner, entry.keyword) {
-            let (owner_path, owner_analysis, owner_name) = match analysis.imports().get(owner) {
-                Some(import) => {
-                    let module = &analysis.modules()[import.module];
-                    (
-                        module.path.clone(),
-                        module.analysis.clone(),
-                        import.name.clone(),
-                    )
+        if entry.keyword == "field" {
+            if let Some(owner) = &entry.owner {
+                let (owner_path, owner_analysis, owner_name) = match analysis.imports().get(owner) {
+                    Some(import) => {
+                        let module = &analysis.modules()[import.module];
+                        (
+                            module.path.clone(),
+                            module.analysis.clone(),
+                            import.name.clone(),
+                        )
+                    }
+                    None => (path.to_string(), analysis.clone(), owner.clone()),
+                };
+                if let Some(span) = member_span(&owner_analysis, &owner_name, &entry.name) {
+                    return Some(Definition {
+                        path: owner_path,
+                        span,
+                    });
                 }
-                None => (path.to_string(), analysis.clone(), owner.clone()),
-            };
-            return member_span(&owner_analysis, &owner_name, &entry.name).map(|span| Definition {
-                path: owner_path,
-                span,
-            });
+            }
+            // A member its receiver's type does not declare (`xs.rev`) is the
+            // top-level fn the checker picked for it. One it picked none for
+            // is a built-in member (`V(0).l`), declared nowhere.
+            let picked = item.check.resolved.iter().find(|(s, _)| *s == entry.span);
+            let picked = picked.map(|(_, r)| r.clone());
+            return picked.and_then(|r| self.picked_method(path, &analysis, &r));
         }
         if let Some(decl) = entry.decl {
             return Some(Definition {
@@ -376,6 +414,46 @@ impl Database {
             }
         }
         None
+    }
+
+    /// Where the fn the checker picked for a member is declared.
+    fn picked_method(
+        &mut self,
+        path: &str,
+        analysis: &Arc<Analysis>,
+        picked: &Resolved,
+    ) -> Option<Definition> {
+        if picked.module.is_empty() {
+            let span = analysis.decl_span(&picked.name)?;
+            return Some(Definition {
+                path: path.to_string(),
+                span,
+            });
+        }
+        if picked.module == "prelude" {
+            return self.std_method(path, &picked.name);
+        }
+        if let Some(module) = analysis.modules().iter().find(|m| m.name == picked.module) {
+            let name = match analysis.imports().get(&picked.name) {
+                Some(import) if analysis.modules()[import.module].name == picked.module => {
+                    import.name.clone()
+                }
+                _ => picked.name.clone(),
+            };
+            if let Some(span) = module.analysis.decl_span(&name) {
+                return Some(Definition {
+                    path: module.path.clone(),
+                    span,
+                });
+            }
+        }
+        let parts: Vec<String> = picked.module.split('.').map(str::to_string).collect();
+        let module = self.load_module(path, &parts, Span::default(), &mut Vec::new())?;
+        let span = module.analysis.decl_span(&picked.name)?;
+        Some(Definition {
+            path: module.path,
+            span,
+        })
     }
 
     /// The top-level std `fn name(..)` a member declared nowhere on its

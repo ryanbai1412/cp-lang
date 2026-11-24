@@ -249,9 +249,10 @@ impl<'a> Checker<'a> {
                 self.old_copy_spelling(&base_ty, name);
             }
         }
+        let shown = self.shown_member(&ty, name);
         // A catalog method the call types later (`xs.sorted()`) is still
         // known here, by its catalog signature.
-        let known = match ty {
+        let known = match shown {
             Ty::Error => false,
             Ty::Unknown => owner
                 .as_deref()
@@ -262,7 +263,7 @@ impl<'a> Checker<'a> {
             self.hovers.push(HoverEntry {
                 span: name.span,
                 name: name.text.clone(),
-                ty: ty.clone(),
+                ty: shown,
                 keyword: "field",
                 decl: None,
                 owner,
