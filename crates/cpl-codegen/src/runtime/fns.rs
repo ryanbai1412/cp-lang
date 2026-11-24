@@ -44,15 +44,24 @@ template <class B, class W> Memo<B, W> memo(B b, W w) { return {std::move(b), st
         name: "pick",
         needs: &[],
         code: "\
-// A value `if` or `match` of different closures: each kept, the picked one called.
+// A value `if` or `match` of different closures: each of its own type, only
+// the picked one built (from its thunk), and called through a const one too.
 template <class... F> struct Pick {
-    int i; std::tuple<F...> f;
-    template <size_t K = 0, class... A> auto operator()(A&&... a) {
+    int i; mutable std::tuple<std::optional<F>...> f;
+    template <size_t K = 0, class... A> auto operator()(A&&... a) const {
         if constexpr (K + 1 < sizeof...(F)) { if (i != (int)K) return this->template operator()<K + 1>((A&&)a...); }
-        return std::get<K>(f)((A&&)a...);
+        return (*std::get<K>(f))((A&&)a...);
     }
 };
-template <class... F> Pick<F...> pick(int i, F... f) { return {i, {std::move(f)...}}; }
+template <class P, class T, size_t... K> void pick_build(P& p, T& t, std::index_sequence<K...>) {
+    ((p.i == (int)K ? (void)std::get<K>(p.f).emplace(std::get<K>(t)()) : (void)0), ...);
+}
+template <class... T> Pick<std::invoke_result_t<T&>...> pick(int i, T... t) {
+    Pick<std::invoke_result_t<T&>...> p{i, {}};
+    std::tuple<T&...> ts{t...};
+    pick_build(p, ts, std::index_sequence_for<T...>{});
+    return p;
+}
 ",
     },
     Piece {

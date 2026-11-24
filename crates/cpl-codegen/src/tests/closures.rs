@@ -1045,3 +1045,18 @@ fn a_fn_param_its_recursion_passes_a_new_closure_is_a_fn_ref_not_a_std_function(
         "{out}"
     );
 }
+
+#[test]
+fn a_value_if_of_closures_copying_lists_builds_only_the_picked_one() {
+    let out = cpp(concat!(
+        "fn total(n: Int, w: Int -> Int = _ => 0) -> Int = sum(w(i) for i in 0..n)\n",
+        "fn go(n: Int, on: Bool) -> Int:\n",
+        "    let wt = [i * 3 for i in 0..n]\n",
+        "    total(n, w: if on: (i: Int) => wt[i] else: _ => 0)\n",
+        "let n: Int = read()\n",
+        "print(go(n, false), go(n, true))\n",
+    ));
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("cpl::pick("), "{out}");
+    assert!(out.contains("[&] { return "), "{out}");
+}

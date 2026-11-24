@@ -485,8 +485,8 @@ impl<'p> Devirt<'p> {
     }
 
     /// The closures a value `if` or `match` of a fn type picks between, in
-    /// order: closure literals and fn locals, each cheap to build and none
-    /// run, so all are built and the picked one called (`cpl::pick`).
+    /// order: closure literals and fn locals, none naming a local a branch
+    /// binds; only the picked one is built, and called (`cpl::pick`).
     /// `None` when a branch is any other value or there is only one.
     pub fn join_leaves<'e>(&self, e: &'e Expr) -> Option<Vec<&'e Expr>> {
         let mut out = Vec::new();
@@ -540,12 +540,9 @@ impl<'p> Devirt<'p> {
         match &e.kind {
             ExprKind::Closure(cid) => {
                 let def = &self.program.closures[*cid];
-                def.captures.iter().all(|c| {
-                    let ty = &def.locals[c.inner].ty;
-                    c.is_global
-                        || (!bound.contains(&c.outer)
-                            && (c.by_ref || ty.is_scalar() || matches!(ty, Ty::Fn(..))))
-                })
+                def.captures
+                    .iter()
+                    .all(|c| c.is_global || !bound.contains(&c.outer))
             }
             ExprKind::Local(slot) => matches!(e.ty, Ty::Fn(..)) && !bound.contains(slot),
             _ => false,

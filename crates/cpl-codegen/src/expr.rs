@@ -1522,9 +1522,9 @@ impl Emitter<'_> {
         proven.then_some(pos)
     }
 
-    /// `cpl::pick(index, leaf0, leaf1, ..)`: a value `if` or `match` of
-    /// closures (see [`crate::devirt::Devirt::join_leaves`]) keeps each in
-    /// its own type and calls the one `index` names. For an `if`, `c` is
+    /// `cpl::pick(index, [&] { return leaf0; }, ..)`: a value `if` or
+    /// `match` of closures (see [`crate::devirt::Devirt::join_leaves`])
+    /// keeps each in its own type, builds and calls the one `index` names. For an `if`, `c` is
     /// its condition, already written.
     fn pick(&mut self, e: &Expr, leaves: &[&Expr], c: Code) -> Code {
         self.need("pick");
@@ -1537,7 +1537,11 @@ impl Emitter<'_> {
             _ => c.text,
         };
         let mut args = vec![index];
-        args.extend(leaves.iter().map(|leaf| self.expr(leaf).text));
+        args.extend(
+            leaves
+                .iter()
+                .map(|leaf| format!("[&] {{ return {}; }}", self.expr(leaf).text)),
+        );
         Code::primary(format!("cpl::pick({})", args.join(", ")))
     }
 
