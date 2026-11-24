@@ -673,12 +673,13 @@ impl<'a> Lowerer<'a> {
         owner: Option<&Ty>,
     ) -> Option<Ty> {
         let (trait_name, owner) = (trait_name?, owner?);
-        let (f, generics, place): (&'a ast::FnDecl, Vec<&str>, _) =
+        let (f, generics, m, o): (&'a ast::FnDecl, Vec<&str>, _, _) =
             match self.traits.iter().find(|t| t.name == trait_name) {
                 Some(t) => (
                     t.methods.iter().find(|f| f.name.text == method)?,
                     t.generics.clone(),
-                    Some((t.mod_id, t.offset)),
+                    t.mod_id,
+                    t.offset,
                 ),
                 None => {
                     let (generics, body) = cpl_check::core_trait_decl(trait_name)?;
@@ -686,7 +687,8 @@ impl<'a> Lowerer<'a> {
                         ast::StmtKind::Fn(f) if f.name.text == method => Some(f),
                         _ => None,
                     })?;
-                    (f, generics.iter().map(|g| g.text.as_str()).collect(), None)
+                    let names = generics.iter().map(|g| g.text.as_str()).collect();
+                    (f, names, self.cur_mod, self.offset)
                 }
             };
         let ty = match at {
@@ -694,25 +696,14 @@ impl<'a> Lowerer<'a> {
             None => f.ret.as_ref(),
         }?;
         let mut env = self.gen_env.clone();
-        let mut names = generics;
-        names.insert(0, "Self");
-        for (k, g) in names.into_iter().enumerate() {
-            let arg = k.checked_sub(1).and_then(|k| trait_args.get(k));
-            env.insert(g.into(), GenArg::Ty(arg.unwrap_or(owner).clone()));
+        env.insert("Self".into(), GenArg::Ty(owner.clone()));
+        for (k, g) in generics.into_iter().enumerate() {
+            env.insert(
+                g.into(),
+                GenArg::Ty(trait_args.get(k).unwrap_or(owner).clone()),
+            );
         }
-        let saved_env = std::mem::replace(&mut self.gen_env, env);
-        let saved_place = place.map(|(m, o)| {
-            (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, o),
-            )
-        });
-        let resolved = self.resolve_ty(ty);
-        if let Some((m, o)) = saved_place {
-            (self.cur_mod, self.offset) = (m, o);
-        }
-        self.gen_env = saved_env;
-        Some(resolved)
+        Some(self.quietly_in(m, o, env, |lw| lw.resolve_ty(ty)))
     }
 }
 
