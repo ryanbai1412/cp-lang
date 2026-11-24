@@ -6,11 +6,9 @@ Traits come from `pub trait` bodies in std/*.cp and from the core traits
 listed in spec/conformance/traits.toml. Claims come from `impl Trait for
 Type:` lines in std/*.cp and from the core claimers in traits.toml.
 Each (type, trait, method) needs a `[case]` in traits.toml, which becomes
-spec/conformance/traits/<trait>/<type>--<method>.cp, or a line in
-spec/conformance/trait-gaps.txt. `--check` fails when a generated case is
-stale, a triple has neither, or a gap line names a triple that has a case or
-no longer exists. Writing never adds a gap unless `--add-gaps` is given, so
-the gap list only shrinks.
+spec/conformance/traits/<trait>/<type>--<method>.cp. Writing and `--check`
+both fail when a triple has no case; `--check` also fails when a generated
+case is stale.
 """
 import re
 import sys
@@ -21,7 +19,6 @@ ROOT = Path(__file__).resolve().parent.parent
 CONF = ROOT / "spec" / "conformance"
 STD = ROOT / "std"
 OUT = CONF / "traits"
-GAPS = CONF / "trait-gaps.txt"
 
 TRAIT = re.compile(r"pub trait (\w+)(<[^>]*>)?(:\s*(.*))?$")
 METHOD = re.compile(r"\s+(?:@get\s+)?fn (\w+)\(")
@@ -110,14 +107,9 @@ def main():
     missing = sorted(all_t - set(cases))
     want = {OUT / tr / f"{ty}--{m}.cp": case_text(c) for (tr, ty, m), c in cases.items()}
     have = {p: p.read_text() for p in OUT.rglob("*.cp")} if OUT.exists() else {}
-    gap_lines = [l for l in GAPS.read_text().split("\n") if l and not l.startswith("#")] if GAPS.exists() else []
-    gaps = {tuple(l.split("/")) for l in gap_lines}
-    new_gaps = [t for t in missing if t not in gaps]
-    dead_gaps = sorted(gaps - set(missing))
-    summary = f"traits: {len(all_t)} methods over claims, {len(cases)} with a case, {len(missing)} gaps"
+    summary = f"traits: {len(all_t)} methods over claims, {len(cases)} with a case"
+    problems += [f"no case: {'/'.join(t)} (write one in traits.toml)" for t in missing]
     if "--check" in sys.argv:
-        problems += [f"no case and no gap line: {'/'.join(t)}" for t in new_gaps]
-        problems += [f"gap line covered or gone, delete it: {'/'.join(t)}" for t in dead_gaps]
         stale = sorted(str(p.relative_to(ROOT)) for p in set(want) | set(have) if want.get(p) != have.get(p))
         problems += [f"stale: {s}" for s in stale[:20]]
         if problems:
@@ -126,8 +118,6 @@ def main():
             return 1
         print(summary)
         return 0
-    if new_gaps and "--add-gaps" not in sys.argv:
-        problems += [f"no case: {'/'.join(t)} (write one, or rerun with --add-gaps)" for t in new_gaps]
     if problems:
         print("\n".join(problems))
         return 1
@@ -137,11 +127,6 @@ def main():
         p.parent.mkdir(parents=True, exist_ok=True)
         if have.get(p) != t:
             p.write_text(t)
-    GAPS.write_text(
-        "# (trait/type/method) with no case yet. Shrink-only: scripts/conformance-traits.py\n"
-        "# never adds a line without --add-gaps; write the case in traits.toml instead.\n"
-        + "".join("/".join(t) + "\n" for t in missing)
-    )
     print(summary)
     return 0
 

@@ -59,7 +59,7 @@ tier = "pre-commit"
 
 [[gen]]
 name = "traits"
-files = ["spec/conformance/traits/**/*.cp", "spec/conformance/trait-gaps.txt"]
+files = ["spec/conformance/traits/**/*.cp"]
 inputs = ["spec/conformance/traits.toml", "std/*.cp"]
 write = ["scripts/conformance-traits.py"]
 check = ["scripts/conformance-traits.py", "--check"]
