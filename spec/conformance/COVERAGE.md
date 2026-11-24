@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3405 (3318 passing). Rules: 615.
+Cases: 3406 (3318 passing). Rules: 615.
 
 ## Summary per chapter
 
@@ -1106,12 +1106,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
 - **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (158/176 named by a case)
-  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
+- **tree** (160/176 named by a case)
+  - uncovered: `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2285 of 2397 std items are named by a case.
+2287 of 2397 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
