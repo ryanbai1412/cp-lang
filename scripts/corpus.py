@@ -31,7 +31,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUBS = os.path.join(ROOT, "corpus", "submissions")
 PROBLEMS = os.path.join(ROOT, "corpus", "problems")
 SETS = os.path.join(ROOT, "corpus", "sets")
-CXX_CACHE = os.path.join(ROOT, "target", "corpus-cxx")
+# Under ~/.cache/cpl/cxx, which CI caches across runs; the key holds the source and compiler.
+CXX_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "cpl", "cxx", "corpus")
 HAND = {"tags": [], "difficulty": None, "dream": "none", "spec": "none", "notes": ""}
 RECORDED = ("dream_stress",)
 STATUSES = {"none", "draft", "reviewed", "gold"}
@@ -151,7 +152,7 @@ class InfraError(Exception):
 
 
 def binary(src):
-    """`src` built with reference_cxx(), cached by content and compiler under target/corpus-cxx/."""
+    """`src` built with reference_cxx(), cached by content and compiler under CXX_CACHE."""
     os.makedirs(CXX_CACHE, exist_ok=True)
     cxx, version = reference_cxx()
     data = Path(src).read_bytes()

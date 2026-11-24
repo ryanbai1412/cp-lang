@@ -67,9 +67,10 @@ jobs:
             cxx-${{ runner.os }}-${{ startsWith(matrix.part, 'conform:diff') && 'conform:diff' || matrix.part }}
             cxx-${{ runner.os }}-
       # scripts/corpus.py make writes each package's tests.toml cases here,
-      # stamp-cached by content; cold, it compiles every accepted C++ (~1 min).
-      - uses: actions/cache@v4
-        if: matrix.part == 'conform:corpus+docs'
+      # stamp-cached by content; cold, it runs every gen.py and accepted C++.
+      # Saved even when the gate fails, so a cold cache warms once.
+      - uses: actions/cache/restore@v4
+        if: startsWith(matrix.part, 'conform:')
         with:
           path: target/corpus-tests
           key: corpus-tests-${{ github.run_id }}
@@ -90,6 +91,11 @@ jobs:
           CPL_CONFORM_PREV: ${{ startsWith(matrix.part, 'conform:') && 'target/conform-prev.json' || '' }}
           CPL_DERIVED_HEALED: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '' }}
         run: scripts/check.sh --fast
+      - uses: actions/cache/save@v4
+        if: ${{ always() && matrix.part == 'conform:corpus+docs' }}
+        with:
+          path: target/corpus-tests
+          key: corpus-tests-${{ github.run_id }}
       - name: Keep this green run's scoreboard
         if: ${{ success() && github.ref == 'refs/heads/main' && startsWith(matrix.part, 'conform:') }}
         run: "[ ! -f target/conform-prev.json.new ] || mv target/conform-prev.json.new target/conform-prev.json"
@@ -190,6 +196,12 @@ jobs:
           restore-keys: |
             cxx-${{ runner.os }}-tests-
             cxx-${{ runner.os }}-
+      # The cases scripts/corpus.py make wrote in the conform part (interp_memory, fix_behavior).
+      - uses: actions/cache/restore@v4
+        with:
+          path: target/corpus-tests
+          key: corpus-tests-${{ github.run_id }}
+          restore-keys: corpus-tests-
       - uses: actions/download-artifact@v4
         with:
           name: nextest-archive
