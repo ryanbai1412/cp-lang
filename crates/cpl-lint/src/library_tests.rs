@@ -133,13 +133,16 @@ fn declared_holes_match_free_names_and_a_record_name_keeps_its_code() {
         crate::lint(&format!("{decl}{body}"), &crate::Config::default())
             .into_iter()
             .filter(|d| d.code.0 == "L0557")
-            .map(|d| (d.code.0.to_string(), d.fixes[0].edits[0].1.clone()))
+            .map(|d| (d.code.0.to_string(), d.message.clone()))
             .collect()
     };
     let hit = "let a = [3, 1]\nlet m = a.len\nfor j in 0..m:\n    print(a[j])\n";
     assert_eq!(
         found(hit),
-        [("L0557".into(), "for x in a.walk:\n    print(x)".into())]
+        [(
+            "L0557".into(),
+            "write `for x in a.walk:\n    print(x)`".into()
+        )]
     );
     let calls = "let a = [3, 1]\nfn m() -> Int = 2\nfor j in 0..m():\n    print(a[j])\n";
     assert!(found(calls).is_empty());
