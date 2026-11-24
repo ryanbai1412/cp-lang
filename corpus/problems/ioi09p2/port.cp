@@ -10,7 +10,6 @@
 //   plan's size smallest Q among the candidates up to its rate setter. O(n log n).
 // limits: 1500 ms, 64 MB
 // original: corpus/submissions/5102705.cpp
-
 // Bounds: n: 1..=5e5; w: 1..=1e10; ask.s, ask.q: 1..=2e4
 let (n, w): (1..=5e5, 1..=1e10) = read()
 domain Worker = 1..=n

@@ -11,7 +11,6 @@
 //   O((M + P) log N).
 // limits: 5000 ms, 256 MB
 // original: corpus/submissions/5637805.cpp
-
 // Bounds: m, n: 1..=1e6; budget: 0..=2e9; p: 1..=4e5; boxes.x0, boxes.x1: 1..=m; boxes.y0, boxes.y1: 1..=n; boxes.cost: 1..=7000
 let (m, n): (1..=1e6, 1..=1e6) = read()
 let budget: 0..=2e9 = read()
