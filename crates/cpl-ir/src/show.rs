@@ -69,17 +69,17 @@ pub(crate) fn ty_name(
         Ty::Bool => "Bool".into(),
         Ty::Char => "Char".into(),
         Ty::Str | Ty::StrView => "Str".into(),
-        Ty::Pos(d) => domains[*d].clone(),
-        Ty::Bound(d) => format!("{}.cuts", domains[*d]),
+        Ty::Pos(d) => source_name(&domains[*d]).into(),
+        Ty::Bound(d) => format!("{}.cuts", source_name(&domains[*d])),
         Ty::Range(inner) => format!("Range<{}>", name(inner)),
         Ty::DomainVal => "domain".into(),
         Ty::Array { dims, elem } => {
             let dims: Vec<String> = dims
                 .iter()
                 .map(|d| match d {
-                    Dim::Pos(d) => domains[*d].clone(),
-                    Dim::Bound(d) => format!("{}.cuts", domains[*d]),
-                    Dim::Sym(d) => format!("Sym<{}>", domains[*d]),
+                    Dim::Pos(d) => source_name(&domains[*d]).into(),
+                    Dim::Bound(d) => format!("{}.cuts", source_name(&domains[*d])),
+                    Dim::Sym(d) => format!("Sym<{}>", source_name(&domains[*d])),
                     Dim::Enum(e) => enums[*e].name.clone(),
                     Dim::Int | Dim::IntFrom(_) => "Int".into(),
                 })
@@ -104,10 +104,36 @@ pub(crate) fn ty_name(
         Ty::HashSet(elem) => format!("HashSet<{}>", name(elem)),
         Ty::Fn(args, ret) => format!("({}) -> {}", list(args), name(ret)),
         Ty::Mut(of) => format!("mut {}", name(of)),
-        Ty::Struct(id) => structs[*id].name.clone(),
-        Ty::Enum(id) => enums[*id].name.clone(),
+        Ty::Struct(id) => {
+            let s = &structs[*id];
+            shown(&s.name, &s.source, &list(&s.targs))
+        }
+        Ty::Enum(id) => {
+            let e = &enums[*id];
+            shown(&e.name, &e.source, &list(&e.targs))
+        }
         Ty::Error => "_".into(),
     }
+}
+
+/// A type as the program writes it: `Pt`, not the module's `m1_Pt`.
+fn shown(name: &str, source: &str, args: &str) -> String {
+    match (source, args) {
+        ("", _) => source_name(name).into(),
+        (source, "") => source.into(),
+        (source, args) => format!("{source}<{args}>"),
+    }
+}
+
+/// `V` for a module's `m2_V`.
+pub(crate) fn source_name(name: &str) -> &str {
+    name.strip_prefix('m')
+        .and_then(|rest| {
+            let digits = rest.find(|c: char| !c.is_ascii_digit())?;
+            (digits > 0).then_some(())?;
+            rest[digits..].strip_prefix('_')
+        })
+        .unwrap_or(name)
 }
 
 /// "expected `want`, found `found`", naming views when both read the same.

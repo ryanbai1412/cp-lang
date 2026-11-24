@@ -1377,6 +1377,10 @@ pub enum ElemLoc {
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct StructDef {
     pub name: String,
+    /// The name the program writes, `Pt` for `m1_Pt`; empty when `name` is.
+    pub source: String,
+    /// A generic instance's arguments, shown as `Pair<Int>`.
+    pub targs: Vec<Ty>,
     pub fields: Vec<(String, Ty)>,
     /// The fields that are a row of a length written as a number, `kid:
     /// [0..2]?Int`, by position: every value of the struct holds exactly
@@ -1416,6 +1420,9 @@ impl OrdHook {
 #[derive(Clone, PartialEq, Debug)]
 pub struct EnumDef {
     pub name: String,
+    /// As `StructDef::source`.
+    pub source: String,
+    pub targs: Vec<Ty>,
     pub variants: Vec<(String, Vec<Ty>)>,
     pub values: Vec<Option<i64>>,
     /// `@tag("Q") Ask`: the token a variant reads and prints as, when it

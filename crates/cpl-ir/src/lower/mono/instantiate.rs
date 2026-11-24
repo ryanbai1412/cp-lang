@@ -51,6 +51,8 @@ impl<'a> Lowerer<'a> {
         self.structs.push(StructInfo {
             def: StructDef {
                 name: mangled,
+                source: decl.name.text.clone(),
+                targs: shown_args(&args),
                 fields: Vec::new(),
                 ..Default::default()
             },
@@ -248,6 +250,8 @@ impl<'a> Lowerer<'a> {
         let mangled = format!("{}_{}_{id}", decl.name.text, suffix.join("_"));
         self.enums.push(EnumDef {
             name: mangled,
+            source: decl.name.text.clone(),
+            targs: shown_args(&args),
             variants: Vec::new(),
             values: Vec::new(),
             tags: Vec::new(),
@@ -662,4 +666,17 @@ impl<'a> Lowerer<'a> {
         self.gen_env = saved_env;
         val
     }
+}
+
+/// A generic instance's arguments as types, for showing `Pair<Int>`; none
+/// when one is a number or an operator, which shows as the bare name.
+fn shown_args(args: &[GenArg]) -> Vec<Ty> {
+    args.iter()
+        .map(|a| match a {
+            GenArg::Ty(t) => Some(t.clone()),
+            GenArg::Domain(d) => Some(Ty::Pos(*d)),
+            _ => None,
+        })
+        .collect::<Option<_>>()
+        .unwrap_or_default()
 }

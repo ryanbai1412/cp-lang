@@ -66,4 +66,37 @@ mod tests {
             assert!(errors.contains(&want), "{written}: {errors:?}");
         }
     }
+
+    /// A module's type is shown by the name the program writes, never the
+    /// `m1_Pt` it is lowered to (R08.1.6: a tuple is not a `Pt`).
+    #[test]
+    fn a_module_type_is_named_as_written() {
+        let pt = "use std.geometry.{Pt}\n";
+        let cases = [
+            (
+                format!("{pt}let p: Pt = (1, 2)\nprint(p.x)\n"),
+                "expected `Pt`, found `(Int, Int)`",
+            ),
+            (
+                format!("{pt}let p = Pt(1, 2)\nlet s: Str = p\nprint(s)\n"),
+                "expected `Str`, found `Pt`",
+            ),
+        ];
+        for (source, want) in cases {
+            let errors = errors(&source);
+            assert!(errors.iter().any(|e| e == want), "{want}: {errors:?}");
+            for e in &errors {
+                assert!(!mangled(e), "a lowered name in {e:?}");
+            }
+        }
+    }
+
+    fn mangled(text: &str) -> bool {
+        let b = text.as_bytes();
+        (1..b.len()).any(|i| {
+            let start = b[i - 1] == b'm' && (i < 2 || !b[i - 2].is_ascii_alphanumeric());
+            let digits = b[i..].iter().take_while(|c| c.is_ascii_digit()).count();
+            start && digits > 0 && b.get(i + digits) == Some(&b'_')
+        })
+    }
 }

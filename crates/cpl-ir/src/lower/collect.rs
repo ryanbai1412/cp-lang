@@ -26,6 +26,7 @@ impl<'a> Lowerer<'a> {
                     self.structs.push(StructInfo {
                         def: StructDef {
                             name: sname,
+                            source: decl.name.text.clone(),
                             fields: Vec::new(),
                             ..Default::default()
                         },
@@ -173,6 +174,8 @@ impl<'a> Lowerer<'a> {
                     };
                     self.enums.push(EnumDef {
                         name: ename,
+                        source: decl.name.text.clone(),
+                        targs: Vec::new(),
                         variants: Vec::new(),
                         values: Vec::new(),
                         tags: Vec::new(),

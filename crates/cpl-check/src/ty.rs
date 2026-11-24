@@ -575,9 +575,6 @@ impl Ty {
             (Ty::Domain(d), Ty::Named { name, args }) if name == "Range" => {
                 matches!(args.as_slice(), [Ty::Pos(p)] if p == d)
             }
-            // A record or tuple literal builds a struct with those fields;
-            // the fields are checked where the struct is known.
-            (Ty::Record(_) | Ty::Tuple(_), Ty::Named { .. }) => true,
             _ => false,
         }
     }

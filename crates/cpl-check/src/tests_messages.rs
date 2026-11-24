@@ -718,3 +718,35 @@ fn a_bare_variant_two_enums_declare_reads_as_the_expected_enum() {
         one("enum Turn = Left | Back\nenum Side = Left | Right\nlet t: Turn = Right\nprint(t)\n");
     assert_eq!(d.code.0, "E0302");
 }
+
+/// R08.1.6: a named struct is nominal, so a tuple of its fields' types is
+/// not one; the checker says so, and its fix builds the struct.
+#[test]
+fn a_tuple_is_not_a_struct_and_the_fix_builds_one() {
+    let source = "use std.geometry.{Pt}\nfn norm(a: Pt) -> Int = a.norm2\nlet p = (3, 4)\nprint(norm(p))\nlet q: Pt = (1, 2)\nprint(q.x)\n";
+    let d = check(source);
+    let helps: Vec<_> = d.iter().filter_map(|d| d.help.as_deref()).collect();
+    assert!(
+        helps.contains(&"a tuple is not a `Pt`: build one, `Pt(p.0, p.1)`"),
+        "{d:?}"
+    );
+    assert!(
+        helps.contains(&"a tuple is not a `Pt`: build one, `Pt(1, 2)`"),
+        "{d:?}"
+    );
+    let fixed = "use std.geometry.{Pt}\nfn norm(a: Pt) -> Int = a.norm2\nlet p = (3, 4)\nprint(norm(Pt(p.0, p.1)))\nlet q: Pt = Pt(1, 2)\nprint(q.x)\n";
+    let edits: Vec<_> = d
+        .iter()
+        .flat_map(|d| &d.fixes)
+        .map(|f| f.edits[0].1.as_str())
+        .collect();
+    assert!(
+        edits.contains(&"Pt(p.0, p.1)") && edits.contains(&"Pt(1, 2)"),
+        "{edits:?}"
+    );
+    assert!(
+        check(fixed).iter().all(|d| !d.code.0.starts_with('E')),
+        "{:?}",
+        check(fixed)
+    );
+}
