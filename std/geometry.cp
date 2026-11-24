@@ -253,11 +253,17 @@ pub fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool:
 /// Exact in `I128`; vectors in the same direction compare equal, zero comes first.
 pub struct ByAngle(p: Pt)
 
+// `angle_less` from `+x`, with `+x`'s half planes read off the signs.
+fn x_angle_less(a: Pt, b: Pt) -> Bool:
+    let ha = half(a)
+    let hb = half(b)
+    ha < hb or (ha == hb and ha != 0 and a.cross128(b) > I128(0))
+
 impl Ord for ByAngle:
-    fn lt(a, b) = angle_less(a.p, b.p)
+    fn lt(a, b) = x_angle_less(a.p, b.p)
 
 impl Eq for ByAngle:
-    fn eq(a, b) = not angle_less(a.p, b.p) and not angle_less(b.p, a.p)
+    fn eq(a, b) = not x_angle_less(a.p, b.p) and not x_angle_less(b.p, a.p)
 
 /// \(O(1)\) comparison key. Counter-clockwise by direction starting from ray `base`.
 /// Exact in `I128`; vectors in the same direction compare equal, zero comes first.
