@@ -1,4 +1,5 @@
 // Source: IOI 2009 Day 2 (Regions), https://dmoj.ca/problem/ioi09p7
+// limits: 7000 ms, 128 MB
 // Problem: a tree of N <= 2e5 employees rooted at 1 (each one's supervisor is more senior),
 //   each from one of R <= 25000 regions. Answer Q <= 2e5 queries (r1, r2) online: the number
 //   of pairs (e1, e2) with e1 from r1, e2 from r2 and e1 a proper ancestor of e2.

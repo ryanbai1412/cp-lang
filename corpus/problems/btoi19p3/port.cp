@@ -1,4 +1,5 @@
 // Source: Baltic OI 2019 Day 1 P3 (Alpine Valley), https://dmoj.ca/problem/btoi19p3
+// limits: 3000 ms, 256 MB
 // Problem: a weighted tree on n <= 1e5 villages, s of them with shops, and the exit E. Each of
 //   q <= 1e5 queries closes road I and names village R: print "escaped" if R still reaches E,
 //   else the distance to the nearest reachable shop, or "oo" if none.
