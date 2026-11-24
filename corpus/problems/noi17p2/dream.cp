@@ -30,4 +30,4 @@ for op in read<[q]Op>():
             crossing(i, j, -1)
             (next[i], prev[j]) = (None, None)
         Ask(s, k) =>
-            print(s.windows(k).product(of: w => Z(seen[PolyHash.of(w.map(c => c.digit()))])))
+            print(s.windows(k).product(of: w => Z(seen[PolyHash.of(w.map(c => c.digit))])))

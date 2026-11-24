@@ -9,7 +9,7 @@ loop:
     domain Col = [cols]
     let g = read [R, Col]Char
 
-    let value = (r, c) => if g[r, c].is_digit(): Int(g[r, c].digit()) else: 0
+    let value = (r, c) => if g[r, c].is_digit(): Int(g[r, c].digit) else: 0
     # here[r]: best collected so far when entering column c at row r.
     var here: [R]?Int = [R] r => if r == R.last: Some(0) else: None
     for c in Col:

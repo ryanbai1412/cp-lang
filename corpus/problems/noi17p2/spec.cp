@@ -39,5 +39,5 @@ for op in read<[q]Op>():
             crossing(i, j, -1)
             (next[i], prev[j]) = (None, None)
         Ask(s, k) =>
-            let h = RollingHash.new(s.map(c => c.digit()), bases: hasher.bases)
+            let h = RollingHash.new(s.map(c => c.digit), bases: hasher.bases)
             print((0..=s.len - k).map(at => Z(seen.get(h.get(at..at + k)))).prod())
