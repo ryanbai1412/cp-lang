@@ -22978,28 +22978,6 @@
         "status": "D",
         "time": 68.001642133
     },
-    "4852075": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-09-18T19:23:10+00:00",
-        "language": "CPP17",
-        "memory": 19948.0,
-        "problem": "saspeed",
-        "result": "AC",
-        "status": "D",
-        "time": 1.477585441
-    },
-    "4852187": {
-        "case_points": 70.0,
-        "case_total": 100.0,
-        "date": "2022-09-18T19:36:41+00:00",
-        "language": "CPP17",
-        "memory": 23900.0,
-        "problem": "saspeed",
-        "result": "WA",
-        "status": "D",
-        "time": 35.197270021
-    },
     "4896798": {
         "case_points": 0.0,
         "case_total": 100.0,

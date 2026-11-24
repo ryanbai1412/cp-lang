@@ -1,16 +1,16 @@
 {
- "problems": 1144,
- "with_cpp_ac": 1096,
+ "problems": 1143,
+ "with_cpp_ac": 1095,
  "dream": {
   "draft": 126,
   "gold": 0,
-  "none": 1018,
+  "none": 1017,
   "reviewed": 0
  },
  "spec": {
   "draft": 99,
   "gold": 0,
-  "none": 1045,
+  "none": 1044,
   "reviewed": 0
  },
  "by_source": {
@@ -74,7 +74,6 @@
   "rccc": 5,
   "rpeng": 2,
   "sac": 35,
-  "saspeed": 1,
   "sdoi": 12,
   "shoi": 6,
   "shortest": 1,

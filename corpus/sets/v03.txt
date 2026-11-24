@@ -815,7 +815,6 @@ sac22cc4jp4
 sac22cc4p4
 sac22cc5p4
 sac22cc5p5
-saspeed
 sdoi17r1p1
 sdoi17r1p2
 sdoi17r1p3
