@@ -202,12 +202,10 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// `value` checked against the fn's range return type (R03.1.4), unless proven inside it.
-    fn checked_ret(&mut self, value: Expr, span: Span) -> Expr {
-        match self.cx.ret_bounds.clone() {
-            Some(bounds) => self.check_range(value, &bounds, span),
-            None => value,
-        }
+    /// `e` lowered as what the fn returns, checked into its range return type (R03.1.4).
+    fn ret_value(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
+        let cells = self.cx.ret_bounds.clone();
+        self.store_cells(e, cells, &mut |l| l.expr(e, hint))
     }
 
     fn tail_value(&mut self, e: &ast::Expr, tail: Tail, out: &mut Vec<Stmt>) {
@@ -219,12 +217,11 @@ impl<'a> Lowerer<'a> {
             }
             Tail::Return => {
                 let hint = self.cx.ret.clone();
-                let value = self.expr(e, hint.as_ref());
+                let value = self.ret_value(e, hint.as_ref());
                 match hint {
                     Some(Ty::Unit) => out.push(Stmt::Expr(value)),
                     Some(ty) => {
                         let value = self.coerce(value, &ty, e.span);
-                        let value = self.checked_ret(value, e.span);
                         out.push(Stmt::Return(Some(value)));
                     }
                     None => {
@@ -1235,7 +1232,7 @@ impl<'a> Lowerer<'a> {
                     }
                     Some(e) => {
                         let hint = self.cx.ret.clone();
-                        let mut value = self.expr(e, hint.as_ref());
+                        let mut value = self.ret_value(e, hint.as_ref());
                         if matches!(hint, Some(Ty::Unit)) && matches!(value.ty, Ty::Unit) {
                             out.push(Stmt::Expr(value));
                             out.push(Stmt::Return(None));
@@ -1244,7 +1241,6 @@ impl<'a> Lowerer<'a> {
                         match hint {
                             Some(ty) => {
                                 value = self.coerce(value, &ty, e.span);
-                                value = self.checked_ret(value, e.span);
                             }
                             None => self.cx.ret = Some(value.ty.clone()),
                         }

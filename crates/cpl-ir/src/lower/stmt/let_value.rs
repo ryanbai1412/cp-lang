@@ -501,12 +501,10 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        let val = self.expr_as(init, &want);
-        if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(&spec) {
-            return Some(self.check_range(val, &bounds, init.span));
-        }
-        match self.range_info_from_ast(ty) {
-            Some(cells @ RangeInfo::Elem(_)) => Some(self.check_fresh_cells(val, &cells, init)),
+        let cells = (self.range_info_from_ast(ty)).filter(|c| matches!(c, RangeInfo::Elem(_)));
+        let val = self.store_cells(init, cells, &mut |l| l.expr_as(init, &want));
+        match RangeInfo::from_spec(&spec) {
+            Some(RangeInfo::Scalar(bounds)) => Some(self.check_range(val, &bounds, init.span)),
             _ => Some(val),
         }
     }

@@ -906,7 +906,7 @@ impl<'a> Checker<'a> {
         })
     }
 
-    fn literal(e: &Expr) -> Option<i128> {
+    pub(crate) fn literal(e: &Expr) -> Option<i128> {
         match &unparen(e).kind {
             ExprKind::Int(v) => Some(*v),
             ExprKind::Char(c) => Some(*c as i128),

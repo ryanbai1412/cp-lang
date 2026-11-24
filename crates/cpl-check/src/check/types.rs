@@ -1847,9 +1847,7 @@ impl<'a> Checker<'a> {
                     "convert each cell: `{}.map(x => {we}(x))`",
                     self.quote(at.span)
                 );
-                if let Some(diag) = self.report_as(codes::TYPE_MISMATCH, at.span, msg) {
-                    diag.help = Some(help);
-                }
+                self.mismatch_with(at.span, msg, help);
                 return false;
             }
         }

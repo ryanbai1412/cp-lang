@@ -251,7 +251,11 @@ impl<'a> Lowerer<'a> {
             }
         }
         let rhs = match op {
-            ast::AssignOp::Set => self.expr_as(value, &place.ty),
+            ast::AssignOp::Set => {
+                let cells = (self.place_range(&place)).filter(|c| matches!(c, RangeInfo::Elem(_)));
+                let ty = place.ty.clone();
+                self.store_cells(value, cells, &mut |l| l.expr_as(value, &ty))
+            }
             ast::AssignOp::Binary(BinOp::Coalesce) => match &place.ty {
                 Ty::Opt(inner) => {
                     let inner = (**inner).clone();

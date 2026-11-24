@@ -10,21 +10,13 @@ impl<'a> Checker<'a> {
             return None;
         };
         let inner = self.src.get(name.span.end as usize..)?.strip_prefix('(')?;
-        let (mut depth, mut close) = (0u32, None);
-        for (i, c) in inner.char_indices() {
-            match c {
-                '(' | '[' | '{' => depth += 1,
-                ')' if depth == 0 => {
-                    close = Some(i);
-                    break;
-                }
-                ')' | ']' | '}' => depth = depth.checked_sub(1)?,
-                ',' | '\n' | '"' if depth == 0 => return None,
-                _ => {}
-            }
-        }
-        let close = close?;
+        let Some((close, true)) = super::foreign::first_arg(inner) else {
+            return None;
+        };
         let arg = inner[..close].trim();
+        if arg.contains('"') || arg.contains('\n') {
+            return None;
+        }
         let atom = arg
             .chars()
             .all(|c| c.is_alphanumeric() || matches!(c, '_' | '.' | '[' | ']'));

@@ -168,17 +168,9 @@ pub(crate) fn partition_point(src: &str, name: &Name) -> Option<(String, Fix)> {
     }
     let open = name.span.end as usize;
     let rest = src.get(open..)?.strip_prefix('(')?;
-    let mut depth = 0;
-    let close = rest.char_indices().find_map(|(i, c)| {
-        match c {
-            '(' | '[' | '{' => depth += 1,
-            ')' if depth == 0 => return Some(Some(i)),
-            ')' | ']' | '}' => depth -= 1,
-            ',' if depth == 0 => return Some(None),
-            _ => {}
-        }
-        None
-    })??;
+    let Some((close, true)) = first_arg(rest) else {
+        return None;
+    };
     let arg = rest[..close].trim();
     let ok = match arg.split_once("=>") {
         Some((x, body)) if !x.trim().is_empty() && !body.trim().is_empty() => {
@@ -223,16 +215,9 @@ pub(crate) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
     })?;
     let (arg, rest) = match rest.strip_prefix(", ") {
         Some(r) => {
-            let mut depth = 0;
-            let close = r.char_indices().find_map(|(i, c)| {
-                match c {
-                    '(' | '[' | '{' => depth += 1,
-                    ')' if depth == 0 => return Some(i),
-                    ')' | ']' | '}' => depth -= 1,
-                    _ => {}
-                }
-                None
-            })?;
+            let Some((close, true)) = first_arg(r) else {
+                return None;
+            };
             (Some(r[..close].trim()), &r[close + 1..])
         }
         None => (None, rest.strip_prefix(')')?),

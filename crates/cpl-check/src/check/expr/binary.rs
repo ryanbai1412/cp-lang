@@ -242,15 +242,9 @@ impl<'a> Checker<'a> {
                 if let (Some(le), Some(re)) = (seq_concat_elem(&left), seq_concat_elem(&right)) =>
             {
                 if le == re || re.is_vague() {
-                    Ty::Named {
-                        name: "List".into(),
-                        args: vec![le.clone()],
-                    }
+                    Ty::list(le.clone())
                 } else if le.is_vague() {
-                    Ty::Named {
-                        name: "List".into(),
-                        args: vec![re.clone()],
-                    }
+                    Ty::list(re.clone())
                 } else {
                     Ty::Unknown
                 }

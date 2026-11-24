@@ -281,11 +281,9 @@ impl<'a> Checker<'a> {
         self.free_call_mut_args(callee, args);
         let given = self.lambda_params.len();
         for arg in args {
-            if matches!(arg.value.kind, ExprKind::Lambda { .. }) {
-                let params = self.catalog_lambda_params(callee, args, arg);
-                if !params.is_empty() {
-                    self.lambda_params.push((arg.value.span, params));
-                }
+            let params = self.catalog_arg(callee, args, arg);
+            if !params.is_empty() {
+                self.lambda_params.push((arg.value.span, params));
             }
         }
         self.sort_key_by_position(callee, args);
@@ -515,20 +513,23 @@ impl<'a> Checker<'a> {
                 elem: Box::new(elem),
             });
         }
-        let prelude = matches!(&base.kind, ExprKind::Name(list)
-            if list == "List" && self.local(list).is_none() && self.global(list).is_none());
-        let [count, value] = args else {
+        let value = self.list_fill(callee, args)?;
+        self.infer(&args[0].value);
+        let elem = self.infer(&value.value).widen();
+        Some(Ty::list(elem))
+    }
+
+    /// The `x` of a prelude `List.filled(n, x)`: each of its cells is a copy.
+    pub(crate) fn list_fill<'e>(&mut self, callee: &Expr, args: &'e [Arg]) -> Option<&'e Arg> {
+        let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
-        if !prelude || name.text != "filled" {
-            return None;
+        let prelude = matches!(&base.kind, ExprKind::Name(list)
+            if list == "List" && self.local(list).is_none() && self.global(list).is_none());
+        match args {
+            [_, value] if prelude && name.text == "filled" => Some(value),
+            _ => None,
         }
-        self.infer(&count.value);
-        let elem = self.infer(&value.value).widen();
-        Some(Ty::Named {
-            name: "List".into(),
-            args: vec![elem],
-        })
     }
 
     /// Records `call` as a call of `type_name`'s projection `name`, if it has one.
@@ -1640,10 +1641,12 @@ impl<'a> Checker<'a> {
 }
 
 impl Checker<'_> {
-    /// The parameter types of `arg`, a lambda passed to a built-in method, as
-    /// its catalog row writes them: `x` in `xs.map(x => ...)` is an element,
-    /// `(a, b)` in `xs.reach(while: (a, b) => ...)` two.
-    fn catalog_lambda_params(&mut self, callee: &Expr, args: &[Arg], arg: &Arg) -> Vec<Ty> {
+    /// `arg` against its built-in method's catalog row. A lambda gets the
+    /// parameter types the row writes: `x` in `xs.map(x => ...)` is an
+    /// element, `(a, b)` in `xs.reach(while: (a, b) => ...)` two. A list
+    /// fills cells, so `ys` in `xs.extend(ys)` takes none wider than `xs`'s
+    /// range (R04.4.24).
+    fn catalog_arg(&mut self, callee: &Expr, args: &[Arg], arg: &Arg) -> Vec<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return Vec::new();
         };
@@ -1665,6 +1668,31 @@ impl Checker<'_> {
         let Some((_, ty)) = slot.and_then(|p| p.split_once(':')) else {
             return Vec::new();
         };
+        // `cmp: ?((T, T) -> Bool) = None` takes a `(T, T) -> Bool`.
+        let ty = ty.split_once(" = ").map_or(ty, |(t, _)| t).trim();
+        let ty = match ty.strip_prefix("?(") {
+            Some(t) => t.strip_suffix(')').unwrap_or(t),
+            None => ty,
+        };
+        if let Some(cell) = (ty.trim().strip_prefix("List<"))
+            .and_then(|t| catalog_ty(t.strip_suffix('>')?, &elem, &[]))
+        {
+            let want = Ty::list(cell);
+            let got = self.quietly(|c| c.infer(&arg.value));
+            if super::expr::narrows_cells(&got, &want, false) {
+                self.expect_fits(&got, &want, &arg.value, &|c, got, want| {
+                    cpl_diag::msgs::check::EXPECTS_BUT.at(&[
+                        &name.text,
+                        &want,
+                        &c.quote(arg.value.span),
+                        &got.with_article(),
+                    ])
+                });
+            }
+        }
+        if !matches!(arg.value.kind, ExprKind::Lambda { .. }) {
+            return Vec::new();
+        }
         let Some((takes, _)) = ty.split_once("->") else {
             return Vec::new();
         };
@@ -1784,26 +1812,7 @@ fn catalog_ty(text: &str, elem: &Option<Ty>, key_value: &[Ty]) -> Option<Ty> {
     })
 }
 
-/// `a: Int, f: (T, T) -> Bool` split at its top-level commas.
-fn split_top(text: &str) -> Vec<&str> {
-    let mut out = Vec::new();
-    let (mut depth, mut start) = (0i32, 0);
-    for (i, c) in text.char_indices() {
-        match c {
-            '(' | '[' | '<' => depth += 1,
-            ')' | ']' | '>' if !text[..i].ends_with('-') => depth -= 1,
-            ',' if depth == 0 => {
-                out.push(text[start..i].trim());
-                start = i + 1;
-            }
-            _ => {}
-        }
-    }
-    if !text[start..].trim().is_empty() {
-        out.push(text[start..].trim());
-    }
-    out
-}
+pub(super) use crate::builtins::split_params as split_top;
 
 impl Checker<'_> {
     /// `xs.count(v)` and `xs.first(p)`/`xs.last(p)`, which std writes

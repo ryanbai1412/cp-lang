@@ -253,6 +253,12 @@ operand fixes the type. Nothing else converts. (R04.4.22)
    An array's element type does not widen this way: `[V]1..=9` to
    `[V]Int` rewrites every cell, an \(O(n)\) cost a move must not hide
    (R05.2.2), so it is an error; write `xs.map(x => Int(x))` (decision 246).
+   Nor does a container narrow into range cells: `List<Int>` given where
+   `List<0..100>` is expected, at an initializer, assignment, return,
+   argument or a std method that copies cells (`ys.extend(zs)`), would
+   check every cell, so it is an error (E0302) unless the source's cells are
+   already proven in range (`List<0..50>` moves free); write
+   `[x for x in zs]`, which checks each value it stores.
    The other way, an `Int` passed or stored into a range type
    (`f(odd - 1)` with `odd: 0..=100`) is a checked narrowing: in range it is
    free, out of range it traps in a checked build, as any range store does

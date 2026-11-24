@@ -203,9 +203,12 @@ impl Lowerer<'_> {
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
-        if let Some(filled) = self.comprehension_filled(body, clauses, hint, span) {
-            self.empty_item_help(body);
-            return filled;
+        let cells = self.next_cells.take();
+        if cells.is_none() {
+            if let Some(filled) = self.comprehension_filled(body, clauses, hint, span) {
+                self.empty_item_help(body);
+                return filled;
+            }
         }
         let frames = self.open_loops(clauses);
         let (elem_hint, is_set) = match hint {
@@ -213,10 +216,11 @@ impl Lowerer<'_> {
             Some(Ty::Set(elem)) => (Some((**elem).clone()), true),
             _ => (None, false),
         };
-        let value = match &elem_hint {
-            Some(elem) => self.expr_as(body, elem),
-            None => self.expr(body, None),
-        };
+        let inner = cells.as_ref().and_then(RangeInfo::elem).cloned();
+        let value = self.store_cells(body, inner, &mut |l| match &elem_hint {
+            Some(elem) => l.expr_as(body, elem),
+            None => l.expr(body, None),
+        });
         self.empty_item_help(body);
         let ty = if is_set {
             Ty::Set(Box::new(value.ty.clone()))

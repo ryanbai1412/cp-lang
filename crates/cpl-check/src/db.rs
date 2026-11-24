@@ -1711,21 +1711,7 @@ fn decls_of(stmts: &[ast::Stmt]) -> Vec<Decl> {
 /// declaration says what it declares: the names stay bound, but what the
 /// rest of the file can know about them is unknown.
 fn head_is_poisoned(text: &str, stmt: &ast::Stmt, poisoned: &[Span]) -> bool {
-    let start = (stmt.span.start as usize).min(text.len());
-    let end = (stmt.span.end as usize).min(text.len()).max(start);
-    let mut depth = 0u32;
-    let mut head_end = end;
-    for (i, b) in text.as_bytes()[start..end].iter().enumerate() {
-        match b {
-            b'(' | b'[' | b'{' => depth += 1,
-            b')' | b']' | b'}' => depth = depth.saturating_sub(1),
-            b'\n' if depth == 0 => {
-                head_end = start + i;
-                break;
-            }
-            _ => {}
-        }
-    }
+    let (start, head_end, _) = head(text, stmt);
     poisoned
         .iter()
         .any(|p| (p.start as usize) < head_end && (p.end as usize) > start)
@@ -1734,18 +1720,29 @@ fn head_is_poisoned(text: &str, stmt: &ast::Stmt, poisoned: &[Span]) -> bool {
 /// True if the first line of `stmt` opens a bracket it never closes: the
 /// parser then guessed where the value ends, so its type is a guess too.
 pub(crate) fn head_leaves_open(text: &str, stmt: &ast::Stmt) -> bool {
+    head(text, stmt).2
+}
+
+/// Where `stmt` starts, where its head ends (the first newline outside
+/// brackets), and whether its first line leaves a bracket open.
+fn head(text: &str, stmt: &ast::Stmt) -> (usize, usize, bool) {
     let start = (stmt.span.start as usize).min(text.len());
     let end = (stmt.span.end as usize).min(text.len()).max(start);
-    let line = text[start..end].split('\n').next().unwrap_or("");
-    let mut depth = 0i32;
-    for b in line.bytes() {
+    let (mut depth, mut open) = (0i32, None);
+    for (i, b) in text.as_bytes()[start..end].iter().enumerate() {
         match b {
             b'(' | b'[' | b'{' => depth += 1,
             b')' | b']' | b'}' => depth -= 1,
+            b'\n' => {
+                let first = *open.get_or_insert(depth > 0);
+                if depth <= 0 {
+                    return (start, start + i, first);
+                }
+            }
             _ => {}
         }
     }
-    depth > 0
+    (start, end, open.unwrap_or(depth > 0))
 }
 
 fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {

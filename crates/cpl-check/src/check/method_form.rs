@@ -1122,18 +1122,9 @@ impl Checker<'_> {
 /// A catalog row's parameters, `r: Range<T>, by: T -> K`, as names and types.
 fn row_params(params: &str) -> Vec<(&str, &str)> {
     let mut out = Vec::new();
-    let (mut depth, mut start) = (0i32, 0);
-    for (i, c) in params.char_indices().chain([(params.len(), ',')]) {
-        match c {
-            '<' | '(' | '[' => depth += 1,
-            '>' | ')' | ']' => depth -= 1,
-            ',' if depth == 0 => {
-                if let Some((n, t)) = params[start..i].split_once(':') {
-                    out.push((n.trim(), t.trim()));
-                }
-                start = i + 1;
-            }
-            _ => {}
+    for p in super::call::split_top(params) {
+        if let Some((n, t)) = p.split_once(':') {
+            out.push((n.trim(), t.trim()));
         }
     }
     out

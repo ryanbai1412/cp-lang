@@ -9339,11 +9339,6 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
   deletion.
 
 ## 625. A fn's `var` bound to a top-level heap value is E0608, migrated by `cpl fix` (compiler, 2026-11-24)
-
-- **Call.** Inside a fn, `var b = g` where `g` is a top-level heap value (List, Map, Str, a struct holding one, ...) is E0608 with the fix `var b = g.clone()`; `let b = g` stays a lend. A fn reads top-level state lent, as it does a parameter (R05.2.2, R05.4.1), so the binding can neither move `g` out of the file body nor copy it silently. The frozen `tests/v02-snapshot` copies change only through `cpl fix` output, the codemod path every breaking rule uses. Core ruling of 2026-11-24.
-- **Why.** The binding used to compile to a silent deep copy, a cost the source never spelled. Making it E0608 keeps costs visible: `.clone()` is the one O(n) copy.
-- **Reverse.** Drop the rule; `var b = g` in a fn compiles to the copy again, and the migrated `.clone()`s stay valid.
-
 ## 626. `Subset` is plain std: GAPS:7 closes (stdlib, 2026-11-24)
 
 - **Call.** No compiler table names `Subset` any more: 9be132046 made `B.subsets` std's `@member(subsets)` and dropped the prelude rows, and both engines run `std/subset.cp`'s bodies (an edit to `Subset.len` in std changes `cpl run` and the C++ alike). So Q3 (a)'s move for `Subset` is done with no lowering moved and no C++ change, and GAPS:7, which said `cpl run` answers `Subset` calls itself, closes (std_gaps 5 -> 4, prelude_privilege tightened 24 -> 23 to what main measures). Stdlib's Q3 (a) ruling of 2026-11-24.
@@ -9373,7 +9368,30 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 637. (reserved, compiler)
 
-## 638. (reserved, compiler)
+## 638. A container's cells don't narrow into range cells unchecked (compiler, 2026-11-24)
+
+- **Decision.** A `List<Int>` given where `List<0..100>` is expected, at
+  a `let`/`var` initializer, assignment, return, argument, or a std
+  method that copies its argument's cells into the receiver's
+  (`ys.extend(zs)`, its row's `List<T>` with `T` the receiver's cell), is
+  E0302, as decision 246 made `[V]1..=9` to `[V]Int` (R04.4.24). A source
+  whose cells are already proven in range (`List<0..50>`) moves free. The
+  help names the checked conversion, `[x for x in zs]`; a list literal or
+  comprehension written there checks each value it stores, as any range
+  store (R0201).
+- **Why.** Only `push` and index stores checked, so a wider list moved,
+  returned or extended into a ranged list held `500` in a `0..100` cell
+  (Perf's repros). Checking every cell on a move would hide an \(O(n)\)
+  cost ("costs are visible"), so the conversion is written.
+- **Lowering and cost.** None at run time: the check is static; the
+  written comprehension checks each cell once, free where facts prove it.
+- **Reverse.** Drop the sentence from R04.4.24 and the checker's cell
+  test; wider lists move unchecked again.
+- **Status.** Accepted (Core ruling).
+
+- **Call.** Inside a fn, `var b = g` where `g` is a top-level heap value (List, Map, Str, a struct holding one, ...) is E0608 with the fix `var b = g.clone()`; `let b = g` stays a lend. A fn reads top-level state lent, as it does a parameter (R05.2.2, R05.4.1), so the binding can neither move `g` out of the file body nor copy it silently. The frozen `tests/v02-snapshot` copies change only through `cpl fix` output, the codemod path every breaking rule uses. Core ruling of 2026-11-24.
+- **Why.** The binding used to compile to a silent deep copy, a cost the source never spelled. Making it E0608 keeps costs visible: `.clone()` is the one O(n) copy.
+- **Reverse.** Drop the rule; `var b = g` in a fn compiles to the copy again, and the migrated `.clone()`s stay valid.
 
 ## 632. A bare `gen()` takes its type from where it goes; `gen_fields` closes GAPS:12 (stdlib, 2026-11-24)
 

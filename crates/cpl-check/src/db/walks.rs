@@ -23,35 +23,40 @@ pub(super) fn some_walk_needs_seq(tokens: &[Token]) -> bool {
 
 /// The `in` that heads the loop whose `for` comes just before `from`.
 fn loop_in(tokens: &[Token], from: usize) -> Option<usize> {
-    let mut depth = 0i32;
-    for (at, tok) in tokens.iter().enumerate().skip(from) {
-        match tok.kind {
-            TokenKind::LParen | TokenKind::LBracket | TokenKind::LBrace => depth += 1,
-            TokenKind::RParen | TokenKind::RBracket | TokenKind::RBrace => depth -= 1,
-            TokenKind::In if depth == 0 => return Some(at),
-            TokenKind::Colon | TokenKind::Newline | TokenKind::Eof if depth == 0 => return None,
-            _ => {}
-        }
-    }
-    None
+    use TokenKind::*;
+    top_level(tokens, from, &[In], &[Colon, Newline, Eof])
 }
 
 /// Whether the loop iterable starting at `from` is a range at its top level.
 fn walks_a_range(tokens: &[Token], from: usize) -> bool {
+    use TokenKind::*;
+    top_level(
+        tokens,
+        from,
+        &[DotDot, DotDotEq],
+        &[Colon, Newline, If, Eof],
+    )
+    .is_some()
+}
+
+/// The first token from `from` that is one of `find`, outside brackets,
+/// before a `stop` or the bracket around `from` closes.
+fn top_level(
+    tokens: &[Token],
+    from: usize,
+    find: &[TokenKind],
+    stop: &[TokenKind],
+) -> Option<usize> {
     let mut depth = 0i32;
-    for tok in &tokens[from.min(tokens.len())..] {
+    for (at, tok) in tokens.iter().enumerate().skip(from) {
         match tok.kind {
             TokenKind::LParen | TokenKind::LBracket | TokenKind::LBrace => depth += 1,
             TokenKind::RParen | TokenKind::RBracket | TokenKind::RBrace if depth == 0 => break,
             TokenKind::RParen | TokenKind::RBracket | TokenKind::RBrace => depth -= 1,
-            TokenKind::DotDot | TokenKind::DotDotEq if depth == 0 => return true,
-            TokenKind::Colon | TokenKind::Newline | TokenKind::If | TokenKind::Eof
-                if depth == 0 =>
-            {
-                break
-            }
+            k if depth == 0 && find.contains(&k) => return Some(at),
+            k if depth == 0 && stop.contains(&k) => break,
             _ => {}
         }
     }
-    false
+    None
 }

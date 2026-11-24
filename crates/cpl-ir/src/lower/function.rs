@@ -122,12 +122,14 @@ impl<'a> Lowerer<'a> {
         }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
         self.bind_param_facts(decl, &mut params);
-        if let Some(range::RangeInfo::Scalar(mut bounds)) =
-            decl.ret.as_ref().and_then(|t| self.range_info_from_ast(t))
-        {
-            bounds.text = format!("{}` returned by `{}", bounds.text, decl.name.text);
-            self.cx.ret_bounds = Some(bounds);
-        }
+        self.cx.ret_bounds = match decl.ret.as_ref().and_then(|t| self.range_info_from_ast(t)) {
+            Some(range::RangeInfo::Scalar(mut bounds)) => {
+                bounds.text = format!("{}` returned by `{}", bounds.text, decl.name.text);
+                Some(range::RangeInfo::Scalar(bounds))
+            }
+            cells @ Some(range::RangeInfo::Elem(_)) => cells,
+            _ => None,
+        };
         if self.sigs[id].mod_id == 0
             && self.sigs[id].owner.is_none()
             && self.sigs[id].params.iter().all(|p| p.ty.crosses_to_judge())

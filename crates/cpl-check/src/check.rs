@@ -634,6 +634,13 @@ impl<'a> Checker<'a> {
         self.report_as(msg.code(), span, msg.at(args))
     }
 
+    /// An E0302 `said` at `span` with `help`.
+    fn mismatch_with(&mut self, span: Span, said: cpl_diag::msgs::Said, help: String) {
+        if let Some(diag) = self.report_as(codes::TYPE_MISMATCH, span, said) {
+            diag.help = Some(help);
+        }
+    }
+
     fn report_as(
         &mut self,
         code: Code,

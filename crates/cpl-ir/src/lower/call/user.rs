@@ -1519,14 +1519,14 @@ impl<'a> Lowerer<'a> {
                             .filter(|p| !has_receiver || p.name.text != "self")
                             .nth(at)
                             .and_then(|p| p.ty.as_ref());
-                        let value = self.expect_declared(&arg.value, &param.ty, declared);
                         let value = match declared.and_then(|t| self.const_param_range(id, t)) {
-                            Some(b) => self.check_arg(value, &b, arg.value.span),
-                            None => value,
-                        };
-                        let value = match declared.and_then(|t| self.const_param_cells(id, t)) {
-                            Some(cells) => self.check_fresh_cells(value, &cells, &arg.value),
-                            None => value,
+                            Some(RangeInfo::Scalar(b)) => {
+                                let value = self.expect_declared(&arg.value, &param.ty, declared);
+                                self.check_arg(value, &b, arg.value.span)
+                            }
+                            info => self.store_cells(&arg.value, info, &mut |l| {
+                                l.expect_declared(&arg.value, &param.ty, declared)
+                            }),
                         };
                         lowered.push(Arg::Value(value));
                     }
@@ -1792,8 +1792,7 @@ impl<'a> Lowerer<'a> {
                     };
                     let v = self.field_keys(id, &decl.fields[i].ty, v, &arg.value);
                     let v = match self.struct_field_range(id, i) {
-                        Some(RangeInfo::Scalar(b)) => self.check_range(v, &b, arg.value.span),
-                        Some(cells) => self.check_fresh_cells(v, &cells, &arg.value),
+                        Some(info) => self.check_cell(v, &info, &arg.value),
                         None => v,
                     };
                     values.push(v);

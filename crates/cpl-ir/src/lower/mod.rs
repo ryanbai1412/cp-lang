@@ -502,8 +502,8 @@ struct FnCx {
     /// The forward sequence a reversed view local reverses, read for its `.src`.
     rev_src: HashMap<Slot, Expr>,
     ret: Option<Ty>,
-    /// A scalar range return type (`-> 0..10`): what each returned value is checked against.
-    ret_bounds: Option<range::RangeBounds>,
+    /// A range return type (`-> 0..10`, `-> List<0..10>`): what each returned value is checked against.
+    ret_bounds: Option<range::RangeInfo>,
     new_domain_slots: Vec<DomainId>,
     /// `self`'s slot and struct inside a method.
     receiver: Option<(Slot, StructId)>,
@@ -840,6 +840,8 @@ struct Lowerer<'a> {
     sig_param_at: HashMap<FnId, Span>,
     /// The messages of the errors found inside library code.
     in_library: HashSet<String>,
+    /// The cells the next comprehension's destination holds (R04.4.24).
+    next_cells: Option<range::RangeInfo>,
     next_loop: LoopId,
     /// The places a `(place ??= init)` filled: module and span.
     filled: HashSet<(ModId, u32, u32)>,
@@ -972,6 +974,7 @@ impl<'a> Lowerer<'a> {
             asked_at: report::Asked::default(),
             sig_param_at: HashMap::new(),
             in_library: HashSet::new(),
+            next_cells: None,
             next_loop: 0,
             filled: HashSet::new(),
             counter_structs: HashMap::new(),

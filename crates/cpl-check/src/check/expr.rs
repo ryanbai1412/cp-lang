@@ -10,7 +10,7 @@ use binary::split_chain;
 use cpl_diag::msgs;
 use cpl_syntax::ast::{self, BinOp, Cond, Expr, ExprKind, StrPiece, UnOp};
 use fits::convert_to;
-pub(super) use fits::rename_fields;
+pub(super) use fits::{narrows_cells, rename_fields};
 
 fn range_of(elem: Ty) -> Ty {
     range_ty(elem)

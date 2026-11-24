@@ -180,15 +180,9 @@ impl<'a> Checker<'a> {
                         elem => elem,
                     },
                 };
-                Some(Ty::Named {
-                    name: "List".into(),
-                    args: vec![elem],
-                })
+                Some(Ty::list(elem))
             }
-            ("List", [first, ..]) => Some(Ty::Named {
-                name: "List".into(),
-                args: vec![first.clone()],
-            }),
+            ("List", [first, ..]) => Some(Ty::list(first.clone())),
             ("laws_hold", [_, _]) => Some(Ty::Bool),
             ("read_line", _) => Some(Ty::Str),
             ("print", _) => {
