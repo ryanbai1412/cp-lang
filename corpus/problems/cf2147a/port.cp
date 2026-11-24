@@ -1,5 +1,6 @@
 // Source: Codeforces 2147A (Shortest Increasing Path),
 //   https://codeforces.com/contest/2147/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: walk from (0, 0) to (x, y) (1 <= x, y <= 1e9) with steps along +x, +y, +x, ... in turn,
 //   starting with x, each of positive length strictly longer than the last. Print the fewest
 //   steps, or -1. Multitest.

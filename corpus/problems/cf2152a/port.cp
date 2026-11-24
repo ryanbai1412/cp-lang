@@ -1,4 +1,5 @@
 // Source: Codeforces 2152A (Increase or Smash), https://codeforces.com/contest/2152/problem/A
+// limits: 1000 ms, 1024 MB
 // Problem: start from n <= 100 zeros. Increase adds one x > 0 to every element; Smash sets any
 //   chosen elements to 0. Print the fewest operations that reach the target a (1 <= a[i] <= 100).
 //   Multitest.

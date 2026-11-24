@@ -1,4 +1,5 @@
 // Source: Codeforces 2137C (Maximum Even Sum), https://codeforces.com/contest/2137/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: integers a, b with 1 <= a, b <= a b <= 1e18. Pick k dividing b, replace (a, b) by
 //   (a k, b / k); print the largest even a + b reachable, or -1. Multitest.
 // Solution: the product P = a b is fixed and x + P / x grows toward the extremes, so take the

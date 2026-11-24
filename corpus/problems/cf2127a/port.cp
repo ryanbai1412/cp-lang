@@ -1,4 +1,5 @@
 // Source: Codeforces 2127A (Mix Mex Max), https://codeforces.com/contest/2127/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: n <= 100 values in 0..=100, -1 marking a blank (multitest). Can the blanks be filled
 //   with non-negative integers so every window of 3 has mex = max - min? Print YES or NO.
 // Solution: a window without 0 has mex 0, so it is constant; one with 0 has min 0 and needs

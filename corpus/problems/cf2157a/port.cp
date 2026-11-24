@@ -1,4 +1,5 @@
 // Source: Codeforces 2157A (Dungeon Equilibrium), https://codeforces.com/contest/2157/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: n <= 100 values in 0..=n. An array is balanced when every value x in it occurs exactly
 //   x times. Print the fewest deletions that make it balanced. Multitest.
 // Solution: values are independent: with f copies of v, keep v of them when f >= v (delete f - v),

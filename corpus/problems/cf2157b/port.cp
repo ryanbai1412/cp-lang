@@ -1,4 +1,5 @@
 // Source: Codeforces 2157B (Expansion Plan 2), https://codeforces.com/contest/2157/problem/B
+// limits: 1000 ms, 256 MB
 // Problem: only (0, 0) of an infinite grid is black; a string of n <= 2e5 steps follows: '4'
 //   blackens the side neighbours of black cells, '8' the side and corner ones. Print YES if (x, y)
 //   (|x|, |y| <= 1e9) ends black. Multitest, sum n <= 2e5.
