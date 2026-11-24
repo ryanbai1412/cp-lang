@@ -71,6 +71,9 @@ SLICES = [
     ("copies", "perf (codegen)", [f"{PACKAGES}/*.cp", "spec/conformance/*.cp", "std/*", "crates/cpl-codegen/*",
                                   "crates/cpl-cli/tests/support/cpp_counts.rs"],
      ["cpl-cli::read_only_copies"]),
+    ("readable-inputs", "debugger (stress)",
+     [f"{PACKAGES}/*/spec.cp", "spec/conformance/*.cp", "crates/cpl-cli/tests/programs/*", "crates/cpl-stress/*"],
+     ["cpl-stress::readable_shapes"]),
 ]
 # A sharded slice's binary has a test `shard_NN` per shard of its programs, NN being the
 # FNV-1a hash of the program's path mod the shard count (shard_of in
