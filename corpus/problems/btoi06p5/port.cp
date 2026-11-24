@@ -7,9 +7,9 @@
 // Solution: decode into maximal runs, then DP backwards: cost[e] = shortest code of the rest
 //   with escape e. A run of s costs the same under every escape but s; escape s pays
 //   3 ceil(k / n); then s may switch (+3) to the best other escape, or all others adopt s (+3).
-//   So updates are add-all, assign-all, set-one and a global argmin: one LazySegTree with an
-//   assign-then-add tag and `None` for the forbidden escape. O(m + runs log n), then a
-//   forward pass replays the recorded switches to emit the code.
+//   So updates are add-all, assign-all, set-one and an argmin over every escape but s: one
+//   min SegTree with std's assign_add tag, folding either side of s. O(m + runs log n), then
+//   a forward pass replays the recorded switches to emit the code.
 // original: corpus/submissions/4156310.cpp
 // Bounds: n: 2..=100_000; m: 1..=2_000_000; c: 0..=n - 1; b: 0..=n - 1; k: 0..=n - 1
 const SWITCH_COST = 3
@@ -42,37 +42,18 @@ while at < m:
         at += 3
 
 domain R = 0..runs.len
-type Entry = (cost: ?Int, sym: Sym)
-enum SetOp: Keep | Forbid | Set(Int)
-// Tag `(set, add)`: optionally overwrite (`Forbid` / `Set`), then add `add`.
-type Tag = (set: SetOp, add: Int)
+var cost = SegTree(min, a: [Sym] _ => 0, act: assign_add)
 
-fn pick_min(a: Entry, b: Entry) -> Entry:
-    let ca = a.cost ?? return b
-    let cb = b.cost ?? return a
-    if ca <= cb: a else: b
+// The cheapest cost over every escape but `s` (n >= 2, so there is one).
+fn cheapest_but(s: Sym) -> Int:
+    let left = cost.try_fold(..s)
+    let right = cost.try_fold(s.r..)
+    min(left ?? right!, right ?? left!)
 
-fn compose_tag(new: Tag, old: Tag) -> Tag = match new.set:
-    SetOp.Keep => (set: old.set, add: old.add + new.add)
-    _ => new
-
-fn apply_tag(t: Tag, v: Entry, _span: Int) -> Entry = match t.set:
-    SetOp.Forbid => (cost: None, sym: v.sym)
-    SetOp.Set(c) => (cost: Some(c + t.add), sym: v.sym)
-    SetOp.Keep => if let cur = v.cost: (cost: Some(cur + t.add), sym: v.sym) else: v
-
-let cheapest = Monoid<Entry>((cost: None, sym: Sym.last!), pick_min)
-let assign_add = Action<Entry, Tag>(
-    id: (SetOp.Keep, 0),
-    compose: compose_tag,
-    apply: apply_tag,
-    over: cheapest,
-)
-var cost = SegTree<Sym, Entry, Tag>(
-    cheapest,
-    a: [Sym] s => (cost: Some(0), sym: s),
-    act: assign_add,
-)
+// The first escape other than `s` that costs `c`.
+fn first_at(c: Int, but s: Sym) -> Sym:
+    let first = Sym(cost.right_while(Sym.cuts.first!, v => v > c).ord)
+    if first != s: first else: Sym(cost.right_while(s.r, v => v > c).ord)
 
 // switch_to[i]: escape to switch to before run i when esc == runs[i].sym;
 // adopt[i]: switch to runs[i].sym from any other escape before run i.
@@ -80,19 +61,16 @@ var switch_to: [R]?Sym = None
 var adopt: [R]Bool = false
 for i in R.rev:
     let (s, k) = runs[i.ord]
-    var x = cost.fold(s..=s).cost!
-    cost.apply(.., (SetOp.Keep, plain_cost(k)))
-    cost.apply(s..=s, (SetOp.Forbid, 0))
-    let best = cost.fold(..)
-    let opt = best.cost!
-    x += escaped_cost(k)
+    var x = cost.get(s) + escaped_cost(k)
+    cost.apply(.., (set: None, add: plain_cost(k)))
+    let opt = cheapest_but(s)
     if x > opt + SWITCH_COST:
-        switch_to[i] = Some(best.sym)
+        switch_to[i] = Some(first_at(opt, but: s))
         x = opt + SWITCH_COST
     if opt > x + SWITCH_COST:
         adopt[i] = true
-        cost.apply(.., (SetOp.Set(x + SWITCH_COST), 0))
-    cost.apply(s..=s, (SetOp.Set(x), 0))
+        cost.apply(.., (set: Some(x + SWITCH_COST), add: 0))
+    cost.set(s, x)
 
 var out: List<Int> = []
 esc = Sym(0)

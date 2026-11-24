@@ -5,9 +5,10 @@ Port: `corpus/problems/btoi06p5/port.cp`. There is no `dream.cp`; the dream is b
 ## Measurements
 
 - Tokens: port 976, accepted C++ 1867.
-- Emitted C++: 30959 bytes.
-- `--max` (n = 1e5, m = 2e6, median of 15): port 498.5 ms / 46.0 MB, accepted 554.3 ms / 26.2 MB
-  (0.90x time, 1.76x memory).
+- Emitted C++: 29184 bytes (30959 with the hand-written tag).
+- `--max` (n = 1e5, m = 2e6, median of 15, g++ -O2): port 615.8 ms / 43.8 MB, accepted
+  622.9 ms / 27.6 MB (0.99x time, 1.59x memory). The hand-written tag ran 484.9 ms on the
+  same input; see friction 1.
 - Output: identical to the accepted C++.
 
 ## Dream
@@ -36,22 +37,19 @@ for i in R.rev:
 The `...` is the port's switch/adopt logic unchanged. Unverified: `assign_add`, `.on`, and
 `min(by:)` treating `None` as the largest are not in std today.
 
-## Friction 1: a hand-written assign-then-add lazy tag
+## Friction 1: a hand-written assign-then-add lazy tag (fixed)
 
-- Where: `enum SetOp: Keep | Forbid | Set(Int)`, `type Tag = (set: SetOp, add: Int)`,
-  `compose_tag`, `apply_tag`, `pick_min` and the `Action<Entry, Tag>(...)` literal, about
-  35 lines.
-- What felt wrong: std.algebra has `add`, `assign` and `affine` actions
-  (std/algebra.cp:766-774) but none composes "optionally overwrite, then add", which is
-  the standard tag for range-assign plus range-add. The port builds it and its laws by
-  hand, plus a `Forbid` arm because the entry's cost is optional.
-- Goal it hurts: R3, "coherent stdlib".
-- Ideal code: `act: assign_add` from std (dream).
-- General fix: add an `AssignAddAction` to std/algebra.cp with its composition laws
-  tested like the existing three (std/lazy.cp:151), over `?T` values so `assign(None)`
-  is the forbid.
-- Severity: medium (range assign + add is a common lazy segment tree).
-- Owner: Content (std/algebra.cp).
+- Was: `enum SetOp: Keep | Forbid | Set(Int)`, `type Tag`, `compose_tag`, `apply_tag`,
+  `pick_min` and an `Action<Entry, Tag>(...)` literal, about 35 lines, over an
+  `(cost: ?Int, sym: Sym)` entry whose `None` forbade the current escape.
+- Fixed: Content added `assign_add` (e9b4b0aa5), tags `(set: ?T, add: T)`. The port is now
+  `SegTree(min, a: [Sym] _ => 0, act: assign_add)` over plain `Int`. The forbidden escape
+  needs no `None`: `cheapest_but(s)` folds either side of `s`, and `first_at` finds the
+  argmin with `right_while` only when the DP switches. Same output as the old port and
+  the accepted C++.
+- Cost: 615.8 ms against 484.9 ms for the hand tag (two folds per run where the tag did one
+  global fold). Still 0.99x the accepted C++, so no R10 failure.
+- Owner: none open.
 
 ## Friction 2: 1.76x memory
 
@@ -59,8 +57,8 @@ The `...` is the port's switch/adopt logic unchanged. Unverified: `assign_add`, 
   `out: List<Int>`.
 - What felt wrong: the accepted C++ stores runs as two `int` arrays and writes the
   answer directly. The port keeps up to 2e6 runs with an `Int` length, an `?Sym` per run
-  and the whole output list before printing; at m = 2e6 that is the 20 MB difference.
-  Time is fine (0.90x), and 46 MB is within the 64 MB limit.
+  and the whole output list before printing; at m = 2e6 that is the 16 MB difference.
+  Time is fine (0.99x), and 43.8 MB is within the 64 MB limit.
 - Goal it hurts: R10 (memory).
 - Ideal code: `len: 1..=2e6` in the run record (it is at most m), so the record narrows.
 - General fix: port edit. Bounded record fields already narrow (probe in btoi08p6
