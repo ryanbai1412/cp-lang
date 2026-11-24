@@ -740,7 +740,11 @@ pub(crate) fn last_read(
             _ => init,
         };
         return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
-            || place_dies(program, block, k, in_place(init), outer);
+            || place_dies(program, block, k, in_place(init), outer)
+            || copied(init).is_some_and(|src| match src.kind {
+                ExprKind::Global(g) => dies_in(program, block, k, (true, g), None),
+                _ => false,
+            });
     }
     let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
         return false;
