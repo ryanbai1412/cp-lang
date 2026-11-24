@@ -17,10 +17,10 @@ type Z = Mod<MOD>
 @!multitest
 let (x_in, y_in): (0..=200_000, 0..=200_000) = read()
 let (x, y) = (min(x_in, y_in), max(x_in, y_in))
-let vx = if x_in > y_in: -1 else: 1
+let vx: -1..=1 = if x_in > y_in: -1 else: 1
 
 let cnt: Z = if x == y: 1 else: divisors(y - x).len
 print(cnt)
-var out: [0..x + y]Int = -vx
+var out: [0..x + y]-1..=1 = -vx
 out[0..x] = vx
 print(out)
