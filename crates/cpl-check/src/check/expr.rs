@@ -285,6 +285,7 @@ impl<'a> Checker<'a> {
                     self.method_call_on_param(base);
                 }
                 self.full_ranges(args.iter().map(|a| &a.value));
+                self.lent_receiver(callee);
                 let ty = self.call(expr, callee, args);
                 self.member_for_call(expr, callee, args);
                 ty

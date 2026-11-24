@@ -703,17 +703,7 @@ impl<'a> Checker<'a> {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
             return;
         }
-        let members = match &base_ty {
-            Ty::Named { name, .. } => self.members_of(name),
-            _ => None,
-        };
-        let mutates = match &members {
-            Some(m) if m.members.iter().any(|(n, _)| n == &name.text) => {
-                m.mutators.contains(&name.text)
-            }
-            _ => self.takes_mut_self(&base_ty, &name.text),
-        };
-        if mutates {
+        if self.changes_self(&base_ty, &name.text) {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
         }
     }

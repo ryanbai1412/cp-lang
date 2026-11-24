@@ -263,6 +263,8 @@ pub(crate) struct Checker<'a> {
     resolved: Vec<(Span, Resolved)>,
     /// The method each `x.f` calls (R11.3.4), kept through quiet probes.
     chosen_methods: Vec<(Span, Resolved)>,
+    /// Each `s[k]` written through (R05.6.3): it reads as the lending `at`, not `get`.
+    lent_places: std::collections::HashSet<Span>,
     /// Each `x.f` E0701 rejects, with every candidate it was torn between.
     ambiguous: Vec<(Span, Vec<Resolved>)>,
     pub(crate) typed_indexes: Vec<TypedIndex>,
@@ -376,6 +378,7 @@ impl<'a> Checker<'a> {
             refs: Vec::new(),
             resolved: Vec::new(),
             chosen_methods: Vec::new(),
+            lent_places: Default::default(),
             ambiguous: Vec::new(),
             typed_indexes: Vec::new(),
             fixed_io: Vec::new(),

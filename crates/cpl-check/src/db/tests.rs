@@ -336,6 +336,14 @@ fn a_bound_reaches_its_supers_methods_typed() {
 }
 
 #[test]
+fn a_place_under_a_lends_mut_index_beside_a_get_is_typed() {
+    let src = "struct C:\n    var n: Int\n    fn bump(mut self, by: Int):\n        n += by\nstruct Node:\n    var c: C\n    var kids: List<Int>\nstruct Pool:\n    _xs: List<Node>\n    pub fn at(mut self, i: Int) -> lends mut Node:\n        lend mut _xs[i]\n    pub fn get(self, i: Int) -> Int = _xs[i].c.n\nvar p = Pool([Node(C(1), [2])])\np[0].c.bump(4)\np[0].c.n = 2\np[0].kids[0] += 1\np[0].kids.push(3)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    let read = format!("{src}let n: Int = p[0].abs()\n");
+    assert_eq!(silent_unknowns_of(&read).1, 0);
+}
+
+#[test]
 fn a_silent_unknown_names_its_cause() {
     let mut db = Database::new();
     db.set_file("main.cp", "print([])\n");
