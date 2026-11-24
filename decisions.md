@@ -9231,7 +9231,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Why.** Rooted's shape became the std enum `TreeShape` (e9b2b7b44) instead of a compiler name table, so old source lost its spelling. Reading the variants from the enum's declaration migrates it with no table of old names, and works for any enum a std or user signature asks for.
 - **Reverse.** Drop the case-folded lookup; a misspelled variant is a bare unresolved-name error again.
 
-## 615. (reserved, compiler)
+## 615. Names stay `String`; the pointer interner was measured larger and shelved (compiler, 2026-11-24)
+
+- **Call.** `ast::Name.text` stays a `String`. An interned `cpl_syntax::Sym(&'static str)` (hash and equality by pointer, order and printing by text, a two-order byte-identical output test) was built and measured, and it does not land. Coordinator ruling for Core of 2026-11-24.
+- **Why.** Named build against 857edb337: cpl_syntax 153,096 -> 154,232 B gz (+1,136, over its 154,000 budget), cpl_check 303,695 -> 304,105 (+410), and the whole cpl.wasm +3,031 B gz. That was after cutting it down: a sorted-`Vec` table instead of a hash set (the hashbrown table alone was +1.1 KB raw), `Name` made `Copy`, and no new `Sym`-keyed maps. Raw cpl_syntax stays flat, but every derived `Clone`/`PartialEq` over the AST changes, and the ~300 `.text` sites that still need a `String` now convert it. Any win would have to come from re-keying the checker's maps on `Sym` later, which was never shown. u32 ids carry the same table and conversions plus a lookup on every read. Size comes down by removing duplicated code (step 6), not by changing how names are stored.
+- **Reverse.** Revisit only with a named build where `Sym` and the re-keyed checker maps together come out net negative on every crate over budget.
 
 ## 616. (reserved, stdlib)
 
