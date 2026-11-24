@@ -3096,10 +3096,10 @@ fn chunk_by_run_ranges_buckets_and_chunks():
     assert ([1, 2, 3].pairs()).collect() == [(1, 2), (1, 3), (2, 3)]
     assert ([1, 2].cyclic_pairs()).collect() == [(1, 2), (2, 1)]
     domain V = 1..=5
-    domain K = 0..3
-    let keys = [V] i => K([2, 0, 2, 1, 0][i.ord])
+    domain B = 0..3
+    let keys = [V] i => B([2, 0, 2, 1, 0][i.ord])
     let b = keys.buckets()
-    assert b[K(0)] == [V(2), V(5)] and b[K(1)] == [V(4)] and b[K(2)] == [V(1), V(3)]
+    assert b[B(0)] == [V(2), V(5)] and b[B(1)] == [V(4)] and b[B(2)] == [V(1), V(3)]
 
 @test
 fn first_gt_and_last_lt_match_linear_scan():
