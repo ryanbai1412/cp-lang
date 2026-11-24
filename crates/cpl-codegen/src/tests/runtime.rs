@@ -156,3 +156,21 @@ fn a_sort_by_holds_half_a_buffer_and_no_sorted_copy() {
     assert!(out.contains("std::vector<uint32_t> order"), "{out}");
     assert!(!out.contains("std::vector<T> sorted"), "{out}");
 }
+
+#[test]
+fn a_sort_by_a_cell_compares_in_place() {
+    // A key read from a domain-indexed table needs no cached keys or order;
+    // one that ends in the element itself sorts unstably, as no order shows.
+    let src = |key: &str| {
+        format!(
+            "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]Int = read()\n\
+             var ord = I.collect()\nord.sort(by: i => {key})\nprint(ord[0].ord)\n"
+        )
+    };
+    let unique = cpp(&src("(a[i], i)"));
+    assert!(unique.contains("std::sort(ord"), "{unique}");
+    assert!(!unique.contains("cpl::sort_by("), "{unique}");
+    let ties = cpp(&src("a[i]"));
+    assert!(ties.contains("cpl::stable_sort_lt(ord"), "{ties}");
+    assert!(!ties.contains("cpl::sort_by("), "{ties}");
+}

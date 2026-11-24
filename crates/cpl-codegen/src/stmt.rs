@@ -264,9 +264,24 @@ impl<'p> Emitter<'p> {
                         format!("{kf}({a}) < {kf}({b})"),
                         format!("{kf}({b}) < {kf}({a})"),
                     );
+                    // A key that ends in the element makes equal keys equal
+                    // elements, so no order is told apart; a profile still
+                    // counts the interpreter's comparisons.
+                    let ends_in_elem =
+                        |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == *slot);
+                    let unique = elem.is_scalar()
+                        && match &key.kind {
+                            ExprKind::Tuple(items) => items.last().is_some_and(ends_in_elem),
+                            _ => ends_in_elem(key),
+                        };
+                    let sort = if unique && self.sites.is_none() {
+                        "std::sort"
+                    } else {
+                        "cpl::stable_sort_lt"
+                    };
                     self.line(
                         out,
-                        &format!("cpl::stable_sort_lt({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
+                        &format!("{sort}({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
                     );
                 } else {
                     self.need("sort_by");

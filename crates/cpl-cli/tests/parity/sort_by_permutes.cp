@@ -11,3 +11,10 @@ print(names)
 var ps = [(x % 5, x) for x in xs]
 ps.sort(by: p => desc(bucket(p.1)))
 print(ps)
+domain I = 0..200
+let a: [I]Int = [I] i => bucket(i.ord)
+var ord = I.collect()
+ord.sort(by: i => a[i])
+print([i.ord for i in ord])
+ord.sort(by: i => (desc(a[i]), i))
+print([i.ord for i in ord])

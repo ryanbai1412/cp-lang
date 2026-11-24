@@ -78,6 +78,9 @@ pub(crate) fn is_cheap_pure_key(e: &Expr) -> bool {
             is_cheap_pure_key(inner)
         }
         ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(is_cheap_pure_key),
+        ExprKind::Index(base, idxs) => {
+            cpl_ir::effects::in_domain(&base.ty, idxs) && is_cheap_pure_key(base)
+        }
         _ => false,
     }
 }
