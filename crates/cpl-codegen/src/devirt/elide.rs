@@ -1,52 +1,47 @@
 //! Elision: fn params, struct fields and locals nothing reads, and which slots may drop their fn value.
 
 use super::*;
+use crate::uses::places::{each_call, each_closure, each_put, Put};
 
 impl<'p> Devirt<'p> {
     pub(super) fn compute_elidable(&mut self) {
         let mut assigned_fields: BTreeSet<(usize, usize)> = BTreeSet::new();
         let mut captured_params: BTreeSet<(FnId, usize)> = BTreeSet::new();
         let mut scan_assigns = |home: Option<FnId>, block: &Block| {
-            walk::deep_stmts(block, &mut |stmt| {
-                if let Stmt::Assign(place, _, _) = stmt {
-                    if let (PlaceKind::Field(base, index), Ty::Struct(s)) =
-                        (&place.kind, place_base_ty(place))
-                    {
-                        let _ = base;
-                        assigned_fields.insert((*s, *index));
+            let params = home.map_or(0, |id| self.program.fns[id].params.len());
+            let mut note = |place: &Place, reassigned: &mut BTreeSet<(FnId, usize)>| {
+                if let (PlaceKind::Field(_, index), Ty::Struct(s)) =
+                    (&place.kind, place_base_ty(place))
+                {
+                    assigned_fields.insert((*s, *index));
+                }
+                if let (PlaceKind::Local(slot), Some(id)) = (&place.kind, home) {
+                    if *slot < params {
+                        reassigned.insert((id, *slot));
                     }
-                    if let (PlaceKind::Local(slot), Some(id)) = (&place.kind, home) {
-                        if *slot < self.program.fns[id].params.len() {
-                            self.reassigned_params.insert((id, *slot));
-                        }
+                }
+            };
+            each_put(block, &mut |put, _| {
+                if let Put::Store(place, _) = put {
+                    note(place, &mut self.reassigned_params);
+                }
+            });
+            each_call(block, &mut |_, args| {
+                for arg in args {
+                    if let Arg::Mut(place) = arg {
+                        note(place, &mut self.reassigned_params);
                     }
                 }
             });
-            walk::deep_exprs(block, &mut |e| {
-                if let (ExprKind::Closure(cid), Some(id)) = (&e.kind, home) {
-                    for cap in &self.program.closures[*cid].captures {
-                        if !cap.is_global && cap.outer < self.program.fns[id].params.len() {
+            if let Some(id) = home {
+                each_closure(block, &mut |cid| {
+                    for cap in &self.program.closures[cid].captures {
+                        if !cap.is_global && cap.outer < params {
                             captured_params.insert((id, cap.outer));
                         }
                     }
-                }
-                if let ExprKind::Call(_, args) = &e.kind {
-                    for arg in args {
-                        if let Arg::Mut(place) = arg {
-                            if let (PlaceKind::Field(_, index), Ty::Struct(s)) =
-                                (&place.kind, place_base_ty(place))
-                            {
-                                assigned_fields.insert((*s, *index));
-                            }
-                            if let (PlaceKind::Local(slot), Some(id)) = (&place.kind, home) {
-                                if *slot < self.program.fns[id].params.len() {
-                                    self.reassigned_params.insert((id, *slot));
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+                });
+            }
         };
         scan_assigns(None, &self.program.setup);
         scan_assigns(None, &self.program.main);
@@ -122,12 +117,10 @@ impl<'p> Devirt<'p> {
         let program = self.program;
         let mut kept: BTreeSet<(FnId, usize)> = BTreeSet::new();
         let mut scan = |block: &Block| {
-            walk::deep_exprs(block, &mut |e| {
-                if let ExprKind::Call(id, args) = &e.kind {
-                    for (slot, arg) in args.iter().enumerate() {
-                        if !matches!(arg, Arg::Value(v) if self.skippable_value(v)) {
-                            kept.insert((*id, slot));
-                        }
+            each_call(block, &mut |id, args| {
+                for (slot, arg) in args.iter().enumerate() {
+                    if !matches!(arg, Arg::Value(v) if self.skippable_value(v)) {
+                        kept.insert((id, slot));
                     }
                 }
             });
@@ -145,16 +138,9 @@ impl<'p> Devirt<'p> {
             }
             let named = crate::scope::named_params(&f.body, f.params.len());
             let mut captured = BTreeSet::new();
-            walk::deep_exprs(&f.body, &mut |e| {
-                if let ExprKind::Closure(cid) = &e.kind {
-                    captured.extend(
-                        program.closures[*cid]
-                            .captures
-                            .iter()
-                            .filter(|c| !c.is_global)
-                            .map(|c| c.outer),
-                    );
-                }
+            each_closure(&f.body, &mut |cid| {
+                let caps = program.closures[cid].captures.iter();
+                captured.extend(caps.filter(|c| !c.is_global).map(|c| c.outer));
             });
             for (slot, param) in f.params.iter().enumerate() {
                 let fn_valued = match &f.locals[slot].ty {

@@ -85,7 +85,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "dead-fn-values",
         "devirt/elide.rs",
-        Unasked,
+        Uses(&["each_put", "each_call", "each_closure"]),
         "a_fn_field_read_only_into_a_dropped_local_stores_no_std_function",
     ),
     pass(

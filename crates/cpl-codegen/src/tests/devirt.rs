@@ -566,3 +566,16 @@ fn each_value_reports_an_expression_after_the_ones_inside_it() {
     });
     assert!(checked > 4, "{checked} children");
 }
+
+#[test]
+fn a_fn_param_never_named_stays_elided_when_a_closure_makes_the_call() {
+    let out = cpp("fn run(n: Int, g: Int -> Int) -> Int = n * 2
+let k = read<Int>()
+let go = (m: Int) => run(m, x => x + k)
+print(go(k))
+");
+    assert!(
+        !out.contains("std::function"),
+        "`run` never names `g`, and the one call (inside `go`) passes a closure:\n{out}"
+    );
+}
