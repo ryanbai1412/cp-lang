@@ -423,7 +423,8 @@ fn assert_fixes_restore_at(uri: &str, original: &str, breaks: &[(&str, &str, &st
 }
 
 #[test]
-fn definition_on_an_ambiguous_method_lists_every_candidate() {
+fn definition_on_a_method_goes_to_the_fn_it_calls() {
+    // R08.1.4: `self: Range<Int>` beats std's generic `sum`, so it is the one definition.
     let uri = "file:///w/_lsp_ambiguous.cp";
     let src = "pub fn sum(self: Range<Int>) -> Int = 7\nprint((0..3).sum())\n";
     let mut server = Server::new();
@@ -448,14 +449,11 @@ fn definition_on_an_ambiguous_method_lists_every_candidate() {
             ("position", pos(1, 14)),
         ]),
     ));
-    let locations = def[0].at(&["result"]).as_array().unwrap_or(&[]);
-    let uris: Vec<&str> = locations
-        .iter()
-        .filter_map(|l| l.at(&["uri"]).as_str())
-        .collect();
-    assert_eq!(uris.len(), 2, "{def:?}");
-    assert!(uris.contains(&uri), "{uris:?}");
-    assert!(uris.iter().any(|u| u.ends_with("std/seq.cp")), "{uris:?}");
+    assert_eq!(def[0].at(&["result", "uri"]).as_str(), Some(uri), "{def:?}");
+    assert_eq!(
+        def[0].at(&["result", "range", "start", "line"]),
+        &Value::Int(0)
+    );
 }
 
 #[test]
