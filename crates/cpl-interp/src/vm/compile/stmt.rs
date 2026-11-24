@@ -236,6 +236,25 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// `Trace`, and anything else is left to the tree-walker, which
     /// reports it. Returns whether `stmt` was compiled.
     pub(super) fn compile_traced_stmt(&mut self, stmt: &'p Stmt) -> bool {
+        if let Stmt::For(id, slot, Iter::Seq(seq, false), body) = stmt {
+            if let Some((fn_id, feed, args)) = self.traced_feed(*id, *slot, seq, body) {
+                let eager = self.emit(Op::JmpEager { target: 0 }, seq.span);
+                let dst = self.emit_traced_call(seq.span, Callee::Fn(fn_id), args, false);
+                // `emit_traced_call` ends with its `CallTraced`.
+                let call = self.ops.len() - 1;
+                self.traced_feeds.push((call as u32, feed));
+                self.note_fed_site(call, stmt, seq);
+                if dst >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: dst }, seq.span);
+                }
+                let j_end = self.emit(Op::Jmp { target: 0 }, seq.span);
+                self.patch(eager, self.ops.len() as u32);
+                self.compile_eager_for(stmt, *id, *slot, seq, body);
+                self.patch(j_end, self.ops.len() as u32);
+                self.compile_fed_body(*id, body);
+                return true;
+            }
+        }
         match stmt {
             Stmt::Let(slot, Some(init))
                 if self.feed_acc != Some(*slot) && self.traced_quiet(init) =>
@@ -304,32 +323,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if dst >= self.num_local_v {
                     self.emit(Op::ClearV { reg: dst }, e.span);
                 }
-            }
-            Stmt::For(id, slot, Iter::Seq(seq, false), body)
-                if self.fed_body_ok(*id, seq, body) =>
-            {
-                match self.traced_feed(*id, *slot, seq, body) {
-                    Some((fn_id, feed, args)) => {
-                        let eager = self.emit(Op::JmpEager { target: 0 }, seq.span);
-                        let dst = self.emit_traced_call(seq.span, Callee::Fn(fn_id), args, false);
-                        // `emit_traced_call` ends with its `CallTraced`.
-                        let call = self.ops.len() - 1;
-                        self.traced_feeds.push((call as u32, feed));
-                        self.note_fed_site(call, stmt, seq);
-                        if dst >= self.num_local_v {
-                            self.emit(Op::ClearV { reg: dst }, seq.span);
-                        }
-                        let j_end = self.emit(Op::Jmp { target: 0 }, seq.span);
-                        self.patch(eager, self.ops.len() as u32);
-                        self.compile_eager_for(stmt, *id, *slot, seq, body);
-                        self.patch(j_end, self.ops.len() as u32);
-                    }
-                    None => {
-                        self.emit_fallback_stmt(stmt);
-                        self.emit_escapes();
-                    }
-                }
-                self.compile_fed_body(*id, body);
             }
             Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => {
                 match self.traced_quiet_iter(iter) {
@@ -596,16 +589,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.emit(Op::ClearV { reg: dst }, e.span);
     }
 
-    /// Whether the tree-walker can run the body of the fed loop `id` from
-    /// this traced chunk.
-    fn fed_body_ok(&self, id: LoopId, seq: &'p Expr, body: &'p Block) -> bool {
-        self.allow_fed_loops
+    /// The list the fed loop `id` is fed into, when this traced chunk can
+    /// run its body.
+    fn fed_acc(&self, id: LoopId, seq: &'p Expr, body: &'p Block) -> Option<usize> {
+        let ok = self.allow_fed_loops
             && self.feed_acc.is_none()
             && self.inline_slots.is_none()
             && self.inline_ret.is_none()
             && (self.give_targets.is_empty() || !cpl_ir::walk::has_give(&body.stmts))
-            && self.feeds.feeds(id, seq, body).is_some()
-            && !Self::block_has_outer_loop_jump(body, id)
+            && !Self::block_has_outer_loop_jump(body, id);
+        ok.then(|| self.feeds.feeds(id, seq, body))
+            .flatten()
+            .map(|(_, acc)| acc)
     }
 
     /// The fed loop `id`'s call, when this chunk makes it itself.
@@ -616,12 +611,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
         seq: &'p Expr,
         body: &'p Block,
     ) -> Option<(FnId, TracedFeed<'p>, &'p [Arg])> {
-        let (_, acc) = self.feeds.feeds(id, seq, body)?;
-        let Some((Callee::Fn(fn_id), args)) = self.traced_call(seq) else {
+        // A judge's or `@cpp` fn traps as `CallTraced` makes it, as any call.
+        let ExprKind::Call(fn_id, args) = &seq.kind else {
             return None;
         };
+        let acc = self.fed_acc(id, seq, body)?;
         Some((
-            fn_id,
+            *fn_id,
             TracedFeed {
                 id,
                 slot,
