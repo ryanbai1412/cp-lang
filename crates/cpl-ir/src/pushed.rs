@@ -150,6 +150,13 @@ pub struct Feeds {
 
 impl Feeds {
     pub fn of(program: &Program) -> Feeds {
+        let mut feeds = Feeds::candidates(program);
+        feeds.keep_fed(program, &BTreeSet::new());
+        feeds
+    }
+
+    /// Every `yields` fn that could feed a loop, fed or not yet.
+    pub fn candidates(program: &Program) -> Feeds {
         let summaries = summarize(program);
         // Inserted in key order: collecting a BTreeMap sorts, a copy of std's stable sort.
         let mut pushers = BTreeMap::new();
@@ -158,9 +165,13 @@ impl Feeds {
                 pushers.insert(id, p);
             }
         }
-        let mut feeds = Feeds { summaries, pushers };
-        // Only a fn some loop is fed by gets the form that feeds it.
-        let mut fed = BTreeSet::new();
+        Feeds { summaries, pushers }
+    }
+
+    /// Keeps the fns some loop is fed by, and `also`: only they get the form that feeds.
+    pub fn keep_fed(&mut self, program: &Program, also: &BTreeSet<usize>) {
+        let feeds = &*self;
+        let mut fed = also.clone();
         let bodies = [&program.main, &program.setup]
             .into_iter()
             .chain(program.fns.iter().map(|f| &f.body))
@@ -174,8 +185,7 @@ impl Feeds {
                 }
             });
         }
-        feeds.pushers.retain(|id, _| fed.contains(id));
-        feeds
+        self.pushers.retain(|id, _| fed.contains(id));
     }
 
     /// The fn and the slot of its list when the loop `id` over `seq`

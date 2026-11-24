@@ -165,6 +165,8 @@ pub(crate) struct Emitter<'p> {
     pub fused_pushes: Vec<(usize, crate::fuse::FusedPush)>,
     /// Fns with a `cpl_sink_f` form (`crate::sink`), and the slot it sinks.
     pub sinks: BTreeMap<usize, usize>,
+    /// The pure fns a closure handed to a sunk call may call.
+    pub sink_pure: BTreeSet<usize>,
     pub sinking: Option<usize>,
     /// Emitting what is above `@!multitest`, where a top-level `return`
     /// ends the program.
@@ -275,6 +277,7 @@ impl<'p> Emitter<'p> {
             moves_last: false,
             pushers: BTreeMap::new(),
             sinks: BTreeMap::new(),
+            sink_pure: BTreeSet::new(),
             sinking: None,
             pushing: None,
             bodies: Vec::new(),
@@ -289,7 +292,12 @@ impl<'p> Emitter<'p> {
             target: target.clone(),
             chunks: Vec::new(),
         };
-        let feeds = cpl_ir::pushed::Feeds::of(program);
+        let mut feeds = cpl_ir::pushed::Feeds::candidates(program);
+        let checks = emitter.target.checks != crate::Checks::None;
+        let sinks = crate::sink::sinks(program, &emitter.devirt, &feeds.pushers, checks);
+        feeds.keep_fed(program, &sinks.producers);
+        emitter.sinks = sinks.fns;
+        emitter.sink_pure = sinks.pure;
         emitter.summaries = feeds.summaries;
         emitter.uses = crate::uses::Uses::of(
             program,
@@ -297,11 +305,6 @@ impl<'p> Emitter<'p> {
             emitter.target.checks != crate::Checks::None,
         );
         emitter.pushers = feeds.pushers;
-        emitter.sinks = crate::sink::sinks(
-            program,
-            &emitter.devirt,
-            emitter.target.checks != crate::Checks::None,
-        );
         emitter
     }
 

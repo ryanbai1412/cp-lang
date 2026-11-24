@@ -13,20 +13,38 @@ use cpl_ir::{Arg, Expr, ExprKind, Iter, Program, Stmt, Ty};
 use crate::devirt::Devirt;
 use crate::emit::{Code, Emitter};
 use crate::fuse::{producer, FusedPush};
-use crate::uses::effects::{pure_call, pure_closure, pure_fns, trap_free_stmts, trap_free_with};
+use crate::uses::effects::{pure_call, pure_fns, trap_free_stmts, trap_free_with, value_closure};
 use crate::walk;
 
-/// Each fn called with an inline list it can sink, and that list parameter.
-pub(crate) fn sinks(program: &Program, devirt: &Devirt, traps: bool) -> BTreeMap<usize, usize> {
+/// What `sinks` finds.
+pub(crate) struct Sinks {
+    /// Each fn called with an inline list it can sink, and that list parameter.
+    pub fns: BTreeMap<usize, usize>,
+    /// The `yields` fns among the candidates whose callback form feeds one.
+    pub producers: BTreeSet<usize>,
+    /// The pure fns, which a closure handed to a sunk call may call.
+    pub pure: BTreeSet<usize>,
+}
+
+pub(crate) fn sinks(
+    program: &Program,
+    devirt: &Devirt,
+    pushers: &BTreeMap<usize, usize>,
+    traps: bool,
+) -> Sinks {
     let pure = pure_fns(program, devirt, traps);
     let mut found = BTreeMap::new();
+    let mut producers = BTreeSet::new();
     let mut visit = |block| {
         walk::deep_exprs(block, &mut |e: &Expr| {
             let ExprKind::Call(fid, args) = &e.kind else {
                 return;
             };
             if let Some(slot) = sink_param(program, devirt, &pure, traps, *fid) {
-                if sinkable_args(program, devirt, *fid, slot, args) {
+                if sinkable_args(program, devirt, pushers, &pure, *fid, slot, args) {
+                    if let Some(Arg::Value(v)) = args.get(slot) {
+                        producers.extend(yields_call(pushers, v));
+                    }
                     let (mut f, mut s) = (*fid, slot);
                     found.insert(f, s);
                     while let Some((g, k, _)) = forwards(program, f, s) {
@@ -43,7 +61,11 @@ pub(crate) fn sinks(program: &Program, devirt: &Devirt, traps: bool) -> BTreeMap
     program.closures.iter().for_each(|c| visit(&c.body));
     visit(&program.setup);
     visit(&program.main);
-    found
+    Sinks {
+        fns: found,
+        producers,
+        pure,
+    }
 }
 
 fn sink_param(
@@ -84,7 +106,7 @@ fn sink_param_within(
             return depth > 0
                 && forwards(program, fid, slot).is_some_and(|(g, k, args)| {
                     sink_param_within(program, devirt, pure, traps, g, depth - 1) == Some(k)
-                        && other_args_ok(program, devirt, g, k, args)
+                        && other_args_ok(program, devirt, pure, g, k, args)
                 });
         };
         let Stmt::For(_, _, _, body) = &f.body.stmts[at] else {
@@ -127,12 +149,27 @@ fn sink_param_within(
 fn sinkable_args(
     program: &Program,
     devirt: &Devirt,
+    pushers: &BTreeMap<usize, usize>,
+    pure: &BTreeSet<usize>,
     fid: usize,
     slot: usize,
     args: &[Arg],
 ) -> bool {
-    matches!(args.get(slot), Some(Arg::Value(v)) if producer(v).is_some())
-        && other_args_ok(program, devirt, fid, slot, args)
+    matches!(args.get(slot), Some(Arg::Value(v))
+        if producer(v).is_some() || yields_call(pushers, v).is_some())
+        && other_args_ok(program, devirt, pure, fid, slot, args)
+}
+
+/// A call of a `yields` fn that also exists as `cpl_each_f`: the producer is its callback form.
+fn yields_call(pushers: &BTreeMap<usize, usize>, v: &Expr) -> Option<usize> {
+    match &v.kind {
+        ExprKind::Call(f, args)
+            if pushers.contains_key(f) && args.iter().all(|a| matches!(a, Arg::Value(_))) =>
+        {
+            Some(*f)
+        }
+        _ => None,
+    }
 }
 
 /// `fn f(.., xs, ..) = g(.., xs, ..)`, its body only handing the list parameter `slot` on
@@ -159,6 +196,7 @@ fn forwards(program: &Program, fid: usize, slot: usize) -> Option<(usize, usize,
 fn other_args_ok(
     program: &Program,
     devirt: &Devirt,
+    pure: &BTreeSet<usize>,
     fid: usize,
     slot: usize,
     args: &[Arg],
@@ -170,7 +208,7 @@ fn other_args_ok(
                 v.kind,
                 ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Char(_)
             ) || (devirt.param_elidable(fid, s) && devirt.skippable_value(v))
-                || matches!(v.kind, ExprKind::Closure(cid) if pure_closure(program, cid))
+                || matches!(v.kind, ExprKind::Closure(cid) if value_closure(program, devirt, pure, cid))
                 || program.fns[fid].locals[s].ty == Ty::Unit && matches!(v.kind, ExprKind::Unit)
         }
         _ => false,
@@ -187,16 +225,39 @@ impl Emitter<'_> {
         if matches!(seq.kind, ExprKind::Local(l) if self.sinking == Some(l)) {
             return self.forward_sink_call(id, slot, args);
         }
-        let p = producer(seq)?;
-        if self.hoisted.contains(p.vec)
-            || !sinkable_args(self.program, &self.devirt, id, slot, args)
-        {
+        if !sinkable_args(
+            self.program,
+            &self.devirt,
+            &self.pushers,
+            &self.sink_pure,
+            id,
+            slot,
+            args,
+        ) {
+            return None;
+        }
+        let p = producer(seq);
+        if p.as_ref().is_some_and(|p| self.hoisted.contains(p.vec)) {
             return None;
         }
         let mut texts = Vec::with_capacity(args.len());
         for (s, arg) in args.iter().enumerate() {
             let Arg::Value(v) = arg else { return None };
-            if s == slot {
+            if s == slot && p.is_none() {
+                let put = self.temp();
+                let callee = yields_call(&self.pushers, seq)?;
+                let call = self.expr(seq).text;
+                let name = crate::names::fn_name(&self.program.fns[callee].name);
+                let call = (call.strip_prefix("::prog::").unwrap_or(&call))
+                    .strip_prefix(&format!("{name}("))
+                    .and_then(|rest| rest.strip_suffix(')'))?;
+                let sep = if call.is_empty() { "" } else { ", " };
+                let x = self.temp();
+                texts.push(format!(
+                    "[&](auto&& {put}) {{ cpl_each_{name}({call}{sep}[&](auto&& {x}) -> int {{ {put}({x}); return 0; }}); }}"
+                ));
+            } else if s == slot {
+                let Some(p) = &p else { return None };
                 let put = self.temp();
                 let mut body = String::new();
                 self.indent += 1;
@@ -235,7 +296,7 @@ impl Emitter<'_> {
 
     /// In a sink variant, the call handing the sunk list on: it hands on the callback.
     fn forward_sink_call(&mut self, id: usize, slot: usize, args: &[Arg]) -> Option<Code> {
-        if !other_args_ok(self.program, &self.devirt, id, slot, args) {
+        if !other_args_ok(self.program, &self.devirt, &self.sink_pure, id, slot, args) {
             return None;
         }
         let mut texts = Vec::with_capacity(args.len());
@@ -324,15 +385,15 @@ pub(crate) fn explained(program: &Program) -> Vec<cpl_diag::Span> {
     };
     let program = crate::prepared(program, &target);
     let devirt = Devirt::collect(&program);
-    let found = sinks(&program, &devirt, false);
+    let pushers = cpl_ir::pushed::Feeds::candidates(&program).pushers;
+    let found = sinks(&program, &devirt, &pushers, false);
     let mut spans = Vec::new();
     let mut visit = |block| {
         walk::deep_exprs(block, &mut |e: &Expr| {
             if let ExprKind::Call(fid, args) = &e.kind {
-                if found
-                    .get(fid)
-                    .is_some_and(|&slot| sinkable_args(&program, &devirt, *fid, slot, args))
-                {
+                if found.fns.get(fid).is_some_and(|&slot| {
+                    sinkable_args(&program, &devirt, &pushers, &found.pure, *fid, slot, args)
+                }) {
                     spans.push(e.span);
                 }
             }

@@ -253,7 +253,21 @@ pub fn trap_free_with(e: &Expr, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) ->
         | ExprKind::IsSome(x)
         | ExprKind::IsVariant(x, _)
         | ExprKind::Unwrap(x, false)
-        | ExprKind::Cast(Cast::IntToFloat | Cast::IntToI128 | Cast::IntToU64, x) => free(x),
+        | ExprKind::Cast(
+            Cast::IntToFloat
+            | Cast::IntToI128
+            | Cast::IntToU64
+            | Cast::U64ToI128
+            | Cast::I128ToFloat
+            | Cast::U64ToFloat
+            | Cast::CharToInt
+            | Cast::EnumOrd(_)
+            | Cast::EnumVal(_)
+            | Cast::Ord
+            | Cast::Label(_)
+            | Cast::Trust,
+            x,
+        ) => free(x),
         ExprKind::Unary(op, x) => *op != UnOp::Neg && free(x),
         ExprKind::Binary(op, l, r) => {
             let safe = match op {

@@ -133,3 +133,35 @@ fn a_reducer_that_hands_its_list_on_builds_no_list() {
     assert!(!solve.contains("push_back"), "{solve}");
     assert!(cpp.contains("(cpl_g"), "{cpp}");
 }
+
+const SUBSET_LOOP: &str = concat!(
+    "domain B = 0..20\n",
+    "let n: 1..=20 = read()\n",
+    "var t = 0\n",
+    "for k in 0..1000:\n",
+    "    let s = Subset<B>.single(B(n % 20)).with(B(1))\n",
+);
+
+#[test]
+fn a_reducer_over_a_yields_getter_runs_on_its_callback_form() {
+    for reduce in [
+        "    t += s.items.sum(of: b => b.ord * k)\n",
+        "    t += s.items.fold((a, b) => a + b.ord, 0)\n",
+    ] {
+        let cpp = cpp(&format!("{SUBSET_LOOP}{reduce}print(t)\n"));
+        let solve = &cpp[cpp.find("void solve()").unwrap()..];
+        assert!(solve.contains("cpl_sink_"), "{solve}");
+        assert!(solve.contains("cpl_each_Subset_"), "{solve}");
+        assert!(!solve.contains("_items(s)"), "{solve}");
+        assert!(!solve.contains("std::vector"), "{solve}");
+    }
+}
+
+#[test]
+fn a_closure_reading_a_var_keeps_the_list() {
+    let cpp = cpp(&format!(
+        "{SUBSET_LOOP}    var w = k\n    t += s.items.sum(of: b => b.ord * w)\n    w += 1\nprint(t)\n"
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(!solve.contains("cpl_sink_"), "{solve}");
+}
