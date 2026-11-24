@@ -30,6 +30,7 @@ BENCHES = {
     "read_ints": lambda: ints(6 * 10**6, 1),
     "read_range": lambda: positive(6 * 10**6, 2),
     "ask_loop": lambda: "",
+    "print_ints": lambda: "4000000\n",
 }
 
 

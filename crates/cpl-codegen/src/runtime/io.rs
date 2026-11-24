@@ -28,12 +28,15 @@ inline void put_line() { out.push_back('\\n'); spill(); }
         name: "put_int",
         needs: &["out"],
         code: "\
-inline void put_int(ll x) {
+// `end`, when given, is the space or newline after the number, written
+// with it in one append.
+inline void put_int(ll x, char end = 0) {
   unsigned long long u = x < 0 ? 0ULL - (unsigned long long)x : (unsigned long long)x;
-  char b[24]; int i = 24;
+  char b[25]; int i = 24, e = 24 + (end != 0);
+  b[24] = end;
   do { b[--i] = char('0' + u % 10); u /= 10; } while (u);
   if (x < 0) b[--i] = '-';
-  out.append(b + i, (size_t)(24 - i));
+  out.append(b + i, (size_t)(e - i));
   spill();
 }
 ",

@@ -50,6 +50,23 @@ fn an_input_refill_reads_into_its_own_buffer_and_zeroes_nothing() {
 }
 
 #[test]
+fn a_printed_number_and_its_separator_go_out_in_one_write() {
+    let out =
+        cpp("let n: 0..=100 = read()\nfor i in 0..n: print(i, i % 7)\nprint(n, \"x\", n + 1)\n");
+    assert!(
+        out.contains("cpl::put_int(i, ' '); cpl::put_int(i % 7, '\\n');"),
+        "{out}"
+    );
+    assert!(out.contains("cpl::put_int(n, ' '); cpl::put_str("), "{out}");
+    assert!(
+        out.contains("cpl::put_char(' '); cpl::put_int(n + 1, '\\n');"),
+        "{out}"
+    );
+    let body = &out[out.find("void solve()").expect("a solve fn")..];
+    assert!(!body.contains("put_line"), "{body}");
+}
+
+#[test]
 fn a_shift_not_proved_in_range_traps_in_a_checked_build() {
     let out = cpp("let k: Int = read()\nvar x = 3\nx <<= k\nprint(1 << k, x)\n");
     assert!(out.contains("cpl::ishl(1, "), "{out}");

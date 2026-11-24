@@ -320,7 +320,7 @@ fn a_build_the_interpreter_disagrees_with_is_a_toolchain_bug() {
     std::fs::write(
         &gxx,
         format!(
-            "#!/bin/sh\nfor a in \"$@\"; do last=\"$a\"; done\ncase \"$last\" in *.cpp) sed -i 's/put_int(n \\* 2)/put_int(n * 2 + (n == 3))/' \"$last\" ;; esac\nexec {} \"$@\"\n",
+            "#!/bin/sh\nfor a in \"$@\"; do last=\"$a\"; done\ncase \"$last\" in *.cpp) sed -i 's/put_int(n \\* 2/put_int(n * 2 + (n == 3)/' \"$last\" ;; esac\nexec {} \"$@\"\n",
             real.trim()
         ),
     )

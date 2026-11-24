@@ -434,10 +434,25 @@ impl<'p> Emitter<'p> {
         }
         let shown_values: Vec<&cpl_ir::Expr> = args.iter().map(|a| &a.value).chain(end).collect();
         let marked = self.mark_read_in_place(&shown_values, None, &[]);
+        // A number and the space or newline after it go out as one write.
+        let mut fused_end = false;
         for (i, arg) in args.iter().enumerate() {
-            let shown = self.show_expr(&arg.value, &arg.digits.to_string());
+            let mut shown = self.show_expr(&arg.value, &arg.digits.to_string());
+            let lead = i > 0 && !std::mem::take(&mut fused_end);
+            if !sparse {
+                let after = if i + 1 < args.len() {
+                    Some(' ')
+                } else {
+                    end.is_none().then_some('\n')
+                };
+                if let (Some(c), Some(number)) = (after, lone_put_int(&shown)) {
+                    shown = format!("cpl::put_int({number}, '{}');", c.escape_default());
+                    fused_end = true;
+                }
+            }
             match (i > 0, sparse) {
                 (false, _) => parts.push(shown),
+                (true, false) if !lead => parts.push(shown),
                 (true, false) => parts.push(format!("cpl::put_char(' '); {shown}")),
                 (true, true) if arg.value.ty.may_show_nothing() => parts.push(format!(
                     "{{ size_t cpl_at = cpl::out.size(); if (cpl_at > cpl_line) cpl::put_char(' '); size_t cpl_from = cpl::out.size(); {shown} if (cpl::out.size() == cpl_from) cpl::out.resize(cpl_at); }}"
@@ -453,6 +468,7 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(end);
                 parts.push(self.show_stmt(&code, &Ty::Str, "6"));
             }
+            None if fused_end => {}
             None => parts.push("cpl::put_line();".to_string()),
         }
         marked.iter().for_each(|m| _ = self.read_in_place.remove(m));
@@ -755,4 +771,22 @@ pub(crate) fn parts(program: &cpl_ir::Program, ty: &Ty) -> Vec<Ty> {
             .collect(),
         _ => ty.fields().unwrap_or_default(),
     }
+}
+
+/// The number `shown` writes when it is one `cpl::put_int(number);` call.
+fn lone_put_int(shown: &str) -> Option<&str> {
+    let number = shown.strip_prefix("cpl::put_int(")?.strip_suffix(");")?;
+    let mut depth = 0i32;
+    for c in number.chars() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ';' | '{' | '\'' | '"' => return None,
+            _ => {}
+        }
+        if depth < 0 {
+            return None;
+        }
+    }
+    (depth == 0).then_some(number)
 }

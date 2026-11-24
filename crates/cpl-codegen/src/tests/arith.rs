@@ -35,14 +35,14 @@ fn division_by_a_positive_number_of_a_non_negative_one_is_plain_cpp() {
         "let a: 0..=100 = read()\nlet b: 1..=100 = read()\nprint(a / b, a % b, a % 1000000007)\n",
     );
     assert!(
-        body.contains("cpl::put_int(ll(uint32_t(a) / uint32_t(b)))"),
+        body.contains("cpl::put_int(ll(uint32_t(a) / uint32_t(b))"),
         "{body}"
     );
     assert!(
-        body.contains("cpl::put_int(ll(uint32_t(a) % uint32_t(b)))"),
+        body.contains("cpl::put_int(ll(uint32_t(a) % uint32_t(b))"),
         "{body}"
     );
-    assert!(body.contains("cpl::put_int(a % 1000000007)"), "{body}");
+    assert!(body.contains("cpl::put_int(a % 1000000007"), "{body}");
     assert!(
         !body.contains("cpl::ediv") && !body.contains("cpl::divp"),
         "{body}"
@@ -53,8 +53,8 @@ fn division_by_a_positive_number_of_a_non_negative_one_is_plain_cpp() {
 fn a_divisor_unpacked_from_input_keeps_its_declared_range() {
     let src = "let item: [0..3](cost: 1..=200, worth: Int) = read()\nlet (c, w) = item[1]\nlet a: 0..=100 = read()\nprint(a / c, a % c, w)\n";
     let body = body(src);
-    assert!(body.contains("(a / c)"), "{body}");
-    assert!(body.contains("(a % c)"), "{body}");
+    assert!(body.contains("put_int(a / c, "), "{body}");
+    assert!(body.contains("put_int(a % c, "), "{body}");
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn a_variable_assigned_later_is_not_trusted_to_keep_its_range() {
 fn loop_counters_and_lengths_are_known_non_negative() {
     let body =
         body("let xs: List<Int> = [1, 2, 3]\nfor i in 0..10:\n    print(i % 3, xs.len / 2)\n");
-    assert!(body.contains("cpl::put_int(i % 3)"), "{body}");
+    assert!(body.contains("cpl::put_int(i % 3"), "{body}");
     assert!(body.contains("(ll)xs.size() >> 1"), "{body}");
 }
 
