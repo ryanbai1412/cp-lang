@@ -326,14 +326,15 @@ fn split_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> ?List<Mod<P>>:
             osi[j] = -(qr * xr - qi * xi) / s
     fft(mut olr, mut oli)
     fft(mut osr, mut osi)
-    let c = Mod<P>(cut)
+    // Each sum is a non-negative integer within 0.5 of the float, so trunc(x + 0.5) rounds it.
+    // hh < n cut^2 and hl, ll < 2 n cut^2, so (hh % P) cut^2 % P + hl cut + ll stays under 2^63.
+    let c2 = cut * cut % P
     var out = List.filled(n_out, Mod<P>(0))
     unchecked:
         for k in 0..n_out:
-            let hh = Mod<P>(round(olr[k]))
-            let hl = Mod<P>(round(oli[k]) + round(osr[k]))
-            let ll = Mod<P>(round(osi[k]))
-            out[k] = (hh * c + hl) * c + ll
+            let hh = trunc(olr[k] + 0.5) % P
+            let hl = trunc(oli[k] + 0.5) + trunc(osr[k] + 0.5)
+            out[k] = Mod<P>(hh * c2 + hl * cut + trunc(osi[k] + 0.5))
     Some(out)
 
 // modulo the three NTT primes, rebuilt by Garner and reduced mod `P`. `None` when a coefficient
@@ -409,7 +410,16 @@ fn fft(mut re: List<F64>, mut im: List<F64>):
                     wr[i] = ar * xr - ai * xi
                     wi[i] = ar * xi + ai * xr
         k *= 2
-    k = 1
+    unchecked:
+        var i = 0
+        while i + 1 < n:
+            let (xr, xi) = (re[i + 1], im[i + 1])
+            re[i + 1] = re[i] - xr
+            im[i + 1] = im[i] - xi
+            re[i] += xr
+            im[i] += xi
+            i += 2
+    k = 2
     while k < n:
         unchecked:
             var i = 0
