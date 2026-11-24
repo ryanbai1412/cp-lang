@@ -129,7 +129,7 @@ impl<'a> Parser<'a> {
         let mut updates = Vec::new();
         loop {
             let name = self.expect_name("a field name after `with`");
-            self.expect(T::Colon, "`:` and the field's new value");
+            self.expect_token(T::Colon, "`:` and the field's new value");
             updates.push((name, self.coalesce()));
             // A following `name:` is another update; anything else belongs
             // to the enclosing list.
@@ -811,7 +811,7 @@ impl<'a> Parser<'a> {
         }
         self.bump();
         let body = Box::new(self.expr());
-        self.expect(T::RBrace, "`}` to close the lambda");
+        self.expect_token(T::RBrace, "`}` to close the lambda");
         let span = self.span_from(start);
         self.planned(span, &crate::planned::TRAILING_LAMBDA);
         Some(Expr {
@@ -985,7 +985,7 @@ impl<'a> Parser<'a> {
                 } else {
                     "the C++ snippet after `@cpp`"
                 };
-                self.expect(T::LParen, &format!("`(` and {what}"));
+                self.expect_token(T::LParen, &format!("`(` and {what}"));
                 let code = if self.at(T::Str) {
                     let raw = self.text();
                     let inner = raw
@@ -1002,7 +1002,7 @@ impl<'a> Parser<'a> {
                     );
                     String::new()
                 };
-                self.expect(T::RParen, "`)`");
+                self.expect_token(T::RParen, "`)`");
                 if intrinsic {
                     ExprKind::Intrinsic(code)
                 } else {
@@ -1152,11 +1152,14 @@ impl<'a> Parser<'a> {
                     let base = self.expr();
                     if self.at_ident("without") {
                         self.bump();
-                        self.expect(T::LParen, "`(` and the removed field names after `without`");
+                        self.expect_token(
+                            T::LParen,
+                            "`(` and the removed field names after `without`",
+                        );
                         let removed = self.comma_list(T::RParen, "the removed fields", |p| {
                             p.expect_name("a field name")
                         });
-                        self.expect(T::RParen, "`)`");
+                        self.expect_token(T::RParen, "`)`");
                         ExprKind::Without {
                             prefix: Vec::new(),
                             base: Box::new(base),
@@ -1170,7 +1173,7 @@ impl<'a> Parser<'a> {
                             updates,
                         }
                     } else {
-                        self.expect(T::RParen, "`)`");
+                        self.expect_token(T::RParen, "`)`");
                         ExprKind::Range {
                             lo: None,
                             hi: Some(Box::new(base)),
@@ -1187,7 +1190,7 @@ impl<'a> Parser<'a> {
                             let mut removed = Vec::new();
                             if self.at_ident("without") {
                                 self.bump();
-                                self.expect(
+                                self.expect_token(
                                     T::LParen,
                                     "`(` and the removed field names after `without`",
                                 );
@@ -1204,7 +1207,7 @@ impl<'a> Parser<'a> {
                             break;
                         }
                     }
-                    self.expect(T::RParen, "`)`");
+                    self.expect_token(T::RParen, "`)`");
                     if let Some((base, removed)) = spread {
                         ExprKind::Without {
                             prefix: fields,
@@ -1275,7 +1278,7 @@ impl<'a> Parser<'a> {
                             ExprKind::Tuple(items)
                         }
                     } else {
-                        self.expect(T::RParen, "`)` to close the parenthesis");
+                        self.expect_token(T::RParen, "`)` to close the parenthesis");
                         ExprKind::Paren(Box::new(first))
                     }
                 }
@@ -1417,7 +1420,7 @@ impl<'a> Parser<'a> {
         let first = self.expr();
         if self.at(T::For) {
             let clauses = self.clauses();
-            self.expect(T::RBracket, "`]` to close the comprehension");
+            self.expect_token(T::RBracket, "`]` to close the comprehension");
             return ExprKind::Comprehension {
                 body: Box::new(first),
                 clauses,
@@ -1429,11 +1432,11 @@ impl<'a> Parser<'a> {
             if self.eat(T::Comma) {
                 entries.extend(self.comma_list(T::RBracket, "the map", |p| {
                     let key = p.expr();
-                    p.expect(T::Colon, "`:` between a key and its value");
+                    p.expect_token(T::Colon, "`:` between a key and its value");
                     (key, p.expr())
                 }));
             } else {
-                self.expect(T::RBracket, "`,` or `]` in the map");
+                self.expect_token(T::RBracket, "`,` or `]` in the map");
             }
             return ExprKind::Map(entries);
         }
@@ -1444,7 +1447,7 @@ impl<'a> Parser<'a> {
         } else if self.at(T::Semi) {
             return self.rust_repeat(items);
         } else {
-            self.expect(T::RBracket, "`,` or `]` in the list");
+            self.expect_token(T::RBracket, "`,` or `]` in the list");
             if self.recovering {
                 self.skip_to(T::RBracket);
                 self.eat(T::RBracket);
@@ -1469,7 +1472,7 @@ impl<'a> Parser<'a> {
     /// `name: value`, `name:` (the variable `name`) or `name: +` (an operator fn).
     fn record_field(&mut self) -> (Name, Expr) {
         let name = self.expect_name("a field name");
-        self.expect(T::Colon, "`:` after the field name");
+        self.expect_token(T::Colon, "`:` after the field name");
         let value = if matches!(self.peek(), T::Comma | T::RParen) {
             Expr {
                 kind: ExprKind::Name(name.text.clone()),
@@ -1576,7 +1579,7 @@ impl<'a> Parser<'a> {
         self.bump();
         let scrutinee = Box::new(self.expr());
         let mut arms = Vec::new();
-        let colon = self.expect(T::Colon, "`:` after the value being matched");
+        let colon = self.expect_token(T::Colon, "`:` after the value being matched");
         if !colon && !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
             self.skip_line();
             return ExprKind::Match { scrutinee, arms };
@@ -1606,7 +1609,7 @@ impl<'a> Parser<'a> {
             // block.
             let body = if self.eat(T::Colon) {
                 self.block("`:`")
-            } else if self.expect(T::FatArrow, "`=>` after the pattern") {
+            } else if self.expect_token(T::FatArrow, "`=>` after the pattern") {
                 self.block("`=>`")
             } else {
                 self.skip_line();
@@ -1634,7 +1637,7 @@ impl<'a> Parser<'a> {
         loop {
             let pat = self.pattern();
             let guard = self.eat(T::If).then(|| self.expr());
-            self.expect(T::FatArrow, "`=>` after the pattern");
+            self.expect_token(T::FatArrow, "`=>` after the pattern");
             let value = self.expr();
             let span = value.span;
             arms.push(Arm {

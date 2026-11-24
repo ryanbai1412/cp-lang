@@ -193,7 +193,7 @@ impl<'a> Parser<'a> {
                 rest = true;
             } else {
                 let name = self.expect_name("a field name in the record pattern");
-                self.expect(T::Colon, "`:` after the field name");
+                self.expect_token(T::Colon, "`:` after the field name");
                 let pat = if matches!(self.peek(), T::Comma | T::RParen) {
                     Pattern {
                         kind: PatternKind::Name(name.text.clone()),
@@ -208,7 +208,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        self.expect(T::RParen, "`)` to close the record pattern");
+        self.expect_token(T::RParen, "`)` to close the record pattern");
         PatternKind::Record { fields, rest }
     }
 }

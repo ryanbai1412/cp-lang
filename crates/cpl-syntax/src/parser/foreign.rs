@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         args.extend(first.map(|f| (f, self.pos - 1)));
-        self.expect(T::RParen, "`)` after the arguments");
+        self.expect_token(T::RParen, "`)` after the arguments");
         let span = self.span_from(start);
         let texts: Vec<&str> = args
             .iter()
@@ -597,7 +597,7 @@ impl<'a> Parser<'a> {
             }
         }
         let close = self.span();
-        if self.expect(T::RBrace, "`}` after the struct's fields") {
+        if self.expect_token(T::RBrace, "`}` after the struct's fields") {
             let first = args
                 .first()
                 .and_then(|a: &Arg| a.name.as_ref())
@@ -632,7 +632,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        self.expect(T::RBracket, "`]` after the list pattern");
+        self.expect_token(T::RBracket, "`]` after the list pattern");
         self.recovered(
             cpl_diag::msgs::foreign::LIST_PATTERN
                 .error(self.span_from(start), &[])

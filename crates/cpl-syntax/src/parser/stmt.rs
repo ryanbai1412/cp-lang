@@ -444,7 +444,7 @@ impl<'a> Parser<'a> {
                 if self.at(T::Colon) {
                     self.members(&format!("the fields of `{}`", name.text), |p| {
                         let fname = p.expect_name("a context field name");
-                        p.expect(T::Colon, "`:` and the field's type");
+                        p.expect_token(T::Colon, "`:` and the field's type");
                         let ty = p.ty();
                         let default = p.eat(T::Eq).then(|| p.expr());
                         fields.push(FieldDecl {
@@ -923,7 +923,7 @@ impl<'a> Parser<'a> {
             let start = self.start();
             let pat = self.pattern();
             let ty = self.eat(T::Colon).then(|| self.ty());
-            self.expect(T::Eq, "`=` and a value after the name");
+            self.expect_token(T::Eq, "`=` and a value after the name");
             let value = self.expr();
             self.extra_stmts.push(Stmt {
                 kind: StmtKind::Let {
@@ -947,7 +947,7 @@ impl<'a> Parser<'a> {
             let start = self.start();
             self.bump();
             let pat = self.pattern();
-            self.expect(T::Eq, "`=` and a value after the name in `let`");
+            self.expect_token(T::Eq, "`=` and a value after the name in `let`");
             let value = self.expr();
             more.push((pat, value, self.span_from(start)));
         }
@@ -1029,7 +1029,7 @@ impl<'a> Parser<'a> {
             let start = self.start();
             let name = self.name();
             let ty = self.eat(T::Colon).then(|| self.ty());
-            self.expect(T::Eq, "`=` and a value after the name");
+            self.expect_token(T::Eq, "`=` and a value after the name");
             let value = self.expr();
             self.extra_stmts.push(Stmt {
                 kind: StmtKind::Const {
@@ -1056,9 +1056,9 @@ impl<'a> Parser<'a> {
     /// The rest of a law, from its name: `assoc(a, b, c) = cond`.
     fn law(&mut self) -> StmtKind {
         let name = self.name();
-        self.expect(T::LParen, "`(` and the law's arguments");
+        self.expect_token(T::LParen, "`(` and the law's arguments");
         let params = self.params();
-        self.expect(T::Eq, "`=` and the law's condition");
+        self.expect_token(T::Eq, "`=` and the law's condition");
         StmtKind::Law {
             name,
             params,
@@ -1088,7 +1088,7 @@ impl<'a> Parser<'a> {
                     pat = self.bare_tuple_pattern(pat, T::In);
                 }
                 if !self.for_of() {
-                    self.expect(T::In, "`in` after the loop variable");
+                    self.expect_token(T::In, "`in` after the loop variable");
                 }
                 let iter = if self.at(T::Question) {
                     self.optional_type_iter()
@@ -1238,7 +1238,7 @@ impl<'a> Parser<'a> {
         self.name_indices(&mut target);
         self.bump();
         let value = self.expr();
-        self.expect(T::RParen, "`)` to close the parenthesis");
+        self.expect_token(T::RParen, "`)` to close the parenthesis");
         let span = self.span_from(start);
         self.lead_stmts.push(Stmt {
             kind: StmtKind::Assign {
@@ -1482,7 +1482,7 @@ impl<'a> Parser<'a> {
     /// `if let a = x, b = y where cond:`).
     fn let_cond(&mut self) -> Cond {
         let pat = self.pattern();
-        self.expect(T::Eq, "`=` after the pattern in `if let`");
+        self.expect_token(T::Eq, "`=` after the pattern in `if let`");
         // The value ends before `and`, `,`, or `where`, which adds a
         // binding or condition on what the pattern bound. After `,` or
         // `where` the condition is whole, `or` and all; after `and` an
@@ -1788,7 +1788,7 @@ impl<'a> Parser<'a> {
         }
         self.brace_depth -= 1;
         self.block_depth -= 1;
-        self.expect(T::RBrace, "`}` to close the block");
+        self.expect_token(T::RBrace, "`}` to close the block");
         Block {
             stmts,
             span: self.span_from(start),

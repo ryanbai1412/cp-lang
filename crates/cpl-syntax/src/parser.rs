@@ -430,7 +430,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Expects `kind`, described as `what` ("`)` to close the call").
-    fn expect(&mut self, kind: TokenKind, what: &str) -> bool {
+    fn expect_token(&mut self, kind: TokenKind, what: &str) -> bool {
         if self.eat(kind) {
             return true;
         }
@@ -573,7 +573,7 @@ impl<'a> Parser<'a> {
 
     fn close_list(&mut self, close: TokenKind, what: &str) {
         let expected = format!("{} to close {what}", close.describe());
-        self.expect(close, &expected);
+        self.expect_token(close, &expected);
     }
 
     /// Reports `span` as planned syntax. The parser has read it, so it is

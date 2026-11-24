@@ -8,7 +8,7 @@ impl<'a> Parser<'a> {
     pub(super) fn paren_generator(&mut self, start: u32) -> Expr {
         self.clauses();
         let close = self.span();
-        self.expect(T::RParen, "`)` to close the parenthesis");
+        self.expect_token(T::RParen, "`)` to close the parenthesis");
         let abs = |at: u32| (at as i64 - self.delta) as usize;
         let inner = self.src[abs(start) + 1..abs(close.start)]
             .trim()

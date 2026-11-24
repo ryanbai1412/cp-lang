@@ -10,7 +10,7 @@ impl<'a> Parser<'a> {
         while self.eat(T::For) {
             loop {
                 let pat = self.pattern();
-                self.expect(T::In, "`in` after the comprehension variable");
+                self.expect_token(T::In, "`in` after the comprehension variable");
                 // Stop before `if`, which here is the filter.
                 let iter = if self.at(T::Question) {
                     self.optional_type_iter()
@@ -76,7 +76,7 @@ impl<'a> Parser<'a> {
     pub(super) fn let_guard(&mut self) -> Cond {
         self.bump();
         let pat = self.pattern();
-        self.expect(T::Eq, "`=` after the pattern in `if let`");
+        self.expect_token(T::Eq, "`=` after the pattern in `if let`");
         let value = self.not();
         let and = if self.eat(T::And) || self.c_and() {
             Some(Box::new(if self.at(T::Let) {

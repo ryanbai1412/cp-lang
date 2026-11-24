@@ -58,7 +58,7 @@ impl<'a> Parser<'a> {
             if !matches!(len.kind, TypeKind::Range { .. } | TypeKind::Error) {
                 self.error(msgs::syntax::STR_LEN_RANGE.error(len.span, &[]));
             }
-            self.expect(T::RParen, "`)` after the length");
+            self.expect_token(T::RParen, "`)` after the length");
             Box::new(len)
         });
         let alphabet = (self.at_ident("of") && self.peek_n(1) == T::Str).then(|| {
@@ -124,7 +124,7 @@ impl<'a> Parser<'a> {
                 if self.at(T::Domain) {
                     self.bump();
                     let name = self.expect_name("a domain name after `domain`");
-                    self.expect(T::RBracket, "`]` after the domain name");
+                    self.expect_token(T::RBracket, "`]` after the domain name");
                     TypeKind::OwnDomain {
                         name,
                         elem: Box::new(self.ty()),
@@ -175,7 +175,7 @@ impl<'a> Parser<'a> {
                     self.pos = after_group(self.tokens, self.pos);
                     let span = self.span_from(read);
                     self.planned(span, &crate::planned::READ_LENGTH);
-                    self.expect(T::RBracket, "`]` after the index");
+                    self.expect_token(T::RBracket, "`]` after the index");
                     TypeKind::Array {
                         index: vec![Type {
                             kind: TypeKind::Error,
@@ -193,7 +193,7 @@ impl<'a> Parser<'a> {
                     // `[(A, B)]T`: product index space, identical to `[A, B]T`.
                     self.bump();
                     let index = self.comma_list(T::RParen, "the product index", Self::index_ty);
-                    self.expect(T::RBracket, "`]` after the index");
+                    self.expect_token(T::RBracket, "`]` after the index");
                     TypeKind::Array {
                         index,
                         elem: Box::new(self.ty()),
@@ -247,12 +247,15 @@ impl<'a> Parser<'a> {
                     let mut removed = Vec::new();
                     if self.at_ident("without") {
                         self.bump();
-                        self.expect(T::LParen, "`(` and the removed field names after `without`");
+                        self.expect_token(
+                            T::LParen,
+                            "`(` and the removed field names after `without`",
+                        );
                         removed = self.comma_list(T::RParen, "the removed fields", |p| {
                             p.expect_name("a field name")
                         });
                     }
-                    self.expect(T::RParen, "`)`");
+                    self.expect_token(T::RParen, "`)`");
                     TypeKind::RowWithout {
                         prefix: Vec::new(),
                         base,
@@ -334,7 +337,7 @@ impl<'a> Parser<'a> {
                                 let mut removed = Vec::new();
                                 if self.at_ident("without") {
                                     self.bump();
-                                    self.expect(
+                                    self.expect_token(
                                         T::LParen,
                                         "`(` and the removed field names after `without`",
                                     );
@@ -348,13 +351,13 @@ impl<'a> Parser<'a> {
                             break;
                         }
                         let name = self.expect_name("a field name");
-                        self.expect(T::Colon, "`:` after the field name");
+                        self.expect_token(T::Colon, "`:` after the field name");
                         fields.push((name, self.ty()));
                         if !self.eat(T::Comma) {
                             break;
                         }
                     }
-                    self.expect(T::RParen, "`)`");
+                    self.expect_token(T::RParen, "`)`");
                     if let Some((base, removed)) = spread {
                         TypeKind::RowWithout {
                             prefix: fields,
@@ -386,7 +389,7 @@ impl<'a> Parser<'a> {
             }
             T::Fn => {
                 self.bump();
-                self.expect(T::LParen, "`(` after `fn` in a fn type");
+                self.expect_token(T::LParen, "`(` after `fn` in a fn type");
                 let params = self.comma_list(T::RParen, "the fn type", Self::ty);
                 let ret = if self.eat(T::Arrow) {
                     self.ty()
@@ -457,7 +460,7 @@ impl<'a> Parser<'a> {
                     let arg_start = self.start();
                     let mod_expr = self.expr();
                     let arg_span = self.span_from(arg_start);
-                    self.expect(T::RParen, "`)` after the modulus");
+                    self.expect_token(T::RParen, "`)` after the modulus");
                     args.push(Type {
                         kind: TypeKind::Value(Box::new(mod_expr)),
                         span: arg_span,
@@ -893,7 +896,7 @@ impl<'a> Parser<'a> {
         self.bump();
         loop {
             let name = self.expect_name("a type parameter name after `where`");
-            self.expect(T::Colon, "`:` and the traits the type must have");
+            self.expect_token(T::Colon, "`:` and the traits the type must have");
             let traits = self.bound_traits();
             bounds.push(Bound { name, traits });
             if !self.eat(T::Comma) {

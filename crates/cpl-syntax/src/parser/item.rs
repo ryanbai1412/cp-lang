@@ -402,7 +402,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        self.expect(T::RParen, "`)` to close the parameter list");
+        self.expect_token(T::RParen, "`)` to close the parameter list");
         out
     }
 
@@ -461,7 +461,7 @@ impl<'a> Parser<'a> {
     /// `member`, one per line, and returns the methods among them.
     pub(super) fn members(&mut self, after: &str, mut member: impl FnMut(&mut Self)) -> Vec<Stmt> {
         let mut methods = Vec::new();
-        if !self.expect(T::Colon, &format!("`:` after {after}"))
+        if !self.expect_token(T::Colon, &format!("`:` after {after}"))
             && !(self.at(T::Newline) && self.peek_n(1) == T::Indent)
         {
             self.skip_line();
@@ -554,7 +554,7 @@ impl<'a> Parser<'a> {
             fields = self.comma_list(T::RParen, "the struct's fields", |p| {
                 let public = p.eat(T::Pub);
                 let name = p.expect_name("a field name");
-                p.expect(T::Colon, "`:` and the field's type");
+                p.expect_token(T::Colon, "`:` and the field's type");
                 let ty = p.ty();
                 let default = p.eat(T::Eq).then(|| p.expr());
                 FieldDecl {
@@ -585,7 +585,7 @@ impl<'a> Parser<'a> {
                 while self.eat(T::Comma) {
                     names.push(self.expect_name("a field name"));
                 }
-                self.expect(T::Colon, "`:` and the field's type");
+                self.expect_token(T::Colon, "`:` and the field's type");
                 let ty = self.ty();
                 let default = self.eat(T::Eq).then(|| self.expr());
                 for name in names {
@@ -643,7 +643,7 @@ impl<'a> Parser<'a> {
                     span: names[0].span,
                 }
             } else {
-                p.expect(T::Colon, "`:` and the field's type");
+                p.expect_token(T::Colon, "`:` and the field's type");
                 p.ty()
             };
             let default = p.eat(T::Eq).then(|| p.expr());
@@ -738,9 +738,9 @@ impl<'a> Parser<'a> {
         let tag = if self.at(T::At) && self.peek_n(1) == T::Ident {
             self.bump();
             self.bump();
-            self.expect(T::LParen, "`(` after `@tag`");
+            self.expect_token(T::LParen, "`(` after `@tag`");
             let tag = self.expr();
-            self.expect(T::RParen, "`)` after the tag");
+            self.expect_token(T::RParen, "`)` after the tag");
             Some(tag)
         } else {
             None
@@ -797,7 +797,7 @@ impl<'a> Parser<'a> {
             };
             return StmtKind::Domain { name, def };
         }
-        self.expect(
+        self.expect_token(
             T::Eq,
             "`=` and the domain's range, as in `domain V = 1..=n`",
         );
@@ -853,7 +853,7 @@ impl<'a> Parser<'a> {
                 bounds,
             };
         }
-        self.expect(T::Eq, "`=` and the type this names");
+        self.expect_token(T::Eq, "`=` and the type this names");
         let ty = self.ty();
         StmtKind::TypeAlias {
             name,
@@ -878,7 +878,7 @@ impl<'a> Parser<'a> {
                 name.text = format!("{}.{}", name.text, part.text);
             }
             name.span = self.span_from(start);
-            self.expect(T::Colon, "`:` and the traits the type must have");
+            self.expect_token(T::Colon, "`:` and the traits the type must have");
             let traits = self.bound_traits();
             bounds.push(Bound { name, traits });
             if !self.eat(T::Comma) {
@@ -931,7 +931,7 @@ impl<'a> Parser<'a> {
             loop {
                 let fstart = self.start();
                 let fname = self.expect_name("a trait field name");
-                self.expect(T::Colon, "`:` and the field's type");
+                self.expect_token(T::Colon, "`:` and the field's type");
                 let fty = self.ty();
                 let fspan = self.span_from(fstart);
                 stmts.push(Stmt {
