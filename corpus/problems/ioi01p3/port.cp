@@ -14,43 +14,43 @@ let kind: Char = read()
 
 // A grid is valid when letters A..Y, placed in order, always extend a
 // staircase: row r may grow only while it stays shorter than row r - 1.
-// A staircase is five row lengths, packed base 6. cell_of[letter] pins a
-// letter to one cell (-1 = free); ways(key) counts the valid completions.
-var cell_of: [0..25]Int = -1
-var memo: [0..7776]Int = -1
+// A staircase is five row lengths, packed base 6; ways(key) counts the valid
+// completions while cell_of pins chosen letters to their cells.
+domain Letter = 0..25
+domain Cell = 0..25
+domain Key = 0..7776
+var cell_of: [Letter]?Cell = None
+var memo: [Key]?Int = None
 let weight: List<Int> = [1296, 216, 36, 6, 1]  // weight[r]: one more cell in row r
-fn ways(key: Int) -> Int:
-    if key == 7775: return 1
-    if memo[key] != -1: return memo[key]
-    var len: List<Int> = []
-    var placed = 0
-    for r in 0..5:
-        len.push(key / weight[r] % 6)
-        placed += len[r]
+fn ways(key: Key) -> Int:
+    if key == Key.last!: return 1
+    if let known = memo[key]: return known
+    let len = [key.ord / weight[r] % 6 for r in 0..5]
+    let next = Letter.nth(len.sum())
     var total = 0
     for r in 0..5:
         if len[r] < 5 and (r == 0 or len[r - 1] > len[r]):
-            let cell = r * 5 + len[r]
-            if cell_of[placed] == -1 or cell_of[placed] == cell:
-                total += ways(key + weight[r])
+            let cell = Cell.nth(r * 5 + len[r])
+            if (cell_of[next] ?? cell) == cell: total += ways(Key.nth(key.ord + weight[r]))
     memo[key] = total
     total
 
 fn completions() -> Int:
-    for key in 0..7776: memo[key] = -1
-    ways(0)
+    for key in Key: memo[key] = None
+    ways(Key.first!)
 
-var used: [0..25]Bool = false
+var used: [Letter]Bool = false
 if kind == 'W':
-    let word: [0..25]Char = read()
+    let word: [Cell]Char = read()
     var rank = 1
-    for cell in 0..25:
-        let letter = word[cell] - 'A'
-        for smaller in 0..letter:
+    for cell in Cell:
+        let letter = Letter.nth(word[cell] - 'A')
+        for smaller in Letter:
+            if smaller == letter: break
             if not used[smaller]:
                 cell_of[smaller] = cell
                 rank += completions()
-                cell_of[smaller] = -1
+                cell_of[smaller] = None
         cell_of[letter] = cell
         used[letter] = true
     print(rank)
@@ -58,15 +58,15 @@ else:
     let rank: Int = read()
     var skip = rank - 1
     var word: List<Char> = []
-    for cell in 0..25:
-        for letter in 0..25:
+    for cell in Cell:
+        for letter in Letter:
             if used[letter]: continue
             cell_of[letter] = cell
             let here = completions()
             if skip < here:
                 used[letter] = true
-                word.push('A' + letter)
+                word.push('A' + letter.ord)
                 break
             skip -= here
-            cell_of[letter] = -1
+            cell_of[letter] = None
     print(word)

@@ -21,19 +21,13 @@ if s <= c:
     while l < r:
         if shots.len % period < s:
             shots.push(r)
-            if r - l + 1 == 2:
-                l = max(1, l - 1)
-                r = l
-            else:
-                l = max(1, l - 1)
-                r -= 2
+            let pair = r - l + 1 == 2
+            l = max(1, l - 1)
+            r = if pair: l else: r - 2
         else:
             shots.push(l + 1)
-            if r - l + 1 == 2:
-                l += 1
-            else:
-                l += 1
-                r -= 1
+            if r - l + 1 > 2: r -= 1
+            l += 1
     if l == r: shots.push(l)
 else:
     // two windows, one per half, each squeezed against its wall
