@@ -26,7 +26,14 @@ for i in Pos.rev:
 fn clash(i: Pos, j: Pos) -> Bool:
     if j < i: return clash(j, i)
     if let low = later[j]: a[i] < a[j] and low < a[i] else: false
-let apart = [Pos] i => [j for j in Pos if i != j and clash(i, j)]
+var sides = ParityDsu<Pos>()
+for i in Pos:
+    for j in Pos if i < j and clash(i, j): sides.unite(i, j)
+// the earliest position of each component leads it
+var lead: [Pos]?Pos = None
+for i in Pos:
+    let r = sides.find(i).root
+    if lead[r] == None: lead[r] = i
 
 var (stack1, stack2) = (List<Int>(), List<Int>())
 var script: List<Char> = []
@@ -43,11 +50,11 @@ fn pop_due():
         else: return
         need += 1
 
-// the earliest position of every component colours `false`: stack 1, the cheaper letters
-if let second = two_color(apart):
+// the earliest position of every component goes on stack 1, the cheaper letters
+if sides.consistent:
     for i in Pos:
         pop_due()
-        if second[i]:
+        if sides.diff(lead[sides.find(i).root]!, i)!:
             stack2.push(a[i])
             script.push('c')
         else:
