@@ -2574,6 +2574,139 @@ pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -
         return Some((keys[i], keys[j]))
     None
 
+// ---- points draining out of rectangles
+
+/// A fixed set of integer points, each named by its index in the list it was built from, where
+/// `drain(x, y)` removes and returns every point still in the half-open rectangle `x * y`.
+///
+/// The points sit in a segment tree over `x` whose nodes keep their points sorted by `y`, and each
+/// node skips removed points with path-compressed next pointers. A point is passed over at most
+/// once per node it sits in, so any run of drains costs \(O((n + q) \log^2 n + k)\) for `q` drains
+/// returning `k` points in all. This answers "settle every unreached point of a rectangle" in a
+/// Dijkstra or BFS where an edge reaches a whole rectangle.
+pub struct PointSet:
+    xs: List<Int>
+    ys: List<Int>
+    ids: List<Int>
+    nxt: List<Int>
+    lo: List<Int>
+    hi: List<Int>
+    size: Int
+    alive: List<Bool>
+    live: Int
+
+    /// Build the set holding every point of `pts`; point `i` is `pts[i]`.
+    ///
+    /// cost: \(O(n \log n)\) time and memory
+    /// empty: an empty `pts` gives an empty set; every `drain` is `[]`
+    /// traps: never
+    /// example: `PointSet.of([Pt(1, 1), Pt(2, 5)]).len == 2`
+    pub fn of(pts: List<Pt>) -> PointSet:
+        let n = pts.len
+        var order = List(0..n)
+        order.sort(by: i => (pts[i].x, pts[i].y))
+        var size = 1
+        while size < n: size *= 2
+        var lists: List<List<Int>> = [[] for _ in 0..2 * size]
+        for k in 0..n: lists[size + k] = [order[k]]
+        for v in (1..size).rev:
+            let (a, b) = (lists[2 * v], lists[2 * v + 1])
+            var m: List<Int> = []
+            var (i, j) = (0, 0)
+            while i < a.len or j < b.len:
+                if j == b.len or (i < a.len and pts[a[i]].y <= pts[b[j]].y):
+                    m.push(a[i])
+                    i += 1
+                else:
+                    m.push(b[j])
+                    j += 1
+            lists[v] = m
+        var ys: List<Int> = []
+        var ids: List<Int> = []
+        var nxt: List<Int> = []
+        var lo = List.filled(2 * size, 0)
+        var hi = List.filled(2 * size, 0)
+        for u in 1..2 * size:
+            lo[u] = ids.len
+            for id in lists[u]:
+                nxt.push(ids.len)
+                ys.push(pts[id].y)
+                ids.push(id)
+            hi[u] = ids.len
+            nxt.push(ids.len)
+            ys.push(0)
+            ids.push(-1)
+        PointSet([pts[order[k]].x for k in 0..n], ys, ids, nxt, lo, hi, size, List.filled(n, true), n)
+
+    /// The number of points not yet removed or drained.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5)]); let _ = s.remove(0); s.len == 1`
+    @get pub fn len(self) -> Int = live
+
+    /// Whether point `i` is still in the set.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `i` is not an index of the built list
+    /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5)]); let _ = s.drain(0..2, 0..2); s.contains(0) == false and s.contains(1)`
+    pub fn contains(self, i: Int) -> Bool = alive[i]
+
+    /// Remove point `i`; `false` when it was already gone.
+    ///
+    /// cost: \(O(1)\); later drains pass over it once per node it sits in
+    /// traps: when `i` is not an index of the built list
+    /// example: `var s = PointSet.of([Pt(1, 1)]); s.remove(0) and not s.remove(0)`
+    pub fn remove(mut self, i: Int) -> Bool:
+        if not alive[i]: return false
+        alive[i] = false
+        live -= 1
+        true
+
+    fn find(mut self, j: Int) -> Int:
+        var r = j
+        while nxt[r] != r: r = nxt[r]
+        var k = j
+        while nxt[k] != r:
+            let t = nxt[k]
+            nxt[k] = r
+            k = t
+        r
+
+    fn take(mut self, v: Int, y: Range<Int>, mut out: List<Int>):
+        var j = self.find((lo[v]..hi[v]).first_true(s => ys[s] >= y.start) ?? hi[v])
+        while j < hi[v] and ys[j] < y.end:
+            let id = ids[j]
+            if alive[id]:
+                alive[id] = false
+                live -= 1
+                out.push(id)
+            nxt[j] = j + 1
+            j = self.find(j + 1)
+
+    /// Remove and return every point still in the half-open rectangle `x * y`, by index.
+    ///
+    /// cost: \(O(\log^2 n + k)\) amortized for `k` points returned
+    /// empty: `[]` when no point is left in the rectangle
+    /// order: by `y` within each of \(O(\log n)\) blocks of `x`; sort the result for a fixed order
+    /// traps: never
+    /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3), Pt(4, 4)]); s.drain(2..5, 2..5).sorted() == [2, 3] and s.drain(2..5, 2..5) == []`
+    pub fn drain(mut self, x: Range<Int>, y: Range<Int>) -> List<Int>:
+        var out: List<Int> = []
+        let n = xs.len
+        var a = size + ((0..n).first_true(k => xs[k] >= x.start) ?? n)
+        var b = size + ((0..n).first_true(k => xs[k] >= x.end) ?? n)
+        while a < b:
+            if a % 2 == 1:
+                self.take(a, y, mut out)
+                a += 1
+            if b % 2 == 1:
+                b -= 1
+                self.take(b, y, mut out)
+            a /= 2
+            b /= 2
+        out
+
 // ---- axis-aligned rectangles, planar subdivisions, and Delaunay / Voronoi
 
 /// \(O(1)\) value type. Half-open integer rectangle `x * y` (accepts cut ranges per decision 124).

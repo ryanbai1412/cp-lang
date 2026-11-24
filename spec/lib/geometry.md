@@ -573,7 +573,7 @@ Audit against AtCoder Library (which omits geometry), KACTL (`content/geometry/`
 | 30 | Exact Delaunay triangulation & Voronoi cells | **new** | `delaunay<D>`, `voronoi_cells<D>` |
 | 31 | 3D floating-point vectors, planes, polyhedron volume & spherical distance | **new** | `Vec3`, `Plane3`, `line_plane_intersect`, `sphere_dist`, `polyhedron_volume6` |
 | 32 | 1D convex hull trick / `LineContainer` / `LiChao` | **out** | Owned by `std.dp` (4.16): 1D linear envelopes `k*x + m` are DP optimizations, not 2D geometry. |
-| 33 | KD-tree / 2D orthogonal range tree | **out** | Problem-specific pruning and monoids belong in `std.ranges` or user code; static 2D sums are `Prefix<R, C, T>` / `Fenwick2D`. |
+| 33 | KD-tree / 2D orthogonal range tree | **out** | Problem-specific pruning and monoids belong in `std.ranges` or user code; static 2D sums are `Prefix<R, C, T>` / `Fenwick2D`; removing every point of a rectangle is `PointSet` (42). |
 | 34 | General non-convex polygon boolean ops (union/diff/intersection) | **out** | Rare in contests and edge-case heavy; `polygon_cut`, `convex_polygon_intersect`, `circles_union_area`, and `rects_union_area` cover contest needs. |
 | 35 | General 3D mesh boolean ops / CSG / 3D half-space intersection | **out** | Virtually absent from contests; `convex_hull_3d`, `Plane3`, and `polyhedron_volume6` cover 3D contest geometry. |
 | 36 | Exact homogeneous / rational points (`Hom(x, y, w)`) | **out** | Specialized to exact line-arrangement graphs; belongs in `std.math` (`Frac`) or `examples/local-lib/` rather than duplicating every 2D primitive. |
@@ -582,8 +582,9 @@ Audit against AtCoder Library (which omits geometry), KACTL (`content/geometry/`
 | 39 | Ellipses, Bezier curves, and general conics | **out** | Rare in contests; affine scaling reduces ellipses to circles and ternary search handles general smooth curves. |
 | 40 | 3D dynamic convex hull / 3D Delaunay / 3D Voronoi | **out** | Outside standard contest scope; \(O(n^2)\) static `convex_hull_3d` suffices. |
 | 41 | Sub-polygon chord-area prefix structure | **out** | Two lines composing `Prefix<D, Int>` over `cross(poly[i], poly[i.next])`; no standalone type needed. |
+| 42 | Draining the points of a rectangle (an edge to every point of `[L,R) x [D,U)` in a shortest path) | **new** | `PointSet.of(pts)`, `remove(i)`, `drain(x, y)`: amortized \(O(\log^2 n + k)\) |
 
-Totals: **16 have**, **15 new**, **10 out** (41 topics).
+Totals: **16 have**, **16 new**, **10 out** (42 topics).
 
 ## Cross-area
 
