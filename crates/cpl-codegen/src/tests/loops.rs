@@ -110,3 +110,18 @@ fn a_grid_read_and_written_at_product_positions_indexes_the_cell_by_ordinal() {
         "no position is taken apart: {out}"
     );
 }
+
+#[test]
+fn a_callback_loop_that_never_reads_its_item_marks_it_unused() {
+    // `deg` counts the arcs `out` yields; g++ -Wextra must stay quiet.
+    let out = cpp(concat!(
+        "let n: Int = read()\n",
+        "domain V = 0..n\n",
+        "let es: [V](u: V, v: V) = [(u: v, v: V((v.ord + 1) % n)) for v in V]\n",
+        "print(Graph.undirected(es).only(keep: v => v.ord != 1).deg(V(0)))\n",
+    ));
+    assert!(
+        out.contains("[&]([[maybe_unused]] const std::tuple<"),
+        "{out}"
+    );
+}

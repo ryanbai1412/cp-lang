@@ -486,6 +486,15 @@ impl<'p> Emitter<'p> {
                         } else {
                             (format!("const {cpp}& {var}"), &first)
                         };
+                    let mut read = !pushed_first.is_empty();
+                    crate::walk::deep_exprs(body, &mut |e| {
+                        read |= matches!(e.kind, ExprKind::Local(s) if s == slot)
+                    });
+                    let decl = if read {
+                        decl
+                    } else {
+                        format!("[[maybe_unused]] {decl}")
+                    };
                     if self.pushed_loop(id, &decl, pushed_first, seq, body, out) {
                         return;
                     }
