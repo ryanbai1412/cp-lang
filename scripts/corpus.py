@@ -970,9 +970,13 @@ def seed_toml(pkg, inputs):
 
 
 def committed_inputs(pkg):
-    """The committed tests/ inputs: `*.in`, or an interactive package's `*.case`, samples first."""
+    """The committed tests/ inputs, samples first: `*.in`, but an interactive
+    package's `*.case` where it has them, since its `*.in` is then the reply
+    transcript the interactor writes, not data the interactor can read."""
     d = pkg.dir / "tests"
     files = [f for f in d.iterdir() if f.suffix in (".in", ".case")] if d.is_dir() else []
+    if pkg.interactor and any(f.suffix == ".case" for f in files):
+        files = [f for f in files if f.suffix == ".case"]
     order = lambda f: (not f.stem.startswith("sample"), int(re.sub(r"\D", "", f.stem) or 0), f.name)
     return [(f.name, f.read_text()) for f in sorted(files, key=order)]
 
@@ -1187,7 +1191,8 @@ def cli(argv):
     ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")
     ls.add_argument("ids", nargs="*")
     ls.add_argument("--set", action="append")
-    ls.add_argument("--file", help="a package file such as port.cp; packages without it are left out")
+    ls.add_argument("--file", action="append",
+                    help="a package file such as port.cp, or a glob such as '*.cp'; repeatable; packages without one are left out")
     g = sub.add_parser("gaps")
     g.add_argument("paths", nargs="*")
     g.add_argument("--json", action="store_true")
@@ -1210,8 +1215,8 @@ def cli(argv):
 def ls_mode(args):
     """The one corpus listing other languages' tools read: one path per line."""
     for pkg in problems(args.set, args.ids):
-        path = pkg.dir / args.file if args.file else pkg.dir
-        if path.exists():
+        paths = sorted({f for leaf in args.file for f in pkg.dir.glob(leaf) if f.is_file()}) if args.file else [pkg.dir]
+        for path in paths:
             print(os.path.relpath(path, ROOT))
     return 0
 

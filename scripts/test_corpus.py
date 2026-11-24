@@ -205,9 +205,10 @@ class CompareTest(unittest.TestCase):
 class LsTest(Corpus):
     def test_lists_dirs_or_one_file_per_package(self):
         self.package("p1", port_cp="")
-        self.package("p2")
+        self.package("p2", dream_cp="", gen_py="")
         for argv, want in ((["ls"], ["p1", "p2"]), (["ls", "--file", "port.cp"], ["p1/port.cp"]),
-                           (["ls", "--set", "small"], ["p2"])):
+                           (["ls", "--set", "small"], ["p2"]),
+                           (["ls", "--file", "*.cp", "--file", "gen.py"], ["p1/port.cp", "p2/dream.cp", "p2/gen.py"])):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 self.assertEqual(corpus.cli(argv), 0)
@@ -240,6 +241,21 @@ class CheckTestsTest(Corpus):
     def test_no_cases_is_a_finding(self):
         found, *_ = self.run_tests("cpl-test-no-cases")
         self.assertEqual(found, ["cpl-test-no-cases p -"])
+
+
+class CommittedInputsTest(Corpus):
+    def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
+        d = self.package("p", port_cp="", interactor_py="")
+        (d / "tests").mkdir()
+        for name, text in (("01.case", "data"), ("01.in", "replies"), ("01.ans", "")):
+            (d / "tests" / name).write_text(text)
+        self.assertEqual(corpus.committed_inputs(corpus.Package.at(d)), [("01.case", "data")])
+
+    def test_a_plain_package_seeds_from_its_inputs(self):
+        d = self.package("p", port_cp="")
+        (d / "tests").mkdir()
+        (d / "tests" / "01.in").write_text("1")
+        self.assertEqual(corpus.committed_inputs(corpus.Package.at(d)), [("01.in", "1")])
 
 
 class InteractedTest(Corpus):
