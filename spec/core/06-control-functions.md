@@ -326,6 +326,8 @@ library or by this spec:
   can't state (one that reads types or proven facts, or spans more than one
   block). The `rust_idiom_lints` counter in `scripts/debt-ratchet.py`
   counts the rest and is held at 0 (decision 512). (R06.4.10)
+  A site whose name for a variable `to` declares is a name `to` reads
+  (`let first = first(..)`) keeps the finding with no fix.
 
 User libraries declare their own decorators as ordinary generic
 functions over function types, and their own tool roles with `marker`

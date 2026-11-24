@@ -932,7 +932,22 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             {
                 continue;
             }
-            if !commented && d.lint.no_fix.is_none() && !d.decl.advice {
+            // A name `to` declares, spelled as a name `to` reads, would
+            // read itself: such a site keeps the finding with no fix.
+            let word = |t: &Token| &d.decl.to[t.span.start as usize..t.span.end as usize];
+            let shadows = (to.windows(2))
+                .filter(|w| matches!(w[0].kind, K::Let | K::Var) && w[1].kind == K::Ident)
+                .filter_map(|w| names.iter().find(|(p, _)| p == word(&w[1])))
+                .any(|(_, user)| {
+                    (to.iter().enumerate()).any(|(i, t)| {
+                        t.kind == K::Ident
+                            && word(t) == user
+                            && (i == 0 || to[i - 1].kind != K::Dot)
+                            && !names.iter().any(|(p, _)| p == user)
+                            && !d.decl.holes.iter().any(|h| h == user)
+                    })
+                });
+            if !commented && !shadows && d.lint.no_fix.is_none() && !d.decl.advice {
                 diag = fixed;
             }
             taken.push(span);
