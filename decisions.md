@@ -9124,7 +9124,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** `laws_hold(+, xs)`, `use_op(max)` and `SegTree(max, xs)` reached std bodies with the op's type silently unknown (the checker) or `()` (the IR, which could not call it), so std could not own them without a compiler intercept. One literal-style default keeps every such op value typed by the ordinary rule.
 - **Reverse.** Drop `lambda_defaults` (cpl-check `check/lambda.rs`), the open-param fallback in cpl-ir `lower/mono/gen_call.rs`, the `open_takes_int` pass in `lower/fn_impl.rs`, and make `GenArg::Op` resolve to `()` again in `lower/resolve_ty.rs`.
 
-## 593. (reserved, compiler)
+## 593. `Eq` and `Ord` take `Rhs = Self`; two sequences compare by one std impl over `Seq` (compiler, 2026-11-24)
+
+- **Call.** `Eq<Rhs = Self>` and `Ord<Rhs = Self>` take the right side's type the way `Add`..`Rem` do, through the same operator trait-argument path in the checker and lowering. Every existing `impl Eq for X` is `Eq<X>`, unchanged. std/seq.cp has one walk-order impl, `Eq<R>`/`Ord<R>` for any `S: Seq<T>` with `R: Seq<T>`, which walks both sides in lockstep (R07.4.2), so `a.filter(p) == b`, `a.map(f) < b.rev` and `xs == ys` type-check and run the same on the VM and in C++. When both sides are contiguous (a list, a slice, a string) codegen picks the existing contiguous compare from the representation, not from a type name, so list-to-list code is unchanged. `cpl explain` gives a lockstep compare as O(n). A mixed comparison with no impl, such as `1 == "a"`, is still E0606 with the same message.
+- **Why.** "Small core, no privileged stdlib": `Mapped`, `Filtered` and `Stepped` are std structs, and the checker's rule that `==` needs `Eq` on the left type alone rejected `a.map(f) == b`, which R07.4.2 promises. Materializing one side to a list would hide an O(n) copy ("costs are visible"), and a checker exception for sequences would be a second operator path.
+- **Reverse.** Drop `Rhs` from `Eq` and `Ord` and the std impl over `Seq`, and coerce both sides of a sequence comparison to a list by walking them.
 
 ## 594. (reserved, compiler)
 

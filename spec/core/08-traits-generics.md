@@ -65,7 +65,12 @@ impl Ord for Frac:
   override the trait method instead (decision 486). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,
-  `Show`, `Read`, `Unwrap`). Compound assignment comes from the
+  `Show`, `Read`, `Unwrap`). `Eq<Rhs = Self>` and `Ord<Rhs = Self>` take
+  the right side's type the way `Add` does, so `impl Eq for X` is
+  `Eq<X>` and `a == b` with `b` of another type needs an
+  `impl Eq<B> for A` (no other mixed comparison type-checks: `1 == "a"`
+  is E0606). std's one walk-order impl over `Seq` is how a view and a
+  list compare (R07.4.2). Compound assignment comes from the
   operator. (R08.1.5)
 - **Derived impls are structural**: tuples, records, structs and enums
   get `Eq`, `Ord` (lexicographic in declaration order, variants in
