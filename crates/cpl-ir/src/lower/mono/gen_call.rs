@@ -16,6 +16,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let (hint, want) = std::mem::take(&mut self.call_hint);
+        let owner_ranges = std::mem::take(&mut self.owner_ranges);
         let tpl_mod = self.gen_fns[gfid].mod_id;
         let tpl_offset = self.gen_fns[gfid].offset;
         let owner_env = self.gen_fns[gfid].owner_env.clone();
@@ -854,7 +855,7 @@ impl<'a> Lowerer<'a> {
         if let Some(e) = self.growing_call(gfid, &decl.name.text, span) {
             return e;
         }
-        let range_ends: Vec<(String, GenArg)> = gen_names
+        let mut range_ends: Vec<(String, GenArg)> = gen_names
             .iter()
             .filter_map(|g| {
                 let key = mono::range_ends_marker(g);
@@ -862,6 +863,7 @@ impl<'a> Lowerer<'a> {
                 (inferred.get(g) == Some(&GenArg::Ty(Ty::Int))).then_some((key, ends))
             })
             .collect();
+        range_ends.extend(owner_ranges);
         let fn_id = self.instantiate_fn(
             gfid,
             final_args,

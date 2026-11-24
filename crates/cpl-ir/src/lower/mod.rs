@@ -808,6 +808,9 @@ struct Lowerer<'a> {
     /// The type wanted of the generic call being lowered, which fills a
     /// type parameter only its return type names: `let x: Int = gen(r)`.
     call_hint: (Option<Ty>, Option<lambda_infer::WantBound>),
+    /// The range ends of the owner struct's parameters for the generic method
+    /// call being lowered: `Monoid<T>.of(max)` with `T` a `1..=9` sees `T.MIN == 1`.
+    owner_ranges: Vec<(String, GenArg)>,
     self_struct: Option<StructId>,
     /// The trait fns a law being lowered names unqualified (`LawInfo::trait_fns`).
     law_fns: Vec<String>,
@@ -952,6 +955,7 @@ impl<'a> Lowerer<'a> {
             outer_cxs: Vec::new(),
             gen_env: HashMap::new(),
             call_hint: (None, None),
+            owner_ranges: Vec::new(),
             self_struct: None,
             law_fns: Vec::new(),
             default_trait_fns: HashMap::new(),

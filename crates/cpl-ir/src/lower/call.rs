@@ -37,6 +37,24 @@ pub(super) enum Reduce {
 }
 
 impl<'a> Lowerer<'a> {
+    /// The range ends a struct's type arguments carry in this instance: a
+    /// written `T` that is an `Int` with known ends gives its parameter those
+    /// ends, without making the struct a type of its own.
+    fn written_ranges(&self, params: &[ast::Name], written: &[ast::Type]) -> Vec<(String, GenArg)> {
+        params
+            .iter()
+            .zip(written)
+            .filter_map(|(p, t)| {
+                let ast::TypeKind::Named { name, .. } = &t.kind else {
+                    return None;
+                };
+                let ends = self.gen_env.get(&mono::range_ends_marker(&name.text))?;
+                (self.gen_env.get(&name.text) == Some(&GenArg::Ty(Ty::Int)))
+                    .then(|| (mono::range_ends_marker(&p.text), ends.clone()))
+            })
+            .collect()
+    }
+
     /// `base.name(args)`.
     /// `G.m(..)` or `G<V>.m(..)` on a generic struct: the arguments not written
     /// (all of them, or the last ones) come from the hint, the call's
@@ -509,6 +527,7 @@ impl<'a> Lowerer<'a> {
                         return self.method_call(fn_id, None, args, span);
                     }
                     if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
+                        self.owner_ranges = self.written_ranges(&decl.generics, gtypes);
                         return self.call_gen_fn(gfid, Vec::new(), None, args, span);
                     }
                     if self.structs[sid].index_domain.is_some() {
