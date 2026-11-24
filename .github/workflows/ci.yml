@@ -523,6 +523,15 @@ jobs:
           path: target/corpus-tests
           key: corpus-tests-${{ steps.hour.outputs.hour }}
           restore-keys: corpus-tests-
+      # Cases the interpreter can't finish in 20 s, by content (scripts/corpus.py INTERP_SLOW).
+      - uses: actions/cache/restore@v4
+        if: ${{ !cancelled() }}
+        with:
+          path: target/interp-slow
+          key: interp-slow-${{ matrix.shard }}-${{ steps.hour.outputs.hour }}
+          restore-keys: |
+            interp-slow-${{ matrix.shard }}-
+            interp-slow-
       - name: The interpreter and the C++ agree on this shard's v03 ports
         # scripts/corpus.py verify: cpl test, interpreter vs C++ and size, with no known list.
         if: ${{ !cancelled() }}
@@ -530,6 +539,11 @@ jobs:
         run: |
           just corpus-tests-make --cpl target/ci/cpl --set v03 --shard ${{ matrix.shard }}/8 >/dev/null
           just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" --set v03 --shard ${{ matrix.shard }}/8
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() }}
+        with:
+          path: target/interp-slow
+          key: interp-slow-${{ matrix.shard }}-${{ steps.hour.outputs.hour }}
 
   corpus-audit:
     # handbook/guidelines/problem-packages-checklist.md R1-R4, compiling and

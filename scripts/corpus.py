@@ -831,12 +831,23 @@ def run_result(cmd, data):
     return r.returncode, r.stdout, r.stderr
 
 
+# A case the interpreter can't finish in TIMEOUT has no interpreter verdict.
+# Its content key lands here, so later runs skip it instead of spending the
+# TIMEOUT again; a changed port or case is a new key, run again.
+INTERP_SLOW = os.path.join(ROOT, "target", "interp-slow")
+SLOW = "interp-slow"
+
+
+def slow_key(port, data):
+    return hashlib.sha256(Path(port).read_bytes() + b"\0" + data).hexdigest()[:20]
+
+
 def compare(run, interp, cxx, data):
-    """Why `cpl run` and the port's C++ disagree on `data`, or None when they
-    agree or the interpreter times out. A C++ timeout is retried once."""
+    """Why `cpl run` and the port's C++ disagree on `data`, None when they
+    agree, or SLOW when the interpreter times out. A C++ timeout is retried once."""
     a = run(interp, data)
     if a is None:
-        return None
+        return SLOW
     b = run(cxx, data) or run(cxx, data)
     if b is None:
         return "c++ timed out twice"
@@ -865,8 +876,17 @@ def check_stress(pkg, ctx):
         return [f"no-build {pkg.id} -"]
     found = []
     for inp in generated(pkg):
-        why = compare(run_result, [ctx.cpl, "run", str(pkg.port)], [exe], inp.read_bytes())
-        if why:
+        data = inp.read_bytes()
+        memo = os.path.join(INTERP_SLOW, slow_key(pkg.port, data))
+        if os.path.exists(memo):
+            ctx.slow.append(f"{pkg.id} {inp.name}")
+            continue
+        why = compare(run_result, [ctx.cpl, "run", str(pkg.port)], [exe], data)
+        if why == SLOW:
+            os.makedirs(INTERP_SLOW, exist_ok=True)
+            Path(memo).write_text(f"{pkg.id} {inp.name}\n")
+            ctx.slow.append(f"{pkg.id} {inp.name}")
+        elif why:
             found.append(f"differ {pkg.id} {inp.name}: {why}")
     ref = pkg.reference()
     orig = built(ref) if ref else None
@@ -1148,6 +1168,7 @@ class Context:
     def __init__(self, cpl, run=True, named=()):
         self.named = set(named)
         self.cpl, self.run, self.natives, self._hill, self._tests = cpl, run, {}, None, None
+        self.slow = []
         self.run_ids = set_ids(RUN_SET) if os.path.exists(os.path.join(SETS, RUN_SET + ".txt")) else set()
 
     def runs(self, pkg):
@@ -1430,6 +1451,9 @@ def verify(args):
         return 2
     for f in found:
         print(f)
+    if ctx.slow:
+        print(f"corpus: {len(ctx.slow)} case(s) past the interpreter's {TIMEOUT} s have no interpreter verdict "
+              f"({INTERP_SLOW}): {', '.join(sorted(ctx.slow)[:8])}", file=sys.stderr)
     print(f"corpus: verified {len(wanted)} package(s) ({','.join(modes)}): {len(found)} finding(s)", file=sys.stderr)
     return 1 if found else 0
 

@@ -325,6 +325,28 @@ class CliTest(unittest.TestCase):
             self.assertIn(f"unrecognized arguments: {argv[1]}", err.getvalue())
 
 
+class InterpSlowTest(Corpus):
+    def test_a_case_past_the_interpreter_is_reported_and_then_skipped(self):
+        d = self.package("p", port_cp="print(1)\n")
+        case = self.root / "01.in"
+        case.write_text("1\n")
+        runs = []
+
+        def run_result(cmd, data):
+            runs.append(cmd[0])
+            return None if cmd[0] == "cpl" else (0, b"1\n", b"")
+        ctx = corpus.Context("cpl", named=["p"])
+        with mock.patch.object(corpus, "INTERP_SLOW", str(self.root / "slow")), \
+                mock.patch.object(corpus, "native", lambda pkg, ctx: ("exe", 1)), \
+                mock.patch.object(corpus, "generated", lambda pkg: [case]), \
+                mock.patch.object(corpus, "run_result", run_result):
+            pkg = corpus.Package.at(d)
+            self.assertEqual(corpus.check_stress(pkg, ctx), [])
+            self.assertEqual(corpus.check_stress(pkg, ctx), [])
+        self.assertEqual(runs, ["cpl"])
+        self.assertEqual(ctx.slow, ["p 01.in", "p 01.in"])
+
+
 class CompareTest(unittest.TestCase):
     def outcome(self, interp, *cxx):
         """`run` gives the interpreter's result, then each C++ result in turn."""
@@ -340,8 +362,8 @@ class CompareTest(unittest.TestCase):
     def test_two_cxx_timeouts_are_a_finding_that_says_so(self):
         self.assertEqual(self.outcome((0, b"1\n", b""), None, None), "c++ timed out twice")
 
-    def test_an_interp_timeout_is_skipped(self):
-        self.assertIsNone(self.outcome(None))
+    def test_an_interp_timeout_is_slow_not_agreement(self):
+        self.assertEqual(self.outcome(None), corpus.SLOW)
 
     def test_a_differ_names_both_exit_codes_and_the_first_differing_line(self):
         self.assertEqual(self.outcome((0, b"a\nb\n", b""), (0, b"a\nB\n", b"")),
