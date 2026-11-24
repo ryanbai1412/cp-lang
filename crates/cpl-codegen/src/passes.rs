@@ -205,6 +205,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_global_a_fn_writes_stays_a_global_and_the_rest_are_main_locals",
     ),
     pass(
+        "forward-call",
+        "forward.rs",
+        Uses(&["returned_param"]),
+        "a_call_to_a_fn_that_returns_its_param_is_that_argument",
+    ),
+    pass(
         "inline-list-call",
         "inline.rs",
         Types,
