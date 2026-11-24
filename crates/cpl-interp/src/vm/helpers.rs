@@ -629,6 +629,7 @@ pub(super) fn take_value(cell: &mut Value, span: Span) -> Res<Value> {
         Value::Str(_) => Value::Str(Rc::default()),
         Value::Map(_) => Value::Map(Rc::default()),
         Value::Set(_) => Value::Set(Rc::default()),
+        Value::Tuple(TupleVal::Boxed(_)) => Value::Moved,
         other => other.clone(),
     };
     Ok(std::mem::replace(cell, empty))
