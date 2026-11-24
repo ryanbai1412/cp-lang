@@ -16,7 +16,9 @@ python3 "$root/corpus/problems/cf2084g2/gen.py" 1 500000 > "$tmp/slope.in"
 # at `gen.py --max` against their accepted C++.
 python3 "$root/corpus/problems/atcoder_dp_l/gen.py" --max > "$tmp/interval_l.in"
 python3 "$root/corpus/problems/atcoder_dp_n/gen.py" --max > "$tmp/interval_n.in"
-for name in frog3 dnc knuth mono monge aliens slope interval_l interval_n; do
+# A `[Row, Col]Mod` table filled with Mod's zero: atcoder_dp_h's port at `gen.py --max`.
+python3 "$root/corpus/problems/atcoder_dp_h/gen.py" --max > "$tmp/grid_h.in"
+for name in frog3 dnc knuth mono monge aliens slope interval_l interval_n grid_h; do
     src="$root/bench/dp/$name.cp"; ref="$root/bench/dp/${name}_matched.cpp"
     if [ "$name" = slope ]; then src="$root/corpus/problems/cf2084g2/port.cp"; fi
     if [ "$name" = interval_l ]; then
@@ -24,6 +26,9 @@ for name in frog3 dnc knuth mono monge aliens slope interval_l interval_n; do
     fi
     if [ "$name" = interval_n ]; then
         src="$root/corpus/problems/atcoder_dp_n/port.cp"; ref="$root/corpus/submissions/4131779.cpp"
+    fi
+    if [ "$name" = grid_h ]; then
+        src="$root/corpus/problems/atcoder_dp_h/port.cp"; ref="$root/corpus/submissions/4131657.cpp"
     fi
     "$cpl" build "$src" -o "$tmp/${name}_cp.cpp" >/dev/null
     g++ -std=c++17 -O2 "$tmp/${name}_cp.cpp" -o "$tmp/${name}_cp"

@@ -126,6 +126,21 @@ fn every_runtime_piece_comes_after_the_pieces_it_needs() {
 }
 
 #[test]
+fn a_table_of_a_struct_whose_zero_is_zero_bytes_comes_from_calloc() {
+    // Mod's zero is `Mod(0 % P)`, every byte zero, so the grid skips its fill loop.
+    let grid = cpp(concat!(
+        "type Z = Mod<1_000_000_007>\nlet n: 1..=1000 = read()\ndomain R = 1..=n\n",
+        "var g: [R, R]Z = 0\ng[R.first!, R.first!] = 1\nprint(g[R.last!, R.last!])\n",
+    ));
+    assert!(grid.contains("cpl::zero_grid<Mod_"), "{grid}");
+    let one = cpp(concat!(
+        "type Z = Mod<1_000_000_007>\nlet n: 1..=1000 = read()\ndomain R = 1..=n\n",
+        "var g: [R, R]Z = 1\nprint(g[R.last!, R.last!])\n",
+    ));
+    assert!(!one.contains("zero_grid<"), "{one}");
+}
+
+#[test]
 fn a_zero_filled_table_comes_from_calloc() {
     // `vector(n, 0)` writes every page; calloc's pages stay unmapped until used.
     let out = cpp("var t: [80_000_000]0..=500 = 0\nt[7] = 3\nprint(t[7])\n");

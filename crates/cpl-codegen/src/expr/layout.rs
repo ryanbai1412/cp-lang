@@ -23,12 +23,9 @@ impl<'p> Emitter<'p> {
             ExprKind::RangeCheck { value, .. } => value,
             _ => v,
         });
-        let zero = match value.map(|v| &v.kind) {
-            None | Some(ExprKind::Int(0) | ExprKind::Bool(false) | ExprKind::Char(0)) => true,
-            Some(ExprKind::Float(f)) => f.to_bits() == 0,
-            _ => false,
-        };
-        let bytes: i64 = match cell_bytes(cell) {
+        let zero = value.is_none_or(|v| zero_bits(self.program, v, &[], 0));
+        let plain = cell_bytes(cell).or_else(|| value.and_then(|v| self.plain_bytes(&v.ty)));
+        let bytes: i64 = match plain {
             Some(b) => b,
             None => return false,
         };
@@ -320,6 +317,63 @@ impl<'p> Emitter<'p> {
 }
 
 /// The bytes of a number cell, which holds whatever bytes it is given.
+impl Emitter<'_> {
+    /// The bytes of a struct whose fields are all numbers, at any depth.
+    fn plain_bytes(&self, ty: &Ty) -> Option<i64> {
+        let Ty::Struct(s) = ty else {
+            return cell_bytes(&elem_ty(self.program, self.niches, ty));
+        };
+        let def = &self.program.structs[*s];
+        if !def.fixed.is_empty() || def.fields.is_empty() {
+            return None;
+        }
+        def.fields.iter().map(|(_, t)| self.plain_bytes(t)).sum()
+    }
+}
+
+/// `e` is a value whose every byte is zero: a zero number, a struct of them,
+/// or a call of a fn whose one expression makes one from zero arguments
+/// (`Mod(x % P)` for `x = 0`). `zeros` marks the locals known to be zero.
+fn zero_bits(program: &cpl_ir::Program, e: &Expr, zeros: &[bool], depth: usize) -> bool {
+    let zero = |x: &Expr| zero_bits(program, x, zeros, depth);
+    match &e.kind {
+        ExprKind::Int(0) | ExprKind::Bool(false) | ExprKind::Char(0) => true,
+        ExprKind::Float(f) => f.to_bits() == 0,
+        ExprKind::Local(s) => zeros.get(*s).copied().unwrap_or(false),
+        ExprKind::Cast(Cast::IntToFloat | Cast::IntToI128 | Cast::IntToU64, x) => zero(x),
+        ExprKind::Tuple(items) if matches!(e.ty, Ty::Struct(_)) => {
+            !items.is_empty() && items.iter().all(zero)
+        }
+        ExprKind::Binary(op, l, r) => match op {
+            BinOp::Mul | BinOp::BitAnd => zero(l) || zero(r),
+            BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor => zero(l) && zero(r),
+            BinOp::Div | BinOp::Rem => zero(l) && matches!(r.kind, ExprKind::Int(n) if n != 0),
+            BinOp::Shl | BinOp::Shr => zero(l),
+            _ => false,
+        },
+        ExprKind::Call(f, args) if depth < 4 => {
+            let callee = &program.fns[*f];
+            let [Stmt::Return(Some(body)) | Stmt::Give(body) | Stmt::Expr(body)] =
+                callee.body.stmts.as_slice()
+            else {
+                return false;
+            };
+            if args.len() != callee.params.len() {
+                return false;
+            }
+            let mut known = vec![false; callee.locals.len()];
+            for (slot, arg) in args.iter().enumerate() {
+                match arg {
+                    Arg::Value(v) => known[slot] = zero(v),
+                    _ => return false,
+                }
+            }
+            zero_bits(program, body, &known, depth + 1)
+        }
+        _ => false,
+    }
+}
+
 fn cell_bytes(cell: &str) -> Option<i64> {
     match cell.trim_start_matches('u') {
         "ll" | "double" | "int64_t" => Some(8),
