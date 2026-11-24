@@ -1,7 +1,8 @@
 import sys, random
+from fractions import Fraction
 # `seed size`: n <= size points (size >= 1e5 gives n = 1e5), distinct x and distinct y, m <= 20
 # nonzero slopes, distinct as fractions. Seeds cycle through random points, all points on one line (5e9 pairs) and
-# extreme coordinates/slopes (keys b * y - a * x near 2e18).
+# extreme coordinates/slopes (keys b * y - a * x near 2e18). At full size the random seeds draw all 20 slopes.
 if sys.argv[1] == "--max":
     sys.argv[1:] = ["3", "100000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
@@ -14,6 +15,8 @@ if mode == 0:
     xs = r.sample(range(1, span + 1), n); ys = r.sample(range(1, span + 1), n)
     pts = list(zip(xs, ys))
     sl = [(r.choice([-1, 1]) * r.randint(1, 4), r.choice([-1, 1]) * r.randint(1, 4)) for _ in range(m)]
+    while S >= N and len({Fraction(*s) for s in sl}) < 20:
+        sl.append((r.choice([-1, 1]) * r.randint(1, 4), r.choice([-1, 1]) * r.randint(1, 4)))
 elif mode == 1:
     a, b = r.choice([(1, 1), (1, 2), (3, 1), (-1, 1), (-2, 3)])
     if b < 0: a, b = -a, -b
@@ -26,7 +29,6 @@ else:
     xs = r.sample(range(C - 5 * n, C + 1), n); ys = r.sample(range(1, 5 * n + 2), n)
     pts = list(zip(xs, ys))
     sl = [(r.choice([-C, C, -1, 1, C - 1]), r.choice([-C, C, -1, 1, 7])) for _ in range(m)]
-from fractions import Fraction
 # the slopes are distinct as fractions (the accepted C++ counts a repeated slope twice)
 seen = set(); sl = [s for s in sl if Fraction(*s) not in seen and not seen.add(Fraction(*s))]
 m = len(sl)

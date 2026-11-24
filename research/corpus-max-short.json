@@ -1,6 +1,5 @@
 {
   "max_short": [
-    "max-short aac4p3 m: --max reads 6, the statement allows 20",
     "max-short abc479e n: --max reads 199999, the statement allows 2e5",
     "max-short btoi18p6 k: --max reads 4, the statement allows 5",
     "max-short btoi19p3 s: --max reads 10000, the statement allows n",
