@@ -8,7 +8,6 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.redhat.devtools.lsp4ij.LanguageServerManager
 import org.eclipse.lsp4j.ExecuteCommandParams
 import java.util.concurrent.CompletableFuture
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
@@ -16,13 +15,14 @@ import com.intellij.openapi.editor.LogicalPosition
 import com.intellij.openapi.editor.ScrollType
 import com.intellij.openapi.editor.markup.HighlighterLayer
 import com.intellij.openapi.editor.markup.RangeHighlighter
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.wm.ToolWindowAnchor
+import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.wm.ToolWindow
+import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.jcef.JBCefBrowser
@@ -40,11 +40,7 @@ import com.redhat.devtools.lsp4ij.server.StreamConnectionProvider
 import com.intellij.openapi.vfs.VirtualFile
 import java.io.File
 
-/**
- * `cpl lsp` through LSP4IJ, wherever LSP4IJ is loaded: `cpl setup jetbrains` installs it
- * in every IDE, because the free IntelliJ IDEA ships the built-in client's classes without
- * the module that turns it on. The built-in client runs `cpl lsp` only where LSP4IJ is absent.
- */
+/** `cpl lsp` through LSP4IJ in every IDE; `cpl setup jetbrains` installs LSP4IJ (decision 617). */
 class CpLsp4ijFactory : LanguageServerFactory {
     override fun createConnectionProvider(project: Project): StreamConnectionProvider =
         object : OSProcessStreamConnectionProvider(
@@ -56,11 +52,6 @@ class CpLsp4ijFactory : LanguageServerFactory {
     companion object {
         /** Asks `cpl lsp` for its Run, Trace, Test and Stress code lenses. */
         val INITIALIZATION_OPTIONS = mapOf("codeLens" to true)
-
-        private val id = PluginId.getId("com.redhat.devtools.lsp4ij")
-
-        val loaded: Boolean
-            get() = PluginManagerCore.getPlugin(id)?.let { !PluginManagerCore.isDisabled(id) } ?: false
     }
 }
 
@@ -136,8 +127,8 @@ object CplTrace {
         browser.jbCefClient.cefClient.addMessageRouter(router)
         Disposer.register(browser) { router.dispose(); shown?.dispose() }
         browser.loadHTML(page)
-        val window = ToolWindowManager.getInstance(project).getToolWindow("CP Lang Trace")
-            ?: ToolWindowManager.getInstance(project).registerToolWindow("CP Lang Trace") { anchor = ToolWindowAnchor.RIGHT; canCloseContent = true }
+        val window = ToolWindowManager.getInstance(project).getToolWindow("CP Lang Trace")!!
+        window.isAvailable = true
         window.contentManager.findContent("Trace: ${source.name}")?.let { window.contentManager.removeContent(it, true) }
         val content = ContentFactory.getInstance().createContent(browser.component, "Trace: ${source.name}", false)
         content.setDisposer(browser)
@@ -153,4 +144,11 @@ object CplTrace {
         editor.scrollingModel.scrollTo(LogicalPosition(line, 0), ScrollType.MAKE_VISIBLE)
         return editor.markupModel.addLineHighlighter(DebuggerColors.EXECUTIONPOINT_ATTRIBUTES, line, HighlighterLayer.SELECTION - 1)
     }
+}
+
+/** The Trace tool window plugin.xml declares; hidden until a Trace lens's run fills it. */
+class CplTraceWindow : ToolWindowFactory, DumbAware {
+    override fun shouldBeAvailable(project: Project) = false
+
+    override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) = Unit
 }

@@ -32,9 +32,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        // The built-in LSP client ships only in the commercial IDEs (IntelliJ IDEA
-        // Ultimate, CLion, PyCharm Professional, ...), so the plugin builds against
-        // one; Community IDEs get `cpl lsp` through LSP4IJ. Both are optional.
+        // Every IDE runs `cpl lsp` through LSP4IJ, a required dependency.
         intellijIdeaUltimate(providers.gradleProperty(if (freeIde) "freeIdeVersion" else "platformVersion"))
         plugin("com.redhat.devtools.lsp4ij", providers.gradleProperty("lsp4ijVersion").get())
         testFramework(TestFrameworkType.Platform)
@@ -51,10 +49,8 @@ intellijPlatform {
             untilBuild = provider { null }
         }
     }
-    // `./gradlew verifyPlugin`: the built zip against IntelliJ IDEA Community, where
-    // the built-in LSP client is missing, and Ultimate, where it is used. A required
-    // dependency Community lacks is a compatibility problem and fails it; the optional
-    // `com.intellij.modules.ultimate` is reported missing there, as it should be.
+    // `./gradlew verifyPlugin`: the built zip against IntelliJ IDEA Community and
+    // Ultimate. A required dependency either lacks is a compatibility problem and fails it.
     pluginVerification {
         ides {
             ide(IntelliJPlatformType.IntellijIdeaCommunity, providers.gradleProperty("platformVersion").get())

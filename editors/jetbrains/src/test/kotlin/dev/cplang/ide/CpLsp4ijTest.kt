@@ -48,7 +48,9 @@ class CpLsp4ijTest : BasePlatformTestCase() {
     }
 
     fun `test lsp4ij is the client`() {
-        assertTrue("LSP4IJ is loaded", CpLsp4ijFactory.loaded)
+        val id = com.intellij.openapi.extensions.PluginId.getId("com.redhat.devtools.lsp4ij")
+        assertFalse("LSP4IJ is loaded", com.intellij.ide.plugins.PluginManagerCore.isDisabled(id))
+        assertNotNull(com.intellij.ide.plugins.PluginManagerCore.getPlugin(id))
     }
 
     fun `test the server's code lenses run through the cpl exec action`() {

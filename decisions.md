@@ -9233,7 +9233,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 616. (reserved, stdlib)
 
-## 617. (reserved, unknown)
+## 617. JetBrains: every IDE runs `cpl lsp` through LSP4IJ (tools, 2026-11-24)
+
+- **Call.** The plugin requires LSP4IJ (`<depends>com.redhat.devtools.lsp4ij</depends>`), the reverse decision 367 named. The built-in client's provider (`CpLsp.kt`, `cp-lang-lsp.xml`) and the `CpLsp4ijFactory.loaded` check that kept the two clients from both starting are deleted, and the trace's tool window is declared in plugin.xml instead of registered on first use.
+- **Why.** `cpl setup jetbrains` already installs LSP4IJ in every IDE, so the built-in client ran only for a plugin installed by hand without it; choosing a client was editor logic for that one case. An IDE installing the plugin by hand now installs LSP4IJ with it.
+- **Reverse.** Restore `cp-lang-lsp.xml` with its provider, make the LSP4IJ dependency optional again, and bring back the `loaded` check.
 
 ## 618. (reserved, unknown)
 

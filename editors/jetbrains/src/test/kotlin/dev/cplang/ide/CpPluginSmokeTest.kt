@@ -58,16 +58,24 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         myFixture.checkResult("// let x = 1\n")
     }
 
-    fun `test the language server is registered`() {
+    fun `test the plugin requires lsp4ij and runs cpl lsp`() {
+        val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("dev.cplang.ide"))!!
+        val lsp4ij = plugin.dependencies.single { it.pluginId.idString == "com.redhat.devtools.lsp4ij" }
+        assertFalse("LSP4IJ is required, not optional", lsp4ij.isOptional)
         val providers = ExtensionPointName.create<Any>("com.intellij.platform.lsp.serverSupportProvider").extensionList
-        assertTrue(providers.any { it is CpLspServerSupportProvider })
-        val cmd = CpLspServerDescriptor(project).createCommandLine()
-        assertEquals(listOf(cpl.path, "lsp"), cmd.getCommandLineList(null))
+        assertTrue("no second client starts `cpl lsp`", providers.none { it.javaClass.name.startsWith("dev.cplang") })
+        assertEquals(listOf(cpl.path, "lsp"), Cpl.commandLine(Cpl.lspArgs(), null).getCommandLineList(null))
+    }
+
+    fun `test the trace window is declared and hidden until a trace opens`() {
+        val window = com.intellij.openapi.wm.ToolWindowEP.EP_NAME.extensionList.single { it.id == "CP Lang Trace" }
+        assertEquals("dev.cplang.ide.CplTraceWindow", window.factoryClass)
+        assertFalse(CplTraceWindow().shouldBeAvailable(project))
     }
 
     fun `test the server answers initialize and hover`() {
         Assume.assumeTrue("build cpl first: cargo build -p cpl-cli", cpl.canExecute())
-        val process = CpLspServerDescriptor(project).createCommandLine().createProcess()
+        val process = Cpl.commandLine(Cpl.lspArgs(), null).createProcess()
         try {
             val io = LspPipe(process)
             io.send("""{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":null,"capabilities":{}}}""")
@@ -94,7 +102,7 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         for ((name, body) in matrix.getAsJsonObject("files").entrySet()) File(dir, name).writeText(body.asString)
         val main = File(dir, "main.cp")
         val uri = main.toPath().toUri().toString()
-        val process = CpLspServerDescriptor(project).createCommandLine().createProcess()
+        val process = Cpl.commandLine(Cpl.lspArgs(), null).createProcess()
         try {
             val io = LspPipe(process)
             io.send("""{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":null,"capabilities":{}}}""")
