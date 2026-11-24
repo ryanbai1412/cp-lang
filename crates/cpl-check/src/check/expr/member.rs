@@ -1173,6 +1173,16 @@ impl<'a> Checker<'a> {
         let ty = match field_ty {
             Some(ty) => self.settle(&ty),
             None => match methods.iter().find(|(m, _)| *m == name.text) {
+                // `Walk.of(v => up[v])`: a static fn called keeps its generics for the
+                // call to bind, as a free generic fn's do. Not past a projection
+                // (`Tree<M.Fold>`): which impl a bare op's bound picks is lowering's.
+                Some((_, ty))
+                    if self.in_call_callee
+                        && matches!(base_ty, Ty::TypeName(_))
+                        && !projects(ty) =>
+                {
+                    ty.clone()
+                }
                 Some((_, ty)) => self.settle(ty),
                 // `fn area(self: Sq) -> Int` at the top of the file is
                 // a method of `Sq`, and of no other struct.
@@ -1231,4 +1241,14 @@ fn member_position_as_struct(ty: Ty) -> Ty {
         }
     }
     ty
+}
+
+/// Whether `ty` names an associated type (`M.Fold`).
+fn projects(ty: &Ty) -> bool {
+    let mut found = false;
+    ty.map(&mut |t| {
+        found |= matches!(t, Ty::Assoc { .. });
+        None
+    });
+    found
 }

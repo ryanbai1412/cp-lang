@@ -382,3 +382,9 @@ fn a_free_fold_and_a_stepped_range_type_by_the_seq_element() {
     let step = "let r = 0..10\nlet q = r.step(2)\nfor v in q: print(v + q.len)\nfor w in (0..9).step(3): print(w + 1)\n";
     assert_eq!(silent_unknowns_of(step), (vec![], 0));
 }
+
+#[test]
+fn a_static_fns_untyped_lambda_takes_the_generic_its_body_binds() {
+    let src = "domain V = 0..5\nfn up(v: V) -> ?V = None\nstruct Walk<V>(next: V -> ?V):\n    pub fn of(next: V -> ?V) -> Walk<V> = Walk<V>(next)\n    pub fn of2<W>(next: W -> ?W) -> Walk<W> = Walk<W>(next)\n    pub fn steps(self, v: V) -> Int = 0\nprint(Walk.of(v => up(v)).steps(V(3)))\nprint(Walk.of2(w => up(w)).steps(V(3)))\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}
