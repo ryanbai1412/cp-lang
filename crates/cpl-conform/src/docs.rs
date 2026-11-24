@@ -347,9 +347,10 @@ fn native_labels(
     let groups: Vec<Vec<&DocExample>> = by_module.into_values().collect();
     let failed = runner::parallel_with_db(&groups, |db, group| {
         let key = group.first().map_or_else(String::new, |ex| ex.id.clone());
+        let stdin: String = group.iter().map(|ex| ex.stdin.as_str()).collect();
         let whole = [claims_program(group, false), claims_program(group, true)]
             .into_iter()
-            .any(|src| native_run(db, root, &key, &src).is_ok());
+            .any(|src| native_run(db, root, &key, &src, &stdin).is_ok());
         let fails: Vec<(String, CaseOutcome)> = if whole {
             Vec::new()
         } else {
@@ -359,7 +360,7 @@ fn native_labels(
                     let one = std::slice::from_ref(ex);
                     let mut last = String::new();
                     for src in [claims_program(one, false), claims_program(one, true)] {
-                        match native_run(db, root, &ex.id, &src) {
+                        match native_run(db, root, &ex.id, &src, &ex.stdin) {
                             Ok(()) => return None,
                             Err(e) => last = e,
                         }
@@ -390,6 +391,11 @@ fn claims_program(group: &[&DocExample], import_module: bool) -> String {
     if import_module && !module.is_empty() && module != "prelude" && module != "core" {
         lines.push(format!("use std.{module}.*"));
     }
+    if let [ex] = group {
+        let code = ex.snippet.as_deref().unwrap_or_default();
+        lines.push(build_example_program(ex, code, false));
+        return lines.join("\n") + "\n";
+    }
     for (k, ex) in group.iter().enumerate() {
         let code = ex.snippet.as_deref().unwrap_or_default();
         lines.push(format!("fn claim_{k}():"));
@@ -402,7 +408,13 @@ fn claims_program(group: &[&DocExample], import_module: bool) -> String {
 }
 
 /// Builds `source` to C++ and runs it; `Err` says why it did not build or finish.
-fn native_run(db: &mut Session, root: &Path, id: &str, source: &str) -> Result<(), String> {
+fn native_run(
+    db: &mut Session,
+    root: &Path,
+    id: &str,
+    source: &str,
+    stdin: &str,
+) -> Result<(), String> {
     let safe: String = id
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
@@ -420,7 +432,7 @@ fn native_run(db: &mut Session, root: &Path, id: &str, source: &str) -> Result<(
     let bin = crate::diff::compile_cpp(&cpp, &cache).map_err(|e| match e {
         crate::diff::CppCompileError::Cxx(m) | crate::diff::CppCompileError::Infra(m) => m,
     })?;
-    let out = runner::run_piped(std::process::Command::new(bin), b"", 10)?;
+    let out = runner::run_piped(std::process::Command::new(bin), stdin.as_bytes(), 10)?;
     if out.status.success() {
         Ok(())
     } else {
