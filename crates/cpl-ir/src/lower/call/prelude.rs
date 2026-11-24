@@ -587,7 +587,8 @@ impl<'a> Lowerer<'a> {
                     ref ty @ (Ty::Int | Ty::Bool | Ty::Char | Ty::Float) => {
                         self.not_contents(false, src, ty, span)
                     }
-                    _ => val,
+                    Ty::Error => val,
+                    _ => self.collect_iter_to_list(src, span),
                 }
             }
             "Set" | "HashSet" => {

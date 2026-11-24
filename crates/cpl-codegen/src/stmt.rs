@@ -695,7 +695,10 @@ impl<'p> Emitter<'p> {
                 && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
             {
                 let item = self.flatten(&items[0], out);
-                let text = self.yielded(item, out);
+                let text = match self.lent_parts(item) {
+                    Some(parts) => format!("std::forward_as_tuple({})", parts.join(", ")),
+                    None => self.yielded(item, out),
+                };
                 match how {
                     Mutation::Extend => {
                         let x = self.temp();

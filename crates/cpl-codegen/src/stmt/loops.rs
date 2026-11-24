@@ -682,6 +682,12 @@ impl<'p> Emitter<'p> {
                         (format!("auto&& {var}"), &first)
                     } else if ty.is_scalar() || var != name {
                         (format!("{cpp} {var}"), &first)
+                    } else if self.lends_tuple_parts(&ty)
+                        && matches!(&seq.kind, ExprKind::Call(f, _)
+                            if !self.devirt.recursive_fns.contains(f))
+                    {
+                        // The fn may hand the parts as references ([`Emitter::lent_parts`]).
+                        (format!("const auto& {var}"), &first)
                     } else {
                         (format!("const {cpp}& {var}"), &first)
                     };

@@ -381,6 +381,15 @@ impl crate::emit::Emitter<'_> {
         self.facts.local(self.facts_home(), slot)
     }
 
+    /// Whether local `slot` is a parameter of the fn being emitted: a `let`
+    /// of one the fn only reads parts of names the caller's value.
+    pub(crate) fn is_param(&self, slot: usize) -> bool {
+        self.closure_id.is_none()
+            && self
+                .fn_id
+                .is_some_and(|id| slot < self.program.fns[id].params.len())
+    }
+
     pub(crate) fn home(&self) -> Home {
         match (self.closure_id, self.fn_id) {
             (Some(cid), _) => Home::Closure(cid),
@@ -400,6 +409,7 @@ impl crate::emit::Emitter<'_> {
             return !self.uses.of_binding(self.home(), slot).mutated
                 && self.facts.stores(self.facts_local(slot)) <= 1;
         }
+        let init = in_place(init);
         !init.ty.is_scalar()
             && !matches!(init.ty, Ty::Fn(..))
             && !self.spent.contains(&slot)
@@ -410,7 +420,9 @@ impl crate::emit::Emitter<'_> {
                 | ExprKind::Unwrap(..) => true,
                 // The optional an `if let` or `while let` tests.
                 ExprKind::Local(src) => {
-                    self.locals()[slot].name.is_empty() || self.locals()[src].name.is_empty()
+                    self.locals()[slot].name.is_empty()
+                        || self.locals()[src].name.is_empty()
+                        || (self.is_param(src) && !self.uses.of_binding(self.home(), slot).moved)
                 }
                 ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
                 // `let n = arena.get(id)`: a fn that lends from an argument.

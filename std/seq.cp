@@ -613,7 +613,7 @@ pub fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
 /// example: `[1, 2, 3].pairs().count() == 3`
 /// see: `adjacent` for neighbours, `Pair<V>` for a table keyed by unordered pairs
 pub fn pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
-    let xs: List<T> = self.collect()
+    let xs: List<T> = List(self)
     for i in 0..xs.len:
         for j in i + 1..xs.len: yield (xs[i], xs[j])
 

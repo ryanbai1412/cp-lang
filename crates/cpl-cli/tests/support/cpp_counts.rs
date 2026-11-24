@@ -201,6 +201,9 @@ pub fn deep_copies(cpp: &str) -> usize {
         {
             count += 1;
         }
+        if line.contains("cpl_f(") {
+            count += tuples_of_places(line);
+        }
         let Some(open) = line.find("= [") else {
             continue;
         };
@@ -215,6 +218,77 @@ pub fn deep_copies(cpp: &str) -> usize {
             .count();
     }
     count
+}
+
+/// Each `std::tuple<std::vector<int>, ..>{xs[i], xs[j]}` on a line: a tuple
+/// that holds a container, built from places, copies them. Counted where a
+/// `cpl_each_` form yields one, which can hand the places as references.
+fn tuples_of_places(line: &str) -> usize {
+    let mut count = 0;
+    let mut rest = line;
+    while let Some(at) = rest.find("std::tuple<") {
+        rest = &rest[at + "std::tuple<".len()..];
+        let mut depth = 1;
+        let Some(end) = rest.char_indices().find_map(|(i, c)| {
+            depth += match c {
+                '<' => 1,
+                '>' => -1,
+                _ => 0,
+            };
+            (depth == 0).then_some(i)
+        }) else {
+            break;
+        };
+        let (held, after) = (&rest[..end], &rest[end + 1..]);
+        let Some(inner) = after.strip_prefix('{') else {
+            continue;
+        };
+        let mut depth = 1;
+        let Some(close) = inner.char_indices().find_map(|(i, c)| {
+            depth += match c {
+                '{' | '(' => 1,
+                '}' | ')' => -1,
+                _ => 0,
+            };
+            (depth == 0).then_some(i)
+        }) else {
+            continue;
+        };
+        let args = &inner[..close];
+        let indexed = |a: &str| {
+            a.strip_suffix(']')
+                .and_then(|t| t.split_once('['))
+                .is_some_and(|(base, i)| is_place(base) && is_place(i))
+        };
+        let tys = top_level(held);
+        let args = top_level(args);
+        count += usize::from(
+            tys.len() == args.len()
+                && tys
+                    .iter()
+                    .zip(&args)
+                    .any(|(t, a)| is_container(t) && (is_place(a) || is_part(a) || indexed(a))),
+        );
+    }
+    count
+}
+
+/// `a, std::map<ll, ll>, c` split at its top-level commas.
+fn top_level(list: &str) -> Vec<&str> {
+    let (mut out, mut depth, mut from) = (Vec::new(), 0i32, 0);
+    for (i, c) in list.char_indices() {
+        match c {
+            '<' | '(' | '[' | '{' => depth += 1,
+            '>' | ')' | ']' | '}' => depth -= 1,
+            ',' if depth == 0 => {
+                out.push(list[from..i].trim());
+                from = i + 1;
+            }
+            _ => {}
+        }
+    }
+    out.push(list[from..].trim());
+    out
 }
 
 /// Each `std::function` the C++ declares: a fn value whose callee codegen

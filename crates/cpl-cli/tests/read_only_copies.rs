@@ -573,6 +573,14 @@ fn a_header_states_a_count_once_and_above_zero() {
 }
 
 #[test]
+fn a_yielded_tuple_built_from_rows_copies_them_and_one_of_references_does_not() {
+    let pairs = "if (int cpl_r = cpl_f(std::tuple<std::vector<int>, std::vector<int>>{xs[i], xs[j]})) return cpl_r;";
+    assert_eq!(deep_copies(pairs), 1);
+    let lent = "if (int cpl_r = cpl_f(std::forward_as_tuple(xs[i], xs[j]))) return cpl_r;";
+    assert_eq!(deep_copies(lent), 0);
+}
+
+#[test]
 fn a_shortened_std_function_counts_at_each_use() {
     let cpp = "template<class...T>using Qy=std::function<T...>;\n\
                struct M { Qy<ll(ll, ll)> add; Qy<ll(ll, ll)> mul; };\n\

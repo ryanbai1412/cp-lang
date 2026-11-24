@@ -1987,3 +1987,39 @@ pub(crate) fn loop_vars(program: &cpl_ir::Program) -> BTreeMap<*const Block, usi
     }
     vars
 }
+
+impl Emitter<'_> {
+    /// The parts of `yield (xs[i], xs[j])` in a `cpl_each_` form, each the
+    /// text of a place, when a heap one is among them: the callback gets
+    /// references to them, not copies. A tuple of lent parts is lent: the
+    /// loop body reads it, and storing it copies. The body cannot change
+    /// what the fn reads (`cpl_ir::pushed` feeds it no such loop), and the
+    /// fn's own locals stay put until the callback returns.
+    pub(crate) fn lent_parts(&mut self, item: &Expr) -> Option<Vec<String>> {
+        let (ExprKind::Tuple(parts), Ty::Tuple(tys)) = (&item.kind, &item.ty) else {
+            return None;
+        };
+        let place = |e: &Expr| {
+            matches!(
+                e.kind,
+                ExprKind::Local(_)
+                    | ExprKind::Global(_)
+                    | ExprKind::Field(..)
+                    | ExprKind::Index(..)
+            ) && crate::stmt::place_root(e).is_some()
+        };
+        let lends = parts.len() == tys.len()
+            && self.lends_tuple_parts(&item.ty)
+            && parts.iter().all(|p| p.ty.is_scalar() || place(p))
+            && self
+                .fn_id
+                .is_some_and(|id| !self.devirt.recursive_fns.contains(&id));
+        lends.then(|| parts.iter().map(|p| self.expr(p).text).collect())
+    }
+
+    /// Whether a yielded value of type `ty` is a tuple with a heap part, which a
+    /// `cpl_each_` form hands its callback as references ([`Emitter::lent_parts`]).
+    pub(crate) fn lends_tuple_parts(&self, ty: &Ty) -> bool {
+        matches!(ty, Ty::Tuple(tys) if tys.iter().any(|t| !t.is_scalar() && !matches!(t, Ty::Fn(..))))
+    }
+}

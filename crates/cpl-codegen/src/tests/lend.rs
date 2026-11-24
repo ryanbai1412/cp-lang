@@ -1354,3 +1354,44 @@ fn a_compound_assign_through_a_lent_slot_works_its_index_out_once() {
         assert_eq!(body.matches("Grid_cell(").count(), 1, "{ty}: {body}");
     }
 }
+
+#[test]
+fn pairs_of_rows_walks_the_rows_in_place_and_hands_the_body_references() {
+    let out = cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "let rows: [0..3][0..n]Int = read()\n",
+        "var s = 0\n",
+        "for (a, b) in rows.pairs(): s += a[0] * b[n - 1]\n",
+        "print(s)\n",
+    ));
+    let each = out
+        .split("int cpl_each_")
+        .nth(1)
+        .expect("pairs is a cpl_each_ form");
+    assert!(
+        each.contains("const std::vector<std::vector<ll>>& xs = self;"),
+        "the rows are not collected: {each}"
+    );
+    assert!(
+        each.contains("cpl_f(std::forward_as_tuple(xs[i], "),
+        "each pair is two references: {each}"
+    );
+    assert!(
+        !out.contains("std::tuple<std::vector<ll>, std::vector<ll>>{"),
+        "no tuple holds copies of two rows: {out}"
+    );
+}
+
+#[test]
+fn pairs_of_a_lazy_sequence_collects_it_once() {
+    let out = cpp(concat!(
+        "let xs: List<Int> = read()\n",
+        "var s = 0\n",
+        "for (a, b) in xs.filter(x => x > 1).pairs(): s += a * b\n",
+        "print(s)\n",
+    ));
+    assert!(
+        out.contains("push_back("),
+        "the filtered values are collected: {out}"
+    );
+}
