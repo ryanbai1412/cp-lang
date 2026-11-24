@@ -62,6 +62,9 @@ pub struct Reach {
     fields: Vec<FieldReach>,
     /// The most test cases one input had, under `@!multitest`.
     tests: usize,
+    /// Over generated inputs, read as text: the most numbers one had and
+    /// their range.
+    generated: Option<(usize, i128, i128)>,
 }
 
 impl Reach {
@@ -100,8 +103,21 @@ impl Reach {
         }
     }
 
-    /// `n from 1 to 8, a up to 8 long from -3 to 5, up to 4 tests`, or
-    /// nothing when no case was made from types.
+    /// Takes in one input a generator wrote, which has no fields to name.
+    pub fn add_text(&mut self, input: &str) {
+        let numbers: Vec<i128> = (input.split_ascii_whitespace())
+            .filter_map(|token| token.parse().ok())
+            .collect();
+        let (Some(&lo), Some(&hi)) = (numbers.iter().min(), numbers.iter().max()) else {
+            return;
+        };
+        let (most, low, high) = self.generated.unwrap_or((0, lo, hi));
+        self.generated = Some((most.max(numbers.len()), low.min(lo), high.max(hi)));
+    }
+
+    /// `n from 1 to 8, a up to 8 long from -3 to 5, up to 4 tests`, or for
+    /// generated inputs `inputs of up to 9 numbers from 1 to 40`; nothing
+    /// when no case passed.
     pub fn describe(&self) -> String {
         let mut parts: Vec<String> = (self.fields.iter())
             .filter_map(|(name, range, longest)| {
@@ -121,6 +137,12 @@ impl Reach {
             .collect();
         if self.tests > 0 {
             parts.push(format!("up to {} tests", self.tests));
+        }
+        if let Some((most, lo, hi)) = self.generated {
+            let s = if most == 1 { "" } else { "s" };
+            parts.push(format!(
+                "inputs of up to {most} number{s} from {lo} to {hi}"
+            ));
         }
         parts.join(", ")
     }

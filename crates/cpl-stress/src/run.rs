@@ -375,8 +375,9 @@ pub fn stress_with(
                     }
                 };
                 let Some((verdict, expected, got)) = wrong else {
-                    if let (InputSource::Typed(spec), Made::Typed(case)) = (&current, &case) {
-                        reached.add(spec, case);
+                    match (&current, &case) {
+                        (InputSource::Typed(spec), Made::Typed(case)) => reached.add(spec, case),
+                        _ => reached.add_text(&input),
                     }
                     continue;
                 };

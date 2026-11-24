@@ -183,7 +183,7 @@ Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_broken_helper_i
 ### stress/U31: how far a clean run reached
 Need: decide whether to trust `1000 cases agree`.
 Design: the clean report adds the largest size and the extreme values tried: `tried: n from 1 to 8, a up to 8 long from -1000000000 to 1000000000`.
-Milestone: M1-differentiating. Status: partial (cases made from the file's types only, not from a `@gen` fn or `--gen`; the text report only, not `--format json`)
+Milestone: M1-differentiating. Status: supported (a `@gen` fn's or `--gen` program's inputs have no field names, so they read `inputs of up to 9 numbers from 1 to 40`; `--format json` carries the line as `"tried"`)
 Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_clean_stress_says_how_far_its_cases_reached`)
 
 ### stress/U32: stress for as long as I can spare

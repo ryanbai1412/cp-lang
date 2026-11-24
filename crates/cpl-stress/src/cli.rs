@@ -385,8 +385,10 @@ pub fn report_json(
 ) -> String {
     let Some(failure) = &report.failure else {
         return format!(
-            "{{\"status\":\"ok\",\"cases\":{},\"saved_passed\":{}}}\n",
-            report.cases, report.saved
+            "{{\"status\":\"ok\",\"cases\":{},\"saved_passed\":{},\"tried\":{}}}\n",
+            report.cases,
+            report.saved,
+            json_string(&report.reached.describe())
         );
     };
     let stages: Vec<String> = stages

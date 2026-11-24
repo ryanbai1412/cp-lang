@@ -668,7 +668,10 @@ mod cli {
         let (_, out, _) = stress(&[
             file, "--fast", &good, "--brute", &good, "--cases", "5", "--format", "json",
         ]);
-        assert_eq!(out, "{\"status\":\"ok\",\"cases\":5,\"saved_passed\":1}\n");
+        assert!(
+            out.starts_with("{\"status\":\"ok\",\"cases\":5,\"saved_passed\":1,\"tried\":\""),
+            "{out}"
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 

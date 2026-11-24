@@ -455,6 +455,31 @@ fn a_clean_stress_says_how_far_its_cases_reached() {
         out.contains("  tried: n from 1 to 8, a up to 8 long from -1000000000 to 1000000000\n"),
         "{out}"
     );
+    let (code, out) = cpl(&[
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--cases".as_ref(),
+        "200".as_ref(),
+        "--format".as_ref(),
+        "json".as_ref(),
+    ]);
+    assert_eq!(code, Some(0), "{out}");
+    assert!(
+        out.contains("\"tried\":\"n from 1 to 8, a up to 8 long from -1000000000 to 1000000000\""),
+        "{out}"
+    );
+    let generated = scratch("reach-gen");
+    std::fs::write(
+        &generated,
+        "let n: 1..=100 = read()\nprint(n * 2)\n\n@alt(program)\nfn slow():\n    let n: 1..=100 = read()\n    print(n + n)\n\n@gen\nfn small():\n    print(rand(3, 40))\n",
+    )
+    .unwrap();
+    let (code, out) = cpl(&["stress".as_ref(), generated.as_os_str()]);
+    assert_eq!(code, Some(0), "{out}");
+    assert!(
+        out.contains("  tried: inputs of up to 1 number from 3 to "),
+        "{out}"
+    );
 }
 
 /// A lint warning in a brute, checker or interactor, in the file or not, stays
