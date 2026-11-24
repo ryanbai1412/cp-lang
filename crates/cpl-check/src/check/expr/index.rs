@@ -624,7 +624,8 @@ impl<'a> Checker<'a> {
             // nor `Keyed`) reaches piece `i` by walking, so `[i]` is not O(1).
             ty @ Ty::Named { name, .. }
                 if matches!(name.as_str(), "Gen" | "Iter")
-                || (self.implements_trait(ty, "Seq") && !self.implements_trait(ty, "Keyed")) =>
+                    || (self.implements_trait(ty, "Seq")
+                        && !self.implements_trait(ty, "Keyed")) =>
             {
                 if let Some(diag) = self.report(
                     expr.span,

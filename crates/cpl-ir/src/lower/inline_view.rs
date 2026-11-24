@@ -6,7 +6,7 @@
 use super::{all_returns, Remap, Sub};
 use crate::walk::{children_mut, deep_exprs, stmt_blocks_mut, stmt_exprs_mut};
 use crate::{Arg, Block, ClosureDef, Expr, ExprKind, Function, LoopId, Span, Stmt, Ty};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 /// Rewrites each library walk every call of which is `walk(make(args))` to
 /// take `args`; gives each such call in the user's code.
@@ -18,22 +18,27 @@ pub(super) fn fold(
     shown: &[String],
     next_loop: &mut LoopId,
 ) -> Vec<(Span, String)> {
-    let mut made: BTreeMap<usize, Option<usize>> = BTreeMap::new();
-    let mut calls: BTreeMap<usize, usize> = BTreeMap::new();
+    let n = fns.len();
+    // Per fn: its calls, and the fn every call of it walks the result of.
+    let (mut calls, mut made) = (vec![0usize; n], vec![None; n]);
     let mut note = |b: &Block| {
         deep_exprs(b, &mut |e| {
             if let ExprKind::Call(f, args) = &e.kind {
-                *calls.entry(*f).or_default() += 1;
                 let c = match args.as_slice() {
                     [Arg::Value(Expr {
                         kind: ExprKind::Call(c, _),
                         ..
-                    })] => Some(*c),
-                    _ => None,
+                    })] => *c,
+                    _ => usize::MAX,
                 };
-                made.entry(*f)
-                    .and_modify(|was| *was = was.filter(|_| *was == c))
-                    .or_insert(c);
+                if let (Some(k), Some(m)) = (calls.get_mut(*f), made.get_mut(*f)) {
+                    *m = if *k == 0 || *m == Some(c) {
+                        Some(c)
+                    } else {
+                        None
+                    };
+                    *k += 1;
+                }
             }
         })
     };
@@ -41,25 +46,25 @@ pub(super) fn fold(
     closures.iter().for_each(|c| note(&c.body));
     hosts.iter().for_each(|b| note(b));
     let lib = |f: usize| library.get(f).copied().unwrap_or(false);
-    let mut walks = BTreeMap::new();
-    for (f, c) in made {
-        let Some(c) = c.filter(|&c| c != f && lib(f) && lib(c)) else {
+    let mut walks = vec![false; n];
+    for f in 0..n {
+        let Some(c) = made[f].filter(|&c| c < n && c != f && lib(f) && lib(c)) else {
             continue;
         };
-        let (Some(Some(walk)), Some(Some(make))) = (fns.get(f), fns.get(c)) else {
+        let (Some(walk), Some(make)) = (&fns[f], &fns[c]) else {
             continue;
         };
         if let Some(mut new) = fold_fn(walk, make, closures, next_loop) {
             // With no other call left, `make` is gone and the walk is what it was.
-            let lone = calls.get(&c) == calls.get(&f);
+            let lone = calls[c] == calls[f];
             if lone {
-                new.name = make.name.clone();
+                std::mem::swap(
+                    &mut new.name,
+                    fns[c].as_mut().map_or(&mut String::new(), |m| &mut m.name),
+                );
             }
-            let walked = std::mem::replace(&mut fns[f], Some(new));
-            if let (true, Some(Some(make)), Some(walked)) = (lone, fns.get_mut(c), walked) {
-                make.name = walked.name;
-            }
-            walks.insert(f, ());
+            fns[f] = Some(new);
+            walks[f] = true;
         }
     }
     let mut out = Vec::new();
@@ -169,7 +174,7 @@ fn fold_fn(
 /// `walk(make(args))` as `walk(args)`, at `make`'s call.
 fn retarget(
     b: &mut Block,
-    walks: &BTreeMap<usize, ()>,
+    walks: &[bool],
     user: bool,
     shown: &[String],
     out: &mut Vec<(Span, String)>,
@@ -186,7 +191,7 @@ fn retarget(
         else {
             return;
         };
-        if !walks.contains_key(f) {
+        if !walks.get(*f).copied().unwrap_or(false) {
             return;
         }
         let (inner, span) = (std::mem::take(inner), *span);
