@@ -290,9 +290,9 @@ pub struct Database {
     syntax: HashMap<u64, SyntaxMemo>,
     defs: HashMap<(u32, u64, String), DefMemo>,
     checks: HashMap<(u32, u64), CheckMemo>,
-    /// `calling`'s scope per file, for the analysis and names it was built
+    /// The last file's `calling` scope, for the analysis and names it was built
     /// from: every `.` completed in an unchanged file imports the methods once.
-    callings: crate::names::NameMap<Calling>,
+    callings: Option<(String, Calling)>,
     stats: Stats,
     loader: Box<dyn Loader>,
     /// Where the item whose `use` is being imported starts, so an import's fix can reach
@@ -327,7 +327,7 @@ impl Database {
             syntax: HashMap::default(),
             defs: HashMap::default(),
             checks: HashMap::default(),
-            callings: Default::default(),
+            callings: None,
             stats: Stats::default(),
             loader,
             import_base: None,
@@ -391,7 +391,9 @@ impl Database {
 
     pub fn remove_file(&mut self, path: &str) {
         self.edits += 1;
-        self.callings.remove(path);
+        if self.callings.as_ref().is_some_and(|(at, _)| at == path) {
+            self.callings = None;
+        }
         if let Some(file) = self.files.remove(path) {
             self.defs.retain(|key, _| key.0 != file.id);
             self.checks.retain(|key, _| key.0 != file.id);
@@ -1499,8 +1501,9 @@ impl Database {
     /// `calling` for `analysis` of `path`, built once until the file's
     /// analysis or `names` change.
     fn memo_calling(&mut self, path: &str, analysis: &Arc<Analysis>, names: &[&str]) -> Arc<Scope> {
-        if let Some((of, named, scope)) = self.callings.get(path) {
-            if Arc::ptr_eq(of, analysis)
+        if let Some((at, (of, named, scope))) = &self.callings {
+            if at == path
+                && Arc::ptr_eq(of, analysis)
                 && named.iter().map(String::as_str).eq(names.iter().copied())
             {
                 return scope.clone();
@@ -1509,7 +1512,7 @@ impl Database {
         let scope = Arc::new(self.calling(path, &analysis.scope, names));
         let named = names.iter().map(|n| n.to_string()).collect();
         let memo = (analysis.clone(), named, scope.clone());
-        self.callings.insert(path.to_string(), memo);
+        self.callings = Some((path.to_string(), memo));
         scope
     }
 
