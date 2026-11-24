@@ -2066,6 +2066,24 @@ def or_true(root: Path) -> list[str]:
     return _grep_all(root, r"\|\|[[:space:]]*true\b")
 
 
+TRACE_CEILING_RE = re.compile(r'^\s*\("(\w+)", (\d+(?:\.\d+)?)\),$')
+
+
+def trace_budget_gap(root: Path) -> list[str]:
+    """Tenths of a slowdown over the 1.2x trace budget that trace_log's
+    `OVER_BUDGET` ceilings allow, one entry per tenth."""
+    path = root / "crates/cpl-interp/tests/trace_log.rs"
+    lines = _lines(path) if path.is_file() else []
+    start = next((i for i, l in enumerate(lines) if l.startswith("const OVER_BUDGET")), len(lines))
+    out = []
+    for line in lines[start + 1:]:
+        m = TRACE_CEILING_RE.match(line)
+        if not m:
+            break
+        out += [f"{m[1]} {k + 1}" for k in range(max(0, round((float(m[2]) - 1.2) * 10)))]
+    return out
+
+
 def trace_engine_refs(root: Path) -> list[str]:
     """`CPL_TRACE_ENGINE` mentions: the switch back to the tree-walker for traces."""
     return _grep_all(root, "CPL_TRACE_ENGINE")
@@ -2843,6 +2861,8 @@ COUNTERS = {
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
     "uncached_installs": ("CI tool installs outside the cached install-tools action (Factory)", uncached_installs, True),
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
+    "trace_budget_gap": ("tenths over the 1.2x trace budget trace_log's ceilings allow (VM-trace)",
+                         trace_budget_gap, True),
     "std_types_shown_empty": ("std types a trace shows as `{}`: no pub field, no Show (Content)",
                               std_types_shown_empty, True),
     "std_trait_matrix": ("std containers missing Show, a walk or is_empty (std-api/R12, Content)",

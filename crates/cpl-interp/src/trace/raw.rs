@@ -22,28 +22,23 @@ impl Tracer {
     }
 
     pub(super) fn raw_locals(&mut self, raw: &[(&str, i64)]) {
-        let (mut names, mut ints) = (
-            std::mem::take(&mut self.local_names),
-            std::mem::take(&mut self.local_ints),
-        );
+        let (names, ints) = (&mut self.local_names, &mut self.local_ints);
         ints.clear();
-        for &(_, v) in raw {
-            ints.push(v);
-        }
+        ints.extend(raw.iter().map(|&(_, v)| v));
         let at = raw
             .iter()
             .map(|(name, _)| (name.as_ptr() as usize, name.len()));
-        if !at.clone().eq(self.local_name_at.iter().copied()) {
+        let renamed = !at.clone().eq(self.local_name_at.iter().copied());
+        if renamed {
             self.local_name_at.clear();
             self.local_name_at.extend(at);
             names.clear();
             for (name, _) in raw {
                 names.push('\n');
-                string(&mut names, name);
+                string(names, name);
             }
         }
-        self.rec.log.locals_ints(&names, &ints);
-        (self.local_names, self.local_ints) = (names, ints);
+        self.rec.log.locals_ints(names, renamed, ints);
     }
 
     /// The step a VM write to `Int` global `id`, or to `Int` cell `path` of

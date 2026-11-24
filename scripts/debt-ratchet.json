@@ -200,6 +200,7 @@
   "stress_hand_json": 0,
   "helper_env_vars": 0,
   "trace_engine_refs": 0,
+  "trace_budget_gap": 141,
   "corpus_known": 0,
   "site_rederived": 0,
   "browser_lsp_gaps": 0,

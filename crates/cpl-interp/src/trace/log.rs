@@ -437,9 +437,11 @@ impl Log {
         }
     }
 
-    /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their values.
-    pub fn locals_ints(&mut self, names: &str, values: &[i64]) {
+    /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their
+    /// values. `renamed` when `names` differs from the last call's.
+    pub fn locals_ints(&mut self, names: &str, renamed: bool, values: &[i64]) {
         let named = match &self.int_names {
+            Some((_, text)) if !renamed => *text,
             Some((kept, text)) if kept == names => *text,
             _ => {
                 let text = self.keep(names);

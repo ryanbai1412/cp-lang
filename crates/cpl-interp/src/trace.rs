@@ -819,7 +819,8 @@ impl Tracer {
                 == Some(&(name.as_ptr() as usize, name.len()));
         }
         if raw {
-            if !same || ints.len() != self.local_name_at.len() {
+            let renamed = !same || ints.len() != self.local_name_at.len();
+            if renamed {
                 self.local_name_at.clear();
                 names.clear();
                 for (name, _, _) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
@@ -829,7 +830,7 @@ impl Tracer {
                     string(&mut names, name);
                 }
             }
-            self.rec.log.locals_ints(&names, &ints);
+            self.rec.log.locals_ints(&names, renamed, &ints);
             (self.local_names, self.local_ints) = (names, ints);
         } else {
             (self.local_names, self.local_ints) = (names, ints);
