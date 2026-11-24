@@ -214,6 +214,9 @@ pub struct Sieve:
     ///
     /// Queries take any `x` in `0..=n` (`1..=n` where 0 is meaningless).
     ///
+    /// Only odd numbers up to \(\sqrt n\) cross off; the primes are then read a 64-bit word at a
+    /// time (`popcount` sizes the list, `ctz` walks each word's primes).
+    ///
     /// cost: \(O(n \log \log n)\) time, \(n / 16\) bytes plus 4 bytes a prime
     /// traps: when `n < 0` or `n > 2_000_000_000`
     /// example: `Sieve(10).is_prime(7) == true`
@@ -225,28 +228,32 @@ pub struct Sieve:
     @lint(hand_rolled_sieve, from: "for i in 2..=n:\n    if spf[i] == 0:\n        spf[i] = i\n        primes.push(i)\n    for p in primes:\n        if p > spf[i] or i * p > n: break\n        spf[i * p] = p", to: "Sieve.new(n)", holes: "spf, primes")
     pub fn new(n: 0..) -> Sieve:
         let bound: SieveVal = n
-        var odd_composite = List.filled(n / 128 + 1, U64(0))
+        let words = n / 128 + 1
+        var odd_composite = List.filled(words, U64(0))
         odd_composite[0] = U64(1)
-        var count = if n >= 2: 1 else: 0
+        // the last word's bits for odd numbers past n read as composite, so whole words count
+        let tail = (n + 1) / 2 - 64 * (words - 1)
+        if tail < 64: odd_composite[words - 1] |= ~((U64(1) << tail) - U64(1))
         unchecked:
             var i = 3
-            while i <= n:
+            while i * i <= n:
                 if (odd_composite[i / 128] >> (i / 2 % 64)) & U64(1) == U64(0):
-                    count += 1
                     var j = i * i
                     while j <= n:
                         odd_composite[j / 128] |= U64(1) << (j / 2 % 64)
                         j += 2 * i
                 i += 2
+        var count = if n >= 2: 1 else: 0
+        for w in odd_composite: count += popcount(~w)
         var primes: List<SieveVal> = List.filled(count, 2)
         var at = 1
         unchecked:
-            var i = 3
-            while i <= n:
-                if (odd_composite[i / 128] >> (i / 2 % 64)) & U64(1) == U64(0):
-                    primes[at] = i
+            for k in 0..words:
+                var z = ~odd_composite[k]
+                while z != U64(0):
+                    primes[at] = 128 * k + 2 * ctz(z) + 1
                     at += 1
-                i += 2
+                    z &= z - U64(1)
         Sieve(primes, bound, odd_composite, [])
 
     /// Fill `_spf` by a linear sieve over `primes` on the first call.
