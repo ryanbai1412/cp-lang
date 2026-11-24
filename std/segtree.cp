@@ -824,6 +824,14 @@ fn pushed_tags_keep_their_order():
     assert st.all == a.sum()
 
 @test
+fn an_assign_tree_folds_an_empty_range_to_the_identity():
+    domain V = 1..=10
+    var st = SegTree(min, [V] v => 0, act: assign)
+    st.apply(V.nth(0)..=V.nth(9), Some(3))
+    assert st.fold(..V.nth(0)) == Int.MAX and st.fold(V.nth(4)..V.nth(4)) == Int.MAX
+    assert st.fold(V.nth(2)..V.nth(5)) == 3
+
+@test
 fn right_while_and_left_while_binary_search():
     for n in [1, 2, 3, 5, 8, 13]:
         domain P = 0..n
