@@ -150,7 +150,7 @@ Fields: `h: Heap<Desc<T>>`.
 - `fn push_pop(mut self, x: T) -> T` — \(O(\log n)\); \(O(1)\) when `x` is returned; Push `x`, then pop and return the largest element.
 - `fn replace_top(mut self, x: T) -> ?T` — \(O(\log n)\); Pop the largest element, then push `x`; returns the popped one, or `None` (and only pushes) when empty.
 - `fn push_all(mut self, items: Seq<T>)` — \(O(n + k \log(n + k))\); Push every element of `items`.
-- `fn drain(mut self) -> yields T` — \(O(n \log n)\); Pop every element, largest first.
+- `fn drain(mut self) -> yields T` — \(O(\log n)\) per step; Pop and yield every element, largest first, leaving the heap empty.
 
 ## `struct Settle<K, P>(best: (P, P) -> P = min)`
 
