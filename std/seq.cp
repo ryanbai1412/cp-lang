@@ -14,7 +14,6 @@
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.algebra.{Monoid}
-use std.hashmap.{Counter}
 use std.math.{abs}
 use std.prefix.{Prefix}
 use std.range.{RingRange, ends, first_true, last_true}
@@ -2207,19 +2206,6 @@ pub fn majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) ->
             i -= 1
     if 2 * count > chain.len + same.len: Some((val: c, count:)) else: None
 
-/// \(O(n)\) expected, \(O(\mathit{distinct})\) memory. How many times each key `by(x)` occurs across `self`, as a `Counter`, so a key that never occurs reads 0.
-///
-/// cost: \(O(n)\) expected, \(O(\mathit{distinct})\) memory
-/// empty: `let a: List<Char> = []; a.tally()['a'] == 0`
-/// traps: never
-/// example: `"abca".tally()['a'] == 2`
-/// example: `[1, 1, 2].tally()[7] == 0`
-pub fn tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
-    var out = Counter<K, Int>()
-    for x in self:
-        out.add(by(x), 1)
-    out
-
 /// \(O(n \log n)\), \(O(n)\) memory. Group elements by an ordered key; `of:` keeps a projection of each element (`pairs.group(by: .0, of: .1)`). When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
 ///
 /// cost: \(O(n \log n)\), \(O(n)\) memory
@@ -3669,14 +3655,6 @@ pub trait Track<T>:
     fn push(mut self, x: T)
     fn pop(mut self, x: T)
 
-/// `push(x)` adds 1 to `x`'s count and `pop(x)` takes 1 away, so `len` is the number of distinct
-/// values in the window.
-impl Track<K> for Counter<K, Int>:
-    fn push(mut self, x: K):
-        self.add(x, 1)
-    fn pop(mut self, x: K):
-        self.add(x, -1)
-
 /// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
 /// `state: Track`, as its positions.
 ///
@@ -4116,7 +4094,7 @@ pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>:
 @get pub fn keys<T>(self: List<T>) -> Range<Int> = 0..self.len
 
 @test
-fn dedup_first_some_tally_and_group():
+fn dedup_first_some_and_group():
     var a = [1, 1, 2, 1, 1]
     a.dedup()
     assert a == [1, 2, 1]
@@ -4125,8 +4103,6 @@ fn dedup_first_some_tally_and_group():
     assert e == []
     assert [1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)
     assert [1, 2].first_some(x => if x > 3: Some(x) else: None) == None
-    let t = [3, 1, 3, 3].tally()
-    assert t[3] == 3 and t[1] == 1 and t[2] == 0
     let g = [(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)
     assert g[1] == ['a', 'c'] and g[2] == ['b']
 

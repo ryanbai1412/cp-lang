@@ -6,6 +6,7 @@ use std.algebra.{Action, MaxCount, MinCount, Monoid, add, affine, assign}
 use std.rand.Rng
 use std.segtree.{SegTree}
 use std.range.{ends}
+use std.seq.{Seq}
 
 const TWO_31 = 2_147_483_648
 

@@ -804,10 +804,7 @@ impl<'a> Lowerer<'a> {
                 continue;
             };
             let is_trait = matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_)))
-                || matches!(
-                    name.text.as_str(),
-                    "Seq" | "Keyed" | "Bidir" | "Indexed" | "IndexedMut"
-                );
+                || matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut");
             if !is_trait {
                 continue;
             }
@@ -824,10 +821,25 @@ impl<'a> Lowerer<'a> {
                 .find(|a| a.name.as_ref().is_some_and(|n| n.text == param.name.text))
                 .or_else(|| args.get(pos).filter(|a| a.name.is_none()));
             if let Some(arg) = matched_arg {
-                let hint = self.trait_lambda_hint(pty, &arg.value, &inferred);
+                let hint = self
+                    .trait_lambda_hint(pty, &arg.value, &inferred)
+                    .or_else(|| {
+                        self.trait_list_hint(pty, &arg.value, (tpl_mod, tpl_offset), &inferred)
+                    });
                 let probed = self.probe_expr(&arg.value, hint.as_ref());
                 if probed.ty != Ty::Error {
                     trait_params.push((decl_idx, probed.ty));
+                }
+            } else if let Some(default) = &param.default {
+                let saved = (
+                    std::mem::replace(&mut self.cur_mod, tpl_mod),
+                    std::mem::replace(&mut self.offset, tpl_offset),
+                    std::mem::replace(&mut self.gen_env, inferred.clone()),
+                );
+                let probed = self.probe_ty_silent(default);
+                (self.cur_mod, self.offset, self.gen_env) = saved;
+                if let Some(dty) = probed.filter(|t| *t != Ty::Error) {
+                    trait_params.push((decl_idx, dty));
                 }
             }
         }

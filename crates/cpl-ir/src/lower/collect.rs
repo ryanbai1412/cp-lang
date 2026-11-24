@@ -267,9 +267,7 @@ impl<'a> Lowerer<'a> {
                     let id = self.declare_fn_in(entry, m, offset, None, HashMap::new());
                     self.mod_syms[m].insert(key, Sym::Fn(id));
                     self.grader_wrappers.push((source, entry));
-                } else if !decl.generics.is_empty()
-                    || decl.params.iter().any(super::declare::is_opt_mut)
-                {
+                } else if !decl.generics.is_empty() || self.takes_trait(decl, m) {
                     let gfid = self.gen_fns.len();
                     self.gen_fns.push(GenFnTemplate {
                         mod_id: m,
@@ -567,9 +565,28 @@ impl<'a> Lowerer<'a> {
             matches!(
                 &p.ty,
                 Some(ast::Type { kind: ast::TypeKind::Named { name, .. }, .. })
-                    if matches!(self.mod_syms[m].get(&name.text), Some(Sym::Trait(_)))
+                    if self.names_trait(m, &name.text)
             ) || declare::is_opt_mut(p)
         })
+    }
+
+    /// Whether `name` in `m` is a trait, declared there or imported: imports
+    /// are wired after collection, so an imported one is read off its module.
+    fn names_trait(&self, m: usize, name: &str) -> bool {
+        if matches!(self.mod_syms[m].get(name), Some(Sym::Trait(_))) {
+            return true;
+        }
+        let analysis = self.mods[m];
+        let Some(imp) = analysis.imports().get(name) else {
+            return false;
+        };
+        let Some(&from) = self.path_to_mod.get(&analysis.modules()[imp.module].path) else {
+            return false;
+        };
+        from != m
+            && self.mod_items(from).any(|(_, stmt)| {
+                matches!(&stmt.kind, ast::StmtKind::Trait { name: n, .. } if n.text == imp.name)
+            })
     }
 
     /// The fns no engine but the C++ can run: the judge's grader's, and

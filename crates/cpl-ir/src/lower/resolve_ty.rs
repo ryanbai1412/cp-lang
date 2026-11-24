@@ -332,7 +332,7 @@ impl<'a> Lowerer<'a> {
             "Bool" => Ty::Bool,
             "Char" => Ty::Char,
             "Str" => Ty::Str,
-            "List" | "Iter" | "Seq" => Ty::list(arg(self, 0)),
+            "List" | "Iter" => Ty::list(arg(self, 0)),
             "Slice" | "Rev" => match arg(self, 0) {
                 Ty::List(e) => Ty::ListView(e, Dim::Int),
                 Ty::ListView(e, d) | Ty::MutView(e, d) => Ty::ListView(e, d),

@@ -220,8 +220,11 @@ use std.search.{
 use std.segtree.{SegTree}
 use std.window.{Sweep, Undo, Undoing, Window, track, undoing, window_fold}
 use std.seq.{
+    Bidir,
     Compressed,
     Positional,
+    Seq,
+    Sized,
     Rev,
     RingSlice,
     Slice,
@@ -276,11 +279,10 @@ use std.seq.{
     runs,
     span,
     take_while,
-    tally,
     windows,
     zip,
 }
-use std.hashmap.{Counter}
+use std.hashmap.{Counter, tally}
 use std.pair.{Pair}
 use std.poly.{binomial_transform, eval}
 use std.sparse.{SparseTable}

@@ -4,6 +4,7 @@
 //! example: `domain B = 0..4; Subset<B>.empty.with(1).with(3).len == 2`
 
 use std.math.{popcount, ctz}
+use std.seq.{Seq}
 
 /// A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for `B`'s `k`-th
 /// position). `B.subsets` is the domain of all `2^|B|` of them, so `[B.subsets]T` is a mask-DP

@@ -9,6 +9,8 @@
 //! start: `ternary_max`, `parallel_bsearch`, `bsearch`, `peak`, `dinkelbach`
 //! example: `ternary_max(0..6, i => -(i - 3) * (i - 3)) == Some(3)`
 
+use std.seq.{Seq}
+
 fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     let n = r.len
     if n == 0: return None

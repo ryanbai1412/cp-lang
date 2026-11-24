@@ -8,6 +8,7 @@
 //! built-in `HashMap<Int, V>` overhead matters.
 use std.math.{splitmix64}
 use std.algebra.{desc}
+use std.seq.{Seq, Track}
 
 // Slot states: 0 = empty, 1 = occupied; `remove` uses backward-shift deletion (no tombstones).
 /// Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
@@ -283,7 +284,7 @@ pub struct Counter<K, V: Add = Int>:
     /// traps: never
     /// example: `let c = Counter(['a', 'b', 'a']); c['a'] == 2 and c['z'] == 0 and c.len == 2`
     /// example: `var c: Counter<Char, Int> = Counter(); c.get('z') == 0 and c.len == 0`
-    pub fn new(xs: Seq<K> = []; init: V = V(0)) -> Counter<K, V>:
+    pub fn new(xs: Seq<K> = List<K>(); init: V = V(0)) -> Counter<K, V>:
         var c = Counter(0, HashMap<K, V>(), init)
         for x in xs: c.add(x, V(1))
         c
@@ -566,6 +567,32 @@ fn flat_map_shows_by_key():
     m.set(3, 30)
     assert "{m}" == "-2=5, 3=30, 7=70"
     assert "{FlatMap(0)}" == ""
+
+/// \(O(n)\) expected, \(O(\mathit{distinct})\) memory. How many times each key `by(x)` occurs across `self`, as a `Counter`, so a key that never occurs reads 0.
+///
+/// cost: \(O(n)\) expected, \(O(\mathit{distinct})\) memory
+/// empty: `let a: List<Char> = []; a.tally()['a'] == 0`
+/// traps: never
+/// example: `"abca".tally()['a'] == 2`
+/// example: `[1, 1, 2].tally()[7] == 0`
+pub fn tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
+    var out = Counter<K, Int>()
+    for x in self:
+        out.add(by(x), 1)
+    out
+
+/// `push(x)` adds 1 to `x`'s count and `pop(x)` takes 1 away, so `len` is the number of distinct
+/// values in the window.
+impl Track<K> for Counter<K, Int>:
+    fn push(mut self, x: K):
+        self.add(x, 1)
+    fn pop(mut self, x: K):
+        self.add(x, -1)
+
+@test
+fn tally_counts_each_key():
+    let t = [3, 1, 3, 3].tally()
+    assert t[3] == 3 and t[1] == 1 and t[2] == 0
 
 /// A Counter prints `k=v` in key order on both engines, not in hash order: \(O(n \log n)\).
 impl Show for Counter<K: Ord, V>:

@@ -55,7 +55,7 @@ impl<'a> Lowerer<'a> {
             }
             ast::TypeKind::Named { name, args } => match (name.text.as_str(), concrete) {
                 (
-                    "List" | "Iter" | "Seq",
+                    "List" | "Iter",
                     Ty::List(elem)
                     | Ty::ListView(elem, _)
                     | Ty::Keyed(elem, _)
@@ -64,10 +64,10 @@ impl<'a> Lowerer<'a> {
                 ) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
                 }
-                ("List" | "Iter" | "Seq", Ty::Str | Ty::StrView) if args.len() == 1 => {
+                ("List" | "Iter", Ty::Str | Ty::StrView) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], &Ty::Char, tpl_mod, gen_names, env);
                 }
-                ("List" | "Iter" | "Seq", Ty::Array { elem, .. }) if args.len() == 1 => {
+                ("List" | "Iter", Ty::Array { elem, .. }) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
                 }
                 ("Set" | "HashSet", Ty::Set(elem) | Ty::HashSet(elem)) if args.len() == 1 => {

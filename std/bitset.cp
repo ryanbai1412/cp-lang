@@ -2,7 +2,7 @@
 //!
 //! start: `Bitset`, `DynBitset`, `XorTrie`, `BitTrie`
 //! example: `domain D = 0..10; var b = Bitset<D>(); b.add(3); b.add(7); b.len == 2 and b.contains(7)`
-use std.seq.{take_all}
+use std.seq.{Seq, take_all}
 use std.math.{bit, popcount, bit_width, ctz}
 
 /// One bit per position of `D`, in `ceil(K / 64)` words.

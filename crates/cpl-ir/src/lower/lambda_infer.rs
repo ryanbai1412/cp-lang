@@ -9,6 +9,28 @@ use super::*;
 pub(super) struct WantBound(String, Vec<Ty>);
 
 impl<'a> Lowerer<'a> {
+    /// `[]` passed where `Seq<T>` is written: a list of `T`, `T` read off the bound.
+    pub(super) fn trait_list_hint(
+        &mut self,
+        pty: &ast::Type,
+        arg: &ast::Expr,
+        (tpl_mod, tpl_offset): (ModId, u32),
+        inferred: &GenEnv,
+    ) -> Option<Ty> {
+        let (ast::ExprKind::List(items), ast::TypeKind::Named { args, .. }) =
+            (&arg.kind, &pty.kind)
+        else {
+            return None;
+        };
+        let ([], [elem]) = (items.as_slice(), args.as_slice()) else {
+            return None;
+        };
+        let elem = self.quietly_in(tpl_mod, tpl_offset, inferred.clone(), |lw| {
+            lw.resolve_ty(elem)
+        });
+        (elem != Ty::Error).then(|| Ty::list(elem))
+    }
+
     /// Unify each annotated parameter of the lambda `arg` with its slot in the fn type `pat`.
     pub(super) fn unify_lambda_params(
         &mut self,

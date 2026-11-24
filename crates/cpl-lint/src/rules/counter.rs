@@ -98,7 +98,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 let text = |e: &Expr| e.span.shift(at).text(self.src);
                 let help = if made + 1 == i {
                     format!(
-                        "write `let {map} = {}.tally()` (`std.seq`): a `Counter` of each item, which reads 0 for a key it never saw",
+                        "write `let {map} = {}.tally()` (`std.hashmap`): a `Counter` of each item, which reads 0 for a key it never saw",
                         text(iter)
                     )
                 } else {

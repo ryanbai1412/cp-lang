@@ -25,7 +25,7 @@ use std.heap.{Heap, MinHeap}
 use std.math.{abs, gcd, popcount, ctz}
 use std.opt.{is_none_or}
 use std.rand.{shuffle}
-use std.seq.{collect, reverse, count, Slice}
+use std.seq.{collect, reverse, count, Seq, Slice}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by
