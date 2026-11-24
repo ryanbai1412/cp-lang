@@ -27,13 +27,13 @@ are the input spec:
     let a = gen<[V]1..=1e9>()  // an array over a domain
     let s = gen<Str of "ab">(len: 1..=10)
     let g = gen<Graph<V, (to: V, w: 1..=9)>>(simple: true, connected: true)
-    let t = gen<Rooted<V>>(shape: Recursive)  // a TreeShape: also Path, Star, Caterpillar, Binary
+    let t = gen<Rooted<V>>(shape: Random)  // a TreeShape: also Path, Star, Caterpillar, Binary
     let p = gen<Perm<V>>()
     print(n)
 ```
 
 - `gen<Perm<V>>()` draws a uniformly random permutation: a `Perm<V>` is a `[V]V`, drawn
-  by the `Random` impl over the alias. `gen<Rooted<V>>(shape:)` takes a `TreeShape`, `Recursive`
+  by the `Random` impl over the alias. `gen<Rooted<V>>(shape:)` takes a `TreeShape`, `Random`
   by default; its variants read bare there, as an expected enum's do (R02.7.1).
 - `gen<V>()` for a domain `V` draws a position uniformly, in \(O(1)\) as
   `V.nth(rand(0, V.count - 1))`; a record or tuple type such as
