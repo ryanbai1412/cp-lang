@@ -54,7 +54,8 @@ for round in 2..:
         for (u, d, br) in cd.piece(c) if max_budget[u] >= d and max_budget[u] > 0:
             let idx = min(max_d, max_budget[u] - d)
             buckets[idx] = merge(buckets[idx], Best((d, br), None))
-        let bests = buckets.rev.scan(merge).rev
+        var bests = buckets
+        for d in (0..max_d).rev: bests[d] = merge(bests[d], bests[d + 1])
         for (u, d, br) in cd.piece(c) if s[u] == '1':
             if let far = bests[d].best_other(br): next_dist[u] max= d + far
 
