@@ -359,6 +359,25 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// What a fn item an argument names binds `param` to: its own type
+    /// `type_of(f)`, when `param`'s bound has an impl for that type.
+    pub(super) fn item_arg_for(
+        &mut self,
+        bounds: &[ast::Bound],
+        param: &str,
+        e: &ast::Expr,
+    ) -> Option<GenArg> {
+        let ident = e.fn_item_ident()?;
+        if matches!(e.kind, ast::ExprKind::Name(_))
+            && !matches!(self.sym(e), Some(Sym::Fn(_) | Sym::GenFn(_)))
+        {
+            return None;
+        }
+        let fits = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::ItemOf(of) if of.fn_item_ident().as_deref() == Some(ident.as_str()));
+        self.bound_has_impl(bounds, param, fits)
+            .then(|| GenArg::Ty(Ty::Struct(self.item_type(&ident))))
+    }
+
     /// Whether `param` is bound by a trait some fn type implements, as in
     /// `impl<T> Op<T> for (T, T) -> T`: a closure passed for it stays a fn
     /// value, so the impl's methods and associated types apply to it.

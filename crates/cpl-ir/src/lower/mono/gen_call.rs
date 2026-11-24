@@ -148,6 +148,10 @@ impl<'a> Lowerer<'a> {
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
                 {
+                    if let Some(g) = self.item_arg_for(&decl.bounds, &name.text, &arg.value) {
+                        inferred.insert(name.text.clone(), g);
+                        continue;
+                    }
                     // `go(+, [2, 3])` with `M: Op<E>`: `+` takes `Monoid<E>` once
                     // a later argument gives `E`.
                     if self.monoid_bare_op(&arg.value).is_some()

@@ -127,6 +127,12 @@ impl<'a> Lowerer<'a> {
                     &[&name, &name],
                 );
             }
+            Some(Sym::Fn(_) | Sym::GenFn(_))
+                if hint.is_some_and(|h| self.is_item_type_of(name, h)) =>
+            {
+                let ty = hint.cloned().unwrap_or(Ty::Error);
+                return self.mk(ExprKind::Tuple(Vec::new()), ty, span);
+            }
             Some(Sym::Fn(id)) => return self.fn_as_closure(id, hint, span),
             Some(Sym::GenFn(gfid)) => return self.gen_fn_as_closure(gfid, name, hint, span),
             Some(Sym::Domain(d)) => return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),

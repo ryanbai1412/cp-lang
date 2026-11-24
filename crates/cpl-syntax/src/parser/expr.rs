@@ -650,7 +650,7 @@ impl<'a> Parser<'a> {
 
     /// The two short ways to write a fn as an argument: `.cost` is
     /// `x => x.cost` (`.0` is `x => x.0`), and an operator alone, `+`, is `(a, b) => a + b`.
-    fn fn_shorthand(&mut self) -> Option<Expr> {
+    pub(super) fn fn_shorthand(&mut self) -> Option<Expr> {
         let start = self.start();
         let span = self.span();
         let param = |text: &str| Pattern {

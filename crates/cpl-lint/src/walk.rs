@@ -317,6 +317,7 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
         | TypeKind::DomainBinder(_)
         | TypeKind::ConstrainedStr { len: None, .. }
         | TypeKind::LiteralUnion(_)
+        | TypeKind::ItemOf(_)
         | TypeKind::Infer
         | TypeKind::Error => {}
         TypeKind::Row(fields) => {
