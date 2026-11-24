@@ -8828,12 +8828,6 @@ Reserved for call 5, which landed as decision 519.
 
 ## 525. Std names come only from the lexicon (stdlib, 2026-11-24)
 
-- **Call.** `[D]T.partition_point(ok)` becomes `a.bsearch(ok, last:)`, the element form of `Range.bsearch`, keeping its wrong-way trap. `Graph.has(u, v)` becomes `contains`; the adjacency list's free `has(u, v)` goes as a twin of `g[u].contains(v)`, which `cpl fix` writes for `g.has(u, v)` and `g.contains(u, v)` on a list of lists; `LazyTreap.append(other)` becomes `splice_back` (LinkedList's word), `XorFenwick.flip(i, x)` becomes `add` (Fenwick's word), and 2-SAT's `Lit.flip` becomes `l.neg`. `cpl fix` rewrites each old name. New lexicon rows cover the cut search `bsearch`, positional `insert(i, x)`, `splice_back`/`splice_front`, `back` (opposite direction, matching partner), component `size(v)`, math `shift`, `T.empty` and `neg`. `scripts/std-api-lint.py` R1 fails a public std fn named by a "Not" word that no row uses.
-- **Why.** std-api/R1: one idea, one word, so a contestant guesses the next type's calls from the last one.
-- **Reverse.** Restore the old names and drop R1 from the lint.
-
-
-
 ## 526. One Mat elimination for every field; F64 states its `eps:` at the call (stdlib, 2026-11-24)
 
 - **Call.** `det_real`, `rank_real`, `solve_real` and `inverse_real` are gone. `Mat<T>.det`, `rank`, `solve`, `solve_space` and `inverse` take `eps: ?T = None`. When `T: Ord` (`F64`) the pivot is the largest `abs` entry of its column and `|x| <= eps` counts as zero; otherwise (`Mod<P>`) the pivot is the first entry `!= T.zero`. `eps` defaults to exact zero, so a float caller writes `m.rank(eps: 1e-9)`.
@@ -8864,7 +8858,3 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** `Visit` is a plain enum, so `step.prune()` had no body to call, and the spec example could not run. A predicate is visible at the call and costs one call per entered vertex.
 - **Reverse.** Drop `prune:` and `dfs_arcs` from `std/graph.cp` and give `Visit` a steering handle.
 ## 532. (reserved, content)
-- **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
-## 528. (reserved, infra)
-
-- **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
