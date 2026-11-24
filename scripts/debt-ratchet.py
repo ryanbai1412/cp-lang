@@ -3136,7 +3136,7 @@ HARD_ZERO = frozenset({
     "interp_max_over_20s",
     "edit_engines",
     "web_hand_copied",
-    "corpus_no_tests", "cpp_optional_copies",
+    "corpus_no_tests", "cpp_optional_copies", "cpp_std_functions",
     "helper_env_vars",
     "timeout_passes",
     "stress_engines",
