@@ -63,6 +63,7 @@ case "${1:-}" in
         [ ! -s "$out/sizes/$(git rev-parse "$base^{tree}").json" ] || exit 0
         src="$out/base-src"
         git worktree remove --force "$src" 2>/dev/null || rm -rf "$src"
+        git worktree prune
         git worktree add -q --detach "$src" "$base"
         (cd "$src" && CARGO_TARGET_DIR="$target" scripts/build-wasm.sh --names "$out/base")
         node web/scripts/wasm-crates.mjs --sizes "$out/base/cpl.wasm" "$out/sizes/$(git rev-parse "$base^{tree}").json"
