@@ -155,6 +155,8 @@ impl<'a> Lowerer<'a> {
             BareOp::Min => named("min"),
             BareOp::Gcd => named("gcd"),
             BareOp::Lcm => named("lcm"),
+            BareOp::And => bin(ast::BinOp::And),
+            BareOp::Or => bin(ast::BinOp::Or),
         };
         let e = ast::Expr { kind, span };
         Some(self.expr(&e, hint))

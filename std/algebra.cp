@@ -35,6 +35,8 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T):
         if same(m, max): return Monoid(T.MIN, (a, b) => max(a, b))
         if same(m, min): return Monoid(T.MAX, (a, b) => min(a, b))
         if same(m, gcd): return Monoid(T.zero, (a, b) => gcd(a, b))
+        if same(m, or): return Monoid(false, (a, b) => a or b)
+        if same(m, and): return Monoid(true, (a, b) => a and b)
         m.monoid()
 
     /// A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a

@@ -669,6 +669,7 @@ impl<'a> Parser<'a> {
                 span,
             })
         };
+        let mut param_tys = Vec::new();
         let (params, body) = if self.at(T::Dot) && self.peek_n(1) == T::Ident {
             self.bump();
             let field = self.name();
@@ -707,6 +708,22 @@ impl<'a> Parser<'a> {
                     _ => return None,
                 };
                 self.bump();
+                // `and` and `or` take only `Bool`s.
+                if matches!(op, BinOp::And | BinOp::Or) {
+                    let bool_ty = || {
+                        Some(Type {
+                            kind: TypeKind::Named {
+                                name: Name {
+                                    text: "Bool".into(),
+                                    span,
+                                },
+                                args: Vec::new(),
+                            },
+                            span,
+                        })
+                    };
+                    param_tys = vec![bool_ty(), bool_ty()];
+                }
                 let body = ExprKind::Binary {
                     op,
                     op_span: span,
@@ -723,7 +740,7 @@ impl<'a> Parser<'a> {
         Some(Expr {
             kind: ExprKind::Lambda {
                 params,
-                param_tys: Vec::new(),
+                param_tys,
                 param_mut: Vec::new(),
                 ret_ty: None,
                 body,

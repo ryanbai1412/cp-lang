@@ -26,6 +26,8 @@ pub(super) enum BareOp {
     Min,
     Gcd,
     Lcm,
+    And,
+    Or,
 }
 
 /// One concrete argument to a generic type, struct, function, or const.
@@ -328,6 +330,8 @@ impl<'a> Lowerer<'a> {
                             ast::BinOp::BitXor => Some(BareOp::BitXor),
                             ast::BinOp::BitOr => Some(BareOp::BitOr),
                             ast::BinOp::BitAnd => Some(BareOp::BitAnd),
+                            ast::BinOp::And => Some(BareOp::And),
+                            ast::BinOp::Or => Some(BareOp::Or),
                             _ => None,
                         };
                     }
