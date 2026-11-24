@@ -1672,15 +1672,17 @@ pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
         let o = i.ord - first - from
         0 <= o < n - from and o % k == 0
 
-/// \(O(1)\). The same cells keyed by `keys`, which must have the same length (traps otherwise):
+/// \(O(n)\). The same cells keyed by `keys`, which must have the same length (traps otherwise):
 /// a table computed on offsets handed back in the caller's keys, `z.rekey(s.keys)`.
 ///
-/// cost: \(O(1)\)
+/// cost: \(O(n)\), allocates
 /// empty: valid only with empty `keys`
 /// order: same cells, keyed by `keys`
 /// traps: when `keys.len != self.len`
 /// example: `[4, 5].rekey(10..12)[11] == 5`
-pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T = todo
+pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T:
+    assert self.len == keys.len, "`rekey` needs one key per element"
+    [K] k => self.nth(k.ord - keys.start.ord)
 
 /// The end of a lazy chain, materialized into the type the context expects, else a `List`.
 /// \(O(n)\), allocates.

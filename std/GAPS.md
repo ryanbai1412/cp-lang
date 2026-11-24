@@ -29,7 +29,6 @@ line when the gap closes and the body lands.
 - heap, `MeldHeap` (all methods): `meld`/`absorb` in O(log n) need recursive node storage (a struct holding `?Box<Node>` or a shared arena); the stub has only `_len`, and adding a per-heap arena makes `meld` O(other.len).
 - hashmap, `Counter.reserve`: the builtin `HashMap` has no `reserve` in `cpl run` (waits on the `Map` stub).
 - search, real-valued examples using `close(...)`: `close` is not in scope for a bare doc example; verified with `abs(...) < eps` in `spec/conformance/std-search`.
-- io, `Wire.new`/`Wire.ask`: no CP Lang primitive to switch stdout to flush-before-read mode.
 - io, `read_all`: no end-of-input test (`read` traps past the end), so "read to end" is not expressible.
 - pair, `symmetric`: `[Pair<V>]T` is not an indexable domain array in `cpl run` (`a Int can't be indexed`).
 - timetree, `TimeTree.add_range` doc example: `TimeTree<Str>(3); add_range(1..3, "e")` gives 7 steps under `add_interval` (nodes [1,2) and [2,3)), not the documented 5; the example needs correcting by the doc owner.
@@ -42,11 +41,9 @@ line when the gap closes and the body lands.
 - pair, `symmetric`: `cpl run` rejects `[Pair<V>]T` as an array type (E0204 "an array is indexed by a domain or a length"), so no program can build the argument.
 - seq, `subsequences` / `SubseqStep.prune`: the yielded step is a copy, so `prune()` in the consumer cannot reach the generator; item-steered generators (decision 126) need compiler support.
 - io, `read_all`: no stdlib-visible end-of-input test (the interpreter's `at_eof` is only reachable from `@!multitest(until_eof)`), so there is no way to stop reading.
-- seq, `counting_sort`: the body sorts by any domain key; the doc example's `Char` key is not a domain (`[Char]Int` is E0301 "indexed by `Int`, but the index is a `Char`"), so bounded non-domain keys need `Char` (and bounded ranges) usable as array index types.
 - seq, `span`: the body is written, but `span(lo, hi)` still lowers to the compiler's builtin `span` (cpl-ir lower/call.rs `lower_span`), which skips the `lo <= hi` trap; the builtin should go so the stdlib body runs.
 - dp, `Step.prune` (`backtrack`): same as seq `SubseqStep.prune`; the yielded step is a copy, so pruning needs item-steered generators (decision 126). `backtrack` itself walks without pruning.
 - deque, `LinkedList.splice_back`/`splice_front`: each list owns its `nx`/`pv`/`val` pools, so an O(1) splice needs a shared pool the struct layout does not have.
-- seq, `Range.mid`: the body is written, but `r.mid` still lowers to the compiler's builtin (cpl-ir lower/call.rs, `(Ty::Range, "mid")`), which returns the middle element as `?D` instead of a cut; the builtin should go so the stdlib body runs (`mid(r)` already does).
 - beats, `BeatsSegTree`/`HistoricBeatsSegTree` query doc examples (`BeatsSegTree([5, 1, 4]).sum(1..3)`): `sum`/`min_val`/`get` take `mut self` (they push tags down), so calling them on a temporary is E0401; the examples need a `var` or the queries a non-pushing signature.
 - segtree, `DynamicOrderTree.kth`: a Fenwick of order trees answers `count_lt` in O(log^2 |D|), but the k-th value over arbitrary online `T` needs a binary search over values on top of it (O(log^3 |D|)); O(log^2) needs the values known ahead (offline compression), which the signature doesn't take.
 - lazy, `LazyTreap.split_at`/`append`: each treap owns its `nodes` list, so returning or absorbing another treap copies its nodes (O(n), not O(log n)); needs a shared node pool.
@@ -56,7 +53,6 @@ line when the gap closes and the body lands.
 - seq, `covering`: maps a range of cuts back to piece keys of `pieces`, which is itself blocked on fresh domains; nothing can build its `[P]Range<D>` input today.
 - seq, `rev`, `Filtered.src`/`Mapped.src`/`Rev.src`/`Items.src`: the view structs are declared with no fields (`struct Rev<S>()`), so a body cannot hold or hand back its source; needs the views to carry `src`.
 - seq, `drop`/`drop_last`/`take`/`take_last`/`split`/`maximal`/`minimal`/`Ring.maximal`/`Ring.minimal`: return `Slice<S>` views of a generic `S`, which cannot be built (`Slice<S>()` has no fields and `self[i..j]` on generic `S` indexes one element).
-- seq, `rekey`: building a `[K]T` from a `Range<K>` of a caller's domain needs `[K]` fill from a generic range (`[K] k => ...` over `keys`), and `rekey(10..12)` needs an int range to act as a domain.
 - segtree, `SegTree.apply_all`: same as `apply`; its tag type `F` is not a declared parameter.
 - persistent, `PMultiset.*`: an immutable value holding only `root: Int` needs one node pool shared by every multiset (and a hash per node for O(1) `==`); a struct cannot own shared storage.
 - graph, `Graph.weighted` (`Reweighted`): a lambda stored in a struct's generic field is typed `Int` (`Rw(g, a => 5)` is `Rw<Graph<..>, Int>`, then E0203 "no method `f`").
