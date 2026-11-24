@@ -217,6 +217,21 @@ fn pusher(id: usize, f: &Function, summary: &FnSummary) -> Option<usize> {
         .then_some(acc)
 }
 
+/// Whether a closure `f` makes captures its local `slot`: its body runs
+/// elsewhere, where a push to the list cannot become a call of the loop body.
+fn captured(program: &Program, f: &Function, slot: usize) -> bool {
+    let mut seen = false;
+    walk::deep_exprs(&f.body, &mut |e| {
+        if let ExprKind::Closure(c) = e.kind {
+            seen |= program.closures[c]
+                .captures
+                .iter()
+                .any(|cap| !cap.is_global && cap.outer == slot);
+        }
+    });
+    seen
+}
+
 /// The local a fn returns when it is a list it made itself.
 fn returned_list(f: &Function) -> Option<usize> {
     let mut acc = None;
@@ -254,7 +269,7 @@ impl Feeds {
         let mut pushers = BTreeMap::new();
         let mut eager = BTreeSet::new();
         for (id, f) in program.fns.iter().enumerate() {
-            if let Some(p) = pusher(id, f, &summaries[id]) {
+            if let Some(p) = pusher(id, f, &summaries[id]).filter(|&p| !captured(program, f, p)) {
                 pushers.insert(id, p);
                 if f.locals[p].name != "__yields" {
                     eager.insert(id);

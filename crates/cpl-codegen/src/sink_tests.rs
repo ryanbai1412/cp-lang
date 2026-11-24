@@ -207,3 +207,20 @@ fn the_len_of_a_list_a_fn_starts_with_values_keeps_the_list() {
     ));
     assert!(!cpp.contains("cpl_each_halves"), "{cpp}");
 }
+
+#[test]
+fn a_list_a_local_fn_pushes_to_is_built_not_fed() {
+    let cpp = cpp(concat!(
+        "let n: 1..=9 = read()\n",
+        "fn picks(limit: Int) -> List<Int>:\n",
+        "    var open: List<Int> = []\n",
+        "    fn visit(v: Int):\n",
+        "        if v < n:\n",
+        "            visit(v + 1)\n",
+        "            if v > limit: open.push(v)\n",
+        "    visit(0)\n",
+        "    open\n",
+        "print(picks(2).len, picks(n).len)\n",
+    ));
+    assert!(!cpp.contains("cpl_each_picks"), "{cpp}");
+}
