@@ -245,8 +245,8 @@ function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared =
     lines.push(examples.length > 1 ? 'Examples:' : 'Example:', '');
     for (const e of examples) lines.push(...renderExample(e, module, shared, ctx.ran, ctx.failing, `${module}.${name}`));
   }
-  lines.push(`[Source](${blob}/std/${module}.cp#L${item.line})`, '');
-  if (item.kind === 'fn' || item.kind === 'struct' || item.kind === 'enum' || item.kind === 'trait') {
+  lines.push(`[Source](${blob}/${ctx.paths[module]}${item.line ? `#L${item.line}` : ''})`, '');
+  if (['fn', 'struct', 'enum', 'trait', 'builtin'].includes(item.kind)) {
     index.push({ name, module, kind: item.kind, cost: facts.find(([k]) => k === 'cost')?.[1] ?? '' });
   }
   const memberShared = item.members?.length ? commonSetup(memberExamples(item)) : [];
@@ -308,7 +308,10 @@ async function runInTurn(tries) {
 }
 
 const index = [];
-const modules = std.modules.filter((m) => m.items.some((i) => /^pub\b/.test(i.signature))).sort((a, b) => a.name.localeCompare(b.name));
+// What a program can name: std's `pub` items, and the types the language
+// itself declares (the `builtin` module, from the compiler's catalog).
+const isPublic = (i) => i.kind === 'builtin' || /^pub\b/.test(i.signature);
+const modules = std.modules.filter((m) => m.items.some(isPublic)).sort((a, b) => a.name.localeCompare(b.name));
 // Each example's programs, in the order renderExample tries them.
 const tries = [];
 const collect = (item, module, parentDoc, shared) => {
@@ -325,14 +328,15 @@ const ctx = {
   failing: [],
   unstructured: [],
   anchors: [],
+  paths: Object.fromEntries(std.modules.map((m) => [m.name, m.path])),
   math(text, where, cost = false) {
     return checkMath(where, texSpans(text, { legacyCost: cost }));
   },
 };
 for (const m of modules) {
-  const fields = m.items.filter((i) => i.kind === 'field' || (i.kind !== 'impl' && !/^pub\b/.test(i.signature)));
+  const fields = m.items.filter((i) => i.kind === 'field' || (i.kind !== 'impl' && !isPublic(i)));
   const body = [
-    `Generated from [std/${m.name}.cp](${blob}/std/${m.name}.cp) by \`cpl doc --format json\`.`,
+    `Generated from [${m.path}](${blob}/${m.path}) by \`cpl doc --format json\`.`,
     '',
     linked(m.doc, m.links ?? []),
     '',

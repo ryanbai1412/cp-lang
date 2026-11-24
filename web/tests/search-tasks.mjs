@@ -35,6 +35,9 @@ const tasks = [
   ['knapsack', ['/docs/ref/std/dp', '/docs/ref/lib/search-dp']],
   ['check my solution against a brute force', ['/docs/guides/stress', '/docs/ref/lib/random-stress']],
   ['convert from c++', ['/docs/guides/cpp-guide']],
+  // A name from another language finds the std spelling (spec/lib/inventory.md).
+  ['lower_bound', ['/docs/ref/std/seq', '/docs/ref/std/bag', '/docs/ref/std/prefix']],
+  ['unordered_map', ['/docs/ref/std/builtin', '/docs/ref/std/hashmap']],
 ];
 const TOP = 5;
 // An answer page that no longer exists fails here, so this list can't go stale.

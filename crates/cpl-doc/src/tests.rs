@@ -496,6 +496,13 @@ fn inventory_rows_name_what_they_spell() {
     let want: Vec<(&[String], &[String])> = want.iter().map(|(f, n)| (&f[..], &n[..])).collect();
     assert_eq!(got, want);
     assert_eq!(rows[0].line, 1);
+    // `sum, min, max` beside `a.sum(), a.min(), a.max()` pair up; one
+    // spelling for two names takes both.
+    let of = crate::aliases::of;
+    assert_eq!(of("first_gt"), ["upper_bound", "bisect_right"]);
+    assert_eq!(of("sum"), ["accumulate"]);
+    assert!(of("bsearch").contains(&"binary_search".to_string()));
+    assert!(of("bsearch").contains(&"partition_point".to_string()));
 }
 
 /// handbook/domains/stdlib.md, "Findable without knowing the name": every

@@ -20,6 +20,9 @@ pub struct Row<'a> {
     pub from: Vec<String>,
     /// The std names its CP Lang spelling uses: `first_ge`, `Heap`.
     pub names: Vec<String>,
+    /// The same names, one list per backticked spelling: with as many
+    /// spellings as `from` names, the `i`th spells the `i`th.
+    pub spellings: Vec<Vec<String>>,
 }
 
 /// The rows of an inventory table.
@@ -30,11 +33,16 @@ pub fn rows(text: &str) -> Vec<Row<'_>> {
         let [lib, from, to] = cells[..] else {
             return None;
         };
+        let spellings: Vec<Vec<String>> = code(to)
+            .map(named)
+            .filter(|names| !names.is_empty())
+            .collect();
         Some(Row {
             line: n + 1,
             lib: LIBS.into_iter().find(|l| *l == lib)?,
             from: code(from).map(unapplied).collect(),
-            names: code(to).flat_map(named).collect(),
+            names: spellings.concat(),
+            spellings,
         })
     };
     text.lines().enumerate().filter_map(row).collect()
@@ -91,7 +99,15 @@ pub fn of(name: &str) -> &'static [String] {
     let table = BY_NAME.get_or_init(|| {
         let mut out: Vec<(String, Vec<String>)> = Vec::new();
         for row in rows(INVENTORY) {
-            for name in &row.names {
+            let paired = row.from.len() == row.spellings.len();
+            for (i, name) in (row.spellings.iter().enumerate())
+                .flat_map(|(i, names)| names.iter().map(move |n| (i, n)))
+            {
+                let from = if paired {
+                    &row.from[i..=i]
+                } else {
+                    &row.from[..]
+                };
                 let at = match out.iter().position(|(n, _)| n == name) {
                     Some(at) => at,
                     None => {
@@ -100,7 +116,7 @@ pub fn of(name: &str) -> &'static [String] {
                     }
                 };
                 let known = &mut out[at].1;
-                for from in &row.from {
+                for from in from {
                     if from != name && !known.contains(from) {
                         known.push(from.clone());
                     }
