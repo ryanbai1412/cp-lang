@@ -163,6 +163,13 @@ grow(mut b)                 // error: b is a let; declare it var
 A `mut` parameter is a place: the callee may assign it whole
 (`xs = List()`), which replaces the caller's value. (R05.4.3)
 
+An optional `mut` parameter, `seen: ?mut [V]Bool = None`, takes a `mut x`
+(`x: [V]Bool`) or nothing. In the body the parameter itself is read-only,
+and `if let s = seen:` binds `s` to the caller's place, so `s[v] = true`
+writes `x`; when the call leaves it out, the `if let` is skipped. This is
+how `dfs(g, from: .., seen: mut seen)` shares one table across walks
+(decision 447). (R05.4.5)
+
 **Generated constructors move.** `S(a, b)` and struct literals take their
 arguments by value (R2): an owned argument moves in, a lent argument makes
 the struct lent (R6). That is how a library struct holds a closure or a
