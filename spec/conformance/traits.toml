@@ -2367,3 +2367,19 @@ let l = LinkedList.from_list([3, 1, 4])
 for x in l: print(x)
 """
 out = "3\n1\n4"
+
+[case."Bidir/LinkedList/iter_rev"]
+code = """
+use std.deque.{LinkedList}
+let l = LinkedList.from_list([3, 1, 4])
+for x in l.rev: print(x)
+"""
+out = "4\n1\n3"
+
+[case."Bidir/Deque/iter_rev"]
+code = """
+use std.deque.{Deque}
+let d = Deque.of([3, 1, 4])
+for x in d.rev: print(x)
+"""
+out = "4\n1\n3"
