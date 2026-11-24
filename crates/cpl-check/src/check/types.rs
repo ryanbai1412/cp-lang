@@ -586,7 +586,7 @@ impl<'a> Checker<'a> {
             params.push(Param {
                 name: p.label_text().to_string(),
                 ty,
-                mutable: p.mutable,
+                mutable: p.mutable || self.note_opt_mut(p),
                 has_default: p.default.is_some(),
                 named_only: p.named_only,
                 variadic: p.variadic,

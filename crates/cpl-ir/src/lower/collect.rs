@@ -228,7 +228,7 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 let decl = self.with_implicit_generics(decl, m, None);
-                if !decl.generics.is_empty() {
+                if !decl.generics.is_empty() || decl.params.iter().any(super::declare::is_opt_mut) {
                     let gfid = self.gen_fns.len();
                     self.gen_fns.push(GenFnTemplate {
                         mod_id: m,

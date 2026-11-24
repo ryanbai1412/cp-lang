@@ -2,7 +2,7 @@
 //! closures, `lends` projections, and `laws_hold`.
 
 use super::*;
-use declare::rev_param_key;
+use declare::{opt_mut_instance, param_marker};
 use std::collections::HashSet;
 
 pub(super) type ModId = usize;
@@ -1450,7 +1450,7 @@ impl<'a> Lowerer<'a> {
         let tpl_offset = self.gen_fns[gfid].offset;
         let owner = self.gen_fns[gfid].owner;
         let mut env = self.gen_fns[gfid].owner_env.clone();
-        let decl = self.gen_fns[gfid].decl;
+        let decl = opt_mut_instance(self.gen_fns[gfid].decl, &rev_params);
         for (p, a) in decl.generics.iter().zip(&args) {
             env.insert(p.text.clone(), a.clone());
         }
@@ -1487,7 +1487,7 @@ impl<'a> Lowerer<'a> {
             env.insert(op_param_key(name), GenArg::Op(*op));
         }
         for name in &rev_params {
-            env.insert(rev_param_key(name), GenArg::Int(1));
+            env.insert(param_marker(name), GenArg::Int(1));
         }
         let id = self.declare_fn_in(decl, tpl_mod, tpl_offset, owner, env);
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();

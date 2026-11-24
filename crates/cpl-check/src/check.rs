@@ -171,6 +171,9 @@ pub(crate) struct Checker<'a> {
     src: &'a str,
     sink: Sink,
     scopes: Vec<HashMap<String, Local>>,
+    /// The name spans of params declared `?mut T`: `if let s = p:` binds
+    /// `s` to the caller's place, so it is mutable.
+    opt_mut_params: std::collections::HashSet<Span>,
     generics: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
     pub(crate) param_bounds: Vec<(String, Vec<String>)>,
@@ -273,6 +276,7 @@ impl<'a> Checker<'a> {
             src,
             sink: Sink::with_poisoned(poisoned),
             scopes: vec![HashMap::default()],
+            opt_mut_params: Default::default(),
             generics: Vec::new(),
             param_bounds: Vec::new(),
             hovers: Vec::new(),
@@ -525,6 +529,17 @@ impl<'a> Checker<'a> {
 
     fn pop_scope(&mut self) {
         self.scopes.pop();
+    }
+
+    /// Whether `p` is declared `?mut T`, noting it so `if let s = p:`
+    /// binds a mutable `s`.
+    fn note_opt_mut(&mut self, p: &cpl_syntax::ast::Param) -> bool {
+        let opt_mut = matches!(&p.ty, Some(cpl_syntax::ast::Type { kind: cpl_syntax::ast::TypeKind::Optional(t), .. })
+            if matches!(t.kind, cpl_syntax::ast::TypeKind::Mut(_)));
+        if opt_mut {
+            self.opt_mut_params.insert(p.name.span);
+        }
+        opt_mut
     }
 
     fn local(&self, name: &str) -> Option<&Local> {

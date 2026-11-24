@@ -1113,7 +1113,9 @@ impl<'a> Checker<'a> {
                     Ty::Error => Ty::Error,
                     _ => Ty::Unknown,
                 };
-                self.bind(pat, &ty, false, "let");
+                let alias = matches!(&value.kind, ExprKind::Name(n)
+                    if self.local(n).is_some_and(|l| self.opt_mut_params.contains(&l.span)));
+                self.bind(pat, &ty, alias, "let");
                 if let Some(and) = and {
                     self.cond(and);
                 }

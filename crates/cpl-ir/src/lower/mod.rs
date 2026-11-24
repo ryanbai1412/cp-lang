@@ -1724,7 +1724,7 @@ impl<'a> Lowerer<'a> {
                 &p.ty,
                 Some(ast::Type { kind: ast::TypeKind::Named { name, .. }, .. })
                     if matches!(self.mod_syms[m].get(&name.text), Some(Sym::Trait(_)))
-            )
+            ) || declare::is_opt_mut(p)
         })
     }
 

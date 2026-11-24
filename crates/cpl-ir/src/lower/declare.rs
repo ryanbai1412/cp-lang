@@ -123,6 +123,9 @@ impl<'a> Lowerer<'a> {
             if generic(p) && arg.is_some_and(|a| self.reversed_arg(&a.value)) {
                 out.push(p.name.text.clone());
             }
+            if is_opt_mut(p) && arg.is_some_and(|a| a.mutable) {
+                out.push(format!("?mut {}", p.name.text));
+            }
         }
         out
     }
@@ -141,5 +144,91 @@ impl<'a> Lowerer<'a> {
                 self.cx.view_rev.insert(slot);
             }
         }
+    }
+}
+
+pub(super) fn opt_mut_key(name: &str) -> String {
+    format!("__opt_mut_param_{name}")
+}
+
+/// The env key of a call-shape marker from `reversed_params`: a reversed
+/// view, or `?mut p` for a `?mut T` param the call passes `mut x` for.
+pub(super) fn param_marker(name: &str) -> String {
+    match name.strip_prefix("?mut ") {
+        Some(n) => opt_mut_key(n),
+        None => rev_param_key(name),
+    }
+}
+
+/// `seen: ?mut T`: a param the call may leave out, and the fn changes in
+/// place when it is given.
+pub(super) fn is_opt_mut(p: &ast::Param) -> bool {
+    matches!(&p.ty, Some(ast::Type { kind: ast::TypeKind::Optional(t), .. })
+        if matches!(t.kind, ast::TypeKind::Mut(_)))
+}
+
+/// A fn's decl for one call shape of its `?mut T` params: one the call
+/// passes `mut x` for is `mut p: T`, one it leaves out is `p: ?T = None`.
+/// Each shape is its own instance, so neither engine needs a nullable
+/// reference.
+pub(super) fn opt_mut_instance<'d>(decl: &'d ast::FnDecl, shape: &[String]) -> &'d ast::FnDecl {
+    if !decl.params.iter().any(is_opt_mut) {
+        return decl;
+    }
+    let mut decl = decl.clone();
+    for p in decl.params.iter_mut() {
+        let inner = match p.ty.as_ref().map(|t| &t.kind) {
+            Some(ast::TypeKind::Optional(t)) => match &t.kind {
+                ast::TypeKind::Mut(inner) => (**inner).clone(),
+                _ => continue,
+            },
+            _ => continue,
+        };
+        let given = shape
+            .iter()
+            .any(|s| s.strip_prefix("?mut ") == Some(p.name.text.as_str()));
+        if given {
+            p.mutable = true;
+            p.ty = Some(inner);
+            p.default = None;
+        } else if let Some(ty) = &mut p.ty {
+            ty.kind = ast::TypeKind::Optional(Box::new(inner));
+        }
+    }
+    Box::leak(Box::new(decl))
+}
+
+impl<'a> Lowerer<'a> {
+    /// `if let s = seen:` in an instance whose call passed `mut x` for the
+    /// `?mut` param `seen`: `s` is `seen` itself, so its writes reach `x`.
+    pub(super) fn opt_mut_alias(&mut self, pat: &ast::Pattern, value: &ast::Expr) -> Option<Expr> {
+        let (ast::PatternKind::Name(s), ast::ExprKind::Name(n)) = (&pat.kind, &value.kind) else {
+            return None;
+        };
+        if !self.gen_env.contains_key(&opt_mut_key(n)) {
+            return None;
+        }
+        let slot = self.lookup(n)?;
+        self.cx.scopes.last_mut()?.insert(s.clone(), slot);
+        Some(self.mk(ExprKind::Bool(true), Ty::Bool, value.span))
+    }
+}
+
+/// Depth of nested `List.filled(_, ...)` calls wrapping a bare `none` literal.
+pub(super) fn filled_none_depth(e: &ast::Expr) -> Option<usize> {
+    match &e.kind {
+        ast::ExprKind::None => Some(0),
+        ast::ExprKind::Paren(inner) => filled_none_depth(inner),
+        ast::ExprKind::Call { callee, args } if args.len() == 2 => {
+            if let ast::ExprKind::Field { base, name } = &callee.kind {
+                if name.text == "filled"
+                    && matches!(&base.kind, ast::ExprKind::Name(n) if n == "List")
+                {
+                    return filled_none_depth(&args[1].value).map(|d| d + 1);
+                }
+            }
+            None
+        }
+        _ => None,
     }
 }

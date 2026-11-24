@@ -2789,7 +2789,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             if let (ast::PatternKind::Name(vname), Some(init_expr)) = (&pat.kind, init) {
-                if let Some(depth) = filled_none_depth(init_expr) {
+                if let Some(depth) = declare::filled_none_depth(init_expr) {
                     if let Some(hint_ty) = self.peek_filled_none_type(vname, depth, rest) {
                         return Some(self.expr(init_expr, Some(&hint_ty)));
                     }
@@ -5371,6 +5371,9 @@ impl<'a> Lowerer<'a> {
         before: &mut Vec<Stmt>,
         binds: &mut Vec<Stmt>,
     ) -> Option<Expr> {
+        if let Some(present) = self.opt_mut_alias(pat, value) {
+            return Some(present);
+        }
         if let ast::PatternKind::Literal(lit) = &pat.kind {
             if matches!(lit.kind, ast::ExprKind::None) {
                 let (present, _) = self.optional(value, what, before)?;
@@ -6218,25 +6221,6 @@ pub(super) fn diverging_default(e: &ast::Expr) -> Option<&ast::Stmt> {
 
 pub(super) fn plural(n: i64, what: &str) -> String {
     format!("{n} {what}{}", if n == 1 { "" } else { "s" })
-}
-
-/// Depth of nested `List.filled(_, ...)` calls wrapping a bare `none` literal.
-fn filled_none_depth(e: &ast::Expr) -> Option<usize> {
-    match &e.kind {
-        ast::ExprKind::None => Some(0),
-        ast::ExprKind::Paren(inner) => filled_none_depth(inner),
-        ast::ExprKind::Call { callee, args } if args.len() == 2 => {
-            if let ast::ExprKind::Field { base, name } = &callee.kind {
-                if name.text == "filled"
-                    && matches!(&base.kind, ast::ExprKind::Name(n) if n == "List")
-                {
-                    return filled_none_depth(&args[1].value).map(|d| d + 1);
-                }
-            }
-            None
-        }
-        _ => None,
-    }
 }
 
 /// Whether `e` only names where a value lives, a variable or a field of
