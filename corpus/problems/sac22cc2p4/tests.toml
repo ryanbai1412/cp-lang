@@ -1,0 +1,30 @@
+# Cases for scripts/corpus.py make (problem-packages/R9).
+
+[[case]]
+input = "6 4\nC..C\n.CCC\nCC.C\n..CC\nCC..\nC.C.\n"
+
+[[case]]
+input = "5 5\n.....\n..CC.\n.....\n.....\n.....\n"
+
+[[case]]
+seed = 1
+size = 1
+
+[[case]]
+seed = 2
+size = 3
+
+[[case]]
+seed = 3
+size = 10
+
+[[case]]
+seed = 4
+size = 40
+
+[[case]]
+seed = 5
+size = 200
+
+[[case]]
+args = ["--max"]
