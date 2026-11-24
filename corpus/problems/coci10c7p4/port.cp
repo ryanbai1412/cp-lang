@@ -1,4 +1,5 @@
 // Source: COCI 2010/2011 Contest 7 #4, Postar, https://dmoj.ca/problem/coci10c7p4
+// limits: 4000 ms, 32 MB
 // Problem: an N x N town (N <= 50) of cells P (one post office), K (houses, at least one) and
 //   '.', each with a height < 1e6. Starting from P and moving to any of the 8 neighbours,
 //   visit every K and return. Print the smallest possible (highest - lowest) height visited.

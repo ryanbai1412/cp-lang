@@ -1,4 +1,5 @@
 // Source: CCC 2022 Senior S5 (Good Influencers), https://dmoj.ca/problem/ccc22s5
+// limits: 3000 ms, 1024 MB
 // Problem: a tree of n <= 2e5 students, each initially Y or N (at least one of each), with costs
 //   c_i <= 1000. Paying a Y student c_i turns all their friends Y. Print the least total cost
 //   to make every student Y.

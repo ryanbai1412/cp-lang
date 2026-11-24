@@ -1,4 +1,5 @@
 // Source: CCO 2021 P1, Swap Swap Sort, https://dmoj.ca/problem/cco21p1
+// limits: 3000 ms, 1024 MB
 // Problem: an array of n <= 1e5 values in 1..k and a target order of 1..k (initially 1..k).
 //   Each of q <= 1e6 queries swaps the target order's entries j and j + 1; after each, print
 //   the least number of adjacent swaps that sort the array by the current target order.

@@ -1,4 +1,5 @@
 // Source: CCO 2016 Day 2 P2 (Zombie Apocalypse), https://dmoj.ca/problem/cco16p5
+// limits: 1000 ms, 1024 MB
 // Problem: an N x M grid (N, M <= 1e9) holds K <= 2000 zombies in distinct cells. Each cell
 //   is marked with its king-move (Chebyshev) distance to the nearest zombie. Given Q
 //   (0 <= Q <= N + M), print how many cells are marked Q.

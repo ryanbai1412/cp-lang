@@ -1,4 +1,5 @@
 // Source: CCO 2005 Day 2 P3 (Windows), https://dmoj.ca/problem/cco05p6
+// limits: 2500 ms, 256 MB
 // Problem: n <= 5e4 rectangular windows (borders included) on a C x R screen (<= 1e4), each
 //   later one on top of the earlier ones. Each of m <= 5e4 clicks at (x, y) hits the topmost
 //   window containing the point: print its number (0 if none) and bring it to the top.

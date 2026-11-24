@@ -1,4 +1,5 @@
 // Source: COCI 2011/2012 Contest 4 #4 (Ograda), https://dmoj.ca/problem/coci11c4p4
+// limits: 1000 ms, 32 MB
 // Problem: Slavko's fence of n <= 3e5 boards of distinct heights, and n distinct new boards
 //   (heights < 1e9). Arrange the new boards so every neighbour pair compares as in Slavko's
 //   fence, maximizing the sum of |height differences| of neighbours; print it and the fence.

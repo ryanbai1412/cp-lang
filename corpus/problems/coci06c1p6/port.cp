@@ -1,4 +1,5 @@
 // Source: COCI 2006/2007 Contest 1 #6 (Debug), https://dmoj.ca/problem/coci06c1p6
+// limits: 600 ms, 32 MB
 // Problem: an R x C grid of 0/1, R, C <= 300. A square killer is a square submatrix of size >= 2
 //   equal to its own 180-degree rotation. Print the size of the largest killer, or -1.
 // Solution: a 2-D rolling hash of the grid and one of the grid turned 180 degrees, with the same

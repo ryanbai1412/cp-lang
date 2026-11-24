@@ -1,4 +1,5 @@
 // Source: CCO 2019 P2 (Sirtet), https://dmoj.ca/problem/cco19p2
+// limits: 1000 ms, 1024 MB
 // Problem: an N x M grid (NM <= 1e6) of '.' and '#'; side-connected '#' cells form rigid objects
 //   that all fall straight down at the same speed, each stopping on the bottom row or on top of
 //   another object. Print the final grid.

@@ -1,4 +1,5 @@
 // Source: APIO 2023 P2 (Sequence), https://dmoj.ca/problem/apio23p2
+// limits: 1500 ms, 1024 MB
 // Problem: A of length N <= 5e5 with 1 <= A[i] <= N. Over all subarrays and each median x of it
 //   (both middle elements if the length is even), print the max number of occurrences of x in it.
 // Solution: v is a median of a subarray holding c copies iff |#greater - #smaller| <= c. Take

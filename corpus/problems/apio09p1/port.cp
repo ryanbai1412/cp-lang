@@ -1,4 +1,5 @@
 // Source: APIO 2009 Digging for Oil (采油区域), https://dmoj.ca/problem/apio09p1
+// limits: 750 ms, 128 MB
 // Problem: an n x m grid (n, m <= 1500) of values 0..=500 and a size k; print the largest total
 //   of three non-overlapping k x k squares (three always fit).
 // Solution: three equal squares always split by a straight cut into one and two, and the two by

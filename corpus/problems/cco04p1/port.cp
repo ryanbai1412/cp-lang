@@ -1,4 +1,5 @@
 // Source: CCO 2004 Stage 2 Day 1 P1 (Scribble), https://dmoj.ca/problem/cco04p1
+// limits: 1000 ms, 32 MB
 // Problem: 7 tiles as k letters, each with a score <= 26 and a count. Of N <= 1e5 words, print
 //   the best score (sum of its letters' scores) of one spelled from the tiles, or 0 if none.
 // Solution: count each word's letters; it is playable iff no count exceeds that letter's

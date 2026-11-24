@@ -1,4 +1,5 @@
 // Source: CCO 2018 Day 2 P2 (Boring Lectures), https://dmoj.ca/problem/cco18p5
+// limits: 3500 ms, 1024 MB
 // Problem: N <= 1e6 qualities a_i <= 1e9 and a window length K. The value is the largest a_i + a_j
 //   with i != j inside some K consecutive lectures, i.e. |i - j| < K. Print it for the initial
 //   array and after each of Q <= 1e5 point assignments.

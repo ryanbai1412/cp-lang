@@ -1,4 +1,5 @@
 // Source: CCO 2002 Stage 2 Day 1 P3 (Return To Blind Man's Bluff), https://dmoj.ca/problem/cco02p3
+// limits: 2000 ms, 64 MB
 // Problem: interactive. A blind robot is on an n x m board with unit obstacles; it is given n,
 //   m, its start row and column and its facing (N, E, S, W). It may turn left (L), turn right
 //   (R) or try a step forward (F, answered 1 if it moved, 0 if blocked by a wall or obstacle).
