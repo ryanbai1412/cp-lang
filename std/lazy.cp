@@ -32,7 +32,7 @@ pub struct Flip<T>(pub now: T, pub flipped: T):
     /// traps: never (an `m` without a known identity is a compile-time error)
     /// example: `Flip.op(+).op(Flip(1, 0), Flip(0, 1)).now == 1`
     /// example: `Flip.op(+).id.flipped == 0`
-    pub fn op<M>(m: M) -> Monoid<Flip<T>>:
+    pub fn op<M: Op<T>>(m: M) -> Monoid<Flip<T>>:
         let b = Monoid<T>.of(m)
         Monoid(Flip(b.id, b.id), (x, y) => Flip(b.op(x.now, y.now), b.op(x.flipped, y.flipped)))
 
@@ -44,7 +44,7 @@ pub struct Flip<T>(pub now: T, pub flipped: T):
 /// traps: never
 /// example: `flip_action(+).apply(true, Flip(3, 1), 4).now == 1`
 /// example: `flip_action(+).compose(true, true) == false`
-pub fn flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>:
+pub fn flip_action<T, M: Op<T>>(m: M) -> Action<Flip<T>, Bool>:
     let k = Monoid<T>.of(m)
     Action<Flip<T>, Bool>(
         id: false,
@@ -1238,7 +1238,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// example: `SeqFold<Int>(+).total == 0`
     /// example: `var s = SeqFold<Int>(+, [1, 2, 3], mirror: x => x); s.reverse(0..2); s.items.collect() == [2, 1, 3] and s.fold(0..1) == 2`
     /// example: `var s = SeqFold<Int, Int, 0..=9>(+, [1, 2, 3], lift: x => 10 * x); s.push(4); s.total == 100 and s.get(1) == 20`
-    pub fn new<M, S: Seq<E>>(op: M, xs: S = List<E>(), act: ?Action<T, F> = None, mirror: ?(T -> T) = None, lift: E -> T = x => x) -> SeqFold<T, F, E>:
+    pub fn new<M: Op<T>, S: Seq<E>>(op: M, xs: S = List<E>(), act: ?Action<T, F> = None, mirror: ?(T -> T) = None, lift: E -> T = x => x) -> SeqFold<T, F, E>:
         var s = SeqFold<T, F, E>.blank(Monoid<T>.of(op), act, mirror, lift)
         s.root = s.build(xs)
         s

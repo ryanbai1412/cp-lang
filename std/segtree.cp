@@ -84,7 +84,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
     /// trap: `SegTree<Int, Int>(fill: 0, over: 0..10)`
-    pub fn new<M, A: Acts<T, F>, O>(
+    pub fn new<M: Op<T>, A: Acts<T, F>, O>(
         op: M = NoOp(),
         a: ?[D]T = None,
         fill: ?T = None,
@@ -104,7 +104,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         if same(act, NoAction()): return SegTree<D, T, F>.sparse(m, over, fill, None)
         SegTree<D, T, F>.sparse(m, over, fill, Some(Action<T, F>.of(act, op)))
 
-    fn on_domain<M, A: Acts<T, F>>(op: M, a: ?[D]T, fill: ?T, act: A) -> SegTree<D, T, F>:
+    fn on_domain<M: Op<T>, A: Acts<T, F>>(op: M, a: ?[D]T, fill: ?T, act: A) -> SegTree<D, T, F>:
         if same(op, NoOp()):
             // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
             // values, so `apply` runs on leaves only.
@@ -526,7 +526,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// let w: [D]Int = [1, 2, 3]
     /// SegTree<D, Int>.of(+, i => w[i] * 2).all == 12
     /// ```
-    pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T, F>:
+    pub fn of<M: Op<T>>(op: M, f: D -> T) -> SegTree<D, T, F>:
         var s = SegTree<D, T, F>.build(Monoid<T>.of(op), [D] i => f(i), None)
         s.source = f
         s
@@ -1114,7 +1114,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// traps: when both `a` and `fill` are given
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).all == 9`
     /// trap: `domain R = 0..2; let g: [R, R]Int = 1; SegTree2D<R, R, Int>(+, a: g, fill: 1)`
-    pub fn new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T>:
+    pub fn new<M: Op<T>>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T>:
         let m = Monoid<T>.of(op)
         let (h, w) = (R.count, C.count)
         var g = SegTree2D<R, C, T>(m, List.filled(4 * h * w, m.id))
