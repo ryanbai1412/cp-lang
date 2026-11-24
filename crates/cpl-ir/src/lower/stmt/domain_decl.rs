@@ -87,11 +87,7 @@ impl<'a> Lowerer<'a> {
             let mut len = self.product_factor_len(&factors[0].1, def.span);
             for (_, f) in &factors[1..] {
                 let flen = self.product_factor_len(f, def.span);
-                len = self.mk(
-                    ExprKind::Binary(BinOp::Mul, Box::new(len), Box::new(flen)),
-                    Ty::Int,
-                    def.span,
-                );
+                len = self.mk_binary(BinOp::Mul, len, flen, Ty::Int, def.span);
             }
             let lo = self.int_lit(0, def.span);
             out.push(Stmt::DefDomain { id, lo, len });
@@ -103,11 +99,7 @@ impl<'a> Lowerer<'a> {
                 .map(|d| self.mk(ExprKind::DomainLen(d), Ty::Int, def.span));
             let first = lens.next().unwrap();
             let len = lens.fold(first, |acc, l| {
-                self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(acc), Box::new(l)),
-                    Ty::Int,
-                    def.span,
-                )
+                self.mk_binary(BinOp::Add, acc, l, Ty::Int, def.span)
             });
             let lo = self.int_lit(0, def.span);
             out.push(Stmt::DefDomain { id, lo, len });
@@ -116,17 +108,9 @@ impl<'a> Lowerer<'a> {
         if let Some(base_id) = self.domain_pairs_iter(def) {
             let n = self.mk(ExprKind::DomainLen(base_id), Ty::Int, def.span);
             let n_minus_1 = self.int_add(n.clone(), -1);
-            let prod = self.mk(
-                ExprKind::Binary(BinOp::Mul, Box::new(n), Box::new(n_minus_1)),
-                Ty::Int,
-                def.span,
-            );
+            let prod = self.mk_binary(BinOp::Mul, n, n_minus_1, Ty::Int, def.span);
             let two = self.int_lit(2, def.span);
-            let len = self.mk(
-                ExprKind::Binary(BinOp::Div, Box::new(prod), Box::new(two)),
-                Ty::Int,
-                def.span,
-            );
+            let len = self.mk_binary(BinOp::Div, prod, two, Ty::Int, def.span);
             let lo = self.int_lit(0, def.span);
             out.push(Stmt::DefDomain { id, lo, len });
             return;
@@ -163,22 +147,16 @@ impl<'a> Lowerer<'a> {
                 | Ty::Array { .. }
                 | Ty::Str
                 | Ty::StrView => {
-                    let len = self.mk(
-                        ExprKind::Builtin(Builtin::Len, vec![val]),
-                        Ty::Int,
-                        def.span,
-                    );
+                    let len = self.mk_builtin(Builtin::Len, [val], Ty::Int, def.span);
                     let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
                     out.push(Stmt::DefDomain { id, lo, len });
                 }
                 Ty::Tuple(fields) if fields.first() == Some(&Ty::DomainVal) => {
-                    let dom_field =
-                        self.mk(ExprKind::Field(Box::new(val), 0), Ty::DomainVal, def.span);
+                    let dom_field = self.mk_field(val, 0, Ty::DomainVal, def.span);
                     out.push(Stmt::DefDomainFromVal { id, val: dom_field });
                 }
                 Ty::Record(fields) if fields.first().is_some_and(|(_, t)| *t == Ty::DomainVal) => {
-                    let dom_field =
-                        self.mk(ExprKind::Field(Box::new(val), 0), Ty::DomainVal, def.span);
+                    let dom_field = self.mk_field(val, 0, Ty::DomainVal, def.span);
                     out.push(Stmt::DefDomainFromVal { id, val: dom_field });
                 }
                 Ty::Struct(sid) => {
@@ -192,12 +170,8 @@ impl<'a> Lowerer<'a> {
                         .find(|(_, (_, t))| matches!(t, Ty::Array { .. } | Ty::List(_) | Ty::Str))
                         .map(|(idx, (_, fty))| {
                             let fty = fty.clone();
-                            let field = self.mk(ExprKind::Field(Box::new(val), idx), fty, def.span);
-                            self.mk(
-                                ExprKind::Builtin(Builtin::Len, vec![field]),
-                                Ty::Int,
-                                def.span,
-                            )
+                            let field = self.mk_field(val, idx, fty, def.span);
+                            self.mk_builtin(Builtin::Len, [field], Ty::Int, def.span)
                         });
                     if let Some(len) = len_expr {
                         let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
@@ -235,11 +209,7 @@ impl<'a> Lowerer<'a> {
         let slot = self.temp(Ty::Int);
         out.push(Stmt::Let(slot, Some(lo)));
         let lo = self.local(slot, def.span);
-        let len = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(hi), Box::new(lo.clone())),
-            Ty::Int,
-            def.span,
-        );
+        let len = self.mk_binary(BinOp::Sub, hi, lo.clone(), Ty::Int, def.span);
         let len = if *inclusive {
             self.int_add(len, 1)
         } else {

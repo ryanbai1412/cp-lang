@@ -77,11 +77,7 @@ impl<'a> Lowerer<'a> {
             return self.len_of(rows, span);
         }
         let axis = self.int_lit(axis as i64, span);
-        self.mk(
-            ExprKind::Builtin(Builtin::AxisLen, vec![rows, axis]),
-            Ty::Int,
-            span,
-        )
+        self.mk_builtin(Builtin::AxisLen, [rows, axis], Ty::Int, span)
     }
 
     /// `g[r, ..] max= g[v, ..]`: every cell of one row or column of a grid
@@ -149,11 +145,7 @@ impl<'a> Lowerer<'a> {
         let len = self.axis_len(grid, axis, span);
         let (lo, hi) = self.axis_part(&indices[axis], dims[axis], len, out);
         let (lo, hi) = (self.hold(lo, out), self.hold(hi, out));
-        let count = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(hi.clone()), Box::new(lo.clone())),
-            Ty::Int,
-            span,
-        );
+        let count = self.mk_binary(BinOp::Sub, hi.clone(), lo.clone(), Ty::Int, span);
         let cell = Place {
             kind: PlaceKind::Index(Box::new(place), cell),
             ty: elem.clone(),
@@ -162,11 +154,7 @@ impl<'a> Lowerer<'a> {
         // The cell of the other side that goes with it.
         let mut body = Vec::new();
         let counter = self.cast(Cast::Trust, self.local(at, span), Ty::Int);
-        let offset = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(counter), Box::new(lo.clone())),
-            Ty::Int,
-            span,
-        );
+        let offset = self.mk_binary(BinOp::Sub, counter, lo.clone(), Ty::Int, span);
         let (theirs, their_count) = match self.grid_row(value) {
             Some((other, their_indices, their_axis)) => {
                 let other = self.expr(other, None);
@@ -204,24 +192,12 @@ impl<'a> Lowerer<'a> {
                     out,
                 );
                 let (their_lo, their_hi) = (self.hold(their_lo, out), self.hold(their_hi, out));
-                let step = self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(their_lo.clone()), Box::new(offset)),
-                    Ty::Int,
-                    span,
-                );
+                let step = self.mk_binary(BinOp::Add, their_lo.clone(), offset, Ty::Int, span);
                 let step = self.cast(Cast::Trust, step, slot_ty(their_dims[their_axis]));
                 body.push(Stmt::Let(their_at, Some(step)));
-                let their_count = self.mk(
-                    ExprKind::Binary(BinOp::Sub, Box::new(their_hi), Box::new(their_lo)),
-                    Ty::Int,
-                    span,
-                );
+                let their_count = self.mk_binary(BinOp::Sub, their_hi, their_lo, Ty::Int, span);
                 (
-                    self.mk(
-                        ExprKind::Index(Box::new(other), their_cell),
-                        elem.clone(),
-                        value.span,
-                    ),
+                    self.mk_index(other, their_cell, elem.clone(), value.span),
                     Some(their_count),
                 )
             }
@@ -252,21 +228,13 @@ impl<'a> Lowerer<'a> {
                 let their_count = self.len_of(other.clone(), span);
                 let index = self.cast(Cast::Trust, offset, slot_ty(dim));
                 (
-                    self.mk(
-                        ExprKind::Index(Box::new(other), vec![index]),
-                        elem.clone(),
-                        value.span,
-                    ),
+                    self.mk_index(other, vec![index], elem.clone(), value.span),
                     Some(their_count),
                 )
             }
         };
         if let Some(their_count) = their_count {
-            let differ = self.mk(
-                ExprKind::Cmp(CmpOp::Ne, Box::new(their_count), Box::new(count)),
-                Ty::Bool,
-                span,
-            );
+            let differ = self.mk_cmp(CmpOp::Ne, their_count, count, Ty::Bool, span);
             let trap = Stmt::Trap(
                 format!("`a {word} b` needs two rows of one length"),
                 self.span(span),
@@ -291,12 +259,10 @@ impl<'a> Lowerer<'a> {
             return changed;
         };
         let theirs = self.hold(theirs, &mut body);
-        let better = self.mk(
-            ExprKind::Cmp(
-                if max { CmpOp::Gt } else { CmpOp::Lt },
-                Box::new(theirs.clone()),
-                Box::new(place_to_expr(&cell)),
-            ),
+        let better = self.mk_cmp(
+            if max { CmpOp::Gt } else { CmpOp::Lt },
+            theirs.clone(),
+            place_to_expr(&cell),
             Ty::Bool,
             span,
         );
@@ -436,21 +402,11 @@ impl<'a> Lowerer<'a> {
             from_len,
             out,
         );
-        let sub = |lw: &Self, a: Expr, b: Expr| {
-            lw.mk(
-                ExprKind::Binary(BinOp::Sub, Box::new(a), Box::new(b)),
-                Ty::Int,
-                span,
-            )
-        };
+        let sub = |lw: &Self, a: Expr, b: Expr| lw.mk_binary(BinOp::Sub, a, b, Ty::Int, span);
         let count = sub(self, hi, lo.clone());
         let count = self.hold(count, out);
         let theirs = sub(self, from_hi, from_lo.clone());
-        let differ = self.mk(
-            ExprKind::Cmp(CmpOp::Ne, Box::new(theirs), Box::new(count.clone())),
-            Ty::Bool,
-            span,
-        );
+        let differ = self.mk_cmp(CmpOp::Ne, theirs, count.clone(), Ty::Bool, span);
         let written = match (store, with) {
             (_, Some((bin, ..))) => format!("a[l..r] = b[l2..r2] {} x", bin.text()),
             (ast::AssignOp::Set, None) => "a[l..r] = b[l2..r2]".to_string(),
@@ -473,34 +429,18 @@ impl<'a> Lowerer<'a> {
         });
         let k = self.temp(Ty::Int);
         let step = |lw: &Self, slot: Slot, first: &Expr, dim: Dim| {
-            let sum = lw.mk(
-                ExprKind::Binary(
-                    BinOp::Add,
-                    Box::new(first.clone()),
-                    Box::new(lw.local(k, span)),
-                ),
-                Ty::Int,
-                span,
-            );
+            let sum = lw.mk_binary(BinOp::Add, first.clone(), lw.local(k, span), Ty::Int, span);
             let sum = match index_ty(dim) {
                 Ty::Int => sum,
                 ty => lw.cast(Cast::Trust, sum, ty),
             };
             Stmt::Let(slot, Some(sum))
         };
-        let read = self.mk(
-            ExprKind::Index(Box::new(rows), from_cell),
-            elem.clone(),
-            span,
-        );
+        let read = self.mk_index(rows, from_cell, elem.clone(), span);
         let worked = match with {
             Some((bin, value, first)) => {
                 let (left, right) = if first { (value, read) } else { (read, value) };
-                self.mk(
-                    ExprKind::Binary(bin, Box::new(left), Box::new(right)),
-                    elem.clone(),
-                    span,
-                )
+                self.mk_binary(bin, left, right, elem.clone(), span)
             }
             None => read,
         };
@@ -535,11 +475,7 @@ impl<'a> Lowerer<'a> {
             }
         };
         let (forward, backward) = (run(self, false), run(self, true));
-        let later = self.mk(
-            ExprKind::Cmp(CmpOp::Gt, Box::new(lo), Box::new(from_lo)),
-            Ty::Bool,
-            span,
-        );
+        let later = self.mk_cmp(CmpOp::Gt, lo, from_lo, Ty::Bool, span);
         out.push(Stmt::If(later, backward, forward));
     }
 
@@ -648,11 +584,7 @@ impl<'a> Lowerer<'a> {
                 let len = self.len_of(row.clone(), span);
                 let len = self.hold(len, out);
                 let theirs = self.len_of(other.clone(), span);
-                let same = self.mk(
-                    ExprKind::Cmp(CmpOp::Ne, Box::new(theirs), Box::new(len.clone())),
-                    Ty::Bool,
-                    span,
-                );
+                let same = self.mk_cmp(CmpOp::Ne, theirs, len.clone(), Ty::Bool, span);
                 let word = if max { "max=" } else { "min=" };
                 let trap = Stmt::Trap(
                     format!("`a {word} b` needs two rows of one length"),
@@ -681,13 +613,11 @@ impl<'a> Lowerer<'a> {
             ty: elem.clone(),
             span: self.span(span),
         };
-        let theirs = self.mk(ExprKind::Index(Box::new(other), vec![at]), elem, span);
-        let better = self.mk(
-            ExprKind::Cmp(
-                if max { CmpOp::Gt } else { CmpOp::Lt },
-                Box::new(theirs.clone()),
-                Box::new(place_to_expr(&cell)),
-            ),
+        let theirs = self.mk_index(other, vec![at], elem, span);
+        let better = self.mk_cmp(
+            if max { CmpOp::Gt } else { CmpOp::Lt },
+            theirs.clone(),
+            place_to_expr(&cell),
             Ty::Bool,
             span,
         );

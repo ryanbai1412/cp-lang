@@ -25,12 +25,13 @@ impl<'a> Lowerer<'a> {
             let item = lw.temp(elem_ty.clone());
             let lid = lw.fresh_loop();
             let item_expr = lw.local(item, span);
-            let cond = lw.mk(
-                ExprKind::CallExpr(Box::new(pred_val), vec![Arg::Value(item_expr.clone())]),
+            let cond = lw.mk_call_expr(
+                pred_val,
+                vec![Arg::Value(item_expr.clone())],
                 Ty::Bool,
                 span,
             );
-            let some_val = lw.mk(ExprKind::Some(Box::new(item_expr)), opt_ty.clone(), span);
+            let some_val = lw.mk_some(item_expr, opt_ty.clone(), span);
             let set_found = Stmt::Assign(
                 Place {
                     kind: PlaceKind::Local(found),
@@ -159,16 +160,8 @@ impl<'a> Lowerer<'a> {
                 (lw.temp(elem_ty.clone()), None)
             };
             let edge_expr = lw.local(edge, span);
-            let u_expr = lw.mk(
-                ExprKind::Field(Box::new(edge_expr.clone()), u_idx),
-                Ty::Pos(dom),
-                span,
-            );
-            let v_expr = lw.mk(
-                ExprKind::Field(Box::new(edge_expr), v_idx),
-                Ty::Pos(dom),
-                span,
-            );
+            let u_expr = lw.mk_field(edge_expr.clone(), u_idx, Ty::Pos(dom), span);
+            let v_expr = lw.mk_field(edge_expr, v_idx, Ty::Pos(dom), span);
             let acc_place = Place {
                 kind: PlaceKind::Local(acc),
                 ty: arr_ty.clone(),
@@ -185,16 +178,8 @@ impl<'a> Lowerer<'a> {
                 span: lw.span(span),
             };
             let mut body_stmts = Vec::new();
-            let p1 = lw.mk(
-                ExprKind::Mutate(Mutation::Push, Box::new(u_cell), vec![v_expr]),
-                Ty::Unit,
-                span,
-            );
-            let p2 = lw.mk(
-                ExprKind::Mutate(Mutation::Push, Box::new(v_cell), vec![u_expr]),
-                Ty::Unit,
-                span,
-            );
+            let p1 = lw.mk_mutate(Mutation::Push, u_cell, vec![v_expr], Ty::Unit, span);
+            let p2 = lw.mk_mutate(Mutation::Push, v_cell, vec![u_expr], Ty::Unit, span);
             body_stmts.push(Stmt::Expr(p1));
             body_stmts.push(Stmt::Expr(p2));
             let loop_body = if let Some(cond) = filter_cond {
@@ -279,11 +264,7 @@ impl<'a> Lowerer<'a> {
                     ty: list_ty.clone(),
                     span: lw.span(span),
                 };
-                Stmt::Expr(lw.mk(
-                    ExprKind::Mutate(Mutation::Push, Box::new(place), vec![value]),
-                    Ty::Unit,
-                    span,
-                ))
+                Stmt::Expr(lw.mk_mutate(Mutation::Push, place, vec![value], Ty::Unit, span))
             };
             build(lw, out, &push);
             out.push(Stmt::Give(lw.local(acc, span)));

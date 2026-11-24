@@ -34,11 +34,7 @@ impl<'a> Lowerer<'a> {
                 dims: vec![Dim::Int],
                 elem: Box::new(cell.clone()),
             };
-            self.mk(
-                ExprKind::Builtin(Builtin::ListToArray, vec![value]),
-                ty,
-                span,
-            )
+            self.mk_builtin(Builtin::ListToArray, [value], ty, span)
         } else {
             value
         };
@@ -54,11 +50,7 @@ impl<'a> Lowerer<'a> {
                 } else {
                     0
                 };
-                let len = self.mk(
-                    ExprKind::Builtin(Builtin::Len, vec![src.clone()]),
-                    Ty::Int,
-                    span,
-                );
+                let len = self.mk_builtin(Builtin::Len, [src.clone()], Ty::Int, span);
                 let len = self.hold(len, &mut stmts);
                 let spec = match first {
                     0 => DimSpec::Int(Box::new(len.clone())),
@@ -81,13 +73,9 @@ impl<'a> Lowerer<'a> {
             Dim::IntFrom(first) => self.int_add(i.clone(), first),
             _ => i.clone(),
         };
-        let cell = self.mk(ExprKind::Index(Box::new(src), vec![i.clone()]), cell, span);
+        let cell = self.mk_index(src, vec![i.clone()], cell, span);
         let gap = self.gap(cell.clone(), &name, key, span);
-        let got = self.mk(
-            ExprKind::Unwrap(Box::new(cell), false),
-            inside.clone(),
-            span,
-        );
+        let got = self.mk_unwrap(cell, false, inside.clone(), span);
         let place = Place {
             kind: PlaceKind::Index(
                 Box::new(Place {
@@ -124,17 +112,13 @@ impl<'a> Lowerer<'a> {
         if !list {
             return cells;
         }
-        let ty = Ty::List(Box::new(inside));
-        self.mk(
-            ExprKind::Builtin(Builtin::ArrayToList, vec![cells]),
-            ty,
-            span,
-        )
+        let ty = Ty::list(inside);
+        self.mk_builtin(Builtin::ArrayToList, [cells], ty, span)
     }
 
     /// The trap at the first `None` cell, naming it: "`!` on `None`: at[2] is None".
     fn gap(&mut self, cell: Expr, name: &str, key: Expr, span: Span) -> Stmt {
-        let some = self.mk(ExprKind::IsSome(Box::new(cell)), Ty::Bool, span);
+        let some = self.mk_is_some(cell, Ty::Bool, span);
         let mut pieces = vec![FmtPiece::Text(
             format!("`!` on `None`: {name}[").into_bytes(),
         )];

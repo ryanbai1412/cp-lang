@@ -28,11 +28,7 @@ impl<'a> Lowerer<'a> {
         let ord = |lw: &mut Self, e: &ast::Expr| {
             let label = lw.expr(e, None);
             let first = lw.domain_first_label(d, span);
-            lw.mk(
-                ExprKind::Binary(BinOp::Sub, Box::new(label), Box::new(first)),
-                Ty::Int,
-                span,
-            )
+            lw.mk_binary(BinOp::Sub, label, first, Ty::Int, span)
         };
         let lo = match lo {
             Some(e) => ord(self, e),
@@ -51,7 +47,7 @@ impl<'a> Lowerer<'a> {
                 lo: Box::new(lo),
                 hi: Box::new(hi),
             },
-            Ty::Range(Box::new(Ty::Pos(d))),
+            Ty::range(Ty::Pos(d)),
             span,
         ))
     }
@@ -78,7 +74,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(l),
                             hi: Box::new(hi),
                         },
-                        Ty::Range(Box::new(Ty::Int)),
+                        Ty::range(Ty::Int),
                         span,
                     )
                 }
@@ -87,11 +83,7 @@ impl<'a> Lowerer<'a> {
                     let r = self.coerce(r, &Ty::I128, span);
                     let hi = if inclusive {
                         let one = self.coerce(self.int_lit(1, span), &Ty::I128, span);
-                        self.mk(
-                            ExprKind::Binary(BinOp::Add, Box::new(r), Box::new(one)),
-                            Ty::I128,
-                            span,
-                        )
+                        self.mk_binary(BinOp::Add, r, one, Ty::I128, span)
                     } else {
                         r
                     };
@@ -100,7 +92,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(l),
                             hi: Box::new(hi),
                         },
-                        Ty::Range(Box::new(Ty::I128)),
+                        Ty::range(Ty::I128),
                         span,
                     )
                 }
@@ -118,7 +110,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(lo_ord),
                             hi: Box::new(hi_ord),
                         },
-                        Ty::Range(Box::new(Ty::Pos(d))),
+                        Ty::range(Ty::Pos(d)),
                         span,
                     )
                 }
@@ -146,7 +138,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(lo_ord),
                             hi: Box::new(hi_ord),
                         },
-                        Ty::Range(Box::new(elem)),
+                        Ty::range(elem),
                         span,
                     )
                 }
@@ -156,7 +148,7 @@ impl<'a> Lowerer<'a> {
                         lo: Box::new(l),
                         hi: Box::new(r),
                     },
-                    Ty::Range(Box::new(Ty::Float)),
+                    Ty::range(Ty::Float),
                     span,
                 ),
                 (Ty::Float, Ty::Float) => {
@@ -193,7 +185,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(lo_ord),
                             hi: Box::new(hi_ord),
                         },
-                        Ty::Range(Box::new(elem)),
+                        Ty::range(elem),
                         span,
                     )
                 }
@@ -206,7 +198,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(l),
                             hi: Box::new(hi),
                         },
-                        Ty::Range(Box::new(Ty::Int)),
+                        Ty::range(Ty::Int),
                         span,
                     )
                 }
@@ -224,7 +216,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(lo),
                             hi: Box::new(hi),
                         },
-                        Ty::Range(Box::new(Ty::Int)),
+                        Ty::range(Ty::Int),
                         span,
                     )
                 }
@@ -241,7 +233,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(lo_ord),
                             hi: Box::new(hi_ord),
                         },
-                        Ty::Range(Box::new(Ty::Pos(d))),
+                        Ty::range(Ty::Pos(d)),
                         span,
                     )
                 }
@@ -260,7 +252,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(lo_ord),
                             hi: Box::new(hi_ord),
                         },
-                        Ty::Range(Box::new(elem)),
+                        Ty::range(elem),
                         span,
                     )
                 }
@@ -291,10 +283,7 @@ impl<'a> Lowerer<'a> {
             Ty::Opt(_) => (value.ty.clone(), value),
             ref t => {
                 let ty = Ty::opt(t.clone());
-                (
-                    ty.clone(),
-                    self.mk(ExprKind::Some(Box::new(value)), ty, span),
-                )
+                (ty.clone(), self.mk_some(value, ty, span))
             }
         };
         self.do_expr(Some(&ty), span, |lw, out| {
@@ -336,19 +325,15 @@ impl<'a> Lowerer<'a> {
             let slot = self.temp(opt.ty.clone());
             self.cx.pending.push(Stmt::Let(slot, Some(opt)));
             let held = self.local(slot, span);
-            let is_some = self.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
-            let is_none = self.mk(
-                ExprKind::Unary(UnOp::Not, Box::new(is_some)),
-                Ty::Bool,
-                span,
-            );
+            let is_some = self.mk_is_some(held.clone(), Ty::Bool, span);
+            let is_none = self.mk_unary(UnOp::Not, is_some, Ty::Bool, span);
             let leave = Block {
                 stmts: vec![Stmt::Break(Some(lid))],
             };
             self.cx
                 .pending
                 .push(Stmt::If(is_none, leave, Block::default()));
-            return self.mk(ExprKind::Unwrap(Box::new(held), false), *inner_ty, span);
+            return self.mk_unwrap(held, false, *inner_ty, span);
         }
         let ret_ty = self
             .cx
@@ -359,12 +344,8 @@ impl<'a> Lowerer<'a> {
             let slot = lw.temp(opt.ty.clone());
             out.push(Stmt::Let(slot, Some(opt)));
             let held = lw.local(slot, span);
-            let is_some = lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
-            let is_none = lw.mk(
-                ExprKind::Unary(UnOp::Not, Box::new(is_some)),
-                Ty::Bool,
-                span,
-            );
+            let is_some = lw.mk_is_some(held.clone(), Ty::Bool, span);
+            let is_none = lw.mk_unary(UnOp::Not, is_some, Ty::Bool, span);
             let ret_none = lw.mk(ExprKind::None, ret_ty.clone(), span);
             out.push(Stmt::If(
                 is_none,
@@ -373,11 +354,7 @@ impl<'a> Lowerer<'a> {
                 },
                 Block::default(),
             ));
-            let val = lw.mk(
-                ExprKind::Unwrap(Box::new(held), false),
-                (*inner_ty).clone(),
-                span,
-            );
+            let val = lw.mk_unwrap(held, false, (*inner_ty).clone(), span);
             out.push(Stmt::Give(val));
         })
     }

@@ -165,7 +165,7 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Paren(inner) if self.is_filled(inner) => {
                 let held = self.expr(inner, None);
                 match held.ty.clone() {
-                    Ty::Opt(ty) => self.mk(ExprKind::Unwrap(Box::new(held), false), *ty, span),
+                    Ty::Opt(ty) => self.mk_unwrap(held, false, *ty, span),
                     _ => held,
                 }
             }
@@ -180,7 +180,7 @@ impl<'a> Lowerer<'a> {
                     // position. It is still checked, so a proof that is
                     // wrong stops the program and can't read past an array.
                     Ty::Opt(inner) if !written && self.step_stays(e, &inner) => {
-                        self.mk(ExprKind::Unwrap(Box::new(value), true), *inner, span)
+                        self.mk_unwrap(value, true, *inner, span)
                     }
                     _ => value,
                 }
@@ -202,7 +202,7 @@ impl<'a> Lowerer<'a> {
                             lo: Box::new(lo),
                             hi: Box::new(hi),
                         },
-                        Ty::Range(Box::new(Ty::Pos(d))),
+                        Ty::range(Ty::Pos(d)),
                         span,
                     )
                 }
@@ -246,20 +246,16 @@ impl<'a> Lowerer<'a> {
                             return self.err_expr(span);
                         }
                         let map_ty = self.structs[sid].def.fields[0].1.clone();
-                        let map_expr =
-                            self.mk(ExprKind::Field(Box::new(base_expr), 0), map_ty, span);
+                        let map_expr = self.mk_field(base_expr, 0, map_ty, span);
                         let key = self.expect(&indices[0], &key_ty);
-                        let found = self.mk(
-                            ExprKind::Builtin(Builtin::MapGet, vec![map_expr, key]),
+                        let found = self.mk_builtin(
+                            Builtin::MapGet,
+                            [map_expr, key],
                             Ty::opt(Ty::Int),
                             span,
                         );
                         let zero = self.int_lit(0, span);
-                        return self.mk(
-                            ExprKind::Binary(BinOp::Coalesce, Box::new(found), Box::new(zero)),
-                            Ty::Int,
-                            span,
-                        );
+                        return self.mk_binary(BinOp::Coalesce, found, zero, Ty::Int, span);
                     }
                     let ast_args: Vec<ast::Arg> = indices
                         .iter()
@@ -367,11 +363,9 @@ impl<'a> Lowerer<'a> {
                             let parts: Vec<(Expr, Expr)> = whole
                                 .iter()
                                 .map(|&axis| {
-                                    let len = lw.mk(
-                                        ExprKind::Builtin(
-                                            Builtin::AxisLen,
-                                            vec![base.clone(), lw.int_lit(axis as i64, span)],
-                                        ),
+                                    let len = lw.mk_builtin(
+                                        Builtin::AxisLen,
+                                        [base.clone(), lw.int_lit(axis as i64, span)],
                                         Ty::Int,
                                         span,
                                     );
@@ -382,7 +376,7 @@ impl<'a> Lowerer<'a> {
                             if let (Some(at), Some((lo, _))) = (first, parts.first()) {
                                 out.push(lw.set_local(at, lo.clone(), span));
                             }
-                            let value = lw.mk(ExprKind::Index(Box::new(base), cell), ty, span);
+                            let value = lw.mk_index(base, cell, ty, span);
                             let mut body = Block {
                                 stmts: vec![push(lw, value)],
                             };
@@ -439,7 +433,7 @@ impl<'a> Lowerer<'a> {
                 }
                 let (indices, ty) = self.index_args(&base_expr.ty, indices, span);
                 let indices = self.vouched(&base_expr.ty, indices);
-                let out = self.mk(ExprKind::Index(Box::new(base_expr), indices), ty, span);
+                let out = self.mk_index(base_expr, indices, ty, span);
                 let plain = self.plain_ty(&out.ty);
                 self.try_coerce(out, &plain).unwrap_or_else(|e| e)
             }
@@ -566,11 +560,7 @@ impl<'a> Lowerer<'a> {
                             ExprKind::Int(v) => *v,
                             _ => 0,
                         };
-                        let diff = self.mk(
-                            ExprKind::Binary(BinOp::Sub, Box::new(hi_e), Box::new(lo_e)),
-                            Ty::Int,
-                            span,
-                        );
+                        let diff = self.mk_binary(BinOp::Sub, hi_e, lo_e, Ty::Int, span);
                         let len = if *inclusive {
                             self.int_add(diff, 1)
                         } else {
@@ -648,11 +638,7 @@ impl<'a> Lowerer<'a> {
                                 continue;
                             }
                             let base_ref = self.local(slot, span);
-                            kept_vals.push(self.mk(
-                                ExprKind::Field(Box::new(base_ref), idx),
-                                fty.clone(),
-                                span,
-                            ));
+                            kept_vals.push(self.mk_field(base_ref, idx, fty.clone(), span));
                             kept_tys.push((fname, fty));
                         }
                         let out_ty = Ty::Record(kept_tys);
@@ -722,11 +708,7 @@ impl<'a> Lowerer<'a> {
                         values.push(lw.expect(val_expr, fty));
                     } else {
                         let base_ref = lw.local(tmp.expect("needs_tmp"), span);
-                        values.push(lw.mk(
-                            ExprKind::Field(Box::new(base_ref), idx),
-                            fty.clone(),
-                            span,
-                        ));
+                        values.push(lw.mk_field(base_ref, idx, fty.clone(), span));
                     }
                 }
                 let built = lw.mk(ExprKind::Tuple(values), ty, span);
@@ -739,9 +721,7 @@ impl<'a> Lowerer<'a> {
                 let value = self.expr_maybe_opt_reduce(inner);
                 self.cx.as_written = false;
                 match value.ty.clone() {
-                    Ty::Opt(inside) => {
-                        self.mk(ExprKind::Unwrap(Box::new(value), true), *inside, span)
-                    }
+                    Ty::Opt(inside) => self.mk_unwrap(value, true, *inside, span),
                     Ty::Error => value,
                     ref ty if Self::unwraps_cells(ty) => self.unwrap_cells(value, span),
                     // Inside a generic function (e.g. `bsearch_first<I>` instantiated with `I = Int`),

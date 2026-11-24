@@ -66,9 +66,12 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
+        self.error_text(code, span, message.into());
+    }
+
+    fn error_text(&mut self, code: cpl_diag::Code, span: Span, mut message: String) {
         let at = span.shift(self.offset);
         let span = self.span(span);
-        let mut message = message.into();
         let mut notes = Vec::new();
         if self.cur_mod != 0 {
             if let Some((module, line, inside)) = self.library_place(self.cur_mod, at) {

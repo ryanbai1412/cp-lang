@@ -15,7 +15,7 @@ impl<'a> Lowerer<'a> {
             return if *op == CmpOp::In {
                 found
             } else {
-                self.mk(ExprKind::Unary(UnOp::Not, Box::new(found)), Ty::Bool, span)
+                self.mk_unary(UnOp::Not, found, Ty::Bool, span)
             };
         }
         // `none == x` needs the other side's type first.
@@ -253,6 +253,6 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         }
-        self.mk(ExprKind::Cmp(op, Box::new(l), Box::new(r)), Ty::Bool, span)
+        self.mk_cmp(op, l, r, Ty::Bool, span)
     }
 }

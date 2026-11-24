@@ -290,23 +290,11 @@ impl Lowerer<'_> {
             }
             _ => self.expr(body, None),
         };
-        let len = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(hi), Box::new(lo)),
-            Ty::Int,
-            span,
-        );
+        let len = self.mk_binary(BinOp::Sub, hi, lo, Ty::Int, span);
         let zero = self.int_lit(0, span);
-        let count = self.mk(
-            ExprKind::Builtin(Builtin::Max, vec![len, zero]),
-            Ty::Int,
-            span,
-        );
+        let count = self.mk_builtin(Builtin::Max, [len, zero], Ty::Int, span);
         let ty = Ty::list(value.ty.clone());
-        Some(self.mk(
-            ExprKind::Builtin(Builtin::ListFilled, vec![count, value]),
-            ty,
-            span,
-        ))
+        Some(self.mk_builtin(Builtin::ListFilled, [count, value], ty, span))
     }
 
     /// `[deg[u] * 2 for u in V]` where a `[V]T` is declared builds the
@@ -537,18 +525,10 @@ impl Lowerer<'_> {
                 let len_var = self.mk(ExprKind::Local(len), Ty::Int, span);
                 let lo_var = self.mk(ExprKind::Local(lo), Ty::Int, span);
                 let lo_end = BinOp::Sub;
-                let lo_end = self.mk(
-                    ExprKind::Binary(lo_end, Box::new(n1.clone()), Box::new(len_var.clone())),
-                    Ty::Int,
-                    span,
-                );
+                let lo_end = self.mk_binary(lo_end, n1.clone(), len_var.clone(), Ty::Int, span);
                 let hi = BinOp::Add;
-                let hi = self.mk(
-                    ExprKind::Binary(hi, Box::new(lo_var.clone()), Box::new(len_var)),
-                    Ty::Int,
-                    span,
-                );
-                let piece_ty = Ty::Range(Box::new(Ty::Pos(d)));
+                let hi = self.mk_binary(hi, lo_var.clone(), len_var, Ty::Int, span);
+                let piece_ty = Ty::range(Ty::Pos(d));
                 let piece = ExprKind::Range {
                     lo: Box::new(lo_var),
                     hi: Box::new(hi),

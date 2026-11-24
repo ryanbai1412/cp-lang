@@ -298,12 +298,12 @@ impl<'a> Lowerer<'a> {
     }
 
     fn memo_cmp(&self, op: CmpOp, a: Expr, b: Expr, span: Span) -> Expr {
-        self.mk(ExprKind::Cmp(op, Box::new(a), Box::new(b)), Ty::Bool, span)
+        self.mk_cmp(op, a, b, Ty::Bool, span)
     }
 
     fn memo_bin(&self, op: BinOp, a: Expr, b: Expr, span: Span) -> Expr {
         let ty = a.ty.clone();
-        self.mk(ExprKind::Binary(op, Box::new(a), Box::new(b)), ty, span)
+        self.mk_binary(op, a, b, ty, span)
     }
 
     /// Splits `value` into coordinates of the flat table. `false` when
@@ -374,11 +374,7 @@ impl<'a> Lowerer<'a> {
                 let Ty::Opt(payload_ty) = &value.ty else {
                     return false;
                 };
-                let payload = self.mk(
-                    ExprKind::Unwrap(Box::new(value.clone()), false),
-                    (**payload_ty).clone(),
-                    span,
-                );
+                let payload = self.mk_unwrap(value.clone(), false, (**payload_ty).clone(), span);
                 let at = memo.parts.len();
                 if !self.memo_parts(memo, payload, inner) || memo.parts.len() != at + 1 {
                     return false;
@@ -389,22 +385,10 @@ impl<'a> Lowerer<'a> {
                     // Below the range is still outside the table, not `none`.
                     let low = self.memo_cmp(CmpOp::Ge, part.ord, self.int_lit(0, span), span);
                     let out = self.int_lit(-1, span);
-                    some = self.mk(
-                        ExprKind::If(Box::new(low), Box::new(some), Box::new(out)),
-                        Ty::Int,
-                        span,
-                    );
+                    some = self.mk_if(low, some, out, Ty::Int, span);
                 }
-                let present = self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span);
-                let ord = self.mk(
-                    ExprKind::If(
-                        Box::new(present),
-                        Box::new(some),
-                        Box::new(self.int_lit(0, span)),
-                    ),
-                    Ty::Int,
-                    span,
-                );
+                let present = self.mk_is_some(value, Ty::Bool, span);
+                let ord = self.mk_if(present, some, self.int_lit(0, span), Ty::Int, span);
                 memo.parts.push(Part {
                     ord,
                     len: self.int_add(part.len, 1),
@@ -417,11 +401,7 @@ impl<'a> Lowerer<'a> {
             }
             Spec::Plain(Ty::Bool) => {
                 let (one, zero) = (self.int_lit(1, span), self.int_lit(0, span));
-                let ord = self.mk(
-                    ExprKind::If(Box::new(value), Box::new(one), Box::new(zero)),
-                    Ty::Int,
-                    span,
-                );
+                let ord = self.mk_if(value, one, zero, Ty::Int, span);
                 memo.parts.push(Part {
                     ord,
                     len: self.int_lit(2, span),
@@ -468,11 +448,7 @@ impl<'a> Lowerer<'a> {
             Spec::Fields(ty @ (Ty::Tuple(_) | Ty::Record(_)), specs) => {
                 let _ = ty;
                 specs.iter().enumerate().all(|(i, field)| {
-                    let part = self.mk(
-                        ExprKind::Field(Box::new(value.clone()), i),
-                        field.ty(),
-                        span,
-                    );
+                    let part = self.mk_field(value.clone(), i, field.ty(), span);
                     self.memo_parts(memo, part, field)
                 })
             }
@@ -643,8 +619,9 @@ impl<'a> Lowerer<'a> {
             let zero = self.temp(ret.clone());
             let filled = |lw: &Self, value: Expr| {
                 let ty = Ty::list(value.ty.clone());
-                lw.mk(
-                    ExprKind::Builtin(Builtin::ListFilled, vec![lw.local(cells, span), value]),
+                lw.mk_builtin(
+                    Builtin::ListFilled,
+                    [lw.local(cells, span), value],
                     ty,
                     span,
                 )
@@ -697,43 +674,28 @@ impl<'a> Lowerer<'a> {
                 span: lw.span(span),
             };
             let cell_of = |lw: &Self, of: &Place, ty: Ty| {
-                lw.mk(
-                    ExprKind::Index(Box::new(read(of)), vec![lw.local(at, span)]),
-                    ty,
-                    span,
-                )
+                lw.mk_index(read(of), vec![lw.local(at, span)], ty, span)
             };
             let mut found = vec![Stmt::Let(at, Some(index))];
             if lazy {
-                let have = |lw: &Self| {
-                    lw.mk(
-                        ExprKind::Builtin(Builtin::Len, vec![read(&seen)]),
-                        Ty::Int,
-                        span,
-                    )
-                };
+                let have = |lw: &Self| lw.mk_builtin(Builtin::Len, [read(&seen)], Ty::Int, span);
                 let short = self.memo_cmp(CmpOp::Ge, self.local(at, span), have(self), span);
                 let twice = self.memo_bin(BinOp::Mul, have(self), self.int_lit(2, span), span);
                 let need = self.int_add(self.local(at, span), 1);
-                let more = self.mk(
-                    ExprKind::Builtin(Builtin::Max, vec![twice, need]),
-                    Ty::Int,
-                    span,
-                );
-                let size = self.mk(
-                    ExprKind::Builtin(Builtin::Min, vec![more, memo.parts[0].len.clone()]),
+                let more = self.mk_builtin(Builtin::Max, [twice, need], Ty::Int, span);
+                let size = self.mk_builtin(
+                    Builtin::Min,
+                    [more, memo.parts[0].len.clone()],
                     Ty::Int,
                     span,
                 );
                 let to = self.temp(Ty::Int);
                 let blank = self.temp(ret.clone());
                 let resize = |lw: &Self, list: &Place, fill: Expr| {
-                    Stmt::Expr(lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Resize,
-                            Box::new(list.clone()),
-                            vec![lw.local(to, span), fill],
-                        ),
+                    Stmt::Expr(lw.mk_mutate(
+                        Mutation::Resize,
+                        list.clone(),
+                        vec![lw.local(to, span), fill],
                         Ty::Unit,
                         span,
                     ))
@@ -769,24 +731,17 @@ impl<'a> Lowerer<'a> {
             start.push(set(&table, empty));
             let k = self.temp(key.ty.clone());
             out.push(Stmt::Let(k, Some(key)));
-            let got_ty = Ty::Opt(Box::new(ret.clone()));
+            let got_ty = Ty::opt(ret.clone());
             let got = self.temp(got_ty.clone());
-            let lookup = self.mk(
-                ExprKind::Builtin(Builtin::MapGet, vec![read(&table), self.local(k, span)]),
+            let lookup = self.mk_builtin(
+                Builtin::MapGet,
+                [read(&table), self.local(k, span)],
                 got_ty.clone(),
                 span,
             );
             out.push(Stmt::Let(got, Some(lookup)));
-            let known = self.mk(
-                ExprKind::IsSome(Box::new(self.local(got, span))),
-                Ty::Bool,
-                span,
-            );
-            let stored = self.mk(
-                ExprKind::Unwrap(Box::new(self.local(got, span)), false),
-                ret.clone(),
-                span,
-            );
+            let known = self.mk_is_some(self.local(got, span), Ty::Bool, span);
+            let stored = self.mk_unwrap(self.local(got, span), false, ret.clone(), span);
             out.push(Stmt::If(
                 known,
                 block(vec![Stmt::Return(Some(stored))]),
@@ -803,11 +758,7 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Return(Some(call.clone())));
         }
 
-        let fresh = self.mk(
-            ExprKind::Unary(UnOp::Not, Box::new(read(&ready))),
-            Ty::Bool,
-            span,
-        );
+        let fresh = self.mk_unary(UnOp::Not, read(&ready), Ty::Bool, span);
         out.insert(0, Stmt::If(fresh, block(start), Block::default()));
         out
     }
@@ -823,11 +774,7 @@ impl<'a> Lowerer<'a> {
     ) -> Vec<Stmt> {
         let at = self.temp(Ty::Int);
         let cell = |lw: &Self, of: &Place, ty: Ty| {
-            lw.mk(
-                ExprKind::Index(Box::new(read(of)), vec![lw.local(at, span)]),
-                ty,
-                span,
-            )
+            lw.mk_index(read(of), vec![lw.local(at, span)], ty, span)
         };
         let known = cell(self, &fast.seen, Ty::Bool);
         let stored = cell(self, &fast.vals, ret.clone());

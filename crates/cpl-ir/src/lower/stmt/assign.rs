@@ -317,11 +317,7 @@ impl<'a> Lowerer<'a> {
         }
         let key = self.expect(key, &key_ty);
         let key = self.hold(key, out);
-        let remove = self.mk(
-            ExprKind::Mutate(Mutation::Remove, Box::new(place), vec![key]),
-            Ty::Bool,
-            e.span,
-        );
+        let remove = self.mk_mutate(Mutation::Remove, place, vec![key], Ty::Bool, e.span);
         out.push(Stmt::Expr(remove));
         true
     }
@@ -370,40 +366,21 @@ impl<'a> Lowerer<'a> {
                         let r_slot = self.temp(place.ty.clone());
                         out.push(Stmt::Let(r_slot, Some(rhs)));
                         let r_expr = self.local(r_slot, span);
-                        let r_some =
-                            self.mk(ExprKind::IsSome(Box::new(r_expr.clone())), Ty::Bool, span);
-                        let r_val = self.mk(
-                            ExprKind::Unwrap(Box::new(r_expr), false),
-                            (*inner).clone(),
-                            span,
-                        );
+                        let r_some = self.mk_is_some(r_expr.clone(), Ty::Bool, span);
+                        let r_val = self.mk_unwrap(r_expr, false, (*inner).clone(), span);
                         (Some(r_some), r_val)
                     };
                     let p_expr = place_to_expr(&place);
-                    let p_some =
-                        self.mk(ExprKind::IsSome(Box::new(p_expr.clone())), Ty::Bool, span);
-                    let p_none =
-                        self.mk(ExprKind::Unary(UnOp::Not, Box::new(p_some)), Ty::Bool, span);
-                    let p_val = self.mk(
-                        ExprKind::Unwrap(Box::new(p_expr), false),
-                        (*inner).clone(),
-                        span,
-                    );
+                    let p_some = self.mk_is_some(p_expr.clone(), Ty::Bool, span);
+                    let p_none = self.mk_unary(UnOp::Not, p_some, Ty::Bool, span);
+                    let p_val = self.mk_unwrap(p_expr, false, (*inner).clone(), span);
                     let cmp_op = if is_max { CmpOp::Gt } else { CmpOp::Lt };
-                    let better = self.mk(
-                        ExprKind::Cmp(cmp_op, Box::new(r_val.clone()), Box::new(p_val)),
-                        Ty::Bool,
-                        span,
-                    );
-                    let should_set = self.mk(
-                        ExprKind::Binary(BinOp::Or, Box::new(p_none), Box::new(better)),
-                        Ty::Bool,
-                        span,
-                    );
+                    let better = self.mk_cmp(cmp_op, r_val.clone(), p_val, Ty::Bool, span);
+                    let should_set = self.mk_binary(BinOp::Or, p_none, better, Ty::Bool, span);
                     let set_stmt = Stmt::Assign(
                         place,
                         AssignOp::Set,
-                        self.mk(ExprKind::Some(Box::new(r_val)), Ty::Opt(inner), span),
+                        self.mk_some(r_val, Ty::Opt(inner), span),
                     );
                     let keep = Stmt::If(
                         should_set,
@@ -432,12 +409,8 @@ impl<'a> Lowerer<'a> {
                     let slot = self.temp(value.ty.clone());
                     out.push(Stmt::Let(slot, Some(value)));
                     let held = self.local(slot, span);
-                    let some = self.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
-                    let inside = self.mk(
-                        ExprKind::Unwrap(Box::new(held), false),
-                        place.ty.clone(),
-                        span,
-                    );
+                    let some = self.mk_is_some(held.clone(), Ty::Bool, span);
+                    let inside = self.mk_unwrap(held, false, place.ty.clone(), span);
                     let mut branch = Vec::new();
                     self.emit_assign(place, op, inside, span, &mut branch);
                     out.push(Stmt::If(some, Block { stmts: branch }, Block::default()));
@@ -529,16 +502,13 @@ impl<'a> Lowerer<'a> {
                     if let PlaceKind::Index(base, keys) = &place.kind {
                         if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) {
                             let init = self.coerce(value, &place.ty, span);
-                            let has = self.mk(
-                                ExprKind::Builtin(
-                                    Builtin::Contains,
-                                    vec![place_to_expr(base), keys[0].clone()],
-                                ),
+                            let has = self.mk_builtin(
+                                Builtin::Contains,
+                                [place_to_expr(base), keys[0].clone()],
                                 Ty::Bool,
                                 span,
                             );
-                            let missing =
-                                self.mk(ExprKind::Unary(UnOp::Not, Box::new(has)), Ty::Bool, span);
+                            let missing = self.mk_unary(UnOp::Not, has, Ty::Bool, span);
                             let slot = self.temp(place.ty.clone());
                             let fresh = self.local(slot, span);
                             out.push(Stmt::If(
@@ -566,13 +536,12 @@ impl<'a> Lowerer<'a> {
                     };
                     let init = self.coerce(value, &inner, span);
                     let held = place_to_expr(&place);
-                    let some = self.mk(ExprKind::IsSome(Box::new(held)), Ty::Bool, span);
-                    let missing =
-                        self.mk(ExprKind::Unary(UnOp::Not, Box::new(some)), Ty::Bool, span);
+                    let some = self.mk_is_some(held, Ty::Bool, span);
+                    let missing = self.mk_unary(UnOp::Not, some, Ty::Bool, span);
                     // The value is whole before the place is reached for.
                     let slot = self.temp((*inner).clone());
                     let fresh = self.local(slot, span);
-                    let filled = self.mk(ExprKind::Some(Box::new(fresh)), place.ty.clone(), span);
+                    let filled = self.mk_some(fresh, place.ty.clone(), span);
                     out.push(Stmt::If(
                         missing,
                         Block {

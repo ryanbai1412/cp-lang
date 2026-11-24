@@ -188,7 +188,7 @@ impl<'a> Lowerer<'a> {
                             if name.text == "Range" {
                                 self.unify_ast_ty(
                                     pty,
-                                    &Ty::Range(Box::new(Ty::Pos(d))),
+                                    &Ty::range(Ty::Pos(d)),
                                     tpl_mod,
                                     &gen_names,
                                     &mut inferred,

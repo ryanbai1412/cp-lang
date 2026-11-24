@@ -353,6 +353,10 @@ impl Ty {
         Ty::List(Box::new(elem))
     }
 
+    pub fn range(elem: Ty) -> Ty {
+        Ty::Range(Box::new(elem))
+    }
+
     /// Passed and stored by value without a thought: fits in a register.
     pub fn is_scalar(&self) -> bool {
         matches!(
@@ -431,7 +435,7 @@ impl Ty {
             {
                 Some(Ty::List(e.clone()))
             }
-            (Ty::Opt(a), Ty::Opt(b)) => a.list_meet(b).map(|t| Ty::Opt(Box::new(t))),
+            (Ty::Opt(a), Ty::Opt(b)) => a.list_meet(b).map(Ty::opt),
             (Ty::Tuple(xs), Ty::Tuple(ys)) if self.same_shape(other) => {
                 let met: Vec<_> = xs.iter().zip(ys).map(|(x, y)| x.list_meet(y)).collect();
                 let pick = |(i, m): (usize, &Option<Ty>)| m.clone().unwrap_or(xs[i].clone());
@@ -1361,7 +1365,7 @@ impl NarrowLayout {
         match (self, elem_ty) {
             (NarrowLayout::Int(w), Ty::Int) => Some(w.cpp().to_string()),
             (NarrowLayout::OptI32, Ty::Opt(t)) if **t == Ty::Int => Some("cpl::OptI32".to_string()),
-            (NarrowLayout::OptOptI32, Ty::Opt(t)) if **t == Ty::Opt(Box::new(Ty::Int)) => {
+            (NarrowLayout::OptOptI32, Ty::Opt(t)) if **t == Ty::opt(Ty::Int) => {
                 Some("cpl::OptOptI32".to_string())
             }
             (NarrowLayout::Tuple(ws), Ty::Tuple(ts)) if ws.len() == ts.len() => {

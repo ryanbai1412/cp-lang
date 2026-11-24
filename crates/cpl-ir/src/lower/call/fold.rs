@@ -49,7 +49,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         let ty = spec.ty();
-        self.mk(ExprKind::Read(Box::new(spec)), ty, span)
+        self.mk_read(spec, ty, span)
     }
 
     /// `let s: [domain S]Char = read()`: the token read is the array,
@@ -75,19 +75,10 @@ impl<'a> Lowerer<'a> {
         }
         self.do_expr(Some(&ty.clone()), span, |lw, out| {
             let word = lw.temp(Ty::Str);
-            let token = lw.mk(
-                ExprKind::Read(Box::new(Spec::Plain(Ty::Str))),
-                Ty::Str,
-                span,
-            );
+            let token = lw.mk_read(Spec::Plain(Ty::Str), Ty::Str, span);
             out.push(Stmt::Let(word, Some(token)));
-            let len = |lw: &Self| {
-                lw.mk(
-                    ExprKind::Builtin(Builtin::Len, vec![lw.local(word, span)]),
-                    Ty::Int,
-                    span,
-                )
-            };
+            let len =
+                |lw: &Self| lw.mk_builtin(Builtin::Len, [lw.local(word, span)], Ty::Int, span);
             out.push(Stmt::DefDomain {
                 id: d,
                 lo: lw.int_lit(0, span),
@@ -118,8 +109,9 @@ impl<'a> Lowerer<'a> {
                 ty: Ty::Char,
                 span: lw.span(span),
             };
-            let byte = lw.mk(
-                ExprKind::Index(Box::new(lw.local(word, span)), vec![lw.local(at, span)]),
+            let byte = lw.mk_index(
+                lw.local(word, span),
+                vec![lw.local(at, span)],
                 Ty::Char,
                 span,
             );
@@ -195,11 +187,7 @@ impl<'a> Lowerer<'a> {
         match &fv.ty {
             Ty::Fn(ps, ret) if ps.len() == 1 => {
                 let ret = (**ret).clone();
-                Some(self.mk(
-                    ExprKind::CallExpr(Box::new(fv), vec![Arg::Value(elem_expr)]),
-                    ret,
-                    span,
-                ))
+                Some(self.mk_call_expr(fv, vec![Arg::Value(elem_expr)], ret, span))
             }
             Ty::Error => None,
             _ => {
@@ -303,61 +291,36 @@ impl<'a> Lowerer<'a> {
         let k_slot = self.temp(key_ty.clone());
         inner.push(Stmt::Let(k_slot, Some(key_expr)));
 
-        let bk_is_some = self.mk(
-            ExprKind::IsSome(Box::new(local(best_key_slot, &opt_key_ty))),
-            Ty::Bool,
-            span,
-        );
-        let bk_none = self.mk(
-            ExprKind::Unary(UnOp::Not, Box::new(bk_is_some)),
-            Ty::Bool,
-            span,
-        );
-        let bk_val = self.mk(
-            ExprKind::Unwrap(Box::new(local(best_key_slot, &opt_key_ty)), false),
+        let bk_is_some = self.mk_is_some(local(best_key_slot, &opt_key_ty), Ty::Bool, span);
+        let bk_none = self.mk_unary(UnOp::Not, bk_is_some, Ty::Bool, span);
+        let bk_val = self.mk_unwrap(
+            local(best_key_slot, &opt_key_ty),
+            false,
             key_ty.clone(),
             span,
         );
         let k_val = local(k_slot, &key_ty);
         let better_cmp = if is_max {
-            self.mk(
-                ExprKind::Cmp(CmpOp::Lt, Box::new(bk_val), Box::new(k_val)),
-                Ty::Bool,
-                span,
-            )
+            self.mk_cmp(CmpOp::Lt, bk_val, k_val, Ty::Bool, span)
         } else {
-            self.mk(
-                ExprKind::Cmp(CmpOp::Lt, Box::new(k_val), Box::new(bk_val)),
-                Ty::Bool,
-                span,
-            )
+            self.mk_cmp(CmpOp::Lt, k_val, bk_val, Ty::Bool, span)
         };
-        let take = self.mk(
-            ExprKind::If(
-                Box::new(bk_none),
-                Box::new(self.mk(ExprKind::Bool(true), Ty::Bool, span)),
-                Box::new(better_cmp),
-            ),
+        let take = self.mk_if(
+            bk_none,
+            self.mk(ExprKind::Bool(true), Ty::Bool, span),
+            better_cmp,
             Ty::Bool,
             span,
         );
         let set_best = Stmt::Assign(
             place(best_slot, &out_ty),
             AssignOp::Set,
-            self.mk(
-                ExprKind::Some(Box::new(local(x_slot, &elem_ty))),
-                out_ty.clone(),
-                span,
-            ),
+            self.mk_some(local(x_slot, &elem_ty), out_ty.clone(), span),
         );
         let set_key = Stmt::Assign(
             place(best_key_slot, &opt_key_ty),
             AssignOp::Set,
-            self.mk(
-                ExprKind::Some(Box::new(local(k_slot, &key_ty))),
-                opt_key_ty.clone(),
-                span,
-            ),
+            self.mk_some(local(k_slot, &key_ty), opt_key_ty.clone(), span),
         );
         inner.push(Stmt::If(
             take,
@@ -473,25 +436,13 @@ impl<'a> Lowerer<'a> {
                             };
                             let so_far = lw.local(best, span);
                             if *ty == plain {
-                                let better = lw.mk(
-                                    ExprKind::Builtin(op, vec![so_far, held]),
-                                    plain.clone(),
-                                    span,
-                                );
+                                let better = lw.mk_builtin(op, [so_far, held], plain.clone(), span);
                                 out.push(Stmt::Assign(place, AssignOp::Set, better));
                             } else {
-                                let some =
-                                    lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
-                                let inside = lw.mk(
-                                    ExprKind::Unwrap(Box::new(held), false),
-                                    plain.clone(),
-                                    span,
-                                );
-                                let better = lw.mk(
-                                    ExprKind::Builtin(op, vec![so_far, inside]),
-                                    plain.clone(),
-                                    span,
-                                );
+                                let some = lw.mk_is_some(held.clone(), Ty::Bool, span);
+                                let inside = lw.mk_unwrap(held, false, plain.clone(), span);
+                                let better =
+                                    lw.mk_builtin(op, [so_far, inside], plain.clone(), span);
                                 out.push(Stmt::If(
                                     some,
                                     Block {
@@ -537,40 +488,18 @@ impl<'a> Lowerer<'a> {
                             out.push(Stmt::Let(b_slot, Some(rhs_expr)));
                             let a = lw.local(a_slot, span);
                             let b = lw.local(b_slot, span);
-                            let a_some =
-                                lw.mk(ExprKind::IsSome(Box::new(a.clone())), Ty::Bool, span);
-                            let b_some =
-                                lw.mk(ExprKind::IsSome(Box::new(b.clone())), Ty::Bool, span);
-                            let av = lw.mk(
-                                ExprKind::Unwrap(Box::new(a.clone()), false),
-                                inner_c.clone(),
-                                span,
-                            );
-                            let bv = lw.mk(
-                                ExprKind::Unwrap(Box::new(b.clone()), false),
-                                inner_c.clone(),
-                                span,
-                            );
+                            let a_some = lw.mk_is_some(a.clone(), Ty::Bool, span);
+                            let b_some = lw.mk_is_some(b.clone(), Ty::Bool, span);
+                            let av = lw.mk_unwrap(a.clone(), false, inner_c.clone(), span);
+                            let bv = lw.mk_unwrap(b.clone(), false, inner_c.clone(), span);
                             let op = if is_max { Builtin::Max } else { Builtin::Min };
-                            let both = lw.mk(
-                                ExprKind::Some(Box::new(lw.mk(
-                                    ExprKind::Builtin(op, vec![av, bv]),
-                                    inner_c,
-                                    span,
-                                ))),
+                            let both = lw.mk_some(
+                                lw.mk_builtin(op, [av, bv], inner_c, span),
                                 lhs_ty.clone(),
                                 span,
                             );
-                            let inner_if = lw.mk(
-                                ExprKind::If(Box::new(b_some), Box::new(both), Box::new(a)),
-                                lhs_ty.clone(),
-                                span,
-                            );
-                            let res = lw.mk(
-                                ExprKind::If(Box::new(a_some), Box::new(inner_if), Box::new(b)),
-                                lhs_ty,
-                                span,
-                            );
+                            let inner_if = lw.mk_if(b_some, both, a, lhs_ty.clone(), span);
+                            let res = lw.mk_if(a_some, inner_if, b, lhs_ty, span);
                             out.push(Stmt::Give(res));
                         });
                     }
@@ -909,24 +838,16 @@ impl<'a> Lowerer<'a> {
             let (lo, hi) = (lw.new_slot("lo", Ty::Int), lw.new_slot("hi", Ty::Int));
             for (slot, end) in [(lo, Builtin::RangeLo), (hi, Builtin::RangeHi)] {
                 let value = lw.local(r, span);
-                let value = lw.mk(ExprKind::Builtin(end, vec![value]), Ty::Int, span);
+                let value = lw.mk_builtin(end, [value], Ty::Int, span);
                 out.push(Stmt::Let(slot, Some(value)));
             }
             let (l, h) = (lw.local(lo, span), lw.local(hi, span));
-            let empty = lw.mk(
-                ExprKind::Cmp(CmpOp::Le, Box::new(h.clone()), Box::new(l.clone())),
-                Ty::Bool,
-                span,
-            );
+            let empty = lw.mk_cmp(CmpOp::Le, h.clone(), l.clone(), Ty::Bool, span);
             let end = if max { lw.int_add(h, -1) } else { l };
             let result = if optional {
-                let some = lw.mk(ExprKind::Some(Box::new(end)), ty.clone(), span);
+                let some = lw.mk_some(end, ty.clone(), span);
                 let none = lw.mk(ExprKind::None, ty.clone(), span);
-                lw.mk(
-                    ExprKind::If(Box::new(empty), Box::new(none), Box::new(some)),
-                    ty,
-                    span,
-                )
+                lw.mk_if(empty, none, some, ty, span)
             } else {
                 let word = if max { "max" } else { "min" };
                 let trap = Stmt::Trap(format!("`{word}` of an empty sequence"), lw.span(span));

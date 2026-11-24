@@ -41,7 +41,7 @@ impl<'a> Lowerer<'a> {
                     fs.iter().map(|(n, _)| n.clone()).zip(shifted).collect(),
                 ))
             }
-            Ty::Opt(t) => self.shifted_ty(t).map(|t| Ty::Opt(Box::new(t))),
+            Ty::Opt(t) => self.shifted_ty(t).map(Ty::opt),
             Ty::List(t) | Ty::ListView(t, _) | Ty::Keyed(t, _) | Ty::MutView(t, _) => {
                 self.shifted_ty(t).map(Ty::list)
             }
@@ -80,7 +80,7 @@ impl<'a> Lowerer<'a> {
                     let parts = fields
                         .into_iter()
                         .map(|(i, t)| {
-                            let field = lw.mk(ExprKind::Field(Box::new(held.clone()), i), t, span);
+                            let field = lw.mk_field(held.clone(), i, t, span);
                             lw.shifted(field, b, span)
                         })
                         .collect();
@@ -89,16 +89,12 @@ impl<'a> Lowerer<'a> {
             }
             Ty::Opt(inner) => self.do_expr(Some(&to.clone()), span, |lw, out| {
                 let held = lw.hold(value, out);
-                let some = lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
-                let inside = lw.mk(ExprKind::Unwrap(Box::new(held), false), *inner, span);
+                let some = lw.mk_is_some(held.clone(), Ty::Bool, span);
+                let inside = lw.mk_unwrap(held, false, *inner, span);
                 let inside = lw.shifted(inside, b, span);
-                let some_val = lw.mk(ExprKind::Some(Box::new(inside)), to.clone(), span);
+                let some_val = lw.mk_some(inside, to.clone(), span);
                 let none = lw.mk(ExprKind::None, to.clone(), span);
-                out.push(Stmt::Give(lw.mk(
-                    ExprKind::If(Box::new(some), Box::new(some_val), Box::new(none)),
-                    to,
-                    span,
-                )));
+                out.push(Stmt::Give(lw.mk_if(some, some_val, none, to, span)));
             }),
             Ty::Array { dims, elem } if dims.len() > 1 => {
                 let cell = self.shifted_ty(&elem).expect("a cell that shifts");
@@ -166,27 +162,15 @@ impl<'a> Lowerer<'a> {
     /// axis from the one at `idx` on: a grid prints as its rows do.
     fn nest_rows(&mut self, flat: &Expr, lens: &[Expr], cell: &Ty, idx: Expr, span: Span) -> Expr {
         let Some((len, rest)) = lens.split_first() else {
-            return self.mk(
-                ExprKind::Index(Box::new(flat.clone()), vec![idx]),
-                cell.clone(),
-                span,
-            );
+            return self.mk_index(flat.clone(), vec![idx], cell.clone(), span);
         };
         let inner = rest.iter().fold(cell.clone(), |t, _| Ty::list(t));
         self.collected(inner, span, |lw, out, push| {
             let k = lw.temp(Ty::Int);
             let lid = lw.fresh_loop();
-            let scaled = lw.mk(
-                ExprKind::Binary(BinOp::Mul, Box::new(idx), Box::new(len.clone())),
-                Ty::Int,
-                span,
-            );
+            let scaled = lw.mk_binary(BinOp::Mul, idx, len.clone(), Ty::Int, span);
             let at = lw.local(k, span);
-            let next = lw.mk(
-                ExprKind::Binary(BinOp::Add, Box::new(scaled), Box::new(at)),
-                Ty::Int,
-                span,
-            );
+            let next = lw.mk_binary(BinOp::Add, scaled, at, Ty::Int, span);
             let row = lw.nest_rows(flat, rest, cell, next, span);
             let body = Block {
                 stmts: vec![push(lw, row)],

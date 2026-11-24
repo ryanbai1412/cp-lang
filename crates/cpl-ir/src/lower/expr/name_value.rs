@@ -42,9 +42,7 @@ impl<'a> Lowerer<'a> {
         let present = !written
             && (shown(&self.cx) || (self.cx.is_closure && self.outer_cxs.iter().any(shown)));
         match value.ty.clone() {
-            Ty::Opt(inner) if present => {
-                self.mk(ExprKind::Unwrap(Box::new(value), false), *inner, span)
-            }
+            Ty::Opt(inner) if present => self.mk_unwrap(value, false, *inner, span),
             _ => value,
         }
     }
@@ -64,13 +62,13 @@ impl<'a> Lowerer<'a> {
         if let Some((ref recv_place, owner)) = self.cx.inline_self.clone() {
             if let Some((index, ty)) = self.field_of(&Ty::Struct(owner), name) {
                 let base = place_to_expr(recv_place);
-                return self.mk(ExprKind::Field(Box::new(base), index), ty, span);
+                return self.mk_field(base, index, ty, span);
             }
         }
         if let Some((slot, owner)) = self.cx.receiver {
             if let Some((index, ty)) = self.field_of(&Ty::Struct(owner), name) {
                 let base = self.local(slot, span);
-                return self.mk(ExprKind::Field(Box::new(base), index), ty, span);
+                return self.mk_field(base, index, ty, span);
             }
         }
         if let Some(sid) = self.self_struct {
@@ -84,7 +82,7 @@ impl<'a> Lowerer<'a> {
         if let Some((slot, owner)) = self.capture_self_from_outer() {
             if let Some((index, ty)) = self.field_of(&Ty::Struct(owner), name) {
                 let base = self.local(slot, span);
-                return self.mk(ExprKind::Field(Box::new(base), index), ty, span);
+                return self.mk_field(base, index, ty, span);
             }
         }
         // Generic value parameter (e.g. `P` in `Mod<P>`) or generic domain parameter (`C` in `(C, comp)`).

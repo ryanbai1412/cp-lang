@@ -256,11 +256,7 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         };
-        self.mk(
-            ExprKind::CallExpr(Box::new(func), vec![Arg::Value(elem)]),
-            ret,
-            span,
-        )
+        self.mk_call_expr(func, vec![Arg::Value(elem)], ret, span)
     }
 
     pub(in crate::lower) fn lower_map_view_materialize(

@@ -389,7 +389,7 @@ impl<'a> Lowerer<'a> {
                 .zip(&shapes)
                 .map(|((slot, _, span), tys)| {
                     let base = self.local(*slot, *span);
-                    self.mk(ExprKind::Field(Box::new(base), i), tys[i].clone(), *span)
+                    self.mk_field(base, i, tys[i].clone(), *span)
                 })
                 .collect();
             let value = if items.len() == 1 {
@@ -417,11 +417,7 @@ impl<'a> Lowerer<'a> {
     ) -> bool {
         let leave_unless = |lw: &mut Self, holds: Expr, stmts: &mut Vec<Stmt>| {
             let span = holds.span;
-            let fails = lw.mk(
-                ExprKind::Unary(UnOp::Not, Box::new(holds)),
-                Ty::Bool,
-                Span::new(0, 0),
-            );
+            let fails = lw.mk_unary(UnOp::Not, holds, Ty::Bool, Span::new(0, 0));
             let fails = Expr { span, ..fails };
             stmts.push(Stmt::If(
                 fails,

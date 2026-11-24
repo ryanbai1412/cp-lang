@@ -76,7 +76,7 @@ impl<'a> Lowerer<'a> {
                 lo: Box::new(lo),
                 hi: Box::new(hi),
             },
-            Ty::Range(Box::new(Ty::Pos(d))),
+            Ty::range(Ty::Pos(d)),
             span,
         )
     }
@@ -189,11 +189,7 @@ impl<'a> Lowerer<'a> {
         let held = self.hold(v, &mut out);
         let mut parts = Vec::with_capacity(elems.len());
         for (i, ((_, f), ety)) in factors.iter().zip(elems).enumerate() {
-            let part = self.mk(
-                ExprKind::Field(Box::new(held.clone()), i),
-                ety.clone(),
-                span,
-            );
+            let part = self.mk_field(held.clone(), i, ety.clone(), span);
             parts.push(match f {
                 ProductFactor::Domain(d) if ety == Ty::Int => self.mk(
                     ExprKind::Cast(Cast::FromLabel(*d), Box::new(part)),
@@ -224,21 +220,11 @@ impl<'a> Lowerer<'a> {
             tys.iter().cloned().map(Spec::Plain).collect(),
         );
         let parts = self.readable(parts);
-        let read = self.mk(
-            ExprKind::Read(Box::new(parts)),
-            Ty::Tuple(tys.clone()),
-            span,
-        );
+        let read = self.mk_read(parts, Ty::Tuple(tys.clone()), span);
         let mut out = Vec::new();
         let held = self.hold(read, &mut out);
         let parts = (0..tys.len())
-            .map(|i| {
-                self.mk(
-                    ExprKind::Field(Box::new(held.clone()), i),
-                    tys[i].clone(),
-                    span,
-                )
-            })
+            .map(|i| self.mk_field(held.clone(), i, tys[i].clone(), span))
             .collect();
         let pos = self.encode_product(id, parts, span);
         out.push(Stmt::Give(pos));
@@ -275,11 +261,7 @@ impl<'a> Lowerer<'a> {
         let mut parts = Vec::with_capacity(elems.len());
         let mut checks = Vec::new();
         for (i, ((_, f), ety)) in factors.iter().zip(elems).enumerate() {
-            let part = self.mk(
-                ExprKind::Field(Box::new(held.clone()), i),
-                ety.clone(),
-                span,
-            );
+            let part = self.mk_field(held.clone(), i, ety.clone(), span);
             match f {
                 ProductFactor::Domain(d) if ety == Ty::Int => {
                     let found = self.domain_try_label(*d, part, span);
@@ -296,7 +278,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let pos = self.encode_product(id, parts, span);
-        let mut found = self.mk(ExprKind::Some(Box::new(pos)), want.clone(), span);
+        let mut found = self.mk_some(pos, want.clone(), span);
         for check in checks.into_iter().rev() {
             let none = self.mk(ExprKind::None, want.clone(), span);
             let pick = ExprKind::If(Box::new(check), Box::new(found), Box::new(none));
@@ -333,11 +315,7 @@ impl<'a> Lowerer<'a> {
                 let v = self.coerce(val, &Ty::Bool, span);
                 let one = self.int_lit(1, span);
                 let zero = self.int_lit(0, span);
-                self.mk(
-                    ExprKind::If(Box::new(v), Box::new(one), Box::new(zero)),
-                    Ty::Int,
-                    span,
-                )
+                self.mk_if(v, one, zero, Ty::Int, span)
             }
             ProductFactor::Library { sid, ord, .. } => {
                 let v = self.coerce(val, &Ty::Struct(*sid), span);
@@ -354,11 +332,7 @@ impl<'a> Lowerer<'a> {
             }
             ProductFactor::Bool => {
                 let zero = self.int_lit(0, span);
-                self.mk(
-                    ExprKind::Cmp(CmpOp::Ne, Box::new(ord), Box::new(zero)),
-                    Ty::Bool,
-                    span,
-                )
+                self.mk_cmp(CmpOp::Ne, ord, zero, Ty::Bool, span)
             }
             ProductFactor::Library { sid, nth, .. } => self.mk(
                 ExprKind::Call(*nth, vec![Arg::Value(ord)]),

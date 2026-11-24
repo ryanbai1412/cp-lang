@@ -202,7 +202,7 @@ impl<'a> Lowerer<'a> {
                 let some_ty = elem.clone();
                 let all = self.listed(domain, elem.clone(), Some(none), span, |lw, ord| {
                     let pos = lw.cast(Cast::Trust, ord, Ty::Pos(domain));
-                    (None, lw.mk(ExprKind::Some(Box::new(pos)), some_ty, span))
+                    (None, lw.mk_some(pos, some_ty, span))
                 });
                 (Iter::Seq(all, false), elem)
             }
@@ -455,13 +455,8 @@ impl<'a> Lowerer<'a> {
                     return (iter, ty);
                 }
                 let down = |lw: &mut Self, lo: Expr, hi: Expr, step: Expr| {
-                    let bin = |lw: &mut Self, op, l: Expr, r: Expr| {
-                        lw.mk(
-                            ExprKind::Binary(op, Box::new(l), Box::new(r)),
-                            Ty::Int,
-                            span,
-                        )
-                    };
+                    let bin =
+                        |lw: &mut Self, op, l: Expr, r: Expr| lw.mk_binary(op, l, r, Ty::Int, span);
                     let one = lw.int_lit(1, span);
                     let top = if closed {
                         hi.clone()
@@ -636,7 +631,7 @@ impl<'a> Lowerer<'a> {
                     if let Some((each_fn, elem)) = self.struct_walk(sid, span) {
                         let call = self.mk(
                             ExprKind::Call(each_fn, vec![Arg::Value(value)]),
-                            Ty::List(Box::new(elem.clone())),
+                            Ty::list(elem.clone()),
                             span,
                         );
                         return (Iter::Seq(call, false), elem);

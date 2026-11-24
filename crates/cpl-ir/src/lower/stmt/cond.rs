@@ -155,16 +155,8 @@ impl<'a> Lowerer<'a> {
                     let slot = self.temp(at.ty.clone());
                     before.push(Stmt::Let(slot, Some(at)));
                     let held = self.local(slot, value.span);
-                    let present = self.mk(
-                        ExprKind::IsSome(Box::new(held.clone())),
-                        Ty::Bool,
-                        value.span,
-                    );
-                    let inner = self.mk(
-                        ExprKind::Unwrap(Box::new(held), false),
-                        Ty::Pos(id),
-                        value.span,
-                    );
+                    let present = self.mk_is_some(held.clone(), Ty::Bool, value.span);
+                    let inner = self.mk_unwrap(held, false, Ty::Pos(id), value.span);
                     self.bind(arg, inner, binds);
                     return Some(present);
                 }
@@ -452,16 +444,8 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::WRONG_ARG_COUNT, pat.span, message);
                         return None;
                     }
-                    let is_some = self.mk(
-                        ExprKind::IsSome(Box::new(value.clone())),
-                        Ty::Bool,
-                        pat.span,
-                    );
-                    let unwrapped = self.mk(
-                        ExprKind::Unwrap(Box::new(value.clone()), false),
-                        *inner_ty,
-                        pat.span,
-                    );
+                    let is_some = self.mk_is_some(value.clone(), Ty::Bool, pat.span);
+                    let unwrapped = self.mk_unwrap(value.clone(), false, *inner_ty, pat.span);
                     return and(Some(is_some), self.pattern(&args[0], &unwrapped, binds));
                 }
                 if let Ty::Pos(d) = value.ty {

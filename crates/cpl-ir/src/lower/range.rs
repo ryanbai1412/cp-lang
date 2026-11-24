@@ -191,7 +191,7 @@ impl RangeInfo {
             (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::Int => {
                 inner.scalar()?.narrow_opt_layout()
             }
-            (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::Opt(Box::new(Ty::Int)) => {
+            (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::opt(Ty::Int) => {
                 match inner.as_ref() {
                     RangeInfo::Opt(held) => held.scalar()?.narrow_opt_opt_layout(),
                     _ => None,
@@ -1274,11 +1274,7 @@ impl<'a> Lowerer<'a> {
             }
             AssignOp::Binary(bin) => {
                 let cur = super::stmt::place_to_expr(&place);
-                let next = self.mk(
-                    ExprKind::Binary(bin, Box::new(cur), Box::new(value)),
-                    Ty::Int,
-                    span,
-                );
+                let next = self.mk_binary(bin, cur, value, Ty::Int, span);
                 let checked = self.check_range(next, &bounds, span);
                 out.push(Stmt::Assign(place, AssignOp::Set, checked));
             }
@@ -1296,11 +1292,7 @@ impl<'a> Lowerer<'a> {
                 } else {
                     CmpOp::Lt
                 };
-                let cond = self.mk(
-                    ExprKind::Cmp(cmp, Box::new(rhs.clone()), Box::new(cur)),
-                    Ty::Bool,
-                    span,
-                );
+                let cond = self.mk_cmp(cmp, rhs.clone(), cur, Ty::Bool, span);
                 let checked = self.check_range(rhs, &bounds, span);
                 out.push(Stmt::If(
                     cond,
@@ -1326,15 +1318,11 @@ impl<'a> Lowerer<'a> {
             let (lo, hi) = (lw.new_slot("lo", Ty::Int), lw.new_slot("hi", Ty::Int));
             for (slot, end) in [(lo, Builtin::RangeLo), (hi, Builtin::RangeHi)] {
                 let value = lw.local(r, span);
-                let value = lw.mk(ExprKind::Builtin(end, vec![value]), Ty::Int, span);
+                let value = lw.mk_builtin(end, [value], Ty::Int, span);
                 out.push(Stmt::Let(slot, Some(value)));
             }
             let (l, h) = (lw.local(lo, span), lw.local(hi, span));
-            let empty = lw.mk(
-                ExprKind::Cmp(CmpOp::Le, Box::new(h), Box::new(l)),
-                Ty::Bool,
-                span,
-            );
+            let empty = lw.mk_cmp(CmpOp::Le, h, l, Ty::Bool, span);
             let trap = Stmt::Trap(
                 "an empty range has no cell in `V.ranges`".into(),
                 lw.span(span),
@@ -1348,21 +1336,9 @@ impl<'a> Lowerer<'a> {
                 let (l, h) = (lw.local(lo, span), lw.local(hi, span));
                 let zero = lw.int_lit(0, span);
                 let n = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                let below = lw.mk(
-                    ExprKind::Cmp(CmpOp::Lt, Box::new(l), Box::new(zero)),
-                    Ty::Bool,
-                    span,
-                );
-                let above = lw.mk(
-                    ExprKind::Cmp(CmpOp::Gt, Box::new(h), Box::new(n)),
-                    Ty::Bool,
-                    span,
-                );
-                let outside = lw.mk(
-                    ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(above)),
-                    Ty::Bool,
-                    span,
-                );
+                let below = lw.mk_cmp(CmpOp::Lt, l, zero, Ty::Bool, span);
+                let above = lw.mk_cmp(CmpOp::Gt, h, n, Ty::Bool, span);
+                let outside = lw.mk_binary(BinOp::Or, below, above, Ty::Bool, span);
                 let trap = Stmt::Trap(
                     "the range reaches outside the domain of `V.ranges`".into(),
                     lw.span(span),
@@ -1376,11 +1352,7 @@ impl<'a> Lowerer<'a> {
             let last = lw.local(hi, span);
             let last = lw.int_add(last, -1);
             let first = lw.local(lo, span);
-            let idx = lw.mk(
-                ExprKind::Builtin(Builtin::SymIdx, vec![first, last]),
-                Ty::Int,
-                span,
-            );
+            let idx = lw.mk_builtin(Builtin::SymIdx, [first, last], Ty::Int, span);
             out.push(Stmt::Give(idx));
         });
         self.cast(Cast::Raw, sym, Ty::Int)
@@ -1417,11 +1389,7 @@ impl<'a> Lowerer<'a> {
         let held = self.local(slot, span);
         let op = if is_max { CmpOp::Gt } else { CmpOp::Lt };
         let current = super::stmt::place_to_expr(&place);
-        let better = self.mk(
-            ExprKind::Cmp(op, Box::new(held.clone()), Box::new(current)),
-            Ty::Bool,
-            span,
-        );
+        let better = self.mk_cmp(op, held.clone(), current, Ty::Bool, span);
         let set = Stmt::Assign(place, AssignOp::Set, held);
         out.push(Stmt::If(
             better,
@@ -1511,7 +1479,7 @@ impl<'a> Lowerer<'a> {
             Ty::Array { elem, dims } => (Builtin::KeySlice, Ty::ListView(elem.clone(), dims[0])),
             _ => unreachable!(),
         };
-        self.mk(ExprKind::Builtin(op, vec![base, lo, hi]), ty, span)
+        self.mk_builtin(op, [base, lo, hi], ty, span)
     }
 
     /// `r[lo..hi]` of a `Range`: the keys `lo..hi`, which must lie inside `r`.
@@ -1529,16 +1497,8 @@ impl<'a> Lowerer<'a> {
             let src_slot = lw.temp(range_ty.clone());
             out.push(Stmt::Let(src_slot, Some(base)));
             let src = lw.local(src_slot, span);
-            let src_lo = lw.mk(
-                ExprKind::Builtin(Builtin::RangeLo, vec![src.clone()]),
-                Ty::Int,
-                span,
-            );
-            let src_hi = lw.mk(
-                ExprKind::Builtin(Builtin::RangeHi, vec![src]),
-                Ty::Int,
-                span,
-            );
+            let src_lo = lw.mk_builtin(Builtin::RangeLo, [src.clone()], Ty::Int, span);
+            let src_hi = lw.mk_builtin(Builtin::RangeHi, [src], Ty::Int, span);
             let key = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
                 let v = lw.expr(e, Some(&elem));
                 let v = match v.ty {
@@ -1561,19 +1521,10 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Let(hi_slot, Some(hi_e)));
             let (lo_e, hi_e) = (lw.local(lo_slot, span), lw.local(hi_slot, span));
             let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
-                lw.mk(
-                    ExprKind::Cmp(op, Box::new(l.clone()), Box::new(r.clone())),
-                    Ty::Bool,
-                    span,
-                )
+                lw.mk_cmp(op, l.clone(), r.clone(), Ty::Bool, span)
             };
-            let or = |lw: &mut Self, l: Expr, r: Expr| {
-                lw.mk(
-                    ExprKind::Binary(BinOp::Or, Box::new(l), Box::new(r)),
-                    Ty::Bool,
-                    span,
-                )
-            };
+            let or =
+                |lw: &mut Self, l: Expr, r: Expr| lw.mk_binary(BinOp::Or, l, r, Ty::Bool, span);
             let below = cmp(lw, CmpOp::Lt, &lo_e, &src_lo);
             let reversed = cmp(lw, CmpOp::Lt, &hi_e, &lo_e);
             let beyond = cmp(lw, CmpOp::Gt, &hi_e, &src_hi);

@@ -21,11 +21,11 @@ impl<'a> Lowerer<'a> {
     pub(crate) fn plain_ty(&self, ty: &Ty) -> Ty {
         match ty {
             Ty::Pos(d) | Ty::Bound(d) if self.is_range_domain(*d) => Ty::Int,
-            Ty::Opt(inner) => Ty::Opt(Box::new(self.plain_ty(inner))),
-            Ty::Range(inner) => Ty::Range(Box::new(self.plain_ty(inner))),
-            Ty::List(inner) => Ty::List(Box::new(self.plain_ty(inner))),
+            Ty::Opt(inner) => Ty::opt(self.plain_ty(inner)),
+            Ty::Range(inner) => Ty::range(self.plain_ty(inner)),
+            Ty::List(inner) => Ty::list(self.plain_ty(inner)),
             Ty::Array { dims, elem } if matches!(dims.as_slice(), [Dim::Pos(d)] if self.is_range_domain(*d) && self.list_domains.contains(d)) => {
-                Ty::List(Box::new(self.plain_ty(elem)))
+                Ty::list(self.plain_ty(elem))
             }
             Ty::Array { dims, elem } => Ty::Array {
                 dims: dims
@@ -49,7 +49,7 @@ impl<'a> Lowerer<'a> {
     pub(crate) fn list_given(&self, want: &Ty) -> Option<Ty> {
         match want {
             Ty::Array { dims, elem } if matches!(dims.as_slice(), [Dim::Pos(d)] if self.list_domains.contains(d)) => {
-                Some(Ty::List(Box::new(self.plain_ty(elem))))
+                Some(Ty::list(self.plain_ty(elem)))
             }
             _ => None,
         }
@@ -94,11 +94,7 @@ impl<'a> Lowerer<'a> {
             };
         }
         let sized = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
-        let differ = self.mk(
-            ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(sized)),
-            Ty::Bool,
-            span,
-        );
+        let differ = self.mk_cmp(CmpOp::Ne, len, sized, Ty::Bool, span);
         let name = self.domain_said(d);
         let message = format!("the arrays given for one `{name}` must have the same length");
         let trap = Stmt::Trap(message, self.span(span));
@@ -119,16 +115,14 @@ impl<'a> Lowerer<'a> {
         out.push(Stmt::Let(dst, Some(empty)));
         let item = self.temp(elem_ty);
         let coerced = self.coerce(self.local(item, span), &want_elem_ty, span);
-        let push = Stmt::Expr(self.mk(
-            ExprKind::Mutate(
-                Mutation::Push,
-                Box::new(Place {
-                    kind: PlaceKind::Local(dst),
-                    ty: dst_ty,
-                    span: self.span(span),
-                }),
-                vec![coerced],
-            ),
+        let push = Stmt::Expr(self.mk_mutate(
+            Mutation::Push,
+            Place {
+                kind: PlaceKind::Local(dst),
+                ty: dst_ty,
+                span: self.span(span),
+            },
+            vec![coerced],
             Ty::Unit,
             span,
         ));
@@ -175,11 +169,7 @@ impl<'a> Lowerer<'a> {
                     // Passing the list sets the size of its domain.
                     return Ok(self.do_expr(Some(want), span, |lw, out| {
                         let held = lw.hold(e, out);
-                        let len = lw.mk(
-                            ExprKind::Builtin(Builtin::Len, vec![held.clone()]),
-                            Ty::Int,
-                            span,
-                        );
+                        let len = lw.mk_builtin(Builtin::Len, [held.clone()], Ty::Int, span);
                         let (size, held) = lw.size_for_list(d, len, held, span);
                         out.push(size);
                         let list_expr = if needs_elem_coerce {
@@ -201,17 +191,9 @@ impl<'a> Lowerer<'a> {
                     let list_ty = Ty::list((**elem).clone());
                     return Ok(self.do_expr(Some(want), span, |lw, out| {
                         let held = lw.hold(e, out);
-                        let len = lw.mk(
-                            ExprKind::Builtin(Builtin::Len, vec![held.clone()]),
-                            Ty::Int,
-                            span,
-                        );
+                        let len = lw.mk_builtin(Builtin::Len, [held.clone()], Ty::Int, span);
                         let n = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                        let short = lw.mk(
-                            ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(n)),
-                            Ty::Bool,
-                            span,
-                        );
+                        let short = lw.mk_cmp(CmpOp::Ne, len, n, Ty::Bool, span);
                         let trap = Stmt::Trap(
                             "a table keyed by part of a domain is not an array over all of it"
                                 .into(),
@@ -222,11 +204,7 @@ impl<'a> Lowerer<'a> {
                             Block { stmts: vec![trap] },
                             Block::default(),
                         ));
-                        let list = lw.mk(
-                            ExprKind::Builtin(Builtin::ToList, vec![held]),
-                            list_ty,
-                            span,
-                        );
+                        let list = lw.mk_builtin(Builtin::ToList, [held], list_ty, span);
                         let array = ExprKind::Builtin(Builtin::ListToArray, vec![list]);
                         out.push(Stmt::Give(lw.mk(array, want.clone(), span)));
                     }));
@@ -245,8 +223,9 @@ impl<'a> Lowerer<'a> {
                 let elem_ty = (**elem).clone();
                 return Ok(self.do_expr(Some(want), span, |lw, out| {
                     let held = lw.hold(e, out);
-                    let raw = lw.mk(
-                        ExprKind::Builtin(Builtin::ArrayToList, vec![held]),
+                    let raw = lw.mk_builtin(
+                        Builtin::ArrayToList,
+                        [held],
                         Ty::list(elem_ty.clone()),
                         span,
                     );
@@ -277,43 +256,25 @@ impl<'a> Lowerer<'a> {
             (Ty::Int, Ty::Bound(d)) if self.range_domains.contains_key(d) => {
                 let ord = self.cast(Cast::Ord, e, Ty::Int);
                 let lo = self.mk(ExprKind::DomainLo(*d), Ty::Int, span);
-                Ok(self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(ord), Box::new(lo)),
-                    Ty::Int,
-                    span,
-                ))
+                Ok(self.mk_binary(BinOp::Add, ord, lo, Ty::Int, span))
             }
             (Ty::Bound(d), Ty::Int) if self.range_domains.contains_key(d) => {
                 let d = *d;
                 Ok(self.do_expr(Some(want), span, |lw, out| {
                     let lo = lw.mk(ExprKind::DomainLo(d), Ty::Int, span);
-                    let ord = lw.mk(
-                        ExprKind::Binary(BinOp::Sub, Box::new(e), Box::new(lo)),
-                        Ty::Int,
-                        span,
-                    );
+                    let ord = lw.mk_binary(BinOp::Sub, e, lo, Ty::Int, span);
                     let slot = lw.temp(Ty::Int);
                     out.push(Stmt::Let(slot, Some(ord)));
-                    let below = lw.mk(
-                        ExprKind::Cmp(
-                            CmpOp::Lt,
-                            Box::new(lw.local(slot, span)),
-                            Box::new(lw.int_lit(0, span)),
-                        ),
+                    let below = lw.mk_cmp(
+                        CmpOp::Lt,
+                        lw.local(slot, span),
+                        lw.int_lit(0, span),
                         Ty::Bool,
                         span,
                     );
                     let len = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                    let above = lw.mk(
-                        ExprKind::Cmp(CmpOp::Lt, Box::new(len), Box::new(lw.local(slot, span))),
-                        Ty::Bool,
-                        span,
-                    );
-                    let outside = lw.mk(
-                        ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(above)),
-                        Ty::Bool,
-                        span,
-                    );
+                    let above = lw.mk_cmp(CmpOp::Lt, len, lw.local(slot, span), Ty::Bool, span);
+                    let outside = lw.mk_binary(BinOp::Or, below, above, Ty::Bool, span);
                     let trap = Stmt::Trap(
                         "a boundary outside the array's range".to_string(),
                         lw.span(span),
@@ -336,14 +297,10 @@ impl<'a> Lowerer<'a> {
                 Ok(self.do_expr(Some(want), span, |lw, out| {
                     let held = lw.hold(e, out);
                     let mut end = |lw: &mut Self, which: Builtin| {
-                        let at = lw.mk(ExprKind::Builtin(which, vec![held.clone()]), Ty::Int, span);
+                        let at = lw.mk_builtin(which, [held.clone()], Ty::Int, span);
                         let first = lw.mk(ExprKind::DomainLo(d), Ty::Int, span);
                         let op = if into { BinOp::Sub } else { BinOp::Add };
-                        let moved = lw.mk(
-                            ExprKind::Binary(op, Box::new(at), Box::new(first)),
-                            Ty::Int,
-                            span,
-                        );
+                        let moved = lw.mk_binary(op, at, first, Ty::Int, span);
                         let slot = lw.temp(Ty::Int);
                         out.push(Stmt::Let(slot, Some(moved)));
                         lw.local(slot, span)
@@ -352,18 +309,10 @@ impl<'a> Lowerer<'a> {
                     if into {
                         // An empty range reads nothing, wherever it is.
                         let cmp = |lw: &Self, a: Expr, b: Expr| {
-                            lw.mk(
-                                ExprKind::Cmp(CmpOp::Lt, Box::new(a), Box::new(b)),
-                                Ty::Bool,
-                                span,
-                            )
+                            lw.mk_cmp(CmpOp::Lt, a, b, Ty::Bool, span)
                         };
                         let or = |lw: &Self, op: BinOp, a: Expr, b: Expr| {
-                            lw.mk(
-                                ExprKind::Binary(op, Box::new(a), Box::new(b)),
-                                Ty::Bool,
-                                span,
-                            )
+                            lw.mk_binary(op, a, b, Ty::Bool, span)
                         };
                         let len = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
                         let outside = or(
@@ -403,17 +352,15 @@ impl<'a> Lowerer<'a> {
                         Ty::Opt(inner) => (**inner).clone(),
                         _ => Ty::Error,
                     };
-                    let inner = lw.mk(
-                        ExprKind::Unwrap(Box::new(held.clone()), false),
-                        inner_ty,
-                        span,
-                    );
+                    let inner = lw.mk_unwrap(held.clone(), false, inner_ty, span);
                     let inner = lw.coerce(inner, &want_inner, span);
-                    let some = lw.mk(ExprKind::Some(Box::new(inner)), want.clone(), span);
+                    let some = lw.mk_some(inner, want.clone(), span);
                     let none = lw.mk(ExprKind::None, want.clone(), span);
-                    let is_some = lw.mk(ExprKind::IsSome(Box::new(held)), Ty::Bool, span);
-                    out.push(Stmt::Give(lw.mk(
-                        ExprKind::If(Box::new(is_some), Box::new(some), Box::new(none)),
+                    let is_some = lw.mk_is_some(held, Ty::Bool, span);
+                    out.push(Stmt::Give(lw.mk_if(
+                        is_some,
+                        some,
+                        none,
                         want.clone(),
                         span,
                     )));

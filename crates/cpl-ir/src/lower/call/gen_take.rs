@@ -127,22 +127,18 @@ impl<'a> Lowerer<'a> {
                 span: lw.span(span),
             };
             let (acc_place, taken_place) = (place(acc, list_ty.clone()), place(taken, Ty::Int));
-            let push = lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(acc_place),
-                    vec![lw.local(cur, span)],
-                ),
+            let push = lw.mk_mutate(
+                Mutation::Push,
+                acc_place,
+                vec![lw.local(cur, span)],
                 Ty::Unit,
                 span,
             );
             let one = lw.int_lit(1, span);
-            let enough = lw.mk(
-                ExprKind::Cmp(
-                    CmpOp::Ge,
-                    Box::new(lw.local(taken, span)),
-                    Box::new(lw.local(k_slot, span)),
-                ),
+            let enough = lw.mk_cmp(
+                CmpOp::Ge,
+                lw.local(taken, span),
+                lw.local(k_slot, span),
                 Ty::Bool,
                 span,
             );
@@ -171,12 +167,10 @@ impl<'a> Lowerer<'a> {
                     Block::default(),
                 ),
             ]);
-            let positive = lw.mk(
-                ExprKind::Cmp(
-                    CmpOp::Gt,
-                    Box::new(lw.local(k_slot, span)),
-                    Box::new(lw.int_lit(0, span)),
-                ),
+            let positive = lw.mk_cmp(
+                CmpOp::Gt,
+                lw.local(k_slot, span),
+                lw.int_lit(0, span),
                 Ty::Bool,
                 span,
             );

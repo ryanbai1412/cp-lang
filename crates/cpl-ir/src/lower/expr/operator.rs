@@ -31,7 +31,7 @@ impl<'a> Lowerer<'a> {
                     (ExprKind::Float(v), _) => self.mk(ExprKind::Float(-*v), Ty::Float, span),
                     (_, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float) => {
                         let ty = value.ty.clone();
-                        self.mk(ExprKind::Unary(op, Box::new(value)), ty, span)
+                        self.mk_unary(op, value, ty, span)
                     }
                     (_, Ty::Struct(sid)) => {
                         let sid = *sid;
@@ -68,7 +68,7 @@ impl<'a> Lowerer<'a> {
             }
             UnOp::Not => {
                 let value = self.expect(operand, &Ty::Bool);
-                self.mk(ExprKind::Unary(op, Box::new(value)), Ty::Bool, span)
+                self.mk_unary(op, value, Ty::Bool, span)
             }
             UnOp::BitNot => {
                 let value = self.expr(operand, hint.filter(|ty| matches!(ty, Ty::I128 | Ty::U64)));
@@ -83,7 +83,7 @@ impl<'a> Lowerer<'a> {
                     _ => Ty::Int,
                 };
                 let value = self.coerce(value, &ty, operand.span);
-                self.mk(ExprKind::Unary(op, Box::new(value)), ty, span)
+                self.mk_unary(op, value, ty, span)
             }
         }
     }
@@ -115,11 +115,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.present.extend(held.into_iter().map(String::from));
                 let r = self.worked_out_here(rhs.span, |lw| lw.expect(rhs, &Ty::Bool));
                 self.cx.present.truncate(past);
-                return self.mk(
-                    ExprKind::Binary(op, Box::new(l), Box::new(r)),
-                    Ty::Bool,
-                    span,
-                );
+                return self.mk_binary(op, l, r, Ty::Bool, span);
             }
             Coalesce => {
                 self.cx.as_written = narrow::asks_optional(lhs);
@@ -160,10 +156,8 @@ impl<'a> Lowerer<'a> {
                         }
                         let slot = self.temp(l.ty.clone());
                         let held = self.local(slot, span);
-                        let some =
-                            self.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
-                        let missing =
-                            self.mk(ExprKind::Unary(UnOp::Not, Box::new(some)), Ty::Bool, span);
+                        let some = self.mk_is_some(held.clone(), Ty::Bool, span);
+                        let missing = self.mk_unary(UnOp::Not, some, Ty::Bool, span);
                         let mut leave = Vec::new();
                         // The way out is lowered as the statement it is,
                         // outside any value block.
@@ -176,7 +170,7 @@ impl<'a> Lowerer<'a> {
                             Block { stmts: leave },
                             Block::default(),
                         ));
-                        return self.mk(ExprKind::Unwrap(Box::new(held), false), *inner, span);
+                        return self.mk_unwrap(held, false, *inner, span);
                     }
                 }
                 // The default is read as what the optional holds, so that a
@@ -191,7 +185,7 @@ impl<'a> Lowerer<'a> {
                 // `a ?? b ?? 0`: an optional default keeps the result optional.
                 let ty = if r.ty == l.ty { l.ty.clone() } else { *inner };
                 let r = self.coerce(r, &ty, rhs.span);
-                return self.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), ty, span);
+                return self.mk_binary(op, l, r, ty, span);
             }
             _ => {}
         }
@@ -368,11 +362,7 @@ impl<'a> Lowerer<'a> {
                     } else {
                         r
                     };
-                    return self.mk(
-                        ExprKind::Builtin(Builtin::StrConcat, vec![l, r]),
-                        Ty::Str,
-                        span,
-                    );
+                    return self.mk_builtin(Builtin::StrConcat, [l, r], Ty::Str, span);
                 }
                 let l = self.as_str(l, lhs.span);
                 let r = self.as_str(r, rhs.span);
@@ -386,30 +376,20 @@ impl<'a> Lowerer<'a> {
                 let elem = seq_concat_elem(a).unwrap().clone();
                 let list_ty = Ty::list(elem);
                 if !matches!(l.ty, Ty::List(_)) || !matches!(r.ty, Ty::List(_)) {
-                    return self.mk(
-                        ExprKind::Builtin(Builtin::ListConcat, vec![l, r]),
-                        list_ty,
-                        span,
-                    );
+                    return self.mk_builtin(Builtin::ListConcat, [l, r], list_ty, span);
                 }
                 return self.do_expr(Some(&list_ty), span, |lw, out| {
                     let slot = lw.temp(list_ty.clone());
-                    let cloned = lw.mk(
-                        ExprKind::Builtin(Builtin::Copy, vec![l]),
-                        list_ty.clone(),
-                        span,
-                    );
+                    let cloned = lw.mk_builtin(Builtin::Copy, [l], list_ty.clone(), span);
                     out.push(Stmt::Let(slot, Some(cloned)));
-                    let ext = lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Extend,
-                            Box::new(Place {
-                                kind: PlaceKind::Local(slot),
-                                ty: list_ty.clone(),
-                                span: lw.span(span),
-                            }),
-                            vec![r],
-                        ),
+                    let ext = lw.mk_mutate(
+                        Mutation::Extend,
+                        Place {
+                            kind: PlaceKind::Local(slot),
+                            ty: list_ty.clone(),
+                            span: lw.span(span),
+                        },
+                        vec![r],
                         Ty::Unit,
                         span,
                     );
@@ -425,11 +405,7 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::Char, Ty::Int) if matches!(op, Add | Sub) => {
                 let l = self.cast(Cast::CharToInt, l, Ty::Int);
-                let sum = self.mk(
-                    ExprKind::Binary(op, Box::new(l), Box::new(r)),
-                    Ty::Int,
-                    span,
-                );
+                let sum = self.mk_binary(op, l, r, Ty::Int, span);
                 return self.cast(Cast::StepToChar, sum, Ty::Char);
             }
             (Ty::Pos(a), Ty::Pos(b)) | (Ty::Bound(a), Ty::Bound(b)) if a == b && op == Sub => {
@@ -457,9 +433,9 @@ impl<'a> Lowerer<'a> {
             }
         };
         if let Some(wrap) = self.wrapping(op, &ty).filter(|_| l.ty == ty && r.ty == ty) {
-            return self.mk(ExprKind::Builtin(wrap, vec![l, r]), ty, span);
+            return self.mk_builtin(wrap, [l, r], ty, span);
         }
-        self.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), ty, span)
+        self.mk_binary(op, l, r, ty, span)
     }
 
     /// `a + b` and `a - b` where a side is a `?Int` or `?F64`: `none` on
@@ -478,20 +454,12 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::Let(slot, Some(side)));
                 let held = lw.local(slot, span);
                 let value = if let Ty::Opt(inner) = &side_ty {
-                    let some = lw.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
+                    let some = lw.mk_is_some(held.clone(), Ty::Bool, span);
                     present = Some(match present.take() {
-                        Some(first) => lw.mk(
-                            ExprKind::Binary(BinOp::And, Box::new(first), Box::new(some)),
-                            Ty::Bool,
-                            span,
-                        ),
+                        Some(first) => lw.mk_binary(BinOp::And, first, some, Ty::Bool, span),
                         None => some,
                     });
-                    lw.mk(
-                        ExprKind::Unwrap(Box::new(held), false),
-                        (**inner).clone(),
-                        span,
-                    )
+                    lw.mk_unwrap(held, false, (**inner).clone(), span)
                 } else {
                     held
                 };
@@ -499,19 +467,11 @@ impl<'a> Lowerer<'a> {
             }
             let r = sides.pop().expect("two sides");
             let l = sides.pop().expect("two sides");
-            let sum = lw.mk(
-                ExprKind::Binary(op, Box::new(l), Box::new(r)),
-                num.clone(),
-                span,
-            );
+            let sum = lw.mk_binary(op, l, r, num.clone(), span);
             let some = lw.coerce(sum, &ty, span);
             let none = lw.mk(ExprKind::None, ty.clone(), span);
             let cond = present.expect("one side is optional");
-            let value = lw.mk(
-                ExprKind::If(Box::new(cond), Box::new(some), Box::new(none)),
-                ty.clone(),
-                span,
-            );
+            let value = lw.mk_if(cond, some, none, ty.clone(), span);
             out.push(Stmt::Give(value));
         })
     }

@@ -208,11 +208,7 @@ impl<'a> Lowerer<'a> {
             .iter()
             .map(|(slot, _)| Arg::Value(self.local(*slot, span)))
             .collect();
-        let call = self.mk(
-            ExprKind::CallExpr(Box::new(self.local(body, span)), args),
-            ret_ty.clone(),
-            span,
-        );
+        let call = self.mk_call_expr(self.local(body, span), args, ret_ty.clone(), span);
         let mut lets = Vec::new();
         let stmts = match into {
             Some(table) => self.memo_into_wrapper(table, decl, call, &ret_ty),

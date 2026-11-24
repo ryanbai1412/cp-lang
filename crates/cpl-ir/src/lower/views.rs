@@ -148,10 +148,7 @@ impl<'a> Lowerer<'a> {
         if let Stmt::DefDomain { lo, .. } = &mut size {
             *lo = self.view_first_key(&list, span);
         }
-        (
-            size,
-            self.mk(ExprKind::Builtin(Builtin::ToList, vec![list]), ty, span),
-        )
+        (size, self.mk_builtin(Builtin::ToList, [list], ty, span))
     }
 
     /// `id(args)`. When it returns a view, an owned temporary argument (a

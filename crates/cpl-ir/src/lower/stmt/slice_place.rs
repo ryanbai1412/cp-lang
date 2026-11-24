@@ -79,11 +79,7 @@ impl<'a> Lowerer<'a> {
             Ty::Pos(_) | Ty::Bound(_) => self.cast(Cast::Ord, key, Ty::Int),
             _ => self.coerce(key, &Ty::Int, span),
         };
-        let pos = self.mk(
-            ExprKind::Binary(BinOp::Sub, Box::new(at), Box::new(lo)),
-            Ty::Int,
-            span,
-        );
+        let pos = self.mk_binary(BinOp::Sub, at, lo, Ty::Int, span);
         let elem = Self::sliceable_mut_elem(&view.ty)?;
         Some(Place {
             kind: PlaceKind::Index(Box::new(view.clone()), vec![pos]),
@@ -120,11 +116,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         match key_lo {
-            Some(lo) => self.mk(
-                ExprKind::Binary(BinOp::Sub, Box::new(ord), Box::new(lo.clone())),
-                Ty::Int,
-                span,
-            ),
+            Some(lo) => self.mk_binary(BinOp::Sub, ord, lo.clone(), Ty::Int, span),
             None => ord,
         }
     }
@@ -156,11 +148,7 @@ impl<'a> Lowerer<'a> {
         if let (Some(_), [_]) = (self.mut_view_key_lo(base, span), indices.as_slice()) {
             let key = indices.remove(0);
             let view = place_to_expr(base);
-            indices.push(self.mk(
-                ExprKind::Builtin(Builtin::KeyPos, vec![view, key]),
-                Ty::Int,
-                span,
-            ));
+            indices.push(self.mk_builtin(Builtin::KeyPos, [view, key], Ty::Int, span));
         }
         (indices, ty)
     }

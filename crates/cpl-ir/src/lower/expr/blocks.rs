@@ -62,11 +62,9 @@ impl<'a> Lowerer<'a> {
                 PlaceKind::Index(base, keys)
                     if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) =>
                 {
-                    let has = lw.mk(
-                        ExprKind::Builtin(
-                            Builtin::Contains,
-                            vec![place_to_expr(base), keys[0].clone()],
-                        ),
+                    let has = lw.mk_builtin(
+                        Builtin::Contains,
+                        [place_to_expr(base), keys[0].clone()],
                         Ty::Bool,
                         span,
                     );
@@ -96,18 +94,10 @@ impl<'a> Lowerer<'a> {
             }
             lw.emit_assign_place(place, op, rhs, target.span, out);
             let before = lw.local(old, span);
-            let mut changed = lw.mk(
-                ExprKind::Cmp(CmpOp::Ne, Box::new(now), Box::new(before)),
-                Ty::Bool,
-                span,
-            );
+            let mut changed = lw.mk_cmp(CmpOp::Ne, now, before, Ty::Bool, span);
             if let Some(had) = had {
-                let fresh = lw.mk(ExprKind::Unary(UnOp::Not, Box::new(had)), Ty::Bool, span);
-                changed = lw.mk(
-                    ExprKind::Binary(BinOp::Or, Box::new(fresh), Box::new(changed)),
-                    Ty::Bool,
-                    span,
-                );
+                let fresh = lw.mk_unary(UnOp::Not, had, Ty::Bool, span);
+                changed = lw.mk_binary(BinOp::Or, fresh, changed, Ty::Bool, span);
             }
             out.push(Stmt::Give(changed));
         })
@@ -434,14 +424,18 @@ impl Lowerer<'_> {
             {
                 parts.extend([*l, *r]);
                 Box::new(move |p| {
-                    let [l, r]: [Expr; 2] = p.try_into().expect("two operands");
+                    let Ok([l, r]) = <[Expr; 2]>::try_from(p) else {
+                        unreachable!("two operands")
+                    };
                     ExprKind::Binary(op, Box::new(l), Box::new(r))
                 })
             }
             ExprKind::Cmp(op, l, r) => {
                 parts.extend([*l, *r]);
                 Box::new(move |p| {
-                    let [l, r]: [Expr; 2] = p.try_into().expect("two operands");
+                    let Ok([l, r]) = <[Expr; 2]>::try_from(p) else {
+                        unreachable!("two operands")
+                    };
                     ExprKind::Cmp(op, Box::new(l), Box::new(r))
                 })
             }

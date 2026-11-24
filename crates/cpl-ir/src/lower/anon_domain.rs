@@ -497,19 +497,11 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Let(s, Some(moved)));
             let sv = lw.local(s, span);
             let edge = lw.int_lit(if next { n } else { -1 }, span);
-            let off = lw.mk(
-                ExprKind::Cmp(CmpOp::Eq, Box::new(sv.clone()), Box::new(edge)),
-                Ty::Bool,
-                span,
-            );
+            let off = lw.mk_cmp(CmpOp::Eq, sv.clone(), edge, Ty::Bool, span);
             let variant = lw.cast(Cast::OrdToEnum(id), sv, Ty::Enum(id));
-            let some = lw.mk(ExprKind::Some(Box::new(variant)), opt_ty.clone(), span);
+            let some = lw.mk_some(variant, opt_ty.clone(), span);
             let none = lw.mk(ExprKind::None, opt_ty.clone(), span);
-            let res = lw.mk(
-                ExprKind::If(Box::new(off), Box::new(none), Box::new(some)),
-                opt_ty,
-                span,
-            );
+            let res = lw.mk_if(off, none, some, opt_ty, span);
             out.push(Stmt::Give(res));
         })
     }

@@ -97,11 +97,7 @@ impl<'a> Lowerer<'a> {
         let mut total = self.product_factor_len(&factors[0].1, span);
         for (_, f) in &factors[1..] {
             let flen = self.product_factor_len(f, span);
-            total = self.mk(
-                ExprKind::Binary(BinOp::Mul, Box::new(total), Box::new(flen)),
-                Ty::Int,
-                span,
-            );
+            total = self.mk_binary(BinOp::Mul, total, flen, Ty::Int, span);
         }
         out.push(Stmt::DefDomain {
             id: d,
@@ -117,11 +113,7 @@ impl<'a> Lowerer<'a> {
         let mut prod = self.product_factor_len(&factors[0], span);
         for f in &factors[1..] {
             let flen = self.product_factor_len(f, span);
-            prod = self.mk(
-                ExprKind::Binary(BinOp::Mul, Box::new(prod), Box::new(flen)),
-                Ty::Int,
-                span,
-            );
+            prod = self.mk_binary(BinOp::Mul, prod, flen, Ty::Int, span);
         }
         prod
     }
@@ -134,11 +126,7 @@ impl<'a> Lowerer<'a> {
         let mut acc = self.sum_variant_count(&variants[0].1, span);
         for (_, fs) in &variants[1..tag] {
             let c = self.sum_variant_count(fs, span);
-            acc = self.mk(
-                ExprKind::Binary(BinOp::Add, Box::new(acc), Box::new(c)),
-                Ty::Int,
-                span,
-            );
+            acc = self.mk_binary(BinOp::Add, acc, c, Ty::Int, span);
         }
         acc
     }
@@ -148,11 +136,7 @@ impl<'a> Lowerer<'a> {
         let mut total = self.sum_variant_count(&variants[0].1, span);
         for (_, fs) in &variants[1..] {
             let c = self.sum_variant_count(fs, span);
-            total = self.mk(
-                ExprKind::Binary(BinOp::Add, Box::new(total), Box::new(c)),
-                Ty::Int,
-                span,
-            );
+            total = self.mk_binary(BinOp::Add, total, c, Ty::Int, span);
         }
         out.push(Stmt::DefDomain {
             id: d,
@@ -177,25 +161,13 @@ impl<'a> Lowerer<'a> {
             for (f, part) in factors[1..].iter().zip(parts.into_iter().skip(1)) {
                 let len = self.product_factor_len(f, span);
                 let ford = self.product_factor_ord(f, part, span);
-                let scaled = self.mk(
-                    ExprKind::Binary(BinOp::Mul, Box::new(inner), Box::new(len)),
-                    Ty::Int,
-                    span,
-                );
-                inner = self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(scaled), Box::new(ford)),
-                    Ty::Int,
-                    span,
-                );
+                let scaled = self.mk_binary(BinOp::Mul, inner, len, Ty::Int, span);
+                inner = self.mk_binary(BinOp::Add, scaled, ford, Ty::Int, span);
             }
             if tag == 0 {
                 inner
             } else {
-                self.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(off), Box::new(inner)),
-                    Ty::Int,
-                    span,
-                )
+                self.mk_binary(BinOp::Add, off, inner, Ty::Int, span)
             }
         };
         self.cast(Cast::Trust, ord, Ty::Pos(d))
@@ -206,33 +178,13 @@ impl<'a> Lowerer<'a> {
         let ord = self.cast(Cast::Ord, val, Ty::Int);
         let lo = self.sum_variant_offset(d, tag, span);
         if factors.is_empty() {
-            return self.mk(
-                ExprKind::Cmp(CmpOp::Eq, Box::new(ord), Box::new(lo)),
-                Ty::Bool,
-                span,
-            );
+            return self.mk_cmp(CmpOp::Eq, ord, lo, Ty::Bool, span);
         }
         let count = self.sum_variant_count(factors, span);
-        let hi = self.mk(
-            ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(count)),
-            Ty::Int,
-            span,
-        );
-        let ge = self.mk(
-            ExprKind::Cmp(CmpOp::Ge, Box::new(ord.clone()), Box::new(lo)),
-            Ty::Bool,
-            span,
-        );
-        let lt = self.mk(
-            ExprKind::Cmp(CmpOp::Lt, Box::new(ord), Box::new(hi)),
-            Ty::Bool,
-            span,
-        );
-        self.mk(
-            ExprKind::Binary(BinOp::And, Box::new(ge), Box::new(lt)),
-            Ty::Bool,
-            span,
-        )
+        let hi = self.mk_binary(BinOp::Add, lo.clone(), count, Ty::Int, span);
+        let ge = self.mk_cmp(CmpOp::Ge, ord.clone(), lo, Ty::Bool, span);
+        let lt = self.mk_cmp(CmpOp::Lt, ord, hi, Ty::Bool, span);
+        self.mk_binary(BinOp::And, ge, lt, Ty::Bool, span)
     }
 
     pub(crate) fn decode_sum_variant_field(
@@ -249,37 +201,21 @@ impl<'a> Lowerer<'a> {
             ord
         } else {
             let lo = self.sum_variant_offset(d, tag, span);
-            self.mk(
-                ExprKind::Binary(BinOp::Sub, Box::new(ord), Box::new(lo)),
-                Ty::Int,
-                span,
-            )
+            self.mk_binary(BinOp::Sub, ord, lo, Ty::Int, span)
         };
         if field_idx + 1 < factors.len() {
             let mut stride = self.product_factor_len(&factors[field_idx + 1], span);
             for f in &factors[field_idx + 2..] {
                 let flen = self.product_factor_len(f, span);
-                stride = self.mk(
-                    ExprKind::Binary(BinOp::Mul, Box::new(stride), Box::new(flen)),
-                    Ty::Int,
-                    span,
-                );
+                stride = self.mk_binary(BinOp::Mul, stride, flen, Ty::Int, span);
             }
-            rel = self.mk(
-                ExprKind::Binary(BinOp::Div, Box::new(rel), Box::new(stride)),
-                Ty::Int,
-                span,
-            );
+            rel = self.mk_binary(BinOp::Div, rel, stride, Ty::Int, span);
         }
         let ford = if field_idx == 0 {
             rel
         } else {
             let flen = self.product_factor_len(&factors[field_idx], span);
-            self.mk(
-                ExprKind::Binary(BinOp::Rem, Box::new(rel), Box::new(flen)),
-                Ty::Int,
-                span,
-            )
+            self.mk_binary(BinOp::Rem, rel, flen, Ty::Int, span)
         };
         self.product_factor_from_ord(&factors[field_idx], ford, span)
     }
@@ -290,16 +226,8 @@ impl<'a> Lowerer<'a> {
         for ((_, f), part) in factors[1..].iter().zip(parts.into_iter().skip(1)) {
             let len = self.product_factor_len(f, span);
             let ord = self.product_factor_ord(f, part, span);
-            let scaled = self.mk(
-                ExprKind::Binary(BinOp::Mul, Box::new(acc), Box::new(len)),
-                Ty::Int,
-                span,
-            );
-            acc = self.mk(
-                ExprKind::Binary(BinOp::Add, Box::new(scaled), Box::new(ord)),
-                Ty::Int,
-                span,
-            );
+            let scaled = self.mk_binary(BinOp::Mul, acc, len, Ty::Int, span);
+            acc = self.mk_binary(BinOp::Add, scaled, ord, Ty::Int, span);
         }
         self.cast(Cast::Trust, acc, Ty::Pos(id))
     }
@@ -321,21 +249,9 @@ impl<'a> Lowerer<'a> {
         for i in (1..factors.len()).rev() {
             let ord_held = self.hold(ord, out);
             let len = self.product_factor_len(&factors[i].1, span);
-            let rem = self.mk(
-                ExprKind::Binary(
-                    BinOp::Rem,
-                    Box::new(ord_held.clone()),
-                    Box::new(len.clone()),
-                ),
-                Ty::Int,
-                span,
-            );
+            let rem = self.mk_binary(BinOp::Rem, ord_held.clone(), len.clone(), Ty::Int, span);
             parts[i] = self.product_factor_from_ord(&factors[i].1, rem, span);
-            ord = self.mk(
-                ExprKind::Binary(BinOp::Div, Box::new(ord_held), Box::new(len)),
-                Ty::Int,
-                span,
-            );
+            ord = self.mk_binary(BinOp::Div, ord_held, len, Ty::Int, span);
         }
         parts[0] = self.product_factor_from_ord(&factors[0].1, ord, span);
         parts
@@ -407,19 +323,11 @@ impl<'a> Lowerer<'a> {
         let mut ord = self.cast(Cast::Ord, val, Ty::Int);
         for (_, f) in &factors[idx + 1..] {
             let len = self.product_factor_len(f, span);
-            ord = self.mk(
-                ExprKind::Binary(BinOp::Div, Box::new(ord), Box::new(len)),
-                Ty::Int,
-                span,
-            );
+            ord = self.mk_binary(BinOp::Div, ord, len, Ty::Int, span);
         }
         if idx > 0 {
             let len = self.product_factor_len(&factors[idx].1, span);
-            ord = self.mk(
-                ExprKind::Binary(BinOp::Rem, Box::new(ord), Box::new(len)),
-                Ty::Int,
-                span,
-            );
+            ord = self.mk_binary(BinOp::Rem, ord, len, Ty::Int, span);
         }
         self.product_factor_from_ord(&factors[idx].1, ord, span)
     }

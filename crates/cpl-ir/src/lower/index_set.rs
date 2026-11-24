@@ -179,11 +179,7 @@ impl<'a> Lowerer<'a> {
                     Dim::Enum(e) => Ty::Enum(e),
                     Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                 };
-                let field = self.mk(
-                    ExprKind::Field(Box::new(value.clone()), i),
-                    part,
-                    index.span,
-                );
+                let field = self.mk_field(value.clone(), i, part, index.span);
                 let at = self.coerce(field, &want, index.span);
                 out.push(match dim {
                     Dim::Enum(e) => {

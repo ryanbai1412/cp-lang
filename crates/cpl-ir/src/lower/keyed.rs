@@ -20,7 +20,7 @@ impl<'a> Lowerer<'a> {
             let key = idx_exprs.remove(0);
             return self.key_index(base, key, elem_ty, span);
         }
-        self.mk(ExprKind::Index(Box::new(base), idx_exprs), elem_ty, span)
+        self.mk_index(base, idx_exprs, elem_ty, span)
     }
 
     /// `s.keyed()` / `s.keyed(keys)` on a list or view: the same cells, keyed
@@ -60,11 +60,7 @@ impl<'a> Lowerer<'a> {
         let mut seq = self.expr(base, None);
         // A reversed view keys its cells from the far end; the counter follows the walk (R04a.9.6).
         if matches!(seq.kind, ExprKind::Builtin(Builtin::Reversed, _)) {
-            seq = self.mk(
-                ExprKind::Builtin(Builtin::ToList, vec![seq]),
-                Ty::list(elem.clone()),
-                span,
-            );
+            seq = self.mk_builtin(Builtin::ToList, [seq], Ty::list(elem.clone()), span);
         }
         let res = if matches!(seq.ty, Ty::List(_)) {
             Ty::Keyed(Box::new(elem), dim)
@@ -84,21 +80,13 @@ impl<'a> Lowerer<'a> {
             Some(keys) => {
                 let keys = self.expr(keys, None);
                 let keys = self.hold_view(keys, span);
-                self.mk(
-                    ExprKind::Builtin(Builtin::RangeLo, vec![keys]),
-                    Ty::Int,
-                    span,
-                )
+                self.mk_builtin(Builtin::RangeLo, [keys], Ty::Int, span)
             }
         };
         let lo = self.hold_view(lo, span);
         let len = self.len_of(seq.clone(), span);
         let hi = self.int_sum(lo.clone(), len);
-        Some(self.mk(
-            ExprKind::Builtin(Builtin::Rekey, vec![seq, lo, hi]),
-            res,
-            span,
-        ))
+        Some(self.mk_builtin(Builtin::Rekey, [seq, lo, hi], res, span))
     }
 
     /// Whether `x[k]` names a key: a view keeps its source's keys (R04b.1),
@@ -297,8 +285,9 @@ impl<'a> Lowerer<'a> {
         let cells = self.new_slot("cells", mapped.ty.clone());
         self.cx.pending.push(Stmt::Let(cells, Some(mapped)));
         let cells = self.local(cells, span);
-        self.mk(
-            ExprKind::Builtin(Builtin::Rekey, vec![cells, lo, hi]),
+        self.mk_builtin(
+            Builtin::Rekey,
+            [cells, lo, hi],
             Ty::Keyed(out_elem, dim),
             span,
         )
@@ -363,8 +352,9 @@ impl<'a> Lowerer<'a> {
             ),
             Ok(grid) => {
                 let axis = self.int_lit(axis as i64, span);
-                self.mk(
-                    ExprKind::Builtin(Builtin::GridLine, vec![grid, at, axis]),
+                self.mk_builtin(
+                    Builtin::GridLine,
+                    [grid, at, axis],
                     Ty::Keyed(Box::new(elem.clone()), dim),
                     span,
                 )
@@ -396,11 +386,7 @@ impl<'a> Lowerer<'a> {
             let (cells, lo) = (lw.local(held, span), lw.local(first, span));
             let len = lw.len_of(cells.clone(), span);
             let hi = lw.int_sum(lo.clone(), len);
-            let keyed = lw.mk(
-                ExprKind::Builtin(Builtin::Rekey, vec![cells, lo, hi]),
-                ty,
-                span,
-            );
+            let keyed = lw.mk_builtin(Builtin::Rekey, [cells, lo, hi], ty, span);
             out.push(Stmt::Give(keyed));
         })
     }
@@ -426,13 +412,9 @@ impl<'a> Lowerer<'a> {
         let lo = self.view_first_key(&value, span);
         let key = value.ty.key_ty();
         let len = self.len_of(value, span);
-        let hi = self.mk(
-            ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(len)),
-            Ty::Int,
-            span,
-        );
+        let hi = self.mk_binary(BinOp::Add, lo.clone(), len, Ty::Int, span);
         let (lo, hi) = (Box::new(lo), Box::new(hi));
-        self.mk(ExprKind::Range { lo, hi }, Ty::Range(Box::new(key)), span)
+        self.mk(ExprKind::Range { lo, hi }, Ty::range(key), span)
     }
 
     /// `a.rev` over a list or view, whose `.keys` are `a`'s walked backwards (R07.4.7).
@@ -461,7 +443,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let ty = value.ty.clone();
-                self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), ty, span)
+                self.mk_builtin(Builtin::Reversed, [value], ty, span)
             }
         }
     }
@@ -537,11 +519,11 @@ impl<'a> Lowerer<'a> {
             let item = lw.temp(pair_ty);
             let lid = lw.fresh_loop();
             let pair = lw.local(item, span);
-            let elem = lw.mk(ExprKind::Field(Box::new(pair.clone()), 1), elem_ty, span);
+            let elem = lw.mk_field(pair.clone(), 1, elem_ty, span);
             let call = ExprKind::CallExpr(Box::new(pred), vec![Arg::Value(elem)]);
             let keep = lw.mk(call, Ty::Bool, span);
             let kept = if keys {
-                lw.mk(ExprKind::Field(Box::new(pair), 0), key_ty, span)
+                lw.mk_field(pair, 0, key_ty, span)
             } else {
                 pair
             };
