@@ -34,6 +34,10 @@ A dense `rows x cols` matrix stored flat in row-major order.
 - `fn pfaffian(self) -> T` — \(O(n^3)\) time, \(O(n^2)\) space; The Pfaffian of an even-order skew-symmetric matrix over a field, with the sign convention `pf([[0, a], [-a, 0]]) == a`; `pf(A)^2 == det(A)`.; traps: when the matrix is not square or `n` is odd
 - `fn adjugate(self) -> Mat<T> where T: Mul + Div` — \(O(n^3)\) time, \(O(n^2)\) space; The adjugate matrix `adj(self)`, the transpose of the cofactor matrix, so `self * adj(self) == det(self) * I`.; traps: when the matrix is not square
 
+## `trait TropicalProduct`
+
+A number type whose `Mat` products under `Semiring(max, +)` and `Semiring(min, +)` (entries `?Self`, `None` the zero) run as one flat pass; `Int` has one.
+
 ## `struct XorBasis`
 
 Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
