@@ -317,6 +317,14 @@ pub fn known_where(e: &Expr, is_none: &dyn Fn(&Expr) -> bool) -> Option<bool> {
     match &e.kind {
         ExprKind::IsSome(x) if is_none(x) => Some(false),
         ExprKind::Bool(b) => Some(*b),
+        ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), a, b)
+            if [a, b].iter().any(|x| x.kind == ExprKind::None)
+                && [a, b]
+                    .iter()
+                    .all(|x| x.kind == ExprKind::None || is_none(x)) =>
+        {
+            Some(*op == CmpOp::Eq)
+        }
         ExprKind::Cmp(op, a, b) => {
             let (ExprKind::Int(a), ExprKind::Int(b)) = (&a.kind, &b.kind) else {
                 return None;

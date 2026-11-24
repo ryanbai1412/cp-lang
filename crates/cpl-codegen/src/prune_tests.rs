@@ -191,6 +191,27 @@ fn an_optional_comparator_nobody_passes_is_never_tested() {
 }
 
 #[test]
+fn a_comparison_with_none_of_a_field_only_none_fills_keeps_only_the_branch_taken() {
+    let cpp = cpp(concat!(
+        "struct Box:\n",
+        "    f: ?Int\n",
+        "fn get(b: Box) -> Int:\n",
+        "    if b.f != None: return b.f! * 7\n",
+        "    if None == b.f: return 3\n",
+        "    5\n",
+        "let n: 1..=10 = read()\n",
+        "print(get(Box(None)) + n)\n",
+    ));
+    let start = cpp.find(" get(").expect("a get fn");
+    let get = &cpp[start..start + cpp[start..].find("\n}").expect("its end")];
+    assert!(!get.contains("has_value()"), "{get}");
+    assert!(
+        get.contains("return 3") && !get.contains("return 5"),
+        "{get}"
+    );
+}
+
+#[test]
 fn an_optional_comparator_some_heap_gets_is_still_tested() {
     let cpp = cpp(concat!(
         "var h = MinHeap<Int>()\n",
