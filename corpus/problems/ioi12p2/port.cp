@@ -73,7 +73,8 @@ fn link(u: Int, v: Int):
     elif not unite(0, u, v):
         // all degrees are at most 2, so this component just became a cycle
         cycles += 1
-        cycle_len = -up[find(u)]
+        let root = find(u)
+        cycle_len = -up[root]
 
 fn count_critical() -> Int:
     if cand.len > 0: return count(chains[k] for k in 0..4)
