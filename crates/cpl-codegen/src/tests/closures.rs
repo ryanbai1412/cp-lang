@@ -683,6 +683,33 @@ fn a_struct_field_a_param_brings_one_capturing_closure_to_is_that_closures_type(
 }
 
 #[test]
+fn a_struct_field_a_template_param_brings_one_closure_to_is_that_closures_type() {
+    let src = concat!(
+        "struct Path(f: (Int, Int) -> Int)\n",
+        "fn walk(n: Int, f: (Int, Int) -> Int) -> Int:\n",
+        "    let p = Path(f)\n",
+        "    p.f(n, 1)\n",
+        "fn twice(n: Int, f: (Int, Int) -> Int) -> Int = walk(n, f) + walk(n + 1, f)\n",
+        "let k: 1..=8 = read()\n",
+        "for c in 0..k:\n",
+        "    let w = (a: Int, b: Int) => a * b + c\n",
+        "    print(twice(k, w) + Path(w).f(2, 3))\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("cpl_cl0 f;"), "{out}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained.iter().any(|e| e.site == "struct Path.f"
+            && matches!(e.mode, crate::ClosureMode::StaticFunctor { closure: 0 })),
+        "{explained:?}"
+    );
+}
+
+#[test]
 fn a_struct_field_two_closures_with_like_captures_reach_is_a_bound_fn() {
     let src = concat!(
         "struct Op2(f: (Int, Int) -> Int)\n",

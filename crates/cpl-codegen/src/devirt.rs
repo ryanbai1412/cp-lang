@@ -111,6 +111,8 @@ enum Made {
     Call(FnId),
     /// Fn field `index` of the struct in local `slot`.
     Field(usize, usize),
+    /// A closure literal: `let f = (a, b) => ..`.
+    Closure(ClosureId),
 }
 
 /// What has been stored in a [`Home`] so far.
@@ -157,8 +159,14 @@ pub(crate) struct Devirt<'p> {
     /// What fn field `(fn, index)` of every struct `fn` returns holds.
     returned: BTreeMap<(FnId, usize), Held>,
     /// Locals bound once and never written again: `let x = f(...)` of a
-    /// struct (`x` is what `f` returned), or `let g = x.op` of a fn field.
+    /// struct (`x` is what `f` returned), `let g = x.op` of a fn field, or
+    /// `let g = (a, b) => ..` of a closure.
     made_by: BTreeMap<(FnId, usize), Made>,
+    /// [`Devirt::made_by`] for the file's own lines.
+    main_made: BTreeMap<usize, Made>,
+    /// Whether the fixpoint is reading the file's own lines, the only
+    /// `home == None` block whose locals `main_made` describes.
+    in_main: bool,
     /// Each closure's stand-in: the first closure that only calls the same fn.
     same: Vec<ClosureId>,
     /// Fn-typed globals set once to a closure: each call goes to the
@@ -203,6 +211,8 @@ impl<'p> Devirt<'p> {
             unread_lets: BTreeSet::new(),
             returned: BTreeMap::new(),
             made_by: made_by(program),
+            main_made: made_in(program, &program.main),
+            in_main: false,
             same,
             globals: BTreeMap::new(),
             lambda_returns: BTreeSet::new(),
@@ -223,7 +233,9 @@ impl<'p> Devirt<'p> {
         while pass.changed {
             pass.changed = false;
             pass.block(None, &program.setup);
+            pass.in_main = true;
             pass.block(None, &program.main);
+            pass.in_main = false;
             for (id, f) in program.fns.iter().enumerate() {
                 pass.block(Some(id), &f.body);
                 pass.returns(id, &f.body);
@@ -770,10 +782,7 @@ impl<'p> Devirt<'p> {
     /// `None`: nothing has been stored there yet.
     fn value(&self, home: Option<FnId>, e: &Expr) -> Option<Held> {
         match &e.kind {
-            ExprKind::Closure(cid) if self.closure_effectively_captureless(*cid) => {
-                Some(Held::One(self.same[*cid]))
-            }
-            ExprKind::Closure(cid) => Some(Held::One(*cid)),
+            ExprKind::Closure(cid) => Some(self.closure_held(*cid)),
             ExprKind::Local(slot) => match home {
                 Some(id) if *slot < self.program.fns[id].params.len() => {
                     self.held.get(&Home::Param(id, *slot)).copied()
@@ -784,6 +793,11 @@ impl<'p> Devirt<'p> {
                             .or_else(|| self.only_closure_of(id, *base, *index))
                             .unwrap_or(Held::Many),
                     ),
+                    Some(Made::Closure(cid)) => Some(self.local_closure(*cid)),
+                    _ => Some(Held::Many),
+                },
+                None if self.in_main => match self.main_made.get(slot) {
+                    Some(Made::Closure(cid)) => Some(self.local_closure(*cid)),
                     _ => Some(Held::Many),
                 },
                 _ => Some(Held::Many),
@@ -797,6 +811,27 @@ impl<'p> Devirt<'p> {
                 _ => Some(Held::Many),
             },
             _ => Some(Held::Many),
+        }
+    }
+
+    /// What a local bound once to closure `cid` holds: that closure when it
+    /// captures, so a field or param it fills can take the closure's own type.
+    /// A captureless one stays erased here: calls through it keep their lambda.
+    fn local_closure(&self, cid: ClosureId) -> Held {
+        if self.closure_effectively_captureless(cid) {
+            Held::Many
+        } else {
+            Held::One(cid)
+        }
+    }
+
+    /// What a value built as closure `cid` holds: its stand-in when nothing
+    /// it captures is live.
+    fn closure_held(&self, cid: ClosureId) -> Held {
+        if self.closure_effectively_captureless(cid) {
+            Held::One(self.same[cid])
+        } else {
+            Held::One(cid)
         }
     }
 
@@ -1041,50 +1076,61 @@ impl<'p> Devirt<'p> {
     }
 }
 
-/// Each fn's locals bound once, to a call made struct or to a fn field of
-/// a local, and never written again, in place, through `mut` or by a closure.
+/// Each fn's locals bound once, to a call made struct, a fn field of a
+/// local or a closure, and never written again, in place, through `mut` or
+/// by a closure.
 fn made_by(program: &Program) -> BTreeMap<(FnId, usize), Made> {
     let mut out = BTreeMap::new();
     for (id, f) in program.fns.iter().enumerate() {
-        let mut lets: BTreeMap<usize, Option<Made>> = BTreeMap::new();
-        let mut written = BTreeSet::new();
-        each_sink(&f.body, &mut |sink| match sink {
-            Sink::Let(ref slot, init) => {
-                let maker = match init.map(|e| (&e.kind, &e.ty)) {
-                    Some((ExprKind::Call(callee, _), Ty::Struct(_))) => Some(Made::Call(*callee)),
-                    Some((ExprKind::Field(base, index), Ty::Fn(..))) => match base.kind {
-                        ExprKind::Local(b) => Some(Made::Field(b, *index)),
-                        _ => None,
-                    },
+        for (slot, made) in made_in(program, &f.body) {
+            out.insert((id, slot), made);
+        }
+    }
+    out
+}
+
+/// [`made_by`] for the locals of one body.
+fn made_in(program: &Program, body: &Block) -> BTreeMap<usize, Made> {
+    let mut out = BTreeMap::new();
+    let mut lets: BTreeMap<usize, Option<Made>> = BTreeMap::new();
+    let mut written = BTreeSet::new();
+    each_sink(body, &mut |sink| match sink {
+        Sink::Let(ref slot, init) => {
+            let maker = match init.map(|e| (&e.kind, &e.ty)) {
+                Some((ExprKind::Call(callee, _), Ty::Struct(_))) => Some(Made::Call(*callee)),
+                Some((ExprKind::Closure(cid), Ty::Fn(..))) => Some(Made::Closure(*cid)),
+                Some((ExprKind::Field(base, index), Ty::Fn(..))) => match base.kind {
+                    ExprKind::Local(b) => Some(Made::Field(b, *index)),
                     _ => None,
-                };
-                let again = lets.contains_key(slot);
-                lets.insert(*slot, maker.filter(|_| !again));
+                },
+                _ => None,
+            };
+            let again = lets.contains_key(slot);
+            lets.insert(*slot, maker.filter(|_| !again));
+        }
+        Sink::Store(place, _, _) => {
+            written.insert(place.root_local());
+        }
+        Sink::For(slot, _) => {
+            written.insert(Some(slot));
+        }
+        _ => {}
+    });
+    each_write(body, &mut |how, place| {
+        if let Write::Mut | Write::Mutate(_) = how {
+            written.insert(place.root_local());
+        }
+    });
+    each_closure(body, &mut |cid| {
+        for cap in &program.closures[cid].captures {
+            if cap.by_ref && !cap.is_global {
+                written.insert(Some(cap.outer));
             }
-            Sink::Store(place, _, _) => {
-                written.insert(place.root_local());
-            }
-            Sink::For(slot, _) => {
-                written.insert(Some(slot));
-            }
-            _ => {}
-        });
-        each_write(&f.body, &mut |how, place| {
-            if let Write::Mut | Write::Mutate(_) = how {
-                written.insert(place.root_local());
-            }
-        });
-        each_closure(&f.body, &mut |cid| {
-            for cap in &program.closures[cid].captures {
-                if cap.by_ref && !cap.is_global {
-                    written.insert(Some(cap.outer));
-                }
-            }
-        });
-        for (slot, maker) in lets {
-            if let (Some(maker), false) = (maker, written.contains(&Some(slot))) {
-                out.insert((id, slot), maker);
-            }
+        }
+    });
+    for (slot, maker) in lets {
+        if let (Some(maker), false) = (maker, written.contains(&Some(slot))) {
+            out.insert(slot, maker);
         }
     }
     out

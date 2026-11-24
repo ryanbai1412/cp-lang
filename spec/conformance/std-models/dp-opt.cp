@@ -11,7 +11,6 @@
 // The Monge and convexity DP speedups against their quadratic or cubic loops, on seeded random
 // small instances: squared gaps between sorted points (Monge), interval sums (Knuth), convex
 // sequences (aliens). Reads `seed n`; prints the first op that differs.
-// std_functions: 1
 use std.rand.{Rng}
 use std.dp.{MongePath, aliens, dnc_layer, knuth, monge_path, monge_paths, monotone_minima, smawk}
 

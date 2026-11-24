@@ -60,8 +60,9 @@ the heap. Locals of plain types live in registers or the stack.
 - A function value with a known target is passed as an empty struct and
   inlined; captures are passed as references at each call (chapter 6).
   There is no `std::function` and no indirect call. A struct fn field
-  only ever built from one capturing closure holds that closure as its own
-  type (a struct of its captures with a call operator); only a field that
+  only ever built from one capturing closure, directly or through fn
+  params and locals bound once that only hold it, holds that closure as its
+  own type (a struct of its captures with a call operator); only a field that
   different closures reach is erased, and `cpl explain` says which. (R13.3.2)
 - A non-recursive generator inlines its body with the loop body in place
   of `yield`. A recursive generator becomes a recursive function taking
