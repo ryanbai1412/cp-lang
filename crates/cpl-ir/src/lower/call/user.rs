@@ -1121,14 +1121,7 @@ impl<'a> Lowerer<'a> {
                 {
                     continue;
                 }
-                let saved = (
-                    std::mem::replace(&mut self.cur_mod, tpl_mod),
-                    std::mem::replace(&mut self.offset, tpl_offset),
-                    std::mem::replace(&mut self.gen_env, inferred.clone()),
-                );
-                let probed = self.probe_ty_silent(d);
-                (self.cur_mod, self.offset, self.gen_env) = saved;
-                if let Some(t) = probed.filter(|t| *t != Ty::Error) {
+                if let Some(t) = self.probe_default(d, (tpl_mod, tpl_offset), &inferred) {
                     inferred.insert(name.text.clone(), GenArg::Ty(t));
                 }
             }
