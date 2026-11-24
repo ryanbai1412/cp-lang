@@ -308,8 +308,30 @@ jobs:
       - name: Vim smoke
         shell: bash
         run: VIM_BIN="${{ steps.vim.outputs.executable }}" just vim-smoke
+      # The Linux legs of vscode and cli run here, on this job's cpl: one runner
+      # instead of three, since hosted jobs queue for a runner past about 35.
+      - uses: actions/setup-node@v4
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        with:
+          node-version: "24"
+      - uses: astral-sh/setup-uv@v6
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+      - name: VS Code extension tests
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        working-directory: editors/vscode
+        run: just vscode-test
+      - name: Clipboard servers
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        run: |
+          . scripts/retry.sh
+          sudo rm -f /var/lib/man-db/auto-update
+          retry timeout 180 sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 xvfb xclip xsel wl-clipboard sway >/dev/null
+      - name: Clipboard round trip
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        timeout-minutes: 10
+        run: just clipboard-roundtrip
 
-  # VS Code: the unit tests, then the extension host against the real `cpl lsp`
+  # VS Code (Linux runs it in neovim): the unit tests, then the extension host against the real `cpl lsp`
   # (diagnostics, definition, completion, formatting); editors/vscode/test/integration.
   vscode:
     name: vscode (${{ matrix.os }})
@@ -317,7 +339,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -337,15 +359,15 @@ jobs:
         run: |
           just vscode-test
 
-  # The contest CLI on macOS and Windows (Linux runs it in the gate): paths,
-  # the clipboard command, CRLF input, `cpl setup`, the contest flow.
+  # The contest CLI on macOS and Windows (Linux runs it in the gate, the
+  # clipboard round trip in neovim): paths, the clipboard command, CRLF input, `cpl setup`, the contest flow.
   cli:
     name: cli (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
@@ -367,12 +389,6 @@ jobs:
         timeout-minutes: 10
         shell: bash
         run: just test-cli
-      - name: Clipboard servers
-        if: runner.os == 'Linux'
-        run: |
-          . scripts/retry.sh
-          sudo rm -f /var/lib/man-db/auto-update
-          retry timeout 180 sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 xvfb xclip xsel wl-clipboard sway >/dev/null
       # `cpl b -c` then each OS's paste tool gives back the file (tools.md, Submitting).
       - name: Clipboard round trip
         timeout-minutes: 10
