@@ -229,7 +229,7 @@ Renaming a public item ships a `cpl fix` codemod and a checker error on the old 
 
 - **Why:** old solutions keep building, and a contestant with an old habit is told the new spelling.
 - **Example:** `K`, `to_idx`, `from_idx` give an error with a fix to `count`, `ord`, `nth`.
-- **Enforced by:** corpus ports in `cpl-conform all --check`; `missing` (public-signature snapshot test).
+- **Enforced by:** corpus ports in `cpl-conform all --check`; `scripts/std-api-snapshot.py` fails a signature change not written to `spec/lib/std-api.snapshot`, and a removed name no `cpl fix` codemod or CHANGELOG.md line names.
 
 ### R21. std is lint-clean
 

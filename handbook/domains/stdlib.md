@@ -275,7 +275,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | std passes the rules a user library meets | `cpl check std/<m>.cp` errors per file | `crates/cpl-cli/tests/std_checks.rs`, each count only drops |
 | No unimplemented bodies | `todo` stubs | `scripts/debt-ratchet.py` (`stdlib_todo`) |
 | Modules import without cycles | explicit import cycles | `crates/cpl-check/tests/std_acyclic.rs`; `measure.py cycles` for the graph |
-| Public API changes are never silent | signature changes with no codemod or release note | rule `std-api/R20`; `missing` (public-signature snapshot test, like `cargo-semver-checks`) |
+| Public API changes are never silent | signature changes with no codemod or release note | rule `std-api/R20`; `scripts/std-api-snapshot.py` (`spec/lib/std-api.snapshot`; a removed name needs a codemod or CHANGELOG line) |
 | Old solutions keep building | corpus ports broken by a std change | corpus in `cpl-conform all --check` |
 | Lint-clean std | lint hits in std (`L0301` float equality and others) | rule `std-api/R21`; `scripts/std-lint-ratchet.py` (in `scripts/check.sh`, per file and code, shrink-only) |
 

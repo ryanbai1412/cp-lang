@@ -652,6 +652,10 @@ step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
 uv run --quiet python scripts/std-api-lint.py --max 0 \
     || fail "a std signature breaks a std-api rule; see above"
 
+step "std's public signatures match their snapshot (scripts/std-api-snapshot.py)"
+uv run --quiet python scripts/std-api-snapshot.py \
+    || fail "std's public API changed; review the diff above and run scripts/std-api-snapshot.py --write"
+
 step "std is lint-clean, shrink-only (scripts/std-lint-ratchet.py)"
 uv run --quiet python scripts/std-lint-ratchet.py --cpl "$cpl" \
     || fail "std gained a lint hit; fix it or mark it with lint(...: allow)"
