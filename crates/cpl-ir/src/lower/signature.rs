@@ -124,6 +124,12 @@ impl<'a> Lowerer<'a> {
                 return found;
             }
         }
+        if let Some(ty) = match t {
+            Ty::Struct(sid) => self.default_assoc(*sid, item),
+            _ => None,
+        } {
+            return Some(ty);
+        }
         // Structural trait associated types: if a trait method returns `Self.<item>`
         // or `yields Self.<item>`, recover `<item>` from the concrete type's matching
         // method (or sequence-valued adjacency array / function).

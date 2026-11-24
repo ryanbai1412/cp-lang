@@ -370,6 +370,25 @@ impl<'a> Lowerer<'a> {
                         .collect()
                 });
                 let (methods, fields) = fn_value::trait_members(body);
+                let super_names = supers
+                    .iter()
+                    .filter_map(|t| match &t.kind {
+                        ast::TypeKind::Named { name, .. } => Some(name.text.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                let assoc_defaults = body
+                    .stmts
+                    .iter()
+                    .filter_map(|s| match &s.kind {
+                        ast::StmtKind::TypeAlias {
+                            name, generics, ty, ..
+                        } if generics.is_empty() && !matches!(ty.kind, ast::TypeKind::Error) => {
+                            Some((name.text.as_str(), ty))
+                        }
+                        _ => None,
+                    })
+                    .collect();
                 let unimplemented = stmt
                     .decorators
                     .iter()
@@ -394,6 +413,8 @@ impl<'a> Lowerer<'a> {
                     generics: generics.iter().map(|g| g.text.as_str()).collect(),
                     unimplemented,
                     alias_of,
+                    supers: super_names,
+                    assoc_defaults,
                 });
                 self.mod_syms[m].insert(name.text.clone(), Sym::Trait(tid));
             }

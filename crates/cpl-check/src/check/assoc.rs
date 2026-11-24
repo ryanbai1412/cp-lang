@@ -4,6 +4,7 @@
 
 use super::types::type_head;
 use super::*;
+use crate::def::TraitMethod;
 use cpl_syntax::ast::{self, Stmt, StmtKind};
 
 /// The associated types a trait body declares, each with its bound's traits
@@ -34,7 +35,10 @@ impl Checker<'_> {
             Ty::Fn { .. } => "fn".into(),
             _ => return None,
         };
-        for (_, def) in self.env.impls(&key) {
+        // A type implementing both `Seq` and `Indexed` takes `Taken` from
+        // the most derived trait (decision 469).
+        let mut found: Vec<(String, Ty)> = Vec::new();
+        for (trait_name, def) in self.env.impls(&key) {
             let Def::Impl { target, assoc, .. } = &*def else {
                 continue;
             };
@@ -44,10 +48,105 @@ impl Checker<'_> {
             let mut bindings = crate::ty::Bindings::default();
             target.unify(of, &mut bindings);
             if of.fits(&target.subst(&bindings)) {
-                return Some(chosen.subst(&bindings));
+                let head = trait_name.as_deref().unwrap_or("");
+                found.push((
+                    head.split('<').next().unwrap_or(head).to_string(),
+                    chosen.subst(&bindings),
+                ));
             }
         }
-        None
+        let pick = (0..found.len()).find(|&i| {
+            (0..found.len()).all(|j| i == j || self.trait_extends(&found[i].0, &found[j].0))
+        });
+        pick.or((!found.is_empty()).then_some(0))
+            .map(|i| found.swap_remove(i).1)
+    }
+
+    /// True when trait `sub` names `sup` among its supertraits, at any depth.
+    pub(super) fn trait_extends(&mut self, sub: &str, sup: &str) -> bool {
+        let mut seen: Vec<String> = Vec::new();
+        let mut todo = vec![sub.to_string()];
+        while let Some(t) = todo.pop() {
+            let head = t.split('<').next().unwrap_or(&t).trim().to_string();
+            if head == sup && seen.len() > 0 {
+                return true;
+            }
+            if seen.contains(&head) {
+                continue;
+            }
+            seen.push(head.clone());
+            if let Some(Def::Trait { supers, .. }) = self.global(&head).as_deref() {
+                todo.extend(supers.iter().cloned());
+            }
+        }
+        false
+    }
+
+    /// R08.1.9: an impl that chooses its own `type Tk` writes every default
+    /// fn whose type names `Self.Tk`, since that body was checked against
+    /// the trait's `Tk`.
+    fn impl_writes_assoc_users(&mut self, trait_name: &str, trait_text: &str, body: &[Stmt]) {
+        let defaults = self.trait_assoc_defaults(trait_name);
+        let written: Vec<String> = body
+            .iter()
+            .filter_map(|s| match &s.kind {
+                StmtKind::Fn(f) => Some(f.name.text.clone()),
+                _ => None,
+            })
+            .collect();
+        let mut methods: Vec<TraitMethod> = Vec::new();
+        let mut seen: Vec<String> = Vec::new();
+        let mut todo = vec![trait_name.to_string()];
+        while let Some(t) = todo.pop() {
+            let head = t.split('<').next().unwrap_or(&t).trim().to_string();
+            if seen.contains(&head) {
+                continue;
+            }
+            seen.push(head.clone());
+            if let Some(Def::Trait {
+                methods: own,
+                supers,
+                ..
+            }) = self.global(&head).as_deref().cloned()
+            {
+                for m in own {
+                    if methods.iter().all(|k| k.name != m.name) {
+                        methods.push(m);
+                    }
+                }
+                todo.extend(supers.into_iter().rev());
+            }
+        }
+        for s in body {
+            let StmtKind::TypeAlias { name, .. } = &s.kind else {
+                continue;
+            };
+            if defaults.iter().all(|(n, _)| *n != name.text) {
+                continue;
+            }
+            let users: Vec<String> = methods
+                .iter()
+                .filter(|m| {
+                    !m.required && !written.contains(&m.name) && names_assoc(&m.ty, &name.text)
+                })
+                .map(|m| m.name.clone())
+                .collect();
+            if users.is_empty() {
+                continue;
+            }
+            let message = format!(
+                "`impl {trait_text}` chooses its own `type {}`, so it must also write {}",
+                name.text,
+                super::expr::list_names(&users)
+            );
+            if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
+                diag.help = Some(format!(
+                    "the default body of {} is written for `{trait_text}`'s own `{}`",
+                    super::expr::list_names(&users),
+                    name.text
+                ));
+            }
+        }
     }
 
     /// An impl's associated types with the trait's defaults for the ones it
@@ -58,26 +157,51 @@ impl Checker<'_> {
         self_ty: &Ty,
         mut assoc: Vec<(String, Ty)>,
     ) -> Vec<(String, Ty)> {
-        let Some(Def::Trait {
-            assoc: declared, ..
-        }) = trait_ty
-            .and_then(type_head)
-            .and_then(|n| self.global(&n))
-            .as_deref()
-            .cloned()
-        else {
+        let Some(trait_name) = trait_ty.and_then(type_head) else {
             return assoc;
         };
         let mut on = crate::ty::Bindings::default();
         on.insert("Self".into(), self_ty.clone());
-        for (name, _, default) in declared {
-            if let Some(default) = default {
-                if assoc.iter().all(|(n, _)| *n != name) {
-                    assoc.push((name, default.subst(&on)));
-                }
+        for (name, default) in self.trait_assoc_defaults(&trait_name) {
+            if assoc.iter().all(|(n, _)| *n != name) {
+                assoc.push((name, default.subst(&on)));
             }
         }
         assoc
+    }
+
+    /// The associated-type defaults a trait gives, its own first and then
+    /// each supertrait's it does not refine: the most derived one wins
+    /// (`Indexed`'s `type Taken = Slice<Self>` over `Seq`'s).
+    pub(super) fn trait_assoc_defaults(&mut self, trait_name: &str) -> Vec<(String, Ty)> {
+        let mut out: Vec<(String, Ty)> = Vec::new();
+        let mut seen: Vec<String> = Vec::new();
+        let mut todo = vec![trait_name.to_string()];
+        while let Some(t) = todo.pop() {
+            let head = t.split('<').next().unwrap_or(&t).trim().to_string();
+            if seen.contains(&head) {
+                continue;
+            }
+            seen.push(head.clone());
+            let Some(Def::Trait { assoc, supers, .. }) = self.global(&head).as_deref().cloned()
+            else {
+                continue;
+            };
+            for (name, _, default) in assoc {
+                if out.iter().any(|(n, _)| *n == name) {
+                    continue;
+                }
+                if let Some(default) = default {
+                    out.push((name, default));
+                } else if seen.len() == 1 {
+                    // Declared again without a default: the trait asks each impl.
+                    seen.push(format!("={name}"));
+                }
+            }
+            todo.extend(supers.into_iter().rev());
+        }
+        out.retain(|(n, _)| !seen.contains(&format!("={n}")));
+        out
     }
 
     /// The methods impls for fn types give a fn value of type `of`.
@@ -186,6 +310,9 @@ impl Checker<'_> {
                 }
             }
         }
+        if let Some(t) = type_head(trait_ty) {
+            self.impl_writes_assoc_users(&t, &trait_text, body);
+        }
         // A defaulted associated type may be left out (decision 469).
         let missing: Vec<String> = declared
             .iter()
@@ -234,4 +361,14 @@ impl Checker<'_> {
             .map(|m| (m.name.clone(), self.resolve_assoc(&m.ty.subst(&on))))
             .collect()
     }
+}
+
+/// True when `ty` names the associated type `Self.<name>`.
+fn names_assoc(ty: &Ty, name: &str) -> bool {
+    let mut found = false;
+    ty.map(&mut |t| {
+        found |= matches!(t, Ty::Assoc { of, name: n } if n == name && matches!(of.as_ref(), Ty::Param(p) if p == "Self"));
+        found.then(|| t.clone())
+    });
+    found
 }

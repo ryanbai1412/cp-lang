@@ -837,6 +837,21 @@ impl<'a> Checker<'a> {
                                 trait_hits.push(tn);
                             }
                         }
+                        // A subtrait refining its supertrait's default is no rival
+                        // to it: the most derived one answers (decision 469).
+                        let heads: Vec<String> = trait_hits
+                            .iter()
+                            .map(|t| t.split('<').next().unwrap_or(t).to_string())
+                            .collect();
+                        let mut keep = Vec::new();
+                        for (i, hit) in trait_hits.iter().enumerate() {
+                            let refined = (0..heads.len())
+                                .any(|j| j != i && self.trait_extends(&heads[j], &heads[i]));
+                            if !refined {
+                                keep.push(hit.clone());
+                            }
+                        }
+                        let trait_hits = keep;
                         if trait_hits.len() >= 2 {
                             let message = format!(
                                 "`{type_name}.{}` is ambiguous: both `{}` and `{}` define it",

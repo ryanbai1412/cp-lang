@@ -293,6 +293,9 @@ impl<'a> Lowerer<'a> {
             return;
         }
         let num_impls = self.impls.len();
+        // Which trait each copied default came from: a subtrait's default
+        // replaces its supertrait's (`Indexed.take` over `Seq.take`).
+        let mut defaulted: HashMap<String, usize> = HashMap::new();
         for idx in 0..num_impls {
             let imp_mod = self.impls[idx].mod_id;
             let imp_offset = self.impls[idx].offset;
@@ -455,9 +458,13 @@ impl<'a> Lowerer<'a> {
                     let t_offset = self.traits[tid].offset;
                     let t_methods = self.traits[tid].methods.clone();
                     for m in t_methods {
+                        let refines = defaulted
+                            .get(&m.name.text)
+                            .is_some_and(|&s| s != tid && self.trait_extends(tid, s));
                         if !matches!(m.body, ast::FnBody::None)
-                            && !self.structs[sid].methods.contains_key(&m.name.text)
+                            && (refines || !self.structs[sid].methods.contains_key(&m.name.text))
                         {
+                            defaulted.insert(m.name.text.clone(), tid);
                             let fn_id =
                                 self.declare_fn_in(m, t_mod, t_offset, Some(sid), env.clone());
                             self.resolve_fn_sig(fn_id, Some(tname.as_str()));

@@ -254,6 +254,11 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(self.subset_ty(d, name.span));
                 }
             }
+            if let (Some(sid), "Self") = (self.self_struct, prefix) {
+                if let Some(ty) = self.assoc_type(&Ty::Struct(sid), rest) {
+                    return Spec::Plain(ty);
+                }
+            }
             if let Some(GenArg::Ty(t)) = self.gen_env.get(prefix).cloned() {
                 if let Some(ty) = self.assoc_type(&t, rest) {
                     return Spec::Plain(ty);

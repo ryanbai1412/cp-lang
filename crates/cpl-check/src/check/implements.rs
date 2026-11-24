@@ -93,7 +93,7 @@ impl Checker<'_> {
             Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
             _ => None,
         };
-        if impl_key.is_some_and(|name| self.has_impl(name, trait_name))
+        if impl_key.is_some_and(|name| self.has_impl_for(ty, name, trait_name, seen))
             || self.rev_has(ty, trait_name, seen)
         {
             return true;
@@ -263,6 +263,52 @@ impl Checker<'_> {
     }
 
     /// Is there a written `impl trait_name for name`?
+    /// `has_impl` for `ty` itself: a generic impl counts only when `ty` meets its head's
+    /// bounds (`impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>` is no impl for an
+    /// `Items<Rev<List<Int>>>`).
+    fn has_impl_for(
+        &mut self,
+        ty: &Ty,
+        name: &str,
+        trait_name: &str,
+        seen: &mut Vec<String>,
+    ) -> bool {
+        if self
+            .global(&crate::def::impl_name(Some(trait_name), name))
+            .is_some()
+        {
+            return true;
+        }
+        let impls: Vec<Arc<Def>> = self
+            .env
+            .impls(name)
+            .into_iter()
+            .filter(|(t, _)| {
+                t.as_deref()
+                    .is_some_and(|t| t.split('<').next().unwrap_or(t) == trait_name)
+            })
+            .map(|(_, def)| def)
+            .collect();
+        impls.iter().any(|def| {
+            let Def::Impl {
+                target, bound_args, ..
+            } = &**def
+            else {
+                return true;
+            };
+            let mut bindings = crate::ty::Bindings::default();
+            target.unify(ty, &mut bindings);
+            bound_args.iter().all(|(param, bound, _)| {
+                let Some(actual) = bindings.get(param).cloned() else {
+                    return true;
+                };
+                let bound = bound.split('<').next().unwrap_or(bound).to_string();
+                matches!(actual, Ty::Param(_) | Ty::Unknown | Ty::Error)
+                    || self.implements_trait_inner(&actual, &bound, seen)
+            })
+        })
+    }
+
     pub(super) fn has_impl(&mut self, name: &str, trait_name: &str) -> bool {
         self.global(&crate::def::impl_name(Some(trait_name), name))
             .is_some()

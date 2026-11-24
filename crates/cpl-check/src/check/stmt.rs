@@ -1139,7 +1139,13 @@ impl<'a> Checker<'a> {
                 self.type_hover(name);
                 self.owned(&name.text, &body.stmts);
                 self.own_fns_scope(&name.text, &body.stmts);
+                // A default body sees the trait's own associated-type
+                // defaults: `fn tk(self, k) -> Self.Tk = Lz(self, k)` under
+                // `type Tk = Lz<Self>` (decision 469).
+                let defaults = self.trait_assoc_defaults(&name.text);
+                let outer_assoc = std::mem::replace(&mut self.self_assoc, defaults);
                 self.methods(&body.stmts, &self_ty);
+                self.self_assoc = outer_assoc;
                 self.pop_scope();
                 self.param_bounds.truncate(outer_bounds);
                 self.leave_body(scope);

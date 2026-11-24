@@ -56,6 +56,7 @@ mod shown;
 mod signature;
 mod stmt;
 mod sum_product;
+mod trait_defaults;
 mod type_call;
 mod typo;
 mod unify_ast;

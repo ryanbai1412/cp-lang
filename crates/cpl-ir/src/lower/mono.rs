@@ -121,6 +121,10 @@ pub(super) struct TraitInfo<'a> {
     pub unimplemented: Option<String>,
     /// `trait Both = Sh + Nm`: implemented exactly when each of these is.
     pub alias_of: Option<Vec<String>>,
+    /// `trait Indexed<D, T>: Keyed<D, T> + Bidir<T>`: the traits it extends, by name.
+    pub supers: Vec<String>,
+    /// `type Taken = Slice<Self>`: the associated-type defaults it writes (decision 469).
+    pub assoc_defaults: Vec<(&'a str, &'a ast::Type)>,
 }
 
 pub(super) struct ImplInfo<'a> {
