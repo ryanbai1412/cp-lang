@@ -343,6 +343,8 @@ pub(crate) struct Checker<'a> {
     /// The bounds with trait arguments of the fn whose arguments are being
     /// checked: binding `S` binds what `S: Seq<T>` says of `T`.
     call_bound_args: Option<Vec<(String, String, Vec<crate::ty::Ty>)>>,
+    /// What `item_impls_hold` refused: an argument's error whatever form the call takes.
+    item_misses: Vec<cpl_diag::Diagnostic>,
     /// The trait arguments a call's bound gave a fn item's own type: `go(+)` at `M: Op<Int>`.
     item_args: Vec<(String, String, Vec<crate::ty::Ty>)>,
     /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
@@ -433,6 +435,7 @@ impl<'a> Checker<'a> {
             local_defs: Default::default(),
             lambda_params: Vec::new(),
             call_bound_args: None,
+            item_misses: Vec::new(),
             item_args: Vec::new(),
             moved: Default::default(),
             assigning_name: None,
