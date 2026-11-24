@@ -298,6 +298,15 @@ impl<'p> Emitter<'p> {
                 v.text = format!("std::move({})", v.text);
             }
         }
+        if let (AssignOp::Set, ExprKind::Global(_)) = (op, &value.kind) {
+            if last
+                && std::ptr::eq(value, whole)
+                && !value.ty.is_scalar()
+                && !matches!(value.ty, Ty::Fn(..))
+            {
+                v.text = format!("std::move({})", v.text);
+            }
+        }
         if let (AssignOp::Set, ExprKind::Some(inner)) = (op, &value.kind) {
             if last && std::ptr::eq(value, whole) {
                 if let Some(text) = self.some_moved(inner, &value.ty) {

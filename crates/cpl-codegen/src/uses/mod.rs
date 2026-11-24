@@ -657,13 +657,22 @@ pub(crate) fn last_read(
     let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
         return false;
     };
-    let ExprKind::Local(slot) = &value.kind else {
-        return false;
+    let source = match value.kind {
+        ExprKind::Local(slot) => (false, slot),
+        ExprKind::Global(g) => (true, g),
+        _ => return false,
     };
     field_store(place)
-        && walk::root(place) != (false, *slot)
+        && walk::root(place) != source
         && (crate::lend::overwritten_before_read(value, &block.stmts[k + 1..])
-            || dead_after(program, block, k, *slot, outer))
+            || match source {
+                (false, slot) => dead_after(program, block, k, slot, outer),
+                // Nothing runs after the program's last top-level statement.
+                (true, _) => {
+                    std::ptr::eq(block, &program.main)
+                        && crate::lend::untouched_in(value, &block.stmts[k + 1..])
+                }
+            })
 }
 
 /// A variable or a field path on one: `x`, `s.a.b`.

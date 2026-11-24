@@ -1936,6 +1936,12 @@ pub(crate) fn overwritten_before_read(init: &Expr, rest: &[Stmt]) -> bool {
     false
 }
 
+/// Whether nothing in `rest`, nor code it calls, reads or sets the
+/// variable path `e` names.
+pub(crate) fn untouched_in(e: &Expr, rest: &[Stmt]) -> bool {
+    path_of(e).is_some_and(|path| !rest.iter().any(|stmt| touches(stmt, &path)))
+}
+
 /// Each `for` body of `program` and the variable it binds.
 pub(crate) fn loop_vars(program: &cpl_ir::Program) -> BTreeMap<*const Block, usize> {
     let mut vars = BTreeMap::new();

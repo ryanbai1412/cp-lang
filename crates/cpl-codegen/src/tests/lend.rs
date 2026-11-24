@@ -1268,4 +1268,28 @@ fn a_whole_read_moves_when_its_source_is_overwritten_before_its_next_read() {
         "print(f(3))\n",
     ));
     assert!(swapped.contains("xs = std::move(ys);"), "{swapped}");
+    let globals = cpp("var xs = [1]\nvar ys = [2]\nlet t = xs\nxs = ys\nys = t\nprint(xs, ys)\n");
+    for step in [
+        "t = std::move(xs);",
+        "xs = std::move(ys);",
+        "ys = std::move(t);",
+    ] {
+        assert!(
+            globals.contains(step),
+            "top-level variables move too: {globals}"
+        );
+    }
+    let read_by_a_call = cpp(concat!(
+        "var xs = [1]\n",
+        "var ys = [2]\n",
+        "fn peek() -> Int: ys.len\n",
+        "xs = ys\n",
+        "print(peek())\n",
+        "ys = [3]\n",
+        "print(xs, ys)\n",
+    ));
+    assert!(
+        read_by_a_call.contains("xs = ys;"),
+        "a fn reads ys before it is set again: {read_by_a_call}"
+    );
 }
