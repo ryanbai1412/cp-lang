@@ -6,6 +6,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 
 export const DATA = 'data (std source, strings)';
@@ -29,7 +30,17 @@ export function crateOf(name) {
   return (roots.find(([c]) => c.startsWith('cpl_')) ?? roots[0])?.[0] ?? RUNTIME;
 }
 
-/** The code bodies, function names (index -> name) and data segment of a cpl.wasm built with names. */
+/** `name` without the root of the crate the linker kept the copy from (see crateOf). */
+export function sharedName(name) {
+  const roots = [...name.matchAll(ROOT)];
+  const last = roots.at(-1);
+  return roots.length > 1 && last.index + last[0].length + +last[1] === name.length ? name.slice(0, last.index) : name;
+}
+
+/**
+ * The code bodies, function names (index -> name), data segment, type signatures,
+ * data segment ranges and memory size of a cpl.wasm built with names.
+ */
 function sections(wasm) {
   let at = 8;
   const leb = () => {
@@ -50,20 +61,48 @@ function sections(wasm) {
   let imported = 0;
   const bodies = [];
   const names = new Map();
+  const imports = [];
+  const types = [];
+  const segments = [];
+  const table = [];
+  let memory = 0;
   let data = Buffer.alloc(0);
+  const limits = () => (wasm[at++] & 1 ? [leb(), leb()][0] : leb());
   while (at < wasm.length) {
     const id = wasm[at++];
     const size = leb();
     const end = at + size;
-    if (id === 2) {
+    if (id === 1) {
       for (let i = leb(); i > 0; i--) {
-        str();
-        str();
+        const from = at;
+        if (wasm[at++] !== 0x60) throw new Error(`wasm-crates: type ${types.length} is not a function type`);
+        for (let v = 0; v < 2; v++) {
+          const n = leb();
+          at += n;
+        }
+        types.push(wasm.subarray(from, at));
+      }
+    } else if (id === 2) {
+      for (let i = leb(); i > 0; i--) {
+        const field = `${str()}.${str()}`;
         const kind = wasm[at++];
-        if (kind === 0) (leb(), imported++);
+        if (kind === 0) (leb(), imports.push(field), imported++);
         else if (kind === 1) (at++, wasm[at++] & 1 ? (leb(), leb()) : leb());
         else if (kind === 2) (wasm[at++] & 1 ? (leb(), leb()) : leb());
         else if (kind === 3) at += 2;
+      }
+    } else if (id === 5 && leb()) {
+      memory = limits() * 65536;
+    } else if (id === 9) {
+      for (let i = leb(); i > 0; i--) {
+        const flags = leb();
+        if (flags !== 0 && flags !== 2) throw new Error(`wasm-crates: element segment kind ${flags}`);
+        if (flags === 2) leb();
+        if (wasm[at++] !== 0x41) throw new Error('wasm-crates: an element segment not at an i32.const');
+        const base = sleb(wasm, at);
+        while (wasm[at++] !== 0x0b);
+        if (flags === 2 && wasm[at++] !== 0) throw new Error('wasm-crates: an element segment not of functions');
+        for (let n = leb(), j = 0; j < n; j++) table[base + j] = leb();
       }
     } else if (id === 10) {
       for (let i = leb(); i > 0; i--) {
@@ -73,6 +112,18 @@ function sections(wasm) {
       }
     } else if (id === 11) {
       data = wasm.subarray(at, end);
+      for (let i = leb(); i > 0; i--) {
+        const flags = leb();
+        let base = null;
+        if (flags !== 1) {
+          if (flags === 2) leb();
+          if (wasm[at] === 0x41) base = sleb(wasm, at + 1);
+          while (wasm[at++] !== 0x0b);
+        }
+        const len = leb();
+        if (base !== null && len) segments.push([base, base + len]);
+        at += len;
+      }
     } else if (id === 0 && str() === 'name') {
       while (at < end) {
         const sub = wasm[at++];
@@ -83,11 +134,152 @@ function sections(wasm) {
     }
     at = end;
   }
-  return { bodies, imported, names, data };
+  imports.forEach((field, i) => names.has(i) || names.set(i, `import ${field}`));
+  return { bodies, imported, names, data, types, segments, table, memory };
 }
 
 /** Every function name in a cpl.wasm built with names. */
 export const functionNames = (wasm) => [...sections(wasm).names.values()];
+
+/**
+ * crate -> function name -> its body as normalized writes it, for a cpl.wasm built
+ * with names: what a crate's code is, whatever index or address the link gave it.
+ * Another crate's change renumbers functions and types and moves statics; it does
+ * not change a byte here. A function goes by its sharedName; one repeated in a crate
+ * gets `#2`, `#3`, ...
+ */
+export function normalizedFunctions(wasm) {
+  const { bodies, imported, names, types, segments, table, memory } = sections(wasm);
+  const id = (text) => createHash('sha256').update(text).digest().subarray(0, 4);
+  const fn = Array.from({ length: imported + bodies.length }, (_, i) => id(sharedName(names.get(i) ?? `#${i}`)));
+  const ty = types.map(id);
+  const lo = Math.min(...segments.map(([from]) => from));
+  const slots = table.map((f) => Buffer.concat([Buffer.from([0xd2]), fn[f]]));
+  const shape = { fn, ty, slots, statics: [lo, Math.max(memory, ...segments.map(([, to]) => to))] };
+  const out = new Map();
+  bodies.forEach((body, i) => {
+    const name = names.get(i + imported) ?? `#${i + imported}`;
+    const c = crateOf(name);
+    if (!out.has(c)) out.set(c, new Map());
+    const fns = out.get(c);
+    let key = sharedName(name);
+    for (let n = 2; fns.has(key); n++) key = `${sharedName(name)}#${n}`;
+    try {
+      fns.set(key, normalized(body, shape));
+    } catch (e) {
+      throw new Error(`wasm-crates: ${name}: ${e.message}`);
+    }
+  });
+  return out;
+}
+
+const skipLeb = (buf, at) => {
+  while (buf[at++] & 0x80);
+  return at;
+};
+const uleb = (buf, at) => {
+  let v = 0, shift = 0, b;
+  do {
+    b = buf[at++];
+    v += (b & 0x7f) * 2 ** shift;
+    shift += 7;
+  } while (b & 0x80);
+  return v;
+};
+function sleb(buf, at) {
+  let v = 0n, shift = 0n, b;
+  do {
+    b = buf[at++];
+    v |= BigInt(b & 0x7f) << shift;
+    shift += 7n;
+  } while (b & 0x80);
+  return Number(b & 0x40 ? v - (1n << shift) : v);
+}
+
+// Opcode -> immediates, for the instructions rustc's wasm32 output uses: f a function,
+// t a type, a an address-or-integer (i32.const), m a memarg (align, then an offset that
+// may be an address), u any other LEB, b a byte, 4/8 raw bytes, v br_table's labels,
+// k a blocktype, y select's value types. Anything else is refused, never skipped.
+const OPS = new Map([
+  ...[0x02, 0x03, 0x04].map((o) => [o, 'k']),
+  [0x0c, 'u'], [0x0d, 'u'], [0x0e, 'v'], [0x10, 'f'], [0x11, 'tu'], [0x12, 'f'], [0x13, 'tu'], [0x1c, 'y'],
+  ...[0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26].map((o) => [o, 'u']),
+  ...Array.from({ length: 0x3e - 0x28 + 1 }, (_, i) => [0x28 + i, 'm']),
+  [0x3f, 'b'], [0x40, 'b'], [0x41, 'a'], [0x42, 'u'], [0x43, '4'], [0x44, '8'], [0xd0, 'b'], [0xd2, 'f'],
+  ...[0x00, 0x01, 0x05, 0x0b, 0x0f, 0x1a, 0x1b, 0xd1].map((o) => [o, '']),
+  ...Array.from({ length: 0xc4 - 0x45 + 1 }, (_, i) => [0x45 + i, '']),
+]);
+// 0xfc's sub-opcodes: the saturating truncations, then bulk memory and tables.
+const FC = ['', '', '', '', '', '', '', '', 'ub', 'u', 'bb', 'b', 'uu', 'u', 'uu', 'u', 'u', 'u'];
+const VALTYPE = new Set([0x40, 0x6f, 0x70, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f]);
+
+/**
+ * `body` with each function it names written as 4 bytes of its name's hash, each type
+ * as 4 of its signature's, and each relocated constant (wasm-ld leaves those as padded
+ * 5-byte LEBs) as what it points at: a table slot as 0xd2 and its function's hash, a
+ * static address as 4 bytes of its first-use order in the body, so the rest of the
+ * link moving them changes nothing. Throws on an instruction it cannot read and on a
+ * body whose outermost `end` is not its last byte, so a misread immediate can't pass.
+ */
+export function normalized(body, { fn, ty, slots, statics: [lo, hi] }) {
+  const out = [];
+  const addrs = new Map();
+  let at = 0;
+  const copy = (to) => {
+    if (to > body.length) throw new Error(`instruction runs past the body's ${body.length} B`);
+    for (; at < to; at++) out.push(body[at]);
+  };
+  const named = (table, v, what) => {
+    if (!table[v]) throw new Error(`${what} ${v} does not exist`);
+    out.push(...table[v]);
+  };
+  const addr = (v) => {
+    if (!addrs.has(v)) addrs.set(v, addrs.size);
+    const n = addrs.get(v);
+    out.push(n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, n >>> 24);
+  };
+  const imm = (k) => {
+    if (k === 'f') (named(fn, uleb(body, at), 'function'), (at = skipLeb(body, at)));
+    else if (k === 't') (named(ty, uleb(body, at), 'type'), (at = skipLeb(body, at)));
+    else if (k === 'u') copy(skipLeb(body, at));
+    else if (k === 'b') copy(at + 1);
+    else if (k === '4' || k === '8') copy(at + +k);
+    else if (k === 'v') for (let n = uleb(body, at) + 1, i = 0; i <= n; i++) copy(skipLeb(body, at));
+    else if (k === 'y') for (let n = uleb(body, at), i = 0; i <= n; i++) copy(i ? at + 1 : skipLeb(body, at));
+    else if (k === 'k') {
+      if (VALTYPE.has(body[at])) copy(at + 1);
+      else (named(ty, sleb(body, at), 'type'), (at = skipLeb(body, at)));
+    } else if (k === 'a' || k === 'm') {
+      if (k === 'm') {
+        if (body[at] & 0x40) throw new Error('a memarg naming a memory');
+        copy(skipLeb(body, at));
+      }
+      const v = k === 'a' ? sleb(body, at) : uleb(body, at);
+      const end = skipLeb(body, at);
+      const padded = end - at === 5 && Math.abs(v) < 2 ** 27;
+      if (padded && v >= lo && v <= hi) (addr(v), (at = end));
+      else if (padded && k === 'a' && slots[v]) (out.push(...slots[v]), (at = end));
+      else copy(end);
+    }
+  };
+  for (let n = uleb(body, 0), i = 0; i <= n; i++) copy(i ? skipLeb(body, at) + 1 : skipLeb(body, at));
+  for (let depth = 0; ; ) {
+    if (at >= body.length) throw new Error('the body ends inside a block');
+    const op = body[at];
+    copy(at + 1);
+    if (op === 0x02 || op === 0x03 || op === 0x04) depth++;
+    else if (op === 0x0b && !depth--) break;
+    if (op === 0xfc) {
+      const sub = uleb(body, at);
+      if (sub >= FC.length) throw new Error(`unknown instruction 0xfc ${sub}`);
+      copy(skipLeb(body, at));
+      for (const k of FC[sub]) imm(k);
+    } else if (OPS.has(op)) for (const k of OPS.get(op)) imm(k);
+    else throw new Error(`unknown instruction 0x${op.toString(16)}`);
+  }
+  if (at !== body.length) throw new Error(`the body's last \`end\` is ${body.length - at} B before its end`);
+  return Buffer.from(out);
+}
 
 /** [crate, raw code bytes, gzipped bytes] for a cpl.wasm built with names, largest first. */
 export function contributors(wasm) {
@@ -252,10 +444,15 @@ export function dataOverBudget(rows, budgets) {
 // check that the data segment and every touched crate are within their budgets; other
 // crates over theirs only warn. With `--parent`, a parent build's sizes, a crate over
 // every crate is held to the shrink-only ratchet, and the sort copies only grow if they
-// grew. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
+// grew. `--normalized DIR/cpl.wasm OUT.json` writes normalizedFunctions as
+// {crate: {fn: hex}}. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
 // `--data` takes such a file in place of a build. `--lower-budgets` lowers each budget
 // with slack after a pass (lowered).
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--sizes') {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--normalized') {
+  const crates = normalizedFunctions(readFileSync(process.argv[3]));
+  const json = Object.fromEntries([...crates].map(([c, fns]) => [c, Object.fromEntries([...fns].map(([f, b]) => [f, b.toString('hex')]))]));
+  writeFileSync(process.argv[4], `${JSON.stringify(json)}\n`);
+} else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--sizes') {
   const wasm = readFileSync(process.argv[3]);
   // A sizes file standing in for a build (scripts/test_land.py's builds) is its own sizes.
   const crates = wasm[0] === 0x7b ? null : Object.fromEntries(contributors(wasm).map(([c, , gz]) => [c, gz]));

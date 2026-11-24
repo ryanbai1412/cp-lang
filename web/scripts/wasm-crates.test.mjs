@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, checkSortCopies, crateOf, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, crateOf, normalizedFunctions, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -114,6 +114,76 @@ describe('wasm crate budgets', () => {
     expect(over.error).toContain('\n  cpl_fmt: ');
     expect(over.error).toContain('\n  cpl_ir: ');
     expect(checkSortCopies(copies, 5).lower).toMatch(/lower "max" in web\/scripts\/wasm-sort-copies.json to 3$/);
+  });
+
+  // A names build: `fns` ([name, body instructions] in index order), `types` signatures,
+  // a table of `slots` (function indices) and `pad` bytes of data at 1024 ahead of a static.
+  const uleb = (v, pad = 0) => {
+    const out = [];
+    do out.push((v & 0x7f) | (v >= 128 || out.length + 1 < pad ? 0x80 : 0)), (v = Math.floor(v / 128)); while (v || out.length < pad);
+    out[out.length - 1] &= 0x7f;
+    return out;
+  };
+  const str = (s) => [...uleb(s.length), ...Buffer.from(s)];
+  const vec = (items) => [...uleb(items.length), ...items.flat()];
+  const section = (id, bytes) => [id, ...uleb(bytes.length), ...bytes];
+  const build = ({ fns, types = [[0x60, 0, 0]], slots = [], data = 8 }) => Buffer.from([
+    0, 0x61, 0x73, 0x6d, 1, 0, 0, 0,
+    ...section(1, vec(types)),
+    ...section(5, [1, 0, 1]),
+    ...section(9, vec([[0, 0x41, 1, 0x0b, ...vec(slots.map((f) => uleb(f)))]])),
+    ...section(10, vec(fns.map(([, code]) => [...uleb(code.length + 2), 0, ...code, 0x0b]))),
+    ...section(11, vec([[0, 0x41, ...uleb(1024, 2), 0x0b, ...uleb(data + 4), ...Array(data + 4).fill(7)]])),
+    ...section(0, [...str('name'), ...section(1, vec(fns.map(([n], i) => [...uleb(i), ...str(n)])))]),
+  ]);
+  const fn = (crate, f) => `_RNvCs1_${crate.length}${crate}${f.length}${f}`;
+  // wasm-ld's relocated immediates: padded 5-byte LEBs.
+  const call = (i) => [0x10, ...uleb(i, 5)];
+  const indirect = (t) => [0x41, 0, 0x11, ...uleb(t, 5), 0];
+  const slot = (i) => [0x41, ...uleb(i, 5), 0x1a];
+  const load = (addr) => [0x41, 0, 0x28, 2, ...uleb(addr, 5), 0x1a];
+  const fnsOf = (wasm, crate) => normalizedFunctions(wasm).get(crate);
+
+  test('a crate normalizes the same when other crates renumber its calls, types, table slots and statics', () => {
+    // cpl_a calls itself and cpl_b, calls indirectly through type (i32) -> (), takes cpl_b's
+    // address and reads a static that sits after `data` bytes of other crates' statics.
+    const a = (self, b, type, at, data) => [
+      [fn('cpl_a', 'f'), [...call(self + 1), ...call(b), ...indirect(type), ...slot(at), ...load(1024 + data), 0x02, 0x40, 0x0b]],
+      [fn('cpl_a', 'g'), call(self)],
+    ];
+    const sig = [0x60, 1, 0x7f, 0];
+    const before = build({ fns: [...a(0, 2, 1, 1, 8), [fn('cpl_b', 'h'), [0x01]]], types: [[0x60, 0, 0], sig], slots: [2] });
+    const after = build({
+      fns: [[fn('cpl_b', 'x'), [0x01]], [fn('cpl_b', 'y'), call(0)], [fn('cpl_b', 'h'), [0x01]], ...a(3, 2, 2, 2, 40)],
+      types: [[0x60, 0, 0], [0x60, 0, 1, 0x7f], sig],
+      slots: [0, 2],
+      data: 40,
+    });
+    expect(fnsOf(after, 'cpl_a')).toEqual(fnsOf(before, 'cpl_a'));
+    expect([...fnsOf(after, 'cpl_b').keys()]).toEqual([fn('cpl_b', 'x'), fn('cpl_b', 'y'), fn('cpl_b', 'h')]);
+  });
+
+  test('a real change to a body changes its normalized bytes, and growth makes them longer', () => {
+    const base = (extra, callee = 1) => build({ fns: [[fn('cpl_a', 'f'), [...call(callee), ...extra]], [fn('cpl_a', 'g'), [0x01]], [fn('cpl_a', 'k'), [0x01]]] });
+    const was = fnsOf(base([]), 'cpl_a');
+    const grown = fnsOf(base([0x41, 7, 0x1a]), 'cpl_a');
+    expect(grown.get(fn('cpl_a', 'f')).length).toBe(was.get(fn('cpl_a', 'f')).length + 3);
+    expect(grown.get(fn('cpl_a', 'g'))).toEqual(was.get(fn('cpl_a', 'g')));
+    expect(fnsOf(base([], 2), 'cpl_a').get(fn('cpl_a', 'f'))).not.toEqual(was.get(fn('cpl_a', 'f')));
+  });
+
+  test('a std generic goes by its name without the crate the linker kept it from', () => {
+    const drop = '_RNvNtCsiErZIu7dPQ0_4core3ptr4dropCs8Jhg9rW6Oc3_10cpl_interp';
+    expect(sharedName(drop)).toBe('_RNvNtCsiErZIu7dPQ0_4core3ptr4drop');
+    expect(sharedName(fn('cpl_a', 'f'))).toBe(fn('cpl_a', 'f'));
+    const user = (kept) => build({ fns: [[fn('cpl_a', 'f'), call(1)], [`_RNvNtCsiErZIu7dPQ0_4core3ptr4dropCs1_${kept.length}${kept}`, [0x01]]] });
+    expect(fnsOf(user('cpl_b'), 'cpl_a')).toEqual(fnsOf(user('cpl_check'), 'cpl_a'));
+  });
+
+  test('an instruction the normalizer cannot read fails it instead of misreading the crate', () => {
+    expect(() => normalizedFunctions(build({ fns: [[fn('cpl_a', 'f'), [0xfd, 0x0c]]] }))).toThrow(/cpl_a1f: unknown instruction 0xfd/);
+    expect(() => normalizedFunctions(build({ fns: [[fn('cpl_a', 'f'), [0x0b, 0x01]]] }))).toThrow(/last `end` is 2 B before its end/);
+    expect(() => normalizedFunctions(build({ fns: [[fn('cpl_a', 'f'), call(9)]] }))).toThrow(/function 9 does not exist/);
   });
 
   test('within budget passes', () => {
