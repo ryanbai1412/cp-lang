@@ -60,9 +60,9 @@ conformance *args:
 hooks:
     scripts/install-hooks.sh
 
-# Print the next unused decision number in decisions.md.
+# Reserve the next decision number on main and print it.
 next-decision:
-    python3 scripts/next-decision.py
+    python3 scripts/next-decision.py --reserve
 
 # Check that repo paths cited in live docs exist.
 check-links:

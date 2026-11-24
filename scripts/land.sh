@@ -60,6 +60,9 @@ if [ -n "$changed" ]; then
 fi
 [ ! -f scripts/debt-ratchet.py ] || python3 scripts/debt-ratchet.py --check >/dev/null ||
     { python3 scripts/debt-ratchet.py --check >&2; exit 1; }
+# A decision number is taken once it is on main (decision 505): a heading
+# main never had, even as a `--reserve` stub, would collide with another lane.
+[ ! -f scripts/next-decision.py ] || python3 scripts/next-decision.py --check-landing FETCH_HEAD || exit 1
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
