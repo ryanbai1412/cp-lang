@@ -7,7 +7,7 @@ use std::ops::Range;
 /// the many small helpers a library method lowers to (a node's size, one
 /// tag push) stay calls. A short, non-recursive, non-template definition
 /// gets the hint; recursion and long bodies are left to the compiler.
-pub(super) fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
+pub(super) fn inline_hint(def: &str, signature: &str, recursive: bool) -> bool {
     const MAX_LINES: usize = 16;
     let body = def
         .trim_start_matches('\n')
@@ -21,7 +21,7 @@ pub(super) fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
     !signature.starts_with("template")
         && !signature.contains(" main(")
         && stmts <= MAX_LINES
-        && !body.contains(&format!("{name}("))
+        && !recursive
 }
 
 /// The comment that opens the file: what it is, and the source it was

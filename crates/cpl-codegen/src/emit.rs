@@ -1065,7 +1065,11 @@ impl<'p> Emitter<'p> {
             self.hoisted_decls(&mut fns, f.params.len());
             self.block(&f.body, &mut fns);
             text::close_def(&mut fns, def_at, &self.names[..f.params.len()]);
-            if inline_hint(&fns[def_at..], &signature, &fn_name(&f.name)) {
+            if inline_hint(
+                &fns[def_at..],
+                &signature,
+                self.devirt.recursive_fns.contains(&id),
+            ) {
                 fns.insert_str(def_at + 1, "inline ");
             }
             let list_form =

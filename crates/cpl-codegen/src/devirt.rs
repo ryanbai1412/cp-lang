@@ -106,7 +106,7 @@ pub(crate) struct Devirt<'p> {
     elidable: BTreeSet<Home>,
     template_params: BTreeMap<FnId, Vec<usize>>,
     reassigned_params: BTreeSet<(FnId, usize)>,
-    recursive_fns: BTreeSet<FnId>,
+    pub(crate) recursive_fns: BTreeSet<FnId>,
     unread_fields: BTreeSet<(usize, usize)>,
     unbuilt: BTreeSet<usize>,
     dead_locals: BTreeSet<(Option<FnId>, usize)>,

@@ -843,6 +843,15 @@ print(sq(7) + fact(5))
     assert!(!out.contains("inline void solve("), "{out}");
 }
 #[test]
+fn a_fn_whose_name_ends_a_runtime_helper_is_still_inline() {
+    let out = cpp("let n: Int = read()
+fn add(x: Int, best: Int) -> Int = max(best, x * (n + 1) + x)
+print(add(n, 0))
+");
+    assert!(out.contains("cpl::iadd("), "{out}");
+    assert!(out.contains("inline ll add("), "{out}");
+}
+#[test]
 fn solve_only_globals_and_const_domain_lo_stay_internal_and_local() {
     let out = cpp("let n: Int = read()
 domain D = 0..n
