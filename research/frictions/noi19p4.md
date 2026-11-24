@@ -11,8 +11,9 @@
 - **Severity:** low.
 
 ## Measurements
-Stress: 30/30 agree with AC 3800719 (the v0.2 port does not check today); max (n = 7e4,
-m = 1.5e5) 0.51 s vs C++ 0.65 s, same output.
+Stress: 30/30 agree with the v0.2 port and 30/30 with AC 3800719, and the package's cases
+pass. Max (n = 7e4, m = 1.5e5): 0.48 s against the C++'s 0.58 s, with the same output.
+`PointSet<D>` keyed by a domain is asked of Content stdlib.
 
 ## Dream
 The ungated ideal (does not check today):
