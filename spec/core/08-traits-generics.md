@@ -85,7 +85,12 @@ impl Ord for Frac:
 - **Derived impls are structural**: tuples, records, structs and enums
   get `Eq`, `Ord` (lexicographic in declaration order, variants in
   declaration order), `Hash`, `Show` and `Read` when every field has
-  them, unless the type writes its own impl. Tuples and records (not
+  them, unless the type writes its own impl. A struct's own `Eq` and
+  `Hash` are what `==`, a `Set` or `Map` key and a tuple, list or
+  struct holding it read, on every engine. A struct with its own `Eq`
+  derives no `Ord` or `Hash`, which would compare fields its `Eq`
+  ignores: it writes them too or goes without. A struct with its own
+  `Ord` but no own `Hash` is never hashed; its tables keep its order. Tuples and records (not
   structs, whose fields may be private) also get `+`, `-` and `Zero`
   fieldwise when every field has them, so a rerooting DP over
   `(cnt: Int, sum: Int)` passes `+` as its operation. (R08.1.6)

@@ -117,7 +117,14 @@ struct CpHash {
         else return splitmix64(hash_tuple<T, I + 1>(t) ^ (uint64_t)(*this)(std::get<I>(t)));
     }
     template <class... Ts> size_t operator()(const std::tuple<Ts...>& t) const { return (size_t)hash_tuple(t); }
-    template <class T> auto operator()(const T& x) const -> decltype((*this)(x.cpl_tie())) {
+    // A struct with its own `Hash` (R08.1.6) hashes by it, found by ADL as `cpl_user_hash`.
+    template <class T> auto operator()(const T& x) const -> decltype((size_t)cpl_user_hash(x)) {
+        return (size_t)splitmix64(salt() ^ cpl_user_hash(x));
+    }
+    template <class T, class = void> struct user_hashed : std::false_type {};
+    template <class T> struct user_hashed<T, std::void_t<decltype(cpl_user_hash(std::declval<const T&>()))>> : std::true_type {};
+    template <class T, std::enable_if_t<!user_hashed<T>::value, int> = 0>
+    auto operator()(const T& x) const -> decltype((*this)(x.cpl_tie())) {
         return (*this)(x.cpl_tie());
     }
 };

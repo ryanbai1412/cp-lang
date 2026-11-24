@@ -75,7 +75,10 @@ impl Reach {
                     for (_, fty) in &s.fields {
                         self.ty(program, fty);
                     }
-                    for hook in [s.eq_fn, s.ord.map(OrdHook::id)].into_iter().flatten() {
+                    for hook in [s.eq_fn, s.hash_fn, s.ord.map(OrdHook::id)]
+                        .into_iter()
+                        .flatten()
+                    {
                         self.call(hook);
                     }
                 }

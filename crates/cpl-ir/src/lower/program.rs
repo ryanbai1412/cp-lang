@@ -41,9 +41,14 @@ impl Lowerer<'_> {
                 collect_block_calls(&body.body, &mut newly_called);
             }
             for s in &lw.structs {
-                for hook in [s.def.eq_fn, s.def.ord.map(OrdHook::id), s.def.show_fn]
-                    .into_iter()
-                    .flatten()
+                for hook in [
+                    s.def.eq_fn,
+                    s.def.hash_fn,
+                    s.def.ord.map(OrdHook::id),
+                    s.def.show_fn,
+                ]
+                .into_iter()
+                .flatten()
                 {
                     newly_called.push(hook);
                 }

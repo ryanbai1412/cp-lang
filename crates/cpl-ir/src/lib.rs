@@ -1471,6 +1471,8 @@ pub struct StructDef {
     pub show_fn: Option<FnId>,
     /// From `impl Eq for S`: `fn eq(a: S, b: S) -> Bool`.
     pub eq_fn: Option<FnId>,
+    /// From `impl Hash for S`: `fn hash(self: S) -> U64`.
+    pub hash_fn: Option<FnId>,
     /// From `impl Ord for S`.
     pub ord: Option<OrdHook>,
     /// Field indices marked `@cache` (interior-mutable, skipped by `==`).
@@ -1932,12 +1934,12 @@ impl Program {
         }
     }
 
-    /// Whether `id` is a struct's or enum's `Eq`, `Ord` or `Show` hook.
+    /// Whether `id` is a struct's or enum's `Eq`, `Hash`, `Ord` or `Show` hook.
     pub fn is_hook(&self, id: FnId) -> bool {
         let hook = Some(id);
         self.structs
             .iter()
-            .any(|s| [s.eq_fn, s.ord.map(OrdHook::id), s.show_fn].contains(&hook))
+            .any(|s| [s.eq_fn, s.hash_fn, s.ord.map(OrdHook::id), s.show_fn].contains(&hook))
             || self.enums.iter().any(|e| e.show_fn == hook)
     }
 }

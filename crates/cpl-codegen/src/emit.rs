@@ -1724,6 +1724,24 @@ impl<'p> Emitter<'p> {
                  inline bool operator>=(const {ty}& a, const {ty}& b) {{ return !{lt}(a, b); }}\n"
             ));
         }
+        // A struct with its own `Eq` or `Hash` is compared and hashed by it everywhere: as a
+        // table's key and inside a tuple, a list or another struct (R08.1.6).
+        for (id, s) in program.structs.iter().enumerate() {
+            let ty = self.ty(&Ty::Struct(id));
+            if let Some(eq) = s.eq_fn.filter(|f| reachable.contains(f)) {
+                let eq = fn_name(&program.fns[eq].name);
+                out.push_str(&format!(
+                    "inline bool operator==(const {ty}& a, const {ty}& b) {{ return {eq}(a, b); }}\n\
+                     inline bool operator!=(const {ty}& a, const {ty}& b) {{ return !{eq}(a, b); }}\n"
+                ));
+            }
+            if let Some(hash) = s.hash_fn.filter(|f| reachable.contains(f)) {
+                let hash = fn_name(&program.fns[hash].name);
+                out.push_str(&format!(
+                    "inline uint64_t cpl_user_hash(const {ty}& a) {{ return (uint64_t){hash}(a); }}\n"
+                ));
+            }
+        }
         if self.show_cycle {
             for show in &self.shows {
                 if let Some(signature) =
