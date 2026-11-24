@@ -38,32 +38,7 @@ impl<'p> Devirt<'p> {
                 self.find_escapes(home, body, out);
             }
             Stmt::For(_, _, iter, body) => {
-                match iter {
-                    cpl_ir::Iter::Walk { .. } => {
-                        unreachable!("Iter::Walk is expanded before codegen")
-                    }
-                    cpl_ir::Iter::Range { lo, hi, step, .. } => {
-                        self.find_escapes_expr(home, lo, false, out);
-                        self.find_escapes_expr(home, hi, false, out);
-                        if let Some(step) = step {
-                            self.find_escapes_expr(home, step, false, out);
-                        }
-                    }
-                    cpl_ir::Iter::RangeVal(e, _) | cpl_ir::Iter::Seq(e, _) => {
-                        self.find_escapes_expr(home, e, false, out);
-                    }
-                    cpl_ir::Iter::TreeRange {
-                        container, lo, hi, ..
-                    } => {
-                        self.find_escapes_expr(home, container, false, out);
-                        if let Some((e, _)) = lo {
-                            self.find_escapes_expr(home, e, false, out);
-                        }
-                        if let Some((e, _)) = hi {
-                            self.find_escapes_expr(home, e, false, out);
-                        }
-                    }
-                }
+                crate::fuse::iter_exprs(iter, &mut |e| self.find_escapes_expr(home, e, false, out));
                 self.find_escapes(home, body, out);
             }
             Stmt::Assert { cond, message, .. } => {
@@ -210,32 +185,10 @@ impl<'p> Devirt<'p> {
                     && self.block_captures_unused(body, cap_slots)
             }
             Stmt::For(_, _, iter, body) => {
-                let iter_ok = match iter {
-                    cpl_ir::Iter::Walk { .. } => {
-                        unreachable!("Iter::Walk is expanded before codegen")
-                    }
-                    cpl_ir::Iter::Range { lo, hi, step, .. } => {
-                        self.expr_captures_unused(lo, cap_slots)
-                            && self.expr_captures_unused(hi, cap_slots)
-                            && step
-                                .as_ref()
-                                .is_none_or(|s| self.expr_captures_unused(s, cap_slots))
-                    }
-                    cpl_ir::Iter::RangeVal(e, _) | cpl_ir::Iter::Seq(e, _) => {
-                        self.expr_captures_unused(e, cap_slots)
-                    }
-                    cpl_ir::Iter::TreeRange {
-                        container, lo, hi, ..
-                    } => {
-                        self.expr_captures_unused(container, cap_slots)
-                            && lo
-                                .as_ref()
-                                .is_none_or(|(e, _)| self.expr_captures_unused(e, cap_slots))
-                            && hi
-                                .as_ref()
-                                .is_none_or(|(e, _)| self.expr_captures_unused(e, cap_slots))
-                    }
-                };
+                let mut iter_ok = true;
+                crate::fuse::iter_exprs(iter, &mut |e| {
+                    iter_ok = iter_ok && self.expr_captures_unused(e, cap_slots)
+                });
                 iter_ok && self.block_captures_unused(body, cap_slots)
             }
             Stmt::Assert { cond, message, .. } => {

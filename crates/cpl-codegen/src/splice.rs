@@ -217,12 +217,11 @@ impl Ren {
                 self.fresh(id);
                 *slot = self.map[*slot];
                 let ok = match iter {
-                    Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
                     Iter::Range { lo, hi, step, .. } => {
                         self.expr(lo) && self.expr(hi) && step.as_mut().is_none_or(|s| self.expr(s))
                     }
                     Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(e),
-                    Iter::TreeRange { .. } => false,
+                    Iter::TreeRange { .. } | Iter::Walk { .. } => false,
                 };
                 ok && self.block(body)
             }

@@ -133,12 +133,11 @@ impl Found {
         walk::deep_stmts(block, &mut |stmt| {
             if let Stmt::For(_, _, iter, _) = stmt {
                 match iter {
-                    Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
                     Iter::Seq(seq, _) if self.blind_scans.contains(&(seq as *const Expr)) => {}
                     Iter::Seq(seq, _)
                     | Iter::RangeVal(seq, _)
                     | Iter::TreeRange { container: seq, .. } => self.order(program, &seq.ty),
-                    Iter::Range { .. } => {}
+                    Iter::Range { .. } | Iter::Walk { .. } => {}
                 }
             }
         });

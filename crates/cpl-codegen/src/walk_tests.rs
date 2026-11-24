@@ -30,3 +30,24 @@ fn no_library_domain_walk_survives_lowering() {
         "the walks should expand to ordinal ranges"
     );
 }
+
+#[test]
+fn a_pass_reading_a_loop_head_sees_a_walks_length_and_receiver() {
+    use cpl_ir::{Expr, ExprKind, Iter, Ty};
+    let local = |slot| Expr {
+        kind: ExprKind::Local(slot),
+        ty: Ty::Int,
+        span: Default::default(),
+    };
+    let walk = Iter::Walk {
+        k: 0,
+        n: 1,
+        len: local(2),
+        nth: 0,
+        recv: Some(local(3)),
+        rev: false,
+    };
+    let mut seen = Vec::new();
+    crate::fuse::iter_exprs(&walk, &mut |e| seen.push(e.kind.clone()));
+    assert_eq!(seen, [ExprKind::Local(2), ExprKind::Local(3)]);
+}

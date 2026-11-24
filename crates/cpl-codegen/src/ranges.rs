@@ -364,7 +364,9 @@ impl<'p> Facts<'p> {
                     *self.stores.entry(v).or_default() += 1;
                     self.taint(v);
                     match iter {
-                        Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
+                        Iter::Walk { .. } => {
+                            crate::fuse::iter_exprs(iter, &mut |e| self.expr(fn_id, e))
+                        }
                         Iter::Range {
                             lo,
                             hi,

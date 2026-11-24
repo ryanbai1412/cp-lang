@@ -208,7 +208,12 @@ pub(crate) fn producer(seq: &Expr) -> Option<Producer<'_>> {
 
 pub(crate) fn iter_exprs<'p>(iter: &'p Iter, f: &mut dyn FnMut(&'p Expr)) {
     match iter {
-        Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
+        Iter::Walk { len, recv, .. } => {
+            f(len);
+            if let Some(r) = recv {
+                f(r);
+            }
+        }
         Iter::Range { lo, hi, step, .. } => {
             f(lo);
             f(hi);

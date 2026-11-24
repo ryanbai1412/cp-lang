@@ -91,26 +91,7 @@ impl Scopes {
                 self.block(body);
             }
             Stmt::For(_, slot, iter, body) => {
-                match iter {
-                    Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
-                    Iter::Range { lo, hi, step, .. } => {
-                        self.expr(lo);
-                        self.expr(hi);
-                        step.iter().for_each(|e| self.expr(e));
-                    }
-                    Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(e),
-                    Iter::TreeRange {
-                        container, lo, hi, ..
-                    } => {
-                        self.expr(container);
-                        if let Some((e, _)) = lo {
-                            self.expr(e);
-                        }
-                        if let Some((e, _)) = hi {
-                            self.expr(e);
-                        }
-                    }
-                }
+                crate::fuse::iter_exprs(iter, &mut |e| self.expr(e));
                 self.visible.push(BTreeSet::new());
                 self.declare(*slot);
                 self.block(body);
