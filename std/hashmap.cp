@@ -362,7 +362,7 @@ pub struct Counter<K, V: Add = Int>:
     /// traps: never
     /// example: `var c = Counter.of([1]); c.reserve(100); c[1] == 1`
     pub fn reserve(mut self, cap: Int):
-        if cap < 0: return
+        if cap >= 0: m.reserve(cap)
 
     /// Remove all entries.
     ///
