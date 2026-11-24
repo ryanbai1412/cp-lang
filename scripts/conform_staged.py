@@ -18,18 +18,28 @@ and logged for the culprit finder, and doesn't refuse (f33d10f7 was refused
 for a case red on main). A base that doesn't build, or lacks the case, refuses.
 `--check` holds corpus programs calling a changed std signature to the same
 rule with `cpl check` (VM-expr was refused for noi09p4/spec.cp, red on main).
+`--all` runs the whole suite once when the change since REV touches a compiler
+crate or a std module the prelude reaches, under the same rule; a new red that
+passes alone at the tip is a race, logged and not refused (cea2d50e4 changed
+only cpl-check, cpl-ir and prelude std, and std-graph/bfs-over-named-product-domain
+went red on main: its `bfs` comes from the prelude, with no `use` to find it by).
 """
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PREFIX = "spec/conformance/"
 BOARD = "research/scoreboard.json"
 FAIL = re.compile(r"^  (\S+\.cp): fail")
+COMPILER = tuple(f"crates/{c}/" for c in (
+    "cpl-syntax", "cpl-diag", "cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen", "cpl-rt")) + (
+    "crates/cpl-cli/src/", "crates/cpl-conform/src/")
+USE_STD = re.compile(r"^\s*(?:pub\s+)?use\s+std\.(\w+)", re.M)
 sys.path.insert(0, str(ROOT / "scripts"))
 
 
@@ -158,6 +168,69 @@ def check_programs(programs, base, run=subprocess.run):
     return 1 if new else 0
 
 
+def prelude_reach(read=lambda p: (ROOT / p).read_text(encoding="utf-8")):
+    """The std files every program sees: std/prelude.cp and each module it `use`s, transitively."""
+    seen, todo = set(), ["std/prelude.cp"]
+    while todo:
+        p = todo.pop()
+        if p in seen:
+            continue
+        try:
+            text = read(p)
+        except OSError:
+            continue
+        seen.add(p)
+        todo += [f"std/{m}.cp" for m in USE_STD.findall(text)]
+    return seen
+
+
+def needs_all(paths, reach):
+    """Whether a change to `paths` can move any case: a compiler crate, or std the prelude reaches."""
+    return any(p.startswith(COMPILER) or p in reach for p in paths)
+
+
+def all_failing(output):
+    """{case: its failure report} for every case cpl-conform's --verbose output fails."""
+    return {m[1]: new_failures(m[1], output, set()) for l in output.splitlines() if (m := FAIL.match(l))}
+
+
+def run_all(conform, base, run=subprocess.run):
+    """The whole suite at the tip; 1 if a case fails that passes at `base` and fails alone here too."""
+    rev = subprocess.run(["git", "rev-parse", base], cwd=ROOT, capture_output=True, text=True).stdout.strip() or base
+    t0 = time.monotonic()
+    r = run([conform, "conformance", "--verbose"], cwd=ROOT, capture_output=True, text=True)
+    failing = all_failing(r.stdout + r.stderr)
+    at = base_verdicts(sorted(failing), rev, run) if failing else {}
+    common = Path(subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT,
+                                 capture_output=True, text=True).stdout.strip() or ROOT / ".git")
+    new = []
+    with open(common / "cpl-preexisting-reds.log", "a") as log, open(common / "cpl-flaky-tests.log", "a") as flaky:
+        for c in failing:
+            if at[c] == "fail":
+                who = owner(c, rev)
+                print(f"conform_staged: pre-existing red, owner {who}: {PREFIX}{c} fails at the base {rev[:9]} too; "
+                      "main's culprit job routes it, not refusing", file=sys.stderr)
+                log.write(f"{rev} {who} conform:{c}\n")
+                continue
+            alone = run([conform, "conformance", "--verbose", c], cwd=ROOT, capture_output=True, text=True)
+            if verdict(c, alone.stdout + alone.stderr) == "pass":
+                who = owner(c, rev)
+                print(f"conform_staged: flaky at the tip, owner {who}: {PREFIX}{c} failed in the full run, "
+                      "passes alone; not refusing", file=sys.stderr)
+                flaky.write(f"{rev} {who} conform:{c}\n")
+                continue
+            print(f"conform_staged: NEW red: {PREFIX}{c} is {at[c]} at the base {rev[:9]} and fails with this change",
+                  file=sys.stderr)
+            new.append(c)
+    if new:
+        print("\n".join(l for c in new for l in failing[c]))
+        print(f"conform_staged: {len(new)} case(s) of the full suite fail that pass at the base; fix them")
+        return 1
+    print(f"conform_staged: the full suite has no new red against {rev[:9]} ({time.monotonic() - t0:.0f} s)",
+          file=sys.stderr)
+    return 0
+
+
 def owner(case, base, path=None):
     from culprit import describe
     import new_reds
@@ -171,6 +244,20 @@ def main(argv, run=subprocess.run):
         base, argv = argv[1], argv[2:]
     if argv[:1] == ["--check"] and base:
         return check_programs(argv[1:], base, run)
+    if argv[:1] == ["--all"] and base:
+        paths = subprocess.run(["git", "diff", "--name-only", base, "HEAD"], cwd=ROOT, capture_output=True,
+                               text=True).stdout.split()
+        if not needs_all(paths, prelude_reach()):
+            return 0
+        if subprocess.run(["git", "diff", "--quiet", "HEAD", "--", "crates", "std", "Cargo.toml", "Cargo.lock"],
+                          cwd=ROOT).returncode:
+            print("conform_staged: uncommitted changes under crates/ or std/ would be tested in place of what "
+                  "lands; commit or stash them", file=sys.stderr)
+            return 1
+        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=ROOT).returncode:
+            return 1
+        target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
+        return run_all(str((target if target.is_absolute() else ROOT / target) / "debug" / "cpl-conform"), base, run)
     if argv[:1] == ["--build"]:
         if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=ROOT).returncode:
             return 1

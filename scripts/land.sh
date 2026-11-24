@@ -254,6 +254,13 @@ if [ -n "$sig_programs" ]; then
     uv run --quiet python scripts/conform_staged.py --base "$main_base" --check $sig_programs >&2 ||
         { echo "land: a corpus program no longer checks against the changed std signature (above); update it in this change" >&2; exit 1; }
 fi
+# A compiler crate or prelude std change runs the whole suite before the lock,
+# refusing only a case that passes at the base: cea2d50e4 changed cpl-check and
+# cpl-ir, and std-graph/bfs-over-named-product-domain (prelude `bfs`, no `use`) went red on main.
+if [ -f scripts/conform_staged.py ]; then
+    uv run --quiet python scripts/conform_staged.py --base "$main_base" --all >&2 ||
+        { echo "land: a conformance case that passes on main fails at the rebased tip (above); fix it and land again: uv run scripts/conform_staged.py --base origin/main --all" >&2; exit 1; }
+fi
 changed=$(git diff --name-only --diff-filter=ACMR "$main_base" HEAD)
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
 # started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook

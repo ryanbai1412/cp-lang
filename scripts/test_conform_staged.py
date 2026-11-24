@@ -80,6 +80,57 @@ class AtBase(unittest.TestCase):
         self.assertEqual(self._main("fail", base=())[0], 1)
 
 
+
+class FullSuite(unittest.TestCase):
+    """`--all`: cea2d50e4 changed only compiler crates and prelude std, and a case calling prelude
+    `bfs` with no `use` went red on main; the whole suite runs, refusing only a red the base passes."""
+
+    def test_the_prelude_reaches_what_it_uses_transitively(self):
+        files = {"std/prelude.cp": "use std.graph.{bfs}\n", "std/graph.cp": "use std.seq.{Seq}\n",
+                 "std/seq.cp": "fn f() = 1\n"}
+
+        def read(p):
+            if p not in files:
+                raise OSError(p)
+            return files[p]
+        self.assertEqual(conform_staged.prelude_reach(read), set(files))
+
+    def test_a_compiler_crate_or_prelude_std_needs_the_suite(self):
+        reach = {"std/prelude.cp", "std/graph.cp"}
+        self.assertTrue(conform_staged.needs_all(["crates/cpl-check/src/check/assoc.rs"], reach))
+        self.assertTrue(conform_staged.needs_all(["std/graph.cp"], reach))
+        self.assertFalse(conform_staged.needs_all(["scripts/land.sh", "std/timetree.cp", "crates/cpl-lsp/src/a.rs"],
+                                                  reach))
+
+    def test_all_failing_names_each_failing_case(self):
+        self.assertEqual(sorted(conform_staged.all_failing(OUT)), ["a/wrong.cp", "ab/wrong.cp"])
+
+    def _run_all(self, at_base, alone):
+        def run(argv, **_):
+            out = RED if argv[-1] == "--verbose" or alone == "fail" else "conformance 1/1 pass\n"
+            return subprocess.CompletedProcess(argv, 0, out, "")
+        with mock.patch.object(conform_staged, "base_verdicts", lambda cases, rev, run: {c: at_base for c in cases}), \
+                mock.patch.object(conform_staged, "owner", lambda c, rev: "compiler"), \
+                mock.patch("builtins.open", mock.mock_open()), \
+                mock.patch("sys.stderr") as err, mock.patch("sys.stdout"):
+            code = conform_staged.run_all("conform", "HEAD", run=run)
+        return code, "".join(c.args[0] for c in err.write.call_args_list)
+
+    def test_a_case_red_at_the_base_too_is_mains(self):
+        code, said = self._run_all("fail", "fail")
+        self.assertEqual(code, 0)
+        self.assertIn("pre-existing red, owner compiler", said)
+
+    def test_a_case_green_at_the_base_and_red_alone_refuses(self):
+        code, said = self._run_all("pass", "fail")
+        self.assertEqual(code, 1)
+        self.assertIn("NEW red", said)
+
+    def test_a_case_that_passes_alone_is_a_race_not_refused(self):
+        code, said = self._run_all("pass", "pass")
+        self.assertEqual(code, 0)
+        self.assertIn("flaky at the tip", said)
+
 if __name__ == "__main__":
     unittest.main()
 
