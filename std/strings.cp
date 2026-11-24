@@ -2671,15 +2671,11 @@ pub struct PalindromicTree<A>:
         if m == 0: return true
         unchecked:
             if not is_palindrome(w): return false
-            var at = if m % 2 == 1: 0 else: 1
-            for i in ((m - 1) / 2 + 1..m):
-                let t = next[at * alpha + w[i].ord]
-                if t == -1: return false
-                at = t
-            if m % 2 == 1:
-                let t = next[w[(m - 1) / 2].ord]
-                if t == -1: return false
-        true
+            var at = if m % 2 == 1: next[w[m / 2].ord] else: 1
+            for i in (m / 2 + m % 2..m):
+                if at == -1: return false
+                at = next[at * alpha + w[i].ord]
+            return at != -1
 
     /// `dp[i]` is the least number of palindromes the first `i` pushed letters split into, for
     /// `i in 0..=n`, by the series-link DP.
@@ -3078,11 +3074,13 @@ pub struct AhoCorasick<A>:
             for w in ends[s]: total[w] = visits[s]
         total
 
-    /// Every state in BFS order of the trie (root first, then by depth, equal depths by state
-    /// number), so each state comes after its failure link; iterate backwards for bottom-up DP.
+    /// Every state in BFS order of the trie (root first, then by depth, equal depths by their
+    /// parents' places in the order, then by letter), so each state comes after its failure
+    /// link; iterate backwards for bottom-up DP.
     ///
     /// cost: \(O(\mathit{states})\)
-    /// order: non-decreasing depth; ties by smaller state number
+    /// order: non-decreasing depth; ties by parent's place in the order, then by letter
+    /// ties: `AhoCorasick<Char>(["ab", "bb", "ba"]).fail_order() == [0, 1, 3, 2, 5, 4]`
     /// traps: never
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).fail_order() == [0, 1, 3, 2]`
     pub fn fail_order(self) -> List<Int> = order.collect()
