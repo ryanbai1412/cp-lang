@@ -889,14 +889,6 @@ def g_etsr23r2p2(p, big, _):
     W(p, lines)
 
 
-def g_etsr23r2p3(p, big, _):
-    rng = random.Random(2041)
-    # Original reads 32-bit `int a, b, c`
-    t = 100_000 if big else 500
-    lines = [t] + [f"{rng.randint(1, 10**9)} {rng.randint(1, 10**9)} {rng.randint(1, 10**9)}" for _ in range(t)]
-    W(p, lines)
-
-
 def g_ioi07p3(p, big, _):
     rng = random.Random(2042)
     n = 100_000 if big else 500
@@ -1136,7 +1128,6 @@ SPECS += [
     ("scout_batch_18/today/dpw", O(4133460), "lazy segtree", "n=m=2e5", g_dpw, "exact"),
     ("scout_batch_48/today/egoi22p1", O(5198974), "greedy", "t=500, n=50", g_egoi22p1, "exact"),
     ("scout_batch_43/etsr23r2p2", O(5494433), "interval DP", "t=20, n=25", g_etsr23r2p2, "exact"),
-    ("scout_batch_43/etsr23r2p3", O(5494453), "bit ops", "t=1e5", g_etsr23r2p3, "exact"),
     ("scout_batch_24/today/ioi07p3", O(5120005), "lazy segtree", "n=1e5", g_ioi07p3, "exact"),
     ("scout_batch_2/ioi08p2", O(5107842), "functional graph", "n=1e6", g_ioi08p2, "exact"),
     ("scout_batch_29/ioi09p2", O(5102705), "sort+heap", "n=5e5", g_ioi09p2, "head1"),
@@ -1766,17 +1757,6 @@ def g_egoi23p7(p, big, _):
     W(p, [f"{n} {m1} {m2}"] + e1 + e2)
 
 
-def g_etsr23r1p3(p, big, _):
-    rng = random.Random(3059)
-    t = 100 if big else 5
-    lines = [t]
-    for _ in range(t):
-        m = 26
-        n = 5000 if big else 100
-        lines.append(f"{m} " + "".join(chr(ord("a") + rng.randint(0, m - 1)) for _ in range(n)))
-    W(p, lines)
-
-
 def g_etsr23r1p4(p, big, _):
     rng = random.Random(3060)
     n, q = (200_000, 200_000) if big else (500, 500)
@@ -1800,12 +1780,6 @@ def g_etsr23r2p4(p, big, _):
         for _ in range(n):
             lines.append(f"{rng.randint(1, 10**6)} {rng.randint(1, 10**6)}")
     W(p, lines)
-
-
-def g_etsr23r4p1(p, big, _):
-    rng = random.Random(3062)
-    n = 300_000 if big else 1000
-    W(p, [n, J(rng.randint(1, 10**9) for _ in range(n))])
 
 
 def g_etsr23r4p3(p, big, _):
@@ -2166,10 +2140,8 @@ SPECS += [
     ("scout_batch_48/today/egoi22p5", O(5203693), "bsearch+fenwick", "n=q=1e5", g_egoi22p5, "exact"),
     ("scout_batch_48/today/egoi23p1", O(5678049), "hashmap+offset", "n=q=3e5", g_egoi23p1, "exact"),
     ("scout_batch_38/today/egoi23p7", O(5678057), "DAG topo", "n=m1=m2=2e5", g_egoi23p7, "exact"),
-    ("scout_batch_43/today/etsr23r1p3", O(5494303), "string DP", "t=100, n=5000", g_etsr23r1p3, "exact"),
     ("scout_batch_43/today/etsr23r1p4", O(5495163), "segtree beats", "n=q=2e5", g_etsr23r1p4, "exact"),
     ("scout_batch_43/today/etsr23r2p4", O(5494510), "greedy+sort", "t=20, n=1e4", g_etsr23r2p4, "exact"),
-    ("scout_batch_43/today/etsr23r4p1", O(5521420), "array scan", "n=3e5", g_etsr23r4p1, "exact"),
     ("scout_batch_43/today/etsr23r4p3", O(5635626), "tree+edges", "n=m=1e5", g_etsr23r4p3, "exact"),
     ("scout_batch_7/ioi01p1", O(3477640), "2D fenwick", "1024x1024, q=1e5", g_ioi01p1, "exact"),
     ("scout_batch_32/today/ioi04p2hard", O(4182973), "geom/sort", "n=2e5", g_ioi04p2hard, "exact"),
@@ -2364,9 +2336,6 @@ def g_multitest_array(seed, lo, hi, n_big, n_small=200):
         n = n_big if big else n_small
         W(p, [1, n, J(rng.randint(lo, hi) for _ in range(n))])
     return g
-
-
-
 
 
 def g_cf2261g(p, big, _):

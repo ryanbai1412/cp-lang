@@ -1,6 +1,6 @@
 // Blind Critic #4 — First Draft (written from docs/one-page-cheat-sheet.md v2.1 ONLY)
 // Problem: ioi11p5 (Dancing Elephants)
-// Original: corpus/submissions/3469626.cpp
+// Original: submission 3469626 (since deleted)
 // Exercises: for mut, struct with mut methods, List<Bucket>, .first_ge, Tropical Optionals, @brute
 
 const B = 400

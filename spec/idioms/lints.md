@@ -41,7 +41,7 @@ before     = "lints/hand_rolled_prefix_sum/before.cp"   # passes cpl check, prin
 after      = "lints/hand_rolled_prefix_sum/after.cp"    # passes cpl check, prints X, lint-clean
 not        = ["lints/hand_rolled_prefix_sum/not-1.cp"]  # near misses that must not fire
 docs       = "https://cp-lang.org/lints/hand_rolled_prefix_sum"
-evidence   = ["corpus/problems/cf1234a", "skill-eval/2026-11-22/p07"]
+evidence   = ["corpus/problems/cf2237h", "skill-eval/2026-11-22/p07"]
 ```
 
 `before`/`after`/`not` are tested like conformance cases: both programs check and print the same

@@ -157,7 +157,7 @@ current CP Lang port or design sketch in `proto/ports/`.
     - Corpus: `corpus/submissions/4340958.cpp` (124 LOC) · Port: `proto/ports/scout_batch_10/sac22cc3p5.cp` (44 LOC, design sketch)
     - Collisions: `[W]Str` word table + arena/trie `List<Node>` + `Letter` domain + substring traversal + `Subset` bitmask DP.
 16. **`4331904` — Minimum-Token String Segmentation**
-    - Corpus: `corpus/submissions/4331904.cpp` (78 LOC) · Port: `proto/ports/blind_critic_1/4331904.cp` (53 LOC, runnable prototype port)
+    - Corpus: submission 4331904 (78 LOC, since deleted with sac22cc3jp5) · Port: `proto/ports/blind_critic_1/4331904.cp` (53 LOC, runnable prototype port)
     - Collisions: `Str` + `[D](c: Char, x: Str)` dictionary + suffix DP over `0..=s.len` + lexicographically smallest path reconstruction.
 
 ### 5. Flow / Graph + Binary Search (3 problems)

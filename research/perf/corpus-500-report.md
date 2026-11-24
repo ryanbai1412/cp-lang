@@ -271,13 +271,11 @@ The longest twenty, by stripped lines of the latest accepted submission:
 
 - `noi16p5` (NOI (China)): 1172 stripped lines, `corpus/submissions/4798192.cpp`
 - `rccc1s3` (DMOJ contests): 461 stripped lines, `corpus/submissions/3415809.java`
-- `noi10p6` (NOI (China)): 437 stripped lines, `corpus/submissions/5671318.cpp`
+- `noi10p6` (NOI (China)): 437 stripped lines, submission 5671318 (since deleted)
 - `sac22cc4p5` (DMOJ contests): 430 stripped lines, `corpus/submissions/4411363.cpp`
 - `noimps22p2` (NOI (China)): 421 stripped lines, `corpus/submissions/4537218.cpp`
 - `ioi23p1` (IOI): 392 stripped lines, `corpus/submissions/5773674.cpp`
 - `noi18p5` (NOI (China)): 383 stripped lines, `corpus/submissions/6520781.cpp`
-- `cmt21r3cxr` (DMOJ contests): 365 stripped lines, `corpus/submissions/3997981.cpp`
-- `cmt21r1lbc` (DMOJ contests): 338 stripped lines, `corpus/submissions/4010527.cpp`
 - `noi19p2` (NOI (China)): 331 stripped lines, `corpus/submissions/3875578.cpp`
 - `noip21p4` (NOIP): 321 stripped lines, `corpus/submissions/5445679.cpp`
 - `noiwc22p2` (NOI (China)): 317 stripped lines, `corpus/submissions/4276958.cpp`
@@ -287,7 +285,7 @@ The longest twenty, by stripped lines of the latest accepted submission:
 - `ioi19p3` (IOI): 255 stripped lines, `corpus/submissions/5661960.cpp`
 - `ioi15p2` (IOI): 249 stripped lines, `corpus/submissions/5723346.cpp`
 - `noi20p3` (NOI (China)): 247 stripped lines, `corpus/submissions/6075539.cpp`
-- `noi05p3` (NOI (China)): 246 stripped lines, `corpus/submissions/5030143.cpp`
-- `noi05p5` (NOI (China)): 235 stripped lines, `corpus/submissions/5032793.cpp`
+- `noi05p3` (NOI (China)): 246 stripped lines, submission 5030143 (since deleted)
+- `noi05p5` (NOI (China)): 235 stripped lines, submission 5032793 (since deleted)
 
 The full list is the `unported` array of the registry JSON.

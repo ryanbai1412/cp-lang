@@ -3103,44 +3103,6 @@
     "scout_batch_40"
    ]
   },
-  "cmt21peter2": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_21/cmt21peter2.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
-   "groups": [
-    "scout_batch_21"
-   ]
-  },
-  "cmt21r1xym": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/blind_critic_3/cmt21r1xym.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": null,
-   "duplicates": [
-    "proto/ports/blind_critic_3/cmt21r1xym_draft.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "blind_critic_3"
-   ]
-  },
-  "cmt21r2ztr": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_9/cmt21r2ztr.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
-   "groups": [
-    "scout_batch_9"
-   ]
-  },
   "coci06c1p6": {
    "family": "COCI",
    "canonical": "proto/ports/scout_batch_3/today/coci06c1p6.cp",
@@ -4775,34 +4737,6 @@
     "scout_batch_48"
    ]
   },
-  "etsr23r1p2": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_6/today/etsr23r1p2.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_6/etsr23r1p2.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_6/etsr23r1p2.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_6"
-   ]
-  },
-  "etsr23r1p3": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_43/today/etsr23r1p3.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_43/etsr23r1p3.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_43/etsr23r1p3.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_43"
-   ]
-  },
   "etsr23r1p4": {
    "family": "DMOJ contests",
    "canonical": "proto/ports/scout_batch_43/today/etsr23r1p4.cp",
@@ -4831,20 +4765,6 @@
     "scout_batch_43"
    ]
   },
-  "etsr23r2p3": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_43/today/etsr23r2p3.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_43/etsr23r2p3.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_43/etsr23r2p3.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_43"
-   ]
-  },
   "etsr23r2p4": {
    "family": "DMOJ contests",
    "canonical": "proto/ports/scout_batch_43/today/etsr23r2p4.cp",
@@ -4859,32 +4779,6 @@
     "scout_batch_43"
    ]
   },
-  "etsr23r3p1": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_43/today/etsr23r3p1.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_43/etsr23r3p1.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_43/etsr23r3p1.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_43"
-   ]
-  },
-  "etsr23r3p2": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_5/etsr23r3p2.cp",
-   "canonical_form": "spec",
-   "canonical_verified": "no harness",
-   "spec_port": "proto/ports/scout_batch_5/etsr23r3p2.cp",
-   "duplicates": [],
-   "port_files": 1,
-   "groups": [
-    "scout_batch_5"
-   ]
-  },
   "etsr23r3p3": {
    "family": "DMOJ contests",
    "canonical": "proto/ports/scout_batch_43/today/etsr23r3p3.cp",
@@ -4893,20 +4787,6 @@
    "spec_port": "proto/ports/scout_batch_43/etsr23r3p3.cp",
    "duplicates": [
     "proto/ports/scout_batch_43/etsr23r3p3.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_43"
-   ]
-  },
-  "etsr23r4p1": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_43/today/etsr23r4p1.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_43/etsr23r4p1.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_43/etsr23r4p1.cp"
    ],
    "port_files": 2,
    "groups": [
@@ -4995,20 +4875,6 @@
    "port_files": 2,
    "groups": [
     "scout_batch_45"
-   ]
-  },
-  "imo22p6checker": {
-   "family": "other",
-   "canonical": "proto/ports/scout_batch_31/today/imo22p6checker.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_31/imo22p6checker.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_31/imo22p6checker.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_31"
    ]
   },
   "ioi00p1": {
@@ -8403,18 +8269,6 @@
     "scout_batch_46"
    ]
   },
-  "sac22cc3jp5": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/blind_critic_1/4331904.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
-   "groups": [
-    "blind_critic_1"
-   ]
-  },
   "sac22cc3p3": {
    "family": "DMOJ contests",
    "canonical": "proto/ports/scout_batch_46/today/sac22cc3p3.cp",
@@ -8517,18 +8371,6 @@
    "port_files": 2,
    "groups": [
     "scout_batch_39"
-   ]
-  },
-  "saspeed": {
-   "family": "other",
-   "canonical": "proto/ports/scout_batch_10/saspeed.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
-   "groups": [
-    "scout_batch_10"
    ]
   },
   "sdoi17r1p1": {
@@ -9162,25 +9004,6 @@
    "verified": "not reported"
   },
   {
-   "path": "proto/ports/blind_critic_1/4331904.cp",
-   "group": "blind_critic_1",
-   "form": "runnable",
-   "problem": "sac22cc3jp5",
-   "mapped_by": "header",
-   "submission": "4331904",
-   "original": "corpus/submissions/4331904.cpp",
-   "generation": "v1",
-   "cp_loc": 46,
-   "wish_markers": 0,
-   "harness": "proto/ports/blind_critic_1/check.py",
-   "cpp_raw_loc": 69,
-   "cpp_stripped_loc": 34,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "ok   4331904: 60 cases agree"
-  },
-  {
    "path": "proto/ports/blind_critic_1/4342005.cp",
    "group": "blind_critic_1",
    "form": "runnable",
@@ -9696,43 +9519,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/blind_critic_3/cmt21r1xym.cp",
-   "group": "blind_critic_3",
-   "form": "runnable",
-   "problem": "cmt21r1xym",
-   "mapped_by": "header",
-   "submission": "3997206",
-   "original": "corpus/submissions/3997206.cpp",
-   "generation": "v1",
-   "cp_loc": 36,
-   "wish_markers": 0,
-   "harness": "proto/ports/blind_critic_3/check.py",
-   "cpp_raw_loc": 104,
-   "cpp_stripped_loc": 76,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "OK cmt21r1xym: 300 tests agree with 3997206.cpp"
-  },
-  {
-   "path": "proto/ports/blind_critic_3/cmt21r1xym_draft.cp",
-   "group": "blind_critic_3",
-   "form": "draft",
-   "problem": "cmt21r1xym",
-   "mapped_by": "header",
-   "submission": "3997206",
-   "original": "corpus/submissions/3997206.cpp",
-   "generation": "v1",
-   "cp_loc": 30,
-   "wish_markers": 0,
-   "harness": null,
-   "cpp_raw_loc": 104,
-   "cpp_stripped_loc": 76,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/blind_critic_3/coci21c2p5.cp",
    "group": "blind_critic_3",
    "form": "runnable",
@@ -9924,7 +9710,7 @@
    "problem": "ioi11p5",
    "mapped_by": "file name is the problem code, id from check.py",
    "submission": "3469626",
-   "original": "corpus/submissions/3469626.cpp",
+   "original": null,
    "generation": "v2.1",
    "cp_loc": 120,
    "wish_markers": 0,
@@ -9943,7 +9729,7 @@
    "problem": "ioi11p5",
    "mapped_by": "header",
    "submission": "3469626",
-   "original": "corpus/submissions/3469626.cpp",
+   "original": null,
    "generation": "v2.1",
    "cp_loc": 96,
    "wish_markers": 0,
@@ -15722,25 +15508,6 @@
    "harness_line": "sac22cc3p5: OK (60 inputs)"
   },
   {
-   "path": "proto/ports/scout_batch_10/saspeed.cp",
-   "group": "scout_batch_10",
-   "form": "runnable",
-   "problem": "saspeed",
-   "mapped_by": "header",
-   "submission": "4852075",
-   "original": "corpus/submissions/4852075.cpp",
-   "generation": "v1",
-   "cp_loc": 3,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_10/check.py",
-   "cpp_raw_loc": 87,
-   "cpp_stripped_loc": 83,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "saspeed: OK (60 inputs)"
-  },
-  {
    "path": "proto/ports/scout_batch_10/year2018p7.cp",
    "group": "scout_batch_10",
    "form": "runnable",
@@ -18530,25 +18297,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "ccc14s4: 60 cases agree"
-  },
-  {
-   "path": "proto/ports/scout_batch_21/cmt21peter2.cp",
-   "group": "scout_batch_21",
-   "form": "runnable",
-   "problem": "cmt21peter2",
-   "mapped_by": "header",
-   "submission": "4041223",
-   "original": "corpus/submissions/4041223.cpp",
-   "generation": "v1",
-   "cp_loc": 24,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_21/check.py",
-   "cpp_raw_loc": 75,
-   "cpp_stripped_loc": 45,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "cmt21peter2: 60 cases agree (reals compared with a tolerance)"
   },
   {
    "path": "proto/ports/scout_batch_21/dpj.cp",
@@ -21435,24 +21183,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_31/imo22p6checker.cp",
-   "group": "scout_batch_31",
-   "form": "spec",
-   "problem": "imo22p6checker",
-   "mapped_by": "header",
-   "submission": "4955728",
-   "original": "corpus/submissions/4955728.cpp",
-   "generation": "v2",
-   "cp_loc": 11,
-   "wish_markers": 0,
-   "harness": null,
-   "cpp_raw_loc": 265,
-   "cpp_stripped_loc": 116,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_31/noi10p3.cp",
    "group": "scout_batch_31",
    "form": "spec",
@@ -21601,25 +21331,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "ok   dmopc21c7p1: 150 cases match corpus/submissions/4452959.cpp"
-  },
-  {
-   "path": "proto/ports/scout_batch_31/today/imo22p6checker.cp",
-   "group": "scout_batch_31",
-   "form": "runnable",
-   "problem": "imo22p6checker",
-   "mapped_by": "header",
-   "submission": "4955728",
-   "original": "corpus/submissions/4955728.cpp",
-   "generation": "v2",
-   "cp_loc": 28,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_31/check.py",
-   "cpp_raw_loc": 265,
-   "cpp_stripped_loc": 116,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "ok   imo22p6checker: 150 cases match corpus/submissions/4955728.cpp"
   },
   {
    "path": "proto/ports/scout_batch_31/today/noi10p3.cp",
@@ -25703,24 +25414,6 @@
    "harness_line": "PASS occ19g4    (30/30 vs 3578469.cpp (+10 brute-only extreme/negative-coord cases))"
   },
   {
-   "path": "proto/ports/scout_batch_43/etsr23r1p3.cp",
-   "group": "scout_batch_43",
-   "form": "spec",
-   "problem": "etsr23r1p3",
-   "mapped_by": "header",
-   "submission": "5494303",
-   "original": "corpus/submissions/5494303.cpp",
-   "generation": "v2",
-   "cp_loc": 24,
-   "wish_markers": 0,
-   "harness": null,
-   "cpp_raw_loc": 79,
-   "cpp_stripped_loc": 44,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_43/etsr23r1p4.cp",
    "group": "scout_batch_43",
    "form": "spec",
@@ -25757,24 +25450,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_43/etsr23r2p3.cp",
-   "group": "scout_batch_43",
-   "form": "spec",
-   "problem": "etsr23r2p3",
-   "mapped_by": "header",
-   "submission": "5494453",
-   "original": "corpus/submissions/5494453.cpp",
-   "generation": "v2",
-   "cp_loc": 6,
-   "wish_markers": 0,
-   "harness": null,
-   "cpp_raw_loc": 64,
-   "cpp_stripped_loc": 29,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_43/etsr23r2p4.cp",
    "group": "scout_batch_43",
    "form": "spec",
@@ -25793,24 +25468,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_43/etsr23r3p1.cp",
-   "group": "scout_batch_43",
-   "form": "spec",
-   "problem": "etsr23r3p1",
-   "mapped_by": "header",
-   "submission": "5527625",
-   "original": "corpus/submissions/5527625.cpp",
-   "generation": "v2",
-   "cp_loc": 53,
-   "wish_markers": 0,
-   "harness": null,
-   "cpp_raw_loc": 185,
-   "cpp_stripped_loc": 114,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_43/etsr23r3p3.cp",
    "group": "scout_batch_43",
    "form": "spec",
@@ -25824,24 +25481,6 @@
    "harness": null,
    "cpp_raw_loc": 194,
    "cpp_stripped_loc": 109,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
-   "path": "proto/ports/scout_batch_43/etsr23r4p1.cp",
-   "group": "scout_batch_43",
-   "form": "spec",
-   "problem": "etsr23r4p1",
-   "mapped_by": "header",
-   "submission": "5521420",
-   "original": "corpus/submissions/5521420.cpp",
-   "generation": "v2",
-   "cp_loc": 36,
-   "wish_markers": 0,
-   "harness": null,
-   "cpp_raw_loc": 117,
-   "cpp_stripped_loc": 86,
    "strip_source": "auto",
    "original_language": "cpp",
    "verified": "no harness"
@@ -25883,25 +25522,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_43/today/etsr23r1p3.cp",
-   "group": "scout_batch_43",
-   "form": "runnable",
-   "problem": "etsr23r1p3",
-   "mapped_by": "header",
-   "submission": "5494303",
-   "original": "corpus/submissions/5494303.cpp",
-   "generation": "v2",
-   "cp_loc": 37,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_43/check.py",
-   "cpp_raw_loc": 79,
-   "cpp_stripped_loc": 44,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "PASS etsr23r1p3: 30/30 cases matched 5494303.cpp"
-  },
-  {
    "path": "proto/ports/scout_batch_43/today/etsr23r1p4.cp",
    "group": "scout_batch_43",
    "form": "runnable",
@@ -25940,25 +25560,6 @@
    "harness_line": "PASS etsr23r2p2: 30/30 cases matched 5494433.cpp"
   },
   {
-   "path": "proto/ports/scout_batch_43/today/etsr23r2p3.cp",
-   "group": "scout_batch_43",
-   "form": "runnable",
-   "problem": "etsr23r2p3",
-   "mapped_by": "header",
-   "submission": "5494453",
-   "original": "corpus/submissions/5494453.cpp",
-   "generation": "v2",
-   "cp_loc": 9,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_43/check.py",
-   "cpp_raw_loc": 64,
-   "cpp_stripped_loc": 29,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "PASS etsr23r2p3: 30/30 cases matched 5494453.cpp"
-  },
-  {
    "path": "proto/ports/scout_batch_43/today/etsr23r2p4.cp",
    "group": "scout_batch_43",
    "form": "runnable",
@@ -25978,25 +25579,6 @@
    "harness_line": "PASS etsr23r2p4: 30/30 cases matched 5494510.cpp"
   },
   {
-   "path": "proto/ports/scout_batch_43/today/etsr23r3p1.cp",
-   "group": "scout_batch_43",
-   "form": "runnable",
-   "problem": "etsr23r3p1",
-   "mapped_by": "header",
-   "submission": "5527625",
-   "original": "corpus/submissions/5527625.cpp",
-   "generation": "v2",
-   "cp_loc": 73,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_43/check.py",
-   "cpp_raw_loc": 185,
-   "cpp_stripped_loc": 114,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "PASS etsr23r3p1: 30/30 cases matched 5527625.cpp"
-  },
-  {
    "path": "proto/ports/scout_batch_43/today/etsr23r3p3.cp",
    "group": "scout_batch_43",
    "form": "runnable",
@@ -26014,25 +25596,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "PASS etsr23r3p3: 30/30 cases matched 5521298.cpp"
-  },
-  {
-   "path": "proto/ports/scout_batch_43/today/etsr23r4p1.cp",
-   "group": "scout_batch_43",
-   "form": "runnable",
-   "problem": "etsr23r4p1",
-   "mapped_by": "header",
-   "submission": "5521420",
-   "original": "corpus/submissions/5521420.cpp",
-   "generation": "v2",
-   "cp_loc": 53,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_43/check.py",
-   "cpp_raw_loc": 117,
-   "cpp_stripped_loc": 86,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "PASS etsr23r4p1: 30/30 cases matched 5521420.cpp"
   },
   {
    "path": "proto/ports/scout_batch_43/today/etsr23r4p2.cp",
@@ -28365,24 +27928,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_5/etsr23r3p2.cp",
-   "group": "scout_batch_5",
-   "form": "spec",
-   "problem": "etsr23r3p2",
-   "mapped_by": "header",
-   "submission": "5529780",
-   "original": "corpus/submissions/5529780.cpp",
-   "generation": "v1",
-   "cp_loc": 12,
-   "wish_markers": 4,
-   "harness": null,
-   "cpp_raw_loc": 69,
-   "cpp_stripped_loc": 37,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_5/ioi06p2.cp",
    "group": "scout_batch_5",
    "form": "spec",
@@ -30050,24 +29595,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_6/etsr23r1p2.cp",
-   "group": "scout_batch_6",
-   "form": "spec",
-   "problem": "etsr23r1p2",
-   "mapped_by": "header",
-   "submission": "5494248",
-   "original": "corpus/submissions/5494248.cpp",
-   "generation": "v1",
-   "cp_loc": 19,
-   "wish_markers": 5,
-   "harness": null,
-   "cpp_raw_loc": 58,
-   "cpp_stripped_loc": 27,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_6/joi16fp2.cp",
    "group": "scout_batch_6",
    "form": "spec",
@@ -30235,25 +29762,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "dmopc21c8p1: stress OK: 50 tests agree (0 rejected by where)"
-  },
-  {
-   "path": "proto/ports/scout_batch_6/today/etsr23r1p2.cp",
-   "group": "scout_batch_6",
-   "form": "runnable",
-   "problem": "etsr23r1p2",
-   "mapped_by": "header",
-   "submission": "5494248",
-   "original": "corpus/submissions/5494248.cpp",
-   "generation": "v1",
-   "cp_loc": 35,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_6/check.sh",
-   "cpp_raw_loc": 58,
-   "cpp_stripped_loc": 27,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "etsr23r1p2: stress OK: 50 tests agree (0 rejected by where)"
   },
   {
    "path": "proto/ports/scout_batch_6/today/joi16fp2.cp",
@@ -30710,25 +30218,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "btoi19p3: stress OK: 200 tests agree (0 rejected by where)"
-  },
-  {
-   "path": "proto/ports/scout_batch_9/cmt21r2ztr.cp",
-   "group": "scout_batch_9",
-   "form": "runnable",
-   "problem": "cmt21r2ztr",
-   "mapped_by": "header",
-   "submission": "4016530",
-   "original": "corpus/submissions/4016530.cpp",
-   "generation": "v1",
-   "cp_loc": 42,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_9/stress.sh",
-   "cpp_raw_loc": 250,
-   "cpp_stripped_loc": 224,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "cmt21r2ztr: stress OK: 200 tests accepted (0 rejected by where)"
   },
   {
    "path": "proto/ports/scout_batch_9/coci25c3p4.cp",
@@ -31622,7 +31111,7 @@
    "accepted_submissions": 1,
    "attempts": 1,
    "submission": "4381330",
-   "original": "corpus/submissions/4381330.cpp",
+   "original": null,
    "cpp_raw_loc": 1,
    "cpp_stripped_loc": 1,
    "hard": false
@@ -31913,111 +31402,6 @@
    "note": "never accepted"
   },
   {
-   "problem": "cmt21r1lbc",
-   "family": "DMOJ contests",
-   "accepted_submissions": 1,
-   "attempts": 3,
-   "submission": "4010527",
-   "original": "corpus/submissions/4010527.cpp",
-   "cpp_raw_loc": 369,
-   "cpp_stripped_loc": 338,
-   "hard": true
-  },
-  {
-   "problem": "cmt21r1pjq",
-   "family": "DMOJ contests",
-   "accepted_submissions": 0,
-   "attempts": 6,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "cmt21r2yg",
-   "family": "DMOJ contests",
-   "accepted_submissions": 0,
-   "attempts": 11,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "cmt21r2zjr",
-   "family": "DMOJ contests",
-   "accepted_submissions": 2,
-   "attempts": 3,
-   "submission": "4007901",
-   "original": "corpus/submissions/4007901.cpp",
-   "cpp_raw_loc": 188,
-   "cpp_stripped_loc": 162,
-   "hard": true
-  },
-  {
-   "problem": "cmt21r3cxr",
-   "family": "DMOJ contests",
-   "accepted_submissions": 4,
-   "attempts": 14,
-   "submission": "3997981",
-   "original": "corpus/submissions/3997981.cpp",
-   "cpp_raw_loc": 423,
-   "cpp_stripped_loc": 365,
-   "hard": true
-  },
-  {
-   "problem": "cmt21r3dyp",
-   "family": "DMOJ contests",
-   "accepted_submissions": 0,
-   "attempts": 4,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "cmt21r3zlm",
-   "family": "DMOJ contests",
-   "accepted_submissions": 0,
-   "attempts": 8,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "cmt21r4djq",
-   "family": "DMOJ contests",
-   "accepted_submissions": 0,
-   "attempts": 4,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "cmt21r4wcz",
-   "family": "DMOJ contests",
-   "accepted_submissions": 0,
-   "attempts": 3,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "cmt21r5wwc",
-   "family": "DMOJ contests",
-   "accepted_submissions": 0,
-   "attempts": 4,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "cmt21r8srf",
-   "family": "DMOJ contests",
-   "accepted_submissions": 0,
-   "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
    "problem": "coci08c1p1",
    "family": "COCI",
    "accepted_submissions": 1,
@@ -32042,15 +31426,6 @@
    "family": "COCI",
    "accepted_submissions": 0,
    "attempts": 5,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "ctsc06p6",
-   "family": "NOI (China)",
-   "accepted_submissions": 0,
-   "attempts": 4,
    "submission": null,
    "hard": false,
    "note": "never accepted"
@@ -32259,17 +31634,6 @@
    "note": "never accepted"
   },
   {
-   "problem": "dmpg17g3",
-   "family": "DMOJ contests",
-   "accepted_submissions": 1,
-   "attempts": 4,
-   "submission": "5200842",
-   "original": "corpus/submissions/5200842.cpp",
-   "cpp_raw_loc": 198,
-   "cpp_stripped_loc": 167,
-   "hard": true
-  },
-  {
    "problem": "dpa",
    "family": "AtCoder DP",
    "accepted_submissions": 1,
@@ -32332,46 +31696,6 @@
    "note": "never accepted"
   },
   {
-   "problem": "eoi22math2",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 3,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "eoi22math3",
-   "family": "other",
-   "accepted_submissions": 0,
-   "attempts": 2,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "etsr23r1p1",
-   "family": "DMOJ contests",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": "5494240",
-   "original": "corpus/submissions/5494240.cpp",
-   "cpp_raw_loc": 41,
-   "cpp_stripped_loc": 10,
-   "hard": false
-  },
-  {
-   "problem": "etsr23r2p1",
-   "family": "DMOJ contests",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": "5494375",
-   "original": "corpus/submissions/5494375.cpp",
-   "cpp_raw_loc": 45,
-   "cpp_stripped_loc": 11,
-   "hard": false
-  },
-  {
    "problem": "factorial",
    "family": "other",
    "accepted_submissions": 1,
@@ -32405,24 +31729,6 @@
    "hard": false
   },
   {
-   "problem": "gaolian2019",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 11,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "gaolian2020",
-   "family": "other",
-   "accepted_submissions": 0,
-   "attempts": 8,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
    "problem": "hci16ulamspiral",
    "family": "other",
    "accepted_submissions": 0,
@@ -32447,15 +31753,6 @@
    "family": "other",
    "accepted_submissions": 0,
    "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "never accepted"
-  },
-  {
-   "problem": "help2022p0",
-   "family": "other",
-   "accepted_submissions": 0,
-   "attempts": 8,
    "submission": null,
    "hard": false,
    "note": "never accepted"
@@ -32525,15 +31822,6 @@
    "family": "IOI",
    "accepted_submissions": 1,
    "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "ioi12p1old",
-   "family": "IOI",
-   "accepted_submissions": 1,
-   "attempts": 2,
    "submission": null,
    "hard": false,
    "note": "no accepted C++ or Java source"
@@ -32690,123 +31978,6 @@
    "hard": true
   },
   {
-   "problem": "math01",
-   "family": "other",
-   "accepted_submissions": 2,
-   "attempts": 3,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math02",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 2,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math03",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 2,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math04",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 5,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math05",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math06",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 12,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math07",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math08",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math09",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math10",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 7,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math11",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math12",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
-   "problem": "math13",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 5,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
    "problem": "mccc3j1",
    "family": "DMOJ contests",
    "accepted_submissions": 1,
@@ -32909,7 +32080,7 @@
    "accepted_submissions": 6,
    "attempts": 44,
    "submission": "5030143",
-   "original": "corpus/submissions/5030143.cpp",
+   "original": null,
    "cpp_raw_loc": 278,
    "cpp_stripped_loc": 246,
    "hard": true
@@ -32920,7 +32091,7 @@
    "accepted_submissions": 4,
    "attempts": 18,
    "submission": "5032793",
-   "original": "corpus/submissions/5032793.cpp",
+   "original": null,
    "cpp_raw_loc": 285,
    "cpp_stripped_loc": 235,
    "hard": true
@@ -32931,7 +32102,7 @@
    "accepted_submissions": 4,
    "attempts": 16,
    "submission": "3753393",
-   "original": "corpus/submissions/3753393.cpp",
+   "original": null,
    "cpp_raw_loc": 10,
    "cpp_stripped_loc": 8,
    "hard": true
@@ -32978,7 +32149,7 @@
    "accepted_submissions": 2,
    "attempts": 28,
    "submission": "5671318",
-   "original": "corpus/submissions/5671318.cpp",
+   "original": null,
    "cpp_raw_loc": 483,
    "cpp_stripped_loc": 437,
    "hard": true
@@ -33138,7 +32309,7 @@
    "accepted_submissions": 3,
    "attempts": 10,
    "submission": "4825283",
-   "original": "corpus/submissions/4825283.cpp",
+   "original": null,
    "cpp_raw_loc": 294,
    "cpp_stripped_loc": 145,
    "hard": true
@@ -33234,7 +32405,7 @@
    "accepted_submissions": 1,
    "attempts": 2,
    "submission": "5067857",
-   "original": "corpus/submissions/5067857.cpp",
+   "original": null,
    "cpp_raw_loc": 49,
    "cpp_stripped_loc": 18,
    "hard": false
@@ -33245,7 +32416,7 @@
    "accepted_submissions": 1,
    "attempts": 1,
    "submission": "5067872",
-   "original": "corpus/submissions/5067872.cpp",
+   "original": null,
    "cpp_raw_loc": 71,
    "cpp_stripped_loc": 40,
    "hard": false
@@ -33267,7 +32438,7 @@
    "accepted_submissions": 1,
    "attempts": 1,
    "submission": "5086701",
-   "original": "corpus/submissions/5086701.cpp",
+   "original": null,
    "cpp_raw_loc": 80,
    "cpp_stripped_loc": 49,
    "hard": false
@@ -33300,7 +32471,7 @@
    "accepted_submissions": 1,
    "attempts": 2,
    "submission": "5096408",
-   "original": "corpus/submissions/5096408.cpp",
+   "original": null,
    "cpp_raw_loc": 54,
    "cpp_stripped_loc": 22,
    "hard": false
@@ -33859,15 +33030,6 @@
    "note": "never accepted"
   },
   {
-   "problem": "shortest1",
-   "family": "other",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": null,
-   "hard": false,
-   "note": "no accepted C++ or Java source"
-  },
-  {
    "problem": "tropical",
    "family": "other",
    "accepted_submissions": 1,
@@ -33940,17 +33102,6 @@
    "original": "corpus/submissions/4121122.cpp",
    "cpp_raw_loc": 49,
    "cpp_stripped_loc": 14,
-   "hard": false
-  },
-  {
-   "problem": "wossoly21s2",
-   "family": "DMOJ contests",
-   "accepted_submissions": 1,
-   "attempts": 1,
-   "submission": "4121142",
-   "original": "corpus/submissions/4121142.cpp",
-   "cpp_raw_loc": 90,
-   "cpp_stripped_loc": 55,
    "hard": false
   },
   {
