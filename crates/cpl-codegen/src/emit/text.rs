@@ -113,3 +113,17 @@ pub(super) fn drop_unread_list_forms(
         chunks[chunk].2 = chunks[chunk].2.replacen(&text, "", 1);
     }
 }
+
+/// An `@cpp` fn: its body as written, after it names each param as the
+/// source does, even one renamed for a global it shadows.
+pub(super) fn cpp_fn_def<'n>(
+    signature: &str,
+    params: impl Iterator<Item = (&'n str, &'n str)>,
+    code: &str,
+) -> String {
+    let aliases: String = params
+        .filter(|(source, cpp)| source != cpp)
+        .map(|(source, cpp)| format!("    auto& {source} = {cpp};\n"))
+        .collect();
+    format!("{signature} {{\n{aliases}    {code}\n}}\n")
+}

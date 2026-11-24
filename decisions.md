@@ -8539,3 +8539,4 @@ learns of the overlap only from `t.roots`. Reverse by restoring the trap and the
 - **Call.** `@brute`, with any argument, is E0503 naming `@alt(f)` and `@alt(program)`, as `@brute(main)` already was. The corpus, the seeded stress bench and the tests now write `@alt(f)`.
 - **Why.** The two meant the same thing and the report already said `@alt`, so a contestant had to remember which decorator to write for one idea (use case stress/U27, R06.4.3's closed decorator set).
 - **Reverse.** Drop the `"brute"` arm of the removed-decorator match in `crates/cpl-syntax/src/parser/stmt.rs`.
+Tool gaps `lint expr Cpp` and `trace expr Cpp` are intended debt: a lint has nothing to read inside opaque C++, and the interpreter, which traces, can't run it. Drop them when lint records or traced programs can hold an `@cpp` fn (a C++-build trace).

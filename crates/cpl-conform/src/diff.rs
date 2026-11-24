@@ -406,7 +406,17 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
     };
 
     let mut interp_outputs = Vec::with_capacity(inputs.len());
+    // An `@cpp` body runs only in C++: a case's written output stands in
+    // for the interpreter's run (decision 449).
+    let written = match conformance::parse_header(&text) {
+        Ok((Expect::OkOutput(want), _)) if !compiled.program.cpp_bodies.is_empty() => Some(want),
+        _ => None,
+    };
     for (_, inp) in &inputs {
+        if let Some(want) = &written {
+            interp_outputs.push(want.clone().into_bytes());
+            continue;
+        }
         let run = match runner::run_interp_bounded(&compiled.program, &path_str, &text, inp) {
             Ok(run) => run,
             Err(detail) => {

@@ -1294,7 +1294,8 @@ impl<'p> Emitter<'p> {
                 always: hook || program.judge_fns.contains(&id),
             });
             if let Some((_, code)) = program.cpp_bodies.iter().find(|(c, _)| *c == id) {
-                fns.push_str(&format!("{signature} {{\n    {code}\n}}\n"));
+                let names = (0..f.params.len()).map(|s| (&*f.locals[s].name, &*self.names[s]));
+                fns.push_str(&text::cpp_fn_def(&signature, names, code));
                 self.chunks
                     .push((part, f.name.clone(), fns[start..].to_string()));
                 continue;

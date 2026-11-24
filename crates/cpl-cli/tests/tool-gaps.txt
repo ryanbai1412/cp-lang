@@ -6,3 +6,5 @@ lint expr Map
 lint expr Mut
 lint expr TableFill
 lint stmt Mod
+lint expr Cpp
+trace expr Cpp
