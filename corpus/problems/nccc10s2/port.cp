@@ -11,10 +11,10 @@
 // original: corpus/submissions/4214203.cpp
 let (n, k): (1..=1e4, 1..=26) = read()
 domain L = 'A'..'A' + k
-let ballots: [n]Str = read()
 
 var ahead: [L, L]Bool = true  // ahead[x, y]: x before y on every ballot
-for b in ballots:
+repeat n:
+    let b: Str = read()
     for (x, y) in b.pairs():
         ahead[L(y), L(x)] = false
 
