@@ -32,7 +32,7 @@ pub(super) fn halving_loop(stmt: &Stmt) -> Option<Halving<'_>> {
     let [(CmpOp::Lt, hi)] = rest.as_slice() else {
         return None;
     };
-    let (lo, hi) = (expr_name(first)?, expr_name(hi)?);
+    let (lo, hi) = (shapes::name(first)?, shapes::name(hi)?);
     let [let_mid, branch] = body.stmts.as_slice() else {
         return None;
     };
@@ -95,7 +95,7 @@ pub(super) fn midpoint(m: &Expr, lo: &str, hi: &str) -> Option<bool> {
             _ => None,
         }
     }
-    let is = |e: &Expr, n: &str| expr_name(e) == Some(n);
+    let is = |e: &Expr, n: &str| shapes::name(e) == Some(n);
     // `x + 1` gives `(x, true)`, anything else `(x, false)`.
     let plus_one = |e: &Expr| match bin(e) {
         Some((BinOp::Add, x, one)) if is_int_lit(one, 1) => (x.clone(), true),
@@ -139,14 +139,14 @@ pub(super) fn bound_move<'a>(block: &'a Block, mid: &str) -> Option<(&'a str, i1
     else {
         return None;
     };
-    let name = expr_name(target)?;
-    if expr_name(value) == Some(mid) {
+    let name = shapes::name(target)?;
+    if shapes::name(value) == Some(mid) {
         return Some((name, 0));
     }
     let ExprKind::Binary { op, lhs, rhs, .. } = &walk::unparen(value).kind else {
         return None;
     };
-    if expr_name(lhs) != Some(mid) || !is_int_lit(rhs, 1) {
+    if shapes::name(lhs) != Some(mid) || !is_int_lit(rhs, 1) {
         return None;
     }
     match op {
@@ -224,7 +224,8 @@ pub(super) fn sorted_lookup<'e>(
         _ => (&**first, None),
     };
     let (list, ix) = plain_index(elem)?;
-    if expr_name(ix) != Some(mid) || end != format!("{list}.len") || mentions(text(target), mid) {
+    if shapes::name(ix) != Some(mid) || end != format!("{list}.len") || mentions(text(target), mid)
+    {
         return None;
     }
     let by = field

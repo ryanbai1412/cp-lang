@@ -8,6 +8,7 @@
 //! `k` of a heap (`manual_heap_drain`), lists grouped by key
 //! (`group_into_map`) and a sliding window sum (`sliding_sum_by_hand`).
 
+use super::shapes::is_ident;
 use crate::walk::Visitor;
 use crate::{
     File, Finding, ADJACENT_BY_INDEX, ARGSORT_LOOP, FACT_TABLES_BY_HAND, GROUP_INTO_MAP,
@@ -59,10 +60,6 @@ fn squash_code(text: &str) -> String {
     out.trim_end().to_string()
 }
 
-fn ident(s: &str) -> bool {
-    !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_')
-}
-
 /// The std call for `st.len > 0 and a[st.last!] < a[i]` (squashed), the pop
 /// condition of a monotone stack of positions into `a`, with what it finds,
 /// the stack and the current position.
@@ -77,7 +74,7 @@ fn monotone_pop(c: &str) -> Option<(String, &'static str, &str, &str)> {
         .iter()
         .find_map(|op| Some((*op, rest.strip_prefix(op)?)))?;
     let i = rhs.strip_prefix(&format!("{a}["))?.strip_suffix(']')?;
-    if !(ident(st) && ident(a) && ident(i)) {
+    if !(is_ident(st) && is_ident(a) && is_ident(i)) {
         return None;
     }
     let (call, what) = match op {
@@ -140,7 +137,7 @@ fn writes(body: &str, xs: &str) -> bool {
 fn value_index(s: &str) -> Option<(&str, &str)> {
     let (x, rest) = s.strip_prefix('(')?.split_once('[')?;
     let (i, rest) = rest.split_once(']')?;
-    let ok = ident(x) && ident(i) && rest.starts_with(&format!(",{i})"));
+    let ok = is_ident(x) && is_ident(i) && rest.starts_with(&format!(",{i})"));
     ok.then_some((x, i))
 }
 
@@ -162,7 +159,7 @@ impl HandSearch<'_> {
         if recv.starts_with("[(") {
             return comp(recv);
         }
-        if !ident(recv) {
+        if !is_ident(recv) {
             return None;
         }
         if let Some(at) = src.find(&format!("{recv}=[(")) {
@@ -222,7 +219,7 @@ impl HandSearch<'_> {
                     .trim_start_matches(".ord")
                     .trim_start_matches([')', '&', '1', ' '])
                     .starts_with("==0");
-                (picks && !unset && ident(i)).then(|| i.to_string())
+                (picks && !unset && is_ident(i)).then(|| i.to_string())
             });
         let Some(i) = bit else {
             return;
@@ -232,11 +229,11 @@ impl HandSearch<'_> {
             let xs = whole[..at]
                 .rsplit(|c: char| !(c.is_alphanumeric() || c == '_'))
                 .next()?;
-            ident(xs).then(|| xs.to_string())
+            is_ident(xs).then(|| xs.to_string())
         }) else {
             return;
         };
-        if !ident(&m) || !ident(n) {
+        if !is_ident(&m) || !is_ident(n) {
             return;
         }
         let diag = Diagnostic::warning(
@@ -269,7 +266,7 @@ impl HandSearch<'_> {
         else {
             return;
         };
-        if !ident(&i) {
+        if !is_ident(&i) {
             return;
         }
         let t = text(only.span);
@@ -277,12 +274,12 @@ impl HandSearch<'_> {
             .split_once('=')
             .and_then(|(x, rhs)| {
                 let x = x.strip_suffix(&format!("[{i}]"))?;
-                ident(x).then_some(())?;
+                is_ident(x).then_some(())?;
                 rhs.strip_prefix(&format!("{x}[{i}-1]*"))
             })
             .or_else(|| {
                 let (x, rest) = t.split_once(".push(")?;
-                ident(x).then_some(())?;
+                is_ident(x).then_some(())?;
                 let rest = rest.strip_suffix(')')?;
                 rest.strip_prefix(&format!("{x}[{i}-1]*"))
                     .or_else(|| rest.strip_prefix(&format!("{x}.last!*")))
@@ -299,7 +296,7 @@ impl HandSearch<'_> {
         } else {
             let Some(ty) = factor
                 .strip_suffix(&format!("({i})"))
-                .filter(|ty| ident(ty))
+                .filter(|ty| is_ident(ty))
             else {
                 return;
             };
@@ -360,7 +357,7 @@ impl HandSearch<'_> {
         };
         let x = pat.span.shift(self.base).text(self.src).trim();
         let xs = iter.span.shift(self.base).text(self.src).trim();
-        if !ident(m) || !ident(x) {
+        if !is_ident(m) || !is_ident(x) {
             return;
         }
         let xs = if xs.contains("..") {
@@ -396,7 +393,7 @@ impl HandSearch<'_> {
         let Some((k, _)) = it.split_once("..") else {
             return;
         };
-        if !ident(&i) || k.is_empty() {
+        if !is_ident(&i) || k.is_empty() {
             return;
         }
         for st in &body.stmts {
@@ -410,7 +407,7 @@ impl HandSearch<'_> {
             let Some(a) = add.strip_suffix(&format!("[{i}]")) else {
                 continue;
             };
-            if !ident(cur) || !ident(a) || sub != format!("{a}[{i}-{k}]") {
+            if !is_ident(cur) || !is_ident(a) || sub != format!("{a}[{i}-{k}]") {
                 continue;
             }
             let diag = Diagnostic::warning(
@@ -446,7 +443,7 @@ impl HandSearch<'_> {
         let Some(h) = whole[..*at]
             .rsplit(|c: char| !(c.is_alphanumeric() || c == '_'))
             .next()
-            .filter(|h| ident(h))
+            .filter(|h| is_ident(h))
         else {
             return;
         };
@@ -479,7 +476,7 @@ impl HandSearch<'_> {
     fn adjacent(&mut self, stmt: &Stmt, pat: &Pattern, iter: &Expr, body: &Block) {
         let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
         let v = text(pat.span);
-        if !ident(&v) {
+        if !is_ident(&v) {
             return;
         }
         for (k, b) in body.stmts.iter().enumerate() {
@@ -490,7 +487,7 @@ impl HandSearch<'_> {
             let last = cond
                 .strip_prefix(&format!("{v}!="))
                 .and_then(|r| r.split_once(".last!:"))
-                .is_some_and(|(d, _)| ident(d));
+                .is_some_and(|(d, _)| is_ident(d));
             let end = text(iter.span);
             let bound = cond
                 .strip_prefix(&format!("{v}+1<"))
@@ -505,7 +502,7 @@ impl HandSearch<'_> {
                 let xs = t[..at]
                     .rsplit(|c: char| !(c.is_alphanumeric() || c == '_'))
                     .next()?;
-                ident(xs).then_some(xs)
+                is_ident(xs).then_some(xs)
             }) else {
                 continue;
             };
@@ -566,7 +563,7 @@ impl HandSearch<'_> {
         }) else {
             return;
         };
-        if !ident(&i) || !ident(&s) {
+        if !is_ident(&i) || !is_ident(&s) {
             return;
         }
         let diag = Diagnostic::warning(
@@ -641,11 +638,11 @@ impl Visitor for HandSearch<'_> {
                 let t = text(b.span);
                 let popped = t.strip_prefix("let ").and_then(|t| {
                     let (j, rhs) = t.split_once('=')?;
-                    (ident(j) && (rhs == format!("{st}.last!") || rhs == format!("{st}.pop()!")))
+                    (is_ident(j) && (rhs == format!("{st}.last!") || rhs == format!("{st}.pop()!")))
                         .then_some(())
                 });
                 let answer = t.strip_suffix(&format!("={i}")).is_some_and(|lhs| {
-                    lhs.ends_with(']') && lhs.split_once('[').is_some_and(|(ans, _)| ident(ans))
+                    lhs.ends_with(']') && lhs.split_once('[').is_some_and(|(ans, _)| is_ident(ans))
                 });
                 wrote |= answer;
                 popped.is_some() || answer || t == format!("{st}.pop()")
@@ -673,7 +670,7 @@ impl Visitor for HandSearch<'_> {
         if let Some(s) = c.strip_suffix(">0").or_else(|| c.strip_suffix("!=0")) {
             let step = text(last.span);
             let mask = step.strip_prefix(&format!("{s}=({s}-1)&"));
-            if let Some(m) = mask.filter(|m| ident(s) && ident(m)) {
+            if let Some(m) = mask.filter(|m| is_ident(s) && is_ident(m)) {
                 let diag = Diagnostic::warning(
                     SUBMASK_LOOP.code,
                     span,

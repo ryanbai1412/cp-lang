@@ -86,12 +86,12 @@ pub(super) fn hand_rolled_string_algos(file: &File) -> Vec<Finding> {
 pub(super) fn seq_index_parts(e: &Expr) -> Option<(&str, &Expr)> {
     match &walk::unparen(e).kind {
         ExprKind::Index { base, indices } if indices.len() == 1 => {
-            Some((expr_name(base)?, &indices[0]))
+            Some((shapes::name(base)?, &indices[0]))
         }
         ExprKind::Call { callee, args } if args.len() == 1 => {
             if let ExprKind::Field { base, name } = &walk::unparen(callee).kind {
                 if name.text == "at" {
-                    return Some((expr_name(base)?, &args[0].value));
+                    return Some((shapes::name(base)?, &args[0].value));
                 }
             }
             None
@@ -115,7 +115,7 @@ pub(super) fn is_var_minus_one(e: &Expr, var: &str) -> bool {
     matches!(
         &walk::unparen(e).kind,
         ExprKind::Binary { op: BinOp::Sub, lhs, rhs, .. }
-            if expr_name(lhs) == Some(var) && is_int_lit(rhs, 1)
+            if shapes::name(lhs) == Some(var) && is_int_lit(rhs, 1)
     )
 }
 
@@ -124,8 +124,8 @@ pub(super) fn is_var_plus_one(e: &Expr, var: &str) -> bool {
     matches!(
         &walk::unparen(e).kind,
         ExprKind::Binary { op: BinOp::Add, lhs, rhs, .. }
-            if (expr_name(lhs) == Some(var) && is_int_lit(rhs, 1))
-                || (expr_name(rhs) == Some(var) && is_int_lit(lhs, 1))
+            if (shapes::name(lhs) == Some(var) && is_int_lit(rhs, 1))
+                || (shapes::name(rhs) == Some(var) && is_int_lit(lhs, 1))
     )
 }
 
@@ -175,7 +175,7 @@ pub(super) fn is_kmp_prefix_loop(for_var: &str, body: &Block) -> bool {
                             value,
                         } = &s.kind
                         {
-                            if let Some(j) = expr_name(target) {
+                            if let Some(j) = shapes::name(target) {
                                 if let Some((pi, idx)) = seq_index_parts(value) {
                                     if is_var_minus_one(idx, j) {
                                         fallback = Some((j.to_string(), pi.to_string()));
@@ -191,11 +191,11 @@ pub(super) fn is_kmp_prefix_loop(for_var: &str, body: &Block) -> bool {
                             matches!(
                                 single_cmp(p),
                                 Some((lhs, CmpOp::Gt, rhs))
-                                    if expr_name(lhs) == Some(j.as_str()) && is_int_lit(rhs, 0)
+                                    if shapes::name(lhs) == Some(j.as_str()) && is_int_lit(rhs, 0)
                             ) || matches!(
                                 single_cmp(p),
                                 Some((lhs, CmpOp::Lt, rhs))
-                                    if is_int_lit(lhs, 0) && expr_name(rhs) == Some(j.as_str())
+                                    if is_int_lit(lhs, 0) && shapes::name(rhs) == Some(j.as_str())
                             )
                         });
                         let has_seq_ne = parts.iter().any(|p| {
@@ -219,7 +219,7 @@ pub(super) fn is_kmp_prefix_loop(for_var: &str, body: &Block) -> bool {
                     ..
                 } => {
                     if let Some((arr, idx)) = seq_index_parts(target) {
-                        if expr_name(idx) == Some(self.for_var) {
+                        if shapes::name(idx) == Some(self.for_var) {
                             self.written_tables.push(arr.to_string());
                         }
                     }
@@ -253,8 +253,8 @@ pub(super) fn same_simple_expr(a: &Expr, b: &Expr) -> bool {
                 indices: i2,
             },
         ) if i1.len() == 1 && i2.len() == 1 => {
-            expr_name(t1) == expr_name(t2)
-                && expr_name(t1).is_some()
+            shapes::name(t1) == shapes::name(t2)
+                && shapes::name(t1).is_some()
                 && same_simple_expr(&i1[0], &i2[0])
         }
         _ => false,
@@ -266,8 +266,8 @@ pub(super) fn is_for_plus_expr(e: &Expr, for_var: &str, k: &Expr) -> bool {
     matches!(
         &walk::unparen(e).kind,
         ExprKind::Binary { op: BinOp::Add, lhs, rhs, .. }
-            if (expr_name(lhs) == Some(for_var) && same_simple_expr(rhs, k))
-                || (expr_name(rhs) == Some(for_var) && same_simple_expr(lhs, k))
+            if (shapes::name(lhs) == Some(for_var) && same_simple_expr(rhs, k))
+                || (shapes::name(rhs) == Some(for_var) && same_simple_expr(lhs, k))
     )
 }
 
@@ -377,7 +377,7 @@ pub(super) fn expr_looks_like_char_code(e: &Expr) -> bool {
                 ExprKind::Char(_) => self.found = true,
                 ExprKind::Field { name, .. } if name.text == "ord" => self.found = true,
                 ExprKind::Call { callee, args }
-                    if expr_name(callee) == Some("Int")
+                    if shapes::name(callee) == Some("Int")
                         && args.len() == 1
                         && matches!(
                             walk::unparen(&args[0].value).kind,
@@ -431,12 +431,12 @@ pub(super) fn is_poly_hash_loop(for_var: &str, body: &Block) -> bool {
                     if arr != arr2 {
                         return false;
                     }
-                    return (is_var_plus_one(idx, for_var) && expr_name(idx2) == Some(for_var))
-                        || (expr_name(idx) == Some(for_var) && is_var_minus_one(idx2, for_var));
+                    return (is_var_plus_one(idx, for_var) && shapes::name(idx2) == Some(for_var))
+                        || (shapes::name(idx) == Some(for_var) && is_var_minus_one(idx2, for_var));
                 }
                 false
-            } else if let Some(h) = expr_name(target) {
-                expr_name(cand) == Some(h)
+            } else if let Some(h) = shapes::name(target) {
+                shapes::name(cand) == Some(h)
             } else {
                 false
             }
@@ -505,8 +505,8 @@ pub(super) fn trie_child_slot(e: &Expr) -> Option<(String, String)> {
         return None;
     };
     if indices.len() == 2 {
-        let tbl = expr_name(base)?;
-        let cur = expr_name(&indices[0])?;
+        let tbl = shapes::name(base)?;
+        let cur = shapes::name(&indices[0])?;
         return Some((tbl.to_string(), cur.to_string()));
     }
     if indices.len() != 1 {
@@ -517,8 +517,8 @@ pub(super) fn trie_child_slot(e: &Expr) -> Option<(String, String)> {
             base: outer,
             indices: outer_idx,
         } if outer_idx.len() == 1 => {
-            let tbl = expr_name(outer)?;
-            let cur = expr_name(&outer_idx[0])?;
+            let tbl = shapes::name(outer)?;
+            let cur = shapes::name(&outer_idx[0])?;
             Some((tbl.to_string(), cur.to_string()))
         }
         ExprKind::Field {
@@ -526,7 +526,7 @@ pub(super) fn trie_child_slot(e: &Expr) -> Option<(String, String)> {
             name,
         } => {
             let (arr, idx) = seq_index_parts(node_expr)?;
-            let cur = expr_name(idx)?;
+            let cur = shapes::name(idx)?;
             Some((format!("{arr}.{}", name.text), cur.to_string()))
         }
         _ => None,
@@ -558,7 +558,7 @@ pub(super) fn is_trie_insert_loop(body: &Block) -> bool {
                     op: AssignOp::Set,
                     value,
                 } => {
-                    if let Some(cur) = expr_name(target) {
+                    if let Some(cur) = shapes::name(target) {
                         let inner = match &walk::unparen(value).kind {
                             ExprKind::Unwrap(e) => e,
                             _ => value,

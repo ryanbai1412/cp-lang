@@ -3,6 +3,8 @@
 use cpl_syntax::ast::*;
 use std::collections::HashSet;
 
+pub(super) use crate::rules::shapes::mentions;
+
 /// `0..` as `(0..)`, so a following `if` is not read as its end.
 pub(super) fn iter_text<'s>(iter: &Expr, text: &'s str) -> std::borrow::Cow<'s, str> {
     match &iter.kind {
@@ -83,11 +85,6 @@ pub(super) fn only_indexed_after(src: &str, from: usize, name: &str) -> bool {
                 .strip_prefix(".len")
                 .is_some_and(|t| !t.starts_with(ident))
     })
-}
-
-/// `text` mentions the identifier `name`.
-pub(super) fn mentions(text: &str, name: &str) -> bool {
-    words(text).any(|w| w == name)
 }
 
 pub(super) fn words(text: &str) -> impl Iterator<Item = &str> {

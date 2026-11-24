@@ -3,6 +3,7 @@
 //! language has for the idea, and rewrites to it where the rewrite cannot
 //! change what the program does.
 
+use super::shapes;
 use crate::walk::{self, Bind, Visitor};
 use crate::{
     File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
@@ -379,7 +380,7 @@ impl<'a> Taste<'a> {
                 let expr = match &found.kind {
                     PrefixLoopKind::Domain1d { var, domain } => {
                         if let Some((src_arr, ix)) = plain_index(found.rhs) {
-                            if expr_name(ix) == Some(var) && src_arr != found.arr {
+                            if shapes::name(ix) == Some(var) && src_arr != found.arr {
                                 format!("Prefix({src_arr})")
                             } else {
                                 format!("Prefix([{domain}] {var} => {rhs_text})")
@@ -391,7 +392,7 @@ impl<'a> Taste<'a> {
                     PrefixLoopKind::RangeZero { var, hi } => {
                         let hi_text = at(base, hi.span);
                         if let Some((src_arr, ix)) = plain_index(found.rhs) {
-                            if expr_name(ix) == Some(var)
+                            if shapes::name(ix) == Some(var)
                                 && src_arr != found.arr
                                 && hi_text == format!("{src_arr}.len")
                             {
@@ -636,7 +637,7 @@ impl<'a> Taste<'a> {
                 return None;
             };
             let (base, ix) = plain_index(pushed_onto(call, sub_name)?)?;
-            if expr_name(ix) != Some(var.as_str()) || base == sub_name {
+            if shapes::name(ix) != Some(var.as_str()) || base == sub_name {
                 return None;
             }
             let (method, args) = match_in_place_mut_stmt(self.src, stmts.get(i + 2)?, sub_name)?;

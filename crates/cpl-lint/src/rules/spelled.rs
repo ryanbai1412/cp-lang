@@ -272,13 +272,6 @@ fn one_shl(e: &Expr) -> Option<&Expr> {
     }
 }
 
-fn name_of(e: &Expr) -> Option<&str> {
-    match &unparen(e).kind {
-        ExprKind::Name(n) => Some(n),
-        _ => None,
-    }
-}
-
 fn pat_name(p: &Pattern) -> Option<&str> {
     match &p.kind {
         PatternKind::Name(n) => Some(n),
@@ -326,7 +319,7 @@ fn halves(stmt: &Stmt, x: &str) -> bool {
     let StmtKind::Assign { target, op, value } = &stmt.kind else {
         return false;
     };
-    if name_of(target) != Some(x) {
+    if super::shapes::name(target) != Some(x) {
         return false;
     }
     let by = |op: BinOp, v: &Expr| {
@@ -338,7 +331,7 @@ fn halves(stmt: &Stmt, x: &str) -> bool {
     match (op, &unparen(value).kind) {
         (AssignOp::Binary(op), _) => by(*op, value),
         (AssignOp::Set, ExprKind::Binary { op, lhs, rhs, .. }) => {
-            name_of(lhs) == Some(x) && by(*op, rhs)
+            super::shapes::name(lhs) == Some(x) && by(*op, rhs)
         }
         _ => false,
     }
@@ -349,11 +342,11 @@ fn squares(stmt: &Stmt) -> bool {
     let StmtKind::Assign { target, op, value } = &stmt.kind else {
         return false;
     };
-    let Some(b) = name_of(target) else {
+    let Some(b) = super::shapes::name(target) else {
         return false;
     };
     if matches!(op, AssignOp::Binary(BinOp::Mul)) {
-        return name_of(value) == Some(b);
+        return super::shapes::name(value) == Some(b);
     }
     let mut found = false;
     let mut v = Each {
@@ -366,7 +359,7 @@ fn squares(stmt: &Stmt) -> bool {
                 ..
             } = &e.kind
             {
-                found |= name_of(lhs) == Some(b) && name_of(rhs) == Some(b);
+                found |= super::shapes::name(lhs) == Some(b) && super::shapes::name(rhs) == Some(b);
             }
         },
     };
@@ -514,7 +507,7 @@ impl Spelled<'_> {
             else {
                 continue;
             };
-            if name_of(lhs) != Some(i)
+            if super::shapes::name(lhs) != Some(i)
                 || !matches!(rhs.kind, ExprKind::Int(1))
                 || self.text(jhi) != self.text(hi)
                 || pat_name(jpat).is_none()
@@ -555,7 +548,7 @@ impl Spelled<'_> {
             ExprKind::Name(n) if names.contains(&n.as_str()) => uses.push(e.span),
             ExprKind::Index { base, indices } => {
                 if let [idx] = indices.as_slice() {
-                    if name_of(idx).is_some_and(|n| names.contains(&n)) {
+                    if super::shapes::name(idx).is_some_and(|n| names.contains(&n)) {
                         indexed.push(idx.span);
                         seqs.push(base.span.shift(self.base).text(self.src).to_string());
                     }
@@ -592,7 +585,9 @@ impl Spelled<'_> {
         let ExprKind::Compare { first, rest } = &cond.kind else {
             return;
         };
-        let (Some(y), [(CmpOp::Gt | CmpOp::Ne, zero)]) = (name_of(first), rest.as_slice()) else {
+        let (Some(y), [(CmpOp::Gt | CmpOp::Ne, zero)]) =
+            (super::shapes::name(first), rest.as_slice())
+        else {
             return;
         };
         if !matches!(zero.kind, ExprKind::Int(0)) {
@@ -602,7 +597,7 @@ impl Spelled<'_> {
             let StmtKind::Assign { target, op, value } = &s.kind else {
                 return None;
             };
-            if name_of(target) != Some(y) {
+            if super::shapes::name(target) != Some(y) {
                 return None;
             }
             let b = match (op, &unparen(value).kind) {
@@ -615,7 +610,7 @@ impl Spelled<'_> {
                         rhs,
                         ..
                     },
-                ) if name_of(lhs) == Some(y) => match rhs.kind {
+                ) if super::shapes::name(lhs) == Some(y) => match rhs.kind {
                     ExprKind::Int(b) => b,
                     _ => return None,
                 },
@@ -656,7 +651,7 @@ impl Spelled<'_> {
                 } = &s.kind
                 {
                     let x = match &cond.kind {
-                        ExprKind::Compare { first, .. } => name_of(first),
+                        ExprKind::Compare { first, .. } => super::shapes::name(first),
                         _ => None,
                     };
                     pow |= x.is_some_and(|x| body.stmts.iter().any(|s| halves(s, x)))
@@ -698,11 +693,11 @@ impl Spelled<'_> {
                         lhs,
                         rhs,
                         ..
-                    } => name_of(lhs) == Some(a) && name_of(rhs) == Some(b),
+                    } => super::shapes::name(lhs) == Some(a) && super::shapes::name(rhs) == Some(b),
                     _ => false,
                 };
-                euclid |= name_of(callee) == Some(&decl.name.text)
-                    && name_of(&first.value) == Some(b)
+                euclid |= super::shapes::name(callee) == Some(&decl.name.text)
+                    && super::shapes::name(&first.value) == Some(b)
                     && rem;
             },
         );

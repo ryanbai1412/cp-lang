@@ -69,15 +69,14 @@ fn conjuncts<'e>(e: &'e Expr, out: &mut Vec<&'e Expr>) {
     }
 }
 
-fn ident(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
-}
-
 /// The starts of `word` in `text` as a whole identifier.
 fn starts_of<'t>(text: &'t str, word: &'t str) -> impl Iterator<Item = usize> + 't {
-    text.match_indices(word)
-        .map(|(i, _)| i)
-        .filter(move |&i| !text[..i].chars().next_back().is_some_and(ident))
+    text.match_indices(word).map(|(i, _)| i).filter(move |&i| {
+        !text[..i]
+            .chars()
+            .next_back()
+            .is_some_and(super::shapes::ident_char)
+    })
 }
 
 /// Whether `text` has `word` as a whole identifier followed by `next`.
@@ -105,7 +104,10 @@ fn tests_colour(text: &str, t: &str, c: i128) -> bool {
                         };
                         let rest = rest.trim_start();
                         return rest.starts_with(&c)
-                            && !rest[c.len()..].chars().next().is_some_and(ident);
+                            && !rest[c.len()..]
+                                .chars()
+                                .next()
+                                .is_some_and(super::shapes::ident_char);
                     }
                 }
                 _ => {}

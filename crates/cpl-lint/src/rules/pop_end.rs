@@ -5,9 +5,9 @@
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, POP_MIN_LOOP};
 use cpl_diag::{Diagnostic, Fix, Span};
-use cpl_syntax::ast::{Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind};
+use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 
-use super::shapes::name;
+use super::shapes::{name, pattern_name};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Ends<'a> {
@@ -34,7 +34,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             else {
                 return;
             };
-            let Some(bound) = binding(pattern) else {
+            let Some(bound) = pattern_name(pattern) else {
                 return;
             };
             let ExprKind::Unwrap(end) = &init.kind else {
@@ -110,12 +110,4 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     };
     file.walk(&mut v, |v, base| v.base = base);
     v.out
-}
-
-/// The name a `let` binds, when it binds one plain name.
-fn binding(p: &Pattern) -> Option<&str> {
-    match &p.kind {
-        PatternKind::Name(n) => Some(n.as_str()),
-        _ => None,
-    }
 }

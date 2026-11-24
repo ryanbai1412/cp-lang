@@ -120,7 +120,7 @@ impl Indexes<'_> {
 }
 
 /// `xs` in `xs.field`.
-fn receiver<'a>(expr: &'a Expr, field: &str) -> Option<&'a str> {
+fn field_receiver<'a>(expr: &'a Expr, field: &str) -> Option<&'a str> {
     match &unparen(expr).kind {
         ExprKind::Field { base, name } if name.text == field => match &base.kind {
             ExprKind::Name(list) => Some(list),
@@ -132,7 +132,7 @@ fn receiver<'a>(expr: &'a Expr, field: &str) -> Option<&'a str> {
 
 /// `xs` in `xs.len`.
 fn list_of_len(len: &Expr) -> Option<&str> {
-    receiver(len, "len")
+    field_receiver(len, "len")
 }
 
 /// The list `iter` walks the indices of: `0..xs.len`, `xs.indices`, and
@@ -145,8 +145,8 @@ fn indexed_list(iter: &Expr) -> Option<&str> {
             hi: Some(hi),
             inclusive: false,
             step: None,
-        } if matches!(lo.kind, ExprKind::Int(_)) => receiver(hi, "len"),
-        _ => receiver(iter, "indices"),
+        } if matches!(lo.kind, ExprKind::Int(_)) => field_receiver(hi, "len"),
+        _ => field_receiver(iter, "indices"),
     }
 }
 
@@ -169,7 +169,7 @@ fn guard_facts(test: &Expr, out: &mut Vec<(String, String)>) {
             op: UnOp::Not,
             expr,
         } => {
-            if let Some(list) = receiver(expr, "is_empty") {
+            if let Some(list) = field_receiver(expr, "is_empty") {
                 out.push((LAST.to_string(), list.to_string()));
             }
         }

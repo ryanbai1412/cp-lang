@@ -84,7 +84,7 @@ pub(super) fn plain_index(e: &Expr) -> Option<(&str, &Expr)> {
     let [ix] = indices.as_slice() else {
         return None;
     };
-    Some((expr_name(base)?, ix))
+    Some((shapes::name(base)?, ix))
 }
 
 /// Matches `arr[x] != x` (or `x != arr[x]`), returning `(arr, x)`.
@@ -93,13 +93,13 @@ pub(super) fn dsu_not_root_cond(cond: &Cond) -> Option<(&str, &str)> {
     let (lhs, CmpOp::Ne, rhs) = single_cmp(e)? else {
         return None;
     };
-    if let (Some((arr, ix)), Some(v)) = (plain_index(lhs), expr_name(rhs)) {
-        if expr_name(ix) == Some(v) {
+    if let (Some((arr, ix)), Some(v)) = (plain_index(lhs), shapes::name(rhs)) {
+        if shapes::name(ix) == Some(v) {
             return Some((arr, v));
         }
     }
-    if let (Some(v), Some((arr, ix))) = (expr_name(lhs), plain_index(rhs)) {
-        if expr_name(ix) == Some(v) {
+    if let (Some(v), Some((arr, ix))) = (shapes::name(lhs), plain_index(rhs)) {
+        if shapes::name(ix) == Some(v) {
             return Some((arr, v));
         }
     }
@@ -125,11 +125,11 @@ pub(super) fn is_dsu_path_halving_loop(cond: &Cond, body: &Block) -> bool {
             } = &stmt.kind
             {
                 if let Some((a1, ix1)) = plain_index(target) {
-                    if a1 == self.arr && expr_name(ix1) == Some(self.var) {
+                    if a1 == self.arr && shapes::name(ix1) == Some(self.var) {
                         if let Some((a2, ix2)) = plain_index(value) {
                             if a2 == self.arr {
                                 if let Some((a3, ix3)) = plain_index(ix2) {
-                                    if a3 == self.arr && expr_name(ix3) == Some(self.var) {
+                                    if a3 == self.arr && shapes::name(ix3) == Some(self.var) {
                                         self.halved = true;
                                     }
                                 }
@@ -168,9 +168,9 @@ pub(super) fn is_dsu_recursive_or_two_pass_fn(decl: &FnDecl, body: &Block) -> bo
     impl Visitor for Rec<'_> {
         fn expr(&mut self, expr: &Expr) {
             if let ExprKind::Call { callee, args } = &expr.kind {
-                if expr_name(callee) == Some(self.fn_name) && args.len() == 1 {
+                if shapes::name(callee) == Some(self.fn_name) && args.len() == 1 {
                     if let Some((arr, ix)) = plain_index(&args[0].value) {
-                        if expr_name(ix) == Some(self.param) {
+                        if shapes::name(ix) == Some(self.param) {
                             self.rec_arr = Some(arr.to_string());
                         }
                     }
@@ -185,7 +185,7 @@ pub(super) fn is_dsu_recursive_or_two_pass_fn(decl: &FnDecl, body: &Block) -> bo
             } = &stmt.kind
             {
                 if let Some((arr, ix)) = plain_index(target) {
-                    if expr_name(ix) == Some(self.param) {
+                    if shapes::name(ix) == Some(self.param) {
                         self.writes_arr.push(arr.to_string());
                     }
                 }
@@ -259,8 +259,8 @@ pub(super) fn is_sieve_loop(outer_var: &str, body: &Block) -> bool {
         else {
             return false;
         };
-        (expr_name(lhs) == Some(var) && (expr_name(rhs) == Some(var) || is_int_lit(rhs, 2)))
-            || (expr_name(rhs) == Some(var) && is_int_lit(lhs, 2))
+        (shapes::name(lhs) == Some(var) && (shapes::name(rhs) == Some(var) || is_int_lit(rhs, 2)))
+            || (shapes::name(rhs) == Some(var) && is_int_lit(lhs, 2))
     }
     fn unwrap_domain_wrap(e: &Expr) -> &Expr {
         let u = walk::unparen(e);
@@ -290,8 +290,8 @@ pub(super) fn is_sieve_loop(outer_var: &str, body: &Block) -> bool {
                     op: AssignOp::Binary(BinOp::Add),
                     value,
                 } => {
-                    if let Some(v) = expr_name(target) {
-                        if expr_name(value) == Some(self.outer) {
+                    if let Some(v) = shapes::name(target) {
+                        if shapes::name(value) == Some(self.outer) {
                             self.stepped_vars.push(v.to_string());
                         }
                     }
@@ -303,11 +303,11 @@ pub(super) fn is_sieve_loop(outer_var: &str, body: &Block) -> bool {
                 } => {
                     if let Some((_, ix)) = plain_index(target) {
                         let inner = unwrap_domain_wrap(ix);
-                        if let Some(v) = expr_name(inner) {
+                        if let Some(v) = shapes::name(inner) {
                             let marks = matches!(
                                 &walk::unparen(value).kind,
                                 ExprKind::Bool(_) | ExprKind::Int(0)
-                            ) || expr_name(value) == Some(self.outer);
+                            ) || shapes::name(value) == Some(self.outer);
                             if marks {
                                 self.marked_vars.push(v.to_string());
                             }
@@ -339,11 +339,11 @@ pub(super) fn is_sieve_loop(outer_var: &str, body: &Block) -> bool {
                                     ..
                                 } = &inner.kind
                                 {
-                                    let is_ip = (expr_name(lhs) == Some(self.outer)
-                                        && expr_name(rhs) == Some(p.as_str()))
-                                        || (expr_name(rhs) == Some(self.outer)
-                                            && expr_name(lhs) == Some(p.as_str()));
-                                    let writes_p = expr_name(value) == Some(p.as_str())
+                                    let is_ip = (shapes::name(lhs) == Some(self.outer)
+                                        && shapes::name(rhs) == Some(p.as_str()))
+                                        || (shapes::name(rhs) == Some(self.outer)
+                                            && shapes::name(lhs) == Some(p.as_str()));
+                                    let writes_p = shapes::name(value) == Some(p.as_str())
                                         || matches!(
                                             walk::unparen(value).kind,
                                             ExprKind::Bool(false)
@@ -380,7 +380,7 @@ pub(super) fn index_2d(e: &Expr) -> Option<(&str, &Expr, &Expr)> {
         return None;
     };
     match indices.as_slice() {
-        [a, b] => Some((expr_name(base)?, a, b)),
+        [a, b] => Some((shapes::name(base)?, a, b)),
         [b] => {
             let (tbl, a) = plain_index(base)?;
             Some((tbl, a, b))
@@ -420,9 +420,11 @@ pub(super) fn is_binary_lifting_loop(level_var: &str, body: &Block) -> bool {
                 return;
             }
             // Orientation 1: `up[k, v] = up[k - 1, up[k - 1, v]]`
-            if expr_name(la) == Some(self.k) && is_var_minus_one(ra, self.k) {
+            if shapes::name(la) == Some(self.k) && is_var_minus_one(ra, self.k) {
                 if let Some((itbl, ia, ib)) = index_2d(rb) {
-                    if itbl == tbl && is_var_minus_one(ia, self.k) && expr_name(ib) == expr_name(lb)
+                    if itbl == tbl
+                        && is_var_minus_one(ia, self.k)
+                        && shapes::name(ib) == shapes::name(lb)
                     {
                         self.found = true;
                         return;
@@ -430,9 +432,11 @@ pub(super) fn is_binary_lifting_loop(level_var: &str, body: &Block) -> bool {
                 }
             }
             // Orientation 2: `up[v, k] = up[up[v, k - 1], k - 1]`
-            if expr_name(lb) == Some(self.k) && is_var_minus_one(rb, self.k) {
+            if shapes::name(lb) == Some(self.k) && is_var_minus_one(rb, self.k) {
                 if let Some((itbl, ia, ib)) = index_2d(ra) {
-                    if itbl == tbl && is_var_minus_one(ib, self.k) && expr_name(ia) == expr_name(la)
+                    if itbl == tbl
+                        && is_var_minus_one(ib, self.k)
+                        && shapes::name(ia) == shapes::name(la)
                     {
                         self.found = true;
                     }
@@ -497,7 +501,7 @@ pub(super) fn is_segtree_build_pull_loop(var: &str, body: &Block) -> bool {
             } = &stmt.kind
             {
                 if let Some((arr, ix)) = plain_index(target) {
-                    if expr_name(ix) == Some(self.var)
+                    if shapes::name(ix) == Some(self.var)
                         && rhs_reads_both_children(value, arr, self.var)
                     {
                         self.found = true;
@@ -527,7 +531,7 @@ pub(super) struct PrefixLoop<'a> {
 pub(super) fn is_field_of(e: &Expr, var: &str, field: &str) -> bool {
     matches!(
         &walk::unparen(e).kind,
-        ExprKind::Field { base, name } if expr_name(base) == Some(var) && name.text == field
+        ExprKind::Field { base, name } if shapes::name(base) == Some(var) && name.text == field
     )
 }
 
@@ -601,7 +605,7 @@ pub(super) fn prefix_sum_loop(stmt: &Stmt) -> Option<PrefixLoop<'_>> {
         if !domain_2d && !int_2d {
             return None;
         }
-        if expr_name(iter).is_none()
+        if shapes::name(iter).is_none()
             && !matches!(
                 &walk::unparen(iter).kind,
                 ExprKind::Range { lo: Some(s), .. } if is_int_lit(s, 0)
@@ -609,7 +613,7 @@ pub(super) fn prefix_sum_loop(stmt: &Stmt) -> Option<PrefixLoop<'_>> {
         {
             return None;
         }
-        if expr_name(inner_iter).is_none()
+        if shapes::name(inner_iter).is_none()
             && !matches!(
                 &walk::unparen(inner_iter).kind,
                 ExprKind::Range { lo: Some(s), .. } if is_int_lit(s, 0)
@@ -652,12 +656,12 @@ pub(super) fn prefix_sum_loop(stmt: &Stmt) -> Option<PrefixLoop<'_>> {
                     let r_prev = if domain_2d {
                         is_field_of(ir, var, "l")
                     } else {
-                        expr_name(ir) == Some(var)
+                        shapes::name(ir) == Some(var)
                     };
                     let c_prev = if domain_2d {
                         is_field_of(ic, cvar, "l")
                     } else {
-                        expr_name(ic) == Some(cvar)
+                        shapes::name(ic) == Some(cvar)
                     };
                     let r_next = if domain_2d {
                         is_field_of(ir, var, "r")
@@ -710,7 +714,7 @@ pub(super) fn prefix_sum_loop(stmt: &Stmt) -> Option<PrefixLoop<'_>> {
     let (arr, t_ix) = plain_index(target)?;
 
     // 1. `for i in D: p[i.r] = p[i.l] + rhs`
-    if let Some(domain) = expr_name(iter) {
+    if let Some(domain) = shapes::name(iter) {
         if is_field_of(t_ix, var, "r") {
             let rhs = split_add_with_prev(value, arr, |ix| is_field_of(ix, var, "l"))?;
             return Some(PrefixLoop {
@@ -730,7 +734,7 @@ pub(super) fn prefix_sum_loop(stmt: &Stmt) -> Option<PrefixLoop<'_>> {
     } = &walk::unparen(iter).kind
     {
         if is_int_lit(lo, 0) && is_var_plus_one(t_ix, var) {
-            let rhs = split_add_with_prev(value, arr, |ix| expr_name(ix) == Some(var))?;
+            let rhs = split_add_with_prev(value, arr, |ix| shapes::name(ix) == Some(var))?;
             return Some(PrefixLoop {
                 arr,
                 rhs,
@@ -747,7 +751,7 @@ pub(super) fn prefix_sum_loop(stmt: &Stmt) -> Option<PrefixLoop<'_>> {
         ..
     } = &walk::unparen(iter).kind
     {
-        if is_int_lit(lo, 1) && expr_name(t_ix) == Some(var) {
+        if is_int_lit(lo, 1) && shapes::name(t_ix) == Some(var) {
             let rhs = split_add_with_prev(value, arr, |ix| is_var_minus_one(ix, var))?;
             return Some(PrefixLoop {
                 arr,
@@ -765,7 +769,7 @@ pub(super) fn is_zero_init(e: &Expr) -> bool {
         ExprKind::Field { name, .. } if name.text == "zero" => true,
         ExprKind::Call { callee, args } if args.len() == 1 => {
             matches!(&walk::unparen(&args[0].value).kind, ExprKind::Int(0))
-                && expr_name(callee).is_some()
+                && shapes::name(callee).is_some()
         }
         _ => false,
     }
@@ -846,7 +850,7 @@ pub(super) fn prefix_zero_decl<'a>(
             else {
                 return None;
             };
-            if expr_name(recv) == Some("List")
+            if shapes::name(recv) == Some("List")
                 && mname.text == "filled"
                 && args.len() == 2
                 && is_zero_init(&args[1].value)
@@ -885,7 +889,7 @@ pub(super) fn collect_pure_index_reads(
                 return;
             }
             if let StmtKind::Assign { target, .. } = &stmt.kind {
-                if expr_name(target) == Some(self.arr)
+                if shapes::name(target) == Some(self.arr)
                     || plain_index(target).is_some_and(|(a, _)| a == self.arr)
                 {
                     self.ok = false;
@@ -897,7 +901,7 @@ pub(super) fn collect_pure_index_reads(
                 return;
             }
             match &expr.kind {
-                ExprKind::Index { base, indices } if expr_name(base) == Some(self.arr) => {
+                ExprKind::Index { base, indices } if shapes::name(base) == Some(self.arr) => {
                     if indices.len() != 1 {
                         self.ok = false;
                         return;
@@ -1241,11 +1245,11 @@ pub(super) fn running_total_loop(stmt: &Stmt) -> Option<(&str, &str, &Expr)> {
             else {
                 return None;
             };
-            let acc = expr_name(target)?;
+            let acc = shapes::name(target)?;
             let table = match &store.kind {
                 StmtKind::Expr(e) => {
                     let (table, v) = push_call(e)?;
-                    (expr_name(v) == Some(acc)).then_some(table)?
+                    (shapes::name(v) == Some(acc)).then_some(table)?
                 }
                 StmtKind::Assign {
                     target,
@@ -1253,7 +1257,7 @@ pub(super) fn running_total_loop(stmt: &Stmt) -> Option<(&str, &str, &Expr)> {
                     value,
                 } => {
                     let (table, ix) = plain_index(target)?;
-                    (expr_name(ix) == Some(var) && expr_name(value) == Some(acc))
+                    (shapes::name(ix) == Some(var) && shapes::name(value) == Some(acc))
                         .then_some(table)?
                 }
                 _ => return None,
@@ -1272,7 +1276,9 @@ fn push_call(e: &Expr) -> Option<(&str, &Expr)> {
         return None;
     };
     match args.as_slice() {
-        [arg] if name.text == "push" && arg.name.is_none() => Some((expr_name(base)?, &arg.value)),
+        [arg] if name.text == "push" && arg.name.is_none() => {
+            Some((shapes::name(base)?, &arg.value))
+        }
         _ => None,
     }
 }
@@ -1282,7 +1288,7 @@ fn is_last_of(e: &Expr, table: &str) -> bool {
     match &walk::unparen(e).kind {
         ExprKind::Unwrap(inner) => is_field_of(inner, table, "last"),
         ExprKind::Index { base, indices } => {
-            expr_name(base) == Some(table)
+            shapes::name(base) == Some(table)
                 && matches!(indices.as_slice(), [i] if matches!(
                     &walk::unparen(i).kind,
                     ExprKind::Binary { op: BinOp::Sub, lhs, rhs, .. }

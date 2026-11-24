@@ -39,7 +39,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 let Cond::Expr(cond) = cond else { continue };
                 if let Some((x, y)) = bounds_check(cond) {
                     let both = |ix: &[Expr]| {
-                        let named = |n: &str| ix.iter().any(|i| name_of(i) == Some(n));
+                        let named = |n: &str| ix.iter().any(|i| super::shapes::name(i) == Some(n));
                         ix.len() >= 2 && named(&x) && named(&y)
                     };
                     if block.stmts.iter().any(|s| indexes(s, &both)) {
@@ -62,16 +62,19 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 // `g[r - 1, c]`: the same cell's neighbour, the other index as is.
                 let off = |ix: &[Expr]| {
                     ix.len() == 2
-                        && ix
-                            .iter()
-                            .any(|i| name_of(i).is_some_and(|other| other != name.as_str()))
+                        && ix.iter().any(|i| {
+                            super::shapes::name(i).is_some_and(|other| other != name.as_str())
+                        })
                         && ix.iter().any(|i| match &unparen(i).kind {
                             ExprKind::Binary {
                                 op: BinOp::Sub,
                                 lhs,
                                 rhs,
                                 ..
-                            } => name_of(lhs) == Some(name.as_str()) && int_of(rhs) == Some(1),
+                            } => {
+                                super::shapes::name(lhs) == Some(name.as_str())
+                                    && int_of(rhs) == Some(1)
+                            }
                             _ => false,
                         })
                 };
@@ -128,13 +131,6 @@ fn direction_lists(stmts: &[(u32, &Stmt)], out: &mut Vec<Finding>) {
     }
 }
 
-fn name_of(e: &Expr) -> Option<&str> {
-    match &unparen(e).kind {
-        ExprKind::Name(n) => Some(n),
-        _ => None,
-    }
-}
-
 fn int_of(e: &Expr) -> Option<i128> {
     match &unparen(e).kind {
         ExprKind::Int(v) => Some(*v),
@@ -150,7 +146,7 @@ fn edge_test(cond: &Expr) -> Option<String> {
     let [(op, rhs)] = rest.as_slice() else {
         return None;
     };
-    let name = name_of(first)?;
+    let name = super::shapes::name(first)?;
     match (op, int_of(rhs)?) {
         (CmpOp::Gt, 0) | (CmpOp::Ge, 1) => Some(name.to_string()),
         _ => None,
@@ -205,7 +201,7 @@ fn bounds_check(expr: &Expr) -> Option<(String, String)> {
         };
         let mut prev = &**first;
         for (op, next) in rest {
-            let (name, other, op) = match (name_of(prev), name_of(next)) {
+            let (name, other, op) = match (super::shapes::name(prev), super::shapes::name(next)) {
                 (Some(n), _) if int_of(next) == Some(0) || int_of(next).is_none() => (n, next, *op),
                 (_, Some(n)) => (n, prev, flip(*op)),
                 _ => {

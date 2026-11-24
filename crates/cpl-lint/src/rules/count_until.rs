@@ -7,7 +7,7 @@ use crate::{File, Finding, COUNT_UNTIL};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, int, is_step, name, negated_op};
+use super::shapes::{compare, int, is_step, mentions, name, negated_op};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = CountUntil {
@@ -42,11 +42,6 @@ fn int_var(stmt: &Stmt) -> Option<(&str, i128)> {
         PatternKind::Name(n) => Some((n, int(init)?)),
         _ => None,
     }
-}
-
-/// Whether `word` occurs in `text` as a whole identifier.
-fn mentions(text: &str, word: &str) -> bool {
-    spans_of(text, word).next().is_some()
 }
 
 fn spans_of<'t>(text: &'t str, word: &'t str) -> impl Iterator<Item = usize> + 't {

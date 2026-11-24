@@ -78,13 +78,6 @@ pub(super) fn hand_rolled_range_trees(file: &File) -> Vec<Finding> {
     scan.findings
 }
 
-pub(super) fn expr_name(e: &Expr) -> Option<&str> {
-    match &walk::unparen(e).kind {
-        ExprKind::Name(s) => Some(s.as_str()),
-        _ => None,
-    }
-}
-
 pub(super) fn is_int_lit(e: &Expr, want: i128) -> bool {
     matches!(walk::unparen(e).kind, ExprKind::Int(v) if v == want)
 }
@@ -103,10 +96,11 @@ pub(super) fn is_lowbit(e: &Expr, var: &str) -> bool {
     let is_neg = |x: &Expr| {
         matches!(
             &walk::unparen(x).kind,
-            ExprKind::Unary { op: UnOp::Neg, expr } if expr_name(expr) == Some(var)
+            ExprKind::Unary { op: UnOp::Neg, expr } if shapes::name(expr) == Some(var)
         )
     };
-    (expr_name(lhs) == Some(var) && is_neg(rhs)) || (expr_name(rhs) == Some(var) && is_neg(lhs))
+    (shapes::name(lhs) == Some(var) && is_neg(rhs))
+        || (shapes::name(rhs) == Some(var) && is_neg(lhs))
 }
 
 /// Matches `v | (v + 1)` or `(v & (v + 1)) - 1` (0-indexed Fenwick step).
@@ -115,8 +109,8 @@ pub(super) fn is_zero_indexed_bit_step(e: &Expr, var: &str) -> bool {
         matches!(
             &walk::unparen(x).kind,
             ExprKind::Binary { op: BinOp::Add, lhs, rhs, .. }
-                if (expr_name(lhs) == Some(var) && is_int_lit(rhs, 1))
-                    || (expr_name(rhs) == Some(var) && is_int_lit(lhs, 1))
+                if (shapes::name(lhs) == Some(var) && is_int_lit(rhs, 1))
+                    || (shapes::name(rhs) == Some(var) && is_int_lit(lhs, 1))
         )
     };
     match &walk::unparen(e).kind {
@@ -126,8 +120,8 @@ pub(super) fn is_zero_indexed_bit_step(e: &Expr, var: &str) -> bool {
             rhs,
             ..
         } => {
-            (expr_name(lhs) == Some(var) && is_v_plus_1(rhs))
-                || (expr_name(rhs) == Some(var) && is_v_plus_1(lhs))
+            (shapes::name(lhs) == Some(var) && is_v_plus_1(rhs))
+                || (shapes::name(rhs) == Some(var) && is_v_plus_1(lhs))
         }
         ExprKind::Binary {
             op: BinOp::Sub,
@@ -137,8 +131,8 @@ pub(super) fn is_zero_indexed_bit_step(e: &Expr, var: &str) -> bool {
         } if is_int_lit(rhs, 1) => matches!(
             &walk::unparen(lhs).kind,
             ExprKind::Binary { op: BinOp::BitAnd, lhs: a, rhs: b, .. }
-                if (expr_name(a) == Some(var) && is_v_plus_1(b))
-                    || (expr_name(b) == Some(var) && is_v_plus_1(a))
+                if (shapes::name(a) == Some(var) && is_v_plus_1(b))
+                    || (shapes::name(b) == Some(var) && is_v_plus_1(a))
         ),
         _ => false,
     }
@@ -148,7 +142,7 @@ pub(super) fn is_zero_indexed_bit_step(e: &Expr, var: &str) -> bool {
 pub(super) fn fenwick_step_var(body: &Block) -> Option<String> {
     for stmt in &body.stmts {
         if let StmtKind::Assign { target, op, value } = &stmt.kind {
-            let Some(var) = expr_name(target) else {
+            let Some(var) = shapes::name(target) else {
                 continue;
             };
             match op {
@@ -163,7 +157,7 @@ pub(super) fn fenwick_step_var(body: &Block) -> Option<String> {
                         ..
                     } = &walk::unparen(value).kind
                     {
-                        if expr_name(lhs) == Some(var) && is_lowbit(rhs, var) {
+                        if shapes::name(lhs) == Some(var) && is_lowbit(rhs, var) {
                             return Some(var.to_string());
                         }
                     }
@@ -228,15 +222,15 @@ pub(super) fn is_double(e: &Expr, var: &str) -> bool {
             rhs,
             ..
         } => {
-            (expr_name(lhs) == Some(var) && is_int_lit(rhs, 2))
-                || (expr_name(rhs) == Some(var) && is_int_lit(lhs, 2))
+            (shapes::name(lhs) == Some(var) && is_int_lit(rhs, 2))
+                || (shapes::name(rhs) == Some(var) && is_int_lit(lhs, 2))
         }
         ExprKind::Binary {
             op: BinOp::Shl,
             lhs,
             rhs,
             ..
-        } => expr_name(lhs) == Some(var) && is_int_lit(rhs, 1),
+        } => shapes::name(lhs) == Some(var) && is_int_lit(rhs, 1),
         _ => false,
     }
 }
@@ -261,7 +255,7 @@ pub(super) fn is_halve_assign(stmt: &Stmt) -> Option<String> {
     let StmtKind::Assign { target, op, value } = &stmt.kind else {
         return None;
     };
-    let var = expr_name(target)?;
+    let var = shapes::name(target)?;
     let halved = match op {
         AssignOp::Binary(BinOp::Shr) => is_int_lit(value, 1),
         AssignOp::Binary(BinOp::Div) => is_int_lit(value, 2),
@@ -271,13 +265,13 @@ pub(super) fn is_halve_assign(stmt: &Stmt) -> Option<String> {
                 lhs,
                 rhs,
                 ..
-            } => expr_name(lhs) == Some(var) && is_int_lit(rhs, 1),
+            } => shapes::name(lhs) == Some(var) && is_int_lit(rhs, 1),
             ExprKind::Binary {
                 op: BinOp::Div,
                 lhs,
                 rhs,
                 ..
-            } => expr_name(lhs) == Some(var) && is_int_lit(rhs, 2),
+            } => shapes::name(lhs) == Some(var) && is_int_lit(rhs, 2),
             _ => false,
         },
         _ => false,
@@ -332,8 +326,8 @@ pub(super) fn is_iterative_segtree_loop(body: &Block) -> bool {
             } = &expr.kind
             {
                 for v in self.vars {
-                    if (expr_name(lhs) == Some(v.as_str()) && is_int_lit(rhs, 1))
-                        || (expr_name(rhs) == Some(v.as_str()) && is_int_lit(lhs, 1))
+                    if (shapes::name(lhs) == Some(v.as_str()) && is_int_lit(rhs, 1))
+                        || (shapes::name(rhs) == Some(v.as_str()) && is_int_lit(lhs, 1))
                     {
                         self.has_parity = true;
                     }
@@ -393,8 +387,8 @@ pub(super) fn is_recursive_segtree_fn(decl: &FnDecl, body: &Block) -> bool {
                                 ExprKind::Compare { first, rest } if rest.len() == 1 => {
                                     let (op, rhs) = &rest[0];
                                     if matches!(op, CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge) {
-                                        let l = expr_name(first);
-                                        let r = expr_name(rhs);
+                                        let l = shapes::name(first);
+                                        let r = shapes::name(rhs);
                                         if matches!(l, Some("mid") | Some("m"))
                                             || matches!(r, Some("mid") | Some("m"))
                                         {
@@ -433,7 +427,7 @@ pub(super) fn is_recursive_segtree_fn(decl: &FnDecl, body: &Block) -> bool {
                 {
                     self.has_mid = true;
                 }
-                ExprKind::Call { callee, args } if expr_name(callee) == Some(self.fn_name) => {
+                ExprKind::Call { callee, args } if shapes::name(callee) == Some(self.fn_name) => {
                     for arg in args {
                         for p in self.params {
                             if is_double(&arg.value, p) {

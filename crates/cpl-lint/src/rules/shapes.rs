@@ -88,3 +88,26 @@ pub(crate) fn negated_op(op: CmpOp) -> Option<&'static str> {
         _ => return None,
     })
 }
+
+/// Whether `c` can be part of an identifier.
+pub(crate) fn ident_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+
+/// Whether `s` is one identifier.
+pub(crate) fn is_ident(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(ident_char)
+}
+
+/// Whether `word` occurs in `text` as a whole identifier.
+pub(crate) fn mentions(text: &str, word: &str) -> bool {
+    text.split(|c: char| !ident_char(c)).any(|w| w == word)
+}
+
+/// The name a plain name pattern binds.
+pub(crate) fn pattern_name(p: &cpl_syntax::ast::Pattern) -> Option<&str> {
+    match &p.kind {
+        cpl_syntax::ast::PatternKind::Name(n) => Some(n.as_str()),
+        _ => None,
+    }
+}
