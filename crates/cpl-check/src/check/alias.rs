@@ -38,7 +38,7 @@ impl<'a> Checker<'a> {
                 work.push((n.text.clone(), n.span));
             }
         });
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = crate::fx::HashSet::default();
         while let Some((alias, origin)) = work.pop() {
             if alias == start {
                 return Some(origin);
