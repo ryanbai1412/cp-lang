@@ -344,6 +344,8 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertFalse(dr.idiom_edit_stateable(*shared_const))
         self.assertTrue(dr.idiom_edit_stateable(*two_places))
         self.assertFalse(dr.idiom_edit_stateable("x\n", "x\n"))
+        adds_directive = ("let t: Int = read()\nfor _ in 0..t:\n    print(1)\n", "@!multitest\nprint(1)\n")
+        self.assertFalse(dr.idiom_edit_stateable(*adds_directive))
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())

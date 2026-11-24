@@ -2771,14 +2771,17 @@ CP_BINDING = re.compile(r"\b(?:let|var|const|fn|type|struct|enum|for)\s+(?:mut\s
 def idiom_edit_stateable(before: str, after: str) -> bool:
     """Whether a lint record's before -> after edit is what a `@lint(from:, to:)`
     pattern states (decision 512): each changed line run stays in one block (a
-    statement run), and no two runs change the same name bound in the file (then
-    they are one edit at two places, not two findings)."""
+    statement run), no two runs change the same name bound in the file (then
+    they are one edit at two places, not two findings), and no run adds a `@!`
+    directive (directives are core, not std items a pattern's `to` can call)."""
     old = [line.rstrip() for line in before.split("\n")]
     new = [line.rstrip() for line in after.split("\n")]
     hunks = [o for o in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes() if o[0] != "equal"]
     bound = set(CP_BINDING.findall(before + "\n" + after))
     seen: set[str] = set()
     for _, i1, i2, j1, j2 in hunks:
+        if any(line.lstrip().startswith("@!") for line in new[j1:j2]):
+            return False
         run = [line for line in old[i1:i2] if line.strip()]
         if any(_indent(line) < _indent(run[0]) for line in run):
             return False
