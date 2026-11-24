@@ -2808,6 +2808,7 @@ HARD_ZERO = frozenset({
     "web_hand_copied",
     "corpus_no_tests", "cpp_optional_copies",
     "helper_env_vars",
+    "timeout_passes",
 })
 # Paid down to the one place the thing lives: above the floor fails, with no baseline.
 HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader

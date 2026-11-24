@@ -568,16 +568,14 @@ jobs:
           key: corpus-tests-${{ github.run_id }}
           restore-keys: corpus-tests-
       # Keyed by content in scripts/corpus.py: built ports and references
-      # (CXX_CACHE), --checks builds (corpus-generators), and the cases the
-      # interpreter can't finish in 20 s (INTERP_SLOW). Per shard, so each
-      # shard's save holds its own packages.
+      # (CXX_CACHE) and --checks builds (corpus-generators). Per shard, so
+      # each shard's save holds its own packages.
       - uses: actions/cache/restore@v4
         if: ${{ !cancelled() }}
         with:
           path: |
             ~/.cache/cpl/cxx/corpus
             target/corpus-generators
-            target/interp-slow
           key: acceptance-${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: |
             acceptance-${{ matrix.shard }}-
@@ -598,7 +596,6 @@ jobs:
           path: |
             ~/.cache/cpl/cxx/corpus
             target/corpus-generators
-            target/interp-slow
           key: acceptance-${{ matrix.shard }}-${{ github.run_id }}
 
   corpus-audit:

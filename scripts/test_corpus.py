@@ -325,56 +325,38 @@ class CliTest(unittest.TestCase):
             self.assertIn(f"unrecognized arguments: {argv[1]}", err.getvalue())
 
 
-class InterpSlowTest(Corpus):
-    def check_twice(self, *builds):
-        """check_stress on one slow case once per `cpl` build in `builds`; the cpl runs it made."""
+class InterpTimeoutTest(Corpus):
+    def test_a_case_past_the_interpreter_is_a_finding(self):
         d = self.package("p", port_cp="print(1)\n")
         case = self.root / "01.in"
         case.write_text("1\n")
-        cpl = self.root / "cpl"
-        runs = []
 
-        def run_result(cmd, data):
-            runs.append(cmd[0])
-            return None if cmd[0] == str(cpl) else (0, b"1\n", b"")
-        corpus.build_id.cache_clear()
-        with mock.patch.object(corpus, "INTERP_SLOW", str(self.root / "slow")), \
-                mock.patch.object(corpus, "native", lambda pkg, ctx: ("exe", 1)), \
+        def run_result(cmd, data, timeout=corpus.TIMEOUT):
+            return corpus.TIMED_OUT if cmd[0] == "cpl" else (0, b"1\n", b"")
+        with mock.patch.object(corpus, "native", lambda pkg, ctx: ("exe", 1)), \
                 mock.patch.object(corpus, "generated", lambda pkg: [case]), \
                 mock.patch.object(corpus, "run_result", run_result):
-            pkg = corpus.Package.at(d)
-            for build in builds:
-                cpl.write_bytes(build)
-                corpus.build_id.cache_clear()
-                ctx = corpus.Context(str(cpl), named=["p"])
-                self.assertEqual(corpus.check_stress(pkg, ctx), [])
-                self.assertEqual(ctx.slow, ["p 01.in"])
-        return runs.count(str(cpl))
-
-    def test_a_case_past_the_interpreter_is_reported_and_then_skipped(self):
-        self.assertEqual(self.check_twice(b"v1", b"v1"), 1)
-
-    def test_a_new_cpl_build_runs_a_slow_case_again(self):
-        self.assertEqual(self.check_twice(b"v1", b"v2"), 2)
+            ctx = corpus.Context("cpl", named=["p"])
+            self.assertEqual(corpus.check_stress(corpus.Package.at(d), ctx), ["interp-timeout p 01.in"])
 
 
 class CompareTest(unittest.TestCase):
     def outcome(self, interp, *cxx):
         """`run` gives the interpreter's result, then each C++ result in turn."""
         results = iter([interp, *cxx])
-        return corpus.compare(lambda cmd, data: next(results), ["cpl"], ["exe"], b"")
+        return corpus.compare(lambda cmd, data, timeout=None: next(results), ["cpl"], ["exe"], b"")
 
     def test_agreement_is_no_finding(self):
         self.assertIsNone(self.outcome((0, b"1\n", b""), (0, b"1\n", b"")))
 
     def test_one_cxx_timeout_is_retried_not_a_finding(self):
-        self.assertIsNone(self.outcome((0, b"1\n", b""), None, (0, b"1\n", b"")))
+        self.assertIsNone(self.outcome((0, b"1\n", b""), corpus.TIMED_OUT, (0, b"1\n", b"")))
 
     def test_two_cxx_timeouts_are_a_finding_that_says_so(self):
-        self.assertEqual(self.outcome((0, b"1\n", b""), None, None), "c++ timed out twice")
+        self.assertEqual(self.outcome((0, b"1\n", b""), corpus.TIMED_OUT, corpus.TIMED_OUT), "c++ timed out twice")
 
-    def test_an_interp_timeout_is_slow_not_agreement(self):
-        self.assertEqual(self.outcome(None), corpus.SLOW)
+    def test_an_interp_timeout_is_timed_out_not_agreement(self):
+        self.assertEqual(self.outcome(corpus.TIMED_OUT), corpus.TIMED_OUT)
 
     def test_a_differ_names_both_exit_codes_and_the_first_differing_line(self):
         self.assertEqual(self.outcome((0, b"a\nb\n", b""), (0, b"a\nB\n", b"")),

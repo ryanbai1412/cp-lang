@@ -862,40 +862,31 @@ def gen_out(pkg, args):
         return None
 
 
-def run_result(cmd, data):
-    """(exit code, stdout, stderr) of `cmd` on `data`, or None on a timeout."""
+# How long the interpreter may take on one stress case: the largest v03
+# cases take it 32 s (cco24p1 11.in, 33 MB) and 34 s (noi10p2 21.in).
+INTERP_TIMEOUT = 60
+
+
+def run_result(cmd, data, timeout=TIMEOUT):
+    """(exit code, stdout, stderr) of `cmd` on `data`, or TIMED_OUT past `timeout`."""
     try:
-        r = subprocess.run(cmd, input=data, capture_output=True, timeout=TIMEOUT)
+        r = subprocess.run(cmd, input=data, capture_output=True, timeout=timeout)
     except subprocess.TimeoutExpired:
-        return None
+        return TIMED_OUT
     return r.returncode, r.stdout, r.stderr
-
-
-# A case the interpreter can't finish in TIMEOUT has no interpreter verdict.
-# Its content key lands here, so later runs skip it instead of spending the
-# TIMEOUT again; a changed port, case or cpl build is a new key, run again.
-INTERP_SLOW = os.path.join(ROOT, "target", "interp-slow")
-SLOW = "interp-slow"
-
-
-@functools.lru_cache(maxsize=None)
-def build_id(cpl):
-    """The hash of the `cpl` binary: a new interpreter is a new verdict."""
-    return hashlib.sha256(Path(cpl).read_bytes()).digest()
-
-
-def slow_key(port, data, cpl):
-    return hashlib.sha256(build_id(cpl) + Path(port).read_bytes() + b"\0" + data).hexdigest()[:20]
 
 
 def compare(run, interp, cxx, data):
     """Why `cpl run` and the port's C++ disagree on `data`, None when they
-    agree, or SLOW when the interpreter times out. A C++ timeout is retried once."""
-    a = run(interp, data)
-    if a is None:
-        return SLOW
-    b = run(cxx, data) or run(cxx, data)
-    if b is None:
+    agree, or TIMED_OUT when the interpreter times out, which has no verdict
+    and so is a finding. A C++ timeout is retried once."""
+    a = run(interp, data, INTERP_TIMEOUT)
+    if a == TIMED_OUT:
+        return TIMED_OUT
+    b = run(cxx, data)
+    if b == TIMED_OUT:
+        b = run(cxx, data)
+    if b == TIMED_OUT:
         return "c++ timed out twice"
     if a[:2] == b[:2]:
         return None
@@ -922,16 +913,9 @@ def check_stress(pkg, ctx):
         return [f"no-build {pkg.id} -"]
     found = []
     for inp in generated(pkg):
-        data = inp.read_bytes()
-        memo = os.path.join(INTERP_SLOW, slow_key(pkg.port, data, ctx.cpl))
-        if os.path.exists(memo):
-            ctx.slow.append(f"{pkg.id} {inp.name}")
-            continue
-        why = compare(run_result, [ctx.cpl, "run", str(pkg.port)], [exe], data)
-        if why == SLOW:
-            os.makedirs(INTERP_SLOW, exist_ok=True)
-            Path(memo).write_text(f"{pkg.id} {inp.name}\n")
-            ctx.slow.append(f"{pkg.id} {inp.name}")
+        why = compare(run_result, [ctx.cpl, "run", str(pkg.port)], [exe], inp.read_bytes())
+        if why == TIMED_OUT:
+            found.append(f"interp-timeout {pkg.id} {inp.name}")
         elif why:
             found.append(f"differ {pkg.id} {inp.name}: {why}")
     ref = pkg.reference()
@@ -1219,7 +1203,6 @@ class Context:
     def __init__(self, cpl, run=True, named=()):
         self.named = set(named)
         self.cpl, self.run, self.natives, self._hill, self._tests = cpl, run, {}, None, None
-        self.slow = []
         self.run_ids = set_ids(RUN_SET) if os.path.exists(os.path.join(SETS, RUN_SET + ".txt")) else set()
 
     def runs(self, pkg):
@@ -1513,9 +1496,6 @@ def verify(args):
         return 2
     for f in found:
         print(f)
-    if ctx.slow:
-        print(f"corpus: {len(ctx.slow)} case(s) past the interpreter's {TIMEOUT} s have no interpreter verdict "
-              f"({INTERP_SLOW}): {', '.join(sorted(ctx.slow)[:8])}", file=sys.stderr)
     print(f"corpus: verified {len(wanted)} package(s) ({','.join(modes)}): {len(found)} finding(s)", file=sys.stderr)
     return 1 if found else 0
 

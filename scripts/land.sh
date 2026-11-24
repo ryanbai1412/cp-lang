@@ -218,9 +218,9 @@ refuse_if_broken() {
 }
 # Clippy as CI runs it (-D warnings, every target) on the touched crates and
 # the workspace crates that depend on them, at the rebased tip. A compile
-# error in a crate this change touches refuses the land; past
-# CPL_LAND_CLIPPY_SECS (cold cache) or on any other failure it warns and
-# lands, leaving it to CI (whose regen job applies `clippy --fix`).
+# error in a crate this change touches refuses the land; on any other
+# failure it warns and lands, leaving it to CI (whose regen job applies
+# `clippy --fix`). It runs to the end, so a cold cache is slow, never a pass.
 users=""
 if [ -n "$crates" ]; then
     users=$(cargo metadata -q --format-version 1 --no-deps | uv run --quiet python -c '
@@ -242,13 +242,12 @@ print(" ".join("-p " + n for n in sorted(seen)))
 ' $crates)
     gate_start=$(date +%s)
     set +e
-    out=$(timeout "${CPL_LAND_CLIPPY_SECS:-40}" cargo clippy -q $users --all-targets -- -D warnings 2>&1)
+    out=$(cargo clippy -q $users --all-targets -- -D warnings 2>&1)
     rc=$?
     set -e
     echo "land: clippy on $(printf '%s\n' $users | grep -vc -- -p) crate(s) in $(( $(date +%s) - gate_start ))s" >&2
     case "$rc" in
         0) ;;
-        124) echo "land: clippy over ${CPL_LAND_CLIPPY_SECS:-40}s; landing, CI will check it" >&2 ;;
         *) refuse_if_broken "$out"
            printf '%s\n' "$out" | grep -E '^(error|warning)|-->' | head -20 >&2
            echo "land: WARNING: clippy fails on $users (maybe already on main); landing, CI's regen applies clippy --fix" >&2 ;;
@@ -262,7 +261,7 @@ push() {
         pull || exit 1
         recheck
         # What landed meanwhile can break this change's files: check again.
-        [ -z "$users" ] || refuse_if_broken "$(timeout "${CPL_LAND_CLIPPY_SECS:-40}" cargo check -q $users --all-targets 2>&1)"
+        [ -z "$users" ] || refuse_if_broken "$(cargo check -q $users --all-targets 2>&1)"
     fi
     git push -q --no-verify "$remote" HEAD:main
 }
