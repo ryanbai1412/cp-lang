@@ -14,6 +14,7 @@ use std.bag.{SortedSet}
 use std.seq.{collect}
 use std.hashmap.{Counter, push}
 use std.range.{first_true, last_true}
+use std.strings.{min_rotation}
 
 fn igcd(a0: Int, b0: Int) -> Int:
     var a = a0
@@ -2861,14 +2862,8 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
     walk
 
 fn least_rotation(cyc: List<Int>) -> List<Int>:
-    // `<` on lists is lexicographic; `best min= rot` would take the cellwise minimum.
-    with lint(chmin_chmax_if: allow)
-    let m = cyc.len
-    var best: List<Int> = copy(cyc)
-    for s in 1..m:
-        let rot = [cyc[(s + i) % m] for i in 0..m]
-        if rot < best: best = rot
-    best
+    let k = min_rotation(cyc) ?? 0
+    [cyc[(k + i) % cyc.len] for i in 0..cyc.len]
 
 /// For each query point, the index into `planar_faces(pts, edges)` of the bounded face that
 /// contains it, or `None` when it lies on an edge or vertex or in the unbounded region (offline
@@ -4443,3 +4438,11 @@ fn point_location_planar_matches_the_least_enclosing_face():
                         want = Some(f)
                         best = area
             assert got[qi] == want
+
+@test
+fn least_rotation_starts_at_the_smallest_rotation():
+    assert least_rotation([3, 1, 2, 1, 1]) == [1, 1, 3, 1, 2]
+    assert least_rotation([5, 4, 3, 2, 1, 1, 2]) == [1, 1, 2, 5, 4, 3, 2]
+    assert least_rotation([1, 2, 1, 1, 2, 1]) == [1, 1, 2, 1, 1, 2]
+    assert least_rotation([2, 2, 2]) == [2, 2, 2]
+    assert least_rotation([7]) == [7]
