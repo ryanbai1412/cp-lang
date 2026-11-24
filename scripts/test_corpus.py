@@ -69,6 +69,14 @@ class ProblemsTest(Corpus):
         self.assertIs(corpus.accepted_cxx('#include "bits/extc++.h"\n__gnu_pbds::tree<int> t;'), corpus.GNU_CXX)
         self.assertIs(corpus.accepted_cxx('#include "bits/extc++.h"\nint main() {}'), corpus.ACCEPTED_CXX)
 
+    def test_gnu_dialect_clang_rejects_builds_with_gxx(self):
+        src = self.root / "vla.cpp"
+        src.write_text("#include <cstdio>\nint main(){int n=3; int a[n] {}; printf(\"%d\\n\", a[2]);}\n")
+        self.addCleanup(setattr, corpus, "CXX_CACHE", corpus.CXX_CACHE)
+        corpus.CXX_CACHE = str(self.root / "cxx")
+        out = subprocess.run([corpus.binary(src)], capture_output=True, text=True).stdout
+        self.assertEqual(out, "0\n")
+
     def test_reference_falls_back_to_an_accepted_submission(self):
         d = self.package("p1", orig_cpp="")
         self.assertEqual(corpus.Package.at(d).reference(), d / "orig.cpp")

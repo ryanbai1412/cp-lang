@@ -146,6 +146,10 @@ def binary(src):
     if not os.path.exists(exe):
         cxx = accepted_cxx(data.decode(errors="replace"))
         r = subprocess.run([*cxx, "-o", exe, str(src)], capture_output=True, text=True)
+        if r.returncode and cxx is ACCEPTED_CXX:
+            # The judge accepted it under g++: GNU dialect clang rejects
+            # (`int a[n] {};`) is still the reference.
+            r = subprocess.run([*GNU_CXX, "-o", exe, str(src)], capture_output=True, text=True)
         if r.returncode:
             raise RuntimeError("c++: " + r.stderr[:200])
     return exe
