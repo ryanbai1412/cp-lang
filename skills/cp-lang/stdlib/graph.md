@@ -62,7 +62,7 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 - `fn contains(self, u: V, v: V) -> Bool` — \(O(\deg u)\); True when some arc `u -> v` exists.
 - `fn lists(self) -> [V]List<V>` — \(O(n + m)\); The targets of every vertex as plain lists, `lists()[u] == next(u).collect()`: the shape `std.flow` matchings take.
 - `fn hops(self) -> [V, V]Int` — \(O(n (n + m))\) time, \(O(n^2)\) memory; The fewest arcs between every ordered pair, by a BFS from each vertex; `0` on the diagonal.; traps: when some vertex cannot reach another
-- `fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E>` — \(O(1)\) to make, \(O(1)\) per edge; Every edge once, as `Edge(e, u, v)`.
+- `fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E>` — \(O(n + m)\) for the whole walk, all of it before the first edge: it marks every edge; Every edge once, as `Edge(e, u, v)`.
 - `fn peel(self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None) -> List<V>` — \(O(n + m)\) plus the calls of `ready` and `on_remove`; `peel(g, ready:, on_remove:)` as a method; see the free `peel`.
 - `fn transpose(self) -> Graph<V, A>` — \(O(n + m)\); Every arc `u -> a.to` reversed to `a.to -> u`, its other fields kept (`(..a, to: u)`).
 
@@ -144,7 +144,7 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 `g.only(keep)`; see `only`.
 
 - `fn out(self, u: V) -> yields G.Arc` — \(O(1)\) to make, \(O(1)\) per arc of `g` walked; The arcs out of `u` the view keeps: None when `u` is dropped, else those whose `to` is kept.
-- `fn deg(self, u: V) -> Int` — O(deg u in `g`); The number of arcs out of `u` the view keeps.
+- `fn deg(self, u: V) -> Int` — \(O(\deg u)\) in `g`; The number of arcs out of `u` the view keeps.
 - `fn transpose(self) -> Graph<V, G.Arc>` — \(O(n + m)\); The kept arcs reversed, built as a `Graph` (record arcs as `(..a, to: u)`, a plain vertex arc as `u`).
 
 ## Functions
@@ -197,8 +197,8 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn de_bruijn(k: Int, n: Int) -> List<Int>` — \(O(k^n)\); The de Bruijn sequence over `0..k` of order `n`: a cyclic sequence of length `k^n` in which every length-`n` word appears once.; traps: when `k < 1` or `n < 1`
 - `fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(edges: [E]R, by: R -> K = e => e.w) -> (total: W, take: [E]Bool)` — \(O(m \log m)\); A minimum spanning forest by Kruskal, as its total weight and the chosen edges.
 - `fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V)` — \(O(n^2)\); A minimum spanning tree of the dense graph `w` (Prim without a heap), rooted at `V.first`; `None` if it is disconnected.
-- `fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (total: W, edges: List<(u: V, v: V)>)` — \(O(\log n)\) rounds, each \(O(n)\) plus the call of `cheapest`; A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST, Manhattan MST).; traps: when `cheapest` returns a list whose length is not the number of components
-- `fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(total: W, parent: [V]?E)` — \(O(m \log n)\); A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with a skew heap): `parent[v]` is the edge entering `v`, `None` at `root`.
+- `fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (total: W, edges: List<(u: V, v: V)>)` — \(O(n \log n)\) plus the calls of `cheapest`: \(O(\log n)\) rounds, each \(O(n)\); A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST, Manhattan MST).; traps: when `cheapest` returns a list whose length is not the number of components
+- `fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(total: W, parent: [V]?E)` — \(O(m \log n)\); A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with leftist heaps): `parent[v]` is the edge entering `v`, `None` at `root`.
 - `fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool` — \(O(n + m)\); A spanning forest of an undirected graph as chosen edges: a BFS from each unvisited vertex in vertex order takes the arc that discovers each vertex.
 - `fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>` — \(O(n + m)\); `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
 - `fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, G>` — \(O(1)\) to make; `keep` and `from` run per arc walked; The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex are skipped as `out` walks.
