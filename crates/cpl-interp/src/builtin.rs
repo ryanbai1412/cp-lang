@@ -51,31 +51,21 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     _ => a.wrapping_mul(b),
                 })
             }
-            Builtin::Min => {
+            Builtin::Min | Builtin::Max => {
                 // On `?T`, `none` is the identity: it never wins and loses to any value.
                 let none =
                     |v: &Value| matches!(e.ty, Ty::Opt(_)) && matches!(v, Value::Opt(OptVal::None));
+                let wins = if matches!(op, Builtin::Max) {
+                    std::cmp::Ordering::Greater
+                } else {
+                    std::cmp::Ordering::Less
+                };
                 let mut best = first;
                 for v in values {
                     if none(&v) {
                         continue;
                     }
-                    if none(&best) || self.cmp_ty_val(&e.ty, &v, &best, span)?.is_lt() {
-                        best = v;
-                    }
-                }
-                best
-            }
-            Builtin::Max => {
-                // On `?T`, `none` is the identity: it never wins and loses to any value.
-                let none =
-                    |v: &Value| matches!(e.ty, Ty::Opt(_)) && matches!(v, Value::Opt(OptVal::None));
-                let mut best = first;
-                for v in values {
-                    if none(&v) {
-                        continue;
-                    }
-                    if none(&best) || self.cmp_ty_val(&e.ty, &v, &best, span)?.is_gt() {
+                    if none(&best) || self.cmp_ty_val(&e.ty, &v, &best, span)? == wins {
                         best = v;
                     }
                 }
