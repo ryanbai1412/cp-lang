@@ -36,6 +36,8 @@ pub(crate) struct Tail {
     /// Locals read whole, not only through an index, field or length: the
     /// C++ may move them, so nothing may hold a reference into them.
     pub(crate) whole: std::collections::BTreeSet<usize>,
+    /// The path each write in the statements changes.
+    pub(crate) written: Vec<crate::uses::places::Path>,
 }
 
 /// The map and key of `m.get(k)`: the one read whose found value is an

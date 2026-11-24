@@ -956,3 +956,49 @@ fn a_list_walked_again_or_read_later_is_kept() {
         assert!(!out.contains(".swap(words)"), "{out}");
     }
 }
+
+#[test]
+fn an_operand_binds_by_reference_when_later_operands_write_other_fields() {
+    let solve = body(
+        "struct Node:
+    var kids: List<Int>
+    var heap: List<Int>
+fn take(mut xs: List<Int>) -> Int:
+    xs.push(1)
+    xs.len
+fn grow(mut n: Node) -> Int:
+    n.kids.push(2)
+    n.kids.len
+fn inc(mut x: Int) -> Int:
+    x += 1
+    x
+var n = Node([1, 2], [3])
+print(n.kids, take(mut n.heap))
+print(n.heap, take(mut n.heap))
+print(n.kids, grow(mut n))
+print(n.kids, inc(mut n.kids[0]))
+",
+    );
+    let lines: Vec<&str> = solve.lines().map(str::trim).collect();
+    let bound = |line: &str| lines.iter().filter(|l| l.ends_with(line)).count();
+    assert_eq!(
+        bound("& t0 = n.kids;"),
+        1,
+        "a later write to another field leaves kids as it was read:\n{solve}"
+    );
+    assert_eq!(
+        bound("std::vector<ll> t2 = n.heap;"),
+        1,
+        "a later write to the same field copies:\n{solve}"
+    );
+    assert_eq!(
+        bound("std::vector<ll> t4 = n.kids;"),
+        1,
+        "a later write to the whole struct copies:\n{solve}"
+    );
+    assert_eq!(
+        bound("std::vector<ll> t6 = n.kids;"),
+        1,
+        "a later write to an element copies:\n{solve}"
+    );
+}

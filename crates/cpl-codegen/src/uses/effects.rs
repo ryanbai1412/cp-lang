@@ -218,6 +218,7 @@ impl crate::emit::Emitter<'_> {
             tested: false,
             lendable: false,
             whole,
+            written: crate::uses::places::write_paths(&block),
         }
     }
 }
