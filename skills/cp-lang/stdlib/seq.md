@@ -170,13 +170,17 @@ State a window can add to at the back and remove from at the front.
 - `fn prev(self, i: D) -> D` — \(O(1)\); The position before `i`, wrapping.
 - `fn from(self, i: D) -> yields D` — \(O(1)\) per step; All n positions, starting at `i` and wrapping.
 - `fn span(self, start: D, len: Int) -> RingRange<D>` — \(O(1)\); The `len` positions from `start` on, wrapping (`len <= n`).; traps: when `len` is not in `0..=n`
-- `fn windows(self, k: Int) -> yields RingSlice<D, T>` — \(O(1)\) per window; The n windows of `k` elements, one starting at each position, wrapping.; traps: when `k` is not in `1..=n`
+- `fn windows(self, k: Int) -> RingWindows<D, T>` — \(O(1)\) to build, \(O(1)\) per window walked; The n windows of `k` elements, one starting at each position, wrapping.; traps: when `k` is not in `1..=n`
 - `fn maximal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; Two pointers round the cycle: for each position as the last element, the longest wrapping piece (at most n elements) ending there that is `ok`, fed through `state: Track`.
 - `fn minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; For each position as the last element, the shortest wrapping piece ending there that is `ok`, or None.
 
-## `struct RingSlice<D, T>()`
+## `struct RingWindows<D, T>(pub src: Ring<D, T>, k: Int)`
 
 A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
+
+Fields: `k: Int,`.
+
+## `struct RingSlice<D, T>()`
 
 - `@get fn range(self) -> RingRange<D>` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window.
