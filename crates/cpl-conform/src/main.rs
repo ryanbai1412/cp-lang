@@ -331,8 +331,9 @@ fn main() -> ExitCode {
         }
         if !ratchet.stale.is_empty() {
             eprintln!(
-                "cpl-conform: {} case(s) research/scoreboard.json records as failing now pass; record them: cargo run -p cpl-conform -- <suite> --write",
-                ratchet.stale.len()
+                "cpl-conform: {} case(s) {} records as failing now pass; record them: cargo run -p cpl-conform -- <suite> --write",
+                ratchet.stale.len(),
+                sb_path.display()
             );
             for s in &ratchet.stale {
                 eprintln!("  - {s}");
