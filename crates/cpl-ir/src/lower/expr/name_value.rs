@@ -200,14 +200,8 @@ impl<'a> Lowerer<'a> {
                 self.error(codes::TYPE_MISMATCH, span, message);
             }
             _ if name == "INF" => return self.mk(ExprKind::Int(INF), Ty::Int, span),
-            _ if matches!(name, "min" | "max") => {
-                let pair = Ty::Fn(vec![Ty::Int, Ty::Int], Box::new(Ty::Int));
-                let hint = match hint {
-                    Some(t @ Ty::Fn(ps, _)) if ps.len() == 2 => t.clone(),
-                    _ => pair,
-                };
-                let lambda = self.call_closure_ast(name, 2, span);
-                return self.expr(&lambda, Some(&hint));
+            _ if matches!(name, "min" | "max" | "some" | "Some") => {
+                return self.prelude_fn_value(name, hint, span);
             }
             _ if name == "todo" => {
                 let at = self.span(span);

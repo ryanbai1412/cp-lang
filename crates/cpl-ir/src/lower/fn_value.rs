@@ -87,6 +87,20 @@ impl<'a> Lowerer<'a> {
 
     /// `(a, b) => name(a, b)`: a fn named as a value is the closure that calls
     /// it, so it means what a direct call does (`min` keeps `none` as identity).
+    /// `min`/`max`, or the `Some` variant, named as a fn value: `xs.map(Some)` is `x => Some(x)`.
+    pub(super) fn prelude_fn_value(&mut self, name: &str, hint: Option<&Ty>, span: Span) -> Expr {
+        if matches!(name, "some" | "Some") {
+            let lambda = self.call_closure_ast(name, 1, span);
+            return self.expr(&lambda, hint);
+        }
+        let hint = match hint {
+            Some(t @ Ty::Fn(ps, _)) if ps.len() == 2 => t.clone(),
+            _ => Ty::Fn(vec![Ty::Int, Ty::Int], Box::new(Ty::Int)),
+        };
+        let lambda = self.call_closure_ast(name, 2, span);
+        self.expr(&lambda, Some(&hint))
+    }
+
     pub(super) fn call_closure_ast(&self, name: &str, arity: usize, span: Span) -> ast::Expr {
         let params: Vec<String> = (0..arity).map(|i| format!("__{name}{i}")).collect();
         let at = |kind| ast::Expr { kind, span };
