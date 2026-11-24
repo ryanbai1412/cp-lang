@@ -7,11 +7,15 @@
   {"id": "5072368", "language": "CPP17", "result": "RTE", "time": 1.371855519, "memory_kb": 394232.0, "file": "corpus/submissions/5072368.cpp"},
   {"id": "5072373", "language": "CPP17", "result": "RTE", "time": 1.863811863, "memory_kb": 394280.0, "file": "corpus/submissions/5072373.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/iati21a21/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Statement: IATI 2021 senior day 2 task 1 (Hint), arena.olimpiici.com problem 1603 (PDF); it has no sample test. Grader-only (genHint and solve in separate processes), stdio-adapted through interactor.py: round 1 gets the local grader's input (N M, A, B, K, an optimal C) and prints the hint bits, round 2 gets A, B and the hint and prints an LCS, checked for length K and for being common; one process serves both rounds, so state kept across them is not caught. No accepted submission exists (the four C++ ones crash), so orig.cpp sends N bits marking C's leftmost embedding in A: correct, but far over the 640 bits that score fully. gen.py's C is Hunt-Szymanski, checked against the O(NM) DP on 400 generated cases."
 }
