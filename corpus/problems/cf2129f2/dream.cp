@@ -21,23 +21,29 @@ domain Q = 0..29
 domain Val = 1..=890
 type Mask = Bitset<Q>
 
-let rows = [Mask([3 * i, 3 * i + 1, 3 * i + 2]) for i in 0..9]
-let diags = [Mask([3 * i, (3 * i + 4) % 27, (3 * i + 8) % 27]) for i in 0..9]
-let small = [Mask([])] + [Mask([q]) for q in Q] + [Mask([q, r]) for (q, r) in Q.pairs]
-let masks: [Val]Mask = rows + diags + small + small
+let rows = [Mask.of([Q(3 * i), Q(3 * i + 1), Q(3 * i + 2)]) for i in 0..9]
+let diags = [Mask.of([Q(3 * i), Q((3 * i + 4) % 27), Q((3 * i + 8) % 27)]) for i in 0..9]
+let small = [Mask.empty()] + [Mask.of([q]) for q in Q] + [Mask.of([q, r]) for (q, r) in Q.pairs]
+let all_masks = rows + diags + small + small
+let masks = [Val] v => all_masks[v.ord]
 let holders = Val.group(by: v => masks[v])
-var rng = Rng(50)
+var rng = Rng.new(50)
 
-fn query_positions(vals: List<Val>) -> List<Int> = ask<[vals.len]Int>(2, vals.len, vals)
-fn query_values(probes: List<Int>) -> List<Val> =
-    ask<[min(probes.len, TYPE3_LIMIT)]Val>(3, probes.len, probes)
+fn query_positions(vals: List<Val>) -> List<Int>:
+    print(2, vals.len, vals)
+    let found: [0..vals.len]Int = read()
+    found.collect()
+fn query_values(probes: List<Int>) -> List<Val>:
+    print(3, probes.len, probes)
+    let found: [0..min(probes.len, TYPE3_LIMIT)]Val = read()
+    found.collect()
 
 @!multitest
 let n: 2..=890 = read()
 domain Pos = 1..=n
-var sig: [Pos]Mask = Mask([])
+var sig: [Pos]Mask = Mask.empty()
 for q in Q:
-    let vals = Val.filter(v => v.ord < n and q in masks[v])
+    let vals = [v for v in Val if v.ord < n and q in masks[v]]
     if not vals.is_empty:
         for p in query_positions(vals): sig[Pos(p)].add(q)
 
@@ -49,7 +55,7 @@ for (s, ps) in Pos.group(by: p => sig[p]):
     if ps.len == 1:
         ans[ps[0]] = vs[0]
     else:
-        let (p0, p1) = if rng.coin(): (ps[1], ps[0]) else: (ps[0], ps[1])
+        let (p0, p1) = if rng.chance(0.5): (ps[1], ps[0]) else: (ps[0], ps[1])
         (ans[p0], ans[p1]) = (vs[0], vs[1])
         probes.push(p0.ord + 1)
         undo[vs[1]] = (p0, p1)
