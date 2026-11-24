@@ -2,6 +2,7 @@
 """Run the staged spec/conformance cases through cpl-conform (commit tier).
 
     scripts/conform_staged.py CPL_CONFORM CASE...
+    scripts/conform_staged.py --build CASE...   build cpl-cli and cpl-conform first (land.sh)
 
 A staged case that fails blocks the commit unless HEAD's
 research/scoreboard.json already records it as failing: no new failing case,
@@ -11,6 +12,7 @@ mark `// <- here` (conformance/R1, conformance/R3). Each case runs twice, and on
 between the runs is a flake and blocks too.
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -62,6 +64,11 @@ def flake(case, first, second):
 
 
 def main(argv):
+    if argv[:1] == ["--build"]:
+        if subprocess.run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=ROOT).returncode:
+            return 1
+        target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
+        argv = [str((target if target.is_absolute() else ROOT / target) / "debug" / "cpl-conform"), *argv[1:]]
     conform, paths = argv[0], argv[1:]
     known = board_failing(head_board())
     bad = []

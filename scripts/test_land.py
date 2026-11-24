@@ -193,6 +193,39 @@ class LandTest(unittest.TestCase):
             self.assertEqual(git(ours, "show", "origin/main:pkg.txt") if code == 0 else
                              git(ours, "ls-tree", "origin/main", "pkg.txt"), "" if code else slices)
 
+    def test_conformance_cases_the_hooks_cut_skipped_run_before_the_push(self):
+        ours = self.clone("ours")
+        (ours / "scripts" / "conform_staged.py").write_text(
+            "import sys\nprint('cases', *sys.argv[1:], file=sys.stderr)\nsys.exit(1 if 'bad.cp' in sys.argv else 0)\n")
+        self.commit(ours, "a case runner")
+        git(ours, "push", "-q", "origin", "HEAD:main")
+        pending = ours / ".git" / "cpl-pending-cases"
+        for case, code in (("bad.cp", 1), ("good.cp", 0)):
+            (ours / case).write_text("x\n")
+            self.commit(ours, case)
+            pending.write_text(case + "\n")
+            r = self.land(ours)
+            self.assertEqual(r.returncode, code, r.stderr)
+            self.assertIn(f"cases --build {case}", r.stderr)
+            self.assertEqual(pending.exists(), code != 0)
+            if code:
+                git(ours, "rm", "-q", case)
+                self.commit(ours, "drop " + case)
+
+    def test_pending_cases_refuse_uncommitted_compiler_changes(self):
+        ours = self.clone("ours")
+        (ours / "crates").mkdir()
+        (ours / "crates" / "a.rs").write_text("fn a() {}\n")
+        (ours / "c.cp").write_text("x\n")
+        self.commit(ours, "a crate and a case")
+        (ours / "crates" / "a.rs").write_text("fn b() {}\n")
+        (ours / ".git" / "cpl-pending-cases").write_text("c.cp\n")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("uncommitted changes under crates/ or std/", r.stderr)
+        git(ours, "fetch", "-q")
+        self.assertEqual(git(ours, "ls-tree", "origin/main", "c.cp"), "")
+
     def test_a_rebase_past_no_gate_change_lands_without_rerunning_it(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         self._hook(theirs, "echo gate ran; exit 1\n")

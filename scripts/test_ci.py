@@ -512,6 +512,13 @@ class CommitTest(unittest.TestCase):
         self.assertIn("check: Rust files are not formatted; run: cargo fmt -p cpl-fmt", err)
         self.assertFalse([e for e in ev if "clippy" in e or "gate.mjs" in e])
 
+    def test_staged_cases_refuse_unstaged_compiler_changes(self) -> None:
+        # 4aaa8b0db: the case passed against a codegen fix that stayed unstaged.
+        code, ev, _, err, _, _ = self._commit({"conform_cases": "c.cp"}, codes={"git diff --quiet -- crates std Cargo.toml Cargo.lock": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("unstaged changes under crates/ or std/", err)
+        self.assertFalse([e for e in ev if "conform_staged" in e])
+
     def test_every_selected_check_runs_in_order(self) -> None:
         sel = {"slices": "a b", "data_filter": "test(=d)", "check_files": "scripts/ci.py", "audit": "1",
                "idioms_catalog": "1", "spec_traits": "1", "steps": "scripts/x.py", "script_tests": "scripts/test_ci.py",

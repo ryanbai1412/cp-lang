@@ -163,6 +163,20 @@ if [ -s "$pending" ]; then
         { echo "land: a touched-path slice fails at the rebased tip; fix it and land again: uv run scripts/affected.py --run-slices $slices" >&2; exit 1; }
     rm -f "$pending"
 fi
+# The staged conformance cases a hook's cut skipped, against what lands: 4aaa8b0db
+# landed a case without the codegen fix its author had left unstaged.
+pending_cases="$(git rev-parse --git-common-dir)/cpl-pending-cases"
+if [ -s "$pending_cases" ]; then
+    cases=$(sort -u "$pending_cases" | while read -r c; do [ ! -f "$c" ] || echo "$c"; done | tr '\n' ' ' | sed 's/ $//')
+    if [ -n "$cases" ]; then
+        git diff --quiet HEAD -- crates std Cargo.toml Cargo.lock ||
+            { echo "land: uncommitted changes under crates/ or std/ would be tested in place of what lands; commit or stash them, then land again" >&2; exit 1; }
+        echo "land: running the staged conformance cases the hook's cut skipped: $cases" >&2
+        uv run --quiet python scripts/conform_staged.py --build $cases >&2 ||
+            { echo "land: a staged conformance case fails at the rebased tip; fix it and land again: uv run scripts/conform_staged.py --build $cases" >&2; exit 1; }
+    fi
+    rm -f "$pending_cases"
+fi
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
 # started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook

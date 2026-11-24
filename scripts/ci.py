@@ -624,6 +624,9 @@ class Tail:
                 raise Failed(f"script unit tests failed (named above); rerun: uv run python -m unittest {' '.join(tests)}")
         if cases := sel.get("conform_cases", "").split():
             self.step("staged conformance cases (scripts/conform_staged.py)")
+            if self.call(["git", "diff", "--quiet", "--", "crates", "std", "Cargo.toml", "Cargo.lock"]):
+                raise Failed("unstaged changes under crates/ or std/ would run the staged cases against code this commit"
+                             " leaves out (4aaa8b0db); stage them, or stash them with git stash --keep-index")
             self._cargo_build("cpl-cli", "cpl-conform")
             if self.call([sys.executable, "scripts/conform_staged.py", str(target_dir() / "debug/cpl-conform"), *cases]):
                 raise Failed("a staged conformance case fails; cpl-conform's message above says how to fix it")
