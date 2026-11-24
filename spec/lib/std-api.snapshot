@@ -1502,7 +1502,7 @@ std/segtree.cp: SegTree.fold(self, r: Range<D>) -> T
 std/segtree.cp: SegTree.get(self, i: D) -> T
 std/segtree.cp: SegTree.left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>
 std/segtree.cp: SegTree.monoid(self) -> Monoid<T>
-std/segtree.cp: SegTree.new<M, A>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: ?Range<Int> = None) -> SegTree<D, T, F>
+std/segtree.cp: SegTree.new<M, A, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>
 std/segtree.cp: SegTree.of<M>(op: M, f: D -> T) -> SegTree<D, T, F>
 std/segtree.cp: SegTree.refresh(mut self, i: D)
 std/segtree.cp: SegTree.right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>

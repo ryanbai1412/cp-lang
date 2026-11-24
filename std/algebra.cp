@@ -128,7 +128,7 @@ pub struct Action<T, F>(
     ) -> Action<T, F>:
         Action(id, compose, apply, Monoid<T>.of(over), commutes)
 
-    /// Resolve a stock action (`add`, `assign`, `affine`) or an `Action` against fold `op`.
+    /// Resolve a stock action (`add`, `assign`, `affine`, `flip`) or an `Action` against fold `op`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
@@ -155,6 +155,8 @@ pub struct Action<T, F>(
                 (f, v, span) => f.0 * v + f.1 * span,
                 m,
             )
+        if same(a, flip):
+            return Action(false, (nf, of) => nf != of, (f, v, span) => if f: T(v.flipped, v.now) else: v, m, true)
         a
 
 /// `x` with its order reversed. Build it with `desc(x)`.

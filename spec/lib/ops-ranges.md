@@ -323,10 +323,11 @@ A custom action, written inline:
   domain Cut = 0..=8
   struct Low: cover: Int, l: Cut, r: Cut, len: Int
   impl Low:
-      fn join(a: Low, b: Low) -> Low = todo -->
+      fn join(a: Low, b: Low) -> Low = todo
+  let lows = Monoid(Low(Int.MAX, Cut.first!, Cut.first!, 0), Low.join) -->
 ```cp
-let shift = Action(compose: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d))
-var low = SegTree(Low.join, [Cut] c => Low(0, c, c, 0), act: shift)
+let shift = Action(compose: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d), over: lows)
+var low = SegTree(lows, [Cut] c => Low(0, c, c, 0), act: shift)
 ```
 
 `n` is computed from the node, never stored, so an action that ignores it
@@ -667,12 +668,13 @@ if cover.fold(s.a..=s.b) == 0: todo
   struct Side: ends: Int
   impl Side:
       fn join(a: Side, b: Side) -> Side = todo
+  let sides = Monoid(Side(0), Side.join)
   let t = Rooted.from_parents([V] v => if v == V.first!: None else: Some(V.first!))
   let init: [V]Flip<Side> = todo
   let v = V(2) -->
 ```cp
 // cf2152g: flip a subtree, read the root
-var st = SegTree(Side.join, t.reorder(init), act: flip)
+var st = SegTree(Flip<Side>.op(sides), t.reorder(init), act: flip)
 st.apply(t.sub(v), true)
 print(st.all.now.ends)
 ```

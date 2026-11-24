@@ -8,6 +8,7 @@ type Pos = 0..=2_000_000_000
 
 struct NoAction
 struct NoOp
+struct NoOver
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
@@ -58,31 +59,39 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-    pub fn new<M, A>(
+    pub fn new<M, A, O>(
         op: M = NoOp(),
         a: ?[D]T = None,
         fill: ?T = None,
         act: A = NoAction(),
-        over: ?Range<Int> = None,
+        over: O = NoOver(),
     ) -> SegTree<D, T, F>:
-        if over != None: assert a == None, "pass either `a` or `over:`, not both"
+        // Only the domain path reads `D.count`, so `SegTree<Int, T>(op, over: lo..hi)` never reaches it.
+        if same(over, NoOver()): return SegTree<D, T, F>.on_domain(op, a, fill, act)
+        assert a == None, "pass either `a` or `over:`, not both"
+        if same(op, NoOp()):
+            assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
+            let left = Monoid<T>(fill!, (x, _) => x)
+            var st = SegTree<D, T, F>.sparse(left, over, fill, Some(Action<T, F>.of(act, left)))
+            st.dual = true
+            return st
+        let m = Monoid<T>.of(op)
+        if same(act, NoAction()): return SegTree<D, T, F>.sparse(m, over, fill, None)
+        SegTree<D, T, F>.sparse(m, over, fill, Some(Action<T, F>.of(act, op)))
+
+    fn on_domain<M, A>(op: M, a: ?[D]T, fill: ?T, act: A) -> SegTree<D, T, F>:
         if same(op, NoOp()):
             // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
             // values, so `apply` runs on leaves only.
             assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
             let seed = if let init = a: init[D.first!] else: fill!
             let left = Monoid<T>(seed, (x, _) => x)
-            let tags = Action<T, F>.of(act, left)
-            var st = if let r = over: SegTree<D, T, F>.sparse(left, r, fill, Some(tags)) else: SegTree<D, T, F>.build_lazy(left, a, fill, tags)
+            var st = SegTree<D, T, F>.build_lazy(left, a, fill, Action<T, F>.of(act, left))
             st.dual = true
             return st
         let m = Monoid<T>.of(op)
-        if same(act, NoAction()):
-            if let r = over: return SegTree<D, T, F>.sparse(m, r, fill, None)
-            return SegTree<D, T, F>.build(m, a, fill)
-        let resolved = Action<T, F>.of(act, op)
-        if let r = over: return SegTree<D, T, F>.sparse(m, r, fill, Some(resolved))
-        SegTree<D, T, F>.build_lazy(m, a, fill, resolved)
+        if same(act, NoAction()): return SegTree<D, T, F>.build(m, a, fill)
+        SegTree<D, T, F>.build_lazy(m, a, fill, Action<T, F>.of(act, op))
 
     fn sparse(m: Monoid<T>, over: Range<Int>, fill: ?T, act: ?Action<T, F>) -> SegTree<D, T, F>:
         let (lo, hi) = over.ends

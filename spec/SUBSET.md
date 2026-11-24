@@ -83,7 +83,7 @@ documented.
 | R07.9 | Folds | supported |  |
 | R07.11 | Ordering and grouping | supported |  |
 | R07.12 | More vocabulary | supported |  |
-| R08.1 | Folds | supported | 2 known gaps |
+| R08.1 | Folds | supported | 1 known gap |
 | R08.2 | 8.1 Traits and impls | supported |  |
 | R08.3 | 8.3 Laws | supported | 1 known gap |
 | R08.4 | 8.4 Record row types (trial) | supported |  |
@@ -180,7 +180,6 @@ documented.
 - core-04/zip-keyed-by-first.cp: fail
 - core-05/exercise-04-var-from-lent-param.cp: fail
 - core-05/map-entry-index-key-lends.cp: fail
-- core-08/extension-concrete-and-generic-ambiguous.cp: fail
 - core-08/law-calls-trait-method.cp: fail
 - std-graph/undirected-takes-list-of-records.cp: fail
 - std-search/real-bsearch-is-a-range-method.cp: fail
