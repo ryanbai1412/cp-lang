@@ -48,7 +48,7 @@ class CpSyntaxHighlighter : SyntaxHighlighterBase() {
 
     override fun getTokenHighlights(type: IElementType?): Array<TextAttributesKey> = pack(
         when (type) {
-            CpTokens.KEYWORD -> CpColors.KEYWORD
+            CpTokens.KEYWORD, CpTokens.LITERAL -> CpColors.KEYWORD
             CpTokens.TYPE_NAME -> CpColors.TYPE_NAME
             CpTokens.IDENTIFIER -> CpColors.IDENTIFIER
             CpTokens.NUMBER -> CpColors.NUMBER
@@ -96,21 +96,7 @@ class CpColorSettingsPage : ColorSettingsPage {
     override fun getAttributeDescriptors() = descriptors
     override fun getColorDescriptors(): Array<ColorDescriptor> = ColorDescriptor.EMPTY_ARRAY
     override fun getDisplayName() = "CP Lang"
-    override fun getDemoText() = """
-        /// The sum of everything left of the boundary.
-        @memo
-        fn ways(n: Int) -> Mod<1000000007>:
-            if n <= 1:
-                return 1
-            ways(n - 1) + ways(n - 2)
-
-        fn main():
-            let (n, k) = read()
-            var best = 0x7f
-            for i in 0..n:
-                best = max(best, k * i)  // no overflow: the types say so
-            print(f"{best} {ways(n)}", 'x')
-    """.trimIndent()
+    override fun getDemoText() = CpColorSettingsPage::class.java.getResource("/cp/demo.cp")!!.readText()
 }
 
 class CpParserDefinition : ParserDefinition {

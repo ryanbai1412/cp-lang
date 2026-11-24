@@ -296,6 +296,10 @@ jobs:
       - if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: nvim --version | head -1 && just neovim-smoke
+      - name: Vim highlighting agrees with the lexer
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: just highlight-agree vim
       # Vim from a clean home (an empty vimrc): `cpl setup vim`, then ^X^O completes.
       - uses: rhysd/action-setup-vim@v1
         id: vim
@@ -420,6 +424,8 @@ jobs:
         run: just zed-smoke
       - name: Tree-sitter grammar
         run: just tree-sitter-smoke
+      - name: Emacs and tree-sitter highlighting agree with the lexer
+        run: just highlight-agree emacs,tree-sitter,jetbrains
 
   # A main push with stale generated files (skill pages, gap lists, fixed
   # prelude gaps) or a machine-fixable clippy lint gets them regenerated and committed here, under the pushed

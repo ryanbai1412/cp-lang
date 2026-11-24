@@ -9,6 +9,7 @@ class CpTokenType(debugName: String) : IElementType(debugName, CpLanguage)
 
 object CpTokens {
     @JvmField val KEYWORD = CpTokenType("KEYWORD")
+    @JvmField val LITERAL = CpTokenType("LITERAL")
     @JvmField val IDENTIFIER = CpTokenType("IDENTIFIER")
     @JvmField val TYPE_NAME = CpTokenType("TYPE_NAME")
     @JvmField val NUMBER = CpTokenType("NUMBER")

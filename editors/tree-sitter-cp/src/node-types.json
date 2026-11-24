@@ -82,6 +82,10 @@
           {
             "type": "identifier",
             "named": true
+          },
+          {
+            "type": "number",
+            "named": true
           }
         ]
       }

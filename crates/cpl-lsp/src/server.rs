@@ -1251,7 +1251,12 @@ fn semantic_tokens(analysis: &cpl_check::Analysis) -> Vec<u32> {
     for item in &analysis.items {
         for entry in &item.check.hovers {
             let span = entry.span.shift(item.offset);
-            if analysis.text.get(span.start as usize..span.end as usize) != Some(&entry.name) {
+            let named = entry
+                .name
+                .starts_with(|c: char| c.is_alphabetic() || c == '_');
+            if !named
+                || analysis.text.get(span.start as usize..span.end as usize) != Some(&entry.name)
+            {
                 continue;
             }
             let callable = matches!(entry.ty, cpl_check::Ty::Fn { .. });

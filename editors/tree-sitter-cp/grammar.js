@@ -53,7 +53,7 @@ module.exports = grammar({
       '"',
     )),
 
-    char: _ => token(seq("'", choice(/[^'\\\n]/, /\\./), "'")),
+    char: _ => token(seq("'", choice(/[^'\\\n]/, /\\x[0-9a-fA-F]{2}/, /\\./), "'")),
     label: _ => token(seq("'", /[A-Za-z_][A-Za-z0-9_]*/)),
 
     number: _ => token(choice(
@@ -74,7 +74,8 @@ module.exports = grammar({
 
     member: $ => prec.right(1, seq(
       alias('.', $.punctuation),
-      field('name', $.identifier),
+      // A tuple field, `t.0.1`, is a whole number: never `0.1`.
+      field('name', choice($.identifier, alias(token(prec(1, /[0-9][0-9_]*/)), $.number))),
       optional(field('call', alias('(', $.punctuation))),
     )),
 

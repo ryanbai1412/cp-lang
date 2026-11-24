@@ -145,5 +145,19 @@ fn the_jetbrains_lexer_is_generated() {
         .find_map(|l| l.strip_prefix("KEYWORD\t(?:"))
         .and_then(|l| l.split(')').next())
         .unwrap_or_default();
-    assert_eq!(keywords.split('|').collect::<Vec<_>>(), crate::KEYWORDS);
+    let literals = text
+        .lines()
+        .find_map(|l| l.strip_prefix("LITERAL\t(?:"))
+        .and_then(|l| l.split(')').next())
+        .unwrap_or_default();
+    let mut words: Vec<&str> = keywords.split('|').chain(literals.split('|')).collect();
+    let mut table = crate::KEYWORDS.to_vec();
+    table.extend(
+        LITERAL_WORDS
+            .iter()
+            .filter(|w| !crate::KEYWORDS.contains(w)),
+    );
+    words.sort_unstable();
+    table.sort_unstable();
+    assert_eq!(words, table);
 }

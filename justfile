@@ -74,6 +74,11 @@ zed-smoke cpl="target/debug/cpl":
 tree-sitter-smoke:
     editors/tree-sitter-cp/smoke.sh
 
+# Every generated grammar against the lexer over the conformance cases; `engines` (comma-separated,
+# e.g. `vim,emacs`) must run there, not be skipped (CI: ci.yml `neovim`, `editors`).
+highlight-agree engines="":
+    CPL_HIGHLIGHT={{engines}} cargo test -q -p cpl-cli --test highlight_agrees
+
 # The VS Code extension's unit, grammar and host tests (CI: ci.yml `vscode`).
 vscode-test: && vscode-integration
     cd editors/vscode && npm ci --no-audit --no-fund && npm test

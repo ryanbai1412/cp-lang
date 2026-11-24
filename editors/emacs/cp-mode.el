@@ -31,6 +31,9 @@
     (modify-syntax-entry ?/ ". 12" table)
     (modify-syntax-entry ?\n ">" table)
     (modify-syntax-entry ?_ "_" table)
+    ;; Operators end a name, as the lexer reads them: `impl<S>`, `n=4`.
+    (dolist (c (string-to-list "+-*%<>=!&|^~?:,.@#$;"))
+      (modify-syntax-entry c "." table))
     (modify-syntax-entry ?' "\"" table)
     (modify-syntax-entry ?\" "\"" table)
     table))

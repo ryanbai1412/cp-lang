@@ -103,6 +103,8 @@ vars! {
     LSP_FUZZ_PORTS = "CPL_LSP_FUZZ_PORTS";
     /// The Chrome the browser trace test drives (default: one on `PATH`).
     CHROME = "CPL_CHROME";
+    /// The engines (comma-separated, or `all`) the highlighting agreement test must run, not skip.
+    HIGHLIGHT = "CPL_HIGHLIGHT";
     /// `1`: conformance runs the release `cpl` binary.
     CONFORM_RELEASE = "CPL_CONFORM_RELEASE";
     /// The `cpl` binary conformance runs.

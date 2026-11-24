@@ -33,7 +33,11 @@ class CpLexerTest {
         val body = token.substringAfter("pub fn keyword(text: &str)").substringBefore("_ => return")
         val compiler = Regex("\"([a-z]+)\" =>").findAll(body).map { it.groupValues[1] }.toSortedSet()
         assertTrue("found the keywords", compiler.size > 20)
-        for (word in compiler) assertEquals(word, listOf(CpTokens.KEYWORD to word), lex(word))
+        for (word in compiler) {
+            val token = if (word == "true" || word == "false") CpTokens.LITERAL else CpTokens.KEYWORD
+            assertEquals(word, listOf(token to word), lex(word))
+        }
+        assertEquals(listOf(CpTokens.LITERAL to "None"), lex("None"))
     }
 
     @Test
