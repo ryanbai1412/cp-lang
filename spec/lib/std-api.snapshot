@@ -418,9 +418,11 @@ std/dsu.cp: DsuOf.size(mut self, v: V) -> Int
 std/dsu.cp: DsuOf.undo_to(mut self, snap: Mark)
 std/dsu.cp: DsuOf.unite(mut self, a: V, b: V) -> Bool
 std/dsu.cp: DsuOf.values(self) -> yields T
+std/dsu.cp: ParityDsu.components(self) -> Int
 std/dsu.cp: ParityDsu.consistent(self) -> Bool
 std/dsu.cp: ParityDsu.diff(self, a: V, b: V) -> ?Bool
 std/dsu.cp: ParityDsu.find(self, v: V) -> (root: V, flip: Bool)
+std/dsu.cp: ParityDsu.groups(self) -> List<List<V>>
 std/dsu.cp: ParityDsu.mark(self) -> Mark
 std/dsu.cp: ParityDsu.new() -> ParityDsu<V>
 std/dsu.cp: ParityDsu.same(self, a: V, b: V) -> Bool
@@ -1481,9 +1483,6 @@ std/seq.cp: Compressed.last_lt(self, val: T) -> ?D
 std/seq.cp: Compressed.len(self) -> Int
 std/seq.cp: Compressed.slice(self, r: Range<D>) -> List<T>
 std/seq.cp: Compressed.try_index_of(self, val: T) -> ?D
-std/seq.cp: Filtered.src(self) -> S
-std/seq.cp: Items.src(self) -> S
-std/seq.cp: Mapped.src(self) -> S
 std/seq.cp: MonoStack.clear(mut self)
 std/seq.cp: MonoStack.is_empty(self) -> Bool
 std/seq.cp: MonoStack.len(self) -> Int
@@ -1560,7 +1559,7 @@ std/seq.cp: drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S>
 std/seq.cp: drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T
 std/seq.cp: equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>
 std/seq.cp: even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>
-std/seq.cp: filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S>
+std/seq.cp: filter<S: Seq<T>, T>(self: S, p: T -> Bool) -> Filtered<S, T>
 std/seq.cp: filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U
 std/seq.cp: find<S: Seq, T>(self: S, p: T -> Bool) -> ?T
 std/seq.cp: first<S: Seq, T>(self: S) -> ?T
@@ -1579,7 +1578,7 @@ std/seq.cp: inversions<S: Seq, T>(self: S) -> Int
 std/seq.cp: is_permutation<A: Seq, B: Seq, T>(self: A, b: B) -> Bool
 std/seq.cp: is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool
 std/seq.cp: is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool
-std/seq.cp: items<S: Keyed, K, T>(self: S) -> Items<S>
+std/seq.cp: items<S: Keyed<K, T>, K, T>(self: S) -> Items<S>
 std/seq.cp: iterate<T>(from: ?T, step: T -> ?T) -> yields T
 std/seq.cp: keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, T, K>
 std/seq.cp: keys<T>(self: List<T>) -> Range<Int>
@@ -1589,7 +1588,7 @@ std/seq.cp: last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D
 std/seq.cp: lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>
 std/seq.cp: lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>
 std/seq.cp: majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)
-std/seq.cp: map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U>
+std/seq.cp: map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U>
 std/seq.cp: max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
 std/seq.cp: max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
 std/seq.cp: max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>

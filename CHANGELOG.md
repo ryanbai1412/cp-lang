@@ -22,6 +22,8 @@ exhaustive form, and `plan/STATUS.md` lists what is still open.
 
 ### Library
 
+- `Filtered.src`, `Mapped.src` and `Items.src` are now `pub` fields rather
+  getter fns; `v.src` reads the same.
 - The library is respecified in `std/`: about 1,700 documented
   signatures, each with its cost.
 - Prefix sums and Fenwick trees answer range queries with `fold(r)`, not
