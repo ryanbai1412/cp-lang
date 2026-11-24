@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3743 (3602 passing). Rules: 617.
+Cases: 3744 (3602 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1184,6 +1184,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-05/field-let-after-closure-captures-struct.cp
 - core-05/field-let-then-whole-struct-passed.cp
 - core-05/field-read-in-a-loop-is-not-moved.cp
+- core-05/mut-call-copies-an-element-it-may-grow.cp
 - core-05/mut-cell-of-2d-array-as-argument.cp
 - core-05/nested-field-let-then-parent-read.cp
 - core-05/param-field-let-then-same-field-read.cp
