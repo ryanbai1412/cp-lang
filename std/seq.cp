@@ -57,8 +57,9 @@ pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
 /// sequence order. `a.max(by: f, ties: Ties.Last)` is the rightmost maximum.
 pub enum Ties = First | Last
 
-/// The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty. A method call (`s.min()`)
-/// picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
+/// The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
+///
+/// A method call (`s.min()`) picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
 /// is argmin. \(O(n)\).
 ///
 /// cost: \(O(n)\)
@@ -146,9 +147,11 @@ pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool:
 
 // --- Adapters, ends, and sorting (R07.2.8, R07.4) ---
 
-/// \(O(1)\) to make. A view of the elements satisfying `p`, in order. Keys survive: each element
-/// keeps its source key, so `a.filter(p).items` gives `(i, a[i])` with `a`'s own `i`. `p` runs
-/// as the view is walked, once per element per walk. Bidirectional when `self` is.
+/// A view of the elements satisfying `p`, in order. \(O(1)\) to make.
+///
+/// Keys survive: each element keeps its source key, so `a.filter(p).items` gives `(i, a[i])`
+/// with `a`'s own `i`. `p` runs as the view is walked, once per element per walk.
+/// Bidirectional when `self` is.
 ///
 /// cost: \(O(1)\) to make; \(O(n)\) calls of `p` per walk
 /// empty: an empty view
@@ -355,6 +358,7 @@ pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D:
             yield i
 
 /// Distinct values of `self` in first-seen order (optionally keyed by `by:`).
+///
 /// Works on any `Seq`. \(O(n)\) expected time, \(O(n)\) space via `HashSet`. Unlike
 /// `dedup` / `deduped` (adjacent duplicates only, \(O(n)\) time without hashing),
 /// `distinct` drops duplicates anywhere in the sequence.
@@ -608,8 +612,10 @@ pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V:
 pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
     self[k] = f(self.get(k) ?? init)
 
-/// Rotate `self` left by `k` in place (or only the subrange `range` when given):
-/// what was at offset `k % len` comes first. Signed Euclidean `k`: negative `k`
+/// Rotate `self` left by `k` in place (or only the subrange `range` when given): what was at
+/// offset `k % len` comes first.
+///
+/// Signed Euclidean `k`: negative `k`
 /// rotates right. Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). \(O(n)\), \(O(1)\) extra space.
 ///
 /// cost: \(O(n)\), \(O(1)\) extra space
@@ -723,8 +729,9 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
         r -= 1
     true
 
-/// The stretches of equal neighbours (or equal `by:` keys), in order:
-/// each a slice of `self`: `"aabccc".runs()` walks `"aa"`, `"b"`, `"ccc"`, and
+/// The stretches of equal neighbours (or equal `by:` keys), in order, each a slice of `self`.
+///
+/// `"aabccc".runs()` walks `"aa"`, `"b"`, `"ccc"`, and
 /// `[r.len for r in s.runs()]` is `[2, 1, 3]`. Each run's `.keys` is its range and
 /// `r[r.keys.first!]` its key. With `link:`, a run is a maximal piece where every adjacent
 /// pair `(x, y)` satisfies `link(x, y)`, and `by:` is ignored: `runs(by: key)` is
@@ -758,6 +765,7 @@ pub fn runs<S: Indexed, T, K>(
             i = j
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
+///
 /// The result is keyed by the value domain, so group by any domain-valued key with
 /// `a.map(key).buckets()`.
 /// \(O(\lvert D \rvert + \lvert K \rvert)\) time and memory.
@@ -858,7 +866,9 @@ pub struct Compressed<D, T>(vals: [D]T):
     pub fn last_lt(self, val: T) -> ?D = vals.last_lt(val)
 
 /// Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the
-/// duplicates and binds a fresh domain `C` for them, so an array over them is `[C]Int` and an
+/// duplicates and binds a fresh domain `C` for them.
+///
+/// So an array over them is `[C]Int` and an
 /// index of one compression cannot be used in another. Works on any `Seq`. \(O(n \log n)\).
 ///
 /// cost: \(O(n \log n)\)
@@ -878,8 +888,9 @@ pub fn compress<S: Seq, T: Ord>(all: S) -> (domain C, Compressed<C, T>):
     (C, Compressed(vals))
 
 /// Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the
-/// non-empty pieces between consecutive cuts (the range's own ends always count; repeats drop),
-/// with `piece[p]` the `Range<D>` that piece covers, in order. It is coordinate compression for
+/// non-empty pieces between consecutive cuts, with `piece[p]` the `Range<D>` that piece covers.
+///
+/// The range's own ends always count and repeated cuts drop; pieces come in order. It is coordinate compression for
 /// intervals: a segment tree over `P` stores `piece[p].len`, and no +1/-1 converts back.
 /// \(O(k \log k)\) for k cuts.
 ///
@@ -1022,7 +1033,9 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
     Some((self.l..m, m..self.r))
 
 /// Every way to cut the range into two non-empty pieces, as `(left, right)` with
-/// `left.r == right.l`: one pair per cut strictly inside, so `len - 1` of them. Interval DP over
+/// `left.r == right.l`.
+///
+/// There is one pair per cut strictly inside, so `len - 1` of them. Interval DP over
 /// `V.ranges` folds over them, and every piece is already done when its range comes up.
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per pair, nothing allocated
@@ -1090,9 +1103,11 @@ pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
     let lo = (0..self.len).first_true(m => not (ok(self.nth(m)))) ?? self.len
     if lo > 0: Some(self.nth(lo - 1)) else: None
 
-/// \(O(\log n)\) calls to `ok`. The cut where `ok` flips: false then true along `r` by default
-/// (`r.l` when it always holds, `r.r` when it never does), true then false with `last: true`
-/// (`r.r` when it always holds). `first_true(ok)` is `.r` of it; `last_true(ok)` is
+/// The cut where `ok` flips: false then true along `r` by default, true then false with
+/// `last: true`. \(O(\log n)\) calls to `ok`.
+///
+/// By default it is `r.l` when `ok` always holds and `r.r` when it never does; with
+/// `last: true` it is `r.r` when `ok` always holds. `first_true(ok)` is `.r` of it; `last_true(ok)` is
 /// `bsearch(ok, last: true).l`.
 ///
 /// cost: \(O(\log n)\) calls of `ok`
@@ -1436,13 +1451,13 @@ pub struct Slice<S>():
     /// example: `[5, 6, 7][1..].keys == 1..3`
     /// order: increasing
     @get pub fn keys<K>(self) -> Range<K> = todo
-    ///
+    /// The number of elements in the slice.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[1, 2, 3][1..].len == 2`
     @get pub fn len(self) -> Int = todo
-    ///
+    /// Whether the slice has no elements.
     ///
     /// cost: \(O(1)\)
     /// traps: never
@@ -1616,8 +1631,10 @@ pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
 /// example: `[4, 5].rekey(10..12)[11] == 5`
 pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T = todo
 
-/// \(O(n)\), allocates. The end of a lazy chain, materialized into the type the context expects
-/// (`List`, `Set`, `Map`, `Str`, `[D]T`), else a `List`: `a.filter(p).map(f).collect()`.
+/// The end of a lazy chain, materialized into the type the context expects, else a `List`.
+/// \(O(n)\), allocates.
+///
+/// The context may want a `List`, `Set`, `Map`, `Str` or `[D]T`: `a.filter(p).map(f).collect()`.
 /// The same operation as `List(s)`; the postfix form is for chains.
 ///
 /// cost: \(O(n)\), allocates
@@ -1631,7 +1648,9 @@ pub fn collect<S: Seq, T>(self: S) -> List<T>:
     out
 
 /// `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items`
-/// gives `(key, x)`, and `argmax`/`find` answer with keys. By default the k-th element gets
+/// gives `(key, x)`, and `argmax`/`find` answer with keys.
+///
+/// By default the k-th element gets
 /// the k-th key of `keys` (`0..` is a counter: `for (i, x) in g.keyed().items`); with `by:`
 /// each key is `by(x)` (`dfs(s).keyed(by: v => v)`). Passing both is an error. \(O(1)\) to make.
 ///
@@ -1893,8 +1912,9 @@ pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
             count = 1
     if let (v, _) = best: Some((val: v, count:)) else: None
 
-/// The value held by more than half the elements, with its count, or `None`. Only `eq` is
-/// asked, never order or hashing, so it works with an equality oracle (Fischer-Salzberg: one
+/// The value held by more than half the elements, with its count, or `None`.
+///
+/// Only `eq` is asked, never order or hashing, so it works with an equality oracle (Fischer-Salzberg: one
 /// pass builds a chain with no two neighbours equal, a second counts its last value).
 ///
 /// cost: at most \(\lfloor 3n/2 \rfloor\) calls of `eq`; \(O(n)\) memory
@@ -2089,7 +2109,7 @@ pub fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
         else: j += 1
     out
 
-///
+/// The values in both of two sorted sequences, merged in one pass.
 ///
 /// cost: \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
 /// empty: `[]`
@@ -3000,7 +3020,8 @@ fn cyclic_pairs_close_the_ring():
     let empty: List<Int> = []
     assert empty.cyclic_pairs().collect().len == 0
 
-/// The index of the first largest value (optionally under key `by:`), or `None` when empty:
+/// The index of the first largest value (optionally under key `by:`), or `None` when empty.
+///
 /// `[3, 9, 2, 9].argmax()` is `Some(1)` and `words.argmax(by: w => w.len)` is the index of the
 /// longest word. It is an index of `self`, so `a[a.argmax()!]` is the largest value of a
 /// `List<T>`, a `[1..=n]T`, a `[V]T` or a filtered view of one alike. \(O(n)\).
@@ -3291,7 +3312,9 @@ fn piece<S: Indexed>(s: S, i: Int, j: Int) -> Slice<S>:
 /// Which end of a piece a two-pointer result is keyed by.
 pub enum Anchor = Start | End
 /// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
-/// `state: Track`, as its positions: read the piece as `a[w]`, like [`spans`](spans). `ok` must be
+/// `state: Track`, as its positions.
+///
+/// Read the piece as `a[w]`, like [`spans`](spans). `ok` must be
 /// monotone under shrinking. `anchor: Anchor.Start` keys by left
 /// end instead: the longest piece starting at each position, as greedy jumps want. \(O(n)\) amortized.
 ///
@@ -3503,7 +3526,7 @@ pub struct RingRange<D>():
     pub at: ?D = None
     n: Int = 0
 
-    ///
+    /// The number of positions in the run.
     ///
     /// cost: \(O(1)\)
     /// traps: never
@@ -3533,7 +3556,7 @@ pub struct RingRange<D>():
     @get pub fn keys(self) -> yields D:
         for k in 0..n: yield D.nth((at!.ord + k) % D.count)
 
-    ///
+    /// Whether position `i` is in the run, counting the wrap past the last position.
     ///
     /// cost: \(O(1)\)
     /// traps: never
@@ -3553,7 +3576,7 @@ pub struct RingSlice<D, T>():
     /// example: `[1, 2, 3].ring.windows(2).first!.range.len == 2`
     @get pub fn range(self) -> RingRange<D> = rr
 
-    ///
+    /// The number of elements in the window.
     ///
     /// cost: \(O(1)\)
     /// traps: never
@@ -3584,7 +3607,9 @@ pub struct RingSlice<D, T>():
         for k in rr.keys: yield k
 
 /// The non-empty ranges whose every element is strictly below both elements just outside it
-/// (both must exist). At most 2n of them, left ends ascending, from one monotone-stack pass;
+/// (both must exist).
+///
+/// At most 2n of them, left ends ascending, from one monotone-stack pass;
 /// the "walls" shape of grid problems such as IOI 2019 Rectangles. \(O(n)\) to walk.
 ///
 /// cost: \(O(n)\) to walk

@@ -635,7 +635,7 @@ uv run --quiet python scripts/std-trait-matrix.py --max 76 \
     || fail "a std container lacks a common trait; see above"
 
 step "std docs follow the std-docs checklist (scripts/std-docs-lint.py)"
-uv run --quiet python scripts/std-docs-lint.py --max 93 \
+uv run --quiet python scripts/std-docs-lint.py --max 71 \
     || fail "a std doc breaks a std-docs rule; see above"
 
 step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
