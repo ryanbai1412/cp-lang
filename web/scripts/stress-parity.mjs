@@ -30,7 +30,7 @@ const files = execFileSync('git', ['grep', '-lE', '@alt\\(program\\)|^\\s*@inter
 const tmp = mkdtempSync(join(tmpdir(), 'stress-parity-'));
 const view = (o) => o.status === 'fail'
   ? { status: 'fail', case: o.counterexample.case, verdict: o.counterexample.verdict, input: o.counterexample.raw_input,
-      first: o.counterexample.explain?.divergence?.name ?? null, got: o.counterexample.got ?? null,
+      explain: o.counterexample.explain ?? null, got: o.counterexample.got ?? null,
       interaction: o.counterexample.interaction ?? null }
   : o.status === 'ok' ? { status: 'ok', cases: o.case_count } : { status: 'error' };
 
