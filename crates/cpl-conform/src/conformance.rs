@@ -274,7 +274,7 @@ fn unmet_has_lacks(text: &str, out: &str) -> Option<String> {
         })
 }
 
-fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
+pub(crate) fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
     let mut out = Vec::new();
     for line in text.lines() {
         let Some(rest) = line.trim_start().strip_prefix("//") else {
@@ -287,7 +287,7 @@ fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
     out
 }
 
-fn unquote(v: &str) -> String {
+pub(crate) fn unquote(v: &str) -> String {
     let body = v
         .strip_prefix('"')
         .and_then(|q| q.strip_suffix('"'))

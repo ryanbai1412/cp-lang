@@ -35,6 +35,7 @@ options:
   --causes        group failing cases by root cause, sorted by count
   --rules         check spec/core rule coverage against spec/conformance
   --strict        fail on unmet conformance cases (or uncovered rules with --rules)
+  --manifest P    write the conformance cases the filter selects as the I/O contract's JSON to P
   --verbose       print failing case details
   -h, --help      show this help
 ";
@@ -61,6 +62,7 @@ fn main() -> ExitCode {
     let mut prev_path: Option<PathBuf> = None;
     let mut save_path: Option<PathBuf> = None;
     let mut filter: Option<String> = None;
+    let mut manifest_path: Option<PathBuf> = None;
 
     if args.first().map(String::as_str) == Some("fuzz") {
         return fuzz(&args[1..]);
@@ -104,6 +106,14 @@ fn main() -> ExitCode {
                     &mut save_path
                 };
                 *slot = Some(PathBuf::from(path));
+            }
+            "--manifest" => {
+                i += 1;
+                let Some(path) = args.get(i) else {
+                    eprintln!("cpl-conform: --manifest needs a path");
+                    return ExitCode::from(2);
+                };
+                manifest_path = Some(PathBuf::from(path));
             }
             "--scoreboard" | "--out" | "--baseline" => {
                 i += 1;
@@ -155,6 +165,25 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+
+    if let Some(path) = manifest_path {
+        if suites.iter().any(|&s| s != Suite::Conformance) {
+            eprintln!("cpl-conform: --manifest lists conformance cases only");
+            return ExitCode::from(2);
+        }
+        let json = match cpl_conform::manifest::manifest(&root, filter.as_deref()) {
+            Ok(json) => json,
+            Err(e) => {
+                eprintln!("cpl-conform: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
+        if let Err(e) = std::fs::write(&path, json + "\n") {
+            eprintln!("cpl-conform: cannot write {}: {e}", path.display());
+            return ExitCode::FAILURE;
+        }
+        return ExitCode::SUCCESS;
+    }
 
     if rules_only {
         let cov = conformance::check_rules(&root);

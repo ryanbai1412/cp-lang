@@ -6,6 +6,7 @@ pub mod docs;
 pub mod fuzz;
 pub mod gen;
 mod lsp;
+pub mod manifest;
 pub mod pin;
 pub mod rewrites;
 pub mod runner;
