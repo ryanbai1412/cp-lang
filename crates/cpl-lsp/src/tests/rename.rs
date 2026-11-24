@@ -229,3 +229,13 @@ fn rename_refuses_a_variant_the_input_spells() {
     let unread = "enum Axis = |X | Y\nfn f(a: Axis) -> Int = 1\nprint(f(X))\n";
     assert_eq!(renamed_texts(unread, "Z"), ["Z", "Z"]);
 }
+
+/// A member (`s.len`, `dijkstra(..).dist`) is not the top-level value that
+/// shares its name, so renaming the value leaves the member alone.
+#[test]
+fn rename_leaves_a_member_named_like_a_top_level_value() {
+    let src = "let len| = 3\nlet s = \"ab\"\nprint(s.len + len)\n";
+    assert_eq!(renamed_texts(src, "size"), ["size", "size"]);
+    let src = "var dist| = 3\nlet g: [3]List<(to: Int, w: Int)> = [[], [], []]\ndist = dijkstra(g, from: [(0, 0)]).dist[0]!\nprint(dist)\n";
+    assert_eq!(renamed_texts(src, "d"), ["d", "d", "d"]);
+}

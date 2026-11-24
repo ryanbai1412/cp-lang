@@ -492,7 +492,7 @@ impl Database {
         picked: &Resolved,
     ) -> Option<Definition> {
         if picked.module.is_empty() {
-            let span = analysis.decl_span(&picked.name)?;
+            let span = top_level_fn_span(analysis, &picked.name)?;
             return Some(Definition {
                 path: path.to_string(),
                 span,
@@ -657,7 +657,20 @@ fn member_span(analysis: &Analysis, owner: &str, member: &str) -> Option<Span> {
     if let Some(span) = own.or_else(field).or_else(traits) {
         return Some(span);
     }
-    analysis.decl_span(member)
+    top_level_fn_span(analysis, member)
+}
+
+/// Where a top-level fn `name`, callable in member form, is declared. A
+/// top-level value sharing a member's name (`let len`, `var dist`) is not
+/// what `s.len` or `f(..).dist` means.
+fn top_level_fn_span(analysis: &Analysis, name: &str) -> Option<Span> {
+    let is_fn = analysis.items.iter().any(|item| {
+        item.syntax
+            .decls
+            .iter()
+            .any(|d| d.name == name && d.kind == crate::DeclKind::Fn)
+    });
+    is_fn.then(|| analysis.decl_span(name)).flatten()
 }
 
 /// The doc above the line `at` is on, past its decorators.
