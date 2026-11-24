@@ -1619,20 +1619,13 @@ impl<'a> Checker<'a> {
             "IndexedMut" => ty.is_indexed_mut(),
             "Contains" => match ty {
                 Ty::Str | Ty::Domain(_) => true,
-                Ty::Named { name, .. } => matches!(
-                    name.as_str(),
-                    "Set"
-                        | "HashSet"
-                        | "SortedSet"
-                        | "SortedBag"
-                        | "Map"
-                        | "HashMap"
-                        | "SortedMap"
-                        | "Bitset"
-                        | "Range"
-                        | "Counter"
-                        | "Bag"
-                ),
+                Ty::Named { name, .. } => {
+                    matches!(
+                        name.as_str(),
+                        "Set" | "HashSet" | "Map" | "HashMap" | "Range"
+                    ) || matches!(self.struct_method(name, "contains"),
+                        Some((_, Ty::Fn { params, .. })) if params.len() == 1)
+                }
                 _ => false,
             },
             "Add" => ty.is_numeric() || matches!(ty, Ty::Str),
