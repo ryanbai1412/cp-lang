@@ -77,6 +77,27 @@ pub fn overload_key(name: &str, k: usize) -> String {
     method_key(name, &format!("#{k}"))
 }
 
+/// R06.1.6: the labels a call must give `params`, its named-only ones
+/// with no default, sorted. Fns of one name whose sets differ are
+/// overloads, each under its own key (`overload_key`).
+pub fn required_labels(params: &[ast::Param]) -> Vec<&str> {
+    let mut out: Vec<&str> = (params.iter())
+        .filter(|p| p.named_only && p.default.is_none() && !p.variadic)
+        .map(|p| p.label_text())
+        .collect();
+    out.sort_unstable();
+    out
+}
+
+/// Whether a call naming the labels `given` fits `params`: it names each
+/// required label, and only labels `params` has.
+pub fn labels_fit(params: &[ast::Param], given: &[&str]) -> bool {
+    required_labels(params).iter().all(|r| given.contains(r))
+        && given
+            .iter()
+            .all(|g| params.iter().any(|p| p.label_text() == *g))
+}
+
 /// The name and `#k` of an overload's key, `bsearch of #2` or the
 /// imported `bsearch of std.range#2`.
 pub fn overload_part(key: &str) -> Option<(&str, &str)> {
@@ -99,7 +120,14 @@ pub fn import_key(module: &[ast::Name], name: &str, own: bool) -> String {
 /// each is then imported under its `method_key`, and a call picks the
 /// one its receiver fits (R11.3.4).
 pub fn shared_method(name: &str) -> bool {
-    methods().iter().filter(|(_, n)| n.text == name).count() > 1
+    let mut modules = methods()
+        .iter()
+        .filter(|(_, n)| n.text == name)
+        .map(|(m, _)| m);
+    // Overloads of one module (R06.1.6) are one module's.
+    modules
+        .next()
+        .is_some_and(|first| modules.any(|m| m != first))
 }
 
 /// Every fn, method and getter name the active standard library declares where a program

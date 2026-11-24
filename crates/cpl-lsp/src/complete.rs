@@ -147,7 +147,7 @@ fn item_at(analysis: &Analysis, offset: u32) -> Option<&AnalyzedItem> {
         .find(|item| item.offset <= offset)
 }
 
-fn outline_of(analysis: &Analysis) -> Outline {
+pub(crate) fn outline_of(analysis: &Analysis) -> Outline {
     Outline::of_items(
         &analysis.text,
         analysis

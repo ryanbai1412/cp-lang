@@ -371,6 +371,18 @@ impl Server {
                 let Some(mut hover) = hover else {
                     return Ok(Reply::default());
                 };
+                // R06.1.6: a name with several fns shows each.
+                let word = analysis
+                    .text
+                    .get(hover.span.start as usize..hover.span.end as usize);
+                let outline = crate::complete::outline_of(&analysis);
+                let fns: Vec<&str> = (outline.entries.iter())
+                    .filter(|e| Some(e.name.as_str()) == word && e.kind == crate::outline::Kind::Fn)
+                    .map(|e| e.detail.as_str())
+                    .collect();
+                if fns.len() > 1 {
+                    hover.text = fns.join("\n");
+                }
                 if let Some(def) = self.db.definition_location(&uri, offset) {
                     if def.path != uri {
                         let text = self.db.file_text(&def.path).unwrap_or_default();

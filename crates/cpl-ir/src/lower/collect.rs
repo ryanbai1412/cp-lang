@@ -558,9 +558,14 @@ impl<'a> Lowerer<'a> {
             .find_map(|stmt| match &stmt.kind {
                 ast::StmtKind::Fn(f) if f.name.text == *name => Some(f),
                 _ => None,
-            })
-            .is_some_and(|f| !std::ptr::eq(f, decl) && takes_self(f));
-        if !first || !takes_self(decl) {
+            });
+        let labels = cpl_check::required_labels;
+        let overload = first.is_some_and(|f| {
+            !std::ptr::eq(f, decl)
+                && ((takes_self(f) && takes_self(decl))
+                    || labels(&f.params) != labels(&decl.params))
+        });
+        if !overload {
             return name.clone();
         }
         let k = (2..).find(|&k| !self.mod_syms[m].contains_key(&cpl_check::overload_key(name, k)));

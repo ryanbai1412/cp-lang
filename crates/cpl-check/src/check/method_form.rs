@@ -108,16 +108,22 @@ impl Checker<'_> {
         let Some(mine) = own.iter().find(|k| at(self, k) == Some(here)).cloned() else {
             return;
         };
-        let Some(this) = self.global(&mine).map(|d| self_ty(&d)) else {
+        let Some(mine_def) = self.global(&mine) else {
             return;
         };
+        let this = self_ty(&mine_def);
         for key in own.iter().filter(|k| **k != mine) {
             if !at(self, key).is_some_and(|i| i < here) {
                 continue;
             }
-            let Some(that) = self.global(key).map(|d| self_ty(&d)) else {
+            let Some(that_def) = self.global(key) else {
                 continue;
             };
+            // R06.1.6: other required labels make it an overload of its own.
+            if def_labels(&mine_def) != def_labels(&that_def) {
+                continue;
+            }
+            let that = self_ty(&that_def);
             if !more_specific(&this, &that) && !more_specific(&that, &this) {
                 self.report(
                     f.name.span,
@@ -261,7 +267,9 @@ impl Checker<'_> {
         }
         let mut fit: Vec<(String, Arc<Def>)> = Vec::new();
         for (key, def) in self.method_candidates(name) {
-            if self.self_fits(base, &def) && args.is_none_or(|args| takes_shapes(&def, args)) {
+            if self.self_fits(base, &def)
+                && args.is_none_or(|args| takes_shapes(&def, args) && def_labels_fit(&def, args))
+            {
                 fit.push((key, def));
             }
         }
@@ -286,6 +294,10 @@ impl Checker<'_> {
             if fit.iter().any(|(_, d)| takes_count(d, given)) {
                 fit.retain(|(_, d)| takes_count(d, given));
             }
+        }
+        // With no call to read labels from, the overload that needs none.
+        if args.is_none() && fit.len() > 1 && fit.iter().any(|(_, d)| def_labels(d).is_empty()) {
+            fit.retain(|(_, d)| def_labels(d).is_empty());
         }
         if fit.len() > 1 {
             return Pick::Ambiguous(fit.into_iter().map(|f| f.0).collect());
@@ -1046,6 +1058,40 @@ fn names_param(ty: &Ty) -> bool {
 }
 
 /// Whether the method `def` takes `given` positional arguments after `self`.
+/// R06.1.6: the labels a call must give `def`, sorted.
+pub(super) fn def_labels(def: &Def) -> Vec<&str> {
+    let Def::Fn {
+        ty: Ty::Fn { params, .. },
+        ..
+    } = def
+    else {
+        return Vec::new();
+    };
+    let mut out: Vec<&str> = (params.iter())
+        .filter(|p| p.named_only && !p.has_default && !p.variadic)
+        .map(|p| p.name.as_str())
+        .collect();
+    out.sort_unstable();
+    out
+}
+
+/// Whether the call's labels fit `def`: each it requires, and only ones it has.
+pub(super) fn def_labels_fit(def: &Def, args: &[Arg]) -> bool {
+    let Def::Fn {
+        ty: Ty::Fn { params, .. },
+        ..
+    } = def
+    else {
+        return true;
+    };
+    let given: Vec<&str> = args
+        .iter()
+        .filter_map(|a| a.name.as_ref().map(|n| n.text.as_str()))
+        .collect();
+    def_labels(def).iter().all(|r| given.contains(r))
+        && given.iter().all(|g| params.iter().any(|p| p.name == *g))
+}
+
 fn takes_count(def: &Def, given: usize) -> bool {
     let Def::Fn {
         ty: Ty::Fn { params, .. },

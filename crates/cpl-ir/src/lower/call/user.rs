@@ -533,6 +533,13 @@ impl<'a> Lowerer<'a> {
                 if getter || super::names::core_over_std(name, args) && !self.declares(name) {
                     return self.prelude(name, args, hint, span);
                 }
+                if let Some(key) = self.overload_for(name, args) {
+                    let picked = ast::Expr {
+                        kind: ast::ExprKind::Name(key),
+                        span: callee.span,
+                    };
+                    return self.call(whole, &picked, args, hint);
+                }
                 match self.get_sym(name) {
                     Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
                     Some(Sym::GenFn(gfid))

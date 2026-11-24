@@ -1071,6 +1071,47 @@ impl<'a> Lowerer<'a> {
         self.get_sym(name).into_iter().chain(keyed).collect()
     }
 
+    /// R06.1.6: whether a call with `args`' labels fits the fn `sym`.
+    pub(in crate::lower) fn sym_labels_fit(&self, sym: Sym, args: &[ast::Arg]) -> bool {
+        let decl = match sym {
+            Sym::Fn(fid) => self.sigs[fid].decl,
+            Sym::GenFn(gfid) => self.gen_fns[gfid].decl,
+            _ => return true,
+        };
+        let given: Vec<&str> = (args.iter())
+            .filter_map(|a| a.name.as_ref().map(|n| n.text.as_str()))
+            .collect();
+        cpl_check::labels_fit(&decl.params, &given)
+    }
+
+    /// R06.1.6: the key of the overload of `name(..)` whose labels the call
+    /// gives, when the name has several and that one is not the first.
+    pub(in crate::lower) fn overload_for(&self, name: &str, args: &[ast::Arg]) -> Option<String> {
+        if cpl_check::overload_part(name).is_some() {
+            return None;
+        }
+        let prefix = cpl_check::method_key(name, "");
+        let mut keys: Vec<String> = (self.mod_syms[self.cur_mod].keys())
+            .filter(|k| k.starts_with(&prefix) && cpl_check::overload_part(k).is_some())
+            .cloned()
+            .collect();
+        if keys.is_empty() {
+            return None;
+        }
+        keys.sort();
+        keys.insert(0, name.to_string());
+        let fits: Vec<String> = (keys.into_iter())
+            .filter(|k| {
+                self.get_sym(k)
+                    .is_some_and(|s| self.sym_labels_fit(s, args))
+            })
+            .collect();
+        match fits.as_slice() {
+            [one] if one != name => Some(one.clone()),
+            _ => None,
+        }
+    }
+
     /// Whether the checker sent `x.name(..)` past the built-in member of the
     /// name, whose parameters can't take the call's arguments.
     pub(in crate::lower) fn past_builtin_row(&self, name: Span) -> bool {
@@ -1153,8 +1194,11 @@ impl<'a> Lowerer<'a> {
         recv_mark: Option<usize>,
         hint: Option<&Ty>,
     ) -> Option<Expr> {
-        let candidates = self.method_syms(name);
+        let candidates: Vec<Sym> = (self.method_syms(name).into_iter())
+            .filter(|&s| self.sym_labels_fit(s, args))
+            .collect();
         let chosen = (self.resolved_method(name, base, span))
+            .filter(|&s| self.sym_labels_fit(s, args))
             .or_else(|| self.fitting_method(&candidates, base, args.len()));
         let sym = match chosen {
             Some(s) => s,

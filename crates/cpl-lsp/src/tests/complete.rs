@@ -222,6 +222,35 @@ fn signature_help_tracks_the_argument_being_typed() {
 }
 
 #[test]
+fn signature_help_and_hover_list_every_overload() {
+    let decl = "fn pick(xs: List<Int>; by: Int -> Int) -> Int = 1\nfn pick(xs: List<Int>; cmp: (Int, Int) -> Bool) -> Int = 2\n";
+    let help = ask_at(
+        "textDocument/signatureHelp",
+        &format!("{decl}print(pick([1], cmp: |"),
+    );
+    let labels: Vec<&str> = (help.at(&["signatures"]).as_array().unwrap_or(&[]).iter())
+        .filter_map(|s| s.at(&["label"]).as_str())
+        .collect();
+    assert_eq!(
+        labels,
+        [
+            "pick(xs: List<Int>; by: Int -> Int) -> Int",
+            "pick(xs: List<Int>; cmp: (Int, Int) -> Bool) -> Int"
+        ]
+    );
+    assert_eq!(help.at(&["activeSignature"]).as_u32(), Some(1));
+    let hover = ask_at(
+        "textDocument/hover",
+        &format!("{decl}print(pi|ck([1], by: x => x))\n"),
+    );
+    let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+    assert!(
+        text.contains("by: Int -> Int") && text.contains("cmp: (Int, Int) -> Bool"),
+        "{text}"
+    );
+}
+
+#[test]
 fn signature_help_for_methods_and_library_fns() {
     let (label, active, _) = signature(&format!("{ROAD}let r = Road(1, 2)\nprint(Road.make(|))\n"));
     assert_eq!((label.as_str(), active), ("make(to: Int) -> Road", 0));

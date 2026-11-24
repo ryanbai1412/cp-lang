@@ -31,8 +31,9 @@ pub(super) fn top_level_names(
                 // R08.1.4: fns of one name that each take a `self` are
                 // overloads, picked by the receiver.
                 Some(&first_idx)
-                    if takes_self(item, &decl.name)
-                        && takes_self(&items[first_idx], &decl.name) =>
+                    if (takes_self(item, &decl.name)
+                        && takes_self(&items[first_idx], &decl.name))
+                        || labels_differ(item, &items[first_idx], &decl.name) =>
                 {
                     let k = (2..).find(|&k| {
                         !names.contains_key(&crate::prelude::overload_key(&decl.name, k))
@@ -47,6 +48,24 @@ pub(super) fn top_level_names(
         }
     }
     duplicates
+}
+
+/// The `fn name` of `item`.
+fn fn_decl<'a>(item: &'a ItemSyntax, name: &str) -> Option<&'a ast::FnDecl> {
+    item.parsed.stmts.iter().find_map(|stmt| match &stmt.kind {
+        ast::StmtKind::Fn(f) if f.name.text == name => Some(f),
+        _ => None,
+    })
+}
+
+/// R06.1.6: two `fn name`s whose required labels differ are overloads.
+fn labels_differ(a: &ItemSyntax, b: &ItemSyntax, name: &str) -> bool {
+    match (fn_decl(a, name), fn_decl(b, name)) {
+        (Some(x), Some(y)) => {
+            crate::prelude::required_labels(&x.params) != crate::prelude::required_labels(&y.params)
+        }
+        _ => false,
+    }
 }
 
 /// True if `item` is a `fn name` whose first parameter is `self`.

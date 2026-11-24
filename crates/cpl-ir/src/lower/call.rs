@@ -567,7 +567,20 @@ impl<'a> Lowerer<'a> {
         };
         match value_domain.map(Sym::Domain).or_else(|| self.sym(base)) {
             Some(Sym::Mod(target_mod)) => {
-                let sym = self.mod_syms[target_mod].get(&name.text).copied();
+                // R06.1.6: of the module's overloads of the name, the one the labels fit.
+                let keys = std::iter::once(name.text.clone()).chain(
+                    (2..)
+                        .map(|k| cpl_check::overload_key(&name.text, k))
+                        .take_while(|k| self.mod_syms[target_mod].contains_key(k)),
+                );
+                let fits: Vec<Sym> = (keys
+                    .filter_map(|k| self.mod_syms[target_mod].get(&k).copied()))
+                .filter(|&s| self.sym_labels_fit(s, args))
+                .collect();
+                let sym = match fits.as_slice() {
+                    [one] => Some(*one),
+                    _ => self.mod_syms[target_mod].get(&name.text).copied(),
+                };
                 return match sym {
                     Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
                     Some(Sym::GenFn(gfid)) => self.call_gen_fn(gfid, Vec::new(), None, args, span),

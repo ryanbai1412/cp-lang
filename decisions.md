@@ -9251,6 +9251,27 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 623. (reserved, compiler)
 
-## 624. (reserved, content)
+## 624. Fns of one name overload by label set (content, 2026-11-24)
+
+- **Decision.** Fns of one name whose required labels (named-only
+  parameters with no default) differ are overloads, as R06.1.6 and W7
+  already read ("one name and label set has one generic signature"). A
+  call, free, as a method or through a module (`seq.sort(..)`), takes the
+  one whose required labels it gives and whose labels it only names; a
+  call fitting none is the named-argument error (E0310). Two fns of one
+  name and one label set still clash (E0702); decision 127 still forbids
+  overloading by type. Hover and signature help show every overload, the
+  fitting one active.
+- **Why.** `sort(by:)` and `sort(cmp:)` are two ideas with one name: one
+  signature can't tell a passed `by:` from its default, so std needed a
+  compiler arm to reject both together (E0309). Labels are written at the
+  call, so the pick is visible and needs no inference.
+- **Lowering and cost.** Each overload is its own fn under the existing
+  `name of #k` key; the pick is at check time, so it costs nothing at run
+  time.
+- **Reverse.** Admit one fn per name again; std's overloads merge back
+  into one signature with optional parameters.
+- **Status.** Accepted; std's `sort`/`sorted` move to it with the arm's
+  deletion.
 
 ## 625. (reserved, compiler)

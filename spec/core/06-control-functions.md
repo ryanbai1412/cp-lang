@@ -48,7 +48,10 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
   and one call does not mix the two (decision 324). Options are always
   named (`by:`, `desc`), never `_by` twins (decision 60). (R06.1.5)
 - No overloading by type: one name and label set has one generic
-  signature (decision 127). Operators are functions:
+  signature (decision 127). Fns of one name whose required labels (the
+  named-only ones with no default) differ are overloads: a call takes the
+  one whose labels it gives, a call fitting none is the named-argument
+  error, and two of one label set clash (E0702). Operators are functions:
   `fn (a: Frac) + (b: Frac) -> Frac`. (R06.1.6)
 - Functions hoist within their block; every capture must be initialized
   before the first call. A `fn` below `@!multitest` is in the per-test

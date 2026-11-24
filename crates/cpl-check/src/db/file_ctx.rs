@@ -140,7 +140,9 @@ impl FileCtx<'_> {
                 Some(&index) => {
                     let module = &scope.modules[index];
                     let public = module.analysis.public_names();
-                    if public.iter().any(|n| n == member) {
+                    // An overload's key (R06.1.6) is public when its name is.
+                    let named = crate::prelude::overload_part(member).map_or(member, |(n, _)| n);
+                    if public.iter().any(|n| n == named) {
                         self.module_def(module, member)
                     } else {
                         (None, 0)

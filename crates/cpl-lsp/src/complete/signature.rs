@@ -93,8 +93,71 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib, doc: Option<String>) ->
     }
     // `f(a, by: k`: the argument named, else the one by position.
     let given = named_args(&text[paren + 1..arg_start]);
-    let active = active_param(&sig, &given, text[arg_start..offset].trim_start(), commas);
+    let arg = text[arg_start..offset].trim_start();
+    // R06.1.6: every overload of the name, the one the labels fit active.
+    let overloads = overloads(cursor, std, callee_end, name);
+    let sigs = if overloads.len() > 1 {
+        (overloads.into_iter())
+            .map(|e| Signature {
+                name: name.to_string(),
+                params: e.params.iter().map(written_param).collect(),
+                ret: e.ret().unwrap_or("").to_string(),
+                doc: e.doc,
+            })
+            .collect()
+    } else {
+        vec![sig]
+    };
+    // The argument being typed counts once its label is written (`cmp: |`).
+    let typing = (arg.split_once(':'))
+        .map(|(l, _)| l.trim())
+        .filter(|l| !l.is_empty() && l.chars().all(|c| c.is_alphanumeric() || c == '_'));
+    let labels: Vec<&str> = given.iter().copied().chain(typing).collect();
+    let fits = |s: &Signature| {
+        let named = |n: &str| s.params.iter().any(|p| p.name == n);
+        (s.params.iter())
+            .filter(|p| p.named_only && p.default.is_empty())
+            .all(|p| labels.contains(&p.name.as_str()))
+            && labels.iter().all(|g| named(g))
+    };
+    let chosen = sigs.iter().position(fits).unwrap_or(0);
+    let mut active = 0;
+    let signatures: Vec<Value> = (sigs.iter().enumerate())
+        .map(|(i, sig)| {
+            let (value, at) = signature_json(sig, active_param(sig, &given, arg, commas));
+            if i == chosen {
+                active = at;
+            }
+            value
+        })
+        .collect();
+    Some(obj([
+        ("signatures", signatures.into()),
+        ("activeSignature", (chosen as u32).into()),
+        ("activeParameter", (active as u32).into()),
+    ]))
+}
 
+/// The fns a call's name may mean: its overloads (R06.1.6), as declared.
+fn overloads(cursor: &Cursor, std: &mut StdLib, callee_end: usize, name: &str) -> Vec<Entry> {
+    let start = (callee_end - name.len()) as u32;
+    let is_fn = |e: &Entry| e.name == name && matches!(e.kind, Kind::Fn | Kind::Method);
+    if cursor.analysis.text[..start as usize].ends_with('.') {
+        return receiver_type(cursor, start - 1).map_or(Vec::new(), |ty| {
+            (members_of_ty(cursor, std, &ty).into_iter())
+                .map(|(e, _)| e)
+                .filter(is_fn)
+                .collect()
+        });
+    }
+    (outline_of(cursor.analysis).entries.iter())
+        .filter(|e| is_fn(e))
+        .cloned()
+        .collect()
+}
+
+/// One signature's LSP form, and the parameter `active` is.
+fn signature_json(sig: &Signature, active: usize) -> (Value, usize) {
     let mut label = format!("{}(", sig.name);
     let mut parameters = Vec::new();
     for (i, param) in sig.params.iter().enumerate() {
@@ -137,14 +200,13 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib, doc: Option<String>) ->
     if !sig.doc.is_empty() {
         signature.insert(
             "documentation".to_string(),
-            obj([("kind", "markdown".into()), ("value", sig.doc.into())]),
+            obj([
+                ("kind", "markdown".into()),
+                ("value", sig.doc.clone().into()),
+            ]),
         );
     }
-    Some(obj([
-        ("signatures", vec![Value::Object(signature)].into()),
-        ("activeSignature", 0.into()),
-        ("activeParameter", (active as u32).into()),
-    ]))
+    (Value::Object(signature), active)
 }
 
 /// The parameter an argument is for: `f(a, by: k`'s is `by`, else the

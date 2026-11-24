@@ -143,6 +143,9 @@ impl<'a> Checker<'a> {
     }
 
     pub(super) fn call_unrecorded(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
+        if let Some(picked) = self.overload_for(callee, args) {
+            return self.call_unrecorded(call, &picked, args);
+        }
         if let ExprKind::Name(fn_name) = &callee.kind {
             if let Some(caps) = self
                 .local_fn_captures
@@ -361,6 +364,70 @@ impl<'a> Checker<'a> {
         }
         self.mutates_self(callee);
         receiver.unwrap_or(ty)
+    }
+
+    /// R06.1.6: the callee naming the overload of `name(..)` or
+    /// `module.name(..)` whose labels the call gives, when the name has
+    /// several and that one is not the first.
+    fn overload_for(&mut self, callee: &Expr, args: &[Arg]) -> Option<Expr> {
+        let (alias, name) = match &callee.kind {
+            ExprKind::Name(name) if self.local(name).is_none() => (None, name.clone()),
+            ExprKind::Field { base, name } => match &base.kind {
+                ExprKind::Name(m) if self.local(m).is_none() && self.env.is_module(m) => {
+                    (Some(m.clone()), name.text.clone())
+                }
+                _ => return None,
+            },
+            _ => return None,
+        };
+        if crate::prelude::overload_part(&name).is_some() {
+            return None;
+        }
+        let path = |key: &str| match &alias {
+            Some(m) => format!("{m}.{key}"),
+            None => key.to_string(),
+        };
+        let mut keys: Vec<String> = vec![name.clone()];
+        match &alias {
+            None => keys.extend(
+                (self.env.method_keys(&name).into_iter())
+                    .filter(|k| crate::prelude::overload_part(k).is_some()),
+            ),
+            Some(_) => keys.extend(
+                (2..)
+                    .map(|k| crate::prelude::overload_key(&name, k))
+                    .take_while(|k| self.global(&path(k)).is_some()),
+            ),
+        }
+        if keys.len() < 2 {
+            return None;
+        }
+        let fits: Vec<String> = (keys.into_iter())
+            .filter(|k| {
+                self.global(&path(k))
+                    .is_some_and(|d| super::method_form::def_labels_fit(&d, args))
+            })
+            .collect();
+        let [one] = fits.as_slice() else {
+            return None;
+        };
+        if *one == name {
+            return None;
+        }
+        let kind = match &callee.kind {
+            ExprKind::Field { base, name } => ExprKind::Field {
+                base: base.clone(),
+                name: cpl_syntax::ast::Name {
+                    text: one.clone(),
+                    span: name.span,
+                },
+            },
+            _ => ExprKind::Name(one.clone()),
+        };
+        Some(Expr {
+            kind,
+            span: callee.span,
+        })
     }
 
     /// `read<T>()` (optionally with `base:` / `none:` / `gen:`) is a `T`.
