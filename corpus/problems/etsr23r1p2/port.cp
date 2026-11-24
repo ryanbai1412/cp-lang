@@ -1,6 +1,11 @@
-// ETSR 2023 Round 1 P2: a set of ranges starts empty. An order of kind 2 adds
-// the range l..=r after throwing out every range that touches it, and prints
-// how many it threw out. An order of kind 1 prints how many ranges there are.
+// Source: ETSR 2023 Round 1 P2, https://dmoj.ca/problem/etsr23r1p2
+// Problem: q <= 2e5 orders on a set of ranges in 1..=n (n <= 1e9), starting empty. Kind
+//   2 adds l..=r after throwing out every range that touches it and prints how many it
+//   threw out; kind 1 prints how many ranges there are.
+// Solution: ranges in the set never overlap, so they sort the same by start and by end.
+//   A max SegTree over compressed coordinates marks the starts: throw out every start
+//   in l..=r, then the last range starting before l if it reaches l. Each range is
+//   thrown out once, O(q log q).
 // original: corpus/submissions/5494248.cpp
 let q: 1..=2e5 = read()
 let n: 1..=1e9 = read()

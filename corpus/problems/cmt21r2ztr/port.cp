@@ -1,7 +1,14 @@
+// Source: CMT 2021 R2 (ztr), https://dmoj.ca/problem/cmt21r2ztr
+// Problem: n <= 1e5 hidden numbers and m <= 1e5 facts, each saying that the median of
+//   numbers i, j, k is x (x <= 1e9). Print YES and numbers that fit every fact, or NO.
+// Solution: a fact says at most one of its three numbers is below x and at most one is
+//   above, so the only questions are "is number s below / above value x" for each slot
+//   and value a fact names. These are 2-SAT variables: each fact forbids two of its
+//   three being below (or above), a mark is never both, and consecutive marks of one
+//   slot chain (above this or below the next). SCC of the implication graph decides it
+//   and gives each slot its bound, O(n + m log m).
 // original: corpus/submissions/4016530.cpp
 // checker: proto/ports/scout_batch_9/harness/cmt21r2ztr_check.cpp
-// cmt21r2ztr: n hidden numbers and m facts, each saying that the median
-// of three of them is x. Print numbers that fit every fact, or NO.
 let n: 1..=1e5 = read()
 let m: 1..=1e5 = read()
 domain Slot = 1..=n

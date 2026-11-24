@@ -552,7 +552,7 @@ else
 fi
 
 step "every corpus package passes the static modes (scripts/corpus.py verify --no-run)"
-uv run --quiet python scripts/corpus.py verify --no-run --only check,package,lint --cpl "$cpl" \
+uv run --quiet python scripts/corpus.py verify --no-run --only header,check,package,lint --cpl "$cpl" \
     || fail "a corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
 
 step "std/prelude.cp: name count"

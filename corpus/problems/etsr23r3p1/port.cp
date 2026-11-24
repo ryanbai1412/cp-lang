@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of etsr23r3p1.cp
+// Source: ETSR 2023 Round 3 P1, https://dmoj.ca/problem/etsr23r3p1
+// Problem: n operations, each adding x, subtracting x, multiplying by x, or adding x
+//   times the starting value, apply in turn to a value, which is clamped into ql..=qr
+//   after each one. For each of q starting values, print the final value.
+// Solution: the operations keep the starting values in order, so sort and dedupe them
+//   and keep the current values in a lazy SegTree whose tag is an affine map in
+//   (current, starting value) plus an optional assignment. After each operation, the
+//   cells below ql and above qr are a prefix and a suffix: find them with
+//   right_while/left_while and assign the bound, O((n + q) log q).
 // original: corpus/submissions/5527625.cpp
 
 struct Cell:

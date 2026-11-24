@@ -1,5 +1,13 @@
-// Universal Cup 5 Stage 1 (Nizhny Novgorod) A: a rooted tree on n vertices
-// grows by m vertices, each attached to a uniformly random existing vertex.
+// Source: Universal Cup 5 Stage 1 (Nizhny Novgorod) A
+// Problem: a rooted tree on n <= 500 vertices grows by m <= 500 vertices, each attached
+//   to a uniformly random existing vertex. Print the expected product of the internal
+//   vertices' degrees divided by the number of leaves, mod p.
+// Solution: let every internal vertex mark one child: the markings count the product of
+//   degrees. Count growths together with a partial marking by state (leaves, internal
+//   vertices still unmarked), starting from prod(deg(v) + x); at the end every vertex
+//   is marked, so the answer is sum dp[i, 0] / i over the prod (n + z) growth
+//   sequences. O((n + m)^2 m).
+// limits: 2000 ms, 256 MB
 //
 // Let every internal vertex mark one of its children: the number of markings
 // is the product of the internal degrees, and the answer is the expected
@@ -10,7 +18,6 @@
 // vertices (mark one of the deg(v) children now, or stay unmarked). At the end
 // every vertex must be marked, so the answer is sum dp[i, 0] / i, divided by
 // the prod (n + z) equally likely growth sequences.
-// limits: 2000 ms, 256 MB
 type Z = Mod<998_244_353>
 
 let (n, m): (1..=500, 0..=500) = read()

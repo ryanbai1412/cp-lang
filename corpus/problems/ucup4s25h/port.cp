@@ -1,4 +1,12 @@
-// UCup 4 Stage 25 (Zagreb) H — Median Single-Character Deletion
+// Source: Universal Cup 4 Stage 25 (Zagreb) H (Median Single-Character Deletion)
+// Problem: for a string s (2 <= |s| <= 1e6, sum of |s| <= 1e6), sort the |s| strings
+//   made by deleting one character, by text then position, and print the position of
+//   the median one (index n / 2).
+// Solution: deleting i and a later j agree up to i, then differ at the first character
+//   after i that is not s[i]: i ranks after every later deletion when that character is
+//   larger, else before. A right-to-left scan pushes i to `right` or `left`, so
+//   `left.rev + right` is the order, O(n).
+// limits: 1000 ms, 1024 MB
 //
 // Given `s` (`2 <= |s| <= 1e6`, sum of `|s|` at most 1e6), compare deleting position `i` vs any
 // later position `j > i`: both strings agree before `i`, then compare `s[i + 1]`
@@ -11,7 +19,6 @@
 //   ranks before all later deletions (`left.push(i)`).
 // Thus `left.rev + right` is the exact lexicographical order of all `n`
 // deletions, and index `n / 2` is the median.
-// limits: 1000 ms, 1024 MB
 
 @!multitest
 let s: Str = read()

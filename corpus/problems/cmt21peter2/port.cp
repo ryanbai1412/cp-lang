@@ -1,11 +1,10 @@
-// CMT 2021 (Peter) P2: for each of n points, print the sum of its
-// distances to all the others; an answer within a few percent is accepted.
-//
-// The length of a vector is pi/2 times the average length of its shadow
-// over all directions. So take K directions evenly spread over a half
-// turn; along one direction the sum of |shadow differences| from one point
-// to all the others is a sort and a running sum, and the average over the
-// K directions times pi/2 is the answer, off by about 1/K^2.
+// Source: CMT 2021 (Peter) P2, https://dmoj.ca/problem/cmt21peter2
+// Problem: for each of n points, print the sum of its distances to all the others; an
+//   answer within a few percent is accepted.
+// Solution: a vector's length is pi/2 times the average length of its shadow over all
+//   directions. Take K directions evenly spread over a half turn; along one direction
+//   the sum of shadow distances from each point to all others is a sort and a running
+//   sum, and pi/2 times the average over the K directions is off by about 1/K^2.
 // original: corpus/submissions/4041223.cpp
 use real.float.{PI, sin_cos}
 

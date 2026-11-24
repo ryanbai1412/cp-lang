@@ -17,7 +17,7 @@ a stable id that reviews, lints and tests cite. The ideas behind them are in
 **Rule:** the header has `Source:`, `Problem:` and `Solution:`, and derives every constant and closing formula the code uses.
 **Why:** a reader learns the idea before the code, and nothing is unexplained.
 **Example:** `// Solution: free cuts split the items into SCCs ...` before `@!multitest`.
-**Enforced by:** `corpus/header.py` (reports); review.
+**Enforced by:** `scripts/corpus.py verify` (`header`, a hard gate in `scripts/check.sh`); review.
 
 ### idiomatic-code/R2
 

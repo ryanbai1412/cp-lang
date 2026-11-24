@@ -1,5 +1,12 @@
-// Universal Cup 5 Stage 2 F — Flight of the Night Butterfly,
-//   qoj.ac/contest/4207/problem/20720 (n, m <= 50, l, r, T <= 1e18, q <= 100)
+// Source: Universal Cup 5 Stage 2 F (Flight of the Night Butterfly), qoj.ac/contest/4207/problem/20720
+// Problem: two sets of intervals p0, p1 (n, m <= 50, ends <= 1e18). For each of q <=
+//   100 periods t, print the least k (6k <= t) such that every point (6i + 6) t / 6k
+//   lies in an interval of p0 and every point (6i + v) t / 6k, v in 1..=5, lies in one
+//   of p1, or none.
+// Solution: clear the denominators in I128 and cover the grid points greedily along the
+//   sorted intervals. When residue v fails at k, any valid multiple must be a multiple
+//   of 6 / gcd(6, v) of k, so k grows by 6, 3 or 2; a residue-6 failure means no
+//   answer.
 // limits: 1000 ms, 512 MB
 //
 // For a query period t, we seek the smallest multiple 6 * k <= t (k >= 1) such

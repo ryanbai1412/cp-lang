@@ -1,7 +1,12 @@
-// IATI 2021 A1 P2, matching supply to demand up a weighted tree (buildable today-form)
+// Source: IATI 2021 A1 P2, https://dmoj.ca/problem/iati21a12
+// Problem: a tree of n <= 2e5 nodes with weighted edges up to the parent; node v wants
+//   want[v] units and gives give[v]. A unit moved up an edge of weight w gains w, and
+//   serving demand at a node earns the unit's value. Print the largest total.
+// Solution: go up from the leaves with one heap of unclaimed supply per subtree, merged
+//   small into large, and a per-heap lift that adds the edge weight to all of them at
+//   once. A node takes its most valuable units while they are worth at least 0; served
+//   units re-enter at value 0 so a later node can re-route them. O(n log^2 n).
 // original: corpus/submissions/5071843.cpp
-// A max-heap is a MinHeap of negated keys here, and each node owns a heap
-// slot instead of swapping heaps (no MaxHeap, no swap of heaps in the prototype).
 let n: 1..=2e5 = read()
 domain V = 0..n
 let want: [V]Int = read()

@@ -1,5 +1,11 @@
-// EGOI '22 P8 (Rotation-Proof Cards, CP Lang 0.2.2): encode a number as segments
-// on a 3x3 dot grid surviving 90-degree rotations, and decode back.
+// Source: EGOI 2022 P8 (Rotation-Proof Cards), https://dmoj.ca/problem/egoi22p8
+// Problem: encode a number n <= 6.7e7 as a set of segments between dots of a 3x3 grid
+//   so that the card decodes to the same number after any 90-degree rotation; a second
+//   run decodes a drawn card back.
+// Solution: a card is 28 bits, 7 segments per quarter turn; the canonical card is the
+//   least of its four rotations. Count canonical cards below a mask quadrant by
+//   quadrant (ext1..ext4) to rank one; encode binary searches the least card of rank n,
+//   decode ranks the least rotation of the drawn card.
 // original: corpus/submissions/5202737.cpp
 
 fn turn(p: Int) -> Int = (2 - p % 3) * 3 + p / 3

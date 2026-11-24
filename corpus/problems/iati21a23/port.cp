@@ -1,4 +1,11 @@
-// IATI 2021 A2 P3, shots that surely hit a target that flees for s turns then approaches for c (buildable today-form)
+// Source: IATI 2021 A2 P3, https://dmoj.ca/problem/iati21a23
+// Problem: a target hides in one of n <= 1000 cells and moves one cell each turn: for s
+//   turns it flees, then for c turns it approaches, repeating. Print a list of shots
+//   that surely hits it.
+// Solution: track the window of cells the target may be in. With s <= c one window
+//   shrinks by shooting the end it moves toward; otherwise one window per half of the
+//   line, each squeezed against its wall, shooting the wider one. Each shot shrinks a
+//   window, O(n) shots.
 // original: corpus/submissions/5072008.cpp
 let n: 1..=1000 = read()
 let s: 0..=1000 = read()

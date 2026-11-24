@@ -4,7 +4,7 @@
 |---|---|
 | Kind | Process |
 | Owner | idioms |
-| Describes | `corpus/problems/<id>/`, `research/frictions/`, `research/reviews/`, `corpus/header.py`, `scripts/review-check.py` |
+| Describes | `corpus/problems/<id>/`, `research/frictions/`, `research/reviews/`, `scripts/corpus.py`, `scripts/review-check.py` |
 
 A port is an accepted C++ solution rewritten in CP Lang and kept in the
 corpus beside the original. It is evidence about the language: each port
@@ -102,8 +102,8 @@ there is one:
 //   enough to picture the solution and follow the code>
 ```
 
-`python3 corpus/header.py` counts the ports that have all three and lists
-the rest, longest first.
+`uv run python scripts/corpus.py verify --only header` names every port
+missing one of the three; `scripts/check.sh` blocks on any.
 
 ## Taste checklist
 
@@ -138,7 +138,7 @@ The review lives in `research/reviews/<id>.md` (format and score scale in
 | New ports under 4 only go down | The ratchet in `research/reviews/baseline.json`, read by `scripts/review-check.py`; lower it when a rewrite lifts a port, never raise it |
 | Ports compile and lint clean | The commit tier runs `cpl check` and the corpus lint ratchet on each staged `port.cp` and `spec.cp` |
 | Ports agree with their tests | `cpl-conform corpus` and `cpl test` |
-| Ports carry the header | `corpus/header.py` (reports, does not block) |
+| Ports carry the header | `scripts/corpus.py verify` (`header`; blocks in `scripts/check.sh`) |
 | Dream agrees with the accepted C++ on the package's tests (or gen.py seeds) | `scripts/corpus.py verify --check`, on every staged dream in the commit tier |
 | Port is close to its dream | `scripts/review-check.py` reports the port-over-dream token gap; `scripts/corpus.py gaps` counts what the dreams need from the language (neither blocks) |
 

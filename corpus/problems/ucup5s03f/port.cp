@@ -1,4 +1,11 @@
-// Universal Cup 5 Stage 3 (Gorkovskaya) F — Subset XOR via Krawtchouk / WHT
+// Source: Universal Cup 5 Stage 3 (Gorkovskaya) F (Subset XOR)
+// Problem: given m + 1 subset sizes a[0..=m] in 0..=n (n <= 1e4, m <= 2e5), count
+//   tuples of subsets of {1..n} with those sizes whose XOR is empty, mod p.
+// Solution: by the Walsh-Hadamard transform the answer is 2^-n sum_k C(n, k) prod_j
+//   K_{a_j}(k), with K_i(k) the Krawtchouk polynomial [x^i] (1 - x)^k (1 + x)^(n - k).
+//   Step k by dividing by (1 + x) and multiplying by (1 - x), O(n) each, and group
+//   equal sizes into powers: O(n^2 + m).
+// limits: 7000 ms, 1024 MB
 //
 // Input gives `m + 1` subset sizes `a[0..=m]` in `0..=n` (matching the
 // statement's `m + 1` integers). We count tuples of subsets `S_0, ..., S_m` of
@@ -12,7 +19,6 @@
 // - Stepping `k -> k + 1` multiplies `(1 - x)^k (1 + x)^{n - k}` by `(1 - x) / (1 + x)`:
 //   dividing by `(1 + x)` is the forward pass `kraw[i + 1] -= kraw[i]`, and
 //   multiplying by `(1 - x)` is the backward pass `kraw[i + 1] -= kraw[i]`.
-// limits: 7000 ms, 1024 MB
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

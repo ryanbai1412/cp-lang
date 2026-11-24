@@ -1,4 +1,12 @@
-// UCup 4 Stage 24 (Wulin) F — Residue-Covering Minimum Cost Cuts
+// Source: Universal Cup 4 Stage 24 (Wulin) F (Residue-Covering Minimum Cost Cuts)
+// Problem: choose positions in 1..=n (n, r <= 5e5) at cost c[i] each so that no gap
+//   between consecutive choices (or before the first) holds prefix sums of a covering
+//   all r residues mod r. Print the least total cost.
+// Solution: scan i from n down, with each residue's earliest index and a lazy MaxHeap
+//   giving first_full, the last position the next choice may take. dp[i] = c[i - 1] +
+//   min(dp[i + 1..=first_full]), a sliding min Window since first_full only falls; the
+//   first choice lies in 1..=first_0. O(n log n).
+// limits: 2000 ms, 256 MB
 //
 // Scan prefix sums `pref.prefix(i) % r` from `n` down to `1`, tracking each
 // residue's earliest seen index `last_occ[rem]` and the farthest among all `r`
@@ -10,7 +18,6 @@
 // only falls as `i` does, so a min `Window` over `dp[i + 1..=oldest]` keeps
 // `min(dp[i + 1..=first_full])` by popping its oldest positions. Finally, the first chosen position must lie in
 // `1..=first_0` where `first_0 = last_occ.get(0) ?? (n + 1)`.
-// limits: 2000 ms, 256 MB
 
 @!multitest
 let (n, r): (1..=500_000, 1..=500_000) = read()

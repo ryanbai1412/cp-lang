@@ -1,18 +1,12 @@
-// CCC 2014 S4 Tinted Glass Window (large limits): n rectangular panes of
-// glass, each with a tint, laid over a window. Print the area where the
-// tints of the panes on top of each other add up to at least `need`.
-//
-// Sweep a vertical line across the panes. Between two neighbouring y
-// coordinates the tint under the line is one number, so the line is a row
-// of strips. A pane adds its tint to a range of strips at its left edge
-// and takes it back at its right edge, and between events the line sweeps
-// (distance) * (total height of the strips at or over `need`).
-//
-// "Add to a range, measure what is over a threshold" has no segment tree,
-// so the strips are grouped in blocks of about sqrt(m). A block keeps its
-// strips sorted by tint, with running heights, and one pending amount that
-// applies to all of them: a range add re-sorts at most two blocks, and the
-// measure is a binary search in each block.
+// Source: CCC 2014 S4 (Tinted Glass Window, large limits), https://dmoj.ca/problem/ccc14s4hard
+// Problem: n rectangular panes, each with a tint, lie over a window. Print the area
+//   where the tints of the panes on top of each other add up to at least `need`.
+// Solution: sweep a vertical line; between neighbouring y coordinates the line is a row
+//   of strips, and a pane adds its tint to a range of strips at its left edge and takes
+//   it back at its right edge. Strips are grouped in blocks of about sqrt(m), each
+//   sorted by tint with running heights and one pending add: a range add re-sorts at
+//   most two blocks, and the height at or over `need` is a binary search per block,
+//   times the distance to the next event.
 let (n, need): (Int, Int) = read()
 domain Pane = 0..n
 let panes: [Pane](x1: Int, y1: Int, x2: Int, y2: Int, tint: Int) = read()

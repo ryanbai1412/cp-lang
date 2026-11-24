@@ -1,4 +1,12 @@
-// UCup 4 Stage 25 (Zagreb) E: for each query v, maximize sum(a[i..j]) + (j - i) * v
+// Source: Universal Cup 4 Stage 25 (Zagreb) E
+// Problem: for each of q <= 5e5 queries v, print the maximum of sum(a[i..j]) + (j - i)
+//   * v over all non-empty subarrays a[i..j] of a (n <= 5e5).
+// Solution: every subarray is a point Pt(j - i, sum(a[i..j])) and a query is a dot with
+//   Pt(v, 1), so only the upper hull of all such points matters. Divide and conquer:
+//   the cross-boundary points are the Minkowski sum of the negated left prefix hull and
+//   the right prefix hull, O(n log n); then each query is a binary search on the hull.
+// limits: 4000 ms, 1024 MB
+//
 // over all non-empty subarrays a[i..j] (0 <= i < j <= n).
 //
 // Represent each prefix as Pt(i, sum(a[..i])). For a split at md:
@@ -10,7 +18,6 @@
 //   maxima in O(hi - lo) time.
 // Taking the upper hull of the per-length maxima and maximizing `dot(p, Pt(v, 1))`
 // answers each query in O(log n).
-// limits: 4000 ms, 1024 MB
 use std.geometry.{hull_extreme, minkowski_upper, upper_hull}
 
 @!multitest

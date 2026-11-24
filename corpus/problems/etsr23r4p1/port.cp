@@ -1,4 +1,9 @@
-// Runnable port (proto/cp.py lib-run) of etsr23r4p1.cp
+// Source: ETSR 2023 Round 4 P1, https://dmoj.ca/problem/etsr23r4p1
+// Problem: a permutation p of n positions; print a balanced bracket string in which p
+//   maps every bracket to one of the opposite kind, or nothing if none exists.
+// Solution: brackets alternate along each cycle of p, so an odd cycle has no answer and
+//   a 2-cycle opens at its smaller position. Each longer cycle has two phases; try
+//   every choice of phases and keep the first whose prefix sums stay non-negative.
 // original: corpus/submissions/5521420.cpp
 
 let n: Int = read()

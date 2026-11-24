@@ -1,4 +1,11 @@
-// OLY 2023 Practice 5, buildable under proto/cpc today. See ../oly23practice5.cp.
+// Source: OLY 2023 Practice 5, https://dmoj.ca/problem/oly23practice5
+// Problem: change as few elements as possible of an array a (n <= 3e5, values in 0..=n)
+//   so that it alternates between two distinct values x and y, with x on even positions
+//   and y on odd ones. Multitest.
+// Solution: keeping x on even and y on odd positions costs n - even[x] - odd[y], plus a
+//   penalty where a run of the pair alternates the wrong way. Only the O(n) pairs that
+//   appear next to each other carry a penalty: try those, and for every other x the
+//   best penalty-free y in order of odd count.
 // original: corpus/submissions/6415646.cpp
 @!multitest
 let n: 1..=300_000 = read()

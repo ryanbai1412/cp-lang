@@ -1,4 +1,10 @@
-// Universal Cup 5 Stage 2 (EPS) E — Common Prefix Cuts
+// Source: Universal Cup 5 Stage 2 (EPS) E (Common Prefix Cuts)
+// Problem: three rankings of n <= 2e5 contestants; a cut after place i is good when two
+//   of the rankings hold the same set of contestants in their first i + 1 places. Print
+//   1 + the number of good cuts.
+// Solution: for each pair of rankings, invert one: the first i + 1 of the other occupy
+//   places 0..=i there exactly when the running maximum of their places equals i. O(n)
+//   per pair.
 //
 // A cut after 0-based position `i` (`0 <= i < n - 1`) is good when two of the
 // three rankings `rank[z]`, `rank[y]` contain the exact same set of contestants

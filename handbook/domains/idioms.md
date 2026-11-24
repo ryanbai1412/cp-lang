@@ -83,7 +83,7 @@ of user impact.
   `dream.cp`, `spec.cp`, `tests/`, `gen.py`, `checker.py`, interactors), the
   sets in `corpus/sets/` (`ecnerwala.txt`, the judge-proven `v03.txt`), the
   hill-climb set `corpus/hillclimb.json`, `corpus/newcomer/` (the newcomer
-  lint set), `corpus/header.py`. Never `corpus/submissions/`, which holds raw
+  lint set), `scripts/corpus.py`. Never `corpus/submissions/`, which holds raw
   accepted submissions and is never edited.
 - Judge profiles: `crates/cpl-judge` (compiler, flags, OS, stack, size limit
   per judge, resolution order `--judge` > `// judge:` > `cp.toml` >
@@ -263,7 +263,7 @@ GCC and LLVM's differential testing against a reference.
 | `uv run python scripts/skill-gen.py --check --cpl target/debug/cpl` | a skill example that no longer checks |
 | `uv run python scripts/ports-page.py --tokens` | token ratios against the C++ |
 | `uv run python corpus/newcomer/score.py --fixes` | newcomer spots no lint flags, or fixes that break |
-| `python3 corpus/header.py` | ports without the standard header |
+| `uv run python scripts/corpus.py verify --only header` | ports without the standard header |
 | `research/dryrun/v03/loop.sh <problem> <cases>` | a dry-run solution failing check, test, stress or the C++ build |
 
 ## Invariants
