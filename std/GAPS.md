@@ -6,7 +6,6 @@ line when the gap closes and the body lands.
 
 - subset: every `Subset` method: `Subset` is built into the compiler (`crates/cpl-ir/src/lower/expr.rs`, `library_domain.rs`, cpl-check `prelude.rs`), so `cpl run` answers its calls itself instead of running these bodies.
 - tree: `Lift.of(next)` without type arguments: `V` is not inferred from the lambda `next: V -> ?V` (E0302 "`Lift.of` needs a domain for `V`, and `Int` is not one"), so programs write `Lift<V, ()>.of(next)`.
-- pair: `symmetric`: `[Pair<V>]T` is rejected as an array key (E0204 "an array is indexed by a domain or a length"), and `Pair<0..4>` in the doc examples is rejected ("`Pair` takes a domain by name"); blocks egoi23p4.
 - window, `undoing`/`Tracked` with a tuple-pattern closure: `(mut d, (u, v)) => ...` is E0302 "a `Int` can't be taken apart into 2 names" (the element type is not inferred from the callee), so btoi20p3 writes `e: (V, V)`.
 - io: `read_all`: CP Lang has no end-of-input test (the interpreter has one internally, `Input::at_eof`), so reading to the end can't be written; blocks ioi05p2 and the site's `read_all<Cmd>(until:)` snippets.
 - seq, `filter` / `map`: `Filtered<S>` and `Mapped<S, U>` have no fields and no `T` parameter to hold the closure, and a struct cannot implement `Seq` yet; the compiler's built-in views serve these calls.
