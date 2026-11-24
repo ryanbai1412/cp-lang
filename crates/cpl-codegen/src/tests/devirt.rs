@@ -408,6 +408,19 @@ fn a_dropped_field_at_a_product_position_drops_its_local_and_stores() {
 }
 
 #[test]
+fn a_field_only_an_unwritten_method_reads_is_dropped() {
+    let out = cpp(concat!(
+        "domain V = [5]\n",
+        "let g: [V]List<(to: V, w: Int)> = [[(to: V(1), w: 2)], [(to: V(2), w: 3)], [], [], []]\n",
+        "print(dijkstra(g, from: [(V(0), 0)])[V(2)]!)\n",
+    ));
+    assert!(
+        !out.contains("order.push_back") && !out.contains("> order"),
+        "only `Paths.iter` reads `order`, and the file never writes it, so neither the field nor its pushes are kept:\n{out}"
+    );
+}
+
+#[test]
 fn a_closure_named_to_keep_argument_order_is_no_std_function() {
     let out = cpp("use std.search.{parallel_bsearch}
 let n = read<Int>()

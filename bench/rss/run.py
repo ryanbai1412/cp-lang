@@ -84,6 +84,7 @@ CASES = {
     "sort_tuples": lambda: "200000\n" + "".join(f"{i * 7919 % 1001} {i * 104729 % 1001}\n" for i in range(200_000)),
     "sort_boxes": lambda: "20\n",  # sort() 2^20 (l: Int, r: Int) records, btoi08p6's boxes
     "cf2124c": lambda: gen("cf2124c"),  # b.adjacent over 6e5 [0..n]1..=1e9: 4 B cells, not 8
+    "ucrpc21f": lambda: gen("ucrpc21f"),  # dijkstra over 1e6 cells read by p[v]: no settling-order list
     "aho_corasick": lambda: aho_words(50_000, 1000),  # 56k states over 3 used letters of 26
     "row_lists": lambda: "50000 200\n",  # [Row]List<Int> made anew 200 times, as dmpg16g2 does
 }

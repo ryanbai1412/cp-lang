@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod layout;
 pub mod lowered;
-mod reach;
+pub(crate) mod reach;
 
 /// The closures no code that runs makes (see [`reach::Reach`]).
 pub(crate) fn unreached_closures(program: &Program) -> std::collections::BTreeSet<usize> {

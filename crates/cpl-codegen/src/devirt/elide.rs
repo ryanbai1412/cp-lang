@@ -246,19 +246,27 @@ impl<'p> Devirt<'p> {
                 }
             });
         };
+        // A fn the file never writes (`Paths.iter` when only `p[v]` is
+        // used) reads nothing.
+        let reach = crate::emit::reach::Reach::of(program, &self.same);
         scan(Some(None), &program.setup);
         scan(Some(None), &program.main);
-        for (id, f) in program.fns.iter().enumerate() {
-            scan(Some(Some(id)), &f.body);
+        for &id in &reach.fns {
+            scan(Some(Some(id)), &program.fns[id].body);
         }
-        for closure in &program.closures {
-            scan(None, &closure.body);
+        for &cid in &reach.closures {
+            scan(None, &program.closures[cid].body);
         }
-        let locals = program
+        let locals = reach
             .fns
             .iter()
-            .flat_map(|f| &f.locals)
-            .chain(program.closures.iter().flat_map(|c| &c.locals))
+            .flat_map(|&id| &program.fns[id].locals)
+            .chain(
+                reach
+                    .closures
+                    .iter()
+                    .flat_map(|&c| &program.closures[c].locals),
+            )
             .chain(&program.main_locals);
         for l in locals {
             key_structs(&l.ty, &mut whole);

@@ -6,7 +6,7 @@ use cpl_ir::{Block, ClosureId, ExprKind, OrdHook, Program, Ty};
 use std::collections::BTreeSet;
 
 #[derive(Default)]
-pub(super) struct Reach {
+pub(crate) struct Reach {
     pub fns: BTreeSet<usize>,
     pub closures: BTreeSet<usize>,
     pub structs: BTreeSet<usize>,
@@ -20,7 +20,7 @@ pub(super) struct Reach {
 
 impl Reach {
     /// `same[c]` is the closure `c` is written as (`Devirt::same`).
-    pub(super) fn of(program: &Program, same: &[ClosureId]) -> Reach {
+    pub(crate) fn of(program: &Program, same: &[ClosureId]) -> Reach {
         let mut r = Reach::default();
         for g in &program.globals {
             r.ty(program, &g.ty);
