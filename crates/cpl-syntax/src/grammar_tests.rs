@@ -99,3 +99,33 @@ fn the_generated_grammars_classify_words_as_the_lexer_does() {
         );
     }
 }
+
+/// editors/words.json, which tree-sitter and JetBrains read, is the lexer's tables (`just gen`).
+#[test]
+fn the_editor_word_list_is_the_lexers() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text = std::fs::read_to_string(root.join("editors/words.json")).unwrap();
+    let list = |key: &str| -> Vec<String> {
+        let body = text
+            .split(&format!("\"{key}\": ["))
+            .nth(1)
+            .unwrap()
+            .split(']')
+            .next()
+            .unwrap();
+        body.split(',')
+            .map(|w| w.trim().trim_matches('"').to_string())
+            .filter(|w| !w.is_empty())
+            .collect()
+    };
+    assert_eq!(
+        list("keywords"),
+        crate::KEYWORDS,
+        "editors/words.json is stale; run: just gen"
+    );
+    assert_eq!(
+        list("literals"),
+        LITERAL_WORDS,
+        "editors/words.json is stale; run: just gen"
+    );
+}

@@ -31,12 +31,9 @@ object CpTokens {
     @JvmField val COMMENTS = TokenSet.create(LINE_COMMENT, DOC_COMMENT)
     @JvmField val STRINGS = TokenSet.create(STRING, CHAR)
 
-    /** The reserved words of `TokenKind::keyword` in `crates/cpl-syntax/src/token.rs`. */
-    val KEYWORDS: Set<String> = setOf(
-        "let", "var", "fn", "struct", "enum", "domain", "type", "const", "trait", "impl", "use", "pub",
-        "if", "elif", "else", "for", "while", "in", "match", "return", "break", "continue",
-        "and", "or", "not", "assert", "mut", "self", "true", "false", "lends", "yield", "unchecked",
-    )
+    /** cpl-syntax's `KEYWORDS`, from the editors/words.json that `just gen` writes and the build bundles. */
+    val KEYWORDS: Set<String> = com.google.gson.JsonParser.parseString(CpTokens::class.java.getResource("/cp/words.json")!!.readText())
+        .asJsonObject.getAsJsonArray("keywords").map { it.asString }.toSet()
 }
 
 /**

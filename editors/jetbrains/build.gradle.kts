@@ -73,6 +73,9 @@ intellijPlatform {
 val repo: File = rootDir.parentFile.parentFile
 
 tasks {
+    processResources {
+        from(repo.resolve("editors/words.json")) { into("cp") }
+    }
     test {
         systemProperty("cpl.repo", repo.absolutePath)
         systemProperty("cpl.bin", System.getenv("CPL") ?: repo.resolve(if (System.getProperty("os.name").startsWith("Windows")) "target/debug/cpl.exe" else "target/debug/cpl").absolutePath)
