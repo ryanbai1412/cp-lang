@@ -9179,3 +9179,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** `cpp_deep_copies` sums `// copies:` headers over `corpus/problems` only and is a hard zero: no corpus port, dream or spec makes a deep copy. The copies a spec/conformance case exists to require (decision 458's list, 12 today) are `spec_required_copies`, shrink-only. `read_only_copies` still pins every program and case to its header, in both directions.
 - **Why.** With both in one counter its target 0 meant breaking the spec, and the 12 required copies hid any avoidable one that came back in the corpus. Split, a corpus copy fails at once, and raising a conformance header to hide a regression is a visible bump of its own counter.
 - **Reverse.** Fold `spec_required_copies` back into `cpp_deep_copies` with a baseline of their sum.
+
+## 607. (reserved, unknown)
