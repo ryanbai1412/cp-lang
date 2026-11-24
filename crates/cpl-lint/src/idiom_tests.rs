@@ -656,3 +656,18 @@ fn manual_adjacency_list_reads_the_list_type_from_the_checker() {
     assert!(fires("var adj: [0..=n]List<Int> = []"));
     assert!(!fires("var adj: List<Set<Int>> = [[] for _ in 0..=n]"));
 }
+
+#[test]
+fn sentinel_table_reads_the_element_type_from_the_checker() {
+    let fires = |decl: &str| {
+        let src = format!(
+            "let n: 1..=90 = read()\n{decl}\nfn fib(i: Int) -> Int:\n    if i < 2:\n        return i\n    if memo[i] != -1:\n        return memo[i]\n    memo[i] = fib(i - 1) + fib(i - 2)\n    memo[i]\nprint(fib(n))\n"
+        );
+        codes(&src).contains(&"L0530")
+    };
+    assert!(fires("var memo: [0..=90]Int = -1"));
+    assert!(fires("var memo: List<Int> = [-1 for _ in 0..=90]"));
+    assert!(fires("var memo = [-1 for _ in 0..=90]"));
+    assert!(!fires("var memo: [0..=90]I128 = -1"));
+    assert!(!fires("var memo: List<I128> = [-1 for _ in 0..=90]"));
+}

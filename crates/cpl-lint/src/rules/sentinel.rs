@@ -3,10 +3,12 @@
 //! value (or, for a large one, orders as a relaxation does). C++ marks
 //! "absent" with a value; `[D]?Int` says it in the type.
 
+use crate::facts::Facts;
 use crate::walk::Visitor;
 use crate::{File, Finding, SENTINEL_TABLE};
+use cpl_check::Ty;
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{BinOp, CmpOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, TypeKind, UnOp};
+use cpl_syntax::ast::{BinOp, CmpOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, UnOp};
 
 pub(crate) const LARGE: i128 = 1_000_000_000;
 
@@ -21,6 +23,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Sentinels<'a> {
         src: &'a str,
         base: u32,
+        facts: Option<&'a Facts>,
         tables: Vec<Table>,
         /// Name, the compared constant if any, and the comparison's span.
         tests: Vec<(String, Option<i128>, bool, Span)>,
@@ -40,14 +43,20 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let PatternKind::Name(name) = &pat.kind else {
                 return;
             };
-            let fill = match (ty.as_ref().map(|t| &t.kind), &init.kind) {
-                (Some(TypeKind::Array { elem, .. }), _) if is_int(elem) => {
+            // A written type, as the checker reads it; `Some(None)` when it
+            // has no answer.
+            let written = ty.as_ref().map(|_| {
+                self.facts
+                    .and_then(|f| f.place_type(pat.span.shift(self.base)))
+            });
+            let fill = match (written, &init.kind) {
+                (Some(Some(Ty::Array { elem, .. })), _) if is_int(elem) => {
                     constant(init).map(|v| (v, init.span))
                 }
                 (
-                    Some(TypeKind::Named { name, args }),
+                    Some(Some(Ty::Named { name, args })),
                     ExprKind::Comprehension { body, clauses },
-                ) if name.text == "List"
+                ) if name == "List"
                     && matches!(&args[..], [a] if is_int(a))
                     && clauses.len() == 1 =>
                 {
@@ -101,6 +110,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = Sentinels {
         src: file.src,
         base: 0,
+        facts: file.facts,
         tables: Vec::new(),
         tests: Vec::new(),
     };
@@ -132,8 +142,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     out
 }
 
-fn is_int(ty: &cpl_syntax::ast::Type) -> bool {
-    matches!(&ty.kind, TypeKind::Named { name, args } if name.text == "Int" && args.is_empty())
+fn is_int(ty: &Ty) -> bool {
+    matches!(ty, Ty::Int)
 }
 
 /// `-1`, `10**18`, `10**9 + 7`, `1000000000000000000` and their negations.
