@@ -953,6 +953,12 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertIn("must stay at 0", errs[0])
 
+    def test_a_port_without_a_limits_line_fails_the_ratchet(self) -> None:
+        self.assertIn("corpus_no_limits", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"corpus_no_limits": 1}, {"corpus_no_limits": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
     def test_an_optional_copies_header_fails_the_ratchet(self) -> None:
         self.assertIn("cpp_optional_copies", dr.HARD_ZERO)
         errs, _, _ = dr.evaluate({"cpp_optional_copies": 1}, {"cpp_optional_copies": 0})
