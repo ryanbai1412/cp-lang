@@ -18,7 +18,7 @@ let (n, m): (2..=150000, 1..=150000) = read()
 let p: 0..n = read()
 let q: 1..=2000 = read()
 domain F = 0..n
-domain Trail = 0..m  // most beautiful first
+domain Trail = 0..m      // most beautiful first
 domain State = 0..2 * n  // 2 * fountain + (arrived by its best trail)
 domain Query = 0..q
 let ends: [Trail](a: F, b: F) = read()

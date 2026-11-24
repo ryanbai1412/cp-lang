@@ -49,8 +49,7 @@ let a: [I]-1e9..=1e9 = read()
 let unfolded = Monoid<Cell>((0, MaxSub.zero), (x, _) => x)
 var st = SegTree<I, Cell, Tag>(
     a: [I] i => (a[i], MaxSub.of(a[i])),
-    act: Action<Cell,
-    Tag>(
+    act: Action<Cell, Tag>(
         id: identity,
         compose: (g, f) => then(g, f),
         apply: (f, c, _) => run(f, c),

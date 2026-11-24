@@ -10,7 +10,6 @@
 //   [bad_l[i]+1..=i] x [i..bad_r[i]]; subtracting adjacent overlaps counts each once. O(n).
 // Bounds: n: 1..=200_000; a: 1..=n
 
-
 @!multitest
 let n: 1..=200_000 = read()
 domain Pos = 0..n

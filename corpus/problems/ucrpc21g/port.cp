@@ -29,5 +29,7 @@ var held: [Row, Col]?Int = None
 held[start] = Some(0)
 for t in Tick:
     let moved = [Row, Col] p => [held[q] for q in p.adj4 + [p]].present().max()
-    held = [Row, Col] p => moved[p].map(h => if crush[t, p.0, p.1]: h / 2 else: h + gain[t, p.0, p.1])
+    held = [Row, Col] p => moved[p].map(
+        h => if crush[t, p.0, p.1]: h / 2 else: h + gain[t, p.0, p.1]
+    )
 print([held[r, c] for r in Row for c in Col].present().max()!)

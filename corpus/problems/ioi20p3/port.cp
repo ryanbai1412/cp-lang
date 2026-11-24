@@ -23,7 +23,9 @@ let x: [Colour, Ticket]0..=1_000_000_000 = read()
 // every round pays its n/2 high tickets minus its n/2 low ones. Each colour starts with its
 // k smallest as low; its j-th upgrade turns one into its j-th largest, and the gain falls with
 // j, so the best n*k/2 upgrades over all colours form a valid choice
-let ups = [(gain: x[c, Ticket(m - 1 - j)] + x[c, Ticket(k - 1 - j)], c:) for c in Colour for j in 0..k]
+let ups = [
+    (gain: x[c, Ticket(m - 1 - j)] + x[c, Ticket(k - 1 - j)], c:) for c in Colour for j in 0..k
+]
 let taken = ups.sorted(by: u => desc(u.gain)).take(n * k / 2).collect()
 var high: [Colour]0..=k = 0
 for u in taken: high[u.c] += 1

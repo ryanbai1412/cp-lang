@@ -22,7 +22,9 @@ let roads: [m](u: City, v: City, w: 1..=1e9) = read()
 
 fn parent(c: City) -> City = City.nth((c.ord + 1) / 2 - 1)
 fn road_up(c: City) -> Int = up[c.ord - 1]
-let g = Graph.directed(roads.collect() + [(u: c, v: parent(c), w: road_up(c)) for c in City.drop(1)])
+let g = Graph.directed(
+    roads.collect() + [(u: c, v: parent(c), w: road_up(c)) for c in City.drop(1)]
+)
 
 var d = RollbackArray<City, ?Int>(init: _ => None)
 var total = Z(0)

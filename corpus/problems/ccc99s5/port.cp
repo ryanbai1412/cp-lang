@@ -44,7 +44,9 @@ fn fill(p: At, give: ?(x: Letter, d: Int) = None) -> Bool:
     let below = Row(row.ord + 1)
     if let x = letter(row, col):
         if let d = digit[x]: return fill((col:, row: below, total: total + d))
-        return Digit.any(d => fill((col:, row: below, total: total + d.ord), give: Some((x, d.ord))))
+        return Digit.any(
+            d => fill((col:, row: below, total: total + d.ord), give: Some((x, d.ord)))
+        )
     fill((col:, row: below, total:))
 
 assert fill((col: 0, row: Row.first!, total: 0))  // every puzzle has an answer

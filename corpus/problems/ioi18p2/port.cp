@@ -28,7 +28,11 @@ for p in Who: who[seat[p].r, seat[p].c] = p
 // position t of the tree stands for the prefix 0..=t; it holds that prefix's top-left corners
 // (a seated cell with nobody above or to its left) plus its dents (an empty cell with two or
 // more seated neighbours). A prefix is a rectangle exactly when the total is 1, the least.
-let shift = Action<MinCount<Int>, Int>.new(apply: (d, v, _) => MinCount(v.val + d, v.count), over: MinCount.monoid(), commutes: true)
+let shift = Action<MinCount<Int>, Int>.new(
+    apply: (d, v, _) => MinCount(v.val + d, v.count),
+    over: MinCount.monoid(),
+    commutes: true,
+)
 var bad = SegTree<Who, MinCount<Int>, Int>(MinCount.monoid(), [Who] _ => MinCount.of(0), act: shift)
 
 // the cut where the contestant at (r, c) sits down; off the grid, never

@@ -10,7 +10,6 @@
 //   multiplies by V. Bridge decomposition and BFS, O(n + m).
 // Bounds: n: 2..=200_000; m: 1..=400_000; lim: 1..=10 ** 9; edges.u, edges.v: 1..=n
 
-
 type Z = Mod<998_244_353>
 
 @!multitest

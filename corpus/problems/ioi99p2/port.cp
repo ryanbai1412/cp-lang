@@ -36,7 +36,9 @@ for i in T:
     for s in slots.get(text[i]) ?? []:
         start[s.w][s.j] = if s.j == 0: Some(i) else: start[s.w][s.j - 1]
         if s.j == words[s.w].len - 1:
-            if let from = start[s.w][s.j] and Int(i) - Int(from) < SPAN and words[s.w].len + best[from.l] > best[i.r]:
+            if let from = start[s.w][s.j] and
+                    Int(i) - Int(from) < SPAN and
+                    words[s.w].len + best[from.l] > best[i.r]:
                 best[i.r] = words[s.w].len + best[from.l]
                 took[i.r] = Some((w: s.w, from: from.l))
 

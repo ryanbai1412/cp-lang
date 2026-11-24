@@ -18,12 +18,17 @@ let dir: [Ball]0..=1 = read()
 
 // when, within a period, each ball first reaches each wall
 let reach: [Ball](left: Int, right: Int) = [Ball] b =>
-    if dir[b] == 1: (left: 2 * L - pos[b], right: L - pos[b]) else: (left: pos[b], right: pos[b] + L)
+    if dir[b] == 1: (
+        left: 2 * L - pos[b],
+        right: L - pos[b],
+    ) else: (left: pos[b], right: pos[b] + L)
 
 fn hits(t: Int) -> (left: Int, right: Int):
     let (laps, m) = (t / (2 * L), t % (2 * L))
-    (left: n * laps + count(reach[b].left <= m for b in Ball),
-     right: n * laps + count(reach[b].right <= m for b in Ball))
+    (
+        left: n * laps + count(reach[b].left <= m for b in Ball),
+        right: n * laps + count(reach[b].right <= m for b in Ball),
+    )
 
 // where ball b is, and whether it heads right, at m seconds into a period
 fn place(b: Ball, m: Int) -> (at: Int, right: Bool):
@@ -41,7 +46,7 @@ else:
     // seen from the unfinished wall, the balls heading for it, nearest first
     let to_right = h.right < kr
     let need = if to_right: kr - h.right else: kl - h.left
-    let movers = [if to_right: s.at else: L - s.at
-                  for b in Ball for s in [place(b, t1 % (2 * L))] if s.right == to_right]
-        .sorted(by: p => desc(p))
+    let movers = [
+        if to_right: s.at else: L - s.at for b in Ball for s in [place(b, t1 % (2 * L))] if s.right == to_right
+    ].sorted(by: p => desc(p))
     print(t1 + 2 * L - (if need < movers.len: movers[need - 1] else: 0))

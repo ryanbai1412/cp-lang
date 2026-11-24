@@ -33,7 +33,9 @@ for c in Course:
     let ways = tables(c, above, below)
     // of the j still at or below, `keep` stay so here; the other below - keep were already out
     still = [Others] keep => ways * sum(
-        still[j] * comb.choose(j.label, keep.label) * comb.choose(n - 1 - j.label, below - keep.label)
-        for j in Others if j >= keep
+        still[j] * comb.choose(j.label, keep.label) * comb.choose(
+            n - 1 - j.label,
+            below - keep.label,
+        ) for j in Others if j >= keep
     )
 print(still[Others.at(k)!])

@@ -37,7 +37,9 @@ for _ in 0..tcs:
         for _ in 0..a + b + c:
             let x = cane()
             seen[x] += 1
-            if seen[x] > a and bowl[x] == None: bowl[x] = Bowl(1 + Colour.count(y => bowl[y] != None))
+            if seen[x] > a and bowl[x] == None: bowl[x] = Bowl(
+                1 + Colour.count(y => bowl[y] != None)
+            )
             put(if seen[x] > a: bowl[x] else: None)
     else:
         (bowl[red], bowl[green]) = (Bowl(1), Bowl(2))

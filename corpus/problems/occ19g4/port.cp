@@ -76,6 +76,12 @@ fn split(l: Int, r: Int, by_u: List<Goose>, by_start: List<Goose>, by_stop: List
     split(l, m, eu, es, et)
     split(m, r, lu, ls, lt)
 
-split(0, 2 * n, Goose.sort(by: g => u[g]), Goose.sort(by: g => start[g]), Goose.sort(by: g => stop[g]))
+split(
+    0,
+    2 * n,
+    Goose.sort(by: g => u[g]),
+    Goose.sort(by: g => start[g]),
+    Goose.sort(by: g => stop[g]),
+)
 
 for g in Goose: print(ans[g])

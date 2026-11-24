@@ -37,7 +37,9 @@ fn crossings(blocks: List<(Int, Int)>) -> Int:
     // below it already made the edge
     fn starts_edge(x: Int, y: Int) -> Bool =
         (x - 1, y) in run_of and not ((x, y - 1) in run_of and (x - 1, y - 1) in run_of)
-    let edges = [(Run(run_of[(x - 1, y)]), Run(run_of[(x, y)])) for (x, y) in blocks if starts_edge(x, y)]
+    let edges = [
+        (Run(run_of[(x - 1, y)]), Run(run_of[(x, y)])) for (x, y) in blocks if starts_edge(x, y)
+    ]
     let tree = Rooted(undirected_of_pairs(edges), Run.first!)
     var under: [Run]Int = [Run] r => size[r.label]
     var total = 0

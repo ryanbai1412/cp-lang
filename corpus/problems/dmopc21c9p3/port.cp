@@ -25,6 +25,8 @@ for _ in 0..q:
     let (s, t, x): (Station, Station, Int) = read()
     let (u, v, y): (Station, Station, Int) = read()
     // a trip that fits leaves the new route to the other; else both share it
-    let fits = dist[s, t] <= x or dist[u, v] <= y or
-        min(dist[s, u] + dist[t, v], dist[s, v] + dist[t, u]) <= x + y - 2
+    let fits = dist[s, t] <= x or dist[u, v] <= y or min(
+        dist[s, u] + dist[t, v],
+        dist[s, v] + dist[t, u],
+    ) <= x + y - 2
     print(yes(fits))

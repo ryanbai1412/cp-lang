@@ -9,4 +9,8 @@
 let (n, m): (1..=18, 0..=153) = read()
 domain V = 1..=n
 let restricted: [m](u: V, v: V) = read()
-print(max(keep.len for keep in Subset<V> if all(not (e.u in keep and e.v in keep) for e in restricted))!)
+print(
+    max(
+        keep.len for keep in Subset<V> if all(not (e.u in keep and e.v in keep) for e in restricted)
+    )!
+)

@@ -18,8 +18,10 @@ var seen: Counter<(List<Int>, List<Int>), Int> = Counter()
 var pairs = 0
 for _ in 0..g:
     let grid: [Row, Col]Char = read()
-    let key = ([sum(red(grid[r, c]) for c in Col) % 2 for r in Row],
-               [sum(red(grid[r, c]) for r in Row) % 2 for c in Col])
+    let key = (
+        [sum(red(grid[r, c]) for c in Col) % 2 for r in Row],
+        [sum(red(grid[r, c]) for r in Row) % 2 for c in Col],
+    )
     pairs += seen[key]
     seen[key] += 1
 print(pairs)

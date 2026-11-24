@@ -15,7 +15,9 @@ let a: [Pos]-1e9..=1e9 = read()
 
 fn side(i: Pos) -> Parity = Parity(i.ord % 2)
 
-var sums: [Parity]Fenwick<Pos, Int> = [Parity] s => Fenwick([Pos] i => if side(i) == s: a[i] else: 0)
+var sums: [Parity]Fenwick<Pos, Int> = [Parity] s => Fenwick(
+    [Pos] i => if side(i) == s: a[i] else: 0
+)
 for _ in 0..q:
     let ty: 1..=2 = read()
     if ty == 1:

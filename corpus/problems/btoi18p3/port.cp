@@ -63,7 +63,13 @@ fn on_sheet(x1: Int, y1: Int, x2: Int, y2: Int, seen: ?Seen) -> ?(Int, Int):
         let (best, x) = [(at(i, mid), i) for i in x1..=x2].max()!
         if let p = seen:
             if p.h >= best:
-                let half = if p.y <= mid: on_sheet(x1, y1, x2, mid - 1, seen) else: on_sheet(x1, mid + 1, x2, y2, seen)
+                let half = if p.y <= mid: on_sheet(x1, y1, x2, mid - 1, seen) else: on_sheet(
+                    x1,
+                    mid + 1,
+                    x2,
+                    y2,
+                    seen,
+                )
                 if let hit = half: return Some(hit)
         let a = if mid - 1 >= y1: at(x, mid - 1) else: 0
         let c = if mid + 1 <= y2: at(x, mid + 1) else: 0
@@ -75,7 +81,13 @@ fn on_sheet(x1: Int, y1: Int, x2: Int, y2: Int, seen: ?Seen) -> ?(Int, Int):
         let (best, y) = [(at(mid, i), i) for i in y1..=y2].max()!
         if let p = seen:
             if p.h >= best:
-                let half = if p.x <= mid: on_sheet(x1, y1, mid - 1, y2, seen) else: on_sheet(mid + 1, y1, x2, y2, seen)
+                let half = if p.x <= mid: on_sheet(x1, y1, mid - 1, y2, seen) else: on_sheet(
+                    mid + 1,
+                    y1,
+                    x2,
+                    y2,
+                    seen,
+                )
                 if let hit = half: return Some(hit)
         let a = if mid - 1 >= x1: at(mid - 1, y) else: 0
         let c = if mid + 1 <= x2: at(mid + 1, y) else: 0
@@ -86,7 +98,9 @@ fn on_sheet(x1: Int, y1: Int, x2: Int, y2: Int, seen: ?Seen) -> ?(Int, Int):
 // A box: the best of q / 2 random cells, then walk uphill.
 fn in_box() -> Cell:
     var rng = Rng(1)
-    var c = [(rng.int(0, n - 1), rng.int(0, m - 1), rng.int(0, k - 1)) for _ in 0..q / 2].max(by: height)!
+    var c = [
+        (rng.int(0, n - 1), rng.int(0, m - 1), rng.int(0, k - 1)) for _ in 0..q / 2
+    ].max(by: height)!
     while let d = beside(c).find(d => height(d) > height(c)): c = d
     c
 

@@ -30,7 +30,13 @@ for w in weight:
                 for take in 0..=n - used:
                     let bits = carry + take
                     let fixed = ones + bits % 2
-                    if fixed <= k: next[used + take, bits / 2, fixed] += cur * power * comb.choose(n - used, take)
+                    if fixed <= k: next[
+                        used + take,
+                        bits / 2,
+                        fixed,
+                    ] += cur * power * comb.choose(n - used, take)
                     power *= w
     dp = next
-print(sum(dp[n, carry, ones] for carry in 0..=n / 2 for ones in 0..=k if ones + popcount(carry) <= k))
+print(
+    sum(dp[n, carry, ones] for carry in 0..=n / 2 for ones in 0..=k if ones + popcount(carry) <= k)
+)

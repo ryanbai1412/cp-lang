@@ -27,5 +27,7 @@ fn switch<P>(r: Range<P>, on: Bool) -> Int:  // returns how many changed
 let q: 1..=1e5 = read()
 for _ in 0..q:
     let (cmd, x): (Str, Pkg) = read()
-    if cmd == "install": print(sum(switch(c.range, true) for c in tree.chains(Pkg.first!, x, false)))
+    if cmd == "install": print(
+        sum(switch(c.range, true) for c in tree.chains(Pkg.first!, x, false))
+    )
     else: print(switch(tree.sub(x), false))

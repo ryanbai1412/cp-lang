@@ -40,7 +40,9 @@ let tree = Rooted(u => [(to: v, w: size[v]) for v in kids[u]], order[0])
 repeat q:
     let (s, t): (V, V) = read()
     let extra: [k](u: V, v: V) = read()
-    let vt = tree.virtual([comp[s], comp[t]] + [comp[e.u] for e in extra] + [comp[e.v] for e in extra])
+    let vt = tree.virtual(
+        [comp[s], comp[t]] + [comp[e.u] for e in extra] + [comp[e.v] for e in extra]
+    )
     fn node(u: V) -> vt.K = vt.K.find(x => vt.at[x] == comp[u])!
     var ahead: [vt.K]List<vt.K> = []
     var behind: [vt.K]List<vt.K> = []

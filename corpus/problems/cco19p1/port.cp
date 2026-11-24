@@ -11,18 +11,18 @@
 // original: corpus/submissions/3613457.cpp
 // Bounds: n, m: 1..=13; slack: 1..=16
 let n: 1..=13 = read()
-let m: 1..=13 = read()                                    // at most 13 cells in all
+let m: 1..=13 = read()  // at most 13 cells in all
 domain Row = 0..n
 domain Col = 0..m
 type Cell = (Row, Col)
 
 enum Player = J | D
 fn other(p: Player) -> Player = if p == J: D else: J
-type Board = [Row, Col]?Player                            // None once a piece has left
+type Board = [Row, Col]?Player  // None once a piece has left
 
 let letters: [Row, Col]Char = read()
 let start: Board = [Row, Col] (r, c) => Some(if letters[r, c] == 'J': J else: D)
-let slack: [Player]1..=16 = read()                       // how many of his best moves each picks from
+let slack: [Player]1..=16 = read()  // how many of his best moves each picks from
 
 var memo: [Player]Map<Board, F64> = [Player] _ => Map()
 

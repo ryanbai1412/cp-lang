@@ -16,7 +16,10 @@ var common: [I, J]0..=3000 = 0
 for i in I.rev:
     for j in J.rev:
         if let i1 = i.next and let j1 = j.next:
-            common[i, j] = if a[i.label] == b[j.label]: 1 + common[i1, j1] else: max(common[i1, j], common[i, j1])
+            common[i, j] = if a[i.label] == b[j.label]: 1 + common[i1, j1] else: max(
+                common[i1, j],
+                common[i, j1],
+            )
 
 var out: List<Char> = []
 var i = I.first!

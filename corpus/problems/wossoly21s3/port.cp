@@ -24,7 +24,11 @@ fn land(q: Cell) -> ?Cell:
     let ch = school[q]
     if ch == '#' or ch.is_lower: None elif ch.is_upper: place[ch.lower] else: q
 
-fn walk(from: Char, to: Char) -> ?Int = bfs(p => p.adj4.filter_map(land), from: [place[from]], until: place[to])[place[to]]
+fn walk(from: Char, to: Char) -> ?Int = bfs(
+    p => p.adj4.filter_map(land),
+    from: [place[from]],
+    until: place[to],
+)[place[to]]
 
 let legs = [walk('0' + k, '0' + k + 1) for k in 0..4].all_some()
 print(if let steps = legs: steps.sum() else: -1)

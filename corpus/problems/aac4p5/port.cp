@@ -42,7 +42,9 @@ if groups.len < x:
 else:
     let comps = components()
     let forced = sum(c.len for c in comps if c.len > 1)
-    let room = sum(c.len * (c.len - 1) for c in comps) + (n * n - sum(c.len * c.len for c in comps)) / 2
+    let room = sum(c.len * (c.len - 1) for c in comps) + (
+        n * n - sum(c.len * c.len for c in comps)
+    ) / 2
     if forced <= m <= room:
         for (u, v) in edges(comps).take(m):
             print(u, v)

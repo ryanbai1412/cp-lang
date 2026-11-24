@@ -34,6 +34,12 @@ fn prefix_xor(len: Int, d: Int) -> Int:
 let n: 1..=200_000 = read()
 var ans = 0
 repeat n:
-    let (a, b, c, l, r): (1..=10 ** 18, 1..=10 ** 18, 1..=10 ** 18, 1..=10 ** 18, 1..=10 ** 18) = read()
+    let (a, b, c, l, r): (
+        1..=10 ** 18,
+        1..=10 ** 18,
+        1..=10 ** 18,
+        1..=10 ** 18,
+        1..=10 ** 18,
+    ) = read()
     ans ^= prefix_xor(r - c + 1, c - b) ^ prefix_xor(l - c, c - b)
 print(if ans != 0: "Bug" else: "Feature")

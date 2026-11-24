@@ -53,7 +53,7 @@ fn sorting_flops() -> List<Flop>:
     flops
 
 let there = sorting_flops()  // a
-let back = sorting_flops()  // b
+let back = sorting_flops()   // b
 print(there.len + back.len)
 for f in there: print(f.l + 1, f.r + 1)
 for f in back.rev: print(f.l + 1, f.r + 1)

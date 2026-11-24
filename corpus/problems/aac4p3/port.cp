@@ -19,8 +19,11 @@ fn lowest(k: Int, d: Int) -> (a: Int, b: Int):
 
 let directions = Set(lowest(s.k, s.d) for s in slopes)
 // points on one line of slope a / b share b * y - a * x
-print(sum(
-    c * (c - 1) / 2
-    for (a, b) in directions
-    for c in points.tally(by: p => b * p.y - a * p.x).values
-))
+print(
+    sum(
+        c * (c - 1) / 2 for (
+            a,
+            b,
+        ) in directions for c in points.tally(by: p => b * p.y - a * p.x).values
+    )
+)

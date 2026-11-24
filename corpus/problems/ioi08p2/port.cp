@@ -32,7 +32,11 @@ for ring in islands.cycles():
     var (minus, plus): (?Int, ?Int) = (None, None)  // best reach[a] - at, reach[a] + at so far
     for b in ring:
         best max= inside[b]
-        if let s = minus and let l = plus: best = max(best, reach[b] + at + s, reach[b] + around - at + l)
+        if let s = minus and let l = plus: best = max(
+            best,
+            reach[b] + at + s,
+            reach[b] + around - at + l,
+        )
         minus max= reach[b] - at
         plus max= reach[b] + at
         at += bridge[b].len

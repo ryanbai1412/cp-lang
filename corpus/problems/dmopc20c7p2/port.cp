@@ -24,7 +24,9 @@ for t in Tile:
     let corners = [c + d for d in shape]
     for (p, q) in (corners + [corners[0]]).adjacent: edges.push((p, q, t))
 edges.sort(by: e => e.from)
-fn leaving(p: Pt) -> List<(from: Pt, to: Pt, tile: Tile)> = [edges[i] for i in edges.equal_range(p, by: e => e.from)]
+fn leaving(p: Pt) -> List<(from: Pt, to: Pt, tile: Tile)> = [
+    edges[i] for i in edges.equal_range(p, by: e => e.from)
+]
 let start = min(e.from for e in edges if leaving(e.from).len == 1)!
 var at = start
 var by = leaving(start)[0].tile

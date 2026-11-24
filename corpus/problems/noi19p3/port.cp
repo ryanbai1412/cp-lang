@@ -52,7 +52,11 @@ repeat k:
     let pair = best(mut both_out, i => not in_c[i] and not in_d[i])
     let ad = best(mut a_of_d, i => not in_c[i])
     let bc = best(mut b_of_c, i => not in_d[i])
-    let gains = [pair.map(p => p.gain), ad.map(x => x.gain + fb.gain), bc.map(x => x.gain + fa.gain)]
+    let gains = [
+        pair.map(p => p.gain),
+        ad.map(x => x.gain + fb.gain),
+        bc.map(x => x.gain + fa.gain),
+    ]
     let top = gains.map(g => g ?? -1).max()!
     if spare > 0 and fa.i != fb.i and fa.gain + fb.gain > top:
         total += fa.gain + fb.gain

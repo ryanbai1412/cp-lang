@@ -18,8 +18,8 @@ struct Student:
     patience: 0..=7
 domain Pos = 0..n
 let queue: [Pos]Student = read()
-domain Offset = 0..8        // the window i, i + 1, ..., i + 7
-domain Rel = -8..8          // the last served student, as an offset from i
+domain Offset = 0..8  // the window i, i + 1, ..., i + 7
+domain Rel = -8..8    // the last served student, as an offset from i
 type Window = Subset<Offset>
 
 fn at(i: Pos, j: Int) -> Pos = Pos(i.ord + j)
@@ -38,15 +38,18 @@ fn choices(i: Pos, served: Window) -> List<Offset>:
 // cur[served][last]: the least time for a state at the current i.
 var cur: [Window][Rel]?Int = None
 for j in choices(Pos.first!, Window.empty):
-    cur[Window.single(j)][Rel(Int(j))] = 0      // the first dish is free
+    cur[Window.single(j)][Rel(Int(j))] = 0  // the first dish is free
 for i in Pos:
     var next: [Window][Rel]?Int = None
-    for served in Window:                      // ascending: serving someone makes a larger set
+    for served in Window:  // ascending: serving someone makes a larger set
         for last in Rel:
             if let time = cur[served][last]:
                 if served.contains(Offset.first!):
                     let slid = last.prev!
-                    next[served.shifted(-1)][slid] = min(next[served.shifted(-1)][slid] ?? time, time)
+                    next[served.shifted(-1)][slid] = min(
+                        next[served.shifted(-1)][slid] ?? time,
+                        time,
+                    )
                 else:
                     let before = queue[at(i, Int(last))].taste
                     for j in choices(i, served):

@@ -77,7 +77,9 @@ fn get_distance(i: Int, j: Int) -> Int:
     match (real_kind[S(i)], real_kind[S(j)]):
         (1, 1) => 2 * right_d[max(a, b)]!.ord - a.ord - b.ord
         (2, 2) => a.ord + b.ord - 2 * left_c[min(a, b)]!.ord
-        (1, _) => if a < b: b.ord - a.ord else: 2 * (right_d[a]!.ord - left_c[b]!.ord) - a.ord + b.ord
+        (1, _) => if a < b: b.ord - a.ord else: 2 * (
+            right_d[a]!.ord - left_c[b]!.ord
+        ) - a.ord + b.ord
         _ => if b < a: a.ord - b.ord else: 2 * (right_d[b]!.ord - left_c[a]!.ord) + a.ord - b.ord
 
 let found = find_location(n, at[S(0)], get_distance)

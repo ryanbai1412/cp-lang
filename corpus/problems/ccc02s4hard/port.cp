@@ -33,7 +33,10 @@ fn set_slowest(slowest: ?Int, c: Cell, _span: Int) -> Cell:
     c
 
 let cells = Monoid<Cell>((low: None, total: None), join)
-var st = SegTree<Cut, Cell, ?Int>(cells, act: Action<Cell, ?Int>(id: None, compose: then, apply: set_slowest, over: cells))
+var st = SegTree<Cut, Cell, ?Int>(
+    cells,
+    act: Action<Cell, ?Int>(id: None, compose: then, apply: set_slowest, over: cells),
+)
 var dp: [Cut]Int = 0
 var next: [Cut]Cut = Cut.last!
 st.set(Cut.last!, (low: Some((val: 0, at: Cut.last!)), total: None))

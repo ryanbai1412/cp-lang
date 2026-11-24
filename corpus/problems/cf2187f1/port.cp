@@ -21,6 +21,7 @@ let t = PermTree.new([I] i => pos_a[b[I(n - 1 - i.ord)]])
 
 fn depth<Node>(v: Node) -> Int:
     if t.kind[v] == PermKind.Leaf: return 1
-    if t.kind[v] == PermKind.Decr and t.kind[t.right(v)] == PermKind.Leaf: return 1 + depth(t.left(v))
+    if t.kind[v] == PermKind.Decr and
+        t.kind[t.right(v)] == PermKind.Leaf: return 1 + depth(t.left(v))
     max(depth(t.left(v)), depth(t.right(v)))
 print(depth(t.root))

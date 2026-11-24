@@ -26,7 +26,11 @@ let days = Pipe.count(p => take[p] and not is_old(p))
 fn saves_a_day(dearest: Int) -> Bool:
     if dearest > d: return false
     var rest = Dsu<House>()
-    for p in Pipe if take[p] and (is_old(p) or pipes[p].w < dearest): rest.unite(pipes[p].u, pipes[p].v)
-    Pipe.any(p => not take[p] and is_old(p) and pipes[p].w <= d and not rest.same(pipes[p].u, pipes[p].v))
+    for p in Pipe if take[p] and (
+        is_old(p) or pipes[p].w < dearest
+    ): rest.unite(pipes[p].u, pipes[p].v)
+    Pipe.any(
+        p => not take[p] and is_old(p) and pipes[p].w <= d and not rest.same(pipes[p].u, pipes[p].v)
+    )
 let dearest = max(pipes[p].w for p in Pipe if take[p])
 print(days - Int(dearest.map(saves_a_day) ?? false))

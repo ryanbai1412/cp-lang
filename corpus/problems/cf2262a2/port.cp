@@ -12,7 +12,6 @@
 //   scanning i down. The buckets total sum ceil(n / k) = O(n log n).
 // Bounds: n: 1..=1e5; a: 0..=n
 
-
 const MOD = 1e9 + 7
 type Z = Mod<MOD>
 

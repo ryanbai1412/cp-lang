@@ -41,10 +41,15 @@ fn fill(u: Node, k: Arrive) -> Z:
                 if al < 0: continue
                 let ar = a - al
                 let past = ar + h - i - Int(al + i == spare(near) and ar + h - i > spare(far))
-                total += comb.choose(h, i) * comb.arrange(al + i, i) * comb.arrange(ar + h - i, h - i)
-                    * ways(near, al + i) * ways(far, past)
+                total += comb.choose(h, i) * comb.arrange(al + i, i) * comb.arrange(
+                    ar + h - i,
+                    h - i,
+                ) * ways(near, al + i) * ways(far, past)
             total
-        (Some(c), None) | (None, Some(c)) => comb.arrange(a + h, h) * ways(c, a + h - Int(a == spare(u)))
+        (Some(c), None) | (None, Some(c)) => comb.arrange(a + h, h) * ways(
+            c,
+            a + h - Int(a == spare(u)),
+        )
         (None, None) => Z(1)
 
 print(if Node.any(u => spare(u) < 0): Z(0) else: ways(Node.first!, 0))

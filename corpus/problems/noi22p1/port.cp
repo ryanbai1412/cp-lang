@@ -18,7 +18,7 @@ domain Bit = 0..20  // values are at most 1e6 < 2^20
 
 var items = [Store] _ => Deque<Int>()
 var counts = [Store] _ => Counter<Int>()
-var ones: [Store, Bit]Int = 0  // how many values of the store have bit b set
+var ones: [Store, Bit]Int = 0           // how many values of the store have bit b set
 var store: [Label]Store = Store.first!  // sequence label -> store
 
 fn push(s: Store, x: Int):

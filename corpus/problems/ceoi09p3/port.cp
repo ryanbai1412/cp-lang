@@ -27,6 +27,8 @@ fn cover(lo: P.cuts, hi: P.cuts, k: H) -> Int:
     if l > r: return 0
     if pts[l].y <= height[k]: return cover(l.r, hi, k)
     if pts[r].y <= height[k]: return cover(lo, r.l, k)
-    [cover(lo, i.r, tallest(l, i)) + cover(i.r, hi, k) + 1 for i in l..=r if tallest(l, i) > k].min()!
+    [
+        cover(lo, i.r, tallest(l, i)) + cover(i.r, hi, k) + 1 for i in l..=r if tallest(l, i) > k
+    ].min()!
 
 print(cover(P.cuts.first!, P.cuts.last!, H.first!))

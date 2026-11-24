@@ -11,7 +11,6 @@
 //   telescope to O(n) steps, O(n log n) in all.
 // Bounds: n: 1..=1_000_000; a: 0..=2_000_000
 
-
 @!multitest
 let n: 1..=1_000_000 = read()
 domain Pos = 0..n

@@ -25,8 +25,8 @@ for i in City if i != City.first:
         road[j, i] = road[i, j]
 
 for s in City:
-    var x = Red  // the first part's colour
-    var first: List<City> = []  // in path order; its last city is a, at the junction
+    var x = Red                   // the first part's colour
+    var first: List<City> = []    // in path order; its last city is a, at the junction
     var second: List<City> = [s]  // back to front: s stays first, the last city is b
     for u in City if u != s:
         if let a = first.last:

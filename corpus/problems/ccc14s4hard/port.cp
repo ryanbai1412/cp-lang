@@ -23,12 +23,14 @@ fn height(s: Strip) -> Int = ys.get(Cut.nth(s.ord + 1)) - ys.get(Cut.nth(s.ord))
 
 let size = max(1, isqrt(Strip.len))
 domain Block = 0..(Strip.len + size - 1) / size
-fn strips(b: Block) -> Range<Strip> = Strip.nth(b.ord * size)..=Strip.nth(min(Strip.len, (b.ord + 1) * size) - 1)
+fn strips(b: Block) -> Range<Strip> = Strip.nth(b.ord * size)..=Strip.nth(
+    min(Strip.len, (b.ord + 1) * size) - 1
+)
 
 var tint: [Strip]Int = 0
 var pending: [Block]Int = 0
 var order: [Block]List<Strip> = [Block] b => strips(b).collect()  // by tint, darkest first
-var upto: [Block]List<Int> = [Block] _ => []                     // running heights along order
+var upto: [Block]List<Int> = [Block] _ => []                      // running heights along order
 var shade: [Block]Int = 0                                         // height at or over need
 var shaded = 0
 
@@ -40,7 +42,9 @@ fn heights(b: Block):
     upto[b] = rows
 
 fn measure(b: Block):
-    let lit = (0..order[b].len).first_true(i => tint[order[b][i]] + pending[b] < need) ?? order[b].len
+    let lit = (0..order[b].len).first_true(
+        i => tint[order[b][i]] + pending[b] < need
+    ) ?? order[b].len
     shaded -= shade[b]
     shade[b] = if lit == 0: 0 else: upto[b][lit - 1]
     shaded += shade[b]
@@ -58,8 +62,11 @@ fn add(lo: Int, hi: Int, t: Int):
         measure(b)
 
 for b in Block: heights(b)
-var events = [(x: p.x0, lo: ys.index_of(p.y0).ord, hi: ys.index_of(p.y1).ord, tint: p.tint) for p in panes] +
-             [(x: p.x1, lo: ys.index_of(p.y0).ord, hi: ys.index_of(p.y1).ord, tint: -p.tint) for p in panes]
+var events = [
+    (x: p.x0, lo: ys.index_of(p.y0).ord, hi: ys.index_of(p.y1).ord, tint: p.tint) for p in panes
+] + [
+    (x: p.x1, lo: ys.index_of(p.y0).ord, hi: ys.index_of(p.y1).ord, tint: -p.tint) for p in panes
+]
 var (area, x) = (0, 0)
 events.sort(by: e => e.x)
 for e in events:

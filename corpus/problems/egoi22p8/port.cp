@@ -43,15 +43,24 @@ fn with4(a: Int, b: Int, c: Int, d: Int) -> Int:
 
 fn below(card: Int) -> Int:  // least-rotation cards <= card
     let (a, b, c, d) = (digit(card, 0), digit(card, 1), digit(card, 2), digit(card, 3))
-    sum(with1(i) for i in 0..a) + sum(with2(a, i) for i in 0..b) +
-        sum(with3(a, b, i) for i in 0..c) + sum(with4(a, b, c, i) for i in 0..=d)
+    sum(with1(i) for i in 0..a) +
+        sum(with2(a, i) for i in 0..b) +
+        sum(with3(a, b, i) for i in 0..c) +
+        sum(
+        with4(a, b, c, i) for i in 0..=d
+    )
 
 fn turned(card: Int, t: Int) -> Int =
     ((card << (7 * t)) | (card >> (BITS - 7 * t))) % (1 << BITS)
 
 let orbits: [0..7]Seg = [
-    ((2, 0), (2, 1)), ((2, 1), (2, 2)), ((1, 1), (2, 1)), ((1, 1), (2, 0)),
-    ((1, 2), (2, 1)), ((0, 0), (2, 1)), ((0, 0), (1, 2)),
+    ((2, 0), (2, 1)),
+    ((2, 1), (2, 2)),
+    ((1, 1), (2, 1)),
+    ((1, 1), (2, 0)),
+    ((1, 2), (2, 1)),
+    ((0, 0), (2, 1)),
+    ((0, 0), (1, 2)),
 ]
 var segs: [0..4, 0..7]Seg = orbits[0]
 for j in 0..7:

@@ -16,8 +16,8 @@ let s: [V]Char = read()
 let boss: [Child]V = read()
 let t = Rooted.from_parents([V] v => if v.label >= 2: boss[Child(v.label)] else: None)
 
-var open: [V]?V = None   // the nearest '(' on the path to v still unmatched
-var ending: [V]Int = 0   // balanced substrings that end exactly at v
+var open: [V]?V = None  // the nearest '(' on the path to v still unmatched
+var ending: [V]Int = 0  // balanced substrings that end exactly at v
 var k: [V]Int = 0
 for v in t.at:
     let up = t.parent(v)

@@ -28,13 +28,18 @@ for left in Col:
         var bottom = 0
         for top in Row:
             bottom max= Int(top)
-            while let r = Row.at(bottom) and max(peak.all ?? hi[r], hi[r]) - min(pit.all ?? lo[r], lo[r]) <= k:
+            while let r = Row.at(bottom) and max(
+                peak.all ?? hi[r],
+                hi[r],
+            ) - min(pit.all ?? lo[r], lo[r]) <= k:
                 peak.push(hi[r])
                 pit.push(lo[r])
                 bottom += 1
             let area = (bottom - Int(top)) * (Int(right) - Int(left) + 1)
             if best == None or area > best!.area:
-                best = Some((area:, corner: [Int(left) + 1, n - bottom + 1, Int(right) + 1, n - Int(top)]))
+                best = Some(
+                    (area:, corner: [Int(left) + 1, n - bottom + 1, Int(right) + 1, n - Int(top)])
+                )
             if Int(top) < bottom:
                 peak.pop(hi[top])
                 pit.pop(lo[top])
