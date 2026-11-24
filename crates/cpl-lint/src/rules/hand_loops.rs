@@ -288,7 +288,12 @@ impl HandLoops<'_> {
         }
         let it = self.text(iter.span);
         let it = match iter.kind {
-            ExprKind::Name(_) | ExprKind::Field { .. } | ExprKind::Index { .. } => it.to_string(),
+            ExprKind::Name(_)
+            | ExprKind::Field { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Call { .. }
+            | ExprKind::Paren(_)
+            | ExprKind::List(_) => it.to_string(),
             _ => format!("({it})"),
         };
         let mut diag = Diagnostic::warning(
