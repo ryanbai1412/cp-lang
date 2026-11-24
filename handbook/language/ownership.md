@@ -185,6 +185,16 @@ of `f(a)` could not tell that `a` changes.
 life, so a contestant never has to think about who owns what across a
 call. `mut` at both ends makes every write visible where it happens.
 
+**Optional `mut` parameters** (R05.4.5; decision 447). `dfs(g, from: s,
+seen: mut seen)` shares one visited table across walks, and `dfs(g, from:
+s)` makes its own, so `seen` is a `?mut [V]Bool = None`: a `mut x` or
+nothing. The body reads it with the `if let s = seen:` every optional
+already uses, and `s` is the caller's place, so `s[v] = true` writes `x`.
+Nothing new to learn at the call: it is still `mut` where the write is
+visible. The alternative, two overloads or a separate `dfs_with`, is the
+`_by` variant the stdlib rules out. Lowering makes one instance per call
+shape, so the C++ is a plain reference parameter with no null check.
+
 ### 4. Lending is a mode, not a type
 
 **Chose:** whether a value is owned or lent is not part of its type
