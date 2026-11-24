@@ -1038,6 +1038,26 @@ fn sa_order<S: Indexed>(s: S) -> List<Int>:
     let _ = sa.pop()
     sa
 
+// The suffix array of `s`, its inverse and Kasai's adjacent LCP array.
+fn sa_rank_lcp<S: Indexed>(s: S) -> (List<Int>, List<Int>, List<Int>):
+    let n = s.len
+    let sa = sa_order(s)
+    var rank = List.filled(n, 0)
+    unchecked:
+        for j in 0..n: rank[sa[j]] = j
+    var lcp = List.filled(max(n - 1, 0), 0)
+    unchecked:
+        var k = 0
+        for i in 0..n:
+            if rank[i] == n - 1:
+                k = 0
+                continue
+            let j = sa[rank[i] + 1]
+            while i + k < n and j + k < n and s.nth(i + k) == s.nth(j + k): k += 1
+            lcp[rank[i]] = k
+            if k > 0: k -= 1
+    (sa, rank, lcp)
+
 /// \(O(n)\) SA-IS + Kasai LCP (\(O(n \log n)\) with RMQ). Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries.
 pub struct SuffixArray:
     pub sa: List<Int>
@@ -1064,21 +1084,7 @@ pub struct SuffixArray:
     /// example: `SuffixArray("banana").lcp == [1, 3, 0, 0, 2]`
     pub fn new<S: Indexed>(s: S) -> SuffixArray:
         let n = s.len
-        let sa = sa_order(s)
-        var rank = List.filled(n, 0)
-        unchecked:
-            for j in 0..n: rank[sa[j]] = j
-        var lcp = List.filled(max(n - 1, 0), 0)
-        unchecked:
-            var k = 0
-            for i in 0..n:
-                if rank[i] == n - 1:
-                    k = 0
-                    continue
-                let j = sa[rank[i] + 1]
-                while i + k < n and j + k < n and s.nth(i + k) == s.nth(j + k): k += 1
-                lcp[rank[i]] = k
-                if k > 0: k -= 1
+        let (sa, rank, lcp) = sa_rank_lcp(s)
         // Each sparse-table cell packs `lcp[i] << bits | i`, so one `min` picks the
         // smallest lcp and, among equal ones, the leftmost position.
         let m = lcp.len
@@ -1321,9 +1327,7 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
     with lint(unproven_list_index: allow)
     let n = s.len
     if n == 0: return []
-    let sa_obj = SuffixArray.new(s)
-    let sa = sa_obj.sa
-    let lcp = sa_obj.lcp
+    let (sa, _, lcp) = sa_rank_lcp(s)
     var out: List<SuffixTreeEdge> = []
     // open nodes from the root down: string depth, first leaf rank, edge lengths below
     var st: List<(d: Int, start: Int, sum: Int)> = []
