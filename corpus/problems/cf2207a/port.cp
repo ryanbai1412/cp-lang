@@ -1,4 +1,5 @@
 // Source: Codeforces 2207A (1-1), https://codeforces.com/contest/2207/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: a binary string s, 3 <= n <= 100. A move sets any s_i with s_{i-1} = s_{i+1} = 1 to 0
 //   or 1. Print the least and the most 1s reachable. Multitest, t <= 500.
 // Solution: the end 1s of each maximal run of 1s with single-0 gaps never change, so each such

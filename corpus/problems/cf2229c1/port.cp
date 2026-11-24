@@ -1,5 +1,6 @@
 // Source: Codeforces 2229C1 (We Be Flipping, Easy Version),
 //   https://codeforces.com/contest/2229/problem/C1
+// limits: 2000 ms, 256 MB
 // Problem: n <= 2e5 non-zero integers, |a_i| <= 1e9. An operation picks i with a_i > 0 and negates
 //   a_1..a_i. Print at most n operations (count, then indices) leaving the least possible sum.
 //   Multitest, sum of n <= 2e5.

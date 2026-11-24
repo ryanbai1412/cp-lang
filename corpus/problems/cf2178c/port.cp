@@ -1,4 +1,5 @@
 // Source: Codeforces 2178C (First or Second), https://codeforces.com/contest/2178/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: n <= 2e5 children with niceness |a_i| <= 1e9 in a line. n - 1 times remove the
 //   first child (X += a) or the second (X -= a); one child stays. Print the max X. Multitest.
 // Solution: fix the child k that stays: a[0] is added (if k > 0), each of a[1..k] can be

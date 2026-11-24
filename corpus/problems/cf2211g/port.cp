@@ -1,4 +1,5 @@
 // Source: Codeforces 2211G (Rational Bubble Sort), https://codeforces.com/contest/2211/problem/G
+// limits: 2000 ms, 256 MB
 // Problem: n <= 1e6 integers 0 <= a_i <= 1e6. An operation replaces a_i and a_(i+1) both by their
 //   average. Print whether a can be made non-decreasing. Multitest, sum of n <= 1e6.
 // Solution: operations keep the sum. With diff(i) = n * (sum of a[..i]) - tot * i: if some proper

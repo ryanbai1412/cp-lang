@@ -1,4 +1,5 @@
 // Source: Codeforces 2219A (Grid L), https://codeforces.com/contest/2219/problem/A
+// limits: 2000 ms, 256 MB
 // Problem: p unit segments and q L-shaped pieces (two unit segments at a right angle),
 //   1 <= p, q <= 1e8; print positive n, m such that all the pieces exactly form the segments
 //   of an n x m grid, or -1. Multitest, t <= 100.

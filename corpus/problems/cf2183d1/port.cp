@@ -1,5 +1,6 @@
 // Source: Codeforces 2183D1 (Tree Coloring, Easy Version),
 //   https://codeforces.com/contest/2183/problem/D1
+// limits: 2000 ms, 512 MB
 // Problem: a tree on n <= 2e5 vertices rooted at 1, all white. An operation colours black a set
 //   of white vertices with pairwise distinct depths and no two adjacent. Print the fewest
 //   operations to colour the whole tree. Multitest, sum of n <= 2e5.

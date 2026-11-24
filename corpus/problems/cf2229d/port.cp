@@ -1,4 +1,5 @@
 // Source: Codeforces 2229D (Me When Median Problem), https://codeforces.com/contest/2229/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: arrays a, b of n <= 1e5 values in 1..=2n. n - 1 times pick adjacent columns i, i + 1,
 //   sort a_i, a_(i+1), b_i, b_(i+1) as s1..s4 and merge them into one column (s2, s3). Print the
 //   largest final min(a_1, b_1). Multitest, sum of n <= 1e5.
