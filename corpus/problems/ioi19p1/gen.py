@@ -3,6 +3,11 @@
 Shapes: shuffled; or every right shoe first and the lefts in reverse, the most swaps."""
 import random
 import sys
+if sys.argv[1] == "--max":
+    n = 100000
+    sizes = list(range(1, n + 1))
+    print(n); print(*(sizes + [-v for v in reversed(sizes)]))
+    sys.exit()
 
 seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 8
 rng = random.Random(seed)

@@ -1,6 +1,12 @@
 """nccc8s3 generator: `n k`, then n values in 1..=k with every value present."""
 import random
 import sys
+if sys.argv[1] == "--max":
+    r = random.Random(0)
+    n = k = 200000
+    a = list(range(1, k + 1)); r.shuffle(a)
+    print(n, k); print(*a)
+    sys.exit()
 
 seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 8
 rng = random.Random(seed)

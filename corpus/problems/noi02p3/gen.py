@@ -1,4 +1,11 @@
 import sys, random
+if sys.argv[1] == "--max":
+    r = random.Random(0)
+    n = 300
+    print(n, 2, n // 2)
+    for v in range(2, n + 1):
+        print(r.randint(max(1, v - 3), v - 1), v, r.randint(0, 100_000))
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2]) if len(sys.argv) > 2 else 300
 n = r.randint(1, S)
 heads = r.choice([2, 2, 3, r.randint(2, max(2, n)), r.randint(2, 300)])

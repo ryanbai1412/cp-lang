@@ -1,6 +1,12 @@
 """gen.py seed size: IOI 2016 Aliens (stdin). n <= 1e5 points (r, c) in 0..m, m <= 1e6,
 k in 1..=n photos. Points spread over the grid or bunched near the diagonal."""
 import random, sys
+if sys.argv[1] == "--max":
+    r = random.Random(0)
+    n, m = 100000, 1000000
+    print(n, m, n // 3)
+    print("\n".join(f"{r.randrange(m)} {r.randrange(m)}" for _ in range(n)))
+    sys.exit()
 
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)

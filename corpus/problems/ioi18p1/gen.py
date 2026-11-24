@@ -1,4 +1,8 @@
 import sys, random
+if sys.argv[1] == "--max":
+    r = random.Random(0)
+    print("A" + "".join(r.choice("BXY") for _ in range(1999)))
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 # statement: 1 <= N <= 2000, S over A B X Y, S[0] never appears again. The sample grader reads S.
 # Size S grows N; tails are random, one repeated letter, or two alternating letters.

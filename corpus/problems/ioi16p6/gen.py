@@ -1,4 +1,10 @@
 import sys, random
+if sys.argv[1] == "--max":
+    r = random.Random(0)
+    n, m = 100000, 1000000
+    print(n, m, n // 3)
+    print("\n".join(f"{r.randrange(m)} {r.randrange(m)}" for _ in range(n)))
+    sys.exit()
 # IOI 2016 Aliens, sample-grader stdin: n m k, then n lines r c (0 <= r, c < m, 1 <= k <= n).
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = r.randint(1, S)

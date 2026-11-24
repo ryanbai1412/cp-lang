@@ -1,5 +1,11 @@
 # usage: gen.py SEED [N]: one case in the sample grader's format (N, then the N hidden types).
 import random, sys
+if sys.argv[1] == "--max":
+    r = random.Random(0)
+    n = 2000
+    types = [r.randrange(44) * 22_000_000 for _ in range(n)]
+    print(n); print(*types)
+    sys.exit()
 
 r = random.Random(int(sys.argv[1]))
 n = int(sys.argv[2]) if len(sys.argv) > 2 else r.choice([2, 3, 6, r.randint(2, 50), r.randint(2, 2000), 2000])

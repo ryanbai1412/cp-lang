@@ -1,4 +1,10 @@
 import sys, random
+if sys.argv[1] == "--max":
+    n = e = 1000
+    print(n, e); print(1, n)
+    for v in range(1, n): print(v, v + 1)
+    print(1, n // 2)
+    sys.exit()
 # Connected simple graph: 2 <= n, n - 1 <= e <= 1000 (statement: N, E <= 1000, no multi-edges).
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = r.randint(2, max(2, min(S, 1000)))

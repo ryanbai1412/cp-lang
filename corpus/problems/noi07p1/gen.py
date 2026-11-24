@@ -3,6 +3,14 @@
 # Small weight sets and grid-like layers make many tied shortest paths.
 import random
 import sys
+if sys.argv[1] == "--max":
+    r = random.Random(0)
+    n, m = 100, 4500
+    es = [(a, b) for a in range(1, n + 1) for b in range(a + 1, n + 1)]
+    r.shuffle(es)
+    print(n, m)
+    for a, b in es[:m]: print(a, b, 1)
+    sys.exit()
 
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2]) if len(sys.argv) > 2 else 100

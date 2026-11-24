@@ -1,11 +1,13 @@
 """noi02p1 generator: t commands `M i j` (i, j in different columns) or `C i j` over n ships (n <= 30000)."""
 import random
 import sys
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "500000"]
 
 seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 8
 rng = random.Random(seed)
-t = rng.randint(1, max(1, size))
-ships = rng.choice([3, 10, 50, 300, 30000] if size < 1000 else [200, 3000, 30000])
+t = size if size >= 500000 else rng.randint(1, max(1, size))
+ships = 30000 if size >= 500000 else rng.choice([3, 10, 50, 300, 30000] if size < 1000 else [200, 3000, 30000])
 col = list(range(ships + 1))
 seen = []
 

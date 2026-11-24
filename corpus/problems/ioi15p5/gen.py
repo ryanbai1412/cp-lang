@@ -1,5 +1,12 @@
 # usage: gen.py SEED [MAX_N]: one input in the sample grader's format (N; S; M; M lines X Y), shaped like a random subtask.
 import random, sys
+if sys.argv[1] == "--max":
+    r = random.Random(0)
+    n, m = 200000, 600000
+    s = list(range(n)); r.shuffle(s)
+    print(n); print(*s); print(m)
+    print("\n".join(f"{r.randrange(n)} {r.randrange(n)}" for _ in range(m)))
+    sys.exit()
 
 r = random.Random(int(sys.argv[1]))
 cap = int(sys.argv[2]) if len(sys.argv) > 2 else r.choice([5, 30, 100, 500, 2000])
