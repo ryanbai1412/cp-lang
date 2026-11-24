@@ -1198,29 +1198,25 @@ class MeasureError(RuntimeError):
     """A counter that can't measure, say because the tool it runs isn't built: never a count."""
 
 
+@functools.cache
+def _corpus():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("corpus", Path(__file__).with_name("corpus.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _built_cpl(root: Path) -> Path:
-    """$CPL, else the newer of target/debug/cpl and target/release/cpl if it is newer than every
-    tracked file under crates/ (a stale cpl measures the code it was built from), else a fresh
-    `cargo build -p cpl-cli`; a failed build raises, so the count is never a guess."""
+    """$CPL, else the newer of target/debug/cpl and target/release/cpl, if corpus.py's
+    `cpl_stale` (cargo's dep-info) finds it current: a stale cpl measures the code it was
+    built from, so it raises, naming the build command, and never counts."""
     env = os.environ.get("CPL")
-    if env:
-        if not Path(env).is_file():
-            raise MeasureError(f"$CPL={env} is not a file")
-        return Path(env)
     built = [p for p in (root / "target/debug/cpl", root / "target/release/cpl") if p.is_file()]
-    why = "not built"
-    if built:
-        cpl = max(built, key=lambda p: p.stat().st_mtime)
-        sources = subprocess.run(["git", "ls-files", "-z", "crates", "Cargo.lock"], cwd=root, capture_output=True,
-                                 text=True, env=_git_env()).stdout.split("\0")
-        newer = [f for f in sources if f and (root / f).is_file() and (root / f).stat().st_mtime > cpl.stat().st_mtime]
-        if not newer:
-            return cpl
-        why = f"older than {newer[0]}"
-    r = subprocess.run(["cargo", "build", "-q", "-p", "cpl-cli"], cwd=root, capture_output=True, text=True)
-    if r.returncode != 0 or not (root / "target/debug/cpl").is_file():
-        raise MeasureError(f"target/debug/cpl is {why} and `cargo build -p cpl-cli` failed: {r.stderr.strip()[-300:]}")
-    return root / "target/debug/cpl"
+    cpl = Path(env) if env else max(built, key=lambda p: p.stat().st_mtime, default=root / "target/debug/cpl")
+    if why := _corpus().cpl_stale(str(cpl), str(root)):
+        raise MeasureError(f"cpl: {why}")
+    return cpl
 
 
 def corpus_fmt_dirty(root: Path) -> list[str]:
@@ -2677,6 +2673,7 @@ HARD_ZERO = frozenset({
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
+    "stdlib_todo",
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",

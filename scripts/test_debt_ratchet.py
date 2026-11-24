@@ -115,7 +115,7 @@ class DebtRatchetTest(unittest.TestCase):
                 self.assertEqual(dr.corpus_fmt_dirty(root),
                                  [f"{PKGS}/a/dream.cp", f"{PKGS}/b/spec.cp"])
             with mock.patch.dict(os.environ, {"CPL": str(root / "missing")}):
-                with self.assertRaisesRegex(dr.MeasureError, "is not a file"):
+                with self.assertRaisesRegex(dr.MeasureError, "no cpl at"):
                     dr.corpus_fmt_dirty(root)
 
     def test_a_package_without_a_statement_sample_fails_the_ratchet(self) -> None:
@@ -196,7 +196,7 @@ class DebtRatchetTest(unittest.TestCase):
         baseline = {
             "max_rs_lines": 20,
             "rs_file_size_allowlist": {"crates/demo/src/big.rs": 25},
-            "stdlib_todo": 2,
+            "unwrap_input": 2,
             "allow_attrs": 1,
             "unsafe_blocks": 1,
         }
@@ -211,7 +211,7 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/demo/src/big.rs": 26,
                 "crates/demo/src/new_big.rs": 22,
             },
-            "stdlib_todo": 3,
+            "unwrap_input": 3,
             "allow_attrs": 2,
             "unsafe_blocks": 2,
         }
@@ -224,14 +224,14 @@ class DebtRatchetTest(unittest.TestCase):
         baseline = {
             "max_rs_lines": 20,
             "rs_file_size_allowlist": {"crates/demo/src/big.rs": 25},
-            "stdlib_todo": 2,
+            "unwrap_input": 2,
             "rust_ignore": 1,
             "pending_tests": 1,
         }
         better = {
             "max_rs_lines": 20,
             "rs_file_size_allowlist": {},
-            "stdlib_todo": 1,
+            "unwrap_input": 1,
             "rust_ignore": 0,
             "pending_tests": 0,
         }
@@ -416,14 +416,15 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "corpus/problems/p/port.cp", "print(1)\n")
             self._write(root, "crates/x/src/lib.rs", "\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
-            with self.assertRaisesRegex(dr.MeasureError, "not built and `cargo build -p cpl-cli` failed"):
+            with self.assertRaisesRegex(dr.MeasureError, "no cpl at target/debug/cpl; build it with `cargo build -p cpl-cli`"):
                 dr.corpus_fmt_dirty(root)
             self._write(root, "target/debug/cpl", "#!/bin/sh\n")
+            self._write(root, "target/debug/cpl.d", f"{root}/target/debug/cpl: crates/x/src/lib.rs\n")
             os.utime(root / "target/debug/cpl", (1, 1))
-            with self.assertRaisesRegex(dr.MeasureError, "older than crates/x/src/lib.rs and `cargo build"):
+            with self.assertRaisesRegex(dr.MeasureError, "target/debug/cpl is stale: run cargo build -p cpl-cli"):
                 dr.corpus_fmt_dirty(root)
             os.environ["CPL"] = str(root / "missing")
-            with self.assertRaisesRegex(dr.MeasureError, "is not a file"):
+            with self.assertRaisesRegex(dr.MeasureError, "no cpl at"):
                 dr.corpus_fmt_dirty(root)
 
     def test_web_skip_only_reads_only_js_and_ts(self) -> None:
@@ -890,7 +891,7 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual({n for n in gated if n not in baseline}, set())
 
     def test_a_gated_counter_without_a_baseline_fails(self) -> None:
-        errs, _, _ = dr.evaluate({"stdlib_todo": 1, "rust_ignore": 0}, {"rust_ignore": 0})
+        errs, _, _ = dr.evaluate({"unwrap_input": 1, "rust_ignore": 0}, {"rust_ignore": 0})
         self.assertEqual(len(errs), 1)
         self.assertIn("no baseline", errs[0])
 
@@ -1138,7 +1139,8 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--update", "nope", "--root", str(root), "--ratchet", str(ratchet)]), 2)
 
     def test_cli_roundtrip_update_and_check(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
+        # _make_repo writes 2 stdlib TODOs: main's stdlib_todo is a hard zero, this one isn't.
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(dr, "HARD_ZERO", dr.HARD_ZERO - {"stdlib_todo"}):
             root = Path(d)
             self._make_repo(root)
             ratchet = root / "ratchet.json"

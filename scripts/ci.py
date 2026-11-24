@@ -146,7 +146,9 @@ SUBSET = gate("subset", fail=_stale("spec/SUBSET.md", "subset"))
 # Every checking script check.sh runs, by tier, in order: `commit` before a
 # commit, `checks` after --fast's build, `full` (with --full's slow suites) last.
 STEPS = {
-    "commit": (RATCHET, USECASES, SUBSET),
+    "commit": (Step("cargo build -p cpl-cli (the cpl the ratchet's corpus_fmt_dirty runs)",
+                    ("cargo", "build", "-q", "-p", "cpl-cli"), "cargo build -p cpl-cli failed; see above"),
+               RATCHET, USECASES, SUBSET),
     "checks": (
         RATCHET,
         Step("handbook reads for an outsider (scripts/check-handbook.py)", ("scripts/check-handbook.py",),

@@ -1176,14 +1176,15 @@ def default_cpl():
 CPL_BUILD = "cargo build --release -p cpl-cli"
 
 
-def cpl_sources(crate="cpl-cli"):
+def cpl_sources(crate="cpl-cli", root=None):
     """The workspace files a `cpl` binary is built from: the workspace manifests and
     Cargo.lock, and the Cargo.toml, build.rs and src/ of cpl-cli and every crate it
     depends on by path."""
-    files, seen, todo = [os.path.join(ROOT, "Cargo.toml"), os.path.join(ROOT, "Cargo.lock")], set(), [crate]
+    root = root or ROOT
+    files, seen, todo = [os.path.join(root, "Cargo.toml"), os.path.join(root, "Cargo.lock")], set(), [crate]
     while todo:
         name = todo.pop()
-        manifest = os.path.join(ROOT, "crates", name, "Cargo.toml")
+        manifest = os.path.join(root, "crates", name, "Cargo.toml")
         if name in seen or not os.path.isfile(manifest):
             continue
         seen.add(name)
@@ -1192,13 +1193,13 @@ def cpl_sources(crate="cpl-cli"):
         tables = [toml.get("dependencies", {}), toml.get("build-dependencies", {})]
         tables += [t.get("dependencies", {}) for t in toml.get("target", {}).values()]
         todo += [dep for t in tables for dep in t]
-        files += [manifest, os.path.join(ROOT, "crates", name, "build.rs")]
-        for top, _, names in os.walk(os.path.join(ROOT, "crates", name, "src")):
+        files += [manifest, os.path.join(root, "crates", name, "build.rs")]
+        for top, _, names in os.walk(os.path.join(root, "crates", name, "src")):
             files += [os.path.join(top, n) for n in names]
     return [f for f in files if os.path.isfile(f)]
 
 
-def cpl_dep_info(cpl):
+def cpl_dep_info(cpl, root=None):
     """The files cargo built `cpl` from, by the `<cpl>.d` it writes beside it (std/
     through include_str!, build.rs inputs, every source), or None with no .d. It is
     the list cargo itself rebuilds by, so this agrees with cargo, and with CI's
@@ -1210,27 +1211,42 @@ def cpl_dep_info(cpl):
         return None
     rule = next((l for l in text.splitlines() if re.match(r"(\\ |[^ ])+: ", l)), "")
     deps = re.split(r"(?<!\\)\s+", rule.partition(": ")[2].strip())
-    paths = [os.path.join(ROOT, d.replace("\\ ", " ")) for d in deps if d]
+    base = root or ROOT
+    paths = [os.path.join(base, d.replace("\\ ", " ")) for d in deps if d]
     # build.rs reruns on git's HEAD only to stamp `cpl --version`; every commit or
     # rebase touches it, and an older stamp runs the same compiler.
-    return [f for f in paths if ".git" not in os.path.relpath(f, ROOT).split(os.sep)]
+    return [f for f in paths if ".git" not in os.path.relpath(f, base).split(os.sep)]
+
+
+def cpl_build(cpl):
+    """The command that builds `cpl`: the debug build for target/debug, else the release one."""
+    return "cargo build -p cpl-cli" if os.path.basename(os.path.dirname(cpl)) == "debug" else CPL_BUILD
+
+
+def cpl_stale(cpl, root=None):
+    """Why `cpl` can't be run, naming the command that builds it: it is missing, or it is a
+    build under <root>/target older than a source it is built from (cargo's dep-info, else
+    `cpl_sources`); None when it is current. corpus.py and debt-ratchet both check through it."""
+    root = root or ROOT
+    rel = os.path.relpath(cpl, root)
+    if not os.path.exists(cpl):
+        return f"no cpl at {rel}; build it with `{cpl_build(cpl)}`"
+    target = os.path.join(root, "target")
+    if os.path.commonpath([os.path.abspath(cpl), target]) == target:
+        built = os.path.getmtime(cpl)
+        inputs = cpl_dep_info(cpl, root)
+        if inputs is None:
+            inputs = cpl_sources(root=root)
+        if any(not os.path.exists(f) or os.path.getmtime(f) > built for f in inputs):
+            return f"{rel} is stale: run {cpl_build(cpl)}"
+    return None
 
 
 def require_cpl(cpl):
-    """Exit with one line saying how to build `cpl` when it is missing, or when a
-    build under target/ is older than a source it is built from: a stale binary
-    may lack a command corpus.py runs (`cpl test --make`) and fail with its usage."""
-    rel = os.path.relpath(cpl, ROOT)
-    if not os.path.exists(cpl):
-        sys.exit(f"corpus: no cpl at {rel}; build it with `{CPL_BUILD}`")
-    target = os.path.join(ROOT, "target")
-    if os.path.commonpath([os.path.abspath(cpl), target]) == target:
-        built = os.path.getmtime(cpl)
-        inputs = cpl_dep_info(cpl)
-        if inputs is None:
-            inputs = cpl_sources()
-        if any(not os.path.exists(f) or os.path.getmtime(f) > built for f in inputs):
-            sys.exit(f"corpus: {rel} is stale: run {CPL_BUILD}")
+    """Exit with `cpl_stale`'s line when `cpl` is missing or stale: a stale binary may lack a
+    command corpus.py runs (`cpl test --make`) and fail with its usage."""
+    if why := cpl_stale(cpl):
+        sys.exit(f"corpus: {why}")
 
 
 def make_cases(pkg, out=OUT, cpl=None):
