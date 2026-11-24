@@ -24,5 +24,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "read<[V.drop(1)]V>(), the parents shape std.tree documents, is E0504 today (compiler worklog B3, stdlib H01), so spec.cp reads [n - 1]V and keys it by vertex."
+ "notes": "read<[V.drop(1)]V>(), the parents shape std.tree documents, is E0504 today (compiler worklog B3, stdlib H01), so spec.cp reads [n - 1]V and keys it by vertex.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 20,
+  "sha": "a632b3b3db4cdcf3bec92dadda4f9c868dc6c2a9"
+ }
 }
