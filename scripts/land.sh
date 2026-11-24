@@ -545,7 +545,9 @@ park_old_lock() {
 
 take_lock() {
     local me holder held_by at waited=0 lined="" blind="" nap nap_said="" stuck_head="" stuck_since=0 poll="" seen_holder="" beat_said=""
-    [ -z "${CPL_LAND_QUEUE:-}" ] || enqueue || :
+    # On unless CPL_LAND_QUEUE= : without it the lock went to whoever polled first, and
+    # Tools' passed land waited 20+ min while 8 later lands pushed.
+    [ -z "${CPL_LAND_QUEUE-1}" ] || enqueue || :
     park_old_lock
     while :; do
         first=""
