@@ -16,8 +16,9 @@ A friction reported for one case usually has a general cause. Fix the
 cause with the rule that covers the most cases, and remove the special
 cases it replaces. A new name or form with one use means the general
 mechanism is missing. Each such call goes in `decisions.md` with its
-reason and how to reverse it. `scripts/next-decision.py --check` keeps the
-numbering unique.
+reason and how to reverse it. Take its number with
+`scripts/next-decision.py --reserve`; `scripts/land.sh` refuses a number
+main never had.
 
 ### spec-rules/R2. One spelling per idea, picked by type rather than by name
 

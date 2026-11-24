@@ -130,7 +130,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Code examples in the spec run ([conformance/R7](../guidelines/conformance-checklist.md)) | spec blocks failing that are not `spec-only` | ratchet | `cpl-conform spec-blocks --check` |
 | Milestone gaps are visible, not hidden | failing cases in a supported section with no owner | gate | `scripts/conformance-subset.py --check`, `spec/SUBSET.md` |
 | One spelling per idea | banned spellings in spec | lint | `scripts/spec-vocab.py` |
-| Each decision is recorded once | duplicate decision numbers | check | `scripts/next-decision.py --check` |
+| Each decision is recorded once | duplicate decision numbers (`decision_dup_numbers`, hard zero) | gate: a number is reserved on main first | `scripts/next-decision.py --reserve`, `--check-landing` in `scripts/land.sh` |
 | Cases test the language, not the compiler's internals | cases that reach crate internals | design: a case is a `.cp` file run through `cpl` | `crates/cpl-conform/src/conformance.rs` |
 | A cold reader can write correct code from `spec/` alone | holes and contradictions per cold rebuild round | process: rebuild rounds | `research/rebuild-rounds/` |
 | Handbook language docs and the spec say the same thing ([spec-rules/R6](../guidelines/spec-rules-checklist.md)) | handbook `cp` blocks the compiler rejects, or that a `rejects:` marker says it should reject and it accepts | ratchet: every `cp` block in `handbook/language/` runs in the spec-blocks suite with the spec's own blocks; prose claims beyond code are reviewed when a rule changes | `cpl-conform spec-blocks --check`, `crates/cpl-conform/src/spec_blocks.rs` |

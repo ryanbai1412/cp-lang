@@ -7185,7 +7185,7 @@ counts them as `decision_dup_numbers` (12, shrink-only), and its `--check`
 already runs before every push, after the rebase: a lane whose rebase lands
 on a taken number renumbers its own entry with `just next-decision`. Old
 duplicates keep their numbers, because commit bodies cite them. Reverse by
-removing the counter.
+removing the counter. (Decision 505 renumbered them and reserves numbers.)
 
 ## 331. Grid neighbours are getters and `Dir4` directions are constants (2026-11-22)
 
@@ -8712,4 +8712,14 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Why.** `a.fold(MaxSub)` in sequence-patterns never ran: `fold` takes an operation, and making a type denote its `of` and `join` would be a new value-position rule (a `Summary` trait that `fold` special-cases). The map-then-`+` spelling uses only two existing mechanisms, fn values and `+` as the join, and says the cost (one `of` per element) out loud.
 - **Reverse.** Add a `Summary<T>` trait with `fn of(x: T) -> Self` and let `fold` take a type that implements it; the tables go back to `a.fold(MaxSub)`.
 
-## 505. (reserved, content)
+## 505. A decision number is reserved on main before it is used (spec, 2026-11-24)
+
+`python3 scripts/next-decision.py --reserve` pushes a `## N. (reserved,
+<lane>)` stub to main, retrying on a rejected push, and the entry replaces
+the stub. `scripts/land.sh` runs `--check-landing FETCH_HEAD` after the
+rebase and refuses a heading main never had. `decision_dup_numbers` is in
+`HARD_ZERO`. The 28 numbers that headed two entries were renumbered: the
+first to land keeps the number, the later one has a fresh number and a
+`Formerly N` line. This reverses decision 327's "old duplicates keep their
+numbers". Reverse by dropping the landing check and going back to `max + 1`
+from `just next-decision`.
