@@ -26,6 +26,5 @@
                                  id="dev.cplang.settings" displayName="CP Lang"/>
         <notificationGroup id="CP Lang" displayType="BALLOON"/>
         <toolWindow id="CP Lang Trace" anchor="right" canCloseContents="true" factoryClass="dev.cplang.ide.CplTraceWindow"/>
-        <editorNotificationProvider implementation="dev.cplang.ide.CpLightEditNotice"/>
     </extensions>
 </idea-plugin>

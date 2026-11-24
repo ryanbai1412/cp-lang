@@ -286,6 +286,10 @@ fn setup_unpacks_the_jetbrains_plugin_into_each_ide() {
         "{said}"
     );
     assert!(said.contains("skipped IntelliJIdea2024.2"), "{said}");
+    assert!(
+        said.contains("\na .cp file opened on its own (LightEdit) gets highlighting only; open its folder as a project for `cpl lsp`'s diagnostics, completion and runs\n"),
+        "{said}"
+    );
 
     // No IDE has started since: --check fails, naming each.
     let out = setup(&["jetbrains", "--check"]);

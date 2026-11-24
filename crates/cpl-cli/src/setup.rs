@@ -904,9 +904,14 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
             old.join(", ")
         );
     }
+    report += LIGHT_EDIT;
     report += "restart the IDE, then `cpl setup jetbrains --check` says whether CP Lang loaded";
     Ok(report)
 }
+
+/// What a `.cp` file opened on its own gets: the plugin can't tell the user
+/// in the IDE, so setup says it once.
+const LIGHT_EDIT: &str = "a .cp file opened on its own (LightEdit) gets highlighting only; open its folder as a project for `cpl lsp`'s diagnostics, completion and runs\n";
 
 /// Sets the plugin's `path` (Settings, Tools, CP Lang, in `options/cp-lang.xml`)
 /// to `cpl` unless it names one already; says the path the IDE runs.

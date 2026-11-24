@@ -201,7 +201,7 @@ window. The file marks the line of the step the trace shows, and a click on a
 line in the trace moves the caret there.
 Open the folder as a project, not the file on its own: `idea a.cp` opens it
 in LightEdit mode, which has no project for `cpl lsp`, so the file gets
-highlighting only and a notice that offers to open its folder as a project.
+highlighting only; `cpl setup jetbrains` says so when it installs.
 A project the IDE hasn't been told to trust opens in Safe Mode; choose Trust
 Project.
 `./gradlew test` runs the lexer tests and a smoke test in a headless IDE
