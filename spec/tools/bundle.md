@@ -10,7 +10,9 @@ Status: draft for 0.3.0. Sources: `plan/40-tooling.md` §4-5,
   `debug(...)`, `@local` items. (Rbundle.2)
 - Libraries are inlined from the content-addressed store by pin, so a
   rebuild is byte-identical; `cpl vendor` copies them next to the file.
-  Status: planned for Milestone 2 (pins and codemods). (Rbundle.6)
+  Today the one library is std, which the compiler carries: `cpl vendor`
+  copies the std modules the file loads to `vendor/std/`. Pins of other
+  libraries come with Milestone 2 (pins and codemods). (Rbundle.6)
 - Size is checked against the profile; `--size` attributes bytes to
   header, runtime, types, library functions, user code and glue. (Rbundle.3)
 - `@cpp("...", includes:)` items and `extern fn` judge functions are

@@ -28,6 +28,7 @@ platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 | `cpl submit d` | `build`, then the cases on that build with the judge's flags; `--copy` (`-c`) puts the file on the clipboard |
 | `cpl migrate [path]...` | rewrites spellings newer versions removed (each `E0503` with a fix) in every `.cp` file under the paths, shows the diff, and lists what needs a hand edit; `--check` changes nothing. Stdlib codemods join as their diagnostics land; recording pins waits on `cp.toml` pins |
 | `cpl judges` | lists judge profiles |
+| `cpl vendor d` | copies each std module `d` loads, as this compiler carries it, to `vendor/std/` beside it, one `std.<module> -> <path>` line each (Rbundle.6) |
 | `cpl doc` | renders library docs from doc comments |
 | `cpl lsp` | the language server |
 | `cpl watch d` | rebuild and test on save |

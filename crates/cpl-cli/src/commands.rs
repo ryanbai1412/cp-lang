@@ -95,6 +95,13 @@ pub(crate) const COMMANDS: &[Command] = &[
         ]),
     },
     Command {
+        name: "vendor",
+        args: "<file>",
+        summary: &["copy the std modules the file loads to vendor/std/"],
+        json: Json::None,
+        options: None,
+    },
+    Command {
         name: "judges",
         args: "[file]",
         summary: &["list the judge profiles, marking the one a build uses"],
@@ -347,6 +354,7 @@ pub(crate) fn command_usage(command: &str) -> Option<&'static str> {
         "judge" => JUDGE_USAGE,
         "submit" => SUBMIT_USAGE,
         "judges" => JUDGES_USAGE,
+        "vendor" => crate::vendor::USAGE,
         "explain" => EXPLAIN_USAGE,
         "lsp" => LSP_USAGE,
         "dap" => DAP_USAGE,

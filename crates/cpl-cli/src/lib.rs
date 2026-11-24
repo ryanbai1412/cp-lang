@@ -25,6 +25,7 @@ pub mod toolchain;
 pub use cpl_ir::fix::{apply_error_fixes, checked_fix};
 mod trace;
 mod unit_tests;
+mod vendor;
 
 use build::{build_file, take_judge, BuildOptions};
 use check::{check, fix};
@@ -323,6 +324,10 @@ pub fn exec<S: AsRef<str>>(
                 ),
             }
         }
+        Some("vendor") => match &rest[..] {
+            [file] => vendor::run(file, stdout, stderr),
+            _ => usage_error("`vendor` takes one file: `cpl vendor a.cp`".into()),
+        },
         Some("judges") => {
             let json = rest.contains(&"--json");
             match rest
