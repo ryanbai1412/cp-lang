@@ -309,7 +309,8 @@ class WorkflowTest(unittest.TestCase):
         for name in sorted(os.listdir(wf)):
             with open(os.path.join(wf, name), encoding="utf-8") as f:
                 text = f.read()
-            for own in ("rustup toolchain install", "Swatinem/rust-cache", "scripts/ci-mtime.sh"):
+            for own in ("rustup toolchain install", "Swatinem/rust-cache", "scripts/ci-mtime.sh",
+                        "dtolnay/rust-toolchain"):
                 self.assertNotIn(own, text, f"{name}: use ./.github/actions/setup-rust (ci/R38)")
             for key in re.findall(r"TARGET_KEY: (\S+)", text):
                 self.assertEqual(key, "target-ci-v2",
