@@ -251,6 +251,13 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// traps: when `k < 0`
     /// example: `MaxSub.of(-3).scale(2).try_best == Some(-6)`
     /// example: `MaxSub.of(-3).scale(0).try_best == Some(0)`
+    /// The summary of the same elements in reverse order: the best prefix and suffix swap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `(MaxSub.of(3) + MaxSub.of(-5)).reversed() == MaxSub.of(-5) + MaxSub.of(3)`
+    pub fn reversed(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
+
     pub fn scale(self, k: Int) -> MaxSub:
         assert k >= 0
         if not has: self

@@ -1084,7 +1084,7 @@ pub struct Rope<D, T>:
 ///
 /// Tags come from an `Action<T, F>` whose `apply(f, x, span)` acts on each element independently
 /// (it is a homomorphism of the fold, as every `Action` is), so a tag and a reversal commute.
-pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
+pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> T)):
     lc: List<0..=2_147_483_647>
     rc: List<0..=2_147_483_647>
     pri: List<0..=2_147_483_647>
@@ -1100,15 +1100,18 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
 
     /// The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a
     /// `Monoid(id, op)`, which need not commute. `act:` adds range tags (`apply`), such as
-    /// `flip_action(op)` or an `Action` of your own over the same monoid.
+    /// `flip_action(op)` or an `Action` of your own over the same monoid. `mirror:` gives a fold's
+    /// value for the same run reversed (`MaxSub.reversed`); with it `reverse` mirrors one stored
+    /// fold per node instead of keeping a second, backward one.
     ///
     /// cost: \(O(n)\) expected
     /// empty: `SeqFold<Str>(Monoid("", (a, b) => a + b), []).total == ""`
     /// traps: never
     /// example: `SeqFold<Int>(+, [1, 2, 3]).total == 6`
     /// example: `SeqFold<Int>(+).total == 0`
-    pub fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>:
-        var s = SeqFold<T, F>.blank(Monoid<T>.of(op), act)
+    /// example: `var s = SeqFold<Int>(+, [1, 2, 3], mirror: x => x); s.reverse(0..2); s.items.collect() == [2, 1, 3] and s.fold(0..1) == 2`
+    pub fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None, mirror: ?(T -> T) = None) -> SeqFold<T, F>:
+        var s = SeqFold<T, F>.blank(Monoid<T>.of(op), act, mirror)
         s.root = s.build(xs)
         s
 
@@ -1213,7 +1216,7 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
         self.emit(b, None, false, mut moved)
         self.recycle(b)
         root = a
-        var out = SeqFold<T, F>.blank(m, act)
+        var out = SeqFold<T, F>.blank(m, act, mirror)
         out.root = out.build(moved)
         out
 
@@ -1297,8 +1300,8 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
         out.push(if let a = act: (if let h = f: a.apply(h, val[u], 1) else: val[u]) else: val[u])
         self.emit(second, g, r, mut out)
 
-    fn blank(m: Monoid<T>, act: ?Action<T, F>) -> SeqFold<T, F> =
-        SeqFold<T, F>(m, act, [0], [0], [0], [0], [m.id], [m.id], [m.id], [None], [false], 0, Rng(48), [])
+    fn blank(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> T)) -> SeqFold<T, F> =
+        SeqFold<T, F>(m, act, mirror, [0], [0], [0], [0], [m.id], [m.id], [m.id], [None], [false], 0, Rng(48), [])
 
     // A treap of `xs` in order, in O(len): a Cartesian-tree stack keeps the right spine, so each
     // new node takes the run it pops as its left child.
@@ -1335,7 +1338,7 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
             sz[u] = 1
             val[u] = x
             fwd[u] = x
-            bwd[u] = x
+            if mirror == None: bwd[u] = x
             tag[u] = None
             rev[u] = false
             return u
@@ -1345,7 +1348,7 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
         sz.push(1)
         val.push(x)
         fwd.push(x)
-        bwd.push(x)
+        if mirror == None: bwd.push(x)
         tag.push(None)
         rev.push(false)
         lc.len - 1
@@ -1356,12 +1359,15 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
         let a = act!
         val[u] = a.apply(f, val[u], 1)
         fwd[u] = a.apply(f, fwd[u], sz[u])
-        bwd[u] = a.apply(f, bwd[u], sz[u])
+        if mirror == None: bwd[u] = a.apply(f, bwd[u], sz[u])
         tag[u] = if let old = tag[u]: Some(a.compose(f, old)) else: Some(f)
 
     fn flip(mut self, u: Int):
         if u == 0: return
         rev[u] = not rev[u]
+        if let mr = mirror:
+            fwd[u] = mr(fwd[u])
+            return
         let t = fwd[u]
         fwd[u] = bwd[u]
         bwd[u] = t
@@ -1383,7 +1389,7 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
         let (a, b) = (lc[u], rc[u])
         sz[u] = 1 + sz[a] + sz[b]
         fwd[u] = m.op(m.op(fwd[a], val[u]), fwd[b])
-        bwd[u] = m.op(m.op(bwd[b], val[u]), bwd[a])
+        if mirror == None: bwd[u] = m.op(m.op(bwd[b], val[u]), bwd[a])
 
     fn cut(mut self, u: Int, k: Int) -> (Int, Int):
         if u == 0: return (0, 0)

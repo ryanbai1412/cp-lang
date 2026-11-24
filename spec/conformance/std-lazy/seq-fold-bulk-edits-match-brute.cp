@@ -2,7 +2,8 @@
 // rule: std.lazy.SeqFold.erase_range
 // `SeqFold` of max-subarray summaries under an assign tag agrees with a plain list under
 // insert_many, erase_range, split_at, splice, apply, reverse and fold, the edits noi05p2 runs.
-// Erased nodes are reused, so the run also covers recycled slots.
+// Erased nodes are reused, so the run also covers recycled slots; every other round mirrors
+// one fold per node (`mirror:`) instead of storing the backward fold.
 use std.lazy.{SeqFold}
 use std.algebra.{Action, MaxSub}
 
@@ -20,7 +21,8 @@ fn brute(xs: List<Int>, lo: Int, hi: Int) -> MaxSub:
 var ok = true
 for round in 0..30:
     var xs: List<Int> = [rand(-9, 9) for _ in 0..rand(0, 6)]
-    var s = SeqFold<MaxSub, ?Int>(+, [MaxSub.of(x) for x in xs], act: assign)
+    let mirror: ?(MaxSub -> MaxSub) = if round % 2 == 0: Some(x => x.reversed()) else: None
+    var s = SeqFold<MaxSub, ?Int>(+, [MaxSub.of(x) for x in xs], act: assign, mirror:)
     for _ in 0..200:
         let k = rand(0, 6)
         let lo = rand(0, xs.len)
