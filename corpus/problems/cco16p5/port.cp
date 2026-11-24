@@ -3,71 +3,33 @@
 //   is marked with its king-move (Chebyshev) distance to the nearest zombie. Given Q
 //   (0 <= Q <= N + M), print how many cells are marked Q.
 // Solution: the cells within distance Q are the union of the K squares of radius Q
-//   clipped to the grid, so the answer is area(Q) - area(Q - 1). Each union area is
-//   Klee's measure: sweep the square edges along rows over coordinate-compressed columns,
-//   with a segment tree whose nodes keep a cover count and the covered length (no lazy
-//   push): O(K log K).
+//   clipped to the grid, so the answer is area(Q) - area(Q - 1). Cut the columns at
+//   every square's edges; within one strip the covered rows are the union of the squares
+//   spanning it, measured by one pass over the squares sorted by top row: O(K^2) per area.
 // original: corpus/submissions/4580695.cpp
-let (n, m): (Int, Int) = read()
-let k: Int = read()
-domain Z = 0..k
-let zombies: [Z](r: Int, c: Int) = read()
-let q: Int = read()
+// Bounds: n, m: 1..=1e9; k: 1..=2000; zombies.r: 1..=n; zombies.c: 1..=m; q: 0..=n + m
+let n: 1..=1e9 = read()
+let m: 1..=1e9 = read()
+let k: 1..=2000 = read()
+let zombies: [k](r: 1..=n, c: 1..=m) = read()
+let q: 0..=n + m = read()
 
-var ys: List<Int> = []
-var cnt: List<Int> = []
-var cov: List<Int> = []
-
-fn ct_update(p: Int, lo: Int, hi: Int, ql: Int, qr: Int, delta: Int):
-    if qr <= lo or hi <= ql: return
-    if ql <= lo and hi <= qr:
-        cnt[p] += delta
-    else:
-        let mid = (lo + hi) / 2
-        ct_update(2 * p, lo, mid, ql, qr, delta)
-        ct_update(2 * p + 1, mid, hi, ql, qr, delta)
-    if cnt[p] > 0:
-        cov[p] = ys[hi] - ys[lo]
-    elif lo + 1 == hi:
-        cov[p] = 0
-    else:
-        cov[p] = cov[2 * p] + cov[2 * p + 1]
-
-fn y_id(y: Int) -> Int:
-    let lo = ys.first_ge(y) ?? ys.len
-    lo
-
-fn union_area(rad: Int) -> Int:
-    if rad < 0: return 0
-    var raw_y: List<Int> = []
-    var evs: List<(x: Int, y1: Int, y2: Int, d: Int)> = []
-    for z in Z:
-        let x1 = max(1, zombies[z].r - rad)
-        let x2 = min(n, zombies[z].r + rad) + 1
-        let y1 = max(1, zombies[z].c - rad)
-        let y2 = min(m, zombies[z].c + rad) + 1
-        raw_y.push(y1)
-        raw_y.push(y2)
-        evs.push((x: x1, y1:, y2:, d: 1))
-        evs.push((x: x2, y1:, y2:, d: -1))
-    let sy = raw_y.sorted()
-    ys = []
-    for y in sy:
-        if ys.len == 0 or ys.last! != y:
-            ys.push(y)
-    let segs = max(1, ys.len - 1)
-    cnt = List.filled(4 * segs + 4, 0)
-    cov = List.filled(4 * segs + 4, 0)
-    let sevs = evs.sorted()
+// The number of cells within distance rad of a zombie: the union of the clipped squares.
+fn covered(rad: Int) -> Int:
+    var squares = [(r0: max(1, z.r - rad), r1: min(n, z.r + rad) + 1,
+                    c0: max(1, z.c - rad), c1: min(m, z.c + rad) + 1) for z in zombies]
+    squares.sort(by: s => s.r0)
+    var cuts = [s.c0 for s in squares] + [s.c1 for s in squares]
+    cuts.sort()
+    cuts.dedup()
     var area = 0
-    var prev_x = sevs[0].x
-    for ev in sevs:
-        area += (ev.x - prev_x) * cov[1]
-        let ql = y_id(ev.y1)
-        let qr = y_id(ev.y2)
-        if ql < qr:
-            ct_update(1, 0, ys.len - 1, ql, qr, ev.d)
-        prev_x = ev.x
+    for (lo, hi) in cuts.adjacent:
+        var (rows, reach) = (0, 1)  // rows counted so far, all of them above `reach`
+        for s in squares:
+            if s.c0 <= lo and hi <= s.c1 and s.r1 > reach:
+                rows += s.r1 - max(s.r0, reach)
+                reach = s.r1
+        area += (hi - lo) * rows
     area
 
-print(union_area(q) - union_area(q - 1))
+print(covered(q) - (if q == 0: 0 else: covered(q - 1)))

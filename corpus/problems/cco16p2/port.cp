@@ -14,15 +14,13 @@ use std.geometry.{arg}
 
 let n: 2..=4000 = read()
 domain Hare = 1..=n
-type Spot = (x: -1e6..=1e6, y: -1e6..=1e6, w: -10_000..=10_000)
+type Coord = -1e6..=1e6
+type Spot = (x: Coord, y: Coord, w: -10_000..=10_000)
 
 fn pos(s: Spot) -> Pt = Pt(s.x, s.y)
 fn upper(v: Pt) -> Bool = v.y > 0 or (v.y == 0 and v.x < 0)
 
-fn crowded() -> [Hare]Spot:  // small grid, mixed signs, many collinear
-    [Hare] h => (rand(-4, 4), rand(-4, 4), rand(-9, 9))
-
-let hares: [Hare]Spot = read(gen: crowded)
+let hares: [Hare]Spot = read()
 
 // A hare seen from the pivot: the line through both, as a direction in the
 // upper half plane, and whether the hare is on that side of the pivot.
@@ -49,4 +47,4 @@ fn best_through(pivot: Hare) -> Int:
         right += ahead
     p.w + best!
 
-print(max(0, [best_through(h) for h in Hare].max()!))  // taking nothing is allowed
+print(max(0, max(best_through(h) for h in Hare)))  // taking nothing is allowed
