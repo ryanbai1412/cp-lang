@@ -1,5 +1,7 @@
 import sys, random
 # seed size: n, m <= size (capped at 2000), 0 <= L <= R <= n m, 1 <= s, f, k_i <= n
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "2000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 big = S >= 2000
 n = 2000 if big else r.randint(1, S)
