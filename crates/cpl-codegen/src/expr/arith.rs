@@ -185,6 +185,8 @@ impl<'p> Emitter<'p> {
                 let a = if both_narrow { widen(a) } else { a.clone() };
                 infix(&a, sym, b, prec)
             }
+            // Two `Int`s widened to `I128` multiply within 2**126.
+            (Ty::I128, BinOp::Mul) if widened_int(l) && widened_int(r) => infix(a, "*", b, MUL),
             (Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
                 let f = self.overflow_checked(&l.ty, op);
                 Code::primary(format!("{f}({}, {})", a.text, b.text))
@@ -276,4 +278,8 @@ impl<'p> Emitter<'p> {
             }
         }
     }
+}
+
+fn widened_int(e: &Expr) -> bool {
+    matches!(&e.kind, cpl_ir::ExprKind::Cast(cpl_ir::Cast::IntToI128, _))
 }

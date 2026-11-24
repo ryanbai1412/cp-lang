@@ -843,6 +843,17 @@ fn a_row_a_loop_never_moves_is_checked_once_per_loop() {
 }
 
 #[test]
+fn widened_ints_multiply_in_i128_unchecked() {
+    let cpp = cpp(concat!(
+        "let (a, b): (Int, Int) = read()\n",
+        "let c = I128(a) * I128(b)\n",
+        "print(c * I128(a))\n",
+    ));
+    assert!(cpp.contains("(__int128)a * (__int128)b"), "{cpp}");
+    assert!(cpp.contains("cpl::imul128(c, (__int128)a)"), "{cpp}");
+}
+
+#[test]
 fn cheap_pure_sort_key_avoids_sort_by_buffers() {
     let cpp = cpp(concat!(
         "struct Pt(x: Int, y: Int)\n",
