@@ -6,7 +6,7 @@
 // Solution: P ^ Q ^ R is the prefix xor, so a valid state is (x, x, prefix). ways[x] counts
 //   them; a step only changes ways[previous prefix] = 3 * ways[prev] + 2 * ways[new prefix].
 //   Answer: the sum of ways. A HashMap, O(n) expected.
-// Bounds: a: 1..=1e9
+// Bounds: a: 1..=1e9; a.len: 1..=2e5
 @!multitest
 let a: [0..read(1..=2e5)]1..=1e9 = read()
 

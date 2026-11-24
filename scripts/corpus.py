@@ -492,16 +492,45 @@ def read_ranges(names, t, domains):
     return {n: (m.group(1).strip(), hi if m.group(2) else f"{hi} - 1") for n in names}
 READ_BINDER = re.compile(r"^\s*(?:(?:let|var) (.+?)(?::[^=]+)?=(?!=)|for (.+?) in )")
 def read_of(line):
-    """The type of the first `read<T>()` anywhere in `line`, or None."""
-    i = line.find("read<")
-    if i < 0 or (i and (line[i - 1].isalnum() or line[i - 1] == "_")):
+    """The type of the first `read<T>()` or `read_line().parse<T>()` anywhere in `line`, or None."""
+    m = re.search(r"(?<![\w])(?:read|read_line\(\)\.parse)<", line)
+    if not m:
         return None
     depth = 0
-    for j in range(i + 4, len(line)):
+    for j in range(m.end() - 1, len(line)):
         depth += {"<": 1, ">": -1}.get(line[j], 0)
         if depth == 0:
-            return line[i + 5:j] if line.startswith("()", j + 1) else None
+            return line[m.end():j] if line.startswith("()", j + 1) else None
     return None
+
+
+READ_ARG = re.compile(r"(?<!\w)(?<!\w\.)read\(([^()]*)\)")
+READ_DOMAIN = re.compile(r"^\s*domain (\w+) = read\(")
+
+
+def arg_ranges(line, domains):
+    """name -> (lo, hi) of each `read(lo..=hi)` in `line`, a number read and checked in the
+    range. It is named for the domain it sizes (`domain I = read(1..=n)` is I.count), the
+    list it sizes (`let a: [0..read(1..=n)]T` is a.len) or the name it binds (`let n =
+    read(1..=n)`); one bound to no name is `read(lo..=hi)`, which no header can state."""
+    out = {}
+    for m in READ_ARG.finditer(line):
+        if not READ_RANGE.match(m.group(1).strip()):
+            continue
+        d, b = READ_DOMAIN.match(line), READ_BINDER.match(line)
+        pat = (b.group(1) or b.group(2)).strip() if b else ""
+        if d:
+            name = d.group(1) + ".count"
+        elif re.fullmatch(r"\w+", pat) and re.search(r"\[(?:0\s*\.\.\s*)?$", line[:m.start()]):
+            name = pat + ".len"
+        elif re.fullmatch(r"\w+", pat):
+            name = pat
+        else:
+            name = f"read({m.group(1).strip()})"
+        out.update(read_ranges([name], m.group(1), domains))
+    return out
+
+
 def port_domains(text):
     """Each `domain`/`type`/`struct` the port declares: name -> its type text. An enum is
     the struct of its variants' named fields, so `ops.u` names `Join(u: W, v: W)`'s u."""
@@ -533,9 +562,10 @@ def port_ranges(text):
     """name (a field as name.field, a positional one as name.0) -> (lo, hi) text of each
     ranged read in the port: `let x: T = read()`, or a `read<T>()` bound by `let`/`for`
     anywhere in its statement, wrapped over lines or not (`let xs = read<[n]T>().sorted()`,
-    `for a in read<[m]T>():`)."""
+    `for a in read<[m]T>():`), and each `read(lo..=hi)` (arg_ranges)."""
     domains, out = port_domains(text), {}
     for line in logical_lines(text):
+        out.update(arg_ranges(line, domains))
         m, b = READ_LINE.match(line), READ_BINDER.match(line)
         if m:
             pat, t = (m.group(1) or m.group(3)).strip(), m.group(2) or m.group(4)
@@ -590,10 +620,16 @@ def bound_value(text):
         return None
 
 
+def port_consts(text):
+    """Each numeric `const NAME = value` the port declares: name -> its value text."""
+    found = re.finditer(r"(?m)^const (\w+)(?::[^=]+)? = (.+?)\s*$", text)
+    return {m.group(1): m.group(2) for m in found if bound_value(m.group(2)) is not None}
+
+
 def bounds_findings(pid, text):
     """Each ranged read the header's Bounds doesn't state, and each stated bound
     the port reads narrower or differently: a valid judge input it would reject."""
-    declared, read = declared_bounds(text), port_ranges(text)
+    declared, read, consts = declared_bounds(text), port_ranges(text), port_consts(text)
     if declared is None:
         return [f"no-header-bounds {pid} -"] if read else []
     header = text.split("\n")[:next((i for i, l in enumerate(text.split("\n")) if not l.startswith("//")), None)]
@@ -606,7 +642,7 @@ def bounds_findings(pid, text):
         if not want or n not in read:
             continue
         got = read[n]
-        nums = [bound_value(x) for x in (*got, *want)]
+        nums = [bound_value(re.sub(r"\w+", lambda w: f"({consts.get(w[0], w[0])})", x)) for x in (*got, *want)]
         if None in nums:
             narrow = [" ".join(a.split()) for a in got] != [" ".join(b.split()) for b in want]
         else:

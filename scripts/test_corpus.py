@@ -556,6 +556,16 @@ class BoundsTest(unittest.TestCase):
         self.assertEqual(corpus.bounds_findings("p", "// Bounds: s: [q](1..=3, 1..=2e5); c: Cell\n" + port),
                          ["bounds-narrow p s.1: reads 1..=w, statement 1..=2e5"])
 
+    def test_a_read_of_a_range_or_a_parsed_line_is_checked(self):
+        port = ("let n = read(1..=5000)\ndomain I = read(2..=2e5)\nlet a: [0..read(1..=10)]1..=9 = read()\n"
+                "let m = read_line().parse<1..=100>()!\nprint(read(0..3))\n")
+        self.assertEqual(corpus.port_ranges(port), {"n": ("1", "5000"), "I.count": ("2", "2e5"), "a.len": ("1", "10"),
+                                                    "a": ("1", "9"), "m": ("1", "100"), "read(0..3)": ("0", "3 - 1")})
+        self.assertEqual(corpus.bounds_findings("p", port), ["no-header-bounds p -"])
+        const = "// Bounds: n: 2..=5e5\nconst N = 500_000\nlet n: 2..=N = read()\n"
+        self.assertEqual(corpus.bounds_findings("p", const), [])
+        self.assertEqual(corpus.bounds_findings("p", const.replace("5e5", "6e5")), ["bounds-narrow p n: reads 2..=N, statement 2..=6e5"])
+
     def test_bounds_end_at_the_next_header_key(self):
         text = "// Bounds: n: 1..=9\n// limits: 1000 ms, 256 MB\n//   q: 1..=5\nlet n: 1..=9 = read()\n"
         self.assertEqual(corpus.declared_bounds(text), {"n": ("1", "9")})

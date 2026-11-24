@@ -9,7 +9,7 @@
 //   Fenwick over value order, hi on reversed values and positions); a fixed v needs both at its
 //   own cell. Earliest deadline first fills the free positions in order from a MinHeap of (hi, v) over the free values, failing on a
 //   missed deadline; ties go to the smaller value, which keeps the order. O(n log n).
-// Bounds: a: 1..=Pos.count
+// Bounds: a: 1..=Pos.count; Pos.count: 2..=5e5
 
 @!multitest
 use std.seq.{inverse}
