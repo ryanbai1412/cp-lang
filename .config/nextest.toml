@@ -41,6 +41,13 @@ threads-required = 'num-cpus'
 filter = 'binary_id(cpl-lsp::std_items) | binary_id(cpl-lsp::completion_replay) | binary_id(cpl-cli::front_end_fuzz)'
 threads-required = 'num-cpus'
 
+# The judges matrix, corpus, limit and size shards each build and compile
+# their ports one thread per core; beside the rest of the suite a 20 s
+# shard took 122 s. Give them the machine.
+[[profile.default.overrides]]
+filter = 'binary_id(cpl-cli::judges) & (test(/^every_port_compiles_with_every_judges_flags_[0-9]/) | test(/^every_passing_corpus_port_compiles_with_every_judges_flags_[0-9]/) | test(/^every_port_is_written_for_every_judge_within_its_limit_/) | test(/^the_size_report_of_every_port_adds_up_to_its_file_[0-9]/))'
+threads-required = 'num-cpus'
+
 # The commit tier (scripts/check.sh --commit) skips the end-to-end suites:
 # they drive whole programs through the CLI, LSP and conformance corpus, and
 # take most of the fast gate's time. The land tier (--fast) runs them all.

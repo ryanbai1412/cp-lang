@@ -39,8 +39,9 @@ SLOW_TESTS = (
     "recovery_scoreboard",
     "fix_it_scoreboard",
     "committed_scoreboard_ratchet",
-    "every_port_compiles_with_every_judges_flags",
 )
+# Tests split into `<name>_<shard>` shards: --fast leaves every shard to --full.
+SLOW_SHARDED_TESTS = ("every_port_compiles_with_every_judges_flags",)
 
 # Wall-clock assertions (decision 225): a timing budget can fail on a loaded
 # machine with no code change, so no blocking tier runs one. CI reports them
@@ -65,7 +66,8 @@ def _tests(names: tuple[str, ...]) -> str:
 
 def slow_filter() -> str:
     """Nextest filter for every test a blocking tier skips."""
-    return "binary(budget)" + _tests(SLOW_TESTS) + _tests(WALL_CLOCK_TESTS)
+    sharded = "".join(f" or test(/(^|::){n}_[0-9]+$/)" for n in SLOW_SHARDED_TESTS)
+    return "binary(budget)" + _tests(SLOW_TESTS) + sharded + _tests(WALL_CLOCK_TESTS)
 
 
 def wall_filter() -> str:
@@ -314,8 +316,8 @@ STEPS = {
               "committed_scoreboard_ratchet"),
              "a passing case regressed against research/scoreboard.json; rerun: cargo test -p cpl-conform --test ratchet"),
         Step("cargo test: every port compiled with every judge profile's flags",
-             ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--", "--exact",
-              "every_port_compiles_with_every_judges_flags"),
+             ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--",
+              "every_port_compiles_with_every_judges_flags_", "--test-threads=1"),
              "a port fails to compile under a judge profile; rerun: cargo test -p cpl-cli --test judges",
              needs=("g++",)),
         Step("cargo test: the budget tests, alone", ("cargo", "test", "-p", "cpl-cli", "--test", "budget", "--",
@@ -1044,7 +1046,7 @@ class Tail:
                     raise Failed("a doctest failed; rerun: cargo test --workspace --doc")
             else:
                 self.step("cargo test --workspace (without the --full tests)")
-                skips = [a for t in (*SLOW_TESTS, *UNTIMED_TESTS) for a in ("--skip", t)]
+                skips = [a for t in (*SLOW_TESTS, *SLOW_SHARDED_TESTS, *UNTIMED_TESTS) for a in ("--skip", t)]
                 if self.call(["cargo", "test", "--workspace", "--", *skips]):
                     raise Failed("a workspace test failed; rerun: cargo test --workspace")
             self.save("nextest_doc")
@@ -1153,7 +1155,8 @@ def _guard(mode: str, root: Path) -> None:
 
 
 
-TIMING_EXTRA = ("every_corpus_program_and_conformance_case_is_served", "every_port_compiles_with_every_judges_flags")
+TIMING_EXTRA = ("test(=every_corpus_program_and_conformance_case_is_served)",
+                "test(/^every_port_compiles_with_every_judges_flags_[0-9]+$/)")
 FAST_BUDGET_S = 180
 AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only header)"
 
@@ -1200,7 +1203,7 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         g = gate_part(part, mode)
         if mode == "timing":
             print("\n==> wall-clock budgets (reported, never blocking)", flush=True)
-            expr = " or ".join([wall_filter(), *(f"test(={t})" for t in TIMING_EXTRA)])
+            expr = " or ".join([wall_filter(), *TIMING_EXTRA])
             walls = run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr], cwd=ROOT).returncode
             print("\n==> every touched-path slice against its limit (reported, never blocking)", flush=True)
             slices = run([sys.executable, "scripts/affected.py", "--run-slices", "all"], cwd=ROOT).returncode

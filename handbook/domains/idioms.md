@@ -224,7 +224,7 @@ GCC and LLVM's differential testing against a reference.
 | Idiomatic ports run as fast as matched C++ | p50, p95 and max runtime ratio on max inputs | `handbook/guidelines/idiomatic-code-checklist.md#r10`; `handbook/guidelines/performance.md`; generated benchmark | perf's corpus bench; `scripts/corpus.py verify` (`slow`: over 1.5x on the `--max` input, best of three) |
 | Every port can be tuned to 1.1x in the language | tuned ports at or under 1.1x | process | `missing` |
 | Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); `scripts/corpus.py verify` (`stress`, `size`, `lint`) (`over-32kb`, a hard gate, no list) |
-| A built solution compiles under each judge's flags | ports failing any judge's compiler and flags | generated matrix | `crates/cpl-cli/tests/judges.rs` (`every_port_compiles_with_every_judges_flags`) |
+| A built solution compiles under each judge's flags | ports failing any judge's compiler and flags | generated matrix | `crates/cpl-cli/tests/judges.rs` (`every_port_compiles_with_every_judges_flags_*`, 32 path-hashed shards) |
 | What passed locally passes on the judge | ports whose local verdict differs from the judge's | process: a sample of real submissions, by Ryan only | `missing` |
 
 ### Judge profiles (J9)

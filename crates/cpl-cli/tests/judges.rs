@@ -86,6 +86,73 @@ fn parallel<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R>
     done.into_iter().map(|(_, r)| r).collect()
 }
 
+/// Which of `shards` tests takes `path`: a hash of its path from the root,
+/// so a port added or dropped moves no other port to another shard.
+fn shard_of(path: &Path, shards: usize) -> usize {
+    let path = path.strip_prefix(root()).unwrap_or(path);
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in path.to_string_lossy().bytes() {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
+    }
+    (hash % shards as u64) as usize
+}
+
+/// `$run(i)` as one test per shard `i`, and a test that the shards listed
+/// are exactly `0..$shards`, so together they cover every port.
+macro_rules! sharded {
+    ($run:ident, $shards:expr, $covers:ident; $($test:ident = $shard:literal),* $(,)?) => {
+        $(
+            #[test]
+            fn $test() {
+                $run($shard);
+            }
+        )*
+        #[test]
+        fn $covers() {
+            assert_eq!(vec![$($shard),*], (0..$shards).collect::<Vec<usize>>());
+        }
+    };
+}
+
+/// The judges with the compiler and flags each builds with here.
+fn locals() -> Vec<(cpl_judge::Profile, cpl_judge::Local)> {
+    cpl_judge::builtins()
+        .into_iter()
+        .map(|profile| {
+            let local = profile.local();
+            (profile, local)
+        })
+        .collect()
+}
+
+/// `cpp` through `local`'s compiler and flags with `-fsyntax-only`. Judges
+/// with the same flags get the same C++ but for the stamp comment naming
+/// the judge, so each distinct compiler, flags and C++ compiles once.
+fn syntax_checked(cpp: &str, local: &cpl_judge::Local, scratch: &Path) -> Result<(), String> {
+    use std::collections::HashMap;
+    use std::hash::{Hash, Hasher};
+    use std::sync::{Mutex, OnceLock};
+    static CHECKED: OnceLock<Mutex<HashMap<u64, Result<(), String>>>> = OnceLock::new();
+    let checked = CHECKED.get_or_init(Default::default);
+    let mut key = std::collections::hash_map::DefaultHasher::new();
+    (&local.compiler, &local.flags).hash(&mut key);
+    for line in cpp
+        .lines()
+        .filter(|line| !line.starts_with("// For judge `"))
+    {
+        line.hash(&mut key);
+    }
+    let key = key.finish();
+    if let Some(seen) = checked.lock().unwrap().get(&key) {
+        return seen.clone();
+    }
+    let path = scratch.join(format!("{key:016x}.cpp"));
+    std::fs::write(&path, cpp).unwrap();
+    let result = compile(&path, &path, local, true);
+    checked.lock().unwrap().insert(key, result.clone());
+    result
+}
+
 fn build(file: &Path, judge: &str) -> Result<String, String> {
     let out = cpl_cli::run(&["build", file.to_str().unwrap(), "--judge", judge, "-o", "-"]);
     match out.code {
@@ -94,9 +161,9 @@ fn build(file: &Path, judge: &str) -> Result<String, String> {
     }
 }
 
-/// Every port written for `judge` fits its limit and carries its stamp. One
-/// test per judge, so CI spreads the judges over its shards.
-fn written_within_limit(judge: &str) {
+/// Every port written for `judge` fits its limit and carries its stamp. Two
+/// tests per judge, each taking the ports of one half by `shard_of`.
+fn written_within_limit(judge: &str, half: usize) {
     let ports = ports();
     assert!(ports.len() >= 30, "{} ports", ports.len());
     let profile = cpl_judge::builtins()
@@ -104,7 +171,11 @@ fn written_within_limit(judge: &str) {
         .find(|p| p.name == judge)
         .unwrap_or_else(|| panic!("no judge `{judge}`"));
     {
-        let indexed: Vec<(usize, &PathBuf)> = ports.iter().enumerate().collect();
+        let indexed: Vec<(usize, &PathBuf)> = ports
+            .iter()
+            .enumerate()
+            .filter(|(_, port)| shard_of(port, 2) == half)
+            .collect();
         let sizes = parallel(&indexed, |&(i, port)| {
             let cpp =
                 build(port, &profile.name).unwrap_or_else(|e| panic!("{}: {e}", port.display()));
@@ -148,11 +219,15 @@ fn written_within_limit(judge: &str) {
 }
 
 macro_rules! judges {
-    ($($test:ident = $judge:literal),* $(,)?) => {
+    ($($first:ident, $second:ident = $judge:literal),* $(,)?) => {
         $(
             #[test]
-            fn $test() {
-                written_within_limit($judge);
+            fn $first() {
+                written_within_limit($judge, 0);
+            }
+            #[test]
+            fn $second() {
+                written_within_limit($judge, 1);
             }
         )*
         #[test]
@@ -164,14 +239,14 @@ macro_rules! judges {
 }
 
 judges! {
-    every_port_is_written_for_every_judge_within_its_limit_generic = "generic",
-    every_port_is_written_for_every_judge_within_its_limit_codeforces = "codeforces",
-    every_port_is_written_for_every_judge_within_its_limit_atcoder = "atcoder",
-    every_port_is_written_for_every_judge_within_its_limit_cses = "cses",
-    every_port_is_written_for_every_judge_within_its_limit_icpc = "icpc",
-    every_port_is_written_for_every_judge_within_its_limit_kattis = "kattis",
-    every_port_is_written_for_every_judge_within_its_limit_dmoj = "dmoj",
-    every_port_is_written_for_every_judge_within_its_limit_usaco = "usaco",
+    every_port_is_written_for_every_judge_within_its_limit_generic_0, every_port_is_written_for_every_judge_within_its_limit_generic_1 = "generic",
+    every_port_is_written_for_every_judge_within_its_limit_codeforces_0, every_port_is_written_for_every_judge_within_its_limit_codeforces_1 = "codeforces",
+    every_port_is_written_for_every_judge_within_its_limit_atcoder_0, every_port_is_written_for_every_judge_within_its_limit_atcoder_1 = "atcoder",
+    every_port_is_written_for_every_judge_within_its_limit_cses_0, every_port_is_written_for_every_judge_within_its_limit_cses_1 = "cses",
+    every_port_is_written_for_every_judge_within_its_limit_icpc_0, every_port_is_written_for_every_judge_within_its_limit_icpc_1 = "icpc",
+    every_port_is_written_for_every_judge_within_its_limit_kattis_0, every_port_is_written_for_every_judge_within_its_limit_kattis_1 = "kattis",
+    every_port_is_written_for_every_judge_within_its_limit_dmoj_0, every_port_is_written_for_every_judge_within_its_limit_dmoj_1 = "dmoj",
+    every_port_is_written_for_every_judge_within_its_limit_usaco_0, every_port_is_written_for_every_judge_within_its_limit_usaco_1 = "usaco",
 }
 
 fn compile(
@@ -318,43 +393,80 @@ fn popcount_on_an_x86_judge_is_one_popcnt() {
 /// Every port's C++ for every judge, compiled with that judge's flags.
 /// About a minute on eight cores: a slow test (scripts/ci.py SLOW_TESTS)
 /// that `scripts/check.sh --full` and `--timing` (ci-slow.yml) run.
-#[test]
-fn every_port_compiles_with_every_judges_flags() {
-    let ports = ports();
-    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-matrix");
-    std::fs::create_dir_all(&scratch).unwrap();
-    let mut failures = Vec::new();
-    for profile in cpl_judge::builtins() {
-        let local = profile.local();
-        let failed: Vec<String> = parallel(&ports, |port| {
-            let stem = port
-                .parent()
-                .unwrap()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap();
-            let cpp = scratch.join(format!("{}-{stem}.cpp", profile.name));
-            std::fs::write(&cpp, build(port, &profile.name).unwrap()).unwrap();
-            compile(&cpp, &cpp, &local, true)
-                .err()
-                .map(|e| format!("{} for {}:\n{e}", port.display(), profile.name))
-        })
+/// Each port built for every judge compiles with that judge's flags, in
+/// `MATRIX_SHARDS` tests by `shard_of`.
+const MATRIX_SHARDS: usize = 32;
+
+fn matrix_shard(shard: usize) {
+    let ports: Vec<PathBuf> = ports()
         .into_iter()
-        .flatten()
+        .filter(|port| shard_of(port, MATRIX_SHARDS) == shard)
         .collect();
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("judges-matrix-{shard}"));
+    std::fs::create_dir_all(&scratch).unwrap();
+    let locals = locals();
+    let failures: Vec<String> = parallel(&ports, |port| {
+        locals
+            .iter()
+            .filter_map(|(profile, local)| {
+                let cpp = build(port, &profile.name)
+                    .unwrap_or_else(|e| panic!("{}: {e}", port.display()));
+                syntax_checked(&cpp, local, &scratch)
+                    .err()
+                    .map(|e| format!("{} for {}:\n{e}", port.display(), profile.name))
+            })
+            .collect::<Vec<_>>()
+    })
+    .into_iter()
+    .flatten()
+    .collect();
+    for (profile, local) in &locals {
         eprintln!(
-            "{:<11} {} ports, {} fail: {} {}; dropped {:?}",
+            "{:<11} {} ports: {} {}; dropped {:?}",
             profile.name,
             ports.len(),
-            failed.len(),
             local.compiler,
             local.flags.join(" "),
             local.dropped
         );
-        failures.extend(failed);
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+sharded! {
+    matrix_shard, MATRIX_SHARDS, every_port_compiles_with_every_judges_flags_covers_every_shard;
+    every_port_compiles_with_every_judges_flags_0 = 0,
+    every_port_compiles_with_every_judges_flags_1 = 1,
+    every_port_compiles_with_every_judges_flags_2 = 2,
+    every_port_compiles_with_every_judges_flags_3 = 3,
+    every_port_compiles_with_every_judges_flags_4 = 4,
+    every_port_compiles_with_every_judges_flags_5 = 5,
+    every_port_compiles_with_every_judges_flags_6 = 6,
+    every_port_compiles_with_every_judges_flags_7 = 7,
+    every_port_compiles_with_every_judges_flags_8 = 8,
+    every_port_compiles_with_every_judges_flags_9 = 9,
+    every_port_compiles_with_every_judges_flags_10 = 10,
+    every_port_compiles_with_every_judges_flags_11 = 11,
+    every_port_compiles_with_every_judges_flags_12 = 12,
+    every_port_compiles_with_every_judges_flags_13 = 13,
+    every_port_compiles_with_every_judges_flags_14 = 14,
+    every_port_compiles_with_every_judges_flags_15 = 15,
+    every_port_compiles_with_every_judges_flags_16 = 16,
+    every_port_compiles_with_every_judges_flags_17 = 17,
+    every_port_compiles_with_every_judges_flags_18 = 18,
+    every_port_compiles_with_every_judges_flags_19 = 19,
+    every_port_compiles_with_every_judges_flags_20 = 20,
+    every_port_compiles_with_every_judges_flags_21 = 21,
+    every_port_compiles_with_every_judges_flags_22 = 22,
+    every_port_compiles_with_every_judges_flags_23 = 23,
+    every_port_compiles_with_every_judges_flags_24 = 24,
+    every_port_compiles_with_every_judges_flags_25 = 25,
+    every_port_compiles_with_every_judges_flags_26 = 26,
+    every_port_compiles_with_every_judges_flags_27 = 27,
+    every_port_compiles_with_every_judges_flags_28 = 28,
+    every_port_compiles_with_every_judges_flags_29 = 29,
+    every_port_compiles_with_every_judges_flags_30 = 30,
+    every_port_compiles_with_every_judges_flags_31 = 31,
 }
 
 /// Whether `file` is a program of `@grader` fns, which the package's
@@ -413,9 +525,9 @@ fn passing_corpus_ports() -> Vec<PathBuf> {
         .collect()
 }
 
-/// The corpus test is split into `CORPUS_SHARDS` tests by each port's index,
-/// so each stays short and together they cover every passing port.
-const CORPUS_SHARDS: usize = 8;
+/// The corpus test is split into `CORPUS_SHARDS` tests by `shard_of`, so
+/// each stays short and together they cover every passing port.
+const CORPUS_SHARDS: usize = 16;
 
 fn corpus_shard(shard: usize) {
     let ports = passing_corpus_ports();
@@ -425,93 +537,82 @@ fn corpus_shard(shard: usize) {
     );
     let ports: Vec<PathBuf> = ports
         .into_iter()
-        .skip(shard)
-        .step_by(CORPUS_SHARDS)
+        .filter(|port| shard_of(port, CORPUS_SHARDS) == shard)
         .collect();
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("judges-corpus-{shard}"));
     std::fs::create_dir_all(&scratch).unwrap();
-    let mut failures = Vec::new();
-    for profile in cpl_judge::builtins() {
-        let local = profile.local();
-        if !has(&local.compiler) {
-            eprintln!("{}: skipped, no {}", profile.name, local.compiler);
-            continue;
-        }
-        let failed: Vec<String> = parallel(&ports, |port| {
-            let id = port
-                .parent()
-                .unwrap()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap();
-            let cpp = build(port, &profile.name)
-                .map_err(|e| format!("{id} for {}: does not build:\n{e}", profile.name))?;
-            if build(port, &profile.name).as_ref() != Ok(&cpp) {
-                return Err(format!("{id} for {}: not deterministic", profile.name));
-            }
-            if cpp.len() > profile.limit() {
-                return Err(format!("{id} for {}: {} bytes", profile.name, cpp.len()));
-            }
-            let path = scratch.join(format!("{}-{id}.cpp", profile.name));
-            std::fs::write(&path, &cpp).unwrap();
-            compile(&path, &path, &local, true)
-                .map_err(|e| format!("{id} for {}:\n{e}", profile.name))
-        })
+    let locals: Vec<_> = locals()
         .into_iter()
-        .filter_map(Result::err)
+        .filter(|(profile, local)| {
+            let has = has(&local.compiler);
+            if !has {
+                eprintln!("{}: skipped, no {}", profile.name, local.compiler);
+            }
+            has
+        })
         .collect();
+    let failures: Vec<String> = parallel(&ports, |port| {
+        let id = port
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        locals
+            .iter()
+            .filter_map(|(profile, local)| {
+                let cpp = match build(port, &profile.name) {
+                    Ok(cpp) => cpp,
+                    Err(e) => {
+                        return Some(format!("{id} for {}: does not build:\n{e}", profile.name))
+                    }
+                };
+                if build(port, &profile.name).as_ref() != Ok(&cpp) {
+                    return Some(format!("{id} for {}: not deterministic", profile.name));
+                }
+                if cpp.len() > profile.limit() {
+                    return Some(format!("{id} for {}: {} bytes", profile.name, cpp.len()));
+                }
+                syntax_checked(&cpp, local, &scratch)
+                    .err()
+                    .map(|e| format!("{id} for {}:\n{e}", profile.name))
+            })
+            .collect::<Vec<_>>()
+    })
+    .into_iter()
+    .flatten()
+    .collect();
+    for (profile, local) in &locals {
         eprintln!(
-            "{:<11} {} corpus ports, {} fail: {} {}",
+            "{:<11} {} corpus ports: {} {}",
             profile.name,
             ports.len(),
-            failed.len(),
             local.compiler,
             local.flags.join(" ")
         );
-        failures.extend(failed);
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags_0() {
-    corpus_shard(0);
-}
-
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags_1() {
-    corpus_shard(1);
-}
-
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags_2() {
-    corpus_shard(2);
-}
-
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags_3() {
-    corpus_shard(3);
-}
-
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags_4() {
-    corpus_shard(4);
-}
-
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags_5() {
-    corpus_shard(5);
-}
-
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags_6() {
-    corpus_shard(6);
-}
-
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags_7() {
-    corpus_shard(7);
+sharded! {
+    corpus_shard, CORPUS_SHARDS, every_passing_corpus_port_compiles_with_every_judges_flags_covers_every_shard;
+    every_passing_corpus_port_compiles_with_every_judges_flags_0 = 0,
+    every_passing_corpus_port_compiles_with_every_judges_flags_1 = 1,
+    every_passing_corpus_port_compiles_with_every_judges_flags_2 = 2,
+    every_passing_corpus_port_compiles_with_every_judges_flags_3 = 3,
+    every_passing_corpus_port_compiles_with_every_judges_flags_4 = 4,
+    every_passing_corpus_port_compiles_with_every_judges_flags_5 = 5,
+    every_passing_corpus_port_compiles_with_every_judges_flags_6 = 6,
+    every_passing_corpus_port_compiles_with_every_judges_flags_7 = 7,
+    every_passing_corpus_port_compiles_with_every_judges_flags_8 = 8,
+    every_passing_corpus_port_compiles_with_every_judges_flags_9 = 9,
+    every_passing_corpus_port_compiles_with_every_judges_flags_10 = 10,
+    every_passing_corpus_port_compiles_with_every_judges_flags_11 = 11,
+    every_passing_corpus_port_compiles_with_every_judges_flags_12 = 12,
+    every_passing_corpus_port_compiles_with_every_judges_flags_13 = 13,
+    every_passing_corpus_port_compiles_with_every_judges_flags_14 = 14,
+    every_passing_corpus_port_compiles_with_every_judges_flags_15 = 15,
 }
 
 #[test]
@@ -561,9 +662,11 @@ fn size_parts(report: &str) -> (usize, Vec<(String, usize)>) {
     (total, parts)
 }
 
-#[test]
-fn the_size_report_of_every_port_adds_up_to_its_file() {
-    let ports = ports();
+fn size_report_shard(shard: usize) {
+    let ports: Vec<PathBuf> = ports()
+        .into_iter()
+        .filter(|port| shard_of(port, 2) == shard)
+        .collect();
     let glue = parallel(&ports, |port| {
         let out = cpl_cli::run(&["build", port.to_str().unwrap(), "--size", "-o", "-"]);
         assert_eq!(out.code, 0, "{}: {}", port.display(), out.stderr);
@@ -593,6 +696,12 @@ fn the_size_report_of_every_port_adds_up_to_its_file() {
         glue[glue.len() / 2],
         glue[glue.len() - 1]
     );
+}
+
+sharded! {
+    size_report_shard, 2, the_size_report_of_every_port_adds_up_to_its_file_covers_every_shard;
+    the_size_report_of_every_port_adds_up_to_its_file_0 = 0,
+    the_size_report_of_every_port_adds_up_to_its_file_1 = 1,
 }
 
 #[test]
