@@ -5,15 +5,14 @@
 // Solution: give each word an id on first sight (a hash map) and build the weighted digraph;
 //   run Dijkstra from a for each query: O(q (n + m) log n).
 // original: corpus/submissions/4188022.cpp
-use std.seq.{get_or_insert_with}
+use std.marks.{Interner}
 
 let (n, m): (Int, Int) = read()
 domain V = 0..n
-var ids = Map<Str, V>()
+var ids = Interner<Str>()
 
 fn id(name: Str) -> V:
-    let next_id = ids.len
-    ids.get_or_insert_with(name, () => V(next_id))
+    V(ids.id(name))
 
 var out: [V]List<(to: V, w: Int)> = []
 for _ in 0..m:

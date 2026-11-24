@@ -593,16 +593,6 @@ pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V:
     if not (k in self): self[k] = v
     self[k]
 
-/// As `get_or_insert`, but the value is made by `f`, which runs only when `m` holds None
-/// for `k`: `ids.get_or_insert_with(name, () => next_id())`. \(O(\log n)\).
-///
-/// cost: \(O(\log n)\), plus `f` once when `k` is absent
-/// traps: never
-/// example: `var m: Map<Int, Int> = Map(); m.get_or_insert_with(1, () => 5) == 5`
-pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V:
-    if not (k in self): self[k] = f()
-    self[k]
-
 /// Replace the value under `k` by `f` of it, starting from `init` when `m` holds none:
 /// `cnt.update(x, 0, c => c + 1)`. \(O(\log n)\).
 ///
@@ -2970,16 +2960,6 @@ fn get_or_insert_stores_only_what_is_missing():
     var ids = Map<Str, Int>()
     assert ids.get_or_insert("a", ids.len) == 0 and ids.get_or_insert("b", ids.len) == 1
     assert ids.get_or_insert("a", 99) == 0 and ids.len == 2
-
-@test
-fn get_or_insert_with_makes_a_value_only_when_missing():
-    var ids = Map<Str, Int>()
-    var made = 0
-    fn fresh() -> Int:
-        made += 1
-        made * 10
-    assert ids.get_or_insert_with("a", fresh) == 10 and ids.get_or_insert_with("a", fresh) == 10
-    assert ids.get_or_insert_with("b", () => 7) == 7 and made == 1
 
 @test
 fn update_starts_from_init_and_then_from_the_value():

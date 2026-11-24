@@ -7,15 +7,14 @@
 //   in-degree 0), then along what is left of each cycle, starting after an already matched node
 //   if the cycle has one, else anywhere (len / 2). O(n) after interning names.
 // original: corpus/submissions/4456169.cpp
-use std.seq.{get_or_insert_with}
+use std.marks.{Interner}
 
 let n: Int = read()
 domain P = 0..n
-var ids = Map<Str, P>()
+var ids = Interner<Str>()
 
 fn id(name: Str) -> P:
-    let next_id = ids.len
-    ids.get_or_insert_with(name, () => P(next_id))
+    P(ids.id(name))
 
 var loves = [P] p => p
 for _ in P:
