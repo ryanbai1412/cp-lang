@@ -181,18 +181,15 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/library-domain-count-trap-names-sizing-site-release.cp: compiler
 - core-04/list-fill-copies-per-key.cp: compiler
 - core-04/list-of-domain-array-loses-domain.cp: compiler
-- core-04/palindromes-longest-at-key.cp: stdlib
 - core-04/rebased-str-indexes-from-zero.cp: stdlib
 - core-04/runtime-domain-literal-between-traps.cp: compiler
 - core-04/table-one-cell-parameter.cp: compiler
 - core-04/zip-keyed-by-first.cp: compiler
 - core-05/exercise-04-var-from-lent-param.cp: compiler
-- core-05/exercise-20-segtree-lent-from-ws.cp: compiler
 - core-05/exercise-35-lent-optional-kept.cp: compiler
 - core-05/lent-generator-blocks-overlapping-write.cp: compiler
 - core-05/let-heap-element-lends-no-copy.cp: compiler
 - core-05/map-entry-index-key-lends.cp: compiler
-- core-05/spec-block-segtree-of-ws.cp: compiler
 - core-06/gen-graph-simple-connected.cp: stdlib (generated edge record has no `all`)
 - core-07/chain-takes-any-number.cp: stdlib
 - core-07/fold-with-init.cp: compiler
@@ -204,11 +201,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-11/prelude-has-components.cp: compiler
 - core-11/strings-table-in-prelude.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
-- std-algebra/each-of-bool-operators.cp: stdlib
-- std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
+- std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: compiler (a std fn's trait-alias bound resolves only when the caller imports the alias)
 - std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - std-segtree/closure-op-picks-index.cp: stdlib `all` of an identity-less op is `?T`; needs identity-less fold typing (plan/QUESTIONS.md)
-- std-seq/split-on-separator-predicate.cp: stdlib
 - std-window/track-infers-element-from-sequence.cp: compiler
 - tools-bundle/vendor-copies-pinned-libraries.cp: tools Milestone 2 (pins, Rbundle.6), not promised for Milestone 1
 - core-08/impl-chooses-an-associated-type-per-kind.cp: compiler associated types chosen by impl (decision 456)
@@ -218,6 +213,5 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/for-over-a-bag-range-keeps-the-bag-lent.cp: compiler: a `for` header view of a `lends` method keeps the receiver lent
 - core-05/closure-capturing-a-view-keeps-its-source-lent.cp: compiler: a closure capturing a view keeps the source lent
 - std-bag/closure-captures-a-range-view.cp: compiler: a captured bag range view is typed `()`
-- core-07/fold-of-and-or-over-empty-uses-identity.cp: compiler: folds of bare `and`/`or` miss their identity
 - core-10/hash-containers-are-not-show.cp: compiler: hash containers not Show (decision 460)
 - core-02/enum-level-tags-is-removed.cp: compiler: enum-level `@tags` removed (decision 459)
