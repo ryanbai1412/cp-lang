@@ -395,12 +395,13 @@ fn an_assert_storing_through_the_fns_it_calls_still_runs_or_is_checked() {
                   fn close(mut d: [V, V]?Int) -> Bool = floyd_warshall(mut d)\n\
                   fn wrap(mut d: [V, V]?Int) -> Bool = close(mut d)\n\
                   assert wrap(mut hop)\nprint(hop[0, 2] ?? -1)\n";
+    // `wrap` only forwards its param, so the assert's call is `close`.
     let unchecked = solve_body(source, crate::Checks::None);
-    assert!(unchecked.contains("wrap("), "{unchecked}");
+    assert!(unchecked.contains("close("), "{unchecked}");
     assert!(!unchecked.contains("assertion failed"), "{unchecked}");
     let checked = solve_body(source, crate::Checks::default());
     assert!(
-        checked.contains("wrap(") && checked.contains("assertion failed"),
+        checked.contains("close(") && checked.contains("assertion failed"),
         "{checked}"
     );
 }

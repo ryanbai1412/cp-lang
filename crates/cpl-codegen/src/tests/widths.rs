@@ -401,7 +401,7 @@ print(res)
 fn a_generic_fn_takes_a_narrow_array_at_its_width() {
     let out = cpp("let n: 1..=100 = read()
 let a: [0..n]0..=1_000_000_000 = read()
-fn f<A: Positional<Int>>(a: A) -> Int = a.nth(0)
+fn f<A: Positional<Int>>(a: A) -> Int = a.nth(0) + a.len
 print(f(a))
 ");
     assert!(out.contains("std::vector<uint32_t> a"), "{out}");
@@ -416,7 +416,7 @@ fn a_generic_fn_called_at_two_widths_takes_the_wider() {
     let out = cpp("let n: 1..=100 = read()
 let a: [0..n]0..=1_000_000_000 = read()
 let b: [0..n]Int = read()
-fn f<A: Positional<Int>>(a: A) -> Int = a.nth(0)
+fn f<A: Positional<Int>>(a: A) -> Int = a.nth(0) + a.len
 print(f(a), f(b))
 ");
     assert!(out.contains("std::vector<ll> a"), "{out}");

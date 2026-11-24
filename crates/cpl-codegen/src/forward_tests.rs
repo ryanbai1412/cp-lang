@@ -88,3 +88,55 @@ fn a_ranged_param_keeps_the_call_that_checks_it() {
     ));
     assert!(cpp.contains("low("), "{cpp}");
 }
+
+#[test]
+fn a_void_fn_that_forwards_its_params_to_one_call_is_that_call() {
+    let cpp = program(concat!(
+        "struct Tally(t: List<Int>):\n",
+        "    fn put(mut self, p: Int, x: Int, add: Bool):\n",
+        "        if add: t[p] += x else: t[p] = x\n",
+        "        print(t[p])\n",
+        "    fn set(mut self, p: Int, x: Int) = self.put(p, x, false)\n",
+        "var s = Tally([0, 0, 0])\n",
+        "let n: 0..3 = read()\n",
+        "s.set(n, 5)\n",
+        "s.set(n, 7)\n",
+    ));
+    assert!(!cpp.contains("_set("), "{cpp}");
+    // No bigger than the program that calls `put` itself.
+    let direct = program(concat!(
+        "struct Tally(t: List<Int>):\n",
+        "    fn put(mut self, p: Int, x: Int, add: Bool):\n",
+        "        if add: t[p] += x else: t[p] = x\n",
+        "        print(t[p])\n",
+        "var s = Tally([0, 0, 0])\n",
+        "let n: 0..3 = read()\n",
+        "s.put(n, 5, false)\n",
+        "s.put(n, 7, false)\n",
+    ));
+    assert_eq!(cpp, direct);
+}
+
+#[test]
+fn a_forwarder_that_reorders_its_params_keeps_its_call() {
+    let cpp = program(concat!(
+        "fn show(a: Int, b: Int):\n",
+        "    print(a - b)\n",
+        "fn swapped(a: Int, b: Int) = show(b, a)\n",
+        "let n: 1..=10 = read()\n",
+        "swapped(n, n + 1)\n",
+    ));
+    assert!(cpp.contains("swapped("), "{cpp}");
+}
+
+#[test]
+fn a_forwarder_whose_added_args_would_grow_its_many_sites_keeps_its_call() {
+    let cpp = program(concat!(
+        "fn among(g: Int, lo: Int, hi: Int) -> Int = g * (hi - lo)\n",
+        "let n: Int = read()\n",
+        "fn size(g: Int) -> Int = among(g, 0, n)\n",
+        "let x: Int = read()\n",
+        "print(size(x), size(x + 1), size(x + 2), size(x + 3))\n",
+    ));
+    assert!(cpp.contains("size("), "{cpp}");
+}

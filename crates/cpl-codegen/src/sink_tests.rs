@@ -369,7 +369,8 @@ var zs: List<Int> = []";
     let mut fns = total("    for x in xs: t ^= x\n    t").replace("fn total(", "fn f0(");
     for k in 1..=5 {
         let chain = format!("{fns}\nfn total(xs: List<Int>) -> Int = f{}(xs)", k - 1);
-        assert_eq!(sinks(&chain, ""), k <= 4, "{k} fns hand the list on");
+        // Each `f{k}` only forwards its param, so the chain is one call.
+        assert!(sinks(&chain, ""), "{k} fns hand the list on");
         fns = format!("{fns}\nfn f{k}(xs: List<Int>) -> Int = f{}(xs)", k - 1);
     }
 }
@@ -413,8 +414,6 @@ fn a_sunk_call_passes_its_other_args_after_the_callback() {
         "{fns}fn total(xs: List<Int>) -> Int = inner(xs, by: 5)\n\
          let n: 1..=1000 = read()\nprint(total({list}))\n"
     ));
-    assert!(
-        handed.contains("return cpl_sink_inner(cpl_g, 5);"),
-        "{handed}"
-    );
+    // `total` only forwards `xs`, so its call is `inner`'s, sunk in place.
+    assert!(handed.contains("\n  }, 5);\n"), "{handed}");
 }

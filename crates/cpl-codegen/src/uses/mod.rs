@@ -1034,8 +1034,71 @@ pub(crate) fn returned_expr(f: &cpl_ir::Function, traps: bool) -> Option<&Expr> 
         .then_some(e)
 }
 
+/// The call `f`'s whole body makes when `f` only forwards to another fn:
+/// one call, as a statement or returned, whose args are `f`'s params, each
+/// once and in order (by value, or `mut` for a `mut` param), and other args
+/// that are trap-free, read no local and are small. The callee may do
+/// anything; `f` adds nothing to it. What it gives back is a scalar. Also
+/// gives the other args' node count: what each call site gains.
+pub(crate) fn forwarded_call(
+    f: &cpl_ir::Function,
+    me: usize,
+    traps: bool,
+) -> Option<(&Expr, usize)> {
+    let e = match f.body.stmts.as_slice() {
+        [Stmt::Expr(e)] | [Stmt::Return(Some(e))] => e,
+        _ => return None,
+    };
+    let ExprKind::Call(g, args) = &e.kind else {
+        return None;
+    };
+    if *g == me || e.ty != f.ret || !e.ty.is_scalar() {
+        return None;
+    }
+    let n = f.params.len();
+    let plain = f.params.iter().all(|p| p.range.is_none() && !p.fills_cache);
+    let reads = read_counts(&f.body, f.locals.len());
+    let once = reads
+        .iter()
+        .enumerate()
+        .all(|(s, &k)| k <= usize::from(s < n));
+    let mut next = 0;
+    let mut nodes = 0;
+    let in_order = args.iter().all(|a| match a {
+        Arg::Value(Expr {
+            kind: ExprKind::Local(s),
+            ..
+        }) if *s < n => {
+            next += 1;
+            *s == next - 1 && !f.params[*s].mutable
+        }
+        Arg::Mut(Place {
+            kind: PlaceKind::Local(s),
+            ..
+        }) if *s < n => {
+            next += 1;
+            *s == next - 1 && f.params[*s].mutable
+        }
+        Arg::Value(v) => {
+            walk::deep_expr(v, &mut |_| nodes += 1);
+            read_counts_expr(v) == 0 && effects::trap_free_with(v, traps, &|_| false)
+        }
+        Arg::Mut(_) => false,
+    });
+    (plain && once && in_order && next == n && nodes <= MAX_RETURNED_NODES).then_some((e, nodes))
+}
+
+/// How many locals `e` reads.
+fn read_counts_expr(e: &Expr) -> usize {
+    let mut k = 0;
+    walk::deep_expr(e, &mut |x| {
+        k += usize::from(matches!(x.kind, ExprKind::Local(_)))
+    });
+    k
+}
+
 /// The most expression nodes a [`returned_expr`] has: no larger than the call it replaces.
-const MAX_RETURNED_NODES: usize = 3;
+pub(crate) const MAX_RETURNED_NODES: usize = 3;
 
 /// How many times `block` reads each of the locals below `n`, at any depth.
 pub(crate) fn read_counts(block: &Block, n: usize) -> Vec<usize> {
