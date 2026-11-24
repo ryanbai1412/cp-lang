@@ -188,6 +188,9 @@ pub(crate) struct Emitter<'p> {
     /// The statement being written stores a local read for the last time,
     /// or `let`s a variable the next statements set before reading it.
     pub moves_last: bool,
+    /// `let`s inside the statement being written that read a local of an
+    /// enclosing block for the last time ([`crate::uses::dying_lets`]).
+    pub dying_lets: Vec<*const Stmt>,
     pub pushers: BTreeMap<usize, usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
@@ -301,6 +304,7 @@ impl<'p> Emitter<'p> {
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,
+            dying_lets: Vec::new(),
             pushers: BTreeMap::new(),
             sinks: BTreeMap::new(),
             sinking: None,

@@ -476,3 +476,28 @@ for v in 0..n:
         "`need` is only called and `kids` never changes, so it is borrowed:\n{out}"
     );
 }
+
+#[test]
+fn sorted_at_the_last_read_sorts_the_list_itself() {
+    let out = cpp(concat!(
+        "let es: [0..3](a: Int, w: Int) = read()\n",
+        "for (a, w) in es:\n",
+        "    print(a)\n",
+        "for (a, w) in es.sorted(by: e => -e.w):\n",
+        "    print(a, w)\n",
+    ));
+    assert!(out.contains("std::move(es)"), "{out}");
+    assert!(!out.contains("= es;"), "{out}");
+}
+
+#[test]
+fn sorted_before_another_read_or_inside_a_loop_copies() {
+    for tail in [
+        "for (a, w) in es.sorted(by: e => -e.w):\n    print(a, es.len)\n",
+        "for (a, w) in es.sorted(by: e => -e.w):\n    print(a)\nprint(es.len)\n",
+        "for i in 0..2:\n    for (a, w) in es.sorted(by: e => -e.w):\n        print(a)\n",
+    ] {
+        let out = cpp(&format!("let es: [0..3](a: Int, w: Int) = read()\n{tail}"));
+        assert!(!out.contains("std::move(es)"), "{tail}: {out}");
+    }
+}

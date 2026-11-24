@@ -1093,6 +1093,32 @@ pub(crate) fn copy_sites(
 }
 
 impl Emitter<'_> {
+    /// Statement `k` of `block`, moving each variable it reads for the
+    /// last time instead of copying it.
+    pub(crate) fn stmt_owning(&mut self, block: &Block, k: usize, out: &mut String) {
+        let outer = self.dying_lets.len();
+        self.dying_lets
+            .extend(crate::uses::dying_lets(self.program, block, k));
+        self.moves_last = crate::uses::last_read(self.program, block, k)
+            || self.takes_sunk_param(block, k)
+            || self.dies_here(&block.stmts[k]);
+        self.stmt_presized(&block.stmts, k, out);
+        self.moves_last = false;
+        self.dying_lets.truncate(outer);
+    }
+
+    /// A `let` an enclosing statement found reads its source for the last
+    /// time, unless that source is itself a reference or the `let` lends.
+    pub(crate) fn dies_here(&self, stmt: &Stmt) -> bool {
+        let Stmt::Let(slot, Some(init)) = stmt else {
+            return false;
+        };
+        self.dying_lets.contains(&(stmt as *const Stmt))
+            && !matches!(crate::uses::in_place(init).kind,
+                ExprKind::Local(src) if self.ref_bound.contains(&src))
+            && !self.lends(*slot, init, self.tail.as_ref())
+    }
+
     /// `std::move(text)` for a `let` of a heap variable (or a field path on
     /// one) the statements after it set again before anything reads it:
     /// `let old_k = ks; ks = List.filled(..)` takes the list, not a copy.

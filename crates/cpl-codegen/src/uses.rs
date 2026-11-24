@@ -9,7 +9,9 @@
 
 use crate::lend::{copied_at_test, Tail};
 use crate::walk::{self, Effects as Stores};
-use cpl_ir::{Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
+use cpl_ir::{
+    Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) use cpl_ir::effects::Effects;
@@ -504,4 +506,144 @@ pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
             _ => None,
         })
         .collect()
+}
+
+/// The `let x = src` statements that statement `k` of `block` runs once,
+/// in the value blocks it evaluates, at the last read of `src`, a heap
+/// variable `block` sets: `for e in edges.sorted(by: ..)` with nothing
+/// reading `edges` after it sorts `edges` itself. Such a `let` may move
+/// `src`.
+pub(crate) fn dying_lets(program: &Program, block: &Block, k: usize) -> Vec<*const Stmt> {
+    let mut found = Vec::new();
+    once_lets(&block.stmts[k], &mut found);
+    found
+        .into_iter()
+        .filter(|stmt| match stmt {
+            Stmt::Let(_, Some(init)) => {
+                crate::lend::holds_heap(program, &init.ty)
+                    && !matches!(init.ty, Ty::Fn(..))
+                    && walk::path_root(in_place(init))
+                        .filter(|_| walk::is_simple(in_place(init)))
+                        .is_some_and(|src| dies_in(program, block, k, src))
+            }
+            _ => false,
+        })
+        .map(|stmt| stmt as *const Stmt)
+        .collect()
+}
+
+/// A read of the whole variable `src`.
+fn reads_whole(e: &Expr, src: (bool, usize)) -> bool {
+    match e.kind {
+        ExprKind::Local(s) => src == (false, s),
+        ExprKind::Global(g) => src == (true, g),
+        _ => false,
+    }
+}
+
+/// The `let`s of a variable that `stmt` runs at most once: in the value
+/// blocks it evaluates and the branches it takes, never in a loop body, a
+/// closure or an operand that may run them again.
+fn once_lets<'s>(stmt: &'s Stmt, out: &mut Vec<&'s Stmt>) {
+    fn stmts<'s>(block: &'s Block, out: &mut Vec<&'s Stmt>) {
+        for inner in &block.stmts {
+            if let Stmt::Let(_, Some(init)) = inner {
+                if matches!(
+                    in_place(init).kind,
+                    ExprKind::Local(_) | ExprKind::Global(_)
+                ) {
+                    out.push(inner);
+                }
+            }
+            once_lets(inner, out);
+        }
+    }
+    let mut value = |e: &'s Expr| {
+        if let ExprKind::Do(block) = &e.kind {
+            stmts(block, out);
+        }
+    };
+    match stmt {
+        Stmt::Let(_, Some(e))
+        | Stmt::Assign(_, _, e)
+        | Stmt::Expr(e)
+        | Stmt::Give(e)
+        | Stmt::Return(Some(e))
+        | Stmt::For(_, _, Iter::Seq(e, _) | Iter::RangeVal(e, _), _) => value(e),
+        Stmt::If(cond, then, otherwise) => {
+            value(cond);
+            stmts(then, out);
+            stmts(otherwise, out);
+        }
+        _ => {}
+    }
+}
+
+/// Whether the variable `src`, which `block` sets before statement `k`
+/// (a `let`, or a top-level global's first store in `main`), is read for
+/// the last time by that statement, once: read nowhere after it nor
+/// elsewhere in it, by no closure or fn, and held by no earlier value
+/// that could point into it (a view, a reference).
+fn dies_in(program: &Program, block: &Block, k: usize, src: (bool, usize)) -> bool {
+    let before = &block.stmts[..k];
+    let set = before.iter().any(|stmt| match (stmt, src) {
+        (Stmt::Let(s, _), (false, slot)) => *s == slot,
+        (Stmt::Assign(place, AssignOp::Set, _), (true, g)) => {
+            std::ptr::eq(block, &program.main) && place.kind == PlaceKind::Global(g)
+        }
+        _ => false,
+    });
+    if !set {
+        return false;
+    }
+    let count = |b: &Block| {
+        let mut n = 0;
+        walk::deep_exprs(b, &mut |e| n += usize::from(reads_whole(e, src)));
+        let stored = Stores::of_block(b);
+        n + usize::from(match src {
+            (false, s) => stored.locals.contains(&s),
+            (true, g) => stored.globals.contains(&g),
+        })
+    };
+    let rest = Block {
+        stmts: block.stmts[k + 1..].to_vec(),
+    };
+    let here = Block {
+        stmts: vec![block.stmts[k].clone()],
+    };
+    // A closure or fn could run at any later point and read it.
+    let elsewhere = match src {
+        (false, slot) => {
+            let mut captured = false;
+            walk::deep_exprs(block, &mut |e| {
+                if let ExprKind::Closure(cid) = e.kind {
+                    captured |= program.closures[cid]
+                        .captures
+                        .iter()
+                        .any(|c| !c.is_global && c.outer == slot);
+                }
+            });
+            captured || mentions(program, &rest.stmts, slot).any
+        }
+        (true, _) => {
+            count(&rest) > 0
+                || program.fns.iter().any(|f| count(&f.body) > 0)
+                || program.closures.iter().any(|c| count(&c.body) > 0)
+        }
+    };
+    let mut held = false;
+    walk::deep_stmts(
+        &Block {
+            stmts: before.to_vec(),
+        },
+        &mut |stmt| match stmt {
+            Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) => {
+                let mut reads = false;
+                walk::deep_expr(e, &mut |inner| reads |= reads_whole(inner, src));
+                held |= reads && !e.ty.is_scalar() && !reads_whole(e, src)
+            }
+            _ => {}
+        },
+    );
+    !elsewhere && !held && count(&here) == 1
 }

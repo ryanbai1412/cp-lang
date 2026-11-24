@@ -32,17 +32,14 @@ impl<'p> Emitter<'p> {
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for k in 0..block.stmts.len() {
             self.tail = self.tail_at(&block.stmts, k);
-            self.moves_last =
-                crate::uses::last_read(self.program, block, k) || self.takes_sunk_param(block, k);
-            self.stmt_presized(&block.stmts, k, out);
-            self.moves_last = false;
+            self.stmt_owning(block, k, out);
         }
         self.tail = None;
     }
 
     /// `let l = limbs` in a fn's body, where `limbs` is a parameter taken by
     /// value (see [`crate::scope::sunk_params`]) that nothing reads after.
-    fn takes_sunk_param(&self, block: &Block, k: usize) -> bool {
+    pub(crate) fn takes_sunk_param(&self, block: &Block, k: usize) -> bool {
         let (Stmt::Let(_, Some(init)), Some(id)) = (&block.stmts[k], self.fn_id) else {
             return false;
         };
@@ -70,7 +67,9 @@ impl<'p> Emitter<'p> {
                     }
                     _ => self.tail_at(stmts, k),
                 };
+                self.moves_last = self.dies_here(&stmts[k]);
                 self.stmt_presized(stmts, k, out);
+                self.moves_last = false;
             }
             self.tail = None;
             e = value;
