@@ -462,6 +462,15 @@ impl<'p> Emitter<'p> {
                 let name = self.names[*slot].clone();
                 self.line(out, &format!("auto {name} = cpl::rec({text});"));
             }
+            Stmt::Let(slot, Some(init))
+                if self.locals()[*slot].binds.is_some()
+                    && !self.hoisted.contains(slot)
+                    && !self.plain_let =>
+            {
+                if let Some(map) = &self.locals()[*slot].binds {
+                    self.let_map_slot(*slot, map, init, out);
+                }
+            }
             Stmt::Let(slot, init) => {
                 self.borrow_if_named_closure(*slot, init.as_ref());
                 let tail = self.tail.take();
@@ -929,4 +938,37 @@ fn built_in(mut e: &Expr, slot: usize) -> bool {
         e = value;
     }
     false
+}
+
+impl<'p> Emitter<'p> {
+    /// `let p = mut m[k]` keyed by `slot`: find the slot once; reads trap on an
+    /// absent key and writes make room for it, as `m[k]` does.
+    fn let_map_slot(&mut self, slot: usize, map: &'p Place, init: &Expr, out: &mut String) {
+        let name = self.names[slot].clone();
+        // A key that is an unchanging parameter needs no copy of its own.
+        let param = match init.kind {
+            ExprKind::Local(src) if self.closure_id.is_none() && !init.ty.is_scalar() => {
+                self.fn_id.is_some_and(|id| {
+                    self.program.fns[id]
+                        .params
+                        .get(src)
+                        .is_some_and(|p| !p.mutable)
+                })
+            }
+            _ => false,
+        };
+        if param {
+            let (cpp, src) = (self.ty(&init.ty), self.expr(init).text);
+            self.line(out, &format!("const {cpp}& {name} = {src};"));
+        } else {
+            self.plain_let = true;
+            self.stmt(&Stmt::Let(slot, Some(init.clone())), out);
+            self.plain_let = false;
+        }
+        let m = self.place(map);
+        let at = self.temp();
+        self.need("map_slot");
+        self.line(out, &format!("auto* {at} = cpl::map_slot({m}, {name});"));
+        self.map_slots.insert((self.closure_id, slot), at);
+    }
 }

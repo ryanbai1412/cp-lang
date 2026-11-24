@@ -362,6 +362,19 @@ template <class M, class Q> Lent<typename M::mapped_type> map_lend(const M& m, c
 ",
     },
     Piece {
+        name: "map_slot",
+        needs: &["fail"],
+        code: "\
+template <class M, class Q> typename M::mapped_type* map_slot(M& m, const Q& k) {
+    auto it = m.find(k); return it == m.end() ? nullptr : &it->second;
+}
+template <class V> V& map_slot_at(V* p) { if (!p) fail(\"key not in map\"); return *p; }
+template <class M, class Q> typename M::mapped_type& map_slot_put(M& m, typename M::mapped_type*& p, const Q& k) {
+    return p ? *p : *(p = &m[k]);
+}
+",
+    },
+    Piece {
         name: "map_or",
         needs: &[],
         code: "\

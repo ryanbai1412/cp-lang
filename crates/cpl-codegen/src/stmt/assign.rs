@@ -151,25 +151,42 @@ impl<'p> Emitter<'p> {
             if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) && op != AssignOp::Set {
                 let b = self.place(base);
                 let k = self.expr(&idx[0]).text;
+                let at = self.map_slot(&idx[0]);
+                let cell = match &at {
+                    Some(at) => format!("cpl::map_slot_put({b}, {at}, {k})"),
+                    None => format!("{b}[{k}]"),
+                };
                 match op {
                     AssignOp::Max => {
                         self.need("map_fold");
                         self.line(out, &format!("cpl::map_max({b}, {k}, {});", v.text));
+                        if let Some(at) = &at {
+                            self.line(out, &format!("{at} = cpl::map_slot({b}, {k});"));
+                        }
                         return;
                     }
                     AssignOp::Min => {
                         self.need("map_fold");
                         self.line(out, &format!("cpl::map_min({b}, {k}, {});", v.text));
+                        if let Some(at) = &at {
+                            self.line(out, &format!("{at} = cpl::map_slot({b}, {k});"));
+                        }
                         return;
                     }
                     AssignOp::Binary(BinOp::Mul) => {
                         self.need("map_fold");
                         self.line(out, &format!("cpl::map_mul({b}, {k}, {});", v.text));
+                        if let Some(at) = &at {
+                            self.line(out, &format!("{at} = cpl::map_slot({b}, {k});"));
+                        }
                         return;
                     }
                     AssignOp::Binary(BinOp::BitAnd) => {
                         self.need("map_fold");
                         self.line(out, &format!("cpl::map_and({b}, {k}, {});", v.text));
+                        if let Some(at) = &at {
+                            self.line(out, &format!("{at} = cpl::map_slot({b}, {k});"));
+                        }
                         return;
                     }
                     AssignOp::Binary(BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor) => {
@@ -184,9 +201,9 @@ impl<'p> Emitter<'p> {
                         {
                             let tmp = self.temp();
                             self.line(out, &format!("auto {tmp} = {};", v.text));
-                            self.line(out, &format!("{b}[{k}] {sym}= {tmp};"));
+                            self.line(out, &format!("{cell} {sym}= {tmp};"));
                         } else {
-                            self.line(out, &format!("{b}[{k}] {sym}= {};", v.text));
+                            self.line(out, &format!("{cell} {sym}= {};", v.text));
                         }
                         return;
                     }

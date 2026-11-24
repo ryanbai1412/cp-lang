@@ -820,3 +820,20 @@ fn a_view_made_from_variables_points_to_them_while_nothing_changes_them() {
         "{local}"
     );
 }
+
+#[test]
+fn mut_alias_of_a_map_key_finds_its_slot_once() {
+    let code = body(concat!(
+        "var m = HashMap<Int, Int>()\n",
+        "for i in 0..10:\n",
+        "    let p = mut m[i % 3]\n",
+        "    p += 1\n",
+        "    let gone = p == 3\n",
+        "    if gone: m.remove(i % 3)\n",
+        "print(m.len)\n",
+    ));
+    assert_eq!(code.matches("cpl::map_slot(m, ").count(), 1, "{code}");
+    assert!(code.contains("cpl::map_slot_put(m, "), "{code}");
+    assert!(code.contains("cpl::map_slot_at("), "{code}");
+    assert!(!code.contains("m.at("), "{code}");
+}

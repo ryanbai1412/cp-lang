@@ -139,6 +139,7 @@ impl<'a> Lowerer<'a> {
                     locals.push(Local {
                         name: format!("_p{i}"),
                         ty: fty.clone(),
+                        binds: None,
                     });
                     params.push(i);
                     args_expr.push(Expr {

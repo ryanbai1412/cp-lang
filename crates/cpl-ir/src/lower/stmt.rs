@@ -560,6 +560,13 @@ impl<'a> Lowerer<'a> {
                 {
                     let raw = self.place(target);
                     let frozen = self.freeze_place(raw, out);
+                    if let PlaceKind::Index(map, keys) = &frozen.kind {
+                        if let (Ty::Map(..) | Ty::HashMap(..), [key]) = (&map.ty, keys.as_slice()) {
+                            if let ExprKind::Local(k) = key.kind {
+                                self.cx.locals[k].binds = Some((**map).clone());
+                            }
+                        }
+                    }
                     self.cx.mut_aliases.insert(alias_name.clone(), frozen);
                     return;
                 }

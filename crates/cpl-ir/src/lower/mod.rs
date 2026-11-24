@@ -1062,6 +1062,7 @@ impl<'a> Lowerer<'a> {
         self.cx.locals.push(Local {
             name: name.to_string(),
             ty,
+            binds: None,
         });
         self.cx.locals.len() - 1
     }

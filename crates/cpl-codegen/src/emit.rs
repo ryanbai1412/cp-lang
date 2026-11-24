@@ -204,6 +204,11 @@ pub(crate) struct Emitter<'p> {
     pub spent: BTreeSet<usize>,
     /// Named `let o = m.get(k)` held as a `cpl::Lent`: see [`Emitter::lent_map_get`].
     pub lent: BTreeSet<usize>,
+    /// Keys of `let p = mut m[k]` aliases (see [`cpl_ir::Local::binds`]), by
+    /// closure and slot: the C++ pointer to the map slot found once.
+    pub map_slots: BTreeMap<(Option<usize>, usize), String>,
+    /// Emitting the plain `let` of such a key, before its slot pointer.
+    pub plain_let: bool,
     /// Locals bound as `const T&` to a place they read.
     pub ref_bound: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
@@ -297,6 +302,8 @@ impl<'p> Emitter<'p> {
             in_setup: false,
             spent: BTreeSet::new(),
             lent: BTreeSet::new(),
+            map_slots: BTreeMap::new(),
+            plain_let: false,
             ref_bound: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
@@ -435,6 +442,14 @@ impl<'p> Emitter<'p> {
         }
         self.taken.insert(name.clone());
         name
+    }
+
+    /// The slot pointer of a map index keyed by a mut alias's frozen key.
+    pub fn map_slot(&self, key: &Expr) -> Option<String> {
+        let ExprKind::Local(k) = key.kind else {
+            return None;
+        };
+        self.map_slots.get(&(self.closure_id, k)).cloned()
     }
 
     pub fn locals(&self) -> &'p [Local] {

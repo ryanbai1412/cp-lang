@@ -493,6 +493,14 @@ impl<'p> Emitter<'p> {
                     }
                 })
             }
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..))
+                    && indices.len() == 1
+                    && self.map_slot(&indices[0]).is_some() =>
+            {
+                let at = self.map_slot(&indices[0]).unwrap_or_default();
+                Code::primary(format!("cpl::map_slot_at({at})"))
+            }
             ExprKind::Index(base, indices) => {
                 let mut operands: Vec<&Expr> = vec![base];
                 operands.extend(indices.iter());

@@ -91,6 +91,7 @@ impl<'a> Lowerer<'a> {
                         self.cx.locals.push(Local {
                             name: n.clone(),
                             ty: t.clone(),
+                            binds: None,
                         });
                         self.cx.scopes.last_mut().unwrap().insert(n.clone(), s);
                     }

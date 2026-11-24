@@ -27,6 +27,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.locals.push(Local {
                     name: decl.name.text.clone(),
                     ty: fn_ty.clone(),
+                    binds: None,
                 });
                 self.cx
                     .scopes
@@ -107,6 +108,7 @@ impl<'a> Lowerer<'a> {
             self.cx.locals.push(Local {
                 name: p.name.text.clone(),
                 ty: pty,
+                binds: None,
             });
             if p.mutable {
                 self.cx.mut_slots.insert(slot);
@@ -426,6 +428,7 @@ impl<'a> Lowerer<'a> {
             child_cx.locals.push(Local {
                 name: pname.clone(),
                 ty: local_ty,
+                binds: None,
             });
             if is_mut {
                 child_cx.mut_slots.insert(slot);
@@ -510,6 +513,7 @@ impl<'a> Lowerer<'a> {
             locals.push(Local {
                 name: format!("a{i}"),
                 ty: ty.clone(),
+                binds: None,
             });
             p_slots.push(i);
             call_args.push(Arg::Value(Expr {
@@ -589,12 +593,14 @@ impl<'a> Lowerer<'a> {
                 locals.push(Local {
                     name: format!("a{i}"),
                     ty: ty.clone(),
+                    binds: None,
                 });
             }
             let inner_recv = locals.len();
             locals.push(Local {
                 name: "self".into(),
                 ty: recv_ty.clone(),
+                binds: None,
             });
             call_args.push(Arg::Value(Expr {
                 kind: ExprKind::Local(inner_recv),

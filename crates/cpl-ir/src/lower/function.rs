@@ -52,6 +52,7 @@ impl<'a> Lowerer<'a> {
             cx.locals.push(Local {
                 name: "self".into(),
                 ty: Ty::Struct(owner),
+                binds: None,
             });
             cx.scopes[0].insert("self".into(), 0);
             if mutable {
@@ -72,6 +73,7 @@ impl<'a> Lowerer<'a> {
             cx.locals.push(Local {
                 name: param.name.clone(),
                 ty: param.ty.clone(),
+                binds: None,
             });
             params.push(ParamDef {
                 mutable: param.mutable,
@@ -277,6 +279,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.locals.push(Local {
                     name: param.name.clone(),
                     ty: param.ty.clone(),
+                    binds: None,
                 });
                 slots.push((slot, written.ty.as_ref()));
             }
@@ -339,6 +342,7 @@ impl<'a> Lowerer<'a> {
                     self.cx.locals.push(Local {
                         name: param.name.clone(),
                         ty: param.ty.clone(),
+                        binds: None,
                     });
                 }
                 let args = (0..params.len())

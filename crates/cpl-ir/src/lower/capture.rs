@@ -74,6 +74,7 @@ impl Lowerer<'_> {
                 cx.locals.push(Local {
                     name: key.to_string(),
                     ty: ty.clone(),
+                    binds: None,
                 });
                 cx.captures.push(Capture {
                     outer: cur,
