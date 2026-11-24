@@ -1,5 +1,6 @@
-//! Applying the fixes diagnostics carry as edits: the text step every
-//! fix path shares (`cpl fix`, `cpl lint --fix`, the editor, migrate).
+//! Splicing the fixes diagnostics carry as edits: the unchecked text step
+//! under the one checked fix path (`cpl_lint::fix_rounds`, `cpl_ir::fix`),
+//! which `cpl fix`, `cpl lint --fix`, the editor and `cpl migrate` share.
 
 use crate::{Diagnostic, Span};
 
@@ -7,7 +8,7 @@ use crate::{Diagnostic, Span};
 /// overlap an earlier one are left for the next run; a fix with an edit
 /// outside `src` (a span that ends before it starts, past the end, or inside
 /// a character) is a producer bug and is skipped, never applied.
-pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
+pub fn splice_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
     let mut edits: Vec<(Span, String)> = Vec::new();
     let mut applied = 0;
     let mut fixes: Vec<_> = diagnostics.iter().filter_map(|d| d.fixes.first()).collect();

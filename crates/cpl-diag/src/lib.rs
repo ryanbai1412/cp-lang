@@ -15,7 +15,7 @@ mod source;
 pub mod usage;
 pub mod view;
 
-pub use fix::{apply_fixes, splice};
+pub use fix::{splice, splice_fixes};
 pub use registry::{lookup, CodeInfo, REGISTRY};
 pub use render::{render, render_all};
 pub use source::{LineCol, LineIndex};
@@ -683,14 +683,14 @@ mod tests {
             Span::new(0, 0),
             "(",
         );
-        assert_eq!(apply_fixes(src, &[replace, insert]), ("(xy".into(), 2));
+        assert_eq!(splice_fixes(src, &[replace, insert]), ("(xy".into(), 2));
         // One fix whose own edits overlap is a producer bug, left alone.
         let mut both = Diagnostic::error(codes::UNRESOLVED_NAME, Span::new(0, 2), "b");
         both.fixes.push(Fix {
             title: "both".into(),
             edits: vec![(Span::new(0, 2), "x".into()), (Span::new(1, 2), "y".into())],
         });
-        assert_eq!(apply_fixes(src, &[both]), ("ab".into(), 0));
+        assert_eq!(splice_fixes(src, &[both]), ("ab".into(), 0));
     }
 
     #[test]

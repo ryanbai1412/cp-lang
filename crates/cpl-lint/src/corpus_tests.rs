@@ -213,7 +213,7 @@ pub(crate) fn teach_apart(src: &str, config: &Config, outer: &Diagnostic, inner:
         fixes: outer.fixes[..1].to_vec(),
         ..outer.clone()
     };
-    let (fixed, _) = cpl_diag::apply_fixes(src, &[one]);
+    let (fixed, _) = cpl_diag::splice_fixes(src, &[one]);
     count(&fixed) >= count(src)
 }
 

@@ -33,6 +33,7 @@ pub(crate) use std_source;
 mod checker;
 mod config;
 pub mod facts;
+mod fix;
 mod library;
 mod recheck;
 mod rules;
@@ -53,9 +54,7 @@ pub(crate) use checker::{checked, checker_lints};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
 pub use session::Session;
-pub use typed::{
-    apply_lint_fixes, apply_lint_fixes_where, lint_analysis, refine_with_analysis, Errors,
-};
+pub use typed::{lint_analysis, refine_with_analysis, Errors};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
 use cpl_syntax::ast::{Block, ExprKind, Stmt, StmtKind};
@@ -911,115 +910,12 @@ pub(crate) fn closest_lint(name: &str) -> Option<&'static str> {
 
 use cpl_diag::edit_distance;
 
-/// The removed spellings the parser offers a rewrite for (`where` as a
-/// filter, `--- multitest ---`), applied to a fixed point. Parser recovery
-/// guesses, such as an inserted `:`, are not among them.
-pub fn fix_removed_syntax(src: &str) -> (String, usize) {
-    let mut src = src.to_string();
-    let mut total = 0;
-    loop {
-        let codemods: Vec<_> = cpl_syntax::parse_file(&src)
-            .diagnostics
-            .into_iter()
-            .filter(|d| {
-                (d.code == cpl_diag::codes::REMOVED_SYNTAX
-                    || (d.code == cpl_diag::codes::UNKNOWN_CHAR
-                        && d.message == "CP Lang concatenates with `+`"))
-                    && !d.fixes.is_empty()
-            })
-            .collect();
-        let (text, applied) = apply_fixes(&src, &codemods);
-        if applied == 0 {
-            return (src, total);
-        }
-        total += applied;
-        src = text;
-    }
-}
-
-/// Type-directed rewrites the checker reports for `key` in a warm `db`,
-/// applied to a fixed point: removed syntax (such as `Range.lo`/`.hi` ->
-/// `.start`/`.end`, leaving user struct fields named `lo`/`hi` untouched)
-/// and a getter called with `()`.
-pub fn fix_checked_removed_syntax_in(
-    db: &mut cpl_check::Session,
-    key: &str,
-    src: &str,
-) -> (String, usize) {
-    let mut src = src.to_string();
-    let mut total = 0;
-    loop {
-        db.set_file(key, src.as_str());
-        let Some(analysis) = db.analyze(key) else {
-            return (src, total);
-        };
-        let codemods: Vec<_> = analysis
-            .diagnostics
-            .iter()
-            .filter(|d| {
-                [
-                    cpl_diag::codes::REMOVED_SYNTAX,
-                    cpl_diag::codes::NOT_CALLABLE,
-                    cpl_diag::codes::WRONG_ARG_COUNT,
-                ]
-                .contains(&d.code)
-                    && !d.fixes.is_empty()
-            })
-            .cloned()
-            .collect();
-        let (text, applied) = apply_fixes(&src, &codemods);
-        if applied == 0 {
-            return (src, total);
-        }
-        total += applied;
-        src = text;
-    }
-}
-
-/// What `cpl fix` makes of a source: removed-syntax rewrites (parser, then
-/// type-directed checker rewrites), then every lint fix, each to a fixed point.
+pub use fix::{
+    apply_lint_fixes, apply_lint_fixes_where, checked_fixes, fix_checked_removed_syntax_in, fix_in,
+    fix_removed_syntax, fix_rounds,
+};
 #[cfg(test)]
-pub(crate) fn fix(src: &str, config: &Config) -> (String, usize) {
-    fix_at(None, src, config)
-}
-
-/// Like [`fix`], resolving imports relative to `path` when given.
-#[cfg(test)]
-pub(crate) fn fix_at(
-    path: Option<&std::path::Path>,
-    src: &str,
-    config: &Config,
-) -> (String, usize) {
-    let key = path
-        .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "<fix>.cp".to_string());
-    fix_in(
-        &mut cpl_check::Session::new(),
-        &key,
-        src,
-        config,
-        &cpl_ir::check,
-    )
-}
-
-/// [`fix`] on the file `key` in a warm `db`, leaving `db` holding the result.
-pub fn fix_in(
-    db: &mut cpl_check::Session,
-    key: &str,
-    src: &str,
-    config: &Config,
-    check: &Errors,
-) -> (String, usize) {
-    let (src, total) = fix_removed_syntax(src);
-    if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
-        return (src, total);
-    }
-    let (src, checked) = fix_checked_removed_syntax_in(db, key, &src);
-    let (src, linted) = apply_lint_fixes(db, key, src, config, check);
-    (src, total + checked + linted)
-}
-
-pub use cpl_diag::apply_fixes;
+pub(crate) use fix::{fix, fix_at};
 
 #[cfg(test)]
 mod tests;

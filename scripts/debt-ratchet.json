@@ -219,7 +219,7 @@
   "web_skip_only": 0,
   "ts_ignore": 0,
   "habit_matchers": 0,
-  "unchecked_fix_paths": 6,
+  "unchecked_fix_paths": 0,
   "stress_engines": 1,
   "conformance_failing": 5,
   "conformance_wrong_output": 1,

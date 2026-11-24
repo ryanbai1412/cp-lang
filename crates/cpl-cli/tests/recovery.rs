@@ -367,7 +367,7 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     }
     t.fixable = errs.iter().filter(|d| !d.fixes.is_empty()).count() as u32;
     let fixed = (t.fixable > 0).then(|| {
-        let (once, _) = cpl_lint::apply_fixes(&b.src, &errs);
+        let (once, _) = cpl_diag::splice_fixes(&b.src, &errs);
         cpl_cli::apply_error_fixes(&b.path, &once).0
     });
     if let Some(f) = &fixed {

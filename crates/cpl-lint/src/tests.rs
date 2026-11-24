@@ -59,7 +59,7 @@ fn var_never_reassigned_offers_let() {
     assert_eq!(found.code, VAR_NEVER_REASSIGNED.code);
     assert_eq!(found.message, "`total` is declared `var` but never changed");
     assert_eq!(found.span.text(src), "var");
-    let (fixed, applied) = apply_fixes(src, &[found]);
+    let (fixed, applied) = cpl_diag::splice_fixes(src, &[found]);
     assert_eq!(
         (fixed.as_str(), applied),
         ("let total = 0\nprint(total)\n", 1)
@@ -448,7 +448,7 @@ fn overlapping_fixes_wait_for_the_next_round() {
         "yy",
     );
     assert_eq!(
-        apply_fixes("var x=1\n", &[a, b, c]),
+        cpl_diag::splice_fixes("var x=1\n", &[a, b, c]),
         ("let x=yy\n".to_string(), 2)
     );
 }
@@ -736,7 +736,7 @@ pub(crate) fn fixed(src: &str) -> String {
     let mut src = src.to_string();
     loop {
         let found = lint(&src, &Config::default());
-        let (text, applied) = apply_fixes(&src, &found);
+        let (text, applied) = cpl_diag::splice_fixes(&src, &found);
         if applied == 0 {
             return src;
         }
@@ -978,7 +978,7 @@ fn turbofish_type_args_offers_plain_generic_fix() {
     let src = "let x = read::<Int>()\nprint(x)\n";
     let found = only(src);
     assert_eq!(found.code, TURBOFISH_TYPE_ARGS.code);
-    let (fixed, applied) = apply_fixes(src, &[found]);
+    let (fixed, applied) = cpl_diag::splice_fixes(src, &[found]);
     assert_eq!(applied, 1);
     assert_eq!(fixed, "let x = read<Int>()\nprint(x)\n");
     assert!(lint(&fixed, &Config::default()).is_empty());
