@@ -816,13 +816,10 @@ impl<'a> Parser<'a> {
         if self.at(T::Bang) {
             let span = self.span();
             self.error(
-                Diagnostic::error(
-                    codes::UNEXPECTED_TOKEN,
-                    span,
-                    "`!` doesn't negate in CP Lang",
-                )
-                .with_help(habits::CMP_TOKEN.say(&[]))
-                .with_fix(habits::CMP_TOKEN_2.say(&[]), span, "not "),
+                cpl_diag::msgs::foreign::BANG_NOT
+                    .error(span, &[])
+                    .with_help(habits::CMP_TOKEN.say(&[]))
+                    .with_fix(habits::CMP_TOKEN_2.say(&[]), span, "not "),
             );
         }
         if !self.at_ident("is") {
@@ -838,13 +835,10 @@ impl<'a> Parser<'a> {
         };
         let span = Span::new(start.start, self.rel(self.tokens[self.pos - 1].span).end);
         self.recovered(
-            Diagnostic::error(
-                codes::UNEXPECTED_TOKEN,
-                span,
-                format!("CP Lang compares with `{ours}`, not `{foreign}`"),
-            )
-            .with_help(habits::CMP_TOKEN_3.say(&[&ours]))
-            .with_fix(habits::WRITE.say(&[&ours]), span, ours),
+            cpl_diag::msgs::foreign::CMP_TOKEN
+                .error(span, &[&ours, &foreign])
+                .with_help(habits::CMP_TOKEN_3.say(&[&ours]))
+                .with_fix(habits::WRITE.say(&[&ours]), span, ours),
         );
     }
 
@@ -913,17 +907,14 @@ impl<'a> Parser<'a> {
             self.tokens[self.pos - 1].span.end,
         ));
         self.recovered(
-            Diagnostic::error(
-                codes::REMOVED_SYNTAX,
-                if_span,
-                "CP Lang writes `a if c else b` as `if c: a else: b`",
-            )
-            .with_help(habits::PYTHON_TERNARY.say(&[]))
-            .with_fix(
-                habits::C_TERNARY_2.say(&[]),
-                whole,
-                format!("if {c}: {a} else: {b}"),
-            ),
+            cpl_diag::msgs::foreign::PYTHON_TERNARY
+                .error(if_span, &[])
+                .with_help(habits::PYTHON_TERNARY.say(&[]))
+                .with_fix(
+                    habits::C_TERNARY_2.say(&[]),
+                    whole,
+                    format!("if {c}: {a} else: {b}"),
+                ),
         );
         Self::inline_if(cond, yes, no, self.span_from(start))
     }
@@ -950,13 +941,10 @@ impl<'a> Parser<'a> {
         let arrow = self.span();
         self.bump();
         self.recovered(
-            Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                arrow,
-                "CP Lang writes a lambda with `=>`, not `->`",
-            )
-            .with_help(habits::ARROW_LAMBDA.say(&[]))
-            .with_fix(habits::ARROW_LAMBDA_2.say(&[]), arrow, "=>"),
+            cpl_diag::msgs::foreign::ARROW_LAMBDA
+                .error(arrow, &[])
+                .with_help(habits::ARROW_LAMBDA.say(&[]))
+                .with_fix(habits::ARROW_LAMBDA_2.say(&[]), arrow, "=>"),
         );
         let body = self.lambda_body();
         Expr {
@@ -1006,13 +994,10 @@ impl<'a> Parser<'a> {
             _ => format!("({}) =>", names.join(", ")),
         };
         self.recovered(
-            Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                bars,
-                "CP Lang writes a lambda with `=>`, not `|x|`",
-            )
-            .with_help(habits::RUST_CLOSURE.say(&[]))
-            .with_fix(habits::WRITE.say(&[&ours]), bars, ours),
+            cpl_diag::msgs::foreign::RUST_CLOSURE
+                .error(bars, &[])
+                .with_help(habits::RUST_CLOSURE.say(&[]))
+                .with_fix(habits::WRITE.say(&[&ours]), bars, ours),
         );
         let body = self.lambda_body();
         Some(Expr {
@@ -1056,17 +1041,14 @@ impl<'a> Parser<'a> {
             _ => format!("({}) =>", names.join(", ")),
         };
         self.recovered(
-            Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                kw,
-                "CP Lang writes a lambda with `=>`, not `lambda`",
-            )
-            .with_help(habits::RUST_CLOSURE.say(&[]))
-            .with_fix(
-                habits::WRITE.say(&[&ours]),
-                Span::new(kw.start, colon.end),
-                ours,
-            ),
+            cpl_diag::msgs::foreign::PYTHON_LAMBDA
+                .error(kw, &[])
+                .with_help(habits::RUST_CLOSURE.say(&[]))
+                .with_fix(
+                    habits::WRITE.say(&[&ours]),
+                    Span::new(kw.start, colon.end),
+                    ours,
+                ),
         );
         let body = self.lambda_body();
         Expr {
@@ -1092,13 +1074,10 @@ impl<'a> Parser<'a> {
         }
         let span = self.span();
         self.recovered(
-            Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                span,
-                "CP Lang strings interpolate without an `f` prefix",
-            )
-            .with_help(habits::F_STRING_PREFIX.say(&[]))
-            .with_fix(habits::F_STRING_PREFIX_2.say(&[]), span, ""),
+            cpl_diag::msgs::foreign::F_STRING_PREFIX
+                .error(span, &[])
+                .with_help(habits::F_STRING_PREFIX.say(&[]))
+                .with_fix(habits::F_STRING_PREFIX_2.say(&[]), span, ""),
         );
         self.bump();
         true
@@ -1144,11 +1123,7 @@ impl<'a> Parser<'a> {
         }
         self.eat(T::RParen);
         let span = self.span_from(start);
-        let mut diag = Diagnostic::error(
-            codes::EXPECTED_TOKEN,
-            span,
-            "a CP Lang string names its values in its braces, not in `.format(...)`",
-        );
+        let mut diag = cpl_diag::msgs::foreign::PYTHON_FORMAT.error(span, &[]);
         if args.len() != holes.len() {
             let help = habits::PYTHON_FORMAT.say(&[]);
             self.recovered(diag.with_help(help));
@@ -1215,12 +1190,9 @@ impl<'a> Parser<'a> {
             items.push(self.pattern());
         }
         let span = self.span_from(start);
-        let mut diag = Diagnostic::error(
-            codes::EXPECTED_TOKEN,
-            span,
-            "unpacking a tuple takes parentheses in CP Lang",
-        )
-        .with_help(habits::BARE_TUPLE_PATTERN.say(&[&self.item_text(span)]));
+        let mut diag = cpl_diag::msgs::foreign::BARE_TUPLE_PATTERN
+            .error(span, &[])
+            .with_help(habits::BARE_TUPLE_PATTERN.say(&[&self.item_text(span)]));
         diag.fixes.push(cpl_diag::Fix {
             title: habits::BARE_TUPLE_PATTERN_2.say(&[]),
             edits: vec![
@@ -1252,13 +1224,10 @@ impl<'a> Parser<'a> {
             .map_or(end - word.len() as u32, |p| self.tokens[p].span.end);
         let gap = self.rel(Span::new(start, end));
         self.recovered(
-            Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                self.span(),
-                format!("a header ends with `:` in CP Lang, not `{word}`"),
-            )
-            .with_help(habits::FOREIGN_THEN.say(&[&word]))
-            .with_fix(habits::FOREIGN_THEN_2.say(&[]), gap, ":"),
+            cpl_diag::msgs::foreign::FOREIGN_THEN
+                .error(self.span(), &[&word])
+                .with_help(habits::FOREIGN_THEN.say(&[&word]))
+                .with_fix(habits::FOREIGN_THEN_2.say(&[]), gap, ":"),
         );
         self.bump();
         true
@@ -1277,13 +1246,10 @@ impl<'a> Parser<'a> {
             .map_or(eq.end, |t| t.span.start);
         let gap = self.rel(Span::new(name_end, value));
         self.recovered(
-            Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                self.rel(eq),
-                "a named argument takes `:`, not `=`",
-            )
-            .with_help(habits::KEYWORD_ARG.say(&[]))
-            .with_fix(habits::FOREIGN_THEN_2.say(&[]), gap, ": "),
+            cpl_diag::msgs::foreign::KEYWORD_ARG
+                .error(self.rel(eq), &[])
+                .with_help(habits::KEYWORD_ARG.say(&[]))
+                .with_fix(habits::FOREIGN_THEN_2.say(&[]), gap, ": "),
         );
         let name = self.name();
         self.bump();
@@ -1315,12 +1281,9 @@ impl<'a> Parser<'a> {
             return false;
         }
         let (o, c) = (self.span(), self.rel(self.tokens[end - 1].span));
-        let mut diag = Diagnostic::error(
-            codes::REMOVED_SYNTAX,
-            o,
-            "a `for` header takes no parentheses in CP Lang",
-        )
-        .with_help(habits::PAREN_FOR.say(&[]));
+        let mut diag = cpl_diag::msgs::foreign::PAREN_FOR
+            .error(o, &[])
+            .with_help(habits::PAREN_FOR.say(&[]));
         diag.fixes.push(cpl_diag::Fix {
             title: habits::PAREN_FOR_2.say(&[]),
             edits: vec![(o, String::new()), (c, String::new())],
@@ -1337,13 +1300,10 @@ impl<'a> Parser<'a> {
         }
         let span = self.span();
         self.recovered(
-            Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                span,
-                "CP Lang loops with `in`, not `of`",
-            )
-            .with_help(habits::PAREN_FOR.say(&[]))
-            .with_fix(habits::FOR_OF.say(&[]), span, "in"),
+            cpl_diag::msgs::foreign::FOR_OF
+                .error(span, &[])
+                .with_help(habits::PAREN_FOR.say(&[]))
+                .with_fix(habits::FOR_OF.say(&[]), span, "in"),
         );
         self.bump();
         true
@@ -1365,12 +1325,9 @@ impl<'a> Parser<'a> {
             .map(str::trim)
             .collect();
         let whole = self.rel(Span::new(a, b));
-        let mut diag = Diagnostic::error(
-            codes::REMOVED_SYNTAX,
-            whole,
-            "CP Lang has no C-style `for (init; cond; step)`",
-        )
-        .with_help(habits::C_FOR.say(&[]));
+        let mut diag = cpl_diag::msgs::foreign::C_FOR
+            .error(whole, &[])
+            .with_help(habits::C_FOR.say(&[]));
         let (name, range) = counted(&parts);
         // C's body with no braces, on the line or under it: the fix adds the `:`.
         let colon = match self.tokens.get(end).map(|t| t.kind) {
@@ -1437,11 +1394,7 @@ impl<'a> Parser<'a> {
             _ => ":",
         };
         let whole = self.rel(Span::new(a, b));
-        let diag = Diagnostic::error(
-            codes::REMOVED_SYNTAX,
-            whole,
-            "a loop over a sequence is `for x in xs`, with no type",
-        );
+        let diag = cpl_diag::msgs::foreign::TYPED_FOR.error(whole, &[]);
         self.recovered(match by_ref {
             false => diag
                 .with_help(habits::C_RANGE_FOR.say(&[&pat, &seq]))
@@ -1488,7 +1441,8 @@ impl<'a> Parser<'a> {
             let at = Span::new(lo.start, self.span().end);
             self.bump();
             self.error(
-                Diagnostic::error(codes::REMOVED_SYNTAX, at, "empty type arguments `<>`")
+                cpl_diag::msgs::foreign::EMPTY_TYPE_ARGS
+                    .error(at, &[])
                     .with_help(habits::EMPTY_TYPE_ARGS.say(&[]))
                     .with_fix(habits::EMPTY_TYPE_ARGS_2.say(&[]), at, ""),
             );
@@ -1633,11 +1587,7 @@ impl<'a> Parser<'a> {
             .iter()
             .any(|t| t.kind == T::Ident && t.span.text(self.src) == name);
         let whole = self.rel(whole);
-        let diag = Diagnostic::error(
-            codes::REMOVED_SYNTAX,
-            whole,
-            format!("CP Lang has no `{name}--`: a loop that runs `{name}` times is a `for`"),
-        );
+        let diag = cpl_diag::msgs::foreign::C_DECREMENT_LOOP.error(whole, &[&name, &name]);
         self.recovered(match reads {
             false => diag
                 .with_help(habits::C_COUNTDOWN_REPORT.say(&[&name]))
@@ -1670,13 +1620,10 @@ impl<'a> Parser<'a> {
             };
         let theirs = if fix.is_empty() { "case" } else { "default" };
         self.recovered(
-            Diagnostic::error(
-                codes::REMOVED_SYNTAX,
-                span,
-                format!("a `match` arm has no `{theirs}`"),
-            )
-            .with_help(habits::C_CASE.say(&[&ours]))
-            .with_fix(habits::C_CASE_2.say(&[&theirs]), span, fix),
+            cpl_diag::msgs::foreign::C_CASE
+                .error(span, &[&theirs])
+                .with_help(habits::C_CASE.say(&[&ours]))
+                .with_fix(habits::C_CASE_2.say(&[&theirs]), span, fix),
         );
     }
 
@@ -1695,13 +1642,10 @@ impl<'a> Parser<'a> {
             });
         };
         self.recovered(
-            Diagnostic::error(
-                codes::EXPECTED_TOKEN,
-                colon,
-                "CP Lang slices with `..`, not `:`",
-            )
-            .with_help(habits::INDEX_ITEM.say(&[]))
-            .with_fix(habits::INDEX_ITEM_2.say(&[]), colon, ".."),
+            cpl_diag::msgs::foreign::SLICE_COLON
+                .error(colon, &[])
+                .with_help(habits::INDEX_ITEM.say(&[]))
+                .with_fix(habits::INDEX_ITEM_2.say(&[]), colon, ".."),
         );
         self.bump();
         let hi = (!matches!(self.peek(), T::RBracket | T::Comma)).then(|| Box::new(self.expr()));
