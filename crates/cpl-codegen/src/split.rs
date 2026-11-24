@@ -520,7 +520,7 @@ impl<'p> Flow<'p> {
                     }
                 }
             }
-            Sink::Store(place, value) if self.is_tracked(&place.ty) => {
+            Sink::Store(place, _, value) if self.is_tracked(&place.ty) => {
                 let Some(new) = self.eval(ctx, value) else {
                     return;
                 };

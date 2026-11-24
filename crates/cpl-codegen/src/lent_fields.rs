@@ -403,7 +403,7 @@ impl Scan<'_> {
         for (scope, body) in bodies(program) {
             let lets = matches!(scope, ScopeId::Main).then_some(&main_lets);
             each_sink(body, &mut |sink| {
-                if let Sink::Store(place, value) = sink {
+                if let Sink::Store(place, _, value) = sink {
                     let global = matches!(place.kind, PlaceKind::Global(_));
                     if !(global && self.global_only(value, lets)) {
                         writes.push(place);

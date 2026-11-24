@@ -472,3 +472,29 @@ fn each_let_run_breaks_a_run_of_lets_at_any_other_statement() {
         "two lets, the print, then a let: {shape}"
     );
 }
+
+#[test]
+fn each_sink_says_how_a_store_combines() {
+    use crate::uses::split::{each_sink, Sink};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var k = 0\n",
+        "    k = n\n",
+        "    k += 1\n",
+        "    k\n",
+        "print(f(3))\n",
+    ));
+    let mut ops = Vec::new();
+    each_sink(&program.fns[0].body, &mut |sink| {
+        if let Sink::Store(_, op, _) = sink {
+            ops.push(*op);
+        }
+    });
+    assert!(
+        matches!(
+            ops.as_slice(),
+            [cpl_ir::AssignOp::Set, cpl_ir::AssignOp::Binary(_)]
+        ),
+        "{ops:?}"
+    );
+}

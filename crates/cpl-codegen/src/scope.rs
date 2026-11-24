@@ -7,7 +7,7 @@
 
 use crate::uses::effects::Touch;
 use crate::uses::loops::{each_loop, Loop};
-use crate::uses::places::{each_part, each_put, each_write, Put, Write};
+use crate::uses::places::{each_call, each_closure, each_part, each_put, each_write, Put, Write};
 use crate::uses::split::{each_let_run, each_sink, each_value, Sink};
 use crate::walk;
 use cpl_ir::{
@@ -572,12 +572,10 @@ pub(crate) fn fixed_arrays(
     )
     .collect();
     for &(scope, body) in &bodies {
-        crate::walk::deep_exprs(body, &mut |e| {
-            if let ExprKind::Closure(cid) = &e.kind {
-                for cap in &program.closures[*cid].captures {
-                    if !cap.is_global {
-                        ban(ElemLoc::Local(scope, cap.outer));
-                    }
+        each_closure(body, &mut |cid| {
+            for cap in &program.closures[cid].captures {
+                if !cap.is_global {
+                    ban(ElemLoc::Local(scope, cap.outer));
                 }
             }
         });
@@ -587,13 +585,13 @@ pub(crate) fn fixed_arrays(
     loop {
         let mut changed = false;
         for &(scope, body) in &bodies {
-            crate::walk::deep_stmts(body, &mut |stmt| {
-                let (loc, src) = match stmt {
-                    Stmt::Let(slot, Some(init)) if is_1d(&init.ty) => {
-                        (ElemLoc::Local(scope, *slot), Some(init))
+            each_sink(body, &mut |sink| {
+                let (loc, src) = match sink {
+                    Sink::Let(slot, Some(init)) if is_1d(&init.ty) => {
+                        (ElemLoc::Local(scope, slot), Some(init))
                     }
-                    Stmt::Let(slot, None) => (ElemLoc::Local(scope, *slot), None),
-                    Stmt::Assign(p, cpl_ir::AssignOp::Set, v) if is_1d(&p.ty) => {
+                    Sink::Let(slot, None) => (ElemLoc::Local(scope, slot), None),
+                    Sink::Store(p, cpl_ir::AssignOp::Set, v) if is_1d(&p.ty) => {
                         let Some(l) = p_loc(scope, p) else { return };
                         (l, Some(v))
                     }
@@ -638,16 +636,13 @@ pub(crate) fn fixed_arrays(
                     changed = true;
                 }
             });
-            crate::walk::deep_exprs(body, &mut |e| {
-                let ExprKind::Call(fid, args) = &e.kind else {
-                    return;
-                };
-                let f = &program.fns[*fid];
+            each_call(body, &mut |fid, args| {
+                let f = &program.fns[fid];
                 for (slot, arg) in args.iter().enumerate() {
                     if slot >= f.params.len() || !is_1d(&f.locals[slot].ty) {
                         continue;
                     }
-                    let loc = ElemLoc::Local(ScopeId::Fn(*fid), slot);
+                    let loc = ElemLoc::Local(ScopeId::Fn(fid), slot);
                     if banned.contains(&loc) {
                         continue;
                     }
@@ -693,9 +688,9 @@ pub(crate) fn fixed_arrays(
     let mut non_flow_dst: Vec<ElemLoc> = Vec::new();
 
     for &(scope, body) in &bodies {
-        crate::walk::deep_stmts(body, &mut |stmt| match stmt {
-            Stmt::Let(slot, Some(init)) if is_1d(&init.ty) => {
-                let dst = ElemLoc::Local(scope, *slot);
+        each_sink(body, &mut |sink| match sink {
+            Sink::Let(slot, Some(init)) if is_1d(&init.ty) => {
+                let dst = ElemLoc::Local(scope, slot);
                 let mut cur = init;
                 while let ExprKind::Do(b) = &cur.kind {
                     allowed_exprs.push(cur as *const Expr);
@@ -718,7 +713,7 @@ pub(crate) fn fixed_arrays(
                     non_flow_dst.push(dst);
                 }
             }
-            Stmt::Assign(pl, cpl_ir::AssignOp::Set, val) if is_1d(&pl.ty) => {
+            Sink::Store(pl, cpl_ir::AssignOp::Set, val) if is_1d(&pl.ty) => {
                 if let Some(dst) = p_loc(scope, pl) {
                     allowed_places.push(pl as *const Place);
                     let mut cur = val;
@@ -744,15 +739,16 @@ pub(crate) fn fixed_arrays(
                     }
                 }
             }
-            Stmt::For(_, _, Iter::Seq(seq, _), _)
-                if is_1d(&seq.ty)
-                    && matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_)) =>
-            {
-                allowed_exprs.push(seq as *const Expr);
-            }
             _ => {}
         });
-        crate::walk::deep_exprs(body, &mut |e| match &e.kind {
+        each_loop(body, &mut |_, head| {
+            if let Loop::For(_, Iter::Seq(seq, _)) = head {
+                if is_1d(&seq.ty) && matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                    allowed_exprs.push(seq as *const Expr);
+                }
+            }
+        });
+        each_value(body, &mut |e| match &e.kind {
             ExprKind::Index(base, idx)
                 if idx.len() == 1
                     && is_1d(&base.ty)
@@ -849,7 +845,7 @@ pub(crate) fn fixed_arrays(
         }
     };
     for &(scope, body) in &bodies {
-        crate::walk::deep_exprs(body, &mut |e| {
+        each_value(body, &mut |e| {
             if matches!(e.kind, ExprKind::Local(_) | ExprKind::Global(_))
                 && !allowed_exprs.contains(&(e as *const Expr))
             {
@@ -871,8 +867,8 @@ pub(crate) fn fixed_arrays(
                 _ => {}
             }
         });
-        crate::walk::deep_stmts(body, &mut |stmt| {
-            if let Stmt::Assign(pl, _, _) = stmt {
+        each_put(body, &mut |put, _| {
+            if let Put::Store(pl, _) = put {
                 check_place_root(scope, pl, &mut fixed);
             }
         });

@@ -325,6 +325,8 @@ pub(crate) const PASSES: &[Pass] = &[
             "each_write",
             "each_sink",
             "each_part",
+            "each_call",
+            "each_closure",
         ]),
         "a_loop_local_list_is_one_static_buffer",
     ),

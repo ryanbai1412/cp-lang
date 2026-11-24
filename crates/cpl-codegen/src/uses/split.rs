@@ -3,7 +3,7 @@
 //! binding, store and return.
 
 use crate::walk;
-use cpl_ir::{Block, Expr, ExprKind, Place, Slot, Stmt};
+use cpl_ir::{AssignOp, Block, Expr, ExprKind, Place, Slot, Stmt};
 
 /// Every expression in `block`, at any depth (a `do` block's too), each
 /// after the expressions inside it: the order code computes them.
@@ -45,8 +45,8 @@ pub(crate) enum Sink<'a> {
     Let(Slot, Option<&'a Expr>),
     /// The binding of a `for` loop, one item per pass.
     For(Slot),
-    /// `place = v` or `place op= v`.
-    Store(&'a Place, &'a Expr),
+    /// `place = v` or `place op= v`: the place, how it combines, the value.
+    Store(&'a Place, &'a AssignOp, &'a Expr),
     /// `return v`.
     Return(&'a Expr),
 }
@@ -57,7 +57,7 @@ pub(crate) fn each_sink<'a>(block: &'a Block, f: &mut dyn FnMut(Sink<'a>)) {
     walk::deep_stmts(block, &mut |stmt| match stmt {
         Stmt::Let(slot, init) => f(Sink::Let(*slot, init.as_ref())),
         Stmt::For(_, slot, ..) => f(Sink::For(*slot)),
-        Stmt::Assign(place, _, value) => f(Sink::Store(place, value)),
+        Stmt::Assign(place, op, value) => f(Sink::Store(place, op, value)),
         Stmt::Return(Some(e)) => f(Sink::Return(e)),
         _ => {}
     });
