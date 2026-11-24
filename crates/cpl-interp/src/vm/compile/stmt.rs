@@ -163,6 +163,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) => return false,
+            // A domain's bounds aren't a value the trace shows.
+            Stmt::DefDomain { lo, len, .. } if self.traced_quiet(lo) && self.traced_quiet(len) => {
+                self.compile_untraced_stmt(stmt);
+            }
+            Stmt::DefDomainFromVal { val, .. } if self.traced_quiet(val) => {
+                self.compile_untraced_stmt(stmt);
+            }
             Stmt::Assign(place, AssignOp::Set, value)
                 if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_take(value) =>
             {
