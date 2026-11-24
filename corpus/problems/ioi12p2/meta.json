@@ -14,5 +14,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is accepted submission 4689474 (corpus/submissions/4689474.cpp) with a main that stands in for the IOI grader: n and the call count, then \"u v\" for Link and \"-1 -1\" for CountCritical."
 }

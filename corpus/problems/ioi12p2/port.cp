@@ -7,6 +7,7 @@
 //   neighbours are the only candidates; for each keep a DSU and degrees of the graph without it,
 //   replaying all links so far and then each new one, and count the candidates whose graph has
 //   no degree > 2 and no cycle. O((n + calls) alpha(n)), five layers of n.
+// limits: 2500 ms, 256 MB
 // original: corpus/submissions/4689474.cpp (grader functions Init / Link / CountCritical)
 // stdin: n and the number of calls, then one call per line: "u v" for
 // Link(u, v), "-1 -1" for CountCritical. stdout: one count per CountCritical.

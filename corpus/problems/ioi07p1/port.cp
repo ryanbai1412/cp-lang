@@ -1,4 +1,5 @@
 // Source: IOI '07 P1 (Aliens), https://dmoj.ca/problem/ioi07p1
+// limits: 1000 ms, 256 MB
 // Problem: interactive. An N x N meadow (15 <= N <= 2e9) holds a crop formation: 13 flattened
 //   M x M squares (M odd, unknown) in a 5 x 5 checkerboard. Given N and one flattened cell
 //   (X0, Y0), ask `examine X Y` (true if flattened) at most 300 times and print

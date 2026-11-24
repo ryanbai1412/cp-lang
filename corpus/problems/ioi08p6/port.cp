@@ -8,6 +8,7 @@
 //   corner: O((M + P) log N) per k. B = 0: two pointers over columns; a SegTree counting the
 //   obstacles over each y (whole removals only, so no push-down) knows the longest free run, and
 //   the window shrinks until a square of its width fits. O((M + P) log N).
+// limits: 5000 ms, 256 MB
 // original: corpus/submissions/5637805.cpp
 
 let m: Int = read()
@@ -26,19 +27,22 @@ for _ in 0..p:
 
 // the cheapest place for a base of side k, or none when the field is too small
 fn cheapest(k: Int) -> Int:
-    domain X = 1..=m - k + 1  // where the base's lowest corner can be
     domain Y = 1..=n - k + 1
-    var starts: [X]List<(lo: Y, hi: Y, cost: Int)> = []
-    var stops: [X]List<(lo: Y, hi: Y, cost: Int)> = []
+    // the cost changes only where a box starts or stops covering a corner x
+    var events: List<(x: Int, by: Int, lo: Y, hi: Y)> = []
     for b in boxes:
-        let span = (lo: Y(max(b.y0 - k + 1, 1)), hi: Y(min(b.y1, n - k + 1)), cost: b.cost)
-        starts[X(max(b.x0 - k + 1, 1))].push(span)
-        if b.x1 < m - k + 1: stops[X(b.x1 + 1)].push(span)
+        let (lo, hi) = (Y(max(b.y0 - k + 1, 1)), Y(min(b.y1, n - k + 1)))
+        events.push((max(b.x0 - k + 1, 1), b.cost, lo, hi))
+        if b.x1 < m - k + 1: events.push((b.x1 + 1, -b.cost, lo, hi))
+    let order = sorted(events, by: e => e.x)
     var cost = SegTree<Y, Int, Int>(min, act: add, a: [Y] _ => 0)
-    var best = Int.MAX
-    for x in X:
-        for s in stops[x]: cost.apply(s.lo..=s.hi, -s.cost)
-        for s in starts[x]: cost.apply(s.lo..=s.hi, s.cost)
+    var best = if order.is_empty or order[0].x > 1: 0 else: Int.MAX
+    var i = 0
+    while i < order.len:
+        let x = order[i].x
+        while i < order.len and order[i].x == x:
+            cost.apply(order[i].lo..=order[i].hi, order[i].by)
+            i += 1
         best min= cost.fold(Y.all)
     best
 

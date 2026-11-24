@@ -1,4 +1,5 @@
 // Source: IOI 2014 Day 2 Holiday, https://dmoj.ca/problem/ioi14p6
+// limits: 1800 ms, 256 MB
 // Problem: n <= 1e5 cities on a line with attraction[i] <= 1e9 and a start city; each of d <=
 //   2n + n/2 days either moves to a neighbouring city or visits the current one (a city counts
 //   once). Print the most attractions visited.

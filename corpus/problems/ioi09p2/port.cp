@@ -8,6 +8,7 @@
 //   (exact cross-multiplied order), keep a max-heap of Q, and pop the largest Q while
 //   points * rate is over budget; keep the best (count, then bill) plan. A second sweep
 //   stops at the best plan's rate setter and prints its heap. O(n log n).
+// limits: 1500 ms, 64 MB
 // original: corpus/submissions/5102705.cpp
 
 let (n, w): (Int, Int) = read()

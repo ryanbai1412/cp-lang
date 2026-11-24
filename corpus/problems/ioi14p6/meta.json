@@ -18,5 +18,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is accepted submission 4690972 (corpus/submissions/4690972.cpp) with a main that stands in for the IOI grader: n, start, d, then the n attraction values."
 }

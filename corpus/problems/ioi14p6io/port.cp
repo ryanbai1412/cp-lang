@@ -1,109 +1,44 @@
 // Source: IOI 2014 P6 (Holiday, standard I/O), https://dmoj.ca/problem/ioi14p6io
+// limits: 1800 ms, 256 MB
 // Problem: n <= 1e5 cities on a line with attraction counts <= 1e9, a start city and
 //   d <= 2n + n/2 days; each day moves to a neighbour or visits the current city (each city
 //   counts once). Print the most attractions visitable.
-// Solution: an optimal plan goes out one side, back, then out the other. Per side,
-//   f(t) = best with t days there: pick the far end i, then the top t - c(i + 1) cities among
-//   the first i + 1 (c = 2 for the side done first, 1 for the other). The best i is monotone
-//   in t, so divide and conquer on t; top-k of a prefix comes from blocks of 300 with sorted
-//   prefixes and prefix sums. Combine the sides over the day split, with or without the start
-//   city, both orientations: O((n + d) log d) top-k queries of O(300) each.
-// Stdin: n, start, d, then n attraction values. Prints maximum sum.
-// Uses top-level recursive fn (working around cpl-emit recursive nested-fn self-capture bug).
+// Solution: a best walk goes out one way and back, then out the other way. For one side and t
+//   days, ending at the i-th city passed costs step days per city (2 if coming back, 1 if not)
+//   and visits the best of the first i with the rest; the best i only moves out as t grows, so
+//   monotone_minima finds it, with WaveletMatrix top-k sums: O((n + d) log^2 n). Combine both
+//   sides over every split of the days, visiting the start city or not.
 // original: corpus/submissions/4691224.cpp
+// Bounds: n: 1..=1e5; start: 0..=n - 1; days: 0..=250000; fun: 0..=1e9
+use std.segtree.{WaveletMatrix}
 
-fn ri() -> Int:
-    let x: Int = read()
-    return x
+let (n, start, days): (1..=1e5, 0..n, 0..=250000) = read()
+domain City = 0..n
+let fun: [City]0..=1e9 = read()
+let home = City.at(start)!
 
-var g_sorted_pref: List<List<Int>> = []
-var g_psum: List<List<Int>> = []
-var g_gaps: List<List<(Int, Int)>> = []
-var g_ans: List<Int> = []
-var g_mul = 1
+// most[t]: the most seen in t days spent on `side`, the cities in the order
+// they are passed going away from the start. Reaching the i-th costs `step`
+// days a city: 2 if the walk has to come back, 1 if it ends there; the days
+// left go to the best cities passed.
+fn away(side: List<Int>, step: Int) -> List<Int>:
+    let order = WaveletMatrix(side)
+    let passed = Prefix<Int>(side)
+    fn seen(t: Int, i: Int) -> ?Int:
+        let visits = min(t - (i + 1) * step, i + 1)
+        if visits < 0: return None
+        Some(-(passed.cut(i + 1) - order.quantile_sum(0..i + 1, i + 1 - visits)))
+    // with more days it never pays to turn round sooner, so the best last city only moves away
+    [if let b = best: -b.val else: 0 for best in monotone_minima(days + 1, side.len, seen)]
 
-fn topk_query(i: Int, k: Int) -> Int:
-    if k <= 0: return 0
-    var rem = min(k, i + 1)
-    let b = i / 300
-    var tot = 0
-    let sp = g_sorted_pref[b]
-    for pair in g_gaps[b]:
-        if rem == 0: break
-        let x = -pair.0
-        let j = pair.1
-        if j <= i:
-            if rem - 1 >= sp.len or x > sp[rem - 1]:
-                rem -= 1
-                tot += x
-            else:
-                break
-    return tot + g_psum[b][rem]
+// walk `first` and come back, then walk `second`; the start city is visited or not
+fn best(first: List<Int>, second: List<Int>) -> Int:
+    let (round_trip, one_way) = (away(first, 2), away(second, 1))
+    [here + round_trip[t] + one_way[days - spent - t] for (spent, here) in [
+            (0, 0),
+            (1, fun[home]),
+        ] for t in 0..=days - spent].max()!
 
-fn dnc_rec(l: Int, r: Int, ql: Int, qr: Int):
-    if l > r: return
-    let mid = (l + r) / 2
-    var best = -1
-    var opt = ql
-    for i in ql..=qr:
-        let v = topk_query(i, mid - g_mul * (i + 1))
-        if v > best:
-            best = v
-            opt = i
-    g_ans[mid] = max(0, best)
-    dnc_rec(l, mid - 1, ql, opt)
-    dnc_rec(mid + 1, r, opt, qr)
-
-fn solve_side(mul: Int, d: Int, a: List<Int>) -> List<Int>:
-    let n = a.len
-    g_ans = [0..d + 1] _ => 0
-    if n == 0: return g_ans
-    g_mul = mul
-    g_sorted_pref = []
-    g_psum = []
-    g_gaps = []
-    var ind = 0
-    while ind <= n:
-        var s: List<Int> = [-a[i] for i in 0..ind]
-        s.sort()
-        var sp: List<Int> = []
-        var ps: List<Int> = [0]
-        for x in s:
-            let v = -x
-            sp.push(v)
-            ps.push(ps.last! + v)
-        g_sorted_pref.push(sp)
-        g_psum.push(ps)
-        let hi = min(n, ind + 300)
-        var g: List<(Int, Int)> = [(-a[j], j) for j in ind..hi]
-        g.sort()
-        g_gaps.push(g)
-        ind += 300
-    dnc_rec(0, d, 0, n - 1)
-    return g_ans
-
-fn one_way(n: Int, start: Int, d: Int, a: List<Int>) -> Int:
-    var left_a: List<Int> = []
-    var i = start - 1
-    while i >= 0:
-        left_a.push(a[i])
-        i -= 1
-    var right_a: List<Int> = [a[j] for j in start + 1..n]
-    let ldp = solve_side(2, d, left_a)
-    let rdp = solve_side(1, d, right_a)
-    var best = 0
-    for t in 0..=d:
-        best max= ldp[t] + rdp[d - t]
-        if t < d: best max= a[start] + ldp[t] + rdp[d - 1 - t]
-    return best
-
-let n: Int = read()
-let start: Int = read()
-let d: Int = read()
-var a: List<Int> = [ri() for _ in 0..n]
-var rev_a: List<Int> = []
-var ii = n - 1
-while ii >= 0:
-    rev_a.push(a[ii])
-    ii -= 1
-print(max(one_way(n, start, d, a), one_way(n, n - 1 - start, d, rev_a)))
+let left = [fun[c] for c in City if c < home].rev
+let right = [fun[c] for c in City if c > home]
+print(max(best(right, left), best(left, right)))
