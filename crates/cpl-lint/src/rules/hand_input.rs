@@ -34,7 +34,7 @@ struct HandInput<'a> {
 }
 
 /// Splits `(a, b)` into its top-level parts; any other text is one part.
-fn parts(ty: &str) -> Vec<&str> {
+pub(super) fn parts(ty: &str) -> Vec<&str> {
     let Some(inner) = ty.strip_prefix('(').and_then(|t| t.strip_suffix(')')) else {
         return vec![ty];
     };

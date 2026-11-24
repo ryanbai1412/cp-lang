@@ -4,7 +4,7 @@ for _ in 0..m:
     let (u, v): (1..=n, 1..=n) = read()
     adj[u].push(v)
     adj[v].push(u)  // expect: symmetric_write
-var seen: List<Bool> = [false for _ in 0..=n]
+var seen: List<Bool> = [false for _ in 0..=n]  // expect: int_vertex_ids
 fn visit(u: Int):
     seen[u] = true
     for v in adj[u]:

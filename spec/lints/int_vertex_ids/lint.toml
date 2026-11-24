@@ -1,0 +1,8 @@
+code = "L0533"
+level = "warn"
+group = "idiom"
+title = "A table over `0..=n` indexed by ids read as `1..=n`"
+rule = "idiomatic-code/R6"
+summary = "`var deg: [0..=n]Int` indexed by `u: 1..=n`: `domain V = 1..=n`, read `u` as `V` and make the table `[V]Int`"
+no_fix = "the domain, the reads and every table over the ids change together"
+family = "D. Domains, positions and cuts"

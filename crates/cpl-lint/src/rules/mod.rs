@@ -54,6 +54,7 @@ mod taste;
 mod test_count;
 mod types;
 mod unreachable;
+mod vertex_ids;
 mod while_pop;
 mod wide_shift;
 mod zero_div;
@@ -115,6 +116,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(hand_graph::check(file));
     findings.extend(hand_ds::check(file));
     findings.extend(hand_input::check(file));
+    findings.extend(vertex_ids::check(file));
     findings.extend(count_until::check(file));
     findings.extend(hand_search::check(file));
     findings.extend(read_loop::check(file));
