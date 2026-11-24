@@ -80,10 +80,14 @@ impl Checker<'_> {
         if bindings.is_empty() {
             return;
         }
-        let mut bound: Vec<(String, Ty)> = (bindings.iter())
-            .map(|(name, ty)| (name.clone(), self.settle(ty)))
+        let mut names: Vec<String> = bindings.keys().cloned().collect();
+        names.sort();
+        let bound: Vec<(String, Ty)> = (names.into_iter())
+            .map(|name| {
+                let ty = self.settle(&bindings[&name]);
+                (name, ty)
+            })
             .collect();
-        bound.sort_by(|a, b| a.0.cmp(&b.0));
         self.exprs.instantiations.retain(|(at, _)| *at != call.span);
         self.exprs.instantiations.push((call.span, bound));
     }

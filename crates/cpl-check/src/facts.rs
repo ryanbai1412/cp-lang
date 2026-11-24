@@ -4,8 +4,10 @@
 //! `cpl lint`, the editor and `cpl fix` read the facts the checker reported from.
 
 use crate::{Analysis, Revision, Ty, TypedIndex};
+use by_span::BySpan;
 use cpl_diag::Span;
-use std::collections::HashMap;
+
+mod by_span;
 
 /// What a call calls.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,14 +78,14 @@ pub struct Facts {
     types: Vec<(Span, Ty)>,
     /// The type a member belongs to, by the member name's file span:
     /// `Bitset` for the `first` of `b.first()`.
-    owners: HashMap<(u32, u32), String>,
+    owners: BySpan<String>,
     /// The indexes the checker proves by their type, `dist[v]` with `v: V`.
     typed_indexes: Vec<TypedIndex>,
     /// The type of every expression, one per file span, by start then end.
-    exprs: Vec<(Span, Ty)>,
+    exprs: BySpan<Ty>,
     /// The callee of each call, by the call's file span.
-    callees: HashMap<(u32, u32), Callee>,
-    instantiations: HashMap<(u32, u32), Vec<(String, Ty)>>,
+    callees: BySpan<Callee>,
+    instantiations: BySpan<Vec<(String, Ty)>>,
 }
 
 impl Facts {
@@ -92,22 +94,16 @@ impl Facts {
             revision: analysis.revision,
             ..Facts::default()
         };
-        let mut exprs: HashMap<(u32, u32), Ty> = HashMap::new();
+        let (mut exprs, mut owners) = (Vec::new(), Vec::new());
         for item in &analysis.items {
             let shift = |s: Span| s.shift(item.offset);
             for (span, ty) in &item.check.exprs.types {
-                let span = shift(*span);
-                let slot = exprs.entry((span.start, span.end)).or_insert(Ty::Unknown);
-                // The last answer wins, but a vague re-check keeps a known one.
-                if !ty.is_vague() || slot.is_vague() {
-                    *slot = ty.clone();
-                }
+                exprs.push((shift(*span), ty.clone()));
             }
             for entry in &item.check.hovers {
                 facts.types.push((shift(entry.span), entry.ty.clone()));
                 if let ("field", Some(owner)) = (entry.keyword, &entry.owner) {
-                    let span = shift(entry.span);
-                    facts.owners.insert((span.start, span.end), owner.clone());
+                    owners.push((shift(entry.span), owner.clone()));
                 }
             }
             for (span, ty) in &item.check.shapes {
@@ -124,74 +120,40 @@ impl Facts {
         }
         // By end, then start: `place_type` looks a place up by its end.
         facts.types.sort_by_key(|(s, _)| (s.end, s.start));
+        let (mut callees, mut instantiations) = (Vec::new(), Vec::new());
         for item in &analysis.items {
-            facts.add_calls(item);
+            add_calls(item, &mut callees, &mut instantiations);
         }
-        facts.exprs = (exprs.into_iter())
-            .map(|((start, end), ty)| (Span::new(start, end), ty))
-            .collect();
-        facts.exprs.sort_by_key(|(s, _)| (s.start, s.end));
+        // The last answer wins, but a vague re-check keeps a known one.
+        facts.exprs = BySpan::merged(exprs, |kept, earlier| {
+            if kept.is_vague() && !earlier.is_vague() {
+                std::mem::swap(kept, earlier);
+            }
+        });
+        facts.owners = BySpan::new(owners);
+        facts.callees = BySpan::new(callees);
+        facts.instantiations = BySpan::new(instantiations);
         facts
-    }
-
-    fn add_calls(&mut self, item: &crate::AnalyzedItem) {
-        let shift = |s: Span| s.shift(item.offset);
-        let resolved: HashMap<(u32, u32), &crate::Resolved> = (item.check.resolved.iter())
-            .map(|(s, r)| ((s.start, s.end), r))
-            .collect();
-        let owners: HashMap<(u32, u32), &str> = (item.check.hovers.iter())
-            .filter_map(|h| Some(((h.span.start, h.span.end), h.owner.as_deref()?)))
-            .collect();
-        for call in &item.check.exprs.calls {
-            let at = (call.name_span.start, call.name_span.end);
-            let found = resolved.get(&at);
-            let owner = match call.kind {
-                CalleeKind::Method | CalleeKind::Getter => (found.and_then(|r| r.owner.clone()))
-                    .or_else(|| owners.get(&at).map(|o| o.to_string())),
-                _ => None,
-            };
-            let callee = Callee {
-                module: found.map(|r| r.module.clone()).unwrap_or_default(),
-                owner,
-                name: call.name.clone(),
-                kind: call.kind,
-            };
-            let span = shift(call.call);
-            self.callees.insert((span.start, span.end), callee);
-        }
-        for (call, bound) in &item.check.exprs.instantiations {
-            let span = shift(*call);
-            self.instantiations
-                .insert((span.start, span.end), bound.clone());
-        }
     }
 
     /// What the call at exactly `call` calls.
     pub fn callee(&self, call: Span) -> Option<&Callee> {
-        self.callees.get(&(call.start, call.end))
+        self.callees.get(call)
     }
 
     /// The type each generic parameter took at the call `call`, by name.
     pub fn instantiation(&self, call: Span) -> Option<&[(String, Ty)]> {
-        (self.instantiations.get(&(call.start, call.end))).map(Vec::as_slice)
+        self.instantiations.get(call).map(Vec::as_slice)
     }
 
     /// The type the checker gave the expression at exactly `expr`.
     pub fn type_of(&self, expr: Span) -> Option<&Ty> {
-        (self.exprs)
-            .binary_search_by_key(&(expr.start, expr.end), |(s, _)| (s.start, s.end))
-            .ok()
-            .map(|at| &self.exprs[at].1)
+        self.exprs.get(expr)
     }
 
     /// Every typed expression inside `span`, in source order: by start, then end.
     pub fn types_in(&self, span: Span) -> impl Iterator<Item = (Span, &Ty)> {
-        let from = (self.exprs).partition_point(|(s, _)| s.start < span.start);
-        self.exprs[from..]
-            .iter()
-            .take_while(move |(s, _)| s.start <= span.end)
-            .filter(move |(s, _)| s.end <= span.end)
-            .map(|(s, ty)| (*s, ty))
+        self.exprs.within(span)
     }
 
     /// The session revision these facts were found at.
@@ -213,12 +175,44 @@ impl Facts {
 
     /// The type the member named at `span` belongs to.
     pub fn owner(&self, span: Span) -> Option<&str> {
-        self.owners.get(&(span.start, span.end)).map(String::as_str)
+        self.owners.get(span).map(String::as_str)
     }
 
     /// The checker's proof that the index access at `access` is in bounds.
     pub fn typed_index(&self, access: Span) -> Option<&TypedIndex> {
         self.typed_indexes.iter().find(|t| t.access == access)
+    }
+}
+
+fn add_calls(
+    item: &crate::AnalyzedItem,
+    callees: &mut Vec<(Span, Callee)>,
+    instantiations: &mut Vec<(Span, Vec<(String, Ty)>)>,
+) {
+    let shift = |s: Span| s.shift(item.offset);
+    let resolved = BySpan::new((item.check.resolved.iter()).map(|(s, r)| (*s, r)).collect());
+    let owners = BySpan::new(
+        (item.check.hovers.iter())
+            .filter_map(|h| Some((h.span, h.owner.as_deref()?)))
+            .collect(),
+    );
+    for call in &item.check.exprs.calls {
+        let found = resolved.get(call.name_span);
+        let owner = match call.kind {
+            CalleeKind::Method | CalleeKind::Getter => (found.and_then(|r| r.owner.clone()))
+                .or_else(|| owners.get(call.name_span).map(|o| o.to_string())),
+            _ => None,
+        };
+        let callee = Callee {
+            module: found.map(|r| r.module.clone()).unwrap_or_default(),
+            owner,
+            name: call.name.clone(),
+            kind: call.kind,
+        };
+        callees.push((shift(call.call), callee));
+    }
+    for (call, bound) in &item.check.exprs.instantiations {
+        instantiations.push((shift(*call), bound.clone()));
     }
 }
 
