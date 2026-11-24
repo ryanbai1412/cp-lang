@@ -731,7 +731,7 @@ if [ "$mode" = full ]; then
     uv run scripts/conformance-metamorphic.py --check || fail "a meaning-preserving edit changed a case's output; see above"
     uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
     uv run scripts/conformance-speed.py || fail "the conformance and spec-block suites went over their CPU budget; see above"
-    uv run scripts/explain-copies.py --check --max 13 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
+    uv run scripts/explain-copies.py --check --max 6 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
     uv run scripts/conformance-flakes.py --runs 2 --check || fail "a conformance case changed verdict between runs; see above"
 
     step "cargo test: every port compiled with every judge profile's flags"

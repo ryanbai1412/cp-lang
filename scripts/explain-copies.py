@@ -23,9 +23,36 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-COPY = re.compile(r"(?:std::vector<[^;()]*?>|std::string)\(\w+(?:\.\w+)*\)|cpl::to_list\(|cpl::sorted\(\w+(?:\.\w+)*\)")
+COPY = re.compile(r"(?:std::vector<[^;()]*?>|cpl::Grid<[^;()]*?>|std::string)\(\w+(?:\.\w+)*\)|cpl::to_list\(|cpl::sorted\(\w+(?:\.\w+)*\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+PARAM = re.compile(r"(?:std::vector<|std::map<|std::set<|std::unordered_map<|std::deque<|std::string)[^();{}=]*?[&\s](\w+)\s*[,)]")
+CAPTURES = re.compile(r"\[([^\[\]]*)\]\(")
+STRUCT = re.compile(r"^struct (\w+)\s*\{")
+
+
+def container_structs(cpp):
+    """Structs that hold a container field, directly or through another such struct."""
+    bodies, name = {}, None
+    for line in cpp.splitlines():
+        line = line.strip()
+        if m := STRUCT.match(line):
+            name = m.group(1)
+            bodies[name] = []
+        elif name and line.startswith("}"):
+            name = None
+        elif name:
+            bodies[name].append(line)
+    holders, grew = set(), True
+    while grew:
+        grew = False
+        for n, lines in bodies.items():
+            if n not in holders and any(l.startswith(CONTAINERS) or l.split(" ")[0].split("<")[0] in holders for l in lines):
+                holders.add(n)
+                grew = True
+    return holders
+
+
 SCALARS = ("int", "ll", "bool", "double", "char", "auto", "unsigned", "__int128", "cpl::OptPos")
 
 
@@ -91,10 +118,19 @@ def deep_copies(cpp):
     """Mirrors deep_copies in crates/cpl-cli/tests/support/cpp_counts.rs, plus
     copies spelled as a constructor call or `cpl::to_list`, tuples holding a
     container copied from places, and a container assigned from a place."""
-    held, count = set(), len(COPY.findall(cpp))
+    held, count = set(PARAM.findall(cpp)), len(COPY.findall(cpp))
+    holders = container_structs(cpp)
     for line in cpp.splitlines():
         line = line.strip()
         decl = line.removeprefix("const ")
+        ty, _, rest = decl.partition(" ")
+        if ty in holders:
+            name, eq, init = rest.partition("=")
+            name = name.strip()
+            if re.fullmatch(r"\w+", name):
+                held.add(name)
+                if eq and init.strip().endswith(";") and is_place(init.strip()[:-1]):
+                    count += 1
         if (scalar := scalar_decl(decl)) is not None:
             held.discard(scalar)
         if decl.startswith(CONTAINERS):
@@ -124,13 +160,10 @@ def deep_copies(cpp):
         if eq and rhs.endswith(";") and NAME.fullmatch(lhs) and lhs.rsplit(".", 1)[-1] in held and is_place(rhs[:-1]):
             count += 1
     for line in cpp.splitlines():
-        open_ = line.find("= [")
-        close = line.find("](", open_) if open_ >= 0 else -1
-        if close < 0:
-            continue
-        for cap in line[open_ + 3 : close].split(", "):
-            if not cap.startswith("&") and " = " in cap and cap.split(" = ", 1)[1].strip() in held:
-                count += 1
+        for caps in CAPTURES.findall(line):
+            for cap in caps.split(", "):
+                if not cap.startswith("&") and " = " in cap and cap.split(" = ", 1)[1].strip() in held:
+                    count += 1
     return count
 
 

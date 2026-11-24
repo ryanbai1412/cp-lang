@@ -182,7 +182,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/list-fill-copies-per-key.cp: compiler
 - core-04/list-of-domain-array-loses-domain.cp: compiler
 - core-04/palindromes-longest-at-key.cp: stdlib
-- core-04/pieces-of-a-domain-take-its-cuts.cp: compiler
 - core-04/rebased-str-indexes-from-zero.cp: stdlib
 - core-04/runtime-domain-literal-between-traps.cp: compiler
 - core-04/table-one-cell-parameter.cp: compiler
