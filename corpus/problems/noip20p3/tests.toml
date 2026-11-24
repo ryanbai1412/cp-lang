@@ -1,4 +1,6 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
+# Many answers are right: the statement takes any list of at most 820000 legal moves that
+# sorts the tubes, and checker.py judges exactly that, so the output need not match the C++.
 
 [[case]]
 seed = 1
