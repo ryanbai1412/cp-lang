@@ -82,6 +82,8 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   (`crates/cpl-lsp/src/tests/exec.rs`). With `initializationOptions.trusted`
   false (VS Code's Restricted Mode) `cpl.exec`, `cpl.import` and live values
   refuse to run, and `cp.inlayHints.enabled` false hides every inlay hint.
+  JetBrains forwards its lenses' `cpl.exec` and draws only a trace's `html`
+  and a test run's `view.tests` in its test tree (`CpLsp4ijTest`).
 - **Replay while debugging**: `initializationOptions.replayLenses`
   `"debugging"` shows the Replay lenses only after a `cpl/debugging`
   `{type: "cp"}` notification and until one with another `type` or none,

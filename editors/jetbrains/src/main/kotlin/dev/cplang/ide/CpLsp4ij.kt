@@ -1,9 +1,14 @@
 package dev.cplang.ide
 
-import com.intellij.execution.process.CapturingProcessHandler
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.redhat.devtools.lsp4ij.LanguageServerManager
+import org.eclipse.lsp4j.ExecuteCommandParams
+import java.util.concurrent.CompletableFuture
 import com.intellij.ide.plugins.PluginManagerCore
-import com.intellij.notification.NotificationGroupManager
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
@@ -14,8 +19,6 @@ import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -61,30 +64,63 @@ class CpLsp4ijFactory : LanguageServerFactory {
     }
 }
 
-/** `cpl.exec`, the command of `cpl lsp`'s code lenses: LSP4IJ runs the action of that id. */
+/**
+ * `cpl.exec`, the command of `cpl lsp`'s code lenses: the server runs it and shows its report through
+ * the protocol (the panel, the status, each line's mark, the wrong call as a diagnostic); a trace's
+ * page comes back as `html` for the Trace tool window, and a test run's cases as `view.tests` for the test tree.
+ */
 class CplExecAction : LSPCommandAction() {
     override fun getCommandPerformedThread() = ActionUpdateThread.EDT
 
     override fun commandPerformed(command: LSPCommand, e: AnActionEvent) {
-        val project = e.project ?: return
-        CplExec.run(project, command.arguments.indices.mapNotNull { command.getArgumentAt<String>(it, String::class.java) })
+        val project = e.getRequiredData(CommonDataKeys.PROJECT)
+        FileDocumentManager.getInstance().saveAllDocuments()
+        val source = File(command.getArgumentAt(1, String::class.java)!!)
+        run(project, command.arguments).thenAccept {
+            CplTrace.open(project, source, it)
+            CplTests.open(project, source, it)
+        }
+    }
+
+    companion object {
+        /** `cpl.exec` of a lens's arguments in `cpl lsp`: its `{view, html, code, stderr}` once the run ends. */
+        fun run(project: Project, arguments: List<Any>): CompletableFuture<JsonObject> =
+            LanguageServerManager.getInstance(project).getLanguageServer("cpl").thenCompose {
+                it!!.server.workspaceService.executeCommand(ExecuteCommandParams("cpl.exec", arguments))
+            }.thenApply { Gson().toJsonTree(it).asJsonObject }
     }
 }
 
 /**
- * A Trace lens's run: `cpl run --trace --format html`'s page as is in JCEF. The page posts each
+ * Import a Problem: `cpl lsp`'s `cpl.import` waits for Competitive Companion, creates each problem
+ * in the selected folder (else the project's) and opens it through `window/showDocument`.
+ */
+class CplImportProblemAction : AnAction() {
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
+    override fun update(e: AnActionEvent) {
+        e.presentation.isEnabledAndVisible = e.project != null
+    }
+
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.getRequiredData(CommonDataKeys.PROJECT)
+        val path = e.getData(CommonDataKeys.VIRTUAL_FILE)?.path ?: project.basePath
+        LanguageServerManager.getInstance(project).getLanguageServer("cpl").thenAccept {
+            it?.server?.workspaceService?.executeCommand(ExecuteCommandParams("cpl.import", listOf(path)))
+        }
+    }
+}
+
+/**
+ * A Trace lens's run: the page `cpl.exec` answers with, as is in JCEF. The page posts each
  * step's and each clicked line, 0-based and checked, through `jbCefQuery`; the editor shows and marks it.
  */
 object CplTrace {
-    fun open(project: Project, source: File, args: List<String>) = object : Task.Backgroundable(project, "cpl run --trace") {
-        override fun run(indicator: ProgressIndicator) {
-            val out = CapturingProcessHandler(Cpl.commandLine(args + listOf("--format", "html"), source.parentFile)).runProcess()
-            ApplicationManager.getApplication().invokeLater { show(project, source, out.stdout + out.stderr) }
+    /** Shows the page a Trace lens's run answered with, if it has one. */
+    fun open(project: Project, source: File, result: JsonObject) =
+        result.get("html")?.takeIf { it.isJsonPrimitive }?.let { page ->
+            ApplicationManager.getApplication().invokeLater { show(project, source, page.asString) }
         }
-
-        override fun onThrowable(error: Throwable) = NotificationGroupManager.getInstance().getNotificationGroup("CP Lang")
-            .createNotification("No trace", error.message.orEmpty(), NotificationType.ERROR).notify(project)
-    }.queue()
 
     fun show(project: Project, source: File, page: String) {
         val file = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(source)!!

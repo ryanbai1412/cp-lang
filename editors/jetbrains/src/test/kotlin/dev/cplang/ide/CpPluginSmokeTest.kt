@@ -59,64 +59,6 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         assertEquals(listOf(cpl.path, "lsp"), cmd.getCommandLineList(null))
     }
 
-    fun `test a code lens runs cpl with the report format the run window reads`() {
-        val dir = Files.createTempDirectory("cpl").toFile()
-        val source = File(dir, "sum.cp")
-        val line = { args: List<String> -> CplExec.commandLine(args, source).getCommandLineList(null) }
-        assertEquals(listOf(cpl.path, "run", source.path, "i1"), line(listOf("run", source.path, "i1")))
-        assertEquals(listOf(cpl.path, "test", source.path, "--format", "teamcity"), line(listOf("test", source.path)))
-        assertEquals(listOf(cpl.path, "stress", source.path, "--format", "json"), line(listOf("stress", source.path)))
-        assertEquals(dir, CplExec.commandLine(listOf("run", source.path), source).workDirectory)
-    }
-
-    fun `test the stress lens saves a failing case that the test lens reruns`() {
-        val dir = Files.createTempDirectory("cpl").toFile()
-        val planted = File(repo, "examples/debugging/knapsack.cp").readText()
-        assertTrue(planted.contains("for c in 0..=cap:"))
-        val source = File(dir, "k.cp").apply { writeText(planted) }
-        fun run(command: String): Pair<Int, String> {
-            val process = CplExec.commandLine(listOf(command, source.path), source).toProcessBuilder().redirectErrorStream(true).start()
-            val shown = process.inputStream.bufferedReader().readText()
-            return process.waitFor() to shown
-        }
-        val (stressed, report) = run("stress")
-        assertEquals(report, 1, stressed)
-        assertTrue(report, report.contains("saved"))
-        assertEquals(report, 1, File(dir, "k.tests").listFiles { f -> f.name.endsWith(".in") }.orEmpty().size)
-        val (failed, rerun) = run("test")
-        assertTrue(rerun, failed != 0)
-        assertTrue(rerun, rerun.contains("##teamcity[testFailed name='"))
-        source.writeText(planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:"))
-        val (passed, fixed) = run("test")
-        assertEquals(fixed, 0, passed)
-    }
-
-    fun `test a wrong call is drawn on its line until the next run`() {
-        val dir = Files.createTempDirectory("cpl").toFile()
-        VfsRootAccess.allowRootAccess(testRootDisposable, dir.canonicalPath)
-        val part = File(dir, "p.cp").apply { writeText(File(repo, "crates/cpl-cli/tests/debugger/part_planted.cp").readText()) }
-        val one = File(dir, "one.in").apply { writeText("1\n") }
-        myFixture.configureFromExistingVirtualFile(LocalFileSystem.getInstance().refreshAndFindFileByIoFile(part)!!)
-        fun locate() {
-            val handler = CplWrongCall.Handler(project, part, GeneralCommandLine(cpl.path, "locate", part.path, one.path, "--json"))
-            handler.startNotify()
-            assertTrue(handler.waitFor(60_000))
-            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-        }
-        fun notes() = myFixture.editor.inlayModel.getAfterLineEndElementsInRange(0, myFixture.editor.document.textLength)
-            .map { it.renderer }.filterIsInstance<CplWrongCall.Note>()
-        fun warned() = myFixture.editor.markupModel.allHighlighters.filter { it.errorStripeTooltip != null }
-        locate()
-        val note = notes().single()
-        assertTrue(note.text, note.text.startsWith("← first wrong call: `tri(k: 1)`"))
-        assertEquals(3, myFixture.editor.document.getLineNumber(myFixture.editor.inlayModel
-            .getAfterLineEndElementsInRange(0, myFixture.editor.document.textLength).single().offset))
-        assertEquals(3, myFixture.editor.document.getLineNumber(warned().single().startOffset))
-        locate()
-        assertEquals("a rerun replaces the old note", 1, notes().size)
-        assertEquals(1, warned().size)
-    }
-
     fun `test the server answers initialize and hover`() {
         Assume.assumeTrue("build cpl first: cargo build -p cpl-cli", cpl.canExecute())
         val process = CpLspServerDescriptor(project).createCommandLine().createProcess()

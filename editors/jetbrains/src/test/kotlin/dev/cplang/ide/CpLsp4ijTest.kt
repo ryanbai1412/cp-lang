@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.openapi.util.Disposer
 import org.junit.Assume
 import java.io.File
 import java.net.Socket
@@ -19,6 +20,7 @@ import java.nio.file.Files
  */
 class CpLsp4ijTest : BasePlatformTestCase() {
     private val cpl = File(System.getProperty("cpl.bin"))
+    private val repo = File(System.getProperty("cpl.repo"))
 
     override fun setUp() {
         super.setUp()
@@ -52,6 +54,47 @@ class CpLsp4ijTest : BasePlatformTestCase() {
     fun `test the server's code lenses run through the cpl exec action`() {
         assertEquals(mapOf("codeLens" to true), CpLsp4ijFactory.INITIALIZATION_OPTIONS)
         assertTrue(com.intellij.openapi.actionSystem.ActionManager.getInstance().getAction("cpl.exec") is CplExecAction)
+    }
+
+    /** A lens's `cpl.exec`, run by the server: its answer once the run ends. */
+    private fun exec(vararg args: String): com.google.gson.JsonObject {
+        val run = CplExecAction.run(project, args.toList())
+        return eventually("cpl.exec's answer") { run.takeIf { it.isDone }?.get() }
+    }
+
+    fun `test the stress lens saves a failing case that the test lens reruns`() {
+        val planted = File(repo, "examples/debugging/knapsack.cp").readText()
+        assertTrue(planted.contains("for c in 0..=cap:"))
+        open("k.cp", planted)
+        val source = File(myFixture.file.virtualFile.path)
+        val stressed = exec("stress", source.path)
+        assertEquals(stressed.toString(), 1, stressed.get("code").asInt)
+        assertEquals(1, File(source.parentFile, "k.tests").listFiles { f -> f.name.endsWith(".in") }.orEmpty().size)
+        val failing = exec("test", source.path)
+        assertTrue(failing.get("code").asInt != 0)
+        val tree = CplTests.show(project, source, failing.getAsJsonObject("view").getAsJsonArray("tests"))
+        val cases = tree.resultsViewer.testsRootNode.allTests.filter { it.isLeaf }
+        assertTrue(cases.toString(), cases.isNotEmpty() && cases.any { it.isDefect })
+        Disposer.dispose(tree)
+        source.writeText(planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:"))
+        assertEquals(0, exec("test", source.path).get("code").asInt)
+    }
+
+    fun `test a wrong call is the server's diagnostic on its line`() {
+        open("p.cp", File(repo, "crates/cpl-cli/tests/debugger/part_planted.cp").readText())
+        val source = File(myFixture.file.virtualFile.path)
+        val one = File(source.parentFile, "one.in").apply { writeText("1\n") }
+        exec("locate", source.path, one.path)
+        val marked = eventually("wrong call") {
+            myFixture.doHighlighting(HighlightSeverity.ERROR).firstOrNull { it.description?.startsWith("first wrong call") == true }
+        }
+        assertEquals(3, myFixture.editor.document.getLineNumber(marked.startOffset))
+    }
+
+    fun `test a trace lens answers the page the trace window shows`() {
+        open("t.cp", "fn main():\n    print(1)\n")
+        val traced = exec("run", File(myFixture.file.virtualFile.path).path, "--trace")
+        assertTrue(traced.get("html").asString.contains("<html", ignoreCase = true))
     }
 
     fun `test import a problem opens the file the server creates`() {

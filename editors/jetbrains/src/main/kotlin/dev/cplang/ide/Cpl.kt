@@ -55,16 +55,4 @@ object Cpl {
     }
 
     fun lspArgs() = listOf("lsp")
-
-    /** The first wrong call a report's `view` marks: its 0-based line and headline. */
-    data class WrongCall(val line: Int, val message: String)
-
-    /** What `cpl stress --format json` and `cpl locate --json` say to draw (spec/tools/cli.md). */
-    data class View(val panel: String, val wrongCall: WrongCall?)
-
-    fun view(json: String): View? = runCatching {
-        val view = com.google.gson.JsonParser.parseString(json).asJsonObject.getAsJsonObject("view")
-        val d = view.get("diagnostic")?.takeIf { it.isJsonObject }?.asJsonObject
-        View(view.get("panel").asString, d?.let { WrongCall(it.get("line").asInt, it.get("message").asString) })
-    }.getOrNull()
 }
