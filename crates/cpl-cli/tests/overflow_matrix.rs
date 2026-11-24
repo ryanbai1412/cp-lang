@@ -38,6 +38,52 @@ const PLACES: [(&str, &str, &str, &str); 10] = [
     ("optional", "", "var o{id}: ?Int = Some({s})", "o{id}!"),
 ];
 
+/// An op on a map value of the range `R` (100..=1000), a start inside it
+/// and a step that takes it out: the narrow cell must trap on the range,
+/// not wrap back into it (1000 * 65537 is 1000 in 16 bits).
+const RANGED_OPS: [(&str, &str, &str); 8] = [
+    ("+", "900", "200"),
+    ("-", "200", "150"),
+    ("*", "900", "2"),
+    ("*", "1000", "65537"),
+    ("|", "512", "1024"),
+    ("^", "512", "1024"),
+    ("max", "900", "2000"),
+    ("min", "200", "50"),
+];
+
+/// A map place whose values are `R`, local and as a (narrow) field.
+const RANGED_PLACES: [(&str, &str, &str, &str); 4] = [
+    (
+        "ranged map",
+        "",
+        "var m{id}: Map<Int, R> = Map()\n    m{id}[0] = {s}",
+        "m{id}[0]",
+    ),
+    (
+        "ranged hash",
+        "",
+        "var h{id}: HashMap<Int, R> = HashMap()\n    h{id}[0] = {s}",
+        "h{id}[0]",
+    ),
+    (
+        "narrow map field",
+        "",
+        "var q{id} = Q([], [])\n    q{id}.m[0] = {s}",
+        "q{id}.m[0]",
+    ),
+    (
+        "narrow hash field",
+        "",
+        "var q{id} = Q([], [])\n    q{id}.h[0] = {s}",
+        "q{id}.h[0]",
+    ),
+];
+
+const PRELUDE: &str = "let case: Int = read()\nlet v: Int = read()\nstruct P:\n    var x: Int\n";
+
+const RANGED_PRELUDE: &str = "let case: Int = read()\nlet v: Int = read()\ntype R = 100..=1000\nstruct Q:\n    var m: Map<Int, R>\n    var h: HashMap<Int, R>\n";
+
 /// A store of `{v}` into `{l}` with the op `{o}`.
 const SHAPES: [(&str, &str); 5] = [
     ("compound", "{l} {o}= {v}"),
@@ -52,14 +98,21 @@ struct Case {
     step: &'static str,
 }
 
-/// One program per op, so each stays under the judge's size limit.
-fn matrix(op: &str, start: &str, step: &'static str) -> (String, Vec<Case>) {
-    let mut decls =
-        String::from("let case: Int = read()\nlet v: Int = read()\nstruct P:\n    var x: Int\n");
+/// One program per op group, so each stays under the judge's size limit.
+/// `min=` and `max=` have no binary form, so they skip the `plain` shapes.
+fn matrix(
+    prelude: &str,
+    places: &[(&str, &str, &str, &str)],
+    ops: &[(&str, &str, &'static str)],
+) -> (String, Vec<Case>) {
+    let mut decls = String::from(prelude);
     let (mut fns, mut calls, mut cases) = (String::new(), String::new(), Vec::new());
-    {
-        for (place, global, setup, name) in PLACES {
+    for &(op, start, step) in ops {
+        for &(place, global, setup, name) in places {
             for (shape, store) in SHAPES {
+                if op.starts_with('m') && store.contains(" {o} ") {
+                    continue;
+                }
                 for literal in [true, false] {
                     let i = cases.len();
                     let id = i.to_string();
@@ -113,8 +166,17 @@ fn every_int_op_through_every_place_traps_in_interp_and_native() {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("overflow-matrix");
     std::fs::create_dir_all(&dir).unwrap();
     let (mut wrong, mut total) = (Vec::new(), 0);
-    for (k, (op, start, step)) in OPS.into_iter().enumerate() {
-        let (program, cases) = matrix(op, start, step);
+    // A ranged place traps on its range (`... is outside ...`) instead.
+    let groups = OPS
+        .iter()
+        .map(|op| (PRELUDE, &PLACES[..], std::slice::from_ref(op), "overflow"))
+        .chain(
+            RANGED_OPS
+                .chunks(3)
+                .map(|ops| (RANGED_PRELUDE, &RANGED_PLACES[..], ops, "outside")),
+        );
+    for (k, (prelude, places, ops, trap)) in groups.enumerate() {
+        let (program, cases) = matrix(prelude, places, ops);
         total += cases.len();
         let path = dir.join(format!("matrix{k}.cp"));
         std::fs::write(&path, &program).unwrap();
@@ -125,8 +187,7 @@ fn every_int_op_through_every_place_traps_in_interp_and_native() {
         for (i, case) in cases.iter().enumerate() {
             let input = format!("{i} {}\n", case.step);
             let interp = cpl_cli::run_with_input(&["run", &path], input.as_bytes());
-            if interp.code != 3 || !interp.stderr.contains("overflow") || !interp.stdout.is_empty()
-            {
+            if interp.code != 3 || !interp.stderr.contains(trap) || !interp.stdout.is_empty() {
                 wrong.push(format!(
                     "{}: interp exits {} with {}",
                     case.name, interp.code, interp.stderr
@@ -147,7 +208,11 @@ fn every_int_op_through_every_place_traps_in_interp_and_native() {
             let ran = child.wait_with_output().unwrap();
             let stderr = String::from_utf8_lossy(&ran.stderr);
             if ran.status.code() != Some(3)
-                || !stderr.contains("integer overflow")
+                || !stderr.contains(if trap == "overflow" {
+                    "integer overflow"
+                } else {
+                    trap
+                })
                 || !ran.stdout.is_empty()
             {
                 wrong.push(format!(

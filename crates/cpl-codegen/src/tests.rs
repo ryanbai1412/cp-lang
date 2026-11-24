@@ -239,7 +239,10 @@ fn a_map_of_ranged_keys_and_values_stores_them_narrow() {
         "{narrow}"
     );
     // `+=` sums wide and checks the count against its range: the cell's width can't wrap it back in.
-    assert!(narrow.contains("cpl::fit<uint32_t>(ll("), "{narrow}");
+    assert!(
+        narrow.contains("cpl::fit<uint32_t>(cpl::iadd(ll("),
+        "{narrow}"
+    );
     assert!(narrow.contains("0, 4000000, \"0..=4000000\")"), "{narrow}");
     // A map given whole from elsewhere keeps its stored width.
     let wide = cpp(concat!(
