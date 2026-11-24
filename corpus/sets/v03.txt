@@ -40,6 +40,7 @@ atcoder_dp_z
 btoi17p2
 btoi19p6
 btoi20p3
+ccc01s5
 ccc03s4
 ccc04s5
 ccc05s5
@@ -55,6 +56,7 @@ ccc20s1
 ccc20s2
 ccc20s3
 ccc20s4
+ccc20s5
 ccc21s2
 ccc21s3
 ccc21s4
@@ -65,6 +67,7 @@ ccc23s1
 ccc23s2
 ccc23s4
 ccc23s5
+ccc96s3
 ccc99s5
 cco16p3
 cco21p2

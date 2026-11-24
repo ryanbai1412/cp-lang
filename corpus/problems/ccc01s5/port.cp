@@ -6,12 +6,11 @@
 //   other; a pick whose rows disagree is dropped at once, and lists stop at m - 1 words.
 //   Exponential in the worst case, but m * n <= 40 keeps it small.
 // original: corpus/submissions/5025769.cpp
-let (m, n): (Int, Int) = read()
+let (m, n): (1..=40, 1..=40) = read()
+assert m * n <= 40
 domain Pair = 1..=n
 let a: [Pair]Str = read()
 let b: [Pair]Str = read()
-
-fn starts_with(s: Str, head: Str) -> Bool = head.len <= s.len and s[0..head.len] == head
 
 var picked: List<Pair> = []
 /// Extend the list given what the top row (or, with `top_ahead` false, the bottom row) has spare.
@@ -21,9 +20,9 @@ fn search(ahead: Str, top_ahead: Bool) -> Bool:
     for p in Pair:
         let (long, short) = if top_ahead: (ahead + a[p], b[p]) else: (ahead + b[p], a[p])
         picked.push(p)
-        if starts_with(long, short):
+        if long.starts_with(short):
             if search(long[short.len..long.len], top_ahead): return true
-        elif starts_with(short, long):
+        elif short.starts_with(long):
             if search(short[long.len..short.len], not top_ahead): return true
         picked.pop()
     false

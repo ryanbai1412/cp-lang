@@ -8,32 +8,24 @@
 //   of its type, else dp of that last one. Scan from the back with a suffix sum; the answer is
 //   sum dp / n. O(N + M).
 // original: corpus/submissions/5032745.cpp
-let n: 1..=1000000 = read()
+let n: 1..=1e6 = read()
 domain Pos = 0..n
-let fav: [Pos]1..=500000 = read()
-
+domain Kind = 1..=5e5
+let fav: [Pos]Kind = read()
 let coach = fav[Pos.first!]
 let josh = fav[Pos.last!]
-if coach == josh:
-    print(1.0, precision: 8)  // WISH P4
-else:
-    var last_of: [1..=500000]?Pos = None
-    for i in Pos: last_of[fav[i]] = i
 
-    // dp[i]: probability Josh gets his burger if the chain of forced steals
-    // first reaches someone at or after i whose favorite is fav[i].
-    var dp: [Pos]F64 = 0.0     // WISH P4
-    var suffix_sum: F64 = 0.0  // WISH P4
-    for i in Pos.rev:
-        if fav[i] == coach:
-            dp[i] = 1.0
-        elif fav[i] == josh:
-            dp[i] = 0.0
-        elif last_of[fav[i]] == i:
-            let rem = n - i.idx
-            dp[i] = (1.0 + suffix_sum) / F64(rem)  // WISH P4
-        else:
-            dp[i] = dp[last_of[fav[i]]!]
-        suffix_sum += dp[i]
+var last_of: [Kind]?Pos = None
+for i in Pos: last_of[fav[i]] = i
 
-    print(suffix_sum / F64(n), precision: 8)  // WISH P4
+// chance[i]: Josh's chance when the chain of random picks reaches person i's burger first.
+var chance: [Pos]F64 = 0.0
+var after = 0.0  // the sum of chance over the people from i on
+for i in Pos.rev:
+    let last = last_of[fav[i]]!
+    chance[i] = if fav[i] == coach: 1.0
+                elif fav[i] == josh: 0.0
+                elif last == i: (1.0 + after) / F64(n - i.idx)
+                else: chance[last]
+    after += chance[i]
+print(if coach == josh: 1.0 else: after / F64(n), precision: 8)
