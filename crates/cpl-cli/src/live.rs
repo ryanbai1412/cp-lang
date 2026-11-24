@@ -108,7 +108,10 @@ fn watch(path: &str, recorded: Option<Vec<u8>>, live: &Live, record: Record) -> 
         }
         last = now;
         let result = record(None);
-        let mut shown = live.shown.lock().unwrap();
+        let mut shown = live
+            .shown
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         shown.changes += 1;
         match result {
             Ok(document) => {
@@ -167,7 +170,10 @@ fn answer(stream: TcpStream, live: &Live, run: &Run, record: Record) {
             .unwrap_or_default();
         ("application/json", replay(run, &body))
     } else {
-        let mut shown = live.shown.lock().unwrap();
+        let mut shown = live
+            .shown
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if let (Some(after), "/live") = (after, target) {
             shown = live
                 .changed

@@ -1339,7 +1339,9 @@ fn run_file(
             let read = std::sync::Arc::clone(&read);
             cpl_interp::Io::live(Box::new(move || {
                 let chunk = more();
-                read.lock().unwrap().push(&chunk);
+                read.lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .push(&chunk);
                 (!chunk.is_empty()).then_some(chunk)
             }))
         }
