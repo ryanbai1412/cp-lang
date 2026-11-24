@@ -171,10 +171,12 @@ print(go(b), bump(mut b))
 ");
     // `u` is a size over 4 or `b.free` where it is >= 0, and a literal's
     // walk stays between its least and greatest cell.
-    assert!(!out.contains("check_range(u,"), "{out}");
-    assert!(!out.contains("check_range(v,"), "{out}");
+    for v in ["u", "v"] {
+        assert!(!out.contains(&format!("check_range({v},")), "{out}");
+        assert!(!out.contains(&format!("check_arg({v},")), "{out}");
+    }
     // A store to the field ends its guard.
-    assert!(out.contains("check_range(w,"), "{out}");
+    assert!(out.contains("take(cpl::check_arg(w,"), "{out}");
 }
 
 #[test]
