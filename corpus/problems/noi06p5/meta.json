@@ -14,16 +14,20 @@
   {"id": "3753090", "language": "CPP17", "result": "WA", "time": 0.024487893, "memory_kb": 3284.0, "file": "corpus/submissions/3753090.cpp"},
   {"id": "3753130", "language": "CPP17", "result": "WA", "time": 0.023966079, "memory_kb": 3324.0, "file": "corpus/submissions/3753130.cpp"},
   {"id": "3753139", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3753139.cpp"},
-  {"id": "3753140", "language": "CPP17", "result": "AC", "time": 0.02413869, "memory_kb": 3332.0, "file": "corpus/submissions/3753140.cpp"},
-  {"id": "3753148", "language": "CPP17", "result": "AC", "time": 0.024329818, "memory_kb": 3332.0, "file": "corpus/submissions/3753148.cpp"},
-  {"id": "3753205", "language": "CPP17", "result": "AC", "time": 0.024311608, "memory_kb": 3332.0, "file": "corpus/submissions/3753205.cpp"},
-  {"id": "3753393", "language": "CPP17", "result": "AC", "time": 0.024315298, "memory_kb": 3292.0, "file": "corpus/submissions/3753393.cpp"}
+  {"id": "3753140", "language": "CPP17", "result": "AC", "time": 0.02413869, "memory_kb": 3332.0, "file": null},
+  {"id": "3753148", "language": "CPP17", "result": "AC", "time": 0.024329818, "memory_kb": 3332.0, "file": null},
+  {"id": "3753205", "language": "CPP17", "result": "AC", "time": 0.024311608, "memory_kb": 3332.0, "file": null},
+  {"id": "3753393", "language": "CPP17", "result": "AC", "time": 0.024315298, "memory_kb": 3292.0, "file": null}
  ],
- "cpp_ac": 4,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi06p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Output-only task. The four accepted C++ (3753140, 3753148, 3753205, 3753393) print a table of routes keyed on the test number and assert 1 <= T <= 10, so they crash on the statement sample (T = 0) and answer no other graph; they are no reference and their files are gone. orig.cpp is exact for n <= 20 and for forests and otherwise a deterministic randomized Warnsdorff search with Posa rotations; on the ten official files it matches or beats those tables (10 21 99 500 81 256 1000 200 29 95), and its n <= 10 answers match an exhaustive search on 150 generated graphs. checker.py accepts any valid route at least as long. Bounds come from the official guide1-10.in, since the statement gives none."
 }
