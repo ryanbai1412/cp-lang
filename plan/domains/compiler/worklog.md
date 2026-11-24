@@ -1197,3 +1197,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - VM-stmt: `allow_fed_loops` is gone from the VM compiler. Nothing ever set it to false, so the two fed-loop checks that read it only ever saw `true`.
 
 - VM-stmt: a fed loop nested in a fed fn compiles on the VM even when its body jumps further out. `try_compile_for_fed` no longer refuses it, since the fed-body escape path (`FeedBodyBreak` and the escape register) already carries such jumps out; every `yields` program in tests/programs and spec/conformance prints the same.
+
+- VM-stmt: the fed-call lending and its escape dispatch share the VM's helpers: `CallVmFeed` moves a lent place in and out with `write_slot`/`read_slot`, finds its root with `walk::root`, and one loop routes each fed-body escape back to its loop jump, `give` or inlined return (cpl-interp -40 lines).

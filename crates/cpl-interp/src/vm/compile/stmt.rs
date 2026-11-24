@@ -1249,34 +1249,23 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let after_pc = self.ops.len() as u32;
         self.patch(j_after, after_pc);
-        let mut k = 0;
-        let mut dispatch = |c: &mut Self| {
-            k += 1;
-            let r = c.alloc_i();
-            c.emit(Op::ConstImmI { dst: r, val: k }, Span::default());
-            c.emit(
-                Op::JmpEqI {
-                    a: escape,
-                    b: r,
-                    target: 0,
-                },
-                Span::default(),
-            )
-        };
-        for j in jumps {
-            let pc = dispatch(self);
-            self.jumps.push(LoopJump { pc, ..j });
-        }
-        for _ in gives {
-            let pc = dispatch(self);
-            if let Some(t) = self.give_targets.last_mut() {
-                t.exits_mut().push(pc);
-            }
-        }
-        for _ in rets {
-            let pc = dispatch(self);
-            if let Some((_, j)) = &mut self.inline_ret {
-                j.push(pc);
+        let (n_jumps, n_gives) = (jumps.len(), gives.len());
+        let mut jumps = jumps.into_iter();
+        for k in 1..=(n_jumps + n_gives + rets.len()) as i32 {
+            let b = self.alloc_i();
+            self.emit(Op::ConstImmI { dst: b, val: k }, Span::default());
+            let jmp = Op::JmpEqI {
+                a: escape,
+                b,
+                target: 0,
+            };
+            let pc = self.emit(jmp, Span::default());
+            match (jumps.next(), &mut self.inline_ret) {
+                (Some(j), _) => self.jumps.push(LoopJump { pc, ..j }),
+                (None, Some((_, j))) if k as usize > n_jumps + n_gives => j.push(pc),
+                _ => (self.give_targets.last_mut())
+                    .into_iter()
+                    .for_each(|t| t.exits_mut().push(pc)),
             }
         }
         true

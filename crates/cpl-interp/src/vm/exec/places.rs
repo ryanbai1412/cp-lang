@@ -5,7 +5,7 @@ use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{bug, interp_failed, trap, Flow, Interp, Res};
-use cpl_ir::{CmpOp, LoopId, PlaceKind};
+use cpl_ir::{CmpOp, LoopId};
 use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
@@ -1099,18 +1099,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             .map(|r| std::mem::take(&mut regs_v[r]))
                             .collect();
                         first += exprs.len();
-                        let mut p = place;
-                        while let PlaceKind::Index(b, _)
-                        | PlaceKind::Field(b, _)
-                        | PlaceKind::Some(b) = &p.kind
-                        {
-                            p = b;
-                        }
                         // The caller's locals are in registers; the place's root goes on the stack.
-                        let root = match p.kind {
-                            PlaceKind::Local(slot) => Some(slot),
-                            _ => None,
-                        };
+                        let (global, slot) = cpl_ir::walk::root(place);
+                        let root = (!global).then_some(slot);
                         if let Some(slot) = root {
                             let regs_i = &vm_regs_i[base_i..base_i + chunk.num_i];
                             let loc = &chunk.slot_map[slot];
@@ -1127,24 +1118,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let part = Rc::new(self.part_of(place, &mut indices.into_iter()));
                         if resumed.is_none() {
                             let val = std::mem::replace(self.lender(&part)?, Value::Moved);
-                            match fed_chunk.slot_map[k] {
-                                SlotLoc::V(r) => callee_regs_v[r as usize] = val,
-                                SlotLoc::I(r, _) => {
-                                    vm_regs_i[callee_base_i + r as usize] =
-                                        ScalarKind::unbox_val(&val)
-                                }
-                                SlotLoc::OptI { val: v, some, .. } => {
-                                    let (a, b) = ScalarKind::unbox_opt(&val);
-                                    vm_regs_i[callee_base_i + v as usize] = a;
-                                    vm_regs_i[callee_base_i + some as usize] = b;
-                                }
-                                SlotLoc::SmallTuple { .. } => {
-                                    return trap(
-                                        spans[cur_pc],
-                                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                    )
-                                }
-                            }
+                            let regs_i = &mut vm_regs_i[callee_base_i..];
+                            write_slot(&fed_chunk.slot_map[k], regs_i, &mut callee_regs_v, val);
                         }
                         held.push((k, part, root));
                     }
@@ -1271,14 +1246,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                 }
                 for (k, part, root) in held {
-                    let val = match fed_chunk.slot_map[k] {
+                    let (loc, regs_i) = (&fed_chunk.slot_map[k], &vm_regs_i[callee_base_i..]);
+                    let val = match *loc {
                         SlotLoc::V(r) => std::mem::take(&mut callee_regs_v[r as usize]),
-                        SlotLoc::I(r, kind) => kind.box_val(vm_regs_i[callee_base_i + r as usize]),
-                        SlotLoc::OptI { val, some, kind } => kind.box_opt(
-                            vm_regs_i[callee_base_i + val as usize],
-                            vm_regs_i[callee_base_i + some as usize],
-                        ),
-                        SlotLoc::SmallTuple { .. } => Value::Moved,
+                        _ => read_slot(loc, regs_i, &callee_regs_v),
                     };
                     if back.is_ok() {
                         back = self.lender(&part).map(|cell| *cell = val);
