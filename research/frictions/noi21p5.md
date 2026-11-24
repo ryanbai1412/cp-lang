@@ -8,4 +8,4 @@ REVERSE is `reverse(l - 1..r)` with no reliance on E being W transposed, and FLI
 matrix is a named tuple type with one `mul`.
 
 Evidence: stress agrees on 30/30 cases against the v0.2 port and 30/30 against the accepted
-C++. On the max case the port takes 0.44 s and the C++ 0.39 s, with the same output.
+C++. On the max case the port takes 0.41 s and the C++ 0.35 s, with the same output.

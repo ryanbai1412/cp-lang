@@ -32,17 +32,21 @@ let flip = Action<M2, Bool>(
     apply: (f, m, _) => if f: (m.3, m.2, m.1, m.0) else: m,
     over: prod,
 )
-var ops = SeqFold<M2, Bool>(prod, [step(c == 'E') for c in s], act: Some(flip))
+var ops = SeqFold<M2, Bool>(prod, act: Some(flip))
+for c in s: ops.push(step(c == 'E'))
 
 fn report():
     let m = ops.total
     print(m.0 + m.1, m.2 + m.3)
 
+fn span() -> Range<Int>:
+    let (l, r): (1..=n + q, 1..=n + q) = read()
+    l - 1..r
+
 report()
 repeat q:
     match read<Str>():
         "APPEND" => ops.push(step(read<Str>() == "E"))
-        kind =>
-            let (l, r): (1..=n + q, 1..=n + q) = read()
-            if kind == "FLIP": ops.apply(l - 1..r, true) else: ops.reverse(l - 1..r)
+        "FLIP" => ops.apply(span(), true)
+        _ => ops.reverse(span())
     report()
