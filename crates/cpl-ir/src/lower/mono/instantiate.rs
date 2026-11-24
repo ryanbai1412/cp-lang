@@ -558,9 +558,8 @@ impl<'a> Lowerer<'a> {
         let saved_env = std::mem::replace(&mut self.gen_env, t_env.clone());
         for (name, ty) in defaults {
             let key = format!("Self.{name}");
-            if !t_env.contains_key(&key) {
-                let default = self.resolve_ty(ty);
-                t_env.insert(key, GenArg::Ty(default));
+            if let std::collections::hash_map::Entry::Vacant(slot) = t_env.entry(key) {
+                slot.insert(GenArg::Ty(self.resolve_ty(ty)));
             }
         }
         self.cur_mod = saved_mod;
