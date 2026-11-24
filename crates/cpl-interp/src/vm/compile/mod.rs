@@ -268,7 +268,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             call_sites: self.call_sites,
             keeps: {
                 let mut keeps = self.keeps;
-                keeps.sort_by_key(|k| k.0);
+                cpl_diag::sort_by_key(&mut keeps, |k| u64::from(k.0));
                 keeps.dedup_by_key(|k| k.0);
                 keeps
             },

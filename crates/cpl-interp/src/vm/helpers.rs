@@ -437,15 +437,10 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
     let Value::List(keys) = keys else {
         return trap(span, "internal: expected the sort keys");
     };
-    let mut order: Vec<usize> = (0..keys.len()).collect();
-    order.sort_by(|&a, &b| {
-        let o = keys.get_unchecked_val(a).cmp(&keys.get_unchecked_val(b));
-        if desc {
-            o.reverse()
-        } else {
-            o
-        }
-    });
+    let order = crate::sort::stable_order(keys.len(), &mut |a, b| {
+        let (a, b) = (keys.get_unchecked_val(a), keys.get_unchecked_val(b));
+        Ok(if desc { a > b } else { a < b })
+    })?;
     match seq {
         Value::List(items) => Ok(Value::List(Rc::new(
             order.iter().map(|&k| items.get_unchecked_val(k)).collect(),
@@ -499,26 +494,9 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
         Value::Str(bytes) => sort_ord(Rc::make_mut(bytes).as_mut_slice(), desc),
         Value::Array(arr) => {
             let a = Rc::make_mut(arr);
-            match &mut a.data {
-                Cells::Int(v) | Cells::OneIntStruct(v) => sort_ord(v, desc),
-                Cells::OptInt(v) => sort_ord(v, desc),
-                Cells::Bool(v) => sort_ord(v, desc),
-                Cells::Char(v) => sort_ord(v, desc),
-                Cells::Values(v) => sort_ord(v, desc),
-                Cells::Float(v) => {
-                    v.sort_unstable_by(f64::total_cmp);
-                    if desc {
-                        v.reverse();
-                    }
-                }
-                Cells::SmallIntTuple { .. } => {
-                    let mut boxed: Vec<Value> =
-                        (0..a.len()).map(|i| a.get_unchecked_val(i)).collect();
-                    sort_ord(&mut boxed, desc);
-                    for (i, val) in boxed.into_iter().enumerate() {
-                        a.set(i, val);
-                    }
-                }
+            a.data.sort_unstable();
+            if desc {
+                a.data.reverse();
             }
         }
         _ => return trap(span, "internal: cannot sort this value"),
@@ -1213,8 +1191,12 @@ pub(super) fn assign_place_leaf_scalar(
     }
 }
 
-#[derive(Default)]
+#[cfg_attr(not(target_family = "wasm"), derive(Default))]
 pub(crate) struct VmStats {
+    /// `CPL_VM_STATS` is native only: the browser's stats are uninhabited, so
+    /// `cpl.wasm` drops the counting and the report.
+    #[cfg(target_family = "wasm")]
+    _never: std::convert::Infallible,
     pub(crate) total_fallbacks: u64,
     pub(crate) loop_fallbacks: u64,
     pub(crate) hot_loop_fallbacks: u64,
@@ -1227,6 +1209,12 @@ pub(crate) struct VmStats {
 }
 
 impl VmStats {
+    #[cfg(target_family = "wasm")]
+    pub(crate) fn from_env() -> Option<Self> {
+        None
+    }
+
+    #[cfg(not(target_family = "wasm"))]
     pub(crate) fn from_env() -> Option<Self> {
         let val = cpl_env::VM_STATS.raw()?;
         if val.is_empty() || val == "0" {
@@ -1253,19 +1241,10 @@ impl VmStats {
     }
 
     pub(crate) fn emit_stderr(&self) {
-        let mut entries: Vec<(&str, u64)> =
-            self.counts.iter().map(|(k, &v)| (k.as_str(), v)).collect();
-        entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
-        let mut loop_entries: Vec<(&str, u64)> = self
-            .loop_counts
-            .iter()
-            .map(|(k, &v)| (k.as_str(), v))
-            .collect();
-        loop_entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        let entries = by_count(&self.counts);
+        let loop_entries = by_count(&self.loop_counts);
         if cpl_env::VM_STATS.is("json") {
-            let mut walked: Vec<_> = self.walked_counts.iter().collect();
-            walked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-            let walked: Vec<(&str, u64)> = walked.iter().map(|(k, &v)| (k.as_str(), v)).collect();
+            let walked = by_count(&self.walked_counts);
             let s = cpl_json::write_with(|w| {
                 w.object().key("total_fallbacks").int(self.total_fallbacks);
                 w.key("loop_fallbacks").int(self.loop_fallbacks);
@@ -1299,6 +1278,14 @@ impl VmStats {
             }
         }
     }
+}
+
+/// `map`'s entries by count, largest first, then by name: `map` iterates by
+/// name and the shared sort is stable.
+fn by_count(map: &std::collections::BTreeMap<String, u64>) -> Vec<(&str, u64)> {
+    let mut v: Vec<(&str, u64)> = map.iter().map(|(k, &n)| (k.as_str(), n)).collect();
+    cpl_diag::sort_by_key(&mut v, |e| u64::MAX - e.1);
+    v
 }
 
 pub(super) fn place_tag(place: &Place) -> &'static str {

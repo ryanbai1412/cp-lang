@@ -36,7 +36,7 @@ pub(super) fn last_values(
             value: text,
         });
     }
-    lives.sort_by_key(|live| live.line);
+    cpl_diag::sort_by_key(&mut lives, |live| u64::from(live.line));
     lives
 }
 

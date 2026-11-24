@@ -719,13 +719,26 @@ impl Cells {
             Cells::OptInt(v) => v.sort_unstable(),
             Cells::Bool(v) | Cells::Char(v) => v.sort_unstable(),
             Cells::Float(v) => {
-                v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or_else(|| a.total_cmp(b)))
+                // As `i64`s ordered like `f64::total_cmp`, so cpl.wasm sorts one integer type.
+                let key = |b: i64| b ^ (((b >> 63) as u64) >> 1) as i64;
+                let mut bits: Vec<i64> = v.iter().map(|x| key(x.to_bits() as i64)).collect();
+                bits.sort_unstable();
+                for (x, b) in v.iter_mut().zip(bits) {
+                    *x = f64::from_bits(key(b) as u64);
+                }
             }
-            Cells::Values(v) => v.sort_unstable(),
-            Cells::SmallIntTuple { .. } => {
-                let mut vals = self.to_values();
-                vals.sort_unstable();
-                *self = Cells::from_values(vals);
+            Cells::Values(v) => crate::sort::sort_values(v),
+            // Every field kind packs into `i64` in its own order, so a tuple's
+            // `<` is its row's.
+            Cells::SmallIntTuple { stride, data, .. } => {
+                let k = *stride as usize;
+                let row = |i: usize| &data[i * k..i * k + k];
+                let Ok(order) =
+                    crate::sort::stable_order(data.len() / k, &mut |a, b| Ok(row(a) < row(b)))
+                else {
+                    return;
+                };
+                *data = order.iter().flat_map(|&i| row(i)).copied().collect();
             }
         }
     }
