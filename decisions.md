@@ -8554,7 +8554,7 @@ Tool gaps `lint expr Cpp` and `trace expr Cpp` are intended debt: a lint has not
 
 ## 458. `cpp_deep_copies` counts copies the spec requires (perf, 2026-11-23)
 
-- **Call.** The deep-copy bound is 32, not 29: core-05's `map-entry-var-copies`, `copies-in-two-fns-stay-apart` and `match-payload-outlives-reassigning-its-scrutinee` (twice) exist to show a copy is required, and each needs one. A correction, not a weakening; every other copy still has to go.
+- **Call.** The `cpp_deep_copies` bound is 37, not 29: core-05's `map-entry-var-copies`, `copies-in-two-fns-stay-apart` and `match-payload-outlives-reassigning-its-scrutinee` (twice), and adversarial round 47's `global-copied-by-a-fn-a-closure-calls-twice`, `global-copied-by-a-fn-called-in-a-loop`, `global-copied-by-a-recursive-fn`, `global-read-by-another-fn-after-the-copy` and `match-payload-outlives-a-fn-writing-its-global-scrutinee`, exist to show a copy is required, and each needs one. A correction, not a weakening; every other copy still has to go.
 - **Reverse.** Lower the bound when a real copy is removed, or drop a case that no longer needs its copy.
 
 ## 459. An enum's tokens are spelled `@tag` on each variant (spec, 2026-11-23)
