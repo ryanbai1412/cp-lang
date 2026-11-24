@@ -7,7 +7,7 @@ use crate::walk::Visitor;
 use crate::{File, Finding, Group, Level, Lint};
 use cpl_check::Analysis;
 use cpl_diag::{Code, Span};
-use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind, Type};
+use cpl_syntax::ast::{Cond, Expr, ExprKind, Stmt, StmtKind, Type};
 use cpl_syntax::library_lint::{self, is_name, Bound, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
 use std::collections::HashMap;
@@ -309,6 +309,9 @@ struct Spans {
     /// keeps out of the program's own fn of its fn's name, which the fix
     /// would make call itself.
     fns: Vec<(String, Span)>,
+    /// Each branch of an `if` with an `elif` or `else`: where its test
+    /// starts and its body ends. A branch matches an `if` from alone.
+    branches: Vec<(u32, u32)>,
 }
 
 impl Visitor for Spans {
@@ -328,6 +331,25 @@ impl Visitor for Spans {
         }
         if let ExprKind::Keep { target, .. } = &expr.kind {
             self.places.push(target.span.shift(self.base).start);
+        }
+        if let ExprKind::If {
+            branches,
+            otherwise,
+        } = &expr.kind
+        {
+            for (cond, body) in branches
+                .iter()
+                .filter(|_| branches.len() > 1 || otherwise.is_some())
+            {
+                let test = match cond {
+                    Cond::Expr(e) | Cond::Const(e) | Cond::Guard { test: e, .. } => e.span,
+                    Cond::Let { pat, .. } => pat.span,
+                };
+                if let Some(last) = body.stmts.last() {
+                    (self.branches)
+                        .push((test.shift(self.base).start, last.span.shift(self.base).end));
+                }
+            }
         }
     }
     fn ty(&mut self, ty: &Type) {
@@ -440,6 +462,15 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         (c.0 as u64) << 32 | (u32::MAX as usize - c.1) as u64
     });
     candidates.dedup_by_key(|c| (c.0, c.1));
+    // An `if` branch from its keyword: an `elif` matches `from`'s `if`.
+    let branches: Vec<Span> = (spans.branches.iter())
+        .filter_map(|&(test, end)| {
+            let kw = (0..before(test))
+                .rev()
+                .find(|&i| matches!(kinds.get(i), Some(K::If | K::Elif)))?;
+            Some(Span::new(toks[kw].span.start, end))
+        })
+        .collect();
     let tok_range = |s: &Span| {
         let (start, stop) = (before(s.start), before(s.end));
         (start < stop).then_some((start, stop))
@@ -522,6 +553,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             1 => {
                 let mut one: Vec<Vec<Span>> = (candidates.iter().map(|c| c.2))
                     .chain(spans.blocks.iter().flatten().copied())
+                    .chain(branches.iter().copied())
                     .map(|s| vec![s])
                     .collect();
                 cpl_diag::sort_by_key(&mut one, |r| r[0].order());
@@ -669,6 +701,10 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 .take_while(|c| *c == ' ' || *c == '\t')
                 .collect();
             let fix = fill(&d.decl.to, &got, &names, &d.spell, &indent, &stmts);
+            let fix = match kinds.get(before(span.start)) {
+                Some(K::Elif) => format!("el{fix}"),
+                _ => fix,
+            };
             let subject = (to.iter().zip(&to_labels))
                 .filter(|(_, label)| !**label)
                 .map(|(t, _)| &d.decl.to[t.span.start as usize..t.span.end as usize])
@@ -897,7 +933,9 @@ impl Matcher<'_> {
                 return false;
             }
         }
-        self.kinds[j] == *kind && self.text[j] == text && self.go(p + 1, j + 1, stop, holes, names)
+        let elif = p == 0 && *kind == K::If && self.kinds[j] == K::Elif;
+        (elif || (self.kinds[j] == *kind && self.text[j] == text))
+            && self.go(p + 1, j + 1, stop, holes, names)
     }
 
     /// The ends of the expressions, types and binding patterns starting at

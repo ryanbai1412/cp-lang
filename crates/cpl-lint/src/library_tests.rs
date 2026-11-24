@@ -814,3 +814,25 @@ fn a_hole_written_as_a_whole_condition_keeps_no_parens() {
         ["if n == 0:\n    print(0)\nelif let b = best, b > 4:\n    print(b)"]
     );
 }
+
+/// An `if` `from` matches one branch of an `if` chain, an `elif` as its
+/// `if`, and the fix keeps the other branches. Rule: R06.4.9.
+#[test]
+fn an_if_from_matches_one_branch_of_an_if_chain() {
+    let decl = "@lint(pos, from: \"if a > 0:\\n    b\", to: \"if pos(a):\\n    b\", holes: \"b\")\npub fn pos(a: Int) -> Bool = a > 0\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "pos")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let chain = "fn f(x: Int, y: Int):\n    if x > 0:\n        print(1)\n    elif y > 0:\n        print(2)\n    else:\n        print(3)\nf(1, 2)\n";
+    assert_eq!(
+        found(chain),
+        [
+            "if pos(x):\n        print(1)",
+            "elif pos(y):\n        print(2)"
+        ]
+    );
+}
