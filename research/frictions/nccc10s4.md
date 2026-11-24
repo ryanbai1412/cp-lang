@@ -46,3 +46,7 @@ then and converted with `Corner(id[p])`.
 (`corpus/submissions/4225209.cpp`). The max case (12 lines, |coordinate| <= 2000)
 gives the same answer as the C++ in 4.9 s, the v0.2 port's time; the C++ takes 2.6 s. The
 emitted C++ is 37 KB, over the 32 KB generic judge target (W0201).
+
+## Tuned twin retired (2026-11-24)
+
+The plain port is within 1.1x of the accepted C++ on `gen.py --max` on both counts (best of 9, CPU time and peak RSS, `scripts/corpus.py`'s judge builds): 2.337 s / 1.9 MB against 2.306 s / 6.2 MB (1.01x time, 0.3x memory), with the same output, so `perf.cp` is deleted (performance/R6 keeps a twin only over 1.1x).

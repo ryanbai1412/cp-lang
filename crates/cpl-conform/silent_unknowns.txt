@@ -701,7 +701,6 @@
 5 corpus/problems/mccc6s3/port.cp
 9 corpus/problems/mmcc14p3/port.cp
 1 corpus/problems/nccc10s2/port.cp
-31 corpus/problems/nccc10s4/perf.cp
 31 corpus/problems/nccc10s4/port.cp
 20 corpus/problems/nccc10s4/spec.cp
 4 corpus/problems/nccc8s1/port.cp
