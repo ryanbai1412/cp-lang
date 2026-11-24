@@ -1,4 +1,3 @@
 # set code count; see src/corpus_tests.rs
-spec L0506 1
 std L0545 1
 std L0567 2
