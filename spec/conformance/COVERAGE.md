@@ -12,7 +12,7 @@ Cases: 3489 (3427 passing). Rules: 616.
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 164 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 163 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 197 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -20,7 +20,7 @@ Cases: 3489 (3427 passing). Rules: 616.
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 96 rules, 252 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 31 rules, 107 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 31 rules, 108 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -147,7 +147,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.3.1 [1+ 0-]: `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence capabilities of ...
 - R02.3.2 [4+ 2-]: `Str of "01?"` is a string whose characters come from the literal's alphabet. The alphabet...
 - R02.3.3 [3+ 0-]: `+` concatenates (allocating; the cost is visible as a new value); either side may be a sl...
-- R02.4.1 [4+ 1-]: `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`); `x.is_none_o...
+- R02.4.1 [4+ 0-]: `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`); `x.is_none_o...
 - R02.4.2 [2+ 1-]: `T` converts to `?T` implicitly; the other way is explicit: `x ?? d` (lazy fallback), `x!`...
 - R02.4.3 [1+ 0-]: When `T` has a spare value (a niche), `?T` takes no more bytes than `T` (chapter 3). Other...
 - R02.4.4 [1+ 2-]: **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`, `None` if either side i...
@@ -575,7 +575,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.3.2 [1+ 0-]: Laws are never assumed by the type checker. They select documented, answer-preserving spec...
 - R08.3.3 [1+ 0-]: `cpl stress` samples laws on the values a program actually builds; `laws_hold(op, samples)...
 - R08.3.4 [1+ 0-]: A false law gives wrong answers, never undefined behaviour.
-- R08.4.1 [2+ 1-]: `(f: T, ..)` is a bound: any record with at least those fields, in any order. `R` names th...
+- R08.4.1 [2+ 2-]: `(f: T, ..)` is a bound: any record with at least those fields, in any order. `R` names th...
 - R08.4.2 [1+ 1-]: There is no subtyping: a record with more fields is not usable where fewer are expected un...
 - R08.4.3 [1+ 0-]: Row-polymorphic functions are monomorphized per record type.
 - R08.4.4 [1+ 4-]: Nine safety rules (decision 146): no hidden heap copies, no field reordering visible to th...
@@ -786,7 +786,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0112 `let ... else` block falls through: 1 case(s)
 - E0201 Unresolved name: 14 case(s)
 - E0202 Duplicate definition: 4 case(s)
-- E0203 Unknown field or method: 19 case(s)
+- E0203 Unknown field or method: 18 case(s)
 - E0204 Unknown type: 4 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
@@ -841,7 +841,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0701 Ambiguous trait method: 2 case(s)
 - E0702 Overload by type: 2 case(s)
 - E0703 Operator tuple: 1 case(s)
-- E0704 Record misses a row field: 2 case(s)
+- E0704 Record misses a row field: 3 case(s)
 - E0705 Unsupported specialization: 1 case(s)
 - E0706 Fold without an identity: 1 case(s)
 - E0801 Context value is not a constant: 1 case(s)
