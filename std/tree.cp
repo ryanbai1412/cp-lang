@@ -123,6 +123,9 @@ pub struct Rooted<V, Pre, A>:
     /// empty: `domain V = 0..2; let par: [V]?V = [Some(1), Some(0)]; Rooted.from_parents(par).size(0) == 2` (traps R0301)
     /// traps: when the parents have a cycle; `try_from_parents` is for input that may
     /// example: `domain V = 0..3; let par: [V]?V = [None, Some(0), Some(1)]; let t = Rooted.from_parents(par); t.depth(2) == 2 and t.parent(1) == Some(0)`
+    @lint(depth_by_hand, from: "var d: List<Int> = [0, 0]\nfor v in 2..=n:\n    d.push(d[par[v - 2]] + 1)", to: "Rooted.from_parents(par).depth(v)", holes: "n")
+    @lint(depth_by_hand, from: "var d: List<Int> = [0, 0]\nfor v in 2..=n:\n    s\n    d.push(d[par[v - 2]] + 1)", to: "Rooted.from_parents(par).depth(v)", holes: "n, s")
+    @lint(depth_by_hand, from: "var d: T = 0\nfor k in r:\n    s\n    d[x] = d[k] + 1\n    t", to: "Rooted.from_parents(parents).depth(x)", holes: "T, r, s, x, t")
     pub fn from_parents(par: [V]?V) -> Rooted<V, _, _> = Rooted.try_from_parents(par)!
 
     /// `from_parents` for parents that may not form a forest: `None` when they have a cycle.

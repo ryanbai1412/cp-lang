@@ -1539,6 +1539,7 @@ pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1], [2], [3], [1]]; find_cycle(g) == Some([1, 2, 3])`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; find_cycle(g) == None`
+@lint(cycle_by_colors, from: "var color: List<Int> = [0 for _ in 0..=n]\nvar cyc = false\nfn dfs(u: Int):\n    color[u] = 1\n    for v in g[u]:\n        if color[v] == 1:\n            cyc = true\n        elif color[v] == 0:\n            dfs(v)\n    color[u] = 2\nfor u in 1..=n:\n    if color[u] == 0:\n        dfs(u)", to: "let cyc = find_cycle(g) != None", holes: "n")
 pub fn find_cycle<V>(g: Next<V>) -> ?List<V>:
     let out = [V] v => [a.to for a in g.out(v)]
     var state: [V]Int = 0  // 0 unseen, 1 on the dfs path, 2 finished

@@ -14,8 +14,6 @@ super::msgs! {
     COPY_COMPREHENSION = "L0549", "`{}` copies a sequence one element at a time";
     COUNTER_BY_MAP = "L0579", "`{}` counts by hand: it is a `Counter`";
     CROSS_BY_HAND = "L0556", "`{}` is a cross product of points kept in two lists";
-    CYCLE_BY_COLORS = "L0565", "`fn {}` colours `{}` {} on entry and {} on exit to find a directed cycle by hand";
-    DEPTH_BY_HAND = "L0567", "`{}` steps each depth from the parent's by hand";
     DIFF_BY_HAND = "L0559", "`{}` is a difference array kept by hand";
     DOMAIN_EMPTY_THEN_FIRST_LAST = "L0304", "`{}` is empty when `{}` is {}, and then `{}` traps";
     DOMAIN_KEYED_MAP = "L0412", "`{}` is keyed by the domain `{}`";

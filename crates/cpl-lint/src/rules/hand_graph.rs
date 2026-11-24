@@ -1,15 +1,13 @@
-//! Graph and window algorithms written out by hand: a three-colour DFS for
-//! a directed cycle (`cycle_by_colors`), a monotone deque for each window's
-//! minimum or maximum (`sliding_min_by_hand`), and depths stepped from the
-//! parent's (`depth_by_hand`).
+//! A monotone deque for each window's minimum or maximum, written out by
+//! hand (`sliding_min_by_hand`).
 
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
-use crate::{File, Finding, CYCLE_BY_COLORS, DEPTH_BY_HAND, SLIDING_MIN_BY_HAND};
+use crate::{File, Finding, SLIDING_MIN_BY_HAND};
 use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, index1, int, name, squash};
+use super::shapes::{compare, name, squash};
 use super::Warn;
 use cpl_diag::msgs::lint_rules;
 
@@ -17,63 +15,16 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandGraph {
         src: file.src,
         base: 0,
-        structs: file
-            .top_level()
-            .filter_map(|(base, s)| match &s.kind {
-                StmtKind::Struct(decl) => Some((
-                    s.span.shift(base),
-                    decl.fields.iter().map(|f| f.name.text.clone()).collect(),
-                )),
-                _ => None,
-            })
-            .collect(),
-        compared: Vec::new(),
-        depths: Vec::new(),
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
-    v.base = 0;
-    for (t, at) in std::mem::take(&mut v.depths) {
-        if v.compared.contains(&t) {
-            v.warn_at(
-                &DEPTH_BY_HAND,
-                at,
-&lint_rules::DEPTH_BY_HAND, &[&t],
-                "`Rooted.from_parents(par)` (`par: [V]?V`, `None` at the root) or `Rooted.new(adj, root)` knows `t.depth(v)`, `t.parent(v)` and `t.lca(u, v)`".to_string(),
-            );
-        }
-    }
     v.out
 }
 
 struct HandGraph<'a> {
     src: &'a str,
     base: u32,
-    /// Each struct and its fields: a depth table that is a struct's own
-    /// field (std's `Rooted`, `JumpTree`) is how that type answers depths.
-    structs: Vec<(Span, Vec<String>)>,
-    /// Tables read at two places in one comparison or difference,
-    /// `depth[u] > depth[v]`, `depth[u] - depth[a]`: the depths feed a walk
-    /// up the tree or a distance, which `Rooted` answers. Depths read only
-    /// as values are one pass by hand, cheaper than building the tree.
-    compared: Vec<String>,
-    /// Each table stepped from the parent's, and where.
-    depths: Vec<(String, Span)>,
     out: Vec<Finding>,
-}
-
-/// `t[i] = c` with a name index and an integer: the table, the index, `c`.
-fn mark(stmt: &Stmt) -> Option<(&str, &str, i128)> {
-    let StmtKind::Assign {
-        target,
-        op: AssignOp::Set,
-        value,
-    } = &stmt.kind
-    else {
-        return None;
-    };
-    let (t, i) = index1(target)?;
-    Some((t, name(i)?, int(value)?))
 }
 
 /// `xs.method(args)` as a statement: the receiver, the method, the args.
@@ -155,39 +106,6 @@ fn has_followed(text: &str, word: &str, next: &str) -> bool {
     starts_of(text, word).any(|i| text[i + word.len()..].trim_start().starts_with(next))
 }
 
-/// Whether `text` compares an element of `t` with `== c`.
-fn tests_colour(text: &str, t: &str, c: i128) -> bool {
-    let c = c.to_string();
-    starts_of(text, t).any(|i| {
-        let rest = &text[i + t.len()..];
-        if !rest.starts_with('[') {
-            return false;
-        }
-        let mut depth = 0;
-        for (j, ch) in rest.char_indices() {
-            match ch {
-                '[' => depth += 1,
-                ']' => {
-                    depth -= 1;
-                    if depth == 0 {
-                        let Some(rest) = rest[j + 1..].trim_start().strip_prefix("==") else {
-                            return false;
-                        };
-                        let rest = rest.trim_start();
-                        return rest.starts_with(&c)
-                            && !rest[c.len()..]
-                                .chars()
-                                .next()
-                                .is_some_and(super::shapes::ident_char);
-                    }
-                }
-                _ => {}
-            }
-        }
-        false
-    })
-}
-
 impl super::Warn for HandGraph<'_> {
     fn sink(&mut self) -> (&mut Vec<Finding>, u32) {
         (&mut self.out, self.base)
@@ -197,35 +115,6 @@ impl super::Warn for HandGraph<'_> {
 impl HandGraph<'_> {
     fn text(&self, span: Span) -> &str {
         span.shift(self.base).text(self.src)
-    }
-
-    /// `fn dfs(u): c[u] = 1; ... c[v] == 1 ...; c[u] = 2`.
-    fn colours(&mut self, decl: &FnDecl) {
-        let FnBody::Block(body) = &decl.body else {
-            return;
-        };
-        let Some(u) = decl.params.first().map(|p| p.name.text.as_str()) else {
-            return;
-        };
-        let (Some(first), Some(last)) = (body.stmts.first(), body.stmts.last()) else {
-            return;
-        };
-        let (Some((t, i, open)), Some((t2, i2, done))) = (mark(first), mark(last)) else {
-            return;
-        };
-        if t != t2 || i != u || i2 != u || open == done {
-            return;
-        }
-        if !tests_colour(self.text(body.span), t, open) {
-            return;
-        }
-        let f = &decl.name.text;
-        self.warn_at(
-            &CYCLE_BY_COLORS,
-            decl.sig_span,
-&lint_rules::CYCLE_BY_COLORS, &[&f, &t, &open, &done],
-            "`find_cycle(g)` (`std.graph`) returns one directed cycle or `None`, without recursion: `find_cycle(g) != None` asks whether there is one, and `topo(g)` gives an order when there is none".to_string(),
-        );
     }
 
     /// `for i ..: while .. q[q.len - 1] >= a[i]: q.pop()` (or `if a[q.last!] < a[i]: break`
@@ -299,76 +188,10 @@ impl HandGraph<'_> {
             format!("`var w = Window({m})` (`std.window`) keeps that deque: `w.push(x)` as an item enters, `w.pop()` as the oldest leaves, and `w.all!` is the window's {m}"),
         );
     }
-
-    /// `d[v] = d[p] + 1` or `d.push(d[p] + 1)` on a table named for depth.
-    fn depth(&mut self, stmt: &Stmt) {
-        let (t, value) = match &stmt.kind {
-            StmtKind::Assign {
-                target,
-                op: AssignOp::Set,
-                value,
-            } => match index1(target) {
-                Some((t, _)) => (t, value),
-                None => return,
-            },
-            _ => match method_call(stmt, std_fn::PUSH) {
-                Some((t, [a])) => (t, &a.value),
-                _ => return,
-            },
-        };
-        let lower = t.to_ascii_lowercase();
-        if !["dep", std_fn::LEVEL, "lvl"]
-            .iter()
-            .any(|w| lower.contains(w))
-        {
-            return;
-        }
-        let ExprKind::Binary {
-            op: BinOp::Add,
-            lhs,
-            rhs,
-            ..
-        } = &unparen(value).kind
-        else {
-            return;
-        };
-        if int(rhs) != Some(1) || index1(lhs).map(|(b, _)| b) != Some(t) {
-            return;
-        }
-        let at = stmt.span.shift(self.base);
-        if self.structs.iter().any(|(s, fields)| {
-            s.start <= at.start && at.end <= s.end && fields.iter().any(|f| f == t)
-        }) {
-            return;
-        }
-        self.depths.push((t.to_string(), at));
-    }
 }
 
 impl Visitor for HandGraph<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
-        if let StmtKind::Fn(decl) = &stmt.kind {
-            self.colours(decl);
-        }
         self.deque(stmt);
-        self.depth(stmt);
-    }
-    fn expr(&mut self, expr: &Expr) {
-        let pair = match &unparen(expr).kind {
-            ExprKind::Binary {
-                op: BinOp::Sub,
-                lhs,
-                rhs,
-                ..
-            } => Some((&**lhs, &**rhs)),
-            _ => compare(expr).map(|(a, _, b)| (a, b)),
-        };
-        if let Some((a, b)) = pair {
-            if let (Some((x, _)), Some((y, _))) = (index1(a), index1(b)) {
-                if x == y {
-                    self.compared.push(x.to_string());
-                }
-            }
-        }
     }
 }
