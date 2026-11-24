@@ -505,6 +505,9 @@ impl<'p> Emitter<'p> {
                 });
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                if !rev && self.read_streamed(id, seq, &format!("{cpp} {var}"), &first, body, out) {
+                    return;
+                }
                 if !rev && self.sink_loop(id, seq, &var, &cpp, &first, body, out) {
                     return;
                 }
@@ -644,6 +647,60 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+    }
+
+    /// `for x in read<[D]T>()` reads each `x` as its round begins, with no
+    /// array, when the body can neither trap, stop early, read nor print:
+    /// nothing can tell that from reading every value first.
+    fn read_streamed(
+        &mut self,
+        id: LoopId,
+        seq: &Expr,
+        decl: &str,
+        first: &[String],
+        body: &Block,
+        out: &mut String,
+    ) -> bool {
+        let ExprKind::Read(spec) = &seq.kind else {
+            return false;
+        };
+        let cpl_ir::Spec::Array { dims, elem } = spec.as_ref() else {
+            return false;
+        };
+        let scalar = match elem.as_ref() {
+            cpl_ir::Spec::Int { .. } => true,
+            cpl_ir::Spec::Plain(ty) => ty.is_scalar() && *ty != Ty::Char,
+            _ => false,
+        };
+        if dims.len() != 1 || !scalar {
+            return false;
+        }
+        let pushed = self.fused_pushes.last().map_or(usize::MAX, |(vec, _)| *vec);
+        let traps = self.target.checks != crate::Checks::None;
+        let call_ok = |e: &Expr| {
+            crate::uses::effects::pure_call(
+                self.program,
+                &self.devirt,
+                &self.sink_pure,
+                self.fn_id,
+                traps,
+                e,
+            )
+        };
+        if !crate::uses::effects::trap_free_stmts(&body.stmts, pushed, traps, &call_ok) {
+            return false;
+        }
+        let len = self.dim(&dims[0]);
+        let value = self.read(elem).text;
+        let (at, end) = (self.temp(), self.temp());
+        self.line(
+            out,
+            &format!("for (ll {at} = 0, {end} = {len}; {at} < {end}; {at}++) {{"),
+        );
+        let mut opening = vec![format!("{decl} = {value};")];
+        opening.extend(first.iter().cloned());
+        self.loop_body(id, &opening, body, out);
+        true
     }
 }
 

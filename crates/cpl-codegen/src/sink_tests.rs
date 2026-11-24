@@ -221,3 +221,31 @@ fn a_list_a_local_fn_pushes_to_is_built_not_fed() {
     ));
     assert!(!cpp.contains("cpl_each_picks"), "{cpp}");
 }
+
+#[test]
+fn a_generator_over_a_read_array_reads_each_value_in_the_callee_loop() {
+    let cpp = cpp(concat!(
+        "domain V = 0..5\n",
+        "fn take<S: Seq<Int>>(xs: S) -> Int:\n",
+        "    var s = 0\n",
+        "    for x in xs: s += x\n",
+        "    s\n",
+        "print(take(x * 2 for x in read<[V]0..=9>()))\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(solve.contains("cpl_sink_"), "{solve}");
+    assert!(!solve.contains("std::vector"), "{solve}");
+}
+
+#[test]
+fn a_loop_over_a_read_array_that_reads_more_reads_the_array_first() {
+    let cpp = cpp(concat!(
+        "domain V = 0..5\n",
+        "var s = 0\n",
+        "for x in read<[V]0..=9>():\n",
+        "    let y = read<0..=9>()\n",
+        "    print(x * 10 + y)\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(solve.contains("std::vector"), "{solve}");
+}
