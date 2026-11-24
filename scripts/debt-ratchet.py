@@ -1222,7 +1222,7 @@ def unregistered_lists(root: Path) -> list[str]:
 # committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
 HARD_ZERO = frozenset({
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers",
-    "continue_on_error", "unregistered_lists", "codegen_effect_guesses",
+    "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.

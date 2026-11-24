@@ -23,7 +23,7 @@ lists what is still open.
 
 ### Library
 
-- The library is respecified in `spec/std/`: about 1,700 documented
+- The library is respecified in `std/`: about 1,700 documented
   signatures, each with its cost.
 - Prefix sums and Fenwick trees answer range queries with `fold(r)`, not
   `sum`.
@@ -36,6 +36,15 @@ lists what is still open.
 
 ### Breaking changes
 
+- `--json` keys follow one naming rule (`spec/tools/cli.md`): elapsed
+  time is `time_ms` (`time_ns` in `cpl profile`), peak memory `peak_kb`,
+  limits `time_limit_ms` and `memory_limit_kb` (`cpl judges` and `cpl bench`),
+  and `cpl judges`' thread stack `thread_stack_kb`,
+  the source `path`, a pass flag `ok`, and a count `\<noun\>_count`. Scripts
+  that read `ms`, `kb`, `nanos`, `file`, `passed`, `total`, `samples`,
+  `inputs`, `lines`, `covered`, `saved_passed`, `cpl stress`'s `cases` or
+  `cpl judges`' `time_ms`, `memory_mb` and `thread_stack_mb` must read the
+  new names.
 - `none` becomes `None` and `some` becomes `Some`. The 0.2.2 compiler
   already accepts both spellings.
 - `D.bounds` is now `D.cuts`, `(+, max)` is `each(+, max)`,

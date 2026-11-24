@@ -22,7 +22,7 @@ lists what is still open.
 
 ### Library
 
-- The library is respecified in `spec/std/`: about 1,700 documented
+- The library is respecified in `std/`: about 1,700 documented
   signatures, each with its cost.
 - Prefix sums and Fenwick trees answer range queries with `fold(r)`, not
   `sum`.
