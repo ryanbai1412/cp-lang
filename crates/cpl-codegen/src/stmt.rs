@@ -849,13 +849,19 @@ impl<'p> Emitter<'p> {
                 if later {
                     self.line(
                         out,
-                        &format!("auto {name} = cpl::memo(std::move({body}_body), {text});"),
+                        &format!(
+                            "auto {name} = cpl::memo({}, {text});",
+                            self.move_of(&value.ty, &format!("{body}_body"))
+                        ),
                     );
                     self.line(out, &format!("auto {body} = {name}.body();"));
                 } else {
                     self.line(
                         out,
-                        &format!("auto {name} = cpl::memo(std::move({body}), {text});"),
+                        &format!(
+                            "auto {name} = cpl::memo({}, {text});",
+                            self.move_of(&value.ty, &body)
+                        ),
                     );
                 }
             }
@@ -1022,7 +1028,10 @@ impl<'p> Emitter<'p> {
                                 if self.spent.contains(of)
                                     && !self.spread.contains_key(&(self.current_scope(), *of)) =>
                             {
-                                format!("std::get<{index}>(std::move({}))", self.names[*of])
+                                format!(
+                                    "std::get<{index}>({})",
+                                    self.move_of(&base.ty, &self.names[*of])
+                                )
                             }
                             _ => {
                                 if fixed_len.is_some() {
@@ -1063,11 +1072,10 @@ impl<'p> Emitter<'p> {
                     ExprKind::Local(built)
                         if text == self.names[built]
                             && !self.ref_bound.contains(&built)
-                            && !init.ty.is_scalar()
                             && !matches!(init.ty, Ty::Fn(..))
                             && built_in(whole, built) =>
                     {
-                        format!("std::move({text})")
+                        self.move_of(&init.ty, &text)
                     }
                     _ => text,
                 };
@@ -1212,12 +1220,13 @@ impl<'p> Emitter<'p> {
                         && matches!(value.kind, ExprKind::Field(..) | ExprKind::Index(..))
                         && self.returned_item_dies(std::slice::from_ref(value), 0)
                     {
-                        text = self.moved_if(true, text);
+                        text = self.moved_if(true, &value.ty, text);
                     }
                     if let Some(local) = rekeyed {
                         let name = &self.names[local];
                         if let Some(rest) = text.strip_prefix(&format!("cpl::rekey_own({name}, ")) {
-                            text = format!("cpl::rekey_own(std::move({name}), {rest}");
+                            text =
+                                format!("cpl::rekey_own({}, {rest}", self.move_of(&value.ty, name));
                         }
                     }
                     self.last_use_call = false;
@@ -1674,7 +1683,7 @@ impl Emitter<'_> {
             } else {
                 let (cpp, held) = (self.ty(ty), self.temp());
                 self.line(out, &format!("{cpp} {held} = {text};"));
-                args.push(format!("std::move({held})"));
+                args.push(self.move_of(ty, &held));
             }
         }
         args.join(", ")
@@ -1707,7 +1716,7 @@ impl Emitter<'_> {
                 let text = self.expr(part).text;
                 self.line(out, &format!("auto {tmp} = {text};"));
                 cpp.push(format!("decltype({tmp})"));
-                vals.push(format!("std::move({tmp})"));
+                vals.push(self.move_of(ty, &tmp));
             } else {
                 cpp.push(self.ty(ty));
                 vals.push(self.expr(part).text);

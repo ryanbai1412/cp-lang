@@ -105,7 +105,11 @@ impl<'p> Emitter<'p> {
             self.spread.insert((self.current_scope(), slot), names);
             return Some((params, Vec::new()));
         }
-        let moved_in: Vec<String> = names.iter().map(|n| format!("std::move({n})")).collect();
+        let moved_in: Vec<String> = names
+            .iter()
+            .zip(parts.iter())
+            .map(|(n, t)| self.move_of(t, n))
+            .collect();
         let mut lines = vec![format!("{decl} = {cpp}{{{}}};", moved_in.join(", "))];
         lines.extend(first.iter().cloned());
         Some((params, lines))
@@ -238,7 +242,15 @@ impl<'p> Emitter<'p> {
         let close = match (returns, outermost, &result) {
             (false, ..) => "});".to_string(),
             (true, false, _) => "}) == 2) return 2;".to_string(),
-            (true, true, Some(held)) => format!("}}) == 2) return std::move(*{held});"),
+            (true, true, Some(held)) => {
+                let ret = self
+                    .fn_id
+                    .map_or(Ty::Error, |f| self.program.fns[f].ret.clone());
+                format!(
+                    "}}) == 2) return {};",
+                    self.move_of(&ret, &format!("*{held}"))
+                )
+            }
             (true, true, None) if self.in_setup => "}) == 2) return false;".to_string(),
             (true, true, None) => "}) == 2) return;".to_string(),
         };

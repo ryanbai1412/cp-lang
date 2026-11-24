@@ -164,7 +164,13 @@ impl<'p> Emitter<'p> {
         );
         let mut cases = String::new();
         for (k, alt) in alts.iter().enumerate() {
-            out.push_str(&format!("    {name}({alt} f) : v(std::move(f)) {{}}\n"));
+            let def = &self.program.closures[cids[k]];
+            let params = def.params.iter().map(|&s| def.locals[s].ty.clone());
+            let fn_ty = Ty::Fn(params.collect(), Box::new(def.ret.clone()));
+            out.push_str(&format!(
+                "    {name}({alt} f) : v({}) {{}}\n",
+                self.move_of(&fn_ty, "f")
+            ));
             let case = match k + 1 == alts.len() {
                 true => "default".to_string(),
                 false => format!("case {k}"),
