@@ -580,6 +580,10 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
             self.seed(fill)
             return
         let v = fill ?? m.id
+        if let f = act:
+            for p in 0..has_lz.len:
+                lz[p] = f.id
+                has_lz[p] = false
         for i in 0..size: t[size + i] = if i < D.count: v else: m.id
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
 
@@ -594,9 +598,9 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree(+, [1, 2, 3, 4]).walk(1..4).collect() == [2, 7]`
     pub fn walk(self, r: Range<D>) -> yields T:
         let (lo, hi) = r.ends
-        if lc.len > 0:
+        if lc.len > 0 or act != None:
             if lo >= hi: return
-            let (l, h) = (self.slot(lo), self.slot(hi - 1) + 1)
+            let (l, h) = if lc.len > 0: (self.slot(lo), self.slot(hi - 1) + 1) else: (lo, hi)
             var stack: List<(Int, Int, Int, ?F)> = [(1, 0, size, None)]
             while let (p, nl, nr, pend) = stack.pop():
                 if h <= nl or nr <= l: continue
