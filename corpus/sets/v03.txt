@@ -655,6 +655,7 @@ ioi25_festival
 ioi25_migrations
 ioi25_obstacles
 ioi25_souvenirs
+ioi25_triples
 ioi94p1
 ioi99p2
 ioi99p6
