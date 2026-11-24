@@ -393,11 +393,16 @@ impl<'p> Emitter<'p> {
                     1
                 )
             ),
-            "in" => piece.code.replacen(
-                "inline bool more() { ",
-                "inline bool more() { if (parsing) return false; ",
-                1,
-            ),
+            // A string being parsed is the whole input: reading on would take stdin into it.
+            "in" => {
+                let code = piece.code.replacen(
+                    "inline bool more() {",
+                    "inline bool more() { if (parsing) return false;",
+                    1,
+                );
+                assert_ne!(code, piece.code, "the `in` piece defines `more()`");
+                code
+            }
             _ => piece.code.to_string(),
         }
     }
