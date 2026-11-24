@@ -900,16 +900,19 @@ def at_max(pkg, cpl, exe, orig, data):
     runs = [measure(exe, data, 2 * ms / 1000 + 1) for _ in range(3)]
     if any(r is None or r[0] != 0 for r in runs):
         return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
-    if min(r[2] for r in runs) > ms / 1000 or min(r[3] for r in runs) > mb:
-        found.append(f"over-limit {pid} --max")
+    mine, theirs = min(r[2] for r in runs), None
     if orig:
         wants = [measure(orig, data, 4 * ms / 1000 + 1) for _ in range(3)]
         if all(w is not None and w[0] == 0 for w in wants):
             if not agrees(pkg, data, runs[0][1], wants[0][1]):
                 found.append(f"disagrees {pid} --max")
-            mine, theirs = min(r[2] for r in runs), min(w[2] for w in wants)
+            theirs = min(w[2] for w in wants)
             if mine >= FLOOR and mine > SLOWER * max(theirs, FLOOR):
                 found.append(f"slow {pid} --max")
+    # On a box slower than the judge the accepted C++ itself runs past the
+    # limit; the port then answers to the accepted C++'s time instead.
+    if mine > max(ms / 1000, theirs or 0) or min(r[3] for r in runs) > mb:
+        found.append(f"over-limit {pid} --max")
     return found
 
 

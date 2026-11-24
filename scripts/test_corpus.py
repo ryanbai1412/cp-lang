@@ -594,6 +594,10 @@ class AtMax(unittest.TestCase):
     def test_over_the_time_limit(self):
         self.assertIn("over-limit p --max", self.findings((0, b"1\n", 1, 10), (0, b"1\n", 2.5, 10), (0, b"1\n", 2.4, 10)))
 
+    def test_a_box_slower_than_the_judge_measures_against_the_accepted_cpp(self):
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 2.2, 10), (0, b"1\n", 2.4, 10)), [])
+        self.assertIn("over-limit p --max", self.findings((0, b"1\n", 1, 10), (0, b"1\n", 2.5, 10), (0, b"1\n", 2.4, 10)))
+
     def test_over_the_memory_limit(self):
         self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 300)), ["over-limit p --max"])
 
