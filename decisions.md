@@ -9170,13 +9170,15 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Decision.** Supersedes 253. Each program is built at the four code
   layouts of `LAYOUTS` in `crates/cpl-contest/src/zero_cost.rs`, and its
   time is the median over layouts of each layout's fastest run.
-  `--check` fails the run on a pair over the 1.05x bar.
+  `--check` fails the run on a pair over the 1.05x bar, and
+  `scripts/ci.py` runs it.
 - **Why.** One build's fastest run says where g++ put the hot loop:
   `iterators` has the same 13-instruction loop in both binaries, yet one
   build reads 1.047x and the same `.cpp` at `-falign-loops=32` reads
   1.28x, and `segtree_prefix` read 1.078x on one fastest-of-five run.
   `perf stat` cycles and instructions are `<not supported>` on the VM.
-- **Reverse.** Drop `--check` and set `LAYOUTS` to one entry.
+- **Reverse.** Drop `--check` from the `scripts/ci.py` step and set
+  `LAYOUTS` to one entry.
 
 ## 602. Bounded `max`/`min` fold to `T`; unbounded ones and identity-less ops fold to `?T` (stdlib, 2026-11-24)
 

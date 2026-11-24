@@ -69,7 +69,7 @@ Enforced by: `bench/v03_perf_bench.py` (both `tuned max` figures), gaps in
 hand-written C++ and of its direct `.cp` form.
 Reason: domains, optionals, iterators and operation values must be free.
 Example: `bench/zero-cost/optionals/`.
-Enforced by: `cpl bench --zero-cost bench/zero-cost`.
+Enforced by: `cpl bench --zero-cost bench/zero-cost --check` in `scripts/ci.py`.
 
 **performance/R8.** Emitted C++ stays under 32 KB and never exceeds 64 KB.
 Reason: 64 KB is the judges' hard limit; 32 KB leaves room for the
