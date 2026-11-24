@@ -613,36 +613,76 @@ const NAME_THE_CALL: &[&Lint] = &[&FREE_FOLD, &HAND_ROLLED_ANSWER_SEARCH];
 /// Each fn of a file, so a finding that says "this is `first`" is not
 /// reported inside `fn first` itself. In a library module that holds for
 /// every lint whose help names the call `first(..)`: the fn is where the
-/// library writes the loop the lint teaches.
+/// library writes the loop the lint teaches, and so is a private fn such a
+/// fn calls: calling `first_true` there would recurse.
 #[derive(Default)]
 struct Fns {
     base: u32,
-    spans: Vec<(Span, String)>,
+    fns: Vec<FnSpan>,
+    /// Each call of a fn by name: where, and the name.
+    calls: Vec<(u32, String)>,
+}
+
+struct FnSpan {
+    span: Span,
+    name: String,
+    public: bool,
 }
 
 impl Visitor for Fns {
     fn stmt(&mut self, stmt: &Stmt) {
         if let StmtKind::Fn(decl) = &stmt.kind {
-            let quoted = format!("`{}`", decl.name.text);
-            self.spans.push((stmt.span.shift(self.base), quoted));
+            self.fns.push(FnSpan {
+                span: stmt.span.shift(self.base),
+                name: decl.name.text.clone(),
+                public: stmt.public,
+            });
+        }
+    }
+
+    fn expr(&mut self, expr: &cpl_syntax::ast::Expr) {
+        if let ExprKind::Call { callee, .. } = &expr.kind {
+            if let ExprKind::Name(name) = &callee.kind {
+                self.calls
+                    .push((expr.span.shift(self.base).start, name.clone()));
+            }
         }
     }
 }
 
 impl Fns {
+    /// The innermost fn around `span`.
+    fn around(&self, span: Span) -> Option<&FnSpan> {
+        (self.fns.iter())
+            .filter(|f| f.span.contains(span))
+            .min_by_key(|f| f.span.end - f.span.start)
+    }
+
     fn defines(&self, lint: &Lint, diag: &Diagnostic, library: bool) -> bool {
         let names_call = NAME_THE_CALL.iter().any(|l| l.code == lint.code);
-        let named = |quoted: &str| {
+        let named = |f: &FnSpan| {
             // `count(..)` or the method `xs.count(..)` (decision 53).
-            let name = quoted.trim_matches('`');
+            let name = &f.name;
             let calls =
                 |h: &str| h.contains(&format!("`{name}(")) || h.contains(&format!(".{name}("));
-            (names_call && diag.message.contains(quoted))
+            (names_call && diag.message.contains(&format!("`{name}`")))
                 || (library && diag.help.as_deref().is_some_and(calls))
         };
-        self.spans
+        if self
+            .fns
             .iter()
-            .any(|(span, quoted)| span.contains(diag.span) && named(quoted))
+            .any(|f| f.span.contains(diag.span) && named(f))
+        {
+            return true;
+        }
+        let Some(helper) = self.around(diag.span).filter(|f| library && !f.public) else {
+            return false;
+        };
+        let mut callers = (self.calls.iter())
+            .filter(|(_, name)| *name == helper.name)
+            .filter_map(|(at, _)| self.around(Span::new(*at, *at)))
+            .filter(|f| !std::ptr::eq(*f, helper));
+        callers.any(named)
     }
 }
 

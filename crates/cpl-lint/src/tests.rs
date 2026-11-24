@@ -1717,3 +1717,13 @@ fn levels_round_trip_through_their_names() {
         assert_eq!(Level::parse(name), Some(level));
     }
 }
+
+#[test]
+fn a_library_search_helper_of_first_true_is_part_of_its_definition() {
+    let helper = "fn flip_at(n: Int, ok: Int -> Bool) -> Int:\n    var lo = 0\n    var hi = n\n    while lo < hi:\n        let m = lo + (hi - lo) / 2\n        if ok(m): hi = m\n        else: lo = m + 1\n    lo\n";
+    let lib = |caller: &str| {
+        format!("{helper}pub fn {caller}(n: Int, ok: Int -> Bool) -> Int = flip_at(n, ok)\n")
+    };
+    assert!(!codes(&lib("first_true")).contains(&"L0520"));
+    assert!(codes(&lib("cut")).contains(&"L0520"));
+}
