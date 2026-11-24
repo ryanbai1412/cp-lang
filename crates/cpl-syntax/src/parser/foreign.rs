@@ -16,15 +16,17 @@ impl<'a> Parser<'a> {
                 .with_fix("remove `;`", span, "");
         }
         match (found == T::Comma).then(|| self.tuple_assign()).flatten() {
-            Some((at, both)) => diag
-                .with_help("several names are assigned at once in parentheses: `(a, b) = (b, a)`")
-                .with_fix(format!("write `{both}`"), at, both.clone()),
+            Some((at, both, help)) => {
+                diag.with_help(help)
+                    .with_fix(format!("write `{both}`"), at, both.clone())
+            }
             None => diag,
         }
     }
 
     /// `a, b = b, a`, Python's swap: the line as a tuple assignment.
-    fn tuple_assign(&self) -> Option<(Span, String)> {
+    /// `n, m = map(int, input().split())` reads the names as a tuple.
+    fn tuple_assign(&self) -> Option<(Span, String, &'static str)> {
         let at = self.tokens.get(self.pos)?.span.start as usize;
         let begin = self.src[..at].rfind('\n').map_or(0, |i| i + 1);
         let end = self.src[at..].find('\n').map_or(self.src.len(), |i| at + i);
@@ -39,13 +41,18 @@ impl<'a> Parser<'a> {
         {
             return None;
         }
+        let span = Span::new((begin + indent) as u32, (begin + line.len()) as u32);
+        if let Some(read) = python_read(lhs, rhs) {
+            let help = "CP Lang reads numbers by token, so the names are declared as a tuple read";
+            return Some((self.rel(span), read, help));
+        }
         let rhs = if rhs.starts_with('(') {
             rhs.to_string()
         } else {
             format!("({rhs})")
         };
-        let span = Span::new((begin + indent) as u32, (begin + line.len()) as u32);
-        Some((self.rel(span), format!("({lhs}) = {rhs}")))
+        let help = "several names are assigned at once in parentheses: `(a, b) = (b, a)`";
+        Some((self.rel(span), format!("({lhs}) = {rhs}"), help))
     }
 
     /// `fn f(x: Int): Int = x`, TypeScript's return type: CP Lang writes
@@ -1262,4 +1269,26 @@ fn counted<'s>(parts: &[&'s str]) -> (Option<&'s str>, Option<String>) {
         .filter(|_| steps.iter().any(|s| s == parts[2]))
         .map(|(op, hi)| format!("{}{op}{}", lo.trim(), hi.trim()));
     (Some(name), range)
+}
+
+/// `n, m = map(int, input().split())` as `let (n, m): (Int, Int) = read()`.
+fn python_read(lhs: &str, rhs: &str) -> Option<String> {
+    let rest = rhs.trim().strip_prefix("map(")?;
+    let (f, rest) = rest.split_once(',')?;
+    let ty = match f.trim() {
+        "int" => "Int",
+        "float" => "F64",
+        _ => return None,
+    };
+    let line = rest.trim().strip_prefix("input().split(")?;
+    if !matches!(line, "))" | "' '))" | "\" \"))") {
+        return None;
+    }
+    let names: Vec<&str> = lhs.split(',').map(str::trim).collect();
+    let plain = |n: &str| !n.is_empty() && n.chars().all(|c| c.is_alphanumeric() || c == '_');
+    if names.len() < 2 || !names.iter().all(|n| plain(n)) {
+        return None;
+    }
+    let tys = vec![ty; names.len()].join(", ");
+    Some(format!("let ({}): ({tys}) = read()", names.join(", ")))
 }
