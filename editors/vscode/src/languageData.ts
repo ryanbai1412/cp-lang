@@ -60,7 +60,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'OnlineHull', 'OnlineLis', 'Only', 'Op', 'Ordering', 'PArena', 'PMultiset', 'Pair',
     'Palindromes', 'PalindromicTree', 'ParityDsu', 'Paths', 'Perm', 'PermKind', 'PermNode',
     'PermTree', 'PersistentArray', 'PersistentDsu', 'PersistentLazySegTree', 'PersistentSegTree',
-    'Plane3', 'Poly', 'PotentialDsu', 'PreferredPaths', 'Prefix', 'PrefixXorBasis',
+    'Plane3', 'PointSet', 'Poly', 'PotentialDsu', 'PreferredPaths', 'Prefix', 'PrefixXorBasis',
     'PrimePowerComb', 'Pt', 'Pt3', 'RangeFenwick', 'RangeKth', 'Ratio', 'Rebased', 'Rect',
     'RelaxedConvolve', 'Rev', 'Reversible', 'Reweighted', 'Ring', 'RingRange', 'RingSlice', 'Rng',
     'RollbackArray', 'RollingHash', 'RollingHash61', 'Rooted', 'Rope', 'SegTree', 'SegTree2D',

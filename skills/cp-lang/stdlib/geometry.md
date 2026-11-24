@@ -95,6 +95,18 @@ Fields: `hull: List<Pt>`.
 - `fn from_line(a: F64, b: F64, c: F64) -> HalfPlane` — \(O(1)\); The half-plane `{ (x, y) \| a*x + b*y + c >= 0 }`, as `HalfPlane(p, Vec(b, -a))` with `p` the line's point nearest the origin, `Vec(-a * c, -b * c) / (a*a + b*b)`.; traps: when `a == 0.0` and `b == 0.0`
 - `fn side(self, q: Vec) -> F64` — \(O(1)\); The signed value `dir.cross(q - p)`: positive left of the line (inside), 0 on it, negative outside.
 
+## `struct PointSet`
+
+A fixed set of integer points, each named by its index in the list it was built from, where `drain(x, y)` removes and returns every point still in the half-open rectangle `x * y`.
+
+Fields: `xs: List<Int>`, `ys: List<Int>`, `ids: List<Int>`, `nxt: List<Int>`, `lo: List<Int>`, `hi: List<Int>`, `size: Int`, `alive: List<Bool>`, `live: Int`.
+
+- `fn of(pts: List<Pt>) -> PointSet` — \(O(n \log n)\) time and memory; Build the set holding every point of `pts`; point `i` is `pts[i]`.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of points not yet removed or drained.
+- `fn contains(self, i: Int) -> Bool` — \(O(1)\); Whether point `i` is still in the set.; traps: when `i` is not an index of the built list
+- `fn remove(mut self, i: Int) -> Bool` — \(O(1)\); later drains pass over it once per node it sits in; Remove point `i`; `false` when it was already gone.; traps: when `i` is not an index of the built list
+- `fn drain(mut self, x: Range<Int>, y: Range<Int>) -> List<Int>` — \(O(\log^2 n + k)\) amortized for `k` points returned; Remove and return every point still in the half-open rectangle `x * y`, by index.
+
 ## `struct Rect(pub x: Range<Int>, pub y: Range<Int>)`
 
 \(O(1)\) value type.
