@@ -10,7 +10,7 @@ for _ in 0..n:
     let xs: [0..k]Int = read()
     let key = sorted([x for x in xs])
     if key not in seen:
-        seen.insert(key)
+        seen.insert(key.clone())
         fresh += 1
     count[key] = (count.get(key) ?? 0) + 1
     firsts.insert([(x, "{x}") for x in key])
