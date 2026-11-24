@@ -286,7 +286,7 @@ Fields: `alpha: Count`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBu
 - `fn suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>` — \(O(n \log n)\) time and memory (the LCP sparse table; the suffix sort itself is \(O(n)\) for `Str` and small integer alphabets); The suffix array of `s`; the same as `SuffixArray(s)`.
 - `fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>` — \(O(n)\); Every edge of the compressed suffix tree of `s` (built from the suffix array and LCP array), one `SuffixTreeEdge` per edge of non-zero length.
 - `fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>` — \(O(n \log n)\) time and memory; Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)` is a half-open range `s[l..r]` with smallest period `period`, `r - l >= 2 * period`, that cannot be extended left or right with the same period.
-- `fn lcs_all<A, S: Seq>(words: List<S>) -> Int` — \(O(\sum_w \lvert w \rvert \cdot \log n)\) expected, `n` the shortest word's length; The length of the longest sequence that is a substring of every word in `words`.
+- `fn lcs_all<A, S: Seq<A>>(words: List<S>) -> Int` — \(O(\sum_w \lvert w \rvert \cdot \log n)\) expected, `n` the shortest word's length; The length of the longest sequence that is a substring of every word in `words`.
 - `fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str` — \(O(\mathit{hi})\); `gen<Str of alphabet>(len: lo..=hi)`.; traps: when `lo > hi` or `alphabet` is empty
 
 ## Example
