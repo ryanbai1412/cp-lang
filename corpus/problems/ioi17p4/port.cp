@@ -7,61 +7,43 @@
 //   knowing the non-lollipops left of each end: walk left from mid past non-lollipops to a
 //   lollipop c, then recurse on [l, c - 1] and [mid + 1, r] while their counts differ; a
 //   sum of 0 is the diamond. About sqrt(n) log n asks.
-// Stdin: n, then hidden lollipop types t[0..n] (unique 0 = diamond; smaller = rarer).
-// Uses top-level recursive fn (working around cpl-emit recursive nested-fn self-capture bug).
+// Stdin: n, then the hidden prize kinds (0 the diamond; a smaller kind is rarer).
 // original: corpus/submissions/5659145.cpp
+let n: 3..=200_000 = read()
+domain Box = 0..n
+domain Kind = 0..n
+let kind: [Box]Kind = read()
 
-fn ri() -> Int:
-    let x: Int = read()
-    return x
+// the judge: ask(i) is how many boxes left and right of i hold a rarer prize
+var seen = Fenwick<Kind, Int>()
+var rarer_left: [Box]Int = 0
+for i in Box:
+    rarer_left[i] = seen.prefix(kind[i].l)
+    seen.add(kind[i], 1)
+let judge = [Box] i => (l: rarer_left[i], r: seen.prefix(kind[i].l) - rarer_left[i])
 
-var g_n = 0
-var g_kind: List<Int> = []
-var g_seen: List<Bool> = []
-var g_ml: List<Int> = []
-var g_mr: List<Int> = []
-var g_max_sum = 0
+// the contestant: each box is asked at most once; every lollipop sees the most rarer boxes
+var asked: [Box]Bool = false
+var widest = 0
+fn ask(i: Box) -> (l: Int, r: Int):
+    if not asked[i]:
+        asked[i] = true
+        widest max= judge[i].l + judge[i].r
+    judge[i]
 
-fn query(i: Int) -> (Int, Int):
-    if not g_seen[i]:
-        g_seen[i] = true
-        var l = 0
-        var r = 0
-        for j in 0..i:
-            if g_kind[j] < g_kind[i]: l += 1
-        for j in i + 1..g_n:
-            if g_kind[j] < g_kind[i]: r += 1
-        g_ml[i] = l
-        g_mr[i] = r
-        g_max_sum max= l + r
-    return (g_ml[i], g_mr[i])
+// the diamond within cuts a..b, knowing how many non-lollipops lie before a and before b:
+// walk left from the middle past non-lollipops to a lollipop, then split around it
+fn search(a: Cut<Box>, b: Cut<Box>, before_a: Int, before_b: Int) -> ?Box:
+    if a >= b or before_a == before_b: return None
+    let mid = Box((Int(a) + Int(b) - 1) / 2)
+    for c in (a.r!..=mid).rev:
+        let (l, r) = ask(c)
+        if l + r == 0: return c
+        if l + r == widest:
+            if let left = search(a, c.l, before_a, l): return left
+            return search(mid.r, b, l + Int(mid) - Int(c), before_b)
+    search(mid.r, b, before_a + Int(mid.r) - Int(a), before_b)
 
-fn search(l: Int, r: Int, lo_cnt: Int, hi_cnt: Int) -> Int:
-    if l > r or lo_cnt == hi_cnt: return -1
-    let mid = (l + r) / 2
-    var c = mid
-    while c >= l:
-        let res = query(c)
-        if res.0 + res.1 == 0: return c
-        if res.0 + res.1 == g_max_sum:
-            let left = search(l, c - 1, lo_cnt, res.0)
-            if left != -1: return left
-            return search(mid + 1, r, res.0 + (mid - c), hi_cnt)
-        c -= 1
-    return search(mid + 1, r, lo_cnt + (mid - l + 1), hi_cnt)
-
-g_n = ri()
-for _ in 0..g_n: g_kind.push(ri())
-g_seen = [0..g_n] _ => false
-g_ml = [0..g_n] _ => 0
-g_mr = [0..g_n] _ => 0
-
-let probe = min(g_n, 450)
-var found = -1
-for i in 0..probe:
-    let res = query(i)
-    if res.0 + res.1 == 0:
-        found = i
-        break
-if found == -1: found = search(0, g_n - 1, 0, g_max_sum)
-print(found)
+// lollipops are the vast majority: asking the first 450 boxes meets one
+let probe = (Box.first!..=Box(min(n, 450) - 1)).find(i => ask(i).l + ask(i).r == 0)
+print(probe ?? search(Box.cuts.first!, Box.cuts.last!, 0, widest)!)
