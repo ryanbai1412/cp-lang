@@ -3,7 +3,9 @@
 //! exit wakes it at once.
 
 use std::io;
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Child, ExitStatus};
+#[cfg(any(unix, windows))]
+use std::process::{Command, Stdio};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
