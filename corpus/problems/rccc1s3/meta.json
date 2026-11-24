@@ -10,11 +10,15 @@
   {"id": "3415775", "language": "JAVA", "result": "WA", "time": 0.433740109, "memory_kb": 57560.0, "file": "corpus/submissions/3415775.java"},
   {"id": "3415809", "language": "JAVA", "result": "AC", "time": 41.036701846, "memory_kb": 104336.0, "file": "corpus/submissions/3415809.java"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/rccc1s3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ on DMOJ (the AC is Java), so orig.cpp is a corpus-written reference: sort each swap-graph component, emitting swaps by fixing spanning-tree leaves. Swap sequences are not unique, so checker.py replays them and compares the permutation. The permutation matches the sample and a BFS over all reachable permutations on 300 small generated cases."
 }
