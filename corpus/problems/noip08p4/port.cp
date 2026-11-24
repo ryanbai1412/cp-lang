@@ -27,8 +27,10 @@ fn clash(i: Pos, j: Pos) -> Bool:
     if j < i: return clash(j, i)
     if let low = later[j]: a[i] < a[j] and low < a[i] else: false
 var sides = ParityDsu<Pos>()
-for i in Pos:
-    for j in Pos if i < j and clash(i, j): sides.unite(i, j)
+// the first odd cycle settles the answer as 0
+'pairs: for i in Pos:
+    for j in Pos if i < j and clash(i, j):
+        if not sides.unite(i, j): break 'pairs
 // the earliest position of each component leads it
 var lead: [Pos]?Pos = None
 for i in Pos:
