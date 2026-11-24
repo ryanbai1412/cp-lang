@@ -9083,7 +9083,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 
 ## 584. (reserved, unknown)
 
-## 585. (reserved, unknown)
+## 585. `assign_add` is the stock overwrite-then-add action; `Mat.sum` adds under the matrix's semiring (stdlib, 2026-11-24)
+
+- **Call.** `act: assign_add` takes tags `(set: ?T, add: T)`: each element becomes `(set ?? old) + add`. A later tag with a `set` replaces the earlier one; one without adds its `add` on. It is an `Acts<T, (set: ?T, add: T)>` impl like `add`/`assign`/`affine`, so `+`, `min` and `max` trees take it and others get the usual missing-impl error. `m.sum()` folds every entry with the matrix's own add (`+`, or the `over:` semiring's), \(O(\mathit{rows} \cdot \mathit{cols})\). A runtime modulus needs no new type: `type Z = Mod(m)` (decision 232) already is one.
+- **Why.** btoi06p5 hand-wrote about 35 lines of tag, compose and apply for this action, and atcoder_dp_r summed a `Mat` with a double comprehension over `get`. A `Mat` keyed by its domains is a separate design (todo).
+- **Reverse.** Delete `AssignAddAction`, `assign_add` (and its prelude entry), its traits/std-segtree cases and `std/lazy.cp` law rows; delete `Mat.sum`, its std-matrix case and scaling line.
 
 ## 586. Every x86-64 judge profile targets `popcnt`; `isa = "unknown"` targets nothing (judge, 2026-11-24)
 

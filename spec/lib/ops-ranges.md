@@ -310,6 +310,7 @@ fold it makes sense for, and the pairing is checked:
 | `add` | `x + f * n` | `x + f` | error: no `impl` |
 | `assign` | `f * n` | `f` | `f` folded `n` times with `op` (\(O(\log n)\)) |
 | `affine` | `a * x + b * n` | error: not monotone | error |
+| `assign_add` | `s * n + d * n`, or `x + d * n` with no `set` | `s + d`, or `x + d` | error: no `impl` |
 | `flip` | swaps `now` / `flipped` of a `Flip<T>` | same | same |
 
 `SegTree(gcd, a, act: add)` is a compile error, `add does not act on gcd`,

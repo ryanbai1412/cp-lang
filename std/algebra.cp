@@ -163,6 +163,13 @@ impl<T> Acts<T, (T, T)> for AffineAction:
         over,
     )
 
+impl<T> Acts<T, (set: ?T, add: T)> for AssignAddAction:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, (set: ?T, add: T)>:
+        let keep: ?T = None
+        let id = (set: keep, add: T.zero)
+        if sums: return Action(id, (nf, of) => if let _ = nf.set: nf else: (set: of.set, add: of.add + nf.add), (f, v, span) => if let x = f.set: x * span + f.add * span else: v + f.add * span, over)
+        Action(id, (nf, of) => if let _ = nf.set: nf else: (set: of.set, add: of.add + nf.add), (f, v, span) => if let x = f.set: x + f.add else: v + f.add, over)
+
 impl<T> Acts<T, Bool> for FlipAction:
     fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, Bool> =
         Action(false, (nf, of) => nf != of, (f, v, span) => if f: T(v.flipped, v.now) else: v, over, true)
@@ -761,6 +768,9 @@ pub struct AffineAction
 /// Marker type for the stock `flip` action.
 pub struct FlipAction
 
+/// Marker type for the stock `assign_add` action.
+pub struct AssignAddAction
+
 /// Stock action: add a tag to every element; the tag is a `T`. On `+` a span of `n` changes by `f * n`; on
 /// `min`/`max` by `f`. Tags commute, so `SegTree.apply` with it never pushes down. \(O(1)\).
 pub const add: AddAction = AddAction()
@@ -775,6 +785,12 @@ pub const affine: AffineAction = AffineAction()
 
 /// Stock action: swap the two halves of a `Flip<T>` value.
 pub const flip: FlipAction = FlipAction()
+
+/// Stock action: optionally overwrite every element, then add to it. The tag is `(set: ?T, add: T)`:
+/// `(set: Some(5), add: 2)` makes each element 7, `(set: None, add: 2)` adds 2. On `+` a span of
+/// `n` becomes `s * n + d * n` (or `v + d * n` with no `set`); on `min`/`max`, `s + d` (or `v + d`).
+/// A later tag with a `set` replaces the earlier one; one without adds to it. \(O(1)\).
+pub const assign_add: AssignAddAction = AssignAddAction()
 
 /// \(O(1)\). The op lifted to `?T` with `None` as its identity, so any associative op (a closure,
 /// a `Semigroup`) becomes a `Monoid` whose folds say "nothing here" as `None` (ops-ranges.md section 2).

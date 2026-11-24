@@ -1138,6 +1138,7 @@ std/math.cp: Sieve.mobius_table(self) -> List<Int>
 std/math.cp: Sieve.new(n: Int) -> Sieve
 std/math.cp: Sieve.phi(self, x: Int) -> Int
 std/math.cp: Sieve.phi_table(self) -> List<Int>
+std/math.cp: Sieve.spf(self) -> List<SieveVal>
 std/math.cp: best_rational(num: Int, den: Int, max_den: Int) -> Ratio
 std/math.cp: bit(self: Int, i: Int) -> Bool
 std/math.cp: bit_len(x: Int) -> Int
@@ -1226,6 +1227,7 @@ std/matrix.cp: Mat.rref(self) -> (mat: Mat<T>, rank: Int, pivots: List<Int>)
 std/matrix.cp: Mat.set(mut self, r: Int, c: Int, val: T)
 std/matrix.cp: Mat.solve(self, b: List<T>, eps: ?T = None) -> ?List<T>
 std/matrix.cp: Mat.solve_space(self, b: List<T>, eps: ?T = None) -> ?(List<T>, List<List<T>>)
+std/matrix.cp: Mat.sum(self) -> T
 std/matrix.cp: Mat.transpose(self) -> Mat<T>
 std/matrix.cp: Mat.zeros(rows: Int, cols: Int) -> Mat<T>
 std/matrix.cp: MatPow.apply_pow(self, e: Int, v: List<T>) -> List<T>

@@ -10012,7 +10012,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "matrix.Mat.at",
-   "measured": 0.95,
+   "measured": 0.99,
    "n": 32,
    "ok": true
   },
@@ -10020,7 +10020,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.filled",
-   "measured": 13.45,
+   "measured": 13.93,
    "n": 32,
    "ok": true
   },
@@ -10028,7 +10028,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.from_flat",
-   "measured": 16.84,
+   "measured": 13.96,
    "n": 32,
    "ok": true
   },
@@ -10036,7 +10036,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.from_rows",
-   "measured": 21.03,
+   "measured": 17.76,
    "n": 32,
    "ok": true
   },
@@ -10044,7 +10044,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "matrix.Mat.get",
-   "measured": 1.45,
+   "measured": 0.99,
    "n": 32,
    "ok": true
   },
@@ -10052,7 +10052,7 @@
    "cost": "n^2",
    "documented": 16.0,
    "fn": "matrix.Mat.identity",
-   "measured": 29.29,
+   "measured": 12.91,
    "n": 32,
    "ok": true
   },
@@ -10060,7 +10060,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.mul_vec",
-   "measured": 15.12,
+   "measured": 15.76,
    "n": 32,
    "ok": true
   },
@@ -10068,7 +10068,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.new",
-   "measured": 15.2,
+   "measured": 14.76,
    "n": 32,
    "ok": true
   },
@@ -10076,7 +10076,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.of",
-   "measured": 20.57,
+   "measured": 25.74,
    "n": 32,
    "ok": true
   },
@@ -10084,7 +10084,7 @@
    "cost": "n^2",
    "documented": 16.0,
    "fn": "matrix.Mat.product",
-   "measured": 14.57,
+   "measured": 12.71,
    "n": 32,
    "ok": true
   },
@@ -10092,7 +10092,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "matrix.Mat.set",
-   "measured": 1.04,
+   "measured": 1.0,
+   "n": 32,
+   "ok": true
+  },
+  "bench/scaling/mat.cp::matrix.Mat.sum": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
+   "documented": 16.0,
+   "fn": "matrix.Mat.sum",
+   "measured": 15.6,
    "n": 32,
    "ok": true
   },
@@ -10100,7 +10108,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.transpose",
-   "measured": 18.76,
+   "measured": 14.97,
    "n": 32,
    "ok": true
   },
@@ -10108,7 +10116,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 16.0,
    "fn": "matrix.Mat.zeros",
-   "measured": 16.45,
+   "measured": 16.92,
    "n": 32,
    "ok": true
   },

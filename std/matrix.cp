@@ -150,6 +150,25 @@ pub struct Mat<T>:
         if self.sentinel: return ring!.peek!(raw[self.cell(r, c)])
         cells[self.cell(r, c)]
 
+    /// Every entry added up under the matrix's own `+` (the `over:` semiring's add): the number of
+    /// walks a power counts, or the best entry under `Semiring(max, +)`.
+    ///
+    /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\)
+    /// empty: `Mat<Int>.zeros(0, 0).sum() == 0`
+    /// traps: never
+    /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).sum() == 10`
+    /// example: `domain V = 0..2; Mat([V, V] (i, j) => Some(Int(i) + Int(j)), over: Semiring(max, +)).sum() == Some(2)`
+    pub fn sum(self) -> T:
+        if T: Add:
+            if ring == None:
+                var s = T.zero
+                for x in cells: s = s + x
+                return s
+        let r = ring!
+        var s = r.zero
+        for x in self.data: s = r.plus(s, x)
+        s
+
     /// Whether a product left the entries in `raw`. Only a lifted `?W` ring has that form, so
     /// for an `Add` entry type it is `false` at compile time and the accessors test nothing.
     @get fn sentinel(self) -> Bool:

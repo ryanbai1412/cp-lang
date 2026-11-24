@@ -21,6 +21,7 @@ Fields: `cells: List<T>`.
 - `fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a `rows x cols` matrix from a flat row-major list of length `rows * cols`: entry `(r, c)` is `data[r * cols + c]`.; traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
 - `fn from_rows(grid: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.; traps: when the rows differ in length
 - `fn get(self, r: Int, c: Int) -> T` — \(O(1)\); The entry at `(r, c)`, 0-based.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
+- `fn sum(self) -> T` — \(O(\mathit{rows} \cdot \mathit{cols})\); Every entry added up under the matrix's own `+` (the `over:` semiring's add): the number of walks a power counts, or the best entry under `Semiring(max, +)`.
 - `fn set(mut self, r: Int, c: Int, val: T)` — \(O(1)\); Set the entry at `(r, c)` to `val`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn at(mut self, r: Int, c: Int) -> lends mut T` — \(O(1)\); The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn transpose(self) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; The transpose, a new `cols x rows` matrix with entry `(c, r)` equal to `self`'s `(r, c)`.

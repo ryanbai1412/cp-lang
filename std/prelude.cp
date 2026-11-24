@@ -24,6 +24,7 @@ use std.algebra.{
     add,
     affine,
     assign,
+    assign_add,
     cmp,
     desc,
     each,

@@ -31,6 +31,8 @@ for _ in 0..16384:
     acc += a0.transpose().get(1, 1) // timed: matrix.Mat.transpose
 for _ in 0..2048:
     acc += a0.mul_vec(vec)[0] // timed: matrix.Mat.mul_vec
+for _ in 0..16384:
+    acc += a0.sum() // timed: matrix.Mat.sum
 for _ in 0..65536:
     acc += Mat<Z>.product(n).id.get(0, 0) // timed: matrix.Mat.product
 var g = Mat<Z>.of(rows)

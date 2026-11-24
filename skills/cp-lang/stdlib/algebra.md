@@ -4,7 +4,7 @@
 
 Operations as values: what a range structure folds with.  A structure never asks "what is the sum of two `T`s"; it is handed the operation. Most of the time that is a bare operator: `SegTree<V, Int>(max, a)` and `SegTree<V, Int>(+, a)` are the same tree with two operations. An operation of your own is the pair `Monoid(id, op)`; a lazy update is an `Action`. `desc(x)` reverses an order inside a sort key or a heap entry, and a non-commutative value says how it reads backwards with `Reversible`.
 
-In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Each`, `Group`, `Idempotent`, `Monoid`, `Op`, `Ordering`, `Selective`, `Semiring`, `add`, `affine`, `assign`, `cmp`, `desc`, `each`, `flip`, `minmax`, `pow`.
+In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Each`, `Group`, `Idempotent`, `Monoid`, `Op`, `Ordering`, `Selective`, `Semiring`, `add`, `affine`, `assign`, `assign_add`, `cmp`, `desc`, `each`, `flip`, `minmax`, `pow`.
 
 ## Types & Constants
 
@@ -12,6 +12,7 @@ In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Each`, `Group`, 
 - `const assign: AssignAction = AssignAction()` — Stock action: assign a tag to every element; the tag is a `?T` (`None` is a no-op).
 - `const affine: AffineAction = AffineAction()` — Stock action: `x -> a * x + b` on `+` folds (span `n`: `a * s + b * n`).
 - `const flip: FlipAction = FlipAction()` — Stock action: swap the two halves of a `Flip<T>` value.
+- `const assign_add: AssignAddAction = AssignAddAction()` — Stock action: optionally overwrite every element, then add to it.
 
 ## `struct Monoid<T>(pub id: T, pub op: (T, T) -> T)`
 
@@ -153,6 +154,10 @@ Marker type for the stock `affine` action.
 ## `struct FlipAction`
 
 Marker type for the stock `flip` action.
+
+## `struct AssignAddAction`
+
+Marker type for the stock `assign_add` action.
 
 ## Functions
 

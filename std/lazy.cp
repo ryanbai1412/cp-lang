@@ -151,6 +151,11 @@ fn stock_actions_obey_their_laws():
         assert act_laws(Action<Int, ?Int>.of(assign, +), ts, gs)
         assert act_laws(Action<Int, ?Int>.of(assign, min), ts, gs)
         assert act_laws(Action<Int, ?Int>.of(assign, max), ts, gs)
+        let keep: ?Int = None
+        let hs = [(set: keep, add: 0), (set: keep, add: -4), (set: Some(0), add: 6), (set: Some(-4), add: -1)]
+        assert act_laws(Action<Int, (set: ?Int, add: Int)>.of(assign_add, +), ts, hs)
+        assert act_laws(Action<Int, (set: ?Int, add: Int)>.of(assign_add, min), ts, hs)
+        assert act_laws(Action<Int, (set: ?Int, add: Int)>.of(assign_add, max), ts, hs)
 
 @test
 fn set_and_an_empty_tree():
