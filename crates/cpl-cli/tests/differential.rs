@@ -42,7 +42,7 @@ const GXX_FLAGS: [&str; 6] = [
 /// and when `sort(by:)` works out a key, `print` arguments that print,
 /// stepped ranges at their edges, arrays of two lengths given for one
 /// `D`, `argmin` on arrays that do not start at 0, `?` inside a larger
-/// expression, how a `Float` prints, `sort(by:)` with a `()` key, and optional fn parameters every call fills alike, structs that point to a lent value, views over temporaries kept by a `let`, a `for`, a return, a capture or a store (`lent_temp_*`), and `sort(by:)` permuting a list in place. They are a test of their own,
+/// expression, how a `Float` prints, `sort(by:)` with a `()` key, and optional fn parameters every call fills alike, structs that point to a lent value, views over temporaries kept by a `let`, a `for`, a return, a capture or a store (`lent_temp_*`), `sort(by:)` permuting a list in place, and a list a builder walks once per cell staying whole until its last cell. They are a test of their own,
 /// so a break in either is named as that.
 fn parity_programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity");
@@ -74,6 +74,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "closed_loop_at_int_bounds",
             "closure_param_mod",
             "codegen_names_shadow",
+            "count_in_each_cell",
             "dead_field",
             "dead_field_store_traps",
             "domain_step",
