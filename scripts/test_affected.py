@@ -1,11 +1,14 @@
 """Tests for scripts/affected.py, the commit tier's path selection."""
 
+import io
 import os
 import subprocess
+import tempfile
 import sys
 import re
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import affected  # noqa: E402
@@ -165,6 +168,26 @@ class AffectedTest(unittest.TestCase):
                "        PASS [  30.000s] (3/3) cpl-lint other::test\n")
         self.assertEqual(affected.slice_times(out, ["vm-trace", "corpus-warnings"]),
                          {"vm-trace": 14.789, "corpus-warnings": 21.5})
+
+    def test_a_slow_slice_warns_without_refusing_the_commit(self):
+        out = "        PASS [  33.800s] (1/1) cpl-cli::vm_fallbacks shrink\n"
+        done = subprocess.CompletedProcess([], 0, out, "")
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(affected, "ROOT", tmp), \
+                mock.patch.object(affected, "build_slices", lambda names: 0), \
+                mock.patch.object(affected.subprocess, "run", lambda *a, **k: done), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as printed:
+            os.mkdir(os.path.join(tmp, ".git"))
+            self.assertEqual(affected.run_slices(["vm-trace"]), 0)
+            with open(os.path.join(tmp, ".git", "cpl-slow-slices.log"), encoding="utf-8") as f:
+                self.assertRegex(f.read(), r"^\d+ vm-trace 33.8s consumers \(trace\)\n$")
+        self.assertIn("WARNING: slice vm-trace took 33.8s", printed.getvalue())
+        failed = subprocess.CompletedProcess([], 100, out.replace("PASS", "FAIL"), "")
+        with mock.patch.object(affected, "ROOT", "/nonexistent"), \
+                mock.patch.object(affected, "build_slices", lambda names: 0), \
+                mock.patch.object(affected.subprocess, "run", lambda *a, **k: failed), \
+                mock.patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(affected.run_slices(["vm-trace"]), 100)
 
     def test_every_slice_has_an_owner_paths_and_tests(self):
         names = [s[0] for s in affected.SLICES]

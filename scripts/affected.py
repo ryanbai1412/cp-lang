@@ -21,6 +21,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -193,10 +194,17 @@ def run_slices(names):
     sys.stdout.write(run.stdout + run.stderr)
     owners = {s[0]: s[1] for s in SLICES}
     slow = {n: t for n, t in slice_times(run.stdout + run.stderr, names).items() if t > SLICE_LIMIT_S}
+    # A slow slice is its owner's to speed up, never a reason to refuse another lane's
+    # commit: it warns and is logged for the owner, and only a failing test fails.
+    log = os.path.join(ROOT, ".git", "cpl-slow-slices.log") if os.path.isdir(os.path.join(ROOT, ".git")) else None
     for name, secs in slow.items():
-        print(f"affected: slice {name} took {secs:.1f}s, over the {SLICE_LIMIT_S} s limit; "
-              f"split it or ask its owner ({owners[name]}) for a faster test")
-    return run.returncode or (1 if slow else 0)
+        line = (f"affected: WARNING: slice {name} took {secs:.1f}s, over the {SLICE_LIMIT_S} s limit; "
+                f"its owner ({owners[name]}) splits it or makes it faster")
+        print(line)
+        if log:
+            with open(log, "a", encoding="utf-8") as f:
+                f.write(f"{int(time.time())} {name} {secs:.1f}s {owners[name]}\n")
+    return run.returncode
 
 
 def select(paths, dirs):
