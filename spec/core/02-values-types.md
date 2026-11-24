@@ -173,7 +173,10 @@ struct Tally:
   fields with defaults may be omitted (decision 134). A custom
   constructor is a static fn (`Graph.read()`). A `type` alias is the type
   it names everywhere: `type Z = Mod<1e9 + 7>`, then `Z(a)`; `type G =
-  Subset<R>`, then `for s in G` walks the subsets. There are no
+  Subset<R>`, then `for s in G` walks the subsets. On its right side the
+  alias's own name means what it means outside it, so `type Mod =
+  Mod<998244353>` names std's `Mod`; an alias defined by itself (`type A =
+  List<A>`, or `type A = B` with `type B = A`) is E0323. There are no
   constructor side effects and no destructors. (R02.6.2)
 - **Two kinds of constructor, one rule each.** A generated constructor
   (`Edge(a, b, 5)`, a struct literal) stores its arguments, so it takes

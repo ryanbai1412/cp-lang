@@ -792,6 +792,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0323"),
+        title: "Type alias defined by itself",
+        summary: "A `type` alias names itself on its right side, directly or through other aliases, and nothing outside the file has that name.",
+        explanation: "On the right of `type Z = ...` a name means what it means outside the alias, so `type Mod = Mod<998244353>` names std's `Mod`. When no import or std type has the name, the alias would be defined by itself, as in `type A = List<A>` or `type A = B` with `type B = A`, and it never names a type.",
+        trigger: "type A = List<A>\nlet x: A = []\nprint(x.len)\n",
+        fix: "type A = List<Int>\nlet x: A = []\nprint(x.len)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

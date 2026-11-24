@@ -118,6 +118,19 @@ pub(crate) trait Env {
     fn declares_type(&mut self, _name: &str) -> bool {
         false
     }
+    /// True if this file declares `name` as a `type` alias.
+    fn declares_alias(&mut self, _name: &str) -> bool {
+        false
+    }
+    /// What `name` would mean without this file's own declarations: an
+    /// import or the prelude.
+    fn outer_global(&mut self, _name: &str) -> Option<Arc<Def>> {
+        None
+    }
+    /// The right side of this file's `type name = ...`.
+    fn alias_rhs(&mut self, _name: &str) -> Option<cpl_syntax::ast::Type> {
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -188,6 +201,8 @@ pub(crate) struct Checker<'a> {
     /// `s` to the caller's place, so it is mutable.
     opt_mut_params: crate::fx::HashSet<Span>,
     generics: Vec<String>,
+    /// The `type` aliases whose right side is being resolved, innermost last.
+    defining_aliases: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
     pub(crate) param_bounds: Vec<(String, Vec<String>)>,
     hovers: Vec<HoverEntry>,
@@ -296,6 +311,7 @@ impl<'a> Checker<'a> {
             scopes: vec![HashMap::default()],
             opt_mut_params: Default::default(),
             generics: Vec::new(),
+            defining_aliases: Vec::new(),
             param_bounds: Vec::new(),
             hovers: Vec::new(),
             present: Vec::new(),

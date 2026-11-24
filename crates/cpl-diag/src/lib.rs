@@ -170,6 +170,7 @@ pub mod codes {
     pub const NEGATIVE_LITERAL_INDEX: Code = Code("E0321");
     /// A struct or enum field that stores the type itself (`l: ?N` in `N`).
     pub const RECURSIVE_FIELD: Code = Code("E0322");
+    pub const ALIAS_CYCLE: Code = Code("E0323");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");

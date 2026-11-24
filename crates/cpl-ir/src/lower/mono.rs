@@ -266,7 +266,12 @@ impl<'a> Lowerer<'a> {
         let mut m = self.cur_mod;
         loop {
             if let Some(sym) = self.mod_syms[m].get(name) {
-                return Some(*sym);
+                return match *sym {
+                    Sym::Alias(aid) if self.alias_stack.contains(&aid) => {
+                        self.alias_shadows.get(&aid).copied()
+                    }
+                    sym => Some(sym),
+                };
             }
             m = self.inline_mods.get(&m)?.0;
         }

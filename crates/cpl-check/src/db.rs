@@ -553,8 +553,10 @@ impl Database {
         // leaves those names alone (all of them for a glob).
         let library = self.analyzing.len() > 1;
         if !prelude_off && !library && !is_prelude(path) {
+            // `type Mod = Mod<P>` names the prelude's `Mod` on its right.
             let declared: crate::fx::HashSet<&str> = items
                 .iter()
+                .filter(|item| !alias_names_itself(item))
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
                 .collect();
             let mut ident_tokens: crate::fx::HashSet<&str> = crate::fx::HashSet::default();
@@ -2132,6 +2134,18 @@ impl FileCtx<'_> {
         );
         result
     }
+}
+
+/// Whether `item` is `type N = ...` with `N` on its right side.
+fn alias_names_itself(item: &ItemSyntax) -> bool {
+    let Some(StmtKind::TypeAlias { name, .. }) = item.parsed.stmts.first().map(|s| &s.kind) else {
+        return false;
+    };
+    let Some((_, rhs)) = item.text.split_once('=') else {
+        return false;
+    };
+    rhs.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .any(|word| word == name.text)
 }
 
 /// Whether `path` is the prelude itself, which is not given its own names.

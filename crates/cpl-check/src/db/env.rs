@@ -45,6 +45,28 @@ impl Env for FileCtx<'_> {
         matches!(first, Some(StmtKind::Struct(_) | StmtKind::Enum(_)))
     }
 
+    fn declares_alias(&mut self, name: &str) -> bool {
+        let Some(k) = self.decl_order(name) else {
+            return false;
+        };
+        let first = self.items[k].parsed.stmts.first().map(|s| &s.kind);
+        matches!(first, Some(StmtKind::TypeAlias { .. }))
+    }
+
+    fn alias_rhs(&mut self, name: &str) -> Option<cpl_syntax::ast::Type> {
+        let k = self.decl_order(name)?;
+        match self.items[k].parsed.stmts.first().map(|s| &s.kind) {
+            Some(StmtKind::TypeAlias { ty, .. }) => Some(ty.clone()),
+            _ => None,
+        }
+    }
+
+    fn outer_global(&mut self, name: &str) -> Option<Arc<Def>> {
+        let (def, fingerprint) = self.imported(name);
+        self.record(name, fingerprint);
+        def
+    }
+
     fn lent_before(&mut self) -> Vec<Replay> {
         let fingerprint = self.replays_fingerprint();
         self.record(DEP_LENT, fingerprint);

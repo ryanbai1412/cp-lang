@@ -61,6 +61,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0320 | int_index_on_cut_table | `pre[k]`: an `Int` index into a cut table can't say position or cut; write `pre.cut(k)` for the fold of the first `k`, or index by a typed cut or position (R07.1.6) |
 | E0321 | negative_literal_index | `a[-1]`: keys never wrap; the last element is `a.last!`, the `k`-th from the end `a[a.len - k]` (R07.2.17) |
 | E0322 | recursive_field | `l: ?N` stores `N` inside `N` itself, so its size would never end; keep the nodes in a `var nodes = PArena<N>()` from `std.persistent` and link them by handle, `?Id<N>`, or hold them in a `List<N>` (R03.2.9) |
+| E0323 | alias_cycle | `type A` is defined by itself, so it never names a type; write the type `A` stands for, or give the alias a name of its own (R02.6.2) |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | `a` is a `let`, so it can't be passed as `mut` |

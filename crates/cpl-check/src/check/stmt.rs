@@ -1300,11 +1300,7 @@ impl<'a> Checker<'a> {
             StmtKind::TypeAlias {
                 name, generics, ty, ..
             } => {
-                let outer = self.generics.len();
-                self.generics
-                    .extend(generics.iter().map(|g| g.text.clone()));
-                let aliased = self.resolve_type(ty);
-                self.generics.truncate(outer);
+                let aliased = self.resolve_alias(name, generics, ty);
                 self.type_hover(name);
                 if !top_level {
                     self.scopes.last_mut().unwrap().insert(
