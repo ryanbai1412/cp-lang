@@ -249,7 +249,8 @@ fn plain_type(ty: Option<&Ty>) -> bool {
 
 /// `text` with the lint fixes `cpl lint --fix` would make under `config`,
 /// and how many; each round lints the analysis `db` has, so a clean file is
-/// checked once. `cpl fix` and the playground's `fix` share it.
+/// checked once. `cpl fix` and the playground's `fix` share it. A round is
+/// re-checked: a fix that would add a checker error is not applied.
 pub fn apply_lint_fixes(
     db: &mut cpl_check::Database,
     path: &str,
@@ -260,12 +261,74 @@ pub fn apply_lint_fixes(
     for _ in 0..8 {
         db.set_file(path, text.as_str());
         let analysis = db.analyze(path).expect("the file was just set");
-        let (next, n) = crate::apply_fixes(&text, &lint_analysis(&analysis, config));
+        let findings = lint_analysis(&analysis, config);
+        let errors = error_codes(&analysis.diagnostics);
+        let (next, n) = safe_fixes(db, path, &text, &findings, &errors);
         if n == 0 {
             break;
         }
         applied += n;
         text = next;
     }
+    db.set_file(path, text.as_str());
     (text, applied)
+}
+
+/// The checker errors in `diagnostics`, as sorted codes.
+fn error_codes(diagnostics: &[cpl_diag::Diagnostic]) -> Vec<&'static str> {
+    let mut codes: Vec<_> = diagnostics
+        .iter()
+        .filter(|d| d.severity == cpl_diag::Severity::Error)
+        .map(|d| d.code.0)
+        .collect();
+    codes.sort_unstable();
+    codes
+}
+
+/// Whether `text` as `path` has no checker error beyond `errors`.
+fn adds_no_error(db: &mut cpl_check::Database, path: &str, text: &str, errors: &[&str]) -> bool {
+    db.set_file(path, text);
+    let Some(analysis) = db.analyze(path) else {
+        return false;
+    };
+    let mut left = errors.to_vec();
+    for code in error_codes(&analysis.diagnostics) {
+        match left.iter().position(|c| *c == code) {
+            Some(at) => {
+                left.remove(at);
+            }
+            None => return false,
+        }
+    }
+    true
+}
+
+/// `findings`' fixes applied to `text`, keeping only fixes after which the
+/// checker reports no error that `errors` lacks: all at once when that is
+/// safe, else each one that is safe alone, else the first such.
+pub(crate) fn safe_fixes(
+    db: &mut cpl_check::Database,
+    path: &str,
+    text: &str,
+    findings: &[cpl_diag::Diagnostic],
+    errors: &[&str],
+) -> (String, usize) {
+    let (all, n) = crate::apply_fixes(text, findings);
+    if n == 0 || adds_no_error(db, path, &all, errors) {
+        return (all, n);
+    }
+    let safe: Vec<_> = findings
+        .iter()
+        .filter(|f| !f.fixes.is_empty())
+        .filter(|f| {
+            let (alone, n) = crate::apply_fixes(text, std::slice::from_ref(*f));
+            n > 0 && adds_no_error(db, path, &alone, errors)
+        })
+        .cloned()
+        .collect();
+    let (kept, n) = crate::apply_fixes(text, &safe);
+    if n == 0 || adds_no_error(db, path, &kept, errors) {
+        return (kept, n);
+    }
+    crate::apply_fixes(text, &safe[..1])
 }

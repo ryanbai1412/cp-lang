@@ -77,3 +77,21 @@ fn a_witness_names_only_a_plain_input() {
         assert!(rules::witness(text, 5).is_empty(), "{text}");
     }
 }
+
+#[test]
+fn a_fix_that_would_add_a_checker_error_is_not_applied() {
+    use cpl_diag::{Diagnostic, Span};
+    let text = "let x = 1\nprint(x)\n";
+    let at = |start, end| Span { start, end };
+    let finding = |span, to: &str| {
+        Diagnostic::warning(crate::LOOP_REDUCTION.code, span, "test").with_fix("fix", span, to)
+    };
+    let good = finding(at(8, 9), "2");
+    let bad = finding(at(16, 17), "y");
+    let mut db = cpl_check::Database::new();
+    let (out, n) =
+        crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad.clone(), good.clone()], &[]);
+    assert_eq!((out.as_str(), n), ("let x = 2\nprint(x)\n", 1));
+    let (out, n) = crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad], &[]);
+    assert_eq!((out.as_str(), n), (text, 0));
+}
