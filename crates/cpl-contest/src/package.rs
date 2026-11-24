@@ -1,6 +1,7 @@
 //! A problem package's cases from its `tests.toml` (problem-packages/R9).
-//! Each `[[case]]` is an `input` written inline, or what `gen.py seed size`
-//! or `gen.py args..` prints. A case's answer is what the accepted C++
+//! Each `[[case]]` is an `input` written inline, an `input_file` beside it
+//! in the package (a statement sample too big to inline), or what
+//! `gen.py seed size` or `gen.py args..` prints. A case's answer is what the accepted C++
 //! prints on it; an interactive package's case is the interactor's hidden
 //! data and has none. `cpl test`, `scripts/corpus.py make` and the tests
 //! all read the cases made here, in `target/corpus-tests/<id>/`.
@@ -24,6 +25,8 @@ const MAKER: &str = "cpl-cases 1";
 pub enum Case {
     /// The input, written out.
     Input(String),
+    /// The input in a file, its path relative to the package.
+    File(PathBuf),
     /// `gen.py`'s arguments: `seed size`, or a case's `args`.
     Gen(Vec<String>),
 }
@@ -77,6 +80,7 @@ pub fn parse(text: &str) -> Result<Vec<Case>, String> {
 #[derive(Default)]
 struct Fields {
     input: Option<String>,
+    input_file: Option<String>,
     seed: Option<i64>,
     size: Option<i64>,
     args: Option<Vec<String>>,
@@ -86,6 +90,7 @@ impl Fields {
     fn set(&mut self, key: &str, value: Value) -> Result<(), String> {
         match (key, value) {
             ("input", Value::Str(s)) => self.input = Some(s),
+            ("input_file", Value::Str(s)) => self.input_file = Some(s),
             ("seed", Value::Int(n)) => self.seed = Some(n),
             ("size", Value::Int(n)) => self.size = Some(n),
             ("args", Value::List(items)) => self.args = Some(items),
@@ -93,7 +98,7 @@ impl Fields {
             ("name", Value::Str(_)) => {}
             (key, _) => {
                 return Err(format!(
-                    "`{key}` is not `input`, `seed`, `size`, `args` or `name` of its type"
+                    "`{key}` is not `input`, `input_file`, `seed`, `size`, `args` or `name` of its type"
                 ))
             }
         }
@@ -104,6 +109,7 @@ impl Fields {
         match self {
             Fields {
                 input: Some(input),
+                input_file: None,
                 seed: None,
                 size: None,
                 args: None,
@@ -113,7 +119,22 @@ impl Fields {
                 input + "\n"
             })),
             Fields {
+                input: Some(_),
+                input_file: Some(_),
+                ..
+            } => Err(format!(
+                "case {n}: give `input` or `input_file`, not both"
+            )),
+            Fields {
                 input: None,
+                input_file: Some(file),
+                seed: None,
+                size: None,
+                args: None,
+            } => Ok(Case::File(PathBuf::from(file))),
+            Fields {
+                input: None,
+                input_file: None,
                 seed: Some(seed),
                 size: Some(size),
                 args: None,
@@ -125,12 +146,13 @@ impl Fields {
             )),
             Fields {
                 input: None,
+                input_file: None,
                 seed: None,
                 size: None,
                 args: Some(args),
             } => Ok(Case::Gen(args)),
             _ => Err(format!(
-                "case {n}: give `input`, or `seed` and `size`, or `args`, and only one"
+                "case {n}: give `input` or `input_file`, or `seed` and `size`, or `args`, and only one"
             )),
         }
     }
@@ -275,6 +297,39 @@ pub fn reference(package: &Path) -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
+/// The file an `input_file` case names, `path` relative to `package`:
+/// an error when it is missing or, links and `..` followed, outside the package.
+pub fn input_file(package: &Path, path: &Path) -> Result<PathBuf, String> {
+    let package = package
+        .canonicalize()
+        .map_err(|e| format!("can't find {}: {e}", package.display()))?;
+    let file = package
+        .join(path)
+        .canonicalize()
+        .map_err(|e| format!("input_file {}: {e}", path.display()))?;
+    if !file.starts_with(&package) {
+        return Err(format!(
+            "input_file {} is outside the package",
+            path.display()
+        ));
+    }
+    if !file.is_file() {
+        return Err(format!("input_file {} is not a file", path.display()));
+    }
+    Ok(file)
+}
+
+/// The cases' `input_file`s, each checked by [`input_file`]; an error names the case.
+fn input_files(package: &Path, cases: &[Case]) -> Result<Vec<PathBuf>, String> {
+    let mut files = Vec::new();
+    for (i, case) in cases.iter().enumerate() {
+        if let Case::File(path) = case {
+            files.push(input_file(package, path).map_err(|e| format!("case {:02}: {e}", i + 1))?);
+        }
+    }
+    Ok(files)
+}
+
 /// Makes `package`'s cases in `out` unless the ones there are current:
 /// `NN.in`, `NN.ans` from the accepted C++ (none for an interactive
 /// package), and an empty `NN.max` beside the generator's largest.
@@ -303,11 +358,13 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
         })?),
     };
     let gen = package.join("gen.py");
+    let files = input_files(package, &cases).map_err(|e| format!("{}: {e}", toml.display()))?;
     let mut stamp = DefaultHasher::new();
     stamp.write(MAKER.as_bytes());
     for file in [Some(&toml), Some(&gen), reference.as_ref()]
         .into_iter()
         .flatten()
+        .chain(&files)
     {
         stamp.write(&std::fs::read(file).unwrap_or_default());
         stamp.write_u8(0);
@@ -334,10 +391,22 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
     let _ = std::fs::remove_dir_all(&aside);
     let made = (|| {
         std::fs::create_dir_all(&aside).map_err(|e| e.to_string())?;
+        let mut files = files.iter();
         for (i, case) in cases.iter().enumerate() {
             let n = format!("{:02}", i + 1);
             let input = match case {
                 Case::Input(text) => text.clone(),
+                Case::File(_) => {
+                    let file = files.next().expect("one checked file per input_file case");
+                    let text = std::fs::read(file)
+                        .map_err(|e| format!("can't read {}: {e}", file.display()))?;
+                    let text = String::from_utf8_lossy(&text).into_owned();
+                    if text.ends_with('\n') {
+                        text
+                    } else {
+                        text + "\n"
+                    }
+                }
                 Case::Gen(args) => {
                     let mut cmd = Command::new("python3");
                     cmd.arg(&gen).args(args).current_dir(&root);
@@ -596,6 +665,52 @@ mod tests {
         assert!(small.contains("at least 1"), "{small}");
         let stray = parse("input = \"1\"\n").unwrap_err();
         assert!(stray.contains("before any `[[case]]`"), "{stray}");
+        let file = parse("[[case]]\ninput_file = \"samples/1.in\"\n").unwrap();
+        assert_eq!(file, [Case::File("samples/1.in".into())]);
+        let both = parse("[[case]]\ninput = \"1\"\ninput_file = \"samples/1.in\"\n").unwrap_err();
+        assert!(
+            both.contains("case 1") && both.contains("not both"),
+            "{both}"
+        );
+    }
+
+    #[test]
+    fn an_input_file_case_is_the_file_and_makes_again_when_it_changes() {
+        let dir = package("file", "[[case]]\ninput_file = \"samples/1.in\"\n", "");
+        std::fs::create_dir_all(dir.join("samples")).unwrap();
+        std::fs::write(dir.join("samples/1.in"), "3\n1 2 3").unwrap();
+        let out = cases_dir(&dir);
+        make(&dir, &out).unwrap();
+        assert_eq!(text(out.join("01.in")), "3\n1 2 3\n");
+        std::fs::write(dir.join("samples/1.in"), "1\n4\n").unwrap();
+        make(&dir, &out).unwrap();
+        assert_eq!(text(out.join("01.in")), "1\n4\n");
+        std::fs::remove_dir_all(dir.ancestors().nth(3).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn an_input_file_missing_or_outside_the_package_names_its_case() {
+        let toml = "[[case]]\ninput = \"1\"\n\n[[case]]\ninput_file = \"samples/none.in\"\n";
+        let dir = package("nofile", toml, "");
+        let out = cases_dir(&dir);
+        let missing = make(&dir, &out).unwrap_err();
+        assert!(
+            missing.contains("case 02: input_file samples/none.in"),
+            "{missing}"
+        );
+        std::fs::write(dir.parent().unwrap().join("secret.in"), "1\n").unwrap();
+        std::fs::write(
+            dir.join("tests.toml"),
+            "[[case]]\ninput_file = \"../secret.in\"\n",
+        )
+        .unwrap();
+        let outside = make(&dir, &out).unwrap_err();
+        assert!(
+            outside.contains("case 01: input_file ../secret.in is outside the package"),
+            "{outside}"
+        );
+        assert!(!out.exists());
+        std::fs::remove_dir_all(dir.ancestors().nth(3).unwrap()).unwrap();
     }
 
     /// An interactive package (its cases have no answers, so no C++
@@ -690,11 +805,11 @@ mod tests {
             let toml = package.join("tests.toml");
             if let Ok(text) = std::fs::read_to_string(&toml) {
                 let cases = parse(&text).map_err(|e| format!("{}: {e}", toml.display()));
-                assert!(
-                    !cases.unwrap().is_empty(),
-                    "{} lists no case",
-                    toml.display()
-                );
+                let cases = cases.unwrap();
+                assert!(!cases.is_empty(), "{} lists no case", toml.display());
+                if let Err(e) = input_files(&package, &cases) {
+                    panic!("{}: {e}", toml.display());
+                }
                 read += 1;
             }
         }

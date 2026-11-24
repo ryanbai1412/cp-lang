@@ -830,6 +830,40 @@ fn cpl_test_runs_a_package_whose_cases_are_only_a_tests_toml() {
 }
 
 #[test]
+fn cpl_test_runs_a_package_case_from_its_input_file() {
+    let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("tests-toml-input-file");
+    let _ = std::fs::remove_dir_all(&root);
+    let package = root.join("corpus/problems/p");
+    std::fs::create_dir_all(package.join("samples")).unwrap();
+    std::fs::write(package.join("samples/2.in"), "21").unwrap();
+    std::fs::write(
+        package.join("tests.toml"),
+        "[[case]]\ninput = \"3\"\n\n[[case]]\ninput_file = \"samples/2.in\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        package.join("orig.cpp"),
+        "#include <cstdio>\nint main(){long long n;scanf(\"%lld\",&n);printf(\"%lld\\n\",2*n);}\n",
+    )
+    .unwrap();
+    let port = package.join("port.cp");
+    std::fs::write(&port, "let n: Int = read()\nprint(2 * n)\n").unwrap();
+    let out = cpl_cli::run(&["test", port.to_str().unwrap()]);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.code, 0, "{stdout}{}", out.stderr);
+    assert!(stdout.contains("2/2"), "{stdout}");
+    let cases = root.join("target/corpus-tests/p");
+    assert_eq!(
+        std::fs::read_to_string(cases.join("02.in")).unwrap(),
+        "21\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(cases.join("02.ans")).unwrap(),
+        "42\n"
+    );
+}
+
+#[test]
 fn a_reference_past_its_time_budget_fails_naming_the_case() {
     let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("tests-toml-slow-reference");
     let _ = std::fs::remove_dir_all(&root);
