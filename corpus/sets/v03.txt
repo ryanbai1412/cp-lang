@@ -401,7 +401,12 @@ cf2268b
 cf2268c
 cf2268d
 cf2268e
+cheerio1s1
+cheerio1s2
 cheerio1s3
+cheerio1s5
+coci06c1p6
+coci10c7p4
 coci21c1p1
 coci21c1p5
 coi06p2

@@ -7,14 +7,13 @@
 //   scores the whole block and splits it into two blocks cleared before. Interval DP
 //   clear[l, r] = max over H at i of (r - l) + clear[l, i] + clear[i + 1, r], O(N^3); then
 //   best[i, used] picks consecutive blocks over s[i..] holding at most K H's, O(N^2 K).
-// Written in today's buildable form.
 // original: corpus/submissions/5339756.cpp
 // Bounds: k: 0..=1000
 let s: [domain S]Char = read()
 let k: 0..=1000 = read()
 let n = S.len
-let head: List<Bool> = [s[i] == 'H' for i in S]
-let heads = prefix([Int(head[i]) for i in 0..n])
+let head = s.map(c => c == 'H').collect()
+let heads = prefix(head.map(h => Int(h)))
 
 // clear[l, r]: best score from the block l..r, every pick splitting what is left
 var clear: [0..=n, 0..=n]Int = 0

@@ -11,40 +11,31 @@
 let n: 2..=50 = read()
 domain Row = 1..=n
 domain Col = 1..=n
-type Cell = (Row, Col)
 let town: [Row, Col]Char = read()
 let high: [Row, Col]1..=1e6 = read()
-
-fn cells() -> List<Cell>: [(r, c) for r in Row for c in Col]  // WISH L5: `for p in Cell`
-
-fn around(p: Cell) -> List<Cell>:  // WISH L1: p.around() over Dir8
-    var out: List<Cell> = []
-    for dr in -1..=1:
-        for dc in -1..=1:
-            if let r = Row.at(p.0 + dr) and let c = Col.at(p.1 + dc): out.push((r, c))
-    out
+let cells = [(r, c) for r in Row for c in Col]
+let post = cells.find(p => town[p] == 'P')!
 
 // Can he deliver everything standing only on ground between lo and hi?
 fn delivers(lo: Int, hi: Int) -> Bool:
-    var seen: [Row, Col]Bool = false  // WISH L7: let seen = reach(adj, from: town.where('P'))
-    var todo: List<Cell> = []
-    for p in cells():
-        if town[p] == 'P' and lo <= high[p] and high[p] <= hi:
-            seen[p] = true
-            todo.push(p)
+    fn inside(p: (Row, Col)) -> Bool = lo <= high[p] and high[p] <= hi
+    if not inside(post): return false
+    var seen: [Row, Col]Bool = false
+    seen[post] = true
+    var todo = [post]
     while let p = todo.pop():
-        for q in around(p):
-            if not seen[q] and lo <= high[q] and high[q] <= hi:
+        for q in p.adj8:
+            if inside(q) and not seen[q]:
                 seen[q] = true
                 todo.push(q)
-    all(seen[p] for p in cells() if town[p] == 'K')
+    cells.all(p => town[p] != 'K' or seen[p])
 
 // Raising the floor never lowers the ceiling it needs, so both only move up.
-let levels = sorted([high[p] for p in cells()])
-var best = levels.last! - levels[0]
+let levels = cells.map(p => high[p]).sorted()
+var best = levels.last! - levels.first!
 var top = 0
-for floor in 0..levels.len:  // WISH L8: for (lo, hi) in levels.stretches(delivers)
-    top max= floor           // with no house every stretch delivers, the empty ones too
+for floor in 0..levels.len:
+    top max= floor
     while top < levels.len and not delivers(levels[floor], levels[top]): top += 1
     if top == levels.len: break
     best min= levels[top] - levels[floor]
