@@ -242,7 +242,7 @@ Evidence: `spec/conformance/std-seq/split-on-separator-predicate.cp` splits a li
 
 ### seq/U44: prefixes and suffixes by count or predicate
 Need: the leading run of small values, or all but the first k.
-Design: `take(k)`, `drop(k)`, `take_last(k)`, `drop_last(k)`, `take_while(p)`, `skip_while(p)`; views.
+Design: `take(k)`, `drop(k)`, `take_last(k)`, `drop_last(k)`, `take_while(p)`, `drop_while(p)`; views.
 Milestone: M1-critical. Status: supported
 Evidence: program `spec/conformance/std-seq/seq-u44-take-drop-while.cp`.
 

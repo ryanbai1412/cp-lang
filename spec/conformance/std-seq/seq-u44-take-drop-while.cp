@@ -2,4 +2,4 @@
 // Acceptance for seq/U44 (prefixes and suffixes by count or predicate), handbook/product/std/sequences-usecases.md.
 let a = [1, 2, 5, 1]
 print(List(a.take(2)), List(a.drop(2)), List(a.take_last(1)))
-print(a.take_while(x => x < 3).collect(), a.skip_while(x => x < 3).collect())
+print(a.take_while(x => x < 3).collect(), a.drop_while(x => x < 3).collect())

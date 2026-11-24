@@ -1653,20 +1653,6 @@ pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T:
         dropping = false
         yield x
 
-/// \(O(1)\) per step. Alias for `drop_while`: skip leading elements while `drop(x)` holds, then yield the rest.
-///
-/// cost: \(O(1)\) per step
-/// empty: yields nothing
-/// order: input order
-/// traps: never
-/// example: `[1, 2, 5, 1].skip_while(x => x < 3).collect() == [5, 1]`
-pub fn skip_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T:
-    var dropping = true
-    for x in self:
-        if dropping and drop(x): continue
-        dropping = false
-        yield x
-
 /// \(O(1)\) per step. Lazily yield `f(x)` for each element where it is not `None`:
 /// `dag[c].filter_map(a => best(a.to)).max()`.
 ///

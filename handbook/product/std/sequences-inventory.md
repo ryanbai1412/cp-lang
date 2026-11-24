@@ -78,7 +78,7 @@ surface" names the [std area](README.md) surface that owns it.
 - **Folds:** `fold`, `try_fold` and `reduce` go to U9 and U36; `sum` and
   `product` go to U18; `scan` goes to U23.
 - **Adapters:** `map`, `filter`, `filter_map`, `flat_map` and `flatten` go
-  to U56 and U22; `take`, `skip`, `take_while`, `skip_while` and
+  to U56 and U22; `take`, `skip`, `take_while`, `drop_while` and
   `map_while` go to U44; `step_by` goes to U45; `chain` goes to U22; `zip`,
   `enumerate` and `unzip` go to U15 and U57; `rev` goes to U16; `peekable`
   and `fuse` are non-goals (a `for` loop has the same power); `cycle` goes

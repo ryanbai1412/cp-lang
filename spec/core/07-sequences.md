@@ -272,7 +272,7 @@ for d in divisors(n):
 | Form | Result | Note |
 |---|---|---|
 | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read (R07.7.1) |
-| `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` | (R07.7.2) |
+| `s.filter(p)`, `s.take_while(p)`, `s.drop_while(p)` | `Seq` | (R07.7.2) |
 | `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consuming a view from the front is `w = w.drop(1)` (R07.7.3) |
 | `chain(a, b, ...)` | `Seq` of each argument in turn, any number of them, as `min` and `max` take | (R07.7.4) |
 | `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, \(O(1)\) per step (R07.7.5) |
