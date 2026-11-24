@@ -96,18 +96,9 @@ impl<'a> Lowerer<'a> {
         }
         if let (ast::ExprKind::Tuple(targets), ast::AssignOp::Set) = (&target.kind, op) {
             // `(a[d], b[d]) = read()`: the places say what is read.
-            let tried: Vec<Option<Place>> = targets.iter().map(|t| self.try_place(t)).collect();
-            let wanted: Option<Vec<Ty>> = tried
+            let wanted: Option<Vec<Ty>> = targets
                 .iter()
-                .map(|p| p.as_ref().map(|p| p.ty.clone()))
-                .collect();
-            // A store to a variable or field path runs no code, so a right-hand
-            // item that is one too, of a variable no earlier store sets, may be
-            // read at its own store, where codegen moves it if a later store
-            // sets it whole: `(x, y) = (y, f(x, y))` holds only `f(x, y)`.
-            let roots: Option<Vec<(bool, usize)>> = tried
-                .iter()
-                .map(|p| p.as_ref().and_then(path_place))
+                .map(|t| self.try_place(t).map(|place| place.ty))
                 .collect();
             // `(a, b) = (b, a)` of lists: every other right-hand item is held
             // whole before any store, in a temp of its own, so each store moves it in.
@@ -117,13 +108,27 @@ impl<'a> Lowerer<'a> {
             if let (ast::ExprKind::Tuple(items), true) = (&value.kind, owning) {
                 if items.len() == targets.len() {
                     let mut held = Vec::new();
+                    // A store to a variable runs no code, so a right-hand item
+                    // that is a variable no earlier store sets may be read at
+                    // its own store, where codegen
+                    // moves it if a later store sets it whole:
+                    // `(x, y) = (y, f(x, y))` holds only `f(x, y)`.
+                    let mut places: Vec<Place> = Vec::new();
                     for (k, item) in items.iter().enumerate() {
                         let want = wanted.as_ref().map(|w| &w[k]);
                         let item = self.expr(item, want);
-                        let unset = roots.as_ref().is_some_and(|roots| {
-                            path_expr(&item).is_some_and(|root| !roots[..k].contains(&root))
-                        });
-                        if unset {
+                        let var = match item.kind {
+                            ExprKind::Local(slot) => Some((false, slot)),
+                            ExprKind::Global(id) => Some((true, id)),
+                            _ => None,
+                        };
+                        let free = var.is_some()
+                            && places.iter().all(|p| {
+                                matches!(p.kind, PlaceKind::Local(_) | PlaceKind::Global(_))
+                                    && Some(crate::walk::root(p)) != var
+                            });
+                        places.push(self.place(&targets[k]));
+                        if free {
                             held.push(item);
                             continue;
                         }
@@ -135,8 +140,7 @@ impl<'a> Lowerer<'a> {
                         });
                         out.push(Stmt::Let(slot, Some(item)));
                     }
-                    for (t, item) in targets.iter().zip(held) {
-                        let place = self.place(t);
+                    for ((t, place), item) in targets.iter().zip(places).zip(held) {
                         let item = self.coerce(item, &place.ty, t.span);
                         self.emit_assign(place, AssignOp::Set, item, t.span, out);
                     }
@@ -658,26 +662,5 @@ impl<'a> Lowerer<'a> {
             }
         };
         self.emit_assign(place, op, value, span, out);
-    }
-}
-
-/// The variable a place of variables and fields is part of; `None` for an
-/// element, whose index may run code.
-fn path_place(place: &Place) -> Option<(bool, usize)> {
-    match &place.kind {
-        PlaceKind::Local(slot) => Some((false, *slot)),
-        PlaceKind::Global(id) => Some((true, *id)),
-        PlaceKind::Field(base, _) => path_place(base),
-        PlaceKind::Index(..) | PlaceKind::Some(_) => None,
-    }
-}
-
-/// The variable an expression of variables and fields reads; `None` once
-/// an index is on the way, which an earlier store may change.
-fn path_expr(e: &Expr) -> Option<(bool, usize)> {
-    match &e.kind {
-        ExprKind::Field(base, _) => path_expr(base),
-        ExprKind::Local(_) | ExprKind::Global(_) => crate::walk::path_root(e),
-        _ => None,
     }
 }
