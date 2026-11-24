@@ -49,5 +49,5 @@ fn attempt(given: Square) -> ?Square:
 let given: Square = [[read_cell() for _ in 0..3] for _ in 0..3]
 while true:
     let sq = attempt(given) else: continue
-    for row in sq: print("{row[0]} {row[1]} {row[2]}")
+    for row in sq: print("{row[0]!} {row[1]!} {row[2]!}")
     break
