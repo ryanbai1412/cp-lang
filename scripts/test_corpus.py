@@ -401,6 +401,19 @@ class BoundsTest(unittest.TestCase):
         got = corpus.port_ranges("type City = 1..=n\nlet roads: [0..n]List<(u: City, v: 1..=n)> = read()\n")
         self.assertEqual((got["roads.u"], got["roads.v"]), (("1", "n"), ("1", "n")))
 
+    def test_a_read_inside_an_expression_or_a_for_is_checked(self):
+        got = corpus.port_ranges("let xs: List<P> = read<[c](x: 1..=n, y: 1..=m)>().sorted()\n"
+                                 "for a in read<[0..m]1..=n>():\n    print(a)\nlet z = unread<1..=3>()\n")
+        self.assertEqual(got, {"xs.x": ("1", "n"), "xs.y": ("1", "m"), "a": ("1", "n")})
+
+    def test_an_unnamed_tuple_has_positional_fields_the_header_can_state_whole(self):
+        port = "domain Col = 1..=w\ntype Cell = (Col, 0..n)\nlet s: [q](1..=3, Col) = read()\nlet c: Cell = read()\n"
+        self.assertEqual(corpus.port_ranges(port), {"s.0": ("1", "3"), "s.1": ("1", "w"),
+                                                    "c.0": ("1", "w"), "c.1": ("0", "n - 1")})
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: s: [q](1..=3, Col); c.0: Col; c.1: 0..n\n" + port), [])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: s: [q](1..=3, 1..=2e5); c: Cell\n" + port),
+                         ["bounds-narrow p s.1: reads 1..=w, statement 1..=2e5"])
+
     def test_bounds_end_at_the_next_header_key(self):
         text = "// Bounds: n: 1..=9\n// limits: 1000 ms, 256 MB\n//   q: 1..=5\nlet n: 1..=9 = read()\n"
         self.assertEqual(corpus.declared_bounds(text), {"n": ("1", "9")})
