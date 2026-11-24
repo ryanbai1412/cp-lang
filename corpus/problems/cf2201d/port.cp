@@ -14,7 +14,8 @@
 //   O(log n) per query.
 // Bounds: n, q: 1..=200_000; a: 1..=n; x, nv: 1..=n
 
-struct SegNode(mx: Int, pref: Int, suff: Int, all: Bool, cnt: Int):
+type Len = 0..=200_000
+struct SegNode(mx: Len, pref: Len, suff: Len, all: Bool, cnt: Int):
     fn empty() -> SegNode = SegNode(0, 0, 0, false, 0)
     fn single(v: Int) -> SegNode = SegNode(v, 1, 1, true, 1)
     fn join(x: SegNode, y: SegNode) -> SegNode:
