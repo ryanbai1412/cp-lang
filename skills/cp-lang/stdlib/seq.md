@@ -245,7 +245,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).; traps: when `k < 1`
 - `@get fn even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
 - `@get fn odd<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
-- `fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T` — \(O(1)\); traps: when `keys.len != self.len`
+- `fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T` — \(O(n)\), allocates; \(O(n)\).; traps: when `keys.len != self.len`
 - `fn collect<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), allocates; The end of a lazy chain, materialized into the type the context expects, else a `List`.
 - `fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, T, K>` — \(O(1)\) to make, \(O(1)\) per step; `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items` gives `(key, x)`, and `argmax`/`find` answer with keys.; traps: when both `keys` and `by` are given; when `keys` runs out first
 - `fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T` — \(O(1)\) per step
