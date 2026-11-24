@@ -797,6 +797,26 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.editor_logic_lines(root), [f"editors/vscode/src/extension.ts:{i}" for i in (4, 5, 6)])
 
+    def test_editor_logic_lines_read_a_restart_on_launch_settings_as_wiring(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            sections = [{"id": "cp.server", "properties": {"cp.server.path": {}}},
+                        {"id": "cp", "properties": {"cp.run.timeoutMs": {}}}]
+            self._write(root, "editors/vscode/package.json", json.dumps({"contributes": {"configuration": sections}}))
+            self._write(root, "editors/vscode/src/client.ts", "new LanguageClient(get('server.path'), get('run.timeoutMs'));\n")
+            self._write(root, "editors/vscode/src/extension.ts", "\n".join([
+                "if (event.affectsConfiguration('cp.server')) {", "    void client.restart();", "}",
+                "if (event.affectsConfiguration('cp.server')) client.restart();",
+                "if (event.affectsConfiguration('cp')) {", "    void client.restart();", "}",
+                "if (event.affectsConfiguration('cp.server')) {", "    show();", "}", "get('run.timeoutMs');", ""]))
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.editor_logic_lines(root), [f"editors/vscode/src/extension.ts:{i}" for i in (5, 8)])
+            self._write(root, "editors/vscode/src/extension.ts",
+                        "if (event.affectsConfiguration('cp.server')) client.restart();\nget('server.path');\n")
+            self.assertEqual(dr.editor_logic_lines(root), ["editors/vscode/src/extension.ts:1"])
+            self.assertIn("editor_logic_lines", dr.HARD_ZERO)
+
     def test_surface_counters_find_a_second_mechanism(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

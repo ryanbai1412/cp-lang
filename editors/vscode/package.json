@@ -260,88 +260,99 @@
         "editor.defaultFormatter": "cp-lang.cp-lang"
       }
     },
-    "configuration": {
-      "title": "CP Lang",
-      "properties": {
-        "cp.server.path": {
-          "type": "string",
-          "default": "cpl",
-          "scope": "machine-overridable",
-          "markdownDescription": "The `cpl` binary: a name on `PATH` (the installer puts `cpl` there) or an absolute path, such as a cp-lang checkout's `target/debug/cpl`."
-        },
-        "cp.server.args": {
-          "type": "array",
-          "items": {
-            "type": "string"
+    "configuration": [
+      {
+        "id": "cp",
+        "title": "CP Lang",
+        "order": 0,
+        "properties": {
+          "cp.trace.server": {
+            "type": "string",
+            "enum": [
+              "off",
+              "messages",
+              "verbose"
+            ],
+            "default": "off",
+            "description": "Log the messages between VS Code and the language server."
           },
-          "default": [
-            "lsp"
-          ],
-          "scope": "machine-overridable",
-          "markdownDescription": "Arguments that start the language server. The server speaks LSP on stdio."
-        },
-        "cp.trace.server": {
-          "type": "string",
-          "enum": [
-            "off",
-            "messages",
-            "verbose"
-          ],
-          "default": "off",
-          "description": "Log the messages between VS Code and the language server."
-        },
-        "cp.codeLens.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show Run, Stress and Trace lenses above the file, its samples and its `@alt`/`@check`/`@interactor` functions."
-        },
-        "cp.inlayHints.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show the language server's inlay hints: inferred types, proven ranges and domain loops."
-        },
-        "cp.liveValues.enabled": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "After each save, run the file on `#cp.liveValues.input#` and show the value of each top-level `let` at the end of its line."
-        },
-        "cp.liveValues.input": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "The sample live values are computed on, such as `i1` or `1`. Empty means the file's first sample."
-        },
-        "cp.liveValues.maxLength": {
-          "type": "integer",
-          "default": 60,
-          "minimum": 10,
-          "description": "Longest value shown inline before it is cut; the full value is in the hover."
-        },
-        "cp.submit.copy": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Copy the C++ to the clipboard when `CP: Submit` finds it ready to send (`cpl submit --copy`)."
-        },
-        "cp.stress.args": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "cp.codeLens.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show Run, Stress and Trace lenses above the file, its samples and its `@alt`/`@check`/`@interactor` functions."
           },
-          "default": [],
-          "markdownDescription": "Extra flags passed to `cpl stress` (for example `[\"--cases\", \"1000\", \"--size\", \"10\"]`)."
-        },
-        "cp.run.timeoutMs": {
-          "type": "integer",
-          "default": 10000,
-          "minimum": 100,
-          "description": "Kill a sample run or stress run that takes longer than this."
-        },
-        "cp.companion.port": {
-          "type": "number",
-          "default": 10043,
-          "markdownDescription": "The port `CP: Import a Problem` waits on for Competitive Companion (`cpl new --listen --port`); 10043 is one the extension sends to out of the box."
+          "cp.inlayHints.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show the language server's inlay hints: inferred types, proven ranges and domain loops."
+          },
+          "cp.liveValues.enabled": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "After each save, run the file on `#cp.liveValues.input#` and show the value of each top-level `let` at the end of its line."
+          },
+          "cp.liveValues.input": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "The sample live values are computed on, such as `i1` or `1`. Empty means the file's first sample."
+          },
+          "cp.liveValues.maxLength": {
+            "type": "integer",
+            "default": 60,
+            "minimum": 10,
+            "description": "Longest value shown inline before it is cut; the full value is in the hover."
+          },
+          "cp.submit.copy": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Copy the C++ to the clipboard when `CP: Submit` finds it ready to send (`cpl submit --copy`)."
+          },
+          "cp.stress.args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "markdownDescription": "Extra flags passed to `cpl stress` (for example `[\"--cases\", \"1000\", \"--size\", \"10\"]`)."
+          },
+          "cp.run.timeoutMs": {
+            "type": "integer",
+            "default": 10000,
+            "minimum": 100,
+            "description": "Kill a sample run or stress run that takes longer than this."
+          },
+          "cp.companion.port": {
+            "type": "number",
+            "default": 10043,
+            "markdownDescription": "The port `CP: Import a Problem` waits on for Competitive Companion (`cpl new --listen --port`); 10043 is one the extension sends to out of the box."
+          }
+        }
+      },
+      {
+        "id": "cp.server",
+        "title": "Server",
+        "order": 1,
+        "properties": {
+          "cp.server.path": {
+            "type": "string",
+            "default": "cpl",
+            "scope": "machine-overridable",
+            "markdownDescription": "The `cpl` binary: a name on `PATH` (the installer puts `cpl` there) or an absolute path, such as a cp-lang checkout's `target/debug/cpl`."
+          },
+          "cp.server.args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "lsp"
+            ],
+            "scope": "machine-overridable",
+            "markdownDescription": "Arguments that start the language server. The server speaks LSP on stdio."
+          }
         }
       }
-    },
+    ],
     "colors": [
       {
         "id": "cp.liveValueForeground",

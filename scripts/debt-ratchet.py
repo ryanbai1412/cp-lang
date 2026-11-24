@@ -2901,18 +2901,53 @@ EDITOR_IMPL_RE = re.compile(r"^\s*impl\b.*\bfor\b")  # Rust's `impl Trait for Ty
 EDITOR_STRING_RE = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`")
 
 
+# `if (event.affectsConfiguration('<launch section>')) { client.restart(); }` is process
+# lifecycle: the server restarts when the settings that start it change.
+EDITOR_RESTART_IF_RE = re.compile(r"^\s*if \(\w+\.affectsConfiguration\('([\w.]+)'\)\) \{?\s*(.*)$")
+EDITOR_RESTART_RE = re.compile(r"^\s*(?:void )?\w+\.restart\(\);?\s*\}?\s*$")
+
+
+def _launch_sections(root: Path, editor: str, files: list[str]) -> set[str]:
+    """The settings sections (`id`s) of an editor's package.json whose every setting is
+    under the section and read only in the file that makes its LSP client: launch settings."""
+    try:
+        sections = json.loads((root / editor / "package.json").read_text())["contributes"]["configuration"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return set()
+    texts = {rel: (root / rel).read_text(errors="replace") for rel in files
+             if rel.startswith(editor + "/src/") and (root / rel).is_file()}
+    client = {rel for rel, text in texts.items() if "new LanguageClient(" in text}
+    out = set()
+    for section in sections if isinstance(sections, list) else [sections]:
+        sid, keys = section.get("id", ""), list(section.get("properties", {}))
+        reads = [{rel for rel, text in texts.items() if f"'{key.split('.', 1)[-1]}'" in text} for key in keys]
+        if sid and keys and all(key.startswith(sid + ".") for key in keys) and all(r and r <= client for r in reads):
+            out.add(sid)
+    return out
+
+
+def _restarts_on_launch_change(line: str, after: list[str], sections: set[str]) -> bool:
+    m = EDITOR_RESTART_IF_RE.match(line)
+    return bool(m) and m.group(1) in sections and bool(EDITOR_RESTART_RE.match(m.group(2) or "".join(after[:1])))
+
+
 def editor_logic_lines(root: Path) -> list[str]:
     """Code lines in git-tracked editor sources (never node_modules/, out/ or dist/ a build
     leaves) other than LSP-client wiring: every code line,
-    and in an `EDITOR_GLUE` file each line that decides or computes (`EDITOR_DECIDES_RE`).
+    and in an `EDITOR_GLUE` file each line that decides or computes (`EDITOR_DECIDES_RE`)
+    other than a restart when the launch settings change (`_launch_sections`).
     Editors stay thin, with completion, running, results and tracing in the server."""
-    out = []
-    for rel in _git(root, "ls-files", "editors"):
+    out, files, launch = [], _git(root, "ls-files", "editors"), {}
+    for rel in files:
         if EDITOR_SOURCE_RE.match(rel) and (root / rel).is_file():
-            glue = rel in EDITOR_GLUE
-            out += [f"{rel}:{i}" for i, line in enumerate(_lines(root / rel), 1)
+            glue, editor = rel in EDITOR_GLUE, "/".join(rel.split("/")[:2])
+            if glue and editor not in launch:
+                launch[editor] = _launch_sections(root, editor, files)
+            lines = _lines(root / rel)
+            out += [f"{rel}:{i}" for i, line in enumerate(lines, 1)
                     if line.strip() and not line.strip().startswith(EDITOR_COMMENT)
-                    and (not glue or EDITOR_DECIDES_RE.search(EDITOR_IMPL_RE.sub("", EDITOR_STRING_RE.sub("''", line))))]
+                    and (not glue or (EDITOR_DECIDES_RE.search(EDITOR_IMPL_RE.sub("", EDITOR_STRING_RE.sub("''", line)))
+                                      and not _restarts_on_launch_change(line, lines[i:i + 1], launch[editor])))]
     return out
 
 
@@ -3065,7 +3100,7 @@ HARD_ZERO = frozenset({
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
-    "stdlib_todo",
+    "stdlib_todo", "editor_logic_lines",
     "uncached_installs",
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_no_limits", "stale_arch_paths",

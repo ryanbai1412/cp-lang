@@ -59,10 +59,17 @@ fn word(text: &str) -> &str {
 fn vscode() -> Settings {
     let package = cpl_json::parse(&read(&root().join("editors/vscode/package.json"))).unwrap();
     package
-        .at(&["contributes", "configuration", "properties"])
-        .as_object()
-        .expect("package.json declares its settings")
+        .at(&["contributes", "configuration"])
+        .as_array()
+        .expect("package.json declares its settings in sections")
         .iter()
+        .flat_map(|section| {
+            section
+                .at(&["properties"])
+                .as_object()
+                .expect("a section's settings")
+                .iter()
+        })
         .map(|(k, v)| (k.clone(), Some(norm(&v.at(&["default"]).to_string()))))
         .collect()
 }

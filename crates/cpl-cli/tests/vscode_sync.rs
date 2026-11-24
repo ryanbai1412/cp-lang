@@ -65,10 +65,17 @@ fn reads(sources: &str) -> BTreeMap<String, String> {
 fn every_vscode_setting_is_read_documented_and_defaults_alike() {
     let package = cpl_json::parse(&read("editors/vscode/package.json")).unwrap();
     let declared: BTreeMap<String, String> = package
-        .at(&["contributes", "configuration", "properties"])
-        .as_object()
-        .expect("package.json declares its settings")
+        .at(&["contributes", "configuration"])
+        .as_array()
+        .expect("package.json declares its settings in sections")
         .iter()
+        .flat_map(|section| {
+            section
+                .at(&["properties"])
+                .as_object()
+                .expect("a section's settings")
+                .iter()
+        })
         .map(|(k, v)| (k.clone(), v.at(&["default"]).to_string().replace(' ', "")))
         .collect();
     assert!(
