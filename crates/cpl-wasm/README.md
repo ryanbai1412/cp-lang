@@ -25,7 +25,7 @@ build.cpp;                     // "// main.cp: C++17 written by cpl 0.0.0 ..."
 ```
 
 It is the same code as the `cpl` binary, through the same
-`cpl_check::Database`, so a program means in the browser what it means on
+`cpl_check::Session`, so a program means in the browser what it means on
 the command line. `tests/parity.rs` holds the two to the same bytes.
 
 ## Building

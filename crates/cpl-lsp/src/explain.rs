@@ -6,7 +6,7 @@
 /// data hover shows.
 #[allow(clippy::type_complexity)]
 pub fn storage(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     path: &str,
 ) -> (
     Vec<(String, cpl_check::Representation)>,
@@ -25,7 +25,7 @@ pub fn storage(
 }
 
 /// `cpl explain`'s types and memory section (spec/tools/explain.md).
-pub fn storage_section(db: &mut cpl_check::Database, path: &str) -> String {
+pub fn storage_section(db: &mut cpl_check::Session, path: &str) -> String {
     let (rows, total) = storage(db, path);
     if rows.is_empty() {
         return format!("Storage for {path}: no top-level values\n");
@@ -55,7 +55,7 @@ pub fn storage_section(db: &mut cpl_check::Database, path: &str) -> String {
 
 /// How a peak compares with the memory limit of the judge the build is
 /// for, worded as the editor's memory lens words it (Rjudge.7).
-fn judge_limit(db: &cpl_check::Database, path: &str, bytes: u128) -> String {
+fn judge_limit(db: &cpl_check::Session, path: &str, bytes: u128) -> String {
     let text = db
         .file_text(path)
         .map(|text| text.to_string())

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use cpl_check::Database;
+use cpl_check::Session;
 use cpl_conform::runner;
 
 /// A worker reuses one `Database` across cases, so a case must compile the
@@ -19,7 +19,7 @@ fn a_case_compiles_the_same_after_any_other_case() {
         "spec/conformance/core-07/with-prev.cp",
     ] {
         let (path, text) = read(victim);
-        let mut db = Database::new();
+        let mut db = Session::new();
         let _ = runner::compile_program(&mut db, &first, &first_text);
         if let Err(runner::CompileError::Diagnostics(err)) =
             runner::compile_program(&mut db, &path, &text)

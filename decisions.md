@@ -8819,7 +8819,11 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** A shared interface lands before its consumers. The counters now show shadowing that was there but hidden: the built-ins existed with no std declaration to shadow.
 - **Reverse.** Delete the five traits; the counters go back down.
 
-## 524. (reserved, unknown)
+## 524. One `cpl_check::Session` is the only front end (compiler, 2026-11-24)
+
+- **Call.** A tool gets checker answers from a `cpl_check::Session` (or `cpl_check::open(path, text)` for one file once). `Database::new`/`with_loader` are `pub(crate)`, so nothing outside `cpl-check` builds an analysis; `SessionOptions` (std source, `[libs]` loader, edition and package version stubs) is how every host chooses module resolution. Every edit moves the session to a new `Revision`; an analysis, its `Facts` and its diagnostics are built at most once per revision. The `own_databases` debt-ratchet counter is a hard gate at 0.
+- **Why.** A second database in a tool is a second front end that can disagree with the checker; the Phase 2 plan makes the checker the single source of type and resolution facts.
+- **Reverse.** Make `Database::new` public again and drop `own_databases` from `HARD_ZERO`.
 
 ## 525. (reserved, content)
 

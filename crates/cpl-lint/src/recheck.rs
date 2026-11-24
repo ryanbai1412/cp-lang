@@ -12,7 +12,7 @@ use cpl_diag::{Diagnostic, Severity};
 
 /// The errors of `src` as `(code, message)`, in a stable order: spans move
 /// when a line goes, what is reported does not.
-fn verdict(db: &mut cpl_check::Database, src: &str) -> Vec<(String, String)> {
+fn verdict(db: &mut cpl_check::Session, src: &str) -> Vec<(String, String)> {
     db.set_file("<lint>.cp", src);
     errors(db.diagnostics("<lint>.cp"))
 }
@@ -35,8 +35,8 @@ pub(crate) fn recheck(diags: &mut Vec<Diagnostic>, src: &str) {
 thread_local! {
     /// Kept between rechecks, so the modules a file imports are checked once
     /// per thread rather than on every keystroke.
-    static CHECKER: std::cell::RefCell<cpl_check::Database> =
-        std::cell::RefCell::new(cpl_check::Database::new());
+    static CHECKER: std::cell::RefCell<cpl_check::Session> =
+        std::cell::RefCell::new(cpl_check::Session::new());
 }
 
 pub(crate) fn keep_if_unchanged(

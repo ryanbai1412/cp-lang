@@ -102,7 +102,7 @@ mod tests {
             "assert n != 7\n",
             "print(xs[n] + 10 / n + 10 % n)\n",
         );
-        let mut db = cpl_check::Database::new();
+        let mut db = cpl_check::Session::new();
         db.set_file("t.cp", source);
         let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
         let target = crate::Target {
@@ -140,7 +140,7 @@ mod tests {
             "assert a.len == 4, \"dropped\"\n",
             "print(a.len)\n",
         );
-        let mut db = cpl_check::Database::new();
+        let mut db = cpl_check::Session::new();
         db.set_file("t.cp", source);
         let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
         let target = crate::Target {

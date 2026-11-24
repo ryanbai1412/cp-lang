@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use cpl_check::Database;
+use cpl_check::Session;
 
 #[test]
 fn no_spec_std_module_imports_itself_back() {
@@ -24,7 +24,7 @@ fn no_spec_std_module_imports_itself_back() {
         if module == "prelude" {
             continue;
         }
-        let mut db = Database::new();
+        let mut db = Session::new();
         let main = std_dir.join("../main.cp").to_string_lossy().into_owned();
         db.set_file(&main, format!("use std.{module}\n"));
         db.analyze(&main);

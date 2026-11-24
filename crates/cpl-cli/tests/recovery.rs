@@ -32,7 +32,7 @@ fn root() -> PathBuf {
 /// editor sees a stream of edits.
 fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
     thread_local! {
-        static DB: std::cell::RefCell<cpl_check::Database> = Default::default();
+        static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
     }
     let analysis = DB.with_borrow_mut(|db| {
         db.set_file(path, src);
@@ -340,7 +340,7 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
         count: 1,
         ..FirstFix::default()
     };
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     if let Some(fix) = cpl_cli::checked_fix(&mut db, &b.path, &b.src, &errs[0]) {
         let fixed = apply(&b.src, &fix.edits);
         first.fixed = 1;

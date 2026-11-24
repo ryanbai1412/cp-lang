@@ -484,7 +484,7 @@ pub fn stress_source(
     stack_limit: Option<u32>,
     explain: bool,
 ) -> Result<StressResult, StressError> {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file(name, source);
     let analysis = db
         .analyze(name)

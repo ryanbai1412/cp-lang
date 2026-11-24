@@ -12,7 +12,7 @@ pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     let json = args.contains(&"--json");
     let files = args.iter().filter(|arg| **arg != "--json");
     let mut reports = Vec::new();
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     let mut code = 0;
     for path in files {
         let text = match std::fs::read_to_string(path) {
@@ -67,7 +67,7 @@ pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
     let json = args.contains(&"--json");
     let files = args.iter().filter(|arg| **arg != "--json");
     let mut reports = Vec::new();
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     let mut code = 0;
     for path in files {
         let text = match std::fs::read_to_string(path) {

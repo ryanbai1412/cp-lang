@@ -1,9 +1,9 @@
 //! The incremental front end of the cp language.
 //!
-//! [`Database`] is the one front end behind `cpl check`, `cpl run`,
+//! [`Session`] is the one front end behind `cpl check`, `cpl run`,
 //! `cpl build` and `cpl lsp`. Give it file texts with
-//! [`Database::set_file`] and ask for [`Database::analyze`],
-//! [`Database::hover`], [`Database::definition`] or
+//! [`Session::set_file`] and ask for [`Session::analysis`],
+//! [`Session::facts`], [`Database::hover`], [`Database::definition`] or
 //! [`Database::symbols`]; it re-does only the work an edit invalidated.
 //! See `db.rs` for how.
 //!
@@ -25,6 +25,7 @@ mod labels;
 mod modules;
 mod nav;
 mod prelude;
+mod session;
 mod std_files;
 mod ty;
 
@@ -49,6 +50,7 @@ pub use prelude::{
     import_edit, method_key, method_module, methods as std_methods, std_module, std_names,
     std_self_heads,
 };
+pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};
 
 /// A `<fn>_of_pairs`/`<fn>_of_triples` fn: what `T.fn(list)` resolves to, never a name

@@ -4,7 +4,7 @@ The language server (`cpl lsp`): diagnostics as you type, hover, go-to-definitio
 
 ## Invariants
 
-- Answers from the same `cpl_check::Database` as the command line, so the editor and `cpl check` never disagree.
+- Answers from the same `cpl_check::Session` as the command line, so the editor and `cpl check` never disagree.
 - Latency budgets are tested (`tests/latency.rs`).
 
 ## Tests

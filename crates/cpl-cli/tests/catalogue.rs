@@ -98,7 +98,7 @@ fn reported(mode: &str, src: &str, input: &str, name: &str) -> (Vec<String>, Vec
 
 /// `src` with the fix-it of its first diagnostic applied, if it has one.
 fn apply_first_fix_it(src: &str) -> Option<String> {
-    let mut db = cpl_check::Database::default();
+    let mut db = cpl_check::Session::default();
     db.set_file("trigger.cp", src);
     let analysis = db.analyze("trigger.cp").unwrap();
     let mut diags = cpl_ir::check(&analysis);

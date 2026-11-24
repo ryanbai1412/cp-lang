@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use cpl_check::Database;
+use cpl_check::Session;
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
@@ -75,7 +75,7 @@ fn tests_dir(root: &Path, prob_dir: &Path, id: &str) -> PathBuf {
     }
 }
 
-pub fn run_one(db: &mut Database, prob: &CorpusProblem) -> CaseOutcome {
+pub fn run_one(db: &mut Session, prob: &CorpusProblem) -> CaseOutcome {
     if prob.tests.is_empty() {
         return CaseOutcome {
             status: "untested".into(),

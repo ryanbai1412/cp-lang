@@ -67,7 +67,7 @@ fn a_producer_that_may_trap_is_not_cut_short() {
 }
 
 fn build(source: &str, checks: crate::Checks) -> String {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let target = crate::Target {

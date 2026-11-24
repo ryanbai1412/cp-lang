@@ -223,7 +223,7 @@ fn plain_type(ty: Option<&Ty>) -> bool {
 /// checked once. `cpl fix` and the playground's `fix` share it. A round is
 /// re-checked: a fix that would add a checker error is not applied.
 pub fn apply_lint_fixes(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     path: &str,
     mut text: String,
     config: &crate::Config,

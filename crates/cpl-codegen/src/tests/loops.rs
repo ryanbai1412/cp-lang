@@ -57,7 +57,7 @@ fn explain_names_each_table_stored_as_a_hash_table() {
         "for x in a: freq[x] += 1\n",
         "print(freq.get(3) ?? 0)\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let report = crate::explain::report("t.cp", source, &program);

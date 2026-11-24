@@ -14,7 +14,7 @@ pub const MAX_CHECKS: usize = 32;
 /// checks clean, else the first after which no error starts on or before
 /// `diag`'s line, else `fixes[0]`. One fix is returned with no re-check.
 pub fn checked_fix<'d>(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     path: &str,
     text: &str,
     diag: &'d Diagnostic,
@@ -24,7 +24,7 @@ pub fn checked_fix<'d>(
 }
 
 fn choose<'d>(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     path: &str,
     text: &str,
     diag: &'d Diagnostic,
@@ -63,7 +63,7 @@ fn choose<'d>(
 /// `errors` with the checked fix moved first in each, so applying first
 /// fixes applies the checked ones, sharing `MAX_CHECKS` re-checks.
 pub fn rank_checked(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     path: &str,
     text: &str,
     errors: &mut [Diagnostic],
@@ -81,7 +81,7 @@ pub fn rank_checked(
 }
 
 /// The errors the front end reports for `text` as `path`.
-pub fn errors_in(db: &mut cpl_check::Database, path: &str, text: &str) -> Vec<Diagnostic> {
+pub fn errors_in(db: &mut cpl_check::Session, path: &str, text: &str) -> Vec<Diagnostic> {
     db.set_file(path, text);
     let analysis = db.analyze(path).expect("the file was just set");
     let mut out = crate::check(&analysis);
@@ -93,13 +93,13 @@ pub fn errors_in(db: &mut cpl_check::Database, path: &str, text: &str) -> Vec<Di
 /// until none applies, and how many were applied. A round can uncover
 /// another error, so the rounds are capped.
 pub fn apply_error_fixes(path: &str, text: &str) -> (String, usize) {
-    let (text, applied, _) = apply_error_fixes_in(&mut cpl_check::Database::new(), path, text);
+    let (text, applied, _) = apply_error_fixes_in(&mut cpl_check::Session::new(), path, text);
     (text, applied)
 }
 
 /// `apply_error_fixes` in `db`, with the errors left in the result.
 pub fn apply_error_fixes_in(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     path: &str,
     text: &str,
 ) -> (String, usize, Vec<cpl_diag::Diagnostic>) {
@@ -136,7 +136,7 @@ mod tests {
     }
 
     fn chosen(text: &str, d: &Diagnostic) -> String {
-        let mut db = cpl_check::Database::new();
+        let mut db = cpl_check::Session::new();
         checked_fix(&mut db, "a.cp", text, d).unwrap().title.clone()
     }
 
@@ -170,7 +170,7 @@ mod tests {
     #[test]
     fn a_spent_budget_keeps_the_ranked_order() {
         let text = "let x = \nprint(x)\n";
-        let mut db = cpl_check::Database::new();
+        let mut db = cpl_check::Session::new();
         let mut errors = vec![diag(&["zz", "1"])];
         rank_checked(&mut db, "a.cp", text, &mut errors, &mut 0);
         assert_eq!(errors[0].fixes[0].title, "insert zz");

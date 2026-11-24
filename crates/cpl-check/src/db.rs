@@ -151,15 +151,11 @@ pub struct Analysis {
     pub diagnostics: Vec<Diagnostic>,
     pub items: Vec<AnalyzedItem>,
     pub(crate) scope: Arc<Scope>,
-    pub(crate) facts: std::sync::OnceLock<crate::Facts>,
+    pub(crate) facts: std::sync::OnceLock<Arc<crate::Facts>>,
+    pub(crate) revision: crate::Revision,
 }
 
 impl Analysis {
-    /// What checking found about each place in the file, in file positions.
-    pub fn facts(&self) -> &crate::Facts {
-        self.facts.get_or_init(|| crate::Facts::from_analysis(self))
-    }
-
     pub fn has_errors(&self) -> bool {
         self.diagnostics
             .iter()
@@ -266,6 +262,8 @@ const KEEP_REVISIONS: u64 = 32;
 
 pub struct Database {
     files: HashMap<String, FileState>,
+    /// Bumped by every edit through `set_file`, `restore_file` or `remove_file`.
+    pub(crate) edits: u64,
     next_file: u32,
     revision: u64,
     syntax: HashMap<u64, SyntaxMemo>,
@@ -289,22 +287,17 @@ pub struct Database {
     last_cycle: Vec<String>,
 }
 
-impl Default for Database {
-    fn default() -> Database {
-        Database::with_loader(Box::new(FsLoader))
-    }
-}
-
 impl Database {
-    /// A database that reads the modules its files import from disk.
-    pub fn new() -> Database {
-        Database::default()
+    /// Reads imports from disk. Only [`crate::Session`] and tests build one.
+    pub(crate) fn new() -> Database {
+        Database::with_loader(Box::new(FsLoader))
     }
 
     /// A database that asks `loader` for the modules its files import.
-    pub fn with_loader(loader: Box<dyn Loader>) -> Database {
+    pub(crate) fn with_loader(loader: Box<dyn Loader>) -> Database {
         Database {
             files: HashMap::default(),
+            edits: 0,
             next_file: 0,
             revision: 0,
             syntax: HashMap::default(),
@@ -323,6 +316,7 @@ impl Database {
 
     /// Sets the text of a file. Nothing is computed until it is asked for.
     pub fn set_file(&mut self, path: &str, text: impl Into<Arc<str>>) {
+        self.edits += 1;
         self.store(path, text.into(), false);
     }
 
@@ -364,6 +358,7 @@ impl Database {
     }
 
     pub fn remove_file(&mut self, path: &str) {
+        self.edits += 1;
         if let Some(file) = self.files.remove(path) {
             self.defs.retain(|key, _| key.0 != file.id);
             self.checks.retain(|key, _| key.0 != file.id);
@@ -381,6 +376,7 @@ impl Database {
 
     /// Puts back what `file_text` and `file_loaded` said before a trial edit.
     pub fn restore_file(&mut self, path: &str, text: Arc<str>, loaded: bool) {
+        self.edits += 1;
         self.store(path, text, false);
         if let Some(file) = self.files.get_mut(path) {
             file.loaded = loaded;
@@ -1208,6 +1204,7 @@ impl Database {
                 .collect(),
             scope,
             facts: Default::default(),
+            revision: crate::Revision(self.edits),
         }));
         self.collect_garbage(items.len());
         // A cycle through a file that imports this one cut names out of it:

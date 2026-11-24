@@ -862,8 +862,14 @@ class DebtRatchetTest(unittest.TestCase):
             for rel in ("crates/cpl-lsp/src/server.rs", "crates/cpl-lsp/src/fix_tests.rs",
                         "crates/cpl-lsp/tests/a.rs", "crates/cpl-check/src/db.rs"):
                 (root / rel).parent.mkdir(parents=True, exist_ok=True)
-                (root / rel).write_text("let db = Database::new();\n")
-            self.assertEqual(dr.own_databases(root), ["crates/cpl-lsp/src/server.rs:1"])
+                (root / rel).write_text("let db = Database::new();\nlet s = Session::new();\n")
+            (root / "crates/cpl-ir/src/a.rs").parent.mkdir(parents=True)
+            (root / "crates/cpl-ir/src/a.rs").write_text("Database::with_loader(l)\n")
+            self.assertEqual(sorted(dr.own_databases(root)),
+                             ["crates/cpl-ir/src/a.rs:1", "crates/cpl-lsp/src/fix_tests.rs:1",
+                              "crates/cpl-lsp/src/server.rs:1", "crates/cpl-lsp/tests/a.rs:1"])
+            errors, _, _ = dr.evaluate({"own_databases": 1}, {"own_databases": 5})
+            self.assertTrue(any("must be 0" in e for e in errors), errors)
             tests = root / "crates/cpl-cli/tests"
             tests.mkdir(parents=True)
             (tests / "read_only_copies.rs").write_text(

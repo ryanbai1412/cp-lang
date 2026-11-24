@@ -176,7 +176,7 @@ fn analyzed(path: &Path, text: &str) -> Option<(String, std::sync::Arc<cpl_check
         return None;
     }
     let name = path.shown();
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file(&name, text);
     let analysis = db.analyze(&name)?;
     let failed = (analysis.diagnostics.iter()).any(|d| d.severity == cpl_diag::Severity::Error);

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use cpl_check::Database;
+use cpl_check::Session;
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
@@ -313,7 +313,7 @@ fn build_example_program(ex: &DocExample, code: &str, import_module: bool) -> St
     prog
 }
 
-pub fn run_one(db: &mut Database, root: &Path, ex: &DocExample) -> CaseOutcome {
+pub fn run_one(db: &mut Session, root: &Path, ex: &DocExample) -> CaseOutcome {
     let Some(code) = &ex.snippet else {
         return CaseOutcome {
             status: "prose".into(),
@@ -351,7 +351,7 @@ pub fn run_one(db: &mut Database, root: &Path, ex: &DocExample) -> CaseOutcome {
     }
 }
 
-fn run_unchecked(db: &mut Database, root: &Path, ex: &DocExample, code: &str) -> CaseOutcome {
+fn run_unchecked(db: &mut Session, root: &Path, ex: &DocExample, code: &str) -> CaseOutcome {
     let safe_id: String = ex
         .id
         .chars()

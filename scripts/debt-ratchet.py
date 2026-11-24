@@ -809,14 +809,18 @@ def vm_fallbacks(root: Path) -> list[str]:
     return [l for l in _lines(path) if l and not l.startswith("#")] if path.is_file() else []
 
 
+OWN_DATABASE_RE = re.compile(r"\bDatabase::(?:new|with_loader|default)\b|\bDatabase\s*\{")
+
+
 def own_databases(root: Path) -> list[str]:
-    """`Database::new()` outside tests and cpl-check: a tool re-deriving what one session answers."""
+    """A `Database` built outside cpl-check, tests included: only a `cpl_check::Session`
+    builds an analysis, so no tool keeps a front end that could disagree with the checker."""
     out = []
-    for p in _rs_files(root, "crates", tests=False):
+    for p in _rs_files(root, "crates", tests=True):
         rel = _rel(root, p)
-        if rel.startswith("crates/cpl-check/") or "/examples/" in rel or rel.endswith("_tests.rs"):
+        if rel.startswith("crates/cpl-check/"):
             continue
-        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if "Database::new()" in line]
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if OWN_DATABASE_RE.search(line)]
     return out
 
 
@@ -1795,7 +1799,7 @@ COUNTERS = {
     "conformance_wrong_output": ("conformance cases with wrong output in research/scoreboard.json (Content)",
                                  conformance_wrong_output, True),
     "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
-    "own_databases": ("Database::new() outside tests and cpl-check", own_databases, True),
+    "own_databases": ("Database built outside cpl-check", own_databases, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
     "cpp_deep_copies": ("deep copies in the corpus C++ (read_only_copies)", cpp_deep_copies, True),
@@ -1852,6 +1856,10 @@ COUNTERS = {
     "module_loaders": ("Database::new outside cpl-check", module_loaders, True),
     "unregistered_lists": ("list files with no LISTS row (counter, owner, plan)", unregistered_lists, True),
 }
+
+
+# Counters that are rules, not debt: any item fails, whatever a baseline says.
+HARD_ZERO = {"own_databases"}
 
 
 def register_rows_by_domain(root: Path) -> dict[str, int]:
@@ -1935,7 +1943,9 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
                 errors.append(f"{label}: gated counter with no baseline (`--update {name}` in the commit that adds it)")
             continue
         cur, base = int(actual[name]), int(baseline[name])
-        if cur > base:
+        if name in HARD_ZERO and cur > 0:
+            errors.append(f"{label}: {cur}, must be 0 (a hard gate, no baseline; `--list {name}` shows them)")
+        elif cur > base:
             errors.append(
                 f"{label}: increased from {base} to {cur} (ratchet may only go down; "
                 f"`--list {name}` shows them)"

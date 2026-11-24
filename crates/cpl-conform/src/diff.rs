@@ -4,7 +4,7 @@ use std::process::Command;
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
-use cpl_check::Database;
+use cpl_check::Session;
 
 use crate::conformance::{self, Expect};
 use crate::corpus;
@@ -278,7 +278,7 @@ pub(crate) fn run_binary(bin: &Path, input: &[u8]) -> Result<Vec<u8>, String> {
     Ok(out.stdout)
 }
 
-fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String, CaseOutcome) {
+fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, CaseOutcome) {
     let (id, path, inputs, token_compare) = match target {
         DiffTarget::Conformance { id, path } => (
             id.clone(),
@@ -384,7 +384,7 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
         Err(CompileError::Diagnostics(_)) => {
             // Guard against cross-case Database state contamination under parallel reuse:
             // retry once on a fresh Database before classifying as skip.
-            let mut fresh = Database::new();
+            let mut fresh = Session::new();
             match runner::compile_program(&mut fresh, &path_str, &text) {
                 Ok(c) => c,
                 Err(CompileError::Diagnostics(diag)) => {
@@ -531,7 +531,7 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
             .join("conform-cxx"),
     };
 
-    let one = |db: &mut Database, target: &DiffTarget| {
+    let one = |db: &mut Session, target: &DiffTarget| {
         runner::running(target.id());
         let (id, outcome) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             run_one(db, &cache_dir, target)

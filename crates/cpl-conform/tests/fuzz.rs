@@ -1,7 +1,7 @@
 //! compiler-changes/R4: generated programs are valid, and both engines
 //! agree on them at every `--checks` level.
 
-use cpl_check::Database;
+use cpl_check::Session;
 use cpl_codegen::Checks;
 use cpl_conform::{fuzz, gen};
 
@@ -19,7 +19,7 @@ fn generated_programs_check_run_and_agree() {
         .output()
         .is_ok();
     let levels = [Checks::None, Checks::Traps, Checks::All];
-    let mut db = Database::new();
+    let mut db = Session::new();
     let found: Vec<_> = (0..40)
         .filter_map(|seed| fuzz::check(&mut db, &cache_dir, seed, &levels, cxx && seed < 12).err())
         .map(|f| (f.seed, f.kind, f.detail))

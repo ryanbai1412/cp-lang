@@ -2,13 +2,13 @@
 //! and the playground: each error's checked fix, round after round, then,
 //! once the file checks clean, the lint fixes and codemods.
 
-use cpl_check::Database;
+use cpl_check::Session;
 use cpl_diag::Diagnostic;
 
 /// `text` fixed in `db` under `key`: the fixed text, how many fixes were
 /// applied, and the errors left.
 pub fn document(
-    db: &mut Database,
+    db: &mut Session,
     key: &str,
     text: &str,
     config: &cpl_lint::Config,

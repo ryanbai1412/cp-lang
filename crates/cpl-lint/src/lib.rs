@@ -510,7 +510,7 @@ pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
 
 /// `src` checked in a database of its own, for callers that hold none.
 pub(crate) fn analyze_alone(src: &str) -> Option<std::sync::Arc<cpl_check::Analysis>> {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("<lint>.cp", src);
     db.analyze("<lint>.cp")
 }
@@ -866,7 +866,7 @@ pub fn fix_removed_syntax(src: &str) -> (String, usize) {
 /// `.start`/`.end`, leaving user struct fields named `lo`/`hi` untouched)
 /// and a getter called with `()`.
 pub fn fix_checked_removed_syntax_in(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     key: &str,
     src: &str,
 ) -> (String, usize) {
@@ -917,12 +917,12 @@ pub(crate) fn fix_at(
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<fix>.cp".to_string());
-    fix_in(&mut cpl_check::Database::new(), &key, src, config)
+    fix_in(&mut cpl_check::Session::new(), &key, src, config)
 }
 
 /// [`fix`] on the file `key` in a warm `db`, leaving `db` holding the result.
 pub fn fix_in(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     key: &str,
     src: &str,
     config: &Config,

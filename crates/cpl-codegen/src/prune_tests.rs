@@ -63,7 +63,7 @@ fn a_fn_only_an_assert_calls_is_left_out_of_a_build_without_checks() {
         "assert is_even(n)\n",
         "print(n)\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let build = |checks| {
@@ -200,7 +200,7 @@ assert floyd_warshall(mut hop)
 assert hop[0, 2] == Some(2)
 print(hop[0, 2] ?? -1)
 ";
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let target = crate::Target {

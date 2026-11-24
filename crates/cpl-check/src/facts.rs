@@ -3,12 +3,13 @@
 //! of re-deriving it from syntax. Built once per revision on first use, so
 //! `cpl lint`, the editor and `cpl fix` read the facts the checker reported from.
 
-use crate::{Analysis, Ty, TypedIndex};
+use crate::{Analysis, Revision, Ty, TypedIndex};
 use cpl_diag::Span;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Default)]
 pub struct Facts {
+    revision: Revision,
     /// The type of each name, member, call, index, unwrap and parenthesised
     /// expression, by file span.
     types: Vec<(Span, Ty)>,
@@ -21,7 +22,10 @@ pub struct Facts {
 
 impl Facts {
     pub fn from_analysis(analysis: &Analysis) -> Facts {
-        let mut facts = Facts::default();
+        let mut facts = Facts {
+            revision: analysis.revision,
+            ..Facts::default()
+        };
         for item in &analysis.items {
             let shift = |s: Span| s.shift(item.offset);
             for entry in &item.check.hovers {
@@ -46,6 +50,11 @@ impl Facts {
         // By end, then start: `place_type` looks a place up by its end.
         facts.types.sort_by_key(|(s, _)| (s.end, s.start));
         facts
+    }
+
+    /// The session revision these facts were found at.
+    pub fn revision(&self) -> Revision {
+        self.revision
     }
 
     /// The type of the place `span` names (`x`, `g[i][j]`, `self.best`): the

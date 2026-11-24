@@ -457,7 +457,7 @@ fn docs_example_tags_name_how_an_example_stops() {
 fn docs_examples_run_or_stop_as_tagged() {
     use cpl_conform::docs::{run_one, DocExample};
     let root = find_repo_root().expect("repo root");
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     let ex = |snippet: Option<&str>, expect: Option<&str>| DocExample {
         id: "t.cp#x:1".into(),
         module: String::new(),
@@ -466,7 +466,7 @@ fn docs_examples_run_or_stop_as_tagged() {
         block: false,
         expect: expect.map(str::to_string),
     };
-    let status = |db: &mut cpl_check::Database, e: DocExample| run_one(db, &root, &e).status;
+    let status = |db: &mut cpl_check::Session, e: DocExample| run_one(db, &root, &e).status;
     assert_eq!(status(&mut db, ex(Some("1 + 1 == 2"), None)), "pass");
     assert_eq!(
         status(&mut db, ex(Some("[1, 2][5] == 0"), Some("R0101"))),

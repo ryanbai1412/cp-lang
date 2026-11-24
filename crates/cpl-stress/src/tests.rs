@@ -1057,7 +1057,7 @@ fn solve():
 #[test]
 fn the_stdlib_perm_and_tree_are_made_as_a_permutation_and_a_tree() {
     let src = "use std.graph.{Tree}\nuse std.seq.{Perm}\nlet n: 1..=10 = read()\ndomain V = 1..=n\nlet p: Perm<V> = read()\nlet t: Tree<V> = read()\nprint(n)\n";
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let analysis = db.analyze("t.cp").expect("analyzed");
     assert!(

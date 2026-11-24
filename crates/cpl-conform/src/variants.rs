@@ -7,7 +7,7 @@
 //! moved value) are dropped, so what remains is a valid program whose output
 //! the interpreter and the C++ must agree on.
 
-use cpl_check::Database;
+use cpl_check::Session;
 use cpl_diag::{LineIndex, Severity};
 
 /// Lines inserted before line `at` of the port, or appended when `at` is `None`.
@@ -55,7 +55,7 @@ const SHOWN_HASH_INSIDE: [&str; 2] = ["[cpl_x.len for cpl_x in {}]", "{}.len"];
 
 /// The probe forms for the top-level `var v` of `text`, by whether its type walks in hash
 /// order at the top, only inside, or not at all.
-fn shown_forms(db: &mut Database, path: &str, text: &str, v: &str) -> &'static [&'static str] {
+fn shown_forms(db: &mut Session, path: &str, text: &str, v: &str) -> &'static [&'static str] {
     const HASHED: [&str; 3] = ["HashMap", "HashSet", "Interner"];
     let decl = format!("var {v}");
     let Some(at) = text
@@ -228,7 +228,7 @@ pub fn apply(text: &str, probes: &[Probe], keep: &[bool]) -> (String, Vec<Option
 }
 
 /// Zero-based lines of the error diagnostics `text` gets from the checker and lowering.
-fn error_lines(db: &mut Database, path: &str, text: &str) -> Option<Vec<usize>> {
+fn error_lines(db: &mut Session, path: &str, text: &str) -> Option<Vec<usize>> {
     db.set_file(path, text);
     let analysis = db.analyze(path).expect("the file was just set");
     db.remove_file(path);
@@ -257,7 +257,7 @@ fn error_lines(db: &mut Database, path: &str, text: &str) -> Option<Vec<usize>> 
 
 /// The variant of `text` with every probe that checks, and how many probes it kept;
 /// `None` when no probe survives.
-pub fn build(db: &mut Database, path: &str, text: &str) -> Option<(String, usize)> {
+pub fn build(db: &mut Session, path: &str, text: &str) -> Option<(String, usize)> {
     let sep = if text.ends_with('\n') { "" } else { "\n" };
     let shown: Vec<&str> = top_vars(text)
         .iter()

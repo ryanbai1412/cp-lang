@@ -1,7 +1,7 @@
 //! The cp language server (`cpl lsp`).
 //!
 //! It speaks the Language Server Protocol over stdio and answers from the
-//! same incremental [`cpl_check::Database`] as `cpl check`, `cpl run` and
+//! same incremental [`cpl_check::Session`] as `cpl check`, `cpl run` and
 //! `cpl build`. It publishes diagnostics as you type and serves hover,
 //! go-to-definition, the document outline, quick fixes, formatting,
 //! type-aware completion (`xs.`, names in scope, `use std.`), signature

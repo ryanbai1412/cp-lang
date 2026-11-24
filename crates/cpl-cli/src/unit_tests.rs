@@ -50,7 +50,7 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
             return false;
         }
         if let Ok(text) = std::fs::read_to_string(p) {
-            let mut db = cpl_check::Database::new();
+            let mut db = cpl_check::Session::new();
             db.set_file(paths[0], text.as_str());
             if laws::with_law_tests(&text).is_some() {
                 return true;
@@ -112,7 +112,7 @@ pub(crate) fn run_unit_tests(
         }
         collect_cp_files(p, &mut files);
     }
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     let mut passed = 0usize;
     let mut failed = 0usize;
     let tmp_dir = std::env::temp_dir().join(format!("cpl-test-{}", std::process::id()));

@@ -11,7 +11,7 @@ mod uses;
 mod widths;
 
 pub(crate) fn cpp(source: &str) -> String {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
     assert!(
@@ -24,7 +24,7 @@ pub(crate) fn cpp(source: &str) -> String {
 }
 
 pub(crate) fn lower(source: &str) -> cpl_ir::Program {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     cpl_ir::lower(&db.analyze("t.cp").expect("the file was just set")).expect("lowers")
 }
@@ -228,7 +228,7 @@ fn the_same_source_gives_the_same_bytes() {
 #[test]
 fn without_its_source_the_file_says_so_and_is_otherwise_the_same() {
     let source = "let n: Int = read()\nprint(n + 1)\n";
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program =
         cpl_ir::lower(&db.analyze("t.cp").expect("the file was just set")).expect("lowers");
@@ -835,7 +835,7 @@ fn the_program_runs_on_a_thread_with_the_profile_stack() {
         "{cpp}"
     );
     assert!(cpp.contains("mallopt(M_ARENA_MAX, 1);"), "{cpp}");
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let windows = crate::Target {
@@ -854,7 +854,7 @@ fn the_program_runs_on_a_thread_with_the_profile_stack() {
 
 #[test]
 fn a_judge_without_threads_has_main_run_the_program() {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", "print(1)\n");
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let target = crate::Target {
@@ -893,7 +893,7 @@ fn static_struct_and_param_ops_eliminate_std_function() {
         "let b = Box((x, y) => x + y, 10)\n",
         "print(apply_box(b, 5))\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
@@ -921,7 +921,7 @@ fn multi_closure_fn_param_lowers_to_template_functor() {
         "let k = 3\n",
         "print(twice(x => x + 1, 2), twice(x => x + k, 2))\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
@@ -972,7 +972,7 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
         out.contains("std::optional<std::function<ll(ll)>> pick;"),
         "{out}"
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let explained = crate::explain_closures(&program);
@@ -1018,7 +1018,7 @@ fn recursive_fn_threads_its_closure_param_as_a_template() {
         out.contains("ll wrap(ll n, const std::function<ll(ll)>& f)"),
         "{out}"
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let explained = crate::explain_closures(&program);
@@ -1054,7 +1054,7 @@ fn recursive_local_closure_takes_itself_instead_of_std_function() {
     );
     assert!(out.contains("auto go = cpl::rec(["), "{out}");
     assert!(out.contains("](auto& go_2, ll u)"), "{out}");
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let explained = crate::explain_closures(&program);
@@ -1078,7 +1078,7 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
         "if k > 3:\n    a = Box(x => x + k)\n",
         "print(run(k), a.op(2))\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
@@ -1844,7 +1844,7 @@ fn a_local_memo_body_is_an_auto_lambda_and_its_wrapper_is_explained() {
     let src = "let n: Int = read()\nfn solve() -> Int:\n    @memo\n    fn fib(i: 0..=n) -> Int = if i < 2: i else: fib(i - 1) + fib(i - 2)\n    fib(n)\nprint(solve())\n";
     let out = cpp(src);
     assert!(out.contains("auto __memo_body"), "{out}");
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let explained = crate::explain_closures(&program);
@@ -1880,7 +1880,7 @@ fn explain_names_closure_params_and_top_level_fn_vars() {
         "let h = (f: Int -> Int, x: Int) => f(x) * 2\n",
         "print(h(g, 3), g(1))\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let reasons: Vec<String> = crate::explain_closures(&program)

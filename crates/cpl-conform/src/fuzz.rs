@@ -7,7 +7,7 @@
 
 use std::path::Path;
 
-use cpl_check::Database;
+use cpl_check::Session;
 use cpl_codegen::{Checks, Target};
 
 use crate::diff::{compile_cpp, run_binary, CppCompileError};
@@ -26,7 +26,7 @@ pub struct Finding {
 /// Runs the program of `seed`: on the interpreter, and as C++ at each of
 /// `levels` when `cxx` is set.
 pub fn check(
-    db: &mut Database,
+    db: &mut Session,
     cache_dir: &Path,
     seed: u64,
     levels: &[Checks],

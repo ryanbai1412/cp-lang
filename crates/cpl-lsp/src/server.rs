@@ -9,7 +9,7 @@ use crate::complete::{self, Cursor, StdLib};
 use crate::outline::Outline;
 use crate::rename;
 use crate::uri::uri_of_path;
-use cpl_check::{Database, DeclKind, Definition};
+use cpl_check::{DeclKind, Definition, Session};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{obj, Value};
 #[cfg(not(target_arch = "wasm32"))]
@@ -35,7 +35,7 @@ const INVALID_REQUEST: i32 = -32600;
 const SERVER_NOT_INITIALIZED: i32 = -32002;
 
 pub struct Server {
-    pub(crate) db: Database,
+    pub(crate) db: Session,
     /// Open documents by URI, with their current text.
     docs: BTreeMap<String, String>,
     /// The standard library's declarations, for completion.
@@ -66,7 +66,7 @@ impl Default for Server {
 impl Server {
     pub fn new() -> Server {
         Server {
-            db: Database::new(),
+            db: Session::new(),
             docs: BTreeMap::new(),
             std: StdLib::default(),
             proven: HashMap::new(),
@@ -141,7 +141,7 @@ impl Server {
     /// After a panic: rebuild the database from the open documents, answer
     /// the request with an error, and tell the user through a diagnostic.
     fn recover(&mut self, method: &str, params: &Value, id: Value, what: String) -> Vec<Value> {
-        self.db = Database::new();
+        self.db = Session::new();
         for (uri, text) in &self.docs {
             self.db.set_file(uri, text.as_str());
         }
@@ -1451,14 +1451,14 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
 /// site bundle's size cap.
 /// The buffer after `cpl fix`, if that changes it.
 #[cfg(target_arch = "wasm32")]
-fn fix_file(_db: &mut Database, _uri: &str, _text: &str) -> Option<String> {
+fn fix_file(_db: &mut Session, _uri: &str, _text: &str) -> Option<String> {
     None
 }
 
 /// Fixed in the server's own database, which then gets the buffer back:
 /// the client hasn't applied the edit yet.
 #[cfg(not(target_arch = "wasm32"))]
-fn fix_file(db: &mut Database, uri: &str, text: &str) -> Option<String> {
+fn fix_file(db: &mut Session, uri: &str, text: &str) -> Option<String> {
     let (fixed, applied, _) = crate::fix::document(db, uri, text, &lint_config(uri));
     db.set_file(uri, text);
     (applied > 0).then_some(fixed)
@@ -1625,7 +1625,7 @@ fn size_in(cost: &str, size: &str) -> String {
 /// loop has a count and every call a documented cost that can be evaluated.
 #[allow(clippy::type_complexity)]
 fn fn_call_costs(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     facts: &Proven,
@@ -1663,7 +1663,7 @@ fn fn_call_costs(
 /// their `O(..)` terms; and whether any call has a documented cost.
 #[allow(clippy::type_complexity)]
 fn fn_documented(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     facts: &Proven,
@@ -1758,7 +1758,7 @@ fn fn_documented(
 /// the file it calls; `None` if a loop or call is uncounted. With it, the
 /// `O(..)` terms of the calls with a stated cost.
 fn fn_extra(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     evaluated: &[(Span, f64, Option<String>)],
@@ -1930,7 +1930,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
 /// against the memory limit of the judge its build is for. Clicking it
 /// lists the judges. None under 1 KB.
 fn memory_lens(
-    db: &mut cpl_check::Database,
+    db: &mut cpl_check::Session,
     uri: &str,
     path: &str,
     text: &str,

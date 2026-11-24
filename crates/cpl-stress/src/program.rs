@@ -289,7 +289,7 @@ fn emit_cpp(
             cpl_diag::render_all(diagnostics, &name, &text).trim_end()
         ))
     };
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file(&name, text.as_str());
     let analysis = db.analyze(&name).expect("the file was just set");
     let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
@@ -622,7 +622,7 @@ impl Program {
         let name = path.shown();
         let text = std::fs::read_to_string(path)
             .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
-        let mut db = cpl_check::Database::new();
+        let mut db = cpl_check::Session::new();
         db.set_file(&name, text.as_str());
         let analysis = db.analyze(&name).expect("the file was just set");
         let failed = |diagnostics: &[cpl_diag::Diagnostic]| {

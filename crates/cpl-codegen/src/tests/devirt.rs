@@ -112,7 +112,7 @@ fn explain_lists_no_fn_field_of_a_struct_the_file_omits() {
         "fn make(k: Int) -> Unused = Unused((x, y) => x + y + k)\n",
         "print(read::<Int>())\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
@@ -133,7 +133,7 @@ fn explain_lists_a_fn_that_returns_a_closure() {
         "    (k: Int) => k * n + 1\n",
         "print(adder(read::<Int>())(2))\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);

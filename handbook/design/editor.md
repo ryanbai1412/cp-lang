@@ -48,10 +48,10 @@ source text
 
 - **Analysis.** `cpl_check` owns the query database: it parses, resolves
   names, checks types and computes facts (`Analysis`). Tools only read it.
-  The compiler is replacing `cpl_check::Database` with one
-  `cpl_check::Session` per command, handed down as `&mut Session`; every
-  tool opens that instead of its own database, and the `own_databases`
-  ratchet in `scripts/debt-ratchet.py` counts the sites left.
+  A tool opens one `cpl_check::Session` per command (or `cpl_check::open`
+  for one file once), handed down as `&mut Session`; only `cpl-check` can
+  build a `Database`, and the `own_databases` gate in
+  `scripts/debt-ratchet.py` fails on any site outside it.
 - **Language server** (`crates/cpl-lsp`). `server.rs` keeps the open
   documents in one database and dispatches requests; `complete.rs` does
   completion and signature help, `outline.rs` symbols, `rename.rs`

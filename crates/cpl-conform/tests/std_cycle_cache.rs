@@ -1,4 +1,4 @@
-use cpl_check::Database;
+use cpl_check::Session;
 use cpl_conform::conformance::{run_one, ConformanceCase};
 use cpl_conform::find_repo_root;
 
@@ -7,7 +7,7 @@ use cpl_conform::find_repo_root;
 #[test]
 fn a_case_does_not_change_what_std_gives_the_next_one() {
     let root = find_repo_root().unwrap();
-    let mut db = Database::new();
+    let mut db = Session::new();
     for id in ["std-rand/chance-pick", "std-strings/search-empty-pattern"] {
         let case = ConformanceCase {
             id: id.to_string(),

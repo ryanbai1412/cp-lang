@@ -7,7 +7,7 @@ use crate::{run, run_on_this_thread, Limits};
 /// Runs `source` on `input`: what it printed, and the failure if it
 /// ended in one.
 fn outcome(source: &str, input: &str) -> (String, Option<String>) {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
     assert!(
@@ -135,7 +135,7 @@ fn input_is_held_to_what_the_program_declares() {
 #[test]
 fn recursion_without_end_is_reported_not_crashed() {
     // On a small stack, so that the test does not fill gigabytes first.
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file(
         "t.cp",
         "fn f(n: Int) -> Int:\n    f(n + 1) + 1\nprint(f(0))\n",
@@ -308,7 +308,7 @@ print(s.first!, s.last!, r[2], sum(r), prod(r), yes(is_sorted(r)))
             "`Int` does not implement `Indexed`",
         ),
     ] {
-        let mut db = cpl_check::Database::new();
+        let mut db = cpl_check::Session::new();
         db.set_file("t.cp", src);
         let analysis = db.analyze("t.cp").expect("the file was just set");
         let diags = cpl_ir::lower(&analysis).expect_err("bound violation must fail lowering");
@@ -511,7 +511,7 @@ for _ in 0..3:
     gtot += count_and_bump(mut glob, v => v > k)
 print(gtot, local_driver(2), glob[0])
 ";
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
     assert!(
@@ -1107,7 +1107,7 @@ for i in 0..100:
     a[i % 1000] += 1
 print(x, a[0])
 ";
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
     assert!(
@@ -1291,7 +1291,7 @@ print(t)
 /// with no fallback to the tree-walker but on the way to a trap, and on the
 /// tree-walker (a profiled run), which must agree.
 fn vm_runs_alone(source: &str, input: &str) -> String {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
     assert!(
@@ -1519,7 +1519,7 @@ fn vm_swaps_optional_elements_itself() {
 #[test]
 fn traced_vm_swaps_grid_cells_itself() {
     let source = include_str!("../../cpl-cli/tests/programs/vm_traced_swap_grid.cp");
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let analysis = db.analyze("t.cp").expect("the file was just set");
     assert!(
@@ -1581,7 +1581,7 @@ fn vm_combines_boxed_values_in_place_itself() {
 fn only_a_closure_made_off_the_vm_syncs_the_whole_frame_around_calls() {
     // `(has_by_ref_closure, ref_slots)` of fn `name`'s chunk, or main's.
     let syncs = |source: &str, name: Option<&str>| {
-        let mut db = cpl_check::Database::new();
+        let mut db = cpl_check::Session::new();
         db.set_file("t.cp", source);
         let analysis = db.analyze("t.cp").expect("the file was just set");
         assert!(

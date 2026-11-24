@@ -7,7 +7,7 @@
 
 use std::path::Path;
 
-use cpl_check::Database;
+use cpl_check::Session;
 
 use crate::corpus::{discover_file, CorpusProblem};
 use crate::runner::{self, CompileError};
@@ -22,7 +22,7 @@ fn outcome(status: &str, detail: impl Into<String>) -> CaseOutcome {
 
 /// What `cpl fix` writes: each error's fix, then, once none is left, the
 /// lint fixes.
-fn fixed(db: &mut Database, path: &str, text: &str) -> String {
+fn fixed(db: &mut Session, path: &str, text: &str) -> String {
     let (fixed, _, left) = cpl_ir::fix::apply_error_fixes_in(db, path, text);
     if !left.is_empty() {
         return fixed;
@@ -31,14 +31,14 @@ fn fixed(db: &mut Database, path: &str, text: &str) -> String {
     cpl_lint::fix_in(db, path, &fixed, &config).0
 }
 
-fn rewrite(db: &mut Database, how: &str, path: &str, text: &str) -> String {
+fn rewrite(db: &mut Session, how: &str, path: &str, text: &str) -> String {
     match how {
         "fix" => fixed(db, path, text),
         _ => cpl_fmt::format(text).unwrap_or_else(|_| text.to_string()),
     }
 }
 
-pub fn run_one(db: &mut Database, prob: &CorpusProblem, how: &str) -> CaseOutcome {
+pub fn run_one(db: &mut Session, prob: &CorpusProblem, how: &str) -> CaseOutcome {
     let Ok(text) = std::fs::read_to_string(&prob.spec_path) else {
         return outcome("error", "cannot read the program");
     };

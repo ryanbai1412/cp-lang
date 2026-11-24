@@ -137,7 +137,7 @@ fn mutate(src: &str, rng: &mut Rng) -> String {
 }
 
 /// Every diagnostic the checker, lowering and linter report, as text.
-fn front_end(db: &mut cpl_check::Database, path: &str, src: &str) -> Vec<String> {
+fn front_end(db: &mut cpl_check::Session, path: &str, src: &str) -> Vec<String> {
     db.set_file(path, src);
     let analysis = db.analyze(path).expect("the file was just set");
     let lints = cpl_lint::lint(src, &cpl_lint::Config::default());
@@ -175,7 +175,7 @@ fn mutated_programs_never_crash_and_report_deterministically() {
                 let paths = &paths;
                 scope.spawn(move || {
                     let mut crashes = Vec::new();
-                    let mut db = cpl_check::Database::new();
+                    let mut db = cpl_check::Session::new();
                     for (k, path) in paths.iter().enumerate().skip(t).step_by(threads) {
                         let src = std::fs::read_to_string(path).unwrap();
                         let name = path.to_string_lossy().into_owned();
@@ -191,7 +191,7 @@ fn mutated_programs_never_crash_and_report_deterministically() {
                             match &ok {
                                 Ok(warm) if round % 4 == 0 => {
                                     let fresh =
-                                        front_end(&mut cpl_check::Database::new(), &name, &copy);
+                                        front_end(&mut cpl_check::Session::new(), &name, &copy);
                                     if *warm != fresh {
                                         crashes.push(format!(
                                             "{name} seed {seed:#x}: a warm database reports\n{}\nand a fresh one\n{}\n{copy}",
@@ -209,7 +209,7 @@ fn mutated_programs_never_crash_and_report_deterministically() {
                                     .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
                                     .unwrap_or_default();
                                 crashes.push(format!("{name} seed {seed:#x}: {msg}\n{copy}"));
-                                db = cpl_check::Database::new();
+                                db = cpl_check::Session::new();
                             }
                         }
                     }
@@ -259,7 +259,7 @@ fn a_broken_copy_checks_within_10_percent_of_its_original() {
             .map(|t| {
                 let paths = &paths;
                 scope.spawn(move || {
-                    let mut db = cpl_check::Database::new();
+                    let mut db = cpl_check::Session::new();
                     let (mut clean, mut broken, mut copies) = (Duration::ZERO, Duration::ZERO, 0);
                     for (k, path) in paths.iter().enumerate().skip(t).step_by(threads) {
                         let src = std::fs::read_to_string(path).unwrap();
@@ -270,7 +270,7 @@ fn a_broken_copy_checks_within_10_percent_of_its_original() {
                             c.len() >= src.len() && front_end(&mut db, &name, c).len() > quiet
                         });
                         let Some(copy) = copy else { continue };
-                        let time = |db: &mut cpl_check::Database, text: &str| {
+                        let time = |db: &mut cpl_check::Session, text: &str| {
                             let start = Instant::now();
                             front_end(db, &name, text);
                             start.elapsed()

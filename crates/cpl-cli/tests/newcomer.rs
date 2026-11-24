@@ -22,7 +22,7 @@ fn root() -> PathBuf {
 }
 
 fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file(path, src);
     let analysis = db.analyze(path).expect("the file was just set");
     let mut out: Vec<Diagnostic> = cpl_ir::check(&analysis)

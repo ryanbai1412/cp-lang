@@ -5,7 +5,7 @@
 //! and imports by construction. Only names that share the declaration's
 //! text are asked, which keeps a request to a handful of lookups.
 
-use cpl_check::{Database, Definition};
+use cpl_check::{Definition, Session};
 use cpl_diag::Span;
 
 fn is_ident(c: char) -> bool {
@@ -32,7 +32,7 @@ pub fn word_at(text: &str, offset: u32) -> Option<(Span, &str)> {
 
 /// The declaration under `offset` and every span in `path` that names it,
 /// the declaration first when it is in this file.
-pub fn references(db: &mut Database, path: &str, offset: u32) -> Option<(Definition, Vec<Span>)> {
+pub fn references(db: &mut Session, path: &str, offset: u32) -> Option<(Definition, Vec<Span>)> {
     let analysis = db.analyze(path)?;
     let (_, name) = word_at(&analysis.text, offset)?;
     let Some(target) = db.definition_location(path, offset) else {
@@ -44,7 +44,7 @@ pub fn references(db: &mut Database, path: &str, offset: u32) -> Option<(Definit
 
 /// Every span in `path` that names the declaration at `target`, the
 /// declaration first when it is in this file.
-pub fn uses_in(db: &mut Database, path: &str, target: &Definition, name: &str) -> Vec<Span> {
+pub fn uses_in(db: &mut Session, path: &str, target: &Definition, name: &str) -> Vec<Span> {
     let Some(analysis) = db.analyze(path) else {
         return Vec::new();
     };
@@ -257,7 +257,7 @@ pub fn project_files(uri: &str, name: &str) -> Vec<String> {
 /// merged, a use captured by a nearer binding, a declaration shadowed. The
 /// files are re-checked with the edits applied and restored afterwards.
 pub fn changed_meaning(
-    db: &mut Database,
+    db: &mut Session,
     edits: &[(String, Vec<Span>)],
     old: &str,
     new: &str,

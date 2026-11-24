@@ -3,7 +3,7 @@
 //! states the bytes explain
 //! lists for it (spec/tools/explain.md, "LSP hover shows the same data").
 
-use cpl_check::{human_bytes, Database, DeclKind};
+use cpl_check::{human_bytes, DeclKind, Session};
 use std::path::Path;
 
 const PRIMITIVES: &[&str] = &[
@@ -31,7 +31,7 @@ fn hover_states_the_storage_explain_lists() {
         let path = format!("{pid}.cp");
         let src =
             std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
-        let mut db = Database::new();
+        let mut db = Session::new();
         db.set_file(&path, src.as_str());
         let explained = cpl_lsp::explain::storage(&mut db, &path).0;
         for symbol in db.symbols(&path) {

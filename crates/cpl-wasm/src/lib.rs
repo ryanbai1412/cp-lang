@@ -8,7 +8,7 @@
 //! wraps those exports for JavaScript.
 //!
 //! Every answer comes from the crates `cpl` itself is built from, through
-//! the same [`cpl_check::Database`], so a program means in the browser what
+//! the same [`cpl_check::Session`], so a program means in the browser what
 //! it means on the command line: same diagnostics, same output, same C++.
 //! `tests/parity.rs` holds the two to that.
 //!
@@ -18,7 +18,7 @@
 
 pub mod abi;
 
-use cpl_check::{Database, DeclKind};
+use cpl_check::{DeclKind, Session};
 use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{self as json, obj, Value};
 use std::collections::BTreeMap;
@@ -59,7 +59,7 @@ pub const MAX_STACK: u32 = 3 << 20;
 /// touched.
 #[derive(Default)]
 pub struct Playground {
-    db: Database,
+    db: Session,
     lsp: cpl_lsp::Server,
 }
 

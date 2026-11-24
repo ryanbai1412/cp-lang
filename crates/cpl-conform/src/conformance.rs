@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use cpl_check::Database;
+use cpl_check::Session;
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
@@ -13,7 +13,7 @@ use crate::scoreboard::{CaseOutcome, SuiteReport};
 /// cases as `cpl run --release`, the C++ a judge runs, so a backend bug
 /// shows up too.
 enum Backend<'a> {
-    Linked(&'a mut Database),
+    Linked(&'a mut Session),
     Cli(PathBuf),
 }
 
@@ -655,7 +655,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<ConformanceCase> {
         .collect()
 }
 
-pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
+pub fn run_one(db: &mut Session, case: &ConformanceCase) -> CaseOutcome {
     let text = match std::fs::read_to_string(&case.path) {
         Ok(t) => t,
         Err(e) => {

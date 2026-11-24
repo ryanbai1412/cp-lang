@@ -137,7 +137,7 @@ pub fn against_brute(
 ) -> Result<cpl_stress::cli::Traced, String> {
     let name = path.shown();
     let source = std::fs::read_to_string(path).map_err(|e| format!("can't read {name}: {e}"))?;
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file(&name, source.as_str());
     let analysis = db.analyze(&name).ok_or("the file can't be checked")?;
     let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
@@ -155,7 +155,7 @@ pub fn against_brute(
         }
         None => match cpl_stress::cli::swap_in_part_brutes(&source) {
             Some(swapped) => {
-                let mut swapped_db = cpl_check::Database::new();
+                let mut swapped_db = cpl_check::Session::new();
                 swapped_db.set_file(&name, swapped.as_str());
                 let analysis = (swapped_db.analyze(&name))
                     .ok_or("the file with its `@alt` fns swapped in can't be checked")?;

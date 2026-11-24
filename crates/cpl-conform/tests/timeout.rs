@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 #[test]
 fn a_case_that_never_finishes_times_out() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     for case in [
         "spec/conformance/core-07/range-folds-are-ranges-own.cp",
         "spec/conformance/core-10/spec-block-multitest-sieve.cp",

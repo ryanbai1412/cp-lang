@@ -22,7 +22,7 @@
 //!
 //! Enforces `handbook/guidelines/commands-checklist.md#r13-latency`.
 
-use cpl_check::Database;
+use cpl_check::Session;
 
 #[path = "../../cpl-cli/tests/support/corpus_programs.rs"]
 mod corpus_programs;
@@ -167,7 +167,7 @@ fn check_latency(lines: usize) {
     // Cold: a fresh database, as `cpl check` and `cpl run` see the file.
     let mut cold = Samples(Vec::new());
     for _ in 0..10 {
-        let mut db = Database::new();
+        let mut db = Session::new();
         db.set_file("a.cp", src.as_str());
         let (analysis, took) = time_cpu(|| db.analyze("a.cp").unwrap());
         cold.0.push(took);
@@ -185,7 +185,7 @@ fn check_latency(lines: usize) {
     report("check, cold", actual, &mut cold, cold_budget);
 
     // Warm: one keystroke at a time in a fn body, as the editor sees it.
-    let mut db = Database::new();
+    let mut db = Session::new();
     db.set_file("a.cp", src.as_str());
     db.analyze("a.cp");
     let mut warm = Samples(Vec::new());

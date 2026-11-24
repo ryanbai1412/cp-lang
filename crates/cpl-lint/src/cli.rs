@@ -87,7 +87,7 @@ pub fn run_with(
     };
     // One database for the run, as the editor keeps one: std and shared
     // modules are checked once, and every step below reads the same analysis.
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     let mut as_json = false;
     let mut fix = false;
     let mut taste = false;

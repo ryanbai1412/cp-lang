@@ -37,7 +37,7 @@ pub struct PairResult {
 pub fn emit_cpp(path: &Path) -> Result<String, String> {
     let source =
         std::fs::read_to_string(path).map_err(|e| format!("can't read {}: {e}", path.shown()))?;
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     let name = path.to_string_lossy().into_owned();
     db.set_file(&name, source.as_str());
     let analysis = db

@@ -32,7 +32,7 @@ fn is_migration(d: &cpl_diag::Diagnostic) -> bool {
 /// `text` with every migration fix applied, how many, and the migrations
 /// left that have no fix.
 fn migrate_text(path: &str, text: &str) -> (String, usize, Vec<cpl_diag::Diagnostic>) {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     let mut text = text.to_string();
     let mut applied = 0;
     for _ in 0..8 {

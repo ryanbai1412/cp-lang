@@ -653,7 +653,7 @@ enum Side {
 
 /// Reads and checks `path` through the shared front end, then lowers it.
 /// This is the gate `run` and `build` both go through: the same
-/// [`cpl_check::Database`] the language server holds, so a file means the
+/// [`cpl_check::Session`] the language server holds, so a file means the
 /// same thing to every tool.
 fn compile(path: &str, stderr: &mut String) -> Result<Compiled, u8> {
     compile_side(path, Side::Solution, stderr)
@@ -675,9 +675,9 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
 /// the standard library once, and a command that asks more of a file it
 /// compiled (`explain`'s storage) doesn't check it again. The loader rereads
 /// imports on every analysis.
-pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_check::Database) -> R) -> R {
+pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_check::Session) -> R) -> R {
     thread_local! {
-        static DB: std::cell::RefCell<cpl_check::Database> = Default::default();
+        static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
     }
     DB.with_borrow_mut(f)
 }

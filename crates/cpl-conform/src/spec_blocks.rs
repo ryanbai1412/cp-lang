@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use cpl_check::Database;
+use cpl_check::Session;
 
 use crate::runner;
 use crate::scoreboard::{CaseOutcome, SuiteReport};
@@ -260,7 +260,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
     out
 }
 
-fn eval_one(db: &mut Database, block: &SpecBlock) -> (String, (CaseOutcome, bool)) {
+fn eval_one(db: &mut Session, block: &SpecBlock) -> (String, (CaseOutcome, bool)) {
     let vpath = format!("<spec-block:{}>", block.id);
     let source = match &block.marker {
         Marker::Given(prelude) | Marker::GivenRejects(prelude, _) => {

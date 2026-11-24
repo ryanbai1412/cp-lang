@@ -5,12 +5,12 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
-use cpl_check::Database;
+use cpl_check::Session;
 use cpl_diag::{Diagnostic, LineIndex, Severity};
 
 /// Runs `cpl check` semantics, returning rendered
 /// diagnostics and whether any error diagnostic occurred.
-pub fn check_spec(db: &mut Database, path: &str, text: &str) -> (String, bool) {
+pub fn check_spec(db: &mut Session, path: &str, text: &str) -> (String, bool) {
     db.set_file(path, text);
     let analysis = db.analyze(path).expect("the file was just set");
     db.remove_file(path);
@@ -26,7 +26,7 @@ pub fn check_spec(db: &mut Database, path: &str, text: &str) -> (String, bool) {
 
 /// What `cpl lint` reports for `text` at `path`, rendered: an `L` code in
 /// a case header names a lint, not a check error.
-pub fn lint_spec(db: &mut Database, path: &str, text: &str) -> String {
+pub fn lint_spec(db: &mut Session, path: &str, text: &str) -> String {
     let (config, _) = cpl_lint::Config::discover(Path::new(path));
     db.set_file(path, text);
     let analysis = db.analyze(path).expect("the file was just set");
@@ -50,7 +50,7 @@ pub struct CompiledProgram {
 
 /// Checks and lowers `text` at `path` into `cpl_ir::Program`, matching `cpl run` / `cpl build`.
 pub fn compile_program(
-    db: &mut Database,
+    db: &mut Session,
     path: &str,
     text: &str,
 ) -> Result<CompiledProgram, CompileError> {
@@ -245,7 +245,7 @@ fn walk_rec(dir: &Path, ext: &str, out: &mut Vec<PathBuf>) {
 }
 
 /// Runs `work` over `items` in parallel across worker threads, giving each worker
-/// its own `cpl_check::Database` so stdlib is analyzed once per thread.
+/// its own `cpl_check::Session` so stdlib is analyzed once per thread.
 /// Wall time of every case `parallel_with_db` has run, for the slow-case report.
 pub static CASE_SECONDS: Mutex<Vec<(String, f64)>> = Mutex::new(Vec::new());
 
@@ -261,7 +261,7 @@ pub fn parallel_with_db<T, R, F>(items: &[T], work: F) -> BTreeMap<String, R>
 where
     T: Sync,
     R: Send,
-    F: Fn(&mut Database, &T) -> (String, R) + Sync,
+    F: Fn(&mut Session, &T) -> (String, R) + Sync,
 {
     let workers = std::thread::available_parallelism()
         .map(|n| n.get())
@@ -274,7 +274,7 @@ pub fn with_db_on<T, R, F>(workers: usize, items: &[T], work: F) -> BTreeMap<Str
 where
     T: Sync,
     R: Send,
-    F: Fn(&mut Database, &T) -> (String, R) + Sync,
+    F: Fn(&mut Session, &T) -> (String, R) + Sync,
 {
     let workers = workers.clamp(1, items.len().max(1));
     let next = AtomicUsize::new(0);
@@ -288,7 +288,7 @@ where
                 let (next, results, work) = (&next, &results, &work);
                 s.spawn(move || {
                     WORKER.set(w);
-                    let mut db = Database::new();
+                    let mut db = Session::new();
                     loop {
                         let idx = next.fetch_add(1, Ordering::Relaxed);
                         if idx >= items.len() {

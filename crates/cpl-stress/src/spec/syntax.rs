@@ -558,7 +558,7 @@ pub(super) fn std_structs(
 
 pub(super) fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_ir::Program> {
     let name = "input.cp";
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file(name, src);
     let analysis = db.analyze(name)?;
     let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;

@@ -501,7 +501,7 @@ pub fn run_with(
     // The file, analyzed once for its own brute, judge, `@cache` and `@gen`.
     let analysis = match args.file.extension().and_then(|e| e.to_str()) {
         Some("cp") => {
-            let mut db = cpl_check::Database::new();
+            let mut db = cpl_check::Session::new();
             db.set_file(&name, src.as_str());
             db.analyze(&name)
         }

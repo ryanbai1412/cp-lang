@@ -63,7 +63,7 @@ fn a_build_without_traps_sinks_a_consumer_that_divides() {
         "let n: 1..=1000 = read()\n",
         "print(sum([i for i in 0..n if i % 2 == 0], of: x => 100 / x))\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let target = crate::Target {
@@ -80,7 +80,7 @@ fn explain_names_a_sunk_reduction() {
         "let n: 1..=1000 = read()\n",
         "print(sum(i * j for i in 0..n for j in i..n if (i + j) % 3 == 0))\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let report = crate::explain::report("t.cp", source, &program);

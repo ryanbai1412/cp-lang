@@ -2,7 +2,7 @@
 //! `cargo run -p cpl-check --example check -- a.cp`.
 
 fn main() {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     for path in std::env::args().skip(1) {
         let src = std::fs::read_to_string(&path).expect("readable file");
         db.set_file(&path, src.clone());

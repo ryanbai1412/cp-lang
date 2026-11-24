@@ -358,7 +358,7 @@ fn explain_names_each_copy_and_why_it_owns_its_value() {
         "    i => xs[i]\n",
         "print(f(rows) + keep(rows[0])(1))\n",
     );
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let report = crate::explain::report("t.cp", source, &program);

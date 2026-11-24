@@ -32,7 +32,7 @@ fn a_reversed_else_if_fix_from_the_parser_is_left_alone() {
 }
 
 pub(crate) fn checker_errors(src: &str) -> Vec<String> {
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     db.set_file("probe.cp", src);
     let analysis = db.analyze("probe.cp").expect("analysis");
     cpl_ir::reported(&analysis)
@@ -88,7 +88,7 @@ fn a_fix_that_would_add_a_checker_error_is_not_applied() {
     };
     let good = finding(at(8, 9), "2");
     let bad = finding(at(16, 17), "y");
-    let mut db = cpl_check::Database::new();
+    let mut db = cpl_check::Session::new();
     let (out, n) =
         crate::typed::safe_fixes(&mut db, "<t>.cp", text, &[bad.clone(), good.clone()], &[]);
     assert_eq!((out.as_str(), n), ("let x = 2\nprint(x)\n", 1));
