@@ -18,10 +18,6 @@ class CplTest {
 
     @Test
     fun `commands are the cpl subcommands`() {
-        assertEquals(listOf("run", "a.cp", "i1"), Cpl.runArgs("run", "a.cp", "i1", ""))
-        assertEquals(listOf("run", "a.cp", "--release"), Cpl.runArgs("run", "a.cp", "", "--release"))
-        assertEquals(listOf("test", "a.cp"), Cpl.runArgs("test", "a.cp", "i1", ""))
-        assertEquals(listOf("stress", "a.cp", "--seed", "a b"), Cpl.runArgs("stress", "a.cp", null, "--seed \"a b\""))
         assertEquals(listOf("run", "a.cp", "--trace", "--format", "html"), Cpl.traceArgs("a.cp", null))
         assertEquals(listOf("run", "a.cp", "--trace", "dfs", "--format", "html"), Cpl.traceArgs("a.cp", "dfs"))
         assertEquals(listOf("lsp"), Cpl.lspArgs())
@@ -59,27 +55,11 @@ class CplTest {
     }
 
     @Test
-    fun `the lines cpl names in its output link to the file`() {
-        val wrong = "    solution tri(k: 1) = 0 at line 4"
-        assertEquals(listOf(wrong.indexOf("line 4")..wrong.length - 1 to 4), Cpl.lineRefs(wrong))
-        val step = "      line 5: k: 1, s: 0"
-        assertEquals(listOf(step.indexOf("line 5")..step.indexOf(":") - 1 to 5), Cpl.lineRefs(step))
-        // `line 1` of the output, not of the file.
-        assertEquals(emptyList<Pair<IntRange, Int>>(), Cpl.lineRefs("`tri` disagrees with its alt on one.in: line 1 is \"0\""))
-    }
-
-    @Test
-    fun `the first wrong call cpl stress names is the line to mark`() {
-        val report = listOf(
-            "  FAIL on case 1 (seed 1): WA",
-            "  first wrong call: `tri(k: 1)`, the 1st call of `tri`\r",
-            "    solution tri(k: 1) = 0 at line 4",
-            "    alt      tri(k: 1) = 1 at line 10",
-        )
-        assertEquals(Cpl.WrongCall(4, "first wrong call: `tri(k: 1)`, the 1st call of `tri`"), Cpl.wrongCall(report))
-        // A solution line before any headline is not a wrong call.
-        assertNull(Cpl.wrongCall(report.drop(1).drop(1)))
-        assertNull(Cpl.wrongCall(listOf("  first difference at line 1, token 1: expected `1`, got `2`")))
+    fun `the view a cpl report gives is drawn as is`() {
+        val json = """{"status":"fail","view":{"panel":"FAIL\n","lines":[],"diagnostic":{"line":3,"message":"first wrong call: `tri(k: 1)`, the 1st call of `tri`","source":"cpl"}}}"""
+        assertEquals(Cpl.View("FAIL\n", Cpl.WrongCall(3, "first wrong call: `tri(k: 1)`, the 1st call of `tri`")), Cpl.view(json))
+        assertEquals(Cpl.View("ok\n", null), Cpl.view("""{"view":{"panel":"ok\n","lines":[]}}"""))
+        assertNull(Cpl.view("error: no such file"))
     }
 
     @Test

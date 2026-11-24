@@ -11,7 +11,7 @@ formatting, quick fixes and inlay hints. Put `cpl` on the `PATH`
 | VS Code | `editors/vscode/` | TextMate grammar | lenses, stress, trace view |
 | Neovim and Vim | `editors/neovim/` | Vim syntax, or tree-sitter | Run, Trace, Test and Stress lenses; `:Cpl <command>` |
 | Emacs | `editors/emacs/` | font-lock | `M-x compile` with `cpl run` |
-| JetBrains IDEs | `editors/jetbrains/` | lexer, color settings | run configurations, gutter marker, trace tab |
+| JetBrains IDEs | `editors/jetbrains/` | lexer, color settings | Run, Trace, Test and Stress lenses; trace tab |
 | Helix | `editors/helix/` | tree-sitter (`editors/tree-sitter-cp/`) | `:sh cpl run %` |
 | Zed | `editors/zed/` | tree-sitter (`editors/tree-sitter-cp/`) | `cpl run` in a terminal |
 
@@ -179,8 +179,9 @@ jetbrains` installs beside it. `cpl setup jetbrains --check`, after a restart,
 reads the IDE's log and fails unless CP Lang loaded. `./gradlew verifyPlugin`
 checks the plugin against IDEA Community and Ultimate. Set the path to
 `cpl` under Settings, Tools, CP Lang when it is not on the `PATH`. A `.cp`
-file gets a run configuration on its first sample (`cpl run`, `cpl test` or
-`cpl stress`), a run marker on `fn main`, and CP Lang: Show Trace
+file gets the server's Run, Trace, Test and Stress lenses (LSP4IJ runs each
+in the Run window: `cpl test` fills the test tree, `cpl stress` marks the
+first wrong call on its line), and CP Lang: Show Trace
 (Ctrl+Alt+T) opens `cpl run --trace --format html` in the CP Lang Trace tool
 window. The file marks the line of the step the trace shows, and a click on a
 line in the trace moves the caret there.

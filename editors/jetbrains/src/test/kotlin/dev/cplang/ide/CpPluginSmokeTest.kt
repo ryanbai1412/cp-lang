@@ -4,9 +4,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.process.OSProcessHandler
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.fileTypes.FileTypeManager
@@ -62,40 +60,23 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         assertEquals(listOf(cpl.path, "lsp"), cmd.getCommandLineList(null))
     }
 
-    fun `test a cp file makes a run configuration on its first sample`() {
+    fun `test a code lens runs cpl with the report format the run window reads`() {
         val dir = Files.createTempDirectory("cpl").toFile()
-        // macOS's temp folder sits outside the roots a test may read.
-        VfsRootAccess.allowRootAccess(testRootDisposable, dir.canonicalPath)
-        File(dir, "i1").writeText("3\n")
-        val source = File(dir, "sum.cp").apply { writeText("fn main():\n    let n: Int = read()\n    print(n + 1)\n") }
-        val vfile = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(source)!!
-        myFixture.configureFromExistingVirtualFile(vfile)
-        val context = ConfigurationContext(myFixture.file)
-        val made = context.configurationsFromContext.orEmpty().map { it.configuration }.filterIsInstance<CplRunConfiguration>()
-        val config = made.single()
-        // The IDE spells paths with `/` and through the real temp folder on every OS.
-        val same = { path: String -> File(path).canonicalPath }
-        assertEquals(same(source.path), same(config.options.file!!))
-        assertEquals("run", config.options.command)
-        assertEquals("run sum.cp", config.name)
-        assertEquals(
-            listOf(cpl.path, "run", source.path, File(dir, "i1").path).map(same),
-            config.commandLine().getCommandLineList(null).map(same),
-        )
+        val source = File(dir, "sum.cp")
+        val line = { args: List<String> -> CplExec.commandLine(args, source).getCommandLineList(null) }
+        assertEquals(listOf(cpl.path, "run", source.path, "i1"), line(listOf("run", source.path, "i1")))
+        assertEquals(listOf(cpl.path, "test", source.path, "--format", "teamcity"), line(listOf("test", source.path)))
+        assertEquals(listOf(cpl.path, "stress", source.path, "--format", "json"), line(listOf("stress", source.path)))
+        assertEquals(dir, CplExec.commandLine(listOf("run", source.path), source).workDirectory)
     }
 
-    fun `test the stress configuration saves a failing case that the test configuration reruns`() {
+    fun `test the stress lens saves a failing case that the test lens reruns`() {
         val dir = Files.createTempDirectory("cpl").toFile()
         val planted = File(repo, "examples/debugging/knapsack.cp").readText()
         assertTrue(planted.contains("for c in 0..=cap:"))
         val source = File(dir, "k.cp").apply { writeText(planted) }
         fun run(command: String): Pair<Int, String> {
-            val config = CplRunConfigurationType.get().configurationFactories.single()
-                .createTemplateConfiguration(project) as CplRunConfiguration
-            config.options.file = source.path
-            config.options.command = command
-            config.checkConfiguration()
-            val process = config.commandLine().toProcessBuilder().redirectErrorStream(true).start()
+            val process = CplExec.commandLine(listOf(command, source.path), source).toProcessBuilder().redirectErrorStream(true).start()
             val shown = process.inputStream.bufferedReader().readText()
             return process.waitFor() to shown
         }
@@ -118,8 +99,7 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         val one = File(dir, "one.in").apply { writeText("1\n") }
         myFixture.configureFromExistingVirtualFile(LocalFileSystem.getInstance().refreshAndFindFileByIoFile(part)!!)
         fun locate() {
-            val handler = OSProcessHandler(GeneralCommandLine(cpl.path, "locate", part.path, one.path))
-            CplWrongCall.follow(project, part, handler)
+            val handler = CplWrongCall.Handler(project, part, GeneralCommandLine(cpl.path, "locate", part.path, one.path, "--json"))
             handler.startNotify()
             assertTrue(handler.waitFor(60_000))
             PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
@@ -136,14 +116,6 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         locate()
         assertEquals("a rerun replaces the old note", 1, notes().size)
         assertEquals(1, warned().size)
-    }
-
-    fun `test fn main has a run marker`() {
-        myFixture.configureByText("a.cp", "fn helper():\n    pass\n\nfn ma<caret>in():\n    print(1)\n")
-        val element = myFixture.file.findElementAt(myFixture.file.text.indexOf("fn main"))!!
-        assertNotNull(CplRunLineMarkerContributor().getInfo(element))
-        val helper = myFixture.file.findElementAt(0)!!
-        assertNull(CplRunLineMarkerContributor().getInfo(helper))
     }
 
     fun `test the server answers initialize and hover`() {

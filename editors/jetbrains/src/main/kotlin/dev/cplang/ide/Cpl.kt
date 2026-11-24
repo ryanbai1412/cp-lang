@@ -42,8 +42,6 @@ class CplConfigurable : BoundConfigurable("CP Lang") {
 
 /** What the plugin runs: every feature is a `cpl` subcommand, so the IDE and the terminal agree. */
 object Cpl {
-    val COMMANDS = listOf("run", "test", "stress")
-
     fun executable(): String? {
         CplSettings.get().state.path?.takeIf { it.isNotBlank() }?.let { return it }
         System.getenv("CPL")?.takeIf { it.isNotBlank() }?.let { return it }
@@ -82,14 +80,6 @@ object Cpl {
         runCatching { com.google.gson.JsonParser.parseString(line).asJsonObject.get("path")?.asString }.getOrNull()
     }
 
-    /** `cpl run FILE [INPUT]`, `cpl test FILE`, `cpl stress FILE`, then the user's own arguments. */
-    fun runArgs(command: String, file: String, input: String?, extra: String): List<String> {
-        val args = mutableListOf(command, file)
-        if (command == "run" && !input.isNullOrBlank()) args += input
-        args += splitArgs(extra)
-        return args
-    }
-
     /**
      * The cases folder `cpl test FILE` reads, as `cpl-contest`'s `find_tests_dir`: `STEM.tests/` if it
      * exists, else a sibling `tests/` (as in `corpus/problems/<id>/tests/`), else `STEM.tests/`.
@@ -103,9 +93,6 @@ object Cpl {
 
     fun traceArgs(file: String, fn: String?) =
         listOf("run", file, "--trace") + listOfNotNull(fn) + listOf("--format", "html")
-
-    fun splitArgs(text: String): List<String> =
-        Regex("\"([^\"]*)\"|(\\S+)").findAll(text).map { it.groupValues[1].ifEmpty { it.groupValues[2] } }.toList()
 
     /**
      * The sample inputs of `DIR/STEM.cp` in the order the VS Code extension shows them:
@@ -122,29 +109,17 @@ object Cpl {
         return scratch + cases
     }
 
-    /** Each source line `cpl` names in a line of its output (`at line 4`, `line 5: k: 1`): where, and the 1-based line. */
-    fun lineRefs(text: String): List<Pair<IntRange, Int>> =
-        listOf(Regex("\\bat (line (\\d+))\\b"), Regex("^\\s+(line (\\d+)):")).flatMap { re ->
-            re.findAll(text).map { m -> m.groups[1]!!.range to m.groupValues[2].toInt() }.toList()
-        }.sortedBy { it.first.first }
-
+    /** The first wrong call a report's `view` marks: its 0-based line and headline. */
     data class WrongCall(val line: Int, val message: String)
 
-    /**
-     * The solution's line of the first wrong call `cpl stress` printed (`solution tri(k: 1) = 0 at line 4`
-     * under `first wrong call: ...`), and that headline; the same report Neovim and VS Code draw.
-     */
-    fun wrongCall(lines: List<String>): WrongCall? {
-        val head = Regex("^\\s*((first wrong call|first differing value): .*?)\\s*$")
-        val at = Regex("^\\s+solution\\s.*\\sat line (\\d+)\\s*$")
-        var headline: String? = null
-        for (line in lines) {
-            head.find(line)?.let { headline = it.groupValues[1] }
-            val h = headline ?: continue
-            at.find(line)?.let { return WrongCall(it.groupValues[1].toInt(), h) }
-        }
-        return null
-    }
+    /** What `cpl stress --format json` and `cpl locate --json` say to draw (spec/tools/cli.md). */
+    data class View(val panel: String, val wrongCall: WrongCall?)
+
+    fun view(json: String): View? = runCatching {
+        val view = com.google.gson.JsonParser.parseString(json).asJsonObject.getAsJsonObject("view")
+        val d = view.get("diagnostic")?.takeIf { it.isJsonObject }?.asJsonObject
+        View(view.get("panel").asString, d?.let { WrongCall(it.get("line").asInt, it.get("message").asString) })
+    }.getOrNull()
 
     /** The top-level `fn` the offset is in, for `cpl run --trace FN`. */
     fun enclosingFn(text: CharSequence, offset: Int): String? {

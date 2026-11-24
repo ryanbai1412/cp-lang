@@ -5,4 +5,7 @@
         </server>
         <languageMapping language="CP" serverId="cpl" languageId="cp"/>
     </extensions>
+    <actions>
+        <action id="cpl.exec" class="dev.cplang.ide.CplExecAction" text="CP Lang: Run a Code Lens"/>
+    </actions>
 </idea-plugin>

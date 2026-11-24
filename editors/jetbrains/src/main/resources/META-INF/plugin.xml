@@ -23,10 +23,6 @@
         <lang.commenter language="CP" implementationClass="dev.cplang.ide.CpCommenter"/>
         <lang.braceMatcher language="CP" implementationClass="dev.cplang.ide.CpBraceMatcher"/>
         <colorSettingsPage implementation="dev.cplang.ide.CpColorSettingsPage"/>
-        <configurationType implementation="dev.cplang.ide.CplRunConfigurationType"/>
-        <runConfigurationProducer implementation="dev.cplang.ide.CplRunConfigurationProducer"/>
-        <runConfigurationProducer implementation="dev.cplang.ide.CplTestConfigurationProducer"/>
-        <runLineMarkerContributor language="CP" implementationClass="dev.cplang.ide.CplRunLineMarkerContributor"/>
         <applicationConfigurable parentId="tools" instance="dev.cplang.ide.CplConfigurable"
                                  id="dev.cplang.settings" displayName="CP Lang"/>
         <notificationGroup id="CP Lang" displayType="BALLOON"/>

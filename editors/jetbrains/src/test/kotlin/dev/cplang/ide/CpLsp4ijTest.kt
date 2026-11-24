@@ -46,6 +46,11 @@ class CpLsp4ijTest : BasePlatformTestCase() {
         assertTrue("LSP4IJ is loaded", CpLsp4ijFactory.loaded)
     }
 
+    fun `test the server's code lenses run through the cpl exec action`() {
+        assertEquals(mapOf("codeLens" to true), CpLsp4ijFactory.INITIALIZATION_OPTIONS)
+        assertTrue(com.intellij.openapi.actionSystem.ActionManager.getInstance().getAction("cpl.exec") is CplExecAction)
+    }
+
     fun `test a wrong file gets the server's diagnostic`() {
         open("bad.cp", "fn main():\n    let y: Int = \"text\"\n    print(y)\n")
         val error = eventually("diagnostic") {

@@ -64,6 +64,24 @@ object CplTrace {
         return html.substring(0, head.range.last + 1) + shim + html.substring(head.range.last + 1)
     }
 
+    /** Runs `source` on `input` with `--trace` in the background and opens the trace viewer, scoped to `fn`. */
+    fun open(project: Project, source: File, fn: String?, input: File?) {
+        val title = "Trace: ${source.name}" + (fn?.let { " ($it)" } ?: "") + (input?.let { " on ${it.name}" } ?: "")
+        object : Task.Backgroundable(project, "cpl run --trace", true) {
+            override fun run(indicator: ProgressIndicator) {
+                try {
+                    val html = CplTrace.render(source, fn, input)
+                    ApplicationManager.getApplication().invokeLater { CplTrace.show(project, title, html, source) }
+                } catch (err: Exception) {
+                    if (err !is CplTrace.Failed && err !is ExecutionException) throw err
+                    NotificationGroupManager.getInstance().getNotificationGroup("CP Lang")
+                        .createNotification("No trace", err.message ?: "", NotificationType.ERROR)
+                        .notify(project)
+                }
+            }
+        }.queue()
+    }
+
     /** One trace tab per file in the trace tool window, reused by the next trace of that file. */
     fun show(project: Project, title: String, html: String, source: File) {
         val file = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(source)
@@ -167,20 +185,6 @@ class CplShowTraceAction : AnAction() {
         val fn = editor?.let { Cpl.enclosingFn(it.document.charsSequence, it.caretModel.offset) }?.takeIf { it != "main" }
         FileDocumentManager.getInstance().saveAllDocuments()
         val source = File(file.path)
-        val input = Cpl.samples(source).firstOrNull()
-        val title = "Trace: ${file.name}" + (fn?.let { " ($it)" } ?: "") + (input?.let { " on ${it.name}" } ?: "")
-        object : Task.Backgroundable(project, "cpl run --trace", true) {
-            override fun run(indicator: ProgressIndicator) {
-                try {
-                    val html = CplTrace.render(source, fn, input)
-                    ApplicationManager.getApplication().invokeLater { CplTrace.show(project, title, html, source) }
-                } catch (err: Exception) {
-                    if (err !is CplTrace.Failed && err !is ExecutionException) throw err
-                    NotificationGroupManager.getInstance().getNotificationGroup("CP Lang")
-                        .createNotification("No trace", err.message ?: "", NotificationType.ERROR)
-                        .notify(project)
-                }
-            }
-        }.queue()
+        CplTrace.open(project, source, fn, Cpl.samples(source).firstOrNull())
     }
 }
