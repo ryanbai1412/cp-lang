@@ -4167,6 +4167,7 @@
         "etsr23r1p4": "pass",
         "etsr23r3p3": "pass",
         "etsr23r4p2": "pass",
+        "ioi00p4": "pass",
         "ioi01p1": "pass",
         "ioi05p2": "pass",
         "ioi09p3": "pass",
@@ -4230,14 +4231,11 @@
       ],
       "counts": {
         "error": 1,
-        "pass": 98
+        "pass": 99
       },
-      "interp_max_over_20s": [
-        "cco24p1",
-        "noi10p2"
-      ],
-      "passed": 98,
-      "total": 99
+      "interp_max_over_20s": [],
+      "passed": 99,
+      "total": 100
     },
     "diff": {
       "cases": {

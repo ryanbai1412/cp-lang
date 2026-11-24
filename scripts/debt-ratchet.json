@@ -151,7 +151,7 @@
   "corpus_test_files": 0,
   "corpus_no_max": 0,
   "corpus_no_limits": 0,
-  "interp_max_over_20s": 2,
+  "interp_max_over_20s": 0,
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 0,
