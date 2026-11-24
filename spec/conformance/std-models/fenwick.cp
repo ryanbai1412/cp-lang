@@ -3,20 +3,20 @@
 // model: Fenwick
 // Fenwick<V, Int> against a plain array: seeded random adds, each followed by a random range
 // fold, prefix and point read. Reads `seed n`; prints the first op that differs.
+use std.rand.{Rng}
 let seed0 = read<Int>()
 let n = read<Int>()
 domain V = 0..37
-var seed = seed0
+var rng = Rng(seed0)
 var f = Fenwick<V, Int>()
 var a = List.filled(37, 0)
 var bad = ""
 for k in 0..n:
-    seed = (seed * 1103515245 + 12345) % 2147483648
-    let (i, x) = (seed % 37, seed / 37 % 21 - 10)
+    let (i, x) = (rng.int(0, 36), rng.int(-10, 10))
     f.add(V(i), x)
     a[i] += x
-    let lo = seed / 1000 % 37
-    let hi = lo + seed / 100000 % (38 - lo)
+    let lo = rng.int(0, 37)
+    let hi = rng.int(lo, 37)
     let want = sum(a[j] for j in lo..hi)
     if f.fold(V.cuts.nth(lo)..V.cuts.nth(hi)) != want:
         bad = "op {k}: fold {lo}..{hi}"

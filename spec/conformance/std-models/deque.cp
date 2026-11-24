@@ -3,16 +3,16 @@
 // model: Deque
 // Deque<Int> against a List: seeded random pushes, pops, sets and rotations at both ends,
 // with every element compared after each op. Reads `seed n`; prints the first op that differs.
+use std.rand.{Rng}
 let seed0 = read<Int>()
 let n = read<Int>()
-var seed = seed0
+var rng = Rng(seed0)
 var d = Deque<Int>()
 var a: List<Int> = []
 var bad = ""
 for k in 0..n:
-    seed = (seed * 1103515245 + 12345) % 2147483648
-    let op = seed % 7
-    let x = seed / 7 % 100
+    let op = rng.int(0, 6)
+    let x = rng.int(0, 99)
     if op == 0:
         d.push(x)
         a.push(x)

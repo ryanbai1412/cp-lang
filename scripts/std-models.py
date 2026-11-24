@@ -94,7 +94,10 @@ def run_case(cpl, path, engine, seed, ops):
                        capture_output=True, text=True, timeout=300,
                        env={**os.environ, "CPL_STD_DIR": str(ROOT / "std")})
     out = r.stdout.strip()
-    return None if r.returncode == 0 and out == "ok" else (out or r.stderr.strip()).splitlines()[-1:]
+    if r.returncode == 0 and out == "ok":
+        return None
+    err = [ln for ln in r.stderr.splitlines() if re.match(r"(error|trap)\b", ln)]
+    return err[:1] or (out or r.stderr.strip()).splitlines()[-1:]
 
 
 def check(cpl, path, seeds, ops):
