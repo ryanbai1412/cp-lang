@@ -36,5 +36,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the AC submission corpus/submissions/5120575.cpp, unchanged: the port's original, 5120565.cpp, looks for the particle with random two-cell windows (n / 2 looks expected at N = 1e5), so on some valid cases, the --max one among them, it passes the 1e5-look limit; 5120575.cpp stays within a few thousand looks."
 }
