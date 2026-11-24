@@ -2204,7 +2204,7 @@ pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Ma
 
 /// \(O(n)\) expected, \(O(k)\) memory. `k` smallest elements under `by:` (unordered; ties to earlier index).
 ///
-/// cost: \(O(n)\) expected, \(O(k)\) memory
+/// cost: \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills
 /// empty: `let a: List<Int> = []; a.min_k(2) == []`
 /// ties: `[(1, 'a'), (1, 'b'), (1, 'c')].min_k(2, by: .0).sorted() == [(1, 'a'), (1, 'b')]`
 /// order: unspecified; sort it when order matters
@@ -2212,14 +2212,11 @@ pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Ma
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
 pub fn min_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
     assert k >= 0, "min_k requires k >= 0"
-    var ps: List<(K, Int, T)> = []
-    for x in self: ps.push((by(x), ps.len, x))
-    if 0 < k < ps.len: select(mut ps, k - 1, by: p => (p.0, p.1))
-    [ps[i].2 for i in 0..(if k < ps.len: k else: ps.len)]
+    keep_k(self, k, by, (p, q) => p.0 < q.0 or (p.0 == q.0 and p.1 < q.1))
 
 /// \(O(n)\) expected, \(O(k)\) memory. `k` largest elements under `by:` (unordered; ties to earlier index).
 ///
-/// cost: \(O(n)\) expected, \(O(k)\) memory
+/// cost: \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills
 /// empty: `let a: List<Int> = []; a.max_k(2) == []`
 /// ties: `[(1, 'a'), (1, 'b'), (1, 'c')].max_k(2, by: .0).sorted() == [(1, 'a'), (1, 'b')]`
 /// order: unspecified; sort it when order matters
@@ -2227,14 +2224,23 @@ pub fn min_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
 pub fn max_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
     assert k >= 0, "max_k requires k >= 0"
+    keep_k(self, k, by, (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1))
+
+// the `k` first under `first` of `(key, index, element)`, in a buffer that never passes `2k`
+fn keep_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K, first: ((K, Int, T), (K, Int, T)) -> Bool) -> List<T>:
+    if k == 0: return []
     var ps: List<(K, Int, T)> = []
-    for x in self: ps.push((by(x), ps.len, x))
-    if 0 < k < ps.len: select(
-        mut ps,
-        k - 1,
-        cmp: (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1),
-    )
-    [ps[i].2 for i in 0..(if k < ps.len: k else: ps.len)]
+    var i = 0
+    for x in self:
+        ps.push((by(x), i, x))
+        i += 1
+        if ps.len == 2 * k:
+            select(mut ps, k - 1, cmp: first)
+            ps.truncate(k)
+    if k < ps.len:
+        select(mut ps, k - 1, cmp: first)
+        ps.truncate(k)
+    [p.2 for p in ps]
 
 /// \(O(n)\). Unstable in-place partition moving `keep(x)` elements to `0..mid`; returns `mid`.
 ///

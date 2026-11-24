@@ -52,6 +52,7 @@ CASES = {
     "hash_counter_narrow": lambda: "3375000\n",
     "sieve": lambda: "10000000\n",  # primality only: no smallest-factor table
     "enum_grid": lambda: "4000\n",  # 16e6 cells: 16 MB at a byte, 64 MB at four
+    "max_k": lambda: ints(500_000),  # the 30 largest of 5e5: O(k) beside the array (cf2165c)
 }
 
 
