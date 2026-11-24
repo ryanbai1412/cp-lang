@@ -112,13 +112,6 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::Str, "join") => {
-                let Some(exprs) = self.positional_any("join", args, 1, span) else {
-                    return self.err_expr(span);
-                };
-                let items = self.expr(exprs[0], None);
-                self.join(value, items, None, exprs[0].span)
-            }
             (ty, "get") if ty.is_indexed() => {
                 let elem = ty.seq_elem().unwrap();
                 let opt = Ty::opt(elem);
@@ -775,12 +768,6 @@ impl<'a> Lowerer<'a> {
                 Some(_) => mutate(self, Mutation::Clear, Vec::new(), Ty::Unit),
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "reverse") => {
-                match self.positional_any(method, args, 0, span) {
-                    Some(_) => mutate(self, Mutation::Reverse, Vec::new(), Ty::Unit),
-                    None => self.err_expr(span),
-                }
-            }
             (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "sort") => {
                 self.sort(base, &elem, args, span)
             }

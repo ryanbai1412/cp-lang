@@ -987,3 +987,6 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - Deleted the `(lo..hi).clamp(D)` arm in lower/call/value_method.rs: the checker has no
   `clamp` on a range (E0203) and no spec section names it, so nothing reached it
   (`ir_builtin_derived` 33 -> 32).
+- `reverse` and `Str.join` lower from their std bodies (std/seq.cp, std/strings.cp): the
+  compiler arms in lower/call/value_method.rs are gone, with a both-backend case over lists,
+  strings, tables and slices (`ir_builtin_derived` 32 -> 30).

@@ -22,11 +22,11 @@ Measured 89 before this note; 88 after `choose2` moved (below).
 | I/O | intrinsic | `print` `read` `read_line` `read_output` `debug` `flush` `ask` `rand` |
 | Bits | intrinsic | `popcount` `ctz` `clz` `bit_width` `bit_ceil` `bit` |
 | Numeric primitives | intrinsic | `abs` `min` `max` `sqrt` `floor` `ceil` `round` `trunc` `atan2` `sin` `cos` `tan` `asin` `acos` `exp` `ln` `hypot` |
-| Derived: std body exists | move | `isqrt` (math) `sum` `prod` `all` `any` `fold` `find` `rfind` `sort` `sorted` `runs` `distinct` `adjacent` `windows` `join` `extend` `fill` `reverse` `reversed` (seq, strings, range) `prefix` `adjacency` `out` `AddAction` (algebra, prefix, graph) |
+| Derived: std body exists | move | `isqrt` (math) `sum` `prod` `all` `any` `fold` `find` `rfind` `sort` `sorted` `runs` `distinct` `adjacent` `windows` `extend` `fill` `reversed` (seq, strings, range) `prefix` `adjacency` `out` `AddAction` (algebra, prefix, graph) |
 | Derived: std body missing | move, body first | `counts` `shuffle` `laws_hold` `AffineAction` `AssignAction` `FlipAction` `gen` |
 | Derived: trait default getters | move, needs trait default bodies | `to` (`Target`) `hash_token` (`Hashable`) |
 | Derived: diagnostic help keyed by name | move to the diagnostic registry | `e` `indices` |
-| Moved | done | `choose2` `minmax` `span` `is_alpha` `is_digit` `is_lower` `is_upper` `is_space` |
+| Moved | done | `choose2` `minmax` `span` `is_alpha` `is_digit` `is_lower` `is_upper` `is_space` `reverse` `join` |
 | Deleted: no checker form reached the arm | done | `clamp` |
 
 Every name `ir_builtin_names` counts has a row. `ir_builtin_derived` (the ratchet) counts the
