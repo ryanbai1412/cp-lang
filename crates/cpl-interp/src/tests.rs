@@ -1683,6 +1683,38 @@ fn a_value_is_three_words() {
 }
 
 #[test]
+fn packed_cells_move_like_a_vec_of_their_values() {
+    use crate::value::{Cells, OptVal, Value};
+
+    let kinds: [fn(i64) -> Value; 4] = [
+        |i| Value::Bool(i % 2 == 0),
+        |i| Value::Char(b'a' + i as u8),
+        |i| {
+            if i % 3 == 0 {
+                Value::Opt(OptVal::None)
+            } else {
+                Value::some(Value::Int(i))
+            }
+        },
+        |i| Value::Int(i * 7),
+    ];
+    for make in kinds {
+        let mut want: Vec<Value> = (0..6).map(make).collect();
+        let mut cells = Cells::from(want.clone());
+        cells.insert(1, make(9));
+        want.insert(1, make(9));
+        cells.insert(cells.len(), make(10));
+        want.push(make(10));
+        assert_eq!(cells.remove(2), want.remove(2));
+        assert_eq!(cells.remove(0), want.remove(0));
+        cells.reverse();
+        want.reverse();
+        assert_eq!(cells.to_values(), want);
+        assert!(!matches!(cells, Cells::Values(_)));
+    }
+}
+
+#[test]
 fn a_list_of_small_enums_is_packed() {
     use crate::value::{Cells, Value};
     use std::rc::Rc;
