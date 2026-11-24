@@ -255,7 +255,7 @@ pub struct Rooted<V, Pre, A>:
     /// children in child order. `t.order.rev` lists children before parents, the order a tree DP
     /// without recursion walks.
     ///
-    /// cost: \(O(1)\); the list is the tree's own breadth-first order
+    /// cost: \(O(n)\); copies the stored breadth-first order, which `t.bfs` reads in place
     /// order: breadth-first; the roots first
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.order == [0, 1, 2, 3, 4]`
@@ -520,7 +520,7 @@ pub struct Rooted<V, Pre, A>:
 
     /// The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
     ///
-    /// cost: \(O(1)\); a view of the stored sizes
+    /// cost: \(O(n)\); builds the array, while `t.size(v)` reads one size in \(O(1)\)
     /// empty: never empty
     /// order: keyed by `V`
     /// traps: never
