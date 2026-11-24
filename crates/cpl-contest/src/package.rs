@@ -123,7 +123,7 @@ impl Fields {
                 input_file: Some(_),
                 ..
             } => Err(format!(
-                "case {n}: give `input` or `input_file`, not both"
+                "case {n:02}: give `input` or `input_file`, not both"
             )),
             Fields {
                 input: None,
@@ -142,7 +142,7 @@ impl Fields {
             Fields {
                 size: Some(size), ..
             } if size < 1 => Err(format!(
-                "case {n}: size {size}, but `gen.py seed size` takes a size of at least 1"
+                "case {n:02}: size {size}, but `gen.py seed size` takes a size of at least 1"
             )),
             Fields {
                 input: None,
@@ -152,7 +152,7 @@ impl Fields {
                 args: Some(args),
             } => Ok(Case::Gen(args)),
             _ => Err(format!(
-                "case {n}: give `input` or `input_file`, or `seed` and `size`, or `args`, and only one"
+                "case {n:02}: give `input` or `input_file`, or `seed` and `size`, or `args`, and only one"
             )),
         }
     }
@@ -319,15 +319,23 @@ pub fn input_file(package: &Path, path: &Path) -> Result<PathBuf, String> {
     Ok(file)
 }
 
-/// The cases' `input_file`s, each checked by [`input_file`]; an error names the case.
-fn input_files(package: &Path, cases: &[Case]) -> Result<Vec<PathBuf>, String> {
-    let mut files = Vec::new();
-    for (i, case) in cases.iter().enumerate() {
-        if let Case::File(path) = case {
-            files.push(input_file(package, path).map_err(|e| format!("case {:02}: {e}", i + 1))?);
-        }
-    }
-    Ok(files)
+/// Where one case's input comes from, its `input_file` already checked.
+enum Source<'a> {
+    Inline(&'a str),
+    File(PathBuf),
+    Gen(&'a [String]),
+}
+
+/// Each case's [`Source`]; a bad `input_file` fails naming its case.
+fn sources<'a>(package: &Path, cases: &'a [Case]) -> Result<Vec<Source<'a>>, String> {
+    let source = |(i, case): (usize, &'a Case)| match case {
+        Case::Input(text) => Ok(Source::Inline(text)),
+        Case::File(path) => input_file(package, path)
+            .map(Source::File)
+            .map_err(|e| format!("case {:02}: {e}", i + 1)),
+        Case::Gen(args) => Ok(Source::Gen(args)),
+    };
+    cases.iter().enumerate().map(source).collect()
 }
 
 /// Makes `package`'s cases in `out` unless the ones there are current:
@@ -358,13 +366,16 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
         })?),
     };
     let gen = package.join("gen.py");
-    let files = input_files(package, &cases).map_err(|e| format!("{}: {e}", toml.display()))?;
+    let sources = sources(package, &cases).map_err(|e| format!("{}: {e}", toml.display()))?;
     let mut stamp = DefaultHasher::new();
     stamp.write(MAKER.as_bytes());
     for file in [Some(&toml), Some(&gen), reference.as_ref()]
         .into_iter()
         .flatten()
-        .chain(&files)
+        .chain(sources.iter().filter_map(|s| match s {
+            Source::File(file) => Some(file),
+            _ => None,
+        }))
     {
         stamp.write(&std::fs::read(file).unwrap_or_default());
         stamp.write_u8(0);
@@ -391,25 +402,15 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
     let _ = std::fs::remove_dir_all(&aside);
     let made = (|| {
         std::fs::create_dir_all(&aside).map_err(|e| e.to_string())?;
-        let mut files = files.iter();
-        for (i, case) in cases.iter().enumerate() {
+        for (i, (case, source)) in cases.iter().zip(&sources).enumerate() {
             let n = format!("{:02}", i + 1);
-            let input = match case {
-                Case::Input(text) => text.clone(),
-                Case::File(_) => {
-                    let file = files.next().expect("one checked file per input_file case");
-                    let text = std::fs::read(file)
-                        .map_err(|e| format!("can't read {}: {e}", file.display()))?;
-                    let text = String::from_utf8_lossy(&text).into_owned();
-                    if text.ends_with('\n') {
-                        text
-                    } else {
-                        text + "\n"
-                    }
-                }
-                Case::Gen(args) => {
+            let mut input = match source {
+                Source::Inline(text) => text.as_bytes().to_vec(),
+                Source::File(file) => std::fs::read(file)
+                    .map_err(|e| format!("can't read {}: {e}", file.display()))?,
+                Source::Gen(args) => {
                     let mut cmd = Command::new("python3");
-                    cmd.arg(&gen).args(args).current_dir(&root);
+                    cmd.arg(&gen).args(*args).current_dir(&root);
                     match run(&mut cmd, b"", GEN_TIME, "gen.py")? {
                         Ran::Past => {
                             return Err(format!(
@@ -418,14 +419,7 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
                                 GEN_TIME.as_secs()
                             ))
                         }
-                        Ran::Exited(Some(0), out) => {
-                            let text = String::from_utf8_lossy(&out).into_owned();
-                            if text.ends_with('\n') {
-                                text
-                            } else {
-                                text + "\n"
-                            }
-                        }
+                        Ran::Exited(Some(0), out) => out,
                         Ran::Exited(code, _) => {
                             return Err(format!(
                                 "gen.py {} exits {} on case {n}",
@@ -436,17 +430,15 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
                     }
                 }
             };
-            write(&aside.join(format!("{n}.in")), input.as_bytes())?;
+            if !input.ends_with(b"\n") {
+                input.push(b'\n');
+            }
+            write(&aside.join(format!("{n}.in")), &input)?;
             if case.is_max() {
                 write(&aside.join(format!("{n}.max")), b"")?;
             }
             if let Some(exe) = &exe {
-                match run(
-                    &mut judge_stack(exe),
-                    input.as_bytes(),
-                    budget,
-                    "the accepted C++",
-                )? {
+                match run(&mut judge_stack(exe), &input, budget, "the accepted C++")? {
                     Ran::Exited(Some(0), answer) => {
                         write(&aside.join(format!("{n}.ans")), &answer)?
                     }
@@ -658,7 +650,7 @@ mod tests {
     fn a_case_that_is_two_kinds_or_too_small_says_which() {
         let both = parse("[[case]]\ninput = \"1\"\nseed = 1\nsize = 2\n").unwrap_err();
         assert!(
-            both.contains("case 1") && both.contains("only one"),
+            both.contains("case 01") && both.contains("only one"),
             "{both}"
         );
         let small = parse("[[case]]\nseed = 1\nsize = 0\n").unwrap_err();
@@ -669,7 +661,7 @@ mod tests {
         assert_eq!(file, [Case::File("samples/1.in".into())]);
         let both = parse("[[case]]\ninput = \"1\"\ninput_file = \"samples/1.in\"\n").unwrap_err();
         assert!(
-            both.contains("case 1") && both.contains("not both"),
+            both.contains("case 01") && both.contains("not both"),
             "{both}"
         );
     }
@@ -807,7 +799,7 @@ mod tests {
                 let cases = parse(&text).map_err(|e| format!("{}: {e}", toml.display()));
                 let cases = cases.unwrap();
                 assert!(!cases.is_empty(), "{} lists no case", toml.display());
-                if let Err(e) = input_files(&package, &cases) {
+                if let Err(e) = sources(&package, &cases) {
                     panic!("{}: {e}", toml.display());
                 }
                 read += 1;
