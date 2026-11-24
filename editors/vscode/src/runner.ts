@@ -62,7 +62,7 @@ export class Runner {
             return;
         }
         this.output.show(true);
-        this.overlays.setRuntimeError(document.uri, undefined);
+        this.overlays.setView(document.uri, 'error', undefined);
         const counts: Record<SampleOutcome, number> = { passed: 0, failed: 0, printed: 0, stopped: 0 };
         const shown = this.liveSample(samples);
         const summaryLines: string[] = [];
@@ -162,7 +162,7 @@ export class Runner {
         }
         if (report.status === 'pass' || !report.counterexample) {
             this.overlays.setCounterexample(document.uri, undefined);
-            this.overlays.setRuntimeError(document.uri, undefined);
+            this.overlays.setView(document.uri, 'error', undefined);
             const msg =
                 report.status === 'pass'
                     ? `stress: ${report.cases ?? 'all'} cases passed`
@@ -313,7 +313,7 @@ export class Runner {
         const id = ++this.liveRunId;
         this.liveRuns.set(key, id);
         const version = document.version;
-        const result = await runCpl(binary, ['run', document.uri.fsPath, '--format', 'json'], {
+        const result = await runCpl(binary, ['run', document.uri.fsPath, '--format', 'json', '--sample', sample.label], {
             cwd: path.dirname(document.uri.fsPath),
             stdin: await this.read(document, sample.input),
             timeoutMs: config.get<number>('run.timeoutMs', 10000),
@@ -324,16 +324,8 @@ export class Runner {
         }
         const report = parseRunReport(result.stdout);
         if (report) {
-            this.overlays.setLiveValues(document.uri, sample.label, report.values);
-            if (report.error) {
-                this.overlays.setRuntimeError(document.uri, {
-                    line: report.error.line ?? 0,
-                    message: report.error.message,
-                    sample: sample.label,
-                });
-            } else {
-                this.overlays.setRuntimeError(document.uri, undefined);
-            }
+            this.overlays.setView(document.uri, 'error', undefined);
+            this.overlays.setView(document.uri, 'live', report.view);
         }
     }
 
@@ -359,7 +351,7 @@ export class Runner {
         const stdin = sample ? await this.read(document, sample.input) : '';
         let result = await this.cpl(
             document,
-            ['run', document.uri.fsPath, '--format', 'json'],
+            ['run', document.uri.fsPath, '--format', 'json', ...(sample ? ['--sample', sample.label] : [])],
             `cpl run (${label})`,
             stdin,
             { allowUsageFallback: true, allowRuntimeError: true, signal: options.signal },
@@ -378,11 +370,12 @@ export class Runner {
         const stdout = report?.stdout ?? result.stdout;
         const time = `${report?.timeMs ?? result.timeMs} ms`;
         if (report && sample && showValues) {
-            this.overlays.setLiveValues(document.uri, sample.label, report.values);
+            this.overlays.setView(document.uri, 'live', report.view);
         }
         if (result.code !== 0 || report?.error) {
             const parsed = extractRuntimeError(report?.error, result.stderr, label);
-            this.overlays.setRuntimeError(document.uri, parsed);
+            const error = report?.view?.diagnostic && { ...report.view, lines: report.view.lines?.filter(l => l.kind === 'error') };
+            this.overlays.setView(document.uri, 'error', error);
             const summary = `${label}: runtime error (${time})`;
             this.output.appendLine(summary);
             this.output.appendLine(indent(report?.error?.message ?? result.stderr));
@@ -398,7 +391,7 @@ export class Runner {
             return 'failed';
         }
         if (showStatus) {
-            this.overlays.setRuntimeError(document.uri, undefined);
+            this.overlays.setView(document.uri, 'error', undefined);
         }
         if (!sample?.expected) {
             const summary = `${label}: ${time}`;

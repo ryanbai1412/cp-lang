@@ -1,16 +1,18 @@
 // What `cpl run` and `cpl stress` report, and how it is shown. No `vscode`
 // import so every parser and formatter can be unit-tested directly.
 
-/** The value of one top-level `let` or part result on a sample. */
-export interface LiveValue {
-    /** 0-based line the value belongs to. */
-    line: number;
-    name: string;
-    value: string;
+/** What an editor draws for a report (`view` in spec/tools/cli.md), strongest kind first. */
+export const VIEW_KINDS = ['error', 'differs', 'agrees', 'input', 'live'] as const;
+
+export interface View {
+    panel: string;
+    status?: { line: number; ok: boolean; label: string; detail?: string };
+    lines?: { line: number; kind: (typeof VIEW_KINDS)[number]; label: string; hover?: string }[];
+    diagnostic?: { line: number; col?: number; code?: string; message: string; help?: string; source?: string };
 }
 
 export interface RunReport {
-    values: LiveValue[];
+    view?: View;
     stdout: string;
     timeMs?: number;
     /** A runtime error (index out of range, failed assert, overflow). */
@@ -123,19 +125,10 @@ export function parseRunReport(json: string): RunReport | undefined {
     if (!root || !Array.isArray(root.values)) {
         return undefined;
     }
-    const values: LiveValue[] = [];
-    for (const item of root.values) {
-        if (!isObject(item)) {
-            continue;
-        }
-        const at = line(item.line);
-        const name = str(item.name);
-        const value = str(item.value);
-        if (at !== undefined && name !== undefined && value !== undefined) {
-            values.push({ line: at, name, value });
-        }
+    const report: RunReport = { stdout: str(root.stdout) ?? '' };
+    if (isObject(root.view)) {
+        report.view = root.view as unknown as View;
     }
-    const report: RunReport = { values, stdout: str(root.stdout) ?? '' };
     if (typeof root.time_ms === 'number') {
         report.timeMs = root.time_ms;
     }
@@ -258,13 +251,6 @@ function cut(text: string, max: number): string {
 /** Puts `text` on one line of at most `max` characters, ending in an ellipsis when cut. */
 export function clip(text: string, max: number): string {
     return cut(flat(text), max);
-}
-
-/** The text shown after a line for its live values: `i1: [0, 3, none, 7, 5]`. */
-export function liveLabel(sample: string, values: readonly LiveValue[], max: number): string {
-    const shown =
-        values.length === 1 ? flat(values[0].value) : values.map(v => `${v.name} = ${flat(v.value)}`).join('  ');
-    return `${sample}: ${cut(shown, max)}`;
 }
 
 /** The text shown after the line of a part on the counterexample. */
@@ -416,25 +402,6 @@ export function parseCliDiagnostics(stderr: string): CliDiagnostic[] {
         }
     }
     return diagnostics;
-}
-
-/** Inline label shown at the end of a line that trapped at runtime. */
-export function runtimeErrorLabel(error: RuntimeErrorOverlay, max: number): string {
-    const prefix = error.sample ? `${error.sample} error: ` : 'runtime error: ';
-    const code = error.code ? `[${error.code}] ` : '';
-    return `${prefix}${clip(code + error.message, max)}`;
-}
-
-/** Inline label shown beside a sample or file after `cpl run`. */
-export function sampleStatusLabel(status: SampleStatusOverlay, max: number): string {
-    const icon = status.ok ? '\u2713' : '\u2717';
-    return `${icon} ${clip(status.label, max)}`;
-}
-
-/** The `view` a `cpl` JSON report carries, drawn as is (spec/tools/cli.md, "The view"). */
-export interface View {
-    panel: string;
-    status?: { line: number; ok: boolean; label: string; detail?: string };
 }
 
 /** The `view` of a `cpl ... --json` report; undefined when the output is not one. */

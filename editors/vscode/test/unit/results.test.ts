@@ -6,34 +6,18 @@ import {
     divergenceLabel,
     diffOutput,
     firstDifference,
-    liveLabel,
     parseCliDiagnostics,
     parseRunReport,
     parseStressReport,
     parseTestReport,
     renderCounterexample,
-    runtimeErrorLabel,
-    sampleStatusLabel,
     stageLabel,
 } from '../../src/results';
 
-test('parseRunReport reads values with 0-based lines', () => {
-    const report = parseRunReport(
-        JSON.stringify({
-            values: [
-                { line: 12, name: 'dist', value: '[0, 3, none, 7, 5]' },
-                { line: 0, name: 'bad', value: 'x' },
-                { name: 'no line', value: 'x' },
-            ],
-            stdout: '0 3 -1 7 5\n',
-            time_ms: 4,
-        }),
-    );
-    assert.deepEqual(report, {
-        values: [{ line: 11, name: 'dist', value: '[0, 3, none, 7, 5]' }],
-        stdout: '0 3 -1 7 5\n',
-        timeMs: 4,
-    });
+test('parseRunReport keeps the view as cpl sends it', () => {
+    const view = { panel: '6\n', lines: [{ line: 0, kind: 'live', label: 'i1: 2' }] };
+    const report = parseRunReport(JSON.stringify({ values: [], stdout: '6\n', time_ms: 4, view }));
+    assert.deepEqual(report, { view, stdout: '6\n', timeMs: 4 });
 });
 
 test('parseRunReport keeps a runtime error and rejects other output', () => {
@@ -163,11 +147,6 @@ test('a stress report with a wrong part call shows that call', () => {
 test('labels are clipped to the configured length', () => {
     assert.equal(clip('[1,\n  2]', 20), '[1, 2]');
     assert.equal(clip('abcdefghij', 5), 'abcd\u2026');
-    assert.equal(liveLabel('i1', [{ line: 3, name: 'dist', value: '[0, 3, none]' }], 60), 'i1: [0, 3, none]');
-    assert.equal(
-        liveLabel('i1', [{ line: 3, name: 'n', value: '2' }, { line: 3, name: 'm', value: '5' }], 60),
-        'i1: n = 2  m = 5',
-    );
     const [agree, differ] = parseStressReport(FAIL)!.counterexample!.stages;
     assert.equal(stageLabel(agree, 60), 'fast = brute = [none, 1]');
     assert.equal(stageLabel(differ, 60), 'fast [0]  \u2260  brute [1]  \u2190 first difference');
@@ -211,19 +190,6 @@ test('parseCliDiagnostics extracts line, column, code and help from cpl stderr',
             col: 4,
         },
     ]);
-});
-
-test('runtimeErrorLabel and sampleStatusLabel format compact inline badges', () => {
-    assert.equal(
-        runtimeErrorLabel({ line: 10, code: 'E9001', message: 'index out of range', sample: 'i1' }, 60),
-        'i1 error: [E9001] index out of range',
-    );
-    assert.equal(
-        runtimeErrorLabel({ line: 4, message: 'assertion failed' }, 60),
-        'runtime error: assertion failed',
-    );
-    assert.equal(sampleStatusLabel({ line: 0, ok: true, label: 'i1: passed (3 ms)' }, 60), '\u2713 i1: passed (3 ms)');
-    assert.equal(sampleStatusLabel({ line: 0, ok: false, label: '1 of 2 samples passed' }, 60), '\u2717 1 of 2 samples passed');
 });
 
 test('parseTestReport reads each case, with null fields left out', () => {
