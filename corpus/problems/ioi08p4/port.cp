@@ -7,7 +7,7 @@
 //   partner, so the stretches form one path from the start (the ride) plus disjoint cycles. A
 //   new teleporter from the ride into a cycle splices it in for its length + 2 points: take the
 //   longest cycles first; with none left, each pair of crossing teleporters adds 4 and a last
-//   single one adds 1. Sorting the endpoints dominates: O(n log n).
+//   single one adds 1. Endpoints are bucketed by spot: O(n log n + 2e6) with the loop sort.
 // original: corpus/submissions/5637680.cpp
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
@@ -35,20 +35,23 @@ fn track() -> [Tele]Ends:
 
 let teles: [Tele]Ends = read(gen: track)
 
-var ends: List<(Int, Tele)> = []
+// The endpoints are distinct spots up to 2e6, so bucket them by spot and number them west to east.
+var owner: [1..=2e6]?Tele = None
 for t in Tele:
-    ends.push((teles[t].w, t))
-    ends.push((teles[t].e, t))
-let order = ends.sorted()
+    owner[teles[t].w] = t
+    owner[teles[t].e] = t
 var partner: [Point]Point = [Point] p => p
 var first_end: [Tele]?Point = None
-for p in Point:
-    let (_, t) = order[p.label - 1]
-    if let o = first_end[t]:
-        partner[p] = o
-        partner[o] = p
-    else:
-        first_end[t] = p
+var next = 1
+for spot in 1..=2e6:
+    if let t = owner[spot]:
+        let p = Point(next)
+        next += 1
+        if let o = first_end[t]:
+            partner[p] = o
+            partner[o] = p
+        else:
+            first_end[t] = p
 
 // Stretch s of track lies just east of point s (stretch 0 is the start).
 // Riding stretch s ends at point s + 1 and continues on the stretch east of

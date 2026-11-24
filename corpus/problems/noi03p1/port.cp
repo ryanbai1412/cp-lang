@@ -7,14 +7,17 @@
 // Solution: parse into digits, each with weight = sign * place value (the right side counts
 //   negative), so the equation holds when sum(weight * digit) is 0. Try every digit reshaped
 //   with the same stick count (0-6, 0-9, 2-3, 3-5, 6-9), then every ordered pair where one
-//   digit loses a stick and the other gains one, checking the new total in O(1):
-//   O(D^2 * 100) for D digits.
+//   digit loses a stick and the other gains one, checking the new total in O(1): O(D^2).
 // original: corpus/submissions/3738358.cpp
 const STICKS = [6, 2, 5, 5, 4, 5, 6, 3, 7, 6]
 const RESHAPE = [(0, 6), (0, 9), (2, 3), (3, 5), (6, 9)]                  // same count, one match moved
 const ONE_OFF = [(0, 8), (1, 7), (3, 9), (5, 6), (5, 9), (6, 8), (8, 9)]  // one match added or removed
 
 fn linked(pairs: List<(Int, Int)>, a: Int, b: Int) -> Bool = pairs.contains((min(a, b), max(a, b)))
+
+// the digits one stick less (loses) or one stick more (gains) than each digit
+let loses = [[x for x in 0..10 if linked(ONE_OFF, v, x) and STICKS[x] < STICKS[v]] for v in 0..10]
+let gains = [[x for x in 0..10 if linked(ONE_OFF, v, x) and STICKS[x] > STICKS[v]] for v in 0..10]
 
 struct Digit(weight: Int, value: Int, at: Int)  // weight = sign * place value
 
@@ -55,13 +58,11 @@ fn solve():
                 show([(a.at, d)])
                 return
     for a in digits:
-        for b in digits:
-            if a.at == b.at: continue
-            for x in 0..10:
-                for y in 0..10:
-                    let moved = linked(ONE_OFF, a.value, x) and linked(ONE_OFF, b.value, y)
-                    let kept = STICKS[x] + STICKS[y] == STICKS[a.value] + STICKS[b.value]
-                    if moved and kept and total + (x - a.value) * a.weight + (y - b.value) * b.weight == 0:
+        for x in loses[a.value]:
+            for b in digits:
+                if a.at == b.at: continue
+                for y in gains[b.value]:
+                    if total + (x - a.value) * a.weight + (y - b.value) * b.weight == 0:
                         show([(a.at, x), (b.at, y)])
                         return
     print("No")
