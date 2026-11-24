@@ -1378,8 +1378,17 @@ def test_sleeps(root: Path) -> list[str]:
 
 
 def ci_retries(root: Path) -> list[str]:
-    """`--retry`/`--retries` in workflows, scripts and the justfile: a failure tried again."""
-    return _grep_all(root, r"--retr(y|ies)\b", ".github", "scripts", "justfile")
+    """Retries in workflows, scripts and the justfile outside the one helper,
+    scripts/retry.sh: a `--retry`/`--retries` flag or a hand-rolled retry loop.
+    nextest's `--retries N --flaky-result fail` isn't one: the flake still fails."""
+    hits = _git(root, "grep", "-n", "-E", "-e", RETRY_RE, "--", ".github", "scripts", "justfile",
+                ":!scripts/retry.sh", ":!scripts/test_*.py",
+                ":!scripts/debt-ratchet.py", ":!scripts/test_debt_ratchet.py")
+    return [":".join(h.split(":", 2)[:2]) for h in hits if not FLAKE_FAILS_RE.search(h)]
+
+
+RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in "
+FLAKE_FAILS_RE = re.compile(r"--retries [0-9]+ --flaky-result fail")
 
 
 def hardcoded_codes(root: Path) -> list[str]:

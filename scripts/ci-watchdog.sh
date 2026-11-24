@@ -5,6 +5,8 @@
 # (handbook/guidelines/ci-checklist.md#cir23).
 set -euo pipefail
 repo=${GITHUB_REPOSITORY:?}
+here=$(dirname "$0")
+. "$here/retry.sh"
 now=$(date +%s)
 age() { [ -n "$1" ] && echo $((now - $(date -d "$1" +%s))) || echo 999999; }
 # Superseded runs end `cancelled` by the hundred, so ask per conclusion.
@@ -19,16 +21,15 @@ problems=()
 [ "$edge_age" -le 7200 ] || problems+=("edge was last published $((edge_age / 60)) min ago (${shipped:-never})")
 # Every archive edge's SHA256SUMS lists must download, so `install.sh` works.
 base="https://github.com/$repo/releases/download/edge"
-if sums=$(curl -fsSL --retry 3 "$base/SHA256SUMS" 2>/dev/null); then
+if sums=$(fetch "$base/SHA256SUMS" 2>/dev/null); then
     for a in $(awk '{print $2}' <<<"$sums"); do
-        curl -fsIL --retry 3 -o /dev/null "$base/$a" 2>/dev/null || problems+=("edge is missing $a")
+        fetch -I -o /dev/null "$base/$a" 2>/dev/null || problems+=("edge is missing $a")
     done
 else
     problems+=("edge has no SHA256SUMS")
 fi
 # The site is behind when a commit whose site jobs passed isn't live and the
 # live commit is over 2 h old.
-here=$(dirname "$0")
 deployable=$("$here/site-deployable.sh" 2>/dev/null || true)
 if [ -n "$deployable" ]; then
     live=$(curl -fsSL https://cp-lang.org/version.json 2>/dev/null | jq -r '.commit // empty' || true)

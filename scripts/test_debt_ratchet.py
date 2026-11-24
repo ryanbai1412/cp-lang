@@ -267,6 +267,17 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "std/bag.cp", "pub struct Counter {}\n")
             self.assertEqual(dr.prelude_privilege(root), ["Counter", "sum"])
 
+    def test_ci_retries_spares_only_the_helper_and_failing_flakes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "scripts/retry.sh", "retry() {\n")
+            self._write(root, ".github/workflows/x.yml", "nextest run --retries 1 --flaky-result fail\n"
+                        "for try in 1 2 3; do\n  try() { x; }\nnextest run --retries 2\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.ci_retries(root), [".github/workflows/x.yml:2", ".github/workflows/x.yml:3",
+                                                   ".github/workflows/x.yml:4"])
+
     def test_web_skip_only_reads_only_js_and_ts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

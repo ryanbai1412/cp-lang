@@ -323,13 +323,13 @@ jobs:
       # Each download gets 3 tries of 3 min: one hung for 9 min with no output.
       - name: Install Emacs, Helix and the tree-sitter CLI
         run: |
-          try() { for n in 1 2 3; do timeout 180 "$@" && return; echo "::warning::try $n failed: $*" >&2; done; return 1; }
+          . scripts/retry.sh
           # man-db's trigger alone can take minutes on a hosted runner.
           sudo rm -f /var/lib/man-db/auto-update
-          try sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
-          try sh -c 'curl -sSfL --retry 3 https://github.com/helix-editor/helix/releases/download/25.07.1/helix-25.07.1-x86_64-linux.tar.xz | tar xJ -C "$RUNNER_TEMP"'
+          retry timeout 180 sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
+          retry timeout 180 sh -c 'curl -sSfL https://github.com/helix-editor/helix/releases/download/25.07.1/helix-25.07.1-x86_64-linux.tar.xz | tar xJ -C "$RUNNER_TEMP"'
           echo "HX=$RUNNER_TEMP/helix-25.07.1-x86_64-linux/hx" >> "$GITHUB_ENV"
-          try npm install --prefix "$RUNNER_TEMP/ts" --no-audit --no-fund tree-sitter-cli@0.25.10 >/dev/null
+          retry timeout 180 npm install --prefix "$RUNNER_TEMP/ts" --no-audit --no-fund tree-sitter-cli@0.25.10 >/dev/null
           echo "TREE_SITTER=$RUNNER_TEMP/ts/node_modules/.bin/tree-sitter" >> "$GITHUB_ENV"
       - name: Emacs smoke
         run: |
@@ -394,10 +394,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- skills spec/conformance pnpm-lock.yaml crates
           git commit -q -m "factory: regenerate generated files" -m "Domain: ${domain:-infra}"
-          for try in 1 2 3 4 5; do
-            git pull -q --rebase origin main && git push -q origin HEAD:main && break
-            sleep 5
-          done
+          . scripts/retry.sh
+          RETRY_TRIES=5 retry sh -c 'git pull -q --rebase origin main && git push -q origin HEAD:main'
           gh workflow run ci.yml --ref main
           failed
 

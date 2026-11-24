@@ -114,18 +114,17 @@ if [ -n "$regen" ]; then
     git commit -q --no-verify -m "factory: regenerate generated files" -m "Domain: $domain" -- $regen
     echo "land: regenerated $(echo $regen)"
 fi
-for try in $(seq "$tries"); do
+. "$(dirname "$0")/retry.sh"
+try=0
+push() {
+    try=$((try + 1))
     [ "$try" = 1 ] || pull || exit 1
-    if git push -q --no-verify "$remote" HEAD:main; then
-        secs=$(( $(date +%s) - t0 ))
-        printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
-            "$domain" "$(date +%s)" "$secs" "$try" "$(git rev-parse HEAD)" \
-            >>"$(git rev-parse --git-common-dir)/cpl-land.log"
-        echo "land: pushed $(git rev-parse --short HEAD) to $remote main in ${secs}s (try $try)"
-        git rev-parse HEAD >"$seen"
-        exit 0
-    fi
-    echo "land: push rejected (try $try of $tries); rebasing again" >&2
-done
-echo "land: gave up after $tries tries" >&2
-exit 1
+    git push -q --no-verify "$remote" HEAD:main
+}
+RETRY_TRIES=$tries RETRY_WAIT=0 retry push || { echo "land: gave up after $tries tries" >&2; exit 1; }
+secs=$(( $(date +%s) - t0 ))
+printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
+    "$domain" "$(date +%s)" "$secs" "$try" "$(git rev-parse HEAD)" \
+    >>"$(git rev-parse --git-common-dir)/cpl-land.log"
+echo "land: pushed $(git rev-parse --short HEAD) to $remote main in ${secs}s (try $try)"
+git rev-parse HEAD >"$seen"
