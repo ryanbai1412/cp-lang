@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP E (Knapsack 2), https://atcoder.jp/contests/dp/tasks/dp_e
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 100 items with weight w_i <= W <= 1e9 and value v_i <= 1000. Print the largest
 //   total value of a subset with total weight <= W.
 // Solution: weights are huge but the total value is at most 100 * 1000 = 1e5, so index by

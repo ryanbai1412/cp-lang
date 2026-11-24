@@ -1,4 +1,5 @@
 // Source: NOIP 2004 P3 (Chorus Formation), https://dmoj.ca/problem/noip04p3
+// limits: 1000 ms, 256 MB
 // Problem: N <= 100 heights in 130..=230 in a row. Remove the fewest students so the rest strictly
 //   rise to one student and strictly fall after; print that count.
 // Solution: up[i] is the longest strictly rising subsequence ending at i and down[i] the longest

@@ -1,4 +1,5 @@
 // Source: CEOI 2009 P3 (Photo), https://dmoj.ca/problem/ceoi09p3
+// limits: 1000 ms, 512 MB
 // Problem: n <= 100 points (x, y), 0 <= x, y <= 1e5. Cover them all with the fewest rectangles
 //   that stand on the x-axis and have area A <= 2e6 (overlaps allowed); print that number. A point
 //   on the axis (y = 0) needs no rectangle, as in the accepted C++. Bounds from the Luogu mirror P5975.

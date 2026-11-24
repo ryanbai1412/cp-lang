@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 6 P5 (No More Coyotes), https://dmoj.ca/problem/yac6p5
+// limits: 2000 ms, 256 MB
 // Problem: 2 <= N <= 1e6 sheep at (X, Y) (|X|, |Y| <= 1e9), each seeing one quadrant V in 0..=3
 //   (0: x >= and y >= its own, 1: x >=, y <=, 2: x <=, y <=, 3: x <=, y >=). A move is a unit
 //   step or a 90 degree turn (V +- 1 mod 4). Print the fewest moves so every sheep sees all.

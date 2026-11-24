@@ -1,4 +1,5 @@
 // Source: BOI 2017 Day 2 (Cat in a Tree), https://dmoj.ca/problem/btoi17p6
+// limits: 1000 ms, 1024 MB
 // Problem: a tree on n <= 2e5 nodes rooted at 0, given as the parents x_i < i, and d <= 2e5.
 //   Print the most nodes that can be marked so every two marked nodes are >= d edges apart.
 // Solution: greedy bottom-up: a subtree keeps (count, depth of its shallowest mark), a leaf

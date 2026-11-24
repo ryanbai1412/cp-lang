@@ -1,4 +1,5 @@
 // Source: IOI 2011 P4 (Crocodile's Underground City), https://dmoj.ca/problem/ioi11p4
+// limits: 2000 ms, 256 MB
 // Problem: N <= 1e5 chambers, M <= 1e6 corridors with lengths <= 1e9, K exit chambers, start at
 //   0. Each time she leaves a chamber the gatekeeper may block one corridor out of it. Print the
 //   smallest worst-case time to reach an exit. Grader task; here stdin is n m k, the corridors

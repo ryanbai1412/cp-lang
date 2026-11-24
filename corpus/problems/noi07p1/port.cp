@@ -1,4 +1,5 @@
 // Source: NOI '07 P1 (Social Network), https://dmoj.ca/problem/noi07p1
+// limits: 600 ms, 256 MB
 // Problem: a connected graph, n <= 100 vertices, m <= 4500 edges of weight 1..1000; C(s, t)
 //   is the number of shortest s-t paths (<= 1e10) and C(s, t, v) those through v. For each v
 //   print I(v) = sum over s != t, both != v, of C(s, t, v) / C(s, t), to 3 decimals.

@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP T (Permutation), https://atcoder.jp/contests/dp/tasks/dp_t
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 3000 and a string of n - 1 signs '<' / '>'. Count the permutations p of 1..=n with
 //   p_i < p_{i+1} exactly where the i-th sign is '<', mod 1e9+7.
 // Solution: build the permutation left to right by relative order: ways[r] counts orderings of

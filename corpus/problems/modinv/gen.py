@@ -1,4 +1,10 @@
 import sys, random, math
+if sys.argv[1:] == ["--max"]:
+    # the largest consecutive Fibonacci pair with M <= 1e19: the most Euclid steps
+    fib = [1, 2]
+    while fib[-1] + fib[-2] <= 10 ** 19: fib.append(fib[-1] + fib[-2])
+    print(fib[-2], fib[-1])
+    sys.exit()
 # gen.py seed size: 0 <= N < M <= min(size, 1e19), gcd(N, M) = 1.
 # No arguments, or size >= 1e19, uses the full u64 range; the seed picks the shape:
 # consecutive Fibonacci numbers (the most Euclid steps), M near 1e19, N = 0 (M = 1), random.

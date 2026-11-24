@@ -1,4 +1,5 @@
 // Source: EGOI 2023 Day 2 Problem 2 (Candy), https://dmoj.ca/problem/egoi23p6
+// limits: 3000 ms, 1024 MB
 // Problem: n <= 100 boxes with a[i] <= 1e9 candy, f <= n and 0 <= t <= 1e11. Print the fewest swaps
 //   of adjacent boxes after which the first f boxes hold at least t candy, or NO.
 // Solution: moving chosen boxes j_0 < ... < j_(f-1) to the front costs sum (j_i - i) swaps.

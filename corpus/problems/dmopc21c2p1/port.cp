@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 2 P1 (Bosses), https://dmoj.ca/problem/dmopc21c2p1
+// limits: 2000 ms, 256 MB
 // Problem: N levels in order with boss powers A_i; a level needs power >= A_i. H seconds buy 1
 //   permanent power, P seconds 1 power for the next fight only. Print the least total time to
 //   clear every level. N, H, P, A_i <= 1e6.

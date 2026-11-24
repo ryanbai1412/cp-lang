@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """CEOI 2009 Photo (Luogu P5975 bounds): n <= 100, A <= 2e6, coordinates in 0..=1e5."""
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # n = 100, A = 2e6, points anywhere in 0..=1e5
+    sys.argv[1:] = ['0', '1000']
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 C = 100000

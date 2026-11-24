@@ -1,4 +1,5 @@
 // Source: CCC 2017 S4 (Minimum Cost Flow), https://dmoj.ca/problem/ccc17s4
+// limits: 1400 ms, 256 MB
 // Problem: N <= 1e5 buildings, M <= 2e5 weighted pipes; the first N - 1 form the current
 //   spanning tree. Each day swap one active pipe for an inactive one. One pipe may be enhanced
 //   from cost C to max(0, C - D). Print the fewest days to reach a spanning tree of minimum

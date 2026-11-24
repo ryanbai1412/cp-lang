@@ -1,5 +1,6 @@
 // Source: AtCoder Educational DP Contest P (Independent Set),
 //   https://atcoder.jp/contests/dp/tasks/dp_p
+// limits: 2000 ms, 1024 MB
 // Problem: a tree on n <= 1e5 vertices. Count the ways to paint each vertex white or black
 //   with no two adjacent vertices black, modulo 1e9 + 7.
 // Solution: tree DP rooted at vertex 1: white[v] / black[v] count paintings of v's subtree

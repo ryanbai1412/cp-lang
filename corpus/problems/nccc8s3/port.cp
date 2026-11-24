@@ -1,5 +1,6 @@
 // Source: Mock CCC '21 (NCCC 8) S3, Lexicographically Smallest Permutation Subsequence,
 //   https://dmoj.ca/problem/nccc8s3
+// limits: 100 ms, 1024 MB
 // Problem: a list of N <= 2e5 integers in 1..K (K <= N) holds each of 1..K at least once;
 //   print the lexicographically smallest permutation of 1..K that is a subsequence of it.
 // Solution: greedy stack: scan left to right and skip values already kept; before pushing x,

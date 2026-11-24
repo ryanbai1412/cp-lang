@@ -1,4 +1,5 @@
 // Source: CCO 2021 P5, Bread First Search, https://dmoj.ca/problem/cco21p5
+// limits: 1000 ms, 1024 MB
 // Problem: an undirected simple graph with n <= 2e5 towns and m <= 2e5 roads. Print the least
 //   number of new roads that make 1, 2, ..., n a valid BFS order (from town 1).
 // Solution: BFS layers are consecutive blocks; town v (not 1) needs its earliest neighbour

@@ -1,4 +1,5 @@
 // Source: SDOI 2017 Round 2, Dragons and Dungeons (not on DMOJ; Luogu P3779)
+// limits: 4000 ms, 512 MB
 // Problem: T <= 10 tests: Y <= 2e5 dice with faces 0..X-1 (2 <= X <= 20) uniform; for 10
 //   queries 0 <= A <= B <= (X-1)Y print P(A <= total <= B), absolute error 0.013579. At most
 //   2 tests have Y > 800.

@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest R (Walk), https://atcoder.jp/contests/dp/tasks/dp_r
+// limits: 2000 ms, 1024 MB
 // Problem: a simple directed graph on n <= 50 vertices given as an adjacency matrix.
 //   Count the directed walks of length k (k <= 1e18, edges may repeat), modulo 1e9 + 7.
 // Solution: the walks of length k from i to j are entry (i, j) of adj^k, so the answer is

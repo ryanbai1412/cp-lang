@@ -1,4 +1,5 @@
 // Source: CCC 2021 S3 (Lunch Concert), https://dmoj.ca/problem/ccc21s3
+// limits: 3000 ms, 1024 MB
 // Problem: N <= 2e5 friends at P_i <= 1e9, walking 1 metre per W_i <= 1000 seconds, hearing
 //   from within D_i <= 1e9 metres; pick an integer spot c minimizing the total walking time
 //   sum W_i * max(0, |P_i - c| - D_i), and print that minimum.

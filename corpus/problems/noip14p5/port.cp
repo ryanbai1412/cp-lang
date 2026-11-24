@@ -1,4 +1,5 @@
 // Source: NOIP 2014 Senior Day 2 P2 (Finding the Way), Luogu P2296 (not on DMOJ)
+// limits: 1000 ms, 128 MB
 // Problem: a directed graph, n <= 1e4, m <= 2e5 unit edges (loops and multi-edges allowed), and
 //   s != t. Print the length of the shortest s-t path through vertices all of whose
 //   out-neighbours can reach t, or -1 if there is none.

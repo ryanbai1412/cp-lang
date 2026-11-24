@@ -1,4 +1,8 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # n = 5000, k = n / 2: the full Stirling table
+    print(5000, 2500)
+    sys.exit()
 # `seed size`: n <= size (size >= 5000 gives n = 5000), 1 <= k <= n.
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = 5000 if S >= 5000 else r.randint(1, S)

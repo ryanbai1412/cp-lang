@@ -1,6 +1,9 @@
 import sys, random
 from collections import deque
 # seed size: an r x c board split into exactly four connected regions (rc >= 4)
+if sys.argv[1:] == ["--max"]:
+    # the full 1000 x 1000 board cut into four winding regions
+    sys.argv[1:] = ['0', '1000']
 rng = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 while True:  # size >= 1000: the full 1000 x 1000 board
     r, c = (S, S) if S >= 1000 else (rng.randint(1, S), rng.randint(1, S))

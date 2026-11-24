@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # gen.py SEED SIZE: SIZE 0/1 small; SIZE >= 2 n = 100 with a_i up to 1e9 and t up to 1e11.
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # n = 100, a ascending to 1e9 so the f = 50 richest boxes are the last ones: t is their sum
+    # and the answer needs the most swaps (best[] runs over the full swap range)
+    r = random.Random(0)
+    a = sorted(r.randint(10 ** 9 // 2, 10 ** 9) for _ in range(100))
+    print(100, 50, sum(a[-50:]))
+    print(*a)
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 if S <= 1:

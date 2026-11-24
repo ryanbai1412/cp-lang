@@ -1,4 +1,5 @@
 // Source: NOI 2014 P4 (Zoo), https://dmoj.ca/problem/noi14p4
+// limits: 600 ms, 512 MB
 // Problem: for a lowercase string S (|S| <= 1e6), num[i] counts the borders of the prefix S[..i]
 //   (proper, both prefix and suffix) of length <= i / 2. Print the product of (num[i] + 1) over
 //   all i, mod 1e9 + 7. Up to 5 strings (multitest).

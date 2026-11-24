@@ -1,4 +1,5 @@
 // Source: NOIP 2009 P2 (Hankson's Interesting Problem), https://dmoj.ca/problem/noip09p2
+// limits: 1000 ms, 128 MB
 // Problem: n <= 2000 queries a0, a1, b0, b1 <= 2e9 (a1 divides a0, b0 divides b1): print how
 //   many positive x have gcd(x, a0) = a1 and lcm(x, b0) = b1.
 // Solution: lcm(x, b0) = b1 forces x to divide b1, so test each divisor of b1 (at most 1536)

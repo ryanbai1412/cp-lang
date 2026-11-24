@@ -1,4 +1,5 @@
 // Source: CCC 2010 S4 (Animal Farm), https://dmoj.ca/problem/ccc10s4
+// limits: 1000 ms, 256 MB
 // Problem: M <= 100 pens, each a polygon of 3..=8 numbered corner posts (<= 1000) with a cost
 //   (<= 5000) per edge; an edge listed by two pens joins them, one listed once faces outside.
 //   One animal per pen; print the least total cost of edges to break so that all of them can

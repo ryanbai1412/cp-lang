@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 2 (Magneti), https://dmoj.ca/problem/coci21c2p4
+// limits: 1000 ms, 512 MB
 // Problem: n <= 50 distinct magnets with radii r_i go into a row of l <= 1e4 slots (n <= l), at
 //   most one per slot; a magnet attracts any other strictly closer than its own radius. Count the
 //   placements with no attraction, modulo 1e9+7.

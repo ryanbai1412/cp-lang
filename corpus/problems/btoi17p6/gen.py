@@ -1,4 +1,7 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # n = 2e5, a deep tree of short hops, d = 3 so many marks clash
+    sys.argv[1:] = ['0', '200000', 'deep', '3']
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = S if len(sys.argv) > 3 else r.randint(1, S); d = r.choice([1, 2, 3, r.randint(1, n + 1), r.randint(1, 200000)])
 shape = sys.argv[3] if len(sys.argv) > 3 else r.choice(["random", "path", "star", "broom", "deep", "binary"])

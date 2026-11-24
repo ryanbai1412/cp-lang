@@ -1,4 +1,5 @@
 // Source: NOIP 2004 Senior P2 (Combine Fruit), https://dmoj.ca/problem/noip04p2
+// limits: 1000 ms, 128 MB
 // Problem: n <= 10000 piles of fruit, weights <= 20000. Merging two piles costs their total
 //   weight; print the minimum total cost to merge everything into one pile.
 // Solution: Huffman: always merging the two lightest piles is optimal. A MinHeap pops two,

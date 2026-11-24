@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest L (Deque), https://atcoder.jp/contests/dp/tasks/dp_l
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 3000 numbers in a row. Two players alternately take the leftmost or
 //   rightmost one; each maximises (own total - other's). Print first minus second.
 // Solution: lead[r], the best margin for the player to move when the range r is left, is

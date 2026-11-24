@@ -4,6 +4,9 @@ Queries cluster within a few standard deviations of the mean, plus whole-range a
 single-point ones. size >= 2e5 gives T = 10: two tests with Y near 2e5 (or just over
 800) and eight with Y = 800."""
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # T = 10, X = 20: two tests at Y = 2e5 and eight exact ones at Y = 800
+    sys.argv[1:] = ['0', '200000']
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 tests = []
