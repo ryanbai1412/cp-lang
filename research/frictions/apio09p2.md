@@ -21,6 +21,17 @@
 - **General fix:** infer `V` from the closure's parameter use (routed in GAPS.md).
 - **Severity:** low.
 
+## 1.24x slower than the accepted C++ at --max
+- **Where:** the whole `port.cp`, n = 2e5 at `--max`.
+- **What felt wrong:** native 0.36 s against the AC C++'s 0.29 s (the measurement below), over
+  the 1.1x line (idiomatic-code/R10). Not profiled.
+- **Goal it hurts:** performance.
+- **Ideal code:** the port as written.
+- **General fix:** profile which of `IntervalMap.assign`/`run_at`, `Lift.climb` or the
+  `Some((r, i))` suffix scan costs the extra time, and fix that std structure.
+- **Severity:** low (well under the 750 ms limit).
+- **Owner:** perf. Repro: `gen.py --max | port` against `corpus/submissions/5536701.cpp`.
+
 ## Measurements
 - port.cp (spec.cp's algorithm) vs AC C++ (`corpus/submissions/5536701.cpp`) and the v0.2
   port: 60/60 `gen.py` cases each agree; `--max` (n = 2e5): native 0.36 s, 38 MB, AC C++ 0.29 s,
