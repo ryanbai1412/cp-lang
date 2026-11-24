@@ -931,7 +931,11 @@ impl InputSpec {
                         .stream(stmt)?
                         .or(builder.pass(stmt, &HashSet::new())?)
                     else {
-                        if let Some(shapes) = builder.inlined(stmt)? {
+                        let shapes = match builder.inlined(stmt)? {
+                            Some(shapes) => Some(shapes),
+                            None => builder.walked(stmt)?,
+                        };
+                        if let Some(shapes) = shapes {
                             let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
                             let fields = shapes.into_iter().map(|shape| Field {
                                 names: vec![None],

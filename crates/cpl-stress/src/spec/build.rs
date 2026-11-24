@@ -591,6 +591,44 @@ impl Builder<'_> {
         }))
     }
 
+    /// `for x in read<[n]T>():` whose body reads too: the loop reads the
+    /// whole array before its first pass, so the array, then one row of
+    /// what a pass reads for each of its elements.
+    pub(super) fn walked(&mut self, stmt: &Stmt) -> Result<Option<Vec<Shape>>, SpecError> {
+        let StmtKind::For {
+            pat, iter, body, ..
+        } = &stmt.kind
+        else {
+            return Ok(None);
+        };
+        let mut shapes = Vec::new();
+        if !self.reads_in(iter) || !self.inline(iter, &mut shapes)? {
+            return Ok(None);
+        }
+        let Some(Shape::Array { len, .. }) = shapes.last() else {
+            return Ok(None);
+        };
+        let len = len.clone();
+        let mut inside = HashSet::new();
+        bind_names(pat, &mut inside);
+        let (mut parts, mut binds) = (Vec::new(), Vec::new());
+        if !self.rows(&body.stmts, &mut inside, &mut parts, &mut binds)? {
+            return Ok(None);
+        }
+        let elem = match parts.len() {
+            0 => return Ok(None),
+            1 => parts.pop().expect("one part"),
+            _ if binds.iter().all(Vec::is_empty) => Shape::tuple(parts),
+            _ => Shape::Tuple { parts, binds },
+        };
+        shapes.push(Shape::Array {
+            len,
+            elem: Box::new(elem),
+            index: None,
+        });
+        Ok(Some(shapes))
+    }
+
     /// A `while true:` loop whose body reads a row and leaves at `if a ==
     /// 0 and b == 0: break` once the reads before it bind `a` and `b`:
     /// rows of what the body reads, ended by those values.
@@ -1085,6 +1123,11 @@ impl Builder<'_> {
                         binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1)),
                         out,
                     )
+                }
+                // Its iterator runs once, before the first element:
+                // `x * 2 for x in read<[n]Int>()` reads that array.
+                [clause] if clause.conds.is_empty() && !self.reads_in(body) => {
+                    self.inline(&clause.iter, out)
                 }
                 _ => Ok(!self.reads_in(expr)),
             },
