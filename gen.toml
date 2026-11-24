@@ -78,8 +78,8 @@ tier = "pre-commit"
 name = "prelude"
 files = ["spec/conformance/prelude-gaps.txt"]
 inputs = ["spec/lib/*.md", "std/prelude.cp"]
-write = ["scripts/conformance-prelude.py", "--update"]
-check = ["scripts/conformance-prelude.py", "--check"]
+write = ["scripts/spec-gate.py", "prelude", "--write"]
+check = ["scripts/spec-gate.py", "prelude"]
 tier = "pre-commit"
 
 [[gen]]

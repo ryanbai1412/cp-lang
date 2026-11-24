@@ -12,9 +12,7 @@ py() { uv run --quiet python "$@"; }
 run() { local out; out=$("$@" 2>&1) || { printf '%s\n' "$out" | tail -20 >&2; echo "regen: failed: $*" >&2; }; }
 [ ! -f scripts/skill-gen.py ] || run py scripts/skill-gen.py
 [ ! -f scripts/conformance-coverage.py ] || run py scripts/conformance-coverage.py
-if [ -f scripts/conformance-prelude.py ] && py scripts/conformance-prelude.py 2>&1 | grep -q ' 0 new,'; then
-    run py scripts/conformance-prelude.py --update
-fi
+[ ! -f scripts/specgate/prelude.py ] || run py scripts/spec-gate.py prelude --write
 ! command -v pnpm >/dev/null || run pnpm install --lockfile-only --silent
 ! command -v node >/dev/null || run node editors/vscode/scripts/language-data.js
 git status --porcelain -- skills spec/conformance pnpm-lock.yaml editors/vscode/src/languageData.ts editors/vscode/syntaxes | cut -c4-

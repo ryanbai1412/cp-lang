@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# Enforces handbook/guidelines/spec-rules-checklist.md#spec-rulesr5-chapters-and-std-say-the-same-thing
 """Check that spec/lib chapters and std give a top-level fn the same return type.
 
 A chapter's fenced `fn name(...) -> R` line and std's `pub fn name(...) -> R`
@@ -7,16 +5,17 @@ must agree after whitespace is removed: a chapter that says `?Int` where std
 returns `?K`, or `List<Int>` where std returns `List<K>`, teaches a type the
 code doesn't have. Only top-level fns are compared (methods inside a struct
 or trait block are indented); a name std declares more than once matches any
-of its return types. Fns std doesn't declare are `scripts/conformance-prelude.py`'s
-and `scripts/spec-stub.py`'s business.
-
-    uv run scripts/spec-std-signatures.py [--check]
+of its return types. Fns std doesn't declare are the prelude gate's and `scripts/spec-stub.py`'s business.
+Enforces handbook/guidelines/spec-rules-checklist.md#spec-rulesr5-chapters-and-std-say-the-same-thing
 """
-import re
-import sys
-from pathlib import Path
+from __future__ import annotations
 
-ROOT = Path(__file__).resolve().parent.parent
+import re
+
+import specgate
+from specgate import Problem
+
+HELP = "spec/lib chapters and std give each top-level fn the same return type"
 HEAD = re.compile(r"^(?:pub\s+)?fn\s+(\w+)\s*")
 
 
@@ -49,14 +48,19 @@ def returns(line: str) -> tuple[str, str] | None:
     return m.group(1), r[:-1] if r.endswith(":") else r
 
 
-def main() -> int:
+def args(p) -> None:
+    pass
+
+
+def run(a) -> list[Problem]:
+    root = specgate.ROOT
     std: dict[str, set[str]] = {}
-    for p in (ROOT / "std").glob("*.cp"):
+    for p in (root / "std").glob("*.cp"):
         for line in p.read_text().split("\n"):
             if line.startswith("pub fn") and (got := returns(line)):
                 std.setdefault(got[0], set()).add(got[1])
-    bad = 0
-    for p in sorted((ROOT / "spec" / "lib").glob("*.md")):
+    out = []
+    for p in sorted((root / "spec" / "lib").glob("*.md")):
         in_block = False
         for n, line in enumerate(p.read_text().split("\n"), 1):
             if line.startswith("```"):
@@ -64,12 +68,6 @@ def main() -> int:
                 continue
             got = returns(line) if in_block else None
             if got and got[0] in std and got[1] not in std[got[0]]:
-                bad += 1
-                print(f"{p.relative_to(ROOT)}:{n}: `{got[0]}` returns `{got[1]}` here, "
-                      f"`{' | '.join(sorted(std[got[0]]))}` in std")
-    print(f"{bad} chapter signatures disagreeing with std on the return type")
-    return 1 if bad and "--check" in sys.argv else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+                out.append(Problem(f"{p.relative_to(root)}:{n}",
+                                   f"`{got[0]}` returns `{got[1]}` here, `{' | '.join(sorted(std[got[0]]))}` in std"))
+    return out

@@ -147,6 +147,24 @@ class GatesTest(unittest.TestCase):
         with Tree({"std/a.cp": files["std/a.cp"], "spec/conformance/traits.toml": ""}):
             self.assertEqual([p.what for p in run("traits")], ["no case: Shout/Dog/shout (write one)"])
 
+    def test_prelude(self):
+        files = {"std/prelude.cp": "use std.a.{f}\n", "std/a.cp": "pub fn f() -> Int = 1\npub fn g() -> Int = 2\npub fn h() -> Int = 3\n",
+                 "spec/lib/a.md": "```cp\nfn f() -> Int\nfn g() -> Int\n```\n| `h(x)` | h |\n",
+                 "spec/conformance/prelude-gaps.txt": "# head\nspec/lib/a.md: g\nspec/lib/a.md: h\nspec/lib/a.md: gone\n"}
+        with Tree(files) as t:
+            self.assertEqual([p.what.split(" ")[0] for p in run("prelude")], ["`spec/lib/a.md:"])
+            self.assertEqual(run("prelude", "--write"), [])
+            self.assertTrue(t.read("spec/conformance/prelude-gaps.txt").endswith("spec/lib/a.md: g\nspec/lib/a.md: h\n"))
+            self.assertEqual(run("prelude"), [])
+            (t.root / "spec/conformance/prelude-gaps.txt").write_text("spec/lib/a.md: g\n")
+            self.assertEqual([p.where for p in run("prelude", "--write")], ["spec/lib/a.md"])
+
+    def test_std_signatures(self):
+        files = {"std/a.cp": "pub fn f<K>(x: K) -> ?K = None\npub fn g() -> Int = 1\n",
+                 "spec/lib/a.md": "```cp\nfn f(x: Int) -> ?Int\nfn g() -> Int\n```\nfn f() -> Bool outside a block\n"}
+        with Tree(files):
+            self.assertEqual([p.where for p in run("std-signatures")], ["spec/lib/a.md:2"])
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

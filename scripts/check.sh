@@ -628,7 +628,7 @@ uv run --quiet python scripts/spec-gate.py ownership || fail "spec/conformance/o
 uv run --quiet python scripts/spec-gate.py xref || fail "a rule id names no rule in spec/core; see above"
 uv run --quiet python scripts/spec-gate.py changelog || fail "a spelling the spec removes has no changelog line; see above"
 uv run --quiet python scripts/spec-gate.py tool-rules || fail "a tool feature in spec/tools/ has no rule id; see above"
-uv run scripts/spec-std-signatures.py --check || fail "a spec/lib chapter and std disagree on a return type; see above"
+uv run --quiet python scripts/spec-gate.py std-signatures || fail "a spec/lib chapter and std disagree on a return type; see above"
 uv run --quiet python scripts/spec-gate.py decisions-explained || fail "a decision cited in spec/ has no handbook explanation; see above"
 
 step "conformance traits: every claimed trait method has a case or a gap line"
@@ -638,7 +638,7 @@ step "conformance sigs: named args in spec/core and spec/lib exist in std"
 uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"
 
 step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"
-uv run scripts/conformance-prelude.py --check || fail "prelude gate failed; see above"
+uv run --quiet python scripts/spec-gate.py prelude || fail "prelude gate failed; see above"
 
 step "std containers print, walk and have is_empty (scripts/std-trait-matrix.py)"
 uv run --quiet python scripts/std-trait-matrix.py --max 76 \

@@ -108,7 +108,7 @@ target = "< 20 s"
 
 [[metric]]
 name = "chapter-table fns missing from the prelude (R11.3.2)"
-command = "uv run scripts/conformance-prelude.py --check"
+command = "uv run --quiet python scripts/spec-gate.py prelude"
 today = "106 (geometry 36, math 31, flows 11, graphs-trees 11, strings 8, search-dp 7, ops-ranges 1, sequence-patterns 1)"
 target = "0"
 

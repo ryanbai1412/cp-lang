@@ -228,7 +228,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Quality | Metric | Mechanism |
 |---|---|---|
 | Any value a program gets, it can name without a `use` | std types named by prelude signatures but not exported | rule `std-api/R18`; `scripts/prelude-signatures.py` (in `scripts/check.sh`) |
-| Spec tables and the prelude agree | missing prelude names | `scripts/conformance-prelude.py --check`; `scripts/spec-stub.py --check` the other way |
+| Spec tables and the prelude agree | missing prelude names | `scripts/spec-gate.py prelude`; `scripts/spec-stub.py --check` the other way |
 | Findable without knowing the name (`lower_bound` finds `first_ge`) | common C++/Python names with no alias line in docs | `missing` (alias table checked against the docs index) |
 | Hover and completion show the full signature, options and bounds | std fns whose `cpl doc --format json` lacks bounds or defaults | rule `std-docs/R5`; `scripts/test_std_doc_json.py` (every public fn's bounds and defaults in its doc JSON signature) |
 | Go-to-definition opens readable std source | std files over the size cap, fns with no doc | `scripts/debt-ratchet.py` caps; `scripts/spec-stub.py --audit` |
@@ -315,7 +315,7 @@ Probes, run by a reader with only the docs (pass or fail, time, files touched):
 | `cpl-conform all --check` | any suite dropping below the scoreboard | `scripts/check.sh` |
 | `scripts/spec-gate.py traits` | trait methods with no case | `uv run --quiet python scripts/spec-gate.py traits` |
 | `scripts/conformance-sigs.py` | spec named arguments std lacks | `uv run scripts/conformance-sigs.py --check` |
-| `scripts/conformance-prelude.py` | spec table names missing from the prelude | `uv run scripts/conformance-prelude.py --check` |
+| `scripts/spec-gate.py prelude` | spec table names missing from the prelude | `uv run --quiet python scripts/spec-gate.py prelude` |
 | `scripts/spec-stub.py` | missing doc labels, `@get` members that do work | `python3 scripts/spec-stub.py --check`, `--audit` |
 | `scripts/spec-gate.py vocab` | banned spellings | `uv run scripts/spec-gate.py vocab` |
 | `std_checks` | std breaking user-library rules | `cargo test --release -p cpl-cli --test std_checks` |
