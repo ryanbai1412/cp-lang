@@ -260,34 +260,54 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
     None
 
 /// Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`. Stable: equal keys keep their order.
+/// When no single key orders the elements (an exchange argument, an angle), `cmp: (a, b) => Bool` says
+/// whether `a` goes before `b`; give `by:` or `cmp:`, not both (decision 87).
 /// Works on any `IndexedMut`, including slices: `a[l..=r].sort()`.
 ///
 /// cost: \(O(n \log n)\) comparisons, \(O(n)\) extra space
 /// empty: `var a: List<Int> = []; a.sort(); a == []`
 /// ties: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
-/// traps: never (beyond what `by` traps on)
+/// traps: in `cpl run` and `--checked`, when `cmp` is not a strict weak order (`cmp(x, x)`, or both `cmp(a, b)` and `cmp(b, a)`); otherwise never (beyond what `by` or `cmp` traps on)
 /// example: `var a = [3, 1, 2]; a.sort(); a == [1, 2, 3]`
 /// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
-pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x):
+/// example: `var a = [(3, 1), (1, 2), (2, 2)]; a.sort(cmp: (p, q) => p.0 * q.1 < q.0 * p.1); a == [(1, 2), (2, 2), (3, 1)]`
+/// example: `var a = [2, 1]; a.sort(cmp: (x, y) => x <= y); a == [1, 2]` (traps R0001)
+/// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0309)
+pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None):
     let n = self.len
     let ks = self.keys
+    if let before = cmp:
+        var a: List<T> = [self[k] for k in ks]
+        var b = a.clone()
+        let in_a = merge_passes(mut a, mut b, n, before)
+        var t = 0
+        for k in ks:
+            self[k] = if in_a: a[t] else: b[t]
+            t += 1
+        return
     var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
     var b = a.clone()
-    var in_a = true
-    var w = 1
-    while w < n:
-        if in_a: merge_runs(a, mut b, w)
-        else: merge_runs(b, mut a, w)
-        in_a = not in_a
-        w *= 2
+    let in_a = merge_passes(mut a, mut b, n, (p, q) => p.0 < q.0)
     var t = 0
     for k in ks:
         self[k] = if in_a: a[t].1 else: b[t].1
         t += 1
 
+/// The bottom-up passes of `sort` over `a`, using `b` as the other buffer; true when the
+/// sorted result ends in `a`.
+fn merge_passes<E>(mut a: List<E>, mut b: List<E>, n: Int, before: (E, E) -> Bool) -> Bool:
+    var in_a = true
+    var w = 1
+    while w < n:
+        if in_a: merge_runs(a, mut b, w, before)
+        else: merge_runs(b, mut a, w, before)
+        in_a = not in_a
+        w *= 2
+    in_a
+
 /// One bottom-up pass of `sort`: merges each pair of adjacent sorted runs of length `w` in
-/// `src` into `dst`, stably.
-fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int):
+/// `src` into `dst`, stably; `before(x, y)` says `x` goes first.
+fn merge_runs<E>(src: List<E>, mut dst: List<E>, w: Int, before: (E, E) -> Bool):
     let n = src.len
     var lo = 0
     while lo < n:
@@ -296,7 +316,7 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int):
         var (i, j) = (lo, mid)
         for k in lo..hi:
             let right = j < hi and (
-                i >= mid or src[j].0 < src[i].0
+                i >= mid or before(src[j], src[i])
             )
             if right:
                 dst[k] = src[j]
@@ -306,20 +326,22 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int):
                 i += 1
         lo = hi
 
-/// The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed from 0;
-/// to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
+/// The elements of `self` sorted by `by` or `cmp`: the value form of `sort`. A new `List`, keyed
+/// from 0; to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
 /// Stable: equal keys keep their relative order.
 ///
 /// cost: \(O(n \log n)\) comparisons, \(O(n)\) space
 /// empty: `let a: List<Int> = []; a.sorted() == []`
 /// ties: `[(1, 'b'), (0, 'z'), (1, 'a')].sorted(by: p => p.0) == [(0, 'z'), (1, 'b'), (1, 'a')]`
 /// order: increasing `by` (decreasing with `by: x => desc(x)`), keyed from 0
-/// traps: never (beyond what `by` traps on)
+/// traps: as `sort`
 /// example: `[3, 1, 2].sorted() == [1, 2, 3]`
 /// example: `[3, 1, 2].sorted(by: x => desc(x)) == [3, 2, 1]`
-pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>:
+/// example: `[(3, 1), (1, 2), (2, 2)].sorted(cmp: (p, q) => p.0 * q.1 < q.0 * p.1) == [(1, 2), (2, 2), (3, 1)]`
+pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>:
     var out: List<T> = self.collect()
-    sort(mut out, by:)
+    if let before = cmp: sort(mut out, cmp: before)
+    else: sort(mut out, by:)
     out
 
 /// \(O(n)\). A new list of the elements in reverse order; `self.rev` walks them without copying.
