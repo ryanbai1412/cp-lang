@@ -162,6 +162,62 @@ impl Checker<'_> {
         }
     }
 
+    /// `Counter(0)`, `SortedSet(xs)`, `Dsu<V>(n)`: one positional argument
+    /// a type's `new` doesn't take. The fix names the option it is, builds
+    /// from a list with `of`, or drops a size the type arguments give.
+    pub(super) fn ctor_arg_fix(
+        &mut self,
+        callee: &str,
+        params: &[crate::ty::Param],
+        (methods, receivers): (&[(String, Ty)], &[String]),
+        args: &[Arg],
+        call: &Expr,
+    ) {
+        let [arg] = args else { return };
+        if arg.name.is_some() {
+            return;
+        }
+        let ty = self.quietly(|c| c.infer(&arg.value));
+        let text = self.text(arg.value.span).to_string();
+        let of = methods.iter().any(|(m, _)| m == "of") && !receivers.iter().any(|r| r == "of");
+        let list = matches!(&ty, Ty::Array { .. })
+            || matches!(&ty, Ty::Named { name, .. } if name == "List");
+        let option = (params.iter())
+            .find(|p| p.named_only && (matches!(p.ty, Ty::Param(_)) || self.fits(&ty, &p.ty)));
+        let (help, new) = match option {
+            Some(p) if p.has_default && text == "0" => (
+                format!("`{callee}`'s `{}` is 0 by default", p.name),
+                Some(format!("{callee}()")),
+            ),
+            Some(p) => (
+                format!("`{}` is named: `{callee}({}: {text})`", p.name, p.name),
+                Some(format!("{callee}({}: {text})", p.name)),
+            ),
+            None if list && of => (
+                format!("`{callee}.of(xs)` builds one from a list"),
+                Some(format!("{callee}.of({text})")),
+            ),
+            None if ty == Ty::Int && callee.contains('<') => (
+                format!("`{callee}` takes its size from its type arguments"),
+                Some(format!("{callee}()")),
+            ),
+            None if list => (
+                format!("`{callee}()` starts empty: add each element in a `for` loop"),
+                None,
+            ),
+            None => return,
+        };
+        let ours = |d: &&mut cpl_diag::Diagnostic| {
+            matches!(d.code, codes::WRONG_ARG_COUNT | codes::TYPE_MISMATCH) && d.fixes.is_empty()
+        };
+        if let Some(diag) = self.sink.last_mut().filter(ours) {
+            diag.help = Some(help);
+            if let Some(new) = new {
+                diag.fix(format!("write `{new}`"), call.span, new);
+            }
+        }
+    }
+
     /// E0203 for `name` on a value with these fields and methods: the closest
     /// member, or `len == 0` for an `is_empty` the type spells with `len`.
     pub(super) fn unknown_member(

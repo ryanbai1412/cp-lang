@@ -127,6 +127,8 @@ impl Checker<'_> {
                     defaults,
                     fields,
                     ctor,
+                    methods,
+                    receivers,
                     ..
                 } => {
                     // Outside the struct's body `S(..)` calls its `new`;
@@ -153,7 +155,11 @@ impl Checker<'_> {
                     if !type_args.is_empty() && type_args.len() <= generics.len() {
                         bindings.extend(generics.iter().cloned().zip(type_args.iter().cloned()));
                     }
+                    let before = self.sink.len();
                     self.args(callee_text, verb, params, args, call, &mut bindings);
+                    if !is_generated_ctor && self.sink.len() > before {
+                        self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
+                    }
                     if is_generated_ctor {
                         self.move_ctor_args(args);
                     }
