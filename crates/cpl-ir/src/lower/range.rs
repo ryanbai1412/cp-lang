@@ -140,6 +140,17 @@ fn side(ty: &Ty, info: Option<&RangeInfo>) -> Result<JudgeTy, Uncrossable> {
             let items = items.iter().enumerate().map(|(i, t)| side(t, at(i)));
             Ok(JudgeTy::Tuple(items.collect::<Result<_, _>>()?))
         }
+        // `[m]T` over an `Int` is a `std::vector`, `[r, c]T` one of rows.
+        (Ty::Array { dims, elem }, info)
+            if matches!(dims[..], [Dim::Int] | [Dim::Int, Dim::Int]) =>
+        {
+            let inner = match info {
+                Some(RangeInfo::Elem(e)) => Some(&**e),
+                _ => None,
+            };
+            let cell = side(elem, inner)?;
+            Ok((0..dims.len()).fold(cell, |t, _| JudgeTy::List(Box::new(t))))
+        }
         (ty, _) => Err(Uncrossable::Type(ty.clone())),
     }
 }
