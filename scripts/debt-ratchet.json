@@ -14,7 +14,7 @@
   "dup_fn_bodies": 3,
   "layer_violations": 1,
   "tree_walker": 1,
-  "v02_port_files": 5,
+  "v02_port_files": 3,
   "direct_python": 0,
   "unrun_script_tests": 0,
   "crate_edges": [
@@ -161,7 +161,7 @@
   "lint_type_syntax": 26,
   "idioms_evidenced_unlinted": 0,
   "bench_lists": 0,
-  "unwrap_input": 714,
+  "unwrap_input": 713,
   "unsupported_sites": 41,
   "lsp_string_types": 0,
   "lint_post_filters": 0,
