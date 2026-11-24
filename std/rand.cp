@@ -37,7 +37,7 @@ pub struct Rng(s: U64):
     /// multiply-high map, which uses exactly one draw (bias at most `n / 2^64`).
     ///
     /// cost: \(O(1)\)
-    /// empty: traps
+    /// empty: `var r = Rng(1); r.int(3, 2) == 3` (traps R0401)
     /// traps: when `lo > hi`
     /// example: `var r = Rng(1); let x = r.int(1, 6); 1 <= x and x <= 6`
     /// example: `var r = Rng(5); r.int(4, 4) == 4`
@@ -69,7 +69,7 @@ pub struct Rng(s: U64):
     /// drawing.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`, and no draw
+    /// empty: `var r = Rng(1); var q = Rng(1); let p = r.pick(List<Int>()); p == None and r.next() == q.next()`
     /// traps: never
     /// example: `var r = Rng(1); r.pick([7]) == Some(7)`
     /// example: `var r = Rng(1); let x = r.pick([4, 5, 6])!; 4 <= x and x <= 6`
@@ -84,7 +84,7 @@ pub struct Rng(s: U64):
     /// Keys stay where they are; only the values move.
     ///
     /// cost: \(O(n)\)
-    /// empty: no change, and no draw
+    /// empty: `var r = Rng(2); var q = Rng(2); var a = List<Int>(); r.shuffle(mut a); a.len == 0 and r.next() == q.next()`
     /// traps: never
     /// example: `var r = Rng(2); var a = [3, 1, 2]; r.shuffle(mut a); a.sorted() == [1, 2, 3]`
     /// example: `var r = Rng(2); var a = [9]; r.shuffle(mut a); a == [9]`
@@ -110,7 +110,7 @@ pub struct Rng(s: U64):
     /// values at different positions can both be chosen.
     ///
     /// cost: \(O(\lvert \mathit{from} \rvert)\)
-    /// empty: `[]` when `k == 0`
+    /// empty: `var r = Rng(9); r.sample(0, from: List<Int>()) == []`
     /// order: the order drawn (random); a new `List`, keyed from 0
     /// traps: when `k` is not in `0..=from.len`
     /// example: `var r = Rng(9); r.sample(3, from: [5, 6, 7]).sorted() == [5, 6, 7]`
