@@ -27,6 +27,9 @@
  ],
  "cpp_ac": 7,
  "artifacts": {
+  "original": [
+   "corpus/problems/noip22p4/orig.cpp"
+  ],
   "port": [
    "corpus/problems/noip22p4/port.cp"
   ]

@@ -7,84 +7,79 @@
 //   on a fresh empty stack while two are empty, else on a lone card, else on a two-card stack
 //   whose bottom leaves first, else on the last spare; with no empty stack it sits on the lone
 //   card that stays longest. A twin cancels on top, or through the spare stack when its card is
-//   at a bottom. Ordered sets of empty, single and ripe stacks; O(m n) worst case.
+//   at a bottom. Bitsets of empty, single and ripe stacks; a stack holds the deal times of its cards, so a
+//   card knows its twin. O(m log n).
 // original: corpus/submissions/5445681.cpp
-// The three stack pools are plain Set<Int> refreshed by hand and the script
-// is a List of (kind, a, b) printed line by line: the prototype has no
-// print of a tuple without its unused field and no Set<(size, stack)>.first_ge.
-// Bounds: tests: 1..=10
-let tests: 1..=10 = read()
-for _ in 0..tests:
-    let n: 1..=300 = read()
-    let m: 1..=2e6 = read()
-    let k: 1..=2 * n = read()
-    let deck: [0..m]Int = read()
+enum Move = Put(s: Stack) | Pair(s: Stack, t: Stack)
 
-    // leaves_at[i]: when the card dealt at time i is cancelled by its twin, for the first of each pair
-    var leaves_at: [0..m]?Int = None
-    var waiting: [1..=k]?Int = None
-    for i in 0..m:
-        if let first = waiting[deck[i]]:
-            leaves_at[first] = i
-            waiting[deck[i]] = None
-        else: waiting[deck[i]] = i
+@!multitest
+let (n, m) = read<(1..=300, 1..=2e6)>()
+let k = read<1..=2 * n - 1>()
+domain Stack = 1..=n
+domain Card = 1..=k
+domain Time = 0..m
+let deck = read<[Time]Card>()
 
-    var stacks: [0..n]List<Int> = []  // bottom first
-    var leaves: [1..=k]Int = 0        // per card value now in a stack
-    var home: [1..=k]Int = 0
-    var script: List<(Int, Int, Int)> = []
-    var empty = Set<Int>()
-    var single = Set<Int>()
-    var ripe = Set<Int>()  // two cards, and the bottom one leaves first
-    for s in 0..n: empty.insert(s)
+// twin[t]: when the card dealt at t is cancelled, for the first card of each pair
+var twin: [Time]?Time = None
+var unmatched: [Card]?Time = None
+for t in Time:
+    if let first = unmatched[deck[t]]:
+        twin[first] = t
+        unmatched[deck[t]] = None
+    else: unmatched[deck[t]] = t
 
-    fn refresh(s: Int):
-        empty.remove(s)
-        single.remove(s)
-        ripe.remove(s)
-        if stacks[s].len == 0: empty.insert(s)
-        elif stacks[s].len == 1: single.insert(s)
-        elif stacks[s].len == 2 and leaves[stacks[s][0]] < leaves[stacks[s][1]]: ripe.insert(s)
+var stacks: [Stack]Deque<Time> = [Stack] _ => Deque()  // deal times, bottom first
+var home: [Card]?Stack = None
+var script: List<Move> = []
+var empty = Bitset<Stack>.new()
+var single = Bitset<Stack>.new()
+var ripe = Bitset<Stack>.new()  // two cards, and the bottom one leaves first
+for s in Stack: empty.add(s)
 
-    fn place(s: Int, card: Int):
-        script.push((1, s + 1, 0))
-        if stacks[s].last == card: stacks[s].pop()
+fn top(s: Stack) -> ?Card = stacks[s].last.map(t => deck[t])
+fn leaves(t: Time) -> Time = twin[t]!
+
+fn refresh(s: Stack):
+    empty.remove(s)
+    single.remove(s)
+    ripe.remove(s)
+    let cards = stacks[s]
+    if cards.len == 0: empty.add(s)
+    elif cards.len == 1: single.add(s)
+    elif cards.len == 2 and leaves(cards.first!) < leaves(cards.last!): ripe.add(s)
+
+fn place(s: Stack, t: Time):
+    script.push(Put(s))
+    if top(s) == Some(deck[t]): stacks[s].pop()
+    else:
+        stacks[s].push(t)
+        home[deck[t]] = s
+    refresh(s)
+
+fn match_bottoms(s: Stack, spare: Stack):
+    script.push(Pair(s, spare))
+    for u in [s, spare]:
+        stacks[u].pop_front()
+        refresh(u)
+
+for now in Time:
+    if twin[now] != None:
+        let s = if empty.len == 0: single.each().max(by: s => leaves(stacks[s].first!))!  // stays longest
+            elif empty.len > 1: empty.first()!
+            else: single.first() ?? ripe.first() ?? empty.first()!  // keep the last spare stack free
+        place(s, now)
+    else:
+        let s = home[deck[now]]!
+        if top(s) == Some(deck[now]): place(s, now)
         else:
-            stacks[s].push(card)
-            home[card] = s
-        refresh(s)
+            // it is a bottom card: cancel it through the spare stack
+            let spare = empty.first()!
+            place(spare, now)
+            match_bottoms(s, spare)
 
-    fn match_bottoms(s: Int, t: Int):
-        script.push((2, s + 1, t + 1))
-        for u in [s, t]:
-            let rest: List<Int> = [stacks[u][i] for i in 1..stacks[u].len]
-            stacks[u] = rest
-            refresh(u)
-
-    for now in 0..m:
-        let card = deck[now]
-        if let twin = leaves_at[now]:
-            leaves[card] = twin
-            if empty.len == 0:
-                // no spare stack: sit on the lone card that stays longest
-                var best = single.min()!
-                for s in 0..n:
-                    if stacks[s].len == 1 and leaves[stacks[s][0]] > leaves[stacks[best][0]]: best = s
-                place(best, card)
-            elif empty.len > 1: place(empty.min()!, card)
-            elif let s = single.min(): place(s, card)  // keep the last spare stack free
-            elif let s = ripe.min(): place(s, card)
-            else: place(empty.min()!, card)
-        else:
-            let s = home[card]
-            if stacks[s].last == card: place(s, card)
-            else:
-                // it is a bottom card: cancel it through the spare stack
-                let spare = empty.min()!
-                place(spare, card)
-                match_bottoms(s, spare)
-
-    print(script.len)
-    for op in script:
-        if op.0 == 1: print(op.0, op.1)
-        else: print(op.0, op.1, op.2)
+print(script.len)
+for mv in script:
+    match mv:
+        Put(s) => print(1, s)
+        Pair(s, t) => print(2, s, t)
