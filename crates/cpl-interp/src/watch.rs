@@ -150,6 +150,16 @@ impl Observer for Watch {
     fn over_library(&self) -> bool {
         self.seen().is_some_and(Observer::over_library)
     }
+    fn enter_fed_body(&mut self) {
+        if let Some(t) = self.live() {
+            t.enter_fed_body();
+        }
+    }
+    fn leave_fed_body(&mut self) {
+        if let Some(t) = self.live() {
+            t.leave_fed_body();
+        }
+    }
     fn stepped_over(&mut self, view: &View, span: Span) {
         if let Some(t) = self.live() {
             t.stepped_over(view, span);

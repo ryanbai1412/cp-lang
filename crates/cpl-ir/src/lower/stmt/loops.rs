@@ -129,7 +129,6 @@ impl<'a> Lowerer<'a> {
         self.cx.scopes.push(HashMap::new());
         self.cx.local_syms.push(HashMap::new());
         let mut stmts = Vec::new();
-        let mut product_pos = None;
         match (&pat.kind, value.kind) {
             (ast::PatternKind::Tuple(pats), ExprKind::Tuple(parts))
                 if pats.len() == parts.len() =>
@@ -158,7 +157,6 @@ impl<'a> Lowerer<'a> {
                 {
                     if let Some(&slot) = self.cx.scopes.last().and_then(|s| s.get(name)) {
                         self.cx.product_parts.insert(slot, parts);
-                        product_pos = Some(slot);
                     }
                 }
                 if let Some(rinfo) = &rinfo {
@@ -167,9 +165,6 @@ impl<'a> Lowerer<'a> {
             }
         }
         stmts.extend(self.block(body, Tail::Discard).stmts);
-        if let Some(slot) = product_pos {
-            drop_unread_let(slot, &mut stmts);
-        }
         self.cx.local_syms.pop();
         self.cx.scopes.pop();
         self.cx.loops.pop();
@@ -492,28 +487,6 @@ impl<'a> Lowerer<'a> {
 
 /// One integer loop: its variable, first value and end.
 pub(in crate::lower) type LoopHead = (Slot, Expr, Expr);
-
-/// Drops `let slot = ..` from `stmts` when nothing after it reads `slot`: a
-/// product position whose every use read a loop variable instead.
-fn drop_unread_let(slot: usize, stmts: &mut Vec<Stmt>) {
-    let Some(at) = stmts
-        .iter()
-        .position(|s| matches!(s, Stmt::Let(s, _) if *s == slot))
-    else {
-        return;
-    };
-    let rest = Block {
-        stmts: stmts[at + 1..].to_vec(),
-    };
-    let mut read = false;
-    crate::walk::deep_exprs(&rest, &mut |e| {
-        read |= matches!(e.kind, ExprKind::Local(s) if s == slot)
-            || matches!(e.kind, ExprKind::Closure(_));
-    });
-    if !read {
-        stmts.remove(at);
-    }
-}
 
 /// `for x in { let a = ..; f(a) }`, as a method view's walk lowers, walks
 /// `f(a)` after the lets: a loop over a `yields` call is fed by it instead

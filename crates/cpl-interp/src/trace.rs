@@ -604,6 +604,17 @@ impl Tracer {
         self.library.contains(name) && !self.include_fns.iter().any(|p| glob_match(p, name))
     }
 
+    /// A `yields` fn feeds its loop's body: the body is its caller's code,
+    /// recorded as the caller's steps are, not as the fn's own.
+    pub(crate) fn enter_fed_body(&mut self) {
+        let caller = self.over.len().checked_sub(2).map(|at| self.over[at]);
+        self.over.push(caller.unwrap_or(false));
+    }
+
+    pub(crate) fn leave_fed_body(&mut self) {
+        self.over.pop();
+    }
+
     /// Inside a call the trace steps over.
     pub(crate) fn over_library(&self) -> bool {
         self.over.last().copied().unwrap_or(false)

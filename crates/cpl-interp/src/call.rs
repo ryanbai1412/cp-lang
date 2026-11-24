@@ -33,10 +33,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.stack[caller + slot] = value;
         self.fed_bodies += 1;
         self.feeding();
+        if let Some(tracer) = self.tracer.as_mut() {
+            tracer.enter_fed_body();
+        }
         let flow = match self.fed_body_vm(id, caller) {
             Some(flow) => flow,
             None => self.block(body),
         };
+        if let Some(tracer) = self.tracer.as_mut() {
+            tracer.leave_fed_body();
+        }
         self.fed_bodies -= 1;
         let updated = self.stack[caller + slot].clone();
         self.base = callee;

@@ -35,5 +35,5 @@
 {"id":34,"line":10,"label":"for x in upto(n): yield x * x","stage":"main","values":{"stdout":["0 1 4 9 16","0","4"],"seen":[0,1,4,9,16]},"locals":{"n":10,"x":3},"frames":[{"fn":"squares","line":10},{"fn":"main","line":29}]},
 {"id":35,"line":10,"label":"for x in upto(n): yield x * x","stage":"main","values":{"stdout":["0 1 4 9 16","0","4"],"seen":[0,1,4,9,16]},"locals":{"n":10,"x":4},"frames":[{"fn":"squares","line":10},{"fn":"main","line":29}]},
 {"id":36,"line":32,"label":"print → 16","stage":"main","values":{"stdout":["0 1 4 9 16","0","4","16"],"seen":[0,1,4,9,16]},"locals":{"x":16,"x":16},"checkpoint":"print 4","frames":[{"fn":"squares","line":32},{"fn":"main","line":29}]},
-... 79 more lines, 23314 bytes, fnv64 568ef9923d73af74
+... 81 more lines, 24057 bytes, fnv64 05191ea7d70c0810
 stderr:

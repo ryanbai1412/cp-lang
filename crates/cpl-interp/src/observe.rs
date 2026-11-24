@@ -62,6 +62,10 @@ pub(crate) trait Observer {
     fn over_library(&self) -> bool {
         false
     }
+    /// The running `yields` fn feeds its loop's body, until
+    /// [`Observer::leave_fed_body`].
+    fn enter_fed_body(&mut self) {}
+    fn leave_fed_body(&mut self) {}
     /// A call the trace stepped over, from `span`, took a `mut` argument.
     fn stepped_over(&mut self, _view: &View, _span: Span) {}
     /// A fn value ran: any global may have changed, through a capture or a
@@ -180,6 +184,12 @@ impl Observer for Tracer {
     }
     fn over_library(&self) -> bool {
         Tracer::over_library(self)
+    }
+    fn enter_fed_body(&mut self) {
+        Tracer::enter_fed_body(self)
+    }
+    fn leave_fed_body(&mut self) {
+        Tracer::leave_fed_body(self)
     }
     fn stepped_over(&mut self, view: &View, span: Span) {
         Tracer::stepped_over(self, view, span)
