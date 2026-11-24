@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 const out = join(dirname(dirname(fileURLToPath(import.meta.url))), 'out');
-const budgets = [['search index', 'api/search', 600_000]];
+const budgets = [['search index', 'api/search', 560_000]];
 let over = 0;
 for (const [what, file, cap] of budgets) {
   const size = gzipSync(readFileSync(join(out, file)), { level: 9 }).length;

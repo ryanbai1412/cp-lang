@@ -27,25 +27,45 @@ async function structured(page: Page): Promise<StructuredData> {
   throw new Error(`search: no structured data for ${page.url}`);
 }
 
-// Generated reference pages index their headings (one per item) and the
-// page intro only: their full text made the index larger than the compiler.
-// Core chapters also keep their table rows, where each method gets one line.
+// A table cell's content repeats its table's padded header; the row alone,
+// spaces squeezed, says the same in a fraction of the index.
+function row(c: StructuredData['contents'][number]): StructuredData['contents'][number] {
+  if (!(c as { table?: string }).table) return c;
+  return { ...c, content: c.content.split('\n').at(-1)!.replace(/\s+/g, ' ') };
+}
+
+function rows(data: StructuredData): StructuredData {
+  return { headings: data.headings, contents: data.contents.map(row) };
+}
+
+// Generated reference pages index their headings (one per item), the page
+// intro, its "Start here" list and each item's "Elsewhere" row (the names
+// other languages use) only: their full text made the index larger than
+// the compiler. Core chapters also keep their table rows, where each method
+// gets one line.
 function brief(data: StructuredData, tables: boolean): StructuredData {
   return {
     headings: data.headings,
     contents: data.contents.flatMap((c) => {
-      if (!c.heading) return [c];
-      // A row is stored with its table's header; the row alone names the method.
-      if (tables && (c as { table?: string }).table) return [{ ...c, content: c.content.split('\n').at(-1)! }];
+      const r = row(c);
+      if (!c.heading || c.heading === 'start-here') return [r];
+      if (r !== c && (tables || /^\W*Elsewhere\b/.test(r.content))) return [r];
       return [];
     }),
   };
 }
 
+// Search matches `content` only, groups by `page_id` and filters by `tags`
+// and `locale`; indexing every url and type for full text as well made a
+// third of the index. createFromSource hands `schema` to the database
+// (fumadocs-core 16) though its options type doesn't list it.
+const fields = { schema: { content: 'string', page_id: 'string', tags: 'enum[]', locale: 'enum' } };
+
 export const revalidate = false;
 export const { staticGET: GET } = createFromSource(source, {
   // Results rank by relevance; no query sorts by a field, so skip the sort index.
   sort: { enabled: false },
+  ...fields,
   tokenizer,
   async buildIndex(page) {
     const data = await structured(page);
@@ -54,7 +74,7 @@ export const { staticGET: GET } = createFromSource(source, {
       url: page.url,
       title: page.data.title ?? page.url,
       description: page.data.description,
-      structuredData: page.url.startsWith('/docs/ref/') ? brief(data, page.url.startsWith('/docs/ref/core/')) : data,
+      structuredData: page.url.startsWith('/docs/ref/') ? brief(data, page.url.startsWith('/docs/ref/core/')) : rows(data),
     };
   },
 });
