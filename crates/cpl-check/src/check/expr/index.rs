@@ -145,7 +145,8 @@ impl<'a> Checker<'a> {
             }
         }
         let base_ty = self.infer(base);
-        if let Some(n) = nested_arity(&base_ty, indices.len()) {
+        let sym = matches!(&base_ty, Ty::Array { index, .. } if matches!(index.as_slice(), [i] if self.two_position_index(i)));
+        if let Some(n) = nested_arity(&base_ty, indices.len(), sym) {
             let inner = Expr::indexed(base, &indices[..n], base.span.to(indices[n - 1].span));
             let cell = self.index_typed(&inner, base, base_ty, &indices[..n], false);
             return self.index_typed(expr, &inner, cell, &indices[n..], true);
@@ -221,7 +222,8 @@ impl<'a> Checker<'a> {
             // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
             // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.
             Ty::Array { index, elem }
-                if let Some(dom_ty) = pair_storage_domain(index)
+                if let Some(dom_ty) = self
+                    .pair_storage_domain(index)
                     .filter(|_| !(indices.len() == 1 && self.fits(&index_tys[0], &index[0]))) =>
             {
                 if indices.len() == 1
@@ -622,18 +624,51 @@ impl Checker<'_> {
 
 /// How many of `n` indices a table whose cells are arrays takes before the
 /// cell's own: `dp[r, c, k]` on `[R, C][K]T` takes 2 (R01.8.5).
-fn nested_arity(ty: &Ty, n: usize) -> Option<usize> {
+fn nested_arity(ty: &Ty, n: usize, sym: bool) -> Option<usize> {
     let Ty::Array { index, elem } = ty else {
         return None;
     };
     let Ty::Array { index: inner, .. } = &**elem else {
         return None;
     };
-    let sym = matches!(index.as_slice(), [Ty::Named { name, .. }] if matches!(name.as_str(), "Sym" | "Pair"));
     (!sym && index.len() < n && n <= index.len() + inner.len()).then_some(index.len())
 }
 
 impl Checker<'_> {
+    /// An index type two positions spell, `adj[u, v]`: `Sym<V>`, or a type
+    /// with `impl Index` whose `new` takes two of `V` (std's `Pair<V>`).
+    /// `[Sym<V>]T`, `[Pair<V>]T`: a table over two positions of `V`, and `V`.
+    fn pair_storage_domain<'t>(&mut self, index: &'t [Ty]) -> Option<&'t Ty> {
+        match index {
+            [i @ Ty::Named { args, .. }] if self.two_position_index(i) => args.first(),
+            _ => None,
+        }
+    }
+
+    fn two_position_index(&mut self, ty: &Ty) -> bool {
+        let Ty::Named { name, args } = ty else {
+            return false;
+        };
+        if args.len() != 1 {
+            return false;
+        }
+        if name == "Sym" {
+            return true;
+        }
+        if !self.has_impl(name, "Index") {
+            return false;
+        }
+        let Some(members) = self.members_of(name) else {
+            return false;
+        };
+        let bindings = members.bindings(args);
+        members.members.iter().any(|(m, t)| {
+            m == "new"
+                && matches!(t.subst(&bindings), Ty::Fn { params, .. }
+                    if params.len() == 2 && params.iter().all(|p| p.ty == args[0]))
+        })
+    }
+
     /// R01.8.5: `g[r][c]` is spelled `g[r, c]`.
     pub(super) fn double_index(&mut self, base: &Expr, indices: &[Expr]) -> bool {
         let ExprKind::Index {
@@ -712,18 +747,5 @@ impl Checker<'_> {
                 "walk it (`for x in {w}`, `for (k, x) in {w}.items`), or `{w}.rebase` to count from 0"
             )),
         );
-    }
-}
-
-/// The `V` of `[Sym<V>]T` or `[Pair<V>]T` storage, by its index types.
-fn pair_storage_domain(index: &[Ty]) -> Option<&Ty> {
-    match index {
-        [Ty::Named { name, args }] if matches!(name.as_str(), "Sym" | "Pair") => {
-            match args.as_slice() {
-                [dom] => Some(dom),
-                _ => None,
-            }
-        }
-        _ => None,
     }
 }

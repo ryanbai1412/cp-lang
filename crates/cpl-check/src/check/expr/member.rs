@@ -797,7 +797,8 @@ impl<'a> Checker<'a> {
                 name: type_name,
                 args,
             } => {
-                if type_name == "Pair" && name.text == "count" {
+                if name.text == "count" && !self.in_call_callee && self.has_impl(type_name, "Index")
+                {
                     return Ty::Int;
                 }
                 if type_name == "Gen" && name.text == "next" {
