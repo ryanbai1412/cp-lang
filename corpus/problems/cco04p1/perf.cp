@@ -8,9 +8,9 @@
 // Solution: count each word's letters; it is playable iff no count exceeds that letter's
 //   tiles, and then it scores the sum of its letters. O(total length).
 // original: corpus/submissions/5430016.cpp
-// Bounds: k: 0..=26; tiles.score: 0..=26; tiles.count: 0..=7; n: 0..=1e5
+// Bounds: k: 1..=7; tiles.score: 0..=26; tiles.count: 0..=7; n: 0..=1e5
 domain Letter = 'a'..='z'
-let k: 0..=26 = read()
+let k: 1..=7 = read()
 let tiles: [k](letter: Char, score: 0..=26, count: 0..=7) = read()
 var score: [Letter]Int = 0
 var have: [Letter]Int = 0
