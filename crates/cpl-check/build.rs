@@ -40,7 +40,7 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
         println!("cargo:rerun-if-changed={}", root.display());
     }
     let mut modules = Vec::new();
-    collect(root, root, &mut modules);
+    collect(root, "", &mut modules);
     modules.sort();
     let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32");
     // `lazy-std`: a browser build carries `EMBEDDED` whole and is given the

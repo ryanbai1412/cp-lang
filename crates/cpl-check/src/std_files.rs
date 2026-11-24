@@ -3,26 +3,20 @@
 
 use std::path::{Path, PathBuf};
 
-/// Every `.cp` file under `dir`, as its path below `root` without the
-/// extension (`"seq"`, `"geo/hull"`) and where it is.
-pub fn collect(root: &Path, dir: &Path, modules: &mut Vec<(String, PathBuf)>) {
+/// Every `.cp` file under `dir`, as `below` and its path below `dir`
+/// without the extension (`"seq"`, `"geo/hull"`), and where it is.
+pub fn collect(dir: &Path, below: &str, modules: &mut Vec<(String, PathBuf)>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
     for entry in entries.flatten() {
         let path = entry.path();
+        let file_name = entry.file_name();
+        let file_name = file_name.to_string_lossy();
         if path.is_dir() {
-            collect(root, &path, modules);
-        } else if path.extension().is_some_and(|ext| ext == "cp") {
-            let below = path
-                .strip_prefix(root)
-                .expect("found under root")
-                .with_extension("");
-            let name = below
-                .components()
-                .map(|part| part.as_os_str().to_string_lossy().into_owned())
-                .collect::<Vec<_>>()
-                .join("/");
+            collect(&path, &format!("{below}{file_name}/"), modules);
+        } else if let Some(stem) = file_name.strip_suffix(".cp") {
+            let name = format!("{below}{stem}");
             let path = path.canonicalize().unwrap_or(path);
             modules.push((name, path));
         }

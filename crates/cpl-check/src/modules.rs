@@ -210,7 +210,7 @@ pub fn std_from_disk() -> bool {
 
 fn from_disk(dir: &Path) -> Vec<(&'static str, &'static str)> {
     let mut found = Vec::new();
-    crate::std_files::collect(dir, dir, &mut found);
+    crate::std_files::collect(dir, "", &mut found);
     found.sort();
     found
         .into_iter()
@@ -798,7 +798,7 @@ mod tests {
     fn std_sources() -> Vec<(String, String)> {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
         let mut modules = Vec::new();
-        crate::std_files::collect(&dir, &dir, &mut modules);
+        crate::std_files::collect(&dir, "", &mut modules);
         modules.sort();
         modules
             .into_iter()

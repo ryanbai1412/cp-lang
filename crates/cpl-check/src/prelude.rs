@@ -26,8 +26,10 @@ use crate::ty::{Param, Ty};
 pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static NAMES: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        let text = crate::modules::bundled_std(&["prelude".to_string()])
-            .expect("std/prelude.cp is built into the compiler");
+        // A `CPL_STD_DIR` without a prelude gives programs no prelude names.
+        let Some(text) = crate::modules::bundled_std(&["prelude".to_string()]) else {
+            return Vec::new();
+        };
         let mut found = Vec::new();
         for (_, item) in cpl_syntax::parse_file(text).items {
             for stmt in item.stmts {
