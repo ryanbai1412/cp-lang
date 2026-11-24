@@ -1484,14 +1484,18 @@ pub struct DynamicOrderTree<D, T>:
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
     /// example: `DynamicOrderTree([3, 1, 4], values: [1, 3, 4, 9]).kth(0..3, 2) == Some(4)`
     pub fn new(a: [D]T, values: ?List<T> = None) -> DynamicOrderTree<D, T>:
-        var t = DynamicOrderTree<D, T>(D.count, [a[i] for i in D], [])
+        let val = [a[i] for i in D]
         if let given = values:
-            t.ranked = true
+            var vs = List<T>()
             for x in given.sorted():
-                if t.vs.is_empty or t.vs.last! != x: t.vs.push(x)
-            while t.sz < t.vs.len: t.sz *= 2
-            t.at = [SortedBag<Int>.new() for _ in 0..2 * t.sz]
-        else: t.bit = [SortedBag<T>.new() for _ in 0..D.count + 1]
+                if vs.is_empty or vs.last! != x: vs.push(x)
+            var sz = 1
+            while sz < vs.len: sz *= 2
+            let at = [SortedBag<Int>.new() for _ in 0..2 * sz]
+            var t = DynamicOrderTree<D, T>(n: D.count, val:, ranked: true, vs:, sz:, at:)
+            for i in 0..D.count: t.bump(i, t.val[i], true)
+            return t
+        var t = DynamicOrderTree<D, T>(n: D.count, val:, bit: [SortedBag<T>.new() for _ in 0..D.count + 1])
         for i in 0..D.count: t.bump(i, t.val[i], true)
         t
 
