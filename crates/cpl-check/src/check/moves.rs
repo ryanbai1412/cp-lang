@@ -173,7 +173,7 @@ impl Checker<'_> {
             .filter(|(k, v)| before.get(k) != Some(*v))
             .map(|(k, v)| (k.clone(), *v))
             .collect();
-        again.sort_by_key(|(_, at)| at.start);
+        cpl_diag::sort_by_key(&mut again, |(_, at)| u64::from(at.start));
         for (src, at) in again {
             let reported =
                 self.sink.diagnostics().iter().any(|d| {
