@@ -3321,10 +3321,10 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 # counter reads (read_only_copies.rs) is not one: raising it is the bump.
 MEASURED_BY = {
     "corpus_fmt_dirty": ("crates/cpl-fmt/src",),
-    "cpp_deep_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
-    "spec_required_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
-    "cpp_optional_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
-    "cpp_std_functions": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+    "cpp_deep_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
+    "spec_required_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
+    "cpp_optional_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
+    "cpp_std_functions": ("crates/cpl-codegen/src/cpp_counts.rs",),
 }
 
 

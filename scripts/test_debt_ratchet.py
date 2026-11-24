@@ -1659,7 +1659,7 @@ class DebtRatchetTest(unittest.TestCase):
             git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
                                             env=dr._git_env())
             git("init", "-q")
-            counts = root / "crates/cpl-cli/tests/support/cpp_counts.rs"
+            counts = root / "crates/cpl-codegen/src/cpp_counts.rs"
             counts.parent.mkdir(parents=True)
             counts.write_text("fn count() {}\n")
             (root / "scripts").mkdir()

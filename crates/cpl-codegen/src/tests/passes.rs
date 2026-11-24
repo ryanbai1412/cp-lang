@@ -41,7 +41,9 @@ fn every_module_that_walks_ir_to_rewrite_is_a_pass() {
             continue;
         }
         let text = std::fs::read_to_string(&path).unwrap();
-        if text.contains("deep_") && !PASSES.iter().any(|p| p.module == rel) {
+        if ["deep_expr", "deep_stmts"].iter().any(|w| text.contains(w))
+            && !PASSES.iter().any(|p| p.module == rel)
+        {
             missing.push(rel);
         }
     }

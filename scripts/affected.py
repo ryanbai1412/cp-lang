@@ -69,7 +69,7 @@ SLICES = [
                                          "crates/cpl-check/src/std_files.rs"],
      ["cpl-check modules::tests::std_in_the_browser_build_is_within_its_gzipped_cap"]),
     ("copies", "perf (codegen)", [f"{PACKAGES}/*.cp", "spec/conformance/*.cp", "std/*", "crates/cpl-codegen/*",
-                                  "crates/cpl-cli/tests/support/cpp_counts.rs"],
+                                  "crates/cpl-codegen/src/cpp_counts.rs"],
      ["cpl-cli::read_only_copies"]),
     ("readable-inputs", "debugger (stress)",
      [f"{PACKAGES}/*/spec.cp", "spec/conformance/*.cp", "crates/cpl-cli/tests/programs/*", "crates/cpl-stress/*"],

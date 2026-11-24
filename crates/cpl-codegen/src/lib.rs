@@ -6,6 +6,7 @@ mod capfn;
 mod carry;
 mod checks;
 mod compact;
+pub mod cpp_counts;
 mod devirt;
 mod divrem;
 mod emit;
@@ -637,6 +638,8 @@ pub(crate) fn instance_origin(name: &str) -> String {
 
 #[cfg(test)]
 mod copy_tests;
+#[cfg(test)]
+mod cpp_counts_tests;
 #[cfg(test)]
 mod devirt_tests;
 #[cfg(test)]

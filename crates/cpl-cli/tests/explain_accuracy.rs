@@ -9,10 +9,9 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-#[path = "support/cpp_counts.rs"]
-mod cpp_counts;
-use cpp_counts::{
-    deep_copies, is_container, is_place, optional_copies, scalar_decl, std_functions, CONTAINERS,
+use cpl_codegen::cpp_counts::{
+    container_copies, is_container, is_place, optional_copies, scalar_decl, std_functions,
+    CONTAINERS,
 };
 
 /// The `.cp` files one directory down from the corpus problems and the
@@ -47,7 +46,7 @@ fn cpp_copies(cpp: &str) -> usize {
     let mut seen = std::collections::BTreeSet::new();
     let distinct: Vec<&str> = cpp.lines().filter(|l| seen.insert(l.trim())).collect();
     let distinct = distinct.join("\n");
-    deep_copies(&distinct) + optional_copies(&distinct)
+    container_copies(&distinct) + optional_copies(&distinct)
 }
 
 /// The lines of `cpp` outside the runtime's `namespace cpl { .. }`, whose
@@ -224,7 +223,7 @@ fn is_part_or_name(text: &str) -> bool {
 }
 
 /// A part of a value given out by value: `return self.agg[t];` in a fn
-/// returning a heap type (a container's is [`deep_copies`]'s), `Mat v = c ?
+/// returning a heap type (a container's is [`container_copies`]'s), `Mat v = c ?
 /// f(..) : self.t[p];`, `T v = c ? xs : f(..);`, `Mat a = self.m.id;` and a tuple's field `std::vector<u8> w =
 /// std::get<1>(top);`. Mirrors
 /// `returned_parts` in scripts/specgate/explain_copies.py.
@@ -534,7 +533,7 @@ fn place_type<'a>(
 /// or into a field of that type, `h_2.xs = xs;`, by the types the fn
 /// declares (a scalar `v.mn1 = p.mx1;` is no copy), or from a fn that
 /// lends it, `N n = get(a, i);` with `const N& get(..)`. Mirrors the
-/// assignment in `deep_copies` in scripts/specgate/explain_copies.py.
+/// assignment in `container_copies` in scripts/specgate/explain_copies.py.
 /// A single call `f(..)`, whose first `(` closes at the end: not `f(a) + g(b)`.
 fn one_call(text: &str) -> bool {
     let mut depth = 0;
@@ -671,7 +670,7 @@ fn place_arg(rest: &str) -> bool {
 /// place (`std::array<ll, 4>(a)`, `std::set<ll>(a)`), `cpl::sorted(xs)`
 /// (which takes its list by value), `cpl::to_list(..)` and `cpl::to_str(..)`. Mirrors `COPY`
 /// in scripts/specgate/explain_copies.py. Counted here on top of
-/// [`deep_copies`], not under the `// copies:` headers.
+/// [`container_copies`], not under the `// copies:` headers.
 fn constructed_copies(cpp: &str) -> usize {
     let holders = container_structs(cpp);
     program_lines(cpp)
@@ -875,7 +874,7 @@ fn listed_and_made(src: &Path, out: &Path) -> (usize, usize) {
     let listed = rows.iter().filter(|(k, _)| k == "copy").count();
     (
         listed,
-        deep_copies(&cpp)
+        container_copies(&cpp)
             + optional_copies(&cpp)
             + constructed_copies(&cpp)
             + optional_place_copies(&cpp)
@@ -1115,7 +1114,7 @@ fn a_bind_a_call_or_a_fresh_value_is_no_copy() {
         "static auto cpl_fn0 = [](const std::tuple<int, int>& _p0) mutable -> std::vector<std::tuple<int, ll>> {",
     ];
     for cpp in not_copies {
-        let made = deep_copies(cpp)
+        let made = container_copies(cpp)
             + constructed_copies(cpp)
             + optional_place_copies(cpp)
             + array_capture_copies(cpp)

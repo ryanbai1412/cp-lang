@@ -171,7 +171,7 @@ def optional_copies(cpp, holders):
     """An optional of a heap value copied from a place: `std::optional<C>(xs)`
     (a `?T` argument), `std::optional<T> t0 = best;` and
     `std::optional<C>(std::get<0>(sp))`. Mirrors optional_copies in
-    crates/cpl-cli/tests/support/cpp_counts.rs and optional_place_copies in
+    crates/cpl-codegen/src/cpp_counts.rs and optional_place_copies in
     crates/cpl-cli/tests/explain_accuracy.rs."""
     heap = lambda ty: ty.startswith(CONTAINERS + ("std::array<",)) or ty.split("<")[0] in holders
     place = lambda t: bool(DOTTED.fullmatch(t.strip())) or (t.strip().startswith("cpl::at(") and t.strip().endswith(")") and "::" not in t.strip()[8:])
@@ -327,7 +327,7 @@ def opens_fn(line):
 
 
 def deep_copies(cpp):
-    """Mirrors deep_copies in crates/cpl-cli/tests/support/cpp_counts.rs, plus
+    """Mirrors container_copies in crates/cpl-codegen/src/cpp_counts.rs, plus
     copies spelled as a constructor call or `cpl::to_list`, tuples holding a
     container copied from places, a container assigned from a place, and
     optionals of heap values copied from places, parts returned by value;
