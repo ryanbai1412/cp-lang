@@ -8,31 +8,27 @@
 //   the smallest second number that is still at least its own, by binary search over the
 //   fronts, or open a new row; rows are printed reversed. O(s log s).
 // original: corpus/submissions/5430096.cpp
-// Bounds: n: 1..=1e5
-type Tile = (a: Int, b: Int)
+// Bounds: s: 1..=1000
+type Score = (a: Int, b: Int)  // a <= b
 
-fn read_tile() -> Tile:
-    let word: [domain W]Char = read()
-    var ends: List<Int> = [0]
-    for c in word:
-        if c == '-': ends.push(0)
-        else: ends[ends.len - 1] = ends[ends.len - 1] * 10 + (c - '0')
-    (min(ends[0], ends[1]), max(ends[0], ends[1]))
+fn score(word: Str) -> Score:
+    let (x, y) = word.split_once('-')!
+    let (p, q) = (x.parse_int()!, y.parse_int()!)
+    (a: min(p, q), b: max(p, q))
 
 @!multitest
-let n: 1..=1e5 = read()
-var tiles: List<Tile> = []
-for _ in 0..n: tiles.push(read_tile())
+let s: 1..=1000 = read()
+let words: [s]Str = read()
+var scores = [score(w) for w in words]
+scores.sort()
 
-// Largest tile first, each on the row whose front tile has the smallest b
-// that is still large enough. The rows stay in order of that b, so the
-// row is found by binary search, as in patience sorting.
-var rows: List<List<Tile>> = []
-sort(mut tiles)
-for t in tiles.rev:
-    let r = Int(rows.bsearch(row => row.last!.b >= t.b))
-    if r < rows.len: rows[r].push(t)
-    else: rows.push([t])
-print(rows.len)
-for row in rows:
-    print(["{t.a}-{t.b}" for t in row.rev])
+// Largest score first, each onto the game whose latest score has the smallest b still at least
+// its own. The games stay ordered by that b, so a binary search finds it (patience sorting).
+var games: List<List<Score>> = []
+for t in scores.rev:
+    let g = Int(games.bsearch(game => game.last!.b >= t.b))
+    if g < games.len: games[g].push(t)
+    else: games.push([t])
+print(games.len)
+for game in games:
+    print(["{t.a}-{t.b}" for t in game.rev])
