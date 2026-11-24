@@ -14,18 +14,20 @@
 const MOD = 998_244_353
 type Z = Mod<MOD>
 
+let sieve = Sieve(10 ** 6)
+
 @!multitest
 let xs: [0..3]1..=10 ** 6 = read()
 var pset: Set<Int> = Set()
 for x in xs:
-    for (p, _) in factor(x):
+    for (p, _) in sieve.factor(x):
         pset.insert(p)
 
 var tot: Z = 1
 var tot_qs: Map<Int, Int> = Map()
 for p in pset:
     tot *= p - 1
-    for (q, eq) in factor(p - 1):
+    for (q, eq) in sieve.factor(p - 1):
         tot_qs[q] += eq
 
 for x in xs: tot /= x
