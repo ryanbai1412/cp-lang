@@ -6,7 +6,7 @@
 //! Over an ordered `T` such as `F64` elimination pivots on the largest `abs` entry and treats an
 //! entry within the `eps:` argument of zero as zero.
 use std.algebra.{Monoid, Semiring}
-use std.math.{mul_mod, bit}
+use std.math.{mul_mod, bit, ceil_div}
 use std.mod.{Mod}
 use std.rand.{Rng}
 use std.seq.{collect}
@@ -172,8 +172,8 @@ pub struct Mat<T>:
         // In 16 x 16 tiles, so the strided writes stay in cache.
         let b = 16
         unchecked:
-            for bi in 0..(rows + b - 1) / b:
-                for bj in 0..(cols + b - 1) / b:
+            for bi in 0..rows.ceil_div(b):
+                for bj in 0..cols.ceil_div(b):
                     for i in bi * b..min(rows, bi * b + b):
                         for j in bj * b..min(cols, bj * b + b): d[j * rows + i] = data[i * cols + j]
         Mat(cols, rows, d)
