@@ -29,5 +29,5 @@
 {"id":28,"line":7,"label":"i += 1","stage":"main","values":{"stdout":["0 1 4 9 16","0","4","16","0 0","0 1"],"seen":[0,1,4,9,16]},"locals":{"n":3,"i":1},"frames":[{"fn":"upto","line":7},{"fn":"squares","line":10},{"fn":"pairs","line":13},{"fn":"squares","line":33},{"fn":"main","line":29}]},
 {"id":29,"line":4,"label":"var i = 0","stage":"main","values":{"stdout":["0 1 4 9 16","0","4","16","0 0","0 1"],"seen":[0,1,4,9,16]},"locals":{"n":2,"i":0},"frames":[{"fn":"upto","line":4},{"fn":"upto","line":14},{"fn":"squares","line":10},{"fn":"pairs","line":13},{"fn":"squares","line":33},{"fn":"main","line":29}]},
 {"id":30,"line":33,"label":"print → 1 0","stage":"main","values":{"stdout":["0 1 4 9 16","0","4","16","0 0","0 1","1 0"],"seen":[0,1,4,9,16]},"locals":{"x":16,"x":25,"p":{"a":1,"b":0}},"checkpoint":"print 7","frames":[{"fn":"upto","line":33},{"fn":"upto","line":14},{"fn":"squares","line":10},{"fn":"pairs","line":13},{"fn":"squares","line":33},{"fn":"main","line":29}]},
-... 42 more lines, 15339 bytes, fnv64 566f55a9a33c5a19
+... 44 more lines, 16194 bytes, fnv64 5c8946dbcb7b382d
 stderr:

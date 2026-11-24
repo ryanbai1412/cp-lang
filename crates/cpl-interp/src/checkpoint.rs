@@ -1194,6 +1194,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(fed) = fed {
             self.fed_loops.push(crate::Fed {
                 callee: base,
+                frames: self.call_frames.len(),
                 ..fed
             });
         }

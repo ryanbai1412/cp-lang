@@ -27,6 +27,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let fed = &self.fed_loops[at];
         let (callee, caller, slot, id, body) = (fed.callee, fed.caller, fed.slot, fed.id, fed.body);
         let locals = self.frame_locals.pop();
+        let pushed = self.leave_library_frames(fed.frames);
         self.base = caller;
         self.stack[caller + slot] = value;
         self.fed_bodies += 1;
@@ -42,6 +43,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             tracer.on(crate::observe::Event::LeaveFedBody);
         }
         self.fed_bodies -= 1;
+        self.call_frames.extend(pushed);
         let updated = self.stack[caller + slot].clone();
         self.base = callee;
         self.frame_locals.extend(locals);
@@ -60,6 +62,26 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             span,
             cpl_diag::msgs::interp::WRITTEN.at(&[&""]),
         )))
+    }
+
+    /// The library calls on top of the callee's frame while a fed body
+    /// runs: the body is its caller's code, so a step in it is not shown
+    /// inside the `r.splits` the callee's own loop is fed by. Given back by
+    /// extending `call_frames` once the body is done.
+    fn leave_library_frames(&mut self, callee: usize) -> Vec<(&'p str, Span)> {
+        if !self.observed() {
+            return Vec::new();
+        }
+        let program = self.program;
+        let library = |name: &str| {
+            let id = program.fns.iter().position(|f| f.name == name);
+            id.is_some_and(|id| program.library_fns.get(id).copied().unwrap_or(false))
+        };
+        let mut cut = self.call_frames.len();
+        while cut > callee && library(self.call_frames[cut - 1].0) {
+            cut -= 1;
+        }
+        self.call_frames.split_off(cut)
     }
 
     /// The loop the running fn feeds, if it feeds one. A fn feeding a
@@ -196,6 +218,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(fed) = fed {
             self.fed_loops.push(Fed {
                 callee: base,
+                frames: self.call_frames.len(),
                 ..fed
             });
         }

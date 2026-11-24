@@ -361,6 +361,9 @@ pub(crate) struct Tracer {
     /// steps over: a library's own steps are not the user's, unless the
     /// trace's fn names ask for it.
     over: Vec<bool>,
+    /// By entry of `over`, the call whose code a fed body entry runs:
+    /// `None` for a call's own entry.
+    resumes: Vec<Option<usize>>,
     test_cases: Vec<(u64, u64)>,
     watch: Vec<String>,
     last_steps: Option<usize>,
@@ -468,6 +471,7 @@ impl Tracer {
             exclude_fns,
             pos_inside: 0,
             over: Vec::new(),
+            resumes: Vec::new(),
             neg_inside: 0,
             test_cases: config.test_cases,
             watch: config.watch,
@@ -600,6 +604,7 @@ impl Tracer {
             self.neg_inside += 1;
         }
         self.over.push(!pos && self.library.contains(name));
+        self.resumes.push(None);
         self.entered.push((pos, neg));
     }
 
@@ -610,14 +615,21 @@ impl Tracer {
     }
 
     /// A `yields` fn feeds its loop's body: the body is its caller's code,
-    /// recorded as the caller's steps are, not as the fn's own.
+    /// recorded as the caller's steps are, not as the fn's own. The fn
+    /// may itself be running in a fed body inside a call of its own loop's
+    /// feeder, so its caller is the entry below the fn's own call.
     pub(crate) fn enter_fed_body(&mut self) {
-        let caller = self.over.len().checked_sub(2).map(|at| self.over[at]);
-        self.over.push(caller.unwrap_or(false));
+        let own = |at: usize| self.resumes[at].unwrap_or(at);
+        let caller = (self.over.len().checked_sub(1))
+            .and_then(|top| own(top).checked_sub(1))
+            .map(|at| (self.over[at], own(at)));
+        self.over.push(caller.is_some_and(|c| c.0));
+        self.resumes.push(Some(caller.map_or(0, |c| c.1)));
     }
 
     pub(crate) fn leave_fed_body(&mut self) {
         self.over.pop();
+        self.resumes.pop();
     }
 
     /// Inside a call the trace steps over.
@@ -642,6 +654,7 @@ impl Tracer {
             self.neg_inside -= 1;
         }
         self.over.pop();
+        self.resumes.pop();
     }
 
     fn case_matches(&self) -> bool {

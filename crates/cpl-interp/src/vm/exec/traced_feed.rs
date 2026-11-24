@@ -73,6 +73,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             slot: feed.slot,
             body: feed.body,
             left: None,
+            frames: 0,
         }
     }
 

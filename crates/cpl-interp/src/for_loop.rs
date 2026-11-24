@@ -173,6 +173,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     slot,
                     body,
                     left: None,
+                    frames: 0,
                 };
                 self.call_feeding(*callee, args, seq.span, Some(fed))?;
                 if let Some(flow) = self.fed_left.take() {

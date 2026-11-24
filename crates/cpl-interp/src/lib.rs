@@ -808,6 +808,9 @@ struct Fed<'p> {
     body: &'p Block,
     /// How the body left the loop, once it has: the fn stops there.
     left: Option<Flow>,
+    /// The call frames up to and including the callee's: library calls
+    /// above them are not shown while the body runs.
+    frames: usize,
 }
 
 /// How many indices of `place` lead straight from its variable: `2` in
