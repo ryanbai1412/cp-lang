@@ -115,6 +115,15 @@ small.
   `// limits:`. The rejected alternative was judge names known inside
   codegen, where adding a course's judge would need a code change instead
   of a `[judge.<name>]` table.
+- **Decision 188: one size budget for every judge.** A build warns above
+  32 KB, or above half of a smaller judge limit, and fails above 64 KB or
+  the judge's own limit when that is smaller, even when the judge accepts
+  more (AtCoder's 512 KiB). The budget is the contestant's, not the
+  judge's: a file that only fits a generous judge is library bloat, and the
+  same solution may go to a stricter judge next. Profiles also carry
+  `time_ms` and `memory_mb`, the limits a problem gets when its `cp.toml`
+  has no `[limits]`. The rejected alternative, a warning at 75% of each
+  judge's limit, fired at 384 KB on AtCoder and never caught anything.
 
 ## Changes
 

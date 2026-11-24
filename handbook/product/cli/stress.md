@@ -13,6 +13,9 @@ first wrong value: `look at line 14: lo = mid leaves lo unchanged`. The case
 is saved as `d.tests/stress-4.in` with the brute's answer beside it. You
 fix the line, and `cpl stress d` reruns the saved case first, then hunts on:
 `the saved case passes; 1000 cases agree`.
+Saved cases run first so that one command checks the fix and keeps hunting
+(decision 441): a run on a new seed could miss the case it had already
+found, and checking the fix by hand with `cpl test` was a second step.
 
 **Off the happy path.** You have no brute yet, only a WA: stress still
 runs, and a case fails on a runtime error or the time limit, shrunk and
