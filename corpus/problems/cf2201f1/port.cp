@@ -11,14 +11,13 @@
 //   transposed. Compare the two cell multisets by summed splitmix64 hashes: O(1) per query.
 // Bounds: n, q: 1..=200_000; r0, r1: 1..=n
 
-
 enum Side: Left | Right
 
 @!multitest
 let (n, q): (1..=200_000, 1..=200_000) = read()
 domain Row = 1..=n
-var row: [Side, Row]Int = 0
-var freq: [Side, 0..q]Int = 0
+var row: [Side, Row]0..=200_000 = 0
+var freq: [Side, 0..q]0..=200_000 = 0
 var h: [Side]U64 = 0
 
 fn add(s: Side, r: Row):
