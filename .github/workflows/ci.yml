@@ -120,8 +120,8 @@ jobs:
         run: |
           stdbuf -oL vmstat -t -S M 20 > "$RUNNER_TEMP/vmstat.log" 2>&1 &
           while sleep 60; do date -u +%T; ps -eo pcpu,etimes,args --sort=-pcpu | head -6 | cut -c1-200; done > "$RUNNER_TEMP/top.log" 2>&1 &
-          timeout 680 just check || { s=$?; [ "$s" != 124 ] \
-            || echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; exit "$s"; }
+          timeout 680 just check || { s=$?; [ "$s" != 124 ] || { touch "$RUNNER_TEMP/cut-short"
+            echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; }; exit "$s"; }
       - name: Memory, swap and CPU during the gate (MB; si/so swapping, wa I/O wait), and its busiest processes
         if: ${{ !cancelled() }}
         run: "[ ! -f \"$RUNNER_TEMP/vmstat.log\" ] || cat \"$RUNNER_TEMP/vmstat.log\" \"$RUNNER_TEMP/top.log\""
@@ -137,11 +137,12 @@ jobs:
         with:
           path: target/corpus-tests
           key: corpus-tests-${{ github.run_id }}
-      # Only the builds this part used, so its cache isn't every part's. A conform
-      # part cut short keeps all it restored: it never reached the rest.
+      # Only the builds this part used, so its cache isn't every part's. A part
+      # cut short keeps all it restored: it never reached the rest. A red conform
+      # part ran every case, so it trims (6 untrimmed parts held 3.1 GB).
       - name: Drop the g++ builds this part didn't use
-        if: ${{ always() && (success() || !startsWith(matrix.part, 'conform:')) }}
-        run: just cxx-trim "$CXX_SINCE"
+        if: always()
+        run: "[ -f \"$RUNNER_TEMP/cut-short\" ] || just cxx-trim \"$CXX_SINCE\""
       - uses: actions/cache/save@v4
         if: always()
         with:
