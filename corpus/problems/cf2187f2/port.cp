@@ -29,8 +29,8 @@ fn ends<Node>(v: Node) -> List<Z>:
     var res = ends(l)
     res.push(0)
     if t.kind[r] == PermKind.Leaf:
-        let pre = res.scan(+)
-        [pre.prefix(i + 1) for i in res.keys]
+        for i in 1..res.len: res[i] += res[i - 1]
+        res
     else:
         let wr = ways(r)
         res.map(e => e * wr)
