@@ -16,6 +16,7 @@ bash bench/seq/run.sh
 | `slice_nth_element` | `xs[l..r].nth_element(k)` vs `std::nth_element(xs.begin() + l, xs.begin() + l + k, xs.begin() + r)` on `List<Int>` (`n = 200,000`, `len = 100,000`, 80 rounds) | 40.3 ms | 35.4 ms | 1.14x | 8,814 B |
 | `sort_by_records` | `[(cost:, v:, p:) ...].sorted(by: j => desc(j.cost))` vs `std::stable_sort` on 1,000,000 records, 4 rounds | 183.7 ms | 186.8 ms | 0.98x | 5,641 B |
 | `sort_by_cross` | cf1284e's shape: 3,123,750 `(d: Pt, a:, b:)` directions `.sort(by: t => Dir(t.d))` under a cross-product `Ord` vs `std::stable_sort` on a struct | 486.7 ms | 421.3 ms | 1.16x | 9,509 B |
+| `filter_comp` | `[(cost:, v:, p:) for i in 0..n if ..]` keeping 5 in 16 of 20,000,000 (the comprehension reserves `n`; 170 ms and 199 MB at the old `min(n, 16)`) vs `reserve(n)` + `push_back` | 73.3 ms | 100.9 ms | 0.73x | 4,167 B |
 | `pairs` | ioi25_triples' small-group loop: `for (i, j) in group.pairs()` calling a nested fn that writes the fn's `var found`, 40 rounds over `n = 600,000` vs nested index loops | 2794.4 ms | 2179.1 ms | 1.28x | 8,446 B |
 
 Summary (6 matched benchmarks): **p50 = 1.06x** (target <= 1.10x), **max = 1.14x** (target <= 1.50x).

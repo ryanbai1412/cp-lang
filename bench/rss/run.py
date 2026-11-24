@@ -47,6 +47,7 @@ CASES = {
     "hash_counter": lambda: "3375000\n",
     "hash_str_grow": lambda: "300000\n",
     "sort_index": lambda: ints(2_000_000),  # sort(by: i => (a[i], i)) 2e6 positions
+    "filter_comp": lambda: ints(4_000_000),  # [.. for x in a if ..] keeping half, then 1 in 1000
     "sort_field": lambda: "",  # sort(by: e => es[e].w) 250k edges, as std kruskal does
     "hash_counter_narrow": lambda: "3375000\n",
 }
