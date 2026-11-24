@@ -647,8 +647,10 @@ pub struct Rooted<V, Pre, A>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 1) == 1 and t.lower(3, 1) == 3`
     /// trap: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 0)`
     pub fn lower(self, u: V, v: V) -> V:
-        if par[u] == Some(v): return u
-        assert par[v] == Some(u)
+        if let p = par[u]:
+            if p == v: return u
+        if let q = par[v]: assert q == u
+        else: assert false
         v
 
     /// The ends of an ancestor pair, the ancestor first, in either order: a tree edge, or an
