@@ -1112,8 +1112,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             return self.try_compile_for_seq(id, slot, seq_expr, *rev, body);
         }
-        let SlotLoc::I(r_var, _) = self.slot_loc(slot) else {
-            return false;
+        let (r_var, tag_v) = match self.slot_loc(slot) {
+            SlotLoc::I(r_var, _) => (r_var, None),
+            SlotLoc::V(v)
+                if matches!(iter, Iter::Range { .. })
+                    && matches!(self.locals[slot].ty, Ty::Enum(_)) =>
+            {
+                (self.alloc_i(), Some(v))
+            }
+            _ => return false,
         };
         match iter {
             Iter::RangeVal(e, rev) if matches!(&e.ty, Ty::Range(t) if **t != Ty::I128) => {
@@ -1129,10 +1136,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     e.span,
                 );
                 if *rev {
-                    self.emit_down_loop(id, r_var, r_lo, r_hi, false, body, e.span, e.span);
+                    self.emit_down_loop(id, r_var, tag_v, r_lo, r_hi, false, body, e.span, e.span);
                 } else {
                     self.emit_up_loop(
-                        id, slot, r_var, r_lo, r_hi, false, None, false, body, e.span, e.span,
+                        id, slot, r_var, tag_v, r_lo, r_hi, false, None, false, body, e.span,
+                        e.span,
                     );
                 }
                 true
@@ -1154,6 +1162,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     id,
                     slot,
                     r_var,
+                    tag_v,
                     r_lo,
                     r_hi,
                     *closed,
@@ -1174,7 +1183,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
             } => {
                 let r_lo = self.compile_expr_i(lo);
                 let r_hi = self.compile_expr_i(hi);
-                self.emit_down_loop(id, r_var, r_lo, r_hi, *closed, body, lo.span, hi.span);
+                self.emit_down_loop(
+                    id, r_var, tag_v, r_lo, r_hi, *closed, body, lo.span, hi.span,
+                );
                 true
             }
             Iter::Range {
@@ -1225,6 +1236,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     );
                 }
                 let body_pc = self.ops.len() as u32;
+                self.emit_loop_tag(tag_v, r_var, lo.span);
                 self.loops.push(LoopTargets {
                     id,
                     breaks: Vec::new(),

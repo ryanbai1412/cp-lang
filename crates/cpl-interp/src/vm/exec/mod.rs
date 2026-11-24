@@ -393,6 +393,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 Op::UnboxI { dst_i, src_v } => {
                     regs_i[dst_i as usize] = ScalarKind::unbox_val(&regs_v[src_v as usize]);
                 }
+                Op::EnumOfTagI { dst_v, src_i } => {
+                    regs_v[dst_v as usize] =
+                        Value::Enum(regs_i[src_i as usize] as u32, Rc::new(Vec::new()));
+                }
                 Op::BoxOptI {
                     dst_v,
                     val,

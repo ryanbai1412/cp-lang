@@ -89,6 +89,12 @@ pub(crate) enum Op {
         dst_i: u16,
         src_v: u16,
     },
+    /// The payload-free variant with tag `src_i`: an enum loop variable
+    /// counted in an integer register.
+    EnumOfTagI {
+        dst_v: u16,
+        src_i: u16,
+    },
     BoxOptI {
         dst_v: u16,
         val: u16,

@@ -14,6 +14,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         id: LoopId,
         slot: Slot,
         r_var: u16,
+        tag_v: Option<u16>,
         r_lo: u16,
         r_hi: u16,
         closed: bool,
@@ -52,6 +53,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             );
         }
         let body_pc = self.ops.len() as u32;
+        self.emit_loop_tag(tag_v, r_var, lo_span);
         let marks = (self.dom_clears, self.assigned_locals.len());
         let reg = resumable.then_some(LoopReg::Range { id, r_var, r_hi });
         self.loops.push(LoopTargets {
@@ -97,6 +99,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    /// An enum loop variable (`tag_v`) is counted by its tag in `r_var`
+    /// and set from it as each round starts.
+    pub(super) fn emit_loop_tag(&mut self, tag_v: Option<u16>, r_var: u16, span: Span) {
+        if let Some(dst_v) = tag_v {
+            self.emit(
+                Op::EnumOfTagI {
+                    dst_v,
+                    src_i: r_var,
+                },
+                span,
+            );
+        }
+    }
+
     /// `for r_var in (r_lo..r_hi).rev` (`..=` when `closed`), the bounds
     /// already in registers.
     #[allow(clippy::too_many_arguments)]
@@ -104,6 +120,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         &mut self,
         id: LoopId,
         r_var: u16,
+        tag_v: Option<u16>,
         r_lo: u16,
         r_hi: u16,
         closed: bool,
@@ -151,6 +168,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             );
         }
         let body_pc = self.ops.len() as u32;
+        self.emit_loop_tag(tag_v, r_var, hi_span);
         self.loops.push(LoopTargets {
             id,
             breaks: Vec::new(),
