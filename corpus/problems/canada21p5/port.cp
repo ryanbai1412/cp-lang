@@ -4,45 +4,30 @@
 //   seconds, modulo 1e9+7. (Here x is m and K is k.)
 // Solution: only the number of differing places matters: a Markov chain on 0..=n where from
 //   i, c of the m flips hit differing places with probability C(i, c) C(n - i, m - c) / C(n, m).
-//   Raise the (n + 1)^2 matrix to the k by squaring, O(n^3 log k). By symmetry the answer is
+//   Raise the (n + 1)^2 matrix to the k with std `pow` over the matrix-product monoid, O(n^3 log k). By symmetry the answer is
 //   P(0 -> d) / C(n, d) for the starting distance d.
 // original: corpus/submissions/3718293.cpp
-
 const P = 1000000007
 type Z = Mod<P>
 
-let (n, m, k): (Int, Int, Int) = read()  // m <= n <= 128, k <= 1e9
-let (s, t): (Str, Str) = read()
+let n: 1..=128 = read()
+let m: 0..=n = read()
+let k: 0..=1e9 = read()
+let s: Str = read()
+let t: Str = read()
 domain Off = 0..=n  // how many places differ
-type Mat = [Off, Off]Z
-let comb = Comb<Mod<P>>(n)
-
-fn mul(a: Mat, b: Mat) -> Mat:
-    var c: Mat = [Off, Off] (i, j) => Z.zero
-    for i in Off:
-        for j in Off:
-            if a[i, j] != Z.zero:
-                for l in Off: c[i, l] += a[i, j] * b[j, l]
-    c
-
-fn power(x: Mat, e: Int) -> Mat:
-    var (base, acc, left) = (x, [Off, Off] (i, j) => Z(Int(i == j)), e)
-    while left > 0:
-        if left % 2 == 1: acc = mul(acc, base)
-        base = mul(base, base)
-        left /= 2
-    acc
+let comb = Comb<Z>(n)
 
 // One round from i differing places: c of the m flips land on them.
-var step: Mat = [Off, Off] (i, j) => Z.zero
+var step: [Off, Off]Z = Z.zero
 for i in Off:
     for c in 0..=min(i.ord, m):
         if let j = Off.at(i.ord - c + (m - c)):
-            step[i, j] += comb.choose(i.ord, c) * comb.choose(
-                n - i.ord,
-                m - c,
-            ) / comb.choose(n, m)
+            step[i, j] += comb.choose(i.ord, c) * comb.choose(n - i.ord, m - c) / comb.choose(n, m)
 
 // Walk back from "equal": every string at distance d is equally likely.
-let d = sum(1 for i in 0..n if s[i] != t[i])
-print(power(step, k)[Off(0), Off(d)] / comb.choose(n, d))
+let d = (0..n).count(i => s[i] != t[i])
+fn mul(a: [Off, Off]Z, b: [Off, Off]Z) -> [Off, Off]Z = [Off, Off] (i, l) => sum(a[i, j] * b[j, l] for j in Off)
+let one: [Off, Off]Z = [Off, Off] (i, j) => Z(Int(i == j))
+let walk = pow(step, k, op: Monoid(one, mul))
+print(walk[Off.first!, Off(d)] / comb.choose(n, d))
