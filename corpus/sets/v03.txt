@@ -543,8 +543,10 @@ etsr23r3p3
 etsr23r4p1
 etsr23r4p2
 etsr23r4p3
+iati21a12
 iati21a13
 iati21a22
+imo22p6checker
 ioi00p1
 ioi00p2
 ioi00p4
