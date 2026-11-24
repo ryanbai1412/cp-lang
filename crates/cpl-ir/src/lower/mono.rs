@@ -610,6 +610,12 @@ impl<'a> Lowerer<'a> {
                         return GenArg::Int(v);
                     }
                 }
+                // `type M = -10..=10` passes its range, so `T.MIN` is `-10`.
+                if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
+                    if matches!(self.aliases[aid].1.kind, ast::TypeKind::Range { .. }) {
+                        return self.in_alias(aid, |lw, ty| lw.resolve_gen_arg(ty));
+                    }
+                }
                 let resolved = self.resolve_ty(ty);
                 match resolved {
                     Ty::Pos(d) => GenArg::Domain(d),
