@@ -76,7 +76,17 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "devirt",
         "devirt.rs",
-        Uses(&["safe_place"]),
+        Uses(&[
+            "safe_place",
+            "each_call",
+            "each_return",
+            "each_put",
+            "each_write",
+            "each_part",
+            "each_value",
+            "each_sink",
+            "each_closure",
+        ]),
         "local_from_struct_maker_calls_its_one_closure",
     ),
     pass(

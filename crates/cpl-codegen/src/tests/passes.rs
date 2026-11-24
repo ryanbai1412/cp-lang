@@ -680,3 +680,23 @@ fn breaks_or_returns_lets_a_continue_through() {
     assert!(!breaks_or_returns(&program.fns[0].body), "f only continues");
     assert!(breaks_or_returns(&program.fns[1].body), "g breaks out");
 }
+
+#[test]
+fn each_call_hands_back_args_that_outlive_the_walk() {
+    use crate::uses::places::each_call;
+    let program = lower(concat!(
+        "fn g(a: Int, b: Int) -> Int:\n",
+        "    a + b\n",
+        "fn f(n: Int) -> Int:\n",
+        "    g(n, g(1, 2))\n",
+        "print(f(3))\n",
+    ));
+    let mut calls = Vec::new();
+    each_call(&program.fns[1].body, &mut |callee, args| {
+        calls.push((callee, args))
+    });
+    assert_eq!(calls.len(), 2, "the outer call and its argument's");
+    assert!(calls
+        .iter()
+        .all(|(callee, args)| *callee == 0 && args.len() == 2));
+}

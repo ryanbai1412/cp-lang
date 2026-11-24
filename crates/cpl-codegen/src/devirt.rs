@@ -19,6 +19,10 @@ use cpl_ir::{
 };
 
 use crate::emit::Emitter;
+use crate::uses::places::{
+    each_call, each_closure, each_part, each_put, each_return, each_write, Put, Write,
+};
+use crate::uses::split::{each_sink, each_value, Sink};
 use crate::walk;
 
 mod explain;
@@ -229,10 +233,8 @@ impl<'p> Devirt<'p> {
         let program = self.program;
         let mut ahead: BTreeSet<FnId> = BTreeSet::new();
         for c in &program.closures {
-            walk::deep_exprs(&c.body, &mut |e| {
-                if let ExprKind::Call(id, _) = e.kind {
-                    ahead.insert(id);
-                }
+            each_call(&c.body, &mut |id, _| {
+                ahead.insert(id);
             });
         }
         (0..program.fns.len())
@@ -249,18 +251,16 @@ impl<'p> Devirt<'p> {
                     return false;
                 }
                 let mut rets = Vec::new();
-                walk::deep_stmts(&f.body, &mut |stmt| {
-                    if let Stmt::Return(e) = stmt {
-                        rets.push(e);
-                    }
+                each_return(&f.body, &mut |e| {
+                    rets.push(matches!(
+                        e,
+                        Some(Expr {
+                            kind: ExprKind::Closure(_),
+                            ..
+                        })
+                    ));
                 });
-                matches!(
-                    rets.as_slice(),
-                    [Some(Expr {
-                        kind: ExprKind::Closure(_),
-                        ..
-                    })]
-                )
+                rets == [true]
             })
             .collect()
     }
@@ -280,26 +280,17 @@ impl<'p> Devirt<'p> {
             crate::globals::touched(&c.body, &mut elsewhere);
         }
         let mut sets: BTreeMap<usize, usize> = BTreeMap::new();
-        walk::deep_stmts(&program.main, &mut |stmt| {
-            if let Stmt::Assign(place, _, _) = stmt {
+        each_put(&program.main, &mut |put, _| {
+            if let Put::Store(place, _) = put {
                 if let (true, g) = walk::root(place) {
                     *sets.entry(g).or_default() += 1;
                 }
             }
         });
-        walk::deep_exprs(&program.main, &mut |e| {
-            if let ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) = &e.kind {
+        each_write(&program.main, &mut |how, place| {
+            if let Write::Mutate(_) | Write::Sort | Write::Mut = how {
                 if let (true, g) = walk::root(place) {
                     *sets.entry(g).or_default() += 2;
-                }
-            }
-            if let ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) = &e.kind {
-                for arg in args {
-                    if let Arg::Mut(place) = arg {
-                        if let (true, g) = walk::root(place) {
-                            *sets.entry(g).or_default() += 2;
-                        }
-                    }
                 }
             }
         });
@@ -348,8 +339,8 @@ impl<'p> Devirt<'p> {
         blocks.extend(program.fns.iter().map(|f| &f.body));
         blocks.extend(program.closures.iter().map(|c| &c.body));
         for block in blocks {
-            walk::deep_stmts(block, &mut |stmt| {
-                if let Stmt::Assign(place, op, value) = stmt {
+            each_put(block, &mut |put, value| {
+                if let Put::Store(place, op) = put {
                     if let PlaceKind::Global(g) = place.kind {
                         let cid = match value.kind {
                             ExprKind::Closure(cid) if *op == AssignOp::Set => Some(cid),
@@ -359,13 +350,11 @@ impl<'p> Devirt<'p> {
                     }
                 }
             });
-            walk::deep_exprs(block, &mut |e| {
-                if let ExprKind::Call(_, args) = &e.kind {
-                    for arg in args {
-                        if let Arg::Mut(place) = arg {
-                            if let (true, g) = walk::root(place) {
-                                set.entry(g).or_default().push(None);
-                            }
+            each_call(block, &mut |_, args| {
+                for arg in args {
+                    if let Arg::Mut(place) = arg {
+                        if let (true, g) = walk::root(place) {
+                            set.entry(g).or_default().push(None);
                         }
                     }
                 }
@@ -577,8 +566,8 @@ impl<'p> Devirt<'p> {
     fn bound_once(&self, home: Option<ClosureId>, slot: usize, n: u32) -> bool {
         let mut stored = home.is_none() && n > 1;
         if let Some(h) = home {
-            walk::deep_stmts(&self.program.closures[h].body, &mut |s| {
-                stored |= matches!(s, Stmt::Assign(p, _, _) if p.kind == PlaceKind::Local(slot));
+            each_put(&self.program.closures[h].body, &mut |put, _| {
+                stored |= matches!(put, Put::Store(p, _) if p.kind == PlaceKind::Local(slot));
             });
         }
         !stored
@@ -602,7 +591,7 @@ impl<'p> Devirt<'p> {
         for stmt in stmts {
             walk::stmt_blocks(stmt, &mut |inner| self.memo_pairs_in(inner, out));
             walk::stmt_exprs(stmt, &mut |e| {
-                walk::deep_expr(e, &mut |e| {
+                each_part(e, &mut |e| {
                     if let ExprKind::Do(inner) = &e.kind {
                         self.memo_pairs_in(inner, out);
                     }
@@ -623,8 +612,8 @@ impl<'p> Devirt<'p> {
                     ExprKind::Closure(c) => found |= captures(c, slot),
                     _ => {}
                 };
-                walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, &mut look));
-                walk::stmt_blocks(stmt, &mut |inner| walk::deep_exprs(inner, &mut look));
+                walk::stmt_exprs(stmt, &mut |e| each_part(e, &mut look));
+                walk::stmt_blocks(stmt, &mut |inner| each_value(inner, &mut look));
             }
             found
         };
@@ -637,8 +626,8 @@ impl<'p> Devirt<'p> {
                 continue;
             };
             let mut sets = Vec::new();
-            walk::deep_stmts(block, &mut |s| {
-                if let Stmt::Assign(place, _, value) = s {
+            each_put(block, &mut |put, value| {
+                if let Put::Store(place, _) = put {
                     if place.kind == PlaceKind::Local(*w) || place.kind == PlaceKind::Local(*b) {
                         sets.push(value as *const Expr);
                     }
@@ -710,13 +699,9 @@ impl<'p> Devirt<'p> {
     fn keep_recursive_templates_finite(&mut self) {
         let fns = &self.program.fns;
         let n = fns.len();
-        let mut calls: Vec<Vec<(FnId, &Vec<Arg>)>> = vec![Vec::new(); n];
+        let mut calls: Vec<Vec<(FnId, &[Arg])>> = vec![Vec::new(); n];
         for (g, f) in fns.iter().enumerate() {
-            walk::deep_exprs(&f.body, &mut |e| {
-                if let ExprKind::Call(callee, args) = &e.kind {
-                    calls[g].push((*callee, args));
-                }
-            });
+            each_call(&f.body, &mut |callee, args| calls[g].push((callee, args)));
         }
         let reach: Vec<BTreeSet<FnId>> = (0..n)
             .map(|start| {
@@ -946,8 +931,8 @@ impl<'p> Devirt<'p> {
     /// Joins the fn fields of each struct fn `id` returns.
     fn returns(&mut self, id: FnId, body: &Block) {
         let mut seen = Vec::new();
-        walk::deep_stmts(body, &mut |stmt| {
-            if let Stmt::Return(Some(e)) = stmt {
+        each_sink(body, &mut |sink| {
+            if let Sink::Return(e) = sink {
                 seen.push(e);
             }
         });
@@ -985,8 +970,8 @@ impl<'p> Devirt<'p> {
     }
 
     fn block(&mut self, home: Option<FnId>, block: &Block) {
-        walk::deep_stmts(block, &mut |stmt| {
-            let Stmt::Assign(place, _, value) = stmt else {
+        each_put(block, &mut |put, value| {
+            let Put::Store(place, _) = put else {
                 return;
             };
             if !matches!(place.ty, Ty::Fn(..)) {
@@ -1004,7 +989,7 @@ impl<'p> Devirt<'p> {
                 _ => {}
             }
         });
-        walk::deep_exprs(block, &mut |e| match (&e.kind, &e.ty) {
+        each_value(block, &mut |e| match (&e.kind, &e.ty) {
             (ExprKind::Tuple(fields), Ty::Struct(s)) => {
                 for (index, field) in fields.iter().enumerate() {
                     if matches!(field.ty, Ty::Fn(..)) {
@@ -1047,9 +1032,9 @@ fn made_by(program: &Program) -> BTreeMap<(FnId, usize), Made> {
     for (id, f) in program.fns.iter().enumerate() {
         let mut lets: BTreeMap<usize, Option<Made>> = BTreeMap::new();
         let mut written = BTreeSet::new();
-        walk::deep_stmts(&f.body, &mut |stmt| match stmt {
-            Stmt::Let(slot, init) => {
-                let maker = match init.as_ref().map(|e| (&e.kind, &e.ty)) {
+        each_sink(&f.body, &mut |sink| match sink {
+            Sink::Let(ref slot, init) => {
+                let maker = match init.map(|e| (&e.kind, &e.ty)) {
                     Some((ExprKind::Call(callee, _), Ty::Struct(_))) => Some(Made::Call(*callee)),
                     Some((ExprKind::Field(base, index), Ty::Fn(..))) => match base.kind {
                         ExprKind::Local(b) => Some(Made::Field(b, *index)),
@@ -1060,33 +1045,25 @@ fn made_by(program: &Program) -> BTreeMap<(FnId, usize), Made> {
                 let again = lets.contains_key(slot);
                 lets.insert(*slot, maker.filter(|_| !again));
             }
-            Stmt::Assign(place, _, _) => {
+            Sink::Store(place, _, _) => {
                 written.insert(place.root_local());
             }
-            Stmt::For(_, slot, _, _) => {
-                written.insert(Some(*slot));
+            Sink::For(slot, _) => {
+                written.insert(Some(slot));
             }
             _ => {}
         });
-        walk::deep_exprs(&f.body, &mut |e| match &e.kind {
-            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                for arg in args {
-                    if let Arg::Mut(place) = arg {
-                        written.insert(place.root_local());
-                    }
-                }
-            }
-            ExprKind::Closure(cid) => {
-                for cap in &program.closures[*cid].captures {
-                    if cap.by_ref && !cap.is_global {
-                        written.insert(Some(cap.outer));
-                    }
-                }
-            }
-            ExprKind::Mutate(_, place, _) => {
+        each_write(&f.body, &mut |how, place| {
+            if let Write::Mut | Write::Mutate(_) = how {
                 written.insert(place.root_local());
             }
-            _ => {}
+        });
+        each_closure(&f.body, &mut |cid| {
+            for cap in &program.closures[cid].captures {
+                if cap.by_ref && !cap.is_global {
+                    written.insert(Some(cap.outer));
+                }
+            }
         });
         for (slot, maker) in lets {
             if let (Some(maker), false) = (maker, written.contains(&Some(slot))) {
@@ -1282,10 +1259,8 @@ fn recursive_fns(program: &Program) -> BTreeSet<FnId> {
     let n = program.fns.len();
     let mut adj: Vec<BTreeSet<FnId>> = vec![BTreeSet::new(); n];
     for (id, f) in program.fns.iter().enumerate() {
-        walk::deep_exprs(&f.body, &mut |e| {
-            if let ExprKind::Call(callee, _) = e.kind {
-                adj[id].insert(callee);
-            }
+        each_call(&f.body, &mut |callee, _| {
+            adj[id].insert(callee);
         });
     }
     let mut rec = BTreeSet::new();

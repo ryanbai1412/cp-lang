@@ -113,7 +113,7 @@ pub(crate) fn each_built(block: &Block, f: &mut dyn FnMut(usize, &[Expr])) {
 }
 
 /// Every call by name in `block`, at any depth: the fn and its arguments.
-pub(crate) fn each_call(block: &Block, f: &mut dyn FnMut(FnId, &[Arg])) {
+pub(crate) fn each_call<'a>(block: &'a Block, f: &mut dyn FnMut(FnId, &'a [Arg])) {
     walk::deep_exprs(block, &mut |e| {
         if let ExprKind::Call(callee, args) = &e.kind {
             f(*callee, args);

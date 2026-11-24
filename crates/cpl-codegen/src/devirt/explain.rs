@@ -193,8 +193,8 @@ pub fn explain_closures(
             ));
         }
         let hoisted = crate::scope::hoisted(&c.body, c.params.len() + c.captures.len());
-        walk::deep_stmts(&c.body, &mut |stmt| {
-            if let Stmt::Let(slot, init) = stmt {
+        each_sink(&c.body, &mut |sink| {
+            if let Sink::Let(ref slot, init) = sink {
                 if matches!(c.locals[*slot].ty, Ty::Fn(..)) {
                     let site = format!("closure {cid} local {}", c.locals[*slot].name);
                     let auto = match init.as_ref() {
@@ -316,21 +316,20 @@ pub(super) fn explain_locals_in_block(
     out: &mut Vec<ClosureLowering>,
 ) {
     let mut stores: BTreeMap<usize, usize> = BTreeMap::new();
-    walk::deep_stmts(block, &mut |stmt| match stmt {
-        Stmt::Let(slot, Some(_)) => *stores.entry(*slot).or_default() += 1,
-        Stmt::Assign(place, _, _) => {
+    each_put(block, &mut |put, _| match put {
+        Put::Let(slot) => *stores.entry(slot).or_default() += 1,
+        Put::Store(place, _) => {
             if let PlaceKind::Local(slot) = place.kind {
                 *stores.entry(slot).or_default() += 1;
             }
         }
-        _ => {}
     });
     let params = home.map_or(0, |id| devirt.program.fns[id].params.len());
     let hoisted = crate::scope::hoisted(block, params);
     let mut memo_pairs = devirt.memo_pairs(block);
     memo_pairs.retain(|w, (b, ..)| !hoisted.contains(w) && !hoisted.contains(b));
-    walk::deep_stmts(block, &mut |stmt| {
-        let Stmt::Let(slot, init) = stmt else {
+    each_sink(block, &mut |sink| {
+        let Sink::Let(ref slot, init) = sink else {
             return;
         };
         if !matches!(locals[*slot].ty, Ty::Fn(..)) {
