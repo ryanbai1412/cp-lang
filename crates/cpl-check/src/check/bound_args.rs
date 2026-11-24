@@ -158,15 +158,51 @@ impl Checker<'_> {
             .flat_map(|(_, ts)| ts.iter().cloned())
             .collect();
         for trait_name in bounds {
-            let ty = match self.type_def(&trait_name).as_deref() {
-                Some(Def::Trait { methods, .. }) => methods
-                    .iter()
-                    .find(|m| m.name == name)
-                    .map(|m| m.ty.clone()),
-                _ => None,
-            };
-            if let Some(ty) = ty {
-                return Some(ty.subst(&self.bound_bindings(param, &trait_name)));
+            let on = self.bound_bindings(param, &trait_name);
+            if let Some(ty) = self.trait_method(&trait_name, name, on, &mut Vec::new()) {
+                return Some(ty);
+            }
+        }
+        None
+    }
+
+    /// A trait's method, its own or a super's, the super's args read as
+    /// written on the trait (`Table<T>: Positional<T>` reaches `len`).
+    fn trait_method(
+        &mut self,
+        trait_name: &str,
+        name: &str,
+        on: crate::ty::Bindings,
+        seen: &mut Vec<String>,
+    ) -> Option<Ty> {
+        if seen.iter().any(|s| s == trait_name) {
+            return None;
+        }
+        seen.push(trait_name.to_string());
+        let Some(Def::Trait {
+            methods,
+            supers,
+            super_args,
+            ..
+        }) = self.type_def(trait_name).as_deref().cloned()
+        else {
+            return None;
+        };
+        if let Some(m) = methods.iter().find(|m| m.name == name) {
+            return Some(m.ty.subst(&on));
+        }
+        for (sup, args) in supers.iter().zip(&super_args) {
+            let mut theirs = crate::ty::Bindings::default();
+            if let Some(this) = on.get("Self") {
+                theirs.insert("Self".into(), this.clone());
+            }
+            if let Some(Def::Trait { generics, .. }) = self.type_def(sup).as_deref() {
+                for (g, a) in generics.iter().zip(args) {
+                    theirs.insert(g.clone(), a.subst(&on));
+                }
+            }
+            if let Some(ty) = self.trait_method(sup, name, theirs, seen) {
+                return Some(ty);
             }
         }
         None

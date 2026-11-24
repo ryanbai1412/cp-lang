@@ -328,6 +328,14 @@ fn forms_typed_by_where_they_go_are_never_silent() {
 }
 
 #[test]
+fn a_bound_reaches_its_supers_methods_typed() {
+    // `Tall: Height<Int>` reaches `height` as `Int`; `Table<U>: Positional<U>`
+    // reaches std's `Sized.len` and `Positional.nth`.
+    let src = "trait Height<T>:\n    fn height(self) -> T\ntrait Tall: Height<Int>\nfn h<S: Tall>(s: S) -> Int = s.height()\ntrait Table<T>: Positional<T>\nfn mid<S: Table<U>, U>(s: S) -> U = s.nth(s.len / 2)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}
+
+#[test]
 fn a_silent_unknown_names_its_cause() {
     let mut db = Database::new();
     db.set_file("main.cp", "print([])\n");
