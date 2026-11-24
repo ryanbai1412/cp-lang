@@ -3,7 +3,7 @@
 // growth is eating it. Budgets live in wasm-crate-budgets.json, measured on
 // CI (the hosted build is the truth); each crate's owner is the domain whose
 // charter in handbook/domains/ describes it.
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
@@ -192,6 +192,25 @@ export function touchedOverBudget(rows, budgets, map, touched) {
   return { errors: data ? [data, ...errors.filter((e) => !e.startsWith(DATA))] : errors, warnings };
 }
 
+/**
+ * The land gate's budgets against the parent build (`parent`: crate -> gz): a touched
+ * crate, or the data segment, over its budget refuses only if it grew past the parent or
+ * crossed its budget here, so main never gets worse while a crate is still over.
+ */
+export function grewOverBudget(rows, budgets, map, touched, parent) {
+  const { errors, warnings } = touchedOverBudget(rows, budgets, map, touched);
+  const held = rows
+    .filter(([c, , gz]) => parent[c] !== undefined && gz <= parent[c] && parent[c] > (budgets[c] ?? Infinity))
+    .map(([c]) => `${c} `);
+  const isHeld = (e) => held.some((c) => e.startsWith(c));
+  const was = (e) => parent[held.find((c) => e.startsWith(c)).trim()].toLocaleString('en-US');
+  return {
+    errors: errors.filter((e) => !isHeld(e)),
+    warnings,
+    held: errors.filter(isHeld).map((e) => `${e}, but no more than its parent's ${was(e)} B`),
+  };
+}
+
 /** A new budget for a crate measured at `gz`: 2% and 512 B of room, to the next 100. */
 export const budgetFor = (gz) => Math.ceil((gz * 1.02 + 512) / 100) * 100;
 
@@ -204,13 +223,16 @@ export function dataOverBudget(rows, budgets) {
     + ' cut what the browser build embeds (crates/cpl-check/src/std_bundle.rs) or std itself, never the budget';
 }
 
-// `node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b]` (a
-// scripts/build-wasm.sh --names build): the commit gate's check that the data segment
-// and every touched crate are within their budgets; other crates over theirs only warn.
+// `node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b]
+// [--parent SIZES.json] [--sizes SIZES.json]` (a scripts/build-wasm.sh --names build):
+// the commit gate's check that the data segment and every touched crate are within
+// their budgets; other crates over theirs only warn. `--sizes` writes this build's
+// per-crate gz and sort copies; `--parent` reads a parent's, and then a crate over its
+// budget refuses only if it grew (grewOverBudget), and the sort copies only if they grew.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const at = process.argv.indexOf('--data');
   if (at < 0 || !process.argv[at + 1]) {
-    console.error('usage: node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b]');
+    console.error('usage: node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b] [--parent SIZES.json] [--sizes SIZES.json]');
     process.exit(2);
   }
   const t = process.argv.indexOf('--touched');
@@ -220,14 +242,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const here = dirname(fileURLToPath(import.meta.url));
   const budgets = JSON.parse(readFileSync(join(here, 'wasm-crate-budgets.json'), 'utf8'));
   const map = owners(readCharters(join(here, '../../handbook/domains')));
-  const { errors, warnings } = touchedOverBudget(rows, budgets, map, touched);
-  const sorts = checkSortCopies(sortCopies(functionNames(wasm)), JSON.parse(readFileSync(join(here, '../..', sortCopiesFile), 'utf8')).max);
-  if (sorts.error) errors.push(sorts.error);
+  const flag = (name) => (process.argv.indexOf(name) < 0 ? null : process.argv[process.argv.indexOf(name) + 1]);
+  const parent = flag('--parent') && JSON.parse(readFileSync(flag('--parent'), 'utf8'));
+  const { errors, warnings, held = [] } = parent
+    ? grewOverBudget(rows, budgets, map, touched, parent.crates)
+    : touchedOverBudget(rows, budgets, map, touched);
+  const copies = sortCopies(functionNames(wasm));
+  if (flag('--sizes')) writeFileSync(flag('--sizes'), `${JSON.stringify({ crates: Object.fromEntries(rows.map(([c, , gz]) => [c, gz])), sorts: copies.length })}\n`);
+  const sorts = checkSortCopies(copies, JSON.parse(readFileSync(join(here, '../..', sortCopiesFile), 'utf8')).max);
+  if (sorts.error && parent && copies.length <= parent.sorts) held.push(`${sorts.error.split(':')[0]}, but no more than its parent's ${parent.sorts}`);
+  else if (sorts.error) errors.push(sorts.error);
   if (sorts.lower) console.error(`wasm-crates: ${sorts.lower}`);
   for (const w of warnings) console.error(`wasm-crates: warning: ${w} (not touched here)`);
+  for (const h of held) console.error(`wasm-crates: warning: ${h}`);
   for (const e of errors) console.error(`wasm-crates: ${e}`);
   if (errors.length) process.exit(1);
   const gz = rows.find(([crate]) => crate === DATA)?.[2] ?? 0;
   console.log(`wasm-crates: ${DATA} is ${gz.toLocaleString('en-US')} B gzipped, within its budget of ${budgets[DATA].toLocaleString('en-US')}`
-    + (touched.length ? `; ${touched.join(', ')} within theirs` : ''));
+    + (touched.length ? `; ${touched.join(', ')} within theirs${held.length ? ' or no larger than in the parent' : ''}` : ''));
 }

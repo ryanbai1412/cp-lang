@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, checkSortCopies, crateOf, DATA, dataOverBudget, ownerOf, owners, readCharters, sortCopies, touchedOverBudget } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, crateOf, DATA, dataOverBudget, grewOverBudget, ownerOf, owners, readCharters, sortCopies, touchedOverBudget } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -64,6 +64,25 @@ describe('wasm crate budgets', () => {
     expect(errors[1]).toMatch(/^cpl_lsp is 200 B gzipped/);
     expect(warnings).toEqual([expect.stringMatching(/^cpl_check is 300 B gzipped/)]);
     expect(touchedOverBudget(rows, { ...budgets, [DATA]: 50 }, map, []).errors).toEqual([]);
+  });
+
+  test('against its parent, a touched crate over budget refuses only if it grew or crossed', () => {
+    const map = owners(charters);
+    const budgets = { cpl_check: 250, cpl_lsp: 100, [DATA]: 40 };
+    const rows = [['cpl_check', 900, 300], ['cpl_lsp', 500, 200], [DATA, 900, 50]];
+    const gate = (parent) => grewOverBudget(rows, budgets, map, ['cpl_check', 'cpl_lsp'], parent);
+    const held = gate({ cpl_check: 300, cpl_lsp: 210, [DATA]: 50 });
+    expect(held.errors).toEqual([]);
+    expect(held.held).toEqual([
+      expect.stringMatching(/^data .* over its budget of 40.*, but no more than its parent's 50 B$/),
+      expect.stringMatching(/^cpl_check is 300 B gzipped, .*, but no more than its parent's 300 B$/),
+      expect.stringMatching(/^cpl_lsp is 200 B gzipped, .*, but no more than its parent's 210 B$/),
+    ]);
+    const grew = gate({ cpl_check: 299, cpl_lsp: 210, [DATA]: 50 });
+    expect(grew.errors).toEqual([expect.stringMatching(/^cpl_check is 300 B gzipped, over its budget of 250/)]);
+    const crossed = gate({ cpl_check: 300, cpl_lsp: 90, [DATA]: 50 });
+    expect(crossed.errors).toEqual([expect.stringMatching(/^cpl_lsp is 200 B gzipped, over its budget of 100/)]);
+    expect(gate({ cpl_lsp: 210, [DATA]: 50 }).errors).toEqual([expect.stringMatching(/^cpl_check is 300 B/)]);
   });
 
   test('each element type and crate a sort is compiled for is one copy of core\'s sort', () => {
