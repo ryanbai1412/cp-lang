@@ -10,12 +10,12 @@ Import: `use std.persistent.{...}`.
 
 An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte `Id<T>`, and a node never changes after it is allocated, so every version that shares it stays valid.
 
-- `fn new(cap: Int = 0) -> PArena<T>` — \(O(\mathit{cap})\); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
+- `fn new(cap: Int = 0) -> PArena<T>` — \(O(1)\); the room is not touched until it is used; An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of nodes allocated; valid handles have raw values `0..len`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no node is allocated; `len == 0`.
 - `fn alloc(mut self, x: T) -> Id<T>` — \(O(1)\) amortized; Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.; traps: when the arena already holds `2_000_000_001` nodes
 - `fn get(self, id: Id<T>) -> T` — \(O(1)\); The node behind `id`.; traps: when `id` is not below `len`, so a handle from another arena that is out of range
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\); Allocate room for at least `cap` nodes in total; changes no handle or node.; traps: when `cap < 0`
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise; Allocate room for at least `cap` nodes in total; changes no handle or node.; traps: when `cap < 0`
 
 ## `struct Version<S>(root: Int)`
 
@@ -34,7 +34,7 @@ Fields: `val: List<T>`.
 - `fn get(self, v: Version<PersistentSegTree<D, T>>, i: D) -> T` — \(O(\log n)\); The value at position `i` in version `v`.; traps: when `i` is not in `D`, or `v` did not come from this tree
 - `fn fold(self, v: Version<PersistentSegTree<D, T>>, r: Range<D>) -> T` — \(O(\log n)\); The fold of `r` in version `v`, left to right, so a non-commutative monoid sees its elements in position order.; traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
 - `fn all(self, v: Version<PersistentSegTree<D, T>>) -> T` — \(O(1)\); The fold of every position in version `v`, read from its root.; traps: when `v` did not come from this tree
-- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\); Preallocate room for `nodes` tree nodes in total, so later writes do not regrow the arena.; traps: when `nodes < 0`
+- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{len})\) when it grows (it moves the nodes it holds), \(O(1)\) otherwise; Preallocate room for `nodes` tree nodes in total, so later writes do not regrow the arena.; traps: when `nodes < 0`
 - `fn right_while(self, v: Version<PersistentSegTree<D, T>>, from: Cut<D>, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`; The rightmost cut `b` at or after `from` such that `ok(fold(v, from..b))` holds, reading version `v`.; traps: when `from` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
 - `fn left_while(self, v: Version<PersistentSegTree<D, T>>, to: Cut<D>, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`; The leftmost cut `b` at or before `to` such that `ok(fold(v, b..to))` holds, reading version `v`.; traps: when `to` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
 - `fn diff_kth(self, hi: Version<PersistentSegTree<D, T>>, lo: Version<PersistentSegTree<D, T>>, k: Int) -> ?D` — \(O(\log n)\); For a tree of counts under `+`, the position of the `k`-th item (1-based) in the difference `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the difference holds at most `k` items.; traps: when `k < 0`, or a version did not come from this tree
