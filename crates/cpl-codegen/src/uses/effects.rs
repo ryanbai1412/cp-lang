@@ -6,7 +6,7 @@
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{Block, Expr, ExprKind, FnId, PlaceKind, Program, Stmt};
+use cpl_ir::{BinOp, Block, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
 
 use crate::devirt::Devirt;
 use crate::lend::{whole_reads, Tail};
@@ -63,7 +63,18 @@ pub(crate) fn writes_nothing(e: &Expr) -> bool {
 
 /// True when a `sort(by:)` key expression is pure, trap-free, and O(1), so comparing
 /// `kf(a) < kf(b)` in-place is safe and avoids allocating `keys`/`order`/`sorted` buffers.
-pub(crate) fn is_cheap_pure_key(e: &Expr) -> bool {
+/// `traps`: indexing outside a domain and `/ 0` are checked, so only cells of a
+/// domain and nonzero literal divisors count;
+/// the C++ negates without a check, so `-x` costs nothing. A call counts when its fn
+/// only returns such an expression of its parameters (`desc(x)`), and only
+/// with `program`: a profile counts a call once per element, as the
+/// interpreter makes it.
+pub(crate) fn is_cheap_pure_key(program: Option<&Program>, e: &Expr, traps: bool) -> bool {
+    cheap_key(program, e, traps, 0)
+}
+
+fn cheap_key(program: Option<&Program>, e: &Expr, traps: bool, depth: usize) -> bool {
+    let cheap = |e: &Expr| cheap_key(program, e, traps, depth);
     match &e.kind {
         ExprKind::Unit
         | ExprKind::Int(_)
@@ -73,13 +84,37 @@ pub(crate) fn is_cheap_pure_key(e: &Expr) -> bool {
         | ExprKind::None
         | ExprKind::Local(_)
         | ExprKind::Global(_) => true,
-        ExprKind::Some(inner) | ExprKind::Field(inner, _) => is_cheap_pure_key(inner),
-        ExprKind::Unary(cpl_ir::UnOp::Not | cpl_ir::UnOp::BitNot, inner) => {
-            is_cheap_pure_key(inner)
+        ExprKind::Some(inner) | ExprKind::Field(inner, _) => cheap(inner),
+        ExprKind::Unary(cpl_ir::UnOp::Not | cpl_ir::UnOp::BitNot | cpl_ir::UnOp::Neg, inner) => {
+            cheap(inner)
         }
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(is_cheap_pure_key),
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(cheap),
+        ExprKind::Binary(op, l, r) => {
+            let safe = match op {
+                BinOp::Div | BinOp::Rem => !traps || matches!(r.kind, ExprKind::Int(k) if k != 0),
+                BinOp::Pow | BinOp::Shl | BinOp::Shr => false,
+                _ => true,
+            };
+            safe && l.ty != Ty::Str && cheap(l) && cheap(r)
+        }
+        ExprKind::Cmp(_, l, r) => cheap(l) && cheap(r),
         ExprKind::Index(base, idxs) => {
-            cpl_ir::effects::in_domain(&base.ty, idxs) && is_cheap_pure_key(base)
+            (!traps || cpl_ir::effects::in_domain(&base.ty, idxs))
+                && cheap(base)
+                && idxs.iter().all(cheap)
+        }
+        ExprKind::Call(fid, args) if depth < 4 => {
+            let Some(f) = program.map(|p| &p.fns[*fid]) else {
+                return false;
+            };
+            let [Stmt::Return(Some(made))] = &f.body.stmts[..] else {
+                return false;
+            };
+            !f.params.iter().any(|p| p.mutable)
+                && args
+                    .iter()
+                    .all(|a| matches!(a, cpl_ir::Arg::Value(v) if cheap(v)))
+                && cheap_key(program, made, traps, depth + 1)
         }
         _ => false,
     }

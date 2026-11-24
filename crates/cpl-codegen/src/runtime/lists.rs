@@ -205,6 +205,9 @@ template <class It, class B, class L> void merge_sort(It b, size_t lo, size_t hi
 template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; size_t n = e - b; std::vector<V> buf(b, b + n / 2); merge_sort(b, 0, n, buf.begin(), lt); }
 // `Same`: elements that compare equal are the same value, so no order of them is told apart.
 template <bool Same = false, class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (Same || std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
+// Elements already in strictly ascending order are told apart by it, and it is the order
+// they had, so `std::sort` with ties broken by it gives the stable sort's output.
+template <class It, class L> void sort_distinct(It b, It e, L lt) { if (std::adjacent_find(b, e, [](const auto& x, const auto& y) { return !(x < y); }) != e) return stable_sort_lt(b, e, lt); std::sort(b, e, [&](const auto& x, const auto& y) { return lt(x, y) || (!lt(y, x) && x < y); }); }
 template <bool Same = false, class T> std::vector<T> sorted(std::vector<T> v) { sort_seq<Same>(v.begin(), v.end()); return v; }
 template <bool Same = false, class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
 template <bool Same = false, class T, size_t K> std::vector<T> sorted(const std::array<T, K>& a) { std::vector<T> v(a.begin(), a.end()); sort_seq<Same>(v.begin(), v.end()); return v; }
@@ -300,7 +303,8 @@ template <class T, size_t K> inline std::array<T, K> filled_array(const T& x) { 
 // `sort(by: key)`: each key is worked out once, in order, before any is
 // compared; equal keys keep their order.
 // A `()` key (a `by:` left at `_ => ()`) makes every key equal.
-template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
+// `Ties`: ties are broken by position, so `std::sort` gives the stable order.
+template <bool Ties = false, class S, class F> void sort_by(S& seq, F&& key, bool desc) {
     using K = std::decay_t<decltype(key(*seq.begin()))>;
     using T = typename S::value_type;
     if constexpr (std::is_void_v<K>) {
@@ -313,7 +317,10 @@ template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
     std::vector<std::pair<K, uint32_t>> keyed;
     keyed.reserve(seq.size());
     for (const auto& x : seq) keyed.emplace_back(key(x), (uint32_t)keyed.size());
-    if (desc) stable_sort_lt(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return b.first < a.first; });
+    if constexpr (Ties) {
+        if (desc) std::sort(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return b.first < a.first || (!(a.first < b.first) && a.second < b.second); });
+        else std::sort(keyed.begin(), keyed.end());
+    } else if (desc) stable_sort_lt(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return b.first < a.first; });
     else stable_sort_lt(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
     std::vector<uint32_t> order(keyed.size());
     for (size_t i = 0; i < order.size(); i++) order[i] = keyed[i].second;

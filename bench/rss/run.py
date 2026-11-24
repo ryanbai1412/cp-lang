@@ -89,6 +89,8 @@ CASES = {
     "ucrpc21f": lambda: gen("ucrpc21f"),  # dijkstra over 1e6 cells read by p[v]: no settling-order list
     "aho_corasick": lambda: aho_words(50_000, 1000),  # 56k states over 3 used letters of 26
     "row_lists": lambda: "50000 200\n",  # [Row]List<Int> made anew 200 times, as dmpg16g2 does
+    "sort_neg": lambda: ints(2_000_000),  # sort(by: i => (-a[i], i)) and (desc(a[i]), i), 2e6 positions
+    "sort_distinct": lambda: ints(1_000_000),  # sorted(I, by: i => a[i] % 1000): ties kept by position
 }
 
 

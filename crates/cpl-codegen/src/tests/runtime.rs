@@ -147,12 +147,12 @@ fn a_zero_filled_table_comes_from_calloc() {
 
 #[test]
 fn a_sort_by_holds_half_a_buffer_and_no_sorted_copy() {
-    // Keys, a u32 order and n/2 buffer cells; the permutation is applied in place.
+    // Keys beside their u32 positions, which `std::sort` orders with ties by
+    // position, so no buffer; the permutation is applied in place.
     let out = cpp(
-        "fn f(x: Int) -> Int: (x * 37) % 11\nvar xs = [5, 3, 9, 1]\nxs.sort(by: f)\nprint(xs)\n",
+        "fn f(x: Int) -> Int: (x ** 3) % 11\nvar xs = [5, 3, 9, 1]\nxs.sort(by: f)\nprint(xs)\n",
     );
-    assert!(out.contains("cpl::sort_by("), "{out}");
-    assert!(out.contains("std::vector<V> buf(b, b + n / 2)"), "{out}");
+    assert!(out.contains("cpl::sort_by<true>("), "{out}");
     assert!(out.contains("std::vector<uint32_t> order"), "{out}");
     assert!(!out.contains("std::vector<T> sorted"), "{out}");
 }
@@ -160,7 +160,8 @@ fn a_sort_by_holds_half_a_buffer_and_no_sorted_copy() {
 #[test]
 fn a_sort_by_a_cell_compares_in_place() {
     // A key read from a domain-indexed table needs no cached keys or order;
-    // one that ends in the element itself sorts unstably, as no order shows.
+    // one that ends in the element itself sorts unstably, as no order shows,
+    // and positions in order break ties by themselves.
     let src = |key: &str| {
         format!(
             "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]Int = read()\n\
@@ -171,7 +172,7 @@ fn a_sort_by_a_cell_compares_in_place() {
     assert!(unique.contains("std::sort(ord"), "{unique}");
     assert!(!unique.contains("cpl::sort_by("), "{unique}");
     let ties = cpp(&src("a[i]"));
-    assert!(ties.contains("cpl::stable_sort_lt(ord"), "{ties}");
+    assert!(ties.contains("cpl::sort_distinct(ord"), "{ties}");
     assert!(!ties.contains("cpl::sort_by("), "{ties}");
 }
 
@@ -266,4 +267,53 @@ fn a_tuple_with_a_closure_bound_part_by_part_is_never_built() {
         "print(f(k))\n",
     ));
     assert!(!cpp.contains("std::get<0>("), "{cpp}");
+}
+
+#[test]
+fn a_sort_by_negated_or_desc_cells_compares_in_place_unstably() {
+    let src = |table: &str, list: &str, key: &str| {
+        format!(
+            "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: {table}0..=99 = read()\n\
+             var ord = {list}\nord.sort(by: i => {key})\nprint(ord[0])\n"
+        )
+    };
+    for key in ["(-a[i], i)", "(desc(a[i]), i)"] {
+        let named = cpp(&src("[I]", "I.collect()", key));
+        assert!(named.contains("std::sort(ord"), "{key}: {named}");
+        assert!(!named.contains("cpl::sort_by"), "{key}: {named}");
+    }
+    // An inline range's cells: unchecked, as the judge build is, they compare in
+    // place; checked, a bad index traps once, in the keys' order.
+    let inline = src("[0..n]", "(0..n).collect()", "(-a[i], i)");
+    let build_with = |source: &str, checks| {
+        let program = super::lower(source);
+        let target = crate::Target {
+            checks,
+            ..crate::Target::default()
+        };
+        crate::emit_for(&program, "t.cp", None, &target)
+    };
+    let fast = build_with(&inline, crate::Checks::None);
+    assert!(fast.contains("std::sort(ord"), "{fast}");
+    let checked = build_with(&inline, crate::Checks::Traps);
+    assert!(checked.contains("cpl::sort_by<true>(ord"), "{checked}");
+    // A computed key is worked out once per element; a profile counts the
+    // interpreter's comparisons.
+    let arith = cpp(&src("[I]", "I.collect()", "a[i] % 1000 - a[i] / 7"));
+    assert!(arith.contains("cpl::sort_distinct(ord"), "{arith}");
+    let computed = src("[I]", "I.collect()", "a[i] / (a[i] % 7 + 1)");
+    assert!(cpp(&computed).contains("cpl::sort_by<true>(ord"));
+    let mut db = cpl_check::Session::new();
+    let cell = src("[I]", "I.collect()", "a[i]");
+    for (source, kept) in [
+        (&computed, "cpl::sort_by(ord"),
+        (&cell, "cpl::stable_sort_lt(ord"),
+    ] {
+        db.set_file("t.cp", source.as_str());
+        let analysis = db.analyze("t.cp").expect("the file was just set");
+        let program = cpl_ir::lower(&analysis).expect("lowers");
+        let (profiled, _) =
+            crate::emit_profiled(&program, "t.cp", &crate::Target::default(), "t.prof");
+        assert!(profiled.contains(kept), "{profiled}");
+    }
 }

@@ -369,6 +369,17 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// `<true>`: `sort_by` breaks ties by position and uses `std::sort`, which
+    /// gives the stable order without a buffer; a profile still counts the
+    /// interpreter's comparisons.
+    fn sort_ties(&self) -> &'static str {
+        if self.sites.is_none() {
+            "<true>"
+        } else {
+            ""
+        }
+    }
+
     pub fn sort_stmts(
         &mut self,
         place: &Place,
@@ -436,7 +447,9 @@ impl<'p> Emitter<'p> {
                     out,
                     &format!("auto {kf} = [&]({param}) -> {key_ty} {{ return {key_text}; }};"),
                 );
-                if is_cheap_pure_key(key) {
+                let traps = self.target.checks != crate::Checks::None;
+                let calls = self.sites.is_none().then_some(self.program);
+                if is_cheap_pure_key(calls, key, traps) {
                     self.need("sorted");
                     let (a, b) = (self.temp(), self.temp());
                     let cmp = turned(
@@ -453,8 +466,13 @@ impl<'p> Emitter<'p> {
                             ExprKind::Tuple(items) => items.last().is_some_and(ends_in_elem),
                             _ => ends_in_elem(key),
                         };
-                    let sort = if unique && self.sites.is_none() {
+                    // Elements whose order tells every two apart need no
+                    // stability once they are in that order (a domain's positions).
+                    let profiled = self.sites.is_some();
+                    let sort = if unique && !profiled {
                         "std::sort"
+                    } else if !profiled && ties_by_value(&elem) {
+                        "cpl::sort_distinct"
                     } else {
                         "cpl::stable_sort_lt"
                     };
@@ -465,7 +483,8 @@ impl<'p> Emitter<'p> {
                 } else {
                     self.need("sort_by");
                     let desc = desc.clone().unwrap_or_else(|| "false".to_string());
-                    self.line(out, &format!("cpl::sort_by({seq}, {kf}, {desc});"));
+                    let ties = self.sort_ties();
+                    self.line(out, &format!("cpl::sort_by{ties}({seq}, {kf}, {desc});"));
                 }
             }
             SortBy::Fn { func, is_order } => {
@@ -494,7 +513,8 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("cpl::sort_cmp({seq}, {kf}, {desc});"));
                 } else {
                     self.need("sort_by");
-                    self.line(out, &format!("cpl::sort_by({seq}, {kf}, {desc});"));
+                    let ties = self.sort_ties();
+                    self.line(out, &format!("cpl::sort_by{ties}({seq}, {kf}, {desc});"));
                 }
             }
         }
@@ -1484,6 +1504,19 @@ fn reads_a_local(e: &Expr) -> bool {
 /// True when `<` on `ty` is a total order whose ties are equal values: the
 /// derived order of integers, `Bool`, `Char`, positions, `Str` and what is
 /// made of them. `Float` (`-0.0` and `0.0`, NaN) and an `impl Ord` are not.
+/// Whether the C++ of `ty` has its own `<`, the derived order, and equal
+/// values are the same value: integers and positions, `Str`, and tuples and
+/// optionals of those. A struct has a `<` only where its order is used.
+fn ties_by_value(ty: &Ty) -> bool {
+    match ty {
+        Ty::Int | Ty::I128 | Ty::U64 | Ty::Bool | Ty::Char | Ty::Str => true,
+        Ty::Pos(_) | Ty::Bound(_) => true,
+        Ty::Opt(t) => ties_by_value(t),
+        Ty::Tuple(items) => items.iter().all(ties_by_value),
+        _ => false,
+    }
+}
+
 pub(crate) fn identity_order(program: &cpl_ir::Program, ty: &Ty, depth: usize) -> bool {
     let all = |tys: Vec<&Ty>| {
         depth < 8
