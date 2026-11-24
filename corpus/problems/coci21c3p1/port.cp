@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 3 #1 (Lampice), https://dmoj.ca/problem/coci21c3p1
+// limits: 1000 ms, 512 MB
 // Problem: n <= 50 lamp colours 1 <= a_i <= 1000 and 1 <= k <= n. Cut lamps off both ends so some
 //   pattern repeats k times in a row; print the pattern's length and the pattern (any one), or -1.
 // Solution: brute force: for every start l and pattern length len with k len lamps left, check

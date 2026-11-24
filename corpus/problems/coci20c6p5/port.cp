@@ -1,4 +1,5 @@
 // Source: COCI 2020/2021 Contest 6 P5 (Index), https://dmoj.ca/problem/coci20c6p5
+// limits: 2500 ms, 512 MB
 // Problem: n <= 2e5 papers with citation counts p_i <= 2e5, and q <= 2e5 questions l r: print
 //   the h-index of papers l..r, the largest h with at least h of them cited at least h times.
 // Solution: Mo's algorithm (blocks of sqrt n, alternating right-end order). Adding or removing a

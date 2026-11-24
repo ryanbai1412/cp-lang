@@ -1,4 +1,5 @@
 // Source: COCI '21 Contest 3 #2, Cijanobakterije, https://dmoj.ca/problem/coci21c3p2
+// limits: 1000 ms, 512 MB
 // Problem: a forest on n <= 1e5 vertices with m < n edges. Joining trees by new edges, print
 //   the most vertices a single path (chain) can have.
 // Solution: link the trees' diameters end to end, so the answer is the sum of every tree's

@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 1 P3 (Logičari), https://dmoj.ca/problem/coci21c1p3
+// limits: 1000 ms, 512 MB
 // Problem: a connected graph with n <= 1e5 vertices and n edges. Colour the fewest vertices
 //   blue so that every vertex has exactly one blue neighbour; print that count, or -1.
 // Solution: the graph is a tree plus one edge (a, b), found with a DSU. Root the tree at a

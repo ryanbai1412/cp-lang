@@ -1,4 +1,5 @@
 // Source: COCI 2020/2021 Contest 6 (Alias), https://dmoj.ca/problem/coci20c6p2
+// limits: 1000 ms, 512 MB
 // Problem: n <= 1000 words and m <= 1000 directed associations `x y t` (t <= 1e9): hearing x
 //   makes you think of y after t ms. For each of q <= 1000 queries `a b`, print the shortest
 //   time from a to b, or "Roger" if b is never reached.
