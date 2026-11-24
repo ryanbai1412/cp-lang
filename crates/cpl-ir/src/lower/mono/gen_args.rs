@@ -114,10 +114,9 @@ impl<'a> Lowerer<'a> {
                     // `M.Fold` naming a range the impl was given: `Fold.MIN` is its low end.
                     if let Some(GenArg::Ty(t)) = self.gen_env.get(owner).cloned() {
                         self.assoc_range = None;
-                        if self.assoc_type(&t, member).is_some() {
-                            if let Some(g) = self.assoc_range.take() {
-                                return g;
-                            }
+                        self.assoc_type(&t, member);
+                        if let Some(g) = self.assoc_range.take() {
+                            return g;
                         }
                     }
                     if let Some(v) = self.const_of_type(owner, member, name.span) {

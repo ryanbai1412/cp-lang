@@ -182,9 +182,7 @@ pub struct Action<T, F>(
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Action<Int, Int>.of(add, +).apply(2, 10, 3) == 16`
-    pub fn of<A: Acts<T, F>, M>(a: A, op: M) -> Action<T, F>:
-        let over = Monoid<T>.of(op)
-        a.action(over, same(op, +) or over.sums)
+    pub fn of<A: Acts<T, F>, M>(a: A, op: M) -> Action<T, F> = a.action(Monoid<T>.of(op), Monoid<T>.of(op).sums)
 
 /// What an `act:` argument is: a stock action or an `Action`, acting with tags `F` on values `T`.
 /// The impl fixes `F` from `T`, so `SegTree(+, a, act: assign)` has `?T` tags without naming them.
