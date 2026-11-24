@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 7 P5 (Egg Dropping), https://dmoj.ca/problem/yac7p5
+// limits: 7000 ms, 256 MB
 // Problem: interactive. Egg i shatters exactly from floor p[i] up, p a uniformly random
 //   permutation of 1..=n, n <= 1e4. "? e f" moves from floor c to f and drops egg e: |c - f| + 1
 //   moves, plus 20 if the direction reverses. At most 2e5 queries, then "! p"; full score needs <=
