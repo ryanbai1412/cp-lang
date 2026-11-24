@@ -53,7 +53,7 @@ var rounds: [Round, Side]List<Coin> = []
 for pair in 1..=n / 2:
     let (a, b) = (Coin(2 * pair - 1), Coin(2 * pair))
     let sides = balanced_sides(pair, q)
-    for (r, s) in zip(Round.collect(), sides):
+    for (r, s) in zip(Round, sides):
         rounds[r, s].push(a)
         rounds[r, opposite(s)].push(b)
 if n % 2 == 1:
@@ -66,7 +66,7 @@ for r in Round:
 let response: Str = read()
 var hits: [Coin]Int = 0
 var known = 0
-for (r, ch) in zip(Round.collect(), response):
+for (r, ch) in zip(Round, response):
     if let side = parse_side(ch):
         known += 1
         for c in rounds[r, side]: hits[c] += 1
