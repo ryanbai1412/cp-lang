@@ -55,7 +55,6 @@ super::msgs! {
     MONOTONE_STACK_BY_HAND = "L0584", "a monotone stack written by hand";
     NEGATED_HEAP = "L0571", "`{}` holds negated values so it pops the largest: it is a `MaxHeap`";
     NEG_MOD_FIXUP = "L0527", "`+ {}` guards against a negative remainder, which `%` never gives";
-    NESTED_LIST_GRID = "L0532", "`{}` is a list of lists for a fixed {} by {} grid";
     NEVER_TRUE_BOUNDS_CHECK = "L0307", "`{}` never holds: the declared bounds here rule it out, so what it guards never runs";
     NOOP_MOD_REDUCE = "L0308", "`{}` is `{}`: the declared bounds already put `{}` below the modulus and at least 0";
     PALINDROME_BY_HAND = "L0583", "`{}[{}]` against `{}[{} - 1 - {}]` tests whether `{}` is a palindrome";

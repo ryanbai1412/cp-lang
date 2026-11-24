@@ -11,7 +11,6 @@ mod extreme;
 mod fields;
 mod floats;
 mod found_flag;
-mod grid;
 mod hand_ds;
 mod hand_graph;
 mod hand_input;
@@ -69,7 +68,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(isqrt::check(file));
     findings.extend(found_flag::check(file));
     findings.extend(mod_reduce::check(file));
-    findings.extend(grid::check(file));
     findings.extend(floats::check(file));
     findings.extend(imports::check(file));
     findings.extend(fields::check(file));

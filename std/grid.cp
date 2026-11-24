@@ -257,6 +257,10 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// traps: never
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c); g.transposed()[C(2), R(1)] == 12`
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c); g.transposed()[C(0)].collect() == [0, 10]`
+///
+/// A grid comes from the built-in `[R, C].filled(x)` (or `let g: [R, C]Int = 0`), not a
+/// list of lists: one block, indexed `g[r, c]`.
+@lint(nested_list_grid, from: "[[c for _ in 0..m] for _ in 0..n]", to: "[n, m].filled(c)", holes: "c, m, n", builtin: "filled")
 pub fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T = [C, R] (c, r) => self[r, c]
 
 /// \(O(1)\). Every row of `g` as a view keyed by `R`: `g.rows[r]` is `g[r]` (R04b.1.12).
