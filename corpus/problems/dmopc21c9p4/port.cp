@@ -18,15 +18,14 @@ fn random_grid() -> [Row, Col]Char:
 
 let grid: [Row, Col]Char = read(gen: random_grid)
 
-// Part 1 (1-D game): repeatedly remove the leftmost heads-up coin; removing
-// a coin flips its neighbours. Returns the removal order, which covers every
-// coin iff the line can be cleared.
-fn peel<D>(start: [D]Bool) -> List<D>:
-    var up = start
+// Removing the leftmost heads coin each time clears a line whenever it can be
+// cleared; the order covers every coin iff it did.
+fn peel<D>(heads: [D]Bool) -> List<D>:
+    var flipped: [D]Bool = false
     var gone: [D]Bool = false
     var ready = Set<D>()
     for i in D:
-        if start[i]: ready.insert(i)
+        if heads[i]: ready.insert(i)
     var order: List<D> = []
     while let u = ready.min():
         ready.remove(u)
@@ -35,38 +34,32 @@ fn peel<D>(start: [D]Bool) -> List<D>:
         for nb in [u.prev, u.next]:
             if let v = nb:
                 if not gone[v]:
-                    up[v] = not up[v]
-                    if up[v]: ready.insert(v) else: ready.remove(v)
+                    flipped[v] = not flipped[v]
+                    if heads[v] != flipped[v]: ready.insert(v) else: ready.remove(v)
     order
 
 @alt(peel)
-fn peel_slow<D>(start: [D]Bool) -> List<D>:
-    var up = start
+fn peel_slow<D>(heads: [D]Bool) -> List<D>:
+    var flipped: [D]Bool = false
     var gone: [D]Bool = false
     var order: List<D> = []
-    var progress = true
-    while progress:
-        progress = false
-        for u in D:
-            if not progress and up[u] and not gone[u]:
-                gone[u] = true
-                order.push(u)
-                progress = true
-                for nb in [u.prev, u.next]:
-                    if let v = nb:
-                        if not gone[v]: up[v] = not up[v]
+    while let u = D.find(i => not gone[i] and heads[i] != flipped[i]):
+        gone[u] = true
+        order.push(u)
+        for nb in [u.prev, u.next]:
+            if let v = nb:
+                if not gone[v]: flipped[v] = not flipped[v]
     order
 
-// Part 2: a row acts like one coin that is heads iff it has an odd number of heads.
+// A row acts like one coin that is heads iff it has an odd number of heads.
 let row_heads: [Row]Bool = [Row] r => count(grid[r, c] == 'H' for c in Col) % 2 == 1
 
-// Part 3: clear rows in peel order. Removing a row flips its neighbours, so a
+// Clear rows in peel order. Removing a row flips its neighbours, so a
 // row with an even number of heads is cleared with its coins read inverted.
 let moves = [
     (r, c) for r in peel(row_heads) for c in peel([Col] c => (grid[r, c] == 'H') == row_heads[r])
 ]
 
-// Part 4: output the order only if every coin was removed.
 if moves.len == Row.len * Col.len:
     for (r, c) in moves:
         print(r, c)
