@@ -4,10 +4,11 @@ use std::io::Write;
 use std::path::Path;
 
 pub(crate) const USAGE: &str = "\
-usage: cpl vendor <file.cp>
+usage: cpl vendor <file.cp> [--json]
 
 Copies each std module the file loads, as this compiler carries it, to
-vendor/std/ beside the file, and lists them.
+vendor/std/ beside the file, and lists them; `--json` lists them as
+a `vendored` list of each module and its path.
 ";
 
 /// The std modules a check of `source` loads, by name (`\"heap\"`), and
@@ -34,7 +35,12 @@ pub(crate) fn modules(name: &str, source: &str) -> Vec<String> {
     }
 }
 
-pub(crate) fn run(file: &str, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+pub(crate) fn run(
+    file: &str,
+    json: bool,
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
     let source = match std::fs::read_to_string(file) {
         Ok(source) => source,
         Err(e) => {
@@ -47,6 +53,7 @@ pub(crate) fn run(file: &str, stdout: &mut (dyn Write + Send), stderr: &mut Stri
         .unwrap_or(Path::new(""))
         .join("vendor")
         .join("std");
+    let mut vendored = Vec::new();
     for module in modules(file, &source) {
         let Some(text) = cpl_check::bundled_std(std::slice::from_ref(&module)) else {
             *stderr += &format!("cpl: this compiler does not carry `std.{module}`\n");
@@ -61,12 +68,18 @@ pub(crate) fn run(file: &str, stdout: &mut (dyn Write + Send), stderr: &mut Stri
             *stderr += &format!("cpl: cannot write `{}`: {e}\n", path.display());
             return crate::EXIT_ERRORS;
         }
-        let _ = writeln!(
-            stdout,
-            "std.{} -> {}",
-            module.replace('/', "."),
-            path.display()
-        );
+        let name = format!("std.{}", module.replace('/', "."));
+        if !json {
+            let _ = writeln!(stdout, "{name} -> {}", path.display());
+        }
+        vendored.push(cpl_json::obj([
+            ("module", name.into()),
+            ("path", path.display().to_string().into()),
+        ]));
+    }
+    if json {
+        let report = cpl_json::obj([("vendored", cpl_json::Value::Array(vendored))]);
+        let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
     }
     0
 }
@@ -85,7 +98,7 @@ mod tests {
         .unwrap();
         let (mut out, mut err) = (Vec::new(), String::new());
         assert_eq!(
-            super::run(file.to_str().unwrap(), &mut out, &mut err),
+            super::run(file.to_str().unwrap(), false, &mut out, &mut err),
             0,
             "{err}"
         );
@@ -95,6 +108,16 @@ mod tests {
             cpl_check::bundled_std(&["heap".into()])
         );
         assert!(String::from_utf8(out).unwrap().contains("std.heap -> "));
+        let (mut out, mut err) = (Vec::new(), String::new());
+        assert_eq!(
+            super::run(file.to_str().unwrap(), true, &mut out, &mut err),
+            0
+        );
+        let json = cpl_json::parse(&String::from_utf8(out).unwrap()).unwrap();
+        let vendored = json.at(&["vendored"]).as_array().unwrap();
+        assert!(vendored
+            .iter()
+            .any(|v| v.at(&["module"]).as_str() == Some("std.heap")));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

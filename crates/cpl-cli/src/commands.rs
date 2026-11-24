@@ -98,8 +98,8 @@ pub(crate) const COMMANDS: &[Command] = &[
         name: "vendor",
         args: "<file>",
         summary: &["copy the std modules the file loads to vendor/std/"],
-        json: Json::None,
-        options: None,
+        json: Json::Flag,
+        options: Some(&["--json"]),
     },
     Command {
         name: "judges",

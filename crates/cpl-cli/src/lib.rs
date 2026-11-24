@@ -324,8 +324,12 @@ pub fn exec<S: AsRef<str>>(
                 ),
             }
         }
-        Some("vendor") => match &rest[..] {
-            [file] => vendor::run(file, stdout, stderr),
+        Some("vendor") => match rest
+            .iter()
+            .filter(|arg| **arg != "--json")
+            .collect::<Vec<_>>()[..]
+        {
+            [file] => vendor::run(file, rest.contains(&"--json"), stdout, stderr),
             _ => usage_error("`vendor` takes one file: `cpl vendor a.cp`".into()),
         },
         Some("judges") => {
