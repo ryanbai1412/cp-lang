@@ -54,5 +54,23 @@ class Limits(unittest.TestCase):
         self.assertEqual(gn.limits(str(path)), (2000, 256))
 
 
+class Measure(unittest.TestCase):
+    """`measure` reports the program's own peak memory, however much the gate holds."""
+
+    def test_a_small_program_is_small_while_the_gate_is_big(self):
+        import shutil
+        big = bytearray(300 << 20)
+        for i in range(0, len(big), 4096):
+            big[i] = 1
+        code, out, _, mb = gn.measure(shutil.which("cat"), b"hi\n", 20)
+        self.assertEqual((code, out), (0, b"hi\n"))
+        self.assertLess(mb, 50)
+        del big
+
+    def test_a_timeout_is_none(self):
+        import shutil
+        self.assertIsNone(gn.measure(shutil.which("yes"), b"", 0.2))
+
+
 if __name__ == "__main__":
     unittest.main()

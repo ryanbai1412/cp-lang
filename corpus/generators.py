@@ -38,7 +38,7 @@ data, not the port's input.
 Known findings live in corpus/generators-known.txt, which only shrinks.
 Same flags as corpus/differential.py: --check, --update, --cpl, -j.
 """
-import argparse, concurrent.futures, hashlib, json, os, re, resource, subprocess, sys, tempfile, threading, time
+import argparse, concurrent.futures, hashlib, json, os, re, signal, subprocess, sys, tempfile, threading, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import audit, differential
@@ -62,33 +62,68 @@ def limits(port):
     return (int(m.group(1)), int(m.group(2))) if m else (2000, 256)
 
 
-def unlimited_stack():
-    """The judges' stack: Codeforces gives the whole memory limit, so deep recursion at the max is legal."""
-    hard = resource.getrlimit(resource.RLIMIT_STACK)[1]
-    resource.setrlimit(resource.RLIMIT_STACK, (hard, hard))
+# Runs argv[2:] with the judges' stack (Codeforces gives the whole memory
+# limit, so deep recursion at the max is legal) and writes its peak RSS to
+# argv[1]. A child's ru_maxrss starts at its parent's RSS before exec, so the
+# program must fork from this small process, not from the gate holding inputs.
+LAUNCHER = r"""
+#include <signal.h>
+#include <stdio.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
+int main(int argc, char **argv) {
+    struct rlimit r;
+    getrlimit(RLIMIT_STACK, &r);
+    r.rlim_cur = r.rlim_max;
+    setrlimit(RLIMIT_STACK, &r);
+    pid_t p = fork();
+    if (p < 0) return 125;
+    if (p == 0) { execv(argv[2], argv + 2); _exit(127); }
+    int st;
+    struct rusage u;
+    if (wait4(p, &st, 0, &u) < 0) return 125;
+    FILE *f = fopen(argv[1], "w");
+    if (f) { fprintf(f, "%ld\n", (long)u.ru_maxrss); fclose(f); }
+    if (WIFSIGNALED(st)) { signal(WTERMSIG(st), SIG_DFL); kill(getpid(), WTERMSIG(st)); }
+    return WEXITSTATUS(st);
+}
+"""
+
+
+def launcher():
+    """The measuring launcher, built once with g++ and cached by source."""
+    exe = os.path.join(ROOT, "target", "corpus-cxx", "measure-" + hashlib.sha256(LAUNCHER.encode()).hexdigest()[:16])
+    if not os.path.exists(exe):
+        os.makedirs(os.path.dirname(exe), exist_ok=True)
+        src, tmp = f"{exe}.{os.getpid()}.{threading.get_ident()}.cpp", f"{exe}.{os.getpid()}.{threading.get_ident()}"
+        with open(src, "w") as f:
+            f.write(LAUNCHER)
+        subprocess.run(["g++", "-O2", "-o", tmp, src], check=True, capture_output=True)
+        os.remove(src)
+        os.replace(tmp, exe)
+    return exe
 
 
 def measure(exe, data, timeout):
     """(exit code, stdout, seconds, peak MB) of one run, or None on a timeout."""
-    with tempfile.TemporaryFile() as inp, tempfile.TemporaryFile() as out:
+    with tempfile.TemporaryFile() as inp, tempfile.TemporaryFile() as out, \
+            tempfile.NamedTemporaryFile("r") as peak:
         inp.write(data)
         inp.seek(0)
         start = time.perf_counter()
-        p = subprocess.Popen([exe], stdin=inp, stdout=out, stderr=subprocess.DEVNULL, preexec_fn=unlimited_stack)
-        deadline = start + timeout
-        while True:
-            pid, status, usage = os.wait4(p.pid, os.WNOHANG)
-            if pid:
-                break
-            if time.perf_counter() > deadline:
-                p.kill()
-                os.wait4(p.pid, 0)
-                return None
-            time.sleep(0.005)
+        p = subprocess.Popen([launcher(), peak.name, os.path.abspath(exe)], stdin=inp, stdout=out,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
+        try:
+            code = p.wait(timeout)
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGKILL)
+            p.wait()
+            return None
         took = time.perf_counter() - start
-        p.returncode = os.waitstatus_to_exitcode(status)
         out.seek(0)
-        return p.returncode, out.read(), took, usage.ru_maxrss / 1024
+        kb = int(peak.read() or 0) // (1024 if sys.platform == "darwin" else 1)
+        return code, out.read(), took, kb / 1024
 
 
 def checked(pid, port, cpl):
