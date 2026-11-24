@@ -4,7 +4,7 @@
   "alloc": 35400,
   "compiler_builtins": 8700,
   "core": 71100,
-  "cpl_check": 297600,
+  "cpl_check": 293700,
   "cpl_diag": 45000,
   "cpl_fmt": 12800,
   "cpl_interp": 233600,
