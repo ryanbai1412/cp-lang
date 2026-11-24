@@ -151,7 +151,9 @@ class WorkflowTest(unittest.TestCase):
             self.assertNotIn("continue-on-error", block, f"{job} must block main")
             for os_name in oses.split():
                 self.assertIn(f"{os_name}-latest", block, f"{job} must run on {os_name}")
-        self.assertIn("scripts/check.sh", job_block(ci, "gate"))
+        self.assertIn("just check", job_block(ci, "gate"))
+        with open(os.path.join(ROOT, "justfile"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"\ncheck:\n    scripts/check\.sh --fast\n")
 
     def test_every_job_has_a_timeout(self):
         for path in sorted(glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yml"))):
