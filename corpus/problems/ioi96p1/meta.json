@@ -20,5 +20,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Bottom-up [I.ranges] table; @memo(array) over I.ranges is E0311 (compiler worklog)."
+ "notes": "Bottom-up [I.ranges] table; @memo(array) over I.ranges is E0311 (compiler worklog).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "6bfa06d46806584f805bca86c68ad191232c00f0"
+ }
 }

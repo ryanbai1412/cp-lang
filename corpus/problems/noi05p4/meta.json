@@ -37,5 +37,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "@memo(array) F64 DP; table of bfs dists; min(by:) over g.out."
+ "notes": "@memo(array) F64 DP; table of bfs dists; min(by:) over g.out.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 11,
+  "sha": "43526db5a54e042dd8b20bfde8373c0853f1b006"
+ }
 }

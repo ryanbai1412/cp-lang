@@ -28,5 +28,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "PotentialDsu with an explicit head-per-root array."
+ "notes": "PotentialDsu with an explicit head-per-root array.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "b932369901a3135189ca2f5335cba6aa91d402fa"
+ }
 }
