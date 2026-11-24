@@ -66,7 +66,7 @@ Fields: `dense: List<D>`, `pos: [D]Int`.
 - `fn clear(mut self)` — \(O(1)\); Remove every element by resetting the length; the sparse table is not touched.
 - `fn each(self) -> yields D` — \(O(\mathit{len})\); Every element, in dense order: insertion order, except that each `remove` moved the then-last element into the removed one's slot.
 
-## `struct Id<T>(raw: 0..=2_000_000_000)`
+## `struct Id<T>(pub raw: 0..=2_000_000_000)`
 
 Compact 4-byte typed handle into an `Arena<T>`.
 

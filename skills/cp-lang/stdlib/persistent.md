@@ -6,6 +6,17 @@ Persistent segment tree and static range k-th smallest queries.  Each update cop
 
 Import: `use std.persistent.{...}`.
 
+## `struct PArena<T>`
+
+An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte `Id<T>`, and a node never changes after it is allocated, so every version that shares it stays valid.
+
+- `fn new(cap: Int = 0) -> PArena<T>` — \(O(\mathit{cap})\); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
+- `@get fn len(self) -> Int` — \(O(1)\); The number of nodes allocated; valid handles have raw values `0..len`.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no node is allocated; `len == 0`.
+- `fn alloc(mut self, x: T) -> Id<T>` — \(O(1)\) amortized; Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.; traps: when the arena already holds `2_000_000_001` nodes
+- `fn get(self, id: Id<T>) -> T` — \(O(1)\); The node behind `id`.; traps: when `id` is not below `len`, so a handle from another arena that is out of range
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\); Allocate room for at least `cap` nodes in total; changes no handle or node.; traps: when `cap < 0`
+
 ## `struct Version(root: Int)`
 
 Opaque version handle for `PersistentSegTree`.
@@ -67,15 +78,15 @@ Fields: `val: List<T>`.
 
 ## `struct PMultiset<D>`
 
-\(O(\log \lvert D \rvert)\) per update.
+A hashed persistent multiset over domain `D`, an immutable value whose nodes live in a `PArena<PMultiset<D>>` the caller holds and passes to every call that reads or adds nodes.
 
-Fields: `root: Int`.
-
-- `fn empty() -> PMultiset<D>` — \(O(1)\); The empty multiset over `D`.
-- `fn with(self, x: D) -> PMultiset<D>` — \(O(\log \lvert D \rvert)\) time and memory; A new multiset with one more copy of `x`; `self` is unchanged.; traps: when `x` is not in `D`
-- `fn without(self, x: D) -> PMultiset<D>` — \(O(\log \lvert D \rvert)\) time and memory; A new multiset with one copy of `x` removed, or equal to `self` when `x` is absent; `self` is unchanged.; traps: when `x` is not in `D`
-- `fn count(self, x: D) -> Int` — \(O(\log \lvert D \rvert)\); The number of copies of `x`.; traps: when `x` is not in `D`
-- `fn cmp(self, other: PMultiset<D>, desc: Bool = false) -> Int` — \(O(\log \lvert D \rvert)\); Compare the elements of `self` and `other` as sorted sequences, lexicographically: ascending, or largest first with `desc: true`.
+- `fn empty() -> PMultiset<D>` — \(O(1)\); The empty multiset over `D`; it needs no arena node.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of elements, counting copies.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the multiset has no element.
+- `fn with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>` — \(O(\log \lvert D \rvert)\) time and arena nodes; A new multiset with one more copy of `x`; `self` is unchanged.; traps: when `x` is not in `D`
+- `fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>` — \(O(\log \lvert D \rvert)\) time and arena nodes; A new multiset with one copy of `x` removed, or `self` when `x` is absent; `self` is unchanged.; traps: when `x` is not in `D`
+- `fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int` — \(O(\log \lvert D \rvert)\); The number of copies of `x`.; traps: when `x` is not in `D`
+- `fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int` — \(O(\log \lvert D \rvert)\); Compare the elements of `self` and `other` as sorted sequences, lexicographically: ascending, or largest first with `desc: true`.
 
 ## Example
 
