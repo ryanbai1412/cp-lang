@@ -16,13 +16,14 @@ for k in range(t):
     for i in idx: cls.setdefault(i, r.randrange(classes))
     by = {}
     for i in cls: by.setdefault(cls[i], []).append(i)
+    keys = list(by)
     rows = []
     for _ in range(n):
         i = r.choice(idx)
         if r.random() < 0.7 or classes == 1:
             rows.append((i, r.choice(by[cls[i]]), 1))
         else:
-            c = r.choice([c for c in by if c != cls[i]] or [cls[i]])
+            c = r.choice(keys)
             rows.append((i, r.choice(by[c]), 0 if c != cls[i] else 1))
     if (k % 2 if MAX else r.random() < 0.4):
         i = r.choice(idx); rows[r.randrange(n)] = (i, r.choice(by[cls[i]]), 0)

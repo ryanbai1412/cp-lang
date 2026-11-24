@@ -5,22 +5,13 @@
 // Solution: compress the indices, unite the two sides of every equality in a Dsu, then check
 //   that no inequality has both sides in one class. O(n log n) per instance.
 // original: corpus/submissions/3775616.cpp
+// Bounds: q: 1..=1e5; cons.i, cons.j: 1..=1e9; cons.e: 0..=1
 
 @multitest
-let q: Int = read()
-var rules: List<(a: Int, b: Int, same: Bool)> = []
-var raw: List<Int> = []
-for _ in 0..q:
-    let (i, j, e): (Int, Int, Int) = read()
-    raw.push(i)
-    raw.push(j)
-    rules.push((a: i, b: j, same: e == 1))
-
-let (domain Var, vars) = compress(raw)
-var cls = Dsu<Var>()
-for r in rules:
-    if r.same: cls.unite(vars.index_of(r.a), vars.index_of(r.b))
-let ok = rules.filter(r => not r.same).all(
-    r => not cls.same(vars.index_of(r.a), vars.index_of(r.b))
-)
-print(if ok: "YES" else: "NO")
+let q: 1..=1e5 = read()
+let cons = read<[q](i: 1..=1e9, j: 1..=1e9, e: 0..=1)>()
+let (domain X, ids) = compress(cons.flat_map(c => [c.i, c.j]))
+let at = (v: Int) => ids.index_of(v)
+var eq = Dsu<X>()
+for c in cons if c.e == 1: eq.unite(at(c.i), at(c.j))
+print(yes(cons.filter(c => c.e == 0).all(c => not eq.same(at(c.i), at(c.j))), answers: ("YES", "NO")))

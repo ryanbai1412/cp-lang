@@ -9,109 +9,67 @@
 //   pillar and the empty one; then two mixed pillars with the same bottom kind are merged so one
 //   becomes pure (the empty pillar may change), until at most two mixed ones are left and one
 //   swap fixes them. Recurse on the pillars by bottom kind. O(n m log n) moves.
-// Uses top-level recursive fn (working around cpl-emit recursive nested-fn self-capture bug).
+// Bounds: n: 2..=50; m: 2..=400; tube: 1..=n
 // original: corpus/submissions/5445674.cpp
+let (n, m) = read<(2..=50, 2..=400)>()
+domain Tube = 1..=n + 1
+var tube = [Tube] t => if t.label <= n: read<[m]1..=n>().collect() else: List()
+var moves = List<(Tube, Tube)>()
+var spare = Tube.last!
 
-fn ri() -> Int:
-    let x: Int = read()
-    return x
+fn mv(from: Tube, to: Tube, count: Int = 1):
+    for _ in 0..count:
+        tube[to].push(tube[from].pop()!)
+        moves.push((from, to))
 
-var g_n = 0
-var g_m = 0
-var g_stks: List<List<Int>> = []
-var g_mu: List<0..=50> = []  // pillar indices, n + 1 <= 51 of them
-var g_mv: List<0..=50> = []
-var g_empty = 0
+fn split(mut given: List<Tube>, lo: Int, hi: Int):
+    if lo == hi:
+        return
+    let mid = (lo + hi) / 2
+    fn low(t: Tube) -> Int = tube[t].count(c => c <= mid)
+    fn high_bottom(t: Tube) -> Bool = tube[t].first! > mid
+    fn mixed(t: Tube) -> Bool = 0 < low(t) < m
+    fn bottoms(t: Tube) -> Int = if high_bottom(t): m - low(t) else: low(t)
 
-fn transfer(u: Int, v: Int, cnt: Int):
-    for _ in 0..cnt:
-        g_mu.push(u)
-        g_mv.push(v)
-        let x = g_stks[u].pop()!
-        g_stks[v].push(x)
-
-fn cnt_lo(p: Int, mid: Int) -> Int = g_stks[p].count(x => x <= mid)
-
-fn is_pure(p: Int, mid: Int) -> Bool:
-    let c0 = cnt_lo(p, mid)
-    return c0 == 0 or c0 == g_m
-
-fn solve_range(cols: List<Int>, ql: Int, qr: Int):
-    if ql == qr: return
-    let mid = (ql + qr) / 2
-    for a in cols:
-        let c0 = cnt_lo(a, mid)
-        let c1 = g_m - c0
-        let helper = first(p for p in 0..=g_n if p != a and p != g_empty)!
-        transfer(helper, g_empty, c0)
-        var idx = g_m - 1
-        while idx >= 0:
-            if g_stks[a][idx] > mid: transfer(a, g_empty, 1)
-            else: transfer(a, helper, 1)
-            idx -= 1
-        if c0 > c1:
-            transfer(helper, a, c0)
-            transfer(g_empty, a, c1)
+    // each tube: the larger half goes to the bottom, the other on top
+    for a in given:
+        let helper = Tube.find(t => t != a and t != spare)!
+        let lows = low(a)
+        mv(helper, spare, lows)
+        for _ in 0..m:
+            mv(a, if tube[a].last! > mid: spare else: helper)
+        if lows > m - lows:
+            mv(helper, a, lows); mv(spare, a, m - lows)
         else:
-            transfer(g_empty, a, c1)
-            transfer(helper, a, c0)
-        transfer(g_empty, helper, c0)
+            mv(spare, a, m - lows); mv(helper, a, lows)
+        mv(spare, helper, lows)
 
-    var cur_cols: List<Int> = cols.collect()
+    // two mixed tubes with the same bottom half pour the tops off and fill one with bottoms
+    while let (a, b) = given.pairs().find(p => mixed(p.0) and mixed(p.1) and high_bottom(p.0) == high_bottom(p.1)):
+        let (a0, b0) = (bottoms(a), bottoms(b))
+        mv(a, spare, m - a0); mv(b, spare, m - b0)
+        mv(b, a, m - a0)
+        let (left, poured) = (a0 + b0 - m, 2 * m - a0 - b0)
+        if left > poured:
+            mv(spare, b, poured)
+        else:
+            mv(b, spare, left)
+            given = [if t == b: spare else: t for t in given]
+            spare = b
 
-    while true:
-        var changed = false
-        for i in 0..cur_cols.len:
-            for j in 0..cur_cols.len:
-                let a = cur_cols[i]
-                let b = cur_cols[j]
-                if a == b or is_pure(a, mid) or is_pure(b, mid): continue
-                let bot_a = g_stks[a][0] > mid
-                let bot_b = g_stks[b][0] > mid
-                if bot_a != bot_b: continue
-                changed = true
-                let a0 = if bot_a: g_m - cnt_lo(a, mid) else: cnt_lo(a, mid)
-                let a1 = g_m - a0
-                let b0 = if bot_a: g_m - cnt_lo(b, mid) else: cnt_lo(b, mid)
-                let b1 = g_m - b0
-                transfer(a, g_empty, a1)
-                transfer(b, g_empty, b1)
-                transfer(b, a, g_m - a0)
-                let rem0 = a0 + b0 - g_m
-                let rem1 = a1 + b1
-                if rem0 > rem1:
-                    transfer(g_empty, b, rem1)
-                else:
-                    transfer(b, g_empty, rem0)
-                    swap(mut cur_cols[j], mut g_empty)
-        if not changed: break
-
-    let rest = [a for a in cur_cols if not is_pure(a, mid)]
+    // at most one mixed pair is left, with different bottoms: trade their tops
+    let rest = [t for t in given if mixed(t)]
     if rest.len > 0:
-        var a = rest[0]
-        var b = rest[1]
-        if g_stks[a][0] > mid:
-            swap(mut a, mut b)
-        let a1 = g_m - cnt_lo(a, mid)
-        transfer(a, g_empty, a1)
-        transfer(b, a, cnt_lo(b, mid))
-        transfer(g_empty, b, a1)
+        let (a, b) = if high_bottom(rest[0]): (rest[1], rest[0]) else: (rest[0], rest[1])
+        let highs = m - low(a)
+        mv(a, spare, highs); mv(b, a, low(b)); mv(spare, b, highs)
+    var lows = [t for t in given if not high_bottom(t)]
+    var highs = [t for t in given if high_bottom(t)]
+    split(mut lows, lo, mid)
+    split(mut highs, mid + 1, hi)
 
-    var left_cols: List<Int> = []
-    var right_cols: List<Int> = []
-    for a in cur_cols:
-        if g_stks[a][0] <= mid: left_cols.push(a)
-        else: right_cols.push(a)
-    solve_range(left_cols, ql, mid)
-    solve_range(right_cols, mid + 1, qr)
-
-g_n = ri()
-g_m = ri()
-for _ in 0..g_n + 1: g_stks.push([])
-for i in 0..g_n:
-    for _ in 0..g_m: g_stks[i].push(ri() - 1)
-g_empty = g_n
-let init_cols: List<Int> = (0..g_n).collect()
-solve_range(init_cols, 0, g_n - 1)
-print(g_mu.len)
-for i in 0..g_mu.len: print(g_mu[i] + 1, g_mv[i] + 1)
+var tubes = Tube.take(n).collect()
+split(mut tubes, 1, n)
+print(moves.len)
+for (a, b) in moves:
+    print(a, b)

@@ -34,10 +34,9 @@ for t in Time:
 var stacks: [Stack]Deque<Time> = [Stack] _ => Deque()  // deal times, bottom first
 var home: [Card]?Stack = None
 var script: List<Move> = []
-var empty = Bitset<Stack>.new()
+var empty = Bitset<Stack>.full()
 var single = Bitset<Stack>.new()
 var ripe = Bitset<Stack>.new()  // two cards, and the bottom one leaves first
-for s in Stack: empty.add(s)
 
 fn top(s: Stack) -> ?Card = stacks[s].last.map(t => deck[t])
 fn leaves(t: Time) -> Time = twin[t]!
