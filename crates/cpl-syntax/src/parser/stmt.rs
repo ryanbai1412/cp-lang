@@ -550,8 +550,21 @@ impl<'a> Parser<'a> {
             T::Use => self.use_decl(),
             T::While => {
                 self.bump();
-                let cond = self.cond();
-                let body = self.colon_block("the `while` condition");
+                let countdown = self.c_countdown();
+                let cond = match countdown {
+                    Some((whole, ..)) => Cond::Expr(Expr {
+                        kind: ExprKind::Error,
+                        span: self.rel(whole),
+                    }),
+                    None => self.cond(),
+                };
+                let body = match countdown {
+                    Some((.., ":", _)) => self.block("the `while` condition"),
+                    _ => self.colon_block("the `while` condition"),
+                };
+                if let Some(header) = countdown {
+                    self.c_countdown_report(header);
+                }
                 let else_body = self.loop_else();
                 StmtKind::While {
                     cond,
@@ -1184,7 +1197,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        let body = match c_style && !matches!(self.peek(), T::Colon | T::Newline | T::LBrace) {
+        let body = match c_style && !matches!(self.peek(), T::Colon | T::LBrace) {
             true => self.block("the `for` header"),
             false => self.colon_block("the `for` header"),
         };

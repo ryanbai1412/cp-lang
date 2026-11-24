@@ -1265,9 +1265,9 @@ impl<'a> Parser<'a> {
         )
         .with_help("loop over a range: `for i in 0..n:`");
         let (name, range) = counted(&parts);
-        // `for (..) x`, C's one-line body: the fix adds the `:` too.
+        // C's body with no braces, on the line or under it: the fix adds the `:`.
         let colon = match self.tokens.get(end).map(|t| t.kind) {
-            Some(T::Colon | T::Newline | T::LBrace) => "",
+            Some(T::Colon | T::LBrace) => "",
             _ => ":",
         };
         if let (Some(name), Some(range)) = (name, range) {
@@ -1285,6 +1285,48 @@ impl<'a> Parser<'a> {
                 span: whole,
             },
         ))
+    }
+
+    /// `while (n--)`, C's count-down loop, after the `while`: the header's
+    /// span, the counter, the `:` a one-line body needs, and where the body
+    /// starts. `c_countdown_report` reports it once the body is read.
+    pub(super) fn c_countdown(&mut self) -> Option<(Span, &'a str, &'static str, usize)> {
+        let kinds = [T::LParen, T::Ident, T::Minus, T::Minus, T::RParen];
+        let toks = self.tokens.get(self.pos..self.pos + 5)?;
+        if !toks.iter().zip(kinds).all(|(t, k)| t.kind == k) {
+            return None;
+        }
+        let whole = Span::new(self.tokens[self.pos - 1].span.start, toks[4].span.end);
+        let name = toks[1].span.text(self.src);
+        self.pos += 5;
+        let colon = match self.peek() {
+            T::Colon | T::LBrace => "",
+            _ => ":",
+        };
+        Some((whole, name, colon, self.pos))
+    }
+
+    /// One error for `while (n--)`. The fix is `for _ in 0..n` when the body
+    /// never reads `n`; a body that does sees it counted down, so it gets help.
+    pub(super) fn c_countdown_report(&mut self, header: (Span, &str, &str, usize)) {
+        let (whole, name, colon, body) = header;
+        let reads = self.tokens[body..self.pos]
+            .iter()
+            .any(|t| t.kind == T::Ident && t.span.text(self.src) == name);
+        let whole = self.rel(whole);
+        let diag = Diagnostic::error(
+            codes::REMOVED_SYNTAX,
+            whole,
+            format!("CP Lang has no `{name}--`: a loop that runs `{name}` times is a `for`"),
+        );
+        self.recovered(match reads {
+            false => diag
+                .with_help(format!("loop over a range: `for _ in 0..{name}:`"))
+                .with_fix("loop over the range", whole, format!("for _ in 0..{name}{colon}")),
+            true => diag.with_help(format!(
+                "the body reads `{name}`: write `while {name} > 0:` and start the body with `{name} -= 1`"
+            )),
+        });
     }
 
     /// `case 1:` or `default:` opening a `match` arm, as a `switch` writes
