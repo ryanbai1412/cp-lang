@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import types
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -282,10 +283,11 @@ class AtMax(unittest.TestCase):
     def findings(self, safe, mine, theirs=(0, b"1\n", 0.05, 10), limits=(2000, 256)):
         results = iter([safe, mine, mine, mine, theirs, theirs, theirs])
         for name, fake in (("measure", lambda exe, data, t: next(results)), ("checked", lambda *a: "safe"),
-                           ("limits", lambda port: limits), ("agrees", lambda d, data, got, want: got == want)):
+                           ("limits", lambda port: limits)):
             self.addCleanup(setattr, corpus, name, getattr(corpus, name))
             setattr(corpus, name, fake)
-        return corpus.at_max("p", "d", "port.cp", "cpl", "exe", "orig", b"")
+        pkg = types.SimpleNamespace(id="p", port="port.cp", checker=None)
+        return corpus.at_max(pkg, "cpl", "exe", "orig", b"")
 
     def test_a_fast_matching_run_is_no_finding(self):
         self.assertEqual(self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10)), [])

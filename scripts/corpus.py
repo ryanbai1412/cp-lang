@@ -710,8 +710,9 @@ def checked(pid, port, cpl):
             os.remove(cpp)
 
 
-def at_max(pid, d, port, cpl, exe, orig, data):
+def at_max(pkg, cpl, exe, orig, data):
     """The findings of the max input: it passes the checked C++, fits the limits, matches the accepted C++."""
+    pid, port = pkg.id, str(pkg.port)
     ms, mb = limits(port)
     found = []
     safe = checked(pid, port, cpl)
@@ -731,7 +732,7 @@ def at_max(pid, d, port, cpl, exe, orig, data):
     if orig:
         wants = [measure(orig, data, 4 * ms / 1000 + 1) for _ in range(3)]
         if all(w is not None and w[0] == 0 for w in wants):
-            if not agrees(Package.at(d), data, runs[0][1], wants[0][1]):
+            if not agrees(pkg, data, runs[0][1], wants[0][1]):
                 found.append(f"disagrees {pid} --max")
             mine, theirs = min(r[2] for r in runs), min(w[2] for w in wants)
             if mine >= FLOOR and mine > SLOWER * max(theirs, FLOOR):
@@ -755,7 +756,7 @@ def check_max(pkg, ctx):
         return [f"invalid-input {pkg.id} --max"]
     ref = pkg.reference()
     orig = built(ref) if ref else None
-    return at_max(pkg.id, str(pkg.dir), str(pkg.port), ctx.cpl, exe, orig, data)
+    return at_max(pkg, ctx.cpl, exe, orig, data)
 
 
 def check_size(pkg, ctx):
