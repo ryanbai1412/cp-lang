@@ -1,4 +1,5 @@
 // Source: EGOI 2023 Day 1 P1 (Inflation), https://dmoj.ca/problem/egoi23p1
+// limits: 3000 ms, 1024 MB
 // Problem: N <= 3e5 prices p_i <= 1e6, then Q <= 1e5 days, each "INFLATION x" (add x to every
 //   price) or "SET x y" (every price equal to x becomes y), x, y <= 1e6. After each day print
 //   the sum of all prices (needs 64 bits).

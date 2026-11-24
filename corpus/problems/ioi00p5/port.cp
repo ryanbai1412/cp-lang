@@ -1,4 +1,5 @@
 // Source: IOI 2000 (Post Office), https://dmoj.ca/problem/ioi00p5
+// limits: 1000 ms, 16 MB
 // Problem: V <= 300 villages at distinct positions <= 1e4 on a line. Build P <= 30 post
 //   offices in villages, minimising the sum of each village's distance to its nearest office.
 //   Print the sum, then the office positions in increasing order.

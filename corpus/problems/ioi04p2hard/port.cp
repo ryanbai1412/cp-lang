@@ -1,4 +1,5 @@
 // Source: IOI 2004 P2 (Hermes, hard), https://dmoj.ca/problem/ioi04p2hard
+// limits: 3000 ms, 1024 MB
 // Problem: from (0, 0), Hermes visits n <= 1e6 junctions (x_i, y_i) in order (|coords| <=
 //   1e9), but serving one only needs reaching its row y = y_i or its column x = x_i. Print
 //   the least total walking distance.

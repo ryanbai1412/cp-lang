@@ -1,4 +1,5 @@
 // Source: EGOI 2023 Day 2 (Carnival General), https://dmoj.ca/problem/egoi23p5
+// limits: 1000 ms, 1024 MB
 // Problem: generals 0..n-1 (n <= 1000); general i ranks 0..i-1 from best to worst. Line them
 //   all up so that for neighbours i < j, i is not strictly in the worse half of j's ranking.
 //   Print any such order.

@@ -1,4 +1,5 @@
 // Source: IOI 2001 Day 1 P3 (Twofive), https://dmoj.ca/problem/ioi01p3
+// limits: 100 ms, 32 MB
 // Problem: words are the 25 letters A..Y written row by row in a 5x5 grid with every row and
 //   column increasing, numbered from 1 in lexicographic order (fewer than 2^31 of them). Given
 //   "W" and a word print its number; given "N" and a number print that word.
