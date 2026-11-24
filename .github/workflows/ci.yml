@@ -38,6 +38,9 @@ jobs:
       matrix:
         part: [checks, corpus, fmt, "conform:conformance+spec-blocks", "conform:diff@1/5", "conform:diff@2/5", "conform:diff@3/5", "conform:diff@4/5", "conform:diff@5/5", "conform:corpus+docs", "tests:doc"]
     timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: write  # scripts/ci_cache_prune.py deletes superseded caches
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-rust
@@ -176,6 +179,18 @@ jobs:
         with:
           path: target
           key: ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+      # The entries this job's saves superseded go now, not at the next prune:
+      # a run's saves and its parent's together pushed the repo past 14 GB.
+      - name: Delete the caches this job's saves superseded
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          uv run --quiet python scripts/ci_cache_prune.py
+          --family-of "cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}"
+          --family-of "corpus-tests-${{ github.run_id }}"
+          --family-of "conform-prev-${{ matrix.part }}-${{ github.run_id }}"
+          --family-of "${{ env.TARGET_KEY }}-clippy-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}"
 
   # The workspace test binaries, compiled once per run into a nextest archive
   # (ci/R36): six shards each compiling the same binaries cost about 2.5 min
@@ -183,6 +198,9 @@ jobs:
   tests-build:
     name: tests (build)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # scripts/ci_cache_prune.py deletes superseded caches
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -216,6 +234,16 @@ jobs:
         with:
           path: target
           key: ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+      - uses: astral-sh/setup-uv@v6
+      # The entries this job's saves superseded go now, not at the next prune:
+      # a run's saves and its parent's together pushed the repo past 14 GB.
+      - name: Delete the caches this job's saves superseded
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          uv run --quiet python scripts/ci_cache_prune.py
+          --family-of "${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}"
 
   # The workspace tests (without the --full ones) in twelve nextest
   # partitions, run from tests-build's archive with no compile.
@@ -579,6 +607,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: cpl-build
     timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: write  # scripts/ci_cache_prune.py deletes superseded caches
     strategy:
       fail-fast: false
       matrix:
@@ -639,6 +670,15 @@ jobs:
             target/corpus-generators
             target/corpus-tests
           key: acceptance-${{ matrix.shard }}-${{ github.run_id }}
+      # The entries this job's saves superseded go now, not at the next prune:
+      # a run's saves and its parent's together pushed the repo past 14 GB.
+      - name: Delete the caches this job's saves superseded
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          uv run --quiet python scripts/ci_cache_prune.py
+          --family-of "acceptance-${{ matrix.shard }}-${{ github.run_id }}"
 
   corpus-audit:
     # handbook/guidelines/problem-packages-checklist.md R1-R4, compiling and
@@ -647,6 +687,9 @@ jobs:
     # stays near 4 min and no package is skipped.
     name: corpus packages pass the audit (${{ matrix.shard }}/8)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # scripts/ci_cache_prune.py deletes superseded caches
     needs: cpl-build
     timeout-minutes: 15
     strategy:
@@ -694,6 +737,15 @@ jobs:
         with:
           path: ~/.cache/cpl/cxx/corpus
           key: corpus-audit-cxx-${{ matrix.shard }}-${{ github.run_id }}
+      # The entries this job's saves superseded go now, not at the next prune:
+      # a run's saves and its parent's together pushed the repo past 14 GB.
+      - name: Delete the caches this job's saves superseded
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          uv run --quiet python scripts/ci_cache_prune.py
+          --family-of "corpus-audit-cxx-${{ matrix.shard }}-${{ github.run_id }}"
 
   site:
     name: site build
@@ -794,6 +846,15 @@ jobs:
         with:
           path: target
           key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+      # The entries this job's saves superseded go now, not at the next prune:
+      # a run's saves and its parent's together pushed the repo past 14 GB.
+      - name: Delete the caches this job's saves superseded
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          uv run --quiet python scripts/ci_cache_prune.py
+          --family-of "${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}"
 
   site-browser:
     # handbook/guidelines/site-checklist.md site/R6, site/R7: the browser
