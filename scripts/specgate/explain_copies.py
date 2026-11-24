@@ -28,6 +28,7 @@ CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "
 NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*")
 BUILT = re.compile(r"(?<![\w:.])(\w+)\((cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)(?!>)")
 REF_FN = re.compile(r"^(?:template <[^>]*> )?(?:inline |static )*const [^=(]*& (\w+)\(.*\{$")
+BRACED = re.compile(r"(?<![\w:.])(cpl_cl\d+)\{([A-Za-z_]\w*)\}")
 CALL = re.compile(r"(\w+)\(.*\)")
 PARAM = re.compile(r"(?:std::vector<|std::map<|std::set<|std::unordered_map<|std::deque<|std::string)[^();{}=]*?[&\s](\w+)\s*[,)]")
 ARRAY = re.compile(r"std::array<[^;()]*?>&? (\w+)\s*[=;,)]")
@@ -36,7 +37,8 @@ STRUCT = re.compile(r"^struct (\w+)\s*\{")
 
 
 def container_structs(cpp):
-    """Structs that hold a container field, directly or through another such struct."""
+    """Structs that hold a container field, directly or through another such struct;
+    a method's return type is not a field."""
     bodies, name = {}, None
     for line in cpp.splitlines():
         line = line.strip()
@@ -45,8 +47,8 @@ def container_structs(cpp):
             bodies[name] = []
         elif name and line.startswith("}"):
             name = None
-        elif name:
-            bodies[name].append(line)
+        elif name and "(" not in line:
+            bodies[name].append(line.removeprefix("mutable "))
     holders, grew = set(), True
     while grew:
         grew = False
@@ -331,6 +333,8 @@ def deep_copies(cpp):
     copies spelled as a constructor call or `cpl::to_list`, tuples holding a
     container copied from places, a container assigned from a place, and
     optionals of heap values copied from places, parts returned by value;
+    a closure struct braced from a held name (`cpl_cl5{ew}` owns `ew`); a
+    lambda's `auto&&` params keep the types they were passed;
     the runtime's own lines are skipped. The names a fn holds as containers
     are its own: a scalar of the same name in another fn is not one."""
     count = len(COPY.findall(program(cpp)))
@@ -350,7 +354,7 @@ def deep_copies(cpp):
         line = raw.strip()
         decl = line.removeprefix("const ")
         if "](" in line and line.endswith("{"):
-            types.update(params(line[line.index("](") :]))
+            types.update((n, t) for n, t in params(line[line.index("](") :]).items() if t != "auto")
         if t := typed(decl):
             init = decl.removesuffix(";").partition(" = ")[2]
             aliased = part_type(init, types, fields) if t[1] == "auto" and init else None
@@ -383,6 +387,7 @@ def deep_copies(cpp):
         from_ = part_type(rhs[:-1], types, fields) if place else None
         if eq and rhs.endswith(";") and NAME.fullmatch(lhs) and (stored(into, owners) and (place or copied(rhs[:-1])) or stored(from_, owners)):
             count += 1
+        count += sum(m.group(1) in holders and m.group(2) in held for m in BRACED.finditer(line))
         for caps in CAPTURES.findall(line):
             for cap in re.split(r"\s*,\s*", caps):
                 name, eq, src = cap.partition("=")

@@ -66,7 +66,7 @@ fn program_lines(cpp: &str) -> impl Iterator<Item = &str> {
 }
 
 /// The structs that hold a container field, directly or through another
-/// such struct. Mirrors `container_structs` in
+/// such struct; a method's return type is not a field. Mirrors `container_structs` in
 /// scripts/specgate/explain_copies.py.
 fn container_structs(cpp: &str) -> std::collections::BTreeSet<String> {
     let mut bodies: Vec<(String, Vec<&str>)> = Vec::new();
@@ -82,7 +82,8 @@ fn container_structs(cpp: &str) -> std::collections::BTreeSet<String> {
             open = true;
         } else if open && line.starts_with('}') {
             open = false;
-        } else if open {
+        } else if open && !line.contains('(') {
+            let line = line.strip_prefix("mutable ").unwrap_or(line);
             bodies.last_mut().unwrap().1.push(line);
         }
     }
@@ -718,7 +719,25 @@ fn constructed_copies(cpp: &str) -> usize {
                         .is_some_and(|end| place_arg(&rest[end + 1..]))
                 })
                 .count();
-            held + line.matches("cpl::to_list(").count()
+            // A closure struct braced from a name, `cpl_cl5{ew}`, owns its copy.
+            let closure = line
+                .match_indices("cpl_cl")
+                .filter(|&(at, _)| {
+                    let rest = &line[at + "cpl_cl".len()..];
+                    let digits =
+                        rest.len() - rest.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+                    holders.contains(&line[at..at + "cpl_cl".len() + digits])
+                        && rest[digits..]
+                            .strip_prefix('{')
+                            .and_then(|r| r.split_once('}'))
+                            .is_some_and(|(arg, _)| {
+                                arg.starts_with(|c: char| c.is_alphabetic() || c == '_')
+                                    && arg.chars().all(|c| c.is_alphanumeric() || c == '_')
+                            })
+                })
+                .count();
+            held + closure
+                + line.matches("cpl::to_list(").count()
                 + line.matches("cpl::to_str(").count()
                 + sorted
                 + built
@@ -902,6 +921,11 @@ fn explain_lists_the_copies_the_judge_cpp_makes() {
 /// Cases whose copies explain once miscounted, against the C++ for the
 /// judge.
 const CASES: &[&str] = &[
+    "core-02/long-str-literal-is-shared-and-copied-on-write.cp",
+    "std-models/graph-paths.cp",
+    "std-models/seq-order.cp",
+    "std-models/seq-views.cp",
+    "traits/Random/Perm--gen.cp",
     "core-05/let-of-a-lend-keeps-its-value-when-the-source-changes.cp",
     "std-persistent/parena-handles-stay-valid.cp",
     "std-tree/centroids-doc-tree.cp",

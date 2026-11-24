@@ -256,7 +256,9 @@ class GatesTest(unittest.TestCase):
                     "struct B {\n  cpl::Row<cpl::u64, 1> w;\n};\nvoid f(std::vector<B>& out, const B& b) {\n  out[0] = b;\n}",
                     "void f() {\n  auto g = [&c_3 = c_2](const std::vector<ll>& m) mutable -> void {\n    c_3 = m;\n  };\n}",
                     "void f(std::vector<std::string>& out) {\n  static std::vector<std::string> t2;\n  auto& r = t2;\n  out[0] = r[c[0]];\n}",
-                    "void f(const std::vector<std::vector<int>>& adj) {\n  auto g = [&adj](int u) mutable -> std::vector<int> {\n    return adj[u];\n  };\n}"):
+                    "void f(const std::vector<std::vector<int>>& adj) {\n  auto g = [&adj](int u) mutable -> std::vector<int> {\n    return adj[u];\n  };\n}",
+                    "struct M {\n  std::vector<std::string> keys;\n};\nll ins(M& self, const std::string& x) {\n  return [&](auto&& self, auto&& x) -> ll {\n    self.keys[0] = x;\n  }(self, x);\n}",
+                    "struct cpl_cl5 {\n  mutable std::vector<ll> c0;\n};\nvoid f() {\n  std::vector<ll> ew = g();\n  h(cpl_cl5{ew});\n}"):
             self.assertEqual(ec.deep_copies(cpp + "\n"), 1, cpp)
         self.assertEqual(ec.deep_copies("auto b = std::vector<int64_t>(a);\n"), 1)
         for line in ("a2 = std::array<ll, 4>(a);", "u = std::set<ll>(a);", "a = cpl::sorted(a);",
