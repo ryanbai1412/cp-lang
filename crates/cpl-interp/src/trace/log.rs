@@ -452,23 +452,24 @@ impl Log {
     }
 
     /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their
-    /// values. `renamed` when `names` differs from the last call's.
+    /// values (their names are not read). `renamed` when `names` differs
+    /// from the last call's.
     #[inline]
-    pub fn locals_ints(&mut self, names: &str, renamed: bool, values: &[i64]) {
+    pub fn locals_ints(&mut self, names: &str, renamed: bool, values: &[(&str, i64)]) {
         let named = match &self.int_names {
             Some((_, text)) if !renamed => *text,
             _ => self.int_names(names),
         };
         if self.now.locals == Locals::Ints(named) && self.now.local_ints.len() == values.len() {
             let (mut changed, mut small) = (0, true);
-            for (k, (now, &v)) in self.now.local_ints.iter().zip(values).enumerate() {
+            for (k, (now, &(_, v))) in self.now.local_ints.iter().zip(values).enumerate() {
                 if *now != v {
                     changed += 1;
                     small &= u16::try_from(k).is_ok() && i32::try_from(v).is_ok();
                 }
             }
             if small && changed <= 1 + values.len() / 2 {
-                for (k, (now, &v)) in self.now.local_ints.iter_mut().zip(values).enumerate() {
+                for (k, (now, &(_, v))) in self.now.local_ints.iter_mut().zip(values).enumerate() {
                     if *now != v {
                         // What `apply` does with an `IntLocal`.
                         *now = v;
@@ -481,7 +482,7 @@ impl Log {
         let at = self.ints.len() as u32;
         self.ints
             .push(((named.0 as i64) << 32) | values.len() as i64);
-        self.ints.extend_from_slice(values);
+        self.ints.extend(values.iter().map(|&(_, v)| v));
         self.push(Delta::IntLocals(at));
     }
 

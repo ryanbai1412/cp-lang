@@ -23,24 +23,20 @@ impl Tracer {
 
     #[inline]
     pub(super) fn raw_locals(&mut self, raw: &[(&str, i64)]) {
-        let (names, ints) = (&mut self.local_names, &mut self.local_ints);
         let at = |(name, _): &(&str, i64)| (name.as_ptr() as usize, name.len());
-        let mut renamed = raw.len() != self.local_name_at.len();
-        ints.clear();
-        for (k, local) in raw.iter().enumerate() {
-            ints.push(local.1);
-            renamed |= self.local_name_at.get(k) != Some(&at(local));
-        }
+        let renamed = raw.len() != self.local_name_at.len()
+            || !(raw.iter().zip(&self.local_name_at)).all(|(raw, kept)| at(raw) == *kept);
         if renamed {
             self.local_name_at.clear();
-            self.local_name_at.extend(raw.iter().map(at));
+            let names = &mut self.local_names;
             names.clear();
-            for (name, _) in raw {
+            for local in raw {
+                self.local_name_at.push(at(local));
                 names.push('\n');
-                string(names, name);
+                string(names, local.0);
             }
         }
-        self.rec.log.locals_ints(names, renamed, ints);
+        self.rec.log.locals_ints(&self.local_names, renamed, raw);
     }
 
     /// The step a VM write to `Int` global `id`, or to `Int` cell `path` of

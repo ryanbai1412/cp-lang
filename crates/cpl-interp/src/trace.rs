@@ -394,7 +394,7 @@ pub(crate) struct Tracer {
     local_names: String,
     /// Where the names in `local_names` are, so they are escaped once.
     local_name_at: Vec<(usize, usize)>,
-    local_ints: Vec<i64>,
+    local_ints: Vec<(&'static str, i64)>,
     /// The globals written since the last step, each with the one item
     /// written when only one was, unless `all` may have changed.
     touched: Vec<(usize, Option<usize>)>,
@@ -834,7 +834,7 @@ impl Tracer {
         let (mut raw, mut same) = (true, true);
         for (name, ty, value) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
             match (ty, value) {
-                (Ty::Int, Value::Int(v)) if v.unsigned_abs() <= MAX_EXACT => ints.push(*v),
+                (Ty::Int, Value::Int(v)) if v.unsigned_abs() <= MAX_EXACT => ints.push(("", *v)),
                 _ => {
                     raw = false;
                     break;
