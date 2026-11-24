@@ -1,16 +1,16 @@
 {
- "problems": 1115,
+ "problems": 1113,
  "with_cpp_ac": 1100,
  "dream": {
   "draft": 126,
   "gold": 0,
-  "none": 989,
+  "none": 987,
   "reviewed": 0
  },
  "spec": {
   "draft": 99,
   "gold": 0,
-  "none": 1016,
+  "none": 1014,
   "reviewed": 0
  },
  "by_source": {
@@ -44,7 +44,6 @@
   "etsr": 6,
   "factorial": 2,
   "fastbit": 1,
-  "gaolian": 2,
   "hci": 1,
   "helloworld": 1,
   "helloworldhard": 1,
