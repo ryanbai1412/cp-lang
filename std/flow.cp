@@ -624,7 +624,7 @@ pub struct CostFlow<V>:
 /// Profits may be negative; the empty set is a closure, so `value >= 0`. One `max_flow` on
 /// V + 2 vertices and V + E arcs; `take` is the source side of its minimum cut.
 ///
-/// cost: one `max_flow` on V + 2 vertices and V + E arcs, \(O(V + E)\) calls of `profit`
+/// cost: \(O(V^2 (V + E))\), one `max_flow` on V + 2 vertices and V + E arcs, with \(O(V + E)\) calls of `profit`
 /// ties: the smallest optimal closure (contained in every other)
 /// order: `take` keyed by `V`
 /// traps: never
@@ -1250,7 +1250,7 @@ pub fn max_weight_general_matching<V, E>(
 /// Sends `lo` on every arc, then routes each vertex's excess from a super source to a super sink
 /// with one `max_flow`; the result is `lo` plus that flow.
 ///
-/// cost: one `max_flow` on V + 2 vertices and E + V arcs
+/// cost: \(O(V^2 (V + E))\), one `max_flow` on V + 2 vertices and E + V arcs
 /// order: keyed by `E`
 /// traps: when some `lo > hi`
 /// ```cp
@@ -1272,7 +1272,7 @@ pub fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int:
 /// The largest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex
 /// but `s` and `t`, or `None` when no such flow exists. `value` is the net flow out of `s`.
 ///
-/// cost: two `max_flow`s on V + 2 vertices and E + V + 1 arcs
+/// cost: \(O(V^2 (V + E))\), two `max_flow`s on V + 2 vertices and E + V + 1 arcs
 /// ties: among maximum flows, the one the two `max_flow`s find
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`, or `s == t`
@@ -1362,7 +1362,7 @@ fn bounded_flow<V, E>(
 /// every later vertex with parent `p` on `u`'s side (what `u` reaches in the residual) takes
 /// parent `u`.
 ///
-/// cost: `V.count - 1` max flows on one reused network, each \(O(V^2 E)\)
+/// cost: \(O(V^3 E)\): `V.count - 1` max flows on one reused network, each \(O(V^2 E)\)
 /// empty: `[]` when `V` has at most one position
 /// order: one edge per vertex but `V.first`, by increasing `u`; `v` is its parent
 /// traps: when some `w` is negative
@@ -2278,7 +2278,7 @@ fn edge_colorings_use_max_degree_proper_colours():
 /// length), breadth-first from the sources in increasing element order, so each augmentation
 /// takes the least element on ties.
 ///
-/// cost: \(O(r E (r + \mathit{oracle}))\) for answer size r, oracle the cost of one `can_add` or `can_swap`
+/// cost: \(O(r^2 E \cdot \mathit{oracle})\) for answer size r, oracle the cost of one `can_add`, `can_swap` or `rebuild` over E; with `weight`, \(O(r^3 E \cdot \mathit{oracle})\)
 /// order: keyed by `E`
 /// traps: never
 /// ```cp
@@ -2302,24 +2302,36 @@ pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (
         ma.rebuild(take)
         mb.rebuild(take)
         // Vertex cost: `-w(x)` to bring `x` in, `w(y)` to take `y` out; shortest by (cost, length).
+        // Relaxed from a FIFO queue, so without `weight` each element settles on its first visit.
         var dist: [E]?(Int, Int) = None
         var prev: [E]?E = None
-        for x in E:
-            if not take[x] and ma.can_add(x): dist[x] = Some((-w(x), 0))
-        var changed = true
-        while changed:
-            changed = false
-            for p in E:
-                let Some((dc, dl)) = dist[p] else: continue
-                for q in E:
-                    if take[p] == take[q]: continue
-                    let arc = if take[p]: ma.can_swap(p, q) else: mb.can_swap(q, p)
-                    if not arc: continue
-                    let nd = (dc + (if take[q]: w(q) else: -w(q)), dl + 1)
-                    if dist[q] == None or nd < dist[q]!:
-                        dist[q] = Some(nd)
-                        prev[q] = Some(p)
-                        changed = true
+        var queued: [E]Bool = false
+        var queue = List<E>()
+        let ins = [x for x in E if take[x]]
+        let outs = [x for x in E if not take[x]]
+        for x in outs:
+            if ma.can_add(x):
+                dist[x] = Some((-w(x), 0))
+                queued[x] = true
+                queue.push(x)
+        var head = 0
+        while head < queue.len:
+            let p = queue[head]
+            head += 1
+            queued[p] = false
+            let (dc, dl) = dist[p]!
+            let across = if take[p]: outs.len else: ins.len
+            for i in 0..across:
+                let q = if take[p]: outs[i] else: ins[i]
+                let arc = if take[p]: ma.can_swap(p, q) else: mb.can_swap(q, p)
+                if not arc: continue
+                let nd = (dc + (if take[q]: w(q) else: -w(q)), dl + 1)
+                if dist[q] == None or nd < dist[q]!:
+                    dist[q] = Some(nd)
+                    prev[q] = Some(p)
+                    if not queued[q]:
+                        queued[q] = true
+                        queue.push(q)
         var end: ?E = None
         for x in E:
             if take[x] or not mb.can_add(x) or dist[x] == None: continue
@@ -2350,7 +2362,7 @@ pub struct GraphicMatroid<V, E>:
     below: [E]?V
     /// The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
     ///
-    /// cost: \(O(1)\); each `rebuild` is \(O(V + E)\), a DFS of the chosen forest
+    /// cost: \(O(V + E)\) for its per-vertex and per-edge arrays; each `rebuild` is \(O(V + E)\), a DFS of the chosen forest
     /// traps: never
     /// ```cp
     /// domain E = 0..3
@@ -2421,7 +2433,7 @@ pub struct ColorMatroid<E, C>:
     /// The partition matroid of `color`: a set is independent when it holds at most `limit[c]`
     /// elements of each colour `c`.
     ///
-    /// cost: \(O(1)\); each `rebuild` is \(O(E)\)
+    /// cost: \(O(E + C)\) to check `limit` and size its arrays; each `rebuild` is \(O(E)\)
     /// empty: with no elements only the empty set exists and every query is `false`
     /// traps: when some `limit[c]` is negative
     /// ```cp
@@ -2454,7 +2466,7 @@ impl Matroid<E> for ColorMatroid<E, C>:
 /// Finds any circulation with `circulation`, then cancels negative cycles of its residual network
 /// with `CostFlow.cancel_cycles`.
 ///
-/// cost: one `circulation`, then one `cancel_cycles` on V vertices and 2E arcs
+/// cost: \(O(V^2 (V + E) + V E \lvert c \rvert)\) for the returned cost `c`: one `circulation`, then one `cancel_cycles` on V vertices and 2E arcs
 /// ties: among cheapest circulations, the one `cancel_cycles` finds
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`
