@@ -85,8 +85,7 @@ impl<'a> Lowerer<'a> {
         let saved_env = std::mem::replace(&mut self.gen_env, env);
         let saved_outer = std::mem::take(&mut self.outer_cxs);
         let fresh = FnCx {
-            scopes: vec![HashMap::new()],
-            local_syms: vec![HashMap::new()],
+            in_body: true,
             ..FnCx::default()
         };
         let saved_cx = std::mem::replace(&mut self.cx, fresh);
@@ -97,7 +96,7 @@ impl<'a> Lowerer<'a> {
                 None => Ty::Error,
             };
             let slot = self.new_slot(&p.name.text, ty);
-            self.cx.scopes[0].insert(p.name.text.clone(), slot);
+            self.cx.scopes.outer_mut().insert(p.name.text.clone(), slot);
             if p.mutable {
                 self.cx.mut_slots.insert(slot);
             }

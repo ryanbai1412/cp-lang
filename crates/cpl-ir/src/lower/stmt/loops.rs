@@ -139,11 +139,7 @@ impl<'a> Lowerer<'a> {
                             if heads.iter().any(|h| h.0 == *slot) =>
                         {
                             self.cx.locals[*slot].name = name.clone();
-                            self.cx
-                                .scopes
-                                .last_mut()
-                                .expect("a scope")
-                                .insert(name.clone(), *slot);
+                            self.cx.scopes.top_mut().insert(name.clone(), *slot);
                         }
                         _ => self.bind(p, part, &mut stmts),
                     }
@@ -155,7 +151,7 @@ impl<'a> Lowerer<'a> {
                 if let (Some(parts), ast::PatternKind::Name(name)) =
                     (self.cx.loop_parts.take(), &pat.kind)
                 {
-                    if let Some(&slot) = self.cx.scopes.last().and_then(|s| s.get(name)) {
+                    if let Some(&slot) = self.cx.scopes.top().get(name) {
                         self.cx.product_parts.insert(slot, parts);
                     }
                 }
@@ -232,11 +228,7 @@ impl<'a> Lowerer<'a> {
         match &pat.kind {
             ast::PatternKind::Name(name) => {
                 let slot = self.new_slot(name, elem);
-                self.cx
-                    .scopes
-                    .last_mut()
-                    .expect("a scope")
-                    .insert(name.clone(), slot);
+                self.cx.scopes.top_mut().insert(name.clone(), slot);
                 slot
             }
             ast::PatternKind::Wildcard => self.temp(elem),

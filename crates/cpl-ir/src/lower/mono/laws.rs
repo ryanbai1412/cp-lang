@@ -140,11 +140,7 @@ impl<'a> Lowerer<'a> {
                     span: lw.span(span),
                 };
                 out.push_let(fslot, fexpr);
-                lw.cx
-                    .scopes
-                    .last_mut()
-                    .unwrap()
-                    .insert(fname.clone(), fslot);
+                lw.cx.scopes.top_mut().insert(fname.clone(), fslot);
             }
             let saved_recv = lw.cx.receiver.replace((obj_slot, sid));
 
@@ -216,11 +212,7 @@ impl<'a> Lowerer<'a> {
         let var_slot = self.new_slot(pname, elem_ty.clone());
         let lid = self.open_loop(None);
         self.cx.scopes.push(HashMap::new());
-        self.cx
-            .scopes
-            .last_mut()
-            .unwrap()
-            .insert(pname.clone(), var_slot);
+        self.cx.scopes.top_mut().insert(pname.clone(), var_slot);
         let body = self.emit_law_loops(pools, idx + 1, law, span);
         self.cx.scopes.pop();
         self.cx.loops.pop();

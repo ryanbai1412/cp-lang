@@ -212,10 +212,6 @@ impl<'a> Lowerer<'a> {
     }
 
     fn bind_local(&mut self, name: &str, slot: Slot) {
-        self.cx
-            .scopes
-            .last_mut()
-            .expect("a scope")
-            .insert(name.to_string(), slot);
+        self.cx.scopes.top_mut().insert(name.to_string(), slot);
     }
 }

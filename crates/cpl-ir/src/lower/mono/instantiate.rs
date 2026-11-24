@@ -631,7 +631,6 @@ impl<'a> Lowerer<'a> {
             &mut self.cx,
             FnCx {
                 is_main: false,
-                scopes: vec![HashMap::new()],
                 ..FnCx::default()
             },
         );

@@ -103,24 +103,22 @@ impl<'a> Lowerer<'a> {
             asked_at: self.asked_at.callee(self.cur_mod),
         });
         self.bodies.push(None);
-        if let Some(scope) = self.cx.local_syms.last_mut() {
-            scope.insert(decl.name.text.clone(), Sym::Fn(id));
-        }
+        let scope = self.cx.local_syms.top_mut();
+        scope.insert(decl.name.text.clone(), Sym::Fn(id));
         let depth = self.outer_cxs.len();
 
         let mut fresh = FnCx {
             is_closure: true,
             ..FnCx::default()
         };
-        fresh.scopes.push(HashMap::new());
-        fresh.local_syms.push(HashMap::new());
+        fresh.in_body = true;
         fresh.ret = Some(ret_ty.clone());
         let outer_cx = std::mem::replace(&mut self.cx, fresh);
         self.outer_cxs.push(outer_cx);
         let mut params = Vec::new();
         for (p, pty) in decl.params.iter().zip(&param_tys) {
             let slot = self.new_slot(&p.name.text, pty.clone());
-            self.cx.scopes[0].insert(p.name.text.clone(), slot);
+            self.cx.scopes.outer_mut().insert(p.name.text.clone(), slot);
             let range = p.ty.as_ref().and_then(|t| self.range_info_from_ast(t));
             if let Some(rinfo) = range {
                 self.cx.local_ranges.insert(slot, rinfo);

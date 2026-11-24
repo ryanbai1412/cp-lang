@@ -222,8 +222,7 @@ impl<'a> Lowerer<'a> {
         self.cx = FnCx {
             is_main: true,
             ret: Some(Ty::Unit),
-            scopes: vec![HashMap::new()],
-            local_syms: vec![HashMap::new()],
+            in_body: true,
             ..FnCx::default()
         };
         let mut out = Vec::new();
@@ -292,8 +291,7 @@ impl<'a> Lowerer<'a> {
         self.cx = FnCx {
             is_main: true,
             ret: Some(Ty::Unit),
-            scopes: vec![HashMap::new()],
-            local_syms: vec![HashMap::new()],
+            in_body: true,
             ..FnCx::default()
         };
         let mut out = Vec::new();
@@ -385,8 +383,7 @@ impl<'a> Lowerer<'a> {
         self.cx = FnCx {
             is_main: true,
             ret: Some(Ty::Unit),
-            scopes: vec![HashMap::new()],
-            local_syms: vec![HashMap::new()],
+            in_body: true,
             ..FnCx::default()
         };
         let mut out = Vec::new();

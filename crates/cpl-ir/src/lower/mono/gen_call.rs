@@ -1054,11 +1054,7 @@ impl<'a> Lowerer<'a> {
             for (p, val) in decl.params.iter().zip(arg_vals) {
                 let slot = lw.temp(val.ty.clone());
                 out.push_let(slot, val);
-                lw.cx
-                    .scopes
-                    .last_mut()
-                    .unwrap()
-                    .insert(p.name.text.clone(), slot);
+                lw.cx.scopes.top_mut().insert(p.name.text.clone(), slot);
             }
             match &decl.body {
                 ast::FnBody::Expr(e) => {

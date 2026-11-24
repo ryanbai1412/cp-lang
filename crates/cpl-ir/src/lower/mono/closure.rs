@@ -40,8 +40,7 @@ impl<'a> Lowerer<'a> {
                 });
                 self.cx
                     .scopes
-                    .last_mut()
-                    .unwrap()
+                    .top_mut()
                     .insert(decl.name.text.clone(), fn_slot);
                 fn_slot
             }
@@ -105,8 +104,7 @@ impl<'a> Lowerer<'a> {
             is_closure: true,
             ..FnCx::default()
         };
-        fresh.scopes.push(HashMap::new());
-        fresh.local_syms.push(HashMap::new());
+        fresh.in_body = true;
         fresh.ret = Some(ret_ty.clone());
         let outer_cx = std::mem::replace(&mut self.cx, fresh);
         self.outer_cxs.push(outer_cx);
@@ -122,7 +120,7 @@ impl<'a> Lowerer<'a> {
             if p.mutable {
                 self.cx.mut_slots.insert(slot);
             }
-            self.cx.scopes[0].insert(p.name.text.clone(), slot);
+            self.cx.scopes.outer_mut().insert(p.name.text.clone(), slot);
             if let Some(ty_ast) = &p.ty {
                 if let Some(rinfo) = self.range_info_from_ast(ty_ast) {
                     self.cx.local_ranges.insert(slot, rinfo);
@@ -199,8 +197,7 @@ impl<'a> Lowerer<'a> {
         let body_slot = self.new_slot(&body_name, fn_ty.clone());
         self.cx
             .scopes
-            .last_mut()
-            .unwrap()
+            .top_mut()
             .insert(body_name.clone(), body_slot);
         // The body calls the wrapper, so the wrapper's variable comes first.
         out.push(Stmt::Let(fn_slot, None));
@@ -210,15 +207,14 @@ impl<'a> Lowerer<'a> {
             is_closure: true,
             ..FnCx::default()
         };
-        fresh.scopes.push(HashMap::new());
-        fresh.local_syms.push(HashMap::new());
+        fresh.in_body = true;
         fresh.ret = Some(ret_ty.clone());
         let outer_cx = std::mem::replace(&mut self.cx, fresh);
         self.outer_cxs.push(outer_cx);
         let mut slots = Vec::new();
         for (p, pty) in decl.params.iter().zip(&param_tys) {
             let slot = self.new_slot(&p.name.text, pty.clone());
-            self.cx.scopes[0].insert(p.name.text.clone(), slot);
+            self.cx.scopes.outer_mut().insert(p.name.text.clone(), slot);
             slots.push((slot, p.ty.as_ref()));
         }
         let body = self.capture_from_outer(&body_name).expect("just declared");
@@ -434,7 +430,6 @@ impl<'a> Lowerer<'a> {
         // Push enclosing FnCx onto `outer_cxs` so lookups inside the lambda can capture variables.
         let mut child_cx = FnCx {
             ret: ret_hint.clone(),
-            scopes: vec![HashMap::new()],
             is_closure: true,
             ..FnCx::default()
         };
@@ -465,7 +460,7 @@ impl<'a> Lowerer<'a> {
                 mut_slots.push(slot);
             }
             if matches!(params[i].kind, ast::PatternKind::Name(_)) {
-                child_cx.scopes[0].insert(pname, slot);
+                child_cx.scopes.outer_mut().insert(pname, slot);
             }
             param_slots.push(slot);
         }

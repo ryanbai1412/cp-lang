@@ -46,9 +46,8 @@ impl<'a> Lowerer<'a> {
             span: self.span(span),
         };
         out.push(Stmt::Assign(place, AssignOp::Set, value));
-        if let Some(scope) = self.cx.local_syms.last_mut() {
-            scope.insert(name.to_string(), Sym::Global(gid));
-        }
+        let scope = self.cx.local_syms.top_mut();
+        scope.insert(name.to_string(), Sym::Global(gid));
     }
 
     /// Declares `name` with the value `init`: a global at the top level of
@@ -101,11 +100,7 @@ impl<'a> Lowerer<'a> {
             if reversed {
                 self.cx.view_rev.insert(slot);
             }
-            self.cx
-                .scopes
-                .last_mut()
-                .expect("a scope")
-                .insert(name.to_string(), slot);
+            self.cx.scopes.top_mut().insert(name.to_string(), slot);
             out.push_let(slot, init);
         }
     }
@@ -183,7 +178,7 @@ impl<'a> Lowerer<'a> {
     /// param, and that a param given a reversed view walks backwards.
     pub(super) fn bind_param_facts(&mut self, decl: &ast::FnDecl, params: &mut [ParamDef]) {
         for p in &decl.params {
-            let Some(&slot) = self.cx.scopes[0].get(&p.name.text) else {
+            let Some(&slot) = self.cx.scopes.outer().get(&p.name.text) else {
                 continue;
             };
             if let Some(rinfo) = p.ty.as_ref().and_then(|t| self.range_info_from_ast(t)) {
@@ -263,7 +258,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let slot = self.lookup(n)?;
-        self.cx.scopes.last_mut()?.insert(s.clone(), slot);
+        self.cx.scopes.top_mut().insert(s.clone(), slot);
         Some(self.mk(ExprKind::Bool(true), Ty::Bool, value.span))
     }
 }

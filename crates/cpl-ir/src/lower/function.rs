@@ -47,8 +47,7 @@ impl<'a> Lowerer<'a> {
 
         let mut cx = FnCx {
             ret: self.sigs[id].ret.clone(),
-            scopes: vec![HashMap::new()],
-            local_syms: vec![HashMap::new()],
+            in_body: true,
             ..FnCx::default()
         };
         let mut params = Vec::new();
@@ -58,7 +57,7 @@ impl<'a> Lowerer<'a> {
                 ty: Ty::Struct(owner),
                 binds: None,
             });
-            cx.scopes[0].insert("self".into(), 0);
+            cx.scopes.outer_mut().insert("self".into(), 0);
             if mutable {
                 cx.mut_slots.insert(0);
             }
@@ -71,7 +70,7 @@ impl<'a> Lowerer<'a> {
         }
         for param in &self.sigs[id].params {
             let slot = cx.locals.len();
-            cx.scopes[0].insert(param.name.clone(), slot);
+            cx.scopes.outer_mut().insert(param.name.clone(), slot);
             if param.mutable {
                 cx.mut_slots.insert(slot);
             }
@@ -173,7 +172,10 @@ impl<'a> Lowerer<'a> {
 
         // If this fn returns `(domain C, ...)`, pre-bind each fresh domain as a local domain symbol.
         for (dname, dom_id) in &new_doms {
-            self.cx.local_syms[0].insert(dname.clone(), Sym::Domain(*dom_id));
+            self.cx
+                .local_syms
+                .outer_mut()
+                .insert(dname.clone(), Sym::Domain(*dom_id));
             self.cx.new_domain_slots.push(*dom_id);
         }
 
@@ -258,8 +260,7 @@ impl<'a> Lowerer<'a> {
         if self.memo_fns.contains(&id) && plain && !is_gen && !matches!(ret, Ty::Unit | Ty::Error) {
             let wrapper = FnCx {
                 ret: Some(ret.clone()),
-                scopes: vec![HashMap::new()],
-                local_syms: vec![HashMap::new()],
+                in_body: true,
                 ..FnCx::default()
             };
             let body_cx = std::mem::replace(&mut self.cx, wrapper);
@@ -295,7 +296,7 @@ impl<'a> Lowerer<'a> {
             let mut slots = Vec::new();
             for (param, written) in self.sigs[id].params.iter().zip(&decl.params) {
                 let slot = self.cx.locals.len();
-                self.cx.scopes[0].insert(param.name.clone(), slot);
+                self.cx.scopes.outer_mut().insert(param.name.clone(), slot);
                 self.cx.locals.push(Local {
                     name: param.name.clone(),
                     ty: param.ty.clone(),
@@ -324,8 +325,7 @@ impl<'a> Lowerer<'a> {
             if let Some(fast) = self.memo_fast.take() {
                 let fresh = FnCx {
                     ret: Some(ret.clone()),
-                    scopes: vec![HashMap::new()],
-                    local_syms: vec![HashMap::new()],
+                    in_body: true,
                     ..FnCx::default()
                 };
                 let slow_cx = std::mem::replace(&mut self.cx, fresh);

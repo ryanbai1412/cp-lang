@@ -161,11 +161,7 @@ impl<'a> Lowerer<'a> {
                     ty: ty.clone(),
                     binds: None,
                 });
-                outer
-                    .scopes
-                    .last_mut()
-                    .expect("an open scope")
-                    .insert(name.clone(), slot);
+                outer.scopes.top_mut().insert(name.clone(), slot);
                 outer.mut_slots.insert(slot);
                 memo.lets.push(Stmt::Let(slot, None));
                 PlaceKind::Local(self.capture_from_outer(&name).expect("just declared"))
@@ -267,7 +263,10 @@ impl<'a> Lowerer<'a> {
         };
         self.stmt(&plain_stmt(ast::StmtKind::Expr(hit), span), &mut out);
         let answer = self.cx.locals.len();
-        self.cx.scopes[0].insert(ANSWER.to_string(), answer);
+        self.cx
+            .scopes
+            .outer_mut()
+            .insert(ANSWER.to_string(), answer);
         self.cx.locals.push(Local {
             name: ANSWER.to_string(),
             ty: ret.clone(),

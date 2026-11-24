@@ -201,7 +201,7 @@ impl<'a> Lowerer<'a> {
             span,
         };
         // The fields are the only names the definition sees besides globals.
-        let scopes = std::mem::replace(&mut self.cx.scopes, vec![HashMap::new()]);
+        let scopes = std::mem::take(&mut self.cx.scopes);
         let inline = self.cx.inline_self.replace((place, sid));
         let module = std::mem::replace(&mut self.cur_mod, init.mod_id);
         let offset = std::mem::replace(&mut self.offset, init.offset);
@@ -244,7 +244,7 @@ impl<'a> Lowerer<'a> {
             ty: value.ty.clone(),
             span,
         };
-        let scopes = std::mem::replace(&mut self.cx.scopes, vec![HashMap::new()]);
+        let scopes = std::mem::take(&mut self.cx.scopes);
         let inline = self.cx.inline_self.replace((place, sid));
         let mut out = Vec::new();
         for init in inits {

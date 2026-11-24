@@ -94,7 +94,7 @@ impl<'a> Lowerer<'a> {
                             ty: t.clone(),
                             binds: None,
                         });
-                        self.cx.scopes.last_mut().unwrap().insert(n.clone(), s);
+                        self.cx.scopes.top_mut().insert(n.clone(), s);
                     }
                     let mut inferred_elems: Vec<Option<Ty>> = vec![None; exprs.len()];
                     for (i, (p, e)) in pats.iter().zip(exprs).enumerate() {

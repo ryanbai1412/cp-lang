@@ -29,8 +29,7 @@ impl<'a> Lowerer<'a> {
             self.domains.push(format!("{}_{id}", name.text));
             self.cx
                 .local_syms
-                .last_mut()
-                .unwrap()
+                .top_mut()
                 .insert(name.text.clone(), Sym::Domain(id));
             id
         };

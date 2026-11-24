@@ -105,7 +105,8 @@ impl<'a> Lowerer<'a> {
                 let dom_id = self.domains.len();
                 self.domains.push(name.text.clone());
                 self.own_domains.insert(dom_id);
-                if let Some(scope) = self.cx.local_syms.last_mut() {
+                if self.cx.in_body {
+                    let scope = self.cx.local_syms.top_mut();
                     scope.insert(name.text.clone(), Sym::Domain(dom_id));
                 } else {
                     self.mod_syms[self.cur_mod].insert(name.text.clone(), Sym::Domain(dom_id));

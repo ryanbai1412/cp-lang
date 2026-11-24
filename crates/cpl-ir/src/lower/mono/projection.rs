@@ -214,7 +214,7 @@ impl<'a> Lowerer<'a> {
         self.cx.mut_aliases.extend(arg_globals);
         self.cx.scopes.push(HashMap::new());
         for (pname, slot) in arg_slots {
-            self.cx.scopes.last_mut().unwrap().insert(pname, slot);
+            self.cx.scopes.top_mut().insert(pname, slot);
         }
 
         f(self, out);

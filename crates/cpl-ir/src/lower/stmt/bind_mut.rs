@@ -32,8 +32,7 @@ impl<'a> Lowerer<'a> {
                     self.domains.push(format!("{dname}_{id}"));
                     self.cx
                         .local_syms
-                        .last_mut()
-                        .unwrap()
+                        .top_mut()
                         .insert(dname.clone(), Sym::Domain(id));
                     id
                 };
@@ -49,8 +48,7 @@ impl<'a> Lowerer<'a> {
                     if let ExprKind::DomainVal(dom_id) = value.kind {
                         self.cx
                             .local_syms
-                            .last_mut()
-                            .unwrap()
+                            .top_mut()
                             .insert(vname.clone(), Sym::Domain(dom_id));
                         return;
                     }
@@ -62,8 +60,7 @@ impl<'a> Lowerer<'a> {
                     });
                     self.cx
                         .local_syms
-                        .last_mut()
-                        .unwrap()
+                        .top_mut()
                         .insert(vname.clone(), Sym::Domain(dom_id));
                     return;
                 }
@@ -192,8 +189,7 @@ impl<'a> Lowerer<'a> {
                                 self.domains.push(format!("{dname}_{id}"));
                                 self.cx
                                     .local_syms
-                                    .last_mut()
-                                    .unwrap()
+                                    .top_mut()
                                     .insert(dname.clone(), Sym::Domain(id));
                                 id
                             };

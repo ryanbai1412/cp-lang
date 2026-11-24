@@ -259,8 +259,7 @@ impl<'a> Lowerer<'a> {
             let slot = self.new_slot(&decl.name.text, fn_ty);
             self.cx
                 .scopes
-                .last_mut()
-                .unwrap()
+                .top_mut()
                 .insert(decl.name.text.clone(), slot);
             self.cx.mut_slots.insert(slot);
             self.cx.predeclared.insert(decl.name.text.clone(), slot);
@@ -326,9 +325,8 @@ impl<'a> Lowerer<'a> {
 
     fn stmt_inner(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt], out: &mut Vec<Stmt>) {
         if let Some((name, init)) = self.generator_recipe(stmt, rest) {
-            if let Some(scope) = self.cx.scopes.last_mut() {
-                scope.remove(&name);
-            }
+            let scope = self.cx.scopes.top_mut();
+            scope.remove(&name);
             let depth = self.cx.scopes.len();
             self.cx.recipes.insert(name, (depth, init.clone()));
             return;
@@ -570,9 +568,8 @@ impl<'a> Lowerer<'a> {
                         if self.is_sorted_range_expr(init_expr) {
                             if let Some(view) = self.sorted_view_from_expr(init_expr, out) {
                                 let slot = self.temp(Ty::Unit);
-                                if let Some(scope) = self.cx.scopes.last_mut() {
-                                    scope.insert(vname.clone(), slot);
-                                }
+                                let scope = self.cx.scopes.top_mut();
+                                scope.insert(vname.clone(), slot);
                                 self.cx.sorted_views.insert(slot, view);
                                 return;
                             }
@@ -588,9 +585,8 @@ impl<'a> Lowerer<'a> {
                                     if self.is_sorted_range_expr(e) {
                                         if let Some(view) = self.sorted_view_from_expr(e, out) {
                                             let slot = self.temp(Ty::Unit);
-                                            if let Some(scope) = self.cx.scopes.last_mut() {
-                                                scope.insert(vname.clone(), slot);
-                                            }
+                                            let scope = self.cx.scopes.top_mut();
+                                            scope.insert(vname.clone(), slot);
                                             self.cx.sorted_views.insert(slot, view);
                                             continue;
                                         }
@@ -615,9 +611,8 @@ impl<'a> Lowerer<'a> {
                                 return;
                             }
                             let slot = self.temp(Ty::Unit);
-                            if let Some(scope) = self.cx.scopes.last_mut() {
-                                scope.insert(vname.clone(), slot);
-                            }
+                            let scope = self.cx.scopes.top_mut();
+                            scope.insert(vname.clone(), slot);
                             self.cx.map_views.insert(slot, view);
                             return;
                         }
@@ -764,11 +759,7 @@ impl<'a> Lowerer<'a> {
                                 AssignOp::Set,
                                 val_ref,
                             ));
-                            self.cx
-                                .local_syms
-                                .last_mut()
-                                .unwrap()
-                                .insert(cname, Sym::Global(gid));
+                            self.cx.local_syms.top_mut().insert(cname, Sym::Global(gid));
                         }
                     }
                 }
@@ -808,7 +799,7 @@ impl<'a> Lowerer<'a> {
                         Ty::Pos(id) => Some(Sym::Domain(id)),
                         _ => None,
                     };
-                    if let (Some(sym), Some(scope)) = (sym, self.cx.local_syms.last_mut()) {
+                    if let (Some(sym), scope) = (sym, self.cx.local_syms.top_mut()) {
                         scope.insert(name.text.clone(), sym);
                     }
                 }
@@ -884,11 +875,7 @@ impl<'a> Lowerer<'a> {
                     if !names.is_empty() {
                         for item in names {
                             if let Some(&sym) = self.mod_syms[tmod].get(&item.text) {
-                                self.cx
-                                    .local_syms
-                                    .last_mut()
-                                    .unwrap()
-                                    .insert(item.text.clone(), sym);
+                                self.cx.local_syms.top_mut().insert(item.text.clone(), sym);
                             }
                         }
                     } else if *glob {
@@ -897,19 +884,17 @@ impl<'a> Lowerer<'a> {
                             .map(|(k, &v)| (k.clone(), v))
                             .collect();
                         for (k, v) in syms {
-                            self.cx.local_syms.last_mut().unwrap().insert(k, v);
+                            self.cx.local_syms.top_mut().insert(k, v);
                         }
                     } else if let Some(al) = alias {
                         self.cx
                             .local_syms
-                            .last_mut()
-                            .unwrap()
+                            .top_mut()
                             .insert(al.text.clone(), Sym::Mod(tmod));
                     } else if let Some(last) = path.last() {
                         self.cx
                             .local_syms
-                            .last_mut()
-                            .unwrap()
+                            .top_mut()
                             .insert(last.text.clone(), Sym::Mod(tmod));
                     }
                 }
@@ -927,9 +912,8 @@ impl<'a> Lowerer<'a> {
                     owner_env: HashMap::new(),
                     decl,
                 });
-                if let Some(scope) = self.cx.local_syms.last_mut() {
-                    scope.insert(decl.name.text.clone(), Sym::GenFn(gfid));
-                }
+                let scope = self.cx.local_syms.top_mut();
+                scope.insert(decl.name.text.clone(), Sym::GenFn(gfid));
             }
             ast::StmtKind::Fn(decl) if !self.at_top_level() => {
                 let memo = stmt.decorators.iter().any(|d| d.name.text == "memo");
@@ -984,9 +968,8 @@ impl<'a> Lowerer<'a> {
                     laws: Vec::new(),
                     index_domain: None,
                 });
-                if let Some(scope) = self.cx.local_syms.last_mut() {
-                    scope.insert(decl.name.text.clone(), Sym::Struct(id));
-                }
+                let scope = self.cx.local_syms.top_mut();
+                scope.insert(decl.name.text.clone(), Sym::Struct(id));
             }
             ast::StmtKind::Struct(_)
             | ast::StmtKind::TypeAlias { .. }

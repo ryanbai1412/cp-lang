@@ -42,6 +42,7 @@ mod local_gen;
 mod memo;
 mod mono;
 mod names;
+mod nest;
 mod op_value;
 mod or_pattern;
 mod ord_space;
@@ -72,6 +73,7 @@ use cpl_diag::msgs;
 use cpl_diag::{codes, Diagnostic, Span};
 use cpl_syntax::{ast, narrow};
 use mono::*;
+use nest::Nest;
 use range::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -453,9 +455,12 @@ struct FnCx {
     uses_io: bool,
     /// A top-level fn's `uses`: the contexts it follows its caller in.
     lexical_uses: Option<Vec<String>>,
-    scopes: Vec<HashMap<String, Slot>>,
+    scopes: Nest<HashMap<String, Slot>>,
     /// Block-scoped type aliases, local domains, etc. (e.g. `domain V = 1..=6`, `type M = Mod<7>`).
-    local_syms: Vec<HashMap<String, Sym>>,
+    local_syms: Nest<HashMap<String, Sym>>,
+    /// Lowering a fn or main body: its block-scoped names go in `local_syms`,
+    /// where outside one (a signature, a module const) they belong to the module.
+    in_body: bool,
     /// Block-scoped generic local functions (`fn id<T>(x: T) -> T = x`).
     local_gen_fns: HashMap<String, ast::FnDecl>,
     /// Parameters bound to compile-time `BareOp` values (`+`, `min`, `max`, `gcd`, etc.).
@@ -1140,7 +1145,6 @@ impl<'a> Lowerer<'a> {
         let local = self
             .cx
             .scopes
-            .iter()
             .rposition(|s| s.contains_key(name))
             .map(|i| i + 1);
         (*depth <= self.cx.scopes.len() && local.is_none_or(|l| l < *depth)).then(|| init.clone())

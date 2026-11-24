@@ -203,7 +203,7 @@ impl<'a> Lowerer<'a> {
     fn entry_keys(&mut self, decl: &ast::FnDecl, out: &mut Vec<Stmt>) -> Vec<(usize, Expr)> {
         for p in &decl.params {
             let Some(ty) = &p.ty else { continue };
-            let Some(&slot) = self.cx.scopes[0].get(&p.name.text) else {
+            let Some(&slot) = self.cx.scopes.outer().get(&p.name.text) else {
                 continue;
             };
             if !matches!(self.cx.locals[slot].ty, Ty::Array { .. }) {
