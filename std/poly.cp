@@ -813,17 +813,19 @@ pub struct Poly<T: Div>(pub c: List<T>):
         for i in 1..c.len: out.push(T.from_int(i) * c[i])
         Poly(out)
 
-    /// The formal integral with zero constant term, as the free `integral`.
+    /// The formal integral with zero constant term, as the free `integral` (the zero polynomial
+    /// stays `[]`).
     ///
     /// cost: \(O(n)\)
     /// traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 3]).integral().at(3) == Z(1)`
     pub fn integral(self) -> Poly<T>:
+        if c.is_empty: return Poly([])
         let out = [T.zero] + [c[i] / T.from_int(i + 1) for i in 0..c.len]
         Poly(out)
 
     /// The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for
-    /// each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums).
+    /// each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums; `[]` when `b` is empty).
     ///
     /// cost: one `*`, which is `convolve`'s product: \(O((n + m) \log (n + m))\) for a `FastProduct` `T` (as `Mod<P>`, `Int`), else \(O(n m)\)
     /// traps: never
@@ -868,7 +870,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
         assert n >= 0, "Poly.log requires n >= 0"
         if n == 0: return Poly([])
         assert self.at(0) == T.one, "Poly.log requires self.at(0) == 1"
-        (self.truncated(n).deriv() * self.inv(n)).truncated(n - 1).integral()
+        (self.truncated(n).deriv() * self.inv(n)).truncated(n - 1).integral().truncated(n)
 
     /// The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.
     ///
@@ -1099,7 +1101,7 @@ pub fn bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P>:
     if a.is_empty: Mod<P>(0) else: a[0] / b[0]
 
 /// The transposed (middle) product: `out[i] = sum_j a[i + j] * b[j]` over `j in 0..b.len`, for each
-/// `i` in `0..max(0, a.len - b.len + 1)` (only complete sums).
+/// `i` in `0..max(0, a.len - b.len + 1)` (only complete sums; `[]` when `b` is empty).
 ///
 /// cost: \(O((n + m) \log(n + m))\)
 /// empty: `type Z = Mod<998244353>; let a: List<Z> = [1]; let b: List<Z> = [1, 1]; transposed_mul(a, b) == []`
