@@ -9,8 +9,9 @@ impl<'a> Lowerer<'a> {
     /// would be: generic params through the instance's env, domains and
     /// structs by name.
     pub(in crate::lower) fn checked_ty(&mut self, e: &ast::Expr) -> Option<Ty> {
-        let facts = self.checked_facts();
-        let checked = facts.type_of(e.span.shift(self.offset))?;
+        let at = e.span.shift(self.offset);
+        let facts = self.checked_facts(at);
+        let checked = facts.type_of(at)?;
         if let Checked::Pos(name) = checked {
             if let Some(d) = self.inline_product_named(name, e.span) {
                 return Some(Ty::Pos(d));
@@ -25,24 +26,22 @@ impl<'a> Lowerer<'a> {
 }
 
 impl Lowerer<'_> {
-    /// The checker's facts for the module being lowered, its bodies' too
-    /// when the caller had them checked.
-    fn checked_facts(&mut self) -> std::sync::Arc<cpl_check::Facts> {
+    /// The checker's facts around `at` in the module being lowered: an
+    /// imported body's from the caller's source, else the module's own.
+    fn checked_facts(&mut self, at: Span) -> std::sync::Arc<cpl_check::Facts> {
         let m = self.cur_mod;
-        if self.mod_facts.len() <= m {
-            self.mod_facts.resize(self.mods.len().max(m + 1), None);
+        if self.mod_paths.len() <= m {
+            self.mod_paths.resize(self.mods.len().max(m + 1), None);
         }
-        if let Some(facts) = &self.mod_facts[m] {
-            return facts.clone();
-        }
-        let module = self.mods[m];
-        let path = (self.mods.iter())
-            .flat_map(|a| a.modules())
-            .find(|i| std::ptr::eq(&*i.analysis, module))
-            .map(|i| i.path.as_str());
-        let facts = self.facts.facts_of(path, module);
-        self.mod_facts[m] = Some(facts.clone());
-        facts
+        let mods = &self.mods;
+        let path = *self.mod_paths[m].get_or_insert_with(|| {
+            (mods.iter())
+                .flat_map(|a| a.modules())
+                .find(|i| std::ptr::eq(&*i.analysis, mods[m]))
+                .map(|i| i.path.as_str())
+        });
+        (path.and_then(|p| self.facts.body_facts(p, at)))
+            .unwrap_or_else(|| std::sync::Arc::clone(self.mods[m].facts()))
     }
 
     /// The inline product domain a checker's `(R, C)` names.

@@ -201,7 +201,7 @@ fn an_imported_body_is_checked_when_its_facts_are_asked_for() {
 }
 
 #[test]
-fn module_facts_are_checked_once_per_revision() {
+fn an_items_body_facts_are_checked_once_per_revision() {
     let lib = "pub fn f(x: Int) -> Int:\n    x * 2\n";
     let mut db = Database::with_loader(Box::new(MapLoader(vec![(
         "lib.a".into(),
@@ -210,17 +210,27 @@ fn module_facts_are_checked_once_per_revision() {
     )])));
     db.set_file("main.cp", "use lib.a.{f}\nprint(f(3))\n");
     db.analyze("main.cp").expect("analyzes");
-    let first = db.module_facts("lib/a.cp").expect("main imports lib.a");
     let at = lib.find("x * 2").unwrap() as u32;
+    let first = db
+        .body_facts("lib/a.cp", Span::new(at, at))
+        .expect("main imports lib.a");
     assert_eq!(first.type_of(Span::new(at, at + 5)), Some(&Ty::Int));
-    let again = db.module_facts("lib/a.cp").unwrap();
-    assert!(Arc::ptr_eq(&first, &again), "asked again, checked once");
+    let checked = db.stats().items_checked;
+    let again = db.body_facts("lib/a.cp", Span::new(at, at)).unwrap();
+    assert!(Arc::ptr_eq(&first, &again), "asked again, the same facts");
+    assert_eq!(
+        db.stats().items_checked,
+        checked,
+        "asked again, nothing checked"
+    );
     let edited = "pub fn f(x: Int) -> Bool:\n    x == 2\n";
     db.set_file("lib/a.cp", edited);
     db.analyze("main.cp");
-    let after = db.module_facts("lib/a.cp").expect("still imported");
-    assert!(!Arc::ptr_eq(&first, &after), "an edit checks again");
     let at = edited.find("x == 2").unwrap() as u32;
+    let after = db
+        .body_facts("lib/a.cp", Span::new(at, at))
+        .expect("still imported");
+    assert!(!Arc::ptr_eq(&first, &after), "an edit checks again");
     assert_eq!(after.type_of(Span::new(at, at + 6)), Some(&Ty::Bool));
 }
 

@@ -672,7 +672,8 @@ struct Lowerer<'a> {
     mods: Vec<&'a Analysis>,
     /// Where the checker's findings in each module's bodies are read.
     facts: &'a dyn cpl_check::FactsSource,
-    mod_facts: Vec<Option<std::sync::Arc<cpl_check::Facts>>>,
+    /// Each module's path among the imports, `None` for the program's own.
+    mod_paths: Vec<Option<Option<&'a str>>>,
     path_to_mod: HashMap<String, ModId>,
     /// The module `std.mod`, when the program uses it.
     std_mod: Option<ModId>,
@@ -885,7 +886,7 @@ impl<'a> Lowerer<'a> {
     fn new(_analysis: &'a Analysis, facts: &'a dyn cpl_check::FactsSource) -> Lowerer<'a> {
         Lowerer {
             facts,
-            mod_facts: Vec::new(),
+            mod_paths: Vec::new(),
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
             std_mod: None,

@@ -47,9 +47,7 @@ pub use db::{
     Analysis, AnalyzedItem, Database, Decl, Import, ItemCheck, ItemSyntax, Module, Stats,
 };
 pub use def::{DeclKind, Def, DomainInfo};
-pub use facts::{
-    CallFact, Callee, CalleeKind, ExprFacts, Facts, FactsSource, ImportedFacts, OwnFacts, RangeEnds,
-};
+pub use facts::{CallFact, Callee, CalleeKind, ExprFacts, Facts, FactsSource, OwnFacts, RangeEnds};
 pub use hover::{Definition, Hover, Representation, Symbol};
 pub use modules::{
     bundled_std, carry_only_embedded_std, configured_libraries, dev_std_problem, file_path,
@@ -63,7 +61,7 @@ pub use prelude::{
     std_self_heads, ty as prelude_type, type_arity, word_type, written_name, SetDomain,
     VALUE_NAMES as PRELUDE_VALUES,
 };
-pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
+pub use session::{open, Libraries, Revision, Session, SessionFacts, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};
 
 /// A `<fn>_of_pairs`/`<fn>_of_triples` fn: what `T.fn(list)` resolves to, never a name

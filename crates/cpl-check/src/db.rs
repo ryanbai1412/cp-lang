@@ -233,9 +233,9 @@ struct FileState {
     /// only. A file can be both, and each importer must get this one
     /// whoever asked first.
     module: Option<Arc<Analysis>>,
-    /// Every body of the file checked, as facts: what lowering reads of a
-    /// module it imports. Forgotten with the analyses.
-    module_facts: Option<Arc<crate::Facts>>,
+    /// Each item's body facts by item index, checked when first asked
+    /// for (`body_facts`). Forgotten with the analyses.
+    body_facts: HashMap<usize, Arc<crate::Facts>>,
     /// Read by the module loader, not given by `set_file`: the loader may
     /// replace its text.
     loaded: bool,
@@ -245,7 +245,7 @@ impl FileState {
     fn forget(&mut self) {
         self.program = None;
         self.module = None;
-        self.module_facts = None;
+        self.body_facts.clear();
     }
 }
 
@@ -378,7 +378,7 @@ impl Database {
                         text,
                         program: None,
                         module: None,
-                        module_facts: None,
+                        body_facts: HashMap::default(),
                         loaded,
                     },
                 );
