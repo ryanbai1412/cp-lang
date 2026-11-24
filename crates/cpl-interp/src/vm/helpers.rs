@@ -1629,7 +1629,12 @@ pub(super) fn expr_tag_short(expr: &Expr) -> &'static str {
         ExprKind::Char(_) => "Char",
         ExprKind::Local(_) => "Local",
         ExprKind::Global(_) => "Global",
-        _ => "Other",
+        ExprKind::Unit => "Unit",
+        ExprKind::RangeCheck { .. } => "RangeCheck",
+        ExprKind::Intrinsic(..) => "Intrinsic",
+        ExprKind::MutSlice(..) => "MutSlice",
+        ExprKind::MutLine(..) => "MutLine",
+        ExprKind::Error => "Error",
     }
 }
 
@@ -1644,15 +1649,6 @@ pub(super) fn expr_tag(expr: &Expr, program: &Program) -> String {
         ExprKind::Cast(c, _) => format!("expr:Cast({c:?})"),
         ExprKind::Binary(op, _, _) => format!("expr:Binary({op:?})"),
         ExprKind::Unary(op, _) => format!("expr:Unary({op:?})"),
-        _ => {
-            let s = expr_tag_short(expr);
-            if s == "Other" {
-                let dbg = format!("{:?}", expr.kind);
-                let head = dbg.split(['(', '{', ' ']).next().unwrap_or("Other");
-                format!("expr:{head}")
-            } else {
-                format!("expr:{s}")
-            }
-        }
+        _ => format!("expr:{}", expr_tag_short(expr)),
     }
 }
