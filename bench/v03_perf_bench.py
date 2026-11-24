@@ -3,7 +3,9 @@
 
 Measures the runtime ratio (emitted C++ / matched C++ original), each side's
 fastest user+sys CPU time over its runs, across:
-  1. corpus   -- every corpus package's port.cp and orig.cpp (scripts/corpus.py) (max-N via corpus_generators, gen.py --max, or tests/*.in)
+  1. corpus   -- every corpus package's port.cp and its accepted C++
+                 (corpus.accepted_cpps: orig.cpp, else its first AC submission)
+                 (max-N via corpus_generators, gen.py --max, or tests/*.in)
   2. dryrun   -- research/dryrun/v03/p*.cp at large N vs bench/dryrun-matched/p*.cpp
                  (the same algorithm as research/dryrun/p*_ref.cpp with the fast
                  I/O hand-written contest C++ uses), else the _ref.cpp itself
@@ -48,7 +50,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "bench"))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
-from corpus import problems  # noqa: E402
+from corpus import accepted_cpps, problems  # noqa: E402
 
 CPL = os.path.join(ROOT, "target", "release", "cpl")
 CLEAN_ENV = {
@@ -382,9 +384,10 @@ def collect_items(suites, only, cache_dir, live=False):
         except Exception:
             pass
         for pkg in problems(ids=only or None):
-            if not pkg.orig:
+            refs = accepted_cpps(pkg)
+            if not refs:
                 continue
-            orig, d, pid = str(pkg.orig), str(pkg.dir), pkg.id
+            orig, d, pid = str(refs[0]), str(pkg.dir), pkg.id
             # The frozen v0.2 copy keeps the series comparable while ports are re-ported in place.
             cp = os.path.join(ROOT, "tests", "v02-snapshot", pid, "port.cp")
             if live or not os.path.exists(cp):
