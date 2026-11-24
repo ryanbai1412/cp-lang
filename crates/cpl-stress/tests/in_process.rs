@@ -238,3 +238,22 @@ fn a_parts_wrong_call_is_explained_as_the_cli_explains_it() {
         assert_eq!(divergence.at(&["nth"]).as_i64(), Some(nth), "{json:?}");
     }
 }
+
+#[test]
+fn a_part_brute_that_traps_is_reported_at_its_trap() {
+    let source = "let n: 1..=9 = read()\n\nfn tri(k: Int) -> Int = k * (k + 1) / 2\n\n@alt(tri)\nfn tri_slow(k: Int) -> Int = [0][k]\n\nprint(tri(n))\n";
+    let options = Options {
+        jobs: 1,
+        ..Options::default()
+    };
+    let result = stress_source("p.cp", source, &options, Some(1 << 26), false).unwrap();
+    let json = cpl_json::parse(&result.render()).unwrap();
+    let counterexample = json.at(&["counterexample"]);
+    assert_eq!(
+        counterexample.at(&["verdict"]).as_str(),
+        Some("brute RE"),
+        "{json:?}"
+    );
+    let error = counterexample.at(&["error"]);
+    assert!(error.at(&["code"]).as_str().is_some(), "{json:?}");
+}

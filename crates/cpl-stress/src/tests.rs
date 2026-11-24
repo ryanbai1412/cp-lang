@@ -1498,3 +1498,39 @@ fn a_time_limit_case_spends_a_bounded_number_of_full_limit_runs() {
         );
     }
 }
+
+#[test]
+fn each_verdict_names_the_program_whose_trap_explains_it() {
+    use crate::judge::Trapped;
+    let named = [
+        (Verdict::Accepted, None),
+        (Verdict::Wrong("4 vs 5".into()), None),
+        (Verdict::TimeLimit, None),
+        (Verdict::MemoryLimit, None),
+        (
+            Verdict::RuntimeError("crashed".into()),
+            Some(Trapped::Solution),
+        ),
+        (Verdict::BruteError("crashed".into()), Some(Trapped::Brute)),
+        (
+            Verdict::JudgeError("checker", "R0101".into()),
+            Some(Trapped::Checker),
+        ),
+        (
+            Verdict::JudgeError("interactor", "R0101".into()),
+            Some(Trapped::Interactor),
+        ),
+    ];
+    for (verdict, trapped) in named {
+        assert_eq!(verdict.trapped(), trapped, "{verdict:?}");
+        let helper = matches!(
+            trapped,
+            Some(Trapped::Brute | Trapped::Checker | Trapped::Interactor)
+        );
+        assert_eq!(verdict.helper_failed(), helper, "{verdict:?}");
+        assert_eq!(
+            verdict.stopped(),
+            matches!(verdict, Verdict::RuntimeError(_) | Verdict::TimeLimit)
+        );
+    }
+}

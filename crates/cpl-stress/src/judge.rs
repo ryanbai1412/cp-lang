@@ -76,9 +76,72 @@ pub enum Verdict {
     JudgeError(&'static str, String),
 }
 
+/// The program a failing case stopped in with an error of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Trapped {
+    Solution,
+    Brute,
+    Checker,
+    Interactor,
+}
+
+impl Trapped {
+    pub fn name(self) -> &'static str {
+        match self {
+            Trapped::Solution => "solution",
+            Trapped::Brute => "brute",
+            Trapped::Checker => "checker",
+            Trapped::Interactor => "interactor",
+        }
+    }
+}
+
 impl Verdict {
     pub fn accepted(&self) -> bool {
         *self == Verdict::Accepted
+    }
+
+    /// A wrong answer, as the brute, checker or interactor rules it.
+    pub fn wrong(&self) -> bool {
+        matches!(self, Verdict::Wrong(_))
+    }
+
+    pub fn timed_out(&self) -> bool {
+        *self == Verdict::TimeLimit
+    }
+
+    /// The solution itself never finished cleanly: a crash or the time limit.
+    pub fn stopped(&self) -> bool {
+        matches!(self, Verdict::RuntimeError(_) | Verdict::TimeLimit)
+    }
+
+    /// Which program's own error the case stopped at: whose trap the
+    /// debug run that explains it shows.
+    pub fn trapped(&self) -> Option<Trapped> {
+        match self {
+            Verdict::RuntimeError(_) => Some(Trapped::Solution),
+            Verdict::BruteError(_) => Some(Trapped::Brute),
+            Verdict::JudgeError("checker", _) => Some(Trapped::Checker),
+            Verdict::JudgeError(..) => Some(Trapped::Interactor),
+            _ => None,
+        }
+    }
+
+    /// The brute, checker or interactor failed, not the solution: the case
+    /// is no test of it.
+    pub fn helper_failed(&self) -> bool {
+        self.trapped().is_some_and(|t| t != Trapped::Solution)
+    }
+
+    /// What the verdict says of the run, or `""` when it says nothing more.
+    pub fn why(&self) -> &str {
+        match self {
+            Verdict::Wrong(why)
+            | Verdict::RuntimeError(why)
+            | Verdict::BruteError(why)
+            | Verdict::JudgeError(_, why) => why,
+            _ => "",
+        }
     }
 
     /// The two letters judges use.
@@ -287,6 +350,34 @@ pub(crate) fn failure(outcome: &Outcome) -> Option<Verdict> {
             }))
         }
     }
+}
+
+/// What an interpreted run that trapped is called.
+pub(crate) fn interp_failure(trap: cpl_interp::Trap) -> Verdict {
+    match trap.message.as_str() {
+        cpl_interp::OUT_OF_TIME => Verdict::TimeLimit,
+        _ => Verdict::RuntimeError(trap.message),
+    }
+}
+
+/// How a run with `@cache` off, `cold`, rules on the cached run's output `got`.
+pub(crate) fn recheck(cold: &Outcome, got: &str) -> Option<crate::case::Failed> {
+    let why = match cold.ok() {
+        false => format!(
+            "@cache cold run failed ({:?}) while cached run succeeded",
+            cold.exit
+        ),
+        true => format!(
+            "@cache changed the output ({})",
+            first_difference(&cold.stdout, got)?
+        ),
+    };
+    let wrong = Verdict::Wrong(why);
+    Some(crate::case::Failed::new(
+        wrong,
+        cold.stdout.clone(),
+        got.to_string(),
+    ))
 }
 
 /// One judged run: the verdict and what the solution printed and cost.

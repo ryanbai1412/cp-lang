@@ -15,7 +15,7 @@ use crate::case::{judge_case, Ran, Ruling, Sides, Talked, Wrong};
 use crate::choices::{self, Drawn};
 use crate::cli::{swap_in_part_brutes, Stage};
 use crate::judge::{explaining, Explaining};
-use crate::judge::{first_difference, Judge, Verdict};
+use crate::judge::{Judge, Trapped};
 use crate::program::Program;
 use crate::report::StressResult;
 use crate::run::StressError as Error;
@@ -135,21 +135,7 @@ impl Sides for ProcessEngine<'_> {
         let cold_out = cold
             .run(input, crate::case::brute_limit(limit))
             .map_err(unrunnable(cold))?;
-        let wrong = |why: String| {
-            Some(crate::case::Failed::new(
-                Verdict::Wrong(why),
-                cold_out.stdout.clone(),
-                got.to_string(),
-            ))
-        };
-        if !cold_out.ok() {
-            return Ok(wrong(format!(
-                "@cache cold run failed ({:?}) while cached run succeeded",
-                cold_out.exit
-            )));
-        }
-        Ok(first_difference(&cold_out.stdout, got)
-            .and_then(|why| wrong(format!("@cache changed the output ({why})"))))
+        Ok(crate::judge::recheck(&cold_out, got))
     }
 }
 
@@ -219,7 +205,7 @@ static ENGINES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new
 impl InterpEngine {
     /// [`run_ir`] on the calling thread, from the state `program` reaches
     /// before it first reads, once a first run has found it.
-    fn run_case(
+    fn run_resumed(
         &self,
         role: Role,
         program: &cpl_ir::Program,
@@ -328,7 +314,7 @@ impl Engine for InterpEngine {
     }
 
     fn stops(&self, input: &str) -> bool {
-        self.run_case(Role::Fast, &self.fast, input, self.limit)
+        self.run_resumed(Role::Fast, &self.fast, input, self.limit)
             .is_err()
     }
 
@@ -347,10 +333,7 @@ fn ran(run: Result<String, (String, cpl_interp::Trap)>) -> Ran {
         Ok(out) => Ran { out, stop: None },
         Err((out, trap)) => Ran {
             out,
-            stop: Some(match trap.message.as_str() {
-                cpl_interp::OUT_OF_TIME => Verdict::TimeLimit,
-                _ => Verdict::RuntimeError(trap.message),
-            }),
+            stop: Some(crate::judge::interp_failure(trap)),
         },
     }
 }
@@ -370,11 +353,11 @@ impl Sides for InterpEngine {
         Ok(self
             .brute
             .as_ref()
-            .map(|brute| ran(self.run_case(Role::Brute, brute, input, limit))))
+            .map(|brute| ran(self.run_resumed(Role::Brute, brute, input, limit))))
     }
 
     fn solution(&self, input: &str, limit: Duration) -> Result<Ran, Error> {
-        Ok(ran(self.run_case(Role::Fast, &self.fast, input, limit)))
+        Ok(ran(self.run_resumed(Role::Fast, &self.fast, input, limit)))
     }
 
     fn check(
@@ -715,23 +698,24 @@ pub fn stress_source(
             return failure.trap.clone();
         }
         let path = std::path::Path::new(name);
-        let brute = match failure.verdict {
-            Verdict::RuntimeError(_) => false,
-            Verdict::BruteError(_) if own_brute.is_some() => true,
-            Verdict::JudgeError("checker", _) => {
-                return crate::explain::checker_trap_in(
-                    path,
-                    source,
-                    &failure.input,
-                    &failure.got,
-                    stack_limit,
-                )
-                .map(|t| t.json());
+        let input = &failure.input;
+        match failure.verdict.trapped()? {
+            Trapped::Solution => {
+                crate::explain::trap_report_in(path, source, input, false, stack_limit)
             }
-            _ => return None,
-        };
-        crate::explain::trap_report_in(path, source, &failure.input, brute, stack_limit)
-            .map(|t| t.json())
+            Trapped::Brute if own_brute.is_some() => {
+                crate::explain::trap_report_in(path, source, input, true, stack_limit)
+            }
+            Trapped::Brute => {
+                let swapped = swap_in_part_brutes(source)?;
+                crate::explain::trap_report_in(path, &swapped, input, false, stack_limit)
+            }
+            Trapped::Checker => {
+                crate::explain::checker_trap_in(path, source, input, &failure.got, stack_limit)
+            }
+            Trapped::Interactor => None,
+        }
+        .map(|t| t.json())
     });
     Ok(StressResult {
         stages,
