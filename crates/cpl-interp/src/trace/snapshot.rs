@@ -153,7 +153,10 @@ pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, Extra) {
             // list of arcs that each start with a vertex is a graph, and
             // a root beside a parent per vertex is a tree.
             let arcs_from = |ty: &Ty| match ty {
-                Ty::List(arc) => matches!(field_tys(arc, program).first(), Some(Ty::Pos(_))),
+                Ty::List(arc) => {
+                    matches!(**arc, Ty::Pos(_))
+                        || matches!(field_tys(arc, program).first(), Some(Ty::Pos(_)))
+                }
                 _ => false,
             };
             let parent_per = |ty: &Ty| match ty {
@@ -162,9 +165,11 @@ pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, Extra) {
                 }
                 _ => false,
             };
-            if field("start") == Some(&Ty::List(Box::new(Ty::Int)))
-                && field("arcs").is_some_and(arcs_from)
-            {
+            let offsets = |ty: &Ty| match ty {
+                Ty::List(elem) | Ty::Array { elem, .. } => **elem == Ty::Int,
+                _ => false,
+            };
+            if field("start").is_some_and(offsets) && field("arcs").is_some_and(arcs_from) {
                 (Kind::Csr, vec![("directed", true.into())])
             } else if matches!(field("root"), Some(Ty::Pos(_)))
                 && field("par").is_some_and(parent_per)
@@ -527,27 +532,32 @@ pub(super) fn snapshot(
                 return (graph(std::iter::empty(), &[]), None);
             };
             let lo = match &def.fields[arcs].1 {
-                Ty::List(item) => match field_tys(item, view.program).first() {
-                    Some(Ty::Pos(d)) => view.domains[*d].0,
+                Ty::List(item) => match (&**item, field_tys(item, view.program).first()) {
+                    (Ty::Pos(d), _) | (_, Some(Ty::Pos(d))) => view.domains[*d].0,
                     _ => 0,
                 },
                 _ => 0,
             };
-            let (Value::List(start), Value::List(arcs)) = (&fields[start], &fields[arcs]) else {
+            let start: Vec<i64> = match &fields[start] {
+                Value::List(start) => start.iter().map(|v| v.int()).collect(),
+                Value::Array(start) => start.to_values().iter().map(Value::int).collect(),
+                _ => return (graph(std::iter::empty(), &[]), None),
+            };
+            let Value::List(arcs) = &fields[arcs] else {
                 return (graph(std::iter::empty(), &[]), None);
             };
             let n = start.len().saturating_sub(1);
             let mut edges = Vec::new();
             for from in 0..n {
-                for arc in
-                    start.get_unchecked_val(from).int()..start.get_unchecked_val(from + 1).int()
-                {
-                    if let Some(Value::Tuple(arc)) = arcs.get(arc as usize) {
-                        edges.push((
-                            from as i64 + lo,
-                            arc.get(0).map_or(0, |v| v.int()) + lo,
-                            None,
-                        ));
+                for arc in start[from]..start[from + 1] {
+                    // an arc is a record that starts with its vertex, or the vertex itself
+                    let to = match arcs.get(arc as usize) {
+                        Some(Value::Tuple(arc)) => arc.get(0).map(|v| v.int()),
+                        Some(vertex) => Some(vertex.int()),
+                        None => None,
+                    };
+                    if let Some(to) = to {
+                        edges.push((from as i64 + lo, to + lo, None));
                     }
                 }
             }

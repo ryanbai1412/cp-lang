@@ -105,10 +105,10 @@ for k in 0..n:
             if a == u.ord: und.push(V(b))
             if b == u.ord: und.push(V(a))
         und.sort()
-        var gus = gu[u].clone()
+        var gus = List(gu[u])
         gus.sort()
         let tw = [V(a) for (a, b) in pairs if b == u.ord]
-        var gts = gt[u].clone()
+        var gts = List(gt[u])
         gts.sort()
         var tws = tw.clone()
         tws.sort()

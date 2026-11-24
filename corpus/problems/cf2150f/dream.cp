@@ -40,7 +40,8 @@ fn route(i: V, j: V) -> List<V>:
     let far = [d.u, d.v].max(by: f => t.dist(i, f))!
     let mid = t.meet(i, j, far)
     let stem_len = half - dist + 1
-    let stem = t.path(mid, far)[..stem_len]
+    let to_far = t.path(mid, far)
+    let stem = to_far[..stem_len]
     let out = if mid == j: 1 else: 0
     let detour = [x for (z, x) in stem.items if z % 2 == out] +
         [x for (z, x) in stem.items.rev if z % 2 != out]

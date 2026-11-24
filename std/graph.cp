@@ -639,36 +639,49 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
     (C:, comp: [V] v => C(k - 1 - done[v]))
 
 /// `Graph.directed` on a plain list of `(u, v)` pairs: no edge domain, and each arc is the
-/// target vertex itself.
+/// target vertex itself. A `Graph` in compressed sparse rows, as `Graph.directed` builds one.
 ///
-/// cost: \(O(n + m)\)
-/// empty: `domain V = 0..2; directed_of_pairs(List<(V, V)>()) == [[], []]`
+/// cost: \(O(n + m)\) time; memory is `n + 1` offsets and one list of `m` arcs, no list per vertex
+/// empty: `domain V = 0..2; let g = directed_of_pairs(List<(V, V)>()); g.deg(0) == 0 and g.deg(1) == 0`
 /// order: each vertex's arcs in input order
 /// traps: never
-/// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))])[0] == [2, 1]`
-pub fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
-    var adj: [V]List<V> = []
-    for (u, v) in edges: adj[u].push(v)
-    adj
+/// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))]).next(0).collect() == [2, 1]`
+pub fn directed_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>:
+    var start: [V.cuts]Int = 0
+    for (u, _) in edges: start[u.ord] += 1
+    for i in 1..start.len: start[i] += start[i - 1]
+    var arcs = List<V>()
+    if let (u0, _) = edges.first:
+        arcs = List.filled(edges.len, u0)
+        for (u, v) in edges.rev:
+            start[u.ord] -= 1
+            arcs[start[u.ord]] = v
+    Graph<V, V>(start:, arcs:)
 
 /// `Graph.undirected` on a plain list of `(u, v)` pairs: each pair gives arcs both ways,
-/// each arc the target vertex itself.
+/// each arc the target vertex itself. A `Graph` in compressed sparse rows, as
+/// `Graph.undirected` builds one.
 ///
-/// cost: \(O(n + m)\)
-/// empty: `domain V = 0..2; undirected_of_pairs(List<(V, V)>()) == [[], []]`
+/// cost: \(O(n + m)\) time; memory is `n + 1` offsets and one list of `2m` arcs, no list per vertex
+/// empty: `domain V = 0..2; let g = undirected_of_pairs(List<(V, V)>()); g.deg(0) == 0 and g.deg(1) == 0`
 /// order: each vertex's arcs in the order of their pairs
 /// traps: never
-/// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))])[1] == [0, 2]`
-pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
-    var deg: [V]Int = 0
+/// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))]).next(1).collect() == [0, 2]`
+pub fn undirected_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>:
+    var start: [V.cuts]Int = 0
     for (u, v) in edges:
-        deg[u] += 1
-        deg[v] += 1
-    var adj: [V]List<V> = []
-    for v in V: adj[v].reserve(deg[v])
-    for (u, v) in edges:
-        for (a, b) in [(u, v), (v, u)]: adj[a].push(b)
-    adj
+        start[u.ord] += 1
+        start[v.ord] += 1
+    for i in 1..start.len: start[i] += start[i - 1]
+    var arcs = List<V>()
+    if let (u0, _) = edges.first:
+        arcs = List.filled(2 * edges.len, u0)
+        for (u, v) in edges.rev:
+            start[v.ord] -= 1
+            arcs[start[v.ord]] = u
+            start[u.ord] -= 1
+            arcs[start[u.ord]] = v
+    Graph<V, V>(start:, arcs:)
 
 /// The number of arcs out of `u` in an adjacency list, as `Graph.deg` is for a `Graph`.
 /// `Graph.undirected` over a plain range of edges (`[0..m](u: V, v: V)`) gives one.
