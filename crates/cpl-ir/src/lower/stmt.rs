@@ -3099,7 +3099,15 @@ impl<'a> Lowerer<'a> {
                 if matches!(&callee.kind, ast::ExprKind::Name(name)
                     if self.lookup(name).is_none()
                         && matches!(self.get_sym(name), Some(Sym::Struct(_) | Sym::GenStruct(_)))));
-            if builds_a_cell && matches!(elem_ty, Ty::Struct(_)) {
+            // `var adj: [X]List<X> = List()`: an empty list is one cell's
+            // value too, and takes its element from the cell.
+            let empty_list = matches!(&init.kind, ast::ExprKind::Call { callee, args }
+                if args.is_empty()
+                    && matches!(&callee.kind, ast::ExprKind::Name(name)
+                        if name == "List" && self.lookup(name).is_none()));
+            if (builds_a_cell && matches!(elem_ty, Ty::Struct(_)))
+                || (empty_list && matches!(elem_ty, Ty::List(_)))
+            {
                 let value = self.expect(init, &elem_ty);
                 return Some(self.fill_with_index_domains(
                     dims.clone(),

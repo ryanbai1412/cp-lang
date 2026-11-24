@@ -178,7 +178,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/grid-rows-is-a-getter.cp: compiler (E0304 for a std `@get` fn called with `()`)
 - core-04/keyed-counter-is-not-a-key.cp: compiler
 - core-04/library-domain-count-trap-names-sizing-site-release.cp: compiler
-- core-04/list-fill-copies-per-key.cp: compiler
 - core-04/list-of-domain-array-loses-domain.cp: compiler
 - core-04/rebased-str-indexes-from-zero.cp: stdlib
 - core-04/runtime-domain-literal-between-traps.cp: compiler
