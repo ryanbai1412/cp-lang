@@ -189,9 +189,12 @@ pub fn run_built(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
-    let mut to_solution = child.stdin.take().expect("piped");
-    let mut from_solution = child.stdout.take().expect("piped");
-    let mut errors = child.stderr.take().expect("piped");
+    let (Some(mut to_solution), Some(mut from_solution), Some(mut errors)) =
+        (child.stdin.take(), child.stdout.take(), child.stderr.take())
+    else {
+        let _ = child.kill();
+        return Err(std::io::ErrorKind::BrokenPipe.into());
+    };
     let (said, heard) = std::sync::mpsc::channel::<Vec<u8>>();
     let (judge_trap, lines, stderr) = std::thread::scope(|scope| {
         let listening = scope.spawn(move || {
