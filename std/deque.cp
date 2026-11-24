@@ -26,7 +26,7 @@ pub struct Deque<T>:
     /// order `xs` lists them.
     ///
     /// cost: \(O(n)\)
-    /// empty: an empty deque
+    /// empty: `Deque<Int>.of([]).len == 0`
     /// traps: never
     /// example: `Deque.of([1, 2, 3]).to_list() == [1, 2, 3]`
     /// example: `var q = Deque.of([1, 2]); q.pop_front() == Some(1)`
@@ -138,7 +138,7 @@ pub struct Deque<T>:
     /// Remove and return the back, or `None` when empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`, and the deque stays empty
+    /// empty: `var q = Deque<Int>(); q.pop() == None and q.len == 0`
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.pop() == Some(2) and q.to_list() == [1]`
     pub fn pop(mut self) -> ?T:
@@ -150,7 +150,7 @@ pub struct Deque<T>:
     /// Remove and return the front, or `None` when empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`, and the deque stays empty
+    /// empty: `var q = Deque<Int>(); q.pop_front() == None and q.len == 0`
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.pop_front() == Some(1) and q.to_list() == [2]`
     pub fn pop_front(mut self) -> ?T:
@@ -168,7 +168,7 @@ pub struct Deque<T>:
     /// that element and everything behind it stay. `ok` is called at most `k + 1` times.
     ///
     /// cost: \(O(k)\) for `k` removed
-    /// empty: `[]`
+    /// empty: `var q = Deque<Int>(); q.pop_front_while(x => x < 4) == []`
     /// order: front first, the order the elements sat in; a new `List`, keyed from 0
     /// traps: never
     /// example: `var q = Deque.of([1, 2, 5, 3]); q.pop_front_while(x => x < 4) == [1, 2] and q.to_list() == [5, 3]`
@@ -184,7 +184,7 @@ pub struct Deque<T>:
     /// first element where it is false.
     ///
     /// cost: \(O(k)\) for `k` removed
-    /// empty: `[]`
+    /// empty: `var q = Deque<Int>(); q.pop_while(x => x < 4) == []`
     /// order: back first, the order they were popped; a new `List`, keyed from 0
     /// traps: never
     /// example: `var q = Deque.of([5, 1, 2]); q.pop_while(x => x < 4) == [2, 1] and q.to_list() == [5]`
@@ -196,8 +196,8 @@ pub struct Deque<T>:
     /// The front, or `None` when empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
-    /// ties: none: there is one front
+    /// empty: `Deque<Int>().first == None`
+    /// ties: `Deque.of([4, 4]).first == Some(4)`
     /// traps: never
     /// example: `Deque.of([4, 5]).first == Some(4)`
     @get pub fn first(self) -> ?T:
@@ -210,8 +210,8 @@ pub struct Deque<T>:
     /// `dq.last(k)` is `dq[dq.len - 1 - k]` when `k < dq.len`, and `None` otherwise.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None` for every `k`
-    /// ties: none: each `k` names one place
+    /// empty: `let q = Deque<Int>(); q.last == None and q.last(3) == None`
+    /// ties: `let q = Deque.of([4, 4, 5]); q.last(1) == Some(4) and q.last(2) == Some(4)`
     /// traps: when `k < 0`
     /// example: `Deque.of([4, 5, 6]).last == Some(6)`
     /// example: `Deque.of([4, 5, 6]).last(1) == Some(5)`
@@ -224,7 +224,7 @@ pub struct Deque<T>:
     /// \(O(n)\) to walk.
     ///
     /// cost: \(O(1)\) to make, \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `Deque<Int>().items.collect() == []`
     /// order: front to back; the places are `0..len`
     /// traps: never
     /// example: `Deque.of([7, 8]).items.collect() == [(0, 7), (1, 8)]`
@@ -257,7 +257,7 @@ pub struct Deque<T>:
     /// Materialize the elements front to back as a `List<T>`.
     ///
     /// cost: \(O(n)\), one new `List`
-    /// empty: `[]`
+    /// empty: `Deque<Int>().to_list() == []`
     /// order: front to back; a new `List`, keyed from 0
     /// traps: never
     /// example: `var q = Deque.of([2]); q.push_front(1); q.to_list() == [1, 2]`
@@ -270,7 +270,7 @@ pub struct Deque<T>:
     /// `for x in q` uses this.
     ///
     /// cost: \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `Deque<Int>().each().collect() == []`
     /// order: front to back
     /// traps: never
     /// example: `Deque.of([1, 2]).each().collect() == [1, 2]`
@@ -280,7 +280,7 @@ pub struct Deque<T>:
     /// Yield elements back to front without allocating.
     ///
     /// cost: \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `Deque<Int>().each_rev().collect() == []`
     /// order: back to front
     /// traps: never
     /// example: `Deque.of([1, 2]).each_rev().collect() == [2, 1]`
@@ -296,7 +296,7 @@ pub struct Deque<T>:
     /// negative `k` rotates right: `rotate_left(-1)` is `rotate_right(1)`.
     ///
     /// cost: \(O(\min(k, n - k))\) after reducing `k` mod `n`
-    /// empty: does nothing, for every `k`
+    /// empty: `var q = Deque<Int>(); q.rotate_left(3); q.rotate_left(-1); q.to_list() == []`
     /// traps: never
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_left(1); q.to_list() == [2, 3, 4, 1]`
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_left(-1); q.to_list() == [4, 1, 2, 3]`
@@ -314,7 +314,7 @@ pub struct Deque<T>:
     /// `rotate_left(-k)`.
     ///
     /// cost: \(O(\min(k, n - k))\) after reducing `k` mod `n`
-    /// empty: does nothing, for every `k`
+    /// empty: `var q = Deque<Int>(); q.rotate_right(3); q.rotate_right(-1); q.to_list() == []`
     /// traps: never
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_right(1); q.to_list() == [4, 1, 2, 3]`
     /// example: `var q = Deque.of([1, 2, 3]); q.rotate_right(4); q.to_list() == [3, 1, 2]`
@@ -370,7 +370,7 @@ pub struct LinkedList<T>:
     /// Build a `LinkedList<T>` from `xs`, front to back.
     ///
     /// cost: \(O(n)\)
-    /// empty: an empty list
+    /// empty: `LinkedList<Int>.from_list([]).len == 0`
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).each().collect() == [1, 2]`
     pub fn from_list(xs: List<T>) -> LinkedList<T>:
@@ -397,8 +397,8 @@ pub struct LinkedList<T>:
     /// The front element, or `None` when the list is empty (as `Deque.first`).
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
-    /// ties: none: there is one front
+    /// empty: `LinkedList<Int>().first == None`
+    /// ties: `LinkedList.from_list([4, 4]).first == Some(4)`
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).first == Some(1)`
     @get pub fn first(self) -> ?T:
@@ -407,8 +407,8 @@ pub struct LinkedList<T>:
     /// The back element, or `None` when the list is empty (as `Deque.last`).
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
-    /// ties: none: there is one back
+    /// empty: `LinkedList<Int>().last == None`
+    /// ties: `LinkedList.from_list([4, 4]).last == Some(4)`
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).last == Some(2)`
     @get pub fn last(self) -> ?T:
@@ -445,7 +445,7 @@ pub struct LinkedList<T>:
     /// Remove and return the back element, or `None` if empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `var l = LinkedList<Int>(); l.pop() == None`
     /// traps: never
     /// example: `var l = LinkedList.from_list([1, 2]); l.pop() == Some(2) and l.len == 1`
     pub fn pop(mut self) -> ?T:
@@ -460,7 +460,7 @@ pub struct LinkedList<T>:
     /// Remove and return the front element, or `None` if empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `var l = LinkedList<Int>(); l.pop_front() == None`
     /// traps: never
     /// example: `var l = LinkedList.from_list([1, 2]); l.pop_front() == Some(1) and l.first == 2`
     pub fn pop_front(mut self) -> ?T:
@@ -507,7 +507,7 @@ pub struct LinkedList<T>:
     /// Reverse the list in place. \(O(1)\) via reversible links.
     ///
     /// cost: \(O(1)\)
-    /// empty: does nothing
+    /// empty: `let xs: List<Int> = []; var a = LinkedList.from_list(xs); a.reverse(); a.each().collect() == []`
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2, 3]); a.reverse(); a.each().collect() == [3, 2, 1]`
     pub fn reverse(mut self):
@@ -528,7 +528,7 @@ pub struct LinkedList<T>:
     /// Yield elements front to back.
     ///
     /// cost: \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `LinkedList<Int>().each().collect() == []`
     /// order: front to back
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).each().collect() == [1, 2]`
@@ -541,7 +541,7 @@ pub struct LinkedList<T>:
     /// Yield elements back to front.
     ///
     /// cost: \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `LinkedList<Int>().each_rev().collect() == []`
     /// order: back to front
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).each_rev().collect() == [2, 1]`
