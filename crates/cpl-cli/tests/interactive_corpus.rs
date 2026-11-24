@@ -1,6 +1,6 @@
 //! Every interactive corpus problem with a judge (`interactor.py`) is
-//! solved by its port on each `tests/*.case` and on cases its `gen.py`
-//! makes: in the interpreter, and as the judge's C++ when a compiler is
+//! solved by its port on the cases its `gen.py`
+//! makes, in the interpreter, and as the judge's C++ when a compiler is
 //! here. A port that forgets to flush, reads past
 //! the judge's reply or asks too many questions fails here.
 
@@ -9,17 +9,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
-/// Interactive problems with no `interactor.py`, and why.
-const KNOWN_NO_JUDGE: &[(&str, &str)] =
-    &[("ioi18p1", "a grader task; spec.cp plays the sample grader")];
-
 /// `gen.py`'s seed and size for the made cases.
 const GENERATED: [(u32, u32); 2] = [(1, 8), (2, 64)];
-
-/// Ports that don't speak their judge's protocol, and why; their
-/// `spec.cp` is run instead. Shrink-only: a port that starts passing must
-/// leave the list.
-const KNOWN_OTHER_PROTOCOL: &[(&str, &str)] = &[];
 
 fn problems() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems")
@@ -78,11 +69,7 @@ fn every_interactive_port_satisfies_its_judge() {
             continue;
         }
         judged += 1;
-        let mut cases: Vec<PathBuf> = std::fs::read_dir(dir.join("tests"))
-            .map(|entries| entries.map(|e| e.unwrap().path()).collect())
-            .unwrap_or_default();
-        cases.retain(|p| p.extension().is_some_and(|x| x == "case"));
-        cases.sort();
+        let mut cases: Vec<PathBuf> = Vec::new();
         let made = Path::new(env!("CARGO_TARGET_TMPDIR"))
             .join("interactive")
             .join(&name);
@@ -97,23 +84,6 @@ fn every_interactive_port_satisfies_its_judge() {
             let case = made.join(format!("gen-{seed}-{size}.case"));
             std::fs::write(&case, &out.stdout).unwrap();
             cases.push(case);
-        }
-        let other = KNOWN_OTHER_PROTOCOL.iter().any(|(n, _)| *n == name);
-        let file = if other { "spec.cp" } else { "port.cp" };
-        if other {
-            let mut judge = Command::new("python3");
-            judge
-                .arg("interactor.py")
-                .arg(&cases[0])
-                .arg("--")
-                .arg(env!("CARGO_BIN_EXE_cpl"))
-                .args(["run", "port.cp"])
-                .current_dir(dir);
-            let out = within(judge, Duration::from_secs(120));
-            assert!(
-                !out.status.success(),
-                "{name}'s port.cp now satisfies its judge: remove it from KNOWN_OTHER_PROTOCOL"
-            );
         }
         let modes: &[&[&str]] = if cpp {
             &[&["run"], &["run", "--release"]]
@@ -130,12 +100,12 @@ fn every_interactive_port_satisfies_its_judge() {
                     .arg("--")
                     .arg(env!("CARGO_BIN_EXE_cpl"))
                     .args(*mode)
-                    .arg(file)
+                    .arg("port.cp")
                     .current_dir(dir);
                 let out = within(judge, Duration::from_secs(120));
                 if !out.status.success() {
                     failures.push(format!(
-                        "{name} {} (cpl {} {file}): {}",
+                        "{name} {} (cpl {} port.cp): {}",
                         case.file_name().unwrap().to_string_lossy(),
                         mode.join(" "),
                         String::from_utf8_lossy(&out.stderr).trim()
@@ -144,10 +114,9 @@ fn every_interactive_port_satisfies_its_judge() {
             }
         }
     }
-    let listed: Vec<_> = KNOWN_NO_JUDGE.iter().map(|(n, _)| n.to_string()).collect();
-    assert_eq!(
-        unjudged, listed,
-        "interactive problems without interactor.py must be listed in KNOWN_NO_JUDGE with why"
+    assert!(
+        unjudged.is_empty(),
+        "interactive problems need an interactor.py to be judged: {unjudged:?}"
     );
     eprintln!(
         "interactive corpus: {judged} problems judged, {runs} runs, {} failed; {} without a judge",

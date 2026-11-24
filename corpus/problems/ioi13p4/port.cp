@@ -8,22 +8,16 @@
 //   search on k, setting the first k free switches to that position and the rest to the other,
 //   for the smallest k that opens d: its k-th free switch is d's. At most 1 + 13 queries per
 //   door, O(N^2 log N) time.
-// The task is a grader function and the judge supplies `try_combination`; this plays the sample
-// grader: it reads N, each switch's open position and its door, answers each try the way the
-// judge does, and prints `Accepted: q`. The `protocol` form is the dream in
-// research/frictions/ioi13p4.md.
+// The judge sends N, answers each `try S` with the first closed door (or -1) and takes
+//   `answer S D` (interactor.py).
 // original: corpus/submissions/4687973.cpp
 let n: 1..=5000 = read()
 domain Switch = 0..n
 domain Door = 0..n
-let hidden_open: [Switch]0..=1 = read()
-let hidden_door: [Switch]Door = read()
 
-var tries = 0
 fn try_combination(s: [Switch]0..=1) -> ?Door:
-    tries += 1
-    assert tries <= 70_000
-    [hidden_door[w] for w in Switch if s[w] != hidden_open[w]].min()
+    let first: Int = ask("try", s)
+    Door.at(first)
 
 fn explore_cave() -> ([Switch]0..=1, [Switch]Door):
     var open: [Switch]0..=1 = 0
@@ -43,5 +37,4 @@ fn explore_cave() -> ([Switch]0..=1, [Switch]Door):
     (open, [Switch] w => door[w]!)
 
 let (found_open, found_door) = explore_cave()
-assert found_open == hidden_open and found_door == hidden_door
-print("Accepted:", tries)
+print("answer", found_open, found_door)

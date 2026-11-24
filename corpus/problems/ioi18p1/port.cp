@@ -7,15 +7,8 @@
 //   takes one press of s+a + s+b+a + s+b+b + s+b+c (length 4|s| + 6 <= 4N), which scores |s| + 1
 //   for a, |s| + 2 for b, |s| for c. The last letter takes two presses again: N + 2 in all.
 // original: corpus/submissions/4707803.cpp
-use std.strings.{prefix_matches}
-
-let word = read<Str of "ABXY">()
-assert 1 <= word.len <= 2000
-var presses = 0
-fn press(p: Str) -> Int:
-    presses += 1
-    assert presses <= 8000 and p.len <= 4 * word.len
-    prefix_matches(p, word).max() ?? 0
+let n: 1..=2000 = read()
+fn press(p: Str) -> Int = ask("press", p)
 
 // One letter after s in two presses: is it in the pair A B, then which of the pair.
 fn letter_after(s: Str) -> Char:
@@ -33,5 +26,4 @@ fn guess_sequence(n: Int) -> Str:
     if n >= 2: s.push(letter_after(s))
     s
 
-assert guess_sequence(word.len) == word
-print("Accepted:", presses)
+print("guess", guess_sequence(n))
