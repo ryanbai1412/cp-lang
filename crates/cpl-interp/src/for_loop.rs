@@ -143,104 +143,28 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                 }
             }
-            Iter::RangeVal(expr, rev) => match self.eval(expr)? {
-                Value::Range(lo, hi) if lo < hi => {
-                    if *rev {
-                        let mut v = hi - 1;
-                        while v >= lo {
-                            round!(Value::Int(v));
-                            if v == lo {
-                                break;
-                            }
-                            v -= 1;
-                        }
-                    } else {
-                        let mut v = lo;
-                        while v < hi {
-                            round!(Value::Int(v));
-                            v += 1;
-                        }
-                    }
-                }
-                Value::Range128(r) if r.0 < r.1 => {
-                    let (lo, hi) = *r;
-                    if *rev {
-                        let mut v = hi - 1;
-                        while v >= lo {
-                            round!(Value::I128(v.into()));
-                            if v == lo {
-                                break;
-                            }
-                            v -= 1;
-                        }
-                    } else {
-                        let mut v = lo;
-                        while v < hi {
-                            round!(Value::I128(v.into()));
-                            v += 1;
-                        }
-                    }
-                }
-                _ => {}
-            },
             Iter::TreeRange {
                 container,
                 lo,
                 hi,
                 rev,
             } => {
-                use std::ops::Bound;
                 let held = self.eval(container)?;
-                let lo_b = match lo {
-                    Some((e, true)) => Bound::Included(self.eval(e)?),
-                    Some((e, false)) => Bound::Excluded(self.eval(e)?),
-                    None => Bound::Unbounded,
+                let mut bound = |b: &'p Option<(Expr, bool)>| -> Res<_> {
+                    Ok(match b {
+                        Some((e, closed)) => Some((self.eval(e)?, *closed)),
+                        None => None,
+                    })
                 };
-                let hi_b = match hi {
-                    Some((e, true)) => Bound::Included(self.eval(e)?),
-                    Some((e, false)) => Bound::Excluded(self.eval(e)?),
-                    None => Bound::Unbounded,
-                };
-                let empty = match (&lo_b, &hi_b) {
-                    (Bound::Included(a), Bound::Included(b)) => a > b,
-                    (Bound::Included(a), Bound::Excluded(b))
-                    | (Bound::Excluded(a), Bound::Included(b))
-                    | (Bound::Excluded(a), Bound::Excluded(b)) => a >= b,
-                    _ => false,
-                };
-                // Only a B-tree's bounds can be ordered structurally; a sorted set finds its own.
-                let empty = empty
-                    && !matches!(&held, Value::Set(s) if s.is_sorted_by_user())
-                    && !matches!(&held, Value::Map(m) if m.is_sorted_by_user());
-                if !empty {
-                    match &held {
-                        Value::Set(items) => {
-                            let range = items
-                                .range(lo_b, hi_b, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?;
-                            if *rev {
-                                for item in range.rev() {
-                                    round!(item.clone());
-                                }
-                            } else {
-                                for item in range {
-                                    round!(item.clone());
-                                }
-                            }
-                        }
-                        Value::Map(entries) => {
-                            let range = entries
-                                .range(lo_b, hi_b, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?;
-                            if *rev {
-                                for (k, v) in range.rev() {
-                                    round!(Value::tuple(vec![k.clone(), v.clone()]));
-                                }
-                            } else {
-                                for (k, v) in range {
-                                    round!(Value::tuple(vec![k.clone(), v.clone()]));
-                                }
-                            }
-                        }
-                        _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+                let (lo, hi) = (bound(lo)?, bound(hi)?);
+                let items = self.tree_range_items(&held, lo, hi, span)?;
+                if *rev {
+                    for item in items.into_iter().rev() {
+                        round!(item);
+                    }
+                } else {
+                    for item in items {
+                        round!(item);
                     }
                 }
             }
@@ -264,74 +188,75 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     return Ok(flow);
                 }
             }
-            Iter::Seq(seq, rev) => {
+            Iter::RangeVal(seq, rev) | Iter::Seq(seq, rev) => {
                 // The loop walks the value as it was when the loop began.
                 let held = self.eval(seq)?;
-                match &held {
-                    Value::List(items) => {
-                        let n = items.len();
-                        for k in rounds(n, *rev) {
-                            round!(items.get_unchecked_val(k));
-                        }
-                    }
-                    Value::ListView(view) => {
-                        let n = view.len;
-                        for k in rounds(n, *rev) {
-                            round!(view.base.get_unchecked_val(view.pos(k)));
-                        }
-                    }
-                    Value::MutView(mv) => {
-                        let items = self.mut_view_to_vec(mv, span)?;
-                        let n = items.len();
-                        for k in rounds(n, *rev) {
-                            round!(items[k].clone());
-                        }
-                    }
-                    Value::Array(array) => {
-                        let n = array.len();
-                        for k in rounds(n, *rev) {
-                            round!(array.get_unchecked_val(k));
-                        }
-                    }
-                    Value::Str(bytes) => {
-                        let n = bytes.len();
-                        for k in rounds(n, *rev) {
-                            round!(Value::Char(bytes[k]));
-                        }
-                    }
-                    Value::StrView(view) => {
-                        let n = view.len;
-                        for k in rounds(n, *rev) {
-                            round!(Value::Char(view.base[view.pos(k)]));
-                        }
-                    }
-                    Value::Set(items) => {
-                        if *rev {
-                            for item in items.iter().rev() {
-                                round!(item.clone());
-                            }
-                        } else {
-                            for item in items.iter() {
-                                round!(item.clone());
-                            }
-                        }
-                    }
-                    Value::Map(entries) => {
-                        if *rev {
-                            for (key, value) in entries.iter().rev() {
-                                round!(Value::tuple(vec![key.clone(), value.clone()]));
-                            }
-                        } else {
-                            for (key, value) in entries.iter() {
-                                round!(Value::tuple(vec![key.clone(), value.clone()]));
-                            }
-                        }
-                    }
-                    _ => {}
+                let items = self.seq_items(&held, span)?;
+                for k in rounds(items.len(), *rev) {
+                    round!(items[k].clone());
                 }
             }
         }
         Ok(Flow::Next)
+    }
+
+    /// The items a `for` loop over sequence `held` walks, in order: a
+    /// string's are its chars, a map's its `(key, value)` pairs.
+    pub(crate) fn seq_items(&self, held: &Value, span: Span) -> Res<Vec<Value>> {
+        Ok(match held {
+            Value::List(xs) => xs.iter().collect(),
+            Value::ListView(v) => (0..v.len)
+                .map(|k| v.base.get_unchecked_val(v.pos(k)))
+                .collect(),
+            Value::MutView(mv) => self.mut_view_to_vec(mv, span)?,
+            Value::Array(a) => (0..a.len()).map(|k| a.get_unchecked_val(k)).collect(),
+            Value::Str(bytes) => bytes.iter().map(|&c| Value::Char(c)).collect(),
+            Value::StrView(v) => (0..v.len).map(|k| Value::Char(v.base[v.pos(k)])).collect(),
+            Value::Set(items) => items.iter().cloned().collect(),
+            Value::Map(entries) => (entries.iter())
+                .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
+                .collect(),
+            Value::Range(lo, hi) => (*lo..*hi).map(Value::Int).collect(),
+            Value::Range128(r) => (r.0..r.1).map(|v| Value::I128(v.into())).collect(),
+            _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        })
+    }
+
+    /// The items of sorted set or map `held` between bounds, each a value
+    /// and whether it is closed, in order: a map's are `(key, value)` pairs.
+    pub(crate) fn tree_range_items(
+        &mut self,
+        held: &Value,
+        lo: Option<(Value, bool)>,
+        hi: Option<(Value, bool)>,
+        span: Span,
+    ) -> Res<Vec<Value>> {
+        use std::ops::Bound;
+        let [lo, hi] = [lo, hi].map(|b| match b {
+            Some((v, true)) => Bound::Included(v),
+            Some((v, false)) => Bound::Excluded(v),
+            None => Bound::Unbounded,
+        });
+        let empty = match (&lo, &hi) {
+            (Bound::Included(a), Bound::Included(b)) => a > b,
+            (Bound::Included(a) | Bound::Excluded(a), Bound::Included(b) | Bound::Excluded(b)) => {
+                a >= b
+            }
+            _ => false,
+        };
+        // Only a B-tree's bounds can be ordered structurally; a sorted set finds its own.
+        let empty = empty
+            && !matches!(held, Value::Set(s) if s.is_sorted_by_user())
+            && !matches!(held, Value::Map(m) if m.is_sorted_by_user());
+        let mut cmp = |t: &Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, span);
+        Ok(match held {
+            _ if empty => vec![],
+            Value::Set(items) => items.range(lo, hi, &mut cmp)?.cloned().collect(),
+            Value::Map(entries) => (entries.range(lo, hi, &mut cmp)?)
+                .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
+                .collect(),
+            _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        })
     }
 }
 

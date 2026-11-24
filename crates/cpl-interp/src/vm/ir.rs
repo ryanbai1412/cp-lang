@@ -1044,11 +1044,19 @@ pub(crate) enum Op {
         list_v: u16,
         r_i: u16,
     },
-    /// The members of a set, or the `(key, value)` pairs of a map, as a
-    /// list: what a `for` loop over it walks, as it was when the loop began.
+    /// The items a `for` loop over a sequence walks, as a list as it was
+    /// when the loop began: a map's are its `(key, value)` pairs.
     SeqItems {
         dst: u16,
         src: u16,
+    },
+    /// [`Op::SeqItems`] of the sorted set or map `src` between bounds, each
+    /// a register and whether it is closed.
+    TreeRangeItems {
+        dst: u16,
+        src: u16,
+        lo: Option<(u16, bool)>,
+        hi: Option<(u16, bool)>,
     },
     ListPopFieldOptIL {
         dst_val: u16,

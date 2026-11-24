@@ -873,17 +873,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst_some as usize] = s;
             }
             Op::SeqItems { dst, src } => {
-                let items: Vec<Value> = match &regs_v[src as usize] {
-                    Value::Set(members) => members.iter().cloned().collect(),
-                    Value::Map(entries) => entries
-                        .iter()
-                        .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
-                        .collect(),
-                    Value::Array(array) => (0..array.len())
-                        .map(|k| array.get_unchecked_val(k))
-                        .collect(),
-                    _ => return bug(spans[cur_pc], "expected a set, map or table"),
-                };
+                let items = self.seq_items(&regs_v[src as usize], spans[cur_pc])?;
+                regs_v[dst as usize] = Value::List(Rc::new(crate::value::Cells::from(items)));
+            }
+            Op::TreeRangeItems { dst, src, lo, hi } => {
+                let [lo, hi] = [lo, hi].map(|b| b.map(|(r, c)| (regs_v[r as usize].clone(), c)));
+                let held = regs_v[src as usize].clone();
+                let items = self.tree_range_items(&held, lo, hi, spans[cur_pc])?;
                 regs_v[dst as usize] = Value::List(Rc::new(crate::value::Cells::from(items)));
             }
             Op::ListPopFieldOptIL {
