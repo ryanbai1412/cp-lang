@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import tempfile
 import unittest
 
 spec = importlib.util.spec_from_file_location("sizes", os.path.join(os.path.dirname(__file__), "sizes.py"))
@@ -18,6 +19,21 @@ class Verdict(unittest.TestCase):
 
     def test_there_is_no_oversize_list(self):
         self.assertFalse(os.path.exists(os.path.join(sizes.ROOT, "bench", "oversize.txt")))
+
+
+class Stale(unittest.TestCase):
+    def test_a_binary_older_than_a_source_is_stale(self):
+        with tempfile.NamedTemporaryFile() as f:
+            os.utime(f.name, (0, 0))
+            self.assertIsNotNone(sizes.stale(f.name))
+
+    def test_a_missing_binary_is_stale(self):
+        self.assertIn("missing", sizes.stale("/nonexistent/cpl"))
+
+    def test_a_binary_newer_than_every_source_is_current(self):
+        with tempfile.NamedTemporaryFile() as f:
+            os.utime(f.name, (4e9, 4e9))
+            self.assertIsNone(sizes.stale(f.name))
 
 
 class Programs(unittest.TestCase):

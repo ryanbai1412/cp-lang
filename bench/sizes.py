@@ -60,6 +60,21 @@ def size(cpl, judge, path):
     return int(total.group(1)), f"{biggest[0]} {biggest[1]}"
 
 
+def stale(cpl):
+    """A compiler source newer than the `cpl` binary (std is compiled in), so
+    its sizes would be stale; None when the binary is current."""
+    if not os.path.exists(cpl):
+        return f"{cpl} (missing)"
+    built = os.path.getmtime(cpl)
+    for top in ("crates", "std"):
+        for d, dirs, files in os.walk(os.path.join(ROOT, top)):
+            dirs[:] = [x for x in dirs if x not in ("target", "node_modules")]
+            for f in files:
+                if f.endswith((".rs", ".cp", "Cargo.toml")) and os.path.getmtime(os.path.join(d, f)) > built:
+                    return os.path.relpath(os.path.join(d, f), ROOT)
+    return None
+
+
 def verdict(over):
     """What to say about the programs `over` the bar, as (bytes, path), and
     whether --check fails: any one over it does, as there is no list to excuse it."""
@@ -74,6 +89,11 @@ def main():
     ap.add_argument("--check", action="store_true")
     ap.add_argument("-j", type=int, default=os.cpu_count())
     args = ap.parse_args()
+    newer = stale(args.cpl)
+    if newer:
+        print(f"sizes: {args.cpl} is older than {newer}; rebuild it (cargo build -p cpl-cli) "
+              "or pass --cpl", file=sys.stderr)
+        return 1
     paths = programs()
     with ThreadPoolExecutor(args.j) as pool:
         got = list(pool.map(lambda p: size(args.cpl, args.judge, p), paths))
