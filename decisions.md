@@ -9088,3 +9088,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 ## 586. (reserved, compiler)
 
 ## 587. (reserved, unknown)
+
+## 588. (reserved, compiler)
