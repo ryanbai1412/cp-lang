@@ -89,6 +89,13 @@ Interval DP is a table over `V.ranges`, whose keys are non-empty, so
 `r.first` is a `V` and not a `?V`; a hand-built `[V, V.cuts]` table wasted
 half its cells and left `l <= r` unchecked (decision 322).
 
+**One elimination serves every field.** `Mat<T>.det`, `rank`, `solve`,
+`solve_space` and `inverse` take `eps: ?T = None`; for an ordered field
+(`F64`) the pivot is the largest entry of its column and `|x| <= eps` counts
+as zero, and for `Mod<P>` any nonzero pivot works (decision 526). The
+`det_real` family lost because it duplicated four elimination bodies under
+second names, and its silent `1e-9` hid a tolerance the caller should see.
+
 **A structure with a different invariant is a different type.**
 `DualSegTree` (range apply, point get) and `DualFenwick` are their own
 types rather than modes, because a mode would let you call `sum(r)` on a

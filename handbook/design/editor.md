@@ -32,6 +32,11 @@ and prints the same diagnostic.
 - **Everything the compiler knows, shown where you type.** Types, named
   options, costs, storage and proven ranges come from the compiler's facts,
   never re-derived in a tool.
+- **Completion offers only what the checker accepts.** Every item comes from
+  the checker's resolution at the cursor, so accepting one never adds an
+  error (decision 513). A hand table of members is a second copy of the
+  library's surface: it drifts, and a suggestion that doesn't compile costs
+  a round trip in the moment completion should save one.
 
 ## How it fits together
 

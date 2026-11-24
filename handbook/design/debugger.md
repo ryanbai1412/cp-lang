@@ -50,6 +50,14 @@ source -> cpl-check -> cpl-ir::Program
   trace JSON (tools/trace/trace-schema.json) -> viewer
 ```
 
+Tracing is a flag on the commands that already run a program (`cpl run
+--trace`, `--live`, `cpl stress --trace`, `cpl replay --trace --step`) plus
+`cpl dap`; there is no `cpl trace`, `cpl snap` or `cpl debug` (decision 273).
+One flag on a command the contestant already types is guessable, and
+`replay` of a recorded call does what a snapshot command would without a
+second file format. Lost: separate debugging commands, which would be thin
+wrappers over the same code.
+
 ## Parts
 
 ### Stress (`crates/cpl-stress`)

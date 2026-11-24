@@ -215,6 +215,10 @@ early, so non-interactive output stays one write. A trap in any mode
 flushes buffered output before writing its report to stderr. Locally,
 `cpl run` on a file with an `@interactor` fn runs the program against it
 (`spec/tools/stress.md`).
+Under `@!multitest` the harness sends the program the test count and runs
+the `@interactor` once per test, so an interactive multitest problem is
+written exactly as the judge runs it (decision 382). Lost: making each
+interactor send the count itself, a line every interactor would repeat.
 
 ## Key decisions
 
