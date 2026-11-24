@@ -21,11 +21,13 @@ pub(crate) const STD_DIR: &str = "std";
 
 /// The source of one std module, `std_source!("prelude.cp")`; the path
 /// repeats `STD_DIR` because `include_str!` needs a literal.
+#[cfg(test)]
 macro_rules! std_source {
     ($file:literal) => {
         include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../std/", $file))
     };
 }
+#[cfg(test)]
 pub(crate) use std_source;
 
 mod checker;
