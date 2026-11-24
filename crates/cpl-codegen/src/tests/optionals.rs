@@ -391,3 +391,22 @@ fn a_position_stepped_by_k_checks_only_the_side_it_can_leave() {
         "{p}"
     );
 }
+
+#[test]
+fn a_profiled_build_counts_the_line_that_tests_an_into_fn() {
+    let src =
+        "let n: Int = read()\nfn half(x: Int) -> ?Int = if x % 2 == 0: Some(x / 2) else: None\n\
+         var s = 0\nfor i in 0..n:\n    if let h = half(i): s += h\nprint(s)\n";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let (profiled, spans) =
+        crate::emit_profiled(&program, "t.cp", &crate::Target::default(), "t.prof");
+    assert!(profiled.contains("ll& cpl_out)"), "{profiled}");
+    let at = src.find("half(i)").unwrap() as u32;
+    assert!(
+        spans.iter().any(|s| s.start <= at && at < s.end),
+        "no site counts `if let h = half(i)`: {spans:?}\n{profiled}"
+    );
+}

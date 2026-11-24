@@ -160,7 +160,10 @@ impl Emitter<'_> {
             return None;
         }
         let j = tested_here(self.program, stmts, k)?;
-        let parts = self.opt_parts(init, Some(out))?;
+        let mut parts_out = String::new();
+        let parts = self.opt_parts(init, Some(&mut parts_out))?;
+        self.start_stmt(&stmts[k], out);
+        out.push_str(&parts_out);
         self.opened.insert(*t, parts);
         for i in k + 1..=j {
             each(self, i, out);

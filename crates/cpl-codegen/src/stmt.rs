@@ -666,7 +666,9 @@ impl<'p> Emitter<'p> {
         callee.ret == Ty::Unit && callee.params.first().is_some_and(|p| p.fills_cache)
     }
 
-    pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
+    /// What starts every statement however it is emitted: its trap line,
+    /// and in a profiled build the count of its site.
+    pub(crate) fn start_stmt(&mut self, stmt: &Stmt, out: &mut String) {
         self.note_site(stmt);
         if let (Some(sites), Some(span)) = (&mut self.sites, stmt.span()) {
             if self.counted.contains(&(stmt as *const Stmt)) {
@@ -678,6 +680,10 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("cpl_prof::mark({id});"));
             }
         }
+    }
+
+    pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
+        self.start_stmt(stmt, out);
         let program = self.program;
         match stmt {
             Stmt::Let(slot, _)
