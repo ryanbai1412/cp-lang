@@ -15,11 +15,11 @@ use std.algebra.{add}
 use std.dp.{Step}
 use std.dsu.{Dsu}
 use std.graph.{Next, Target, Graph, Visit, Edged, dfs, Tree, arc_len}
+use std.math.{bit}
 use std.rand.{Rng}
+use std.range.{first_true}
 use std.segtree.{SegTree}
 use std.seq.{collect, dedup, get_or_insert, span}
-use std.range.{first_true}
-use std.math.{bit}
 
 /// A BFS spanning tree rooted at `V.first`, as a `Rooted`.
 ///
@@ -46,7 +46,10 @@ pub fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _, _> = Rooted.new(sel
 /// order: children in the order the search reached them
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let (tree, tree_edge) = Graph.undirected(es).dfs_tree(0); tree.parent(2) == Some(1) and tree.depth(2) == 2 and tree_edge == [true, true, false]`
-pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _, _>, tree_edge: [E]Bool) where A: Edged<E>:
+pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (
+    tree: Rooted<V, _, _>,
+    tree_edge: [E]Bool,
+) where A: Edged<E>:
     var par: [V]?V = None
     var tree_edge: [E]Bool = false
     var path: List<V> = []
@@ -1481,10 +1484,7 @@ fn orders_lifting_and_the_virtual_tree():
     domain V = 0..14
     let adj = random_tree(V.first!)
     let r = Rooted(adj, V.first!)
-    let up: [V]?(
-        V,
-        Word,
-    ) = [V] v => if let p = r.parent(v): Some((p, Word(Str(v.ord)))) else: None
+    let up: [V]?(V, Word) = [V] v => if let p = r.parent(v): Some((p, Word(Str(v.ord)))) else: None
     let l = Lift(up, op: (x, y) => Word(x.s + y.s), identity: Word(""))
     let cost: [V]?(V, Int) = [V] v => if let p = r.parent(v): Some((p, v.ord + 1)) else: None
     let lc = Lift(cost, op: (x, y) => x + y, identity: 0)
@@ -1504,10 +1504,8 @@ fn orders_lifting_and_the_virtual_tree():
             sum += u.ord + 1
         for t in 0..r.depth(a) + 1:
             let c = l.climb(a, u => r.depth(u) >= t)
-            assert c.at == r.ancestor(
-                a,
-                max(r.depth(a) - t, 0),
-            )! and c.steps == r.depth(a) - r.depth(c.at)
+            assert c.at == r.ancestor(a, max(r.depth(a) - t, 0))! and
+                c.steps == r.depth(a) - r.depth(c.at)
         for b in V: assert l.lca(a, b) == Some(r.lca(a, b))
     for size in 0..6:
         var keys = List<V>()
@@ -1637,7 +1635,8 @@ fn heavy_light_and_subtree_cover_the_children():
         let chain = r.chain(v).map(q => r.at[q]).collect()
         assert chain.first == r.top(v) and r.children(chain.last!).is_empty
         for k in 1..chain.len:
-            assert r.parent(chain[k]) == Some(chain[k - 1]) and chain[k] not in r.light(chain[k - 1]).collect()
+            assert r.parent(chain[k]) == Some(chain[k - 1]) and
+                chain[k] not in r.light(chain[k - 1]).collect()
         var lights = 0
         for a in r.ancestors(v):
             if let p = r.parent(a):
@@ -2956,53 +2955,49 @@ pub struct PermTree<I, V, Node>:
             [k / 2 for k in 0..2 * n - 1],
             [val[k / 2] for k in 0..2 * n - 1],
             [val[k / 2] for k in 0..2 * n - 1],
-            1,
         )
-        // `gap[L]` is `max - min - (i - L)` of `val[L..=i]`: 0 exactly when that run is an interval
-        var gap = SegTree(min, [0 for _ in 0..n], act: add)
-        var (mx, mn, st) = (List<Int>(), List<Int>(), List<Int>())
+        // `prv[v]` and `nxt[v]` are the nearest values below and above `v` at earlier positions
+        var prv = [v - 1 for v in 0..n]
+        var nxt = [v + 1 for v in 0..n]
+        for i in (0..n).rev:
+            let v = val[i]
+            if prv[v] >= 0: nxt[prv[v]] = nxt[v]
+            if nxt[v] < n: prv[nxt[v]] = prv[v]
+        // runs not yet closed, left to right; a value outside `gap` of the last can't extend it
+        var st: List<(first: Int, lo: Int, hi: Int, gap: Range<Int>, node: Int)> = []
         for i in 0..n:
-            if i > 0: gap.apply(0..i, -1)
-            while mx.len > 0 and val[mx.last!] < val[i]:
-                let j = mx.pop()!
-                gap.apply((if mx.len > 0: mx.last! + 1 else: 0)..j + 1, val[i] - val[j])
-            mx.push(i)
-            while mn.len > 0 and val[mn.last!] > val[i]:
-                let j = mn.pop()!
-                gap.apply((if mn.len > 0: mn.last! + 1 else: 0)..j + 1, val[j] - val[i])
-            mn.push(i)
-            var x = 2 * i
-            var more = true
-            while more:
-                more = false
-                if let t = st.last:
-                    if b.hi[t] + 1 == b.lo[x] or b.hi[x] + 1 == b.lo[t]:
-                        st.pop()
-                        x = b.join(t, x, if b.hi[t] < b.lo[x]: Incr else: Decr)
-                        more = true
-                if not more and b.first[x] > 0 and gap.fold(0..b.first[x]) == 0:
-                    var (lo, hi, cnt) = (b.lo[x], b.hi[x], b.last[x] - b.first[x] + 1)
-                    var k = st.len
-                    var open = true
-                    while open:
-                        k -= 1
-                        let t = st[k]
-                        (lo, hi, cnt) = (
-                            min(lo, b.lo[t]),
-                            max(hi, b.hi[t]),
-                            cnt + b.last[t] - b.first[t] + 1,
-                        )
-                        open = hi - lo + 1 != cnt
-                    var acc = st[k]
-                    for j in k + 1..st.len: acc = b.join(acc, st[j], Partial)
-                    while st.len > k: st.pop()
-                    x = b.join(acc, x, Full)
-                    more = true
-            st.push(x)
+            let v = val[i]
+            while let t = st.last:
+                if t.gap.contains(v): break
+                st.pop()
+                let u = st.len - 1
+                // hang `t` under the last run as the bottom of its left spine, so a `Partial`
+                // never has a `Partial` right child
+                var bottom = t.node
+                var spine: List<Int> = []
+                while b.kind[bottom] == Partial:
+                    spine.push(bottom)
+                    bottom = b.l[bottom]
+                var x = b.join(2 * t.first - 1, st[u].node, bottom, Partial)
+                for y in spine.rev: x = b.join(y, x, b.r[y], Partial)
+                st[u] = (..st[u], lo: min(st[u].lo, t.lo), hi: max(st[u].hi, t.hi), node: x)
+            st.push((first: i, lo: v, hi: v, gap: prv[v] + 1..nxt[v], node: 2 * i))
+            while st.len >= 2:
+                let (u, t) = (st[st.len - 2], st.last!)
+                let (lo, hi) = (min(u.lo, t.lo), max(u.hi, t.hi))
+                if hi - lo != i - u.first: break
+                let k = if lo == t.lo: Decr elif hi == t.hi: Incr else: Full
+                st.pop()
+                st[st.len - 1] = (
+                    ..u,
+                    lo: lo,
+                    hi: hi,
+                    node: b.join(2 * t.first - 1, u.node, t.node, k),
+                )
         assert st.len == 1
         domain N = 0..2 * I.count - 1
         PermTree<I, V, N>(
-            N(st[0]),
+            N(st[0].node),
             [N] x => b.kind[x.ord],
             [N] x => N(b.l[x.ord]),
             [N] x => N(b.r[x.ord]),
@@ -3072,11 +3067,8 @@ struct PermBuild:
     var last: List<Int>
     var lo: List<Int>
     var hi: List<Int>
-    var next: Int
 
-    fn join(mut self, a: Int, b: Int, k: PermKind) -> Int:
-        let x = next
-        next += 2
+    fn join(mut self, x: Int, a: Int, b: Int, k: PermKind) -> Int:
         kind[x] = k
         l[x] = a
         r[x] = b
@@ -3088,7 +3080,7 @@ struct PermBuild:
 
 @test
 fn perm_tree_nodes_cover_intervals_of_values():
-    for n in 1..=9:
+    for n in 1..=16:
         for _ in 0..20:
             domain I = 0..n
             var vals = I.collect()
@@ -3160,7 +3152,9 @@ fn perm_tree_of_a_small_permutation():
     let pt = PermTree(p)
     let (a, d) = (pt.left(pt.root), pt.right(pt.root))
     assert pt.kind[pt.root] == PermKind.Full and d == pt.leaf(3)
-    assert pt.kind[a] == PermKind.Partial and pt.right(a) == pt.leaf(2) and [i.ord for i in pt.span(a)] == [
+    assert pt.kind[a] == PermKind.Partial and
+        pt.right(a) == pt.leaf(2) and
+        [i.ord for i in pt.span(a)] == [
         0,
         1,
         2,
@@ -4020,9 +4014,7 @@ pub struct KruskalTree<V, N, W>:
 /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); N.count == 5 and kt.bottleneck(0, 2) == Some(5)`
 pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
     domain N,
-    KruskalTree<V,
-    N,
-    W>,
+    KruskalTree<V, N, W>,
 ):
     var order = E.collect()
     order.sort(by: e => w(e))
@@ -4048,7 +4040,15 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
     for x in N:
         if par[x.ord] >= 0: up[x] = Some((N.nth(par[x.ord]), 0))
     let lift = Lift(up, op: (a, b) => a + b, identity: 0)
-    (N, KruskalTree<V, N, W>([V] v => N.nth(v.ord), [N] x => weight[x.ord], [N] x => key[x.ord], lift))
+    (
+        N,
+        KruskalTree<V, N, W>(
+            [V] v => N.nth(v.ord),
+            [N] x => weight[x.ord],
+            [N] x => key[x.ord],
+            lift,
+        ),
+    )
 
 /// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
 /// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
