@@ -63,8 +63,9 @@ fn merge_edge(parent: State, child: State, lbl: Label, edge: Edge, w: Z, mut nex
     let one_active = parent.active == Active.Off or lifted.active == Active.Off
     let one_resolved = not (parent.resolved and lifted.resolved)
     let edge_ok = parent.active == Active.Off or edge == Edge.One
-    let resolved_deepest = (not lifted.resolved or parent.depth <= lifted.depth) and
-        (not parent.resolved or parent.depth > lifted.depth)
+    let resolved_deepest = (
+        not lifted.resolved or parent.depth <= lifted.depth
+    ) and (not parent.resolved or parent.depth > lifted.depth)
     let active_clean = lifted.active == Active.Off or parent.depth == 0
     if not (one_active and one_resolved and edge_ok and resolved_deepest and active_clean):
         return

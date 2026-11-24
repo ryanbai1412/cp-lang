@@ -35,7 +35,7 @@
  "notes": "one convolve over Semiring(min, +) with shape: Curved.Neither; Rooted.children yields.",
  "dream_stress": {
   "ok": true,
-  "cases": 8,
-  "sha": "cf41cdde4fd7f216ae527cf016de1b3306378c0b"
+  "cases": 9,
+  "sha": "998f315fa75471a9a17c6c310eccf84ea5a6e173"
  }
 }
