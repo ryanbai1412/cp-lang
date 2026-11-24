@@ -16,13 +16,13 @@ fn a_var_a_closure_changes_is_changed() {
 
 #[test]
 fn loop_reduction_fixes_run() {
-    // core-01/range-forms.cp: `(0..10 by 3).sum()` doesn't run yet (E0501);
+    // core-01/range-forms.cp: a stepped range sums as a value (dcd95b532);
     // tests/programs/repeat_loop.cp: `repeat n:` became `sum(1 for repeat in ..)`.
     let src =
         "var s = 0\nfor i in 0..10 by 3: s += i\nprint(s)\nvar t = 0\nrepeat 4: t += 1\nprint(t)\n";
     assert_eq!(
         fixed(src),
-        "let s = sum(i for i in 0..10 by 3)\nprint(s)\nvar t = 0\nrepeat 4: t += 1\nprint(t)\n"
+        "let s = (0..10 by 3).sum()\nprint(s)\nvar t = 0\nrepeat 4: t += 1\nprint(t)\n"
     );
 }
 

@@ -1314,15 +1314,11 @@ impl<'a> Taste<'a> {
                 let one_name = !p.is_empty()
                     && p != "_"
                     && p.chars().all(|ch| ch.is_alphanumeric() || ch == '_');
-                let stepped = matches!(
-                    iter.kind,
-                    ExprKind::Range { step: Some(_), .. } | ExprKind::By { .. }
-                );
                 // A lambda can't write what it captures; a generator can.
                 let writes = cond.is_some_and(writes_place);
                 (
                     std_fn::COUNT,
-                    Some(if one_name && !stepped && !writes {
+                    Some(if one_name && !writes {
                         generator = Some(format!("count({c} for {p} in {it})"));
                         format!("{}.count({p} => {c})", receiver(&it))
                     } else {
@@ -1331,16 +1327,7 @@ impl<'a> Taste<'a> {
                 )
             }
             AssignOp::Binary(BinOp::Add) if !numeric(i) => return,
-            // A stepped range kept as a value doesn't run yet (E0501); a generator over it does.
-            AssignOp::Binary(BinOp::Add)
-                if i == "0"
-                    && c.is_none()
-                    && v == p
-                    && !matches!(
-                        iter.kind,
-                        ExprKind::Range { step: Some(_), .. } | ExprKind::By { .. }
-                    ) =>
-            {
+            AssignOp::Binary(BinOp::Add) if i == "0" && c.is_none() && v == p => {
                 (std_fn::SUM, Some(format!("{}.sum()", receiver(&it))))
             }
             AssignOp::Binary(BinOp::Add) => (
