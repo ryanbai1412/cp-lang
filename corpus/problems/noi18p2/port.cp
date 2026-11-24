@@ -7,53 +7,26 @@
 //   i placed values with maximum j by C(2n-i-j, n-i) - C(2n-i-j, n-j-1). Walk q: where p first
 //   exceeds q at i, p_i is a new maximum >= max(mx, q_i) + 1, and those completions sum to one
 //   ballot term; stop once q's own prefix is not good. O(n) per test after factorials.
-// Runs on proto/cp.py lib-run today.
+// original: corpus/submissions/6512891.cpp
 
-type Z = Mod<998244353>
+type Z = Mod<998_244_353>
+let comb = Comb<Z>(2 * 600_000 + 5)
 
-let t: Int = read()
-var cases: List<List<Int>> = []
-var max_n = 1
-for _ in 0..t:
-    let n: Int = read()
-    max_n max= n
-    var q: List<Int> = []
-    for _ in 0..n:
-        let v: Int = read()
-        q.push(v)
-    cases.push(q)
-
-let comb = Comb<Z>(2 * max_n + 5)
-
-fn safe_choose(n: Int, k: Int) -> Z:
-    if n < 0 or k < 0 or k > n: return 0
-    comb.choose(n, k)
-
+/// Good completions after i placed values with maximum `low - 1`.
 fn ballot(n: Int, i: Int, low: Int) -> Z:
     if low > n: return 0
     let steps = 2 * n - i - low
-    safe_choose(steps, n - i) - safe_choose(steps, n - low - 2)
+    comb.choose(steps, n - i) - comb.choose(steps, n - low - 2)
 
-for c in 0..t:
-    let q = cases[c]
-    let n = q.len
-    var seen = List.filled(n + 2, false)
-    var min_unused = 1
-    var mx = 0
-    var ans: Z = 0
-
-    for i in 1..=n:
-        let v = q[i - 1]
-        let low = max(mx, v) + 1
-        ans += ballot(n, i, low)
-
-        if v > mx:
-            mx = v
-        elif v != min_unused:
-            break
-
-        seen[v] = true
-        while min_unused <= n and seen[min_unused]:
-            min_unused += 1
-
-    print(ans)
+@multitest
+let n: 1..=6e5 = read()
+let q: [1..=n]1..=n = read()
+var used: [1..=n + 1]Bool = false
+var (smallest, top, greater) = (1, 0, Z(0))
+for i in 1..=n:
+    greater += ballot(n, i, max(top, q[i]) + 1)
+    if q[i] > top: top = q[i]
+    elif q[i] != smallest: break
+    used[q[i]] = true
+    smallest = (smallest..=n + 1).find(v => not used[v])!
+print(greater)

@@ -23,12 +23,9 @@ fn concat(a: Block, b: Block) -> Block = Block(rh.combine(a.hash, b.hash, b.len)
 let (n, q): (1..=200_000, 1..=500_000) = read()
 domain Worm = 1..=n
 let size: [Worm]1..=6 = read()
-var ahead: [Worm]?Worm = None
-var behind: [Worm]?Worm = None
-var blocks = Map<HashVal, Int>()
-
-fn count(block: Block, by: Int):
-    blocks[block.hash] = (blocks.get(block.hash) ?? 0) + by
+var before: [Worm]?Worm = None
+var after: [Worm]?Worm = None
+var blocks = Counter<HashVal>()
 
 /// Blocks of fewer than `longest` worms starting at `from` along `toward`
 /// (`back = true`: extending on the right; `back = false`: prepending on the left).
@@ -45,28 +42,25 @@ fn reach(from: Worm, toward: [Worm]?Worm, back: Bool) -> List<Block>:
 
 /// Count (`by = 1`) or forget (`by = -1`) every block with `v` right behind `u`.
 fn joint(u: Worm, v: Worm, by: Int):
-    let (left, right) = (reach(u, ahead, false), reach(v, behind, true))
+    let (left, right) = (reach(u, before, false), reach(v, after, true))
     for a in left:
         for b in right:
             if a.len + b.len > longest: break
-            count(concat(a, b), by)
+            blocks.add(concat(a, b).hash, by)
 
-for w in Worm: count(one[size[w]], 1)
+for w in Worm: blocks.add(one[size[w]].hash, 1)
 repeat q:
-    match read<Int>():
+    match read<1..=3>():
         1 =>
             let (u, v): (Worm, Worm) = read()
             joint(u, v, 1)
-            (behind[u], ahead[v]) = (Some(v), Some(u))
+            (after[u], before[v]) = (Some(v), Some(u))
         2 =>
             let u: Worm = read()
-            let v = behind[u]!
+            let v = after[u]!
             joint(u, v, -1)
-            (behind[u], ahead[v]) = (None, None)
+            (after[u], before[v]) = (None, None)
         _ =>
-            let (s, k): (Str, Int) = read()
+            let (s, k): (Str, 1..=longest) = read()
             let hash = RollingHash.new([c - '0' for c in s], bases: rh.bases)
-            var ways = Z(1)
-            for i in 0..=s.len - k:
-                ways *= Z(blocks.get(hash.slice(i, i + k)) ?? 0)
-            print(ways)
+            print((0..=s.len - k).map(i => Z(blocks[hash.slice(i, i + k)])).prod())

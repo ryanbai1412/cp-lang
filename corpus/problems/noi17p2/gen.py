@@ -5,6 +5,23 @@ of an existing queue so their counts are nonzero; mode picks few lengths, long c
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one chain of n = 2e5 worms, 1000 split/rejoin pairs, then asks of 33 digits read off the
+    # chain until m = 5e5 and sum |s| is just under 1e7
+    rng, n, m = random.Random(0), 200_000, 500_000
+    size_of = [0] + [rng.randint(1, 6) for _ in range(n)]
+    ops = [f"1 {i} {i + 1}" for i in range(1, n)]
+    for _ in range(1000):
+        i = rng.randint(1, n - 1)
+        ops += [f"2 {i}", f"1 {i} {i + 1}"]
+    while len(ops) < m:
+        a = rng.randint(1, n - 32)
+        ops.append(f"3 {''.join(str(size_of[w]) for w in range(a, a + 33))} {rng.randint(1, 33)}")
+    print(n, m)
+    print(*size_of[1:])
+    print("\n".join(ops))
+    sys.exit()
+
 seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 30
 rng = random.Random(seed)
 n = rng.randint(1, min(200_000, max(1, size)))
