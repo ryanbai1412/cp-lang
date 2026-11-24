@@ -2,6 +2,16 @@
 
 use super::{body, cpp};
 
+/// Whether the C++ copies `m`'s entry at `at` (`"m, 0"`) out by value: the
+/// entry is lent only as far as the line that copies it or the default.
+fn copies_out(cpp: &str, at: &str) -> bool {
+    let lend = format!("cpl::map_lend({at});");
+    let lines: Vec<&str> = cpp.lines().collect();
+    lines
+        .windows(2)
+        .any(|w| w[0].ends_with(&lend) && w[1].contains(".has_value() ? *t"))
+}
+
 #[test]
 fn if_let_map_get_points_into_the_map_unless_the_map_changes() {
     let lent = body(concat!(
@@ -96,11 +106,11 @@ fn coalesced_map_get_points_into_the_map_unless_it_changes() {
         "print(l.len, v.len)\n",
     ));
     assert!(
-        copied.contains("cpl::map_get(m, 0)"),
+        copies_out(&copied, "m, 0"),
         "a changed map keeps the copy: {copied}"
     );
     assert!(
-        copied.contains("cpl::map_get(m, 1)"),
+        copies_out(&copied, "m, 1"),
         "a changed binding keeps the copy: {copied}"
     );
 }
@@ -130,7 +140,7 @@ fn for_over_map_get_or_default_walks_the_entry_unless_the_body_changes_the_map()
         "print(m[0])\n",
     ));
     assert!(
-        copied.contains("cpl::map_get(m, 0)"),
+        copies_out(&copied, "m, 0"),
         "a changed map keeps the copy: {copied}"
     );
 }
@@ -202,7 +212,7 @@ fn a_map_entry_read_through_a_closure_and_a_domain_block_is_never_copied() {
         "print(s)\n",
     ));
     assert!(
-        copied.contains("cpl::map_get(m, 0)"),
+        copies_out(&copied, "m, 0"),
         "a closure that writes the map keeps the copy: {copied}"
     );
 }
@@ -231,7 +241,7 @@ fn a_map_entry_passed_to_a_fn_is_read_in_place_unless_the_fn_writes_the_map() {
         "print(bumped(m.get(1) ?? []))\n",
     ));
     assert!(
-        written.contains("cpl::map_get(m, 1)") && !written.contains("map_or("),
+        copies_out(&written, "m, 1") && !written.contains("map_or("),
         "a fn that writes the map gets a copy: {written}"
     );
 }
@@ -1410,5 +1420,18 @@ fn pairs_of_a_lazy_sequence_collects_it_once() {
     assert!(
         out.contains("push_back("),
         "the filtered values are collected: {out}"
+    );
+}
+
+#[test]
+fn a_map_entry_or_a_default_given_by_value_copies_the_entry_once() {
+    let given = cpp(concat!(
+        "let m = [(i % 3, i) for i in 0..9].group(by: p => p.0)\n",
+        "fn kids(k: Int) -> List<(Int, Int)> = m.get(k) ?? List()\n",
+        "print(kids(1).len + kids(5).len)\n",
+    ));
+    assert!(
+        given.contains("cpl::map_lend(m, k)") && !given.contains("map_get("),
+        "the entry is copied straight out, not into an optional first: {given}"
     );
 }

@@ -74,14 +74,31 @@ impl<'p> Emitter<'p> {
                     return Code::new(format!("{a}.has_value() ? {value} : {}", b.at(COND)), COND);
                 }
                 let ret = self.ty(&e.ty);
+                // `m.get(k) ?? d` points at the entry: only the branch that
+                // gives it copies, and `d` still runs only when `k` is absent.
+                let lent = match &l.kind {
+                    ExprKind::Builtin(Builtin::MapGet, got) if !keeps_opt && !e.ty.is_scalar() => {
+                        Some(got)
+                    }
+                    _ => None,
+                };
                 self.lambda(&ret, |this, out| {
-                    let a = this.expr(l).text;
                     let name = this.temp();
-                    out.push_str(&format!(
-                        "{}{} {name} = {a};\n",
-                        pad(this.indent),
-                        this.ty(&l.ty)
-                    ));
+                    if let Some(got) = lent {
+                        this.need("map_lend");
+                        let (m, k) = (this.expr(&got[0]).text, this.expr(&got[1]).text);
+                        out.push_str(&format!(
+                            "{}const auto {name} = cpl::map_lend({m}, {k});\n",
+                            pad(this.indent)
+                        ));
+                    } else {
+                        let a = this.expr(l).text;
+                        out.push_str(&format!(
+                            "{}{} {name} = {a};\n",
+                            pad(this.indent),
+                            this.ty(&l.ty)
+                        ));
+                    }
                     let b = this.expr(r);
                     let value = if keeps_opt {
                         name.clone()
