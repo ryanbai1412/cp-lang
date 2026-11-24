@@ -8,7 +8,7 @@
 //   range assignment and sum counts installed packages before each assignment: O(log^2 n) per
 //   command.
 
-let n: Int = read()
+let n: 1..=1e5 = read()
 domain Pkg = 0..n
 domain Dep = 1..n  // the packages that need another
 let needs: [Dep]Pkg = read()
@@ -23,7 +23,7 @@ fn switch<P>(r: Range<P>, on: Bool) -> Int:  // returns how many changed
     installed.apply(r, Some(Int(on)))
     if on: r.len - had else: had
 
-let q: Int = read()
+let q: 1..=1e5 = read()
 for _ in 0..q:
     let (cmd, x): (Str, Pkg) = read()
     if cmd == "install": print(sum(switch(c.range, true) for c in tree.chains(Pkg.first!, x, false)))

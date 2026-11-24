@@ -8,52 +8,34 @@
 //   everything that must precede it, then give the unmarked flights the latest slots their
 //   deadlines allow, going down from slot n; u takes the highest slot left free. O(n (n + m)).
 // original: corpus/submissions/5670273.cpp
-
-let (n, m): (Int, Int) = read()
+let (n, m): (1..=2000, 0..=10000) = read()
 domain Plane = 1..=n
-domain Slot = 1..=n
-let k: [Plane]Int = read()
-var after: [Plane]List<(to: Plane)> = []
-var before: [Plane]List<Plane> = []
-for _ in 0..m:
-    let (a, b): (Int, Int) = read()
-    after[Plane(a)].push((to: Plane(b)))
-    before[Plane(b)].push(Plane(a))
+domain Rule = 0..m
+let k: [Plane]1..=n = read()
+let rules: [Rule](u: Plane, v: Plane) = read()
+let g = Graph.directed(rules)
+let back = g.transpose()
 
-// One line of numbers. The interpreter has no `" ".join(...)`.
-fn line(xs: List<Int>) -> Str:
-    var out = Str()
-    for x in xs:
-        if not out.is_empty: out.push(' ')
-        for c in "{x}": out.push(c)
-    out
-
+// due[p]: the latest slot p can take, pulled earlier by every plane that must follow it
 var due = [Plane] p => k[p]
-let order = topo<Plane>(p => after[p])!
-for p in order.rev:
-    for a in after[p]: due[p] min= due[a.to] - 1
+for p in topo(g)!.rev:
+    for a in g[p]: due[p] min= due[a.to] - 1
+print(List(Plane).sorted(by: p => due[p]))
 
-print(line([p.ord + 1 for p in sorted([p for p in Plane], by: p => due[p])]))
-
-fn earliest(u: Plane) -> Int:
-    var first: [Plane]Bool = false  // u and everything that must precede it
-    var stack = [u]
-    first[u] = true
-    while not stack.is_empty:
-        let p = stack.pop()!
-        for b in before[p]:
-            if not first[b]:
-                first[b] = true
-                stack.push(b)
-    var due_at: [Slot]Int = 0
+// the earliest slot of u: everything that must precede u goes first, the rest as late as
+// due allows; u takes the latest slot no other plane is forced into
+fn earliest(u: Plane) -> ?Int:
+    var first: [Plane]Bool = false
+    for step in dfs(back, [u]):
+        if let Visit.Enter(p, _) = step: first[p] = true
+    var due_at: [1..=n]Int = 0
     for p in Plane:
-        if not first[p]: due_at[Slot(due[p])] += 1
+        if not first[p]: due_at[due[p]] += 1
     var waiting = 0
-    for slot in Slot.rev:
+    for slot in (1..=n).rev:
         waiting += due_at[slot]
-        if waiting == 0: return slot.ord + 1
+        if waiting == 0: return slot
         waiting -= 1
-    assert false
-    0
+    None
 
-print(line([earliest(u) for u in Plane]))
+print([earliest(u)! for u in Plane])
