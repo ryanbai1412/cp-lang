@@ -15,12 +15,6 @@
 let (n, m1, m2) = read<(1..=3e5, 0..=3e5, 0..=3e5)>()
 domain V = 0..n
 let need = read<[m1](child: V, parent: V)>()
-var bans: [V]Set<V> = []
-var banned_by: [V]List<V> = []
-for e in read<[m2](child: V, parent: V)>():
-    if e.parent not in bans[e.child]:
-        bans[e.child].insert(e.parent)
-        banned_by[e.child].push(e.parent)
 
 var up: [V]?V = None
 for e in need:
@@ -29,6 +23,12 @@ for e in need:
         return
     up[e.child] = Some(e.parent)
 let forest = Rooted.try_from_parents(up) else: print("NO"); return
+var bans: [V]Set<V> = []
+var banned_by: [V]List<V> = []
+for e in read<[m2](child: V, parent: V)>():
+    if e.parent not in bans[e.child]:
+        bans[e.child].insert(e.parent)
+        banned_by[e.child].push(e.parent)
 let blocks = forest.roots.collect()
 var cannot: [V]List<V> = []
 for c in blocks:

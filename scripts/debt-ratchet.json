@@ -262,7 +262,7 @@
   "perf_twins_stale": 4,
   "unreferenced_scripts": 0,
   "explain_copy_mismatches": 4,
-  "corpus_max_short": 4,
+  "corpus_max_short": 3,
   "corpus_max_unread": 0,
   "dream_over_32kb": 3
 }

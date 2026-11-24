@@ -1,13 +1,17 @@
 import sys, random
 if sys.argv[1] == "--max":
-    # N = K = 3e5; M = N - 601 existing tubes: one 299400-building path (deepest DFS) plus 600
-    # lone buildings, banned from each other almost densely (K = 3e5), so the complement DFS scans
-    # every ban; each lone building can still hang below the path, so the answer is a tree.
-    rng = random.Random(0); n, lone = 300000, 600
+    # N = M = K = 3e5: the existing tubes run all N buildings round one cycle, so the answer is
+    # NO only once the cycle is walked, and the bans fall densely among 775 of them.
+    # --max --lone L: M = N - L - 1, one (N - L)-building path (deepest DFS) plus L lone buildings
+    # banned from each other almost densely, so the complement DFS scans every ban; each lone
+    # building can still hang below the path, so the answer is a tree.
+    rng = random.Random(0); n = 300000
+    lone = int(sys.argv[3]) if sys.argv[2:3] == ["--lone"] else 0
     lab = list(range(n)); rng.shuffle(lab)
-    path, solo = lab[:n - lone], lab[n - lone:]
-    must = [(path[i], path[i + 1]) for i in range(len(path) - 1)]
-    ban = [(a, b) for a in solo for b in solo if a != b]
+    path, solo = lab[:n - lone], lab[n - lone:] if lone else lab[:775]
+    must = [(path[i], path[i + 1]) for i in range(len(path) - 1)] + ([] if lone else [(path[-1], path[0])])
+    tube = set(must)
+    ban = [(a, b) for a in solo for b in solo if a != b and (a, b) not in tube]
     rng.shuffle(ban); ban = ban[:300000]
     rng.shuffle(must)
     out = [f"{n} {len(must)} {len(ban)}"] + [f"{a} {b}" for a, b in must + ban]
