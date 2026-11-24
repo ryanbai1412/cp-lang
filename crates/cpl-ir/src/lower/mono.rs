@@ -169,9 +169,7 @@ impl<'a> Lowerer<'a> {
                 if !path_to_mod.contains_key(&imported.path) {
                     let id = self.mods.len();
                     path_to_mod.insert(imported.path.clone(), id);
-                    // SAFETY: imported.analysis lives inside `root`'s Arc tree for lifetime `'a`.
-                    let ptr: *const Analysis = &*imported.analysis;
-                    self.mods.push(unsafe { &*ptr });
+                    self.mods.push(&imported.analysis);
                     self.mod_syms.push(HashMap::new());
                     match imported.name.as_str() {
                         "std.mod" => self.std_mod = Some(id),
