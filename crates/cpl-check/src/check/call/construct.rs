@@ -127,7 +127,9 @@ impl Checker<'_> {
         // `SegTree<D, P, Int>(..)`: the args left out follow `new`, not the struct's defaults.
         if let ExprKind::Call { callee, .. } = &call.kind {
             if let ExprKind::Generic { args: written, .. } = &callee.kind {
-                type_args.truncate(written.len());
+                if let Some(w) = type_args.get(..written.len()) {
+                    type_args = w.to_vec();
+                }
             }
         }
         if let Some(def) = self.type_def(name) {
