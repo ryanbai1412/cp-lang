@@ -1051,6 +1051,9 @@ impl<'p> Emitter<'p> {
                 self.ref_bound.remove(slot);
                 self.mut_bound.remove(slot);
                 if hoisted {
+                    if matches!(init.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                        self.note_let_copy(*slot, init, &text, tail.as_ref());
+                    }
                     self.line(out, &format!("{name} = {text};"));
                 } else if name.starts_with('_') {
                     // `_t` is a name for a value the program may not use.

@@ -1188,6 +1188,14 @@ fn names_a_place(text: &str) -> bool {
     })
 }
 
+/// What tuple part `std::get<1>(marks[i])` reads from: `marks[i]`.
+fn tuple_part_of(text: &str) -> &str {
+    text.strip_prefix("std::get<")
+        .and_then(|t| t.split_once(">("))
+        .and_then(|(_, t)| t.strip_suffix(')'))
+        .map_or(text, tuple_part_of)
+}
+
 /// Why `return self.f` copies.
 const GIVEN: &str = "a part of a value that still holds it, given by value";
 
@@ -1347,7 +1355,10 @@ impl Emitter<'_> {
                 value.kind,
                 ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
             ) && rooted_in_a_name(value));
-        let named = names_a_place(text);
+        // A part of an unnamed temporary (`let (a, b) = f()`) is the part of a dead value.
+        let temp =
+            matches!(part_base(value).kind, ExprKind::Local(s) if self.locals()[s].name.is_empty());
+        let named = names_a_place(tuple_part_of(text)) && !(temp && tuple_part_of(text) != text);
         let lent = matches!(value.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(&f));
         if names_a_static(value) && !moved(text) {
             self.note_copy(value.span, STATIC_COPY, None);

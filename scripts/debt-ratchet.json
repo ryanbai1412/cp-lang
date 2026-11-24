@@ -262,7 +262,7 @@
   "ports_over_bar": 205,
   "perf_twins_stale": 22,
   "unreferenced_scripts": 0,
-  "explain_copy_mismatches": 7,
+  "explain_copy_mismatches": 6,
   "corpus_max_short": 25,
   "corpus_max_unread": 108
 }

@@ -402,3 +402,19 @@ fn a_name_bound_to_a_part_through_an_inlined_lend_lists_its_copy() {
         include_str!("../../../../spec/conformance/core-05/call-through-a-lends-mut-call.cp");
     assert!(copy_reasons(source).contains(&crate::uses::SOURCE_CALLED));
 }
+
+#[test]
+fn a_set_from_a_tuple_part_that_still_holds_it_is_listed() {
+    let src = "var marks: List<(Int, List<Int>)> = [(0, [1, 2])]\nvar a = [3]\na = marks[0].1\na.push(4)\nprint(a.len, marks[0].1.len)\n";
+    let out = super::cpp(src);
+    assert!(out.contains("a = std::get<1>("), "{out}");
+    assert_eq!(copy_reasons(src), [crate::lend::SET_COPY]);
+}
+
+#[test]
+fn a_hoisted_let_of_a_whole_list_is_listed() {
+    let src = "let a = [3, 1, 4]\nfor (k, e) in a.items.items: print(k, e.1)\n";
+    let out = super::cpp(src);
+    assert!(out.contains("t0 = a;"), "{out}");
+    assert!(!copy_reasons(src).is_empty());
+}
