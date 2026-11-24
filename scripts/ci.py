@@ -596,7 +596,7 @@ class Tail:
             self._cargo_build("cpl-cli")
             if self.call([sys.executable, "scripts/corpus.py", "make", "--changed", "staged", "--cpl", self.cpl], stdout=subprocess.DEVNULL):
                 raise Failed("scripts/corpus.py make --changed staged failed; rerun it to see which package")
-            if self.call([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--skip", "dream,header,package", "--cpl", self.cpl]):
+            if self.call([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--skip", "dream,header", "--cpl", self.cpl]):
                 raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
             staged = self.run(["git", "diff", "--cached", "--name-only", "--diff-filter=AMR", "--", "corpus/problems/*/dream.cp"], cwd=ROOT, capture_output=True, text=True)
             if dreams := [Path(f).parent.name for f in staged.stdout.split()]:
@@ -978,7 +978,7 @@ def _guard(mode: str, root: Path) -> None:
 
 TIMING_EXTRA = ("every_corpus_program_and_conformance_case_is_served", "every_port_compiles_with_every_judges_flags")
 FAST_BUDGET_S = 180
-AUDIT_FIRST = "staged corpus packages: header and package (scripts/corpus.py verify --only header,package)"
+AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only header)"
 
 
 def selection(mode: str, run=subprocess.run) -> dict[str, str]:
@@ -1019,10 +1019,11 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
             sel = selection(mode, run)
             if mode == "commit" and sel.get("audit") == "1":
                 # Before anything that builds, --fast included, so the hook's time limit
-                # never skips these: they need no binary.
+                # never skips it: header needs no binary. package runs later, with the
+                # cpl this tier builds from the tree being committed.
                 print(f"\n==> {AUDIT_FIRST}", flush=True)
                 t0 = clock()
-                if run([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--only", "header,package"],
+                if run([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--only", "header"],
                        cwd=ROOT).returncode:
                     raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode"
                                  " and the package")

@@ -528,7 +528,7 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(order, sorted(order))
         self.assertEqual(ev.count("cargo build -q -p cpl-cli"), 2)
         # check.sh ran the header and package modes before anything built.
-        self.assertIn("scripts/corpus.py verify --changed staged --skip dream,header,package --cpl target/debug/cpl", ev)
+        self.assertIn("scripts/corpus.py verify --changed staged --skip dream,header --cpl target/debug/cpl", ev)
 
 
 class GateTest(unittest.TestCase):
@@ -614,7 +614,7 @@ class GateTest(unittest.TestCase):
         sel = "all=0\naudit=1\npackages=\n"
         code, ev, out, _, tmp = self._gate("commit", affected=sel)
         self.assertEqual(code, 0)
-        self.assertEqual(ev[-1], "scripts/corpus.py verify --changed staged --only header,package")
+        self.assertEqual(ev[-1], "scripts/corpus.py verify --changed staged --only header")
         self.assertEqual(GateTest.FakeTier.made[0].committed, {"all": "0", "audit": "1", "packages": ""})
         self.assertIn("commit-tier checks passed in 12s", out)
         self.assertFalse((tmp / "gate-fast-time.json").exists())

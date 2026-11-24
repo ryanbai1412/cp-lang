@@ -427,6 +427,24 @@ class DebtRatchetTest(unittest.TestCase):
             with self.assertRaisesRegex(dr.MeasureError, "no cpl at"):
                 dr.corpus_fmt_dirty(root)
 
+    def test_a_stale_newer_cpl_gives_way_to_a_current_one(self) -> None:
+        # A release cpl built before a rebase is newer than the debug cpl the tier just built.
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CPL", None)
+            root = Path(tmp)
+            for f, t in (("crates/x/src/lib.rs", 1), ("crates/x/src/new.rs", 3000)):
+                self._write(root, f, "\n")
+                os.utime(root / f, (t, t))
+            for build, dep, t in (("debug", "lib.rs", 1000), ("release", "new.rs", 2000)):
+                self._write(root, f"target/{build}/cpl", "#!/bin/sh\n")
+                self._write(root, f"target/{build}/cpl.d", f"{root}/target/{build}/cpl: crates/x/src/{dep}\n")
+                os.utime(root / f"target/{build}/cpl", (t, t))
+            self.assertEqual(dr._built_cpl(root), root / "target/debug/cpl")
+            os.utime(root / "target/debug/cpl", (2, 2))
+            os.utime(root / "crates/x/src/lib.rs", (5, 5))
+            with self.assertRaisesRegex(dr.MeasureError, "target/release/cpl is stale: run cargo build --release -p cpl-cli"):
+                dr._built_cpl(root)
+
     def test_uncached_installs_counts_installs_outside_install_tools(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
