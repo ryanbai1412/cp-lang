@@ -53,7 +53,8 @@ pub fn organize(text: &str) -> Option<(Span, String)> {
             lines.push(format!("use {path}.{{{}}}", names.join(", ")));
         }
     }
-    lines.sort_by(|a, b| module(a).cmp(module(b)).then(a.cmp(b)));
+    cpl_diag::sort_by_str_key(&mut lines, |l| l);
+    cpl_diag::sort_by_str_key(&mut lines, |l| module(l));
     lines.dedup();
     let organized: String = lines.iter().map(|l| format!("{l}\n")).collect();
     (organized != block).then(|| (Span::new(start as u32, end as u32), organized))

@@ -1468,7 +1468,7 @@ fn scope_completion(
         .iter()
         .map(|(name, import)| (name, import.module))
         .collect();
-    imports.sort();
+    cpl_diag::sort_by_str_key(&mut imports, |(name, _)| name);
     for (name, module) in imports {
         if let Some(outline) = module_outline(cursor, std, module) {
             let import = &analysis.imports()[name];
@@ -1480,7 +1480,7 @@ fn scope_completion(
         }
     }
     let mut aliases: Vec<&String> = analysis.aliases().keys().collect();
-    aliases.sort();
+    cpl_diag::sort_by_str_key(&mut aliases, |alias| alias);
     for alias in aliases {
         let item = plain(alias, Kind::Module, format!("module {alias}"), "");
         add(&item, 2, &mut items);

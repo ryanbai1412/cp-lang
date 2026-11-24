@@ -75,7 +75,7 @@ impl Server {
             let lines = LineIndex::new(&text);
             // In the order they first call, as a reader meets them.
             let mut callers: Vec<_> = callers.into_iter().collect();
-            callers.sort_by_key(|(_, spans)| spans[0].start);
+            cpl_diag::sort_by_key(&mut callers, |(_, spans)| spans[0].start.into());
             for (caller, spans) in callers {
                 let from = match caller {
                     Some(i) => {

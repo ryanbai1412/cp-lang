@@ -800,7 +800,7 @@ impl Server {
                         ]),
                     ));
                 }
-                hints.sort_by_key(|(at, _)| *at);
+                cpl_diag::sort_by_key(&mut hints, |(at, _)| u64::from(*at));
                 Ok(Reply::result(Value::Array(
                     hints.into_iter().map(|(_, h)| h).collect(),
                 )))
@@ -841,7 +841,9 @@ impl Server {
 
     /// Why a variant the input spells keeps its name.
     fn spelled_by_input(name: &str) -> String {
-        format!("`{name}` is how the input spells this variant: renaming it changes what `read` accepts")
+        format!(
+            "`{name}` is how the input spells this variant: renaming it changes what `read` accepts"
+        )
     }
 
     /// The document and byte offset a position request refers to.
@@ -1348,7 +1350,10 @@ fn folding_ranges(text: &str) -> Vec<(u32, u32, Option<&'static str>)> {
             i = i.max(first + 1);
         }
     }
-    out.sort();
+    cpl_diag::sort_by_str_key(&mut out, |(.., kind)| kind.unwrap_or(""));
+    cpl_diag::sort_by_key(&mut out, |&(first, last, _)| {
+        u64::from(first) << 32 | u64::from(last)
+    });
     out
 }
 
