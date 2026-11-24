@@ -1,0 +1,3 @@
+# v0.3 perf-set programs whose peak RSS is over its bar (decision 470): `idiom` over 1.5x
+# matched C++, `tuned` (better of idiomatic and perf.cp) over 1.1x, with the ratio each may not grow
+# past. bench/rss.py --check fails on one over its bar but unlisted, grown, or listed but within it.
