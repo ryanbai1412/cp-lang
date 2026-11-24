@@ -1,7 +1,9 @@
 fn mysort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x):
     let n = self.len
     let ks = self.keys
-    var buf: List<T> = [self[ks.nth(i)] for i in 0..n / 2]
+    var buf: List<T> = []
+    buf.reserve(n / 2)
+    for i in 0..n / 2: buf.push(self[ks.nth(i)])
     my_sort_run(mut self, ks, 0, n, mut buf, by)
 
 fn my_sort_run<S: IndexedMut, D, T, K: Ord>(mut a: S, ks: Range<D>, lo: Int, hi: Int, mut buf: List<T>, by: T -> K):
