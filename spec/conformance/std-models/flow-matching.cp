@@ -233,7 +233,7 @@ for k in 0..n:
     let colors: [E]C = [E] e => C(col[e.ord])
     let limits: [C]Int = [C] c => lim[c.ord]
     let plain = matroid_intersection<E>(GraphicMatroid(mes), ColorMatroid(colors, limits))
-    let weighted = matroid_intersection<E>(GraphicMatroid(mes), ColorMatroid(colors, limits), weight: Some(e => mwt[e.ord]))
+    let weighted = matroid_intersection<E>(GraphicMatroid(mes), ColorMatroid(colors, limits), weight: e => mwt[e.ord])
     for (res, check_w) in [(plain, false), (weighted, true)]:
         let keep = [res[E(i)] for i in 0..6]
         let wt = (0..6).sum(i => if keep[i]: mwt[i] else: 0)
