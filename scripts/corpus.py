@@ -4,8 +4,9 @@
   scripts/corpus.py build          regenerate the generated fields of every
                                    meta.json and corpus/index.json, keeping
                                    hand-written fields
-  scripts/corpus.py check          fail when a meta.json is stale or names a
-                                   missing file
+  scripts/corpus.py check          fail when a meta.json is stale, isn't
+                                   byte-identical to meta_text's canonical
+                                   form, or names a missing file
   scripts/corpus.py delete <id>... remove packages whose statement can't be
                                    found: the dir, their submissions and
                                    info.json entries, and their lines in
@@ -396,7 +397,7 @@ def summary_lines(r, top=10):
 def record(pkg, field, value):
     meta = pkg.read_meta()
     meta[field] = value
-    pkg.meta.write_text(dump(meta))
+    write_meta(pkg.meta, meta)
 
 
 HEADER_FIELDS = ("Source", "Problem", "Solution")
@@ -1348,8 +1349,24 @@ def merged(gen, path):
 
 
 def dump(x):
-    text = json.dumps(x, indent=1)
-    return re.sub(r"\{\n\s+(\"id\"[^{}]*?)\n\s+\}", lambda m: "{" + re.sub(r"\n\s+", " ", m.group(1)) + "}", text) + "\n"
+    return json.dumps(x, indent=1) + "\n"
+
+
+def meta_text(meta):
+    """meta.json's one canonical form, which every writer uses and `check` holds each file to:
+    one-space indent, ASCII, each submission row on one line."""
+    fields = []
+    for k, v in meta.items():
+        if k == "submissions" and v:
+            body = "[\n" + ",\n".join("  " + json.dumps(r) for r in v) + "\n ]"
+        else:
+            body = json.dumps(v, indent=1).replace("\n", "\n ")
+        fields.append(f" {json.dumps(k)}: {body}")
+    return "{\n" + ",\n".join(fields) + "\n}\n"
+
+
+def write_meta(path, meta):
+    Path(path).write_text(meta_text(meta))
 
 
 def index(metas):
@@ -1415,7 +1432,11 @@ def main(mode):
     metas, errors = {}, []
     for problem, g in gen.items():
         path = os.path.join(PROBLEMS, problem, "meta.json")
-        meta = merged(g, path)
+        try:
+            meta = merged(g, path)
+        except json.JSONDecodeError as e:
+            errors.append(f"{rel(path)}: not JSON ({e}); fix it by hand")
+            continue
         metas[problem] = meta
         for k in ("dream", "spec"):
             if meta[k] not in STATUSES:
@@ -1424,11 +1445,13 @@ def main(mode):
                  [f for v in meta["artifacts"].values() for f in v]:
             if not os.path.exists(os.path.join(ROOT, f)):
                 errors.append(f"{rel(path)}: missing {f}")
+        text = Path(path).read_text() if os.path.exists(path) else None
         if mode == "build":
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            open(path, "w").write(dump(meta))
-        elif not os.path.exists(path) or open(path).read() != dump(meta):
-            errors.append(f"{rel(path)}: stale; run scripts/corpus.py build")
+            write_meta(path, meta)
+        elif text != meta_text(meta):
+            what = "not in canonical form" if text and json.loads(text) == meta else "stale"
+            errors.append(f"{rel(path)}: {what}; run scripts/corpus.py build")
     for pkg in problems():
         if pkg.id not in gen:
             errors.append(f"corpus/problems/{pkg.id}: no submissions or artifacts")
@@ -1437,8 +1460,8 @@ def main(mode):
     errors += [f"{f}:{n}: names {path}, which doesn't exist" for f, n, path in dangling_references()]
     ipath = os.path.join(ROOT, "corpus", "index.json")
     if mode == "build":
-        open(ipath, "w").write(dump(index(metas)))
-    elif not os.path.exists(ipath) or open(ipath).read() != dump(index(metas)):
+        Path(ipath).write_text(dump(index(metas)))
+    elif not os.path.exists(ipath) or Path(ipath).read_text() != dump(index(metas)):
         errors.append("corpus/index.json: stale; run scripts/corpus.py build")
     for e in errors:
         print(e, file=sys.stderr)

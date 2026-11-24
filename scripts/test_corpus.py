@@ -911,6 +911,80 @@ class DanglingReferenceTest(unittest.TestCase):
         self.assertIn(f"bench/a.py:3: names {PKGS}/gone, which doesn't exist", err.getvalue())
 
 
+
+class MetaFormatTest(unittest.TestCase):
+    GEN = {"problem": "p", "source": "x",
+           "submissions": [{"id": "1", "language": "CPP17", "result": "AC", "time": 0.5, "memory_kb": 4.0, "file": None},
+                           {"id": "2", "language": "PY3", "result": "WA", "time": 1.0, "memory_kb": 8.0, "file": None}],
+           "cpp_ac": 1, "artifacts": {"original": [f"{PKGS}/p/orig.cpp"]}}
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        for name, value in (("ROOT", self.root), ("PROBLEMS", self.root / PKGS), ("SUBS", self.root / SUBS_DIR)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        (self.root / PKGS / "p").mkdir(parents=True)
+        (self.root / PKGS / "p" / "orig.cpp").write_text("")
+        self.path = self.root / PKGS / "p" / "meta.json"
+        for name, value in (("generate", {"p": self.GEN}), ("orphan_submissions", []), ("dangling_references", [])):
+            patcher = mock.patch.object(corpus, name, return_value=value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def run_main(self, mode):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            code = corpus.main(mode)
+        return code, err.getvalue()
+
+    def canonical(self, **hand):
+        return corpus.meta_text({**self.GEN, **corpus.HAND, **hand})
+
+    def test_meta_text_keeps_each_submission_row_on_one_line(self):
+        self.assertEqual(corpus.meta_text({"problem": "p", "submissions": self.GEN["submissions"],
+                                           "artifacts": {"original": ["a.cpp"]}, "tags": [], "notes": "\u00e9"}),
+                         '{\n "problem": "p",\n "submissions": [\n'
+                         '  {"id": "1", "language": "CPP17", "result": "AC", "time": 0.5, "memory_kb": 4.0, "file": null},\n'
+                         '  {"id": "2", "language": "PY3", "result": "WA", "time": 1.0, "memory_kb": 8.0, "file": null}\n ],\n'
+                         ' "artifacts": {\n  "original": [\n   "a.cpp"\n  ]\n },\n "tags": [],\n "notes": "\\u00e9"\n}\n')
+
+    def test_every_committed_meta_json_is_already_canonical(self):
+        for d in sorted(Path(corpus.__file__).resolve().parent.parent.joinpath(PKGS).iterdir()):
+            if (d / "meta.json").is_file():
+                text = (d / "meta.json").read_text()
+                self.assertEqual(text, corpus.meta_text(json.loads(text)), d.name)
+
+    def test_check_fails_a_json_dump_edit_and_build_restores_the_canonical_bytes(self):
+        want = self.canonical(notes="caf\u00e9")
+        self.path.write_text(json.dumps(json.loads(want), indent=2, ensure_ascii=False))
+        code, err = self.run_main("check")
+        self.assertEqual(code, 1)
+        self.assertIn(f"{PKGS}/p/meta.json: not in canonical form; run scripts/corpus.py build", err)
+        self.assertEqual(self.run_main("build"), (0, ""))
+        self.assertEqual(self.path.read_text(), want)
+        self.assertEqual(self.run_main("check"), (0, ""))
+
+    def test_a_wrong_generated_field_is_stale(self):
+        self.path.write_text(self.canonical().replace('"cpp_ac": 1', '"cpp_ac": 2'))
+        code, err = self.run_main("check")
+        self.assertEqual(code, 1)
+        self.assertIn(f"{PKGS}/p/meta.json: stale; run scripts/corpus.py build", err)
+
+    def test_meta_json_that_isnt_json_is_named_and_build_leaves_it(self):
+        self.path.write_text("{")
+        for mode in ("check", "build"):
+            code, err = self.run_main(mode)
+            self.assertEqual(code, 1)
+            self.assertIn(f"{PKGS}/p/meta.json: not JSON", err)
+        self.assertEqual(self.path.read_text(), "{")
+
+    def test_record_writes_the_canonical_form(self):
+        self.path.write_text(json.dumps({**self.GEN, **corpus.HAND}))
+        corpus.record(corpus.Package.at(self.path.parent), "dream_stress", {"ok": True, "cases": 8, "sha": "abc"})
+        self.assertEqual(self.path.read_text(), self.canonical(dream_stress={"ok": True, "cases": 8, "sha": "abc"}))
+
 class OrphanSubmissionTest(unittest.TestCase):
     def test_a_submission_file_no_package_lists_is_an_orphan(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(corpus, "SUBS", d), \
