@@ -53,3 +53,15 @@ fn an_int_op_not_proved_in_range_never_overflows_cpp() {
         "{out}"
     );
 }
+
+#[test]
+fn a_narrow_range_len_needs_no_overflow_check() {
+    // Its span always fits in `ll`, so `len` in a hot loop is a subtraction (cf2066f).
+    let out = cpp("domain P = read(1..=500)\nlet r = P.first!..=P.last!\nprint(r.len)\n");
+    let len = &out[out.find("ll len() const").expect("Range::len")..];
+    let check = len.find("range length overflow").expect("the wide check");
+    assert!(
+        len[..check].contains("if constexpr (sizeof(T) < sizeof(ll)) return (ll)span();"),
+        "{out}"
+    );
+}

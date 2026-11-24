@@ -1191,6 +1191,7 @@ template <class T> struct Range {
     using U = std::conditional_t<sizeof(T) == 16, unsigned __int128, unsigned long long>;
     U span() const { return hi <= lo ? 0 : (U)hi - (U)lo; }
     ll len() const {
+        if constexpr (sizeof(T) < sizeof(ll)) return (ll)span();
         if (span() > (~0ULL >> 1)) fail(\"range length overflow\");
         return (ll)span();
     }
