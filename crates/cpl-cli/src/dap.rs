@@ -589,14 +589,15 @@ impl Session {
                     kept(&before, was_stopped),
                     kept(&self.recording, self.stopped),
                 );
-                let shorter_open = match was.cmp(&now) {
-                    std::cmp::Ordering::Less => open(&before, was_stopped),
-                    std::cmp::Ordering::Greater => open(&self.recording, self.stopped),
-                    std::cmp::Ordering::Equal => {
-                        open(&before, was_stopped) || open(&self.recording, self.stopped)
-                    }
-                };
-                let same_steps = shorter_open.then(|| was.min(now));
+                let n = was.min(now);
+                let runs = [
+                    (was, open(&before, was_stopped)),
+                    (now, open(&self.recording, self.stopped)),
+                ];
+                let same_steps = runs
+                    .iter()
+                    .any(|&(steps, open)| open && steps == n)
+                    .then_some(n);
                 self.change = match same_steps {
                     Some(n) => first_change_in(&before, 0..n, &self.recording, 0..n),
                     None => first_change(&before, &self.recording),
