@@ -953,10 +953,12 @@ mod tests {
         }
     }
 
-    /// The outlines `build.rs` writes are the ones read off std/ itself.
+    /// The outlines `build.rs` writes are the ones read off the std text it
+    /// put in. A dev build reads std/ from disk and is not rerun by a std
+    /// edit, so the disk may be newer than the built outlines.
     #[test]
     fn the_built_outlines_are_the_outlines_of_std() {
-        let read: Vec<(&str, String)> = crate::modules::std_modules()
+        let read: Vec<(&str, String)> = crate::modules::BUNDLED
             .iter()
             .map(|(name, text)| (*name, crate::std_files::outline(text)))
             .collect();

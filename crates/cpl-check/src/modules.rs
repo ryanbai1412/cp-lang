@@ -60,7 +60,7 @@ fn module_key(path: &Path) -> String {
 
 /// The modules of `std` as they were when the compiler was built, by
 /// their path below it (`"seq"`).
-const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
+pub(crate) const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
 
 /// The modules of `std` as they are now on disk, so a std edit needs no
 /// rebuild of `cpl`: in the `CPL_STD_DIR` folder when it is set, else, in a
