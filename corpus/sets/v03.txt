@@ -522,6 +522,7 @@ mccc4j5
 mccc5j3
 mccc5j4
 mccc5j5
+mccc6s3
 mmcc14p3
 modinv
 nccc10s1
