@@ -270,12 +270,10 @@ impl Checker<'_> {
                 fit.push((key, def));
             }
         }
-        // R11.2.3: a name the file declares or a `use` imports shadows the
-        // prelude's, so the prelude's candidates drop out beside one.
-        let shadows: Vec<bool> = fit
-            .iter()
-            .map(|f| self.env.origin(&f.0).is_none() || self.env.chosen(&f.0))
-            .collect();
+        // R11.2.3: a name a `use` imports shadows the prelude's, so the
+        // prelude's candidates drop out beside one. A fn the file declares
+        // stands beside them, and specificity picks (decision 486).
+        let shadows: Vec<bool> = fit.iter().map(|f| self.env.chosen(&f.0)).collect();
         if shadows.contains(&true) {
             let mut shadows = shadows.into_iter();
             fit.retain(|_| shadows.next().unwrap_or(false));
