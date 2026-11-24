@@ -169,6 +169,22 @@ template <class T> std::vector<T> reversed(std::vector<T> v) { std::reverse(v.be
 ",
     },
     Piece {
+        name: "list_to_fixed",
+        needs: &["fail"],
+        code: "\
+// A list of exactly K cells as the `std::array` its fixed-size array type is held in;
+// cells move out of a list nothing else reads.
+template <size_t K, class V> auto list_to_fixed(V&& v) {
+    using T = typename std::decay_t<V>::value_type;
+    if (v.size() != K) fail(\"a list of another length than its array has\");
+    std::array<T, K> a;
+    if constexpr (std::is_rvalue_reference_v<V&&>) std::move(v.begin(), v.end(), a.begin());
+    else std::copy(v.begin(), v.end(), a.begin());
+    return a;
+}
+",
+    },
+    Piece {
         name: "row",
         needs: &["fail"],
         code: "\

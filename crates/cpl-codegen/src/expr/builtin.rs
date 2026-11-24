@@ -222,7 +222,13 @@ impl<'p> Emitter<'p> {
                     codes[0].clone()
                 }
             }
-            Builtin::ListToArray => codes[0].clone(),
+            Builtin::ListToArray => match (self.ty_fixed_len(&e.ty), args.first()) {
+                (Some(k), Some(list)) if self.expr_fixed_len(list).is_none() => {
+                    self.need("list_to_fixed");
+                    Code::primary(format!("cpl::list_to_fixed<{k}>({})", text(0)))
+                }
+                _ => codes[0].clone(),
+            },
             Builtin::Len if is_grid => {
                 Code::new(format!("(ll){}.d.size()", codes[0].at(PRIMARY)), UNARY)
             }
