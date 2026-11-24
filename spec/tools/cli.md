@@ -128,6 +128,9 @@ per choice it explains.
 `spec/lib/inventory.md` gives it elsewhere (empty outside std).
 `cpl test --format json` prints `{"passed_count", "case_count", "cases": [{"name",
 "verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
+`cpl test --list --json` prints `{"cases": [{"name", "input"}]}`: the
+cases in the order `cpl test` runs them, each `input` its `.in` file; the
+editors' test trees list them so.
 `cpl test --format teamcity` prints TeamCity service messages (`##teamcity[...]`),
 as IntelliJ's test tree and CI servers read them: per case `testStarted` (its
 `locationHint` the absolute `file://` URL of `NAME.in`), `testStdOut`, `testFailed`

@@ -275,6 +275,63 @@ fn a_problem_without_limits_gets_its_judges_usual_ones() {
 }
 
 #[test]
+fn list_names_the_cases_in_the_order_they_run() {
+    // Editors' test trees list what this prints: `+3` is a number, as Rust
+    // parses a u64, and 2^64 is not.
+    let dir = scratch("list");
+    let tests = dir.join("d.tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    let names = [
+        "stress-7",
+        "hand",
+        "10",
+        "2",
+        "02",
+        "Hand",
+        "+3",
+        "18446744073709551616",
+    ];
+    for name in names {
+        std::fs::write(tests.join(format!("{name}.in")), "").unwrap();
+    }
+    let d = dir.join("d.cp").to_string_lossy().into_owned();
+    let list = |format: &[&str]| {
+        let args: Vec<String> = [&d, "--list"]
+            .into_iter()
+            .chain(format.iter().copied())
+            .map(String::from)
+            .collect();
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        assert_eq!(
+            crate::test::run(&args, &mut out, &mut err),
+            0,
+            "{}",
+            String::from_utf8_lossy(&err)
+        );
+        String::from_utf8(out).unwrap()
+    };
+    let order = [
+        "02",
+        "2",
+        "+3",
+        "10",
+        "18446744073709551616",
+        "Hand",
+        "hand",
+        "stress-7",
+    ];
+    assert_eq!(list(&[]), order.map(|n| format!("{n}\n")).concat());
+    let listed = json::parse(&list(&["--format", "json"])).unwrap();
+    let cases = listed.at(&["cases"]).as_array().unwrap();
+    let seen: Vec<&str> = cases
+        .iter()
+        .map(|c| c.at(&["name"]).as_str().unwrap())
+        .collect();
+    assert_eq!(seen, order);
+    assert!(cases[0].at(&["input"]).as_str().unwrap().ends_with("02.in"));
+}
+
+#[test]
 fn cases_are_samples_in_order_then_the_rest_by_name() {
     let dir = scratch("cases");
     let tests = dir.join("d.tests");

@@ -227,6 +227,7 @@ fn every_json_output_has_the_published_keys() {
         ("explain d", &["explain", "a.cp", "--json"]),
         ("doc", &["doc", "--format", "json", "a.cp"]),
         ("test", &["test", "a", "--format", "json"]),
+        ("test --list", &["test", "a", "--list", "--json"]),
         ("stress", &["stress", "same.cp", "--format", "json"]),
         ("stress", &["stress", "differ.cp", "--format", "json"]),
         ("locate", &["locate", "alt.cp", "a.tests/1.in", "--json"]),

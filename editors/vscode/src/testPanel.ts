@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { serverBinary } from './client';
 import { missingCpl, runCpl } from './cpl';
-import { caseOrder, parseTestReport, TestCase } from './results';
+import { parseTestReport, TestCase } from './results';
 
 export type Outcome = 'passed' | 'failed' | 'errored' | 'skipped';
 
@@ -54,29 +54,22 @@ export class TestPanel implements vscode.Disposable {
         await this.resolve(item);
     }
 
-    /** A problem's cases: `N.in` in `<stem>.tests/`, in `cpl test`'s order. */
+    /** A problem's cases, in `cpl test`'s order, as `cpl test --list` gives them. */
     private async resolve(item: vscode.TestItem): Promise<void> {
-        const source = item.uri!;
-        const dir = vscode.Uri.file(source.fsPath.replace(/\.cp$/, '.tests'));
-        let names: string[] = [];
-        try {
-            names = (await vscode.workspace.fs.readDirectory(dir)).map(([name]) => name);
-        } catch {
-            // No folder: no cases.
-        }
-        const cases = names
-            .filter(name => name.endsWith('.in'))
-            .map(name => name.slice(0, -'.in'.length))
-            .sort(caseOrder);
+        const source = item.uri!.fsPath;
+        const binary = serverBinary();
+        const listed = binary
+            ? await runCpl(binary, ['test', source, '--list', '--format', 'json'], { cwd: path.dirname(source), timeoutMs: 10000 })
+            : undefined;
+        const cases = (listed?.code === 0 ? JSON.parse(listed.stdout) : { cases: [] }).cases as { name: string; input: string }[];
         if (cases.length === 0) {
             this.controller.items.delete(item.id);
             return;
         }
         item.children.replace(
-            cases.map(name => {
-                const child = this.controller.createTestItem(`${item.id}#${name}`, name, vscode.Uri.joinPath(dir, `${name}.in`));
-                return child;
-            }),
+            cases.map(c =>
+                this.controller.createTestItem(`${item.id}#${c.name}`, c.name, vscode.Uri.file(path.resolve(path.dirname(source), c.input))),
+            ),
         );
     }
 

@@ -39,6 +39,9 @@ options:
   --make             make the cases the package <problem>'s tests.toml lists,
                      into --tests DIR (else target/corpus-tests/<id>/), and
                      run nothing
+  --list             print the cases, one name a line, in the order they
+                     run, and run nothing; with --format json,
+                     `{\"cases\": [{\"name\", \"input\"}]}`
   --case NAME        run only the case NAME (`2` for 2.in)
   --add FILE         add FILE (`-`: standard input) as the next numbered case,
                      then run it; with --expect OUT, OUT is its answer
@@ -523,6 +526,28 @@ fn make_cases(
     }
 }
 
+/// `cpl test --list`: the problem's cases in the order `cpl test` runs
+/// them, so an editor's test tree lists them as the CLI does.
+fn list_cases(file: &str, tests: Option<&str>, json: bool, stdout: &mut dyn Write) -> u8 {
+    let dir = tests.map_or_else(|| find_tests_dir(&source_path(file)), PathBuf::from);
+    let cases = cases_in(&dir);
+    if json {
+        let cases = cases.iter().map(|case| {
+            cpl_json::obj([
+                ("name", case.name.as_str().into()),
+                ("input", case.input.to_string_lossy().as_ref().into()),
+            ])
+        });
+        let list = cpl_json::obj([("cases", cpl_json::Value::Array(cases.collect()))]);
+        let _ = writeln!(stdout, "{}", cpl_json::to_string(&list));
+    } else {
+        for case in &cases {
+            let _ = writeln!(stdout, "{}", case.name);
+        }
+    }
+    0
+}
+
 /// Runs `cpl test`. Returns the exit code: 0 when every case passed.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
     if args.iter().any(|arg| arg == "-h" || arg == "--help") {
@@ -534,7 +559,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         "test",
         args,
         &[VALUED, &["--format", "--case", "--add", "--expect"]].concat(),
-        &["--make"],
+        &["--make", "--list"],
     )
     .and_then(|args| {
         let report = match args.value("--format") {
@@ -550,9 +575,13 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let file = args.file("test")?.to_string();
         Ok((args, file, report))
     });
-    if let Ok((args, file, _)) = &parsed {
+    if let Ok((args, file, report)) = &parsed {
         if args.has("--make") {
             return make_cases(Path::new(file), args.value("--tests"), stdout, stderr);
+        }
+        if args.has("--list") {
+            let json = matches!(report, Report::Json);
+            return list_cases(file, args.value("--tests"), json, stdout);
         }
     }
     let (args, source, report) = match parsed {
