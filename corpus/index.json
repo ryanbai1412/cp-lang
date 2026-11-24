@@ -1,16 +1,16 @@
 {
- "problems": 1113,
- "with_cpp_ac": 1111,
+ "problems": 1112,
+ "with_cpp_ac": 1110,
  "dream": {
   "draft": 126,
   "gold": 0,
-  "none": 987,
+  "none": 986,
   "reviewed": 0
  },
  "spec": {
   "draft": 99,
   "gold": 0,
-  "none": 1014,
+  "none": 1013,
   "reviewed": 0
  },
  "by_source": {
@@ -47,7 +47,6 @@
   "hci": 1,
   "helloworld": 1,
   "helloworldhard": 1,
-  "help": 1,
   "iati": 6,
   "ioi": 119,
   "jloi": 1,

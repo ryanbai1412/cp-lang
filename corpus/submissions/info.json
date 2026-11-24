@@ -22747,83 +22747,6 @@
         "status": "D",
         "time": 1.300138791
     },
-    "4963746": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:41:25+00:00",
-        "language": "PYPY3",
-        "memory": 57496.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.06350997
-    },
-    "4963750": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:42:05+00:00",
-        "language": "PYPY3",
-        "memory": 57432.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.057129108
-    },
-    "4963752": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:42:10+00:00",
-        "language": "PYPY3",
-        "memory": 57500.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.062662794
-    },
-    "4963753": {
-        "case_points": 0.0,
-        "case_total": 75.0,
-        "date": "2022-10-23T16:42:25+00:00",
-        "language": "PYPY3",
-        "memory": 61656.0,
-        "problem": "help2022p0",
-        "result": "WA",
-        "status": "D",
-        "time": 0.062561777
-    },
-    "4963756": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:42:47+00:00",
-        "language": "PYPY3",
-        "memory": 57424.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.057154988
-    },
-    "4963768": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:43:49+00:00",
-        "language": "PYPY3",
-        "memory": 57496.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.062449058
-    },
-    "4963771": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T16:43:55+00:00",
-        "language": "PYPY3",
-        "memory": 57428.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.057042902
-    },
     "4964435": {
         "case_points": 0.0,
         "case_total": 100.0,
@@ -22834,17 +22757,6 @@
         "result": "WA",
         "status": "D",
         "time": 0.067809047
-    },
-    "4964436": {
-        "case_points": 0.0,
-        "case_total": 300.0,
-        "date": "2022-10-23T19:53:18+00:00",
-        "language": "PYPY3",
-        "memory": 57508.0,
-        "problem": "help2022p0",
-        "result": "IR",
-        "status": "D",
-        "time": 0.062962056
     },
     "5024527": {
         "case_points": 0.0,
