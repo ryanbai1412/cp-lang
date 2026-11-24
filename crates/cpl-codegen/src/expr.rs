@@ -277,6 +277,12 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Cmp(op, l, r) => self.sequence(&[l, r], &Ty::Bool, |_, codes| {
+                // `()` has one value: equal to itself, so never less or greater.
+                if l.ty == Ty::Unit {
+                    let holds = matches!(op, CmpOp::Eq | CmpOp::Le | CmpOp::Ge);
+                    let (a, b) = (&codes[0].text, &codes[1].text);
+                    return Code::primary(format!("((void)({a}), (void)({b}), {holds})"));
+                }
                 if let Ty::Struct(id) = l.ty {
                     let sdef = &program.structs[id];
                     match op {

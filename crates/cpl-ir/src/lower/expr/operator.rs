@@ -573,7 +573,8 @@ impl<'a> Lowerer<'a> {
             | Ty::Str
             | Ty::StrView
             | Ty::Pos(_)
-            | Ty::Bound(_) => true,
+            | Ty::Bound(_)
+            | Ty::Unit => true,
             Ty::Tuple(items) => items.iter().all(|t| self.ordered(t)),
             Ty::Record(fields) => fields.iter().all(|(_, t)| self.ordered(t)),
             Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
