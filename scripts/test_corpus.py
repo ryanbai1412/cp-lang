@@ -52,6 +52,17 @@ class Corpus(unittest.TestCase):
 
 
 class ProblemsTest(Corpus):
+    def test_a_graded_dream_is_what_the_gates_run_without_a_port(self) -> None:
+        dream = "@grader(two_phase)\nfn f(x: Int) -> Int = x\n"
+        alone = corpus.Package.at(self.package("g1", dream_cp=dream, grader_cpp="int main(){}\n"))
+        self.assertEqual(alone.solution, alone.dir / "dream.cp")
+        both = corpus.Package.at(self.package("g2", dream_cp=dream, port_cp="print(1)\n", grader_cpp=""))
+        self.assertEqual(both.solution, both.dir / "port.cp")
+        ungraded = corpus.Package.at(self.package("g3", dream_cp="print(1)\n", grader_cpp=""))
+        self.assertIsNone(ungraded.solution)
+        no_grader = corpus.Package.at(self.package("g4", dream_cp=dream))
+        self.assertIsNone(no_grader.solution)
+
     def test_build_keeps_a_recorded_statement(self) -> None:
         st = {"url": "https://example.org/t.pdf", "sha256": "ab" * 32, "samples": 0}
         with tempfile.TemporaryDirectory() as tmp:

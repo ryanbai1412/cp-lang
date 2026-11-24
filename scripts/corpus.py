@@ -78,6 +78,17 @@ class Package:
     def read_meta(self):
         return json.loads(self.meta.read_text()) if self.meta else {}
 
+    @property
+    def solution(self):
+        """What the gates run: port.cp, else a dream of `@grader` fns linked with the
+        package's grader, which runs a two-phase task's phases in their own processes
+        as the judge does, so that task needs no stdin twin."""
+        if self.port:
+            return self.port
+        if self.dream and self.grader and GRADER.search(self.dream.read_text(errors="replace")):
+            return self.dream
+        return None
+
     def reference(self):
         """The accepted C++: orig.cpp, else meta.json's first AC .cpp submission."""
         if self.orig:
@@ -213,9 +224,9 @@ def judge_args(pkg, source):
 
 def package_limits(pkg):
     """The problem's limits, from its port's `// limits:` line, so a dream is judged as the port is."""
-    if not pkg.port:
+    if not pkg.solution:
         return []
-    ms, mb = limits(pkg.port)
+    ms, mb = limits(pkg.solution)
     return ["--time-limit", str(ms), "--memory-limit", str(mb)]
 
 
@@ -733,10 +744,11 @@ def check_tests(pkg, ctx):
         return [f"reference-fails {pkg.id} {e.case}"]
     except (RuntimeError, subprocess.SubprocessError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
-    # Without a port, making the cases has run the reference on every one: that is the check.
-    if not pkg.port:
+    # Without a program, making the cases has run the reference on every one: that is the check.
+    if not pkg.solution:
         return []
-    cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg, pkg.port), *package_limits(pkg))
+    cases = cpl_cases(ctx.cpl, pkg.solution, "--tests", os.path.join(OUT, pkg.id),
+                      *judge_args(pkg, pkg.solution), *package_limits(pkg))
     if isinstance(cases, str):
         return [f"{cases} {pkg.id} -"]
     found = [f"cpl-test-fails {pkg.id} {c['name']}" for c in cases if c["verdict"] not in (None, "ok")]
@@ -1015,11 +1027,15 @@ def check_max(pkg, ctx):
     without a trap, its judge build runs within the `// limits:` time and memory,
     and it matches the accepted C++ within 1.5x its time (problem-packages/R6).
     A missing --max is counted by the `corpus_no_max` ratchet, not here."""
-    if not pkg.port or not ctx.runs(pkg) or pkg.interactor or not has_max(pkg):
+    if not pkg.solution or not ctx.runs(pkg) or pkg.interactor or not has_max(pkg):
         return []
     data = gen_out(pkg, ("--max",))
     if data is None:
         return [f"gen-fails {pkg.id} --max"]
+    if not pkg.port:
+        # A dream through its grader: `cpl test` judges it at the limits.
+        ok, _ = judged(pkg, pkg.solution, [data.decode()], ctx.cpl)
+        return [] if ok else [f"max-fails {pkg.id} --max"]
     exe, _ = native(pkg, ctx)
     if exe and rejects([exe], data):
         return [f"invalid-input {pkg.id} --max"]
