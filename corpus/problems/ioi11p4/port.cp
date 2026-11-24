@@ -6,12 +6,13 @@
 // Solution: the best way out of a chamber is always blocked, so a chamber is worth its
 //   second-best (neighbour's worth + corridor). Dijkstra from all exits, settling a chamber the
 //   second time it comes off the heap; stop when chamber 0 settles. O((N + M) log M).
+// original: corpus/submissions/3734919.cpp
 
-let (n, m, k): (Int, Int, Int) = read()
+let (n, m, k): (1..=1e5, 1..=1e6, 1..=1e5) = read()
 domain Room = 0..n
 domain Hall = 0..m
 domain X = 0..k
-let halls: [Hall](u: Room, v: Room, len: Int) = read()
+let halls: [Hall](u: Room, v: Room, len: 1..=1e9) = read()
 let exits: [X]Room = read()
 let g = Graph<Room, Hall>.undirected(halls)
 

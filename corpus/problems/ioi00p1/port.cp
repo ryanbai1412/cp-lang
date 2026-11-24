@@ -4,6 +4,7 @@
 // Solution: interval DP: need(i, j) for s[i..=j] is need(i + 1, j - 1) when s[i] == s[j], else
 //   1 + min(need(i + 1, j), need(i, j - 1)). Run i downward keeping only the rows for i and
 //   i + 1 (inner), so it is O(N^2) time and O(N) memory.
+// original: corpus/submissions/4682427.cpp
 let n: 3..=5000 = read()
 domain I = 0..n
 fn word() -> [I]Char: [I] _ => 'a' + rand(0, 2)

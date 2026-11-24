@@ -4,6 +4,7 @@
 // Solution: binary search the answer x: some window has median <= x iff more than half its
 //   cells are <= x. Each check builds a 2D prefix sum of [rank <= x] and tests every h x w
 //   window in O(1): O(rc log(rc)) total.
+// original: corpus/problems/ioi10p3/orig.cpp
 
 let (r, c, h, w): (1..=3000, 1..=3000, 1..=3000, 1..=3000) = read()
 domain Row = 0..r
