@@ -494,7 +494,12 @@ def tree_walker(root: Path) -> list[str]:
 
 
 def v02_port_files(root: Path) -> list[str]:
-    return _git(root, "ls-files", "corpus/problems/*/port.cp")
+    """Corpus ports not yet re-ported in v0.3 style (absent from `corpus/sets/v03.txt`).
+
+    Their frozen copies under `tests/v02-snapshot/` keep the regression coverage."""
+    sets = root / "corpus/sets/v03.txt"
+    v03 = {l.strip() for l in _lines(sets)} if sets.is_file() else set()
+    return [p for p in _git(root, "ls-files", "corpus/problems/*/port.cp") if p.split("/")[2] not in v03]
 
 
 def spec_std_refs(root: Path) -> list[str]:
@@ -1416,7 +1421,7 @@ COUNTERS = {
     "browser_lsp_gaps": ("language-server capabilities the browser editor never asks for", browser_lsp_gaps, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
-    "v02_port_files": ("v0.2 corpus port.cp files", v02_port_files, True),
+    "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),

@@ -47,6 +47,17 @@ class DebtRatchetTest(unittest.TestCase):
                 "corpus/problems/a/tests/1.ans", "corpus/problems/a/tests/1.in",
                 "corpus/problems/a/tests/sample1.in"])
 
+    def test_v02_port_files_counts_ports_not_in_the_v03_set(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for f in ["corpus/problems/a/port.cp", "corpus/problems/b/port.cp",
+                      "corpus/problems/c/spec.cp", "corpus/sets/v03.txt"]:
+                (root / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / f).write_text("b\n")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            self.assertEqual(dr.v02_port_files(root), ["corpus/problems/a/port.cp"])
+
     def test_dead_code_allows_and_external_crates(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

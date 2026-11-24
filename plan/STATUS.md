@@ -268,7 +268,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | dev_crate_edges | 3 | informational: test-only edges that would be layer violations if shipped |
 | layer_violations | 1 | 0 |
 | tree_walker | 1 | 0 |
-| v02_port_files | 877 | 0 |
+| v02_port_files | 551 | 0 |
 | spec_std_refs | 149 | 0 |
 | direct_python | 13 | 0 |
 | unrun_script_tests | 3 | 0 |

@@ -103,7 +103,7 @@ milestone = "M3"
 [[metric]]
 name = "v02_port_files"
 command = "python3 scripts/debt-ratchet.py --show v02_port_files"
-today = 877
+today = 551
 target = "0"
 milestone = "M1"
 
