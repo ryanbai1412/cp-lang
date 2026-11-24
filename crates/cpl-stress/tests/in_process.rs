@@ -72,4 +72,7 @@ fn a_trapping_checker_in_process_is_a_checker_re() {
     let result = stress_source("c.cp", source, &options, Some(1 << 26), false).unwrap();
     let failure = result.report.failure.expect("the checker fails");
     assert_eq!(failure.verdict.code(), "checker RE", "{failure:?}");
+    let error = result.error.expect("the checker's trap");
+    assert!(error.contains("\"code\":\"R0101\""), "{error}");
+    assert!(error.contains("\"line\":9"), "{error}");
 }

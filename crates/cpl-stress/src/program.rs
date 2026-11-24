@@ -606,6 +606,14 @@ impl Program {
         if found(&profile.host().compiler) {
             return Ok(None);
         }
+        Self::lowered_gen(path, size).map(Some)
+    }
+
+    /// The file's `@gen` fn lowered for the interpreter, compiler or not.
+    pub fn lowered_gen(path: &Path, size: i64) -> Result<cpl_ir::Program, BuildError> {
+        let name = path.shown();
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
         let mut db = cpl_check::Database::new();
         db.set_file(&name, text.as_str());
         let analysis = db.analyze(&name).expect("the file was just set");
@@ -621,9 +629,7 @@ impl Program {
         }
         let (gen_fn, _) = cpl_ir::generator(&analysis)
             .ok_or_else(|| BuildError(format!("{name} declares no `@gen` fn")))?;
-        cpl_ir::lower_gen(&analysis, &gen_fn, size)
-            .map(Some)
-            .map_err(|diagnostics| failed(&diagnostics))
+        cpl_ir::lower_gen(&analysis, &gen_fn, size).map_err(|diagnostics| failed(&diagnostics))
     }
 
     /// The command with `extra` arguments added.

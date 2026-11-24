@@ -656,9 +656,21 @@ pub fn run_with(
                 Ok(Some(program)) => Source::Interpreted {
                     program: Box::new(program),
                     name: name.clone(),
+                    lines: cpl_diag::LineIndex::new(&src),
                 },
                 Ok(None) => match Program::resolve_gen(&args.file, fn_name, size) {
-                    Ok(program) => Source::InFile(program),
+                    Ok(program) => Source::InFile(
+                        program,
+                        Program::lowered_gen(&args.file, size).ok().map(|program| {
+                            Box::new(crate::InterpChoices {
+                                program,
+                                name: format!("{name} (`{fn_name}`)"),
+                                lines: cpl_diag::LineIndex::new(&src),
+                                stack_limit: None,
+                                limit: args.options.limit,
+                            })
+                        }),
+                    ),
                     Err(e) => return fail(e.to_string()),
                 },
                 Err(e) => return fail(e.to_string()),
@@ -857,6 +869,18 @@ pub fn run_with(
                 crate::explain::trap_report(&args.file, &failure.input, false, true)
             }
             crate::Verdict::BruteError(_) => brute_trap(&failure.input, true),
+            crate::Verdict::JudgeError("checker", _) => {
+                std::fs::read_to_string(&args.file).ok().and_then(|text| {
+                    crate::explain::checker_trap_in(
+                        &args.file,
+                        &text,
+                        &failure.input,
+                        &failure.got,
+                        true,
+                        None,
+                    )
+                })
+            }
             _ => None,
         });
     if args.json {

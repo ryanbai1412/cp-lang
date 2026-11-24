@@ -137,11 +137,16 @@ impl Engine for ProcessEngine<'_> {
 }
 
 /// Native CLI `@gen` backend using `CPL_SEED` / `CPL_CHOICES` on a compiled binary.
-pub struct ProcessChoices<'a>(pub &'a Program);
+/// The built `@gen` fn, and the same fn interpreted, which says on which
+/// line a draw that fails traps.
+pub struct ProcessChoices<'a>(pub &'a Program, pub Option<&'a InterpChoices>);
 
 impl ChoiceSource for ProcessChoices<'_> {
     fn draw(&self, seed: u64) -> Result<Drawn, StressError> {
-        choices::draw(self.0, seed)
+        choices::draw(self.0, seed).map_err(|built| match self.1 {
+            Some(interpreted) => interpreted.draw(seed).err().unwrap_or(built),
+            None => built,
+        })
     }
 
     fn replay(&self, list: &[u64]) -> Option<Drawn> {
@@ -350,9 +355,12 @@ impl Engine for InterpEngine {
 }
 
 /// In-process `@gen` backend using `cpl-interp` with seeded `rand`/`shuffle`.
+#[derive(Clone, Debug)]
 pub struct InterpChoices {
     pub program: cpl_ir::Program,
     pub name: String,
+    /// The lines of the file the fn is in, to say where it traps.
+    pub lines: cpl_diag::LineIndex,
     pub stack_limit: Option<u32>,
     /// How long one draw may take before it is stopped.
     pub limit: Duration,
@@ -382,8 +390,10 @@ impl ChoiceSource for InterpChoices {
         self.run(cpl_interp::Io::fixed(b"").seeded(seed), None)
             .map_err(|trap| {
                 StressError(format!(
-                    "the `@gen` fn of {} failed on seed {seed}: {}",
-                    self.name, trap.message
+                    "the `@gen` fn of {} failed on seed {seed} at line {}: {}",
+                    self.name,
+                    self.lines.line_of(trap.span.start) + 1,
+                    trap.message
                 ))
             })
     }
@@ -516,6 +526,7 @@ pub fn stress_source(
             Some(InterpChoices {
                 program,
                 name: name.to_string(),
+                lines: cpl_diag::LineIndex::new(source),
                 stack_limit,
                 limit: options.limit,
             })
@@ -618,12 +629,22 @@ pub fn stress_source(
     }
 
     let error = report.failure.as_ref().and_then(|failure| {
+        let path = std::path::Path::new(name);
         let brute = match failure.verdict {
             Verdict::RuntimeError(_) => false,
             Verdict::BruteError(_) if own_brute.is_some() => true,
+            Verdict::JudgeError("checker", _) => {
+                return crate::explain::checker_trap_in(
+                    path,
+                    source,
+                    &failure.input,
+                    &failure.got,
+                    true,
+                    stack_limit,
+                );
+            }
             _ => return None,
         };
-        let path = std::path::Path::new(name);
         crate::explain::trap_report_in(path, source, &failure.input, brute, true, stack_limit)
     });
     Ok(SourceStressResult {

@@ -106,6 +106,41 @@ fn render(
     }
 }
 
+/// The trap the file's `@check` fn stops at, judging `got` for `input`,
+/// rendered as `cpl check` renders a diagnostic. `None` when it has no
+/// `@check` fn, or the fn accepts or rejects the output without a trap.
+pub fn checker_trap_in(
+    path: &Path,
+    text: &str,
+    input: &str,
+    got: &str,
+    json: bool,
+    stack_limit: Option<u32>,
+) -> Option<String> {
+    let (name, analysis) = analyzed(path, text)?;
+    let (checker, _) = cpl_ir::checker(&analysis)?;
+    let program = cpl_ir::lower_checker(&analysis, &checker).ok()?;
+    let mut printed = Some(got.as_bytes().to_vec());
+    let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()))
+        .until(cpl_interp::Stop::after(LIMIT));
+    let mut sink = Vec::new();
+    let trap = match stack_limit {
+        Some(bytes) => {
+            let limits = cpl_interp::Limits {
+                stack_bytes: bytes as usize,
+            };
+            cpl_interp::run_with_on_this_thread(&program, io, &mut sink, limits).err()?
+        }
+        None => cpl_interp::run_with(&program, io, &mut sink).err()?,
+    };
+    if trap.message == cpl_interp::OUT_OF_TIME {
+        return None;
+    }
+    let lines = cpl_diag::LineIndex::new(text);
+    let diagnostic = trap.to_diagnostic(&name, &lines);
+    Some(render(&diagnostic, &name, text, &lines, json))
+}
+
 /// What the debug interpreter prints running the `.cp` file at `path` on
 /// `input`. `None` when the file is not CP Lang, does not build, is
 /// interactive, traps or is still running after [`LIMIT`].

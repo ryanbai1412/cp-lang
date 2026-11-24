@@ -114,7 +114,7 @@ pub fn shrink(
     budget: usize,
     still_fails: &mut dyn FnMut(&str) -> bool,
 ) -> Drawn {
-    shrink_with(&ProcessChoices(generator), first, budget, still_fails)
+    shrink_with(&ProcessChoices(generator, None), first, budget, still_fails)
 }
 
 /// [`shrink`], driven by any [`ChoiceSource`].

@@ -177,7 +177,7 @@ Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`stress_names_the_
 ### stress/U30: the checker, interactor or generator fails
 Need: know which helper broke and why, not see a failing solution.
 Design: each helper is blamed by name with its trap rendered as a brute's is (U18), and the case is not saved as a test of the solution.
-Milestone: M1-critical. Status: partial (an index, overflow, range, `None`, `todo` or stack trap is the helper's own bug: `checker RE` or `interactor RE` with its trap, not saved; a `@gen` fn's failure shows the compiled generator's trap message, without its line; the browser shows a checker's trap as its message alone, and `--format json` has no structured trap for a helper)
+Milestone: M1-critical. Status: partial (an index, overflow, range, `None`, `todo` or stack trap is the helper's own bug: `checker RE` or `interactor RE` with its trap, not saved; a `@gen` fn's failure names its line, `failed on seed 1 at line 7: ...`; a `@check` fn's trap is the `"error"` diagnostic, with code and span, in `--format json` and in the browser; an interactor's trap is still text alone in JSON)
 Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_broken_helper_is_blamed_with_its_trap_not_the_solution`), `crates/cpl-stress/tests/in_process.rs` (`a_trapping_checker_in_process_is_a_checker_re`)
 
 ### stress/U31: how far a clean run reached

@@ -21,11 +21,12 @@ pub enum Source {
     Generator(Program),
     /// The file's own `@gen` fn, built for one size. It shrinks through
     /// the choices its `rand` and `shuffle` made.
-    InFile(Program),
+    InFile(Program, Option<Box<crate::InterpChoices>>),
     /// The file's own `@gen` fn, interpreted where no C++ compiler is.
     Interpreted {
         program: Box<cpl_ir::Program>,
         name: String,
+        lines: cpl_diag::LineIndex,
     },
 }
 
@@ -186,14 +187,19 @@ pub fn stress_with_cold(
     let input_source = match source {
         Source::Typed(spec) => InputSource::Typed(spec),
         Source::Generator(program) => InputSource::Generator(program),
-        Source::InFile(program) => {
-            choices = ProcessChoices(program);
+        Source::InFile(program, interpreted) => {
+            choices = ProcessChoices(program, interpreted.as_deref());
             InputSource::Choices(&choices)
         }
-        Source::Interpreted { program, name } => {
+        Source::Interpreted {
+            program,
+            name,
+            lines,
+        } => {
             interpreted = crate::InterpChoices {
                 program: (**program).clone(),
                 name: name.clone(),
+                lines: lines.clone(),
                 stack_limit: None,
                 limit: options.limit,
             };
