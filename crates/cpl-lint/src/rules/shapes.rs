@@ -57,14 +57,6 @@ pub(crate) fn squash(text: &str) -> String {
     text.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
-/// The operator and operands of a binary expression.
-pub(crate) fn binary(e: &Expr) -> Option<(BinOp, &Expr, &Expr)> {
-    match &e.kind {
-        ExprKind::Binary { op, lhs, rhs, .. } => Some((*op, lhs, rhs)),
-        _ => None,
-    }
-}
-
 /// `op` with its sides swapped: `a < b` is `b > a`.
 pub(crate) fn flip(op: CmpOp) -> CmpOp {
     match op {
