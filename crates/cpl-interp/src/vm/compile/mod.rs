@@ -92,7 +92,7 @@ enum ModSuperOp {
 pub(super) struct Compiler<'p, 'f> {
     program: &'p Program,
     feeds: &'f cpl_ir::pushed::Feeds,
-    fed_ok: &'f [bool],
+    pub(super) fed_ok: &'f [bool],
     ops: Vec<Op>,
     spans: Vec<Span>,
     consts_i: Vec<i64>,
@@ -184,11 +184,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn new(
         program: &'p Program,
         feeds: &'f cpl_ir::pushed::Feeds,
-        fed_ok: &'f [bool],
         locals: &'p [Local],
         cur_fn: Option<FnId>,
         param_count: usize,
         tuple_params: Option<&'p cpl_ir::Function>,
+        profiled: bool,
     ) -> Self {
         let mut slot_map = Vec::with_capacity(locals.len());
         let mut next_i: u16 = 0;
@@ -224,7 +224,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         Self {
             program,
             feeds,
-            fed_ok,
+            fed_ok: &[],
             ops: Vec::new(),
             spans: Vec::new(),
             consts_i: Vec::new(),
@@ -267,7 +267,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             dom_clears: 0,
             assigned_locals: Vec::new(),
             traced: false,
-            profiled: false,
+            profiled,
             steps: Vec::new(),
             trace_points: Vec::new(),
             traced_loop_var: None,

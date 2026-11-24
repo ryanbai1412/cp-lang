@@ -227,7 +227,7 @@ impl<'p> CompiledProgram<'p> {
     ) -> Self {
         let fed_fn = |id: usize, fed_ok: &[bool]| -> Option<Chunk<'p>> {
             let f = &program.fns[id];
-            if traced || profiled || program.judge_fns.contains(&id) {
+            if traced || program.judge_fns.contains(&id) {
                 return None;
             }
             let &acc_slot = feeds.pushers.get(&id)?;
@@ -235,12 +235,13 @@ impl<'p> CompiledProgram<'p> {
             let mut fc = Compiler::new(
                 program,
                 feeds,
-                fed_ok,
                 &f.locals,
                 Some(id),
                 f.params.len(),
                 None,
+                profiled,
             );
+            fc.fed_ok = fed_ok;
             fc.feed_acc = Some(acc_slot);
             fc.compile_block(&f.body, None, false);
             fc.emit(Op::FeedEnd, Span::default());
@@ -278,11 +279,11 @@ impl<'p> CompiledProgram<'p> {
         };
         let fed_ok: Vec<bool> = fed_fns.iter().map(Option::is_some).collect();
         let body_chunk = |locals, cur_fn, params, ret, body, def, captures: &[cpl_ir::Capture]| {
-            let mut c = Compiler::new(program, feeds, &fed_ok, locals, cur_fn, params, def);
+            let mut c = Compiler::new(program, feeds, locals, cur_fn, params, def, profiled);
+            c.fed_ok = &fed_ok;
             let refs = captures.iter().filter(|cap| cap.by_ref);
             c.held.extend(refs.map(|cap| cap.inner as u16));
             c.traced = traced;
-            c.profiled = profiled;
             let ret_kind = ScalarKind::of_ty(ret, program);
             if !traced && !profiled {
                 c.tuple_ret = small_tuple_shape(ret, program);
@@ -339,17 +340,32 @@ impl<'p> CompiledProgram<'p> {
                 closures.push(lendable.then_some(chunk));
             }
         }
-        let mut main_c =
-            Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0, None);
+        let mut main_c = Compiler::new(
+            program,
+            feeds,
+            &program.main_locals,
+            None,
+            0,
+            None,
+            profiled,
+        );
+        main_c.fed_ok = &fed_ok;
         main_c.traced = traced;
-        main_c.profiled = profiled;
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let main = main_c.finish();
         let setup = {
-            let mut c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0, None);
+            let mut c = Compiler::new(
+                program,
+                feeds,
+                &program.main_locals,
+                None,
+                0,
+                None,
+                profiled,
+            );
+            c.fed_ok = &fed_ok;
             c.traced = traced;
-            c.profiled = profiled;
             c.compile_block(&program.setup, None, false);
             let done = c.alloc_i();
             c.emit_const_i(done, 1, Span::default());

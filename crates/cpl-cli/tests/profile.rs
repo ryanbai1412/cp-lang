@@ -208,6 +208,41 @@ fn a_reduce_lowered_inline_starts_its_line_once() {
 }
 
 #[test]
+fn a_fed_loop_left_early_stops_every_generator_feeding_it() {
+    // A `break` in the outer body stops a generator that feeds itself and
+    // one fed by another `yields` fn: neither runs past the yield it gave.
+    let recursive = scratch(
+        "fed_recursive.cp",
+        "fn walk(n: Int) -> yields Int:\n    if n > 0:\n        yield n\n        \
+         for x in walk(n - 1): yield x\n\nvar s = 0\nfor x in walk(10):\n    \
+         if x == 3: break\n    s += x\nprint(s)\n",
+    );
+    let nested = scratch(
+        "fed_nested.cp",
+        "fn upto(n: Int) -> yields Int:\n    var i = 0\n    while i < n:\n        \
+         yield i\n        i += 1\n\nfn squares(n: Int) -> yields Int:\n    \
+         for x in upto(n): yield x * x\n\nfor x in squares(10):\n    \
+         if x > 20: break\n    print(x)\n",
+    );
+    let cases = [
+        (&recursive, [(1, 8), (2, 8), (3, 8), (4, 28)]),
+        (&nested, [(1, 1), (2, 1), (3, 1), (4, 6)]),
+    ];
+    for (file, want) in cases {
+        let path = file.to_str().unwrap();
+        for engine in [&[][..], &["--native"][..]] {
+            if !engine.is_empty() && !has_gxx() {
+                continue;
+            }
+            let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+            let (out, err, code) = cpl(&args);
+            assert_eq!(code, 0, "{err}");
+            assert_eq!(&hits(&out)[..4], want, "{path} {engine:?}");
+        }
+    }
+}
+
+#[test]
 fn a_loop_binding_a_tuple_starts_its_line_once() {
     let file = scratch(
         "tuple_for.cp",
