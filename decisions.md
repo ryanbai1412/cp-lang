@@ -8857,3 +8857,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `dfs(g, from:, seen:, prune: f)` does not expand the arcs of a `v` with `f(v)`; it still yields `Enter(v)` and `Exit(v)`. `step.prune()` is gone from the spec.
 - **Why.** `Visit` is a plain enum, so `step.prune()` had no body to call, and the spec example could not run. A predicate is visible at the call and costs one call per entered vertex.
 - **Reverse.** Drop `prune:` and `dfs_arcs` from `std/graph.cp` and give `Visit` a steering handle.
+
+## 534. (reserved, content)
