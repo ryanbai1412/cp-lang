@@ -25,6 +25,13 @@ threads-required = 'num-cpus'
 filter = 'test(=std_own_tests_pass)'
 threads-required = 'num-cpus'
 
+# Each shard of these runs one thread per core over its files; beside the
+# rest of the suite one slow file's thread got a fraction of a core and its
+# shard took 68 s against 16 s alone. Give them the machine.
+[[profile.default.overrides]]
+filter = 'binary_id(cpl-cli::fix_actions) | binary_id(cpl-cli::lsp_parity)'
+threads-required = 'num-cpus'
+
 # The commit tier (scripts/check.sh --commit) skips the end-to-end suites:
 # they drive whole programs through the CLI, LSP and conformance corpus, and
 # take most of the fast gate's time. The land tier (--fast) runs them all.

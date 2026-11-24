@@ -45,15 +45,13 @@ fn v03_files() -> Vec<PathBuf> {
     files
 }
 
-/// What `cpl <command>` renders for `files`, by file.
+/// What `cpl <command>` renders for `files`, by file, run in-process so
+/// each thread's database checks shared modules once.
 fn rendered(command: &str, files: &[PathBuf], out: &mut BTreeMap<String, Vec<Diag>>) {
-    let run = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg(command)
-        .args(files)
-        .output()
-        .expect("cpl runs");
-    let text =
-        String::from_utf8_lossy(&run.stderr).into_owned() + &String::from_utf8_lossy(&run.stdout);
+    let mut args = vec![command];
+    args.extend(files.iter().map(|f| f.to_str().unwrap()));
+    let run = cpl_cli::run(&args);
+    let text = run.stderr + &String::from_utf8_lossy(&run.stdout);
     let lines: Vec<&str> = text.lines().collect();
     for (i, line) in lines.iter().enumerate() {
         let Some((severity, rest)) = ["error", "warning", "note"]
@@ -87,26 +85,60 @@ fn rendered(command: &str, files: &[PathBuf], out: &mut BTreeMap<String, Vec<Dia
     }
 }
 
-/// `rendered` for `files`, split across one `cpl` process per core.
-fn rendered_parallel(command: &str, files: &[PathBuf]) -> BTreeMap<String, Vec<Diag>> {
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+/// `files` dealt round-robin into `n` parts, longest first, so no part is
+/// one slow directory or the long files.
+fn dealt(files: &[PathBuf], n: usize) -> Vec<Vec<PathBuf>> {
+    let n = n.min(files.len()).max(1);
+    let mut files = files.to_vec();
+    files.sort_by_key(|f| std::cmp::Reverse(std::fs::metadata(f).map_or(0, |m| m.len())));
+    (0..n)
+        .map(|i| files.iter().skip(i).step_by(n).cloned().collect())
+        .collect()
+}
+
+/// `f` on each of `parts`, one thread each, with a deep stack as `cpl`'s
+/// own main thread has.
+fn on_threads<R: Send>(parts: Vec<Vec<PathBuf>>, f: impl Fn(&[PathBuf]) -> R + Sync) -> Vec<R> {
     std::thread::scope(|s| {
-        let workers: Vec<_> = files
-            .chunks(files.len().div_ceil(threads))
-            .map(|chunk| {
-                s.spawn(move || {
-                    let mut out = BTreeMap::new();
-                    rendered(command, chunk, &mut out);
-                    out
-                })
+        let f = &f;
+        let workers: Vec<_> = parts
+            .iter()
+            .map(|part| {
+                std::thread::Builder::new()
+                    .stack_size(64 << 20)
+                    .spawn_scoped(s, move || f(part))
+                    .unwrap()
             })
             .collect();
-        let mut all = BTreeMap::new();
-        for worker in workers {
-            all.extend(worker.join().unwrap());
-        }
-        all
+        workers.into_iter().map(|w| w.join().unwrap()).collect()
     })
+}
+
+fn threads() -> usize {
+    std::thread::available_parallelism().map_or(4, |n| n.get())
+}
+
+/// `rendered` for each of `commands` on `files`, split across one thread
+/// per core; one thread runs every command on its files, so they share its
+/// database.
+fn rendered_parallel(commands: &[&str], files: &[PathBuf]) -> Vec<BTreeMap<String, Vec<Diag>>> {
+    let parts = on_threads(dealt(files, threads()), |part| {
+        commands
+            .iter()
+            .map(|command| {
+                let mut out = BTreeMap::new();
+                rendered(command, part, &mut out);
+                out
+            })
+            .collect::<Vec<_>>()
+    });
+    let mut all = vec![BTreeMap::new(); commands.len()];
+    for part in parts {
+        for (all, out) in all.iter_mut().zip(part) {
+            all.extend(out);
+        }
+    }
+    all
 }
 
 fn frame(body: &str) -> Vec<u8> {
@@ -188,10 +220,8 @@ fn editor_parity(shard: usize) {
     // `cpl lint` also shows what `cpl check` reported (the checker's L06xx
     // lints and the errors lints can't see past); the editor shows each
     // once. Lint shows exactly the errors `cpl check` shows.
-    let (mut want, lints) = std::thread::scope(|s| {
-        let lints = s.spawn(|| rendered_parallel("lint", &files));
-        (rendered_parallel("check", &files), lints.join().unwrap())
-    });
+    let [mut want, lints] =
+        <[_; 2]>::try_from(rendered_parallel(&["check", "lint"], &files)).unwrap();
     let mut strays = Vec::new();
     for (file, diags) in lints {
         let checked: &mut Vec<Diag> = want.entry(file.clone()).or_default();
@@ -218,18 +248,10 @@ fn editor_parity(shard: usize) {
         strays.len(),
         strays.join("\n")
     );
-    let chunks: Vec<Vec<PathBuf>> = files
-        .chunks(files.len().div_ceil(8))
-        .map(<[_]>::to_vec)
-        .collect();
-    let workers: Vec<_> = chunks
+    let mut got: BTreeMap<String, Vec<Diag>> = on_threads(dealt(&files, threads()), published)
         .into_iter()
-        .map(|c| std::thread::spawn(move || published(&c)))
+        .flatten()
         .collect();
-    let mut got = BTreeMap::new();
-    for worker in workers {
-        got.extend(worker.join().unwrap());
-    }
     let reported: usize = want.values().map(Vec::len).sum();
     assert!(
         reported > 500 / SHARDS,
@@ -263,16 +285,24 @@ fn editor_parity(shard: usize) {
 fn json_parity(shard: usize) {
     let files = shard_of(shard);
     let mut want = BTreeMap::new();
-    rendered("check", &files, &mut want);
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg("check")
-        .args(&files)
-        .arg("--json")
-        .output()
-        .expect("cpl runs");
-    let json = cpl_json::parse(&String::from_utf8_lossy(&out.stdout)).expect("JSON");
+    let outs = on_threads(dealt(&files, threads()), |part| {
+        let mut text = BTreeMap::new();
+        rendered("check", part, &mut text);
+        let mut args = vec!["check"];
+        args.extend(part.iter().map(|f| f.to_str().unwrap()));
+        args.push("--json");
+        let out = cpl_cli::run(&args);
+        let json = cpl_json::parse(&String::from_utf8_lossy(&out.stdout)).expect("JSON");
+        (text, json)
+    });
+    for (text, _) in &outs {
+        want.extend(text.clone());
+    }
     let mut got: BTreeMap<String, Vec<Diag>> = BTreeMap::new();
-    for file in json.at(&["files"]).as_array().unwrap() {
+    for file in outs
+        .iter()
+        .flat_map(|(_, json)| json.at(&["files"]).as_array().unwrap())
+    {
         let path = file.at(&["path"]).as_str().unwrap();
         for d in file.at(&["diagnostics"]).as_array().unwrap() {
             let s = |key: &str| d.at(&[key]).as_str().unwrap().to_string();

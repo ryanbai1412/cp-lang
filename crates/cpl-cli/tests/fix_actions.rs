@@ -14,7 +14,6 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use cpl_json::{obj, Value};
 use cpl_lsp::Server;
@@ -100,20 +99,41 @@ fn mirrored(files: &[PathBuf], scratch: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-/// `f` over `items` split across one thread per core, results in order.
-fn parallel<T: Sync, R: Send>(items: &[T], f: impl Fn(&[T]) -> Vec<R> + Sync) -> Vec<R> {
+/// `f` on each of `items`, results in order: one thread per core, each
+/// with its own editor, taking the next item as it finishes one, so a run
+/// of slow files doesn't hold up one thread.
+fn balanced<T: Sync, R: Send>(items: &[T], f: impl Fn(&mut Server, &T) -> R + Sync) -> Vec<R> {
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    std::thread::scope(|s| {
-        let f = &f;
-        let workers: Vec<_> = items
-            .chunks(items.len().div_ceil(threads).max(1))
-            .map(|chunk| s.spawn(move || f(chunk)))
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let mut done: Vec<(usize, R)> = std::thread::scope(|s| {
+        let workers: Vec<_> = (0..threads.min(items.len()))
+            .map(|_| {
+                let (f, next) = (&f, &next);
+                std::thread::Builder::new()
+                    .stack_size(64 << 20)
+                    .spawn_scoped(s, move || {
+                        let mut server = Server::new();
+                        server.handle(&message(Some(1), "initialize", obj([])));
+                        server.handle(&message(None, "initialized", obj([])));
+                        let mut out = Vec::new();
+                        loop {
+                            let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            let Some(item) = items.get(i) else {
+                                return out;
+                            };
+                            out.push((i, f(&mut server, item)));
+                        }
+                    })
+                    .unwrap()
+            })
             .collect();
         workers
             .into_iter()
             .flat_map(|w| w.join().unwrap())
             .collect()
-    })
+    });
+    done.sort_by_key(|(i, _)| *i);
+    done.into_iter().map(|(_, r)| r).collect()
 }
 
 fn applied(text: &str, edits: Vec<(usize, usize, String)>) -> String {
@@ -124,35 +144,18 @@ fn applied(text: &str, edits: Vec<(usize, usize, String)>) -> String {
     cpl_diag::splice(text, edits).expect("a fix's edits apply")
 }
 
-/// The diagnostics with fixes `cpl <command> --json` reports for
-/// `files`; a file `cpl` fails on without its JSON is in `crashed`.
+/// The diagnostics with fixes `cpl <command> --json` reports for `file`,
+/// run in-process, so each thread's database checks shared modules once;
+/// a run that fails without its JSON is in `problems`.
 fn reported(
     command: &str,
-    files: &[PathBuf],
-    crashed: &mut Vec<String>,
+    file: &Path,
+    problems: &mut Vec<String>,
 ) -> BTreeMap<String, Vec<Fixable>> {
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg(command)
-        .args(files)
-        .arg("--json")
-        .output()
-        .expect("cpl runs");
-    if out.status.code().is_none_or(|code| code > 1) {
-        if let [file] = files {
-            let why = String::from_utf8_lossy(&out.stderr);
-            crashed.push(format!(
-                "{}: `cpl {command}` failed: {}",
-                file.display(),
-                why.trim()
-            ));
-            return BTreeMap::new();
-        }
-        return files
-            .iter()
-            .flat_map(|file| reported(command, std::slice::from_ref(file), crashed))
-            .collect();
-    }
-    let json = cpl_json::parse(&String::from_utf8_lossy(&out.stdout)).expect("JSON");
+    let Some(out) = cpl(&[command, file.to_str().unwrap(), "--json"], problems) else {
+        return BTreeMap::new();
+    };
+    let json = cpl_json::parse(&String::from_utf8_lossy(&out)).expect("JSON");
     let mut found = BTreeMap::new();
     for file in json.at(&["files"]).as_array().unwrap() {
         let path = file.at(&["path"]).as_str().unwrap();
@@ -295,162 +298,147 @@ fn after(action: &Value, uri: &str, text: &str) -> String {
     applied(text, edits.collect())
 }
 
-/// What the editor offers for each file: its problems with the quick
-/// fixes, and the text after its fix-all.
+/// What the editor offers for `file`: its problems with the quick fixes,
+/// and the text after its fix-all.
 fn editor(
-    files: &[PathBuf],
+    server: &mut Server,
+    file: &Path,
     want: &BTreeMap<String, Vec<Fixable>>,
-) -> Vec<(String, Vec<String>, String)> {
-    let mut server = Server::new();
-    server.handle(&message(Some(1), "initialize", obj([])));
-    server.handle(&message(None, "initialized", obj([])));
-    let mut out = Vec::new();
-    for file in files {
-        let path = file.to_str().unwrap();
-        let text = std::fs::read_to_string(file).unwrap();
-        let uri = format!("file://{path}");
-        server.handle(&message(
-            None,
-            "textDocument/didOpen",
-            obj([(
-                "textDocument",
-                obj([
-                    ("uri", uri.as_str().into()),
-                    ("languageId", "cp".into()),
-                    ("version", 1.into()),
-                    ("text", text.as_str().into()),
-                ]),
-            )]),
-        ));
-        let mut problems = Vec::new();
-        for d in want.get(path).map_or(&[][..], Vec::as_slice) {
-            let mut got: Vec<Fix> = actions(&mut server, &uri, &text, (d.start, d.end), "quickfix")
-                .iter()
-                .filter(|a| {
-                    a.at(&["diagnostics"])
-                        .as_array()
-                        .unwrap_or(&[])
-                        .iter()
-                        .any(|on| {
-                            on.at(&["code"]).as_str() == Some(&d.code)
-                                && first_line(on.at(&["message"])) == d.message
-                                && offset_of(&text, on.at(&["range", "start"])) == d.start
-                                && offset_of(&text, on.at(&["range", "end"])) == d.end
-                        })
-                })
-                .map(|a| {
-                    (
-                        a.at(&["title"]).as_str().unwrap().to_string(),
-                        after(a, &uri, &text),
-                    )
-                })
-                .collect();
-            let mut fixes = d.fixes.clone();
-            got.sort();
-            fixes.sort();
-            if got != fixes {
-                let titles = |fs: &[Fix]| fs.iter().map(|f| f.0.clone()).collect::<Vec<_>>();
-                let lines = cpl_diag::LineIndex::new(&text);
-                let at = lines.line_col(d.start as u32);
-                problems.push(format!(
-                    "{path}:{}:{} {} `{}`: fixes {:?}, code actions {:?}{}",
-                    at.line + 1,
-                    at.col + 1,
-                    d.code,
-                    d.message,
-                    titles(&fixes),
-                    titles(&got),
-                    if titles(&fixes) == titles(&got) {
-                        " (different edits)"
-                    } else {
-                        ""
-                    }
-                ));
-            }
-        }
-        let fixed = actions(&mut server, &uri, &text, (0, 0), "source.fixAll")
-            .first()
-            .map_or(text.clone(), |a| after(a, &uri, &text));
-        server.handle(&message(
-            None,
-            "textDocument/didClose",
-            obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
-        ));
-        out.push((path.to_string(), problems, fixed));
-    }
-    out
-}
-
-/// `cpl fix` over `files`, one file at a time after a run `cpl` fails on;
-/// each file it fails on is in `crashed`.
-fn fix(files: &[PathBuf], crashed: &mut Vec<String>) {
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg("fix")
-        .args(files)
-        .output()
-        .expect("cpl fix runs");
-    if out.status.code().is_none_or(|code| code > 1) {
-        match files {
-            [file] => crashed.push(format!(
-                "{}: `cpl fix` failed: {}",
-                file.display(),
-                String::from_utf8_lossy(&out.stderr).trim()
-            )),
-            _ => files
-                .iter()
-                .for_each(|file| fix(std::slice::from_ref(file), crashed)),
-        }
-    }
-}
-
-fn fix_actions(shard: usize) {
-    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("fix-actions-{shard}"));
-    let files = mirrored(&shard_of(shard), &scratch);
-    let mut want = BTreeMap::<String, Vec<Fixable>>::new();
+) -> (String, Vec<String>, String) {
+    let path = file.to_str().unwrap();
+    let text = std::fs::read_to_string(file).unwrap();
+    let uri = format!("file://{path}");
+    server.handle(&message(
+        None,
+        "textDocument/didOpen",
+        obj([(
+            "textDocument",
+            obj([
+                ("uri", uri.as_str().into()),
+                ("languageId", "cp".into()),
+                ("version", 1.into()),
+                ("text", text.as_str().into()),
+            ]),
+        )]),
+    ));
     let mut problems = Vec::new();
+    for d in want.get(path).map_or(&[][..], Vec::as_slice) {
+        let mut got: Vec<Fix> = actions(server, &uri, &text, (d.start, d.end), "quickfix")
+            .iter()
+            .filter(|a| {
+                a.at(&["diagnostics"])
+                    .as_array()
+                    .unwrap_or(&[])
+                    .iter()
+                    .any(|on| {
+                        on.at(&["code"]).as_str() == Some(&d.code)
+                            && first_line(on.at(&["message"])) == d.message
+                            && offset_of(&text, on.at(&["range", "start"])) == d.start
+                            && offset_of(&text, on.at(&["range", "end"])) == d.end
+                    })
+            })
+            .map(|a| {
+                (
+                    a.at(&["title"]).as_str().unwrap().to_string(),
+                    after(a, &uri, &text),
+                )
+            })
+            .collect();
+        let mut fixes = d.fixes.clone();
+        got.sort();
+        fixes.sort();
+        if got != fixes {
+            let titles = |fs: &[Fix]| fs.iter().map(|f| f.0.clone()).collect::<Vec<_>>();
+            let lines = cpl_diag::LineIndex::new(&text);
+            let at = lines.line_col(d.start as u32);
+            problems.push(format!(
+                "{path}:{}:{} {} `{}`: fixes {:?}, code actions {:?}{}",
+                at.line + 1,
+                at.col + 1,
+                d.code,
+                d.message,
+                titles(&fixes),
+                titles(&got),
+                if titles(&fixes) == titles(&got) {
+                    " (different edits)"
+                } else {
+                    ""
+                }
+            ));
+        }
+    }
+    let fixed = actions(server, &uri, &text, (0, 0), "source.fixAll")
+        .first()
+        .map_or(text.clone(), |a| after(a, &uri, &text));
+    server.handle(&message(
+        None,
+        "textDocument/didClose",
+        obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
+    ));
+    (path.to_string(), problems, fixed)
+}
+
+/// What `cpl <args>` prints, run in-process; a run that fails (exits past
+/// 1, or panics) is in `problems` instead.
+fn cpl(args: &[&str], problems: &mut Vec<String>) -> Option<Vec<u8>> {
+    let run = std::panic::catch_unwind(|| cpl_cli::run(args));
+    match run {
+        Ok(out) if out.code <= 1 => return Some(out.stdout),
+        Ok(out) => problems.push(format!(
+            "{}: `cpl {}` failed: {}",
+            args[1],
+            args[0],
+            out.stderr.trim()
+        )),
+        Err(_) => problems.push(format!("{}: `cpl {}` panicked", args[1], args[0])),
+    }
+    None
+}
+
+/// The problems with one file, and how many fixes it reported.
+fn file(server: &mut Server, file: &Path) -> (Vec<String>, usize) {
+    let mut problems = Vec::new();
+    let mut want = BTreeMap::<String, Vec<Fixable>>::new();
     for command in ["check", "lint"] {
-        let found = parallel(&files, |chunk| {
-            let mut crashed = Vec::new();
-            vec![(reported(command, chunk, &mut crashed), crashed)]
-        });
-        for (found, crashed) in found {
-            problems.extend(crashed);
-            for (path, fixable) in found {
-                let seen = want.entry(path).or_default();
-                for d in fixable {
-                    let key = |s: &Fixable| (s.start, s.end, s.code.clone(), s.message.clone());
-                    if !seen.iter().any(|s| key(s) == key(&d)) {
-                        seen.push(d);
-                    }
+        for (path, fixable) in reported(command, file, &mut problems) {
+            let seen = want.entry(path).or_default();
+            for d in fixable {
+                let key = |s: &Fixable| (s.start, s.end, s.code.clone(), s.message.clone());
+                if !seen.iter().any(|s| key(s) == key(&d)) {
+                    seen.push(d);
                 }
             }
         }
     }
-    let fixes: usize = want.values().flatten().map(|d| d.fixes.len()).sum();
-    assert!(fixes > 40 / SHARDS, "only {fixes} fixes reported");
-    // A file `cpl` crashed on would crash the in-process server too; it
-    // already fails the test above.
-    let files: Vec<PathBuf> = files
-        .into_iter()
-        .filter(|f| {
-            !problems
-                .iter()
-                .any(|p| p.starts_with(&format!("{}: ", f.display())))
-        })
-        .collect();
-    let edited = parallel(&files, |chunk| editor(chunk, &want));
-    problems.extend(parallel(&files, |chunk| {
-        let mut crashed = Vec::new();
-        fix(chunk, &mut crashed);
-        crashed
-    }));
-    for (path, offered, by_editor) in edited {
-        problems.extend(offered);
+    let fixes = want.values().flatten().map(|d| d.fixes.len()).sum();
+    // What `cpl` failed on would fail the server too; it already fails
+    // the test.
+    if !problems.is_empty() {
+        return (problems, fixes);
+    }
+    let (path, offered, by_editor) = editor(server, file, &want);
+    problems.extend(offered);
+    if cpl(&["fix", &path], &mut problems).is_some() {
         let by_cli = std::fs::read_to_string(&path).unwrap();
         if by_editor != by_cli {
             problems.push(format!("{path}: fix-all differs from `cpl fix`"));
         }
     }
+    (problems, fixes)
+}
+
+fn fix_actions(shard: usize) {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("fix-actions-{shard}"));
+    let mut files = mirrored(&shard_of(shard), &scratch);
+    // Longest first, so a slow file starts early instead of ending last.
+    files.sort_by_key(|f| std::cmp::Reverse(std::fs::metadata(f).map_or(0, |m| m.len())));
+    let mut fixes = 0;
+    let mut problems = Vec::new();
+    for (found, n) in balanced(&files, |server, f| file(server, f)) {
+        problems.extend(found);
+        fixes += n;
+    }
+    assert!(fixes > 40 / SHARDS, "only {fixes} fixes reported");
     let shown = problems
         .iter()
         .map(|p| p.replace(&format!("{}/", scratch.display()), ""));
