@@ -12,16 +12,16 @@
 let n: 1..=10_000_000 = read()
 let k: 1..=n = read()
 let l: 1..=1_000_000_000 = read()
-let pos: [0..n]Int = read()
+domain Team = 0..n
+let pos: [Team]0..l = read()
 
-// cw[i]: the first i teams served by clockwise round trips, k teams a trip;
-// ccw[i]: teams i.. served by anticlockwise round trips
-var cw: [0..=n]Int = 0
-for i in 1..=n: cw[i] = 2 * pos[i - 1] + cw[max(0, i - k)]
-var ccw: [0..=n]Int = 0
-for i in (0..n).rev: ccw[i] = 2 * (l - pos[i]) + ccw[min(n, i + k)]
+// cw[c]: the teams before cut c served by clockwise round trips, the k farthest a trip;
+// ccw[c]: the teams after cut c, anticlockwise
+var cw: [Team.cuts]Int = 0
+for t in Team: cw[t.r] = 2 * pos[t] + cw[Team.cuts.at(Int(t.r) - k) ?? Team.cuts.first!]
+var ccw: [Team.cuts]Int = 0
+for t in Team.rev: ccw[t.l] = 2 * (l - pos[t]) + ccw[Team.cuts.at(Int(t.l) + k) ?? Team.cuts.last!]
 
-// split the teams at i, with at most one full lap taking the k teams after it
-var best = cw[n]
-for i in 0..=n: best min= cw[i] + min(ccw[i], l + ccw[min(n, i + k)])
-print(best)
+// split the teams at cut c, with at most one full lap taking the k teams after it
+let lap = (c: Team.cuts) => l + ccw[Team.cuts.at(Int(c) + k) ?? Team.cuts.last!]
+print(Team.cuts.map(c => cw[c] + min(ccw[c], lap(c))).min()!)

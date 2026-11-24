@@ -8,29 +8,24 @@
 //   exceeds u, stop at the first sum >= l. O(n log n).
 // original: corpus/submissions/4686581.cpp (grader function find_subset)
 // stdin here: n l u, then the n weights.
-// stdout: the size of the subset, then its 0-based indices.
-let n: 1..=200000 = read()
-let l: Int = read()
-let u: Int = read()
+// stdin here: n l u, then the n weights; stdout: the subset's size, then its 0-based indices.
+let n: 1..=200_000 = read()
+let l: 1..=2_147_483_647 = read()
+let u: l..=2_147_483_647 = read()
 domain I = 0..n
-let w: [I]Int = read()
+let w: [I]1..=u = read()
 
-var order: List<(Int, Int)> = []  // (weight, index), lightest first
-for i in I:
-    order.push((w[i], i.ord))
-order.sort()
-
-var lo = 0
-var total = 0
-var picked: List<Int> = []
-for hi in 0..n:
-    total += order[hi].0
+// a window of the lightest-first order: drop its lightest while it weighs over u
+let order = I.sort(by: i => (w[i], i))
+var (lo, total) = (0, 0)
+var picked: List<I> = []
+for (hi, i) in order.items:
+    total += w[i]
     while total > u:
-        total -= order[lo].0
+        total -= w[order[lo]]
         lo += 1
     if total >= l:
-        for j in lo..(hi + 1):
-            picked.push(order[j].1)
+        picked = order.take(hi + 1).drop(lo).collect()
         break
 print(picked.len)
 print(picked)

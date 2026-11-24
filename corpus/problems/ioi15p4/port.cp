@@ -7,18 +7,17 @@
 //   keeping the best sale so far as a multiple `lead` of the herd at the block start; each
 //   block multiplies it by x >= 2, so once it reaches 1e9 no earlier year can win (~30
 //   blocks). SegTrees give the max y per block and the prefix product mod p: O(30 log n) each.
-// input: n, x[], y[], m, then m lines `kind year value` (0-based year;
-// kind 1 sets x, kind 2 sets y)
 // original: corpus/submissions/5723351.cpp (the three grader functions)
+// stdin here: n, x, y, m, then m updates `kind year value`, kind 1 setting x and 2 setting y.
 type Z = Mod<1_000_000_007>
 
-let n: Int = read()
+let n: 1..=500_000 = read()
 domain Year = 0..n
-var x: [Year]Int = read()
-let y: [Year]Int = read()
+var x: [Year]1..=1_000_000_000 = read()
+let y: [Year]1..=1_000_000_000 = read()
 var growth = SegTree<Year, Z>.of(*, i => Z(x[i]))
-var surge = SegTree<Year, Int>(max, x)  // to find the years with x > 1
-var price = SegTree<Year, Int>(max, y)
+var surge = SegTree<Year, Int>(max, [Year] i => Int(x[i]))  // to find the years with x > 1
+var price = SegTree<Year, Int>(max, [Year] i => Int(y[i]))
 
 fn best() -> Z:
     var (lead, ans) = (0, Z(0))  // best sale / herd at `end`, and the sale itself
@@ -35,9 +34,8 @@ fn best() -> Z:
     ans
 
 print(best())
-let m: Int = read()
-for _ in 0..m:
-    let (kind, at, value): (Int, Year, Int) = read()
+let m: 1..=100_000 = read()
+for (kind, at, value) in read<[m](kind: 1..=2, at: Year, value: 1..=1_000_000_000)>():
     if kind == 1:
         x[at] = value
         growth.refresh(at)
