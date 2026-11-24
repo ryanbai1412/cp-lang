@@ -15,13 +15,15 @@ use crate::{
 pub struct Session {
     analysis: Arc<Analysis>,
     proven: OnceLock<rules::Proven>,
-    ranges: OnceLock<Vec<(u32, i128, i128)>>,
-    sizes: OnceLock<Vec<ProvenSize>>,
-    domains: OnceLock<Vec<(String, u128)>>,
-    fns: OnceLock<Vec<ProvenFn>>,
-    loops: OnceLock<Vec<ProvenLoop>>,
-    indexes: OnceLock<Vec<ProvenIndex>>,
-    exprs: OnceLock<Vec<ProvenExpr>>,
+    derived: OnceLock<Derived>,
+}
+
+/// What lint works out from the proof that is not a part of it.
+#[derive(Default)]
+struct Derived {
+    sizes: Vec<ProvenSize>,
+    domains: Vec<(String, u128)>,
+    fns: Vec<ProvenFn>,
 }
 
 impl Session {
@@ -29,13 +31,7 @@ impl Session {
         Session {
             analysis,
             proven: OnceLock::new(),
-            ranges: OnceLock::new(),
-            sizes: OnceLock::new(),
-            domains: OnceLock::new(),
-            fns: OnceLock::new(),
-            loops: OnceLock::new(),
-            indexes: OnceLock::new(),
-            exprs: OnceLock::new(),
+            derived: OnceLock::new(),
         }
     }
 
@@ -73,40 +69,58 @@ impl Session {
         })
     }
 
+    /// The bounds proof; none for a file with a syntax error.
+    fn proven(&self) -> Option<&rules::Proven> {
+        if self.proven.get().is_none() {
+            self.file(|f| {
+                rules::proven(f);
+            });
+        }
+        self.proven.get()
+    }
+
+    fn derived(&self) -> &Derived {
+        self.derived.get_or_init(|| {
+            self.file(|f| Derived {
+                sizes: rules::proven_sizes(f),
+                domains: rules::domain_sizes(f),
+                fns: rules::proven_fns(f),
+            })
+        })
+    }
+
     /// As [`crate::proven_ranges`].
     pub fn ranges(&self) -> &[(u32, i128, i128)] {
-        self.ranges.get_or_init(|| self.file(rules::proven_ranges))
+        self.proven().map_or(&[], |p| &p.names)
     }
 
     /// As [`crate::proven_sizes`].
     pub fn sizes(&self) -> &[ProvenSize] {
-        self.sizes.get_or_init(|| self.file(rules::proven_sizes))
+        &self.derived().sizes
     }
 
     /// As [`crate::domain_sizes`].
     pub fn domains(&self) -> &[(String, u128)] {
-        self.domains.get_or_init(|| self.file(rules::domain_sizes))
+        &self.derived().domains
     }
 
     /// As [`crate::proven_fns`].
     pub fn fns(&self) -> &[ProvenFn] {
-        self.fns.get_or_init(|| self.file(rules::proven_fns))
+        &self.derived().fns
     }
 
     /// As [`crate::proven_loops`].
     pub fn loops(&self) -> &[ProvenLoop] {
-        self.loops.get_or_init(|| self.file(rules::proven_loops))
+        self.proven().map_or(&[], |p| &p.loops)
     }
 
     /// As [`crate::proven_indexes`].
     pub fn indexes(&self) -> &[ProvenIndex] {
-        self.indexes
-            .get_or_init(|| self.file(rules::proven_indexes))
+        self.proven().map_or(&[], |p| &p.indexes)
     }
 
     /// As [`crate::proven_expr_ranges`].
     pub fn exprs(&self) -> &[ProvenExpr] {
-        self.exprs
-            .get_or_init(|| self.file(rules::proven_expr_ranges))
+        self.proven().map_or(&[], |p| &p.exprs)
     }
 }

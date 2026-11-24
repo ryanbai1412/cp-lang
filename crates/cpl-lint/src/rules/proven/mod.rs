@@ -181,7 +181,7 @@ pub(crate) type Divisor = ((u32, u32), (u32, u32), i128, i128);
 type Push = (String, Option<u128>, Vec<Factor>);
 
 pub(crate) struct Proven {
-    names: Vec<(u32, i128, i128)>,
+    pub(crate) names: Vec<(u32, i128, i128)>,
     /// Each method call's receiver of a bounded size, with that size.
     sizes: Vec<((u32, u32), u128, Terms)>,
     /// Each `push` onto a list `Bounds::pushes` counts, by call: the list,
@@ -191,7 +191,7 @@ pub(crate) struct Proven {
     pushed_calls: Vec<((u32, u32), String)>,
     /// Each list only pushed to in counted loops, with its most elements.
     lists: Vec<(String, u128)>,
-    exprs: Vec<crate::ProvenExpr>,
+    pub(crate) exprs: Vec<crate::ProvenExpr>,
     /// Each `/` and `%` whose divisor the bounds let be 0: the operator,
     /// the divisor, and the divisor's range.
     divisors: Vec<Divisor>,
@@ -200,8 +200,8 @@ pub(crate) struct Proven {
     shifts: Vec<Divisor>,
     empty_ranges: Vec<(u32, u32)>,
     found: hazards::Found,
-    loops: Vec<crate::ProvenLoop>,
-    indexes: Vec<crate::ProvenIndex>,
+    pub(crate) loops: Vec<crate::ProvenLoop>,
+    pub(crate) indexes: Vec<crate::ProvenIndex>,
     fns: Vec<FnCost>,
     /// The statement of each loop in `loops`, in the same order.
     loop_stmts: Vec<(u32, u32)>,
@@ -241,7 +241,7 @@ impl Default for Proven {
     }
 }
 
-fn proven<'f>(file: &'f File) -> &'f Proven {
+pub(crate) fn proven<'f>(file: &'f File) -> &'f Proven {
     file.proven.get_or_init(|| proven_in(file, None))
 }
 
