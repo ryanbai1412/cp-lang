@@ -134,7 +134,7 @@
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 0,
-    "debugger": 3,
+    "debugger": 1,
     "diagnostics": 0,
     "idioms": 1,
     "infra": 0,
