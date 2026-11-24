@@ -820,15 +820,14 @@ pub struct SortedBag<K>:
 
     // Insert `c` copies of `x` under node `n` at height `h`: -2 when `unique` finds `x`, else
     // the new right sibling of `n` after a split, or -1.
+    // Whether leaf `n`'s slot `p`, the first not below `x`, holds `x`.
+    fn holds(self, n: Int, p: Int, x: K) -> Bool = p < self.fill(n) and not x < keys[n * BAG_B + p]
+
     fn ins(mut self, n: Int, h: Int, x: K, c: Int, unique: Bool) -> Int:
         if h == 0:
             let p = self.at(n, 0, x, false)
             let s = n * BAG_B + p
-            var hit = false
-            if p < self.fill(n):
-                let y = keys[s]
-                hit = not x < y
-            if hit:
+            if self.holds(n, p, x):
                 got = s
                 if unique: return -2
                 ws[s] += c
@@ -918,9 +917,7 @@ pub struct SortedBag<K>:
         if h == 0:
             let p = self.at(n, 0, x, false)
             let s = n * BAG_B + p
-            if p >= self.fill(n): return 0
-            let y = keys[s]
-            if x < y: return 0
+            if not self.holds(n, p, x): return 0
             if not all and ws[s] > 1:
                 ws[s] -= 1
                 return 1
