@@ -2722,7 +2722,7 @@ HARD_ZERO = frozenset({
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
     "measure_broken", "mono_unguarded", "ts_ignore", "ports_unreported",
     "site_rederived", "browser_lsp_gaps",
-    "unrun_script_tests", "trap_text_outside_registry",
+    "unrun_script_tests", "trap_text_outside_registry", "diag_text_outside_registry",
     "permits", "written_twice",
     "plan_delta_lines", "idioms_evidenced_unlinted", "v02_port_files", "judge_tables",
     "trait_gaps",
