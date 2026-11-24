@@ -608,6 +608,18 @@ impl<'a> Lowerer<'a> {
                             self.narrow_elems.insert(ElemLoc::Field(id, idx), layout);
                         }
                     }
+                    // A field typed by an alias from another module, such as
+                    // `n: Len`, gets the bounds its checked stores hold.
+                    if let RangeInfo::Scalar(RangeBounds {
+                        lo_min: Some(lo),
+                        hi_max: Some(hi),
+                        ..
+                    }) = info
+                    {
+                        (self.structs[id].def.int_ranges)
+                            .entry(idx)
+                            .or_insert((lo, hi));
+                    }
                     self.struct_field_ranges.insert((id, idx), info);
                 }
             }

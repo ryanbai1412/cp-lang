@@ -503,3 +503,38 @@ fn a_shift_that_stays_positive_bounds_its_count() {
     let nonzero = body(&src("(top >> bits) != 0"));
     assert!(nonzero.contains("cpl::imul(bits, 1000)"), "{nonzero}");
 }
+
+struct OneLib(&'static str);
+
+impl cpl_check::Loader for OneLib {
+    fn load(&self, _from: &str, module: &[String]) -> Option<(String, String)> {
+        (module.join(".") == "lib.r").then(|| ("lib/r.cp".into(), self.0.into()))
+    }
+}
+
+#[test]
+fn a_field_typed_by_an_imported_range_alias_is_bounded_by_it() {
+    let field = |ty: &str| {
+        let src = format!(
+            "use lib.r.{{Len}}\nstruct S:\n    n: {ty}\nlet s = S(n: read())\nprint(s.n + 63)\n"
+        );
+        let mut db =
+            cpl_check::Session::with_loader(Box::new(OneLib("pub type Len = 0..2_147_483_648\n")));
+        db.set_file("t.cp", src.as_str());
+        let analysis = db.analyze("t.cp").expect("the file was just set");
+        assert!(
+            analysis.diagnostics.is_empty(),
+            "{:?}",
+            analysis.diagnostics
+        );
+        crate::emit(
+            &cpl_ir::lower(&analysis).expect("lowers"),
+            "t.cp",
+            Some(&src),
+        )
+    };
+    let alias = field("Len");
+    assert!(alias.contains("put_int(s.n + 63,"), "{alias}");
+    let open = field("Int");
+    assert!(open.contains("cpl::iadd(s.n, 63)"), "{open}");
+}
