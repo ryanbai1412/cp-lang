@@ -76,8 +76,10 @@ impl<'p> Emitter<'p> {
             }
             self.tail = self.tail_at(&block.stmts, k);
             self.slot_written_next = self.slot_written_next(&block.stmts, k);
+            self.blank_next = self.filled_next(&block.stmts, k);
             self.stmt_owning(block, k, out);
             self.slot_written_next = false;
+            self.blank_next = false;
         }
         self.tail = None;
     }
@@ -98,6 +100,84 @@ impl<'p> Emitter<'p> {
             && matches!(op, BinOp::Add | BinOp::Sub | BinOp::BitOr | BinOp::BitXor)
             && matches!(idx[0].kind, ExprKind::Local(s) if s == *slot)
             && !expr_may_alias_root(value, walk::root(base))
+    }
+
+    /// `let a = <table>` right before loops from 0 over each of its axes that
+    /// write `a[i, j, ...]` last, with nothing between that reads `a` or
+    /// leaves the loops: a table comprehension, which writes every cell
+    /// before anything reads one, so the cells need no fill first.
+    pub(crate) fn filled_next(&self, stmts: &[Stmt], k: usize) -> bool {
+        let (Stmt::Let(slot, Some(init)), Some(mut next)) = (&stmts[k], stmts.get(k + 1)) else {
+            return false;
+        };
+        let ExprKind::Fill(dims, None) = &init.kind else {
+            return false;
+        };
+        let Stmt::For(_, _, _, outer) = next else {
+            return false;
+        };
+        let touch = self.block_touch(outer);
+        let mut counters = Vec::new();
+        let last = loop {
+            let Stmt::For(
+                _,
+                counter,
+                Iter::Range {
+                    lo,
+                    hi,
+                    step: None,
+                    rev: false,
+                    closed: false,
+                },
+                body,
+            ) = next
+            else {
+                return false;
+            };
+            let Some(cpl_ir::DimSpec::Int(len)) = dims.get(counters.len()) else {
+                return false;
+            };
+            if !matches!(lo.kind, ExprKind::Int(0))
+                || !same_count(hi, len, (!counters.is_empty()).then_some(&touch))
+            {
+                return false;
+            }
+            counters.push(*counter);
+            let [pre @ .., last] = &body.stmts[..] else {
+                return false;
+            };
+            if pre.iter().any(|s| self.leaves_or_reads(s, *slot)) {
+                return false;
+            }
+            if counters.len() == dims.len() {
+                break last;
+            }
+            next = last;
+        };
+        let Stmt::Assign(place, AssignOp::Set, value) = last else {
+            return false;
+        };
+        let PlaceKind::Index(base, at) = &place.kind else {
+            return false;
+        };
+        matches!(base.kind, PlaceKind::Local(s) if s == *slot)
+            && at.len() == counters.len()
+            && at
+                .iter()
+                .zip(&counters)
+                .all(|(i, c)| matches!(i.kind, ExprKind::Local(s) if s == *c))
+            && !crate::uses::mentions_any(self.program, value, *slot)
+    }
+
+    fn leaves_or_reads(&self, s: &Stmt, slot: usize) -> bool {
+        let mut bad = matches!(s, Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(_));
+        walk::stmt_exprs(s, &mut |e| {
+            bad |= crate::uses::mentions_any(self.program, e, slot)
+        });
+        walk::stmt_blocks(s, &mut |b| {
+            bad |= b.stmts.iter().any(|s| self.leaves_or_reads(s, slot))
+        });
+        bad
     }
 
     /// `block.stmts[k..]` as a noinline lambda the block returns through,
@@ -759,6 +839,15 @@ impl<'p> Emitter<'p> {
                             .and_then(|c| c.strip_suffix('>'))
                             .unwrap_or_default()
                             .to_string();
+                        if !reused
+                            && value.is_none()
+                            && std::mem::take(&mut self.blank_next)
+                            && crate::expr::layout::plain_cell(&cell)
+                        {
+                            let blank = self.blank(&cell, dims).text;
+                            self.line(out, &format!("{cpp} {name} = {blank};"));
+                            return;
+                        }
                         if let Some(zeros) = (!reused)
                             .then(|| self.zeros(&cell, dims, value.as_deref()))
                             .flatten()
@@ -1417,5 +1506,17 @@ impl Emitter<'_> {
             }
         }
         format!("std::tuple<{}>{{{}}}", cpp.join(", "), vals.join(", "))
+    }
+}
+
+/// `hi` reads the count `len` holds: the same local, global or literal, which
+/// `again` (the loops an inner axis's count is read in) never writes.
+fn same_count(hi: &Expr, len: &Expr, again: Option<&crate::uses::effects::Touch>) -> bool {
+    let kept = |root| !again.is_some_and(|t| t.opaque || t.writes.contains(&root));
+    match (&hi.kind, &len.kind) {
+        (ExprKind::Local(a), ExprKind::Local(b)) => a == b && kept((false, *a)),
+        (ExprKind::Global(a), ExprKind::Global(b)) => a == b && kept((true, *a)),
+        (ExprKind::Int(a), ExprKind::Int(b)) => a == b,
+        _ => false,
     }
 }

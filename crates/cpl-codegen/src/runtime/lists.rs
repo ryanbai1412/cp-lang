@@ -142,6 +142,27 @@ template <class T, int K> Grid<T, K> zero_grid(std::array<ll, K> n) { Grid<T, K>
 ",
     },
     Piece {
+        name: "blank",
+        needs: &["zeros"],
+        code: "\
+// Number cells a table comprehension writes before anything reads them.
+template <class T> std::vector<T> blank(size_t n) {
+#ifdef __GLIBCXX__
+    struct B : std::vector<T> { B(size_t n) { auto& m = this->_M_impl; if (n && !(m._M_start = (T*)malloc(n * sizeof(T)))) throw std::bad_alloc(); m._M_finish = m._M_end_of_storage = m._M_start + n; } };
+    return B(n);
+#endif
+    return std::vector<T>(n);
+}
+",
+    },
+    Piece {
+        name: "blank_grid",
+        needs: &["grid", "blank"],
+        code: "\
+template <class T, int K> Grid<T, K> blank_grid(std::array<ll, K> n) { Grid<T, K> g; ll c = 1; for (int k = 0; k < K; k++) c *= g.n[k] = n[k]; g.d = blank<T>(c); return g; }
+",
+    },
+    Piece {
         name: "pop",
         needs: &[],
         code: "\

@@ -245,6 +245,8 @@ pub(crate) struct Emitter<'p> {
     pub plain_let: bool,
     /// The statement being written is a `let p = mut m[k]` that [`Emitter::slot_written_next`] holds.
     pub slot_written_next: bool,
+    /// The statement being written is a `let` of a table that [`Emitter::filled_next`] holds.
+    pub blank_next: bool,
     /// Locals bound as `const T&` to a place they read.
     pub ref_bound: BTreeSet<usize>,
     /// Locals a `return` gives a part of (`return Some(p.x0)`, `return t.b`).
@@ -349,6 +351,7 @@ impl<'p> Emitter<'p> {
             map_slots: BTreeMap::new(),
             plain_let: false,
             slot_written_next: false,
+            blank_next: false,
             ref_bound: BTreeSet::new(),
             given_parts: BTreeSet::new(),
             mut_bound: BTreeSet::new(),

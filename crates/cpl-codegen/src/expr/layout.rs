@@ -28,12 +28,9 @@ impl<'p> Emitter<'p> {
             Some(ExprKind::Float(f)) => f.to_bits() == 0,
             _ => false,
         };
-        let bytes: i64 = match cell.trim_start_matches('u') {
-            "ll" | "double" | "int64_t" => 8,
-            "int" | "int32_t" => 4,
-            "int16_t" => 2,
-            "char" | "8" | "int8_t" => 1,
-            _ => return false,
+        let bytes: i64 = match cell_bytes(cell) {
+            Some(b) => b,
+            None => return false,
         };
         let len = |d: &DimSpec| match d {
             DimSpec::Pos(d) => self.facts.domain_max_len(*d),
@@ -56,6 +53,26 @@ impl<'p> Emitter<'p> {
             self.need("zeros");
             true
         }
+    }
+
+    /// `dims` of cells nothing has written yet, for a table comprehension
+    /// to write (see [`Emitter::filled_next`]).
+    pub fn blank(&mut self, cell: &str, dims: &[DimSpec]) -> Code {
+        let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
+        Code::primary(match &lens[..] {
+            [n] => {
+                self.need("blank");
+                format!("cpl::blank<{cell}>({n})")
+            }
+            _ => {
+                self.need("blank_grid");
+                format!(
+                    "cpl::blank_grid<{cell}, {}>({{{}}})",
+                    lens.len(),
+                    lens.join(", ")
+                )
+            }
+        })
     }
 
     /// `dims` of `value` from calloc, when every cell is zero bytes.
@@ -289,4 +306,20 @@ impl<'p> Emitter<'p> {
             _ => code,
         }
     }
+}
+
+/// The bytes of a number cell, which holds whatever bytes it is given.
+fn cell_bytes(cell: &str) -> Option<i64> {
+    match cell.trim_start_matches('u') {
+        "ll" | "double" | "int64_t" => Some(8),
+        "int" | "int32_t" => Some(4),
+        "int16_t" => Some(2),
+        "char" | "8" | "int8_t" => Some(1),
+        _ => None,
+    }
+}
+
+/// A cell C++ leaves unset until written: a number.
+pub(crate) fn plain_cell(cell: &str) -> bool {
+    cell_bytes(cell).is_some()
 }

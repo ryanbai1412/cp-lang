@@ -20,7 +20,9 @@ fn pushes_to(stmt: &Stmt, slot: usize) -> bool {
 impl<'p> Emitter<'p> {
     /// Writes `stmts[k]`, then the `reserve` [`Self::presize`] finds for it.
     pub(crate) fn stmt_presized(&mut self, stmts: &[Stmt], k: usize, out: &mut String) {
+        self.blank_next = self.filled_next(stmts, k);
         self.stmt(&stmts[k], out);
+        self.blank_next = false;
         if let Some(line) = self.presize(&stmts[k..]) {
             self.line(out, &line);
         }

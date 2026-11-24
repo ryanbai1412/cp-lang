@@ -24,7 +24,7 @@ mod arith;
 
 mod place;
 
-mod layout;
+pub(crate) mod layout;
 
 mod rows;
 
@@ -1354,7 +1354,12 @@ impl<'p> Emitter<'p> {
                 if let Some(k) = self.ty_fixed_len(&e.ty) {
                     return self.expr_with_fixed_len(e, Some(k));
                 }
-                if let Some(zeros) = self.zeros(&cell, dims, value.as_deref()) {
+                if std::mem::take(&mut self.blank_next)
+                    && value.is_none()
+                    && layout::plain_cell(&cell)
+                {
+                    self.blank(&cell, dims)
+                } else if let Some(zeros) = self.zeros(&cell, dims, value.as_deref()) {
                     zeros
                 } else if dims.len() == 1 {
                     let args = self.fill_args(dims, value.as_deref());

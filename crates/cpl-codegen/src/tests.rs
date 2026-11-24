@@ -1310,3 +1310,18 @@ fn the_sizes_of_a_file_with_folded_instances_add_up_to_it() {
         "{sizes:?}\n{def}"
     );
 }
+
+#[test]
+fn a_table_comprehension_writes_cells_nothing_filled_first() {
+    let cpp = cpp(concat!(
+        "let (n, m): (Int, Int) = read()\n",
+        "let t = [0..n, 0..m] (i, j) => i * j\n",
+        "let u = [0..n] i => i + 1\n",
+        "var v: [0..n]Int = 0\n",
+        "for i in 0..n - 1: v[i] = i\n",
+        "print(t[n - 1, m - 1] + u[0] + v[n - 1])\n",
+    ));
+    assert!(cpp.contains("cpl::blank_grid<ll, 2>("), "{cpp}");
+    assert!(cpp.contains("cpl::blank<ll>("), "{cpp}");
+    assert_eq!(cpp.matches("cpl::blank<ll>(").count(), 1, "{cpp}");
+}
