@@ -8634,17 +8634,6 @@
         "status": "D",
         "time": 0.064913807
     },
-    "4121142": {
-        "case_points": 50.0,
-        "case_total": 50.0,
-        "date": "2021-12-19T18:36:20+00:00",
-        "language": "CPP17",
-        "memory": 8364.0,
-        "problem": "wossoly21s2",
-        "result": "AC",
-        "status": "D",
-        "time": 0.698327761
-    },
     "4121186": {
         "case_points": 20.0,
         "case_total": 50.0,

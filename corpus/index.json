@@ -1,16 +1,16 @@
 {
- "problems": 1134,
- "with_cpp_ac": 1088,
+ "problems": 1133,
+ "with_cpp_ac": 1087,
  "dream": {
   "draft": 126,
   "gold": 0,
-  "none": 1008,
+  "none": 1007,
   "reviewed": 0
  },
  "spec": {
   "draft": 99,
   "gold": 0,
-  "none": 1035,
+  "none": 1034,
   "reviewed": 0
  },
  "by_source": {
@@ -82,7 +82,7 @@
   "ucup": 16,
   "utso": 1,
   "wac": 2,
-  "wossoly": 3,
+  "wossoly": 2,
   "wtf": 4,
   "yac": 17,
   "year": 1
