@@ -205,7 +205,7 @@ super::msgs! {
     GEN_STR_LEN = UNSUPPORTED, "a `gen<Str of ...>` takes its length range: `len: 1..=10`";
     GEN_NEEDS_MODULE = UNSUPPORTED, "`gen` needs `std.{}`, which this build did not load";
     GEN_MAKES = UNSUPPORTED,
-        "`gen` makes ranges, arrays of them, `Str of`, and named types with a `Random` impl";
+        "`gen` makes ranges, domains, records, tuples and arrays of them, `Str of`, and named types with a `Random` impl";
     COPIES_PAIRS_HOLDS = TYPE_MISMATCH, "`{}({})` copies `(key, value)` pairs, but `{}` holds `{}`s";
     COPIES_PAIRS_NOT = TYPE_MISMATCH, "`{}({})` copies `(key, value)` pairs, not {} `{}`";
     COPIES_SEQUENCE_NOT = TYPE_MISMATCH, "`{}({})` copies a sequence, not {} `{}`";

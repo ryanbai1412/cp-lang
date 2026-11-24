@@ -182,20 +182,30 @@ impl<'a> Checker<'a> {
         if let ExprKind::Generic { base, args: tys } = &callee.kind {
             if matches!(&base.kind, ExprKind::Name(n) if n == "gen" && self.local(n).is_none() && self.global(n).is_none())
             {
-                // `gen<T>(args)` on a type that draws itself is `T.gen(args)`.
-                let own = match tys.as_slice() {
-                    [t] if !matches!(&t.kind, cpl_syntax::ast::TypeKind::Named { name, .. } if matches!(name.text.as_str(), "Graph")) => {
-                        t.gen_call(args, call.span)
+                let ty = match tys.as_slice() {
+                    [t] => {
+                        let ty = self.quietly(|c| c.type_arg(t));
+                        // `gen<T>(args)` on a type that draws itself is `T.gen(args)`;
+                        // a domain draws a position.
+                        if !matches!(ty, Ty::Pos(_))
+                            && !matches!(&t.kind, cpl_syntax::ast::TypeKind::Named { name, .. } if name.text == "Graph")
+                        {
+                            if let Some(own) = t.gen_call(args, call.span) {
+                                return self.infer(&own);
+                            }
+                        }
+                        ty
                     }
-                    _ => None,
+                    _ => Ty::Unknown,
                 };
-                if let Some(own) = own {
-                    return self.infer(&own);
-                }
                 for arg in args {
                     self.infer(&arg.value);
                 }
-                return self.read_ty(callee, args).unwrap_or(Ty::Unknown);
+                return if matches!(ty, Ty::Error) {
+                    Ty::Unknown
+                } else {
+                    ty
+                };
             }
         }
         if let Some(on_self) = self.implicit_self_method(callee) {
@@ -359,10 +369,6 @@ impl<'a> Checker<'a> {
         let (ExprKind::Name(name), [t]) = (&base.kind, tys.as_slice()) else {
             return None;
         };
-        if name == "gen" && self.local(name).is_none() && self.global(name).is_none() {
-            let ty = self.quietly(|c| c.type_arg(t));
-            return (!matches!(ty, Ty::Unknown | Ty::Error)).then_some(ty);
-        }
         if !args.iter().all(|a| {
             a.name
                 .as_ref()

@@ -35,6 +35,9 @@ are the input spec:
 - `gen<Perm<V>>()` draws a uniformly random permutation: a `Perm<V>` is a `[V]V`, drawn
   by the `Random` impl over the alias. `gen<Rooted<V>>(shape:)` takes a `TreeShape`, `Recursive`
   by default; its variants read bare there, as an expected enum's do (R02.7.1).
+- `gen<V>()` for a domain `V` draws a position uniformly, in \(O(1)\) as
+  `V.nth(rand(0, V.count - 1))`; a record or tuple type such as
+  `gen<(to: V, w: 1..=9)>()` draws each field in order.
 - `gen<T>(args)` for any other named type is `T.gen(args)`: a type is drawn by its
   `std.rand.Random` impl, a user type like a std one, and its `gen` may take named
   options (`fn gen(far: Bool = false) -> Pt`). A type without one has no `gen` to call.

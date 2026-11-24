@@ -111,6 +111,17 @@ impl<'a> Lowerer<'a> {
                 });
                 self.std_call("strings", "_gen_str", &[], &call, span)
             }
+            ast::TypeKind::Named { args: tys, .. }
+                if tys.is_empty()
+                    && let Ty::Pos(d) = self.resolve_ty(ty) =>
+            {
+                // A position drawn uniformly: `V.nth(rand(0, V.count - 1))`.
+                let n = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                let last = self.int_add(n, -1);
+                let ord =
+                    self.mk_builtin(Builtin::Rand, [self.int_lit(0, span), last], Ty::Int, span);
+                self.cast(Cast::Trust, ord, Ty::Pos(d))
+            }
             ast::TypeKind::Named { name, args: tys } => {
                 match (name.text.as_str(), tys.as_slice()) {
                     ("Graph", [_, arc]) => {
@@ -151,6 +162,26 @@ impl<'a> Lowerer<'a> {
                         None => self.gen_unsupported(span),
                     },
                 }
+            }
+            ast::TypeKind::Record(fields) => {
+                let fields = fields
+                    .iter()
+                    .map(|(n, t)| (n.clone(), gen_of(t, Vec::new())))
+                    .collect();
+                let record = ast::Expr {
+                    kind: ast::ExprKind::Record(fields),
+                    span,
+                };
+                self.expr(&record, None)
+            }
+            ast::TypeKind::Tuple(items) if !items.is_empty() => {
+                let tuple = ast::Expr {
+                    kind: ast::ExprKind::Tuple(
+                        items.iter().map(|t| gen_of(t, Vec::new())).collect(),
+                    ),
+                    span,
+                };
+                self.expr(&tuple, None)
             }
             _ => self.gen_unsupported(span),
         }
