@@ -8,8 +8,6 @@
 //   v only when the farthest unserved town below could not reach v's parent (always at the
 //   root if one is left). That gives the fewest parks for a radius, O(n) per check, O(n log)
 //   in all; pad the answer with any other towns up to k.
-// As it builds today: the parks of the best radius are worked out a second time (R2), and
-// the road lengths are stored beside the tree (B14).
 // original: corpus/submissions/5120081.cpp
 // Bounds: n: 1..=2e5; k: 1..=n
 let n: 1..=2e5 = read()
@@ -21,15 +19,7 @@ fn random_tree() -> [Road](u: Town, v: Town, w: 1..=1e9):
     [Road] t => (Town(rand(1, t.label)), Town(t.label + 1), rand(1, 20))
 
 let roads: [Road](u: Town, v: Town, w: 1..=1e9) = read(gen: random_tree)
-
-var adj: [Town]List<Town> = []
-for (u, v, w) in roads:
-    adj[u].push(v)
-    adj[v].push(u)
-let tree = Rooted(adj, Town.first!)
-var up: [Town]Int = 0  // length of the road to the parent
-for (u, v, w) in roads:
-    up[if tree.parent(u) == v: u else: v] = w
+let tree = Rooted(Graph.undirected(roads), Town.first!)
 
 // The fewest parks that leave every town within `reach` of one: going up
 // the tree, a park is put down only when the farthest unserved town below
@@ -38,18 +28,19 @@ fn parks(reach: Int) -> List<Town>:
     var built: List<Town> = []
     var far: [Town]?Int = 0      // farthest town at or below v that no park serves yet
     var near: [Town]?Int = None  // nearest park at or below v
-    for v in tree.at.rev:        // children before parents
+    for v in tree.order.rev:     // children before parents
         if let f = far[v]:
             if let d = near[v]:
                 if f + d <= reach: far[v] = None
-        if let p = tree.parent(v):
+        if let up = tree.up_arc(v):
+            let p = tree.parent(v)!
             if let f = far[v]:
-                if f + up[v] > reach:
+                if f + up.w > reach:
                     built.push(v)
                     near[v] = 0
                     far[v] = None
-            if let f = far[v]: far[p] max= f + up[v]
-            if let d = near[v]: near[p] min= d + up[v]
+            if let f = far[v]: far[p] max= f + up.w
+            if let d = near[v]: near[p] min= d + up.w
         elif far[v] != None:
             built.push(v)
     built

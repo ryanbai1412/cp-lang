@@ -12,24 +12,11 @@
 let n: 1..=16 = read()
 domain V = 0..=n
 domain E = 0..n
-type Edge = (u: V, v: V)
+let edges: [E](u: V, v: V) = read()
+let tree = Rooted(Graph.undirected(edges), V.first!)
 
-let edges: [E]Edge = read()
-var adj: [V]List<(V, Int)> = []
-for e in E:
-    adj[edges[e].u].push((edges[e].v, 1 << e.idx))
-    adj[edges[e].v].push((edges[e].u, 1 << e.idx))
-
-var label: [V]?Int = None
-label[V.first!] = 0
-var todo = [V.first!]
-while let u = todo.pop():
-    for (v, bit) in adj[u]:
-        if label[v] == None:
-            label[v] = label[u]! ^ bit
-            todo.push(v)
+// Tree edge e is hypercube dimension e: a node's label is the XOR of its path's bits.
+let label = tree.down(0, (above, v) => if let a = tree.up_arc(v): above ^ (1 << a.e.ord) else: above)
 
 print(1 << (n - 1))
-for flip in Subset<E>:
-    if popcount(flip.ord) % 2 == 0:
-        print([label[v]! ^ flip.ord for v in V])
+for flip in Subset<E> if popcount(flip.ord) % 2 == 0: print([label[v] ^ flip.ord for v in V])
