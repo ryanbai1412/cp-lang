@@ -8,6 +8,7 @@
 // a plain multiset of words, a fresh Aho-Corasick automaton against the pattern prefixes, and a
 // palindromic tree grown and shrunk at the back against every palindromic substring.
 // Reads `seed n`; prints the first op that differs.
+// copies: 2
 use std.rand.{Rng}
 use std.strings.{Trie, AhoCorasick, DynamicAhoCorasick, PalindromicTree}
 

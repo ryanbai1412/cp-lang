@@ -6,6 +6,7 @@
 // model: mo_order_hilbert
 // model: mo_rollback
 // model: mo_with_updates
+// copies: 4
 use std.rand.{Rng}
 use std.math.{isqrt}
 use std.mo.{mo, mo_order, mo_order_hilbert, mo_rollback, mo_steps, mo_with_updates}

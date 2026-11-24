@@ -43,7 +43,13 @@ const DIRECTIVES: [(&str, Count); 4] = [
 /// How `src`'s C++ disagrees with its header.
 fn disagreements(src: &Path, out: &Path) -> Vec<String> {
     let text = std::fs::read_to_string(src).unwrap();
-    let built = cpl_cli::run(&["build", src.to_str().unwrap(), "-o", out.to_str().unwrap()]);
+    let built = cpl_cli::run(&[
+        "build",
+        src.to_str().unwrap(),
+        "--full",
+        "-o",
+        out.to_str().unwrap(),
+    ]);
     let cpp = std::fs::read_to_string(out)
         .ok()
         .filter(|_| built.code == 0);
@@ -293,7 +299,13 @@ fn explain_gives_one_reason_per_copy_a_library_call_makes() {
     )
     .unwrap();
     let out = dir.join("bag.cpp");
-    let built = cpl_cli::run(&["build", src.to_str().unwrap(), "-o", out.to_str().unwrap()]);
+    let built = cpl_cli::run(&[
+        "build",
+        src.to_str().unwrap(),
+        "--full",
+        "-o",
+        out.to_str().unwrap(),
+    ]);
     assert_eq!(built.code, 0);
     let cpp = std::fs::read_to_string(&out).unwrap();
     let copies = container_copies(&cpp) + optional_copies(&cpp);

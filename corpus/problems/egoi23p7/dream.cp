@@ -4,6 +4,7 @@
 // banned parent of c's root. The blocks then need a spanning tree in the complement of the
 // "may not" graph: a search that scans only the blocks it has not reached, each kept block paid
 // for by a ban. O((N + M + K) log N).
+// copies: 1
 let (n, m1, m2) = read<(1..=3e5, 0..=3e5, 0..=3e5)>()
 domain V = 0..n
 let need = read<[m1](child: V, parent: V)>()

@@ -12,6 +12,7 @@
 // rotation of the other two coordinates, and convex hulls of points with no four coplanar
 // against every triple with all points on one side. Reads `seed n`; prints the first op that
 // differs.
+// copies: 1
 use std.rand.{Rng}
 use std.geometry.{Plane3, Pt3, Vec3, convex_hull_3d, convex_hull_3d_idx, line_plane_intersect, polyhedron_volume6, sphere_dist}
 let seed0 = read<Int>()

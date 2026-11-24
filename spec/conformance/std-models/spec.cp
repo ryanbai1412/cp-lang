@@ -16,6 +16,7 @@
 // model: berlekamp_massey
 // model: recurrence_at
 // model: guess_at
+// copies: 1
 use std.rand.{Rng}
 use std.mod.{Mod}
 use std.spec.{argmins, berlekamp_massey, concavity_break, convexity_break, decrease, differences, dnc_break, guess_at, increase, knuth_break, monge_break, newton, poly_at, poly_degree, recurrence_at, unimodality_break}

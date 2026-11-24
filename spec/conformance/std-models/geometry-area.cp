@@ -14,6 +14,7 @@
 // line crossings, and disk regions over 800 vertical lines of chords and polygon crossings.
 // Centroids against a triangle fan and the enclosing circle against every pair and triple.
 // Reads `seed n`; prints the first op that differs.
+// copies: 1
 use std.rand.{Rng}
 use std.geometry.{Circle, HalfPlane, Vec, circle_circle_area, circle_polygon_area, circles_union_area, convex_polygon_intersect, half_plane_intersect, min_enclosing_circle, polygon_area, polygon_centroid, polygon_cut, polygon_kernel}
 let seed0 = read<Int>()

@@ -1,4 +1,5 @@
 // expect: ok, output "ok\n1 6 17\n2 3\n1 2 1\n0 1 998244352 2\n998244352 1"
+// copies: 2
 use std.poly.{SubproductTree, compose_inv, compose, gcd_poly, div_mod}
 type Z = Mod<998_244_353>
 fn trim(a: List<Z>) -> List<Z>:

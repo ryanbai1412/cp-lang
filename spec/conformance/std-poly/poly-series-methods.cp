@@ -1,5 +1,6 @@
 // expect: ok, output "1 1 1 1 | 0 2 998244352 | 1 2 2 | 1 3 3 1 | 1 1 0 | 1 2 1 | 3 5 7 | 3 2 | 1 0 1"
 // `Poly<T>` methods work over any field `T` and agree with the free functions on `List<Mod<P>>`.
+// copies: 1
 use std.poly.{Poly}
 type Z = Mod<998244353>
 fn show(p: Poly<Z>) -> Str = " ".join([Str(p.at(i).v) for i in 0..p.len])

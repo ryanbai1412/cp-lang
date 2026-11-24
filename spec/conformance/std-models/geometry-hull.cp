@@ -23,6 +23,7 @@
 // walks along that hull, and every hull query against a loop over all vertices, edges or pairs.
 // OnlineHull adds random points against the rebuilt wrap. Reads `seed n`; prints the first op
 // that differs.
+// copies: 1
 use std.rand.{Rng}
 use std.geometry.{Location, OnlineHull, Pt, convex_hull, convex_hull_idx, convex_polygons_overlap, diameter2, hull_extreme, hull_line_intersect, hull_tangents, hull_width, locate_convex, lower_hull, lower_hull_idx, min_bounding_box, minkowski_lower, minkowski_sum, minkowski_upper, polygon_triangulate, upper_hull, upper_hull_idx}
 let seed0 = read<Int>()

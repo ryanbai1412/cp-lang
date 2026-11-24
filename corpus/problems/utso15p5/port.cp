@@ -10,6 +10,7 @@
 //   O(M log^2 N).
 // original: corpus/submissions/4207493.cpp
 // Bounds: n: 1..=5e4; m: 1..=1e5; roads.u, roads.v: 1..=n; roads.cost: 1..=1e4
+// copies: 1
 let (n, m): (1..=5e4, 1..=1e5) = read()
 domain Town = 1..=n
 domain Road = 0..m

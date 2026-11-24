@@ -12,6 +12,7 @@
 //   O((N + M + K) log N).
 // original: corpus/submissions/5678057.cpp
 // Bounds: n: 1..=3e5; m1, m2: 0..=3e5; need.child, need.parent, e.child, e.parent: 0..n
+// copies: 1
 let (n, m1, m2) = read<(1..=3e5, 0..=3e5, 0..=3e5)>()
 domain V = 0..n
 let need = read<[m1](child: V, parent: V)>()

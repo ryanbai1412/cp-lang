@@ -6,6 +6,7 @@
 // a fold out of order shows) against a sorted List<Int>: seeded random add and remove over keys
 // -8..=8, with len, all, count, contains, rank, nth, first, last, each and every fold compared
 // after each op. Reads `seed n`; prints the first op that differs.
+// sunk_copies: 1
 use std.rand.{Rng}
 use std.bag.{AugSortedBag, AugSortedSet}
 
