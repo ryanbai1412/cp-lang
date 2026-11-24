@@ -21,7 +21,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, fcntl, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
+import argparse, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -1078,6 +1078,7 @@ def make_cases(pkg, out=OUT):
     # One make of a package at a time, so concurrent makers (nextest runs each
     # test in its own process) wait for the first and then find it made.
     with open(os.path.join(out, f".{pkg.id}.lock"), "w") as lock:
+        import fcntl  # POSIX only; `ls` and the walkers run on Windows too
         fcntl.flock(lock, fcntl.LOCK_EX)
         made(pkg, ref, tests, out)
 

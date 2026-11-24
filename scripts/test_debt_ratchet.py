@@ -399,6 +399,7 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "scripts/changed.sh", "git diff --cached --name-only -- 'corpus/problems/*/tests/*'\n")
             self._write(root, "scripts/one.py", "paths = glob.glob('docs/*') + ['!corpus/problems/cf1a/dream.cp']\n")
             self._write(root, "scripts/corpus.py", "os.listdir('corpus/problems')\n")
+            self._write(root, "scripts/key.py", "x = glob.glob('a/*')\nclimb = json.load(f)[\"problems\"]\n")
             self._write(root, "crates/a/src/note.rs", "// reads corpus/problems/<id>/spec.cp\nfn f() { std::fs::read_dir(x); }\n")
             self._write(root, "tools/new-allow.txt", "x\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())

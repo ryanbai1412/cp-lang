@@ -1796,7 +1796,7 @@ def _names_corpus_set(line: str) -> bool:
     the files git says changed."""
     if GIT_CHANGED_RE.search(line):
         return False
-    return bool(re.search(r"[\"']problems[\"']", line)) or "corpus/problems" in ONE_PROBLEM_RE.sub("", line)
+    return bool(re.search(r"(?<![\[&])[\"']problems[\"']", line)) or "corpus/problems" in ONE_PROBLEM_RE.sub("", line)
 
 
 # A comment can name the corpus but can't walk it.
@@ -1990,6 +1990,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
+    "corpus_walkers",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",

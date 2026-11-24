@@ -282,6 +282,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      # The corpus test lists the corpus with scripts/corpus.py.
+      - uses: astral-sh/setup-uv@v6
       - name: Build cpl
         run: cargo build -p cpl-cli
       - name: Extension tests
