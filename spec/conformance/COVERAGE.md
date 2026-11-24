@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3169 (1093 passing). Rules: 605.
+Cases: 3170 (1093 passing). Rules: 605.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 57 rules, 179 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 57 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 153 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -118,7 +118,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.6.7 [3+ 2-]: `todo` is an expression of any type that traps when run; library stubs use it as a body.
 - R01.7.1 [6+ 2-]: `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is the value-position...
 - R01.7.2 [4+ 1-]: `for` and `while` (there is no `loop`: `while true:` with a `break` is the loop that exits...
-- R01.7.3 [3+ 2-]: `match` is exhaustive over enums, literal unions, `Bool` and `?T`. Arms may have guards `p...
+- R01.7.3 [3+ 3-]: `match` is exhaustive over enums, literal unions, `Bool` and `?T`. Arms may have guards `p...
 - R01.7.4 [1+ 0-]: Loops over library generators support `break`, `continue`, `return`, labels and `else` exa...
 - R01.7.5 [1+ 0-]: `@!multitest` on its own line is the multitest divider: code above it runs once, code belo...
 - R01.8.1 [5+ 0-]: **Lambdas** `x => e`, `(a, b) => e`, `(d: Int, l: Low) => e`, `_ => e`, `(mut d, e) => d.u...
@@ -799,6 +799,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0315 Not a token type: 1 case(s)
 - E0316 Field bound from input: 1 case(s)
 - E0317 Getter needs defaults: 1 case(s)
+- E0318 Unreachable match arm: 1 case(s)
 - E0401 Assignment to immutable `let` binding: 5 case(s)
 - E0402 Missing `mut` at call site: 4 case(s)
 - E0403 `mut` of an immutable binding: 5 case(s)
@@ -981,7 +982,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-86 of 222 testable codes have no negative case.
+86 of 223 testable codes have no negative case.
 
 ## Spec code blocks
 
