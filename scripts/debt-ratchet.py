@@ -1488,6 +1488,20 @@ def ci_retries(root: Path) -> list[str]:
     return [":".join(h.split(":", 2)[:2]) for h in hits]
 
 
+def retry_calls(root: Path) -> list[str]:
+    """Calls of the one retry helper (`retry ...` in shell, `retry(` in Python) in
+    workflows and scripts: each is a network or push race wrapped instead of removed."""
+    hits = _git(root, "grep", "-n", "-E", "-e", r"(^|[[:space:]$(=])retry( |\()", "--", ".github", "scripts", "justfile",
+                ":!scripts/retry.sh", ":!scripts/retry.py", ":!scripts/test_*.py",
+                ":!scripts/debt-ratchet.py", ":!scripts/test_debt_ratchet.py")
+    return [":".join(h.split(":", 2)[:2]) for h in hits if not h.split(":", 2)[2].lstrip().startswith("#") and " import retry" not in h]
+
+
+def poll_sleeps(root: Path) -> list[str]:
+    """`thread::sleep` in shipped Rust: a poll or backoff where an event or a blocking wait belongs."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root) if "thread::sleep" in line]
+
+
 RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
 
 
@@ -2117,6 +2131,8 @@ COUNTERS = {
     "cpl_env_reads": ("CPL_* env reads outside the config module (Consumers)", cpl_env_reads, True),
     "test_sleeps": ("sleeps in tests (Factory)", test_sleeps, True),
     "ci_retries": ("--retry/--retries in CI and scripts (Factory)", ci_retries, True),
+    "retry_calls": ("calls of the retry helper in CI and scripts (Factory)", retry_calls, True),
+    "poll_sleeps": ("thread::sleep in shipped Rust (Factory)", poll_sleeps, True),
     "hardcoded_codes": ("E0xxx literals outside cpl-check and cpl-diag (Consumers)", hardcoded_codes, True),
     "xfail_markers": ("xfail/known-fail markers and lists (Content)", xfail_markers, True),
     "todo_fixme": ("TODO/FIXME in std, web and scripts", todo_fixme, True),

@@ -480,6 +480,18 @@ class DebtRatchetTest(unittest.TestCase):
                     mock.patch.object(dr, "rs_over_cap", lambda r, m: {}):
                 self.assertEqual(dr.main(["--zero", "--root", str(root)]), 0)
 
+    def test_retry_calls_and_poll_sleeps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "scripts/a.sh", ". retry.sh\nx=$(retry gh api y)\n# retry here\nretrying=1\n")
+            self._write(root, "scripts/b.py", "from retry import retry\nreturn retry(f, tries=3)\n")
+            self._write(root, "crates/a/src/lib.rs", "std::thread::sleep(d);\n// thread::sleep\n")
+            self._write(root, "crates/a/src/tests.rs", "std::thread::sleep(d);\n")
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, env=dr._git_env())
+            self.assertEqual(dr.retry_calls(root), ["scripts/a.sh:2", "scripts/b.py:2"])
+            self.assertEqual(dr.poll_sleeps(root), ["crates/a/src/lib.rs:1"])
+
     def test_addendum_five_counters(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
