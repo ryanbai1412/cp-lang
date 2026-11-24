@@ -34,6 +34,7 @@ mod passes;
 mod presize;
 mod prune;
 mod ranges;
+mod release;
 mod rowcache;
 mod runtime;
 mod scope;

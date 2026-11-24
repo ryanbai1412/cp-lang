@@ -309,6 +309,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_comprehension_reserves_its_source_size",
     ),
     pass(
+        "release-walked",
+        "release.rs",
+        Uses(&["walked_last"]),
+        "a_top_level_list_walked_once_for_the_last_time_is_emptied_after_that_loop",
+    ),
+    pass(
         "prune",
         "prune.rs",
         Uses(&[

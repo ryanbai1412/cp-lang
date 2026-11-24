@@ -93,7 +93,14 @@ impl<'p> Emitter<'p> {
         self.tail = self.tail_at(&block.stmts, k);
         self.slot_written_next = self.slot_written_next(&block.stmts, k);
         self.blank_next = self.filled_next(&block.stmts, k);
+        let top = std::ptr::eq(block, &self.program.main);
+        if top {
+            self.released = self.released_at(block, k);
+        }
         self.stmt_owning(block, k, out);
+        if top {
+            self.released.clear();
+        }
         self.slot_written_next = false;
         self.blank_next = false;
     }
@@ -1085,7 +1092,10 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("while ({cond}) {{"));
                 self.loop_body(*id, &[], body, out);
             }
-            Stmt::For(id, slot, iter, body) => self.checked_for(*id, *slot, iter, body, out),
+            Stmt::For(id, slot, iter, body) => {
+                self.checked_for(*id, *slot, iter, body, out);
+                self.release_walked(iter, out);
+            }
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
             Stmt::Return(None) => self.line(out, "return;"),
             Stmt::Give(value)

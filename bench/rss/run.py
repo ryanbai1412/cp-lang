@@ -40,6 +40,12 @@ def aho_words(n, m):
     return f"{n} {m}\n" + "\n".join(sorted(seen)) + "\n" + "\n".join(texts) + "\n"
 
 
+def words20(n):
+    """`n`, then n lines of 20 letters each."""
+    lines = ("".join(chr(97 + (i * 7919 + j * 31) % 26) for j in range(20)) for i in range(n))
+    return f"{n}\n" + "\n".join(lines) + "\n"
+
+
 def edges(n):
     """`n`, then n lines `u v w` with u, v in 1..=n and w in 1..=1000."""
     lines = (f"{i * 7919 % n + 1} {i * 104729 % n + 1} {i % 1000 + 1}" for i in range(n))
@@ -90,6 +96,7 @@ CASES = {
     "sort_boxes": lambda: "20\n",  # sort() 2^20 (l: Int, r: Int) records, btoi08p6's boxes
     "cf2124c": lambda: gen("cf2124c"),  # b.adjacent over 6e5 [0..n]1..=1e9: 4 B cells, not 8
     "ucrpc21f": lambda: gen("ucrpc21f"),  # dijkstra over 1e6 cells read by p[v]: no settling-order list
+    "release_walked": lambda: words20(400_000),  # words freed once a comprehension last walks them
     "aho_corasick": lambda: aho_words(50_000, 1000),  # 56k states over 3 used letters of 26
     "row_lists": lambda: "50000 200\n",  # [Row]List<Int> made anew 200 times, as dmpg16g2 does
     "sort_neg": lambda: ints(2_000_000),  # sort(by: i => (-a[i], i)) and (desc(a[i]), i), 2e6 positions
