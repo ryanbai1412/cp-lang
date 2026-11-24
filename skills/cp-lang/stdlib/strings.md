@@ -238,7 +238,6 @@ Fields: `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<A>`.
 - `fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool` — \(O(\min(\lvert \mathit{self} \rvert - \mathit{at}, \lvert \mathit{pat} \rvert))\); True when `pat` occurs in `self` starting at position `at` (default 0, so a prefix test): the `pat.len` elements of `self` from `at` equal those of `pat` in order, `false` when they run past the end.; traps: when `at` is outside `0..=self.len`
 - `fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{pat} \rvert))\); True when `self` closes with `pat`: the last `pat.len` elements of `self` equal those of `pat` in order.
 - `fn search<S: Indexed, K, P>(self: S, p: P) -> ?K` — \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\); The key where `p` first stands in `self`, or `None`.
-- `fn count(self: Str, c: Char) -> Int` — \(O(\lvert \mathit{self} \rvert)\); How many times the character `c` stands in `self`: `"banana".count('a')` is `3`.
 - `fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K` — \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\); The key where `p` last starts in `self`, or `None`.
 - `@get fn lower(self: Char) -> Char` — \(O(1)\); The lowercase letter of an ASCII capital; any other character is returned as it is.
 - `@get fn upper(self: Char) -> Char` — \(O(1)\); The capital of an ASCII lowercase letter; any other character is returned as it is.
