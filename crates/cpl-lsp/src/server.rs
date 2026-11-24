@@ -424,6 +424,16 @@ impl Server {
                     ("items", Value::Array(items)),
                 ])))
             }
+            "completionItem/resolve" => {
+                let mut item = params.clone();
+                if let (Some(doc), Value::Object(members)) =
+                    (complete::resolve(params, &mut self.std), &mut item)
+                {
+                    let doc = obj([("kind", "markdown".into()), ("value", doc.into())]);
+                    members.insert("documentation".to_string(), doc);
+                }
+                Ok(Reply::result(item))
+            }
             "textDocument/signatureHelp" => {
                 let (uri, offset) = self.position(params)?;
                 let analysis = self
@@ -1062,10 +1072,13 @@ fn capabilities() -> Value {
                 ("hoverProvider", true.into()),
                 (
                     "completionProvider",
-                    obj([(
-                        "triggerCharacters",
-                        vec![".".into(), "(".into(), ",".into(), "{".into()].into(),
-                    )]),
+                    obj([
+                        (
+                            "triggerCharacters",
+                            vec![".".into(), "(".into(), ",".into(), "{".into()].into(),
+                        ),
+                        ("resolveProvider", true.into()),
+                    ]),
                 ),
                 (
                     "signatureHelpProvider",

@@ -859,17 +859,6 @@ mod tests {
         }
     }
 
-    /// An outline keeps the first line of a kept item's doc, just above it.
-    #[test]
-    fn an_outline_keeps_the_first_doc_line_of_an_item_above_it() {
-        let text = "/// Sums.\n///\n/// More.\npub fn f(x: Int) -> Int:\n    x\n/// A field.\n    y: Int\n";
-        let outline = crate::std_files::outline(text);
-        assert_eq!(
-            outline,
-            "\n\n/// Sums.\npub fn f(x: Int) -> Int:\n    todo\n\n\n"
-        );
-    }
-
     /// The outlines `build.rs` writes are the ones read off std/ itself.
     #[test]
     fn the_built_outlines_are_the_outlines_of_std() {

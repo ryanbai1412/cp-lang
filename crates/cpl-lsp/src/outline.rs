@@ -70,6 +70,9 @@ pub struct Entry {
     /// Reached through a value (`x.len`) rather than the type (`Dir.L`).
     pub instance: bool,
     pub members: Vec<Entry>,
+    /// The std module the host hasn't given yet that this comes from, and
+    /// the type it is a member of: its docs come with `completionItem/resolve`.
+    pub origin: Option<(String, Option<String>)>,
 }
 
 #[derive(Default, Debug)]
@@ -268,6 +271,7 @@ impl Reader<'_> {
                 params: Vec::new(),
                 instance: false,
                 members: Vec::new(),
+                origin: None,
             })
             .collect()
     }
@@ -282,6 +286,7 @@ impl Reader<'_> {
             params: Vec::new(),
             instance: false,
             members: Vec::new(),
+            origin: None,
         };
         Some(match &stmt.kind {
             StmtKind::Fn(f) => {
@@ -325,6 +330,7 @@ impl Reader<'_> {
                         params: Vec::new(),
                         instance: true,
                         members: Vec::new(),
+                        origin: None,
                     })
                     .collect();
                 e
@@ -352,6 +358,7 @@ impl Reader<'_> {
                         params: Vec::new(),
                         instance: true,
                         members: Vec::new(),
+                        origin: None,
                     })
                     .chain(s.methods.iter().filter_map(|m| self.entry(m, true)))
                     .collect();
@@ -379,6 +386,7 @@ impl Reader<'_> {
                             params: Vec::new(),
                             instance: false,
                             members: Vec::new(),
+                            origin: None,
                         }
                     })
                     .chain(en.methods.iter().filter_map(|m| self.entry(m, true)))
