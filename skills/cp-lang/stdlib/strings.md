@@ -30,19 +30,19 @@ Fields: `alpha: Count`, `goto: List<Count>`, `pi: List<Count>`.
 - `fn count(self) -> Int` — \(O(n)\); The number of non-empty palindromic substrings, each occurrence counted: `sum(odd) + sum(even)`.
 - `fn longest(self) -> (l: Int, r: Int)` — \(O(n)\); The half-open range `(l, r)` of a longest palindromic substring.
 
-## `struct SuffixArray`
+## `struct SuffixArray<T: Ord>`
 
 \(O(n)\) SA-IS + Kasai LCP (\(O(n \log n)\) with RMQ).
 
-Fields: `rank: List<Int>`, `rmq: List<Int>`, `bits: Int`, `dcum: List<Int>`, `toks: List<Int>`.
+Fields: `rank: List<Int>`, `rmq: List<Int>`, `bits: Int`, `dcum: List<Int>`, `src: List<T>`.
 
-- `fn new<S: Indexed>(s: S) -> SuffixArray` — \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise; The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
+- `fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>` — \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise; The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
 - `@get fn len(self) -> Int` — \(O(1)\); The length `n` of the sequence the suffix array was built over.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the suffix array was built over an empty sequence.
 - `fn lcp_between(self, i: Int, j: Int) -> Int` — \(O(1)\); The length of the longest common prefix of the suffixes starting at `i` and `j`.; traps: when `i` or `j` is outside `0..=self.len`
-- `fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>` — \(O(\lvert \mathit{pat} \rvert \log n)\); The ranks `lo..hi` of the suffixes that start with `pat`.
-- `fn find_all<P: Indexed>(self, pat: P) -> yields Int` — \(O(\lvert \mathit{pat} \rvert \log n + \mathit{occurrences})\); The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.
-- `fn count<P: Indexed>(self, pat: P) -> Int` — \(O(\lvert \mathit{pat} \rvert \log n)\); The number of occurrences of `pat`, overlapping ones included: `rank_range(pat).len`.
+- `fn rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>` — \(O(\lvert \mathit{pat} \rvert \log n)\); The ranks `lo..hi` of the suffixes that start with `pat`.
+- `fn find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int` — \(O(\lvert \mathit{pat} \rvert \log n + \mathit{occurrences})\); The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.
+- `fn count<P: Indexed<J, T>, J>(self, pat: P) -> Int` — \(O(\lvert \mathit{pat} \rvert \log n)\); The number of occurrences of `pat`, overlapping ones included: `rank_range(pat).len`.
 - `fn lcp_range(self, i: Int, len: Int) -> Range<Int>` — \(O(\log n)\); The ranks `lo..hi` of the suffixes whose LCP with the suffix at `i` is at least `len`; always contains `rank[i]`.; traps: when `i` is outside `0..n` or `len` outside `0..=n - i`
 - `fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int` — \(O(1)\); The lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: `-1`, `0` or `1`.; traps: when a range is not within `0..=n` or has its end before its start
 - `fn distinct(self) -> Int` — \(O(n)\); The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
@@ -279,7 +279,7 @@ Fields: `alpha: Count`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBu
 - `fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K` — \(O(\lvert \mathit{self} \rvert \cdot \mathit{ceil}(\lvert \mathit{pat} \rvert / 64))\); The start position of every occurrence of `pat` in `self`, overlapping ones included, by bit-parallel Shift-And.
 - `fn find_all_wildcard<S: Indexed<K, Char>, P: Indexed<L, Char>, K, L>(self: S, pat: P, wildcard: Char = '?') -> yields K` — \(O(\lvert \mathit{self} \rvert \cdot \lvert \mathit{pat} \rvert)\) worst case, comparing directly; The start key of every place where `pat` matches `self` when each `wildcard` in `pat` matches any one element.
 - `fn manacher<S: Indexed>(s: S) -> Palindromes` — \(O(n)\); The palindrome radii of `s` by Manacher's algorithm: `odd[i]` is the largest `k` with `s[i - k + 1..i + k]` a palindrome, and `even[i]` the largest `k` with `s[i - k..i + k]` one.
-- `fn suffix_array<S: Indexed>(s: S) -> SuffixArray` — \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise; The suffix array of `s`; the same as `SuffixArray(s)`.
+- `fn suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>` — \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise; The suffix array of `s`; the same as `SuffixArray(s)`.
 - `fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>` — \(O(n)\); Every edge of the compressed suffix tree of `s` (built from the suffix array and LCP array), one `SuffixTreeEdge` per edge of non-zero length.
 - `fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>` — \(O(n \log n)\) time and memory; Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)` is a half-open range `s[l..r]` with smallest period `period`, `r - l >= 2 * period`, that cannot be extended left or right with the same period.
 - `fn lcs_all<A, S: Seq>(words: List<S>) -> Int` — \(O(\mathit{sum} \lvert w \rvert \cdot \lvert A \rvert)\); The length of the longest sequence that is a substring of every word in `words`.
