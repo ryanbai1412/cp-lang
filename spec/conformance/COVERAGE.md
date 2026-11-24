@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3643 (3599 passing). Rules: 617.
+Cases: 3646 (3599 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1093,8 +1093,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Monoid.commutative`, `Comm`, `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (166/166 named by a case)
 - **beats** (25/25 named by a case)
-- **bitset** (101/104 named by a case)
-  - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
+- **bitset** (104/104 named by a case)
 - **deque** (42/42 named by a case)
 - **derive** (5/6 named by a case)
   - uncovered: `read_fields`
@@ -1144,7 +1143,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2378 of 2462 std items are named by a case.
+2381 of 2462 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
