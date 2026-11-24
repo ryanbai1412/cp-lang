@@ -454,7 +454,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
         let tarcs = src.map(i => reversed_arc(arcs[i], from[i])).collect()
         Graph<V, A>(start: tstart, arcs: tarcs)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the
 /// vertices in removal order.
 ///
@@ -539,7 +538,6 @@ pub fn topo<V>(g: Next<V>) -> ?List<V>:
             if indeg[a.to] == 0: order.push(a.to)
     if order.len == V.count: order else: None
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The strongly connected components, as a fresh domain `C` and each vertex's component.
 /// `C` is a topological order of the condensation: every arc goes from a component to the
 /// same or a later one.
@@ -671,7 +669,6 @@ pub fn transpose<V>(self: [V]List<V>) -> [V]List<V>:
         for v in self[u]: t[v].push(u)
     t
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The connected components of an undirected graph, as a fresh domain `C` and each vertex's
 /// component.
 ///
@@ -732,7 +729,6 @@ pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>:
             if cu != cv: out[cu].push((to: cv))
     out
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The two-edge-connected components (bridge blocks) of an undirected graph, as a fresh domain `C`
 /// and each vertex's component.
 ///
@@ -1198,7 +1194,6 @@ pub struct Paths<V, W: Add, A>:
         reverse(mut out)
         out
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Fewest arcs from any vertex of `from` to each vertex, by breadth-first search.
 ///
 /// The sources start at distance 0 in the order given (repeats ignored). A vertex is
@@ -1253,7 +1248,6 @@ pub fn bfs<V, G: Next<V>>(
                     break
     Paths(dist:, back:, order:)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances when every weight is 0 or 1, from every vertex of `from` at distance
 /// 0: a deque, with 0-arcs pushed to the front. `until: t` stops once `t` is settled
 /// (popped with its final distance).
@@ -1397,7 +1391,6 @@ pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
         if until == t: break
     Paths(dist, back, order)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances with any weights, from `(vertex, starting distance)` pairs, or `None`
 /// when a source reaches a negative cycle (cycles no source reaches are ignored).
 ///
@@ -1450,7 +1443,6 @@ pub fn bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(
             order.push(chain[k])
     Some(Paths(dist, back, order))
 
-// blocked: operation-value defaults typed as `Int` (GAPS.md ntt `convolve`)
 /// All-pairs shortest distances, in place: `d[u, v]` starts as the direct weight (`None`:
 /// no edge, usually from `g.matrix()`) and ends as the distance. Returns `false` if there
 /// is a negative cycle, and `d` is then unspecified.
@@ -1495,7 +1487,6 @@ pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> B
             if add.op(dv, one) != one: return false
     true
 
-// blocked: operation-value defaults typed as `Int` (GAPS.md ntt `convolve`)
 /// The value form of `floyd_warshall`, as `sorted` is to `sort`: a new matrix closed under
 /// `over:`, or `None` on a negative cycle. A matrix is already closed when
 /// `d.closure(over: r) == Some(d)`.
@@ -1549,7 +1540,6 @@ pub fn find_cycle<V>(g: Next<V>) -> ?List<V>:
                 path.pop()
     None
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Which edges are bridges: removing one disconnects its ends. Arcs carry `e` (a
 /// `Graph.undirected`), so a parallel edge is not mistaken for the way back and is never a
 /// bridge. A loop is never a bridge.
@@ -2003,7 +1993,6 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 
 // ---- Spec surface without implementations yet ----------------------------
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// A depth-first walk from each vertex of `from` in turn, yielding `Enter(v, via:)` when `v` is
 /// discovered, `Again(from, via)` for an arc into an already discovered vertex, and `Exit(v, via:)`
 /// when `v` is finished.
@@ -2140,7 +2129,6 @@ pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
 /// discovered `v` (`None` for a source); `Again(from, via)` is an arc into a discovered vertex.
 pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, via: A)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances for integer weights in `0..=max_w` with a bucket queue (Dial), from
 /// every vertex of `from` at distance 0. Same result shape as `dijkstra`; `until: t` stops
 /// once `t` is settled.
@@ -2192,7 +2180,6 @@ pub fn dial<V, G: WeightedNext<V, Int>>(
                 in_q += 1
     Paths(dist, back, order)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// All-pairs shortest distances with negative arcs: one Bellman-Ford from a virtual source joined
 /// to every vertex, then a Dijkstra per vertex on the reweighted arcs.
 ///
@@ -2233,7 +2220,6 @@ pub fn johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W:
                 res[s, v] = Some(dv - h[s] + h[v])
     Some(res)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The lengths of the `k` shortest walks from any vertex of `from` to `to` (Eppstein).
 /// Walks may repeat vertices and arcs; the empty walk counts when `to` is a source. Fewer
 /// than `k` when fewer walks exist.
@@ -2282,7 +2268,6 @@ pub fn k_shortest<V, W: Add>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int)
                 pq.push((nd + hv, nd, a.to))
     ans
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Some cycle of negative total weight, as its arcs in walking order, or `None`.
 ///
 /// Bellman-Ford from every vertex at distance 0 (vertices in vertex order, arcs in arc
@@ -2323,7 +2308,6 @@ pub fn negative_cycle<V, W: Add, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
     reverse(mut cyc)
     Some(cyc)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The least mean weight over all directed cycles, as `(sum, len)` of a cycle achieving it
 /// (Karp), or `None` on an acyclic graph. Among cycles of least mean the shortest is
 /// reported, so `(sum, len)` is unique.
@@ -2440,7 +2424,6 @@ pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
             if indeg[a.to] == 0: ready.push(a.to)
     if order.len == V.count: order else: None
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// DP over a DAG in topological order.
 ///
 /// Each vertex starts at `init(v)`; then, for `u` in `topo` order and each arc `a` of `u` in arc
@@ -2461,7 +2444,6 @@ pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, 
             val[a.to] = k.op(val[a.to], step(val[u], a))
     Some(val)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The number of paths from a vertex of `from` to every `v` of a DAG, in `T` (a modular
 /// type keeps it exact). A source has its empty path; a repeated source counts once.
 /// `None` if the graph has a cycle anywhere.
@@ -2479,7 +2461,6 @@ pub fn count_paths<T: Add, V>(g: Next<V>, from: Seq<V>) -> ?[V]T:
         for a in g.out(u): dp[a.to] += dp[u]
     Some(dp)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Reachability of every pair as bitset rows: `r[u].contains(v)` when some path of zero or
 /// more arcs leads from `u` to `v`, so every `u` reaches itself. Computed through the
 /// condensation in reverse topological order.
@@ -2715,7 +2696,6 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
         solve(0, m - 1, active)
     ans
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The block-cut tree of an undirected simple graph: `B` numbers the blocks as the DFS (roots
 /// in vertex order, arcs in arc order) closes them, deepest first, as `blocks` does, and `links` joins each block to the cut vertices it contains.
 ///
@@ -2788,7 +2768,6 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
                 links.push((b: bi, v:))
     (B:, links:)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The biconnected block of every edge: edges, not vertices, are partitioned, so a cut vertex lies
 /// in several blocks and parallel edges share one.
 ///
@@ -2962,7 +2941,6 @@ pub fn odd_cycle<V>(g: Next<V>) -> ?List<V>:
                     return cyc
     None
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The immediate dominator of every vertex reachable from `root` (Lengauer-Tarjan): the
 /// last vertex other than `v` that every path from `root` to `v` passes. `None` for `root`
 /// and unreachable vertices.
@@ -3421,7 +3399,6 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
         parent[edges[e].v] = Some(e)
     Some((total:, parent:))
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// A spanning forest of an undirected graph as chosen edges: a BFS from each unvisited
 /// vertex in vertex order takes the arc that discovers each vertex.
 ///
