@@ -326,6 +326,36 @@ fn a_field_a_literal_reads_before_it_is_reset_moves_in() {
 }
 
 #[test]
+fn a_dead_field_moves_into_a_literal_whatever_its_type() {
+    let src = |reset: &str| {
+        format!(
+            "struct Tree:\n    xs: List<Int>\n    fn new() -> Tree = Tree(xs: [])\n\nstruct Bag:\n    ids: List<-2_147_483_648..=2_147_483_647>\n    t: Tree\n\n    fn take(mut self) -> Bag:\n        let out = Bag(ids, t)\n{reset}        out\n\nvar b = Bag(ids: [1, 2], t: Tree.new())\nlet c = b.take()\nprint(c.ids.len + c.t.xs.len, b.ids.len)\n"
+        )
+    };
+    let moved = cpp(&src("        ids = []\n        t = Tree.new()\n"));
+    assert!(
+        moved.contains("Bag{std::move(self.ids), std::move(self.t)}"),
+        "{moved}"
+    );
+    let read = cpp(concat!(
+        "struct Tree:\n    xs: List<Int>\n    fn new() -> Tree = Tree(xs: [])\n",
+        "struct Bag:\n    ids: List<-2_147_483_648..=2_147_483_647>\n    t: Tree\n",
+        "var ids: List<-2_147_483_648..=2_147_483_647> = [1, 2]\n",
+        "var t = Tree.new()\n",
+        "fn peek() -> Int = ids.len + t.xs.len\n",
+        "let out = Bag(ids, t)\n",
+        "print(peek())\n",
+        "ids = []\n",
+        "t = Tree.new()\n",
+        "print(out.ids.len + out.t.xs.len, peek())\n",
+    ));
+    assert!(
+        read.contains("Bag{ids, t}"),
+        "peek reads both before the reset: {read}"
+    );
+}
+
+#[test]
 fn a_get_of_a_stored_field_or_an_element_of_one_lends_it() {
     let out = cpp("struct H:
     xs: List<Int>

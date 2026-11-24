@@ -691,12 +691,11 @@ impl<'p> Emitter<'p> {
                                     .and_then(|s| self.elem_layout(cpl_ir::ElemLoc::Field(s, idx)))
                                     .cloned()
                                 {
-                                    return self.expr_with_elem_layout(item, Some(&l)).text;
+                                    let v = self.expr_with_elem_layout(item, Some(&l)).text;
+                                    return self.taken_item(item, v);
                                 }
-                                let mut v = self.braced(item);
-                                if self.taken_items.contains(&(item as *const Expr)) {
-                                    v = format!("std::move({v})");
-                                }
+                                let v = self.braced(item);
+                                let v = self.taken_item(item, v);
                                 match struct_id {
                                     Some(s) => self.narrow_field_store(s, idx, &v),
                                     None => v,

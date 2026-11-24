@@ -1256,6 +1256,14 @@ impl Emitter<'_> {
         reads
     }
 
+    /// `std::move(text)` when `item` is one of the literal's taken items.
+    pub(crate) fn taken_item(&self, item: &Expr, text: String) -> String {
+        match self.taken_items.contains(&(item as *const Expr)) {
+            true => format!("std::move({text})"),
+            false => text,
+        }
+    }
+
     /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets
     /// before reading it, which nothing later in the literal reads either:
     /// moving them in leaves only the value `rest` overwrites.
@@ -1353,7 +1361,13 @@ fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
     let block = Block {
         stmts: vec![stmt.clone()],
     };
-    let opaque = Touch::of_block(&block).code();
+    // Code called by name sees a local only through its arguments, which
+    // `uses` counts; a global it may read itself.
+    let access = Touch::of_block(&block);
+    let opaque = match root.0 {
+        true => access.code(),
+        false => access.unnamed(),
+    };
     let (mut uses, mut elsewhere) = (0usize, 0usize);
     walk::deep_exprs(&block, &mut |e| match &e.kind {
         ExprKind::Local(s) if (false, *s) == *root => uses += 1,
