@@ -15,7 +15,7 @@ let n: 1..=500_000 = read()
 domain Year = 0..n
 var x: [Year]1..=1_000_000_000 = read()
 let y: [Year]1..=1_000_000_000 = read()
-var growth = SegTree<Year, Z>.of(*, i => Z(x[i]))
+var growth = SegTree<Year, Z>(*, [Year] i => Z(x[i]))
 var surge = SegTree<Year, Int>(max, [Year] i => Int(x[i]))  // to find the years with x > 1
 var price = SegTree<Year, Int>(max, [Year] i => Int(y[i]))
 
@@ -38,7 +38,7 @@ let m: 1..=100_000 = read()
 for (kind, at, value) in read<[m](kind: 1..=2, at: Year, value: 1..=1_000_000_000)>():
     if kind == 1:
         x[at] = value
-        growth.refresh(at)
+        growth.set(at, Z(value))
         surge.set(at, value)
     else:
         price.set(at, value)
