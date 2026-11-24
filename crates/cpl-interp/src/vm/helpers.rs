@@ -168,14 +168,19 @@ pub(super) fn sync_refs_from_stack(
 /// `None` for every slot.
 fn reachable_slots(chunk: &Chunk, lent: &[(usize, Rc<Part>)], base: usize) -> Option<Vec<usize>> {
     let refs = chunk.ref_slots.as_ref().filter(|_| !chunk.traced)?;
-    let mut slots: Vec<usize> = (lent.iter().rev())
-        .take_while(|l| l.0 >= base)
-        .map(|l| l.0 - base)
-        .chain(refs.iter().map(|&s| s as usize))
-        .collect();
-    slots.sort_unstable();
-    slots.dedup();
-    Some(slots)
+    let mut reach = vec![false; chunk.slot_map.len()];
+    for l in lent.iter().rev().take_while(|l| l.0 >= base) {
+        reach[l.0 - base] = true;
+    }
+    for &s in refs {
+        reach[usize::from(s)] = true;
+    }
+    Some(
+        (reach.iter().enumerate())
+            .filter(|r| *r.1)
+            .map(|r| r.0)
+            .collect(),
+    )
 }
 
 /// Puts on the stack the slots a call can reach while the frame lends
