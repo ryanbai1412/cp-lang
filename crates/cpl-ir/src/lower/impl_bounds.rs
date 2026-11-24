@@ -131,4 +131,62 @@ impl<'a> Lowerer<'a> {
             _ => value,
         }
     }
+
+    /// The impl's type parameters bound for the concrete struct `sid`, if impl `idx` is
+    /// for `sid` and its bounds hold there (`impl Indexed for Mapped<S: Indexed>`).
+    pub(super) fn impl_env_for(&mut self, idx: usize, sid: StructId) -> Option<GenEnv> {
+        let sdecl = self.structs[sid].decl?;
+        let struct_decl_name = sdecl.name.text.clone();
+        let struct_mod = self.structs[sid].mod_id;
+        let origin_args: Vec<GenArg> = self.structs[sid]
+            .origin_gen
+            .as_ref()
+            .map(|(_, a)| a.clone())
+            .unwrap_or_default();
+        let imp_mod = self.impls[idx].mod_id;
+        let imp_target = self.impls[idx].target;
+        let ast::TypeKind::Named {
+            name: tname,
+            args: targs,
+        } = &imp_target.kind
+        else {
+            return None;
+        };
+        // Check whether `tname` in `imp_mod` refers to the same struct.
+        let target_matches = match self.mod_syms[imp_mod].get(&tname.text).copied() {
+            Some(Sym::Struct(id)) => id == sid,
+            Some(Sym::GenStruct(gid)) => self.structs[sid]
+                .origin_gen
+                .as_ref()
+                .is_some_and(|(g, _)| *g == gid),
+            _ => tname.text == struct_decl_name && imp_mod == struct_mod,
+        };
+        if !target_matches {
+            return None;
+        }
+        if targs.len() != origin_args.len() {
+            return None;
+        }
+        // Bind impl type params from `targs` vs `origin_args`.
+        let mut env = self.structs[sid].env.clone();
+        let mut ok = true;
+        for (targ, actual) in targs.iter().zip(&origin_args) {
+            match &targ.kind {
+                ast::TypeKind::Named { name, args } if args.is_empty() => {
+                    env.insert(name.text.clone(), actual.clone());
+                }
+                ast::TypeKind::Value(expr) => {
+                    if let ast::ExprKind::Name(n) = &expr.kind {
+                        env.insert(n.clone(), actual.clone());
+                    } else if let Some(v) = self.eval_const_int(expr) {
+                        if *actual != GenArg::Int(v) {
+                            ok = false;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        (ok && self.bind_impl_bounds(self.impls[idx].bounds, imp_mod, &mut env)).then_some(env)
+    }
 }

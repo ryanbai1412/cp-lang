@@ -171,7 +171,15 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].target,
             );
             if matches!(&target.kind, ast::TypeKind::Named { args, .. } if !args.is_empty()) {
-                return true;
+                match ty {
+                    Ty::Struct(sid) => {
+                        if self.impl_env_for(idx, *sid).is_some() {
+                            return true;
+                        }
+                        continue;
+                    }
+                    _ => return true,
+                }
             }
             let saved = (
                 std::mem::replace(&mut self.cur_mod, m),
@@ -1115,71 +1123,20 @@ impl<'a> Lowerer<'a> {
 
     /// Finds and attaches all `impl` blocks matching concrete struct `sid`.
     pub(super) fn attach_impls_for_struct(&mut self, sid: StructId) {
-        let Some(sdecl) = self.structs[sid].decl else {
+        if self.structs[sid].decl.is_none() {
             return;
-        };
-        let struct_decl_name = sdecl.name.text.clone();
-        let struct_mod = self.structs[sid].mod_id;
-        let origin_args: Vec<GenArg> = self.structs[sid]
-            .origin_gen
-            .as_ref()
-            .map(|(_, a)| a.clone())
-            .unwrap_or_default();
-
+        }
         let num_impls = self.impls.len();
         for idx in 0..num_impls {
             let imp_mod = self.impls[idx].mod_id;
             let imp_offset = self.impls[idx].offset;
             let imp_trait = self.impls[idx].trait_name.clone();
             let imp_trait_args = self.impls[idx].trait_args.clone();
-            let imp_target = self.impls[idx].target;
             let imp_body = self.impls[idx].body;
 
-            let ast::TypeKind::Named {
-                name: tname,
-                args: targs,
-            } = &imp_target.kind
-            else {
+            let Some(mut env) = self.impl_env_for(idx, sid) else {
                 continue;
             };
-            // Check whether `tname` in `imp_mod` refers to the same struct.
-            let target_matches = match self.mod_syms[imp_mod].get(&tname.text).copied() {
-                Some(Sym::Struct(id)) => id == sid,
-                Some(Sym::GenStruct(gid)) => self.structs[sid]
-                    .origin_gen
-                    .as_ref()
-                    .is_some_and(|(g, _)| *g == gid),
-                _ => tname.text == struct_decl_name && imp_mod == struct_mod,
-            };
-            if !target_matches {
-                continue;
-            }
-            if targs.len() != origin_args.len() {
-                continue;
-            }
-            // Bind impl type params from `targs` vs `origin_args`.
-            let mut env = self.structs[sid].env.clone();
-            let mut ok = true;
-            for (targ, actual) in targs.iter().zip(&origin_args) {
-                match &targ.kind {
-                    ast::TypeKind::Named { name, args } if args.is_empty() => {
-                        env.insert(name.text.clone(), actual.clone());
-                    }
-                    ast::TypeKind::Value(expr) => {
-                        if let ast::ExprKind::Name(n) = &expr.kind {
-                            env.insert(n.clone(), actual.clone());
-                        } else if let Some(v) = self.eval_const_int(expr) {
-                            if *actual != GenArg::Int(v) {
-                                ok = false;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            if !ok || !self.bind_impl_bounds(self.impls[idx].bounds, imp_mod, &mut env) {
-                continue;
-            }
 
             let saved_mod = std::mem::replace(&mut self.cur_mod, imp_mod);
             let saved_offset = std::mem::replace(&mut self.offset, imp_offset);

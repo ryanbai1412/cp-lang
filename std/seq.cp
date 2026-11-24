@@ -203,7 +203,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// order: reverse source order, source keys
 /// traps: never
 /// example: `[1, 2, 3].rev.collect() == [3, 2, 1]`
-@get pub fn rev<S: Bidir>(self: S) -> Rev<S> = todo
+@get pub fn rev<S: Bidir>(self: S) -> Rev<S> = Rev(self)
 
 /// \(O(1)\). A view of `(key, element)` pairs with the source's own keys.
 ///
@@ -1361,13 +1361,14 @@ impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     @get fn keys(self) -> Range<D> = src.keys
 
 /// \(O(1)\) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
-pub struct Rev<S>():
+pub struct Rev<S>(
     /// \(O(1)\). The source sequence this view reverses.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `let a = [1, 2]; a.rev.src == a`
-    @get pub fn src(self) -> S = todo
+    pub src: S,
+):
 
     /// \(O(1)\). The element `k` steps into the walk: `a.rev.nth(0)` is `a`'s last.
     ///
@@ -1415,6 +1416,21 @@ pub struct Rev<S>():
     /// traps: when `k < 0`
     /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
     pub fn drop_last(self, k: Int = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
+
+impl Seq<T> for Rev<S: Bidir<T>>:
+    fn iter(self) -> yields T:
+        for x in src.iter_rev(): yield x
+
+impl Bidir<T> for Rev<S: Bidir<T>>:
+    fn iter_rev(self) -> yields T:
+        for x in src: yield x
+
+impl Sized for Rev<S: Sized>:
+    @get fn len(self) -> Int = src.len
+
+impl Keyed<D, T> for Rev<S: Indexed<D, T>>:
+    fn items(self) -> yields (D, T):
+        for (k, x) in Items(src).iter_rev(): yield (k, x)
 
 /// \(O(1)\) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
 pub struct Items<S>(

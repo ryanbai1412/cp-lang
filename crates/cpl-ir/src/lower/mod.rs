@@ -2596,6 +2596,18 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(Ty::ListView(e, key))
                 }
                 Ty::Str | Ty::StrView => return Spec::Plain(Ty::StrView),
+                // A view over a view is std's own struct.
+                Ty::Struct(_) if name.text == "Rev" => {
+                    if let Some(Sym::GenStruct(gid)) = self.get_sym("Rev") {
+                        let gargs = self.resolve_gen_args_for_struct(gid, args);
+                        let sid = self.instantiate_struct(gid, gargs);
+                        return if values {
+                            self.struct_spec(sid)
+                        } else {
+                            Spec::Plain(Ty::Struct(sid))
+                        };
+                    }
+                }
                 _ => {}
             }
         }

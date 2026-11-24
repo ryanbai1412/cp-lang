@@ -254,9 +254,9 @@ impl Checker<'_> {
     /// passed on to the source the view reverses.
     pub(super) fn rev_owns(&mut self, name: &str) -> bool {
         name == "rev"
-            || self
-                .members_of("Rev")
-                .is_some_and(|m| m.members.iter().any(|(n, _)| n == name))
+            || self.members_of("Rev").is_some_and(|m| {
+                m.members.iter().any(|(n, _)| n == name) || m.fields.iter().any(|f| f.name == name)
+            })
     }
 
     /// A std fn whose `self` is a concrete sequence (`[D]T`, `List<T>`),
