@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3122 (1093 passing). Rules: 593.
+Cases: 3123 (1093 passing). Rules: 593.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 175 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 152 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 186 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 187 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 228 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -232,7 +232,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.7 [1+ 1-]: | `V(x)` | integer to position, trapping outside `V` | \(O(1)\)
 - R04.2.8 [1+ 0-]: | `V.at(x)` | integer to position, `?V`: `None` outside `V` | \(O(1)\)
 - R04.2.9 [3+ 0-]: | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` d...
-- R04.2.10 [8+ 3-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
+- R04.2.10 [9+ 3-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [3+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
 - R04.2.11 [8+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [2+ 1-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
