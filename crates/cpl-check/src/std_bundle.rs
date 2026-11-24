@@ -23,14 +23,78 @@ pub fn without_comments(text: &str) -> String {
 }
 
 /// What a browser build's index carries for module `name` of `text`: the
-/// `EMBEDDED` modules whole, without comments, and the others' outlines.
+/// `EMBEDDED` modules whole, without comments, and the others' outlines
+/// without their private fns.
 pub fn browser_index(name: &str, text: &str) -> String {
     let text = without_tests(text);
     if EMBEDDED.contains(&name) {
         without_comments(&text)
     } else {
-        outline(&text)
+        without_private_fns(&outline(&text))
     }
+}
+
+/// `text` with each non-`pub` fn blanked, header and body: only the
+/// module's own bodies name one (R11.1.4), and the host gives the module's
+/// text before a check reads those. A trait's members and a trait impl's
+/// stay, since the trait decides their visibility. Every line stays, blank.
+pub fn without_private_fns(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut in_trait = false;
+    let mut dropped: Option<usize> = None;
+    let mut open = 0i32;
+    for line in text.split_inclusive('\n') {
+        let code = line.trim_end_matches(['\n', '\r']);
+        let trimmed = code.trim_start();
+        let indent = code.len() - trimmed.len();
+        if let Some(at) = dropped {
+            if open > 0 || trimmed.is_empty() || indent > at {
+                open += brackets(code);
+                out.push_str(&line[code.len()..]);
+                continue;
+            }
+            dropped = None;
+        }
+        if indent == 0 && !trimmed.is_empty() {
+            in_trait = trait_block(trimmed);
+        }
+        if !in_trait && private_fn(trimmed) {
+            dropped = Some(indent);
+            open = brackets(code).max(0);
+            out.push_str(&line[code.len()..]);
+            continue;
+        }
+        out.push_str(line);
+    }
+    out
+}
+
+/// Whether a top-level `line` opens a trait or a trait impl.
+fn trait_block(line: &str) -> bool {
+    let line = line.strip_prefix("pub ").unwrap_or(line);
+    line.starts_with("trait ") || (line.starts_with("impl") && line.contains(" for "))
+}
+
+/// Whether `line` declares a fn without `pub`, after any `@attr`s.
+fn private_fn(mut line: &str) -> bool {
+    while let Some(rest) = line.strip_prefix('@') {
+        let Some((_, after)) = rest.split_once(' ') else {
+            return false;
+        };
+        line = after;
+    }
+    line.starts_with("fn ")
+}
+
+/// How many more brackets `line` opens than it closes.
+fn brackets(line: &str) -> i32 {
+    line.chars()
+        .map(|c| match c {
+            '(' | '[' => 1,
+            ')' | ']' => -1,
+            _ => 0,
+        })
+        .sum()
 }
 
 /// How often the `sources`, doc examples included, write `.name`, for the
@@ -70,4 +134,16 @@ pub fn call_table<'a>(
         out.push_str(&format!("\n{name} {count}"));
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::without_private_fns;
+
+    #[test]
+    fn private_fns_are_blanked_and_every_line_stays() {
+        let text = "pub struct S:\n    @get fn hid(self) -> Int = todo\n    @get pub fn shown(self) -> Int = todo\n    fn helper(\n        self,\n    ):\n        todo\n\n    pub fn api(self):\n        todo\nfn top(a: Int) -> Int = todo\ntrait T:\n    fn need(self) -> Int\nimpl T for S:\n    fn need(self) -> Int = todo\npub fn last() -> Int = todo\n";
+        let want = "pub struct S:\n\n    @get pub fn shown(self) -> Int = todo\n\n\n\n\n\n    pub fn api(self):\n        todo\n\ntrait T:\n    fn need(self) -> Int\nimpl T for S:\n    fn need(self) -> Int = todo\npub fn last() -> Int = todo\n";
+        assert_eq!(without_private_fns(text), want);
+    }
 }
