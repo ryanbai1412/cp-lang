@@ -165,8 +165,47 @@ impl Checker<'_> {
                     .map(|m| m.ty.clone()),
                 _ => None,
             };
+            let outer = self.bound_bindings(param, &trait_name);
             if let Some(ty) = ty {
-                return Some(ty.subst(&self.bound_bindings(param, &trait_name)));
+                return Some(ty.subst(&outer));
+            }
+            if let Some(ty) = self.super_method(&trait_name, &outer, name, 0) {
+                return Some(ty);
+            }
+        }
+        None
+    }
+
+    /// `name` in a trait alias's supers: `WeightedNext<V, W> = Next<V> ..`
+    /// answers `out` with `Next`'s, at the alias's arguments.
+    fn super_method(
+        &mut self,
+        trait_name: &str,
+        outer: &crate::ty::Bindings,
+        name: &str,
+        depth: u8,
+    ) -> Option<Ty> {
+        let Some(Def::Trait { super_args, .. }) = self.type_def(trait_name).as_deref().cloned()
+        else {
+            return None;
+        };
+        for (sup, args) in super_args.into_iter().filter(|_| depth < 8) {
+            let Some(Def::Trait { generics, methods, .. }) = self.type_def(&sup).as_deref().cloned()
+            else {
+                continue;
+            };
+            let mut on = crate::ty::Bindings::default();
+            if let Some(this) = outer.get("Self") {
+                on.insert("Self".into(), this.clone());
+            }
+            for (g, a) in generics.iter().zip(args) {
+                on.insert(g.clone(), a.subst(outer));
+            }
+            if let Some(m) = methods.iter().find(|m| m.name == name) {
+                return Some(m.ty.subst(&on));
+            }
+            if let Some(ty) = self.super_method(&sup, &on, name, depth + 1) {
+                return Some(ty);
             }
         }
         None
