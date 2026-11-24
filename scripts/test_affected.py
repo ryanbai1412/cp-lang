@@ -104,6 +104,11 @@ class AffectedTest(unittest.TestCase):
     def test_site_paths_select_the_snippet_gate(self):
         self.assertTrue(self.sel("web/src/pages/index.astro")["site"])
 
+    def test_a_removed_std_spelling_selects_the_snippet_gate(self):
+        for path in ("crates/cpl-check/src/check/removed.rs", "std/prelude.cp"):
+            self.assertTrue(self.sel(path)["site"], path)
+        self.assertFalse(self.sel("crates/cpl-check/src/check/expr.rs")["site"])
+
     def test_the_real_workspace_maps_every_crate_directory(self):
         dirs = affected.crate_dirs()
         for d in sorted(os.listdir(os.path.join(affected.ROOT, "crates"))):

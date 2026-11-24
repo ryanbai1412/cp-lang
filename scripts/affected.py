@@ -40,6 +40,8 @@ PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "worklog.md", "research/*",
 EVERY_CRATE = ["Cargo.toml", "Cargo.lock", "rust-toolchain*", ".cargo/*",
                ".config/nextest.toml", "std/*", "clippy.toml", "rustfmt.toml"]
 SITE = ["web/*", "docs/*"]
+# Paths that remove or rename a std spelling the site's snippets may still use.
+SITE_SPELLINGS = ["crates/cpl-check/src/check/removed.rs", "std/prelude.cp"]
 # Data files and the nextest filter of the tests that read them.
 DATA_TESTS = [(f"{PACKAGES}/*/{leaf}", "package(cpl-lint) & test(/corpus_warnings/)")
               for leaf in ("spec.cp", "port.cp")]
@@ -222,6 +224,8 @@ def select(paths, dirs):
         if path.endswith(".rs"):
             sel["rust_files"].append(path)
         editor = next((n for d, n in EDITOR_CRATES.items() if path.startswith(d)), None)
+        if matches(path, SITE_SPELLINGS):
+            sel["site"] = True
         if path.startswith("spec/conformance/") and path.endswith(".cp"):
             sel["conform_cases"].append(path)
         elif crate:
