@@ -29,12 +29,12 @@ for k in 0..n:
         if l.pop_front() != want: bad = "op {k}: pop_front"
     elif op == 4 or op == 5:
         let b = [rng.int(0, 99) for _ in 0..rng.int(0, 4)]
-        let o = if b.len == 1 and x % 2 == 0: LinkedList.of(b[0]) else: LinkedList.from_list(b)
+        var o = if b.len == 1 and x % 2 == 0: LinkedList.of(b[0]) else: LinkedList.from_list(b)
         if op == 4:
-            l.splice_back(o)
+            l.splice_back(mut o)
             a = a + b
         else:
-            l.splice_front(o)
+            l.splice_front(mut o)
             a = b + a
     elif op == 6:
         l.reverse()

@@ -2,10 +2,12 @@
 use std.deque.{LinkedList}
 let empty: List<Int> = []
 var a = LinkedList.from_list([1, 2])
-a.splice_back(LinkedList.from_list(empty))
+var b = LinkedList.from_list(empty)
+a.splice_back(mut b)
 print(a.each().collect())
-a.splice_front(LinkedList.from_list(empty))
+a.splice_front(mut b)
 print(a.each().collect())
 var e = LinkedList.from_list(empty)
-e.splice_back(LinkedList.from_list(empty))
+var f = LinkedList.from_list(empty)
+e.splice_back(mut f)
 print(e.each().collect().len)

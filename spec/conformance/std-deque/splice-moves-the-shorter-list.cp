@@ -1,7 +1,8 @@
 // expect: ok, output "ok"
 // rule: std.deque.LinkedList.splice_back
 // `splice_back`/`splice_front` keep order whichever list is longer, also after a `reverse` on
-// either side, and leave the spliced-into list usable at both ends; checked against Lists.
+// either side, leave `other` empty, and leave the spliced-into list usable at both ends; checked
+// against Lists.
 use std.deque.{LinkedList}
 
 var ok = true
@@ -20,11 +21,12 @@ for round in 0..300:
         ys.reverse()
     var want: List<Int> = []
     if rand(0, 1) == 0:
-        a.splice_back(b)
+        a.splice_back(mut b)
         want = xs + ys
     else:
-        a.splice_front(b)
+        a.splice_front(mut b)
         want = ys + xs
+    if not b.is_empty: ok = false
     a.push(100)
     a.push_front(-1)
     want = [-1] + want + [100]
