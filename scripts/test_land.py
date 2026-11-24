@@ -109,7 +109,8 @@ class LandTest(unittest.TestCase):
     def test_a_checkout_behind_main_lands_with_mains_land_sh(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         land = theirs / "scripts" / "land.sh"
-        land.write_text(land.read_text().replace('t0=$(date +%s)\n', 't0=$(date +%s)\necho "land: main\'s copy" >&2\n', 1))
+        land.write_text(land.read_text().replace('cd "$(git rev-parse --show-toplevel)"\n',
+                                                 'cd "$(git rev-parse --show-toplevel)"\necho "land: main\'s copy" >&2\n', 1))
         self.commit(theirs, "land")
         git(theirs, "push", "-q", "origin", "HEAD:main")
         (ours / "src.txt").write_text("source\n")
@@ -348,6 +349,25 @@ class LandTest(unittest.TestCase):
         self.assertIn("took the land lock after", r.stderr)
         taken = [int(s.split()[3]) for s in stamps.read_text().splitlines() if " other " not in f" {s} "]
         self.assertTrue(taken and taken[0] >= int(freed[0]), (taken, freed))
+
+    def test_a_pull_that_changes_land_sh_lands_with_the_new_copy_once(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        pending, runs = self._steps_runner(ours)
+        git(theirs, "pull", "-q", "origin", "main")
+        land = theirs / "scripts" / "land.sh"
+        land.write_text(land.read_text().replace("set -euo pipefail\n",
+                                                 "set -euo pipefail\necho 'land: the new copy runs' >&2\n", 1))
+        self.commit(theirs, "a new land.sh")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        pending.write_text("nextest\n")
+        # theirs lands the new land.sh while ours runs its pending steps, so ours's push loses the race.
+        r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), CPL_LAND_TRIES="3")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stderr.count("landing with the new copy"), 1, r.stderr)
+        self.assertEqual(r.stderr.count("the new copy runs"), 1, r.stderr)
+        self.assertIn("pushed", r.stdout)
+        self.assertEqual(self.lock_on_remote(), "")
 
     def test_a_land_that_loses_the_race_reruns_without_the_land_lock(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")

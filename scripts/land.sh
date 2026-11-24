@@ -14,10 +14,13 @@
 #
 # Usage: scripts/land.sh [remote]   (default origin; CPL_LAND_TRIES, default 5)
 set -euo pipefail
+# The copy running now: a pull that changes scripts/land.sh lands with the new one.
+self_blob=$(git hash-object "${BASH_SOURCE[0]}")
+land_args=("$@")
 cd "$(git rev-parse --show-toplevel)"
 remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
-t0=$(date +%s)
+t0=${CPL_LAND_T0:-$(date +%s)}
 git fetch -q "$remote" main
 # A checkout behind main lands with main's land.sh, so a fix to landing reaches
 # every lane at once instead of after its next rebase.
@@ -111,8 +114,19 @@ pull() {
     remeasure
 }
 # Where this commit's hook ran: main's tip before the pull, as far as HEAD has it.
-checked=$(git merge-base HEAD FETCH_HEAD 2>/dev/null || git rev-parse FETCH_HEAD)
+checked=${CPL_LAND_CHECKED:-$(git merge-base HEAD FETCH_HEAD 2>/dev/null || git rev-parse FETCH_HEAD)}
+# A running bash keeps the land.sh it started with (perf's land waited 320 s on the
+# old lock after main fixed it), and reads on from a file the rebase rewrote; once
+# per land, a pull that changed it lands with the new copy from here.
+reexec_if_land_changed() {
+    [ -z "${CPL_LAND_REEXEC:-}" ] && [ -f scripts/land.sh ] || return 0
+    [ "$(git hash-object scripts/land.sh)" != "$self_blob" ] || return 0
+    echo "land: the pull changed scripts/land.sh; landing with the new copy" >&2
+    CPL_LAND_REEXEC=1 CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked \
+        exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
+}
 pull || exit 1
+reexec_if_land_changed
 # The hook ran the commit tier on the old base; a rebase past a change to the
 # gates themselves (scripts/, the hooks, gen.toml, the justfile) reruns it on the
 # rebased tip, staged against main, since passing the old gates says nothing about
@@ -375,6 +389,7 @@ push() {
     if ! git merge-base --is-ancestor FETCH_HEAD HEAD; then
         drop_lock
         pull || exit 1
+        reexec_if_land_changed
         recheck
         run_pending_steps
         # What landed meanwhile can break this change's files: check again.
