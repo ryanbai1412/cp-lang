@@ -34,6 +34,6 @@ print(p2.map(label_x10) ?? -1, pn.map(label_x10) ?? -1)
 print(p2.filter(is_even).map(p => p.label) ?? -1, p3.filter(is_even).map(p => p.label) ?? -1)
 
 var rest: List<Int> = []
-for v in P.all.without(P(2)):
+for v in Bitset<P>.full().without(P(2)):
     rest.push(v.label)
 print(rest)
