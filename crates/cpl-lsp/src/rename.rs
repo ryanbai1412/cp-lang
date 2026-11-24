@@ -268,6 +268,7 @@ fn field_references(
         uri: path,
         analysis,
         offset,
+        fit: None,
     };
     let type_name = |dot: u32| match crate::complete::receiver_type(&cursor(dot), dot)? {
         cpl_check::Ty::Named { name, .. } => Some(name),

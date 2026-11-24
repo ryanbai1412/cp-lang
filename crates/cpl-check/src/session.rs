@@ -155,6 +155,18 @@ impl Session {
         self.analysis(path).map(|a| a.facts().clone())
     }
 
+    /// For each of `names`, whether `receiver.name` in `path` calls a `fn
+    /// name(self: ..)` in reach, as the checker picks it: `None` when none
+    /// takes `receiver`, else whether the one it picks takes any type.
+    pub fn method_fits(
+        &mut self,
+        path: &str,
+        receiver: &crate::Ty,
+        names: &[&str],
+    ) -> Vec<Option<bool>> {
+        self.db.method_fits(path, receiver, names)
+    }
+
     /// What checking found in the item of `path` around `at`. A module read
     /// through `use` has only its signatures checked; this checks the one
     /// body asked for (memoised per item), so lowering a std fn reads the

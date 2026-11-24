@@ -9,7 +9,7 @@ use crate::complete::{self, Cursor, StdLib};
 use crate::outline::Outline;
 use crate::rename;
 use crate::uri::uri_of_path;
-use cpl_check::{DeclKind, Definition, Session};
+use cpl_check::{DeclKind, Definition, Session, Ty};
 use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{obj, Value};
 #[cfg(not(target_arch = "wasm32"))]
@@ -390,10 +390,13 @@ impl Server {
             }
             "textDocument/completion" => {
                 let (uri, offset, analysis) = self.position(params)?;
+                let db = std::cell::RefCell::new(&mut self.db);
+                let fit = |ty: &Ty, names: &[&str]| db.borrow_mut().method_fits(&uri, ty, names);
                 let cursor = Cursor {
                     uri: &uri,
                     analysis: &analysis,
                     offset,
+                    fit: Some(&fit),
                 };
                 let trigger = params
                     .at(&["context", "triggerCharacter"])
@@ -417,14 +420,18 @@ impl Server {
             }
             "textDocument/signatureHelp" => {
                 let (uri, offset, analysis) = self.position(params)?;
-                let cursor = Cursor {
+                let mut cursor = Cursor {
                     uri: &uri,
                     analysis: &analysis,
                     offset,
+                    fit: None,
                 };
                 let doc = complete::callee_start(&cursor)
                     .and_then(|at| self.named_hover(&uri, &analysis, at))
                     .and_then(|h| h.doc);
+                let db = std::cell::RefCell::new(&mut self.db);
+                let fit = |ty: &Ty, names: &[&str]| db.borrow_mut().method_fits(&uri, ty, names);
+                cursor.fit = Some(&fit);
                 Ok(
                     match complete::signature_help(&cursor, &mut self.std, doc) {
                         Some(help) => Reply::result(help),
@@ -902,10 +909,13 @@ impl Server {
         // fact is the free form, so show the declaration as written,
         // as completion and signature help do.
         if called_field || checked.as_ref().is_none_or(|h| h.signature) {
+            let db = std::cell::RefCell::new(&mut self.db);
+            let fit = |ty: &Ty, names: &[&str]| db.borrow_mut().method_fits(uri, ty, names);
             let cursor = Cursor {
                 uri,
                 analysis,
                 offset,
+                fit: Some(&fit),
             };
             let member = complete::member_hover(&cursor, &mut self.std);
             match checked {

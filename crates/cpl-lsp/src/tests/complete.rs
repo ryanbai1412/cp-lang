@@ -5,7 +5,8 @@ use super::*;
 #[test]
 fn completion_after_a_trailing_dot_lists_fields_getters_and_methods() {
     let items = completions(&format!("{ROAD}let r = Road(1, 2)\nprint(r.|)\n"));
-    assert_eq!(labels(&items), ["to", "w", "twice", "heavy"]);
+    // A struct is `Ord` field by field, so `std.algebra.cmp` takes it.
+    assert_eq!(labels(&items), ["to", "w", "twice", "heavy", "cmp"]);
     assert_eq!(detail_of(&items, "w"), "w: Int");
     assert_eq!(detail_of(&items, "twice"), "fn twice(self) -> Int");
     assert_eq!(items.iter().find(|i| i.0 == "heavy").unwrap().1, 10);
@@ -72,8 +73,10 @@ fn dot_completion_on_a_library_type_substitutes_its_type_arguments() {
 
 #[test]
 fn dot_completion_on_records_domains_and_positions() {
-    let items = completions("let p = (x: 1, y: 2)\nprint(p.|)\n");
-    assert_eq!(labels(&items), ["x", "y"]);
+    // A record of numbers is `Ord`, `Signed` and `Real` field by field; it is
+    // not a tuple, so `std.grid`'s `self: (R, C)` getters are not its.
+    let items = completions("use std.grid.{left}\nlet p = (x: 1, y: 2)\nprint(p.|)\n");
+    assert_eq!(labels(&items), ["x", "y", "cmp", "abs", "sqrt"]);
     let items = completions("domain V = 0..5\nprint(V.|)\n");
     assert!(labels(&items).contains(&"first") && labels(&items).contains(&"rev"));
     let items = completions("domain V = 0..5\nfor v in V:\n    print(v.|)\n");
@@ -862,4 +865,26 @@ fn a_tuple_receiver_is_offered_its_getters() {
         shown.contains(&"left") && shown.contains(&"right"),
         "{shown:?}"
     );
+}
+
+#[test]
+fn an_extension_is_offered_exactly_where_the_checker_takes_its_receiver() {
+    let head = "use std.seq.{to_list}\nuse std.grid.{left}\ndomain R = 0..3\ndomain C = 0..3\nlet xs = [5, 6, 7]\n";
+    let mut taken = 0;
+    for recv in ["xs[1..]", "xs", "(R(1), C(2))", "(1, 2, 3)"] {
+        for (name, call) in [("to_list", "()"), ("left", "")] {
+            let items = completions(&format!("{head}print({recv}.|)\n"));
+            let offered = labels(&items).contains(&name);
+            let src = format!("{head}let v = {recv}.{name}{call}\n");
+            let mut session = cpl_check::Session::new();
+            session.set_file("/w/a.cp", src.as_str());
+            let analysis = session.analysis("/w/a.cp").unwrap();
+            let accepted = (analysis.diagnostics.iter())
+                .chain(&cpl_ir::reported(&analysis))
+                .all(|d| d.severity != cpl_diag::Severity::Error);
+            assert_eq!(offered, accepted, "{recv}.{name}");
+            taken += usize::from(accepted);
+        }
+    }
+    assert!(taken >= 2, "{taken}");
 }

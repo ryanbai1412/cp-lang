@@ -106,7 +106,7 @@ pub struct AnalyzedItem {
     pub check: Arc<ItemCheck>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub(crate) struct Scope {
     /// Name to the index of the item that defines it.
     pub names: HashMap<String, usize>,
@@ -130,7 +130,7 @@ pub(crate) struct Scope {
 }
 
 /// One name of `use std.algebra.{Monoid}`.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Import {
     /// Index into [`Analysis::modules`].
     pub module: usize,
@@ -138,7 +138,7 @@ pub struct Import {
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Module {
     /// `std.algebra`.
     pub name: String,
@@ -1413,14 +1413,82 @@ impl Database {
         analysis: &Analysis,
         name: &str,
     ) -> (Option<Arc<Def>>, u64) {
-        let Some(id) = self.files.get(path).map(|f| f.id) else {
-            return (None, 0);
+        match self.file_ctx(path, analysis, analysis.scope.clone()) {
+            Some(mut ctx) => ctx.def(name),
+            None => (None, 0),
+        }
+    }
+
+    /// For each of `names`, whether `receiver.name` in `path` picks a
+    /// top-level `fn name(self: ..)` in reach, by the rule the checker
+    /// resolves method-form calls with: `None` when none takes `receiver`,
+    /// else whether the one it picks takes any type.
+    pub fn method_fits(&mut self, path: &str, receiver: &Ty, names: &[&str]) -> Vec<Option<bool>> {
+        let Some(analysis) = self.analyze(path) else {
+            return vec![None; names.len()];
         };
-        let mut ctx = FileCtx {
+        let scope = Arc::new(self.calling(path, &analysis.scope, names));
+        let Some(mut ctx) = self.file_ctx(path, &analysis, scope) else {
+            return vec![None; names.len()];
+        };
+        let mut checker = Checker::new(&mut ctx, "", Vec::new());
+        (names.iter())
+            .map(|name| checker.method_fit(receiver, name))
+            .collect()
+    }
+
+    /// `scope` as it would be had the file written `.name` for each of
+    /// `names`: the prelude's methods of those names it does not shadow are
+    /// imported, as analysis imports those the file calls.
+    fn calling(&mut self, path: &str, scope: &Scope, names: &[&str]) -> Scope {
+        let mut scope = scope.clone();
+        if is_prelude(path) || is_std_path(path) {
+            return scope;
+        }
+        let names: crate::fx::HashSet<&str> = names.iter().copied().collect();
+        let listed = crate::prelude::methods().iter();
+        for (module, method) in listed.filter(|(_, m)| names.contains(m.text.as_str())) {
+            let name = method.text.as_str();
+            let own = crate::prelude::VALUE_NAMES.contains(&name);
+            let key = scoping::import_key(&scope, module, name, true, own);
+            if scope.imports.contains_key(&key) || scope.chosen.contains(name) {
+                continue;
+            }
+            let bare = (key != name).then(|| scope.imports.remove(name)).flatten();
+            let (had_imports, modules, hits) =
+                (scope.has_imports, scope.modules.len(), self.cycle_hits);
+            let mut diags = Vec::new();
+            let from = std::slice::from_ref(method);
+            self.import(path, module, from, false, None, &mut scope, &mut diags);
+            scope.has_imports = had_imports;
+            let import = scope.imports.remove(name);
+            if !diags.is_empty() {
+                self.cycle_hits = hits;
+                scope.modules.truncate(modules);
+                scope.imports.retain(|_, i| i.module < modules);
+            } else if let Some(import) = import {
+                scope.imports.insert(key, import);
+            }
+            if let Some(bare) = bare {
+                scope.imports.insert(name.to_string(), bare);
+            }
+        }
+        scope
+    }
+
+    /// Lookups outside any item of the analyzed file `path`.
+    fn file_ctx(
+        &mut self,
+        path: &str,
+        analysis: &Analysis,
+        scope: Arc<Scope>,
+    ) -> Option<FileCtx<'_>> {
+        let id = self.files.get(path)?.id;
+        Some(FileCtx {
             db: self,
             file: id,
             items: analysis.syntax.clone(),
-            scope: analysis.scope.clone(),
+            scope,
             frame: Vec::new(),
             recording: false,
             in_progress: Vec::new(),
@@ -1432,8 +1500,7 @@ impl Database {
             effects_of: Vec::new(),
             vars: None,
             impl_names: None,
-        };
-        ctx.def(name)
+        })
     }
 
     /// Drops memos that no recent revision used, once they outnumber the

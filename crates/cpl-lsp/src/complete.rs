@@ -131,7 +131,13 @@ pub struct Cursor<'a> {
     pub uri: &'a str,
     pub analysis: &'a Analysis,
     pub offset: u32,
+    /// The checker's answer to whether `receiver.name` picks an extension fn,
+    /// for each name (`Session::method_fits`).
+    pub fit: Option<&'a MethodFits<'a>>,
 }
+
+/// `Session::method_fits` for the cursor's file.
+pub type MethodFits<'a> = dyn Fn(&Ty, &[&str]) -> Vec<Option<bool>> + 'a;
 
 fn item_at(analysis: &Analysis, offset: u32) -> Option<&AnalyzedItem> {
     analysis
@@ -1067,25 +1073,24 @@ fn generics_of(header: &str) -> Vec<String> {
 fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)> {
     let mut out = own_members_of_ty(cursor, std, ty);
     let mut seen: HashSet<String> = out.iter().map(|(e, _)| e.name.clone()).collect();
-    // A domain named as a value walks its positions; a type with `iter` (Seq's one method) is a Seq.
+    // A domain named as a value walks its positions.
     let ty = match ty {
         Ty::TypeName(name) if is_domain(cursor.analysis, name) => &Ty::Domain(name.clone()),
         ty => ty,
     };
-    // `impl Seq` gives `iter` even where a library keeps it out of the list.
-    let walks = seen.contains("iter")
-        || seen.contains("each")
-        || matches!(ty, Ty::Named { name, .. } if outlines_for(cursor, std, name)
-            .iter()
-            .any(|o| o.members_of(name).any(|m| m.instance && m.name == "iter")));
-    let imported = cursor.analysis.imports();
-    for entry in std_methods(cursor, std) {
+    let entries = std_methods(cursor, std);
+    let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+    let fits = cursor.fit.map_or_else(Vec::new, |fit| fit(ty, &names));
+    for (entry, fit) in entries.into_iter().zip(fits) {
         // A `fn f<T>(self: T)` a `use` names is everyone's member; unnamed, it would crowd every list.
-        // It sorts after the members whose receiver bound `ty` meets.
-        let received = receives(&entry.detail, ty, walks);
-        let named = imported.contains_key(&entry.name) && takes_any_self(&entry.detail);
-        if (received || named) && seen.insert(entry.name.clone()) {
-            out.push((entry, if received { 1 } else { 2 }));
+        // It sorts after the members whose receiver is a type of their own or meets a bound.
+        let sort = match fit {
+            Some(false) => 1,
+            Some(true) if cursor.analysis.imports().contains_key(&entry.name) => 2,
+            _ => continue,
+        };
+        if seen.insert(entry.name.clone()) {
+            out.push((entry, sort));
         }
     }
     out
@@ -1149,7 +1154,7 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
         };
         let outline = std.outline_of(&module.path, module.analysis.text.clone());
         if let Some(entry) = outline.find(&import.name) {
-            if entry.kind == Kind::Fn && entry.public && self_type(&entry.detail).is_some() {
+            if entry.kind == Kind::Fn && entry.public {
                 let mut entry = entry.clone();
                 entry.name = local.clone();
                 entry.kind = Kind::Method;
@@ -1164,7 +1169,7 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
             continue;
         };
         if let Some(entry) = outline.find(&name.text) {
-            if entry.kind == Kind::Fn && entry.public && self_type(&entry.detail).is_some() {
+            if entry.kind == Kind::Fn && entry.public {
                 let mut entry = entry.clone();
                 entry.kind = Kind::Method;
                 entry.instance = true;
@@ -1173,128 +1178,6 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
         }
     }
     out
-}
-
-/// `S` in `fn runs<S: Indexed, T>(self: S, ..)`.
-fn self_type(detail: &str) -> Option<&str> {
-    let (_, rest) = detail
-        .split_once("(self: ")
-        .or_else(|| detail.split_once("(mut self: "))?;
-    Some(top_level(rest).next().unwrap_or(rest).trim())
-}
-
-/// `text` split at the `,`, `;` and closing `)` outside any brackets, up to that `)`.
-fn top_level(text: &str) -> impl Iterator<Item = &str> {
-    let mut depth = 0i32;
-    let mut start = 0;
-    let mut done = false;
-    let mut parts = Vec::new();
-    for (i, c) in text.char_indices() {
-        match c {
-            '(' | '[' | '<' => depth += 1,
-            ')' if depth == 0 => done = true,
-            ')' | ']' | '>' => depth -= 1,
-            ',' | ';' if depth == 0 => {}
-            _ => continue,
-        }
-        if depth == 0 && (done || matches!(c, ',' | ';')) {
-            parts.push(&text[start..i]);
-            start = i + 1;
-        }
-        if done {
-            break;
-        }
-    }
-    if !done {
-        parts.push(&text[start..]);
-    }
-    parts.into_iter()
-}
-
-/// Whether `ty` can be the `self` of the fn whose signature is `detail`:
-/// its generic's bound (`S: Indexed`) holds, or its type is `ty`'s.
-/// `fn f<T>(self: T)`: the receiver is a type parameter with no bound.
-fn takes_any_self(detail: &str) -> bool {
-    let Some(self_ty) = self_type(detail) else {
-        return false;
-    };
-    let generics = detail
-        .split_once('<')
-        .filter(|(head, _)| !head.contains('('))
-        .and_then(|(_, rest)| rest.split_once(">("))
-        .map_or("", |(g, _)| g);
-    generics.split(',').any(|g| g.trim() == self_ty)
-}
-
-fn receives(detail: &str, ty: &Ty, walks: bool) -> bool {
-    let Some(self_ty) = self_type(detail) else {
-        return false;
-    };
-    let generics = detail
-        .split_once('<')
-        .filter(|(head, _)| !head.contains('('))
-        .and_then(|(_, rest)| rest.split_once(">("))
-        .map_or("", |(g, _)| g);
-    let bound = generics.split(',').find_map(|g| {
-        let (name, bound) = g.split_once(':')?;
-        (name.trim() == self_ty).then(|| bound.trim())
-    });
-    let is_generic = generics
-        .split(',')
-        .any(|g| g.split(':').next().unwrap_or("").trim() == self_ty);
-    match bound {
-        Some(bound) => bound
-            .split('+')
-            .all(|b| ty.meets_seq_bound(b.trim(), walks)),
-        None if is_generic => false,
-        // `self: ?T`, `T` generic, takes every optional.
-        None if matches!(ty, Ty::Optional(_))
-            && self_ty.strip_prefix('?').is_some_and(|inner| {
-                generics
-                    .split(',')
-                    .any(|g| g.split(':').next().unwrap_or("").trim() == inner)
-            }) =>
-        {
-            true
-        }
-        // `self: (R, C)`: a tuple whose items each are a generic or the type written.
-        None if self_ty.starts_with('(') => {
-            let Ty::Tuple(items) = ty else {
-                return false;
-            };
-            let parts: Vec<&str> = top_level(&self_ty[1..]).map(str::trim).collect();
-            parts.len() == items.len()
-                && parts.iter().zip(items).all(|(part, item)| {
-                    generics
-                        .split(',')
-                        .any(|g| g.split(':').next().unwrap_or("").trim() == *part)
-                        || item.to_string() == *part
-                })
-        }
-        // `self: [D]T`: any array or list whose element is `T`'s.
-        None if self_ty.starts_with('[') => {
-            let elem = match ty {
-                Ty::Array { elem, .. } => (**elem).clone(),
-                _ => match ty.seq_elem().filter(|e| *ty == Ty::list(e.clone())) {
-                    Some(elem) => elem,
-                    None => return false,
-                },
-            };
-            let want = self_ty.split_once(']').map_or("", |(_, w)| w.trim());
-            generics
-                .split(',')
-                .any(|g| g.split(':').next().unwrap_or("").trim() == want)
-                || elem.to_string() == want
-        }
-        None => {
-            let name = self_ty.split('<').next().unwrap_or(self_ty);
-            let ty = match ty {
-                Ty::Range { .. } => &Ty::Int,
-                ty => ty,
-            };
-            ty.to_string().split('<').next() == Some(name)
-        }
-    }
 }
 
 fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)> {

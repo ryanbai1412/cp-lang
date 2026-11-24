@@ -296,6 +296,30 @@ impl Checker<'_> {
         }
     }
 
+    /// Whether `base.name` picks a fn: `None` when no candidate's `self`
+    /// takes `base` as it is (a `self: ?T` takes a `T` only by lifting it,
+    /// a `self: (R, C)` a record only by reading it as a tuple), else
+    /// whether the one it picks takes any type (`fn f<T>(self: T)`, `T`
+    /// unbounded).
+    pub(crate) fn method_fit(&mut self, base: &Ty, name: &str) -> Option<bool> {
+        let coerced = |def: &Def| match (self_ty(def), base) {
+            (Some(Ty::Optional(_)), b) => !matches!(b, Ty::Optional(_)),
+            (Some(Ty::Tuple(_)), Ty::Record(_)) => true,
+            _ => false,
+        };
+        match self.pick_method(base, name) {
+            Pick::One(_, def) if coerced(&def) => None,
+            Pick::One(_, def) => Some(match (&*def, self_ty(&def)) {
+                (Def::Fn { bounds, .. }, Some(Ty::Param(g))) => {
+                    (bounds.iter()).all(|(p, t)| *p != g || t.is_empty())
+                }
+                _ => false,
+            }),
+            Pick::Ambiguous(_) => Some(false),
+            Pick::Unsettled | Pick::NoFit => None,
+        }
+    }
+
     /// The fn `base.name` calls: the candidate it fits, else the only one.
     pub(super) fn method_def(&mut self, base: &Ty, name: &str) -> Option<Arc<Def>> {
         match self.pick_method(base, name) {

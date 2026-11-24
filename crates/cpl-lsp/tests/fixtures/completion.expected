@@ -7,6 +7,7 @@
 == completion @ 8:11
 to [5] to: Int
 w [5] w: Int
+cmp [2] fn cmp<T: Ord>(self: T, other: T) -> Ordering
 
 == completion @ 9:12
 len [10] len: Int
@@ -53,6 +54,7 @@ Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(pub x: T)
 
 == completion @ 12:19
+cmp [2] fn cmp<T: Ord>(self: T, other: T) -> Ordering
 prod [2] fn prod<S: Seq<T>, T>(self: S) -> T
 sum [2] fn sum<S: Seq<T>, T, U>(self: S, of: T -> U = x => x) -> U
 mean [2] fn mean<S: Seq<T>, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64
@@ -64,4 +66,3 @@ any [2] fn any<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool
 all [2] fn all<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool
 is_sorted [2] fn is_sorted<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Bool
 filter [2] fn filter<S: Seq<T>, T>(self: S, p: T -> Bool) -> Filtered<S, T>
-map [2] fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U>
