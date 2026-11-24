@@ -30,14 +30,22 @@ DEFAULT_MAX_BYTES = 2 << 30
 
 
 def real_compiler():
+    """The first g++ on PATH that is not a cache shim. Each choice's directory
+    goes into CPL_CXX_SHIM_SKIP for the compiler's children, so a wrapper that
+    runs `g++` from PATH again, or a second checkout's shim, moves on to the
+    next g++ instead of looping back through the shim."""
     here = os.path.dirname(os.path.abspath(__file__))
     shim_dir = os.environ.get("CPL_CXX_SHIM_DIR", "")
+    skip = {os.path.abspath(d) for d in os.environ.get("CPL_CXX_SHIM_SKIP", "").split(os.pathsep) if d}
+    skip |= {here, os.path.abspath(shim_dir)}
     for d in os.environ.get("PATH", "").split(os.pathsep):
-        if not d or os.path.abspath(d) in (here, os.path.abspath(shim_dir)):
+        if not d or os.path.abspath(d) in skip:
             continue
         cand = os.path.join(d, "g++")
-        if os.access(cand, os.X_OK) and os.path.realpath(cand) != os.path.realpath(sys.argv[0]):
-            return cand
+        if not os.access(cand, os.X_OK) or os.path.basename(os.path.realpath(cand)) == "cxx-cache.py":
+            continue
+        os.environ["CPL_CXX_SHIM_SKIP"] = os.pathsep.join(sorted(skip | {os.path.abspath(d)}))
+        return cand
     sys.exit("cxx-cache: no g++ on PATH besides the cache")
 
 

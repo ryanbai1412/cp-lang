@@ -86,6 +86,22 @@ class CxxCacheTest(unittest.TestCase):
         with open(os.path.join(self.tmp.name, path)) as f:
             return f.read()
 
+    def test_a_wrapper_or_second_shim_that_reruns_gxx_from_path_does_not_loop(self):
+        t = self.tmp.name
+        wrap, shim2 = os.path.join(t, "wrap"), os.path.join(t, "shim2")
+        os.makedirs(wrap)
+        os.makedirs(shim2)
+        with open(os.path.join(wrap, "g++"), "w") as f:
+            f.write('#!/bin/sh\nexec g++ "$@"\n')
+        os.chmod(os.path.join(wrap, "g++"), 0o755)
+        os.symlink(os.path.join(ROOT, "scripts", "cxx-cache.py"), os.path.join(shim2, "g++"))
+        shim, rest = self.env["PATH"].split(os.pathsep, 1)
+        self.env["PATH"] = os.pathsep.join([shim, shim2, wrap, rest])
+        r = subprocess.run(["g++", "-O2", self.src, "-o", "x"], env=self.env, capture_output=True,
+                           text=True, cwd=t, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.compiles(), 1)
+
     def test_same_source_and_flags_reuse_the_binary_and_its_warnings(self):
         r1 = self.gxx("-O2", self.src, "-o", "x")
         r2 = self.gxx("-O2", self.src, "-o", "y")
