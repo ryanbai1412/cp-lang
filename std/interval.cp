@@ -247,12 +247,12 @@ pub struct IntervalSet<D>:
         if let (pl, ph) = segs.last_le(lo):
             if ph >= lo:
                 lo = pl
-                hi = max(hi, ph)
+                hi max= ph
                 total -= ph - pl
                 let _ = segs.remove(pl)
         while let (nl, nh) = segs.last_le(hi):
             if nl < lo: break
-            hi = max(hi, nh)
+            hi max= nh
             total -= nh - nl
             let _ = segs.remove(nl)
         segs[lo] = hi

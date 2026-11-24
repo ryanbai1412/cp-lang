@@ -145,8 +145,8 @@ pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int>:
     var hi = queries[0].ends.1
     for i in 1..q:
         let (l, r) = queries[i].ends
-        lo = min(lo, l)
-        hi = max(hi, r)
+        lo min= l
+        hi max= r
     let n = hi - lo
     var side = 1
     while side <= n: side *= 2
@@ -292,8 +292,8 @@ pub fn mo_with_updates<D, U, R>(
         let (l, r) = queries[i].range.ends
         let t = queries[i].time
         assert 0 <= t <= updates.len, "a `time` is outside `0..=updates.len`"
-        lo = min(lo, l)
-        hi = max(hi, r)
+        lo min= l
+        hi max= r
     let n = hi - lo
     var b = 1
     while (b + 1) * (b + 1) * (b + 1) <= n * n: b += 1
