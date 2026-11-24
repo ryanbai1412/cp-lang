@@ -501,7 +501,7 @@ impl<'a> Checker<'a> {
                         _ => false,
                     };
                     if !fits_bound {
-                        this.expect_fits(&ety, &k_ty, e, |c, got, want| {
+                        this.expect_fits(&ety, &k_ty, e, &|c, got, want| {
                             cpl_diag::msgs::check::RANGE_BOUND_EXPECTED.at(&[
                                 &c.quote(e.span),
                                 &got.with_article(),
@@ -524,7 +524,7 @@ impl<'a> Checker<'a> {
                 };
                 let got = self.infer(arg);
                 if !matches!(got, Ty::Error | Ty::Unknown) {
-                    self.expect_fits(&got, &want, arg, |c, g, w| {
+                    self.expect_fits(&got, &want, arg, &|c, g, w| {
                         cpl_diag::msgs::check::EXPECTED.at(&[
                             &c.quote(arg.span),
                             &g.with_article(),
@@ -937,7 +937,7 @@ impl<'a> Checker<'a> {
         if let (Ty::Domain(d), "cuts" | "bounds", [arg]) = (&base_ty, name.text.as_str(), args) {
             if arg.name.is_none() {
                 let got = self.infer(&arg.value);
-                self.expect_fits(&got, &Ty::Int, &arg.value, |c, got, _| {
+                self.expect_fits(&got, &Ty::Int, &arg.value, &|c, got, _| {
                     cpl_diag::msgs::check::TAKES_INT_BUT.at(&[
                         &c.quote(callee.span),
                         &c.quote(arg.value.span),
@@ -1481,7 +1481,7 @@ impl<'a> Checker<'a> {
                                         .map(|(_, t)| t)
                                 })
                                 .unwrap_or(&factors[i].1);
-                            self.expect_fits(&arg_ty, want, &arg.value, |c, got, want| {
+                            self.expect_fits(&arg_ty, want, &arg.value, &|c, got, want| {
                                 cpl_diag::msgs::check::EXPECTS_BUT.at(&[
                                     &name,
                                     &want,
@@ -1507,7 +1507,7 @@ impl<'a> Checker<'a> {
 
                         if matches!(arg_ty, Ty::Tuple(_) | Ty::Record(_)) {
                             let want = Ty::Pos(name.clone());
-                            self.expect_fits(&arg_ty, &want, &args[0].value, |c, got, want| {
+                            self.expect_fits(&arg_ty, &want, &args[0].value, &|c, got, want| {
                                 cpl_diag::msgs::check::EXPECTS_BUT.at(&[
                                     &name,
                                     &want,

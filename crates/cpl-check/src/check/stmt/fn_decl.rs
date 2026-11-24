@@ -314,7 +314,7 @@ impl<'a> Checker<'a> {
             if let Some(default) = &param.default {
                 let default_ty = self.infer(default);
                 if !self.array_fills(&ty, &default_ty, default) {
-                    self.expect_fits(&default_ty, &ty, default, |c, got, want| {
+                    self.expect_fits(&default_ty, &ty, default, &|c, got, want| {
                         cpl_diag::msgs::check::BUT_DEFAULT.at(&[
                             &param.name.text,
                             &want.with_article(),

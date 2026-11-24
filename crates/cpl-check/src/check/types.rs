@@ -1768,7 +1768,7 @@ impl<'a> Checker<'a> {
         got: &Ty,
         want: &Ty,
         at: &Expr,
-        message: impl FnOnce(&Self, &Ty, &Ty) -> cpl_diag::msgs::Said,
+        message: &dyn Fn(&Self, &Ty, &Ty) -> cpl_diag::msgs::Said,
     ) -> bool {
         if let (Ty::Array { elem: ge, .. }, Ty::Array { elem: we, .. }) = (got, want) {
             if matches!(**ge, Ty::Range { .. }) && we.is_int() && ge != we {

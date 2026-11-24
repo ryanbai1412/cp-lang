@@ -84,7 +84,7 @@ impl Checker<'_> {
             let got = self.infer(body);
             if let (Some(i), Some(fields)) = (i, want) {
                 let field = &fields[i];
-                self.expect_fits(&got, &field.ty, body, |c, got, want| {
+                self.expect_fits(&got, &field.ty, body, &|c, got, want| {
                     cpl_diag::msgs::check::FIELD_BUT.at(&[
                         &field.name,
                         &want.with_article(),
@@ -426,7 +426,7 @@ impl Checker<'_> {
                 }
                 continue;
             }
-            self.expect_fits(&arg_ty, &want, &arg.value, |c, got, want| {
+            self.expect_fits(&arg_ty, &want, &arg.value, &|c, got, want| {
                 let slot = if param.name.is_empty() {
                     String::new()
                 } else {

@@ -149,7 +149,7 @@ impl<'a> Checker<'a> {
         if !row {
             return;
         }
-        self.expect_fits(value_ty, target_ty, value, |c, got, want| {
+        self.expect_fits(value_ty, target_ty, value, &|c, got, want| {
             cpl_diag::msgs::check::OTHER_SIDE_ONE_TOO.at(&[
                 &c.quote(target.span),
                 &want.with_article(),

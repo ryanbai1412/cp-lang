@@ -341,7 +341,7 @@ impl Checker<'_> {
                         continue;
                     }
                 }
-                self.expect_fits(&got, target, &arg.value, |_, got, want| {
+                self.expect_fits(&got, target, &arg.value, &|_, got, want| {
                     cpl_diag::msgs::check::TYPE_MISMATCH_EXPECTED_GOT.at(&[&want, &got])
                 });
             }

@@ -231,7 +231,7 @@ impl<'a> Checker<'a> {
                         || matches!(&index_tys[0], Ty::Tuple(items) if items.len() == 2))
                 {
                     let want = Ty::Tuple(vec![dom_ty.clone(), dom_ty.clone()]);
-                    self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
+                    self.expect_fits(&index_tys[0], &want, &indices[0], &|c, got, want| {
                         cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
                             &c.quote(base.span),
                             &want,
@@ -293,7 +293,7 @@ impl<'a> Checker<'a> {
             {
                 self.note_typed_index(expr, base, indices, &index_tys, &wants);
                 for ((got, want), index_expr) in index_tys.iter().zip(&wants).zip(indices) {
-                    self.expect_fits(got, want, index_expr, |c, got, want| {
+                    self.expect_fits(got, want, index_expr, &|c, got, want| {
                         cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
                             &c.quote(base.span),
                             &want,
@@ -309,7 +309,7 @@ impl<'a> Checker<'a> {
                 if indices.len() == 1
                     && matches!(index.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
             {
-                self.expect_fits(&index_tys[0], &index[0], &indices[0], |c, got, want| {
+                self.expect_fits(&index_tys[0], &index[0], &indices[0], &|c, got, want| {
                     cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
                         &c.quote(base.span),
                         &want,
@@ -329,7 +329,7 @@ impl<'a> Checker<'a> {
                 if let (ExprKind::Tuple(parts), Ty::Tuple(got)) = (&indices[0].kind, &index_tys[0])
                 {
                     for ((got, want), part) in got.iter().zip(index.iter()).zip(parts) {
-                        self.expect_fits(got, want, part, |c, got, want| {
+                        self.expect_fits(got, want, part, &|c, got, want| {
                             cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
                                 &c.quote(base.span),
                                 &want,
@@ -342,7 +342,7 @@ impl<'a> Checker<'a> {
                 }
                 let want = Ty::Tuple(index.clone());
                 self.note_typed_index(expr, base, indices, &index_tys, std::slice::from_ref(&want));
-                self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
+                self.expect_fits(&index_tys[0], &want, &indices[0], &|c, got, want| {
                     cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
                         &c.quote(base.span),
                         &want,

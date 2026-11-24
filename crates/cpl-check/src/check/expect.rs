@@ -1,6 +1,5 @@
-//! `expect_fits`, generic over its message, is a thin shell: each of its
-//! callers' closures would otherwise carry a whole copy of the check into
-//! cpl.wasm.
+//! `expect_fits` takes its message as `&dyn Fn`, so one copy of it (and of
+//! the check behind it) serves every caller in cpl.wasm.
 
 use super::*;
 use cpl_syntax::ast::Expr;
@@ -11,11 +10,10 @@ impl Checker<'_> {
         got: &Ty,
         want: &Ty,
         at: &Expr,
-        message: impl FnOnce(&Self, &Ty, &Ty) -> cpl_diag::msgs::Said,
+        message: &dyn Fn(&Self, &Ty, &Ty) -> cpl_diag::msgs::Said,
     ) -> bool {
-        let mut message = Some(message);
         self.expect_fits_by(got, want, at, &mut |c, got, want| {
-            message.take().map(|m| m(c, got, want))
+            Some(message(c, got, want))
         })
     }
 }

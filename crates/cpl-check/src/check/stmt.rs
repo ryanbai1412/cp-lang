@@ -817,9 +817,9 @@ impl<'a> Checker<'a> {
                         ])
                     };
                     if fresh {
-                        self.expect_fits(init_ty, declared, init, message);
+                        self.expect_fits(init_ty, declared, init, &message);
                     } else {
-                        self.expect_moves(init_ty, declared, init, message);
+                        self.expect_moves(init_ty, declared, init, &message);
                     }
                 }
                 let guessed = declared.is_none()
@@ -984,7 +984,7 @@ impl<'a> Checker<'a> {
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
                 let init_ty = init.as_ref().map(|init| self.infer(init));
                 if let (Some(declared), Some(init_ty), Some(init)) = (&declared, &init_ty, init) {
-                    self.expect_fits(init_ty, declared, init, |c, got, want| {
+                    self.expect_fits(init_ty, declared, init, &|c, got, want| {
                         cpl_diag::msgs::check::DECLARED_BUT.at(&[
                             &name.text,
                             &want.with_article(),
@@ -1041,7 +1041,7 @@ impl<'a> Checker<'a> {
                     if let Some(default) = &field.default {
                         let default_ty = self.infer(default);
                         if !self.array_fills(&ty, &default_ty, default) {
-                            self.expect_fits(&default_ty, &ty, default, |c, got, want| {
+                            self.expect_fits(&default_ty, &ty, default, &|c, got, want| {
                                 cpl_diag::msgs::check::BUT_DEFAULT.at(&[
                                     &field.name.text,
                                     &want.with_article(),
@@ -1425,7 +1425,7 @@ impl<'a> Checker<'a> {
                         );
                     }
                 } else if *op == AssignOp::Set && !not_assignable {
-                    self.expect_moves(&value_ty, &target_ty, value, |c, got, want| {
+                    self.expect_moves(&value_ty, &target_ty, value, &|c, got, want| {
                         cpl_diag::msgs::check::BUT.at(&[
                             &c.quote(target.span),
                             &want.with_article(),
@@ -1600,7 +1600,7 @@ impl<'a> Checker<'a> {
                     let fty = self.field_type(f);
                     if let Some(d) = &f.default {
                         let dty = self.infer(d);
-                        self.expect_fits(&dty, &fty, d, |c, got, want| {
+                        self.expect_fits(&dty, &fty, d, &|c, got, want| {
                             cpl_diag::msgs::check::BUT.at(&[
                                 &f.name.text,
                                 &want.with_article(),
@@ -1632,7 +1632,7 @@ impl<'a> Checker<'a> {
                     self.declare(&param.name.text, param.name.span, ty, false, "param");
                 }
                 let ty = self.infer(body);
-                self.expect_fits(&ty, &Ty::Bool, body, |c, got, _| {
+                self.expect_fits(&ty, &Ty::Bool, body, &|c, got, _| {
                     cpl_diag::msgs::check::LAW_MUST_RETURN_BOOL
                         .at(&[&c.quote(body.span), &got.with_article()])
                 });
@@ -1730,7 +1730,7 @@ impl<'a> Checker<'a> {
         if !declared {
             return;
         }
-        self.expect_fits(value_ty, &ret, value, |c, got, want| {
+        self.expect_fits(value_ty, &ret, value, &|c, got, want| {
             cpl_diag::msgs::check::RETURNS_BUT.at(&[
                 &name,
                 &want.with_article(),
