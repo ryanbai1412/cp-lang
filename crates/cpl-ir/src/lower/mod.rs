@@ -29,6 +29,7 @@ mod hoist;
 mod impl_bounds;
 mod index_set;
 mod instance;
+mod judge;
 mod keyed;
 mod lambda_infer;
 mod later_calls;
@@ -493,6 +494,7 @@ impl Lowerer<'_> {
             judge_fns,
             cpp_bodies,
             entry_fns,
+            judge_tys: lw.judge_tys,
             raw_lists: lw.raw_lists,
             narrow_elems: lw.narrow_elems,
         };
@@ -879,6 +881,10 @@ struct Lowerer<'a> {
     char_domains: HashSet<DomainId>,
     /// Declared integer range bounds for globals and struct fields.
     global_ranges: HashMap<GlobalId, RangeInfo>,
+    /// Declared ranges of each top-level fn's parameters and result, for
+    /// the types a `@grader` fn gives the grader.
+    sig_ranges: HashMap<FnId, (Vec<Option<RangeInfo>>, Option<RangeInfo>)>,
+    judge_tys: Vec<(FnId, Vec<JudgeTy>, JudgeTy)>,
     struct_field_ranges: HashMap<(StructId, usize), RangeInfo>,
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays/grids/lists/tuples.
     narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
@@ -1021,6 +1027,8 @@ impl<'a> Lowerer<'a> {
             domain_lens: HashMap::new(),
             char_domains: HashSet::new(),
             global_ranges: HashMap::new(),
+            sig_ranges: HashMap::new(),
+            judge_tys: Vec::new(),
             struct_field_ranges: HashMap::new(),
             narrow_elems: std::collections::BTreeMap::new(),
             const_ints: HashMap::new(),
@@ -1103,69 +1111,6 @@ impl<'a> Lowerer<'a> {
         self.diags
             .iter()
             .any(|d| d.severity == cpl_diag::Severity::Error)
-    }
-
-    /// The fns that cross to the judge's grader: those it supplies (no
-    /// body) and those it calls (`@grader fn` with a body), each checked
-    /// to take and give only what a grader can.
-    fn grader_fns(&mut self, analysis: &'a Analysis) -> (Vec<FnId>, Vec<FnId>) {
-        let entries: Vec<&ast::FnDecl> = analysis
-            .items
-            .iter()
-            .flat_map(|item| &item.syntax.parsed.stmts)
-            .filter_map(|stmt| match &stmt.kind {
-                ast::StmtKind::Fn(decl)
-                    if stmt.decorators.iter().any(|d| d.name.text == "grader") =>
-                {
-                    Some(decl)
-                }
-                _ => None,
-            })
-            .collect();
-        let (mut judge_fns, mut entry_fns) = (Vec::new(), Vec::new());
-        for id in 0..self.sigs.len() {
-            let Some(f) = &self.bodies[id] else { continue };
-            let decl = self.sigs[id].decl;
-            let top_level = self.sigs[id].mod_id == 0 && self.sigs[id].owner.is_none();
-            if matches!(decl.body, ast::FnBody::None) {
-                judge_fns.push(id);
-            } else if top_level && entries.iter().any(|entry| std::ptr::eq(*entry, decl)) {
-                entry_fns.push(id);
-            } else {
-                continue;
-            }
-            let name = &decl.name.text;
-            let changed = f.params.iter().position(|p| p.mutable);
-            let odd = (f
-                .locals
-                .iter()
-                .take(f.params.len())
-                .map(|l| &l.ty)
-                .chain([&f.ret]))
-            .find(|ty| !ty.crosses_to_judge())
-            .cloned();
-            let saved = (self.cur_mod, self.offset);
-            (self.cur_mod, self.offset) = (self.sigs[id].mod_id, self.sigs[id].offset);
-            if let Some(at) = changed {
-                let param = decl.params[at].name.text.clone();
-                self.error(
-                    codes::UNSUPPORTED,
-                    decl.params[at].name.span,
-                    format!("the judge's grader can't lend `{param}` to `{name}` to change"),
-                );
-                self.help(format!("take `{param}` by value and return what changed"));
-            } else if let Some(ty) = odd {
-                let shown = self.show(&ty);
-                self.error(
-                    codes::UNSUPPORTED,
-                    decl.name.span,
-                    format!("a `{shown}` can't cross to the judge's grader in `{name}`"),
-                );
-                self.help("a `@grader fn` takes and gives `Int`, `F64`, `Bool`, `Char`, `Str`, and lists and tuples of them");
-            }
-            (self.cur_mod, self.offset) = saved;
-        }
-        (judge_fns, entry_fns)
     }
 
     fn help(&mut self, help: impl Into<String>) {
@@ -3579,6 +3524,17 @@ impl<'a> Lowerer<'a> {
         }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
         self.bind_param_facts(decl, &mut params);
+        if self.sigs[id].mod_id == 0
+            && self.sigs[id].owner.is_none()
+            && self.sigs[id].params.iter().all(|p| p.ty.crosses_to_judge())
+            && !matches!(&self.sigs[id].ret, Some(ret) if !ret.crosses_to_judge())
+        {
+            let declared = (0..decl.params.len())
+                .map(|slot| self.cx.local_ranges.get(&slot).cloned())
+                .collect();
+            let ret = decl.ret.as_ref().and_then(|t| self.range_info_from_ast(t));
+            self.sig_ranges.insert(id, (declared, ret));
+        }
         let mut out = Vec::new();
 
         // If this is a constructor/static method of a struct with owned domains (e.g. `Rooted<V>.Pre`),

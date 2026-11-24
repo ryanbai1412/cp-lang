@@ -141,32 +141,32 @@ inline unsigned long long to_u64(__int128 x) { if (x < 0 || x > (__int128)~0ULL)
         name: "judge",
         needs: &["fail"],
         code: "\
-// A value as the judge's grader holds it, and back: an Int is an `int`
-// there and a Char a `char`. An Int too large for an `int` stops the program.
-template <class T> struct Judge {
-    using type = T;
-    static T to(const T& v) { return v; }
-    static T from(const T& v) { return v; }
+// A `T` of the program's as the `J` the judge's grader holds, and back:
+// `J` comes from the declared type (R10.1.4), so only an `Int` the
+// declared type does not bound can be too large for its `int`.
+template <class T, class J> struct Judge {
+    static J to(const T& v) { return J(v); }
+    static T from(const J& v) { return T(v); }
 };
-template <> struct Judge<ll> {
-    using type = int;
+template <> struct Judge<ll, int> {
     static int to(ll v) { if (v != (int)v) fail(\"an Int given to the judge's grader does not fit in an int\"); return (int)v; }
     static ll from(int v) { return v; }
 };
-template <> struct Judge<u8> {
-    using type = char;
+template <> struct Judge<u8, char> {
     static char to(u8 v) { return (char)v; }
     static u8 from(char v) { return (u8)v; }
 };
-template <class T> struct Judge<std::vector<T>> {
-    using type = std::vector<typename Judge<T>::type>;
-    static type to(const std::vector<T>& v) { type r; r.reserve(v.size()); for (const T& x : v) r.push_back(Judge<T>::to(x)); return r; }
-    static std::vector<T> from(const type& v) { std::vector<T> r; r.reserve(v.size()); for (const auto& x : v) r.push_back(Judge<T>::from(x)); return r; }
+template <class T, class J> struct Judge<std::vector<T>, std::vector<J>> {
+    static std::vector<J> to(const std::vector<T>& v) { std::vector<J> r; r.reserve(v.size()); for (const T& x : v) r.push_back(Judge<T, J>::to(x)); return r; }
+    static std::vector<T> from(const std::vector<J>& v) { std::vector<T> r; r.reserve(v.size()); for (const J& x : v) r.push_back(Judge<T, J>::from(x)); return r; }
 };
-template <class... T> struct Judge<std::tuple<T...>> {
-    using type = std::tuple<typename Judge<T>::type...>;
-    static type to(const std::tuple<T...>& v) { return std::apply([](const T&... x) { return type(Judge<T>::to(x)...); }, v); }
-    static std::tuple<T...> from(const type& v) { return std::apply([](const typename Judge<T>::type&... x) { return std::tuple<T...>(Judge<T>::from(x)...); }, v); }
+template <class A, class B, class JA, class JB> struct Judge<std::tuple<A, B>, std::pair<JA, JB>> {
+    static std::pair<JA, JB> to(const std::tuple<A, B>& v) { return {Judge<A, JA>::to(std::get<0>(v)), Judge<B, JB>::to(std::get<1>(v))}; }
+    static std::tuple<A, B> from(const std::pair<JA, JB>& v) { return {Judge<A, JA>::from(v.first), Judge<B, JB>::from(v.second)}; }
+};
+template <class... T, class... J> struct Judge<std::tuple<T...>, std::tuple<J...>> {
+    static std::tuple<J...> to(const std::tuple<T...>& v) { return std::apply([](const T&... x) { return std::tuple<J...>(Judge<T, J>::to(x)...); }, v); }
+    static std::tuple<T...> from(const std::tuple<J...>& v) { return std::apply([](const J&... x) { return std::tuple<T...>(Judge<T, J>::from(x)...); }, v); }
 };
 ",
     },

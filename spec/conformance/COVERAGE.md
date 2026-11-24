@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3746 (3602 passing). Rules: 617.
+Cases: 3748 (3602 passing). Rules: 618.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 3746 (3602 passing). Rules: 617.
 - R07 (07-sequences.md): 97 rules, 266 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 20 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 21 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 33 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -57,7 +57,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | R07 | 97 | 97 (100%) | 33 | 33 (100%) | 97 (100%) |
 | R08 | 31 | 31 (100%) | 12 | 12 (100%) | 31 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
-| R10 | 20 | 20 (100%) | 11 | 11 (100%) | 20 (100%) |
+| R10 | 21 | 21 (100%) | 12 | 12 (100%) | 21 (100%) |
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | Rlsp | 9 | 9 (100%) | 2 | 2 (100%) | 9 (100%) |
 | Rstress | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rtrace | 6 | 6 (100%) | 4 | 4 (100%) | 6 (100%) |
-| all | 617 | 617 (100%) | 258 | 258 (100%) | 617 (100%) |
+| all | 618 | 618 (100%) | 259 | 259 (100%) | 618 (100%) |
 
 ## Rules
 
@@ -621,6 +621,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.1 [16+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [2+ 1-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
+- R10.1.4 [1+ 1-]: A value crossing to the judge's grader takes its C++ type from the type the `@grader` fn d...
 - R10.2.1 [7+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [10+ 2-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
 - R10.2.3 [21+ 5-]: Arrays `[D]T` read `D.count` values; `[R, C]T` reads `R.count * C.count` tokens row-major,...
@@ -826,7 +827,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0407 Duplicate enum variant tag: 1 case(s)
 - E0408 Assign into a range: 2 case(s)
 - E0409 Fn can end without a value: 2 case(s)
-- E0501 Unsupported construct in backend: 10 case(s)
+- E0501 Unsupported construct in backend: 11 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 13 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
@@ -1075,9 +1076,9 @@ prepends it.
   - line 37: `fn solve():`
   - line 127: `with checks(ranges: on, overflow: on, bounds: on):`
 - 10-io.md: 4 blocks, 1 with a case, 0 spec-only, 3 neither
-  - line 55: `let n: 1..=2e5 = read()`
-  - line 178: `let n: Int = read(base: 1)`
-  - line 186: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
+  - line 65: `let n: 1..=2e5 = read()`
+  - line 188: `let n: Int = read(base: 1)`
+  - line 196: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 0 spec-only, 1 neither
   - line 38: `use std.graph.{dijkstra, Paths}`
 

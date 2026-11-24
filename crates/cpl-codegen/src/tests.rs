@@ -228,15 +228,50 @@ fn a_fn_of_the_judges_grader_is_declared_in_its_types() {
         assert!(cpp[..runtime].contains(decl), "{cpp}");
     }
     assert!(
-        cpp.contains("return cpl::Judge<std::vector<ll>>::from(::ask(cpl::Judge<ll>::to(i)));"),
+        cpp.contains("return cpl::Judge<std::vector<ll>, std::vector<int>>::from(::ask(cpl::Judge<ll, int>::to(i)));"),
         "{cpp}"
     );
     // The fn the grader calls, in its types, and no `main` beside the grader's.
     assert!(
-        cpp.contains("\nstd::tuple<int, std::vector<int>> best(int n) {\n  cpl_start();"),
+        cpp.contains("\nstd::pair<int, std::vector<int>> best(int n) {\n  cpl_start();"),
         "{cpp}"
     );
     assert!(!cpp.contains("int main()"), "{cpp}");
+}
+
+#[test]
+fn a_grader_fn_crosses_in_the_narrowest_type_its_declared_range_fits() {
+    // IOI 2025 souvenirs: `std::pair<std::vector<int>, long long>
+    // transaction(long long M)` and `void buy_souvenirs(int N, long long P0)`.
+    let out = cpp(
+        "@grader fn transaction(m: 1..=1e15) -> (List<0..100>, 0..=1e15)\n\
+         @grader\nfn buy_souvenirs(count: 2..=100, p0: 1..=1e15):\n    let (got, back) = transaction(p0 - 1)\n    print(got.len, back, count)\n",
+    );
+    let runtime = out.find("namespace cpl").expect("a runtime");
+    assert!(
+        out[..runtime].contains("std::pair<std::vector<int>, long long> transaction(long long m);"),
+        "{out}"
+    );
+    assert!(
+        out.contains("\nvoid buy_souvenirs(int count, long long p0) {"),
+        "{out}"
+    );
+    assert!(
+        out.contains("cpl::Judge<std::tuple<std::vector<ll>, ll>, std::pair<std::vector<int>, long long>>::from"),
+        "{out}"
+    );
+    let wide = cpp("@grader\nfn f(a: (Int, Int, 0..=1e12)) -> Int = a.0\n");
+    assert!(
+        wide.contains("\nint f(std::tuple<int, int, long long> a) {"),
+        "{wide}"
+    );
+    let widths = cpp(
+        "@grader\nfn f(a: -2_147_483_648..=2_147_483_647, b: -9e18..=9e18, c: 0..=2_147_483_648) -> Int = 0\n",
+    );
+    assert!(
+        widths.contains("\nint f(int a, long long b, long long c) {"),
+        "{widths}"
+    );
 }
 
 #[test]

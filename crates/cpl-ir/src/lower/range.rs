@@ -35,7 +35,7 @@ impl RangeBounds {
             .then_some(NarrowLayout::OptI32)
     }
 
-    fn limits(&self) -> Option<(i64, i64)> {
+    pub(super) fn limits(&self) -> Option<(i64, i64)> {
         let lo_min = self
             .lo_const
             .or_else(|| self.lo.as_ref().and_then(expr_limits).map(|(lo, _)| lo))?;
@@ -53,6 +53,63 @@ impl RangeBounds {
             .hi_const
             .or_else(|| self.hi.as_ref().and_then(expr_limits).map(|(_, hi)| hi))?;
         IntWidth::of(lo_min, hi_max)
+    }
+}
+
+/// `ty` as the judge's grader holds it, from its declared range `info`
+/// (R10.1.4): `int` unless the range is past it, so a value never
+/// narrows on the way; `Err` is the spelling of a range with an open end.
+/// Why a declared type can't cross to the judge's grader.
+pub(super) enum Uncrossable {
+    /// A range with an open end, as spelled.
+    Open(String),
+    /// A type the grader has no spelling for.
+    Type(Ty),
+}
+
+/// The grader's side of `ty`, declared with ranges `info`.
+pub(super) fn judge_ty(ty: &Ty, info: Option<&RangeInfo>) -> Result<JudgeTy, Uncrossable> {
+    side(ty, info).map_err(|why| match why {
+        Uncrossable::Type(_) => Uncrossable::Type(ty.clone()),
+        open => open,
+    })
+}
+
+fn side(ty: &Ty, info: Option<&RangeInfo>) -> Result<JudgeTy, Uncrossable> {
+    match (ty, info) {
+        (Ty::Int, Some(RangeInfo::Scalar(b))) => {
+            let open = |e: &Option<Expr>, c: Option<i64>| e.is_none() && c.is_none();
+            if open(&b.lo, b.lo_const) || open(&b.hi, b.hi_const) {
+                return Err(Uncrossable::Open(b.text.clone()));
+            }
+            let int = i64::from(i32::MIN)..=i64::from(i32::MAX);
+            Ok(match b.limits() {
+                Some((lo, hi)) if !int.contains(&lo) || !int.contains(&hi) => JudgeTy::Long,
+                _ => JudgeTy::Int,
+            })
+        }
+        (Ty::Int, _) => Ok(JudgeTy::Int),
+        (Ty::Unit, _) => Ok(JudgeTy::Void),
+        (Ty::Float, _) => Ok(JudgeTy::Double),
+        (Ty::Bool, _) => Ok(JudgeTy::Bool),
+        (Ty::Char, _) => Ok(JudgeTy::Char),
+        (Ty::Str, _) => Ok(JudgeTy::Str),
+        (Ty::List(elem), info) if **elem != Ty::Unit => {
+            let inner = match info {
+                Some(RangeInfo::Elem(e)) => Some(&**e),
+                _ => None,
+            };
+            Ok(JudgeTy::List(Box::new(side(elem, inner)?)))
+        }
+        (Ty::Tuple(items), info) if !items.contains(&Ty::Unit) => {
+            let at = |i: usize| match info {
+                Some(RangeInfo::Tuple(infos)) => infos.get(i).and_then(Option::as_ref),
+                _ => None,
+            };
+            let items = items.iter().enumerate().map(|(i, t)| side(t, at(i)));
+            Ok(JudgeTy::Tuple(items.collect::<Result<_, _>>()?))
+        }
+        (ty, _) => Err(Uncrossable::Type(ty.clone())),
     }
 }
 

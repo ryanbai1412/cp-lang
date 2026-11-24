@@ -1,6 +1,6 @@
 //! C++ names for the program's names, and C++ types for its types.
 
-use cpl_ir::{Program, Ty};
+use cpl_ir::{JudgeTy, Program, Ty};
 
 /// Names the emitted file can't give to the user's things: C++ keywords,
 /// macros of the headers it includes, and the names the file itself uses.
@@ -388,25 +388,22 @@ pub(crate) fn value_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
     }
 }
 
-/// A type as the judge's grader writes it: what `cpl::Judge<T>::type` is.
-pub(crate) fn judge_ty(ty: &Ty) -> String {
+/// A type as the judge's grader writes it (R10.1.4).
+pub(crate) fn judge_ty(ty: &JudgeTy) -> String {
     match ty {
-        Ty::Unit => "void".into(),
-        Ty::Int => "int".into(),
-        Ty::Float => "double".into(),
-        Ty::Bool => "bool".into(),
-        Ty::Char => "char".into(),
-        Ty::Str => "std::string".into(),
-        Ty::StrView => "cpl::StrView".into(),
-        Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
-        Ty::ListView(elem, _) => format!("cpl::ListView<{}>", judge_ty(elem)),
-        Ty::Keyed(elem, _) => format!("cpl::Keyed<{}>", judge_ty(elem)),
-        Ty::MutView(elem, _) => format!("cpl::MutView<{}>", judge_ty(elem)),
-        Ty::Tuple(items) => {
+        JudgeTy::Int => "int".into(),
+        JudgeTy::Long => "long long".into(),
+        JudgeTy::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
+        JudgeTy::Tuple(items) => {
             let items: Vec<String> = items.iter().map(judge_ty).collect();
-            format!("std::tuple<{}>", items.join(", "))
+            let of = if items.len() == 2 { "pair" } else { "tuple" };
+            format!("std::{of}<{}>", items.join(", "))
         }
-        _ => unreachable!("lowering lets only these types cross to the judge"),
+        JudgeTy::Void => "void".into(),
+        JudgeTy::Double => "double".into(),
+        JudgeTy::Bool => "bool".into(),
+        JudgeTy::Char => "char".into(),
+        JudgeTy::Str => "std::string".into(),
     }
 }
 

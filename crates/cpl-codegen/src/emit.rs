@@ -686,11 +686,21 @@ impl<'p> Emitter<'p> {
     }
 
     /// The fn as the judge's grader declares it.
-    fn judge_signature(&self, f: &Function) -> String {
+    fn judge_signature(
+        &self,
+        f: &Function,
+        sides: &[cpl_ir::JudgeTy],
+        ret: &cpl_ir::JudgeTy,
+    ) -> String {
         let params: Vec<String> = (0..f.params.len())
-            .map(|slot| format!("{} {}", judge_ty(&f.locals[slot].ty), self.names[slot]))
+            .map(|slot| format!("{} {}", judge_ty(&sides[slot]), self.names[slot]))
             .collect();
-        format!("{} {}({})", judge_ty(&f.ret), f.name, params.join(", "))
+        format!("{} {}({})", judge_ty(ret), f.name, params.join(", "))
+    }
+
+    /// `cpl::Judge<T, J>`: a `T` of the program's to a `J` of the grader's.
+    fn judge_conv(&self, ty: &Ty, side: &cpl_ir::JudgeTy) -> String {
+        format!("cpl::Judge<{}, {}>", self.ty(ty), judge_ty(side))
     }
 
     /// Declarations of the locals that could not be declared where they
@@ -937,40 +947,35 @@ impl<'p> Emitter<'p> {
                     .push((part, f.name.clone(), fns[start..].to_string()));
                 continue;
             }
-            if program.judge_fns.contains(&id) {
+            let judge = program.judge_sides(id);
+            if let Some((sides, ret)) = judge.filter(|_| program.judge_fns.contains(&id)) {
                 // The judge's fn, declared at the top of the file, behind
                 // a fn of the program's own types.
                 self.need("judge");
-                judge_decls.push_str(&format!("{};\n", self.judge_signature(f)));
+                judge_decls.push_str(&format!("{};\n", self.judge_signature(f, sides, ret)));
                 let args: Vec<String> = (0..f.params.len())
                     .map(|slot| {
-                        format!(
-                            "cpl::Judge<{}>::to({})",
-                            self.ty(&f.locals[slot].ty),
-                            self.names[slot]
-                        )
+                        let conv = self.judge_conv(&f.locals[slot].ty, &sides[slot]);
+                        format!("{conv}::to({})", self.names[slot])
                     })
                     .collect();
                 let call = format!("::{}({})", f.name, args.join(", "));
                 let body = match f.ret {
                     Ty::Unit => format!("{call};"),
-                    _ => format!("return cpl::Judge<{}>::from({call});", self.ty(&f.ret)),
+                    _ => format!("return {}::from({call});", self.judge_conv(&f.ret, ret)),
                 };
                 fns.push_str(&format!("\n{signature} {{\n    {body}\n}}\n"));
                 self.chunks
                     .push((part, f.name.clone(), fns[start..].to_string()));
                 continue;
             }
-            if program.entry_fns.contains(&id) {
+            if let Some((sides, ret)) = judge.filter(|_| program.entry_fns.contains(&id)) {
                 // What the judge's grader calls: the same fn in its types.
                 self.need("judge");
                 let args: Vec<String> = (0..f.params.len())
                     .map(|slot| {
-                        format!(
-                            "cpl::Judge<{}>::from({})",
-                            self.ty(&f.locals[slot].ty),
-                            self.names[slot]
-                        )
+                        let conv = self.judge_conv(&f.locals[slot].ty, &sides[slot]);
+                        format!("{conv}::from({})", self.names[slot])
                     })
                     .collect();
                 let call = format!("prog::{}({})", fn_name(&f.name), args.join(", "));
@@ -978,13 +983,13 @@ impl<'p> Emitter<'p> {
                 let body = match f.ret {
                     Ty::Unit => format!("{call};\n    cpl::flush();"),
                     _ => format!(
-                        "auto cpl_result = cpl::Judge<{}>::to({call});\n    cpl::flush();\n    return cpl_result;",
-                        self.ty(&f.ret)
+                        "auto cpl_result = {}::to({call});\n    cpl::flush();\n    return cpl_result;",
+                        self.judge_conv(&f.ret, ret)
                     ),
                 };
                 entries.push_str(&format!(
                     "\n{} {{\n    cpl_start();\n    {body}\n}}\n",
-                    self.judge_signature(f)
+                    self.judge_signature(f, sides, ret)
                 ));
             }
             let def_at = fns.len();
