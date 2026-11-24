@@ -11,8 +11,8 @@
 
 use crate::uses::Home;
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, Iter, Place, PlaceKind,
-    Program, Spec, Stmt, Ty, UnOp,
+    Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, DomainId, Expr, ExprKind, Iter, Place,
+    PlaceKind, Program, Spec, Stmt, Ty, UnOp,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -1448,6 +1448,40 @@ impl<'p> Facts<'p> {
             (Some(lo), _) if lo > 0 => Sign::Positive,
             (Some(0), Sign::Unknown) => Sign::NonNeg,
             (_, own) => own,
+        }
+    }
+
+    /// Which sides of `0..len` the ordinal `e` of domain `d` is known to
+    /// keep: `(>= 0, < len)`. A position stepped up by an amount never
+    /// negative stays `>= 0`; stepped down, `< len`.
+    pub(crate) fn kept_sides(&self, fn_id: Option<usize>, e: &Expr, d: DomainId) -> (bool, bool) {
+        let low = self.sign_at(fn_id, e, 0) != Sign::Unknown;
+        let first = |z: &Expr| match &z.kind {
+            ExprKind::Cast(Cast::Label(l), z) if *l == d => match &z.kind {
+                ExprKind::Cast(Cast::Trust, z) => matches!(z.kind, ExprKind::Int(0)),
+                k => matches!(k, ExprKind::Int(0)),
+            },
+            _ => false,
+        };
+        let (base, labels) = match &e.kind {
+            ExprKind::Binary(BinOp::Sub, a, z) if first(z) => (&**a, true),
+            _ => (e, false),
+        };
+        let pos = |p: &Expr| match &p.kind {
+            ExprKind::Cast(Cast::Ord, q) => q.ty == Ty::Pos(d),
+            _ => p.ty == Ty::Pos(d),
+        };
+        let at = |p: &Expr| match &p.kind {
+            ExprKind::Cast(Cast::Label(l), p) => labels && *l == d && pos(p),
+            ExprKind::Cast(Cast::Ord, p) => !labels && p.ty == Ty::Pos(d),
+            _ => false,
+        };
+        let known = |k: &Expr| self.sign_at(fn_id, k, 0) != Sign::Unknown;
+        match &base.kind {
+            _ if at(base) => (true, true),
+            ExprKind::Binary(BinOp::Add, p, k) if at(p) && known(k) => (true, false),
+            ExprKind::Binary(BinOp::Sub, p, k) if at(p) && known(k) => (low, true),
+            _ => (low, false),
         }
     }
 

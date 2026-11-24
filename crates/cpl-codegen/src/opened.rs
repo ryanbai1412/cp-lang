@@ -6,7 +6,7 @@
 //! and `if let a = xs.last` is `if (!xs.empty()) { a = xs.back(); ... }`.
 //! Only optionals of a scalar: the value is a copy either way.
 
-use crate::emit::{Code, Emitter, AND, COND, PRIMARY, UNARY};
+use crate::emit::{Code, Emitter, AND, COND, PRIMARY, REL, UNARY};
 use crate::names::dom_ident;
 use cpl_ir::{walk, BinOp, Builtin, Expr, ExprKind, Program, Stmt, Ty};
 use std::collections::BTreeSet;
@@ -70,8 +70,16 @@ impl Emitter<'_> {
                 }
                 _ => i.at(PRIMARY),
             };
+            let home = self.facts_home();
+            let (low, high) = self.facts.kept_sides(home, &args[0], *d);
+            let test = match (!low, !high) {
+                (true, true) => Code::new(format!("{at} >= 0 && {at} < {len}"), AND),
+                (true, false) => Code::new(format!("{at} >= 0"), REL),
+                (false, true) => Code::new(format!("{at} < {len}"), REL),
+                (false, false) => Code::new("true", PRIMARY),
+            };
             return Some(Parts {
-                test: Code::new(format!("{at} >= 0 && {at} < {len}"), AND),
+                test,
                 value: format!("(int){at}"),
             });
         }

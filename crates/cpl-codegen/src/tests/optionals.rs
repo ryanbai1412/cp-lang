@@ -368,3 +368,25 @@ fn a_cell_fn_tested_by_its_caller_builds_no_opt_tuple() {
         "{p}"
     );
 }
+
+#[test]
+fn a_position_stepped_by_k_checks_only_the_side_it_can_leave() {
+    let cpp = cpp("let w: 1..=9 = read()\ndomain Col = 0..w\nlet c: Col = Col.first!\nlet k: 0..=9 = read()\nif let l = Col.at(c - 1): print(l.idx)\nif let r = Col.at(c + k): print(r.idx)\n");
+    let p = prog(&cpp);
+    let checks: Vec<&str> = p
+        .lines()
+        .filter(|l| l.trim_start().starts_with("if ("))
+        .collect();
+    assert!(
+        checks
+            .iter()
+            .any(|l| l.contains(">= 0") && !l.contains("Col_len")),
+        "{p}"
+    );
+    assert!(
+        checks
+            .iter()
+            .any(|l| l.contains("< Col_len") && !l.contains(">= 0")),
+        "{p}"
+    );
+}
