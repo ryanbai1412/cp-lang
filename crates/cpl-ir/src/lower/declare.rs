@@ -122,6 +122,19 @@ pub(super) fn rev_param_key(name: &str) -> String {
 }
 
 impl<'a> Lowerer<'a> {
+    /// `e` is `a.rev` over an array, list or view, or a name bound to one: its
+    /// order is not its keys' order.
+    pub(super) fn reordered_view(&mut self, e: &ast::Expr) -> bool {
+        match &e.kind {
+            ast::ExprKind::Field { base, name } if name.text == "rev" => matches!(
+                self.probe_ty_silent(base),
+                Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..))
+            ),
+            ast::ExprKind::Paren(inner) => self.reordered_view(inner),
+            _ => self.reversed_arg(e),
+        }
+    }
+
     /// `e` is `a.rev` over a list or view, or a name bound to one.
     fn reversed_arg(&mut self, e: &ast::Expr) -> bool {
         match &e.kind {

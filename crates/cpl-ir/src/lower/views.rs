@@ -33,6 +33,10 @@ impl<'a> Lowerer<'a> {
             let Some(arg) = arg.filter(|a| a.mutable == param.mutable) else {
                 continue;
             };
+            // A reversed view is read in its own order, so it becomes a fresh `[V]T`.
+            if self.reordered_view(&arg.value) {
+                continue;
+            }
             let Ty::Array { dims, elem } = &param.ty else {
                 continue;
             };
