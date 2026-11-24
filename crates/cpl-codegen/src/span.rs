@@ -37,6 +37,9 @@ impl Facts<'_> {
         }
         let at = |x: &Expr| self.lower_bound(fn_id, x, depth + 1);
         let once = |v: crate::ranges::Var| {
+            if let Some(Spec::Int { lo: Some(lo), .. }) = self.param_range(v) {
+                return self.lower_bound(v.0, lo, depth + 1);
+            }
             if self.stores(v) != 1 {
                 return None;
             }

@@ -1008,6 +1008,9 @@ impl<'p> Facts<'p> {
     }
 
     fn local_hi(&self, v: Var, depth: u8) -> Option<i64> {
+        if let Some(Spec::Int { hi: Some(hi), .. }) = self.param_range(v) {
+            return self.upper_bound(v.0, hi, depth + 1);
+        }
         if let (1, Some(&(hi, closed))) = (self.stores(v), self.loop_hi.get(&v)) {
             let hi = self.upper_bound(v.0, hi, depth + 1)?;
             return if closed { Some(hi) } else { hi.checked_sub(1) };
@@ -1019,6 +1022,14 @@ impl<'p> Facts<'p> {
         } else {
             self.var_hi.get(&v).copied()
         }
+    }
+
+    /// The declared range of parameter `v`, while no store has changed it.
+    pub(crate) fn param_range(&self, v: Var) -> Option<&'p Spec> {
+        self.param_ranges
+            .get(&v)
+            .copied()
+            .filter(|_| self.stores(v) == 2)
     }
 
     /// True when `e` can't be `Int.MAX`, so `i <= e` ends a loop that

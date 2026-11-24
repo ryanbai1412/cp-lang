@@ -188,7 +188,7 @@ fn a_ranged_param_divides_with_cpps_own_operator() {
         "print(step(n, 7))\n",
     ));
     assert!(
-        cpp.contains("cpl::imul(x, 3), 1)) % uint64_t(m));"),
+        cpp.contains("ll(uint32_t(x * 3 + 1) % uint32_t(m));"),
         "{cpp}"
     );
     assert!(!cpp.contains("cpl::emod("), "{cpp}");
@@ -480,4 +480,12 @@ fn a_loop_guard_bounds_what_its_body_sets_the_local_to() {
         "let n: 1..=1_000_000_000 = read()\nvar i = 1\nwhile i < n: i = 2 * i + 1\ni = i * i\nprint(i * 2)\n",
     );
     assert!(past.contains("cpl::imul(i, 2)"), "{past}");
+}
+
+#[test]
+fn a_ranged_parameter_is_bounded_by_its_range() {
+    let out = cpp("fn g(n: 0..2_147_483_648) -> Int = n * 2 + 63\nprint(g(read()))\n");
+    assert!(out.contains("n * 2 + 63"), "{out}");
+    let open = cpp("fn g(n: 0..) -> Int = n + 63\nprint(g(read()))\n");
+    assert!(open.contains("cpl::iadd(n, 63)"), "{open}");
 }
