@@ -277,7 +277,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "splice",
         "splice.rs",
-        Unasked,
+        Uses(&["each_loop", "stmt_count"]),
         "bfs_over_a_filtered_adj4_builds_no_list_per_cell",
     ),
     pass(

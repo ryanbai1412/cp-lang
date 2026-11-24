@@ -257,3 +257,29 @@ fn each_write_says_how_each_place_is_written() {
         "a global's first value is a store too"
     );
 }
+
+#[test]
+fn each_loop_and_stmt_count_see_nested_loops() {
+    use crate::uses::loops::{each_loop, stmt_count, Loop};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var t = 0\n",
+        "    for i in 0..n:\n",
+        "        while t < i:\n",
+        "            t += 1\n",
+        "    t\n",
+        "print(f(3))\n",
+    ));
+    let body = &program.fns[0].body;
+    let (mut fors, mut whiles, mut ids) = (0, 0, Vec::new());
+    each_loop(body, &mut |id, head| {
+        ids.push(id);
+        match head {
+            Loop::For(_) => fors += 1,
+            Loop::While => whiles += 1,
+        }
+    });
+    ids.dedup();
+    assert_eq!((fors, whiles, ids.len()), (1, 1, 2));
+    assert!(stmt_count(body) >= 4, "let, for, while and the store");
+}

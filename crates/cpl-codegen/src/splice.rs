@@ -6,7 +6,7 @@
 //! the same work in the same order, minus a call.
 
 use crate::devirt::{skippable, Devirt};
-use crate::walk;
+use crate::uses::loops::{each_loop, stmt_count, Loop};
 use cpl_ir::{
     Arg, Block, ClosureDef, ClosureId, Expr, ExprKind, FnId, Iter, Local, LoopId, Place, PlaceKind,
     Program, Slot, Stmt,
@@ -33,12 +33,12 @@ pub(crate) fn splice(program: &mut Program) {
     {
         let devirt = Devirt::collect(program);
         let mut scan = |owner: Owner, home: Option<FnId>, body: &Block| {
-            walk::deep_stmts(body, &mut |stmt| {
-                if let Stmt::For(id, _, Iter::Seq(seq, false), _) = stmt {
+            each_loop(body, &mut |id, head| {
+                if let Loop::For(Iter::Seq(seq, false)) = head {
                     if let ExprKind::CallExpr(callee, _) = &seq.kind {
                         if let Some(cid) = devirt.target(home, callee) {
                             if skippable(callee) {
-                                found.insert((owner, *id), cid);
+                                found.insert((owner, id), cid);
                             }
                         }
                     }
@@ -140,8 +140,7 @@ fn producer_body(c: &ClosureDef) -> Option<Block> {
         }
         _ => return None,
     };
-    let mut count = 0;
-    walk::deep_stmts(&block, &mut |_| count += 1);
+    let count = stmt_count(&block);
     let seq = Expr {
         kind: ExprKind::Do(block),
         ty: c.ret.clone(),
@@ -158,12 +157,7 @@ fn producer_body(c: &ClosureDef) -> Option<Block> {
 
 fn max_loop(program: &Program) -> LoopId {
     let mut max = 0;
-    let mut see = |b: &Block| {
-        walk::deep_stmts(b, &mut |s| match s {
-            Stmt::For(id, ..) | Stmt::While(id, ..) => max = max.max(*id),
-            _ => {}
-        })
-    };
+    let mut see = |b: &Block| each_loop(b, &mut |id, _| max = max.max(id));
     see(&program.main);
     see(&program.setup);
     program.fns.iter().for_each(|f| see(&f.body));

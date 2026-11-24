@@ -8,6 +8,7 @@
 //! block's value) keeps it live to the end of the block.
 
 pub(crate) mod effects;
+pub(crate) mod loops;
 pub(crate) mod places;
 
 use crate::lend::{copied_at_test, Tail};
@@ -832,9 +833,7 @@ pub(crate) fn stored_last(program: &Program, f: &cpl_ir::Function) -> BTreeSet<u
 /// loop, at any depth.
 pub(crate) fn repeats(block: &Block) -> bool {
     let mut found = false;
-    walk::deep_stmts(block, &mut |stmt| {
-        found |= matches!(stmt, Stmt::For(..) | Stmt::While(..));
-    });
+    loops::each_loop(block, &mut |_, _| found = true);
     found
 }
 
