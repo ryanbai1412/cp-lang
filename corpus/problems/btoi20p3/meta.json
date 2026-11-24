@@ -25,5 +25,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "ParityDsu mark/undo_to + recursion; ParityDsu and yes() were missing from the prelude/stubs."
+ "notes": "ParityDsu mark/undo_to + recursion; ParityDsu and yes() were missing from the prelude/stubs.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "b583aa8cc6dd7cbe3d71f21c7bef28805a276375"
+ }
 }
