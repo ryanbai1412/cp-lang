@@ -1176,6 +1176,53 @@ fn a_let_of_a_field_only_pushed_to_before_it_is_set_whole_moves_out() {
     assert!(out.contains("std::vector<ll> old = std::move(s"), "{out}");
 }
 
+fn payload_let(prelude: &str, call: &str) -> String {
+    let out = cpp(&format!(
+        "enum Q = Ask(s: Str) | Skip\nvar q = Q.Ask(read<Str>())\n{prelude}match q:\n    Ask(s) =>\n        {call}\n        print(s)\n    Skip => print(\"none\")\nprint(match q: Skip => 0, Ask(_) => 1)\n"
+    ));
+    let line = out
+        .lines()
+        .find(|l| l.contains("q.Ask_0"))
+        .expect("the payload let");
+    line.trim().to_string()
+}
+
+#[test]
+fn a_match_payload_moves_out_before_a_fn_that_sets_its_scrutinee_whole() {
+    let global = payload_let("fn clear():\n    q = Q.Skip\n", "clear()");
+    assert!(global.contains("std::move(q."), "{global}");
+    let param = payload_let("fn reset(mut x: Q):\n    x = Q.Skip\n", "reset(mut q)");
+    assert!(param.contains("std::move(q."), "{param}");
+}
+
+#[test]
+fn a_match_payload_still_copies_when_the_fn_may_read_its_scrutinee_first() {
+    for (prelude, call) in [
+        (
+            "fn clear():\n    print(yes(q is Skip))\n    q = Q.Skip\n",
+            "clear()",
+        ),
+        (
+            "fn reset(mut x: Q):\n    print(yes(x is Skip))\n    x = Q.Skip\n",
+            "reset(mut q)",
+        ),
+        (
+            "fn clear(n: Int):\n    if n > 0: clear(n - 1)\n    q = Q.Skip\n",
+            "clear(2)",
+        ),
+        (
+            "fn clear(n: Int):\n    if n > 0: return\n    q = Q.Skip\n",
+            "clear(2)",
+        ),
+    ] {
+        let line = payload_let(prelude, call);
+        assert!(
+            line.starts_with("std::string s = q.Ask_0"),
+            "{prelude}: {line}"
+        );
+    }
+}
+
 #[test]
 fn a_match_payload_whose_scrutinee_is_set_next_moves_out() {
     let out = cpp(concat!(
