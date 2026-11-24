@@ -6,7 +6,7 @@ struct Run:
     var len: Int
 let n = 4
 let a: [0..n]Int = [0..n] i => i * 3
-print(a.first, a.last!)
+print(a.first!, a.last!)
 let top: Int = a.last!
 print(top + 1)
 var runs = [Run(1, 2), Run(3, 4)]
@@ -23,7 +23,7 @@ zs.first! -= 1
 print(zs)
 // An array from 1: the builder's `i` is the index, not the offset.
 let from_one: [1..=3]Int = [1..=3] i => i * 10
-print(from_one, from_one.first, from_one.last)
+print(from_one, from_one.first!, from_one.last!)
 domain I = 0..n
 let by_domain: [I]Int = [I] i => i.ord + 10
 domain R = 0..2
@@ -31,4 +31,4 @@ domain C = 0..3
 let g: [R, C]Int = [R, C] (r, c) => r.ord * 3 + c.ord
 domain Z = 0..0
 let e: [Z]Int = [Z] z => 0
-print(by_domain.first, by_domain.last, g.first, g.last, e.first, e.last)
+print(by_domain.first, by_domain.last, g.first, g.last, e.first, e.last, none: "none")

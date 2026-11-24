@@ -4,7 +4,7 @@ var ok = 1..
 ok = ok.clip(-3..)
 print(ok.len)
 let wide = -3..
-print(wide.first!, wide.contains(5), wide.contains(-4))
+print(wide.first!, yes(wide.contains(5)), yes(wide.contains(-4)))
 var below = ..5
 below = below.clip(-3..)
 print(below.len)
