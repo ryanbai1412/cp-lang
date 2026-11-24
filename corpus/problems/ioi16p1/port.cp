@@ -7,7 +7,7 @@
 //   lightest to the k heaviest. Two pointers: grow the window, drop the lightest while the sum
 //   exceeds u, stop at the first sum >= l. O(n log n).
 // original: corpus/submissions/4686581.cpp (grader function find_subset)
-// stdin here: n l u, then the n weights.
+// checker: corpus/problems/ioi16p1/checker.py
 // stdin here: n l u, then the n weights; stdout: the subset's size, then its 0-based indices.
 let n: 1..=200_000 = read()
 let l: 1..=2_147_483_647 = read()
