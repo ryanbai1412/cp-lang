@@ -23,7 +23,10 @@ for i in 0..reps:
     let e = fo.seq() // timed: lazy.LazyForest.seq
     fo.push(fs, i) // timed: lazy.LazyForest.push
     fo.append(e, fo.split_at(fs, n))
-for _ in 0..200:
-    s += fo.to_list(fs).len // timed: lazy.LazyForest.to_list
+// at n / 8 elements, as for LazyTreap.to_list
+let fl = fo.seq()
+for i in 0..n / 8: fo.push(fl, i * 7919 % n)
+for _ in 0..1600:
+    s += fo.to_list(fl).len // timed: lazy.LazyForest.to_list
 
 print(s)

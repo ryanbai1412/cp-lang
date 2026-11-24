@@ -37,5 +37,5 @@
 {"id":36,"line":25,"label":"ok = ok and check(mut t, want)","stage":"main","values":{"stdout":[],"ok":true},"locals":{"n":2,"t":"1 0","want":[1,0],"i":1,"k":1,"back":""},"frames":[{"fn":"main","line":25}]},
 {"id":37,"line":14,"label":"t.insert_at(i / 2, i)","stage":"main","values":{"stdout":[],"ok":true},"locals":{"n":3,"t":"0","want":[],"i":0,"k":1,"back":""},"frames":[{"fn":"main","line":14}]},
 {"id":38,"line":14,"label":"t.insert_at(i / 2, i)","stage":"main","values":{"stdout":[],"ok":true},"locals":{"n":3,"t":"1 0","want":[0],"i":1,"k":1,"back":""},"frames":[{"fn":"main","line":14}]},
-... 4609 more lines, 1197966 bytes, fnv64 58970e4bce8df331
+... 4609 more lines, 1197966 bytes, fnv64 3d9ae49c2dda594f
 stderr:

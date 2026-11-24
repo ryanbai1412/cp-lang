@@ -5,22 +5,36 @@
 //!
 //! `Concave` keeps `f` on `lo..=hi` as `f(lo)` plus the multiset of slopes
 //! `f(c + 1) - f(c)`, largest first, in a lazy treap; `Convex` is its mirror.
+use std.algebra.{Action}
 use std.lazy.{LazyTreap}
-use std.range.{Len, first_true}
+use std.range.{Len}
 
-struct Slide(base: Int, step: Int)
+// What a tag does to the slopes it covers, by their position `p` from its first slope: each
+// becomes `(0 if zero else s) + base + p * step`.
+struct Slide(zero: Bool, base: Int, step: Int)
 
-fn falling() -> LazyTreap<Int, Slide> = LazyTreap<Int, Slide>(
-    apply: (v, left, f) => v + f.base + left * f.step,
-    compose: (f, g) => Slide(f.base + g.base, f.step + g.step),
-    split: (f, left) => (f, Slide(f.base + (left + 1) * f.step, f.step)),
-    before: (x, y) => x >= y,
-    mirror: (f, n) => Slide(f.base + (n - 1) * f.step, -f.step),
+fn adds(base: Int, step: Int) -> Slide = Slide(false, base, step)
+
+// The slopes in falling order in a `LazyTreap` that keeps each subtree's slope sum, so a prefix
+// sum or a count of the slopes at least `v` is one walk down the tree.
+fn slope_treap() -> LazyTreap<Int, Slide> = LazyTreap<Int, Slide>(
+    apply: (v, k, f) => (if f.zero: 0 else: v) + f.base + k * f.step,
+    compose: then,
+    split: (f, k) => (f, Slide(f.zero, f.base + (k + 1) * f.step, f.step)),
+    before: (x, y) => x > y,
+    summary: Action<Int, Slide>(
+        id: adds(0, 0),
+        compose: then,
+        apply: (f, s, n) => (if f.zero: 0 else: s) + n * f.base + n * (n - 1) / 2 * f.step,
+    ),
 )
 
+// `g` after `f`.
+fn then(g: Slide, f: Slide) -> Slide = if g.zero: g else: Slide(f.zero, f.base + g.base, f.step + g.step)
+
 /// A concave function on the integers `lo..=hi`: its value at `lo` and its slopes in falling order.
-/// Law: every operation keeps it concave. \(O(\log n)\) expected per slope update, for n slopes;
-/// reading a value walks the slopes.
+/// Law: every operation keeps it concave. \(O(\log n)\) expected per update and per read, for n
+/// slopes.
 pub struct Concave(start: Int, base: Int):
     slopes: LazyTreap<Int, Slide>
 
@@ -29,7 +43,7 @@ pub struct Concave(start: Int, base: Int):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var t = Concave.point(3); t.at(3) == 0`
-    pub fn point(d: Int) -> Concave = Concave(d, 0, falling())
+    pub fn point(d: Int) -> Concave = Concave(d, 0, slope_treap())
 
     /// The function that is 0 on every point of `r`; its domain is `r`, so `lo` is the first point of
     /// `r` and `hi` the last.
@@ -94,30 +108,25 @@ pub struct Concave(start: Int, base: Int):
         assert step <= 0
         assert q(start + 3) == q0 + 3 * (q2 - q1)
         base += q0
-        slopes.apply_all(Slide(q1 - q0, step))
+        slopes.apply_all(adds(q1 - q0, step))
 
     /// The value `f(c)`.
     ///
-    /// cost: \(O(c - \mathit{lo} + \log n)\) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: when `c` is outside `lo..=hi`
     /// example: `var f = Concave.flat(0..=4); f.add_abs(1); f.at(4) == -3`
     pub fn at(mut self, c: Int) -> Int:
         assert start <= c <= start + slopes.len
-        base + slopes.take(c - start).sum()
+        base + slopes.prefix(c - start)
 
     /// The largest value of `f` over its domain.
     /// On a tie only the value is kept; which point attains it does not matter.
     ///
-    /// cost: \(O(n)\)
+    /// cost: \(O(\log n)\) expected
     /// ties: `var f = Concave.flat(0..=2); f.max() == 0`
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(1); f.add_const(5); f.max() == 5`
-    pub fn max(mut self) -> Int:
-        var best = base
-        for s in slopes.to_list():
-            if s <= 0: break
-            best += s
-        best
+    pub fn max(mut self) -> Int = base + slopes.prefix(self.count_at_least(1))
 
     /// Add `min(0, x - a)`: a hinge with slope 1 left of `a` and flat from `a` on.
     ///
@@ -127,7 +136,7 @@ pub struct Concave(start: Int, base: Int):
     pub fn add_left(mut self, a: Int):
         let k = if a <= start: 0 else: min(a - start, slopes.len)
         base += min(0, start - a)
-        slopes.apply_range(0, k, Slide(1, 0))
+        slopes.apply_range(0, k, adds(1, 0))
     /// Add `min(0, a - x)`: flat up to `a` and slope -1 right of it.
     ///
     /// cost: \(O(\log n)\) expected
@@ -136,7 +145,7 @@ pub struct Concave(start: Int, base: Int):
     pub fn add_right(mut self, a: Int):
         let k = if a <= start: 0 else: min(a - start, slopes.len)
         base += min(0, a - start)
-        slopes.apply_range(k, slopes.len, Slide(-1, 0))
+        slopes.apply_range(k, slopes.len, adds(-1, 0))
     /// Add `-|x - a|`; `add_left(a)` and `add_right(a)` together.
     ///
     /// cost: \(O(\log n)\) expected
@@ -159,33 +168,30 @@ pub struct Concave(start: Int, base: Int):
     /// example: `var f = Concave.flat(0..=4); f.add_linear(2); f.at(3) == 6 and f.at(0) == 0`
     pub fn add_linear(mut self, k: Int):
         base += k * start
-        slopes.apply_all(Slide(k, 0))
+        slopes.apply_all(adds(k, 0))
     /// Replace `f(x)` with the largest `f(y)` over `y <= x` in the domain; the domain is unchanged
     /// and every falling slope becomes 0.
     /// On a tie only the value is kept; which point attains it does not matter.
     ///
-    /// cost: \(O((m + \log n) \log n)\) expected, for the m falling slopes
+    /// cost: \(O(\log n)\) expected
     /// ties: `var f = Concave.flat(0..=4); f.add_left(2); f.prefix_max(); f.at(3) == 0`
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.prefix_max(); f.at(0) == -2 and f.at(4) == 0`
     pub fn prefix_max(mut self):
         let k = self.count_at_least(0)
-        let m = slopes.len - k
-        slopes.erase_range(k..slopes.len)
-        for _ in 0..m: slopes.insert(0)
+        slopes.apply_range(k, slopes.len, Slide(true, 0, 0))
     /// Replace `f(x)` with the largest `f(y)` over `y >= x` in the domain; the domain is unchanged
     /// and every rising slope becomes 0.
     /// On a tie only the value is kept; which point attains it does not matter.
     ///
-    /// cost: \(O(n + k \log n)\) expected, for the k rising slopes
+    /// cost: \(O(\log n)\) expected
     /// ties: `var f = Concave.flat(0..=4); f.add_right(2); f.suffix_max(); f.at(1) == 0`
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.suffix_max(); f.at(0) == 0 and f.at(4) == -2`
     pub fn suffix_max(mut self):
         let k = self.count_at_least(1)
         base = self.max()
-        slopes.erase_range(0..k)
-        for _ in 0..k: slopes.insert(0)
+        slopes.apply_range(0, k, Slide(true, 0, 0))
     /// Move the function right by `d`: the new `f(x)` is the old `f(x - d)`, and `lo` and `hi` both
     /// grow by `d`.
     ///
@@ -209,7 +215,7 @@ pub struct Concave(start: Int, base: Int):
     /// The points where `f` reaches its maximum, as a half-open range; by concavity they are
     /// contiguous.
     ///
-    /// cost: \(O(\log^2 n)\) expected
+    /// cost: \(O(\log n)\) expected
     /// order: ascending points
     /// ties: `var f = Concave.flat(0..=4); f.add_left(2); f.argmax() == 2..5`
     /// traps: never
@@ -218,12 +224,10 @@ pub struct Concave(start: Int, base: Int):
     pub fn argmax(mut self) -> Range<Int> =
         start + self.count_at_least(1)..start + self.count_at_least(0) + 1
 
-    fn count_at_least(mut self, v: Int) -> Int =
-        (0..slopes.len).first_true(i => slopes.get(i) < v) ?? slopes.len
+    fn count_at_least(mut self, v: Int) -> Int = slopes.count_while(s => s >= v)
 
 /// A convex function on the integers `lo..=hi`, the negation of a `Concave`: the same operations
-/// with `min` for `max`. \(O(\log n)\) expected per slope update, for n slopes; reading a value
-/// walks the slopes.
+/// with `min` for `max`. \(O(\log n)\) expected per update and per read, for n slopes.
 pub struct Convex(neg: Concave):
     /// The function defined on the single point `d`, with `f(d) = 0`.
     ///
@@ -274,7 +278,7 @@ pub struct Convex(neg: Concave):
 
     /// The value `f(c)`.
     ///
-    /// cost: \(O(c - \mathit{lo} + \log n)\) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: when `c` is outside `lo..=hi`
     /// example: `var f = Convex.flat(0..=4); f.add_abs(1); f.at(4) == 3`
     pub fn at(mut self, c: Int) -> Int = -neg.at(c)
@@ -282,7 +286,7 @@ pub struct Convex(neg: Concave):
     /// The smallest value of `f` over its domain.
     /// On a tie only the value is kept; which point attains it does not matter.
     ///
-    /// cost: \(O(n)\)
+    /// cost: \(O(\log n)\) expected
     /// ties: `var f = Convex.flat(0..=2); f.min() == 0`
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(1); f.add_const(5); f.min() == 5`
@@ -321,7 +325,7 @@ pub struct Convex(neg: Concave):
     /// Replace `f(x)` with the smallest `f(y)` over `y <= x` in the domain; the domain is unchanged.
     /// On a tie only the value is kept; which point attains it does not matter.
     ///
-    /// cost: \(O((m + \log n) \log n)\) expected, for the m rising slopes
+    /// cost: \(O(\log n)\) expected
     /// ties: `var f = Convex.flat(0..=4); f.add_right(2); f.prefix_min(); f.at(3) == 0`
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(2); f.prefix_min(); f.at(0) == 2 and f.at(4) == 0`
@@ -329,7 +333,7 @@ pub struct Convex(neg: Concave):
     /// Replace `f(x)` with the smallest `f(y)` over `y >= x` in the domain; the domain is unchanged.
     /// On a tie only the value is kept; which point attains it does not matter.
     ///
-    /// cost: \(O(n + k \log n)\) expected, for the k falling slopes
+    /// cost: \(O(\log n)\) expected
     /// ties: `var f = Convex.flat(0..=4); f.add_left(2); f.suffix_min(); f.at(1) == 0`
     /// traps: never
     /// example: `var f = Convex.flat(0..=4); f.add_abs(2); f.suffix_min(); f.at(0) == 0 and f.at(4) == 2`
@@ -353,7 +357,7 @@ pub struct Convex(neg: Concave):
     /// The points where `f` reaches its minimum, as a half-open range; by convexity they are
     /// contiguous.
     ///
-    /// cost: \(O(\log^2 n)\) expected
+    /// cost: \(O(\log n)\) expected
     /// order: ascending points
     /// ties: `var f = Convex.flat(0..=4); f.add_left(2); f.argmin() == 2..5`
     /// traps: never

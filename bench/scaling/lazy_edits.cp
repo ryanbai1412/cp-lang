@@ -16,12 +16,18 @@ for i in 0..reps:
     var u = t.split_at(t.len - 1 - i % 8) // timed: lazy.LazyTreap.split_at [let: k = n - 4]
     t.splice_back(mut u) // timed: lazy.LazyTreap.splice_back [fixed: m]
     s += t.take(4).len // timed: lazy.LazyTreap.take [fixed: k]
-for _ in 0..200:
-    s += t.to_list().len // timed: lazy.LazyTreap.to_list
-// Storage grows by moving the nodes already there.
-for _ in 0..100:
+// At n / 8 elements the list stays under 128 KB at 4n too, so malloc serves both sizes from the
+// heap and neither pays fresh-page faults that the other doesn't.
+var tl = treap()
+for i in 0..n / 8: tl.push(i * 7919 % n)
+for _ in 0..1600:
+    s += tl.to_list().len // timed: lazy.LazyTreap.to_list
+// Storage grows by moving the nodes already there. At n / 128 nodes the doubled block stays
+// under 128 KB at 4n too, so malloc serves both sizes from the heap and neither pays fresh-page
+// faults that the other doesn't.
+for _ in 0..30000:
     var r = treap()
-    for i in 0..n: r.push(i)
-    r.reserve(2 * n) // timed: lazy.LazyTreap.reserve
+    for i in 0..n / 128: r.push(i)
+    r.reserve(n / 64) // timed: lazy.LazyTreap.reserve
     s += r.len
 print(s)
