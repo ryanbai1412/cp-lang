@@ -26,6 +26,13 @@ class SeedListTest(unittest.TestCase):
     def write(self, toml):
         (self.dir / "tests.toml").write_text(toml)
 
+    def test_a_port_with_a_seed_list_has_tests_without_a_spec(self):
+        self.assertEqual(ct.problems([]), [])
+        (self.dir / "port.cp").write_text("")
+        self.assertEqual(ct.problems([]), [])
+        self.write("[[case]]\nseed = 1\nsize = 4\n")
+        self.assertEqual(ct.problems([]), ["p1"])
+
     def test_no_list_means_none(self):
         self.assertIsNone(ct.seed_list("p1"))
 

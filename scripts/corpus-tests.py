@@ -2,7 +2,7 @@
 """Generate the corpus acceptance tests (`tests/NN.in` and `NN.ans`).
 
 `make` writes `target/corpus-tests/<id>/NN.in` and `NN.ans` for every
-problem with a `spec.cp`: inputs from the seed list in
+problem with a `spec.cp`, or a `port.cp` and a `tests.toml`: inputs from the seed list in
 `corpus/problems/<id>/tests.toml` (see `seed_list`), else from its `gen.py`
 or `bench/*` SPECS, answers from the problem's accepted C++ submission. It
 never writes into `corpus/`: committed test data is being retired
@@ -33,7 +33,10 @@ INLINE = 200
 
 
 def problems(ids):
-    have = sorted(p for p in os.listdir(PROBLEMS) if os.path.exists(os.path.join(PROBLEMS, p, "spec.cp")))
+    """Problems with a `spec.cp`, or a `port.cp` with a `tests.toml` seed list."""
+    def has(p, f):
+        return os.path.exists(os.path.join(PROBLEMS, p, f))
+    have = sorted(p for p in os.listdir(PROBLEMS) if has(p, "spec.cp") or (has(p, "port.cp") and has(p, "tests.toml")))
     return [p for p in have if not ids or p in ids]
 
 
