@@ -1880,6 +1880,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::LoadLList1V { .. }
             | Op::LoadLList1OptI { .. }
             | Op::SeqItems { .. }
+            | Op::TreeRangeItems { .. }
             | Op::ListPopFieldOptIL { .. }
             | Op::ListPopFieldLV { .. }
             | Op::MakeRange { .. }

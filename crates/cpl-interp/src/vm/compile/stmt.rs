@@ -455,7 +455,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 && step.as_ref().is_none_or(|s| self.traced_quiet(s)))
             .then_some(lo.span),
             Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.traced_quiet(e).then_some(e.span),
-            Iter::TreeRange { .. } => None,
+            Iter::TreeRange {
+                container, lo, hi, ..
+            } => (self.traced_quiet(container)
+                && [lo, hi]
+                    .iter()
+                    .all(|b| b.as_ref().is_none_or(|(e, _)| self.traced_quiet(e))))
+            .then_some(container.span),
         }
     }
 
@@ -634,9 +640,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         self.traced_loop_var = Some((slot, seq.span));
         self.in_dom.clear();
-        if !self.try_compile_for_seq(id, slot, seq, false, body) {
-            self.emit_fallback_stmt(stmt);
-        }
+        self.compile_for_seq(id, slot, seq, None, false, body);
         self.traced_loop_var = None;
         self.emit_trace(TracePoint::LoopEnd(slot), seq.span);
     }
@@ -1251,20 +1255,40 @@ impl<'p, 'f> Compiler<'p, 'f> {
             if !*rev && self.feeds.feeds(id, seq_expr, body).is_some() {
                 return false;
             }
-            return self.try_compile_for_seq(id, slot, seq_expr, *rev, body);
+            self.compile_for_seq(id, slot, seq_expr, None, *rev, body);
+            return true;
         }
+        let in_i = matches!(self.slot_loc(slot), SlotLoc::I(..));
+        match iter {
+            // An `I128` range, or one whose items aren't ints, walks its items.
+            Iter::RangeVal(e, rev) if !in_i => {
+                self.compile_for_seq(id, slot, e, None, *rev, body);
+                return true;
+            }
+            Iter::TreeRange {
+                container,
+                lo,
+                hi,
+                rev,
+            } => {
+                let src = self.compile_expr_v(container);
+                let [lo, hi] = [lo, hi]
+                    .map(|b| (b.as_ref()).map(|(e, closed)| (self.compile_expr_v(e), *closed)));
+                let dst = self.alloc_v();
+                self.emit(Op::TreeRangeItems { dst, src, lo, hi }, container.span);
+                self.compile_for_seq(id, slot, container, Some(dst), *rev, body);
+                return true;
+            }
+            _ => {}
+        }
+        // A range's ints count in a register; an enum variable is tagged from it.
         let (r_var, tag_v) = match self.slot_loc(slot) {
             SlotLoc::I(r_var, _) => (r_var, None),
-            SlotLoc::V(v)
-                if matches!(iter, Iter::Range { .. })
-                    && matches!(self.locals[slot].ty, Ty::Enum(_)) =>
-            {
-                (self.alloc_i(), Some(v))
-            }
+            SlotLoc::V(v) if matches!(iter, Iter::Range { .. }) => (self.alloc_i(), Some(v)),
             _ => return false,
         };
         match iter {
-            Iter::RangeVal(e, rev) if matches!(&e.ty, Ty::Range(t) if **t != Ty::I128) => {
+            Iter::RangeVal(e, rev) => {
                 let src_v = self.compile_expr_v(e);
                 let r_lo = self.alloc_i();
                 let r_hi = self.alloc_i();
@@ -1405,34 +1429,32 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
-    pub(super) fn try_compile_for_seq(
+    /// `for slot in seq_expr`, or over the list already in `listed`.
+    pub(super) fn compile_for_seq(
         &mut self,
         id: LoopId,
         slot: Slot,
         seq_expr: &'p Expr,
+        listed: Option<u16>,
         rev: bool,
         body: &'p Block,
-    ) -> bool {
+    ) {
         let slot_loc = self.slot_loc(slot);
-        let reads = match &seq_expr.ty {
-            Ty::Array { dims, .. } if dims.len() == 1 => SeqReads::Elems(SeqKind::Array),
-            Ty::Array { .. } => SeqReads::Elems(SeqKind::List),
-            Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) => SeqReads::Elems(SeqKind::List),
-            Ty::Str | Ty::StrView => match slot_loc {
-                SlotLoc::I(var, _) => SeqReads::Chars(var),
-                _ => return false,
-            },
-            Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) => {
-                SeqReads::Elems(SeqKind::List)
-            }
-            _ => return false,
+        let reads = match (&seq_expr.ty, slot_loc) {
+            _ if listed.is_some() => SeqReads::Elems(SeqKind::List),
+            (Ty::Array { dims, .. }, _) if dims.len() == 1 => SeqReads::Elems(SeqKind::Array),
+            (Ty::Str | Ty::StrView, SlotLoc::I(var, _)) => SeqReads::Chars(var),
+            _ => SeqReads::Elems(SeqKind::List),
         };
-        // A table walks its cells in row-major order.
-        let items = match &seq_expr.ty {
-            Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) => true,
-            Ty::Array { dims, .. } => dims.len() > 1,
-            _ => false,
-        };
+        // Any other sequence walks the list of its items; a table its cells
+        // in row-major order.
+        let items = listed.is_none()
+            && match &seq_expr.ty {
+                Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) => false,
+                Ty::Array { dims, .. } => dims.len() > 1,
+                Ty::Str | Ty::StrView => !matches!(reads, SeqReads::Chars(_)),
+                _ => true,
+            };
         let r_idx = self.alloc_i();
         let r_len = self.alloc_i();
         let walk = match reads {
@@ -1443,6 +1465,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             SeqReads::Elems(kind) => SeqWalk::Elems(
                 kind,
                 match &seq_expr.kind {
+                    _ if listed.is_some() => SeqHeld::Local(listed.unwrap_or_default()),
                     ExprKind::Global(gid)
                         if !items && matches!(seq_expr.ty, Ty::Array { .. } | Ty::List(_)) =>
                     {
@@ -1578,7 +1601,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::ClearV { reg: lv }, seq_expr.span);
             }
         }
-        true
     }
 }
 

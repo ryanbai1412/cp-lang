@@ -1165,3 +1165,4 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   which is not `Show` (R10.3.7); L0608 was only ever a warning. The
   program now unwraps with `!` or prints with `none:` and calls
   `argmin()`/`argmax()`, with the same .out.
+- VM-stmt F15: a `for` over a sorted set or map range (`TreeRangeItems`), an `I128` range value, or any other sequence whose items the register walk can't read (`SeqItems` now takes every sequence) compiles to the VM, so compile_eager_for no longer falls back after a quiet sequence and `Stmt::For` falls back only for a fed loop the VM can't feed (compile_fed_args alias, outer loop jump, inlined fn, judge fn). The tree-walker's `for` and the VM read sequence and sorted-range items through one `seq_items`/`tree_range_items`. Regression: `programs/for_tree_range_and_seq_items.cp`.
