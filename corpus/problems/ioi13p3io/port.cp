@@ -10,7 +10,7 @@
 //   best middle column is monotone (opt[i][j-1] <= k <= opt[i+1][j]) and a product is O(C^2).
 //   A change rebuilds one block and its O(log R) ancestors; an escape reads the root.
 // limits: 9000 ms, 256 MB
-// Bounds: r: 1..=5000; c: 1..=200; events: 1..=2e5 + 500
+// Bounds: r: 1..=5000; c: 1..=200; events: 1..=2e5 + 500; kind: 1..=3; row: 0..r; gap: 0..c - 1; drop: 0..r - 1; col, v1, v2: 0..c
 // original: corpus/submissions/4722412.cpp (orig.cpp enables its sample grader)
 const BLOCK = 20
 type Wombats = 0..=1000
@@ -70,13 +70,13 @@ let events: 1..=2e5 + 500 = read()
 for _ in 0..events:
     let kind: 1..=3 = read()
     if kind == 1:
-        let (p, q, w): (Row, Gap, Wombats) = read()
-        east[p, q] = w
-        routes.set(block_of(p.ord), block(block_of(p.ord)))
+        let (row, gap, w): (Row, Gap, Wombats) = read()
+        east[row, gap] = w
+        routes.set(block_of(row.ord), block(block_of(row.ord)))
     elif kind == 2:
-        let (p, q, w): (Drop, Col, Wombats) = read()
-        south[p, q] = w
-        routes.set(block_of(p.ord), block(block_of(p.ord)))
+        let (drop, col, w): (Drop, Col, Wombats) = read()
+        south[drop, col] = w
+        routes.set(block_of(drop.ord), block(block_of(drop.ord)))
     else:
         let (v1, v2): (Col, Col) = read()
         print(routes.all[v1, v2]!)
