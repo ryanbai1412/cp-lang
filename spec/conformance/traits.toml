@@ -2690,3 +2690,53 @@ use std.strings.{HashVal}
 print(HashVal(1, 2).hash_token)
 """
 out = "2147483650"
+
+[case."Show/LazyTreap/show"]
+code = """
+use std.lazy.{LazyTreap}
+var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f)
+t.push(1)
+t.push(2)
+t.apply_all(5)
+print(t)
+"""
+out = "6 7"
+
+[case."Show/Rope/show"]
+code = """
+use std.lazy.{Rope}
+var r = Rope([1, 2, 3])
+r.apply(0..2, 7)
+r.reverse(1..3)
+print(r)
+"""
+out = "7 3 7"
+
+[case."Show/Each/show"]
+code = """
+use std.algebra.{each}
+print(each(+, max))
+"""
+out = "each of 2 ops"
+
+[case."Show/HistoricBeatsSegTree/show"]
+code = """
+use std.beats.{HistoricBeatsSegTree}
+var t = HistoricBeatsSegTree([2, 8, 5])
+t.chmax(0..3, 4)
+t.add(0..2, -1)
+print(t)
+"""
+out = "3 7 5"
+
+[case."Show/LazyEulerTourTree/show"]
+code = """
+use std.tree.{LazyEulerTourTree}
+use std.algebra.{add}
+domain V = 0..3
+var et = LazyEulerTourTree<V, Int, Int>(add)
+et.link(1, 2)
+et.apply_tree(2, 4)
+print(et)
+"""
+out = "0 4 4"
