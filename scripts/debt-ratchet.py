@@ -520,6 +520,35 @@ def lint_dup_helpers(root: Path) -> list[str]:
     return [f"{n}: {', '.join(fs)}" for n, fs in sorted(where.items()) if len(fs) > 1 and n != "check"]
 
 
+AUTHORITY = "handbook leads design; spec/ is its downstream exhaustive form"
+AUTHORITY_HOMES = ("AGENTS.md", "CHANGELOG.md", "spec/README.md", "handbook/README.md",
+                   "handbook/language/overview.md", "handbook/domains/spec.md", "plan/STATUS.md")
+AUTHORITY_CONTRARY = re.compile(
+    r"only normative source|normative source is|the normative language|spec[^.]{0,40}wins wherever"
+    r"|where `?spec/`? disagrees with any other doc", re.I)
+
+
+def authority_drift(root: Path) -> list[str]:
+    """A home of the authority sentence without it, or a doc stating another order.
+
+    Rule: handbook/README.md (Language design and spec move together), as
+    Ryan decided. Prose wraps, so the sentence is matched across line breaks.
+    """
+    found = []
+    for f in AUTHORITY_HOMES:
+        if not (root / f).is_file():
+            continue
+        text = (root / f).read_text(encoding="utf-8")
+        if AUTHORITY.lower() not in " ".join(text.replace("`", "").split()).lower():
+            found.append(f"{f}: lacks \"{AUTHORITY}\"")
+    for f in _git(root, "ls-files", "*.md", "*.mdx", "*.tsx", ":!research", ":!web/content/docs/releases.mdx"):
+        if (root / f).is_file():
+            text = " ".join((root / f).read_text(encoding="utf-8").split())
+            for m in AUTHORITY_CONTRARY.finditer(text):
+                found.append(f"{f}: {m.group(0)}")
+    return found
+
+
 WHY_HOMES = ("decisions.md", "handbook/language/*.md", "handbook/design/*.md",
              "spec/*.md", "spec/core/*.md", "spec/lib/*.md", "spec/tools/*.md")
 
@@ -1302,7 +1331,7 @@ def unregistered_lists(root: Path) -> list[str]:
 # main's own measurement can raise them above 0. Every gated counter whose
 # committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
 HARD_ZERO = frozenset({
-    "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice",
+    "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers",
     "measure_broken",
@@ -1339,6 +1368,7 @@ COUNTERS = {
     "lint_dup_helpers": ("helper fns copied across lint rule files", lint_dup_helpers, True),
     "plan_delta_lines": ("lines of notes under plan/domains/*/delta", plan_delta_lines, True),
     "why_written_twice": ("reasoning written in two homes, or rationale under spec/", why_written_twice, True),
+    "authority_drift": ("authority sentence missing from a home, or contradicted", authority_drift, True),
     "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
     "own_databases": ("Database::new() outside tests and cpl-check", own_databases, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),

@@ -439,6 +439,21 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.improved({"register_rows_by_domain": by}, {"register_rows_by_domain": {"a": 3}}),
                              ["register_rows_by_domain"])
 
+    def test_authority_drift_wants_the_sentence_and_no_contrary_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for f in dr.AUTHORITY_HOMES:
+                self._write(root, f, "# X\n\nThe rule: handbook leads design; `spec/` is its\ndownstream exhaustive form.\n")
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            subprocess.run(["git", "add", "."], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.authority_drift(root), [])
+            self._write(root, "spec/README.md", "spec/ is the normative language.\n")
+            self._write(root, "handbook/language/a.md", "The spec states every rule and\nwins wherever the two differ.\n")
+            subprocess.run(["git", "add", "."], cwd=root, check=True, env=dr._git_env())
+            found = dr.authority_drift(root)
+            self.assertEqual(len(found), 3, found)
+            self.assertIn("authority_drift", dr.HARD_ZERO)
+
     def test_why_written_twice_counts_copied_reasoning_and_spec_rationale(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

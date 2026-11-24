@@ -85,6 +85,7 @@ Each kind of duplicate and the counter that detects it.
 | The stdlib's behavior lives in the stdlib | The IR lowers a std method by its name | `scripts/debt-ratchet.py` (`ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege`) |
 | Docs cite code that exists | An architecture doc names a deleted file | `scripts/debt-ratchet.py` (`stale_arch_paths`) |
 | The why is written once: `handbook/language/` explains, `decisions.md` records the call and its reversal, `spec/` states the rule | A sentence of reasoning copied from the handbook into a spec chapter, or a `spec/RATIONALE.md` | `scripts/debt-ratchet.py` (`why_written_twice`) |
+| Authority is one sentence: handbook leads design; spec/ is its downstream exhaustive form | A doc ranking `spec/` above the handbook, or a home of the sentence dropping it | `scripts/debt-ratchet.py` (`authority_drift`) |
 | A list of lints, crates or std modules is generated or points at its source | A guide lists 36 std modules and misses the six added after it | `scripts/debt-ratchet.py` (`written_twice`) |
 
 ## Changes
