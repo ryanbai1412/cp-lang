@@ -33,6 +33,11 @@ use std.range.{Len, RingRange, ends, first_true}
 /// example: `[3, 1, 4].scan(+).fold(1..=2) == 5`
 /// example: `[3, 1, 4].scan(+, from: 10).prefix(0) == 10`
 @lint(prefix_totals_list, from: "var p = [0]\nfor x in self:\n    p.push(p.last! + x)", to: "let p = self.scan(+)")
+@lint(hand_rolled_prefix_sum, from: "for x in xs:\n    acc += x\n    out.push(acc)", advice: "let out = xs.scan(+)", holes: "xs, acc, out")
+@lint(hand_rolled_prefix_sum, from: "for i in r:\n    acc += xs[i]\n    out[i] = acc", advice: "let out = xs.scan(+)", holes: "r, xs, acc, out")
+@lint(hand_rolled_prefix_sum, from: "for i in r:\n    acc += xs[i]\n    out.push(acc)", advice: "let out = xs.scan(+)", holes: "r, xs, acc, out")
+@lint(hand_rolled_prefix_sum, from: "for x in xs:\n    out.push(out.last! + x)", advice: "let out = xs.scan(+)", holes: "xs, out")
+@lint(hand_rolled_prefix_sum, from: "for x in xs:\n    out.push(out[out.len - 1] + x)", advice: "let out = xs.scan(+)", holes: "xs, out")
 pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T> =
     Prefix<D, T>.of_scan(self, f, from)
 
@@ -161,6 +166,9 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(2) == 3`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
     /// trap: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(max).prefix(D(1).l)`
+    @lint(hand_rolled_prefix_sum, from: "var p: [K]Int = 0\nfor c in D:\n    p[c.r] = p[c.l] + xs[c]", to: "let p = Prefix(xs)", reads: "p[b] -> p.prefix(b)", holes: "K, D, xs")
+    @lint(hand_rolled_prefix_sum, from: "var p: [K]Int = 0\nfor c in D:\n    p[c.r] = p[c.l] + e", to: "let p = Prefix([D] c => e)", reads: "p[b] -> p.prefix(b)", holes: "K, D, e")
+    @lint(hand_rolled_prefix_sum, from: "for c in D:\n    p[c.r] = p[c.l] + e", advice: "let p = Prefix([D] c => e)", holes: "D, p, e")
     pub fn prefix(self, b: Cut<D>) -> T:
         if back:
             assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
@@ -261,6 +269,12 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `[5, -3, -2].scan(+).cut(1) == 5`
     /// example: `[5, -3, -2].scan(+).cut(3) == 0`
     /// example: `domain D = 1..=3; let p: [D]Int = [4, 1, 2]; p.scan(max).cut(2) == 4`
+    @lint(hand_rolled_prefix_sum, from: "var p = List.filled(xs.len + 1, 0)\nfor i in 0..xs.len:\n    p[i + 1] = p[i] + xs[i]", to: "let p = Prefix(xs)", reads: "p[k] -> p.cut(k)", holes: "xs")
+    @lint(hand_rolled_prefix_sum, from: "var p: [0..=xs.len]Int = 0\nfor i in 0..xs.len:\n    p[i + 1] = p[i] + xs[i]", to: "let p = Prefix(xs)", reads: "p[k] -> p.cut(k)", holes: "xs")
+    @lint(hand_rolled_prefix_sum, from: "var p = List.filled(n + 1, 0)\nfor i in 0..n:\n    p[i + 1] = p[i] + e", to: "let p = Prefix([e for i in 0..n])", reads: "p[k] -> p.cut(k)", holes: "n, e")
+    @lint(hand_rolled_prefix_sum, from: "var p: [0..=n]Int = 0\nfor i in 0..n:\n    p[i + 1] = p[i] + e", to: "let p = Prefix([e for i in 0..n])", reads: "p[k] -> p.cut(k)", holes: "n, e")
+    @lint(hand_rolled_prefix_sum, from: "for i in r:\n    p[i + 1] = p[i] + e", advice: "let p = Prefix([e for i in r])", holes: "r, p, e")
+    @lint(hand_rolled_prefix_sum, from: "for i in r:\n    p[i] = p[i - 1] + e", advice: "let p = Prefix([e for i in r])", holes: "r, p, e")
     pub fn cut(self, k: Int) -> T = self.p[D.cuts.nth(k)]
 
     /// The sum of everything right of the cut `b`: `all - prefix(b)`, zero at the last cut.
@@ -424,6 +438,8 @@ pub struct Prefix<R, C, T: Add + Sub>:
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.prefix(1, 2) == 3`
     /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.prefix(0, 3) == 0`
+    @lint(hand_rolled_prefix_sum, from: "for i in R:\n    for j in C:\n        p[i.r, j.r] = p[i.l, j.r] + p[i.r, j.l] - p[i.l, j.l] + e", advice: "let p = Prefix([R, C] (i, j) => e)", holes: "R, C, p, e")
+    @lint(hand_rolled_prefix_sum, from: "for i in 0..n:\n    for j in 0..m:\n        p[i + 1, j + 1] = p[i, j + 1] + p[i + 1, j] - p[i, j] + e", advice: "let p = Prefix([[e for j in 0..m] for i in 0..n])", holes: "n, m, p, e")
     pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = self.p[r, c]
 
     /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty, by
