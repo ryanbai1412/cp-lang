@@ -570,22 +570,17 @@ jobs:
         run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
         run: just acceptance target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/8
-      # Seeded problems (problem-packages/R9) keep their cases in target/corpus-tests/.
-      - uses: actions/cache/restore@v4
-        if: ${{ !cancelled() }}
-        with:
-          path: target/corpus-tests
-          key: corpus-tests-${{ github.run_id }}
-          restore-keys: corpus-tests-
       # Keyed by content in scripts/corpus.py: built ports and references
-      # (CXX_CACHE) and --checks builds (corpus-generators). Per shard, so
-      # each shard's save holds its own packages.
+      # (CXX_CACHE), --checks builds (corpus-generators) and seeded problems'
+      # cases (target/corpus-tests, problem-packages/R9). Per shard, so each
+      # shard's save holds its own packages, not the gate's 1.5 GB of cases.
       - uses: actions/cache/restore@v4
         if: ${{ !cancelled() }}
         with:
           path: |
             ~/.cache/cpl/cxx/corpus
             target/corpus-generators
+            target/corpus-tests
           key: acceptance-${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: |
             acceptance-${{ matrix.shard }}-
@@ -606,6 +601,7 @@ jobs:
           path: |
             ~/.cache/cpl/cxx/corpus
             target/corpus-generators
+            target/corpus-tests
           key: acceptance-${{ matrix.shard }}-${{ github.run_id }}
 
   corpus-audit:
