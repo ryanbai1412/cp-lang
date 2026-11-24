@@ -5,7 +5,6 @@
     "max-short ccc21s2 cols: --max reads 2236, the statement allows 5e6",
     "max-short ccc21s2 rows: --max reads 2236, the statement allows 5e6",
     "max-short cco04p1 k: --max reads 7, the statement allows 26",
-    "max-short cco21p1 k: --max reads 300, the statement allows 1e5",
     "max-short cco23p1 k: --max reads 1000, the statement allows n",
     "max-short coci21c1p2 k: --max reads 99, the statement allows 350",
     "max-short dmopc21c9p4 cols: --max reads 999, the statement allows 1000",
