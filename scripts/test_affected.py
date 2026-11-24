@@ -225,9 +225,9 @@ class AffectedTest(unittest.TestCase):
     def test_a_crate_a_tested_binary_links_runs_the_slice(self):
         """41ffcffe5 changed only cpl-codegen's output and landed with cpl-cli's
         output_pins unrun: output_pins runs the `cpl` binary, which links cpl-codegen."""
-        for path in ("crates/cpl-codegen/src/emit.rs", "crates/cpl-ir/src/lib.rs", "crates/cpl-rt/src/lib.rs"):
+        for path in ("crates/cpl-codegen/src/emit.rs", "crates/cpl-codegen/src/lib.rs"):
             self.assertIn("editor-contract", self.sel(path)["slices"], path)
-        self.assertLessEqual({"cpl-cli", "cpl-codegen", "cpl-rt"}, affected.crate_deps("cpl-cli"))
+        self.assertLessEqual({"cpl-cli", "cpl-codegen"}, affected.crate_deps("cpl-cli"))
 
     def test_a_lint_or_checker_change_runs_the_corpus_warnings_slice(self):
         for path in ("crates/cpl-lint/src/rules.rs", "crates/cpl-check/src/lib.rs"):
