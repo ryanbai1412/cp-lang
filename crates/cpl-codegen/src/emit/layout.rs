@@ -150,10 +150,18 @@ impl<'p> Emitter<'p> {
                 return format!("cpl::FnRef<{sig}>");
             }
             if self.lent_opts[id].contains(&slot) {
-                if let Some(held) = cpp
+                // A niche-packed `?T` (`OptField`, `OptTuple`) lends the same `T`.
+                let held = match cpp
                     .strip_prefix("std::optional<")
                     .and_then(|t| t.strip_suffix('>'))
                 {
+                    Some(held) => Some(held.to_string()),
+                    None => match ty {
+                        Ty::Opt(inner) => Some(self.ty(inner)),
+                        _ => None,
+                    },
+                };
+                if let Some(held) = held {
                     return format!("cpl::Lent<{held}>");
                 }
             }

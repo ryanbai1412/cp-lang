@@ -457,3 +457,21 @@ fn a_zip_points_to_its_sequences_even_when_one_is_a_temporary() {
         }
     }
 }
+
+#[test]
+fn a_niche_packed_optional_lends_like_any_other() {
+    let cpp = cpp(concat!(
+        "struct Box(n: Int, items: List<Int>)\n",
+        "struct Holder:\n",
+        "    var b: ?Box = None\n",
+        "fn total(found: ?Box) -> Int:\n",
+        "    if let b = found: return b.n + b.items.len\n",
+        "    -1\n",
+        "var h = Holder()\n",
+        "h.b = Some(Box(3, [1, 2]))\n",
+        "print(total(h.b))\n",
+    ));
+    assert!(cpp.contains("cpl::OptField<&Box::n> b;"), "{cpp}");
+    assert!(cpp.contains("total(cpl::Lent<Box> found)"), "{cpp}");
+    assert!(cpp.contains("total(cpl::lend_opt(h.b))"), "{cpp}");
+}

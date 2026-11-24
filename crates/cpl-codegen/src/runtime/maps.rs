@@ -340,6 +340,8 @@ template <class M, class Q> auto map_get(const M& m, const Q& k) -> std::optiona
 }
 ",
     },
+    // Every `?T` representation (std::optional, Lent, a niche-packed OptField
+    // or OptTuple) lends through has_value() and a `*` giving its `T` in place.
     Piece {
         name: "lent",
         needs: &[],
@@ -353,8 +355,10 @@ template <class V> struct Lent {
     operator std::optional<V>() const { return p ? std::optional<V>(*p) : std::nullopt; }
 };
 template <class V> Lent<V> lend(const V& v) { return {&v}; }
-template <class V> Lent<V> lend_opt(const std::optional<V>& o) { return {o ? &*o : nullptr}; }
-template <class V> Lent<V> lend_opt(Lent<V> l) { return l; }
+template <class O> auto lend_opt(const O& o) -> Lent<std::decay_t<decltype(*o)>> {
+    static_assert(std::is_lvalue_reference_v<decltype(*o)>, \"a lent ?T holds its T in place\");
+    return {o.has_value() ? &*o : nullptr};
+}
 ",
     },
     Piece {
