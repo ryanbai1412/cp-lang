@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3295 (1093 passing). Rules: 609.
+Cases: 3297 (1093 passing). Rules: 609.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3295 (1093 passing). Rules: 609.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 250 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 92 rules, 227 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 92 rules, 229 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 30 rules, 100 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -451,7 +451,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R07: 07-sequences.md
 
 - R07.5.3 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]` on a slice whose keys start elsewhere...
-- R07.3.5 [7+ 2-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
+- R07.3.5 [8+ 3-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
 - R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [2+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has \(O(1)\) `.len`; ...
 - R07.1.3 [3+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
@@ -823,7 +823,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 38 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
-- E0606 Missing trait implementation for operator: 30 case(s)
+- E0606 Missing trait implementation for operator: 31 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
 - E0608 Use of moved value: 16 case(s)
 - E0701 Ambiguous trait method: 2 case(s)
@@ -1084,8 +1084,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (55/55 named by a case)
-- **seq** (224/234 named by a case)
-  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `StepKeys`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
+- **seq** (225/234 named by a case)
+  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rebased`, `StepKeys`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
@@ -1099,7 +1099,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2258 of 2378 std items are named by a case.
+2259 of 2378 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
