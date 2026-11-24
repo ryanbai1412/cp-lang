@@ -187,10 +187,11 @@ class StepsTest(unittest.TestCase):
                 elif step.argv:
                     self.assertNotIn(" ".join(step.argv), check)
         self.assertNotIn("npm test\n", check)
-        for tier in ("commit", "touched"):
-            self.assertIn(f"scripts/ci.py steps {tier}", check)
-        # The checks and full tiers run inside `ci.py tail`, as do its stages.
-        self.assertIn("scripts/ci.py tail ", check)
+        # The commit tier runs in `ci.py commit`; the build, checks and full tiers in
+        # `ci.py tail`, as do its stages.
+        self.assertIn("ci_tier commit ", check)
+        self.assertIn("ci_tier tail ", check)
+        self.assertNotIn("cargo ", check.split("ci_tier commit ")[1])
         for owned in ("cpl-conform\" all", "--test recovery", "known_traps.cp"):
             self.assertNotIn(owned, check)
 
@@ -210,8 +211,13 @@ class FakeProc:
 
 
 class TailTest(unittest.TestCase):
-    def _tail(self, mode="fast", part="", cached=(), codes=None, procs=None, manifest="m", since=None, **kw):
-        events, codes, procs = [], codes or {}, procs or {}
+    FMT = "cargo fmt --all --check"
+    CLIPPY = "cargo clippy --workspace --all-targets -- -D warnings"
+    BUILD = "cargo build -q -p cpl-cli -p cpl-conform"
+
+    def _tail(self, mode="fast", part="", cached=(), codes=None, procs=None, manifest="m", since=None, sel=None,
+              outs=None, **kw):
+        events, codes, procs, outs = [], codes or {}, procs or {}, outs or {}
 
         def label(argv):
             argv = [str(a) for a in argv]
@@ -227,7 +233,9 @@ class TailTest(unittest.TestCase):
                 return subprocess.CompletedProcess(argv, 0 if verb == "save" or stage in cached else 1, "", "")
             events.append(name)
             out = "scripts/test_ci.py\n" if name.startswith("git ls-files") else ""
-            return subprocess.CompletedProcess(argv, codes.get(name.split()[0], 0), out, "")
+            out = next((o for k, o in outs.items() if name.startswith(k)), out)
+            code = codes.get(name, codes.get(name.split()[0], 0))
+            return subprocess.CompletedProcess(argv, code, out, "")
 
         def popen(argv, stdout=None, **_):
             name = label(argv)
@@ -241,7 +249,7 @@ class TailTest(unittest.TestCase):
         tail = ci.Tail(mode, part, cache_dir="d", manifest=manifest, run=run, popen=popen, which=lambda c: f"/bin/{c}", **kw)
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = tail() if since is None else tail.part(since)
+            code = tail.commit(sel) if sel is not None else tail() if since is None else tail.part(since)
         return code, events, out.getvalue(), err.getvalue(), tail, spawned
 
     def test_fast_overlaps_the_tests_and_saves_each_stage_after_it_passes(self) -> None:
@@ -253,17 +261,18 @@ class TailTest(unittest.TestCase):
         self.assertLess(ev.index("spawn cpl-conform"), nextest)
         self.assertLess(nextest, ev.index("spawn recovery"))
         saves = [e.split()[1] for e in ev if e.startswith("save")]
-        self.assertEqual(saves, ["nextest_doc", "fmt_corpus", "site_gate", "scoreboard_fast", "recovery"])
+        self.assertEqual(saves, ["clippy", "nextest_doc", "fmt_corpus", "site_gate", "scoreboard_fast", "recovery"])
         self.assertIn("fmt_check log", out)
         self.assertIn("known_traps:", out)
         self.assertIn("cpl fmt is idempotent and keeps meaning on every .cp file", [t for _, t in tail.times])
 
     def test_a_cached_stage_runs_nothing(self) -> None:
-        stages = ("fmt_corpus", "scoreboard_fast", "nextest_doc", "recovery", "site_gate")
+        stages = ("clippy", "fmt_corpus", "scoreboard_fast", "nextest_doc", "recovery", "site_gate")
         code, ev, out, _, _, _ = self._tail(cached=stages)
         self.assertEqual(code, 0)
-        self.assertFalse([e for e in ev if e.startswith(("spawn", "save", "cargo"))])
-        self.assertEqual(out.count(ci.CACHED), 5)
+        self.assertFalse([e for e in ev if e.startswith(("spawn", "save"))])
+        self.assertEqual([e for e in ev if e.startswith("cargo")], [self.FMT, self.BUILD])
+        self.assertEqual(out.count(ci.CACHED), 6)
 
     def test_no_manifest_runs_every_stage(self) -> None:
         code, ev, _, _, _, _ = self._tail(manifest="", cached=("fmt_corpus",))
@@ -275,7 +284,7 @@ class TailTest(unittest.TestCase):
         code, ev, out, _, _, _ = self._tail(part="checks")
         self.assertEqual(code, 0)
         self.assertEqual([e for e in ev if e.startswith("spawn")], ["spawn gate.mjs"])
-        self.assertFalse([e for e in ev if e.startswith("cargo")])
+        self.assertEqual([e for e in ev if e.startswith("cargo")], [self.FMT, self.CLIPPY, self.BUILD])
         self.assertEqual(out.count("CPL_GATE_PART=checks"), 4)
 
     def test_a_failed_job_names_its_rerun_and_stops_the_rest(self) -> None:
@@ -382,6 +391,69 @@ class TailTest(unittest.TestCase):
         self.assertEqual((env["HOME"], env["CARGO_HOME"], env["RUSTUP_HOME"], env["PATH"]), ("/h", "/c", "/real/.rustup", "/bin"))
         self.assertNotIn("GIT_DIR", env)
         self.assertEqual(env["GIT_CONFIG_NOSYSTEM"], "1")
+
+
+class CommitTest(unittest.TestCase):
+    """The commit tier (`ci.py commit`) runs only what scripts/affected.py selected."""
+    TREE = "cargo tree -q -p cpl-wasm"
+    _tail = TailTest._tail
+
+    def _commit(self, sel: dict[str, str], **kw):
+        self.enterContext(mock.patch.dict(ci.os.environ))
+        ci.os.environ.pop("CI", None)
+        with mock.patch.object(ci, "run_steps", side_effect=lambda tier, *a, **k: self.tiers.append((tier, k.get("only"))) or 0):
+            self.tiers = []
+            return self._tail(mode="commit", sel=sel, **kw)
+
+    def test_an_empty_selection_runs_the_commit_steps_and_the_staleness_note(self) -> None:
+        code, ev, _, _, tail, _ = self._commit({})
+        self.assertEqual(code, 0)
+        self.assertEqual(self.tiers, [("commit", None)])
+        self.assertEqual(ev, ["scripts/gen.py --check"])
+        self.assertEqual([t for _, t in tail.times][0], "checking scripts (scripts/ci.py steps commit)")
+
+    def test_stale_generated_files_only_note(self) -> None:
+        code, _, out, _, _, _ = self._commit({}, codes={"scripts/gen.py": 1}, outs={"scripts/gen.py": "a\n3 stale\n"})
+        self.assertEqual(code, 0)
+        self.assertIn("3 stale\nnote: not blocking", out)
+
+    def test_touched_crates_get_fmt_clippy_and_their_tests_and_wasm_only_when_it_reaches_them(self) -> None:
+        sel = {"packages": "cpl-check cpl-cli", "filter": "rdeps(cpl-check)", "slice_filter": "test(=s)"}
+        code, ev, _, _, _, _ = self._commit(sel, outs={self.TREE: "cpl-wasm v0.1.0\ncpl-check v0.1.0\n"})
+        self.assertEqual(code, 0)
+        ps = "-p cpl-check -p cpl-cli"
+        expr = f"(rdeps(cpl-check)) & not ({ci.slow_filter()}) & not (test(=s))"
+        self.assertEqual(ev[1:], [f"cargo fmt --check {ps}", f"cargo clippy -q {ps} --all-targets -- -D warnings",
+                                  self.TREE + " --target wasm32-unknown-unknown -e normal --prefix none",
+                                  "rustc --print target-libdir --target wasm32-unknown-unknown",
+                                  f"cargo nextest run --workspace --profile commit --no-fail-fast -E {expr}"])
+        code, ev, _, _, _, _ = self._commit(sel, outs={self.TREE: "cpl-wasm v0.1.0\n"})
+        self.assertFalse([e for e in ev if e.startswith("rustc")])
+
+    def test_a_failed_check_names_its_rerun_and_stops_the_tier(self) -> None:
+        sel = {"packages": "cpl-fmt", "filter": "x", "site": "1"}
+        code, ev, _, err, _, _ = self._commit(sel, codes={"cargo fmt --check -p cpl-fmt": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("check: Rust files are not formatted; run: cargo fmt -p cpl-fmt", err)
+        self.assertFalse([e for e in ev if "clippy" in e or "gate.mjs" in e])
+
+    def test_every_selected_check_runs_in_order(self) -> None:
+        sel = {"slices": "a b", "data_filter": "test(=d)", "check_files": "scripts/ci.py", "audit": "1",
+               "idioms_catalog": "1", "steps": "scripts/x.py", "script_tests": "scripts/test_ci.py",
+               "conform_cases": "c.cp", "site": "1"}
+        dream = "corpus/problems/p1/dream.cp\n"
+        code, ev, _, _, _, _ = self._commit(sel, outs={"git diff --cached": dream})
+        self.assertEqual(code, 0)
+        self.assertEqual(self.tiers, [("commit", None), ("touched", {"scripts/x.py"})])
+        firsts = ["scripts/affected.py --run-slices a b", "cargo nextest run --workspace --no-fail-fast -E (test(=d))",
+                  "target/debug/cpl check scripts/ci.py", "scripts/corpus.py make --changed staged",
+                  "scripts/corpus.py verify --check --cpl target/debug/cpl p1", "scripts/idioms-catalog.py --check",
+                  "-m unittest scripts/test_ci.py", "scripts/conform_staged.py", "node web/scripts/gate.mjs"]
+        order = [next(i for i, e in enumerate(ev) if e.startswith(f)) for f in firsts]
+        self.assertEqual(order, sorted(order))
+        self.assertEqual(ev.count("cargo build -q -p cpl-cli"), 2)
+        # check.sh ran the header and package modes before anything built.
+        self.assertIn("scripts/corpus.py verify --changed staged --skip dream,header,package --cpl target/debug/cpl", ev)
 
 
 class GuardTest(unittest.TestCase):
