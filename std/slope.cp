@@ -214,13 +214,8 @@ pub struct Concave(start: Int, base: Int):
     pub fn argmax(mut self) -> Range<Int> =
         start + self.count_at_least(1)..start + self.count_at_least(0) + 1
 
-    fn count_at_least(mut self, v: Int) -> Int:
-        var (lo, hi) = (0, slopes.len)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if slopes.get(mid) >= v: lo = mid + 1
-            else: hi = mid
-        lo
+    fn count_at_least(mut self, v: Int) -> Int =
+        (0..slopes.len).first_true(i => slopes.get(i) < v) ?? slopes.len
 
 /// \(O(\log n)\) expected per slope update, for n slopes; reading a value walks the slopes.
 /// A convex function on the integers `lo..=hi`, the negation of a `Concave`:
