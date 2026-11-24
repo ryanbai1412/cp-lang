@@ -13,7 +13,7 @@ const P = 150
 const WORD = 20
 const SYMBOL = 18
 
-enum Run = First | Second
+enum Run = @tag("first") First | @tag("second") Second
 
 // Bits a[0] low to high, then a[1], ..., regrouped into `len` words of `to` bits.
 fn recut(a: List<Int>, from: Int, to: Int, len: Int) -> List<Int>:
@@ -40,7 +40,7 @@ fn top_power(p: Int) -> Int:
     q
 let powers = primes.map(top_power)
 
-let run = if read<"first" | "second">() == "first": First else: Second
+let run: Run = read()
 for _ in 0..read<Int>():
     match run:
         First:
