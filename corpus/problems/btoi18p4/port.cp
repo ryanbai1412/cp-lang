@@ -23,7 +23,11 @@ let hi = [Wire] w => Int(ends[w].b) + (if ends[w].b < ends[w].a: n else: 0)
 // O(s log s) in the number of arcs, never O(n), so the per-top checks stay O(m log m) in total.
 fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
     var upto = part.lo - 1
-    for (l, h) in [(lo[w] + s, hi[w] + s) for w in on for s in [-n, 0, n]].sorted():
+    let laps = [
+        (lo[w] + s, hi[w] + s) for w in on for s in [-n, 0, n]
+        if lo[w] + s <= part.hi and hi[w] + s >= part.lo
+    ]
+    for (l, h) in laps.sorted():
         if upto >= part.hi:
             break
         if l > upto + 1:
@@ -31,29 +35,41 @@ fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
         upto max= h
     upto >= part.hi
 
-let whole = (lo: 1, hi: n)
+// every segment lies under one of `on`: the furthest reach from each start, swept round once
+fn covers_ring(on: List<Wire>) -> Bool:
+    var far: [Seg]Int = 0
+    for w in on:
+        far[ends[w].a] max= min(hi[w], n)
+        if hi[w] > n: far[Seg.first!] max= hi[w] - n
+    var upto = 0
+    for s in Seg:
+        upto max= far[s]
+        if upto < s.label: return false
+    true
+
 var holder: [Wire]?Wire = None
 var reach: ?(end: Int, by: Wire) = None
-let copies = [(start: lo[w] + s, end: hi[w] + s, w:) for w in Wire for s in [0, n]]
-for c in copies.sorted(by: c => (c.start, desc(c.end))):
-    match reach:
-        Some(r) if c.end <= r.end and r.by != c.w => holder[c.w] = holder[c.w] ?? Some(r.by)
-        _ => reach = Some((end: c.end, by: c.w))
+let order = Wire.collect().sorted(by: w => (lo[w], desc(hi[w])))  // by start, longest first
+for s in [0, n]:  // the circle twice, so a wire past n can hold the ones it wraps over
+    for w in order:
+        match reach:
+            Some(r) if hi[w] + s <= r.end and r.by != w => holder[w] = holder[w] ?? Some(r.by)
+            _ => reach = Some((end: hi[w] + s, by: w))
 let top = [Wire] w =>
     var u = w
     while let h = holder[u]: u = h
     u
-let tops = Wire.filter(w => holder[w] == None).collect().sorted(by: w => lo[w])
+let tops = order.filter(w => holder[w] == None).collect()
 domain T = [tops.len]
 var rank: [Wire]?T = None
 for t in T:
     rank[tops[Int(t)]] = Some(t)
-let inside = Wire.filter(w => holder[w] != None).collect().group(by: w => top[w])
-fn kids(t: T) -> List<Wire> = inside.get(tops[Int(t)]) ?? List()
+let inside = ([Wire] w => rank[top[w]]!).buckets()
+fn kids(t: T) -> List<Wire> = [w for w in inside[t] if holder[w] != None]
 
 fn spread(side: T -> Bool) -> ?[Wire]Bool:
     let dir = [Wire] w => if holder[w] == None: side(rank[w]!) else: not side(rank[top[w]]!)
-    let both = [false, true].all(d => covers(Wire.filter(w => dir[w] == d).collect(), whole))
+    let both = [false, true].all(d => covers_ring(Wire.filter(w => dir[w] == d).collect()))
     if both: Some(dir) else: None
 
 // Top t can share its neighbour's direction when its own nested wires and its two neighbouring
@@ -69,7 +85,7 @@ let answer: ?[Wire]Bool =
         spread(t => Int(t) % 2 == 1)
     elif T.count == 3:
         T.first_some(b => spread(t => T.wrap(t.ord - b.ord).ord % 2 == 0))
-    elif not covers(Wire.collect(), whole):
+    elif not covers_ring(Wire.collect()):
         None
     else:
         let free = [T] t => alone(t)
