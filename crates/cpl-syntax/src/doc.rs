@@ -24,12 +24,40 @@ pub fn doc_above(text: &str, at: usize) -> String {
     for line in head[..line_start].lines().rev() {
         match doc_line(line) {
             Some(doc) => lines.push(doc),
-            None if line.trim_start().starts_with('@') => {}
+            None if decorators_only(line) => {}
             None => break,
         }
     }
     lines.reverse();
     lines.join("\n").trim().to_string()
+}
+
+/// Whether `line` is only decorators (`@memo`, `@check(n: 5)`), not
+/// `@get pub fn cw(self) -> Dir4 = ..`, a declaration whose doc is its own.
+fn decorators_only(line: &str) -> bool {
+    let mut rest = line.trim();
+    while let Some(after) = rest.strip_prefix('@') {
+        let name = after.trim_start_matches(|c: char| c.is_alphanumeric() || c == '_');
+        rest = match name.strip_prefix('(') {
+            Some(args) => {
+                let mut depth = 1;
+                let Some(close) = args.find(|c| {
+                    depth += match c {
+                        '(' => 1,
+                        ')' => -1,
+                        _ => 0,
+                    };
+                    depth == 0
+                }) else {
+                    return true;
+                };
+                &args[close + 1..]
+            }
+            None => name,
+        }
+        .trim_start();
+    }
+    line.trim_start().starts_with('@') && rest.is_empty()
 }
 
 /// The labelled lines of a doc, std/README.md's facts about an operation.
@@ -390,6 +418,16 @@ pub fn split_top<'a>(code: &'a str, sep: &str) -> Vec<&'a str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_doc_stops_at_the_declaration_above_even_a_decorated_one() {
+        let text = "/// Clockwise.\n@get pub fn cw(self) -> D = d\n/// Back.\n@memo\n@check(n: (5))\nfn back(self) -> D = d\n";
+        assert_eq!(doc_above(text, text.find("fn back").unwrap()), "Back.");
+        assert_eq!(
+            doc_above(text, text.find("pub fn cw").unwrap()),
+            "Clockwise."
+        );
+    }
 
     #[test]
     fn facts_examples_and_prose_come_apart() {
