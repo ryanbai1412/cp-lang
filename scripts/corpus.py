@@ -41,7 +41,8 @@ HAND = {"tags": [], "difficulty": None, "dream": "none", "spec": "none", "notes"
 RECORDED = ("dream_stress",)
 STATUSES = {"none", "draft", "reviewed", "gold"}
 EXT = {"CPP": ".cpp", "CPP03": ".cpp", "CPP11": ".cpp", "CPP14": ".cpp", "CPP17": ".cpp",
-       "CPP20": ".cpp", "JAVA": ".java", "PY3": ".py", "PYPY3": ".py", "PY2": ".py", "C": ".c"}
+       "CPP20": ".cpp", "JAVA": ".java", "PY3": ".py", "PYPY3": ".py", "PY2": ".py", "C": ".c",
+       "TEXT": ".txt"}
 
 
 def rel(p):
@@ -1304,6 +1305,11 @@ def artifacts():
 
 def generate():
     info = json.load(open(os.path.join(SUBS, "info.json")))
+    stored = defaultdict(list)
+    for name in sorted(os.listdir(SUBS)):
+        stem, ext = os.path.splitext(name)
+        if ext != ".json":
+            stored[stem].append(ext)
     by = defaultdict(list)
     for sid, e in info.items():
         by[canonical_id(e["problem"])].append((sid, e))
@@ -1314,7 +1320,7 @@ def generate():
         subs = by.get(problem, [])
         rows = []
         for sid, e in sorted(subs, key=lambda x: x[1].get("date", "")):
-            f = next((sid + x for x in (EXT.get(e.get("language", ""), ""), ".cpp", ".java", ".py")
+            f = next((sid + x for x in (EXT.get(e.get("language", ""), ""), *stored.get(sid, ()))
                       if x and os.path.exists(os.path.join(SUBS, sid + x))), None)
             rows.append({"id": sid, "language": e.get("language"), "result": e.get("result"),
                          "time": e.get("time"), "memory_kb": e.get("memory"),
@@ -1357,6 +1363,15 @@ def index(metas):
             "by_source": dict(sorted(Counter(m["source"] for m in metas.values()).items()))}
 
 
+def orphan_submissions(metas):
+    """Submission files no package lists and no other tracked file names."""
+    listed = {os.path.basename(r["file"]) for m in metas.values() for r in m["submissions"] if r["file"]}
+    loose = [n for n in sorted(os.listdir(SUBS)) if not n.endswith(".json") and n not in listed]
+    return [n for n in loose if subprocess.run(
+        ["git", "grep", "-q", "-F", "corpus/submissions/" + n, "--", ".", ":!corpus/submissions"],
+        cwd=ROOT).returncode != 0]
+
+
 def main(mode):
     gen = generate()
     metas, errors = {}, []
@@ -1379,6 +1394,8 @@ def main(mode):
     for pkg in problems():
         if pkg.id not in gen:
             errors.append(f"corpus/problems/{pkg.id}: no submissions or artifacts")
+    errors += [f"corpus/submissions/{n}: no package lists it; delete it or add it to info.json"
+               for n in orphan_submissions(metas)]
     ipath = os.path.join(ROOT, "corpus", "index.json")
     if mode == "build":
         open(ipath, "w").write(dump(index(metas)))

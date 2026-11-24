@@ -738,5 +738,21 @@ class GraderTest(Corpus):
         self.assertEqual(corpus.judge_args(pkg, pkg.port), ["--checker", str(d / "checker.py")])
 
 
+class OrphanSubmissionTest(unittest.TestCase):
+    def test_a_submission_file_no_package_lists_is_an_orphan(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(corpus, "SUBS", d), \
+                mock.patch.object(corpus.subprocess, "run", return_value=mock.Mock(returncode=1)):
+            for n in ("1.cpp", "2.txt", "info.json"):
+                Path(d, n).write_text("")
+            metas = {"p": {"submissions": [{"file": "corpus/submissions/1.cpp"}, {"file": None}]}}
+            self.assertEqual(corpus.orphan_submissions(metas), ["2.txt"])
+
+    def test_a_file_another_tracked_file_names_is_kept(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(corpus, "SUBS", d), \
+                mock.patch.object(corpus.subprocess, "run", return_value=mock.Mock(returncode=0)):
+            Path(d, "2.txt").write_text("")
+            self.assertEqual(corpus.orphan_submissions({}), [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,7 @@
  "problem": "ioi12p1",
  "source": "ioi",
  "submissions": [
-  {"id": "4730691", "language": "TEXT", "result": "AC", "time": 0.29580549, "memory_kb": 1904.0, "file": null}
+  {"id": "4730691", "language": "TEXT", "result": "AC", "time": 0.29580549, "memory_kb": 1904.0, "file": "corpus/submissions/4730691.txt"}
  ],
  "cpp_ac": 1,
  "artifacts": {

@@ -2,7 +2,7 @@
  "problem": "perlgolf",
  "source": "perlgolf",
  "submissions": [
-  {"id": "3461777", "language": "PERL", "result": "WA", "time": 0.033667467, "memory_kb": 5972.0, "file": null}
+  {"id": "3461777", "language": "PERL", "result": "WA", "time": 0.033667467, "memory_kb": 5972.0, "file": "corpus/submissions/3461777.pl"}
  ],
  "cpp_ac": 1,
  "artifacts": {

@@ -4,8 +4,8 @@
  "submissions": [
   {"id": "5670585", "language": "CPP17", "result": "WA", "time": 0.045437712, "memory_kb": 3424.0, "file": "corpus/submissions/5670585.cpp"},
   {"id": "5670587", "language": "CPP17", "result": "WA", "time": 0.046568827, "memory_kb": 3432.0, "file": "corpus/submissions/5670587.cpp"},
-  {"id": "5670591", "language": "TEXT", "result": "WA", "time": 0.040888009, "memory_kb": 1780.0, "file": null},
-  {"id": "5670592", "language": "TEXT", "result": "WA", "time": 0.040195408, "memory_kb": 1740.0, "file": null},
+  {"id": "5670591", "language": "TEXT", "result": "WA", "time": 0.040888009, "memory_kb": 1780.0, "file": "corpus/submissions/5670591.txt"},
+  {"id": "5670592", "language": "TEXT", "result": "WA", "time": 0.040195408, "memory_kb": 1740.0, "file": "corpus/submissions/5670592.txt"},
   {"id": "5670594", "language": "CPP17", "result": "WA", "time": 0.034705594, "memory_kb": 3392.0, "file": "corpus/submissions/5670594.cpp"},
   {"id": "5670595", "language": "CPP17", "result": "WA", "time": 0.032642739, "memory_kb": 3324.0, "file": "corpus/submissions/5670595.cpp"},
   {"id": "5670596", "language": "CPP17", "result": "WA", "time": 0.033261375, "memory_kb": 3428.0, "file": "corpus/submissions/5670596.cpp"},

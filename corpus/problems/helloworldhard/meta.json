@@ -2,7 +2,7 @@
  "problem": "helloworldhard",
  "source": "helloworldhard",
  "submissions": [
-  {"id": "3682536", "language": "PHP", "result": "WA", "time": 0.049804621, "memory_kb": 14632.0, "file": null}
+  {"id": "3682536", "language": "PHP", "result": "WA", "time": 0.049804621, "memory_kb": 14632.0, "file": "corpus/submissions/3682536.php"}
  ],
  "cpp_ac": 1,
  "artifacts": {
