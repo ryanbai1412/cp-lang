@@ -1018,3 +1018,10 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   as the `if`'s type when it is read first (9d04d7c0e): an owned `else` met it with E0302,
   red on corpus cf2187d. The view copies to the owned type, as before. Case:
   core-01/if-is-branch-view-meets-owned-else.
+
+### VM-expr lane (2026-11-24): map-entry `mut` args run on the VM
+
+- A `mut` arg that is a map entry (`adj[3].reverse()`, now a std fn after `reverse` moved to
+  std/seq.cp) is taken by its place path and put back whole by `StorePlaceV`, as a field or
+  nested place already was (vm/compile/call_mix.rs), instead of the call walking.
+  Regression: cpl-interp `vm_walks_map_entries_itself` (programs/vm_map_key_place).

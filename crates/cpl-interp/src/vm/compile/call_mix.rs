@@ -72,9 +72,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 Ty::List(_) => true,
                                 _ => false,
                             };
-                            if !base_ok || !container_ok {
-                                return None;
-                            }
+                            // Any other container (a map entry) is moved out by its path.
+                            via_path[i] = !base_ok || !container_ok;
                             idx_mut_count += 1;
                         }
                         PlaceKind::Index(..) | PlaceKind::Field(..)

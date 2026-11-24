@@ -112,8 +112,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
-                let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
-                store_place_leaf_val(container, last, val, regs_i, spans[cur_pc])?;
+                // A map entry (a `mut` arg taken by its path) is put back whole.
+                if let PlaceStep::Key(_) = last {
+                    *walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])? = val;
+                } else {
+                    let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
+                    store_place_leaf_val(container, last, val, regs_i, spans[cur_pc])?;
+                }
             }
             Op::AssignPlaceI {
                 path,
