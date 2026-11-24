@@ -676,6 +676,22 @@ fn a_fed_body_that_never_stops_says_so_in_its_callback_type() {
     assert!(calls[1].contains("-> int {"), "{cpp}");
 }
 
+#[test]
+fn a_fed_body_stops_through_the_loop_fused_onto_its_push() {
+    let cpp = cpp(concat!(
+        "fn upto3(n: Int) -> yields Int:\n    for i in 0..n: yield i\n",
+        "let n: Int = read()\nvar t = 0\n",
+        "for x in [y for y in upto3(n) if y % 2 == 0]:\n    t += x\n    if x >= 4: break\n",
+        "print(t)\n",
+    ));
+    let calls: Vec<&str> = cpp
+        .lines()
+        .filter(|l| l.contains("cpl_each_upto3(n, "))
+        .collect();
+    assert_eq!(calls.len(), 1, "{cpp}");
+    assert!(calls[0].contains("-> int {"), "{cpp}");
+}
+
 /// The lines of `cpl_each_{name}`'s form that call a `cpl_each_` form.
 fn pusher_calls(cpp: &str, name: &str) -> Vec<String> {
     let head = format!("int cpl_each_{name}(");

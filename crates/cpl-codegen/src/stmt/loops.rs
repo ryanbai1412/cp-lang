@@ -41,6 +41,30 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// Whether a fed `body` may stop its loop, through the consumer loop body
+    /// fused onto a list it pushes to as well: `for a in g.out(u)` fused onto
+    /// a filter's push breaks from inside the filter's callback.
+    fn fed_body_stops(&self, body: &Block) -> bool {
+        if cpl_ir::pushed::stops(body) {
+            return true;
+        }
+        let mut consumers = Vec::new();
+        crate::walk::deep_exprs(body, &mut |e| {
+            let ExprKind::Mutate(cpl_ir::Mutation::Push, place, _) = &e.kind else {
+                return;
+            };
+            let cpl_ir::PlaceKind::Local(v) = place.kind else {
+                return;
+            };
+            if let Some((_, c)) = self.fused_pushes.iter().rev().find(|(s, _)| *s == v) {
+                if c.sink.is_none() {
+                    consumers.push(c.body.clone());
+                }
+            }
+        });
+        consumers.iter().any(|b| self.fed_body_stops(b))
+    }
+
     /// `for x in f(..)` over a `yields` fn as `cpl_each_f(.., body)`: the
     /// body runs on each value as `f` makes it and no list is built.
     /// False when the loop has to walk the list instead.
@@ -92,7 +116,7 @@ impl<'p> Emitter<'p> {
         // A body that never stops says so in its type, so the form's
         // `if (int cpl_r = cpl_f(..))` folds away even where it isn't inlined.
         // Inside a pusher, a yield forwards the outer callback's stop.
-        let go = if self.pushing.is_some() || cpl_ir::pushed::stops(body) {
+        let go = if self.pushing.is_some() || self.fed_body_stops(body) {
             "int"
         } else {
             "std::integral_constant<int, 0>"
