@@ -486,6 +486,14 @@ impl<'p> Devirt<'p> {
         self.unread_fields.contains(&(struct_id, index))
     }
 
+    /// A field the C++ struct leaves out: never read, or `()`-typed (an op
+    /// value like `+` holds nothing). Declaration, literals and reads all
+    /// ask this one question, so they drop the field together.
+    pub fn dropped_field(&self, struct_id: usize, index: usize) -> bool {
+        self.unread_field(struct_id, index)
+            || self.program.structs[struct_id].fields[index].1 == Ty::Unit
+    }
+
     /// Count only the struct literals in `fns` and `closures`, the code the
     /// file writes: a literal in a fn that is never written never runs.
     pub fn built_only_in(&mut self, fns: &BTreeSet<FnId>, closures: &BTreeSet<ClosureId>) {

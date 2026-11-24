@@ -401,3 +401,20 @@ fn a_dropped_field_at_a_product_position_drops_its_local_and_stores() {
         "nothing reads `Paths.back`, so neither its array nor a store into it is written:\n{out}"
     );
 }
+
+#[test]
+fn an_op_value_field_is_left_out_of_declaration_literal_and_tie() {
+    let out = cpp("use std.window.{Window}
+var w = Window(+)
+for x in [3, 5, 2]: w.push(x)
+print(w)
+");
+    assert!(
+        !out.contains("void op"),
+        "an op value holds nothing:\n{out}"
+    );
+    assert!(
+        !out.contains("{(void)0,"),
+        "the literal drops the field too:\n{out}"
+    );
+}

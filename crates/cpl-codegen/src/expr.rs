@@ -608,6 +608,12 @@ impl<'p> Emitter<'p> {
                     }
                 })
             }
+            ExprKind::Field(base, index)
+                if matches!(base.ty, Ty::Struct(id) if self.devirt.dropped_field(id, *index)
+                    && e.ty == Ty::Unit) =>
+            {
+                Code::primary("(void)0")
+            }
             ExprKind::Field(base, index) => {
                 let b = self.expr(base);
                 match &base.ty {
@@ -643,7 +649,7 @@ impl<'p> Emitter<'p> {
                             _ => None,
                         };
                         let dropped: Vec<bool> = (0..items.len())
-                            .map(|idx| struct_id.is_some_and(|s| self.devirt.unread_field(s, idx)))
+                            .map(|idx| struct_id.is_some_and(|s| self.devirt.dropped_field(s, idx)))
                             .collect();
                         let items: Vec<String> = items
                             .iter()

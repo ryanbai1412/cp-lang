@@ -686,7 +686,7 @@ impl<'p> Emitter<'p> {
                                 };
                                 let dropped: Vec<bool> = (0..items.len())
                                     .map(|idx| {
-                                        struct_id.is_some_and(|s| self.devirt.unread_field(s, idx))
+                                        struct_id.is_some_and(|s| self.devirt.dropped_field(s, idx))
                                     })
                                     .collect();
                                 let rendered: Vec<String> = items

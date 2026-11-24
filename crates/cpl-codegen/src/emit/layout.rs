@@ -276,7 +276,8 @@ impl<'p> Emitter<'p> {
                 let mut names = Vec::new();
                 for (field_idx, (field, field_ty)) in def.fields.iter().enumerate() {
                     let name = ident(field);
-                    if self.devirt.unread_field(*id, field_idx) {
+                    // A `()` field, such as an op value like `+`, holds nothing.
+                    if self.devirt.dropped_field(*id, field_idx) {
                         continue;
                     }
                     if self.devirt.field_elidable(*id, field_idx) {
