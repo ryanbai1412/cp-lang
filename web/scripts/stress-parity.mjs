@@ -28,7 +28,7 @@ const tmp = mkdtempSync(join(tmpdir(), 'stress-parity-'));
 const view = (o) => o.status === 'fail'
   ? { status: 'fail', case: o.counterexample.case, verdict: o.counterexample.verdict, input: o.counterexample.raw_input,
       first: o.counterexample.explain?.divergence?.name ?? null }
-  : o.status === 'ok' ? { status: 'ok', cases: o.cases } : { status: 'error' };
+  : o.status === 'ok' ? { status: 'ok', cases: o.case_count } : { status: 'error' };
 
 let bad = 0, found = 0;
 const slow = [];

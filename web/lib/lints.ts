@@ -88,7 +88,7 @@ function runs(src: string, input: string): boolean {
 }
 
 /** One record of `cpl lint --list --json`. */
-type Record = {
+type LintRecord = {
   code: string;
   name: string;
   dir: string;
@@ -110,8 +110,8 @@ export function lints(): Lint[] {
   const byNumber = new Map(principles().map((p) => [p.n, p]));
   const listed = spawnSync(cpl, ['lint', '--list', '--json'], { encoding: 'utf8', maxBuffer: 64 << 20 });
   if (listed.status !== 0) throw new Error(`lints: \`${cpl} lint --list --json\` failed: ${listed.stderr}`);
-  const input = (r: Record, f: string) => sampled[`${r.dir}/${f}`] ?? '';
-  cache = (JSON.parse(listed.stdout).lints as Record[]).map((r) => ({
+  const input = (r: LintRecord, f: string) => sampled[`${r.dir}/${f}`] ?? '';
+  cache = (JSON.parse(listed.stdout).lints as LintRecord[]).map((r) => ({
     name: r.name,
     dir: r.dir,
     code: r.code,

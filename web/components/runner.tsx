@@ -255,13 +255,13 @@ function Output({ result, source, onUseInput }: { result: Result; source: string
   if (result.kind === 'stress') {
     const o = result.outcome;
     if (o.status === 'error') return <pre className={cn(box, 'text-destructive')} role="status">{o.error}</pre>;
-    if (o.status === 'ok') return <pre tabIndex={0} className={box} role="status">{`All ${o.cases} random cases agree.`}</pre>;
+    if (o.status === 'ok') return <pre tabIndex={0} className={box} role="status">{`All ${o.case_count} random cases agree.`}</pre>;
     const c = o.counterexample;
     const d = c.explain && 'divergence' in c.explain ? c.explain.divergence : null;
     return (
       <div className="space-y-2 text-sm" role="status">
         <p className="font-medium">
-          Case {c.case} of {o.cases} differs ({c.verdict}). Shrunk to the smallest input that still fails:
+          Case {c.case} of {o.case_count} differs ({c.verdict}). Shrunk to the smallest input that still fails:
         </p>
         <div className="grid gap-2 sm:grid-cols-3">
           {[['Input', c.input], ['Expected', c.expected], ['Got', c.got]].map(([label, text]) => (
