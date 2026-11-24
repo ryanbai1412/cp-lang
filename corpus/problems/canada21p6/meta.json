@@ -6,11 +6,15 @@
   {"id": "5151453", "language": "CPP17", "result": "RTE", "time": 1.457991725, "memory_kb": 795428.0, "file": "corpus/submissions/5151453.cpp"},
   {"id": "5151463", "language": "CPP17", "result": "RTE", "time": 1.300664735, "memory_kb": 795428.0, "file": "corpus/submissions/5151463.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/canada21p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Both C++ submissions are RTE, so there is no accepted reference. orig.cpp is a corpus-written k-d tree with branch and bound over the black holes (exact: a subtree is pruned only when its bounding box cannot beat the answer so far), checked against the statement sample and an independent brute that scans every hole per block on 150 random cases."
 }

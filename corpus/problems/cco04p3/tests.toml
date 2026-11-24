@@ -1,0 +1,23 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "((KS)K)\n((KK)S)\n(((SK)S)K)\n(((SS)K)S)\n(((SK)K)K)\n((((S((SK)K))(K(S((S(KS))K))))((S((S(KS))K))(K((SK)K))))((S((S(KS))K))(K((SK)K))))\n(((S((S((SK)K))(K(S((S(KS))K)))))(K(K((SK)K))))(((S((S(KS))K))((SK)K))((S((S(KS))K))((SK)K))))\n"
+
+[[case]]
+seed = 1
+size = 1
+
+[[case]]
+seed = 2
+size = 4
+
+[[case]]
+seed = 3
+size = 16
+
+[[case]]
+seed = 4
+size = 64
+
+[[case]]
+args = ["--max"]
