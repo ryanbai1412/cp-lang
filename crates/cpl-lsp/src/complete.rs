@@ -1508,6 +1508,8 @@ fn scope_completion(
         // A local the checker could not type is still in scope.
         let (kind, detail) = match keyword {
             "domain" => (Kind::Domain, format!("domain {name}")),
+            "type" => (Kind::Alias, format!("type {name}")),
+            "field" => (Kind::Field, format!("{name}: {ty}")),
             _ if ty.has_vague() => (Kind::Value, name.clone()),
             _ => (Kind::Value, format!("{name}: {ty}")),
         };
@@ -1636,18 +1638,32 @@ fn whole_words(text: &str, word: &str) -> usize {
 }
 
 /// The fn bodies of an item: a local declared in one is seen only in it.
-/// Also its comprehensions, whose `for` names are seen in the body before them.
-struct FnSpans(Vec<cpl_diag::Span>, Vec<cpl_diag::Span>);
+/// Also its comprehensions, whose `for` names are seen in the body before them,
+/// each fn's generics (seen in its signature too) and the struct methods, which
+/// see the struct's fields without `self.`.
+#[derive(Default)]
+struct FnSpans {
+    fns: Vec<cpl_diag::Span>,
+    comprehensions: Vec<cpl_diag::Span>,
+    generics: Vec<(cpl_diag::Span, String)>,
+    methods: Vec<cpl_diag::Span>,
+}
 
 impl Visitor for FnSpans {
     fn stmt(&mut self, stmt: &Stmt) {
-        if let StmtKind::Fn(_) = stmt.kind {
-            self.0.push(stmt.span);
+        match &stmt.kind {
+            StmtKind::Fn(f) => {
+                self.fns.push(stmt.span);
+                let names = f.generics.iter().map(|g| (stmt.span, g.text.clone()));
+                self.generics.extend(names);
+            }
+            StmtKind::Struct(s) => self.methods.extend(s.methods.iter().map(|m| m.span)),
+            _ => {}
         }
     }
     fn expr(&mut self, expr: &Expr) {
         if let ExprKind::Comprehension { .. } = expr.kind {
-            self.1.push(expr.span);
+            self.comprehensions.push(expr.span);
         }
     }
 }
@@ -1658,17 +1674,18 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
         return Vec::new();
     };
     let rel = cursor.offset - item.offset;
-    let mut fns = FnSpans(Vec::new(), Vec::new());
+    let mut fns = FnSpans::default();
     for stmt in &item.syntax.parsed.stmts {
         walk_stmt(stmt, &mut fns);
     }
+    let within = |s: &cpl_diag::Span| s.start <= rel && rel <= s.end;
     let in_same_comprehension = |at: u32| {
-        fns.1
+        fns.comprehensions
             .iter()
             .any(|c| c.start <= at && at <= c.end && c.start <= rel && rel <= c.end)
     };
     let innermost = |at: u32| {
-        fns.0
+        fns.fns
             .iter()
             .filter(|s| s.start <= at && at <= s.end)
             .min_by_key(|s| s.end - s.start)
@@ -1691,7 +1708,7 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
         let owner = match entry.keyword {
             "fn" => {
                 let mut around: Vec<_> = fns
-                    .0
+                    .fns
                     .iter()
                     .filter(|s| s.start <= entry.span.start && entry.span.start <= s.end)
                     .collect();
@@ -1705,6 +1722,16 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
         }
         out.retain(|(name, _, _)| *name != entry.name);
         out.push((entry.name.clone(), entry.ty.clone(), entry.keyword));
+    }
+    if fns.methods.iter().any(within) {
+        for entry in &item.check.hovers {
+            if entry.keyword == "field" && entry.decl == Some(entry.span) {
+                out.insert(0, (entry.name.clone(), entry.ty.clone(), "field"));
+            }
+        }
+    }
+    for (_, name) in fns.generics.iter().filter(|(span, _)| within(span)) {
+        out.insert(0, (name.clone(), Ty::TypeName(name.clone()), "type"));
     }
     out.reverse();
     out
