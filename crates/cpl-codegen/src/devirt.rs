@@ -309,7 +309,7 @@ impl<'p> Devirt<'p> {
                     && match value.kind {
                         ExprKind::Closure(_) => true,
                         ExprKind::Call(f, _) => self.lambda_returns.contains(&f),
-                        _ => false,
+                        _ => self.join_leaves(value).is_some(),
                     }
             })
             .map(|(g, _)| g)
@@ -458,6 +458,87 @@ impl<'p> Devirt<'p> {
     /// type (see [`Devirt::returns_lambda`]) and nothing stores to `name` again.
     pub fn let_auto_call(&self, home: Option<ClosureId>, slot: usize, f: FnId, n: u32) -> bool {
         self.bound_once(home, slot, n) && self.returns_lambda(f)
+    }
+
+    /// The closures a value `if` or `match` of a fn type picks between, in
+    /// order: closure literals and fn locals, each cheap to build and none
+    /// run, so all are built and the picked one called (`cpl::pick`).
+    /// `None` when a branch is any other value or there is only one.
+    pub fn join_leaves<'e>(&self, e: &'e Expr) -> Option<Vec<&'e Expr>> {
+        let mut out = Vec::new();
+        self.join_into(e, &BTreeSet::new(), &mut out)?;
+        (out.len() > 1).then_some(out)
+    }
+
+    fn join_into<'e>(
+        &self,
+        e: &'e Expr,
+        bound: &BTreeSet<usize>,
+        out: &mut Vec<&'e Expr>,
+    ) -> Option<()> {
+        match &e.kind {
+            ExprKind::If(_, a, b) if matches!(e.ty, Ty::Fn(..)) => {
+                self.join_branch(a, bound, out)?;
+                self.join_branch(b, bound, out)
+            }
+            ExprKind::Do(block) if matches!(e.ty, Ty::Fn(..)) => {
+                let mut bound = bound.clone();
+                let mut gives = Vec::new();
+                block_gives(block, &mut bound, &mut gives);
+                for give in gives {
+                    if !self.join_leaf(give, &bound) {
+                        return None;
+                    }
+                    out.push(give);
+                }
+                Some(())
+            }
+            _ => None,
+        }
+    }
+
+    fn join_branch<'e>(
+        &self,
+        e: &'e Expr,
+        bound: &BTreeSet<usize>,
+        out: &mut Vec<&'e Expr>,
+    ) -> Option<()> {
+        if self.join_leaf(e, bound) {
+            out.push(e);
+            return Some(());
+        }
+        self.join_into(e, bound, out)
+    }
+
+    /// `e` is a closure literal or a fn local none of `bound` (set within
+    /// the join) reaches, and building it copies nothing off the heap.
+    fn join_leaf(&self, e: &Expr, bound: &BTreeSet<usize>) -> bool {
+        match &e.kind {
+            ExprKind::Closure(cid) => {
+                let def = &self.program.closures[*cid];
+                def.captures.iter().all(|c| {
+                    let ty = &def.locals[c.inner].ty;
+                    c.is_global
+                        || (!bound.contains(&c.outer)
+                            && (c.by_ref || ty.is_scalar() || matches!(ty, Ty::Fn(..))))
+                })
+            }
+            ExprKind::Local(slot) => matches!(e.ty, Ty::Fn(..)) && !bound.contains(slot),
+            _ => false,
+        }
+    }
+
+    /// Whether `let name = <join>` (see [`Devirt::join_leaves`]) binds
+    /// `auto`: nothing stores to `name` again and no branch names it.
+    pub fn let_auto_join(&self, home: Option<ClosureId>, slot: usize, init: &Expr, n: u32) -> bool {
+        self.bound_once(home, slot, n)
+            && self.join_leaves(init).is_some_and(|leaves| {
+                leaves.iter().all(|leaf| match leaf.kind {
+                    ExprKind::Closure(cid) => self.local_auto(slot, cid),
+                    ExprKind::Local(src) => src != slot,
+                    _ => false,
+                })
+            })
     }
 
     /// Local `slot` of `home` (a closure, or the fn when None, with `n`
@@ -1213,6 +1294,34 @@ impl Emitter<'_> {
             let value = self.flatten(value, out);
             let text = self.expr(value).text;
             self.line(out, &format!("(void)({text});"));
+        }
+    }
+}
+
+/// The values `block` gives, outside nested `Do`s, and the locals it
+/// binds or writes on the way into `bound`.
+fn block_gives<'e>(block: &'e Block, bound: &mut BTreeSet<usize>, gives: &mut Vec<&'e Expr>) {
+    for stmt in &block.stmts {
+        match stmt {
+            Stmt::Let(slot, _) => {
+                bound.insert(*slot);
+            }
+            Stmt::Assign(place, _, _) => {
+                if let (false, slot) = walk::root(place) {
+                    bound.insert(slot);
+                }
+            }
+            Stmt::Give(value) => gives.push(value),
+            Stmt::If(_, a, b) => {
+                block_gives(a, bound, gives);
+                block_gives(b, bound, gives);
+            }
+            Stmt::While(_, _, body) => block_gives(body, bound, gives),
+            Stmt::For(_, slot, _, body) => {
+                bound.insert(*slot);
+                block_gives(body, bound, gives);
+            }
+            _ => {}
         }
     }
 }

@@ -180,6 +180,9 @@ pub(crate) struct Emitter<'p> {
     /// The `let`s the `Do` block being written as a lambda owns: they
     /// move into what it gives.
     pub give_owned: Option<BTreeSet<usize>>,
+    /// Within a `cpl::pick` join's `Do` block: each closure it gives, by
+    /// address, to the index the block returns in its place.
+    pub give_index: BTreeMap<usize, usize>,
     /// `m.get(k) ?? d` expressions read only within their full expression,
     /// written as `cpl::map_or` (see [`Emitter::mark_read_in_place`]).
     pub read_in_place: BTreeSet<usize>,
@@ -357,6 +360,7 @@ impl<'p> Emitter<'p> {
             cold: BTreeMap::new(),
             cold_ret: String::new(),
             give_owned: None,
+            give_index: BTreeMap::new(),
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,

@@ -41,6 +41,21 @@ template <class B, class W> Memo<B, W> memo(B b, W w) { return {std::move(b), st
 ",
     },
     Piece {
+        name: "pick",
+        needs: &[],
+        code: "\
+// A value `if` or `match` of different closures: each kept, the picked one called.
+template <class... F> struct Pick {
+    int i; std::tuple<F...> f;
+    template <size_t K = 0, class... A> auto operator()(A&&... a) {
+        if constexpr (K + 1 < sizeof...(F)) { if (i != (int)K) return this->template operator()<K + 1>((A&&)a...); }
+        return std::get<K>(f)((A&&)a...);
+    }
+};
+template <class... F> Pick<F...> pick(int i, F... f) { return {i, {std::move(f)...}}; }
+",
+    },
+    Piece {
         name: "fn_ref",
         needs: &[],
         code: "\

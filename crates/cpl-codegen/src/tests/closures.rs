@@ -555,23 +555,6 @@ fn a_yields_fn_whose_own_closures_write_its_locals_feeds_a_loop() {
 }
 
 #[test]
-fn a_value_if_of_different_closures_joins_at_the_erased_fn() {
-    let out = cpp(concat!(
-        "let m = read<Int>()\n",
-        "fn go(flip: Bool) -> Int:\n",
-        "    fn low(t: Int) -> Int = t + m\n",
-        "    let side = if flip: (t: Int) => m - low(t) else: low\n",
-        "    side(3)\n",
-        "print(go(true), go(false))\n",
-    ));
-    assert!(
-        out.contains("side = flip ? std::function<ll(ll)>("),
-        "{out}"
-    );
-    assert!(out.contains(" : std::function<ll(ll)>(low)"), "{out}");
-}
-
-#[test]
 fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
     let cpp = cpp(concat!(
         "fn inner2(n: Int) -> yields Int:\n    for i in 0..n: yield i\n",
@@ -853,4 +836,42 @@ fn a_closure_passed_in_an_optional_the_callee_only_calls_borrows_its_list() {
         explained.is_empty(),
         "no copy is left to explain: {explained:?}"
     );
+}
+
+#[test]
+fn a_value_if_or_match_of_different_closures_keeps_each_own_type() {
+    let src = concat!(
+        "let m: Int = read()\n",
+        "enum K = A | B | C\n",
+        "fn pick(k: K) -> Int:\n",
+        "    fn low(t: Int) -> Int = t + m\n",
+        "    let f = match k:\n",
+        "        A => (t: Int) => m - low(t)\n",
+        "        B => low\n",
+        "        C => (t: Int) => t * 2\n",
+        "    f(3)\n",
+        "fn go(flip: Bool) -> Int:\n",
+        "    fn low(t: Int) -> Int = t + m\n",
+        "    let side = if flip: (t: Int) => m - low(t) elif m > 3: low else: (t: Int) => t\n",
+        "    side(3)\n",
+        "let g = if m > 5: (t: Int) => t + 1 else: (t: Int) => t - 1\n",
+        "print(go(true), go(false), pick(K.C), g(1))\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("auto side = cpl::pick("), "{out}");
+    assert!(out.contains("auto f = cpl::pick("), "{out}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    for e in explained
+        .iter()
+        .filter(|e| e.site.ends_with(" side") || e.site.ends_with(" f") || e.site == "top-level g")
+    {
+        assert!(
+            matches!(e.mode, crate::ClosureMode::StaticLocalAuto),
+            "{explained:?}"
+        );
+    }
 }

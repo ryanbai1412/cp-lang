@@ -851,7 +851,12 @@ impl<'p> Emitter<'p> {
                         ExprKind::Call(f, _) => {
                             !hoisted && self.devirt.let_auto_call(self.closure_id, *slot, f, stores)
                         }
-                        _ => false,
+                        _ => {
+                            !hoisted
+                                && self
+                                    .devirt
+                                    .let_auto_join(self.closure_id, *slot, init, stores)
+                        }
                     };
                 // A name for a fn parameter that is a template is that same functor.
                 if matches!(ty, Ty::Fn(..))
@@ -916,6 +921,14 @@ impl<'p> Emitter<'p> {
             Stmt::For(id, slot, iter, body) => self.checked_for(*id, *slot, iter, body, out),
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
             Stmt::Return(None) => self.line(out, "return;"),
+            Stmt::Give(value)
+                if self
+                    .give_index
+                    .contains_key(&(value as *const Expr as usize)) =>
+            {
+                let k = self.give_index[&(value as *const Expr as usize)];
+                self.line(out, &format!("return {k};"));
+            }
             Stmt::Return(Some(value)) | Stmt::Give(value) => {
                 let value = self.flatten(value, out);
                 if value.ty == Ty::Error {

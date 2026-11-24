@@ -8,6 +8,7 @@ use crate::names::{
     bits_field, cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_plain_enum,
 };
 use crate::walk;
+use std::collections::BTreeMap;
 pub(crate) const FLOAT_DIGITS: &str = "10";
 
 use cpl_ir::{
@@ -853,6 +854,9 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::If(cond, then, otherwise) => {
                 let c = self.expr(cond);
+                if let Some(leaves) = self.devirt.join_leaves(e) {
+                    return self.pick(e, &leaves, c);
+                }
                 let a = self.expr(then);
                 let b = self.expr(otherwise);
                 if e.ty == Ty::Unit {
@@ -863,8 +867,8 @@ impl<'p> Emitter<'p> {
                         b.text
                     ));
                 }
-                // Each closure is its own C++ type, so a join of fns meets at the
-                // fn's one erased representation, as a `var` of that type does.
+                // Each closure is its own C++ type, so a join of fns other than
+                // closures and fn locals meets at the fn's erased representation.
                 let (a, b) = if matches!(e.ty, Ty::Fn(..)) {
                     let erased = self.ty(&e.ty);
                     let join = |x: Code| Code::primary(format!("{erased}({})", x.text));
@@ -888,6 +892,10 @@ impl<'p> Emitter<'p> {
                 }
                 if let Some(place) = gives_its_place(block, &e.ty) {
                     return self.expr(place);
+                }
+                if let Some(leaves) = self.devirt.join_leaves(e) {
+                    let index = self.join_index(e, &leaves);
+                    return self.pick(e, &leaves, index);
                 }
                 let ret = if let Some(k) = self.expr_fixed_len(e) {
                     self.fixed_array_cpp(&e.ty, k)
@@ -1387,6 +1395,62 @@ pub(crate) fn map_remove_do(e: &Expr) -> Option<(&[Stmt], &Place, &Expr)> {
         Some((prefix, place, key_val))
     } else {
         None
+    }
+}
+
+impl Emitter<'_> {
+    /// `cpl::pick(index, leaf0, leaf1, ..)`: a value `if` or `match` of
+    /// closures (see [`crate::devirt::Devirt::join_leaves`]) keeps each in
+    /// its own type and calls the one `index` names. For an `if`, `c` is
+    /// its condition, already written.
+    fn pick(&mut self, e: &Expr, leaves: &[&Expr], c: Code) -> Code {
+        self.need("pick");
+        let index = match &e.kind {
+            ExprKind::If(_, a, b) => {
+                let a = self.join_index(a, leaves);
+                let b = self.join_index(b, leaves);
+                format!("{} ? {} : {}", c.at(COND + 1), a.text, b.text)
+            }
+            _ => c.text,
+        };
+        let mut args = vec![index];
+        args.extend(leaves.iter().map(|leaf| self.expr(leaf).text));
+        Code::primary(format!("cpl::pick({})", args.join(", ")))
+    }
+
+    /// The index into `leaves` that join `e` picks, as an int expression.
+    fn join_index(&mut self, e: &Expr, leaves: &[&Expr]) -> Code {
+        if let Some(k) = leaves.iter().position(|leaf| std::ptr::eq(*leaf, e)) {
+            return Code::primary(k.to_string());
+        }
+        match &e.kind {
+            ExprKind::If(cond, a, b) => {
+                let c = self.expr(cond);
+                let a = self.join_index(a, leaves);
+                let b = self.join_index(b, leaves);
+                Code {
+                    text: format!("{} ? {} : {}", c.at(COND + 1), a.at(COND + 1), b.at(COND)),
+                    prec: COND,
+                    narrow: false,
+                }
+            }
+            ExprKind::Do(block) => {
+                let indices: BTreeMap<usize, usize> = leaves
+                    .iter()
+                    .enumerate()
+                    .map(|(k, leaf)| (*leaf as *const Expr as usize, k))
+                    .collect();
+                let outer = std::mem::replace(&mut self.give_index, indices);
+                let give_ref = std::mem::replace(&mut self.give_ref, false);
+                let give_owned = self.give_owned.take();
+                let code = self.lambda("int", |this, out| this.block(block, out));
+                self.give_index = outer;
+                self.give_ref = give_ref;
+                self.give_owned = give_owned;
+                code
+            }
+            _ => unreachable!("join_leaves gives only ifs, dos and their leaves"),
+        }
     }
 }
 

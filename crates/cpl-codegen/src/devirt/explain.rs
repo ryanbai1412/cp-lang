@@ -191,6 +191,11 @@ pub fn explain_closures(
                         Some(ExprKind::Call(f, _)) => {
                             !hoisted.contains(slot) && devirt.let_auto_call(Some(cid), *slot, *f, 0)
                         }
+                        Some(_) => {
+                            let init = init.as_ref().expect("some");
+                            !hoisted.contains(slot)
+                                && devirt.let_auto_join(Some(cid), *slot, init, 0)
+                        }
                         _ => false,
                     };
                     out.push(match auto {
@@ -362,6 +367,16 @@ pub(super) fn explain_locals_in_block(
                 if !hoisted.contains(slot)
                     && stores.get(slot).copied().unwrap_or(0) <= 1
                     && home.is_some_and(|id| devirt.template_params(id).contains(&src)) =>
+            {
+                ClosureMode::StaticLocalAuto
+            }
+            _ if !hoisted.contains(slot)
+                && devirt.let_auto_join(
+                    None,
+                    *slot,
+                    init,
+                    stores.get(slot).map_or(0, |&n| n as u32),
+                ) =>
             {
                 ClosureMode::StaticLocalAuto
             }
