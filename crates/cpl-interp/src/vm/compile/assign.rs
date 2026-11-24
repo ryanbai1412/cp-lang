@@ -1242,6 +1242,50 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if op != AssignOp::Set && val_kind.is_none() && opt_kind.is_none() {
             return self.try_compile_assign_op_v(place, op, value);
         }
+        if let (AssignOp::Max, None, Some(kind)) = (op, val_kind, opt_kind) {
+            match place.kind {
+                PlaceKind::Local(slot) => {
+                    let SlotLoc::OptI { val, some, .. } = self.slot_loc(slot) else {
+                        return false;
+                    };
+                    let (b_val, b_some) = self.compile_expr_opt_i(value);
+                    let max = Op::MaxOptI {
+                        val,
+                        some,
+                        b_val,
+                        b_some,
+                    };
+                    self.emit(max, place.span);
+                    return true;
+                }
+                PlaceKind::Global(gid) => {
+                    let (b_val, b_some) = self.compile_expr_opt_i(value);
+                    let (val, some, gid) = (self.alloc_i(), self.alloc_i(), gid as u16);
+                    let load = Op::LoadGlobalOptI {
+                        dst_val: val,
+                        dst_some: some,
+                        gid,
+                    };
+                    self.emit(load, place.span);
+                    let max = Op::MaxOptI {
+                        val,
+                        some,
+                        b_val,
+                        b_some,
+                    };
+                    self.emit(max, place.span);
+                    let store = Op::StoreGlobalOptI {
+                        gid,
+                        val,
+                        some,
+                        kind,
+                    };
+                    self.emit(store, place.span);
+                    return true;
+                }
+                _ => {}
+            }
+        }
         if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) {
             return false;
         }
@@ -1306,6 +1350,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     place.span,
                 );
+                true
+            }
+            // An optional's `max=` orders it as a value does.
+            (AssignOp::Max, None, Some(_)) => {
+                let r_val = self.compile_expr_v(value);
+                self.emit(Op::AssignPlaceV { path, r_val, op }, place.span);
+                if r_val >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: r_val }, place.span);
+                }
                 true
             }
             _ => {

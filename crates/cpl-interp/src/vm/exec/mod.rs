@@ -412,6 +412,20 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 Op::MaxI { dst, a, b } => {
                     regs_i[dst as usize] = regs_i[a as usize].max(regs_i[b as usize]);
                 }
+                Op::MaxOptI {
+                    val,
+                    some,
+                    b_val,
+                    b_some,
+                } => {
+                    let b = regs_i[b_val as usize];
+                    if regs_i[b_some as usize] != 0
+                        && (regs_i[some as usize] == 0 || b > regs_i[val as usize])
+                    {
+                        regs_i[val as usize] = b;
+                        regs_i[some as usize] = 1;
+                    }
+                }
                 Op::WrapAddI { dst, a, b } => {
                     regs_i[dst as usize] = regs_i[a as usize].wrapping_add(regs_i[b as usize]);
                 }

@@ -253,6 +253,13 @@ pub(crate) enum Op {
         a: u16,
         b: u16,
     },
+    /// `?Int max=` in registers: `None` orders below every `Int`.
+    MaxOptI {
+        val: u16,
+        some: u16,
+        b_val: u16,
+        b_some: u16,
+    },
     AbsI {
         dst: u16,
         a: u16,
