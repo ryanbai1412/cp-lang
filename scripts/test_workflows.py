@@ -157,7 +157,7 @@ class WorkflowTest(unittest.TestCase):
         m = re.search(r'slow-timeout = \{ period = "(\d+)s", terminate-after = (\d+) \}', gate.group(0))
         self.assertIsNotNone(m, "[profile.gate] needs a slow-timeout with terminate-after")
         with open(os.path.join(ROOT, "scripts", "check.sh"), encoding="utf-8") as f:
-            self.assertRegex(f.read(), r"nextest run [^\n]*--profile gate [^\n]*--retries 1 --partition")
+            self.assertRegex(f.read(), r"nextest run [^\n]*--profile gate [^\n]*--retries 1 --flaky-result fail --partition")
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             cap = int(re.search(r"^    timeout-minutes: (\d+)", job_block(f.read(), "gate"), re.M).group(1))
         # Both tries of a hung test end with minutes left for the build.

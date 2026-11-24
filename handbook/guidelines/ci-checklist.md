@@ -307,15 +307,16 @@ test is listed.
 
 ### ci/R35
 
-CI's test partitions retry a failed test once, and every test that passed
-only on the retry is named as a `flaky test` warning on the run and in its
-summary.
-*Why:* a test that fails one run in twenty turned main red with no code
-change, and lanes then spent time on a red they could not reproduce. The
-retry keeps main shipping, and the warning keeps the flake visible so the
-sheriff routes it to its owner.
-*Example:* a test that races a temp file fails, passes on try 2, and the run
-shows `flaky test (failed, then passed on retry): cpl-cli::corpus <name>`.
+CI's test partitions retry a failed test once only to tell a flake from a
+break: a test that passes only on the retry still fails the run
+(`--flaky-result fail`), and is named as a `flaky test` warning on the run
+and in its summary.
+*Why:* a retry that passes hid each flake while main stayed green, and the
+audit's target for test retries and flaky tests is 0. Failing on the flake
+makes its owner fix it, and the name says it is a flake, not a break.
+*Example:* a test that races a temp file fails, passes on try 2, the
+partition fails, and the run shows `flaky test (failed, then passed on
+retry; fails the run): cpl-cli::corpus <name>`.
 *Enforced by:* `scripts/flaky.py`, tested by `scripts/test_flaky.py`, run by
 `scripts/check.sh`.
 

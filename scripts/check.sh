@@ -340,12 +340,13 @@ case "$gate_part" in
         [ -z "${CPL_NEXTEST_ARCHIVE:-}" ] \
             || from=(--archive-file "$CPL_NEXTEST_ARCHIVE" --workspace-remap . --extract-to . --extract-overwrite)
         step "cargo nextest run --partition $part (without the --full tests)"
-        # One retry, so a flaky test can't turn main red; flaky.py names it (ci/R35).
+        # A test that passes only on its retry fails the run as flaky, and
+        # flaky.py names it (ci/R35): flakes surface instead of hiding.
         nextest_log="$(mktemp)"
-        cargo nextest run "${from[@]}" --profile gate --no-fail-fast --retries 1 --partition "$part" -E "not ($slow_filter)" \
+        cargo nextest run "${from[@]}" --profile gate --no-fail-fast --retries 1 --flaky-result fail --partition "$part" -E "not ($slow_filter)" \
             2>&1 | tee "$nextest_log" || tests_status=$?
         uv run --quiet python scripts/flaky.py "$nextest_log"
-        [ "${tests_status:-0}" = 0 ] || fail "a test failed twice; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'"
+        [ "${tests_status:-0}" = 0 ] || fail "a test failed or was flaky; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'"
         step_end
         printf '\ncheck: test partition %s passed in %ss\n' "$part" "$(( $(date +%s) - gate_t0 ))"
         exit 0

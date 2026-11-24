@@ -132,7 +132,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 | A hung job can't block the queue | job minutes over its cap | [ci/R28](../guidelines/ci-checklist.md#cir28): every job has `timeout-minutes` | `scripts/test_workflows.py` |
 | Every main commit has a result | commits on main with no `ci/covered` status | [ci/R10](../guidelines/ci-checklist.md#cir10): `scripts/commit_status.py`, `.github/workflows/commit-status.yml` | built; first production run pending |
 | CI results match a local run | reds that don't reproduce on a fresh `origin/main` build | Pinned toolchains, hermetic std path, deterministic tests | ci/R34, `scripts/test_wall_clock.py` |
-| No flaky tests | tests that both pass and fail on the same commit | One nextest retry in CI; each test that passes only on retry is reported | ci/R35, `scripts/flaky.py`, `scripts/test_flaky.py` |
+| No flaky tests | tests that both pass and fail on the same commit | A test that passes only on its nextest retry fails CI and is named | ci/R35, `scripts/flaky.py`, `scripts/test_flaky.py` |
 | A red names its culprit fast | minutes from red to named commit | Bisect of the failing tests over the run's range, then a verified revert (`culprit.yml`); direct log reading first | `scripts/test_culprit.py`; **missing**: a recorded red-to-culprit time per red |
 | Main is usually green | % of time the newest finished run is green | Process: the sheriff fixes or reverts within 15 min | **missing**: a recorded metric |
 | CI tests all three OSes | jobs per OS that block main | [ci/R29](../guidelines/ci-checklist.md#cir29): `cli`, `vscode` matrices on Linux, macOS, Windows; `os.yml` | `scripts/test_workflows.py` |
