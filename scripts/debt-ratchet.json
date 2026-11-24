@@ -24,7 +24,7 @@
   "tree_walker": 1,
   "v02_port_files": 877,
   "direct_python": 11,
-  "unrun_script_tests": 2,
+  "unrun_script_tests": 0,
   "crate_edges": [
     "cpl-check -> cpl-diag",
     "cpl-check -> cpl-syntax",
@@ -165,7 +165,7 @@
   "continue_on_error": 0,
   "nonblocking_jobs": 6,
   "dream_unverified": 421,
-  "measure_broken": 1,
+  "measure_broken": 0,
   "mono_unguarded": 1,
   "std_shadowed": 55,
   "corpus_walkers": 49,
