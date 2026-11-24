@@ -73,8 +73,7 @@ fn blame(f: &Facts, id: usize, func: &Function, e: &Expr, depth: u8) -> String {
     }
 }
 
-fn scan(src: &str) -> Option<Vec<((String, u32, u32), Op)>> {
-    let mut db = cpl_check::Session::new();
+fn scan(db: &mut cpl_check::Session, src: &str) -> Option<Vec<((String, u32, u32), Op)>> {
     db.set_file("t.cp", src);
     let a = db.analyze("t.cp")?;
     if !a.diagnostics.is_empty() {
@@ -127,13 +126,15 @@ fn every_int_op_in_std_bodies_is_proved() {
     let files = Mutex::new(0usize);
     std::thread::scope(|s| {
         for _ in 0..std::thread::available_parallelism().map_or(4, |n| n.get()) {
-            std::thread::Builder::new().stack_size(1 << 28).spawn_scoped(s, || loop {
+            std::thread::Builder::new().stack_size(1 << 28).spawn_scoped(s, || {
+                let mut db = cpl_check::Session::new();
+                loop {
                 let Some(f) = queue.lock().unwrap().pop() else { return };
                 let src = std::fs::read_to_string(&f).unwrap();
                 if !src.starts_with("// expect: ok") {
                     continue;
                 }
-                let Some(found) = scan(&src) else { continue };
+                let Some(found) = scan(&mut db, &src) else { continue };
                 *files.lock().unwrap() += 1;
                 let mut ops = ops.lock().unwrap();
                 for (k, op) in found {
@@ -147,6 +148,7 @@ fn every_int_op_in_std_bodies_is_proved() {
                         e.text = op.text;
                     }
                     e.base &= op.base;
+                }
                 }
             }).unwrap();
         }
