@@ -352,6 +352,23 @@ impl<'a> Checker<'a> {
             return None;
         }
         self.infer(&args[0].value);
+        let has_new = !matches!(
+            self.global(&shape).as_deref(),
+            Some(crate::def::Def::Struct { ctor: None, .. })
+        );
+        if !has_new {
+            let at = self.report(
+                callee.span,
+                cpl_diag::msgs::check::NO_METHOD_ON,
+                &[&"struct", &name, &"new"],
+            );
+            if let Some(diag) = at {
+                diag.help = Some(format!(
+                    "`{name}(a)` on a 2-D array calls `new(a)` of the `{name}` with three type parameters"
+                ));
+            }
+            return Some(Ty::Error);
+        }
         Some(Ty::Named {
             name: shape.to_string(),
             args: vec![index[0].clone(), index[1].clone(), *elem],
