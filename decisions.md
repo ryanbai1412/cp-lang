@@ -9017,3 +9017,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Reverse.** Commit the report again only for content that changes when coverage does (the gaps), never the counts.
 
 ## 571. (reserved, content)
+
+## 572. (reserved, infra)
