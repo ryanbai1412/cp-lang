@@ -200,16 +200,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             self.saved_domains.push((d, self.domains[d]));
         }
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
-        let fed_ok = !feeding || self.vm.as_ref().is_some_and(|c| c.main.traced);
-        let flow = if fed_ok {
-            if let Some(compiled) = self.vm.clone() {
-                if compiled.fns.get(id).is_some_and(Option::is_some) {
-                    self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
-                } else {
-                    self.fell_back(|| format!("fn:{}(uncompiled)", f.name), false);
-                    self.block(&f.body)
-                }
+        let compiled = Rc::clone(&self.vm);
+        let flow = if !feeding || compiled.main.traced {
+            if compiled.fns.get(id).is_some_and(Option::is_some) {
+                self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
             } else {
+                self.fell_back(|| format!("fn:{}(uncompiled)", f.name), false);
                 self.block(&f.body)
             }
         } else {

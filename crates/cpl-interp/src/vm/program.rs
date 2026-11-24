@@ -78,6 +78,9 @@ pub(crate) struct Chunk<'p> {
     pub takes_fn: bool,
     /// The slots `has_by_ref_closure` syncs around a call; `None` is all.
     pub ref_slots: Option<Vec<u16>>,
+    /// The locals a `mut` view made here writes into, kept on the stack too
+    /// once synced so that reads through the view find them.
+    pub view_roots: Vec<u16>,
     pub back_edges: Vec<BackEdge>,
     pub call_sites: Vec<CallSite<'p>>,
     /// The call ops, by pc in order, whose result a call site's `before`

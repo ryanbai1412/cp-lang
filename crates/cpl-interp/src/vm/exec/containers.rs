@@ -34,6 +34,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Array(arr) => arr.len() as i64,
                     Value::List(items) => items.len() as i64,
                     Value::ListView(view) => view.len as i64,
+                    Value::MutView(view) => view.len as i64,
                     Value::Str(bytes) => bytes.len() as i64,
                     Value::StrView(view) => view.len as i64,
                     Value::Map(m) => m.len() as i64,
@@ -824,7 +825,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst_some as usize] = s;
             }
             Op::SeqItems { dst, src } => {
-                let items = self.seq_items(&regs_v[src as usize], spans[cur_pc])?;
+                // A view reads its root where it was lent.
+                let held = &regs_v[src as usize];
+                let lent = matches!(held, Value::MutView(_));
+                if lent {
+                    self.show_lent()?;
+                }
+                let items = self.seq_items(held, spans[cur_pc]);
+                if lent {
+                    self.hide_lent()?;
+                }
+                let items = items?;
                 regs_v[dst as usize] = Value::List(Rc::new(crate::value::Cells::from(items)));
             }
             Op::TreeRangeItems { dst, src, lo, hi } => {

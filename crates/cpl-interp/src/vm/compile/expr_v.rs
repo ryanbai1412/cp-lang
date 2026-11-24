@@ -689,6 +689,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 self.emit_fallback_expr_v(expr)
             }
+            ExprKind::MutSlice(place, lo, hi) => {
+                self.compile_view(ViewOp::Slice(place), place, &[lo, hi], true, expr)
+            }
+            ExprKind::MutLine(place, at, axis) => {
+                self.compile_view(ViewOp::Line(place, *axis), place, &[at], true, expr)
+            }
             ExprKind::Closure(cid) => {
                 let def = &self.program.closures[*cid];
                 {

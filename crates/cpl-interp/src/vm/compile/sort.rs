@@ -265,7 +265,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
     fn push_sort_spec(&mut self, expr: &'p Expr) -> u32 {
         self.applies_sync = true;
         let idx = self.applies.len() as u32;
-        self.applies.push(ApplySpec { expr, regs: vec![] });
+        self.applies.push(ApplySpec {
+            expr,
+            regs: vec![],
+            view: None,
+        });
         idx
     }
 

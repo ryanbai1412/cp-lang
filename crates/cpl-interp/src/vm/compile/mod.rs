@@ -109,6 +109,7 @@ pub(super) struct Compiler<'p, 'f> {
     formats: Vec<FormatSpec<'p>>,
     applies: Vec<ApplySpec<'p>>,
     applies_sync: bool,
+    view_roots: Vec<u16>,
     fallback_stmts: Vec<&'p Stmt>,
     fails: Vec<&'p Stmt>,
     fallback_exprs: Vec<&'p Expr>,
@@ -238,6 +239,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             formats: Vec::new(),
             applies: Vec::new(),
             applies_sync: false,
+            view_roots: Vec::new(),
             fallback_stmts: Vec::new(),
             fails: Vec::new(),
             fallback_exprs: Vec::new(),
@@ -338,6 +340,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             has_by_ref_closure: self.ref_all || !self.ref_slots.is_empty(),
             takes_fn: false,
             ref_slots: (!self.ref_all).then_some(self.ref_slots),
+            view_roots: self.view_roots,
             back_edges: self.back_edges,
             call_sites: self.call_sites,
             keeps: {

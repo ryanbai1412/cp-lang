@@ -274,14 +274,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let sorted = self.merge_sort_ty(items, elem, desc, span);
                 self.hide_lent()?;
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let sorted = seq_of_items(sorted?, dims);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 *walk_place_mut(root, &pp.steps, regs_i, &keys, span)? = sorted;
@@ -324,14 +317,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let sorted = self.merge_sort_keyed(keyed, key_ty, desc, span);
                 self.hide_lent()?;
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let sorted = seq_of_items(sorted?.into_iter().map(|(_, x)| x).collect(), dims);
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
@@ -1414,6 +1400,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 if shown {
                     self.hide_lent()?;
                     take_back_values(&chunk.slot_map, regs_v, &mut self.stack, base);
+                    keep_view_roots(chunk, regs_v, &mut self.stack, base);
                 }
                 printed?;
             }
@@ -1452,17 +1439,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         chunk.traced,
                     );
                     self.show_lent()?;
-                    let val = self.apply(spec.expr, vals);
+                    let val = match spec.view {
+                        Some((op, n)) => self.view_op(op, vals, n, spans[cur_pc]),
+                        None => self.apply(spec.expr, vals),
+                    };
                     self.hide_lent()?;
                     let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                    sync_from_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
+                    sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                     val
                 } else {
                     self.apply(spec.expr, vals)
@@ -1536,14 +1519,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.fed_hosts.pop();
                 }
                 self.leave_fallback(outer);
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let flow = flow?;
                 match flow {
                     Flow::Next => {}
@@ -1570,14 +1546,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.show_lent()?;
                 let val = self.eval(expr);
                 self.hide_lent()?;
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let val = val?;
                 regs_i[dst as usize] = ScalarKind::unbox_val(&val);
             }
@@ -1599,19 +1568,48 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.show_lent()?;
                 let val = self.eval(expr);
                 self.hide_lent()?;
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    self.base,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 let val = val?;
                 regs_v[dst as usize] = val;
             }
             _ => return Err(interp_failed(spans[cur_pc])),
         }
         Ok(None)
+    }
+}
+
+impl<'p, O: Observer> Interp<'p, '_, O> {
+    /// `op` on the stack, given its first `operands` `vals` and then its
+    /// place's indices.
+    fn view_op(
+        &mut self,
+        op: ViewOp<'p>,
+        mut vals: Vec<Value>,
+        operands: usize,
+        span: cpl_diag::Span,
+    ) -> Res<Value> {
+        let indices = vals.split_off(operands);
+        match op {
+            ViewOp::Slice(place) => {
+                let [lo, hi] = crate::apply::operand_values(vals, span)?;
+                self.mut_slice_view(place, lo.int(), hi.int(), indices, span)
+            }
+            ViewOp::Line(place, axis) => {
+                let [at] = crate::apply::operand_values(vals, span)?;
+                self.mut_line_view(place, at.int(), axis, indices, span)
+            }
+            ViewOp::Mutate(op, place, args) => {
+                self.mutated(op, place, args, indices, vals, span)
+            }
+            ViewOp::Sort(place, by) => {
+                let desc = vals.first().is_some_and(|d| d.bool());
+                self.sort_place(place, by, desc, indices, span)
+            }
+            ViewOp::Write(place, op) => {
+                let [value] = crate::apply::operand_values(vals, span)?;
+                self.assign_value(place, op, value, indices)?;
+                Ok(Value::Unit)
+            }
+        }
     }
 }

@@ -1,6 +1,6 @@
 use crate::value::SmallFieldKind;
 use cpl_diag::Span;
-use cpl_ir::{AssignOp, BinOp, CmpOp, Expr, FmtArg, FmtPiece, FnId, LoopId, Place, Slot};
+use cpl_ir::{AssignOp, BinOp, CmpOp, Expr, FmtArg, FmtPiece, FnId, LoopId, Mutation, Place, Slot};
 
 pub(crate) use super::program::*;
 pub(super) use super::scalar::small_tuple_shape;
@@ -1693,10 +1693,28 @@ pub(crate) struct FormatSpec<'p> {
     pub regs: Vec<u16>,
 }
 
+/// What an `Op::ApplyV` does through a mutable view.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ViewOp<'p> {
+    /// `mut place[lo..hi]`.
+    Slice(&'p Place),
+    /// Line `at` of the grid at `place` along the axis.
+    Line(&'p Place, usize),
+    /// A mutation of a place reached through a view.
+    Mutate(Mutation, &'p Place, &'p [Expr]),
+    /// An assignment to a place reached through a view.
+    Write(&'p Place, AssignOp),
+    /// A sort of a view, descending when its operand says so.
+    Sort(&'p Place, &'p cpl_ir::SortBy),
+}
+
 /// An expression applied to the values of its operands, in `regs`.
 pub(crate) struct ApplySpec<'p> {
     pub expr: &'p Expr,
     pub regs: Vec<u16>,
+    /// What it does through a mutable view instead, its first `.1`
+    /// registers the operands and the rest the place's indices.
+    pub view: Option<(ViewOp<'p>, usize)>,
 }
 
 /// One of main's loops, as a checkpoint finds it in the registers.

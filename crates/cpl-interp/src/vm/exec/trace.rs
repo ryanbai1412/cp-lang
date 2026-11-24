@@ -94,6 +94,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.trace_point(point);
                     self.hide_lent()?;
                     take_back_values(&chunk.slot_map, regs_v, &mut self.stack, self.base);
+                    keep_view_roots(chunk, regs_v, &mut self.stack, self.base);
                 }
             }
         }

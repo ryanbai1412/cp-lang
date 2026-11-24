@@ -720,14 +720,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
                 self.hide_lent()?;
                 self.leave_fallback(outer);
-                sync_from_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    caller,
-                    chunk.traced,
-                );
+                sync_back(chunk, regs_i, regs_v, &mut self.stack, caller);
                 let value = returned?;
                 if let Some(Flow::Return(v) | Flow::Give(v)) = self.fed_left.take() {
                     return Ok(Some(ExecExit::Return(v)));

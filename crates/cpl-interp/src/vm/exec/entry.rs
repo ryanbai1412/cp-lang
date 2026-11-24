@@ -31,7 +31,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// chunk that left the loop to the tree-walker, if one holds it.
     pub(crate) fn fed_body_vm(&mut self, id: LoopId, caller: usize) -> Option<Res<Flow>> {
         let &(_, host) = self.fed_hosts.iter().rev().find(|h| h.0 == caller)?;
-        let compiled = self.vm.clone()?;
+        let compiled = Rc::clone(&self.vm);
         let chunk = compiled
             .chunks()
             .find(|c| std::ptr::eq(*c as *const Chunk<'p> as *const (), host))?;

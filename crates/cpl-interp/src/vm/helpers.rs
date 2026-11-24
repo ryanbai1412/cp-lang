@@ -157,6 +157,7 @@ pub(super) fn sync_refs_from_stack(
             }
         }
     }
+    keep_view_roots(chunk, regs_v, stack, base);
 }
 
 /// The slots of `chunk`'s frame a call can reach while the frame lends
@@ -232,6 +233,7 @@ pub(super) fn sync_reachable_from_stack(
             }
         }
     }
+    keep_view_roots(chunk, regs_v, stack, base);
 }
 
 /// Hands the moved values back to their registers after a trace point,
@@ -245,6 +247,29 @@ pub(super) fn take_back_values(
     for (slot, loc) in slot_map.iter().enumerate() {
         if let SlotLoc::V(r) = *loc {
             regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
+        }
+    }
+}
+
+/// Takes back every local `sync_to_stack` put on the stack, leaving there
+/// the roots of `chunk`'s views.
+pub(super) fn sync_back(
+    chunk: &Chunk,
+    regs_i: &mut [i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+) {
+    sync_from_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced);
+    keep_view_roots(chunk, regs_v, stack, base);
+}
+
+/// Leaves on the stack a share of each local a view of `chunk` writes
+/// into, where reading through the view looks.
+pub(super) fn keep_view_roots(chunk: &Chunk, regs_v: &[Value], stack: &mut [Value], base: usize) {
+    for &slot in &chunk.view_roots {
+        if let SlotLoc::V(r) = chunk.slot_map[slot as usize] {
+            stack[base + slot as usize] = regs_v[r as usize].clone();
         }
     }
 }

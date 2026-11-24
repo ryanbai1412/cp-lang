@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"g":{"name":"g","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":10,"label":"var g = [8, 6, 7, 5, 3, 0, 9]","stage":"main","values":{"stdout":[],"g":[8,6,7,5,3,0,9]},"locals":{},"frames":[{"fn":"main","line":10}]},
+{"id":1,"line":12,"label":"reverse(mut g[..3])","stage":"main","values":{"stdout":[],"g":[0,6,8,3,5,7,9]},"locals":{},"frames":[{"fn":"main","line":12}]},
+{"id":2,"line":4,"label":"var a = [5, 1, 4, 2, 3, 9]","stage":"main","values":{"stdout":[],"g":[0,6,8,3,5,7,9]},"locals":{"a":[5,1,4,2,3,9]},"frames":[{"fn":"verbs","line":4},{"fn":"main","line":13}]},
+{"id":3,"line":6,"label":"reverse(mut a[1..4])","stage":"main","values":{"stdout":[],"g":[0,6,8,3,5,7,9]},"locals":{"a":[1,4,3,2,5,9]},"frames":[{"fn":"verbs","line":6},{"fn":"main","line":13}]},
+{"id":4,"line":13,"label":"print → 5 4 0 0 1 9 0 6 8 3 5 7 9","stage":"main","values":{"stdout":["5 4 0 0 1 9 0 6 8 3 5 7 9"],"g":[0,6,8,3,5,7,9]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":13}]},
+{"id":5,"line":13,"label":"the program ended","stage":"main","values":{"stdout":["5 4 0 0 1 9 0 6 8 3 5 7 9"],"g":[0,6,8,3,5,7,9]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":13}]}]}}}
+stderr:

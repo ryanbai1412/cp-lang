@@ -434,6 +434,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 quiet_place(place, cpl_ir::walk::root(place)) && !self.yields_into(place)
             }
             ExprKind::Print(..) => true,
+            // A view writes nothing until written through.
+            ExprKind::MutSlice(..) | ExprKind::MutLine(..) => true,
             ExprKind::Sort(place, ..) => {
                 quiet_place(place, cpl_ir::walk::root(place)) && !self.yields_into(place)
             }
@@ -583,6 +585,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.applies.push(ApplySpec {
             expr: e,
             regs: vec![src],
+            view: None,
         });
         let dst = self.alloc_v();
         self.emit(Op::MutatePlace { idx, path, dst }, e.span);
@@ -811,9 +814,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 } else if let ExprKind::Print(args, end) = &expr.kind {
                     self.compile_print(args, end.as_deref(), expr.span);
                 } else if let ExprKind::Mutate(op, place, args) = &expr.kind {
-                    if self.try_compile_mutate_stmt(*op, place, args, expr.span) {
+                    if super::apply::through_view(place) {
+                        let operands: Vec<&'p Expr> = args.iter().collect();
+                        let view = ViewOp::Mutate(*op, place, args);
+                        let reg = self.compile_view(view, place, &operands, false, expr);
+                        self.emit(Op::ClearV { reg }, expr.span);
+                    } else if self.try_compile_mutate_stmt(*op, place, args, expr.span) {
                     } else if let Some(dst) = self.try_compile_mutate_place(expr) {
                         self.emit(Op::ClearV { reg: dst }, expr.span);
+                    } else {
+                        self.emit_fallback_stmt(stmt);
+                    }
+                } else if matches!(&expr.kind, ExprKind::Sort(place, ..) if super::apply::through_view(place))
+                {
+                    if let Some(reg) = self.try_compile_apply_v(expr) {
+                        self.emit(Op::ClearV { reg }, expr.span);
                     } else {
                         self.emit_fallback_stmt(stmt);
                     }
@@ -885,7 +900,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.patch(j_ok, end_pc);
             }
             Stmt::Assign(place, op, value) => {
-                if !self.try_compile_assign(place, *op, value) {
+                if super::apply::through_view(place) {
+                    let write = ViewOp::Write(place, *op);
+                    let reg = self.compile_view(write, place, &[value], true, value);
+                    self.emit(Op::ClearV { reg }, place.span);
+                } else if !self.try_compile_assign(place, *op, value) {
                     self.emit_fallback_stmt(stmt);
                 }
                 self.in_dom

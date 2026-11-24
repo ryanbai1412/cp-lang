@@ -6,7 +6,7 @@ use super::Compiler;
 use crate::apply::{applies, operands};
 use crate::vm::helpers::{place_indices, quiet};
 use crate::vm::ir::*;
-use cpl_ir::{Dim, Expr, ExprKind, Mutation, Place, Program, Ty};
+use cpl_ir::{Dim, Expr, ExprKind, Mutation, Place, PlaceKind, Program, Ty};
 
 /// Whether comparing values of `ty` never runs user code (a struct's `eq`
 /// or `lt`), so the frame can stay in registers.
@@ -49,12 +49,93 @@ fn owned(ty: &Ty, program: &Program) -> bool {
     }
 }
 
+/// Whether `place` is reached through a mutable view.
+pub(super) fn through_view(place: &Place) -> bool {
+    matches!(place.ty, Ty::MutView(..))
+        || match &place.kind {
+            PlaceKind::Field(base, _) | PlaceKind::Some(base) | PlaceKind::Index(base, _) => {
+                through_view(base)
+            }
+            PlaceKind::Local(_) | PlaceKind::Global(_) => false,
+        }
+}
+
 impl<'p, 'f> Compiler<'p, 'f> {
+    /// `view` by `Op::ApplyV`, its `operands` evaluated before the place's
+    /// indices when `operands_first`, as the tree-walker does; `expr` gives
+    /// its span. The place's root local goes on the stack around each call
+    /// too, where a view of it writes.
+    pub(super) fn compile_view(
+        &mut self,
+        view: ViewOp<'p>,
+        place: &'p Place,
+        operands: &[&'p Expr],
+        operands_first: bool,
+        expr: &'p Expr,
+    ) -> u16 {
+        if let (false, slot) = cpl_ir::walk::root(place) {
+            let slot = slot as u16;
+            if let Err(at) = self.ref_slots.binary_search(&slot) {
+                self.ref_slots.insert(at, slot);
+            }
+            if matches!(view, ViewOp::Slice(_) | ViewOp::Line(..))
+                && !self.view_roots.contains(&slot)
+            {
+                self.view_roots.push(slot);
+            }
+        }
+        let mut indices = Vec::new();
+        crate::vm::helpers::place_indices(place, &mut indices);
+        let (first, then) = match operands_first {
+            true => (operands, &indices[..]),
+            false => (&indices[..], operands),
+        };
+        let mut regs: Vec<u16> = first.iter().map(|x| self.compile_expr_v(x)).collect();
+        regs.extend(then.iter().map(|x| self.compile_expr_v(x)));
+        if !operands_first {
+            regs.rotate_left(indices.len());
+        }
+        self.applies_sync = true;
+        let idx = self.applies.len() as u32;
+        self.applies.push(ApplySpec {
+            expr,
+            regs: regs.clone(),
+            view: Some((view, operands.len())),
+        });
+        let dst = self.alloc_v();
+        self.emit(
+            Op::ApplyV {
+                idx,
+                dst,
+                sync: true,
+            },
+            expr.span,
+        );
+        for r in regs {
+            if r >= self.num_local_v {
+                self.emit(Op::ClearV { reg: r }, expr.span);
+            }
+        }
+        dst
+    }
+
     /// `expr` into a fresh value register by `Op::ApplyV`, when it applies
     /// to its operands.
     pub(super) fn try_compile_apply_v(&mut self, expr: &'p Expr) -> Option<u16> {
-        if matches!(expr.kind, ExprKind::Mutate(..)) {
+        if let ExprKind::Mutate(op, place, args) = &expr.kind {
+            if through_view(place) {
+                let args_ref: Vec<&'p Expr> = args.iter().collect();
+                let view = ViewOp::Mutate(*op, place, args);
+                return Some(self.compile_view(view, place, &args_ref, false, expr));
+            }
             return self.try_compile_mutate_place(expr);
+        }
+        if let ExprKind::Sort(place, by, desc) = &expr.kind {
+            if through_view(place) {
+                let desc: Vec<&'p Expr> = desc.iter().map(|d| &**d).collect();
+                let view = ViewOp::Sort(place, by);
+                return Some(self.compile_view(view, place, &desc, true, expr));
+            }
         }
         if !applies(expr) {
             return None;
@@ -88,6 +169,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.applies.push(ApplySpec {
             expr,
             regs: regs.clone(),
+            view: None,
         });
         let dst = self.alloc_v();
         self.emit(Op::ApplyV { idx, dst, sync }, expr.span);
@@ -143,6 +225,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.applies.push(ApplySpec {
             expr,
             regs: regs.clone(),
+            view: None,
         });
         let dst = self.alloc_v();
         self.emit(Op::MutatePlace { idx, path, dst }, expr.span);

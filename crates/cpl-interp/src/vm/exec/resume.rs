@@ -14,7 +14,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// VM from where it was to its end.
     pub(crate) fn resume_frame(&mut self, frames: &[FrameAt], k: usize) -> Res<Flow> {
         let frame = &frames[k];
-        let compiled = (self.vm.clone()).filter(|c| chunk_of(c, frame.body).is_some());
+        let compiled =
+            Some(std::rc::Rc::clone(&self.vm)).filter(|c| chunk_of(c, frame.body).is_some());
         let base = self.base;
         let exit = match &compiled {
             Some(compiled) => self.run_body_vm(compiled, frame.body, Some((frames, k))),

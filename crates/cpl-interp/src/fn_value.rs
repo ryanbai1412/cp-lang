@@ -132,11 +132,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         for &d in &self.closure_guarded[cid] {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let flow = match self.vm.clone() {
-            Some(compiled) if lent.is_empty() && compiled.closures[cid].is_some() => self
+        let compiled = Rc::clone(&self.vm);
+        let flow = match lent.is_empty() && compiled.closures[cid].is_some() {
+            true => self
                 .run_closure_vm_from_stack(&compiled, cid)
                 .map(Flow::Return),
-            _ => self.block(&def.body),
+            false => self.block(&def.body),
         };
         self.restore_domains(dom_mark);
         self.in_closure = in_closure;

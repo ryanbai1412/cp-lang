@@ -258,6 +258,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let value = self.eval(value)?;
         let mut indices = Vec::new();
         self.indices(place, &mut indices)?;
+        self.assign_value(place, op, value, indices)
+    }
+
+    /// [`Self::assign`] of an evaluated `value` at `place`'s evaluated `indices`.
+    pub(crate) fn assign_value(
+        &mut self,
+        place: &Place,
+        op: AssignOp,
+        value: Value,
+        indices: Vec<Value>,
+    ) -> Res<Vec<Value>> {
         // Storing into a string or under a new map key has no cell to
         // point at, so those two go through their container.
         if let PlaceKind::Index(base, _) = &place.kind {
@@ -409,67 +420,38 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             _ => None,
         };
         if let Some(mv) = mv_opt {
-            let target = self.part_mut(&mv.target, span)?;
-            return Ok(match (op, target) {
-                (_, Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
-                (Mutation::Reverse, Value::List(items)) => {
-                    Rc::make_mut(items).reverse_range(mv.lo, mv.lo + mv.len);
-                    Value::Unit
-                }
-                (Mutation::Reverse, Value::Array(arr)) => {
-                    let a = Rc::make_mut(arr);
-                    for i in 0..mv.len / 2 {
-                        a.swap(mv.lo + i * mv.step, mv.lo + (mv.len - 1 - i) * mv.step);
-                    }
-                    Value::Unit
-                }
-                (Mutation::Swap, Value::List(items)) => {
-                    let (i, j) = (arg.int(), arg2.int());
-                    let v = Rc::make_mut(items);
-                    match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
-                        (Some(i), Some(j)) if i < mv.len && j < mv.len => {
-                            v.swap(mv.lo + i * mv.step, mv.lo + j * mv.step);
-                        }
-                        _ => {
-                            return trap(
-                                span,
-                                cpl_diag::msgs::interp::SWAP_OUTSIDE_LIST_LENGTH
-                                    .at(&[&i, &j, &mv.len]),
-                            )
-                        }
-                    }
-                    Value::Unit
-                }
-                (Mutation::Swap, Value::Array(arr)) => {
-                    let (i, j) = (arg.int(), arg2.int());
-                    let a = Rc::make_mut(arr);
-                    match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
-                        (Some(i), Some(j)) if i < mv.len && j < mv.len => {
-                            a.swap(mv.lo + i * mv.step, mv.lo + j * mv.step);
-                        }
-                        _ => {
-                            return trap(
-                                span,
+            let n = mv.len;
+            let (i, j) = (arg.int(), arg2.int());
+            let (lo, hi, swaps) = match op {
+                Mutation::Reverse => (0, n.wrapping_sub(1), n / 2),
+                Mutation::Swap => match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
+                    (Some(i), Some(j)) if i < n && j < n => (i, j, 1),
+                    _ => {
+                        let msg = match self.part(&mv.target) {
+                            Some(Value::Array(_)) => {
                                 cpl_diag::msgs::interp::SWAP_OUTSIDE_ARRAY_LENGTH
-                                    .at(&[&i, &j, &mv.len]),
-                            )
-                        }
+                            }
+                            _ => cpl_diag::msgs::interp::SWAP_OUTSIDE_LIST_LENGTH,
+                        };
+                        return trap(span, msg.at(&[&i, &j, &n]));
                     }
-                    Value::Unit
-                }
-                (Mutation::Fill, Value::List(items)) => {
-                    Rc::make_mut(items).fill_range(mv.lo, mv.lo + mv.len, arg);
-                    Value::Unit
-                }
-                (Mutation::Fill, Value::Array(arr)) => {
-                    let a = Rc::make_mut(arr);
-                    for i in 0..mv.len {
-                        a.set(mv.lo + i * mv.step, arg.clone());
+                },
+                Mutation::Fill => {
+                    for k in 0..n {
+                        *self.mut_view_cell(&mv, k, span)? = arg.clone();
                     }
-                    Value::Unit
+                    return Ok(Value::Unit);
                 }
                 _ => return bug(span, "this value can't be changed that way"),
-            });
+            };
+            // Swap 1 pair, or the `swaps` pairs meeting in the middle.
+            for k in 0..swaps {
+                let (a, b) = (lo + k, hi.wrapping_sub(k));
+                let x = std::mem::replace(self.mut_view_cell(&mv, a, span)?, Value::Unit);
+                let y = std::mem::replace(self.mut_view_cell(&mv, b, span)?, x);
+                *self.mut_view_cell(&mv, a, span)? = y;
+            }
+            return Ok(Value::Unit);
         }
         let program = self.program;
         let cell = self.resolve(place, &mut indices.iter())?;

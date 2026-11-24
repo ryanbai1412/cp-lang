@@ -356,7 +356,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 }
 
 /// The values `apply` was handed for an expression with `N` operands.
-fn operand_values<const N: usize>(vals: Vec<Value>, span: Span) -> Res<[Value; N]> {
+pub(crate) fn operand_values<const N: usize>(vals: Vec<Value>, span: Span) -> Res<[Value; N]> {
     match <[Value; N]>::try_from(vals) {
         Ok(vals) => Ok(vals),
         Err(_) => bug(span, "no shared evaluation for this expression"),
