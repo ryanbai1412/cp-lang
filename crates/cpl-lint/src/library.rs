@@ -573,23 +573,25 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             if !used {
                 continue;
             }
-            // A method's lint another type's method also declares holds
-            // only on its own type's values (a rewrite's text, untyped,
-            // keeps it).
-            let shared = |ty: &String| {
-                (declared.iter()).any(|o| {
-                    o.lint.code == d.lint.code && o.decl.receiver.as_ref().is_some_and(|r| r != ty)
-                })
+            // A method's lint another type's method also declares does not
+            // hold on that type's values, which its own lint covers (any
+            // other value, typed or not, keeps it).
+            let others: Vec<&str> = (declared.iter())
+                .filter(|o| o.lint.code == d.lint.code && o.decl.receiver != d.decl.receiver)
+                .filter_map(|o| o.decl.receiver.as_deref())
+                .collect();
+            let at = d
+                .decl
+                .holes
+                .iter()
+                .position(|h| h == "self")
+                .and_then(|i| holes[i]);
+            let place = |(a, b): (usize, usize)| {
+                let at = Span::new(toks[a].span.start, toks[b - 1].span.end);
+                file.facts.and_then(|f| f.place_type(at))
             };
-            let receiver =
-                (d.decl.receiver.as_ref()).filter(|ty| file.facts.is_some() && shared(ty));
-            let receiver = receiver.and_then(|ty| {
-                let at = d.decl.holes.iter().position(|h| h == "self");
-                let (a, b) = at.and_then(|i| holes[i])?;
-                Some((Span::new(toks[a].span.start, toks[b - 1].span.end), ty))
-            });
-            let place = |at: Span| file.facts.and_then(|f| f.place_type(at));
-            if receiver.is_some_and(|(at, ty)| !place(at).is_some_and(|t| t.is_one_of(&[ty]))) {
+            if d.decl.receiver.is_some() && at.and_then(place).is_some_and(|t| t.is_one_of(&others))
+            {
                 continue;
             }
             let first = before(span.start);

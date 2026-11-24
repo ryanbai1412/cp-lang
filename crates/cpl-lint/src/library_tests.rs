@@ -669,17 +669,18 @@ fn a_library_lint_the_wider_fix_keeps_is_shown_with_it() {
     );
 }
 
-/// A method's `@lint` holds only where `self` matched a value of its type;
-/// another type's method of the same name may share the lint's name. Rule: R06.4.9.
+/// A method's `@lint` does not hold where `self` matched a value of
+/// another type whose method shares the lint's name; a third type's value
+/// keeps it. Rule: R06.4.9.
 #[test]
 fn a_method_lint_fires_only_on_its_own_type() {
-    let src = "pub struct Cell(v: Int):\n    @get pub fn get(self) -> Int = v\n    @lint(next_by_hand, from: \"self.get + 1\", to: \"self.next()\")\n    pub fn next(self) -> Int = v + 1\npub struct Other(v: Int):\n    @get pub fn get(self) -> Int = v\n    @lint(next_by_hand, from: \"self.get + 2\", to: \"self.next()\")\n    pub fn next(self) -> Int = v + 2\nlet c = Cell(1)\nlet o = Other(2)\nprint(c.get + 1, o.get + 1, o.get + 2)\n";
+    let src = "pub struct Cell(v: Int):\n    @get pub fn get(self) -> Int = v\n    @lint(next_by_hand, from: \"self.get + 1\", to: \"self.next()\")\n    pub fn next(self) -> Int = v + 1\npub struct Other(v: Int):\n    @get pub fn get(self) -> Int = v\n    @lint(next_by_hand, from: \"self.get + 2\", to: \"self.next()\")\n    pub fn next(self) -> Int = v + 2\npub struct Third(v: Int):\n    @get pub fn get(self) -> Int = v\nlet c = Cell(1)\nlet o = Other(2)\nlet t = Third(3)\nprint(c.get + 1, o.get + 1, o.get + 2, t.get + 1)\n";
     let found: Vec<String> = crate::lint(src, &crate::Config::default())
         .into_iter()
         .filter(|d| d.code.0 == "next_by_hand")
         .map(|d| d.fixes[0].edits[0].1.clone())
         .collect();
-    assert_eq!(found, ["c.next()", "o.next()"]);
+    assert_eq!(found, ["c.next()", "o.next()", "t.next()"]);
 }
 
 /// A library's lint keeps out of the program's own fn of its fn's name: the
