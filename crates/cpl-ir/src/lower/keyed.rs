@@ -488,7 +488,7 @@ impl<'a> Lowerer<'a> {
         };
         let (src, test) = Self::filter_call(base)?;
         if !matches!(
-            self.probe_ty_silent(src),
+            self.checked_ty(src),
             Some(
                 Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..) | Ty::Array { .. }
             ) | Some(Ty::Str | Ty::StrView)

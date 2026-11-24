@@ -127,7 +127,7 @@ impl<'a> Lowerer<'a> {
     pub(super) fn reordered_view(&mut self, e: &ast::Expr) -> bool {
         match &e.kind {
             ast::ExprKind::Field { base, name } if name.text == "rev" => matches!(
-                self.probe_ty_silent(base),
+                self.checked_ty(base),
                 Some(
                     Ty::Array { .. }
                         | Ty::List(_)
@@ -145,7 +145,7 @@ impl<'a> Lowerer<'a> {
     fn reversed_arg(&mut self, e: &ast::Expr) -> bool {
         match &e.kind {
             ast::ExprKind::Field { base, name } if name.text == "rev" => matches!(
-                self.probe_ty_silent(base),
+                self.checked_ty(base),
                 Some(Ty::List(_) | Ty::ListView(..) | Ty::MutView(..))
             ),
             ast::ExprKind::Name(n) => match self.lookup(n) {
