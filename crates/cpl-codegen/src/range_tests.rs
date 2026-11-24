@@ -237,5 +237,6 @@ fn g(x: Int) -> Int = x
 print(f(read<Int>()) + 63, g(read<Int>()) + 63)
 ");
     assert!(!out.contains("cpl::iadd(f("), "{out}");
-    assert!(out.contains("cpl::iadd(g("), "{out}");
+    // `g` is its param, so its sum is checked.
+    assert!(out.contains("cpl::iadd(cpl::read_int(), 63)"), "{out}");
 }

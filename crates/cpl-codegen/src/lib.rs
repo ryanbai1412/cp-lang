@@ -13,6 +13,7 @@ mod emit;
 mod expr;
 mod flat;
 mod fold;
+mod forward;
 mod frame;
 mod fuse;
 mod globals;
@@ -244,6 +245,9 @@ fn prepared_with(program: &cpl_ir::Program, target: &Target, inline: bool) -> cp
         }
     }
     unpack::unpack(&mut program);
+    if inline {
+        forward::forward_calls(&mut program, target.checks != Checks::None);
+    }
     optfn::known_options(&mut program);
     capfn::zero_size_captures(&mut program);
     split::split(&mut program);
@@ -662,6 +666,8 @@ mod cpp_counts_tests;
 mod devirt_tests;
 #[cfg(test)]
 mod fold_tests;
+#[cfg(test)]
+mod forward_tests;
 #[cfg(test)]
 mod mangle_tests;
 #[cfg(test)]

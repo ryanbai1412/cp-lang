@@ -545,7 +545,7 @@ fn a_field_typed_by_an_imported_range_alias_is_bounded_by_it() {
 
 #[test]
 fn a_call_is_bounded_by_what_its_fn_returns() {
-    let src = "fn f(x: Int) -> Int:\n    if x < 0: return 0\n    x % 7\nfn g(x: Int) -> Int = x\nlet a: Int = read()\nprint(f(a) * 1000, g(a) + 1)\n";
+    let src = "fn f(x: Int) -> Int:\n    if x < 0: return 0\n    x % 7\nfn g(x: Int) -> Int = x - 1\nlet a: Int = read()\nprint(f(a) * 1000, g(a) + 1)\n";
     let out = body(src);
     assert!(out.contains("f(a) * 1000"), "{out}");
     assert!(out.contains("cpl::iadd(g(a), 1)"), "{out}");
