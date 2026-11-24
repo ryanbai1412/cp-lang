@@ -6,7 +6,9 @@
 use crate::emit::{Code, Emitter, COND};
 use crate::uses::effects::{may_touch, Touch};
 use crate::walk;
-use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
+use cpl_ir::{
+    Arg, AssignOp, BinOp, Block, Expr, ExprKind, FnId, Place, PlaceKind, Program, Stmt, Ty,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// A container argument that is no place: a temporary C++ destroys at the
@@ -1844,7 +1846,7 @@ impl Emitter<'_> {
                         .iter()
                         .enumerate()
                         .any(|(j, other)| j != i && touches(&Stmt::Expr(other.clone()), &path))
-                    && (overwritten_before_read(item, rest)
+                    && (overwritten_before_read(self.program, item, rest)
                         || crate::uses::place_dies(self.program, block, k, item, outer)
                         || self.sunk_dies(block, k, item))
             })
@@ -2098,17 +2100,29 @@ fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
 /// Whether the variable path `init` names is set whole by one of the
 /// statements after its `let` before any of them reads it, changes it or
 /// leaves: the `let` may take its value instead of copying it.
-pub(crate) fn overwritten_before_read(init: &Expr, rest: &[Stmt]) -> bool {
-    path_of(init).is_some_and(|path| set_before_read(&path, rest))
+pub(crate) fn overwritten_before_read(program: &Program, init: &Expr, rest: &[Stmt]) -> bool {
+    path_of(init).is_some_and(|path| set_before_read(program, &path, rest, &mut Vec::new()))
 }
 
 /// Whether `rest` sets the local `slot` whole before anything reads it.
-pub(crate) fn local_set_before_read(slot: usize, rest: &[Stmt]) -> bool {
-    set_before_read(&((false, slot), Vec::new()), rest)
+pub(crate) fn local_set_before_read(program: &Program, slot: usize, rest: &[Stmt]) -> bool {
+    set_before_read(program, &((false, slot), Vec::new()), rest, &mut Vec::new())
 }
 
-fn set_before_read(path: &((bool, usize), Vec<usize>), rest: &[Stmt]) -> bool {
+/// Whether `rest` sets `path` (or a place holding it) whole before anything
+/// reads it, a call counting as a store when its fn does that first to the
+/// global or `mut` param it reaches the path through. `open` holds the fns
+/// being asked about, so a recursive one answers no.
+pub(crate) fn set_before_read(
+    program: &Program,
+    path: &((bool, usize), Vec<usize>),
+    rest: &[Stmt],
+    open: &mut Vec<FnId>,
+) -> bool {
     for stmt in rest {
+        if call_sets_whole(program, stmt, path, open) {
+            return true;
+        }
         if let Stmt::Assign(place, AssignOp::Set, value) = stmt {
             // Setting the path or a place holding it replaces the whole of it.
             if place_path(place)
@@ -2123,6 +2137,49 @@ fn set_before_read(path: &((bool, usize), Vec<usize>), rest: &[Stmt]) -> bool {
         }
     }
     false
+}
+
+/// Whether `stmt` calls a fn that sets the root of `path` whole before it
+/// reads it, the root reached as that global or as the call's one `mut`
+/// argument, with no other argument reading the path.
+fn call_sets_whole(
+    program: &Program,
+    stmt: &Stmt,
+    path: &((bool, usize), Vec<usize>),
+    open: &mut Vec<FnId>,
+) -> bool {
+    let Stmt::Expr(Expr {
+        kind: ExprKind::Call(f, args),
+        ..
+    }) = stmt
+    else {
+        return false;
+    };
+    let root = path.0;
+    let mut through = None;
+    for (i, arg) in args.iter().enumerate() {
+        match arg {
+            Arg::Value(e) if touches(&Stmt::Expr(e.clone()), path) => return false,
+            Arg::Value(_) => {}
+            Arg::Mut(p) if walk::root(p) != root => {}
+            Arg::Mut(p)
+                if matches!(p.kind, PlaceKind::Local(_) | PlaceKind::Global(_))
+                    && through.is_none() =>
+            {
+                through = Some(i)
+            }
+            Arg::Mut(_) => return false,
+        }
+    }
+    let effects = crate::uses::effects::sets_whole_first;
+    match (root, through) {
+        ((true, g), None) => effects(program, *f, (true, g), None, open),
+        // A global the call lends as a `mut` param: the fn must not reach it
+        // by its name too before it stores the param.
+        ((true, g), Some(i)) => effects(program, *f, (false, i), Some(g), open),
+        ((false, _), Some(i)) => effects(program, *f, (false, i), None, open),
+        _ => false,
+    }
 }
 
 /// Whether `stmt` only pushes onto the variable path `path`, from values
