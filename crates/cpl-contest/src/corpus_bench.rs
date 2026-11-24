@@ -793,7 +793,7 @@ mod input_tests {
     fn a_package_benches_on_its_tests_toml_max_case_not_a_bare_gen_run() {
         let root = std::env::temp_dir().join(format!("cpl-bench-input-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        let dir = root.join("corpus/problems/p");
+        let dir = root.join("corpus/problems").join("p");
         std::fs::create_dir_all(&dir).unwrap();
         let toml = "[[case]]\ninput = \"1\"\n\n[[case]]\nargs = [\"--max\"]\n";
         std::fs::write(dir.join("tests.toml"), toml).unwrap();

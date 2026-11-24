@@ -718,7 +718,7 @@ mod tests {
     fn package(name: &str, toml: &str, gen: &str) -> PathBuf {
         let root = std::env::temp_dir().join(format!("cpl-package-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        let dir = root.join("corpus/problems/p");
+        let dir = root.join("corpus/problems").join("p");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("tests.toml"), toml).unwrap();
         std::fs::write(dir.join("gen.py"), gen).unwrap();

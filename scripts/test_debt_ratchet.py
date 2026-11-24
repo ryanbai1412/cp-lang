@@ -112,7 +112,7 @@ class DebtRatchetTest(unittest.TestCase):
             cpl.chmod(0o755)
             with mock.patch.dict(os.environ, {"CPL": str(cpl)}):
                 self.assertEqual(dr.corpus_fmt_dirty(root),
-                                 ["corpus/problems/a/dream.cp", "corpus/problems/b/spec.cp"])
+                                 [f"{PKGS}/a/dream.cp", f"{PKGS}/b/spec.cp"])
             with mock.patch.dict(os.environ, {"CPL": str(root / "missing")}):
                 self.assertEqual(dr.corpus_fmt_dirty(root), ["target/debug/cpl: not built; run `cargo build -p cpl-cli`"])
 

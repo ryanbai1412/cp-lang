@@ -805,7 +805,7 @@ fn a_native_profile_builds_with_the_judges_flags_on_the_judges_stack() {
 fn cpl_test_runs_a_package_whose_cases_are_only_a_tests_toml() {
     let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("tests-toml-package");
     let _ = std::fs::remove_dir_all(&root);
-    let package = root.join("corpus/problems/p");
+    let package = root.join("corpus/problems").join("p");
     std::fs::create_dir_all(&package).unwrap();
     std::fs::write(
         package.join("tests.toml"),
@@ -833,7 +833,7 @@ fn cpl_test_runs_a_package_whose_cases_are_only_a_tests_toml() {
 fn cpl_test_runs_a_package_case_from_its_input_file() {
     let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("tests-toml-input-file");
     let _ = std::fs::remove_dir_all(&root);
-    let package = root.join("corpus/problems/p");
+    let package = root.join("corpus/problems").join("p");
     std::fs::create_dir_all(package.join("samples")).unwrap();
     std::fs::write(package.join("samples/2.in"), "21").unwrap();
     std::fs::write(
@@ -867,7 +867,7 @@ fn cpl_test_runs_a_package_case_from_its_input_file() {
 fn a_reference_past_its_time_budget_fails_naming_the_case() {
     let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("tests-toml-slow-reference");
     let _ = std::fs::remove_dir_all(&root);
-    let package = root.join("corpus/problems/slow");
+    let package = root.join("corpus/problems").join("slow");
     std::fs::create_dir_all(&package).unwrap();
     std::fs::write(
         package.join("tests.toml"),
