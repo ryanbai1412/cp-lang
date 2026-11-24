@@ -2865,7 +2865,7 @@ impl<'a> Lowerer<'a> {
             return Some(self.expr(init, None));
         };
         let spec = self.resolve(ty, true);
-        let want = spec.ty();
+        let want = self.written_as(spec.ty(), ty);
         let Some(init) = init else {
             let z = self.zero(&spec, span);
             if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(&spec) {

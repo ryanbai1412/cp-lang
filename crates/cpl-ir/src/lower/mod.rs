@@ -40,6 +40,7 @@ mod product;
 mod range;
 mod read_spec;
 mod report;
+mod shown;
 mod stmt;
 mod type_call;
 mod typo;
@@ -945,6 +946,8 @@ struct Lowerer<'a> {
     self_struct: Option<StructId>,
     /// Start of the item being lowered; its spans are relative to it.
     offset: u32,
+    /// Declared types shown as their source writes them, innermost last.
+    written: Vec<(Ty, String)>,
     /// The user's expression being lowered: where an error inside the
     /// library code it asks for is shown.
     asked_at: report::Asked,
@@ -1063,6 +1066,7 @@ impl<'a> Lowerer<'a> {
             stress: call::Stress::Off,
             aside: None,
             tail_names: HashSet::new(),
+            written: Vec::new(),
             announce_tests: false,
             cx: FnCx::default(),
             outer_cxs: Vec::new(),
@@ -1184,40 +1188,6 @@ impl<'a> Lowerer<'a> {
             Some((written, _)) if self.range_domains.contains_key(&d) => written.to_string(),
             _ => name.clone(),
         }
-    }
-
-    fn show(&self, ty: &Ty) -> String {
-        let domains: Vec<String> = (0..self.domains.len())
-            .map(|d| self.domain_said(d))
-            .collect();
-        let structs = self.shown_structs(&domains);
-        crate::show::ty_name(ty, &domains, &structs, &self.enums)
-    }
-
-    /// The structs, each named as it is written: a struct made from a
-    /// generic one is `Mod<998244353>`, not the name its copy has in the C++.
-    fn shown_structs(&self, domains: &[String]) -> Vec<StructDef> {
-        let mut structs: Vec<StructDef> = self.structs.iter().map(|s| s.def.clone()).collect();
-        for sid in 0..structs.len() {
-            let (Some(decl), Some((_, args))) =
-                (self.structs[sid].decl, &self.structs[sid].origin_gen)
-            else {
-                continue;
-            };
-            let args: Vec<String> = args
-                .iter()
-                .map(|arg| match arg {
-                    GenArg::Int(v) => v.to_string(),
-                    GenArg::Range(_, _) => "Int".to_string(),
-                    GenArg::Domain(d) => domains[*d].clone(),
-                    GenArg::Ty(ty) => crate::show::ty_name(ty, domains, &structs, &self.enums),
-                    GenArg::RuntimeInt(_) => "_".to_string(),
-                    GenArg::Op(op) => format!("{op:?}"),
-                })
-                .collect();
-            structs[sid].name = format!("{}<{}>", decl.name.text, args.join(", "));
-        }
-        structs
     }
 
     fn err_expr(&self, span: Span) -> Expr {

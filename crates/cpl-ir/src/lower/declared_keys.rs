@@ -16,24 +16,20 @@ impl<'a> Lowerer<'a> {
         init: Option<&ast::Expr>,
         span: Span,
     ) -> Option<Expr> {
-        let before = self.diags.len();
+        let depth = self.written.len();
         let value = self.declared_value_inner(ty, init, span);
-        // A counted array's type holds no count, so it shows as `[Int]Int`:
-        // an error about the declared type names it as written, `[n]Int`.
-        let counted = |t: &Ty| matches!(t, Ty::Array { dims, .. } if dims.iter().any(|d| matches!(d, Dim::Int | Dim::IntFrom(_))));
-        if let Some(ty) = ty.filter(|_| self.diags.len() > before) {
-            let want = self.resolve(ty, true).ty();
-            if counted(&want) {
-                let (shown, written) = (
-                    format!("`{}`", self.show(&want)),
-                    format!("`{}`", self.source(ty.span)),
-                );
-                for d in &mut self.diags[before..] {
-                    d.message = d.message.replace(&shown, &written);
-                }
-            }
-        }
+        self.written.truncate(depth);
         value
+    }
+
+    /// `want`, the declared type `ty` names; while its value is lowered, a
+    /// counted array is shown as written, `[n]Int` rather than `[Int]Int`.
+    pub(super) fn written_as(&mut self, want: Ty, ty: &ast::Type) -> Ty {
+        let counted = matches!(&want, Ty::Array { dims, .. } if dims.iter().any(|d| matches!(d, Dim::Int | Dim::IntFrom(_))));
+        if counted {
+            self.written.push((want.clone(), self.source(ty.span)));
+        }
+        want
     }
 
     /// The count each count-indexed axis of `ty` declares, by axis.
