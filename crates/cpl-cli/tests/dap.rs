@@ -1293,6 +1293,7 @@ print(acc)
     launch(&mut dap, false, "");
     let mut straight = vec![state(&mut dap)];
     loop {
+        assert!(straight.len() < 10_000, "stepIn never ends the run");
         dap.send("stepIn", Some("{\"threadId\":1}"));
         let stop = loop {
             let msg = dap.recv();
@@ -1371,4 +1372,136 @@ fn variable(response: &str, name: &str) -> Option<String> {
         .iter()
         .find(|v| v.get("name").and_then(cpl_json::Value::as_str) == Some(name))?;
     found.get("value")?.as_str().map(str::to_string)
+}
+
+const LONG_TRAP: &str =
+    "let n: Int = read()\nvar i = 0\nwhile i < n:\n    i += 1\nlet a = [1, 2]\nprint(a[i])\n";
+
+fn top_line(dap: &mut DapClient) -> String {
+    dap.send("stackTrace", Some("{\"threadId\":1}"));
+    dap.recv_until("\"command\":\"stackTrace\"")
+}
+
+#[test]
+fn continue_past_the_first_window_stops_at_the_run_s_trap() {
+    let (mut dap, _) = launched(
+        "long_trap",
+        LONG_TRAP,
+        "\"stopOnEntry\":true,\"recordSteps\":1000,\"inputText\":\"3000\\n\"",
+    );
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let stop = dap.recv_until("\"event\":\"stopped\"");
+    assert!(stop.contains("\"reason\":\"exception\""), "{stop}");
+    let frame = top_line(&mut dap);
+    assert!(frame.contains("\"line\":6"), "{frame}");
+    dap.finish();
+}
+
+#[test]
+fn step_back_from_a_long_run_s_first_step_stays_there() {
+    let (mut dap, _) = launched(
+        "long_entry",
+        LONG_TRAP,
+        "\"stopOnEntry\":true,\"recordSteps\":1000,\"inputText\":\"3000\\n\"",
+    );
+    dap.send("stepBack", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let frame = top_line(&mut dap);
+    assert!(frame.contains("\"line\":1"), "{frame}");
+    dap.send("stepIn", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let frame = top_line(&mut dap);
+    assert!(frame.contains("\"line\":2"), "{frame}");
+    dap.finish();
+}
+
+#[test]
+fn continue_without_breakpoints_stops_at_an_edit_far_past_the_window() {
+    let source = |step: i64| {
+        format!(
+            "let n: Int = read()\nvar i = 0\nwhile i < n:\n    i += 1\nvar s = 0\ns += 1\ns += {step}\nprint(s + i)\n"
+        )
+    };
+    let (mut dap, path) = launched_at(
+        "late_edit_free",
+        &source(1),
+        "\"stopOnEntry\":false,\"recordSteps\":1000,\"inputText\":\"3000\\n\"",
+        &[5],
+    );
+    std::fs::write(&path, source(2)).unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let _ = dap.recv_until("re-ran");
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    dap.send(
+        "setBreakpoints",
+        Some(&format!(
+            "{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[]}}"
+        )),
+    );
+    let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let stop = dap.recv_until("\"event\":\"stopped\"");
+    assert!(stop.contains("\"reason\":\"divergence\""), "{stop}");
+    let frame = top_line(&mut dap);
+    assert!(frame.contains("\"line\":7"), "{frame}");
+    dap.finish();
+}
+
+const ENDLESS: &str = "var i = 0\nwhile true:\n    i += 1\n";
+
+#[test]
+fn a_run_cut_by_its_time_limit_ends_its_recording_and_restarts_the_same() {
+    let (mut dap, _) = launched(
+        "endless",
+        ENDLESS,
+        "\"stopOnEntry\":true,\"recordSteps\":1000,\"timeLimit\":0.3",
+    );
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("re-ran");
+    assert!(
+        note.contains(
+            "re-ran: every value and every print of the first 1000 steps is the same as before"
+        ),
+        "{note}"
+    );
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let stop = dap.recv_until("\"event\":\"stopped\"");
+    assert!(stop.contains("\"reason\":\"exception\""), "{stop}");
+    assert!(stop.contains("longer than its time limit"), "{stop}");
+    dap.finish();
+}
+
+#[test]
+fn a_cut_run_shorter_than_a_recording_restarts_the_same_over_both() {
+    let (mut dap, _) = launched(
+        "endless_short",
+        ENDLESS,
+        "\"stopOnEntry\":true,\"recordSteps\":1000000000,\"timeLimit\":0.2",
+    );
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("re-ran");
+    assert!(note.contains("steps is the same as before"), "{note}");
+    dap.finish();
+}
+
+#[test]
+fn a_watch_reads_the_parameter_that_hides_a_global() {
+    let (mut dap, _) = launched_at(
+        "shadow_param",
+        "let k = 1\nfn f(k: Int) -> Int:\n    let r = k * 10\n    return r\nprint(f(5) + k)\n",
+        "\"stopOnEntry\":false",
+        &[3, 5],
+    );
+    let reply = eval(&mut dap, "k");
+    assert!(reply.contains("\"result\":\"5\""), "{reply}");
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    let reply = eval(&mut dap, "k");
+    assert!(
+        reply.contains("\"result\":\"1\",\"type\":\"Int\""),
+        "{reply}"
+    );
+    dap.finish();
 }

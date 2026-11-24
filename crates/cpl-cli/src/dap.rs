@@ -15,6 +15,7 @@ pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
+use std::time::Duration;
 
 pub fn serve_stdio() -> u8 {
     let stdin = io::stdin();
@@ -62,6 +63,8 @@ struct Session {
     cursor: usize,
     /// The steps a recording keeps: a launch's `recordSteps`, or `MAX_STEPS`.
     max_steps: usize,
+    /// How long a recording may run: a launch's `timeLimit`, or `TIME_LIMIT`.
+    time_limit: Duration,
     /// The run's step that `recording` starts at: past 0 on a long run.
     base: usize,
     /// A run longer than one recording holds traces its other steps again from
@@ -94,6 +97,7 @@ impl Session {
             trap_message: None,
             cursor: 0,
             max_steps: MAX_STEPS,
+            time_limit: TIME_LIMIT,
             base: 0,
             pager: None,
             stopped: false,
@@ -232,6 +236,11 @@ impl Session {
                     .and_then(|a| a.get("recordSteps"))
                     .and_then(Json::as_u64)
                     .map_or(MAX_STEPS, |steps| steps.max(10) as usize);
+                self.time_limit = args
+                    .and_then(|a| a.get("timeLimit"))
+                    .and_then(Json::as_f64)
+                    .and_then(|secs| Duration::try_from_secs_f64(secs).ok())
+                    .unwrap_or(TIME_LIMIT);
                 self.brute = args
                     .and_then(|a| a.get("brute"))
                     .and_then(Json::as_bool)
@@ -570,10 +579,13 @@ impl Session {
                     _ => std::mem::take(&mut seen),
                 };
                 // Two runs longer than what is kept, or a run the time limit
-                // cut, compare over what both keep.
+                // cut, compare over what both keep. A cut run's last step
+                // stopped partway, so it is not kept.
+                let kept =
+                    |run: &Recording, cut: bool| run.len() - usize::from(cut && !run.truncated);
                 let cut = was_stopped || self.stopped;
                 let same_steps = (cut || before.truncated && self.recording.truncated)
-                    .then(|| before.len().min(self.recording.len()));
+                    .then(|| kept(&before, was_stopped).min(kept(&self.recording, self.stopped)));
                 self.change = match same_steps {
                     Some(n) => first_change_in(&before, 0..n, &self.recording, 0..n),
                     None => first_change(&before, &self.recording),
@@ -753,8 +765,7 @@ impl Session {
         let observed = cpl_interp::run_observed(
             &compiled.program,
             // A program that never ends still lets the editor step through it.
-            cpl_interp::Io::fixed(&self.input)
-                .until(cpl_interp::Stop::after(std::time::Duration::from_secs(10))),
+            cpl_interp::Io::fixed(&self.input).until(cpl_interp::Stop::after(self.time_limit)),
             &mut printed,
             Some(config),
         );
@@ -800,7 +811,6 @@ impl Session {
         } else {
             self.cursor + 1
         };
-        let mut jumped = false;
         loop {
             for i in start..self.recording.len() {
                 if self.is_trap(i) {
@@ -822,14 +832,14 @@ impl Session {
             }
             // With nothing to stop at on the way, only the run's end is traced again.
             let later_change = matches!(&self.change, Some(c) if c.step >= self.base);
-            let jump = !jumped && self.breakpoints.is_empty() && !later_change;
-            jumped |= jump;
-            let turned = if jump {
-                self.page_last()
-            } else {
-                self.page_forward()
-            };
-            if !turned {
+            if self.breakpoints.is_empty() && !later_change {
+                if self.page_last() && self.is_trap(self.cursor) {
+                    let msg = self.trap_message.clone();
+                    return self.send_stopped(writer, "exception", msg.as_deref());
+                }
+                break;
+            }
+            if !self.page_forward() {
                 break;
             }
             start = self.cursor;
@@ -885,7 +895,7 @@ impl Session {
     /// Moves back to the steps before `recording`, standing at the last.
     fn page_back(&mut self) -> bool {
         let from = self.base.saturating_sub(self.page());
-        let turned = self.base > 0 && self.load(from, self.base - from);
+        let turned = self.load(from, self.base - from);
         if turned {
             self.cursor = self.recording.len() - 1;
         }
@@ -925,22 +935,17 @@ impl Session {
     /// arithmetic, comparisons, `and`, `or` and `not`.
     fn eval_expr(&self, expr: &str) -> Option<(String, String)> {
         let step = self.recording.step(self.cursor)?;
-        if let Some(var) = self
-            .recording
-            .vars
+        // A name means what the program means by it there: a local hides a global.
+        let valued = self.evaluate(expr).ok()?;
+        let local = matches!(cpl_json::parse(&step.locals), Ok(Json::Object(map)) if map.contains_key(expr));
+        let ty = step
+            .values
             .iter()
-            .find(|v| v.name == expr || v.id == expr)
-        {
-            let (_, value) = step
-                .values
-                .iter()
-                .find(|(i, _)| self.recording.vars[*i].id == var.id)?;
-            let value = cpl_json::parse(value).ok()?;
-            return Some((shown(&value), var.ty.clone()));
-        }
-        self.evaluate(expr)
-            .ok()
-            .map(|v| (shown(&v.json), String::new()))
+            .rev()
+            .map(|(i, _)| &self.recording.vars[*i])
+            .find(|var| !local && var.name == expr)
+            .map_or_else(String::new, |var| var.ty.clone());
+        Some((shown(&valued.json), ty))
     }
 
     fn eval_error(&self, expr: &str) -> String {
@@ -1201,9 +1206,7 @@ fn at(list: &Valued, index: &Valued) -> Result<Valued, String> {
     let items = list.json.as_array().ok_or("only a list can be indexed")?;
     let key = index.json.to_string();
     let position = match list.labels.as_ref().and_then(Json::as_array) {
-        Some(labels) => labels
-            .iter()
-            .position(|l| l.to_string() == key || shown(l) == key),
+        Some(labels) => labels.iter().position(|l| l.to_string() == key),
         None => usize::try_from(int(index)?).ok(),
     };
     let json = position
@@ -1295,6 +1298,7 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
 
 /// What a debug session records: a run of 10^7 steps fits in a few hundred MB.
 const MAX_STEPS: usize = 10_000_000;
+const TIME_LIMIT: Duration = Duration::from_secs(10);
 
 fn describe_change(change: &Change) -> String {
     let source = |json: &Option<String>, ended: &str| match json.as_deref().map(cpl_json::parse) {
