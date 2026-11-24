@@ -4152,6 +4152,22 @@ impl Show for Rev<S>:
             out += "{x}"
         out
 
+impl Show for Filtered<S, T>:
+    fn show(v):
+        var out = ""
+        for x in v:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Mapped<S, T, U>:
+    fn show(v):
+        var out = ""
+        for x in v:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
 impl Show for Rebased<S>:
     fn show(v):
         var out = ""
