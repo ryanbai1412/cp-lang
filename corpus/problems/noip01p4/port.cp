@@ -7,8 +7,6 @@
 //   Then Floyd-Warshall over all 4n airports with Euclidean prices, O(n^3), and take the
 //   cheapest of the 16 corner pairs.
 // original: corpus/submissions/5086731.cpp
-use std.geometry.{dot}  // WISH F1
-
 let n: 1..=100 = read()
 let air: 1..=1000 = read()
 domain City = 1..=n
@@ -18,9 +16,8 @@ let given: [City](a: Pt, b: Pt, c: Pt, rail: 1..=1000) = read()
 
 // The corner opposite a right angle at p is q + r - p.
 fn fourth(a: Pt, b: Pt, c: Pt) -> Pt:
-    for (p, q, r) in [(a, b, c), (b, c, a), (c, a, b)]:
-        if dot(q - p, r - p) == 0: return q + r - p
-    unreachable  // WISH G17
+    let (p, q, r) = [(a, b, c), (b, c, a), (c, a, b)].find(((p, q, r)) => (q - p).dot(r - p) == 0)!
+    q + r - p
 
 domain Corner = 1..=4
 type Airport = (City, Corner)
@@ -31,7 +28,7 @@ fn at(u: Airport) -> Pt:
     let (c, k) = u
     corners[c][k.ord]
 
-fn price(u: Airport, v: Airport) -> F64:  // WISH F15
+fn price(u: Airport, v: Airport) -> F64:
     let ((cu, _), (cv, _)) = (u, v)
     F64(if cu == cv: given[cu].rail else: air) * at(u).dist(at(v))
 var cost: [Airport, Airport]?F64 = [Airport, Airport] (u, v) => Some(price(u, v))

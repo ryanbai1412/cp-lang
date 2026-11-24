@@ -8,46 +8,39 @@
 //   search on k, setting the first k free switches to that position and the rest to the other,
 //   for the smallest k that opens d: its k-th free switch is d's. At most 1 + 13 queries per
 //   door, O(N^2 log N) time.
-//
-// IDEAL SKETCH, not run: the prototype has no `protocol` / `@interactor`.
+// The task is a grader function and the judge supplies `try_combination`; this plays the sample
+// grader: it reads N, each switch's open position and its door, answers each try the way the
+// judge does, and prints `Accepted: q`. dream.cp has the `protocol` form.
 // original: corpus/submissions/4687973.cpp
-let n: 1..=5000 = param()
+let n: 1..=5000 = read()
 domain Switch = 0..n
 domain Door = 0..n
-enum Pos: Up, Down
-fn other(p: Pos) -> Pos = if p == Up: Down else: Up
+let hidden_open: [Switch]0..=1 = read()
+let hidden_door: [Switch]Door = read()
 
-protocol Cave:
-    fn try_combination(s: [Switch]Pos) -> ?Door
-    @final fn answer(open: [Switch]Pos, door: [Switch]Door)
-    limit try_combination: 70000
+var tries = 0
+fn try_combination(s: [Switch]0..=1) -> ?Door:
+    tries += 1
+    assert tries <= 70_000
+    [hidden_door[w] for w in Switch if s[w] != hidden_open[w]].min()
 
-// The wiring is a bijection, which no field type says. `Perm<Switch, Door>`
-// is the stdlib's constructive generator for it, so nothing is rejected.
-@interactor(Cave)
-@derive(Gen)
-struct Judge(open: [Switch]Pos, door: Perm<Switch, Door>):
-    fn try_combination(mut self, s: [Switch]Pos) -> ?Door =
-        [door[w] for w in Switch if s[w] != open[w]].min()!
-    fn answer(
-        mut self,
-        o: [Switch]Pos,
-        d: [Switch]Door,
-    ) -> Bool = o == open and d == door.to_array()
-
-@graded fn explore_cave(judge: Cave):
-    var open: [Switch]Pos = Up
+fn explore_cave() -> ([Switch]0..=1, [Switch]Door):
+    var open: [Switch]0..=1 = 0
     var door: [Switch]?Door = None
     for d in Door:
-        // Known switches hold their doors open; `free` are the rest.
+        // Settled switches hold their doors open; `free` are the rest.
         let free = [w for w in Switch if door[w] == None]
-        fn opens(flip: List<Switch>, to: Pos) -> Bool:
-            var s = [Switch] w => if door[w] != None: open[w] elif flip.contains(w): to else: other(to)
-            (judge.try_combination(s) ?? Door.count) > d
+        fn opens(k: Int, to: 0..=1) -> Bool:
+            var s = [Switch] w => if door[w] != None: open[w] else: 1 - to
+            for w in free[..k]: s[w] = to
+            if let first_closed = try_combination(s): first_closed > d else: true
         // Which position opens door d, then which free switch carries it.
-        let to = if opens(free, Up): Up else: Down
-        let at = first_where(1..=free.len, k => opens(free[..k], to))
-        let w = free[at - 1]
-        open[w] = to
-        door[w] = d
-    judge.answer(open, [Switch] w => door[w]!)
+        let to = if opens(free.len, 0): 0 else: 1
+        let k = (1..=free.len).first_true(k => opens(k, to))!
+        open[free[k - 1]] = to
+        door[free[k - 1]] = Some(d)
+    (open, [Switch] w => door[w]!)
+
+let (open, door) = explore_cave()
+assert open == hidden_open and door == hidden_door
+print("Accepted:", tries)

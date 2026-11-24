@@ -584,8 +584,8 @@ else
     recovery_pid=$!
 fi
 
-step "corpus ports pass cpl check (scripts/port-check.sh, ratchet corpus/port-check-failing.txt)"
-scripts/port-check.sh "$cpl" || fail "a corpus port stopped checking; fix it (the list only shrinks)"
+step "corpus ports pass cpl check (scripts/port-check.sh, hard gate)"
+scripts/port-check.sh "$cpl" || fail "a corpus port fails cpl check; fix it"
 
 step "std/prelude.cp: name count"
 prelude=$(sed 's://.*::' std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')

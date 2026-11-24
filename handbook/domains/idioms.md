@@ -206,7 +206,7 @@ GCC and LLVM's differential testing against a reference.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Every port checks on the current language | ports failing `cpl check` | ratchet, list only shrinks | `scripts/port-check.sh` (`corpus/port-check-failing.txt`) in `scripts/check.sh`; per staged port in the commit tier |
+| Every port checks on the current language | ports failing `cpl check` | hard gate at 0, no list | `scripts/port-check.sh` in `scripts/check.sh`; per staged port in the commit tier |
 | Every port agrees with its accepted C++ | ports matching `orig.cpp` on samples plus generated inputs | differential | `crates/cpl-cli/tests/judges.rs` (`every_v03_port_checks`) over `corpus/sets/v03.txt`; `corpus/generators.py` (`disagrees`: the port's C++ against the accepted C++ on generated inputs, judged by `checker.py` when there is one) |
 | The hill-climb problems pass | `cpl-conform corpus` passes, judged by checker where one exists | generated suite, ratchet | `cpl-conform corpus`, `research/scoreboard.json` via `cpl-conform all --check` |
 | Every problem has tests, and expected outputs come from an accepted solution | untested problems; expected outputs regenerated from `orig.cpp` | `handbook/guidelines/problem-packages-checklist.md#r1`; generated | `scripts/corpus-tests.py verify`; `corpus/audit.py` (`answer-is-input`, `no-reference`, ratchet `corpus/audit-known.txt`) |
