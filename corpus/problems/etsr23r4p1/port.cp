@@ -1,64 +1,32 @@
 // Source: ETSR 2023 Round 4 P1, https://dmoj.ca/problem/etsr23r4p1
-// Problem: a permutation p of n positions; print a balanced bracket string in which p
-//   maps every bracket to one of the opposite kind, or nothing if none exists.
-// Solution: brackets alternate along each cycle of p, so an odd cycle has no answer and
-//   a 2-cycle opens at its smaller position. Each longer cycle has two phases; try
-//   every choice of phases and keep the first whose prefix sums stay non-negative.
+// Problem: a permutation p of n positions; print a balanced bracket string in which p maps every
+//   bracket to one of the opposite kind, or nothing if none exists.
+// Solution: brackets alternate along each cycle of p, so an odd cycle has no answer and a
+//   2-cycle opens at its smaller position. Each longer cycle has two phases; try every choice of
+//   phases, in the order of the reference, and keep the first whose prefix sums stay
+//   non-negative: O(2^m n) for m cycles longer than 2.
 // original: corpus/submissions/5521420.cpp
+// The statement is not public: n is the reference's int, and the phase search is fast only when
+// few cycles are longer than 2.
+let n: 1..=1e5 = read()
+domain V = 1..=n
+let p: [V]V = read()
 
-let n: Int = read()
-domain V = 0..n
-var p: [V]V = [V] v => v
-for i in 0..n:
-    let x: Int = read()
-    p[V(i)] = V(x - 1)
+fn brackets() -> ?Str:
+    let cycles = p.perm_cycles()
+    if cycles.any(c => c.len % 2 == 1): return None
+    let (pairs, long) = cycles.partition(c => c.len == 2)
+    var step: [V]Int = 0  // +1 opens, -1 closes
+    for c in pairs:
+        step[c[0]] = 1
+        step[c[1]] = -1
+    for phases in 0..(1 << long.len):
+        for (j, c) in long.items:
+            for (k, v) in c.items:
+                step[v] = if (k % 2 == 1) != phases.bit(j): 1 else: -1
+        let balance = step.scan(+)
+        if V.cuts.all(c => balance[c] >= 0):
+            return Some("".join([if s > 0: "(" else: ")" for s in step]))
+    None
 
-var vis: [V]Bool = false
-var base: [V]Int = 0
-var big: List<List<V>> = []
-var bad_odd = false
-
-for v in V:
-    if vis[v]: continue
-    var cyc: List<V> = []
-    var u = v
-    while not vis[u]:
-        vis[u] = true
-        cyc.push(u)
-        u = p[u]
-    if cyc.len % 2 != 0:
-        bad_odd = true
-        break
-    if cyc.len == 2:
-        let a = if cyc[0].ord < cyc[1].ord: cyc[0] else: cyc[1]
-        let b = if cyc[0].ord < cyc[1].ord: cyc[1] else: cyc[0]
-        base[a] = 1
-        base[b] = -1
-    else:
-        big.push(cyc)
-
-if not bad_odd:
-    let m = big.len
-    var found = false
-    for mask in 0..(1 << m):
-        var cur: [V]Int = [V] v => base[v]
-        for j in 0..m:
-            let bit = (mask >> j) & 1
-            let cyc = big[j]
-            for k in 0..cyc.len:
-                cur[cyc[k]] += ((k ^ bit) % 2) * 2 - 1
-        var psum = 0
-        var ok = true
-        for v in V:
-            psum += cur[v]
-            if psum < 0:
-                ok = false
-                break
-        if ok:
-            var out = ""
-            for v in V:
-                if cur[v] == -1: out += ")"
-                else: out += "("
-            print(out)
-            found = true
-            break
+if let s = brackets(): print(s)
