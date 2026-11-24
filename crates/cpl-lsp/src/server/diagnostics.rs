@@ -58,7 +58,7 @@ impl Server {
             return publish(uri, self.run_diagnostics(uri));
         };
         let analysis = facts.analysis().clone();
-        let reported = reported(uri, &facts);
+        let reported = reported(uri, &facts, &self.db.facts_source());
         // A lint on the same span (L0306) already says it, with a fix.
         let mut notes = overflows(&facts);
         notes.retain(|n| !reported.iter().any(|l| l.span == n.span));
@@ -87,9 +87,13 @@ impl Server {
 /// The same answer as `cpl check`: the checker's diagnostics, then what
 /// lowering rejects; then, as `cpl lint` reports them, the lints. What the
 /// editor publishes and offers each diagnostic's fixes on.
-pub(super) fn reported(uri: &str, facts: &Proven) -> Vec<Diagnostic> {
+pub(super) fn reported(
+    uri: &str,
+    facts: &Proven,
+    source: &dyn cpl_check::FactsSource,
+) -> Vec<Diagnostic> {
     let analysis = facts.analysis();
-    let mut out = at_levels(uri, analysis, cpl_ir::reported(analysis, &cpl_check::OwnFacts));
+    let mut out = at_levels(uri, analysis, cpl_ir::reported(analysis, source));
     out.extend(lints(uri, facts));
     out
 }

@@ -214,7 +214,8 @@ fn a_recursive_local_fn_inside_a_local_fn_is_passed_itself() {
     assert!(out.contains("auto go = cpl::rec(["), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let analysis = db.analyze("t.cp").expect("set");
+    let program = cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers");
     let explained = crate::explain_closures(&program);
     assert!(
         explained

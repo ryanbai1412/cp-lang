@@ -12,7 +12,7 @@ fn runs(source: &str, input: &str) -> String {
         "{:?}",
         analysis.diagnostics
     );
-    let program = match cpl_ir::lower(&analysis, &cpl_check::OwnFacts) {
+    let program = match cpl_ir::lower(&analysis, &db.facts_source()) {
         Ok(program) => program,
         Err(diags) => return format!("{diags:?}"),
     };
@@ -126,7 +126,7 @@ fn laws_hold_lowers_its_named_samples_in_the_order_written() {
         let mut db = cpl_check::Session::new();
         db.set_file("t.cp", source);
         let analysis = db.analyze("t.cp").expect("analysis");
-        format!("{:?}", cpl_ir::lower(&analysis).expect("lowers"))
+        format!("{:?}", cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers"))
     };
     let first = lowered();
     for _ in 0..8 {
@@ -135,4 +135,14 @@ fn laws_hold_lowers_its_named_samples_in_the_order_written() {
             "lowering laws_hold gave a different program"
         );
     }
+}
+
+#[test]
+fn a_fact_inside_a_std_body_is_read_by_lowering() {
+    // `bfs` reads `a.to` on its `G.Arc`, typed only in std's own body.
+    let source = "domain R = 0..3\ndomain C = 0..3\ndomain Cell = (R, C)\n\
+        fn nb(p: Cell) -> yields Cell:\n    for q in p.adj4: yield q\n\
+        let ps = bfs(nb, from: [(R(0), C(0))])\n\
+        print(ps.get((R(2), C(0))) ?? -1)\n";
+    assert_eq!(runs(source, ""), "2\n");
 }
