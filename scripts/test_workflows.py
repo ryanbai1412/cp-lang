@@ -35,6 +35,18 @@ def job_block(text, job):
 
 
 
+def gradle_jobs_without_rust(text):
+    """Jobs that run the JetBrains Gradle build with no `setup-rust` step before it: the
+    build runs cargo to write the plugin's generated Kotlin (decision 611)."""
+    out = []
+    for job in re.findall(r"^  ([\w-]+):\s*(?:#.*)?$", text.split("\njobs:", 1)[-1], re.M):
+        block = job_block(text, job)
+        gradle = block.find("jetbrains-gradle")
+        if gradle >= 0 and "./.github/actions/setup-rust" not in block[:gradle]:
+            out.append(job)
+    return out
+
+
 def fake_curl(body):
     """A `curl` that answers 200 with `body`, to stdout or to `-o FILE` with
     `-w '%{http_code}'` as scripts/retry.sh's fetch_optional asks."""
@@ -47,6 +59,18 @@ class WorkflowTest(unittest.TestCase):
     def test_actionlint_passes(self):
         run = subprocess.run(["actionlint"], cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+
+    def test_every_jetbrains_gradle_job_sets_up_rust_first(self):
+        for path in sorted(glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yml"))):
+            with open(path, encoding="utf-8") as f:
+                self.assertEqual(gradle_jobs_without_rust(f.read()), [], os.path.basename(path))
+
+    def test_a_gradle_job_without_rust_is_found(self):
+        steps = "    runs-on: ubuntu-latest\n    steps:\n"
+        gradle = "      - run: just jetbrains-gradle buildPlugin\n"
+        rust = "      - uses: ./.github/actions/setup-rust\n"
+        text = f"on: push\njobs:\n  bare:\n{steps}{gradle}  late:\n{steps}{gradle}{rust}  set:\n{steps}{rust}{gradle}  other:\n{steps}"
+        self.assertEqual(gradle_jobs_without_rust(text), ["bare", "late"])
 
     def test_only_a_green_job_stamps_the_cached_target(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
