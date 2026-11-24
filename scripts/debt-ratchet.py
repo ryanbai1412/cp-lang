@@ -1839,7 +1839,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 HARD_ZERO = frozenset({
     "bench_lists", "scaling_mismatches", "corpus_test_files", "corpus_known",
-    "own_databases", "module_loaders", "web_skip_only", "todo_fixme", "ci_retries", "or_true",
+    "own_databases", "module_loaders", "web_skip_only", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
