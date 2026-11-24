@@ -9184,9 +9184,8 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 608. (reserved, stdlib)
 
-## 609. (reserved, compiler)
-
 ## 611. (reserved, tools)
+
 ## 609. `Prefix(a)` takes its shape from `new`'s signature (stdlib, 2026-11-24)
 
 - **Call.** A family's constructor `F(a)` on a `List<T>` or a `[0..n]T` builds the shape `F<T>` whose `new` takes a `List<T>`, as it already built the 2-D shape for `[R, C]T`. So `Prefix(list)` is `Prefix<T>`, read by `Int` cuts, the same table `prefix(list)` builds. Coordinator ruling for Consumers of 2026-11-24.
