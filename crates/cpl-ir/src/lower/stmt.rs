@@ -6,7 +6,6 @@ mod cond;
 mod domain_decl;
 mod lambda_tuple;
 mod lends;
-mod let_infer;
 mod let_value;
 mod loops;
 mod mutation;
@@ -640,14 +639,8 @@ impl<'a> Lowerer<'a> {
                         if args.is_empty()
                             && matches!(&callee.kind, ast::ExprKind::Name(n) if n == "Map" || n == "HashMap")
                         {
-                            let hashed =
-                                matches!(&callee.kind, ast::ExprKind::Name(n) if n == "HashMap");
-                            let (kt, vt) = self.peek_map_kv_types(vname, rest);
-                            Some(if hashed {
-                                Ty::HashMap(Box::new(kt), Box::new(vt))
-                            } else {
-                                Ty::Map(Box::new(kt), Box::new(vt))
-                            })
+                            let _ = vname;
+                            self.checked_ty(init.as_ref().unwrap())
                         } else {
                             None
                         }
