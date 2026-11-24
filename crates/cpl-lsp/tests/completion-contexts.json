@@ -334,6 +334,28 @@
   ]
  },
  {
+  "context": "dot/list-literal",
+  "source": "let s = [(0, 1), (1, 0)].$0",
+  "want": [
+   "sum",
+   "len"
+  ]
+ },
+ {
+  "context": "dot/comprehension",
+  "source": "fn canon() -> Int = 1\nlet t = [canon() for _ in 0..3].$0",
+  "want": [
+   "tally"
+  ]
+ },
+ {
+  "context": "dot/list-takes-array-method",
+  "source": "let xs = [3, 1, 2]\nlet sa = xs.sorted().$0",
+  "want": [
+   "scan"
+  ]
+ },
+ {
   "context": "dot/domain-seq",
   "source": "let n = 5\ndomain V = 1..=n\nlet s = V.$0",
   "want": [

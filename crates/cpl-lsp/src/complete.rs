@@ -821,6 +821,16 @@ fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
     let ty = match &expr.kind {
         ExprKind::Paren(inner) => return type_of(item, inner),
         ExprKind::Str(_) => Ty::Str,
+        ExprKind::Int(_) => Ty::Int,
+        ExprKind::Bool(_) => Ty::Bool,
+        ExprKind::Tuple(parts) => Ty::Tuple(
+            parts
+                .iter()
+                .map(|p| type_of(item, p))
+                .collect::<Option<_>>()?,
+        ),
+        ExprKind::List(elems) => Ty::list(type_of(item, elems.first()?)?),
+        ExprKind::Comprehension { body, .. } => Ty::list(type_of(item, body)?),
         ExprKind::Field { name, .. } => hover_at(item, name.span)?.clone(),
         ExprKind::Generic { base, .. } => return type_of(item, base),
         ExprKind::Call { callee, .. } => match type_of(item, callee)? {
@@ -1065,16 +1075,21 @@ fn receives(detail: &str, ty: &Ty, walks: bool) -> bool {
         {
             true
         }
-        // `self: [D]T`: any array whose element is `T`'s.
-        None if self_ty.starts_with('[') => match (ty, self_ty.split_once(']')) {
-            (Ty::Array { elem, .. }, Some((_, want))) => {
-                let generic = generics
-                    .split(',')
-                    .any(|g| g.split(':').next().unwrap_or("").trim() == want.trim());
-                generic || elem.to_string() == want.trim()
-            }
-            _ => false,
-        },
+        // `self: [D]T`: any array or list whose element is `T`'s.
+        None if self_ty.starts_with('[') => {
+            let elem = match ty {
+                Ty::Array { elem, .. } => (**elem).clone(),
+                _ => match ty.seq_elem().filter(|e| *ty == Ty::list(e.clone())) {
+                    Some(elem) => elem,
+                    None => return false,
+                },
+            };
+            let want = self_ty.split_once(']').map_or("", |(_, w)| w.trim());
+            generics
+                .split(',')
+                .any(|g| g.split(':').next().unwrap_or("").trim() == want)
+                || elem.to_string() == want
+        }
         None => {
             let name = self_ty.split('<').next().unwrap_or(self_ty);
             let ty = match ty {
