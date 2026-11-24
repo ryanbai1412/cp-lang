@@ -1266,10 +1266,14 @@ impl<'a> Lowerer<'a> {
                 } else {
                     "asserts"
                 };
+                let cond_ast = cond;
                 let cond = self.expr_as(cond, &Ty::Bool);
                 let mut message = message.as_ref().map(|m| self.expr_as(m, &Ty::Str));
                 if key_test.is_some() {
                     (text, message) = (String::new(), key_test);
+                } else {
+                    let values = self.assert_values(cond_ast);
+                    message = self.with_values(message, values);
                 }
                 let kept = self
                     .context("checks", checks)

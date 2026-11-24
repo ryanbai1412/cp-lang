@@ -453,3 +453,130 @@ impl<'a> Lowerer<'a> {
         Some(self.mk(ExprKind::Format(pieces), Ty::Str, cond.span))
     }
 }
+
+/// The plain values a failed condition compared, as written: names and
+/// field chains (`i`, `_cap`, `other.len`), also inside the arithmetic of
+/// an operand (`x < 1 << _bits` shows `x` and `_bits`), never a call or
+/// an index, so showing them can't trap or run anything.
+fn compared_values<'e>(e: &'e ast::Expr, out: &mut Vec<&'e ast::Expr>) {
+    match &e.kind {
+        ast::ExprKind::Compare { first, rest } => {
+            for operand in std::iter::once(&**first).chain(rest.iter().map(|(_, x)| x)) {
+                operand_leaves(operand, out);
+            }
+        }
+        ast::ExprKind::Binary {
+            op: ast::BinOp::And | ast::BinOp::Or,
+            lhs,
+            rhs,
+            ..
+        } => {
+            compared_values(lhs, out);
+            compared_values(rhs, out);
+        }
+        ast::ExprKind::Unary {
+            op: ast::UnOp::Not,
+            expr,
+        }
+        | ast::ExprKind::Paren(expr) => compared_values(expr, out),
+        _ => {}
+    }
+}
+
+fn operand_leaves<'e>(e: &'e ast::Expr, out: &mut Vec<&'e ast::Expr>) {
+    match &e.kind {
+        _ if plain_value(e) => out.push(e),
+        ast::ExprKind::Binary { lhs, rhs, op, .. }
+            if !matches!(op, ast::BinOp::And | ast::BinOp::Or | ast::BinOp::Coalesce) =>
+        {
+            operand_leaves(lhs, out);
+            operand_leaves(rhs, out);
+        }
+        ast::ExprKind::Unary { expr, .. } | ast::ExprKind::Paren(expr) => operand_leaves(expr, out),
+        _ => {}
+    }
+}
+
+/// `i`, `_cap`, `self.lo`, `other.len`: a name or a field chain on one,
+/// not a constant (`Int.MAX`, `MOD`).
+fn plain_value(e: &ast::Expr) -> bool {
+    match &e.kind {
+        ast::ExprKind::Name(n) => n.starts_with(|c: char| c.is_ascii_lowercase() || c == '_'),
+        ast::ExprKind::Field { base, name } => {
+            !name.text.is_empty()
+                && (matches!(base.kind, ast::ExprKind::SelfValue) || plain_value(base))
+        }
+        _ => false,
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// What a failed `assert` shows after its message: each plain value
+    /// the condition compared, `i = 7, _cap = 4` (errors/R11). `None` when
+    /// it compared none.
+    pub(super) fn assert_values(&mut self, cond: &ast::Expr) -> Option<Expr> {
+        let mut leaves = Vec::new();
+        compared_values(cond, &mut leaves);
+        let mut seen = std::collections::HashSet::new();
+        let mut pieces = Vec::new();
+        for leaf in leaves {
+            let text = self.source(leaf.span);
+            if !seen.insert(text.clone()) {
+                continue;
+            }
+            let value = self.expr(leaf, None);
+            if !matches!(
+                value.ty,
+                Ty::Int
+                    | Ty::U64
+                    | Ty::I128
+                    | Ty::Float
+                    | Ty::Char
+                    | Ty::Str
+                    | Ty::Pos(_)
+                    | Ty::Bound(_)
+            ) {
+                continue;
+            }
+            let Some(arg) = self.fmt_arg(value, crate::FLOAT_DIGITS, leaf.span) else {
+                continue;
+            };
+            let sep = if pieces.is_empty() { "" } else { ", " };
+            pieces.push(FmtPiece::Text(format!("{sep}{text} = ").into_bytes()));
+            pieces.push(FmtPiece::Value(arg));
+        }
+        (!pieces.is_empty()).then(|| self.mk(ExprKind::Format(pieces), Ty::Str, cond.span))
+    }
+
+    /// `message`, then the values the condition compared: `"needs k >= 0 (k = -1)"`.
+    pub(super) fn with_values(
+        &mut self,
+        message: Option<Expr>,
+        values: Option<Expr>,
+    ) -> Option<Expr> {
+        let Some(values) = values else {
+            return message;
+        };
+        let Some(message) = message else {
+            return Some(values);
+        };
+        let span = message.span;
+        let arg = |value| {
+            FmtPiece::Value(FmtArg {
+                value,
+                digits: crate::FLOAT_DIGITS,
+            })
+        };
+        let pieces = vec![
+            arg(message),
+            FmtPiece::Text(b" (".to_vec()),
+            arg(values),
+            FmtPiece::Text(b")".to_vec()),
+        ];
+        Some(Expr {
+            kind: ExprKind::Format(pieces),
+            ty: Ty::Str,
+            span,
+        })
+    }
+}
