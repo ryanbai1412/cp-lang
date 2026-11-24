@@ -226,8 +226,8 @@ STEPS = {
              "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"),
         gate("metamorphic", fail="a meaning-preserving edit changed a case's output; see above"),
         gate("speed", fail="the conformance and spec-block suites went over their CPU budget; see above"),
-        gate("explain-copies", "--max", "1",
-             fail="cpl explain claims more copies than the C++ makes in more cases; see above"),
+        gate("explain-copies", "--max", "0",
+             fail="cpl explain claims a copy the C++ doesn't make; see above"),
         gate("tool-vocab", fail="help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"),
         gate("flakes", "--runs", "2", fail="a conformance case changed verdict between runs; see above"),
         gate("case-bugs", fail="a known-gap case fails because of the case itself (conformance/R3); fix the case"
