@@ -1249,6 +1249,28 @@ print([3, 1, 4].scan(+))
 """
 out = "0 3 4 8"
 
+[case."Seq/Prefix/iter"]
+code = """
+let pre = [3, 1, 2].scan(+)
+for t in pre: print(t)
+"""
+out = "3\n4\n6"
+
+[case."Keyed/Prefix/items"]
+code = """
+domain V = 0..3
+let a: [V]Int = [3, 1, 2]
+for (v, t) in a.scan(+).items(): print(v, t)
+"""
+out = "0 3\n1 4\n2 6"
+
+[case."Bidir/Prefix/iter_rev"]
+code = """
+let pre = [3, 1, 2].scan(+)
+for t in pre.iter_rev(): print(t)
+"""
+out = "6\n4\n3"
+
 [case."Show/SortedBag/show"]
 code = """
 use std.bag.{SortedBag}

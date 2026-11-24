@@ -2893,6 +2893,7 @@
         "std-prefix/scan-prefix-ends.cp": "pass",
         "std-prefix/scan-range-array-int-index-is-an-error.cp": "pass",
         "std-prefix/scan-sums-are-int.cp": "pass",
+        "std-prefix/scan-walks-its-running-folds.cp": "pass",
         "std-rand/chance-pick.cp": "pass",
         "std-rand/float-in-unit-interval.cp": "pass",
         "std-rand/perm-into-declared-domain.cp": "pass",
@@ -3483,6 +3484,7 @@
         "traits/Add/Vec3--add.cp": "pass",
         "traits/Bidir/Array--iter_rev.cp": "pass",
         "traits/Bidir/List--iter_rev.cp": "pass",
+        "traits/Bidir/Prefix--iter_rev.cp": "pass",
         "traits/Bidir/Range--iter_rev.cp": "pass",
         "traits/Bidir/Str--iter_rev.cp": "pass",
         "traits/BitAnd/Subset--bitand.cp": "pass",
@@ -3524,6 +3526,7 @@
         "traits/Keyed/Keys--items.cp": "pass",
         "traits/Keyed/List--items.cp": "pass",
         "traits/Keyed/Map--items.cp": "pass",
+        "traits/Keyed/Prefix--items.cp": "pass",
         "traits/Keyed/Range--items.cp": "pass",
         "traits/Keyed/Str--items.cp": "pass",
         "traits/Matroid/ColorMatroid--can_add.cp": "pass",
@@ -3565,6 +3568,7 @@
         "traits/Seq/Keys--iter.cp": "pass",
         "traits/Seq/List--iter.cp": "pass",
         "traits/Seq/Map--iter.cp": "pass",
+        "traits/Seq/Prefix--iter.cp": "pass",
         "traits/Seq/Range--iter.cp": "pass",
         "traits/Seq/Str--iter.cp": "pass",
         "traits/Show/Arena--show.cp": "pass",
@@ -3812,10 +3816,10 @@
       ],
       "counts": {
         "fail": 7,
-        "pass": 3740
+        "pass": 3744
       },
-      "passed": 3740,
-      "total": 3747
+      "passed": 3744,
+      "total": 3751
     },
     "corpus": {
       "cases": {
