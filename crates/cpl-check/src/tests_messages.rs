@@ -306,6 +306,13 @@ fn foreign_strip_names_become_trim() {
 }
 
 #[test]
+fn foreign_pad_names_become_resize() {
+    let d = check("var xs = [1]\nxs.pad_to(3, 0)\nxs.pad(4, 0)\nprint(xs)\n");
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["resize", "resize"], "{d:?}");
+}
+
+#[test]
 fn an_optional_print_says_how_to_give_none_a_text() {
     let d = check("let x: ?Int = None\nprint(x + 1)\n");
     assert_eq!(d.len(), 1, "{d:?}");

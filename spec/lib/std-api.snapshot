@@ -1748,6 +1748,7 @@ std/seq.cp: take_all<T>(mut self: List<T>) -> List<T>
 std/seq.cp: take_last<S: Indexed>(self: S, k: Int) -> Slice<S>
 std/seq.cp: take_while<S: Seq<T>, T>(self: S, keep: T -> Bool) -> yields T
 std/seq.cp: tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>
+std/seq.cp: to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T>
 std/seq.cp: union<T>(mut self: Set<T>, o: Set<T>)
 std/seq.cp: unzip<S: Seq<(A, B)
 std/seq.cp: update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)
@@ -2168,6 +2169,7 @@ std/tree.cp: Rooted.meet(self, a: V, b: V, c: V) -> V
 std/tree.cp: Rooted.new(next: Next<V>, root: V) -> Rooted<V, _, _>
 std/tree.cp: Rooted.on_path(self, c: V, a: V, b: V) -> Bool
 std/tree.cp: Rooted.order(self) -> List<V>
+std/tree.cp: Rooted.orient(self, u: V, v: V) -> (anc: V, desc: V)
 std/tree.cp: Rooted.parent(self, v: V) -> ?V
 std/tree.cp: Rooted.path(self, a: V, b: V) -> List<V>
 std/tree.cp: Rooted.pos(self, v: V) -> Pre

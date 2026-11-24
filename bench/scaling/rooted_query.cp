@@ -21,6 +21,7 @@ for i in 0..64 * n:
     s += t.below(a).count() // timed: tree.Rooted.below
     if t.is_anc(a, b): s += 1 // timed: tree.Rooted.is_anc
     s += t.lower(a, t.parent(a) ?? b).ord // timed: tree.Rooted.lower
+    s += t.orient(a, t.parent(a) ?? a).anc.ord // timed: tree.Rooted.orient
     s += t.root_of(a).ord // timed: tree.Rooted.root_of
     s += t.lca(a, b).ord // timed: tree.Rooted.lca
     s += t.dist(a, b) // timed: tree.Rooted.dist

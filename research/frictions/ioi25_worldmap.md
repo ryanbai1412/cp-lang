@@ -74,6 +74,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   (bridges, 2-edge-connected parts, ear decompositions).
 - **Owner:** stdlib.
 - **Severity:** medium.
+- **Fixed:** `tree.orient(e.u, e.v)` gives `(anc:, desc:)` for any ancestor pair (decision 583).
 
 ## `List.pad_to` is missing; `resized` copies
 - **Where:** `dream.cp`, `diags.pad_to(4 * n - 1, with: diags.last!)`, now
@@ -90,6 +91,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   port that grows a table to a known length (DP rows, layered output).
 - **Owner:** stdlib.
 - **Severity:** low.
+- **Fixed:** `List.resize(n, x)` already pads in place; `pad`/`pad_to` now get a help and fix naming it (decision 583).
 
 ## A `@grader fn` can't return a fixed-size grid
 - **Where:** `dream.cp`, the signature `-> [2 * n][2 * n]1..=n` and the body

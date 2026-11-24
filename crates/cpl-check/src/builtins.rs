@@ -185,6 +185,7 @@ pub fn foreign_own(name: &str) -> &'static [&'static str] {
         "partition_point" => &["bsearch"],
         "flip" => &["toggle", "neg", "add"],
         "insert" => &["add"],
+        "pad" | "pad_to" | "grow" => &["resize"],
         _ => &[],
     }
 }

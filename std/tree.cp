@@ -628,6 +628,19 @@ pub struct Rooted<V, Pre, A>:
         else: assert false
         c
 
+    /// The ends of an ancestor pair, the ancestor first, in either order: a tree edge, or an
+    /// edge `dfs_tree` left out of an undirected graph's tree, which always joins a vertex to one
+    /// of its ancestors (a back edge).
+    ///
+    /// cost: \(O(1)\)
+    /// ties: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.orient(3, 3).anc == 3 and t.orient(3, 3).desc == 3`
+    /// traps: when neither `u` nor `v` is an ancestor of the other
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.orient(3, 0).anc == 0 and t.orient(3, 0).desc == 3 and t.orient(1, 4).desc == 4`
+    pub fn orient(self, u: V, v: V) -> (anc: V, desc: V):
+        if self.is_anc(u, v): return (anc: u, desc: v)
+        assert self.is_anc(v, u), "`orient(u, v)` needs one end to be an ancestor of the other"
+        (anc: v, desc: u)
+
     /// The lowest common ancestor of `a` and `b`, by heavy-path climbing.
     ///
     /// cost: \(O(\log n)\)
