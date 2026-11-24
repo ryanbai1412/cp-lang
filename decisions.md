@@ -9033,3 +9033,4 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** abs/sqrt/popcount and 18 `backend_std_names` sites were name-matched in cpl-ir, cpl-codegen and cpl-interp, so std could not change a signature without a compiler change and a user library could not do what std does. `@cpp` alone has no interpreter twin; a std-only marker would privilege std.
 - **Reverse.** Fold `@intrinsic` into `@cpp("...", vm: "id")` if a second C++-only use appears; the table and IR form stay.
 
+## 575. (reserved, content)
