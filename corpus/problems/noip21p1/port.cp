@@ -2,34 +2,20 @@
 // limits: 1000 ms, 512 MB
 // Problem: x is skipped when it is a multiple of a number with a decimal digit 7. For each of
 //   T <= 2e5 queries x <= 1e7, print -1 if x is skipped, else the next number not skipped.
-// Solution: a sieve up to 10000100 (past the survivor after 1e7): each number with a 7 that is
-//   not yet skipped marks all its multiples (a skipped one's multiples are marked already).
-//   A right-to-left scan then stores the next survivor after each x. O(L log L) once, O(1) per
-//   query.
-// The original is its author's second attempt; the first (factor every x, test every divisor)
-// is still in the file.
+// Solution: sieve the survivors up to a little past the first survivor above 1e7: each number
+//   with a 7 that is still alive kills all its multiples (a dead one's multiples are dead
+//   already). A query is a Bitset lookup, and the next survivor is the Bitset's `next`.
+//   O(L log L) once, then a short scan per query.
 // original: corpus/submissions/5445676.cpp
 const LIMIT = 10000100  // past the next survivor above 1e7
 
-let t: 1..=2e5 = read()
-let asks: [0..t]1..=1e7 = read()
+let t = read<1..=2e5>()
+let asks = read<[t]1..=1e7>()
 
-fn has7(x: Int) -> Bool:
-    digits(x).contains(7)
+domain X = 1..=LIMIT
+var alive = Bitset<X>.full()
+for x in X:
+    if alive.contains(x) and digits(x.label).contains(7):
+        for m in (x.label..=LIMIT).step(x.label): alive.remove(X(m))
 
-var skipped: [0..=LIMIT]Bool = false
-for i in 1..=LIMIT:
-    if not skipped[i] and has7(i):
-        var j = i
-        while j <= LIMIT:
-            skipped[j] = true
-            j += i
-
-// after[x]: the smallest survivor above x
-var after: [0..=LIMIT]Int = 0
-var seen = 0
-for x in (1..=LIMIT).rev:
-    after[x] = seen
-    if not skipped[x]: seen = x
-
-for x in asks: print(if skipped[x]: -1 else: after[x])
+for x in asks: print(if alive.contains(X(x)): alive.next(X(x + 1))!.label else: -1)

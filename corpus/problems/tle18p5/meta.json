@@ -29,6 +29,9 @@
  ],
  "cpp_ac": 5,
  "artifacts": {
+  "original": [
+   "corpus/problems/tle18p5/orig.cpp"
+  ],
   "port": [
    "corpus/problems/tle18p5/port.cp"
   ]
