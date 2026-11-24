@@ -1061,8 +1061,15 @@ impl<'a> Checker<'a> {
                     self.method_sigs_and_selves(&s.methods, &self_ty);
                 let method_rows = (s.methods.iter())
                     .filter_map(|m| match &m.kind {
-                        ast::StmtKind::Fn(f) => Some((f.name.text.clone(), self.fn_bounds(f).0))
-                            .filter(|(_, rows)| !rows.is_empty()),
+                        ast::StmtKind::Fn(f) => {
+                            let rows = self.fn_bounds(f).0;
+                            let outer = self.generics.len();
+                            (self.generics).extend(f.generics.iter().map(|g| g.text.clone()));
+                            let through = self.quietly(|c| c.bound_args(&f.bounds));
+                            self.generics.truncate(outer);
+                            Some((f.name.text.clone(), rows, through))
+                                .filter(|(_, rows, _)| !rows.is_empty())
+                        }
                         _ => None,
                     })
                     .collect();

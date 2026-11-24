@@ -1261,7 +1261,7 @@ impl<'a> Checker<'a> {
         else {
             return;
         };
-        let Some((_, rows)) = method_rows.into_iter().find(|(m, _)| m == method) else {
+        let Some((_, rows, through)) = method_rows.into_iter().find(|(m, _, _)| m == method) else {
             return;
         };
         let Some((_, Ty::Fn { params, .. })) = methods.into_iter().find(|(m, _)| m == method)
@@ -1278,6 +1278,14 @@ impl<'a> Checker<'a> {
             if let Some(param) = param {
                 let got = self.quietly(|c| c.infer(&arg.value));
                 param.ty.unify(&got, &mut bindings);
+            }
+        }
+        // `S: Indexed<E, R>`: `R` is what the `S` given holds.
+        for (param, trait_name, trait_args) in &through {
+            let holds = matches!(trait_name.as_str(), "Indexed" | "Seq" | "Positional");
+            let elem = bindings.get(param).and_then(|t| t.seq_elem());
+            if let (true, Some(elem), Some(last)) = (holds, elem, trait_args.last()) {
+                last.unify(&elem, &mut bindings);
             }
         }
         // A tuple argument (`Graph.directed(pairs)`) is read by another path; only a record

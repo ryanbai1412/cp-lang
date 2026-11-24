@@ -55,7 +55,9 @@ pub enum Def {
         /// type parameters bind from the value it is called on.
         selves: Vec<(String, Ty)>,
         /// Each method's row bounds, `R: (u: V, v: V, ..)`: a `T.name(..)` call checks them.
-        method_rows: Vec<(String, RowBounds)>,
+        /// With them, the bounds that give a trait arguments, `S: Indexed<E, R>`, through
+        /// which `R` binds.
+        method_rows: Vec<(String, RowBounds, Vec<(String, String, Vec<Ty>)>)>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
         /// The owned domains sized from fields (`domain Idx = 0..src.len`):
