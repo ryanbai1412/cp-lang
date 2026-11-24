@@ -157,7 +157,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if n < 0 {
                     return trap(span, format!("List.filled with negative length {n}"));
                 }
-                Value::List(Rc::new(crate::value::Cells::from(vec![val; n as usize])))
+                Value::List(Rc::new(crate::value::Cells::filled(n as usize, val)))
             }
             Builtin::Join => {
                 let text = |value: Value| match value {

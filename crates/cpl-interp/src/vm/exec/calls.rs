@@ -222,7 +222,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 let val = regs_v[val_v as usize].clone();
                 regs_v[dst as usize] =
-                    Value::List(Rc::new(crate::value::Cells::from(vec![val; n as usize])));
+                    Value::List(Rc::new(crate::value::Cells::filled(n as usize, val)));
             }
             Op::ToList { dst, src_v } => {
                 regs_v[dst as usize] = match &regs_v[src_v as usize] {

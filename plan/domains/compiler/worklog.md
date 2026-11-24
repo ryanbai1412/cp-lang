@@ -1081,3 +1081,4 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   syntactic may-write scans (`Written`, `Touched`) still over-approximate by name, which
   only drops a narrowing or a lint, never adds a diagnostic.
 - Regression: spec/conformance/core-05/fn-field-call-changes-nothing.cp (both engines).
+- VM-memory: `List.filled` builds its cells packed (`Cells::filled`) instead of a boxed `Vec<Value>` it then packs: yac7p3 427 -> 294 MB, dmopc21c4p2 395 -> 340 MB on interp_memory. Regression: interp_memory's bounds; `a_list_of_scalars_is_packed` covers the store.
