@@ -103,7 +103,7 @@ was there already), the `tests` folder and its `sample_count`.
 top-level `values` it ended with; with `--trace` it prints the trace
 instead (`tools/trace/trace-schema.json`).
 `cpl judges --json` prints `{"judges": [{"name", "title", "chosen",
-"command", "os", "stack", "thread_stack_mb", "time_limit_ms", "memory_limit_mb",
+"command", "os", "stack", "thread_stack_mb", "time_limit_ms", "memory_limit_kb",
 "source_limit_kb", "evidence"}]}`, `chosen` on the profile the file builds for.
 `cpl explain --json` prints `[{"code", "title", "summary", "explanation",
 "trigger", "fix", "mode", "lint_name", "input"?, "rule"?}]`, one entry

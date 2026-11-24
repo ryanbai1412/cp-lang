@@ -94,6 +94,9 @@ fn misnamed(name: &str, value: &Value) -> Option<&'static str> {
     {
         return Some("a time or memory key without its unit");
     }
+    if ["memory", "peak"].iter().any(|q| name.contains(q)) && name.ends_with("_mb") {
+        return Some("memory in MB; write `_kb` so it compares with `peak_kb`");
+    }
     if matches!(value, Value::Int(_))
         && name.ends_with('s')
         && name != "bytes"

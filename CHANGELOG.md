@@ -37,6 +37,7 @@ lists what is still open.
 
 - `--json` keys follow one naming rule (`spec/tools/cli.md`): elapsed
   time is `time_ms` (`time_ns` in `cpl profile`), peak memory `peak_kb`,
+  limits `time_limit_ms` and `memory_limit_kb` (`cpl judges` and `cpl bench`),
   the source `path`, a pass flag `ok`, and a count `<noun>_count`. Scripts
   that read `ms`, `kb`, `nanos`, `file`, `passed`, `total`, `samples`,
   `inputs`, `lines`, `covered`, `saved_passed`, `cpl stress`'s `cases` or
