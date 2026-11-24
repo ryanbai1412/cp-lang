@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3170 (1093 passing). Rules: 605.
+Cases: 3171 (1093 passing). Rules: 605.
 
 ## Summary per chapter
 
@@ -968,13 +968,13 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 12 case(s)
-- R0101 Index out of range: 32 case(s)
+- R0101 Index out of range: 33 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 86 case(s)
+- R0401 Assertion failed: 85 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
@@ -1078,8 +1078,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (55/55 named by a case)
-- **seq** (218/228 named by a case)
-  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Stepped`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
+- **seq** (221/232 named by a case)
+  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Stepped`, `StepKeys`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
@@ -1093,7 +1093,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2247 of 2368 std items are named by a case.
+2250 of 2372 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

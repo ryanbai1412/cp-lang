@@ -77,6 +77,14 @@ The view `rebase` returns.
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `fn nth(self, j: Int) -> T` — \(O(1)\); traps: unless `0 <= j < self.len`
 - `fn at<K>(self, i: K) -> T` — \(O(1)\); traps: unless `i` is a key the stride visits (`first`, `first + k`, ...), naming them
+- `@get fn keys(self) -> StepKeys` — \(O(1)\)
+
+## `struct StepKeys(first: Int, n: Int, k: Int, from: Int)`
+
+The keys a `step(k)` view visits, made by its `keys`: of the `n` source keys from position `first`, every `k`-th one from `from` on.
+
+- `@get fn len(self) -> Int` — \(O(1)\)
+- `fn contains<K>(self, i: K) -> Bool` — \(O(1)\)
 
 ## `struct Keys<S, I, K>(pub src: S, pub keys: I, by: ?K)`
 
@@ -259,7 +267,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)` — at most \(\lfloor 3n/2 \rfloor\) calls of `eq`; \(O(n)\) memory; The value held by more than half the elements, with its count, or `None`.
 - `fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>` — \(O(n)\) expected, \(O(\mathit{distinct})\) memory
-- `fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>>` — \(O(n)\) expected, \(O(n)\) memory
+- `fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>` — \(O(n \log n)\), \(O(n)\) memory
 - `fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory; traps: when `k < 0`; `k > n` gives every element
 - `fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory; traps: when `k < 0`; `k > n` gives every element
 - `fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
