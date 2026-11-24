@@ -321,8 +321,8 @@ impl<'a> Lowerer<'a> {
         let ast::ExprKind::Name(n) = &base.kind else {
             return None;
         };
-        if name.text != "subsets"
-            || self.lookup(n).is_some()
+        let of = cpl_check::domain_member(&name.text)?;
+        if self.lookup(n).is_some()
             || (self.resolve_domain_name(n).is_none() && !self.is_type_domain(n))
         {
             return None;
@@ -332,7 +332,7 @@ impl<'a> Lowerer<'a> {
         Some(ast::Expr {
             kind: ast::ExprKind::Generic {
                 base: Box::new(ast::Expr {
-                    kind: ast::ExprKind::Name("Subset".into()),
+                    kind: ast::ExprKind::Name(of.into()),
                     span,
                 }),
                 args: vec![arg],
@@ -370,23 +370,24 @@ impl<'a> Lowerer<'a> {
         span: Span,
         values: bool,
     ) -> Option<Option<DimSpec>> {
-        let domain = text.strip_suffix(".subsets")?;
+        let (domain, member) = text.rsplit_once('.')?;
+        let of = cpl_check::domain_member(member)?;
         if let Some(id) = self.resolve_domain_name(domain) {
-            if let Ty::Struct(sid) = self.subset_ty(id, span) {
+            if let Ty::Struct(sid) = self.member_domain_ty(of, id, span) {
                 return Some(self.structs[sid].index_domain.map(DimSpec::Pos));
             }
         }
         if self.is_type_domain(domain) {
-            return Some(self.dim(&Self::subset_of(domain, span), values));
+            return Some(self.dim(&Self::member_domain_of(of, domain, span), values));
         }
         None
     }
 
-    fn subset_of(name: &str, span: Span) -> ast::Type {
+    fn member_domain_of(of: &str, name: &str, span: Span) -> ast::Type {
         ast::Type {
             kind: ast::TypeKind::Named {
                 name: ast::Name {
-                    text: "Subset".to_string(),
+                    text: of.to_string(),
                     span,
                 },
                 args: vec![Self::named_ty(name, span)],
@@ -395,9 +396,9 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// `Subset<B>`: std's struct over the domain `d`.
-    pub(super) fn subset_ty(&mut self, d: DomainId, span: Span) -> Ty {
-        match self.get_sym("Subset") {
+    /// `Subset<B>`: the struct `of` std declares a domain member, over the domain `d`.
+    pub(super) fn member_domain_ty(&mut self, of: &str, d: DomainId, span: Span) -> Ty {
+        match self.get_sym(of) {
             Some(Sym::GenStruct(gid)) => {
                 Ty::Struct(self.instantiate_struct(gid, vec![GenArg::Domain(d)]))
             }

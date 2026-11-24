@@ -161,7 +161,7 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.library_domain_member(expr, base, name) {
             return ty;
         }
-        let base_ty = self.infer_base(base);
+        let base_ty = member_position_as_struct(self.infer_base(base));
         self.note_method(&base_ty, name);
         if self.member_advice(&base_ty, name) {
             return Ty::Error;
@@ -1026,6 +1026,9 @@ impl<'a> Checker<'a> {
                         ret: Box::new(Ty::list(Ty::Pos(domain.clone()))),
                     },
                     "sort" => Ty::Unknown,
+                    m if crate::prelude::domain_member(m).is_some() => {
+                        Ty::Domain(format!("{domain}.{m}"))
+                    }
                     _ => Ty::Unknown,
                 };
             }
@@ -1212,4 +1215,20 @@ fn written_path(expr: &Expr) -> Option<Vec<String>> {
         ExprKind::Paren(inner) => written_path(inner),
         _ => None,
     }
+}
+
+/// A position of a declared domain member (`w` in `for w in V.subsets`) has the
+/// members of the struct std declares it with (`@member(subsets)` on `Subset<B>`).
+fn member_position_as_struct(ty: Ty) -> Ty {
+    if let Ty::Pos(domain) = &ty {
+        if let Some((d, member)) = domain.rsplit_once('.') {
+            if let Some(of) = crate::prelude::domain_member(member) {
+                return Ty::Named {
+                    name: of.into(),
+                    args: vec![Ty::Pos(d.into())],
+                };
+            }
+        }
+    }
+    ty
 }

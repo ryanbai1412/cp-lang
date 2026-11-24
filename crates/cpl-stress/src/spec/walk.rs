@@ -209,20 +209,14 @@ impl Builder<'_> {
                     format!("`{}` is not a domain declared above", name.text),
                 ))
             }
-            // `Pair<V>`: each two positions of `V`; `Subset<B>`: each set of them.
-            TypeKind::Named { name, args }
-                if args.len() == 1 && set_domain(&name.text).is_some() =>
-            {
+            // `Pair<V>`, `Subset<B>`: a std `impl Index` type over a domain,
+            // its count as std's `impl Index` states it.
+            TypeKind::Named { name, args } if args.len() == 1 => {
                 let (lo, hi) = self.index(&args[0])?;
                 let n = binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1));
-                let count = match set_domain(&name.text) {
-                    Some(SetDomain::Pairs) => binary(
-                        BinOp::Div,
-                        binary(BinOp::Mul, n.clone(), binary(BinOp::Sub, n, int(1))),
-                        int(2),
-                    ),
-                    Some(SetDomain::Subsets) | None => binary(BinOp::Shl, int(1), n),
-                };
+                let count = std_index_count(&name.text, &n).ok_or_else(|| {
+                    self.error(ty.span, "an array is indexed by a domain or a range".into())
+                })?;
                 Ok((int(0), binary(BinOp::Sub, count, int(1))))
             }
             _ => Err(self.error(ty.span, "an array is indexed by a domain or a range".into())),
@@ -1964,17 +1958,7 @@ fn sentinel(stmt: &Stmt, returns: bool) -> Option<Vec<(String, i128)>> {
 /// The declaration of the std type `name` in `module`, with that module's
 /// text and the base its spans are relative to.
 pub(super) fn std_decl(module: &str, name: &str) -> Option<(&'static str, u32, &'static Stmt)> {
-    thread_local! {
-        static PARSED: std::cell::RefCell<HashMap<String, &'static cpl_syntax::ParsedFile>> =
-            Default::default();
-    }
-    let text = cpl_check::bundled_std(&[module.to_string()])?;
-    let parsed = PARSED.with(|parsed| {
-        *parsed
-            .borrow_mut()
-            .entry(module.to_string())
-            .or_insert_with(|| Box::leak(Box::new(cpl_syntax::parse_file(text))))
-    });
+    let (text, parsed) = std_file(module)?;
     parsed.items.iter().find_map(|(base, item)| {
         item.stmts
             .iter()
@@ -1986,6 +1970,22 @@ pub(super) fn std_decl(module: &str, name: &str) -> Option<(&'static str, u32, &
             })
             .map(|stmt| (text, *base, stmt))
     })
+}
+
+/// A std module's text and its parse, parsed once per thread.
+pub(super) fn std_file(module: &str) -> Option<(&'static str, &'static cpl_syntax::ParsedFile)> {
+    thread_local! {
+        static PARSED: std::cell::RefCell<HashMap<String, &'static cpl_syntax::ParsedFile>> =
+            Default::default();
+    }
+    let text = cpl_check::bundled_std(&[module.to_string()])?;
+    let parsed = PARSED.with(|parsed| {
+        *parsed
+            .borrow_mut()
+            .entry(module.to_string())
+            .or_insert_with(|| Box::leak(Box::new(cpl_syntax::parse_file(text))))
+    });
+    Some((text, parsed))
 }
 
 /// How many generics a std struct, enum or alias declares.

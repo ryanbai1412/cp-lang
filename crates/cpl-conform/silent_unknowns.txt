@@ -572,7 +572,6 @@
 18 corpus/problems/dmpg15g6/perf.cp
 20 corpus/problems/dmpg15g6/port.cp
 1 corpus/problems/dmpg16g2/dream.cp
-9 corpus/problems/dmpg16g2/spec.cp
 1 corpus/problems/dmpg18s5/port.cp
 19 corpus/problems/dwite10c3p3/port.cp
 2 corpus/problems/egoi22p2/perf.cp
@@ -770,7 +769,7 @@
 5 corpus/problems/noi22p4/perf.cp
 22 corpus/problems/noi22p4/port.cp
 26 corpus/problems/noi23p1/port.cp
-31 corpus/problems/noi23p2/port.cp
+2 corpus/problems/noi23p2/port.cp
 24 corpus/problems/noi23p4/port.cp
 7 corpus/problems/noimps22p1/port.cp
 5 corpus/problems/noimps22p4/port.cp
@@ -1000,8 +999,6 @@
 1 spec/conformance/core-04/dom-pattern-refutes.cp
 2 spec/conformance/core-04/dom-range.cp
 1 spec/conformance/core-04/domain-is-its-range.cp
-1 spec/conformance/core-04/domain-subsets-array-and-loop.cp
-5 spec/conformance/core-04/domain-subsets-needs-no-import.cp
 20 spec/conformance/core-04/domain-through-a-value-is-a-domain.cp
 1 spec/conformance/core-04/e1-generic-param-takes-slice.cp
 1 spec/conformance/core-04/e1-list-param-rejects-slice.cp

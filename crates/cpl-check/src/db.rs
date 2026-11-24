@@ -651,6 +651,12 @@ impl Database {
                     ident_tokens.extend(words.filter(|w| w.starts_with(char::is_uppercase)));
                 }
             }
+            // `B.subsets` uses the `Subset` std declares as `@member(subsets)`.
+            for &(member, of) in crate::prelude::domain_members() {
+                if dot_ident_tokens.contains(member) {
+                    ident_tokens.insert(of);
+                }
+            }
             let uses = |name: &str| ident_tokens.contains(name);
             // A method the library adds to a type is used as `.name`.
             let calls = |name: &str| dot_ident_tokens.contains(name);

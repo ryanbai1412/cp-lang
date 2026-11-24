@@ -379,10 +379,12 @@ impl<'a> Checker<'a> {
                 Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {
                     Some(Ty::Domain(domain)) => Ty::Pos(domain),
                     Some(_) => Ty::Unknown,
-                    // `Letter.subsets` for a type that is its own domain is `Subset<Letter>`.
-                    None if member == "subsets" => {
+                    // `Letter.subsets` for a type that is its own domain is `Subset<Letter>`,
+                    // the struct std declares `@member(subsets)`.
+                    None if crate::prelude::domain_member(member).is_some() => {
+                        let of = crate::prelude::domain_member(member).unwrap_or_default();
                         let owner_ty = self.named_type(&owner, head_span, Vec::new());
-                        self.named_type("Subset", span, vec![owner_ty])
+                        self.named_type(of, span, vec![owner_ty])
                     }
                     None => {
                         let member_span = Span::new(head_span.end + 1, span.end);

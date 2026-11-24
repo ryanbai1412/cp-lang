@@ -509,7 +509,7 @@ fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
 /// The words of the language that are written with a library fn: a
 /// program that uses the word gets the fn, as if it had named it.
 /// `prefix(a)` dispatches by what `a` is (`[D]T`, `[R, C]T`, or `List<T>`).
-pub const BUILT_ON: &[(&str, &str)] = &[("subsets", "Subset")];
+pub const BUILT_ON: &[(&str, &str)] = &[];
 
 /// `BUILT_ON` and the words std states on a type, `@word(prefix)` above
 /// `pub struct Prefix`: `prefix(a)` is that type's constructor, `Prefix(a)`.
@@ -517,25 +517,7 @@ pub fn built_on() -> &'static [(&'static str, &'static str)] {
     static ALL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
     ALL.get_or_init(|| {
         let mut all = BUILT_ON.to_vec();
-        let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
-        for (_, text) in crate::modules::std_index() {
-            if !text.contains("@word(") {
-                continue;
-            }
-            for (_, item) in cpl_syntax::parse_file(text).items {
-                for stmt in &item.stmts {
-                    let ast::StmtKind::Struct(d) = &stmt.kind else {
-                        continue;
-                    };
-                    let words = stmt.decorators.iter().filter(|d| d.name.text == "word");
-                    for arg in words.flat_map(|d| &d.args) {
-                        if let ast::ExprKind::Name(word) = &arg.value.kind {
-                            all.push((leak(word), leak(&d.name.text)));
-                        }
-                    }
-                }
-            }
-        }
+        all.extend(struct_decorations("word"));
         all
     })
 }
@@ -546,6 +528,48 @@ pub fn word_type(name: &str) -> Option<&'static str> {
         .iter()
         .find(|(word, _)| *word == name)
         .map(|(_, on)| *on)
+}
+
+/// `(arg, struct)` for every `@<decorator>(arg)` std writes above a
+/// `pub struct`, read off std's outlines.
+fn struct_decorations(decorator: &str) -> Vec<(&'static str, &'static str)> {
+    let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
+    let mut out = Vec::new();
+    for (_, text) in crate::modules::std_index() {
+        if !text.contains(&format!("@{decorator}(")) {
+            continue;
+        }
+        for (_, item) in cpl_syntax::parse_file(text).items {
+            for stmt in &item.stmts {
+                let ast::StmtKind::Struct(d) = &stmt.kind else {
+                    continue;
+                };
+                let found = stmt.decorators.iter().filter(|d| d.name.text == decorator);
+                for arg in found.flat_map(|d| &d.args) {
+                    if let ast::ExprKind::Name(word) = &arg.value.kind {
+                        out.push((leak(word), leak(&d.name.text)));
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The domain members std declares: `@member(subsets)` above
+/// `pub struct Subset<B>` makes `D.subsets` the domain `Subset<D>` for any
+/// domain `D`.
+pub fn domain_members() -> &'static [(&'static str, &'static str)] {
+    static FOUND: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
+    FOUND.get_or_init(|| struct_decorations("member"))
+}
+
+/// The struct whose domain `D.member` is, when std declares one.
+pub fn domain_member(member: &str) -> Option<&'static str> {
+    domain_members()
+        .iter()
+        .find(|(m, _)| *m == member)
+        .map(|&(_, of)| of)
 }
 
 /// The name a std item has now for one it was written with before, as
@@ -705,9 +729,8 @@ pub fn value(name: &str) -> Option<Ty> {
         | "log10" => float_fn(1),
         "atan2" | "hypot" => float_fn(2),
         // `ask("?", x)` prints a query, flushes, and reads the judge's
-        // answer; `Subset<D>` is the subsets of a domain. Both are lowered
-        // by `cpl-ir`.
-        "ask" | "Subset" => Ty::Unknown,
+        // answer; `cpl-ir` lowers it.
+        "ask" => Ty::Unknown,
         _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
         _ if VALUE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
@@ -757,8 +780,6 @@ pub fn ty(name: &str) -> Option<Ty> {
         // The solution as an `@interactor` sees it: `sol.recv()` reads what
         // it printed, `sol.send(x)` answers it.
         "Interactor" => Ty::Unknown,
-        // The subsets of a domain, lowered by `cpl-ir` as a bitmask.
-        "Subset" => Ty::Unknown,
         _ => return None,
     })
 }
@@ -786,7 +807,6 @@ pub const TYPE_NAMES: &[&str] = &[
     "HashMap",
     "HashSet",
     "Interactor",
-    "Subset",
     "Sym",
     "Seq",
     "Indexed",
@@ -1200,22 +1220,5 @@ mod tests {
                 .collect();
             assert_eq!(scanned, parsed, "method scan mismatch in std.{module}");
         }
-    }
-}
-
-/// A library type that is a domain over another: `Pair<V>`, each two
-/// positions of `V`, or `Subset<B>`, each set of them.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SetDomain {
-    Pairs,
-    Subsets,
-}
-
-/// The set domain a library type name stands for.
-pub fn set_domain(name: &str) -> Option<SetDomain> {
-    match name {
-        "Pair" => Some(SetDomain::Pairs),
-        "Subset" => Some(SetDomain::Subsets),
-        _ => None,
     }
 }

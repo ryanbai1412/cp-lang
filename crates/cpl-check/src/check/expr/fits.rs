@@ -64,17 +64,8 @@ impl<'a> Checker<'a> {
             return true;
         }
         match (got, want) {
-            (Ty::Named { name, args }, Ty::Pos(dom))
-                if name == "Subset"
-                    && args.len() == 1
-                    && matches!(&args[0], Ty::Pos(d) | Ty::Domain(d) if dom.strip_suffix(".subsets") == Some(d.as_str())) =>
-            {
-                return true;
-            }
-            (Ty::Pos(dom), Ty::Named { name, args })
-                if name == "Subset"
-                    && args.len() == 1
-                    && matches!(&args[0], Ty::Pos(d) | Ty::Domain(d) if dom.strip_suffix(".subsets") == Some(d.as_str())) =>
+            (Ty::Named { name, args }, Ty::Pos(dom)) | (Ty::Pos(dom), Ty::Named { name, args })
+                if member_domain(name, args, dom) =>
             {
                 return true;
             }
@@ -600,4 +591,14 @@ pub(super) fn convert_to(domain: &str, span: Span) -> cpl_diag::Fix {
             (Span::point(span.end), ")".into()),
         ],
     }
+}
+
+/// `D.subsets` is `Subset<D>`: a member domain std declares (`@member`) is
+/// its struct over the domain.
+fn member_domain(name: &str, args: &[Ty], dom: &str) -> bool {
+    let Some((d, member)) = dom.rsplit_once('.') else {
+        return false;
+    };
+    crate::prelude::domain_member(member) == Some(name)
+        && matches!(args, [Ty::Pos(a) | Ty::Domain(a)] if a == d)
 }

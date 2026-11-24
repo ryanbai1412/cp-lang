@@ -272,9 +272,9 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(Ty::range(Ty::Pos(d)));
                 }
             }
-            if rest == "subsets" {
+            if let Some(of) = cpl_check::domain_member(rest) {
                 if let Some(d) = self.resolve_domain_name(prefix) {
-                    return Spec::Plain(self.subset_ty(d, name.span));
+                    return Spec::Plain(self.member_domain_ty(of, d, name.span));
                 }
             }
             let projected = match self.gen_env.get(prefix).cloned() {

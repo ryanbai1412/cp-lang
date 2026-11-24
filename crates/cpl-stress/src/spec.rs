@@ -11,7 +11,7 @@
 //! vertices. Bounds can use the values read before them, which is what
 //! lets the generator and the shrinker keep every case valid.
 
-use cpl_check::{set_domain, SetDomain, Ty};
+use cpl_check::Ty;
 use cpl_diag::Span;
 use cpl_syntax::ast::{
     AssignOp, BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt,
@@ -21,8 +21,10 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 mod choice;
+mod index_count;
 mod syntax;
 mod walk;
+use index_count::*;
 use syntax::*;
 use walk::*;
 

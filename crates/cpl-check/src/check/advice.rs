@@ -868,8 +868,13 @@ impl Checker<'_> {
             Some(d @ Ty::Named { name, .. }) if name == "List" => {
                 ("[]".into(), d.to_string(), &habits::EMPTY_BRACES)
             }
-            // Decision 220: `{}` is no Subset literal; the empty subset is `Subset<B>.empty`.
-            Some(d @ Ty::Named { name, .. }) if name == "Subset" => {
+            // Decision 220: `{}` is no Subset literal; the empty subset is `Subset<B>.empty`,
+            // as for any struct std gives an `empty`.
+            Some(d @ Ty::Named { name, .. })
+                if self
+                    .members_of(name)
+                    .is_some_and(|m| m.members.iter().any(|(m, _)| m == "empty")) =>
+            {
                 (format!("{d}.empty"), d.to_string(), &habits::EMPTY_BRACES)
             }
             // `d = {}` with no type: Python's empty dict.
