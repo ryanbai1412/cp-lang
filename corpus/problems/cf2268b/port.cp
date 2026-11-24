@@ -17,7 +17,7 @@ let (n, q): (2..=200_000, 0..=200_000) = read()
 var a: [1..=n]0..16 = read()
 
 var good = sum(even(x) for x in a)
-var out = [good]
+var out: List<0..=n> = [good]
 for _ in 0..q:
     let (p, x): (1..=n, 0..16) = read()
     good += even(x) - even(a[p])
