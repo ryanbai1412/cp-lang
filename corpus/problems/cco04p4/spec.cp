@@ -14,7 +14,7 @@ enum Axis = X | Y
             for sign in [1, -1]:
                 var left = len
                 while left > 0:
-                    moves.push((d: sign * min(cap, left), axis: axis))
+                    moves.push((d: sign * min(cap, left), axis:))
                     left -= min(cap, left)
         for _ in 0..rand(0, 2):
             moves.push((d: 0, axis: if rand(0, 1) == 0: "X" else: "Y"))
