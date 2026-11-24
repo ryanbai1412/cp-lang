@@ -231,26 +231,27 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].target,
                 self.impls[idx].body,
             );
-            let head_fits = match &target.kind {
-                ast::TypeKind::Named { name, args } => {
-                    !self.names_struct_like(m, &name.text)
-                        && !(args.is_empty() && self.impl_params(m, target).contains(&name.text))
-                }
-                ast::TypeKind::Fn { .. } => matches!(ty, Ty::Fn(..)),
-                ast::TypeKind::Tuple(_) => matches!(ty, Ty::Tuple(_)),
-                ast::TypeKind::Array { .. } => matches!(ty, Ty::Array { .. }),
-                _ => false,
+            let env = if self.blanket_param(idx).is_some() {
+                self.blanket_env(idx, ty)
+            } else {
+                let head_fits = match &target.kind {
+                    ast::TypeKind::Named { name, args } => {
+                        !self.names_struct_like(m, &name.text)
+                            && !(args.is_empty()
+                                && self.impl_params(m, target).contains(&name.text))
+                    }
+                    ast::TypeKind::Fn { .. } => matches!(ty, Ty::Fn(..)),
+                    ast::TypeKind::Tuple(_) => matches!(ty, Ty::Tuple(_)),
+                    ast::TypeKind::Array { .. } => matches!(ty, Ty::Array { .. }),
+                    _ => false,
+                };
+                (head_fits.then(|| self.impl_env(m, target, ty)).flatten()).filter(|env| {
+                    self.quietly_in(m, offset, env.clone(), |l| l.resolve_ty(target)) == *ty
+                })
             };
-            if !head_fits || self.domain_blanket_param(idx).is_some() {
-                continue;
-            }
-            let Some(env) = self.impl_env(m, target, ty) else {
+            let Some(env) = env else {
                 continue;
             };
-            let fits = self.quietly_in(m, offset, env.clone(), |l| l.resolve_ty(target)) == *ty;
-            if !fits {
-                continue;
-            }
             let own = body.stmts.iter().find_map(|item| match &item.kind {
                 ast::StmtKind::Fn(f) if f.name.text == method && f.generics.is_empty() => Some(f),
                 _ => None,

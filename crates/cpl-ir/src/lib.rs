@@ -499,6 +499,7 @@ impl Ty {
     pub fn key_ty(&self) -> Ty {
         match self.seq_key() {
             Some(Dim::Pos(d)) => Ty::Pos(d),
+            Some(Dim::Enum(e)) => Ty::Enum(e),
             _ => Ty::Int,
         }
     }

@@ -9260,7 +9260,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 622. (reserved, unknown)
 
-## 623. (reserved, compiler)
+## 623. A blanket impl over a bare parameter holds for every type meeting its bounds (compiler, 2026-11-24)
+
+- **Call.** `impl<S: Indexed<D, U>, D, U> Key<D, U> for S` is an ordinary impl: the checker files it under every type, applies it to a type when that type meets each of `S`'s bounds, and reads `D` and `U` off those bounds, and lowering binds them the same way. `impl<domain D> Search for D` is now one case of it, so the Domain-only filing and lookup in the checker and IR are gone. A concrete impl the blanket impl covers, and a second blanket impl of the same trait, are E0202 (R08.1.2). Core ruling of 2026-11-24 (G2).
+- **Why.** `by:` keys over a table (`Key` for every `Indexed`) need one impl for every indexed type. A special case per trait would privilege std. With one rule for everything, a type has one choice, and users get the same power std has.
+- **Reverse.** Drop the bare-parameter case, so a blanket impl again needs a written type head (`?T`, `List<T>`), and restore the Domain filing.
 
 ## 624. Fns of one name overload by label set (content, 2026-11-24)
 

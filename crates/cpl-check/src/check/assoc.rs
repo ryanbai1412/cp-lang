@@ -77,40 +77,47 @@ impl Checker<'_> {
         assoc
     }
 
-    /// The methods the impls filed under `of`'s head give a value of type `of`, with their
-    /// traits' defaults: a fn type's, a `List<Int>`'s, a `[D]T`'s.
-    fn head_impl_members(&mut self, of: &Ty) -> Vec<(String, Ty)> {
-        let Some(head) = of.impl_head() else {
+    /// The members the impls filed under `of`'s head, and the blanket impls whose bounds `of`
+    /// meets, give it, with their traits' defaults; a `@get` reads as its value.
+    pub(super) fn head_impl_members(&mut self, of: &Ty) -> Vec<(String, Ty)> {
+        if matches!(of, Ty::Unknown | Ty::Error) {
             return Vec::new();
-        };
+        }
         let mut out = Vec::new();
-        for (trait_name, def) in self.env.impls(head) {
-            let Def::Impl {
-                target, methods, ..
-            } = &*def
-            else {
-                continue;
-            };
-            let mut bindings = crate::ty::Bindings::default();
-            target.unify(of, &mut bindings);
-            if !of.fits(&target.subst(&bindings)) {
-                continue;
+        for head in of.impl_head().into_iter().chain(["*"]) {
+            for (trait_name, def) in self.env.impls(head) {
+                let Def::Impl {
+                    methods, getters, ..
+                } = &*def
+                else {
+                    continue;
+                };
+                let Some(bindings) = self.impl_on(&def, of, &mut Vec::new()) else {
+                    continue;
+                };
+                let mut found = methods.clone();
+                let tr = (trait_name.as_deref()).and_then(|t| t.split('<').next());
+                if let Some(tr) = tr.and_then(|t| self.type_def(t)) {
+                    if let Def::Trait {
+                        methods, generics, ..
+                    } = &*tr
+                    {
+                        found.extend(self.trait_members(methods, generics, &def));
+                    }
+                }
+                for (m, t) in found {
+                    out.push(match t.subst(&bindings) {
+                        Ty::Fn { ret, .. } if getters.contains(&m) => (m, *ret),
+                        t => (m, t),
+                    });
+                }
             }
-            let mut found = methods.clone();
-            let tr = (trait_name.as_deref()).and_then(|t| t.split('<').next());
-            if let Some(Def::Trait {
-                methods, generics, ..
-            }) = tr.and_then(|t| self.type_def(t)).as_deref().cloned()
-            {
-                found.extend(self.trait_members(&methods, &generics, &def));
-            }
-            out.extend(found.into_iter().map(|(m, t)| (m, t.subst(&bindings))));
         }
         out
     }
 
-    /// `x.name` on a value whose type defines no members itself: what its head's impls give,
-    /// when one of them is `name`.
+    /// `x.name` on a value whose type defines no members itself: what its impls give, when
+    /// one of them is `name`.
     pub(super) fn head_impl_found(&mut self, of: &Ty, name: &str) -> Option<HeadFound> {
         let methods = self.head_impl_members(of);
         (methods.iter().any(|(m, _)| m == name)).then(|| (None, Vec::new(), methods))

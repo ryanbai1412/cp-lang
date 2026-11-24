@@ -108,16 +108,16 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].target,
                 self.impls[idx].body,
             );
-            let blanket = self.domain_blanket_param(idx);
+            let blanket = self.blanket_param(idx).is_some();
             let opened = match t {
                 Ty::Struct(sid) => self.opened_impl_env(idx, *sid),
                 _ => None,
             };
             let head_env = match (t, &target.kind) {
-                (Ty::Pos(d), _) if let Some(blanket) = &blanket => {
-                    Some(GenEnv::from([(blanket.clone(), GenArg::Domain(*d))]))
-                }
-                _ if blanket.is_some() => continue,
+                _ if blanket => match self.blanket_env(idx, t) {
+                    Some(env) => Some(env),
+                    None => continue,
+                },
                 _ if opened.is_some() => opened,
                 (Ty::Struct(sid), ast::TypeKind::Named { args, .. }) if !args.is_empty() => {
                     match self.struct_impl_env(idx, *sid) {
@@ -252,7 +252,7 @@ impl<'a> Lowerer<'a> {
         for idx in 0..self.impls.len() {
             let imp = &self.impls[idx];
             let (m, offset, target, body) = (imp.mod_id, imp.offset, imp.target, imp.body);
-            if self.domain_blanket_param(idx).is_some() {
+            if self.blanket_param(idx).is_some() {
                 continue;
             }
             // `impl Pick for Int -> Bool`: fn values of that type get its methods.

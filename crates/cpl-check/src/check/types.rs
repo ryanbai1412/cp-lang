@@ -1529,9 +1529,13 @@ impl<'a> Checker<'a> {
         bounds: &[ast::Bound],
     ) {
         let outer = self.param_bounds.len();
+        let outer_args = self.param_bound_args.len();
         self.param_bounds.extend(extract_bounds(bounds));
+        let args = self.quietly(|c| c.bound_args(bounds));
+        self.param_bound_args.extend(args);
         self.methods(methods, self_ty);
         self.param_bounds.truncate(outer);
+        self.param_bound_args.truncate(outer_args);
     }
 
     /// True when trait `sub` is `want` or transitively inherits from `want`.
@@ -1607,7 +1611,9 @@ impl<'a> Checker<'a> {
                 .all(|s| self.implements_trait_inner(ty, s, seen));
         }
         let impl_key = ty.impl_head();
-        if impl_key.is_some_and(|name| self.impl_holds(name, ty, trait_name, seen)) {
+        if impl_key.is_some_and(|name| self.impl_holds(name, ty, trait_name, seen))
+            || self.impl_holds("*", ty, trait_name, seen)
+        {
             return true;
         }
         match trait_name {
@@ -1840,14 +1846,7 @@ impl<'a> Checker<'a> {
 
     /// Is there a written `impl trait_name for name`?
     pub(super) fn has_impl(&mut self, name: &str, trait_name: &str) -> bool {
-        self.global(&crate::def::impl_name(Some(trait_name), name))
-            .is_some()
-            || self
-                .env
-                .impls(name)
-                .into_iter()
-                .filter_map(|(t, _)| t)
-                .any(|t| t.split('<').next().unwrap_or(&t) == trait_name)
+        !self.impls_of(name, trait_name).is_empty()
     }
 
     /// True when `ty` can be passed to `print(...)`: a written `impl Show`

@@ -222,6 +222,8 @@ use std.window.{Sweep, Undo, Undoing, Window, track, undoing, window_fold}
 use std.seq.{
     Bidir,
     Compressed,
+    Indexed,
+    Keyed,
     Positional,
     Seq,
     Sized,

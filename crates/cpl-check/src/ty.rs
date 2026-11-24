@@ -94,7 +94,6 @@ impl Ty {
             Ty::Char => "Char",
             Ty::Str => "Str",
             Ty::Fn { .. } => "fn",
-            Ty::Pos(_) | Ty::Domain(_) => "domain",
             Ty::Array { .. } => "[D]T",
             Ty::Tuple(_) => "tuple",
             Ty::Optional(_) => "?T",

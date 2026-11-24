@@ -175,12 +175,12 @@ impl<'a> Lowerer<'a> {
                 builtin_has(&ty, trait_name)
                     || builtin_seq_has(&ty, trait_name)
                     || self.has_plain_impl(&ty, trait_name)
-                    || (matches!(ty, Ty::Bound(_)) && self.has_domain_blanket_impl(trait_name))
+                    || self.has_blanket_impl(&ty, trait_name)
                     || (position && self.index_has_structural(trait_name))
             }
             Some(GenArg::Domain(d)) => {
                 builtin_has(&Ty::Pos(*d), trait_name)
-                    || self.has_domain_blanket_impl(trait_name)
+                    || self.has_blanket_impl(&Ty::Pos(*d), trait_name)
                     || self.index_has_structural(trait_name)
             }
             _ => false,
@@ -188,11 +188,11 @@ impl<'a> Lowerer<'a> {
         by_impl || self.has_bound_by_shape(param, trait_name)
     }
 
-    /// An `impl<D: Domain> Tr for D` gives `Tr` to every domain and its cuts.
-    fn has_domain_blanket_impl(&self, trait_name: &str) -> bool {
+    /// A blanket `impl<S: Tr> Tr2 for S` gives `Tr2` to every type meeting its bounds.
+    fn has_blanket_impl(&mut self, ty: &Ty, trait_name: &str) -> bool {
         (0..self.impls.len()).any(|idx| {
             self.impls[idx].trait_name.as_deref() == Some(trait_name)
-                && self.domain_blanket_param(idx).is_some()
+                && self.blanket_env(idx, ty).is_some()
         })
     }
 

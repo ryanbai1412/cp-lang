@@ -1083,7 +1083,9 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                return self.domain_impl_member(&base_ty, &name.text);
+                let members = self.head_impl_members(&base_ty);
+                return (members.into_iter().find(|(m, _)| *m == name.text))
+                    .map_or(Ty::Unknown, |m| m.1);
             }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {

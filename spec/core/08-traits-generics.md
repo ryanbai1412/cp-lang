@@ -42,7 +42,12 @@ impl Ord for Frac:
   types, field requirements and laws. Supertraits go in parentheses. (R08.1.1)
 - `impl Trait for T` implements it; `impl A + B for T` is shorthand for
   two impls. One impl per (trait, type), declared with the trait or the
-  type. Blanket impls are allowed (`impl<T: Add> Add for ?T`). (R08.1.2)
+  type. Blanket impls are allowed (`impl<T: Add> Add for ?T`), and one
+  for a bare parameter, `impl<S: Indexed<D, U>, D, U> Key<D, U> for S`,
+  holds for every type meeting its bounds, its other parameters read off
+  them (`impl<domain D> Search for D` is one, over every domain). A
+  concrete impl such a blanket impl covers, or a second blanket impl of
+  the trait, is E0202. (R08.1.2)
 - Inherent methods (`impl T:` or methods in a struct body) live in the
   type's module only. (R08.1.3)
 - Method lookup: inherent first, then traits in scope that the type
@@ -110,9 +115,9 @@ impl Ord for Frac:
   otherwise, chosen by one impl with `if T: Bounded:`; decision 602)
   (decision 456). A bare operator takes the impl for a struct with a
   `@from_op` static fn (`Monoid.of` in std) and becomes that fn's call.
-  A fn type is a type an impl may be for, and an impl may
-  cover every domain (`impl<domain D> Search for D`) beside one for a
-  concrete type (`impl Search for F64`). A generic fn names the choice as
+  A fn type is a type an impl may be for, and a blanket impl
+  over every domain (`impl<domain D> Search for D`) may sit beside one for
+  a concrete type that is no domain (`impl Search for F64`). A generic fn names the choice as
   `M.Name` (R08.2.7), and its body is checked against the bound alone
   (R08.2.2): it can't assume `M.Name` is one type, so `fn f<B: Box>(b: B) ->
   Int = b.get()` is E0302. A trait may give an associated type a default

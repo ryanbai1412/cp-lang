@@ -1230,6 +1230,7 @@ impl<'a> Checker<'a> {
 
                 if let Some(trait_name) = trait_name {
                     self.impl_supertraits(trait_name, target, bounds);
+                    self.impl_overlap(trait_name, target, bounds, &self_ty);
                     self.impl_matches_trait(trait_name, target, &body.stmts);
                     if type_head(trait_name).as_deref() == Some("Index") {
                         self.index_size(&body.stmts);

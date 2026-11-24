@@ -216,6 +216,9 @@ impl<'a> Checker<'a> {
             if let Some(Ty::Fn { ret, .. }) = self.bound_method(param, "at") {
                 return *ret;
             }
+            if let Some(mut args) = self.trait_args_of(&base_ty, "Indexed", 2) {
+                return args.pop().unwrap_or(Ty::Unknown);
+            }
         }
         if let (ExprKind::Name(base_name), Some(idx_expr)) = (&base.kind, indices.first()) {
             let idx_owner = match &idx_expr.kind {

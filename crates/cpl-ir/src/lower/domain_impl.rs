@@ -1,32 +1,53 @@
-//! Which impls a type has, `impl<D: Domain> Tr for D` among them: one impl
-//! for every domain, its methods made for a domain the first time a call
-//! reaches them through it.
+//! Which impls a type has, blanket `impl<S: Tr> Tr2 for S` among them: one
+//! impl for every type meeting its bounds, its methods made for a type the
+//! first time a call reaches them through it.
 
 use super::*;
 
 impl<'a> Lowerer<'a> {
-    /// The param a blanket `impl<D: Domain> Tr for D` is over.
-    pub(super) fn domain_blanket_param(&self, idx: usize) -> Option<String> {
+    /// The param a blanket `impl<S: Tr> Tr2 for S` is over.
+    pub(super) fn blanket_param(&self, idx: usize) -> Option<String> {
         let imp = &self.impls[idx];
         let ast::TypeKind::Named { name, args } = &imp.target.kind else {
             return None;
         };
-        if !args.is_empty() || self.mod_syms[imp.mod_id].contains_key(&name.text) {
-            return None;
+        (args.is_empty()
+            && !self.mod_syms[imp.mod_id].contains_key(&name.text)
+            && imp.bounds.iter().any(|b| b.name.text == name.text))
+        .then(|| name.text.clone())
+    }
+
+    /// Blanket impl `idx`'s env at `ty`: its param is `ty`, and the names its bounds leave
+    /// open are bound from `ty`'s impls. `None` where `ty` does not meet a bound.
+    pub(super) fn blanket_env(&mut self, idx: usize, ty: &Ty) -> Option<GenEnv> {
+        let param = self.blanket_param(idx)?;
+        let (m, bounds) = (self.impls[idx].mod_id, self.impls[idx].bounds);
+        let position = matches!(ty, Ty::Pos(_) | Ty::Bound(_));
+        for b in bounds.iter().filter(|b| b.name.text == param) {
+            for tr in &b.traits {
+                let ast::TypeKind::Named { name, .. } = &tr.kind else {
+                    return None;
+                };
+                match name.text.as_str() {
+                    "Domain" if !position => return None,
+                    "Domain" | "Seq" | "Bidir" | "Sized" | "Positional" | "Keyed" | "Indexed"
+                    | "IndexedMut" => {}
+                    t if !self.implements(ty, t) => return None,
+                    _ => {}
+                }
+            }
         }
-        let domain = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::Named { name: tn, .. } if tn.text == "Domain");
-        imp.bounds
-            .iter()
-            .any(|b| b.name.text == name.text && b.traits.iter().any(domain))
-            .then(|| name.text.clone())
+        let arg = match ty {
+            Ty::Pos(d) => GenArg::Domain(*d),
+            _ => GenArg::Ty(ty.clone()),
+        };
+        let mut env = GenEnv::from([(param, arg)]);
+        self.bind_impl_bounds(bounds, m, &mut env).then_some(env)
     }
 
     /// The method an impl gives a value of a non-struct type: a primitive's
     /// own impl, a domain position's blanket impl, `?T`'s or a fn type's.
     pub(super) fn value_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
-        if let Ty::Pos(_) = ty {
-            return self.domain_impl_method(ty.clone(), method);
-        }
         let prim = self
             .prim_methods
             .iter()
@@ -79,8 +100,6 @@ impl<'a> Lowerer<'a> {
         None
     }
 
-    /// `D.m(..)` with `D` a domain, or the cuts `V.cuts` of one: the method
-    /// a blanket domain impl gives it.
     /// The body trait `impls[idx]` gives `method` when the impl writes none:
     /// `impl<D: Domain> Target<D> for D` takes `Target`'s `to`, with the
     /// trait's parameters bound by the impl's trait arguments.
@@ -110,62 +129,6 @@ impl<'a> Lowerer<'a> {
         Some((f, tm, toff, env))
     }
 
-    pub(super) fn domain_impl_method(&mut self, ty: Ty, method: &str) -> Option<FnId> {
-        let arg = match ty {
-            Ty::Pos(d) => GenArg::Domain(d),
-            Ty::Bound(_) => GenArg::Ty(ty.clone()),
-            _ => return None,
-        };
-        if let Some(found) = self
-            .prim_methods
-            .iter()
-            .find(|(t, m, _)| *t == ty && m == method)
-        {
-            return Some(found.2);
-        }
-        for idx in 0..self.impls.len() {
-            let Some(param) = self.domain_blanket_param(idx) else {
-                continue;
-            };
-            let (m, offset, body) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].body,
-            );
-            let own = body.stmts.iter().find_map(|item| match &item.kind {
-                ast::StmtKind::Fn(f) if f.name.text == method && f.generics.is_empty() => Some(f),
-                _ => None,
-            });
-            let env = GenEnv::from([(param, arg.clone())]);
-            let (f, m, offset, env) = match own {
-                Some(f) => (f, m, offset, env),
-                None => match self.impl_trait_default(idx, method, &ty, env) {
-                    Some(found) => found,
-                    None => continue,
-                },
-            };
-            let trait_name = self.impls[idx].trait_name.clone();
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
-            let fn_id = self.declare_fn_in(f, m, offset, None, env);
-            let suffix = self.prim_methods.len();
-            self.sigs[fn_id].name = format!(
-                "{}_dom_{}_{suffix}",
-                trait_name.as_deref().unwrap_or("impl"),
-                f.name.text
-            );
-            self.prim_self.insert(fn_id, ty.clone());
-            self.prim_methods
-                .push((ty.clone(), method.to_string(), fn_id));
-            self.resolve_fn_sig(fn_id, trait_name.as_deref());
-            (self.cur_mod, self.offset) = saved;
-            return Some(fn_id);
-        }
-        None
-    }
-
     /// Whether `ty` has an `impl` of the library trait `name`. A name that is not a trait declared
     /// in a module (a structural one), or an `impl` over a generic type, is taken as met.
     pub(super) fn implements(&mut self, ty: &Ty, name: &str) -> bool {
@@ -187,8 +150,8 @@ impl<'a> Lowerer<'a> {
             if matches!(&target.kind, ast::TypeKind::Named { args, .. } if !args.is_empty()) {
                 return true;
             }
-            if self.domain_blanket_param(idx).is_some() {
-                if matches!(ty, Ty::Pos(_) | Ty::Bound(_)) {
+            if self.blanket_param(idx).is_some() {
+                if self.blanket_env(idx, ty).is_some() {
                     return true;
                 }
                 continue;

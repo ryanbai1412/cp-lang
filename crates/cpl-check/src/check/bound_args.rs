@@ -85,7 +85,17 @@ impl Checker<'_> {
                 .collect(),
             _ => Vec::new(),
         };
-        (trait_args, self.quietly(|c| c.bound_args(bounds)))
+        let mut bound_args = self.quietly(|c| c.bound_args(bounds));
+        for b in bounds {
+            for t in &b.traits {
+                if let ast::TypeKind::Named { name, args } = &t.kind {
+                    if args.is_empty() {
+                        bound_args.push((b.name.text.clone(), name.text.clone(), Vec::new()));
+                    }
+                }
+            }
+        }
+        (trait_args, bound_args)
     }
 
     /// `Self` and the trait's own parameters, as bound `param: trait_name<..>` gives them.
@@ -117,13 +127,12 @@ impl Checker<'_> {
         bindings: &mut crate::ty::Bindings,
     ) {
         for (param, traits) in bounds {
-            let Some(Ty::Named { name, args }) = bindings.get(param).map(|t| self.settle(t)) else {
+            let Some(on_ty) = bindings.get(param).map(|t| self.settle(t)) else {
                 continue;
             };
-            let on_ty = Ty::Named {
-                name: name.clone(),
-                args,
-            };
+            if on_ty.impl_head().is_none() {
+                continue;
+            }
             for trait_name in traits {
                 let Some(Def::Trait {
                     generics: of_trait, ..
@@ -447,40 +456,17 @@ impl Checker<'_> {
                 .find(|(q, t, args)| q == p && t == trait_name && args.len() == n)
                 .map(|(_, _, args)| args.clone());
         }
-        if let Ty::Named { name, .. } = ty {
-            let written = self.global(&crate::def::impl_name(Some(trait_name), name));
-            let listed = (self.env.impls(name).into_iter())
-                .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
-                .map(|(_, d)| d);
-            for def in written.into_iter().chain(listed) {
-                if let Def::Impl {
-                    trait_args,
-                    target,
-                    bound_args,
-                    ..
-                } = &*def
-                {
-                    if trait_args.len() == n {
-                        let mut on = crate::ty::Bindings::default();
-                        target.unify(ty, &mut on);
-                        // `impl<S: Indexed<K, T>, K, T> Seq<T> for Rebased<S>`: `T` is what `S` gives.
-                        for (param, bound, args) in bound_args {
-                            let Some(actual) = on.get(param).cloned() else {
-                                continue;
-                            };
-                            let Some(given) = self.trait_args_of(&actual, bound, args.len()) else {
-                                continue;
-                            };
-                            let mut solved = crate::ty::Bindings::default();
-                            for (want, got) in args.iter().zip(&given) {
-                                want.unify(got, &mut solved);
-                            }
-                            for (g, t) in solved {
-                                on.entry(g).or_insert(t);
-                            }
-                        }
-                        return Some(trait_args.iter().map(|t| t.subst(&on)).collect());
-                    }
+        if let Some(name) = ty.impl_head() {
+            let defs = [name, "*"].map(|h| self.impls_of(h, trait_name));
+            for def in defs.into_iter().flatten() {
+                let Def::Impl { trait_args, .. } = &*def else {
+                    continue;
+                };
+                if trait_args.len() != n {
+                    continue;
+                }
+                if let Some(on) = self.impl_on(&def, ty, &mut Vec::new()) {
+                    return Some(trait_args.iter().map(|t| t.subst(&on)).collect());
                 }
             }
         }

@@ -78,19 +78,17 @@ impl Checker<'_> {
     }
 }
 
-/// The name an impl is filed under: `impl<D: Domain> Tr for D` is every domain's, `domain`.
+/// The name an impl is filed under: a blanket `impl<S: Tr> Tr2 for S`, over its own
+/// parameter, is every type's, `*`, and holds where `S`'s bounds do.
 pub(crate) fn impl_file_head(ty: &ast::Type, bounds: &[ast::Bound]) -> Option<String> {
-    if let TypeKind::Named { name, args } = &ty.kind {
-        let domain = |t: &ast::Type| type_head(t).as_deref() == Some("Domain");
-        if args.is_empty()
-            && bounds
-                .iter()
-                .any(|b| b.name.text == name.text && b.traits.iter().any(domain))
+    match &ty.kind {
+        TypeKind::Named { name, args }
+            if args.is_empty() && bounds.iter().any(|b| b.name.text == name.text) =>
         {
-            return Some("domain".into());
+            Some("*".into())
         }
+        _ => impl_target_head(ty),
     }
-    impl_target_head(ty)
 }
 
 impl<'a> Checker<'a> {
@@ -237,67 +235,86 @@ impl Checker<'_> {
         trait_name: &str,
         seen: &mut Vec<String>,
     ) -> bool {
-        let written = self.global(&crate::def::impl_name(Some(trait_name), name));
-        let listed = (self.env.impls(name).into_iter())
-            .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
-            .map(|(_, d)| d);
-        written.into_iter().chain(listed).any(|def| {
-            let Def::Impl {
-                target, bound_args, ..
-            } = &*def
-            else {
-                return true;
+        (self.impls_of(name, trait_name).iter()).any(|def| self.impl_on(def, ty, seen).is_some())
+    }
+
+    /// The impls of `trait_name` filed under `name`: the one written by name, then the listed.
+    pub(super) fn impls_of(&mut self, name: &str, trait_name: &str) -> Vec<std::sync::Arc<Def>> {
+        let mut out = Vec::from_iter(self.global(&crate::def::impl_name(Some(trait_name), name)));
+        for (t, d) in self.env.impls(name) {
+            if t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name) {
+                out.push(d);
+            }
+        }
+        out
+    }
+
+    /// R08.1.9: an impl for a type a blanket impl of the same trait covers is E0202.
+    pub(crate) fn impl_overlap(
+        &mut self,
+        tr: &ast::Type,
+        target: &ast::Type,
+        bounds: &[ast::Bound],
+        self_ty: &Ty,
+    ) {
+        let Some(head) = type_head(tr) else {
+            return;
+        };
+        if impl_file_head(target, bounds).as_deref() != Some("*")
+            && self.impl_holds("*", self_ty, &head, &mut Vec::new())
+        {
+            let (tr_text, target_text) = (self.quote(tr.span), self.quote(target.span));
+            self.report(
+                target.span,
+                msgs::check::IMPL_OVERLAPS_BLANKET,
+                &[&tr_text, &target_text],
+            );
+        }
+    }
+
+    /// What `def`, an impl, binds its parameters to on `ty` when it covers it: its target,
+    /// bound to `ty`, meets the head's bounds, which give the rest (`impl<S: Indexed<K, T>, K, T>
+    /// Seq<T> for Rebased<S>`: `T` is what `S` gives).
+    pub(crate) fn impl_on(
+        &mut self,
+        def: &Def,
+        ty: &Ty,
+        seen: &mut Vec<String>,
+    ) -> Option<crate::ty::Bindings> {
+        let mut on = crate::ty::Bindings::default();
+        let Def::Impl {
+            target, bound_args, ..
+        } = def
+        else {
+            return Some(on);
+        };
+        target.unify(ty, &mut on);
+        if !ty.fits(&target.subst(&on)) {
+            return None;
+        }
+        for (param, bound, args) in bound_args {
+            let Some(actual) = on.get(param).cloned() else {
+                continue;
             };
-            let mut on = crate::ty::Bindings::default();
-            target.unify(ty, &mut on);
-            bound_args.iter().all(|(param, bound, _)| {
-                on.get(param)
-                    .cloned()
-                    .is_none_or(|actual| self.implements_trait_inner(&actual, bound, seen))
-            })
-        })
+            if !self.implements_trait_inner(&actual, bound, seen) {
+                return None;
+            }
+            let given = self
+                .trait_args_of(&actual, bound, args.len())
+                .unwrap_or_default();
+            let mut solved = crate::ty::Bindings::default();
+            for (want, got) in args.iter().zip(&given) {
+                want.unify(got, &mut solved);
+            }
+            for (g, t) in solved {
+                on.entry(g).or_insert(t);
+            }
+        }
+        Some(on)
     }
 }
 
 impl Checker<'_> {
-    /// `v.tk` on a domain position: the member a blanket `impl<D: Domain> Tr for D` gives it,
-    /// written in the impl or a default of `Tr`; a `@get` reads as its value. Else `Unknown`.
-    pub(super) fn domain_impl_member(&mut self, pos: &Ty, name: &str) -> Ty {
-        for (trait_name, def) in self.env.impls("domain") {
-            let Def::Impl {
-                methods,
-                getters,
-                target,
-                ..
-            } = &*def
-            else {
-                continue;
-            };
-            let own = methods.iter().find(|(m, _)| m == name).map(|m| m.1.clone());
-            let found = own.or_else(|| {
-                let tr = trait_name.as_deref()?.split('<').next()?.to_string();
-                let Def::Trait {
-                    methods, generics, ..
-                } = &*self.type_def(&tr)?
-                else {
-                    return None;
-                };
-                let members = self.trait_members(&methods.clone(), &generics.clone(), &def);
-                members.into_iter().find(|(m, _)| m == name).map(|m| m.1)
-            });
-            let Some(ty) = found else {
-                continue;
-            };
-            let mut on = crate::ty::Bindings::default();
-            target.unify(pos, &mut on);
-            return match ty.subst(&on) {
-                Ty::Fn { ret, .. } if getters.iter().any(|g| g == name) => *ret,
-                ty => ty,
-            };
-        }
-        Ty::Unknown
-    }
-
     /// R08.1.7: a record or tuple meets a trait by its shape, so it has the trait's default
     /// methods as a type with an empty impl would: `(3, 4).rev()` is `Reversible`'s.
     pub(super) fn shape_default_member(&mut self, ty: &Ty, name: &str) -> Option<Ty> {
