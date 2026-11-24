@@ -82,6 +82,8 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([3, 1, 3]).to_list() == [1, 3, 3]`
     pub fn of(xs: List<K>) -> SortedBag<K>:
         var b = SortedBag<K>.new()
+        b.keys.reserve(min(xs.len, BAG_B))
+        b.ws.reserve(min(xs.len, BAG_B))
         for x in xs: b.add(x)
         b
 
@@ -760,6 +762,7 @@ pub struct SortedBag<K>:
                 while keys.len < u * BAG_B + BAG_B:
                     keys.push(x)
                     ws.push(0)
+            if u == 0: meta.reserve(4)
             for v in [0, -1, -1, -1]: meta.push(v)
         meta[4 * u] = 0
         meta[4 * u + 1] = -1
@@ -816,6 +819,10 @@ pub struct SortedBag<K>:
         let f = self.fill(n)
         if f < BAG_B:
             if keys.len == n * BAG_B + f:
+                // A small bag's one leaf starts at 4 slots, not 1.
+                if f == 0:
+                    keys.reserve(4)
+                    ws.reserve(4)
                 keys.push(x)
                 ws.push(0)
             var i = f
