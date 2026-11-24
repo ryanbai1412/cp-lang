@@ -23,6 +23,8 @@ for r in 0..1024:
         g.pop() // timed: strings.PalindromicTree.pop
     for c in w:
         acc += g.push_front(c) // timed: strings.PalindromicTree.push_front
+for r in 0..1024:
+    acc += p.items.collect().len // timed: strings.Palindromes.items
 let tp = PalindromicTree<L>.of(pal)
 let ta = PalindromicTree<L>.of([L(0) for _ in 0..n])
 for r in 0..4096:

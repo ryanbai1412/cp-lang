@@ -24,6 +24,8 @@ for i in 0..1 << 19:
     acc += sa.distinct() // timed: strings.SuffixArray.distinct
     acc += sa.lcp_range(j, i % 4).len // timed: strings.SuffixArray.lcp_range
     if let r = sa.kth_distinct(i * 104729 % total): acc += r.start // timed: strings.SuffixArray.kth_distinct
+for r in 0..512:
+    for k in sa.each(): acc += k // timed: strings.SuffixArray.each
 for r in 0..2048:
     for _ in 0..4:
         acc += sb.rank_range(pat).len // timed: strings.SuffixArray.rank_range
