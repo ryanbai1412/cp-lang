@@ -6748,8 +6748,8 @@ delete `scripts/gen.py`.
   the program keeps no undefined behaviour there. `--checks traps` is the
   opt-in "fast but still traps" build, `--checks all` adds the local build's
   checks (`-DLOCAL`). `--checked` stays the sanitizer build. `cpl run
-  --release` and `cpl stress` still build at `traps`, so a local crash is
-  seen; the Trap Parity Gate builds at `traps`.
+  --release`, `cpl test` and `cpl stress` build at `all` (450); the Trap
+  Parity Gate builds at `traps`.
 - **Why.** Ryan (2026-11-22): "by default when releasing to the judge we
   should assume that RE vs WA doesn't really matter"; the traps cost hot-loop
   time and bytes that hand-written C++ does not pay. Names agreed in perf's
@@ -8514,3 +8514,9 @@ Reverse: drop `opt_mut_params`/`note_opt_mut` in the checker and `opt_mut_instan
 
 W14/Rbundle.5: an `@cpp` body goes into the bundle as written. Before, the parser read a `return e;` body back as CP Lang (so `a + b` became `cpl::iadd`, and `__builtin_popcountll` was E0201), and any other body became `()`, a silent wrong value. Now `@cpp("...")` is its own expression, `ExprKind::Cpp`. The checker checks only the fn's signature and gives E0501 for `@cpp` anywhere but a fn's whole body. Lowering lists the fn in `judge_fns`, so no pass looks into its empty body, and records its text in `Program::cpp_bodies`, which codegen emits as the body. The interpreter can't run C++, so `cpl run` (and the conformance runner) runs such a program as its C++ build, as spec recommended. `cpl explain` lists each such fn. Calling one in the interpreter by another path traps with a message that says why.
 Reverse: drop `ExprKind::Cpp` and `cpp_bodies`, and restore the parser's re-read of `return e;`.
+
+## 450. Every local C++ build checks what the interpreter checks (tools, 2026-11-23)
+
+- **Call.** `cpl run --release` without `--checks`, `cpl test`'s C++ runs and every `cpl stress` side build at `--checks all` (`Checks::LOCAL`): traps plus overflow, range stores and the other local checks, as `cpl run` makes in the interpreter. `--checks` on `cpl run --release` still picks a level. Judge builds stay at `none` (299).
+- **Why.** At `traps`, an overflow wrapped in the local C++ build where `cpl run` traps (spec/core/09-contexts-checks.md), so stress could pass, or report a wrong answer, on a program the interpreter stops at the overflow. One local profile keeps debug and release agreeing for valid programs and shows a crash as the check it is (afa44a59a).
+- **Reverse.** Set `Checks::LOCAL` in `crates/cpl-codegen/src/checks.rs` to `Checks::Traps`.
