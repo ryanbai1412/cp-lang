@@ -1062,6 +1062,7 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
         "ord" => Some("a character's code is `Int(c)`"),
         "chr" => Some("the character with code `i` is `Char(i)`"),
         "dict" => Some("an empty map is `Map<K, V>()`, or `[:]` where its type is known"),
+        "sys" => Some("CP Lang has no `sys`: `read()` is already fast, so remove the `sys` line"),
         "math" | "Math" => Some("math functions are methods here: `x.sqrt`, `x.abs`, `x.isqrt`"),
         _ => None,
     }

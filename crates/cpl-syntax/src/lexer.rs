@@ -174,6 +174,7 @@ impl<'a> Lexer<'a> {
                 }
                 b'/' if self.peek_at(1) == b'/' && self.floor_division() => {}
                 b'/' if self.peek_at(1) == b'/' => self.comment(),
+                _ if self.foreign_header() => {}
                 _ => self.token(),
             }
         }
@@ -241,6 +242,53 @@ impl<'a> Lexer<'a> {
         );
         self.pos += 2;
         self.push(TokenKind::Slash, start);
+        true
+    }
+
+    /// `#include <..>`, `using namespace std;`, `import sys` or `from math
+    /// import gcd` as a top-level line: another language's header, which
+    /// CP Lang doesn't need. One error, and the fix removes the line.
+    fn foreign_header(&mut self) -> bool {
+        let begin = self.src[..self.pos].rfind('\n').map_or(0, |i| i + 1);
+        let end = self.src[self.pos..]
+            .find('\n')
+            .map_or(self.src.len(), |i| self.pos + i);
+        let line = self.src[begin..end].trim_end();
+        if begin != self.pos || self.indents.len() > 1 {
+            return false;
+        }
+        let names = |s: &str| {
+            s.split(',').all(|n| {
+                !n.trim().is_empty() && n.trim().chars().all(|c| c.is_alphanumeric() || c == '_')
+            })
+        };
+        let word = if line.starts_with("#include") {
+            "#include"
+        } else if line.starts_with("using namespace ") && line.ends_with(';') {
+            "using namespace"
+        } else if line.strip_prefix("import ").is_some_and(names) {
+            "import"
+        } else if line
+            .strip_prefix("from ")
+            .and_then(|l| l.split_once(" import "))
+            .is_some_and(|(m, _)| names(m))
+        {
+            "from .. import"
+        } else {
+            return false;
+        };
+        let span = Span::new(begin as u32, line.len() as u32 + begin as u32);
+        let whole = Span::new(begin as u32, (end + 1).min(self.src.len()) as u32);
+        self.out.diagnostics.push(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                span,
+                format!("CP Lang has no `{word}`: the prelude is always in scope"),
+            )
+            .with_help("remove the line; a std item is brought in with `use std.<module>.{name}`, which `cpl fix` adds")
+            .with_fix("remove the line", whole, ""),
+        );
+        self.pos = end;
         true
     }
 

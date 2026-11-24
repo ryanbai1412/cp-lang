@@ -927,6 +927,10 @@ impl<'a> Checker<'a> {
         let suggestion = closest(name, candidates.iter().map(String::as_str))
             .filter(|s| !capital(name) || capital(s))
             .filter(|s| value || prelude::type_arity(s).is_none_or(|n| n == written_args));
+        // A std name that differs only in case (`deque` for `Deque`) wins.
+        let case_only = |n: &str| n.eq_ignore_ascii_case(name) && n != name;
+        let in_std = value && prelude::std_names().iter().any(|(n, _)| case_only(n));
+        let suggestion = suggestion.filter(|_| !in_std);
         // Neither here nor in `std/`: say so, and offer the closest
         // library name, since a program reaching for a helper that does not
         // exist yet usually means one that does under another name.
@@ -955,7 +959,7 @@ impl<'a> Checker<'a> {
             None
         };
         let assigned = value && self.assigning_name == Some(span);
-        let message = match (value, unknown) {
+        let message = match (value, unknown && !in_std) {
             _ if assigned => format!("`{name}` is assigned before it is declared"),
             (true, false) => format!("no `{name}` in scope"),
             (false, false) => format!("no type or domain named `{name}`"),
