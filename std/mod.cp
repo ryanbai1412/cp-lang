@@ -61,6 +61,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// traps: when `gcd(v, P) != 1`
     /// example: `Mod<7>(3).inv() == Mod<7>(5)`
     /// example: `Mod<10>(3).inv() == Mod<10>(7)`
+    @lint(fermat_inverse, from: "pow_mod(a, P - 2, P)", to: "Mod<P>(a).inv().v", holes: "a, P")
     pub fn inv(self) -> Mod<P> = self.try_inv()!
 
     /// Lift an `Int` to `Mod<P>`; the same reduction as `new`.

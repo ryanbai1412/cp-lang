@@ -135,8 +135,9 @@ fn every_record_fix_clears_its_lint_and_still_parses() {
             "{}: fixing before.cp gives a file that does not parse:\n{fixed}",
             lint.name
         );
+        // A no-fix lint's before.cp is changed only by the other lints' fixes.
         assert!(
-            !codes(&fixed).contains(&lint.code.0),
+            lint.no_fix.is_some() || !codes(&fixed).contains(&lint.code.0),
             "{}: fixing before.cp leaves the lint firing:\n{fixed}",
             lint.name
         );
