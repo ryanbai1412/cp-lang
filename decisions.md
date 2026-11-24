@@ -9080,3 +9080,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** `t.orient(u, v) -> (anc: V, desc: V)` takes the ends of any ancestor pair in either order and traps when neither is an ancestor of the other. Every edge `dfs_tree` leaves out of an undirected graph's tree is such a pair, so back-edge walks (lowpoint, bridges, cactus, ear decompositions) read `tree.orient(e.u, e.v).anc`. `t.lower(u, v)` still traps on anything that isn't a tree edge. `pad`, `pad_to` and `grow` on a list point at `resize` (E0203 help and fix).
 - **Why.** ioi25_worldmap's port rederived "descendant, ancestor" from depths with a tie branch that can't happen (research/frictions/ioi25_worldmap.md). Widening `lower` would have dropped its check that the pair is a tree edge (std-tree/rooted-lower-non-edge-traps), which catches a wrong-edge P0.
 - **Reverse.** Delete `Rooted.orient`, its two std-tree cases and its scaling line, and drop the `pad` row from `foreign_own` in crates/cpl-check/src/builtins.rs.
+
+## 584. (reserved, unknown)
