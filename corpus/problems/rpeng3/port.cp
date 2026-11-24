@@ -20,49 +20,48 @@ domain Loc = 1..=500_001
 let home: Loc = read()
 domain Fair = 0..n
 let fairs: [Fair](t: 1..=500_000, at: Loc, gain: 1..=4000) = read()
-let neg = -1000000000000000000
+
+// Every visited location's best profit lies in -5e6..=2e9: walking there from
+// home costs at most 10 * 5e5, and the fairs gain at most 4000 * 5e5. The keys
+// below move it by at most 5e6 either way, so Key's low end is below any of
+// them and is the trees' empty fold.
+type Key = -10_000_000..=2_010_000_000
 
 // from_low[p] = best profit ending at p, plus p * down: a later stop x >= p
 // subtracts x * down. from_high mirrors it for stops x <= p.
-var from_low = SegTree<Loc, Int>(max, fill: neg)
-var from_high = SegTree<Loc, Int>(max, fill: neg)
+var from_low = SegTree<Loc, Key>(max)
+var from_high = SegTree<Loc, Key>(max)
 from_low.set(home, Int(home) * down)
 from_high.set(home, -Int(home) * up)
 
 fn arrive(x: Loc) -> Int:
     max(from_low.fold(Loc.first!..=x) - Int(x) * down, from_high.fold(x..=Loc.last!) + Int(x) * up)
 
+let ud = up + down
 let by_day = fairs.sorted()
 for day in by_day.runs(by: f => f.t):
-    // A day's fairs: visit a contiguous stretch, entering anywhere,
-    // sweeping to one end and optionally back.
-    let m = day.len
-    let locs = [f.at for f in day]
-    let at = [Int(x) for x in locs]
-    var pre = [0]
-    for f in day: pre.push(pre.last! + f.gain)
-    let entry = [arrive(x) for x in locs]
-    var opt = List.filled(m, neg)
-    var val = List.filled(m, neg)
-    // Enter at q, go up to the far end, come back down to the exit.
-    var run = neg
-    for q in (0..m).rev:
-        run max= -(up + down) * at[q] + pre[q + 1]
-        val[q] = run + (up + down) * at[q] - pre[q] + entry[q]
-    run = neg
-    for q in (0..m).rev:
-        run max= -up * at[q] + pre[q] + val[q]
-        opt[q] max= run + up * at[q] - pre[q]
-    // Enter at q, go down to the near end, come back up to the exit.
-    run = neg
-    for q in 0..m:
-        run max= (up + down) * at[q] - pre[q]
-        val[q] = run - (up + down) * at[q] + pre[q + 1] + entry[q]
-    run = neg
-    for q in 0..m:
-        run max= down * at[q] - pre[q + 1] + val[q]
-        opt[q] max= run - down * at[q] + pre[q + 1]
-    for q in 0..m:
-        from_low.set(locs[q], opt[q] + at[q] * down)
-        from_high.set(locs[q], opt[q] - at[q] * up)
+    // A day's fairs, by location: enter at one, sweep to an end of a
+    // contiguous stretch and come back to the exit.
+    domain Q = 0..day.len
+    let stop = [Q] q => day.nth(q.ord)
+    let x = [Q] q => Int(stop[q].at)
+    let sums = ([Q] q => stop[q].gain).scan(+)
+    let before = [Q] q => sums.prefix(q.l)
+    let upto = [Q] q => sums.prefix(q.r)
+    let entry = [Q] q => arrive(stop[q].at)
+    // Enter at q, go up to the far end, come back down to an exit at or below q.
+    let far_up = ([Q] q => upto[q] - ud * x[q]).rev.scan(max)
+    let enter_up = [Q] q => far_up.suffix(q.l) + ud * x[q] - before[q] + entry[q]
+    let exit_up = ([Q] q => before[q] - up * x[q] + enter_up[q]).rev.scan(max)
+    // Enter at q, go down to the near end, come back up to an exit at or above q.
+    let far_down = ([Q] q => ud * x[q] - before[q]).scan(max)
+    let enter_down = [Q] q => far_down.prefix(q.r) - ud * x[q] + upto[q] + entry[q]
+    let exit_down = ([Q] q => enter_down[q] + down * x[q] - upto[q]).scan(max)
+    for q in Q:
+        let best = max(
+            exit_up.suffix(q.l) + up * x[q] - before[q],
+            exit_down.prefix(q.r) - down * x[q] + upto[q],
+        )
+        from_low.set(stop[q].at, best + x[q] * down)
+        from_high.set(stop[q].at, best - x[q] * up)
 print(arrive(home))
