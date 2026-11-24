@@ -25,7 +25,7 @@ var dp: [0..n, 0..n, 0..n]Z = 0
 for x in 0..a[n - 1]: dp[x, x, 0] = 1
 
 for i in (0..n - 1).rev:
-    var suf = dp
+    var suf = dp.clone()
     for y in (0..n - 1).rev:
         suf[y, 0, 0] += suf[y + 1, 0, 0]
         for k in 1..=i + 1:
