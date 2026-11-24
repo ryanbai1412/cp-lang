@@ -423,6 +423,9 @@ HEADER_LINE = re.compile(r"//\s*(Source|Problem|Solution|Bounds):")
 HEADER_KEY = re.compile(r"// ?([A-Za-z][\w-]*):")
 TIMEOUT = 20
 SLOWER, FLOOR = 1.5, 0.1
+# One timed run at a time: two at once share caches and memory bandwidth, which
+# CPU time counts against whichever side happens to run beside a heavy neighbour.
+TIMED = threading.Lock()
 TARGET_BYTES = 32 * 1024
 GEN_SEEDS, GEN_SIZES = (1, 2, 3), (5, 50)
 RANGE = re.compile(rb"error\[R05\d\d\]|outside its range")
@@ -1241,14 +1244,15 @@ def at_max(pkg, cpl, exe, orig, data):
     # The port and the accepted C++ take turns, each going first in turn, and
     # each side keeps its best CPU time: a burst of load hits both sides.
     runs, wants = [], []
-    for i in range(3):
-        for side in ((exe, orig) if i % 2 == 0 else (orig, exe)):
-            if side == exe:
-                runs.append(measure(exe, data, 2 * ms / 1000 + 1))
-            elif side:
-                wants.append(measure(orig, data, 4 * ms / 1000 + 1))
-        if any(r is None or r[0] != 0 for r in runs):
-            return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
+    with TIMED:
+        for i in range(3):
+            for side in ((exe, orig) if i % 2 == 0 else (orig, exe)):
+                if side == exe:
+                    runs.append(measure(exe, data, 2 * ms / 1000 + 1))
+                elif side:
+                    wants.append(measure(orig, data, 4 * ms / 1000 + 1))
+            if any(r is None or r[0] != 0 for r in runs):
+                return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
     mine, theirs = min(r[2] for r in runs), None
     if orig:
         if all(w is not None and w[0] == 0 for w in wants):

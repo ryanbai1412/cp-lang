@@ -945,7 +945,12 @@ class AtMax(unittest.TestCase):
     def findings(self, safe, mine, theirs=(0, b"1\n", 0.05, 10), limits=(2000, 256)):
         self.order = []
         result = {"safe": safe, "exe": mine, "orig": theirs}
-        for name, fake in (("measure", lambda exe, data, t: self.order.append(exe) or result[exe]),
+        def measure(exe, data, t):
+            self.order.append(exe)
+            self.held.append(corpus.TIMED.locked())
+            return result[exe]
+        self.held = []
+        for name, fake in (("measure", measure),
                            ("checked", lambda *a: "safe"),
                            ("limits", lambda port: limits)):
             self.addCleanup(setattr, corpus, name, getattr(corpus, name))
@@ -985,6 +990,13 @@ class AtMax(unittest.TestCase):
     def test_the_port_and_the_accepted_cpp_take_turns(self):
         self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
         self.assertEqual(self.order, ["safe", "exe", "orig", "orig", "exe", "exe", "orig"])
+
+    def test_the_timed_runs_hold_the_lock_and_let_it_go(self):
+        self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
+        self.assertEqual(self.held, [False] + [True] * 6)
+        self.assertFalse(corpus.TIMED.locked())
+        self.findings((0, b"1\n", 0.1, 10), None)
+        self.assertFalse(corpus.TIMED.locked())
 
     def test_an_accepted_cpp_that_fails_the_max_is_a_finding(self):
         self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 10), (139, b"", 0.01, 10)), ["reference-fails p --max"])
