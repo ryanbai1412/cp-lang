@@ -33,5 +33,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Pt walkers stepping through one lcm period; sign() returns Sign so Int(sign(d)) is needed (minor friction)."
+ "notes": "Pt walkers stepping through one lcm period; sign() returns Sign so Int(sign(d)) is needed (minor friction).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 13,
+  "sha": "f2a14c7a47dcbf531c9cba06dd4b295a13437ab2"
+ }
 }

@@ -64,5 +64,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "SuffixArray(s).distinct(); SuffixArray had no constructor stub, and joined the prelude."
+ "notes": "SuffixArray(s).distinct(); SuffixArray had no constructor stub, and joined the prelude.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 9,
+  "sha": "dbe442079ee5e6d4b121ddc7d4993105c04ea434"
+ }
 }

@@ -1,17 +1,29 @@
-# CCC 2020 S4 Swapping Seats: people A, B and C sit round a table. Each swap exchanges two people.
-# Make every letter sit contiguously with the fewest swaps.
-# Fix where the A block starts and whether B or C follows. Count c[x][y], how many people of letter
-# x sit in letter y's block. A swap fixes two misplaced people when they sit in each other's blocks;
-# whatever remains forms 3-cycles, which take two swaps each.
-enum Who = A | B | C
-let seats = read Str.map(ch => Who.parse(ch)!)
-let size = seats.tally()
+// CCC 2020 S4 Swapping Seats: people A, B and C sit round a table. Each swap exchanges two people.
+// Make every letter sit contiguously with the fewest swaps.
+// Fix where the A block starts and whether B or C follows. Count c[x, y], how many people of letter
+// x sit in letter y's block. A swap fixes two misplaced people when they sit in each other's blocks;
+// whatever remains forms 3-cycles, which take two swaps each.
+let s: Str = read()
+let n = s.len
+domain Who = 0..3
+let seat = [Who(ch.ord - 'A'.ord) for ch in s]
+// before[w][i]: people of w in the first i seats of the doubled table.
+var before: [Who]List<Int> = [Who] _ => [0]
+for i in 0..2 * n:
+    for w in Who: before[w].push(before[w].last! + Int(seat[i % n] == w))
+fn among(w: Who, from: Int, len: Int) -> Int = before[w][from + len] - before[w][from]
+let size = [Who] w => among(w, 0, n)
 
-fn swaps(blocks: [Who]RingSlice) -> Int:
-    let c = [Who, Who] (x, y) => seats.ring[blocks[y]].count(x)
-    let pairs = Who.pairs().sum(of: (x, y) => min(c[x, y], c[y, x]))
-    let left = Who.pairs().sum(of: (x, y) => c[x, y] - min(c[x, y], c[y, x]))
-    pairs + 2 * left / 3
+fn swaps(at: Int, order: List<Who>) -> Int:
+    var start: [Who]Int = 0
+    var from = at
+    for w in order:
+        start[w] = from
+        from += size[w]
+    let c = [Who, Who] (x, y) => among(x, start[y], size[y])
+    let pairs = [min(c[x, y], c[y, x]) for x in Who for y in Who if x < y].sum()
+    let wrong = [c[x, y] for x in Who for y in Who if x != y].sum()
+    pairs + 2 * (wrong - 2 * pairs) / 3
 
-print(min(for start in seats.keys for order in [[A, B, C], [A, C, B]]:
-    swaps(seats.ring.from(start).blocks(order.map(w => size[w])).keyed(order))))
+let orders = [[Who(0), Who(1), Who(2)], [Who(0), Who(2), Who(1)]]
+print([swaps(at, order) for at in 0..n for order in orders].min()!)
