@@ -53,6 +53,7 @@ for r in 0..2048:
     acc += padded.trim_start().len // timed: strings.trim_start
     acc += padded.trim_end().len // timed: strings.trim_end
     acc += spaced.split_whitespace().len // timed: strings.split_whitespace
+    acc += spaced.split_whitespace().len // timed: strings.split_whitespace
     acc += ",".join(words).len // timed: strings.join
     acc += ab.replace("b", "cd").len // timed: strings.replace
     acc += z_function(s)[1] // timed: strings.z_function
@@ -62,7 +63,6 @@ for r in 0..2048:
     for b in borders(ab): acc += b // timed: strings.borders
     acc += ab.prefix_matches(half)[n - 1] // timed: strings.prefix_matches
     acc += overlap(ab, abs[1 - r % 2]) // timed: strings.overlap
-    for k in ab.shift_and(half): acc += k // timed: strings.shift_and
     for k in ab.find_all_wildcard(wild): acc += k // timed: strings.find_all_wildcard
     acc += manacher(s).len // timed: strings.manacher
 for r in 0..256:

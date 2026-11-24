@@ -7120,6 +7120,22 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/shift_and.cp::strings.find_all": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.find_all",
+   "measured": 4.16,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/shift_and.cp::strings.shift_and": {
+   "cost": "\\lvert \\mathit{self} \\rvert \\cdot \\lceil \\lvert \\mathit{pat} \\rvert / 64 \\rceil + \\lvert \\mathit{pat} \\rvert",
+   "documented": 15.64,
+   "fn": "strings.shift_and",
+   "measured": 8.73,
+   "n": 2048,
+   "ok": true
+  },
   "bench/scaling/sieve.cp::math.Sieve.div_count_table": {
    "cost": "n",
    "documented": 4.0,
@@ -7404,7 +7420,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.borders",
-   "measured": 4.91,
+   "measured": 3.82,
    "n": 512,
    "ok": true
   },
@@ -7412,7 +7428,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
    "fn": "strings.common_prefix_len",
-   "measured": 4.35,
+   "measured": 1.73,
    "n": 512,
    "ok": true
   },
@@ -7420,7 +7436,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
    "fn": "strings.common_suffix_len",
-   "measured": 4.83,
+   "measured": 3.0,
    "n": 512,
    "ok": true
   },
@@ -7428,7 +7444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.digit",
-   "measured": 0.86,
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -7436,7 +7452,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{pat} \\rvert)",
    "documented": 4.0,
    "fn": "strings.ends_with",
-   "measured": 4.29,
+   "measured": 2.39,
    "n": 512,
    "ok": true
   },
@@ -7444,7 +7460,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
    "documented": 4.0,
    "fn": "strings.find_all",
-   "measured": 4.53,
+   "measured": 2.92,
    "n": 512,
    "ok": true
   },
@@ -7452,7 +7468,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert \\cdot \\lvert \\mathit{pat} \\rvert",
    "documented": 16.0,
    "fn": "strings.find_all_wildcard",
-   "measured": 13.54,
+   "measured": 10.16,
    "n": 512,
    "ok": true
   },
@@ -7460,7 +7476,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_alnum",
-   "measured": 0.96,
+   "measured": 0.87,
    "n": 512,
    "ok": true
   },
@@ -7468,7 +7484,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_alpha",
-   "measured": 0.75,
+   "measured": 0.81,
    "n": 512,
    "ok": true
   },
@@ -7476,7 +7492,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_digit",
-   "measured": 1.0,
+   "measured": 0.74,
    "n": 512,
    "ok": true
   },
@@ -7484,7 +7500,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_lower",
-   "measured": 0.8,
+   "measured": 0.98,
    "n": 512,
    "ok": true
   },
@@ -7492,7 +7508,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.is_palindrome",
-   "measured": 3.6,
+   "measured": 3.29,
    "n": 512,
    "ok": true
   },
@@ -7500,7 +7516,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_space",
-   "measured": 0.94,
+   "measured": 0.89,
    "n": 512,
    "ok": true
   },
@@ -7508,7 +7524,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_upper",
-   "measured": 0.96,
+   "measured": 0.97,
    "n": 512,
    "ok": true
   },
@@ -7516,7 +7532,7 @@
    "cost": "\\lvert \\mathit{output} \\rvert",
    "documented": 4.0,
    "fn": "strings.join",
-   "measured": 3.97,
+   "measured": 3.47,
    "n": 512,
    "ok": true
   },
@@ -7524,7 +7540,7 @@
    "cost": "\\sum_w \\lvert w \\rvert \\cdot \\log n",
    "documented": 4.89,
    "fn": "strings.lcs_all",
-   "measured": 3.13,
+   "measured": 3.88,
    "n": 512,
    "ok": true
   },
@@ -7532,7 +7548,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.lower",
-   "measured": 0.92,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -7540,7 +7556,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.lyndon_factorization",
-   "measured": 3.82,
+   "measured": 3.2,
    "n": 512,
    "ok": true
   },
@@ -7548,7 +7564,7 @@
    "cost": "n \\log n",
    "documented": 4.89,
    "fn": "strings.lyndon_runs",
-   "measured": 3.63,
+   "measured": 5.39,
    "n": 512,
    "ok": true
   },
@@ -7556,7 +7572,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.manacher",
-   "measured": 4.51,
+   "measured": 4.63,
    "n": 512,
    "ok": true
   },
@@ -7564,7 +7580,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.max_rotation",
-   "measured": 4.33,
+   "measured": 3.12,
    "n": 512,
    "ok": true
   },
@@ -7572,7 +7588,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.min_rotation",
-   "measured": 4.99,
+   "measured": 2.48,
    "n": 512,
    "ok": true
   },
@@ -7580,7 +7596,7 @@
    "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
    "documented": 4.0,
    "fn": "strings.overlap",
-   "measured": 4.45,
+   "measured": 3.96,
    "n": 512,
    "ok": true
   },
@@ -7588,7 +7604,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.parse",
-   "measured": 4.78,
+   "measured": 3.87,
    "n": 512,
    "ok": true
   },
@@ -7596,7 +7612,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.parse_int",
-   "measured": 3.86,
+   "measured": 3.02,
    "n": 512,
    "ok": true
   },
@@ -7604,7 +7620,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.period",
-   "measured": 5.43,
+   "measured": 3.0,
    "n": 512,
    "ok": true
   },
@@ -7612,7 +7628,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.prefix_function",
-   "measured": 3.96,
+   "measured": 3.97,
    "n": 512,
    "ok": true
   },
@@ -7620,7 +7636,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
    "documented": 4.0,
    "fn": "strings.prefix_matches",
-   "measured": 4.38,
+   "measured": 3.9,
    "n": 512,
    "ok": true
   },
@@ -7628,7 +7644,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert \\cdot n",
    "documented": 4.0,
    "fn": "strings.repeat",
-   "measured": 4.5,
+   "measured": 2.76,
    "n": 512,
    "ok": true
   },
@@ -7636,7 +7652,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{output} \\rvert",
    "documented": 4.0,
    "fn": "strings.replace",
-   "measured": 3.92,
+   "measured": 3.58,
    "n": 512,
    "ok": true
   },
@@ -7644,7 +7660,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
    "documented": 4.0,
    "fn": "strings.rsearch",
-   "measured": 5.93,
+   "measured": 2.51,
    "n": 512,
    "ok": true
   },
@@ -7652,15 +7668,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
    "documented": 4.0,
    "fn": "strings.search",
-   "measured": 5.1,
-   "n": 512,
-   "ok": true
-  },
-  "bench/scaling/str_free.cp::strings.shift_and": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
-   "documented": 4.0,
-   "fn": "strings.shift_and",
-   "measured": 4.37,
+   "measured": 3.76,
    "n": 512,
    "ok": true
   },
@@ -7668,7 +7676,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.split_once",
-   "measured": 4.23,
+   "measured": 3.2,
    "n": 512,
    "ok": true
   },
@@ -7676,7 +7684,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.split_whitespace",
-   "measured": 2.03,
+   "measured": 2.46,
    "n": 512,
    "ok": true
   },
@@ -7684,7 +7692,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert - \\mathit{at}, \\lvert \\mathit{pat} \\rvert)",
    "documented": 4.01,
    "fn": "strings.starts_with",
-   "measured": 4.51,
+   "measured": 2.65,
    "n": 512,
    "ok": true
   },
@@ -7692,7 +7700,7 @@
    "cost": "n \\log n",
    "documented": 4.89,
    "fn": "strings.suffix_array",
-   "measured": 3.74,
+   "measured": 4.2,
    "n": 512,
    "ok": true
   },
@@ -7700,7 +7708,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.suffix_tree_edges",
-   "measured": 3.97,
+   "measured": 5.06,
    "n": 512,
    "ok": true
   },
@@ -7708,7 +7716,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.to_lower",
-   "measured": 5.3,
+   "measured": 3.52,
    "n": 512,
    "ok": true
   },
@@ -7716,7 +7724,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.to_upper",
-   "measured": 2.39,
+   "measured": 3.86,
    "n": 512,
    "ok": true
   },
@@ -7724,7 +7732,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.trim",
-   "measured": 3.62,
+   "measured": 4.02,
    "n": 512,
    "ok": true
   },
@@ -7732,7 +7740,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.trim_end",
-   "measured": 4.42,
+   "measured": 3.45,
    "n": 512,
    "ok": true
   },
@@ -7740,7 +7748,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.trim_start",
-   "measured": 4.31,
+   "measured": 3.21,
    "n": 512,
    "ok": true
   },
@@ -7748,7 +7756,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.upper",
-   "measured": 1.22,
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -7756,7 +7764,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.z_function",
-   "measured": 3.41,
+   "measured": 3.74,
    "n": 512,
    "ok": true
   },

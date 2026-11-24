@@ -708,17 +708,46 @@ pub struct KmpAutomaton<A>:
             if state == m: yield pos - m
 
 /// The start position of every occurrence of `pat` in `self`, overlapping ones included,
-/// the same matches as `find_all`, which it runs (KMP), for code ported from Shift-And.
+/// by bit-parallel Shift-And: one bit per pattern position, \(\lceil \lvert \mathit{pat} \rvert / 64 \rceil\)
+/// words of state stepped per element. The same matches as `find_all` (KMP); faster than it
+/// for patterns of up to a few words.
 ///
 /// The starts are keys of `self`, as for `find_all`.
 ///
-/// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{pat} \rvert)\)
+/// cost: \(O(\lvert \mathit{self} \rvert \cdot \lceil \lvert \mathit{pat} \rvert / 64 \rceil + \lvert \mathit{pat} \rvert)\) expected
 /// empty: `("ab".shift_and("").collect(), "".shift_and("a").collect()) == ([0, 1], [])`
 /// order: increasing start
 /// traps: never
 /// example: `"abab".shift_and("ab").collect() == [0, 2]`
 pub fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K:
-    for i in find_all(self, pat): yield i
+    let m = pat.len
+    if m == 0:
+        for k in self.keys: yield k
+        return
+    let words = (m + 63) / 64
+    var class = HashMap<T, Int>()
+    var masks: List<U64> = []
+    for j in 0..m:
+        let c = pat.nth(j)
+        var id = class.get(c) ?? -1
+        if id == -1:
+            id = masks.len / words
+            class[c] = id
+            for _ in 0..words: masks.push(U64(0))
+        masks[id * words + j / 64] |= U64(1) << (j % 64)
+    var d = List.filled(words, U64(0))
+    let (last, top) = ((m - 1) / 64, U64(1) << ((m - 1) % 64))
+    for i in 0..self.len:
+        let id = class.get(self.nth(i)) ?? -1
+        if id == -1:
+            for w in 0..words: d[w] = U64(0)
+            continue
+        var carry = U64(1)
+        for w in 0..words:
+            let x = d[w]
+            d[w] = ((x << 1) | carry) & masks[id * words + w]
+            carry = x >> 63
+        if (d[last] & top) != U64(0): yield self.keys.nth(i + 1 - m)
 
 /// The start key of every place where `pat` matches `self` when each `wildcard` in
 /// `pat` matches any one element. A `wildcard` in `self` is an ordinary element.

@@ -102,7 +102,7 @@ def big_o(cost):
     return m.group(1) if m else None
 
 
-BUILTINS = ("lg", "sqrt", "min", "max", "C")
+BUILTINS = ("lg", "sqrt", "min", "max", "C", "ceil")
 
 
 def _arg(f, i):
@@ -126,6 +126,7 @@ def python(formula):
     symbols, each spelt `v_<symbol>`."""
     f = formula
     f = re.sub(r"\\lvert\s*(.*?)\s*\\rvert", r"(\1)", f)
+    f = re.sub(r"\\lceil\s*(.*?)\s*\\rceil", r"ceil(\1)", f)
     f = f.replace("\\_", "_").replace("³", "^3").replace("²", "^2")
     f = re.sub(r"\\mathit\{(\w+)\}", r"\1", f)
     f = re.sub(r"(\w+)\.(\w+)", r"\1_\2", f)
@@ -175,7 +176,7 @@ def growth(formula, fixed=(), k=4.0, n=float(N), let=None):
     other symbol for n."""
     let = {s: python(e) for s, e in (let or {}).items()}
     env = {"__builtins__": {}, "lg": lambda v: math.log2(max(v, 2.0)),
-           "sqrt": math.sqrt, "min": min, "max": max,
+           "sqrt": math.sqrt, "min": min, "max": max, "ceil": math.ceil,
            "C": lambda a, b: math.exp(math.lgamma(a + 1) - math.lgamma(b + 1) - math.lgamma(a - b + 1))}
 
     def at(x, f, inner=False):

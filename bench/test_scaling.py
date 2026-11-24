@@ -48,6 +48,13 @@ class Growth(unittest.TestCase):
         self.assertAlmostEqual(scaling.growth("C(n, k)", let={"k": "2"}, n=15.0), 1770 / 105, places=3)
         self.assertAlmostEqual(scaling.growth("C(n, k)", fixed=("k",)), 4.0, places=3)
 
+    def test_a_ceiling_grows_as_its_value(self):
+        f = r"\lvert s \rvert \cdot \lceil \lvert p \rvert / 64 \rceil"
+        self.assertAlmostEqual(scaling.growth(f, n=512.0), 16.0, places=3)
+        self.assertAlmostEqual(scaling.growth(f, fixed=("p",), n=512.0), 4.0, places=3)
+        self.assertAlmostEqual(scaling.growth(f, fixed=("s",), n=8.0), 1.0, places=3)
+        self.assertAlmostEqual(scaling.growth(f, fixed=("s",), n=200.0), 13 / 4, places=3)
+
     def test_a_sum_grows_as_its_term_times_its_bound(self):
         self.assertEqual(scaling.growth(r"\sum_i p_i^{e_i}", fixed=("p_i", "e_i")), 1.0)
         self.assertAlmostEqual(scaling.growth(r"\sum_{i=1}^{k} \log n", fixed=("k",)), 16 / 14, places=3)
