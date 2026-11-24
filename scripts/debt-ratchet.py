@@ -1447,19 +1447,12 @@ def _corpus():
 
 
 def _built_cpl(root: Path) -> Path:
-    """$CPL, else the newer current one of target/debug/cpl and target/release/cpl, as
-    corpus.py's `cpl_stale` (cargo's dep-info) judges them: a stale cpl measures the code it
-    was built from, so with none current it raises, naming the build command, and never counts."""
-    stale = _corpus().cpl_stale
-    if env := os.environ.get("CPL"):
-        candidates = [Path(env)]
-    else:
-        built = [p for p in (root / "target/debug/cpl", root / "target/release/cpl") if p.is_file()]
-        candidates = sorted(built, key=lambda p: p.stat().st_mtime, reverse=True) or [root / "target/debug/cpl"]
-    for cpl in candidates:
-        if not stale(str(cpl), str(root)):
-            return cpl
-    raise MeasureError(f"cpl: {stale(str(candidates[0]), str(root))}")
+    """`corpus.current_cpl`: a stale cpl measures the code it was built from, so with none
+    current it raises, naming the build command, and never counts."""
+    cpl, why = _corpus().current_cpl(root)
+    if why:
+        raise MeasureError(f"cpl: {why}")
+    return cpl
 
 
 def corpus_fmt_dirty(root: Path) -> list[str]:

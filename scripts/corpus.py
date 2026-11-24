@@ -1658,6 +1658,22 @@ def cpl_stale(cpl, root=None):
     return None
 
 
+def current_cpl(root=None):
+    """$CPL, else the newer current one of target/debug/cpl and target/release/cpl, as
+    `cpl_stale` judges them: `(cpl, None)`, or `(cpl, why)` naming the build command when
+    none is current. Every script that runs the built `cpl` picks it here."""
+    root = Path(root or ROOT)
+    if env := os.environ.get("CPL"):
+        candidates = [Path(env)]
+    else:
+        built = [p for p in (root / "target/debug/cpl", root / "target/release/cpl") if p.is_file()]
+        candidates = sorted(built, key=lambda p: p.stat().st_mtime, reverse=True) or [root / "target/debug/cpl"]
+    for cpl in candidates:
+        if not cpl_stale(str(cpl), str(root)):
+            return cpl, None
+    return candidates[0], cpl_stale(str(candidates[0]), str(root))
+
+
 def require_cpl(cpl):
     """Exit with `cpl_stale`'s line when `cpl` is missing or stale: a stale binary may lack a
     command corpus.py runs (`cpl test --make`) and fail with its usage."""

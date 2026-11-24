@@ -1533,5 +1533,49 @@ class AtBaseTest(unittest.TestCase):
         self.assertIn("verify exited 2", self._base("interp-timeout yac6p6 08.in\n", code=2)[1])
 
 
+class CurrentCplTest(unittest.TestCase):
+    """Every script runs the newest current `cpl`, so a release build left from before a
+    rebase never scores or measures the old code (newcomer score.py scored 0% on one)."""
+
+    def _tree(self, root):
+        for f, t in (("crates/x/src/lib.rs", 1), ("crates/x/src/new.rs", 3000)):
+            (root / f).parent.mkdir(parents=True, exist_ok=True)
+            (root / f).write_text("\n")
+            os.utime(root / f, (t, t))
+        for build, dep, t in (("debug", "lib.rs", 1000), ("release", "new.rs", 2000)):
+            cpl = root / "target" / build / "cpl"
+            cpl.parent.mkdir(parents=True, exist_ok=True)
+            cpl.write_text("#!/bin/sh\n")
+            (root / "target" / build / "cpl.d").write_text(f"{cpl}: crates/x/src/{dep}\n")
+            os.utime(cpl, (t, t))
+
+    def test_a_stale_newer_release_gives_way_to_a_current_debug(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CPL", None)
+            root = Path(tmp)
+            self._tree(root)
+            self.assertEqual(corpus.current_cpl(root), (root / "target/debug/cpl", None))
+            os.utime(root / "target/debug/cpl", (2, 2))
+            os.utime(root / "crates/x/src/lib.rs", (5, 5))
+            cpl, why = corpus.current_cpl(root)
+            self.assertEqual(cpl, root / "target/release/cpl")
+            self.assertIn("target/release/cpl is stale: run cargo build --release -p cpl-cli", why)
+
+    def test_newcomer_score_refuses_a_stale_cpl(self):
+        spec = importlib.util.spec_from_file_location("score", Path(__file__).resolve().parents[1] / "corpus/newcomer/score.py")
+        score = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(score)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CPL", None)
+            root = Path(tmp)
+            self._tree(root)
+            os.utime(root / "crates/x/src/lib.rs", (5000, 5000))
+            with mock.patch.object(score, "ROOT", root), self.assertRaisesRegex(SystemExit, "score: target/release/cpl is stale"):
+                score.cpl()
+            os.utime(root / "crates/x/src/lib.rs", (1, 1))
+            with mock.patch.object(score, "ROOT", root):
+                self.assertEqual(score.cpl(), str(root / "target/debug/cpl"))
+
+
 if __name__ == "__main__":
     unittest.main()

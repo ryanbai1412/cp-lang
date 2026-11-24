@@ -31,10 +31,14 @@ MARK = re.compile(r"//\s*expect:\s*(.+?)\s*$")
 
 
 def cpl():
-    for p in [os.environ.get("CPL"), ROOT / "target" / "release" / "cpl", ROOT / "target" / "debug" / "cpl", shutil.which("cpl")]:
-        if p and Path(p).exists():
-            return str(p)
-    sys.exit("score: no cpl binary; build it with `cargo build -p cpl-cli`")
+    """The newest current `cpl` (`corpus.current_cpl`): a stale build scores the lints it was built with."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from corpus import current_cpl
+
+    bin, why = current_cpl(ROOT)
+    if why:
+        sys.exit(f"score: {why}")
+    return str(bin)
 
 
 def lint_names(bin):
