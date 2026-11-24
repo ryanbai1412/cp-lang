@@ -110,8 +110,8 @@ impl<'a> Lowerer<'a> {
             );
             let blanket = self.domain_blanket_param(idx);
             let head_env = match (t, &target.kind) {
-                (Ty::Pos(d), _) if blanket.is_some() => {
-                    Some(GenEnv::from([(blanket.unwrap(), GenArg::Domain(*d))]))
+                (Ty::Pos(d), _) if let Some(blanket) = &blanket => {
+                    Some(GenEnv::from([(blanket.clone(), GenArg::Domain(*d))]))
                 }
                 _ if blanket.is_some() => continue,
                 (Ty::Struct(sid), ast::TypeKind::Named { args, .. }) if !args.is_empty() => {
@@ -548,9 +548,8 @@ impl<'a> Lowerer<'a> {
             .or_else(|| self.prim_self.get(&id).cloned());
         let mut params = Vec::new();
         for (i, param) in decl.params.iter().enumerate() {
-            if i == 0 && param.name.text == "self" && self.sigs[id].owner.is_some() {
+            if let (0, "self", Some(owner)) = (i, param.name.text.as_str(), self.sigs[id].owner) {
                 // A method that grows a cache works on the caller's struct.
-                let owner = self.sigs[id].owner.expect("checked above");
                 let cached = self.stress != call::Stress::ColdCache
                     && self.structs[owner]
                         .decl
