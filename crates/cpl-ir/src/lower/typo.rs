@@ -349,6 +349,21 @@ impl<'a> Lowerer<'a> {
             }
             return;
         }
+        // Python's `sep=' '`: its quotes make a string either way.
+        let quoted = text.strip_prefix('\'').and_then(|t| t.strip_suffix('\''));
+        if let (Ty::Char, Ty::Str, Some(inner)) = (found, want, quoted.filter(|t| !t.contains('"')))
+        {
+            let (new, edit) = (format!("\"{inner}\""), self.span(span));
+            if let Some(last) = self
+                .diags
+                .last_mut()
+                .filter(|d| d.code == codes::TYPE_MISMATCH)
+            {
+                last.help = Some("a string is written in double quotes".into());
+                last.fix(format!("write `{new}`"), edit, new);
+            }
+            return;
+        }
         let Some(c) = cpl_check::char_literal(&text) else {
             return;
         };

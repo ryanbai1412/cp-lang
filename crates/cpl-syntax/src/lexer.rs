@@ -1457,6 +1457,12 @@ impl<'a> Lexer<'a> {
                 return;
             }
             self.pos += 1;
+        } else if let Some(close) = rest
+            .find(['\'', '\n'])
+            .filter(|&i| rest.as_bytes()[i] == b'\'')
+        {
+            // Python's `', '`: one string, not two stray quotes.
+            self.pos += close + 1;
         }
         let span = Span::new(start as u32, self.pos as u32);
         self.out.poisoned.push(span);
@@ -1470,7 +1476,7 @@ impl<'a> Lexer<'a> {
         if let Some(inner) = text
             .strip_prefix('\'')
             .and_then(|t| t.strip_suffix('\''))
-            .filter(|t| t.len() > 1 && !t.contains('"'))
+            .filter(|t| t.chars().count() != 1 && !t.contains('"'))
         {
             diag = diag.with_fix("make it a string", span, format!("\"{inner}\""));
         }
