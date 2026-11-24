@@ -3,6 +3,7 @@
 import { Bug, History, ListChecks, Loader2, Play, RotateCcw, Share2, Square, Type } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { CodeEditor } from '@/components/editor/code-editor';
+import { CPL_EXEC, type CodeLens } from '@/components/editor/lsp-actions';
 import { inlayHintsOn, setInlayHints } from '@/components/editor/intelligence';
 import { type Status, StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { cpl, stop, type Diagnostic, type StressOutcome } from '@/lib/cpl';
+import { cpl, started, stop, type Diagnostic, type StressOutcome } from '@/lib/cpl';
+import { LspDoc } from '@/lib/lsp';
 import { tools } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 
@@ -106,7 +108,25 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
       setResult({ kind: 'error', message: (e as Error).message });
     }
   }, [program]);
-  const stressable = /^@(brute|alt|check|checker)\b/m.test(source);
+  // Stress is offered where the language server offers its Stress lens. Asking
+  // it loads cpl.wasm, so until something else has loaded it, a guess stands in.
+  const [lensStress, setLensStress] = useState<boolean | null>(null);
+  const running = result.kind === 'running';
+  useEffect(() => {
+    if (!started() || running) return;
+    const doc = new LspDoc(() => source);
+    const timer = setTimeout(() => {
+      doc
+        .request<CodeLens[]>('textDocument/codeLens', {})
+        .then((got) => setLensStress(!!got?.some((l) => l.command?.command === CPL_EXEC && l.command.arguments?.[0] === 'stress')))
+        .catch(() => setLensStress(null));
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      doc.close();
+    };
+  }, [source, running]);
+  const stressable = lensStress ?? /^@(brute|alt|check|checker|interactor)\b/m.test(source);
 
   const runLint = useCallback(async () => {
     setTab('output');

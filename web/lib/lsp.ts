@@ -27,7 +27,7 @@ function session<T>(task: (send: LspSend) => Promise<T>): Promise<T> {
   return lspTask(async (send, fresh) => {
     if (fresh) {
       known.clear();
-      const replies = (await send({ jsonrpc: '2.0', id: 0, method: 'initialize', params: {} })) as Reply[];
+      const replies = (await send({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { initializationOptions: { codeLens: true } } })) as Reply[];
       const init = replies.find((r) => r.id === 0)?.result as { capabilities?: Capabilities } | undefined;
       advertised = init?.capabilities ?? {};
       await notify(send, 'initialized', {});

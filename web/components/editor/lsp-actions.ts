@@ -45,6 +45,11 @@ type Symbol = {
 };
 type CallItem = { name: string; uri: string; range: Range; selectionRange: Range };
 
+
+/** A code lens; a `cpl.exec` one runs `cpl` with its arguments, as `["stress", path]`. */
+export type CodeLens = { range: Range; command?: { title: string; command?: string; arguments?: string[] } };
+export const CPL_EXEC = "cpl.exec";
+
 export type Lsp = {
   editable: boolean;
   uri: (view: EditorView) => string;
@@ -460,9 +465,10 @@ export function lspActions(lsp: Lsp): { extension: Extension; link: (view: Edito
   const lensPlugin = onDocument(
     lsp,
     800,
-    (view) => lsp.request<{ range: Range; command?: { title: string } }[]>(view, "textDocument/codeLens"),
+    (view) => lsp.request<CodeLens[]>(view, "textDocument/codeLens"),
     (view, got) => {
-      const marks: CmRange<Decoration>[] = got.flatMap((l) => {
+      // `cpl.exec` lenses (Run, Trace, Stress) are the runner's buttons.
+      const marks: CmRange<Decoration>[] = got.filter((l) => l.command?.command !== CPL_EXEC).flatMap((l) => {
         const pos = lsp.fromLsp(view, l.range.start) ?? 0;
         return l.command?.title ? [Decoration.widget({ widget: new LensWidget(l.command.title), block: true, side: -1 }).range(view.state.doc.lineAt(pos).from)] : [];
       });
