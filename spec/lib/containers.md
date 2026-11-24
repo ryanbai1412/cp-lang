@@ -610,6 +610,13 @@ struct PMultiset<D>                            // hashed persistent multiset
     fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int                 // O(log |D|)
     fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int  // O(log |D|)
     // ==: O(1) by size and a 64-bit sum of fixed per-key weights
+
+struct PersistentDsu<V>                        // one version of a union-find (std.dsu)
+    fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>             // O(n) time, 2n - 1 nodes
+    fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V                     // O(log^2 n)
+    fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool            // O(log^2 n)
+    fn size(self, ar: PArena<DsuNode<V>>, v: V) -> Int                   // O(log^2 n)
+    fn unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>  // O(log^2 n), O(log n) nodes; self when already one set
 ```
 
 `cmp` orders the sorted elements lexicographically (largest first with

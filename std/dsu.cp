@@ -1,5 +1,7 @@
 //! Disjoint sets over a domain, with optional values per set, parities, and rollback.
 use std.algebra.{Group}
+use std.marks.{Id}
+use std.persistent.{PArena}
 
 /// A point in the history of a structure that can step back in time, returned by `mark()`
 /// and taken by `undo_to`. Its own type, so it can't be mixed up with a count or an index.
@@ -677,141 +679,111 @@ pub struct RollbackArray<D, T>:
             let (i, old) = log.pop()!
             data[i] = old
 
-/// Path-copying persistent disjoint-set union over domain `V`.
-/// Every version remains readable; `find`, `unite`, `same`, and `size` run in \(O(\log^2 n)\).
+/// One node of a `PersistentDsu<V>`'s path-copied array: a leaf holds one position's parent and,
+/// at a root, its set's size; an inner node holds its two halves. Nodes live in a
+/// `PArena<DsuNode<V>>` the caller holds.
+pub struct DsuNode<V>:
+    _l: ?Id<DsuNode<V>> = None
+    _r: ?Id<DsuNode<V>> = None
+    _parent: Int = 0
+    _size: Int = 0
+
+/// One version of a persistent disjoint-set union over domain `V`: an immutable value whose nodes
+/// live in a `PArena<DsuNode<V>>` the caller holds and passes to every call. `unite` returns a new
+/// version and leaves `self` readable; versions share every node they did not change.
+///
+/// Union by size without path compression keeps every tree \(O(\log n)\) deep, and each parent
+/// lookup walks one \(O(\log n)\) path of the array, so queries take \(O(\log^2 n)\). A version only
+/// reads nodes of the arena that built it.
 pub struct PersistentDsu<V>:
-    _parts: Int = 0
-    _kid: List<(Int, Int)> = []
-    _cell: List<(Int, Int)> = []
-    _roots: List<Int> = []
+    _root: Id<DsuNode<V>>
 
-    /// A persistent union-find over `V` holding version 0, every position in its own set.
+    /// The version where every position of `V` is alone, built in `ar`.
     ///
-    /// cost: \(O(n)\)
+    /// cost: \(O(n)\) time and \(2n - 1\) arena nodes
     /// traps: never
-    /// example: `let d = PersistentDsu<0..3>(); not d.same(d.base, 0, 1)`
-    pub fn new() -> PersistentDsu<V>:
-        var d: PersistentDsu<V> = PersistentDsu(V.count, [], [], [])
-        let root = d.build(0, V.count)
-        d._roots.push(root)
-        d
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); not d.same(ar, 0, 1) and ar.len == 5`
+    pub fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V> =
+        PersistentDsu(build(mut ar, 0, V.count))
 
-    fn build(mut self, lo: Int, hi: Int) -> Int:
-        if hi - lo <= 1:
-            _kid.push((-1, -1))
-            _cell.push((lo, 1))
-            return _kid.len - 1
-        let mid = (lo + hi) / 2
-        let l = self.build(lo, mid)
-        let r = self.build(mid, hi)
-        _kid.push((l, r))
-        _cell.push((0, 0))
-        _kid.len - 1
+    /// The representative of `v`'s set, chosen by union by size as in [`Dsu.find`](Dsu.find).
+    ///
+    /// cost: \(O(\log^2 n)\)
+    /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); let e = d.unite(mut ar, 2, 1); e.find(ar, 1) == 2 and d.find(ar, 1) == 1`
+    pub fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V = V.nth(self.root_ord(ar, v.ord))
 
-    fn get(self, root: Int, i: Int) -> (Int, Int):
-        var t = root
+    /// Whether `a` and `b` are in the same set.
+    ///
+    /// cost: \(O(\log^2 n)\)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); let e = d.unite(mut ar, 0, 1); e.same(ar, 0, 1) and not d.same(ar, 0, 1)`
+    pub fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool =
+        self.root_ord(ar, a.ord) == self.root_ord(ar, b.ord)
+
+    /// The number of positions in `v`'s set, `v` included.
+    ///
+    /// cost: \(O(\log^2 n)\)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); let e = d.unite(mut ar, 0, 1); e.size(ar, 1) == 2 and d.size(ar, 1) == 1`
+    pub fn size(self, ar: PArena<DsuNode<V>>, v: V) -> Int =
+        self.leaf(ar, self.root_ord(ar, v.ord))._size
+
+    /// A new version with the sets of `a` and `b` merged; `self` is unchanged. Merging keeps the
+    /// larger set's root, `a`'s root on equal sizes. When `a` and `b` are already one set it
+    /// returns `self` and allocates nothing.
+    ///
+    /// cost: \(O(\log^2 n)\) time and \(O(\log n)\) arena nodes
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); let e = d.unite(mut ar, 0, 1); let f = d.unite(mut ar, 1, 2); f.same(ar, 1, 2) and not f.same(ar, 0, 1) and e.same(ar, 0, 1)`
+    pub fn unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>:
+        var x = self.root_ord(ar, a.ord)
+        var y = self.root_ord(ar, b.ord)
+        if x == y: return self
+        let nx = self.leaf(ar, x)._size
+        let ny = self.leaf(ar, y)._size
+        if nx < ny: (x, y) = (y, x)
+        var root = put(mut ar, _root, 0, V.count, y, DsuNode(_parent: x, _size: ny))
+        root = put(mut ar, root, 0, V.count, x, DsuNode(_parent: x, _size: nx + ny))
+        PersistentDsu(root)
+
+    fn leaf(self, ar: PArena<DsuNode<V>>, i: Int) -> DsuNode<V>:
+        var t = ar.get(_root)
         var (lo, hi) = (0, V.count)
         while hi - lo > 1:
             let mid = (lo + hi) / 2
-            let (l, r) = _kid[t]
             if i < mid:
-                t = l
+                t = ar.get(t._l!)
                 hi = mid
             else:
-                t = r
+                t = ar.get(t._r!)
                 lo = mid
-        _cell[t]
+        t
 
-    fn put(mut self, t: Int, lo: Int, hi: Int, i: Int, cell: (Int, Int)) -> Int:
-        if hi - lo <= 1:
-            _kid.push((-1, -1))
-            _cell.push(cell)
-            return _kid.len - 1
-        let mid = (lo + hi) / 2
-        var (l, r) = _kid[t]
-        if i < mid: l = self.put(l, lo, mid, i, cell)
-        else: r = self.put(r, mid, hi, i, cell)
-        _kid.push((l, r))
-        _cell.push((0, 0))
-        _kid.len - 1
-
-    fn root_ord(self, ver: Int, start: Int) -> Int:
-        assert 0 <= ver < _roots.len, "`ver` is not a version of this PersistentDsu"
+    fn root_ord(self, ar: PArena<DsuNode<V>>, start: Int) -> Int:
         var x = start
         while true:
-            let (p, _) = self.get(_roots[ver], x)
+            let p = self.leaf(ar, x)._parent
             if p == x: return x
             x = p
         x
 
-    /// The handle of version 0, where every position is alone.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `PersistentDsu<0..3>().base == 0`
-    @get pub fn base(self) -> Int = 0
+// The array where position `i` of `lo..hi` is its own parent with size 1; returns its root node.
+fn build<V>(mut ar: PArena<DsuNode<V>>, lo: Int, hi: Int) -> Id<DsuNode<V>>:
+    if hi - lo <= 1: return ar.alloc(DsuNode(_parent: lo, _size: 1))
+    let mid = (lo + hi) / 2
+    let l = build(mut ar, lo, mid)
+    let r = build(mut ar, mid, hi)
+    ar.alloc(DsuNode(_l: Some(l), _r: Some(r)))
 
-    /// The representative of `v`'s set in version `ver`, chosen by union by size as in
-    /// [`Dsu.find`](Dsu.find).
-    ///
-    /// cost: \(O(\log^2 n)\)
-    /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
-    /// traps: when `ver` is not a version handle of `self`
-    /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 2, 1); d.find(v1, 1) == 2 and d.find(d.base, 1) == 1`
-    pub fn find(self, ver: Int, v: V) -> V = V.nth(self.root_ord(ver, v.ord))
-
-    /// Whether `a` and `b` are in the same set in version `ver`.
-    ///
-    /// cost: \(O(\log^2 n)\)
-    /// traps: when `ver` is not a version handle of `self`
-    /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 0, 1); d.same(v1, 0, 1) and not d.same(d.base, 0, 1)`
-    pub fn same(
-        self,
-        ver: Int,
-        a: V,
-        b: V,
-    ) -> Bool = self.root_ord(ver, a.ord) == self.root_ord(ver, b.ord)
-
-    /// The number of positions in `v`'s set in version `ver`, `v` included.
-    ///
-    /// cost: \(O(\log^2 n)\)
-    /// traps: when `ver` is not a version handle of `self`
-    /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 0, 1); d.size(v1, 1) == 2 and d.size(d.base, 1) == 1`
-    pub fn size(self, ver: Int, v: V) -> Int:
-        let (_, n) = self.get(_roots[ver], self.root_ord(ver, v.ord))
-        n
-
-    /// A new version equal to `ver` with the sets of `a` and `b` merged; `ver` itself is unchanged.
-    ///
-    /// Handles are numbered in creation order: the k-th call returns `k`. A call whose `a` and `b`
-    /// are already one set in `ver` still returns a fresh handle, equal in content to `ver`. Merging
-    /// keeps the larger set's root, `a`'s root on equal sizes.
-    ///
-    /// cost: \(O(\log^2 n)\) time and \(O(\log n)\) memory
-    /// traps: when `ver` is not a version handle of `self`
-    /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 0, 1); let v2 = d.unite(d.base, 1, 2); v1 == 1 and v2 == 2 and d.same(v2, 1, 2) and not d.same(v2, 0, 1)`
-    pub fn unite(mut self, ver: Int, a: V, b: V) -> Int:
-        var x = self.root_ord(ver, a.ord)
-        var y = self.root_ord(ver, b.ord)
-        var root = _roots[ver]
-        if x != y:
-            let (_, nx) = self.get(root, x)
-            let (_, ny) = self.get(root, y)
-            if nx < ny: (x, y) = (y, x)
-            root = self.put(root, 0, V.count, y, (x, ny))
-            root = self.put(root, 0, V.count, x, (x, nx + ny))
-        _roots.push(root)
-        _roots.len - 1
-
-    /// Preallocates room for at least `nodes` persistent-array nodes, so later `unite`s do not
-    /// grow the pool. Changes no version.
-    ///
-    /// cost: \(O(\mathit{nodes})\)
-    /// traps: when `nodes < 0`
-    /// example: `var d = PersistentDsu<0..3>(); d.reserve(100); d.size(d.base, 0) == 1`
-    pub fn reserve(mut self, nodes: Int):
-        _kid.reserve(nodes)
-        _cell.reserve(nodes)
+// A copy of the array under `t` (over `lo..hi`) with leaf `i` replaced by `cell`.
+fn put<V>(mut ar: PArena<DsuNode<V>>, t: Id<DsuNode<V>>, lo: Int, hi: Int, i: Int, cell: DsuNode<V>) -> Id<DsuNode<V>>:
+    if hi - lo <= 1: return ar.alloc(cell)
+    let mid = (lo + hi) / 2
+    let n = ar.get(t)
+    if i < mid: return ar.alloc(n with _l: Some(put(mut ar, n._l!, lo, mid, i, cell)))
+    ar.alloc(n with _r: Some(put(mut ar, n._r!, mid, hi, i, cell)))
 
 @test
 fn potential_dsu_and_rollback_array():

@@ -2,14 +2,6 @@
 # Written by web/scripts/gen-ref.mjs's check; it fails when a line is missing or runs again.
 dp.Step.prune: with `next` as `x => if x < 4: [2 * x, 2 * x + 1] else: []`, a `for s in backtrack(1, next)` body that calls `s.prune()` when `s.state == 2` sees the states `[1, 2, 3, 6, 7]`
 pair.symmetric: `domain V = 0..3; let d: [Pair<V>]Int = [5, 6, 7]; let m = d.symmetric(diag: 0); m[2, 1] == 7 and m[0, 2] == 6 and m[1, 1] == 0`
-persistent.PMultiset.empty: `PMultiset<0..10>.empty().count(3) == 0`
-persistent.PMultiset.with: `let s = PMultiset<0..10>.empty().with(3).with(3); s.count(3) == 2`
-persistent.PMultiset.without: `let s = PMultiset<0..10>.empty().with(3).with(3); s.without(3).count(3) == 1 and s.count(3) == 2`
-persistent.PMultiset.without: `let s = PMultiset<0..10>.empty(); s.without(3) == s`
-persistent.PMultiset.count: `PMultiset<0..10>.empty().with(4).count(4) == 1`
-persistent.PMultiset.cmp: `let e = PMultiset<0..10>.empty(); e.with(1).with(3).cmp(e.with(2)) == -1`
-persistent.PMultiset.cmp: `let e = PMultiset<0..10>.empty(); e.with(1).with(3).cmp(e.with(2), desc: true) == 1`
-persistent.PMultiset.cmp: `let e = PMultiset<0..10>.empty(); e.with(1).cmp(e.with(1).with(2)) == -1`
 segtree.SegTree.new: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
 seq.Filtered.src: `let a = [1, 2]; a.filter(x => x > 1).src == a`
 seq.Mapped.src: `let a = [1, 2]; a.map(x => x * 2).src == a`
