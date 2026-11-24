@@ -9,8 +9,8 @@ scripts/corpus.py's problems()), research/dryrun/v03/*.cp, bench/*/*.cp and
 bench/zero-cost/*/*.cp. A
 program that does not build is listed, not sized. --report writes one line
 per program (bytes, the largest part, the path). --check fails when any built
-program is over the bar, and when any bench program does not build: nothing else builds the bench
-programs, so a rename would rot them unseen. Enforces performance/R8.
+program is over the bar, and when any program does not build: a broken bench
+program or dream would otherwise rot unseen. Enforces performance/R8.
 """
 import argparse, glob, os, re, statistics, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -39,9 +39,8 @@ def programs():
 
 def build_verdict(broken):
     """What to say about the programs `broken` (path, why), and whether --check
-    fails: every bench program must build; corpus programs are left to their suites."""
-    bench = [(p, why) for p, why in broken if p.startswith("bench/")]
-    return [f"sizes: {p} does not build ({why}); fix it" for p, why in bench], bool(bench)
+    fails: every program must build, as there is no list to excuse one."""
+    return [f"sizes: {p} does not build ({why}); fix it" for p, why in broken], bool(broken)
 
 
 def size(cpl, judge, path):

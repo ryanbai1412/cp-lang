@@ -53,9 +53,14 @@ class BuildVerdict(unittest.TestCase):
         self.assertTrue(failed)
         self.assertIn("bench/a/b.cp does not build", messages[0])
 
-    def test_a_corpus_program_that_does_not_build_is_left_to_its_suites(self):
-        _, failed = sizes.build_verdict([(f"{PKGS}/x/port.cp", "error")])
-        self.assertFalse(failed)
+    def test_a_corpus_program_that_does_not_build_fails(self):
+        for kind in ("port", "spec", "dream"):
+            messages, failed = sizes.build_verdict([(f"{PKGS}/x/{kind}.cp", "error")])
+            self.assertTrue(failed)
+            self.assertIn(f"{PKGS}/x/{kind}.cp does not build", messages[0])
+
+    def test_every_program_that_builds_passes(self):
+        self.assertEqual(sizes.build_verdict([]), ([], False))
 
     def test_there_is_no_unbuilt_list(self):
         self.assertFalse(os.path.exists(os.path.join(sizes.ROOT, "bench", "unbuilt.txt")))
