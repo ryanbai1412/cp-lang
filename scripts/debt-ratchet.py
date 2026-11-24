@@ -1568,13 +1568,55 @@ HABIT_FILES = ("crates/cpl-syntax/src/parser/foreign.rs", "crates/cpl-syntax/src
                "crates/cpl-check/src/check/advice.rs")
 
 
+HABIT_REGISTRY = "crates/cpl-diag/src/habits.rs"
+HABIT_MISTAKES = "crates/cpl-cli/tests/habits"
+_HABIT_TEXT = re.compile(r'(with_help|\.help\s*=\s*Some|\.fix|with_fix)\(|\b(?:title|help):\s*|\blet (?:help|title)\s*=\s*')
+
+
+def _first_arg(text: str, i: int) -> str:
+    """The expression starting at `text[i]`, up to its `,`, `;` or closing bracket."""
+    depth, j = 0, i
+    while j < len(text):
+        c = text[j]
+        if c == '"':
+            j += 1
+            while j < len(text) and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}":
+            if depth == 0:
+                break
+            depth -= 1
+        elif c in ",;" and depth == 0:
+            break
+        j += 1
+    return text[i:j]
+
+
 def habit_matchers(root: Path) -> list[str]:
-    """`fn` items in hand-written habit matchers: the named files and any crates file named
-    foreign/habit/advice (Consumers; a generated habit table replaces them)."""
-    files = {rel for rel in _git(root, "ls-files", "crates/**/*.rs")
-             if rel in HABIT_FILES or re.search(r"foreign|habit|advice", Path(rel).name)}
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
-            if rel in files and re.match(r"\s*(pub(\([^)]*\))?\s+)?fn\s", line)]
+    """Help or fix-title text in foreign/advice/habit code that doesn't come from a
+    `cpl_diag::habits` row (a help or fix call, `title:`/`help:`, or `let help`/`let title`
+    whose value holds a string literal), plus rows with no mistake program in
+    crates/cpl-cli/tests/habits. The generated test in crates/cpl-cli/tests/diagnostics.rs
+    fails any row whose mistake doesn't show it or whose fix doesn't check (Consumers; this
+    replaces the count of `fn` items in those files)."""
+    files = [rel for rel in _git(root, "ls-files", "crates/**/*.rs")
+             if (rel in HABIT_FILES or re.search(r"foreign|habit|advice", Path(rel).name))
+             and rel != HABIT_REGISTRY and not rel.endswith("tests.rs")]
+    found = []
+    for rel in files:
+        text = (root / rel).read_text()
+        for m in _HABIT_TEXT.finditer(text):
+            line = text[text.rfind("\n", 0, m.start()) + 1:m.start()]
+            arg = _first_arg(text, m.end())
+            if not line.lstrip().startswith("//") and '"' in arg and "habits::" not in arg:
+                found.append(f"{rel}:{text.count(chr(10), 0, m.start()) + 1}")
+    registry = (root / HABIT_REGISTRY).read_text() if (root / HABIT_REGISTRY).is_file() else ""
+    for key in re.findall(r'\b(?:call|value|shape)\(\s*"(\w+)"', registry):
+        if not (root / HABIT_MISTAKES / f"{key}.cp").is_file():
+            found.append(f"{HABIT_REGISTRY}:{key}")
+    return found
 
 
 FIX_GATE = ("crates/cpl-ir/src/fix.rs", "crates/cpl-lint/src/typed.rs")
@@ -2039,6 +2081,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
+    "habit_matchers",
     "corpus_walkers", "poll_sleeps",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
@@ -2166,7 +2209,7 @@ COUNTERS = {
     "todo_fixme": ("TODO/FIXME in std, web and scripts", todo_fixme, True),
     "web_skip_only": ("web .skip(/.only( (Factory)", web_skip_only, True),
     "ts_ignore": ("web @ts-ignore (Factory)", ts_ignore, True),
-    "habit_matchers": ("fns in hand-written habit matchers (Consumers)", habit_matchers, True),
+    "habit_matchers": ("habit help/fix text outside cpl_diag::habits rows, and rows without a mistake (Consumers)", habit_matchers, True),
     "rust_idiom_lints": ("idiom lints in Rust a std @lint from/to could state (Consumers)", rust_idiom_lints, True),
     "unchecked_fix_paths": ("fix appliers outside the re-checking gate (Consumers)", unchecked_fix_paths, True),
     "stress_engines": ("stress-case runners picking a verdict (Consumers)", stress_engines, True),

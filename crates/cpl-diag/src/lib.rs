@@ -5,6 +5,7 @@
 //! editor (`plan/30-compiler.md` 3.7).
 
 mod fix;
+pub mod habits;
 pub mod json;
 pub mod plain;
 pub mod registry;

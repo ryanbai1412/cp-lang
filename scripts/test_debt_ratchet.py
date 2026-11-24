@@ -514,7 +514,10 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "web/tests/a.test.ts", "it.skip(x)\n// @ts-ignore\n")
             self._write(root, "std/a.cp", "// TODO x\n")
             self._write(root, "spec/conformance/c.cp", "// gap: core 2026-11-24\n")
-            self._write(root, "crates/cpl-check/src/check/advice.rs", "fn a() {}\n    pub(crate) fn b() {}\n")
+            self._write(root, "crates/cpl-check/src/check/advice.rs",
+                        'd.with_help("x");\nd.with_help(habits::A.say(&[]));\n// d.fix("y", s, "");\n')
+            self._write(root, "crates/cpl-diag/src/habits.rs", 'shape("a", c, "x", "");\nshape("gone", c, "y", "");\n')
+            self._write(root, "crates/cpl-cli/tests/habits/a.cp", "let x = 1  // <- here\n")
             self._write(root, "crates/cpl-stress/src/engine.rs", "fn run_case() {}\n")
             self._write(root, "crates/cpl-stress/src/cli.rs", "Verdict::Ok\n")
             self._write(root, "crates/cpl-stress/src/judge.rs", "Verdict::Ok\n")

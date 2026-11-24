@@ -1750,7 +1750,7 @@ impl<'a> Checker<'a> {
             && !self.old_copy_spelling(&base_ty, name)
         {
             let message = Self::no_method(&base_ty, name);
-            let suggestion = self.member_typo(&base_ty, &name.text).zip(Some(self.src));
+            let suggestion = self.member_typo(&base_ty, &name.text);
             let twin = self.method_twin(base, name, &base_ty);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             let pair = super::advice::iterator_pair_fix(self.src, base.span, name.span);
@@ -1780,9 +1780,9 @@ impl<'a> Checker<'a> {
                         _ => help.to_string(),
                     });
                     diag.fixes.extend(pair.or(position));
-                } else if let Some((s, src)) = suggestion {
-                    super::advice::suggest_member(diag, src, name.span, s, base_ty == Ty::Str);
-                } else if let Some(help) = super::advice::foreign_call(&name.text)
+                } else if let Some(s) = suggestion {
+                    diag.suggest(name.span, s);
+                } else if let Some(help) = habits::help(habits::Kind::Call, &name.text)
                     .or_else(|| super::advice::foreign_method(&name.text))
                 {
                     diag.help = Some(help.to_string());

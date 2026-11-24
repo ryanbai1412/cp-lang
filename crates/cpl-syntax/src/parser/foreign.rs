@@ -4,6 +4,7 @@ use super::c_decl::*;
 use super::expr::unescape;
 use super::*;
 use crate::literal::{self, StrPart};
+use cpl_diag::habits;
 
 impl<'a> Parser<'a> {
     /// The help for a token where a statement should have ended: `;`
@@ -14,15 +15,13 @@ impl<'a> Parser<'a> {
         }
         if found == T::Semi {
             return diag
-                .with_help(
-                    "statements end at the end of the line; `;` is only used inside `{ ... }`",
-                )
-                .with_fix("remove `;`", span, "");
+                .with_help(habits::STATEMENT_END_HELP.say(&[]))
+                .with_fix(habits::STATEMENT_END_HELP_2.say(&[]), span, "");
         }
         match (found == T::Comma).then(|| self.tuple_assign()).flatten() {
             Some((at, both, help)) => {
                 diag.with_help(help)
-                    .with_fix(format!("write `{both}`"), at, both.clone())
+                    .with_fix(habits::WRITE.say(&[&both]), at, both.clone())
             }
             None => diag,
         }
@@ -43,7 +42,7 @@ impl<'a> Parser<'a> {
         }
         let span = Span::new(begin as u32, (begin + line.len()) as u32);
         if let Some(read) = python_read(lhs, rhs) {
-            let help = "CP Lang reads numbers by token, so the names are declared as a tuple read";
+            let help = habits::TUPLE_ASSIGN.help;
             return Some((self.rel(span), read, help));
         }
         let rhs = if rhs.starts_with('(') {
@@ -51,7 +50,7 @@ impl<'a> Parser<'a> {
         } else {
             format!("({rhs})")
         };
-        let help = "several names are assigned at once in parentheses: `(a, b) = (b, a)`";
+        let help = habits::TUPLE_ASSIGN_2.help;
         Some((self.rel(span), format!("({lhs}) = {rhs}"), help))
     }
 
@@ -119,10 +118,13 @@ impl<'a> Parser<'a> {
             Diagnostic::error(
                 codes::REMOVED_SYNTAX,
                 kw,
-                format!("CP Lang declares a variable with `let`, not `{}`", self.text()),
+                format!(
+                    "CP Lang declares a variable with `let`, not `{}`",
+                    self.text()
+                ),
             )
-            .with_help("`let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value")
-            .with_fix("write `let`", kw, "let"),
+            .with_help(habits::C_AUTO.say(&[]))
+            .with_fix(habits::C_AUTO_2.say(&[]), kw, "let"),
         );
         self.let_stmt()
     }
@@ -158,8 +160,8 @@ impl<'a> Parser<'a> {
             format!("CP Lang writes a variable's type after its name, not `{written}` before it");
         Some(
             Diagnostic::error(codes::REMOVED_SYNTAX, ty, message)
-                .with_help("`let x: Int = 0` for a value that stays, `var x: Int = 0` for one that changes")
-                .with_fix(format!("write `{decl}`"), at, decl.clone()),
+                .with_help(habits::C_DECL_ERROR.say(&[]))
+                .with_fix(habits::WRITE.say(&[&decl]), at, decl.clone()),
         )
     }
 
@@ -183,8 +185,8 @@ impl<'a> Parser<'a> {
                 colon,
                 "a return type follows `->` in CP Lang, not `:`",
             )
-            .with_help(format!("the `:` becomes `->`: `-> {ty}`"))
-            .with_fix("write `->`", colon, " ->"),
+            .with_help(habits::COLON_RETURN_TYPE.say(&[&ty]))
+            .with_fix(habits::COLON_RETURN_TYPE_2.say(&[]), colon, " ->"),
         );
         self.bump();
         true
@@ -239,9 +241,9 @@ impl<'a> Parser<'a> {
             span,
             format!("CP Lang prints with `print(...)`, not `{name}!`"),
         )
-        .with_help("`print(a, b)` writes its values with spaces between, then a newline; `\"{x}\"` interpolates");
+        .with_help(habits::RUST_PRINT.say(&[]));
         if let ("println", Some(new)) = (name, Self::print_for(&texts)) {
-            diag = diag.with_fix(format!("write `{new}`"), span, new);
+            diag = diag.with_fix(habits::WRITE.say(&[&new]), span, new);
         }
         self.recovered(diag);
         ExprKind::Error
@@ -273,15 +275,12 @@ impl<'a> Parser<'a> {
             semi,
             "Rust's `[x; n]` is a fill here: `[n].filled(x)`",
         )
-        .with_help("write `[n].filled(x)`, a list of `n` copies of `x`");
+        .with_help(habits::RUST_REPEAT.say(&[]));
         if let ([item], true) = (items.as_slice(), self.at(T::RBracket)) {
             let item_text = self.item_text(item.span);
             if !item_text.contains(';') {
                 diag.fixes.push(cpl_diag::Fix {
-                    title: format!(
-                        "write `[{}].filled({item_text})`",
-                        self.item_text(count.span)
-                    ),
+                    title: habits::RUST_REPEAT_2.say(&[&self.item_text(count.span), &item_text]),
                     edits: vec![
                         (
                             Span::new(item.span.start, count.span.end),
@@ -330,8 +329,8 @@ impl<'a> Parser<'a> {
                 span,
                 "an empty map is `Map<K, V>()` in CP Lang, or `[:]` where its type is known",
             )
-            .with_help(format!("write `{new}`"))
-            .with_fix(format!("write `{new}`"), span, new),
+            .with_help(habits::WRITE.say(&[&new]))
+            .with_fix(habits::WRITE.say(&[&new]), span, new),
         );
         ExprKind::Error
     }
@@ -408,8 +407,12 @@ impl<'a> Parser<'a> {
                 kw,
                 "CP Lang has no `new`: a struct is built by calling its type",
             )
-            .with_help(format!("drop `new`: `{}(...)`", next.text(self.src)))
-            .with_fix("drop `new`", Span::new(kw.start, name.start), ""),
+            .with_help(habits::FOREIGN_NEW.say(&[&next.text(self.src)]))
+            .with_fix(
+                habits::FOREIGN_NEW_2.say(&[]),
+                Span::new(kw.start, name.start),
+                "",
+            ),
         );
     }
 
@@ -431,8 +434,8 @@ impl<'a> Parser<'a> {
                 star,
                 "CP Lang has no pointers: a value is used as it is, without `*`",
             )
-            .with_help("drop the `*`")
-            .with_fix("drop the `*`", star, ""),
+            .with_help(habits::C_DEREF.say(&[]))
+            .with_fix(habits::C_DEREF.say(&[]), star, ""),
         );
     }
 
@@ -483,8 +486,8 @@ impl<'a> Parser<'a> {
                     amp,
                     "CP Lang has no pointers: a value is passed as it is, without `&`",
                 )
-                .with_help("drop the `&`; a fn that changes an argument takes it as `mut x`")
-                .with_fix("drop the `&`", amp, ""),
+                .with_help(habits::C_ADDRESS.say(&[]))
+                .with_fix(habits::C_ADDRESS_2.say(&[]), amp, ""),
             );
         }
     }
@@ -506,11 +509,12 @@ impl<'a> Parser<'a> {
                     amp,
                     "CP Lang marks an argument the fn changes with `mut`, not `&`",
                 )
-                .with_help(format!(
-                    "write `mut {}`: the fn gets the variable itself",
-                    self.tokens[self.pos].span.text(self.src)
-                ))
-                .with_fix("write `mut`", Span::new(amp.start, next.start), "mut "),
+                .with_help(habits::CHANGES.say(&[&self.tokens[self.pos].span.text(self.src)]))
+                .with_fix(
+                    habits::GETS.say(&[]),
+                    Span::new(amp.start, next.start),
+                    "mut ",
+                ),
             );
         }
         true
@@ -548,10 +552,13 @@ impl<'a> Parser<'a> {
             "CP Lang has no `*` unpacking: a list is passed as it is",
         );
         self.recovered(if print {
-            diag.with_help("`print(a)` prints a list's items separated by spaces")
-                .with_fix("drop the `*`", star, "")
+            diag.with_help(habits::PYTHON_SPLAT.say(&[])).with_fix(
+                habits::C_DEREF.say(&[]),
+                star,
+                "",
+            )
         } else {
-            diag.with_help("pass the list itself, or its items one by one")
+            diag.with_help(habits::PYTHON_SPLAT_2.say(&[]))
         });
     }
 
@@ -584,12 +591,9 @@ impl<'a> Parser<'a> {
         let operand = self.postfix();
         let wrapped = group == Some(self.pos);
         let (ty, help) = if float {
-            ("F64", "a float is made with `F64(x)`")
+            ("F64", habits::C_CAST_FLOAT.help)
         } else {
-            (
-                "Int",
-                "an integer is made with `Int(x)`, and an `Int` is already 64 bits",
-            )
+            ("Int", habits::C_CAST_INT.help)
         };
         let edits = if wrapped {
             vec![(cast, ty.to_string())]
@@ -597,7 +601,7 @@ impl<'a> Parser<'a> {
             let close = (Span::point(operand.span.end), ")".to_string());
             vec![(cast, format!("{ty}(")), close]
         };
-        let title = format!("write `{ty}(...)`");
+        let title = habits::C_CAST.say(&[&ty]);
         let mut diag = Diagnostic::error(codes::REMOVED_SYNTAX, cast, "CP Lang has no C casts")
             .with_help(help);
         diag.fixes.push(cpl_diag::Fix {
@@ -639,10 +643,10 @@ impl<'a> Parser<'a> {
                 Span::new(open.start, close.end),
                 "CP Lang builds a struct by calling its type, not with `{ ... }`",
             )
-            .with_help(format!("write `{}({fields})`", self.item_text(callee.span)));
+            .with_help(habits::STRUCT_LITERAL.say(&[&self.item_text(callee.span), &fields]));
             let open = Span::new(callee.span.end, first.unwrap_or(last));
             diag.fixes.push(cpl_diag::Fix {
-                title: "use parentheses".into(),
+                title: habits::STRUCT_LITERAL_2.say(&[]),
                 edits: vec![(open, "(".into()), (Span::new(last, close.end), ")".into())],
             });
             self.recovered(diag);
@@ -672,9 +676,7 @@ impl<'a> Parser<'a> {
                 self.span_from(start),
                 "a list can't be unpacked in CP Lang: only tuples can",
             )
-            .with_help(
-                "index it, `let a = xs[0]`, or unpack a tuple: `let (a, b) = (xs[0], xs[1])`",
-            ),
+            .with_help(habits::LIST_PATTERN.say(&[])),
         );
         PatternKind::Tuple(items)
     }
@@ -692,8 +694,8 @@ impl<'a> Parser<'a> {
                 span,
                 "a range's stride is `by` in CP Lang, not `step`",
             )
-            .with_help("write `0..10 by 2`")
-            .with_fix("write `by`", span, "by"),
+            .with_help(habits::FOREIGN_STEP.say(&[]))
+            .with_fix(habits::FOREIGN_STEP_2.say(&[]), span, "by"),
         );
         self.bump();
         true
@@ -728,8 +730,8 @@ impl<'a> Parser<'a> {
                 at,
                 "CP Lang has no `npos`: `find` gives `None` when there is no match",
             )
-            .with_help("compare with `None`: `s.find(t) != None`, or write `t in s`")
-            .with_fix("write `None`", at, "None"),
+            .with_help(habits::CPP_NPOS.say(&[]))
+            .with_fix(habits::CPP_NPOS_2.say(&[]), at, "None"),
         );
         for _ in 0..len {
             self.bump();
@@ -770,7 +772,7 @@ impl<'a> Parser<'a> {
             p.src[a as usize..b as usize].to_string()
         };
         let mut diag = Diagnostic::error(codes::REMOVED_SYNTAX, q, "CP Lang has no `c ? a : b`")
-            .with_help("write `if c: a else: b`");
+            .with_help(habits::C_TERNARY.say(&[]));
         if complete && self.pos > colon + 1 && colon > question + 1 {
             let (c, a, b) = (
                 text(self, first, question),
@@ -782,7 +784,7 @@ impl<'a> Parser<'a> {
                 self.tokens[self.pos - 1].span.end,
             ));
             diag = diag.with_fix(
-                "write it as an inline `if`",
+                habits::C_TERNARY_2.say(&[]),
                 whole,
                 format!("if {c}: {a} else: {b}"),
             );
@@ -806,8 +808,8 @@ impl<'a> Parser<'a> {
                 at,
                 format!("`{written}` is C++; CP Lang writes the value as `{value}`"),
             )
-            .with_help(format!("write `{value}`"))
-            .with_fix(format!("write `{value}`"), at, value),
+            .with_help(habits::WRITE.say(&[&value]))
+            .with_fix(habits::WRITE.say(&[&value]), at, value),
         );
         while self
             .tokens
@@ -846,8 +848,8 @@ impl<'a> Parser<'a> {
                 span,
                 "CP Lang reverses with `.rev`, not `[::-1]`",
             )
-            .with_help("`xs.rev` is the reversed view; `List(xs.rev)` copies it")
-            .with_fix("write `.rev`", whole, ".rev"),
+            .with_help(habits::REVERSED_SLICE.say(&[]))
+            .with_fix(habits::REVERSED_SLICE_2.say(&[]), whole, ".rev"),
         );
         for _ in 0..3 {
             self.bump();
@@ -870,8 +872,8 @@ impl<'a> Parser<'a> {
                     span,
                     "`!` doesn't negate in CP Lang",
                 )
-                .with_help("write `not in` instead of `!in`")
-                .with_fix("replace with `not `", span, "not "),
+                .with_help(habits::CMP_TOKEN.say(&[]))
+                .with_fix(habits::CMP_TOKEN_2.say(&[]), span, "not "),
             );
         }
         if !self.at_ident("is") {
@@ -892,10 +894,8 @@ impl<'a> Parser<'a> {
                 span,
                 format!("CP Lang compares with `{ours}`, not `{foreign}`"),
             )
-            .with_help(format!(
-                "write `x {ours} None`; values are compared, there is no identity"
-            ))
-            .with_fix(format!("write `{ours}`"), span, ours),
+            .with_help(habits::CMP_TOKEN_3.say(&[&ours]))
+            .with_fix(habits::WRITE.say(&[&ours]), span, ours),
         );
     }
 
@@ -969,9 +969,9 @@ impl<'a> Parser<'a> {
                 if_span,
                 "CP Lang writes `a if c else b` as `if c: a else: b`",
             )
-            .with_help("an inline `if` takes `:` after the condition and after `else`")
+            .with_help(habits::PYTHON_TERNARY.say(&[]))
             .with_fix(
-                "write it as an inline `if`",
+                habits::C_TERNARY_2.say(&[]),
                 whole,
                 format!("if {c}: {a} else: {b}"),
             ),
@@ -1006,8 +1006,8 @@ impl<'a> Parser<'a> {
                 arrow,
                 "CP Lang writes a lambda with `=>`, not `->`",
             )
-            .with_help("`->` names a fn's return type; a lambda's body follows `=>`")
-            .with_fix("write `=>`", arrow, "=>"),
+            .with_help(habits::ARROW_LAMBDA.say(&[]))
+            .with_fix(habits::ARROW_LAMBDA_2.say(&[]), arrow, "=>"),
         );
         let body = self.lambda_body();
         Expr {
@@ -1062,8 +1062,8 @@ impl<'a> Parser<'a> {
                 bars,
                 "CP Lang writes a lambda with `=>`, not `|x|`",
             )
-            .with_help("write `x => x * 2`, or `(a, b) => a + b`")
-            .with_fix(format!("write `{ours}`"), bars, ours),
+            .with_help(habits::RUST_CLOSURE.say(&[]))
+            .with_fix(habits::WRITE.say(&[&ours]), bars, ours),
         );
         let body = self.lambda_body();
         Some(Expr {
@@ -1112,9 +1112,9 @@ impl<'a> Parser<'a> {
                 kw,
                 "CP Lang writes a lambda with `=>`, not `lambda`",
             )
-            .with_help("write `x => x * 2`, or `(a, b) => a + b`")
+            .with_help(habits::RUST_CLOSURE.say(&[]))
             .with_fix(
-                format!("write `{ours}`"),
+                habits::WRITE.say(&[&ours]),
                 Span::new(kw.start, colon.end),
                 ours,
             ),
@@ -1148,8 +1148,8 @@ impl<'a> Parser<'a> {
                 span,
                 "CP Lang strings interpolate without an `f` prefix",
             )
-            .with_help("write `\"n = {n}\"`")
-            .with_fix("remove the `f`", span, ""),
+            .with_help(habits::F_STRING_PREFIX.say(&[]))
+            .with_fix(habits::F_STRING_PREFIX_2.say(&[]), span, ""),
         );
         self.bump();
         true
@@ -1201,7 +1201,7 @@ impl<'a> Parser<'a> {
             "a CP Lang string names its values in its braces, not in `.format(...)`",
         );
         if args.len() != holes.len() {
-            let help = "write each value in its hole: `\"{x} {y:.2}\"`";
+            let help = habits::PYTHON_FORMAT.say(&[]);
             self.recovered(diag.with_help(help));
             let text_only = parts.iter().filter_map(|p| match p {
                 StrPart::Text(t) => Some(StrPiece::Text(unescape(t.text(text)))),
@@ -1241,8 +1241,8 @@ impl<'a> Parser<'a> {
             }
         }
         fixed.push_str(&text[prev..]);
-        diag = diag.with_help(format!("write `{fixed}`")).with_fix(
-            format!("write `{fixed}`"),
+        diag = diag.with_help(habits::WRITE.say(&[&fixed])).with_fix(
+            habits::WRITE.say(&[&fixed]),
             span,
             fixed,
         );
@@ -1271,9 +1271,9 @@ impl<'a> Parser<'a> {
             span,
             "unpacking a tuple takes parentheses in CP Lang",
         )
-        .with_help(format!("write `({})`", self.item_text(span)));
+        .with_help(habits::BARE_TUPLE_PATTERN.say(&[&self.item_text(span)]));
         diag.fixes.push(cpl_diag::Fix {
-            title: "add the parentheses".into(),
+            title: habits::BARE_TUPLE_PATTERN_2.say(&[]),
             edits: vec![
                 (Span::new(span.start, span.start), "(".into()),
                 (Span::new(span.end, span.end), ")".into()),
@@ -1308,8 +1308,8 @@ impl<'a> Parser<'a> {
                 self.span(),
                 format!("a header ends with `:` in CP Lang, not `{word}`"),
             )
-            .with_help(format!("the condition stays; `{word}` becomes `:`"))
-            .with_fix("write `:`", gap, ":"),
+            .with_help(habits::FOREIGN_THEN.say(&[&word]))
+            .with_fix(habits::FOREIGN_THEN_2.say(&[]), gap, ":"),
         );
         self.bump();
         true
@@ -1333,8 +1333,8 @@ impl<'a> Parser<'a> {
                 self.rel(eq),
                 "a named argument takes `:`, not `=`",
             )
-            .with_help("write `name: value`, as in `print(xs, sep: \", \")`")
-            .with_fix("write `:`", gap, ": "),
+            .with_help(habits::KEYWORD_ARG.say(&[]))
+            .with_fix(habits::FOREIGN_THEN_2.say(&[]), gap, ": "),
         );
         let name = self.name();
         self.bump();
@@ -1371,9 +1371,9 @@ impl<'a> Parser<'a> {
             o,
             "a `for` header takes no parentheses in CP Lang",
         )
-        .with_help("write `for x in xs:`");
+        .with_help(habits::PAREN_FOR.say(&[]));
         diag.fixes.push(cpl_diag::Fix {
-            title: "remove the parentheses".into(),
+            title: habits::PAREN_FOR_2.say(&[]),
             edits: vec![(o, String::new()), (c, String::new())],
         });
         self.recovered(diag);
@@ -1393,8 +1393,8 @@ impl<'a> Parser<'a> {
                 span,
                 "CP Lang loops with `in`, not `of`",
             )
-            .with_help("write `for x in xs:`")
-            .with_fix("replace `of` with `in`", span, "in"),
+            .with_help(habits::PAREN_FOR.say(&[]))
+            .with_fix(habits::FOR_OF.say(&[]), span, "in"),
         );
         self.bump();
         true
@@ -1421,7 +1421,7 @@ impl<'a> Parser<'a> {
             whole,
             "CP Lang has no C-style `for (init; cond; step)`",
         )
-        .with_help("loop over a range: `for i in 0..n:`");
+        .with_help(habits::C_FOR.say(&[]));
         let (name, range) = counted(&parts);
         // C's body with no braces, on the line or under it: the fix adds the `:`.
         let colon = match self.tokens.get(end).map(|t| t.kind) {
@@ -1430,7 +1430,7 @@ impl<'a> Parser<'a> {
         };
         if let (Some(name), Some(range)) = (name, range) {
             let ours = format!("{name} in {range}{colon}");
-            diag = diag.with_fix("loop over the range", whole, ours);
+            diag = diag.with_fix(habits::C_FOR_2.say(&[]), whole, ours);
         }
         self.recovered(diag);
         self.pos = end;
@@ -1495,12 +1495,14 @@ impl<'a> Parser<'a> {
         );
         self.recovered(match by_ref {
             false => diag
-                .with_help(format!("write `for {pat} in {seq}:`"))
-                .with_fix("loop over it", whole, format!("{pat} in {seq}{colon}")),
+                .with_help(habits::C_RANGE_FOR.say(&[&pat, &seq]))
+                .with_fix(
+                    habits::C_RANGE_FOR_2.say(&[]),
+                    whole,
+                    format!("{pat} in {seq}{colon}"),
+                ),
             true => {
-                let diag = diag.with_help(format!(
-                    "the loop variable is a copy, so change the list through its indexes: `for i in 0..{seq}.len: {seq}[i] += 1`"
-                ));
+                let diag = diag.with_help(habits::C_RANGE_FOR_3.say(&[&seq, &seq]));
                 match self.by_index(end, &names, seq, whole) {
                     Some(edits) => diag.with_edits("loop over the indexes", edits),
                     None => diag,
@@ -1538,8 +1540,8 @@ impl<'a> Parser<'a> {
             self.bump();
             self.error(
                 Diagnostic::error(codes::REMOVED_SYNTAX, at, "empty type arguments `<>`")
-                    .with_help("leave the `<>` off: CP Lang infers type arguments")
-                    .with_fix("remove `<>`", at, ""),
+                    .with_help(habits::EMPTY_TYPE_ARGS.say(&[]))
+                    .with_fix(habits::EMPTY_TYPE_ARGS_2.say(&[]), at, ""),
             );
         }
     }
@@ -1689,11 +1691,13 @@ impl<'a> Parser<'a> {
         );
         self.recovered(match reads {
             false => diag
-                .with_help(format!("loop over a range: `for _ in 0..{name}:`"))
-                .with_fix("loop over the range", whole, format!("for _ in 0..{name}{colon}")),
-            true => diag.with_help(format!(
-                "the body reads `{name}`: write `while {name} > 0:` and start the body with `{name} -= 1`"
-            )),
+                .with_help(habits::C_COUNTDOWN_REPORT.say(&[&name]))
+                .with_fix(
+                    habits::C_FOR_2.say(&[]),
+                    whole,
+                    format!("for _ in 0..{name}{colon}"),
+                ),
+            true => diag.with_help(habits::C_COUNTDOWN_REPORT_2.say(&[&name, &name, &name])),
         });
     }
 
@@ -1722,8 +1726,8 @@ impl<'a> Parser<'a> {
                 span,
                 format!("a `match` arm has no `{theirs}`"),
             )
-            .with_help(format!("write the pattern itself: `{ours}`"))
-            .with_fix(format!("remove `{theirs}`"), span, fix),
+            .with_help(habits::C_CASE.say(&[&ours]))
+            .with_fix(habits::C_CASE_2.say(&[&theirs]), span, fix),
         );
     }
 
@@ -1747,8 +1751,8 @@ impl<'a> Parser<'a> {
                 colon,
                 "CP Lang slices with `..`, not `:`",
             )
-            .with_help("write `xs[a..b]`; `xs[a..]` and `xs[..b]` leave out an end")
-            .with_fix("replace `:` with `..`", colon, ".."),
+            .with_help(habits::INDEX_ITEM.say(&[]))
+            .with_fix(habits::INDEX_ITEM_2.say(&[]), colon, ".."),
         );
         self.bump();
         let hi = (!matches!(self.peek(), T::RBracket | T::Comma)).then(|| Box::new(self.expr()));

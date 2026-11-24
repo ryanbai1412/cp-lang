@@ -1,6 +1,7 @@
 //! The words and fixes of a few errors, kept out of the passes that find them.
 
 use super::*;
+use cpl_diag::habits;
 use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, BinOp, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
@@ -13,11 +14,11 @@ pub(super) fn bad_operands(
     into_string: Option<(Span, String)>,
 ) {
     if let Some((span, text)) = into_string {
-        diag.fix(format!("write `{text}`"), span, text);
+        diag.fix(habits::WRITE.say(&[&text]), span, text);
     } else if *left == Ty::Str || *right == Ty::Str {
-        diag.help = Some("put the value in the string: `\"{x}\"`".into());
+        diag.help = Some(habits::BAD_OPERANDS_2.say(&[]));
     } else if op == BinOp::BitXor && *left == Ty::Bool && *right == Ty::Bool {
-        diag.fix("two Bools differ by `!=`", op_span, "!=");
+        diag.fix(habits::BAD_OPERANDS_3.say(&[]), op_span, "!=");
     }
 }
 
@@ -80,10 +81,8 @@ impl Checker<'_> {
         let end = Span::new(expr.span.end, expr.span.end);
         self.sink.push(
             Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
-                .with_help(format!(
-                    "write `{shown}()`: `()` marks a call that does work"
-                ))
-                .with_fix(format!("write `{shown}()`"), end, "()"),
+                .with_help(habits::SUM.say(&[&shown]))
+                .with_fix(habits::SUM_2.say(&[&shown]), end, "()"),
         );
     }
 
@@ -112,12 +111,11 @@ impl Checker<'_> {
                 };
                 if let Some(diag) = self.error(codes::TYPE_MISMATCH, op_span, message) {
                     if inline {
-                        diag.help = Some(format!("call it to get the {ret}: `{name}()`"));
+                        diag.help = Some(habits::NO_OPERATOR_IMPL.say(&[&ret, &name]));
                         let end = Span::new(rhs.span.end, rhs.span.end);
-                        diag.fix(format!("write `{name}()`"), end, "()");
+                        diag.fix(habits::SUM_2.say(&[&name]), end, "()");
                     } else {
-                        diag.help =
-                            Some(format!("call the method with `()` where `{name}` is made"));
+                        diag.help = Some(habits::NO_OPERATOR_IMPL_2.say(&[&name]));
                     }
                 }
                 return Ty::Error;
@@ -126,9 +124,14 @@ impl Checker<'_> {
         let message =
             format!("`{o}` needs `impl {trait_name}<{right}> for {owner}`, and there is none");
         if let Some(diag) = self.error(codes::MISSING_IMPL, op_span, message) {
-            diag.help = Some(format!(
-                "write `impl {trait_name}<{right}> for {owner}` to define `{owner} {o} {right}`"
-            ));
+            diag.help = Some(habits::NO_OPERATOR_IMPL_3.say(&[
+                &trait_name,
+                &right,
+                &owner,
+                &owner,
+                &o,
+                &right,
+            ]));
         }
         Ty::Error
     }
@@ -154,11 +157,9 @@ impl Checker<'_> {
         let message = "each run is a slice, so it can't be taken apart into 2 names".to_string();
         if let Some(diag) = self.error(codes::TYPE_MISMATCH, pat.span, message) {
             let pair = ".map(r => (r.first!, r.len))";
-            diag.help = Some(format!(
-                "for each value and its count, walk `runs(..){pair}`"
-            ));
+            diag.help = Some(habits::LOOP_ADVICE.say(&[&pair]));
             let end = Span::new(iter.span.end, iter.span.end);
-            diag.fix(format!("write `{pair}`"), end, pair);
+            diag.fix(habits::WRITE.say(&[&pair]), end, pair);
         }
     }
 
@@ -235,41 +236,34 @@ impl Checker<'_> {
         match suggestion {
             _ if renamed.is_some() => {
                 let new = renamed.unwrap_or_default();
-                diag.help = Some(format!(
-                    "a library domain's `{}` is `{new}` since 0.3",
-                    name.text
-                ));
-                diag.fix(format!("write `{new}`"), name.span, new);
+                diag.help = Some(habits::UNKNOWN_MEMBER.say(&[&name.text, &new]));
+                diag.fix(habits::WRITE.say(&[&new]), name.span, new);
             }
             _ if core_only => {
-                diag.help = Some(format!(
-                    "{base_ty} is a library domain (`impl Index`): it walks in `ord` order, but neighbours, cuts, `at` and `wrap` belong to the ordered core domains; use `x.ord` and `{base_ty}.nth(k)`"
-                ));
+                diag.help = Some(habits::UNKNOWN_MEMBER_2.say(&[&base_ty, &base_ty]));
             }
             _ if habit.is_some() => {
                 let own = habit.unwrap_or_default();
-                diag.help = Some(format!("`{}` is spelled `{own}` in CP Lang", name.text));
-                diag.fix(format!("write `{own}`"), name.span, own);
+                diag.help = Some(habits::UNKNOWN_MEMBER_3.say(&[&name.text, &own]));
+                diag.fix(habits::WRITE.say(&[&own]), name.span, own);
             }
             _ if empty_by_len => {
-                diag.help = Some(format!("a {base_ty} is empty when its `len` is 0"));
-                diag.fix("write `len == 0`".to_string(), name.span, "len == 0");
+                diag.help = Some(habits::UNKNOWN_MEMBER_4.say(&[&base_ty]));
+                diag.fix(habits::UNKNOWN_MEMBER_5.say(&[]), name.span, "len == 0");
             }
             _ if top => {
-                diag.help = Some(format!(
-                    "`{base_ty}` shows its top with `peek`, `None` when empty"
-                ));
+                diag.help = Some(habits::UNKNOWN_MEMBER_6.say(&[&base_ty]));
                 let at = Span::new(name.span.start, name.span.end + 2);
-                diag.fix(format!("write `{peek}`"), at, peek);
+                diag.fix(habits::WRITE.say(&[&peek]), at, peek);
             }
             _ if fold_for => {
-                diag.help = Some(format!("a {base_ty} combines a range with `fold`"));
-                diag.fix("write `fold`".to_string(), name.span, "fold");
+                diag.help = Some(habits::UNKNOWN_MEMBER_7.say(&[&base_ty]));
+                diag.fix(habits::UNKNOWN_MEMBER_8.say(&[]), name.span, "fold");
             }
             Some(s) => diag.suggest(name.span, s),
             None if !field_names.is_empty() => {
                 let fields = super::expr::list_names(&field_names);
-                diag.help = Some(format!("its fields are {fields}"));
+                diag.help = Some(habits::UNKNOWN_MEMBER_9.say(&[&fields]));
             }
             None => {
                 let names = self
@@ -277,7 +271,7 @@ impl Checker<'_> {
                     .unwrap_or_else(|| methods.iter().map(|(m, _)| m.clone()).collect());
                 if let Some(list) = method_list(&names) {
                     if let Some(d) = self.sink.last_mut() {
-                        d.help = Some(format!("its methods are {list}"));
+                        d.help = Some(habits::UNKNOWN_MEMBER_10.say(&[&list]));
                     }
                 }
             }
@@ -365,10 +359,8 @@ impl Checker<'_> {
         }
         let message = format!("`{old}` is spelled `{new}` since 0.3");
         if let Some(diag) = self.error(codes::REMOVED_SYNTAX, span, message) {
-            diag.help = Some(format!(
-                "optionals are `Some(x)` and `None`; `cpl migrate` rewrites every `{old}` in a folder"
-            ));
-            diag.fix(format!("write `{new}`"), span, new);
+            diag.help = Some(habits::OLD_OPTIONAL_SPELLING.say(&[&old]));
+            diag.fix(habits::WRITE.say(&[&new]), span, new);
         }
     }
 
@@ -385,7 +377,7 @@ impl Checker<'_> {
         let codes = [codes::MUT_OF_IMMUTABLE, codes::ASSIGN_TO_LET];
         if let Some(d) = self.sink.last_mut().filter(|d| codes.contains(&d.code)) {
             let help = d.help.take().unwrap_or_default();
-            d.help = Some(format!("{help}, or {copy}"));
+            d.help = Some(habits::REVERSE_VIEW_HELP.say(&[&help, &copy]));
         }
     }
 
@@ -479,11 +471,11 @@ impl Checker<'_> {
                 if let Some(diag) = self.sink.last_mut().filter(unresolved) {
                     diag.fixes.clear();
                     diag.help = Some(match &ours {
-                        Some(new) => format!("a heap is std's `Heap`, with methods: `{new}`"),
-                        None => "a heap is std's `Heap`, not a list: `var h: Heap<Int> = Heap()` (`use std.heap.{Heap}`), then `h.push(x)` and `h.pop()!`".to_string(),
+                        Some(new) => habits::HEAP_METHODS.say(&[new]),
+                        None => habits::HEAP.say(&[]),
                     });
                     if let Some(new) = ours {
-                        diag.fix(format!("write `{new}`"), call.span, new);
+                        diag.fix(habits::WRITE.say(&[&new]), call.span, new);
                     }
                 }
                 return;
@@ -533,11 +525,9 @@ impl Checker<'_> {
                     d.code == codes::UNRESOLVED_NAME && d.span == base.span
                 };
                 if let Some(diag) = self.sink.last_mut().filter(unresolved) {
-                    diag.help = Some(format!(
-                        "math functions are members or operators here: `{ours}`"
-                    ));
+                    diag.help = Some(habits::MEMBER_FOR_CALL.say(&[&ours]));
                     diag.fixes.clear();
-                    diag.fix(format!("write `{ours}`"), call.span, ours);
+                    diag.fix(habits::WRITE.say(&[&ours]), call.span, ours);
                 }
                 return;
             }
@@ -563,7 +553,7 @@ impl Checker<'_> {
                 .last_mut()
                 .filter(|d| d.code == code && d.span == at)
             {
-                diag.help = Some("CP Lang reads numbers by token, not by line: `let (n, m): (Int, Int) = read()` reads two, `read<[n]Int>()` reads n of them".to_string());
+                diag.help = Some(habits::MEMBER_FOR_CALL_2.say(&[]));
                 diag.fixes.clear();
             }
             return;
@@ -802,17 +792,17 @@ impl Checker<'_> {
         }) else {
             return;
         };
-        diag.help = Some(format!("{what} in CP Lang: `{ours}`"));
+        diag.help = Some(habits::MEMBER_FOR_CALL_3.say(&[&what, &ours]));
         diag.fixes.clear();
-        diag.fix(format!("write `{ours}`"), call.span, ours);
+        diag.fix(habits::WRITE.say(&[&ours]), call.span, ours);
     }
 
     /// `"a"` where a `Char` is wanted: a character is in single quotes.
     pub(super) fn char_literal_fix(&mut self, got: &Ty, want: &Ty, at: &Expr) -> bool {
         if let (Ty::Str, Ty::Char, Some(c)) = (got, want, crate::char_literal(self.text(at.span))) {
             if let Some(diag) = self.sink.last_mut().filter(|d| d.span == at.span) {
-                diag.help = Some(format!("a character is written in single quotes: `{c}`"));
-                diag.fix(format!("write `{c}`"), at.span, c);
+                diag.help = Some(habits::CHAR_LITERAL_FIX.say(&[&c]));
+                diag.fix(habits::WRITE.say(&[&c]), at.span, c);
             }
         }
         false
@@ -837,11 +827,9 @@ impl Checker<'_> {
         let scan = format!("{not}{r}.contains({l})");
         let whole = Span::new(x.span.start, xs.span.end);
         if let Some(diag) = self.error(codes::MISSING_IMPL, xs.span, message) {
-            diag.help = Some(
-                "`in` is for sets, maps and ranges, where it is fast; a list is scanned in O(n) with `xs.contains(x)`".into(),
-            );
+            diag.help = Some(habits::LIST_IN.say(&[]));
             if alone {
-                diag.fix(format!("scan the list: `{scan}`"), whole, scan);
+                diag.fix(habits::LIST_IN_2.say(&[&scan]), whole, scan);
             }
         }
     }
@@ -851,21 +839,21 @@ impl Checker<'_> {
     pub(super) fn empty_braces(&mut self, declared: Option<&Ty>, init: Option<&Expr>) {
         let Some(init) = init else { return };
         let (empty, kind, help) = match declared {
-            Some(d @ Ty::Named { name, .. }) if name == "Map" => ("[:]".into(), d.to_string(), ""),
-            Some(d @ Ty::Named { name, .. }) if name == "Set" => {
-                ("Set()".into(), d.to_string(), "")
+            Some(d @ Ty::Named { name, .. }) if name == "Map" => {
+                ("[:]".into(), d.to_string(), &habits::EMPTY_BRACES)
             }
-            Some(d @ Ty::Named { name, .. }) if name == "List" => ("[]".into(), d.to_string(), ""),
+            Some(d @ Ty::Named { name, .. }) if name == "Set" => {
+                ("Set()".into(), d.to_string(), &habits::EMPTY_BRACES)
+            }
+            Some(d @ Ty::Named { name, .. }) if name == "List" => {
+                ("[]".into(), d.to_string(), &habits::EMPTY_BRACES)
+            }
             // Decision 220: `{}` is no Subset literal; the empty subset is `Subset<B>.empty`.
             Some(d @ Ty::Named { name, .. }) if name == "Subset" => {
-                (format!("{d}.empty"), d.to_string(), "")
+                (format!("{d}.empty"), d.to_string(), &habits::EMPTY_BRACES)
             }
             // `d = {}` with no type: Python's empty dict.
-            None => (
-                "Map()".to_string(),
-                "map".to_string(),
-                "; its key and value types come from how it is used",
-            ),
+            None => ("Map()".to_string(), "map".to_string(), &habits::EMPTY_DICT),
             _ => return,
         };
         if self.text(init.span).split_whitespace().collect::<String>() != "{}" {
@@ -879,8 +867,8 @@ impl Checker<'_> {
             return;
         };
         diag.message = format!("`{{}}` is an empty block in CP Lang, not an empty {kind}");
-        diag.help = Some(format!("an empty {kind} is `{empty}`{help}"));
-        diag.fix(format!("write `{empty}`"), init.span, empty.clone());
+        diag.help = Some(help.say(&[&kind, &empty]));
+        diag.fix(habits::WRITE.say(&[&empty]), init.span, empty.clone());
     }
 
     /// A member that another version or language has and CP Lang spells
@@ -892,8 +880,8 @@ impl Checker<'_> {
                 let fix = if new == "nth" { "try_at" } else { new };
                 let message = format!("`{}` was renamed to `{new}` in 0.3", name.text);
                 if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
-                    diag.help = Some("a domain reads `D.count`, `x.ord` and `D.nth(k)`, which traps outside `0..D.count`; `D.try_at(k)` gives an optional (R04.2.26)".to_string());
-                    diag.fix(format!("write `{fix}`"), name.span, fix);
+                    diag.help = Some(habits::MEMBER_ADVICE.say(&[]));
+                    diag.fix(habits::WRITE.say(&[&fix]), name.span, fix);
                 }
                 return true;
             }
@@ -901,7 +889,7 @@ impl Checker<'_> {
         if name.text == "bounds" && matches!(base_ty, Ty::Domain(_)) {
             let message = "`D.bounds` was renamed to `D.cuts`".to_string();
             if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
-                diag.fix("write `cuts`", name.span, "cuts");
+                diag.fix(habits::MEMBER_ADVICE_2.say(&[]), name.span, "cuts");
             }
             return true;
         }
@@ -924,8 +912,8 @@ impl Checker<'_> {
         let last = parts.len() - 1;
         let message = format!("a tuple has no `.{}`: its parts have numbers", name.text);
         if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
-            diag.help = Some(format!("the parts of this tuple are `.0` to `.{last}`"));
-            diag.fix(format!("change to `.{i}`"), name.span, i.to_string());
+            diag.help = Some(habits::MEMBER_ADVICE_3.say(&[&last]));
+            diag.fix(habits::MEMBER_ADVICE_4.say(&[&i]), name.span, i.to_string());
         }
         true
     }
@@ -941,9 +929,9 @@ impl Checker<'_> {
             .last_mut()
             .filter(|d| iter_call && d.code == codes::UNKNOWN_FIELD && d.span == name.span);
         if let Some(diag) = last {
-            diag.help = Some("a list or string is iterated as it is: `for x in xs`".into());
+            diag.help = Some(habits::ITER_CALL_HELP.say(&[]));
             diag.fixes.clear();
-            diag.fix(format!("remove `.{}()`", name.text), call, "");
+            diag.fix(habits::ITER_CALL_HELP_2.say(&[&name.text]), call, "");
         }
     }
 
@@ -951,9 +939,8 @@ impl Checker<'_> {
     pub(super) fn lazy_len(&mut self, base_ty: &Ty, name: &Name) {
         let message = format!("`.len` requires `Sized`, which `{base_ty}` does not implement");
         if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
-            diag.help =
-                Some("a lazy sequence has no stored length: `.count()` walks it once".into());
-            diag.fix("write `.count()`", name.span, "count()");
+            diag.help = Some(habits::LAZY_LEN.say(&[]));
+            diag.fix(habits::LAZY_LEN_2.say(&[]), name.span, "count()");
         }
     }
 
@@ -970,7 +957,7 @@ impl Checker<'_> {
         }
         let at = Span::new(name.start.checked_sub(4)?, name.start - 1);
         (keyword == "let" && init.is_some_and(literal) && self.text(at) == "let").then(|| Fix {
-            title: "make it a `const`".into(),
+            title: habits::LITERAL.say(&[]),
             edits: vec![(at, "const".into())],
         })
     }
@@ -1037,9 +1024,9 @@ impl Checker<'_> {
         };
         let message = format!("`{name}` returns a value, but its signature has no return type");
         if let Some(diag) = self.error(codes::TYPE_MISMATCH, value.span, message) {
-            diag.help = Some(format!("a fn without `-> T` gives nothing: add `-> {ty}`"));
+            diag.help = Some(habits::UNDECLARED_RETURN.say(&[&ty]));
             if let Some(slot) = slot {
-                diag.fix(format!("add `-> {ty}`"), slot, format!(" -> {ty}"));
+                diag.fix(habits::WITHOUT.say(&[&ty]), slot, format!(" -> {ty}"));
             }
         }
     }
@@ -1081,19 +1068,7 @@ pub(super) fn duplicate_tag(diag: &mut Diagnostic, first: Span) {
         span: first,
         message: "first `@tag` here".to_string(),
     });
-    diag.help = Some("input names one variant per tag: give one of them another `@tag`".into());
-}
-
-/// `True` or `null` from another language, as CP Lang spells the value.
-pub(super) fn foreign_value(name: &str) -> Option<&'static str> {
-    match name {
-        "True" | "TRUE" => Some("true"),
-        "False" | "FALSE" => Some("false"),
-        "null" | "nil" | "none" | "NULL" | "nullptr" => Some("None"),
-        "INT_MAX" | "LLONG_MAX" | "LONG_MAX" | "INF" => Some("inf"),
-        "INT_MIN" | "LLONG_MIN" | "LONG_MIN" => Some("-inf"),
-        _ => None,
-    }
+    diag.help = Some(habits::DUPLICATE_TAG.say(&[]));
 }
 
 /// Python's conversion builtins and `math.`, as CP Lang writes them.
@@ -1175,40 +1150,6 @@ fn std_in_place_method_in(std: crate::prelude::Std, stem: &str) -> Option<(Strin
         }
     }
     None
-}
-
-pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
-    match name {
-        "str" | "to_string" | "toString" => Some("make a string by interpolation: `\"{x}\"`"),
-        "int" | "stoi" | "atoi" | "parseInt" => {
-            Some("read a number from a string with `s.parse<Int>()!`")
-        }
-        "float" | "stod" | "parseFloat" => {
-            Some("read a number from a string with `s.parse<F64>()!`")
-        }
-        "input" | "cin" | "scanf" => Some("read the input with `read`: `let n: Int = read()`"),
-        "cout" | "printf" | "puts" => Some("write the output with `print`: `print(a, b)`"),
-        "max_element" | "min_element" => {
-            Some("a list's largest and smallest values are `a.max()!` and `a.min()!`")
-        }
-        "accumulate" => Some("a list's sum is `a.sum()`"),
-        "__builtin_popcount" | "__builtin_popcountll" => {
-            Some("the 1 bits are counted with `popcount(x)`")
-        }
-        "lower_bound" | "upper_bound" | "bisect_left" | "bisect_right" => Some(
-            "a sorted list is searched with `a.first_ge(x)` and `a.first_gt(x)`: \
-             the index, or `None` past the end",
-        ),
-        "memset" => Some("a list is filled with its `fill`: `a.fill(0)`"),
-        "make_pair" | "make_tuple" => Some("a tuple is written in parentheses: `(a, b)`"),
-        "endl" => Some("`print` ends the line itself: `print(a, b)` writes `a b` and a newline"),
-        "ord" => Some("a character's code is `Int(c)`"),
-        "chr" => Some("the character with code `i` is `Char(i)`"),
-        "dict" => Some("an empty map is `Map<K, V>()`, or `[:]` where its type is known"),
-        "sys" => Some("CP Lang has no `sys`: `read()` is already fast, so remove the `sys` line"),
-        "math" | "Math" => Some("math functions are methods here: `x.sqrt`, `x.abs`, `x.isqrt`"),
-        _ => None,
-    }
 }
 
 /// Whether the text after a member is its call: `(..)`, or `<T>(..)`
@@ -1372,9 +1313,9 @@ pub(super) fn index_of(src: &str, base: Span, name: &Name, ty: &Ty) -> Option<(S
     }
     let new = format!("{b}.find({x})!");
     let end = name.span.end + 1 + close as u32 + 1;
-    let help = format!("a value's first position is `find`, `None` when it isn't there: `{new}`");
+    let help = habits::INDEX_OF.say(&[&new]);
     let fix = Fix {
-        title: format!("write `{new}`"),
+        title: habits::WRITE.say(&[&new]),
         edits: vec![(Span::new(base.start, end), new)],
     };
     Some((help, fix))
@@ -1409,11 +1350,9 @@ pub(super) fn partition_point(src: &str, name: &Name) -> Option<(String, Fix)> {
     };
     let end = name.span.end + 1 + close as u32 + 1;
     let new = format!("bsearch({ok})");
-    let help = format!(
-        "`partition_point` is where its test turns false; `bsearch` takes the test that turns true there: `{new}`"
-    );
+    let help = habits::PARTITION_POINT.say(&[&new]);
     let fix = Fix {
-        title: format!("write `{new}`"),
+        title: habits::WRITE.say(&[&new]),
         edits: vec![(Span::new(name.span.start, end), new)],
     };
     Some((help, fix))
@@ -1498,7 +1437,7 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
     let start = base.start - f.len() as u32 - 1 - lead;
     let end = (src.len() - rest.len() + extra) as u32;
     Some(Fix {
-        title: format!("write `{new}`"),
+        title: habits::WRITE.say(&[&new]),
         edits: vec![(Span::new(start, end), new)],
     })
 }
@@ -1517,8 +1456,8 @@ pub(super) fn iterator_position_fix(src: &str, base: Span, name: Span) -> Option
         _ => return None,
     };
     let title = match new.is_empty() {
-        true => "write the index".to_string(),
-        false => format!("write `{new}`"),
+        true => habits::ITERATOR_INDEX.say(&[]),
+        false => habits::WRITE.say(&[&new]),
     };
     Some(Fix {
         title,
@@ -1545,10 +1484,9 @@ pub(super) fn str_test(src: &str, base: Span, name: &Name, ty: &Ty) -> Option<(S
     };
     let b = src.get(base.start as usize..base.end as usize)?;
     let new = format!("{b}.all(c => c.{test})");
-    let help =
-        format!("`{test}` tests a `Char`; a string tests every character with `all`: `{new}`");
+    let help = habits::STR_TEST.say(&[&test, &new]);
     let fix = Fix {
-        title: format!("write `{new}`"),
+        title: habits::WRITE.say(&[&new]),
         edits: vec![(Span::new(base.start, name.span.end + call), new)],
     };
     Some((help, fix))
@@ -1568,7 +1506,7 @@ pub(super) fn by_twin(src: &str, name: &str, span: Span) -> Option<(String, Fix)
     Some((
         format!("write `.{base}(by: ..)`: options are named arguments, so there is one `{base}` and no `_by` twin"),
         Fix {
-            title: format!("write `{base}(by: ..)`"),
+            title: habits::BY_TWIN.say(&[&base]),
             edits,
         },
     ))
@@ -1627,7 +1565,7 @@ pub(crate) fn free_by_twin(src: &str, name: &str, span: Span) -> Option<(String,
     Some((
         format!("write `{shown}`: options are named arguments, so there is one `{base}` and no `_by` twin"),
         Fix {
-            title: format!("write `{shown}`"),
+            title: habits::WRITE.say(&[&shown]),
             edits: vec![(Span::new(span.start, end), format!("{recv}.{base}(by: "))],
         },
     ))
@@ -1677,7 +1615,7 @@ pub(crate) fn rename_values(
             .collect();
         cpl_diag::sort_by_key(&mut edits, |(s, _)| s.start as u64);
         edits.dedup_by_key(|(s, _)| s.start);
-        let title = format!("rename `{old}` to `{lower}` everywhere");
+        let title = habits::RENAME_VALUES.say(&[&old, &lower]);
         d.fixes.push(Fix { title, edits });
     }
     diags
@@ -1714,9 +1652,7 @@ pub(crate) fn same_place(
         }
         _ => "into a `let` first, then assign".into(),
     };
-    let help = format!(
-        "compute the right side {first}: otherwise the order the two sides run in decides the result"
-    );
+    let help = habits::SAME_PLACE.say(&[&first]);
     (message, help)
 }
 
@@ -1738,27 +1674,6 @@ impl Checker<'_> {
             _ => false,
         }
     }
-}
-
-/// "did you mean `s`?" for a member, naming the module and adding the
-/// `use` when `.s` on this receiver needs one (errors/R7).
-pub(crate) fn suggest_member(
-    diag: &mut Diagnostic,
-    src: &str,
-    span: Span,
-    s: String,
-    on_str: bool,
-) {
-    let auto = crate::prelude::methods().iter().any(|(_, m)| m.text == s);
-    let Some(m) = crate::prelude::method_module(&s, on_str).filter(|_| !auto) else {
-        return diag.suggest(span, s);
-    };
-    let (at, import) = crate::prelude::import_edit(src, &m, &s);
-    diag.help = Some(format!("did you mean `{s}`, from `std.{m}`?"));
-    diag.fixes.push(Fix {
-        title: format!("change to `{s}` and add it to `use std.{m}`"),
-        edits: vec![(at, import), (span, s)],
-    });
 }
 
 impl<'a> Checker<'a> {
@@ -1844,8 +1759,8 @@ impl Checker<'_> {
         let new = format!("{} {op} {}", text(key.value.span), text(base.span));
         let message = "C++'s `find(..) != end()`: whether an item is in it is `in`".to_string();
         if let Some(diag) = self.error(codes::UNKNOWN_FIELD, whole.span, message) {
-            diag.help = Some(format!("CP Lang has no iterators: write `{new}`"));
-            diag.fix(format!("write `{new}`"), whole.span, new);
+            diag.help = Some(habits::KEYED_FIND.say(&[&new]));
+            diag.fix(habits::WRITE.say(&[&new]), whole.span, new);
         }
         Some(Ty::Bool)
     }
@@ -1884,11 +1799,7 @@ impl Checker<'_> {
             return;
         };
         if each.len() == e.variants.len() && tags.args.len() == each.len() {
-            diag.help = Some(format!(
-                "write `enum {} = {}`",
-                e.name.text,
-                each.join(" | ")
-            ));
+            diag.help = Some(habits::ENUM_TAGS.say(&[&e.name.text, &each.join(" | ")]));
         }
     }
 }

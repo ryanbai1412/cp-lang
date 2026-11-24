@@ -43,6 +43,7 @@ mod storage;
 mod tuple_bound;
 mod variant;
 mod views;
+use cpl_diag::habits::{self, Kind};
 pub(crate) use stmt::runs;
 use views::{binding_kw, Keep};
 mod types;
@@ -1044,8 +1045,8 @@ impl<'a> Checker<'a> {
             && (suggestion.is_none() || near_builtin)
             && field_of_self.is_none()
             && name.chars().nth(1).is_some()
-            && advice::foreign_call(name).is_none()
-            && advice::foreign_value(name).is_none()
+            && habits::find(Kind::Call, name).is_none()
+            && habits::find(Kind::Value, name).is_none()
             && !matches!(name, "enumerate" | "range")
             && prelude::std_module(name).is_none()
             && cpl_syntax::removed_keyword(name).is_none();
@@ -1112,13 +1113,10 @@ impl<'a> Checker<'a> {
                     let fix = cpl_syntax::removed_keyword(name).unwrap_or_default();
                     diag.help = Some(format!("`{name}` was removed in CP Lang 0.2.2: {fix}"));
                 }
-                _ if advice::foreign_call(name).is_some() => {
-                    diag.help = advice::foreign_call(name).map(str::to_string);
-                    let own = match name {
-                        "ord" => "Int",
-                        "chr" => "Char",
-                        _ => "",
-                    };
+                _ if habits::find(Kind::Call, name).is_some() => {
+                    let habit = habits::find(Kind::Call, name);
+                    diag.help = habit.map(|h| h.help.to_string());
+                    let own = habit.map_or("", |h| h.fix);
                     if !own.is_empty() {
                         diag.fixes.clear();
                         diag.fix(format!("write `{own}`"), span, own);
@@ -1156,9 +1154,9 @@ impl<'a> Checker<'a> {
                         edits: vec![(Span::point(0), format!("{import}\n"))],
                     });
                 }
-                _ if advice::foreign_value(name).is_some() => {
-                    let s = advice::foreign_value(name).unwrap_or_default();
-                    diag.help = Some(format!("CP Lang spells it `{s}`"));
+                _ if habits::find(Kind::Value, name).is_some() => {
+                    let s = habits::find(Kind::Value, name).map_or("", |h| h.fix);
+                    diag.help = habits::help(Kind::Value, name).map(str::to_string);
                     diag.fix(format!("change to `{s}`"), span, s);
                 }
                 Some(s) => diag.suggest(span, s),
