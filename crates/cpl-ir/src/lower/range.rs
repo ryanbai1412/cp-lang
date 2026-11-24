@@ -255,6 +255,100 @@ pub(super) fn is_narrowable_elem_ty(ty: &Ty) -> bool {
     )
 }
 
+/// Ranges of struct fields, and of the arguments a generic struct is made with: a
+/// `SegTree<B, [C, C]?Cost>`'s nodes keep `Cost`'s range, so they store as
+/// narrowly as a `[C, C]?Cost` anywhere else.
+#[derive(Default)]
+pub(super) struct FieldRanges {
+    pub(super) fields: HashMap<(StructId, usize), RangeInfo>,
+    /// What `resolve_gen_args_for_struct` read off the written arguments, for
+    /// the `instantiate_struct` of those arguments that follows.
+    pending: Option<(GenStructId, Vec<GenArg>, Vec<Option<RangeInfo>>)>,
+    /// While a generic struct's fields are resolved: each type parameter's range.
+    params: HashMap<String, RangeInfo>,
+}
+
+impl RangeInfo {
+    /// What tells two ranges apart in an instance's identity, when every
+    /// bound is a constant; `None` for a range known only at run time.
+    pub(super) fn const_key(&self) -> Option<String> {
+        match self {
+            RangeInfo::Scalar(b) => {
+                let fixed = |e: &Option<Expr>, c: Option<i64>| e.is_none() || c.is_some();
+                (fixed(&b.lo, b.lo_const) && fixed(&b.hi, b.hi_const))
+                    .then(|| format!("{:?}..={:?}", b.lo_const, b.hi_const))
+            }
+            RangeInfo::Opt(inner) => Some(format!("?{}", inner.const_key()?)),
+            RangeInfo::Elem(inner) => Some(format!("[{}]", inner.const_key()?)),
+            RangeInfo::Tuple(items) => {
+                let keys: Option<Vec<String>> = (items.iter())
+                    .map(|i| i.as_ref().map_or(Some("_".into()), RangeInfo::const_key))
+                    .collect();
+                Some(format!("({})", keys?.join(", ")))
+            }
+            RangeInfo::Piece => Some("piece".into()),
+        }
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// Notes the constant ranges the written `args` of generic struct `gid` carry.
+    pub(super) fn note_arg_ranges(
+        &mut self,
+        gid: GenStructId,
+        args: &[ast::Type],
+        resolved: &[GenArg],
+    ) {
+        let saved_cx = std::mem::take(&mut self.cx);
+        let saved_outer = std::mem::take(&mut self.outer_cxs);
+        let saved_diags = self.diags.len();
+        let ranges: Vec<Option<RangeInfo>> = (args.iter())
+            .map(|t| {
+                self.range_info_from_ast(t)
+                    .filter(|r| r.const_key().is_some())
+            })
+            .collect();
+        self.diags.truncate(saved_diags);
+        self.cx = saved_cx;
+        self.outer_cxs = saved_outer;
+        self.struct_field_ranges.pending =
+            (ranges.iter().any(Option::is_some)).then(|| (gid, resolved.to_vec(), ranges));
+    }
+
+    /// The ranges noted for exactly these arguments of `gid`, and their part of the instance key.
+    pub(super) fn take_arg_ranges(
+        &mut self,
+        gid: GenStructId,
+        args: &[GenArg],
+    ) -> (Vec<Option<RangeInfo>>, Vec<Option<String>>) {
+        let ranges = match self.struct_field_ranges.pending.take() {
+            Some((g, noted, ranges)) if g == gid && args.starts_with(&noted) => ranges,
+            _ => Vec::new(),
+        };
+        let key = ranges
+            .iter()
+            .map(|r| r.as_ref().and_then(RangeInfo::const_key))
+            .collect();
+        (ranges, key)
+    }
+
+    /// Sets each type parameter's range while a struct's fields are resolved; returns the outer ones.
+    pub(super) fn enter_param_ranges(
+        &mut self,
+        generics: &[ast::Name],
+        ranges: &[Option<RangeInfo>],
+    ) -> HashMap<String, RangeInfo> {
+        let params = (generics.iter().zip(ranges))
+            .filter_map(|(p, r)| Some((p.text.clone(), r.clone()?)))
+            .collect();
+        std::mem::replace(&mut self.struct_field_ranges.params, params)
+    }
+
+    pub(super) fn leave_param_ranges(&mut self, outer: HashMap<String, RangeInfo>) {
+        self.struct_field_ranges.params = outer;
+    }
+}
+
 impl<'a> Lowerer<'a> {
     pub(super) fn narrow_range_width(&self, ty: &ast::Type) -> Option<IntWidth> {
         self.static_range_limits(ty)
@@ -372,6 +466,9 @@ impl<'a> Lowerer<'a> {
                         .map(|e| RangeInfo::Elem(Box::new(e)));
                 }
                 if args.is_empty() {
+                    if let Some(r) = self.struct_field_ranges.params.get(&name.text) {
+                        return Some(r.clone());
+                    }
                     if let Some(GenArg::Range(lo_c, hi_c)) = self.gen_env.get(&name.text).cloned() {
                         let lo_expr = lo_c.map(|v| self.int_lit(v, ty.span));
                         let hi_expr = hi_c.map(|v| self.int_lit(v, ty.span));
@@ -445,7 +542,7 @@ impl<'a> Lowerer<'a> {
                             self.narrow_elems.insert(ElemLoc::Field(id, idx), layout);
                         }
                     }
-                    self.struct_field_ranges.insert((id, idx), info);
+                    self.struct_field_ranges.fields.insert((id, idx), info);
                 }
             }
         }
@@ -457,7 +554,7 @@ impl<'a> Lowerer<'a> {
     /// resolving the field's AST type in the current scope for dynamic bounds
     /// (e.g. `struct Pt(r: 1..=n, c: 1..=m)`).
     pub(super) fn struct_field_range(&mut self, id: StructId, idx: usize) -> Option<RangeInfo> {
-        if let Some(info) = self.struct_field_ranges.get(&(id, idx)) {
+        if let Some(info) = self.struct_field_ranges.fields.get(&(id, idx)) {
             return Some(info.clone());
         }
         let decl = self.structs.get(id)?.decl?;
@@ -580,7 +677,7 @@ impl<'a> Lowerer<'a> {
             ExprKind::Global(gid) => self.global_ranges.get(gid).cloned(),
             ExprKind::Field(base, idx) => {
                 if let Ty::Struct(sid) = base.ty {
-                    return self.struct_field_ranges.get(&(sid, *idx)).cloned();
+                    return self.struct_field_ranges.fields.get(&(sid, *idx)).cloned();
                 }
                 match self.expr_range(base)? {
                     RangeInfo::Tuple(items) => items.get(*idx).cloned().flatten(),

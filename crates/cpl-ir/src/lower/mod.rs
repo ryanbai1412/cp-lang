@@ -821,7 +821,7 @@ struct Lowerer<'a> {
     gen_structs: Vec<GenStructTemplate<'a>>,
     /// The empty struct each bare operator value has as its type (`op_value`).
     op_types: Vec<(BareOp, StructId)>,
-    struct_insts: HashMap<(GenStructId, Vec<GenArg>), StructId>,
+    struct_insts: HashMap<(GenStructId, Vec<GenArg>, Vec<Option<String>>), StructId>,
     /// The domains made for arrays indexed by a plain range (`[0..n]T`,
     /// `[1..=n]T`) where a fn asks for a `[D]T`, with their first index.
     /// One per call and generic name; its size is set where the array is
@@ -876,7 +876,7 @@ struct Lowerer<'a> {
     char_domains: HashSet<DomainId>,
     /// Declared integer range bounds for globals and struct fields.
     global_ranges: HashMap<GlobalId, RangeInfo>,
-    struct_field_ranges: HashMap<(StructId, usize), RangeInfo>,
+    struct_field_ranges: FieldRanges,
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays/grids/lists/tuples.
     narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
     const_ints: HashMap<String, i64>,
@@ -1017,7 +1017,7 @@ impl<'a> Lowerer<'a> {
             domain_lens: HashMap::new(),
             char_domains: HashSet::new(),
             global_ranges: HashMap::new(),
-            struct_field_ranges: HashMap::new(),
+            struct_field_ranges: FieldRanges::default(),
             narrow_elems: std::collections::BTreeMap::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),

@@ -529,7 +529,8 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Type],
     ) -> Vec<GenArg> {
         let decl = self.gen_structs[gid].decl;
-        args.iter()
+        let resolved: Vec<GenArg> = args
+            .iter()
             .enumerate()
             .map(|(i, t)| {
                 if let Some(d) = self.anon_range_domain(decl, i, t) {
@@ -549,7 +550,9 @@ impl<'a> Lowerer<'a> {
                 }
                 self.resolve_gen_arg(t)
             })
-            .collect()
+            .collect();
+        self.note_arg_ranges(gid, args, &resolved);
+        resolved
     }
 
     pub(super) fn resolve_gen_arg(&mut self, ty: &ast::Type) -> GenArg {
@@ -823,7 +826,8 @@ impl<'a> Lowerer<'a> {
             self.cur_mod = saved_mod;
             self.offset = saved_offset;
         }
-        let key = (gid, args.clone());
+        let (ranges, range_key) = self.take_arg_ranges(gid, &args);
+        let key = (gid, args.clone(), range_key);
         if let Some(&id) = self.struct_insts.get(&key) {
             return id;
         }
@@ -891,6 +895,7 @@ impl<'a> Lowerer<'a> {
         }
 
         // 2. Resolve fields.
+        let outer_ranges = self.enter_param_ranges(&decl.generics, &ranges);
         let fields: Vec<(String, Ty)> = decl
             .fields
             .iter()
@@ -908,6 +913,7 @@ impl<'a> Lowerer<'a> {
         self.structs[id].def.fixed = self.fixed_rows(decl);
         self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
         self.collect_struct_field_ranges(id, decl);
+        self.leave_param_ranges(outer_ranges);
 
         // 3. Collect methods, getters, projections, laws, constants.
         let struct_env = self.gen_env.clone();
