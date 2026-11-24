@@ -181,6 +181,31 @@ class LandTest(unittest.TestCase):
         self.assertIn("NEW red: cpl-codegen tests::new_red", r.stderr)
         self.assertNotIn("new-reds: rerunning", r.stderr)
 
+    def test_a_new_red_that_passes_alone_at_the_tip_is_flaky_not_refused(self):
+        # cpl-wasm parity's transcript order raced under the full run only, and
+        # refused d2fc481a's unrelated fix as a new red.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\n"
+            # Alone (-E names one test) the racy test passes; the full run fails it.
+            'case "$*" in *"test(=tests::racy)"*) [ -f solid.txt ] || exit 0 ;; esac\n'
+            "if [ -f racy.txt ]; then echo '        FAIL [   0.010s] cpl-wasm tests::racy'; exit 100; fi\n"
+            "exit 0\n")
+        self.commit(theirs, "fake tests")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "origin", "main")
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        (ours / "racy.txt").write_text("x\n")
+        r = subprocess.run(cmd, cwd=ours, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("cpl-wasm tests::racy failed in the full run, passes alone here and at the base; not refusing", r.stderr)
+        self.assertNotIn("NEW red", r.stderr)
+        # One that fails alone too is the change's.
+        (ours / "solid.txt").write_text("x\n")
+        r = subprocess.run(cmd, cwd=ours, capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("NEW red: cpl-wasm tests::racy", r.stderr)
+
     def test_a_test_missing_or_unbuilt_at_the_base_is_a_new_red(self):
         # 617dc8f83 landed with its own new test red: a test the base doesn't have
         # (nextest exits 4, no tests) or can't build (exit 101) is the change's red.

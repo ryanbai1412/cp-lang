@@ -10,7 +10,10 @@ base (default HEAD, which the commit tier stages against) in a scratch
 worktree with its own target dir, by the same CMD with `-E` naming only
 those tests. A test failing there too is printed as "pre-existing red,
 owner <lane>" and logged for the culprit finder, and doesn't refuse; one
-that passes there, or is new, does. A base that doesn't build proves
+that passes there, or is new, is run again alone at the tip: one that passes
+alone fails only under the full run's load or order (a race), so it is printed
+as "flaky at the tip, owner <lane>", logged, and doesn't refuse; CI's full run
+still sees it. One that fails alone too refuses. A base that doesn't build proves
 nothing, so its tests refuse. Results are cached per base tree, so the
 next land on the same base runs nothing again. A failure no FAIL line
 names (a build error) refuses as before.
@@ -111,6 +114,19 @@ def main(argv):
             print(f"new-reds: pre-existing red, owner {who}: {' '.join(t)} fails at the base {base[:9]} too; "
                   "main's culprit job routes it, not refusing", file=sys.stderr)
             log.write(f"{base} {who} {' '.join(t)}\n")
+    if new:
+        print(f"new-reds: trying {len(new)} new red(s) alone at the tip", file=sys.stderr)
+        code, again = tee(only(cmd, new))
+        if code in (0, 4, 100):
+            still = set(failing_tests(again))
+            flaky = [t for t in new if t not in still]
+            new = [t for t in new if t in still]
+            with open(common / "cpl-flaky-tests.log", "a") as log:
+                for t in flaky:
+                    who = owner(t, base)
+                    print(f"new-reds: flaky at the tip, owner {who}: {' '.join(t)} failed in the full run, "
+                          "passes alone here and at the base; not refusing", file=sys.stderr)
+                    log.write(f"{base} {who} {' '.join(t)}\n")
     for t in new:
         print(f"new-reds: NEW red: {' '.join(t)} passes at the base {base[:9]} (or doesn't build there) "
               "and fails with this change", file=sys.stderr)
