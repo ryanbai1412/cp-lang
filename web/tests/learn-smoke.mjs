@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { base, open } from './browser.mjs';
+import { base, done, open } from './browser.mjs';
 
 const { page, errors } = await open();
 
@@ -24,4 +24,4 @@ for (const id of ['halving-game', 'leaderboard']) {
 }
 await page.close();
 console.log('page errors:', errors);
-process.exit(errors.length ? 1 : 0);
+done(errors.length ? 1 : 0);

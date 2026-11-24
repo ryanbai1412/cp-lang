@@ -1,7 +1,7 @@
 // handbook/guidelines/site-checklist.md site/R18: a contestant who describes
 // the task, not the item's name, finds the item in the first results.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { base, open } from './browser.mjs';
+import { base, done, open } from './browser.mjs';
 
 // Task phrasing -> the pages that answer it (any one counts): the std module
 // or the topic page in /docs/ref/lib.
@@ -42,7 +42,7 @@ const out = new URL('../out', import.meta.url).pathname;
 const gone = [...new Set(tasks.flatMap(([, want]) => want))].filter((u) => !existsSync(`${out}${u}.html`) && !existsSync(`${out}${u}/index.html`));
 if (gone.length) {
   console.error(`search-tasks: answer pages not in the site: ${gone.join(' ')}`);
-  process.exit(1);
+  done(1);
 }
 const knownFile = new URL('./search-known.txt', import.meta.url);
 const known = new Set(readFileSync(knownFile, 'utf8').split('\n').filter((l) => l && !l.startsWith('#')));
@@ -68,9 +68,9 @@ console.log(`search-tasks: ${tasks.length - misses.length} of ${tasks.length} ta
 if (process.env.UPDATE) writeFileSync(knownFile, '# Task phrasings search misses today; this list only shrinks (site/R18).\n' + misses.join('\n') + '\n');
 else if (fresh.length) {
   console.error(`search-tasks: newly missed: ${fresh.join('; ')}`);
-  process.exit(1);
+  done(1);
 } else if (fixed.length) {
   console.error(`search-tasks: now found, delete from tests/search-known.txt: ${fixed.join('; ')}`);
-  process.exit(1);
+  done(1);
 }
-process.exit(0);
+done(0);

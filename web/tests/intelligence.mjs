@@ -1,12 +1,12 @@
 // Enforces site/R5, site/R6 (handbook/guidelines/site-checklist.md).
 // Hover, completion and go to definition in a site editor come from the
 // language server in the wasm build.
-import { base, open } from "./browser.mjs";
+import { base, done, open } from "./browser.mjs";
 
 const { page, errors } = await open();
 const fail = (what) => {
   console.error(`intelligence: ${what}`);
-  process.exit(1);
+  done(1);
 };
 await page.goto(base + "/play", { waitUntil: "networkidle" });
 const source =
@@ -215,4 +215,4 @@ if (!(await typed.isVisible())) fail("hover in a std reference example shows no 
 console.log("std reference example hovers:", JSON.stringify((await typed.innerText()).split("\n")[0]));
 if (errors.length) fail(`page errors: ${errors.join("; ")}`);
 await page.close();
-process.exit(0);
+done(0);

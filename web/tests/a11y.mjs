@@ -3,7 +3,7 @@
 // known are listed in tests/a11y-known.txt as `route rule`; that list only shrinks.
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
-import { base, open } from './browser.mjs';
+import { base, done, open } from './browser.mjs';
 
 const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/docs/ref/std/segtree', '/learn', '/learn/start', '/learn/intro', '/learn/read/standard-library', '/learn/practice/prime-count', '/play', '/corpus', '/tools', '/performance', '/setup', '/lints', '/lints/search_loop', '/errors', '/errors/E0301', '/decisions'];
 const knownFile = new URL('./a11y-known.txt', import.meta.url);
@@ -21,6 +21,6 @@ const fixed = [...known].filter((k) => !found.has(k));
 for (const [k, v] of fresh) console.error(`a11y: ${k}: ${v}`);
 if (fixed.length) console.error(`a11y: fixed now, delete from tests/a11y-known.txt:\n${fixed.join('\n')}`);
 if (process.env.A11Y_LIST) console.log([...found.keys()].join('\n'));
-if (fresh.length || fixed.length) process.exit(1);
+if (fresh.length || fixed.length) done(1);
 console.log(`a11y: ${routes.length} routes, ${found.size} known violations left`);
-process.exit(0);
+done(0);

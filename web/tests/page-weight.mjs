@@ -3,7 +3,7 @@
 // fetches, gzipped at level 9 (the static server here does not compress), and
 // the largest contentful paint. Run with `pnpm --dir web page-weight`.
 import { gzipSync } from 'node:zlib';
-import { base, open } from './browser.mjs';
+import { base, done, open } from './browser.mjs';
 
 const { page, errors } = await open();
 const cdp = await page.context().newCDPSession(page);
@@ -32,4 +32,4 @@ for (const path of ['/', '/play', '/docs/guides/tour']) {
   );
 }
 await page.close();
-process.exit(errors.length ? 1 : 0);
+done(errors.length ? 1 : 0);

@@ -1,11 +1,11 @@
 // Enforces site/R12 (handbook/guidelines/site-checklist.md): an edit in the
 // playground, an example or a practice problem survives a reload; Reset forgets it.
-import { base, open } from "./browser.mjs";
+import { base, done, open } from "./browser.mjs";
 
 const { page, errors } = await open();
 const fail = (what) => {
   console.error(`drafts: ${what}`);
-  process.exit(1);
+  done(1);
 };
 const editor = () => page.locator(".cm-content").first();
 const text = () => editor().evaluate((e) => e.cmView?.view?.state.doc.toString() ?? e.innerText);
@@ -32,4 +32,4 @@ for (const path of ["/play", "/learn/practice/prime-count"]) {
 }
 if (errors.length) fail(`page errors: ${errors.join("; ")}`);
 console.log("drafts: edits survive a reload on /play and a practice problem; Reset forgets them");
-process.exit(0);
+done(0);

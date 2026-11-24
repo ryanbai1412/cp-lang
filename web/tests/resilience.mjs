@@ -1,11 +1,11 @@
 // handbook/guidelines/site-checklist.md site/R17: when a service the site
 // calls fails, the page degrades and says so instead of breaking.
-import { base, open } from './browser.mjs';
+import { base, done, open } from './browser.mjs';
 
 const { page, errors } = await open();
 const fail = (m) => {
   console.error(`resilience: ${m}`);
-  process.exit(1);
+  done(1);
 };
 await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
 
@@ -62,4 +62,4 @@ await page
 console.log('std down: Run names the module, and the next Run after it loads works');
 
 if (errors.length) fail(`page errors: ${errors.join('; ')}`);
-process.exit(0);
+done(0);

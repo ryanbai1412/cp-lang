@@ -2,7 +2,7 @@
 // Phone pass (probe P4, mechanical half): loads each route at 390 px wide and
 // lists what sticks out past the viewport, outside any element that scrolls
 // sideways on purpose. Run with `pnpm --dir web phone`.
-import { base, open } from './browser.mjs';
+import { base, done, open } from './browser.mjs';
 
 const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/learn/start', '/learn/intro', '/learn/read/standard-library', '/learn/practice/prime-ranges', '/learn/read/graphs', '/learn/read/dynamic-programming', '/learn/read/greedy-and-two-pointers', '/learn/practice/maze-walk', '/play', '/corpus', '/tools', '/performance', '/setup', '/lints', '/lints/search_loop', '/docs/ref/std/tree', '/errors', '/errors/E0301', '/decisions',
   '/learn/language/ownership-and-mutation',
@@ -44,4 +44,4 @@ for (const path of routes) {
 }
 console.log(`phone: ${routes.length - bad}/${routes.length} routes fit 390 px`);
 await page.close();
-process.exit(errors.length ? 1 : 0);
+done(errors.length ? 1 : 0);

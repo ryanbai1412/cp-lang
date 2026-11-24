@@ -8,7 +8,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { base, open } from "./browser.mjs";
+import { base, done, open } from "./browser.mjs";
 import { cplBin } from "../scripts/cpl-bin.mjs";
 
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -42,7 +42,7 @@ const sample = [...fixed, ...step(cases.filter((c) => !c.raised.fixes.length), 6
 const { page, errors } = await open();
 const fail = (what) => {
   console.error(`lint-fixes: ${what}`);
-  process.exit(1);
+  done(1);
 };
 await page.goto(base + "/play", { waitUntil: "networkidle" });
 const editor = page.locator(".cm-content").first();
@@ -99,4 +99,4 @@ for (const c of sample) {
 }
 if (errors.length) fail(`page errors: ${errors.join("; ")}`);
 console.log(`lint-fixes: ${sample.length} of ${cases.length} lint triggers show their code; ${applied} fixes apply as \`cpl lint\`'s do (${fixed.length} lints have one)`);
-process.exit(0);
+done(0);

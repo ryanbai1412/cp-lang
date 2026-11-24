@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 ;
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { base, open } from "./browser.mjs";
+import { base, done, open } from "./browser.mjs";
 import { cplBin } from "../scripts/cpl-bin.mjs";
 
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -19,7 +19,7 @@ const budget = 1500;
 const { page, errors } = await open();
 const fail = (what) => {
   console.error(`diagnostics: ${what}`);
-  process.exit(1);
+  done(1);
 };
 await page.goto(base + "/play", { waitUntil: "networkidle" });
 const editor = page.locator(".cm-content").first();
@@ -58,4 +58,4 @@ if (slow.length) fail(`errors shown later than ${budget} ms after the last keyst
 if (errors.length) fail(`page errors: ${errors.join("; ")}`);
 const ms = times.map(([, t]) => t).sort((a, b) => a - b);
 console.log(`diagnostics: ${times.length} registry triggers show their code; ${ms[ms.length >> 1]} ms median, ${ms[ms.length - 1]} ms max`);
-process.exit(0);
+done(0);

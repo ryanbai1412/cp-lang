@@ -1,4 +1,4 @@
-import { base, open } from './browser.mjs';
+import { base, done, open } from './browser.mjs';
 
 const { page, errors } = await open();
 let wasm = 0;
@@ -6,7 +6,7 @@ page.on('request', (r) => (wasm += r.url().endsWith('.wasm')));
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 if (wasm) {
   console.error('home fetched cpl.wasm before anything ran');
-  process.exit(1);
+  done(1);
 }
 console.log('home loads without cpl.wasm');
 await page.getByRole('button', { name: 'Run' }).first().click();
@@ -32,7 +32,7 @@ const replay = await viewer.evaluate(async () => {
 });
 if (replay.returned?.before !== 2 || replay.returned?.after !== 3) {
   console.error('replay:', JSON.stringify(replay));
-  process.exit(1);
+  done(1);
 }
 console.log('trace viewer replays a call with an edited fn');
 await viewer.close();
@@ -59,14 +59,14 @@ wasm = 0;
 await page.goto(base + '/docs/guides/tour', { waitUntil: 'networkidle' });
 if (wasm) {
   console.error('the tour fetched cpl.wasm before a Run');
-  process.exit(1);
+  done(1);
 }
 await page.locator('.live-code').getByRole('button', { name: 'Run' }).first().click();
 const live = page.locator('.live-code [role=status]').first();
 await live.filter({ hasNotText: 'Loading' }).waitFor({ timeout: 30000 });
 if (!(await live.innerText()).trim() || (await live.getAttribute('class')).includes('text-destructive')) {
   console.error('tour run:', JSON.stringify(await live.innerText()));
-  process.exit(1);
+  done(1);
 }
 console.log('a guide block runs in place, wasm loaded on Run:', JSON.stringify(await live.innerText()));
 for (const [query, url] of [['Monoid', '/docs/ref/std/algebra'], ['borrow it', '/docs/guides/borrowing'], ['last_true', '/docs/ref/core/04-indices']]) {
@@ -102,4 +102,4 @@ await gcd.getByRole('status').filter({ hasText: /^\d+\s*$/ }).waitFor({ timeout:
 console.log('a lint example that reads runs on a generated input');
 await page.close();
 console.log('page errors:', errors);
-process.exit(errors.length ? 1 : 0);
+done(errors.length ? 1 : 0);

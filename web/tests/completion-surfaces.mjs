@@ -1,12 +1,12 @@
 // Enforces site/R5 (handbook/guidelines/site-checklist.md) for complete/U27-U32:
 // completion works the same in every kind of site editor, says when the
 // compiler isn't there, and fits a phone.
-import { base, open } from './browser.mjs';
+import { base, done, open } from './browser.mjs';
 
 const { page, errors } = await open();
 const fail = (what) => {
   console.error(`completion-surfaces: ${what}`);
-  process.exit(1);
+  done(1);
 };
 const menu = page.locator('.cm-tooltip-autocomplete');
 const labels = () => menu.locator('.cm-completionLabel').allInnerTexts().catch(() => []);
@@ -98,4 +98,4 @@ for (const [name, sel] of [['menu', '.cm-tooltip-autocomplete'], ['detail', '.cm
 console.log('phone: the menu and its detail fit 375 px');
 
 if (errors.length) fail(`page errors: ${errors.join('; ')}`);
-process.exit(0);
+done(0);
