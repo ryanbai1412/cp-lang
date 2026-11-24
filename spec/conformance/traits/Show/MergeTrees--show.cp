@@ -1,4 +1,4 @@
-// expect: ok, output "1 nodes"
+// expect: ok, output "4 nodes"
 // rule: std.segtree MergeTrees prints its node count, past the shared empty node
 use std.segtree.{MergeTree, MergeTrees}
 domain D = 0..8

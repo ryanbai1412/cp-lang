@@ -8,10 +8,10 @@ type Pos = 0..=2_000_000_000
 
 struct NoAction
 
-impl<T, F> Acts<T, F> for NoAction:
-    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, F>:
+impl<T> Acts<T, Int> for NoAction:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, Int>:
         assert false, "a tree without `act:` has no action"
-        Action(F.zero, (f, g) => f, (f, v, span) => v, over)
+        Action(0, (f, g) => f, (f: Int, v: T, span: Int) => v, over)
 struct NoOp
 struct NoOver
 fn same<A, B>(a: A, b: B) -> Bool = a == b

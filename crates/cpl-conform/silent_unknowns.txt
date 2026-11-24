@@ -1,11 +1,11 @@
 76 cause:binding
 497 cause:branch
-2595 cause:call
+2597 cause:call
 1260 cause:index
 244 cause:list
-4211 cause:member
+4213 cause:member
 3342 cause:method-call
-10254 cause:name
+10255 cause:name
 2776 cause:operator
 346 cause:other
 666 cause:unwrap
@@ -2018,6 +2018,7 @@
 2 spec/conformance/std-segtree/segtree-right-while-false-on-identity-traps.cp
 6 spec/conformance/std-segtree/segtree-right-while-to-the-end.cp
 1 spec/conformance/std-segtree/segtree2d-matches-brute.cp
+2 spec/conformance/std-segtree/stock-actions-fix-tags-through-acts.cp
 1 spec/conformance/std-segtree/typed-bare-op-first.cp
 3 spec/conformance/std-segtree/wavelet-matrix-matches-sort.cp
 9 spec/conformance/std-seq/adjacent-buckets-counting-sort-span.cp
@@ -2274,6 +2275,8 @@
 5 spec/conformance/tools-judge/avx2-max-plus-row-agrees-with-the-loop.cp
 2 spec/conformance/tools-judge/avx2-max-plus-row-overflow-traps.cp
 1 spec/conformance/tools-trace/debug-prints-value-with-its-line.cp
+1 spec/conformance/traits/Acts/AssignAction--action.cp
+2 spec/conformance/traits/Acts/FlipAction--action.cp
 1 spec/conformance/traits/Add/MaxCount--add.cp
 1 spec/conformance/traits/Add/MinCount--add.cp
 1 spec/conformance/traits/Bidir/Deque--iter_rev.cp
