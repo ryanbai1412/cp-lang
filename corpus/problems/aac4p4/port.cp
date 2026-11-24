@@ -20,22 +20,35 @@ let r: l..=n * m = read()
 let pass: [Hurdle]Lane = read()
 
 type Cell = (lane: Lane, at: Hurdle)
-// The cells that must hold a banana and those that may, in a plan that leaves the baton in f.
-fn plan() -> ?(must: List<Cell>, may: List<Cell>):
-    if s == f and l == 0: return (must: [], may: [])
-    if let j = Hurdle.rev.find(h => pass[h] == f):
-        if l <= n: return (must: [(s, j)], may: [(i, j) for i in Lane if i != s])
-        let rest = [(i, h) for i in Lane for h in Hurdle if h != j and not (i == f and h > j)]
-        return (must: [(i, j) for i in Lane], may: rest)
-    if s == f: return (must: [], may: [(i, h) for i in Lane if i != s for h in Hurdle])
-    None
+let trivial = s == f and l == 0
+let last_f = Hurdle.rev.find(h => pass[h] == f)
 
-if let p = plan() and max(l, p.must.len) <= min(r, p.must.len + p.may.len):
-    let extra = max(0, l - p.must.len)
+fn must() -> yields Cell:
+    if trivial: return
+    if let j = last_f:
+        if l <= n: yield (s, j)
+        else:
+            for i in Lane: yield (i, j)
+
+fn may() -> yields Cell:
+    if trivial: return
+    if let j = last_f:
+        if l <= n:
+            for i in Lane if i != s: yield (i, j)
+        else:
+            for i in Lane:
+                for h in Hurdle if h != j and not (i == f and h > j): yield (i, h)
+    elif s == f:
+        for i in Lane if i != s:
+            for h in Hurdle: yield (i, h)
+
+let (sure, open) = (must().count(), may().count())
+if (trivial or last_f != None or s == f) and max(l, sure) <= min(r, sure + open):
+    let extra = max(0, l - sure)
     var banana: [Lane, Hurdle]0..=1 = 0
-    for c in p.must: banana[c.lane, c.at] = 1
-    for c in p.may.take(extra): banana[c.lane, c.at] = 1
-    print(p.must.len + extra)
+    for c in must(): banana[c.lane, c.at] = 1
+    for c in may().take(extra): banana[c.lane, c.at] = 1
+    print(sure + extra)
     for i in Lane: print([banana[i, h] for h in Hurdle])
 else:
     print(-1)
