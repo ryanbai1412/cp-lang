@@ -163,6 +163,59 @@ impl<'p> Emitter<'p> {
         Code::primary(text)
     }
 
+    /// Whether printing `piece` runs code (a call, I/O, a write), which a
+    /// `"{x}"` string computes before its capture begins.
+    fn format_value_runs(&self, piece: &FmtPiece) -> bool {
+        let value = match piece {
+            FmtPiece::Value(arg) => &arg.value,
+            FmtPiece::Number(value, _) => value,
+            FmtPiece::Text(_) => return false,
+        };
+        let touch = self.touch(value);
+        touch.io || !touch.writes.is_empty() || !touch.binds.is_empty() || !touch.calls.is_empty()
+    }
+
+    /// The statements that print each piece of a `"{x}"` string into a capture.
+    fn format_parts(&mut self, pieces: &[FmtPiece], values: Vec<Code>) -> Vec<String> {
+        let mut values = values.into_iter();
+        let mut parts = Vec::new();
+        for piece in pieces {
+            match piece {
+                FmtPiece::Text(bytes) => parts.push(self.put_text(bytes)),
+                FmtPiece::Value(arg) => {
+                    let code = match values.next() {
+                        Some(code) => code,
+                        None => self.expr(&arg.value),
+                    };
+                    parts.push(self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string()));
+                }
+                FmtPiece::Number(value, fmt) => {
+                    let code = match values.next() {
+                        Some(code) => code,
+                        None => self.expr(value),
+                    };
+                    self.need("put_num");
+                    let (zero, width) = (fmt.zero, fmt.width);
+                    parts.push(match fmt.kind {
+                        NumKind::Dec => {
+                            format!("cpl::put_num({}, 10, {zero}, {width});", code.text)
+                        }
+                        NumKind::Hex => {
+                            format!("cpl::put_num({}, 16, {zero}, {width});", code.text)
+                        }
+                        NumKind::Bin => {
+                            format!("cpl::put_num({}, 2, {zero}, {width});", code.text)
+                        }
+                        NumKind::Fixed(places) => {
+                            format!("cpl::put_fixed({}, {places}, {zero}, {width});", code.text)
+                        }
+                    });
+                }
+            }
+        }
+        parts
+    }
+
     /// Emits `operands` and hands them to `build`. C++ does not say which
     /// operand of `a + b` or argument of `f(a, b)` runs first; the
     /// language says left to right. Where the difference could show, the
@@ -1266,6 +1319,19 @@ impl<'p> Emitter<'p> {
             ExprKind::Print(args, end) => self.lambda("void", |this, out| {
                 this.print_stmts(args, end.as_deref(), out)
             }),
+            ExprKind::Format(pieces) if !pieces.iter().any(|p| self.format_value_runs(p)) => {
+                self.need("captured");
+                let mut text = String::from("cpl::captured([&] {\n");
+                self.indent += 1;
+                let parts = self.format_parts(pieces, Vec::new());
+                if !parts.is_empty() {
+                    text.push_str(&format!("{}{}\n", pad(self.indent), parts.join(" ")));
+                }
+                self.indent -= 1;
+                text.push_str(&pad(self.indent));
+                text.push_str("})");
+                Code::primary(text)
+            }
             ExprKind::Format(pieces) => self.lambda("std::string", |this, out| {
                 // Values that run code are computed before the capture
                 // begins, so what they print goes out and not in.
@@ -1298,47 +1364,7 @@ impl<'p> Emitter<'p> {
                 this.need("capture");
                 let capture = this.temp();
                 out.push_str(&format!("{}cpl::Capture {capture};\n", pad(this.indent)));
-                let mut values = values.into_iter();
-                let mut parts = Vec::new();
-                for piece in pieces {
-                    match piece {
-                        FmtPiece::Text(bytes) => parts.push(this.put_text(bytes)),
-                        FmtPiece::Value(arg) => {
-                            let code = match values.next() {
-                                Some(code) => code,
-                                None => this.expr(&arg.value),
-                            };
-                            parts.push(this.show_stmt(
-                                &code,
-                                &arg.value.ty,
-                                &arg.digits.to_string(),
-                            ));
-                        }
-                        FmtPiece::Number(value, fmt) => {
-                            let code = match values.next() {
-                                Some(code) => code,
-                                None => this.expr(value),
-                            };
-                            this.need("put_num");
-                            let (zero, width) = (fmt.zero, fmt.width);
-                            parts.push(match fmt.kind {
-                                NumKind::Dec => {
-                                    format!("cpl::put_num({}, 10, {zero}, {width});", code.text)
-                                }
-                                NumKind::Hex => {
-                                    format!("cpl::put_num({}, 16, {zero}, {width});", code.text)
-                                }
-                                NumKind::Bin => {
-                                    format!("cpl::put_num({}, 2, {zero}, {width});", code.text)
-                                }
-                                NumKind::Fixed(places) => format!(
-                                    "cpl::put_fixed({}, {places}, {zero}, {width});",
-                                    code.text
-                                ),
-                            });
-                        }
-                    }
-                }
+                let parts = this.format_parts(pieces, values);
                 if !parts.is_empty() {
                     out.push_str(&format!("{}{}\n", pad(this.indent), parts.join(" ")));
                 }

@@ -123,6 +123,14 @@ struct Capture {
 ",
     },
     Piece {
+        name: "captured",
+        needs: &["capture"],
+        code: "\
+// What `print_into` prints, as a string: a \"{x}\" string whose values run no code.
+template <class F> std::string captured(F&& print_into) { Capture c; print_into(); return c.take(); }
+",
+    },
+    Piece {
         name: "fail",
         needs: &["out"],
         code: "\
