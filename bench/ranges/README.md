@@ -14,6 +14,7 @@ Run with `./bench/ranges/run.sh`.
 | `lazy_treap` | n=200k slope-trick inserts + global affine tags + `take(n/2).sum()` | 83.5 ms | 82.2 ms | 1.02x | 12,332 B |
 | `range_fenwick` | n=200k, 200k range adds + 200k range sums | 26.0 ms | 24.4 ms | 1.06x | 8,138 B |
 | `merge_sort_tree` | n=50k build + 100k O(log^2 n) `count_le` queries | 119.1 ms | 112.9 ms | 1.06x | 9,940 B |
+| `lazy_assign` | n=200k, 200k random range paints (assign hole/tissue) + range longest-run folds; C++ is the recursive int-field tree of the accepted shoi15p2 | 104.0 ms | 71.1 ms | 1.46x | 29,936 B |
 | `beats` | n=50k, 100k mixed `chmin`/`chmax`/`add`/`sum` | 164.5 ms | 148.0 ms | 1.11x | 17,536 B |
 | `range_kth` | n=50k build + 100k O(log n) median queries | 62.9 ms | 54.1 ms | 1.16x | 12,840 B |
 | `time_tree` | n=30k, m=60k edge intervals, q=30k rollback-DSU queries | 50.0 ms | 41.0 ms | 1.22x | 12,910 B |
@@ -25,6 +26,9 @@ hand-written C++17 with zero `std::function`: `MergeSortTree` uses a single flat
 `data` array with `[beg, fin)` offsets, `RangeKth` uses 32-bit ranged-int node
 indices (`0..=2_000_000_000`) and iterative path copy, and `TimeTree` uses a
 flat linked-list pool (`head`/`next`/`ev_val`) with iterative interval insertion.
+
+`lazy_assign` is the open gap: `SegTree`'s bottom-up lazy `apply` pushes and pulls both
+boundary paths in full, where the recursive tree only touches the nodes it visits.
 
 `mo` isolates a codegen bottleneck rather than driver overhead: `mo_order`
 (10.7 ms vs 13.5 ms C++ = 0.79x) is faster than C++, `add`/`remove` inline at
