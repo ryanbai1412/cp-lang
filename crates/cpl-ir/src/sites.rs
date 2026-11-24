@@ -44,16 +44,7 @@ pub fn user_spans(program: &Program) -> Vec<Span> {
 
 fn each_user_stmt<'p>(program: &'p Program, f: &mut dyn FnMut(&'p Stmt)) {
     let library = library_closures(program);
-    // One statement a span in a body: the ones a lowering writes for an
-    // expression (an inline `all`'s loop) carry its statement's span.
-    let mut add = |block: &'p Block| {
-        let mut spans = HashSet::new();
-        written(block, &mut |stmt: &'p Stmt| {
-            if stmt.span().is_some_and(|span| spans.insert(span)) {
-                f(stmt)
-            }
-        })
-    };
+    let mut add = |block: &'p Block| written(block, &mut *f);
     add(&program.setup);
     add(&program.main);
     for (id, f) in program.fns.iter().enumerate() {
@@ -77,21 +68,40 @@ fn each_user_stmt<'p>(program: &'p Program, f: &mut dyn FnMut(&'p Stmt)) {
 /// chain (`elif`, an arm of a `match`), which the C++ may test as one
 /// `switch`: it is not a statement of its own.
 fn written<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Stmt)) {
+    within(block, &[], f)
+}
+
+/// [`written`] for a block inside statements spanned `outer`. A statement
+/// spanned inside the last one written before it in its block or an
+/// enclosing one is one a lowering wrote for that statement's expression
+/// (an inline `all`'s loop over `xs`), not one of its own.
+fn within<'p>(block: &'p Block, outer: &[Span], f: &mut dyn FnMut(&'p Stmt)) {
+    let mut prev = None;
     for stmt in &block.stmts {
-        if stmt.span().is_some() {
+        let span = stmt.span();
+        let made = |s: Span| {
+            prev.iter()
+                .chain(outer)
+                .any(|p| p.start <= s.start && s.end <= p.end)
+        };
+        let own = span.is_some_and(|s| !made(s));
+        if own {
             f(stmt);
+            prev = span;
         }
-        arms(stmt, f);
+        let mut inner = outer.to_vec();
+        inner.extend(prev);
+        arms(stmt, &inner, f);
     }
 }
 
-fn arms<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Stmt)) {
+fn arms<'p>(stmt: &'p Stmt, outer: &[Span], f: &mut dyn FnMut(&'p Stmt)) {
     match stmt {
         Stmt::If(_, then, otherwise) => {
-            written(then, f);
+            within(then, outer, f);
             match &otherwise.stmts[..] {
-                [next @ Stmt::If(..)] => arms(next, f),
-                _ => written(otherwise, f),
+                [next @ Stmt::If(..)] => arms(next, outer, f),
+                _ => within(otherwise, outer, f),
             }
         }
         // A body statement spanned before the loop's iterable binds its
@@ -99,14 +109,14 @@ fn arms<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Stmt)) {
         Stmt::For(..) => {
             let at = stmt.span().map_or(0, |span| span.start);
             walk::stmt_blocks(stmt, &mut |inner| {
-                written(inner, &mut |s: &'p Stmt| {
+                within(inner, outer, &mut |s: &'p Stmt| {
                     if s.span().is_none_or(|span| span.start >= at) {
                         f(s)
                     }
                 })
             })
         }
-        _ => walk::stmt_blocks(stmt, &mut |inner| written(inner, f)),
+        _ => walk::stmt_blocks(stmt, &mut |inner| within(inner, outer, f)),
     }
 }
 

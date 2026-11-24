@@ -11,7 +11,7 @@ for i in 0..8 * n:
     s += r.ends.0 // timed: range.ends
     s += V(i % 64).shift(-2..=9).len // timed: range.shift
 for (a, b) in (0..8 * n).splits: // timed: range.splits
-    s += a.len - b.len
+    s += a.len - b.len // timed: range.splits
 for i in 0..4 * n:
     let ge = (x: Int) => x >= i % n // within: range.first_true
     let le = (x: Int) => x <= i % n // within: range.last_true
