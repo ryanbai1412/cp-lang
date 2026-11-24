@@ -128,7 +128,13 @@ impl<'a> Lowerer<'a> {
         match &e.kind {
             ast::ExprKind::Field { base, name } if name.text == "rev" => matches!(
                 self.probe_ty_silent(base),
-                Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..))
+                Some(
+                    Ty::Array { .. }
+                        | Ty::List(_)
+                        | Ty::ListView(..)
+                        | Ty::Keyed(..)
+                        | Ty::MutView(..)
+                )
             ),
             ast::ExprKind::Paren(inner) => self.reordered_view(inner),
             _ => self.reversed_arg(e),
