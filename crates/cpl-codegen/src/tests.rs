@@ -625,17 +625,19 @@ fn a_printed_sequence_streams_into_out() {
 }
 
 #[test]
-fn the_program_runs_on_a_thread_with_the_profile_stack() {
+fn the_program_runs_with_the_profile_stack() {
     let source = "let n: Int = read()\nprint(n)\n";
     let cpp = cpp(source);
-    assert!(cpp.contains("a 1024 MB stack."), "{cpp}");
+    assert!(cpp.contains("Runs with a 1024 MB stack."), "{cpp}");
+    assert!(cpp.contains("setcontext(&u)"), "{cpp}");
     assert!(cpp.contains("static void cpl_main() {"), "{cpp}");
     assert!(cpp.contains("for (size_t n = (size_t)1024 << 20;"), "{cpp}");
     assert!(
         cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"),
         "{cpp}"
     );
-    assert!(cpp.contains("mallopt(M_ARENA_MAX, 1);"), "{cpp}");
+    // One thread, so glibc keeps malloc's single-thread fast path.
+    assert!(!cpp.contains("mallopt"), "{cpp}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
@@ -648,7 +650,7 @@ fn the_program_runs_on_a_thread_with_the_profile_stack() {
         cpp.contains("#ifdef _WIN32") && cpp.contains("CreateThread(0, n,"),
         "{cpp}"
     );
-    assert!(cpp.contains("#else\n#include <pthread.h>"), "{cpp}");
+    assert!(cpp.contains("#else\n#ifdef __GLIBC__"), "{cpp}");
     // No call depth is counted, in any build.
     assert!(!cpp.contains("depth"), "{cpp}");
 }

@@ -166,8 +166,8 @@ Every fact the compiler relies on is in one tier (`05-ownership.md`):
 
 ## 9.6 Recursion and the stack
 
-The bundle runs `main` on a thread whose stack comes from the judge
-profile (default 1 GB). There is no depth inference or counting; a
+The bundle runs `main` on a stack the size the judge profile gives
+(default 1 GB; §13.1). There is no depth inference or counting; a
 stack overflow crashes as in C++, and the checked runtime prints the
 call trace. Runtime-sized arrays and static arrays over 4 KB never go on
 the stack.

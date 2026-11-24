@@ -124,7 +124,6 @@ const RESERVED: &[&str] = &[
     "SEEK_END",
     "EXIT_SUCCESS",
     "LOCAL",
-    "CPL_LINKED",
     "EXIT_FAILURE",
     "M_PI",
     "M_E",

@@ -1449,7 +1449,7 @@ impl<'p> Emitter<'p> {
         }
         out.push_str("}  // namespace prog\n\n");
         out.push_str(match self.target.thread_stack {
-            Some(bytes) => format!("// Runs on a thread with a {} MB stack.\nstatic void cpl_main() {{\n", bytes >> 20),
+            Some(bytes) => format!("// Runs with a {} MB stack.\nstatic void cpl_main() {{\n", bytes >> 20),
             None => "// The judge allows no threads: the program has the stack `main` is given.\nint main() {\n".into(),
         }.as_str());
         // Each test case has its own query limit.
@@ -1525,8 +1525,8 @@ impl<'p> Emitter<'p> {
     }
 }
 
-/// `main` for a judge that allows threads: the program runs on one with
-/// the profile's stack, or the largest the judge reserves short of that.
+/// `main` for a judge that allows threads: the program runs with the
+/// profile's stack, or the largest the judge reserves short of that.
 /// The stack is address space: pages are committed as calls reach them.
 const THREAD_MAIN: &str = "\
 int main() {
@@ -1546,26 +1546,28 @@ static bool cpl_on(size_t n) {
 ";
 
 const POSIX_THREAD: &str = "
-#include <pthread.h>
-#if defined(__GLIBC__) && __GLIBC__ * 100 + __GLIBC_MINOR__ < 234
-#pragma weak pthread_create  // the judge may not link libpthread
-#define CPL_LINKED &pthread_create
-#else
-#define CPL_LINKED 1
-#endif
 #ifdef __GLIBC__
-#include <malloc.h>  // one arena: a thread's own is slower
-#endif
+#include <sys/mman.h>
+#include <ucontext.h>
+static bool cpl_on(size_t n) {
+    static ucontext_t u;
+    void* p = mmap(0, n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_NORESERVE, -1, 0);
+    if (p == MAP_FAILED || mprotect(p, 4096, PROT_NONE)) return false;
+    getcontext(&u);
+    u.uc_stack = {p, 0, n};
+    makecontext(&u, cpl_main, 0);
+    return setcontext(&u), false;
+}
+#else
+#include <pthread.h>
 static void* cpl_go(void*) { cpl_main(); return 0; }
 static bool cpl_on(size_t n) {
     pthread_attr_t a;
     pthread_t t;
-#ifdef __GLIBC__
-    mallopt(M_ARENA_MAX, 1);
-#endif
-    return CPL_LINKED && !pthread_attr_init(&a) && !pthread_attr_setstacksize(&a, n) &&
+    return !pthread_attr_init(&a) && !pthread_attr_setstacksize(&a, n) &&
            !pthread_create(&t, &a, cpl_go, 0) && (pthread_join(t, 0), true);
 }
+#endif
 ";
 
 /// Comparisons for the program's own types, from their fields in order.
