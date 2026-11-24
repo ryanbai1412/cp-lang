@@ -187,8 +187,9 @@ In order of what a user would feel:
 - Each rule id is defined once, where `(Rnn.n.n)` ends its sentence. A case
   cites it as `// rule: nn.n.n`, without the `R`.
 - A case expecting a code marks the line it points at with `// <- here`; no case counts lines (decision 506).
-- A new case that fails today is recorded as known-failing. A passing case
-  that starts failing blocks the land.
+- Every case passes; there is no known-failing record. A case for a rule the
+  compiler can't meet yet lands with the fix, and any failing case blocks the
+  land.
 - Normative rules live only in `spec/`. The handbook explains them and
   `plan/domains/spec/` tracks work on them; neither restates them.
 

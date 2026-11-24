@@ -84,8 +84,9 @@ the rule.
   each domain's count only goes down.
 - **Every lint and gate cites its rule.** See
   [Rules live in guidelines](#rules-live-in-guidelines).
-- **Skips only shrink.** Ignored tests, xfails, allowlists and lists of
-  known differences have shrink-only counts.
+- **Skips go to zero.** Ignored tests, xfails, allowlists and lists of
+  known differences are counted raw with target 0; a written reason keeps
+  none of them. A new one lands with its counter, owner and deletion plan.
 - **Expected output changes for a reason.** A commit that edits expected
   output together with the code that produces it is flagged for post-land
   review: it may have blessed a bug.
