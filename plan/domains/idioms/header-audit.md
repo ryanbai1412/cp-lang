@@ -156,7 +156,7 @@ bounds and matches an accepted C++ at full statement size.
 - iati21a13: DMOJ code iati21a13 now returns 'No such problem'; statement taken from the official IATI 2021 PDF (Senior Day 1 Task 3 News), Source link left on DMOJ because infos.infosbg.com is not an allowed public host
 - egoi22p4: DMOJ code egoi22p4 returns 'No such problem'; statement from the official EGOI 2022 PDF, Source links oj.uz EGOI22_tourists
 - ucup5s02h: Source has no URL because contest.ucup.ac/qoj.ac are not in scripts/public-hosts.txt; port allows n <= 1.5e5 vs statement n <= 1e5 (looser, harmless)
-- noi06p3: Luogu gives n <= 1e6, port caps n <= 1e5 (DMOJ bound unverified); trying only heights within 2 of nearby values is the original's unproven assumption
+- noi06p3: fixed, the port reads the NOI bounds (Luogu P2703: n <= 1e6, coordinates <= 1e6); trying only heights within 2 of nearby values is the original's unproven assumption (it matches an every-height DP on small random fossils)
 - ioi17p3: bounds n <= 5000, m <= 20000 taken from known statement, the extracted PDF text dropped the numbers
 - noip08p4: no DMOJ statement snapshot was reachable; statement read from Luogu P1155 instead
 - shoi16p1: not on public DMOJ; the statement came from Luogu P3267 (JLOI/SHOI 2016 Scout Guards) and the Source URL stays dmoj.ca
@@ -237,7 +237,7 @@ bounds and matches an accepted C++ at full statement size.
 - iati21a23: statement not found (DMOJ page Cloudflare-gated, no Wayback snapshot, IATI 2021 not on Luogu)
 - 996warmup8p3: statement not found (DMOJ API 404, no Wayback snapshot)
 - iati21a12: no statement found (DMOJ API returns 404, problem not public; no mirror found), so the Problem line could not be written from a statement
-- ucup5s02f: no statement found (QOJ search and ucup.ac turned up nothing; the repo's own worklog/STATUS say the port has no statement)
+- ucup5s02f: fixed, the statement is public at contest.ucup.ac/contest/4207/problem/20720/statement/en (Flight of the Night Butterfly: n, m <= 50, l, r, T <= 1e18, q <= 100, 1 s, 512 MB)
 - ucup5s01a: could not find the statement (Universal Cup 5 Stage 1 A); qoj.ac returns 403, ucup.ac and searches had no problem set, meta.json has no submission link
 - ucup4s25e: statement not readable; QOJ (contest 3773, UCup 4 Stage 25 Zagreb) redirects to login after Cloudflare and no public mirror found, so the Problem line could only come from code
 - ucup4s24f: statement not readable (QOJ needs a login, no public mirror found)

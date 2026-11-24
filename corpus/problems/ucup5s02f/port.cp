@@ -1,4 +1,6 @@
-// Universal Cup 5 Stage 2 F — Periodic Intervals
+// Universal Cup 5 Stage 2 F — Flight of the Night Butterfly,
+//   qoj.ac/contest/4207/problem/20720 (n, m <= 50, l, r, T <= 1e18, q <= 100)
+// limits: 1000 ms, 512 MB
 //
 // For a query period t, we seek the smallest multiple 6 * k <= t (k >= 1) such
 // that every grid point (6 * i + 6) * t / (6 * k) (i in 0..k) falls in some
@@ -41,10 +43,10 @@ fn solve(t: I128, p0: List<(Int, Int)>, p1: List<(Int, Int)>) -> ?Int:
         else: return Some(Int(I128(6) * k))
     None
 
-let (n0, n1): (1..=200_000, 1..=200_000) = read()
-let p0: [0..n0](Int, Int) = read()
-let p1: [0..n1](Int, Int) = read()
-let q: 1..=200_000 = read()
+let (n0, n1): (1..=50, 1..=50) = read()
+let p0: [0..n0](1..=10 ** 18, 1..=10 ** 18) = read()
+let p1: [0..n1](1..=10 ** 18, 1..=10 ** 18) = read()
+let q: 1..=100 = read()
 let queries: [0..q]1..=10 ** 18 = read()
 for t in queries:
     print(solve(I128(t), p0, p1) ?? -1)

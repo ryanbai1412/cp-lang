@@ -1,5 +1,6 @@
 // Source: NOI 2006 P3 Millennium Worm (千年虫), https://dmoj.ca/problem/noi06p3
-// Problem: a fossil A gives n rows (n <= 1e5 here), row i covering cells L_i..=R_i, coordinates
+// limits: 1000 ms, 128 MB
+// Problem: a fossil A gives n rows (n <= 1e6), row i covering cells L_i..=R_i, coordinates
 //   <= 1e6. Find a model worm B that corrodes down to A: B covers A row by row, and each side,
 //   read down the rows, is a trunk with rectangular feet (the side steps out onto a foot and
 //   back in, alternately, the first and last rows on the trunk). Print the fewest cells in B - A.
@@ -7,28 +8,25 @@
 //   heights h_i >= a_i minimizing sum(h_i - a_i), where rows keep their height or strict rises
 //   and falls alternate. Only heights within 2 of a value in rows i - 2..=i + 2 are tried (<= 25
 //   per row). A DP from the bottom keeps states lo (on the trunk, may rise) and hi (on a foot,
-//   may fall) per candidate, with prefix/suffix minima over the next row: O(25 n).
+//   may fall) per candidate, with running minima over the lower and higher next heights: O(25 n).
 // original: corpus/submissions/3868871.cpp
-let n: 1..=100_000 = read()
+let n: 1..=1_000_000 = read()
 domain Col = 0..n
 var a: [Col]Int = 0
 var b: [Col]Int = 0
 for i in Col:
-    let (ai, bi): (Int, Int) = read()
+    let (ai, bi): (0..=1_000_000, 0..=1_000_000) = read()
     a[i] = ai
     b[i] = bi
 let mx_a = a.max()!
 for i in Col: a[i] = mx_a - a[i]
 
 fn cands_at(arr: [Col]Int, i: Int) -> List<Int>:
-    var raw: List<Int> = []
     let ai = arr[Col(i)]
-    for j in max(0, i - 2)..=min(n - 1, i + 2):
-        let aj = arr[Col(j)]
-        for k in max(ai, aj - 2)..=aj + 2: raw.push(k)
     var out: List<Int> = []
-    for v in raw.sorted():
-        if out.is_empty or out.last! != v: out.push(v)
+    for aj in [arr[Col(j)] for j in max(0, i - 2)..=min(n - 1, i + 2)].sorted():
+        let from = if out.is_empty: ai else: max(ai, out.last! + 1)
+        for k in max(from, aj - 2)..=aj + 2: out.push(k)
     out
 
 fn solve_env(arr: [Col]Int) -> Int:
@@ -40,32 +38,25 @@ fn solve_env(arr: [Col]Int) -> Int:
         let cur_h = cands_at(arr, i)
         let m_nxt = nxt_h.len
         let a_next = arr[Col(i + 1)]
-        var pref_lo: [0..m_nxt]?Int = None
-        var suff_hi: [0..m_nxt]?Int = None
-        for q in 0..m_nxt:
-            if q > 0: pref_lo[q] = pref_lo[q - 1]
-            pref_lo[q] min= dp_lo[q] + (nxt_h[q] - a_next)
-        for q in (0..m_nxt).rev:
-            if q + 1 < m_nxt: suff_hi[q] = suff_hi[q + 1]
-            suff_hi[q] min= dp_hi[q] + (nxt_h[q] - a_next)
-
-        var new_lo: List<?Int> = []
-        var new_hi: List<?Int> = []
+        var new_lo: List<?Int> = List.filled(cur_h.len, None)
+        var new_hi: List<?Int> = List.filled(cur_h.len, None)
         var q = 0
-        for h in cur_h:
-            while q < m_nxt and nxt_h[q] < h: q += 1
-            var best_lo: ?Int = None
-            var best_hi: ?Int = None
-            if q > 0: best_hi min= pref_lo[q - 1]
-            if q < m_nxt and nxt_h[q] == h:
-                let diff = h - a_next
-                best_lo min= dp_lo[q] + diff
-                best_hi min= dp_hi[q] + diff
-                if q + 1 < m_nxt: best_lo min= suff_hi[q + 1]
-            elif q < m_nxt:
-                best_lo min= suff_hi[q]
-            new_lo.push(best_lo)
-            new_hi.push(best_hi)
+        var below: ?Int = None
+        for (c, h) in cur_h.items:
+            while q < m_nxt and nxt_h[q] < h:
+                below min= dp_lo[q] + (nxt_h[q] - a_next)
+                q += 1
+            new_hi[c] = below
+            if q < m_nxt and nxt_h[q] == h: new_hi[c] min= dp_hi[q] + (h - a_next)
+        q = m_nxt - 1
+        var above: ?Int = None
+        for c in (0..cur_h.len).rev:
+            let h = cur_h[c]
+            while q >= 0 and nxt_h[q] > h:
+                above min= dp_hi[q] + (nxt_h[q] - a_next)
+                q -= 1
+            new_lo[c] = above
+            if q >= 0 and nxt_h[q] == h: new_lo[c] min= dp_lo[q] + (h - a_next)
 
         nxt_h = cur_h
         dp_lo = new_lo
