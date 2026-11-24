@@ -60,8 +60,6 @@ Fields: `rank: List<Int>`, `mask: List<U64>`, `top: List<Int>`, `dcum: List<Int>
 
 \(O(1)\) space and comparison.
 
-- `@get fn hash_token(self) -> Int` — \(O(1)\); One integer that identifies the pair, `(h1 << 31) \| h2`, so a `RollingHash` can hash a sequence of `HashVal` (rows of a grid, say).
-
 ## `trait Hashable`
 
 \(O(1)\) per element.

@@ -7,14 +7,14 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3833 (3740 passing). Rules: 618.
+Cases: 3835 (3740 passing). Rules: 618.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 191 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 164 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 202 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 203 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -223,7 +223,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R04.2.23 [1+ 0-]: A **domain** is a finite, ordered index type. Its members are **positions**, which are `Or...
 - R04.2.25 [1+ 0-]: An array's axes may also be plain ranges, one per dimension: `[0..=n, 0..=k]Int` is indexe...
-- R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
+- R04.2.1 [4+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | \(O(1)\)
 - R04.2.20 [7+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
@@ -1134,15 +1134,15 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (16/16 named by a case)
-- **strings** (195/197 named by a case)
-  - uncovered: `Hashable`, `_gen_str`
+- **strings** (195/196 named by a case)
+  - uncovered: `_gen_str`
 - **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
 - **tree** (172/176 named by a case)
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2444 of 2479 std items are named by a case.
+2444 of 2478 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
