@@ -99,8 +99,8 @@ export const PRELUDE_VALUES: readonly string[] = [
     'rotated_right', 'round', 'runs', 'scan', 'scc', 'select', 'shuffle', 'sign', 'sin', 'some',
     'sort', 'sorted', 'span', 'split_best', 'sqrt', 'starts_with', 'step', 'sum', 'swap',
     'take_while', 'tally', 'tan', 'ternary_max', 'ternary_max_real', 'ternary_min',
-    'ternary_min_real', 'to_str', 'topo', 'track', 'trunc', 'turn', 'undoing', 'upper', 'windows',
-    'yes', 'z_function', 'zip',
+    'ternary_min_real', 'to_str', 'topo', 'track', 'trunc', 'turn', 'undoing', 'upper',
+    'window_fold', 'windows', 'yes', 'z_function', 'zip',
 ];
 
 /** Public `std/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */

@@ -2,9 +2,9 @@
 
 # std.window
 
-Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).  `a.windows(k).fold(op)` and `Window(op)` pick their strategy from the op's laws: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else uses two stacks. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo and divide-and-conquer DP all accept a `Track`.
+Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).  `a.window_fold(k, op)` and `Window(op)` pick their strategy from the op's laws: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else uses two stacks. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo and divide-and-conquer DP all accept a `Track`.
 
-In prelude (no `use` needed): `Sweep`, `Undo`, `Undoing`, `Window`, `track`, `undoing`.
+In prelude (no `use` needed): `Sweep`, `Undo`, `Undoing`, `Window`, `track`, `undoing`, `window_fold`.
 
 ## `struct Window<T, M>(op: M)`
 
@@ -50,6 +50,7 @@ Fields: `lo: Int`, `hi: Int`.
 
 ## Functions
 
+- `fn window_fold<S: Indexed, T, M>(self: S, k: Int, op: M) -> yields T` — \(O(n)\) amortized calls of `op`; One fold of `op` per length-`k` window of `self`, left to right, with `Window(op)`'s strategy: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else keeps two stacks.; traps: when `k < 1`
 - `fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T>` — \(O(1)\); A `Track` over any structure: `add(mut state, x)` applies an element at the back and `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`.
 - `fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T>` — \(O(1)\); `Undoing` over `state`, holding no elements; see there.
 
