@@ -82,14 +82,17 @@ pub(crate) fn impl_file_head(ty: &ast::Type, bounds: &[ast::Bound]) -> Option<St
     if let TypeKind::Array { .. } = &ty.kind {
         return Some("array".into());
     }
+    if row_bound(ty, bounds).is_some() {
+        return Some("record".into());
+    }
     if let TypeKind::Named { name, args } = &ty.kind {
         let domain = |t: &ast::Type| type_head(t).as_deref() == Some("Domain");
-        let own = || bounds.iter().filter(|b| b.name.text == name.text);
-        if args.is_empty() && own().any(|b| b.traits.iter().any(domain)) {
+        if args.is_empty()
+            && bounds
+                .iter()
+                .any(|b| b.name.text == name.text && b.traits.iter().any(domain))
+        {
             return Some("domain".into());
-        }
-        if args.is_empty() && row_bound(ty, bounds).is_some() {
-            return Some("record".into());
         }
     }
     impl_target_head(ty)

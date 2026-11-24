@@ -91,21 +91,8 @@ impl Lowerer<'_> {
             };
             let trait_name = self.impls[idx].trait_name.clone();
             let env: GenEnv = params.into_iter().zip(gargs).collect();
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
-            let fn_id = self.declare_fn_in(f, m, offset, None, env);
-            let suffix = self.prim_methods.len();
-            self.sigs[fn_id].name = format!(
-                "{}_alias_{}_{suffix}",
-                trait_name.as_deref().unwrap_or("impl"),
-                f.name.text
-            );
-            self.prim_self.insert(fn_id, ty.clone());
-            self.prim_methods.push((ty, method.to_string(), fn_id));
-            self.resolve_fn_sig(fn_id, trait_name.as_deref());
-            (self.cur_mod, self.offset) = saved;
+            let fn_id =
+                self.prim_method(f, (m, offset), (m, offset), env, &ty, (trait_name, "alias"));
             return Some(fn_id);
         }
         None

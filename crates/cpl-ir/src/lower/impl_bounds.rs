@@ -170,6 +170,9 @@ impl<'a> Lowerer<'a> {
             return match ty {
                 Ty::Pos(d) => Some(GenEnv::from([(param, GenArg::Domain(*d))])),
                 Ty::Bound(_) => Some(GenEnv::from([(param, GenArg::Ty(ty.clone()))])),
+                Ty::Tuple(ts) if ts.iter().all(|t| matches!(t, Ty::Pos(_))) => {
+                    Some(GenEnv::from([(param, GenArg::Ty(ty.clone()))]))
+                }
                 _ => None,
             };
         }

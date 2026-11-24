@@ -273,7 +273,12 @@ impl<'a> Lowerer<'a> {
     pub(super) fn pattern_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
         if !matches!(
             ty,
-            Ty::Fn(..) | Ty::Array { .. } | Ty::Tuple(_) | Ty::Record(_)
+            Ty::Fn(..)
+                | Ty::Array { .. }
+                | Ty::Tuple(_)
+                | Ty::Record(_)
+                | Ty::Pos(_)
+                | Ty::Bound(_)
         ) {
             return None;
         }
@@ -283,7 +288,7 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].offset,
                 self.impls[idx].body,
             );
-            if !self.is_pattern_impl(idx) {
+            if !self.is_pattern_impl(idx) && self.domain_blanket_param(idx).is_none() {
                 continue;
             }
             let Some(env) = self.impl_env(idx, ty) else {
@@ -299,23 +304,9 @@ impl<'a> Lowerer<'a> {
             }) else {
                 continue;
             };
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
             let trait_name = self.impls[idx].trait_name.clone();
-            let fn_id = self.declare_fn_in(f, fm, foff, None, env);
-            let suffix = self.prim_methods.len();
-            self.sigs[fn_id].name = format!(
-                "{}_shape_{}_{suffix}",
-                trait_name.as_deref().unwrap_or("impl"),
-                f.name.text
-            );
-            self.prim_self.insert(fn_id, ty.clone());
-            self.prim_methods
-                .push((ty.clone(), method.to_string(), fn_id));
-            self.resolve_fn_sig(fn_id, trait_name.as_deref());
-            (self.cur_mod, self.offset) = (saved.0, saved.1);
+            let fn_id =
+                self.prim_method(f, (m, offset), (fm, foff), env, ty, (trait_name, "shape"));
             return Some(fn_id);
         }
         None

@@ -7,8 +7,8 @@ use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Expr, ExprKind, Name, Stmt, StmtKind};
 
 /// Members of an ordered core domain that a library domain does not derive.
-pub(super) const CORE_DOMAIN_ONLY: [&str; 10] = [
-    "next", "prev", "l", "r", "before", "after", "cuts", "at", "wrap", "offset",
+pub(super) const CORE_DOMAIN_ONLY: [&str; 9] = [
+    "next", "prev", "l", "r", "before", "after", "cuts", "at", "wrap",
 ];
 
 impl Checker<'_> {

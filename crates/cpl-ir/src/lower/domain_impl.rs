@@ -25,9 +25,6 @@ impl<'a> Lowerer<'a> {
     /// The method an impl gives a value of a non-struct type: a primitive's
     /// own impl, a domain position's blanket impl, `?T`'s or a fn type's.
     pub(super) fn value_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
-        if let Some(f) = self.domain_impl_method(ty.clone(), method) {
-            return Some(f);
-        }
         let prim = self
             .prim_methods
             .iter()
@@ -61,23 +58,42 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             let t = &self.traits[tid];
-            let (m, offset, trait_name) = (t.mod_id, t.offset, t.name.clone());
+            let (at, trait_name) = ((t.mod_id, t.offset), t.name.clone());
             let env = GenEnv::from([("Self".to_string(), GenArg::Ty(ty.clone()))]);
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
-            let fn_id = self.declare_fn_in(f, m, offset, None, env);
-            let suffix = self.prim_methods.len();
-            self.sigs[fn_id].name = format!("{trait_name}_shape_{method}_{suffix}");
-            self.prim_self.insert(fn_id, ty.clone());
-            self.prim_methods
-                .push((ty.clone(), method.to_string(), fn_id));
-            self.resolve_fn_sig(fn_id, Some(trait_name.as_str()));
-            (self.cur_mod, self.offset) = saved;
+            let fn_id = self.prim_method(f, at, at, env, ty, (Some(trait_name), "shape"));
             return Some(fn_id);
         }
         None
+    }
+
+    /// Declares `f`, written at `def`, as the method `ty` gets from an impl
+    /// or trait read at `at`, named `{trait}_{kind}_{method}_{n}`.
+    pub(super) fn prim_method(
+        &mut self,
+        f: &'a ast::FnDecl,
+        at: (ModId, u32),
+        def: (ModId, u32),
+        env: GenEnv,
+        ty: &Ty,
+        (trait_name, kind): (Option<String>, &str),
+    ) -> FnId {
+        let saved = (
+            std::mem::replace(&mut self.cur_mod, at.0),
+            std::mem::replace(&mut self.offset, at.1),
+        );
+        let fn_id = self.declare_fn_in(f, def.0, def.1, None, env);
+        let suffix = self.prim_methods.len();
+        self.sigs[fn_id].name = format!(
+            "{}_{kind}_{}_{suffix}",
+            trait_name.as_deref().unwrap_or("impl"),
+            f.name.text
+        );
+        self.prim_self.insert(fn_id, ty.clone());
+        self.prim_methods
+            .push((ty.clone(), f.name.text.clone(), fn_id));
+        self.resolve_fn_sig(fn_id, trait_name.as_deref());
+        (self.cur_mod, self.offset) = saved;
+        fn_id
     }
 
     /// `D.m(..)` with `D` a domain, or the cuts `V.cuts` of one: the method
@@ -109,65 +125,6 @@ impl<'a> Lowerer<'a> {
         }
         env.insert("Self".to_string(), GenArg::Ty(ty.clone()));
         Some((f, tm, toff, env))
-    }
-
-    pub(super) fn domain_impl_method(&mut self, ty: Ty, method: &str) -> Option<FnId> {
-        let arg = match ty {
-            Ty::Pos(d) => GenArg::Domain(d),
-            Ty::Bound(_) => GenArg::Ty(ty.clone()),
-            Ty::Tuple(ref ts) if ts.iter().all(|t| matches!(t, Ty::Pos(_))) => {
-                GenArg::Ty(ty.clone())
-            }
-            _ => return None,
-        };
-        if let Some(found) = self
-            .prim_methods
-            .iter()
-            .find(|(t, m, _)| *t == ty && m == method)
-        {
-            return Some(found.2);
-        }
-        for idx in 0..self.impls.len() {
-            let Some(param) = self.domain_blanket_param(idx) else {
-                continue;
-            };
-            let (m, offset, body) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].body,
-            );
-            let own = body.stmts.iter().find_map(|item| match &item.kind {
-                ast::StmtKind::Fn(f) if f.name.text == method && f.generics.is_empty() => Some(f),
-                _ => None,
-            });
-            let env = GenEnv::from([(param, arg.clone())]);
-            let (f, m, offset, env) = match own {
-                Some(f) => (f, m, offset, env),
-                None => match self.impl_trait_default(idx, method, &ty, env) {
-                    Some(found) => found,
-                    None => continue,
-                },
-            };
-            let trait_name = self.impls[idx].trait_name.clone();
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
-            let fn_id = self.declare_fn_in(f, m, offset, None, env);
-            let suffix = self.prim_methods.len();
-            self.sigs[fn_id].name = format!(
-                "{}_dom_{}_{suffix}",
-                trait_name.as_deref().unwrap_or("impl"),
-                f.name.text
-            );
-            self.prim_self.insert(fn_id, ty.clone());
-            self.prim_methods
-                .push((ty.clone(), method.to_string(), fn_id));
-            self.resolve_fn_sig(fn_id, trait_name.as_deref());
-            (self.cur_mod, self.offset) = saved;
-            return Some(fn_id);
-        }
-        None
     }
 
     /// Whether `ty` has an `impl` of the library trait `name`. A name that is not a trait declared
