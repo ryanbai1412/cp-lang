@@ -27,7 +27,7 @@ pub enum Def {
         generics: Vec<String>,
         bounds: Vec<(String, Vec<String>)>,
         lends: bool,
-        row_bounds: Vec<(String, Vec<(String, Ty)>)>,
+        row_bounds: RowBounds,
         trait_bounds: Vec<(String, String)>,
         /// `@droppable`: its result may be dropped without W0101.
         droppable: bool,
@@ -52,6 +52,8 @@ pub enum Def {
         /// The receiver type a method writes, `self: Rev<[D]T>`: its own
         /// type parameters bind from the value it is called on.
         selves: Vec<(String, Ty)>,
+        /// Each method's row bounds, `R: (u: V, v: V, ..)`: a `T.name(..)` call checks them.
+        method_rows: Vec<(String, RowBounds)>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
         projections: Vec<Projection>,
@@ -160,6 +162,9 @@ pub struct DomainInfo {
     /// Factor types for product domains (`domain State = (V, K)` or `(r: R, s: K)`).
     pub factors: Vec<(Option<String>, Ty)>,
 }
+
+/// `R: (u: V, v: V, ..)` per type parameter: the fields a record argument must have.
+pub type RowBounds = Vec<(String, Vec<(String, Ty)>)>;
 
 impl Def {
     /// The type of a variant of enum `of` used as a value.

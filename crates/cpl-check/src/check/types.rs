@@ -829,6 +829,38 @@ impl<'a> Checker<'a> {
         (sigs, getters, mutators, selves)
     }
 
+    /// `f`'s bounds: the record rows (`R: (u: V, ..)`) and the traits (`T: Ord`) its type
+    /// parameters must meet.
+    pub(crate) fn fn_bounds(
+        &mut self,
+        f: &ast::FnDecl,
+    ) -> (crate::def::RowBounds, Vec<(String, String)>) {
+        let outer = self.generics.len();
+        self.generics
+            .extend(f.generics.iter().map(|g| g.text.clone()));
+        let mut rows = Vec::new();
+        let mut traits = Vec::new();
+        for b in &f.bounds {
+            for t in &b.traits {
+                match &t.kind {
+                    TypeKind::Row(fields) => {
+                        let resolved = fields
+                            .iter()
+                            .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
+                            .collect();
+                        rows.push((b.name.text.clone(), resolved));
+                    }
+                    TypeKind::Named { name: tname, .. } => {
+                        traits.push((b.name.text.clone(), tname.text.clone()));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        self.generics.truncate(outer);
+        (rows, traits)
+    }
+
     /// The definitions a top-level statement gives to the names it declares.
     pub(crate) fn defs_of(&mut self, stmt: &ast::Stmt) -> Vec<(String, Def)> {
         use ast::StmtKind as S;
@@ -972,25 +1004,7 @@ impl<'a> Checker<'a> {
                         },
                     ));
                 }
-                let mut row_bounds = Vec::new();
-                let mut trait_bounds = Vec::new();
-                for b in &f.bounds {
-                    for t in &b.traits {
-                        match &t.kind {
-                            TypeKind::Row(fields) => {
-                                let resolved = fields
-                                    .iter()
-                                    .map(|(n, ty)| (n.text.clone(), self.resolve_type(ty)))
-                                    .collect();
-                                row_bounds.push((b.name.text.clone(), resolved));
-                            }
-                            TypeKind::Named { name: tname, .. } => {
-                                trait_bounds.push((b.name.text.clone(), tname.text.clone()));
-                            }
-                            _ => {}
-                        }
-                    }
-                }
+                let (row_bounds, trait_bounds) = self.fn_bounds(f);
                 out.push((
                     f.name.text.clone(),
                     Def::Fn {
@@ -1039,6 +1053,13 @@ impl<'a> Checker<'a> {
                     .collect();
                 let (methods, getters, mutators, selves) =
                     self.method_sigs_and_selves(&s.methods, &self_ty);
+                let method_rows = (s.methods.iter())
+                    .filter_map(|m| match &m.kind {
+                        ast::StmtKind::Fn(f) => Some((f.name.text.clone(), self.fn_bounds(f).0))
+                            .filter(|(_, rows)| !rows.is_empty()),
+                        _ => None,
+                    })
+                    .collect();
                 self.leave_body(body);
                 // `fn new(..)` without `self` says how the struct is built.
                 let ctor = s.methods.iter().find_map(|m| match &m.kind {
@@ -1078,6 +1099,7 @@ impl<'a> Checker<'a> {
                         mutators,
                         receivers,
                         selves,
+                        method_rows,
                         owned,
                         projections: self.projections(&s.methods),
                         cached_fields: s

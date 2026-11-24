@@ -1181,6 +1181,107 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Each `R: (u: V, ..)` bound holds of what `R` bound to, or the call is E0704.
+    fn rows_hold(
+        &mut self,
+        call: &Expr,
+        callee_text: &str,
+        args: &[Arg],
+        row_bounds: crate::def::RowBounds,
+        bindings: &Bindings,
+    ) {
+        for (param, req_fields) in row_bounds {
+            let Some(actual) = bindings.get(&param) else {
+                continue;
+            };
+            match actual {
+                Ty::Record(actual_fs) => {
+                    for (req_name, req_ty) in &req_fields {
+                        let found = actual_fs.iter().find(|(n, _)| n == req_name);
+                        match found {
+                            Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
+                            _ => {
+                                let diag = self.error(
+                                    codes::ROW_MISSING_FIELD,
+                                    call.span,
+                                    format!(
+                                        "`{callee_text}` needs a record with `{req_name}: {req_ty}`, but `{actual}` {}",
+                                        found.map_or(format!("has no `{req_name}`"), |(_, t)| format!("has `{req_name}: {t}`"))
+                                    ),
+                                );
+                                suggest_rename(diag, args, actual_fs, &req_fields);
+                            }
+                        }
+                    }
+                }
+                Ty::Error | Ty::Unknown | Ty::Param(_) => {}
+                other => {
+                    self.error(
+                        codes::ROW_MISSING_FIELD,
+                        call.span,
+                        format!(
+                            "`{callee_text}` needs a record for `{param}`, but this is `{other}`"
+                        ),
+                    );
+                }
+            }
+        }
+    }
+
+    /// `Graph.directed(flights)`: a static method's row bounds, read off its declared
+    /// parameters, as `rows_hold` checks a free fn's.
+    fn static_rows_hold(
+        &mut self,
+        call: &Expr,
+        callee_text: &str,
+        base: &Expr,
+        method: &str,
+        args: &[Arg],
+    ) {
+        let ty_name = match &base.kind {
+            ExprKind::Generic { base, .. } => match &base.kind {
+                ExprKind::Name(n) => n,
+                _ => return,
+            },
+            ExprKind::Name(n) => n,
+            _ => return,
+        };
+        if self.local(ty_name).is_some() {
+            return;
+        }
+        let Some(Def::Struct {
+            methods,
+            method_rows,
+            ..
+        }) = self.type_def(ty_name).as_deref().cloned()
+        else {
+            return;
+        };
+        let Some((_, rows)) = method_rows.into_iter().find(|(m, _)| m == method) else {
+            return;
+        };
+        let Some((_, Ty::Fn { params, .. })) = methods.into_iter().find(|(m, _)| m == method)
+        else {
+            return;
+        };
+        let mut bindings = Bindings::default();
+        let mut positional = params.iter().filter(|p| !p.named_only);
+        for arg in args {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name == n.text),
+                None => positional.next(),
+            };
+            if let Some(param) = param {
+                let got = self.quietly(|c| c.infer(&arg.value));
+                param.ty.unify(&got, &mut bindings);
+            }
+        }
+        // A tuple argument (`Graph.directed(pairs)`) is read by another path; only a record
+        // can miss a field.
+        bindings.retain(|_, t| matches!(t, Ty::Record(_)));
+        self.rows_hold(call, callee_text, args, rows, &bindings);
+    }
+
     fn call_kind(&mut self, call: &Expr, callee: &Expr, callee_ty: Ty, args: &[Arg]) -> Ty {
         let callee_text = self.quote(callee.span);
         match callee_ty {
@@ -1271,43 +1372,11 @@ impl<'a> Checker<'a> {
                                 _ => {}
                             }
                         }
-                        for (param, req_fields) in row_bounds {
-                            let Some(actual) = bindings.get(&param) else {
-                                continue;
-                            };
-                            match actual {
-                                Ty::Record(actual_fs) => {
-                                    for (req_name, req_ty) in &req_fields {
-                                        let found = actual_fs.iter().find(|(n, _)| n == req_name);
-                                        match found {
-                                            Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
-                                            _ => {
-                                                let diag = self.error(
-                                                    codes::ROW_MISSING_FIELD,
-                                                    call.span,
-                                                    format!(
-                                                        "`{callee_text}` needs a record with `{req_name}: {req_ty}`, but `{actual}` {}",
-                                                        found.map_or(format!("has no `{req_name}`"), |(_, t)| format!("has `{req_name}: {t}`"))
-                                                    ),
-                                                );
-                                                suggest_rename(diag, args, actual_fs, &req_fields);
-                                            }
-                                        }
-                                    }
-                                }
-                                Ty::Error | Ty::Unknown | Ty::Param(_) => {}
-                                other => {
-                                    self.error(
-                                        codes::ROW_MISSING_FIELD,
-                                        call.span,
-                                        format!(
-                                            "`{callee_text}` needs a record for `{param}`, but this is `{other}`"
-                                        ),
-                                    );
-                                }
-                            }
-                        }
+                        self.rows_hold(call, &callee_text, args, row_bounds, &bindings);
                     }
+                }
+                if let ExprKind::Field { base, name } = &callee.kind {
+                    self.static_rows_hold(call, &callee_text, base, &name.text, args);
                 }
                 self.record_instantiation(call, &bindings);
                 self.settle(&ret.subst(&bindings))
