@@ -287,3 +287,35 @@ fn a_fold_from_a_record_seed_through_a_fixed_list_merge_builds_no_list() {
         "the seed is a constant record and `both`'s 4-element list is a fixed array, so neither the mapped run nor that list is built:\n{solve}"
     );
 }
+
+#[test]
+fn a_loop_that_runs_to_its_end_over_a_fn_that_only_builds_a_list_builds_no_list() {
+    let src = |body: &str| {
+        format!(
+            "fn step(x: Int) -> List<Int>:\n    var out: List<Int> = []\n    out.push(x)\n    if x % 3 == 0:\n        out.push(-x)\n    out\nlet n: Int = read()\nvar s = 0\nfor i in 0..n:\n    for v in step(i):\n{body}print(s)\n"
+        )
+    };
+    let fed = cpp(&src("        if v < 0: continue\n        s += v\n"));
+    let solve = &fed[fed.find("void solve()").unwrap()..];
+    assert!(solve.contains("cpl_each_step(i, "), "{solve}");
+    assert!(!solve.contains("std::vector"), "{solve}");
+    for (why, body) in [
+        ("stops early", "        if v > 5: break\n        s += v\n"),
+        ("prints between", "        print(v)\n        s += v\n"),
+    ] {
+        let walked = cpp(&src(body));
+        assert!(
+            !walked.contains("cpl_each_step"),
+            "a body that {why} walks the list:\n{walked}"
+        );
+    }
+    let found = cpp(concat!(
+        "fn step(x: Int) -> List<Int>:\n    var out: List<Int> = []\n    out.push(x)\n    out.push(x + 25)\n    out\n",
+        "fn big(x: Int) -> ?Int = step(x).map(f => f * 2).find(q => q > 19)\n",
+        "print(big(read()) ?? -1)\n",
+    ));
+    assert!(
+        !found.contains("cpl_each_step(x, ["),
+        "a fused consumer that stops walks the list:\n{found}"
+    );
+}

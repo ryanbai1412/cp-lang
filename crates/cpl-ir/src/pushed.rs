@@ -490,9 +490,6 @@ impl Feeds {
             return None;
         };
         let acc = *self.pushers.get(callee)?;
-        if self.eager.contains(callee) {
-            return None;
-        }
         // The body must not change what the fn is still reading or
         // changing: a global it touches, or a list handed to it.
         let summary = &self.summaries[*callee];
@@ -505,6 +502,15 @@ impl Feeds {
                 calls.insert(typed.map_or(fns, |k| fns + 1 + k));
             }
         });
+        if self.eager.contains(callee)
+            && (!self.runs_unseen(body, &calls)
+                || summary.io
+                || summary.opaque
+                || summary.calls_values
+                || !summary.writes.is_empty())
+        {
+            return None;
+        }
         // A closure the body calls may write a local by reference only in
         // the loop's own fn, and never one the fn is handed.
         let home = self.scope.homes.get(&id).copied().unwrap_or(LENT_ELSEWHERE);
@@ -574,6 +580,31 @@ impl Feeds {
 }
 
 impl Feeds {
+    /// Whether a fn that only builds a list, which runs to its end before
+    /// a loop over it starts, can run between the turns of `body` instead:
+    /// the body always runs to its end and neither it nor a fn in `calls`
+    /// reads input or prints, so no one can tell.
+    fn runs_unseen(&self, body: &Block, calls: &BTreeSet<usize>) -> bool {
+        let mut io = calls.iter().any(|f| self.summaries[*f].io);
+        walk::deep_exprs(body, &mut |e| {
+            io |= matches!(e.kind, ExprKind::Read(_) | ExprKind::Print(..))
+        });
+        !io && !stops(body)
+    }
+
+    /// [`Self::runs_unseen`] for a consumer loop body fused onto the
+    /// pushes of a loop an eager fn feeds, with the fns it calls.
+    pub fn consumer_runs_unseen(&self, body: &Block) -> bool {
+        let mut calls = Effects::of_block(body).calls;
+        let all = self.summaries.len() - 1 - self.scope.values.len();
+        walk::deep_exprs(body, &mut |e| {
+            if let ExprKind::CallExpr(..) = &e.kind {
+                calls.insert(all);
+            }
+        });
+        self.runs_unseen(body, &calls)
+    }
+
     /// Whether `body`, or a fn it calls, reads or writes the variable `root`.
     fn sees(
         &self,

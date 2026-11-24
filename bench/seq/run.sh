@@ -5,7 +5,7 @@ cpl="${CPL:-$root/target/release/cpl}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-for name in ${BENCH_NAMES:-scan scan_in_place rotate slice_sort slice_nth_element sort_by_records sort_by_cross filter_comp insert_remove pairs}; do
+for name in ${BENCH_NAMES:-scan scan_in_place rotate slice_sort slice_nth_element sort_by_records sort_by_cross filter_comp insert_remove pairs fed_list}; do
     "$cpl" build "$root/bench/seq/$name.cp" -o "$tmp/${name}_cp.cpp" >/dev/null
     bytes=$(wc -c < "$tmp/${name}_cp.cpp")
     g++ -std=c++17 -O2 "$tmp/${name}_cp.cpp" -o "$tmp/${name}_cp"

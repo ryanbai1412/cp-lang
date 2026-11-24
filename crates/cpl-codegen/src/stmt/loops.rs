@@ -97,11 +97,18 @@ impl<'p> Emitter<'p> {
             scope: std::mem::take(&mut self.feed_scope),
         };
         let fed = feeds.feeds(id, seq, body);
+        // A consumer fused onto this loop's pushes runs between an eager
+        // fn's turns too, so it must not stop early or be seen either.
+        let unseen = !feeds.eager.contains(callee)
+            || self
+                .fused_pushes
+                .iter()
+                .all(|(_, f)| f.sink.is_some() || feeds.consumer_runs_unseen(&f.body));
         self.summaries = feeds.summaries;
         self.pushers = feeds.pushers;
         self.eager = feeds.eager;
         self.feed_scope = feeds.scope;
-        if fed.is_none() {
+        if fed.is_none() || !unseen {
             return false;
         }
         let call = self.expr(seq).text;

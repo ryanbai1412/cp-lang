@@ -18,5 +18,6 @@ bash bench/seq/run.sh
 | `sort_by_cross` | cf1284e's shape: 3,123,750 `(d: Pt, a:, b:)` directions `.sort(by: t => Dir(t.d))` under a cross-product `Ord` vs `std::stable_sort` on a struct | 486.7 ms | 421.3 ms | 1.16x | 9,509 B |
 | `filter_comp` | `[(cost:, v:, p:) for i in 0..n if ..]` keeping 5 in 16 of 20,000,000 (the comprehension reserves `n`; 170 ms and 199 MB at the old `min(n, 16)`) vs `reserve(n)` + `push_back` | 73.3 ms | 100.9 ms | 0.73x | 4,167 B |
 | `pairs` | ioi25_triples' small-group loop: `for (i, j) in group.pairs()` calling a nested fn that writes the fn's `var found`, 40 rounds over `n = 600,000` vs nested index loops | 2794.4 ms | 2179.1 ms | 1.28x | 8,446 B |
+| `fed_list` | cf2237i2's shape: `for v in step(i)` over a fn that builds and returns a 1-2 element `List<Int>`, `n = 100,000,000` (the loop runs at each push; 1.85 s with a list per call) vs the `mut` accumulator, one buffer reused across calls | 51.4 ms | 106.2 ms | 0.48x | 4,864 B |
 
 Summary (6 matched benchmarks): **p50 = 1.06x** (target <= 1.10x), **max = 1.14x** (target <= 1.50x).
