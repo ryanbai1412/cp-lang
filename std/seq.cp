@@ -36,9 +36,7 @@ pub fn prod<S: Seq, T>(self: S) -> T:
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
 pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U:
-    var out = U.zero
-    for x in self: out += of(x)
-    out
+    self.fold((acc, x) => acc + of(x), U.zero)
 
 /// The average of `of` over the elements as `F64`; `None` when empty.
 ///
@@ -869,7 +867,8 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `let (domain C, xs) = compress([30, 10]); xs.index_of(30) == C.last!`
     pub fn index_of(self, val: T) -> D:
         let i = vals.first_ge(val)
-        assert i != None and vals[i!] == val  // `index_of` is for a value that was compressed
+        if let k = i and vals[k] == val: return k
+        assert false, "`index_of` is for a value that was compressed"
         i!
 
     /// The index of `val` if it was compressed, or `None`.
@@ -986,16 +985,8 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
     if P.count == 0:
         assert r.is_empty, "covering: an end of the range is not a cut"
         return P.range
-    var (lo, hi) = (0, P.count)
-    while lo < hi:
-        let m = (lo + hi) / 2
-        if self[P(m)].l < r.l: lo = m + 1 else: hi = m
-    let i = lo
-    (lo, hi) = (0, P.count)
-    while lo < hi:
-        let m = (lo + hi) / 2
-        if self[P(m)].r <= r.r: lo = m + 1 else: hi = m
-    let j = lo
+    let i = (0..P.count).first_true(m => self[P(m)].l >= r.l) ?? P.count
+    let j = (0..P.count).first_true(m => self[P(m)].r > r.r) ?? P.count
     let at_i = if i < P.count: self[P(i)].l else: self[P.last!].r
     let at_j = if j > 0: self[P(j - 1)].r else: self[P.first!].l
     assert at_i == r.l and at_j == r.r, "covering: an end of the range is not a cut"
@@ -2381,7 +2372,7 @@ pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T>:
     assert k >= 0
     let n = self.len
     if k > n: return
-    var idx = [i for i in 0..k]
+    var idx = (0..k).collect()
     while true:
         yield [self.nth(i) for i in idx]
         var i = k - 1
@@ -2507,10 +2498,10 @@ pub fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> Lis
 /// example: `lcs("abc", "acb").len == 2`
 pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>:
     let (n, m) = (a.len, b.len)
-    var f = [[0 for _ in 0..m + 1] for _ in 0..n + 1]
+    var f: [n + 1, m + 1]Int = 0
     for i in 0..n:
         for j in 0..m:
-            f[i + 1][j + 1] = if a.nth(i) == b.nth(j): f[i][j] + 1 elif f[i][j + 1] < f[i + 1][j]: f[i + 1][j] else: f[i][j + 1]
+            f[i + 1, j + 1] = if a.nth(i) == b.nth(j): f[i, j] + 1 elif f[i, j + 1] < f[i + 1, j]: f[i + 1, j] else: f[i, j + 1]
     var out: List<(Int, Int)> = []
     var (i, j) = (n, m)
     while i > 0 and j > 0:
@@ -2518,7 +2509,7 @@ pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>:
             out.push((i - 1, j - 1))
             i -= 1
             j -= 1
-        elif f[i - 1][j] == f[i][j]: i -= 1
+        elif f[i - 1, j] == f[i, j]: i -= 1
         else: j -= 1
     reverse(mut out)
     out
@@ -3050,7 +3041,7 @@ fn prod_and_is_sorted_cover_sequences():
     assert prod([2, 3, 5]) == 30
     let empty_int: List<Int> = []
     assert prod(empty_int) == 1
-    assert prod([1.5, 2.0]) == 3.0
+    assert abs(prod([1.5, 2.0]) - 3.0) < 1e-12
     assert [1, 2, 2, 5].is_sorted() and not [1, 3, 2].is_sorted()
     assert empty_int.is_sorted() and [42].is_sorted()
     assert ["a", "bb", "ccc"].is_sorted(by: s => s.len)
@@ -3150,11 +3141,7 @@ fn permutations_and_inversions():
     assert inversions(empty) == 0 and inversions([5]) == 0
     for _ in 0..60:
         let a = [rand(0, 6) for _ in 0..rand(0, 15)]
-        var brute = 0
-        for i in 0..a.len:
-            for j in i + 1..a.len:
-                if a[i] > a[j]: brute += 1
-        assert inversions(a) == brute
+        assert inversions(a) == a.pairs().count(pq => pq.0 > pq.1)
 
 @test
 fn monotone_stack_and_sliding_extrema():
@@ -3393,14 +3380,14 @@ pub fn minimal<D, T, St>(
     match anchor:
         Anchor.End:
             var l = 0
-            var best_l = -1
+            var best_l: ?Int = None
             for r in 0..n:
                 st.push(self[D.nth(r)])
                 while l <= r and ok(st):
                     best_l = l
                     st.pop(self[D.nth(l)])
                     l += 1
-                if best_l >= 0: out[D.nth(r)] = Some(D.cuts.nth(best_l)..D.cuts.nth(r + 1))
+                if let bl = best_l: out[D.nth(r)] = Some(D.cuts.nth(bl)..D.cuts.nth(r + 1))
         Anchor.Start:
             var l = 0
             for r in 0..n:
@@ -3512,21 +3499,18 @@ pub struct Ring<D, T>(pub src: [D]T):
         var st = state
         var out: [D]?RingSlice<D, T> = [D] _ => None
         var l = 0
-        var best = -1
+        var best: ?Int = None
         for t in 0..2 * n:
             st.push(src[D.nth(t % n)])
             while l <= t and t - l + 1 > n:
                 st.pop(src[D.nth(l % n)])
                 l += 1
             while l <= t and ok(st):
-                best = l
+                best = Some(l)
                 st.pop(src[D.nth(l % n)])
                 l += 1
-            if t >= n and best >= 0 and t - best + 1 <= n:
-                out[D.nth(t - n)] = Some(
-                    RingSlice<D,
-                    T>(rr: self.span(D.nth(best % n), t - best + 1)),
-                )
+            if let b = best and n <= t < b + n:
+                out[D.nth(t - n)] = Some(RingSlice<D, T>(rr: self.span(D.nth(b % n), t - b + 1)))
         out
 
 /// A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
