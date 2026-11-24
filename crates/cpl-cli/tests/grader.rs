@@ -223,3 +223,22 @@ fn cpl_run_without_a_grader_names_the_flag() {
     );
     assert_eq!(String::from_utf8_lossy(&ran.stdout), "6\n");
 }
+
+/// A grader that declares a boundary fn in another type than the program's
+/// (here `std::tuple` where a 2-tuple crosses as `std::pair`) does not
+/// compile, and the error names the fn; it never links and crashes.
+#[test]
+fn a_grader_declaring_a_fn_otherwise_does_not_build() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/grader_mismatch");
+    let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(here.join("guess.cp"))
+        .arg("--grader")
+        .arg(here.join("grader.cpp"))
+        .output()
+        .expect("cpl runs");
+    let stderr = String::from_utf8_lossy(&ran.stderr);
+    assert!(!ran.status.success(), "{stderr}");
+    assert!(stderr.contains("ambiguating new declaration"), "{stderr}");
+    assert!(stderr.contains("stats"), "{stderr}");
+}

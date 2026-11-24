@@ -987,9 +987,10 @@ impl<'p> Emitter<'p> {
                         self.judge_conv(&f.ret, ret)
                     ),
                 };
+                let signature = self.judge_signature(f, sides, ret);
+                judge_decls.push_str(&format!("{signature};\n"));
                 entries.push_str(&format!(
-                    "\n{} {{\n    cpl_start();\n    {body}\n}}\n",
-                    self.judge_signature(f, sides, ret)
+                    "\n{signature} {{\n    cpl_start();\n    {body}\n}}\n"
                 ));
             }
             let def_at = fns.len();
@@ -1213,8 +1214,12 @@ impl<'p> Emitter<'p> {
             out[includes..].to_string(),
         ));
         if !judge_decls.is_empty() {
-            out.push_str("// The judge's grader supplies these.\n");
+            // A local build forces these into the grader too, so a grader
+            // that declares one otherwise does not compile.
+            out.push_str("// The fns the judge's grader supplies and calls.\n");
+            out.push_str(cpl_ir::GRADER_BOUNDARY.0);
             out.push_str(&judge_decls);
+            out.push_str(cpl_ir::GRADER_BOUNDARY.1);
             out.push('\n');
         }
 

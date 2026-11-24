@@ -1233,6 +1233,11 @@ pub struct ClosureDef {
 
 /// A value as the judge's grader holds it, from the type the `@grader`
 /// fn declares (R10.1.4).
+/// The lines around the C++ declarations of the fns that cross to the
+/// judge's grader, in a program's C++ (R10.1.3).
+pub const GRADER_BOUNDARY: (&str, &str) =
+    ("// cpl: grader boundary\n", "// cpl: end grader boundary\n");
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum JudgeTy {
     /// `void`: a fn's `()` result.

@@ -215,6 +215,18 @@ fn grader_bytes(grader: &Path) -> Result<Vec<u8>, BuildError> {
     Ok(bytes)
 }
 
+/// The C++ declarations of the fns that cross to the judge's grader, as a
+/// header that stands alone, from a program's C++ (R10.1.3).
+fn grader_boundary(cpp: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(cpp);
+    let (open, close) = cpl_ir::GRADER_BOUNDARY;
+    let (_, rest) = text.split_once(open)?;
+    let (decls, _) = rest.split_once(close)?;
+    Some(format!(
+        "#include <string>\n#include <tuple>\n#include <utility>\n#include <vector>\n{decls}"
+    ))
+}
+
 fn compile_with(
     source: &Path,
     ours: bool,
@@ -262,6 +274,23 @@ fn compile_with(
                 build.arg("-include").arg(header);
             }
         }
+        if let Some(grader) = grader {
+            let header = dir.join(format!("{stem}-{:016x}.grader.h", hash(&text)));
+            if let Some(boundary) = grader_boundary(&text[..source_len]) {
+                std::fs::write(&header, boundary)
+                    .map_err(|e| BuildError(format!("can't write {}: {e}", header.shown())))?;
+                // Both files see the program's declarations, so a grader
+                // declaring a fn otherwise ("ambiguating new declaration")
+                // fails to compile instead of linking and crashing.
+                build.arg("-include").arg(&header);
+            } else if ours {
+                return Err(BuildError(format!(
+                    "{} has no fn the judge's grader {} supplies or calls",
+                    source.shown(),
+                    grader.shown()
+                )));
+            }
+        }
         build.arg("-o").arg(&partial).arg(source);
         if let Some(grader) = grader {
             let dir = grader.parent().filter(|d| !d.as_os_str().is_empty());
@@ -279,9 +308,16 @@ fn compile_with(
         if !output.status.success() {
             let errors = String::from_utf8_lossy(&output.stderr);
             let shown: Vec<&str> = errors.lines().take(20).collect();
+            let what = match grader {
+                Some(grader) => format!(
+                    "{} with the judge's grader {}",
+                    source.shown(),
+                    grader.shown()
+                ),
+                None => source.shown().to_string(),
+            };
             return Err(BuildError(format!(
-                "{} does not compile:\n{}",
-                source.shown(),
+                "{what} does not compile:\n{}",
                 shown.join("\n")
             )));
         }
