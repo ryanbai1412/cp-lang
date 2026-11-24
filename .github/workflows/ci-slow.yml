@@ -98,7 +98,7 @@ jobs:
           restore-keys: corpus-tests-
       - name: Dreams agree with the accepted C++
         run: |
-          mapfile -t ids < <(ls corpus/problems/*/dream.cp | cut -d/ -f3 |
+          mapfile -t ids < <(printf '%s\n' corpus/problems/*/dream.cp | cut -d/ -f3 |
             awk -v s=${{ matrix.shard }} '(++n - 1) % 2 == s - 1')
           just corpus-tests-make --cpl target/ci/cpl "${ids[@]}" >/dev/null
           just corpus-verify --check --only dream --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"

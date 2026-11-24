@@ -1845,7 +1845,7 @@ CI_ONLY_JOBS = {
     "ci.yml:regen": "commits regenerated files to main",
     "ci.yml:tests-build": "archives the test binaries the `tests` shards run",
 }
-CI_CHECK = re.compile(r"(^|[\s;&|(])(\./)?(scripts|editors|research|bench|crates)/\S+\.(sh|py|lua|el|mjs|js)\b|cargo (test|nextest|run)\b"
+CI_CHECK = re.compile(r"(^|[\s;&|(])\./gradlew\b|(^|[\s;&|(])(\./)?(scripts|editors|research|bench|crates)/\S+\.(sh|py|lua|el|mjs|js)\b|cargo (test|nextest|run)\b"
                       r"|pnpm .*\b(test|build|smoke|typecheck)\b|npm (test|run|ci)\b|nvim --headless")
 
 

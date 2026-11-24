@@ -92,10 +92,12 @@ neovim-stress-loop tmp="target/tmp":
 vim-stress-loop cpl="target/debug/cpl":
     editors/neovim/test/stress_loop_vim.sh "$(realpath {{cpl}})"
 
-# Every workflow and action parses, with valid expressions and action inputs (CI: the
+# Every workflow and action parses, with valid expressions, action inputs and shellcheck-clean
+# run scripts (CI: the
 # checks gate). A workflow GitHub can't parse runs no jobs, so nothing else reports it.
 workflow-lint:
-    actionlint -shellcheck=
+    command -v shellcheck >/dev/null || { echo "workflow-lint: needs shellcheck on PATH"; exit 1; }
+    actionlint
 
 # The JetBrains plugin (CI: jetbrains.yml, release.yml). The fetch is the one retried
 # step, network only; the build and tests then run once, offline.

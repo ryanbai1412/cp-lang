@@ -385,6 +385,15 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.ci_retries(root), [".github/workflows/x.yml:1", ".github/workflows/x.yml:2", ".github/workflows/x.yml:3",
                                                    ".github/workflows/x.yml:4", ".github/workflows/x.yml:5", "scripts/r.py:1"])
 
+    def test_ci_jobs_without_recipe_sees_gradle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, ".github/workflows/ci.yml", "jobs:\n  smoke:\n    steps:\n      - run: ./gradlew --no-daemon test\n"
+                        "  ok:\n    steps:\n      - run: just jetbrains-gradle test\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.ci_jobs_without_recipe(root), [".github/workflows/ci.yml:4 (smoke)"])
+
     def test_web_skip_only_reads_only_js_and_ts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

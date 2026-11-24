@@ -146,7 +146,7 @@ jobs:
         # A job that failed before building leaves target/ near empty; saving it would replace the warm cache.
         # Cargo 1.100 keeps no target/<profile>/deps, so look for build/.
         run: |
-          [ -n "$(ls target/*/build 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
+          compgen -G 'target/*/build' >/dev/null || { echo "target/ has no build; not saving"; exit 0; }
           # Only a green job built every crate the commit changed; a red one keeps the
           # restored base, so the next run re-stamps (and rebuilds) those files (ci/R32).
           [ "${{ job.status }}" != success ] || git rev-parse HEAD > target/.ci-sha
@@ -188,7 +188,7 @@ jobs:
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
         # A job that failed before building leaves target/ near empty; saving it would replace the warm cache.
         run: |
-          [ -n "$(ls target/*/build 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
+          compgen -G 'target/*/build' >/dev/null || { echo "target/ has no build; not saving"; exit 0; }
           # Only a green job built every crate the commit changed (ci/R32).
           [ "${{ job.status }}" != success ] || git rev-parse HEAD > target/.ci-sha
           rm -rf target/check-cache target/tmp target/judge-probes
@@ -385,7 +385,8 @@ jobs:
           # man-db's trigger alone can take minutes on a hosted runner.
           sudo rm -f /var/lib/man-db/auto-update
           retry timeout 180 sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
-          retry timeout 180 sh -c 'curl -sSfL https://github.com/helix-editor/helix/releases/download/25.07.1/helix-25.07.1-x86_64-linux.tar.xz | tar xJ -C "$RUNNER_TEMP"'
+          retry timeout 180 curl -sSfL -o "$RUNNER_TEMP/helix.tar.xz" https://github.com/helix-editor/helix/releases/download/25.07.1/helix-25.07.1-x86_64-linux.tar.xz
+          tar xJf "$RUNNER_TEMP/helix.tar.xz" -C "$RUNNER_TEMP"
           echo "HX=$RUNNER_TEMP/helix-25.07.1-x86_64-linux/hx" >> "$GITHUB_ENV"
           retry timeout 180 npm install --prefix "$RUNNER_TEMP/ts" --no-audit --no-fund tree-sitter-cli@0.25.10 >/dev/null
           echo "TREE_SITTER=$RUNNER_TEMP/ts/node_modules/.bin/tree-sitter" >> "$GITHUB_ENV"
@@ -610,7 +611,7 @@ jobs:
         # A job that failed before building leaves target/ near empty; saving it would replace the warm cache.
         # Cargo 1.100 keeps no target/<profile>/deps, so look for build/.
         run: |
-          [ -n "$(ls target/*/build 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
+          compgen -G 'target/*/build' >/dev/null || { echo "target/ has no build; not saving"; exit 0; }
           # Only a green job built every crate the commit changed; a red one keeps the
           # restored base, so the next run re-stamps (and rebuilds) those files (ci/R32).
           [ "${{ job.status }}" != success ] || git rev-parse HEAD > target/.ci-sha

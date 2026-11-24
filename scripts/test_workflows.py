@@ -147,7 +147,7 @@ class WorkflowTest(unittest.TestCase):
             gate = job_block(f.read(), "gate")
         self.assertRegex(gate, r"if: matrix\.part == 'checks'\n +run: just workflow-lint\n")
         with open(os.path.join(ROOT, "justfile"), encoding="utf-8") as f:
-            self.assertRegex(f.read(), r"\nworkflow-lint:\n    actionlint ")
+            self.assertRegex(f.read(), r"\nworkflow-lint:\n.*shellcheck.*\n    actionlint\n")
         with open(os.path.join(ROOT, ".github/actions/setup-rust/action.yml"), encoding="utf-8") as f:
             self.assertRegex(f.read(), r"tool: just,actionlint\n")
 

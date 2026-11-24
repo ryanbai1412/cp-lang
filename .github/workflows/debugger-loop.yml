@@ -49,7 +49,7 @@ jobs:
       - name: GCC as g++
         if: runner.os == 'macOS'
         run: |
-          gxx=$(ls "$(brew --prefix)"/bin/g++-[0-9]* | sort -V | tail -1)
+          gxx=$(printf '%s\n' "$(brew --prefix)"/bin/g++-[0-9]* | sort -V | tail -1)
           mkdir -p ~/gcc-bin && ln -sf "$gxx" ~/gcc-bin/g++ && echo ~/gcc-bin >>"$GITHUB_PATH"
       - name: Compiler versions
         run: (g++ --version || echo "no g++") | head -1 && rustc --version
@@ -114,7 +114,6 @@ jobs:
         run: cargo build -p cpl-cli
       - name: Plugin smoke tests
         shell: bash
-        working-directory: editors/jetbrains
         run: |
-          if [ "$RUNNER_OS" = Windows ]; then export CPL="$(cygpath -w "$GITHUB_WORKSPACE/target/debug/cpl.exe")"; fi
-          ./gradlew --no-daemon test --tests dev.cplang.ide.CpPluginSmokeTest
+          if [ "$RUNNER_OS" = Windows ]; then CPL=$(cygpath -w "$GITHUB_WORKSPACE/target/debug/cpl.exe"); export CPL; fi
+          just jetbrains-fetch && just jetbrains-gradle test --tests dev.cplang.ide.CpPluginSmokeTest
