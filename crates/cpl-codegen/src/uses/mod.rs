@@ -12,7 +12,7 @@ pub(crate) mod effects;
 use crate::lend::{copied_at_test, Tail};
 use crate::walk;
 use cpl_ir::{
-    AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, Place, PlaceKind, Program, Stmt, Ty,
+    Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, Place, PlaceKind, Program, Stmt, Ty,
 };
 use effects::Touch;
 use std::collections::{BTreeMap, BTreeSet};
@@ -804,20 +804,31 @@ fn once_lets<'s>(stmt: &'s Stmt, out: &mut Vec<&'s Stmt>) {
             once_lets(inner, out);
         }
     }
-    let mut value = |e: &'s Expr| {
-        if let ExprKind::Do(block) = &e.kind {
-            stmts(block, out);
+    // A value block runs once, and so does one an argument evaluates: each
+    // argument is evaluated once, before the call (`edges.sorted(by: ..)
+    // .adjacent` sorts its own copy in the generator's argument).
+    fn value<'s>(e: &'s Expr, out: &mut Vec<&'s Stmt>) {
+        match &e.kind {
+            ExprKind::Do(block) => stmts(block, out),
+            ExprKind::Call(_, args) => {
+                for arg in args {
+                    if let Arg::Value(a) = arg {
+                        value(a, out);
+                    }
+                }
+            }
+            _ => {}
         }
-    };
+    }
     match stmt {
         Stmt::Let(_, Some(e))
         | Stmt::Assign(_, _, e)
         | Stmt::Expr(e)
         | Stmt::Give(e)
         | Stmt::Return(Some(e))
-        | Stmt::For(_, _, Iter::Seq(e, _) | Iter::RangeVal(e, _), _) => value(e),
+        | Stmt::For(_, _, Iter::Seq(e, _) | Iter::RangeVal(e, _), _) => value(e, out),
         Stmt::If(cond, then, otherwise) => {
-            value(cond);
+            value(cond, out);
             stmts(then, out);
             stmts(otherwise, out);
         }

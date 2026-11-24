@@ -1007,3 +1007,18 @@ fn a_place_a_lent_call_gives_is_copied_into_a_call_that_grows_its_root() {
         "the arena element is copied, not lent: {out}"
     );
 }
+
+#[test]
+fn a_never_written_global_sorted_into_a_generator_moves_at_its_last_read() {
+    let out = cpp(concat!(
+        "let n: 2..=100 = read()\n",
+        "let seen: [n](t: Int, x: Int) = read()\n",
+        "let speeds = [b.x - a.x for (a, b) in seen.sorted(by: o => o.t).adjacent]\n",
+        "print(speeds)\n",
+    ));
+    assert!(
+        out.contains("= std::move(seen);"),
+        "seen is read for the last time:\n{out}"
+    );
+    assert!(!out.contains("= seen;"), "no copy of seen:\n{out}");
+}
