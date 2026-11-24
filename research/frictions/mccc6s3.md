@@ -23,6 +23,15 @@ value. `None` means there is none. A deletion-only "nearest present" structure i
 `?Pos` has no order, so the answer key compares `shown(moved)`, the printed move index (`-1`
 for none). The statement orders answers by that printed pair.
 
+## The skip lists are hand pointer arrays again
+
+The section above describes the `DsuOf` port; bcc66ff17 and a73c050d6 replaced it with two
+hand path-halving arrays (`nxt`, `prv` with `above`/`below`/`drop`) whose ends are sentinels
+(`nxt[m] = m`, `prv[0] = 0`, `prv` storing one plus the value). No measurement is recorded for
+the swap. Dream line: `var right = PresentValues<U>(a)` with `at_or_above` / `at_or_below`.
+General fix: a std deletion-only nearest-present structure over a domain (or `DsuOf` measured
+fast enough, with the numbers here). Owner: stdlib. Severity: medium.
+
 ## Verification
 
 30 random cases agree with the v0.2 port and 30 with `orig.cpp`. The max case (n = 1e6) runs

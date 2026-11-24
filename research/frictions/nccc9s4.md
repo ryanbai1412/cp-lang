@@ -28,6 +28,14 @@ avoids a `(0, C.first!)` seed but costs some speed: 0.29 s on the max case again
 the v0.2 port on a loaded box (a plain-tuple seed measured 0.24 s). No time limit is recorded
 for the problem.
 
+## The best is packed into one `Int`
+
+The section above describes a `?(count, value)` best; the port now packs it as
+`cnt[v] * n + v.ord` and unpacks with `V.nth(best % n)`, with no measurement recorded for the
+change. Dream line: `max(best, (cnt[v], v))`. If the tuple is slower, the numbers belong here;
+otherwise the port should go back to it. General fix: make a tuple `max` in a hot loop cost what
+the packed `Int` costs. Owner: codegen. Severity: low.
+
 ## Verification
 
 30 random cases agree with the v0.2 port and 30 with the accepted C++ (new `gen.py`). Corpus tests

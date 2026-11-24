@@ -16,10 +16,11 @@ for (t, k) in read_queries():
 array's rank range from a std persistent `RangeKth`. The new max case (that input) runs in
 0.23 s.
 
-## `kth` traps instead of returning an option
+## `kth` returns an option
 
-`RangeKth.kth` traps when `k` is past the range, so the port checks `k <= ranks.len` first.
-A `try_kth` returning `?T` would merge the check into the call.
+std `WaveletMatrix.kth` returns `?Int` (`None` past the range), so the port's `k <= ranks.len`
+check before `kth(..)!` is redundant; the port owes
+`if let i = starts.kth(ranks, k - 1): i + 1 else: -1`. The earlier note here said `kth` traps.
 
 ## `k` bound
 
