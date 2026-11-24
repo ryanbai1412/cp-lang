@@ -3,8 +3,8 @@
 //! `Mat<T>` stores an `rows x cols` matrix in flat row-major order (`data[r * cols + c]`).
 //! Exact elimination (`det`, `rank`, `solve`, `solve_space`, `inverse`) works over any field
 //! type with `T.zero`, `T.one`, exact `==`, and `/` (such as `Mod<P>` for prime `P`).
-//! Floating-point elimination uses partial pivoting with an explicit tolerance `eps` via
-//! `det_real`, `rank_real`, `solve_real`, and `inverse_real`.
+//! Over an ordered `T` such as `F64` elimination pivots on the largest `abs` entry and treats an
+//! entry within the `eps:` argument of zero as zero.
 use std.algebra.{Monoid, Semiring}
 use std.math.{mul_mod, bit}
 use std.mod.{Mod}
@@ -207,21 +207,45 @@ pub struct Mat<T>:
         let r: ?Ring<T> = ring_of(over)
         Monoid(Mat<T>.unit(n, r), (x, y) => x * y)
 
-    /// The determinant over an exact field (such as `Mod<P>` for prime `P`), by Gaussian elimination.
-    /// The `0 x 0` determinant is `T.one`.
+    fn mag(x: T) -> T = if x < T.zero: T.zero - x else: x
+
+    fn negligible(x: T, eps: T) -> Bool:
+        if T: Ord:
+            return Mat<T>.mag(x) <= eps
+        else:
+            return x == T.zero
+
+    /// The pivot row for `col` among rows `lo..hi` of the flat table `m` with row length `stride`, or
+    /// `hi` if there is none: the largest `abs` entry above `eps` for an ordered `T`, else the first
+    /// nonzero.
+    fn pivot(m: List<T>, lo: Int, hi: Int, stride: Int, col: Int, eps: T) -> Int:
+        if T: Ord:
+            var piv = lo
+            for r in lo + 1..hi:
+                if Mat<T>.mag(m[r * stride + col]) > Mat<T>.mag(m[piv * stride + col]): piv = r
+            return if lo < hi and Mat<T>.mag(m[piv * stride + col]) > eps: piv else: hi
+        else:
+            var piv = lo
+            while piv < hi and m[piv * stride + col] == T.zero: piv += 1
+            return piv
+
+    /// The determinant over a field, by Gaussian elimination. The `0 x 0` determinant is `T.one`.
+    /// Over an ordered `T` such as `F64` the pivot is the largest `abs` entry of its column and an
+    /// entry within `eps` of zero counts as zero; over `Mod<P>` the pivot is the first nonzero entry.
     ///
     /// cost: \(O(n^3)\) time, \(O(n^2)\) space
     /// traps: when the matrix is not square, or an inverse it needs does not exist (a non-field `T`)
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).det() == Mod<7>(5)`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).det() == Mod<7>(0)`
-    pub fn det(self) -> T:
+    /// example: `abs(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]).det(eps: 1e-9) - 2.0) < 1e-9`
+    pub fn det(self, eps: ?T = None) -> T:
         assert rows == cols, "det requires a square matrix"
         let n = rows
         var m = data.collect()
         var ans = T.one
+        let e = eps ?? T.zero
         for col in 0..n:
-            var piv = col
-            while piv < n and m[piv * n + col] == T.zero: piv += 1
+            let piv = Mat<T>.pivot(m, col, n, n, col, e)
             if piv == n: return T.zero
             if piv != col:
                 for c in col..n: m.swap(col * n + c, piv * n + c)
@@ -231,37 +255,38 @@ pub struct Mat<T>:
             let inv_l = T.one / lead
             for r in col + 1..n:
                 let f = m[r * n + col]
-                if f == T.zero: continue
+                if Mat<T>.negligible(f, e): continue
                 let scale = f * inv_l
                 for c in col..n: m[r * n + c] -= scale * m[col * n + c]
         ans
 
-    /// The rank over an exact field: the number of pivots elimination finds.
+    /// The rank over a field: the number of pivots elimination finds, pivoting as `det` does.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
     /// empty: zero
     /// traps: never for a field `T`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).rank() == 1`
-    pub fn rank(self) -> Int:
+    /// example: `Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1e-12]]).rank(eps: 1e-9) == 1`
+    pub fn rank(self, eps: ?T = None) -> Int:
+        let e = eps ?? T.zero
         var m = data.collect()
         var r = 0
         for col in 0..cols:
             if r == rows: break
-            var piv = r
-            while piv < rows and m[piv * cols + col] == T.zero: piv += 1
+            let piv = Mat<T>.pivot(m, r, rows, cols, col, e)
             if piv == rows: continue
             if piv != r:
                 for c in col..cols: m.swap(r * cols + c, piv * cols + c)
             let inv_l = T.one / m[r * cols + col]
             for i in r + 1..rows:
                 let f = m[i * cols + col]
-                if f == T.zero: continue
+                if Mat<T>.negligible(f, e): continue
                 let scale = f * inv_l
                 for c in col..cols: m[i * cols + c] -= scale * m[r * cols + c]
             r += 1
         r
 
-    /// Solve `self * x = b` over an exact field. Returns `(particular, nullspace_basis)` or `None`.
+    /// Solve `self * x = b` over a field. Returns `(particular, nullspace_basis)` or `None`.
     /// Every solution has the form `particular + sum(c_i * basis[i])`. \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\).
     ///
     /// `particular` is the solution with every free variable zero (what `solve` returns). The basis
@@ -275,8 +300,9 @@ pub struct Mat<T>:
     /// traps: when `b.len != rows`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve_space([1, 2]) == Some(([Mod<7>(1), Mod<7>(0)], [[Mod<7>(5), Mod<7>(1)]]))`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve_space([1, 0]) == None`
-    pub fn solve_space(self, b: List<T>) -> ?(List<T>, List<List<T>>):
+    pub fn solve_space(self, b: List<T>, eps: ?T = None) -> ?(List<T>, List<List<T>>):
         assert b.len == rows
+        let e = eps ?? T.zero
         let k = cols
         let stride = k + 1
         var aug = List.filled(rows * stride, T.zero)
@@ -287,8 +313,7 @@ pub struct Mat<T>:
         var r = 0
         for col in 0..k:
             if r == rows: break
-            var piv = r
-            while piv < rows and aug[piv * stride + col] == T.zero: piv += 1
+            let piv = Mat<T>.pivot(aug, r, rows, stride, col, e)
             if piv == rows: continue
             if piv != r:
                 for c in col..=k: aug.swap(r * stride + c, piv * stride + c)
@@ -297,12 +322,12 @@ pub struct Mat<T>:
             for i in 0..rows:
                 if i == r: continue
                 let f = aug[i * stride + col]
-                if f == T.zero: continue
+                if Mat<T>.negligible(f, e): continue
                 for c in col..=k: aug[i * stride + c] = aug[i * stride + c] - f * aug[r * stride + c]
             pivot_row[col] = r
             r += 1
         for i in r..rows:
-            if aug[i * stride + k] != T.zero: return None
+            if not Mat<T>.negligible(aug[i * stride + k], e): return None
         var part = List.filled(k, T.zero)
         var basis = List<List<T>>()
         for col in 0..k:
@@ -316,7 +341,7 @@ pub struct Mat<T>:
                 basis.push(v)
         (part, basis)
 
-    /// Solve `self * x = b` over an exact field. Returns one solution (free variables 0) or `None`.
+    /// Solve `self * x = b` over a field. Returns one solution (free variables 0) or `None`.
     ///
     /// The solution is `solve_space(b)`'s particular one: each free (non-pivot) column's variable is
     /// zero.
@@ -327,12 +352,12 @@ pub struct Mat<T>:
     /// traps: when `b.len != rows`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).solve([5, 6]) == Some([Mod<7>(3), Mod<7>(1)])`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve([1, 0]) == None`
-    pub fn solve(self, b: List<T>) -> ?List<T>:
-        let res = self.solve_space(b)
+    pub fn solve(self, b: List<T>, eps: ?T = None) -> ?List<T>:
+        let res = self.solve_space(b, eps)
         if res == None: return None
         res!.0
 
-    /// The multiplicative inverse of a square matrix over an exact field, or `None` if singular, by
+    /// The multiplicative inverse of a square matrix over a field, or `None` if singular, by
     /// Gauss-Jordan elimination.
     ///
     /// cost: \(O(n^3)\) time, \(O(n^2)\) space
@@ -340,17 +365,17 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square
     /// example: `let inv = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).inverse()!; inv.get(0, 0) == Mod<7>(5) and inv.get(1, 1) == Mod<7>(3)`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).inverse() == None`
-    pub fn inverse(self) -> ?Mat<T>:
+    pub fn inverse(self, eps: ?T = None) -> ?Mat<T>:
         assert rows == cols, "inverse requires a square matrix"
         let n = rows
         let stride = 2 * n
+        let e = eps ?? T.zero
         var aug = List.filled(n * stride, T.zero)
         for i in 0..n:
             for j in 0..n: aug[i * stride + j] = data[i * n + j]
             aug[i * stride + n + i] = T.one
         for col in 0..n:
-            var piv = col
-            while piv < n and aug[piv * stride + col] == T.zero: piv += 1
+            let piv = Mat<T>.pivot(aug, col, n, stride, col, e)
             if piv == n: return None
             if piv != col:
                 for c in col..stride: aug.swap(col * stride + c, piv * stride + c)
@@ -359,7 +384,7 @@ pub struct Mat<T>:
             for i in 0..n:
                 if i == col: continue
                 let f = aug[i * stride + col]
-                if f == T.zero: continue
+                if Mat<T>.negligible(f, e): continue
                 for c in col..stride: aug[i * stride + c] = aug[i * stride + c] - f * aug[col * stride + c]
         var out = List.filled(n * n, T.zero)
         for i in 0..n:
@@ -629,143 +654,6 @@ fn lift_ring<W, S>(over: S) -> Ring<?W>:
         (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(add.op(x, y)) else: a) else: b,
         (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(mul.op(x, y)) else: None) else: None,
     )
-
-/// The determinant of a floating-point square matrix via partial pivoting with tolerance `eps`.
-/// At each column the row with the largest `abs` entry becomes the pivot; if that entry is at most
-/// `eps` in absolute value, the determinant is `0.0`.
-///
-/// cost: \(O(n^3)\) time, \(O(n^2)\) space
-/// empty: `1.0` for the `0 x 0` matrix
-/// traps: when `a` is not square
-/// example: `abs(det_real(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]])) - 2.0) < 1e-9`
-/// example: `abs(det_real(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]))) < 1e-9`
-pub fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64:
-    assert a.rows == a.cols, "det_real requires a square matrix"
-    let n = a.rows
-    var m = a.data.collect()
-    var ans = 1.0
-    for col in 0..n:
-        var piv = col
-        for r in col + 1..n:
-            if abs(m[r * n + col]) > abs(m[piv * n + col]): piv = r
-        if abs(m[piv * n + col]) <= eps: return 0.0
-        if piv != col:
-            for c in col..n: m.swap(col * n + c, piv * n + c)
-            ans = -ans
-        let lead = m[col * n + col]
-        ans *= lead
-        for r in col + 1..n:
-            let scale = m[r * n + col] / lead
-            for c in col..n: m[r * n + c] -= scale * m[col * n + c]
-    ans
-
-/// The rank of a floating-point matrix via partial pivoting with tolerance `eps`: a column has a
-/// pivot when its largest remaining `abs` entry exceeds `eps`.
-///
-/// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
-/// empty: zero
-/// traps: never
-/// example: `rank_real(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]])) == 1`
-/// example: `rank_real(Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1e-12]])) == 1`
-pub fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int:
-    let (rows, cols) = (a.rows, a.cols)
-    var m = a.data.collect()
-    var r = 0
-    for col in 0..cols:
-        if r == rows: break
-        var piv = r
-        for i in r + 1..rows:
-            if abs(m[i * cols + col]) > abs(m[piv * cols + col]): piv = i
-        if abs(m[piv * cols + col]) <= eps: continue
-        if piv != r:
-            for c in col..cols: m.swap(r * cols + c, piv * cols + c)
-        let lead = m[r * cols + col]
-        for i in r + 1..rows:
-            let scale = m[i * cols + col] / lead
-            for c in col..cols: m[i * cols + c] -= scale * m[r * cols + c]
-        r += 1
-    r
-
-/// Solve `a * x = b` over `F64` via partial pivoting with tolerance `eps`.
-///
-/// Returns `None` if inconsistent: some row reduces to all-zero coefficients (each at most `eps`)
-/// with a right-hand side above `eps` in absolute value. Free variables are `0.0`, as in
-/// `Mat.solve`.
-///
-/// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
-/// empty: with `cols == 0`, `Some([])` when every `b` entry is within `eps` of zero, else `None`
-/// order: indexed by column (variable)
-/// traps: when `b.len != a.rows`
-/// example: `let x = solve_real(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]), [3.0, 7.0])!; abs(x[0] - 1.0) < 1e-9 and abs(x[1] - 1.0) < 1e-9`
-/// example: `solve_real(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]), [1.0, 0.0]) == None`
-pub fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64>:
-    assert b.len == a.rows
-    let (rows, k) = (a.rows, a.cols)
-    let stride = k + 1
-    var aug = List.filled(rows * stride, 0.0)
-    for i in 0..rows:
-        for j in 0..k: aug[i * stride + j] = a.data[i * k + j]
-        aug[i * stride + k] = b[i]
-    var pivot_row = List.filled(k, -1)
-    var r = 0
-    for col in 0..k:
-        if r == rows: break
-        var piv = r
-        for i in r + 1..rows:
-            if abs(aug[i * stride + col]) > abs(aug[piv * stride + col]): piv = i
-        if abs(aug[piv * stride + col]) <= eps: continue
-        if piv != r:
-            for c in col..=k: aug.swap(r * stride + c, piv * stride + c)
-        let lead = aug[r * stride + col]
-        for c in col..=k: aug[r * stride + c] /= lead
-        for i in 0..rows:
-            if i == r: continue
-            let f = aug[i * stride + col]
-            if abs(f) <= eps: continue
-            for c in col..=k: aug[i * stride + c] -= f * aug[r * stride + c]
-        pivot_row[col] = r
-        r += 1
-    for i in r..rows:
-        if abs(aug[i * stride + k]) > eps: return None
-    var x = List.filled(k, 0.0)
-    for col in 0..k:
-        if pivot_row[col] != -1: x[col] = aug[pivot_row[col] * stride + k]
-    x
-
-/// The inverse of a floating-point square matrix via partial pivoting with tolerance `eps`, or
-/// `None` if singular (some pivot is at most `eps` in absolute value).
-///
-/// cost: \(O(n^3)\) time, \(O(n^2)\) space
-/// empty: the `0 x 0` matrix
-/// traps: when `a` is not square
-/// example: `let inv = inverse_real(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]))!; abs(inv.get(0, 0) - 1.5) < 1e-9 and abs(inv.get(1, 0) + 2.0) < 1e-9`
-/// example: `inverse_real(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]])) == None`
-pub fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64>:
-    assert a.rows == a.cols, "inverse_real requires a square matrix"
-    let n = a.rows
-    let stride = 2 * n
-    var aug = List.filled(n * stride, 0.0)
-    for i in 0..n:
-        for j in 0..n: aug[i * stride + j] = a.data[i * n + j]
-        aug[i * stride + n + i] = 1.0
-    for col in 0..n:
-        var piv = col
-        for i in col + 1..n:
-            if abs(aug[i * stride + col]) > abs(aug[piv * stride + col]): piv = i
-        if abs(aug[piv * stride + col]) <= eps: return None
-        if piv != col:
-            for c in col..stride: aug.swap(col * stride + c, piv * stride + c)
-        let lead = aug[col * stride + col]
-        for c in col..stride: aug[col * stride + c] /= lead
-        for i in 0..n:
-            if i == col: continue
-            let f = aug[i * stride + col]
-            if abs(f) <= eps: continue
-            for c in col..stride: aug[i * stride + c] -= f * aug[col * stride + c]
-    var out = Mat<F64>.zeros(n, n)
-    for i in 0..n:
-        for j in 0..n: out.set(i, j, aug[i * stride + n + j])
-    out
 
 /// Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
 /// Every operation is \(O(W)\) where W <= 63 (`merge` is \(O(W \cdot \mathit{rank})\)).
@@ -1514,19 +1402,17 @@ fn exact_elimination_det_rank_solve_inverse():
 @test
 fn real_elimination_matches_exact():
     let a = Mat<F64>.from_rows([[2.0, 1.0], [5.0, 3.0]])
-    assert abs(det_real(a) - 1.0) < 1e-9
-    assert rank_real(a) == 2
-    let x = solve_real(a, [4.0, 11.0])!
+    assert abs(a.det(eps: 1e-9) - 1.0) < 1e-9
+    assert a.rank(eps: 1e-9) == 2
+    let x = a.solve([4.0, 11.0], eps: 1e-9)!
     assert abs(x[0] - 1.0) < 1e-9 and abs(x[1] - 2.0) < 1e-9
-    let inv = inverse_real(a)!
+    let inv = a.inverse(eps: 1e-9)!
     let prod = a * inv
     assert abs(prod.get(0, 0) - 1.0) < 1e-9 and abs(prod.get(0, 1)) < 1e-9
     assert abs(prod.get(1, 0)) < 1e-9 and abs(prod.get(1, 1) - 1.0) < 1e-9
     let sing = Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]])
-    assert rank_real(sing) == 1 and inverse_real(sing) == None and solve_real(
-        sing,
-        [1.0, 3.0],
-    ) == None
+    assert sing.rank(eps: 1e-9) == 1 and sing.inverse(eps: 1e-9) == None
+    assert sing.solve([1.0, 3.0], eps: 1e-9) == None
 
 @test
 fn xor_basis_span_kth_and_merge():

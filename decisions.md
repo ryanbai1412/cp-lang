@@ -8828,7 +8828,11 @@ Reserved for call 5, which landed as decision 519.
 
 ## 525. (reserved, content)
 
-## 526. (reserved, content)
+## 526. One Mat elimination for every field; F64 states its `eps:` at the call (stdlib, 2026-11-24)
+
+- **Call.** `det_real`, `rank_real`, `solve_real` and `inverse_real` are gone. `Mat<T>.det`, `rank`, `solve`, `solve_space` and `inverse` take `eps: ?T = None`. When `T: Ord` (`F64`) the pivot is the largest `abs` entry of its column and `|x| <= eps` counts as zero; otherwise (`Mod<P>`) the pivot is the first entry `!= T.zero`. `eps` defaults to exact zero, so a float caller writes `m.rank(eps: 1e-9)`.
+- **Why.** "Coherent stdlib": two spellings did one job, and the `_real` free fns duplicated four elimination bodies. The `if T: Ord` branch is visible in the source, so there is no hidden `F64` specialization. A tolerance the caller writes is a cost the caller sees, where the old silent `1e-9` default was not.
+- **Reverse.** Restore the four `_real` free fns from before this entry and drop the `eps:` parameter.
 
 ## 527. A failing case is a plain failing expectation the scoreboard records (spec, 2026-11-24)
 

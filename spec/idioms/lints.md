@@ -573,7 +573,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | hand_rolled_matrix_det_mod | Gaussian elimination loop computing determinant mod `P` | `mat.det_mod()` | warn | #1 | loop |
 | hand_rolled_char_poly | Hessenberg reduction + DP for characteristic polynomial | `mat.char_poly()` | warn | #1 | loop |
 | hand_rolled_pfaffian | skew-symmetric elimination computing Pfaffian | `mat.pfaffian()` | warn | #1 | loop |
-| hand_rolled_real_gauss | floating-point partial-pivot elimination loop | `det_real` / `rank_real` / `solve_real` / `inverse_real` | warn | #1 | loop |
+| hand_rolled_real_gauss | floating-point partial-pivot elimination loop | `m.det(eps:)` / `m.rank(eps:)` / `m.solve(b, eps:)` / `m.inverse(eps:)` | warn | #1 | loop |
 | hand_rolled_convolve_all | priority-queue / divide-and-conquer loop multiplying a list of polynomials | `convolve_all(polys)` | fix? | #1 | loop |
 | hand_rolled_relaxed_convolve | online divide-and-conquer FFT (`cdq_fft`) | `RelaxedConvolve` / `SemiRelaxedConvolve` | warn | #1 | loop |
 | hand_rolled_subset_exp_log | ranked subset convolution for set power series exp/log | `subset_exp` / `subset_log` | warn | #1 | loop |

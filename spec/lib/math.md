@@ -95,7 +95,7 @@ walk counting (`Mat.pow`, `Mat.apply`), matrix-DP segment trees
 (`Mat.product`), and linear algebra over prime fields `Mod<P>` and reals
 `F64` (`det`, `rank`, `solve`, `solve_space`, `inverse`). Flat row-major
 storage matters for cache locality; elimination is exact over `Mod<P>` and
-uses partial pivoting with a configurable tolerance `eps` over `F64`.
+pivots by `abs` within an `eps:` tolerance over `F64`.
 
 Seventh, **GF(2) linear bases**: XOR subset maximization, membership,
 k-th smallest XOR, and merging bases inside segment trees or DSU-on-tree
@@ -294,21 +294,14 @@ struct Mat<T>(n: Int, m: Int, a: List<T>):
     fn product(n: Int) -> Monoid<Mat<T>>        // O(n^2); monoid for SegTree<D, Mat<T>>
     // impls: Add, Sub, Neg, Mul (ikj order, skipping zero entries)
 
-    // Exact Gaussian elimination over any exact field (e.g. Mod<P> with prime P):
-    fn det(self) -> T                       // O(n^3); square matrix
-    fn rank(self) -> Int                    // O(n m min(n, m))
-    fn solve(self, b: List<T>) -> ?List<T>  // O(n m min(n, m)); one solution or None
-    fn solve_space(self, b: List<T>) -> ?(x0: List<T>, basis: List<List<T>>)
+    // Gaussian elimination over a field (Mod<P> with prime P, F64, ...); an ordered T
+    // pivots on the largest abs entry and treats |x| <= eps as zero:
+    fn det(self, eps: ?T = None) -> T                       // O(n^3); square matrix
+    fn rank(self, eps: ?T = None) -> Int                    // O(n m min(n, m))
+    fn solve(self, b: List<T>, eps: ?T = None) -> ?List<T>  // O(n m min(n, m)); one solution or None
+    fn solve_space(self, b: List<T>, eps: ?T = None) -> ?(x0: List<T>, basis: List<List<T>>)
     // O(n m min(n, m)); particular + nullspace
-    fn inverse(self) -> ?Mat<T>  // O(n^3); square matrix, None if singular
-
-// Floating-point elimination with partial pivoting (F64):
-fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64   // O(n^3)
-fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int  // O(n m min(n, m))
-fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64>
-// O(n m min(n, m))
-fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64>
-// O(n^3)
+    fn inverse(self, eps: ?T = None) -> ?Mat<T>  // O(n^3); square matrix, None if singular
 
 // GF(2) linear basis over 63-bit non-negative integers (x >= 0)
 struct XorBasis:
@@ -324,12 +317,12 @@ struct XorBasis:
     fn monoid() -> Monoid<XorBasis>         // O(1); for SegTree<D, XorBasis>
 ```
 
-Why `det_real` / `solve_real` are separate from `Mat<T>.det` / `Mat<T>.solve`:
-floating-point elimination needs partial pivoting by `abs` and a tolerance
-`eps`, whereas exact elimination over `Mod<P>` checks `== T.zero` and divides
-directly. Keeping exact field methods on `Mat<T>` and pivoted real helpers
-explicit avoids hidden `F64` specialization and respects CP Lang's rule that
-float equality is rejected by default.
+One elimination serves every field (decision 526). When `T: Ord` (`F64`,
+fractions) it pivots on the largest `abs` entry of the column and treats an
+entry within `eps` of zero as zero; otherwise (`Mod<P>`) it takes the first
+entry `!= T.zero`. `eps` defaults to exact zero, so a float caller states its
+tolerance at the call: `m.rank(eps: 1e-9)`. The branch is the visible
+`if T: Ord` in the source, not a hidden `F64` specialization.
 
 ### 2.5 `std.poly`: formal power series over NTT
 
