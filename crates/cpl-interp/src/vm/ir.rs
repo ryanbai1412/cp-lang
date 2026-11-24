@@ -827,6 +827,13 @@ pub(crate) enum Op {
         dst: u16,
         seq_v: u16,
     },
+    /// The cut after (or before) key `key` of sequence `seq_v` in walk order.
+    CutI {
+        dst: u16,
+        seq_v: u16,
+        key: u16,
+        after: bool,
+    },
     RangeLoI {
         dst: u16,
         src_v: u16,

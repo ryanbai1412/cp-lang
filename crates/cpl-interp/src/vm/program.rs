@@ -163,6 +163,28 @@ pub(super) fn recognize_fast_closure(
     }
 }
 
+/// The fn `def`'s body calls with its params in order, when that is all it
+/// does and the fn takes them as the closure's caller lays them out.
+fn forward_of(def: &cpl_ir::ClosureDef, fns: &[Option<Chunk<'_>>]) -> Option<u16> {
+    if !def.captures.is_empty() || !def.muts.is_empty() || def.body.stmts.len() != 1 {
+        return None;
+    }
+    let (Stmt::Return(Some(e)) | Stmt::Expr(e)) = &def.body.stmts[0] else {
+        return None;
+    };
+    let ExprKind::Call(fid, args) = &e.kind else {
+        return None;
+    };
+    let in_order = args.len() == def.params.len()
+        && args.iter().zip(&def.params).all(|(a, &p)| {
+            matches!(a, cpl_ir::Arg::Value(x) if matches!(x.kind, ExprKind::Local(s) if s == p))
+        });
+    let callee = fns.get(*fid)?.as_ref()?;
+    let plain = (callee.slot_map.iter().take(callee.param_count))
+        .all(|l| !matches!(l, SlotLoc::SmallTuple { .. }));
+    (in_order && plain).then_some(*fid as u16)
+}
+
 pub(crate) struct CompiledProgram<'p> {
     pub main: Chunk<'p>,
     /// What is above `@!multitest`. It ends in `RetI` of 1, so a run
@@ -172,6 +194,9 @@ pub(crate) struct CompiledProgram<'p> {
     pub fed_fns: Vec<Option<Chunk<'p>>>,
     pub closures: Vec<Option<Chunk<'p>>>,
     pub fast_closures: Vec<Option<FastClosure>>,
+    /// The fn each closure only passes its params on to, as a fn value
+    /// does: calling it calls the fn.
+    pub forwards: Vec<Option<u16>>,
 }
 
 impl<'p> CompiledProgram<'p> {
@@ -346,7 +371,11 @@ impl<'p> CompiledProgram<'p> {
             }
             setup
         });
+        let forwards = (program.closures.iter())
+            .map(|def| forward_of(def, &fns).filter(|_| !profiled && !traced))
+            .collect();
         CompiledProgram {
+            forwards,
             main,
             setup,
             fns,

@@ -18,6 +18,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     ) -> Res<()> {
         let spans = chunk.spans.as_slice();
         match op {
+            Op::CutI {
+                dst,
+                seq_v,
+                key,
+                after,
+            } => {
+                let key = regs_i[key as usize];
+                let span = spans[cur_pc];
+                regs_i[dst as usize] =
+                    crate::builtin::cut_beside(&regs_v[seq_v as usize], key, after, span)?;
+            }
             Op::SeqLenI { dst, seq_v } => {
                 regs_i[dst as usize] = match &regs_v[seq_v as usize] {
                     Value::Array(arr) => arr.len() as i64,

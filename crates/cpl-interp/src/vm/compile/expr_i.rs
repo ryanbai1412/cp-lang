@@ -342,6 +342,28 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.patch(j_end, end_pc);
                 dst
             }
+            ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), lhs, rhs)
+                if [lhs, rhs].iter().any(|e| matches!(e.kind, ExprKind::None))
+                    && ScalarKind::of_opt_ty(&lhs.ty, self.program).is_none() =>
+            {
+                let opt = if matches!(rhs.kind, ExprKind::None) {
+                    lhs
+                } else {
+                    rhs
+                };
+                let src_v = self.compile_expr_v(opt);
+                let some = self.alloc_i();
+                self.emit(Op::IsSomeV { dst_i: some, src_v }, span);
+                if src_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                }
+                if *op == CmpOp::Ne {
+                    return some;
+                }
+                let dst = self.alloc_i();
+                self.emit(Op::NotBool { dst, a: some }, span);
+                dst
+            }
             ExprKind::Cmp(op, lhs, rhs)
                 if lhs.ty == Ty::U64
                     && rhs.ty == Ty::U64
@@ -551,22 +573,41 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 dst
             }
-            ExprKind::Builtin(Builtin::Min, args)
-                if args.len() == 2 && matches!(expr.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_)) =>
+            ExprKind::Builtin(op @ (Builtin::Min | Builtin::Max), args)
+                if args.len() >= 2 && matches!(expr.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_)) =>
             {
-                let a = self.compile_expr_i(&args[0]);
-                let b = self.compile_expr_i(&args[1]);
-                let dst = self.alloc_i();
-                self.emit(Op::MinI { dst, a, b }, span);
-                dst
+                let mut acc = self.compile_expr_i(&args[0]);
+                for arg in &args[1..] {
+                    let (a, b) = (acc, self.compile_expr_i(arg));
+                    acc = self.alloc_i();
+                    let fold = if *op == Builtin::Min {
+                        Op::MinI { dst: acc, a, b }
+                    } else {
+                        Op::MaxI { dst: acc, a, b }
+                    };
+                    self.emit(fold, span);
+                }
+                acc
             }
-            ExprKind::Builtin(Builtin::Max, args)
-                if args.len() == 2 && matches!(expr.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_)) =>
+            ExprKind::Builtin(op @ (Builtin::CutAfter | Builtin::CutBefore), args)
+                if args.len() == 2 =>
             {
-                let a = self.compile_expr_i(&args[0]);
-                let b = self.compile_expr_i(&args[1]);
+                let seq_v = self.compile_expr_v(&args[0]);
+                let key = self.compile_expr_i(&args[1]);
                 let dst = self.alloc_i();
-                self.emit(Op::MaxI { dst, a, b }, span);
+                let after = *op == Builtin::CutAfter;
+                self.emit(
+                    Op::CutI {
+                        dst,
+                        seq_v,
+                        key,
+                        after,
+                    },
+                    span,
+                );
+                if seq_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: seq_v }, span);
+                }
                 dst
             }
             ExprKind::Builtin(

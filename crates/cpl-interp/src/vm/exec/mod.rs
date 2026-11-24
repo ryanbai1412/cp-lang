@@ -1835,6 +1835,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.exec_fields_and_calls(op, cur_pc, compiled, chunk, base_i, vm_regs_i, regs_v)
             }
             Op::SeqLenI { .. }
+            | Op::CutI { .. }
             | Op::RangeLoI { .. }
             | Op::RangeHiI { .. }
             | Op::RangeBoundsI { .. }

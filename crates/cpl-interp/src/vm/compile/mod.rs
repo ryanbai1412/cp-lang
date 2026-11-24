@@ -1,6 +1,7 @@
 use super::ir::*;
 use crate::value::Value;
 use cpl_diag::Span;
+use cpl_ir::Builtin;
 use cpl_ir::Prim;
 use cpl_ir::{
     Arg, AssignOp, BinOp, Block, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId, Place,
@@ -953,6 +954,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 ExprKind::Intrinsic(Prim::Popcount | Prim::Ctz | Prim::Clz, args) => {
                     args.len() == 1 && simple_expr(&args[0], f, program)
                 }
+                // `unchecked:` arithmetic and `min`/`max` never trap.
+                ExprKind::Builtin(
+                    Builtin::WrapAdd
+                    | Builtin::WrapSub
+                    | Builtin::WrapMul
+                    | Builtin::Min
+                    | Builtin::Max,
+                    args,
+                ) => args.iter().all(|a| simple_expr(a, f, program)),
                 ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], f, program),
                 ExprKind::Index(base, indices) => {
                     let container_ok = match &base.ty {

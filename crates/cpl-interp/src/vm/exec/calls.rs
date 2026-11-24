@@ -871,6 +871,27 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 ret_mode,
                 muts,
             } => {
+                let forward = match &regs_v[callee_v as usize] {
+                    Value::Closure(cid, _) if muts == 0 => compiled.forwards[*cid],
+                    _ => None,
+                };
+                if let Some(fn_id) = forward {
+                    if callee_v as usize >= chunk.num_local_v {
+                        regs_v[callee_v as usize] = Value::Unit;
+                    }
+                    let call = Op::CallVmMix {
+                        fn_id,
+                        arg_base_i,
+                        arg_base_v,
+                        dst_i,
+                        dst_v,
+                        dst_some,
+                        ret_mode,
+                    };
+                    let (bi, rv) = (base_i, regs_v);
+                    return self
+                        .exec_fields_and_calls(call, cur_pc, compiled, chunk, bi, vm_regs_i, rv);
+                }
                 if let Value::Closure(cid, _) = &regs_v[callee_v as usize] {
                     if let Some(fast) = compiled.fast_closures[*cid] {
                         let abi = arg_base_i as usize;

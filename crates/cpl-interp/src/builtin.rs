@@ -617,26 +617,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }),
             Builtin::CutAfter | Builtin::CutBefore => {
                 let key = values.next().unwrap_or_default().int();
-                let (lo, len, rev) = match &first {
-                    Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
-                    Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
-                    Value::MutView(v) => (v.key0, v.len as i64, false),
-                    Value::Array(a) => (0, a.len() as i64, false),
-                    Value::List(items) => (0, items.len() as i64, false),
-                    Value::Str(bytes) => (0, bytes.len() as i64, false),
-                    _ => return trap(span, cpl_diag::msgs::interp::CUTS_NEED_SEQUENCE.at(&[])),
-                };
-                if key < lo || key >= lo + len {
-                    return trap(
-                        span,
-                        cpl_diag::msgs::interp::KEY_NOT_ONE_VIEW_KEYS.at(&[&key, &lo, &(lo + len)]),
-                    );
-                }
-                Value::Int(if (op == Builtin::CutAfter) != rev {
-                    key + 1
-                } else {
-                    key
-                })
+                Value::Int(cut_beside(&first, key, op == Builtin::CutAfter, span)?)
             }
             Builtin::KeyPos | Builtin::PosKey => {
                 let at = values.next().unwrap_or_default().int();
@@ -1000,4 +981,25 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             },
         })
     }
+}
+
+/// `seq.cut_after(key)` (or `cut_before` when not `after`): the cut beside
+/// `key` in walk order.
+pub(crate) fn cut_beside(seq: &Value, key: i64, after: bool, span: Span) -> Res<i64> {
+    let (lo, len, rev) = match seq {
+        Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
+        Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
+        Value::MutView(v) => (v.key0, v.len as i64, false),
+        Value::Array(a) => (0, a.len() as i64, false),
+        Value::List(items) => (0, items.len() as i64, false),
+        Value::Str(bytes) => (0, bytes.len() as i64, false),
+        _ => return trap(span, cpl_diag::msgs::interp::CUTS_NEED_SEQUENCE.at(&[])),
+    };
+    if key < lo || key >= lo + len {
+        return trap(
+            span,
+            cpl_diag::msgs::interp::KEY_NOT_ONE_VIEW_KEYS.at(&[&key, &lo, &(lo + len)]),
+        );
+    }
+    Ok(if after != rev { key + 1 } else { key })
 }

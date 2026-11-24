@@ -622,6 +622,56 @@ print(by_second(xs))
 }
 
 #[test]
+fn vm_runs_cuts_none_tests_wide_max_and_fn_values_itself() {
+    // bench/seq/scan's `cut_after`, bench/ranges/lazy_assign's `act != None`
+    // and three-way `max`: none leaves the VM, and a fn passed as a value is
+    // called directly.
+    let source = "
+struct Box2(a: Int, b: Int)
+fn pair(x: Int, y: Int) -> Int = x * 10 + y
+fn run(f: (Int, Int) -> Int) -> Int = f(3, 4)
+domain D = 0..5
+let xs: [D]Int = [5, 1, 4, 2, 3]
+var cuts = 0
+for i in D: cuts = cuts * 10 + Int(xs.cut_after(i))
+var rcuts = 0
+for i in D: rcuts = rcuts * 10 + Int(xs.rev.cut_before(i))
+let b: ?Box2 = Some(Box2(1, 2))
+let n: ?Box2 = None
+print(cuts, rcuts, yes(b != None), yes(n == None), yes(b == None), max(xs[0], xs[1], 9), min(xs[2], xs[3], xs[4]), run(pair))
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let ops: Vec<String> = compiled
+        .main
+        .ops
+        .iter()
+        .map(|op| format!("{op:?}"))
+        .collect();
+    let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
+    // Only `xs.rev` (making the view) is left to the tree-walker.
+    assert_eq!(count("ApplyV"), 1, "{ops:?}");
+    assert_eq!(count("CutI"), 2, "{ops:?}");
+    assert_eq!(count("IsSomeV"), 3, "{ops:?}");
+    assert!(
+        compiled.forwards.iter().any(Option::is_some),
+        "`pair` is called through a closure"
+    );
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "12345 12345 YES YES NO 9 2 34\n");
+}
+
+#[test]
 fn vm_alias_free_mut_closure_runs_without_fallback() {
     let source = "
 fn count_and_bump(mut xs: List<Int>, pred: Int -> Bool) -> Int:
