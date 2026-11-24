@@ -17,11 +17,11 @@ let a: [0..n]0..=10 ** 9 = read()
 let s: Str = read()
 
 let t_inf = n + 1 + a.max()!
-var dp: List<Int> = [0]
+var dp = Deque.of([0])
 var ans: [0..n]Int = 0
 
 for i in 0..n:
-    if s[i] == '1': dp.insert(0, dp[0])
+    if s[i] == '1': dp.push_front(dp[0])
     for k in 0..dp.len:
         var best = max(a[i], dp[k]) + 1 + 2 * max(k - 1, 0)
         if k + 1 < dp.len:
