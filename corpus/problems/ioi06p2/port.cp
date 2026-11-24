@@ -16,8 +16,11 @@ let cw: 1..=bw - 2 = read()
 let ch: 1..=bh - 2 = read()
 domain Row = 1..=h
 domain Col = 1..=w
-let height: [Row, Col]1..=100 = read()
-let pre = prefix(height)
+var pre = Prefix<Row, Col, Int>.filling()
+for r in Row:
+    for c in Col:
+        let height: 1..=100 = read()
+        pre.set(r, c, height)
 
 // The sum of the rows x cols block whose upper-left cell is (r + 1, c + 1).
 fn block(r: Int, c: Int, rows: Int, cols: Int) -> Int:
