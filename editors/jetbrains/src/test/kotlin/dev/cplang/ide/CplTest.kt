@@ -32,26 +32,13 @@ class CplTest {
     }
 
     @Test
-    fun `a problem's cases are its STEM_tests, else a sibling tests folder`() {
-        val dir = Files.createTempDirectory("cpl").toFile()
-        val source = File(dir, "port.cp").apply { writeText("") }
-        assertEquals(File(dir, "port.tests"), Cpl.testsDir(source))
-        listOf("tests/2.in", "tests/10.in", "tests/2.out").forEach { File(dir, it).apply { parentFile.mkdirs(); writeText("") } }
-        assertEquals(File(dir, "tests"), Cpl.testsDir(source))
-        assertEquals(listOf("tests/2.in", "tests/10.in"), Cpl.samples(source).map { it.relativeTo(dir).invariantSeparatorsPath })
-        File(dir, "port.tests").mkdirs()
-        assertEquals(File(dir, "port.tests"), Cpl.testsDir(source))
-    }
-
-    @Test
-    fun `samples come in the VS Code extension's order`() {
-        val dir = Files.createTempDirectory("cpl").toFile()
-        val source = File(dir, "a.cp").apply { writeText("") }
-        for (name in listOf("i10", "i2", "o2", "notes", "a.tests/3.in", "a.tests/3.out", "a.tests/12.in", "a.samples/1.in", "b.tests/1.in")) {
-            File(dir, name).apply { parentFile.mkdirs(); writeText("") }
-        }
-        val got = Cpl.samples(source).map { it.relativeTo(dir).invariantSeparatorsPath }
-        assertEquals(listOf("i2", "i10", "a.tests/3.in", "a.tests/12.in", "a.samples/1.in"), got)
+    fun `the first sample is the one cpl lists first`() {
+        assertEquals(listOf("run", "a.cp", "--samples", "--list", "--format", "json"), Cpl.samplesArgs("a.cp"))
+        val dir = File("/p")
+        val json = """{"samples":[{"name":"1","input":"tests/1.in"},{"name":"2","input":"tests/2.in"}]}"""
+        assertEquals(File(dir, "tests/1.in"), Cpl.firstSample(json, dir))
+        assertNull(Cpl.firstSample("""{"samples":[]}""", dir))
+        assertNull(Cpl.firstSample("error: no such file", dir))
     }
 
     @Test

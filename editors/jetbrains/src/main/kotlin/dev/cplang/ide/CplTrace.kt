@@ -64,12 +64,23 @@ object CplTrace {
         return html.substring(0, head.range.last + 1) + shim + html.substring(head.range.last + 1)
     }
 
-    /** Runs `source` on `input` with `--trace` in the background and opens the trace viewer, scoped to `fn`. */
-    fun open(project: Project, source: File, fn: String?, input: File?) {
-        val title = "Trace: ${source.name}" + (fn?.let { " ($it)" } ?: "") + (input?.let { " on ${it.name}" } ?: "")
+    /** The first sample `cpl run --samples` runs for `source`, as `cpl` finds it. */
+    fun firstSample(source: File): File? {
+        val dir = source.absoluteFile.parentFile
+        val out = CapturingProcessHandler(Cpl.commandLine(Cpl.samplesArgs(source.name), dir)).runProcess(30_000)
+        return Cpl.firstSample(out.stdout, dir)
+    }
+
+    /**
+     * Runs `source` on `given` (else on its first sample when `onFirstSample`) with `--trace` in the
+     * background and opens the trace viewer, scoped to `fn`.
+     */
+    fun open(project: Project, source: File, fn: String?, given: File?, onFirstSample: Boolean = false) {
         object : Task.Backgroundable(project, "cpl run --trace", true) {
             override fun run(indicator: ProgressIndicator) {
                 try {
+                    val input = given ?: if (onFirstSample) firstSample(source) else null
+                    val title = "Trace: ${source.name}" + (fn?.let { " ($it)" } ?: "") + (input?.let { " on ${it.name}" } ?: "")
                     val html = CplTrace.render(source, fn, input)
                     ApplicationManager.getApplication().invokeLater { CplTrace.show(project, title, html, source) }
                 } catch (err: Exception) {
@@ -185,6 +196,6 @@ class CplShowTraceAction : AnAction() {
         val fn = editor?.let { Cpl.enclosingFn(it.document.charsSequence, it.caretModel.offset) }?.takeIf { it != "main" }
         FileDocumentManager.getInstance().saveAllDocuments()
         val source = File(file.path)
-        CplTrace.open(project, source, fn, Cpl.samples(source).firstOrNull())
+        CplTrace.open(project, source, fn, null, onFirstSample = true)
     }
 }

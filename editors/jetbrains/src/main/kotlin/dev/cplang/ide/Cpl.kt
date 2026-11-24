@@ -80,34 +80,17 @@ object Cpl {
         runCatching { com.google.gson.JsonParser.parseString(line).asJsonObject.get("path")?.asString }.getOrNull()
     }
 
-    /**
-     * The cases folder `cpl test FILE` reads, as `cpl-contest`'s `find_tests_dir`: `STEM.tests/` if it
-     * exists, else a sibling `tests/` (as in `corpus/problems/<id>/tests/`), else `STEM.tests/`.
-     */
-    fun testsDir(source: File): File {
-        val dir = source.absoluteFile.parentFile
-        val own = File(dir, source.nameWithoutExtension + ".tests")
-        val sibling = File(dir, "tests")
-        return if (!own.isDirectory && sibling.isDirectory) sibling else own
-    }
-
     fun traceArgs(file: String, fn: String?) =
         listOf("run", file, "--trace") + listOfNotNull(fn) + listOf("--format", "html")
 
-    /**
-     * The sample inputs of `DIR/STEM.cp` in the order the VS Code extension shows them:
-     * scratch `i1`, `i2`, ... beside the file, then the cases (`STEM.tests/N.in`, see [testsDir]), then `STEM.samples/N.in`.
-     */
-    fun samples(source: File): List<File> {
-        val dir = source.absoluteFile.parentFile ?: return emptyList()
-        val stem = source.nameWithoutExtension
-        val byNumber = compareBy<File>({ it.name.filter(Char::isDigit).toLongOrNull() ?: Long.MAX_VALUE }, { it.name })
-        val scratch = dir.listFiles { f -> f.isFile && Regex("i\\d+").matches(f.name) }.orEmpty().sortedWith(byNumber)
-        val cases = listOf(testsDir(source), File(dir, "$stem.samples")).flatMap { sub ->
-            sub.listFiles { f -> f.isFile && f.name.endsWith(".in") }.orEmpty().sortedWith(byNumber)
-        }
-        return scratch + cases
-    }
+    /** `cpl run FILE --samples --list --format json`: the samples `cpl run --samples` runs, in its order. */
+    fun samplesArgs(file: String) = listOf("run", file, "--samples", "--list", "--format", "json")
+
+    /** The first sample's input in what [samplesArgs] printed, with a relative path under `dir`. */
+    fun firstSample(json: String, dir: File): File? = runCatching {
+        val sample = com.google.gson.JsonParser.parseString(json).asJsonObject.getAsJsonArray("samples").firstOrNull()
+        sample?.asJsonObject?.get("input")?.asString?.let { File(it).takeIf(File::isAbsolute) ?: File(dir, it) }
+    }.getOrNull()
 
     /** The first wrong call a report's `view` marks: its 0-based line and headline. */
     data class WrongCall(val line: Int, val message: String)

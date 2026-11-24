@@ -204,6 +204,7 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         val html = CplTrace.render(source, null, input)
         assertTrue(html.take(200), Regex("^\\s*<(!doctype|html)", RegexOption.IGNORE_CASE).containsMatchIn(html))
         assertTrue(html.contains("total"))
+        assertEquals(input.canonicalFile, CplTrace.firstSample(source)?.canonicalFile)
         val failed = runCatching { CplTrace.render(File(dir, "missing.cp"), null, null) }.exceptionOrNull()
         assertTrue(failed is CplTrace.Failed)
         val bridged = CplTrace.bridge(html, "post(json);")
