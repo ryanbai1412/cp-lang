@@ -8,17 +8,17 @@ Cold review against the idiomatic checklist.
 - R2: "answer = sum of adj^k" is exactly the editorial; `Mat ** k` is the right spelling.
 - R3: std `Mat` and `**`, no hand-written squaring loop.
 - R5: `k: 1..=1e18`, `adj: [V, V]0..=1`.
-- R6: fails mildly: the entries are read back with `0..n` Int indices, not `V`.
-- R10: 1.20x on a 13 ms run; reported with an owner.
+- R6: passes: `walks.sum()` reads no entry back by `Int` index; `Mat` itself is not keyed by `V`.
+- R10: 1.17x on an 11 ms run; reported with an owner.
 
 ## Checklist failures
 
-R6 (Int indices into `Mat`), R10 (reported).
+R10 (reported).
 
 ## Owed rewrites
 
-Replace the double comprehension with `walks.sum()` once `Mat` has it (Content).
+None (`walks.sum()` landed with e9b4b0aa5).
 
 ## Language gaps
 
-`Mat` has no domain index and no entry sum (friction 1).
+`Mat` has no domain index (friction 1; waits on Core's E0309).

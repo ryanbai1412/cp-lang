@@ -13,4 +13,4 @@ domain V = 1..=n
 let adj: [V, V]0..=1 = read()
 
 let walks = Mat<Z>.new([V, V] (i, j) => Z(adj[i, j])) ** k
-print(sum(walks.get(i, j) for i in 0..n for j in 0..n))
+print(walks.sum())
