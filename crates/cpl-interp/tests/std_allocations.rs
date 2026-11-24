@@ -175,10 +175,6 @@ const ALLOCATING_TODAY: &[(&str, &str)] = &[
         "the VM boxes each `MeldNode` and `Meld` struct value",
     ),
     (
-        "math.cp Sieve.divisors",
-        "std builds the factorization and exponents as lists",
-    ),
-    (
         "tree.cp Centroids.ancestors",
         "the VM boxes each yielded named tuple",
     ),

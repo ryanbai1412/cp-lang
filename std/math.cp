@@ -353,13 +353,37 @@ pub struct Sieve:
     /// They come in mixed-radix order over the factorization: the exponent of the smallest prime
     /// changes fastest. That order is fixed but not sorted; use `.sorted()` for ascending.
     ///
-    /// cost: \(O(\log x)\) to start, \(O(1)\) per divisor
+    /// It keeps only the current divisor: each step walks `x`'s primes through `spf`, smallest
+    /// first, and multiplies in the first prime whose exponent can still grow, dividing out the
+    /// primes before it.
+    ///
+    /// cost: \(O(1)\) to start, \(O(\log x)\) amortized per divisor
     /// order: mixed-radix over the exponents, smallest prime fastest (12 gives 1, 2, 4, 3, 6, 12)
     /// traps: when `x` is outside `1..=n`
     /// example: `Sieve(12).divisors(12).collect() == [1, 2, 4, 3, 6, 12]`
     /// example: `Sieve(12).divisors(1).collect() == [1]`
+    /// example: `Sieve(1000).divisors(720).sum() == 2418`
     pub fn divisors(self, x: Int) -> yields Int:
-        for d in divisors_in_radix_order(self.factor(x)): yield d
+        assert 1 <= x and x < spf.len
+        var d = 1
+        while true:
+            yield d
+            var rest = x
+            var grew = false
+            while rest > 1 and not grew:
+                let p = spf[rest]
+                var pe = 1
+                while rest % p == 0:
+                    rest /= p
+                    pe *= p
+                var q = 1
+                while d % (q * p) == 0: q *= p
+                if q < pe:
+                    d *= p
+                    grew = true
+                else:
+                    d /= q
+            if not grew: return
 
 /// Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.
 ///
