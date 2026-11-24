@@ -199,10 +199,7 @@ impl<'a> Lowerer<'a> {
                 }
                 _ => self.range_val(lo.as_deref(), hi.as_deref(), *inclusive, hint, span),
             },
-            ast::ExprKind::Range { .. } => {
-                self.unsupported(span, "a stepped range kept as a value");
-                self.err_expr(span)
-            }
+            ast::ExprKind::Range { .. } => self.stepped_range_val(e, hint),
             ast::ExprKind::Call { callee, args } => self.call(e, callee, args, hint),
             ast::ExprKind::Index { base, indices } => {
                 if indices.len() == 1 && !matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
