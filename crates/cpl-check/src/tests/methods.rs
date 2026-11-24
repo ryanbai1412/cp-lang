@@ -179,3 +179,15 @@ print(Tw<V>.filter(x => x.a > 0).count(), Tw<V>.min(by: x => -x.a)!.a)
 "#;
     assert!(check(src).is_empty(), "{:?}", check(src));
 }
+
+#[test]
+fn a_hash_table_key_that_is_not_hash_is_an_error_at_the_type() {
+    let fn_field =
+        "struct F(f: Int -> Int)\nlet s: HashSet<F> = HashSet([F(x => x)])\nprint(s.len)\n";
+    assert_eq!(codes(fn_field), ["E0606"]);
+    let own_eq = "struct E(x: Int)\nimpl Eq for E:\n    fn eq(self, o: E) -> Bool = self.x % 2 == o.x % 2\nvar m: HashMap<E, Int> = HashMap()\nprint(m.len)\n";
+    assert_eq!(codes(own_eq), ["E0606"]);
+    let derived =
+        "struct P(x: Int, y: Str)\nlet s: HashSet<P> = HashSet([P(1, \"a\")])\nprint(s.len)\n";
+    assert!(check(derived).is_empty(), "{:?}", check(derived));
+}

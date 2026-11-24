@@ -344,7 +344,9 @@ implementation and C++ snippet. Like `@cpp`, any library may write it.
    `HashSet<K: Hash>`); an id the table lacks is E0210. The declaration
    binds no struct of its own: the name is still the table's type. The
    trait it bounds the key by is the one whose impl keys it, read off the
-   declaration, not the trait's name. (R12.14.6)
+   declaration, not the trait's name. Its bounds are met where the type is
+   written, as a struct's are: `HashSet<F>` with `F` not `Hash` is E0606.
+   (R12.14.6)
 
 ## W15. Precomputation (P15)
 

@@ -227,6 +227,41 @@ fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
         .collect()
 }
 
+/// The types std declares as rows of the intrinsics table
+/// (`pub struct HashSet<K: Hash> = @intrinsic("hash_set")`), whose bounds a
+/// written `HashSet<F>` meets like a struct's (R12.14.6).
+pub fn std_intrinsic_types() -> &'static [ast::StructDecl] {
+    static DECLS: OnceLock<Vec<ast::StructDecl>> = OnceLock::new();
+    DECLS.get_or_init(|| {
+        let lines = (crate::modules::std_index().iter()).flat_map(|(_, text)| text.lines());
+        let heads = lines.filter(|l| l.starts_with("pub struct ") && l.contains("= @intrinsic("));
+        (heads.flat_map(|l| cpl_syntax::parse_file(l).items))
+            .flat_map(|(_, item)| item.stmts)
+            .filter_map(|stmt| match stmt.kind {
+                ast::StmtKind::Struct(s) => Some(s),
+                _ => None,
+            })
+            .collect()
+    })
+}
+
+/// `(type, trait)` for each trait std bounds an intrinsic type's parameter by
+/// (`HashSet<K: Hash>`): a program that names the type gets the trait.
+pub fn std_type_bounds() -> &'static [(&'static str, &'static str)] {
+    static ALL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
+    ALL.get_or_init(|| {
+        let traits = |s: &'static ast::StructDecl| {
+            (s.bounds.iter().flat_map(|b| &b.traits)).filter_map(move |t| match &t.kind {
+                ast::TypeKind::Named { name, .. } => {
+                    Some((s.name.text.as_str(), name.text.as_str()))
+                }
+                _ => None,
+            })
+        };
+        std_intrinsic_types().iter().flat_map(traits).collect()
+    })
+}
+
 /// The `self` each top-level std `fn name(self: T, ..)` takes, by name:
 /// `Some(head)` for a named type (`Range`, `List`, `[` for an array) and
 /// `None` for one of the fn's own type parameters, which takes any receiver.

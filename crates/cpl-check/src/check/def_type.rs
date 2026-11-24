@@ -8,7 +8,7 @@ impl Checker<'_> {
     /// A struct's type arguments meet its parameters' bounds, reported at the type the
     /// user wrote: `Graph<V, E>` with `E` an edge domain is not an arc type of `V`
     /// (`A: Target<V>`), caught here rather than inside a std body (R08.2.5).
-    fn struct_args_meet_bounds(
+    pub(super) fn struct_args_meet_bounds(
         &mut self,
         name: &str,
         span: Span,
