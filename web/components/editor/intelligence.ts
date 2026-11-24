@@ -336,12 +336,19 @@ export function intelligence(prefix: string, editable: boolean): Extension {
   ): Promise<CompletionResult | null> {
     const word = ctx.matchBefore(/\w*/)!;
     const dot = ctx.state.sliceDoc(word.from - 1, word.from) === ".";
-    if (!ctx.view || (!ctx.explicit && !dot && word.from === word.to))
+    // `(` and `,` open the call's argument names, `{` a `use`'s items.
+    const opener =
+      word.from === word.to && !ctx.explicit
+        ? ctx.matchBefore(/[(,{] ?$/)
+        : null;
+    if (!ctx.view || (!ctx.explicit && !dot && !opener && word.from === word.to))
       return null;
     const context =
       dot && word.from === word.to
         ? { triggerKind: 2, triggerCharacter: "." }
-        : { triggerKind: 1 };
+        : opener
+          ? { triggerKind: 2, triggerCharacter: opener.text[0] }
+          : { triggerKind: 1 };
     const res = await ask<{ items: Item[] } | Item[]>(
       ctx.view,
       "textDocument/completion",
@@ -368,7 +375,9 @@ export function intelligence(prefix: string, editable: boolean): Extension {
         };
       },
     );
-    return { from: word.from, options, validFor: /^\w*$/ };
+    // After `(`, `,` or `{` the server sends only argument names or `use` items,
+    // so the next word asks again rather than filtering those.
+    return { from: word.from, options, validFor: opener ? undefined : /^\w*$/ };
   }
 
   async function definition(view: EditorView, pos: number) {
