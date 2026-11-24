@@ -190,7 +190,9 @@ impl Checker<'_> {
             return None;
         };
         for (sup, args) in super_args.into_iter().filter(|_| depth < 8) {
-            let Some(Def::Trait { generics, methods, .. }) = self.type_def(&sup).as_deref().cloned()
+            let Some(Def::Trait {
+                generics, methods, ..
+            }) = self.type_def(&sup).as_deref().cloned()
             else {
                 continue;
             };
@@ -213,7 +215,12 @@ impl Checker<'_> {
 
     /// `a.to` on `a: G.Arc` for `G: Next<V>`: the member comes from the
     /// associated type's bound, `type Arc: Target<V>` (R08.1.9).
-    pub(crate) fn assoc_bound_method(&mut self, param: &str, assoc: &str, name: &str) -> Option<Ty> {
+    pub(crate) fn assoc_bound_method(
+        &mut self,
+        param: &str,
+        assoc: &str,
+        name: &str,
+    ) -> Option<Ty> {
         let traits: Vec<String> = (self.param_bounds.iter())
             .filter(|(p, _)| p == param)
             .flat_map(|(_, ts)| ts.iter().cloned())
@@ -250,7 +257,9 @@ impl Checker<'_> {
         };
         if let Some((_, bounds, _)) = declared.into_iter().find(|(n, ..)| n == assoc) {
             for (bound, args) in bounds {
-                let Some(Def::Trait { generics, methods, .. }) = self.type_def(&bound).as_deref().cloned()
+                let Some(Def::Trait {
+                    generics, methods, ..
+                }) = self.type_def(&bound).as_deref().cloned()
                 else {
                     continue;
                 };

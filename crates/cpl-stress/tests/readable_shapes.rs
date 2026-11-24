@@ -92,7 +92,11 @@ fn reads(module: &str, name: &str, ty: &str) -> Option<(String, cpl_ir::Program)
     db.set_file("s.cp", src.as_str());
     let analysis = db.analyze("s.cp")?;
     let error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
-    if analysis.diagnostics.iter().any(error) || cpl_ir::check(&analysis, &db.facts_source()).iter().any(error) {
+    if analysis.diagnostics.iter().any(error)
+        || cpl_ir::check(&analysis, &db.facts_source())
+            .iter()
+            .any(error)
+    {
         return None;
     }
     Some((src, cpl_ir::lower(&analysis, &db.facts_source()).ok()?))

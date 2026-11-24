@@ -70,12 +70,9 @@ pub fn trap_report_in(
     let text = text.to_string();
     let program = match brute {
         false => cpl_ir::lower(&analysis, &db.facts_source()).ok()?,
-        true => cpl_ir::lower_brute(
-            &analysis,
-            &db.facts_source(),
-            &cpl_ir::brute(&analysis)?.0,
-        )
-        .ok()?,
+        true => {
+            cpl_ir::lower_brute(&analysis, &db.facts_source(), &cpl_ir::brute(&analysis)?.0).ok()?
+        }
     };
     // Alone, an interactive solution only ever sees its input end.
     if program.interactive {
@@ -179,7 +176,11 @@ pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
 fn analyzed(
     path: &Path,
     text: &str,
-) -> Option<(String, std::sync::Arc<cpl_check::Analysis>, cpl_check::Session)> {
+) -> Option<(
+    String,
+    std::sync::Arc<cpl_check::Analysis>,
+    cpl_check::Session,
+)> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }

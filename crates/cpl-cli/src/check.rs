@@ -35,7 +35,11 @@ fn check_in(
         // What `cpl run` and `cpl build` would reject, `cpl check` rejects.
         let analysis = db.analyze_text(path, text.as_str());
         let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
-        let diagnostics = cpl_lint::at_levels(&analysis, &cpl_ir::reported(&analysis, &db.facts_source()), &config);
+        let diagnostics = cpl_lint::at_levels(
+            &analysis,
+            &cpl_ir::reported(&analysis, &db.facts_source()),
+            &config,
+        );
         let failed = diagnostics
             .iter()
             .any(|d| d.severity == cpl_diag::Severity::Error);

@@ -37,8 +37,8 @@ fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
         cpl_ir::check(&analysis, &db.facts_source())
     })
     .into_iter()
-        .filter(|d| d.severity == Severity::Error)
-        .collect();
+    .filter(|d| d.severity == Severity::Error)
+    .collect();
     out.sort_by_key(|d| d.span.start);
     out
 }

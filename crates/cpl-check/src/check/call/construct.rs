@@ -334,7 +334,9 @@ impl Checker<'_> {
             self.expected_piece = false;
             let mut typed_lambda = false;
             if let Some(p) = param {
-                let expected = self.graph_lambda_want(&p.ty, bindings).unwrap_or_else(|| p.ty.subst(bindings));
+                let expected = self
+                    .graph_lambda_want(&p.ty, bindings)
+                    .unwrap_or_else(|| p.ty.subst(bindings));
                 if Self::expects_bounds_range(&expected) {
                     self.expected_bounds_range = true;
                 }
@@ -697,7 +699,10 @@ impl Checker<'_> {
                 Ty::Named { name, args: want }
                     if matches!(self.type_def(name).as_deref(), Some(Def::Trait { .. })) =>
                 {
-                    for (w, g) in want.iter().zip(self.trait_args_of(&got, name, want.len()).unwrap_or_default()) {
+                    for (w, g) in want.iter().zip(
+                        self.trait_args_of(&got, name, want.len())
+                            .unwrap_or_default(),
+                    ) {
                         w.unify(&g, bindings);
                     }
                 }
@@ -712,8 +717,8 @@ impl Checker<'_> {
         let Ty::Param(g) = ty else {
             return None;
         };
-        let (_, _, args) = (self.call_bound_args.as_ref()?.iter())
-            .find(|(p, t, _)| p == g && t == "Next")?;
+        let (_, _, args) =
+            (self.call_bound_args.as_ref()?.iter()).find(|(p, t, _)| p == g && t == "Next")?;
         let [v] = args.as_slice() else {
             return None;
         };

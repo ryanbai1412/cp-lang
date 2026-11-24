@@ -38,7 +38,10 @@ impl Lowerer<'_> {
             Checked::Named { name, args } => {
                 let generic = !args.is_empty()
                     && (self.view_struct(name).is_some()
-                        || matches!(self.mod_syms[self.cur_mod].get(name.as_str()), Some(Sym::GenStruct(_))));
+                        || matches!(
+                            self.mod_syms[self.cur_mod].get(name.as_str()),
+                            Some(Sym::GenStruct(_))
+                        ));
                 !generic && args.iter().all(|t| self.checked_names_known(t))
             }
             Checked::Array { index, elem } => {
@@ -48,7 +51,8 @@ impl Lowerer<'_> {
             Checked::Tuple(ts) => ts.iter().all(|t| self.checked_names_known(t)),
             Checked::Record(fs) => fs.iter().all(|(_, t)| self.checked_names_known(t)),
             Checked::Fn { params, ret } => {
-                params.iter().all(|p| self.checked_names_known(&p.ty)) && self.checked_names_known(ret)
+                params.iter().all(|p| self.checked_names_known(&p.ty))
+                    && self.checked_names_known(ret)
             }
             _ => true,
         }
@@ -102,7 +106,10 @@ fn product_name(ty: &Checked) -> Option<String> {
                 Checked::Pos(n) if !n.contains(['(', ')']) => Some(n.as_str()),
                 _ => None,
             });
-            Some(format!("({})", parts.collect::<Option<Vec<_>>>()?.join(", ")))
+            Some(format!(
+                "({})",
+                parts.collect::<Option<Vec<_>>>()?.join(", ")
+            ))
         }
         _ => None,
     }

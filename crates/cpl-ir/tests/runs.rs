@@ -126,7 +126,10 @@ fn laws_hold_lowers_its_named_samples_in_the_order_written() {
         let mut db = cpl_check::Session::new();
         db.set_file("t.cp", source);
         let analysis = db.analyze("t.cp").expect("analysis");
-        format!("{:?}", cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers"))
+        format!(
+            "{:?}",
+            cpl_ir::lower(&analysis, &db.facts_source()).expect("lowers")
+        )
     };
     let first = lowered();
     for _ in 0..8 {

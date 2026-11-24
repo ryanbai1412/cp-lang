@@ -85,8 +85,9 @@ pub fn run_with(
     check: Option<&Errors>,
     save: Option<&Save>,
 ) -> u8 {
-    let checker_only =
-        |analysis: &cpl_check::Analysis, _: &dyn cpl_check::FactsSource| analysis.diagnostics.clone();
+    let checker_only = |analysis: &cpl_check::Analysis, _: &dyn cpl_check::FactsSource| {
+        analysis.diagnostics.clone()
+    };
     let reported_of: &Errors = check.unwrap_or(&checker_only);
     let mut as_json = false;
     let mut fix = false;
@@ -233,7 +234,11 @@ pub fn run_with(
                 failed += 1;
             }
         }
-        let found = checked_analysis(&analysis, &reported_of(&analysis, &db.facts_source()), &config);
+        let found = checked_analysis(
+            &analysis,
+            &reported_of(&analysis, &db.facts_source()),
+            &config,
+        );
         let problems = found.problems;
         if !problems.is_empty() {
             let _ = writeln!(
