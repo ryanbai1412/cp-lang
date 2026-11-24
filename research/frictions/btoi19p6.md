@@ -19,11 +19,11 @@
 - **What felt wrong:** Lawler / k-best partitioning is a recurring pattern (k-th shortest
   path, k-th best assignment) and each port re-threads the heap by hand.
 - **Goal it hurts:** express.
-- **Ideal code:** `best_first(root, by: s => desc(s.value), split: s => ...).nth(c - 1)` (Ideal program below).
+- **Ideal code:** `best_first(root, by: s => desc(s.value), split: s => ...).nth(c - 1)` (Dream below).
 - **General fix:** a std generator `best_first(start, by:, split:) -> yields T` over `Heap`.
 - **Severity:** low
 
-## Ideal program
+## Dream
 
 The ungated dream (no `dream.cp`: one must run, see `dream_unverified`):
 

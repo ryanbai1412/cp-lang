@@ -1,228 +1,47 @@
 // Source: CCO 2016 P3 (Legends), https://dmoj.ca/problem/cco16p3
 // Problem: subtask S in 1..=5 fixes a pattern: Flask (two vertices joined by three disjoint
-//   paths), Moon (a cycle), Sun (a 4-cycle), Talon (a claw), Fox (a triangle with pendants on
-//   two corners). For each connected simple graph, print YES if it can grow from the pattern by
-//   adding edges and vertices and splitting vertices. Sum of n, m <= 1000 (S = 3: <= 1e5).
-// Solution: growing from a pattern means containing it as a subdivided subgraph. S1: for each
-//   DFS cycle, DSU the edges off the cycle; YES if two cycle vertices join, O(m^2). S2: any cycle
-//   (DSU). S3: a back edge spanning >= 3 levels, or two back-edge vertices that are parent and
-//   child or siblings. S4: a vertex of degree >= 3. S5: a triangle or 4-cycle (from each edge
-//   pair) with exits at two corners, else a 5-vertex biconnected block holding a 5-cycle with
-//   such exits, or a larger block with two vertices of degree > 2.
+//   paths), Moon (a cycle), Sun (a cycle of length >= 4), Talon (a claw), Fox (a triangle with
+//   pendants on two corners). For each connected simple graph, print YES if it can grow from the
+//   pattern by adding edges and vertices and splitting vertices. Sum of n, m <= 1000 (S = 3: 1e5).
+// Solution: growing from a pattern means containing a subdivision of it, and every cycle lies in
+//   one biconnected block. A block holds a Flask iff it is not a lone cycle (more edges than
+//   vertices), a cycle iff it has 3 edges, a long cycle iff it has 4 vertices; a Talon is a vertex
+//   of degree 3. A Fox is a cycle with two of its vertices leaving it to two distinct vertices:
+//   a block of over 5 vertices has one iff two of its vertices have degree 3; a smaller block
+//   tries each of its cycles. O(n + m) per graph, plus 5! cycles per small block.
 // original: corpus/submissions/5568296.cpp
+use std.graph.{blocks}
 
-use scout.connectivity.{biconnected_components}
+let pattern: 1..=5 = read()
+let graphs: 1..=1000 = read()
 
-fn solve_s1():
-    let (n, m): (Int, Int) = read()
+fn grows_from(pattern: 1..=5) -> Bool:
+    let n: 1..=100_000 = read()
+    let m: 0..=100_000 = read()
     domain V = 1..=n
     domain E = 0..m
     let edges: [E](u: V, v: V) = read()
     let g = Graph<V, E>.undirected(edges)
+    let (domain B, block) = blocks(g)
+    let block_edges = block.buckets()
+    let members = [B] b => [x for e in block_edges[b] for x in [edges[e].u, edges[e].v]].distinct()
 
-    // Iterative DFS tree with explicit ancestor path stack.
-    var tin: [V]?Int = None
-    var out = [V] u => [a.to for a in g.out(u)]
-    var stack = List<V>()
-    var pos_in_stack: [V]?Int = None
-    var frames = List<(V, Int, ?V)>()
-    var timer = 0
-    var ans = false
+    // Two vertices of `cycle` leave it to two distinct vertices.
+    fn has_two_exits(cycle: List<V>) -> Bool:
+        let outside = [a.to for u in cycle for a in g.out(u) if not cycle.contains(a.to)]
+        cycle.count(u => g.out(u).any(a => not cycle.contains(a.to))) >= 2 and outside.distinct().len >= 2
 
-    for root in V:
-        if tin[root] != None or ans: continue
-        frames.push((root, 0, None))
-        while not frames.is_empty and not ans:
-            let (u, i, p) = frames.last!
-            if i == 0:
-                tin[u] = timer
-                timer += 1
-                pos_in_stack[u] = stack.len
-                stack.push(u)
-            if i < out[u].len:
-                frames[frames.len - 1] = (u, i + 1, p)
-                let v = out[u][i]
-                if p != None and v == p!: continue
-                if tin[v] == None:
-                    frames.push((v, 0, u))
-                elif tin[u]! > tin[v]!:
-                    let start = pos_in_stack[v]!
-                    var on_cyc: [V]Bool = false
-                    for k in start..stack.len: on_cyc[stack[k]] = true
-                    var dsu = Dsu<V>.new()
-                    for e in E:
-                        let (eu, ev) = edges[e]
-                        if not (on_cyc[eu] and on_cyc[ev]):
-                            dsu.unite(eu, ev)
-                    var seen_root: [V]Bool = false
-                    for k in start..stack.len:
-                        let r = dsu.find(stack[k])
-                        if seen_root[r]: ans = true
-                        seen_root[r] = true
-            else:
-                frames.pop()
-                stack.pop()
-                pos_in_stack[u] = None
-    print(if ans: "YES" else: "NO")
+    fn has_fox(vs: List<V>) -> Bool:
+        if vs.len > 5: return vs.count(v => g.deg(v) >= 3) >= 2
+        (3..=vs.len).any(k => vs.permutations(k).any(cycle =>
+            (0..k).all(i => g.out(cycle[i]).any(a => a.to == cycle[(i + 1) % k])) and has_two_exits(cycle)))
 
-fn solve_s2():
-    let (n, m): (Int, Int) = read()
-    domain V = 1..=n
-    domain E = 0..m
-    let edges: [E](u: V, v: V) = read()
-    var dsu = Dsu<V>.new()
-    var has_cycle = false
-    for e in E:
-        if not dsu.unite(edges[e].u, edges[e].v): has_cycle = true
-    print(if has_cycle: "YES" else: "NO")
+    match pattern:
+        1 => B.any(b => block_edges[b].len > members[b].len)
+        2 => B.any(b => block_edges[b].len >= 3)
+        3 => B.any(b => members[b].len >= 4)
+        4 => V.any(v => g.deg(v) >= 3)
+        _ => B.any(b => has_fox(members[b]))
 
-fn solve_s3():
-    let (n, m): (Int, Int) = read()
-    domain V = 1..=n
-    domain E = 0..m
-    let edges: [E](u: V, v: V) = read()
-    let g = Graph<V, E>.undirected(edges)
-    let out = [V] u => [a.to for a in g.out(u)]
-    var tin: [V]?Int = None
-    var depth: [V]Int = 0
-    var par: [V]?V = None
-    var up: [V]Bool = false
-    var frames = List<(V, Int, ?V)>()
-    var timer = 0
-    var ans = false
-
-    for root in V:
-        if tin[root] != None: continue
-        frames.push((root, 0, None))
-        while not frames.is_empty:
-            let (u, i, p) = frames.last!
-            if i == 0:
-                tin[u] = timer
-                timer += 1
-                par[u] = p
-            if i < out[u].len:
-                frames[frames.len - 1] = (u, i + 1, p)
-                let v = out[u][i]
-                if p != None and v == p!: continue
-                if tin[v] == None:
-                    depth[v] = depth[u] + 1
-                    frames.push((v, 0, u))
-                elif tin[u]! > tin[v]!:
-                    up[u] = true
-                    if depth[u] - depth[v] >= 3: ans = true
-            else:
-                frames.pop()
-
-    var up_kids: [V]Int = 0
-    for u in V:
-        if let p = par[u]:
-            if up[u]:
-                up_kids[p] += 1
-                if up[p]: ans = true
-    for u in V:
-        if up_kids[u] >= 2: ans = true
-    print(if ans: "YES" else: "NO")
-
-fn solve_s4():
-    let (n, m): (Int, Int) = read()
-    domain V = 1..=n
-    domain E = 0..m
-    let edges: [E](u: V, v: V) = read()
-    var deg: [V]Int = 0
-    for e in E:
-        deg[edges[e].u] += 1
-        deg[edges[e].v] += 1
-    var ans = false
-    for u in V:
-        if deg[u] >= 3: ans = true
-    print(if ans: "YES" else: "NO")
-
-fn solve_s5():
-    let (n, m): (Int, Int) = read()
-    domain V = 1..=n
-    domain E = 0..m
-    let edges: [E](u: V, v: V) = read()
-    let g = Graph<V, E>.undirected(edges)
-    var has_edge = [V] _ => [V] _ => false
-    var deg: [V]Int = 0
-    for e in E:
-        let (u, v) = edges[e]
-        has_edge[u][v] = true
-        has_edge[v][u] = true
-        deg[u] += 1
-        deg[v] += 1
-
-    // Check whether `cyc` is a cycle whose vertices have >= 2 external exits
-    // (for 3- and 4-cycles, avoiding the single-shared-apex case).
-    fn check_cycle(cyc: List<V>, guard_apex: Bool) -> Bool:
-        let k = cyc.len
-        for i in 0..k:
-            if not has_edge[cyc[i]][cyc[(i + 1) % k]]: return false
-        var out_nodes = 0
-        var deg_max = 0
-        for u in cyc:
-            var ext = deg[u]
-            for v in cyc:
-                if has_edge[u][v]: ext -= 1
-            deg_max max= ext
-            if ext > 0: out_nodes += 1
-        if guard_apex and out_nodes >= 2 and deg_max == 1:
-            var in_cyc: [V]Bool = false
-            for u in cyc: in_cyc[u] = true
-            var ext_seen: [V]Bool = false
-            var ext_uniq = 0
-            for u in cyc:
-                for a in g.out(u):
-                    if not in_cyc[a.to] and not ext_seen[a.to]:
-                        ext_seen[a.to] = true
-                        ext_uniq += 1
-            if ext_uniq <= 1: return false
-        out_nodes >= 2
-
-    var ans = false
-    for i in 0..m:
-        if ans: break
-        let (u1, v1) = edges[E(i)]
-        for j in i + 1..m:
-            let (u2, v2) = edges[E(j)]
-            var pts = [u1, v1, u2, v2]
-            var uniq = List<V>()
-            for x in pts:
-                var dup = false
-                for y in uniq:
-                    if x == y: dup = true
-                if not dup: uniq.push(x)
-            if uniq.len == 3:
-                if check_cycle(uniq, true): ans = true
-            elif uniq.len == 4:
-                if check_cycle([u1, v1, u2, v2], true) or check_cycle([u1, v1, v2, u2], true):
-                    ans = true
-            if ans: break
-
-    if not ans:
-        for block in biconnected_components<V>(u => g.out(u)):
-            if block.len == 5:
-                // Fix block[0] and test all 24 permutations of block[1..5].
-                let a0 = block[0]
-                for i1 in 1..5:
-                    for i2 in 1..5:
-                        if i2 == i1: continue
-                        for i3 in 1..5:
-                            if i3 == i1 or i3 == i2: continue
-                            let i4 = 10 - i1 - i2 - i3
-                            if check_cycle([a0, block[i1], block[i2], block[i3], block[i4]], false):
-                                ans = true
-            elif block.len > 5:
-                var high = 0
-                for u in block:
-                    if deg[u] > 2: high += 1
-                if high >= 2: ans = true
-    print(if ans: "YES" else: "NO")
-
-let (c, tcs): (Int, Int) = read()
-for _ in 0..tcs:
-    if c == 1: solve_s1()
-    elif c == 2: solve_s2()
-    elif c == 3: solve_s3()
-    elif c == 4: solve_s4()
-    else: solve_s5()
+repeat graphs:
+    print(yes(grows_from(pattern)))
