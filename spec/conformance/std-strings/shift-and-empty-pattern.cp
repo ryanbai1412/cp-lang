@@ -1,2 +1,2 @@
-// expect: ok, output "0 1 2"
+// expect: ok, output "0 1"
 print("ab".shift_and("").collect())

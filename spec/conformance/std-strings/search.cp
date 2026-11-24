@@ -1,4 +1,4 @@
-// expect: ok, output "2 2 none\n3 5 2\nYES NO YES YES NO\n0\n1\n2\n2\n3\n1"
+// expect: ok, output "2 2 none\n3 5 1\nYES NO YES YES NO\n0\n1\n2\n2\n3\n1"
 use std.strings.{borders}
 print("banana".search("nan"), "banana".search('n'), "banana".search("x"))
 print("banana".rsearch("an"), "banana".rsearch('a'), "ab".rsearch(""))

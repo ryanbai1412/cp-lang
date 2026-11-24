@@ -54,34 +54,34 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
 /// The key where `p` first stands in `self`, or `None`. `p` is a `Str` or one `Char`.
 ///
 /// The result is a key of `self`, so on a slice it is valid on the source: `s[l..].search(c)`
-/// needs no `+ l`. An empty `p` stands at the first key of `self` (the end key when `self`
-/// is empty).
+/// needs no `+ l`. An empty `p` stands at the first key of `self` (`None` when `self` is
+/// empty): a match starts at an element.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\)
-/// empty: an empty `p` gives `Some(first key)`; an empty `self` and non-empty `p` give `None`
+/// empty: an empty `p` gives the first key, `None` on an empty `self`; an empty `self` gives `None`
 /// ties: the leftmost occurrence
 /// traps: never
 /// example: `"banana".search("nan") == Some(2)`
 /// example: `"banana".search('n') == Some(2)`
 /// example: `"banana"[2..].search('a') == Some(3)`
 /// example: `"banana".search("x") == None`
-pub fn search<S: Indexed, K, P>(self: S, p: P) -> ?K:
+pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
     for k in find_all(self, "" + p): return Some(k)
     None
 
 /// The key where `p` last starts in `self`, or `None`. `p` is a `Str` or one `Char`.
 ///
-/// Like `find`, the result is a key of `self`. An empty `p` stands at the end key, the cut
-/// after the last element (`self.len` on a whole `Str`).
+/// Like `find`, the result is a key of `self`. An empty `p` stands at the last key: a match
+/// starts at an element, never at the end.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\)
-/// empty: an empty `p` gives `Some(end key)`; an empty `self` and non-empty `p` give `None`
+/// empty: an empty `p` gives the last key, `None` on an empty `self`; an empty `self` gives `None`
 /// ties: the rightmost occurrence
 /// traps: never
 /// example: `"banana".rsearch("an") == Some(3)`
 /// example: `"banana".rsearch('a') == Some(5)`
-/// example: `"ab".rsearch("") == Some(2)`
-pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
+/// example: `"ab".rsearch("") == Some(1)`
+pub fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
     var last: ?K = None
     for k in find_all(self, "" + p): last = Some(k)
     last
@@ -419,20 +419,19 @@ fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
 /// (Knuth-Morris-Pratt).
 ///
 /// Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views) without conversion; keys
-/// are those of `self`. An empty pattern occurs at every key and at the end key.
+/// are those of `self`. An empty pattern occurs at every key, never at the end: a match starts at an element.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{pat} \rvert)\)
-/// empty: an empty `pat` yields every key of `self` then its end key; an empty `self` yields nothing for a non-empty `pat`
+/// empty: an empty `pat` yields every key of `self`; an empty `self` yields nothing
 /// ties: every occurrence is yielded; None is preferred
 /// order: increasing start key
 /// traps: never
 /// example: `"aaaa".find_all("aa").collect() == [0, 1, 2]`
-/// example: `"ab".find_all("").collect() == [0, 1, 2]`
-pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
+/// example: `"ab".find_all("").collect() == [0, 1]`
+pub fn find_all<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K:
     with lint(unproven_list_index: allow)
     if pat.is_empty:
         for k in self.keys: yield k
-        yield self.keys.end
         return
     let p = failure_lengths(pat)
     var k = 0
@@ -747,14 +746,14 @@ pub struct KmpAutomaton<A>:
 /// The start position of every occurrence of `pat` in `self`, overlapping ones included,
 /// by bit-parallel Shift-And. Faster than `find_all` for short patterns on small alphabets.
 ///
-/// Positions count from 0 in `self`'s order; on a whole `Str` or `List` they are its keys.
+/// The starts are keys of `self`, as for `find_all`.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert \cdot \mathit{ceil}(\lvert \mathit{pat} \rvert / 64))\)
-/// empty: an empty `pat` yields `0..=|self|`; an empty `self` yields nothing for a non-empty `pat`
+/// empty: an empty `pat` yields every key of `self`; an empty `self` yields nothing
 /// order: increasing start
 /// traps: never
 /// example: `"abab".shift_and("ab").collect() == [0, 2]`
-pub fn shift_and<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int:
+pub fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K:
     for i in find_all(self, pat): yield i
 
 /// The start position of every place where `pat` matches `self` when each `wildcard` in
@@ -778,8 +777,8 @@ pub fn find_all_wildcard<S: Indexed, P: Indexed>(
     for i in 0..=n - m:
         var ok = true
         for j in 0..m:
-            let c = pat.at(j)
-            if c != wildcard and c != self.at(i + j):
+            let c = pat.nth(j)
+            if c != wildcard and c != self.nth(i + j):
                 ok = false
                 break
         if ok: yield i
@@ -1114,7 +1113,7 @@ pub struct SuffixArray:
                 dcum[r + 1] = dcum[r] + (n - sa[r]) - shared
         var toks = List.filled(n, 0)
         unchecked:
-            for i in 0..n: toks[i] = s.at(i).hash_token
+            for i in 0..n: toks[i] = s.nth(i).hash_token
         SuffixArray(sa, rank, lcp, rmq, bits, dcum, toks)
 
     /// The length `n` of the sequence the suffix array was built over.
@@ -1160,7 +1159,7 @@ pub struct SuffixArray:
         if m == 0: return 0..n
         var ptok = List.filled(m, 0)
         unchecked:
-            for k in 0..m: ptok[k] = pat.at(k).hash_token
+            for k in 0..m: ptok[k] = pat.nth(k).hash_token
         var lo = 0
         var hi = n
         unchecked:
@@ -3357,7 +3356,7 @@ fn z_and_prefix_function_match_their_definitions():
 fn find_all_matches_a_scan():
     assert find_all("abababa", "aba").collect() == [0, 2, 4]
     assert ("abababa".find_all("aba")).collect() == [0, 2, 4]
-    assert find_all("abc", "").collect() == [0, 1, 2, 3]
+    assert find_all("abc", "").collect() == [0, 1, 2]
     assert find_all("ab", "abc").collect() == []
     for _ in 0..40:
         let text = random_word(rand(0, 20), 2)
@@ -3798,7 +3797,7 @@ fn indexed_views_and_common_prefix_suffix():
     assert common_suffix_len([1, 2, 3], [9, 2, 3]) == 2
     assert period("xxabababyy"[2..8]) == 2
     assert ("ababa".find_all("aba")).collect() == [0, 2]
-    assert [i for i in "xxababaxx"[2..7].find_all("aba")] == [0, 2]
+    assert [i for i in "xxababaxx"[2..7].find_all("aba")] == [2, 4]
     assert "ababa".prefix_matches("aba") == [1, 2, 3, 2, 3]
     assert overlap("abcab", "abxyz") == 2
     assert lyndon_factorization("bbab") == [0, 1, 2]
@@ -3854,13 +3853,13 @@ fn sequence_generality_parity_across_list_array_and_views():
     let pview = padded[1..4]
 
     // KMP / Z / structural helpers over List<Int>, [D]Int, ListView<Int>, Str, StrView
-    assert prefix_function(arr) == prefix_function(xs)
+    assert [x for x in prefix_function(arr)] == prefix_function(xs)
     assert prefix_function(view) == prefix_function(xs)
-    assert z_function(arr) == z_function(xs)
+    assert [x for x in z_function(arr)] == z_function(xs)
     assert z_function(view) == z_function(xs)
-    assert find_all(arr, parr).collect() == [0, 4]
-    assert find_all(view, pview).collect() == [0, 4]
-    assert prefix_matches(arr, parr) == prefix_matches(xs, pat)
+    assert find_all(arr, parr).collect() == [P(1), P(5)]
+    assert find_all(view, pview).collect() == [1, 5]
+    assert [x for x in prefix_matches(arr, parr)] == prefix_matches(xs, pat)
     assert prefix_matches(view, pview) == prefix_matches(xs, pat)
     assert period(arr) == period(xs)
     assert period(view) == period(xs)
@@ -3897,10 +3896,10 @@ fn sequence_generality_parity_across_list_array_and_views():
     assert is_palindrome(arr) and is_palindrome(view)
     assert manacher(arr).is_palindrome(P(1)..=P(7))
     assert manacher(view).is_palindrome(0..7)
-    assert lyndon_factorization(arr) == lyndon_factorization(xs)
-    assert lyndon_factorization(view) == lyndon_factorization(xs)
-    assert min_rotation(arr) == min_rotation(xs)
-    assert min_rotation(view) == min_rotation(xs)
+    assert [k.ord for k in lyndon_factorization(arr)] == lyndon_factorization(xs)
+    assert [k - 1 for k in lyndon_factorization(view)] == lyndon_factorization(xs)
+    assert min_rotation(arr)!.ord == min_rotation(xs)!
+    assert min_rotation(view)! - 1 == min_rotation(xs)!
     assert lyndon_runs(arr) == lyndon_runs(xs)
     assert lyndon_runs(view) == lyndon_runs(xs)
     assert lyndon_runs("xabababy"[1..7]) == lyndon_runs("ababab")
