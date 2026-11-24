@@ -487,6 +487,72 @@ print(acc, ys.len, ys[2])
 }
 
 #[test]
+fn vm_runs_closures_that_capture_by_reference_itself() {
+    // Nested fns reading and writing their fn's variables, one calling
+    // another, as `split_best` keeps its heap; and one writing a global.
+    let source = "
+var calls = 0
+fn heap_order(xs: List<Int>) -> List<Int>:
+    var vals: List<Int> = []
+    var heap: List<Int> = []
+    var swaps = 0
+    fn less(a: Int, b: Int) -> Bool:
+        calls += 1
+        vals[a] < vals[b]
+    fn push(x: Int):
+        vals.push(x)
+        heap.push(vals.len - 1)
+        var i = heap.len - 1
+        while i > 0 and less(heap[i], heap[(i - 1) >> 1]):
+            let p = (i - 1) >> 1
+            let t = heap[i]
+            heap[i] = heap[p]
+            heap[p] = t
+            swaps += 1
+            i = p
+    for x in xs: push(x)
+    var out: List<Int> = []
+    while heap.len > 0:
+        out.push(vals[heap[0]])
+        let last = heap.pop()!
+        if heap.len > 0:
+            heap[0] = last
+            var i = 0
+            while true:
+                var m = i
+                for c in [2 * i + 1, 2 * i + 2]:
+                    if c < heap.len and less(heap[c], heap[m]): m = c
+                if m == i: break
+                let t = heap[i]
+                heap[i] = heap[m]
+                heap[m] = t
+                i = m
+    out.push(swaps)
+    out
+print(heap_order([5, 3, 8, 1, 9, 2]), calls)
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    for (cid, def) in program.closures.iter().enumerate() {
+        if def.captures.iter().any(|cap| cap.by_ref) {
+            assert!(compiled.closures[cid].is_some(), "closure {cid} is walked");
+        }
+    }
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "1 2 3 5 8 9 4 15\n");
+}
+
+#[test]
 fn vm_alias_free_mut_closure_runs_without_fallback() {
     let source = "
 fn count_and_bump(mut xs: List<Int>, pred: Int -> Bool) -> Int:

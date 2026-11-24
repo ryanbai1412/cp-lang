@@ -990,19 +990,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 // The closure may read the place a param of this frame is lent from.
                 let lends = self.lends();
                 if lends {
-                    sync_to_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
+                    let (lent, base) = (&self.lent, self.base);
+                    sync_reachable_to_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
                     self.show_lent();
                 }
                 // The `mut` params' values, for their arg slots once the frame is synced.
                 let mut lent_back: Vec<Value> = Vec::new();
-                let val = if let Some(callee) = compiled.closures[cid].as_ref() {
+                // A closure holding a variable by reference runs on its frame on
+                // the stack, where the variable is lent to it.
+                let by_val = || caps.iter().all(|c| matches!(c, crate::CaptureVal::Val(_)));
+                let val = if let Some(callee) = compiled.closures[cid].as_ref().filter(|_| by_val())
+                {
                     self.tick(spans[cur_pc])?;
                     self.stack_left(spans[cur_pc], None)?;
                     let mut ni = 0usize;
@@ -1161,15 +1159,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     // With `lends` the frame is already on the stack.
                     let has_frame = chunk.needs_stack && !lends;
+                    // The closure reaches this frame only through what it
+                    // and its kin captured by reference.
                     if has_frame {
-                        sync_to_stack(
-                            &chunk.slot_map,
-                            regs_i,
-                            regs_v,
-                            &mut self.stack,
-                            self.base,
-                            chunk.traced,
-                        );
+                        sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                     }
                     let lent: Vec<usize> = (0..def.params.len())
                         .filter(|k| muts & 1 << k != 0)
@@ -1182,27 +1175,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         val
                     });
                     if has_frame {
-                        sync_from_stack(
-                            &chunk.slot_map,
-                            regs_i,
-                            regs_v,
-                            &mut self.stack,
-                            self.base,
-                            chunk.traced,
-                        );
+                        sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                     }
                     res?
                 };
                 if lends {
                     self.hide_lent();
-                    sync_from_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
+                    let (lent, base) = (&self.lent, self.base);
+                    sync_reachable_from_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
                 }
                 if !lent_back.is_empty() {
                     let mut back = lent_back.into_iter();

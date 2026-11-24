@@ -108,23 +108,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         cid: cpl_ir::ClosureId,
     ) -> Res<Value> {
         let chunk = compiled.closures[cid].as_ref().unwrap();
-        let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
-        let base_i = vm_regs_i.len();
-        vm_regs_i.resize(base_i + chunk.num_i, 0);
-        let mut regs_v = self.take_regs_v(chunk.num_v);
-        sync_from_stack(
-            &chunk.slot_map,
-            &mut vm_regs_i[base_i..base_i + chunk.num_i],
-            &mut regs_v,
-            &mut self.stack,
-            self.base,
-            chunk.traced,
-        );
-        let res = self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v);
-        self.return_regs_v(regs_v);
-        vm_regs_i.truncate(base_i);
-        self.vm_regs_i = vm_regs_i;
-        res
+        let def = &self.program.closures[cid];
+        let by_ref = (def.captures.iter())
+            .filter(|cap| cap.by_ref)
+            .map(|cap| cap.inner);
+        self.run_chunk_lending(compiled, chunk, by_ref)
     }
 
     pub(crate) fn run_fn_vm_from_stack(
@@ -133,10 +121,21 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         fn_id: FnId,
     ) -> Res<Value> {
         let chunk = compiled.fns[fn_id].as_ref().unwrap();
-        // A param lent from a caller's place (a `mut` param lent on, or a
-        // part of a value) holds the value while the chunk runs.
+        self.run_chunk_lending(compiled, chunk, 0..chunk.param_count)
+    }
+
+    /// Runs `chunk` on the frame at `self.base`. A slot in `lent` that
+    /// names a caller's place (a `mut` param lent on, a part of a value, or
+    /// a variable a closure captured by reference) holds the value while
+    /// the chunk runs.
+    fn run_chunk_lending(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        chunk: &Chunk<'p>,
+        lent: impl Iterator<Item = usize>,
+    ) -> Res<Value> {
         let mut aliases: Vec<(usize, Rc<Part>)> = Vec::new();
-        for k in 0..chunk.param_count {
+        for k in lent {
             let part = match &self.stack[self.base + k] {
                 &Value::Alias(mut global, mut at) => {
                     while let Value::Alias(g, a) = match global {
@@ -188,7 +187,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     vm_regs_i[base_i + some as usize],
                 ),
                 SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
-                SlotLoc::SmallTuple { .. } => unreachable!("params are never SmallTuple"),
+                SlotLoc::SmallTuple { .. } => {
+                    unreachable!("a lent slot is never SmallTuple")
+                }
             };
             *self.lender(&part)? = val;
         }
