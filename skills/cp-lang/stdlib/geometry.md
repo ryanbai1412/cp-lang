@@ -2,7 +2,7 @@
 
 # std.geometry
 
-Plane and 3D geometry on exact integer points (`Pt`, `Pt3`) and careful floating-point vectors (`Vec`). Exact predicates compute cross and dot signs in `I128` so integer geometry is the default overflow-free path:  - `|x|, |y| <= 1e9` (e.g. `Pt<-1e9..=1e9>`): differences in `[-2e9, 2e9]`; single-vector `dot`/`cross` <= `2e18` fit `Int`, `turn`/`cross128`/`dot128` <= `8e18` fit `I128` with 19 orders of magnitude to spare, and `any_segments_meet` sweep comparisons <= `1.6e28` fit `I128`. - `|x|, |y| <= 2e18`: `turn`/`cross128`/`dot128`/`dist2_128` <= `8e36` fit `I128`. - 3D `|x|, |y|, |z| <= 1e9`: `cross3` components <= `8e18` fit `Int` (or `I128` up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
+Plane and 3D geometry on exact integer points (`Pt`, `Pt3`) and careful floating-point vectors (`Vec`). Exact predicates compute cross and dot signs in `I128` so integer geometry is the default overflow-free path:  - `|x|, |y| <= 1e9` (coordinates read as `-1e9..=1e9`): differences in `[-2e9, 2e9]`; single-vector `dot`/`cross` <= `2e18` fit `Int`, `turn`/`cross128`/`dot128` <= `8e18` fit `I128` with 19 orders of magnitude to spare, and `any_segments_meet` sweep comparisons <= `1.6e28` fit `I128`. - `|x|, |y| <= 2e18`: `turn`/`cross128`/`dot128`/`dist2_128` <= `8e36` fit `I128`. - 3D `|x|, |y|, |z| <= 1e9`: `cross3` components <= `8e18` fit `Int` (or `I128` up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
 In prelude (no `use` needed): `ByAngle`, `Location`, `Pt`, `cross`, `dot`, `locate`, `turn`.
 
