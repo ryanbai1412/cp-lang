@@ -443,9 +443,9 @@ call writefile([&filetype, g:cpl_path, s:out =~# '"capabilities"' ? 'answers' : 
         );
     }
 
-    // Emacs, where CI installs it: `package-activate-all`, which its startup
+    // Emacs (`just install-emacs`): `package-activate-all`, which its startup
     // runs, loads the package, and a .cp file's eglot command answers.
-    if cfg!(target_os = "linux") {
+    {
         let out = fresh(&installed, &["setup", "emacs"]);
         assert_eq!(out.status.code(), Some(0), "emacs: {}", text(&out.stderr));
         let said = [
@@ -472,11 +472,11 @@ call writefile([&filetype, g:cpl_path, s:out =~# '"capabilities"' ? 'answers' : 
                   "answers" "silent")))))"#;
         let out = fresh(Path::new("emacs"), &["--batch", "--eval", probe]);
         let found = std::fs::read_to_string(dir.join("found")).unwrap_or_default();
-        let found: Vec<_> = found.lines().collect();
+        let found: Vec<_> = found.lines().map(|l| l.replace('\\', "/")).collect();
         assert!(
             found.len() == 3
                 && found[0] == "cp-mode"
-                && found[1] == installed.display().to_string()
+                && found[1] == installed.display().to_string().replace('\\', "/")
                 && found[2] == "answers",
             "emacs: {found:?} {}",
             text(&out.stderr)

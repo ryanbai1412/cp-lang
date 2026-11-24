@@ -253,12 +253,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: nextest-archive
-      # golden.rs's fresh-home setup test starts Emacs without cpl on the PATH.
+      # golden/setup.rs's fresh-home setup test starts Emacs without cpl on the PATH.
       - name: Install Emacs
-        run: |
-          . scripts/retry.sh
-          sudo rm -f /var/lib/man-db/auto-update
-          retry timeout 180 sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
+        timeout-minutes: 10
+        run: just install-emacs
       - name: Tests
         timeout-minutes: 12
         env:
@@ -356,6 +354,12 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           shared-key: neovim
+      # golden/setup.rs's fresh-home setup test starts Emacs without cpl on the PATH.
+      - name: Install Emacs
+        if: runner.os != 'Linux'
+        timeout-minutes: 10
+        shell: bash
+        run: just install-emacs
       # bash, so the first failing command fails the step: Windows' default
       # PowerShell reports only the last command's status. Linux runs these
       # in the gate.
@@ -403,12 +407,12 @@ jobs:
       - name: Build cpl
         run: cargo build -p cpl-cli
       # Each download gets 3 tries of 3 min: one hung for 9 min with no output.
-      - name: Install Emacs, Helix and the tree-sitter CLI
+      - name: Install Emacs
+        timeout-minutes: 10
+        run: just install-emacs
+      - name: Install Helix and the tree-sitter CLI
         run: |
           . scripts/retry.sh
-          # man-db's trigger alone can take minutes on a hosted runner.
-          sudo rm -f /var/lib/man-db/auto-update
-          retry timeout 180 sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
           retry timeout 180 curl -sSfL -o "$RUNNER_TEMP/helix.tar.xz" https://github.com/helix-editor/helix/releases/download/25.07.1/helix-25.07.1-x86_64-linux.tar.xz
           tar xJf "$RUNNER_TEMP/helix.tar.xz" -C "$RUNNER_TEMP"
           echo "HX=$RUNNER_TEMP/helix-25.07.1-x86_64-linux/hx" >> "$GITHUB_ENV"

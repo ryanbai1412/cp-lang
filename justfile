@@ -56,6 +56,10 @@ neovim-smoke cpl="target/debug/cpl":
 vim-smoke cpl="target/debug/cpl":
     bash editors/neovim/test/smoke_vim.sh "$(realpath {{cpl}})"
 
+# Emacs on this OS, for emacs-smoke and the fresh-home setup test (CI: ci.yml `tests`, `cli`, `editors`).
+install-emacs:
+    bash scripts/install-emacs.sh
+
 emacs-smoke cpl="target/debug/cpl":
     CPL="$(realpath {{cpl}})" emacs --batch -Q -l editors/emacs/smoke.el
     uv run --quiet python editors/lsp-smoke.py emacs "$(realpath {{cpl}})" lsp
