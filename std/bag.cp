@@ -787,7 +787,7 @@ pub struct SortedBag<K>:
                 while keys.len < u * BAG_B + BAG_B:
                     keys.push(x)
                     ws.push(0)
-            if u == 0: meta.reserve(4)
+            meta.reserve(4)
             for v in [0, -1, -1, -1]: meta.push(v)
         meta[4 * u] = 0
         meta[4 * u + 1] = -1
@@ -808,7 +808,7 @@ pub struct SortedBag<K>:
     // Node `b` (or the end, -1) follows `a`; a leaf followed by nothing is the tail.
     fn link(mut self, a: Int, b: Int, inner: Bool):
         meta[4 * a + 1] = b
-        if b >= 0: meta[4 * b + 2] = a
+        if b != -1: meta[4 * b + 2] = a
         elif not inner: tail = a
 
     fn release(mut self, n: Int):
@@ -845,9 +845,8 @@ pub struct SortedBag<K>:
         if f < BAG_B:
             if keys.len == n * BAG_B + f:
                 // A small bag's one leaf starts at 4 slots, not 1.
-                if f == 0:
-                    keys.reserve(4)
-                    ws.reserve(4)
+                keys.reserve(4)
+                ws.reserve(4)
                 keys.push(x)
                 ws.push(0)
             var i = f
@@ -944,8 +943,8 @@ pub struct SortedBag<K>:
             self.release(y)
             self.drop(n, a + 1, true)
             return
+        let l = i != a
         while fx + 1 < fy or fy + 1 < fx:
-            let l = fx > fy
             let a = if l: x else: y
             let b = if l: y else: x
             let p = if l: fx - 1 else: 0
@@ -2719,6 +2718,36 @@ fn check_bag_against_counts(b: SortedBag<Int>, cnt: List<Int>):
             assert b.count(x) == cnt[x]
             below += cnt[x]
 
+fn leaf_fills(b: SortedBag<Int>) -> List<Int>:
+    var out: List<Int> = []
+    var n = b.head
+    while n != -1:
+        out.push(b.fill(n))
+        n = b.nxt(n)
+    out
+
+@test
+fn an_underfull_leaf_merges_into_a_sibling_that_fits_else_evens_out():
+    for (more, gone, want) in [
+        (33..41, 0..9, [32]),
+        (-10..0, 16..26, [17, 16]),
+        (33..42, 0..9, [16, 17]),
+    ]:
+        var b = SortedBag<Int>()
+        for x in 0..33: b.add(x)
+        assert leaf_fills(b) == [16, 17]
+        for x in more: b.add(x)
+        for x in gone: assert b.remove(x)
+        assert leaf_fills(b) == want
+        var plain = (0..33).collect() + more.collect()
+        plain = [x for x in plain.sorted() if not gone.contains(x)]
+        var back: List<Int> = []
+        var c = b.cursor_last()
+        while let at = c:
+            back.push(b.key_of(at))
+            c = b.prev_cursor(at)
+        assert b.to_list() == plain and back == plain.rev
+
 @test
 fn sorted_map_btree_set_remove_and_walk_against_a_table():
     let k = 1200
@@ -2969,4 +2998,3 @@ fn check_aug(b: AugSortedBag<Int, (Int, Int)>, cnt: List<Int>):
         assert b.count(lo) == (if lo < cnt.len: cnt[lo] else: 0)
         assert b.rank(lo) == have.count(x => x < lo)
         if lo < have.len: assert b.nth(lo) == Some(have[lo])
-
