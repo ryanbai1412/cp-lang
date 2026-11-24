@@ -52,11 +52,13 @@ impl Checker<'_> {
         let ty = self.call_unrecorded(call, callee, args);
         if !self.exprs.calls.iter().any(|c| c.call == call.span) {
             if let Some((name, kind)) = self.callee_form(callee) {
+                let builtin = kind == CalleeKind::Method && self.builtin_method(callee, &name.0);
                 self.exprs.calls.push(CallFact {
                     call: call.span,
                     name_span: name.1,
                     name: name.0,
                     kind,
+                    builtin,
                 });
             }
         }
@@ -64,15 +66,37 @@ impl Checker<'_> {
     }
 
     /// `p.norm` called as a getter.
-    pub(super) fn record_getter(&mut self, call: &Expr, callee: &Expr) {
+    pub(super) fn record_getter(&mut self, call: &Expr, callee: &Expr, builtin: bool) {
         if let ExprKind::Field { name, .. } = &callee.kind {
             self.exprs.calls.push(CallFact {
                 call: call.span,
                 name_span: name.span,
                 name: name.text.clone(),
                 kind: CalleeKind::Getter,
+                builtin,
             });
         }
+    }
+
+    /// `xs.push(x)`: a method the compiler gives the receiver's built-in type.
+    fn builtin_method(&self, callee: &Expr, name: &str) -> bool {
+        use crate::builtins::{builtin_members, MemberKind, Receiver};
+        let ExprKind::Field { base, .. } = &callee.kind else {
+            return false;
+        };
+        let ty = self.exprs.types.iter().rev().find(|t| t.0 == base.span);
+        let receiver = match ty.map(|t| &t.1) {
+            Some(Ty::Named { name, args }) => match (name.as_str(), args.len()) {
+                ("List", 1) => Receiver::List,
+                ("Map" | "HashMap", 2) => Receiver::Map,
+                ("Set" | "HashSet", 1) => Receiver::Set,
+                _ => return false,
+            },
+            Some(Ty::Str) => Receiver::Str,
+            Some(Ty::Array { .. }) => Receiver::Array,
+            _ => return false,
+        };
+        builtin_members(receiver).any(|m| m.kind == MemberKind::Method && m.name == name)
     }
 
     /// The type each generic parameter of the callee took at `call`.

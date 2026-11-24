@@ -188,11 +188,11 @@ impl<'a> Checker<'a> {
             return self.call(call, &on_self, args);
         }
         if let Some(ty) = self.builtin_getter_call(call, callee, args) {
-            self.record_getter(call, callee);
+            self.record_getter(call, callee, true);
             return ty;
         }
         if let Some(ty) = self.getter_call(callee, args) {
-            self.record_getter(call, callee);
+            self.record_getter(call, callee, false);
             return ty;
         }
         if let Some(ty) = self.filled(callee, args) {
@@ -617,6 +617,56 @@ impl<'a> Checker<'a> {
 
     /// Built-in `MemberKind::Get` properties (`len`, `is_empty`, `first`,
     /// `last`, `rev`, `items`) are read without parentheses.
+    /// `xs.len`, `x.sqrt`: a getter the compiler gives `base_ty`, with no
+    /// declaration of its own.
+    pub(super) fn builtin_get(&self, base_ty: &Ty, name: &str) -> bool {
+        let is_builtin_get = match base_ty {
+            Ty::Named { name: n, args } if n == "List" && args.len() == 1 => {
+                crate::builtins::builtin_members(crate::builtins::Receiver::List)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+            }
+            Ty::Str => crate::builtins::builtin_members(crate::builtins::Receiver::Str)
+                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
+            Ty::Named { name: n, args }
+                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2 =>
+            {
+                crate::builtins::builtin_members(crate::builtins::Receiver::Map)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+            }
+            Ty::Named { name: n, args }
+                if matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
+            {
+                crate::builtins::builtin_members(crate::builtins::Receiver::Set)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+            }
+            Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
+                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
+            Ty::Named { name: n, .. } if n == "Range" => {
+                matches!(
+                    name,
+                    "len" | "is_empty" | "first" | "last" | "rev" | "start" | "end"
+                )
+            }
+            Ty::Named { name: n, .. } if n == "SortedRange" => {
+                matches!(name, "len" | "is_empty" | "first" | "last" | "rev")
+            }
+            Ty::Domain(_) => {
+                matches!(name, "len" | "first" | "last" | "rev" | "bounds" | "cuts")
+            }
+            t if t.is_int() => matches!(name, "abs" | "ord" | "sqrt"),
+            Ty::Float => matches!(name, "abs" | "ceil" | "floor" | "round" | "sqrt" | "trunc"),
+            _ => false,
+        };
+        // `xs.rev`: every `Bidir` sequence's reverse view, a std `@get`.
+        let is_builtin_get = is_builtin_get || (name == "rev" && base_ty.is_bidir());
+        // `g.rows()`: a std method on arrays that is only ever `@get`; a trait
+        // method of the same name (`5.rev()`, `Reversible`) is not one.
+        let is_builtin_get = is_builtin_get
+            || (matches!(base_ty, Ty::Array { .. })
+                && crate::prelude::getter_methods().iter().any(|g| g == name));
+        is_builtin_get
+    }
+
     fn builtin_getter_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         if !args.is_empty() {
             return None;
@@ -625,60 +675,7 @@ impl<'a> Checker<'a> {
             return None;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        let is_builtin_get = match &base_ty {
-            Ty::Named { name: n, args } if n == "List" && args.len() == 1 => {
-                crate::builtins::builtin_members(crate::builtins::Receiver::List)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
-            }
-            Ty::Str => crate::builtins::builtin_members(crate::builtins::Receiver::Str)
-                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text),
-            Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2 =>
-            {
-                crate::builtins::builtin_members(crate::builtins::Receiver::Map)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
-            }
-            Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
-            {
-                crate::builtins::builtin_members(crate::builtins::Receiver::Set)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
-            }
-            Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
-                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text),
-            Ty::Named { name: n, .. } if n == "Range" => {
-                matches!(
-                    name.text.as_str(),
-                    "len" | "is_empty" | "first" | "last" | "rev" | "start" | "end"
-                )
-            }
-            Ty::Named { name: n, .. } if n == "SortedRange" => {
-                matches!(
-                    name.text.as_str(),
-                    "len" | "is_empty" | "first" | "last" | "rev"
-                )
-            }
-            Ty::Domain(_) => {
-                matches!(
-                    name.text.as_str(),
-                    "len" | "first" | "last" | "rev" | "bounds" | "cuts"
-                )
-            }
-            t if t.is_int() => matches!(name.text.as_str(), "abs" | "ord" | "sqrt"),
-            Ty::Float => matches!(
-                name.text.as_str(),
-                "abs" | "ceil" | "floor" | "round" | "sqrt" | "trunc"
-            ),
-            _ => false,
-        };
-        // `xs.rev`: every `Bidir` sequence's reverse view, a std `@get`.
-        let is_builtin_get = is_builtin_get || (name.text == "rev" && base_ty.is_bidir());
-        // `g.rows()`: a std method on arrays that is only ever `@get`; a trait
-        // method of the same name (`5.rev()`, `Reversible`) is not one.
-        let is_builtin_get = is_builtin_get
-            || (matches!(base_ty, Ty::Array { .. })
-                && crate::prelude::getter_methods().contains(&name.text));
-        if !is_builtin_get {
+        if !self.builtin_get(&base_ty, &name.text) {
             return None;
         }
         let callee_text = self.quote(callee.span);

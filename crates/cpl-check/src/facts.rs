@@ -32,6 +32,9 @@ pub struct Callee {
     pub owner: Option<String>,
     pub name: String,
     pub kind: CalleeKind,
+    /// A method or getter no declaration gives: the compiler's own, such
+    /// as `List.push` or `F64.sqrt`. A program's methods are declared.
+    pub builtin: bool,
 }
 
 /// One call the checker typed, relative to its item.
@@ -42,6 +45,8 @@ pub struct CallFact {
     pub name_span: Span,
     pub name: String,
     pub kind: CalleeKind,
+    /// A member the compiler gives a built-in type, `xs.push` or `x.sqrt`.
+    pub builtin: bool,
 }
 
 /// What checking one item found about its expressions, relative to it.
@@ -105,13 +110,13 @@ impl Facts {
         let items: Vec<(u32, &ItemCheck)> = (analysis.items.iter())
             .map(|item| (item.offset, &*item.check))
             .collect();
-        Facts::from_checks(analysis.revision, &items)
+        Facts::from_checks(analysis, &items)
     }
 
     /// The facts of the checked items `items`, each at its file offset.
-    pub(crate) fn from_checks(revision: Revision, items: &[(u32, &ItemCheck)]) -> Facts {
+    pub(crate) fn from_checks(analysis: &Analysis, items: &[(u32, &ItemCheck)]) -> Facts {
         let mut facts = Facts {
-            revision,
+            revision: analysis.revision,
             ..Facts::default()
         };
         let (mut exprs, mut owners) = (Vec::new(), Vec::new());
@@ -144,7 +149,7 @@ impl Facts {
         });
         let (mut callees, mut instantiations) = (Vec::new(), Vec::new());
         for &(offset, check) in items {
-            add_calls(offset, check, &mut callees, &mut instantiations);
+            add_calls(offset, check, analysis, &mut callees, &mut instantiations);
         }
         // The last answer wins, but a vague re-check keeps a known one.
         facts.exprs = BySpan::merged(exprs, |kept, earlier| {
@@ -206,9 +211,23 @@ impl Facts {
     }
 }
 
+/// The module `owner` comes from: imported by name, or declared in a module
+/// this file reaches (`Heap` behind std's `MinHeap`). `None` for its own.
+fn owner_module(analysis: &Analysis, owner: &str) -> Option<String> {
+    let modules = analysis.modules();
+    match analysis.imports().get(owner) {
+        Some(import) => Some(modules[import.module].name.clone()),
+        None if analysis.decl_span(owner).is_some() => None,
+        None => (modules.iter())
+            .find(|m| m.analysis.decl_span(owner).is_some())
+            .map(|m| m.name.clone()),
+    }
+}
+
 fn add_calls(
     offset: u32,
     check: &ItemCheck,
+    analysis: &Analysis,
     callees: &mut Vec<(Span, Callee)>,
     instantiations: &mut Vec<(Span, Vec<(String, Ty)>)>,
 ) {
@@ -227,10 +246,15 @@ fn add_calls(
             _ => None,
         };
         let callee = Callee {
-            module: found.map(|r| r.module.clone()).unwrap_or_default(),
+            // A member of an imported type, `h.push(x)` on std's `MinHeap`,
+            // comes from the module the type is imported from.
+            module: (found.map(|r| r.module.clone()))
+                .or_else(|| owner_module(analysis, owner.as_deref()?).filter(|_| !call.builtin))
+                .unwrap_or_default(),
             owner,
             name: call.name.clone(),
             kind: call.kind,
+            builtin: call.builtin && found.is_none(),
         };
         callees.push((shift(call.call), callee));
     }
@@ -316,6 +340,64 @@ mod tests {
             .windows(2)
             .all(|w| (w[0].start, w[0].end) < (w[1].start, w[1].end)));
         assert_eq!(order.len(), facts.types_in(whole).count());
+    }
+
+    #[test]
+    fn a_builtin_member_is_told_from_a_programs_own() {
+        let src = "struct Bag:\n    n: Int\n\nimpl Bag:\n    fn push(self, x: Int) -> Int = self.n + x\n\nvar xs = [3, 1, 2]\nxs.push(4)\nlet b = Bag(n: 1)\nlet c = b.push(2)\nlet n = xs.len\nprint(c, n)\n";
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        assert!(
+            analysis.diagnostics.is_empty(),
+            "{:?}",
+            analysis.diagnostics
+        );
+        let facts = analysis.facts();
+        let callee = |text: &str| {
+            let start = src.find(text).unwrap() as u32;
+            let c = facts
+                .callee(Span::new(start, start + text.len() as u32))
+                .unwrap();
+            (c.name.clone(), c.kind, c.builtin)
+        };
+        assert_eq!(
+            callee("xs.push(4)"),
+            ("push".into(), CalleeKind::Method, true)
+        );
+        assert_eq!(
+            callee("b.push(2)"),
+            ("push".into(), CalleeKind::Method, false)
+        );
+        assert_eq!(callee("xs.len"), ("len".into(), CalleeKind::Getter, true));
+    }
+
+    #[test]
+    fn a_member_of_an_imported_type_names_its_module() {
+        let src = "var s = SortedBag<Int>()\ns.add(3)\nlet k = s.len\nvar h = MinHeap<Int>()\nh.push(-3)\nprint(k, h.pop()!)\n";
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        assert!(
+            analysis.diagnostics.is_empty(),
+            "{:?}",
+            analysis.diagnostics
+        );
+        let facts = analysis.facts();
+        let callee = |text: &str| {
+            let start = src.find(text).unwrap() as u32;
+            let c = facts
+                .callee(Span::new(start, start + text.len() as u32))
+                .unwrap();
+            (c.module.clone(), c.kind)
+        };
+        assert_eq!(callee("s.add(3)"), ("std.bag".into(), CalleeKind::Method));
+        assert_eq!(callee("s.len"), ("std.bag".into(), CalleeKind::Getter));
+        // `MinHeap` is std's name for its `Heap`.
+        assert_eq!(
+            callee("h.push(-3)"),
+            ("std.heap".into(), CalleeKind::Method)
+        );
     }
 
     #[test]
