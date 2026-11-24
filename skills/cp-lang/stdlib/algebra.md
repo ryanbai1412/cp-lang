@@ -29,7 +29,7 @@ A monoid whose `op(a, b) == op(b, a)` is stated; [`Monoid.commutative`] makes on
 
 - `fn monoid(self) -> Monoid<T>` — \(O(1)\); The monoid underneath, for [`Monoid.of`].
 
-## `struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>, pub commutes: Bool = false, pub replaces: ?(F -> Bool) = None)`
+## `struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>, pub commutes: Bool = false, pub replaces: ?(F -> Bool) = None, pub compose_in: ?((mut F, F) -> ()) = None)`
 
 A lazy update `F` on values `T` folded with `over`.
 

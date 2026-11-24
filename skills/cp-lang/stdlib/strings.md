@@ -69,7 +69,7 @@ Fields: `rank: List<Int>`, `rmq: LinearRmq<Int, Int>`, `dcum: List<Int>`, `src: 
 
 \(O(n)\) build, \(O(1)\) slice hash.
 
-Fields: `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
+Fields: `pre: List<(Int, Int)>`, `pow: List<(Int, Int)>`.
 
 - `fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash` — \(O(n)\); A double-modulus polynomial rolling hash of `seq`; call it as `RollingHash(seq)`.; traps: when a given base is outside `2..M`
 - `fn push<T: Hashable>(mut self, x: T)` — \(O(1)\) amortized; Appends `x` to the end of the hashed sequence.
