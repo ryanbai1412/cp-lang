@@ -1,5 +1,6 @@
 //! E0603: a struct or tuple built from a lent parameter is lent (R05.4.4),
-//! so returning one needs `lends` or a copy (R05.5.1, R05.5.2).
+//! so returning one needs `lends` or a copy (R05.5.1, R05.5.2), and so is
+//! a call whose result holds one (R05.5.3).
 
 use super::lends::unparen;
 use super::*;
@@ -39,6 +40,12 @@ impl Checker<'_> {
             ExprKind::Call { callee, args } if self.constructs_struct(callee) => {
                 args.iter().map(|a| &a.value).collect()
             }
+            // `filter(xs, p)`: the arguments the call's result holds (R05.5.3).
+            ExprKind::Call { callee, args } if !self.in_generator() => {
+                let mut held = Vec::new();
+                self.held_args(e, callee, args, &mut |_, arg, _| held.push(arg));
+                held
+            }
             ExprKind::Name(name) => {
                 let local = self.local(name).cloned()?;
                 let lent = local.keyword == "param" && self.is_heap_type(&local.ty);
@@ -47,6 +54,14 @@ impl Checker<'_> {
             _ => return None,
         };
         parts.into_iter().find_map(|p| self.lent_param_part(p))
+    }
+
+    /// A generator holds its arguments while it runs, so it may yield a
+    /// view of one (R07.2.10).
+    fn in_generator(&self) -> bool {
+        self.fns
+            .last()
+            .is_some_and(|f| matches!(&f.1, Ty::Named { name, .. } if name == "Gen"))
     }
 
     /// Whether calling `callee` constructs a struct (`Box(..)`, `Box<T>(..)`).

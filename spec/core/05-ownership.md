@@ -212,6 +212,26 @@ are lent for the call and its result is owned unless it says `lends`. An
 owned result never keeps its source busy: the source is free again when
 the call returns. (R05.5.2)
 
+**A result that holds a type-parameter argument lends it.** Whether a
+`T` or `S` parameter is lent is only known at the call, so a generic fn
+whose result type keeps one, a struct field of that type, directly or
+through the type's generic arguments, needs no `lends`: each call whose
+argument for it is a heap value or `mut` lends that argument while the
+result lives, and a plain one (`MinCount(5)`) lends nothing.
+`filter(xs, p)` is a `Filtered<S, T>` whose `src: S` is `xs`, and
+`map(filter(xs, p), f)` holds `xs` through it. A fn that returns such a
+call's result built from its own lent parameter returns a lent value
+(R05.5.1). (R05.5.3)
+
+<!-- rejects: E0602 -->
+```python
+use std.seq.{filter}
+var xs = [1, 2, 3]
+let f = filter(xs, x => x > 1)
+xs.push(9)                  // error: xs is lent to f until its last use
+print(f.count(x => x > 0))
+```
+
 <!-- given:
   domain V = 0..3
   let g = Graph.undirected([(V(0), V(1)), (V(1), V(2))])
@@ -221,7 +241,7 @@ the call returns. (R05.5.2)
 ```python
 let t = Rooted(g, root: r)        // reads g, owns its arrays: g is free
 let fast = LcaTable(t)            // reads t, owns its table: t is free
-let ev = xs.filter(p)             // filter is `lends`: xs is lent while ev lives
+let ev = xs.filter(p)             // ev holds xs: xs is lent while ev lives
 ```
 
 The stdlib picks with one rule: **a result owns its data when copying

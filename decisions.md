@@ -9319,7 +9319,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Why.** A pin promises a byte-for-byte rebuild of what an old release accepted. A checker rule that rejects an old spelling would otherwise force an edit to the frozen input, and the record would then measure a different program.
 - **Reverse.** Re-snapshot the ports with today's release and re-record the pin.
 
-## 621. (reserved, compiler)
+## 621. A result holding a type-parameter argument lends it, inferred per call (compiler, 2026-11-24)
+
+- **Call.** A call lends each argument passed for a type parameter `S` when a struct field of the result type is `S`, transitively through generic arguments, and the argument is a heap value or `mut` (R05.5.3). It is read off the signature and the struct declarations, with no list of view makers; the `filter | take | drop` method list it replaces is gone. Returning such a call built from a lent parameter is E0603 like any value built from one. Consumers' report: `let f = filter(xs, p); xs.push(9); f.count(..)` checked clean.
+- **Why.** A type parameter is lent or plain only once the call fixes it. Rejecting the fn unless it says `lends` puts `lends` on 27 std fns, most of them constructors such as `MinCount(v)` and `FlatMap(default_val)` whose `T` is usually an `Int`, and a `lends` fn holds every heap argument, so `filter(xs, p)` would hold `p`'s captures too. Inferring it per call lends exactly the argument the result keeps.
+- **Reverse.** Drop `held_args`, declare `lends` on each generic fn whose result keeps a parameter, and make E0603 reject one that doesn't.
 
 ## 622. Lint's bounds and codegen's Facts share one interval table; the two analyses stay, as logged debt (perf, 2026-11-24)
 

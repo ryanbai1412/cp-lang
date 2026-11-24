@@ -20,6 +20,7 @@
 mod capture;
 mod effects;
 mod escape;
+mod holds;
 mod walk;
 
 pub(crate) use effects::{lambda_effects, own_effects, Effects};
@@ -1331,9 +1332,9 @@ impl<'a> Checker<'a> {
                 }
                 | StmtKind::Assign { value, .. },
             ) => {
-                let found: Vec<_> = self.quietly(|c| {
+                let found = self.quietly(|c| {
                     c.infer(value);
-                    c.extra_holds(value)
+                    c.lent_views(value)
                 });
                 self.lends.view_exprs.clear();
                 self.lends.view_readonly.clear();
@@ -1344,7 +1345,7 @@ impl<'a> Checker<'a> {
                     Some(last) => last.span,
                     None => return,
                 };
-                for (_, place, _, force_mut) in found.into_iter().filter(|h| h.0 == "lent view") {
+                for (_, place, _, force_mut) in found {
                     self.lends.holds.push(Hold {
                         name: name.clone(),
                         root: place.root,
@@ -1530,12 +1531,19 @@ impl<'a> Checker<'a> {
         self.lends.proj_calls.insert(e.span, call);
     }
 
+    /// The `lent view` holds of `value`: what a `let` or `var` of it keeps lent.
+    fn lent_views(&mut self, value: &Expr) -> Vec<(&'static str, Place, bool, bool)> {
+        let mut holds = self.extra_holds(value);
+        holds.retain(|hold| hold.0 == "lent view");
+        holds
+    }
+
     /// `let name = <view>`: the root stays lent until the last statement of `rest` naming `name`.
     /// Additional lends introduced by `value` beyond slice/projection views:
     /// - `mut a[i]` (R05.3.4 / R05.8.4); `rows[0]` of a heap type (R05.3.5)
     /// - `xs.filter(...)` / `.map(...)` / `.take(...)` / `.drop(...)` view adapters (R12.4.9)
     /// - generator calls `evens(a)` / `mark(mut seen)` (R05.7.3 / R05.9.1); `Holder(xs)` (R05.7.2)
-    fn extra_holds(&mut self, value: &Expr) -> Vec<(&'static str, Place, bool, bool)> {
+    pub(crate) fn extra_holds(&mut self, value: &Expr) -> Vec<(&'static str, Place, bool, bool)> {
         let e = unparen(value);
         match &e.kind {
             // `b.cur(0)!` lends what the optional lends.
@@ -1580,18 +1588,12 @@ impl<'a> Checker<'a> {
                 Vec::new()
             }
             ExprKind::Field { base, name } if self.lends_getter(name) => self.receiver_hold(base),
+            ExprKind::Field { base, name } if self.getter_holds_receiver(e, name) => {
+                let mut out = Vec::new();
+                self.arg_hold(base, false, "lent view", &mut out);
+                out
+            }
             ExprKind::Call { callee, args } => {
-                if let ExprKind::Field { base, name } = &unparen(callee).kind {
-                    if matches!(name.text.as_str(), "filter" | "take" | "drop") {
-                        let base_ty = self.infer_quietly(base);
-                        if base_ty.is_seq() {
-                            if let Some(mut place) = self.place(base) {
-                                place.steps.clear();
-                                return vec![("view", place, true, false)];
-                            }
-                        }
-                    }
-                }
                 // `b.range(r)` on a projection returning a view holds `b`.
                 if let ExprKind::Field { base, name } = &unparen(callee).kind {
                     let projection = match self.infer_quietly(base) {
@@ -1617,18 +1619,20 @@ impl<'a> Checker<'a> {
                             let mutable = projection.mutable;
                             let mut out = vec![("lent view", place, !mutable, mutable)];
                             for (arg, source) in args.iter().zip(&projection.sources) {
-                                let arg_ty = self.infer_quietly(&arg.value);
-                                let lent = arg.mutable || self.is_heap_type(&arg_ty);
-                                if let (true, Some(_)) = (lent, source) {
-                                    if let Some(mut place) = self.place(&arg.value) {
-                                        place.steps.clear();
-                                        out.push(("lent view", place, !arg.mutable, arg.mutable));
-                                    }
+                                if source.is_some() {
+                                    self.place_hold(&arg.value, arg.mutable, "lent view", &mut out);
                                 }
                             }
                             return out;
                         }
                     }
+                }
+                let mut out = Vec::new();
+                self.held_args(e, callee, args, &mut |c, arg, is_mut| {
+                    c.arg_hold(arg, is_mut, "lent view", &mut out)
+                });
+                if !out.is_empty() {
+                    return out;
                 }
                 // `lends` fn call: holds all `mut` or heap-typed args.
                 let is_lends_fn = match &unparen(callee).kind {
@@ -1646,14 +1650,7 @@ impl<'a> Checker<'a> {
                 if is_lends_fn {
                     let mut out = Vec::new();
                     for arg in args {
-                        let is_mut = arg.mutable;
-                        let arg_ty = self.infer_quietly(&arg.value);
-                        if is_mut || self.is_heap_type(&arg_ty) {
-                            if let Some(mut place) = self.place(&arg.value) {
-                                place.steps.clear();
-                                out.push(("lent view", place, !is_mut, is_mut));
-                            }
-                        }
+                        self.place_hold(&arg.value, arg.mutable, "lent view", &mut out);
                     }
                     if !out.is_empty() {
                         return out;
@@ -1663,15 +1660,11 @@ impl<'a> Checker<'a> {
                 let ret_ty = self.infer_quietly(e);
                 if matches!(&ret_ty, Ty::Named { name, .. } if name == "Gen") {
                     let mut out = Vec::new();
+                    if let ExprKind::Field { base, .. } = &unparen(callee).kind {
+                        self.arg_hold(base, false, "generator argument", &mut out);
+                    }
                     for arg in args {
-                        let is_mut = arg.mutable;
-                        let arg_ty = self.infer_quietly(&arg.value);
-                        if is_mut || self.is_heap_type(&arg_ty) {
-                            if let Some(mut place) = self.place(&arg.value) {
-                                place.steps.clear();
-                                out.push(("generator argument", place, !is_mut, is_mut));
-                            }
-                        }
+                        self.arg_hold(&arg.value, arg.mutable, "generator argument", &mut out);
                     }
                     return out;
                 }
@@ -1703,11 +1696,7 @@ impl<'a> Checker<'a> {
     /// value's source until the var's last use, as a `let` does; each assignment
     /// takes the loan of the value it stores.
     pub(crate) fn begin_var_hold(&mut self, stmt: &Stmt, name: &str, value: &Expr, rest: &[Stmt]) {
-        let lent: Vec<_> = self
-            .extra_holds(value)
-            .into_iter()
-            .filter(|hold| hold.0 == "lent view")
-            .collect();
+        let lent: Vec<_> = self.lent_views(value);
         if lent.is_empty() {
             return;
         }
@@ -1743,11 +1732,7 @@ impl<'a> Checker<'a> {
         else {
             return;
         };
-        let lent: Vec<_> = self
-            .extra_holds(value)
-            .into_iter()
-            .filter(|hold| hold.0 == "lent view")
-            .collect();
+        let lent: Vec<_> = self.lent_views(value);
         let Some(last) = body.stmts.iter().rev().find(|s| mentions(s, name)) else {
             return;
         };

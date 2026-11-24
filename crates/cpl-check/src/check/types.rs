@@ -923,18 +923,14 @@ impl<'a> Checker<'a> {
                     }
                     _ => None,
                 });
-                let receivers = s
-                    .methods
-                    .iter()
-                    .filter_map(|m| match &m.kind {
-                        ast::StmtKind::Fn(f)
-                            if f.params.first().is_some_and(|p| p.name.text == "self") =>
-                        {
-                            Some(f.name.text.clone())
+                let mut receivers = Vec::new();
+                for m in &s.methods {
+                    if let ast::StmtKind::Fn(f) = &m.kind {
+                        if f.params.first().is_some_and(|p| p.name.text == "self") {
+                            receivers.push(f.name.text.clone());
                         }
-                        _ => None,
-                    })
-                    .collect();
+                    }
+                }
                 let generic_bounds = struct_generic_bounds(&generics, &s.bounds);
                 let bound_getters = (generic_bounds.iter())
                     .map(|(_, t, _)| self.self_getters(t))
@@ -1046,11 +1042,13 @@ impl<'a> Checker<'a> {
             } => {
                 let generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
                 let scope = self.enter_body(&generics, Ty::Param("Self".into()));
-                let methods = body
-                    .stmts
-                    .iter()
-                    .filter_map(|m| match &m.kind {
-                        ast::StmtKind::Fn(f) => Some(crate::def::TraitMethod {
+                // Loops, not filter_map chains: each chain is its own generic
+                // instance in cpl.wasm.
+                let mut methods = Vec::new();
+                let mut fields: Vec<(String, Ty)> = Vec::new();
+                for m in &body.stmts {
+                    match &m.kind {
+                        ast::StmtKind::Fn(f) => methods.push(crate::def::TraitMethod {
                             name: f.name.text.clone(),
                             ty: self.fn_sig(f, Some(&Ty::Param("Self".into()))),
                             required: matches!(f.body, ast::FnBody::None),
@@ -1058,13 +1056,6 @@ impl<'a> Checker<'a> {
                             default_self: matches!(&f.body, ast::FnBody::Expr(e)
                                 if matches!(e.kind, ast::ExprKind::SelfValue)),
                         }),
-                        _ => None,
-                    })
-                    .collect();
-                let fields: Vec<(String, Ty)> = body
-                    .stmts
-                    .iter()
-                    .filter_map(|s| match &s.kind {
                         S::Let {
                             pat:
                                 ast::Pattern {
@@ -1074,10 +1065,10 @@ impl<'a> Checker<'a> {
                             ty: Some(fty),
                             init: None,
                             ..
-                        } => Some((fname.clone(), self.resolve_type(fty))),
-                        _ => None,
-                    })
-                    .collect();
+                        } => fields.push((fname.clone(), self.resolve_type(fty))),
+                        _ => {}
+                    }
+                }
                 let assoc = super::assoc::declared(&body.stmts)
                     .into_iter()
                     .map(|(n, bounds, default)| {
@@ -1123,18 +1114,17 @@ impl<'a> Checker<'a> {
                     }
                     _ => None,
                 });
-                let assoc: Vec<(String, Ty)> = body
-                    .stmts
-                    .iter()
-                    .filter_map(|s| match &s.kind {
-                        S::TypeAlias {
-                            name, generics, ty, ..
-                        } if generics.is_empty() => {
-                            Some((name.text.clone(), self.quietly(|c| c.resolve_type(ty))))
+                let mut assoc: Vec<(String, Ty)> = Vec::new();
+                for st in &body.stmts {
+                    if let S::TypeAlias {
+                        name, generics, ty, ..
+                    } = &st.kind
+                    {
+                        if generics.is_empty() {
+                            assoc.push((name.text.clone(), self.quietly(|c| c.resolve_type(ty))));
                         }
-                        _ => None,
-                    })
-                    .collect();
+                    }
+                }
                 let assoc = self.with_assoc_defaults(trait_name.as_ref(), &self_ty, assoc);
                 let outer_assoc = std::mem::replace(&mut self.self_assoc, assoc.clone());
                 let owned = self.owned(&target_name, &body.stmts);
