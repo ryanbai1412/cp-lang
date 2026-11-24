@@ -1,4 +1,4 @@
-//! `g(a).take(k)` on a generator: a loop `g` feeds that stops after `k`
+//! `g(a).take(k)` or `x.g(a).take(k)` on a generator: a loop `g` feeds that stops after `k`
 //! values, so only `k` are pulled and an infinite generator gives its first
 //! `k` (R07.1.3).
 
@@ -18,15 +18,22 @@ impl<'a> Lowerer<'a> {
         let ast::ExprKind::Call { callee, .. } = &base.kind else {
             return None;
         };
+        if k.name.is_some() {
+            return None;
+        }
         let generator = match self.sym(callee) {
             Some(Sym::Fn(id)) => self.sigs[id].is_generator,
             Some(Sym::GenFn(id)) => matches!(
                 self.gen_fns[id].decl.ret.as_ref().map(|t| &t.kind),
                 Some(ast::TypeKind::Yields(_))
             ),
-            _ => false,
+            // `x.g(a)`: which `g` only lowering the receiver tells.
+            _ => matches!(
+                self.probe_expr(base, None).kind,
+                ExprKind::Call(id, _) if self.sigs.get(id).is_some_and(|s| s.is_generator)
+            ),
         };
-        if k.name.is_some() || !generator {
+        if !generator {
             return None;
         }
         let mut ty = Ty::Error;
