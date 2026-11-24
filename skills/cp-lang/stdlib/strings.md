@@ -24,6 +24,7 @@ Fields: `alpha: Count`, `goto: List<Count>`, `pi: List<Count>`.
 
 - `@get fn len(self) -> Int` — \(O(1)\); The length of the sequence the radii were computed for.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the sequence the radii were computed for is empty.
+- `@get fn items(self) -> yields (Int, (odd: Int, even: Int))` — \(O(\mathit{len})\)
 - `fn longest_at<K>(self, i: K) -> Int` — \(O(1)\); The length of the longest odd-length palindrome centred on the element at key `i` of the sequence the radii were computed for, so a slice is asked in its own keys (R04b.5.6).; traps: when `i` is not one of the sequence's keys
 - `fn longest_between(self, i: Int) -> Int` — \(O(1)\); The length of the longest even-length palindrome centred on the cut `i` (between positions `i - 1` and `i`), `2 * even[i]`; `0` at the cuts `0` and `self.len`.; traps: when `i` is outside `0..=self.len`
 - `fn is_palindrome<R>(self, r: R) -> Bool` — \(O(1)\); True when the positions `r` (`l..r`, `l..=r`, or a `Range<D>`) of the original sequence form a palindrome: `p.is_palindrome(l..r) == is_palindrome(s[l..r])`.; traps: when `r` reaches outside `0..=self.len`
@@ -39,6 +40,7 @@ Fields: `rank: List<Int>`, `rmq: List<Int>`, `bits: Int`, `dcum: List<Int>`, `sr
 - `fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>` — \(O(n \log n)\) time and memory (the LCP sparse table; the suffix sort itself is \(O(n)\) for `Str` and small integer alphabets); The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
 - `@get fn len(self) -> Int` — \(O(1)\); The length `n` of the sequence the suffix array was built over.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the suffix array was built over an empty sequence.
+- `fn each(self) -> yields Int` — \(O(n)\)
 - `fn lcp_between(self, i: Int, j: Int) -> Int` — \(O(1)\); The length of the longest common prefix of the suffixes starting at `i` and `j`.; traps: when `i` or `j` is outside `0..=self.len`
 - `fn rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>` — \(O(\lvert \mathit{pat} \rvert \log n)\); The ranks `lo..hi` of the suffixes that start with `pat`.
 - `fn find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int` — \(O(\lvert \mathit{pat} \rvert \log n + \mathit{occurrences})\); The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.

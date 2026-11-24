@@ -16,6 +16,8 @@ In prelude (no `use` needed): `binomial_transform`, `eval`.
 - `@get fn one() -> Poly<T>` — \(O(1)\); The constant polynomial `1`.
 - `@get fn x() -> Poly<T>` — \(O(1)\); The indeterminate `x`: coefficients `[0, 1]`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of stored coefficients, trailing zeros included.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no coefficient is stored; `Poly.new([])` is the zero polynomial.
+- `@get fn items(self) -> yields (Int, T)` — \(O(\mathit{len})\)
 - `fn deg(self) -> ?Int` — \(O(1)\) plus the number of stored trailing zeros; The degree: the highest index with a nonzero coefficient, `None` for the zero polynomial.
 - `fn is_zero(self) -> Bool` — \(O(1)\) plus the number of stored trailing zeros; Whether all coefficients are zero (including when there are None).
 - `fn at(self, i: Int) -> T` — \(O(1)\); Read coefficient `i` (0 when `i >= self.len`).; traps: when `i < 0`

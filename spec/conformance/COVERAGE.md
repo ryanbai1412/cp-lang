@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3637 (3599 passing). Rules: 617.
+Cases: 3643 (3599 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1103,7 +1103,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **fenwick** (42/42 named by a case)
 - **flow** (59/67 named by a case)
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
-- **geometry** (159/164 named by a case)
+- **geometry** (161/166 named by a case)
   - uncovered: `ByAngle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
 - **graph** (115/127 named by a case)
   - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `Lit.neg`, `TwoSat.add_or`, `Complement`
@@ -1122,7 +1122,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **opt** (3/3 named by a case)
 - **pair** (5/5 named by a case)
 - **persistent** (47/47 named by a case)
-- **poly** (57/58 named by a case)
+- **poly** (59/60 named by a case)
   - uncovered: `prod_linear`
 - **prefix** (46/58 named by a case)
   - uncovered: `FillPrefix`, `Prefix.of_rev_scan`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
@@ -1136,7 +1136,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
   - uncovered: `concavity_break`, `argmins`, `knuth_break`, `differences`, `newton`, `poly_degree`, `poly_at`, `recurrence_at`
-- **strings** (181/193 named by a case)
+- **strings** (183/195 named by a case)
   - uncovered: `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
 - **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
@@ -1144,7 +1144,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2372 of 2456 std items are named by a case.
+2378 of 2462 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
