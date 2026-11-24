@@ -8,55 +8,24 @@
 //   ties to fewer photos. Binary search the smallest fee with at most k photos and print
 //   cost - k * fee (Aliens trick): O(n log m).
 // original: corpus/submissions/4730545.cpp
-let n: 1..=100_000 = read()
-let m: 1..=1_000_000 = read()
-let k: 1..=n = read()
-let points: [n](r: 0..m, c: 0..m) = read()
+// The square from cut l to cut r costs (r - l)^2, a line in l at r; each line carries its photo
+// count so equal costs prefer fewer photos, which `aliens` needs.
+let (n, m, k) = read<(1..=1e5, 1..=1e6, 1..=1e5)>()
+domain Diag = 0..m
+let spans = read<[n](r: Diag, c: Diag)>().map(p => min(p.r, p.c)..=max(p.r, p.c)).outermost()
 
-var spans: List<(lo: Int, hi: Int)> = []
-for (lo, far) in sorted([(min(r, c), -max(r, c)) for (r, c) in points]):
-    if spans.len == 0 or -far > spans.last!.hi: spans.push((lo:, hi: -far))
-let cnt = spans.len
+struct Photo(line: Line, count: Int):
+    fn at(self, x: Int) -> (val: Int, count: Int) = (val: line.at(x), count:)
 
-type Plan = (cost: Int, photos: Int)             // ordered by cost, then by photos
-type Line = (slope: Int, at0: Int, photos: Int)  // cost = slope * x + at0
+fn cover(fee: Int) -> (val: Int, count: Int):
+    var photos = LiChao<Photo, (val: Int, count: Int)>(min, over: 0..=m)
+    var best = (val: 0, count: 0)
+    for (prev, s) in spans.with_prev:
+        let (lo, x) = (Int(s.l), Int(s.r))
+        let shared = prev.map(p => p.clip(s).len) ?? 0
+        photos.add(Photo(Line(-2 * lo, best.val + lo * lo - shared * shared + fee), best.count + 1))
+        let b = photos.at(x)!
+        best = (val: b.val + x * x, count: b.count)
+    best
 
-fn value(l: Line, x: Int) -> Plan:
-    (cost: l.slope * x + l.at0, photos: l.photos)
-
-// the first whole x from which b, the steeper-falling line, is no higher than a
-fn overtakes(a: Line, b: Line) -> Int:
-    let fall = a.slope - b.slope
-    (b.at0 - a.at0 + fall - 1) / fall
-
-// between a and c (slopes falling), b is never the lowest at a whole x
-fn useless(a: Line, b: Line, c: Line) -> Bool:
-    overtakes(a, c) <= overtakes(a, b)
-
-// cheapest cover when each photo costs `fee` extra, and its photo count
-fn cover(fee: Int) -> Plan:
-    var hull: List<Line> = []  // live lines are hull[head..]
-    var head = 0
-    var done: Plan = (cost: 0, photos: 0)  // best plan for the spans so far
-    for i in 0..cnt:
-        // a photo starting at span i: its square, less the part the last photo shares
-        let lo = spans[i].lo
-        let shared = if i > 0: max(0, spans[i - 1].hi - lo + 1) else: 0
-        let line: Line = (
-            slope: -2 * lo,
-            at0: done.cost + lo * lo - shared * shared + fee,
-            photos: done.photos + 1,
-        )
-        while hull.len - head >= 2 and useless(hull[hull.len - 2], hull.last!, line): hull.pop()
-        hull.push(line)
-        let x = spans[i].hi + 1  // the ends only grow, so drop beaten lines
-        while hull.len - head >= 2 and not (
-            value(hull[head], x) < value(hull[head + 1], x)
-        ): head += 1
-        let v = value(hull[head], x)
-        done = (cost: v.cost + x * x, photos: v.photos)
-    done
-
-// a higher fee never means more photos; find the lowest fee that fits k
-let fee = (0..m * m).first_true(mid => cover(mid).photos <= k) ?? (m * m)
-print(cover(fee).cost - k * fee)
+print(aliens(k, cover, lambdas: 0..=m * m))

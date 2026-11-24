@@ -26,3 +26,7 @@ key instead.
   and let `MonotoneHull` take lines whose `at` returns any ordered `K`, as
   `LiChao` does, so a `(val, count)` key breaks ties by comparison. Then
   spec.cp can go back to the O(1) hull.
+
+## Measurements
+
+Contestant-written tokens: port 312, original 675 (`corpus/audit.py` count). Emitted C++: 26671 bytes (`cpl build`, judge `generic`).
