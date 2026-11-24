@@ -762,6 +762,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0320"),
+        title: "Int index into a cut table",
+        summary: "`pre[k]` with an `Int` `k` on a scan over `Int` keys, where `k` could be a position or a cut.",
+        explanation: "On `Int` keys (a `List`, `[n]T` or `[0..n]T`) a position and a cut are both `Int`, so `pre[k]` can't say whether it folds through `k` or before it. Write `pre.cut(k)` for the fold of the first `k`; through position `k` is `pre.cut(k + 1)`. A typed cut or position still indexes the table.",
+        trigger: "let pre = scan([3, 1, 4], +)\nprint(pre[2])\n",
+        fix: "let pre = scan([3, 1, 4], +)\nprint(pre.cut(2))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

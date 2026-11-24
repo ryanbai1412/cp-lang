@@ -24,4 +24,4 @@ for _ in 0..t:
             ends[last + 2 * w] -= 1
             w += run.period
     let (begun, ended) = (scan(starts, +), scan(ends, +))
-    print(sum(ended[i] * begun[i + 1] for i in 0..n - 1))
+    print(sum(ended[i] * begun.cut(i + 1) for i in 0..n - 1))

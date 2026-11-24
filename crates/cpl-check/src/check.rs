@@ -20,6 +20,7 @@ mod expr;
 mod extension;
 mod fall_through;
 mod index_at;
+mod index_end;
 mod known;
 pub(crate) mod lends;
 mod library_domain;

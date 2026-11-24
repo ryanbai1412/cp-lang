@@ -164,6 +164,8 @@ pub mod codes {
     pub const UNREACHABLE_ARM: Code = Code("E0318");
     /// A generic fn that calls itself at a type that grows each time (`f([x])` in `f<T>`).
     pub const GROWING_INSTANTIATION: Code = Code("E0319");
+    /// `pre[k]` with an `Int` `k` into a cut table on `Int` keys (R07.1.6, decision 507).
+    pub const INT_INDEX_ON_CUT_TABLE: Code = Code("E0320");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");

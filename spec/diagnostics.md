@@ -58,7 +58,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0317 | getter_needs_defaults | `@get fn f(self, k: Int)`: a getter is read like a field, so every parameter but `self` needs a default; give `k` one or drop `@get` (R02.6.6) |
 | E0318 | unreachable_arm | unreachable arm: `less` above already matches everything; a lowercase name in a pattern binds, did you mean `Less`? (R01.7.3) |
 | E0319 | growing_instantiation | `wrap` calls itself at a type that grows on every call: `wrap<Int>` needs `wrap<List<Int>>`, and so on without end; a generic fn is compiled once per type, so recurse at the same type or keep the growing part in a value of one fixed type (R08.2.10) |
-| E0320 | int_index_on_cut_table *(0.3)* | `pre[k]`: an `Int` index into a cut table can't say position or cut; write `pre.cut(k)` for the fold of the first `k`, or index by a typed cut or position (R07.1.6) |
+| E0320 | int_index_on_cut_table | `pre[k]`: an `Int` index into a cut table can't say position or cut; write `pre.cut(k)` for the fold of the first `k`, or index by a typed cut or position (R07.1.6) |
 | E0321 | negative_literal_index *(0.3)* | `a[-1]`: keys never wrap; the last element is `a.last!`, the `k`-th from the end `a[a.len - k]` (R07.2.17) |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |

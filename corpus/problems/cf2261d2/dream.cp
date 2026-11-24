@@ -37,7 +37,7 @@ for (a, b) in order.adjacent if hash[a] == hash[b]:
     last_bad max= b
 
 var cuts: List<Int> = []
-if let f = first_bad and let l = last_bad and hash[f] == hash[l]: cuts.push(0)
+if let f = first_bad and let l = last_bad and hash.cut(f) == hash.cut(l): cuts.push(0)
 for i in 0..n - 1:
     if next[i] == i + 1: cuts.push(i + 1)
     else: next[i + 1] min= next[i]

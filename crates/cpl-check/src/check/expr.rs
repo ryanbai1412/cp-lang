@@ -2872,7 +2872,7 @@ impl<'a> Checker<'a> {
 
     fn index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr]) -> Ty {
         if let [index] = indices {
-            if let Some(at) = self.index_by_at(expr, base, index) {
+            if let Some(at) = self.index_one_way(expr, base, index) {
                 return at;
             }
         }

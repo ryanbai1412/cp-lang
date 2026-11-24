@@ -483,7 +483,7 @@ for w in 1..=n / 2:
         ends[lo + 2 * w - 1] += 1
         ends[hi + 2 * w] -= 1
 let (begun, ended) = (scan(starts, +), scan(ends, +))
-print(sum(ended[i] * begun[i + 1] for i in 0..n - 1))
+print(sum(ended[i] * begun.cut(i + 1) for i in 0..n - 1))
 ```
 
 ### 5.4 SAC 2022 CC3 P5 — Multi-Pattern Dictionary (`sac22cc3p5`)
