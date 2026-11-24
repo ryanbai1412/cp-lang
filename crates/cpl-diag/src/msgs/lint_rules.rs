@@ -15,7 +15,6 @@ super::msgs! {
     CONTAINS_THEN_ADD = "L0552", "`{}` is tested for a key before `+=`";
     COPY_COMPREHENSION = "L0549", "`{}` copies a sequence one element at a time";
     COUNTER_BY_MAP = "L0579", "`{}` counts by hand: it is a `Counter`";
-    COUNT_UNTIL = "L0562", "`{}` counts the steps of `{}` until `{}` fails";
     CROSS_BY_HAND = "L0556", "`{}` is a cross product of points kept in two lists";
     CYCLE_BY_COLORS = "L0565", "`fn {}` colours `{}` {} on entry and {} on exit to find a directed cycle by hand";
     DEPTH_BY_HAND = "L0567", "`{}` steps each depth from the parent's by hand";

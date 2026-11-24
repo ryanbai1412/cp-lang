@@ -7,7 +7,6 @@ mod assign;
 mod bag;
 mod bounds;
 mod ceil;
-mod count_until;
 mod counter;
 mod domain_first;
 mod empty_range;
@@ -114,7 +113,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(hand_ds::check(file));
     findings.extend(hand_input::check(file));
     findings.extend(vertex_ids::check(file));
-    findings.extend(count_until::check(file));
     findings.extend(hand_search::check(file));
     findings.extend(read_loop::check(file));
     findings

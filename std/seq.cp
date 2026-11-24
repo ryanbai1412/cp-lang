@@ -1105,6 +1105,10 @@ pub fn first_some<S: Seq<T>, T, U>(self: S, f: T -> ?U) -> ?U:
 /// ties: `[(1, 'a'), (1, 'b')].find(p => p.0 == 1) == Some((1, 'a'))`
 /// traps: never
 /// example: `(1..=10).find(x => x * x > 20) == Some(5)`
+@lint(count_until, from: "var x = 1\nvar k = 0\nwhile x < n:\n    x *= c\n    k += 1", to: "let k = (0..).find(k => c ** k >= n)!", holes: "c, n")
+@lint(count_until, from: "var x = 1\nvar k = 0\nwhile x < n:\n    k += 1\n    x *= c", to: "let k = (0..).find(k => c ** k >= n)!", holes: "c, n")
+@lint(count_until, from: "var x = 1\nvar k = 0\nwhile x <= n:\n    x *= c\n    k += 1", to: "let k = (0..).find(k => c ** k > n)!", holes: "c, n")
+@lint(count_until, from: "var x = 1\nvar k = 0\nwhile x <= n:\n    k += 1\n    x *= c", to: "let k = (0..).find(k => c ** k > n)!", holes: "c, n")
 pub fn find<S: Seq<T>, T>(self: S, p: T -> Bool) -> ?T:
     for x in self:
         if p(x): return Some(x)
