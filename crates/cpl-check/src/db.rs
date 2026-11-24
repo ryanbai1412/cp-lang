@@ -1682,7 +1682,10 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
                     match crate::check::domain_binding(item) {
                         Some(name) => out.push(Decl {
                             name: name.to_string(),
-                            span: item.span,
+                            span: match &item.kind {
+                                ast::PatternKind::Domain(name) => name.span,
+                                _ => item.span,
+                            },
                             kind: DeclKind::Domain,
                             public: false,
                         }),

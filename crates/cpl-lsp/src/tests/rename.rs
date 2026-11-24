@@ -245,3 +245,11 @@ fn rename_reaches_a_variant_named_through_its_enum() {
     let src = "enum Team = Ho|me | Away\nvar score: [Team]Int = 0\nscore[Team.Home] += 1\nprint(score[Team.Home])\n";
     assert_eq!(renamed_texts(src, "Host"), ["Host", "Host", "Host"]);
 }
+
+/// A domain a tuple pattern binds (`let (domain C, ids) = ..`) is declared
+/// at its name, so its uses rename with it.
+#[test]
+fn rename_reaches_a_domain_a_tuple_pattern_binds() {
+    let src = "let xs = [3, 1, 3]\nlet (domain C|, ids) = compress(xs)\nvar t: [C]Int = 0\nprint(t[ids[0]] + C.count)\n";
+    assert_eq!(renamed_texts(src, "Rank"), ["Rank", "Rank", "Rank"]);
+}
