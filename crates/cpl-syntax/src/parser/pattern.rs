@@ -66,17 +66,14 @@ impl<'a> Parser<'a> {
                 let args = self.comma_list(T::RParen, "the pattern", Self::pattern);
                 PatternKind::Variant { path, args }
             }
+            // Read as the variant it names, so it matches only that variant.
             T::Ident if self.peek_n(1) == T::LParen => {
+                let path = vec![self.name()];
                 self.bump();
-                self.bump();
-                let mut args = self.comma_list(T::RParen, "the pattern", Self::pattern);
+                let args = self.comma_list(T::RParen, "the pattern", Self::pattern);
                 let span = self.span_from(start);
                 self.planned(span, &crate::planned::LOWER_VARIANT_PATTERN);
-                if args.len() == 1 {
-                    args.pop().unwrap().kind
-                } else {
-                    PatternKind::Tuple(args)
-                }
+                PatternKind::Variant { path, args }
             }
             T::Ident => PatternKind::Name(self.name().text),
             // `none` is reserved only up to v2.2; v0.3 code may bind it as a name.
