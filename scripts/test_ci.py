@@ -475,6 +475,28 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(ev, ["scripts/gen.py --check"])
         self.assertEqual([t for _, t in tail.times][0], "checking scripts (scripts/ci.py steps commit)")
 
+    def test_only_runs_just_the_named_commit_steps(self) -> None:
+        sel = {"packages": "cpl-check", "filter": "rdeps(cpl-check)", "slices": "s", "site": "1"}
+        code, ev, _, _, _, _ = self._commit(sel, outs={self.TREE: "cpl-check v0.1.0\n"}, only=frozenset({"wasm"}))
+        self.assertEqual(code, 0)
+        self.assertEqual(self.tiers, [])
+        self.assertEqual(ev, [self.TREE + " --target wasm32-unknown-unknown -e normal --prefix none",
+                              "rustc --print target-libdir --target wasm32-unknown-unknown"])
+
+    def test_progress_lists_the_step_a_cut_stops_in_and_every_later_one(self) -> None:
+        progress = Path(self.enterContext(tempfile.TemporaryDirectory())) / "progress"
+        sel = {"packages": "cpl-check", "filter": "rdeps(cpl-check)"}
+        clippy = "cargo clippy -q -p cpl-check --all-targets -- -D warnings"
+        code, _, _, _, _, _ = self._commit(sel, codes={clippy: 1}, progress=str(progress))
+        self.assertEqual(code, 1)
+        self.assertEqual(progress.read_text().split(), list(ci.COMMIT_STEPS[ci.COMMIT_STEPS.index("clippy"):]))
+
+    def test_commit_only_refuses_a_step_it_lacks(self) -> None:
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit):
+            ci.main(["commit", "--only", "wasm,nope"])
+        self.assertIn("no commit-tier step nope", err.getvalue())
+
     def test_stale_generated_files_only_note(self) -> None:
         code, _, out, _, _, _ = self._commit({}, codes={"scripts/gen.py": 1}, outs={"scripts/gen.py": "a\n3 stale\n"})
         self.assertEqual(code, 0)

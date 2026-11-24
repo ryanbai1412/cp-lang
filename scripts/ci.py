@@ -416,6 +416,8 @@ class Tail:
     sel_site: str = ""
     sel_slices: str = ""
     sel_slice_filter: str = ""
+    only: frozenset[str] | None = None
+    progress: str = ""
     run: Callable = subprocess.run
     popen: Callable = subprocess.Popen
     which: Callable = shutil.which
@@ -428,6 +430,13 @@ class Tail:
         self.end_step()
         self._step = (title, self.clock())
         print(f"\n==> {title}", flush=True)
+
+    def wants(self, key: str) -> bool:
+        """Whether the commit tier runs step `key` (every step, or those `--only`
+        names); from here on, `progress` lists it and the steps after it as unrun."""
+        if self.progress:
+            Path(self.progress).write_text("\n".join(COMMIT_STEPS[COMMIT_STEPS.index(key):]) + "\n")
+        return self.only is None or key in self.only
 
     def end_step(self) -> None:
         if self._step:
@@ -552,50 +561,57 @@ class Tail:
     def _commit(self, sel: dict[str, str], logs: str) -> None:
         # First: the hook's 25 s cut allows a commit past any other step, so a slice
         # after them went unrun whenever they were slow (e843b83dc's unparsable std).
-        self._slices(sel.get("slices", "").split())
-        self.step("checking scripts (scripts/ci.py steps commit)")
-        if run_steps("commit", self.cpl, run=self.run):
-            raise Failed("")
-        self.step("generated files current: skill pages, gap lists (scripts/gen.py --check)")
-        # CI's regen job regenerates stale files on main, so a commit isn't blocked by
-        # staleness it may not have caused; only the summary line, the rest is the job's.
-        gen = self.run([sys.executable, "scripts/gen.py", "--check"], cwd=ROOT, stdout=subprocess.PIPE,
-                       stderr=subprocess.STDOUT, text=True)
-        if gen.returncode:
-            print((gen.stdout.strip().splitlines() or [""])[-1].removesuffix("; run: just gen"))
-            print("note: not blocking, and no need to regenerate them: CI's regen job rewrites these on main")
+        if self.only is None:
+            self._slices(sel.get("slices", "").split())
+        if self.wants("scripts"):
+            self.step("checking scripts (scripts/ci.py steps commit)")
+            if run_steps("commit", self.cpl, run=self.run):
+                raise Failed("")
+        if self.only is None:
+            self.step("generated files current: skill pages, gap lists (scripts/gen.py --check)")
+            # CI's regen job regenerates stale files on main, so a commit isn't blocked by
+            # staleness it may not have caused; only the summary line, the rest is the job's.
+            gen = self.run([sys.executable, "scripts/gen.py", "--check"], cwd=ROOT, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, text=True)
+            if gen.returncode:
+                print((gen.stdout.strip().splitlines() or [""])[-1].removesuffix("; run: just gen"))
+                print("note: not blocking, and no need to regenerate them: CI's regen job rewrites these on main")
         not_slow = f" & not ({slow_filter()})"
-        if pkgs := sel.get("packages", "").split():
-            ps = [a for p in pkgs for a in ("-p", p)]
+        pkgs = sel.get("packages", "").split()
+        ps = [a for p in pkgs for a in ("-p", p)]
+        if pkgs and self.wants("fmt"):
             self.step("cargo fmt --check of the touched crates")
             if self.call(["cargo", "fmt", "--check", *ps]):
                 raise Failed(f"Rust files are not formatted; run: cargo fmt {' '.join(ps)}")
+        if pkgs and self.wants("clippy"):
             self.step("cargo clippy of the touched crates and nextest of the crates they reach")
             if self.call(["cargo", "clippy", "-q", *ps, "--all-targets", "--", "-D", "warnings"]):
                 raise Failed(f"clippy found warnings; rerun: cargo clippy {' '.join(ps)} --all-targets -- -D warnings")
+        if pkgs and self.wants("wasm"):
             tree = self.run(["cargo", "tree", "-q", "-p", "cpl-wasm", "--target", "wasm32-unknown-unknown", "-e",
                              "normal", "--prefix", "none"], cwd=ROOT, capture_output=True, text=True)
             if tree.returncode:
                 raise Failed(f"cargo tree -p cpl-wasm failed:\n{tree.stderr}")
             if {line.split()[0] for line in tree.stdout.splitlines() if line.strip()} & set(pkgs) and self.wasm():
                 self.wasm_data(pkgs)
+        if pkgs and self.wants("nextest"):
             expr = f"({sel.get('filter', '')}){not_slow}"
             if slice_filter := sel.get("slice_filter"):
                 expr += f" & not ({slice_filter})"
             if self.call(["cargo", "nextest", "run", "--workspace", "--profile", "commit", "--no-fail-fast", "-E", expr]):
                 raise Failed(f"the touched crates' tests failed (named above); rerun: cargo nextest run --workspace -E '{expr}'")
-        if data := sel.get("data_filter"):
+        if (data := sel.get("data_filter")) and self.wants("data"):
             self.step(f"tests that read the touched data files: {data}")
             expr = f"({data}){not_slow}"
             if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr]):
                 raise Failed(f"tests that read the touched data files failed (named above); rerun: cargo nextest run --workspace -E '{expr}'")
-        if files := sel.get("check_files", "").split():
+        if (files := sel.get("check_files", "").split()) and self.wants("check_files"):
             self.step("cpl check of the touched corpus programs")
             self._cargo_build("cpl-cli")
             for f in files:
                 if (ROOT / f).is_file() and self.call([self.cpl, "check", f]):
                     raise Failed(f"{f} has check errors; cpl check's message above says how to fix it")
-        if sel.get("audit") == "1":
+        if sel.get("audit") == "1" and self.wants("audit"):
             self.step("staged corpus packages pass every mode (scripts/corpus.py verify --changed staged)")
             self._cargo_build("cpl-cli")
             if self.call([sys.executable, "scripts/corpus.py", "make", "--changed", "staged", "--cpl", self.cpl], stdout=subprocess.DEVNULL):
@@ -608,25 +624,25 @@ class Tail:
                 if self.call([sys.executable, "scripts/corpus.py", "verify", "--only", "dream", "--cpl", self.cpl, *dreams]):
                     raise Failed("a staged dream.cp disagrees with its accepted C++ or meta.json lacks its record;"
                                  " run scripts/corpus.py record <id> and stage meta.json")
-        if sel.get("idioms_catalog") == "1":
+        if sel.get("idioms_catalog") == "1" and self.wants("idioms"):
             self.step("lint catalog names only real APIs (scripts/idioms-catalog.py --check)")
             if self.call([sys.executable, "scripts/idioms-catalog.py", "--check"]):
                 raise Failed("a spec/idioms/lints.md row names an API std doesn't define; the finding above names the lint and the name")
-        if sel.get("spec_traits") == "1":
+        if sel.get("spec_traits") == "1" and self.wants("traits"):
             self.step("every std trait impl has its traits.toml case (scripts/spec-gate.py traits)")
             if self.call([sys.executable, "scripts/spec-gate.py", "traits"]):
                 raise Failed("a std impl's trait method has no spec/conformance/traits.toml case; write the case it names"
                              " (or regenerate: scripts/spec-gate.py traits --write)")
-        if steps := sel.get("steps", "").split():
+        if (steps := sel.get("steps", "").split()) and self.wants("touched_steps"):
             self.step(f"touched checking scripts (scripts/ci.py steps touched {' '.join(steps)})")
             if run_steps("touched", self.cpl, run=self.run, only=set(steps)):
                 raise Failed("")
-        if tests := sel.get("script_tests", "").split():
+        if (tests := sel.get("script_tests", "").split()) and self.wants("script_tests"):
             self.step(f"script unit tests: {' '.join(tests)}")
             home = tempfile.mkdtemp(prefix="cpl-home-", dir=logs)
             if self.call([sys.executable, "-m", "unittest", *tests], env=bare_home(home)):
                 raise Failed(f"script unit tests failed (named above); rerun: uv run python -m unittest {' '.join(tests)}")
-        if cases := sel.get("conform_cases", "").split():
+        if (cases := sel.get("conform_cases", "").split()) and self.only is None:
             self.step("staged conformance cases (scripts/conform_staged.py)")
             if self.call(["git", "diff", "--quiet", "--", "crates", "std", "Cargo.toml", "Cargo.lock"]):
                 raise Failed("unstaged changes under crates/ or std/ would run the staged cases against code this commit"
@@ -634,7 +650,7 @@ class Tail:
             self._cargo_build("cpl-cli", "cpl-conform")
             if self.call([sys.executable, "scripts/conform_staged.py", str(target_dir() / "debug/cpl-conform"), *cases]):
                 raise Failed("a staged conformance case fails; cpl-conform's message above says how to fix it")
-        if sel.get("site") == "1":
+        if sel.get("site") == "1" and self.wants("site"):
             self.step("site snippet gate (node web/scripts/gate.mjs)")
             if self.call(["node", "web/scripts/gate.mjs"]):
                 raise Failed("site snippet gate failed; rerun: node web/scripts/gate.mjs")
@@ -1012,6 +1028,14 @@ FAST_BUDGET_S = 180
 AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only header)"
 
 
+# The commit tier's steps, in the order Tail._commit runs them, by the names
+# `ci.py commit --only` takes. A hook cut past 25 s leaves the ones it didn't
+# reach to land.sh (CPL_COMMIT_PROGRESS); the touched-path slices and the staged
+# conformance cases have pending files of their own, and gen.py --check only notes.
+COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits",
+                "touched_steps", "script_tests", "site")
+
+
 def selection(mode: str, run=subprocess.run) -> dict[str, str]:
     """scripts/affected.py's touched-path selection: --land diffs the train against
     CHECK_BASE (default origin/main), --commit the staged files."""
@@ -1029,8 +1053,10 @@ def selection(mode: str, run=subprocess.run) -> dict[str, str]:
 
 
 def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir: str = "", manifest: str = "",
-             since: float | None = None, run=subprocess.run, tail_cls=None, clock=time.time) -> int:
-    """Every tier after check.sh's guards; `since` is when the gate started."""
+             since: float | None = None, run=subprocess.run, tail_cls=None, clock=time.time,
+             only: frozenset[str] | None = None) -> int:
+    """Every tier after check.sh's guards; `since` is when the gate started. `only`
+    runs just those of the commit tier's COMMIT_STEPS (land.sh, after a hook's cut)."""
     tail_cls = tail_cls or Tail
     since = clock() if since is None else since
     times = [(int(clock() - since), "setup")]
@@ -1051,7 +1077,7 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         sel: dict[str, str] = {}
         if mode in ("land", "commit"):
             sel = selection(mode, run)
-            if mode == "commit" and sel.get("audit") == "1":
+            if mode == "commit" and sel.get("audit") == "1" and (only is None or "audit" in only):
                 # Before anything that builds, --fast included, so the hook's time limit
                 # never skips it: header needs no binary. package runs later, with the
                 # cpl this tier builds from the tree being committed.
@@ -1063,13 +1089,20 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
                                  " and the package")
                 times.append((int(clock() - t0), AUDIT_FIRST))
             if sel.get("all", "1") == "1":
+                if only is not None:
+                    print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; CI runs --fast on the tip")
+                    return 0
                 print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; running --fast")
                 mode, sel = "fast", {}
     except (Failed, ValueError) as e:
         print(f"check: {e}", file=sys.stderr)
         return 1
     if mode == "commit":
-        tail = tail_cls("commit", cpl=cpl, run=run)
+        kw = {"only": only} if only is not None else {}
+        if (progress := os.environ.get("CPL_COMMIT_PROGRESS")) and only is None:
+            kw["progress"] = progress
+            Path(progress).write_text("\n".join(COMMIT_STEPS) + "\n")
+        tail = tail_cls("commit", cpl=cpl, run=run, **kw)
         code = tail.commit(sel)
     else:
         tail = tail_cls(mode, part, cpl, cache_dir, manifest, sel.get("packages", ""), sel.get("filter", ""),
@@ -1185,6 +1218,9 @@ def check(argv: list[str], env=None, run=subprocess.run, clock=time.time, guard_
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
+    gc = sub.add_parser("commit", help="the commit tier's named steps on the staged files (land.sh, after a hook's cut)")
+    gc.add_argument("--only", required=True, help=f"comma-separated, of: {','.join(COMMIT_STEPS)}")
+    gc.add_argument("--cpl", default="target/debug/cpl")
     g = sub.add_parser("steps", help="run a tier's checking scripts, spec gates among them")
     g.add_argument("tier", choices=sorted(STEPS) + ["touched"])
     g.add_argument("--cpl", default="target/debug/cpl")
@@ -1208,6 +1244,11 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.cmd == "guard":
         return guard(args.mode)
+    if args.cmd == "commit":
+        only = frozenset(k for k in args.only.split(",") if k)
+        if unknown := sorted(only - set(COMMIT_STEPS)):
+            ap.error(f"no commit-tier step {', '.join(unknown)}; the steps: {', '.join(COMMIT_STEPS)}")
+        return run_gate("commit", cpl=args.cpl, only=only)
     if args.cmd == "cxx-trim":
         return cxx_trim(Path(args.dir), args.since) or 0
     if args.cmd == "gate":
