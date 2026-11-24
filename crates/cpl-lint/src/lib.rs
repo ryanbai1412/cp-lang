@@ -310,13 +310,6 @@ impl<'a> Calls<'a> {
         let path = self.facts?.unresolved(e.span.shift(self.base))?;
         path.last().map(String::as_str)
     }
-
-    /// The name of the std fn `e`, a call or getter, calls: `None` for a
-    /// program's own fn or where the checker has no answer.
-    pub fn name(self, e: &cpl_syntax::ast::Expr) -> Option<&'a str> {
-        let callee = self.facts?.callee(e.span.shift(self.base))?;
-        is_std(self.facts, e.span.shift(self.base), &callee.name).then_some(callee.name.as_str())
-    }
 }
 
 fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {

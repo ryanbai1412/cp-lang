@@ -211,7 +211,9 @@ library or by this spec:
   branches. A finding names the lint (`warning[name]`),
   is in the `idiom` group, warns by default, and `with lint(name: allow)`
   turns it off; its fix is `to` with each hole replaced by what it matched,
-  written over the matched code up to its last token.
+  bracketed unless it is an argument, a generator's element, sequence
+  or filter (`sum(v for x in xs if c)`), or atomic, written over the matched code up
+  to its last token.
   `holes: "a, b"` names more holes than the fn's parameters (a domain or a
   bound the call no longer needs); `to` may drop one of those only when it
   matched an expression that calls nothing, or when the lint has no fix.
@@ -254,15 +256,20 @@ library or by this spec:
   nothing. A hole whose parameter is written
   as a scalar type (`Int`, `I128`, `U64`, `F64`, `Bool`, `Char`, `Str`)
   matches only code the checker gives that type (a range type is an
-  `Int`). One fn's spellings of a name share their sites: the first
+  `Int`), and one whose parameter is written as a type parameter a
+  sequence trait bounds (`self: S` with `S: Seq<T>`; `Sized`, `Bidir`,
+  `Keyed`, `Indexed`, `Positional`, `IndexedMut`) matches only code whose
+  type meets that bound (a list, not a map). One fn's spellings of a name share their sites: the first
   spelling that matches a site takes it. A lint named like a `spec/lints`
   record reports as that record: its code, level and explanation, and
   with no fix when the record gives `no_fix` (its `to` is then only the
   advice). `from` does not match an assigned place (`xs[i] = v`) or the
-  base it indexes, and a hole does not match a bare generator (`x * x
-  for x in xs` in `sum(..)`), a fold's argument rather than a value. A
-  library fn's lint with a fix does not match inside the program's own fn
-  of its name (a hand-written `fn starts_with`), whose fix would call
+  base it indexes, and a hole does not match a comprehension, bare or
+  bracketed (`x * x for x in xs` in `sum(..)`), which a fold reads as
+  math. A `from` statement `t += v` also matches `t = t + v`, and
+  `t min= v` (`max=`) `t = min(t, v)`; a `to` mapping by a hole that
+  matched the element itself writes no map (`xs.map(x => x)` is `xs`). A library fn's lint with a fix does not match inside the
+  program's own fn of its name (a hand-written `fn starts_with`), whose fix would call
   itself; a method's lint, or one with no fix, does (a hand-written `fn
   find` is `Dsu.find`). A `from` ending in a name (`t.order`) does not
   match the callee of a call (`t.order(v)`). The
@@ -273,7 +280,13 @@ library or by this spec:
   with no fix, `to` may drop any hole whatever it matched,
   and a named argument's label (`from:`) is never a hole; where a comment
   falls inside the match it
-  has no fix, since `to` would drop the comment.
+  has no fix, since `to` would drop the comment. A hole after a label or
+  a lambda's `=>` is written bare. No match where a name the code binds
+  is spelled like a name `to` calls (`var sum = 0`), inside the file's
+  own fn of such a name, or where a hole `to` moves into a lambda or
+  generator holds `return`, `break` or `continue`. Where fns' spellings
+  of one lint match the same code, the one with fewest holes reports it,
+  once.
   A hole `to` uses in the initializer of a name it declares (`let p =
   Prefix([e for i in 0..n])`) does not match code that reads that name.
   `reads: "p[k] -> p.cut(k)"` makes the fix rewrite, too, every later

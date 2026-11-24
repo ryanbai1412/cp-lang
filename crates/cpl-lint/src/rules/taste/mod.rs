@@ -9,8 +9,8 @@ use crate::std_fn;
 use crate::walk::{self, Visitor};
 use crate::Calls;
 use crate::{
-    File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
-    HAND_ROLLED_ANSWER_SEARCH, LOOP_REDUCTION, PUSH_LOOP, SEARCH_LOOP,
+    File, Finding, DISCARDED_RESULT, DOMAIN_SPELLING, HAND_ROLLED_ANSWER_SEARCH, PUSH_LOOP,
+    SEARCH_LOOP,
 };
 use cpl_diag::msgs;
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -109,7 +109,6 @@ impl Visitor for Blocks<'_, '_> {
         }
     }
     fn expr(&mut self, expr: &Expr) {
-        self.taste.free_fold(expr);
         self.taste.domain_spelling(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
@@ -223,7 +222,6 @@ impl<'a> Taste<'a> {
             self.next_base = *base;
             self.discarded(stmt);
             self.answer_search(stmts, i);
-            self.copy_mutate_writeback(stmts, i);
             if let Some((next_base, next)) = stmts.get(i + 1) {
                 self.next_base = *next_base;
                 let Some(acc) = AccLoop::of(stmt, next, Calls::new(self.facts, self.next_base))
@@ -233,9 +231,6 @@ impl<'a> Taste<'a> {
                 for form in acc.forms() {
                     match form {
                         Form::Search => self.search(&acc, stmt, next),
-                        Form::Fold { cond, op, value } => {
-                            self.reduce(&acc, cond, op, value, stmt, next)
-                        }
                         Form::Build { cond, value } => self.collect(&acc, cond, value, stmt, next),
                     }
                 }
@@ -360,215 +355,6 @@ impl<'a> Taste<'a> {
             }
         }
         self.push(&HAND_ROLLED_ANSWER_SEARCH, diag);
-    }
-
-    /// Copy-mutate-writeback on a slice (L0522):
-    ///   `let sub = xs[l..r].sorted(..); for i in l..r: xs[i] = sub[i - l]`
-    /// or
-    ///   `var sub = xs[l..r].to_list(); sub.sort(..); for i in 0..sub.len: xs[l + i] = sub[i]`
-    /// rewrites to `xs[l..r].sort(..)` when `sub` is not read afterward.
-    fn copy_mutate_writeback(&mut self, stmts: &[(u32, &Stmt)], i: usize) {
-        let (first_base, first_stmt) = stmts[i];
-        let StmtKind::Let {
-            pat,
-            init: Some(init),
-            otherwise: None,
-            ..
-        } = &first_stmt.kind
-        else {
-            return;
-        };
-        let PatternKind::Name(sub_name) = &pat.kind else {
-            return;
-        };
-        let at = |b: u32, span: Span| {
-            self.src[(b + span.start) as usize..(b + span.end) as usize].trim()
-        };
-
-        let Some(found) = self.match_copy_mutate_pair(stmts, i, sub_name, first_base, init) else {
-            return;
-        };
-        let Some(&(wb_base, wb_stmt)) = stmts.get(found.wb_idx) else {
-            return;
-        };
-        if !is_slice_writeback_loop(
-            self.src,
-            wb_base,
-            wb_stmt,
-            &found.target,
-            sub_name,
-            &found.range,
-            found.lo.as_deref(),
-        ) {
-            return;
-        }
-        let replacement = format!(
-            "{}[{}].{}({})",
-            found.target, found.range, found.method, found.args
-        );
-        let end = trim_end(self.src, wb_base, wb_stmt.span) + wb_base - first_base;
-        let span = Span {
-            start: first_stmt.span.start,
-            end,
-        };
-        let mut diag = msgs::lint::COPY_SORT_WRITEBACK
-            .warning(span, &[&found.target, &found.range, &replacement])
-            .with_help(format!("mutate the slice in place: `{replacement}`"));
-
-        let sub_used_after = stmts[found.wb_idx + 1..]
-            .iter()
-            .any(|&(b, s)| mentions(at(b, s.span), sub_name));
-        if !sub_used_after {
-            diag.fixes.push(Fix {
-                title: format!("use `{replacement}`"),
-                edits: vec![(span, replacement)],
-            });
-        }
-        self.base = first_base;
-        self.push(&COPY_SORT_WRITEBACK, diag);
-    }
-
-    fn match_copy_mutate_pair(
-        &self,
-        stmts: &[(u32, &Stmt)],
-        i: usize,
-        sub_name: &str,
-        first_base: u32,
-        init: &Expr,
-    ) -> Option<CopyMutate> {
-        let at = |b: u32, span: Span| {
-            self.src[(b + span.start) as usize..(b + span.end) as usize].trim()
-        };
-
-        // Form 1 (2 statements): `let/var sub = xs[l..r].sorted(..)` / `.reversed()` / `.rotated_left(..)` / `.rotated_right(..)`
-        if let ExprKind::Call { callee, args, .. } = &init.kind {
-            if let ExprKind::Field { base, .. } = &callee.kind {
-                if let Some((target, range, lo)) =
-                    extract_contiguous_slice(self.src, first_base, base)
-                {
-                    let calls = Calls::new(self.facts, first_base);
-                    let in_place = calls.name(init).and_then(in_place_twin);
-                    if let Some(method) = in_place {
-                        let args =
-                            call_args_text(self.src, first_base, init.span, callee.span, args);
-                        return Some(CopyMutate {
-                            target,
-                            range,
-                            lo,
-                            method,
-                            args,
-                            wb_idx: i + 1,
-                        });
-                    }
-                    // Form 2a (3 statements): `var sub = xs[l..r].to_list()` + `sub.sort(..)` + writeback
-                    if calls.is(init, std_fn::TO_LIST) && args.is_empty() {
-                        if let Some((method, args)) = match_in_place_mut_stmt(
-                            self.src,
-                            stmts.get(i + 1)?,
-                            sub_name,
-                            self.facts,
-                        ) {
-                            return Some(CopyMutate {
-                                target,
-                                range,
-                                lo,
-                                method: method.to_string(),
-                                args,
-                                wb_idx: i + 2,
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        // Form 2b (3 statements): `var sub = [xs[k] for k in l..r]` + `sub.sort(..)` + writeback
-        if let ExprKind::Comprehension { body, clauses } = &init.kind {
-            if clauses.len() == 1 {
-                let Clause { pat, iter, conds } = &clauses[0];
-                if conds.is_empty() {
-                    if let PatternKind::Name(var) = &pat.kind {
-                        if let ExprKind::Range {
-                            lo,
-                            hi: _,
-                            inclusive: _,
-                            step: None,
-                        } = &iter.kind
-                        {
-                            if let ExprKind::Index { base, indices } = &body.kind {
-                                if indices.len() == 1
-                                    && matches!(&indices[0].kind, ExprKind::Name(n) if n == var)
-                                {
-                                    let target = at(first_base, base.span).to_string();
-                                    let range = at(first_base, iter.span).to_string();
-                                    let lo =
-                                        lo.as_ref().map(|e| at(first_base, e.span).to_string());
-                                    if let Some((method, args)) = match_in_place_mut_stmt(
-                                        self.src,
-                                        stmts.get(i + 1)?,
-                                        sub_name,
-                                        self.facts,
-                                    ) {
-                                        return Some(CopyMutate {
-                                            target,
-                                            range,
-                                            lo,
-                                            method: method.to_string(),
-                                            args,
-                                            wb_idx: i + 2,
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Form 3 (4 statements): `var sub: List<T> = []` + `for k in l..r: sub.push(xs[k])` +
-        // `sub.sort(..)` + writeback
-        if matches!(&init.kind, ExprKind::List(items) if items.is_empty()) {
-            let &(loop_base, loop_stmt) = stmts.get(i + 1)?;
-            let StmtKind::For {
-                pat, iter, body, ..
-            } = &loop_stmt.kind
-            else {
-                return None;
-            };
-            let PatternKind::Name(var) = &pat.kind else {
-                return None;
-            };
-            let ExprKind::Range { lo, step: None, .. } = &iter.kind else {
-                return None;
-            };
-            let [push] = body.stmts.as_slice() else {
-                return None;
-            };
-            let StmtKind::Expr(call) = &push.kind else {
-                return None;
-            };
-            let (base, ix) = plain_index(pushed_onto(
-                call,
-                sub_name,
-                Calls::new(self.facts, loop_base),
-            )?)?;
-            if shapes::name(ix) != Some(var.as_str()) || base == sub_name {
-                return None;
-            }
-            let (method, args) =
-                match_in_place_mut_stmt(self.src, stmts.get(i + 2)?, sub_name, self.facts)?;
-            return Some(CopyMutate {
-                target: base.to_string(),
-                range: at(loop_base, iter.span).to_string(),
-                lo: lo.as_ref().map(|e| at(loop_base, e.span).to_string()),
-                method: method.to_string(),
-                args,
-                wb_idx: i + 3,
-            });
-        }
-
-        None
     }
 
     /// `let _ = f(..)` where `f` is a fn of this file that returns a value.
@@ -778,87 +564,6 @@ impl<'a> Taste<'a> {
         self.push(&PUSH_LOOP, diag);
     }
 
-    /// `sum(xs)`, `count(xs, p)`, `sorted(xs, by: k)`, `sort(mut xs)`:
-    /// a fold or sort of one sequence, which reads as its method.
-    fn free_fold(&mut self, expr: &Expr) {
-        let ExprKind::Call { callee, args } = &expr.kind else {
-            return;
-        };
-        if !matches!(callee.kind, ExprKind::Name(_)) {
-            return;
-        }
-        let Some(name) = Calls::new(self.facts, self.base).name(expr) else {
-            return;
-        };
-        let Some(seq) = args.first() else {
-            return;
-        };
-        if self.declared.contains(name)
-            || seq.name.is_some()
-            || matches!(seq.value.kind, ExprKind::Comprehension { .. })
-        {
-            return;
-        }
-        let positional = args.iter().all(|a| a.name.is_none() && !a.mutable);
-        let fits = match name {
-            std_fn::SUM | std_fn::PROD => args.len() == 1 && !seq.mutable,
-            std_fn::MIN | std_fn::MAX => {
-                !seq.mutable
-                    && (args.len() == 1
-                        || (args.len() == 2
-                            && args[1].name.as_ref().map(|n| n.text.as_str()) == Some("by")))
-            }
-            std_fn::COUNT | std_fn::ALL | std_fn::ANY | std_fn::FIRST => {
-                args.len() == 2 && positional && is_test(&args[1].value)
-            }
-            std_fn::SORTED => !seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
-            std_fn::SORT => seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
-            _ => false,
-        };
-        // `sorted(V, by: k)` walks a domain, not a value; `min([a, b, c])`
-        // is a list literal rather than a named sequence.
-        let skip = match &seq.value.kind {
-            ExprKind::Name(n) => n.starts_with(char::is_uppercase),
-            ExprKind::List(_) => matches!(name, std_fn::MIN | std_fn::MAX) && args.len() == 1,
-            _ => false,
-        };
-        if !fits || skip {
-            return;
-        }
-        let recv = self.text(seq.value.span);
-        let recv = if postfix(&seq.value) {
-            recv.to_string()
-        } else {
-            format!("({recv})")
-        };
-        let rest = match (args.get(1), args.last()) {
-            (Some(second), Some(last)) => {
-                let start = second
-                    .name
-                    .as_ref()
-                    .map_or(second.value.span.start, |n| n.span.start);
-                self.text(Span {
-                    start,
-                    end: last.value.span.end,
-                })
-            }
-            _ => "",
-        };
-        // The method form of `first(xs, p)` is `xs.find(p)` (decisions.md §182).
-        let method = match name {
-            std_fn::FIRST => std_fn::FIND,
-            other => other,
-        };
-        let call = format!("{recv}.{method}({rest})");
-        let mut diag = msgs::lint::FREE_FOLD.warning(expr.span, &[&name])
-        .with_help(format!("write `{call}`; the method follows the sequence, so a chain like `xs.filter(..).sum()` reads in order"));
-        diag.fixes.push(Fix {
-            title: format!("use `.{method}`"),
-            edits: vec![(expr.span, call)],
-        });
-        self.push(&FREE_FOLD, diag);
-    }
-
     /// Canonical domain/sequence spellings:
     /// - `D.sorted(...)` -> `D.sort(...)`
     /// - `xs.first(where: p)` -> `xs.first(p)`
@@ -912,153 +617,6 @@ impl<'a> Taste<'a> {
                 }
             }
         }
-    }
-
-    fn reduce(
-        &mut self,
-        acc: &AccLoop,
-        cond: Option<&Expr>,
-        op: &AssignOp,
-        value: &Expr,
-        decl: &Stmt,
-        next: &Stmt,
-    ) {
-        let AccLoop {
-            name,
-            init,
-            pat,
-            iter,
-            ..
-        } = *acc;
-        // `x ?? return None` must be a whole right side (E0501), so a
-        // generator can't hold it.
-        if leaves(value) || cond.is_some_and(leaves) {
-            return;
-        }
-        let (p, it, v, i) = (
-            self.ntext(pat.span),
-            iter_text(iter, self.ntext(iter.span)),
-            self.ntext(value.span),
-            self.text(init.span),
-        );
-        if let (AssignOp::Set, ExprKind::Call { callee, args }) = (op, &value.kind) {
-            let (f, x) = (self.ntext(callee.span), self.ntext(args[1].value.span));
-            // A fn parameter `f` is the fold being written, not one to call.
-            let param = [format!("({f}:"), format!(", {f}:")];
-            if cond.is_some()
-                || mentions(x, name)
-                || mentions(&it, name)
-                || param.iter().any(|p| self.src.contains(p.as_str()))
-            {
-                return;
-            }
-            let seq = sequence(&it, p, x, None);
-            // `fold(f, ..)` hands `f` each element as is; when `f` takes
-            // another type (`?Pos` for a `Pos`), the call widened it, so it
-            // stays in a lambda.
-            // An untyped lambda can't tell the start value's type, so it
-            // writes both; it stays quiet on an optional parameter when the
-            // element type is not written.
-            let elem = it.trim();
-            let folded = match (param_type(self.src, f, 0), param_type(self.src, f, 1)) {
-                (Some(acc), Some(t)) if t != elem && is_type_name(elem) => {
-                    format!("({name}: {acc}, {p}: {elem}) => {v}")
-                }
-                (_, Some(t)) if t.starts_with('?') && !is_type_name(elem) => return,
-                _ => f.to_string(),
-            };
-            let diag = msgs::lint::LOOP_FOLD.warning(self.pair_span(decl.span, next.span), &[&name, &f])
-            .with_help(format!(
-                "write `{seq}.fold_from({i}, {folded})`; one call says what the loop computes, with the start value first"
-            ));
-            self.push(&LOOP_REDUCTION, diag);
-            return;
-        }
-        let c = cond.map(|c| self.ntext(c.span));
-        if mentions(v, name) || c.is_some_and(|c| mentions(c, name)) || mentions(&it, name) {
-            return;
-        }
-        let filter = c.map(|c| format!(" if {c}")).unwrap_or_default();
-        // The generator a `.count(..)` falls back to where the checker says
-        // the loop walks something that is not a `Seq` (a `Map`).
-        let mut generator = None;
-        let (call, text) = match op {
-            // Decision 53: one sequence's count is the method; a pattern
-            // that binds more than one name keeps the generator.
-            AssignOp::Binary(BinOp::Add) if v == "1" && c.is_some() && i == "0" => {
-                let c = c.unwrap_or_default();
-                let one_name = !p.is_empty()
-                    && p != "_"
-                    && p.chars().all(|ch| ch.is_alphanumeric() || ch == '_');
-                // A lambda can't write what it captures; a generator can.
-                let writes = cond.is_some_and(writes_place);
-                (
-                    std_fn::COUNT,
-                    Some(if one_name && !writes {
-                        generator = Some(format!("count({c} for {p} in {it})"));
-                        format!("{}.count({p} => {c})", receiver(&it))
-                    } else {
-                        format!("count({c} for {p} in {it})")
-                    }),
-                )
-            }
-            AssignOp::Binary(BinOp::Add) if !numeric(i) => return,
-            AssignOp::Binary(BinOp::Add) if i == "0" && c.is_none() && v == p => {
-                (std_fn::SUM, Some(format!("{}.sum()", receiver(&it))))
-            }
-            AssignOp::Binary(BinOp::Add) => (
-                std_fn::SUM,
-                Some(if i == "0" {
-                    format!("sum({v} for {p} in {it}{filter})")
-                } else {
-                    format!("{i} + sum({v} for {p} in {it}{filter})")
-                }),
-            ),
-            AssignOp::Max => (std_fn::MAX, None),
-            AssignOp::Min => (std_fn::MIN, None),
-            _ => return,
-        };
-        // `let sum = sum(..)` names itself.
-        if name == call {
-            return;
-        }
-        let at = decl.span.shift(self.base).start;
-        if self
-            .fn_spans
-            .iter()
-            .any(|(f, start, end)| f == call && *start <= at && at < *end)
-        {
-            return;
-        }
-        let mut diag = msgs::lint::LOOP_ACCUMULATE.warning(self.pair_span(decl.span, next.span), &[&name, &call])
-        .with_help(match &text {
-            Some(text) => format!(
-                "write `{text}`; one call says what the loop computes, with no starting value to get wrong"
-            ),
-            None if sentinel(i) => {
-                let seq = sequence(&it, p, v, c);
-                format!("write `{seq}.{call}() ?? {i}`")
-            }
-            None => {
-                let seq = sequence(&it, p, v, c);
-                format!("write `{seq}.{call}()`, or `{call}({i}, {seq}.{call}() ?? {i})` if `{i}` can win or the loop can run zero times")
-            }
-        });
-        if let Some(generator) = generator {
-            let delta = self.next_base - self.base;
-            let iter = Span {
-                start: iter.span.start + delta,
-                end: iter.span.end + delta,
-            };
-            diag = diag.with_label(iter, generator);
-        }
-        if let Some(edits) = text.and_then(|text| self.fold(init, next, call, text)) {
-            diag.fixes.push(Fix {
-                title: format!("use `{call}`"),
-                edits,
-            });
-        }
-        self.push(&LOOP_REDUCTION, diag);
     }
 }
 
@@ -1131,65 +689,6 @@ fn trim_end(src: &str, base: u32, span: Span) -> u32 {
         end -= 1;
     }
     end
-}
-
-/// The written type of parameter `n` of the file's `fn f`, if it declares one.
-fn param_type<'s>(src: &'s str, f: &str, n: usize) -> Option<&'s str> {
-    let at = src.find(&format!("fn {f}("))? + f.len() + 4;
-    let (mut depth, mut start, mut params) = (0usize, at, Vec::new());
-    for (i, c) in src[at..].char_indices() {
-        match c {
-            '(' | '[' | '<' => depth += 1,
-            ')' if depth == 0 => {
-                params.push(&src[start..at + i]);
-                break;
-            }
-            ')' | ']' | '>' => depth = depth.saturating_sub(1),
-            ',' if depth == 0 => {
-                params.push(&src[start..at + i]);
-                start = at + i + 1;
-            }
-            _ => {}
-        }
-    }
-    let ty = params.get(n)?.split_once(':')?.1;
-    Some(ty.split('=').next().unwrap_or(ty).trim())
-}
-
-fn is_type_name(s: &str) -> bool {
-    s.starts_with(|c: char| c.is_ascii_uppercase())
-        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-}
-
-/// Whether `e` holds a `return`, `break` or `continue` (`x ?? break`).
-fn leaves(e: &Expr) -> bool {
-    struct Leaves(bool);
-    impl cpl_syntax::visit::Visitor for Leaves {
-        fn stmt(&mut self, s: &Stmt) {
-            self.0 |= matches!(
-                s.kind,
-                StmtKind::Return(_) | StmtKind::Break(_) | StmtKind::Continue(_)
-            );
-        }
-    }
-    let mut v = Leaves(false);
-    cpl_syntax::visit::walk_expr(e, &mut v);
-    v.0
-}
-
-/// The in-place twin std declares for a value form: `sorted` is `sort`,
-/// `rotated_left` is `rotate_left`, read off std's `self` fns.
-fn in_place_twin(name: &str) -> Option<String> {
-    let heads = cpl_check::std_self_heads();
-    heads.get(name)?;
-    let (word, rest) = name
-        .split_once('_')
-        .map_or((name, None), |(w, r)| (w, Some(r)));
-    [word.strip_suffix('d'), word.strip_suffix("ed")]
-        .into_iter()
-        .flatten()
-        .map(|w| rest.map_or_else(|| w.to_string(), |r| format!("{w}_{r}")))
-        .find(|stem| heads.contains_key(stem))
 }
 
 /// Whether `file` calls std's `ask`, by the checker's callees.

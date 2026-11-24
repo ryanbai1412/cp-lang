@@ -80,9 +80,9 @@ Evidence: `crates/cpl-lint/src/corpus_tests.rs` (`corpus_warnings_only_go_down`)
 
 ### lint/U14: stay quiet when the suggested call wouldn't run
 Need: a help never suggests code that fails `cpl check`.
-Design: a lint is quiet when its replacement doesn't check (`(m..n by k).collect()`), or suggests a form that does (a typed lambda when a fold's fn takes a wider type).
+Design: a lint is quiet when its replacement doesn't check (`(m..n by k).collect()`).
 Milestone: M1-critical. Status: supported
-Evidence: `crates/cpl-lint/src/record_tests.rs` (`every_record_fix_adds_no_checker_error`); `crates/cpl-lint/src/corpus_tests.rs` (`fixes_never_add_checker_errors`); `crates/cpl-lint/src/idiom_tests.rs` (`loop_reduction_keeps_a_widening_call_in_a_typed_lambda`)
+Evidence: `crates/cpl-lint/src/record_tests.rs` (`every_record_fix_adds_no_checker_error`); `crates/cpl-lint/src/corpus_tests.rs` (`fixes_never_add_checker_errors`)
 
 ### lint/U15: stay quiet when a structure is kept for what the stdlib form loses
 Need: no "use the stdlib type" finding when the hand-rolled one serves something the replacement can't: an ordered query on a map, a queue head that is also a rank, buckets keyed by a computed value, a per-vertex child list.

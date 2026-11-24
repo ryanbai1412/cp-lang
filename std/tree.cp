@@ -1447,12 +1447,9 @@ fn path_updates_and_subtree_folds_over_one_lazy_tree():
                 for v in V:
                     if r.is_anc(a, v): val[v] += x
             _ =>
-                var want = 0
-                for v in on: want += val[v]
+                let want = sum(val[v] for v in on)
                 assert r.fold_path(a, b, seg, edges:) == want
-                var below = 0
-                for v in V:
-                    if r.is_anc(a, v): below += val[v]
+                let below = sum(val[v] for v in V if r.is_anc(a, v))
                 assert seg.fold(r.sub(a)) == below
 
 @test

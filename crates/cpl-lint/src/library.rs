@@ -7,7 +7,7 @@ use crate::walk::Visitor;
 use crate::{File, Finding, Group, Level, Lint};
 use cpl_check::Analysis;
 use cpl_diag::{Code, Span};
-use cpl_syntax::ast::{Cond, Expr, ExprKind, Stmt, StmtKind, Type};
+use cpl_syntax::ast::{Cond, Expr, ExprKind, FnDecl, Param, Stmt, StmtKind, Type, TypeKind};
 use cpl_syntax::library_lint::{self, is_name, Bound, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
 use std::collections::HashMap;
@@ -57,6 +57,104 @@ pub(crate) struct Declared {
     spell: Vec<(String, String)>,
 }
 
+/// `stmt`'s `@lint`s, each hole whose parameter's type parameter a sequence
+/// trait bounds (`self: S` with `S: Seq<T>`) typed by that trait.
+fn declared(stmt: &Stmt, offset: u32) -> Vec<LibraryLint> {
+    let mut decls = library_lint::declared(stmt, offset).0;
+    if let StmtKind::Fn(f) = &stmt.kind {
+        for d in &mut decls {
+            for i in 0..d.types.len().min(f.params.len()) {
+                if d.types[i].is_none() {
+                    d.types[i] = seq_bound(f, &f.params[i]);
+                }
+            }
+        }
+    }
+    // A defaulted parameter passed by its own name (`by: by`) may be left
+    // out: the spelling without it, in `from` and `to`, is declared too.
+    if let StmtKind::Fn(f) = &stmt.kind {
+        let optional: Vec<_> = (decls.iter())
+            .flat_map(|d| (f.params.iter()).filter_map(move |p| without(d, p)))
+            .collect();
+        decls.extend(optional);
+    }
+    let spelled: Vec<_> = (decls.iter())
+        .filter_map(|d| spelled_out(&d.from).map(|from| LibraryLint { from, ..d.clone() }))
+        .collect();
+    decls.extend(spelled);
+    decls
+}
+
+/// `d` with `p`, a defaulted parameter `from` passes by its own name
+/// (`, by: by`), left out of `from` and `to`.
+fn without(d: &LibraryLint, p: &Param) -> Option<LibraryLint> {
+    p.default.as_ref()?;
+    let arg = format!(
+        "{}: {}",
+        p.label.as_ref().unwrap_or(&p.name).text,
+        p.name.text
+    );
+    let drop = |s: &str| {
+        (s.replace(&format!(", {arg}"), ""))
+            .replace(&format!("({arg}, "), "(")
+            .replace(&format!("({arg})"), "()")
+    };
+    let from = drop(&d.from);
+    (from != d.from).then(|| LibraryLint {
+        from,
+        to: drop(&d.to),
+        ..d.clone()
+    })
+}
+
+/// A `from` statement `t += v` also matches `t = t + v`, and `t min= v`
+/// `t = min(t, v)`: the ops whose spelled-out right side is all of `v`.
+fn spelled_out(from: &str) -> Option<String> {
+    let mut changed = false;
+    let lines: Vec<String> = (from.split('\n'))
+        .map(|line| {
+            let body = line.trim_start();
+            let indent = &line[..line.len() - body.len()];
+            for op in ["+", "min", "max"] {
+                if let Some((t, v)) = body.split_once(&format!(" {op}= ")) {
+                    if !t.contains(' ') {
+                        changed = true;
+                        return match op {
+                            "+" => format!("{indent}{t} = {t} + {v}"),
+                            _ => format!("{indent}{t} = {op}({t}, {v})"),
+                        };
+                    }
+                }
+            }
+            line.to_string()
+        })
+        .collect();
+    changed.then(|| lines.join("\n"))
+}
+
+/// The sequence traits a hole's type parameter can be bounded by for it to
+/// match only code whose type meets the bound.
+const SEQ_BOUNDS: &[&str] = &["Seq", "Sized", "Bidir", "Indexed", "IndexedMut"];
+
+fn seq_bound(f: &FnDecl, p: &Param) -> Option<String> {
+    let TypeKind::Named { name, args } = &p.ty.as_ref()?.kind else {
+        return None;
+    };
+    if !args.is_empty() {
+        return None;
+    }
+    for b in &f.bounds {
+        for t in &b.traits {
+            if let TypeKind::Named { name: bound, .. } = &t.kind {
+                if b.name.text == name.text && SEQ_BOUNDS.contains(&&*bound.text) {
+                    return Some(bound.text.clone());
+                }
+            }
+        }
+    }
+    None
+}
+
 /// The usable `@lint` declarations of `analysis`'s file, every module it
 /// uses, and std's advice.
 pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
@@ -64,7 +162,7 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
     let mut add = |a: &Analysis, module: &str, spell: &dyn Fn(&str) -> Option<String>| {
         for item in &a.items {
             for stmt in &item.syntax.parsed.stmts {
-                for decl in library_lint::declared(stmt, item.offset).0 {
+                for decl in declared(stmt, item.offset) {
                     out.extend(declare(decl, module, spell));
                 }
             }
@@ -84,7 +182,8 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
             if let Some((local, _)) =
                 (analysis.imports().iter()).find(|(_, imp)| imp.module == i && imp.name == w)
             {
-                return (local != w).then(|| local.clone());
+                // A prelude key (`min of std.seq`) is not a spelling: the code writes `min`.
+                return (local != w && !local.contains(' ')).then(|| local.clone());
             }
             let (alias, _) = analysis.aliases().iter().find(|(_, &at)| at == i)?;
             Some(format!("{alias}.{w}"))
@@ -196,7 +295,7 @@ pub(crate) fn std_lints() -> &'static [(String, LibraryLint)] {
             let module = format!("std.{}", name.replace('/', "."));
             for (offset, item) in cpl_syntax::parse_file(outline).items {
                 for stmt in &item.stmts {
-                    let decls = library_lint::declared(stmt, offset).0;
+                    let decls = declared(stmt, offset);
                     out.extend(decls.into_iter().map(|d| (module.clone(), d)));
                 }
             }
@@ -334,6 +433,7 @@ struct Spans {
     /// Each branch of an `if` with an `elif` or `else`: where its test
     /// starts and its body ends. A branch matches an `if` from alone.
     branches: Vec<(u32, u32)>,
+    comprehensions: Vec<Span>,
 }
 
 impl Visitor for Spans {
@@ -344,9 +444,11 @@ impl Visitor for Spans {
     }
     fn expr(&mut self, expr: &Expr) {
         let span = expr.span.shift(self.base);
-        // A bare generator is a fold's argument, not a value a hole can move.
-        if !expr.is_generator() {
-            self.exprs.push(span);
+        self.exprs.push(span);
+        // A comprehension, bare or bracketed, is what a fold reads as math
+        // (`sum(f(x) for x in xs)`), not a value a hole moves.
+        if matches!(expr.kind, ExprKind::Comprehension { .. }) {
+            self.comprehensions.push(span);
         }
         if let Some(v) = crate::rules::constant(expr) {
             self.consts.insert((span.start, span.end), v);
@@ -475,7 +577,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     }
     let before = |at: u32| starting_before[(at as usize).min(file.src.len())];
     let mut ends: HashMap<u32, Vec<u32>> = HashMap::new();
-    for e in (spans.exprs.iter()).chain(&spans.types).chain(&spans.pats) {
+    let values = (spans.exprs.iter()).filter(|e| !spans.comprehensions.contains(e));
+    for e in values.chain(&spans.types).chain(&spans.pats) {
         ends.entry(e.start).or_default().push(e.end);
     }
     for s in &spans.stmts {
@@ -523,9 +626,29 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     // One fn's spellings of a lint share their sites: the first spelling
     // that matches a site takes it.
     let mut taken: HashMap<(&str, Span), Vec<Span>> = HashMap::new();
-    for d in declared {
+    // Fns declaring one lint share its exact sites too: the spelling with
+    // the fewest holes, the most specific, takes a site first.
+    let (mut claimed, mut claims): (Vec<Span>, Vec<&str>) = (Vec::new(), Vec::new());
+    let mut order: Vec<&Declared> = declared.iter().collect();
+    cpl_diag::sort_by_key(&mut order, |d| d.decl.holes.len() as u64);
+    for d in order {
         let to = library_lint::tokens(&d.decl.to);
         let to_labels = library_lint::labels(&to.iter().map(|t| t.kind).collect::<Vec<_>>());
+        // The names `to` uses that a binding could capture: not a member,
+        // reached through `.`.
+        let mut free: Vec<&str> = Vec::new();
+        for (i, t) in to.iter().enumerate() {
+            let w = &d.decl.to[t.span.start as usize..t.span.end as usize];
+            let owned = w.to_string();
+            if t.kind == K::Ident
+                && !to_labels[i]
+                && (i == 0 || to[i - 1].kind != K::Dot)
+                && !d.decl.holes.contains(&owned)
+                && !d.bound.contains(&owned)
+            {
+                free.push(w);
+            }
+        }
         let in_to = |h: &str| {
             (to.iter().zip(&to_labels)).any(|(t, label)| {
                 !label && &d.decl.to[t.span.start as usize..t.span.end as usize] == h
@@ -605,7 +728,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         let plain = vec![false; d.also.iter().chain(reads).fold(0, |n, p| n.max(p.len()))];
         let taken = taken.entry((&d.decl.name, d.decl.item)).or_default();
         // A hole whose parameter is written as a scalar type matches only
-        // code of that type, where the checker's types are at hand.
+        // code of that type, and one whose type parameter a sequence trait
+        // bounds only code meeting it, where the checker's types are at hand.
         let typed = |h: usize, (a, b): (usize, usize)| {
             let (Some(Some(want)), Some(facts)) = (d.decl.types.get(h), file.facts) else {
                 return true;
@@ -613,7 +737,14 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             let at = Span::new(toks[a].span.start, toks[b - 1].span.end);
             facts
                 .type_of(at)
-                .is_some_and(|t| t.widen().to_string() == *want)
+                .is_some_and(|t| match want.split('<').next().unwrap_or(want) {
+                    "Seq" => t.is_seq(),
+                    "Sized" => t.is_sized(),
+                    "Bidir" => t.is_bidir(),
+                    "Indexed" => t.is_indexed(),
+                    "IndexedMut" => t.is_indexed_mut(),
+                    _ => t.widen().to_string() == *want,
+                })
         };
         for site in sites {
             // Up to the last token: a block statement's span runs on to the
@@ -632,6 +763,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 || (fixes
                     && d.decl.receiver.is_none()
                     && (spans.fns.iter()).any(|(f, at)| *f == d.decl.fn_name && at.contains(span)))
+                || (0..claimed.len()).any(|i| claimed[i] == span && claims[i] == d.decl.name)
             {
                 continue;
             }
@@ -646,7 +778,18 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 at.and_then(|i| holes[i])
                     .is_some_and(|run| proven(file, &spans.consts, &toks, &text, run, b))
             };
+            // A name `from` binds that the code spells like a name `to`
+            // uses (`var sum = 0` for `let t = sum(..)`) would capture it.
+            // Inside the file's own fn of a name `to` uses, the fix would
+            // call that fn from itself; advice calls nothing.
+            let captures = || {
+                names.iter().any(|(_, user)| free.contains(&user.as_str()))
+                    || fixes
+                        && (spans.fns.iter())
+                            .any(|(f, at)| free.contains(&f.as_str()) && at.contains(span))
+            };
             if !matched
+                || captures()
                 || !d.decl.when.iter().all(bounded)
                 || !(holes.iter().enumerate()).all(|(h, run)| run.is_none_or(|r| typed(h, r)))
             {
@@ -847,7 +990,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             let indent: String = (file.src[line..].chars())
                 .take_while(|c| *c == ' ' || *c == '\t')
                 .collect();
-            let fix = fill(&d.decl.to, &got, &names, &d.spell, &indent, &stmts);
+            let fix =
+                identity_maps_dropped(fill(&d.decl.to, &got, &names, &d.spell, &indent, &stmts));
             let fix = match kinds.get(before(span.start)) {
                 Some(K::Elif) => format!("el{fix}"),
                 _ => fix,
@@ -917,6 +1061,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 diag = fixed;
             }
             taken.push(span);
+            claimed.push(span);
+            claims.push(&d.decl.name);
             out.push(Finding { lint: d.lint, diag });
         }
     }
@@ -1024,7 +1170,13 @@ impl Matcher<'_> {
                     self.runs(j, stop)
                 };
                 for k in runs {
-                    if self.repeated[h] && !pure(&self.kinds[j..k]) {
+                    // `to` may move an expression hole into a lambda or a
+                    // generator, which `return`, `break` or `continue`
+                    // cannot leave from.
+                    let leaves = !self.stmt[p]
+                        && (self.kinds[j..k].iter())
+                            .any(|k| matches!(k, K::Return | K::Break | K::Continue));
+                    if leaves || (self.repeated[h] && !pure(&self.kinds[j..k])) {
                         continue;
                     }
                     holes[h] = Some((j, k));
@@ -1175,6 +1327,27 @@ fn pure(kinds: &[K]) -> bool {
         .any(|w| w[1] == K::LParen && matches!(w[0], K::Ident | K::RParen | K::RBracket | K::Gt))
 }
 
+/// `xs.map(x => x)` is `xs`: a hole that matched the element itself maps
+/// nothing (`t min= x` against `self.map(x => v).min()`).
+fn identity_maps_dropped(s: String) -> String {
+    let mut out = String::new();
+    let mut rest = s.as_str();
+    while let Some(i) = rest.find(".map(") {
+        let (head, args) = (&rest[..i], &rest[i + 5..]);
+        let n = args.find(|c: char| !(c.is_alphanumeric() || c == '_'));
+        let tail = n.filter(|&n| n > 0).and_then(|n| {
+            let t = args[n..].strip_prefix(" => ")?.strip_prefix(&args[..n])?;
+            t.strip_prefix(')')
+        });
+        out.push_str(head);
+        rest = tail.unwrap_or_else(|| {
+            out.push_str(".map(");
+            args
+        });
+    }
+    out + rest
+}
+
 /// `to` with each hole replaced by what it matched, in brackets where the
 /// code around it would otherwise bind tighter. Each line of `to` after the
 /// first gets the site's `indent`, and a statement hole's lines move with
@@ -1215,11 +1388,22 @@ fn fill(
             let before = i.checked_sub(1).map(|i| toks[i].kind);
             let after = toks.get(i + 1).map(|t| t.kind);
             let labelled = before == Some(K::Colon) && i >= 2 && labels[i - 2];
+            // A generator's element (`(v for ..`), sequence (`in xs)`) and
+            // filter (`if c)`) take a whole expression, like an argument.
             let delimited = ((labelled
-                || matches!(before, Some(K::LParen | K::LBracket | K::Comma) | None))
-                && matches!(after, Some(K::RParen | K::RBracket | K::Comma) | None))
+                || matches!(
+                    before,
+                    Some(
+                        K::LParen | K::LBracket | K::Comma | K::Colon | K::If | K::In | K::FatArrow
+                    ) | None
+                ))
+                && matches!(
+                    after,
+                    Some(K::RParen | K::RBracket | K::Comma | K::Colon | K::If) | None
+                ))
                 || (before == Some(K::Eq) && after.is_none())
-                || (before == Some(K::LBracket)
+                || (before == Some(K::Colon) && after == Some(K::Eq))
+                || (matches!(before, Some(K::LBracket | K::LParen))
                     && after == Some(K::For)
                     && !clauses(m.trim_matches(['(', ')'])))
                 || (matches!(before, Some(K::If | K::Elif | K::While)) && after == Some(K::Colon));

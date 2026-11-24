@@ -2223,7 +2223,7 @@ fn sieve_tables_and_multiplicative_agree():
         assert mus[x] == s.mobius(x)
         let ds = divisors(x)
         assert dcnt[x] == ds.len and mult_d[x] == dcnt[x]
-        assert dsum[x] == sum(ds)
+        assert dsum[x] == ds.sum()
 
 @test
 fn mod_log_and_mod_sqrt_match_brute_force():
