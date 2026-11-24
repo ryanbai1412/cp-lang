@@ -20,11 +20,7 @@ fn cut(w: Walk, at: B) -> List<Walk>:
         return [w]
     let left = (l..=at).last_true(b => tall.fold(b..=at) >= w.y)!
     let right = (at..=r).first_true(b => tall.fold(at..=b) >= w.y)!
-    [
-        (span: l..=left, y: w.y),
-        (span: left..=right, y: w.y),
-        (span: right..=r, y: w.y),
-    ].filter(p => p.span.len > 1).collect()
+    [(span:, y: w.y) for span in [l..=left, left..=right, right..=r] if span.len > 1]
 
 let walks = [q for w in raw for p in cut((span: w.l..=w.r, y: w.y), s) for q in cut(p, g)]
 
@@ -53,6 +49,5 @@ for (i, w) in walks.items:
 for (p, q) in Stop.collect().adjacent if at.get(p).b == at.get(q).b:
     links.push((u: p, v: q, w: at.get(q).y - at.get(p).y))
 
-let edges = [links.keys] e => links[e]
-let net = Graph.undirected(edges)
+let net = Graph.undirected(links)
 print(dijkstra(net, from: [(stop(s, 0), 0)]).get(stop(g, 0)) ?? -1)
