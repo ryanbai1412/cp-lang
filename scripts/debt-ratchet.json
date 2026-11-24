@@ -229,7 +229,7 @@
   "habit_matchers": 0,
   "unchecked_fix_paths": 0,
   "stress_engines": 0,
-  "conformance_failing": 3,
+  "conformance_failing": 2,
   "conformance_wrong_output": 0,
   "rust_idiom_lints": 36,
   "scaling_mismatches": 0,
