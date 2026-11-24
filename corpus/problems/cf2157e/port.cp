@@ -13,7 +13,7 @@
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()
 domain Val = 1..=2 * n
-var freq: [Val]Int = 0
+var freq: [Val]0..=n = 0
 repeat n:
     let a: Val = read()
     freq[a] += 1
