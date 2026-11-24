@@ -7,3 +7,4 @@
 - **General fix:** infer `flat_map`'s element type from the closure's list literal (sent to Core).
 - **Goal it hurts:** express.
 - **Severity:** low.
+- **Fixed (2026-11-24):** the `flat_map ... .sorted()` above checks and runs under a fresh `cpl run`; the port still pushes in a loop and owes the rewrite (`research/reviews/ucrpc21e.md`).

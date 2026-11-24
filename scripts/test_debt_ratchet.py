@@ -968,6 +968,12 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertIn("must stay at 0", errs[0])
 
+    def test_an_unscored_review_fails_the_ratchet(self) -> None:
+        self.assertIn("reviews_pending", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"reviews_pending": 1}, {"reviews_pending": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
     def test_a_review_without_a_port_or_dream_is_an_orphan(self) -> None:
         self.assertIn("reviews_orphan", dr.HARD_ZERO)
         with tempfile.TemporaryDirectory() as d:
