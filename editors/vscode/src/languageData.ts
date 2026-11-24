@@ -64,7 +64,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'Pt3', 'RangeFenwick', 'RangeKth', 'Ratio', 'Rebased', 'Rect', 'RelaxedConvolve', 'Rev',
     'Reversible', 'Reweighted', 'Ring', 'RingRange', 'RingSlice', 'Rng', 'RollbackArray',
     'RollingHash', 'RollingHash61', 'Rooted', 'Rope', 'SegTree', 'SegTree2D', 'Selective',
-    'SemiRelaxedConvolve', 'Semigroup', 'Semiring', 'Settle', 'Sieve', 'Sign', 'SimpleGraph',
+    'SemiRelaxedConvolve', 'Semigroup', 'Semiring', 'Sep', 'Settle', 'Sieve', 'Sign', 'SimpleGraph',
     'Slice', 'SortedBag', 'SortedMap', 'SortedRange', 'SortedSet', 'SosOver', 'SparseFenwick2D',
     'SparseIntervalMap', 'SparseIntervalSet', 'SparseSet', 'SparseTable', 'SparseTable2D', 'Step',
     'StepKeys', 'Stepped', 'SubproductTree', 'SubseqStep', 'Subset', 'SuffixArray',

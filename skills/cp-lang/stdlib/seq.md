@@ -120,6 +120,10 @@ The view `keyed` returns.
 - `fn mark(self) -> Int` — \(O(1)\)
 - `fn undo_to(mut self, m: Int)` — \(O(1)\) amortized per undone push; \(O(1)\) amortized.; traps: when `m` is not a live mark of this stack
 
+## `trait Sep<T>`
+
+What `split(sep:)` cuts at: an element equal to a value, or one where a predicate holds (decision 456).
+
 ## `enum Anchor`
 
 Which end of a piece a two-pointer result is keyed by.
@@ -301,7 +305,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty.
 - `fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 - `@get fn swap<A>(self: (A, A)) -> (A, A)` — \(O(1)\)
-- `fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S>` — \(O(n)\); Pieces between elements where `sep` holds; separators excluded, empty pieces kept.
+- `fn split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>` — \(O(n)\); Pieces between separators: elements equal to `sep`, or where the predicate `sep` holds.
 - `fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions.; traps: never in release; debug traps when `ok` fails on a single element after a shrink
 - `fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>` — \(O(n)\) amortized pushes and pops on `state`; For each right end, the shortest piece ending there that is `ok` (its positions), or None, keyed by that end like the ring forms; `anchor: Anchor.Start` keys by left end.
 - `@get fn ring<D, T>(self: [D]T) -> Ring<D, T>` — \(O(1)\); \(O(1)\) to make.

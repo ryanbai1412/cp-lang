@@ -251,7 +251,6 @@ Fields: `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<A>`.
 - `fn trim(self: Str) -> Str` — \(O(\lvert \mathit{self} \rvert)\); A copy of `self` with leading and trailing whitespace (`Char.is_space`) removed; inner whitespace is kept.
 - `fn trim_start(self: Str) -> Str` — \(O(\lvert \mathit{self} \rvert)\); A copy of `self` with leading whitespace (`Char.is_space`) removed.
 - `fn trim_end(self: Str) -> Str` — \(O(\lvert \mathit{self} \rvert)\); A copy of `self` with trailing whitespace (`Char.is_space`) removed.
-- `fn split(self: Str, sep: Char) -> List<Str>` — \(O(\lvert \mathit{self} \rvert)\); The pieces of `self` between occurrences of `sep`, as new strings.
 - `fn split_once(self: Str, sep: Char) -> ?(Str, Str)` — \(O(\lvert \mathit{self} \rvert)\); `self` cut at the first `sep` into `(before, after)`, neither holding that `sep`; `None` when `sep` does not occur.
 - `fn split_whitespace(self: Str) -> List<Str>` — \(O(\lvert \mathit{self} \rvert)\); The maximal runs of non-whitespace characters of `self` (`Char.is_space` separates), as new strings.
 - `fn join<S: Seq>(self: Str, parts: S) -> Str` — \(O(\text{total output length})\); The elements of `parts` in order with `self` between each adjacent pair: `", ".join(xs)`.
