@@ -396,7 +396,22 @@ fn check(program: &Path, group: &str) -> Result<(), String> {
     }
     let source = std::fs::read_to_string(program).map_err(|e| e.to_string())?;
     let cpp = String::from_utf8_lossy(&built.stdout);
-    for line in source.lines().filter(|line| !line.trim().is_empty()) {
+    // Over the judge's aim the source goes last (decision 271); the header says so.
+    let headerless = built
+        .stderr
+        .contains("the source in the header is left out");
+    if headerless
+        && !cpp
+            .lines()
+            .next()
+            .is_some_and(|l| l.contains("which is left out"))
+    {
+        return Err("the C++ leaves out the source but its header does not say so".into());
+    }
+    for line in source
+        .lines()
+        .filter(|line| !headerless && !line.trim().is_empty())
+    {
         if !cpp.contains(&format!("//     {line}")) {
             return Err(format!(
                 "the C++ does not open with the source: `{line}` is missing"
