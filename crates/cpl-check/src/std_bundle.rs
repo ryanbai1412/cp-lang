@@ -24,14 +24,40 @@ pub fn without_comments(text: &str) -> String {
 
 /// What a browser build's index carries for module `name` of `text`: the
 /// `EMBEDDED` modules whole, without comments, and the others' outlines
-/// without their private fns.
+/// without their private fns, each `todo` body on its header's line.
 pub fn browser_index(name: &str, text: &str) -> String {
     let text = without_tests(text);
     if EMBEDDED.contains(&name) {
         without_comments(&text)
     } else {
-        without_private_fns(&outline(&text))
+        with_bodies_inline(&without_private_fns(&outline(&text)))
     }
+}
+
+/// `text` with each fn whose return type is written and whose body is the
+/// outline's `todo` on the next line given it as `= todo` on its header's
+/// line, as the outline writes a one-line body: the same declaration, a
+/// line lighter. The `todo` line stays, blank.
+pub fn with_bodies_inline(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut lines = text.split_inclusive('\n').peekable();
+    let indent = |l: &str| l.len() - l.trim_start().len();
+    while let Some(line) = lines.next() {
+        let code = line.trim_end_matches(['\n', '\r']);
+        let typed = code.strip_suffix(':').filter(|head| head.contains("->"));
+        let body =
+            typed.and_then(|_| lines.next_if(|l| l.trim() == "todo" && indent(l) > indent(code)));
+        match (typed, body) {
+            (Some(head), Some(body)) => {
+                out.push_str(head);
+                out.push_str(" = todo");
+                out.push_str(&line[code.len()..]);
+                out.push_str(&body[body.trim_end_matches(['\n', '\r']).len()..]);
+            }
+            _ => out.push_str(line),
+        }
+    }
+    out
 }
 
 /// `text` with each non-`pub` fn blanked, header and body: only the
@@ -127,7 +153,14 @@ pub fn call_table<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::without_private_fns;
+    use super::{with_bodies_inline, without_private_fns};
+
+    #[test]
+    fn a_todo_body_under_a_typed_header_moves_onto_it() {
+        let text = "pub fn f(a: Int) -> Int:\n    todo\npub fn g(\n    a: Int,\n) -> Int:\n    todo\npub fn h(self):\n    todo\npub struct S:\n    pub fn m(self) -> ?Int:\n        todo\npub fn k() -> Int = todo\n";
+        let want = "pub fn f(a: Int) -> Int = todo\n\npub fn g(\n    a: Int,\n) -> Int = todo\n\npub fn h(self):\n    todo\npub struct S:\n    pub fn m(self) -> ?Int = todo\n\npub fn k() -> Int = todo\n";
+        assert_eq!(with_bodies_inline(text), want);
+    }
 
     #[test]
     fn private_fns_are_blanked_and_every_line_stays() {

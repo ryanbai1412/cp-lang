@@ -860,6 +860,44 @@ mod tests {
         }
     }
 
+    /// The browser's index declares what the outline does: each line is
+    /// the outline's, or its typed header with the `todo` body below moved
+    /// onto it, and it parses as cleanly.
+    #[test]
+    fn std_in_the_browser_build_declares_what_its_outline_does() {
+        for (name, text) in std_sources() {
+            if crate::std_files::EMBEDDED.contains(&name.as_str()) {
+                continue;
+            }
+            let text = crate::std_files::without_tests(&text);
+            let outline = crate::std_bundle::without_private_fns(&crate::std_files::outline(&text));
+            let shipped = crate::std_bundle::browser_index(&name, &text);
+            let (was, now): (Vec<&str>, Vec<&str>) =
+                (outline.lines().collect(), shipped.lines().collect());
+            assert_eq!(was.len(), now.len(), "{name}: lines moved");
+            for at in 0..was.len() {
+                let moved = was[at].strip_suffix(':').is_some_and(|head| {
+                    now[at] == format!("{head} = todo")
+                        && was[at + 1].trim() == "todo"
+                        && now[at + 1].is_empty()
+                });
+                let emptied = at > 0
+                    && was[at].trim() == "todo"
+                    && now[at].is_empty()
+                    && now[at - 1].ends_with(" = todo");
+                assert!(
+                    moved || emptied || was[at] == now[at],
+                    "std.{name}:{}: `{}` became `{}`",
+                    at + 1,
+                    was[at],
+                    now[at]
+                );
+            }
+            let errors = |t: &str| cpl_syntax::parse_file(t).diagnostics.len();
+            assert_eq!(errors(&shipped), errors(&outline), "std.{name}");
+        }
+    }
+
     #[test]
     fn std_in_the_browser_build_is_within_its_gzipped_cap() {
         const CAP: usize = 47_900;
