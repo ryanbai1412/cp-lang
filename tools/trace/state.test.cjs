@@ -280,3 +280,37 @@ test("source lines grow with long code so the current-line highlight spans the s
   assert.match(css, /\.line \{[^}]*width: max-content; min-width: 100%;/);
   assert.match(css, /\.code \{[^}]*overflow: auto;/);
 });
+
+// The largest trace the viewer takes (100,000 steps a run, both runs, a
+// 1000-cell array in every step) opens on its answer and scrubs within budget.
+test("the viewer stays fast on the largest trace it takes", () => {
+  const STEPS = 100000, CELLS = 1000, code = Array.from({length:10}, (_, i) => `line ${i}`).join("\n");
+  const run = (label, planted) => {
+    const a = new Array(CELLS).fill(0), steps = [];
+    for (let i = 0; i < STEPS; i++) {
+      a[i % CELLS] += 1 + (i === 70000 ? planted : 0);
+      steps.push({id:i, line:1 + i % 10, label:`a[${i % CELLS}]`, stage:"loop", values:{a:a.slice(), i}, locals:{},
+        ...(i % 100 === 0 ? {checkpoint:`c${i}`} : {})});
+    }
+    return {label, steps};
+  };
+  const trace = {schemaVersion:1, title:"large", source:{file:"big.cp", code},
+    variables:{a:{name:"a", kind:"array", type:"[0..1000]Int"}, i:{name:"i", kind:"scalar", type:"Int"}},
+    runs:{fast:run("fast", 1), slow:run("spec", 0)}};
+  let started = performance.now();
+  T.validate(trace);
+  const analysis = T.analyze(trace), s = T.summary(trace, analysis);
+  const open = performance.now() - started;
+  assert.equal(s.title, "First divergence at step 70001");
+  assert.ok(open < 4000, `opening took ${open.toFixed(0)} ms (budget 4000)`);
+  let worst = 0;
+  for (let k = 0; k < 1000; k++) {
+    const i = (k * 7919) % STEPS;
+    started = performance.now();
+    T.changes(trace.runs.fast, i, ["a", "i"]);
+    T.referenceAt(analysis, i);
+    T.valueAt(trace.runs.fast.steps[i].values, "a", [i % CELLS]);
+    worst = Math.max(worst, performance.now() - started);
+  }
+  assert.ok(worst < 16, `a scrub took ${worst.toFixed(1)} ms (budget one 16 ms frame)`);
+});

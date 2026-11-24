@@ -178,7 +178,7 @@ tests for wording.
 | Large values stay visible | values over the trace's size cap shown as `[]` | hand-written suite: a 30000-cell array is drawn by a window of its cells | `crates/cpl-cli/tests/trace_goldens.rs` `a_large_array_is_drawn_by_a_window` |
 | Library code stays out of a user's trace | steps inside an imported module's fns the trace didn't ask for | design: the tracer steps over library calls (`debugging/R2`); saved traces of std calls | `crates/cpl-cli/tests/trace_goldens.rs` `every_program_records_its_saved_trace` |
 | Huge traces can be narrowed to what matters | filters by fn, test, watch, depth, window | hand-written suite | `crates/cpl-cli/tests/trace_filters.rs` |
-| Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | budget test, run by hand; `missing` as a gate | `crates/cpl-interp/tests/trace_log.rs` `ten_million_steps_fit_the_debugging_budgets` (ignored); `missing` |
+| Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | gate at 10^6 steps on every run, bounds only go down toward the 1.2x target; the 10^7-step budget test by hand | `crates/cpl-interp/tests/trace_log.rs` `tracing_stays_cheap_enough_to_leave_on`, `ten_million_steps_fit_the_debugging_budgets` (ignored) |
 | Tracing off costs nothing | untraced time before and after the observer | design: untraced runs use a no-op observer | `crates/cpl-interp/src/lib.rs` |
 
 ### Time travel and the editor
@@ -199,8 +199,8 @@ tests for wording.
 | The viewer reads every trace the recorder writes | traces failing the schema | unit tests against the schema | `tools/trace/trace.test.cjs`, `tools/trace/state.test.cjs` (in `scripts/check.sh`) |
 | The first screen shows the answer: the divergence or the trap | demos opening elsewhere | browser test | `crates/cpl-cli/tests/trace_browser.rs` (skipped without Chrome) |
 | The viewer works offline from one file | external requests | design: one file, everything inlined | `tools/trace/index.html` |
-| The viewer stays fast on large traces | time to first paint and to scrub at 10^6 steps | `missing` | `missing` |
-| The viewer in the playground matches the CLI's | traces differing between wasm and native | `missing`: the browser still traces on the tree-walker | `missing` |
+| The viewer stays fast on large traces | time to open on the answer and to scrub at the viewer's 100,000-step cap (longer runs are windowed with `--from`) | budget test: open under 4 s, each scrub within a 16 ms frame | `tools/trace/state.test.cjs` `the viewer stays fast on the largest trace it takes` |
+| The viewer in the playground matches the CLI's | traces differing between wasm and native | differential: the playground's trace of every test program against `cpl run --trace --format json` | `crates/cpl-wasm/tests/parity.rs` `trace_matches_cpl_run_trace` |
 
 ### Across the domain
 

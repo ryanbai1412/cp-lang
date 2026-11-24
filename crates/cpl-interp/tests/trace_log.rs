@@ -770,3 +770,49 @@ fn an_untraced_run_keeps_the_last_values_a_traced_one_does() {
         assert_eq!(lives(false), traced, "{source}");
     }
 }
+
+/// The gate under the budgets above, at 10^6 steps so every run has it.
+/// The bounds are today's cost with room for a busy machine and only go
+/// down, toward the 1.2x the budgets ask for: the hooks with nothing kept
+/// cost 2.1x an untraced run, recording every step 7x (10.6x unoptimized).
+#[test]
+fn tracing_stays_cheap_enough_to_leave_on() {
+    let source = "var x = 0\nfor i in 0..1000000:\n    x += i % 7\nprint(x)\n";
+    let program = program(source);
+    let least = |config: Option<TraceConfig>| {
+        (0..RUNS)
+            .map(|_| {
+                let started = Instant::now();
+                let io = cpl_interp::Io::fixed(b"");
+                cpl_interp::run_observed(&program, io, &mut Vec::new(), config.clone());
+                started.elapsed().as_secs_f64()
+            })
+            .fold(f64::INFINITY, f64::min)
+    };
+    let plain = least(None);
+    let observed = least(Some(TraceConfig {
+        source: source.into(),
+        only_fn: Some("not_a_fn".into()),
+        ..TraceConfig::default()
+    })) / plain;
+    let recorded = least(Some(TraceConfig {
+        source: source.into(),
+        record_frames: true,
+        max_steps: Some(1_000_000),
+        ..TraceConfig::default()
+    })) / plain;
+    eprintln!("observed {observed:.2}x, recorded {recorded:.2}x an untraced run");
+    let (hooks, recording) = if cfg!(debug_assertions) {
+        (2.6, 13.0)
+    } else {
+        (2.6, 8.5)
+    };
+    assert!(
+        observed <= hooks,
+        "the hooks alone made the run {observed:.2}x slower (bound {hooks}x)"
+    );
+    assert!(
+        recorded <= recording,
+        "recording made the run {recorded:.2}x slower (bound {recording}x)"
+    );
+}
