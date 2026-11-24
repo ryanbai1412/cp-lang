@@ -1194,9 +1194,10 @@ pub(crate) fn entry_binding(ty: &Ty, cpp: &str, var: &str, e: &str) -> String {
 }
 
 /// A non-scalar value the C++ copies: a `let` of a place (at the span of
-/// what it reads) or a closure's by-value capture (closure id, name).
+/// what it reads, with the fn instance that makes it: each instance of a
+/// generic fn is its own C++) or a closure's by-value capture (closure id, name).
 pub(crate) enum Copied {
-    Let(cpl_diag::Span, &'static str),
+    Let(cpl_diag::Span, &'static str, Option<usize>),
     /// A copy in a library fn, at the span of the call that runs it, with
     /// the fn and the name it binds: two in one call are two copies.
     Library(cpl_diag::Span, String, &'static str),
@@ -1355,7 +1356,7 @@ impl Emitter<'_> {
             return None;
         }
         self.copies.retain(|c| {
-            !matches!(c, Copied::Let(span, why) | Copied::Library(span, _, why)
+            !matches!(c, Copied::Let(span, why, _) | Copied::Library(span, _, why)
                 if *span == inner.span && *why == SOME_COPY)
         });
         Some(format!("{}(std::move({}))", self.ty(ty), self.names[slot]))
@@ -1574,7 +1575,7 @@ impl Emitter<'_> {
         slot: Option<usize>,
     ) {
         let Some(id) = self.fn_id.filter(|_| self.in_library()) else {
-            return self.copies.push(Copied::Let(span, why));
+            return self.copies.push(Copied::Let(span, why, self.fn_id));
         };
         let name = slot.map(|s| self.locals()[s].name.clone());
         let fun = &self.program.fn_display[id];
@@ -1667,18 +1668,25 @@ pub(crate) fn copy_sites(
     for c in &program.closures {
         cpl_ir::walk::deep_exprs(&c.body, &mut visit);
     }
-    let mut sites: Vec<_> = copies
+    let mut once: Vec<_> = copies
         .iter()
         .filter_map(|c| match c {
-            Copied::Let(span, why) => Some((*span, String::new(), *why)),
+            Copied::Let(span, why, fun) => Some((*span, String::new(), *why, *fun)),
             Copied::Library(..) => None,
-            Copied::Capture(cid, name, why) => {
-                Some((*at.get(cid)?, format!("`{name}` captured by value"), *why))
-            }
+            Copied::Capture(cid, name, why) => Some((
+                *at.get(cid)?,
+                format!("`{name}` captured by value"),
+                *why,
+                None,
+            )),
         })
         .collect();
-    sites.sort_by_key(|(span, what, why)| (span.start, what.clone(), *why));
-    sites.dedup_by(|a, b| a == b);
+    once.sort_by_key(|(span, what, why, fun)| (span.start, what.clone(), *why, *fun));
+    once.dedup_by(|a, b| a == b);
+    let mut sites: Vec<_> = once
+        .into_iter()
+        .map(|(span, what, why, _)| (span, what, why))
+        .collect();
     // Each library copy is its own site in the C++, though several share
     // the call that runs them: `return id` twice in one fn is two copies.
     sites.extend(copies.iter().filter_map(|c| match c {

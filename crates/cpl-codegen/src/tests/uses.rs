@@ -418,3 +418,18 @@ fn a_hoisted_let_of_a_whole_list_is_listed() {
     assert!(out.contains("t0 = a;"), "{out}");
     assert!(!copy_reasons(src).is_empty());
 }
+
+#[test]
+fn a_copy_in_a_generic_fn_is_listed_once_per_instance() {
+    let source = "fn f<T>(rows: List<List<T>>, x: T) -> Int:
+    var own = rows[0]
+    own.push(x)
+    own.len
+print(f([[1], [2]], 3))
+print(f([[\"a\"]], \"b\"))
+";
+    assert_eq!(
+        copy_reasons(source),
+        [crate::uses::SET_AGAIN, crate::uses::SET_AGAIN]
+    );
+}

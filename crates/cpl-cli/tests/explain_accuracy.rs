@@ -1023,6 +1023,7 @@ const CASES: &[&str] = &[
     "std-beats/beats-bodies-examples.cp",
     "core-07/step-on-list.cp",
     "std-models/graph-cuts.cp",
+    "std-poly/generic-shift-div-match-brute.cp",
 ];
 
 #[test]
