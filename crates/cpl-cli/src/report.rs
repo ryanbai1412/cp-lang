@@ -227,43 +227,43 @@ pub fn report(
     }
 
     let mut extra_paths: Vec<String> = Vec::new();
-    let (source_name, source_text, mut input_bytes, ice_meta, ice_backtrace) = if last {
-        match load_latest_bundle(&crash_dir()) {
+    let (source_name, source_text, mut input_bytes, ice_meta, ice_backtrace) = match file {
+        None => match load_latest_bundle(&crash_dir()) {
             Ok(b) => (b.source_name, b.source_text, b.input, b.meta, b.backtrace),
             Err(msg) => {
                 *stderr += &format!("cpl: {msg}\n");
                 return EXIT_ERRORS;
             }
-        }
-    } else {
-        let path = file.unwrap();
-        extra_paths.push(path.to_string());
-        if let Ok(canon) = std::fs::canonicalize(path) {
-            extra_paths.push(canon.to_string_lossy().into_owned());
-        }
-        let text = match std::fs::read_to_string(path) {
-            Ok(t) => t,
-            Err(e) => {
-                *stderr += &format!("cpl: can't read `{path}`: {e}\n");
-                return EXIT_USAGE;
-            }
-        };
-        let input = if let Some(ip) = input_path {
-            extra_paths.push(ip.to_string());
-            if let Ok(canon) = std::fs::canonicalize(ip) {
+        },
+        Some(path) => {
+            extra_paths.push(path.to_string());
+            if let Ok(canon) = std::fs::canonicalize(path) {
                 extra_paths.push(canon.to_string_lossy().into_owned());
             }
-            match std::fs::read(ip) {
-                Ok(b) => b,
+            let text = match std::fs::read_to_string(path) {
+                Ok(t) => t,
                 Err(e) => {
-                    *stderr += &format!("cpl: can't read input `{ip}`: {e}\n");
+                    *stderr += &format!("cpl: can't read `{path}`: {e}\n");
                     return EXIT_USAGE;
                 }
-            }
-        } else {
-            drain_stdin(stdin)
-        };
-        (basename(path), Some(text), input, None, None)
+            };
+            let input = if let Some(ip) = input_path {
+                extra_paths.push(ip.to_string());
+                if let Ok(canon) = std::fs::canonicalize(ip) {
+                    extra_paths.push(canon.to_string_lossy().into_owned());
+                }
+                match std::fs::read(ip) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        *stderr += &format!("cpl: can't read input `{ip}`: {e}\n");
+                        return EXIT_USAGE;
+                    }
+                }
+            } else {
+                drain_stdin(stdin)
+            };
+            (basename(path), Some(text), input, None, None)
+        }
     };
 
     // Materialize source in a scratch directory when running from `--last` or
@@ -922,9 +922,9 @@ fn strip_unix_abs_paths(text: &str) -> String {
     let bytes = text.as_bytes();
     let mut out = String::with_capacity(text.len());
     let mut i = 0;
-    while i < bytes.len() {
+    while let Some(ch) = text[i..].chars().next() {
         let prev = if i > 0 { Some(bytes[i - 1]) } else { None };
-        let at_path_start = bytes[i] == b'/'
+        let at_path_start = ch == '/'
             && !matches!(
                 prev,
                 Some(b':' | b'/' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' | b'-' | b'.')
@@ -955,9 +955,21 @@ fn strip_unix_abs_paths(text: &str) -> String {
                 }
             }
         }
-        let ch = text[i..].chars().next().unwrap();
         out.push(ch);
         i += ch.len_utf8();
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::strip_unix_abs_paths;
+
+    #[test]
+    fn stripping_paths_keeps_non_ascii_text_and_urls() {
+        assert_eq!(
+            strip_unix_abs_paths("é /work/u/a.cp: ✗ at https://example.com/y"),
+            "é a.cp: ✗ at https://example.com/y"
+        );
+    }
 }
