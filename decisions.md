@@ -9015,3 +9015,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** `scripts/spec-gate.py coverage` still fails on a rule without the cases it needs, and writes its report to `target/spec/COVERAGE.md` (`--print` prints it). CI's checks job keeps it as the `conformance-coverage` artifact. `spec/conformance/COVERAGE.md` and its `gen.toml` entry are gone.
 - **Why.** Its case counts changed with every new case, so 425 of main's 521 regen commits on 2026-11-23/24 rewrote it, and spec rebases conflicted on it. A count nobody gates on belongs to the run that measured it.
 - **Reverse.** Commit the report again only for content that changes when coverage does (the gaps), never the counts.
+
+## 571. (reserved, content)
