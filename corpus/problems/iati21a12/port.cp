@@ -23,9 +23,11 @@ for i in 1..n:
 struct Lot(value: Int, count: Int)
 impl Add for Lot:
     fn add(x, y) = Lot(x.value + y.value, x.count)
+impl Ord for Lot:
+    fn lt(x, y) = x.value > y.value
 
 // supply[v]: the units still unclaimed in v's subtree, valued at v, most valuable first
-var supply: [V]MeldHeap<Lot> = [V] _ => MeldHeap(by: l => -l.value)
+var supply: [V]MeldHeap<Lot> = [V] _ => MeldHeap()
 var total = 0
 for u in V.rev:
     for (v, w) in kids[u]:
