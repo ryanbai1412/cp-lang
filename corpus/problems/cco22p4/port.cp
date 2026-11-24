@@ -43,7 +43,7 @@ fn fill(u: Node, k: Arrive) -> Z:
                 total += comb.choose(h, i) * comb.arrange(al + i, i) * comb.arrange(ar + h - i, h - i)
                     * ways(near, al + i) * ways(far, past)
             total
+        (Some(c), None) | (None, Some(c)) => comb.arrange(a + h, h) * ways(c, a + h - Int(a == spare(u)))
         (None, None) => Z(1)
-        _ => comb.arrange(a + h, h) * ways((left[u] ?? right[u])!, a + h - Int(a == spare(u)))
 
 print(if Node.any(u => spare(u) < 0): Z(0) else: ways(Node.first!, 0))
