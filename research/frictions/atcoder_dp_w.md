@@ -40,5 +40,8 @@ The header has no `limits:` line (header edit, idioms).
   `fold`, yet 25 SegTree functions (12,245 bytes) are emitted. They include the growing-tree
   paths (`grow`, `open_node`, `blank_at`, `kid`, `dense_width`), which a dense fixed domain never
   uses. Goal it hurts: submission. Severity: medium. Owner: Core (codegen); repro sent.
+  **Fixed by f74d4e0dd and 443583f46** (codegen prunes fold branches on list fields that nothing
+  reachable fills). On 0bed2e3b3 the port emits 28,405 bytes for `--judge atcoder` and 28,183
+  for `generic`, with no W0201. Perf measured the dense repro at 29,929 → 23,989 bytes.
 - **Measurements after the rewrite:** port 196 tokens; `--max` best of 3: port 0.13 s / 22.2 MB,
   accepted 0.47 s / 34.5 MB, same output. `corpus.py verify`: 0 findings.
