@@ -96,7 +96,8 @@ fn say(text: std::fmt::Arguments) {
     let _ = std::io::stderr().write_fmt(text);
 }
 
-fn watch(path: &str, recorded: Option<Vec<u8>>, live: &Live, record: Record) -> ! {
+/// Records again on every save; it returns only when the process is stopped.
+fn watch(path: &str, recorded: Option<Vec<u8>>, live: &Live, record: Record) -> u8 {
     let mut last = recorded;
     let mut files = cpl_wait::files::Watch::new(Duration::from_millis(200), || vec![path.into()]);
     loop {

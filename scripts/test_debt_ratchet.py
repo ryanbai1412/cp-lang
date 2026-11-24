@@ -412,6 +412,37 @@ class DebtRatchetTest(unittest.TestCase):
                 "#3 x: c (no such register row: 'Nope')",
             ])
 
+    def test_unwrap_input_counts_renamed_wrappers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "crates/a/src/invariant.rs", "\n".join([
+                "pub(crate) fn broken_invariant(invariant: &'static str) -> ! {",
+                '    panic!("broken invariant: {invariant}")', "}", ""]))
+            self._write(root, "crates/a/src/lib.rs", "\n".join([
+                'fn ok() { let Some(x) = y else { broken_invariant("y is set") }; }',
+                "#[track_caller]",
+                "fn stop() -> ! { loop {} }",
+                "fn forward(why: &'static str) { broken_invariant(why) }",
+                "fn get<T>(o: Option<T>) -> T {",
+                '    o.unwrap_or_else(|| broken_invariant("present"))',
+                "}",
+                "fn take(o: Option<u8>) -> u8 {",
+                "    match o {",
+                "        Some(v) => v,",
+                "        None => broken_invariant(",
+                '            "set",',
+                "        ),",
+                "    }",
+                "}",
+                "fn long(o: Option<u8>) -> u8 {", *(["    step();"] * 8),
+                '    o.unwrap_or_else(|| broken_invariant("set"))', "}",
+                "fn ends() -> u8 { loop {} }", ""]))
+            self._write(root, "crates/b/src/invariant.rs", "fn a() { panic!(); }\nfn b() { x.unwrap(); }\n")
+            self.assertEqual(dr.unwrap_input(root), [
+                "crates/a/src/lib.rs:2", "crates/a/src/lib.rs:3", "crates/a/src/lib.rs:4",
+                "crates/a/src/lib.rs:5", "crates/a/src/lib.rs:8", "crates/b/src/invariant.rs:2"])
+            self.assertEqual(dr.invariant_sites(root), [f"crates/a/src/lib.rs:{i}" for i in (1, 4, 6, 11, 25)])
+
     def test_new_debt_counters(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

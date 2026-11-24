@@ -1501,12 +1501,72 @@ def _ungated_lines(lines: list[str]) -> Iterator[tuple[int, str]]:
 
 
 UNWRAP_RE = re.compile(r"\.unwrap\(\)|\.expect\(|\bpanic!\(|\bunreachable!\(")
+# compiler-changes/R16: a crate's one stop for a broken invariant is `fn broken_invariant` in
+# its `src/invariant.rs`; that fn's panic is the only one allowed there.
+INVARIANT_FILE_RE = re.compile(r"^crates/[^/]+/src/invariant\.rs$")
+BROKEN_CALL_RE = re.compile(r"\bbroken_invariant\(")
+# What a renamed panic wrapper needs: to report its caller, or to never return.
+WRAPPER_MARK_RE = re.compile(r"#\[track_caller\]|\)\s*->\s*!\s*(?:\{|where\b|$)")
+WRAPPER_MAX_BODY = 8
+
+
+def _crate_src(root: Path) -> dict[str, list[tuple[int, str]]]:
+    files: dict[str, list[tuple[int, str]]] = defaultdict(list)
+    for rel, i, line in _src_lines(root):
+        files[rel].append((i, line))
+    return files
+
+
+def _broken_wrappers(rel: str, lines: list[tuple[int, str]]) -> Iterator[str]:
+    """Calls to `broken_invariant` that forward a name instead of stating one, and small generic
+    or `Option`/`Result`-taking fns calling it: wrappers that would hide their callers."""
+    for k, (i, line) in enumerate(lines):
+        for m in BROKEN_CALL_RE.finditer(line):
+            rest = line[m.end():].strip() or (lines[k + 1][1].strip() if k + 1 < len(lines) else "")
+            if not rest.startswith('"'):
+                yield f"{rel}:{i}"
+        fn = FN_RE.match(line)
+        if not fn:
+            continue
+        sig, j = line, k
+        while "{" not in lines[j][1] and j + 1 < len(lines) and not lines[j][1].rstrip().endswith(";"):
+            j += 1
+            sig += lines[j][1]
+        end = j + 1
+        while end < len(lines) and not (lines[end][1].strip() == "}" and _indent(lines[end][1]) == len(fn.group(1))):
+            end += 1
+        body = [b for _, b in lines[j + 1:end]]
+        params = sig.split("->")[0]
+        if (len(body) <= WRAPPER_MAX_BODY and any(BROKEN_CALL_RE.search(b) for b in body)
+                and (re.search(r"\bfn\s+\w+\s*<", sig) or re.search(r"\b(?:Option|Result)<", params))):
+            yield f"{rel}:{i}"
 
 
 def unwrap_input(root: Path) -> list[str]:
-    """`.unwrap()`, `.expect(`, `panic!(`, `unreachable!(` in shipped crate code:
-    input errors become diagnostics, invariants go behind one counted helper per crate."""
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root) for _ in UNWRAP_RE.finditer(line)]
+    """`.unwrap()`, `.expect(`, `panic!(`, `unreachable!(` in shipped crate code, and the
+    wrappers that would rename them (handbook/guidelines/compiler-changes-checklist.md#compiler-changes-r16):
+    input errors become diagnostics; an invariant stops through its crate's one
+    `invariant::broken_invariant`, whose own panic is the one not counted, and `invariant_sites`
+    counts its calls. A `#[track_caller]` or `-> !` fn elsewhere, a `broken_invariant` call
+    whose argument is not a literal, and a small generic or `Option`/`Result`-taking
+    fn that calls `broken_invariant` each count."""
+    out = []
+    for rel, lines in _crate_src(root).items():
+        found = [f"{rel}:{i}" for i, line in lines for _ in UNWRAP_RE.finditer(line)]
+        if INVARIANT_FILE_RE.match(rel):
+            out += found[1:]
+            continue
+        out += found
+        out += [f"{rel}:{i}" for i, line in lines if WRAPPER_MARK_RE.search(line)]
+        out += _broken_wrappers(rel, lines)
+    return sorted(out, key=lambda x: (x.rsplit(":", 1)[0], int(x.rsplit(":", 1)[1])))
+
+
+def invariant_sites(root: Path) -> list[str]:
+    """Calls to a crate's `invariant::broken_invariant` (compiler-changes/R16): facts the code
+    trusts but its types don't prove yet. Each one goes when a type makes it unbreakable."""
+    return [f"{rel}:{i}" for rel, lines in _crate_src(root).items() if not INVARIANT_FILE_RE.match(rel)
+            for i, line in lines for _ in BROKEN_CALL_RE.finditer(line)]
 
 
 def unsupported_sites(root: Path) -> list[str]:
@@ -2510,6 +2570,7 @@ COUNTERS = {
     "escapes_open": ("escaped bugs whose suite isn't fixed yet", escapes_open, False),
     "uncited_rules": ("lints and gates citing no handbook rule", uncited_rules, True),
     "unwrap_input": ("unwrap/expect/panic!/unreachable! in shipped crate code", unwrap_input, True),
+    "invariant_sites": ("calls to a crate's invariant::broken_invariant", invariant_sites, False),
     "unsupported_sites": ("lowering unsupported( calls and E0501 literals", unsupported_sites, True),
     "lsp_string_types": ("LSP lines reading types out of rendered text", lsp_string_types, True),
     "lint_post_filters": ("entries of cpl-lint after-the-fact tables", lint_post_filters, True),
