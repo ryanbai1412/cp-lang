@@ -1,5 +1,6 @@
 // Source: Codeforces 2245D2 (Construct an Array, Hard Version),
 //   https://codeforces.com/contest/2245/problem/D2
+// limits: 4000 ms, 1024 MB
 // Problem: find integers a[1..n], |a| <= 1e9, meeting m constraints (o, i, j), i <= j: o = 1
 //   needs a[i] + a[j] >= 0, o = 2 needs a[i] + a[j] < 0; print YES and a, or NO.
 //   n <= 2e5, m <= min(1e6, n(n + 1) / 2), each pair i <= j at most once; multitest, sum of

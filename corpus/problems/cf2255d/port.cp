@@ -1,4 +1,5 @@
 // Source: Codeforces 2255D, https://codeforces.com/contest/2255/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: multitest; n <= 2e5 integers 1 <= a_i <= 1e9 (sum n <= 2e5). Each second pick p:
 //   a_p becomes floor(a_p / 2), every other a_i becomes ceil(a_i / 2). Print the fewest seconds
 //   until all are 0.

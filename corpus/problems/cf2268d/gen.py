@@ -3,6 +3,8 @@ gives a statement-max input (sum of n = 1e6) picked by seed % 5: one random n = 
 (one spine of n - 1 edges); reversed; a sawtooth of descending runs under rising peaks; or 1e4
 tests of n = 100."""
 import sys, random
+if sys.argv[1] == "--max":  # sum n = 1e6: one n = 1e6 sawtooth (long descending runs under rising peaks)
+    sys.argv[1:] = ["3", "1000000"]
 
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 

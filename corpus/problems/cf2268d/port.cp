@@ -1,4 +1,5 @@
 // Source: Codeforces 2268 D (AghaBalaSar and Hamed), https://codeforces.com/contest/2268/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: a permutation p of length n; from i one step goes to any j < i or to the first
 //   j > i with p_j > p_i. f(i, j) is the fewest steps from i to j (0 if unreachable); print
 //   the sum of f over all pairs. Multitest, sum of n <= 1e6.

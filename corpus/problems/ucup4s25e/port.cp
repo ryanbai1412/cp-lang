@@ -10,6 +10,7 @@
 //   maxima in O(hi - lo) time.
 // Taking the upper hull of the per-length maxima and maximizing `dot(p, Pt(v, 1))`
 // answers each query in O(log n).
+// limits: 4000 ms, 1024 MB
 use std.geometry.{hull_extreme, minkowski_upper, upper_hull}
 
 @!multitest

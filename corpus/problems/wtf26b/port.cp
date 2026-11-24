@@ -1,5 +1,6 @@
 // Source: AtCoder World Tour Finals 2026 B (Window Records),
 //   https://atcoder.jp/contests/awtf2026algo/tasks/awtf2026algo_b
+// limits: 2000 ms, 2048 MB
 // Problem: given A[1..N] (2 <= N <= 50, 1 <= A_i <= N), count sequences x with 1 <= x_i <= A_i
 //   for which some permutation p of 1..2N-1 has exactly x_i prefix maxima in each window
 //   p[i..i+N-1], mod 998244353.

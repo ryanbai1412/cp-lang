@@ -10,6 +10,7 @@
 // only falls as `i` does, so a min `Window` over `dp[i + 1..=oldest]` keeps
 // `min(dp[i + 1..=first_full])` by popping its oldest positions. Finally, the first chosen position must lie in
 // `1..=first_0` where `first_0 = last_occ.get(0) ?? (n + 1)`.
+// limits: 2000 ms, 256 MB
 
 @!multitest
 let (n, r): (1..=500_000, 1..=500_000) = read()

@@ -1,5 +1,6 @@
 // Source: Codeforces 2261F1 (Plegma II: Ask Me Any Cell, Easy Version),
 //   https://codeforces.com/contest/2261/problem/F1
+// limits: 2000 ms, 256 MB
 // Problem: given n (3 or 20), print n^2 binary n x n grids, the one for target (r, c) with
 //   at most k zeros (k = 9, 24), and a table a_0..a_{n^2} of moves U/L/D/R: starting from the
 //   whole grid, a robot makes 2n - 2 moves, each shrinking one side of its rectangle by the

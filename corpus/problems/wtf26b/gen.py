@@ -1,6 +1,8 @@
 """wtf26b generator: `seed size`; size >= 50 gives N = 50 (all N, random, all 1, ramps)."""
 import random
 import sys
+if sys.argv[1] == "--max":  # N = 50, every A_i = N (the most sequences x to count)
+    print(50); print(*[50] * 50); sys.exit()
 
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])

@@ -2,6 +2,8 @@
 gives a statement-max input picked by seed % 4: one test n = 2e5, m = 1e6 (YES); a complete
 n = 1413 (m = n(n + 1) / 2); 1e4 tests of n = 20, m = 100; or n = 2e5, m = 1e6 with noise (NO)."""
 import sys, random
+if sys.argv[1] == "--max":  # one case n = 2e5, m = 1e6 (both sums), satisfiable (the full peel)
+    sys.argv[1:] = ["0", "200000"]
 
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 

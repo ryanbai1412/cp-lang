@@ -10,6 +10,7 @@
 // vertices (mark one of the deg(v) children now, or stay unmarked). At the end
 // every vertex must be marked, so the answer is sum dp[i, 0] / i, divided by
 // the prod (n + z) equally likely growth sequences.
+// limits: 2000 ms, 256 MB
 type Z = Mod<998_244_353>
 
 let (n, m): (1..=500, 0..=500) = read()
