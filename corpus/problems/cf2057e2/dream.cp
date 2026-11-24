@@ -3,17 +3,23 @@
 // weight <= x costing 0 and the rest 1, dist(a, b) < k. Lighten the edges by increasing weight;
 // only an edge joining two zero-cost components changes dist, by one O(n^2) relaxation through it.
 @!multitest
+use std.graph.{floyd_warshall}
 let (n, m, q) = read<(2..=400, Int, 1..=3e5)>()
 domain V = 1..=n
 domain Q = 0..q
 let edges = read<[m](u: V, v: V, w: 1..=1e9)>().sorted(by: .w)
 let queries: [Q](a: V, b: V, k: Int) = read()
 
-var d = Graph<V>.undirected(edges).hops()
-var pending = Q.sorted(by: .k).group(by: i => (queries[i].a, queries[i].b))
-var ans: [Q]Int
+var hop: [V, V]?Int = None
+for e in edges:
+    for (x, y) in [(e.u, e.v), (e.v, e.u)]: hop[x, y] = 1
+assert floyd_warshall(mut hop)
+var d = [V, V] (i, j) => hop[i, j]!
+var pending: [V, V]List<Q> = []
+for i in Q.sort(by: i => queries[i].k): pending[queries[i].a, queries[i].b].push(i)
+var ans: [Q]Int = 0
 for e in edges if d[e.u, e.v] > 0:
-    for (i, j) in V * V:
+    for i in V, j in V:
         let via = min(d[i, e.u] + d[e.v, j], d[i, e.v] + d[e.u, j])
         if via < d[i, j]:
             d[i, j] = via
