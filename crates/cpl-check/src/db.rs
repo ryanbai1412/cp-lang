@@ -151,6 +151,8 @@ pub struct Analysis {
     /// Every diagnostic, in file positions and source order.
     pub diagnostics: Vec<Diagnostic>,
     pub items: Vec<AnalyzedItem>,
+    /// Each item's syntax, shared by every lookup into this file.
+    pub(crate) syntax: Arc<Vec<Arc<ItemSyntax>>>,
     pub(crate) scope: Arc<Scope>,
     pub(crate) facts: std::sync::OnceLock<Arc<crate::Facts>>,
     pub(crate) revision: crate::Revision,
@@ -1203,6 +1205,7 @@ impl Database {
                     check,
                 })
                 .collect(),
+            syntax: items.clone(),
             scope,
             facts: Default::default(),
             revision: crate::Revision(self.edits),
@@ -1382,12 +1385,23 @@ impl Database {
         analysis: &Analysis,
         name: &str,
     ) -> Option<Arc<Def>> {
-        let id = self.files.get(path)?.id;
-        let items: Vec<Arc<ItemSyntax>> = analysis.items.iter().map(|i| i.syntax.clone()).collect();
+        self.lookup_def(path, analysis, name).0
+    }
+
+    /// [`Self::lookup`] with the def's fingerprint, read from its memo.
+    pub(crate) fn lookup_def(
+        &mut self,
+        path: &str,
+        analysis: &Analysis,
+        name: &str,
+    ) -> (Option<Arc<Def>>, u64) {
+        let Some(id) = self.files.get(path).map(|f| f.id) else {
+            return (None, 0);
+        };
         let mut ctx = FileCtx {
             db: self,
             file: id,
-            items: Arc::new(items),
+            items: analysis.syntax.clone(),
             scope: analysis.scope.clone(),
             frames: Vec::new(),
             in_progress: Vec::new(),
@@ -1400,7 +1414,7 @@ impl Database {
             vars: None,
             impl_names: None,
         };
-        ctx.def(name).0
+        ctx.def(name)
     }
 
     /// Drops memos that no recent revision used, once they outnumber the
@@ -1842,12 +1856,9 @@ impl FileCtx<'_> {
     }
 
     fn module_def(&mut self, module: &Module, name: &str) -> (Option<Arc<Def>>, u64) {
-        match self.db.lookup(&module.path, &module.analysis, name) {
-            Some(def) => {
-                let fingerprint = def.fingerprint();
-                (Some(def), fingerprint)
-            }
-            None => (None, 0),
+        match self.db.lookup_def(&module.path, &module.analysis, name) {
+            (Some(def), fingerprint) => (Some(def), fingerprint),
+            (None, _) => (None, 0),
         }
     }
 

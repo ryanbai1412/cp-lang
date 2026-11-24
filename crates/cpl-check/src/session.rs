@@ -81,6 +81,7 @@ impl Default for Analysis {
             has_syntax_errors: false,
             diagnostics: Vec::new(),
             items: Vec::new(),
+            syntax: Arc::default(),
             scope: Arc::default(),
             facts: std::sync::OnceLock::new(),
             revision: Revision::default(),
