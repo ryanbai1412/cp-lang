@@ -51,9 +51,7 @@ impl<'a> Lowerer<'a> {
         }
         let mut test: Option<Expr> = None;
         for (one, _) in arms {
-            let Some(one) = one else {
-                return None;
-            };
+            let one = one?;
             test = Some(match test {
                 None => one,
                 Some(prev) => Expr {
