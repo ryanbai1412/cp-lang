@@ -3,136 +3,70 @@
 // Problem: n <= 1e6 cards with values s_i <= 2000, then m <= 1500 queries, each a list of primes
 //   <= 2000 (total length <= 18000). For each query count the subsets of cards whose product is
 //   divisible by every listed prime, mod 998244353.
-// Solution: a value <= 2000 has at most one prime factor above 41, so split primes into the 13
-//   small ones (a bitmask) and the big one. Subset sums (SOS) over small masks count cards whose
-//   small primes lie inside a mask, overall and per big prime. A query does inclusion-exclusion
-//   over subsets S of its small primes: of the cards avoiding S, each queried big prime b needs
-//   one of its c_b cards (2^c_b - 1) and the rest are free (2^rest), sign (-1)^|S|. Cost: SOS
-//   over 2^13 masks per big prime, then 2^|small| * |big| per query.
+// Solution: a value <= 2000 has at most one prime factor above 41, the 13th prime, so a card
+//   is a mask of its small primes and at most one big prime. Sum-over-subsets counts, for every
+//   mask, the cards whose small primes lie inside it, overall and per big prime. A query does
+//   inclusion-exclusion over the submasks S of its small primes: of the cards avoiding S, each
+//   queried big prime b needs one of its c_b cards (2^c_b - 1) and the rest are free (2^rest),
+//   sign (-1)^|S|. Cost: SOS over 2^13 masks per big prime, then 2^|small| * |big| per query.
+// Bounds: n: 1..=1e6; cards: 1..=2000; q: 1..=1500; c: 1..=18000; asked: 2..=2000
+use std.math.{submasks}
 
 type Z = Mod<998244353>
 
-let max_v = 2000
-let small_cnt = 13
-let full = (1 << small_cnt) - 1
+let n: 1..=1e6 = read()
+domain Val = 1..=2000
+let cards: [n]Val = read()
 
-let n: Int = read()
-var cnt = List.filled(max_v + 1, 0)
-for _ in 0..n:
-    let v: Int = read()
-    cnt[v] += 1
+let sieve = Sieve(Val.count)
+let primes = [p for p in 2..=Val.count if sieve.is_prime(p)]
+let smalls = 13
+var rank: [Val]?Int = None  // where a prime sits in `primes`
+for (j, p) in primes.items: rank[Val(p)] = Some(j)
 
-let sieve = Sieve(max_v)
-var small_p: List<Int> = []
-var big_id = List.filled(max_v + 1, 0)
-var big_cnt = 0
-for p in 2..=max_v:
-    if sieve.is_prime(p):
-        if small_p.len < small_cnt:
-            small_p.push(p)
-        else:
-            big_cnt += 1
-            big_id[p] = big_cnt
+var count: [Val]Int = 0
+for c in cards: count[c] += 1
 
-var small_mask = List.filled(max_v + 1, 0)
-var val_big = List.filled(max_v + 1, 0)
-for v in 1..=max_v:
-    var x = v
-    var sm = 0
-    for j in 0..small_cnt:
-        let p = small_p[j]
-        if x % p == 0:
-            sm = sm | (1 << j)
-            while x % p == 0: x /= p
-    small_mask[v] = sm
-    if x > 1:  // the big prime, or 43^2
-        val_big[v] = big_id[sieve.factor(x)[0].0]
+// below[m]: cards whose small primes all lie in m; below_big[b][m]: those of them with big prime b
+var below = List.filled(1 << smalls, 0)
+var below_big = [List.filled(1 << smalls, 0) for _ in smalls..primes.len]
+for v in Val if count[v] > 0:
+    var mask = 0
+    var big: ?Int = None
+    for (p, _) in sieve.factor(v.label):
+        let j = rank[Val(p)]!
+        if j < smalls: mask |= 1 << j
+        else: big = Some(j - smalls)
+    below[mask] += count[v]
+    if let b = big: below_big[b][mask] += count[v]
+sos(mut below)
+for b in below_big.keys: sos(mut below_big[b])
 
-var total_sub = List.filled(1 << small_cnt, 0)
-// Store only non-zero (big_id, mask, count) buckets per big prime, then SOS on demand
-// or precompute SOS over small_mask for total and per big prime that appears in input!
-var active_big = List.filled(big_cnt + 1, false)
-var big_vals: List<List<(Int, Int)>> = [[] for _ in 0..=big_cnt]
+var pow2: List<Z> = [Z.one]
+for _ in 0..n: pow2.push(pow2.last! * 2)
 
-for v in 1..=max_v:
-    if cnt[v] > 0:
-        let sm = small_mask[v]
-        total_sub[sm] += cnt[v]
-        let b = val_big[v]
-        if b > 0:
-            active_big[b] = true
-            big_vals[b].push((sm, cnt[v]))
-
-for bit in 0..small_cnt:
-    let step = 1 << bit
-    for mask in 0..(1 << small_cnt):
-        if (mask & step) != 0:
-            total_sub[mask] += total_sub[mask ^ step]
-
-var big_sub: Map<Int, List<Int>> = Map()
-for b in 1..=big_cnt:
-    if active_big[b]:
-        var arr = List.filled(1 << small_cnt, 0)
-        let vs = big_vals[b]
-        for idx in 0..vs.len:
-            let (sm, c) = vs[idx]
-            arr[sm] += c
-        for bit in 0..small_cnt:
-            let step = 1 << bit
-            for mask in 0..(1 << small_cnt):
-                if (mask & step) != 0:
-                    arr[mask] += arr[mask ^ step]
-        big_sub[b] = arr
-
-var pow2: List<Z> = List.filled(n + 1, Z.one)
-for i in 1..=n:
-    pow2[i] = pow2[i - 1] + pow2[i - 1]
-
-fn popcount(x0: Int) -> Int:
-    var x = x0
-    var r = 0
-    while x > 0:
-        r += x & 1
-        x = x >> 1
-    r
-
-let q: Int = read()
+let full = (1 << smalls) - 1
+let q: 1..=1500 = read()
 for _ in 0..q:
-    let m: Int = read()
-    var sm_req = 0
-    var lg_seen: Map<Int, Bool> = Map()
-    var lg_req: List<Int> = []
-    for _ in 0..m:
-        let p: Int = read()
-        if big_id[p] > 0:
-            let b = big_id[p]
-            if not (lg_seen.get(b) ?? false):
-                lg_seen[b] = true
-                lg_req.push(b)
-        else:
-            for j in 0..small_cnt:
-                if small_p[j] == p:
-                    sm_req = sm_req | (1 << j)
-
+    let c: 1..=18000 = read()
+    let asked: [c](2..=2000) = read()
+    var need = 0
+    var bigs: List<Int> = []
+    for p in asked:
+        let j = rank[Val(p)]!
+        if j < smalls: need |= 1 << j
+        else: bigs.push(j - smalls)
+    let wanted = bigs.sorted().deduped()
     var ans: Z = 0
-    var sub = sm_req
-    while true:
-        let comp = full ^ sub
-        var free_cnt = total_sub[comp]
-        var prod: Z = 1
-        for idx in 0..lg_req.len:
-            let b = lg_req[idx]
-            var cb = 0
-            if let arr = big_sub.get(b):
-                cb = arr[comp]
-            free_cnt -= cb
-            prod *= pow2[cb] - Z.one
-        let term = pow2[free_cnt] * prod
-        if popcount(sub) % 2 == 0:
-            ans += term
-        else:
-            ans -= term
-        if sub == 0: break
-        sub = (sub - 1) & sm_req
-
+    for s in submasks(need):
+        let rest = full ^ s
+        var free = below[rest]
+        var term: Z = 1
+        for b in wanted:
+            let with_b = below_big[b][rest]
+            free -= with_b
+            term *= pow2[with_b] - 1
+        term *= pow2[free]
+        if popcount(s) % 2 == 0: ans += term
+        else: ans -= term
     print(ans)
