@@ -17,7 +17,7 @@ use std.dsu.{Dsu}
 use std.graph.{Next, Target, Graph, Visit, Edged, dfs, Tree, arc_len}
 use std.rand.{Rng}
 use std.segtree.{SegTree}
-use std.seq.{collect, dedup, first_true, get_or_insert, span}
+use std.seq.{collect, dedup, drop, first_true, get_or_insert, span, take}
 use std.math.{bit}
 
 /// A BFS spanning tree rooted at `V.first`, as a `Rooted`.
@@ -286,8 +286,7 @@ pub struct Rooted<V, Pre>:
     /// order: as `next` listed them
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(1).collect() == [3, 4] and t.children(2).count() == 0`
-    pub fn children(self, v: V) -> yields V:
-        for i in k0[v]..k1[v]: yield bfs[i]
+    pub fn children(self, v: V) -> Slice<List<V>> = bfs.take(k1[v]).drop(k0[v])
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The arcs from `v` down to its children, with every field `next` gave them
