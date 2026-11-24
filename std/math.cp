@@ -741,12 +741,10 @@ pub fn factor(x: Int) -> List<(Int, Int)>:
 /// example: `divisors(1) == [1] and 12.divisors().len == 6`
 pub fn divisors(self: Int) -> List<Int>:
     var (small, large) = (List<Int>(), List<Int>())
-    var d = 1
-    while d * d <= self:
+    for d in 1..=max(self, 0).isqrt:
         if self % d == 0:
             small.push(d)
-            if d * d != self: large.push(self / d)
-        d += 1
+            if self / d != d: large.push(self / d)
     small + large.rev
 
 /// Every positive divisor of the number whose factorization is `factors`, ascending.
@@ -1045,8 +1043,7 @@ pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int:
         k = mul_mod(k, a0 / g, cur_m)
         add += 1
     if k == cur_b: return add
-    var n = 1
-    while n * n < cur_m: n += 1
+    let n = ceil_sqrt(cur_m)
     var table = HashMap<Int, Int>()
     var rhs = cur_b
     for q in 0..=n:

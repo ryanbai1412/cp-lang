@@ -11,7 +11,7 @@
 //! an `Int`, `*` multiplies in 128 bits.
 use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
-use std.math.{crt_all, factor, gcd, inv_mod, mod_log, mod_sqrt, mul_mod, pow_mod}
+use std.math.{crt_all, factor, gcd, inv_mod, isqrt, mod_log, mod_sqrt, mul_mod, pow_mod}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
 /// `+ - *` are \(O(1)\); `/` and `inv` are \(O(\log P)\) and need `gcd(x, P) == 1`.
@@ -185,10 +185,8 @@ pub struct Comb<M: Add + Sub + Mul>:
     pub fn new(limit: Int = 0) -> Comb<M>:
         assert limit >= 0, "`Comb(limit)` needs `limit >= 0`"
         let p = M.MOD
-        var q = 2
-        while q * q <= p:
+        for q in 2..=p.isqrt:
             assert p % q != 0, "`Comb` needs a prime modulus"
-            q += 1
         let c = Comb<M>([M(1)], [M(1)], [M(1), M(0)], [])
         c.grow(limit)
         c
