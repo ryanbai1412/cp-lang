@@ -49,20 +49,20 @@ Factory owns it.
 | Std bodies | Every pub std item runs its CP Lang body; the compiler never bypasses it | Content | `std_shadowed` (std pub names the compiler also matches by string, intrinsics excluded) |
 | Running programs | The VM, also built to wasm; no interpreter fallback path; compile-time growth is refused (E0319) | Core | `vm_fallbacks`, `tree_walker`, `mono_unguarded` |
 | Crate dependencies | The layer map in `design/architecture.md` | Factory | `layer_violations`, `crate_edges` |
-| Tool data on the site | `web/` reads tool output; nothing is copied in by hand | Factory | to build: `web_hand_copied` |
+| Tool data on the site | `web/` reads tool output; nothing is copied in by hand | Factory | `web_hand_copied` (string arrays in `web/` that copy std names, keywords or codes), `site_rederived` |
 | Machine output | One versioned schema crate, `cpl-json`, for `--format json`, LSP, wasm and trace files; no `serde_json` or hand-built JSON anywhere else | Consumers | `json_outside_cpl_json` |
-| Diagnostics | One registry (code, message key, fix, docs) read by checker, lint, diag and docs; no diagnostic text outside it | Consumers, with Core | to build: `diag_text_outside_registry` |
+| Diagnostics | One registry (code, message key, fix, docs) read by checker, lint, diag and docs; no diagnostic text outside it | Consumers, with Core | `diag_text_outside_registry` (`Diagnostic::error`/`warning` with inline text outside cpl-diag) |
 | Configuration | One schema for `cp.toml`, judge profiles, CLI flags and editor settings | Consumers | `config_schemas` |
 | Std documentation | One doc model, produced by the checker, for `cpl doc`, hover, site and completion | Consumers; the site reads it (Factory) | `std_doc_parsers` |
 | Source edits | One lossless tree and edit engine for fmt, `cpl fix`, codemods and migrations; every codemod is a `cpl fix` | Consumers | `codemods_outside_fix`, `edit_engines` |
-| Execution events | One event model on the VM for trace, profiler, debugger and replay | Core, with Consumers | to build: `event_models` |
-| Integer widths and overflow | One width table, read by both the interpreter and codegen | Core | to build: `width_tables` |
+| Execution events | One event model on the VM for trace, profiler, debugger and replay | Core, with Consumers | `event_models` (uses of an interpreter event sink beside the `tracer` Observer slot) |
+| Integer widths and overflow | One width table, read by both the interpreter and codegen | Core | `width_tables` (narrow-width match arms outside `cpl_ir::IntWidth`) |
 | Input and output | One I/O contract, tested across the interpreter, the C++ runtime and the browser | Core, with Factory for the browser | to build: an I/O parity suite |
 | Problems | One problem package (`corpus/problems/<id>/`) and one walker, `scripts/corpus.py` `problems()`, used by ports, bench, stress and judge | Content, with Factory for bench | `corpus_walkers` (any other glob of `corpus/problems`), `dream_unverified` (a `dream.cp` without a current `dream_stress` record) |
-| Editors | Editors stay thin, with all logic in the LSP | Consumers | to build: `editor_logic_lines` |
+| Editors | Editors stay thin, with all logic in the LSP | Consumers | `editor_logic_lines` (editor code lines beyond the LSP-client wiring in `EDITOR_GLUE`) |
 | Modules | One module loader and resolver for CLI, LSP, wasm and judge | Core | `module_loaders` |
-| Judges and targets | One judge/target table that drives the emitter | Core | to build: `judge_tables` |
-| Codegen optimizations | Every optimization reads the effects/Uses table | Core, with Factory | to build: `opt_without_uses` |
+| Judges and targets | One judge/target table that drives the emitter | Core | `judge_tables` (judges named outside cpl-judge, by id or enum variant) |
+| Codegen optimizations | Every optimization reads the effects/Uses table | Core, with Factory | `codegen_effect_guesses`; to build: `opt_without_uses` once codegen lists its passes |
 | Site | Generated from the tools | Factory | `gen.py --check` |
 | Known gaps | A gap is a case `research/scoreboard.json` records failing; no case carries a `// gap:` line, and `spec/SUBSET.md` is generated from the board; a recorded failure that passes fails the ratchet | Content | `conformance_failing`, the marker counter (hard zero); `spec-gate.py subset`; `cpl-conform --check` (stale records) |
 | Decisions | One number each, reserved with `spec-gate.py decisions --reserve` | Content | `decision_dup_numbers` |

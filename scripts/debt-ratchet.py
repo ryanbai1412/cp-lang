@@ -2155,6 +2155,121 @@ def module_loaders(root: Path) -> list[str]:
             if "Database::new(" in line and _outside(rel, ("crates/cpl-check/",))]
 
 
+WEB_STRING_ARRAY_RE = re.compile(r"\[([^\[\]]*)\]", re.S)
+WEB_ARRAY_ITEM_RE = re.compile(r"""^\s*['"`]([^'"`\n]+)['"`]\s*$""", re.M)
+
+
+def web_hand_copied(root: Path) -> list[str]:
+    """Arrays of four or more strings in web/ sources, at least half of them tool data:
+    pub std names, language keywords (editors/vscode/src/languageData.ts) or diagnostic
+    codes. The site reads those from `cpl doc --json`, `cpl explain --json` and the
+    editor tables instead of keeping a copy."""
+    names: set[str] = set()
+    for p in sorted((root / "std").glob("*.cp")):
+        names.update(re.findall(r"^\s*pub\s+(?:fn|struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
+    data = root / "editors/vscode/src/languageData.ts"
+    if data.is_file():
+        names.update(re.findall(r"'(\w+)'", data.read_text(encoding="utf-8").partition("CONTEXTUAL_KEYWORDS")[0]))
+    out = []
+    for rel in _git(root, "ls-files", "web"):
+        if not WEB_SOURCE_RE.match(rel) or not (root / rel).is_file():
+            continue
+        text = (root / rel).read_text(encoding="utf-8", errors="replace")
+        for m in WEB_STRING_ARRAY_RE.finditer(text):
+            items = WEB_ARRAY_ITEM_RE.findall(m.group(1).replace(",", "\n"))
+            hits = [i for i in items if i in names or re.fullmatch(r"[EWL]\d{4}", i)]
+            if len(items) >= 4 and 2 * len(hits) >= len(items):
+                out.append(f"{rel}:{text.count(chr(10), 0, m.start()) + 1}")
+    return out
+
+
+DIAG_SITE_RE = re.compile(r"\bDiagnostic::(?:error|warning)\(")
+
+
+def diag_text_outside_registry(root: Path) -> list[str]:
+    """Diagnostics built with inline message text outside cpl-diag: each one's wording
+    belongs in the registry row for its code (crates/cpl-diag/src/registry.rs)."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if DIAG_SITE_RE.search(line) and _outside(rel, ("crates/cpl-diag/",))]
+
+
+# The VM's one event model: the `observe::Observer` its `tracer` slot holds.
+EVENT_SINK_TYPE_RE = re.compile(r"^\s*(?:pub(?:\(crate\))?\s+)?(\w+):\s*Option<[^>]*(?:Profiler|Stats|Recorder|Counter|Observer)\b")
+
+
+def event_models(root: Path) -> list[str]:
+    """Uses of an interpreter field that collects execution events beside the one
+    `tracer: Option<Box<O: Observer>>` slot (a profiler, VM stats, a recorder): trace,
+    profiler, debugger and replay share one event stream."""
+    lib = root / "crates/cpl-interp/src/lib.rs"
+    if not lib.is_file():
+        return []
+    sinks = {m.group(1) for line in _lines(lib) if (m := EVENT_SINK_TYPE_RE.match(line))} - {"tracer"}
+    if not sinks:
+        return []
+    use = re.compile(r"\.(?:%s)\b" % "|".join(sorted(sinks)))
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-interp") if use.search(line)]
+
+
+WIDTH_ARM_RE = re.compile(r'"(?:[IU](?:8|16|32)|u?int(?:8|16|32|64)_t)"\s*(?:=>|\|)')
+WIDTH_TABLE = "crates/cpl-ir/src/lib.rs"  # `IntWidth`
+
+
+def width_tables(root: Path) -> list[str]:
+    """Match arms keyed on a narrow integer width's name (`"U8" =>`, `"int32_t" |`) outside
+    `cpl_ir::IntWidth`: a second width table for the checker, lints, VM or codegen."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if WIDTH_ARM_RE.search(line) and rel != WIDTH_TABLE]
+
+
+JUDGE_NAMES = ("Codeforces", "AtCoder", "Cses", "Kattis", "Dmoj", "Usaco", "Yosupo", "Luogu")
+JUDGE_RE = re.compile(r'"(?:%s)"|^\s*(?:%s)\s*,?\s*$|::(?:%s)\b' % (
+    "|".join(n.lower() for n in JUDGE_NAMES), "|".join(JUDGE_NAMES), "|".join(JUDGE_NAMES)))
+
+
+def judge_tables(root: Path) -> list[str]:
+    """Judges named outside crates/cpl-judge's table, by id literal or enum variant:
+    `cpl fetch`, the emitter and the CLI all read the one judge/target table."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if JUDGE_RE.search(line) and _outside(rel, ("crates/cpl-judge/",))]
+
+
+# The editors' LSP-client wiring and language registration; everything else is logic
+# the language server should own.
+EDITOR_GLUE = frozenset({
+    "editors/vscode/src/extension.ts", "editors/vscode/src/client.ts", "editors/vscode/src/languageData.ts",
+    "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLanguage.kt",
+    "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp.kt",
+    "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLsp4ij.kt",
+    "editors/zed/src/lib.rs", "editors/neovim/ftdetect/cp.vim", "editors/neovim/ftplugin/cp.vim",
+})
+EDITOR_SOURCE_RE = re.compile(r"^editors/(?!tree-sitter-cp/)(?!.*(?:/tests?/|/scripts/|smoke|\.test\.)).*\.(?:ts|js|kt|rs|lua|el|vim)$")
+EDITOR_COMMENT = ("//", "/*", "*", "#", ";", "--", '"')
+
+
+def editor_logic_lines(root: Path) -> list[str]:
+    """Code lines in editor sources other than LSP-client wiring (`EDITOR_GLUE`):
+    editors stay thin, with completion, running, results and tracing in the server."""
+    out = []
+    for rel in _git(root, "ls-files", "editors"):
+        if EDITOR_SOURCE_RE.match(rel) and rel not in EDITOR_GLUE and (root / rel).is_file():
+            out += [f"{rel}:{i}" for i, line in enumerate(_lines(root / rel), 1)
+                    if line.strip() and not line.strip().startswith(EDITOR_COMMENT)]
+    return out
+
+
+
+def opt_without_uses(root: Path) -> list[str]:
+    """Codegen files outside the Uses table that walk IR bodies to decide a rewrite but
+    never read `uses::`: every optimization asks the effects/Uses table what code does."""
+    found = set()
+    src = root / "crates/cpl-codegen/src"
+    for rel, _, line in _src_lines(root, "crates/cpl-codegen/src"):
+        if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses"):
+            found.add(rel)
+    return sorted(rel for rel in found if not re.search(r"\buses::|\bUses\b", (root / rel).read_text(encoding="utf-8")))
+
+
 # Every tracked list file outside test data: the counter that counts its
 # entries (None for a data list that exempts nothing), its owner, and how it
 # goes away. A new list without a row here fails `unregistered_lists`.
@@ -2410,6 +2525,13 @@ COUNTERS = {
     "edit_engines": ("text edits applied outside cpl-diag/cpl-fmt", edit_engines, True),
     "codemods_outside_fix": ("scripts rewriting .cp files instead of cpl fix", codemods_outside_fix, True),
     "module_loaders": ("Database::new outside cpl-check", module_loaders, True),
+    "web_hand_copied": ("web/ string arrays copying std names, keywords or codes (Factory)", web_hand_copied, True),
+    "diag_text_outside_registry": ("diagnostics with inline text outside cpl-diag's registry (Consumers, Core)",
+                                   diag_text_outside_registry, True),
+    "event_models": ("interpreter event sinks beside the one Observer slot (Core, Consumers)", event_models, True),
+    "width_tables": ("integer-width match arms outside cpl_ir::IntWidth (Core)", width_tables, True),
+    "judge_tables": ("judges named outside cpl-judge's table (Core, Consumers)", judge_tables, True),
+    "editor_logic_lines": ("editor code lines beyond LSP-client wiring (Consumers)", editor_logic_lines, True),
     "unregistered_lists": ("list files with no LISTS row (counter, owner, plan)", unregistered_lists, True),
 }
 

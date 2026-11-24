@@ -472,6 +472,37 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.codemods_outside_fix(root), ["scripts/mod.py p"])
             self.assertEqual(dr.module_loaders(root), ["crates/a/src/lib.rs:6"])
 
+    def test_surface_counters_find_a_second_mechanism(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "std/core.cp", "pub fn foo(x: Int) -> Int:\n    x\n")
+            self._write(root, "editors/vscode/src/languageData.ts",
+                        "export const KEYWORDS = ['fn', 'let'];\nexport const CONTEXTUAL_KEYWORDS = ['by'];\n")
+            self._write(root, "editors/vscode/src/extension.ts", "activate();\n")
+            self._write(root, "editors/vscode/src/runner.ts", "// runs\nconst a = 1;\n\nrun();\n")
+            self._write(root, "editors/vscode/test/unit/x.ts", "check();\n")
+            self._write(root, "web/lib/kinds.ts", "const k = ['fn', 'let', 'E0301', 'other'];\n"
+                        "const plain = ['a', 'b', 'c', 'd'];\nconst few = ['fn', 'let'];\n")
+            self._write(root, "web/lib/kinds.test.ts", "const k = ['fn', 'let', 'foo', 'by'];\n")
+            self._write(root, "crates/a/src/lib.rs", "\n".join([
+                'let d = Diagnostic::error(code, span, "bad");', '"U8" => 1,', '"U64" => Ty::U64,',
+                "Judge::Codeforces => 1,", '"int32_t" | "int" => 4,', ""]))
+            self._write(root, "crates/cpl-diag/src/lib.rs", 'Diagnostic::error(code, span, "x");\n')
+            self._write(root, "crates/cpl-judge/src/lib.rs", '"codeforces",\n')
+            self._write(root, "crates/cpl-ir/src/lib.rs", 'IntWidth::U8 => "uint8_t",\n"U8" => 1,\n')
+            self._write(root, "crates/cpl-interp/src/lib.rs", "\n".join([
+                "struct Interp<O> {", "    tracer: Option<Box<O>>,", "    profiler: Option<Box<profile::Profiler>>,",
+                "}", "fn f() { self.tracer.take(); }", "fn g() { self.profiler.take(); }", ""]))
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.web_hand_copied(root), ["web/lib/kinds.ts:1"])
+            self.assertEqual(dr.diag_text_outside_registry(root), ["crates/a/src/lib.rs:1"])
+            self.assertEqual(dr.width_tables(root), ["crates/a/src/lib.rs:2", "crates/a/src/lib.rs:5"])
+            self.assertEqual(dr.judge_tables(root), ["crates/a/src/lib.rs:4"])
+            self.assertEqual(dr.event_models(root), ["crates/cpl-interp/src/lib.rs:6"])
+            self.assertEqual(dr.editor_logic_lines(root),
+                             ["editors/vscode/src/runner.ts:2", "editors/vscode/src/runner.ts:4"])
+
     def test_raw_repo_wide_counters(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
