@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, checkSortCopies, crateOf, normalizedFunctions, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, crateOf, gateCrateOf, normalizedFunctions, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -170,6 +170,24 @@ describe('wasm crate budgets', () => {
     expect(grown.get(fn('cpl_a', 'f')).length).toBe(was.get(fn('cpl_a', 'f')).length + 3);
     expect(grown.get(fn('cpl_a', 'g'))).toEqual(was.get(fn('cpl_a', 'g')));
     expect(fnsOf(base([], 2), 'cpl_a').get(fn('cpl_a', 'f'))).not.toEqual(was.get(fn('cpl_a', 'f')));
+  });
+
+  test("the gate charges a generic instantiated on a closure to the closure's crate", () => {
+    // cpl_diag's sort_by_key closure, instantiated on cpl_lint::library::find's closure,
+    // the second time through a backref to cpl_diag's Span.
+    const sort = '_RNCINvCs92dA4jsxNq4_8cpl_diag11sort_by_keyTjjNtB4_4SpanENCNvNtCsigG2x4UxwvU_8cpl_lint7library4finds7_0E0BY_';
+    expect(crateOf(sort)).toBe('cpl_diag');
+    expect(gateCrateOf(sort)).toBe('cpl_lint');
+    // A closure whose path is a backref (`B<base62>_`, an offset after `_R`) to cpl_lint's module.
+    const head = '_RINvCs1_8cpl_diag4sortNCNvNtCs2_8cpl_lint1m1g0NCNvB';
+    const back = '_RINvCs1_8cpl_diag4sortNCNv'.length - 2 - 1;
+    expect(gateCrateOf(`${head}${back.toString(36)}_1h0E`)).toBe('cpl_lint');
+    expect(gateCrateOf('_RINvCs1_8cpl_diag4sortNCNvCs1_8cpl_diag1g0E')).toBe('cpl_diag');
+    expect(gateCrateOf('_RINvNtCsiErZIu7dPQ0_4core3mem4dropINtNtCsd7qzcshS4qx_5alloc3vec3VecjEE')).toBe('core');
+    expect(gateCrateOf(fn('cpl_a', 'f'))).toBe('cpl_a');
+    expect(gateCrateOf('memcpy')).toBe('(runtime)');
+    const user = (closure) => build({ fns: [[`_RINvCs1_8cpl_diag4sortNC${closure}0E`, [0x01]]] });
+    expect([...normalizedFunctions(user('NvCs2_8cpl_lint1g')).keys()]).toEqual(['cpl_lint']);
   });
 
   test('a std generic goes by its name without the crate the linker kept it from', () => {

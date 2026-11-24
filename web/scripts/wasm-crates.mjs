@@ -30,6 +30,56 @@ export function crateOf(name) {
   return (roots.find(([c]) => c.startsWith('cpl_')) ?? roots[0])?.[0] ?? RUNTIME;
 }
 
+// The crate whose change can change `name`'s code, for the land gate's per-crate
+// normalized functions: a generic instantiated on a closure (`NC`) belongs to the
+// closure's crate, the only one that can name it, else crateOf. Budgets still use
+// crateOf, so this file has two attributions: debt until plan/QUESTIONS.md's
+// "site: charge a generic instance to the crate that instantiates it?" is answered.
+export function gateCrateOf(name) {
+  return closureCrate(name) ?? crateOf(name);
+}
+
+// The last closure's crate: a closure passed into another crate's generic closure comes
+// after it. A closure's path ends at a root or a backref (`B<base62>_`, an offset after `_R`).
+const BASE62 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function closureCrate(name) {
+  if (!name.startsWith('_R')) return null;
+  // `<base62>_`: empty is 0, else the digits' value + 1. Returns [value, end].
+  const base62 = (at) => {
+    let v = 0;
+    const from = at;
+    for (; name[at] !== '_'; at++) {
+      const d = BASE62.indexOf(name[at]);
+      if (d < 0) return [null, at];
+      v = v * 62 + d;
+    }
+    return [at === from ? 0 : v + 1, at + 1];
+  };
+  let found = null;
+  for (const m of name.matchAll(/NC/g)) {
+    let at = m.index + 2;
+    for (let hops = 0; hops < 64; hops++) {
+      const c = name[at];
+      if (c === 'N') at += 2;
+      else if (c === 'I') at++;
+      else if (c === 'M' || c === 'X') {
+        at++;
+        if (name[at] === 's') at = base62(at + 1)[1];
+      } else if (c === 'B') {
+        const [v] = base62(at + 1);
+        if (v === null || v + 2 >= at) break;
+        at = v + 2;
+      } else if (c === 'C') {
+        const r = /^C(?:s[0-9A-Za-z]*_)?(\d+)/.exec(name.slice(at));
+        const crate = r && name.substr(at + r[0].length, +r[1]);
+        if (crate?.startsWith('cpl_')) found = crate;
+        break;
+      } else break;
+    }
+  }
+  return found;
+}
+
 /** `name` without the root of the crate the linker kept the copy from (see crateOf). */
 export function sharedName(name) {
   const roots = [...name.matchAll(ROOT)];
@@ -159,7 +209,7 @@ export function normalizedFunctions(wasm) {
   const out = new Map();
   bodies.forEach((body, i) => {
     const name = names.get(i + imported) ?? `#${i + imported}`;
-    const c = crateOf(name);
+    const c = gateCrateOf(name);
     if (!out.has(c)) out.set(c, new Map());
     const fns = out.get(c);
     let key = sharedName(name);

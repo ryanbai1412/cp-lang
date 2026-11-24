@@ -109,3 +109,10 @@ Answered 2026-11-22 by the recommendation: decision 268, hard-fail; a named `--u
 
 ### stdlib: Q6 folds of an identity-less op are `?T` only through the op's type (needs compiler)
 Answered 2026-11-23 by (a): decision 456, associated types chosen by impl.
+
+### site: charge a generic instance to the crate that instantiates it?
+`web/scripts/wasm-crates.mjs` charges a std or cpl generic to the first cpl crate in its name (`crateOf`), so `cpl_diag::sort_by_key<_, cpl_lint::library::find::{closure}>` counts against cpl_diag's budget. Only cpl_lint can name that closure, so the land gate's normalized functions already use `gateCrateOf` (the last closure's crate). Two attributions for one build is debt.
+Options: (a) keep both: budgets by `crateOf`, gate by `gateCrateOf`; (b) budgets by `gateCrateOf`, each budget re-split once. Moved on a named build of d14bc834a (1,564 fns change crate), gz, budgets unchanged: cpl_syntax 157,808 -> 126,691 (-31,117), cpl_diag 44,120 -> 21,731 (-22,389), cpl_json -2,589, cpl_config -673, cpl_check +12,381, cpl_ir +11,458, cpl_lint +10,917, cpl_lsp +9,047 (76,209 vs 68,300), cpl_interp +5,891, cpl_wasm +1,316 (8,538 vs 7,400), cpl_fmt +192, cpl_judge +157.
+Recommendation: (b). The crate whose change grows the code is the one charged, the gate and budgets agree, and `gateCrateOf` replaces `crateOf`. Budgets move with the bytes, so no crate gets room it didn't have.
+How to reverse it: `crateOf` is one function; the budgets file is regenerated from a named build.
+Meanwhile: (a). Owner to decide: Core (budgets) with site (measurement).
