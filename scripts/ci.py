@@ -50,6 +50,7 @@ WALL_CLOCK_TESTS = (
     "the_checks_of_a_typical_function_fit_the_budget",
     "a_segment_tree_monoid_is_checked_within_the_budget",
     "ten_million_steps_fit_the_debugging_budgets",
+    "a_busy_machine_does_not_decide_the_trace_budget",
     "every_command_starts_cold_in_under_100_ms",
 )
 

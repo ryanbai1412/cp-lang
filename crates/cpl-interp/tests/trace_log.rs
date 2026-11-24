@@ -3,9 +3,11 @@
 
 mod common;
 mod counting;
+mod timing;
 use common::program;
 use cpl_interp::trace::{Recording, TraceConfig};
 use std::time::Instant;
+use timing::ROUNDS;
 
 fn record(source: &str, input: &str, config: TraceConfig) -> Recording {
     let config = TraceConfig {
@@ -355,12 +357,9 @@ fn raw_ints_read_back_as_written() {
     }
 }
 
-/// The budgets of a debug session at 10^7 steps: stepping back answers
-/// in under 50 ms, recording makes the run at most 1.2x slower, and the
-/// recording takes a few hundred MB. A wall-clock test (scripts/ci.py
-/// WALL_CLOCK_TESTS): `scripts/check.sh --timing` (ci-slow.yml) reports it;
-/// `cargo test --release -p cpl-interp --test trace_log -- --nocapture`.
-const RUNS: usize = 7;
+/// Rounds of the debugging demos, each running them [`DEMO_RUNS`] times.
+const DEMO_ROUNDS: usize = 20;
+const DEMO_RUNS: usize = 100;
 
 /// The modes whose recording is still over the 1.2x budget, each with a
 /// ceiling on its slowdown that only goes down: debt-ratchet's
@@ -392,6 +391,11 @@ fn check_budget(over: &mut Vec<String>, name: &str, slower: f64) {
     }
 }
 
+/// The budgets of a debug session at 10^7 steps: stepping back answers
+/// in under 50 ms, recording makes the run at most 1.2x slower, and the
+/// recording takes a few hundred MB. A wall-clock test (scripts/ci.py
+/// WALL_CLOCK_TESTS): `scripts/check.sh --timing` (ci-slow.yml) reports it;
+/// `cargo test --release -p cpl-interp --test trace_log -- --nocapture`.
 #[test]
 fn ten_million_steps_fit_the_debugging_budgets() {
     let mut over = Vec::new();
@@ -407,34 +411,26 @@ fn ten_million_steps_fit_the_debugging_budgets() {
     ] {
         let program = program(source);
         let mut out = Vec::new();
-        // The least of several runs, so a busy machine does not decide it.
-        let least = |run: &mut dyn FnMut()| {
-            (0..RUNS)
-                .map(|_| {
-                    let started = Instant::now();
-                    run();
-                    started.elapsed()
-                })
-                .min()
-                .unwrap()
-        };
-        let plain = least(&mut || {
-            cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut Vec::new(), None);
-        });
+        let run = |config: Option<&TraceConfig>| timing::run(&program, b"", config);
         // Hooks on, nothing kept: the traced VM under a filter that matches no fn.
         let observed = TraceConfig {
             source: source.into(),
             only_fn: Some("not_a_fn".into()),
             ..TraceConfig::default()
         };
-        let walked = least(&mut || {
-            cpl_interp::run_observed(
-                &program,
-                cpl_interp::Io::fixed(b""),
-                &mut Vec::new(),
-                Some(observed.clone()),
-            );
-        });
+        let config = TraceConfig {
+            source: source.into(),
+            record_frames: true,
+            max_steps: Some(10_000_000),
+            ..TraceConfig::default()
+        };
+        let times = timing::rounds(
+            ROUNDS,
+            &mut [&mut || run(None), &mut || run(Some(&observed)), &mut || {
+                run(Some(&config))
+            }],
+        );
+        let (plain, walked, traced) = (times.time(0), times.time(1), times.time(2));
         // The last 20,000 steps, traced again from a checkpoint: what time travel to the end costs.
         let started = Instant::now();
         let tail = TraceConfig {
@@ -445,20 +441,6 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         let tail = cpl_interp::trace::resumed_tail(&program, b"", &mut Vec::new(), tail, 20_000);
         let windowed = started.elapsed();
         assert_eq!(tail.recording.unwrap().len(), 20_000);
-        let config = TraceConfig {
-            source: source.into(),
-            record_frames: true,
-            max_steps: Some(10_000_000),
-            ..TraceConfig::default()
-        };
-        let traced = least(&mut || {
-            cpl_interp::run_observed(
-                &program,
-                cpl_interp::Io::fixed(b""),
-                &mut Vec::new(),
-                Some(config.clone()),
-            );
-        });
         out.clear();
         let (observed, usage) = counting::measure(|here| {
             here.observe(&program, cpl_interp::Io::fixed(b""), &mut out, Some(config))
@@ -479,8 +461,7 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             back = back.max(one.elapsed());
         }
         let mb = held as f64 / 1e6;
-        let slower = traced.as_secs_f64() / plain.as_secs_f64();
-        let recording = traced.as_secs_f64() / walked.as_secs_f64();
+        let (slower, recording) = (times.slower(2, 0), times.slower(2, 1));
         eprintln!(
             "{name}: {} steps; untraced {plain:?}, observed {walked:?}, recorded {traced:?}: {slower:.2}x the untraced run, {recording:.2}x the observed one; {mb:.0} MB; step back at most {back:?}; the last 20,000 steps from a checkpoint {windowed:?}, {:.2}x the untraced run",
             rec.len(),
@@ -496,7 +477,7 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         }
     }
     // The debugging demos on the inputs `cpl stress` pins, each run many
-    // times, since one run takes microseconds.
+    // times a round, since one run takes microseconds.
     let demos = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugging/");
     for (name, input) in [
         ("knapsack", "1 2\n1 1\n"),
@@ -505,29 +486,73 @@ fn ten_million_steps_fit_the_debugging_budgets() {
     ] {
         let source = std::fs::read_to_string(format!("{demos}{name}.cp")).unwrap();
         let program = program(&source);
-        let mut out = Vec::new();
-        let mut time = |trace: bool| {
-            let started = Instant::now();
-            for _ in 0..2000 {
-                let config = trace.then(|| TraceConfig {
-                    source: source.clone(),
-                    record_frames: true,
-                    ..TraceConfig::default()
-                });
-                let io = cpl_interp::Io::fixed(input.as_bytes());
-                cpl_interp::run_observed(&program, io, &mut out, config);
-            }
-            started.elapsed()
+        let config = TraceConfig {
+            source: source.clone(),
+            record_frames: true,
+            ..TraceConfig::default()
         };
-        let (plain, traced) = (time(false), time(true));
-        let slower = traced.as_secs_f64() / plain.as_secs_f64();
+        let runs = |trace: bool| {
+            for _ in 0..DEMO_RUNS {
+                timing::run(&program, input.as_bytes(), trace.then_some(&config));
+            }
+        };
+        let modes = timing::rounds(DEMO_ROUNDS, &mut [&mut || runs(false), &mut || runs(true)]);
+        let (plain, traced, slower) = (modes.time(0), modes.time(1), modes.slower(1, 0));
         eprintln!(
-            "{name}: 2000 runs; untraced {plain:?}, recorded {traced:?}: \
+            "{name}: {DEMO_RUNS} runs; untraced {plain:?}, recorded {traced:?}: \
              {slower:.2}x the untraced run"
         );
         check_budget(&mut over, name, slower);
     }
     assert!(over.is_empty(), "over budget: {over:?}");
+}
+
+/// The measurement under the budgets above: a noisy neighbour on every core
+/// moves the array slowdown (at 3*10^6 steps) by at most 15%, about what two
+/// quiet runs differ by, so it can flip a verdict only that near the ceiling, and a recording that got
+/// 2x slower is still caught.
+/// A wall-clock test (scripts/ci.py WALL_CLOCK_TESTS).
+#[test]
+fn a_busy_machine_does_not_decide_the_trace_budget() {
+    let source =
+        "var a: [0..1000]Int = 0\nfor i in 0..3000000:\n    a[i % 1000] += 1\nprint(a[0])\n";
+    let program = program(source);
+    let config = TraceConfig {
+        source: source.into(),
+        record_frames: true,
+        max_steps: Some(3_000_000),
+        ..TraceConfig::default()
+    };
+    // Untraced, traced, and traced with every run done twice: a 2x regression.
+    let slowdowns = || {
+        let run = |config: Option<&TraceConfig>| timing::run(&program, b"", config);
+        let times = timing::rounds(
+            ROUNDS,
+            &mut [&mut || run(None), &mut || run(Some(&config)), &mut || {
+                (0..2).for_each(|_| run(Some(&config)))
+            }],
+        );
+        let slower = |k: usize| times.slower(k, 0);
+        (slower(1), slower(2))
+    };
+    let verdict = |slower: f64| {
+        let mut over = Vec::new();
+        check_budget(&mut over, "array", slower);
+        over.is_empty()
+    };
+    let (quiet, _) = slowdowns();
+    let (loaded, regressed) = timing::beside_neighbours(slowdowns);
+    eprintln!(
+        "array: {quiet:.2}x quiet, {loaded:.2}x loaded, {regressed:.2}x loaded and 2x slower"
+    );
+    assert!(
+        (loaded / quiet - 1.0).abs() <= 0.15,
+        "a busy machine moved the slowdown from {quiet:.2}x to {loaded:.2}x"
+    );
+    assert!(
+        regressed / loaded >= 1.5 && !verdict(regressed),
+        "a 2x slower recording measured {regressed:.2}x ({loaded:.2}x before) and passed"
+    );
 }
 
 #[test]
@@ -777,28 +802,26 @@ fn an_untraced_run_keeps_the_last_values_a_traced_one_does() {
 fn tracing_stays_cheap_enough_to_leave_on() {
     let source = "var x = 0\nfor i in 0..1000000:\n    x += i % 7\nprint(x)\n";
     let program = program(source);
-    let least = |config: Option<TraceConfig>| {
-        (0..RUNS)
-            .map(|_| {
-                let started = Instant::now();
-                let io = cpl_interp::Io::fixed(b"");
-                cpl_interp::run_observed(&program, io, &mut Vec::new(), config.clone());
-                started.elapsed().as_secs_f64()
-            })
-            .fold(f64::INFINITY, f64::min)
-    };
-    let plain = least(None);
-    let observed = least(Some(TraceConfig {
+    let run = |config: Option<&TraceConfig>| timing::run(&program, b"", config);
+    let hooked = TraceConfig {
         source: source.into(),
         only_fn: Some("not_a_fn".into()),
         ..TraceConfig::default()
-    })) / plain;
-    let recorded = least(Some(TraceConfig {
+    };
+    let kept = TraceConfig {
         source: source.into(),
         record_frames: true,
         max_steps: Some(1_000_000),
         ..TraceConfig::default()
-    })) / plain;
+    };
+    let times = timing::rounds(
+        ROUNDS,
+        &mut [&mut || run(None), &mut || run(Some(&hooked)), &mut || {
+            run(Some(&kept))
+        }],
+    );
+    let slower = |k: usize| times.slower(k, 0);
+    let (observed, recorded) = (slower(1), slower(2));
     eprintln!("observed {observed:.2}x, recorded {recorded:.2}x an untraced run");
     let (hooks, recording) = if cfg!(debug_assertions) {
         (2.6, 13.0)
