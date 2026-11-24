@@ -13,6 +13,21 @@ pub(crate) fn impl_target_head(ty: &ast::Type) -> Option<String> {
     }
 }
 
+/// The name an impl is filed under: `impl<D: Domain> Tr for D` is every domain's, `domain`.
+pub(crate) fn impl_file_head(ty: &ast::Type, bounds: &[ast::Bound]) -> Option<String> {
+    if let TypeKind::Named { name, args } = &ty.kind {
+        let domain = |t: &ast::Type| type_head(t).as_deref() == Some("Domain");
+        if args.is_empty()
+            && bounds
+                .iter()
+                .any(|b| b.name.text == name.text && b.traits.iter().any(domain))
+        {
+            return Some("domain".into());
+        }
+    }
+    impl_target_head(ty)
+}
+
 impl<'a> Checker<'a> {
     /// The type an impl is for, with the type parameters its header names:
     /// `impl Add for Mod<P>` is generic over `P`, and `impl<T: Add> Add for ?T`

@@ -20,6 +20,10 @@ impl Lowerer<'_> {
             return None;
         }
         let ty = match (self.gen_env.get(tname), tname.as_str()) {
+            (Some(GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d))), _) => {
+                let fn_id = self.domain_impl_method(*d, &name.text)?;
+                return Some(self.user_call(fn_id, None, args, span));
+            }
             (Some(GenArg::Ty(ty)), _) => ty.clone(),
             (Some(_), _) => return None,
             (None, "Int" | "I64") => Ty::Int,

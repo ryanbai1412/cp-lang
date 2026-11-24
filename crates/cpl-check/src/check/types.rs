@@ -1241,7 +1241,7 @@ impl<'a> Checker<'a> {
                 bounds,
                 body,
             } => {
-                let Some(target_name) = impl_target_head(target) else {
+                let Some(target_name) = impl_file_head(target, bounds) else {
                     return Vec::new();
                 };
                 let generics = self.impl_generics(trait_name.as_ref(), target, bounds);
@@ -1674,6 +1674,7 @@ impl<'a> Checker<'a> {
             Ty::Char => Some("Char"),
             Ty::Str => Some("Str"),
             Ty::Fn { .. } => Some("fn"),
+            Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
             _ => None,
         };
         if impl_key.is_some_and(|name| self.has_impl(name, trait_name))

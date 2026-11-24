@@ -147,40 +147,6 @@ pub(super) struct StructConst<'a> {
 }
 
 impl<'a> Lowerer<'a> {
-    /// Whether `ty` has an `impl` of the library trait `name`. A name that is not a trait declared
-    /// in a module (a structural one), or an `impl` over a generic type, is taken as met.
-    pub(super) fn implements(&mut self, ty: &Ty, name: &str) -> bool {
-        let Some(Sym::Trait(tid)) = self.get_sym(name) else {
-            return true;
-        };
-        if let Some(supers) = self.traits[tid].alias_of.clone() {
-            return supers.iter().all(|s| self.implements(ty, s));
-        }
-        for idx in 0..self.impls.len() {
-            if self.impls[idx].trait_name.as_deref() != Some(name) {
-                continue;
-            }
-            let (m, offset, target) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].target,
-            );
-            if matches!(&target.kind, ast::TypeKind::Named { args, .. } if !args.is_empty()) {
-                return true;
-            }
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
-            let got = self.resolve_ty(target);
-            (self.cur_mod, self.offset) = saved;
-            if got == *ty || got == Ty::Error {
-                return true;
-            }
-        }
-        false
-    }
-
     /// Collects the transitive module graph starting from the root `Analysis` (`ModId = 0`).
     pub(super) fn load_modules(&mut self, root: &'a Analysis) {
         self.mods.push(root);

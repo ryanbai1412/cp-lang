@@ -19,6 +19,7 @@ mod consts;
 mod contains;
 mod declare;
 mod declared_keys;
+mod domain_impl;
 mod expr;
 mod float_fn;
 mod fn_impl;
@@ -1902,12 +1903,11 @@ impl<'a> Lowerer<'a> {
     /// `x.method()` on a value of it.
     fn attach_impls_for_builtins(&mut self) {
         for idx in 0..self.impls.len() {
-            let (m, offset, target, body) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].target,
-                self.impls[idx].body,
-            );
+            let imp = &self.impls[idx];
+            let (m, offset, target, body) = (imp.mod_id, imp.offset, imp.target, imp.body);
+            if self.domain_blanket_param(idx).is_some() {
+                continue;
+            }
             // `impl Pick for Int -> Bool`: fn values of that type get its methods.
             let head = match &target.kind {
                 ast::TypeKind::Named { name, args } => {

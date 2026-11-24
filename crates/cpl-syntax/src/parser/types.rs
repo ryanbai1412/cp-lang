@@ -788,9 +788,22 @@ impl<'a> Parser<'a> {
         while !self.at_type_args_end() && !self.at_line_end() {
             // `const N: Int` is a value parameter; its type is not a bound.
             let value = self.eat(T::Const);
-            // `<domain I>` marks a parameter that is an index space; it is still a type.
+            // `<domain I>` marks a parameter that is an index space: `I: Domain`, still a type.
+            let domain = self.at(T::Domain).then(|| self.start());
             self.eat(T::Domain);
             let name = self.expect_name("a type parameter name");
+            if let Some(start) = domain.filter(|_| !value) {
+                let span = self.span_from(start);
+                let text = "Domain".to_string();
+                let kind = TypeKind::Named {
+                    name: Name { text, span },
+                    args: Vec::new(),
+                };
+                bounds.push(Bound {
+                    name: name.clone(),
+                    traits: vec![Type { kind, span }],
+                });
+            }
             if self.at(T::Lt) {
                 let start = self.start();
                 self.bump();

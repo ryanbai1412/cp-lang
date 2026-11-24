@@ -1698,9 +1698,12 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
             // An impl is filed under a name of its own, so it is found,
             // memoized and reported twice like any other definition.
             StmtKind::Impl {
-                trait_name, target, ..
+                trait_name,
+                target,
+                bounds,
+                ..
             } => {
-                if let Some(target_name) = crate::check::impl_target_head(target) {
+                if let Some(target_name) = crate::check::impl_file_head(target, bounds) {
                     let trait_head = trait_name.as_ref().and_then(crate::check::trait_impl_key);
                     out.push(Decl {
                         name: impl_name(trait_head.as_deref(), &target_name),
