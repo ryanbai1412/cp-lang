@@ -116,6 +116,21 @@ print(f([[1], [2]]))
 }
 
 #[test]
+fn a_loop_that_walks_a_copy_of_a_place_lists_the_copy() {
+    assert_eq!(
+        copy_reasons(
+            "let n: Int = read()
+let sieve = Sieve(n)
+for a in sieve.primes:
+    if sieve.is_prime(2 * n - a):
+        print(a)
+"
+        ),
+        [crate::uses::WALKED_COPY]
+    );
+}
+
+#[test]
 fn a_value_that_owns_no_heap_memory_is_never_listed_as_a_copy() {
     let modular = "type Z = Mod<1000000007>\nlet x: Z = 3\nprint(x ** 4, x ** 0)\n";
     assert_eq!(copy_reasons(modular), [] as [&str; 0]);

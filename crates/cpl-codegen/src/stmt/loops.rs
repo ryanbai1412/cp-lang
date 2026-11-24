@@ -702,6 +702,11 @@ impl<'p> Emitter<'p> {
                         self.line(out, &format!("const {holder_ty}& {held} = {seq_text};"));
                     } else {
                         self.line(out, &format!("{holder_ty} {held} = {seq_text};"));
+                        if held_root(crate::uses::in_place(seq)).is_some()
+                            && crate::lend::holds_heap(self.program, &seq.ty)
+                        {
+                            self.note_walked_copy(seq);
+                        }
                     }
                     held
                 } else {

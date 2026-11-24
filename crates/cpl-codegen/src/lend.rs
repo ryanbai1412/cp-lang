@@ -1234,6 +1234,10 @@ impl Emitter<'_> {
         self.note_copy(e.span, crate::uses::OWNED_VIEW, None);
     }
 
+    pub(crate) fn note_walked_copy(&mut self, e: &Expr) {
+        self.note_copy(e.span, crate::uses::WALKED_COPY, None);
+    }
+
     /// Records the copy `Some(xs)` makes when `xs` is a place holding a
     /// heap value: the `std::optional` holds a value of its own.
     pub(crate) fn note_some_copy(&mut self, inner: &Expr, text: &str) {
@@ -1312,14 +1316,21 @@ impl Emitter<'_> {
                 _ => break,
             }
         }
-        let place = matches!(
-            init.kind,
-            ExprKind::Field(..)
-                | ExprKind::Payload(..)
-                | ExprKind::Index(..)
-                | ExprKind::Unwrap(..)
-        ) && rooted_in_a_name(init)
-            || matches!(init.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(&f));
+        let is_part = |e: &Expr| {
+            matches!(
+                e.kind,
+                ExprKind::Field(..)
+                    | ExprKind::Payload(..)
+                    | ExprKind::Index(..)
+                    | ExprKind::Unwrap(..)
+            ) && rooted_in_a_name(e)
+                || matches!(e.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(&f))
+        };
+        // `T v = c ? f(a) : self.t[p];` copies the arm that is a place.
+        if let Some(arm) = lending_if(init).and_then(|arms| arms.into_iter().find(|a| is_part(a))) {
+            init = arm;
+        }
+        let place = is_part(init);
         // A temporary bound by reference names the place it was bound to.
         let whole = matches!(init.kind, ExprKind::Local(s)
                 if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))
