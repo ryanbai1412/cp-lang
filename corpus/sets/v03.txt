@@ -50,6 +50,7 @@ ccc04s5
 ccc05s5
 ccc10s4
 ccc14s4
+ccc14s4hard
 ccc17s4
 ccc18s2
 ccc18s3
@@ -61,6 +62,7 @@ ccc19s5
 ccc19s5hard
 ccc20s1
 ccc20s2
+ccc20s2hard
 ccc20s3
 ccc20s4
 ccc20s5
@@ -81,9 +83,11 @@ ccc99s5
 cco16p3
 cco16p4
 cco17p1
+cco17p2
 cco17p5
 cco18p1
 cco18p2
+cco18p4
 cco19p5
 cco20p1
 cco20p2

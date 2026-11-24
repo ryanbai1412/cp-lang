@@ -1,48 +1,49 @@
-// Source: CCC 2014 S4 (Tinted Glass Window, large limits), https://dmoj.ca/problem/ccc14s4hard
-// Problem: n rectangular panes, each with a tint, lie over a window. Print the area
-//   where the tints of the panes on top of each other add up to at least `need`.
-// Solution: sweep a vertical line; between neighbouring y coordinates the line is a row
-//   of strips, and a pane adds its tint to a range of strips at its left edge and takes
-//   it back at its right edge. Strips are grouped in blocks of about sqrt(m), each
-//   sorted by tint with running heights and one pending add: a range add re-sorts at
-//   most two blocks, and the height at or over `need` is a binary search per block,
-//   times the distance to the next event.
-let (n, need): (Int, Int) = read()
-domain Pane = 0..n
-let panes: [Pane](x1: Int, y1: Int, x2: Int, y2: Int, tint: Int) = read()
+// Source: CCC 2014 S4 (Tinted Glass Window, hard data), https://dmoj.ca/problem/ccc14s4hard
+// Problem: n axis-parallel panes, corners in 0..=1e9, each adding tint t_i; overlaps add up.
+//   Print the total area whose tint is at least T. Too many panes for the O(n^2) grid of
+//   ccc14s4.
+// Solution: sweep x; between neighbouring y cuts the tint under the sweep line is constant, so
+//   the line is a row of strips, a pane adds its tint to a range of strips at its left edge and
+//   removes it at its right edge, and the area grows by dx times the height of the strips at or
+//   over T. "Add to a range, measure what is over a threshold" has no segment tree, so the strips
+//   are grouped in blocks of about sqrt(m): a block keeps its strips sorted by tint with running
+//   heights and one pending add; a range add rebuilds at most two blocks and the measure is a
+//   binary search per block. O(n sqrt(n) log n).
+// original: corpus/submissions/5672273.cpp
+let n: 1..=1e5 = read()
+let need: 1..=1e9 = read()
+let panes: [n](x0: 0..=1e9, y0: 0..=1e9, x1: 0..=1e9, y1: 0..=1e9, tint: 1..=1e9) = read()
 
-let ys = Set([panes[p].y1 for p in Pane] + [panes[p].y2 for p in Pane]).sorted()
-domain Strip = 0..ys.len - 1  // strip s lies between ys[s] and ys[s + 1]
-var first_strip = Map<Int, Int>()
-for i in 0..ys.len: first_strip[ys[i]] = i
+let (domain Cut, ys) = compress([p.y0 for p in panes] + [p.y1 for p in panes])
+domain Strip = 0..Cut.len - 1  // strip s lies between cuts s and s + 1
+fn height(s: Strip) -> Int = ys.get(Cut.nth(s.ord + 1)) - ys.get(Cut.nth(s.ord))
 
 let size = max(1, isqrt(Strip.len))
 domain Block = 0..(Strip.len + size - 1) / size
-fn strips(b: Block) -> Range<Strip> = Strip.nth(b.ord * size)..=Strip.nth(
-    min(Strip.len, (b.ord + 1) * size) - 1
-)
+fn strips(b: Block) -> Range<Strip> = Strip.nth(b.ord * size)..=Strip.nth(min(Strip.len, (b.ord + 1) * size) - 1)
 
 var tint: [Strip]Int = 0
 var pending: [Block]Int = 0
-var darkest: [Block]List<(tint: Int, height: Int)> = [Block] b => []  // darkest first; height is the total so far
+// darkest[b]: block b's strips, darkest first, each with the total height so far
+var darkest: [Block]List<(tint: Int, height: Int)> = [Block] b => []
 
 fn rebuild(b: Block):
-    var (rows, height) = ([], 0)
-    for s in strips(b).sorted(by: s => -tint[s]):
-        height += ys[s.ord + 1] - ys[s.ord]
-        rows.push((tint: tint[s], height:))
+    var rows: List<(tint: Int, height: Int)> = []
+    var total = 0
+    for s in strips(b).sorted(by: s => desc(tint[s])):
+        total += height(s)
+        rows.push((tint: tint[s], height: total))
     darkest[b] = rows
 
-// The height of the strips of block b that are at or over `need`.
-fn tinted(b: Block) -> Int:
-    let rows = darkest[b]
-    let lo = (0..rows.len).first_true(mid => rows[mid].tint + pending[b] < need) ?? rows.len  // rows[..lo] are dark enough, rows[hi..] are not
-    if lo == 0: 0 else: rows[lo - 1].height
+// The height of block b's strips at or over `need`.
+fn dark(b: Block) -> Int:
+    let lit = (0..darkest[b].len).first_true(i => darkest[b][i].tint + pending[b] < need) ?? darkest[b].len
+    if lit == 0: 0 else: darkest[b][lit - 1].height
 
-// Add t to the strips at offsets l..r.
-fn add(l: Int, r: Int, t: Int):
+// Add t to the strips at offsets lo..hi.
+fn add(lo: Int, hi: Int, t: Int):
     for b in Block:
-        let (from, to) = (max(l, strips(b).first!.ord), min(r, strips(b).last!.ord + 1))
+        let (from, to) = (max(lo, strips(b).first!.ord), min(hi, strips(b).last!.ord + 1))
         if to - from == strips(b).len:
             pending[b] += t
         elif from < to:
@@ -50,15 +51,12 @@ fn add(l: Int, r: Int, t: Int):
             rebuild(b)
 
 for b in Block: rebuild(b)
-var events: List<(x: Int, l: Int, r: Int, tint: Int)> = []
-for p in Pane:
-    let (x1, y1, x2, y2, t) = panes[p]
-    events.push((x: x1, l: first_strip[y1], r: first_strip[y2], tint: t))
-    events.push((x: x2, l: first_strip[y1], r: first_strip[y2], tint: -t))
-
+var events = [(x: p.x0, lo: ys.index_of(p.y0).ord, hi: ys.index_of(p.y1).ord, tint: p.tint) for p in panes] +
+             [(x: p.x1, lo: ys.index_of(p.y0).ord, hi: ys.index_of(p.y1).ord, tint: -p.tint) for p in panes]
 var (area, x) = (0, 0)
-for e in events.sorted(by: e => e.x):
-    if e.x > x: area += (e.x - x) * sum(tinted(b) for b in Block)
+events.sort(by: e => e.x)
+for e in events:
+    area += (e.x - x) * sum(dark(b) for b in Block)
     x = e.x
-    add(e.l, e.r, e.tint)
+    add(e.lo, e.hi, e.tint)
 print(area)
