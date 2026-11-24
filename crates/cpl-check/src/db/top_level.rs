@@ -313,57 +313,42 @@ pub(super) fn rewalk_kind(
     else {
         return None;
     };
-    let types = checks.get(index).map_or(&[][..], |c| &c.exprs.types[..]);
-    fn lazy(e: &ast::Expr, types: &[(Span, Ty)]) -> bool {
+    let facts = checks.get(index).map(|c| &c.exprs);
+    fn lazy(e: &ast::Expr, facts: Option<&crate::facts::ExprFacts>) -> bool {
         let ExprKind::Call { callee, .. } = &crate::check::lends::unparen(e).kind else {
             return false;
         };
         let ExprKind::Field { base, name } = &callee.kind else {
             return false;
         };
-        let ty_at = |e: &ast::Expr| {
-            types
-                .iter()
-                .rev()
-                .find(|(s, _)| *s == e.span)
-                .map(|(_, t)| t)
-        };
         match name.text.as_str() {
-            "filter" | "flat_map" => true,
-            "map" | "take" | "drop" | "enumerate" => lazy(base, types),
+            "map" | "take" | "drop" => lazy(base, facts),
             // A method over a sequence whose value is walk-only: a generator
-            // (`-> yields T`) such as `take_while`.
-            _ => {
-                ty_at(e).is_some_and(|t| t.is_seq() && !t.is_sized())
-                    && ty_at(base).is_some_and(Ty::is_seq)
-            }
+            // (`-> yields T`) such as `take_while`, or a `Filtered` view.
+            _ => facts.is_some_and(|f| {
+                f.last_type(e.span)
+                    .is_some_and(|t| t.is_seq() && !t.is_sized())
+                    && f.last_type(base.span).is_some_and(Ty::is_seq)
+            }),
         }
     }
-    if lazy(init, types) {
+    if lazy(init, facts) {
         return Some((codes::CHAIN_WALKED_TWICE, "a lazy chain"));
     }
     let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {
         return None;
     };
-    let ExprKind::Name(f) = &callee.kind else {
-        return None;
-    };
-    if !args
-        .iter()
-        .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
+    if !matches!(callee.kind, ExprKind::Name(_))
+        || !args
+            .iter()
+            .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
     {
         return None;
     }
     let generator = gen_typed
-        || items.iter().any(|item| {
-            item.parsed.stmts.iter().any(|s| match &s.kind {
-            StmtKind::Fn(decl) => {
-                decl.name.text == *f
-                    && matches!(&decl.ret, Some(t) if matches!(t.kind, ast::TypeKind::Yields(_)))
-            }
-            _ => false,
-        })
-        });
+        || facts
+            .and_then(|f| f.last_type(init.span))
+            .is_some_and(|t| matches!(t, Ty::Named { name, .. } if name == "Gen"));
     generator.then_some((
         codes::MUT_GENERATOR_REWALKED,
         "a generator holding a `mut` lend",
