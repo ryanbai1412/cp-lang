@@ -138,22 +138,25 @@ pub struct Rooted<V, Pre>:
         if roots.len > 0 and queue.len == V.count: Some(Rooted.build(kids, roots)) else: None
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
-    /// One tree per root: `next` must reach every vertex from exactly one of `from`.
+    /// A spanning forest: walks `from` as `dfs` does, skipping a root already reached, then roots
+    /// each unreached vertex in `V` order, so `from: []` spans every component (decision 451).
     ///
     /// Each tree is built as `new` builds it. The trees sit one after another in `t.Pre`, in the
-    /// order of `from`; `t.root` is the first root. Paths and lowest common ancestors exist only
-    /// within one tree (`root_of` tells).
+    /// order they were rooted; `t.root` is the first root. Paths and lowest common ancestors exist
+    /// only within one tree (`root_of` tells).
     ///
     /// cost: \(O(n + m)\)
-    /// empty: `from` must be nonempty
-    /// traps: when `from` is empty, or some vertex is reached from no root or from two
+    /// empty: `from: []` (the default) roots each component at its smallest vertex
+    /// traps: when `V` is empty
     /// example: `domain V = 0..4; let adj: [V]List<V> = [[1], [0], [3], [2]]; let t = Rooted.forest(adj, from: [2, 0]); t.roots.collect() == [2, 0] and t.root_of(1) == 0`
-    pub fn forest(next: Next<V>, from: List<V>) -> Rooted<V, _> = Rooted.build(next, from)
+    pub fn forest(next: Next<V>, from: List<V> = []) -> Rooted<V, _> =
+        Rooted.build(next, from, span: true)
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     // Breadth-first from each root in turn, then sizes, heavy children and the heavy-first
-    // preorder. Traps when a root is reached twice or some vertex is never reached.
-    fn build(next: Next<V>, roots: List<V>) -> Rooted<V, _>:
+    // preorder. Unless `span`, traps when a root is reached twice or some vertex is never
+    // reached; with `span`, skips reached roots and roots each unreached vertex in `V` order.
+    fn build(next: Next<V>, roots: List<V>, span: Bool = false) -> Rooted<V, _>:
         var seen: [V]Bool = false
         var par: [V]?V = None
         var dep: [V]Int = 0
@@ -162,9 +165,16 @@ pub struct Rooted<V, Pre>:
         var k0: [V]Int = 0
         var k1: [V]Int = 0
         var i = 0
-        for r in roots:
-            assert not seen[r]
+        var rs: List<V> = []
+        var cand = roots.clone()
+        if span:
+            for v in V: cand.push(v)
+        for r in cand:
+            if seen[r]:
+                assert span
+                continue
             seen[r] = true
+            rs.push(r)
             bfs.push(r)
             while i < bfs.len:
                 let u = bfs[i]
@@ -179,7 +189,7 @@ pub struct Rooted<V, Pre>:
                         far[v] = far[u] + arc_len(a)
                         bfs.push(v)
                 k1[u] = bfs.len
-        assert roots.len > 0 and bfs.len == V.count
+        assert rs.len > 0 and bfs.len == V.count
         var sz: [V]Int = 1
         for j in (0..bfs.len).rev:
             if let p = par[bfs[j]]: sz[p] += sz[bfs[j]]
@@ -194,7 +204,7 @@ pub struct Rooted<V, Pre>:
         var tin: [V]Int = 0
         var order: List<V> = []
         var stack: List<V> = []
-        for r in roots:
+        for r in rs:
             stack.push(r)
             while let v = stack.pop():
                 tin[v] = order.len
@@ -206,7 +216,7 @@ pub struct Rooted<V, Pre>:
                 if let h = heavy[v]: stack.push(h)
         domain Order = 0..V.count
         Rooted<V, Order>(
-            roots[0],
+            rs[0],
             par,
             [V] v => dep[v],
             far,
