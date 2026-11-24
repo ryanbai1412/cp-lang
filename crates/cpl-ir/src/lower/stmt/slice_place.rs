@@ -41,6 +41,58 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// `g.rows[r]` or `g.cols[c]` written through: the mutable view of that
+    /// line of the grid `g`, as `g[r, ..]`'s is when written through
+    /// (R04b.1.12, R05.3.3). `None` for anything else.
+    pub(in crate::lower) fn grid_line_place(
+        &mut self,
+        base: &ast::Expr,
+        indices: &[ast::Expr],
+        span: Span,
+    ) -> Option<Place> {
+        let ast::ExprKind::Field { base: grid, name } = &base.kind else {
+            return None;
+        };
+        let axis = match name.text.as_str() {
+            "rows" => 1,
+            "cols" => 0,
+            _ => return None,
+        };
+        let [at] = indices else {
+            return None;
+        };
+        let Some(Ty::Array { dims, elem }) = self.probe_ty_silent(grid) else {
+            return None;
+        };
+        let &[d0, d1] = dims.as_slice() else {
+            return None;
+        };
+        let want = match [d0, d1][1 - axis] {
+            Dim::Pos(d) => Ty::Pos(d),
+            Dim::Bound(d) => Ty::Bound(d),
+            _ => return None,
+        };
+        let dim = self.axis_key(&[axis], &dims)?;
+        let grid = self.place(grid);
+        let at_span = at.span;
+        let at = self.expr(at, Some(&want));
+        let at = self.coerce(at, &want, at_span);
+        let at = self.cast(Cast::Ord, at, Ty::Int);
+        let view_ty = Ty::MutView(elem, dim);
+        let view = self.mk(
+            ExprKind::MutLine(Box::new(grid), Box::new(at), axis),
+            view_ty.clone(),
+            span,
+        );
+        let tmp = self.temp(view_ty.clone());
+        self.cx.pending.push_let(tmp, view);
+        Some(Place {
+            kind: PlaceKind::Local(tmp),
+            ty: view_ty,
+            span: self.span(span),
+        })
+    }
+
     /// `a[l..][k]` is the cell of `a` at key `k`, since a slice keeps its
     /// source's keys (R04b.1): the view's position is `k`'s position in `a`
     /// less the slice's first. `None` unless `view` was just made by

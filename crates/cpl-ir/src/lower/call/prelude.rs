@@ -425,6 +425,9 @@ impl<'a> Lowerer<'a> {
                     self.mismatch(args[1].value.span, &ty, &pb.ty);
                     return self.err_expr(span);
                 }
+                if let Ty::MutView(elem, _) = &ty {
+                    return self.swap_views(pa, pb, (**elem).clone(), span);
+                }
                 // Three moves, so two lists trade places in O(1).
                 self.do_expr(Some(&Ty::Unit), span, |lw, out| {
                     let pa = lw.settle_indexes(pa, out);
@@ -1407,6 +1410,71 @@ impl<'a> Lowerer<'a> {
                 .collect();
             let tuple = lw.mk(ExprKind::Tuple(parts), ty, span);
             out.push_give(tuple);
+        })
+    }
+
+    /// `swap(mut a[l..r], mut g.rows[q])`: two views own no cells to trade,
+    /// so they trade the cells they see, one at a time.
+    fn swap_views(&mut self, pa: Place, pb: Place, elem: Ty, span: Span) -> Expr {
+        self.do_expr(Some(&Ty::Unit), span, |lw, out| {
+            let pa = lw.settle_indexes(pa, out);
+            let pb = lw.settle_indexes(pb, out);
+            let len = |lw: &mut Self, place: &Place| {
+                let view = super::stmt::place_to_expr(place);
+                lw.mk_builtin(Builtin::Len, [view], Ty::Int, span)
+            };
+            let len_a = len(lw, &pa);
+            let len_a = lw.hold(len_a, out);
+            let len_b = len(lw, &pb);
+            let differ = lw.mk_cmp(CmpOp::Ne, len_a.clone(), len_b, Ty::Bool, span);
+            let trap = Stmt::Trap(
+                "`swap` needs two views of one length".to_string(),
+                lw.span(span),
+            );
+            out.push(Stmt::If(
+                differ,
+                Block { stmts: vec![trap] },
+                Block::default(),
+            ));
+            let at = lw.temp(Ty::Int);
+            let cell = |lw: &mut Self, view: &Place| Place {
+                kind: PlaceKind::Index(Box::new(view.clone()), vec![lw.local(at, span)]),
+                ty: elem.clone(),
+                span: lw.span(span),
+            };
+            let (ca, cb) = (cell(lw, &pa), cell(lw, &pb));
+            let tmp = lw.temp(elem.clone());
+            let held = Place {
+                kind: PlaceKind::Local(tmp),
+                ty: elem.clone(),
+                span: lw.span(span),
+            };
+            let take = |lw: &mut Self, place: &Place| {
+                lw.mk_mutate(
+                    Mutation::Take,
+                    place.clone(),
+                    Vec::new(),
+                    elem.clone(),
+                    span,
+                )
+            };
+            let mut body = Vec::new();
+            let from_a = take(lw, &ca);
+            body.push_let(tmp, from_a);
+            let from_b = take(lw, &cb);
+            body.push(Stmt::Assign(ca, AssignOp::Set, from_b));
+            let from_tmp = take(lw, &held);
+            body.push(Stmt::Assign(cb, AssignOp::Set, from_tmp));
+            let iter = Iter::Range {
+                lo: lw.int_lit(0, span),
+                hi: len_a,
+                step: None,
+                rev: false,
+                closed: false,
+            };
+            let lid = lw.fresh_loop();
+            out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
+            out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
         })
     }
 }

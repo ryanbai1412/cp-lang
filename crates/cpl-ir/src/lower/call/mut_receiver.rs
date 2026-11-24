@@ -7,6 +7,12 @@ impl<'a> Lowerer<'a> {
     /// Where `method`'s `mut self` lives. A temporary has nowhere to keep
     /// the change, so the error names the method, not an assignment.
     pub(in crate::lower) fn mut_receiver(&mut self, recv: &ast::Expr, method: &str) -> Place {
+        // `g.rows[r]` is a line of the grid's own cells, not a slot lent by `GridRows.at`.
+        if let ast::ExprKind::Index { base, indices } = &recv.kind {
+            if let Some(line) = self.grid_line_place(base, indices, recv.span) {
+                return line;
+            }
+        }
         if let Some(place) = self.lent_receiver(recv) {
             return place;
         }

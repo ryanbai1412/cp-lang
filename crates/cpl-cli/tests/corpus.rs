@@ -43,7 +43,7 @@ fn check(path: &Path) -> cpl_cli::Outcome {
 /// gap in `cpl-ir` or the standard library, listed so that it is seen. A
 /// file leaves this list when it builds, and the test below says so;
 /// nothing is to be added to it.
-const NOT_BUILT: &[&str] = &["crates/cpl-cli/tests/cases/lend/grid_rows.cp"];
+const NOT_BUILT: &[&str] = &[];
 
 #[test]
 fn the_libraries_ports_and_passing_tests_check_clean() {

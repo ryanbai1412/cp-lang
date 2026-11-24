@@ -235,6 +235,9 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::ExprKind::Index { base, indices } => {
+                if let Some(line) = self.grid_line_place(base, indices, e.span) {
+                    return line;
+                }
                 let mut base_place = self.place(base);
                 if let Some(n) = crate::lower::expr::nested_arity(&base_place.ty, indices.len()) {
                     let inner =

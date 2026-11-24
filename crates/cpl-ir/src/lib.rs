@@ -535,7 +535,7 @@ impl Ty {
     /// is lent as the mutable view of the same cells.
     pub fn lent_mut(self) -> Ty {
         match self {
-            Ty::ListView(elem, key) => Ty::MutView(elem, key),
+            Ty::ListView(elem, key) | Ty::Keyed(elem, key) => Ty::MutView(elem, key),
             other => other,
         }
     }
