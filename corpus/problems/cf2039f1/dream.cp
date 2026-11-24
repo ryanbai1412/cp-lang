@@ -8,12 +8,13 @@
 @!multitest
 type Z = Mod<998_244_353>
 let m: 1..=1e5 = read()
-domain G = m.divisors
+
 let numbers = Sieve(m)
-var at, above: [G]Z = 0
-for y in G.rev:
-    let grown = [(h, 2 * (sum(numbers.mobius(d) * above[h * d] for d in (y / h).divisors) - at[h])) for h in y.divisors]
-    for (h, w) in chain(grown, [(y, 1)]):
+let mu = numbers.mobius_table()
+var at, above: [1..=m]Z = 0
+for y in (1..=m).rev:
+    let grown = [(h, 2 * (sum(mu[d] * above[h * d] for d in numbers.divisors(y / h)) - at[h])) for h in numbers.divisors(y)]
+    for (h, w) in grown + [(y, 1)]:
         at[h] += w
-        above[h.divisors] += w
+        for d in numbers.divisors(h): above[d] += w
 print(above[1])
