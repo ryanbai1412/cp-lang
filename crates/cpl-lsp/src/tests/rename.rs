@@ -239,3 +239,9 @@ fn rename_leaves_a_member_named_like_a_top_level_value() {
     let src = "var dist| = 3\nlet g: [3]List<(to: Int, w: Int)> = [[], [], []]\ndist = dijkstra(g, from: [(0, 0)]).dist[0]!\nprint(dist)\n";
     assert_eq!(renamed_texts(src, "d"), ["d", "d", "d"]);
 }
+
+#[test]
+fn rename_reaches_a_variant_named_through_its_enum() {
+    let src = "enum Team = Ho|me | Away\nvar score: [Team]Int = 0\nscore[Team.Home] += 1\nprint(score[Team.Home])\n";
+    assert_eq!(renamed_texts(src, "Host"), ["Host", "Host", "Host"]);
+}

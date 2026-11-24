@@ -257,6 +257,8 @@ impl<'a> Checker<'a> {
             Ty::Str => Some("Str".to_string()),
             Ty::Array { .. } => Some("[D]T".to_string()),
             Ty::Named { name, .. } => Some(name.clone()),
+            // `Team.Home`: a variant named through its enum.
+            Ty::TypeName(name) => Some(name.clone()),
             _ => None,
         };
         if let Some(owner) = owner.as_deref() {

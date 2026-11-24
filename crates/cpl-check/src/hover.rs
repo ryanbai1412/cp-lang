@@ -627,6 +627,7 @@ fn member_span(analysis: &Analysis, owner: &str, member: &str) -> Option<Span> {
     let owns = |target: &cpl_syntax::ast::Type| matches!(&target.kind, TypeKind::Named { name, .. } if name.text == owner);
     let own = find(&|kind| match kind {
         StmtKind::Struct(decl) if decl.name.text == owner => fn_named(&decl.methods),
+        StmtKind::Enum(decl) if decl.name.text == owner => fn_named(&decl.methods),
         StmtKind::Impl {
             trait_name: None,
             target,
@@ -639,6 +640,9 @@ fn member_span(analysis: &Analysis, owner: &str, member: &str) -> Option<Span> {
         find(&|kind| match kind {
             StmtKind::Struct(decl) if decl.name.text == owner => {
                 (decl.fields.iter().find(|f| f.name.text == member)).map(|f| f.name.span)
+            }
+            StmtKind::Enum(decl) if decl.name.text == owner => {
+                (decl.variants.iter().find(|v| v.name.text == member)).map(|v| v.name.span)
             }
             _ => None,
         })
