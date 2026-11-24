@@ -6328,6 +6328,38 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/grid_views.cp::grid.GridCols.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "grid.GridCols.at",
+   "measured": 1.51,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/grid_views.cp::grid.GridCols.each": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "grid.GridCols.each",
+   "measured": 1.55,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/grid_views.cp::grid.GridRows.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "grid.GridRows.at",
+   "measured": 1.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/grid_views.cp::grid.GridRows.each": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "grid.GridRows.each",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/hashmap.cp::hashmap.Counter.absorb": {
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
@@ -17869,8 +17901,6 @@
   "builtin.Str.sorted",
   "builtin.Str.swap",
   "builtin.Str.to_str",
-  "grid.GridCols.each",
-  "grid.GridRows.each",
   "strings.Palindromes.items"
  ]
 }
