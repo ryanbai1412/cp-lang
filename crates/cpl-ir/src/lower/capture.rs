@@ -24,8 +24,7 @@ impl Lowerer<'_> {
             .rev()
             .find_map(|s| s.get(name).copied())?;
         let by_ref = self.outer_cxs[found_level].mut_slots.contains(&orig_slot);
-        let slots = self.thread_capture(found_level, orig_slot, name, by_ref);
-        let inner = *slots.last().expect("one slot per level");
+        let (slots, inner) = self.thread_capture(found_level, orig_slot, name, by_ref);
         if let Some(view) = self.outer_cxs[found_level]
             .sorted_views
             .get(&orig_slot)
@@ -49,14 +48,15 @@ impl Lowerer<'_> {
     }
 
     /// Threads the outer slot `orig` of the FnCx at `found_level` down to the current
-    /// closure under `key`, returning its slot at each level below `found_level`.
+    /// closure under `key`, returning its slot at each level below `found_level`
+    /// and the current closure's (`orig` itself when no level is crossed).
     fn thread_capture(
         &mut self,
         found_level: usize,
         orig: Slot,
         key: &str,
         by_ref: bool,
-    ) -> Vec<Slot> {
+    ) -> (Vec<Slot>, Slot) {
         let ty = self.outer_cxs[found_level].locals[orig].ty.clone();
         let mut slots = Vec::new();
         let mut cur = orig;
@@ -90,7 +90,7 @@ impl Lowerer<'_> {
             }
             slots.push(cur);
         }
-        slots
+        (slots, cur)
     }
 
     /// A captured `b.range(r)` view is the same view in the closure: its bag is captured by
@@ -103,14 +103,16 @@ impl Lowerer<'_> {
         slots: &[Slot],
     ) {
         let base = match &view.base.kind {
-            PlaceKind::Local(root) => {
-                Some(self.thread_capture(found_level, *root, &format!("{name}#base"), true))
-            }
+            PlaceKind::Local(root) => Some(
+                self.thread_capture(found_level, *root, &format!("{name}#base"), true)
+                    .0,
+            ),
             PlaceKind::Global(_) => None,
             _ => return,
         };
         let part = |lw: &mut Self, slot: Slot, what: &str| {
             lw.thread_capture(found_level, slot, &format!("{name}#{what}"), false)
+                .0
         };
         let lo = part(self, view.lo, "lo");
         let lo_inc = part(self, view.lo_inc, "lo_inc");
