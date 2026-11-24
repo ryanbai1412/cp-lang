@@ -46,34 +46,84 @@ doesn't have reads the same on every command,
 
 `cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; each
 diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
-`notes`, `help` and `fixes`, positions as 1-based `line` and byte `col` plus
-the byte `offset`. (Rcli.2) `cpl fix --json` prints the same `files`, each also with
-the number of fixes `applied`, its diagnostics those left in the rewritten
+`notes`, `help`, `fixes`, `witness` (the values that break the rule, each a
+`name` and `value`; empty when there are none) and `page` (its page on the
+docs site, `null` for a code with none), positions as 1-based `line` and byte `col` plus
+the byte `offset`. (Rcli.2) `cpl fix --json` prints `{"files": [{"path", "ok", "diagnostics",
+"applied"}]}`, the same `files` each also with the number of fixes `applied`, its diagnostics those left in the rewritten
 file. `cpl judge --json` prints `{"accepted", "reason", "diagnostic"}`, the
-last two `null` when the judge accepts. `cpl build --json` prints the C++
-file's `path`, `bytes`, the `limit` and `judge` it was built for, and `sizes`:
+last two `null` when the judge accepts. `cpl build --json` prints `{"path", "bytes", "limit", "judge", "checks",
+"sizes": [{"part", "name", "bytes"}]}`: the C++ file's `path`, `bytes`, the
+`limit` and `judge` it was built for, the `checks` it still traps on (`none`,
+`traps` or `all`, as `--checks` names them), and `sizes`:
 each piece's `part`, `name` and `bytes`, adding up to `bytes`. `cpl submit
---json` prints `ready` and the `build` and `test` reports those two print,
-`null` for a step that did not run. `cpl report --json` prints the report's
+--json` prints `{"ready", "build", "test"}`: the `build` and `test` reports those two print,
+`null` for a step that did not run. `cpl report --json` prints `{"path", "bytes", "sections", "comparison",
+"issue_url"}`: the report's
 `path` and `bytes`, its `sections`, the `comparison` of the interpreter and
 C++ runs and the prefilled `issue_url`, `null` when there is none. `cpl fmt
 --json` prints `{"files": [{"path", "changed", "ok", "diagnostics",
 "error"}]}` in path order: `changed` when formatting changed the file (or
 would, under `--check`), `ok` when it is formatted, the lexer `diagnostics`
 that stopped formatting and any other `error` (`null` when none).
-`cpl setup <editor> --json` prints `{"editor", "ok", "message"}`, or
-`"error"` in place of `"message"` when the install or `--check` failed;
+`cpl setup <editor> --json` prints `{"editor", "ok", "message"?, "error"?}`:
+`message`, or `error` in its place when the install or `--check` failed;
 `editor` is the canonical name (`code` reports `vscode`).
 `cpl self list --json` prints `{"toolchains": [{"id", "marks"}]}`, the
 marks among `stable`, `edge`, `default` and `rollback`; `cpl self channel
 --json` prints `{"default", "toolchain"}`, `toolchain` `null` until it is
 installed; every other `cpl self` command prints `{"ok", "message"}` or
-`{"ok", "error"}`.
-`cpl watch --json` prints each round as one line, `{"path", "passed",
-"diagnostics", "test", "skipped", "error"}`: the errors (or, with none, the
+`{"ok", "error"}`, as `cpl self rollback --json` prints `{"ok", "message"?,
+"error"?}`.
+`cpl watch --json` prints `{"path", "passed", "diagnostics", "test",
+"skipped", "error"}` for each round, on one line: the errors (or, with none, the
 lints) in `cpl check --json`'s diagnostic shape, `test` as `cpl test --json`
 prints it or `null` when the cases did not run, why they were `skipped`, and
 any `error` that stopped the round (`null` when none).
 `cpl --help --json` prints `{"commands": [{"name", "usage", "summary",
-"json", "help"}]}`: `json` is how the command asks for JSON output
+"json", "help"}], "version"}`: `version` is the toolchain's, as `cpl
+--version` prints it, and `json` is how the command asks for JSON output
 (`"--json"` or `"--format json"`; both work) or `null` when it has none.
+
+A key marked `?` is in some of a command's outputs only, as its sentence
+says; `crates/cpl-cli/tests/json_contract.rs` runs every command below and
+checks its keys against these shapes. The other commands with JSON output:
+`cpl new --json` and `cpl fetch --json` print `{"path", "created", "tests",
+"samples"}`: the source's `path`, whether it was `created` (false when it
+was there already), the `tests` folder and how many `samples` it holds.
+`cpl migrate --json` prints `{"files": [{"path", "changed", "applied",
+"diagnostics"}]}`. `cpl lint --json` prints `{"files": [{"path", "ok",
+"diagnostics"}]}`, as `cpl check --json` does, the diagnostics its lints.
+`cpl run --format json` prints `{"stdout", "time_ms", "values": [{"line",
+"name", "value"}]}`: what the program printed, how long it ran and the
+top-level `values` it ended with; with `--trace` it prints the trace
+instead (`tools/trace/trace-schema.json`).
+`cpl judges --json` prints `{"judges": [{"name", "title", "chosen",
+"command", "os", "stack", "thread_stack_mb", "time_ms", "memory_mb",
+"source_limit_kb", "evidence"}]}`, `chosen` on the profile the file builds for.
+`cpl explain --json` prints `[{"code", "title", "summary", "explanation",
+"trigger", "fix", "mode", "lint_name", "input"?, "rule"?}]`, one entry
+per code: the lint's `rule` when `mode` is `lint`, else the `input` its
+`trigger` runs on;
+`cpl explain d --json` prints `[{"site", "lowering", "detail"}]`, one entry
+per choice it explains.
+`cpl doc --format json` prints `{"modules": [{"name", "path", "doc", "items",
+"examples", "links"}]}`.
+`cpl test --format json` prints `{"passed", "total", "cases": [{"name",
+"verdict", "ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
+`cpl stress --format json` prints `{"status", "cases", "saved_passed"?,
+"tried"?, "counterexample"?}`: how many `cases` ran, then `saved_passed` and
+what it `tried` when it found no counterexample, or the `counterexample`.
+`cpl locate --json` prints `{"input", "part", "alt", "output", "alt_output",
+"divergence"}`.
+`cpl bench --format json` prints `{"status", "time_limit_ms",
+"memory_limit_kb", "runs": [{"shape", "numbers", "status", "ms", "kb",
+"error"}]}`.
+`cpl profile --format json` prints `{"file", "engine", "nanos", "failure",
+"lines": [{"line", "hits", "nanos"}]}`.
+`cpl cover --format json` prints `{"file", "inputs", "lines", "covered",
+"uncovered", "one_way": [{"line", "always"}]}`: `uncovered` holds the
+numbers of the lines no input ran.
+`cpl replay --json` prints `{"call": {"name", "ordinal", "entry", "exit",
+"args"}, "replayed", "before", "after", "change", "earlier", "fallback",
+"trap"}`.
