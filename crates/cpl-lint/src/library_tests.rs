@@ -701,3 +701,12 @@ fn a_library_lint_keeps_out_of_the_program_s_fn_of_its_name() {
     );
     assert!(report.contains(":4:"), "{report}");
 }
+
+/// A method's lint still fires in the program's fn of the method's name: its
+/// fix calls the method on a value, not the program's fn. Rule: R06.4.9.
+#[test]
+fn a_method_lint_fires_in_the_program_s_fn_of_its_name() {
+    let src = "let n: 1..=9 = read()\nvar bit: [0..=9]Int = 0\nfn add(i0: Int):\n    var i = i0\n    while i <= n:\n        bit[i] += 1\n        i += i & -i\nadd(1)\nprint(bit[1])\n";
+    let found = crate::lint(src, &crate::Config::default());
+    assert!(found.iter().any(|d| d.code.0 == "L0514"), "{found:?}");
+}
