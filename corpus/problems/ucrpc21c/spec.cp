@@ -1,9 +1,10 @@
 // ucrpc21c: two teams start with n health and trade damage each round; report the first round in
 // which a team (or both) falls, or that nobody does.
 let (n, m) = read<(Int, 1..=100_000)>()
+let rounds = read<[m](u: Int, v: Int, x: Int, y: Int)>()
 var (a, b) = (n, n)
 for round in 1..=m:
-    let (u, v, x, y) = read<(Int, Int, Int, Int)>()
+    let (u, v, x, y) = rounds[round - 1]
     a -= u * v
     b -= x * y
     if a <= 0 or b <= 0:

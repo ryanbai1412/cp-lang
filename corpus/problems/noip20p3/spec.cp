@@ -6,7 +6,8 @@
 // that pair, then recurse on the tubes by bottom kind. O(n m log n) moves.
 let (n, m) = read<(2..=50, 2..=400)>()
 domain Tube = 1..=n + 1
-var tube = [Tube] t => if Int(t) <= n: List(read<[m]1..=n>()) else: List()
+let start = read<[n][m]1..=n>()
+var tube = [Tube] t => if Int(t) <= n: List(start[Int(t) - 1]) else: List()
 var empty = Tube(n + 1)
 var moves = List<(Tube, Tube)>()
 

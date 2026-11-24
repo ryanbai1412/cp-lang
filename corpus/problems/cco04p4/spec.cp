@@ -3,15 +3,17 @@
 // of the two lap lengths (each at most 1e4), so walk one joint period and keep the closest
 // approach: O(lcm), about 5e7 minutes at worst. A lap with no length stays put.
 enum Axis = X | Y
-fn lap() -> (at: Pt, steps: List<Pt>):
-    let (x, y, m) = read<(Int, Int, 0..=100)>()
-    let moves = read<[m](d: -100..=100, axis: Axis)>()
+let (x1, y1, m1) = read<(Int, Int, 0..=100)>()
+let moves1 = read<[m1](d: -100..=100, axis: Axis)>()
+let (x2, y2, m2) = read<(Int, Int, 0..=100)>()
+let moves2 = read<[m2](d: -100..=100, axis: Axis)>()
+fn lap(x: Int, y: Int, moves: List<(d: Int, axis: Axis)>) -> (at: Pt, steps: List<Pt>):
     let unit = (a: Axis) => match a:
         X => Pt(1, 0)
         Y => Pt(0, 1)
     let steps = [unit(mv.axis) * Int(mv.d.sign) for mv in moves for _ in 0..abs(mv.d)]
     (at: Pt(x, y), steps: if steps.is_empty: [Pt(0, 0)] else: steps)
-var (s, t) = (lap(), lap())
+var (s, t) = (lap(x1, y1, moves1.collect()), lap(x2, y2, moves2.collect()))
 var best = s.at.dist2_128(t.at)
 for i in 0..lcm(s.steps.len, t.steps.len):
     s.at += s.steps[i % s.steps.len]

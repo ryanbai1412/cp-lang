@@ -9,15 +9,18 @@
 //   bottleneck in at most 2(n - 1) streets. O(n^3).
 let (n, k) = read<(2..=500, 1..=1_000_000)>()
 domain V = [n]
-fn read_triangle(f: Int -> Int) -> [V, V]?Int:
+let cars = read<[n * (n - 1) / 2]0..=k>()
+let bikes = read<[n * (n - 1) / 2]0..=k>()
+fn triangle(widths: List<Int>) -> [V, V]?Int:
     var m: [V, V]?Int = None
+    var at = 0
     for v in V:
         for u in ..v:
-            let w = f(read<0..=k>())
-            (m[u, v], m[v, u]) = (Some(w), Some(w))
+            (m[u, v], m[v, u]) = (Some(widths[at]), Some(widths[at]))
+            at += 1
     m
-let narrow = read_triangle(c => k - c)
-let wide = read_triangle(b => b)
+let narrow = triangle(cars.map(c => k - c).collect())
+let wide = triangle(bikes.collect())
 fn fits(u: V, v: V) -> Bool = u != v and wide[u, v]! >= narrow[u, v]!
 fn only_fits(d: [V, V]?Int) -> [V, V]?Int = [V, V] (u, v) => if fits(u, v): d[u, v] else: None
 fn closes_to<R>(d: [V, V]?Int, over: R, want: [V, V]?Int) -> Bool:

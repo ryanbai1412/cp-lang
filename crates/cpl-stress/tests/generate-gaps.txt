@@ -1,13 +1,8 @@
 # Programs whose input `cpl stress` can't generate yet, and why.
 # Checked by readable_shapes.rs; a fix deletes its line.
 corpus/problems/ccc04s5/spec.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-corpus/problems/cco04p4/spec.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
-corpus/problems/cco16p4/spec.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
-corpus/problems/egoi23p4/spec.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
 corpus/problems/ioi01p1/spec.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 corpus/problems/ioi19p5/spec.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-corpus/problems/noip20p3/spec.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-corpus/problems/ucrpc21c/spec.cp: this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`
 crates/cpl-cli/tests/programs/batch25_yields_with_effects.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
 crates/cpl-cli/tests/programs/read_impl.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 crates/cpl-cli/tests/programs/s2_read_flow.cp: this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`
