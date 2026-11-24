@@ -112,7 +112,7 @@ std/bag.cp: SortedBag.entries_rev(self) -> yields (key: K, count: Int)
 std/bag.cp: SortedBag.first(self) -> ?K
 std/bag.cp: SortedBag.first_true(self, ok: K -> Bool) -> ?K
 std/bag.cp: SortedBag.is_empty(self) -> Bool
-std/bag.cp: SortedBag.join(mut self, other: SortedBag<K>)
+std/bag.cp: SortedBag.join(mut self, var other: SortedBag<K>)
 std/bag.cp: SortedBag.key_of(self, c: BagCursor) -> K
 std/bag.cp: SortedBag.last(self) -> ?K
 std/bag.cp: SortedBag.last_true(self, ok: K -> Bool) -> ?K
@@ -147,7 +147,7 @@ std/bag.cp: SortedMap.first_true(self, ok: (K, V) -> Bool) -> ?(K, V)
 std/bag.cp: SortedMap.get(self, k: K) -> ?V
 std/bag.cp: SortedMap.is_empty(self) -> Bool
 std/bag.cp: SortedMap.items(self) -> yields (K, V)
-std/bag.cp: SortedMap.join(mut self, other: SortedMap<K, V>)
+std/bag.cp: SortedMap.join(mut self, var other: SortedMap<K, V>)
 std/bag.cp: SortedMap.keys(self) -> yields K
 std/bag.cp: SortedMap.last(self) -> ?(K, V)
 std/bag.cp: SortedMap.last_le(self, k: K) -> ?(K, V)
@@ -363,8 +363,8 @@ std/deque.cp: LinkedList.pop_front(mut self) -> ?T
 std/deque.cp: LinkedList.push(mut self, x: T)
 std/deque.cp: LinkedList.push_front(mut self, x: T)
 std/deque.cp: LinkedList.reverse(mut self)
-std/deque.cp: LinkedList.splice_back(mut self, other: LinkedList<T>)
-std/deque.cp: LinkedList.splice_front(mut self, other: LinkedList<T>)
+std/deque.cp: LinkedList.splice_back(mut self, mut other: LinkedList<T>)
+std/deque.cp: LinkedList.splice_front(mut self, mut other: LinkedList<T>)
 std/derive.cp: eq_fields<T>(a: T, b: T) -> Bool
 std/derive.cp: hash_fields<T>(a: T) -> U64
 std/derive.cp: lt_fields<T>(a: T, b: T) -> Bool
@@ -1493,7 +1493,7 @@ std/range.cp: RingRange.is_empty(self) -> Bool
 std/range.cp: RingRange.keys(self) -> yields D
 std/range.cp: RingRange.len(self) -> Int
 std/range.cp: RingRange.start(self) -> D
-std/range.cp: bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>
+std/range.cp: bsearch<D: Search>(self: Range<D>, ok: D -> Bool, last: Bool = false, steps: ?Int = None) -> D.Found
 std/range.cp: clip<D>(self: Range<D>, other: Range<D>) -> Range<D>
 std/range.cp: ends<D>(self: Range<D>) -> (Int, Int)
 std/range.cp: first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D
@@ -1505,7 +1505,6 @@ std/range.cp: r<D>(self: Range<D>) -> Cut<D>
 std/range.cp: shift<D>(self: D, r: Range<Int>) -> Range<D>
 std/range.cp: shift_saturating<D>(self: D, k: Int) -> D
 std/range.cp: splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)
-std/search.cp: bsearch(self: Range<F64>, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 std/search.cp: dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64
 std/search.cp: gallop_first<I: Add>(from: I, ok: I -> Bool) -> ?I
 std/search.cp: parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (), apply: I -> (), ok: Int -> Bool) -> List<?I>
@@ -1752,8 +1751,8 @@ std/seq.cp: rotated_left<S: Seq<T>, T>(self: S, k: Int) -> List<T>
 std/seq.cp: rotated_right<S: Seq<T>, T>(self: S, k: Int) -> List<T>
 std/seq.cp: runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 std/seq.cp: select<S: IndexedMut, T, K>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)
-std/seq.cp: sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x)
-std/seq.cp: sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
+std/seq.cp: sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)
+std/seq.cp: sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>
 std/seq.cp: sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
 std/seq.cp: sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
 std/seq.cp: sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
