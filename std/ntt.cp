@@ -202,7 +202,7 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// A number type with a fast linear product, which `convolve` uses for its default `on: +`,
-/// `over: Semiring(+, *)` form. `Mod<P>` has one (NTT); a user number type joins by implementing
+/// `over: Semiring(+, *)` form. `Mod<P>` has one for every `P` and `F64` has one (see the cost line); a user number type joins by implementing
 /// it the same way.
 pub trait FastProduct:
     /// `convolve(a, b)` for nonempty `a` and `b`, or `None` when this type has no fast product for
