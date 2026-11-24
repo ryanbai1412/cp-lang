@@ -11,7 +11,6 @@
 //   divisible by d. Each value weighs a random hash mod p, so the count is nonzero mod p
 //   whenever it is truly nonzero (with high probability). O(V log V) per k.
 // Bounds: n: 1..=5000; a: 1..=V
-use std.math.{Sieve}
 use std.rand.{Rng}
 
 const MOD = 998_244_353

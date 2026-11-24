@@ -7,7 +7,6 @@
 //   the edge tile[i] -> -tile[j] (the next atom needs a side labelled -tile[j]). The molecule
 //   exists iff this graph has a cycle: std `find_cycle`, O(16 N + 53^2).
 // Bounds: m: 1..=100_000; atoms: -26..=26
-use std.graph.{find_cycle}
 
 domain Label = -26..=26
 let m: 1..=100_000 = read()

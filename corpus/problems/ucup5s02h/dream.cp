@@ -22,7 +22,6 @@
 // `a1 = (c.x - b.x)^2 * a.q`, `a2 = (c.x - a.x)^2 * b.q`, `a3 = (b.x - a.x)^2 * c.q`.
 // Squaring twice removes the square roots: `a2 >= a1 + a3` and `(a2 - a1 - a3)^2 >= 4 * a1 * a3`.
 // Weakest same-group pairs found by sweeping one side's charges through a `Hull`.
-use std.math.{Ratio}
 
 struct Charge(x: Int, q: Int, pin: Char)
 
