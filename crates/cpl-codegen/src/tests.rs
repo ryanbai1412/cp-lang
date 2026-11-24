@@ -166,6 +166,16 @@ fn list_insert_and_remove_move_the_tail_once() {
 }
 
 #[test]
+fn an_optional_read_checks_for_the_end_of_input_first() {
+    let body =
+        body("var xs = List<Int>()\nwhile let x = read<?Int>():\n    xs.push(x)\nprint(xs.len)\n");
+    assert!(
+        body.contains("if (cpl::at_eof()) return cpl::OptInt();"),
+        "{body}"
+    );
+}
+
+#[test]
 fn the_same_source_gives_the_same_bytes() {
     let source = "var m: Map<Str, Int> = []\nm[\"b\"] = 1\nm[\"a\"] = 2\nvar s: Set<Int> = []\ns.insert(3)\nprint(m, s)\n";
     assert_eq!(cpp(source), cpp(source));

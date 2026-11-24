@@ -9008,8 +9008,6 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** noi20p1's max-plus product spent its inner loop on `has_value` tests of a `Some` it had just built (idioms 99962d3b). Both engines already order `?T` with `none` first, so no new semantics are introduced.
 - **Reverse.** Drop the `AssignOp::Max` arm and the `Some(e)` binding in the `?T` `max=`/`min=` lowering (`lower/stmt.rs`) and `none_first` in `runtime/opt.rs`.
 
-## 568. (reserved, compiler)
-
 ## 570. The conformance coverage report is a CI artifact, not a committed file (infra, 2026-11-24)
 
 - **Call.** `scripts/spec-gate.py coverage` still fails on a rule without the cases it needs, and writes its report to `target/spec/COVERAGE.md` (`--print` prints it). CI's checks job keeps it as the `conformance-coverage` artifact. `spec/conformance/COVERAGE.md` and its `gen.toml` entry are gone.
@@ -9023,3 +9021,8 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** `editors/vscode/scripts/language-data.js` writes `src/languageTables.ts` (the six prelude and stdlib name tables) and `syntaxes/cp.tmLanguage.json` (the committed `syntaxes/cp.tmLanguage.in.json` with those names and the literal words filled in). Both are gitignored. The extension's `compile` and `bundle` run it, and so do the site's `postinstall`, `dev` and `prebuild`. The name-table half of `crates/cpl-cli/tests/vscode_sync.rs` is gone, since generated tables can't drift; `test/unit/languageData.test.ts` still checks the generator against `std/` and the prelude.
 - **Why.** Every new std name rewrote both files, so each made a regen commit (53 a day on 2026-11-23/24) and a rebase conflict for any lane editing the grammar.
 - **Reverse.** Commit them again only if a consumer must read them without Node.
+## 568. `read<?T>()` is `None` at the end of input (compiler, 2026-11-24)
+
+- **Call.** An optional read with no `none:` (R10.2.10) skips whitespace and gives `None` when the input has ended, else `Some` of a `T` read by the usual rules, on both engines. The end check is a read, so it flushes under `Wire` and waits on an interactor like one. `read(none: k)` keeps its sentinel meaning.
+- **Why.** CP Lang had no end-of-input test a program could write, so `read_all` and `@!multitest(until_eof)` were compiler special cases. `?T` is how the language says "maybe absent"; an end-of-input `None` makes `read_all` a four-line std body and lets a statement's optional trailing token read as `?T`, with no new name. `read<?Int>()` was E0501 before, so no program changes meaning.
+- **Reverse.** Make the plain `?T` read E0501 again and add an `at_eof()` intrinsic for std.

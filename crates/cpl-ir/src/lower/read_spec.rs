@@ -85,8 +85,9 @@ pub(super) fn unreadable(spec: &Spec) -> Option<Ty> {
         Spec::Parse(_, inner) => unreadable(inner),
         Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
         Spec::Array { elem, .. } | Spec::List(elem) => unreadable(elem),
-        Spec::Opt(inner, absent) => match (&**inner, absent) {
-            (Spec::Plain(Ty::Int | Ty::Pos(_)) | Spec::Int { .. }, Some(_)) => None,
+        Spec::Opt(inner, None) => unreadable(inner),
+        Spec::Opt(inner, Some(_)) => match &**inner {
+            Spec::Plain(Ty::Int | Ty::Pos(_)) | Spec::Int { .. } => None,
             _ => Some(spec.ty()),
         },
     }

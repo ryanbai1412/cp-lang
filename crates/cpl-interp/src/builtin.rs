@@ -106,7 +106,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 Value::Unit
             }
-            Builtin::AtEof => Value::Bool(self.input.at_eof()),
+            Builtin::AtEof => {
+                // Waiting for more input shows what was printed first.
+                if !self.out.is_empty() && self.input.starved() {
+                    self.write_out(true);
+                }
+                Value::Bool(self.input.at_eof())
+            }
             Builtin::SwapInput => {
                 match &mut self.peer {
                     Some(peer) => std::mem::swap(&mut self.input, peer),

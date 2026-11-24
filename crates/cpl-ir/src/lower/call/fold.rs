@@ -13,11 +13,6 @@ impl<'a> Lowerer<'a> {
                     self.help("its fields are private to the module that declares it (R11.1.4); read the values it is built from and build it");
                 }
             }
-            if let Ty::Opt(inner) = &ty {
-                if matches!(**inner, Ty::Int | Ty::Pos(_)) {
-                    self.help("say which number in the input stands for `none`: `read(none: 0)`");
-                }
-            }
             return self.err_expr(span);
         }
         if let Spec::Array { dims, elem } = &spec {

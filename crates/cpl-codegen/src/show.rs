@@ -565,7 +565,17 @@ impl<'p> Emitter<'p> {
                     out.push_str(&format!("{lead}return {ty}({value});\n"));
                 })
             }
-            Spec::Opt(..) => Code::primary(format!("{}()", self.ty(&spec.ty()))),
+            // `read<?T>()`: `None` once the input has ended. (R10.2.10)
+            Spec::Opt(inner, None) => {
+                self.need("at_eof");
+                let ty = self.ty(&spec.ty());
+                let value = self.read(inner).text;
+                self.lambda(&ty, |this, out| {
+                    let lead = pad(this.indent);
+                    out.push_str(&format!("{lead}if (cpl::at_eof()) return {ty}();\n"));
+                    out.push_str(&format!("{lead}return {ty}({value});\n"));
+                })
+            }
             Spec::Call(call) => self.expr(call),
             // A bad token throws instead of stopping the program while the
             // string is the input; see `parse_str` in the runtime.
