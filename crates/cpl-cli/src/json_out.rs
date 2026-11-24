@@ -47,26 +47,12 @@ fn save_witnesses(
             named.join(", "),
             d.code.0
         );
-        let mut spec = match cpl_stress::InputSpec::from_source(src) {
-            Ok(spec) => spec,
-            Err(e) => {
-                out.push(format!("note: {what} is not saved: {}", e.message));
+        let case = match cpl_stress::InputSpec::witness_case(src, &d.witness) {
+            Ok(case) => case,
+            Err(why) => {
+                out.push(format!("note: {what} is not saved: {why}"));
                 continue;
             }
-        };
-        if let Some(w) = d.witness.iter().find(|w| !spec.pin(&w.0, w.1)) {
-            out.push(format!(
-                "note: {what} is not saved: the program does not read `{}` as one integer",
-                w.0
-            ));
-            continue;
-        }
-        let mut rng = cpl_stress::Rng::new(1);
-        let Some(case) = cpl_stress::generate(&spec, &mut rng, cpl_stress::Size::Small(5)) else {
-            out.push(format!(
-                "note: {what} is not saved: no input fits the other declared reads"
-            ));
-            continue;
         };
         let dir = file.with_extension("tests");
         let path = dir.join(format!("lint-{}-{line}.in", d.code.0));

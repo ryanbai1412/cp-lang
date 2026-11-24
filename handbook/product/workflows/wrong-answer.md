@@ -41,8 +41,9 @@ solution hangs: the case fails as a time-out and the explanation names the
 loop that stopped changing. The brute is wrong: stress blames the brute.
 Stress finds nothing but the judge still says WA: the bug lives at sizes
 the default `--size 8` never reaches, such as an overflow at the bounds.
-`cpl lint` names a witness input for each bound it can't prove,
-`cpl lint --save` saves it as a case `cpl test` runs, and
+`cpl lint` names a witness input for each bound it can't prove, stress
+runs each one before its generated cases and saves a failing one as a case
+`cpl test` runs, and
 `cpl bench` runs the maximum size (use case `stress/U28`). A helper fails
 (the checker, interactor or `@gen fn`): stress should blame it by name, as
 it blames a brute (`stress/U30`).

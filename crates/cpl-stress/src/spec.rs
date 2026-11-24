@@ -550,6 +550,22 @@ impl InputSpec {
                 .is_none_or(|cases| cases.fields.is_empty())
     }
 
+    /// An input that reads each name in `witness` as its value, the rest
+    /// generated: a lint's witness, for `cpl lint --save` and stress
+    /// (use case stress/U28). The reason when there is none.
+    pub fn witness_case(src: &str, witness: &[(String, i128)]) -> Result<crate::Case, String> {
+        let mut spec = InputSpec::from_source(src).map_err(|e| e.message)?;
+        if let Some(w) = witness.iter().find(|w| !spec.pin(&w.0, w.1)) {
+            return Err(format!(
+                "the program does not read `{}` as one integer",
+                w.0
+            ));
+        }
+        let mut rng = crate::Rng::new(1);
+        crate::generate(&spec, &mut rng, crate::Size::Small(5))
+            .ok_or_else(|| "no input fits the other declared reads".to_string())
+    }
+
     /// Narrows the read of `name` to `value`, so every case made reads it:
     /// a lint's witness. False when the program reads no such integer.
     pub fn pin(&mut self, name: &str, value: i128) -> bool {

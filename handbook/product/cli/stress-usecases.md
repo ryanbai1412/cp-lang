@@ -165,8 +165,8 @@ Evidence: conformance `spec/conformance/core-06/brute-fn-is-removed.cp`
 ### stress/U28: stress passes but the judge says WA at maximum size
 Need: find the overflow or limit bug that only maximum-size input reaches, when small cases all agree.
 Design: the clean report points at `cpl lint`, whose bound lints (L0306, L0302, L0599, L0305) each name a witness input, and stress takes that witness as a case.
-Milestone: M1-critical. Status: partial (the clean report names each bound lint and `cpl lint --save`, which writes each witness as `<file>.tests/lint-<code>-<line>.in` for `cpl test`; stress does not run the witness as a case itself)
-Evidence: `crates/cpl-cli/tests/lint_witnesses.rs`, `crates/cpl-cli/tests/wrong_answer.rs` `a_clean_stress_points_at_the_bound_lint_and_its_saved_witness`
+Milestone: M1-critical. Status: supported (each witness, the rest of its input generated, runs before the generated cases; a failing one reads `FAIL on the input `cpl lint` names at the bounds, saved as <file>.tests/lint-<code>-<line>.in`, the file `cpl lint --save` writes and `cpl test` runs; a passing one reads `the input `cpl lint` names at the bounds passes`, and one stress can't make is named with the reason)
+Evidence: `crates/cpl-cli/tests/lint_witnesses.rs`, `crates/cpl-cli/tests/wrong_answer.rs` `stress_runs_the_input_a_bound_lint_names`
 
 ### stress/U29: the interpreter and the judge's C++ disagree
 Need: know that a difference is a toolchain bug, not a WA, and under which judge profile stress ran.

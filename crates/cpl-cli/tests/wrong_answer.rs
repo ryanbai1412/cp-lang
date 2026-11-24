@@ -178,10 +178,10 @@ fn a_runtime_error_in_the_json_report_is_a_diagnostic() {
     }
 }
 
-/// Stress finds nothing at small sizes, and its report points at the
-/// lint that names an input at the bounds that traps (`stress/U28`).
+/// Small cases never reach the bounds, so stress runs the input a bound
+/// lint names first, and saves it when it traps (`stress/U28`).
 #[test]
-fn a_clean_stress_points_at_the_bound_lint_and_its_saved_witness() {
+fn stress_runs_the_input_a_bound_lint_names() {
     let file = scratch("bound_lint");
     std::fs::write(
         &file,
@@ -189,17 +189,17 @@ fn a_clean_stress_points_at_the_bound_lint_and_its_saved_witness() {
          if a % 1000 == 37:\n    print(a * b)\n",
     )
     .unwrap();
+    let _ = std::fs::remove_dir_all(file.with_extension("tests"));
     let (code, text) = cpl(&[OsStr::new("stress"), file.as_os_str()]);
-    assert_eq!(code, Some(0), "{text}");
+    assert_ne!(code, Some(0), "{text}");
+    let witness = file.with_extension("tests").join("lint-L0306-4.in");
     assert!(
-        text.contains(
-            "`cpl lint` names inputs at the bounds that fail (L0306 at line 4): `cpl lint --save"
-        ),
+        text.contains("FAIL on the input `cpl lint` names at the bounds, saved as")
+            && text.contains("lint-L0306-4.in: RE")
+            && text.contains("error[R0202]"),
         "{text}"
     );
-    let (_, saved) = cpl(&[OsStr::new("lint"), OsStr::new("--save"), file.as_os_str()]);
-    let witness = file.with_extension("tests").join("lint-L0306-4.in");
-    assert!(witness.exists(), "{saved}");
+    assert!(witness.exists(), "{text}");
     let (code, tested) = cpl(&[OsStr::new("test"), file.as_os_str()]);
     assert_ne!(code, Some(0), "{tested}");
     assert!(
@@ -263,7 +263,8 @@ fn stress_traps_an_overflow_as_cpl_run_does() {
         OsStr::new("1"),
     ]);
     assert_eq!(code, Some(1), "{text}");
-    assert!(text.contains("FAIL on case 1 (seed 1): RE"), "{text}");
+    // The input L0306 names at the bounds runs first and traps.
+    assert!(text.contains("lint-L0306-3.in: RE"), "{text}");
     assert!(text.contains("error[R0202]: integer overflow"), "{text}");
 }
 
@@ -284,7 +285,7 @@ fn stress_traps_a_shift_overflow_as_cpl_run_does() {
         OsStr::new("1"),
     ]);
     assert_eq!(code, Some(1), "{text}");
-    assert!(text.contains("FAIL on case 1 (seed 1): RE"), "{text}");
+    assert!(text.contains("lint-L0302-2.in: RE"), "{text}");
     assert!(
         text.contains("`1 << 63` does not fit in an `Int`"),
         "{text}"

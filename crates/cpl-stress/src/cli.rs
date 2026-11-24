@@ -572,6 +572,25 @@ pub fn run_with(
         }
         _ => None,
     };
+    // Each input a bound lint names, with the rest generated, runs before
+    // the generated cases, since small cases never reach the bounds (use
+    // case stress/U28): what the lint is, where a failing one is saved,
+    // and the input or why there is none.
+    let lines = cpl_diag::LineIndex::new(&src);
+    let witnesses: Vec<(String, PathBuf, Result<String, String>)> = (analysis.as_deref())
+        .filter(|_| args.fast.is_none())
+        .map(|analysis| cpl_lint::lint_analysis(analysis, &cpl_lint::Config::default()))
+        .unwrap_or_default()
+        .iter()
+        .filter(|d| !d.witness.is_empty())
+        .map(|d| {
+            let line = lines.line_col(d.span.start).line + 1;
+            let path =
+                (args.file.with_extension("tests")).join(format!("lint-{}-{line}.in", d.code.0));
+            let input = InputSpec::witness_case(&src, &d.witness).map(|case| case.render());
+            (format!("{} at line {line}", d.code.0), path, input)
+        })
+        .collect();
     // The file's own `@alt(program)`, unless `--brute` names another.
     let own_brute = match &args.brute {
         None => analysis.as_deref().and_then(cpl_ir::brute),
@@ -700,9 +719,18 @@ pub fn run_with(
         Err(message) => return fail(message),
     };
 
-    // The cases saved before run first (use case stress/U15).
+    // The cases saved before run first (use case stress/U15), then the
+    // bound lints' inputs.
+    let mut first = saved_cases(&args.file);
+    let from_files = first.len();
+    first.extend(
+        (witnesses.iter())
+            .filter_map(|(_, path, input)| Some((0, path.clone(), input.clone().ok()?))),
+    );
     let options = Options {
-        saved: saved_cases(&args.file),
+        saved: (first.iter())
+            .map(|(seed, _, input)| (*seed, input.clone()))
+            .collect(),
         ..args.options.clone()
     };
     let report = match stress_with_cold(
@@ -727,7 +755,14 @@ pub fn run_with(
     let saved = (report.failure.as_ref())
         .filter(|failure| !helper_failed(failure))
         .and_then(|failure| match failure.saved {
-            true => Some(saved_path(&args.file, failure.seed)),
+            true => {
+                let (_, path, input) = &first[failure.case - 1];
+                let kept = failure.case <= from_files
+                    || path.exists()
+                    || (path.parent()).is_some_and(|dir| std::fs::create_dir_all(dir).is_ok())
+                        && std::fs::write(path, input).is_ok();
+                kept.then(|| path.clone())
+            }
             false => save(&args.file, failure).ok(),
         });
     // The failing case again, both sides in the debug interpreter: the
@@ -874,10 +909,14 @@ pub fn run_with(
             },
             _ => skipped,
         };
-        let again = match report.saved {
+        let again = match report.saved.min(from_files) {
             0 => String::new(),
             1 => "the saved case passes; ".to_string(),
             n => format!("the {n} saved cases pass; "),
+        } + &match report.saved.saturating_sub(from_files) {
+            0 => String::new(),
+            1 => "the input `cpl lint` names at the bounds passes; ".to_string(),
+            n => format!("the {n} inputs `cpl lint` names at the bounds pass; "),
         };
         let _ = match unjudged {
             true => writeln!(
@@ -890,29 +929,16 @@ pub fn run_with(
         if !tried.is_empty() {
             let _ = writeln!(stdout, "  tried: {tried}");
         }
-        // Small cases never reach the bounds; a lint that names an input
-        // there that fails is pointed at (use case stress/U28).
-        let lines = cpl_diag::LineIndex::new(&src);
-        let at_bounds: Vec<String> = (analysis.as_deref())
-            .filter(|_| args.fast.is_none())
-            .map(|analysis| cpl_lint::lint_analysis(analysis, &cpl_lint::Config::default()))
-            .unwrap_or_default()
-            .iter()
-            .filter(|d| !d.witness.is_empty())
-            .map(|d| {
-                format!(
-                    "{} at line {}",
-                    d.code.0,
-                    lines.line_col(d.span.start).line + 1
-                )
-            })
+        // A bound lint's input stress could not make is pointed at.
+        let unmade: Vec<String> = (witnesses.iter())
+            .filter_map(|(lint, _, input)| Some(format!("{lint}: {}", input.as_ref().err()?)))
             .collect();
-        if !at_bounds.is_empty() {
+        if !unmade.is_empty() {
             let _ = writeln!(
                 stdout,
-                "  cases reach size {}; `cpl lint` names inputs at the bounds that fail ({}): `cpl lint --save {name}` saves them for `cpl test`",
+                "  cases reach size {}; `cpl lint` names inputs at the bounds that fail, which stress can't make ({})",
                 args.options.size,
-                at_bounds.join(", ")
+                unmade.join("; ")
             );
         }
         if report.discarded > 0 {
@@ -934,6 +960,12 @@ pub fn run_with(
         return 0;
     };
     let _ = match (&saved, failure.saved) {
+        (Some(path), true) if failure.case > from_files => writeln!(
+            stdout,
+            "  FAIL on the input `cpl lint` names at the bounds, saved as {}: {}",
+            path.shown(),
+            failure.verdict.code()
+        ),
         (Some(path), true) => writeln!(
             stdout,
             "  FAIL on the saved case {}: {}",
@@ -1131,27 +1163,23 @@ fn budget(text: &str) -> Result<Duration, String> {
     }
 }
 
-fn saved_cases(file: &Path) -> Vec<(u64, String)> {
+fn saved_cases(file: &Path) -> Vec<(u64, PathBuf, String)> {
     let Ok(dir) = std::fs::read_dir(file.with_extension("tests")) else {
         return Vec::new();
     };
-    let mut saved: Vec<(u64, String)> = (dir.flatten())
+    let mut saved: Vec<(u64, PathBuf, String)> = (dir.flatten())
         .filter_map(|entry| {
             let name = entry.file_name().into_string().ok()?;
             let seed = name.strip_prefix("stress-")?.strip_suffix(".in")?;
             Some((
                 seed.parse().ok()?,
+                entry.path(),
                 std::fs::read_to_string(entry.path()).ok()?,
             ))
         })
         .collect();
     saved.sort();
     saved
-}
-
-fn saved_path(file: &Path, seed: u64) -> std::path::PathBuf {
-    file.with_extension("tests")
-        .join(format!("stress-{seed}.in"))
 }
 
 #[cfg(test)]
