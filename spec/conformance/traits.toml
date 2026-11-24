@@ -1833,3 +1833,31 @@ for x in [3, 5, 2]: w.push(x)
 print(w)
 """
 out = "3 elements"
+
+[case."Show/SparseTable/show"]
+code = """
+use std.sparse.{SparseTable}
+print(SparseTable(max, [4, 1, 5]))
+"""
+out = "4 1 5"
+
+[case."Show/DisjointSparseTable/show"]
+code = """
+use std.sparse.{DisjointSparseTable}
+print(DisjointSparseTable((x, y) => x * y, [2, 3, 4]))
+"""
+out = "2 3 4"
+
+[case."Show/SparseTable2D/show"]
+code = """
+use std.sparse.{SparseTable2D}
+print(SparseTable2D(min, [2, 3] (r, c) => r * 3 + c))
+"""
+out = "0 1 2\\n3 4 5"
+
+[case."Show/LinearRmq/show"]
+code = """
+use std.sparse.{LinearRmq}
+print(LinearRmq([5, 2, 7], before: (x, y) => x > y))
+"""
+out = "5 2 7"

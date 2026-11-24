@@ -445,3 +445,51 @@ fn disjoint_sparse_table_handles_non_idempotent_non_commutative_folds():
     assert st_cat.fold(P(0)..=P(6)) == "abcdefg"
     assert st_cat.fold(P(2)..=P(4)) == "cde"
     assert st_cat.fold(P(5)..=P(5)) == "f"
+
+impl Show for SparseTable<D, T>:
+    /// The values it was built from, in key order, space-separated.
+    ///
+    /// example: `"{SparseTable(min, [3, 1, 2])}" == "3 1 2"`
+    fn show(t):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{t.get(i)}"
+        out
+
+impl Show for DisjointSparseTable<D, T>:
+    /// The values it was built from, in key order, space-separated.
+    ///
+    /// example: `"{DisjointSparseTable((x, y) => x + y, [3, 1, 2])}" == "3 1 2"`
+    fn show(t):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{t.get(i)}"
+        out
+
+impl Show for SparseTable2D<R, C, T>:
+    /// The grid it was built from, one row of values per line.
+    ///
+    /// example: `"{SparseTable2D(min, [2, 2] (r, c) => r * 2 + c)}" == "0 1\n2 3"`
+    fn show(t):
+        var out = ""
+        for r in R:
+            if not out.is_empty: out += "\n"
+            var row = ""
+            for c in C:
+                if not row.is_empty: row += " "
+                row += "{t.get(r, c)}"
+            out += row
+        out
+
+impl Show for LinearRmq<D, T>:
+    /// The values it was built from, in key order, space-separated.
+    ///
+    /// example: `"{LinearRmq([3, 1, 2])}" == "3 1 2"`
+    fn show(t):
+        var out = ""
+        for x in t.vals:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
