@@ -1702,7 +1702,7 @@ impl Positional<T> for Rev<S: Indexed<D, T>>:
 
 impl Seq<T> for Rev<S: Bidir<T>>:
     fn iter(self) -> yields T:
-        for x in self: yield x
+        for x in self.src.iter_rev(): yield x
 
 impl Bidir<T> for Rev<S: Bidir<T>>:
     fn iter_rev(self) -> yields T:
