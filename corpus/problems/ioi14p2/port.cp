@@ -6,14 +6,18 @@
 //   into a clamp. So it is a range update with no range query: a SegTree with a lazy clamp
 //   action applies each operation in O(log n), then each column is read once:
 //   O((n + k) log n).
+// original: corpus/problems/ioi14p2/orig.cpp (submission 4683906 plus the sample grader)
 
-let (n, k): (Int, Int) = read()
+let (n, k): (1..=2e6, 1..=5e5) = read()
 domain Col = 0..n
+const TALLEST = 100_000
+type Height = 0..=TALLEST
 
-type Clamp = (lo: Int, hi: Int)
+// clamp into [lo, hi]; the full range is the identity on every height
+type Clamp = (lo: Height, hi: Height)
 fn clamp(c: Clamp, h: Int) -> Int = min(max(h, c.lo), c.hi)
 let clamps = Action<Int, Clamp>(
-    (lo: 0, hi: Int.MAX),
+    (lo: 0, hi: TALLEST),
     (f, g) => (lo: clamp(f, g.lo), hi: clamp(f, g.hi)),
     (f, h, len) => clamp(f, h),
     over: max,
@@ -21,6 +25,6 @@ let clamps = Action<Int, Clamp>(
 
 var wall = SegTree(max, [Col] c => 0, act: clamps)
 for _ in 0..k:
-    let (op, l, r, h): (Int, Col, Col, Int) = read()
-    wall.apply(l..=r, if op == 1: (lo: h, hi: Int.MAX) else: (lo: 0, hi: h))
+    let (op, l, r, h): (1..=2, Col, Col, Height) = read()
+    wall.apply(l..=r, if op == 1: (lo: h, hi: TALLEST) else: (lo: 0, hi: h))
 for c in Col: print(wall.get(c))
