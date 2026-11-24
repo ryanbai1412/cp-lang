@@ -6,6 +6,7 @@
 //   ends. Every edge costs 2 except those on the path to the last word, so end on a longest
 //   word: at each node visit the child on that word's path last and never delete it.
 //   O(total letters * 26).
+// limits: 600 ms, 64 MB
 // original: corpus/submissions/5034409.cpp
 // Bounds: n: 1..=25_000
 use std.strings.{Trie}

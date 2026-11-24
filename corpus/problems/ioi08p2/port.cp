@@ -7,10 +7,11 @@
 //   within it. Then go round each cycle once from a start: for islands a before b the best is
 //   reach[a] + reach[b] plus the longer way round, taken from running maxima of reach[a] - at[a]
 //   and reach[a] + at[a]. O(n).
-// Bounds: bridge.to: 1..=n
-let n: Int = read()
+// limits: 1500 ms, 1024 MB
+// Bounds: n: 2..=1e6; bridge.to: 1..=n; bridge.len: 1..=1e8
+let n: 2..=1e6 = read()
 domain I = 1..=n
-let bridge: [I](to: I, len: Int) = read()
+let bridge: [I](to: I, len: 1..=1e8) = read()
 
 var pending: [I]Int = 0  // unpeeled islands whose bridge leads here
 for i in I: pending[bridge[i].to] += 1

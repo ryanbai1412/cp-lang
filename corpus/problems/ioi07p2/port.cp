@@ -8,6 +8,7 @@
 //   far side of the next wall counter-clockwise. Sweep points by (x, y): the first point of a
 //   still-dry group has the outside next to its north (else east) wall; BFS over faces from
 //   there, one hour per wall crossed. O((n + w) log n) for the sort and DSU.
+// limits: 1000 ms, 32 MB
 // original: corpus/submissions/5133897.cpp
 // Bounds: n: 2..=1e5; m: 1..=2e5; walls.u, walls.v: 1..=n
 
