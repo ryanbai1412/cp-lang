@@ -76,7 +76,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// is 0.
     ///
     /// cost: \(O(\log^2 P)\)
-    /// ties: the root with the smaller value
+    /// ties: `Mod<11>(5).sqrt() == Some(Mod<11>(4))`
     /// traps: when `P` is not prime
     /// example: `Mod<7>(2).sqrt() == Some(Mod<7>(3))`
     /// example: `Mod<7>(3).sqrt() == None`
@@ -91,7 +91,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// `x.log(one)` is `Some(0)` for every `x`.
     ///
     /// cost: \(O(\sqrt P)\)
-    /// ties: the least `k`
+    /// ties: `Mod<7>(2).log(Mod<7>(2)) == Some(1)`
     /// traps: never
     /// example: `Mod<7>(3).log(Mod<7>(6)) == Some(3)`
     /// example: `Mod<7>(3).log(Mod<7>(1)) == Some(0)`
@@ -101,7 +101,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// The inverse of every element of `xs`, with one `inv` in all (Montgomery's trick).
     ///
     /// cost: \(O(n + \log P)\)
-    /// empty: `[]`
+    /// empty: `Mod<7>.inv_all([]) == []`
     /// order: same order as `xs`; a new `List`, keyed from 0
     /// traps: when any element has `gcd(v, P) != 1` (in particular 0)
     /// example: `Mod<7>.inv_all([Mod<7>(1), Mod<7>(2), Mod<7>(3)]) == [Mod<7>(1), Mod<7>(4), Mod<7>(5)]`
@@ -333,7 +333,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// result is exact modulo `P` even when `sum ks >= M.MOD`.
     ///
     /// cost: \(O(\mathit{ks}.\mathit{len})\) amortized
-    /// empty: 1 (the empty multinomial)
+    /// empty: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([]) == Z(1)`
     /// traps: never
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([2, 1]) == Z(3)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([1, 1, 1]) == Z(6)`

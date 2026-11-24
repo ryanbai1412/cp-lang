@@ -19,7 +19,7 @@ pub struct Marks<D>:
     /// An empty mark set over `D`, with its stamp array allocated once.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty `D` gives a set that can never hold a mark
+    /// empty: `Marks<0..0>().len == 0`
     /// traps: never
     /// example: `Marks<0..5>().is_empty`
     pub fn new() -> Marks<D> = Marks([D] _ => 0, 1, 0)
@@ -108,7 +108,7 @@ pub struct MarkMap<D, T>:
     /// key reads as `None`.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty `D` gives a map that can never hold an entry
+    /// empty: `MarkMap<0..0, Int>(0).len == 0`
     /// traps: never
     /// example: `MarkMap<0..5, Int>(0).is_empty`
     pub fn new(default_val: T) -> MarkMap<D, T>:
@@ -294,7 +294,7 @@ pub struct SparseSet<D>:
     /// An empty sparse set over `D`.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty `D` gives a set that can never hold an element
+    /// empty: `SparseSet<0..0>().len == 0`
     /// traps: never
     /// example: `SparseSet<0..5>().is_empty`
     pub fn new() -> SparseSet<D>:

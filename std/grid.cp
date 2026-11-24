@@ -47,7 +47,7 @@ pub struct Dir4(k: Int):
     /// first position wins.
     ///
     /// cost: \(O(1)\)
-    /// ties: a repeated letter maps to its first position in `letters`
+    /// ties: `Dir4.from("URDU", 'U') == Some(Dir4.up)`
     /// traps: `letters.len != 4`
     /// example: `Dir4.from("URDL", 'D') == Some(Dir4.down)`
     /// example: `Dir4.from("NESW", 'W') == Some(Dir4.left)`
@@ -102,7 +102,7 @@ pub struct Dir8(k: Int):
     /// first position wins.
     ///
     /// cost: \(O(1)\)
-    /// ties: a repeated letter maps to its first position in `letters`
+    /// ties: `Dir8.from("abcdefga", 'a') == Some(Dir8.all()[0])`
     /// traps: `letters.len != 8`
     /// example: `Dir8.from("abcdefgh", 'c') == Some(Dir8.all()[2])`
     /// example: `Dir8.from("abcdefgh", 'x') == None`
@@ -197,7 +197,7 @@ pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
 /// first: `p.step(d)`, then a step from that, until a step leaves the grid.
 ///
 /// cost: \(O(1)\) to create, \(O(1)\) per cell
-/// empty: yields nothing when `self.step(d)` is `None`
+/// empty: `domain R = 0..4; domain C = 0..4; (R(3), C(3)).ray(Dir8.all()[3]).collect() == []`
 /// order: nearest first
 /// traps: never
 /// example: `domain R = 0..4; domain C = 0..4; (R(1), C(2)).ray(Dir4.down).collect() == [(R(2), C(2)), (R(3), C(2))]`
@@ -213,7 +213,7 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// `Dir4.all()`, skipping steps that leave the grid.
 ///
 /// cost: \(O(1)\) to create, \(O(1)\) per cell
-/// empty: yields nothing on a 1 × 1 grid
+/// empty: `domain R = 0..1; domain C = 0..1; (R(0), C(0)).adj4.collect() == []`
 /// order: up, right, down, left, with off-grid cells skipped
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj4.collect() == [(R(0), C(1)), (R(1), C(2)), (R(2), C(1)), (R(1), C(0))]`
@@ -227,7 +227,7 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// `Dir8.all()`, skipping steps that leave the grid.
 ///
 /// cost: \(O(1)\) to create, \(O(1)\) per cell
-/// empty: yields nothing on a 1 × 1 grid
+/// empty: `domain R = 0..1; domain C = 0..1; (R(0), C(0)).adj8.collect() == []`
 /// order: clockwise from up, with off-grid cells skipped
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj8.collect().len == 8`
@@ -241,7 +241,7 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// cell. The result is owned, not a view.
 ///
 /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
-/// empty: an empty grid gives an empty grid over `[C, R]`
+/// empty: `domain R = 0..0; domain C = 0..3; let g: [R, C]Int = 1; g.transposed().cols.len == 0`
 /// order: keyed by `(C, R)`, so walking it is row-major over the new rows (the old columns)
 /// traps: never
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c); g.transposed()[C(2), R(1)] == 12`
@@ -251,16 +251,17 @@ pub fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T = [C, R] (c, r) => self[r, 
 /// \(O(1)\). Every row of `g` as a view keyed by `R`: `g.rows[r]` is `g[r]` (R04b.1.12).
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per row
-/// empty: an empty view when `R` is empty
+/// empty: `domain R = 0..0; domain C = 0..3; let g: [R, C]Int = 1; g.rows.len == 0`
 /// order: by `R`
 /// traps: never
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows.len == 2`
-@get pub fn rows<R, C, T>(self: [R, C]T) -> lends GridRows<R, C, T> = GridRows(self)
+@get
+pub fn rows<R, C, T>(self: [R, C]T) -> lends GridRows<R, C, T> = GridRows(self)
 
 /// \(O(1)\). Every column of `g` as a view keyed by `C`: `g.cols[c]` is `g[.., c]` (R04b.1.12).
 ///
 /// cost: \(O(1)\) to make, \(O(1)\) per column
-/// empty: an empty view when `C` is empty
+/// empty: `domain R = 0..2; domain C = 0..0; let g: [R, C]Int = 1; g.cols.len == 0`
 /// order: by `C`
 /// traps: never
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols.len == 3`
@@ -293,7 +294,7 @@ pub struct GridRows<R, C, T>(g: [R, C]T):
     /// The rows in `R` order.
     ///
     /// cost: \(O(1)\) per row
-    /// empty: yields nothing
+    /// empty: `domain R = 0..0; domain C = 0..3; let g: [R, C]Int = 1; g.rows.each().count() == 0`
     /// order: by `R`
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows.each().count() == 2`
@@ -327,7 +328,7 @@ pub struct GridCols<R, C, T>(g: [R, C]T):
     /// The columns in `C` order.
     ///
     /// cost: \(O(1)\) per column
-    /// empty: yields nothing
+    /// empty: `domain R = 0..2; domain C = 0..0; let g: [R, C]Int = 1; g.cols.each().count() == 0`
     /// order: by `C`
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols.each().count() == 3`

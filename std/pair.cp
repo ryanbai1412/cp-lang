@@ -55,8 +55,10 @@ impl Show for Pair<V>:
 /// `u != v`, and `diag` at every `m[v, v]`. `read<[Pair<V>]Int>().map(Some).symmetric(diag: None)`
 /// is a distance matrix for `floyd_warshall`.
 ///
+/// `V` with one position gives `[[diag]]`.
+///
 /// cost: \(O(n^2)\) for `n == V.count`; allocates the matrix
-/// empty: the empty matrix when `V` is empty; `[[diag]]` when `V` has one position
+/// empty: `domain V = 0..0; let d: [Pair<V>]Int = []; d.symmetric(diag: 0).len == 0`
 /// order: keyed by `(V, V)`, row-major
 /// traps: never
 /// example: `domain V = 0..3; let d: [Pair<V>]Int = [5, 6, 7]; let m = d.symmetric(diag: 0); m[2, 1] == 7 and m[0, 2] == 6 and m[1, 1] == 0`
