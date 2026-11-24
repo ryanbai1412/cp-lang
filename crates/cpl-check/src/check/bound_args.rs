@@ -614,13 +614,28 @@ impl Checker<'_> {
 }
 
 /// `of: T -> U = x => x`: each generic a defaulted identity lambda gives
-/// back, with the parameter type it then is (`U` is `T`).
+/// back, with the parameter type it then is (`U` is `T`); `op: M = (+)`
+/// gives `M` the operator's own type, as a written `(+)` would.
 pub(crate) fn identity_defaults(f: &ast::FnDecl, ty: &Ty) -> Vec<(String, Ty)> {
     let Ty::Fn { params, .. } = ty else {
         return Vec::new();
     };
     let mut out = Vec::new();
     for p in &f.params {
+        let sig = params.iter().find(|q| q.name == p.name.text).map(|q| &q.ty);
+        if let (Some(item), Some(Ty::Param(m))) =
+            (p.default.as_ref().and_then(|d| d.fn_item_type()), sig)
+        {
+            let name = item;
+            out.push((
+                m.clone(),
+                Ty::Named {
+                    name,
+                    args: Vec::new(),
+                },
+            ));
+            continue;
+        }
         let Some(ast::Expr {
             kind: ast::ExprKind::Lambda {
                 params: lp, body, ..

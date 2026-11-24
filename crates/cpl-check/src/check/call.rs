@@ -1408,6 +1408,8 @@ impl<'a> Checker<'a> {
                 held.unify(&elem, &mut bindings);
             }
         }
+        self.fn_items_take_bound_types(&through, &params, args, &mut bindings);
+        self.item_impls_hold(method, &through, &bindings, call.span);
         self.method_bounds_hold(method, (&traits, &params), &bindings, (args, call));
         if !matches!(recv, Ty::TypeName(_)) {
             return;
