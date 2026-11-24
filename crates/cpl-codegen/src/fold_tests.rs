@@ -111,3 +111,39 @@ fn self_recursive_instances_call_their_own_template() {
         folded.cpp
     );
 }
+
+#[test]
+fn instances_differing_in_whole_types_fold_on_those_types() {
+    let pad = "long long pad=123456789;pad+=987654321;pad*=pad;pad-=pad;(void)pad;";
+    let file = |get: &str| {
+        format!(
+            "namespace prog {{\n\
+             struct P{{ll a;}};\n\
+             inline ll Int_id(ll x){{\n\
+             {pad}\n\
+             return x;\n\
+             }}\n\
+             inline std::tuple<ll,P> P_id(const std::tuple<ll,P>& x){{\n\
+             {pad}\n\
+             return {get};\n\
+             }}\n\
+             ll both(){{return Int_id(3)+std::get<1>(P_id(std::tuple<ll,P>{{1,P{{2}}}})).a;}}\n\
+             }}\n"
+        )
+    };
+    let origins: BTreeMap<String, String> = [("Int_id", "id"), ("P_id", "id"), ("both", "both")]
+        .into_iter()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect();
+    assert!(fold(&file("(x)"), &origins).members.is_empty());
+    let folded = fold(&file("x"), &origins);
+    let cpp = &folded.cpp;
+    assert_eq!(folded.members.len(), 2, "{cpp}");
+    assert!(cpp.contains("template<class T0,class T1>"), "{cpp}");
+    assert!(cpp.contains("T0 Int_id(T1 x)"), "{cpp}");
+    assert!(cpp.contains("Int_id<ll,ll>(3)"), "{cpp}");
+    assert!(
+        cpp.contains("Int_id<std::tuple<ll,P>,const std::tuple<ll,P>&>(std::tuple<ll,P>{1,P{2}})"),
+        "{cpp}"
+    );
+}

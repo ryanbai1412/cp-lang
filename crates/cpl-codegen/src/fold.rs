@@ -8,6 +8,25 @@
 use crate::compact::{needs_space, tokens};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// The `std` class templates a type a span names can be: `std::min<ll>` is
+/// a fn, never a type.
+const STD_TYPES: &[&str] = &[
+    "array",
+    "bitset",
+    "deque",
+    "function",
+    "map",
+    "multiset",
+    "optional",
+    "pair",
+    "set",
+    "string",
+    "tuple",
+    "unordered_map",
+    "unordered_set",
+    "vector",
+];
+
 const BUILTIN_TYPES: &[&str] = &[
     "bool", "char", "int", "ll", "ull", "double", "size_t", "int8_t", "int16_t", "int32_t",
     "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
@@ -54,9 +73,18 @@ enum Kind {
 /// parameter each varying token is.
 struct Fold {
     members: Vec<String>,
-    stream: Vec<(usize, String)>,
+    stream: Vec<Piece>,
     slots: Vec<Option<usize>>,
     kinds: Vec<Kind>,
+}
+
+/// A token of an instance as its template reads it, or with whole types,
+/// the type that tokens `tok..=end` name: `const std::tuple<ll,A>&`.
+#[derive(Clone)]
+struct Piece {
+    tok: usize,
+    end: usize,
+    text: String,
 }
 
 /// What [`fold`] made of a file.
@@ -68,8 +96,19 @@ pub(crate) struct Folded {
 }
 
 /// `cpp` with the instances `origins` (a fn's C++ name to the generic fn it
-/// is an instance of) says are one fn folded where their text allows.
+/// is an instance of) says are one fn folded where their text allows: the
+/// shorter of each type's words a parameter (`std::vector<T0>`) and each
+/// whole type one, which also folds `ll x` with `const std::tuple<..>& x`.
 pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
+    let words = fold_by(cpp, origins, false);
+    let whole = fold_by(cpp, origins, true);
+    match whole.cpp.len() < words.cpp.len() {
+        true => whole,
+        false => words,
+    }
+}
+
+fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded {
     let unchanged = || Folded {
         cpp: cpp.to_string(),
         members: BTreeMap::new(),
@@ -98,6 +137,17 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
                 .filter(|w| w.as_bytes()[0].is_ascii_alphabetic() || w.starts_with('_')),
         );
     }
+    let spans: Vec<BTreeMap<usize, (usize, String)>> = items
+        .iter()
+        .map(|item| match whole {
+            true => type_spans(&item.toks, &types),
+            false => BTreeMap::new(),
+        })
+        .collect();
+    let span_types: BTreeSet<&str> = spans
+        .iter()
+        .flat_map(|s| s.values().map(|(_, t)| t.as_str()))
+        .collect();
     let kind = |s: &str| -> Kind {
         let b = s.as_bytes();
         let hex = s.starts_with("0x") || s.starts_with("0X");
@@ -106,7 +156,7 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
             || b[0].is_ascii_digit() && !s.contains('.') && (hex || !s.contains(['e', 'E']))
         {
             Kind::Int
-        } else if types.contains(s) {
+        } else if types.contains(s) || span_types.contains(s) {
             Kind::Type
         } else {
             Kind::Other
@@ -145,33 +195,38 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
     }
 
     let expand = |def: &Def, args: &BTreeMap<String, (String, Vec<String>)>| {
-        let mut out: Vec<(usize, String)> = Vec::new();
+        let mut out: Vec<Piece> = Vec::new();
+        let mut push = |tok: usize, end: usize, text: String| out.push(Piece { tok, end, text });
         let own = items[def.item].toks[def.name].text;
-        for (j, t) in items[def.item].toks.iter().enumerate() {
+        let toks = &items[def.item].toks;
+        let mut j = 0;
+        while j < toks.len() {
+            let t = &toks[j];
+            if let Some((end, text)) = spans[def.item].get(&j) {
+                push(j, *end, text.clone());
+                j = end + 1;
+                continue;
+            }
             if j == def.name {
-                out.push((j, "@".into()));
-                continue;
-            }
-            if t.text == own {
-                out.push((j, "@@".into()));
-                continue;
-            }
-            match args.get(t.text) {
-                Some((name, a)) => {
-                    out.push((j, name.clone()));
-                    if !a.is_empty() {
-                        out.push((j, "<".into()));
-                        for (i, x) in a.iter().enumerate() {
-                            if i > 0 {
-                                out.push((j, ",".into()));
-                            }
-                            out.push((j, x.clone()));
+                push(j, j, "@".into());
+            } else if t.text == own {
+                push(j, j, "@@".into());
+            } else if let Some((name, a)) = args.get(t.text) {
+                push(j, j, name.clone());
+                if !a.is_empty() {
+                    push(j, j, "<".into());
+                    for (i, x) in a.iter().enumerate() {
+                        if i > 0 {
+                            push(j, j, ",".into());
                         }
-                        out.push((j, ">".into()));
+                        push(j, j, x.clone());
                     }
+                    push(j, j, ">".into());
                 }
-                None => out.push((j, t.text.to_string())),
+            } else {
+                push(j, j, t.text.to_string());
             }
+            j += 1;
         }
         out
     };
@@ -183,16 +238,16 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
         let mut next = BTreeMap::new();
         folds.clear();
         for members in groups.values() {
-            let streams: Vec<Vec<(usize, String)>> =
+            let streams: Vec<Vec<Piece>> =
                 members.iter().map(|m| expand(&defs[m], &args)).collect();
             let mut shapes: BTreeMap<Vec<&str>, Vec<usize>> = BTreeMap::new();
             for (k, s) in streams.iter().enumerate() {
                 let shape = s
                     .iter()
-                    .map(|(_, x)| match kind(x) {
+                    .map(|x| match kind(&x.text) {
                         Kind::Int => "#int",
                         Kind::Type => "#type",
-                        Kind::Other => x.as_str(),
+                        Kind::Other => x.text.as_str(),
                     })
                     .collect();
                 shapes.entry(shape).or_default().push(k);
@@ -204,13 +259,14 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
                 let mut slots = vec![None; rep.len()];
                 let mut ok = true;
                 for p in 0..rep.len() {
-                    let vals: Vec<&str> = class.iter().map(|&k| streams[k][p].1.as_str()).collect();
+                    let vals: Vec<&str> =
+                        class.iter().map(|&k| streams[k][p].text.as_str()).collect();
                     if vals.iter().all(|v| *v == vals[0]) {
                         continue;
                     }
                     let k = kind(vals[0]);
-                    let prev = p.checked_sub(1).map_or("", |q| rep[q].1.as_str());
-                    let after = rep.get(p + 1).map_or("", |x| x.1.as_str());
+                    let prev = p.checked_sub(1).map_or("", |q| rep[q].text.as_str());
+                    let after = rep.get(p + 1).map_or("", |x| x.text.as_str());
                     let qualified = matches!(prev, ":" | "." | "->" | "struct" | "enum" | "class")
                         || after == ":";
                     if k == Kind::Type && qualified || k == Kind::Int && matches!(prev, "." | "->")
@@ -287,7 +343,7 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
                 format!("template<{}>", ps.join(","))
             }
         };
-        let piece = |p: usize| match (f.slots[p], f.stream[p].1.as_str()) {
+        let piece = |p: usize| match (f.slots[p], f.stream[p].text.as_str()) {
             (Some(c), _) => param(&f.kinds, c),
             (None, "@") => tmpl.clone(),
             (None, "@@") if f.kinds.is_empty() => tmpl.clone(),
@@ -298,10 +354,10 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
             (None, x) => x.to_string(),
         };
         let mut sig = header.clone();
-        for p in (0..f.stream.len()).take_while(|&p| f.stream[p].0 < rep.body) {
+        for p in (0..f.stream.len()).take_while(|&p| f.stream[p].tok < rep.body) {
             let x = piece(p);
             let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
-            let spaced = items[rep.item].toks[f.stream[p].0].space;
+            let spaced = items[rep.item].toks[f.stream[p].tok].space;
             if sig.chars().last().is_some_and(|c| {
                 needs_space(&c.to_string(), &x) && (spaced || word(c) && x.starts_with(word))
             }) {
@@ -333,17 +389,18 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
                 .push_str(&format!("{header}\n"));
             def.push_str(&format!("{header}\n"));
         }
-        let mut by_tok: BTreeMap<usize, String> = BTreeMap::new();
-        for (p, (tok, _)) in f.stream.iter().enumerate() {
-            by_tok.entry(*tok).or_default().push_str(&piece(p));
+        let mut by_tok: BTreeMap<usize, (usize, String)> = BTreeMap::new();
+        for (p, x) in f.stream.iter().enumerate() {
+            let at = by_tok.entry(x.tok).or_insert((x.end, String::new()));
+            at.1.push_str(&piece(p));
         }
-        for (j, text) in by_tok {
-            let t = &item.toks[j];
-            if text != t.text {
+        for (j, (end, text)) in by_tok {
+            let (t, e) = (&item.toks[j], &item.toks[end]);
+            if end != j || text != t.text {
                 edits
                     .entry(t.line)
                     .or_default()
-                    .push((t.start, t.end, text));
+                    .push((t.start, e.end, text));
             }
         }
         rendered.insert(rep.item);
@@ -425,6 +482,72 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
         }
     }
     Folded { cpp: out, members }
+}
+
+/// The whole types `toks` names, each by the token it starts at: where it
+/// ends and its text. A type is a name `types` has, `cpl::` one, or a
+/// `std::` class template in [`STD_TYPES`], with its `<..>` arguments, a
+/// `const` before and `&`s or `*`s after, on one line and not qualified
+/// further (`std::numeric_limits<ll>::max` is a fn).
+fn type_spans(toks: &[Tok], types: &BTreeSet<&str>) -> BTreeMap<usize, (usize, String)> {
+    let text = |j: usize| toks.get(j).map_or("", |t| t.text);
+    let mut out = BTreeMap::new();
+    let mut i = 0;
+    while i < toks.len() {
+        let start = i;
+        let mut j = i + usize::from(text(i) == "const");
+        let core = match (text(j), text(j + 1), text(j + 2), text(j + 3)) {
+            ("std", ":", ":", w) if STD_TYPES.contains(&w) => Some(j + 3),
+            ("cpl", ":", ":", w) if types.contains(w) => Some(j + 3),
+            (w, ..) if types.contains(w) && !matches!(text(j.wrapping_sub(1)), ":") => Some(j),
+            _ => None,
+        };
+        let Some(core) = core.filter(|_| j > start || start == 0 || text(start - 1) != ":") else {
+            i += 1;
+            continue;
+        };
+        j = core + 1;
+        let mut ok = true;
+        if text(j) == "<" {
+            let mut depth = 0;
+            loop {
+                match text(j) {
+                    "<" => depth += 1,
+                    ">" => depth -= 1,
+                    "" => ok = false,
+                    w if matches!(w, ":" | "," | "&" | "*" | "const")
+                        || w.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_') => {}
+                    _ => ok = false,
+                }
+                j += 1;
+                if !ok || depth == 0 {
+                    break;
+                }
+            }
+        }
+        if text(j) == ":" {
+            ok = false;
+        }
+        while matches!(text(j), "&" | "*") {
+            j += 1;
+        }
+        let end = j - 1;
+        if !ok || toks[end].line != toks[start].line || end == start {
+            i = core + 1;
+            continue;
+        }
+        let mut s = String::new();
+        for t in &toks[start..=end] {
+            let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+            if s.ends_with(word) && t.text.starts_with(word) {
+                s.push(' ');
+            }
+            s.push_str(t.text);
+        }
+        out.insert(start, (end, s));
+        i = end + 1;
+    }
+    out
 }
 
 /// The items of the file, or `None` when it has a line this does not read.
