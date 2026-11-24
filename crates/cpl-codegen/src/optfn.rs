@@ -58,7 +58,10 @@ fn shapes(program: &Program) -> BTreeMap<(FnId, Slot), Shape> {
         each_call(block, &mut |callee, args| {
             let f = &program.fns[callee];
             for (slot, arg) in args.iter().enumerate().take(f.params.len()) {
-                if !optional_fn(&f.locals[slot].ty) {
+                // Any optional every call leaves `None` goes; only a fn one
+                // every call fills becomes the fn itself.
+                let ty = &f.locals[slot].ty;
+                if !matches!(ty, Ty::Opt(_)) {
                     continue;
                 }
                 let shape = match arg {
@@ -69,7 +72,7 @@ fn shapes(program: &Program) -> BTreeMap<(FnId, Slot), Shape> {
                     Arg::Value(Expr {
                         kind: ExprKind::Some(_),
                         ..
-                    }) => Shape::Some,
+                    }) if optional_fn(ty) => Shape::Some,
                     _ => Shape::Mixed,
                 };
                 let seen = out.entry((callee, slot)).or_insert(shape);

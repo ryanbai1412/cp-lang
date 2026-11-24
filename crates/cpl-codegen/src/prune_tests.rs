@@ -191,6 +191,30 @@ fn an_optional_comparator_nobody_passes_is_never_tested() {
 }
 
 #[test]
+fn a_field_a_constructor_fills_from_a_param_only_none_reaches_drops_its_branches() {
+    let cpp = cpp(concat!(
+        "struct Box:\n",
+        "    f: ?Int\n",
+        "    n: Int\n",
+        "    fn new(n: Int, f: ?Int = None) -> Box = Box(f, n)\n",
+        "    fn get(self) -> Int:\n",
+        "        if let x = f: return x * 7\n",
+        "        n + 3\n",
+        "    fn grown(self) -> Box = Box(f, n + 1)\n",
+        "let n: 1..=10 = read()\n",
+        "print(Box.new(n).get() + Box.new(n + 1).grown().get())\n",
+    ));
+    let start = cpp.find("_get(").expect("a get fn");
+    let get = &cpp[start..start + cpp[start..].find("\n}").expect("its end")];
+    assert!(
+        !get.contains("* 7") && !get.contains("has_value()"),
+        "{get}"
+    );
+    // `grown` copies `f`, which is only ever `None`, so `Box` keeps no `f`.
+    assert!(!cpp.contains(" f;"), "{cpp}");
+}
+
+#[test]
 fn a_comparison_with_none_of_a_field_only_none_fills_keeps_only_the_branch_taken() {
     let cpp = cpp(concat!(
         "struct Box:\n",

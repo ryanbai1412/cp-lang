@@ -36,7 +36,33 @@ pub(crate) fn prune(program: &mut Program, asserts: bool) {
     known_fields(program, &mut nones);
     if !nones.fields.is_empty() || !nones.empty.is_empty() {
         run(program, asserts, &nones);
+        read_as_none(program, &nones.fields);
     }
+}
+
+/// Every read of a field only ever `None` is `None`, so a value that copies
+/// it into a new one (`LazyTreap(..., summary_act, ...)`) no longer reads it
+/// and the field can be left out of its struct.
+fn read_as_none(program: &mut Program, fields: &BTreeSet<(usize, usize)>) {
+    let go = |b: &mut Block| {
+        crate::optfn::exprs_mut(b, &mut |e| {
+            if let ExprKind::Field(base, i) = &e.kind {
+                if matches!(base.ty, Ty::Struct(id) if fields.contains(&(id, *i)))
+                    && path_root(base).is_some()
+                {
+                    e.kind = ExprKind::None;
+                }
+            }
+        });
+    };
+    for f in &mut program.fns {
+        go(&mut f.body);
+    }
+    for c in &mut program.closures {
+        go(&mut c.body);
+    }
+    go(&mut program.main);
+    go(&mut program.setup);
 }
 
 /// A skipped `assert` whose condition stores still runs it, so
@@ -298,7 +324,7 @@ fn known_fields(program: &Program, nones: &mut Nones) {
         }
     }
     loop {
-        let bad = stored_in(program, &reached(program, nones));
+        let bad = stored_in(program, &reached(program, nones), &nones.params);
         let before = nones.fields.len() + nones.empty.len();
         nones.fields.retain(|f| !bad.contains(f));
         nones.empty.retain(|f| !bad.contains(f));
@@ -310,7 +336,7 @@ fn known_fields(program: &Program, nones: &mut Nones) {
 
 /// The bodies that can run when the branches `nones` decides are left out:
 /// main, setup, the entry, judge and type-hook fns, and what they call.
-fn reached<'p>(program: &'p Program, nones: &Nones) -> Vec<&'p Block> {
+fn reached<'p>(program: &'p Program, nones: &Nones) -> Vec<(Option<FnId>, &'p Block)> {
     let mut fns: BTreeSet<FnId> = program
         .entry_fns
         .iter()
@@ -328,7 +354,7 @@ fn reached<'p>(program: &'p Program, nones: &Nones) -> Vec<&'p Block> {
     let mut fn_work: Vec<FnId> = fns.iter().copied().collect();
     let mut closures: BTreeSet<ClosureId> = BTreeSet::new();
     let mut closure_work: Vec<ClosureId> = Vec::new();
-    let mut out = vec![&program.main, &program.setup];
+    let mut out = vec![(None, &program.main), (None, &program.setup)];
     let mut at = 0;
     loop {
         while at < out.len() {
@@ -339,7 +365,7 @@ fn reached<'p>(program: &'p Program, nones: &Nones) -> Vec<&'p Block> {
                 captured: BTreeSet::new(),
                 lets: BTreeSet::new(),
             };
-            taken_exprs(out[at], &cx, &mut |e| match e.kind {
+            taken_exprs(out[at].1, &cx, &mut |e| match e.kind {
                 ExprKind::Call(id, _) if fns.insert(id) => fn_work.push(id),
                 ExprKind::Closure(id) if closures.insert(id) => closure_work.push(id),
                 _ => {}
@@ -347,9 +373,9 @@ fn reached<'p>(program: &'p Program, nones: &Nones) -> Vec<&'p Block> {
             at += 1;
         }
         if let Some(id) = fn_work.pop() {
-            out.push(&program.fns[id].body);
+            out.push((Some(id), &program.fns[id].body));
         } else if let Some(id) = closure_work.pop() {
-            out.push(&program.closures[id].body);
+            out.push((None, &program.closures[id].body));
         } else {
             return out;
         }
@@ -382,15 +408,21 @@ fn taken_exprs<'p>(b: &'p Block, cx: &Cx, f: &mut dyn FnMut(&'p Expr)) -> bool {
 }
 
 /// The `(struct, field)`s that `bodies` construct with something other than
-/// `None`, `[]` or the same field, store to, or read from input.
-fn stored_in(program: &Program, bodies: &[&Block]) -> BTreeSet<(usize, usize)> {
+/// `None`, `[]`, the same field or a param of their fn in `params` (a
+/// `summary: ?S = None` a constructor forwards), store to, or read from input.
+fn stored_in(
+    program: &Program,
+    bodies: &[(Option<FnId>, &Block)],
+    params: &BTreeSet<(FnId, Slot)>,
+) -> BTreeSet<(usize, usize)> {
     let mut bad = BTreeSet::new();
-    for body in bodies {
+    for &(home, body) in bodies {
         each_value(body, &mut |e| match (&e.kind, &e.ty) {
             (ExprKind::Tuple(items), Ty::Struct(id)) => {
                 for (i, item) in items.iter().enumerate() {
                     let kept = match &item.kind {
                         ExprKind::None => true,
+                        ExprKind::Local(s) => home.is_some_and(|f| params.contains(&(f, *s))),
                         ExprKind::Tuple(empty) => {
                             empty.is_empty() && matches!(item.ty, Ty::List(_))
                         }

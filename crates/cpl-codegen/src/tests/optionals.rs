@@ -177,14 +177,20 @@ fn optional_mut_param_does_not_emit_optional_of_reference() {
         "domain V = 0..2\n",
         "fn f(seen: ?mut [V]Bool = None) -> Int:\n",
         "    0\n",
-        "print(f())\n",
+        "var a: [V]Bool = false\n",
+        "print(f() + f(seen: mut a))\n",
     );
     let out = cpp(src);
     assert!(
         !out.contains("std::optional<std::array<char, 2>&>"),
         "{out}"
     );
-    assert!(out.contains("cpl::Lent<std::array<char, 2>>"), "{out}");
+    // A call that passes a place gets it by reference, as a `Lent` or, once
+    // the `None` call is specialized away, as a plain one.
+    assert!(
+        out.contains("cpl::Lent<std::array<char, 2>>") || out.contains("std::array<char, 2>& seen"),
+        "{out}"
+    );
 }
 
 #[test]
@@ -248,7 +254,7 @@ fn a_generic_field_keeps_its_range_argument_narrow() {
 fn an_optional_of_an_optional_range_is_one_int32() {
     let code = cpp(
         "type Small = -1000..=1000\ntype Tag = ?Small\nstruct Box<F>:\n    x: F\n    var os: List<?F>\n    var o: ?F\n\
-         var t = Box<Tag>(None, [None, Some(None)], Some(None))\nt.os.push(Some(Some(-1000)))\nt.o = Some(Some(7))\n\
+         var t = Box<Tag>(Some(5), [None, Some(None)], Some(None))\nt.os.push(Some(Some(-1000)))\nt.o = Some(Some(7))\n\
          var c: List<?Tag> = [None, Some(None)]\nc.push(Some(Some(3)))\n\
          print(t.x ?? 0, t.os.len, t.o!! + c[2]!!, yes(t.os[1] == Some(None)))\n",
     );
