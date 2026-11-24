@@ -1,13 +1,13 @@
-//! Freeing a list of `main` once a loop has read it for the last time, so the
+//! Freeing a list once the run has read it for the last time, so the
 //! memory it held is free for what the rest of the run builds.
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{Block, Expr, ExprKind, Iter, Ty};
+use cpl_ir::{Block, Expr, ExprKind, Iter, Stmt, Ty};
 
 use crate::emit::Emitter;
 use crate::names::global_ident;
-use crate::uses::walked::walked_last;
+use crate::uses::walked::{read_last, walked_last};
 
 impl Emitter<'_> {
     /// The lists `main` holds as its own locals that statement `k` walks
@@ -37,6 +37,51 @@ impl Emitter<'_> {
     fn owns_heap_storage(&self, g: usize) -> bool {
         self.fixed_array_len(cpl_ir::ElemLoc::Global(g)).is_none()
             && self.ty_fixed_len(&self.program.globals[g].ty).is_none()
+    }
+
+    /// After statement `k` of `block`, frees each list or string it read for
+    /// the last time ([`read_last`]) that the C++ owns, unless what the
+    /// statement keeps could point into it: `let t = ups.sorted(by: f)`
+    /// then `taken = t.take(k).collect()` frees `t` before the rest runs.
+    pub(crate) fn release_read(&mut self, block: &Block, k: usize, out: &mut String) {
+        if self.closure_id.is_some() || self.in_setup {
+            return;
+        }
+        let kept = match &block.stmts[k] {
+            Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) => Some(&e.ty),
+            _ => None,
+        };
+        let owned =
+            |ty: &Ty| ty.is_scalar() || (matches!(ty, Ty::List(_) | Ty::Str) && !ty.holds_view());
+        if kept.is_some_and(|ty| !owned(ty))
+            || matches!(&block.stmts[k], Stmt::Let(s, _) if self.ref_bound.contains(s))
+        {
+            return;
+        }
+        let main = std::ptr::eq(block, &self.program.main);
+        for (global, id) in read_last(self.program, block, k) {
+            let name = match global {
+                true if main
+                    && self.main_only.contains(&id)
+                    && !self.released.contains(&id)
+                    && !self.lent_fields.held_globals.contains(&id)
+                    && matches!(self.program.globals[id].ty, Ty::List(_) | Ty::Str)
+                    && self.owns_heap_storage(id) =>
+                {
+                    global_ident(self.program, id)
+                }
+                false
+                    if !self.ref_bound.contains(&id)
+                        && !self.hoisted.contains(&id)
+                        && !self.reused.contains(&id)
+                        && matches!(self.locals()[id].ty, Ty::List(_) | Ty::Str) =>
+                {
+                    self.names[id].clone()
+                }
+                _ => continue,
+            };
+            self.line(out, &format!("{{ auto cpl_freed = std::move({name}); }}"));
+        }
     }
 
     /// After a loop over a list [`Emitter::released_at`] found: empty it.

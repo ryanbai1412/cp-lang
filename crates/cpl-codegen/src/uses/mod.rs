@@ -1161,7 +1161,7 @@ fn once_lets<'s>(stmt: &'s Stmt, out: &mut Vec<&'s Stmt>) {
 /// the last time by that statement, once: read nowhere after it nor
 /// elsewhere in it, by no closure or fn, and held by no earlier value
 /// that could point into it (a view, a reference).
-fn dies_in(
+pub(crate) fn dies_in(
     program: &Program,
     block: &Block,
     k: usize,
