@@ -86,7 +86,8 @@ impl<'a> Lowerer<'a> {
             env.insert(format!("__trait_param_{idx}"), GenArg::Ty(ty.clone()));
         }
         for (name, op) in op_params {
-            env.insert(op_param_key(name), GenArg::Op(*op));
+            let ty = Ty::Struct(self.op_type(*op));
+            env.insert(op_param_key(name), GenArg::Ty(ty));
         }
         for name in &rev_params {
             env.insert(param_marker(name), GenArg::Int(1));

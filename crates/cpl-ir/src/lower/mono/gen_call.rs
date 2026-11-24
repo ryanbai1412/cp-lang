@@ -102,7 +102,7 @@ impl<'a> Lowerer<'a> {
 
         // Pass 1: unify from non-lambda arguments (and detect bare operators passed for unbound type params).
         let mut op_params: Vec<(String, BareOp)> = Vec::new();
-        let mut waiting_ops = Vec::new();
+        let mut waiting_items = Vec::new();
         for (param, arg) in ast_params.iter().zip(&matched) {
             // An omitted `over: M = (+)` binds `M` to the operator its default names.
             if let (Some(ast::TypeKind::Named { name, args }), None, Some(default)) =
@@ -112,7 +112,8 @@ impl<'a> Lowerer<'a> {
                     .then(|| self.detect_bare_op(default))
                     .flatten()
                 {
-                    inferred.entry(name.text.clone()).or_insert(GenArg::Op(op));
+                    let ty = Ty::Struct(self.op_type(op));
+                    inferred.entry(name.text.clone()).or_insert(GenArg::Ty(ty));
                 } else if args.is_empty()
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
@@ -149,28 +150,19 @@ impl<'a> Lowerer<'a> {
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
                 {
-                    if let Some(g) = self.item_arg_for(&decl.bounds, &name.text, &arg.value) {
-                        inferred.insert(name.text.clone(), g);
-                        continue;
-                    }
-                    // `go(+, [2, 3])` with `M: Op<E>`: `+` takes `Monoid<E>` once
-                    // a later argument gives `E`.
-                    if self.monoid_bare_op(&arg.value).is_some()
-                        && self.bound_has_monoid_impl(&decl.bounds, &name.text)
-                        && self
-                            .monoid_impl_shape(
-                                &decl.bounds,
-                                &name.text,
-                                (tpl_mod, tpl_offset),
-                                &inferred,
-                            )
-                            .is_none()
-                    {
-                        waiting_ops.push((pty, &arg.value, name.text.clone()));
-                        continue;
-                    }
                     let tpl = (tpl_mod, tpl_offset, &inferred);
-                    if let Some(g) = self.bare_op_for(&decl.bounds, &name.text, &arg.value, tpl) {
+                    match self.item_arg_for(&decl.bounds, &name.text, &arg.value, tpl) {
+                        Some(Some(g)) => {
+                            inferred.insert(name.text.clone(), g);
+                            continue;
+                        }
+                        Some(None) => {
+                            waiting_items.push((name.text.clone(), &arg.value));
+                            continue;
+                        }
+                        None => {}
+                    }
+                    if let Some(g) = self.bare_op_for(&decl.bounds, &name.text, &arg.value) {
                         inferred.insert(name.text.clone(), g);
                         continue;
                     }
@@ -307,19 +299,23 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        if let Some(sid) = self.gen_fns[gfid].owner {
-            for (_, _, param) in &waiting_ops {
+        for (param, value) in &waiting_items {
+            if let Some(sid) = self.gen_fns[gfid].owner {
                 self.bind_op_from_owner(sid, decl, param, &owner_env, &mut inferred);
             }
-        }
-        for (pty, value, param) in waiting_ops {
             let tpl = (tpl_mod, tpl_offset, &inferred);
-            match self.bare_op_for(&decl.bounds, &param, value, tpl) {
-                Some(g) => {
-                    inferred.insert(param, g);
+            let bound = self.item_arg_for(&decl.bounds, param, value, tpl);
+            let item = match bound {
+                Some(Some(g)) => g,
+                _ => {
+                    let ident = value.fn_item_ident().unwrap_or_default();
+                    GenArg::Ty(Ty::Struct(match self.detect_bare_op(value) {
+                        Some(op) => self.op_type(op),
+                        None => self.item_type(&ident),
+                    }))
                 }
-                None => self.unify_lambda_params(pty, value, tpl_mod, &gen_names, &mut inferred),
-            }
+            };
+            inferred.insert(param.clone(), item);
         }
         // Propagate bindings implied by row/trait bounds (e.g. `R: (u: V, v: V, ..)`,
         // `G: Next<V>`).
@@ -870,7 +866,9 @@ impl<'a> Lowerer<'a> {
         if hashed.is_some() {
             final_args.push(GenArg::Int(1));
         }
-        final_args.extend(op_params.iter().map(|&(_, op)| GenArg::Op(op)));
+        for &(_, op) in &op_params {
+            final_args.push(GenArg::Ty(Ty::Struct(self.op_type(op))));
+        }
         let rev = self.reversed_params(decl, &ast_params, receiver.as_ref(), args, &gen_names);
         if let Some(e) = self.growing_call(gfid, &decl.name.text, span) {
             return e;

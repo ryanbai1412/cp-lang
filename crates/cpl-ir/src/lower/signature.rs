@@ -125,6 +125,12 @@ impl<'a> Lowerer<'a> {
                         None => continue,
                     }
                 }
+                (Ty::Struct(sid), ast::TypeKind::ItemOf(_)) => {
+                    match self.struct_impl_env(idx, *sid) {
+                        Some(env) => Some(env),
+                        None => continue,
+                    }
+                }
                 (_, ast::TypeKind::Named { args, .. }) if args.is_empty() => None,
                 (_, ast::TypeKind::Fn { .. }) => None,
                 _ => continue,

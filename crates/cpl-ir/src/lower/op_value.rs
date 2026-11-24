@@ -6,6 +6,36 @@
 use super::mono::BareOp;
 use super::*;
 
+/// `op` on its two `args` as written: `a + b`, or `max(a, b)` for an op
+/// that is a fn.
+pub(super) fn op_ast(op: BareOp, op_span: Span, args: &[ast::Arg]) -> ast::ExprKind {
+    let bin = match op {
+        BareOp::Add => ast::BinOp::Add,
+        BareOp::Mul => ast::BinOp::Mul,
+        BareOp::BitXor => ast::BinOp::BitXor,
+        BareOp::BitOr => ast::BinOp::BitOr,
+        BareOp::BitAnd => ast::BinOp::BitAnd,
+        BareOp::And => ast::BinOp::And,
+        BareOp::Or => ast::BinOp::Or,
+        BareOp::Max | BareOp::Min | BareOp::Gcd | BareOp::Lcm => {
+            let callee = ast::Expr {
+                kind: ast::ExprKind::Name(format!("{op:?}").to_lowercase()),
+                span: op_span,
+            };
+            return ast::ExprKind::Call {
+                callee: Box::new(callee),
+                args: args.to_vec(),
+            };
+        }
+    };
+    ast::ExprKind::Binary {
+        op: bin,
+        op_span,
+        lhs: Box::new(args[0].value.clone()),
+        rhs: Box::new(args[1].value.clone()),
+    }
+}
+
 impl<'a> Lowerer<'a> {
     /// Records `impl Add<R>` (and the other operators) and `impl Into<T>`
     /// by the type they take or give, so several can coexist on one struct:
@@ -73,7 +103,7 @@ impl<'a> Lowerer<'a> {
         if let Some(&(_, id)) = self.op_types.iter().find(|(o, _)| *o == op) {
             return id;
         }
-        let id = self.item_type(&format!("{op:?}"));
+        let id = self.item_type(&op_key(op));
         self.structs[id].def.is_op = true;
         self.op_types.push((op, id));
         id
@@ -92,6 +122,37 @@ impl<'a> Lowerer<'a> {
             return id;
         }
         let id = self.push_synth_struct(format!("Op_{ident}"), Vec::new());
+        self.item_types.push((ident.to_string(), id));
+        self.attach_impls_for_struct(id);
+        id
+    }
+
+    /// `type_of(f)` with its impls' open parameters bound by `env`: one
+    /// instance per binding, as a generic struct has one per argument list.
+    pub(super) fn item_type_in(
+        &mut self,
+        ident: &str,
+        env: GenEnv,
+        base: Option<StructId>,
+    ) -> StructId {
+        let base = base.unwrap_or_else(|| self.item_type(ident));
+        if env.is_empty() {
+            return base;
+        }
+        let found = self
+            .item_types
+            .iter()
+            .find(|(k, s)| k == ident && self.structs[*s].env == env);
+        if let Some(&(_, id)) = found {
+            return id;
+        }
+        let mut keys: Vec<&String> = env.keys().collect();
+        keys.sort();
+        let suffix: Vec<String> = keys.iter().map(|k| self.mangle_arg(&env[*k])).collect();
+        let name = format!("{}_{}", self.structs[base].def.name, suffix.join("_"));
+        let id = self.push_synth_struct(name, Vec::new());
+        self.structs[id].def.is_op = self.structs[base].def.is_op;
+        self.structs[id].env = env;
         self.item_types.push((ident.to_string(), id));
         self.attach_impls_for_struct(id);
         id
@@ -145,29 +206,7 @@ impl<'a> Lowerer<'a> {
             mutable: false,
             value: name(text),
         };
-        let bin = |op| ast::ExprKind::Binary {
-            op,
-            op_span: span,
-            lhs: Box::new(name("a")),
-            rhs: Box::new(name("b")),
-        };
-        let call = |f: &str| ast::ExprKind::Call {
-            callee: Box::new(name(f)),
-            args: vec![arg("a"), arg("b")],
-        };
-        let body = match op {
-            BareOp::Add => bin(ast::BinOp::Add),
-            BareOp::Mul => bin(ast::BinOp::Mul),
-            BareOp::BitXor => bin(ast::BinOp::BitXor),
-            BareOp::BitOr => bin(ast::BinOp::BitOr),
-            BareOp::BitAnd => bin(ast::BinOp::BitAnd),
-            BareOp::And => bin(ast::BinOp::And),
-            BareOp::Or => bin(ast::BinOp::Or),
-            BareOp::Max => call("max"),
-            BareOp::Min => call("min"),
-            BareOp::Gcd => call("gcd"),
-            BareOp::Lcm => call("lcm"),
-        };
+        let body = op_ast(op, span, &[arg("a"), arg("b")]);
         let param = |text: &str| ast::Pattern {
             kind: ast::PatternKind::Name(text.into()),
             span,
@@ -185,12 +224,24 @@ impl<'a> Lowerer<'a> {
         self.expr(&lambda, Some(want))
     }
 
+    /// The operator a generic argument binds: its own type's.
+    pub(super) fn op_of_arg(&self, g: &GenArg) -> Option<BareOp> {
+        match g {
+            GenArg::Ty(ty) => self.op_of_type(ty),
+            _ => None,
+        }
+    }
+
     /// The operator a value of type `ty` stands for.
     pub(super) fn op_of_type(&self, ty: &Ty) -> Option<BareOp> {
         let Ty::Struct(id) = ty else { return None };
+        if !self.structs[*id].def.is_op {
+            return None;
+        }
+        let (ident, _) = self.item_types.iter().find(|(_, s)| s == id)?;
         self.op_types
             .iter()
-            .find(|(_, s)| s == id)
+            .find(|(op, _)| op_key(*op) == *ident)
             .map(|(op, _)| *op)
     }
 
@@ -278,18 +329,24 @@ impl Lowerer<'_> {
 }
 
 impl Lowerer<'_> {
-    /// The operator a local names, seen through the closures it is captured into.
+    /// The operator a local names by its type, seen through the closures
+    /// it is captured into; a fn param a bare op was passed for keeps it in
+    /// its instance's env, a receiver's field in its type.
     pub(super) fn op_local(&self, n: &str) -> Option<BareOp> {
-        if let Some(&op) = self.cx.op_locals.get(n) {
-            return Some(op);
-        }
-        if !self.cx.is_closure || self.cx.scopes.iter().any(|s| s.contains_key(n)) {
-            return None;
-        }
-        let cx = self.outer_cxs.iter().rev().find(|cx| {
-            cx.op_locals.contains_key(n) || cx.scopes.iter().any(|s| s.contains_key(n))
-        })?;
-        cx.op_locals.get(n).copied()
+        let slot_ty = |cx: &FnCx| {
+            let slot = cx.scopes.iter().rev().find_map(|s| s.get(n).copied())?;
+            Some(cx.locals[slot].ty.clone())
+        };
+        let ty = match slot_ty(&self.cx) {
+            Some(ty) => ty,
+            None if let Some((_, owner)) = self.cx.receiver => {
+                self.field_of(&Ty::Struct(owner), n)?.1
+            }
+            None if self.cx.is_closure => self.outer_cxs.iter().rev().find_map(slot_ty)?,
+            None => return None,
+        };
+        let param = || self.gen_env.get(&mono::op_param_key(n));
+        self.op_of_type(&ty).or_else(|| self.op_of_arg(param()?))
     }
 
     /// Recognizes a bare operator expression (`+`, `*`, `^`, `|`, `&`, `max`, `min`, `gcd`, `lcm`)
@@ -352,25 +409,20 @@ impl Lowerer<'_> {
                 } else {
                     return None;
                 };
-                let Ty::Struct(sid) = bty else {
-                    return None;
-                };
-                let (gid, gargs) = self.structs[sid].origin_gen.as_ref()?;
-                let decl = self.gen_structs[*gid].decl;
-                let fdecl = decl.fields.iter().find(|f| f.name.text == field.text)?;
-                let ast::TypeKind::Named { name, args } = &fdecl.ty.kind else {
-                    return None;
-                };
-                if !args.is_empty() {
-                    return None;
-                }
-                let pos = decl.generics.iter().position(|g| g.text == name.text)?;
-                match gargs.get(pos) {
-                    Some(GenArg::Op(op)) => Some(*op),
-                    _ => None,
-                }
+                let (_, fty) = self.field_of(&bty, &field.text)?;
+                self.op_of_type(&fty)
             }
             _ => None,
         }
+    }
+}
+
+/// The key `type_of(..)` gives an op: a named one its name (`max`), an
+/// operator its BinOp (`Add`), as `Expr::fn_item_ident` spells them.
+fn op_key(op: BareOp) -> String {
+    let key = format!("{op:?}");
+    match op {
+        BareOp::Max | BareOp::Min | BareOp::Gcd | BareOp::Lcm => key.to_lowercase(),
+        _ => key,
     }
 }

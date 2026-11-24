@@ -3,6 +3,7 @@
 //! (T, T) -> T` and `impl<T: Tr> Tr for ?T` give them to each type they fit,
 //! made the first time one is called.
 
+use super::unify_ast::bare_name;
 use super::*;
 
 impl<'a> Lowerer<'a> {
@@ -83,23 +84,6 @@ impl<'a> Lowerer<'a> {
         matches!(ty, Ty::Fn(..)).then_some(ty)
     }
 
-    /// The `Monoid<T>` a bare operator passed for `param` becomes when its
-    /// bound has an impl for `Monoid<T>`: `M: Op<Int>` and
-    /// `impl<T> Op<T> for Monoid<T>` give `Monoid<Int>`, so `go(+)` folds
-    /// with the monoid's choices (`Fold = T`), not a fn type's.
-    pub(super) fn monoid_impl_shape(
-        &mut self,
-        bounds: &[ast::Bound],
-        param: &str,
-        tpl: (ModId, u32),
-        inferred: &GenEnv,
-    ) -> Option<Ty> {
-        let lifts = self.op_lift_structs();
-        let is_monoid = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::Named { name, .. } if lifts.contains(&name.text));
-        let ty = self.bound_impl_shape(bounds, param, tpl, inferred, &is_monoid)?;
-        self.monoid_struct(&ty).map(|_| ty)
-    }
-
     /// The `@from_op` method of the generic struct `ty` is an instance of, which a bare op
     /// passed where a `ty` is wanted goes through: `Monoid<T>.of`.
     fn monoid_struct(&self, ty: &Ty) -> Option<GenFnId> {
@@ -108,33 +92,13 @@ impl<'a> Lowerer<'a> {
         let of = from_op_method(self.gen_structs[*gid].decl)?;
         self.structs[*sid].gen_methods.get(of).copied()
     }
-
-    /// The generic structs with a `@from_op` method.
-    fn op_lift_structs(&self) -> Vec<String> {
-        (self.gen_structs.iter())
-            .filter(|g| from_op_method(g.decl).is_some())
-            .map(|g| g.decl.name.text.clone())
-            .collect()
-    }
-
     /// The operator `e` names when written bare (`+`, `max`), which
     /// `Monoid.of` gives an identity for; a closure is not one, though
     /// `(a, b) => a + b` folds the same.
     pub(super) fn monoid_bare_op(&self, e: &ast::Expr) -> Option<BareOp> {
-        let written = match &e.kind {
-            ast::ExprKind::Paren(inner) => return self.monoid_bare_op(inner),
-            ast::ExprKind::Name(_) => true,
-            ast::ExprKind::Lambda { body, .. } => {
-                matches!(&body.kind, ast::ExprKind::Binary { op_span, .. } if *op_span == e.span)
-            }
-            _ => false,
-        };
-        written
-            .then(|| self.detect_bare_op(e))
-            .flatten()
-            .filter(|op| *op != BareOp::Lcm)
+        e.fn_item_ident()?;
+        self.detect_bare_op(e).filter(|op| *op != BareOp::Lcm)
     }
-
     /// A bare operator `Monoid.of` takes, passed where a `Monoid<T>` is
     /// wanted: `Monoid<T>.of(op)`.
     pub(super) fn monoid_of_bare_op(&mut self, want: &Ty, arg: &ast::Arg) -> Option<Expr> {
@@ -146,6 +110,13 @@ impl<'a> Lowerer<'a> {
             ..arg.clone()
         };
         Some(self.call_gen_fn(of, Vec::new(), None, &[arg], span))
+    }
+    /// The generic structs with a `@from_op` method.
+    fn op_lift_structs(&self) -> Vec<String> {
+        (self.gen_structs.iter())
+            .filter(|g| from_op_method(g.decl).is_some())
+            .map(|g| g.decl.name.text.clone())
+            .collect()
     }
 
     /// The type an impl of `param`'s bound whose target `fits` is for, its
@@ -181,7 +152,19 @@ impl<'a> Lowerer<'a> {
                         continue;
                     }
                     let trait_args = imp.trait_args.clone();
-                    let params = self.impl_params(m, target);
+                    // `impl<T> Op<T> for type_of(+)`: its open names are the trait's.
+                    let item = match &target.kind {
+                        ast::TypeKind::ItemOf(of) => of.fn_item_ident(),
+                        _ => None,
+                    };
+                    let mut params = self.impl_params(m, target);
+                    for a in trait_args.iter().filter(|_| item.is_some()) {
+                        for p in self.impl_params(m, a) {
+                            if !params.contains(&p) {
+                                params.push(p);
+                            }
+                        }
+                    }
                     let mut env = GenEnv::default();
                     for ((a, t), given) in trait_args.iter().zip(&bound_args).zip(args) {
                         // `Op<E>` with `E = -10..=10` keeps the range, so `Monoid<E>.of(max)`
@@ -203,7 +186,10 @@ impl<'a> Lowerer<'a> {
                     if !params.iter().all(|p| env.contains_key(p)) {
                         continue;
                     }
-                    let ty = self.quietly_in(m, offset, env, |l| l.resolve_ty(target));
+                    let ty = self.quietly_in(m, offset, env.clone(), |l| l.resolve_ty(target));
+                    if let (Some(ident), Ty::Struct(base)) = (&item, &ty) {
+                        return Some(Ty::Struct(self.item_type_in(ident, env, Some(*base))));
+                    }
                     if ty != Ty::Error {
                         return Some(ty);
                     }
@@ -299,17 +285,11 @@ impl<'a> Lowerer<'a> {
         bounds: &[ast::Bound],
         param: &str,
         e: &ast::Expr,
-        (m, offset, inferred): (ModId, u32, &GenEnv),
     ) -> Option<GenArg> {
-        if self.monoid_bare_op(e).is_some() {
-            if let Some(ty) = self.monoid_impl_shape(bounds, param, (m, offset), inferred) {
-                return Some(GenArg::Ty(ty));
-            }
-        }
-        (!self.bound_has_fn_impl(bounds, param))
+        let op = (!self.bound_has_fn_impl(bounds, param))
             .then(|| self.detect_bare_op(e))
-            .flatten()
-            .map(GenArg::Op)
+            .flatten()?;
+        Some(GenArg::Ty(Ty::Struct(self.op_type(op))))
     }
 
     /// `Tree(+, [1, 2], act: Pairs())` through `fn new<M: Op<E>, E, A: Tags<T, F>>(..)
@@ -345,15 +325,11 @@ impl<'a> Lowerer<'a> {
             let Some(p) = param.and_then(|p| p.ty.as_ref()).and_then(bare_name) else {
                 continue;
             };
-            if !new_fn.generics.iter().any(|g| g.text == p)
-                || inferred.contains_key(p)
-                || self.monoid_bare_op(&arg.value).is_none()
-            {
+            if !new_fn.generics.iter().any(|g| g.text == p) || inferred.contains_key(p) {
                 continue;
             }
-            if let Some(g) =
-                self.bare_op_for(&new_fn.bounds, p, &arg.value, (tpl.0, tpl.1, inferred))
-            {
+            let at = (tpl.0, tpl.1, &*inferred);
+            if let Some(g) = self.op_arg_for(&new_fn.bounds, p, &arg.value, at) {
                 inferred.insert(p.to_string(), g);
             }
         }
@@ -411,8 +387,11 @@ impl<'a> Lowerer<'a> {
                 continue;
             };
             for imp in &self.impls {
-                let is_monoid = matches!(&imp.target.kind,
-                    ast::TypeKind::Named { name, .. } if lifts.contains(&name.text));
+                let is_monoid = match &imp.target.kind {
+                    ast::TypeKind::Named { name, .. } => lifts.contains(&name.text),
+                    ast::TypeKind::ItemOf(_) => true,
+                    _ => false,
+                };
                 if !is_monoid || imp.trait_name.as_deref() != Some(tr.text.as_str()) {
                     continue;
                 }
@@ -438,23 +417,52 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// What a bare op or fn item `e` passed for `param` binds it to: its
+    /// own type, by the bound's impl for it where there is one.
+    pub(super) fn op_arg_for(
+        &mut self,
+        bounds: &[ast::Bound],
+        param: &str,
+        e: &ast::Expr,
+        at: (ModId, u32, &GenEnv),
+    ) -> Option<GenArg> {
+        let item = self.item_arg_for(bounds, param, e, at).flatten();
+        item.or_else(|| self.bare_op_for(bounds, param, e))
+    }
+
     /// What a fn item an argument names binds `param` to: its own type
-    /// `type_of(f)`, when `param`'s bound has an impl for that type.
+    /// `type_of(f)`, when `param`'s bound has an impl for that type. The
+    /// impls' open parameters take the bound's arguments (`M: Op<Int>` gives
+    /// `impl<T> Op<T> for type_of(+)` its `T = Int`); `Some(None)` while a
+    /// bound argument is a generic not yet inferred.
     pub(super) fn item_arg_for(
         &mut self,
         bounds: &[ast::Bound],
         param: &str,
         e: &ast::Expr,
-    ) -> Option<GenArg> {
+        (m, offset, inferred): (ModId, u32, &GenEnv),
+    ) -> Option<Option<GenArg>> {
         let ident = e.fn_item_ident()?;
         if matches!(e.kind, ast::ExprKind::Name(_))
-            && !matches!(self.sym(e), Some(Sym::Fn(_) | Sym::GenFn(_)))
+            && !matches!(self.sym(e), None | Some(Sym::Fn(_) | Sym::GenFn(_)))
         {
             return None;
         }
-        let fits = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::ItemOf(of) if of.fn_item_ident().as_deref() == Some(ident.as_str()));
-        self.bound_has_impl(bounds, param, &fits)
-            .then(|| GenArg::Ty(Ty::Struct(self.item_type(&ident))))
+        let names_item = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::ItemOf(of) if of.fn_item_ident().as_deref() == Some(ident.as_str()));
+        if !self.bound_has_impl(bounds, param, &names_item) {
+            return None;
+        }
+        // No impl fits while a bound argument is a generic not yet inferred.
+        let Some(ty) = self.bound_impl_shape(bounds, param, (m, offset), inferred, &names_item)
+        else {
+            return Some(None);
+        };
+        // An operator's instance is an operator too.
+        if let (Some(op), Ty::Struct(id)) = (self.detect_bare_op(e), &ty) {
+            self.op_type(op);
+            self.structs[*id].def.is_op = true;
+        }
+        Some(Some(GenArg::Ty(ty)))
     }
 
     /// Whether `param` is bound by a trait some fn type implements, as in
@@ -464,17 +472,6 @@ impl<'a> Lowerer<'a> {
         self.bound_has_impl(bounds, param, &|t| {
             matches!(t.kind, ast::TypeKind::Fn { .. })
         })
-    }
-
-    /// Whether `param`'s bound has an impl for `Monoid<..>`, which a bare op
-    /// passed for it takes.
-    pub(super) fn bound_has_monoid_impl(&self, bounds: &[ast::Bound], param: &str) -> bool {
-        let lifts = self.op_lift_structs();
-        self.bound_has_impl(
-            bounds,
-            param,
-            &|t| matches!(&t.kind, ast::TypeKind::Named { name, .. } if lifts.contains(&name.text)),
-        )
     }
 
     fn bound_has_impl(
@@ -547,13 +544,6 @@ impl<'a> Lowerer<'a> {
             return Some(fn_id);
         }
         None
-    }
-}
-
-fn bare_name(t: &ast::Type) -> Option<&str> {
-    match &t.kind {
-        ast::TypeKind::Named { name, args } if args.is_empty() => Some(&name.text),
-        _ => None,
     }
 }
 

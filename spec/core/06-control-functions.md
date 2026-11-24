@@ -172,8 +172,8 @@ library or by this spec:
   `with lint(discarded_result: allow)`. Dropping a `?T` is an error (see
   R02.4.7). (R06.4.8)
 - `@from_op` on a struct's static fn (std's `Monoid.of`): a bare operator
-  (`+`, `max`) passed where that struct is wanted, or for a bound the struct
-  has an impl of, becomes a call of the fn (R08.1.9).
+  (`+`, `max`) passed where that struct is wanted becomes a call of the fn;
+  at a trait bound it keeps its own fn-item type (R08.1.9).
 - `@structural` on a trait (std's `Hash`): a tuple, record, optional,
   array or struct has it when each part does, a position when `Int` does,
   and a built-in scalar only through its own `impl` (so `F64`, with none, is
