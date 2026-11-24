@@ -4,7 +4,8 @@
 # sends N M, A, B, L and the hint; the program prints a length and a sequence, which must be a
 # common subsequence of A and B of length K. The official grader runs the rounds in separate
 # processes; this judge runs one process, so it cannot stop a program keeping state across them.
-# The statement scores by the longest hint (min((640 / (L + 1))^0.3, 1)), logged here.
+# The statement scores by the longest hint, min((640 / (L + 1))^0.3, 1); the judge requires the
+# full score, L <= 639.
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "lib"))
 from interactor_lib import run_interactor
@@ -28,8 +29,8 @@ def drive(case_text, io):
         raise RuntimeError("bad case")
     io.send("\n".join(lines[:5]))
     (l,) = map(int, tokens(io, 1))
-    if not 0 <= l <= 10_000_000:
-        raise RuntimeError(f"hint length {l}")
+    if not 0 <= l <= 639:
+        raise RuntimeError(f"hint length {l}, over the full score's 639")
     hint = io.recv_line().strip() if l else ""
     if len(hint) != l or set(hint) - {"0", "1"}:
         raise RuntimeError("the hint is not L bits")
