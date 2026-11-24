@@ -13,6 +13,9 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
+PKGS = "corpus/problems"
+SUBS_DIR = "corpus/submissions"
+
 _SPEC = importlib.util.spec_from_file_location("corpus", Path(__file__).resolve().parent / "corpus.py")
 assert _SPEC and _SPEC.loader
 corpus = importlib.util.module_from_spec(_SPEC)
@@ -680,7 +683,7 @@ class DeleteTest(Corpus):
         (subs / "info.json").write_text(json.dumps(info, indent=4))
         (subs / "910000001.cpp").write_text("")
         (subs / "910000002.cpp").write_text("")
-        unknowns.write_text("1 corpus/problems/p2/port.cp\n1 corpus/problems/p3/port.cp\n")
+        unknowns.write_text(f"1 {PKGS}/p2/port.cp\n1 {PKGS}/p3/port.cp\n")
         build = mock.Mock(return_value=0)
         with mock.patch.object(corpus, "main", build), mock.patch.object(corpus, "named_by", lambda *_: []), \
                 contextlib.redirect_stdout(io.StringIO()):
@@ -690,7 +693,7 @@ class DeleteTest(Corpus):
         self.assertEqual(json.loads((subs / "info.json").read_text()), {"910000002": {"problem": "p3"}})
         self.assertEqual(sorted(f.name for f in subs.iterdir()), ["910000002.cpp", "info.json"])
         self.assertEqual((self.root / "sets" / "small.txt").read_text(), "# comment\n")
-        self.assertEqual(unknowns.read_text(), "1 corpus/problems/p3/port.cp\n")
+        self.assertEqual(unknowns.read_text(), f"1 {PKGS}/p3/port.cp\n")
 
     def test_a_submission_another_file_names_is_kept_without_its_entry(self):
         subs = self.root / "subs"
@@ -749,7 +752,7 @@ class OrphanSubmissionTest(unittest.TestCase):
                 mock.patch.object(corpus.subprocess, "run", return_value=mock.Mock(returncode=1)):
             for n in ("1.cpp", "2.txt", "info.json"):
                 Path(d, n).write_text("")
-            metas = {"p": {"submissions": [{"file": "corpus/submissions/1.cpp"}, {"file": None}]}}
+            metas = {"p": {"submissions": [{"file": f"{SUBS_DIR}/1.cpp"}, {"file": None}]}}
             self.assertEqual(corpus.orphan_submissions(metas), ["2.txt"])
 
     def test_a_file_another_tracked_file_names_is_kept(self):

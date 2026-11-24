@@ -12,6 +12,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import ci  # noqa: E402
 
+PKGS = "corpus/problems"
+
 
 class GatePartTest(unittest.TestCase):
     def test_checks_and_unset(self) -> None:
@@ -482,7 +484,7 @@ class CommitTest(unittest.TestCase):
         sel = {"slices": "a b", "data_filter": "test(=d)", "check_files": "scripts/ci.py", "audit": "1",
                "idioms_catalog": "1", "steps": "scripts/x.py", "script_tests": "scripts/test_ci.py",
                "conform_cases": "c.cp", "site": "1"}
-        dream = "corpus/problems/p1/dream.cp\n"
+        dream = f"{PKGS}/p1/dream.cp\n"
         code, ev, _, _, _, _ = self._commit(sel, outs={"git diff --cached": dream})
         self.assertEqual(code, 0)
         self.assertEqual(self.tiers, [("commit", None), ("touched", {"scripts/x.py"})])
@@ -682,7 +684,7 @@ class GuardTest(unittest.TestCase):
         self.assertIn(old, self._guard(root, "fast")[1])
 
     def test_a_commit_may_not_add_corpus_test_files(self) -> None:
-        root = self._repo({"a.md": "x\n"}, staged={"corpus/problems/p/tests/1.in": "1\n"})
+        root = self._repo({"a.md": "x\n"}, staged={f"{PKGS}/p/tests/1.in": "1\n"})
         code, err = self._guard(root, "commit")
         self.assertEqual(code, 1)
         self.assertIn("problem-packages/R9", err)
