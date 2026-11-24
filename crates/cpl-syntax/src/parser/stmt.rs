@@ -141,13 +141,7 @@ impl<'a> Parser<'a> {
                 public,
             };
         }
-        // `@cpp("...")` at a line's start is an expression, not a decorator.
-        let cpp = self.peek_n(2) == T::LParen
-            && self
-                .tokens
-                .get(self.pos + 1)
-                .is_some_and(|t| t.span.text(self.src) == "cpp");
-        while (self.at(T::At) && !cpp)
+        while (self.at(T::At) && !self.at_cpp())
             || (self.at(T::Minus) && self.peek_n(1) == T::Minus && self.peek_n(2) == T::Minus)
         {
             if self.at(T::At) {

@@ -954,6 +954,13 @@ impl<'a> Parser<'a> {
         matches!(self.peek(), T::None | T::In | T::Type | T::Domain | T::Use) && !self.at_line_end()
     }
 
+    /// At `@cpp(`: an expression even at a line's start, not a decorator.
+    pub(super) fn at_cpp(&self) -> bool {
+        self.at(T::At)
+            && self.peek_n(2) == T::LParen
+            && (self.tokens.get(self.pos + 1)).is_some_and(|t| t.span.text(self.src) == "cpp")
+    }
+
     fn primary(&mut self) -> Expr {
         let start = self.start();
         let kind = match self.peek() {
