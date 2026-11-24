@@ -15,7 +15,7 @@ let n: 2..=100_000 = read()
 let sieve = Sieve.new(n)
 let p = first(x for x in n / 2 + 1..=n if sieve.is_prime(x))!
 
-var res: List<Int> = [p]
+var res: List<1..=n> = [p]
 for k in p + 1..=n:
     res.push(2 * p - k)
     res.push(k)
