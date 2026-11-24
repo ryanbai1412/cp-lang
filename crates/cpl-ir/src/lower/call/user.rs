@@ -1192,11 +1192,12 @@ impl<'a> Lowerer<'a> {
         id = self.view_param_fn(id, args);
         self.queue_fn(id);
         let thunked: Vec<ast::Arg>;
+        let has_receiver = self.sigs[id].receiver.is_some() && self.sigs[id].owner.is_some();
         let decl_params: Vec<&ast::Param> = self.sigs[id]
             .decl
             .params
             .iter()
-            .filter(|p| p.name.text != "self")
+            .filter(|p| !has_receiver || p.name.text != "self")
             .collect();
         let args = match super::mono::thunk_lazy_args(&decl_params, args) {
             Some(t) => {
@@ -1403,11 +1404,13 @@ impl<'a> Lowerer<'a> {
                         );
                         ok = false;
                     } else {
+                        let has_receiver =
+                            self.sigs[id].receiver.is_some() && self.sigs[id].owner.is_some();
                         let declared = self.sigs[id]
                             .decl
                             .params
                             .iter()
-                            .filter(|p| p.name.text != "self")
+                            .filter(|p| !has_receiver || p.name.text != "self")
                             .nth(at)
                             .and_then(|p| p.ty.as_ref());
                         let value = self.expect_declared(&arg.value, &param.ty, declared);
