@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use cpl_conform::conformance::{parse_header, Expect};
-use cpl_conform::scoreboard::{check_ratchet, CaseOutcome, Scoreboard, SuiteReport};
+use cpl_conform::scoreboard::{check_prev, check_ratchet, CaseOutcome, Scoreboard, SuiteReport};
 use cpl_conform::{default_scoreboard_path, find_repo_root, run_suites, Suite};
 
 fn make_board(suite_name: &str, cases: &[(&str, &str)]) -> Scoreboard {
@@ -383,4 +383,30 @@ fn handbook_blocks_are_cp_only() {
         .collect();
     assert_eq!(ids, ["handbook/language/a.md#why:1"]);
     assert_eq!(block_ids("core/a.md", md).len(), 2);
+}
+
+// 331aa3f44 broke 10 lambda-graph cases the committed scoreboard didn't have
+// yet, and `--check` still said 0 regressions.
+#[test]
+fn a_case_newer_than_the_scoreboard_cannot_regress_unseen() {
+    let committed = make_board("conformance", &[("old.cp", "pass"), ("gap.cp", "fail")]);
+    let prev = make_board(
+        "conformance",
+        &[
+            ("old.cp", "pass"),
+            ("gap.cp", "pass"),
+            ("new.cp", "pass"),
+            ("gone.cp", "pass"),
+        ],
+    );
+    let current = make_board(
+        "conformance",
+        &[("old.cp", "fail"), ("gap.cp", "fail"), ("new.cp", "error")],
+    );
+    assert_eq!(
+        check_prev(&committed, &prev, &current),
+        vec!["conformance/new.cp: regressed from pass on main's last green run to error"]
+    );
+    let fixed = make_board("conformance", &[("new.cp", "pass")]);
+    assert!(check_prev(&committed, &prev, &fixed).is_empty());
 }

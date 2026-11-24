@@ -409,6 +409,40 @@ impl Scoreboard {
     }
 }
 
+/// Cases that passed in `prev` (main's last green run, kept by CI) and no
+/// longer pass in `current`, skipping any `baseline` already records: a
+/// recorded pass is `check_ratchet`'s to report, a recorded failure is a known
+/// gap. This covers cases added since the committed scoreboard was written.
+/// A case gone from `current` was deleted or renamed, so it is not reported.
+pub fn check_prev(baseline: &Scoreboard, prev: &Scoreboard, current: &Scoreboard) -> Vec<String> {
+    let mut regressions = Vec::new();
+    for (suite_name, cur) in &current.suites {
+        let Some(prev) = prev.suites.get(suite_name) else {
+            continue;
+        };
+        let recorded = baseline.suites.get(suite_name).map(|b| &b.cases);
+        for (case_id, prev_status) in &prev.cases {
+            if prev_status != "pass" || recorded.is_some_and(|r| r.contains_key(case_id)) {
+                continue;
+            }
+            match cur.cases.get(case_id) {
+                Some(status) if status != "pass" => {
+                    let detail = cur
+                        .details
+                        .get(case_id)
+                        .map(|d| format!(" ({d})"))
+                        .unwrap_or_default();
+                    regressions.push(format!(
+                        "{suite_name}/{case_id}: regressed from pass on main's last green run to {status}{detail}"
+                    ));
+                }
+                _ => {}
+            }
+        }
+    }
+    regressions
+}
+
 fn case_file(case_id: &str) -> &str {
     case_id.split('#').next().unwrap_or(case_id)
 }

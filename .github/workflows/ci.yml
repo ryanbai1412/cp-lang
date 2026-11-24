@@ -86,13 +86,30 @@ jobs:
           path: target/corpus-tests
           key: corpus-tests-${{ github.run_id }}
           restore-keys: corpus-tests-
+      # The scoreboard of this part's last green main run: a case added since
+      # research/scoreboard.json was written regresses against it (--prev).
+      - uses: actions/cache/restore@v4
+        if: startsWith(matrix.part, 'conform:')
+        with:
+          path: target/conform-prev.json
+          key: conform-prev-${{ matrix.part }}-${{ github.run_id }}
+          restore-keys: conform-prev-${{ matrix.part }}-
       - name: Fast gate
         # A hung test holds main's only run slot; a shard takes about 5 min.
         timeout-minutes: 12
         env:
           CPL_GATE_PART: ${{ matrix.part }}
+          CPL_CONFORM_PREV: ${{ startsWith(matrix.part, 'conform:') && 'target/conform-prev.json' || '' }}
           CPL_DERIVED_HEALED: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '' }}
         run: scripts/check.sh --fast
+      - name: Keep this green run's scoreboard
+        if: ${{ success() && github.ref == 'refs/heads/main' && startsWith(matrix.part, 'conform:') }}
+        run: "[ ! -f target/conform-prev.json.new ] || mv target/conform-prev.json.new target/conform-prev.json"
+      - uses: actions/cache/save@v4
+        if: ${{ success() && github.ref == 'refs/heads/main' && startsWith(matrix.part, 'conform:') }}
+        with:
+          path: target/conform-prev.json
+          key: conform-prev-${{ matrix.part }}-${{ github.run_id }}
       - name: Save target/ (${{ matrix.part == 'checks' && 'clippy' || 'dev' }})
         id: stamp
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}

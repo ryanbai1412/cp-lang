@@ -314,7 +314,10 @@ case "$gate_part" in
         uv run --quiet python scripts/corpus-tests.py make --seeded >/dev/null \
             || fail "corpus-tests.py make --seeded failed; rerun it to see which problem"
         # shellcheck disable=SC2086
+        # CI keeps main's last green run in $CPL_CONFORM_PREV, so a case newer than
+        # research/scoreboard.json still can't regress unseen (ci.yml).
         "$target/debug/cpl-conform" $conform_suites $conform_shard --check \
+            ${CPL_CONFORM_PREV:+--prev "$CPL_CONFORM_PREV" --save "$CPL_CONFORM_PREV.new"} \
             || fail "cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- $conform_suites $conform_shard --check"
         step_end
         printf '\ncheck: conformance part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"

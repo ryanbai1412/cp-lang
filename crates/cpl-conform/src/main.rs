@@ -29,6 +29,9 @@ options:
   --write         update the scoreboard JSON with the suites that were run
   --shard N/M     diff runs only every Mth target, starting at the Nth
   --scoreboard P  scoreboard JSON path (default: research/scoreboard.json)
+  --prev P        with --check, also fail on a case that passed in scoreboard P
+                  (main's last green run) and the committed scoreboard lacks
+  --save P        write this run's suites to P (nothing merged)
   --causes        group failing cases by root cause, sorted by count
   --rules         check spec/core rule coverage against spec/conformance
   --strict        fail on unmet conformance cases (or uncovered rules with --rules)
@@ -55,6 +58,8 @@ fn main() -> ExitCode {
     let mut strict = false;
     let mut verbose = false;
     let mut scoreboard_path: Option<PathBuf> = None;
+    let mut prev_path: Option<PathBuf> = None;
+    let mut save_path: Option<PathBuf> = None;
     let mut filter: Option<String> = None;
 
     if args.first().map(String::as_str) == Some("fuzz") {
@@ -86,6 +91,19 @@ fn main() -> ExitCode {
                     return ExitCode::from(2);
                 };
                 let _ = cpl_conform::runner::SHARD.set(shard);
+            }
+            "--prev" | "--save" => {
+                i += 1;
+                let Some(path) = args.get(i) else {
+                    eprintln!("cpl-conform: {arg} requires a path");
+                    return ExitCode::from(2);
+                };
+                let slot = if arg == "--prev" {
+                    &mut prev_path
+                } else {
+                    &mut save_path
+                };
+                *slot = Some(PathBuf::from(path));
             }
             "--scoreboard" | "--out" | "--baseline" => {
                 i += 1;
@@ -243,11 +261,17 @@ fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             }
         };
-        let ratchet = scoreboard::check_ratchet(
+        let mut ratchet = scoreboard::check_ratchet(
             &baseline,
             &current,
             filter.is_some() || cpl_conform::runner::SHARD.get().is_some(),
         );
+        // A missing or unreadable --prev (a cold cache) checks nothing extra.
+        if let Some(prev) = prev_path.as_ref().and_then(|p| Scoreboard::load(p).ok()) {
+            ratchet
+                .regressions
+                .extend(scoreboard::check_prev(&baseline, &prev, &current));
+        }
         if !ratchet.improvements.is_empty() {
             println!(
                 "ratchet: {} newly passing case(s)",
@@ -271,6 +295,13 @@ fn main() -> ExitCode {
             exit_fail = true;
         } else {
             println!("ratchet: ok (0 regressions against {})", sb_path.display());
+        }
+    }
+
+    if let Some(path) = &save_path {
+        if let Err(e) = current.save(path) {
+            eprintln!("cpl-conform: {e}");
+            return ExitCode::FAILURE;
         }
     }
 
