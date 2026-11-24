@@ -5,7 +5,7 @@
 
 use super::{all_returns, Remap, Sub};
 use crate::walk::{children_mut, deep_exprs, stmt_blocks_mut, stmt_exprs_mut};
-use crate::{Arg, Block, ClosureDef, Expr, ExprKind, Function, LoopId, Span, Stmt, Ty};
+use crate::{Arg, Block, ClosureDef, Expr, ExprKind, Function, LoopId, Span, Stmt};
 use std::collections::HashMap;
 
 /// Rewrites each library walk every call of which is `walk(make(args))` to
@@ -90,23 +90,15 @@ fn fold_fn(
     next_loop: &mut LoopId,
 ) -> Option<Function> {
     let m = make.params.len();
-    let (last, pre) = make.body.stmts.split_last()?;
-    let Stmt::Return(Some(Expr {
-        kind: ExprKind::Tuple(items),
-        ..
-    })) = last
-    else {
+    let (Stmt::Return(Some(made)), pre) = make.body.stmts.split_last()? else {
         return None;
     };
-    let mut to = Vec::new();
-    for e in items {
-        match e.kind {
-            ExprKind::Local(j) if j < m && make.locals[j].ty == e.ty => to.push(j),
-            _ => return None,
-        }
-    }
+    // Each `self.f` is then a field of `made`, which the inliner folds.
+    let simple =
+        matches!(&made.kind, ExprKind::Tuple(items) if items.iter().all(crate::walk::is_simple));
     let one_param = matches!(walk.params.as_slice(), [p] if !p.mutable && !p.fills_cache);
-    if !one_param
+    if !simple
+        || !one_param
         || make.locals.len() != m
         || !pre.iter().all(|s| matches!(s, Stmt::Assert { .. }))
         || all_returns(&walk.body) != 1
@@ -114,31 +106,9 @@ fn fold_fn(
     {
         return None;
     }
-    let fresh = walk.locals.len();
     let mut body = walk.body.clone();
-    exprs_mut(&mut body, &mut |e| {
-        if let ExprKind::Field(base, i) = &e.kind {
-            if let (ExprKind::Local(0), Some(&j)) = (&base.kind, to.get(*i)) {
-                if make.locals[j].ty == e.ty {
-                    e.kind = ExprKind::Local(fresh + j);
-                }
-            }
-        }
-    });
-    let mut whole = false;
-    deep_exprs(&body, &mut |e| {
-        whole |= matches!(e.kind, ExprKind::Local(0) | ExprKind::Closure(_))
-    });
-    if whole {
-        return None;
-    }
-    let unit = Expr {
-        kind: ExprKind::Unit,
-        ty: Ty::Unit,
-        span: Span::default(),
-    };
-    let mut map = vec![Sub::Expr(unit)];
-    for s in (m..fresh + m - 1).chain(0..m) {
+    let mut map = vec![Sub::Expr(made.clone())];
+    for s in m..walk.locals.len() + m - 1 {
         map.push(Sub::Slot(s));
     }
     let mut remap = Remap {
