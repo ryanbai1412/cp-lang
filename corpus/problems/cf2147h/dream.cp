@@ -14,9 +14,9 @@ fn answer(colors: List<Bitset<V>>):
         print(c.len)
         print(c)
 
-if fold(gcd, gomory_hu(edges).map(e => e.w)) != 1: return answer([V.all])
+if fold(gcd, gomory_hu(edges).map(e => e.w)) != 1: return answer([Bitset<V>.full()])
 
-var odd = adjacency(edges.filter(e => e.w % 2 == 1), into: Bitset)
+var odd = Bitset<V>.undirected(edges.filter(e => e.w % 2 == 1))
 
 fn complement_within(s: Bitset<V>):          // toggle every edge inside s
     for u in s: odd[u] ^= s.without(u)
@@ -33,5 +33,5 @@ fn even_split(alive: Bitset<V>) -> Bitset<V>:
     if (nbr & side).len % 2 == 0: side.add(v)
     return side
 
-let side = even_split(V.all)
-answer([V.all - side, side])
+let side = even_split(Bitset<V>.full())
+answer([side.complement(), side])
