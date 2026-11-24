@@ -7,7 +7,7 @@
 //   in a deque of (cut, prefix) with prefix sums rising towards the back. O(n).
 let n: 1..=1e5 = read()
 let k: 1..=n = read()
-let taste: [0..n]-1e9..=1e9 = read()
+let taste: [0..n]-1e8..=1e8 = read()
 
 var window = Deque<(cut: Int, pre: Int)>()  // prefix sums rising towards the back
 var pre = 0

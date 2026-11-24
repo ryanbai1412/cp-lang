@@ -11,5 +11,8 @@ if sys.argv[1:] == ["--max"]:
     sys.exit()
 
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
-n = r.randint(1, 2 * S); print(n, r.randint(1, n)); M = r.choice([5, 10**9])
-print(*[r.randint(-M, M) for _ in range(n)])
+# tastes in [-1e8, 1e8], at least one positive
+n = r.randint(1, 2 * S); print(n, r.randint(1, n)); M = r.choice([5, 10**8])
+t = [r.randint(-M, M) for _ in range(n)]
+t[r.randrange(n)] = r.randint(1, M)
+print(*t)
