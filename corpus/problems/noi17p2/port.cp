@@ -28,6 +28,7 @@ let size: [Worm]1..=6 = read()
 var before: [Worm]?Worm = None
 var after: [Worm]?Worm = None
 var blocks = Counter<Hash61>()
+blocks.reserve(longest * n)
 
 /// Blocks of fewer than `longest` worms starting at `from` along `toward`
 /// (`back = true`: extending on the right; `back = false`: prepending on the left).

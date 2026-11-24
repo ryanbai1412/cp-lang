@@ -48,3 +48,9 @@ Blocks are keyed by a 61-bit `Hash61` sharing `rh.base`, not a two-word `HashVal
 that is 1.87 s and 857 MB peak, down from 3.84 s and 1.25 GB; the accepted C++ takes 0.84 s and
 280 MB. What remains is the std hash table's layout (load at most 1/2, 17 bytes per slot,
 both arrays live while it rehashes), sent to Content stdlib with this input as the repro.
+
+With `blocks.reserve(longest * n)` the --max run is 1.77 s and 198 MB against the accepted
+C++'s 0.88 s and 280 MB on the same box. `Counter.add` is a `get` then a `set`, two lookups;
+with it done as one lookup the run is 1.22 s, within the 1.5x bar (stdlib fix requested). A
+table holding only the windows some query asks about, as the accepted C++ does, is no faster
+(1.90 s), so the port keeps the dream's online counts.
