@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-const SHARDS: usize = 8;
+const SHARDS: usize = 16;
 
 const GXX_FLAGS: [&str; 7] = [
     "-std=c++17",
@@ -477,6 +477,14 @@ shards! {
     interpreter_and_sanitized_cpp_agree_shard_5 = 5,
     interpreter_and_sanitized_cpp_agree_shard_6 = 6,
     interpreter_and_sanitized_cpp_agree_shard_7 = 7,
+    interpreter_and_sanitized_cpp_agree_shard_8 = 8,
+    interpreter_and_sanitized_cpp_agree_shard_9 = 9,
+    interpreter_and_sanitized_cpp_agree_shard_10 = 10,
+    interpreter_and_sanitized_cpp_agree_shard_11 = 11,
+    interpreter_and_sanitized_cpp_agree_shard_12 = 12,
+    interpreter_and_sanitized_cpp_agree_shard_13 = 13,
+    interpreter_and_sanitized_cpp_agree_shard_14 = 14,
+    interpreter_and_sanitized_cpp_agree_shard_15 = 15,
 }
 
 #[test]

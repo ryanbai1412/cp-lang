@@ -341,7 +341,7 @@ fn cover_reads_the_problems_cases() {
 /// The programs are split into `SHARDS` tests by their index in sorted
 /// order, as in `differential.rs`, so the test runner spreads them over its
 /// threads and nothing else here starts threads of its own.
-const SHARDS: usize = 8;
+const SHARDS: usize = 16;
 
 fn programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");
@@ -417,4 +417,12 @@ shards! {
     native_profile_counts_what_the_interpreter_counts_5 = 5,
     native_profile_counts_what_the_interpreter_counts_6 = 6,
     native_profile_counts_what_the_interpreter_counts_7 = 7,
+    native_profile_counts_what_the_interpreter_counts_8 = 8,
+    native_profile_counts_what_the_interpreter_counts_9 = 9,
+    native_profile_counts_what_the_interpreter_counts_10 = 10,
+    native_profile_counts_what_the_interpreter_counts_11 = 11,
+    native_profile_counts_what_the_interpreter_counts_12 = 12,
+    native_profile_counts_what_the_interpreter_counts_13 = 13,
+    native_profile_counts_what_the_interpreter_counts_14 = 14,
+    native_profile_counts_what_the_interpreter_counts_15 = 15,
 }
