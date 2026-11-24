@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, checkSortCopies, crateOf, gateCrateOf, normalizedFunctions, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, crateOf, gateCrateOf, grown, normalizedFunctions, normalizedSizes, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -66,26 +66,42 @@ describe('wasm crate budgets', () => {
     expect(touchedOverBudget(rows, { ...budgets, [DATA]: 50 }, map, []).errors).toEqual([]);
   });
 
-  test('the ratchet holds every crate to its parent, touched or not', () => {
+  test('the ratchet refuses a bucket over budget whose normalized code grew, touched or not', () => {
     const map = owners(charters);
     const budgets = { cpl_check: 250, cpl_lsp: 100, [DATA]: 40 };
-    const rows = [['cpl_check', 900, 300], ['cpl_lsp', 500, 90], [DATA, 900, 50]];
-    const gate = (parent) => ratchet(rows, budgets, map, parent);
-    const shrank = gate({ cpl_check: 301, cpl_lsp: 90, [DATA]: 50 });
-    expect(shrank.errors).toEqual([]);
-    expect(shrank.held).toEqual([
-      expect.stringMatching(/^cpl_check is 300 B gzipped, .*, but no more than its parent's 301 B$/),
-      expect.stringMatching(/^data .* over its budget of 40.*, but no more than its parent's 50 B$/),
-    ]);
-    expect(gate({ cpl_check: 299, cpl_lsp: 90, [DATA]: 50 }).errors)
-      .toEqual([expect.stringMatching(/^cpl_check is 300 B gzipped, over its budget of 250.*; it grew 1 B against its parent's 299 B$/)]);
-    expect(gate({ cpl_check: 300, cpl_lsp: 90, [DATA]: 49 }).errors).toEqual([expect.stringMatching(/^data .* it grew 1 B/)]);
-    const crossed = ratchet([['cpl_lsp', 500, 101]], budgets, map, { cpl_lsp: 100 });
-    expect(crossed.errors).toEqual([expect.stringMatching(/^cpl_lsp is 101 B gzipped, over its budget of 100/)]);
-    expect(ratchet([['cpl_lsp', 500, 100]], budgets, map, { cpl_lsp: 99 }).errors).toEqual([]);
-    expect(ratchet([['cpl_check', 900, 300]], budgets, map, {}).errors).toEqual([expect.stringMatching(/^cpl_check is 300 B/)]);
-    expect(ratchet([['cpl_lsp', 500, 199]], { cpl_lsp: 400 }, map, { cpl_lsp: 0 }).grew).toEqual([]);
-    expect(ratchet([['cpl_lsp', 500, 300]], { cpl_lsp: 400 }, map, { cpl_lsp: 100 }).grew).toEqual(['cpl_lsp grew 200 B gzipped against its parent\'s 100 B']);
+    const gate = (rows, fns, parent) => ratchet(rows, budgets, map, grown(fns, parent));
+    const was = { cpl_check: { a: 600, b: 300 }, cpl_lsp: { c: 500 }, [DATA]: { 'data segment': 900 } };
+    // Renumbering only: normalized bytes equal, gz drifts past the budget; held, not refused.
+    const drift = gate([['cpl_check', 900, 300], ['cpl_lsp', 500, 101], [DATA, 900, 50]], was, was);
+    expect(drift.errors).toEqual([]);
+    expect(drift.held).toHaveLength(3);
+    // One fn +1 B in an over-budget crate, nothing else shrinking: refused, with the numbers.
+    const plus = gate([['cpl_check', 900, 300]], { ...was, cpl_check: { a: 601, b: 300 } }, was);
+    expect(plus.errors).toEqual([expect.stringMatching(/^cpl_check is 300 B gzipped, over its budget of 250.*; it grew 1 B against its parent's 900 B of normalized code \(now 901 B\); grew most: a \+1$/)]);
+    // Bytes moving between a crate's fns aren't growth.
+    expect(gate([['cpl_check', 900, 300]], { ...was, cpl_check: { a: 599, b: 301 } }, was).errors).toEqual([]);
+    // A within-budget crate that grows and crosses its budget is refused; one that grows within it passes.
+    const lsp = { ...was, cpl_lsp: { c: 500, d: 7 } };
+    expect(gate([['cpl_lsp', 507, 101]], lsp, was).errors).toEqual([expect.stringMatching(/^cpl_lsp is 101 B gzipped.*grew most: d \+7$/)]);
+    expect(gate([['cpl_lsp', 507, 100]], lsp, was).errors).toEqual([]);
+    // The data segment by its raw bytes.
+    expect(gate([[DATA, 901, 50]], { ...was, [DATA]: { 'data segment': 901 } }, was).errors).toEqual([expect.stringMatching(/^data .* it grew 1 B/)]);
+    // A crate with no parent record grew from nothing.
+    expect(gate([['cpl_check', 900, 300]], was, {}).errors).toEqual([expect.stringMatching(/^cpl_check is 300 B.*it grew 900 B/)]);
+    const big = { ...was, cpl_lsp: { c: 700 } };
+    expect(ratchet([['cpl_lsp', 700, 90]], budgets, map, grown(big, was)).grew).toEqual(['cpl_lsp grew 200 B of normalized code against its parent\'s 500 B']);
+    expect(ratchet([['cpl_lsp', 699, 90]], budgets, map, grown({ ...was, cpl_lsp: { c: 699 } }, was)).grew).toEqual([]);
+  });
+
+  test('an over-budget crate that grows through a dependency it calls is refused', () => {
+    // cpl_lint's change inlines into cpl_lsp (over budget): cpl_lsp's own fn grows 1 B.
+    const prev = build({ fns: [[fn('cpl_lsp', 'f'), call(1)], [fn('cpl_lint', 'g'), [0x01]]] });
+    const next = build({ fns: [[fn('cpl_lint', 'g'), [0x01, 0x01]], [fn('cpl_lsp', 'f'), [...call(0), 0x01]]] });
+    const sizes = (w) => normalizedSizes(w, []);
+    const growth = grown(sizes(next), sizes(prev));
+    expect(Object.keys(growth).sort()).toEqual(['cpl_lint', 'cpl_lsp']);
+    const r = ratchet([['cpl_lsp', 9, 101], ['cpl_lint', 3, 1]], { cpl_lsp: 100, cpl_lint: 100 }, owners(charters), growth);
+    expect(r.errors).toEqual([expect.stringMatching(/^cpl_lsp is 101 B gzipped.*it grew 1 B/)]);
   });
 
   test('a build lowers each budget with slack to its measurement and some room, never up', () => {

@@ -14,6 +14,12 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 GEN = "spec/conformance/widths/int.cp"
 RATCHET = "scripts/debt-ratchet.json"
+
+
+def sized(gz):
+    """A --sizes record standing in for a wasm build: crate -> B gz, with each crate's
+    normalized code the same number of bytes in one fn, so growth there is growth here."""
+    return json.dumps({"crates": gz, "sorts": 0, "fns": {c: {"f": n} for c, n in gz.items()}})
 INDEX = "corpus/index.json"
 
 
@@ -885,7 +891,7 @@ exec {shutil.which("git")} "$@"
         if parent:
             git(ours, "fetch", "-q", "origin")
             (out / "sizes").mkdir()
-            (out / "sizes" / f'{git(ours, "rev-parse", "origin/main^{tree}").strip()}.json').write_text("{}")
+            (out / "sizes" / f'{git(ours, "rev-parse", "origin/main^{tree}").strip()}.json').write_text('{"fns": {}}')
         return out
 
     def _crate_change(self, theirs_crate):
@@ -942,8 +948,8 @@ exec {shutil.which("git")} "$@"
         (ours / "crates" / "cpl-x" / "lib.rs").write_text("ours\n")
         self.commit(ours, "ours")
         out = self._built(ours)
-        (out / "cpl.wasm").write_text(json.dumps({"crates": ours_gz, "sorts": 0}))
-        (next((out / "sizes").iterdir())).write_text(json.dumps({"crates": parent_gz, "sorts": 0}))
+        (out / "cpl.wasm").write_text(sized(ours_gz))
+        (next((out / "sizes").iterdir())).write_text(sized(parent_gz))
         env = self._wasm(ours, 0)
         (self.tmp / "bin" / "node").unlink()
         return self.land(ours, **env)
@@ -965,12 +971,12 @@ exec {shutil.which("git")} "$@"
         r = self._ratchet({"cpl_x": 149, "cpl_y": 150}, {"cpl_x": 150, "cpl_y": 150}, {"cpl_x": 100, "cpl_y": 100})
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("cpl_x is 149 B gzipped, over its budget of 100", r.stderr)
-        self.assertIn("but no more than its parent's 150 B", r.stderr)
+        self.assertIn("but its normalized code is no larger than its parent's", r.stderr)
 
     def test_the_wasm_ratchet_lands_a_crate_over_budget_that_held_its_size(self):
         r = self._ratchet({"cpl_x": 150}, {"cpl_x": 150}, {"cpl_x": 100})
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("but no more than its parent's 150 B", r.stderr)
+        self.assertIn("but its normalized code is no larger than its parent's", r.stderr)
 
     def test_the_wasm_ratchet_keeps_a_crate_within_budget_within_it(self):
         r = self._ratchet({"cpl_x": 50, "cpl_y": 101}, {"cpl_x": 50, "cpl_y": 90}, {"cpl_x": 100, "cpl_y": 100})
@@ -995,17 +1001,17 @@ exec {shutil.which("git")} "$@"
         (repo / "crates" / "cpl-x" / "lib.rs").write_text("x\n")
         built = self.tmp / "built.wasm"
         if built_gz is not None:
-            built.write_text(json.dumps({"crates": {data: 90, **built_gz}, "sorts": 0}))
+            built.write_text(sized({data: 90, **built_gz}))
         (repo / "scripts" / "build-wasm.sh").write_text(f'#!/bin/sh\nmkdir -p "$2"\ncp "{built}" "$2/cpl.wasm"\n')
         (repo / "scripts" / "build-wasm.sh").chmod(0o755)
         self.commit(repo, "gate")
         wasm = self.tmp / "gate.wasm"
-        wasm.write_text(json.dumps({"crates": {data: 90, **ours_gz}, "sorts": 0}))
+        wasm.write_text(sized({data: 90, **ours_gz}))
         if parent_gz is not None:
             sizes = self.tmp / "tgt" / "wasm-warm" / "sizes"
             sizes.mkdir(parents=True)
             tree = git(repo, "rev-parse", "HEAD^{tree}").strip()
-            (sizes / f"{tree}.json").write_text(json.dumps({"crates": {data: 90, **parent_gz}, "sorts": 0}))
+            (sizes / f"{tree}.json").write_text(sized({data: 90, **parent_gz}))
         env = {**os.environ, "CARGO_TARGET_DIR": str(self.tmp / "tgt")}
         return subprocess.run(["bash", "scripts/wasm-warm.sh", "--check", str(wasm), "HEAD", "cpl-x"],
                               cwd=repo, env=env, capture_output=True, text=True)
@@ -1014,7 +1020,7 @@ exec {shutil.which("git")} "$@"
         # D8's follow-up cut cpl_check 277 B and the commit tier still refused it.
         r = self._check({"cpl_x": 149}, {"cpl_x": 100}, parent_gz={"cpl_x": 150})
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("but no more than its parent's 150 B", r.stderr)
+        self.assertIn("but its normalized code is no larger than its parent's", r.stderr)
 
     def test_the_commit_tier_refuses_a_crate_over_budget_that_grew(self):
         r = self._check({"cpl_x": 151}, {"cpl_x": 100}, parent_gz={"cpl_x": 150})
@@ -1066,7 +1072,7 @@ exec {shutil.which("git")} "$@"
         self.commit(ours, "ours")
         env = {**os.environ, **self._wasm(ours, 0)}
         node = self.tmp / "bin" / "node"
-        node.write_text(node.read_text().replace("exit 0", '[ "$2" != --sizes ] || echo "{}" > "$4"\nexit 0'))
+        node.write_text(node.read_text().replace("exit 0", '[ "$2" != --sizes ] || echo \'{"fns": {}}\' > "$4"\nexit 0'))
         warm = lambda *a: subprocess.run(["bash", "scripts/wasm-warm.sh", *a], cwd=ours, env=env,
                                          capture_output=True, text=True)
         (ours / "crates" / "cpl-x" / "lib.rs").write_text("edited\n")
@@ -1106,7 +1112,7 @@ exec {shutil.which("git")} "$@"
         (ours / "crates" / "cpl-x" / "lib.rs").write_text("one\n")
         self.commit(ours, "one")
         old = git(ours, "rev-parse", "HEAD^{tree}").strip()
-        (out / "sizes" / f"{old}.json").write_text("{}")
+        (out / "sizes" / f"{old}.json").write_text('{"fns": {}}')
         warm = lambda *a: subprocess.run(["bash", "scripts/wasm-warm.sh", *a], cwd=ours, env={**os.environ, **self._wasm(ours, 0)},
                                          capture_output=True, text=True)
         for edit in (ours / "crates" / "cpl-x" / "lib.rs", ours / "std" / "seq.cp"):

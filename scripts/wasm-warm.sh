@@ -15,8 +15,9 @@
 #                                   one that differs from it outside these crates and std; else fail
 #   scripts/wasm-warm.sh --check WASM BASE CRATE...
 #                                   the wasm rule the commit tier (ci.py) and land.sh share:
-#                                   with BASE's sizes, every crate is held to the shrink-only
-#                                   ratchet (one over its budget refuses only if it grew);
+#                                   with BASE's sizes, every crate and the data are held to the
+#                                   ratchet (one over its budget refuses only if its
+#                                   normalized code grew);
 #                                   without them, builds BASE's tree to record them first,
 #                                   and refuses if it can't
 # Each recorded build writes its sizes to sizes/<tree>.json, and --wait also builds
@@ -62,6 +63,8 @@ case "${1:-}" in
         base=$(git rev-parse "$2^{tree}" 2>/dev/null) || exit 1
         for f in $(ls -t "$out"/sizes/*.json 2>/dev/null); do
             t=$(basename "$f" .json)
+            # A record from before the normalized sizes can't hold a crate to its code.
+            grep -q '"fns"' "$f" || continue
             if [ "$t" = "$base" ] || git diff --quiet "$t" "$base" -- "${inputs[@]}" 2>/dev/null; then
                 echo "$f"
                 exit 0

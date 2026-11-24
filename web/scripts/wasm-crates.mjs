@@ -434,29 +434,52 @@ export function touchedOverBudget(rows, budgets, map, touched) {
   return { errors: data ? [data, ...errors.filter((e) => !e.startsWith(DATA))] : errors, warnings };
 }
 
+/** A names build's gate buckets: crate -> fn -> normalized B (normalizedFunctions), and the data segment's raw B. */
+export function normalizedSizes(wasm, rows) {
+  const out = Object.fromEntries([...normalizedFunctions(wasm)].map(([c, fns]) => [c, Object.fromEntries([...fns].map(([f, b]) => [f, b.length]))]));
+  const data = rows.find(([c]) => c === DATA);
+  if (data) out[DATA] = { 'data segment': data[1] };
+  return out;
+}
+
+/** The buckets of `fns` whose normalized sum grew against `parent`'s: bucket -> {was, now, top: the 3 fns that grew most}. */
+export function grown(fns, parent) {
+  const sum = (m) => Object.values(m ?? {}).reduce((s, n) => s + n, 0);
+  const out = {};
+  for (const [c, now] of Object.entries(fns)) {
+    const was = parent[c] ?? {};
+    if (sum(now) <= sum(was)) continue;
+    const top = Object.entries(now).map(([f, n]) => [f, n - (was[f] ?? 0)]).filter(([, d]) => d > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    out[c] = { was: sum(was), now: sum(now), top };
+  }
+  return out;
+}
+
 /**
- * The land gate's shrink-only ratchet against the rebased parent build (`parent`:
- * crate -> gz), for every crate and the data segment, whichever paths the change
- * touched: one within its budget in the parent stays within it, and one over it
- * may not grow by a byte; growth of GREW_WARN B or more within budget warns.
+ * The land gate's ratchet against the exact same-tree parent, for every crate and the
+ * data segment alike (touched is only a label): one over its budget (gz) after the change
+ * is refused if its normalized code (`growth`, from grown) grew, so a crate within budget
+ * can't cross it and one over can't grow, while layout-only gz drift never refuses.
+ * Normalized growth of GREW_WARN B or more within budget warns.
  */
-export function ratchet(rows, budgets, map, parent) {
+export function ratchet(rows, budgets, map, growth) {
   const errors = [];
   const held = [];
+  const b = (n) => n.toLocaleString('en-US');
   for (const row of rows) {
-    const [crate, , gz] = row;
+    const [crate] = row;
     const over = crate === DATA ? dataOverBudget(rows, budgets) : checkBudgets([row], budgets, map).errors[0];
     if (!over) continue;
-    const was = parent[crate];
-    const wasOver = was !== undefined && budgets[crate] !== undefined && was > budgets[crate];
-    const b = (n) => n.toLocaleString('en-US');
-    if (wasOver && gz <= was) held.push(`${over}, but no more than its parent's ${b(was)} B`);
-    else if (wasOver) errors.push(`${over}; it grew ${b(gz - was)} B against its parent's ${b(was)} B`);
-    else errors.push(over);
+    const g = growth[crate];
+    if (!g) held.push(`${over}, but its normalized code is no larger than its parent's`);
+    else {
+      const top = g.top.map(([f, d]) => `${f} +${b(d)}`).join(', ');
+      errors.push(`${over}; it grew ${b(g.now - g.was)} B against its parent's ${b(g.was)} B of normalized code (now ${b(g.now)} B)${top ? `; grew most: ${top}` : ''}`);
+    }
   }
   const grew = rows
-    .filter(([c, , gz]) => parent[c] !== undefined && gz - parent[c] >= GREW_WARN && gz <= (budgets[c] ?? -1))
-    .map(([c, , gz]) => `${c} grew ${(gz - parent[c]).toLocaleString('en-US')} B gzipped against its parent's ${parent[c].toLocaleString('en-US')} B`);
+    .filter(([c, , gz]) => growth[c] && growth[c].now - growth[c].was >= GREW_WARN && gz <= (budgets[c] ?? -1))
+    .map(([c]) => `${c} grew ${b(growth[c].now - growth[c].was)} B of normalized code against its parent's ${b(growth[c].was)} B`);
   return { errors, warnings: [], held, grew };
 }
 
@@ -474,7 +497,7 @@ export function lowered(rows, budgets) {
   return Object.keys(next).some((c) => next[c] !== budgets[c]) ? next : null;
 }
 
-/** A touched crate growing at least this many B gz against its parent warns at land. */
+/** A crate growing at least this many B of normalized code against its parent warns at land. */
 export const GREW_WARN = 200;
 
 /** A new budget for a crate measured at `gz`: 2% and 512 B of room, to the next 100. */
@@ -492,8 +515,8 @@ export function dataOverBudget(rows, budgets) {
 // `node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b]
 // [--parent SIZES.json]` (a scripts/build-wasm.sh --names build): the commit gate's
 // check that the data segment and every touched crate are within their budgets; other
-// crates over theirs only warn. With `--parent`, a parent build's sizes, a crate over
-// every crate is held to the shrink-only ratchet, and the sort copies only grow if they
+// crates over theirs only warn. With `--parent`, a parent build's sizes (and normalized
+// sizes, `fns`), every crate and the data segment are held to the ratchet, and the sort copies only grow if they
 // grew. `--normalized DIR/cpl.wasm OUT.json` writes normalizedFunctions as
 // {crate: {fn: hex}}. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
 // `--data` takes such a file in place of a build. `--lower-budgets` lowers each budget
@@ -506,7 +529,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
   const wasm = readFileSync(process.argv[3]);
   // A sizes file standing in for a build (scripts/test_land.py's builds) is its own sizes.
   const crates = wasm[0] === 0x7b ? null : Object.fromEntries(contributors(wasm).map(([c, , gz]) => [c, gz]));
-  writeFileSync(process.argv[4], crates ? `${JSON.stringify({ crates, sorts: sortCopies(functionNames(wasm)).length })}\n` : wasm);
+  const fns = crates && normalizedSizes(wasm, contributors(wasm));
+  writeFileSync(process.argv[4], crates ? `${JSON.stringify({ crates, sorts: sortCopies(functionNames(wasm)).length, fns })}\n` : wasm);
 } else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const at = process.argv.indexOf('--data');
   if (at < 0 || !process.argv[at + 1]) {
@@ -524,8 +548,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
   const map = owners(readCharters(join(here, '../../handbook/domains')));
   const flag = (name) => (process.argv.indexOf(name) < 0 ? null : process.argv[process.argv.indexOf(name) + 1]);
   const parent = flag('--parent') && JSON.parse(readFileSync(flag('--parent'), 'utf8'));
+  if (parent && !parent.fns) {
+    console.error(`wasm-crates: ${flag('--parent')} has no normalized sizes to hold the crates to; record the parent again (scripts/wasm-warm.sh --wait)`);
+    process.exit(1);
+  }
   const { errors, warnings, held = [], grew = [] } = parent
-    ? ratchet(rows, budgets, map, parent.crates)
+    ? ratchet(rows, budgets, map, grown(sized ? sized.fns ?? {} : normalizedSizes(wasm, rows), parent.fns))
     : touchedOverBudget(rows, budgets, map, touched);
   let next;
   const copies = sized ? Array(sized.sorts ?? 0).fill('') : sortCopies(functionNames(wasm));
