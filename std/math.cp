@@ -1780,7 +1780,8 @@ fn digits_are_lowest_first():
 
 @test
 fn sign_is_minus_one_zero_or_one():
-    assert 5.sign == 1 and (-5).sign == -1 and 0.sign == 0 and (3 - 9).sign == -1
+    assert 5.sign == Sign.Pos and (-5).sign == Sign.Neg and 0.sign == Sign.Zero
+    assert Int((3 - 9).sign) == -1 and Int(5.sign) == 1 and Int(0.sign) == 0
 
 @test
 fn is_pow2_is_one_set_bit():

@@ -938,8 +938,8 @@ fn li_chao_matches_a_scan_over_lines_and_segments():
                 lines.push((l:, a:, b:))
             for x in lo..=hi:
                 let here = [e.l.at(x) for e in lines if e.a <= x <= e.b]
-                assert low.at(x) == here.min()!
-                assert high.at(x) == here.max()!
+                assert low.at(x) == here.min()
+                assert high.at(x) == here.max()
     var ties = LiChao<Counted, (cost: Int, used: Int)>(min, 0..=10)
     ties.add(Counted(1, 0, 3))
     ties.add(Counted(1, 0, 2))
