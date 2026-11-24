@@ -6,7 +6,7 @@
 //! Maintains exact `min`, second `min`, `max`, second `max`, and `sum` on every node.
 //! Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized
 //! (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
-use std.range.{ends}
+use std.range.{Len, ends}
 
 // One node's aggregates as seen from above: the stored ones with every ancestor's pending tag
 // applied, and `add` the pending add its children have not seen yet.
@@ -31,7 +31,7 @@ pub struct BeatsSegTree<D>:
     mn2: List<Int>
     mn_c: List<Int>
     lz_add: List<Int>
-    n: Int
+    n: Len
 
     /// A Segment Tree Beats over `D` holding the values of `a`, or `fill` at every position, or
     /// zero everywhere when neither is given. Every node keeps the exact maximum, second maximum
@@ -396,7 +396,7 @@ pub struct BeatsSegTree<D>:
 /// Segment Tree Beats with historic maximum and historic sum tracking under range `chmin`, `chmax`,
 /// and `add` (Ji Driver with historic tags). \(O(\lvert D \rvert)\) space.
 pub struct HistoricBeatsSegTree<D>:
-    n: Int
+    n: Len
     s: List<Int> = []
     c: List<Int> = []
     hm: List<Int> = []

@@ -3,14 +3,14 @@
 //! start: `SparseTable`, `DisjointSparseTable`, `LinearRmq`, `SparseTable.fold`
 //! example: `SparseTable(min, [3, 1, 4]).fold(0..3) == 1`
 use std.math.{gcd, bit_width}
-use std.range.{ends}
+use std.range.{Len, ends}
 
 /// `SparseTable<V, Int>(min, a)`: built in \(O(n \log n)\) time and memory, `fold` is \(O(1)\).
 /// The operation must be associative and idempotent (`op(a, a) == a`): `min`, `max`, `gcd`,
 /// `&`, `|`, or any custom `(T, T) -> T` — no identity is required because `fold` asserts
 /// the range is non-empty and returns `T` directly. Sums are not idempotent; use `Fenwick` or `prefix` for those.
 pub struct SparseTable<D, T>(op: (T, T) -> T):
-    n: Int
+    n: Len
     table: List<T>
 
     /// Build a sparse table for the idempotent, associative `op` over the values of `a`.
@@ -115,7 +115,7 @@ pub fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool:
 /// operation — no idempotence and no inverse required (matrix products, `Mod<P>` products,
 /// `MaxSub`, string concatenation). Asserts `not r.is_empty`.
 pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
-    n: Int
+    n: Len
     table: List<T>
 
     /// Build a disjoint sparse table for the associative `op` over `a`.
@@ -306,7 +306,7 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
 /// by block-of-64 bitmask RMQ (Four Russians): for \(O(1)\) LCA, or a static RMQ where
 /// \(O(n \log n)\) space is too large.
 pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
-    n: Int
+    n: Len
     /// The values it was built over: `a` itself, kept rather than copied.
     pub values: [D]T
     mask: List<U64>

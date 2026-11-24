@@ -22,8 +22,8 @@ const WIEDEMANN_TRIES = 32
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
 pub struct Mat<T>:
-    pub rows: Int
-    pub cols: Int
+    pub rows: Len
+    pub cols: Len
     cells: List<T>
     ring: ?Ring<T> = None
     /// Under a [`TropicalProduct`] ring, the entries a product left in a std-owned sentinel form,
@@ -897,7 +897,7 @@ impl TropicalProduct for Int:
 /// Every operation is \(O(W)\) where W <= 63 (`merge` is \(O(W \cdot \mathit{rank})\)).
 pub struct XorBasis:
     basis: List<Int>
-    size: Int
+    size: Len
 
     /// An empty basis of rank 0, whose span is `{0}`.
     ///
@@ -1095,7 +1095,7 @@ fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis:
 /// Precomputed binary powers of a square matrix for fast multi-query `A^e * v`. \(O(n^3 \log
 /// \mathit{max\_exp})\) build, \(O(n^2 \log e)\) query.
 pub struct MatPow<T>:
-    pub n: Int
+    pub n: Len
     _pw: List<Mat<T>>
 
     /// Precompute `a^(2^k)` for every `k` with `2^k <= max_exp`, multiplied under `a`'s semiring.
@@ -1315,7 +1315,7 @@ fn bit_rref(rows: Int, cols: Int, mut a: List<Int>) -> List<Int>:
 
 /// \(O(62)\) per push and query. Online prefix linear basis answering subarray XOR queries over any range `r`.
 pub struct PrefixXorBasis:
-    pub len: Int
+    pub len: Len
     vecs: List<Int>
     from: List<Int>
 

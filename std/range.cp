@@ -244,7 +244,7 @@ pub fn shift_saturating<D>(self: D, k: Int) -> D:
 /// `D.count` of them. The keys-only half of a `RingSlice`, so it needs no array.
 pub struct RingRange<D>():
     pub at: ?D = None
-    n: Int = 0
+    n: Len = 0
 
     /// The number of positions in the run.
     ///

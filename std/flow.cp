@@ -975,7 +975,7 @@ pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
 /// Edge cells are a (2n+1)^2 table: cell k = u * m + v holds the original edge (eu, ev, ew)
 /// that represents u -> v once u or v is a blossom.
 struct Blossom:
-    n: Int
+    n: Len
     m: Int
     nx: Int
     eu: List<Int>
@@ -1890,7 +1890,7 @@ pub struct Matching<L, R>:
     adj: [L]List<R>
     pub mate: [L]?R
     pub back: [R]?L
-    pub size: Int
+    pub size: Len
 
     /// An online bipartite matching between `L` and `R` with no edges and nothing matched.
     ///

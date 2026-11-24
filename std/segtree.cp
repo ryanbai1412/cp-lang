@@ -48,7 +48,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     t: List<T>
     lz: List<F>
     has_lz: List<Bool>
-    size: Int
+    size: Len
     log: Int
     act: ?Action<T, F>
     /// What each position holds, for a tree built with `of`.
@@ -61,7 +61,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     blank: List<T> = []
     part: List<T> = []
     base: Int = 0
-    n: Int = 0
+    n: Len = 0
 
     /// A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity
     /// everywhere when neither is given. `op` is a bare operator (`+`, `*`, `^`, `&`, `|`, `min`,
@@ -874,7 +874,7 @@ pub struct MergeSortTree<D, T>:
     data: List<T>
     beg: List<0..=2_000_000_000>
     fin: List<0..=2_000_000_000>
-    size: Int
+    size: Len
 
     /// A static tree over `a` whose nodes hold their values sorted, for counting values in a range.
     ///
@@ -1189,7 +1189,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
 /// and memory.
 pub struct WaveletMatrix<D>:
     bits: Int
-    n: Int
+    n: Len
     zs: List<Int>
     // Level `l`'s bits packed 64 to a word, with the count of ones before each word, so a
     // query's rank lookups touch a few hot words instead of a full Int per position.
@@ -1376,7 +1376,7 @@ pub struct WaveletMatrix<D>:
 /// \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) space. Dynamic point-update + 2D range value-count and k-th structure
 /// (Fenwick of order trees) over `[D]T`.
 pub struct DynamicOrderTree<D, T>:
-    n: Int
+    n: Len
     val: List<T> = []
     // `bit[j]` for `j >= 1` holds the values at positions `j - (j & -j)..j`; `bit[0]` holds
     // every value, the candidates `kth` searches.

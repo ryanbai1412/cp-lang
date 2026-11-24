@@ -3212,7 +3212,7 @@ pub struct AhoCorasick<A>:
 /// not a container: an automaton; `len` counts patterns, which are walked by `step`.
 pub struct DynamicAhoCorasick<A>:
     alpha: Count
-    pub n: Int
+    pub n: Len
     stored: Trie<A>
     added: AcBuckets<A>
     removed: AcBuckets<A>

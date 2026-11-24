@@ -967,7 +967,7 @@ pub struct LazyForest<T, F>:
 /// Implicit-key rope over a domain `D` supporting \(O(\log n)\) expected cut, paste, reverse, range
 /// tag `apply`, path queries, and point `get`. \(O(n)\) space.
 pub struct Rope<D, T>:
-    var n: Int
+    var n: Len
     mg: ?((T, T) -> T) = None
     val: List<T> = []
     tg: List<T> = []

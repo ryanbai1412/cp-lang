@@ -4,7 +4,7 @@
 //! example: `Fenwick([1, 2, 3]).all == 6`
 use std.algebra.{Group}
 use std.seq.{deduped}
-use std.range.{ends}
+use std.range.{Len, ends}
 use std.math.{bit_ceil}
 
 /// Point add and range sum over anything with `+` and `-` (`Int`, `Mod<P>`).
@@ -472,7 +472,7 @@ fn lower_bound(a: List<Int>, x: Int) -> Int:
     lo
 
 pub struct SparseFenwick2D<T: Add + Sub>:
-    n: Int
+    n: Len
     pts: List<(Int, Int)>
     xs: List<Int>
     ys: List<List<Int>>

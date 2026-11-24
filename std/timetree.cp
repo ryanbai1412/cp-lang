@@ -23,7 +23,7 @@ pub enum TimeStep:
 /// ranges `[lo, hi)`.
 pub struct TimeTree<E>:
     pub q: Int
-    size: Int
+    size: Len
     head: List<-1..=2_000_000_000>
     next: List<-1..=2_000_000_000>
     ev_val: List<E>

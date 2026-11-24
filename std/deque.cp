@@ -3,6 +3,7 @@
 //! start: `Deque`, `LinkedList`, `Deque.push_front`, `Deque.pop_front`
 //! example: `var q: Deque<Int> = Deque(); q.push(2); q.push_front(1); q.pop_front() == Some(1) and q.len == 1`
 
+use std.range.{Len}
 use std.seq.{Bidir, Seq}
 
 /// A queue with both ends open: `var q = Deque<Int>()`. `push` / `pop` work at the back,
@@ -11,7 +12,7 @@ use std.seq.{Bidir, Seq}
 pub struct Deque<T>:
     buf: List<T>
     head: Int
-    n: Int
+    n: Len
     mask: Int
     want: Int
 
