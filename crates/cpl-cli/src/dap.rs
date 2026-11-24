@@ -9,9 +9,8 @@
 
 use crate::{compile_side, render_trap, Side};
 use cpl_diag::Shown;
-use cpl_interp::trace::{
-    first_change, first_change_in, string as json_str, Change, Recording, Replay, TraceConfig,
-};
+use cpl_interp::trace::{first_change, first_change_in, Change, Recording, Replay, TraceConfig};
+use cpl_json::obj;
 pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
 use std::io::{self, BufRead, BufReader, Write};
@@ -122,40 +121,33 @@ impl Session {
         command: &str,
         success: bool,
         message: Option<&str>,
-        body_json: Option<&str>,
+        body: Option<Json>,
     ) -> io::Result<()> {
-        let seq = self.next_seq();
-        let mut out = format!(
-            "{{\"seq\":{seq},\"type\":\"response\",\"request_seq\":{req_seq},\"success\":{success},\"command\":"
-        );
-        json_str(&mut out, command);
-        if let Some(msg) = message {
-            out.push_str(",\"message\":");
-            json_str(&mut out, msg);
-        }
-        if let Some(body) = body_json {
-            out.push_str(",\"body\":");
-            out.push_str(body);
-        }
-        out.push('}');
-        cpl_lsp::transport::write_raw_message(writer, &out)
+        let mut out = obj([
+            ("seq", self.next_seq().into()),
+            ("type", "response".into()),
+            ("request_seq", req_seq.into()),
+            ("success", success.into()),
+            ("command", command.into()),
+        ]);
+        with(&mut out, "message", message.map(Json::from));
+        with(&mut out, "body", body);
+        cpl_lsp::transport::write_raw_message(writer, &cpl_json::to_string(&out))
     }
 
     fn send_event(
         &mut self,
         writer: &mut dyn Write,
         event: &str,
-        body_json: Option<&str>,
+        body: Option<Json>,
     ) -> io::Result<()> {
-        let seq = self.next_seq();
-        let mut out = format!("{{\"seq\":{seq},\"type\":\"event\",\"event\":");
-        json_str(&mut out, event);
-        if let Some(body) = body_json {
-            out.push_str(",\"body\":");
-            out.push_str(body);
-        }
-        out.push('}');
-        cpl_lsp::transport::write_raw_message(writer, &out)
+        let mut out = obj([
+            ("seq", self.next_seq().into()),
+            ("type", "event".into()),
+            ("event", event.into()),
+        ]);
+        with(&mut out, "body", body);
+        cpl_lsp::transport::write_raw_message(writer, &cpl_json::to_string(&out))
     }
 
     fn send_output(
@@ -164,12 +156,8 @@ impl Session {
         category: &str,
         text: &str,
     ) -> io::Result<()> {
-        let mut body = String::from("{\"category\":");
-        json_str(&mut body, category);
-        body.push_str(",\"output\":");
-        json_str(&mut body, text);
-        body.push('}');
-        self.send_event(writer, "output", Some(&body))
+        let body = obj([("category", category.into()), ("output", text.into())]);
+        self.send_event(writer, "output", Some(body))
     }
 
     fn send_stopped(
@@ -178,15 +166,13 @@ impl Session {
         reason: &str,
         text: Option<&str>,
     ) -> io::Result<()> {
-        let mut body = String::from("{\"reason\":");
-        json_str(&mut body, reason);
-        body.push_str(",\"threadId\":1,\"allThreadsStopped\":true");
-        if let Some(text) = text {
-            body.push_str(",\"text\":");
-            json_str(&mut body, text);
-        }
-        body.push('}');
-        self.send_event(writer, "stopped", Some(&body))
+        let mut body = obj([
+            ("reason", reason.into()),
+            ("threadId", 1i64.into()),
+            ("allThreadsStopped", true.into()),
+        ]);
+        with(&mut body, "text", text.map(Json::from));
+        self.send_event(writer, "stopped", Some(body))
     }
 
     fn send_terminated(&mut self, writer: &mut dyn Write) -> io::Result<()> {
@@ -194,9 +180,9 @@ impl Session {
         self.send_event(
             writer,
             "exited",
-            Some(&format!("{{\"exitCode\":{exit_code}}}")),
+            Some(obj([("exitCode", exit_code.into())])),
         )?;
-        self.send_event(writer, "terminated", Some("{}"))
+        self.send_event(writer, "terminated", Some(obj([])))
     }
 
     fn current_depth(&self) -> usize {
@@ -212,14 +198,13 @@ impl Session {
     ) -> io::Result<bool> {
         match command {
             "initialize" => {
-                let caps = "\
-{\
-\"supportsConfigurationDoneRequest\":true,\
-\"supportsStepBack\":true,\
-\"supportsEvaluateForHovers\":true,\
-\"supportsTerminateRequest\":true,\
-\"supportsRestartRequest\":true\
-}";
+                let caps = obj([
+                    ("supportsConfigurationDoneRequest", true.into()),
+                    ("supportsStepBack", true.into()),
+                    ("supportsEvaluateForHovers", true.into()),
+                    ("supportsTerminateRequest", true.into()),
+                    ("supportsRestartRequest", true.into()),
+                ]);
                 self.send_response(writer, req_seq, command, true, None, Some(caps))?;
                 self.send_event(writer, "initialized", None)?;
             }
@@ -279,22 +264,18 @@ impl Session {
             }
             "setBreakpoints" => {
                 self.breakpoints.clear();
-                let mut verified = String::from("{\"breakpoints\":[");
-                if let Some(list) = args
+                let mut verified = Vec::new();
+                for bp in args
                     .and_then(|a| a.get("breakpoints"))
                     .and_then(Json::as_array)
+                    .unwrap_or_default()
                 {
-                    for (i, bp) in list.iter().enumerate() {
-                        if i > 0 {
-                            verified.push(',');
-                        }
-                        let line = bp.get("line").and_then(Json::as_i64).unwrap_or(1).max(1) as u32;
-                        self.breakpoints.insert(line);
-                        verified += &format!("{{\"verified\":true,\"line\":{line}}}");
-                    }
+                    let line = bp.get("line").and_then(Json::as_i64).unwrap_or(1).max(1) as u32;
+                    self.breakpoints.insert(line);
+                    verified.push(obj([("verified", true.into()), ("line", line.into())]));
                 }
-                verified.push_str("]}");
-                self.send_response(writer, req_seq, command, true, None, Some(&verified))?;
+                let body = obj([("breakpoints", verified.into())]);
+                self.send_response(writer, req_seq, command, true, None, Some(body))?;
             }
             "configurationDone" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
@@ -314,44 +295,53 @@ impl Session {
                     command,
                     true,
                     None,
-                    Some("{\"threads\":[{\"id\":1,\"name\":\"main\"}]}"),
+                    Some(obj([(
+                        "threads",
+                        vec![obj([("id", 1i64.into()), ("name", "main".into())])].into(),
+                    )])),
                 )?;
             }
             "stackTrace" => {
-                let mut body = String::from("{\"stackFrames\":[");
-                let count = if let Some(step) = self.recording.step(self.cursor) {
-                    let frames: Vec<(&str, u32)> = if step.frames.is_empty() {
-                        vec![("main", step.line)]
-                    } else {
-                        step.frames.iter().map(|(n, l)| (n.as_str(), *l)).collect()
-                    };
-                    for (idx, (name, line)) in frames.iter().enumerate() {
-                        if idx > 0 {
-                            body.push(',');
-                        }
-                        body += &format!("{{\"id\":{},\"name\":", idx + 1);
-                        json_str(&mut body, name);
-                        body.push_str(",\"source\":{\"name\":");
-                        json_str(&mut body, &self.source_name);
-                        body.push_str(",\"path\":");
-                        json_str(&mut body, &self.program_path);
-                        body += &format!("}},\"line\":{line},\"column\":1}}");
-                    }
-                    frames.len()
-                } else {
-                    0
+                let frames = match self.recording.step(self.cursor) {
+                    Some(step) if step.frames.is_empty() => vec![("main".to_string(), step.line)],
+                    Some(step) => step.frames,
+                    None => Vec::new(),
                 };
-                body += &format!("],\"totalFrames\":{count}}}");
-                self.send_response(writer, req_seq, command, true, None, Some(&body))?;
+                let source = obj([
+                    ("name", self.source_name.as_str().into()),
+                    ("path", self.program_path.as_str().into()),
+                ]);
+                let count = frames.len();
+                let frames: Vec<Json> = (1..)
+                    .zip(frames)
+                    .map(|(id, (name, line))| {
+                        obj([
+                            ("id", id.into()),
+                            ("name", name.into()),
+                            ("source", source.clone()),
+                            ("line", line.into()),
+                            ("column", 1i64.into()),
+                        ])
+                    })
+                    .collect();
+                let body = obj([
+                    ("stackFrames", frames.into()),
+                    ("totalFrames", count.into()),
+                ]);
+                self.send_response(writer, req_seq, command, true, None, Some(body))?;
             }
             "scopes" => {
-                let body = "\
-{\
-\"scopes\":[\
-{\"name\":\"Locals\",\"variablesReference\":1,\"expensive\":false},\
-{\"name\":\"Globals\",\"variablesReference\":2,\"expensive\":false}\
-]\
-}";
+                let scope = |name: &str, reference: i64| {
+                    obj([
+                        ("name", name.into()),
+                        ("variablesReference", reference.into()),
+                        ("expensive", false.into()),
+                    ])
+                };
+                let body = obj([(
+                    "scopes",
+                    vec![scope("Locals", 1), scope("Globals", 2)].into(),
+                )]);
                 self.send_response(writer, req_seq, command, true, None, Some(body))?;
             }
             "variables" => {
@@ -359,17 +349,12 @@ impl Session {
                     .and_then(|a| a.get("variablesReference"))
                     .and_then(Json::as_i64)
                     .unwrap_or(0);
-                let mut body = String::from("{\"variables\":[");
+                let mut variables = Vec::new();
                 if let Some(step) = self.recording.step(self.cursor) {
-                    let mut first = true;
                     if reference == 1 {
                         if let Ok(Json::Object(map)) = cpl_json::parse(&step.locals) {
                             for (name, val) in map {
-                                if !first {
-                                    body.push(',');
-                                }
-                                first = false;
-                                emit_variable(&mut body, &name, &shown(&val), "");
+                                variables.push(variable(&name, &shown(&val), ""));
                             }
                         }
                     } else if reference == 2 {
@@ -378,18 +363,14 @@ impl Session {
                             if var.id == "stdout" {
                                 continue;
                             }
-                            if !first {
-                                body.push(',');
-                            }
-                            first = false;
                             let value = cpl_json::parse(val_json)
                                 .map_or_else(|_| val_json.to_string(), |v| shown(&v));
-                            emit_variable(&mut body, &var.name, &value, &var.ty);
+                            variables.push(variable(&var.name, &value, &var.ty));
                         }
                     }
                 }
-                body.push_str("]}");
-                self.send_response(writer, req_seq, command, true, None, Some(&body))?;
+                let body = obj([("variables", variables.into())]);
+                self.send_response(writer, req_seq, command, true, None, Some(body))?;
             }
             "evaluate" => {
                 let expr = args
@@ -399,14 +380,10 @@ impl Session {
                     .trim();
                 match self.eval_expr(expr) {
                     Some((val, ty)) => {
-                        let mut body = String::from("{\"result\":");
-                        json_str(&mut body, &val);
-                        if !ty.is_empty() {
-                            body.push_str(",\"type\":");
-                            json_str(&mut body, &ty);
-                        }
-                        body.push_str(",\"variablesReference\":0}");
-                        self.send_response(writer, req_seq, command, true, None, Some(&body))?;
+                        let mut body =
+                            obj([("result", val.into()), ("variablesReference", 0i64.into())]);
+                        with(&mut body, "type", (!ty.is_empty()).then(|| ty.into()));
+                        self.send_response(writer, req_seq, command, true, None, Some(body))?;
                     }
                     None => {
                         let msg = format!(
@@ -425,7 +402,7 @@ impl Session {
                     command,
                     true,
                     None,
-                    Some("{\"allThreadsContinued\":true}"),
+                    Some(obj([("allThreadsContinued", true.into())])),
                 )?;
                 self.advance_continue(writer, false)?;
             }
@@ -692,33 +669,27 @@ impl Session {
                     Ok(replay) => {
                         let report = crate::replay::report(&replay);
                         self.send_output(writer, "console", &report)?;
-                        let mut body = String::from("{\"report\":");
-                        json_str(&mut body, &report);
-                        body.push_str(",\"call\":");
-                        json_str(
-                            &mut body,
-                            &crate::replay::call_text(&replay.recorded.name, &replay.recorded.args),
-                        );
-                        body += &format!(
-                            ",\"ordinal\":{},\"entry\":{}",
-                            replay.recorded.ordinal,
-                            replay.recorded.entry + 1
-                        );
+                        let call =
+                            crate::replay::call_text(&replay.recorded.name, &replay.recorded.args);
+                        let mut body = obj([
+                            ("report", report.into()),
+                            ("call", call.into()),
+                            ("ordinal", replay.recorded.ordinal.into()),
+                            ("entry", (replay.recorded.entry + 1).into()),
+                        ]);
                         for (key, value) in [
                             ("returned", &replay.after.returned),
                             ("before", &replay.before.returned),
                             ("fallback", &replay.fallback),
                         ] {
-                            if let Some(value) = value {
-                                body += &format!(",\"{key}\":");
-                                json_str(&mut body, value);
-                            }
+                            with(&mut body, key, value.as_deref().map(Json::from));
                         }
-                        if let Some(change) = &replay.change {
-                            body += &format!(",\"changeLine\":{}", change.line);
-                        }
-                        body.push('}');
-                        self.send_response(writer, req_seq, command, true, None, Some(&body))?;
+                        with(
+                            &mut body,
+                            "changeLine",
+                            replay.change.as_ref().map(|c| c.line.into()),
+                        );
+                        self.send_response(writer, req_seq, command, true, None, Some(body))?;
                     }
                     Err(msg) => {
                         self.send_response(writer, req_seq, command, false, Some(&msg), None)?
@@ -730,7 +701,7 @@ impl Session {
                 return Ok(true);
             }
             _ => {
-                self.send_response(writer, req_seq, command, true, None, Some("{}"))?;
+                self.send_response(writer, req_seq, command, true, None, Some(obj([])))?;
             }
         }
         Ok(false)
@@ -1256,16 +1227,21 @@ fn number(n: Option<i128>) -> Result<Valued, String> {
     Ok(Valued { json, labels: None })
 }
 
-fn emit_variable(out: &mut String, name: &str, value: &str, ty: &str) {
-    out.push_str("{\"name\":");
-    json_str(out, name);
-    out.push_str(",\"value\":");
-    json_str(out, value);
-    if !ty.is_empty() {
-        out.push_str(",\"type\":");
-        json_str(out, ty);
+fn variable(name: &str, value: &str, ty: &str) -> Json {
+    let mut out = obj([
+        ("name", name.into()),
+        ("value", value.into()),
+        ("variablesReference", 0i64.into()),
+    ]);
+    with(&mut out, "type", (!ty.is_empty()).then(|| ty.into()));
+    out
+}
+
+/// Sets `key` on the object `out` when there is a value for it.
+fn with(out: &mut Json, key: &str, value: Option<Json>) {
+    if let (Json::Object(map), Some(value)) = (out, value) {
+        map.insert(key.to_string(), value);
     }
-    out.push_str(",\"variablesReference\":0}");
 }
 
 /// The input a launch names, `inputText` or an `input` file; with neither,

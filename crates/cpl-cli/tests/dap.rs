@@ -86,6 +86,27 @@ impl DapClient {
 }
 
 #[test]
+fn every_adapter_message_numbers_one_more_and_answers_its_request() {
+    let path = write_temp("numbered", "let x = 1\nprint(x)\n");
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    let init = dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let launch = dap.send("launch", Some(&format!("{{\"program\":\"{p}\"}}")));
+    let mut seqs = Vec::new();
+    let mut answered = Vec::new();
+    while answered.len() < 2 {
+        let msg = cpl_json::parse(&dap.recv()).unwrap();
+        seqs.push(msg.get("seq").and_then(cpl_json::Value::as_i64).unwrap());
+        if let Some(request) = msg.get("request_seq").and_then(cpl_json::Value::as_i64) {
+            answered.push(request);
+        }
+    }
+    dap.finish();
+    assert_eq!(seqs, (1..=seqs.len() as i64).collect::<Vec<_>>());
+    assert_eq!(answered, [init, launch]);
+}
+
+#[test]
 fn dap_breakpoints_stack_variables_and_time_travel() {
     let path = write_temp(
         "time_travel",
@@ -155,14 +176,8 @@ print(acc)
     // Globals scope: `acc` should be 1 and `last_v` should be 1 (1-based domain label).
     dap.send("variables", Some("{\"variablesReference\":2}"));
     let vars = dap.recv_until("\"command\":\"variables\"");
-    assert!(
-        vars.contains("\"name\":\"acc\",\"value\":\"1\""),
-        "expected acc=1: {vars}"
-    );
-    assert!(
-        vars.contains("\"name\":\"last_v\",\"value\":\"1\""),
-        "expected last_v=1: {vars}"
-    );
+    assert_eq!(variable(&vars, "acc").as_deref(), Some("1"), "{vars}");
+    assert_eq!(variable(&vars, "last_v").as_deref(), Some("1"), "{vars}");
 
     // Continue to next hit of line 6 (second vertex, v = 2, acc = 3).
     dap.send("continue", Some("{\"threadId\":1}"));
@@ -711,8 +726,8 @@ print(acc)
         for name in ["t", "acc"] {
             dap.send("evaluate", Some(&format!("{{\"expression\":\"{name}\"}}")));
             let reply = dap.recv_until("\"command\":\"evaluate\"");
-            let body = reply.find("\"body\"").map_or("", |at| &reply[at..]);
-            values.push(body.to_string());
+            let body = cpl_json::parse(&reply).map(|reply| reply.at(&["body"]).to_string());
+            values.push(body.unwrap_or(reply));
         }
         (frames, line, values)
     };
@@ -783,4 +798,15 @@ print(acc)
         }
         dap.finish();
     }
+}
+
+/// The value a `variables` response shows for `name`.
+fn variable(response: &str, name: &str) -> Option<String> {
+    let response = cpl_json::parse(response).ok()?;
+    let found = response
+        .at(&["body", "variables"])
+        .as_array()?
+        .iter()
+        .find(|v| v.get("name").and_then(cpl_json::Value::as_str) == Some(name))?;
+    found.get("value")?.as_str().map(str::to_string)
 }
