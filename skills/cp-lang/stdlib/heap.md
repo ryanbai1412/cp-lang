@@ -85,7 +85,7 @@ Fields: `lt: ?((T, T) -> Bool)`.
 
 ## `struct MeldHeap<T>`
 
-Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and, when `T: Add`, \(O(1)\) lazy offset `add_all`.
+One meldable min-heap (a skew heap) that owns its nodes, with \(O(1)\) lazy offset `add_all` when `T: Add`.
 
 - `fn new<K>(by: ?(T -> K) = None) -> MeldHeap<T>` — \(O(1)\); Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `fn of(xs: List<T>) -> MeldHeap<T>` — \(O(n)\); Build a `MeldHeap<T>` from `xs`.
@@ -93,11 +93,11 @@ Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and, when `T: 
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
 - `@get fn peek(self) -> ?T` — \(O(1)\); The smallest element, or `None` if empty.
 - `@get fn top(self) -> ?T` — \(O(1)\); The smallest element, or `None` if empty (alias for `peek`).
-- `fn push(mut self, x: T)` — \(O(\log n)\); Push `x` into the heap.
-- `fn push_all(mut self, items: Seq<T>)` — \(O(k \log n)\) for `k` items; Push all elements of `items`.
-- `fn pop(mut self) -> ?T` — \(O(\log n)\); Remove and return the smallest element, or `None` if empty.
-- `fn meld(mut self, other: MeldHeap<T>)` — \(O(k + \log n)\) for the smaller heap's `k` nodes; melding `n` one-element heaps; Meld `other` into `self` (consuming `other`).
-- `fn absorb(mut self, mut other: MeldHeap<T>)` — \(O(\log n)\); Meld `other` into `self`, leaving `other` empty.
+- `fn push(mut self, x: T)` — \(O(\log n)\) amortized; Push `x` into the heap.
+- `fn push_all(mut self, items: Seq<T>)` — \(O(k \log n)\) amortized for `k` items; Push all elements of `items`.
+- `fn pop(mut self) -> ?T` — \(O(\log n)\) amortized; Remove and return the smallest element, or `None` if empty.
+- `fn meld(mut self, other: MeldHeap<T>)` — \(O(k + \log n)\) amortized for the smaller heap's `k` nodes; melding `n` one-element heaps; Meld `other` into `self` (consuming `other`).
+- `fn absorb(mut self, mut other: MeldHeap<T>)` — as `meld`: \(O(k + \log n)\) amortized for the smaller heap's `k` nodes; Meld `other` into `self`, leaving `other` empty.
 - `fn add_all(mut self, delta: T) where T: Add` — \(O(1)\); Add `delta` lazily to every element (for additive types).; traps: never (overflow wraps in release, traps in debug)
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
 - `fn take(mut self) -> MeldHeap<T>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
@@ -112,15 +112,15 @@ One heap in a `MeldHeaps<T>` pool: a handle, so copying it is \(O(1)\).
 
 ## `struct MeldHeaps<T>`
 
-A pool of meldable min-heaps (leftist) that keep their nodes in one shared list.
+A pool of meldable min-heaps (skew heaps) that keep their nodes in one shared list.
 
 - `fn new<K>(by: ?(T -> K) = None) -> MeldHeaps<T>` — \(O(1)\); An empty pool, optionally ordered by key extractor `by:`.
 - `fn of(mut self, xs: List<T>) -> Meld<T>` — \(O(n)\); A new heap in the pool holding `xs`.
 - `fn top(self, h: Meld<T>) -> ?T` — \(O(1)\); The smallest element of `h`, or `None` if it is empty.; traps: when `h` is a stale copy (see `Meld`)
-- `fn push(mut self, mut h: Meld<T>, x: T)` — \(O(\log n)\); Push `x` into `h`.; traps: when `h` is a stale copy (see `Meld`)
-- `fn push_all(mut self, mut h: Meld<T>, items: Seq<T>)` — \(O(k \log n)\) for `k` items; Push every element of `items` into `h`.; traps: when `h` is a stale copy (see `Meld`)
-- `fn pop(mut self, mut h: Meld<T>) -> ?T` — \(O(\log n)\); Remove and return the smallest element of `h`, or `None` if it is empty.; traps: when `h` is a stale copy (see `Meld`)
-- `fn meld(mut self, a: Meld<T>, b: Meld<T>) -> Meld<T>` — \(O(\log n)\), no copying; The heap holding `a` and `b`, as `MergeSegs.merge` is.; traps: when `a` or `b` is a stale copy (see `Meld`), or both are the same heap
+- `fn push(mut self, mut h: Meld<T>, x: T)` — \(O(\log n)\) amortized; Push `x` into `h`.; traps: when `h` is a stale copy (see `Meld`)
+- `fn push_all(mut self, mut h: Meld<T>, items: Seq<T>)` — \(O(k \log n)\) amortized for `k` items; Push every element of `items` into `h`.; traps: when `h` is a stale copy (see `Meld`)
+- `fn pop(mut self, mut h: Meld<T>) -> ?T` — \(O(\log n)\) amortized; Remove and return the smallest element of `h`, or `None` if it is empty.; traps: when `h` is a stale copy (see `Meld`)
+- `fn meld(mut self, a: Meld<T>, b: Meld<T>) -> Meld<T>` — \(O(\log n)\) amortized, no copying; The heap holding `a` and `b`, as `MergeSegs.merge` is.; traps: when `a` or `b` is a stale copy (see `Meld`), or both are the same heap
 - `fn add_all(mut self, h: Meld<T>, delta: T) where T: Add` — \(O(1)\); Add `delta` lazily to every element of `h` (for additive types).; traps: when `h` is a stale copy (see `Meld`); overflow wraps in release, traps in debug
 - `fn drain(mut self, mut h: Meld<T>) -> List<T>` — \(O(n \log n)\); Pop all of `h` in ascending order, leaving it empty.; traps: when `h` is a stale copy (see `Meld`)
 
