@@ -1999,9 +1999,9 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
 
 // --- Reductions, folds, frequencies, and selection ---
 
-/// \(O(n)\). Whether some element equals `x`; `x in s` reads the same. A type with a faster
-/// `contains` of its own (a set, a map, a bag, a hashed or keyed type) declares it, and its
-/// declared member wins.
+/// \(O(n)\). Whether some element equals `x`. A type with a faster `contains` of its own (a set,
+/// a map, a bag, a hashed or keyed type) declares it, and its declared member wins; only those
+/// sub-linear `Contains` types take `x in s` (R12.4.7).
 ///
 /// cost: \(O(n)\) comparisons
 /// empty: `let a: List<Int> = []; a.contains(3) == false`

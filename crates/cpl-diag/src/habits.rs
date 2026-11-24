@@ -506,8 +506,13 @@ pub static LAZY_LEN: Habit = shape(
     "",
 );
 pub static LAZY_LEN_2: Habit = shape("lazy_len_2", codes::MISSING_IMPL, "write `.count()`", "");
-pub static LIST_IN: Habit = shape("list_in", codes::MISSING_IMPL, "`in` is for sets, maps and ranges, where it is fast; a list is scanned in O(n) with `xs.contains(x)`", "");
-pub static LIST_IN_2: Habit = shape("list_in_2", codes::MISSING_IMPL, "scan the list: `{}`", "");
+pub static LIST_IN: Habit = shape("list_in", codes::MISSING_IMPL, "`in` is for sets, maps and ranges, where it is fast; a list or other sequence is scanned in O(n) with `xs.contains(x)` or `xs.any(y => y == x)`", "");
+pub static LIST_IN_2: Habit = shape(
+    "list_in_2",
+    codes::MISSING_IMPL,
+    "scan the sequence: `{}`",
+    "",
+);
 pub static LIST_PATTERN: Habit = shape(
     "list_pattern",
     codes::EXPECTED_PATTERN,

@@ -133,7 +133,7 @@ impl<'a> Checker<'a> {
                     let right = side(self, right_expr);
                     any_vague |= right.is_vague();
                     if matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
-                        if matches!(&right, Ty::Named { name, .. } if name == "List") {
+                        if self.lacks_contains(&right) {
                             self.list_in(*op, left_expr, right_expr, &right, rest.len() == 1);
                         }
                     } else {
