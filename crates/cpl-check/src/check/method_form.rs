@@ -338,6 +338,27 @@ impl Checker<'_> {
         }
     }
 
+    /// The key of a sorted container's `range` view, bound from `targs`: a
+    /// struct declaring `range(r: Range<K>)` over its walk `range_each`, as
+    /// `SortedBag<K>` does.
+    pub(crate) fn sorted_view_key(&mut self, ty_name: &str, targs: &[Ty]) -> Option<Ty> {
+        self.struct_method(ty_name, "range_each")?;
+        let (generics, Ty::Fn { params, .. }) = self.struct_method(ty_name, "range")? else {
+            return None;
+        };
+        let [p] = params.as_slice() else {
+            return None;
+        };
+        let Ty::Named { name, args } = &p.ty else {
+            return None;
+        };
+        let (true, [Ty::Param(k)]) = (name == "Range", args.as_slice()) else {
+            return None;
+        };
+        let at = generics.iter().position(|g| g == k)?;
+        targs.get(at).cloned()
+    }
+
     /// True when `ty_name.method` takes a value of one of the struct's own
     /// type parameters, as `Deque<T>.push(x: T)` does: the container keeps it.
     pub(crate) fn method_takes_type_param(&mut self, ty_name: &str, method: &str) -> bool {

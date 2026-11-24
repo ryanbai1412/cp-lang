@@ -454,9 +454,12 @@ impl<'a> Checker<'a> {
             return None;
         };
         let (k_ty, elem_ty) = match (cname.as_str(), targs.as_slice()) {
-            ("SortedBag" | "SortedSet" | "Set", [k]) => (k.clone(), k.clone()),
+            ("Set", [k]) => (k.clone(), k.clone()),
             ("Map", [k, v]) => (k.clone(), Ty::Tuple(vec![k.clone(), v.clone()])),
-            _ => return None,
+            _ => {
+                let k = self.sorted_view_key(cname, targs)?;
+                (k.clone(), k)
+            }
         };
         self.note_projection(call, cname, "range");
         if args.len() != 1 || args[0].name.is_some() {
@@ -556,10 +559,10 @@ impl<'a> Checker<'a> {
         else {
             return None;
         };
-        if !matches!(cname.as_str(), "SortedBag" | "SortedSet") || targs.len() != 1 {
+        if self.struct_method(cname, &name.text).is_some() {
             return None;
         }
-        let k_ty = targs[0].clone();
+        let k_ty = self.sorted_view_key(cname, targs)?;
         for a in args {
             self.infer(&a.value);
         }

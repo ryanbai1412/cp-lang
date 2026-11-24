@@ -944,7 +944,7 @@ impl Items {
 impl<'a> Lowerer<'a> {
     pub(super) fn sorted_container_key(&self, sid: StructId) -> Option<Ty> {
         let info = &self.structs[sid];
-        if !info.def.name.starts_with("SortedBag") && !info.def.name.starts_with("SortedSet") {
+        if !info.methods.contains_key("range_each") {
             return None;
         }
         let (_, gargs) = info.origin_gen.as_ref()?;
