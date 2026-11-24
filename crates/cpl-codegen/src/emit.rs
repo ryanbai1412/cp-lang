@@ -507,6 +507,7 @@ impl<'p> Emitter<'p> {
         self.reused = crate::scope::reused(self.program, fn_id, body);
         self.spent = crate::scope::spent(self.program, body);
         self.lent.clear();
+        self.ref_bound.clear();
         self.break_targets.clear();
         self.continue_targets.clear();
         walk::deep_stmts(body, &mut |stmt| match stmt {

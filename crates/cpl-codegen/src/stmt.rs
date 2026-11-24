@@ -1435,6 +1435,8 @@ impl<'p> Emitter<'p> {
                     && self.closure_id.is_none()
                     && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_auto(*slot, cid))
                     && self.facts.stores((self.fn_id, false, *slot)) <= 1;
+                // Slots are per fn: one another fn lent says nothing of this one.
+                self.ref_bound.remove(slot);
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));
                 } else if name.starts_with('_') {

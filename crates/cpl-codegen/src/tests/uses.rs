@@ -82,6 +82,28 @@ fn a_variant_payload_read_only_is_lent_while_the_others_are_read() {
     );
 }
 
+#[test]
+fn a_name_another_fn_lent_does_not_stop_this_fn_moving_its_own() {
+    let out = super::cpp(concat!(
+        "fn first(rows: List<List<Int>>) -> Int:\n",
+        "    let r = rows[0]\n",
+        "    r.len\n",
+        "fn build(n: Int) -> List<Int>:\n",
+        "    var xs = List.filled(n, 0)\n",
+        "    xs.push(1)\n",
+        "    xs\n",
+        "let n: 1..=10 = read()\n",
+        "let ys = build(n)\n",
+        "let t = [i for i in 0..n]\n",
+        "let zs = t\n",
+        "print(first([ys, zs]), zs.len)\n",
+    ));
+    assert!(
+        out.contains("= std::move("),
+        "a temporary this fn built moves into its name:\n{out}"
+    );
+}
+
 fn copy_reasons(source: &str) -> Vec<&'static str> {
     crate::explain_copies(&lower(source))
         .into_iter()
