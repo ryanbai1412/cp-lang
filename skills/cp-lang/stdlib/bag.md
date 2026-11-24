@@ -25,6 +25,7 @@ An ordered multiset (bag) of `K` backed by a randomized treap over a single flat
 - `fn add_many(mut self, x: K, c: Int)` — \(O(\log n)\) expected, independent of `c`; Insert `c >= 0` copies of `x` into the bag.; traps: when `c < 0`
 - `fn remove(mut self, x: K) -> Bool` — \(O(\log n)\) expected; Remove one copy of `x` if present; returns `true` if a copy was removed.
 - `fn remove_all(mut self, x: K) -> Int` — \(O(\log n)\) expected; Remove all copies of `x` and return how many were removed.
+- `fn remove_at(mut self, c: BagCursor)` — \(O(\log n)\) expected; Remove one copy of the key at cursor `c`, as `remove(key_of(c))` would.; traps: never in release (a stale cursor removes an unspecified key); debug traps when the node of `c` has been freed
 - `fn count(self, x: K) -> Int` — \(O(\log n)\) expected; How many copies of `x` are currently in the bag.
 - `fn contains(self, x: K) -> Bool` — \(O(\log n)\) expected; Whether at least one copy of `x` is in the bag.
 - `@get fn first(self) -> ?K` — \(O(1)\); The smallest element, or `None` when empty.
