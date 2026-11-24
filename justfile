@@ -65,6 +65,19 @@ zed-smoke cpl="target/debug/cpl":
 tree-sitter-smoke:
     editors/tree-sitter-cp/smoke.sh
 
+# The VS Code extension's unit, grammar and host tests (CI: ci.yml `vscode`).
+vscode-test: && vscode-integration
+    cd editors/vscode && npm ci --no-audit --no-fund && npm test
+
+# The VS Code extension's tests in a real host, under xvfb when there is one.
+vscode-integration:
+    cd editors/vscode && npm ci --no-audit --no-fund
+    cd editors/vscode && if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
+
+# The stress and time-travel debugger tests (CI: debugger-loop.yml `loop`).
+debugger-loop:
+    cargo nextest run --no-fail-fast -p cpl-stress -p cpl-cli --test debugger --test runtime_errors --test stress_bench
+
 # The acceptance regression suite, e.g. `just acceptance target/ci/cpl --shard 1/3`.
 acceptance *args:
     uv run --quiet python research/acceptance/regress.py {{args}}

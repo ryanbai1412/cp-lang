@@ -1825,6 +1825,11 @@ CI_ONLY_WORKFLOWS = {
     "site.yml": "deploys the built site",
     "writable-from-docs.yml": "a model writes programs from the docs",
 }
+# Jobs that write to main or stage binaries for other jobs, inside checking workflows.
+CI_ONLY_JOBS = {
+    "ci.yml:regen": "commits regenerated files to main",
+    "ci.yml:tests-build": "archives the test binaries the `tests` shards run",
+}
 CI_CHECK = re.compile(r"(^|[\s;&|(])(\./)?(scripts|editors|research|bench|crates)/\S|cargo (test|nextest|run)\b"
                       r"|pnpm .*\b(test|build|smoke|typecheck)\b|npm (test|run|ci)\b|nvim --headless")
 
@@ -1844,7 +1849,7 @@ def ci_jobs_without_recipe(root: Path) -> list[str]:
             if in_jobs and (m := re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)):
                 job, block = m.group(1), None
                 continue
-            if job is None or job in flagged:
+            if job is None or job in flagged or f"{Path(rel).name}:{job}" in CI_ONLY_JOBS:
                 continue
             indent = len(line) - len(line.lstrip())
             if block is not None and (not line.strip() or indent > block):

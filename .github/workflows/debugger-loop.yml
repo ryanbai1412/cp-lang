@@ -54,7 +54,7 @@ jobs:
       - name: Compiler versions
         run: (g++ --version || echo "no g++") | head -1 && rustc --version
       - name: Stress loop tests
-        run: cargo nextest run --no-fail-fast -p cpl-stress -p cpl-cli --test debugger --test runtime_errors --test stress_bench
+        run: just debugger-loop
       - uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
@@ -96,9 +96,7 @@ jobs:
       - name: Extension integration tests
         shell: bash
         working-directory: editors/vscode
-        run: |
-          npm ci --no-audit --no-fund
-          if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
+        run: just vscode-integration
 
   # The run configurations' stress then test, on each OS's own JDK and paths.
   jetbrains:

@@ -109,7 +109,7 @@ jobs:
         # The shell timeout fails the step and leaves the cache saves below to run;
         # the step's own timeout cancels the job and skips them.
         run: |
-          timeout 680 scripts/check.sh --fast || { s=$?; [ "$s" != 124 ] \
+          timeout 680 just check || { s=$?; [ "$s" != 124 ] \
             || echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; exit "$s"; }
       # The rule coverage report (scripts/spec-gate.py coverage), kept per run, not committed.
       - uses: actions/upload-artifact@v4
@@ -249,7 +249,7 @@ jobs:
         env:
           CPL_GATE_PART: tests:${{ matrix.part }}
           CPL_NEXTEST_ARCHIVE: nextest.tar.zst
-        run: scripts/check.sh --fast
+        run: just check
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() }}
         with:
@@ -324,9 +324,7 @@ jobs:
         shell: bash
         working-directory: editors/vscode
         run: |
-          npm ci --no-audit --no-fund
-          npm test
-          if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
+          just vscode-test
 
   # The contest CLI on macOS and Windows (Linux runs it in the gate): paths,
   # the clipboard command, CRLF input, `cpl setup`, the contest flow.
