@@ -76,6 +76,11 @@ impl Checker<'_> {
         out.into_iter().map(|(k, d, _)| (k, d)).collect()
     }
 
+    /// Whether `key` names a fn the calling module declares, not one it imports.
+    fn own_fn(&mut self, key: &str) -> bool {
+        self.local_defs.contains_key(key) || self.env.origin(key).is_none()
+    }
+
     /// R08.1.4: a later `fn name(self: ..)` of this module whose `self` is
     /// neither more nor less specific than an earlier one's is E0702.
     pub(super) fn overload_clash(&mut self, f: &ast::FnDecl) {
@@ -384,7 +389,9 @@ impl Checker<'_> {
         // R11.2.3: a name a `use` imports shadows the prelude's, so the
         // prelude's candidates drop out beside one. A fn the file declares
         // stands beside them, and specificity picks (decision 486).
-        let shadows: Vec<bool> = fit.iter().map(|f| self.env.chosen(&f.0)).collect();
+        let shadows: Vec<bool> = (fit.iter())
+            .map(|f| self.env.chosen(&f.0) || self.own_fn(&f.0))
+            .collect();
         if shadows.contains(&true) {
             let mut shadows = shadows.into_iter();
             fit.retain(|_| shadows.next().unwrap_or(false));
@@ -407,6 +414,10 @@ impl Checker<'_> {
             .collect();
         let mut beaten = beaten.into_iter();
         fit.retain(|_| !beaten.next().unwrap_or(false));
+        // R08.1.4: at equal specificity, the calling module's own fn beats an imported one.
+        if fit.len() > 1 && fit.iter().any(|f| self.own_fn(&f.0)) {
+            fit.retain(|f| self.own_fn(&f.0));
+        }
         // Of candidates the receiver fits alike, those the argument count fits.
         if let Some(args) = args.filter(|_| fit.len() > 1) {
             let given = args.iter().filter(|a| a.name.is_none()).count();

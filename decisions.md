@@ -7290,6 +7290,9 @@ Amended 2026-11-24 (Core, for decision 419 and Content's `Range<F64>.bsearch`): 
 Amended 2026-11-24 (Core, after std/seq.cp's false E0701s): member-hides E0701 fires only where the hidden fn is the call's different definition and only in the module that declares that fn, std or user alike. A file that imports the fn calls the member with no error (`core-08/importer-of-a-hidden-fn-calls-the-member.cp`); the declaring file gets E0701 (`core-08/member-hides-the-modules-own-fn.cp`); a catalog member backed by the very fn it would hide hides nothing. One precedence order for a method call: a member of the receiver's type (declared or catalog) beats any extension fn; at equal specificity the calling module's own fn beats an imported fn (B's amendment of the same day); ties within one level are E0701. Lost: a warning in the importing file, which can't rename the fn. Reverse: report E0701 at every use.
 
 Amended 2026-11-24 (Core, for std's `find`/`rfind` overloads): a concrete `self` that meets a bare `self: S`'s bounds is more specific than it (`self: Str` over `S: Indexed<D, T>`), so `core-08/extension-concrete-and-generic-ambiguous.cp` becomes `core-08/concrete-extension-beats-std-generic.cp` and prints 7. One module's fns of one name clash (E0702) only when their full signatures overlap: the same `self` with another arity, or `x: T` with `T: Eq` beside `p: T -> Bool`, overloads (`core-08/same-module-receivers-of-other-arity-overload.cp`, `core-08/concrete-self-beats-bounded-generic.cp`). An extension a member of the receiver's type always wins over is E0701 naming the member, never silently dead (`core-08/member-hides-extension-fn.cp`). Lowering calls the fn the checker resolved, not a name arm of its own. Reverse: put back "a bare `self: S` is never more specific" and the receiver-only E0702.
+
+Amended 2026-11-24 (compiler): decision 636 puts back the calling module's own fn ahead of an imported one of equal specificity, for any library.
+
 ## 334. Three hand-written graph and window algorithms teach their std names: L0565-L0567; `lint_std_names` 152 -> 159 (2026-11-22)
 
 `cycle_by_colors` (L0565): a fn that sets `c[u] = 1` first, `c[u] = 2` last and
@@ -9364,8 +9367,6 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **`@was` on fns.** `@was(bsearch_last)` above `pub fn last_true` states a fn's older std name, as it already did for structs and enums; the checker's member migration (E0503 with its fix) reads it, and the `bsearch_first`/`bsearch_last` arms in `check/expr/member.rs` are deleted.
 - **Reverse.** Restore the table in `builtins/foreign.rs` and drop the decorator.
 
-## 636. (reserved, compiler)
-
 ## 637. (reserved, compiler)
 
 ## 638. A container's cells don't narrow into range cells unchecked (compiler, 2026-11-24)
@@ -9435,3 +9436,7 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** `sqrt`, `ln`, `asin` and `acos` in std/math.cp are ordinary bodies: `let f = F64(x); assert <domain>, "<what>"; <name>_of(f)`, where `<name>_of` is a private `@intrinsic` row. A checked build traps R0401 with std's message and `f`'s value on both engines; a release build skips the assert (R09.3.7) and gives the C++ result, NaN for `sqrt(-1.0)`. R09.3.6 says so. cpl_rt keeps only a bare `fn(f64) -> f64` table and a two-argument one for `atan2` and `hypot`: no bounds, no `Fault::Negative`, no domain branch; the C++ forms are `std::sqrt`, `std::log`, `std::asin`, `std::acos` with no runtime piece. Coordinator ruling for the compiler lane of 2026-11-24.
 - **Why.** One rule for one kind of fault: the check is code any library could write, `explain` shows it and its cost, and cpl_rt stays within its 500 B budget.
 - **Reverse.** Add a general precondition mechanism that lets any library name its own trap code (so std's float preconditions could say R0001 again), not a per-fn check in cpl_rt.
+
+## 636. At equal specificity a module's own fn beats an imported one (compiler, 2026-11-24)
+
+Amends decision 486. R08.1.4 picks among a call's candidates in one precedence order: a member of the receiver's type, declared or catalog, beats any extension fn; at equal specificity, a fn the calling module declares beats one it imports, from std or any other library; two candidates that tie at one level are E0701. The rule never names std: a user library's fn yields to the importer's own fn exactly as std's does (`core-08/own-module-fn-beats-equal-imported.cp`), and two imported fns that tie stay E0701 (`core-08/imported-fns-of-equal-specificity-ambiguous.cp`). This lets std declare closed-form `sum(self: Range<Int>)` while `core-08/concrete-extension-beats-std-generic.cp` still prints 7. The member level is 7a8dcef2's amendment to decision 486 (Core, after std/seq.cp's false E0701s). Reverse: drop the own-module level from R08.1.4 and `own_fn` from `pick_method_for`, so equal candidates across modules are E0701 again.
