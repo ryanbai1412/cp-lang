@@ -112,8 +112,18 @@ impl<'a> Lowerer<'a> {
                     .then(|| self.detect_bare_op(default))
                     .flatten()
                 {
-                    let ty = Ty::Struct(self.op_type(op));
-                    inferred.entry(name.text.clone()).or_insert(GenArg::Ty(ty));
+                    let saved = (
+                        std::mem::replace(&mut self.cur_mod, tpl_mod),
+                        std::mem::replace(&mut self.offset, tpl_offset),
+                    );
+                    let tpl = (tpl_mod, tpl_offset, &inferred);
+                    let item = self.item_arg_for(&decl.bounds, &name.text, default, tpl);
+                    (self.cur_mod, self.offset) = saved;
+                    let g = match item {
+                        Some(Some(g)) => g,
+                        _ => GenArg::Ty(Ty::Struct(self.op_type(op))),
+                    };
+                    inferred.entry(name.text.clone()).or_insert(g);
                 } else if args.is_empty()
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
