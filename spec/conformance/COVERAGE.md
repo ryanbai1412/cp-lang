@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3800 (3737 passing). Rules: 618.
+Cases: 3801 (3737 passing). Rules: 618.
 
 ## Summary per chapter
 
@@ -18,7 +18,7 @@ Cases: 3800 (3737 passing). Rules: 618.
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 26 rules, 128 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 26 rules, 129 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 97 rules, 267 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -424,7 +424,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R06: 06-control-functions.md
 
 - R06.1.1 [2+ 0-]: One-line `= expr` or a block whose last expression is the value. `return` is for early exi...
-- R06.1.2 [3+ 4-]: Parameters are lent for the call; `mut` parameters may be mutated (or drained) and are mar...
+- R06.1.2 [4+ 4-]: Parameters are lent for the call; `mut` parameters may be mutated (or drained) and are mar...
 - R06.1.3 [1+ 0-]: A parameter of a `fn` or a lambda may be a pattern, as in `for`: `(mut d, (u, v)) => d.uni...
 - R06.1.4 [7+ 1-]: A lambda with k parameters, passed where the callee expects a function of one k-tuple, unp...
 - R06.1.5 [9+ 3-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
