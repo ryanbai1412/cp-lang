@@ -23,6 +23,10 @@ pub struct FnSummary {
     /// It yields fn values: they may write its locals, so a loop over it
     /// must run as it yields (R06.3.4), whatever else the body does.
     pub yields_fns: bool,
+    /// The fns whose frames a closure it may call writes by reference
+    /// (`None`: the program's top level). Only another fn's frame makes it
+    /// `opaque` to a loop it feeds.
+    pub lent_from: BTreeSet<Option<usize>>,
     pub reads: BTreeSet<usize>,
     pub writes: BTreeSet<usize>,
 }
@@ -66,8 +70,13 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
         .map(|f| direct_of(&f.body, false))
         .collect();
     let mut all = (FnSummary::default(), BTreeSet::new(), false);
-    for c in &program.closures {
-        let (summary, calls, through) = direct_of(&c.body, c.captures.iter().any(|cap| cap.by_ref));
+    let owners = closure_owners(program);
+    for (c, owner) in program.closures.iter().zip(owners) {
+        let by_ref = c.captures.iter().any(|cap| cap.by_ref);
+        let (mut summary, calls, through) = direct_of(&c.body, by_ref);
+        if by_ref {
+            summary.lent_from.insert(owner);
+        }
         all.0.merge(&summary);
         all.1.extend(calls);
         all.2 |= through;
@@ -95,12 +104,50 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
     }
 }
 
+/// The fn each closure is made in, through the closures it is made in
+/// (`None`: the top level).
+fn closure_owners(program: &Program) -> Vec<Option<usize>> {
+    #[derive(Clone, Copy)]
+    enum Made {
+        Top,
+        Fn(usize),
+        In(usize),
+    }
+    let mut made = vec![Made::Top; program.closures.len()];
+    let mut mark = |body: &Block, by: Made| {
+        walk::deep_exprs(body, &mut |e| {
+            if let ExprKind::Closure(c) = e.kind {
+                made[c] = by;
+            }
+        })
+    };
+    for (id, f) in program.fns.iter().enumerate() {
+        mark(&f.body, Made::Fn(id));
+    }
+    for (id, c) in program.closures.iter().enumerate() {
+        mark(&c.body, Made::In(id));
+    }
+    (0..made.len())
+        .map(|mut c| {
+            for _ in 0..made.len() {
+                match made[c] {
+                    Made::Top => return None,
+                    Made::Fn(id) => return Some(id),
+                    Made::In(outer) => c = outer,
+                }
+            }
+            None
+        })
+        .collect()
+}
+
 impl FnSummary {
     pub(crate) fn merge(&mut self, other: &FnSummary) {
         self.io |= other.io;
         self.opaque |= other.opaque;
         self.calls_values |= other.calls_values;
         self.sizes |= other.sizes;
+        self.lent_from.extend(other.lent_from.iter().copied());
         self.reads.extend(other.reads.iter().copied());
         self.writes.extend(other.writes.iter().copied());
     }
@@ -117,10 +164,12 @@ impl FnSummary {
 /// A fn returning a list it only makes, pushes to and returns is one too,
 /// but it runs to its end whatever takes its values: only a reducer that
 /// takes every value is fed by it, never a loop that may stop early.
-fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
+fn pusher(id: usize, f: &Function, summary: &FnSummary) -> Option<usize> {
     let yields = f.locals.iter().position(|local| local.name == "__yields");
     let acc = yields.or_else(|| returned_list(f))?;
-    if acc < f.params.len() || summary.sizes || (!summary.yields_fns && summary.opaque) {
+    // A closure it makes writing its own locals is part of its own run.
+    let opaque = summary.lent_from.iter().any(|&owner| owner != Some(id));
+    if acc < f.params.len() || summary.sizes || (!summary.yields_fns && opaque) {
         return None;
     }
     let is_acc = |e: &Expr| matches!(e.kind, ExprKind::Local(slot) if slot == acc);
@@ -205,7 +254,7 @@ impl Feeds {
         let mut pushers = BTreeMap::new();
         let mut eager = BTreeSet::new();
         for (id, f) in program.fns.iter().enumerate() {
-            if let Some(p) = pusher(f, &summaries[id]) {
+            if let Some(p) = pusher(id, f, &summaries[id]) {
                 pushers.insert(id, p);
                 if f.locals[p].name != "__yields" {
                     eager.insert(id);

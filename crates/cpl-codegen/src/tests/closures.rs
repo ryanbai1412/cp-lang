@@ -496,3 +496,23 @@ fn no_user_name_is_spelled_like_an_emitted_macro() {
         .collect();
     assert!(clash.is_empty(), "add to names::RESERVED: {clash:?}");
 }
+
+#[test]
+fn a_yields_fn_whose_own_closures_write_its_locals_feeds_a_loop() {
+    let cpp = cpp(concat!(
+        "fn halves(n: Int) -> yields Int:\n",
+        "    var todo: List<Int> = []\n",
+        "    fn add(x: Int):\n",
+        "        todo.push(x)\n",
+        "    add(n)\n",
+        "    while let x = todo.pop():\n",
+        "        yield x\n",
+        "        if x > 1: add(x / 2)\n",
+        "let n: 1..=1000000 = read()\n",
+        "for x in halves(n):\n",
+        "    if x < n: break\n",
+        "    print(x)\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(solve.contains("cpl_each_halves(n, "), "{solve}");
+}

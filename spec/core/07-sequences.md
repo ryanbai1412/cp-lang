@@ -17,7 +17,9 @@ ends, `.first`/`.last` are optional.
 3. **Laziness is explicit.** A chain reruns on every walk. Allocation happens
    only at `.collect()`, a comprehension or `List(...)`. Lint flags a chain
    walked twice (sharper when it holds a `mut` lend) and side-effecting
-   closures. (R07.1.3)
+   closures. A generator runs only as far as its consumer pulls: `take(k)`,
+   `first`, `any`, `break` and `return` stop it, and the values it never
+   makes, side effects included, never happen. (R07.1.3)
 4. **Identity everywhere.** Every slice keeps its source's keys
    (`a[l..=r][i] == a[i]`, `s[2..5][3] == s[3]`), and library functions
    answer in the keys they were given. `first`, `nth(k)` and `rebase` cover
