@@ -286,7 +286,9 @@ impl<'a> Checker<'a> {
                 }
                 self.full_ranges(args.iter().map(|a| &a.value));
                 self.lent_receiver(callee);
+                let outer = self.callee.replace(callee.span);
                 let ty = self.call(expr, callee, args);
+                self.callee = outer;
                 self.member_for_call(expr, callee, args);
                 ty
             }

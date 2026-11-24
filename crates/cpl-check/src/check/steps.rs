@@ -119,7 +119,7 @@ impl Checker<'_> {
         {
             return;
         }
-        if super::advice::called_next(self.src.get(expr.span.end as usize..).unwrap_or("")) {
+        if self.is_called(expr) {
             return;
         }
         let shown = format!("{}.{}", self.quote(base.span), name.text);

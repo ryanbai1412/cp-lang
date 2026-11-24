@@ -53,6 +53,12 @@ impl Checker<'_> {
         })
     }
 
+    /// `()` follows `expr`, or `expr` is the callee of the call being checked.
+    pub(super) fn is_called(&self, expr: &Expr) -> bool {
+        self.callee == Some(expr.span)
+            || called_next(self.src.get(expr.span.end as usize..).unwrap_or(""))
+    }
+
     pub(super) fn uncalled_method(
         &mut self,
         expr: &Expr,
@@ -77,7 +83,7 @@ impl Checker<'_> {
                 return;
             }
         }
-        if called_next(self.src.get(expr.span.end as usize..).unwrap_or("")) {
+        if self.is_called(expr) {
             return;
         }
         let shown = format!("{}.{}", self.quote(base.span), name.text);

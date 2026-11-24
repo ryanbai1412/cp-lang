@@ -263,6 +263,8 @@ pub(crate) struct Checker<'a> {
     present: Vec<String>,
     /// The name about to be read stands where an optional is asked for.
     as_written: bool,
+    /// The callee of the call being checked: `gen<P>()` calls a `P.gen` whose text has no `()` after it.
+    callee: Option<Span>,
     /// What the fns declared inside the item being checked assign.
     mutators: narrow::Mutators,
     /// Where a step along a domain stays inside it, in the item being
@@ -384,6 +386,7 @@ impl<'a> Checker<'a> {
             hovers: Vec::new(),
             present: Vec::new(),
             as_written: false,
+            callee: None,
             mutators: narrow::Mutators::default(),
             steps: Default::default(),
             refs: Vec::new(),
