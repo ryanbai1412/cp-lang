@@ -73,10 +73,21 @@ pub struct Facts {
 /// What a `cost:` fact's `O(..)` holds: `n log n` for `O(n log n)
 /// amortized`; `None` for a cost written another way.
 pub fn big_o(cost: &str) -> Option<&str> {
-    cost.trim()
-        .trim_end_matches(" amortized")
-        .strip_prefix("O(")?
-        .strip_suffix(')')
+    let body = cost.trim().strip_prefix("O(")?;
+    let mut depth = 1;
+    let close = body.find(|c| {
+        depth += match c {
+            '(' => 1,
+            ')' => -1,
+            _ => 0,
+        };
+        depth == 0
+    })?;
+    // `O(n) amortized`, `O(n log n) comparisons, O(n) space`: the words after
+    // qualify the leading bound; `O(n) + O(m)` is not one bound.
+    let rest = body[close + 1..].trim_start();
+    (rest.is_empty() || rest.starts_with(|c: char| c == ',' || c.is_alphabetic()))
+        .then(|| &body[..close])
 }
 
 impl Facts {
@@ -488,5 +499,8 @@ mod tests {
         assert_eq!(big_o("O(n log n) amortized"), Some("n log n"));
         assert_eq!(big_o("O(1)"), Some("1"));
         assert_eq!(big_o("linear"), None);
+        assert_eq!(big_o("O(n log n) comparisons, O(n) space"), Some("n log n"));
+        assert_eq!(big_o("O(n) for a value of size n"), Some("n"));
+        assert_eq!(big_o("O(n) + O(m)"), None);
     }
 }
