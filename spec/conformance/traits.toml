@@ -302,7 +302,7 @@ out = "NO"
 [case."Track/Counter/push"]
 code = """
 use std.hashmap.{Counter}
-var c: Counter<Char, Int> = Counter(0)
+var c: Counter<Char, Int> = Counter()
 c.push('a')
 c.push('a')
 print(c['a'])
@@ -312,7 +312,7 @@ out = "2"
 [case."Track/Counter/pop"]
 code = """
 use std.hashmap.{Counter}
-var c: Counter<Char, Int> = Counter(0)
+var c: Counter<Char, Int> = Counter()
 c.push('a')
 c.push('a')
 c.pop('a')

@@ -96,7 +96,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     )
                 } else {
                     format!(
-                        "declare `var {map} = Counter<K>(0)` (`std.hashmap`) and write `{map}.push({var})`: hashed, and a key it never saw reads 0"
+                        "declare `var {map} = Counter<K>()` (`std.hashmap`) and write `{map}.push({var})`: hashed, and a key it never saw reads 0"
                     )
                 };
                 let diag = Diagnostic::warning(
@@ -169,7 +169,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             )
             .with_label(base.span.shift(self.base), "the map")
             .with_help(format!(
-                "declare `var {map} = Counter<K>(0)` (`std.hashmap`) and write `{bump}`: a key it never saw reads 0, so no update repeats `?? 0`"
+                "declare `var {map} = Counter<K>()` (`std.hashmap`) and write `{bump}`: a key it never saw reads 0, so no update repeats `?? 0`"
             ));
             self.out.push(Finding {
                 lint: &COUNTER_BY_MAP,

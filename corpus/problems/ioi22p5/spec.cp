@@ -14,7 +14,7 @@ let kind = read<[Insect]0..=1e9>()
 let limit = 40000
 var (ins, outs, presses) = (0, 0, 0)
 var in_machine: [Insect]Bool = false
-var held: Counter<Int, Int> = Counter(0)
+var held: Counter<Int, Int> = Counter()
 var types_with: [0..=n]Int = 0
 var top = 0
 

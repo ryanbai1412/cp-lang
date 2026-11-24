@@ -16,7 +16,7 @@ fn random_grid() -> Grid:
 
 // A move keeps the number of red cells in every row and every column even
 // or odd, and those parities are all it keeps: grids match when they agree.
-var seen: Counter<(List<Int>, List<Int>), Int> = Counter(0)
+var seen: Counter<(List<Int>, List<Int>), Int> = Counter()
 var pairs = 0
 for _ in 0..g:
     let grid: Grid = read(gen: random_grid)

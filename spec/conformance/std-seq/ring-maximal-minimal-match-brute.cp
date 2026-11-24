@@ -11,7 +11,7 @@ fn piece(a: [D]Int, last: D, len: Int) -> List<Int>:
 var ok = true
 for _ in 0..20:
     let a = [D] _ => rand(0, 3)
-    let mx = a.ring.maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 2)
+    let mx = a.ring.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 2)
     let mn = a.ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 6)
     for p in D:
         var best = 0

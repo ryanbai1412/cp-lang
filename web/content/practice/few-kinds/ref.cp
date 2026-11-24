@@ -1,6 +1,6 @@
 let (n, k): (1..=2e5, 1..=2e5) = read()
 let a: [0..n]1..=1e9 = read()
-var have: Counter<Int, Int> = Counter(0)
+var have: Counter<Int, Int> = Counter()
 var distinct = 0
 var lo = 0
 var best = 0

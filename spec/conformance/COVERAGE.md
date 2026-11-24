@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3221 (1093 passing). Rules: 608.
+Cases: 3240 (1093 passing). Rules: 608.
 
 ## Summary per chapter
 
@@ -786,8 +786,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
-- E0302 Type mismatch: 51 case(s)
-- E0303 Wrong number of arguments: 11 case(s)
+- E0302 Type mismatch: 59 case(s)
+- E0303 Wrong number of arguments: 18 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)

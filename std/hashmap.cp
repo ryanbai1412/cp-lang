@@ -257,13 +257,20 @@ pub struct Counter<K, V: Add = Int>:
     m: HashMap<K, V>
     init: V
 
-    /// Create an empty `Counter<K, V>` whose missing keys read as `init`.
+    /// Count each element of `xs`, as Python's `Counter(xs)` does; `Counter()` starts empty.
     ///
-    /// cost: \(O(1)\)
+    /// Missing keys read as `init`, by name only, which is zero unless given:
+    /// `Counter<Int, Int>(init: -1)`.
+    ///
+    /// cost: \(O(n)\) expected
+    /// empty: `Counter()` is an empty counter
     /// traps: never
-    /// example: `var c: Counter<Char, Int> = Counter(0); c.get('z') == 0 and c.len == 0`
-    pub fn new(init: V) -> Counter<K, V>:
-        Counter(0, HashMap<K, V>(), init)
+    /// example: `let c = Counter(['a', 'b', 'a']); c['a'] == 2 and c['z'] == 0 and c.len == 2`
+    /// example: `var c: Counter<Char, Int> = Counter(); c.get('z') == 0 and c.len == 0`
+    pub fn new(xs: Seq<K> = []; init: V = V(0)) -> Counter<K, V>:
+        var c = Counter(0, HashMap<K, V>(), init)
+        for x in xs: c.add(x, V(1))
+        c
 
     /// Count occurrences of each element in `xs`.
     ///
@@ -333,8 +340,8 @@ pub struct Counter<K, V: Add = Int>:
     ///
     /// cost: \(O(1)\) expected amortized
     /// traps: never (overflow wraps in release, traps in debug)
-    /// example: `var c: Counter<Char, Int> = Counter(0); c.add('x', 2); c['x'] == 2`
-    /// example: `var c: Counter<Char, Int> = Counter(0); c.add('x', 2); c.add('x', -2); c.len == 0`
+    /// example: `var c: Counter<Char, Int> = Counter(); c.add('x', 2); c['x'] == 2`
+    /// example: `var c: Counter<Char, Int> = Counter(); c.add('x', 2); c.add('x', -2); c.len == 0`
     pub fn add(mut self, k: K, delta: V):
         self.set(k, self.get(k) + delta)
 

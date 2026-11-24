@@ -272,8 +272,8 @@ pub struct Sweep<D, S>(pub state: S):
     /// cost: \(O(1)\), plus `start.len` pushes when `start` is given
     /// empty: an empty `start` is the same as None, but sits at `start`'s cut
     /// traps: never (beyond what `state.push` traps on)
-    /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0)); s.range.len == 0`
-    /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0), start: Some(1..3)); s.range == 1..3`
+    /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.range.len == 0`
+    /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(), start: Some(1..3)); s.range == 1..3`
     pub fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S>:
         var s = Sweep<D, S>(state, lo: 0, hi: 0)
         if let r = start: s.move(r)
@@ -290,7 +290,7 @@ pub struct Sweep<D, S>(pub state: S):
     /// cost: \(O(\lvert \mathit{dl} \rvert + \lvert \mathit{dr} \rvert)\) pushes and pops, where `dl` and `dr` are the moves of the two ends
     /// empty: moving to an empty `to` pops everything
     /// traps: never (beyond what the state traps on)
-    /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0)); s.move(1..4); s.move(2..5); s.range == 2..5`
+    /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(1..4); s.move(2..5); s.range == 2..5`
     pub fn move(mut self, to: Range<D>):
         let keys = [d for d in D]
         var (l, r) = (0, 0)
@@ -315,7 +315,7 @@ pub struct Sweep<D, S>(pub state: S):
     /// cost: \(O(1)\)
     /// traps: never
     /// order: increasing positions of `D`
-    /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0)); s.move(0..2); s.range.len == 2`
+    /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(0..2); s.range.len == 2`
     @get pub fn range(self) -> Range<D>:
         let keys = [d for d in D]
         if lo < hi: keys[lo]..=keys[hi - 1] else: keys[0]..keys[0]

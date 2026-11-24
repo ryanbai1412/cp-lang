@@ -1951,7 +1951,7 @@ pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(
 /// example: `"abca".tally()['a'] == 2`
 /// example: `[1, 1, 2].tally()[7] == 0`
 pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
-    var out = Counter<K, Int>(0)
+    var out = Counter<K, Int>()
     for x in self:
         out.add(by(x), 1)
     out
@@ -3323,7 +3323,7 @@ pub enum Anchor = Start | End
 /// ties: none: each key has one longest piece
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never in release; debug traps when `ok` fails on a single element after a shrink
-/// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
+/// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
 pub fn maximal<D, T, St>(
     self: [D]T,
     state: St,
@@ -3474,7 +3474,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// empty: an empty array
     /// order: keyed by `D`, by last element
     /// traps: never
-    /// example: `[1, 1, 2].ring.maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 2).map(w => w.len) == [3, 3, 3]`
+    /// example: `[1, 1, 2].ring.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 2).map(w => w.len) == [3, 3, 3]`
     /// ties: none: each last element has one longest piece
     pub fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>:
         let n = D.count

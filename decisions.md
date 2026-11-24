@@ -8602,3 +8602,10 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Call.** `crates/cpl-cli/tests/rename_replay.rs` renames each user name in the hill-climb ports through the LSP and requires the file to check clean and print the same. The 21 renames it finds broken today are named in `KNOWN` with their cause (a member access resolving to a top-level name, variant patterns and named-argument labels with no definition, a compile-time constant use, a method std calls on the user's type), which adds 21 skip-list entries. A listed rename that starts working fails the test until its line is removed.
 - **Why.** The causes are in the checker's definitions, owned by compiler; the replay guards the 402 renames that work now instead of waiting for those fixes.
 - **Reverse.** Delete `rename_replay.rs`.
+
+
+## 466. A collection's positional argument is its contents; `Counter(xs)` counts (stdlib, 2026-11-24)
+
+- **Call.** `Counter(xs)` counts each element of `xs`, as Python's `Counter(xs)` does, and `Counter()` starts empty; the missing-key default is `init:` by name (`Counter<K, V>(init: v)`). `Counter(0)` is now E0302 (an `Int` is not a sequence to count). Every other std collection was audited for the same trap, one case each: `HashSet(xs)` and `HashMap(pairs)` build from their contents (accepted); `SortedBag`/`SortedSet`/`SortedMap`/`Deque`/`LinkedList`/`Interner`/`Bitset(x)` are E0303, `Heap`/`MinMaxHeap`/`MeldHeap(xs)` are E0302 (the positional is the key fn) and `Dsu<V>(n)` is E0302 (the positional is `rollback: Bool`). `HashMap(xs)` of non-pairs, `HashMap(5)` and `List(5)` still check clean and are compiler known gaps.
+- **Why.** `Counter(a)` read the list as `init`, so every missing key read as the whole list: a silent wrong answer where Python's reading counts. Familiar wins unless novelty removes a P0, and here familiarity removes one.
+- **Reverse.** `Counter.new(init: V)` positional again; restore `Counter(0)` at the call sites.

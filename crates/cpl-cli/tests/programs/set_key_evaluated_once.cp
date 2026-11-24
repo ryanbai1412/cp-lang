@@ -5,7 +5,7 @@ fn k(x: Int) -> Int:
     calls += 1
     x
 
-var have: Counter<Int> = Counter(0)
+var have: Counter<Int> = Counter()
 have[k(3)] += 2
 have[k(3)] max= 7
 let a = [2, 2, 5]

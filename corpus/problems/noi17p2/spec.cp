@@ -15,7 +15,7 @@ let len = read<[W]1..=6>()
 var next: [W]?W = None
 var prev: [W]?W = None
 let hasher = RollingHash.new(List.filled(longest, 0))
-var seen = Counter<HashVal, Int>(0)
+var seen = Counter<HashVal, Int>()
 for w in W:
     seen.add(hasher.hash_of([len[w]]), 1)
 

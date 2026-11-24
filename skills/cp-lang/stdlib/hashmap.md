@@ -34,7 +34,7 @@ Default-valued frequency / weight map over hashable keys `K`.
 
 Fields: `m: HashMap<K, V>`, `init: V`.
 
-- `fn new(init: V) -> Counter<K, V>` — \(O(1)\); Create an empty `Counter<K, V>` whose missing keys read as `init`.
+- `fn new(xs: Seq<K> = []; init: V = V(0)) -> Counter<K, V>` — \(O(n)\) expected; Count each element of `xs`, as Python's `Counter(xs)` does; `Counter()` starts empty.
 - `fn of(xs: List<K>) -> Counter<K, Int>` — \(O(n)\) expected; Count occurrences of each element in `xs`.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of keys with a stored entry.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no keys are stored.
