@@ -14,12 +14,13 @@ In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Each`, `Group`, 
 - `const flip: FlipAction = FlipAction()` — Stock action: swap the two halves of a `Flip<T>` value.
 - `const assign_add: AssignAddAction = AssignAddAction()` — Stock action: optionally overwrite every element, then add to it.
 
-## `struct Monoid<T>(pub id: T, pub op: (T, T) -> T)`
+## `struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreversed)`
 
 An associative operation with an identity: the pair `(id, op)`, written `Monoid<T>(id, op)` or, naming both, `Monoid<T>(id: e, op: (a, b) => ...)`.
 
 - `fn of<M>(m: M) -> Monoid<T>` — \(O(1)\); The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its identity: zero for `+`, `^`, `\|` and `gcd`, one for `*`, all bits for `&`, and for `min` / `max` the far end of `T` (`None` on a `?T`).; traps: never (an operator without a known identity is a compile-time error)
 - `fn monoid(self) -> Monoid<T>` — \(O(1)\); A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a bare operator.
+- `fn reversed(self, x: T) -> T` — one call of `rev`; `x`, a fold of some elements, as the fold of the same elements read backwards: by `rev`, which `Monoid.of` gives every stock op (all commutative), `.commutative()` and a `Reversible` value's own `monoid()`.; traps: when the monoid was made without `rev:`
 - `fn commutative(self) -> Comm<T>` — \(O(1)\); `self` with the law `op(a, b) == op(b, a)` stated, so folds may reorder and lazy tags skip push-down; `cpl stress` samples the law like any other.
 
 ## `struct Comm<T>(pub m: Monoid<T>)`
@@ -51,8 +52,8 @@ Maximum non-empty subarray summary (Kadane monoid).
 - `fn of(v: Int) -> MaxSub` — \(O(1)\); The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
 - `fn join(a: MaxSub, b: MaxSub) -> MaxSub` — \(O(1)\); The summary of `a`'s elements followed by `b`'s (the same as `a + b`).; traps: never (overflow wraps in release, traps in debug)
 - `fn reversed(self) -> MaxSub` — \(O(1)\); The summary of the same elements in reverse order: the best prefix and suffix swap.
-- `fn repeat(self, k: Int) -> MaxSub` — \(O(1)\); The summary of `k` copies of this run, one after another, in \(O(1)\) where `pow` takes \(O(\log k)\) joins: what a range assignment of `k` equal elements stores.; traps: when `k < 0`
-- `fn scale(self, k: Int) -> MaxSub` — \(O(1)\); The summary of the same elements each multiplied by `k` (the same as `self * k`).; traps: when `k < 0`
+- `fn repeat(self, k: 0..) -> MaxSub` — \(O(1)\); The summary of `k` copies of this run, one after another, in \(O(1)\) where `pow` takes \(O(\log k)\) joins: what a range assignment of `k` equal elements stores.; traps: when `k < 0`
+- `fn scale(self, k: 0..) -> MaxSub` — \(O(1)\); The summary of the same elements each multiplied by `k` (the same as `self * k`).; traps: when `k < 0`
 - `@get fn try_best(self) -> ?Int` — \(O(1)\); The largest sum of a non-empty contiguous run of the summarized elements, or `None` for the empty summary.
 - `fn monoid() -> Monoid<MaxSub>` — \(O(1)\); `Monoid(MaxSub.zero, MaxSub.join)`, for `SegTree` and `fold`.
 
@@ -162,7 +163,7 @@ Marker type for the stock `assign_add` action.
 ## Functions
 
 - `fn desc<T>(x: T) -> Desc<T>` — \(O(1)\); `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when `b < a`.
-- `fn pow<T, M>(x: T, k: Int; op: M) -> T` — \(O(\log k)\) calls of `op`; `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`; a plain power is `x ** k`.; traps: when `k < 0`
+- `fn pow<T, M>(x: T, k: 0..; op: M) -> T` — \(O(\log k)\) calls of `op`; `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`; a plain power is `x ** k`.; traps: when `k < 0`
 - `fn point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>` — \(O(1)\); An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`.
 - `fn cmp<T: Ord>(self: T, other: T) -> Ordering` — \(O(1)\) plus one or two comparisons of `T`; The three-way comparison of `self` and `other` under `Ord`: `cmp(a, b)` or `a.cmp(b)`.
 - `fn minmax<T: Ord>(a: T, b: T) -> (T, T)` — \(O(1)\) plus one comparison of `T`; The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.

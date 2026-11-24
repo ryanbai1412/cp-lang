@@ -16,7 +16,7 @@ The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a 
 
 Fields: `top: Int`, `odd_composite: List<U64>`.
 
-- `fn new(n: Int) -> Sieve` — \(O(n \log \log n)\) time, \(n / 16\) bytes plus 4 bytes a prime; A sieve up to `n`: which of `0..=n` are prime, and the primes.; traps: when `n < 0` or `n > 2_000_000_000`
+- `fn new(n: 0..) -> Sieve` — \(O(n \log \log n)\) time, \(n / 16\) bytes plus 4 bytes a prime; A sieve up to `n`: which of `0..=n` are prime, and the primes.; traps: when `n < 0` or `n > 2_000_000_000`
 - `@get fn spf(self) -> List<SieveVal>` — \(O(n)\) time and \(4n\) bytes on the first read, then \(O(1)\), lent; The smallest prime factor of every `0..=n`, with `spf[0]` and `spf[1]` 0.
 - `fn is_prime(self, x: Int) -> Bool` — \(O(1)\); Whether `x` is prime, for `0 <= x <= n`, from the primality bitset (no `spf` build).; traps: when `x` is outside `0..=n`
 - `fn factor(self, x: Int) -> List<(Int, Int)>` — \(O(\log x)\); The prime factorization of `x` in `1..=n` as `(prime, exponent)` pairs, by repeated `spf`.; traps: when `x` is outside `1..=n`
@@ -48,7 +48,7 @@ Which side of zero a number is on.
 
 An exponent `e >= 0` kept small enough to reduce: `v` is `e` itself when `e < m`, else `e % m + m`.
 
-- `fn of(e: Int, m: Int) -> Exp` — \(O(1)\); `e` kept for the modulus `m`.; traps: when `e < 0` or `m < 1`
+- `fn of(e: 0.., m: Int) -> Exp` — \(O(1)\); `e` kept for the modulus `m`.; traps: when `e < 0` or `m < 1`
 
 ## `struct DirichletSum<T: Add + Sub + Mul + Div>`
 
@@ -56,7 +56,7 @@ An exponent `e >= 0` kept small enough to reduce: `v` is `e` itself when `e < m`
 
 Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: Map<Int, T>`.
 
-- `fn new(n: Int, f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>` — \(O(\mathit{f\_small}.\mathit{len})\) to build; queries as `sum`; A Du's-sieve cache for the prefix sums `F(m) = sum_{k=1..=m} f(k)` of a multiplicative `f`, up to `n`.; traps: when `n < 0`
+- `fn new(n: 0.., f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>` — \(O(\mathit{f\_small}.\mathit{len})\) to build; queries as `sum`; A Du's-sieve cache for the prefix sums `F(m) = sum_{k=1..=m} f(k)` of a multiplicative `f`, up to `n`.; traps: when `n < 0`
 - `fn sum(mut self, m: Int) -> T` — \(O(1)\) cached; \(O(n^{2/3})\) total across all `n / i` queries; The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.; traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
 
 ## `struct Ratio(pub p: Int, q: Int)`
@@ -85,16 +85,16 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 
 - `fn gcd(a: Int, b: Int) -> Int` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.; traps: when the result is `2^63` (`gcd(Int.MIN, 0)` or `gcd(Int.MIN, Int.MIN)`)
 - `fn lcm(a: Int, b: Int) -> Int` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); The least common multiple of `a` and `b`, never negative; 0 when either is 0.; traps: when the result overflows `Int`
-- `@get fn isqrt(self: Int) -> Int` — \(O(1)\); The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.; traps: when `self < 0`
+- `@get fn isqrt(self: 0..) -> Int` — \(O(1)\); The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.; traps: when `self < 0`
 - `fn ceil_sqrt(x: Int) -> Int` — \(O(1)\); The exact ceiling square root `ceil(sqrt(x))` of `x >= 0`.; traps: when `self < 0`
-- `fn iroot(x: Int, k: Int) -> Int` — \(O(\log x)\); The exact floor `k`-th root of `x >= 0`, `k >= 1`: `iroot(x, 3)` is `floor(cbrt(x))`.; traps: when `x < 0` or `k < 1`
+- `fn iroot(x: 0.., k: Int) -> Int` — \(O(\log x)\); The exact floor `k`-th root of `x >= 0`, `k >= 1`: `iroot(x, 3)` is `floor(cbrt(x))`.; traps: when `x < 0` or `k < 1`
 - `fn fixed(num: Int, den: Int, k: Int) -> Str` — \(O(k + \log \lvert \mathit{num} / \mathit{den} \rvert)\), the digits of the result; `num / den` with exactly `k` digits after the point, as text, from integers alone.; traps: when `den == 0`, `k < 0`, or `|num| * 10^k * 2` overflows
 - `fn choose(n: Int, k: Int) -> Int` — \(O(\min(k, n - k))\); The number of ways to pick `k` of `n` things, exactly; 0 when `k` is outside `0..=n`.; traps: when the result overflows `Int`
 - `fn choose2(n: Int) -> Int` — \(O(1)\); The number of unordered pairs from `n` things: `n * (n - 1) / 2` for `n >= 2`, else 0.; traps: when the result overflows `Int`
 - `fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); `(g, x, y)` with `a * x + b * y == g == gcd(a, b)`.; traps: when `g` is `2^63`
 - `fn ceil_div(self: Int, b: Int) -> Int` — \(O(1)\); `ceil(self / b)` for any non-zero `b`; `n.ceil_div(k)` or `ceil_div(n, k)`.; traps: when `b == 0`, or on overflow (`ceil_div(Int.MIN, -1)`)
 - `fn divmod(self: Int, d: Int) -> (Int, Int)` — \(O(1)\); The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < \|d\|` and `self == q * d + r`.; traps: when `d == 0`, or on overflow (`Int.MIN.divmod(-1)`)
-- `fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>` — \(O(n)\) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.; traps: when `n < 0`
+- `fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T>` — \(O(n)\) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.; traps: when `n < 0`
 - `fn popcount<W: Word>(x: W) -> Int` — \(O(1)\); The number of 1 bits in `x`'s 64-bit word, one `popcnt`: a negative `Int` counts its two's complement.
 - `fn ctz<W: Word>(x: W) -> Int` — \(O(1)\); The 0 bits below the lowest 1 bit of `x`'s 64-bit word; `ctz(0) == 64`.
 - `fn clz<W: Word>(x: W) -> Int` — \(O(1)\); The 0 bits above the highest 1 bit of `x`'s 64-bit word; `clz(0) == 64`.
@@ -107,45 +107,45 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `@get fn round(self: F64) -> Int` — \(O(1)\); `x` rounded to an `Int`, halves away from zero; traps outside `Int`.
 - `@get fn trunc(self: F64) -> Int` — \(O(1)\); `x` rounded toward zero to an `Int`; traps outside `Int`.
 - `fn bit_len(x: Int) -> Int` — \(O(1)\); The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.; traps: when `self < 0`
-- `fn digits(self: Int, base: Int = 10) -> List<Int>` — \(O(\mathit{log\_base} x)\); The digits of `x >= 0` in `base`, lowest first; `0` has the one digit `0`.; traps: when `self < 0` or `base < 2`
+- `fn digits(self: 0.., base: Int = 10) -> List<Int>` — \(O(\mathit{log\_base} x)\); The digits of `x >= 0` in `base`, lowest first; `0` has the one digit `0`.; traps: when `self < 0` or `base < 2`
 - `fn to_str(self: Int, base: Int = 10) -> Str` — \(O(\log \lvert \mathit{self} \rvert)\); `self` written in `base` (2..=36), highest digit first, lowercase letters past 9, a leading `-` when negative.; traps: when `base` is outside `2..=36`
 - `@get fn sign(self: Int) -> Sign` — \(O(1)\); The side of zero `self` is on: `Neg`, `Zero` or `Pos`.
-- `fn bit(self: Int, i: Int) -> Bool` — \(O(1)\); Whether bit `i` of `self` is set, bit 0 the lowest, in two's complement.; traps: when `i < 0`
+- `fn bit(self: Int, i: 0..) -> Bool` — \(O(1)\); Whether bit `i` of `self` is set, bit 0 the lowest, in two's complement.; traps: when `i < 0`
 - `@get fn is_pow2(self: Int) -> Bool` — \(O(1)\); Is `self` a power of two?
 - `fn splitmix64(x: U64) -> U64` — \(O(1)\); SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart.
-- `fn factor(x: Int) -> List<(Int, Int)>` — \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above; The prime factorization of `x >= 1` as `(prime, exponent)` pairs, for any 64-bit `Int`.; traps: when `x < 1`
+- `fn factor(x: 1..) -> List<(Int, Int)>` — \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above; The prime factorization of `x >= 1` as `(prime, exponent)` pairs, for any 64-bit `Int`.; traps: when `x < 1`
 - `fn divisors(self: Int) -> List<Int>` — \(O(\sqrt x)\); The positive divisors of `x >= 1`, ascending.; traps: when `x < 1`
 - `fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>` — \(O(d \log d)\) for `d` divisors; Every positive divisor of the number whose factorization is `factors`, ascending.; traps: when an exponent is negative, or a divisor overflows `Int`
-- `fn inv_mod(a: Int, m: Int) -> ?Int` — \(O(\log m)\); The modular inverse of `a` modulo `m >= 1`, in `0..m`, or `None` if `gcd(a, m) != 1`.; traps: when `m < 1`
-- `fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int)` — \(O(\log \min(m1, m2))\); The solution of `x = r1 (mod m1)`, `x = r2 (mod m2)` as `(r, m)` with `m = lcm(m1, m2)` and `0 <= r < m`, or `None` if there is None.; traps: when `m1 < 1` or `m2 < 1`, or `lcm(m1, m2)` overflows
+- `fn inv_mod(a: Int, m: 1..) -> ?Int` — \(O(\log m)\); The modular inverse of `a` modulo `m >= 1`, in `0..m`, or `None` if `gcd(a, m) != 1`.; traps: when `m < 1`
+- `fn crt(r1: Int, m1: 1.., r2: Int, m2: Int) -> ?(Int, Int)` — \(O(\log \min(m1, m2))\); The solution of `x = r1 (mod m1)`, `x = r2 (mod m2)` as `(r, m)` with `m = lcm(m1, m2)` and `0 <= r < m`, or `None` if there is None.; traps: when `m1 < 1` or `m2 < 1`, or `lcm(m1, m2)` overflows
 - `fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int)` — \(O(\mathit{eqs}.\mathit{len} \cdot \log \mathit{lcm})\); The solution of the system `x = r (mod m)` for every `(r, m)` in `eqs`, as `(r, m)` with `0 <= r < m`, or `None` if inconsistent: `crt` folded left to right from `(0, 1)`.; traps: when some `m < 1`, or the running lcm overflows
-- `fn mul_mod(a: Int, b: Int, m: Int) -> Int` — \(O(1)\); `a * b mod m` without overflow, in `0..m` for `m >= 1`: through `I128` when the product could leave `Int`.; traps: when `m < 1`
-- `fn pow_mod(a: Int, e: Int, m: Int) -> Int` — \(O(\log e)\) multiplications, each \(O(1)\); `a ** e mod m`, in `0..m`, for `e >= 0` and `m >= 1`; `a ** 0` is `1 % m`.; traps: when `e < 0` or `m < 1`
+- `fn mul_mod(a: Int, b: Int, m: 1..) -> Int` — \(O(1)\); `a * b mod m` without overflow, in `0..m` for `m >= 1`: through `I128` when the product could leave `Int`.; traps: when `m < 1`
+- `fn pow_mod(a: Int, e: 0.., m: Int) -> Int` — \(O(\log e)\) multiplications, each \(O(1)\); `a ** e mod m`, in `0..m`, for `e >= 0` and `m >= 1`; `a ** 0` is `1 % m`.; traps: when `e < 0` or `m < 1`
 - `fn is_prime(x: Int) -> Bool` — \(O(\log^2 x)\); Is `x` prime?
-- `fn phi(x: Int) -> Int` — \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above; Euler's totient of `x >= 1`: how many of `1..=x` are coprime to `x`.; traps: when `x < 1`
-- `fn pow_exp(a: Int, x: Exp, m: Int) -> Exp` — \(O(\log x.v)\) multiplications, each \(O(1)\); `a ** e` kept for the modulus `m`, where `x` keeps `e` for `phi(m)`: `pow_exp(a, x, m).v % m` is `a ** e mod m`, and the result is the exponent the next modulus up, the `M` with `phi(M) == m`, raises by.; traps: when `a < 0` or `m < 1`
+- `fn phi(x: 1..) -> Int` — \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above; Euler's totient of `x >= 1`: how many of `1..=x` are coprime to `x`.; traps: when `x < 1`
+- `fn pow_exp(a: 0.., x: Exp, m: Int) -> Exp` — \(O(\log x.v)\) multiplications, each \(O(1)\); `a ** e` kept for the modulus `m`, where `x` keeps `e` for `phi(m)`: `pow_exp(a, x, m).v % m` is `a ** e mod m`, and the result is the exponent the next modulus up, the `M` with `phi(M) == m`, raises by.; traps: when `a < 0` or `m < 1`
 - `fn pow_tower(xs: List<Int>, m: Int) -> Int` — \(O(k \log m)\) multiplications and \(O(\min(k, \log m))\) `phi` calls; The power tower `xs[0] ** (xs[1] ** (...; traps: when an entry is negative or `m < 1`
 - `fn primitive_root(p: Int) -> Int` — \(O(p^{1/4} \log p)\) expected to factor `p - 1`, then \(O(\log^2 p)\) per candidate; The smallest primitive root modulo the prime `p`: the least `g >= 1` whose powers reach every non-zero residue.; traps: when `p` is not prime
-- `fn mod_log(a: Int, b: Int, m: Int) -> ?Int` — \(O(\sqrt m)\); The least `x >= 0` with `a^x = b (mod m)`, or `None` if there is None.; traps: when `m < 1`
+- `fn mod_log(a: Int, b: Int, m: 1..) -> ?Int` — \(O(\sqrt m)\); The least `x >= 0` with `a^x = b (mod m)`, or `None` if there is None.; traps: when `m < 1`
 - `fn mod_sqrt(a: Int, p: Int) -> ?Int` — \(O(\log^2 p)\); A square root `x` in `0..p` with `x * x = a (mod p)` for prime `p`, or `None` if `a` is a quadratic non-residue (Tonelli-Shanks).; traps: when `p` is not prime
-- `fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int` — \(O(\log m)\); The sum of `(a * i + b) / m` over `i` in `0..n`, with floor (Euclidean) division, by the Euclid-like reduction.; traps: when `n < 0` or `m < 1`, or the sum overflows
+- `fn floor_sum(n: 0.., m: Int, a: Int, b: Int) -> Int` — \(O(\log m)\); The sum of `(a * i + b) / m` over `i` in `0..n`, with floor (Euclidean) division, by the Euclid-like reduction.; traps: when `n < 0` or `m < 1`, or the sum overflows
 - `fn primes_in(lo: Int, hi: Int) -> List<Int>` — \(O((\mathit{hi} - \mathit{lo}) \log \log \mathit{hi} + \sqrt \mathit{hi})\); Every prime in `lo..hi`, sieved block by block; `[]` when the range is empty or below 2.
 - `fn prime_count(n: Int) -> Int` — \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory; The number of primes `<= n` (Lucy_Hedgehog); 0 for `n < 2`.
-- `fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: Int)` — \(O(\sqrt n)\); Each distinct floor quotient `q = n / i` for `i` in `from..=n`, with the half-open range `lo..hi` of the `i` that give it.; traps: when `from < 1`
-- `fn each_divisor(x: Int) -> yields Int` — \(O(x^{1/4} + d(x))\) expected; Each positive divisor of `x >= 1`, from `factor(x)`, without building a list.; traps: when `x < 1`
-- `fn submasks(mask: Int) -> yields Int` — \(O(2^\mathit{popcount}(\mathit{mask}))\); Every submask of `mask`, in descending order, ending with 0.; traps: when `mask < 0`
-- `fn bit_subsets(n: Int, k: Int) -> yields Int` — \(O(C(n, k))\); Every subset of `0..n` with exactly `k` elements, as a bitmask, in ascending order (Gosper's hack).; traps: when `n < 0`, `k < 0` or `n > 62`
-- `fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: Int) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet convolution `(a * b)[k] = sum_{d \| k} a[d] * b[k / d]` for `k` in `1..=n`.; traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
-- `fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: Int) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet inverse of `a` on `1..=n`: the `b` with `a * b` the unit (1 at 1, 0 elsewhere).; traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
+- `fn floor_quotients(n: Int, from: 1.. = 1) -> yields (q: Int, lo: Int, hi: Int)` — \(O(\sqrt n)\); Each distinct floor quotient `q = n / i` for `i` in `from..=n`, with the half-open range `lo..hi` of the `i` that give it.; traps: when `from < 1`
+- `fn each_divisor(x: 1..) -> yields Int` — \(O(x^{1/4} + d(x))\) expected; Each positive divisor of `x >= 1`, from `factor(x)`, without building a list.; traps: when `x < 1`
+- `fn submasks(mask: 0..) -> yields Int` — \(O(2^\mathit{popcount}(\mathit{mask}))\); Every submask of `mask`, in descending order, ending with 0.; traps: when `mask < 0`
+- `fn bit_subsets(n: 0.., k: Int) -> yields Int` — \(O(C(n, k))\); Every subset of `0..n` with exactly `k` elements, as a bitmask, in ascending order (Gosper's hack).; traps: when `n < 0`, `k < 0` or `n > 62`
+- `fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: 0..) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet convolution `(a * b)[k] = sum_{d \| k} a[d] * b[k / d]` for `k` in `1..=n`.; traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
+- `fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: 0..) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet inverse of `a` on `1..=n`: the `b` with `a * b` the unit (1 at 1, 0 elsewhere).; traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
 - `fn sum_phi(n: Int) -> Int` — \(O(n^{2/3})\) time and memory; The totient summatory function `sum_{k=1..=n} phi(k)`; 0 for `n <= 0`.; traps: when the sum overflows `Int`
 - `fn sum_mobius(n: Int) -> Int` — \(O(n^{2/3})\) time and memory; The Mertens function `sum_{k=1..=n} mu(k)`; 0 for `n <= 0`.
 - `fn sum_multiplicative<T: Add + Sub + Mul>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum: List<T>) -> T` — \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory; The prefix sum `sum_{k=1..=n} f(k)` of a multiplicative `f` (Min_25 sieve).; traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`
 - `fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x: Int, step_y: Int)` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); Every integer solution of `a*x + b*y = c` as `x = x0 + k * step_x`, `y = y0 - k * step_y`, or `None` if `gcd(a, b)` does not divide `c`.; traps: when `a == b == 0` (the solutions are not one family), or `y0` overflows
-- `fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int)` — \(O(\log m)\); The solutions of `a * x = b (mod m)` as `x = r (mod step)`: the least `r` in `0..step` and the period `step = m / gcd(a, m)`, or `None` if `gcd(a, m)` does not divide `b`.; traps: when `m < 1`
+- `fn linear_congruence(a: Int, b: Int, m: 1..) -> ?(r: Int, step: Int)` — \(O(\log m)\); The solutions of `a * x = b (mod m)` as `x = r (mod step)`: the least `r` in `0..step` and the period `step = m / gcd(a, m)`, or `None` if `gcd(a, m)` does not divide `b`.; traps: when `m < 1`
 - `fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int` — \(O(p^{1/4} + \sqrt p)\) expected to find one root, plus \(O(\mathit{gcd}(k, p - 1))\) to pick the least; The least `x` in `0..p` with `x^k = a (mod p)` for prime `p` and `k >= 1`, or `None`.; traps: when `p` is not prime or `k < 1`
-- `fn mult_order(a: Int, m: Int) -> ?Int` — \(O(m^{1/4} \log m)\) expected; The multiplicative order of `a` modulo `m >= 1`: the least `k >= 1` with `a^k = 1 (mod m)`, or `None` if `gcd(a, m) != 1`.; traps: when `m < 1`
+- `fn mult_order(a: Int, m: 1..) -> ?Int` — \(O(m^{1/4} \log m)\) expected; The multiplicative order of `a` modulo `m >= 1`: the least `k >= 1` with `a^k = 1 (mod m)`, or `None` if `gcd(a, m) != 1`.; traps: when `m < 1`
 - `fn jacobi(a: Int, n: Int) -> Int` — \(O(\log n)\); The Jacobi symbol `(a / n)`, one of -1, 0 and 1, for odd `n > 0`; 0 exactly when `gcd(a, n) != 1`.; traps: when `n <= 0` or `n` is even
-- `fn carmichael(n: Int) -> Int` — \(O(n^{1/4} \log n)\) expected; Carmichael's function `lambda(n)` for `n >= 1`: the least `k >= 1` with `a^k = 1 (mod n)` for every `a` coprime to `n`.; traps: when `n < 1`
+- `fn carmichael(n: 1..) -> Int` — \(O(n^{1/4} \log n)\) expected; Carmichael's function `lambda(n)` for `n >= 1`: the least `k >= 1` with `a^k = 1 (mod n)` for every `a` coprime to `n`.; traps: when `n < 1`
 - `fn min_mod_in_range(a: Int, m: Int, lo: Int, hi: Int) -> ?Int` — \(O(\log m)\); The least `x >= 0` with `lo <= (a * x) % m <= hi`, or `None`; `a` is reduced first.; traps: unless `m >= 1` and `0 <= lo <= hi < m`
 - `fn continued_fraction(p: Int, q: Int) -> List<Int>` — \(O(\log \min(\lvert p \rvert, \lvert q \rvert))\); The continued fraction `[a0, a1, ...]` of `p / q`, `q > 0`, by the Euclidean algorithm with floor division.; traps: when `q <= 0`
 - `fn best_rational(num: Int, den: Int, max_den: Int) -> Ratio` — \(O(\log \mathit{max\_den})\); The reduced fraction `p / q` with `1 <= q <= max_den` closest to `num / den` (Stern-Brocot).; traps: when `den == 0` or `max_den < 1`

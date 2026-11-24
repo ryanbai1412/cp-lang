@@ -18,19 +18,23 @@ An integer modulo the constant `P`, always stored in `0..P`.
 - `fn log(self, target: Mod<P>) -> ?Int` — \(O(\sqrt P)\); The least `k >= 0` with `self ** k == target` (baby-step giant-step), or `None`.
 - `fn inv_all(xs: List<Mod<P>>) -> List<Mod<P>>` — \(O(n + \log P)\); The inverse of every element of `xs`, with one `inv` in all (Montgomery's trick).; traps: when any element has `gcd(v, P) != 1` (in particular 0)
 
+## `trait Residue`
+
+A number held as its residue in `0..modulus()`, so a sum of many residue products can stay unreduced and be reduced once: `Mat` products use it.
+
 ## `struct Comb<M: Add + Sub + Mul>`
 
 Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 
-- `fn new(limit: Int = 0) -> Comb<M>` — \(O(\min(\mathit{limit}, P))\); Precompute factorials and inverse factorials up to `limit` for `M = Mod<P>`, `P` prime.; traps: when `limit < 0`, or `P` is not prime
-- `fn fact(self, n: Int) -> M` — \(O(1)\) amortized; `n!`, reduced; 0 when `n >= M.MOD` (the product contains `P`).; traps: when `n < 0`
+- `fn new(limit: 0.. = 0) -> Comb<M>` — \(O(\min(\mathit{limit}, P))\); Precompute factorials and inverse factorials up to `limit` for `M = Mod<P>`, `P` prime.; traps: when `limit < 0`, or `P` is not prime
+- `fn fact(self, n: 0..) -> M` — \(O(1)\) amortized; `n!`, reduced; 0 when `n >= M.MOD` (the product contains `P`).; traps: when `n < 0`
 - `fn inv_fact(self, n: Int) -> M` — \(O(1)\) amortized; `1 / n!`, for `0 <= n < M.MOD`.; traps: when `n` is outside `0..M.MOD`
 - `fn inv(self, i: Int) -> M` — \(O(1)\) amortized; `1 / i`, for `1 <= i < M.MOD`: one load from a table of `(i - 1)!; traps: when `i` is outside `1..M.MOD`
 - `fn choose(self, n: Int, k: Int) -> M` — \(O(1)\) amortized for `n < M.MOD`; \(O(\mathit{log\_P} n)\) otherwise; The number of `k`-subsets of `n` things, `n!
 - `fn arrange(self, n: Int, k: Int) -> M` — \(O(1)\) amortized; The number of ordered selections of `k` out of `n` things, `n!
 - `fn multichoose(self, n: Int, k: Int) -> M` — \(O(1)\) amortized; The number of ways to put `n` equal balls into `k` boxes (stars and bars): `choose(n + k - 1, n)`.
-- `fn catalan(self, n: Int) -> M` — \(O(1)\) amortized; The `n`-th Catalan number, `choose(2n, n) - choose(2n, n + 1)`.; traps: when `n < 0`
-- `fn derange(self, n: Int) -> M` — \(O(1)\) amortized, \(O(n)\) table; The number of derangements `!n`: permutations of `n` things with no fixed point.; traps: when `n < 0`
+- `fn catalan(self, n: 0..) -> M` — \(O(1)\) amortized; The `n`-th Catalan number, `choose(2n, n) - choose(2n, n + 1)`.; traps: when `n < 0`
+- `fn derange(self, n: 0..) -> M` — \(O(1)\) amortized, \(O(n)\) table; The number of derangements `!n`: permutations of `n` things with no fixed point.; traps: when `n < 0`
 - `fn multinomial(self, ks: List<Int>) -> M` — \(O(\mathit{ks}.\mathit{len})\) amortized; The multinomial coefficient `(sum ks)!
 
 ## `struct Barrett(pub m: Int, im: U64)`
@@ -56,7 +60,7 @@ Fields: `free: List<Int>`.
 
 Fields: `parts: List<PrimePowerComb>`.
 
-- `fn new(m: Int) -> ModComb` — \(O(\sum_i p_i^{e_i})\) for \(m = \prod_i p_i^{e_i}\); Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per prime power, combined by CRT.; traps: when `m < 1`
+- `fn new(m: 1..) -> ModComb` — \(O(\sum_i p_i^{e_i})\) for \(m = \prod_i p_i^{e_i}\); Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per prime power, combined by CRT.; traps: when `m < 1`
 - `fn choose(self, n: Int, k: Int) -> Int` — \(O(\mathit{omega}(m) \log n)\); `C(n, k) mod m`, by CRT over the prime powers of `m`; 0 when `k` is outside `0..=n`.
 
 ## Example

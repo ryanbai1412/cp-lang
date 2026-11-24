@@ -6,6 +6,10 @@ Ranges of positions: their end cuts, halving, binary search and the cyclic `Ring
 
 In prelude (no `use` needed): `RingRange`.
 
+## `trait Search`
+
+What `bsearch` searches over, and what it finds: the cut where `ok` flips on a domain or an `Int` range, the flip point within `steps` halvings on a `Range<F64>` (decisions 419, 456).
+
 ## `struct RingRange<D>()`
 
 A run of positions of `D` read cyclically, possibly wrapping past the last position, at most `D.count` of them.
@@ -28,7 +32,7 @@ A run of positions of `D` read cyclically, possibly wrapping past the last posit
 - `fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>` — \(O(1)\)
 - `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the first element or `None`; The first element where `ok`, false then true along `r`, holds; `None` when it never does.; traps: when `ok` is true at the start and false at the end; any other `ok` that is not
 - `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the last element or `None`; The last element where `ok`, true then false along `r`, holds; `None` when it never does.; traps: when `ok` is false at the start and true at the end; any other `ok` that is not
-- `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end of `r`; The cut where `ok` flips: false then true along `r` by default, true then false with `last: true`.; traps: when `ok` flips the other way (true then false by default, false then true with
+- `fn bsearch<D: Search>(self: Range<D>, ok: D -> Bool, last: Bool = false, steps: ?Int = None) -> D.Found` — \(O(\log n)\) calls of `ok` on \(n\) positions, plus one when the cut is an end; exactly; Where `ok` flips: false then true along `self` by default, true then false with `last: true`.; traps: when `ok` flips the other way (true then false by default, false then true with
 - `fn shift<D>(self: D, r: Range<Int>) -> Range<D>` — \(O(1)\); The elements at distances `r` after `self`, clipped to its domain and possibly empty.
 - `fn shift_saturating<D>(self: D, k: Int) -> D` — \(O(1)\); The position `k` steps from `self`, stopping at the domain's first or last: `v.next(k)` that saturates instead of giving `None`.; traps: never (a domain with a position is not empty)
 - `@get fn ends<D>(self: Range<D>) -> (Int, Int)` — \(O(1)\); The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.; traps: when the range is written backwards

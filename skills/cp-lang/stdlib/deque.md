@@ -26,7 +26,7 @@ Fields: `buf: List<T>`, `head: Int`, `n: Int`, `mask: Int`, `want: Int`.
 - `fn pop_front_while(mut self, ok: T -> Bool) -> List<T>` — \(O(k)\) for `k` removed
 - `fn pop_while(mut self, ok: T -> Bool) -> List<T>` — \(O(k)\) for `k` removed; Pop from the back while `ok` holds; the popped values, back first.
 - `@get fn first(self) -> ?T` — \(O(1)\); The front, or `None` when empty.
-- `@get fn last(self, k: Int = 0) -> ?T` — \(O(1)\); The back, or `None` when empty.; traps: when `k < 0`
+- `@get fn last(self, k: 0.. = 0) -> ?T` — \(O(1)\); The back, or `None` when empty.; traps: when `k < 0`
 - `@get fn items(self) -> yields (Int, T)` — \(O(1)\) to make, \(O(1)\) per step; Each element with its place from the front: `for (i, x) in dq.items`.
 - `fn get(self, i: Int) -> T` — \(O(1)\); The `i`-th element from the front.; traps: when `i` is not in `0..len`
 - `fn set(mut self, i: Int, x: T)` — \(O(1)\); Overwrite the `i`-th element from the front (W8 `IndexSet` backing `dq[i] = x`).; traps: when `i` is not in `0..len`
@@ -53,8 +53,8 @@ Fields: `head: Int`, `tail: Int`, `nx: List<Int>`, `pv: List<Int>`, `val: List<T
 - `fn push_front(mut self, x: T)` — \(O(1)\); Prepend `x` to the front.
 - `fn pop(mut self) -> ?T` — \(O(1)\); Remove and return the back element, or `None` if empty.
 - `fn pop_front(mut self) -> ?T` — \(O(1)\); Remove and return the front element, or `None` if empty.
-- `fn splice_back(mut self, other: LinkedList<T>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\); Splice all elements of `other` onto the back of `self`, consuming `other`.
-- `fn splice_front(mut self, other: LinkedList<T>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\); Splice all elements of `other` onto the front of `self`, consuming `other`.
+- `fn splice_back(mut self, mut other: LinkedList<T>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\); Splice all elements of `other` onto the back of `self`, leaving `other` empty.
+- `fn splice_front(mut self, mut other: LinkedList<T>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\); Splice all elements of `other` onto the front of `self`, leaving `other` empty.
 - `fn reverse(mut self)` — \(O(1)\); Reverse the list in place.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
 - `fn each(self) -> yields T` — \(O(1)\) per step; Yield elements front to back.

@@ -16,8 +16,8 @@ Offline segment tree over time `[0, q)` holding events of type `E` active on hal
 
 Fields: `size: Int`, `ev_val: List<E>`.
 
-- `fn new(q: Int) -> TimeTree<E>` — \(O(q)\) time and memory; An empty timeline of `q` time slots `0..q`, with no events scheduled yet.; traps: when `q < 0`
-- `fn add_interval(mut self, lo: Int, hi: Int, ev: E)` — \(O(\log q)\); Schedule `ev` to be active at every time slot in `lo..hi` (half-open).; traps: when `lo < 0` or `hi > q` on a non-empty range
+- `fn new(q: 0..) -> TimeTree<E>` — \(O(q)\) time and memory; An empty timeline of `q` time slots `0..q`, with no events scheduled yet.; traps: when `q < 0`
+- `fn add_interval(mut self, lo: 0.., hi: Int, ev: E)` — \(O(\log q)\); Schedule `ev` to be active at every time slot in `lo..hi` (half-open).; traps: when `lo < 0` or `hi > q` on a non-empty range
 - `fn event(self, id: Int) -> E` — \(O(1)\); The event carried by `TimeStep.Apply(id)`.; traps: when `id` is not an id that some `Apply` step carries
 - `fn steps(self) -> List<TimeStep>` — \(O(q + m \log q)\) time and memory for `m` scheduled ranges; The whole depth-first walk over `0..q` as a list.
 - `fn run<M, R>(self, mark: () -> M, apply: E -> (), answer: Int -> R, undo: M -> ()) -> List<R>` — \(O(q + m \log q)\) callback calls for `m` scheduled ranges, \(O(\log q)\) extra stack; Walk the same order as `steps` with callbacks instead of a list.; traps: never (callbacks may trap)

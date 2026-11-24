@@ -53,7 +53,7 @@ Fields: `lo: Int`, `hi: Int`.
 
 ## Functions
 
-- `fn window_fold<S: Indexed, T, M>(self: S, k: Int, op: M) -> yields T` — \(O(n)\) amortized calls of `op`; One fold of `op` per length-`k` window of `self`, left to right, kept the way `Window(op)` keeps it (two stacks).; traps: when `k < 1`
+- `fn window_fold<S: Indexed, T, M>(self: S, k: 1.., op: M) -> yields T` — \(O(n)\) amortized calls of `op`; One fold of `op` per length-`k` window of `self`, left to right, kept the way `Window(op)` keeps it (two stacks).; traps: when `k < 1`
 - `fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T>` — \(O(1)\); A `Track` over any structure: `add(mut state, x)` applies an element at the back and `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`.
 - `fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T>` — \(O(1)\); `Undoing` over `state`, holding no elements; see there.
 

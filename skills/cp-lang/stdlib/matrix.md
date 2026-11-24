@@ -15,10 +15,10 @@ Fields: `cells: List<T>`.
 - `@get fn data(self) -> List<T>` — The entries, row by row, as a new list: `get(r, c)` is `data[r * cols + c]`.
 - `fn new<R, C, S>(a: [R, C]T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
 - `fn of(rows: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read as nested lists.; traps: when the rows differ in length
-- `fn filled<S>(rows: Int, cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`
-- `fn zeros(rows: Int, cols: Int) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix of `T.zero`.; traps: when `rows < 0` or `cols < 0`
-- `fn identity(n: Int) -> Mat<T>` — \(O(n^2)\) time and space; The `n x n` identity matrix: `T.one` on the diagonal, `T.zero` elsewhere.; traps: when `n < 0`
-- `fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a `rows x cols` matrix from a flat row-major list of length `rows * cols`: entry `(r, c)` is `data[r * cols + c]`.; traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
+- `fn filled<S>(rows: 0.., cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`
+- `fn zeros(rows: 0.., cols: Int) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix of `T.zero`.; traps: when `rows < 0` or `cols < 0`
+- `fn identity(n: 0..) -> Mat<T>` — \(O(n^2)\) time and space; The `n x n` identity matrix: `T.one` on the diagonal, `T.zero` elsewhere.; traps: when `n < 0`
+- `fn from_flat(rows: 0.., cols: Int, data: List<T>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a `rows x cols` matrix from a flat row-major list of length `rows * cols`: entry `(r, c)` is `data[r * cols + c]`.; traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
 - `fn from_rows(grid: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.; traps: when the rows differ in length
 - `fn get(self, r: Int, c: Int) -> T` — \(O(1)\); The entry at `(r, c)`, 0-based.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn sum(self) -> T` — \(O(\mathit{rows} \cdot \mathit{cols})\); Every entry added up under the matrix's own `+` (the `over:` semiring's add): the number of walks a power counts, or the best entry under `Semiring(max, +)`.
@@ -26,7 +26,7 @@ Fields: `cells: List<T>`.
 - `fn at(mut self, r: Int, c: Int) -> lends mut T` — \(O(1)\); The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn transpose(self) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; The transpose, a new `cols x rows` matrix with entry `(c, r)` equal to `self`'s `(r, c)`.
 - `fn mul_vec(self, v: List<T>) -> List<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time, \(O(\mathit{rows})\) space; The matrix-vector product `self * v` under the matrix's semiring: entry `r` folds `get(r, c) * v[c]` over `c` with the semiring's addition.; traps: when `v.len != cols`
-- `fn product<S>(n: Int, over: S = Semiring(+, *)) -> Monoid<Mat<T>>` — \(O(n^2)\) time and space (for the identity); The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`): identity the semiring's identity matrix, op `*`, which is associative but not commutative.; traps: when `n < 0`
+- `fn product<S>(n: 0.., over: S = Semiring(+, *)) -> Monoid<Mat<T>>` — \(O(n^2)\) time and space (for the identity); The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`): identity the semiring's identity matrix, op `*`, which is associative but not commutative.; traps: when `n < 0`
 - `fn det(self, eps: ?T = None) -> T` — \(O(n^3)\) time, \(O(n^2)\) space; The determinant over a field, by Gaussian elimination.; traps: when the matrix is not square, or an inverse it needs does not exist (a non-field `T`)
 - `fn rank(self, eps: ?T = None) -> Int` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space; The rank over a field: the number of pivots elimination finds, pivoting as `det` does.; traps: never for a field `T`
 - `fn solve_space(self, b: List<T>, eps: ?T = None) -> ?(List<T>, List<List<T>>)` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space; Solve `self * x = b` over a field.; traps: when `b.len != rows`
@@ -50,11 +50,11 @@ Fields: `basis: List<Int>`, `size: Int`.
 
 - `fn new() -> XorBasis` — \(O(W)\); An empty basis of rank 0, whose span is `{0}`.
 - `@get fn rank(self) -> Int` — \(O(1)\); The number of linearly independent vectors in the basis: the span has `2^rank` elements.
-- `fn add(mut self, x: Int) -> Bool` — \(O(W)\); Insert `x >= 0` into the basis.; traps: when `x < 0`
-- `fn reduce(self, x: Int) -> Int` — \(O(W)\); Reduce `x >= 0` against the basis: the minimum of `x ^ s` over `s` in the span, which is 0 iff `x` is in the span.; traps: when `x < 0`
-- `fn contains(self, x: Int) -> Bool` — \(O(W)\); Whether `x >= 0` is a XOR-combination of basis vectors: `reduce(x) == 0`.; traps: when `x < 0`
-- `fn max_xor(self, init: Int = 0) -> Int` — \(O(W)\); The maximum value of `init ^ s` over all `s` in the span.; traps: when `init < 0`
-- `fn min_xor(self, init: Int = 0) -> Int` — \(O(W)\); The minimum value of `init ^ s` over all `s` in the span: the same as `reduce(init)`, and 0 for the default `init`.; traps: when `init < 0`
+- `fn add(mut self, x: 0..) -> Bool` — \(O(W)\); Insert `x >= 0` into the basis.; traps: when `x < 0`
+- `fn reduce(self, x: 0..) -> Int` — \(O(W)\); Reduce `x >= 0` against the basis: the minimum of `x ^ s` over `s` in the span, which is 0 iff `x` is in the span.; traps: when `x < 0`
+- `fn contains(self, x: 0..) -> Bool` — \(O(W)\); Whether `x >= 0` is a XOR-combination of basis vectors: `reduce(x) == 0`.; traps: when `x < 0`
+- `fn max_xor(self, init: 0.. = 0) -> Int` — \(O(W)\); The maximum value of `init ^ s` over all `s` in the span.; traps: when `init < 0`
+- `fn min_xor(self, init: 0.. = 0) -> Int` — \(O(W)\); The minimum value of `init ^ s` over all `s` in the span: the same as `reduce(init)`, and 0 for the default `init`.; traps: when `init < 0`
 - `fn kth(self, k: Int) -> ?Int` — \(O(W^2)\); The 0-indexed `k`-th smallest value in the span, or `None` if `k < 0` or `k >= 2^rank`.
 - `fn merge(mut self, o: XorBasis)` — \(O(W \cdot o.\mathit{rank})\); Merge another basis into `self`, so `self` spans the union of both spans; `o` is unchanged.
 - `fn monoid() -> Monoid<XorBasis>` — \(O(W)\) (for the identity); The monoid under basis merge (usable in `SegTree`): identity the empty basis, op the merged basis.
@@ -74,8 +74,8 @@ Bit-packed dense matrix over GF(2) with word-parallel elimination.
 
 Fields: `bits: List<Int>`.
 
-- `fn new(rows: Int, cols: Int) -> BitMat` — \(O(\mathit{rows} \cdot \mathit{cols} / 64)\) time and space; A zero GF(2) matrix of `rows x cols`, one bit per entry.; traps: when `rows < 0` or `cols < 0`
-- `fn identity(n: Int) -> BitMat` — \(O(n^2 / 64)\) time and space; The `n x n` GF(2) identity matrix.; traps: when `n < 0`
+- `fn new(rows: 0.., cols: Int) -> BitMat` — \(O(\mathit{rows} \cdot \mathit{cols} / 64)\) time and space; A zero GF(2) matrix of `rows x cols`, one bit per entry.; traps: when `rows < 0` or `cols < 0`
+- `fn identity(n: 0..) -> BitMat` — \(O(n^2 / 64)\) time and space; The `n x n` GF(2) identity matrix.; traps: when `n < 0`
 - `fn get(self, r: Int, c: Int) -> Bool` — \(O(1)\); Read bit `(r, c)`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn set(mut self, r: Int, c: Int, v: Bool)` — \(O(1)\); Write bit `(r, c)`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn det(self) -> Bool` — \(O(n^2 + n^3 / 64)\); The determinant over GF(2): `true` iff the matrix is invertible.; traps: when the matrix is not square
@@ -92,15 +92,15 @@ Fields: `bits: List<Int>`.
 Fields: `vecs: List<Int>`, `from: List<Int>`.
 
 - `fn new() -> PrefixXorBasis` — \(O(1)\); An empty prefix XOR basis, with no positions pushed.
-- `fn push(mut self, x: Int)` — \(O(62)\) time and space; Append `x` at the next position (`0`, `1`, ...), keeping for each bit the basis vector with the rightmost source index, so any subarray's span reads off the vectors whose index lies in it.; traps: when `x < 0` or `x >= 2^62`
+- `fn push(mut self, x: 0..)` — \(O(62)\) time and space; Append `x` at the next position (`0`, `1`, ...), keeping for each bit the basis vector with the rightmost source index, so any subarray's span reads off the vectors whose index lies in it.; traps: when `x < 0` or `x >= 2^62`
 - `fn max_xor(self, r: Range<Int>, init: Int = 0) -> Int` — \(O(62)\); The maximum `init ^ s` for `s` in the span of the values at positions `r`.; traps: when `r` is non-empty and reaches outside `0..len`, or `init < 0`
 - `fn contains(self, r: Range<Int>, x: Int) -> Bool` — \(O(62)\); Whether `x` is in the span of the values at positions `r`.; traps: when `r` is non-empty and reaches outside `0..len`, or `x < 0`
 - `fn rank(self, r: Range<Int>) -> Int` — \(O(62)\); The rank (dimension) of the span of the values at positions `r`.; traps: when `r` is non-empty and reaches outside `0..len`
 
 ## Functions
 
-- `fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>` — \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space; The determinant of a sparse `n x n` matrix via Wiedemann's algorithm.; traps: when `n < 0` or a row or column is not in `0..n`
-- `fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>` — \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space; Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in `sparse_det`.; traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
+- `fn sparse_det<P>(n: 0.., entries: List<(Int, Int, Mod<P>)>) -> Mod<P>` — \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space; The determinant of a sparse `n x n` matrix via Wiedemann's algorithm.; traps: when `n < 0` or a row or column is not in `0..n`
+- `fn sparse_solve<P>(n: 0.., entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>` — \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space; Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in `sparse_det`.; traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
 - `fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>)` — \(O(\mathit{pivots} \cdot \mathit{rows} \cdot \mathit{cols})\) time, the pivots typically \(O(\mathit{rows} + \mathit{cols})\) and exponential in the worst case; \(O(\mathit{rows} \cdot \mathit{cols})\) space; Maximize `c .; traps: when `b.len != a.rows` or `c.len != a.cols`
 
 ## Example

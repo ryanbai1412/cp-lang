@@ -118,7 +118,7 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn root_of(self, v: V) -> V` — \(O(1)\); The first cycle vertex reached from `v` (`v` itself on a cycle): the root of the in-tree hanging off the cycle that holds `v`.
 - `fn depth(self, v: V) -> Int` — \(O(1)\); The steps from `v` to `root_of(v)`; `0` on a cycle.
 - `fn cycle_len(self, v: V) -> Int` — \(O(1)\); The length of the cycle `v` eventually reaches.
-- `fn after(self, v: V, k: Int) -> V` — \(O(\log k)\); The vertex `k` steps after `v`, by jump pointers: `after(v, 0) == v`.; traps: when `k < 0`
+- `fn after(self, v: V, k: 0..) -> V` — \(O(\log k)\); The vertex `k` steps after `v`, by jump pointers: `after(v, 0) == v`.; traps: when `k < 0`
 - `fn jump_while(self, v: V, pred: V -> Bool) -> ?V` — \(O(\log n)\); The first vertex `u` on the walk from `v`, `v` included, with `pred(u)`, or `None` if None appears.
 - `fn dist(self, a: V, b: V) -> ?Int` — \(O(\log n)\); The fewest steps from `a` to `b`, or `None` if the walk from `a` never reaches `b`; `dist(a, a) == Some(0)`.
 - `fn cycles(self) -> List<List<V>>` — \(O(n)\); Every cycle once, each in walk order from its smallest vertex.
@@ -191,7 +191,7 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn triangles<V: Ord>(g: Next<V>) -> yields (V, V, V)` — \(O(m \sqrt m)\) total, \(O(1)\) per item; Every triangle of an undirected simple graph once.
 - `fn max_clique<V: Ord>(adj: [V]Bitset<V>) -> List<V>` — \(O(3^{n/3})\) worst case; A maximum clique of the undirected graph given as bitset rows (Bron-Kerbosch with pivoting); `n` up to about 64 in contests.
 - `fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int` — \(O(2^n n)\); The fewest colours such that no edge joins two vertices of one colour, by inclusion-exclusion over independent sets.
-- `fn de_bruijn(k: Int, n: Int) -> List<Int>` — \(O(k^n)\); The de Bruijn sequence over `0..k` of order `n`: a cyclic sequence of length `k^n` in which every length-`n` word appears once.; traps: when `k < 1` or `n < 1`
+- `fn de_bruijn(k: 1.., n: Int) -> List<Int>` — \(O(k^n)\); The de Bruijn sequence over `0..k` of order `n`: a cyclic sequence of length `k^n` in which every length-`n` word appears once.; traps: when `k < 1` or `n < 1`
 - `fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(edges: [E]R, by: R -> K = e => e.w) -> (total: W, take: [E]Bool)` — \(O(m \log m)\); A minimum spanning forest by Kruskal, as its total weight and the chosen edges.
 - `fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V)` — \(O(n^2)\); A minimum spanning tree of the dense graph `w` (Prim without a heap), rooted at `V.first`; `None` if it is disconnected.
 - `fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (total: W, edges: List<(u: V, v: V)>)` — \(O(n \log n)\) plus the calls of `cheapest`: \(O(\log n)\) rounds, each \(O(n)\); A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST, Manhattan MST).; traps: when `cheapest` returns a list whose length is not the number of components

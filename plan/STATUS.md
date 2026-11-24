@@ -333,6 +333,9 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 Process costing more than 10% of a change is skipped with a trailer
 (`handbook/process/handbook-and-rfcs.md`); this counts them.
 
+Process costing more than 10% of a change is skipped with a trailer
+(`handbook/process/handbook-and-rfcs.md`); this counts them.
+
 | Day | Lane | Skipped |
 |---|---|---|
 | 2026-11-24 | tools | 4 |

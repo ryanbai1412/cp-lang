@@ -69,7 +69,7 @@ Wavelet matrix over non-negative integer values: \(O(\log V)\) range k-th smalle
 Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `words: List<U64>`, `before: List<Int>`, `zsum: List<Int>`.
 
 - `fn new(a: [D]Int) -> WaveletMatrix<D>` — \(O(\lvert D \rvert \log V)\) time and memory; A wavelet matrix over the non-negative values of `a`, with one bit level per bit of the largest value (`V` below is that value plus one).; traps: when some value is negative
-- `fn kth(self, r: Range<D>, k: Int) -> ?Int` — \(O(\log V)\); The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
+- `fn kth(self, r: Range<D>, k: 0..) -> ?Int` — \(O(\log V)\); The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
 - `fn rank(self, r: Range<D>, x: Int) -> Int` — \(O(\log V)\); The number of positions in `r` holding exactly `x`; 0 for any `x` outside `0..V`.; traps: when a non-empty `r` reaches outside `D`
 - `fn count_lt(self, r: Range<D>, x: Int) -> Int` — \(O(\log V)\); The number of positions in `r` whose value is `< x`.; traps: when a non-empty `r` reaches outside `D`
 - `fn count_in(self, r: Range<D>, lo_v: Int, hi_v: Int) -> Int` — \(O(\log V)\); The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
@@ -88,7 +88,7 @@ Fields: `n: Int`.
 - `fn get(self, i: D) -> T` — \(O(1)\); The value at position `i`.; traps: when `i` is outside `D`
 - `fn count_lt(self, r: Range<D>, x: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value is `< x`.; traps: when a non-empty `r` reaches outside `D`
 - `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
-- `fn kth(self, r: Range<D>, k: Int) -> ?T` — \(O(\log^3 \lvert D \rvert)\): a binary search over all stored values, counting each in `r`; The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
+- `fn kth(self, r: Range<D>, k: 0..) -> ?T` — \(O(\log^3 \lvert D \rvert)\): a binary search over all stored values, counting each in `r`; The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
 
 ## `struct MergeSeg<D>`
 
@@ -113,7 +113,7 @@ One tree of values in a `MergeTrees<D, Z>` pool: a handle, so copying it is O(1)
 A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
 
 - `fn new() -> MergeTrees<D, Z>` — \(O(1)\); An empty pool.
-- `fn reserve(mut self, sets: Int)` — \(O(\mathit{sets} \log \lvert D \rvert)\); Preallocate the nodes for `sets` more calls to `set`, so they do not regrow the pool: a `set` and the `merge`s that later split its position off add at most \(\lceil \log_2 \lvert D \rvert \rceil + 1\) nodes for it, and `scale` and the queries add none.; traps: when `sets < 0`
+- `fn reserve(mut self, sets: 0..)` — \(O(\mathit{sets} \log \lvert D \rvert)\); Preallocate the nodes for `sets` more calls to `set`, so they do not regrow the pool: a `set` and the `merge`s that later split its position off add at most \(\lceil \log_2 \lvert D \rvert \rceil + 1\) nodes for it, and `scale` and the queries add none.; traps: when `sets < 0`
 - `fn set(mut self, mut t: MergeTree<D>, x: D, v: Z)` — \(O(\log \lvert D \rvert)\) time and new nodes; Sets position `x` of `t` to `v`.
 - `fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z` — \(O(\log \lvert D \rvert)\); The sum of `t` over the positions in `r`.
 - `fn get(self, t: MergeTree<D>, x: D) -> Z` — \(O(\log \lvert D \rvert)\); The value of `t` at `x`.

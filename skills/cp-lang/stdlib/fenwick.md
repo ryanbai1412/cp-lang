@@ -17,7 +17,7 @@ Fields: `t: List<T>`.
 - `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum of every position left of the cut `b`.; traps: never (`b` is a cut of `D` by type)
 - `fn fold(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum over the positions of `r`: `prefix(r.r) - prefix(r.l)`.; traps: when a non-empty `r` reaches outside `D`
 - `fn first_ge(self, target: Int) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The smallest cut `b` with `prefix(b) >= target`, by binary lifting over the tree; `None` when even the whole sum is below `target`.; traps: never (negative values give an unspecified cut, not a trap)
-- `fn kth(self, k: Int) -> ?D` — \(O(\log \lvert D \rvert)\); The `k`-th item counting from 1, when position `d` holds `a[d]` items: the first `d` with `prefix(d.r) >= k`, or `None` when fewer than `k` items exist in total.; traps: when `k < 1` (negative values give an unspecified position, not a trap)
+- `fn kth(self, k: 1..) -> ?D` — \(O(\log \lvert D \rvert)\); The `k`-th item counting from 1, when position `d` holds `a[d]` items: the first `d` with `prefix(d.r) >= k`, or `None` when fewer than `k` items exist in total.; traps: when `k < 1` (negative values give an unspecified position, not a trap)
 - `fn get(self, i: D) -> T` — \(O(\log \lvert D \rvert)\); The current value at position `i`: `sum(i..=i)`.; traps: when `i` is outside `D`
 - `fn set(mut self, i: D, x: T)` — \(O(\log \lvert D \rvert)\); Assign `a[i] = x`, by adding the difference `x - get(i)`; also the write-through place for `f[i] = x`.; traps: when `i` is outside `D`
 - `@get fn all(self) -> T` — \(O(1)\); The sum of every position of `D`, kept current by `add`, `set` and `clear`.

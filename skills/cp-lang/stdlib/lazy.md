@@ -33,11 +33,11 @@ Many `LazyTreap` sequences in one shared node pool, so splitting one in two or a
 - `fn seq(mut self) -> ForestSeq` — \(O(1)\); A new empty sequence.
 - `fn len(self, s: ForestSeq) -> Int` — \(O(1)\); The number of elements in `s`.; traps: when `s` is not from this forest
 - `fn push(mut self, s: ForestSeq, x: T)` — \(O(\log n)\) expected; Append `x` to the end of `s`.; traps: when `s` is not from this forest, or the forest reaches `2^31` nodes
-- `fn split_at(mut self, s: ForestSeq, k: Int) -> ForestSeq` — \(O(\log n)\) expected; Split off positions `k..len` of `s` into a new sequence and return it; `s` keeps `0..k`.; traps: when `k < 0` or `k > len(s)`
+- `fn split_at(mut self, s: ForestSeq, k: 0..) -> ForestSeq` — \(O(\log n)\) expected; Split off positions `k..len` of `s` into a new sequence and return it; `s` keeps `0..k`.; traps: when `k < 0` or `k > len(s)`
 - `fn append(mut self, s: ForestSeq, other: ForestSeq)` — \(O(\log n)\) expected; Move every element of `other` onto the end of `s`, in order, leaving `other` empty.; traps: when `other` is `s`, or either is not from this forest
 - `fn apply(mut self, s: ForestSeq, r: Range<Int>, f: F)` — \(O(\log n)\) expected; Tag the elements at positions `r` of `s` with `f`.; traps: unless `0 <= r.lo <= r.hi <= len(s)`
 - `fn reverse(mut self, s: ForestSeq, r: Range<Int>)` — \(O(\log n)\) expected; Reverse the elements at positions `r` of `s`.; traps: unless `0 <= r.lo <= r.hi <= len(s)`
-- `fn get(mut self, s: ForestSeq, pos: Int) -> T` — \(O(\log n)\) expected; The element at 0-based position `pos` of `s`, with its pending tags applied.; traps: when `pos < 0` or `pos >= len(s)`
+- `fn get(mut self, s: ForestSeq, pos: 0..) -> T` — \(O(\log n)\) expected; The element at 0-based position `pos` of `s`, with its pending tags applied.; traps: when `pos < 0` or `pos >= len(s)`
 - `fn to_list(self, s: ForestSeq) -> List<T>` — \(O(n)\); Every element of `s` in order, with pending tags applied.; traps: when `s` is not from this forest
 
 ## `struct Rope<D, T>`
@@ -64,12 +64,12 @@ Fields: `val: List<E>`, `own: List<?F>`, `fwd: List<T>`, `bwd: List<T>`, `tag: L
 - `@get fn items(self) -> yields T` — \(O(n)\) to make, \(O(1)\) per step; Each element in position order, with every tag and reversal applied; the treap is unchanged.
 - `@get fn total(self) -> T` — \(O(1)\); The fold of every element in order, with every tag and reversal applied.
 - `fn push(mut self, x: E)` — \(O(\log n)\) expected; Append `x` at the end.
-- `fn insert_at(mut self, pos: Int, x: E)` — \(O(\log n)\) expected; Insert `x` so that it becomes the element at position `pos`; `pos == len` appends.; traps: when `pos < 0` or `pos > len`
-- `fn insert_many<S: Seq<E>>(mut self, pos: Int, xs: S)` — \(O(k + \log n)\) expected for `k` new elements; Insert `xs`, in order, before position `pos` (`pos == len` appends): they take positions `pos..pos + xs.len` and later elements move up by `xs.len`.; traps: when `pos < 0` or `pos > len`
+- `fn insert_at(mut self, pos: 0.., x: E)` — \(O(\log n)\) expected; Insert `x` so that it becomes the element at position `pos`; `pos == len` appends.; traps: when `pos < 0` or `pos > len`
+- `fn insert_many<S: Seq<E>>(mut self, pos: 0.., xs: S)` — \(O(k + \log n)\) expected for `k` new elements; Insert `xs`, in order, before position `pos` (`pos == len` appends): they take positions `pos..pos + xs.len` and later elements move up by `xs.len`.; traps: when `pos < 0` or `pos > len`
 - `fn erase_range(mut self, r: Range<Int>)` — \(O(\lvert r \rvert + \log n)\) expected; Remove the elements at positions `r`; later elements move down by `r.len`.; traps: when a non-empty `r` reaches outside `0..len`
-- `fn split_at(mut self, k: Int) -> SeqFold<T, F, E>` — \(O(\mathit{len} - k + \log n)\) expected; Split off the elements at positions `k..len` into a new sequence with the same monoid and action, and return it; `self` keeps positions `0..k`.; traps: when `k < 0` or `k > len`
-- `fn splice(mut self, pos: Int, mut other: SeqFold<T, F, E>)` — \(O(m + \log n)\) expected for `m` moved elements; Move every element of `other` into `self` before position `pos`, in order, leaving `other` empty.; traps: when `pos < 0` or `pos > len`
-- `fn get(mut self, pos: Int) -> T` — \(O(\log n)\) expected; The element at position `pos`, with every tag and reversal applied.; traps: when `pos < 0` or `pos >= len`
+- `fn split_at(mut self, k: 0..) -> SeqFold<T, F, E>` — \(O(\mathit{len} - k + \log n)\) expected; Split off the elements at positions `k..len` into a new sequence with the same monoid and action, and return it; `self` keeps positions `0..k`.; traps: when `k < 0` or `k > len`
+- `fn splice(mut self, pos: 0.., mut other: SeqFold<T, F, E>)` — \(O(m + \log n)\) expected for `m` moved elements; Move every element of `other` into `self` before position `pos`, in order, leaving `other` empty.; traps: when `pos < 0` or `pos > len`
+- `fn get(mut self, pos: 0..) -> T` — \(O(\log n)\) expected; The element at position `pos`, with every tag and reversal applied.; traps: when `pos < 0` or `pos >= len`
 - `fn fold(mut self, r: Range<Int>) -> T` — \(O(\log n)\) expected; The fold of the elements at positions `r`, in order.; traps: when a non-empty `r` reaches outside `0..len`
 - `fn apply(mut self, r: Range<Int>, f: F)` — \(O(\log n)\) expected; Apply tag `f` to every element at positions `r`.; traps: when the sequence was built without `act:`, or a non-empty `r` reaches outside `0..len`
 - `fn reverse(mut self, r: Range<Int>)` — \(O(\log n)\) expected; Reverse the order of the elements at positions `r`.; traps: when a non-empty `r` reaches outside `0..len`

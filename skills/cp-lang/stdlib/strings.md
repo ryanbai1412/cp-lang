@@ -51,7 +51,7 @@ Fields: `rank: List<Int>`, `rmq: LinearRmq<Int, Int>`, `dcum: List<Int>`, `src: 
 - `fn distinct(self) -> Int` — \(O(1)\); The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
 - `fn lcp_of_ranks(self, r: Range<Int>) -> Int` — \(O(1)\); The longest prefix common to every suffix with rank in `r`: the minimum of `lcp[j]` for `j in r.start..r.end - 1`, or the suffix's own length when `r` holds one rank.; traps: when `r` is empty or reaches outside `0..n`
 - `fn split(self, r: Range<Int>) -> Int` — \(O(1)\); Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are the first child and the rest.; traps: when `r.len < 2` or `r` reaches outside `0..n`
-- `fn kth_distinct(self, k: Int) -> ?Range<Int>` — \(O(\log n)\); The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the positions `l..r` of one occurrence, or `None` when `k >= distinct()`.; traps: when `k < 0`
+- `fn kth_distinct(self, k: 0..) -> ?Range<Int>` — \(O(\log n)\); The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the positions `l..r` of one occurrence, or `None` when `k >= distinct()`.; traps: when `k < 0`
 
 ## `struct SuffixTreeEdge(pub top_size: Int, pub bottom_size: Int, pub parent_len: Int, pub edge_len: Int, pub rank_range: Range<Int>)`
 
@@ -81,7 +81,7 @@ Fields: `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
 - `@get fn all(self) -> HashVal` — \(O(1)\); The hash of the whole sequence, `self.get(0..self.len)`.
 - `fn slice(self, l: Int, r: Int) -> HashVal` — \(O(1)\); The hash of the half-open slice `l..r` (0-based); `HashVal(0, 0)` when `l == r`.; traps: when `l > r`, `l < 0` or `r > self.len`
 - `fn get<R>(self, r: R) -> HashVal` — \(O(1)\); The hash of a range of positions: `l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when the hash was built over a `[D]T`.; traps: when the range reaches outside the hashed sequence
-- `fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal` — \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` per modulus.; traps: when `b_len < 0`
+- `fn combine(self, a: HashVal, b: HashVal, b_len: 0..) -> HashVal` — \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` per modulus.; traps: when `b_len < 0`
 - `fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on hashes (so it can be wrong on a collision); `of: other` puts `b` in `other`, built with the same bases.; traps: when `a` is outside `0..=self.len`, `b` outside `0..=` the len of `of` (or `self`), or
 - `fn lcs(self, a: Int, b: Int) -> Int` — \(O(\log n)\); The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary search on hashes.; traps: when `a` or `b` is outside `0..=self.len`
 
@@ -109,7 +109,7 @@ Fields: `pre: List<U64>`, `pow: List<U64>`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when no elements are hashed.
 - `@get fn all(self) -> Hash61` — \(O(1)\); The hash of the whole sequence, `self.get(0..self.len)`.
 - `fn get<R>(self, r: R) -> Hash61` — \(O(1)\); The hash of a range of positions (`l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when built over a `[D]T`); an empty range hashes to `Hash61(0)`.; traps: when the range reaches outside the hashed sequence
-- `fn combine(self, a: Hash61, b: Hash61, b_len: Int) -> Hash61` — \(O(1)\) amortized (the power table grows past `len` on demand); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` modulo `2^61 - 1`.; traps: when `b_len < 0`
+- `fn combine(self, a: Hash61, b: Hash61, b_len: 0..) -> Hash61` — \(O(1)\) amortized (the power table grows past `len` on demand); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` modulo `2^61 - 1`.; traps: when `b_len < 0`
 - `fn push<T: Hashable>(mut self, x: T)` — \(O(1)\) amortized; Appends `x` to the end of the hashed sequence.
 - `fn pop(mut self)` — \(O(1)\); Removes the last element of the hashed sequence.; traps: when the hash is empty
 - `fn lcp(self, a: Int, b: Int, of: ?RollingHash61 = None) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on hashes; `of: other` puts `b` in `other`, built with the same bases.; traps: when `a` is outside `0..=self.len`, `b` outside `0..=` the len of `of` (or `self`), or
@@ -156,7 +156,7 @@ Fields: `alpha: Count`, `next: List<Slot>`, `links: List<Slot>`, `max_len: List<
 - `fn add_word<S: Seq>(mut self, word: S)` — \(O(\lvert \mathit{word} \rvert)\) amortized; Adds `word` as a separate word of a generalized automaton: `reset()`, then `push` each letter.; traps: when an element of `word` is not in `A`
 - `fn states(self) -> yields Int` — \(O(\mathit{states})\); Every state in the order of `topo_order`, lazily.
 - `fn endpos_tree(self) -> List<List<Int>>` — \(O(\mathit{states})\); The suffix-link tree as child lists: entry `v` lists the states whose link is `v`.
-- `fn kth_substring(self, k: Int, distinct: Bool = true) -> ?List<A>` — \(O(\mathit{states} \cdot \lvert A \rvert)\); The `k`-th (0-based) non-empty substring in lexicographic order, as its letters, or `None` when there are not that many.; traps: when `k < 0`
+- `fn kth_substring(self, k: 0.., distinct: Bool = true) -> ?List<A>` — \(O(\mathit{states} \cdot \lvert A \rvert)\); The `k`-th (0-based) non-empty substring in lexicographic order, as its letters, or `None` when there are not that many.; traps: when `k < 0`
 
 ## `struct PalindromicTree<A>`
 
@@ -204,7 +204,7 @@ Fields: `alpha: Count`, `next: List<Slot>`, `ends: List<Count>`, `pass: List<Cou
 - `fn pass_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that pass through or end at `node`; at the root, all of them.; traps: when `node` is outside `0..self.nodes`
 - `fn contains<S: Seq>(self, word: S) -> Bool` — \(O(\lvert \mathit{word} \rvert)\); True when at least one copy of exactly `word` is stored: `count(word) > 0`.
 - `fn clear(mut self)` — \(O(\lvert A \rvert)\); Removes every word and node, leaving just the root.
-- `fn kth(self, k: Int) -> ?List<A>` — \(O(\mathit{depth} \cdot \lvert A \rvert)\); The `k`-th (0-based) stored word in lexicographic order, copies counted, as its letters; `None` when fewer than `k + 1` words are stored.; traps: when `k < 0`
+- `fn kth(self, k: 0..) -> ?List<A>` — \(O(\mathit{depth} \cdot \lvert A \rvert)\); The `k`-th (0-based) stored word in lexicographic order, copies counted, as its letters; `None` when fewer than `k + 1` words are stored.; traps: when `k < 0`
 - `fn count_less<S: Seq>(self, word: S) -> Int` — \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\); The number of stored words (with multiplicity) lexicographically smaller than `word`.
 
 ## `struct AhoCorasick<A>`
@@ -241,7 +241,7 @@ Fields: `alpha: Count`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBu
 
 ## Functions
 
-- `fn repeat(self: Str, n: Int) -> Str` — \(O(\lvert \mathit{self} \rvert \cdot n)\); `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.; traps: when `n < 0`
+- `fn repeat(self: Str, n: 0..) -> Str` — \(O(\lvert \mathit{self} \rvert \cdot n)\); `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.; traps: when `n < 0`
 - `fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool` — \(O(\min(\lvert \mathit{self} \rvert - \mathit{at}, \lvert \mathit{pat} \rvert))\); True when `pat` occurs in `self` starting at position `at` (default 0, so a prefix test): the `pat.len` elements of `self` from `at` equal those of `pat` in order, `false` when they run past the end.; traps: when `at` is outside `0..=self.len`
 - `fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{pat} \rvert))\); True when `self` closes with `pat`: the last `pat.len` elements of `self` equal those of `pat` in order.
 - `fn search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K` — \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\); The key where `p` first stands in `self`, or `None`.

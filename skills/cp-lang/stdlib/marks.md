@@ -52,7 +52,7 @@ Fields: `to_id: HashMap<K, Int>`, `keys: List<K>`.
 - `fn get(self, k: K) -> ?Int` — \(O(1)\) expected; The id of `k`, or `None` when `k` has not been interned; never adds a key.
 - `fn key(self, i: Int) -> K` — \(O(1)\); The key whose id is `i`; the inverse of `id`.; traps: when `i` is outside `0..len`
 - `fn contains(self, k: K) -> Bool` — \(O(1)\) expected; Whether `k` has been interned; `get(k) != None`.
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{len})\) when it grows (it moves the keys), \(O(1)\) otherwise; Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not reallocate.; traps: when `cap < 0`
+- `fn reserve(mut self, cap: 0..)` — \(O(\mathit{len})\) when it grows (it moves the keys), \(O(1)\) otherwise; Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not reallocate.; traps: when `cap < 0`
 
 ## `struct SparseSet<D>`
 
@@ -77,7 +77,7 @@ Compact 4-byte typed handle into an `Arena<T>`.
 
 Contiguous pool allocator returning compact 4-byte `Id<T>` handles (for user trees, tries, and node pools shared by many structures).
 
-- `fn new(cap: Int = 0) -> Arena<T>` — \(O(1)\) time: the room is allocated, not filled; An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
+- `fn new(cap: 0.. = 0) -> Arena<T>` — \(O(1)\) time: the room is allocated, not filled; An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of live nodes: allocated since creation or the last `clear`, and not freed.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no node is allocated; `len == 0`.
 - `@get fn items(self) -> yields (Id<T>, T)` — \(O(1)\) per step; Visit every live node with its handle.
@@ -86,7 +86,7 @@ Contiguous pool allocator returning compact 4-byte `Id<T>` handles (for user tre
 - `fn get(self, id: Id<T>) -> T` — \(O(1)\); The node behind `id`; also `arena[id]`.; traps: when `id` is not below the slots issued. A handle issued before a `clear` or a
 - `fn at(mut self, id: Id<T>) -> lends mut T` — \(O(1)\); The node behind `id`, lent in place: `arena.at(id).v = 9`, `arena[id].v += 1` and `arena[id].kids[0] = 7` write into the slot with no copy of the node (R05.6.3).; traps: when `id` is not below `len` (stale handles as in `get`)
 - `fn set(mut self, id: Id<T>, x: T)` — \(O(1)\); Overwrite the node behind `id` with `x`; also `arena[id] = x`.; traps: when `id` is not below the slots issued (stale handles as in `get`)
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise; Allocate room for at least `cap` slots in total; changes no handle or node.; traps: when `cap < 0`
+- `fn reserve(mut self, cap: 0..)` — \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise; Allocate room for at least `cap` slots in total; changes no handle or node.; traps: when `cap < 0`
 - `fn clear(mut self)` — \(O(1)\); Drop every node, so the next `alloc` returns handle `0` again.
 
 ## Example

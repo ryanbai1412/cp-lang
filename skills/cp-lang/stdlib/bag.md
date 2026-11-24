@@ -22,7 +22,7 @@ An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat a
 - `fn clear(mut self)` — \(O(1)\); Remove all elements from the bag.
 - `fn take(mut self) -> SortedBag<K>` — \(O(1)\); Move the bag's contents out in \(O(1)\), leaving `self` empty.
 - `fn add(mut self, x: K) -> Bool` — \(O(\log n)\) expected; Insert one copy of `x` into the bag.
-- `fn add_many(mut self, x: K, c: Int)` — \(O(\log n)\) expected, independent of `c`; Insert `c >= 0` copies of `x` into the bag.; traps: when `c < 0`
+- `fn add_many(mut self, x: K, c: 0..)` — \(O(\log n)\) expected, independent of `c`; Insert `c >= 0` copies of `x` into the bag.; traps: when `c < 0`
 - `fn remove(mut self, x: K) -> Bool` — \(O(\log n)\) expected; Remove one copy of `x` if present; returns `true` if a copy was removed.
 - `fn remove_all(mut self, x: K) -> Int` — \(O(\log n)\) expected; Remove all copies of `x` and return how many were removed.
 - `fn remove_at(mut self, c: BagCursor)` — \(O(\log n)\) expected; Remove one copy of the key at cursor `c`, as `remove(key_of(c))` would.; traps: never in release (a stale cursor removes an unspecified key); debug traps when the node of `c` has been freed
@@ -58,7 +58,7 @@ An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat a
 - `fn to_list(self) -> List<K>` — \(O(n)\); Every element in ascending order, repeated by multiplicity.
 - `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate leaf storage for at least `cap` distinct keys.
 - `fn split_at(mut self, k: K) -> SortedBag<K>` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Split off and return all elements `>= k`, keeping `< k` in `self`.
-- `fn join(mut self, other: SortedBag<K>)` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and `self.last >= other.first`
+- `fn join(mut self, var other: SortedBag<K>)` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and `self.last >= other.first`
 - `fn absorb(mut self, mut other: SortedBag<K>)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all elements of `other` into `self` (small-to-large, emptying `other`).
 - `fn sum(self) -> K` — \(O(n)\); Sum of all elements (for additive `K`).; traps: never (overflow wraps in release, traps in debug)
 
@@ -124,7 +124,7 @@ Fields: `ks: SortedBag<K>`, `vals: List<V>`, `vfree: List<Int>`.
 - `fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V)` — \(O(\log n)\) expected calls of `ok`; Largest entry where monotone `ok(k, v)` still holds, or `None`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
 - `fn drain(mut self; after: ?K = None, before: ?K = None, while ok: (K, V) -> Bool) -> List<(K, V)>` — \(O(k \log n)\) expected for `k` removed entries; Remove and return entries after `after` (ascending) or before `before` (descending) while `ok` holds.; traps: when both `after` and `before` are given
 - `fn split_at(mut self, k: K) -> SortedMap<K, V>` — \(O(\log n + s \log n)\) expected for the keys, plus \(O(m)\) expected to move the `m` values split off; Split off and return all entries with key `>= k`.
-- `fn join(mut self, other: SortedMap<K, V>)` — as `SortedBag.join` for the keys, plus \(O(m)\) expected to move the `m` values of `other`; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and the last key of `self` is `>=` the first key of `other`
+- `fn join(mut self, var other: SortedMap<K, V>)` — as `SortedBag.join` for the keys, plus \(O(m)\) expected to move the `m` values of `other`; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and the last key of `self` is `>=` the first key of `other`
 - `fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V) = None)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
 - `@get fn items(self) -> yields (K, V)` — \(O(1)\) to make, \(O(1)\) amortized per step; \(O(1)\) to make.
 - `fn each_rev(self) -> yields (K, V)` — \(O(1)\) amortized per step; Yield `(key, val)` pairs in descending key order.

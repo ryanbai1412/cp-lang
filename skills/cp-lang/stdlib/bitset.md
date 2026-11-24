@@ -10,7 +10,7 @@ In prelude (no `use` needed): `Bitset`.
 
 One bit per position of `D`, in `ceil(K / 64)` words.
 
-Fields: `w: List<U64>`, `n: Int`.
+Fields: `n: Int`.
 
 - `fn new() -> Bitset<D>` — \(O(K / 64)\) time and space; The empty set, every word zero; the same set as `empty()`.
 - `fn empty() -> Bitset<D>` — \(O(K / 64)\) time and space; The empty set, matching `Subset<D>.empty` (a call here: it is \(O(K / 64)\)); the same as `new()`.
@@ -44,27 +44,27 @@ Fields: `w: List<U64>`, `n: Int`.
 - `fn bitxor(self, o: Bitset<D>) -> Bitset<D>` — \(O(K / 64)\) time and space; `a ^ b`: a new set of the positions in exactly one of the sets.
 - `fn meets(self, o: Bitset<D>) -> Bool` — \(O(K / 64)\), less on an early hit; Do the two sets share a position?
 - `fn shifted(self, k: Int) -> Bitset<D>` — \(O(K / 64)\) time and space, for any `k`; A new set with every position `k` places up (down for a negative `k`); positions that leave `D` are dropped.
-- `fn shift_up(mut self, k: Int)` — \(O(K / 64)\); Shift every position `k >= 0` places up in place; bits past `D` drop.; traps: when `k < 0`
-- `fn shift_or(mut self, k: Int)` — \(O(K / 64)\); In-place `self \|= self << k` for `k >= 0`, with zero allocation: the knapsack step "every reachable sum, and every reachable sum plus `k`".; traps: when `k < 0`
+- `fn shift_up(mut self, k: 0..)` — \(O(K / 64)\); Shift every position `k >= 0` places up in place; bits past `D` drop.; traps: when `k < 0`
+- `fn shift_or(mut self, k: 0..)` — \(O(K / 64)\); In-place `self \|= self << k` for `k >= 0`, with zero allocation: the knapsack step "every reachable sum, and every reachable sum plus `k`".; traps: when `k < 0`
 - `fn union_shifted(mut self, o: Bitset<D>, k: Int)` — \(O(K / 64)\); In place, `self \|= o.shifted(k)`: every position `i` of `o` adds `i + k` when it is in `D`, with no temporary set (`k < 0` shifts down).
 - `fn each(self) -> yields D` — \(O(K / 64 + \mathit{len})\) to walk, \(O(1)\) per member amortized; The positions in the set, in increasing order; `for v in b` walks the same sequence.
 - `fn next(self, i: D) -> ?D` — \(O(K / 64)\); The first position in the set at or after `i`, or `None`.
 - `fn prev(self, i: D) -> ?D` — \(O(K / 64)\); The last position in the set at or before `i`, or `None` (the mirror of `next`).
 - `fn count_below(self, i: D) -> Int` — \(O(K / 64)\); The number of positions in the set strictly before `i`.
 - `fn subset_sums(weights: List<Int>) -> Bitset<D>` — \(O(K \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(K / 64)\) space; All subset sums in `0..D.count` reachable from non-negative `weights`: the position with ordinal `s` is set exactly when some sub-multiset of `weights` sums to `s`.; traps: when a weight is negative
-- `fn shift_down(mut self, k: Int)` — \(O(K / 64)\); Shift all bits down by `k >= 0` positions in place (`i -> i - k`); bits below `D` drop.; traps: when `k < 0`
+- `fn shift_down(mut self, k: 0..)` — \(O(K / 64)\); Shift all bits down by `k >= 0` positions in place (`i -> i - k`); bits below `D` drop.; traps: when `k < 0`
 - `fn count_range(self, r: Range<D>) -> Int` — \(O(r.\mathit{len} / 64 + 1)\); Count set bits in `r` (accepts cut ranges via decision 124).
 - `fn set_range(mut self, r: Range<D>, on: Bool = true)` — \(O(r.\mathit{len} / 64 + 1)\); Set (or, with `on: false`, clear) every bit in `r` in place.
 - `fn flip_range(mut self, r: Range<D>)` — \(O(r.\mathit{len} / 64 + 1)\); Flip every bit in `r` in place.
-- `fn nth(self, k: Int) -> ?D` — \(O(K / 64)\); The `k`-th set position (0-based, in increasing order), or `None` if `k >= len`.; traps: when `k < 0`
+- `fn nth(self, k: 0..) -> ?D` — \(O(K / 64)\); The `k`-th set position (0-based, in increasing order), or `None` if `k >= len`.; traps: when `k < 0`
 - `fn each_rev(self) -> yields D` — \(O(K / 64 + \mathit{len})\) to walk; The set positions in descending order.
 
 ## `struct DynBitset`
 
 Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynamically without a domain.
 
-- `fn new(cap: Int) -> DynBitset` — \(O(\mathit{cap} / 64)\) time and space; Create an all-zero `DynBitset` of width `cap`: bits `0..cap`.; traps: when `cap < 0`
-- `fn full(cap: Int) -> DynBitset` — \(O(\mathit{cap} / 64)\) time and space; Create an all-one `DynBitset` of width `cap`; bits at or above `cap` stay clear.; traps: when `cap < 0`
+- `fn new(cap: 0..) -> DynBitset` — \(O(\mathit{cap} / 64)\) time and space; Create an all-zero `DynBitset` of width `cap`: bits `0..cap`.; traps: when `cap < 0`
+- `fn full(cap: 0..) -> DynBitset` — \(O(\mathit{cap} / 64)\) time and space; Create an all-one `DynBitset` of width `cap`; bits at or above `cap` stay clear.; traps: when `cap < 0`
 - `@get fn cap(self) -> Int` — \(O(1)\); The bit capacity: valid indices are `0..cap`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of set bits, kept current by every update.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no bits are set, kept current by every update.
@@ -74,32 +74,32 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 - `fn remove(mut self, i: Int) -> Bool` — \(O(1)\); Clear bit `i` to 0; returns `true` if bit `i` was previously 1 (matches `Bitset.remove`).; traps: when `i` is not in `0..cap`
 - `fn toggle(mut self, i: Int)` — \(O(1)\); Flip bit `i`.; traps: when `i` is not in `0..cap`
 - `fn clear(mut self)` — \(O(\mathit{cap} / 64)\); Clear all bits; the capacity is unchanged.
-- `fn resize(mut self, new_cap: Int)` — \(O(\mathit{new\_cap} / 64)\) time and space; Resize to `new_cap` bits, zero-filling any new high bits.; traps: when `new_cap < 0`
+- `fn resize(mut self, new_cap: 0..)` — \(O(\mathit{new\_cap} / 64)\) time and space; Resize to `new_cap` bits, zero-filling any new high bits.; traps: when `new_cap < 0`
 - `fn first(self) -> ?Int` — \(O(\mathit{cap} / 64)\); The smallest set bit index, or `None` if empty.
 - `fn last(self) -> ?Int` — \(O(\mathit{cap} / 64)\); The largest set bit index, or `None` if empty.
 - `fn next(self, i: Int) -> ?Int` — \(O(\mathit{cap} / 64)\); The smallest set bit `>= i`, or `None`.; traps: when `i` is not in `0..=cap`
 - `fn prev(self, i: Int) -> ?Int` — \(O(\mathit{cap} / 64)\); The largest set bit `<= i`, or `None`; `i` itself counts, as in `Bitset.prev`.; traps: when `i` is not in `0..cap`
 - `fn count_below(self, i: Int) -> Int` — \(O(\mathit{cap} / 64)\); The number of set bits strictly below `i`.; traps: when `i` is not in `0..=cap`
 - `fn count_range(self, r: Range<Int>) -> Int` — \(O(r.\mathit{len} / 64 + 1)\); The number of set bits in `r`.; traps: when `r` is non-empty and reaches outside `0..cap`
-- `fn nth(self, k: Int) -> ?Int` — \(O(\mathit{cap} / 64)\); The `k`-th set bit index (0-based, in increasing order), or `None` if `k >= len`.; traps: when `k < 0`
+- `fn nth(self, k: 0..) -> ?Int` — \(O(\mathit{cap} / 64)\); The `k`-th set bit index (0-based, in increasing order), or `None` if `k >= len`.; traps: when `k < 0`
 - `fn union(mut self, other: DynBitset)` — \(O(\mathit{cap} / 64)\); In-place bitwise OR (`self \|= other`).; traps: when `other.cap != self.cap`
 - `fn intersect(mut self, other: DynBitset)` — \(O(\mathit{cap} / 64)\); In-place bitwise AND (`self &= other`).; traps: when `other.cap != self.cap`
 - `fn subtract(mut self, other: DynBitset)` — \(O(\mathit{cap} / 64)\); In-place set difference (`self &= ~other`).; traps: when `other.cap != self.cap`
 - `fn symmetric(mut self, other: DynBitset)` — \(O(\mathit{cap} / 64)\); In-place bitwise XOR (`self ^= other`).; traps: when `other.cap != self.cap`
 - `fn meets(self, other: DynBitset) -> Bool` — \(O(\mathit{cap} / 64)\), less on an early hit; Whether `self` and `other` share a set bit; stops at the first shared word.; traps: when `other.cap != self.cap`
-- `fn shift_up(mut self, k: Int)` — \(O(\mathit{cap} / 64)\); Shift all bits up by `k >= 0` in place (`i -> i + k`); bits reaching `cap` or beyond drop.; traps: when `k < 0`
-- `fn shift_down(mut self, k: Int)` — \(O(\mathit{cap} / 64)\); Shift all bits down by `k >= 0` in place (`i -> i - k`); bits falling below 0 drop.; traps: when `k < 0`
-- `fn shift_or(mut self, k: Int)` — \(O(\mathit{cap} / 64)\); In-place `self \|= (self << k)` for `k >= 0`, with zero allocation; bits reaching `cap` drop.; traps: when `k < 0`
+- `fn shift_up(mut self, k: 0..)` — \(O(\mathit{cap} / 64)\); Shift all bits up by `k >= 0` in place (`i -> i + k`); bits reaching `cap` or beyond drop.; traps: when `k < 0`
+- `fn shift_down(mut self, k: 0..)` — \(O(\mathit{cap} / 64)\); Shift all bits down by `k >= 0` in place (`i -> i - k`); bits falling below 0 drop.; traps: when `k < 0`
+- `fn shift_or(mut self, k: 0..)` — \(O(\mathit{cap} / 64)\); In-place `self \|= (self << k)` for `k >= 0`, with zero allocation; bits reaching `cap` drop.; traps: when `k < 0`
 - `fn each(self) -> yields Int` — \(O(\mathit{cap} / 64 + \mathit{len})\) to walk; The set bit indices in ascending order; `for i in d` walks the same sequence.
 - `fn each_rev(self) -> yields Int` — \(O(\mathit{cap} / 64 + \mathit{len})\) to walk; The set bit indices in descending order.
-- `fn subset_sums(cap: Int, weights: List<Int>) -> DynBitset` — \(O(\mathit{cap} \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(\mathit{cap} / 64)\) space; All subset sums in `0..cap` reachable from `weights`: bit `s` is set exactly when some sub-multiset of `weights` sums to `s`.; traps: when `cap < 0` or a weight is negative
+- `fn subset_sums(cap: 0.., weights: List<Int>) -> DynBitset` — \(O(\mathit{cap} \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(\mathit{cap} / 64)\) space; All subset sums in `0..cap` reachable from `weights`: bit `s` is set exactly when some sub-multiset of `weights` sums to `s`.; traps: when `cap < 0` or a weight is negative
 
 ## `struct XorTrie`
 
 Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60 bits).
 
 - `fn new(bits: Int = 60) -> XorTrie` — \(O(1)\); Create an empty `XorTrie` over `bits`-bit non-negative integers (default 60): values in `0..2^bits`.; traps: when `bits` is not in `1..=62`
-- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0`
+- `fn reserve(mut self, nodes: 0..)` — \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0`
 - `@get fn len(self) -> Int` — \(O(1)\); The total number of stored integers, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the trie holds no integers.
 - `fn each(self) -> yields Int` — \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element; \(O(\mathit{bits})\) per element.
@@ -111,7 +111,7 @@ Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (
 - `fn max_xor(self, x: Int) -> ?Int` — \(O(\mathit{bits})\); The maximum value of `x ^ y` over stored `y`, or `None` if empty.; traps: when `x` is not in `0..2^bits`
 - `fn min_xor(self, x: Int) -> ?Int` — \(O(\mathit{bits})\); The minimum value of `x ^ y` over stored `y`, or `None` if empty.; traps: when `x` is not in `0..2^bits`
 - `fn count_xor_less(self, x: Int, limit: Int) -> Int` — \(O(\mathit{bits})\); The number of stored `y` (with multiplicity) with `(x ^ y) < limit`.; traps: when `x` is not in `0..2^bits`
-- `fn kth_xor(self, x: Int, k: Int) -> ?Int` — \(O(\mathit{bits})\); The `k`-th smallest value of `x ^ y` over stored `y` (0-based, with multiplicity), or `None` if `k >= len`.; traps: when `k < 0` or `x` is not in `0..2^bits`
+- `fn kth_xor(self, x: Int, k: 0..) -> ?Int` — \(O(\mathit{bits})\); The `k`-th smallest value of `x ^ y` over stored `y` (0-based, with multiplicity), or `None` if `k >= len`.; traps: when `k < 0` or `x` is not in `0..2^bits`
 - `fn mex_xor(self, x: Int = 0) -> Int` — \(O(\mathit{bits})\); The smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`); `2^bits` when every value is present.; traps: when `x` is not in `0..2^bits`
 - `fn clear(mut self)` — \(O(1)\); Remove all elements and the global mask, keeping `bits` and the reserved pool.
 
@@ -121,7 +121,7 @@ The node store shared by every `BitTrie<W>` built in it: one `List` of nodes, ea
 
 Fields: `nodes: List<BitTrieNode>`.
 
-- `fn new(cap: Int = 0) -> BitTrieArena<W>` — \(O(1)\); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
+- `fn new(cap: 0.. = 0) -> BitTrieArena<W>` — \(O(1)\); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
 - `@get fn node_count(self) -> Int` — \(O(1)\); The number of nodes held, over every trie built in the arena.
 
 ## `struct BitTrie<W>`
