@@ -51,8 +51,8 @@ pub use facts::{CallFact, Callee, CalleeKind, ExprFacts, Facts, RangeEnds};
 pub use hover::{Definition, Hover, Representation, Symbol};
 pub use modules::{
     bundled_std, carry_only_embedded_std, configured_libraries, dev_std_problem, file_path,
-    home_dir, provide_std, std_calls, std_from_disk, std_needed, std_needed_with, std_outline,
-    take_std_needs, FsLoader, GivenFiles, Loader,
+    home_dir, provide_std, std_calls, std_from_disk, std_index, std_needed, std_needed_with,
+    std_outline, take_std_needs, FsLoader, GivenFiles, Loader,
 };
 pub use overflow::Overflow;
 pub use prelude::{

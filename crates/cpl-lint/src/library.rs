@@ -11,7 +11,7 @@ use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind, Type};
 use cpl_syntax::library_lint::{self, is_name, Bound, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
 /// One `@lint` declaration a file can see.
 pub(crate) struct Declared {
@@ -29,6 +29,11 @@ pub(crate) struct Declared {
     /// Per token of `from`: a hole standing as a whole statement, which
     /// matches a run of statements.
     stmt_holes: Vec<bool>,
+    /// Per token of `from`, whether it is a named argument's label.
+    labels: Vec<bool>,
+    /// The first hole `from` calls a method on: the finding labels it when
+    /// `to` writes no hole, so a record's `on` types check the receiver.
+    receiver: Option<usize>,
     /// The module's public names `to` uses, each as the linted file spells
     /// it (`sq` -> `geo.sq` under `use mylib.geo`).
     spell: Vec<(String, String)>,
@@ -41,27 +46,7 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
         for item in &a.items {
             for stmt in &item.syntax.parsed.stmts {
                 for decl in library_lint::declared(stmt, item.offset).0 {
-                    let Some((from, ends)) = library_lint::run(&decl.from) else {
-                        continue;
-                    };
-                    let names = library_lint::statement_names(&decl.from);
-                    let stmt_holes = (0..from.len())
-                        .map(|i| names.contains(&i) && decl.holes.contains(&from[i].1))
-                        .collect();
-                    let spell = (library_lint::tokens(&decl.to).iter())
-                        .map(|t| &decl.to[t.span.start as usize..t.span.end as usize])
-                        .filter_map(|w| Some((w.to_string(), spell(w)?)))
-                        .collect();
-                    out.push(Declared {
-                        spell,
-                        lint: intern(&decl.name),
-                        bound: bound_names(&from),
-                        stmt_holes,
-                        decl,
-                        module: module.to_string(),
-                        from,
-                        ends,
-                    });
+                    out.extend(declare(decl, module, spell));
                 }
             }
         }
@@ -87,7 +72,67 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
         };
         add(&m.analysis, &m.name, &spell);
     }
+    let loaded = |name: &str| analysis.modules().iter().any(|m| m.name == name);
+    for (module, decl) in std_lints().iter().filter(|(m, _)| !loaded(m)) {
+        out.extend(declare(decl.clone(), module, &|_| None));
+    }
     out
+}
+
+/// What `collect` keeps of `decl`: none when its `from` is no run of code.
+fn declare(
+    decl: LibraryLint,
+    module: &str,
+    spell: &dyn Fn(&str) -> Option<String>,
+) -> Option<Declared> {
+    let (from, ends) = library_lint::run(&decl.from)?;
+    let names = library_lint::statement_names(&decl.from);
+    let stmt_holes = (0..from.len())
+        .map(|i| names.contains(&i) && decl.holes.contains(&from[i].1))
+        .collect();
+    let spell = (library_lint::tokens(&decl.to).iter())
+        .map(|t| &decl.to[t.span.start as usize..t.span.end as usize])
+        .filter_map(|w| Some((w.to_string(), spell(w)?)))
+        .collect();
+    let labels = library_lint::labels(&from.iter().map(|t| t.0).collect::<Vec<_>>());
+    let receiver = (0..from.len().saturating_sub(1))
+        .filter(|&i| !labels[i] && from[i + 1].0 == K::Dot)
+        .find_map(|i| decl.holes.iter().position(|h| *h == from[i].1));
+    Some(Declared {
+        spell,
+        lint: intern(&decl.name),
+        bound: bound_names(&from),
+        stmt_holes,
+        labels,
+        receiver,
+        decl,
+        module: module.to_string(),
+        from,
+        ends,
+    })
+}
+
+/// Every std module's `@lint`s, read once from std's outline: a program
+/// that hand-writes what a std fn does seldom loads its module, and std's
+/// names need no `use`.
+pub(crate) fn std_lints() -> &'static [(String, LibraryLint)] {
+    static ALL: OnceLock<Vec<(String, LibraryLint)>> = OnceLock::new();
+    ALL.get_or_init(|| {
+        let mut out = Vec::new();
+        for (name, outline) in cpl_check::std_index() {
+            if !outline.contains("@lint(") {
+                continue;
+            }
+            let module = format!("std.{}", name.replace('/', "."));
+            for (offset, item) in cpl_syntax::parse_file(outline).items {
+                for stmt in &item.stmts {
+                    let decls = library_lint::declared(stmt, offset).0;
+                    out.extend(decls.into_iter().map(|d| (module.clone(), d)));
+                }
+            }
+        }
+        out
+    })
 }
 
 /// Whether a library this run has linted declares a lint called `name`.
@@ -303,21 +348,30 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     // that matches a site takes it.
     let mut taken: HashMap<(&str, Span), Vec<Span>> = HashMap::new();
     for d in declared {
-        let all = &d.from;
         let to = library_lint::tokens(&d.decl.to);
+        let to_labels = library_lint::labels(&to.iter().map(|t| t.kind).collect::<Vec<_>>());
         let in_to = |h: &str| {
-            to.iter()
-                .any(|t| &d.decl.to[t.span.start as usize..t.span.end as usize] == h)
+            (to.iter().zip(&to_labels)).any(|(t, label)| {
+                !label && &d.decl.to[t.span.start as usize..t.span.end as usize] == h
+            })
         };
         // R11: a compound `to` runs its right side before the place's indices.
         let compound = library_lint::code(&d.decl.to)
             .is_some_and(|to| library_lint::compound(&to, &d.decl.fn_name));
+        // A statement hole `to` drops is the rest of the block, which the fn
+        // does itself: with no fix to drop it, it need not be pure.
         let repeated: Vec<bool> = (d.decl.holes.iter())
-            .map(|h| compound || all.iter().filter(|(_, t)| t == h).count() > 1 || !in_to(h))
+            .map(|h| {
+                let at = |i: &usize| d.from[*i].1 == *h && !d.labels[*i];
+                let uses = (0..d.from.len()).filter(at).count();
+                let stmt = (0..d.from.len()).any(|i| at(&i) && d.stmt_holes[i]);
+                compound || uses > 1 || (!in_to(h) && !(stmt && d.lint.no_fix.is_some()))
+            })
             .collect();
-        let matcher = |pat, stmt| Matcher {
+        let matcher = |pat, stmt, labels| Matcher {
             pat,
             stmt,
+            labels,
             stmt_runs: &stmt_runs,
             holes: &d.decl.holes,
             bound: &d.bound,
@@ -332,7 +386,11 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         let parts: Vec<Matcher> = (d.ends.iter())
             .map(|&end| {
                 let at = std::mem::replace(&mut start, end)..end;
-                matcher(&d.from[at.clone()], &d.stmt_holes[at])
+                matcher(
+                    &d.from[at.clone()],
+                    &d.stmt_holes[at.clone()],
+                    &d.labels[at],
+                )
             })
             .collect();
         // A run of statements matches statement by statement, in one block;
@@ -427,9 +485,11 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 .take_while(|c| *c == ' ' || *c == '\t')
                 .collect();
             let fix = fill(&d.decl.to, &got, &names, &d.spell, &indent, &stmts);
-            let subject = (to.iter())
-                .map(|t| &d.decl.to[t.span.start as usize..t.span.end as usize])
-                .find_map(|w| holes[d.decl.holes.iter().position(|h| h == w)?]);
+            let subject = (to.iter().zip(&to_labels))
+                .filter(|(_, label)| !**label)
+                .map(|(t, _)| &d.decl.to[t.span.start as usize..t.span.end as usize])
+                .find_map(|w| holes[d.decl.holes.iter().position(|h| h == w)?])
+                .or_else(|| holes[d.receiver?]);
             let from = if d.module.is_empty() {
                 "this file".to_string()
             } else {
@@ -458,6 +518,8 @@ struct Matcher<'a> {
     pat: &'a [(K, String)],
     /// Per token of `pat`: a hole that matches a run of statements.
     stmt: &'a [bool],
+    /// Per token of `pat`, whether it is a named argument's label.
+    labels: &'a [bool],
     stmt_runs: &'a HashMap<usize, Vec<usize>>,
     holes: &'a [String],
     bound: &'a [String],
@@ -488,7 +550,7 @@ impl Matcher<'_> {
             return false;
         }
         let (kind, text) = &self.pat[p];
-        if is_name(*kind, text) {
+        if is_name(*kind, text) && !self.labels[p] {
             if let Some(h) = self.holes.iter().position(|x| x == text) {
                 if let Some((a, b)) = holes[h] {
                     let n = b - a;
@@ -607,7 +669,11 @@ fn fill(
     let mut out = String::new();
     let mut last = 0;
     let lines = |s: &str| s.replace('\n', &format!("\n{indent}"));
+    let labels = library_lint::labels(&toks.iter().map(|t| t.kind).collect::<Vec<_>>());
     for (i, t) in toks.iter().enumerate() {
+        if labels[i] {
+            continue;
+        }
         let word = &to[t.span.start as usize..t.span.end as usize];
         let replacement = if let (Some(m), Some(&was)) = (got.get(word), stmts.get(word)) {
             let line = to[..t.span.start as usize].rfind('\n').map_or(0, |i| i + 1);

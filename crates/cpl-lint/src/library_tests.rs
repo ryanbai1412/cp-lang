@@ -412,3 +412,51 @@ fn a_hole_matches_a_binding_pattern() {
     let shifted = pair.replace("es.push((u, w))", "es.push((u - 1, w))");
     assert!(found(&shifted).is_empty(), "{shifted}");
 }
+
+/// `from:` in `to` is a label, not the fn's `from`; a record `on` heaps
+/// keeps the finding only where the receiver is a heap; and only with no
+/// fix may `to` drop a statement hole whose statements call code.
+/// Rule: R06.4.9.
+#[test]
+fn a_no_fix_lint_drops_a_statement_hole_and_keeps_its_on_types() {
+    let lint = |name: &str| {
+        format!("@lint({name}, from: \"while let (d, u) = pq.pop():\\n    if d > dist[u]:\\n        continue\\n    rest\", to: \"settle(pq, from: 0)\", holes: \"dist, rest\")\npub fn settle(pq: MinHeap<(Int, Int)>, from: Int) = ()\n")
+    };
+    let body = |q: &str| {
+        format!("var pq = {q}\npq.push((0, 1))\nlet best = [0, 0]\nwhile let (c, v) = pq.pop():\n    if c > best[v]:\n        continue\n    print(v)\n")
+    };
+    let found = |name: &str, q: &str| -> Vec<(String, usize)> {
+        crate::lint(
+            &format!("{}{}", lint(name), body(q)),
+            &crate::Config::default(),
+        )
+        .into_iter()
+        .filter(|d| d.message == "write `settle(pq, from: 0)`")
+        .map(|d| (d.code.0.to_string(), d.fixes.len()))
+        .collect()
+    };
+    let heap = "MinHeap<(Int, Int)>()";
+    assert_eq!(found("stale_entry_skip", heap), [("L0553".to_string(), 0)]);
+    assert!(found("stale_entry_skip", "[(0, 1)]").is_empty());
+    assert!(found("settle_all", heap).is_empty());
+}
+
+/// Std's `@lint`s are read from its outline, so they reach a program that
+/// loads none of their module: hand-written code is what does without it.
+/// Rule: R06.4.9.
+#[test]
+fn std_lints_are_read_from_std_outline() {
+    let std = crate::library::std_lints();
+    assert!(
+        std.iter().any(|(m, d)| m == "std.prefix"
+            && d.name == "prefix_totals_list"
+            && d.fn_name == "scan"),
+        "{std:?}"
+    );
+    let src = "let xs = [3, 1]\nvar p = [0]\nfor x in xs:\n    p.push(p.last! + x)\nprint(p)\n";
+    let found = crate::lint(src, &crate::Config::default());
+    assert!(
+        found.iter().any(|d| d.code.0 == "prefix_totals_list"),
+        "{found:?}"
+    );
+}

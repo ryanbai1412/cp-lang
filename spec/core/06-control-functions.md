@@ -219,11 +219,16 @@ library or by this spec:
   base it indexes, and a hole does not match a bare generator (`x * x
   for x in xs` in `sum(..)`), a fold's argument rather than a value. The
   finding spans the matched
-  tokens and labels what `to`'s first hole matched (the receiver a
-  record's `on` types name); where a comment falls inside the match it
+  tokens and labels what `to`'s first hole matched, or with none, the first
+  hole `from` calls a method on (the receiver a record's `on` types name);
+  with no fix, `to` may drop a statement hole whatever its statements call,
+  and a named argument's label (`from:`) is never a hole; where a comment
+  falls inside the match it
   has no fix, since `to` would drop the comment.
   It applies in every file that uses the module, and in the module outside
-  the fn. A struct's or enum's method may declare one like a top-level fn. E0505 (`bad_library_lint`) when `@lint` is not on a fn, lacks a
+  the fn; std's apply in every program, as std's names need no `use`. A
+  struct's or enum's method may declare one like a top-level fn. E0505
+  (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:`, when `from` or `to` is not one expression or
   statement, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name `from` does not use, when `when:` is not
