@@ -62,6 +62,11 @@ build() {
 if $names; then
     # Its own target dir, so the shipped build is not relinked.
     export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$root/target}/wasm-names"
+    # On CI, scripts/ci-mtime.sh back-dates sources to the commit the cached
+    # target/ was built from; this dir is built far more rarely, so cargo would
+    # take its stale artifacts as fresh. It only runs to explain a size, so
+    # start it clean there.
+    if [ -n "${CI:-}" ]; then rm -rf "$CARGO_TARGET_DIR"; fi
     built="$CARGO_TARGET_DIR/$target/wasm/cpl_wasm.wasm"
     strip=false
     build --no-default-features
