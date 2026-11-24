@@ -2325,15 +2325,14 @@ fn edge_colorings_use_max_degree_proper_colours():
 pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (
     a: A,
     b: B,
-    weight: ?(E -> Int) = None,
+    weight: E -> Int = _ => 0,
 ) -> [E]Bool:
     var (ma, mb) = (a, b)
     var take: [E]Bool = false
-    let w = weight ?? (_ => 0)
     loop:
         ma.rebuild(take)
         mb.rebuild(take)
-        // Vertex cost: `-w(x)` to bring `x` in, `w(y)` to take `y` out; shortest by (cost, length).
+        // Vertex cost: `-weight(x)` to bring `x` in, `weight(y)` to take `y` out; shortest by (cost, length).
         // Relaxed from a FIFO queue, so without `weight` each element settles on its first visit.
         var dist: [E]?(Int, Int) = None
         var prev: [E]?E = None
@@ -2343,7 +2342,7 @@ pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (
         let outs = [x for x in E if not take[x]]
         for x in outs:
             if ma.can_add(x):
-                dist[x] = Some((-w(x), 0))
+                dist[x] = Some((-weight(x), 0))
                 queued[x] = true
                 queue.push(x)
         var head = 0
@@ -2357,7 +2356,7 @@ pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (
                 let q = if take[p]: outs[i] else: ins[i]
                 let arc = if take[p]: ma.can_swap(p, q) else: mb.can_swap(q, p)
                 if not arc: continue
-                let nd = (dc + (if take[q]: w(q) else: -w(q)), dl + 1)
+                let nd = (dc + (if take[q]: weight(q) else: -weight(q)), dl + 1)
                 if dist[q] == None or nd < dist[q]!:
                     dist[q] = Some(nd)
                     prev[q] = Some(p)
@@ -2566,7 +2565,7 @@ fn matroid_intersections_match_brute_force():
             let got = matroid_intersection(
                 GraphicMatroid(es),
                 ColorMatroid(col, lim),
-                weight: if weighted: Some((e: E) => wt[e]) else: None,
+                weight: if weighted: (e: E) => wt[e] else: _ => 0,
             )
             var d = Dsu<V>()
             var used: [C]Int = 0

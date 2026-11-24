@@ -554,7 +554,7 @@ std/flow.cp: edge_coloring<L, R, E>(edges: [E](l: L, r: R)) -> (colors: Int, col
 std/flow.cp: general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V)
 std/flow.cp: global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int)) -> (w: Int, side: [V]Bool)
 std/flow.cp: gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: Int)>
-std/flow.cp: matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (a: A, b: B, weight: ?(E -> Int) = None) -> [E]Bool
+std/flow.cp: matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (a: A, b: B, weight: E -> Int = _ => 0) -> [E]Bool
 std/flow.cp: max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V) -> ?(value: Int, flow: [E]Int)
 std/flow.cp: max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, take: [V]Bool)
 std/flow.cp: max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R, back: [R]?L)

@@ -34,7 +34,7 @@ fn matroid_intersections_match_brute_force():
             let got = matroid_intersection(
                 GraphicMatroid(es),
                 ColorMatroid(col, lim),
-                weight: if weighted: Some((e: E) => wt[e]) else: None,
+                weight: if weighted: (e: E) => wt[e] else: _ => 0,
             )
             var d = Dsu<V>()
             var used: [C]Int = 0
