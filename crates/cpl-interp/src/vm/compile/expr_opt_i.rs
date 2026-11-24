@@ -263,7 +263,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
                     ) =>
             {
-                let saved = (self.ops.len(), self.spans.len(), self.places.len());
+                let saved = self.code_mark();
                 let src_v = match self.compile_place_path(place) {
                     Some(path) => {
                         let dst = self.alloc_v();
@@ -272,9 +272,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         dst
                     }
                     None => {
-                        self.ops.truncate(saved.0);
-                        self.spans.truncate(saved.1);
-                        self.places.truncate(saved.2);
+                        self.rewind(saved);
                         self.compile_pop_v(expr, place)
                     }
                 };

@@ -179,7 +179,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 cur_v += 1;
             }
         }
-        let marks = (self.ops.len(), self.spans.len(), self.places.len());
+        let marks = self.code_mark();
         // Pass 1: evaluate all value arguments first.
         for (i, a) in args.iter().enumerate() {
             if let Arg::Value(ae) = a {
@@ -206,9 +206,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         for (i, take) in takes.iter().enumerate() {
             if let Some((place, MutTake::Path)) = *take {
                 let Some(path) = self.compile_place_path_to(place, true) else {
-                    self.ops.truncate(marks.0);
-                    self.spans.truncate(marks.1);
-                    self.places.truncate(marks.2);
+                    self.rewind(marks);
                     return None;
                 };
                 paths[i] = path;

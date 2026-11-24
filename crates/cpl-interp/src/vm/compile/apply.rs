@@ -212,11 +212,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 return None;
             }
         }
-        let saved = (self.ops.len(), self.spans.len(), self.places.len());
+        let saved = self.code_mark();
         let Some(path) = self.place_path_rooted(place, true, None, true) else {
-            self.ops.truncate(saved.0);
-            self.spans.truncate(saved.1);
-            self.places.truncate(saved.2);
+            self.rewind(saved);
             return None;
         };
         let regs: Vec<u16> = args.iter().map(|a| self.compile_expr_v(a)).collect();

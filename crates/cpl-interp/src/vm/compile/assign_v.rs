@@ -11,7 +11,7 @@ impl<'p> Compiler<'p, '_> {
         op: AssignOp,
         value: &'p Expr,
     ) -> bool {
-        let (ops, spans, places) = (self.ops.len(), self.spans.len(), self.places.len());
+        let undo = self.code_mark();
         let (global, slot) = cpl_ir::walk::root(place);
         let (root, held) = if global {
             (PlaceRoot::Global(slot as u16), None)
@@ -35,9 +35,7 @@ impl<'p> Compiler<'p, '_> {
             match self.place_path_rooted(place, false, held.map(|h| h.1), false) {
                 Some(path) => path,
                 None => {
-                    self.ops.truncate(ops);
-                    self.spans.truncate(spans);
-                    self.places.truncate(places);
+                    self.rewind(undo);
                     return false;
                 }
             }

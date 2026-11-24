@@ -110,3 +110,39 @@ print([halves(x, y) for (x, y) in [(0, 0), (1, 0), (-1, 0), (3, -2)]])
     assert_eq!(out, "0 12 21 21\n");
     assert!(trap.is_none(), "{trap:?}");
 }
+
+#[test]
+fn a_leaf_that_returns_an_i128_inlines() {
+    // std/geometry's `cross128`, called once per angular comparison: its
+    // body compiles in place into a V register, so `ccw` makes no call, and
+    // an `I128` overflow in it still traps.
+    let source = "
+fn cross(ax: Int, ay: Int, bx: Int, by: Int) -> I128 = I128(ax) * I128(by) - I128(ay) * I128(bx)
+fn ccw(ax: Int, ay: Int, bx: Int, by: Int) -> Bool = cross(ax, ay, bx, by) > I128(0)
+fn sq(x: Int) -> I128 = I128(x) * I128(x) * I128(x) * I128(x) * I128(x)
+print(yes(ccw(1, 0, 0, 1)), yes(ccw(0, 1, 1, 0)), cross(3, 1, 2, 5))
+print(sq(3_000_000_000_000_000_000))
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let id = (program.fns.iter())
+        .position(|f| f.name == "ccw")
+        .expect("`ccw` is lowered");
+    let chunk = compiled.fns[id].as_ref().expect("runs on the VM");
+    let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
+    assert!(!ops.iter().any(|op| op.starts_with("Call")), "{ops:?}");
+    assert!(chunk.leaf, "{ops:?}");
+    let (out, trap) = outcome(source, "");
+    assert_eq!(out, "YES NO 13\n");
+    let trap = trap.expect("the fifth power overflows");
+    assert!(trap.contains("does not fit in an `I128`"), "{trap}");
+}

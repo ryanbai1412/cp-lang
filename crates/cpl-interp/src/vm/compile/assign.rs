@@ -1135,9 +1135,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     ) -> bool {
         if let PlaceKind::Index(map_place, indices) = &place.kind {
             if matches!(&map_place.ty, Ty::Map(..) | Ty::HashMap(..)) && indices.len() == 1 {
-                let saved_ops = self.ops.len();
-                let saved_spans = self.spans.len();
-                let saved_places = self.places.len();
+                let undo = self.code_mark();
                 let saved_fill_tys = self.fill_tys.len();
                 if let Some(path) = self.compile_place_path(map_place) {
                     let key_v = self.compile_expr_v(&indices[0]);
@@ -1162,9 +1160,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     }
                     return true;
                 }
-                self.ops.truncate(saved_ops);
-                self.spans.truncate(saved_spans);
-                self.places.truncate(saved_places);
+                self.rewind(undo);
                 self.fill_tys.truncate(saved_fill_tys);
             }
         }
@@ -1255,13 +1251,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) {
             return self.try_compile_assign_op_v(place, op, value);
         }
-        let saved_ops = self.ops.len();
-        let saved_spans = self.spans.len();
-        let saved_places = self.places.len();
+        let undo = self.code_mark();
         let Some(path) = self.compile_place_path(place) else {
-            self.ops.truncate(saved_ops);
-            self.spans.truncate(saved_spans);
-            self.places.truncate(saved_places);
+            self.rewind(undo);
             return self.try_compile_assign_op_v(place, op, value);
         };
         match (op, val_kind, opt_kind) {
@@ -1328,9 +1320,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 true
             }
             _ => {
-                self.ops.truncate(saved_ops);
-                self.spans.truncate(saved_spans);
-                self.places.truncate(saved_places);
+                self.rewind(undo);
                 self.try_compile_assign_op_v(place, op, value)
             }
         }
@@ -1381,13 +1371,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if !elem_ty_ok {
             return false;
         }
-        let saved_ops = self.ops.len();
-        let saved_spans = self.spans.len();
-        let saved_places = self.places.len();
+        let undo = self.code_mark();
         let Some(path) = self.compile_place_path_to(place, true) else {
-            self.ops.truncate(saved_ops);
-            self.spans.truncate(saved_spans);
-            self.places.truncate(saved_places);
+            self.rewind(undo);
             return false;
         };
         let desc_r = match desc {

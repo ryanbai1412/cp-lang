@@ -682,6 +682,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
         r
     }
 
+    /// The code emitted so far, for `rewind` to undo back to.
+    pub(super) fn code_mark(&self) -> (usize, usize) {
+        (self.ops.len(), self.places.len())
+    }
+
+    /// Drops the ops, their spans and the places emitted since `mark`.
+    pub(super) fn rewind(&mut self, (ops, places): (usize, usize)) {
+        self.ops.truncate(ops);
+        self.spans.truncate(ops);
+        self.places.truncate(places);
+    }
+
     pub(super) fn temps_mark(&self) -> (u16, u16) {
         (self.next_i, self.next_v)
     }
@@ -906,7 +918,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if !self.program.fn_guarded_domains(&f.ret, &f.body).is_empty() {
             return false;
         }
-        if ScalarKind::of_ty(&f.ret, self.program).is_none() {
+        if ScalarKind::of_ty(&f.ret, self.program).is_none()
+            && !matches!(f.ret, Ty::I128 | Ty::Float)
+        {
             return false;
         }
         // A boxed local takes one of the caller's `INLINE_V_REGS`.
@@ -971,7 +985,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             matches!(e.kind, ExprKind::Local(_)) && small_tuple_shape(&e.ty, program).is_some()
         }
         fn simple_expr(e: &Expr, f: &cpl_ir::Function, program: &Program) -> bool {
-            if ScalarKind::of_ty(&e.ty, program).is_none() {
+            if ScalarKind::of_ty(&e.ty, program).is_none() && !matches!(e.ty, Ty::I128 | Ty::Float)
+            {
                 return false;
             }
             match &e.kind {

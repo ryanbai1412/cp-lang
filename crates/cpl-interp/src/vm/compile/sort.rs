@@ -94,17 +94,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if key_kind.is_none() && ScalarKind::of_opt_ty(key_ty, self.program).is_some() {
             return false;
         }
-        let saved_ops = self.ops.len();
-        let saved_spans = self.spans.len();
-        let saved_places = self.places.len();
+        let undo = self.code_mark();
         let desc_r = match desc {
             Some(e) => self.compile_expr_i(e),
             None => u16::MAX,
         };
         let Some(path) = self.compile_place_path_to(place, true) else {
-            self.ops.truncate(saved_ops);
-            self.spans.truncate(saved_spans);
-            self.places.truncate(saved_places);
+            self.rewind(undo);
             return false;
         };
         let r_seq = self.alloc_v();

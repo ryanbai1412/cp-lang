@@ -779,7 +779,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Call(fn_id, args) => {
-                if let Some((_, dst_v, _)) =
+                if let Some(dst_v) = self.inline_leaf(*fn_id, args, span, true) {
+                    dst_v
+                } else if let Some((_, dst_v, _)) =
                     self.try_compile_call_mix(*fn_id, args, CallRet::V, span)
                 {
                     dst_v
@@ -887,9 +889,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
                     ) =>
             {
-                let saved_ops = self.ops.len();
-                let saved_spans = self.spans.len();
-                let saved_places = self.places.len();
+                let undo = self.code_mark();
                 if let Some(path) = self.compile_place_path(place) {
                     let dst = self.alloc_v();
                     self.emit(
@@ -902,9 +902,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     );
                     dst
                 } else {
-                    self.ops.truncate(saved_ops);
-                    self.spans.truncate(saved_spans);
-                    self.places.truncate(saved_places);
+                    self.rewind(undo);
                     self.emit_fallback_expr_v(expr)
                 }
             }
@@ -961,16 +959,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             && args.is_empty()
             && matches!(place.ty, Ty::List(_) | Ty::Array { .. } | Ty::Str)
         {
-            let saved_ops = self.ops.len();
-            let saved_spans = self.spans.len();
-            let saved_places = self.places.len();
+            let undo = self.code_mark();
             if let Some(path) = self.compile_place_path(place) {
                 self.emit(Op::ReversePlace { path }, span);
                 return true;
             }
-            self.ops.truncate(saved_ops);
-            self.spans.truncate(saved_spans);
-            self.places.truncate(saved_places);
+            self.rewind(undo);
         }
         if matches!(op, Mutation::PopFirst | Mutation::PopLast)
             && args.is_empty()
@@ -979,9 +973,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
             )
         {
-            let saved_ops = self.ops.len();
-            let saved_spans = self.spans.len();
-            let saved_places = self.places.len();
+            let undo = self.code_mark();
             if let Some(path) = self.compile_place_path(place) {
                 let dst = self.alloc_v();
                 self.emit(
@@ -995,9 +987,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::ClearV { reg: dst }, span);
                 return true;
             }
-            self.ops.truncate(saved_ops);
-            self.spans.truncate(saved_spans);
-            self.places.truncate(saved_places);
+            self.rewind(undo);
         }
         if !matches!(place.ty, Ty::List(_)) {
             return false;
@@ -1186,13 +1176,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     true
                 }
                 Mutation::Push if args.len() == 1 => {
-                    let saved_ops = self.ops.len();
-                    let saved_spans = self.spans.len();
-                    let saved_places = self.places.len();
+                    let undo = self.code_mark();
                     let Some(path) = self.compile_place_path(place) else {
-                        self.ops.truncate(saved_ops);
-                        self.spans.truncate(saved_spans);
-                        self.places.truncate(saved_places);
+                        self.rewind(undo);
                         return false;
                     };
                     if let Some(kind) = ScalarKind::of_ty(&args[0].ty, self.program) {

@@ -47,7 +47,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 return None;
             }
         }
-        let marks = (self.ops.len(), self.spans.len(), self.places.len());
+        let marks = self.code_mark();
         let (mut args_i, mut args_v, mut muts) = (Vec::new(), Vec::new(), Vec::new());
         let mut lent = Vec::new();
         for (i, arg) in args.iter().enumerate() {
@@ -89,9 +89,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         for (i, place, regs) in lent {
             let Some(path) = self.whole_place_path(place) else {
-                self.ops.truncate(marks.0);
-                self.spans.truncate(marks.1);
-                self.places.truncate(marks.2);
+                self.rewind(marks);
                 return None;
             };
             let span = place.span;

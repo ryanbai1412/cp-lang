@@ -1107,94 +1107,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         }
                     }
                 }
-                let can_inline_pure_leaf =
-                    self.is_pure_leaf_fn(*fn_id) && {
-                        let f = &self.program.fns[*fn_id];
-                        args.iter().enumerate().all(|(i, a)| {
-                        let Arg::Value(ae) = a else { return false; };
-                        if ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some()
-                            || (small_tuple_shape(&f.locals[i].ty, self.program).is_some()
-                                && self.small_tuple_is_cheap(ae))
-                        {
-                            true
-                        } else if let ExprKind::Local(slot) = &ae.kind {
-                            matches!(self.slot_loc(*slot), SlotLoc::V(r) if r < self.num_local_v)
-                        } else {
-                            false
-                        }
-                    })
-                    };
-                let inlined = if can_inline_pure_leaf {
-                    let f = &self.program.fns[*fn_id];
-                    // A fallback reads its locals from the tree-walker's frame,
-                    // which an inlined body does not have: if the body needs
-                    // one, undo the inlining and call the function instead.
-                    let mark = (
-                        self.ops.len(),
-                        self.fallback_stmts.len(),
-                        self.fallback_exprs.len(),
-                        self.trace_points.len(),
-                    );
-                    match self.leaf_locals(f, args, span) {
-                        None => {
-                            self.ops.truncate(mark.0);
-                            self.spans.truncate(mark.0);
-                            self.fallback_stmts.truncate(mark.1);
-                            self.fallback_exprs.truncate(mark.2);
-                            self.trace_points.truncate(mark.3);
-                            None
-                        }
-                        Some((map, boxed)) => {
-                            let dst = self.alloc_i();
-                            let prev_slots = self.inline_slots.replace(map);
-                            let prev_ret = self.inline_ret.replace((dst, Vec::new()));
-                            let (tail, body) = match f.body.stmts.split_last() {
-                                Some((Stmt::Return(Some(e)) | Stmt::Give(e), rest)) => {
-                                    (Some(e), rest)
-                                }
-                                _ => (None, &f.body.stmts[..]),
-                            };
-                            for s in body {
-                                self.compile_stmt(s);
-                            }
-                            // The last statement's value falls through to the end, so
-                            // it needs no jump, nor a move when nothing else returns.
-                            let tail = tail.map(|e| self.compile_expr_i(e));
-                            let jumps = self.inline_ret.take().map_or_else(Vec::new, |(_, j)| j);
-                            let dst = match tail {
-                                Some(r) if jumps.is_empty() => r,
-                                Some(r) => {
-                                    if r != dst {
-                                        self.emit(Op::MoveI { dst, src: r }, span);
-                                    }
-                                    dst
-                                }
-                                None => dst,
-                            };
-                            let end_pc = self.ops.len() as u32;
-                            self.inline_ret = prev_ret;
-                            self.inline_slots = prev_slots;
-                            self.patch_all(jumps, end_pc);
-                            for reg in boxed {
-                                self.emit(Op::ClearV { reg }, span);
-                            }
-                            if (self.fallback_stmts.len(), self.fallback_exprs.len())
-                                == (mark.1, mark.2)
-                            {
-                                Some(dst)
-                            } else {
-                                self.ops.truncate(mark.0);
-                                self.spans.truncate(mark.0);
-                                self.fallback_stmts.truncate(mark.1);
-                                self.fallback_exprs.truncate(mark.2);
-                                self.trace_points.truncate(mark.3);
-                                None
-                            }
-                        }
-                    }
-                } else {
-                    None
-                };
+                let inlined = self.inline_leaf(*fn_id, args, span, false);
                 if let Some(dst) = inlined {
                     dst
                 } else {
@@ -1250,6 +1163,103 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             _ => self.emit_fallback_expr_i(expr),
+        }
+    }
+
+    /// `fn_id(args)` with the body of the pure leaf `fn_id` compiled in
+    /// place, into a V register when `v`, else an Int one.
+    pub(super) fn inline_leaf(
+        &mut self,
+        fn_id: cpl_ir::FnId,
+        args: &'p [Arg],
+        span: cpl_diag::Span,
+        v: bool,
+    ) -> Option<u16> {
+        let can_inline_pure_leaf = self.is_pure_leaf_fn(fn_id)
+            && (!v
+                || matches!(
+                    self.program.fns[fn_id].body.stmts[..],
+                    [Stmt::Return(Some(_)) | Stmt::Give(_)]
+                ))
+            && {
+                let f = &self.program.fns[fn_id];
+                args.iter().enumerate().all(|(i, a)| {
+                    let Arg::Value(ae) = a else {
+                        return false;
+                    };
+                    if ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some()
+                        || (small_tuple_shape(&f.locals[i].ty, self.program).is_some()
+                            && self.small_tuple_is_cheap(ae))
+                    {
+                        true
+                    } else if let ExprKind::Local(slot) = &ae.kind {
+                        matches!(self.slot_loc(*slot), SlotLoc::V(r) if r < self.num_local_v)
+                    } else {
+                        false
+                    }
+                })
+            };
+        if can_inline_pure_leaf {
+            let f = &self.program.fns[fn_id];
+            // A fallback reads its locals from the tree-walker's frame,
+            // which an inlined body does not have: if the body needs
+            // one, undo the inlining and call the function instead.
+            let mark = (
+                self.code_mark(),
+                self.fallback_stmts.len(),
+                self.fallback_exprs.len(),
+                self.trace_points.len(),
+            );
+            let inlined = self.leaf_locals(f, args, span).and_then(|(map, boxed)| {
+                let dst = self.alloc_i();
+                let prev_slots = self.inline_slots.replace(map);
+                let prev_ret = self.inline_ret.replace((dst, Vec::new()));
+                let (tail, body) = match f.body.stmts.split_last() {
+                    Some((Stmt::Return(Some(e)) | Stmt::Give(e), rest)) => (Some(e), rest),
+                    _ => (None, &f.body.stmts[..]),
+                };
+                for s in body {
+                    self.compile_stmt(s);
+                }
+                // The last statement's value falls through to the end, so
+                // it needs no jump, nor a move when nothing else returns.
+                let tail = tail.map(|e| {
+                    if v {
+                        self.compile_expr_v(e)
+                    } else {
+                        self.compile_expr_i(e)
+                    }
+                });
+                let jumps = self.inline_ret.take().map_or_else(Vec::new, |(_, j)| j);
+                let dst = match tail {
+                    Some(r) if jumps.is_empty() => r,
+                    Some(r) => {
+                        if r != dst {
+                            self.emit(Op::MoveI { dst, src: r }, span);
+                        }
+                        dst
+                    }
+                    None => dst,
+                };
+                let end_pc = self.ops.len() as u32;
+                self.inline_ret = prev_ret;
+                self.inline_slots = prev_slots;
+                self.patch_all(jumps, end_pc);
+                for reg in boxed {
+                    self.emit(Op::ClearV { reg }, span);
+                }
+                ((self.fallback_stmts.len(), self.fallback_exprs.len()) == (mark.1, mark.2))
+                    .then_some(dst)
+            });
+            if inlined.is_none() {
+                self.rewind(mark.0);
+                self.fallback_stmts.truncate(mark.1);
+                self.fallback_exprs.truncate(mark.2);
+                self.trace_points.truncate(mark.3);
+            }
+            inlined
+        } else {
+            None
         }
     }
 
