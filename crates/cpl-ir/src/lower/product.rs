@@ -153,6 +153,40 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts: out }), Ty::Pos(id), span)
     }
 
+    /// `read()` of a product position: each part in order, then the
+    /// position they name.
+    pub(super) fn product_read(&mut self, id: DomainId) -> Expr {
+        let span = Span::default();
+        let tys: Vec<Ty> = self.product_domains[&id]
+            .iter()
+            .map(|(_, f)| f.ty())
+            .collect();
+        let parts = Spec::Fields(
+            Ty::Tuple(tys.clone()),
+            tys.iter().cloned().map(Spec::Plain).collect(),
+        );
+        let parts = self.readable(parts);
+        let read = self.mk(
+            ExprKind::Read(Box::new(parts)),
+            Ty::Tuple(tys.clone()),
+            span,
+        );
+        let mut out = Vec::new();
+        let held = self.hold(read, &mut out);
+        let parts = (0..tys.len())
+            .map(|i| {
+                self.mk(
+                    ExprKind::Field(Box::new(held.clone()), i),
+                    tys[i].clone(),
+                    span,
+                )
+            })
+            .collect();
+        let pos = self.encode_product(id, parts, span);
+        out.push(Stmt::Give(pos));
+        self.mk(ExprKind::Do(Block { stmts: out }), Ty::Pos(id), span)
+    }
+
     /// `V.at(label)`: the position with that label, or `None` outside `V`.
     /// On a product, `P.at((x1, ..., xn))` takes the parts tuple, and is `None`
     /// when any part is outside its factor (R04.2.10).

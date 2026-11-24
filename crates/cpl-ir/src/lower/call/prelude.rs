@@ -1619,6 +1619,10 @@ impl<'a> Lowerer<'a> {
                 });
                 Spec::Call(Box::new(call))
             }
+            // A product position reads as its parts, as it prints. (R10.2.3)
+            Spec::Plain(Ty::Pos(d)) if self.product_domains.contains_key(&d) => {
+                Spec::Call(Box::new(self.product_read(d)))
+            }
             // A payload enum that is a sum domain reads by its tag too. (R10.2.3)
             Spec::Plain(Ty::Pos(d)) if self.sum_enums.contains_key(&d) => {
                 let id = self.sum_enums[&d].enum_id;
