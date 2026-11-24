@@ -36,6 +36,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             .chunks()
             .find(|c| std::ptr::eq(*c as *const Chunk<'p> as *const (), host))?;
         let &(_, pc) = chunk.fed_bodies.iter().find(|b| b.0 == id)?;
+        // The host's frame is a caller of the running fn, so its `mut`
+        // params are back with their lenders; the body holds them again.
+        let frame = self.base..self.base + chunk.slot_map.len();
+        if let Err(e) = self.hide_lent_in(frame.clone()) {
+            return Some(Err(e));
+        }
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         let base_i = vm_regs_i.len();
         vm_regs_i.resize(base_i + chunk.num_i, 0);
@@ -63,6 +69,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         self.vm_regs_i = vm_regs_i;
+        let exit = self.show_lent_in(frame).and(exit);
         Some(exit.map(|exit| match exit {
             ExecExit::FeedNext => Flow::Next,
             ExecExit::FeedBreak => Flow::Break(Some(id)),
