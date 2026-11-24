@@ -1707,11 +1707,7 @@ impl<'a> Lowerer<'a> {
             Ty::Error => return self.err_expr(span),
             other => {
                 let shown = self.show(other);
-                self.report(
-                    span,
-                    cpl_diag::msgs::ir::BAD_OPERANDS_CAN_T_SLICE_A,
-                    &[&shown],
-                );
+                self.report_str(span, cpl_diag::msgs::ir::BAD_OPERANDS_CAN_T_SLICE_A, &shown);
                 return self.err_expr(span);
             }
         };

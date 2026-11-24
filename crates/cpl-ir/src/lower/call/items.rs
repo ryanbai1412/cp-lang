@@ -537,7 +537,7 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
             (None, Some(_)) => {
-                self.report(span, msgs::ir::WRONG_ARG_COUNT_TAKES_NO_SELF_CALL, &[&name]);
+                self.report_str(span, msgs::ir::WRONG_ARG_COUNT_TAKES_NO_SELF_CALL, &name);
                 return self.err_expr(span);
             }
         };

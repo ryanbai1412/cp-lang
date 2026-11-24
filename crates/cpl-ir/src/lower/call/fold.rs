@@ -48,7 +48,7 @@ impl<'a> Lowerer<'a> {
         }
         if names_domain(&spec, &self.own_domains) {
             let shown = self.show(&ty);
-            self.report(span, msgs::ir::UNSUPPORTED_READ_CAN_T_SIZE, &[&shown]);
+            self.report_str(span, msgs::ir::UNSUPPORTED_READ_CAN_T_SIZE, &shown);
             self.help(
                 "read it on its own: `let s: [domain S]Char = read()`, then the rest".to_string(),
             );
@@ -67,7 +67,7 @@ impl<'a> Lowerer<'a> {
         let letters = matches!(elem_ty, Ty::Pos(e) if self.char_domains.contains(&e));
         if elem_ty != Ty::Char && !letters {
             let shown = self.show(&ty);
-            self.report(span, msgs::ir::UNSUPPORTED_READ_CAN_T_TELL, &[&shown]);
+            self.report_str(span, msgs::ir::UNSUPPORTED_READ_CAN_T_TELL, &shown);
             self.help(
                 "read the count first, name a domain of that size, and read a `[D]T`".to_string(),
             );
@@ -392,10 +392,10 @@ impl<'a> Lowerer<'a> {
         }
         match args {
             [] => {
-                self.report(
+                self.report_str(
                     span,
                     msgs::ir::WRONG_ARG_COUNT_NEEDS_SOMETHING_TO_COMPARE,
-                    &[&name],
+                    name,
                 );
                 self.err_expr(span)
             }

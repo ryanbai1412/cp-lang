@@ -65,7 +65,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         let (Dim::Pos(r), Dim::Pos(c)) = (&dims[0], &dims[1]) else {
-            self.report(span, msgs::ir::TYPE_MISMATCH_TAKES_AN_ARRAY_OVER, &[&shape]);
+            self.report_str(span, msgs::ir::TYPE_MISMATCH_TAKES_AN_ARRAY_OVER, shape);
             return self.err_expr(span);
         };
         let gargs = vec![

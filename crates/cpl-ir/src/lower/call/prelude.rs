@@ -664,7 +664,7 @@ impl<'a> Lowerer<'a> {
                 self.convert(name, value, span)
             }
             _ => {
-                self.report(span, msgs::ir::UNRESOLVED_NAME_NO_FN_NAMED_HERE, &[&name]);
+                self.report_str(span, msgs::ir::UNRESOLVED_NAME_NO_FN_NAMED_HERE, name);
                 self.err_expr(span)
             }
         }

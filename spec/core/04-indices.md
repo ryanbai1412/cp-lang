@@ -101,6 +101,12 @@ printed form writes `impl Into<Int>` (`fn into(self) -> Int`) and `Show`, as
 `Subset` does with its mask (decisions 291, 390). An always-on precondition
 is an `assert` inside `with checks(asserts: on):` (R09.4.1). (R04.2.28)
 
+`domain V = e` counts its positions from `e`: an `Int` count, a range of
+`Int`s, a list, array or string (one position per element), a struct that
+holds one of those, or another domain's value. Any other type is E0302,
+which names it: a domain over `F64`s, `Bool`s or a plain struct has no
+positions to count. (R04.2.29)
+
 **Pieces.** Coordinate compression for intervals: `let (domain P, piece) =
 D.pieces(cuts: cs)` splits a range at the given cuts into the pieces between them,
 with `piece[p]` the `Range<D>` each covers (so `piece[p].len` is its real length)

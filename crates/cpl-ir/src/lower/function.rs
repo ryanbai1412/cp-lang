@@ -448,7 +448,7 @@ impl<'a> Lowerer<'a> {
                 return Ty::Unit;
             }
             let name = self.sigs[id].decl.name.text.clone();
-            self.report(span, msgs::ir::UNKNOWN_TYPE_CALLS_ITSELF_SO_IT, &[&name]);
+            self.report_str(span, msgs::ir::UNKNOWN_TYPE_CALLS_ITSELF_SO_IT, &name);
             self.help(format!(
                 "add `-> Int`, or the type it returns, to `fn {name}`"
             ));

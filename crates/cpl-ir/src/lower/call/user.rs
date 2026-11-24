@@ -948,7 +948,7 @@ impl<'a> Lowerer<'a> {
                 self.err_expr(span)
             }
             None => {
-                self.report(span, msgs::ir::UNSUPPORTED_IS_NOT_IN_SCOPE, &[&name]);
+                self.report_str(span, msgs::ir::UNSUPPORTED_IS_NOT_IN_SCOPE, name);
                 self.err_expr(span)
             }
             Some(sym) => {

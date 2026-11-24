@@ -998,7 +998,13 @@ impl<'a> Lowerer<'a> {
 
     /// Reports something the language has but the back ends don't yet.
     fn unsupported(&mut self, span: Span, what: &str) {
-        self.report(span, msgs::ir::UNSUPPORTED_CPL_RUN_AND_CPL, &[&what]);
+        self.report_str(span, msgs::ir::UNSUPPORTED_CPL_RUN_AND_CPL, what);
+    }
+
+    /// `report` with one text argument, kept out of line: callers are many.
+    #[inline(never)]
+    fn report_str(&mut self, span: Span, msg: cpl_diag::msgs::Msg, what: &str) {
+        self.report(span, msg, &[&what]);
     }
 
     fn mismatch(&mut self, span: Span, want: &Ty, found: &Ty) {
