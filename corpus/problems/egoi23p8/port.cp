@@ -14,14 +14,35 @@
 const PARTS = 9
 const TOTAL = 11
 
-// every way to write `total` as `parts` ordered non-negative digits, in lexicographic order
-fn compositions(parts: Int, total: Int) -> List<List<Int>>:
-    if parts == 1: return [[total]]
-    var all: List<List<Int>> = []
-    for d in 0..=total:
-        for rest in compositions(parts - 1, total - d): all.push([d] + rest)
-    all
-let codes = compositions(PARTS, TOTAL)
+// the ways to write `total` as `parts` ordered non-negative digits: C(total + parts - 1, parts - 1)
+fn ways(parts: Int, total: Int) -> Int:
+    var w = 1
+    for i in 1..parts: w = w * (total + i) / i
+    w
+
+// the composition at `rank` in lexicographic order
+fn unrank(rank: Int) -> List<Int>:
+    var r = rank
+    var left = TOTAL
+    var digits: List<Int> = []
+    for i in 0..PARTS - 1:
+        var d = 0
+        while r >= ways(PARTS - 1 - i, left - d):
+            r -= ways(PARTS - 1 - i, left - d)
+            d += 1
+        digits.push(d)
+        left -= d
+    digits.push(left)
+    digits
+
+// where `digits` sits among the compositions in lexicographic order
+fn rank(digits: List<Int>) -> Int:
+    var r = 0
+    var left = TOTAL
+    for i in 0..PARTS - 1:
+        for d in 0..digits[i]: r += ways(PARTS - 1 - i, left - d)
+        left -= digits[i]
+    r
 
 let phase: 1..=2 = read()
 let n: 13..=150_000 = read()
@@ -37,7 +58,7 @@ if phase == 1:
         one_sum += h.ord
         print(1)
     let rest = H.filter(h => not seen[h]).collect()  // the 12 coded houses and Emma's
-    for (i, d) in codes[one_sum % n / 2].items:
+    for (i, d) in unrank(one_sum % n / 2).items:
         for _ in 0..d:
             let h: H = read()
             seen[h] = true
@@ -54,7 +75,7 @@ else:
     if ones.len == n - 12:
         // Emma wrote 1: the composition is whole, and her index is the 1-houses' sum less s
         let count = [coded.count(h => label[h] == 2 + i) for i in 0..PARTS]
-        let at = (0..codes.len).find(j => codes[j] == count)!
+        let at = rank(count)
         let known = sum(h.ord for h in ones)
         print((known - 2 * at) % n, (known - 2 * at - 1) % n)
     elif flags.len == 2: print(flags[0], flags[1])
