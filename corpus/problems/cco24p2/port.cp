@@ -24,12 +24,16 @@ fn print_stacks(k: Int, stack: Flavour -> Int):
     print([stack(a[p]) for p in Pizza])
     print([stack(b[q]) for q in Person])
 
-if not a.is_permutation(b):
+var surplus: [Flavour]Int = 0
+for f in a: surplus[f] += 1
+let distinct = surplus.all(c => c <= 1)
+for f in b: surplus[f] -= 1
+if surplus.any(c => c != 0):
     print(-1)
 elif a.all(f => f.label <= 2):
     if b.collect() == a.rev.collect(): print_stacks(1, _ => 1)
     else: print_stacks(2, f => f.label)
-elif a.is_permutation(Flavour.collect()):
+elif distinct:
     let laid = a.inverse()
     var tops: List<Pizza> = []
     var stack: [Flavour]Int = 0
