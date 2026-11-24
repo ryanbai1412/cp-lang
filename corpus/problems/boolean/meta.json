@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "3422471", "language": "PYPY3", "result": "AC", "time": 23.136395256, "memory_kb": 56300.0, "file": "corpus/submissions/3422471.py"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/boolean/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ (the AC, 3422471, is Python). orig.cpp is corpus-written, checked against the samples and Python's eval of the expression on 40 random cases."
 }

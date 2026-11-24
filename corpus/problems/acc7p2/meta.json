@@ -10,5 +10,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Interactive: interactor.py is the judge, the case is N and each person's timestamp, and it answers a wrong proposal with one self-reviewing timestamp chosen by a generator seeded from the case."
 }

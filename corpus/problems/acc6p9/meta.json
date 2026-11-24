@@ -2,13 +2,17 @@
  "problem": "acc6p9",
  "source": "acc",
  "submissions": [
-  {"id": "4381330", "language": "CPP17", "result": "AC", "time": 0.0, "memory_kb": 0.0, "file": "corpus/submissions/4381330.cpp"}
+  {"id": "4381330", "language": "CPP17", "result": "AC", "time": 0.0, "memory_kb": 0.0, "file": null}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/acc6p9/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The statement asks for no input and no output: any submission is accepted. The AC 4381330 was 9 bytes that are not C++, so it is no reference; its file is gone and this record stays. The package is an empty input judged by checker.py, which accepts any output, with orig.cpp an empty main."
 }
