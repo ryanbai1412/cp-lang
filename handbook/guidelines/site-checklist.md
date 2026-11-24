@@ -38,7 +38,7 @@ Every std entry is rendered from the structured fields of `cpl doc --format json
 
 - **Why:** a contestant scanning for one fact (what `by:` takes, what the cost is) should find it without reading a paragraph.
 - **Example:** `runs` shows its signature as highlighted code, one parameter per line when it is long, then a table of its parameters with types and defaults (`by: T -> K = x => x`), then labelled rows for cost (as math), empty, order and traps, then examples that run.
-- **Enforced by:** `web/scripts/gen-ref.mjs`. What std docs must contain is in `guidelines/std-docs.md`.
+- **Enforced by:** `crates/cpl-doc/src/tests.rs` (`every_std_doc_states_each_fact_once_outside_its_prose`: every std entry has a signature and no `cost:`/`empty:`/`order:`/`ties:`/`traps:` line in its prose), in the commit tier of any `std/` change; `web/scripts/gen-ref.mjs` again in the site build. What std docs must contain is in `guidelines/std-docs.md`.
 
 ## site/R5: Every link is a real link
 
