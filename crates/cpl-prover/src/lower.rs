@@ -175,7 +175,8 @@ pub(crate) struct Lowerer<'a> {
     path: Vec<Formula>,
     depth: usize,
     /// Set to collect what the term needs in order not to trap.
-    pub obligations: Option<Vec<Obligation>>,
+    pub collect: bool,
+    pub obligations: Vec<Obligation>,
 }
 
 fn int(c: i128) -> Poly {
@@ -219,7 +220,8 @@ impl<'a> Lowerer<'a> {
             globals,
             path: Vec::new(),
             depth: 0,
-            obligations: None,
+            collect: false,
+            obligations: Vec::new(),
         }
     }
 
@@ -309,8 +311,8 @@ impl<'a> Lowerer<'a> {
             return;
         }
         let path = self.here();
-        if let Some(list) = self.obligations.as_mut() {
-            list.push(Obligation {
+        if self.collect {
+            self.obligations.push(Obligation {
                 hazard,
                 path,
                 safe,

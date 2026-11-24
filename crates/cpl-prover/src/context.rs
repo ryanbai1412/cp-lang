@@ -263,9 +263,9 @@ impl Context {
     fn define_term(&mut self, name: &str, term: &Term, kind: Kind) -> Res<()> {
         let term = self.resolve(term);
         let mut lowerer = Lowerer::new(&mut self.store, &self.globals);
-        lowerer.obligations = Some(Vec::new());
+        lowerer.collect = true;
         let value = lowerer.term(&term)?;
-        let obligations = lowerer.obligations.take().unwrap();
+        let obligations = std::mem::take(&mut lowerer.obligations);
         self.safety.extend(no_overflow(&obligations)?);
         let internal = self.next_version(name);
         self.globals.vars.insert(internal.clone(), value);
@@ -277,15 +277,13 @@ impl Context {
     /// Forget the value of a variable: it was reassigned to something
     /// unknown, or a call may have changed it. Its type is all that stays.
     pub fn havoc(&mut self, name: &str) -> Res<()> {
-        let internal = self
-            .current
-            .get(name)
-            .ok_or_else(|| Error::new(format!("`{name}` is not declared")))?;
+        // The newest declaration of a name is its current version.
         let decl = self
             .decls
             .iter()
-            .find(|decl| decl.internal == *internal)
-            .unwrap();
+            .rev()
+            .find(|decl| decl.name == name)
+            .ok_or_else(|| Error::new(format!("`{name}` is not declared")))?;
         let sort = match &decl.kind {
             Kind::Input { sort, .. } => sort.clone(),
             _ => Sort::Int,
@@ -336,9 +334,9 @@ impl Context {
     pub fn prove_term(&mut self, goal: &Term) -> Res<Verdict> {
         let goal = self.resolve(goal);
         let mut lowerer = Lowerer::new(&mut self.store, &self.globals);
-        lowerer.obligations = Some(Vec::new());
+        lowerer.collect = true;
         let formula = lowerer.formula(&goal)?;
-        let obligations = lowerer.obligations.take().unwrap();
+        let obligations = std::mem::take(&mut lowerer.obligations);
         let safety = no_overflow(&obligations)?;
         // Each conjunct of the goal is refuted on its own: its search
         // only wakes the definitions that conjunct depends on.
@@ -377,9 +375,9 @@ impl Context {
     pub fn check_traps_term(&mut self, expr: &Term) -> Res<Vec<Finding>> {
         let term = self.resolve(expr);
         let mut lowerer = Lowerer::new(&mut self.store, &self.globals);
-        lowerer.obligations = Some(Vec::new());
+        lowerer.collect = true;
         lowerer.term(&term)?;
-        let obligations = lowerer.obligations.take().unwrap();
+        let obligations = std::mem::take(&mut lowerer.obligations);
         let root: Vec<Formula> = self.facts.iter().map(|fact| fact.formula.clone()).collect();
         let mut findings: Vec<Finding> = Vec::new();
         for obligation in obligations {
@@ -628,7 +626,9 @@ impl Context {
             // The generator stays in place while the candidate is checked:
             // array elements are drawn when they are first read.
             let hit = self.draw(&mut env) && self.hits(&mut env, target, true);
-            rng = env.rng.take().unwrap();
+            if let Some(advanced) = env.rng.take() {
+                rng = advanced;
+            }
             rng.next_u64();
             if hit {
                 return Verdict::Refuted(self.report(&mut env, target));
