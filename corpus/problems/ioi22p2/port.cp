@@ -8,62 +8,65 @@
 //   c) means both counts share a depth t - 1 node and the last bag opened went into child c;
 //   bags alternate by depth. A count at an endpoint or in another child settles the order, the
 //   same child descends a level. 1 + sum b = 21 states, O(n * states * depth) to print.
-// original: corpus/submissions/4783608.cpp
-
-enum Step: Low | High | Child(Int)
-
+// original: corpus/submissions/4783608.cpp (grader function devise_strategy)
+// checker: corpus/problems/ioi22p2/checker.py
+// stdin: n. stdout: the number of states, then per state the bag it opens and the action for
+//   each count 1..=n (-1 / -2 name bag A / B as smaller, else the state to write).
 let n: 2..=5000 = read()
-let fanout: List<Int> = [3, 3, 3, 3, 3, 2, 2, 1]
+domain Count = 1..=n
+let fanout = [3, 3, 3, 3, 3, 2, 2, 1]
 let depth = fanout.len
 
-// size[t]: values covered by a node at depth t (leaf size[depth] = 2).
-var rsize: List<Int> = [2]
-for b in fanout.rev: rsize.push(b * rsize.last! + 2)
-let size = [rsize[depth - t] for t in 0..=depth]
+// size[t]: the counts a node at depth t covers; a leaf (depth `depth`) covers 2
+var size = [2]
+for b in fanout.rev: size.push(b * size.last! + 2)
+size.reverse()
 
-// first_state[t]: state id of (depth t, child 0) for t >= 1.
-var first_state: List<Int> = [0, 1]
-for b in fanout: first_state.push(first_state.last! + b)
-let states = first_state[depth + 1]
+// the state (depth t, child 0); depth 0 has the one start state
+let before = fanout.scan(+)
+fn first_state(t: Int) -> Int = if t == 0: 0 else: 1 + before.cut(t - 1)
 
+enum Step: Low | High | Child(Int)
+// v's walk down the tree: the child it takes at each depth, then the endpoint it is
 fn path(v: Int) -> List<Step>:
     var out: List<Step> = []
     var lo = 1
     for t in 0..=depth:
-        let hi = lo + size[t] - 1
         if v == lo: return out + [Step.Low]
-        if v == hi: return out + [Step.High]
+        if v == lo + size[t] - 1: return out + [Step.High]
         let c = (v - lo - 1) / size[t + 1]
         out.push(Step.Child(c))
         lo += 1 + c * size[t + 1]
     out
+let paths: [Count]List<Step> = [Count] v => path(Int(v))
 
-// Grader action code when the bag just opened is smaller (`mine == true`) or larger.
-fn smaller(bag: Int, mine: Bool) -> Int = if (bag == 0) == mine: -1 else: -2
+enum Bag: A | B
+enum Act: Smaller(Bag) | Write(Int)
+fn other(b: Bag) -> Bag = if b == Bag.A: Bag.B else: Bag.A
+fn code(a: Act) -> Int = match a:
+    Act.Smaller(b) => if b == Bag.A: -1 else: -2
+    Act.Write(s) => s
 
-fn step_action(bag: Int, step: Step, next_base: Int) -> Int = match step:
-    Step.Low => smaller(bag, true)
-    Step.High => smaller(bag, false)
-    Step.Child(next) => next_base + next
+// the opened count left the node by `step` while the other count went into child `c`
+fn settle(bag: Bag, step: Step, c: Int) -> Act = match step:
+    Step.Low => Act.Smaller(bag)
+    Step.High => Act.Smaller(other(bag))
+    Step.Child(mine) => Act.Smaller(if mine < c: bag else: other(bag))
 
-print(states)
+// at depth t the opened count goes on into a child, or is an endpoint and settles
+fn descend(bag: Bag, step: Step, t: Int) -> Act = match step:
+    Step.Child(k) => Act.Write(first_state(t + 1) + k)
+    _ => settle(bag, step, 0)
+
+print(first_state(depth + 1))
 for t in 0..=depth:
-    let branches = if t == 0: 1 else: fanout[t - 1]
-    let next_base = if t < depth: first_state[t + 1] else: 0
-    let bag = t % 2
-    for c in 0..branches:
-        var row: List<Int> = [bag]
-        for v in 1..=n:
-            let p = path(v)
-            let act =
-                if t == 0: step_action(0, p[0], next_base)
-                elif t - 1 >= p.len: 0
-                else:
-                    match p[t - 1]:
-                        Step.Low => smaller(bag, true)
-                        Step.High => smaller(bag, false)
-                        Step.Child(mine) =>
-                            if mine != c: smaller(bag, mine < c)
-                            else: step_action(bag, p[t], next_base)
-            row.push(act)
-        print(row)
+    let bag = if t % 2 == 0: Bag.A else: Bag.B
+    for c in 0..(if t == 0: 1 else: fanout[t - 1]):
+        let acts = [Count] v =>
+            let p = paths[v]
+            // a count whose walk stops above depth t - 1 never sees this state
+            if t == 0: descend(bag, p[0], 0)
+            elif t - 1 >= p.len: Act.Write(0)
+            elif p[t - 1] == Step.Child(c): descend(bag, p[t], t)
+            else: settle(bag, p[t - 1], c)
+        print([Int(bag == Bag.B)] + [code(acts[v]) for v in Count])
