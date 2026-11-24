@@ -1,4 +1,4 @@
-// expect: 1
+// expect: ok, output "1"
 // rule: 02.1.1
 // A `()` field given to a fn value is a value like any other: the closure takes it and the call builds in C++.
 struct Slot<K, V>:
