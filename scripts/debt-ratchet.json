@@ -15,7 +15,7 @@
   "layer_violations": 1,
   "tree_walker": 1,
   "v02_port_files": 0,
-  "ports_unreported": 108,
+  "ports_unreported": 17,
   "direct_python": 0,
   "unrun_script_tests": 0,
   "crate_edges": [
