@@ -8,7 +8,8 @@
 //   weight; only an edge joining two zero-cost components changes dist (at most n - 1 times),
 //   by an O(n^2) relaxation through it. Queries wait per pair sorted by k and are answered by
 //   the weight that brings dist below k. O(n^3 + q log q).
-// Bounds: n: 2..=400; q: 1..=300_000; queries.a, queries.b: 1..=n
+// Bounds: n: 2..=400; q: 1..=300_000; edges.u, edges.v, queries.a, queries.b: 1..=n;
+//   edges.w: 1..=1e9
 @!multitest
 use std.graph.{floyd_warshall}
 let (n, m, q): (2..=400, Int, 1..=300_000) = read()
