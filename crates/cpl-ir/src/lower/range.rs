@@ -406,14 +406,17 @@ impl<'a> Lowerer<'a> {
         &self,
         decl: &ast::StructDecl,
     ) -> std::collections::BTreeMap<usize, (i64, i64)> {
-        (decl.fields.iter().enumerate())
-            .filter(|(_, f)| match &f.ty.kind {
-                ast::TypeKind::Range { .. } => true,
-                ast::TypeKind::Named { args, .. } => args.is_empty(),
-                _ => false,
-            })
-            .filter_map(|(at, f)| Some((at, self.static_range_limits(&f.ty)?)))
-            .collect()
+        let mut ranges = std::collections::BTreeMap::new();
+        ranges.extend(
+            (decl.fields.iter().enumerate())
+                .filter(|(_, f)| match &f.ty.kind {
+                    ast::TypeKind::Range { .. } => true,
+                    ast::TypeKind::Named { args, .. } => args.is_empty(),
+                    _ => false,
+                })
+                .filter_map(|(at, f)| Some((at, self.static_range_limits(&f.ty)?))),
+        );
+        ranges
     }
 
     /// The ranged `Int`, `?Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.
