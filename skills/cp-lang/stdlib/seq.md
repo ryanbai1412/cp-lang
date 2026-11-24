@@ -86,7 +86,7 @@ The keys a `step(k)` view visits, made by its `keys`: of the `n` source keys fro
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `fn contains<K>(self, i: K) -> Bool` — \(O(1)\)
 
-## `struct Keys<S, I, K>(pub src: S, pub keys: I, by: ?K)`
+## `struct Keys<S, I, T, K>(pub src: S, pub keys: I, by: ?(T -> K))`
 
 The view `keyed` returns.
 
@@ -246,7 +246,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn odd<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
 - `fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T` — \(O(1)\); traps: when `keys.len != self.len`
 - `fn collect<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), allocates; The end of a lazy chain, materialized into the type the context expects, else a `List`.
-- `fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, K>` — \(O(1)\) to make, \(O(1)\) per step; `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items` gives `(key, x)`, and `argmax`/`find` answer with keys.; traps: when both `keys` and `by` are given; when `keys` runs out first
+- `fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, T, K>` — \(O(1)\) to make, \(O(1)\) per step; `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items` gives `(key, x)`, and `argmax`/`find` answer with keys.; traps: when both `keys` and `by` are given; when `keys` runs out first
 - `fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T` — \(O(1)\) per step
 - `fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T` — \(O(1)\) per step
 - `fn skip_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T` — \(O(1)\) per step

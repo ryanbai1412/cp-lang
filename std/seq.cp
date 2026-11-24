@@ -1663,10 +1663,10 @@ pub fn keyed<S: Seq, I: Indexed, T, K>(
     self: S,
     keys: I = 0..,
     by: ?(T -> K) = None,
-) -> Keys<S, I, K> = todo
+) -> Keys<S, I, T, K> = todo
 
 /// The view `keyed` returns.
-pub struct Keys<S, I, K>(pub src: S, pub keys: I, by: ?K)
+pub struct Keys<S, I, T, K>(pub src: S, pub keys: I, by: ?(T -> K))
 
 /// \(O(1)\) per step. Yield leading elements while `keep(x)` holds, stopping at the first failure.
 ///

@@ -92,10 +92,9 @@ line when the gap closes and the body lands.
 - seq, `rev`, `Filtered.src`/`Mapped.src`/`Rev.src`/`Items.src`: the view structs are declared with no fields (`struct Rev<S>()`), so a body cannot hold or hand back its source; needs the views to carry `src`.
 - seq, `drop`/`drop_last`/`take`/`take_last`/`split`/`maximal`/`minimal`/`Ring.maximal`/`Ring.minimal`: return `Slice<S>` views of a generic `S`, which cannot be built (`Slice<S>()` has no fields and `self[i..j]` on generic `S` indexes one element).
 - seq, `rekey`: building a `[K]T` from a `Range<K>` of a caller's domain needs `[K]` fill from a generic range (`[K] k => ...` over `keys`), and `rekey(10..12)` needs an int range to act as a domain.
-- seq, `keyed`: `Keys<S, I, K>` stores `by: ?K`, but the parameter is `?(T -> K)`, so the struct cannot hold the given key fn.
 - segtree, `SegTree.apply_all`: same as `apply`; its tag type `F` is not a declared parameter.
 - persistent, `PMultiset.*`: an immutable value holding only `root: Int` needs one node pool shared by every multiset (and a hash per node for O(1) `==`); a struct cannot own shared storage.
-- graph, `Graph.weighted` (`Reweighted`): a lambda stored in a struct's generic field is typed `Int` (`Rw(g, a => 5)` is `Rw<Graph<..>, Int>`, then E0203 "no method `f`"), and a user `impl Next<V>` whose `Arc` has a `w` field does not satisfy `WeightedNext` (E0606 on `dijkstra`, case `std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp`).
+- graph, `Graph.weighted` (`Reweighted`): a lambda stored in a struct's generic field is typed `Int` (`Rw(g, a => 5)` is `Rw<Graph<..>, Int>`, then E0203 "no method `f`").
 - tree, `KruskalTree.top<E>`: a method type parameter mentioned only by a fn-typed parameter is bound to `Int` (compiler worklog), so `ok(E.nth(i))` cannot be typed; the body is one line over an `[N]Int` merging-edge field.
 - segtree, `SegTree.new(over:)`: `SegTree<Int, Int>` is E0201 "doesn't know the name `D`" in `cpl run`, and the layout is one `bit_ceil(D.K)` array with no slot for nodes made on first touch.
 - strings, `parse<T: Read>`: works as a compiler built-in; `Read` only reads standard input, so a std body needs `Read` over a token source (Q3).
