@@ -28,7 +28,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             body: feed.body,
             left: None,
         };
-        self.fed_hosts.push((caller, chunk as *const Chunk<'p>));
+        self.fed_hosts
+            .push((caller, chunk as *const Chunk<'p> as *const ()));
         let returned = self.call_at(id, base, span, Some(fed));
         self.fed_hosts.pop();
         returned
