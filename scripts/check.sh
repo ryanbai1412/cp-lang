@@ -627,6 +627,10 @@ step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
 uv run --quiet python scripts/std-api-lint.py --max 0 \
     || fail "a std signature breaks a std-api rule; see above"
 
+step "std model cases match their brute force on both engines (scripts/std-models.py)"
+uv run --quiet python scripts/std-models.py \
+    || fail "a std type disagrees with its model; the line above gives the shortest failing op sequence"
+
 step "every inventory spelling is a documented std name (scripts/std-inventory.py)"
 uv run --quiet python scripts/std-inventory.py \
     || fail "spec/lib/inventory.md names something cpl doc does not document; see above"

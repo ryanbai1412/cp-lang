@@ -1544,6 +1544,18 @@ EDGE_LABEL_RE = re.compile(r"^\s*/// (empty|ties): (.*)$")
 EDGE_CLAIM_RE = re.compile(r"^`([^`]+)`((?:\s+\((?:stdin `[^`]*`|empty stdin|traps R\d+|error E\d+)\))*)\s*$")
 
 
+def std_model_gaps(root: Path) -> list[str]:
+    """Std types and pub std fns no spec/conformance/std-models/ case checks against a brute force
+    (scripts/std-models.py --list)."""
+    import importlib.util
+    if not (root / "scripts/std-models.py").exists():
+        return []
+    spec = importlib.util.spec_from_file_location("std_models", root / "scripts/std-models.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.gaps(mod.std_texts(root), mod.case_texts(root))
+
+
 def edge_labels_unrun(root: Path) -> list[str]:
     """std `empty:`/`ties:` labels `cpl-conform docs` can't run: prose, or a bare value
     rather than a claim (`docs.rs` `runnable_label`), so no case checks that edge (Content)."""
@@ -2010,6 +2022,8 @@ COUNTERS = {
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
     "std_types_shown_empty": ("std types a trace shows as `{}`: no pub field, no Show (Content)",
                               std_types_shown_empty, True),
+    "std_model_gaps": ("std types and pub std fns with no seeded model case against a brute force (Content)",
+                       std_model_gaps, True),
     "edge_labels_unrun": ("std empty:/ties: labels that are not a claim cpl-conform docs runs (Content)",
                           edge_labels_unrun, True),
     "corpus_known": ("entries of corpus/*-known.txt (scoreboard K6, Content)", corpus_known, True),
