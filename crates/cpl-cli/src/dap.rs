@@ -7,7 +7,8 @@
 //! `reverseContinue`), call stacks, domain-labeled variables, hover/watch
 //! evaluation, and exception stops on runtime traps.
 
-use crate::{compile_side, render_trap, Side};
+use crate::judge::render_trap;
+use crate::{compile_side, Side};
 use cpl_diag::Shown;
 use cpl_interp::trace::{first_change, first_change_in, Change, Recording, Replay, TraceConfig};
 use cpl_json::obj;

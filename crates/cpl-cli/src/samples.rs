@@ -2,7 +2,8 @@
 //! of its samples, each output judged against the sample's answer, and
 //! what an editor shows for that laid out as a `view`.
 
-use crate::{compile_side, render_trap, Compiled, RunArgs, Side, EXIT_FAILED, EXIT_USAGE};
+use crate::judge::render_trap;
+use crate::{compile_side, Compiled, RunArgs, Side, EXIT_FAILED, EXIT_USAGE};
 use cpl_diag::view::{Status, View};
 use std::io::Write;
 
