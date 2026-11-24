@@ -71,6 +71,9 @@ pub struct Written {
     pub structs: BTreeSet<usize>,
     pub fns: BTreeSet<usize>,
     pub closures: BTreeSet<usize>,
+    /// The closures written as a function beside a copy of their captures
+    /// (`cpl::bind_env`); every other local closure reads them in place.
+    pub bound: BTreeSet<usize>,
 }
 
 impl Written {
@@ -83,6 +86,7 @@ impl Written {
             structs: structs.clone(),
             fns: fns.clone(),
             closures: closures.clone(),
+            bound: BTreeSet::new(),
         }
     }
 }

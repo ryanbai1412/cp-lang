@@ -40,6 +40,7 @@ pub fn explain_closures(
 ) -> Vec<ClosureLowering> {
     let mut devirt = Devirt::collect(program);
     devirt.built_only_in(&written.fns, &written.closures);
+    devirt.bound = written.bound.clone();
     let mut out = Vec::new();
 
     for (sid, s) in program.structs.iter().enumerate() {
@@ -342,7 +343,11 @@ pub(super) fn explain_locals_in_block(
                 if stores.get(slot).copied().unwrap_or(0) <= 1
                     && (devirt.local_auto(*slot, cid) || devirt.local_rec(*slot, cid)) =>
             {
-                ClosureMode::StaticLocalAuto
+                if devirt.bound.contains(&cid) {
+                    ClosureMode::Bound
+                } else {
+                    ClosureMode::StaticLocalAuto
+                }
             }
             ExprKind::Closure(cid) if !devirt.local_auto(*slot, cid) => {
                 erased(devirt.program, &locals[*slot].ty, "recursive local closure")

@@ -34,10 +34,15 @@ impl<'p> Emitter<'p> {
 
     /// `cpl::bind_env([](env&, ..) {..}, {a, b})`: a capturing closure whose
     /// signature only ever holds closures with captures of these types, so
-    /// its fn value is a plain function beside its captures.
+    /// its fn value is a plain function beside its captures. A closure that
+    /// is only called where it is made lends its captures instead.
     fn bound_value(&mut self, cid: usize) -> Option<Code> {
         let def = &self.program.closures[cid];
-        if def.captures.is_empty() || !def.muts.is_empty() || self.rec_slot.is_some() {
+        if def.captures.is_empty()
+            || !def.muts.is_empty()
+            || self.rec_slot.is_some()
+            || self.borrow_closures.contains(&cid)
+        {
             return None;
         }
         let args: Vec<Ty> = def
@@ -63,6 +68,7 @@ impl<'p> Emitter<'p> {
                 .join(", ")
         );
         self.need("bound");
+        self.written.bound.insert(cid);
         let t = self.closure_text(cid, true);
         let aliases: String = t
             .captured

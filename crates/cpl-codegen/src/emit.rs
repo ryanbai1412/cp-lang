@@ -98,7 +98,7 @@ pub(crate) struct Emitter<'p> {
     /// Closures built as their own `cpl_clN` type, declared with the types.
     pub functors: BTreeSet<usize>,
     /// The structs and fns the written file defines.
-    written: lowered::Written,
+    pub(crate) written: lowered::Written,
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,

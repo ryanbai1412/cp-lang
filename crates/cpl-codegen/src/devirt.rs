@@ -121,6 +121,8 @@ pub(crate) struct Devirt<'p> {
     pub(crate) recursive_fns: BTreeSet<FnId>,
     unread_fields: BTreeSet<(usize, usize)>,
     unbuilt: BTreeSet<usize>,
+    /// The closures the emitter wrote beside a copy of their captures.
+    pub(crate) bound: BTreeSet<ClosureId>,
     dead_locals: BTreeSet<(Option<FnId>, usize)>,
     /// Locals never read whose one `let` may trap or have an effect:
     /// the value is still computed, as a statement, but not bound.
@@ -168,6 +170,7 @@ impl<'p> Devirt<'p> {
             recursive_fns: recursive_fns(program),
             unread_fields: BTreeSet::new(),
             unbuilt: crate::built::unbuilt(program, None),
+            bound: BTreeSet::new(),
             dead_locals: BTreeSet::new(),
             unread_lets: BTreeSet::new(),
             returned: BTreeMap::new(),

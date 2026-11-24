@@ -875,3 +875,43 @@ fn a_value_if_or_match_of_different_closures_keeps_each_own_type() {
         );
     }
 }
+
+#[test]
+fn a_local_fn_only_called_in_its_home_reads_its_captures_in_place() {
+    let source = concat!(
+        "type Big = (a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: Int)\n",
+        "fn pick(g: Big, i: Int) -> Int:\n",
+        "    fn at(j: Int) -> Int = if j == 0: g.a else: g.h\n",
+        "    at(i) + at(1 - i)\n",
+        "fn keep(g: Big) -> (Int -> Int):\n",
+        "    fn at(j: Int) -> Int = if j == 0: g.a else: g.h\n",
+        "    at\n",
+        "let n: Int = read()\n",
+        "let g: Big = (n, 1, 2, 3, 4, 5, 6, 7)\n",
+        "print(pick(g, n % 2) + keep(g)(0))\n",
+    );
+    let out = cpp(source);
+    let body = |name: &str| {
+        let at = out.find(&format!(" {name}([[maybe_unused]]")).unwrap();
+        out[at..at + out[at..].find("\n}").unwrap()].to_string()
+    };
+    let pick = body("pick");
+    assert!(pick.contains("auto at = [&g_"), "`at` lends `g`:\n{out}");
+    assert!(!pick.contains("cpl::Env<"), "no env copies `g`:\n{out}");
+    assert!(
+        body("keep").contains("cpl::bind_env("),
+        "the returned `at` owns its `g`:\n{out}"
+    );
+    let explained = crate::explain_closures(&super::lower(source));
+    let mode = |site: &str| explained.iter().find(|l| l.site == site).map(|l| &l.mode);
+    assert_eq!(
+        mode("fn pick local at"),
+        Some(&crate::ClosureMode::StaticLocalAuto),
+        "{explained:?}"
+    );
+    assert_eq!(
+        mode("fn keep local at"),
+        Some(&crate::ClosureMode::Bound),
+        "{explained:?}"
+    );
+}
