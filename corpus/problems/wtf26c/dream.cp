@@ -10,6 +10,7 @@
 //   exact[h] = labelled[h] - sum_{g < h} C(h, g) exact[g]
 //   ans[g]   = exact[g]    - sum_{h < g} C(n - h, g - h) ans[h]
 use std.ntt.{convolve_2d}
+use std.poly.{binomial_transform}
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
@@ -27,16 +28,16 @@ for g in 1..=n:
     dp[0, 0] = 1
     for cur in 0..n:
         let (rows, cols) = (cur + 1, n - cur)
-        let joined = convolve_2d(claim, dp, shape: (rows, cols))
+        fn rows_of(m: [0..=n, 0..=n]Z) -> List<List<Z>> = [[m[i, j] for j in 0..cols] for i in 0..rows]
+        let joined = convolve_2d(rows_of(claim), rows_of(dp))
         var next: [0..=n, 0..=n]Z = 0
         for i in 0..rows, j in 0..cols:
             next[i, j] += dp[i, j] * (cur + 1 - i)
-            next[i + 1, j] += dp[i, j + 1] * (j + 1) + joined[i, j] * (a[cur] + 1)
+            next[i + 1, j] += dp[i, j + 1] * (j + 1) + joined[i][j] * (a[cur] + 1)
         dp = next
     labelled[g] = dp[n, 0]
 
-let exact = labelled.binomial_inverse()
-var ans = exact
+var ans = binomial_transform(labelled.collect(), inverse: true)
 for g in 1..=n, h in 1..g: ans[g] -= comb.choose(n - h, g - h) * ans[h]
 
 print(ans[1..=n])
