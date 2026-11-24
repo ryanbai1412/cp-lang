@@ -405,9 +405,9 @@ fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String>
         return Some(ty.trim().to_string());
     }
     if decl.is_none() && !lhs.is_empty() && lhs.chars().all(is_ident) {
-        if let Some((_, ty)) = locals(cursor)
+        if let Some((_, ty, _)) = locals(cursor)
             .into_iter()
-            .find(|(name, ty)| name == lhs && !ty.has_vague())
+            .find(|(name, ty, _)| name == lhs && !ty.has_vague())
         {
             return Some(ty.to_string());
         }
@@ -1248,13 +1248,14 @@ fn scope_completion(
             items.push(item_json(entry, rank(entry, sort)));
         }
     };
-    for (name, ty) in locals(cursor) {
+    for (name, ty, keyword) in locals(cursor) {
         // A local the checker could not type is still in scope.
-        let detail = match ty.has_vague() {
-            true => name.clone(),
-            false => format!("{name}: {ty}"),
+        let (kind, detail) = match keyword {
+            "domain" => (Kind::Domain, format!("domain {name}")),
+            _ if ty.has_vague() => (Kind::Value, name.clone()),
+            _ => (Kind::Value, format!("{name}: {ty}")),
         };
-        add(&plain(&name, Kind::Value, detail, ""), 0, &mut items);
+        add(&plain(&name, kind, detail, ""), 0, &mut items);
     }
     let own = outline_of(analysis);
     for entry in &own.entries {
@@ -1390,7 +1391,7 @@ impl Visitor for FnSpans {
 }
 
 /// The locals in scope at the cursor, nearest last, with their types.
-fn locals(cursor: &Cursor) -> Vec<(String, Ty)> {
+fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
     let Some(item) = item_at(cursor.analysis, cursor.offset) else {
         return Vec::new();
     };
@@ -1407,10 +1408,13 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty)> {
             .copied()
     };
     let here = innermost(rel);
-    let mut out: Vec<(String, Ty)> = Vec::new();
+    let mut out: Vec<(String, Ty, &'static str)> = Vec::new();
     for entry in &item.check.hovers {
         let declares = entry.decl == Some(entry.span)
-            && matches!(entry.keyword, "let" | "var" | "param" | "for" | "fn");
+            && matches!(
+                entry.keyword,
+                "let" | "var" | "param" | "for" | "fn" | "domain"
+            );
         if !declares || entry.span.end >= rel {
             continue;
         }
@@ -1423,18 +1427,15 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty)> {
                     .filter(|s| s.start <= entry.span.start && entry.span.start <= s.end)
                     .collect();
                 around.sort_by_key(|s| s.end - s.start);
-                match around.get(1) {
-                    Some(outer) => Some(**outer),
-                    None => continue,
-                }
+                around.get(1).map(|outer| **outer)
             }
             _ => innermost(entry.span.start),
         };
         if owner.is_some_and(|o| here.is_none_or(|h| !(o.start <= h.start && h.end <= o.end))) {
             continue;
         }
-        out.retain(|(name, _)| *name != entry.name);
-        out.push((entry.name.clone(), entry.ty.clone()));
+        out.retain(|(name, _, _)| *name != entry.name);
+        out.push((entry.name.clone(), entry.ty.clone(), entry.keyword));
     }
     out.reverse();
     out
