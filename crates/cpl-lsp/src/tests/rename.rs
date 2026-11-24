@@ -71,6 +71,22 @@ fn rename_edits_every_reference_and_refuses_library_names() {
     );
     let library = ask_at("textDocument/prepareRename", "print(gc|d(4, 6))\n");
     assert!(library.is_null(), "{library:?}");
+    // `self` is the receiver's spelling, not a name the user chose.
+    let method = "struct P(a: Int):\n    fn get(se|lf) -> Int = a\nprint(P(1).get())\n";
+    let receiver = ask_at("textDocument/prepareRename", method);
+    assert!(receiver.is_null(), "{receiver:?}");
+    let receiver = ask_at_with(
+        "textDocument/rename",
+        method,
+        obj([("newName", "me".into())]),
+    );
+    assert!(
+        receiver
+            .at(&["message"])
+            .as_str()
+            .is_some_and(|m| m.contains("receiver")),
+        "{receiver:?}"
+    );
 }
 
 #[test]

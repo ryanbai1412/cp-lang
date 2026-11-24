@@ -129,7 +129,7 @@
     "crates/cpl-syntax/src/parser/expr.rs",
     "crates/cpl-syntax/src/tests.rs"
   ],
-  "skip_lists": 219,
+  "skip_lists": 240,
   "dead_code_allows": 6,
   "external_crates": 5,
   "corpus_test_files": 1781,

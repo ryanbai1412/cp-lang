@@ -503,6 +503,10 @@ impl Server {
                 let Some((span, name)) = rename::word_at(&analysis.text, offset) else {
                     return Ok(Reply::default());
                 };
+                // `self` is the method's receiver, not a name to choose.
+                if name == "self" {
+                    return Ok(Reply::default());
+                }
                 let name = name.to_string();
                 match self.db.definition_location(&uri, offset) {
                     Some(def) if self.renamable(&uri, &def) => Ok(Reply::result(obj([
@@ -525,6 +529,15 @@ impl Server {
                     .to_string();
                 if let Some(why) = rename::invalid_name(&new_name) {
                     return Err((INVALID_PARAMS, why));
+                }
+                let receiver = self.db.analyze(&uri).is_some_and(|a| {
+                    rename::word_at(&a.text, offset).is_some_and(|(_, w)| w == "self")
+                });
+                if receiver {
+                    return Err((
+                        INVALID_PARAMS,
+                        "`self` is the method's receiver and keeps its name".to_string(),
+                    ));
                 }
                 let Some((target, spans)) = rename::references(&mut self.db, &uri, offset) else {
                     return Ok(Reply::default());

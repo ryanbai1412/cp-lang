@@ -8596,3 +8596,9 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Why.** A `Seq` prints and folds, and `?T` is deliberately not `Show` (R10.3.7): as a `Seq`, `print(x)` would print one value or nothing, the silent absence that rule stops. Rust's clippy warns on the same loop (`for_loops_over_fallibles`). The one corpus caller (cf2150f, a vertex's parent and children) costs `[...]` and `.present()`.
 - **Reverse.** `impl<T> Seq for ?T` yielding zero or one element, with `for` walking it.
 
+
+## 465. The rename replay lists the checker's definition gaps it finds (tools, 2026-11-24)
+
+- **Call.** `crates/cpl-cli/tests/rename_replay.rs` renames each user name in the hill-climb ports through the LSP and requires the file to check clean and print the same. The 21 renames it finds broken today are named in `KNOWN` with their cause (a member access resolving to a top-level name, variant patterns and named-argument labels with no definition, a compile-time constant use, a method std calls on the user's type), which adds 21 skip-list entries. A listed rename that starts working fails the test until its line is removed.
+- **Why.** The causes are in the checker's definitions, owned by compiler; the replay guards the 402 renames that work now instead of waiting for those fixes.
+- **Reverse.** Delete `rename_replay.rs`.
