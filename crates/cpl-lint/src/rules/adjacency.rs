@@ -3,43 +3,45 @@
 //! `Graph.undirected(es)` / `Graph.directed(es)` build it from the edge list
 //! read in one go, over a vertex domain.
 
+use crate::facts::Facts;
 use crate::walk::{unparen, walk_pattern, walk_stmt, Bind, Visitor};
 use crate::{File, Finding, MANUAL_ADJACENCY_LIST};
+use cpl_check::Ty;
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, TypeKind};
-
-use super::lists::is_list_type;
+use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 const HELP: &str = "read the edges at once, `let es: [E](u: V, v: V) = read()` over `domain V = 1..=n` and `domain E = 0..m`, then build `Graph.undirected(es)` or `Graph.directed(es)` (`std.graph`): one compact block in input order, and every vertex index is proven";
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
-    struct Lists {
+    struct Lists<'a> {
         base: u32,
+        facts: Option<&'a Facts>,
         empty: Vec<(String, Span)>,
         pushed_per_edge: Vec<String>,
     }
-    impl Visitor for Lists {
+    impl Visitor for Lists<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
             match &stmt.kind {
                 StmtKind::Let {
                     mutable: true,
                     pat,
-                    ty: Some(ty),
+                    ty: Some(_),
                     init: Some(init),
                     ..
                 } => {
                     let PatternKind::Name(name) = &pat.kind else {
                         return;
                     };
-                    let lists = match (&ty.kind, &init.kind) {
-                        (TypeKind::Named { name, args }, ExprKind::Comprehension { body, .. }) => {
-                            name.text == "List"
-                                && matches!(&args[..], [a] if is_list_type(a))
+                    let ty = self
+                        .facts
+                        .and_then(|f| f.place_type(pat.span.shift(self.base)));
+                    let lists = match (ty, &init.kind) {
+                        (Some(Ty::Named { name, args }), ExprKind::Comprehension { body, .. }) => {
+                            name == "List"
+                                && matches!(&args[..], [a] if is_list(a))
                                 && is_empty_list(body)
                         }
-                        (TypeKind::Array { elem, .. }, _) => {
-                            is_list_type(elem) && is_empty_list(init)
-                        }
+                        (Some(Ty::Array { elem, .. }), _) => is_list(elem) && is_empty_list(init),
                         _ => false,
                     };
                     if lists {
@@ -104,6 +106,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     }
     let mut v = Lists {
         base: 0,
+        facts: file.facts,
         empty: Vec::new(),
         pushed_per_edge: Vec::new(),
     };
@@ -124,6 +127,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             }
         })
         .collect()
+}
+
+fn is_list(ty: &Ty) -> bool {
+    matches!(ty, Ty::Named { name, .. } if name == "List")
 }
 
 fn is_empty_list(e: &Expr) -> bool {

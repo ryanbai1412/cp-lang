@@ -643,3 +643,16 @@ fn copy_comprehension_writes_collect_on_a_call_without_parens() {
         Some("write `g().collect()`: it copies any sequence into a new `List`")
     );
 }
+
+#[test]
+fn manual_adjacency_list_reads_the_list_type_from_the_checker() {
+    let fires = |decl: &str| {
+        let src = format!(
+            "let (n, m): (1..=200000, 0..=200000) = read()\n{decl}\nfor _ in 0..m:\n    let (u, v): (1..=n, 1..=n) = read()\n    adj[u].push(v)\nprint(adj[1].len)\n"
+        );
+        codes(&src).contains(&"L0537")
+    };
+    assert!(fires("var adj: List<List<Int>> = [[] for _ in 0..=n]"));
+    assert!(fires("var adj: [0..=n]List<Int> = []"));
+    assert!(!fires("var adj: List<Set<Int>> = [[] for _ in 0..=n]"));
+}
