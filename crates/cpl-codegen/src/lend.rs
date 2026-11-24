@@ -1150,10 +1150,18 @@ pub(crate) enum Copied {
     Capture(usize, String, &'static str),
 }
 
-/// C++ that names a place as is, `self.rows` or `sa.sa`.
+/// C++ that names a place as is, `self.rows`, `sa.sa` or `adj[u]`.
 fn is_place_text(text: &str) -> bool {
-    text.chars()
-        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+    let mut depth = 0;
+    text.chars().all(|c| {
+        depth += match c {
+            '[' => 1,
+            ']' => -1,
+            _ => 0,
+        };
+        depth >= 0 && (depth > 0 || c.is_alphanumeric() || "_.]".contains(c))
+    }) && depth == 0
+        && !text.starts_with('[')
 }
 
 /// Whether stored text `text` names a place (`v`, `t[f(i)].xs`,
@@ -1194,6 +1202,25 @@ fn rooted_in_a_name(e: &Expr) -> bool {
         | ExprKind::Unwrap(base, _) => rooted_in_a_name(base),
         ExprKind::Local(_) | ExprKind::Global(_) => true,
         _ => false,
+    }
+}
+
+/// What the field, element or payload path `e` reads from: `a.xs` in
+/// `a.at(i).kids`.
+fn part_base(e: &Expr) -> &Expr {
+    match &e.kind {
+        ExprKind::Field(base, _)
+        | ExprKind::Payload(base, ..)
+        | ExprKind::Index(base, _)
+        | ExprKind::Unwrap(base, _) => part_base(base),
+        // An inlined lend, `{ let n = a.xs[i]; n }`, names what it binds.
+        ExprKind::Do(block) => match block.stmts.as_slice() {
+            [.., Stmt::Let(k, Some(init)), Stmt::Give(g)] if matches!(g.kind, ExprKind::Local(s) if s == *k) => {
+                part_base(init)
+            }
+            _ => e,
+        },
+        _ => e,
     }
 }
 
@@ -1375,11 +1402,15 @@ impl Emitter<'_> {
                     | ExprKind::Payload(..)
                     | ExprKind::Index(..)
                     | ExprKind::Unwrap(..)
-            ) && rooted_in_a_name(e)
+            ) && (rooted_in_a_name(e) || given_root(part_base(e), &self.lent_roots).is_some())
                 || matches!(e.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(&f))
         };
-        // `T v = c ? f(a) : self.t[p];` copies the arm that is a place.
-        if let Some(arm) = lending_if(init).and_then(|arms| arms.into_iter().find(|a| is_part(a))) {
+        // `T v = c ? f(a) : self.t[p];` and `T v = o ?? self.d;` copy the arm that is a place.
+        let arms = match &init.kind {
+            ExprKind::Binary(BinOp::Coalesce, a, b) => Some([&**a, &**b]),
+            _ => lending_if(init),
+        };
+        if let Some(arm) = arms.and_then(|arms| arms.into_iter().find(|a| is_part(a))) {
             init = arm;
         }
         let place = is_part(init);
@@ -1421,7 +1452,12 @@ impl Emitter<'_> {
 
     /// Records a copy at `span`; one in a library fn also names the fn and
     /// the local `slot` it binds, so `cpl explain` lists each copy once.
-    fn note_copy(&mut self, span: cpl_diag::Span, why: &'static str, slot: Option<usize>) {
+    pub(crate) fn note_copy(
+        &mut self,
+        span: cpl_diag::Span,
+        why: &'static str,
+        slot: Option<usize>,
+    ) {
         let Some(id) = self.fn_id.filter(|_| self.in_library()) else {
             return self.copies.push(Copied::Let(span, why));
         };

@@ -212,6 +212,13 @@ impl<'p> Emitter<'p> {
                             } else {
                                 this.ty_with_elem_layout(&value.ty, this.expr_elem_layout(value))
                             };
+                            if crate::lend::holds_heap(this.program, &value.ty) {
+                                this.note_copy(
+                                    value.span,
+                                    "the callee writes the value it came from, so it gets its own",
+                                    None,
+                                );
+                            }
                             texts.push(format!("{ty}({})", code.text));
                         } else {
                             texts.push(code.text);

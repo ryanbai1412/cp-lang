@@ -868,6 +868,13 @@ fn explain_lists_the_copies_the_judge_cpp_makes() {
 /// Cases whose copies explain once miscounted, against the C++ for the
 /// judge.
 const CASES: &[&str] = &[
+    "core-05/param-unchanged-by-a-callee-writing-its-source.cp",
+    "core-05/param-unchanged-by-a-write-to-its-global-source.cp",
+    "core-05/read-only-call-reads-a-global-a-closure-writes.cp",
+    "std-graph/next-lambda-explicit-domain.cp",
+    "std-graph/traversals-paths-and-cuts-match-brute.cp",
+    "std-seq/seq-u38-prefix-excl-method.cp",
+    "std-tree/order-walks-parents-first.cp",
     "std-lazy/rope-matches-brute.cp",
     "std-lazy/rope-lazy-treap-to-array-matches-brute.cp",
     "std-hashmap/reserve-keeps-entries.cp",

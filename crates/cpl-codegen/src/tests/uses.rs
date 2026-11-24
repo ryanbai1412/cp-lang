@@ -373,3 +373,10 @@ fn a_global_set_from_a_place_that_still_holds_it_is_listed() {
     assert!(out.contains("acc = cpl::at(ss, 0).xs;"), "{out}");
     assert_eq!(copy_reasons(src), [crate::lend::SET_COPY]);
 }
+
+#[test]
+fn a_name_bound_to_a_part_through_an_inlined_lend_lists_its_copy() {
+    let source =
+        include_str!("../../../../spec/conformance/core-05/call-through-a-lends-mut-call.cp");
+    assert!(copy_reasons(source).contains(&crate::uses::SOURCE_CALLED));
+}
