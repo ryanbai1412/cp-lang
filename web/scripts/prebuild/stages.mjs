@@ -3,12 +3,13 @@
 // a stage when these are unchanged and fails one that reads a repo file not
 // listed here. `always` stages depend on something outside the repo (git
 // HEAD, the network) and always run.
-const compiler = ['crates', 'std', 'Cargo.toml', 'Cargo.lock'];
+// crates' build scripts read spec/ (the lint tables, for one), so it is a compiler input.
+const compiler = ['crates', 'std', 'spec', 'Cargo.toml', 'Cargo.lock'];
 
 export const stages = [
   { name: 'wasm', inputs: [...compiler, 'scripts/build-wasm.sh', 'rust-toolchain.toml'], outputs: ['dist/wasm', 'web/public/wasm'] },
   { name: 'wasm-size', always: true, inputs: ['dist/wasm', '.wasm-size', 'scripts/build-wasm.sh'], outputs: [], env: ['WASM_SIZE_HISTORY', 'GITHUB_ACTIONS'] },
-  { name: 'lint-inputs', inputs: ['web/public/wasm', 'std', 'spec/lints', 'spec/checker-lints'], outputs: ['web/content/generated/lint-inputs.json'] },
+  { name: 'lint-inputs', inputs: [...compiler, 'web/public/wasm'], outputs: ['web/content/generated/lint-inputs.json'] },
   { name: 'practice-mutants', inputs: [...compiler, 'web/content/practice', 'web/scripts/practice-mutants-equivalent.txt'], outputs: ['web/.gate/mutants.json'] },
   { name: 'stress-parity', inputs: [...compiler, 'dist/wasm', 'web/public/wasm', '**/*.cp'], outputs: [] },
   { name: 'stamp', always: true, inputs: [], outputs: ['web/public/version.json'] },
