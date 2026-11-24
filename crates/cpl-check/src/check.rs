@@ -1727,7 +1727,12 @@ pub(crate) fn suggest_rename(
 }
 
 /// The candidate closest to `name`, if it is close enough to be a typo.
-pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Option<String> {
+pub fn closest<'c>(name: &str, mut candidates: impl Iterator<Item = &'c str>) -> Option<String> {
+    closest_of(name, &mut candidates)
+}
+
+/// `closest`'s body, behind `dyn` so its two dozen callers share one copy.
+fn closest_of(name: &str, candidates: &mut dyn Iterator<Item = &str>) -> Option<String> {
     let limit = match name.chars().count() {
         0 | 1 => return None,
         2..=4 => 1,
@@ -1737,25 +1742,23 @@ pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Opt
     // a slip, unless only the capital differs (`vec` for `Vec`).
     let upper = |s: &str| s.chars().next().is_some_and(char::is_uppercase);
     let head = |s: &str| s.chars().next().map(|c| c.to_ascii_lowercase());
-    candidates
-        .filter(|c| *c != name)
-        .filter(|c| upper(c) == upper(name) || head(c) == head(name))
-        .map(|c| (edit_distance(name, c), c))
+    let mut best: Option<(usize, bool, &str)> = None;
+    for c in candidates {
+        if c == name || (upper(c) != upper(name) && head(c) != head(name)) {
+            continue;
+        }
+        let mut d = edit_distance(name, c);
         // `pri` is `print` stopped short, a closer match than `prim` is a typo.
-        .map(|(d, c)| {
-            (
-                if c.starts_with(name) && name.len() >= 3 && c.len() <= name.len() + 2 {
-                    d.min(limit)
-                } else {
-                    d
-                },
-                c,
-            )
-        })
-        .filter(|(d, _)| *d <= limit)
+        if c.starts_with(name) && name.len() >= 3 && c.len() <= name.len() + 2 {
+            d = d.min(limit);
+        }
         // A word stopped short (`sorte`) means the longer name.
-        .min_by_key(|(d, c)| (*d, !c.starts_with(name), c.to_string()))
-        .map(|(_, c)| c.to_string())
+        let key = (d, !c.starts_with(name), c);
+        if d <= limit && best.is_none_or(|b| key < b) {
+            best = Some(key);
+        }
+    }
+    best.map(|(_, _, c)| c.to_string())
 }
 
 use cpl_diag::edit_distance;
@@ -1809,5 +1812,13 @@ mod tests {
         assert_eq!(closest("m", names.iter().copied()), None);
         assert_eq!(closest("dits", names.iter().copied()), Some("dist".into()));
         assert_eq!(edit_distance("kitten", "sitting"), 3);
+    }
+
+    #[test]
+    fn ties_go_to_the_longer_word_then_the_first_in_order() {
+        let names = ["sort", "sorted"];
+        assert_eq!(closest("sorte", names.into_iter()), Some("sorted".into()));
+        let names = ["cot", "cbt"];
+        assert_eq!(closest("cat", names.into_iter()), Some("cbt".into()));
     }
 }
