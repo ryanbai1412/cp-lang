@@ -530,40 +530,27 @@ drop_lock() {
     lock_held=""
 }
 trap 'drop_lock; dequeue; rm -f "$lock_file"' EXIT
-# Whether the rebased tip owes a rerun (the commit tier, the skipped steps or a
-# cargo check) too slow to hold the lock through: 120 s makes it stale.
-reruns_due() {
-    [ -n "$users" ] && return 0
-    [ -z "$rechecked" ] && [ -x .githooks/pre-commit ] &&
-        [ -n "$(git diff --name-only "$checked" "$main_base" -- $gate_paths)" ] && return 0
-    [ -s "$pending_steps" ] && [ "$steps_runs" -lt 1 ]
-}
+# Rebase and recheck run without the lock: the non-force push already refuses a
+# half-gated tip, so the lock covers only the fast-forward check and the push.
+# Rechecking under it let one holder keep every lane waiting for minutes.
 try=0
 push() {
     try=$((try + 1))
-    take_lock || exit 1
     git fetch -q "$remote" main
-    if ! git merge-base --is-ancestor FETCH_HEAD HEAD; then
+    while ! git merge-base --is-ancestor FETCH_HEAD HEAD; do
         pull || exit 1
         main_base=$(git rev-parse FETCH_HEAD)
-        # A lane that waited for the lock always finds main moved by its holder. With
-        # no rerun due, the rebase is all that's left: do it holding the lock, or the
-        # lanes that push meanwhile win the race again (compiler's 1899 s, try 4).
-        if reruns_due; then
-            drop_lock
-        else
-            echo "land: main moved; rebased holding the land lock (no rerun is due)" >&2
-        fi
         reexec_if_land_changed
         recheck
         run_pending_steps
         # What landed meanwhile can break this change's files: check again.
         [ -z "$users" ] || refuse_if_broken "$(cargo check -q $users --all-targets 2>&1)"
-        [ -n "$lock_held" ] || take_lock || exit 1
         git fetch -q "$remote" main
-        git merge-base --is-ancestor FETCH_HEAD HEAD || { drop_lock; return 1; }
-    fi
-    # A failed push (Idioms' "remote rejected ... (failed)") tries again holding
+    done
+    take_lock || exit 1
+    git fetch -q "$remote" main
+    git merge-base --is-ancestor FETCH_HEAD HEAD || { drop_lock; return 1; }
+# A failed push (Idioms' "remote rejected ... (failed)") tries again holding
     # the lock; only main moving under it lets the lock and the turn go.
     moved=""
     RETRY_TRIES=3 RETRY_WAIT=1 retry push_held && [ -z "$moved" ] && return 0
