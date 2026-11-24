@@ -2351,3 +2351,19 @@ let r = a[2..].rebase
 print(r.len)
 """
 out = "3"
+
+[case."Seq/Deque/iter"]
+code = """
+use std.deque.{Deque}
+let d = Deque.of([3, 1, 4])
+for x in d: print(x)
+"""
+out = "3\n1\n4"
+
+[case."Seq/LinkedList/iter"]
+code = """
+use std.deque.{LinkedList}
+let l = LinkedList.from_list([3, 1, 4])
+for x in l: print(x)
+"""
+out = "3\n1\n4"
