@@ -193,6 +193,14 @@ A compiler pass that recognises `(a..b).step(k).sum()`: it would be a
 privilege the stdlib has and a user type doesn't. Returning
 `INT_MIN` for an empty max.
 
+**A summary folds as map, then `+` (decision 472).** Kadane's best
+subarray is `a.map(MaxSub.of).fold(+).best`: build one summary per
+element, then join them with the summary's `+`. `MaxSub.of` is an ordinary
+fn value, like any named fn. Writing `a.fold(MaxSub)` would need a type
+name to stand for its `of` and `join` pair, a new rule that only summary
+types would use. The map spelling needs nothing new, and the same `+` is
+what a `SegTree` over `MaxSub` calls.
+
 ### Scans are indexed by cuts (decision 349, R07.1.6)
 
 **Chosen.** A prefix scan is a table over cuts: `pre[c]` folds everything

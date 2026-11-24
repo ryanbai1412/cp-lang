@@ -29,9 +29,12 @@ Every value is one of:
 - a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every
   library container, and any struct holding one. Heap values move on
   assignment and are copied only by `.clone()` (decision 128). (R02.1.2)
-- a **function value**: `fn` items, lambdas and operation values. They
+- a **function value**: `fn` items (a static fn named through its type,
+  `MaxSub.of`, included), lambdas and operation values. They
   are zero-size when they capture nothing and are always inlined; there
-  is no boxed function type (chapter 13). (R02.1.3)
+  is no boxed function type (chapter 13). A type name is not a value:
+  `a.fold(MaxSub)` is E0302, and a summary type folds as
+  `a.map(MaxSub.of).fold(+)` (decision 472). (R02.1.3)
 - a **generator value**: a recipe that pushes elements to a loop body
   (chapter 6, `07-sequences.md`).
 

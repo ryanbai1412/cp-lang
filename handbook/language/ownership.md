@@ -450,6 +450,16 @@ fn counter() -> (() -> Int):
     () => c                  // error E0603: the lambda captures local c
 ```
 
+**An `Int` parameter is copied in (decision 471).** `fn adder(n: Int) ->
+(Int -> Int): k => k + n` works, as it does in Python. A parameter can't
+change during the call, and an `Int` has no heap part, so a copy and a
+reference can't be told apart; copying it costs nothing and lets the
+closure leave. A `List` parameter is still captured by reference, since
+copying it would be a hidden \(O(n)\) cost, so returning a closure over one
+is E0603: build it from a `let` copy (`let ys = xs.clone()`) if you mean
+to keep it. A local closure that captures only copies is itself a plain
+value, so an outer closure copies it in the same way.
+
 A closure passed to a fn is a parameter there, so the callee can call it
 but not keep it, which is why every closure argument is inlined and
 costs nothing (R05.10.4). Only constructors keep closures.

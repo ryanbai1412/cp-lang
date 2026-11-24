@@ -7,17 +7,17 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3276 (1093 passing). Rules: 609.
+Cases: 3293 (1093 passing). Rules: 609.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 57 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 57 rules, 182 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 190 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 50 rules, 247 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 50 rules, 250 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 92 rules, 227 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 30 rules, 100 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -101,7 +101,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.4.5 [1+ 0-]: **Lists** `[a, b, c]`, **maps** `[k: v, k2: v2]` (`[:]` is empty), **tuples** `(a, b)`, **...
 - R01.4.6 [1+ 1-]: `++` is a lex error ("CP Lang concatenates with `+`").
 - R01.5.8 [2+ 2-]: `**` (right-associative; the right operand may start with unary `-`) On `Int`, `x ** k` is...
-- R01.5.1 [3+ 1-]: So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and `s & (s << 1) == 0` is `(...
+- R01.5.1 [4+ 1-]: So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and `s & (s << 1) == 0` is `(...
 - R01.5.9 [1+ 1-]: On `Bool`, `!=` is exclusive or; `^`, `&` and `|` are integer operators only, and on `Bool...
 - R01.5.2 [3+ 1-]: `/` and `%` are Euclidean: `%` is never negative and `a == (a / b) * b + a % b`, so `7 / -...
 - R01.5.3 [1+ 2-]: Chained comparisons keep Python's meaning, each operand evaluated once, but only when ever...
@@ -140,7 +140,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.7.1 [6+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
 - R02.1.1 [2+ 0-]: a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a domain, `?T` of a plai...
 - R02.1.2 [2+ 3-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
-- R02.1.3 [2+ 1-]: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
+- R02.1.3 [2+ 1-]: a **function value**: `fn` items (a static fn named through its type, `MaxSub.of`, include...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
 - R02.2.1 [3+ 3-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
 - R02.2.2 [2+ 1-]: Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has exactly those valu...
@@ -405,7 +405,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.9.2 [1+ 2-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
 - R05.9.3 [1+ 1-]: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
 - R05.9.4 [1+ 4-]: Walking a `mut`-lent generator value twice is legal and linted: the second walk sees what ...
-- R05.10.1 [4+ 1-]: **What is captured.** Plain `let`s are copied in. Local `var`s, local heap values and para...
+- R05.10.1 [6+ 2-]: **What is captured.** Plain `let`s are copied in, and so are parameters with no heap part ...
 - R05.10.2 [2+ 4-]: **Mode.** A fn value that captures by reference is lent (R6), with the captured variables ...
 - R05.10.3 [2+ 4-]: **Calls.** Captures are borrowed per call (R10), and `mut` captures are exclusive for that...
 - R05.10.4 [2+ 1-]: **Arguments.** A closure passed to a fn is a parameter there (R4): the callee can call it ...
@@ -787,7 +787,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
-- E0302 Type mismatch: 59 case(s)
+- E0302 Type mismatch: 60 case(s)
 - E0303 Wrong number of arguments: 18 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
@@ -820,7 +820,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0505 Library lint that cannot be used: 6 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
 - E0602 Variable mutated while lent: 50 case(s)
-- E0603 Lent value escapes its scope: 37 case(s)
+- E0603 Lent value escapes its scope: 38 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
 - E0606 Missing trait implementation for operator: 30 case(s)
@@ -978,7 +978,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 48 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 88 case(s)
+- R0401 Assertion failed: 89 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
@@ -1016,13 +1016,13 @@ prepends it.
   - line 105: `var xs = [1, 2]`
   - line 180: `struct Holder: xs: List<Int>`
   - line 308: `let ws = read<[V]Int>()`
-  - line 532: `let d = build_dsu(edges)`
-  - line 654: `var xs = [1, 2]`
-  - line 663: `var xs = [1, 2]`
-  - line 860: `let ws = read<[V]Int>()`
-  - line 869: `var xs = [3, 1, 2]`
-  - line 908: `var seen: [V]Bool = false`
-  - line 975: `var xs = [1, 2]`
+  - line 535: `let d = build_dsu(edges)`
+  - line 657: `var xs = [1, 2]`
+  - line 666: `var xs = [1, 2]`
+  - line 863: `let ws = read<[V]Int>()`
+  - line 872: `var xs = [3, 1, 2]`
+  - line 911: `var seen: [V]Bool = false`
+  - line 978: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
   - line 226: `fn divisors(n: Int) -> yields Int:`
@@ -1123,6 +1123,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-03/narrow-range-len-spans-32-bits.cp
 - core-04/char-from-idx.cp
 - core-04/domain-subsets-needs-no-import.cp
+- core-04/empty-list-fills-every-cell.cp
 - core-04/from-ord-after-a-checked-one-still-traps.cp
 - core-04/global-2d-str-array-col-past-end-traps.cp
 - core-04/global-2d-str-array-column-0-store.cp
@@ -1135,15 +1136,23 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-04/three-d-str-cell-append-and-last-dim-trap.cp
 - core-04/trap-in-a-small-fn-names-its-frame.cp
 - core-04/tuple-with-subset-is-a-domain.cp
+- core-05/element-field-let-then-sibling-read.cp
+- core-05/field-let-after-closure-captures-struct.cp
+- core-05/field-let-then-whole-struct-passed.cp
+- core-05/field-read-in-a-loop-is-not-moved.cp
 - core-05/mut-cell-of-2d-array-as-argument.cp
+- core-05/nested-field-let-then-parent-read.cp
+- core-05/param-field-let-then-same-field-read.cp
 - core-05/param-unchanged-by-a-callee-writing-its-source.cp
 - core-05/param-unchanged-by-a-write-to-its-global-source.cp
 - core-05/value-param-beside-a-written-mut-param.cp
+- core-06/code-after-a-sometimes-leaving-statement-runs.cp
 - core-07/in-on-a-list-fixes-to-contains.cp
 - core-07/list-literal-of-range-is-one-element.cp
 - core-07/yielded-closure-writes-generator-local.cp
 - core-08/has-bound-generic-impl.cp
 - core-08/if-bound-builtin-impl.cp
+- core-08/one-generic-fn-at-four-types.cp
 - core-09/asin-outside-domain-trap.cp
 - core-09/exp-ln-hypot.cp
 - core-09/ln-of-negative-trap.cp

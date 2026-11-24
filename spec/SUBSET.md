@@ -173,6 +173,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 ## Known gaps
 
 - core-01/stepped-range-is-a-value.cp: compiler
+- core-01/tuple-field-chain.cp: compiler: `t.0.1` lexes `0.1` as a float after `.` (R01.5.1)
 - core-03/memory-over-profile.cp: compiler
 - core-04/grid-rows-is-a-getter.cp: compiler (E0304 for a std `@get` fn called with `()`)
 - core-04/keyed-counter-is-not-a-key.cp: compiler
@@ -187,12 +188,14 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/let-heap-element-lends-no-copy.cp: compiler
 - core-05/map-entry-index-key-lends.cp: compiler
 - core-06/gen-graph-simple-connected.cp: stdlib (generated edge record has no `all`)
+- core-06/returned-closure-copies-a-local-closure.cp: compiler: a local closure capturing only an `Int` parameter is treated as lent (decision 471)
 - core-07/chain-takes-any-number.cp: stdlib
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf
 - core-10/test-position-stored-above-multitest.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
+- std-algebra/max-sub-of-is-a-fn-value.cp: compiler: a static fn `MaxSub.of` is E0303 as a fn value (decision 472)
 - std-prefix/rev-scan-is-suffix-fold.cp: compiler (`.rev` on a List is typed `List<T>`, so `scan` keys the table by walk order, not the source's cuts)
 - std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - std-seq/keyed-by-answers-with-the-key.cp: compiler (a `Keys` view's `.items` doesn't walk; the `keys` + `at` walk rule)

@@ -437,8 +437,11 @@ A lambda (`x => ...`, block lambdas included) and a nested `fn` are the
 same thing: a fn value with captures. There is no `mut fn` (decision 5.10):
 a nested fn declared after a `var` may read and write it.
 
-- **What is captured.** Plain `let`s are copied in. Local `var`s, local
-  heap values and parameters are captured by reference. Top-level names
+- **What is captured.** Plain `let`s are copied in, and so are parameters
+  with no heap part (an `Int`, a domain value, a tuple of them), which can't
+  change during the call, so copying them is never observable. Local `var`s,
+  local heap values and heap parameters are captured by reference
+  (decision 471). Top-level names
   are not captures; any fn may use them (a fn that writes a top-level
   `var` has that effect at every call, R10). (R05.10.1)
 - **Mode.** A fn value that captures by reference is lent (R6), with the

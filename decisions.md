@@ -8635,3 +8635,15 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Call.** Idiomatic peak RSS over the perf set is at most 1.5x matched C++ at p95 and 2x at max (was p50 1.05x, max 1.5x). Every program, tuned in the language (the better of idiomatic and its `perf.cp`), reaches 1.1x on both runtime and peak RSS (`runtime_tuned_max`, new `memory_tuned_max`). Ryan's targets; performance/R5 and R6, principles goal 3 and the perf register carry them.
 - **Why.** A p50 bar says nothing about the tail, where a wide layout costs a judge's memory limit; p95 and max bound it. Memory, like time, must be reachable without C++, so the tuned bar covers both.
 - **Reverse.** Restore p50 <= 1.05x and max <= 1.5x for idiomatic RSS and drop the memory half of the tuned bar.
+
+## 471. A parameter with no heap part is copied into a closure (spec, 2026-11-24)
+
+- **Call.** A closure copies in a parameter that has no heap part (`Int`, a domain value, a tuple of them), as it copies a plain `let`; a heap parameter is still captured by reference (R05.10.1). So `fn adder(n: Int) -> (Int -> Int): k => k + n` can return its closure, and a local closure that captures only copies is a plain value (R05.2.1) that an outer closure copies in too. Returning a closure over a `List` parameter stays E0603.
+- **Why.** A parameter can't change during the call, so for a plain one a copy and a reference behave the same, and the copy is free. The compiler already copied `Int` parameters (round 49: `adder` returned fine) while R05.10.1 said "by reference", which would make the make-adder idiom from Python an error for no safety gain. A heap parameter keeps the reference rule because copying it would be a hidden \(O(n)\) clone.
+- **Reverse.** Capture every parameter by reference again; `adder` becomes E0603 and is written with `let m = n` first.
+
+## 472. A static fn is a fn value; a type name is not (spec, 2026-11-24)
+
+- **Call.** `MaxSub.of` names a fn value like any `fn` item, so `a.map(MaxSub.of).fold(+)` folds a summary type (R02.1.3). A type name in value position, `a.fold(MaxSub)`, is E0302. The lib tables spell every summary fold this way (`MaxSub`, `MaxSubAt`, `MaxCount`).
+- **Why.** `a.fold(MaxSub)` in sequence-patterns never ran: `fold` takes an operation, and making a type denote its `of` and `join` would be a new value-position rule (a `Summary` trait that `fold` special-cases). The map-then-`+` spelling uses only two existing mechanisms, fn values and `+` as the join, and says the cost (one `of` per element) out loud.
+- **Reverse.** Add a `Summary<T>` trait with `fn of(x: T) -> Self` and let `fold` take a type that implements it; the tables go back to `a.fold(MaxSub)`.

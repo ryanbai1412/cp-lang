@@ -208,9 +208,9 @@ No helper is added for these; each is one or two lines.
 | adjacent differences | `a.adjacent.map((x, y) => y - x)` |
 | count adjacent pairs with a property | `a.adjacent.count((x, y) => x > y)` |
 | every pair `i < j` (brute force) | `a.pairs()`, \(O(n^2)\) to walk |
-| best subarray sum (Kadane) | `a.fold(MaxSub)` (round 5's summary; the same op answers range queries in a `SegTree`) |
-| widest best subarray as a range | `a.items.fold(MaxSubAt)`: `.best` and `.at`, ties widest then leftmost |
-| maximum and how often | `a.fold(MaxCount)` |
+| best subarray sum (Kadane) | `a.map(MaxSub.of).fold(+)` (round 5's summary; the same op answers range queries in a `SegTree`) |
+| widest best subarray as a range | `a.items.map(MaxSubAt.of).fold(+)`: `.best` and `.at`, ties widest then leftmost |
+| maximum and how often | `a.map(MaxCount.of).fold(+)` |
 | prefix records | `a.keys.filter(i => a[i] > pre[i.l])` with `pre = a.scan(max)` |
 | count subarrays with sum `K` | `var seen = Counter<Int>()`; `for c in pre.keys: ans += seen[pre[c] - K]; seen.push(pre[c])` |
 | range sums | `pre = a.scan(+)`; `pre[r.r] - pre[r.l]` |
@@ -284,7 +284,7 @@ from the front.
 | `Window<D>(enter, leave)` | `Sweep(state)` over a `Track` |
 | `prev_less`, `prev_greater`, `next_less`, `next_greater` | `prev_smaller`/`next_smaller` with `by:` |
 | `max_histogram` | `a.spans()` plus a fold |
-| `max_subarray`, `max_count`, `reduce` | `a.fold(MaxSub)`, `a.fold(MaxCount)`, `a.fold(op)` |
+| `max_subarray`, `max_count`, `reduce` | `a.map(MaxSub.of).fold(+)`, `a.map(MaxCount.of).fold(+)`, `a.fold(op)` |
 | `diffs`, `adjacent_diff`, `with_next` | `a.adjacent.map(...)`, `Diff` (round 5), `a.with_prev` |
 | `record_highs` | `a.scan(max)` and a filter |
 | `chunk_by`, `run_ranges` (already gone) | `runs` |
