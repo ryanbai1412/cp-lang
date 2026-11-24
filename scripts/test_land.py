@@ -752,18 +752,13 @@ class LandTest(unittest.TestCase):
         (self.tmp / "bin" / "node").unlink()
         return self.land(ours, **env)
 
-    def test_the_wasm_ratchet_warns_on_growth_of_a_crate_the_change_never_touched(self):
-        # Deleting cpl-lint fns renumbers calls: cpl_check grew 29 B gz untouched.
-        r = self._ratchet({"cpl_x": 50, "cpl_y": 179}, {"cpl_x": 60, "cpl_y": 150}, {"cpl_x": 100, "cpl_y": 100})
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("warning: cpl_y is 179 B gzipped, over its budget of 100", r.stderr)
-        self.assertIn("it grew 29 B against its parent's 150 B", r.stderr)
-
-    def test_the_wasm_ratchet_holds_the_data_segment_whatever_the_change_touched(self):
-        data = "data (std source, strings)"
-        r = self._ratchet({data: 101}, {data: 90}, {})
+    def test_the_wasm_ratchet_refuses_growth_of_a_crate_the_change_never_touched(self):
+        # ecd92f8e6..b434e93d3 grew cpl_check and cpl_syntax past their budgets in lands
+        # that touched other crates, which only warned.
+        r = self._ratchet({"cpl_x": 50, "cpl_y": 151}, {"cpl_x": 50, "cpl_y": 150}, {"cpl_x": 100, "cpl_y": 100})
         self.assertEqual(r.returncode, 1, r.stderr)
-        self.assertIn(f"{data} is 101 B gzipped, over its budget of 100", r.stderr)
+        self.assertIn("cpl_y is 151 B gzipped, over its budget of 100", r.stderr)
+        self.assertIn("it grew 1 B against its parent's 150 B", r.stderr)
 
     def test_the_wasm_ratchet_refuses_a_touched_crate_over_budget_that_grew_a_byte(self):
         r = self._ratchet({"cpl_x": 151}, {"cpl_x": 150}, {"cpl_x": 100})
@@ -782,9 +777,9 @@ class LandTest(unittest.TestCase):
         self.assertIn("but no more than its parent's 150 B", r.stderr)
 
     def test_the_wasm_ratchet_keeps_a_crate_within_budget_within_it(self):
-        r = self._ratchet({"cpl_x": 101, "cpl_y": 50}, {"cpl_x": 90, "cpl_y": 50}, {"cpl_x": 100, "cpl_y": 100})
+        r = self._ratchet({"cpl_x": 50, "cpl_y": 101}, {"cpl_x": 50, "cpl_y": 90}, {"cpl_x": 100, "cpl_y": 100})
         self.assertEqual(r.returncode, 1, r.stderr)
-        self.assertIn("cpl_x is 101 B gzipped, over its budget of 100", r.stderr)
+        self.assertIn("cpl_y is 101 B gzipped, over its budget of 100", r.stderr)
         self.assertNotIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
 
     def _check(self, ours_gz, budgets, parent_gz=None):

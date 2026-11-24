@@ -255,7 +255,7 @@ if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
         echo "land: no wasm sizes of main's tip to compare with; CI checks it" >&2
     else
         scripts/wasm-warm.sh --check "$wasm" FETCH_HEAD $wasm_touched >&2 ||
-            { echo "land: a touched cpl.wasm crate or the data segment grew past main while over its budget, or crossed its budget (above); cut it at its source and land again" >&2; exit 1; }
+            { echo "land: a cpl.wasm crate grew past main while over its budget, or crossed its budget (above), touched here or not; cut it at its source and land again" >&2; exit 1; }
     fi
 fi
 seen="$(git rev-parse --git-dir)/cpl-last-land"

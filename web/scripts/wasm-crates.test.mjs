@@ -88,19 +88,6 @@ describe('wasm crate budgets', () => {
     expect(ratchet([['cpl_lsp', 500, 300]], { cpl_lsp: 400 }, map, { cpl_lsp: 100 }).grew).toEqual(['cpl_lsp grew 200 B gzipped against its parent\'s 100 B']);
   });
 
-  test('with touched crates, the ratchet holds them and the data segment, and only warns on the rest', () => {
-    const map = owners(charters);
-    const budgets = { cpl_check: 250, cpl_lint: 400, [DATA]: 40 };
-    const rows = [['cpl_check', 900, 329], ['cpl_lint', 500, 300], [DATA, 900, 50]];
-    const parent = { cpl_check: 300, cpl_lint: 320, [DATA]: 50 };
-    const gate = ratchet(rows, budgets, map, parent, ['cpl_lint']);
-    expect(gate.errors).toEqual([]);
-    expect(gate.warnings).toEqual([expect.stringMatching(/^cpl_check is 329 B gzipped, .*; it grew 29 B against its parent's 300 B$/)]);
-    expect(ratchet(rows, budgets, map, parent, ['cpl_check']).errors)
-      .toEqual([expect.stringMatching(/^cpl_check is 329 B gzipped, .*; it grew 29 B/)]);
-    expect(ratchet(rows, budgets, map, { ...parent, [DATA]: 49 }, []).errors).toEqual([expect.stringMatching(/^data .* it grew 1 B/)]);
-  });
-
   test('a build lowers each budget with slack to its measurement and some room, never up', () => {
     const budgets = { core: 71100, cpl_json: 19600, cpl_rt: 500, cpl_check: 250, gone: 5 };
     expect(lowered([['core', 1, 62220], ['cpl_json', 1, 14865], ['cpl_rt', 1, 100], ['cpl_check', 1, 300]], budgets))

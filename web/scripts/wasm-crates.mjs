@@ -194,17 +194,13 @@ export function touchedOverBudget(rows, budgets, map, touched) {
 
 /**
  * The land gate's shrink-only ratchet against the rebased parent build (`parent`:
- * crate -> gz): a crate within its budget in the parent stays within it, and one
- * over it may not grow by a byte; growth of GREW_WARN B or more within budget warns.
- * With `touched`, only those crates and the data segment are held; another crate
- * that moved only warns, since deleting functions anywhere renumbers the calls and
- * shifts every crate's gzip by a few bytes.
+ * crate -> gz), for every crate and the data segment, whichever paths the change
+ * touched: one within its budget in the parent stays within it, and one over it
+ * may not grow by a byte; growth of GREW_WARN B or more within budget warns.
  */
-export function ratchet(rows, budgets, map, parent, touched = null) {
+export function ratchet(rows, budgets, map, parent) {
   const errors = [];
-  const warnings = [];
   const held = [];
-  const mine = (crate) => touched === null || crate === DATA || touched.includes(crate);
   for (const row of rows) {
     const [crate, , gz] = row;
     const over = crate === DATA ? dataOverBudget(rows, budgets) : checkBudgets([row], budgets, map).errors[0];
@@ -212,15 +208,14 @@ export function ratchet(rows, budgets, map, parent, touched = null) {
     const was = parent[crate];
     const wasOver = was !== undefined && budgets[crate] !== undefined && was > budgets[crate];
     const b = (n) => n.toLocaleString('en-US');
-    const out = mine(crate) ? errors : warnings;
     if (wasOver && gz <= was) held.push(`${over}, but no more than its parent's ${b(was)} B`);
-    else if (wasOver) out.push(`${over}; it grew ${b(gz - was)} B against its parent's ${b(was)} B`);
-    else out.push(over);
+    else if (wasOver) errors.push(`${over}; it grew ${b(gz - was)} B against its parent's ${b(was)} B`);
+    else errors.push(over);
   }
   const grew = rows
     .filter(([c, , gz]) => parent[c] !== undefined && gz - parent[c] >= GREW_WARN && gz <= (budgets[c] ?? -1))
     .map(([c, , gz]) => `${c} grew ${(gz - parent[c]).toLocaleString('en-US')} B gzipped against its parent's ${parent[c].toLocaleString('en-US')} B`);
-  return { errors, warnings, held, grew };
+  return { errors, warnings: [], held, grew };
 }
 
 /** A lowered budget for a crate measured at `gz`: 1% or 256 B of room, to the next 100. */
@@ -255,9 +250,9 @@ export function dataOverBudget(rows, budgets) {
 // `node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b]
 // [--parent SIZES.json]` (a scripts/build-wasm.sh --names build): the commit gate's
 // check that the data segment and every touched crate are within their budgets; other
-// crates over theirs only warn. With `--parent`, a parent build's sizes, the touched
-// crates (every crate without `--touched`) are held to the shrink-only ratchet, and
-// the sort copies only grow if they grew. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
+// crates over theirs only warn. With `--parent`, a parent build's sizes, a crate over
+// every crate is held to the shrink-only ratchet, and the sort copies only grow if they
+// grew. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
 // `--data` takes such a file in place of a build. `--lower-budgets` lowers each budget
 // with slack after a pass (lowered).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--sizes') {
@@ -282,7 +277,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
   const flag = (name) => (process.argv.indexOf(name) < 0 ? null : process.argv[process.argv.indexOf(name) + 1]);
   const parent = flag('--parent') && JSON.parse(readFileSync(flag('--parent'), 'utf8'));
   const { errors, warnings, held = [], grew = [] } = parent
-    ? ratchet(rows, budgets, map, parent.crates, t < 0 ? null : touched)
+    ? ratchet(rows, budgets, map, parent.crates)
     : touchedOverBudget(rows, budgets, map, touched);
   let next;
   const copies = sized ? Array(sized.sorts ?? 0).fill('') : sortCopies(functionNames(wasm));
