@@ -310,21 +310,19 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        let mut deferred_items = Vec::new();
         for (param, value) in &waiting_items {
             if let Some(sid) = self.gen_fns[gfid].owner {
                 self.bind_op_from_owner(sid, decl, param, &owner_env, &mut inferred);
             }
             let tpl = (tpl_mod, tpl_offset, &inferred);
-            let bound = self.item_arg_for(&decl.bounds, param, value, tpl);
-            let item = match bound {
+            let item = match self.item_arg_for(&decl.bounds, param, value, tpl) {
                 Some(Some(g)) => g,
-                _ => {
-                    let ident = value.fn_item_ident().unwrap_or_default();
-                    GenArg::Ty(Ty::Struct(match self.detect_bare_op(value) {
-                        Some(op) => self.op_type(op),
-                        None => self.item_type(&ident),
-                    }))
+                Some(None) => {
+                    deferred_items.push((param.clone(), *value));
+                    continue;
                 }
+                None => self.base_item_arg(value),
             };
             inferred.insert(param.clone(), item);
         }
@@ -671,6 +669,39 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        // `r.up(+, finish: ..)` through `up<T, U, M: Op<U>>`: once lambdas are done, a bound
+        // argument still open takes `Int` from the bare op, as a literal does (R08.2.11).
+        for (param, value) in deferred_items {
+            let tpl = (tpl_mod, tpl_offset, &inferred);
+            let mut bound = self.item_arg_for(&decl.bounds, &param, value, tpl);
+            if matches!(bound, Some(None)) {
+                let open: Vec<String> = (decl.bounds.iter())
+                    .filter(|b| b.name.text == param)
+                    .flat_map(|b| &b.traits)
+                    .filter_map(|t| match &t.kind {
+                        ast::TypeKind::Named { args, .. } => Some(args),
+                        _ => None,
+                    })
+                    .flatten()
+                    .filter_map(|a| match &a.kind {
+                        ast::TypeKind::Named { name, args } if args.is_empty() => Some(&name.text),
+                        _ => None,
+                    })
+                    .filter(|g| gen_names.contains(*g) && !inferred.contains_key(*g))
+                    .cloned()
+                    .collect();
+                for g in open {
+                    inferred.insert(g, GenArg::Ty(Ty::Int));
+                }
+                let tpl = (tpl_mod, tpl_offset, &inferred);
+                bound = self.item_arg_for(&decl.bounds, &param, value, tpl);
+            }
+            let item = match bound {
+                Some(Some(g)) => g,
+                _ => self.base_item_arg(value),
+            };
+            inferred.insert(param, item);
+        }
         // Handle `<T, S>(it: S) -> T` where `T` is the element type of `S` (or `S` is `List<T>` when `it` is `[]`).
         for (pi, p) in ast_params.iter().enumerate() {
             if let Some(arg) = args.get(pi) {
