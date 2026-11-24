@@ -9045,3 +9045,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** The parser gives every struct that declares a `law` (and no `laws` of its own) `@get pub fn laws(self) -> List<(name: Str, sizes: S -> List<Int>, holds: (S, List<Int>) -> Bool)>` (`cpl-syntax` `parser/laws.rs`, R08.3.5). `S` is `List<T>` when all law parameters share one type, else a record keyed by type name, `(T: List<T>, F: List<F>)`, the shape `laws_hold(act, T: .., F: ..)` already takes. Each entry's `holds` binds the parameters from `picks` and evaluates the law's own body, so checker, both engines and the LSP see one ordinary method.
 - **Why.** `laws_hold` was a compiler arm (`lower_laws_hold`) that walked the law decls by name; std could not reach them, which broke "small core, no privileged stdlib". With `sizes` and index picks the entry type is the same for every law of a struct whatever its arity, so std enumerates samples itself.
 - **Reverse.** Delete `parser/laws.rs` and its call in `struct_decl`, restore the compiler `laws_hold` arm and the prelude row.
+
+## 577. (reserved, content)
