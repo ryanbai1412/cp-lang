@@ -741,11 +741,9 @@ fn a_typed_paren_comma_or_brace_completes_only_what_belongs_there() {
         [" scale: "],
         "after `,` the name comes with its space"
     );
-    assert!(
-        triggered("print(|)\n", "(")
-            .iter()
-            .all(|n| n.ends_with(": "))
-    );
+    assert!(triggered("print(|)\n", "(")
+        .iter()
+        .all(|n| n.ends_with(": ")));
     let items = triggered("use std.graph.{|\n", "{");
     assert!(items.iter().any(|i| i == "Graph"), "{items:?}");
     assert!(triggered("let s = \"{|\"\n", "{").is_empty());
