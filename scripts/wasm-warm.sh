@@ -24,10 +24,11 @@
 # its budget to its parent's size (web/scripts/wasm-crates.mjs --parent).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-# A crate's directory, not its Rust name: a path that matches nothing never differs.
+# A crate by its directory or its Rust name (cpl_ir is crates/cpl-ir); one with
+# neither is refused, since a path that matches nothing never differs.
 case "${1:-}" in --current | --parent)
     for c in "${@:$([ "$1" = --parent ] && echo 3 || echo 2)}"; do
-        [ -d "crates/$c" ] || { echo "wasm-warm: no crate directory crates/$c" >&2; exit 2; }
+        [ -d "crates/${c//_/-}" ] || { echo "wasm-warm: no crate directory crates/${c//_/-}" >&2; exit 2; }
     done ;;
 esac
 target="${CARGO_TARGET_DIR:-target}"
