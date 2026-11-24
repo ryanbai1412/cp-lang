@@ -6,12 +6,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// The fn and its list when the loop `id` runs its body as the fn
     /// yields, as the C++ does.
     pub(super) fn is_fed(&mut self, id: LoopId, seq: &Expr, body: &Block) -> Option<(FnId, usize)> {
-        if self.in_closure
-            || self
-                .fed_loops
-                .last()
-                .is_some_and(|fed| fed.callee == self.base)
-        {
+        if self.in_closure {
             return None;
         }
         if let Some(known) = self.fed.get(&id) {
@@ -26,9 +21,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// the loop it feeds. An `Err` with `left` set means the body left
     /// the loop, and the fn stops where it is.
     pub(super) fn feed(&mut self, value: Value, span: Span) -> Res<Value> {
-        let Some(fed) = self.fed_loops.last() else {
+        let Some(at) = self.fed_by_here() else {
             return Err(interp_failed(span));
         };
+        let fed = &self.fed_loops[at];
         let (callee, caller, slot, id, body) = (fed.callee, fed.caller, fed.slot, fed.id, fed.body);
         let locals = self.frame_locals.pop();
         self.base = caller;
@@ -56,7 +52,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Flow::Break(Some(target)) if target == id => Flow::Next,
             other => other,
         };
-        match self.fed_loops.last_mut() {
+        match self.fed_loops.get_mut(at) {
             Some(fed) => fed.left = Some(left),
             None => return Err(interp_failed(span)),
         }
@@ -64,6 +60,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             span,
             cpl_diag::msgs::interp::WRITTEN.at(&[&""]),
         )))
+    }
+
+    /// The loop the running fn feeds, if it feeds one. A fn feeding a
+    /// loop may run a loop of its own fed by another fn, so its loop need
+    /// not be the innermost.
+    pub(crate) fn fed_by_here(&self) -> Option<usize> {
+        self.fed_loops
+            .iter()
+            .rposition(|fed| fed.callee == self.base)
     }
 
     pub(super) fn call(&mut self, id: FnId, args: &'p [Arg], span: Span) -> Res<Value> {

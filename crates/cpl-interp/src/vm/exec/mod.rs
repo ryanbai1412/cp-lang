@@ -1650,9 +1650,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     point,
                     skip,
                 } if self
-                    .fed_loops
-                    .last()
-                    .is_some_and(|f| f.callee == self.base && f.acc == acc as usize) =>
+                    .fed_by_here()
+                    .is_some_and(|at| self.fed_loops[at].acc == acc as usize) =>
                 {
                     let moved = back != 0 && chunk.slot_map[back as usize - 1] == SlotLoc::V(src);
                     let val = if moved || src >= chunk.num_local_v as u16 {
@@ -1673,8 +1672,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 Op::FeedTree { .. } => {}
                 Op::JmpEager { target } => {
-                    let fed_here = self.fed_loops.last().is_some_and(|f| f.callee == self.base);
-                    if self.in_closure || fed_here {
+                    if self.in_closure {
                         pc = target as usize;
                     }
                 }

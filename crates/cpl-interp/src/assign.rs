@@ -377,8 +377,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         span: Span,
     ) -> Res<Value> {
         // A `yield` of a fn that feeds a loop: the body runs on the value.
-        if let (PlaceKind::Local(slot), Some(fed)) = (&place.kind, self.fed_loops.last()) {
-            if fed.callee == self.base && fed.acc == *slot {
+        let fed_acc = self.fed_by_here().map(|at| self.fed_loops[at].acc);
+        if let (PlaceKind::Local(slot), Some(acc)) = (&place.kind, fed_acc) {
+            if acc == *slot {
                 match (op, arg_vals.pop()) {
                     (Mutation::Push, Some(value)) => {
                         let updated = self.feed(value, span)?;
