@@ -532,6 +532,12 @@ class MaxShortTest(unittest.TestCase):
                          ["max-short p r: --max reads 1000, the statement allows 5e6",
                           "max-short p c: --max reads 2500, the statement allows 5e6"])
 
+    def test_a_joint_bound_on_reads_is_stated_not_unread(self):
+        port = "// Bounds: m, n: 1..=40; m * n: 1..=40\nlet m: 1..=40 = read()\nlet n: 1..=40 = read()\nlet g: [m][n]Bool = read()\n"
+        self.assertEqual(corpus.bounds_findings("p", port), [])
+        self.assertEqual(corpus.bounds_findings("p", port.replace("m * n", "m * k")), ["bounds-unread p m * k"])
+        self.assertEqual(corpus.short_of("p", port, {"m": 20, "n": 2}), [])
+
     def test_a_port_it_cant_read_is_max_unread_not_passed(self):
         pkg = types.SimpleNamespace(id="p", port=mock.Mock(read_text=lambda **_: "@!multitest\n" + self.REL))
         self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p multitest"])

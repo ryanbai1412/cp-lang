@@ -638,7 +638,9 @@ def bounds_findings(pid, text):
     if sum(1 for l in header if re.match(r"//\s*Bounds:", l)) > 1:
         return [f"bounds-twice {pid} -"]
     found = [f"bounds-unparsed {pid} {n}" for n, r in declared.items() if r is None]
-    found += [f"bounds-unread {pid} {n}" for n in declared if declared[n] and n not in read]
+    # A bound on an expression of reads (`m * n: 1..=40`) is a joint bound max-short checks.
+    joint = lambda n: not re.fullmatch(r"[\w.]+", n) and set(re.findall(r"[A-Za-z_][\w.]*", n)) <= set(read)
+    found += [f"bounds-unread {pid} {n}" for n in declared if declared[n] and n not in read and not joint(n)]
     found += [f"bounds-undeclared {pid} {n}" for n in read if n not in declared]
     for n, want in declared.items():
         if not want or n not in read:
