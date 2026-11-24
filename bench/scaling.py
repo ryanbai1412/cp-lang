@@ -111,6 +111,9 @@ def python(formula):
     f = re.sub(r"\\deg\s*", "", f)
     f = re.sub(r"\\(?:operatorname|mathrm)\{(\w+)\}", r"\1", f)
     f = re.sub(r"\\sqrt\{([^}]*)\}", r"sqrt(\1)", f)
+    # a sum grows as its term times its upper bound, or as its term when it names none
+    f = re.sub(r"\\sum_(?:\{[^}]*\}|\w+)\^(\{[^}]*\}|\w+)\s*", r"\1 ", f)
+    f = re.sub(r"\\sum_(?:\{[^}]*\}|\w+)\s*", "", f)
     f = re.sub(r"\\alpha\s*\(([^)]*)\)", "1", f)
     f = f.replace("\\min", "min").replace("\\max", "max")
     # `\log^k x`, `\log x`, `log_b x` and `\sqrt x`, innermost (rightmost) first

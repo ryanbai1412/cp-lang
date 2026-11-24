@@ -29,6 +29,11 @@ class Growth(unittest.TestCase):
                               (r"\lvert \mathit{from} \rvert", 4.0)]:
             self.assertAlmostEqual(scaling.growth(formula, fixed=("P",)), want, places=3, msg=formula)
 
+    def test_a_sum_grows_as_its_term_times_its_bound(self):
+        self.assertEqual(scaling.growth(r"\sum_i p_i^{e_i}", fixed=("p_i", "e_i")), 1.0)
+        self.assertAlmostEqual(scaling.growth(r"\sum_{i=1}^{k} \log n", fixed=("k",)), 16 / 14, places=3)
+        self.assertAlmostEqual(scaling.growth(r"\sum_{i=1}^{k} 1"), 4.0, places=3)
+
     def test_an_unread_formula_is_an_error(self):
         with self.assertRaises(ValueError):
             scaling.growth(r"\binom{n}{k}")
