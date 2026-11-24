@@ -1162,10 +1162,7 @@ impl<'a> Checker<'a> {
                 };
                 let generics = self.impl_generics(trait_name.as_ref(), target, bounds);
                 let scope = self.enter_body(&generics, Ty::Unknown);
-                let self_ty = match super::impl_head::row_bound(target, bounds) {
-                    Some(row) => self.quietly(|c| c.resolve_type(row)),
-                    None => self.quietly(|c| c.resolve_type(target)),
-                };
+                let self_ty = self.quietly(|c| c.resolve_type(target));
                 self.self_ty = Some(self_ty.clone());
                 let (trait_args, bound_args) = self.impl_head_args(trait_name.as_ref(), bounds);
                 let out_ty: Option<Ty> = body.stmts.iter().find_map(|s| match &s.kind {
@@ -1563,9 +1560,20 @@ impl<'a> Checker<'a> {
                 .iter()
                 .all(|s| self.implements_trait_inner(ty, s, seen));
         }
-        let impl_key = super::impl_head::ty_impl_name(ty);
+        let impl_key = match ty {
+            Ty::Named { name, .. } => Some(name.as_str()),
+            Ty::Int => Some("Int"),
+            Ty::I128 => Some("I128"),
+            Ty::U64 => Some("U64"),
+            Ty::Float => Some("F64"),
+            Ty::Bool => Some("Bool"),
+            Ty::Char => Some("Char"),
+            Ty::Str => Some("Str"),
+            Ty::Fn { .. } => Some("fn"),
+            Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
+            _ => None,
+        };
         if impl_key.is_some_and(|name| self.has_impl(name, trait_name))
-            || self.shape_impl(ty, trait_name).is_some()
             || self.rev_has(ty, trait_name, seen)
         {
             return true;

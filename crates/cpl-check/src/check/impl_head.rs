@@ -14,75 +14,19 @@ pub(crate) fn impl_target_head(ty: &ast::Type) -> Option<String> {
     }
 }
 
-/// The name an impl is filed under: `impl<D: Domain> Tr for D` is every domain's, `domain`;
-/// `impl<R: (to: V, ..)> Tr for R` every record's, `record`; `impl Tr for [V]S` every
-/// table's, `array`.
+/// The name an impl is filed under: `impl<D: Domain> Tr for D` is every domain's, `domain`.
 pub(crate) fn impl_file_head(ty: &ast::Type, bounds: &[ast::Bound]) -> Option<String> {
-    if let TypeKind::Array { .. } = &ty.kind {
-        return Some("array".into());
-    }
     if let TypeKind::Named { name, args } = &ty.kind {
         let domain = |t: &ast::Type| type_head(t).as_deref() == Some("Domain");
-        let own = || bounds.iter().filter(|b| b.name.text == name.text);
-        if args.is_empty() && own().any(|b| b.traits.iter().any(domain)) {
+        if args.is_empty()
+            && bounds
+                .iter()
+                .any(|b| b.name.text == name.text && b.traits.iter().any(domain))
+        {
             return Some("domain".into());
-        }
-        if args.is_empty() && row_bound(ty, bounds).is_some() {
-            return Some("record".into());
         }
     }
     impl_target_head(ty)
-}
-
-/// The row `R: (to: V, ..)` a bare impl target `R` is bounded by.
-pub(crate) fn row_bound<'t>(ty: &ast::Type, bounds: &'t [ast::Bound]) -> Option<&'t ast::Type> {
-    let TypeKind::Named { name, args } = &ty.kind else {
-        return None;
-    };
-    if !args.is_empty() {
-        return None;
-    }
-    let own = bounds.iter().filter(|b| b.name.text == name.text);
-    own.flat_map(|b| &b.traits)
-        .find(|t| matches!(t.kind, TypeKind::Row(_)))
-}
-
-/// The name the impls written for `ty` itself are filed under.
-pub(crate) fn ty_impl_name(ty: &Ty) -> Option<&str> {
-    match ty {
-        Ty::Named { name, .. } => Some(name.as_str()),
-        Ty::Int => Some("Int"),
-        Ty::I128 => Some("I128"),
-        Ty::U64 => Some("U64"),
-        Ty::Float => Some("F64"),
-        Ty::Bool => Some("Bool"),
-        Ty::Char => Some("Char"),
-        Ty::Str => Some("Str"),
-        Ty::Fn { .. } => Some("fn"),
-        Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
-        _ => None,
-    }
-}
-
-/// The name the impls a value of `ty` can find by its shape are filed under.
-pub(crate) fn shape_impl_key(ty: &Ty) -> Option<&'static str> {
-    match ty {
-        Ty::Array { .. } => Some("array"),
-        Ty::Record(_) => Some("record"),
-        _ => None,
-    }
-}
-
-/// Whether an impl for the pattern `target` covers `ty`: a row needs each field it names,
-/// a table its number of axes.
-fn shape_fits(target: &Ty, ty: &Ty) -> bool {
-    match (target, ty) {
-        (Ty::Record(want), Ty::Record(got)) => want
-            .iter()
-            .all(|(n, _)| n == ".." || got.iter().any(|(g, _)| g == n)),
-        (Ty::Array { index: want, .. }, Ty::Array { index: got, .. }) => want.len() == got.len(),
-        _ => false,
-    }
 }
 
 impl<'a> Checker<'a> {
@@ -220,18 +164,6 @@ impl Checker<'_> {
         self.param_bounds.truncate(outer);
     }
 
-    /// The impl of `trait_name` a table or record has by its shape: `impl Tr for [V]List<A>`,
-    /// or `impl<R: (to: V, ..)> Tr for R`.
-    pub(crate) fn shape_impl(&mut self, ty: &Ty, trait_name: &str) -> Option<Arc<Def>> {
-        let key = shape_impl_key(ty)?;
-        let head =
-            |t: &Option<String>| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name);
-        (self.env.impls(key).into_iter())
-            .filter(|(t, _)| head(t))
-            .map(|(_, d)| d)
-            .find(|d| matches!(&**d, Def::Impl { target, .. } if shape_fits(target, ty)))
-    }
-
     /// A `.rev` view walks, sizes and reads by position as its source does (R07.3.5).
     pub(super) fn rev_has(&mut self, ty: &Ty, trait_name: &str, seen: &mut Vec<String>) -> bool {
         let need = match trait_name {
@@ -249,20 +181,7 @@ impl Checker<'_> {
     /// `v.tk` on a domain position: the member a blanket `impl<D: Domain> Tr for D` gives it,
     /// written in the impl or a default of `Tr`; a `@get` reads as its value. Else `Unknown`.
     pub(super) fn domain_impl_member(&mut self, pos: &Ty, name: &str) -> Ty {
-        self.impl_member_under("domain", pos, name)
-    }
-
-    /// `e.tgt` on a table or record: the member an impl for its shape gives it, as
-    /// `impl<V, R: (to: V, ..)> Tg<V> for R` does every record with a `to`. Else `Unknown`.
-    pub(super) fn shape_impl_member(&mut self, ty: &Ty, name: &str) -> Ty {
-        match shape_impl_key(ty) {
-            Some(key) => self.impl_member_under(key, ty, name),
-            None => Ty::Unknown,
-        }
-    }
-
-    fn impl_member_under(&mut self, key: &str, pos: &Ty, name: &str) -> Ty {
-        for (trait_name, def) in self.env.impls(key) {
+        for (trait_name, def) in self.env.impls("domain") {
             let Def::Impl {
                 methods,
                 getters,
@@ -287,9 +206,6 @@ impl Checker<'_> {
             let Some(ty) = found else {
                 continue;
             };
-            if key != "domain" && !shape_fits(target, pos) {
-                continue;
-            }
             let mut on = crate::ty::Bindings::default();
             target.unify(pos, &mut on);
             return match ty.subst(&on) {

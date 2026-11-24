@@ -761,12 +761,6 @@ impl<'a> Checker<'a> {
         }
         let found = match &base_ty {
             Ty::Record(fields) => {
-                if !fields.iter().any(|(n, _)| *n == name.text) {
-                    let by_impl = self.shape_impl_member(&base_ty, &name.text);
-                    if by_impl != Ty::Unknown {
-                        return by_impl;
-                    }
-                }
                 let names: Vec<String> = fields.iter().map(|(n, _)| n.clone()).collect();
                 Some((self.field_of(&base_ty, name), names, Vec::new()))
             }

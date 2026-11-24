@@ -89,12 +89,7 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 (_, ast::TypeKind::Named { args, .. }) if args.is_empty() => None,
-                (
-                    _,
-                    ast::TypeKind::Fn { .. }
-                    | ast::TypeKind::Array { .. }
-                    | ast::TypeKind::Tuple(_),
-                ) => None,
+                (_, ast::TypeKind::Fn { .. }) => None,
                 _ => continue,
             };
             let alias = body.stmts.iter().find_map(|s| match &s.kind {
@@ -114,7 +109,7 @@ impl<'a> Lowerer<'a> {
                 (self.cur_mod, self.offset, self.gen_env) = saved;
                 return Some(found);
             }
-            let Some(env) = self.pattern_impl_env(idx, t) else {
+            let Some(env) = self.fn_impl_env(m, target, t) else {
                 continue;
             };
             let saved_mod = std::mem::replace(&mut self.cur_mod, m);
@@ -216,7 +211,7 @@ impl<'a> Lowerer<'a> {
         for idx in 0..self.impls.len() {
             let imp = &self.impls[idx];
             let (m, offset, target, body) = (imp.mod_id, imp.offset, imp.target, imp.body);
-            if self.domain_blanket_param(idx).is_some() || self.row_param(idx).is_some() {
+            if self.domain_blanket_param(idx).is_some() {
                 continue;
             }
             // `impl Pick for Int -> Bool`: fn values of that type get its methods.

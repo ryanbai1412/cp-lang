@@ -565,54 +565,6 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// A method whose signature applies a generic type to one built from its owner's
-    /// parameters, as `Rev<S>.take -> Rev<Slice<S>>`: declared eagerly, each instance
-    /// would declare a deeper one, so it is instantiated when called. The owner type
-    /// itself (`Version<Tree<D, T>>` in `Tree<D, T>`) builds nothing deeper.
-    pub(super) fn nests_owner_params(
-        &self,
-        m: ModId,
-        f: &ast::FnDecl,
-        decl: &ast::StructDecl,
-    ) -> bool {
-        let owner = &decl.generics[..];
-        let is_self = |args: &[ast::Type]| {
-            args.len() == owner.len()
-                && args.iter().zip(owner).all(|(a, g)| {
-                    matches!(&a.kind, ast::TypeKind::Named { name, args } if args.is_empty() && name.text == g.text)
-                })
-        };
-        let nests = |t: &ast::Type| -> bool {
-            let generic = |n: &str| matches!(self.mod_syms[m].get(n), Some(Sym::GenStruct(_)));
-            fn walk(
-                t: &ast::Type,
-                built: &dyn Fn(&ast::Type) -> bool,
-                generic: &dyn Fn(&str) -> bool,
-            ) -> bool {
-                match &t.kind {
-                    ast::TypeKind::Named { name, args } => args
-                        .iter()
-                        .any(|a| (generic(&name.text) && built(a)) || walk(a, built, generic)),
-                    ast::TypeKind::Optional(e)
-                    | ast::TypeKind::Yields(e)
-                    | ast::TypeKind::Mut(e) => walk(e, built, generic),
-                    ast::TypeKind::Tuple(items) => items.iter().any(|i| walk(i, built, generic)),
-                    _ => false,
-                }
-            }
-            let built = |a: &ast::Type| match &a.kind {
-                ast::TypeKind::Named { name, args } if !args.is_empty() => {
-                    !(name.text == decl.name.text && is_self(args))
-                        && owner.iter().any(|g| mono::ty_mentions(a, &g.text))
-                }
-                _ => false,
-            };
-            walk(t, &built, &generic)
-        };
-        let tys = f.params.iter().filter_map(|p| p.ty.as_ref());
-        !owner.is_empty() && tys.chain(f.ret.as_ref()).any(nests)
-    }
-
     /// The fns no engine but the C++ can run: the judge's grader's, and
     /// the `@cpp` ones, which are in `judge_fns` too, with their C++.
     #[allow(clippy::type_complexity)]

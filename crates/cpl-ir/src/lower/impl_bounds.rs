@@ -26,23 +26,7 @@ impl<'a> Lowerer<'a> {
         m: ModId,
         env: &mut GenEnv,
     ) -> bool {
-        self.bind_bounds_open(bounds, m, &[], env)
-    }
-
-    /// [`Self::bind_impl_bounds`] where `declared` names the generics a fn
-    /// declares, open even when they shadow a module name such as a domain `V`.
-    pub(super) fn bind_bounds_open(
-        &mut self,
-        bounds: &[ast::Bound],
-        m: ModId,
-        declared: &[String],
-        env: &mut GenEnv,
-    ) -> bool {
-        let mut open: Vec<String> = declared
-            .iter()
-            .filter(|n| !env.contains_key(*n))
-            .cloned()
-            .collect();
+        let mut open = Vec::new();
         for tr in bounds.iter().flat_map(|b| &b.traits) {
             for name in self.impl_params(m, tr) {
                 if !env.contains_key(&name) && !open.contains(&name) {
@@ -51,37 +35,19 @@ impl<'a> Lowerer<'a> {
             }
         }
         for b in bounds {
-            let seq = match env.get(&b.name.text) {
-                Some(GenArg::Ty(t)) => t.clone(),
-                Some(GenArg::Domain(d)) => Ty::Pos(*d),
-                _ => continue,
+            let Some(GenArg::Ty(seq)) = env.get(&b.name.text).cloned() else {
+                continue;
             };
             for tr in &b.traits {
                 let ast::TypeKind::Named { name, args } = &tr.kind else {
                     continue;
                 };
                 let trait_name = name.text.as_str();
-                let is_struct = matches!(seq, Ty::Struct(_));
-                if is_struct {
-                    if !self.implements(&seq, trait_name) {
-                        return false;
-                    }
-                    let known = self.known_trait_args(args, m, &open, env);
-                    if let Some((given, opened)) = self.impl_trait_args(&seq, trait_name, &known) {
-                        if !given.contains(&Ty::Error) {
-                            env.extend(opened);
-                            for (arg, ty) in args.iter().zip(&given) {
-                                self.unify_ast_ty(arg, ty, m, &open, env);
-                            }
-                            continue;
-                        }
-                    }
-                }
                 let (key, elem) = match trait_name {
                     "Seq" | "Bidir" | "Sized" | "Positional" => (None, args.first()),
                     "Keyed" | "Indexed" | "IndexedMut" => (args.first(), args.get(1)),
                     _ => {
-                        let known = self.known_trait_args(args, m, &open, env);
+                        let known = self.known_trait_args(args, m, env);
                         if let Some((given, opened)) =
                             self.impl_trait_args(&seq, trait_name, &known)
                         {
@@ -98,7 +64,8 @@ impl<'a> Lowerer<'a> {
                     "IndexedMut" => seq.is_indexed_mut(),
                     _ => seq.is_seq(),
                 };
-                if !builtin && !is_struct {
+                if !builtin && !(matches!(seq, Ty::Struct(_)) && self.implements(&seq, trait_name))
+                {
                     return false;
                 }
                 if let Some(k) = key {
@@ -148,64 +115,13 @@ impl<'a> Lowerer<'a> {
         Some(env)
     }
 
-    /// The generic env impl `idx` binds when it is for `ty`: its struct's
-    /// args, the domain of a blanket domain impl, or what a shape pattern
-    /// (`[V]S`, `(T, T) -> T`, a row record) binds.
-    fn impl_env(&mut self, idx: usize, ty: &Ty) -> Option<GenEnv> {
-        if let Ty::Struct(sid) = *ty {
-            return self.struct_impl_env(idx, sid);
-        }
-        let (m, offset, target) = (
-            self.impls[idx].mod_id,
-            self.impls[idx].offset,
-            self.impls[idx].target,
-        );
-        if let ast::TypeKind::Named { name, .. } = &target.kind {
-            if let Some(Sym::Struct(_) | Sym::GenStruct(_)) = self.mod_syms[m].get(&name.text) {
-                return None;
-            }
-        }
-        let env = if let Some(param) = self.domain_blanket_param(idx) {
-            match ty {
-                Ty::Pos(d) => GenEnv::from([(param, GenArg::Domain(*d))]),
-                Ty::Bound(_) => GenEnv::from([(param, GenArg::Ty(ty.clone()))]),
-                _ => return None,
-            }
-        } else if self.is_pattern_impl(idx) {
-            self.pattern_impl_env(idx, ty)?.unwrap_or_default()
-        } else {
-            GenEnv::default()
-        };
-        if self.domain_blanket_param(idx).is_some() {
-            return Some(env);
-        }
-        let saved = (
-            std::mem::replace(&mut self.cur_mod, m),
-            std::mem::replace(&mut self.offset, offset),
-            std::mem::replace(&mut self.gen_env, env),
-            self.diags.len(),
-        );
-        let got = self.resolve_ty(target);
-        self.diags.truncate(saved.3);
-        let env = std::mem::replace(&mut self.gen_env, saved.2);
-        (self.cur_mod, self.offset) = (saved.0, saved.1);
-        (got == *ty).then_some(env)
-    }
-
     /// The args `ty`'s impl of the trait `name` gives it: `Arr<E>`, with
     /// `impl<D: Domain> Versioned<D, Int> for Arr<D>`, gives `[E, Int]`.
     /// The bound's args that `env` already fixes: `T` in `A: Acts<T, F>` once `xs` gave it.
-    fn known_trait_args(
-        &mut self,
-        args: &[ast::Type],
-        m: ModId,
-        open: &[String],
-        env: &GenEnv,
-    ) -> Vec<Option<Ty>> {
+    fn known_trait_args(&mut self, args: &[ast::Type], m: ModId, env: &GenEnv) -> Vec<Option<Ty>> {
         args.iter()
             .map(|a| {
-                let fixed = self.impl_params(m, a).iter().all(|n| env.contains_key(n))
-                    && !Self::bare_names(a).iter().any(|n| open.contains(n));
+                let fixed = self.impl_params(m, a).iter().all(|n| env.contains_key(n));
                 fixed.then(|| {
                     let saved = (
                         std::mem::replace(&mut self.cur_mod, m),
@@ -240,17 +156,17 @@ impl<'a> Lowerer<'a> {
         name: &str,
         known: &[Option<Ty>],
     ) -> Option<(Vec<Ty>, GenEnv)> {
+        let Ty::Struct(sid) = *ty else {
+            return None;
+        };
         for idx in 0..self.impls.len() {
             if self.impls[idx].trait_name.as_deref() != Some(name) {
                 continue;
             }
-            let Some(mut env) = self.impl_env(idx, ty) else {
+            let Some(mut env) = self.struct_impl_env(idx, sid) else {
                 continue;
             };
             let (m, offset) = (self.impls[idx].mod_id, self.impls[idx].offset);
-            if !self.bind_impl_bounds(self.impls[idx].bounds, m, &mut env) {
-                continue;
-            }
             let trait_args = self.impls[idx].trait_args.clone();
             let open = self.open_impl_params(idx, &env);
             for (t, k) in trait_args.iter().zip(known) {

@@ -8,126 +8,63 @@ use super::*;
 impl<'a> Lowerer<'a> {
     /// The names an impl target leaves open: `T` in `impl<T> Op<T> for (T, T) -> T`.
     pub(super) fn impl_params(&self, m: ModId, target: &ast::Type) -> Vec<String> {
-        let mut out = Self::bare_names(target);
-        out.retain(|n| {
-            !matches!(
-                n.as_str(),
-                "Int" | "I64" | "I128" | "U64" | "F64" | "Bool" | "Char" | "Str" | "Unit"
-            ) && !self.mod_syms[m].contains_key(n)
-        });
-        out
-    }
-
-    /// Every argless name a type mentions: `V` and `A` in `[V]List<A>`.
-    pub(super) fn bare_names(ty: &ast::Type) -> Vec<String> {
-        fn walk(ty: &ast::Type, out: &mut Vec<String>) {
+        fn walk(l: &Lowerer, m: ModId, ty: &ast::Type, out: &mut Vec<String>) {
             match &ty.kind {
                 ast::TypeKind::Named { name, args } if args.is_empty() => {
-                    if !out.contains(&name.text) {
+                    let builtin = matches!(
+                        name.text.as_str(),
+                        "Int" | "I64" | "I128" | "U64" | "F64" | "Bool" | "Char" | "Str" | "Unit"
+                    );
+                    if !builtin
+                        && !l.mod_syms[m].contains_key(&name.text)
+                        && !out.contains(&name.text)
+                    {
                         out.push(name.text.clone());
                     }
                 }
                 ast::TypeKind::Named { args, .. } | ast::TypeKind::Tuple(args) => {
-                    args.iter().for_each(|a| walk(a, out))
+                    args.iter().for_each(|a| walk(l, m, a, out))
                 }
-                ast::TypeKind::Optional(t) | ast::TypeKind::Mut(t) => walk(t, out),
-                ast::TypeKind::Record(fields) | ast::TypeKind::Row(fields) => {
-                    fields.iter().for_each(|(_, t)| walk(t, out))
-                }
+                ast::TypeKind::Optional(t) | ast::TypeKind::Mut(t) => walk(l, m, t, out),
                 ast::TypeKind::Array { index, elem } => {
-                    index.iter().for_each(|i| walk(i, out));
-                    walk(elem, out);
+                    index.iter().for_each(|i| walk(l, m, i, out));
+                    walk(l, m, elem, out);
                 }
                 ast::TypeKind::Fn { params, ret } => {
-                    params.iter().for_each(|p| walk(p, out));
-                    walk(ret, out);
+                    params.iter().for_each(|p| walk(l, m, p, out));
+                    walk(l, m, ret, out);
                 }
                 _ => {}
             }
         }
         let mut out = Vec::new();
-        walk(ty, &mut out);
+        walk(self, m, target, &mut out);
         out
     }
 
-    /// The param an impl over every record with some fields is for, and its
-    /// row: `R` and `(to: V, ..)` in `impl<V, R: (to: V, ..)> Tg<V> for R`.
-    pub(super) fn row_param(&self, idx: usize) -> Option<(&'a str, &'a ast::Type)> {
-        let imp = &self.impls[idx];
-        let ast::TypeKind::Named { name, args } = &imp.target.kind else {
-            return None;
-        };
-        if !args.is_empty() {
+    /// How a fn-type impl target binds its open names to the fn type `ty`:
+    /// `Some(None)` for a target with none, `None` when it cannot fit `ty`.
+    pub(super) fn fn_impl_env(
+        &self,
+        m: ModId,
+        target: &ast::Type,
+        ty: &Ty,
+    ) -> Option<Option<GenEnv>> {
+        if !matches!(target.kind, ast::TypeKind::Fn { .. }) {
+            return Some(None);
+        }
+        let params = self.impl_params(m, target);
+        if params.is_empty() {
+            return Some(None);
+        }
+        if !matches!(ty, Ty::Fn(..)) {
             return None;
         }
-        let row = (imp.bounds.iter().filter(|b| b.name.text == name.text))
-            .flat_map(|b| &b.traits)
-            .find(|t| matches!(t.kind, ast::TypeKind::Row(_)))?;
-        Some((name.text.as_str(), row))
-    }
-
-    /// Whether impl `idx` is for a type shape (a fn, table, tuple or row
-    /// record) rather than a named type.
-    pub(super) fn is_pattern_impl(&self, idx: usize) -> bool {
-        let target = &self.impls[idx].target.kind;
-        matches!(
-            target,
-            ast::TypeKind::Fn { .. } | ast::TypeKind::Array { .. } | ast::TypeKind::Tuple(_)
-        ) || self.row_param(idx).is_some()
-    }
-
-    /// How impl `idx`'s target pattern binds its open names, and those its
-    /// bounds then fix, to `ty`: `[V]S` given `[V]List<(to: V)>` binds `V`,
-    /// `S` and, through `S: Seq<A>`, `A`. `Some(None)` for a target with no
-    /// open names or of no shape; `None` when it cannot fit `ty`.
-    pub(super) fn pattern_impl_env(&mut self, idx: usize, ty: &Ty) -> Option<Option<GenEnv>> {
-        let (m, target, bounds) = (
-            self.impls[idx].mod_id,
-            self.impls[idx].target,
-            self.impls[idx].bounds,
-        );
         let mut env = GenEnv::default();
-        if let Some((param, row)) = self.row_param(idx) {
-            let (ast::TypeKind::Row(want), Ty::Record(got)) = (&row.kind, ty) else {
-                return None;
-            };
-            if !want
-                .iter()
-                .all(|(n, _)| got.iter().any(|(g, _)| *g == n.text))
-            {
-                return None;
-            }
-            env.insert(param.to_string(), GenArg::Ty(ty.clone()));
-            let params = self.impl_params(m, row);
-            self.unify_ast_ty(row, ty, m, &params, &mut env);
-        } else {
-            let fits = match (&target.kind, ty) {
-                (ast::TypeKind::Fn { .. }, Ty::Fn(..))
-                | (ast::TypeKind::Array { .. }, Ty::Array { .. })
-                | (ast::TypeKind::Tuple(_), Ty::Tuple(_)) => true,
-                (ast::TypeKind::Fn { .. } | ast::TypeKind::Array { .. }, _)
-                | (ast::TypeKind::Tuple(_), _) => false,
-                _ => return Some(None),
-            };
-            let mut params = self.impl_params(m, target);
-            let bounded = bounds.iter().map(|b| &b.name.text);
-            for name in bounded.filter(|n| mono::ty_mentions(target, n)) {
-                if !params.contains(name) {
-                    params.push(name.clone());
-                }
-            }
-            if params.is_empty() {
-                return Some(None);
-            }
-            if !fits {
-                return None;
-            }
-            self.unify_ast_ty(target, ty, m, &params, &mut env);
-            if !params.iter().all(|p| env.contains_key(p)) {
-                return None;
-            }
-        }
-        self.bind_impl_bounds(bounds, m, &mut env)
+        self.unify_ast_ty(target, ty, m, &params, &mut env);
+        params
+            .iter()
+            .all(|p| env.contains_key(p))
             .then_some(Some(env))
     }
 
@@ -271,14 +208,10 @@ impl<'a> Lowerer<'a> {
         out
     }
 
-    /// `impl<T> Op<T> for (T, T) -> T`, `impl<V: Domain, A> Nx<V> for [V]List<A>`
-    /// or `impl<V, R: (to: V, ..)> Tg<V> for R`: the method for one type of
-    /// that shape, made the first time a value of that type calls it.
-    pub(super) fn pattern_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
-        if !matches!(
-            ty,
-            Ty::Fn(..) | Ty::Array { .. } | Ty::Tuple(_) | Ty::Record(_)
-        ) {
+    /// `impl<T> Op<T> for (T, T) -> T`: the method for one fn type, made the
+    /// first time a value of that type calls it.
+    pub(super) fn fn_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
+        if !matches!(ty, Ty::Fn(..)) {
             return None;
         }
         for idx in 0..self.impls.len() {
@@ -288,10 +221,10 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].target,
                 self.impls[idx].body,
             );
-            if !self.is_pattern_impl(idx) {
+            if !matches!(target.kind, ast::TypeKind::Fn { .. }) {
                 continue;
             }
-            let Some(Some(env)) = self.pattern_impl_env(idx, ty) else {
+            let Some(Some(env)) = self.fn_impl_env(m, target, ty) else {
                 continue;
             };
             let Some(f) = body.stmts.iter().find_map(|item| match &item.kind {
@@ -315,7 +248,7 @@ impl<'a> Lowerer<'a> {
             let fn_id = self.declare_fn_in(f, m, offset, None, env);
             let suffix = self.prim_methods.len();
             self.sigs[fn_id].name = format!(
-                "{}_shape_{}_{suffix}",
+                "{}_fn_{}_{suffix}",
                 trait_name.as_deref().unwrap_or("impl"),
                 f.name.text
             );
