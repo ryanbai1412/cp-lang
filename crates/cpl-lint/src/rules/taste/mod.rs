@@ -1240,6 +1240,11 @@ impl<'a> Taste<'a> {
         decl: &Stmt,
         next: &Stmt,
     ) {
+        // `x ?? return None` must be a whole right side (E0501), so a
+        // generator can't hold it.
+        if leaves(value) || cond.is_some_and(leaves) {
+            return;
+        }
         let (p, it, v, i) = (
             self.ntext(pat.span),
             iter_text(iter, self.ntext(iter.span)),
@@ -1603,4 +1608,20 @@ fn param_type<'s>(src: &'s str, f: &str, n: usize) -> Option<&'s str> {
 fn is_type_name(s: &str) -> bool {
     s.starts_with(|c: char| c.is_ascii_uppercase())
         && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// Whether `e` holds a `return`, `break` or `continue` (`x ?? break`).
+fn leaves(e: &Expr) -> bool {
+    struct Leaves(bool);
+    impl cpl_syntax::visit::Visitor for Leaves {
+        fn stmt(&mut self, s: &Stmt) {
+            self.0 |= matches!(
+                s.kind,
+                StmtKind::Return(_) | StmtKind::Break(_) | StmtKind::Continue(_)
+            );
+        }
+    }
+    let mut v = Leaves(false);
+    cpl_syntax::visit::walk_expr(e, &mut v);
+    v.0
 }

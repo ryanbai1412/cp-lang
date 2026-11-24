@@ -327,6 +327,18 @@ fn a_counting_loop_over_one_sequence_is_its_count_method() {
 }
 
 #[test]
+fn a_loop_that_leaves_on_none_is_no_reduction() {
+    // wossoly21s3: `sum(walk(k) ?? return None for k in 0..4)` fails E0501,
+    // since `?? return` must be a whole right side.
+    for exit in ["return None", "break", "continue"] {
+        let src = format!(
+            "fn walk(k: Int) -> ?Int:\n    if k > 2:\n        return None\n    k\n\nfn total() -> ?Int:\n    var steps = 0\n    for k in 0..4: steps += walk(k) ?? {exit}\n    steps\n\nprint(total() ?? -1)\n"
+        );
+        assert!(!codes(&src).contains(&"L0504"), "{src}\n{:?}", codes(&src));
+    }
+}
+
+#[test]
 fn a_counting_loop_over_a_map_keeps_the_generator() {
     let src = "let m: Map<Int, Int> = [1: 2, 30: 4]\nvar big = 0\nfor kv in m:\n    if kv.0 > 10:\n        big += 1\nprint(big)\n";
     let d = lint_one(src, "L0504");
