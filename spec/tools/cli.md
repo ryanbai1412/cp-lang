@@ -140,6 +140,17 @@ list, `source` naming who reported it (`cpl (i1)`). Lines and columns are
 0-based. An editor only clips a label to its width; showing several
 reports, it keeps the strongest mark on each line and draws a status only
 on a line with no mark.
+`cpl run --samples --format json` prints `{"samples": [{"name", "verdict",
+"time_ms", "output", "expected", "why"}], "passed_count", "case_count",
+"view": {"panel", "status"?: {"line", "ok", "label", "detail"?}, "lines"?:
+[{"line", "kind", "label", "hover"?}], "diagnostic"?: {"line", "col", "code"?,
+"message", "help"?, "source"?}}}`: the file on each sample (`i1` beside it
+with `o1` as its answer, its `.tests/` cases, its `.samples/`), or once on no
+input when it has none; `verdict` is `ok`, `WA`, `RE` or `null` when the
+sample has no answer, and `why` the first difference or the runtime error.
+Its `view` shows the summary as `status`, the values of the sample
+`--values-of` names (default the first) as `live` lines, and the first runtime
+error as an `error` line and the `diagnostic`, its `source` naming the sample.
 `cpl vendor --json` prints `{"vendored": [{"module", "path"}]}`, one
 row per std module it copied.
 `cpl judges --json` prints `{"judges": [{"name", "title", "chosen",

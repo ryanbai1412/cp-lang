@@ -262,6 +262,38 @@ pub fn cases(source: &Path) -> Vec<TestCase> {
     cases_in(&find_tests_dir(source))
 }
 
+/// Every sample an editor runs `source` on: the scratch inputs `i1`, `i2`,
+/// ... beside it (with `o1` as `i1`'s answer), then the problem's cases,
+/// then `<stem>.samples/`.
+pub fn samples(source: &Path) -> Vec<TestCase> {
+    let folder = source
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut scratch: Vec<TestCase> = std::fs::read_dir(folder)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|n| n.len() > 1 && n.starts_with('i') && n[1..].bytes().all(|b| b.is_ascii_digit()))
+        .filter(|n| folder.join(n).is_file())
+        .map(|n| TestCase {
+            expected: Some(folder.join(format!("o{}", &n[1..]))).filter(|p| p.is_file()),
+            input: folder.join(&n),
+            name: n,
+        })
+        .collect();
+    scratch.sort_by_key(|c| {
+        (
+            c.name[1..].parse::<u64>().unwrap_or(u64::MAX),
+            c.name.clone(),
+        )
+    });
+    scratch.extend(cases(source));
+    scratch.extend(cases_in(&source.with_extension("samples")));
+    scratch
+}
+
 #[cfg(test)]
 mod generated_cases_tests {
     use super::*;

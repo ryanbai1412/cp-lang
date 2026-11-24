@@ -18,6 +18,7 @@ mod profile;
 mod replay;
 mod report;
 mod run_view;
+mod samples;
 mod setup;
 mod sha256;
 mod submit;
@@ -180,6 +181,7 @@ pub fn exec<S: AsRef<str>>(
         Some("fix") => fix(&rest, stdout, stderr),
         Some("run") => match RunArgs::parse(&rest) {
             Ok(args) if args.live => run_live(&args, stdin),
+            Ok(args) if args.samples => samples::run(&args, stdout, stderr),
             Ok(args) => {
                 let typed = nothing_piped;
                 if let Some(test) = samples_instead(&args, typed()) {
@@ -398,6 +400,12 @@ struct RunArgs<'a> {
     grader: Option<&'a str>,
     /// `--sample NAME`: what the editor's labels call the input.
     sample: Option<&'a str>,
+    /// `--samples`: run every sample, each judged against its answer.
+    samples: bool,
+    /// `--case NAME` with `--samples`: only that sample.
+    case: Option<&'a str>,
+    /// `--live NAME` with `--samples`: the sample whose values are shown.
+    live_sample: Option<&'a str>,
 }
 
 fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
@@ -460,6 +468,9 @@ impl<'a> RunArgs<'a> {
             time_limit: None,
             grader: None,
             sample: None,
+            samples: false,
+            case: None,
+            live_sample: None,
         };
         let mut paths = Vec::new();
         let mut iter = rest.iter().copied().peekable();
@@ -560,6 +571,18 @@ impl<'a> RunArgs<'a> {
                     }
                 }
                 "--live" => args.live = true,
+                "--samples" => args.samples = true,
+                "--case" => {
+                    args.case = Some(
+                        iter.next()
+                            .ok_or("`--case` names a sample: `cpl run a.cp --samples --case i1`")?,
+                    );
+                }
+                "--values-of" => {
+                    args.live_sample = Some(iter.next().ok_or(
+                        "`--values-of` names a sample: `cpl run a.cp --samples --values-of i1`",
+                    )?);
+                }
                 "--grader" => {
                     args.grader = Some(iter.next().ok_or(
                         "`--grader` names the judge's grader: `cpl run a.cp --grader grader.cpp`",
@@ -594,6 +617,10 @@ impl<'a> RunArgs<'a> {
             }
         }
         match paths.as_slice() {
+            [file] if args.samples => args.file = file,
+            [_, ..] if args.samples => {
+                return Err("`--samples` runs the file's samples, so it takes no input file".into())
+            }
             [file] => args.file = file,
             [file, input] => (args.file, args.input) = (file, Some(*input)),
             _ => {
@@ -612,6 +639,21 @@ impl<'a> RunArgs<'a> {
             return Err(
                 "`--test`, `--watch`, `--last`, `--from`, `--depth` and `--full` shape a trace: add `--trace`".into(),
             );
+        }
+        if (args.case.is_some() || args.live_sample.is_some()) && !args.samples {
+            return Err(
+                "`--case` and `--values-of` pick among the samples: add `--samples`".into(),
+            );
+        }
+        if args.samples
+            && (args.trace
+                || args.release
+                || args.brute
+                || args.live
+                || args.grader.is_some()
+                || args.format == Some("html"))
+        {
+            return Err("`--samples` runs each sample in the debug interpreter: drop `--trace`, `--release`, `--brute`, `--live`, `--grader` and `--format html`".into());
         }
         if args.checks.is_some() && !args.release {
             return Err(

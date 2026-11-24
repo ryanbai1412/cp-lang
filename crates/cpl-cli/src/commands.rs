@@ -529,6 +529,13 @@ options:
                     again each time the file is saved, on the same input;
                     with no input named, the case `cpl stress` saved last.
                     The page keeps its place and shows the first change
+  --samples         run every sample (`i1` beside the file with `o1` as its
+                    answer, the cases in <file>.tests/, <file>.samples/), each
+                    judged against its answer; with --format json, each
+                    sample's verdict and the `view` an editor shows
+  --case NAME       with --samples: only the sample NAME
+  --values-of NAME  with --samples --format json: the sample whose values
+                    the view shows (default the first)
   --brute           run the file's `@alt(program)` fn in place of the solution
   --release         run what a judge runs: the C++ of `cpl build`, built with
                     the judge's flags (those g++ here accepts) on the judge's
