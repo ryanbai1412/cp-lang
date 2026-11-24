@@ -175,8 +175,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn first<S: Seq, T>(self: S) -> ?T` — \(O(1)\)
 - `@get fn last<S: Bidir, T>(self: S) -> ?T` — \(O(1)\)
 - `fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T` — \(O(n)\) calls of `p` at most; The last element satisfying `p`, `None` if None does; walks backwards and stops there.; traps: never (beyond what `p` traps on)
-- `fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bool = false)` — \(O(n \log n)\) comparisons, \(O(n)\) extra space; Sort `self` in place by `by` (descending when `desc`).; traps: never (beyond what `by` traps on)
-- `fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x, desc: Bool = false) -> List<T>` — \(O(n \log n)\) comparisons, \(O(n)\) space; The elements of `self` sorted by `by`: the value form of `sort`.; traps: never (beyond what `by` traps on)
+- `fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x)` — \(O(n \log n)\) comparisons, \(O(n)\) extra space; Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`.; traps: never (beyond what `by` traps on)
+- `fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>` — \(O(n \log n)\) comparisons, \(O(n)\) space; The elements of `self` sorted by `by`: the value form of `sort`.; traps: never (beyond what `by` traps on)
 - `fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None)` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).; traps: when `range` falls outside the keys
 - `fn dedup<T>(mut self: List<T>)` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
 - `fn deduped<S: Seq, T>(self: S) -> List<T>` — \(O(n)\); `self` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
