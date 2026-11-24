@@ -761,7 +761,9 @@ impl Checker<'_> {
         }
         if name.text == "bounds" && matches!(base_ty, Ty::Domain(_)) {
             let message = "`D.bounds` was renamed to `D.cuts`".to_string();
-            self.error(codes::REMOVED_SYNTAX, name.span, message);
+            if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+                diag.fix("write `cuts`", name.span, "cuts");
+            }
             return true;
         }
         if name.text == "bsearch_first" {

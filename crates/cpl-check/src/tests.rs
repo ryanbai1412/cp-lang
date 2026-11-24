@@ -1758,3 +1758,15 @@ fn an_index_with_no_key_does_not_crash_the_map_fold_check() {
         "var cnt: Map<Int, Int> = Map()\nfor x in [3, 1]:\n    cnt[]x = (cnt.get(x) ?? 0) + 1\n";
     assert!(!codes(src).is_empty());
 }
+
+#[test]
+fn every_renamed_spelling_carries_its_rewrite() {
+    for (src, new) in [
+        ("domain V = 0..3\nprint(V.bounds)\n", "cuts"),
+        ("domain V = 0..3\nprint(V.from_idx(1))\n", "try_at"),
+    ] {
+        let d = one(src);
+        assert!(d.message.contains("renamed to"), "{}", d.message);
+        assert_eq!(d.fixes[0].edits, vec![(d.span, new.to_string())], "{src}");
+    }
+}
