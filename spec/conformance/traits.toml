@@ -2423,6 +2423,29 @@ print(r.nth(1))
 """
 out = "1"
 
+[case."Seq/Rev/iter"]
+code = """
+fn walk<S: Seq<Int>>(s: S):
+    for x in s: print(x)
+walk([3, 1, 4].rev)
+"""
+out = "4\n1\n3"
+
+[case."Bidir/Rev/iter_rev"]
+code = """
+fn back<S: Bidir<Int>>(s: S):
+    for x in s.rev: print(x)
+back([3, 1, 4].rev)
+"""
+out = "3\n1\n4"
+
+[case."Sized/Rev/len"]
+code = """
+fn count<S: Sized>(s: S) -> Int = s.len
+print(count([3, 1, 4, 1, 5].rev))
+"""
+out = "5"
+
 [case."Positional/Rev/nth"]
 code = """
 let a = [3, 1, 4, 1, 5]

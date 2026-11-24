@@ -1,4 +1,4 @@
-// expect: E0302
+// expect: E0203
 // rule: 12.4
 // An impl whose inline bound does not hold for the target's parameter gives it nothing.
 struct Wrap<S>(s: S)

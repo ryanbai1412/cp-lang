@@ -220,16 +220,34 @@ impl Checker<'_> {
         self.param_bounds.truncate(outer);
     }
 
-    /// A `.rev` view walks, sizes and reads by position as its source does (R07.3.5).
-    pub(super) fn rev_has(&mut self, ty: &Ty, trait_name: &str, seen: &mut Vec<String>) -> bool {
-        let need = match trait_name {
-            "Seq" | "Bidir" => "Bidir",
-            "Sized" => "Sized",
-            "Positional" => "Indexed",
-            _ => return false,
-        };
-        ty.rev_source()
-            .is_some_and(|src| self.implements_trait_inner(&src.clone(), need, seen))
+    /// Whether an impl of `trait_name` for `name` covers `ty`: its target's generics, bound to
+    /// `ty`'s arguments, meet the bounds the impl head writes (`impl Sized for Rev<S: Sized>`).
+    pub(super) fn impl_holds(
+        &mut self,
+        name: &str,
+        ty: &Ty,
+        trait_name: &str,
+        seen: &mut Vec<String>,
+    ) -> bool {
+        let written = self.global(&crate::def::impl_name(Some(trait_name), name));
+        let listed = (self.env.impls(name).into_iter())
+            .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
+            .map(|(_, d)| d);
+        written.into_iter().chain(listed).any(|def| {
+            let Def::Impl {
+                target, bound_args, ..
+            } = &*def
+            else {
+                return true;
+            };
+            let mut on = crate::ty::Bindings::default();
+            target.unify(ty, &mut on);
+            bound_args.iter().all(|(param, bound, _)| {
+                on.get(param)
+                    .cloned()
+                    .is_none_or(|actual| self.implements_trait_inner(&actual, bound, seen))
+            })
+        })
     }
 }
 

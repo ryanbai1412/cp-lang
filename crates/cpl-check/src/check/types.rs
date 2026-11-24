@@ -1602,9 +1602,7 @@ impl<'a> Checker<'a> {
             Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
             _ => None,
         };
-        if impl_key.is_some_and(|name| self.has_impl(name, trait_name))
-            || self.rev_has(ty, trait_name, seen)
-        {
+        if impl_key.is_some_and(|name| self.impl_holds(name, ty, trait_name, seen)) {
             return true;
         }
         match trait_name {

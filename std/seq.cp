@@ -1540,6 +1540,17 @@ pub struct Rev<S>(base: S):
 impl Positional<T> for Rev<S: Indexed<D, T>>:
     fn nth(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
 
+impl Seq<T> for Rev<S: Bidir<T>>:
+    fn iter(self) -> yields T:
+        for x in self: yield x
+
+impl Bidir<T> for Rev<S: Bidir<T>>:
+    fn iter_rev(self) -> yields T:
+        for x in self.src: yield x
+
+impl Sized for Rev<S: Sized>:
+    @get fn len(self) -> Int = self.src.len
+
 /// \(O(1)\) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
 pub struct Items<S>(
     /// \(O(1)\). The source sequence whose items this view walks.

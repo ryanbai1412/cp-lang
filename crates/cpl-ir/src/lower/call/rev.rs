@@ -20,8 +20,9 @@ impl<'a> Lowerer<'a> {
             return Err(value);
         };
         let decl = self.gen_structs[gid].decl;
+        // A generator (`fn iter(self) -> yields T`) walks; it is not a value to inline.
         let block_method = |stmt: &'a ast::Stmt| match &stmt.kind {
-            ast::StmtKind::Fn(f) if f.name.text == name.text => match &f.body {
+            ast::StmtKind::Fn(f) if f.name.text == name.text && !yields(f) => match &f.body {
                 ast::FnBody::Expr(body) if body.leaves() => None,
                 ast::FnBody::Expr(_) | ast::FnBody::Block(_) => Some((f, &f.body)),
                 ast::FnBody::None => None,
@@ -214,4 +215,11 @@ impl<'a> Lowerer<'a> {
     fn bind_local(&mut self, name: &str, slot: Slot) {
         self.cx.scopes.top_mut().insert(name.to_string(), slot);
     }
+}
+
+fn yields(f: &ast::FnDecl) -> bool {
+    matches!(
+        f.ret.as_ref().map(|t| &t.kind),
+        Some(ast::TypeKind::Yields(_))
+    )
 }
