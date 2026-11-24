@@ -708,7 +708,6 @@
 2 corpus/problems/nccc8s3/dream.cp
 1 corpus/problems/nccc9s4/port.cp
 4 corpus/problems/neerc10k/port.cp
-1 corpus/problems/noi01p5/perf.cp
 1 corpus/problems/noi01p5/port.cp
 1 corpus/problems/noi02p1/port.cp
 1 corpus/problems/noi02p1/spec.cp

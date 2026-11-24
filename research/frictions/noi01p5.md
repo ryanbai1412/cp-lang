@@ -55,3 +55,6 @@ General fix: a std generator over a list of lists that yields every sum (or ever
 given operation) taking one element from each, lazily, so meet-in-the-middle halves are one
 call each. Owner: stdlib.
 
+## Tuned twin retired (2026-11-24)
+
+`perf.cp`'s code was byte-identical to `port.cp` (only its comments differed): the port already adds the first half's sums to the counter as they are made, so the twin bought nothing and is deleted. On `gen.py --max` (best of 7) the port runs 0.274 s / 40.5 MB against 0.43 s / 34.2 MB (0.64x time, 1.18x memory); the memory gap is the half-sum counter itself, which the twin did not change, and stays below as a friction.
