@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 pub(crate) const USAGE: &str = "\
 usage: cpl setup <neovim | vim | vscode | jetbrains> [OPTIONS]
-       cpl setup <vim | emacs> --grammar
+       cpl setup <vim | emacs | jetbrains> --grammar
 
 Writes CP Lang's editor files where the editor loads them at startup, then
 says where. Neovim gets the filetype, highlighting and `cpl lsp`:
@@ -145,10 +145,11 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
         let text = match editor {
             "vim" | "neovim" => cpl_syntax::grammar::vim(),
             "emacs" => cpl_syntax::grammar::emacs(),
+            "jetbrains" => cpl_syntax::grammar::jetbrains(),
             _ => {
                 return usage(
                     stderr,
-                    &format!("no `--grammar` for `{editor}`: `vim` or `emacs`"),
+                    &format!("no `--grammar` for `{editor}`: `vim`, `emacs` or `jetbrains`"),
                 )
             }
         };

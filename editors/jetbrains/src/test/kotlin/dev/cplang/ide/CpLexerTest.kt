@@ -32,7 +32,8 @@ class CpLexerTest {
         val token = File(repo, "crates/cpl-syntax/src/token.rs").readText()
         val body = token.substringAfter("pub fn keyword(text: &str)").substringBefore("_ => return")
         val compiler = Regex("\"([a-z]+)\" =>").findAll(body).map { it.groupValues[1] }.toSortedSet()
-        assertEquals(compiler, CpTokens.KEYWORDS.toSortedSet())
+        assertTrue("found the keywords", compiler.size > 20)
+        for (word in compiler) assertEquals(word, listOf(CpTokens.KEYWORD to word), lex(word))
     }
 
     @Test

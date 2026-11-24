@@ -80,7 +80,7 @@ tasks {
         doLast { resolvable.forEach { it.resolve() } }
     }
     processResources {
-        from(repo.resolve("editors/words.json")) { into("cp") }
+        from(repo.resolve("editors/lexer.tsv")) { into("cp") }
     }
     test {
         systemProperty("cpl.repo", repo.absolutePath)

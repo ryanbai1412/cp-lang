@@ -129,3 +129,21 @@ fn the_editor_word_list_is_the_lexers() {
         "editors/words.json is stale; run: just gen"
     );
 }
+
+/// editors/lexer.tsv, the JetBrains plugin's lexer, is what the generator writes (`just gen`).
+#[test]
+fn the_jetbrains_lexer_is_generated() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text = std::fs::read_to_string(root.join("editors/lexer.tsv")).unwrap_or_default();
+    assert_eq!(
+        text.replace("\r\n", "\n"),
+        crate::grammar::jetbrains(),
+        "editors/lexer.tsv is stale; run: just gen"
+    );
+    let keywords = text
+        .lines()
+        .find_map(|l| l.strip_prefix("KEYWORD\t(?:"))
+        .and_then(|l| l.split(')').next())
+        .unwrap_or_default();
+    assert_eq!(keywords.split('|').collect::<Vec<_>>(), crate::KEYWORDS);
+}

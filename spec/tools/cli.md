@@ -70,10 +70,12 @@ C++ runs and the prefilled `issue_url`, `null` when there is none. `cpl fmt
 "error"}]}` in path order: `changed` when formatting changed the file (or
 would, under `--check`), `ok` when it is formatted, the lexer `diagnostics`
 that stopped formatting and any other `error` (`null` when none).
-`cpl setup <vim | emacs> --grammar` prints, and installs nothing, the highlighting
-an editor reads without `cpl lsp`: Vim's `syntax/cp.vim` (what `cpl setup neovim`
-and `vim` write) or Emacs's font-lock rules as one `read`able list (what
-`cp-mode.el` loads). Both are generated from the lexer's keyword and literal
+`cpl setup <vim | emacs | jetbrains> --grammar` prints, and installs nothing, the
+highlighting an editor reads without `cpl lsp`: Vim's `syntax/cp.vim` (what `cpl
+setup neovim` and `vim` write), Emacs's font-lock rules as one `read`able list (what
+`cp-mode.el` loads), or the JetBrains plugin's lexer, one `TOKEN<tab>regex` rule per
+line in Java's regex syntax, tried in order (`editors/lexer.tsv`, which `just gen`
+writes and the plugin bundles). All are generated from the lexer's keyword and literal
 tables, so neither is kept by hand; with the server running, its semantic tokens
 take over.
 

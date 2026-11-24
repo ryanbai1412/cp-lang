@@ -30,15 +30,12 @@ object CpTokens {
 
     @JvmField val COMMENTS = TokenSet.create(LINE_COMMENT, DOC_COMMENT)
     @JvmField val STRINGS = TokenSet.create(STRING, CHAR)
-
-    /** cpl-syntax's `KEYWORDS`, from the editors/words.json that `just gen` writes and the build bundles. */
-    val KEYWORDS: Set<String> = com.google.gson.JsonParser.parseString(CpTokens::class.java.getResource("/cp/words.json")!!.readText())
-        .asJsonObject.getAsJsonArray("keywords").map { it.asString }.toSet()
 }
 
 /**
- * The highlighting lexer. No token spans a line, so every line starts in state 0
- * and the editor can relex from any line.
+ * The highlighting lexer: the rules of editors/lexer.tsv, which `cpl setup jetbrains --grammar`
+ * generates from cpl-syntax's token tables, tried in order at each offset. No rule spans a line,
+ * so every line starts in state 0 and the editor can relex from any line.
  */
 class CpLexer : LexerBase() {
     private var buffer: CharSequence = ""
@@ -63,114 +60,26 @@ class CpLexer : LexerBase() {
 
     override fun advance() {
         start = stop
-        if (start >= end) {
-            type = null
-            return
-        }
-        type = scan()
-    }
-
-    private fun at(i: Int): Char = if (i < end) buffer[i] else '\u0000'
-
-    private fun identStart(c: Char) = c == '_' || c.isLetter()
-    private fun identPart(c: Char) = c == '_' || c.isLetterOrDigit()
-
-    private fun scan(): IElementType {
-        val c = buffer[start]
-        var i = start + 1
-        when {
-            c == ' ' || c == '\t' || c == '\n' || c == '\r' -> {
-                while (i < end && at(i).let { it == ' ' || it == '\t' || it == '\n' || it == '\r' }) i++
-                stop = i
-                return TokenType.WHITE_SPACE
+        type = null
+        if (start >= end) return
+        for ((token, pattern) in RULES) {
+            val m = pattern.matcher(buffer).region(start, end).useTransparentBounds(true)
+            if (m.lookingAt() && m.end() > start) {
+                stop = m.end()
+                type = token
+                return
             }
-            c == '/' && at(i) == '/' -> {
-                val doc = at(i + 1) == '/' && at(i + 2) != '/'
-                while (i < end && at(i) != '\n') i++
-                stop = i
-                return if (doc) CpTokens.DOC_COMMENT else CpTokens.LINE_COMMENT
-            }
-            c == 'r' && at(i) == '"' -> {
-                i++
-                while (i < end && at(i) != '"' && at(i) != '\n') i++
-                if (at(i) == '"') i++
-                stop = i
-                return CpTokens.STRING
-            }
-            c == '"' -> {
-                while (i < end && at(i) != '"' && at(i) != '\n') i += if (at(i) == '\\' && at(i + 1) != '\n') 2 else 1
-                if (at(i) == '"') i++
-                stop = minOf(i, end)
-                return CpTokens.STRING
-            }
-            c == '\'' -> {
-                if (at(i) == '\\' && at(i + 2) == '\'') {
-                    stop = i + 3
-                    return CpTokens.CHAR
-                }
-                if (at(i) != '\n' && at(i) != '\u0000' && at(i + 1) == '\'') {
-                    stop = i + 2
-                    return CpTokens.CHAR
-                }
-                if (identStart(at(i))) {
-                    while (identPart(at(i))) i++
-                    stop = i
-                    return CpTokens.LABEL
-                }
-                stop = i
-                return CpTokens.OPERATOR
-            }
-            c == '@' && identStart(at(i)) -> {
-                while (identPart(at(i))) i++
-                stop = i
-                return CpTokens.DECORATOR
-            }
-            c.isDigit() -> {
-                stop = number(start)
-                return CpTokens.NUMBER
-            }
-            identStart(c) -> {
-                while (identPart(at(i))) i++
-                stop = i
-                val word = buffer.subSequence(start, i).toString()
-                return when {
-                    word in CpTokens.KEYWORDS -> CpTokens.KEYWORD
-                    c.isUpperCase() -> CpTokens.TYPE_NAME
-                    else -> CpTokens.IDENTIFIER
-                }
-            }
-        }
-        stop = i
-        return when (c) {
-            ',' -> CpTokens.COMMA
-            '.' -> CpTokens.DOT
-            '(' -> CpTokens.LPAREN
-            ')' -> CpTokens.RPAREN
-            '[' -> CpTokens.LBRACKET
-            ']' -> CpTokens.RBRACKET
-            '{' -> CpTokens.LBRACE
-            '}' -> CpTokens.RBRACE
-            else -> CpTokens.OPERATOR
         }
     }
 
-    private fun number(from: Int): Int {
-        var i = from
-        if (at(i) == '0' && (at(i + 1) == 'x' || at(i + 1) == 'X' || at(i + 1) == 'b' || at(i + 1) == 'B')) {
-            i += 2
-            while (at(i).isLetterOrDigit() || at(i) == '_') i++
-            return i
-        }
-        while (at(i).isDigit() || at(i) == '_') i++
-        // `1.5` is a float; `0..n` and `xs.0.len` are not.
-        if (at(i) == '.' && at(i + 1).isDigit()) {
-            i++
-            while (at(i).isDigit() || at(i) == '_') i++
-        }
-        if ((at(i) == 'e' || at(i) == 'E') && (at(i + 1).isDigit() || ((at(i + 1) == '+' || at(i + 1) == '-') && at(i + 2).isDigit()))) {
-            i += 2
-            while (at(i).isDigit() || at(i) == '_') i++
-        }
-        return i
+    companion object {
+        private val TOKENS: Map<String, IElementType> = CpTokens::class.java.fields
+            .mapNotNull { f -> (f.get(null) as? IElementType)?.let { f.name to it } }
+            .toMap() + ("WHITE_SPACE" to TokenType.WHITE_SPACE)
+
+        val RULES: List<Pair<IElementType, java.util.regex.Pattern>> =
+            CpLexer::class.java.getResource("/cp/lexer.tsv")!!.readText().lines()
+                .filter { it.isNotBlank() && !it.startsWith("#") }
+                .map { line -> line.substringBefore('\t').let(TOKENS::getValue) to java.util.regex.Pattern.compile(line.substringAfter('\t')) }
     }
 }
