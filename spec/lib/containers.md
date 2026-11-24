@@ -590,7 +590,11 @@ A persistent value is immutable and shares nodes with the versions it came
 from, so its nodes live in a `PArena<T>` the caller declares and passes to
 each call; the library keeps no pool of its own (decision 519). A node never
 changes after `alloc`, so every handle stays valid while its arena lives. An
-arena declared inside a `@!multitest` case is fresh in every case.
+arena declared inside a `@!multitest` case is fresh in every case. A persistent
+tree or array (`PersistentSegTree`, `PersistentLazySegTree`,
+`PersistentArray`) is its own pool: its nodes live in the value the program
+declares, and each write returns a `Version<S>` that names the structure type
+`S`, so a version of one structure type is rejected by another's methods.
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
@@ -611,6 +615,8 @@ struct PMultiset<D>                            // hashed persistent multiset
     fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int  // O(log |D|)
     // ==: O(1) by size and a 64-bit sum of fixed per-key weights
 
+struct Version<S>                              // one version of the tree or array type S;
+                                               // only S's methods make one, so S's are never mixed
 struct PersistentDsu<V>                        // one version of a union-find (std.dsu)
     fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>             // O(n) time, 2n - 1 nodes
     fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V                     // O(log^2 n)
