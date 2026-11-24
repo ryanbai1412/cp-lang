@@ -103,6 +103,7 @@ documented.
 | R11.4 | 11.4 Versions, pins and migration | documented | `cpl migrate` and pinned rebuilds wait (milestone: "full backward compatibility" can wait) |
 | R12.4 | W4. Sequences, views and index spaces (P4) | documented | user-library powers: specified, not promised for the milestone |
 | R12.11 | W10a. Records, associated types and inline bounds (P10) | documented | user-library powers: specified, not promised for the milestone |
+| R12.14 | W14. Inline C++ (P14) | supported |  |
 | R13.1 | 13.1 The output file | supported |  |
 | R13.2 | 13.2 Values | supported |  |
 | R13.3 | 13.3 Functions, closures, generators | supported |  |

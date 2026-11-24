@@ -139,10 +139,14 @@ RATCHET = Step("tech-debt ratchet (scripts/debt-ratchet.py --check)", ("scripts/
 USECASES = Step("use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)",
                 ("scripts/check-usecases.py", "--check"), "use-case catalogue check failed; see above", stdout=False)
 
+# The board's failing cases generate spec/SUBSET.md's known gaps, so whatever
+# rewrites research/scoreboard.json must regenerate it in the same commit.
+SUBSET = gate("subset", fail=_stale("spec/SUBSET.md", "subset"))
+
 # Every checking script check.sh runs, by tier, in order: `commit` before a
 # commit, `checks` after --fast's build, `full` (with --full's slow suites) last.
 STEPS = {
-    "commit": (RATCHET, USECASES),
+    "commit": (RATCHET, USECASES, SUBSET),
     "checks": (
         RATCHET,
         Step("handbook reads for an outsider (scripts/check-handbook.py)", ("scripts/check-handbook.py",),
@@ -168,7 +172,7 @@ STEPS = {
              ("bench/scaling.py", "--check", "--cpl", "{cpl}"),
              "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"),
         gate("coverage", fail="a rule lacks the case it needs; see above, then rerun: uv run scripts/spec-gate.py coverage"),
-        gate("subset", fail=_stale("spec/SUBSET.md", "subset")),
+        SUBSET,
         gate("matrix", fail="matrix gate failed; see above"),
         gate("widths", fail=_stale("spec/conformance/widths/", "widths")),
         gate("ownership", fail=_stale("spec/conformance/ownership/", "ownership")),
