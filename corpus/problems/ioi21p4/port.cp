@@ -6,33 +6,28 @@
 //   letter is needed more often than it is there. Otherwise a place wanting X where another
 //   wants its letter back is fixed with one swap, and what is left over goes round in threes,
 //   two swaps each. O(n + q).
-// original: corpus/submissions/4698075.cpp
+// original: corpus/submissions/4698075.cpp (grader functions init / get_distance)
+// stdin: n q, a, b, then q queries x y. stdout: the answer per query.
+let (n, q): (1..=100_000, 1..=100_000) = read()
+domain Pos = 0..n
 domain Base = 0..3
 fn base(c: Char) -> Base = Base(if c == 'A': 0 elif c == 'C': 1 else: 2)
-
-let (n, q): (Int, Int) = read()
 let (a, b): (Str, Str) = read()
-// upto[i][x, y]: the places before i where a has x and b has y.
-var upto: List<[Base, Base]Int> = [[Base, Base] (x, y) => 0]
-for i in 0..n:
-    var next = upto.last!.clone()
-    next[base(a[i]), base(b[i])] += 1
-    upto.push(next)
+assert a.len == n and b.len == n
+
+// count[s, t]: prefix counts of the places where a has s and b has t
+let count: [Base, Base]Prefix<Pos, Int> = [Base, Base] (s, t) =>
+    Prefix<Pos, Int>([Pos] i => if base(a[Int(i)]) == s and base(b[Int(i)]) == t: 1 else: 0)
 
 for _ in 0..q:
-    let (x, y): (Int, Int) = read()
-    let have = [Base, Base] (s, t) => upto[y + 1][s, t] - upto[x][s, t]
-    var possible = true
-    for s in Base:
-        if sum(have[s, t] for t in Base) != sum(have[t, s] for t in Base): possible = false
-    if not possible:
+    let (x, y): (Pos, Pos) = read()
+    assert x <= y
+    let have = [Base, Base] (s, t) => count[s, t].fold(x..=y)
+    if any(sum(have[s, t] for t in Base) != sum(have[t, s] for t in Base) for s in Base):
         print(-1)
-        continue
-    var (swaps, left) = (0, 0)
-    for s in Base:
-        for t in Base:
-            if s < t:
-                let pairs = min(have[s, t], have[t, s])
-                swaps += pairs
-                left += have[s, t] + have[t, s] - 2 * pairs
-    print(swaps + left / 3 * 2)
+    else:
+        // a place wanting t where another wants its s back is one swap; the rest go round in
+        // threes, two swaps each
+        let swaps = sum(min(have[p.lo, p.hi], have[p.hi, p.lo]) for p in Pair<Base>)
+        let wrong = sum(have[s, t] for s in Base for t in Base if s != t)
+        print(swaps + (wrong - 2 * swaps) / 3 * 2)
