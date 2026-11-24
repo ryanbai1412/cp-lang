@@ -8,16 +8,15 @@
 //   ends: O(N^2 L).
 // original: corpus/submissions/4226622.cpp
 // Bounds: n: 1..=100; limit, heights: 1..=1000
-const P = 1000000007
-type Z = Mod<P>
-let n: 1..=100 = read()
-let limit: 1..=1000 = read()
-let heights: [n]1..=1000 = read()
+type Z = Mod<1_000_000_007>
+let (n, limit): (1..=100, 1..=1000) = read()
+domain Building = 0..n
+let heights: [Building]1..=1000 = read()
+assert heights.sorted().pairs().all(p => p.0 < p.1)
 
-// Buildings go in from the shortest up, forming groups that will later be
-// joined into the final row. ways[g, c, e]: g groups, e of them already fixed
-// at an end of the row, and c paid so far, counting every open side of a group
-// as if its future neighbour were as tall as the building just placed.
+// ways[g, c, e]: g groups, e of them already fixed at an end of the row, and c paid so far,
+// counting every open side of a group as if its future neighbour were as tall as the building
+// just placed.
 type Ways = [0..=n, 0..=limit, 0..=2]Z
 var ways: Ways = 0
 ways[0, 0, 0] = 1
