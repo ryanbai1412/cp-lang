@@ -7,17 +7,17 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3162 (1093 passing). Rules: 605.
+Cases: 3167 (1093 passing). Rules: 605.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 57 rules, 178 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 57 rules, 179 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 153 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 50 rules, 230 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 50 rules, 231 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 91 rules, 220 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 93 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -108,7 +108,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.5.4 [1+ 0-]: Operands and arguments evaluate left to right. Assignment evaluates the right side first, ...
 - R01.5.5 [1+ 0-]: `and`, `or`, `+`, `*`, `min`, `max`, `gcd`, `^`, `&`, `|` are also operation values (`xs.f...
 - R01.5.6 [1+ 1-]: `??` written next to `+ - * / %` without parentheses is an error: `a ?? 0 + 1` must be wri...
-- R01.5.7 [1+ 0-]: `and` and `or` short-circuit: they evaluate their right side only when the left side does ...
+- R01.5.7 [2+ 0-]: `and` and `or` short-circuit: they evaluate their right side only when the left side does ...
 - R01.6.1 [3+ 0-]: `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a compile-time constant...
 - R01.6.2 [9+ 2-]: `let p = e else: block` binds or runs the block, which must leave (`return`, `break`, `con...
 - R01.6.3 [1+ 0-]: `var` inside a pattern makes that one binding mutable: `for (var left, v) in items:`.
@@ -387,7 +387,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.6.2 [2+ 1-]: **Desugaring.** A call passes the rest of the caller's block as a callback: `let w = windo...
 - R05.6.3 [3+ 1-]: **`lends mut T`** is a place: the caller can assign through it, `a[i] = 5` is `a.at(i) = 5...
 - R05.6.4 [1+ 1-]: **Indexing, slicing, `.rev`, `.map`, `.filter` are all `lends` fns.** So `let row = rows[i...
-- R05.7.1 [1+ 2-]: a parameter (R4), and anything a `lends` fn returns (§6);
+- R05.7.1 [1+ 3-]: a parameter (R4), and anything a `lends` fn returns (§6);
 - R05.7.2 [2+ 1-]: a struct, tuple or enum with a lent field (`Filter(self, keep)`);
 - R05.7.3 [2+ 1-]: a generator value with a lent argument (`dfs(g, from: [s])`, `dfs(g, from: [s], seen: mut ...
 - R05.7.4 [2+ 6-]: a loop item, for the iteration (§9);
@@ -814,7 +814,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0505 Library lint that cannot be used: 6 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
-- E0602 Variable mutated while lent: 44 case(s)
+- E0602 Variable mutated while lent: 45 case(s)
 - E0603 Lent value escapes its scope: 37 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
@@ -973,7 +973,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 46 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 85 case(s)
+- R0401 Assertion failed: 86 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
