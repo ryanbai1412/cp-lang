@@ -484,13 +484,28 @@ class DebtRatchetTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
-            self._write(root, "scripts/a.sh", ". retry.sh\nx=$(retry gh api y)\n# retry here\nretrying=1\n")
-            self._write(root, "scripts/b.py", "from retry import retry\nreturn retry(f, tries=3)\n")
+            self._write(root, "scripts/a.sh", ". retry.sh\nx=$(retry make y)\n# retry here\nretrying=1\nx=$(retry gh api y)\n")
+            self._write(root, "scripts/b.py", "from retry import retry\nreturn retry(f, tries=3)\nreturn retry(post_chat, transient=t)\n")
             self._write(root, "crates/a/src/lib.rs", "std::thread::sleep(d);\n// thread::sleep\n")
             self._write(root, "crates/a/src/tests.rs", "std::thread::sleep(d);\n")
             subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, env=dr._git_env())
             self.assertEqual(dr.retry_calls(root), ["scripts/a.sh:2", "scripts/b.py:2"])
             self.assertEqual(dr.poll_sleeps(root), ["crates/a/src/lib.rs:1"])
+
+    def test_a_retry_wraps_only_a_named_fetch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            named = ["retry timeout 180 sudo apt-get install -y emacs-nox", "retry sh -c 'curl -sSfL $url | tar x'",
+                     "retry npm install --prefix t x", "x=$(retry gh api repos/a)", "retry gh release view edge",
+                     "retry gh run view 1 --log-failed", 'retry "$mm/bin/micromamba" create -y',
+                     "RETRY_TRIES=5 retry sh -c 'git pull -q --rebase origin main && git push -q origin HEAD:main'",
+                     "RETRY_WAIT=0 retry push || exit 1"]
+            self._write(root, ".github/workflows/w.yml", "\n".join(named) + "\n")
+            self._write(root, "scripts/c.sh", "retry cargo test\nretry sh -c 'make all'\nretry pushd x\n")
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, env=dr._git_env())
+            self.assertEqual(dr.retry_calls(root), ["scripts/c.sh:1", "scripts/c.sh:2", "scripts/c.sh:3"])
+            self.assertIn("retry_calls", dr.HARD_ZERO)
 
     def test_only_the_file_watch_and_the_rate_limiter_may_sleep(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

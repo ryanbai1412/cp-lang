@@ -1505,13 +1505,38 @@ def ci_retries(root: Path) -> list[str]:
     return [":".join(h.split(":", 2)[:2]) for h in hits]
 
 
+# What the retry helper may wrap: a fetch over the network or a push that races
+# another lane, by name. The retried command must start with one of these.
+RETRY_FETCHES = {
+    "apt": r"(timeout \d+ )?sudo apt-get install ",
+    "curl": r"(timeout \d+ )?(sh -c ['\"])?curl(_page)? ",
+    "npm": r"(timeout \d+ )?npm install ",
+    "gh api": r"gh api ",
+    "gh release": r"gh release view ",
+    "gh run": r"gh run view ",
+    "micromamba": r"\"?\S*/micromamba\"? create ",
+    "git push race": r"(sh -c 'git pull -q --rebase origin main && git push |push( |$)|push_reservation,)",
+    "chat completion": r"post_chat,",
+}
+_RETRIED = re.compile(r"(?:^|[\s$(=])retry[ (](.*)")
+
+
 def retry_calls(root: Path) -> list[str]:
     """Calls of the one retry helper (`retry ...` in shell, `retry(` in Python) in
-    workflows and scripts: each is a network or push race wrapped instead of removed."""
+    workflows and scripts whose command is not a named fetch in `RETRY_FETCHES`: a
+    retry may only cover the network or a push race, never a flaky step of our own."""
     hits = _git(root, "grep", "-n", "-E", "-e", r"(^|[[:space:]$(=])retry( |\()", "--", ".github", "scripts", "justfile",
                 ":!scripts/retry.sh", ":!scripts/retry.py", ":!scripts/test_*.py",
                 ":!scripts/debt-ratchet.py", ":!scripts/test_debt_ratchet.py")
-    return [":".join(h.split(":", 2)[:2]) for h in hits if not h.split(":", 2)[2].lstrip().startswith("#") and " import retry" not in h]
+    out = []
+    for h in hits:
+        rel, i, line = h.split(":", 2)
+        if line.lstrip().startswith("#") or " import retry" in line:
+            continue
+        retried = _RETRIED.search(line)
+        if not (retried and any(re.match(p, retried.group(1)) for p in RETRY_FETCHES.values())):
+            out.append(f"{rel}:{i}")
+    return out
 
 
 # The two sleeps a blocking wait can't replace without a crate: the file-change
@@ -2082,7 +2107,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 HARD_ZERO = frozenset({
     "habit_matchers",
-    "corpus_walkers", "poll_sleeps",
+    "corpus_walkers", "poll_sleeps", "retry_calls",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
@@ -2202,7 +2227,7 @@ COUNTERS = {
     "cpl_env_reads": ("CPL_* env reads outside the config module (Consumers)", cpl_env_reads, True),
     "test_sleeps": ("sleeps in tests (Factory)", test_sleeps, True),
     "ci_retries": ("--retry/--retries in CI and scripts (Factory)", ci_retries, True),
-    "retry_calls": ("calls of the retry helper in CI and scripts (Factory)", retry_calls, True),
+    "retry_calls": ("retry calls in CI and scripts wrapping no named network fetch or push race (Factory)", retry_calls, True),
     "poll_sleeps": ("thread::sleep in shipped Rust (Factory)", poll_sleeps, True),
     "hardcoded_codes": ("E0xxx literals outside cpl-check and cpl-diag (Consumers)", hardcoded_codes, True),
     "xfail_markers": ("xfail/known-fail markers and lists (Content)", xfail_markers, True),

@@ -201,7 +201,7 @@
   "test_sleeps": 0,
   "ci_retries": 0,
   "poll_sleeps": 0,
-  "retry_calls": 19,
+  "retry_calls": 0,
   "stale_arch_paths": 0,
   "hardcoded_codes": 0,
   "xfail_markers": 0,

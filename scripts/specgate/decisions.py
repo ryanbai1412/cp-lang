@@ -87,7 +87,7 @@ class PushRejected(Exception):
 def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
     local = open(DECISIONS, encoding="utf-8").read() if os.path.exists(DECISIONS) else ""
 
-    def attempt() -> int:
+    def push_reservation() -> int:
         f = git("fetch", "-q", remote, "main")
         if f.returncode != 0:
             print(f"spec-gate decisions: cannot fetch {remote} main (offline?): {f.stderr.strip()}", file=sys.stderr)
@@ -120,7 +120,7 @@ def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
         raise PushRejected(pushed.stderr.strip())
 
     try:
-        return retry(attempt, transient=lambda e: isinstance(e, PushRejected), tries=tries, wait=0)
+        return retry(push_reservation, transient=lambda e: isinstance(e, PushRejected), tries=tries, wait=0)
     except PushRejected as e:
         print(f"spec-gate decisions: main moved under {tries} pushes in a row; try again: {e}", file=sys.stderr)
         return 1
