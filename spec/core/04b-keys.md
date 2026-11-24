@@ -265,8 +265,8 @@ pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> =
 
 | Stub | Today | Becomes |
 |---|---|---|
-| `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>` (R04b.5.1) |
-| `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K` (R04b.5.2) |
+| `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`; a match starts at an element, so an empty pattern matches at the first (last) key, `None` when empty (R04b.5.1) |
+| `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`; an empty pattern matches at each key (R04b.5.2) |
 | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed by `s.keys` (R04b.5.3) |
 | `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty (R04b.5.4) |
 | `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts (R04b.5.5) |
