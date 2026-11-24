@@ -604,7 +604,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// The fold of every position, left to right.
     ///
     /// cost: \(O(1)\)
-    /// empty: `SegTree<0..0, Int>(+).all == 0 and SegTree<0..0, ?Int>(max.opt()).all == None`
+    /// empty: `SegTree<0..0, Int>(+).all == 0 and SegTree<0..0, Int>(max).all == Int.MIN and SegTree<0..0, ?Int>(max.opt()).all == None`
     /// traps: never
     /// example: `SegTree(max, [3, 9, 4]).all == 9`
     @get pub fn all(self) -> T = t[1]

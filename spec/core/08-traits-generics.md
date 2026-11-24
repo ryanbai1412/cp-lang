@@ -96,6 +96,8 @@ impl Ord for Frac:
   of type may choose differently: `impl<T> Op<T> for Monoid<T>` chooses
   `type Fold = T` and the impl for a bare `(T, T) -> T` chooses `?T`, so one
   generic `SegTree(op, a)` folds `T` over a monoid and `?T` over a closure
+  (`max`/`min` are monoids with `Fold = T` over a bounded `T`, and `?T`
+  otherwise, chosen by one impl with `if T: Bounded:`; decision 602)
   (decision 456). A fn type is a type an impl may be for, and an impl may
   cover every domain (`impl<domain D> Search for D`) beside one for a
   concrete type (`impl Search for F64`). A generic fn names the choice as

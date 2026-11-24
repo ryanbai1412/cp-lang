@@ -9148,4 +9148,8 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 
 ## 601. (reserved, unknown)
 
-## 602. (reserved, stdlib)
+## 602. Bounded `max`/`min` fold to `T`; unbounded ones and identity-less ops fold to `?T` (stdlib, 2026-11-24)
+
+- **Call.** Under R5 (`std-api/R5`) and `Op<T>`'s associated `Fold` (decision 456), `max` and `min` over a bounded `T` (one with `T.MIN`/`T.MAX`: `Int`, a range type, `Char`, `Bool`, decision 580's ends) are monoids with `Fold = T`, identity `T.MIN`/`T.MAX`, and also `Selective<T>`. Over a `T` with no ends (`Str`, a user `Ord` type) they fold `?T`. One impl chooses with `if T: Bounded:` (Core's G7.3 ruling, 2026-11-24 04:22 PST); overlapping impls stay an error. So `SegTree(max)` stays non-optional with unchanged C++, an empty `Window(max).all` over `Int` is `Int.MIN` once `Window.all` is `M.Fold`, and `max.opt()` is the fold that is `None` when empty. This replaces decision 575's `Max.Fold = ?T`.
+- **Why.** Max over a bounded type has an identity, so R5's own rule ("a fold of a monoid is `T`") gives `T`; a `?T` fold would put an unwrap on every `SegTree(max)` and change its C++. `None` on empty stays one call away through `opt()`, the same helper every identity-less op uses.
+- **Reverse.** Give `max`/`min` `Fold = ?T` for every `T` and make `SegTree(max)` fold `?T`.

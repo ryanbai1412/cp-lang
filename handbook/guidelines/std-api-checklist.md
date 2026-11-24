@@ -84,10 +84,10 @@ A search, min, max, `first`, `last` or `pop` that can find nothing returns `?T`;
 
 ### R5. A fold of a monoid is `T`; without an identity it is `?T`
 
-An operation with a known identity (`+`, `*`, `min`, `max`, `gcd`, `^`, `|`, `&`, or a `Monoid`) folds to `T`; any other operation still works everywhere and folds to `?T`, lifted by one helper whose identity is `None`.
+An operation with a known identity (`+`, `*`, `min`, `max`, `gcd`, `^`, `|`, `&`, or a `Monoid`) folds to `T`, and an empty fold is that identity; any other operation still works everywhere and folds to `?T`, lifted by one helper whose identity is `None`. `max` and `min` have an identity exactly when `T` is bounded (`T.MIN`/`T.MAX`): over `Int` an empty `max` fold is `Int.MIN`, over `Str` or a user `Ord` type it is `None`. To get `None` on empty over a bounded type, fold `op.opt()`, e.g. `Window(max.opt())` (decision 602).
 
 - **Why:** the contestant shouldn't unwrap a sum, and shouldn't need an identity to use `Window` or a segment tree with a custom op.
-- **Example:** `[3, 1, 4].scan(+).fold(1..=2) == 5`; `Monoid<?Int>.of(min).id == None`.
+- **Example:** `[3, 1, 4].scan(+).fold(1..=2) == 5`; `SegTree<0..0, Int>(max).all == Int.MIN`; `Monoid<?Int>.of(min).id == None`.
 - **Enforced by:** `std/algebra.cp` `Monoid.of` examples in `cpl-conform docs`; `missing` for `Window.all` and the `?T` lifting helper.
 
 ## Arguments
