@@ -8,83 +8,59 @@
 // Solution: beads stay where they are in a lazy segment tree over physical slots, nodes holding
 //   (left colour, right colour, parts) and paint as the action. Rotation and flip only change the
 //   map from position to slot, x -> (dir * x + off) mod n. A segment maps to a slot range,
-//   reversed when flipped and split in two when it wraps; C merges the ends if they match.
-//   O((n + q) log n).
+//   (left colour, right colour, parts) and paint as the action. Rotation and flip only change the
+//   map from position to slot, x -> (dir * x + off) mod n (`Slot.wrap`). A segment maps to one
+//   slot range, or two when it wraps; C merges the ends if they match. O((n + q) log n).
 // original: corpus/submissions/5032746.cpp
+// Bounds: n: 1..=5e5; colours: 1..=1000; bead: 1..=colours; q: 1..=5e5; x: 1..=colours
+let (n, colours): (1..=5e5, 1..=1000) = read()
+domain Pos = 1..=n
+domain Slot = 0..n
+let bead: [Slot]1..=colours = read()
+let q: 1..=5e5 = read()
 
-let (n, c_max): (Int, Int) = read()
-domain Pos = 0..n
-let init_col: [Pos]Int = read()
-let q: Int = read()
+struct Run(l: Int, r: Int, parts: Int):
+    fn of(c: Int) -> Run = Run(c, c, 1)
 
-struct Run:
-    empty: Bool
-    lcol: Int
-    rcol: Int
-    runs: Int
-
-let run_monoid = Monoid<Run>(
-    id: Run(true, 0, 0, 0),
-    op: (a, b) => if a.empty: b else: if b.empty: a else: Run(
-        false,
-        a.lcol,
-        b.rcol,
-        a.runs + b.runs - Int(a.rcol == b.lcol),
-    ),
-)
-
-let paint_action = Action<Run, ?Int>(
+let joined = ((a: Run, b: Run) => Run(a.l, b.r, a.parts + b.parts - Int(a.r == b.l))).opt()
+let paint = Action<?Run, ?Int>(
     id: None,
     compose: (f, g) => if f == None: g else: f,
-    apply: (f, x, len) => if f == None or x.empty: x else: Run(false, f!, f!, 1),
-    over: run_monoid,
+    apply: (f, x, len) => if let c = f: x.map(_ => Run.of(c)) else: x,
+    over: joined,
 )
+var beads = SegTree(joined, [Slot] s => Some(Run.of(bead[s])), act: paint)
 
-let init = [Pos] p => Run(false, init_col[p], init_col[p], 1)
-var st = SegTree(paint_action.over, init, act: paint_action)
+var (dir, off) = (1, 0)
+fn slot(p: Pos) -> Slot = Slot.wrap(dir * (Int(p) - 1) + off)
 
-var dir = 1
-var off = 0
-
-fn phys(one_based: Int) -> Pos:
-    let x = one_based - 1
-    Pos((dir * x + off) % n)
+// the slots of positions i..=j clockwise: one range, or two when it wraps
+fn arcs(i: Pos, j: Pos) -> List<Range<Slot>>:
+    var (l, r) = (slot(i), slot(j))
+    if dir == -1: (l, r) = (r, l)
+    if l <= r: [l..=r] else: [l..=Slot.last!, Slot.first!..=r]
 
 for _ in 0..q:
     let op: Str = read()
     if op == "R":
         let k: Int = read()
-        off = (off - dir * k) % n
+        off -= dir * k
     elif op == "F":
         dir = -dir
     elif op == "S":
-        let (i, j): (Int, Int) = read()
-        let (pi, pj) = (phys(i), phys(j))
-        if pi != pj:
-            let ci = st.get(pi).lcol
-            let cj = st.get(pj).lcol
-            st.set(pi, Run(false, cj, cj, 1))
-            st.set(pj, Run(false, ci, ci, 1))
+        let (i, j): (Pos, Pos) = read()
+        let (a, b) = (slot(i), slot(j))
+        let (ca, cb) = (beads.get(a)!.l, beads.get(b)!.l)
+        beads.set(a, Some(Run.of(cb)))
+        beads.set(b, Some(Run.of(ca)))
     elif op == "P":
-        let (i, j, x): (Int, Int, Int) = read()
-        var (l, r) = (phys(i), phys(j))
-        if dir == -1: swap(mut l, mut r)
-        if l.ord <= r.ord:
-            st.apply(l..=r, x)
-        else:
-            st.apply(l.., x)
-            st.apply(..=r, x)
+        let (i, j, x): (Pos, Pos, 1..=colours) = read()
+        for a in arcs(i, j): beads.apply(a, x)
     elif op == "C":
-        let all = st.fold(Pos.all)
-        let cyc = if all.runs > 1 and all.lcol == all.rcol: all.runs - 1 else: all.runs
-        print(cyc)
+        let all = beads.all!
+        print(all.parts - Int(all.parts > 1 and all.l == all.r))
     else:
-        let (i, j): (Int, Int) = read()
-        var (l, r) = (phys(i), phys(j))
-        if dir == -1: swap(mut l, mut r)
-        var res = run_monoid.id
-        if l.ord <= r.ord:
-            res = st.fold(l..=r)
-        else:
-            res = run_monoid.op(st.fold(l..), st.fold(..=r))
-        print(res.runs)
+        let (i, j): (Pos, Pos) = read()
+        var runs: ?Run = None
+        for a in arcs(i, j): runs = joined.op(runs, beads.fold(a))
+        print(runs!.parts)
