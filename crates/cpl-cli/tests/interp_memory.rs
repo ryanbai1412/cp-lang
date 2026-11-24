@@ -86,59 +86,36 @@ fn peak_kb(spec: &Path, input: &Path) -> u64 {
     out.peak_kb.expect("Linux reports a high-water mark")
 }
 
-/// The run on the `rank`th largest input, one test each so nextest spreads
-/// them over CI's test partitions.
+/// Every run on the largest inputs, on threads of their own: choosing the
+/// inputs walks every package's cases, so it is done once.
+#[test]
 #[cfg(target_os = "linux")]
-fn largest_input_fits_the_judges_memory(rank: usize) {
+fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory() {
     let root = repo_root();
     let inputs = largest_inputs(&root);
     assert_eq!(inputs.len(), PROBLEMS, "fewer corpus problems with inputs");
-    let (name, input) = &inputs[rank];
-    let spec = cpl_corpus::package(&root, name).join("spec.cp");
-    let src = std::fs::read_to_string(&spec).expect("read spec");
-    let limit = cpl_contest::problem::Limits::of(&spec, &src).memory_kb;
-    let peak = peak_kb(&spec, input);
-    assert!(
-        peak <= limit,
-        "{name}: `cpl run` peaks at {} MB on {}, over the {} MB limit",
-        peak / 1024,
-        input.display(),
-        limit / 1024
-    );
-}
-
-#[test]
-#[cfg(target_os = "linux")]
-fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_0() {
-    largest_input_fits_the_judges_memory(0);
-}
-
-#[test]
-#[cfg(target_os = "linux")]
-fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_1() {
-    largest_input_fits_the_judges_memory(1);
-}
-
-#[test]
-#[cfg(target_os = "linux")]
-fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_2() {
-    largest_input_fits_the_judges_memory(2);
-}
-
-#[test]
-#[cfg(target_os = "linux")]
-fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_3() {
-    largest_input_fits_the_judges_memory(3);
-}
-
-#[test]
-#[cfg(target_os = "linux")]
-fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_4() {
-    largest_input_fits_the_judges_memory(4);
-}
-
-#[test]
-#[cfg(target_os = "linux")]
-fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_5() {
-    largest_input_fits_the_judges_memory(5);
+    let over: Vec<String> = std::thread::scope(|s| {
+        let runs: Vec<_> = inputs
+            .iter()
+            .map(|(name, input)| {
+                let root = &root;
+                s.spawn(move || {
+                    let spec = cpl_corpus::package(root, name).join("spec.cp");
+                    let src = std::fs::read_to_string(&spec).expect("read spec");
+                    let limit = cpl_contest::problem::Limits::of(&spec, &src).memory_kb;
+                    let peak = peak_kb(&spec, input);
+                    (peak > limit).then(|| {
+                        format!(
+                            "{name}: `cpl run` peaks at {} MB on {}, over the {} MB limit",
+                            peak / 1024,
+                            input.display(),
+                            limit / 1024
+                        )
+                    })
+                })
+            })
+            .collect();
+        runs.into_iter().filter_map(|r| r.join().unwrap()).collect()
+    });
+    assert!(over.is_empty(), "{}", over.join("\n"));
 }
