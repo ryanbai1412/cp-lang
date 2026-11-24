@@ -8524,7 +8524,7 @@ Reverse: drop `ExprKind::Cpp` and `cpp_bodies`, and restore the parser's re-read
 - **Why.** At `traps`, an overflow wrapped in the local C++ build where `cpl run` traps (spec/core/09-contexts-checks.md), so stress could pass, or report a wrong answer, on a program the interpreter stops at the overflow. One local profile keeps debug and release agreeing for valid programs and shows a crash as the check it is (afa44a59a).
 - **Reverse.** Set `Checks::LOCAL` in `crates/cpl-codegen/src/checks.rs` to `Checks::Traps`.
 
-## 450. `Rooted.forest` skips reached roots and roots every unreached vertex (spec, 2026-11-23)
+## 451. `Rooted.forest` skips reached roots and roots every unreached vertex (spec, 2026-11-23)
 
 `Rooted.forest(g, from:)` trapped when a root was already reached or a vertex was reached from
 no root, so a spanning forest of every component (idioms egoi22p3) took a Dsu pass to pick one
