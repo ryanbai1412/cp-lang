@@ -1933,5 +1933,5 @@ fn hover_shows_a_fns_type_parameter_and_its_bound() {
     let src = "for i in 0..2:\n    fn slide<S: Seq>(order: S) -> Int:\n        return 0\n    print(slide([1]))\n";
     assert_eq!(hover(src, "S: Seq"), "type parameter S");
     assert_eq!(hover(src, "S) ->"), "type parameter S");
-    assert_eq!(hover(src, "Seq>"), "trait Seq");
+    assert_eq!(hover(src, "Seq>"), "trait Seq\n  fn iter() -> Gen<T>");
 }
