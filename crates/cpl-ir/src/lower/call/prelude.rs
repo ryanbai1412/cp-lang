@@ -438,9 +438,7 @@ impl<'a> Lowerer<'a> {
                         ty: ty.clone(),
                         span: lw.span(span),
                     };
-                    let take = |lw: &mut Self, place: &Place| {
-                        lw.mk_mutate(Mutation::Take, place.clone(), Vec::new(), ty.clone(), span)
-                    };
+                    let take = |lw: &mut Self, place: &Place| lw.move_out(place, span);
                     let from_a = take(lw, &pa);
                     out.push_let(tmp, from_a);
                     let from_b = take(lw, &pb);
@@ -1427,6 +1425,25 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// `place`'s value, moved out: taken when it owns storage, read when
+    /// it is plain data (scalars, structs of them), so taking a scalar is
+    /// never a shape an engine sees.
+    fn move_out(&self, place: &Place, span: Span) -> Expr {
+        let plain = |ty: &Ty| ty.is_scalar();
+        let copies = plain(&place.ty)
+            || matches!(&place.ty, Ty::Struct(sid) if self.structs[*sid].def.fields.iter().all(|(_, t)| plain(t)));
+        if copies {
+            return super::stmt::place_to_expr(place);
+        }
+        self.mk_mutate(
+            Mutation::Take,
+            place.clone(),
+            Vec::new(),
+            place.ty.clone(),
+            span,
+        )
+    }
+
     /// `swap(mut a[l..r], mut g.rows[q])`: two views own no cells to trade,
     /// so they trade the cells they see, one at a time.
     fn swap_views(&mut self, pa: Place, pb: Place, elem: Ty, span: Span) -> Expr {
@@ -1463,15 +1480,7 @@ impl<'a> Lowerer<'a> {
                 ty: elem.clone(),
                 span: lw.span(span),
             };
-            let take = |lw: &mut Self, place: &Place| {
-                lw.mk_mutate(
-                    Mutation::Take,
-                    place.clone(),
-                    Vec::new(),
-                    elem.clone(),
-                    span,
-                )
-            };
+            let take = |lw: &mut Self, place: &Place| lw.move_out(place, span);
             let mut body = Vec::new();
             let from_a = take(lw, &ca);
             body.push_let(tmp, from_a);

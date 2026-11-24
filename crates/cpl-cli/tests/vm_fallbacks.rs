@@ -45,3 +45,11 @@ fn the_code_above_multitest_runs_on_the_vm() {
         assert_eq!(walked(&program, traced), 0, "traced: {traced}");
     }
 }
+
+#[test]
+fn plain_swaps_and_local_cell_reads_run_on_the_vm() {
+    let program = tests_dir().join("programs/vm_scalar_swaps_and_local_reads.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 0, "traced: {traced}");
+    }
+}
