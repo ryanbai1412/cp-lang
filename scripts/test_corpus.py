@@ -131,6 +131,28 @@ class ProblemsTest(Corpus):
             exe = corpus.binary(src)
         self.assertEqual((seen, os.path.basename(exe)), ([False], key))
 
+    def test_parallel_checks_run_one_binary_while_it_is_built(self):
+        # A compiler that writes its output in two steps: run early, a binary is
+        # busy (ETXTBSY) or half-written; every caller must still run a whole one.
+        cxx = self.root / "slow-cxx"
+        cxx.write_text('#!/bin/sh\nout=$2\nprintf "#!/bin/sh\\n" > "$out"\nchmod +x "$out"\n'
+                       'sleep 0.2\nprintf "echo whole\\n" >> "$out"\n')
+        cxx.chmod(0o755)
+        src = self.root / "a.cpp"
+        src.write_text("int main(){}\n")
+        self.addCleanup(setattr, corpus, "CXX_CACHE", corpus.CXX_CACHE)
+        corpus.CXX_CACHE = str(self.root / "cxx")
+
+        def check(_):
+            exe = corpus.binary(src)
+            return subprocess.run([exe], capture_output=True, text=True).stdout.strip()
+
+        import concurrent.futures
+        with mock.patch.object(corpus, "reference_cxx", lambda: ([str(cxx)], "14.4.0")), \
+                concurrent.futures.ThreadPoolExecutor(16) as pool:
+            got = list(pool.map(check, range(64)))
+        self.assertEqual(set(got), {"whole"})
+
     def test_a_reference_with_an_avx2_pragma_before_its_includes_builds(self):
         calls = []
         def cxx(cmd, *a, **k):
