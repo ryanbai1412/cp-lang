@@ -33,7 +33,7 @@ fn kept() -> Int:
             total += 1  // o's arrow already points back
 
     // Peel the people nobody loves, matching each with whom they love while both are free.
-    var fans: [P]Int = 0
+    var fans: [P]0..=n = 0
     for p in P: fans[loves[p]] += 1
     var free = [p for p in P if fans[p] == 0]
     while let p = free.pop():
