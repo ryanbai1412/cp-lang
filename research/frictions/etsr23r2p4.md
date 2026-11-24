@@ -7,6 +7,8 @@ A sliding-window bitmask DP. It reads close to the editorial; two small gaps.
   cell, with the index written twice (`next[served.shifted(-1)][slid]`).
 - **What felt wrong:** relaxing a DP cell is one idea; the repeated index is
   where a typo would hide.
+- **Repro:** on a fresh `cpl`, `x.lower(3)` on a `?Int` gives
+  `error[E0203]: a ?Int has no method lower`.
 - **Ideal code:** `next[served.shifted(-1)][last.prev!].lower(time)`.
 - **General fix:** a std `?T` relax method (`lower` / `raise`); same gap as
   etsr23r2p2.

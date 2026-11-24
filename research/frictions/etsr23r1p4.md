@@ -18,7 +18,8 @@ special-purpose `BeatsSegTree`, whose `chdiv` hides that rule.
 
 ## Enum variants with io tags
 - **Where:** port lines 15-19, an `Int` op code and an `if/elif` chain; the
-  dream's `enum Op: Add(r: Range<I>, x: Int) = 1, ...` does not parse.
+  dream's `enum Op: Add(r: Range<I>, x: Int) = 1, ...` does not parse: on a fresh
+  `cpl`, `Add(x: Int) = 1` gives `error[E0107]: expected the end of the statement, found '='`.
 - **General fix:** io tags on enum variants (also ioi01p1, ioi05p2).
 - **Severity:** medium.
 

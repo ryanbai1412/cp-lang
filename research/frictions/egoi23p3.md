@@ -2,7 +2,7 @@
 
 Rethought. The v0.2 port built every move string by pushing chars through an `append_rep` helper, spelled the H = 1 case as a separate early-return branch, and repeated the `print("!", ..)` four times. The v0.3 port builds the moves with `Str.repeat`, folds H = 1 into the first query (just right to the wall), and steps with `Col.at(..).map(..)` optionals. It keeps the survivors with `filter`, tells them apart with `distinct().len`, and picks the second query with `(0..h).map(row_probe).find(..) ?? fallback`. The package gains gen.py and an interactor that answers queries and requires the box within 2 queries.
 
-Gap: `wire.ask` cannot read a tuple when its type comes from the expected type (`let got: (Row, Col) = wire.ask(..)`) or from an alias (`wire.ask<Cell>(..)`), only when spelled out (`wire.ask<(Row, Col)>(..)`). Sent to Core.
+Gap: `wire.ask` cannot read a tuple when its type comes from the expected type (`let got: (Row, Col) = wire.ask(..)`) or from an alias (`wire.ask<Cell>(..)`), only when spelled out (`wire.ask<(Row, Col)>(..)`). Sent to Core. Fixed since: on a fresh `cpl`, `let got: Cell = wire.ask("?")` and `wire.ask<Cell>("?")` with `type Cell = (Int, Int)` both read `3 4` and print `3`, so the port's line 39 can take the dream's spelling.
 
 ## Dream
 
