@@ -183,6 +183,8 @@ pub(crate) struct Emitter<'p> {
     /// next statements set before reading it (`let out = T(xs); xs = []`):
     /// each is moved in, not copied.
     pub taken_items: BTreeSet<*const Expr>,
+    /// The locals the statement being written pushes for the last time.
+    pub pushed_moves: Vec<*const Expr>,
     pub pushers: BTreeMap<usize, usize>,
     /// The pushers that run to their end, never feeding a loop.
     pub eager: BTreeSet<usize>,
@@ -325,6 +327,7 @@ impl<'p> Emitter<'p> {
             moved_entry: BTreeSet::new(),
             moves_last: false,
             taken_items: BTreeSet::new(),
+            pushed_moves: Vec::new(),
             pushers: BTreeMap::new(),
             eager: BTreeSet::new(),
             sinks: BTreeMap::new(),

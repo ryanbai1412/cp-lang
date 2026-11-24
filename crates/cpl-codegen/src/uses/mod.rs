@@ -558,6 +558,36 @@ fn dying_nested_assigns<'a>(
     }
 }
 
+/// The locals `xs.push(y)` or `xs.push((i, y))`, statement `k` of `block`,
+/// reads for the last time: the list takes them by move.
+pub(crate) fn pushed_last_reads(program: &Program, block: &Block, k: usize) -> Vec<*const Expr> {
+    let Stmt::Expr(e) = &block.stmts[k] else {
+        return Vec::new();
+    };
+    let ExprKind::Mutate(cpl_ir::Mutation::Push, place, args) = &e.kind else {
+        return Vec::new();
+    };
+    let items: Vec<&Expr> = match args.first().map(|a| &a.kind) {
+        Some(ExprKind::Tuple(items)) => items.iter().collect(),
+        Some(_) => args.iter().take(1).collect(),
+        None => Vec::new(),
+    };
+    let slot_of = |e: &Expr| match e.kind {
+        ExprKind::Local(slot) => Some(slot),
+        _ => None,
+    };
+    items
+        .iter()
+        .filter_map(|item| slot_of(item).map(|slot| (*item, slot)))
+        .filter(|&(_, slot)| {
+            walk::root(place) != (false, slot)
+                && items.iter().filter(|i| slot_of(i) == Some(slot)).count() == 1
+                && dead_after(program, block, k, slot)
+        })
+        .map(|(item, _)| item as *const Expr)
+        .collect()
+}
+
 /// The local `y` of `Some(y)`.
 fn some_local(e: &Expr) -> Option<usize> {
     match &e.kind {
@@ -921,4 +951,11 @@ pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
         }
     }
     out
+}
+
+/// `xs.extend(src)` may read `src` in place when nothing in it can reach `xs`
+/// (inserting a vector's own range into it is undefined) or run other code.
+pub(crate) fn extend_borrows(place: &cpl_ir::Place, src: &Expr) -> bool {
+    let a = cpl_ir::effects::Access::of_expr(src);
+    !a.opaque && !a.values && !a.mutates && !a.reads.contains(&crate::walk::root(place))
 }

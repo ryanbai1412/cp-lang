@@ -1291,9 +1291,11 @@ impl Emitter<'_> {
             self.moves_last = false;
             self.taken_items.clear();
         }
+        self.pushed_moves = crate::uses::pushed_last_reads(self.program, block, k);
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
         self.taken_items.clear();
+        self.pushed_moves.clear();
     }
 
     /// Whether `stmt` reads a variable a lent struct field may point to,

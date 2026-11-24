@@ -252,6 +252,13 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("{}({text})", self.ty(&e.ty)))
             }
             ExprKind::Local(_) if e.ty == Ty::Unit => Code::primary("void()"),
+            ExprKind::Local(slot)
+                if self.pushed_moves.contains(&(e as *const Expr))
+                    && !self.ref_bound.contains(slot)
+                    && crate::lend::holds_heap(self.program, &e.ty) =>
+            {
+                Code::primary(format!("std::move({})", self.names[*slot]))
+            }
             ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),
             ExprKind::Global(id) => match self.devirt.global_target(*id) {
                 Some(cid) => {
@@ -1083,7 +1090,14 @@ impl<'p> Emitter<'p> {
                         Mutation::Extend => this.lambda("void", |this, out| {
                             let src = this.temp();
                             let r = this.temp();
-                            out.push_str(&Self::extend_source(&args[0], &src, &arg, this.indent));
+                            let borrow = crate::uses::extend_borrows(place, &args[0]);
+                            out.push_str(&Self::extend_source(
+                                &args[0],
+                                &src,
+                                &arg,
+                                this.indent,
+                                borrow,
+                            ));
                             out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
                             out.push_str(&format!(
                                 "{}{r}.insert({r}.end(), std::begin({src}), std::end({src}));\n",

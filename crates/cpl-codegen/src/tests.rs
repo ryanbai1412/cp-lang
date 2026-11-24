@@ -136,6 +136,17 @@ print(join(x, x)[K(1)], s.c[K(2)], (o ?? x)[K(0)])
 }
 
 #[test]
+fn extend_borrows_its_source_and_push_takes_a_dying_local() {
+    let body = body(
+        "let n: Int = read()\nvar stack: List<(val: Int, xs: List<Int>)> = []\nfor i in 0..n:\n    var xs = [i]\n    if stack.len > 0: xs.extend(stack[stack.len - 1].xs)\n    stack.push((i, xs))\nvar again: List<Int> = [1]\nagain.extend(again)\nprint(stack.len, again.len)\n",
+    );
+    assert!(body.contains("const auto& t0 = std::get<1>("), "{body}");
+    assert!(body.contains("{i, std::move(xs)}"), "{body}");
+    // A list grown by its own items reads a copy: inserting a vector's own range is undefined.
+    assert!(body.contains("auto t2 = again;"), "{body}");
+}
+
+#[test]
 fn list_insert_and_remove_move_the_tail_once() {
     let body = body("var a = [1, 3]\na.insert(1, 2)\nlet y = a.remove(0)\nprint(a, y)\n");
     assert!(body.contains("cpl::list_insert(a, "), "{body}");
