@@ -32,8 +32,9 @@ best-row step converted the whole 250 x 250 power. Ofast's reassociation was nev
 with O3 in its place also runs in 0.12 s). bench/math/maxplus (200x200 `**` 10^6) is 1.02-1.07x
 its C++.
 
-`corpus.py verify --only max` builds the port for `codeforces`, not the package's `noi` judge, so it
-times the port without the avx2 target the AC's own pragmas give it: 0.38-0.54 s there.
+`corpus.py verify` builds the port for its package's judge (`noi`, avx2), as `cpl test` and the
+judge do, and reports 0 findings; built for `codeforces` instead, without the avx2 target the AC's
+own pragmas give it, the port takes 0.38-0.54 s.
 
 ## Dream
 
