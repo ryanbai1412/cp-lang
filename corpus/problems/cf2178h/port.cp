@@ -1,4 +1,5 @@
 // Source: Codeforces 2178H (Create or Duplicate), https://codeforces.com/contest/2178/problem/H
+// limits: 6000 ms, 1024 MB
 // Problem: three present types of values a < b < c < m <= 5e5, one present of each. Create adds
 //   a present of a type for its value in mana; Duplicate doubles one type's presents for k
 //   mana. Print the least mana making the total value a multiple of m. Multitest, sums of m and

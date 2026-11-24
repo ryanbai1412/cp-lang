@@ -1,4 +1,5 @@
 // Source: Codeforces 2178G (deCH OR Dations), https://codeforces.com/contest/2178/problem/G
+// limits: 3000 ms, 512 MB
 // Problem: 2 <= n <= 5e5 chords with distinct endpoints on 2n circle points arrive in order. A chain
 //   is a set of chords whose consecutive members (by index) cross. For each prefix print 1 if
 //   every chord lies in an even number of chains, else 0. Multitest, sum of n <= 5e5.

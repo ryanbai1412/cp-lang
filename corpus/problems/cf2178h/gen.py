@@ -1,4 +1,13 @@
 import sys, random
+if sys.argv[1] == "--max":
+    # sum m and sum k saturated by one test: all 8m states with k = 5e5
+    g = random.Random(1)
+    m = 500_000
+    a, b, c = sorted(g.sample(range(1, m), 3))
+    print(1)
+    print(a, b, c, m, 500_000)
+    sys.exit()
+
 
 seed, S = int(sys.argv[1]), int(sys.argv[2])
 r = random.Random(seed)

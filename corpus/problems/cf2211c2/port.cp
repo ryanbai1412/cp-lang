@@ -1,5 +1,6 @@
 // Source: Codeforces 2211C2 (Equal Multisets, hard version),
 //   https://codeforces.com/contest/2211/problem/C2
+// limits: 2000 ms, 256 MB
 // Problem: arrays a (values 1..=n) and b (values 1..=n or -1) of length n <= 2e5 and k <= n. Can
 //   the -1s be filled so that every length-k window of b is a rearrangement of the same window
 //   of a? Print YES/NO. Multitest, sum of n <= 2e5.

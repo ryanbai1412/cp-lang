@@ -1,5 +1,6 @@
 // Source: Codeforces 2207E1 (N-MEX, constructive version),
 //   https://codeforces.com/contest/2207/problem/E1
+// limits: 2000 ms, 256 MB
 // Problem: given a_1..a_n (n <= 2e5, a_i <= 1e9), build b_1..b_n with b_i <= 1e9 such that the
 //   (n-i+1)-th smallest non-negative integer missing from b_1..b_i is a_i, or print NO.
 //   Multitest, sum of n <= 2e5.

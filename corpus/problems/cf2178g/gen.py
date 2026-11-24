@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 # gen.py SEED SIZE: SIZE 0/1 small multitests; SIZE >= 2 sum of n = 5e5 (one big test or many).
 import random, sys
+if sys.argv[1] == "--max":
+    # one test at sum n: 5e5 chords on random endpoints, about a third of the pairs crossing
+    g = random.Random(1)
+    n = 500_000
+    pts = list(range(1, 2 * n + 1))
+    g.shuffle(pts)
+    out = ["1", str(n)] + ["%d %d" % tuple(sorted(pts[2 * i:2 * i + 2])) for i in range(n)]
+    print("\n".join(out))
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 if size <= 1:

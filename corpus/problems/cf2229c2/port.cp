@@ -1,4 +1,5 @@
 // Source: Codeforces 2229C2 (We Be Flipping, hard), https://codeforces.com/contest/2229/problem/C2
+// limits: 2000 ms, 256 MB
 // Problem: n <= 2e5 nonzero integers |a_i| <= 1e9 (sum of n <= 2e5, multitest). An operation picks
 //   i with a_i > 0 and negates a_1..a_i. Print at most n operations that maximise the final sum.
 // Solution: the largest operated index p starts positive and ends negative, nothing right of it

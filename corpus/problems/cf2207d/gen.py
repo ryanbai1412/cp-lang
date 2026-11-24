@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 # usage: gen.py seed size; size caps the sum of n (the statement allows 5e5)
 import random, sys
+if sys.argv[1] == "--max":
+    # one test at sum n: a path under random labels started next to one end, 5e5 deep, k = n
+    n = 500_000
+    perm = list(range(1, n + 1))
+    random.Random(1).shuffle(perm)
+    print(1)
+    print(n, n, perm[1])
+    print("\n".join(f"{perm[i]} {perm[i + 1]}" for i in range(n - 1)))
+    sys.exit()
+
 rng = random.Random(int(sys.argv[1]))
 budget = max(3, min(int(sys.argv[2]) if len(sys.argv) > 2 else 14, 500_000))
 sizes = []

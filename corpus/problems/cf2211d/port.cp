@@ -1,4 +1,5 @@
 // Source: Codeforces 2211D (AND-array), https://codeforces.com/contest/2211/problem/D
+// limits: 3000 ms, 256 MB
 // Problem: f(a)_k is the sum of the ANDs over all k-element subsequences of a. Given
 //   b_k = f(a)_k mod 1e9+7 for k = 1..=n (n <= 1e5), print any a with 0 <= a_i < 2^29 that
 //   produces it. Multitest, sum of n <= 1e5.

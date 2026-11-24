@@ -17,13 +17,35 @@ def load():
 
 
 def final(a, ops, case, who):
-    a = a[:]
+    """The final sum: a_j ends negated once per flip at an index >= j. A Fenwick tree over
+    the flips so far gives the sign at each flip, O(k log n)."""
+    n = len(a)
+    tree = [0] * (n + 1)
     for i in ops:
-        if not 1 <= i <= len(a) or a[i - 1] <= 0:
+        if not 1 <= i <= n:
+            fail(f"case {case}: {who} flips at {i}, out of range")
+        later, p = 0, n
+        while p > 0:
+            later += tree[p]
+            p -= p & -p
+        p = i - 1
+        while p > 0:
+            later -= tree[p]
+            p -= p & -p
+        if (a[i - 1] if later % 2 == 0 else -a[i - 1]) <= 0:
             fail(f"case {case}: {who} flips at {i}, where a_i is not positive")
-        for j in range(i):
-            a[j] = -a[j]
-    return sum(a)
+        p = i
+        while p <= n:
+            tree[p] += 1
+            p += p & -p
+    flips = [0] * (n + 2)
+    for i in ops:
+        flips[i] += 1
+    total, above = 0, 0
+    for j in range(n, 0, -1):
+        above += flips[j]
+        total += a[j - 1] if above % 2 == 0 else -a[j - 1]
+    return total
 
 
 def main():

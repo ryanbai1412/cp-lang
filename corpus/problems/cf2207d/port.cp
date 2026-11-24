@@ -1,4 +1,5 @@
 // Source: Codeforces 2207D (Boxed Like a Fish), https://codeforces.com/contest/2207/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: a tree of n <= 5e5 vertices; Cyndaquil starts at non-leaf v and wants a leaf. Snorlax
 //   moves first and may block one edge at a time, choosing a new one only k turns after the
 //   last; Cyndaquil moves one edge or stays per turn. Print YES iff Cyndaquil can surely reach a
