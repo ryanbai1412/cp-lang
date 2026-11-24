@@ -820,6 +820,20 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(out.getvalue().startswith("The checks to run before a commit or a push."))
         self.assertNotIn("set -euo", out.getvalue())
 
+    def test_cxx_trim_keeps_only_the_binaries_used_since(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            (cache / "ab").mkdir()
+            (cache / "corpus").mkdir()
+            files = {n: cache / n for n in ("ab/old.bin", "ab/old.err", "ab/hit.bin", "ab/hit.err", "corpus/gone", "corpus/used")}
+            for f in files.values():
+                f.write_text("x")
+                os.utime(f, (100, 100))
+            for n in ("ab/hit.bin", "corpus/used"):
+                os.utime(files[n], (300, 300))
+            ci.cxx_trim(cache, 200)
+            self.assertEqual(sorted(n for n, f in files.items() if f.exists()), ["ab/hit.bin", "ab/hit.err", "corpus/used"])
+
     def test_the_cxx_cache_shims_g_plus_plus_and_prunes_week_old_binaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp, "bin")

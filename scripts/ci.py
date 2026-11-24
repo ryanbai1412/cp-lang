@@ -1125,6 +1125,17 @@ def cxx_cache(target: Path, env, run=subprocess.run, clock=time.time) -> None:
             f.unlink()
 
 
+def cxx_trim(cache: Path, since: float) -> None:
+    """Drop the cached binaries not used since `since`, before CI saves the cache. A job
+    with no cache of its own restores another's, so without this every gate part's cache
+    grew to all of theirs: 9 parts of 460 MB a run, past GitHub's 10 GB, which then
+    evicts live caches."""
+    for f in cache.rglob("*"):
+        if f.is_file() and not f.is_symlink() and f.suffix != ".err" and f.stat().st_mtime < since:
+            f.unlink()
+            f.with_suffix(".err").unlink(missing_ok=True)
+
+
 def check(argv: list[str], env=None, run=subprocess.run, clock=time.time, guard_fn=None, gate_fn=None) -> int:
     """scripts/check.sh: parse its flags, set up the C++ and stage caches, run the
     guards, then the tier (`run_gate`)."""
@@ -1184,12 +1195,17 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("check", help="scripts/check.sh [--fast|--commit|--land|--full|--timing] [--no-cache]")
     gd = sub.add_parser("guard", help="the guards before the build: conflict markers, traces, secrets, lockfiles")
     gd.add_argument("--mode", choices=MODES, required=True)
+    tr = sub.add_parser("cxx-trim", help="drop the g++ cache's binaries unused since --since (epoch seconds)")
+    tr.add_argument("--since", type=float, required=True)
+    tr.add_argument("--dir", default=str(Path.home() / ".cache" / "cpl" / "cxx"))
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["check"]:
         return check(argv[1:])
     args = ap.parse_args(argv)
     if args.cmd == "guard":
         return guard(args.mode)
+    if args.cmd == "cxx-trim":
+        return cxx_trim(Path(args.dir), args.since) or 0
     if args.cmd == "gate":
         return run_gate(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest, args.since)
     if args.cmd == "steps":

@@ -191,6 +191,8 @@ def binary(src):
         if r.returncode:
             raise RuntimeError("c++: " + r.stderr[:200])
         os.replace(tmp, exe)
+    else:
+        os.utime(exe)  # used: CI's cache trim keeps it
     return exe
 
 

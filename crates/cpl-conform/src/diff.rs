@@ -196,6 +196,9 @@ pub(crate) fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCom
     let key = fnv1a_hex(format!("{system}\0{flags}\0{cpp}").as_bytes());
     let bin = cache_dir.join(&key);
     if bin.is_file() {
+        // Used: CI's cache trim (scripts/ci.py cxx-trim) keeps it.
+        let _ =
+            std::fs::File::open(&bin).and_then(|f| f.set_modified(std::time::SystemTime::now()));
         return Ok(bin);
     }
     // A worker building the same binary holds its lock; the others wait on

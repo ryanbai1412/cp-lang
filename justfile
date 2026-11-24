@@ -222,6 +222,10 @@ corpus-check:
 corpus-tests-make *args:
     uv run python scripts/corpus.py make {{args}}
 
+# Drop the g++ cache's binaries unused since `since` (epoch seconds); CI runs it before saving the cache.
+cxx-trim since:
+    uv run python scripts/ci.py cxx-trim --since {{since}}
+
 # Run every corpus mode on packages: header, check, package, tests, stress, max, size, lint, dream.
 corpus-verify *args:
     uv run python scripts/corpus.py verify {{args}}
