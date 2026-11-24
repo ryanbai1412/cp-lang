@@ -626,12 +626,13 @@ pub fn stress_source(
     let config = |assignments: bool| TraceConfig {
         source: source.to_string(),
         assignments,
+        record_frames: true,
         ..TraceConfig::default()
     };
     let mut stages = Vec::new();
     let mut explained = None;
     let failed = report.failure.as_ref();
-    let brute_prog = engine.brute.as_ref().filter(|_| own_brute.is_some());
+    let brute_prog = engine.brute.as_ref();
     let interactive = engine.interactor.is_some();
     let explaining = failed.map(|f| explaining(&f.verdict, interactive, brute_prog.is_some()));
     if let (Some(failure), true) = (failed, explain) {
@@ -700,8 +701,11 @@ pub fn stress_source(
                     brute: s.brute,
                 })
                 .collect();
+            // A part's wrong call is the explanation; else the first value they differ in.
+            let call = crate::calls::first_call_divergence(source, &fast_rec, &slow_rec);
             if explain {
-                explained = Some(Ok(explain_divergence(source, &fast_rec, &slow_rec)));
+                let value = || explain_divergence(source, &fast_rec, &slow_rec);
+                explained = Some(Ok(call.or_else(value)));
             }
         }
     }

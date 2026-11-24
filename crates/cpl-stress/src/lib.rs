@@ -2,6 +2,7 @@
 //! case that still fails (`plan/40-tooling.md`, sections 7b and 8).
 
 pub mod args;
+pub mod calls;
 pub mod case;
 pub mod choices;
 pub mod cli;

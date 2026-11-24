@@ -208,3 +208,33 @@ fn an_interactive_failure_is_explained_by_the_answer_it_printed() {
         "{json:?}"
     );
 }
+
+/// Against `@alt(f)` parts, `--explain` names the innermost wrong call of
+/// a part, as `cpl stress` does (`cpl_stress::calls::first_call_divergence`).
+#[test]
+fn a_parts_wrong_call_is_explained_as_the_cli_explains_it() {
+    let cases = [
+        (
+            include_str!("../../cpl-cli/tests/debugger/part_planted.cp"),
+            "tri(k: 1)",
+            1,
+        ),
+        (
+            include_str!("../../cpl-cli/tests/debugger/part_recursive.cp"),
+            "fib(k: 3)",
+            2,
+        ),
+    ];
+    for (source, name, nth) in cases {
+        let options = Options {
+            jobs: 1,
+            ..Options::default()
+        };
+        let result = stress_source("p.cp", source, &options, Some(1 << 26), true).unwrap();
+        let json = cpl_json::parse(&result.render()).unwrap();
+        let divergence = json.at(&["counterexample", "explain", "divergence"]);
+        assert_eq!(divergence.at(&["name"]).as_str(), Some(name), "{json:?}");
+        assert_eq!(divergence.at(&["call"]).as_bool(), Some(true), "{json:?}");
+        assert_eq!(divergence.at(&["nth"]).as_i64(), Some(nth), "{json:?}");
+    }
+}
