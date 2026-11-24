@@ -1427,6 +1427,10 @@ pub struct StructDef {
     pub fixed: std::collections::BTreeMap<usize, u32>,
     /// Ranged `Int` fields whose static bounds fit in 32 bits, by position.
     pub narrow_ints: std::collections::BTreeMap<usize, IntWidth>,
+    /// Scalar ranged `Int` fields whose ends are known while lowering, by
+    /// position: `Mod<P>(v: 0..P)` holds `(0, P - 1)`. Every value of the
+    /// struct holds a field in its range.
+    pub int_ranges: std::collections::BTreeMap<usize, (i64, i64)>,
     /// From `impl Show for S`: `fn show(a: S) -> Str`.
     pub show_fn: Option<FnId>,
     /// From `impl Eq for S`: `fn eq(a: S, b: S) -> Bool`.

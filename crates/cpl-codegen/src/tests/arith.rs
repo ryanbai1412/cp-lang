@@ -342,3 +342,18 @@ fn bounded_operands_add_without_an_overflow_check_whatever_their_sign() {
         .expect("Mod::add emitted");
     assert!(!add.contains("cpl::iadd"), "{add}");
 }
+
+#[test]
+fn a_residue_sum_of_products_reduces_once() {
+    let body = body(concat!(
+        "use std.mod.{Mod}\ntype Z = Mod<1_000_000_007>\nlet n: 1..=100 = read()\n",
+        "let a: List<Z> = [Z(read<Int>()) for _ in 0..n]\nvar s = Z(0)\n",
+        "for x in a:\n    for y in a: s = s + x * y\nprint(s)\n",
+    ));
+    let line = body
+        .lines()
+        .find(|l| l.contains("s = ") && !l.contains("(0)"))
+        .expect("the sum");
+    assert!(!line.contains("_add(") && !line.contains("_mul("), "{line}");
+    assert_eq!(line.matches("% 1000000007").count(), 1, "{line}");
+}

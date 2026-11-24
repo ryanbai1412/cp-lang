@@ -401,6 +401,21 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The ends of `decl`'s scalar ranged `Int` fields known while lowering.
+    pub(super) fn int_field_ranges(
+        &self,
+        decl: &ast::StructDecl,
+    ) -> std::collections::BTreeMap<usize, (i64, i64)> {
+        (decl.fields.iter().enumerate())
+            .filter(|(_, f)| match &f.ty.kind {
+                ast::TypeKind::Range { .. } => true,
+                ast::TypeKind::Named { args, .. } => args.is_empty(),
+                _ => false,
+            })
+            .filter_map(|(at, f)| Some((at, self.static_range_limits(&f.ty)?)))
+            .collect()
+    }
+
     /// The ranged `Int`, `?Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.
     pub(super) fn narrow_int_fields(
         &self,

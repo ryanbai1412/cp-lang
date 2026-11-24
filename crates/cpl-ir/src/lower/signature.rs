@@ -440,6 +440,7 @@ impl<'a> Lowerer<'a> {
             self.structs[id].def.hidden = self.hidden_fields(self.structs[id].mod_id, decl);
             self.structs[id].def.fixed = self.fixed_rows(decl);
             self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
+            self.structs[id].def.int_ranges = self.int_field_ranges(decl);
             self.collect_struct_field_ranges(id, decl);
             self.self_struct = None;
         }

@@ -55,6 +55,7 @@ impl<'p> Emitter<'p> {
         let last_use = std::mem::take(&mut self.last_use_call);
         if let Some(code) = self
             .try_fused_bitset_op(e, id, args)
+            .or_else(|| self.try_lap_fusion(e, id, args))
             .or_else(|| self.try_sink_call(id, args))
         {
             return code;
