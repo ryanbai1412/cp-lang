@@ -4,7 +4,7 @@
 //! over sequences that `plan/12-domains-and-sequences.md` writes bare
 //! (`sum`, `count`, `all`, `any`, `find`, `first`, `last`, `argmax`,
 //! `argmin`), and the intrinsics the libraries are written on top of
-//! (`rand`, `sort`, `swap`, `popcount`, ...; `std/README.md` lists them).
+//! (`rand`, `sort`, `swap`, `popcount`, ...).
 //!
 //! Everything else, `std` included, is cp source and resolves through
 //! `use`. The `std` names a program has without writing one are listed in
@@ -556,7 +556,7 @@ pub const TYPE_NAMES: &[&str] = &[
     "Indexed",
 ];
 
-/// The traits of `plan/19-index-and-lends.md` and `std/README.md`.
+/// The core traits std is written on (`spec/core/`).
 pub const TRAIT_NAMES: &[&str] = &[
     "Index",
     "Seq",

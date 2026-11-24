@@ -51,19 +51,9 @@ the ratchet until it's added to the list in a reviewed commit, and
 
 ## Stages and their crates
 
-| Stage | Crate | Job |
-|---|---|---|
-| Syntax | `cpl-syntax` | Lexer, error-tolerant parser, lossless tree, operator table |
-| Check | `cpl-check` | The query database: names, modules, types, traits, generics, domains, ownership. The front end every tool queries |
-| IR | `cpl-ir` | Lowering to one typed, structured IR; monomorphization; facts and proofs; passes; layout |
-| Facts | `cpl-prover` | Range and overflow proofs used by the IR |
-| Run | `cpl-interp` | The interpreter: a register VM, the event stream, traces, replay, the profiler. Also built for the browser |
-| Emit | `cpl-codegen` | The C++ emitter, runtime tree-shaking, judge profiles |
-| Report | `cpl-diag`, `cpl-json` | The diagnostic model and renderers; one JSON value and printer |
-| Tools | `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge`, `cpl-contest` | Clients of the check queries |
-| Editor | `cpl-lsp`, `cpl-wasm` | The language server and the browser bindings. Presentation only |
-| Harness | `cpl-conform` | Conformance, corpus, doc examples, differential runs, fuzzing |
-| Front door | `cpl-cli` | The `cpl` command. Parses arguments and prints; the work is in the crates above |
+The crates, the stage each belongs to and its job are in
+[architecture.md](architecture.md#crates); `scripts/debt-ratchet.py` holds the
+allowed edges between them.
 
 The stdlib is CP Lang source in `std/`. It gets its powers from general
 mechanisms (`design/std-mechanisms.md`), never from the compiler knowing a

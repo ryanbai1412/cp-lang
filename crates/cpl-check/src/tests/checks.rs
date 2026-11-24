@@ -136,25 +136,6 @@ fn the_bundled_stdlib_drops_tests_and_keeps_every_line() {
     assert!(seq.contains("pub fn bsearch<D>"));
 }
 
-/// `std/README.md` is the design of the whole surface, so a public
-/// name of `std/` it never mentions is a name nobody designed.
-#[test]
-#[ignore = "std/README.md does not name every public std name yet"]
-fn the_stdlib_design_names_every_public_name() {
-    let design = include_str!("../../../../std/README.md");
-    let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
-    let words: std::collections::HashSet<&str> = design.split(|c: char| !word(c)).collect();
-    let missing: Vec<&str> = crate::prelude::std_names()
-        .iter()
-        .map(|(name, _)| *name)
-        .filter(|name| !words.contains(name))
-        .collect();
-    assert!(
-        missing.is_empty(),
-        "std/README.md does not mention {missing:?}"
-    );
-}
-
 /// `@memo` on a fn that neither back end keeps a table for is an error,
 /// not a fn that quietly runs every time.
 #[test]

@@ -61,32 +61,13 @@ the end.
 | Path | Job |
 |---|---|
 | `std/*.cp` | The modules, written in CP Lang: signatures, `///` docs with `example:` lines (normative), bodies. The compiler names no stdlib item beyond the floor (decision 266); a ratchet holds the rest. |
-| `std/README.md` | Module map and conventions (naming, `by:` options, cost in every doc). |
+| `std/README.md` | The doc-comment contract every public item meets, and where the generated reference is. |
 
 ## `crates/`: the toolchain (Rust)
 
 Pipeline: `cpl-syntax` -> `cpl-check` -> `cpl-ir` -> (`cpl-interp` | `cpl-codegen`). Back ends read the IR; `handbook/design/architecture.md` has the edges.
 
-| Crate | Job |
-|---|---|
-| `crates/cpl-syntax` | Lexer, parser, lossless syntax tree, error recovery. |
-| `crates/cpl-check` | Name resolution, types, domains, lends, bound and overflow facts, hover data. |
-| `crates/cpl-ir` | The typed IR, lowered once from the checked program. |
-| `crates/cpl-interp` | Register VM over the IR; deterministic traces. |
-| `crates/cpl-codegen` | IR to one deterministic C++17 file. |
-| `crates/cpl-prover` | Index bounds, overflow freedom, disjoint lends, laws, with counterexamples. |
-| `crates/cpl-diag` | Spans, stable codes, rendering shared by every tool. |
-| `crates/cpl-lint` | Lints over checker facts. |
-| `crates/cpl-fmt` | Formatter: opinionated defaults, configurable. |
-| `crates/cpl-lsp` | Language server. |
-| `crates/cpl-stress` | Typed generators, brute comparison, shrinking, interactors. |
-| `crates/cpl-judge` | Judge profiles: compiler, flags, stack, limits. |
-| `crates/cpl-contest` | `cpl new`, `cpl test`, `cpl bench`, `cpl watch`. |
-| `crates/cpl-doc` | HTML and JSON docs from `///` comments. |
-| `crates/cpl-conform` | One harness: conformance, corpus, doc examples, interpreter vs C++, scoreboard. |
-| `crates/cpl-json` | The one JSON implementation. |
-| `crates/cpl-wasm` | Compiler as WebAssembly for the site and playground. |
-| `crates/cpl-cli` | The `cpl` binary; `tests/` holds end-to-end tests. |
+Every crate's job is in [architecture.md](architecture.md#crates), and its `Cargo.toml` `description` says it in one line.
 
 Each crate has a `README.md`: job, invariants, where its tests are. No `.rs` file over 2,000 lines (ratchet).
 

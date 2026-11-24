@@ -34,20 +34,20 @@ decide. How registers work, and how suites are judged, is in
 
 ## The domains
 
-| Domain | Owns | Excellent means |
-|---|---|---|
-| [infra](infra.md) | CI, the gate, landing, `scripts/`, release pipeline, installers | Landing takes seconds, `main` recovers fast, installs work everywhere |
-| [compiler](compiler.md) | `crates/cpl-syntax`, `cpl-check`, `cpl-ir`, `cpl-interp`, `cpl-prover` | The implementation meets the spec; interpreter and C++ agree |
-| [perf](perf.md) | `crates/cpl-codegen`, `cpl bench` | Generated C++ as fast and small as hand-written |
-| [diagnostics](diagnostics.md) | `crates/cpl-diag`, `spec/diagnostics.md` | One error per root cause, naming the fix |
-| [tech-debt](tech-debt.md) | Cross-domain architecture, ratchets, duplicated and dead code | The codebase gets simpler every week |
-| [lint-fmt](lint-fmt.md) | `crates/cpl-lint`, `crates/cpl-fmt` | Lints teach idiomatic code; the formatter is stable |
-| [tools](tools.md) | `crates/cpl-cli`, `cpl-contest`, `cpl-doc`, `cpl-json`, `cpl-lsp`, `editors/` | Every command and editor is fast, guessable and works |
-| [spec](spec.md) | `spec/`, `handbook/language/`, conformance suite | The language is precise, and its tests catch every compiler bug |
-| [stdlib](stdlib.md) | `std/` | A coherent, documented, fast standard library |
-| [idioms](idioms.md) | The skill, idiom catalog, `corpus/`, `crates/cpl-judge`, acceptance run | Code written from the docs is correct and idiomatic first time |
-| [site](site.md) | `web/`, `crates/cpl-wasm` | A cold reader writes correct code from the site alone |
-| [debugger](debugger.md) | `crates/cpl-stress`, tracing, the trace viewer | A wrong answer becomes a minimal counterexample in seconds |
+| Domain | Excellent means |
+|---|---|
+| [infra](infra.md) | Landing takes seconds, `main` recovers fast, installs work everywhere |
+| [compiler](compiler.md) | The implementation meets the spec; interpreter and C++ agree |
+| [perf](perf.md) | Generated C++ as fast and small as hand-written |
+| [diagnostics](diagnostics.md) | One error per root cause, naming the fix |
+| [tech-debt](tech-debt.md) | The codebase gets simpler every week |
+| [lint-fmt](lint-fmt.md) | Lints teach idiomatic code; the formatter is stable |
+| [tools](tools.md) | Every command and editor is fast, guessable and works |
+| [spec](spec.md) | The language is precise, and its tests catch every compiler bug |
+| [stdlib](stdlib.md) | A coherent, documented, fast standard library |
+| [idioms](idioms.md) | Code written from the docs is correct and idiomatic first time |
+| [site](site.md) | A cold reader writes correct code from the site alone |
+| [debugger](debugger.md) | A wrong answer becomes a minimal counterexample in seconds |
 
 ## How involved Ryan is
 

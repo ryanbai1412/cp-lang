@@ -4,9 +4,8 @@ The front end and both back ends are built: `cpl check`, `cpl run`,
 `cpl build` and `cpl lsp` all go through one `cpl_check::Database`, and
 `cpl run` and `cpl build` share one typed lowering (`cpl-ir`), so the
 interpreter and the C++ cannot disagree about what a program means
-without a test saying so. The tooling around the compiler: `cpl-fmt`,
-`cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-contest` and `cpl-judge` (judge
-profiles: compiler, flags, stack and source limit). The
+without a test saying so. Around the compiler sit the tools: the formatter, the
+linter, docs, stress testing, the contest workflow and the judge profiles. The
 split is a starting point so that work can go on in parallel without two
 people editing the same crate; change it when the code says it is wrong.
 
@@ -183,42 +182,10 @@ what is not cp source: the core types (`Int`, `List`, ...) and the
 intrinsics the libraries are written on (`print`, `read`, `sort`, ...).
 `Subset<D>` is still lowered by `cpl-ir` rather than declared in `std/`.
 
-The pipeline, in the order the crates will depend on each other (add the
-dependency when the code first needs it):
-
-- **`cpl-diag`** is diagnostics: spans, stable error codes, rendering.
-  Every other crate reports errors through it (`plan/30-compiler.md` 3.7).
-- **`cpl-syntax`** is the lexer, the parser and the syntax tree. The
-  parser recovers from errors so the editor works on half-written code
-  (`plan/00-vision.md` G13, `plan/17-syntax.md`).
-- **`cpl-check`** is name resolution, types, domains, borrows and value
-  ranges (`plan/11` to `plan/16`, `plan/30-compiler.md` 3.4 and 3.5).
-- **`cpl-ir`** lowers a checked program to the typed tree both back ends
-  read: names resolved to slots, patterns and comprehensions turned into
-  loops, every `read()` given the type it reads. What neither back end
-  can run yet is reported here, once, as `E0501`.
-- **`cpl-codegen`** turns that tree into one C++17 file (`plan/30-compiler.md` 3.3, `plan/70-judges.md`).
-- **`cpl-interp`** runs that tree directly for debug runs, checking
-  everything the C++ leaves unchecked (`plan/30-compiler.md` 3.1,
-  `plan/50-debugging.md`).
-- **`cpl-fmt`** is the formatter behind `cpl fmt`: one canonical style,
-  no options (`plan/45-dev-tools.md`).
-- **`cpl-lint`** is `cpl lint`: code that is legal but probably wrong,
-  slow or unidiomatic, with levels in `cp.toml` and safe fixes.
-- **`cpl-doc`** is `cpl doc`: HTML and JSON documentation from `///`
-  comments, with checked examples.
-- **`cpl-stress`** is `cpl stress`: inputs generated from the `read()`
-  types, a brute to compare with, structural shrinking, and checker and
-  interactor judging (`plan/40-tooling.md` 7b).
-- **`cpl-contest`** is the workflow around one problem: `cpl new`,
-  `cpl test`, `cpl bench` and `cpl watch` (`plan/40-tooling.md`).
-- **`cpl-lsp`** is the language server (`plan/60-editor.md`).
-- **`cpl-cli`** builds the `cpl` binary and owns the commands (`plan/40-tooling.md`,
-  `plan/45-dev-tools.md`).
-- **`cpl-wasm`** is the same pipeline as a WebAssembly module, for the docs
-  site and the playground: check, run, build and hover in the browser with
-  no server (`plan/90-docs-and-playground.md`, `crates/cpl-wasm/README.md`).
-  `scripts/build-wasm.sh` builds it into `dist/wasm/`.
+Each crate's job, and the stage it belongs to, is in
+`handbook/design/architecture.md` (Crates); each crate's `README.md` has its
+invariants and where its tests are. `scripts/build-wasm.sh` builds `cpl-wasm`
+into `dist/wasm/`.
 
 **`cpl-prover`** (`crates/cpl-prover/`) is the prover for `invariant`, `law`
 and the range checker: index bounds, overflow freedom, `law disjoint` and
