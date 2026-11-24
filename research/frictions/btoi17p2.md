@@ -22,3 +22,7 @@
 
 Largest input (k = 5, n = 5e4, m = 2.5e5, q = 1e4): accepted C++ 0.03 s; `cpl build` C++
 0.05 s (23,793 bytes), interpreter 1.19 s; all three agree.
+
+## Dream std::function
+
+- `Mat(.., over: Semiring(min, +))` stores the semiring as fn fields (`Ring<T>.add/mul` in std/matrix.cp), so every Mat over a semiring builds std::functions; the dream folds `[Slot, Slot]?Int` tables with a top-level `chain` in a `Monoid` instead. Sent to the stdlib owner.
