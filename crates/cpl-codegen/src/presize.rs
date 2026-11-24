@@ -6,6 +6,8 @@
 //! (wtf26a: 96.4 to 93.7 ms; `bench/rss/filter_comp`, `bench/seq/filter_comp`).
 
 use crate::emit::{Emitter, ADD, PRIMARY};
+use crate::uses::places::{each_write, Write};
+use crate::uses::{read_counts, repeats};
 use crate::walk;
 use cpl_ir::{Block, ElemLoc, Expr, ExprKind, Iter, Mutation, PlaceKind, Stmt, Ty};
 
@@ -111,14 +113,14 @@ impl<'p> Emitter<'p> {
 /// The loop body pushes to `slot` at most once a round, under conditions,
 /// and does nothing else with it.
 fn at_most_once(body: &Block, slot: usize) -> bool {
-    let (mut pushes, mut loops, mut named) = (0, false, false);
-    walk::deep_stmts(body, &mut |stmt| {
-        pushes += usize::from(pushes_to(stmt, slot));
-        loops |= matches!(stmt, Stmt::For(..) | Stmt::While(..));
+    let (mut pushes, mut others) = (0, 0);
+    each_write(body, &mut |how, place| {
+        if place.kind == PlaceKind::Local(slot) {
+            match how {
+                Write::Mutate(Mutation::Push) => pushes += 1,
+                _ => others += 1,
+            }
+        }
     });
-    walk::deep_exprs(body, &mut |e| {
-        named |= matches!(e.kind, ExprKind::Local(s) if s == slot)
-            || matches!(&e.kind, ExprKind::Mutate(_, place, _) if place.kind == PlaceKind::Local(slot) && !matches!(e.kind, ExprKind::Mutate(Mutation::Push, ..)));
-    });
-    pushes == 1 && !loops && !named
+    pushes == 1 && others == 0 && !repeats(body) && read_counts(body, slot + 1)[slot] == 0
 }

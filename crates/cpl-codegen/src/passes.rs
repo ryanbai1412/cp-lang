@@ -229,7 +229,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "presize",
         "presize.rs",
-        Unasked,
+        Uses(&["each_write", "read_counts", "repeats"]),
         "a_comprehension_reserves_its_source_size",
     ),
     pass(

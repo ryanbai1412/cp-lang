@@ -828,6 +828,16 @@ pub(crate) fn stored_last(program: &Program, f: &cpl_ir::Function) -> BTreeSet<u
     sunk
 }
 
+/// Whether `block` may run some of its code more than once: it holds a
+/// loop, at any depth.
+pub(crate) fn repeats(block: &Block) -> bool {
+    let mut found = false;
+    walk::deep_stmts(block, &mut |stmt| {
+        found |= matches!(stmt, Stmt::For(..) | Stmt::While(..));
+    });
+    found
+}
+
 /// How many times `block` reads each of the locals below `n`, at any depth.
 pub(crate) fn read_counts(block: &Block, n: usize) -> Vec<usize> {
     let mut reads = vec![0usize; n];

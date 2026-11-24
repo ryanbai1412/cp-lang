@@ -130,6 +130,25 @@ fn a_let_of_an_if_copies_a_place_the_body_changes() {
 }
 
 #[test]
+fn a_list_a_loop_also_passes_mut_is_not_reserved() {
+    let cpp = cpp(concat!(
+        "fn add(mut l: List<Int>):\n",
+        "    l.push(0)\n",
+        "let n: 1..=9 = read()\n",
+        "var t: List<Int> = []\n",
+        "for i in 0..n:\n",
+        "    if i > 2:\n",
+        "        t.push(i)\n",
+        "        add(mut t)\n",
+        "print(t.len)\n",
+    ));
+    assert!(
+        !cpp.contains("t.reserve"),
+        "add may push more than once a round:\n{cpp}"
+    );
+}
+
+#[test]
 fn a_comprehension_reserves_its_source_size() {
     let cpp = cpp(concat!(
         "fn flip(xs: List<Int>) -> List<Int> = [9 - x for x in xs.rev]\n",
