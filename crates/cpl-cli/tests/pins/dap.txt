@@ -1,0 +1,11 @@
+$ cpl dap
+exit 0
+-- stdout
+Content-Length: 249
+
+{"body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":true,"supportsRestartRequest":true,"supportsStepBack":true,"supportsTerminateRequest":true},"command":"initialize","request_seq":1,"seq":1,"success":true,"type":"response"}Content-Length: 46
+
+{"event":"initialized","seq":2,"type":"event"}Content-Length: 81
+
+{"command":"disconnect","request_seq":2,"seq":3,"success":true,"type":"response"}-- stderr
+

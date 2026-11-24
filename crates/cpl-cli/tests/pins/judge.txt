@@ -1,0 +1,19 @@
+$ cpl judge j.cp j.in j.wrong
+exit 3
+-- stdout
+-- stderr
+assertion failed: got == n
+error[R0401]: assertion failed: got == n
+  --> j.cp:8:5
+  |
+8 |     assert got == n
+  |     ^^^^^^^^^^^^^^^
+  = note: call stack: check (j.cp:8) <- top level (j.cp:1)
+  = help: the condition was false for the values below: fix the code that computed them, or the assertion if it is wrong
+
+$ cpl judge j.cp j.in j.right --json
+exit 0
+-- stdout
+{"accepted":true,"diagnostic":null,"reason":null}
+-- stderr
+

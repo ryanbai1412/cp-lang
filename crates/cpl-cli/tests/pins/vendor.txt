@@ -1,0 +1,15 @@
+$ cpl vendor v.cp
+exit 0
+-- stdout
+std.algebra -> vendor/std/algebra.cp
+std.math -> vendor/std/math.cp
+std.prefix -> vendor/std/prefix.cp
+std.range -> vendor/std/range.cp
+-- stderr
+
+$ cpl vendor v.cp --json
+exit 0
+-- stdout
+{"vendored":[{"module":"std.algebra","path":"vendor/std/algebra.cp"},{"module":"std.math","path":"vendor/std/math.cp"},{"module":"std.prefix","path":"vendor/std/prefix.cp"},{"module":"std.range","path":"vendor/std/range.cp"}]}
+-- stderr
+

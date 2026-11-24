@@ -1,0 +1,51 @@
+$ cpl judges
+exit 0
+-- stdout
+* generic    C++17 with g++
+    g++ -std=c++17 -O2
+    Linux, 8 MB stack, the program on a thread with 1024 MB, source up to 64 KB
+    usual limits 2000 ms, 256 MB
+    from: the floor most judges clear: C++17, the 8 MB Linux default stack, a 64 KB source, 2 s and 256 MB
+  codeforces GNU G++20 13.2 (64 bit, winlibs)
+    g++ -std=c++20 -O2 -DONLINE_JUDGE -static -Wl,--stack=268435456
+    Windows, 256 MB stack, the program on a thread with 1024 MB, source up to 64 KB
+    usual limits 2000 ms, 256 MB
+    from: unconfirmed: the Codeforces compiler list and its 256 MB stack link flag are behind a browser check; 2 s and 256 MB are the usual statement limits
+  atcoder    C++23 (GCC 15.2.0)
+    g++ -std=gnu++23 -O2 -Wall -Wextra -DONLINE_JUDGE -DATCODER -DNOMINMAX -march=native -fconstexpr-depth=1024 -fconstexpr-loop-limit=524288 -fconstexpr-ops-limit=2097152 -fmodules -ftrivial-auto-var-init=zero -pthread
+    Linux, stack not documented (8 MB assumed), the program on a thread with 1024 MB, source up to 64 KB
+    usual limits 2000 ms, 1024 MB
+    from: the compile command is from AtCoder's language list (the flags that change what compiles; its library and link flags are left out); 2 s and 1024 MB are the usual statement limits; the 512 KiB source limit and the stack are unconfirmed
+  cses       C++17 (g++ 13.3.0)
+    g++ -std=c++17 -O2 -Wall
+    Linux, stack not documented (8 MB assumed), the program on a thread with 1024 MB, source up to 64 KB
+    usual limits 1000 ms, 512 MB
+    from: compiler, flags and the 128 kB source limit are from cses.fi/howto; 1 s and 512 MB are the problem set's limits; the stack is not documented
+  icpc       DOMjudge's default C++ (g++)
+    g++ -x c++ -Wall -O2 -static -pipe
+    Linux, unlimited stack, the program on a thread with 1024 MB, source up to 64 KB
+    usual limits 2000 ms, 2048 MB
+    from: DOMjudge's default build script, its runguard (stack unlimited) and its default 256 KB source limit; a contest's own image sets the g++ version and so the default standard
+  kattis     C++ (g++ 15.2.0)
+    g++ -g -O2 -std=gnu++23 -static -lrt -Wl,-u,_IO_wfile_doallocate -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
+    Linux, stack not documented (8 MB assumed), the program on a thread with 1024 MB, source up to 64 KB
+    usual limits 2000 ms, 1024 MB
+    from: the compile command is from Kattis' C++ page; the stack and the 128 KB source limit are unconfirmed
+  dmoj       C++17 (g++)
+    g++ -Wall -DONLINE_JUDGE -O2 -lm -march=native -std=c++17 -s
+    Linux, unlimited stack, the program on a thread with 1024 MB, source up to 64 KB
+    usual limits 2000 ms, 256 MB
+    from: DMOJ's judge-server: the command is its GCC executor's, the sandbox sets RLIMIT_STACK unlimited and RLIMIT_NPROC 0, so the thread runner falls back to `main` on that unlimited stack; the g++ version, the 64 KB source limit and 2 s / 256 MB are a site's own
+  usaco      C++17 (g++)
+    g++ -std=c++17 -O2 -Wall
+    Linux, unlimited stack, the program on a thread with 1024 MB, source up to 64 KB
+    usual limits 2000 ms, 256 MB
+    from: usaco.guide: C++17 with -O2 -Wall on Linux, about 2 s and 256 MB, no stack limit beyond memory, standard input and output; the exact command, the g++ version and the source limit are unconfirmed (usaco.org was not reachable)
+-- stderr
+
+$ cpl judges --json
+exit 0
+-- stdout
+{"judges":[{"chosen":true,"command":"g++ -std=c++17 -O2","evidence":"the floor most judges clear: C++17, the 8 MB Linux default stack, a 64 KB source, 2 s and 256 MB","memory_limit_kb":262144,"name":"generic","os":"linux","source_limit_kb":64,"stack":"8 MB stack","thread_stack_kb":1048576,"time_limit_ms":2000,"title":"C++17 with g++"},{"chosen":false,"command":"g++ -std=c++20 -O2 -DONLINE_JUDGE -static -Wl,--stack=268435456","evidence":"unconfirmed: the Codeforces compiler list and its 256 MB stack link flag are behind a browser check; 2 s and 256 MB are the usual statement limits","memory_limit_kb":262144,"name":"codeforces","os":"windows","source_limit_kb":64,"stack":"256 MB stack","thread_stack_kb":1048576,"time_limit_ms":2000,"title":"GNU G++20 13.2 (64 bit, winlibs)"},{"chosen":false,"command":"g++ -std=gnu++23 -O2 -Wall -Wextra -DONLINE_JUDGE -DATCODER -DNOMINMAX -march=native -fconstexpr-depth=1024 -fconstexpr-loop-limit=524288 -fconstexpr-ops-limit=2097152 -fmodules -ftrivial-auto-var-init=zero -pthread","evidence":"the compile command is from AtCoder's language list (the flags that change what compiles; its library and link flags are left out); 2 s and 1024 MB are the usual statement limits; the 512 KiB source limit and the stack are unconfirmed","memory_limit_kb":1048576,"name":"atcoder","os":"linux","source_limit_kb":64,"stack":"stack not documented (8 MB assumed)","thread_stack_kb":1048576,"time_limit_ms":2000,"title":"C++23 (GCC 15.2.0)"},{"chosen":false,"command":"g++ -std=c++17 -O2 -Wall","evidence":"compiler, flags and the 128 kB source limit are from cses.fi/howto; 1 s and 512 MB are the problem set's limits; the stack is not documented","memory_limit_kb":524288,"name":"cses","os":"linux","source_limit_kb":64,"stack":"stack not documented (8 MB assumed)","thread_stack_kb":1048576,"time_limit_ms":1000,"title":"C++17 (g++ 13.3.0)"},{"chosen":false,"command":"g++ -x c++ -Wall -O2 -static -pipe","evidence":"DOMjudge's default build script, its runguard (stack unlimited) and its default 256 KB source limit; a contest's own image sets the g++ version and so the default standard","memory_limit_kb":2097152,"name":"icpc","os":"linux","source_limit_kb":64,"stack":"unlimited stack","thread_stack_kb":1048576,"time_limit_ms":2000,"title":"DOMjudge's default C++ (g++)"},{"chosen":false,"command":"g++ -g -O2 -std=gnu++23 -static -lrt -Wl,-u,_IO_wfile_doallocate -Wl,--whole-archive -lpthread -Wl,--no-whole-archive","evidence":"the compile command is from Kattis' C++ page; the stack and the 128 KB source limit are unconfirmed","memory_limit_kb":1048576,"name":"kattis","os":"linux","source_limit_kb":64,"stack":"stack not documented (8 MB assumed)","thread_stack_kb":1048576,"time_limit_ms":2000,"title":"C++ (g++ 15.2.0)"},{"chosen":false,"command":"g++ -Wall -DONLINE_JUDGE -O2 -lm -march=native -std=c++17 -s","evidence":"DMOJ's judge-server: the command is its GCC executor's, the sandbox sets RLIMIT_STACK unlimited and RLIMIT_NPROC 0, so the thread runner falls back to `main` on that unlimited stack; the g++ version, the 64 KB source limit and 2 s / 256 MB are a site's own","memory_limit_kb":262144,"name":"dmoj","os":"linux","source_limit_kb":64,"stack":"unlimited stack","thread_stack_kb":1048576,"time_limit_ms":2000,"title":"C++17 (g++)"},{"chosen":false,"command":"g++ -std=c++17 -O2 -Wall","evidence":"usaco.guide: C++17 with -O2 -Wall on Linux, about 2 s and 256 MB, no stack limit beyond memory, standard input and output; the exact command, the g++ version and the source limit are unconfirmed (usaco.org was not reachable)","memory_limit_kb":262144,"name":"usaco","os":"linux","source_limit_kb":64,"stack":"unlimited stack","thread_stack_kb":1048576,"time_limit_ms":2000,"title":"C++17 (g++)"}]}
+-- stderr
+

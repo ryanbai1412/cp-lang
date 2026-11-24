@@ -1,0 +1,12 @@
+$ cpl self list
+exit 0
+-- stdout
+no toolchains installed
+-- stderr
+
+$ cpl self list --json
+exit 0
+-- stdout
+{"toolchains":[]}
+-- stderr
+

@@ -1,0 +1,14 @@
+$ cpl fetch https://atcoder.jp/contests/abc999/tasks/abc999_a got --html page.html
+exit 0
+-- stdout
+  created got.cp
+  created got.tests/ (1 sample)
+  next: write it; `cpl test got.cp` runs the samples
+-- stderr
+
+$ cpl fetch https://atcoder.jp/contests/abc999/tasks/abc999_a got_json --html page.html --json
+exit 0
+-- stdout
+{"path":"got_json.cp","created":true,"tests":"got_json.tests","sample_count":1}
+-- stderr
+

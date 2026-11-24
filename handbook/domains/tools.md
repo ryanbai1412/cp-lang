@@ -61,7 +61,8 @@ check behind each, is the quality register at the end of this document.
 ## Where to start
 
 - **Adding or changing a command:** update `spec/tools/cli.md`, then the
-  command in `crates/cpl-cli`, then its snapshot in the golden suite.
+  command in `crates/cpl-cli`, then its runs in `tests/output_pins.rs`
+  (`CPL_BLESS=1` records the pins).
 - **Adding an editor feature:** implement it once in `crates/cpl-lsp` with
   a fixture test, and add a parity case so the browser gets it too.
 - **Fixing an editor package:** `editors/<editor>/`, and run
@@ -216,7 +217,7 @@ their front ends.
 | Every command is discoverable from `cpl --help` | commands with `--help`, help lines within 80 columns | generated: one case per command listed by `cpl --help`; rule `commands/R1` | `crates/cpl-cli/tests/golden.rs` (`every_command_has_help_and_rejects_an_unknown_option`, `every_help_fits_80_columns`) |
 | The spec and the binary name the same commands | mismatches | differential, with a shrink-only allowlist; rule `commands/R4` | `crates/cpl-cli/tests/spec_sync.rs` |
 | A usage error names the right invocation | commands with a usage-error test | generated over the command list; rule `commands/R1` | `crates/cpl-cli/tests/golden.rs` |
-| Every command's output is pinned | commands with a snapshot of text and `--json` output | hand-written snapshots | `crates/cpl-cli/tests/golden.rs`; snapshots for every command and outcome: `missing` |
+| Every command's output is pinned | commands with a snapshot of text and `--json` output | generated over the command list | `crates/cpl-cli/tests/output_pins.rs` (`every_command_prints_its_pinned_output`): stdout, stderr and exit status of a text and a JSON run of every command `cpl --help --json` lists, pinned in `crates/cpl-cli/tests/pins/`; a command without both pins fails |
 | One `--json` contract | commands with `--json`; one flag spelling; outputs valid against a published schema | hand-written suite; rule `commands/R3` | `crates/cpl-cli/tests/golden.rs` (`json_and_format_json_are_one_flag_on_every_command_with_json`); `crates/cpl-cli/tests/json_contract.rs`: 31 runs of every command with JSON output checked key for key against the 29 shapes `spec/tools/cli.md` publishes, each diagnostic against its key list, and every `--help --json` command with JSON output has a shape |
 | Exit codes mean the same on every command | commands asserting success and failure codes | hand-written suite; rule `commands/R5` | `crates/cpl-cli/tests/golden.rs` |
 | Every command starts in under 100 ms | median and p90 per command, release build | generated over the command list and the largest corpus ports; rule `commands/R7` | `crates/cpl-cli/tests/cold_start.rs`; CI `lsp latency` job on macOS and Windows |
@@ -240,6 +241,7 @@ their front ends.
 | Run | What it catches |
 |---|---|
 | `cargo nextest run -p cpl-cli --test golden` | a command without help, a usage error, JSON or exit-code coverage |
+| `cargo nextest run -p cpl-cli --test output_pins` | a command whose text or JSON output moved from its pin, or that has no pin |
 | `cargo test --release -p cpl-cli --test cold_start -- --nocapture` | a command slower than 100 ms to start |
 | `cargo nextest run -p cpl-cli --test spec_sync` | a command the spec and the binary disagree on |
 | `cargo nextest run -p cpl-contest` | case discovery, checkers, contest folders, Companion import |

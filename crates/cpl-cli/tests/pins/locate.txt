@@ -1,0 +1,12 @@
+$ cpl locate alt.cp a.tests/1.in
+exit 0
+-- stdout
+every part agrees with its alt on a.tests/1.in
+-- stderr
+
+$ cpl locate alt.cp a.tests/1.in --json
+exit 0
+-- stdout
+{"alt":null,"alt_output":null,"divergence":null,"input":"a.tests/1.in","output":null,"part":null,"view":{"panel":"every part agrees with its alt on a.tests/1.in\n"}}
+-- stderr
+

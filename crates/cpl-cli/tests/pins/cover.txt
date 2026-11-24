@@ -1,0 +1,12 @@
+$ cpl cover a.cp a.tests/1.in
+exit 0
+-- stdout
+a.cp: 2 of 2 lines covered (100%) by 1 input
+-- stderr
+
+$ cpl cover a.cp a.tests/1.in --format json
+exit 0
+-- stdout
+{"path":"a.cp","input_count":1,"line_count":2,"covered_count":2,"uncovered":[],"one_way":[]}
+-- stderr
+

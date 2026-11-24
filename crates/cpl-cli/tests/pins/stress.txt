@@ -1,0 +1,25 @@
+$ cpl stress differ.cp
+exit 1
+-- stdout
+  brute: differ.cp (`slow`)      checker: none
+  build: judge `generic`: g++ -std=c++17 -O2; 8 MB stack; checked, as `cpl run`
+  FAIL on case 1 (seed 1): WA
+  shrunk from 1 numbers to 1:
+    6
+  that is: n = 6
+  expected:
+    12
+  got:
+    6
+  first difference at line 1, token 1: expected `12`, got `6`
+  saved differ.tests/stress-1.in
+  next: `cpl run differ.cp --trace` steps through this case
+  after a fix: `cpl test differ.cp` reruns it, then `cpl stress differ.cp` again
+-- stderr
+
+$ cpl stress same.cp --format json
+exit 0
+-- stdout
+{"status":"ok","build":"judge `generic`: g++ -std=c++17 -O2; 8 MB stack","case_count":1000,"saved_count":0,"tried":"n from 1 to 10","view":{"panel":"  brute: same.cp (`slow`)      checker: none\n  build: judge `generic`: g++ -std=c++17 -O2; 8 MB stack; checked, as `cpl run`\n  1000 cases agree\n  tried: n from 1 to 10\n","status":{"label":"stress: 1000 cases passed","line":0,"ok":true}}}
+-- stderr
+

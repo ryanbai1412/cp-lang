@@ -1,0 +1,14 @@
+$ cpl replay r.cp --trace t.json --step 1
+exit 0
+-- stdout
+replayed call 1 of `sq(x: 3)`, returning into step 1 of the recording
+returns 9 (as before)
+the call runs as recorded
+-- stderr
+
+$ cpl replay r.cp --trace t.json --step 1 --json
+exit 0
+-- stdout
+{"after":9,"before":9,"call":{"args":{"x":3},"entry":1,"exit":0,"name":"sq","ordinal":1},"change":null,"earlier":null,"fallback":null,"replayed":true,"trap":null}
+-- stderr
+

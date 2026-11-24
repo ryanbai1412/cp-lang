@@ -1,0 +1,15 @@
+$ cpl profile a.cp a.tests/1.in
+exit 0
+-- stdout
+profile of a.cp (interpreter): <n> us
+ line         hits       time    %
+    1            1    <n> us  <n>%  let n: Int = read()
+    2            1    <n> us  <n>%  print(n * 2)
+-- stderr
+
+$ cpl profile a.cp a.tests/1.in --format json
+exit 0
+-- stdout
+{"path":"a.cp","engine":"interpreter","time_ns":<n>,"failure":null,"lines":[{"line":1,"hit_count":1,"time_ns":<n>,"start_count":1},{"line":2,"hit_count":1,"time_ns":<n>,"start_count":1}]}
+-- stderr
+

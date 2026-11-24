@@ -1,0 +1,19 @@
+$ cpl check a.cp bad.cp
+exit 1
+-- stdout
+a.cp: no errors
+-- stderr
+error[E0302]: `x` is declared an Int, but `"s"` is a Str
+  --> bad.cp:1:14
+  |
+1 | let x: Int = "s"
+  |              ^^^
+
+bad.cp: 1 error
+
+$ cpl check a.cp bad.cp --json
+exit 1
+-- stdout
+{"files":[{"diagnostics":[],"ok":true,"path":"a.cp"},{"diagnostics":[{"code":"E0302","end":{"col":17,"line":1,"offset":16},"fixes":[],"help":null,"labels":[],"message":"`x` is declared an Int, but `\"s\"` is a Str","notes":[],"page":"https://cp-lang.org/errors/E0302","severity":"error","start":{"col":14,"line":1,"offset":13},"witness":[]}],"ok":false,"path":"bad.cp"}]}
+-- stderr
+

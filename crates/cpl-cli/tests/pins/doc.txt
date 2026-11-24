@@ -1,0 +1,12 @@
+$ cpl doc a.cp
+exit 0
+-- stdout
+-- stderr
+documented 0 items in 1 file, 0 without a comment; open target/doc/index.html
+
+$ cpl doc --format json a.cp
+exit 0
+-- stdout
+{"modules":[{"name":"a","path":"a.cp","doc":"","examples":[],"links":[],"items":[]}]}
+-- stderr
+

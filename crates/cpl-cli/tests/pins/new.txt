@@ -1,0 +1,14 @@
+$ cpl new fresh
+exit 0
+-- stdout
+  created fresh.cp
+  created fresh.tests/ (no samples yet)
+  next: write it; `cpl test fresh.cp` runs the samples
+-- stderr
+
+$ cpl new fresh_json --json
+exit 0
+-- stdout
+{"path":"fresh_json.cp","created":true,"tests":"fresh_json.tests","sample_count":0}
+-- stderr
+

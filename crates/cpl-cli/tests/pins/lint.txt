@@ -1,0 +1,12 @@
+$ cpl lint a.cp
+exit 0
+-- stdout
+-- stderr
+1 file checked, 0 warnings, 0 errors
+
+$ cpl lint a.cp --json
+exit 0
+-- stdout
+{"files":[{"diagnostics":[],"ok":true,"path":"a.cp"}]}
+-- stderr
+

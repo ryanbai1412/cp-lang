@@ -1,0 +1,12 @@
+$ cpl migrate a.cp
+exit 0
+-- stdout
+1 file uses the current spellings
+-- stderr
+
+$ cpl migrate a.cp --json
+exit 0
+-- stdout
+{"files":[{"applied":0,"changed":false,"diagnostics":[],"path":"a.cp"}]}
+-- stderr
+

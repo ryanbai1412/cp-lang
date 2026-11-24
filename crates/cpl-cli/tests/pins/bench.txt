@@ -1,0 +1,20 @@
+$ cpl bench a
+exit 0
+-- stdout
+  random                1 numbers  ok       <n> ms      <n> MB
+  all smallest          1 numbers  ok       <n> ms      <n> MB
+  all largest           1 numbers  ok       <n> ms      <n> MB
+  ascending             1 numbers  ok       <n> ms      <n> MB
+  descending            1 numbers  ok       <n> ms      <n> MB
+  alternating           1 numbers  ok       <n> ms      <n> MB
+  slowest: alternating at <n> ms, <n>% of the 2000 ms limit
+  memory: <n> MB of 256 MB
+  within limits on every shape
+-- stderr
+
+$ cpl bench a --format json
+exit 0
+-- stdout
+{"status":"ok","time_limit_ms":2000,"memory_limit_kb":262144,"runs":[{"shape":"random","number_count":1,"status":"ok","time_ms":<n>,"peak_kb":<n>,"error":null},{"shape":"all smallest","number_count":1,"status":"ok","time_ms":<n>,"peak_kb":<n>,"error":null},{"shape":"all largest","number_count":1,"status":"ok","time_ms":<n>,"peak_kb":<n>,"error":null},{"shape":"ascending","number_count":1,"status":"ok","time_ms":<n>,"peak_kb":<n>,"error":null},{"shape":"descending","number_count":1,"status":"ok","time_ms":<n>,"peak_kb":<n>,"error":null},{"shape":"alternating","number_count":1,"status":"ok","time_ms":<n>,"peak_kb":<n>,"error":null}]}
+-- stderr
+

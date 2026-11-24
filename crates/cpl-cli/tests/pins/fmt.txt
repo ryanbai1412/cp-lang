@@ -1,0 +1,12 @@
+$ cpl fmt --check a.cp
+exit 0
+-- stdout
+-- stderr
+1 file checked, 0 would change
+
+$ cpl fmt --check a.cp --json
+exit 0
+-- stdout
+{"files":[{"changed":false,"diagnostics":[],"error":null,"ok":true,"path":"a.cp"}]}
+-- stderr
+

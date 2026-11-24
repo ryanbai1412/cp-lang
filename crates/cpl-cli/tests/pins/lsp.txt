@@ -1,0 +1,9 @@
+$ cpl lsp
+exit 0
+-- stdout
+Content-Length: 1248
+
+{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"callHierarchyProvider":true,"codeActionProvider":{"codeActionKinds":["quickfix","source.fixAll.cpl","source.organizeImports"]},"codeLensProvider":{"resolveProvider":false},"completionProvider":{"resolveProvider":true,"triggerCharacters":[".","(",",","{","@","!"]},"definitionProvider":true,"documentFormattingProvider":true,"documentHighlightProvider":true,"documentLinkProvider":{"resolveProvider":false},"documentOnTypeFormattingProvider":{"firstTriggerCharacter":"\n"},"documentRangeFormattingProvider":true,"documentSymbolProvider":true,"foldingRangeProvider":true,"hoverProvider":true,"implementationProvider":true,"inlayHintProvider":true,"linkedEditingRangeProvider":true,"positionEncoding":"utf-16","referencesProvider":true,"renameProvider":{"prepareProvider":true},"semanticTokensProvider":{"full":{"delta":true},"legend":{"tokenModifiers":["declaration","readonly"],"tokenTypes":["type","function","method","property","variable","parameter"]}},"signatureHelpProvider":{"retriggerCharacters":[","],"triggerCharacters":["(",","]},"textDocumentSync":{"change":2,"openClose":true},"typeDefinitionProvider":true,"workspaceSymbolProvider":true},"serverInfo":{"name":"cpl","version":"0.3.0"}}}Content-Length: 38
+
+{"id":2,"jsonrpc":"2.0","result":null}-- stderr
+
