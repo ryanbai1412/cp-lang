@@ -1623,8 +1623,9 @@ impl Emitter<'_> {
     }
 
     /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets
-    /// before reading it, which nothing later in the literal reads either:
-    /// moving them in leaves only the value `rest` overwrites.
+    /// before reading it, which no other item of the literal reads either:
+    /// g++ builds a `std::tuple` from its last item first, so an earlier
+    /// item that reads the place too would see it moved out.
     fn taken_items(
         &self,
         block: &Block,
@@ -1649,9 +1650,10 @@ impl Emitter<'_> {
                 !item.ty.is_scalar()
                     && !matches!(item.ty, Ty::Fn(..))
                     && !(!path.0 .0 && self.ref_bound.contains(&path.0 .1))
-                    && !items[i + 1..]
+                    && !items
                         .iter()
-                        .any(|later| touches(&Stmt::Expr(later.clone()), &path))
+                        .enumerate()
+                        .any(|(j, other)| j != i && touches(&Stmt::Expr(other.clone()), &path))
                     && (overwritten_before_read(item, rest)
                         || crate::uses::place_dies(self.program, block, k, item, outer)
                         || self.sunk_dies(block, k, item))

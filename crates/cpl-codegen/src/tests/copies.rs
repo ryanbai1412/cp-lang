@@ -720,3 +720,16 @@ fn a_mut_self_call_through_a_lend_runs_on_the_slot() {
     );
     assert!(!cpp.contains("N t"), "no node is copied: {cpp}");
 }
+
+#[test]
+fn a_local_two_tuple_items_read_moves_into_neither() {
+    let out = cpp("fn f(q: List<Int>) -> (List<Int>, List<Int>, List<Int>):
+    let one: List<Int> = [1]
+    let step = (one, one, q)
+    print(step.1.len)
+    step
+print(f([5]))
+");
+    assert!(!out.contains("std::move(one)"), "{out}");
+    assert!(out.contains("std::move(q)"), "{out}");
+}
