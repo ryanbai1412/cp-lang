@@ -7,6 +7,67 @@ use crate::{Analysis, Revision, Ty, TypedIndex};
 use cpl_diag::Span;
 use std::collections::HashMap;
 
+/// What a call calls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CalleeKind {
+    /// A function by name, local, imported or `alias.f` of a module.
+    Fn,
+    /// `x.m(..)`: a method of `x`'s type, std's or the program's.
+    Method,
+    /// `x.m` read as a getter.
+    Getter,
+    /// A type's name, called to build or convert a value.
+    Ctor,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Callee {
+    /// The module the callee is declared in: `prelude`, `std.graph`, the
+    /// file's own (empty), or empty for a built-in with no declaration.
+    pub module: String,
+    /// The type a method or getter belongs to, when the checker knows it.
+    pub owner: Option<String>,
+    pub name: String,
+    pub kind: CalleeKind,
+}
+
+/// One call the checker typed, relative to its item.
+#[derive(Clone, Debug)]
+pub struct CallFact {
+    pub call: Span,
+    /// The callee's name: `f` of `f(x)`, `m` of `x.m(y)`.
+    pub name_span: Span,
+    pub name: String,
+    pub kind: CalleeKind,
+}
+
+/// What checking one item found about its expressions, relative to it.
+#[derive(Clone, Debug, Default)]
+pub struct ExprFacts {
+    /// Each type `infer` gave, in the order it did.
+    pub types: Vec<(Span, Ty)>,
+    pub calls: Vec<CallFact>,
+    /// The type arguments each generic call bound, by name.
+    pub instantiations: Vec<(Span, Vec<(String, Ty)>)>,
+    /// The `m` of each `alias.m` naming a module's member.
+    pub module_members: Vec<Span>,
+}
+
+impl ExprFacts {
+    pub(crate) fn mark(&self) -> [usize; 4] {
+        let (t, c) = (self.types.len(), self.calls.len());
+        [t, c, self.instantiations.len(), self.module_members.len()]
+    }
+
+    /// Forgets what was recorded since `mark`, as a quiet probe does.
+    pub(crate) fn truncate(&mut self, [t, c, i, m]: [usize; 4]) {
+        self.types.truncate(t);
+        self.calls.truncate(c);
+        self.instantiations.truncate(i);
+        self.module_members.truncate(m);
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Facts {
     revision: Revision,
@@ -20,6 +81,9 @@ pub struct Facts {
     typed_indexes: Vec<TypedIndex>,
     /// The type of every expression, one per file span, by start then end.
     exprs: Vec<(Span, Ty)>,
+    /// The callee of each call, by the call's file span.
+    callees: HashMap<(u32, u32), Callee>,
+    instantiations: HashMap<(u32, u32), Vec<(String, Ty)>>,
 }
 
 impl Facts {
@@ -31,7 +95,7 @@ impl Facts {
         let mut exprs: HashMap<(u32, u32), Ty> = HashMap::new();
         for item in &analysis.items {
             let shift = |s: Span| s.shift(item.offset);
-            for (span, ty) in &item.check.expr_types {
+            for (span, ty) in &item.check.exprs.types {
                 let span = shift(*span);
                 let slot = exprs.entry((span.start, span.end)).or_insert(Ty::Unknown);
                 // The last answer wins, but a vague re-check keeps a known one.
@@ -60,11 +124,56 @@ impl Facts {
         }
         // By end, then start: `place_type` looks a place up by its end.
         facts.types.sort_by_key(|(s, _)| (s.end, s.start));
+        for item in &analysis.items {
+            facts.add_calls(item);
+        }
         facts.exprs = (exprs.into_iter())
             .map(|((start, end), ty)| (Span::new(start, end), ty))
             .collect();
         facts.exprs.sort_by_key(|(s, _)| (s.start, s.end));
         facts
+    }
+
+    fn add_calls(&mut self, item: &crate::AnalyzedItem) {
+        let shift = |s: Span| s.shift(item.offset);
+        let resolved: HashMap<(u32, u32), &crate::Resolved> = (item.check.resolved.iter())
+            .map(|(s, r)| ((s.start, s.end), r))
+            .collect();
+        let owners: HashMap<(u32, u32), &str> = (item.check.hovers.iter())
+            .filter_map(|h| Some(((h.span.start, h.span.end), h.owner.as_deref()?)))
+            .collect();
+        for call in &item.check.exprs.calls {
+            let at = (call.name_span.start, call.name_span.end);
+            let found = resolved.get(&at);
+            let owner = match call.kind {
+                CalleeKind::Method | CalleeKind::Getter => (found.and_then(|r| r.owner.clone()))
+                    .or_else(|| owners.get(&at).map(|o| o.to_string())),
+                _ => None,
+            };
+            let callee = Callee {
+                module: found.map(|r| r.module.clone()).unwrap_or_default(),
+                owner,
+                name: call.name.clone(),
+                kind: call.kind,
+            };
+            let span = shift(call.call);
+            self.callees.insert((span.start, span.end), callee);
+        }
+        for (call, bound) in &item.check.exprs.instantiations {
+            let span = shift(*call);
+            self.instantiations
+                .insert((span.start, span.end), bound.clone());
+        }
+    }
+
+    /// What the call at exactly `call` calls.
+    pub fn callee(&self, call: Span) -> Option<&Callee> {
+        self.callees.get(&(call.start, call.end))
+    }
+
+    /// The type each generic parameter took at the call `call`, by name.
+    pub fn instantiation(&self, call: Span) -> Option<&[(String, Ty)]> {
+        (self.instantiations.get(&(call.start, call.end))).map(Vec::as_slice)
     }
 
     /// The type the checker gave the expression at exactly `expr`.
@@ -115,7 +224,7 @@ impl Facts {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Database, Ty};
+    use crate::{CalleeKind, Database, Ty};
     use cpl_diag::Span;
 
     #[test]
@@ -190,5 +299,46 @@ mod tests {
             .windows(2)
             .all(|w| (w[0].start, w[0].end) < (w[1].start, w[1].end)));
         assert_eq!(order.len(), facts.types_in(whole).count());
+    }
+
+    #[test]
+    fn every_call_has_its_callee_and_bindings() {
+        let src = "struct P:\n    x: Int\n\nimpl P:\n    fn twice(self) -> Int = self.x * 2\n\nfn id<T>(v: T) -> T = v\nfn f(x: Int) -> Int = x + 1\n\nlet p = P(x: 3)\nlet a = f(p.twice())\nlet b = id(\"s\")\nlet xs = [3, 1, 2]\nlet c = xs.sorted()\nprint(a, b, c)\n";
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        assert!(
+            analysis.diagnostics.is_empty(),
+            "{:?}",
+            analysis.diagnostics
+        );
+        let facts = analysis.facts();
+        let at = |text: &str| {
+            let start = src.find(text).unwrap() as u32;
+            Span::new(start, start + text.len() as u32)
+        };
+        let callee = |text: &str| facts.callee(at(text)).cloned();
+        let kind = |text: &str| callee(text).map(|c| (c.name, c.kind));
+        assert_eq!(kind("f(p.twice())"), Some(("f".into(), CalleeKind::Fn)));
+        assert_eq!(
+            kind("p.twice()"),
+            Some(("twice".into(), CalleeKind::Method))
+        );
+        assert_eq!(kind("P(x: 3)"), Some(("P".into(), CalleeKind::Ctor)));
+        assert_eq!(
+            kind("xs.sorted()"),
+            Some(("sorted".into(), CalleeKind::Method))
+        );
+        assert_eq!(
+            kind("print(a, b, c)"),
+            Some(("print".into(), CalleeKind::Fn))
+        );
+        assert_eq!(callee("print(a, b, c)").unwrap().module, "prelude");
+        assert_eq!(callee("p.twice()").unwrap().owner.as_deref(), Some("P"));
+        assert_eq!(
+            facts.instantiation(at("id(\"s\")")),
+            Some(&[("T".to_string(), Ty::Str)][..])
+        );
+        assert_eq!(facts.instantiation(at("f(p.twice())")), None);
     }
 }

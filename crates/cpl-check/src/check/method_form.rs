@@ -501,7 +501,7 @@ impl Checker<'_> {
     /// other compound expression for the editor's `.`. An untyped call
     /// keeps the library type `method_form_call` gave it.
     pub(super) fn record_shape(&mut self, expr: &Expr, ty: &Ty) {
-        self.expr_types.push((expr.span, ty.clone()));
+        self.exprs.types.push((expr.span, ty.clone()));
         let compound = matches!(
             expr.kind,
             ExprKind::Call { .. }

@@ -92,7 +92,7 @@ pub struct ItemCheck {
     /// The type of each call, index, unwrap and parenthesised or range
     /// expression: what no name's hover carries, for the editor's `.`.
     pub shapes: Vec<(Span, Ty)>,
-    pub expr_types: Vec<(Span, Ty)>,
+    pub exprs: crate::ExprFacts,
 }
 
 #[derive(Debug)]
@@ -2110,7 +2110,7 @@ impl FileCtx<'_> {
             fixed_io: checked.fixed_io,
             io_costs: checked.io_costs,
             shapes: checked.shapes,
-            expr_types: checked.expr_types,
+            exprs: checked.exprs,
         });
         self.db.checks.insert(
             key,

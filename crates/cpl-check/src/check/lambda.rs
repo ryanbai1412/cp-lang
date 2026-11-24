@@ -90,7 +90,7 @@ impl Checker<'_> {
         if any_typed || ret_ty.is_some() {
             sig
         } else {
-            self.expr_types.push((expr.span, sig));
+            self.exprs.types.push((expr.span, sig));
             Ty::Unknown
         }
     }

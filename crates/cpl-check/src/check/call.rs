@@ -110,7 +110,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
+    pub(super) fn call_unrecorded(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
         if let ExprKind::Name(fn_name) = &callee.kind {
             if let Some(caps) = self
                 .local_fn_captures
@@ -166,9 +166,11 @@ impl<'a> Checker<'a> {
             return self.call(call, &on_self, args);
         }
         if let Some(ty) = self.builtin_getter_call(call, callee, args) {
+            self.record_getter(call, callee);
             return ty;
         }
         if let Some(ty) = self.getter_call(callee, args) {
+            self.record_getter(call, callee);
             return ty;
         }
         if let Some(ty) = self.filled(callee, args) {
@@ -243,7 +245,7 @@ impl<'a> Checker<'a> {
         let converts_one = match &callee.kind {
             ExprKind::Name(n) if n == "print" => {
                 self.record_io(callee.span, n, args);
-                self.expr_types.push((call.span, Ty::Unit));
+                self.exprs.types.push((call.span, Ty::Unit));
                 false
             }
             ExprKind::Name(n) => {
@@ -1285,6 +1287,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
+                self.record_instantiation(call, &bindings);
                 self.settle(&ret.subst(&bindings))
             }
             Ty::Named {
