@@ -149,6 +149,31 @@ class CheckCacheTest(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("merge conflict markers", r.stderr)
 
+    def test_post_commit_hook_runs_the_wasm_warm_build_without_the_hooks_git_vars(self):
+        # Inherited GIT_INDEX_FILE made wasm-warm's `git worktree add` of the parent rewrite the committer's index.
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = hermetic_env()
+        env.pop("CI", None)
+        with tempfile.TemporaryDirectory() as tmp:
+            for args in (["init", "-q"], ["config", "user.email", "t@example.com"], ["config", "user.name", "t"]):
+                subprocess.run(["git", *args], cwd=tmp, check=True, env=env)
+            for d in ("scripts", "crates", ".githooks"):
+                os.makedirs(os.path.join(tmp, d))
+            shutil.copy(os.path.join(root, ".githooks", "post-commit"), os.path.join(tmp, ".githooks", "post-commit"))
+            warm = os.path.join(tmp, "scripts", "wasm-warm.sh")
+            with open(warm, "w", encoding="utf-8") as f:
+                f.write("#!/usr/bin/env bash\nenv | grep '^GIT_' > \"$(dirname \"$0\")/../warm.env\"; true\n")
+            os.chmod(warm, 0o755)
+            subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "root"], cwd=tmp, check=True, env=env)
+            subprocess.run(["git", "config", "core.hooksPath", ".githooks"], cwd=tmp, check=True, env=env)
+            with open(os.path.join(tmp, "crates", "a.rs"), "w", encoding="utf-8") as f:
+                f.write("fn a() {}\n")
+            subprocess.run(["git", "add", "-A"], cwd=tmp, check=True, env=env)
+            subprocess.run(["git", "commit", "-qm", "a"], cwd=tmp, check=True, env=env)
+            with open(os.path.join(tmp, "warm.env"), encoding="utf-8") as f:
+                leaked = [v for v in f.read().split() if v.split("=")[0] in ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE")]
+            self.assertEqual(leaked, [])
+
     def test_pre_commit_hook_allows_the_commit_when_the_tier_runs_past_its_limit(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()
