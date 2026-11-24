@@ -26,6 +26,37 @@ fn takes_self(def: &Def) -> bool {
         if params.first().is_some_and(|p| p.name == "self" && !p.named_only))
 }
 
+fn self_ty(def: &Def) -> Option<Ty> {
+    match def {
+        Def::Fn {
+            ty: Ty::Fn { params, .. },
+            ..
+        } => params.first().map(|p| p.ty.clone()),
+        _ => None,
+    }
+}
+
+/// Whether `to` is `from` with its type parameters bound: `Range<D>` to
+/// `Range<F64>`.
+fn instance_of(to: &Ty, from: &Ty) -> bool {
+    let mut bindings = crate::ty::Bindings::default();
+    from.unify(to, &mut bindings);
+    from.subst(&bindings) == *to
+}
+
+/// R08.1.4: `a` is more specific than `b` when `b`'s `self` binds to
+/// `a`'s and not the other way. A bare `self: S` is no shape, so it is
+/// never more or less specific than another.
+fn more_specific(a: &Option<Ty>, b: &Option<Ty>) -> bool {
+    let (Some(a), Some(b)) = (a, b) else {
+        return false;
+    };
+    !matches!(a, Ty::Param(_))
+        && !matches!(b, Ty::Param(_))
+        && instance_of(a, b)
+        && !instance_of(b, a)
+}
+
 impl Checker<'_> {
     /// Every top-level `fn name(self: ..)` in reach, by the name it is
     /// imported under, one per module.
@@ -85,7 +116,9 @@ impl Checker<'_> {
         let mut bindings = crate::ty::Bindings::default();
         first.ty.unify(base, &mut bindings);
         let takes = first.ty.subst(&bindings);
-        same_shape || (!matches!(first.ty, Ty::Named { .. }) && self.fits(base, &takes))
+        // `self: Range<F64>` has `Range<Int>`'s shape but doesn't take it.
+        let named = matches!(first.ty, Ty::Named { .. });
+        (same_shape && (!named || self.fits(base, &takes))) || (!named && self.fits(base, &takes))
     }
 
     /// The candidate `base` fits; of several, one whose `self` is a type of
@@ -101,25 +134,23 @@ impl Checker<'_> {
         if base.is_vague() || matches!(base, Ty::Param(_) | Ty::Error) {
             return Pick::Unsettled;
         }
-        let mut fit: Vec<(String, Arc<Def>, bool)> = Vec::new();
+        let mut fit: Vec<(String, Arc<Def>)> = Vec::new();
         for (key, def) in self.method_candidates(name) {
             if self.self_fits(base, &def) && args.is_none_or(|args| takes_shapes(&def, args)) {
-                let own_type = !matches!(&*def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
-                    if matches!(params[0].ty, Ty::Param(_)));
-                fit.push((key, def, own_type));
+                fit.push((key, def));
             }
         }
-        if fit.iter().any(|f| f.2) {
-            fit.retain(|f| f.2);
-        }
-        // The file's own fn of the name stands in front of the library's.
-        if fit.iter().any(|f| self.env.origin(&f.0).is_none()) {
-            fit.retain(|f| self.env.origin(&f.0).is_none());
-        }
+        // R08.1.4: of the candidates, those no other is more specific than.
+        let selfs: Vec<Option<Ty>> = fit.iter().map(|f| self_ty(&f.1)).collect();
+        let beaten: Vec<bool> = (0..fit.len())
+            .map(|b| (0..fit.len()).any(|a| more_specific(&selfs[a], &selfs[b])))
+            .collect();
+        let mut beaten = beaten.into_iter();
+        fit.retain(|_| !beaten.next().unwrap_or(false));
         match fit.len() {
             0 => Pick::NoFit,
             1 => {
-                let (key, def, _) = fit.pop().unwrap();
+                let (key, def) = fit.pop().unwrap();
                 Pick::One(key, def)
             }
             _ => Pick::Ambiguous(fit.into_iter().map(|f| f.0).collect()),
@@ -130,7 +161,7 @@ impl Checker<'_> {
     pub(super) fn method_def(&mut self, base: &Ty, name: &str) -> Option<Arc<Def>> {
         match self.pick_method(base, name) {
             Pick::One(_, def) => Some(def),
-            _ => self.method_candidates(name).into_iter().next().map(|c| c.1),
+            _ => self.only_candidate(name),
         }
     }
 
@@ -148,12 +179,15 @@ impl Checker<'_> {
             .filter(|d| takes_self(d))
         {
             Some(def) => Some(def),
-            None => self
-                .method_candidates(&name.text)
-                .into_iter()
-                .next()
-                .map(|c| c.1),
+            None => self.only_candidate(&name.text),
         }
+    }
+
+    /// The fn `x.name` calls when the receiver can't pick: the only
+    /// candidate, never the first of several by declaration order.
+    fn only_candidate(&mut self, name: &str) -> Option<Arc<Def>> {
+        let mut candidates = self.method_candidates(name);
+        (candidates.len() == 1).then(|| candidates.remove(0).1)
     }
 
     /// The top-level fn `name` whose `self` the struct, record or tuple

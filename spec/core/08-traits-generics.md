@@ -49,11 +49,20 @@ impl Ord for Frac:
   implements; two candidates at one step is an ambiguity error naming
   both, resolved by `Trait.m(x, ...)`. No auto-ref or auto-deref. Generic
   code calls the method of the receiver's own `impl`, so a trait default
-  a type overrides is overridden everywhere. A free extension function
-  can't be overridden: two of one name that both take the receiver (one
-  `self: Range<Int>`, one `self: S` with `S: Seq`) are the same ambiguity
-  error. To give a type its own cost, override the trait method instead
-  (decision 486). (R08.1.4)
+  a type overrides is overridden everywhere. A free extension function's
+  candidates are the fns of the name whose `self` the receiver fits and
+  whose parameters take the call's arguments; a built-in member whose
+  parameters can't take them is no candidate, so `a.contains(i, x)`
+  calls a `fn contains(self: [0..2]Int, i: Int, x: Int)`. Of the
+  candidates, one is chosen when it is more specific than every other:
+  `A` is more specific than `B` when `B`'s `self` binds to `A`'s and not
+  the other way, so `self: Range<F64>` beats `self: Range<D>` and
+  `[V]List<V>` beats `[D]T`. A bare `self: S` (with `S: Seq`) has no
+  shape and is never more or less specific, so it and `self: Range<Int>`
+  are the same ambiguity error, as are two equally specific candidates
+  in different modules (E0701) or one module (E0702). The relation is the
+  same within a module and across modules. To give a type its own cost,
+  override the trait method instead (decision 486). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,
   `Show`, `Read`, `Unwrap`). Compound assignment comes from the
