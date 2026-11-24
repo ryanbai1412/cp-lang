@@ -1908,15 +1908,15 @@ pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
         out.add(by(x), 1)
     out
 
-/// \(O(n)\) expected, \(O(n)\) memory. Group elements by an arbitrary hashable key; `of:` keeps a projection of each element (`pairs.group(by: .0, of: .1)`). When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
+/// \(O(n \log n)\), \(O(n)\) memory. Group elements by an ordered key; `of:` keeps a projection of each element (`pairs.group(by: .0, of: .1)`). When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
 ///
-/// cost: \(O(n)\) expected, \(O(n)\) memory
+/// cost: \(O(n \log n)\), \(O(n)\) memory
 /// empty: an empty map
-/// order: each group keeps input order
+/// order: keys ascending; each group keeps input order
 /// traps: never
 /// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)[1] == ['a', 'c']`
-pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>>:
-    var out = HashMap<K, List<U>>()
+pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>:
+    var out = Map<K, List<U>>()
     for x in self:
         let k = by(x)
         if out.get(k) == None: out[k] = []
