@@ -210,6 +210,13 @@ impl<'a> Lowerer<'a> {
                         ret,
                         *span,
                     ))));
+                } else {
+                    // Never an empty body: a std newer than this compiler fails here.
+                    self.error(
+                        codes::UNKNOWN_INTRINSIC,
+                        *span,
+                        format!("no intrinsic `{name}` in this compiler's table"),
+                    );
                 }
             }
             ast::FnBody::Expr(e) if !collect::is_cpp(e) => self.tail(e, Tail::Return, &mut out),
