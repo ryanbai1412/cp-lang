@@ -26,7 +26,7 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "SortedSet.absorb is small-to-large; out[f].absorb(mut out[v]) would overlap two mut lends of out, so take() first.",
+ "notes": "Ordered Sets merged smaller into larger, as the original's std::set; the order statistics of SortedSet are not needed.",
  "dream_stress": {
   "ok": true,
   "cases": 12,
