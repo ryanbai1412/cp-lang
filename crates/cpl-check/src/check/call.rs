@@ -679,7 +679,11 @@ impl<'a> Checker<'a> {
             return None;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        if !self.builtin_get(&base_ty, &name.text) {
+        // `xs.items()`: a std `@get` fn on a list, text or array reads as a field too.
+        let std_get = (matches!(base_ty, Ty::Str | Ty::Array { .. })
+            || matches!(&base_ty, Ty::Named { name, .. } if name == "List"))
+            && self.quietly(|c| c.is_std_getter(&base_ty, &name.text));
+        if !std_get && !self.builtin_get(&base_ty, &name.text) {
             return None;
         }
         let callee_text = self.quote(callee.span);

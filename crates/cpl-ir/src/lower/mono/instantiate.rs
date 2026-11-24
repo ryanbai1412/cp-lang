@@ -125,6 +125,11 @@ impl<'a> Lowerer<'a> {
 
         // 3. Collect methods, getters, projections, laws, constants.
         let struct_env = self.gen_env.clone();
+        // A method of `Rev<S>` returning `Rev<Slice<S>>` names a bigger instance of the same
+        // struct; inside such an instance, signatures wait for a use (`ensure_sig`), so the
+        // family stays finite.
+        let nested = self.collecting_structs.contains(&gid);
+        self.collecting_structs.push(gid);
         for item in &decl.methods {
             let is_get = item.decorators.iter().any(|d| d.name.text == "get");
             match &item.kind {
@@ -163,12 +168,14 @@ impl<'a> Lowerer<'a> {
                             Some(id),
                             struct_env.clone(),
                         );
-                        let dlen = self.diags.len();
-                        self.resolve_fn_sig(fn_id, None);
-                        if self.diags.len() > dlen {
-                            self.diags.truncate(dlen);
-                            self.sigs[fn_id].params.clear();
-                            self.sigs[fn_id].ret = None;
+                        if !nested {
+                            let dlen = self.diags.len();
+                            self.resolve_fn_sig(fn_id, None);
+                            if self.diags.len() > dlen {
+                                self.diags.truncate(dlen);
+                                self.sigs[fn_id].params.clear();
+                                self.sigs[fn_id].ret = None;
+                            }
                         }
                         self.structs[id].methods.insert(f.name.text.clone(), fn_id);
                     }
@@ -221,6 +228,7 @@ impl<'a> Lowerer<'a> {
 
         // 4. Attach matching `impl` blocks for this struct.
         self.attach_impls_for_struct(id);
+        self.collecting_structs.pop();
 
         self.cur_mod = saved_mod;
         self.offset = saved_offset;

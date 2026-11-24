@@ -29,6 +29,55 @@ impl<'a> Lowerer<'a> {
 
     /// `g[u]` on a struct with an `at` method and no `get` is `g.at(u)` (R05.6.3). When `at`
     /// takes a cut of `D`, a position `v` of `D` is its right cut `v.r` (R07.1.6).
+    /// `s[lo..hi]` on an `Indexed` struct: std's `Slice<S>` over the walk positions of those keys.
+    pub(in crate::lower) fn struct_slice(
+        &mut self,
+        sid: StructId,
+        base: &ast::Expr,
+        indices: &[ast::Expr],
+        span: Span,
+    ) -> Option<Expr> {
+        let [index] = indices else {
+            return None;
+        };
+        let ast::ExprKind::Range {
+            lo,
+            hi,
+            inclusive,
+            step: None,
+        } = &index.kind
+        else {
+            return None;
+        };
+        let info = &self.structs[sid];
+        let keyed = ["keys", "at"].iter().all(|m| {
+            info.methods.contains_key(*m)
+                || info.gen_methods.contains_key(*m)
+                || info.projections.contains_key(*m)
+        });
+        if !keyed {
+            return None;
+        }
+        let arg = |value: ast::Expr| ast::Arg {
+            name: None,
+            mutable: false,
+            value,
+        };
+        let end = |e: &Option<Box<ast::Expr>>| match e {
+            Some(e) => (**e).clone(),
+            None => ast::Expr {
+                kind: ast::ExprKind::None,
+                span: index.span,
+            },
+        };
+        let closed = ast::Expr {
+            kind: ast::ExprKind::Bool(*inclusive),
+            span: index.span,
+        };
+        let args = [arg(base.clone()), arg(end(lo)), arg(end(hi)), arg(closed)];
+        Some(self.std_call("seq", "key_slice", &[], &args, span))
+    }
+
     pub(in crate::lower) fn struct_at(
         &mut self,
         sid: StructId,

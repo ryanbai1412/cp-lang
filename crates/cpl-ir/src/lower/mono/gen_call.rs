@@ -193,6 +193,10 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
+                // A bare `None` says nothing of `K` in `lo: ?K`: the bounds bind it.
+                if matches!(arg.value.kind, ast::ExprKind::None) {
+                    continue;
+                }
                 self.unify_arg(
                     decl,
                     pty,

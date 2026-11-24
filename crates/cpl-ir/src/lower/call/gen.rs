@@ -206,7 +206,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// A call of the fn `name` of the loaded module `std.<module>`.
-    fn std_call(
+    pub(in crate::lower) fn std_call(
         &mut self,
         module: &str,
         name: &str,

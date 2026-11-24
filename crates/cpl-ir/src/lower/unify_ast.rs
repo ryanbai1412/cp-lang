@@ -8,7 +8,7 @@ impl<'a> Lowerer<'a> {
     /// Unifies an AST type pattern `pat` against a concrete `Ty` to bind generic parameters.
     #[allow(clippy::only_used_in_recursion)]
     pub(super) fn unify_bounds(
-        &self,
+        &mut self,
         bounds: &[ast::Bound],
         tpl_mod: ModId,
         gen_names: &[String],
@@ -23,6 +23,16 @@ impl<'a> Lowerer<'a> {
                     _ => continue,
                 };
                 for tr in &bound.traits {
+                    // A struct meets a trait bound through its `impl`: `Q: Indexed<K, V>`
+                    // takes `K` and `V` from that impl's trait arguments, not the struct's own.
+                    if let Some(given) = self.struct_trait_args(&concrete, tr) {
+                        if let ast::TypeKind::Named { args, .. } = &tr.kind {
+                            for (want, got) in args.iter().zip(&given) {
+                                self.unify_ast_ty(want, got, tpl_mod, gen_names, env);
+                            }
+                        }
+                        continue;
+                    }
                     self.unify_ast_ty(tr, &concrete, tpl_mod, gen_names, env);
                 }
             }
@@ -85,7 +95,9 @@ impl<'a> Lowerer<'a> {
                     self.unify_ast_ty(&args[0], &inner, tpl_mod, gen_names, env);
                 }
                 // `Slice<S>` and `Rev<S>` are views of `S`: `S` is the source the view was cut from.
-                ("Slice" | "Rev", view) if args.len() == 1 => {
+                ("Slice" | "Rev", view)
+                    if args.len() == 1 && !self.instance_of(view, &name.text) =>
+                {
                     let source = match view {
                         Ty::ListView(e, Dim::Int) => Ty::List(e.clone()),
                         Ty::ListView(e, d) => Ty::Array {
@@ -352,5 +364,16 @@ impl<'a> Lowerer<'a> {
             }
             _ => {}
         }
+    }
+}
+
+impl Lowerer<'_> {
+    /// Whether `ty` is an instance of the generic struct `name`: std's own `Slice<S>` over a struct.
+    fn instance_of(&self, ty: &Ty, name: &str) -> bool {
+        let Ty::Struct(sid) = ty else {
+            return false;
+        };
+        let origin = self.structs[*sid].origin_gen.as_ref().map(|(g, _)| *g);
+        matches!(self.get_sym(name), Some(Sym::GenStruct(g)) if Some(g) == origin)
     }
 }

@@ -477,3 +477,33 @@ fn explain_lists_no_copy_for_a_value_moved_out() {
     let copies = crate::explain_copies(&super::lower(HANDED_OUT));
     assert!(copies.is_empty(), "{copies:?}");
 }
+
+#[test]
+fn a_view_struct_points_at_its_source_instead_of_copying_it() {
+    let cpp = cpp("fn odd(x: Int) -> Bool = x % 2 == 1
+let n: 1..=100 = read()
+let ys = [i for i in 0..n]
+let f = ys.filter(odd)
+print(f.src.len, f.src.len, ys.items.len)
+");
+    assert!(
+        cpp.contains("const std::vector<ll>* src = nullptr;"),
+        "{cpp}"
+    );
+    assert!(
+        !cpp.contains("std::vector<ll> self,"),
+        "a view takes its source by value: {cpp}"
+    );
+}
+
+#[test]
+fn a_lends_struct_points_at_the_container_it_was_cut_from() {
+    let cpp = cpp("let n: 1..=100 = read()
+let b = SortedBag<Int>.of([i for i in 0..n])
+var t = 0
+for i in 0..n: t += b.range(i..i + 8).each().count()
+print(t)
+");
+    assert!(cpp.contains("const SortedBag_Int_"), "{cpp}");
+    assert!(cpp.contains("{&b, "), "{cpp}");
+}

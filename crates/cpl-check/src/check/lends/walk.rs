@@ -127,7 +127,10 @@ impl Checker<'_> {
                 ExprKind::Name(n) => self.global(n),
                 _ => None,
             },
-            ExprKind::Field { name, .. } => self.chosen_method(name),
+            ExprKind::Field { base, name } => {
+                let base_ty = self.quietly(|c| c.infer(base));
+                self.chosen_method_on(&base_ty, name)
+            }
             _ => None,
         };
         let Some(def) = def else {

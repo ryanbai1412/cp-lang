@@ -706,6 +706,8 @@ struct Lowerer<'a> {
 
     traits: Vec<TraitInfo<'a>>,
     impls: Vec<ImplInfo<'a>>,
+    /// Generic structs whose instance's methods are being collected, outermost first.
+    collecting_structs: Vec<GenStructId>,
     /// Methods an `impl` gives a built-in type (`impl Hash for Int`).
     prim_methods: Vec<(Ty, String, FnId)>,
     /// The `self` type of each of those methods.
@@ -847,6 +849,7 @@ impl<'a> Lowerer<'a> {
             gen_consts: Vec::new(),
             traits: Vec::new(),
             impls: Vec::new(),
+            collecting_structs: Vec::new(),
             prim_methods: Vec::new(),
             prim_self: HashMap::new(),
             sigs: Vec::new(),

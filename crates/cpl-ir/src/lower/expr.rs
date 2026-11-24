@@ -279,6 +279,9 @@ impl<'a> Lowerer<'a> {
                     if let Some(call) = self.struct_at(sid, base, indices) {
                         return self.expr(&call, hint);
                     }
+                    if let Some(slice) = self.struct_slice(sid, base, indices, span) {
+                        return slice;
+                    }
                 }
                 let piece_cell = matches!(&base_expr.ty, Ty::Array { dims, .. } if matches!(dims.as_slice(), [Dim::Sym(_)]));
                 let sliced = !piece_cell

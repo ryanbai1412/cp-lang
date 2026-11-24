@@ -65,7 +65,11 @@ impl<'a> Lowerer<'a> {
                     return false;
                 }
                 if let Some(k) = key {
-                    self.unify_ast_ty(k, &seq.key_ty(), m, &open, env);
+                    let key_ty = match self.seq_key_of(&seq) {
+                        Some(Dim::Pos(d)) => Ty::Pos(d),
+                        _ => Ty::Int,
+                    };
+                    self.unify_ast_ty(k, &key_ty, m, &open, env);
                 }
                 if let (Some(t), Some(e)) = (elem, self.seq_elem_of(&seq)) {
                     self.unify_ast_ty(t, &e, m, &open, env);
@@ -153,6 +157,39 @@ impl<'a> Lowerer<'a> {
 
     /// The impl's type parameters bound for the concrete struct `sid`, if impl `idx` is
     /// for `sid` and its bounds hold there (`impl Indexed for Mapped<S: Indexed>`).
+    /// The trait arguments a struct's own `impl` of the trait `tr` names gives,
+    /// e.g. `(Int, (Int, Int))` for `Indexed` on `Items<List<Int>>`.
+    pub(super) fn struct_trait_args(&mut self, ty: &Ty, tr: &ast::Type) -> Option<Vec<Ty>> {
+        let (Ty::Struct(sid), ast::TypeKind::Named { name, args }) = (ty, &tr.kind) else {
+            return None;
+        };
+        if args.is_empty() || !matches!(self.get_sym(&name.text), Some(Sym::Trait(_))) {
+            return None;
+        }
+        for idx in 0..self.impls.len() {
+            let imp = &self.impls[idx];
+            if imp.trait_name.as_deref() != Some(name.text.as_str())
+                || imp.trait_args.len() != args.len()
+            {
+                continue;
+            }
+            let (m, offset, trait_args) = (imp.mod_id, imp.offset, imp.trait_args.clone());
+            let Some(env) = self.impl_env_for(idx, *sid) else {
+                continue;
+            };
+            let given = self.quietly_in(m, offset, env, |l| {
+                trait_args
+                    .iter()
+                    .map(|t| l.resolve_ty(t))
+                    .collect::<Vec<_>>()
+            });
+            if !given.contains(&Ty::Error) {
+                return Some(given);
+            }
+        }
+        None
+    }
+
     pub(super) fn impl_env_for(&mut self, idx: usize, sid: StructId) -> Option<GenEnv> {
         let sdecl = self.structs[sid].decl?;
         let struct_decl_name = sdecl.name.text.clone();

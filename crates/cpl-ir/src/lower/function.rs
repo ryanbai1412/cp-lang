@@ -145,9 +145,14 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        // If this fn is a block-bodied generator (`-> yields T`), allocate the output `List<T>` accumulator.
-        // Expression-bodied `-> yields T = expr` returns the sequence expression directly.
-        let is_gen = is_gen && matches!(decl.body, ast::FnBody::Block(_));
+        // A generator (`-> yields T`) builds its values in a `List<T>` accumulator; `= e`
+        // yields each element of `e`, so it feeds a loop as a block body does.
+        let is_gen = is_gen
+            && match &decl.body {
+                ast::FnBody::Block(_) => true,
+                ast::FnBody::Expr(e) => !collect::is_cpp(e),
+                ast::FnBody::None => false,
+            };
         if is_gen {
             let list_ty = self.cx.ret.clone().unwrap_or_else(|| Ty::list(Ty::Error));
             let elem_ty = match &list_ty {
@@ -183,16 +188,35 @@ impl<'a> Lowerer<'a> {
                 out.extend(body.stmts);
             }
             // `-> yields T = e` yields each element of `e`.
+            // `= e` walks `e` and yields each element, whatever sequence `e` is.
             ast::FnBody::Expr(expr) if is_gen => {
-                let each = ast::Stmt {
-                    kind: ast::StmtKind::Yield {
-                        value: expr.clone(),
-                        from: true,
-                    },
-                    span: expr.span,
+                let span = expr.span;
+                let stmt = |kind| ast::Stmt {
+                    kind,
+                    span,
                     decorators: Vec::new(),
                     public: false,
                 };
+                let x = "__yielded".to_string();
+                let each = stmt(ast::StmtKind::For {
+                    label: None,
+                    pat: ast::Pattern {
+                        kind: ast::PatternKind::Name(x.clone()),
+                        span,
+                    },
+                    iter: expr.clone(),
+                    body: ast::Block {
+                        stmts: vec![stmt(ast::StmtKind::Yield {
+                            value: ast::Expr {
+                                kind: ast::ExprKind::Name(x),
+                                span,
+                            },
+                            from: false,
+                        })],
+                        span,
+                    },
+                    else_body: None,
+                });
                 self.stmt(&each, &mut out);
             }
             ast::FnBody::Expr(e) if !collect::is_cpp(e) => self.tail(e, Tail::Return, &mut out),

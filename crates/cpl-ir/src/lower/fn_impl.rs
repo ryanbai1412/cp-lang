@@ -189,7 +189,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `f` resolved in module `m` at `offset` with `env`, its diagnostics dropped.
-    fn quietly_in<R>(
+    pub(super) fn quietly_in<R>(
         &mut self,
         m: ModId,
         offset: u32,

@@ -216,6 +216,16 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// example: `[5, 6][1..].items.collect() == [(1, 6)]`
 @get pub fn items<S: Keyed<K, T>, K, T>(self: S) -> Items<S> = Items(self)
 
+/// The source keys a `filter` view keeps, in walk order (R07.3.2).
+///
+/// cost: \(O(1)\) to make; \(O(n)\) to walk
+/// empty: `let a: List<Int> = []; a.filter(x => x > 0).keys.collect() == []`
+/// order: walk order, source keys
+/// traps: never
+/// example: `[5, 6, 7].filter(x => x != 6).keys.collect() == [0, 2]`
+@get pub fn keys<S: Keyed<K, T>, K, T>(self: Filtered<S, T>) -> yields K:
+    for (k, _) in self.items(): yield k
+
 /// \(O(1)\). The first element, `None` when empty. For the first element satisfying a predicate,
 /// use `find(p)`; for its key, `keys.find(p)`.
 /// Ties don't apply: position decides.
@@ -1621,6 +1631,16 @@ fn slice_keys<S: Indexed, D>(s: S, lo: Int, hi: Int) -> Range<D>:
     let k = ks.nth(ks.len - 1)
     k..k
 
+/// `s[lo..hi]` (`closed`: `s[lo..=hi]`) on an `Indexed` struct: the walk positions of its keys
+/// from `lo` up to `hi`, with an absent end at the start or the end of `s`'s keys.
+fn key_slice<Q: Indexed<K, V>, K, V>(s: Q, lo: ?K, hi: ?K, closed: Bool) -> Slice<Q>:
+    var i = 0
+    if let Some(k) = lo: i = s.keys[..k].len
+    var j = s.len
+    if let Some(k) = hi:
+        j = if closed: s.keys[..=k].len else: s.keys[..k].len
+    Slice(s, i, j)
+
 impl Seq<T> for Slice<S: Indexed<D, T>>:
     fn iter(self) -> yields T:
         for k in slice_keys(src, lo, hi): yield src.at(k)
@@ -1636,6 +1656,9 @@ impl Bidir<T> for Slice<S: Indexed<D, T>>:
     fn iter_rev(self) -> yields T:
         for k in slice_keys(src, lo, hi).rev: yield src.at(k)
 
+impl Positional<T> for Slice<S: Indexed<D, T>>:
+    fn nth(self, k: Int) -> T = src.at(slice_keys(src, lo, hi).nth(k))
+
 impl Indexed<D, T> for Slice<S: Indexed<D, T>>:
     fn at(self, i: D) -> T:
         assert i in slice_keys(src, lo, hi), "a key outside the slice"
@@ -1647,17 +1670,6 @@ impl Indexed<D, T> for Slice<S: Indexed<D, T>>:
     /// example: `[5, 6, 7][1..].keys == 1..3`
     /// order: increasing
     @get fn keys(self) -> Range<D> = slice_keys(src, lo, hi)
-
-    /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
-    /// same elements without the keys.
-    ///
-    /// cost: \(O(\mathit{len})\)
-    /// empty: `[1, 2][2..].items.collect() == []`
-    /// order: increasing key
-    /// traps: never
-    /// example: `[5, 6, 7][1..].items.collect() == [(1, 6), (2, 7)]`
-    @get pub fn items<K, T>(self) -> yields (K, T):
-        for k in self.keys: yield (k, self.at(k))
 
 /// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0`). Consuming a view
 /// from the front is `w = w.drop(1)`.
@@ -4158,15 +4170,7 @@ fn views_and_trackers_walk_and_show():
     let r = [1, 2, 3].ring.span(2, 2)
     assert r.each().collect() == [2, 0] and "{r}" == "2 0" and not r.is_empty
 
-impl Show for Rev<S>:
-    fn show(v):
-        var out = ""
-        for x in v:
-            if not out.is_empty: out += " "
-            out += "{x}"
-        out
-
-impl Show for Slice<S>:
+impl Show for Slice<S: Indexed<D, T>>:
     fn show(v):
         var out = ""
         for (_, x) in v.items:

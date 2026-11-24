@@ -29,7 +29,12 @@ fn a_fold_whose_op_calls_trap_free_fns_builds_no_list() {
         "let n: 1..=1000 = read()\n",
         "print((1..=n).filter(i => i % 3 != 0).map(i => Z(i)).fold(*))\n",
     ));
-    assert!(cpp.contains("cpl_sink_"), "{cpp}");
+    let solve = &cpp[cpp.find("void solve()").expect("solve")..];
+    assert!(!solve.contains("std::vector"), "{cpp}");
+    assert!(
+        cpp.contains("cpl_each_Mapped_"),
+        "the fold walks the view: {cpp}"
+    );
 }
 
 #[test]

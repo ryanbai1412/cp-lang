@@ -226,6 +226,14 @@ impl Checker<'_> {
         };
         let core_only =
             library_domain && super::library_domain::CORE_DOMAIN_ONLY.contains(&name.text.as_str());
+        if let Some(tr) = self.unmet_trait_of(base_ty, &name.text) {
+            let message = format!(
+                "`.{}` needs `{tr}`, which {base_ty} does not implement",
+                name.text
+            );
+            self.error(codes::MISSING_IMPL, name.span, message);
+            return;
+        }
         let message = format!("{base_ty} has no field or method `{}`", name.text);
         let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) else {
             return;
@@ -1797,6 +1805,32 @@ impl Checker<'_> {
         if each.len() == e.variants.len() && tags.args.len() == each.len() {
             diag.help = Some(habits::ENUM_TAGS.say(&[&e.name.text, &each.join(" | ")]));
         }
+    }
+}
+
+impl Checker<'_> {
+    /// The trait that declares member `name` when `ty` is a struct that does not implement it:
+    /// `.len` of a `Filtered` is `Sized`'s.
+    fn unmet_trait_of(&mut self, ty: &Ty, name: &str) -> Option<String> {
+        if !matches!(ty, Ty::Named { .. }) {
+            return None;
+        }
+        let std_traits = crate::modules::std_index().iter().flat_map(|(_, text)| {
+            text.lines().filter_map(|line| {
+                let rest = line.strip_prefix("pub trait ")?;
+                let end = rest.find(|c: char| !(c.is_alphanumeric() || c == '_'))?;
+                Some(rest[..end].to_string())
+            })
+        });
+        let names: Vec<String> = self.env.names().into_iter().chain(std_traits).collect();
+        for tr in names {
+            let declares = matches!(self.type_def(&tr).as_deref(),
+                Some(Def::Trait { methods, alias: false, .. }) if methods.iter().any(|m| m.name == name));
+            if declares && !self.implements_trait(ty, &tr) {
+                return Some(tr);
+            }
+        }
+        None
     }
 }
 

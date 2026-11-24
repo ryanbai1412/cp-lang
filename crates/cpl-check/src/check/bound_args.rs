@@ -231,25 +231,8 @@ impl Checker<'_> {
                 .find(|(q, t, args)| q == p && t == trait_name && args.len() == n)
                 .map(|(_, _, args)| args.clone());
         }
-        if let Ty::Named { name, .. } = ty {
-            let written = self.global(&crate::def::impl_name(Some(trait_name), name));
-            let listed = (self.env.impls(name).into_iter())
-                .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
-                .map(|(_, d)| d);
-            for def in written.into_iter().chain(listed) {
-                if let Def::Impl {
-                    trait_args,
-                    target,
-                    head_bounds,
-                    ..
-                } = &*def
-                {
-                    if trait_args.len() == n {
-                        let on = self.impl_bindings(target, head_bounds, ty);
-                        return Some(trait_args.iter().map(|t| t.subst(&on)).collect());
-                    }
-                }
-            }
+        if let Some(args) = self.impl_trait_args(ty, trait_name, n) {
+            return Some(args);
         }
         if n == 0
             || !self.trait_implies(trait_name, "Seq")
@@ -273,6 +256,36 @@ impl Checker<'_> {
         }
         out.push(elem);
         Some(out)
+    }
+    /// The arguments an `impl` of `trait_name` for struct `ty` gives the trait, bound
+    /// through the impl's head: `impl Seq<(D, T)> for Items<S: Keyed<D, T>>`.
+    pub(crate) fn impl_trait_args(
+        &mut self,
+        ty: &Ty,
+        trait_name: &str,
+        n: usize,
+    ) -> Option<Vec<Ty>> {
+        if let Ty::Named { name, .. } = ty {
+            let written = self.global(&crate::def::impl_name(Some(trait_name), name));
+            let listed = (self.env.impls(name).into_iter())
+                .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
+                .map(|(_, d)| d);
+            for def in written.into_iter().chain(listed) {
+                if let Def::Impl {
+                    trait_args,
+                    target,
+                    head_bounds,
+                    ..
+                } = &*def
+                {
+                    if trait_args.len() == n {
+                        let on = self.impl_bindings(target, head_bounds, ty);
+                        return Some(trait_args.iter().map(|t| t.subst(&on)).collect());
+                    }
+                }
+            }
+        }
+        None
     }
 }
 

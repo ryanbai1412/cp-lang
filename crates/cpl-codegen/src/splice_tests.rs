@@ -89,7 +89,10 @@ fn a_build_without_traps_fuses_a_filter_whose_both_sides_index() {
     );
     let solve = |cpp: &str| cpp[cpp.find("void solve()").expect("solve")..].to_string();
     let traps = solve(&build(source, crate::Checks::Traps));
-    assert!(traps.contains("std::vector<ll>"), "{traps}");
+    assert!(
+        !traps.contains("std::vector<ll> t"),
+        "views walk their source: {traps}"
+    );
     let none = solve(&build(source, crate::Checks::None));
     assert!(!none.contains("std::vector<ll> t"), "{none}");
 }

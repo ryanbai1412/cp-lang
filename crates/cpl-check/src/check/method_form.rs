@@ -64,6 +64,15 @@ fn more_specific(a: &Option<Ty>, b: &Option<Ty>) -> bool {
         && !instance_of(b, a)
 }
 
+/// Whether one value could be the `self` of both: `List<T>` and `Filtered<S, T>` never are.
+fn overlap(a: &Option<Ty>, b: &Option<Ty>) -> bool {
+    match (a, b) {
+        (Some(Ty::Named { name: x, .. }), Some(Ty::Named { name: y, .. })) => x == y,
+        (Some(Ty::Param(_)), _) | (_, Some(Ty::Param(_))) | (None, _) | (_, None) => true,
+        (Some(a), Some(b)) => std::mem::discriminant(a) == std::mem::discriminant(b),
+    }
+}
+
 /// A candidate's module, and its `#k` among one module's overloads.
 type Origin = (Option<String>, Option<String>);
 
@@ -120,7 +129,8 @@ impl Checker<'_> {
             let Some(that) = self.global(key).map(|d| self_ty(&d)) else {
                 continue;
             };
-            if !more_specific(&this, &that) && !more_specific(&that, &this) {
+            if overlap(&this, &that) && !more_specific(&this, &that) && !more_specific(&that, &this)
+            {
                 self.error(
                     codes::OVERLOAD_BY_TYPE,
                     f.name.span,
@@ -150,8 +160,14 @@ impl Checker<'_> {
                 self.record_getter(expr, expr, false);
             }
         }
+        let declared = matches!(&base, Ty::Named { name, .. } if self.members_of(name).is_some());
         match self.member_ty(expr, name, base) {
             Ty::Unknown if !self.in_call_callee => self.getter_fn_read(expr).unwrap_or(Ty::Unknown),
+            // `.name` without `()` reads only getters: a declared plain `fn items(self)` yields
+            // to a `@get fn items` that reaches the value.
+            ty @ Ty::Fn { .. } if declared && !self.in_call_callee && takes_nothing(&ty) => {
+                self.getter_fn_read(expr).unwrap_or(ty)
+            }
             ty => ty,
         }
     }
@@ -177,12 +193,9 @@ impl Checker<'_> {
             return None;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
+        let Pick::One(..) = self.pick_getter(&base_ty, &name.text) else {
             return None;
         };
-        if !matches!(&*def, Def::Fn { getter: true, .. }) {
-            return None;
-        }
         // A call giving a value of a struct leaves its type in `shapes`.
         let read = |c: &mut Self| {
             let ty = c.method_form_call(expr, expr, &[]);
@@ -250,11 +263,37 @@ impl Checker<'_> {
     /// take `args`' shapes: `s.split(sep: c => c == ' ')` on a `Str` is the
     /// predicate split, not `split(self: Str, sep: Char)`.
     fn pick_method_for(&mut self, base: &Ty, name: &str, args: Option<&[Arg]>) -> Pick {
+        let candidates = self.method_candidates(name);
+        self.pick_from(base, candidates, args)
+    }
+
+    /// Whether `field`'s receiver declares the member as a plain `fn` taking nothing, not a getter.
+    fn declares_plain_fn(&mut self, field: &Expr, base_ty: &Ty) -> bool {
+        let ExprKind::Field { name, .. } = &field.kind else {
+            return false;
+        };
+        let ty = self.quietly(|c| c.member_ty(field, name, base_ty.clone()));
+        takes_nothing(&ty)
+    }
+
+    /// As `pick_method`, over only the `@get` fns: what `base.name` with no `()` reads.
+    fn pick_getter(&mut self, base: &Ty, name: &str) -> Pick {
+        let mut candidates = self.method_candidates(name);
+        candidates.retain(|(_, def)| matches!(&**def, Def::Fn { getter: true, .. }));
+        self.pick_from(base, candidates, None)
+    }
+
+    fn pick_from(
+        &mut self,
+        base: &Ty,
+        candidates: Vec<(String, Arc<Def>)>,
+        args: Option<&[Arg]>,
+    ) -> Pick {
         if base.is_vague() || matches!(base, Ty::Param(_) | Ty::Error) {
             return Pick::Unsettled;
         }
         let mut fit: Vec<(String, Arc<Def>)> = Vec::new();
-        for (key, def) in self.method_candidates(name) {
+        for (key, def) in candidates {
             if self.self_fits(base, &def) && args.is_none_or(|args| takes_shapes(&def, args)) {
                 fit.push((key, def));
             }
@@ -309,6 +348,35 @@ impl Checker<'_> {
         }
     }
 
+    /// Whether `base.name` reads a `@get` fn whose `self` takes `base`.
+    pub(super) fn is_std_getter(&mut self, base: &Ty, name: &str) -> bool {
+        matches!(self.pick_getter(base, name), Pick::One(..))
+    }
+
+    /// `chosen_method` for a receiver of type `base`: with no pick recorded at `name`,
+    /// only a candidate whose `self` takes `base` answers.
+    pub(super) fn chosen_method_on(&mut self, base: &Ty, name: &ast::Name) -> Option<Arc<Def>> {
+        let recorded = (self.resolved.iter().rev())
+            .chain(&self.chosen_methods)
+            .any(|r| r.0 == name.span);
+        if recorded {
+            // A name's resolution says which module's fn it means, not that its
+            // `self` takes this receiver.
+            let def = self.chosen_method(name)?;
+            let one = vec![(name.text.clone(), def.clone())];
+            return match self.quietly(|c| c.pick_from(base, one, None)) {
+                Pick::NoFit => None,
+                _ => Some(def),
+            };
+        }
+        let candidates = self.method_candidates(&name.text);
+        match self.quietly(|c| c.pick_from(base, candidates, None)) {
+            Pick::One(_, def) => Some(def),
+            Pick::Unsettled => self.only_candidate(&name.text),
+            Pick::Ambiguous(_) | Pick::NoFit => None,
+        }
+    }
+
     /// The fn `x.name` calls when the receiver can't pick: the only
     /// candidate, never the first of several by declaration order.
     fn only_candidate(&mut self, name: &str) -> Option<Arc<Def>> {
@@ -340,6 +408,7 @@ impl Checker<'_> {
             ty: Ty::Fn { params, ret },
             generics,
             bounds,
+            bound_args,
             ..
         } = &*def
         else {
@@ -354,6 +423,17 @@ impl Checker<'_> {
             first.ty.unify(base, &mut bindings);
         }
         self.bind_bound_params(generics, bounds, &mut bindings);
+        // `keys<S: Keyed<K, T>>(self: Filtered<S, T>)`: `K` is what `S`'s `Keyed` gives.
+        for (param, trait_name, args) in bound_args {
+            let Some(actual) = bindings.get(param).map(|t| self.settle(t)) else {
+                continue;
+            };
+            if let Some(given) = self.trait_args_of(&actual, trait_name, args.len()) {
+                for (want, got) in args.iter().zip(&given) {
+                    want.unify(got, &mut bindings);
+                }
+            }
+        }
         let ty = Ty::Fn {
             params: params[1..].to_vec(),
             ret: ret.clone(),
@@ -429,12 +509,20 @@ impl<'a> Checker<'a> {
         if name.text == "split" && base_ty == Ty::Str && self.split_on_str(args) {
             return Some(Ty::Error);
         }
-        if self.declares_member(&base_ty, &name.text) {
+        // `a.rev.items` with no `()`: a declared plain `fn items(self)` doesn't take the read,
+        // a `@get fn items` that reaches `a.rev` does.
+        let getter = (std::ptr::eq(call, callee) && self.declares_plain_fn(callee, &base_ty))
+            .then(|| self.pick_getter(&base_ty, &name.text))
+            .filter(|pick| matches!(pick, Pick::One(..)));
+        if getter.is_none() && self.declares_member(&base_ty, &name.text) {
             return None;
         }
-        let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
-            Pick::NoFit => self.pick_method(&base_ty, &name.text),
-            pick => pick,
+        let pick = match getter {
+            Some(pick) => pick,
+            None => match self.pick_method_for(&base_ty, &name.text, Some(args)) {
+                Pick::NoFit => self.pick_method(&base_ty, &name.text),
+                pick => pick,
+            },
         };
         let key = match &pick {
             Pick::One(key, _) => key.clone(),
@@ -876,6 +964,10 @@ impl Members {
             .zip(args.iter().cloned())
             .collect()
     }
+}
+
+fn takes_nothing(ty: &Ty) -> bool {
+    matches!(ty, Ty::Fn { params, .. } if params.is_empty())
 }
 
 /// True when a type parameter (`D`) is left in `ty`: it was not worked out.

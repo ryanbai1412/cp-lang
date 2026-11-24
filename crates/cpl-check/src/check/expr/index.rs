@@ -64,6 +64,14 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
+                // A struct with `impl Seq<T>` walks its `T`, bound through the impl's head
+                // (`impl Seq<(D, T)> for Items<S: Keyed<D, T>>`).
+                let args = self.impl_trait_args(ty, "Seq", 1);
+                if let Some(elem) = args.and_then(|a| a.into_iter().next()) {
+                    if !matches!(elem, Ty::Unknown | Ty::Error) {
+                        return self.settle(&elem);
+                    }
+                }
                 ty.seq_elem().unwrap_or(Ty::Unknown)
             }
             Ty::Error => Ty::Error,
@@ -582,6 +590,14 @@ impl<'a> Checker<'a> {
                 Ty::Error
             }
             Ty::Error => Ty::Error,
+            // A struct with `impl Indexed<D, T>` reads a `T` at a key.
+            ty @ Ty::Named { .. } => {
+                let args = self.impl_trait_args(ty, "Indexed", 2);
+                match args.and_then(|a| a.into_iter().nth(1)) {
+                    Some(elem) if !elem.has_vague() => self.settle(&elem),
+                    _ => Ty::Unknown,
+                }
+            }
             _ => Ty::Unknown,
         }
     }
