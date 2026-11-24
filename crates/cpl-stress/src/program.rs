@@ -868,7 +868,7 @@ impl Program {
     pub(crate) fn to_command(&self) -> Command {
         let stack = raised_stack();
         let orphan_kill = dies_with_parent();
-        let mut command = match (stack, orphan_kill) {
+        let command = match (stack, orphan_kill) {
             (None, None) => {
                 let mut command = Command::new(&self.argv[0]);
                 command.args(&self.argv[1..]);
@@ -895,7 +895,11 @@ impl Program {
         };
         // Its own process group, so a time limit stops what it started too.
         #[cfg(unix)]
-        std::os::unix::process::CommandExt::process_group(&mut command, 0);
+        let command = {
+            let mut command = command;
+            std::os::unix::process::CommandExt::process_group(&mut command, 0);
+            command
+        };
         command
     }
 
