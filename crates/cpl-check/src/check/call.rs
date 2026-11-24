@@ -1329,7 +1329,11 @@ impl<'a> Checker<'a> {
                     _ => None,
                 };
                 let callee_def = callee_name.and_then(|n| self.global(n));
-                let outer = std::mem::replace(&mut self.call_bound_args, callee_def.clone());
+                let through = match callee_def.as_deref() {
+                    Some(Def::Fn { bound_args, .. }) => Some(bound_args.clone()),
+                    _ => None,
+                };
+                let outer = std::mem::replace(&mut self.call_bound_args, through);
                 self.args(&callee_text, "takes", &params, args, call, &mut bindings);
                 self.call_bound_args = outer;
                 if let Some(Def::Fn { default_binds, .. }) = callee_def.as_deref() {

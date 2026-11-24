@@ -1048,7 +1048,6 @@ impl<'a> Checker<'a> {
                             let through = self.quietly(|c| c.bound_args(&f.bounds));
                             self.generics.truncate(outer);
                             Some((f.name.text.clone(), rows, through))
-                                .filter(|(_, rows, _)| !rows.is_empty())
                         }
                         _ => None,
                     })

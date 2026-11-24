@@ -176,20 +176,26 @@ impl Checker<'_> {
     /// type the bound's parameter is bound to, so `sum(xs)` over
     /// `S: Seq<T>` given a `List<Int>` has `T = Int`.
     pub(crate) fn bind_bound_args(&mut self, bindings: &mut crate::ty::Bindings) {
-        let Some(def) = self.call_bound_args.clone() else {
+        let Some(bound_args) = self.call_bound_args.clone() else {
             return;
         };
-        let Def::Fn { bound_args, .. } = &*def else {
-            return;
-        };
-        for (param, trait_name, args) in bound_args {
+        for (param, trait_name, args) in &bound_args {
             let Some(actual) = bindings.get(param).cloned() else {
                 continue;
             };
             let actual = self.settle(&actual);
             if let Some(given) = self.trait_args_of(&actual, trait_name, args.len()) {
+                // `impl<T> Acts<T, T> for Plus`: the impl's own `T` is the
+                // bound's, where the call already fixed it.
+                let mut open = crate::ty::Bindings::default();
                 for (want, got) in args.iter().zip(&given) {
-                    want.unify(got, bindings);
+                    let known = want.subst(bindings);
+                    if !known.mentions_param() {
+                        got.unify(&known, &mut open);
+                    }
+                }
+                for (want, got) in args.iter().zip(&given) {
+                    want.unify(&got.subst(&open), bindings);
                 }
             }
         }

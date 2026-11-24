@@ -129,6 +129,7 @@ impl Checker<'_> {
                     ctor,
                     methods,
                     receivers,
+                    method_rows,
                     ..
                 } => {
                     // Outside the struct's body `S(..)` calls its `new`;
@@ -156,7 +157,13 @@ impl Checker<'_> {
                         bindings.extend(generics.iter().cloned().zip(type_args.iter().cloned()));
                     }
                     let before = self.sink.len();
+                    // `new<A: Acts<T, F>>(.., act: A)`: `F` is what `A`'s impl gives.
+                    let through = (method_rows.iter())
+                        .find(|(m, _, _)| m == "new" && !is_generated_ctor)
+                        .map(|(_, _, through)| through.clone());
+                    let outer = std::mem::replace(&mut self.call_bound_args, through);
                     self.args(callee_text, verb, params, args, call, &mut bindings);
+                    self.call_bound_args = outer;
                     if !is_generated_ctor && self.sink.len() > before {
                         self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
                     }
