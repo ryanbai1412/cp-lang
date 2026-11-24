@@ -231,22 +231,13 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
     raise RuntimeError("No ANTHROPIC_API_KEY or OPENAI_API_KEY in environment")
 
 
-def outputs_match(got: str, want: str, tol: float = 1e-6) -> bool:
-    if got == want:
-        return True
-    gt, wt = got.split(), want.split()
-    if len(gt) != len(wt):
-        return False
-    for a, b in zip(gt, wt):
-        if a == b:
-            continue
-        try:
-            fa, fb = float(a), float(b)
-        except ValueError:
-            return False
-        if abs(fa - fb) > tol * max(1.0, abs(fb)):
-            return False
-    return True
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "corpus", "lib"))
+from judge_tokens import same_tokens  # noqa: E402  (cpl test's own comparison)
+
+
+def outputs_match(got: str, want: str) -> bool:
+    return same_tokens(want, got)
 
 
 def evaluate_problem(

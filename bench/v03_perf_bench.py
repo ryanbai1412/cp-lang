@@ -99,28 +99,14 @@ def sha256_file(path):
     return h.hexdigest()[:16]
 
 
-def same_tokens(a, b):
-    ta, tb = a.split(), b.split()
-    if ta == tb:
-        return True
-    if len(ta) != len(tb):
-        return False
-    for x, y in zip(ta, tb):
-        if x == y:
-            continue
-        try:
-            fx, fy = float(x), float(y)
-        except ValueError:
-            return False
-        if not math.isclose(fx, fy, rel_tol=1e-6, abs_tol=1e-6):
-            return False
-    return True
-
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "corpus", "lib"))
+from judge_tokens import same_tokens  # noqa: E402  (cpl test's own comparison)
 
 def outputs_agree(cp, inp, out, ans):
     """Exact tokens, or, where the problem ships a `checker.py` (many valid
     answers), the checker's verdict on `out` against the original's `ans`."""
-    if same_tokens(open(out, errors="replace").read(), open(ans, errors="replace").read()):
+    if same_tokens(open(ans, errors="replace").read(), open(out, errors="replace").read()):
         return True
     checker = os.path.join(os.path.dirname(cp), "checker.py")
     if not os.path.exists(checker):

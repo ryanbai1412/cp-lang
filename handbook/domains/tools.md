@@ -195,7 +195,7 @@ their front ends.
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | `cpl run` with no input runs every sample and shows the diff | sample layouts covered | hand-written suite | `crates/cpl-cli/tests/cli.rs` |
-| Local verdicts match the judge's | token pairs every caller accepts and rejects alike | one comparator (`cpl_stress::judge`) for `cpl test`, `stress`, `submit` and `watch`; rule `commands/R10` | an agreement test across `cpl test`, stress, the corpus bench and `cpl judge`: `missing` (the corpus bench still has its own tolerance formula) |
+| Local verdicts match the judge's | token pairs every caller accepts and rejects alike | one comparator (`cpl_stress::judge`) for `cpl test`, `stress`, `submit` and `watch`; rule `commands/R10` | `crates/cpl-cli/tests/judge_agreement.rs` (31 token pairs judged alike by `cpl_stress::judge` and `corpus/lib/judge_tokens.py`, which the corpus benches and `writable-from-docs.py` now share; no Python file keeps its own tolerance) |
 | Multi-answer problems are judged by their checker | problems with `@check` or `checker.py` judged by it | hand-written suite | `crates/cpl-contest/src/tests.rs` |
 | Interactive problems run with correct flushing | interactive problems run end to end | hand-written suite | `crates/cpl-cli/tests/cli.rs`, `crates/cpl-contest/src/tests.rs`; `crates/cpl-cli/tests/interactive_corpus.rs`: every corpus problem with an `interactor.py` (25) is solved on each `tests/*.case` and two `gen.py` cases, by `cpl run` and `cpl run --release` (196 runs) |
 | Adding a custom test is one step | `cpl test --add` paths and editor Add Test | hand-written suite | `crates/cpl-contest/src/tests.rs`, `editors/vscode/test/unit/` |

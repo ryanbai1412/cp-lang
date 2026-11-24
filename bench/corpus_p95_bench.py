@@ -80,18 +80,9 @@ def run(binary, inp, outp, timeout, rss=False):
     return wall, kb, "ok" if pr.returncode == 0 else f"exit {pr.returncode}"
 
 
-def same_tokens(a, b):
-    """Token equality, with floats allowed to differ in the last printed digits."""
-    ta, tb = a.split(), b.split()
-    if ta == tb: return True
-    if len(ta) != len(tb): return False
-    for x, y in zip(ta, tb):
-        if x == y: continue
-        try: fx, fy = float(x), float(y)
-        except ValueError: return False
-        if not math.isclose(fx, fy, rel_tol=1e-6, abs_tol=1e-6): return False
-    return True
-
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "corpus", "lib"))
+from judge_tokens import same_tokens  # noqa: E402  (cpl test's own comparison)
 
 def hand_generators():
     """Return (by_port_rel, by_problem, audit2) from rust_max_n_audit and corpus_generators."""
