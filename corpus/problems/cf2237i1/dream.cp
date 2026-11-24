@@ -1,8 +1,8 @@
 // Codeforces 2237 I1: bottom-up tree DP counting canonical valid 0/1 edge
 // assignments matching a template string ('0', '1', or '?').
 //
-// At each vertex `u`, `dp[u]` counts valid labellings keyed by
-// `State(depth, active, resolved)`:
+// At each vertex `u`, `dp[u]` counts valid labellings per
+// `State(depth, active, resolved)`, packed densely at `slot(state)`:
 //   - `depth`: max 1-edge depth among processed children,
 //   - `active`: an open 0-chain reaches `u` (at most one, cannot cross a
 //     0-edge from `parent`, and cannot coexist with `parent.depth > 0`),
@@ -24,6 +24,9 @@ enum Edge: Zero | One
 
 struct State(depth: Int, active: Bool, resolved: Bool)
 
+fn slot(s: State) -> Int = 4 * s.depth + (if s.active: 2 else: 0) + (if s.resolved: 1 else: 0)
+fn state_at(i: Int) -> State = State(i / 4, i % 4 >= 2, i % 2 == 1)
+
 fn parse_label(ch: Char) -> Label = match ch:
     '0' => Label.Zero
     '1' => Label.One
@@ -35,7 +38,7 @@ fn lift(child: State, edge: Edge) -> State:
     else:
         State(child.depth + if edge == Edge.One: 1 else: 0, child.active, child.resolved)
 
-fn merge_edge(parent: State, child: State, edge: Edge, mut out: List<(State, Int)>):
+fn merge_edge(parent: State, child: State, edge: Edge, w: Z, mut next: List<Z>):
     let lifted = lift(child, edge)
     let one_active = not (parent.active and lifted.active)
     let one_resolved = not (parent.resolved and lifted.resolved)
@@ -49,22 +52,20 @@ fn merge_edge(parent: State, child: State, edge: Edge, mut out: List<(State, Int
     let nd = max(parent.depth, lifted.depth)
     let na = parent.active or lifted.active
     let nr = parent.resolved or lifted.resolved
-    out.push((State(nd, na, nr), 1))
+    next[slot(State(nd, na, nr))] += w
     if not parent.active and edge == Edge.One and parent.depth == 0:
-        out.push((State(nd, true, nr), -1))
+        next[slot(State(nd, true, nr))] -= w
 
-fn merge(parent: State, child: State, lbl: Label) -> List<(State, Int)>:
-    var out: List<(State, Int)> = []
+fn merge(parent: State, child: State, lbl: Label, w: Z, mut next: List<Z>):
     match lbl:
-        Label.Zero => merge_edge(parent, child, Edge.Zero, mut out)
-        Label.One => merge_edge(parent, child, Edge.One, mut out)
+        Label.Zero => merge_edge(parent, child, Edge.Zero, w, mut next)
+        Label.One => merge_edge(parent, child, Edge.One, w, mut next)
         Label.Any =>
-            merge_edge(parent, child, Edge.Zero, mut out)
-            merge_edge(parent, child, Edge.One, mut out)
-    out
+            merge_edge(parent, child, Edge.Zero, w, mut next)
+            merge_edge(parent, child, Edge.One, w, mut next)
 
 @!multitest
-let n: 1..=500 = read()
+let n: 2..=3000 = read()
 domain V = 1..=n
 let label_str: Str = read()
 let label: [V]Label = [V] v => if v == V.first!: Label.Zero else: parse_label(label_str[v.ord - 1])
@@ -79,18 +80,19 @@ for u in V:
         children[u].push(c)
 let t = Rooted.from_parents(par)
 
-var dp: [V]Map<State, Z> = [V] _ => Map<State, Z>()
+// A merge deepens the child by at most one edge, so `next` needs one depth (4 slots) more.
+var dp: [V]List<Z> = [V] _ => []
 for p in t.Pre.rev:
     let u = t.at[p]
-    var cur: Map<State, Z> = Map()
-    cur[State(0, false, false)] = Z(1)
+    var cur = List.filled(4, Z(0))
+    cur[slot(State(0, false, false))] = Z(1)
     for c in children[u]:
-        var next: Map<State, Z> = Map()
-        for (parent, w0) in cur.items:
-            for (child, w1) in dp[c].items:
-                for (s, sign) in merge(parent, child, label[c]):
-                    next[s] = (next.get(s) ?? Z(0)) + sign * w0 * w1
+        var next = List.filled(max(cur.len, dp[c].len + 4), Z(0))
+        for i in 0..cur.len if cur[i] != Z(0):
+            for j in 0..dp[c].len if dp[c][j] != Z(0):
+                merge(state_at(i), state_at(j), label[c], cur[i] * dp[c][j], mut next)
+        dp[c] = []
         cur = next
     dp[u] = cur
 
-print([w for (_, w) in dp[V.first!].items].sum())
+print(dp[V.first!].sum())
