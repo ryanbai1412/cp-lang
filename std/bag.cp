@@ -333,7 +333,8 @@ pub struct SortedBag<K>:
     /// empty: a range with no keys gives an empty view
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(2..=7).len == 3`
-    pub fn range(self, r: Range<K>) -> SortedRange<K> = todo
+    pub fn range(self, r: Range<K>) -> lends SortedRange<K> =
+        SortedRange(self, Some(r.l), true, Some(r.r), false)
 
     fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
         var ans = -1
@@ -1229,7 +1230,7 @@ pub struct SortedSet<K>:
     /// empty: a range with no keys gives an empty view
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..7).last == Some(3)`
-    pub fn range(self, r: Range<K>) -> SortedRange<K> = todo
+    pub fn range(self, r: Range<K>) -> lends SortedRange<K> = bag.range(r)
 
     fn range_first(
         self,
@@ -2471,6 +2472,7 @@ fn sorted_set_and_bag_drain_after_before_and_random():
 /// `each()`. Copies of one key in a `SortedBag` are all inside or all outside, so nothing here
 /// has a tie to break. `n` is the container's `len`, `k` the number of keys visited.
 pub struct SortedRange<K>:
+    bag: SortedBag<K>
     lo: ?K
     lo_inc: Bool
     hi: ?K
@@ -2483,7 +2485,7 @@ pub struct SortedRange<K>:
     /// ties: copies of a key are equal, so any is the answer
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(2..).first == Some(3)`
-    @get pub fn first(self) -> ?K = todo
+    @get pub fn first(self) -> ?K = bag.range_first(lo, lo_inc, hi, hi_inc)
 
     /// The largest key in the range.
     ///
@@ -2492,7 +2494,7 @@ pub struct SortedRange<K>:
     /// ties: copies of a key are equal, so any is the answer
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..=6).last == Some(3)`
-    @get pub fn last(self) -> ?K = todo
+    @get pub fn last(self) -> ?K = bag.range_last(lo, lo_inc, hi, hi_inc)
 
     /// The number of keys in the range, counting copies.
     ///
@@ -2500,7 +2502,7 @@ pub struct SortedRange<K>:
     /// empty: 0
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(3..=3).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = bag.range_len(lo, lo_inc, hi, hi_inc)
 
     /// True when the range holds no key.
     ///
@@ -2508,7 +2510,7 @@ pub struct SortedRange<K>:
     /// empty: `true`
     /// traps: never
     /// example: `SortedSet.of([1, 7]).range(2..7).is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = self.first == None
 
     /// The keys in ascending order, copies included.
     ///
@@ -2517,7 +2519,7 @@ pub struct SortedRange<K>:
     /// order: ascending
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(2..).each().collect() == [3, 3, 7]`
-    pub fn each(self) -> yields K = todo
+    pub fn each(self) -> yields K = bag.range_each(lo, lo_inc, hi, hi_inc)
 
     /// The keys in descending order, copies included.
     ///
@@ -2526,7 +2528,7 @@ pub struct SortedRange<K>:
     /// order: descending
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..7).rev.collect() == [3, 1]`
-    @get pub fn rev(self) -> yields K = todo
+    @get pub fn rev(self) -> yields K = bag.range_each_rev(lo, lo_inc, hi, hi_inc)
 
 impl Show for SortedBag<K>:
     fn show(b):
