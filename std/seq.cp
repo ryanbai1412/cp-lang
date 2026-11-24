@@ -1433,6 +1433,18 @@ impl Seq<(D, T)> for Items<S: Keyed<D, T>>:
 impl Sized for Items<S: Sized>:
     @get fn len(self) -> Int = src.len
 
+impl Keyed<D, (D, T)> for Items<S: Indexed<D, T>>:
+    fn items(self) -> yields (D, (D, T)):
+        for (k, x) in src.items: yield (k, (k, x))
+
+impl Bidir<(D, T)> for Items<S: Indexed<D, T>>:
+    fn iter_rev(self) -> yields (D, T):
+        for k in src.keys.rev: yield (k, src.at(k))
+
+impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
+    fn at(self, i: D) -> (D, T) = (i, src.at(i))
+    @get fn keys(self) -> Range<D> = src.keys
+
 /// \(O(1)\) to make. `s[r]`: a borrowed view of `s` over the range `r`. Every slice keeps its
 /// source's keys: `a[l..=r][i]` is `a[i]` and `i` must lie in `l..=r`; for a `List` or `Str`,
 /// `s[2..5][3]` is `s[3]` and `s[2..5][0]` traps. `w.first`, `w.nth(k)` and `w.rebase()` give
