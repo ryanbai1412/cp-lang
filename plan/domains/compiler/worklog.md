@@ -1025,3 +1025,11 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   std/seq.cp) is taken by its place path and put back whole by `StorePlaceV`, as a field or
   nested place already was (vm/compile/call_mix.rs), instead of the call walking.
   Regression: cpl-interp `vm_walks_map_entries_itself` (programs/vm_map_key_place).
+
+### VM-traced lane (2026-11-24): traced sorts run on the VM
+
+- A traced `xs.sort(..)` of a quiet place compiles on the VM (`traced_quiet`), and a keyed
+  sort declares its key's local each round (`TracePoint::Declared`), as the tree-walker
+  leaves the last element there. The traced `stmt:Expr(Sort)` kind remains only where the
+  same sort falls back untraced (an `Ord` impl's sort, operator fns).
+- Regression: tests/programs/vm_traced_statements.cp sorts a local by key and a global.

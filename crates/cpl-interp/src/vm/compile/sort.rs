@@ -125,6 +125,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
             SortKey::Slot(slot, key) => {
                 let slot_loc = self.slot_loc(slot);
                 self.emit_seq_load(slot_loc, seq_kind, None, Some(r_seq), r_idx, span);
+                if self.traced {
+                    self.emit_trace(TracePoint::Declared(slot), span);
+                }
                 Some(key)
             }
             SortKey::Fn(func) => {

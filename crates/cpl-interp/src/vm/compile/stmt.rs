@@ -342,6 +342,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 quiet_place(place, cpl_ir::walk::root(place)) && !self.yields_into(place)
             }
             ExprKind::Print(..) => true,
+            ExprKind::Sort(place, ..) => {
+                quiet_place(place, cpl_ir::walk::root(place)) && !self.yields_into(place)
+            }
             _ => quiet_node(e),
         };
         let mut children = ok;
