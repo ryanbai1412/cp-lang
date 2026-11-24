@@ -6,7 +6,7 @@
 //! `first_ge`/`first_gt`/`last_le`/`last_lt`; a search inside a range
 //! structure is its `right_while`/`left_while`.
 //!
-//! start: `ternary_max`, `parallel_bsearch`, `bsearch`, `peak`, `dinkelbach`
+//! start: `ternary_max`, `parallel_bsearch`, `peak`, `dinkelbach`
 //! example: `ternary_max(0..6, i => -(i - 3) * (i - 3)) == Some(3)`
 
 use std.seq.{Seq}
