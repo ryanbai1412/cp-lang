@@ -216,7 +216,7 @@ pub struct IntervalMap<D, T>:
     pub fn first_where(self, from: Cut<D>, ok: T -> Bool) -> ?D:
         var pos = from.ord
         while pos < D.count:
-            let (sl, seg) = segs.last_le(pos)!
+            let (_, seg) = segs.last_le(pos)!
             if ok(seg.val): return Some(D.nth(pos))
             pos = seg.hi
         None

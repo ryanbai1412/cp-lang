@@ -1,5 +1,6 @@
 //! A dense set of positions of a domain, 64 per word.
 use std.seq.{take_all}
+use std.math.{bit}
 
 /// One bit per position of `D`, in `ceil(K / 64)` words.
 /// `Bitset<D>` is an explicit type you ask for; `[D]Bool` stays one byte
@@ -82,7 +83,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>(); let x = b.add(D(2)); let y = b.add(D(2)); x and not y and b.len == 1`
     pub fn add(mut self, i: D) -> Bool:
         if self.contains(i): return false
-        w[i.ord / 64] |= bit(i.ord % 64)
+        w[i.ord / 64] |= word_bit(i.ord % 64)
         n += 1
         true
 
@@ -93,7 +94,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.single(D(2)); let x = b.remove(D(2)); let y = b.remove(D(2)); x and not y and b.is_empty`
     pub fn remove(mut self, i: D) -> Bool:
         if not self.contains(i): return false
-        w[i.ord / 64] &= ~bit(i.ord % 64)
+        w[i.ord / 64] &= ~word_bit(i.ord % 64)
         n -= 1
         true
 
@@ -104,7 +105,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.single(D(2)); b.toggle(D(2)); b.toggle(D(5)); b.each().collect() == [D(5)]`
     pub fn toggle(mut self, i: D):
         n += if self.contains(i): -1 else: 1
-        w[i.ord / 64] ^= bit(i.ord % 64)
+        w[i.ord / 64] ^= word_bit(i.ord % 64)
 
     /// A copy of `self` with `i` added; `self` is unchanged.
     ///
@@ -209,7 +210,7 @@ pub struct Bitset<D>:
                 let b = ctz(x)
                 let v = D.nth(64 * k + b)
                 if pred(v): return v
-                x &= ~bit(b)
+                x &= ~word_bit(b)
         None
 
     /// The largest position in the set satisfying `pred`, or `None`. Members are
@@ -381,7 +382,7 @@ pub struct Bitset<D>:
             while x != 0:
                 let b = ctz(x)
                 yield D.nth(64 * k + b)
-                x &= ~bit(b)
+                x &= ~word_bit(b)
 
     /// The first position in the set at or after `i`, or `None`.
     ///
@@ -546,7 +547,7 @@ pub struct Bitset<D>:
             while x != U64(0):
                 let b = msb(x)
                 yield D.nth(64 * k + b)
-                x &= ~bit(b)
+                x &= ~word_bit(b)
 
     fn recount(mut self):
         n = 0
@@ -650,7 +651,7 @@ pub struct DynBitset:
     /// example: `var d = DynBitset(10); let x = d.add(2); let y = d.add(2); x and not y`
     pub fn add(mut self, i: Int) -> Bool:
         if self.contains(i): return false
-        _w[i / 64] |= bit(i % 64)
+        _w[i / 64] |= word_bit(i % 64)
         _n += 1
         true
 
@@ -661,7 +662,7 @@ pub struct DynBitset:
     /// example: `var d = DynBitset(10); d.add(2); let x = d.remove(2); let y = d.remove(2); x and not y and d.is_empty`
     pub fn remove(mut self, i: Int) -> Bool:
         if not self.contains(i): return false
-        _w[i / 64] &= ~bit(i % 64)
+        _w[i / 64] &= ~word_bit(i % 64)
         _n -= 1
         true
 
@@ -672,7 +673,7 @@ pub struct DynBitset:
     /// example: `var d = DynBitset(10); d.toggle(6); d.toggle(6); d.toggle(7); d.each().collect() == [7]`
     pub fn toggle(mut self, i: Int):
         _n += if self.contains(i): -1 else: 1
-        _w[i / 64] ^= bit(i % 64)
+        _w[i / 64] ^= word_bit(i % 64)
 
     /// Clear all bits; the capacity is unchanged.
     ///
@@ -913,7 +914,7 @@ pub struct DynBitset:
             while x != U64(0):
                 let b = ctz(x)
                 yield 64 * k + b
-                x &= ~bit(b)
+                x &= ~word_bit(b)
 
     /// The set bit indices in descending order.
     ///
@@ -928,7 +929,7 @@ pub struct DynBitset:
             while x != U64(0):
                 let b = msb(x)
                 yield 64 * k + b
-                x &= ~bit(b)
+                x &= ~word_bit(b)
 
     /// All subset sums in `0..cap` reachable from `weights`: bit `s` is set exactly when some
     /// sub-multiset of `weights` sums to `s`.
@@ -1109,7 +1110,7 @@ pub struct XorTrie:
         var out = 0
         for i in (0.._bits).rev:
             let zb = (z >> i) & 1
-            if (limit >> i) & 1 == 1:
+            if limit.bit(i):
                 let same = self.child(node, zb)
                 if same >= 0: out += _cnt[same]
                 node = self.child(node, 1 - zb)
@@ -1344,7 +1345,7 @@ impl Show for Bitset<D>:
             out += "{v}"
         out
 /// The word with only bit `k` set.
-fn bit(k: Int) -> U64 = U64(1) << k
+fn word_bit(k: Int) -> U64 = U64(1) << k
 
 fn span(k: Int, lo: Int, hi: Int) -> U64 =
     low(min(hi - 64 * k, 64)) & ~low(max(lo - 64 * k, 0))

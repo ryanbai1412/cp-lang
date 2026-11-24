@@ -749,7 +749,7 @@ pub struct LazyTreap<T, F>(
         let i = u ?? return
         unchecked:
             let n = nodes[i]
-            let (a, b) = if n.rev: (n.r, n.l) else: (n.l, n.r)
+            let a = if n.rev: n.r else: n.l
             let ls = self.sz_of(a)
             var v = n.val
             var t = n.tag

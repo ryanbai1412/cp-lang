@@ -10,6 +10,8 @@
 /// example: `gcd(-4, 6) == 2`
 /// example: `gcd(0, -5) == 5`
 /// example: `gcd(0, 0) == 0`
+use std.range.{last_true}
+
 pub fn gcd(a: Int, b: Int) -> Int:
     var (x, y) = (abs(a), abs(b))
     while y != 0: (x, y) = (y, x % y)
@@ -1672,13 +1674,7 @@ fn big_divmod_mag(a: List<Int>, b: List<Int>) -> (List<Int>, List<Int>):
         let shifted = [a[i]] + copy(r)
         r = shifted
         while not r.is_empty and r.last! == 0: r.pop()
-        var (lo, hi) = (0, BIG_BASE - 1)
-        while lo < hi:
-            let guess = (lo + hi + 1) / 2
-            if big_cmp_mag(big_mul_mag(b, [guess]), r) <= 0:
-                lo = guess
-            else:
-                hi = guess - 1
+        let lo = (1..=BIG_BASE - 1).last_true(guess => big_cmp_mag(big_mul_mag(b, [guess]), r) <= 0) ?? 0
         if lo > 0:
             r = big_sub_mag(r, big_mul_mag(b, [lo]))
             while not r.is_empty and r.last! == 0: r.pop()

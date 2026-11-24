@@ -1603,8 +1603,7 @@ pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T:
 /// traps: never
 /// example: `(1..4).map(x => x * x).collect() == [1, 4, 9]`
 pub fn collect<S: Seq, T>(self: S) -> List<T>:
-    var out: List<T> = []
-    for x in self: out.push(x)
+    let out: List<T> = [x for x in self]
     out
 
 /// `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items`

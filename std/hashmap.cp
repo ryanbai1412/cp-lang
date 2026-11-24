@@ -4,6 +4,7 @@
 //! linear probing and power-of-two capacity, avoiding per-node heap allocations when
 //! built-in `HashMap<Int, V>` overhead matters.
 use std.math.{splitmix64}
+use std.algebra.{desc}
 
 // Slot states: 0 = empty, 1 = occupied; `remove` uses backward-shift deletion (no tombstones).
 /// Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
@@ -425,7 +426,7 @@ pub struct Counter<K, V: Add = Int>:
     pub fn most_common(self, k: Int) -> List<(K, V)>:
         var es: List<(K, V)> = [(k, v) for (k, v) in m.items]
         es = es.sorted(by: e => e.0)
-        es = es.sorted(by: e => -e.1)
+        es = es.sorted(by: e => desc(e.1))
         let out: List<(K, V)> = [es[i] for i in 0..min(k, es.len)]
         out
 

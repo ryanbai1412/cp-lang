@@ -571,7 +571,7 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
         on[s] = true
         call.push(s)
         while call.len > 0:
-            let u = call[call.len - 1]
+            let u = call.last!
             if ptr[u] < adj[u].len:
                 let v = adj[u][ptr[u]]
                 ptr[u] += 1
@@ -587,12 +587,11 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
             else:
                 call.pop()
                 if call.len > 0:
-                    let p = call[call.len - 1]
+                    let p = call.last!
                     low[p] min= low[u]
                 if low[u] == idx[u]:
                     while true:
-                        let w = st[st.len - 1]
-                        st.pop()
+                        let w = st.pop()!
                         on[w] = false
                         done[w] = k
                         if w == u: break
@@ -812,7 +811,7 @@ pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
                 if is_root:
                     if ch >= 2: is_cut[u] = true
                 else:
-                    let p = stk_u[stk_u.len - 1]
+                    let p = stk_u.last!
                     low[p] min= low[u]
                     if low[u] >= tin[p] and stk_u.len > 1:
                         is_cut[p] = true
@@ -1141,7 +1140,7 @@ pub struct Paths<V, W: Add, A>:
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; bfs(g, from: [V(0)]).iter().collect() == [(v: 0, d: 0), (v: 1, d: 1), (v: 2, d: 2)]`
     pub fn iter(self) -> yields (v: V, d: W):
         for v in order:
-            yield (v: v, d: dist[v]!)
+            yield (v:, d: dist[v]!)
 
     /// The arcs on some shortest path: for each reached `u`, the arcs `a` of `g.out(u)` with
     /// `p[a.to] == p[u] + w(a)`, where `w(a)` is `a.w` for `Weighted` arcs and `1` otherwise.
@@ -1502,7 +1501,7 @@ pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> B
 /// example: `domain V = 0..2; var d: [V, V]?Int = None; d[0, 1] = Some(2); let c = d.closure()!; c[0, 1] == Some(2) and c[0, 0] == Some(0) and c[1, 0] == None`
 pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W:
     var d = self.clone()
-    if floyd_warshall(mut d, over: over): Some(d) else: None
+    if floyd_warshall(mut d, over:): Some(d) else: None
 
 /// One directed cycle, as its vertices in walking order (each is followed by the next, and
 /// the last by the first), or `None` if the graph is acyclic.
@@ -1526,7 +1525,7 @@ pub fn find_cycle<V>(g: Next<V>) -> ?List<V>:
         state[root] = 1
         path.push((root, 0))
         while path.len > 0:
-            let (u, i) = path[path.len - 1]
+            let (u, i) = path.last!
             if i < out[u].len:
                 path[path.len - 1] = (u, i + 1)
                 let v = out[u][i]
@@ -1583,7 +1582,7 @@ pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
                 stk_i.pop()
                 stk_nbrs.pop()
                 if stk_u.len > 0:
-                    let p = stk_u[stk_u.len - 1]
+                    let p = stk_u.last!
                     low[p] min= low[u]
                     if low[u] > tin[p]:
                         if let Some(eid) = pe:
@@ -1916,7 +1915,7 @@ fn find_cycle_exists_exactly_when_topo_fails():
         assert (cyc == None) == (topo<V>(v => out[v]) != None)
         if let c = cyc:
             for i in 0..c.len: assert out[c[i]].contains(c[(i + 1) % c.len])
-            assert sorted(c).len == c.len
+            assert c.sorted().len == c.len
 
 @test
 fn bridges_are_the_edges_whose_removal_disconnects():
@@ -2099,7 +2098,7 @@ pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
         yield s
         path.push((s, 0))
         while path.len > 0:
-            let (u, i) = path[path.len - 1]
+            let (u, i) = path.last!
             if i < out[u].len:
                 path[path.len - 1] = (u, i + 1)
                 let v = out[u][i]
@@ -2311,7 +2310,7 @@ pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int):
     let n = V.count
     if n == 0: return None
     var dp: List<[V]?Int> = []
-    var init: [V]?Int = Some(0)
+    let init: [V]?Int = Some(0)
     dp.push(init)
     for step in 1..=n:
         var nxt: [V]?Int = None
@@ -2407,8 +2406,7 @@ pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
     for v in V:
         if indeg[v] == 0: ready.push(v)
     var order: List<V> = []
-    while not ready.is_empty:
-        let u = ready.pop()!
+    while let u = ready.pop():
         order.push(u)
         for a in g.out(u):
             indeg[a.to] -= 1
@@ -2451,7 +2449,7 @@ pub fn count_paths<T: Add, V>(g: Next<V>, from: Seq<V>) -> ?[V]T:
     var dp: [V]T = T.zero
     for s in from: dp[s] = T.one
     for u in ord:
-        for a in g.out(u): dp[a.to] = dp[a.to] + dp[u]
+        for a in g.out(u): dp[a.to] += dp[u]
     Some(dp)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
@@ -2596,7 +2594,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                     dfs_u.pop()
                     dfs_i.pop()
                     if dfs_u.len > 0:
-                        let p = dfs_u[dfs_u.len - 1]
+                        let p = dfs_u.last!
                         low[p] min= low[u]
         var left_es = List<E>()
         var right_es = List<E>()
@@ -2675,7 +2673,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                     dfs_u.pop()
                     dfs_i.pop()
                     if dfs_u.len > 0:
-                        let p = dfs_u[dfs_u.len - 1]
+                        let p = dfs_u.last!
                         low[p] min= low[u]
         var active = List<E>()
         for e in all_es:
@@ -2743,13 +2741,12 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
                 stk_i.pop()
                 stk_p.pop()
                 if stk_u.len > 0:
-                    let p = stk_u[stk_u.len - 1]
+                    let p = stk_u.last!
                     low[p] min= low[u]
                     if low[u] >= tin[p]:
                         if p != root: is_cut[p] = true
                         var blk = List<V>()
-                        while vstk.len > 0:
-                            let w = vstk.pop()!
+                        while let w = vstk.pop():
                             blk.push(w)
                             if w == u: break
                         blk.push(p)
@@ -2761,8 +2758,8 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
     for bi in B:
         for v in raw_blocks[bi.ord]:
             if is_cut[v]:
-                links.push((b: bi, v: v))
-    (B:, links: links)
+                links.push((b: bi, v:))
+    (B:, links:)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The biconnected block of every edge: edges, not vertices, are partitioned, so a cut vertex lies
@@ -2826,12 +2823,11 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
                 stk_pe.pop()
                 stk_i.pop()
                 if stk_v.len > 0:
-                    let p = stk_v[stk_v.len - 1]
+                    let p = stk_v.last!
                     low[p] min= low[u]
                     if low[u] >= tin[p]:
                         let pe_val = pe!
-                        while estk.len > 0:
-                            let x = estk.pop()!
+                        while let x = estk.pop():
                             raw[x] = nblocks
                             if x == pe_val: break
                         nblocks += 1
@@ -3061,7 +3057,7 @@ fn clique_rec<V: Ord>(
 ):
     if p.is_empty and x.is_empty:
         var c = r.collect()
-        sort(mut c)
+        c.sort()
         if c.len > best.len or (c.len == best.len and c < best): best = c
         return
     if r.len + p.count < best.len: return
@@ -3109,7 +3105,6 @@ pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int:
     var nb = List.filled(n, 0)
     for v in V:
         for u in adj[v].each(): nb[v.ord] |= 1 << u.ord
-    let full = (1 << n) - 1
     var ind = List.filled(1 << n, 0)
     ind[0] = 1
     for s in 1..(1 << n):
@@ -3123,7 +3118,7 @@ pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int:
                 var t = 1
                 let b = ind[s] % p
                 for _ in 0..k: t = t * b % p
-                if (n - popcount(s)) % 2 == 1: sum = (sum - t + p) % p else: sum = (sum + t) % p
+                if (n - popcount(s)) % 2 == 1: sum = (sum - t) % p else: sum = (sum + t) % p
             if sum != 0: return k
     n
 
@@ -3147,7 +3142,7 @@ pub fn de_bruijn(k: Int, n: Int) -> List<Int>:
         if n % m == 0:
             for x in w: out.push(x)
         while w.len < n: w.push(w[w.len - m])
-        while w.len > 0 and w[w.len - 1] == k - 1: w.pop()
+        while w.len > 0 and w.last! == k - 1: w.pop()
     out
 
 /// A minimum spanning forest by Kruskal, as its total weight and the chosen edges. Edges
@@ -3236,7 +3231,7 @@ pub fn boruvka<V, C, W>(
 ) -> (total: W, edges: List<(u: V, v: V)>):
     var total = W.zero
     var edges = List<(u: V, v: V)>()
-    if V.count <= 1: return (total: total, edges: edges)
+    if V.count <= 1: return (total:, edges:)
     var dsu = Dsu<V>()
     var num_comps = V.count
     while num_comps > 1:
@@ -3260,7 +3255,7 @@ pub fn boruvka<V, C, W>(
                     num_comps -= 1
                     merged = true
         if not merged: break
-    (total: total, edges: edges)
+    (total:, edges:)
 
 /// A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with a skew heap):
 /// `parent[v]` is the edge entering `v`, `None` at `root`. `None` if some vertex is
@@ -3380,7 +3375,6 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
     while r > 0:
         r -= 1
         let prev_map = hist_prev_idx[r]
-        let id = hist_id[r]
         let v_of = hist_v_of[r]
         let in_idx = hist_in_idx[r]
         var covered = [false for _ in 0..hist_n[r]]
@@ -3398,7 +3392,7 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
     for ci in chosen:
         let e = orig0[ci]
         parent[edges[e].v] = Some(e)
-    Some((total: total, parent: parent))
+    Some((total:, parent:))
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// A spanning forest of an undirected graph as chosen edges: a BFS from each unvisited
@@ -3552,7 +3546,7 @@ pub struct Functional<V>:
         if _cyc[x] != _cyc[y]: return None
         if _depth[y] == 0:
             let len = _cycles[_cyc[y]].len
-            return Some(_depth[x] + (_pos[y] - _pos[_root[x]] + len) % len)
+            return Some(_depth[x] + (_pos[y] - _pos[_root[x]]) % len)
         if _depth[x] < _depth[y]: return None
         let d = _depth[x] - _depth[y]
         if self.lift(x, d) == y: Some(d) else: None
@@ -3775,8 +3769,7 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).deg(0) == 1`
     pub fn deg(self, u: V) -> Int:
-        var k = 0
-        for _ in self.out(u): k += 1
+        let k = sum(1 for _ in self.out(u))
         k
 
     /// The kept arcs reversed, built as a `Graph` (record arcs as `(..a, to: u)`, a plain
