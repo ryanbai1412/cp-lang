@@ -284,7 +284,10 @@ impl<'a> Lowerer<'a> {
         }
         if let ast::ExprKind::Name(type_name) = &base.kind {
             if self.lookup(type_name).is_none() {
-                let ends = self.gen_env.get(&mono::range_ends_marker(type_name)).cloned();
+                let ends = self
+                    .gen_env
+                    .get(&mono::range_ends_marker(type_name))
+                    .cloned();
                 if ends.is_none()
                     && (type_name == "Int"
                         || matches!(self.gen_env.get(type_name), Some(GenArg::Ty(Ty::Int))))

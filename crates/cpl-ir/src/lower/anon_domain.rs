@@ -541,7 +541,9 @@ fn domain_generics(decl: &ast::FnDecl, gen_names: &[String]) -> Vec<String> {
 /// `domains` is that range; any other `Int` keeps its type and records the range's ends.
 fn bind_scalar_range(name: &str, info: &RangeInfo, domains: &[String], env: &mut GenEnv) {
     let RangeInfo::Scalar(b) = info else { return };
-    let (Some(lo), Some(hi)) = (b.lo_const, b.hi_const) else { return };
+    let (Some(lo), Some(hi)) = (b.lo_const, b.hi_const) else {
+        return;
+    };
     let range = GenArg::Range(Some(lo), Some(hi));
     match env.get(name) {
         None | Some(GenArg::Ty(Ty::Int)) if domains.iter().any(|d| d == name) => {

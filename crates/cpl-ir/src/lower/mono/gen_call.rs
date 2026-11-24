@@ -744,8 +744,14 @@ impl<'a> Lowerer<'a> {
                 Some((key, ends)).filter(|_| inferred.get(g) == Some(&GenArg::Ty(Ty::Int)))
             })
             .collect();
-        let fn_id =
-            self.instantiate_fn(gfid, final_args, &trait_params, &op_params, rev, &range_ends);
+        let fn_id = self.instantiate_fn(
+            gfid,
+            final_args,
+            &trait_params,
+            &op_params,
+            rev,
+            &range_ends,
+        );
         if let Some(ty) = hashed {
             self.sigs[fn_id].params[0].ty = ty;
         }
