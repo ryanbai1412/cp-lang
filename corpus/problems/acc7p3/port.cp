@@ -4,27 +4,15 @@
 //   connects everyone.
 // Solution: sorted by value, a link between any two users can be replaced by the chain of
 //   neighbouring pairs between them at the same total cost, so only the n - 1 neighbouring pairs
-//   are candidates. Unite the existing friendships in a DSU, then Kruskal over those pairs by
-//   cost. O(n log n + m).
+//   are candidates. Kruskal over the friendships at cost 0 and those pairs: O((n + m) log(n + m)).
 // original: corpus/submissions/3540475.cpp
 
-let n: Int = read()
-let m: Int = read()
-domain C = 0..n
-let a: [C]Int = read()
-var net = Dsu<C>.new()
-for _ in 0..m:
-    let u: Int = read()
-    let v: Int = read()
-    net.unite(C(u - 1), C(v - 1))
+let (n, m): (1..=1e5, 0..=1e5) = read()
+domain U = 1..=n
+let f: [U]0..=1e9 = read()
+let friends: [m](u: U, v: U) = read()
 
-let by_value = sorted(C, by: c => a[c])
-var gaps: List<(cost: Int, u: C, v: C)> = []
-for i in 1..n:
-    let (u, v) = (by_value[i - 1], by_value[i])
-    gaps.push((cost: a[v] - a[u], u:, v:))
-
-var total = 0
-for g in gaps.sorted(by: g => g.cost):
-    if net.unite(g.u, g.v): total += g.cost
-print(total)
+// existing friendships are free links; after them, only neighbours by value are worth linking
+let by_value = U.sort(by: u => f[u])
+let links = [(u:, v:, w: 0) for (u, v) in friends] + [(u:, v:, w: f[v] - f[u]) for (u, v) in by_value.adjacent]
+print(kruskal(links).total)

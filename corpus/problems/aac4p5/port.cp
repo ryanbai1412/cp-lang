@@ -20,25 +20,21 @@ fn components() -> List<List<V>>:
     kept.push(groups.drop(x - 1).flatten().collect())
     kept
 
-// The first m edges of: the cycles (each group of two or more must be strongly connected),
-// then the other ordered pairs inside a group, then pairs from an earlier group to a later one.
-fn edges(comps: List<List<V>>) -> List<(V, V)>:
-    var out: List<(V, V)> = []
+// Cycles first (each group of two or more must be strongly connected), then the other
+// ordered pairs inside a group, then pairs from an earlier group to a later one.
+fn edges(comps: List<List<V>>) -> yields (V, V):
     for c in comps if c.len > 1:
         for (i, v) in c.items:
-            out.push((v, c[(i + 1) % c.len]))
+            yield (v, c[(i + 1) % c.len])
     for c in comps:
         for (i, u) in c.items:
             for (j, v) in c.items if j != i and j != (i + 1) % c.len:
-                if out.len == m: return out
-                out.push((u, v))
+                yield (u, v)
     for (i, a) in comps.items:
         for b in comps.drop(i + 1):
             for u in a:
                 for v in b:
-                    if out.len == m: return out
-                    out.push((u, v))
-    out
+                    yield (u, v)
 
 if groups.len < x:
     print(-1)
@@ -47,7 +43,7 @@ else:
     let forced = sum(c.len for c in comps if c.len > 1)
     let room = sum(c.len * (c.len - 1) for c in comps) + (n * n - sum(c.len * c.len for c in comps)) / 2
     if forced <= m <= room:
-        for (u, v) in edges(comps):
+        for (u, v) in edges(comps).take(m):
             print(u, v)
     else:
         print(-1)

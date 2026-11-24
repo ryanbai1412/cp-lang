@@ -2,8 +2,11 @@
  "problem": "abc481f",
  "source": "abc",
  "submissions": [],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/abc481f/orig.cpp"
+  ],
   "port": [
    "corpus/problems/abc481f/port.cp"
   ]

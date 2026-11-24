@@ -2,10 +2,13 @@
  "problem": "abc481g",
  "source": "abc",
  "submissions": [],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
   "dream": [
    "corpus/problems/abc481g/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/abc481g/orig.cpp"
   ],
   "port": [
    "corpus/problems/abc481g/port.cp"
@@ -15,5 +18,10 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "",
+ "dream_stress": {
+  "ok": true,
+  "cases": 3,
+  "sha": "500b473748a4c59b08b274ef7dcbd5faf0516360"
+ }
 }
