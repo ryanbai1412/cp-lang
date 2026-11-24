@@ -49,10 +49,10 @@ impl<'a> Lowerer<'a> {
     }
 
     fn close_do(&mut self, out: Vec<Stmt>, span: Span) -> Expr {
-        let frame = self.cx.dos.pop().expect("pushed by open_do");
+        let ty = self.cx.dos.pop().and_then(|frame| frame.ty);
         self.mk(
             ExprKind::Do(Block { stmts: out }),
-            frame.ty.unwrap_or(Ty::Error),
+            ty.unwrap_or(Ty::Error),
             span,
         )
     }
