@@ -93,6 +93,11 @@ fn a_dividend_that_may_be_negative_gets_the_branchless_fix() {
         cpp.contains("inline ll modp(ll a, ll b)") && cpp.contains("return r + ((r >> 63) & b);"),
         "{cpp}"
     );
+    // A dividend that is non-negative at run time skips the signed remainder and its fix-up.
+    assert!(
+        cpp.contains("if (__builtin_expect(a >= 0, 1)) return ll(uint64_t(a) % uint64_t(b));"),
+        "{cpp}"
+    );
     // The helpers it does not call are not in the file.
     assert!(!cpp.contains("inline ll emod"), "{cpp}");
 }
@@ -341,4 +346,19 @@ fn bounded_operands_add_without_an_overflow_check_whatever_their_sign() {
         .find(|s| s.contains("_add(const"))
         .expect("Mod::add emitted");
     assert!(!add.contains("cpl::iadd"), "{add}");
+}
+
+#[test]
+fn a_residue_sum_of_products_reduces_once() {
+    let body = body(concat!(
+        "use std.mod.{Mod}\ntype Z = Mod<1_000_000_007>\nlet n: 1..=100 = read()\n",
+        "let a: List<Z> = [Z(read<Int>()) for _ in 0..n]\nvar s = Z(0)\n",
+        "for x in a:\n    for y in a: s = s + x * y\nprint(s)\n",
+    ));
+    let line = body
+        .lines()
+        .find(|l| l.contains("s = ") && !l.contains("(0)"))
+        .expect("the sum");
+    assert!(!line.contains("_add(") && !line.contains("_mul("), "{line}");
+    assert_eq!(line.matches("% 1000000007").count(), 1, "{line}");
 }

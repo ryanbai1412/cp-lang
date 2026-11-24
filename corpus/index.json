@@ -1,20 +1,19 @@
 {
- "problems": 1111,
- "with_cpp_ac": 1111,
+ "problems": 1108,
+ "with_cpp_ac": 1108,
  "dream": {
-  "draft": 127,
+  "draft": 126,
   "gold": 0,
-  "none": 984,
+  "none": 982,
   "reviewed": 0
  },
  "spec": {
   "draft": 100,
   "gold": 0,
-  "none": 1011,
+  "none": 1008,
   "reviewed": 0
  },
  "by_source": {
-  "996warmup8p3": 1,
   "aac": 13,
   "abc": 6,
   "acc": 5,
@@ -27,7 +26,7 @@
   "bsspc": 5,
   "btoi": 24,
   "canada": 2,
-  "ccc": 47,
+  "ccc": 46,
   "cco": 65,
   "ceoi": 12,
   "cf": 287,
@@ -41,7 +40,7 @@
   "dmpg": 4,
   "dwite": 2,
   "egoi": 16,
-  "etsr": 6,
+  "etsr": 5,
   "factorial": 2,
   "fastbit": 1,
   "hci": 1,

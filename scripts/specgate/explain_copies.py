@@ -23,7 +23,7 @@ from specgate import Problem
 
 HELP = "`cpl explain` lists exactly the deep copies the judge C++ makes (--max mismatched cases allowed, shrink-only)"
 
-COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.\w+)*)\)(?!>)|cpl::to_list\(|cpl::to_str\(|cpl::sorted\([A-Za-z_]\w*(?:\.\w+)*\)")
+COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.\w+)*)\)(?!>)|cpl::to_list\(|cpl::to_str\(|cpl::sorted(?:<[^<>()]*>)?\([A-Za-z_]\w*(?:\.\w+)*\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.[A-Za-z_]\w*)*")
 PARAM = re.compile(r"(?:std::vector<|std::map<|std::set<|std::unordered_map<|std::deque<|std::string)[^();{}=]*?[&\s](\w+)\s*[,)]")

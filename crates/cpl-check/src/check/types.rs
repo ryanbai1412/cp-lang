@@ -68,6 +68,13 @@ impl<'a> Checker<'a> {
 
     fn resolve_written(&mut self, ty: &ast::Type) -> Ty {
         match &ty.kind {
+            TypeKind::ItemOf(item) => match item.fn_item_type() {
+                Some(name) => Ty::Named {
+                    name,
+                    args: Vec::new(),
+                },
+                None => Ty::Unknown,
+            },
             TypeKind::Named { name, args } => {
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
                 self.named_type(&name.text, name.span, args)
@@ -1628,6 +1635,7 @@ impl<'a> Checker<'a> {
             "Next" | "WeightedNext" | "EdgedNext" => matches!(ty, Ty::Array { .. } | Ty::Fn { .. }),
             _ => match ty {
                 Ty::Record(fields) => self.meets_by_shape(fields, trait_name),
+                Ty::Tuple(items) => self.meets_by_shape(&positional(items), trait_name),
                 _ => false,
             },
         }
@@ -1648,17 +1656,22 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// R08.1.7: a record meets a trait when a field meets each member the trait leaves without a
-    /// body, a field `w: W` or a bodiless `@get fn w(self) -> W` alike, with its type.
+    /// R08.1.7: a record or tuple meets a trait when a field meets each member the trait and its
+    /// supertraits leave without a body, a field `w: W` or a bodiless `@get fn w(self) -> W`
+    /// alike, with its type.
     pub(crate) fn meets_by_shape(&mut self, fields: &[(String, Ty)], trait_name: &str) -> bool {
         let Some(Def::Trait {
             methods,
             fields: wanted,
+            supers,
             ..
         }) = self.global(trait_name).as_deref().cloned()
         else {
             return true;
         };
+        if !supers.iter().all(|s| self.meets_by_shape(fields, s)) {
+            return false;
+        }
         let getters = methods
             .into_iter()
             .filter(|m| m.required)
@@ -1948,4 +1961,13 @@ fn struct_generic_bounds(
         }
     }
     out
+}
+
+/// A tuple's parts as the fields R08.1.7 matches by shape: `.0`, `.1`, ...
+pub(crate) fn positional(items: &[Ty]) -> Vec<(String, Ty)> {
+    items
+        .iter()
+        .enumerate()
+        .map(|(i, t)| (i.to_string(), t.clone()))
+        .collect()
 }

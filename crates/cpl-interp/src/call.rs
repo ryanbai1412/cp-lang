@@ -55,14 +55,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             other => other,
         };
         self.fed_loops.last_mut().expect("still the innermost").left = Some(left);
-        Err(Box::new(Trap {
-            message: String::new(),
-            code: cpl_diag::codes::RUNTIME,
+        Err(Box::new(Trap::said(
             span,
-            call_stack: Vec::new(),
-            case: None,
-            notes: Vec::new(),
-        }))
+            cpl_diag::msgs::interp::WRITTEN.at(&[&""]),
+        )))
     }
 
     pub(super) fn call(&mut self, id: FnId, args: &'p [Arg], span: Span) -> Res<Value> {
@@ -205,10 +201,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             self.fell_back(|| format!("fn:{}({why})", f.name), false);
             self.block(&f.body)
         };
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(dom_mark);
         self.in_closure = in_closure;
         if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
             tracer.leave_fn(entered);

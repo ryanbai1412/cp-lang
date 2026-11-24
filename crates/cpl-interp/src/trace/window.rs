@@ -180,7 +180,7 @@ fn tail_from(
     stop: &Stop,
 ) -> Option<Recording> {
     let stopped = |observed: Observed| match &observed.trap {
-        Some(trap) if is_stop(&trap.message) => None,
+        Some(trap) if is_stop(trap.message()) => None,
         _ => observed.recording,
     };
     let mut back = 1;
@@ -199,7 +199,7 @@ fn tail_from(
         };
         let want = Checkpoints::resuming(from);
         let resumed = checkpointed(program, io, &mut ignored, limits, trace, want).observed;
-        let stopped_early = resumed.trap.as_ref().is_some_and(|t| is_stop(&t.message));
+        let stopped_early = resumed.trap.as_ref().is_some_and(|t| is_stop(t.message()));
         let resumed = stopped(resumed);
         if stopped_early {
             return None;
@@ -229,11 +229,14 @@ pub fn sent(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> Vec<u
         let mut output = output
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let io = io
+        let taken = io
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take()
-            .expect("only the thread that starts takes the input");
+            .take();
+        // Only the thread that starts takes the input.
+        let Some(io) = taken else {
+            return Observed::default();
+        };
         let want = Checkpoints::taking(u64::MAX, 1);
         let run = checkpointed(program, io, &mut **output, limits, None, want);
         *sent.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = run.sent;
@@ -259,11 +262,14 @@ pub fn interactive(
         let mut output = output
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let io = io
+        let taken = io
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take()
-            .expect("only the thread that starts takes the input");
+            .take();
+        // Only the thread that starts takes the input.
+        let Some(io) = taken else {
+            return Observed::default();
+        };
         let tail = config.last_steps.filter(|_| config.from_step.is_none());
         let (every, keep) = match tail {
             Some(_) => (CHECKPOINT_EVERY, CHECKPOINTS_KEPT),

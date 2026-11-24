@@ -15,8 +15,10 @@ pub struct LibraryLint {
     pub name: String,
     /// The decorated fn.
     pub fn_name: String,
-    /// The fn's parameter names.
+    /// The fn's parameter names, then the names `holes:` adds.
     pub holes: Vec<String>,
+    /// How many of `holes` are the fn's parameters; `to` may drop the rest.
+    pub params: usize,
     pub from: String,
     pub to: String,
     /// The decorator, in file positions.
@@ -86,7 +88,15 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             );
             continue;
         };
-        let holes: Vec<String> = f.params.iter().map(|p| p.name.text.clone()).collect();
+        let mut holes: Vec<String> = f.params.iter().map(|p| p.name.text.clone()).collect();
+        let params = holes.len();
+        holes.extend(
+            text("holes")
+                .iter()
+                .flat_map(|h| h.split(','))
+                .map(|h| h.trim().to_string())
+                .filter(|h| !h.is_empty()),
+        );
         let (Some((from_toks, _)), Some(to_toks)) = (run(&from), code(&to)) else {
             let msg = if run(&from).is_none() {
                 &msgs::syntax::LINT_FROM_NOT_CODE
@@ -122,6 +132,15 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             );
             continue;
         }
+        if let Some(h) = holes[params..].iter().find(|h| !in_from.contains(h)) {
+            error(
+                &msgs::syntax::LINT_HOLE_UNUSED,
+                &[&name, &h],
+                "list in `holes:` only names `from` uses",
+                &mut label,
+            );
+            continue;
+        }
         if let Some(p) = f.params.iter().find(|p| {
             let h = &p.name.text;
             in_to.contains(h) && !in_from.contains(h)
@@ -137,7 +156,8 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             continue;
         }
         let calls = to_toks.windows(2).any(|w| {
-            w[0].0 == TokenKind::Ident && w[0].1 == f.name.text && w[1].0 == TokenKind::LParen
+            (w[0].0 == TokenKind::Ident && w[0].1 == f.name.text && w[1].0 == TokenKind::LParen)
+                || (w[0].0 == TokenKind::Dot && w[1].0 == TokenKind::Ident && w[1].1 == f.name.text)
         });
         if !calls {
             error(
@@ -152,6 +172,7 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             name,
             fn_name: f.name.text.clone(),
             holes,
+            params,
             from,
             to,
             decorator: span,
@@ -237,4 +258,26 @@ pub fn tokens(src: &str) -> Vec<Token> {
             )
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    fn errors(src: &str) -> Vec<String> {
+        let parsed = crate::parse_file(src);
+        (parsed.items.iter())
+            .flat_map(|(off, item)| item.stmts.iter().map(|s| super::declared(s, *off)))
+            .flat_map(|(_, errs)| errs.into_iter().map(|e| e.message))
+            .collect()
+    }
+
+    #[test]
+    fn holes_must_be_used_by_from_and_to_may_name_the_fn_as_a_getter() {
+        let ok = "@lint(walk_by_hand, from: \"xs[n]\", to: \"xs.walk\", holes: \"n\")\npub fn walk(xs: List<Int>) -> Int = 0\n";
+        assert!(errors(ok).is_empty(), "{:?}", errors(ok));
+        let unused = "@lint(walk_by_hand, from: \"xs[0]\", to: \"xs.walk\", holes: \"n\")\npub fn walk(xs: List<Int>) -> Int = 0\n";
+        assert_eq!(
+            errors(unused),
+            ["`holes:` of `@lint(walk_by_hand)` names `n`, which `from` does not use"]
+        );
+    }
 }

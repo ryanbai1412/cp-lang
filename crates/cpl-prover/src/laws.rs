@@ -61,7 +61,8 @@ impl fmt::Display for Law {
 #[derive(Clone, PartialEq, Debug)]
 pub struct Structure {
     pub name: String,
-    pub laws: Vec<Law>,
+    /// The laws as written; [`Structure::check`] parses them.
+    pub laws: Vec<String>,
 }
 
 const ASSOC: &str = "law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))";
@@ -70,18 +71,22 @@ const INVERSE: &str = "law inverse(a: T) = op(a, inv(a)) == id and op(inv(a), a)
 
 impl Structure {
     pub fn new(name: &str, laws: &[&str]) -> Result<Structure, Error> {
-        let laws = laws
-            .iter()
-            .map(|law| Law::parse(law))
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Structure {
-            name: name.to_string(),
-            laws,
-        })
+        for law in laws {
+            Law::parse(law)?;
+        }
+        Ok(Structure::builtin(name, laws))
     }
 
     fn builtin(name: &str, laws: &[&str]) -> Structure {
-        Structure::new(name, laws).expect("the laws of the standard library parse")
+        Structure {
+            name: name.to_string(),
+            laws: laws.iter().map(|law| law.to_string()).collect(),
+        }
+    }
+
+    fn also(mut self, law: &str) -> Structure {
+        self.laws.push(law.to_string());
+        self
     }
 
     /// `Semigroup<T>(op)`: `assoc`.
@@ -122,28 +127,25 @@ impl Structure {
     }
 
     /// Add a law.
-    pub fn with_law(mut self, law: &str) -> Result<Structure, Error> {
-        self.laws.push(Law::parse(law)?);
-        Ok(self)
+    pub fn with_law(self, law: &str) -> Result<Structure, Error> {
+        Law::parse(law)?;
+        Ok(self.also(law))
     }
 
     /// Also require `op(a, b) == op(b, a)`.
     pub fn commutative(self) -> Structure {
-        self.with_law("law commutes(a: T, b: T) = op(a, b) == op(b, a)")
-            .unwrap()
+        self.also("law commutes(a: T, b: T) = op(a, b) == op(b, a)")
     }
 
     /// Also require `op(a, a) == a`, as a sparse table does.
     pub fn idempotent(self) -> Structure {
-        self.with_law("law idempotent(a: T) = op(a, a) == a")
-            .unwrap()
+        self.also("law idempotent(a: T) = op(a, a) == a")
     }
 
     /// Also require that `apply` distributes over `op`, as a lazy segment
     /// tree does: updating a merged node equals merging updated children.
     pub fn distributive(self) -> Structure {
-        self.with_law("law distributes(f: F, a: T, b: T) = apply(f, op(a, b)) == op(apply(f, a), apply(f, b))")
-            .unwrap()
+        self.also("law distributes(f: F, a: T, b: T) = apply(f, op(a, b)) == op(apply(f, a), apply(f, b))")
     }
 
     /// Check every law for the given type parameters and fields.
@@ -169,6 +171,7 @@ impl Structure {
         }
         let mut results = Vec::with_capacity(self.laws.len());
         for law in &self.laws {
+            let law = Law::parse(law)?;
             let mut ctx = base.clone();
             for (param, sort) in &law.params {
                 let sort = sort
@@ -179,7 +182,7 @@ impl Structure {
             let verdict = ctx.prove_term(&law.body)?;
             let broken = broken_equation(&ctx, &law.body, &verdict);
             results.push(LawResult {
-                law: law.clone(),
+                law,
                 verdict,
                 broken,
             });
@@ -203,8 +206,8 @@ impl Structure {
 ///      @law comm(a: Int, b: Int) = add(a, b) == add(b, a)\n\
 ///      @law no_ident(a: Int) = add(a, 1) == a\n",
 /// );
-/// assert!(report.verdict("comm").is_proved());
-/// assert_eq!(report.verdict("no_ident").to_string(), "fails for a = 0");
+/// assert!(report.verdict("comm").unwrap().is_proved());
+/// assert_eq!(report.verdict("no_ident").unwrap().to_string(), "fails for a = 0");
 /// ```
 pub fn check_source(src: &str) -> Report {
     let mut base = Context::new();
@@ -370,12 +373,9 @@ impl Report {
         self.results.iter().find(|result| result.law.name == name)
     }
 
-    /// The verdict on one law; panics if the structure has no such law.
-    pub fn verdict(&self, name: &str) -> &Verdict {
-        &self
-            .law(name)
-            .unwrap_or_else(|| panic!("{} has no law `{name}`", self.structure))
-            .verdict
+    /// The verdict on one law, if the structure has it.
+    pub fn verdict(&self, name: &str) -> Option<&Verdict> {
+        self.law(name).map(|result| &result.verdict)
     }
 }
 

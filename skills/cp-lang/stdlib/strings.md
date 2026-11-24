@@ -211,7 +211,7 @@ Fields: `alpha: Count`, `next: List<Slot>`, `ends: List<Count>`, `pass: List<Cou
 
 \(O(\mathit{total} \cdot \lvert A \rvert)\) build, \(O(1)\) step.
 
-Fields: `alpha: Count`, `goto: List<Slot>`, `fail: List<Count>`, `ends: List<List<Count>>`, `exit: List<Slot>`, `order: List<Count>`, `lens: List<Count>`, `pat_state: List<Count>`.
+Fields: `width: Count`, `column: List<Count>`, `goto: List<Slot>`, `fail: List<Count>`, `first: List<Slot>`, `next: List<Slot>`, `exit: List<Slot>`, `order: List<Count>`, `lens: List<Count>`, `pat_state: List<Count>`.
 
 - `fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>` — \(O(\sum_p \lvert p \rvert \cdot \lvert A \rvert)\); The Aho-Corasick automaton of `patterns`; call it as `AhoCorasick<A>(patterns)`.; traps: when an element of a pattern is not in `A`
 - `@get fn root(self) -> Int` — \(O(1)\); The root state, before any letter is read: always `0`.

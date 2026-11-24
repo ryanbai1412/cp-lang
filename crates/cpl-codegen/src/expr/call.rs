@@ -55,6 +55,7 @@ impl<'p> Emitter<'p> {
         let last_use = std::mem::take(&mut self.last_use_call);
         if let Some(code) = self
             .try_fused_bitset_op(e, id, args)
+            .or_else(|| self.try_lap_fusion(e, id, args))
             .or_else(|| self.try_sink_call(id, args))
         {
             return code;
@@ -95,6 +96,12 @@ impl<'p> Emitter<'p> {
                         && self.borrow_closures.insert(cid)
                     {
                         borrowed.push(cid);
+                    }
+                } else if crate::lend::opt_fn_param_only_called(program, id, slot) {
+                    for cid in crate::lend::optional_closures(value) {
+                        if self.borrow_closures.insert(cid) {
+                            borrowed.push(cid);
+                        }
                     }
                 }
             }

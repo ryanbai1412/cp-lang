@@ -8,6 +8,9 @@
   own domain and each read crosses over by ordinal.
 - **Goal it hurts:** express, types carry the proofs (`Stop(i.ord + 1)` is checked at run time).
 - **Ideal code:** `domain Market = Stop.inner_cuts`, then `room[i.l]`, `room[i.r]`.
+- **Repro:** `domain Stop = 0..4; domain Market = Stop.inner_cuts` under `cpl run` (0.2) is
+  `error[E0203]: a domain Stop has no method inner_cuts`.
+- **Owner domain:** stdlib
 - **Severity:** low.
 
 ## The spare-umbrella stack is hand-kept

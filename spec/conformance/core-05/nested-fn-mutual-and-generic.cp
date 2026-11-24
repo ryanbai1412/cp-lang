@@ -1,6 +1,5 @@
 // expect: ok, output "1"
 // rule: 05.10.6 06.1.7
-// std_functions: 1
 fn f() -> Bool:
     fn even(n: Int) -> Bool = if n == 0: true else: odd(n - 1)
     fn odd(n: Int) -> Bool = if n == 0: false else: even(n - 1)

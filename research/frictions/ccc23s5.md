@@ -37,8 +37,6 @@ for x in keep(0, n, 0, 1): print(x)
 
 ## Measurements
 
-## Measurements
-
 - Tokens: port 263, original 511
 - Max input (`gen.py --max`): port 0.24 s, 7116 KB, original 0.34 s, 7524 KB
 - Emitted C++: 11809 bytes

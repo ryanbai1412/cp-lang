@@ -55,6 +55,9 @@ pub struct Param {
     pub default: String,
     /// After `;`: passed only by name.
     pub named_only: bool,
+    /// The name the body uses when a label is passed instead: `ok` in
+    /// `while ok: K -> Bool`; empty otherwise.
+    pub binding: String,
 }
 
 #[derive(Clone, Debug)]
@@ -176,7 +179,17 @@ impl Outline {
 
     /// The members of the type `name` declared here, its own and its impls'.
     pub fn members_of<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Entry> + 'a {
-        let own = self.find(name).into_iter().flat_map(|e| e.members.iter());
+        self.members_of_entry(self.find(name), name)
+    }
+
+    /// [`Self::members_of`] for one of the types named `name`: `Prefix<T>`
+    /// beside `Prefix<D, T>` has its own `filling`.
+    pub fn members_of_entry<'a>(
+        &'a self,
+        def: Option<&'a Entry>,
+        name: &'a str,
+    ) -> impl Iterator<Item = &'a Entry> + 'a {
+        let own = def.into_iter().flat_map(|e| e.members.iter());
         let added = self
             .impls
             .iter()
@@ -315,6 +328,7 @@ impl Reader<'_> {
                             .as_ref()
                             .map_or(String::new(), |d| squash(self.slice(d.span))),
                         named_only: p.named_only,
+                        binding: (p.label.as_ref()).map_or(String::new(), |_| p.name.text.clone()),
                     })
                     .collect();
                 e

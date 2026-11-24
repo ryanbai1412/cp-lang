@@ -9,6 +9,7 @@ static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() -> ExitCode {
     cpl_cli::install_ice_hook();
+    cpl_cli::one_command_per_process();
     let args: Vec<String> = std::env::args().skip(1).collect();
     cpl_cli::set_crash_context(&args);
     if let Some(code) = cpl_cli::toolchain::launch(&args) {

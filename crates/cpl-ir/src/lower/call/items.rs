@@ -231,7 +231,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let test_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
-        let test = self.expect(test, &test_ty);
+        let test = self.expr_as(test, &test_ty);
         let found_ty = Ty::opt(elem.clone());
         self.do_expr(Some(&found_ty), span, |lw, out| {
             let holds = lw.temp(test_ty);

@@ -169,7 +169,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "main-globals",
         "globals.rs",
-        Unasked,
+        Uses(&["Touch::of_block"]),
         "a_global_a_fn_writes_stays_a_global_and_the_rest_are_main_locals",
     ),
     pass(

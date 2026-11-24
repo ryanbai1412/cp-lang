@@ -1,5 +1,6 @@
 //! Every lint is a record under `spec/lints/<name>/`: `before.cp` fires,
-//! `after.cp` fires nothing, `near_miss.cp` not it, a fix clears it, and the spec lists it.
+//! `after.cp` fires nothing, `near_miss.cp` (a case of its own) not it, a
+//! fix clears it, and the spec lists it.
 
 use super::*;
 
@@ -27,6 +28,12 @@ fn every_lint_record_fires_on_before_only() {
         assert!(
             !codes(lint.near_miss).contains(&code),
             "{}: near_miss.cp fires",
+            lint.name
+        );
+        assert_ne!(
+            lint.near_miss.trim(),
+            lint.fix.trim(),
+            "{}: near_miss.cp repeats after.cp; give it a case the lint must not take",
             lint.name
         );
     }

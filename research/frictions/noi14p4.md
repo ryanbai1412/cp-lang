@@ -1,5 +1,6 @@
 # Friction Report: noi14p4
 
-No friction left: the border depths are `Rooted.from_parents` over the prefix function, as
-`L0567` asked (they used to be hand-stepped `depth[i + 1] = depth[pi[i]] + 1`). The `half`
-pointer is a second KMP match, kept explicit because it falls back on two conditions.
+No friction left. The border depths are stepped by hand over the prefix function,
+`for j in 1..=s.len: depth.push(depth[pi[j - 1]] + 1)` (port line 17); an earlier note said
+they were `Rooted.from_parents`, which the port does not use. The `half` pointer is a second
+KMP match, kept explicit because it falls back on two conditions.

@@ -65,18 +65,15 @@ jobs:
       - name: Workflow lint
         if: matrix.part == 'checks'
         run: just workflow-lint
-      # The cxx and corpus caches are saved once an hour, not once a run:
-      # per-run saves passed GitHub's cache limit and evicted the warm ones.
-      - name: Cache hour
-        id: hour
-        run: echo "hour=$(date -u +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
+      # The cxx and corpus caches are saved every run, so the next run starts
+      # from this one's builds; scripts/ci_cache_prune.py deletes the older ones.
       # scripts/cxx-cache.py keys binaries on source, flags, compiler and
       # system headers; a cold cache costs the conform part about 6 min of g++.
       # Saved after the gate even when it fails, so a cold cache warms once.
       - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/cpl/cxx
-          key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ steps.hour.outputs.hour }}
+          key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}
           restore-keys: |
             cxx-${{ runner.os }}-${{ matrix.part }}-
             cxx-${{ runner.os }}-${{ startsWith(matrix.part, 'conform:diff') && 'conform:diff' || matrix.part }}
@@ -88,7 +85,7 @@ jobs:
         if: startsWith(matrix.part, 'conform:')
         with:
           path: target/corpus-tests
-          key: corpus-tests-${{ steps.hour.outputs.hour }}
+          key: corpus-tests-${{ github.run_id }}
           restore-keys: corpus-tests-
       # The scoreboard of this part's last green main run: a case added since
       # research/scoreboard.json was written regresses against it (--prev).
@@ -131,12 +128,12 @@ jobs:
         if: ${{ always() && matrix.part == 'conform:corpus+docs' }}
         with:
           path: target/corpus-tests
-          key: corpus-tests-${{ steps.hour.outputs.hour }}
+          key: corpus-tests-${{ github.run_id }}
       - uses: actions/cache/save@v4
         if: always()
         with:
           path: ~/.cache/cpl/cxx
-          key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ steps.hour.outputs.hour }}
+          key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}
       - name: Keep this green run's scoreboard
         if: ${{ success() && github.ref == 'refs/heads/main' && startsWith(matrix.part, 'conform:') }}
         run: "[ ! -f target/conform-prev.json.new ] || mv target/conform-prev.json.new target/conform-prev.json"
@@ -230,17 +227,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      # The cxx and corpus caches are saved once an hour, not once a run:
-      # per-run saves passed GitHub's cache limit and evicted the warm ones.
-      - name: Cache hour
-        id: hour
-        run: echo "hour=$(date -u +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
+      # The cxx and corpus caches are saved every run, so the next run starts
+      # from this one's builds; scripts/ci_cache_prune.py deletes the older ones.
       # Saved after Tests even when it fails: actions/cache saves only after a
       # green job, so a red main kept the tests' g++ cache from 45371294523.
       - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/cpl/cxx
-          key: cxx-${{ runner.os }}-tests-${{ steps.hour.outputs.hour }}
+          key: cxx-${{ runner.os }}-tests-${{ github.run_id }}
           restore-keys: |
             cxx-${{ runner.os }}-tests-
             cxx-${{ runner.os }}-
@@ -248,7 +242,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: target/corpus-tests
-          key: corpus-tests-${{ steps.hour.outputs.hour }}
+          key: corpus-tests-${{ github.run_id }}
           restore-keys: corpus-tests-
       - uses: actions/download-artifact@v4
         with:
@@ -267,7 +261,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           path: ~/.cache/cpl/cxx
-          key: cxx-${{ runner.os }}-tests-${{ steps.hour.outputs.hour }}
+          key: cxx-${{ runner.os }}-tests-${{ github.run_id }}
 
   # The Milestone 1 editor: `cpl setup neovim`, then diagnostics, completion,
   # `gd` and format on write in headless Neovim (editors/neovim/test/smoke.lua).
@@ -481,8 +475,13 @@ jobs:
           printf '%s\n' "$changed" | sort -u | xargs -r git add -A --
           git commit -q -m "factory: regenerate generated files" -m "Domain: ${domain:-infra}"
           # One attempt: a conflict or a lost push race means a newer main tip
-          # exists, and that tip's own run regenerates the same files.
-          if git pull -q --rebase origin main && git push -q origin HEAD:main; then
+          # exists, and that tip's own run regenerates the same files. The zed
+          # rev names a commit, so a grammar commit the rebase lands under it
+          # makes it stale: write it again on the rebased tree.
+          zed=editors/zed/extension.toml
+          if git pull -q --rebase origin main && uv run --quiet python scripts/zed-rev.py --write &&
+            { git diff --quiet -- "$zed" || git commit -q --amend --no-edit -- "$zed"; } &&
+            git push -q origin HEAD:main; then
             gh workflow run ci.yml --ref main
           else
             [ ! -d .git/rebase-merge ] || git rebase --abort
@@ -494,6 +493,32 @@ jobs:
   # (research/acceptance/solutions/) with the release cpl and the
   # Codeforces profile; any non-AC blocks. Split over 8 runners, parallel on
   # each one's 4 cores, restoring the release target/ the site job saves.
+  # stdlib.md "Tests catch real bugs": every one-line mutant of the std/*.cp lines
+  # this push (or pull request) changed is caught by std's own suites
+  # (scripts/mutation-score.py --std --min 1.0); a missed one fails the run.
+  std-mutants:
+    name: std mutants
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: release
+      - name: Fetch the base
+        id: base
+        run: |
+          base="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          if [ -n "$base" ] && git fetch -q --depth=1 origin "$base"; then echo "sha=$base" >> "$GITHUB_OUTPUT"
+          else git fetch -q --depth=2 origin "$GITHUB_SHA" && echo "sha=$(git rev-parse HEAD~1)" >> "$GITHUB_OUTPUT"; fi
+      - name: Std mutation score
+        env:
+          CPL_GATE_PART: std-mutants
+          CPL_STD_MUTANTS_BASE: ${{ steps.base.outputs.sha }}
+        shell: bash
+        run: just check | tee -a "$GITHUB_STEP_SUMMARY"
+
   acceptance:
     name: acceptance solutions stay AC (${{ matrix.shard }}/8)
     runs-on: ubuntu-latest
@@ -512,38 +537,45 @@ jobs:
         run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
         run: just acceptance target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/8
-      - name: Cache hour
-        id: hour
-        if: ${{ !cancelled() }}
-        run: echo "hour=$(date -u +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
       # Seeded problems (problem-packages/R9) keep their cases in target/corpus-tests/.
       - uses: actions/cache/restore@v4
         if: ${{ !cancelled() }}
         with:
           path: target/corpus-tests
-          key: corpus-tests-${{ steps.hour.outputs.hour }}
+          key: corpus-tests-${{ github.run_id }}
           restore-keys: corpus-tests-
-      # Cases the interpreter can't finish in 20 s, by content (scripts/corpus.py INTERP_SLOW).
+      # Keyed by content in scripts/corpus.py: built ports and references
+      # (CXX_CACHE), --checks builds (corpus-generators), and the cases the
+      # interpreter can't finish in 20 s (INTERP_SLOW). Per shard, so each
+      # shard's save holds its own packages.
       - uses: actions/cache/restore@v4
         if: ${{ !cancelled() }}
         with:
-          path: target/interp-slow
-          key: interp-slow-${{ matrix.shard }}-${{ steps.hour.outputs.hour }}
+          path: |
+            ~/.cache/cpl/cxx/corpus
+            target/corpus-generators
+            target/interp-slow
+          key: acceptance-${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: |
-            interp-slow-${{ matrix.shard }}-
-            interp-slow-
+            acceptance-${{ matrix.shard }}-
+            acceptance-
       - name: The interpreter and the C++ agree on this shard's v03 ports
         # scripts/corpus.py verify: cpl test, interpreter vs C++ and size, with no known list.
         if: ${{ !cancelled() }}
         timeout-minutes: 6
+        # `timeout` (exit 124, a failure) ends g++ before the save below, so a
+        # slow run still leaves the next one warm.
         run: |
-          just corpus-tests-make --cpl target/ci/cpl --set v03 --shard ${{ matrix.shard }}/8 >/dev/null
-          just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" --set v03 --shard ${{ matrix.shard }}/8
+          timeout 340 bash -c 'just corpus-tests-make --cpl target/ci/cpl --set v03 --shard ${{ matrix.shard }}/8 >/dev/null &&
+            just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" --set v03 --shard ${{ matrix.shard }}/8'
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() }}
         with:
-          path: target/interp-slow
-          key: interp-slow-${{ matrix.shard }}-${{ steps.hour.outputs.hour }}
+          path: |
+            ~/.cache/cpl/cxx/corpus
+            target/corpus-generators
+            target/interp-slow
+          key: acceptance-${{ matrix.shard }}-${{ github.run_id }}
 
   corpus-audit:
     # handbook/guidelines/problem-packages-checklist.md R1-R4, compiling and
@@ -566,15 +598,12 @@ jobs:
       # The package mode makes each package's cases with `cpl test --make`.
       - name: Build cpl
         run: cargo build --profile ci --bin cpl
-      - name: Cache hour
-        id: hour
-        run: echo "hour=$(date -u +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
       # corpus.py caches each built reference under CXX_CACHE; save it even
       # when the audit fails or times out, so the next run starts warm.
       - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/cpl/cxx/corpus
-          key: corpus-audit-cxx-${{ matrix.shard }}-${{ steps.hour.outputs.hour }}
+          key: corpus-audit-cxx-${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: |
             corpus-audit-cxx-${{ matrix.shard }}-
             corpus-audit-cxx-
@@ -588,7 +617,7 @@ jobs:
         if: always()
         with:
           path: ~/.cache/cpl/cxx/corpus
-          key: corpus-audit-cxx-${{ matrix.shard }}-${{ steps.hour.outputs.hour }}
+          key: corpus-audit-cxx-${{ matrix.shard }}-${{ github.run_id }}
 
   site:
     name: site build

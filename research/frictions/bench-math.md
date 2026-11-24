@@ -26,6 +26,17 @@ Three rows remain slightly above 1.10x (`crt` 1.17x, `comb` 1.15x, `sieve` 1.11x
 - **Status:** resolved
 - **Area:** stdlib, codegen
 
+## `Mod(x)` paid a signed remainder and its fix-up for every non-negative `x`
+
+- **Where:** `corpus/problems/cf2138d/port.cp` after the `Comb.inv` table (`0.126s` vs `orig.cpp` `0.111s`, `1.13x`), where `span_expect` builds `Z(hi - lo) * Z(num_right)` 25M times.
+- **What felt wrong:** the `i < iv.len` guard was not the cost: deleting it from the C++ by hand moved nothing (`0.142s` vs `0.144s`). The cost was `Mod.new`'s `x % P`. The checker cannot prove `hi - lo` or `num_right` non-negative, so it went through `cpl::modp`'s signed remainder and sign fix-up; an unsigned `%` alone took the port to `0.110s`.
+- **Goal it hurts:** performance
+- **Ideal code:** `Z(hi - lo) * Z(num_right)`, as written.
+- **General fix:** `cpl::modp` (the `%` by a positive divisor of unknown-sign dividend) branches on the dividend's sign, likely non-negative, and divides unsigned on that side. Skipping the reduction for an `x` already in `0..P` was faster still on cf2138d (`0.108s`) but mispredicts on residues of uniform 31-bit values (`combinv` `2x`). cf2138d is now `0.120s` vs `0.128s` (`0.94x`, median of 41), `combinv` stays at `1.0x`.
+- **Severity:** medium
+- **Status:** resolved
+- **Area:** codegen
+
 ## `Comb.choose` pays lazy-grow check on every query
 
 - **Where:** `bench/math/comb.cp` (`0.081s` vs `0.071s` C++, `1.15x`, down from `1.58x`).

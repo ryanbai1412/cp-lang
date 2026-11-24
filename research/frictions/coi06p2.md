@@ -31,3 +31,22 @@ let low = tree.up(min, lift: v => tree.pos(v) min map.out(v).filter(a => not tre
 
 Measured: `cpl stress` agrees with the accepted C++ on 30 cases (size 60) and on the
 `--max` case (N = 1e5, E = 5e5, Q = 3e5): 0.21 s against the C++'s 0.22 s.
+
+## R11 runs for the dream line
+
+Fresh `cpl check` of the port with lines 19–23 replaced by the dream line:
+
+```
+error[E0103]: expected `,` or `)` in the argument list, found a name
+19 | let low = tree.up(min, lift: v => tree.pos(v) min map.out(v)...
+   |                                               ^^^
+```
+
+With the infix `min` spelled `min(tree.pos(v), ... .min() ?? tree.pos(v))`:
+
+```
+error[E0303]: `tree.up` takes 3 arguments (op, lift, finish), but `finish` is missing
+error[E0303]: this lambda takes 1 parameters, but the call passes it 3 arguments: `_`, `Town`, `Town`
+```
+
+So the dream needs rewriting against the DFS tree's `up(op, lift, finish)` before the missing-monoid claim can be tested.

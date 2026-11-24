@@ -120,6 +120,20 @@ fn a_global_a_fn_writes_stays_a_global_and_the_rest_are_main_locals() {
 }
 
 #[test]
+fn a_global_a_fn_writes_only_through_a_slice_stays_a_global() {
+    let out = cpp(concat!(
+        "var a = [0, 0, 0]\n",
+        "fn bump():\n",
+        "    a[1..3] = [5, 6]\n",
+        "bump()\n",
+        "print(a[1])\n",
+    ));
+    let main = out.find("void solve()").expect("a main");
+    let a = out.find("std::vector<ll> a").expect("a is declared");
+    assert!(a < main, "bump writes a through a slice:\n{out}");
+}
+
+#[test]
 fn a_loop_over_a_list_literal_fn_walks_the_literal() {
     let out = cpp(concat!(
         "fn roles(a: Int, b: Int) -> List<(Int, Int, Int)> = [(a, b, 1), (b, a, 2)]\n",

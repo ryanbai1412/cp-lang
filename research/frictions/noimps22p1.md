@@ -9,6 +9,7 @@ cut directives with the magic offsets `line[8..]` and `line[7..]`. Now `expand` 
 ## No `strip_prefix` on `Str`
 - **Where:** `line.starts_with(define)` then `line[define.len..]`.
 - **Ideal:** `if let rest = line.strip_prefix("#define "):`.
+- **Run:** `line.strip_prefix("#define ")` gives `error[E0203]: a `Str` has no method `strip_prefix``.
 
 ## A recursive call with one more set element needs a copy
 - **Where:** `var inner = active; inner.insert(word.clone())` before `expand(body, inner)`.

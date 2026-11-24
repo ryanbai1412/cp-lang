@@ -844,10 +844,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         if !v.rev {
                             out.extend_from_slice(&v.base[v.lo..v.lo + v.len]);
                         } else {
-                            out.reserve(v.len);
-                            for i in 0..v.len {
-                                out.push(v.get(i).unwrap());
-                            }
+                            out.extend(v.iter());
                         }
                     }
                     _ => {}
@@ -866,10 +863,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 match rhs {
                     Value::List(b) => out.extend(b.iter()),
                     Value::ListView(v) => {
-                        out.reserve(v.len);
-                        for i in 0..v.len {
-                            out.push(v.get(i).unwrap().clone());
-                        }
+                        out.extend(v.iter());
                     }
                     Value::MutView(mv) => out.extend(self.mut_view_to_vec(&mv, span)?),
                     Value::Array(arr) => out.extend(arr.to_values()),

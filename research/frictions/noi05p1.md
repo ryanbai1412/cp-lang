@@ -22,3 +22,10 @@ the input numbers it.
 8/8. The max generator case takes 0.45 s against a 400 ms limit. The second structure costs
 about 2x over a single hand deque, and `Deque` has no `pop_back_while` to fold the two
 together.
+
+## Current port, measured
+
+The port now uses `Window(max)` alone, with `expire` dropping a start that falls out of reach,
+and no second `Deque`. On the `gen.py --max` case the built port takes 0.10 s and 3.8 MB
+(`/usr/bin/time`), inside the 400 ms limit; the 0.45 s above was the two-structure version.
+

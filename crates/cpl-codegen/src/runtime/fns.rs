@@ -35,6 +35,7 @@ template <class B, class W> struct Memo {
     B b; W w;
     struct Body { Memo& m; template <class... A> decltype(auto) operator()(A&&... a) { return m.b(m, (A&&)a...); } };
     template <class... A> decltype(auto) operator()(A&&... a) { Body body{*this}; return w(body, (A&&)a...); }
+    Body body() { return {*this}; }
 };
 template <class B, class W> Memo<B, W> memo(B b, W w) { return {std::move(b), std::move(w)}; }
 ",

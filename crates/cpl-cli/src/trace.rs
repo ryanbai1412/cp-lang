@@ -56,9 +56,7 @@ pub fn trap_locals(
     trap: &cpl_interp::Trap,
 ) -> Option<String> {
     // A run stopped from outside would not stop at the same place again.
-    if [cpl_interp::OUT_OF_TIME.text(), cpl_interp::CANCELLED.text()]
-        .contains(&trap.message.as_str())
-    {
+    if [cpl_interp::OUT_OF_TIME.text(), cpl_interp::CANCELLED.text()].contains(&trap.message()) {
         return None;
     }
     // Untraced again with checkpoints, and only the end traced from the last one.
@@ -72,7 +70,7 @@ pub fn trap_locals(
         1,
         stop,
     );
-    (observed.trap?.message == trap.message).then_some(())?;
+    (observed.trap?.message() == trap.message()).then_some(())?;
     let at = source.get(trap.span.start as usize..trap.span.end as usize);
     cpl_interp::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }

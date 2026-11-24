@@ -78,10 +78,10 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
             raise ValueError(f"CPL_GATE_PART={part} with --{mode}: only `full` goes with --full")
         out["kind"] = "full"
         return out
-    if part in ("fmt", "corpus", "conform") or part.startswith(("conform:", "tests:")):
+    if part in ("fmt", "corpus", "conform", "std-mutants") or part.startswith(("conform:", "tests:")):
         if mode != "fast":
             raise ValueError(f"CPL_GATE_PART={part} needs --fast")
-    if part in ("fmt", "corpus"):
+    if part in ("fmt", "corpus", "std-mutants"):
         out["kind"] = part
     elif part == "conform" or part.startswith("conform:"):
         suites = part.partition(":")[2] or "all"
@@ -95,7 +95,7 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     elif part.startswith("tests:") and part != "tests:":
         out.update(kind="tests", partition=part.removeprefix("tests:"))
     else:
-        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform, tests:<partition>, or full with --full)")
+        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform, std-mutants, tests:<partition>, or full with --full)")
     return out
 
 
@@ -810,6 +810,8 @@ class Tail:
                 raise Failed("cargo build -p cpl-cli failed")
             self._corpus_static()
             return "corpus part"
+        if g["kind"] == "std-mutants":
+            return self._std_mutants(env)
         if g["kind"] == "full":
             self.step("cargo build -p cpl-cli -p cpl-conform (the binaries the --full suites run)")
             if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
@@ -819,6 +821,23 @@ class Tail:
                 raise Failed("a --full suite failed; the lines above name each one")
             return "full part"
         raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
+
+    def _std_mutants(self, env) -> str:
+        """Every mutant of the std/*.cp lines this push changed is caught by std's own
+        suites (stdlib.md "Tests catch real bugs"); the base is CPL_STD_MUTANTS_BASE,
+        else CHECK_BASE, else origin/main."""
+        base = env.get("CPL_STD_MUTANTS_BASE") or env.get("CHECK_BASE") or "origin/main"
+        self.step(f"std mutants since {base} (scripts/mutation-score.py --std --since {base} --min 1.0)")
+        # CI restores main's `ci`-profile target/ (setup-rust target: release).
+        profile = "ci" if env.get("CI") else "release"
+        if self.call(["cargo", "build", "-q", "--profile", profile, "-p", "cpl-cli", "-p", "cpl-conform"]):
+            raise Failed(f"cargo build --profile {profile} -p cpl-cli -p cpl-conform failed")
+        argv = [sys.executable, "scripts/mutation-score.py", "--std", "--since", base, "--min", "1.0",
+                "--bin", str(target_dir() / profile), "-j", str(os.cpu_count() or 2)]
+        if self.call(argv):
+            raise Failed(f"a std mutant survives; add a test that kills each `missed:` line above, rerun:"
+                         f" uv run scripts/mutation-score.py --std --since {base} --min 1.0")
+        return "std mutants part"
 
     def _slices(self, slices: list[str]) -> None:
         """The touched paths' owner-named tests, ahead of the rest; one over 20 s fails."""
@@ -1011,7 +1030,10 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         if mode == "timing":
             print("\n==> wall-clock budgets (reported, never blocking)", flush=True)
             expr = " or ".join([wall_filter(), *(f"test(={t})" for t in TIMING_EXTRA)])
-            return run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr], cwd=ROOT).returncode
+            walls = run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr], cwd=ROOT).returncode
+            print("\n==> every touched-path slice against its limit (reported, never blocking)", flush=True)
+            slices = run([sys.executable, "scripts/affected.py", "--run-slices", "all"], cwd=ROOT).returncode
+            return walls or slices
         if g["kind"] != "checks":
             return tail_cls(mode, part, cpl, cache_dir, manifest).part(since)
         sel: dict[str, str] = {}

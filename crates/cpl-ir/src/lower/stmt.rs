@@ -312,12 +312,15 @@ impl<'a> Lowerer<'a> {
             std::mem::take(&mut self.cx.pending),
             std::mem::replace(&mut self.cx.exits, exits),
             std::mem::replace(&mut self.cx.rhs_extent, stmt.rhs_extent()),
+            std::mem::take(&mut self.cx.after),
         );
         let at = out.len();
         self.stmt_inner(stmt, rest, out);
         let pending = std::mem::replace(&mut self.cx.pending, outer.1);
+        let after = std::mem::replace(&mut self.cx.after, outer.4);
         (self.cx.way_out, self.cx.exits, self.cx.rhs_extent) = (outer.0, outer.2, outer.3);
         out.splice(at..at, pending);
+        out.extend(after);
         self.lift_leaving(out, at);
     }
 
@@ -832,7 +835,7 @@ impl<'a> Lowerer<'a> {
                                 } = &s.kind
                                 {
                                     if n == "count" {
-                                        let len = self.expect(init, &Ty::Int);
+                                        let len = self.expr_as(init, &Ty::Int);
                                         let lo = self.int_lit(0, init.span);
                                         out.push(Stmt::DefDomain {
                                             id: dom_id,
@@ -1280,8 +1283,8 @@ impl<'a> Lowerer<'a> {
                 } else {
                     "asserts"
                 };
-                let cond = self.expect(cond, &Ty::Bool);
-                let mut message = message.as_ref().map(|m| self.expect(m, &Ty::Str));
+                let cond = self.expr_as(cond, &Ty::Bool);
+                let mut message = message.as_ref().map(|m| self.expr_as(m, &Ty::Str));
                 if key_test.is_some() {
                     (text, message) = (String::new(), key_test);
                 }
@@ -1312,7 +1315,7 @@ impl<'a> Lowerer<'a> {
                 for f in fields {
                     let fty = self.resolve_ty(&f.ty);
                     let val = if let Some(d) = &f.default {
-                        self.expect(d, &fty)
+                        self.expr_as(d, &fty)
                     } else {
                         self.mk(ExprKind::Int(0), fty.clone(), f.name.span)
                     };
@@ -1414,7 +1417,7 @@ impl<'a> Lowerer<'a> {
                                 .enumerate()
                                 .find(|(_, (fnm, _))| fnm == &k.text)
                             {
-                                let val = self.expect(v, fty);
+                                let val = self.expr_as(v, fty);
                                 out.push(Stmt::Assign(
                                     Place {
                                         kind: PlaceKind::Field(
@@ -1451,7 +1454,7 @@ impl<'a> Lowerer<'a> {
                                     .enumerate()
                                     .find(|(_, (fnm, _))| fnm == &k.text)
                                 {
-                                    let val = self.expect(v, fty);
+                                    let val = self.expr_as(v, fty);
                                     out.push(Stmt::Assign(
                                         Place {
                                             kind: PlaceKind::Field(

@@ -21,7 +21,7 @@ use std::rc::Rc;
 use crate::core::{fit, Formula, Lazy, Res};
 use crate::eval::is_builtin;
 use crate::poly::{Mono, Poly, Var};
-use crate::term::{BinOp, Error, Sort, Term, UnOp, INT_MAX, INT_MIN};
+use crate::term::{BinOp, Error, IntOp, Operands, Sort, Term, UnOp, INT_MAX, INT_MIN};
 
 /// A symbolic value: what a term denotes for every input at once.
 #[derive(Clone)]
@@ -175,15 +175,16 @@ pub(crate) struct Lowerer<'a> {
     path: Vec<Formula>,
     depth: usize,
     /// Set to collect what the term needs in order not to trap.
-    pub obligations: Option<Vec<Obligation>>,
+    pub collect: bool,
+    pub obligations: Vec<Obligation>,
 }
 
 fn int(c: i128) -> Poly {
     Poly::constant(c)
 }
 
-fn bool_of(var: Var) -> Formula {
-    Formula::ge(Poly::var(var).add_const(-1).unwrap())
+fn bool_of(var: Var) -> Res<Formula> {
+    Formula::le(&int(1), &Poly::var(var))
 }
 
 fn in_int_range(p: &Poly) -> Res<Formula> {
@@ -219,7 +220,8 @@ impl<'a> Lowerer<'a> {
             globals,
             path: Vec::new(),
             depth: 0,
-            obligations: None,
+            collect: false,
+            obligations: Vec::new(),
         }
     }
 
@@ -259,7 +261,7 @@ impl<'a> Lowerer<'a> {
                 let v = self.store.fresh(name);
                 let p = Poly::var(v);
                 let facts = Formula::and([Formula::le(&int(0), &p)?, Formula::le(&p, &int(1))?]);
-                (SVal::Bool(bool_of(v)), facts)
+                (SVal::Bool(bool_of(v)?), facts)
             }
             Sort::Range { lo, hi, inclusive } => {
                 let (lo, hi) = (self.poly(lo)?, self.poly(hi)?);
@@ -290,7 +292,7 @@ impl<'a> Lowerer<'a> {
                     Formula::and([Formula::le(&int(0), &p)?, Formula::le(&p, &int(1))?, fact]);
                 (
                     SVal::Opt {
-                        some: bool_of(flag),
+                        some: bool_of(flag)?,
                         value: Box::new(value),
                     },
                     facts,
@@ -309,8 +311,8 @@ impl<'a> Lowerer<'a> {
             return;
         }
         let path = self.here();
-        if let Some(list) = self.obligations.as_mut() {
-            list.push(Obligation {
+        if self.collect {
+            self.obligations.push(Obligation {
                 hazard,
                 path,
                 safe,
@@ -472,8 +474,8 @@ impl<'a> Lowerer<'a> {
         scope: &Scope,
         term: &Term,
     ) -> Res<SVal> {
-        match op {
-            BinOp::And => {
+        let op = match op.operands() {
+            Operands::And => {
                 let l = self.lower_bool(lhs, scope)?;
                 if l == Formula::False {
                     return Ok(SVal::Bool(l));
@@ -481,7 +483,7 @@ impl<'a> Lowerer<'a> {
                 let r = self.under(l.clone(), |s| s.lower_bool(rhs, scope))?;
                 return Ok(SVal::Bool(Formula::and([l, r])));
             }
-            BinOp::Or => {
+            Operands::Or => {
                 let l = self.lower_bool(lhs, scope)?;
                 if l == Formula::True {
                     return Ok(SVal::Bool(l));
@@ -489,7 +491,7 @@ impl<'a> Lowerer<'a> {
                 let r = self.under(l.negate()?, |s| s.lower_bool(rhs, scope))?;
                 return Ok(SVal::Bool(Formula::or([l, r])));
             }
-            BinOp::Coalesce => {
+            Operands::Coalesce => {
                 return match self.lower(lhs, scope)? {
                     SVal::NoneLit => self.lower(rhs, scope),
                     SVal::Opt { some, value } => {
@@ -499,7 +501,7 @@ impl<'a> Lowerer<'a> {
                     present => Ok(present),
                 };
             }
-            BinOp::Eq | BinOp::Ne => {
+            Operands::Eq | Operands::Ne => {
                 let (l, r) = (self.lower(lhs, scope)?, self.lower(rhs, scope)?);
                 let equal = self.equal(&l, &r, term)?;
                 return Ok(SVal::Bool(if op == BinOp::Eq {
@@ -508,8 +510,8 @@ impl<'a> Lowerer<'a> {
                     equal.negate()?
                 }));
             }
-            _ => {}
-        }
+            Operands::Ints(op) => op,
+        };
         let (a, b) = (self.lower_int(lhs, scope)?, self.lower_int(rhs, scope)?);
         let arithmetic = |s: &mut Self, value: Poly| -> Res<SVal> {
             s.oblige(
@@ -521,19 +523,19 @@ impl<'a> Lowerer<'a> {
             Ok(SVal::Int(value))
         };
         match op {
-            BinOp::Add => arithmetic(self, fit(a.add(&b))?),
-            BinOp::Sub => arithmetic(self, fit(a.sub(&b))?),
-            BinOp::Mul => arithmetic(self, fit(a.mul(&b))?),
-            BinOp::Div | BinOp::Mod => {
+            IntOp::Add => arithmetic(self, fit(a.add(&b))?),
+            IntOp::Sub => arithmetic(self, fit(a.sub(&b))?),
+            IntOp::Mul => arithmetic(self, fit(a.mul(&b))?),
+            IntOp::Div | IntOp::Mod => {
                 let nonzero = Formula::same(&b, &int(0))?.negate()?;
                 self.oblige(Hazard::DivByZero, nonzero, None, term);
-                Ok(SVal::Int(if op == BinOp::Div {
+                Ok(SVal::Int(if op == IntOp::Div {
                     self.divmod(&a, &b)?.0
                 } else {
                     self.modulo(&a, &b)?
                 }))
             }
-            BinOp::Pow => match (a.as_const(), b.as_const()) {
+            IntOp::Pow => match (a.as_const(), b.as_const()) {
                 (Some(base), Some(exp @ 0..=127)) if base.checked_pow(exp as u32).is_some() => {
                     arithmetic(self, int(base.pow(exp as u32)))
                 }
@@ -549,25 +551,24 @@ impl<'a> Lowerer<'a> {
                     arithmetic(self, value)
                 }
             },
-            BinOp::Shl => match b.as_const() {
+            IntOp::Shl => match b.as_const() {
                 Some(k @ 0..=62) => arithmetic(self, fit(a.scale(1 << k))?),
                 _ => {
                     let value = self.opaque("<<", vec![a, b]);
                     arithmetic(self, value)
                 }
             },
-            BinOp::Shr => match b.as_const() {
+            IntOp::Shr => match b.as_const() {
                 Some(k @ 0..=62) => Ok(SVal::Int(self.divmod(&a, &int(1 << k))?.0)),
                 _ => Ok(SVal::Int(self.opaque(">>", vec![a, b]))),
             },
-            BinOp::BitAnd => Ok(SVal::Int(self.bits(Ac::And, vec![a, b])?)),
-            BinOp::BitOr => Ok(SVal::Int(self.bits(Ac::Or, vec![a, b])?)),
-            BinOp::Xor => Ok(SVal::Int(self.bits(Ac::Xor, vec![a, b])?)),
-            BinOp::Lt => Ok(SVal::Bool(Formula::lt(&a, &b)?)),
-            BinOp::Le => Ok(SVal::Bool(Formula::le(&a, &b)?)),
-            BinOp::Gt => Ok(SVal::Bool(Formula::lt(&b, &a)?)),
-            BinOp::Ge => Ok(SVal::Bool(Formula::le(&b, &a)?)),
-            BinOp::And | BinOp::Or | BinOp::Coalesce | BinOp::Eq | BinOp::Ne => unreachable!(),
+            IntOp::BitAnd => Ok(SVal::Int(self.bits(Ac::And, vec![a, b])?)),
+            IntOp::BitOr => Ok(SVal::Int(self.bits(Ac::Or, vec![a, b])?)),
+            IntOp::Xor => Ok(SVal::Int(self.bits(Ac::Xor, vec![a, b])?)),
+            IntOp::Lt => Ok(SVal::Bool(Formula::lt(&a, &b)?)),
+            IntOp::Le => Ok(SVal::Bool(Formula::le(&a, &b)?)),
+            IntOp::Gt => Ok(SVal::Bool(Formula::lt(&b, &a)?)),
+            IntOp::Ge => Ok(SVal::Bool(Formula::le(&b, &a)?)),
         }
     }
 
@@ -594,16 +595,19 @@ impl<'a> Lowerer<'a> {
                 self.apply(&name, args, term)
             }
             SVal::Named(name) => {
-                if name == "some" && args.len() == 1 {
-                    let value = args.into_iter().next().unwrap();
-                    return Ok(match value {
-                        SVal::Opt { .. } | SVal::NoneLit => value,
-                        present => SVal::Opt {
-                            some: Formula::True,
-                            value: Box::new(present),
-                        },
-                    });
-                }
+                let args = match <[SVal; 1]>::try_from(args) {
+                    Ok([value]) if name == "some" => {
+                        return Ok(match value {
+                            SVal::Opt { .. } | SVal::NoneLit => value,
+                            present => SVal::Opt {
+                                some: Formula::True,
+                                value: Box::new(present),
+                            },
+                        });
+                    }
+                    Ok(one) => Vec::from(one),
+                    Err(args) => args,
+                };
                 let mut ints = Vec::with_capacity(args.len());
                 for arg in args {
                     match arg {
@@ -619,10 +623,16 @@ impl<'a> Lowerer<'a> {
                 let value = match (name.as_str(), ints.len()) {
                     ("min", 1..) => self.extreme(Ac::Min, ints)?,
                     ("max", 1..) => self.extreme(Ac::Max, ints)?,
-                    ("abs", 1) => {
-                        let negated = fit(ints[0].neg())?;
-                        self.extreme(Ac::Max, vec![ints.pop().unwrap(), negated])?
-                    }
+                    ("abs", _) => match <[Poly; 1]>::try_from(ints) {
+                        Ok([x]) => {
+                            let negated = fit(x.neg())?;
+                            self.extreme(Ac::Max, vec![x, negated])?
+                        }
+                        Err(ints) => {
+                            let n = ints.len();
+                            return Err(Error::new(format!("`abs` does not take {n} arguments")));
+                        }
+                    },
                     ("gcd", 1..) => self.bits(Ac::Gcd, ints)?,
                     (_, n) => {
                         return Err(Error::new(format!("`{name}` does not take {n} arguments")))
@@ -842,9 +852,10 @@ impl<'a> Lowerer<'a> {
         for (form, constant) in best {
             args.push(fit(form.add_const(constant))?);
         }
-        if args.len() == 1 {
-            return Ok(args.pop().unwrap());
-        }
+        let args = match <[Poly; 1]>::try_from(args) {
+            Ok([only]) => return Ok(only),
+            Err(args) => args,
+        };
         let key = (op, args);
         if let Some(v) = self.store.ac.get(&key) {
             return Ok(Poly::var(*v));
@@ -929,13 +940,14 @@ impl<'a> Lowerer<'a> {
         if absorbed || args.is_empty() {
             return Ok(int(constant));
         }
-        if args.len() == 1 && constant == identity {
-            let only = args.pop().unwrap();
-            return if op == Ac::Gcd {
-                let negated = fit(only.neg())?;
-                self.extreme(Ac::Max, vec![only, negated])
-            } else {
-                Ok(only)
+        if constant == identity {
+            args = match <[Poly; 1]>::try_from(args) {
+                Ok([only]) if op == Ac::Gcd => {
+                    let negated = fit(only.neg())?;
+                    return self.extreme(Ac::Max, vec![only, negated]);
+                }
+                Ok([only]) => return Ok(only),
+                Err(args) => args,
             };
         }
         if constant != identity {

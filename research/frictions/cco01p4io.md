@@ -13,6 +13,19 @@ passes the same interactor.
 - **Where:** `n` and `d` come from `ask("GetN")` and `ask("GetD")`; the header gate reports them
   as unread, so their statement bounds live only in the types.
 
+## A DP table cannot be defined from itself
+- **Where:** `var drops: [Span]Int` and `var up: [Span]Int`, filled by a `for s in Span if s.idx > 0` loop.
+- **What felt wrong:** the dream's `let plan = [Span] s => ... plan[s - i - 1].cost ...` is the
+  recurrence as written. `cpl run` of
+  `let plan: [Span](cost: Int, up: Int) = [Span] s => ... plan[Span(s.ord - i - 1)].cost ...`
+  fails with `error[E0205]: plan is used in its own definition`.
+- **Goal it hurts:** quick to write; each fact once (two arrays kept in step).
+- **Ideal code:** `let plan = [Span] s => min((1 + max(i, plan[s - i - 1].cost), i) for i in 0..s)`.
+- **General fix:** a self-referential array builder (`Span.build((s, plan) => ...)` reading only
+  earlier entries), or allow the self-reference when every read is at a smaller index.
+- **Severity:** low
+- **Owner:** stdlib.
+
 ## Dream
 ```cp
 let (n, d): (1..=100, 1..=100) = (ask("GetN"), ask("GetD"))

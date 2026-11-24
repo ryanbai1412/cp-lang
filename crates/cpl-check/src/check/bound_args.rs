@@ -216,6 +216,62 @@ impl Checker<'_> {
         }
     }
 
+    /// At a call: a fn item passed for a parameter `M: Tr` whose own type
+    /// `type_of(f)` has an impl of `Tr` binds `M` to that type, before its
+    /// value would coerce to its fn type (R08.1.9).
+    pub(crate) fn fn_items_take_their_type(
+        &mut self,
+        def: &Def,
+        params: &[crate::ty::Param],
+        args: &[ast::Arg],
+        bindings: &mut crate::ty::Bindings,
+    ) {
+        let Def::Fn { bounds, .. } = def else {
+            return;
+        };
+        let positional: Vec<&crate::ty::Param> = params.iter().filter(|p| !p.named_only).collect();
+        let mut next = 0;
+        for arg in args {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name == n.text),
+                None => {
+                    next += 1;
+                    positional.get(next - 1).copied()
+                }
+            };
+            let Some(Ty::Param(m)) = param.map(|p| &p.ty) else {
+                continue;
+            };
+            let Some(item) = arg.value.fn_item_type() else {
+                continue;
+            };
+            if let ast::ExprKind::Name(n) = &arg.value.kind {
+                if self.local(n).is_some()
+                    || !matches!(self.global(n).as_deref(), Some(Def::Fn { .. }))
+                {
+                    continue;
+                }
+            }
+            let Some((_, traits)) = bounds.iter().find(|(p, _)| p == m) else {
+                continue;
+            };
+            let has_impl = self.env.impls(&item).iter().any(|(t, _)| {
+                t.as_deref()
+                    .and_then(|t| t.split('<').next())
+                    .is_some_and(|t| traits.iter().any(|w| w == t))
+            });
+            if has_impl {
+                bindings.insert(
+                    m.clone(),
+                    Ty::Named {
+                        name: item,
+                        args: Vec::new(),
+                    },
+                );
+            }
+        }
+    }
+
     /// The `Monoid<..>` an impl of `trait_name<want..>` is for.
     fn monoid_impl_for(&mut self, trait_name: &str, want: &[Ty]) -> Option<Ty> {
         for (t, def) in self.env.impls("Monoid") {

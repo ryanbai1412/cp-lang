@@ -36,10 +36,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             self.saved_domains.push((d, self.domains[d]));
         }
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(dom_mark);
         self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         res
@@ -82,10 +79,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             self.saved_domains.push((d, self.domains[d]));
         }
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(dom_mark);
         if res.is_ok() && params.iter().any(|p| p.mutable) {
             let mut ii = 0usize;
             let mut iv = 0usize;
@@ -1456,15 +1450,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
                         Value::ListView(view) => {
-                            let len = view.len as i64;
-                            if idx < 0 || idx >= len {
+                            let Some(item) = usize::try_from(idx).ok().and_then(|i| view.get(i))
+                            else {
+                                let len = view.len as i64;
                                 return trap(
                                     spans[cur_pc],
                                     rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
-                            }
-                            regs_i[dst as usize] =
-                                ScalarKind::unbox_val(&view.get(idx as usize).unwrap());
+                            };
+                            regs_i[dst as usize] = ScalarKind::unbox_val(&item);
                         }
                         _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[])),
                     }
@@ -1573,15 +1567,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
                         Value::ListView(view) => {
-                            let len = view.len as i64;
-                            if idx < 0 || idx >= len {
+                            let Some(item) = usize::try_from(idx).ok().and_then(|i| view.get(i))
+                            else {
+                                let len = view.len as i64;
                                 return trap(
                                     spans[cur_pc],
                                     rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
-                            }
-                            regs_i[dst as usize] =
-                                ScalarKind::unbox_val(&view.get(idx as usize).unwrap());
+                            };
+                            regs_i[dst as usize] = ScalarKind::unbox_val(&item);
                         }
                         _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[])),
                     }
@@ -1764,7 +1758,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                 }
                 Op::Trace { idx } => {
-                    self.exec_trace(chunk, idx, regs_i, regs_v);
+                    self.exec_trace(chunk, idx, regs_i, regs_v)?;
                 }
                 other => {
                     if let Some(exit) = self.exec_ext_op(

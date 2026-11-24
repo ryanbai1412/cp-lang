@@ -8,7 +8,10 @@ use commands::{command_usage, unknown_option, usage as main_usage};
 
 mod dap;
 mod explain;
+mod front_end;
 use explain::explain_code;
+pub use front_end::one_command_per_process;
+use front_end::with_db;
 mod interact;
 mod json_out;
 mod kept_input;
@@ -762,18 +765,6 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
     compile_text(path, text, side, stderr)
 }
 
-/// The thread's database. One per thread, as the language server keeps one:
-/// a process that compiles many files (the test suites, `cpl watch`) checks
-/// the standard library once, and a command that asks more of a file it
-/// compiled (`explain`'s storage) doesn't check it again. The loader rereads
-/// imports on every analysis.
-pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_check::Session) -> R) -> R {
-    thread_local! {
-        static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
-    }
-    DB.with_borrow_mut(f)
-}
-
 /// Checks and lowers `text` as the file at `path`.
 fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
     let analysis = with_db(|db| db.analyze_text(path, text.as_str()));
@@ -913,7 +904,7 @@ fn verdict(
         let (reason, diagnostic) = match &result {
             Ok(()) => (cpl_json::Value::Null, cpl_json::Value::Null),
             Err(trap) => (
-                trap.message.as_str().into(),
+                trap.message().into(),
                 json_out::diagnostic(&trap.to_diagnostic(path, &lines), &lines),
             ),
         };
@@ -924,7 +915,7 @@ fn verdict(
         ]);
         let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
     } else if let Err(trap) = &result {
-        *stderr += &format!("{}\n", trap.message);
+        *stderr += &format!("{}\n", trap.message());
         *stderr += &render_trap(path, text, trap);
         if let Some(file) = diagnostic {
             let lines = cpl_diag::LineIndex::new(text);
@@ -1003,7 +994,8 @@ fn run_release_judged(
     }
     // A judge left with nothing to read after the solution failed only
     // follows from that failure.
-    let starved = |trap: &cpl_interp::Trap| trap.message.starts_with("the solution's output ended");
+    let starved =
+        |trap: &cpl_interp::Trap| trap.message().starts_with("the solution's output ended");
     match &ruling.judge {
         Some(trap) if solved || !starved(trap) => {
             *stderr += &format!("cpl: the interactor `{name}` rejected the run\n");
@@ -1283,8 +1275,8 @@ fn run_file(
         // A side that stops leaves the other with nothing to read: that
         // second failure only follows from the first.
         let starved = |trap: &cpl_interp::Trap| {
-            trap.message.starts_with("the input ended")
-                || trap.message.starts_with("the solution's output ended")
+            trap.message().starts_with("the input ended")
+                || trap.message().starts_with("the solution's output ended")
         };
         let (judge_trap, solution_trap) = match (ruling.judge, ruling.solution) {
             (Some(judge), Some(solution)) if starved(&judge) && !starved(&solution) => {
@@ -1342,6 +1334,7 @@ fn run_file(
         Some(limit) => io.until(cpl_interp::Stop::after(limit)),
         None => io,
     };
+    front_end::release();
     let started = std::time::Instant::now();
     let observed = cpl_interp::run_observed(&compiled.program, io, stdout, None);
     *stderr += &String::from_utf8_lossy(&observed.debug);

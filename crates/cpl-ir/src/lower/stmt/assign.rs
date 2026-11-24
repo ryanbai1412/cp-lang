@@ -216,7 +216,7 @@ impl<'a> Lowerer<'a> {
                 );
             // `xs += ys` grows `xs` where it is; it is not a copy of both.
             if bin == BinOp::Add && matches!(place.ty, Ty::List(_)) {
-                let more = self.expect(value, &place.ty);
+                let more = self.expr_as(value, &place.ty);
                 let extend = ExprKind::Mutate(Mutation::Extend, Box::new(place), vec![more]);
                 out.push(Stmt::Expr(self.mk(extend, Ty::Unit, target.span)));
                 return;
@@ -244,27 +244,27 @@ impl<'a> Lowerer<'a> {
                         self.coerce(stepped, &place.ty, target.span)
                     }
                 } else {
-                    self.expect(&whole, &place.ty)
+                    self.expr_as(&whole, &place.ty)
                 };
                 out.push(Stmt::Assign(place, AssignOp::Set, rhs));
                 return;
             }
         }
         let rhs = match op {
-            ast::AssignOp::Set => self.expect(value, &place.ty),
+            ast::AssignOp::Set => self.expr_as(value, &place.ty),
             ast::AssignOp::Binary(BinOp::Coalesce) => match &place.ty {
                 Ty::Opt(inner) => {
                     let inner = (**inner).clone();
                     // `(o ??= []).push(x)` goes on with what `o` holds.
                     self.filled
                         .insert((self.cur_mod, target.span.start, target.span.end));
-                    self.expect(value, &inner)
+                    self.expr_as(value, &inner)
                 }
                 Ty::Error => self.expr(value, None),
                 // A map entry: `m[k] ??= []` holds what the map holds.
                 entry => {
                     let entry = entry.clone();
-                    self.expect(value, &entry)
+                    self.expr_as(value, &entry)
                 }
             },
             ast::AssignOp::Binary(BinOp::Add) if place.ty == Ty::Str => self.expr(value, None),
@@ -348,7 +348,7 @@ impl<'a> Lowerer<'a> {
         if let PlaceKind::Local(s) = root_place(&place) {
             self.cx.mut_slots.insert(s);
         }
-        let key = self.expect(key, &key_ty);
+        let key = self.expr_as(key, &key_ty);
         let key = self.hold(key, out);
         let remove = self.mk_mutate(Mutation::Remove, place, vec![key], Ty::Bool, e.span);
         out.push(Stmt::Expr(remove));

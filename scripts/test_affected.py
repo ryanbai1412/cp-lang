@@ -104,6 +104,11 @@ class AffectedTest(unittest.TestCase):
     def test_site_paths_select_the_snippet_gate(self):
         self.assertTrue(self.sel("web/src/pages/index.astro")["site"])
 
+    def test_a_removed_std_spelling_selects_the_snippet_gate(self):
+        for path in ("crates/cpl-check/src/check/removed.rs", "std/prelude.cp"):
+            self.assertTrue(self.sel(path)["site"], path)
+        self.assertFalse(self.sel("crates/cpl-check/src/check/expr.rs")["site"])
+
     def test_the_real_workspace_maps_every_crate_directory(self):
         dirs = affected.crate_dirs()
         for d in sorted(os.listdir(os.path.join(affected.ROOT, "crates"))):
@@ -188,6 +193,25 @@ class AffectedTest(unittest.TestCase):
                 mock.patch.object(affected.subprocess, "run", lambda *a, **k: failed), \
                 mock.patch("sys.stdout", new_callable=io.StringIO):
             self.assertEqual(affected.run_slices(["vm-trace"]), 100)
+
+    def test_ci_runs_every_slice_and_counts_the_slow_ones_in_its_summary(self):
+        out = ("        PASS [  33.800s] (1/2) cpl-cli::vm_fallbacks shrink\n"
+               "        PASS [   2.000s] (2/2) cpl-cli::read_only_copies every_program\n")
+        done = subprocess.CompletedProcess([], 0, out, "")
+        ran = []
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(affected, "ROOT", tmp), \
+                mock.patch.object(affected, "build_slices", lambda names: ran.append(names) or 0), \
+                mock.patch.object(affected.subprocess, "run", lambda *a, **k: done), \
+                mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true",
+                                             "GITHUB_STEP_SUMMARY": os.path.join(tmp, "summary.md")}), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as printed:
+            self.assertEqual(affected.run_slices(["all"]), 0)
+            with open(os.path.join(tmp, "summary.md"), encoding="utf-8") as f:
+                self.assertEqual(f.read(), f"slow slices: 1 of {len(affected.SLICES)} over 20 s\n"
+                                           "- vm-trace 33.8s (consumers (trace))\n")
+        self.assertEqual(ran, [[s[0] for s in affected.SLICES]])
+        self.assertIn("::warning::affected: WARNING: slice vm-trace took 33.8s", printed.getvalue())
 
     def test_every_slice_has_an_owner_paths_and_tests(self):
         names = [s[0] for s in affected.SLICES]

@@ -11,3 +11,12 @@ Evidence: stress agrees on 30/30 cases against the v0.2 port and 30/30 against t
 C++, on the package generator. On its max case (n = 4e5, m = 1.2e5, mostly k = 15) the port
 takes 2.52 s and the C++ 1.28 s, with the same output, inside the 3 s limit. The gap is the
 per-candidate `bits_apart` over 16 half-words, where the C++ xors four 64-bit words.
+
+## 1. Comparing a candidate costs 16 half-word popcounts
+- **Where:** `bits_apart(word, i)` over the `[W, Quarter]U64` dictionary and `any(...)` over the buckets.
+- **What felt wrong:** the max case runs in 2.52 s against the accepted C++'s 1.28 s (2x, measurement
+  above), inside the 3 s limit but over the 1.1x line.
+- **Ideal code:** `any(popcount(word ^ dict[i]) <= k for ...)` over a 256-bit `Word` value.
+- **General fix:** a fixed-width bit word (`Bits<256>`) whose xor and popcount compile to four 64-bit
+  ops, so the comparison is one expression and as fast as the C++.
+- **Owner:** perf (with stdlib for the type). **Severity:** medium.

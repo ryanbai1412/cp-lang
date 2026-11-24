@@ -135,8 +135,7 @@ trace and lint.
 - Example: `unchecked:` blocks appear in conformance cases, so a saved-trace
   program in `crates/cpl-cli/tests/programs/` uses one too.
 - Enforced by: `every_syntax_form_reaches_every_tools_suite` in
-  `crates/cpl-cli/tests/tool_matrix.rs`; today's gaps are listed in
-  `crates/cpl-cli/tests/tool-gaps.txt`, which `skip_lists` only lets shrink.
+  `crates/cpl-cli/tests/tool_matrix.rs`, which fails on any gap.
 
 ### compiler-changes/R13: a valid program prints the same at every checks level
 

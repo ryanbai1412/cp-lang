@@ -779,7 +779,7 @@ fn signature_help_highlights_a_named_option_written_first() {
     );
     assert_eq!(params[active as usize], "before: ?Int = none");
     let (_, active, params) = signature("var s = Set<Int>()\nprint(s.drain(while: |))\n");
-    assert_eq!(params[active as usize], "while: (Int) -> Bool");
+    assert_eq!(params[active as usize], "while ok: (Int) -> Bool");
 }
 
 #[test]

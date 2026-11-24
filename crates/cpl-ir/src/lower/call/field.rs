@@ -731,6 +731,25 @@ impl<'a> Lowerer<'a> {
                 // The bounds are ends, not positions: `hi` is one past the last key
                 // and `lo` is no key at all when the domain is empty.
                 Dim::Pos(d) => self.domain_keys(d, span),
+                // `[D.cuts]T` is keyed by `D`'s cuts, one more than it has positions.
+                Dim::Bound(d) => {
+                    let lo = self.mk(
+                        ExprKind::Cast(Cast::Trust, Box::new(self.int_lit(0, span))),
+                        Ty::Bound(d),
+                        span,
+                    );
+                    let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    let n = self.int_add(len, 1);
+                    let hi = self.mk(ExprKind::Cast(Cast::Trust, Box::new(n)), Ty::Bound(d), span);
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(lo),
+                            hi: Box::new(hi),
+                        },
+                        Ty::range(Ty::Bound(d)),
+                        span,
+                    )
+                }
                 dim => {
                     let first = if let Dim::IntFrom(first) = dim {
                         first
@@ -963,13 +982,8 @@ impl<'a> Lowerer<'a> {
                     &[&self.a_ty(&ty), &name.text],
                 );
                 self.member_typo(&ty, &name.text, name.span);
+                self.position_member_hint(&ty, &name.text);
                 match (&ty, name.text.as_str()) {
-                    // An arc of a graph built from a list of pairs is the
-                    // neighbour, with no record around it.
-                    (Ty::Pos(_), "e") => self.help(
-                        "this is the neighbour itself, and a graph built from a list of pairs numbers no edges; \
-                         for `.e`, give the edges a domain: `let edges: [E](u: V, v: V) = ...`, then `Graph.directed(edges)`",
-                    ),
                     (Ty::List(_), "indices") => self.help(
                         "a list is indexed by `Int` from 0: write `0..xs.len`; \
                          an array `[D]T` has `.indices`, the positions of `D`",

@@ -23,7 +23,7 @@ for (i, v) in a.items:
     else:
         cur_delta -= 2 * v
 
-var ops: List<Int> = []
+var ops: List<1..=n> = []
 if let idx = best_idx:
     var flip = false
     for i in (0..idx).rev if (a[i] > 0) != flip:

@@ -100,9 +100,10 @@ pub fn shared_method(name: &str) -> bool {
     methods().iter().filter(|(_, n)| n.text == name).count() > 1
 }
 
-/// Every fn, method and getter name the active standard library declares.
-/// A struct's fields are not members of the built-in types (R02.6.4). A member of a built-in
-/// type that the checker can't type and no module declares is a spec gap.
+/// Every fn, method and getter name the active standard library declares where a program
+/// can call it: `pub`, or in a trait or impl body. A struct's fields and a module's private
+/// helpers are not members of the built-in types (R02.6.4). A member of a built-in type that
+/// the checker can't type and no module declares is a spec gap.
 pub fn spec_member_names() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
     NAMES.get_or_init(|| member_names(crate::modules::std_index()))
@@ -116,13 +117,23 @@ fn member_names(std: Std) -> crate::fx::HashSet<String> {
     };
     let mut names = crate::fx::HashSet::default();
     for (_, text) in std {
+        let mut shared_body = false;
         for line in text.lines() {
-            let code = line.split('#').next().unwrap_or("").trim_start();
-            if code.starts_with("//") {
+            let line = line.split('#').next().unwrap_or("");
+            let code = line.trim_start();
+            if code.is_empty() || code.starts_with("//") {
                 continue;
             }
+            let top = code.len() == line.len();
+            if top {
+                let item = code.strip_prefix("pub ").unwrap_or(code);
+                shared_body = item.starts_with("trait ") || item.starts_with("impl");
+            }
             if let Some(at) = code.find("fn ") {
-                names.insert(ident(&code[at + 3..]));
+                let public = code[..at].split_whitespace().any(|w| w == "pub");
+                if public || (shared_body && !top) {
+                    names.insert(ident(&code[at + 3..]));
+                }
             }
         }
     }
@@ -880,6 +891,19 @@ pub(crate) fn public_names<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A module's private helper is no member a program can name, so it
+    /// never hides a typo on a built-in type (`v.nxt` beside a std `fn nxt`).
+    #[test]
+    fn member_names_skip_private_helpers() {
+        let text = "pub struct S:\n    pub fn get(self) -> Int = 0\n    fn nxt(self) -> Int = 1\nfn helper() -> Int = 2\npub trait T:\n    fn need(self) -> Int\n";
+        let names = member_names(&[("m", text)]);
+        assert!(names.contains("get") && names.contains("need"), "{names:?}");
+        assert!(
+            !names.contains("nxt") && !names.contains("helper"),
+            "{names:?}"
+        );
+    }
 
     /// Every scan of std's declarations reads the outlines a browser build
     /// carries; on every std name it answers as it does from the files.

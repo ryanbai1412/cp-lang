@@ -101,7 +101,18 @@ impl<'p> Emitter<'p> {
         } else {
             "int"
         };
-        let rest = format!("(const {}& v, {digits}) {{\n{body}}}\n", self.ty(ty));
+        // A sequence may be stored narrower than its element type, so its
+        // helper takes whatever holds it and widens each element it writes.
+        let seq = matches!(
+            ty,
+            Ty::List(_) | Ty::Array { .. } | Ty::ListView(..) | Ty::Keyed(..)
+        );
+        let param = if seq {
+            "CplSeq".to_string()
+        } else {
+            self.ty(ty)
+        };
+        let rest = format!("(const {param}& v, {digits}) {{\n{body}}}\n");
         // Two types that are one in C++ and print alike share a helper.
         let twin = self.shows[..index]
             .iter()
@@ -112,8 +123,9 @@ impl<'p> Emitter<'p> {
             return format!("show_{}", twin + 1);
         }
         self.shows[index] = format!(
-            "// Prints a `{}`.\nvoid show_{}{rest}",
+            "// Prints a `{}`.\n{}void show_{}{rest}",
             self.program.show_ty(ty),
+            if seq { "template <class CplSeq> " } else { "" },
             index + 1
         );
         format!("show_{}", index + 1)

@@ -87,9 +87,9 @@ impl<'a> Lowerer<'a> {
                 if !values {
                     return Spec::Plain(Ty::Int);
                 }
-                let lo = lo.as_deref().map(|lo| Box::new(self.expect(lo, &Ty::Int)));
+                let lo = lo.as_deref().map(|lo| Box::new(self.expr_as(lo, &Ty::Int)));
                 let hi = hi.as_deref().map(|hi| {
-                    let mut hi = self.expect(hi, &Ty::Int);
+                    let mut hi = self.expr_as(hi, &Ty::Int);
                     if !inclusive {
                         hi = self.int_add(hi, -1);
                     }
@@ -158,6 +158,10 @@ impl<'a> Lowerer<'a> {
                 };
                 Spec::Plain(ty)
             }
+            ast::TypeKind::ItemOf(item) => Spec::Plain(match item.fn_item_ident() {
+                Some(ident) => Ty::Struct(self.item_type(&ident)),
+                None => Ty::Error,
+            }),
             ast::TypeKind::Infer | ast::TypeKind::Error => Spec::Plain(Ty::Error),
         }
     }
@@ -228,7 +232,7 @@ impl<'a> Lowerer<'a> {
                     GenArg::Domain(d) => Ty::Pos(d),
                     GenArg::Int(_) | GenArg::RuntimeInt(_) | GenArg::Range(_, _) => Ty::Int,
                     GenArg::OptRange(_, _) => Ty::opt(Ty::Int),
-                    GenArg::Op(_) => Ty::Unit,
+                    GenArg::Op(op) => Ty::Struct(self.op_type(op)),
                 });
             }
             let local = self
@@ -727,7 +731,7 @@ impl<'a> Lowerer<'a> {
                     if !values {
                         return Some(DimSpec::IntFrom(first, Box::new(self.int_lit(0, ty.span))));
                     }
-                    let mut len = self.expect(hi, &Ty::Int);
+                    let mut len = self.expr_as(hi, &Ty::Int);
                     len = self.int_add(len, if *inclusive { 1 - first } else { -first });
                     return Some(DimSpec::IntFrom(first, Box::new(len)));
                 }
@@ -746,7 +750,7 @@ impl<'a> Lowerer<'a> {
                 if !values {
                     return Some(DimSpec::Int(Box::new(self.int_lit(0, ty.span))));
                 }
-                let mut len = self.expect(hi, &Ty::Int);
+                let mut len = self.expr_as(hi, &Ty::Int);
                 if *inclusive {
                     len = self.int_add(len, 1);
                 }
@@ -786,7 +790,7 @@ impl<'a> Lowerer<'a> {
                     kind: ast::ExprKind::Name(name.text.clone()),
                     span: name.span,
                 };
-                Some(DimSpec::Int(Box::new(self.expect(&expr, &Ty::Int))))
+                Some(DimSpec::Int(Box::new(self.expr_as(&expr, &Ty::Int))))
             }
             ast::TypeKind::Value(expr) => {
                 if !values {

@@ -46,10 +46,21 @@ fn setup_writes_the_editor_files() {
         .unwrap()
         .starts_with("can't write taken"));
 
-    let out = cpl(&dir, &["setup", "emacs"]);
+    let out = cpl(&dir, &["setup", "emacs", "--dir", "elpa"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let version = env!("CARGO_PKG_VERSION").split('-').next().unwrap();
+    for file in ["cp-mode.el", "cp-mode-pkg.el", "cp-mode-autoloads.el"] {
+        let path = dir
+            .join("elpa")
+            .join(format!("cp-mode-{version}"))
+            .join(file);
+        assert!(path.is_file(), "{file}");
+    }
+
+    let out = cpl(&dir, &["setup", "notepad"]);
     assert_eq!(out.status.code(), Some(EXIT_USAGE as i32));
     assert!(
-        text(&out.stderr).contains("no setup for `emacs`"),
+        text(&out.stderr).contains("no setup for `notepad`"),
         "{}",
         text(&out.stderr)
     );
@@ -69,12 +80,26 @@ fn setup_installs_the_vscode_extension() {
     .unwrap();
     std::fs::set_permissions(&code, std::fs::Permissions::from_mode(0o755)).unwrap();
     std::fs::write(dir.join("x.vsix"), "").unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(["setup", "vscode", "--vsix", "x.vsix"])
-        .current_dir(&dir)
-        .env("CPL_CODE", &code)
-        .output()
-        .unwrap();
+    let home = dir.join("home");
+    let setup = |code: &Path| {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_cpl"));
+        command
+            .args(["setup", "vscode", "--vsix", "x.vsix"])
+            .current_dir(&dir);
+        command
+            .env("CPL_CODE", code)
+            .env("HOME", &home)
+            .env_remove("XDG_CONFIG_HOME");
+        command.env_remove("CPL_TOOLCHAIN").output().unwrap()
+    };
+    let settings = if cfg!(target_os = "macos") {
+        home.join("Library/Application Support/Code/User/settings.json")
+    } else {
+        home.join(".config/Code/User/settings.json")
+    };
+    let recorded = || cpl_json::parse(&std::fs::read_to_string(&settings).unwrap()).unwrap();
+    let cpl = std::fs::canonicalize(env!("CARGO_BIN_EXE_cpl")).unwrap();
+    let out = setup(&code);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     assert_eq!(
         std::fs::read_to_string(dir.join("args")).unwrap(),
@@ -85,6 +110,50 @@ fn setup_installs_the_vscode_extension() {
         "{}",
         text(&out.stdout)
     );
+    // A desktop launcher's VS Code has no shell PATH, so setup records the
+    // absolute cpl it ran as in the user settings, as for the other editors.
+    let ran = recorded()
+        .get("cp.server.path")
+        .and_then(|v| v.as_str())
+        .map(PathBuf::from);
+    assert_eq!(
+        ran.map(|p| std::fs::canonicalize(p).unwrap()),
+        Some(cpl.clone())
+    );
+    assert!(
+        !text(&out.stdout).contains(".cpl/bin"),
+        "{}",
+        text(&out.stdout)
+    );
+    // The user's other settings stay, and a cp.server.path they set wins.
+    std::fs::write(&settings, "{\"editor.tabSize\": 2}").unwrap();
+    assert_eq!(setup(&code).status.code(), Some(0));
+    assert_eq!(
+        recorded().get("editor.tabSize").and_then(|v| v.as_i64()),
+        Some(2)
+    );
+    assert!(recorded().get("cp.server.path").is_some());
+    std::fs::write(&settings, "{\"cp.server.path\": \"/opt/cpl\"}").unwrap();
+    let out = setup(&code);
+    assert!(
+        text(&out.stdout).contains("it runs /opt/cpl"),
+        "{}",
+        text(&out.stdout)
+    );
+    assert_eq!(
+        recorded().get("cp.server.path").and_then(|v| v.as_str()),
+        Some("/opt/cpl")
+    );
+    // Settings with comments are left as they are, with what to set.
+    std::fs::write(&settings, "// mine\n{}").unwrap();
+    let out = setup(&code);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out.stderr).contains("set `cp.server.path` to"),
+        "{}",
+        text(&out.stderr)
+    );
+    assert_eq!(std::fs::read_to_string(&settings).unwrap(), "// mine\n{}");
     // An editor command that installs nothing is a failure, not a success.
     let silent = dir.join("silent");
     std::fs::write(&silent, "#!/bin/sh\nexit 0\n").unwrap();

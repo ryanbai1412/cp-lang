@@ -408,6 +408,19 @@ fn a_dropped_field_at_a_product_position_drops_its_local_and_stores() {
 }
 
 #[test]
+fn a_field_only_an_unwritten_method_reads_is_dropped() {
+    let out = cpp(concat!(
+        "domain V = [5]\n",
+        "let g: [V]List<(to: V, w: Int)> = [[(to: V(1), w: 2)], [(to: V(2), w: 3)], [], [], []]\n",
+        "print(dijkstra(g, from: [(V(0), 0)])[V(2)]!)\n",
+    ));
+    assert!(
+        !out.contains("order.push_back") && !out.contains("> order"),
+        "only `Paths.iter` reads `order`, and the file never writes it, so neither the field nor its pushes are kept:\n{out}"
+    );
+}
+
+#[test]
 fn a_closure_named_to_keep_argument_order_is_no_std_function() {
     let out = cpp("use std.search.{parallel_bsearch}
 let n = read<Int>()
@@ -502,4 +515,15 @@ fn closures_stored_in_a_list_of_records_are_fn_pointers_or_bound() {
     assert!(!out.contains("std::function<"), "{out}");
     assert!(out.contains("cpl::Bound<cpl::Env<ll>, ll(ll)>"), "{out}");
     assert!(out.contains("std::add_pointer_t<ll(ll, ll)>"), "{out}");
+}
+
+#[test]
+fn an_unread_flat_key_is_voided_so_g_plus_plus_sees_no_dead_statement() {
+    let out = cpp(
+        "domain R = 0..3\ndomain C = 2..=4\nvar g: [R, C]Int = 0\nfor p in g.keys:\n    g[p] = p.0.label\nprint(g[(R(1), C(2))])\n",
+    );
+    for line in out.lines().map(str::trim) {
+        assert!(!line.starts_with("(int)((ll)"), "{line}");
+    }
+    assert!(out.contains("(void)(int)((ll)"), "{out}");
 }

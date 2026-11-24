@@ -15,6 +15,7 @@ mod frame;
 mod fuse;
 mod globals;
 mod inline;
+mod lap;
 mod lend;
 mod lent_fields;
 mod lentopt;

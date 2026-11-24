@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, crateOf, DATA, dataOverBudget, ownerOf, owners, readCharters, touchedOverBudget } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, crateOf, DATA, dataOverBudget, ownerOf, owners, readCharters, sortCopies, touchedOverBudget } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -64,6 +64,27 @@ describe('wasm crate budgets', () => {
     expect(errors[1]).toMatch(/^cpl_lsp is 200 B gzipped/);
     expect(warnings).toEqual([expect.stringMatching(/^cpl_check is 300 B gzipped/)]);
     expect(touchedOverBudget(rows, { ...budgets, [DATA]: 50 }, map, []).errors).toEqual([]);
+  });
+
+  test('each element type and crate a sort is compiled for is one copy of core\'s sort', () => {
+    const unstable = (t, c) => `_RINvNtNtNtCsiErZIu7dPQ0_4core5slice4sort8unstable7ipnsort${t}NvYB1b_NtNtBa_3cmp10PartialOrd2ltE${c}`;
+    const stable = '_RINvNtNtNtCsiErZIu7dPQ0_4core5slice4sort6stable14driftsort_mainjNvYjNtNtBa_3cmp10PartialOrd2ltECsjqR3RLP4pKN_6cpl_ir';
+    const names = [
+      unstable('Re', 'Cs7ddMHjwixPc_7cpl_fmt'),
+      unstable('Re', 'CsigG2x4UxwvU_8cpl_lint'),
+      unstable('Re', 'CsigG2x4UxwvU_8cpl_lint'),
+      stable,
+      '_RINvNtNtNtNtCsiErZIu7dPQ0_4core5slice4sort8unstable9quicksort9quicksortReNvYB17_NtNtBa_3cmp10PartialOrd2ltECsigG2x4UxwvU_8cpl_lint',
+      '_RNvCs1a2b_9cpl_check4sort',
+    ];
+    const copies = sortCopies(names);
+    expect(copies).toHaveLength(3);
+    expect(checkSortCopies(copies, 3)).toEqual({ error: null, lower: null });
+    const over = checkSortCopies(copies, 2);
+    expect(over.error).toMatch(/^cpl.wasm has 3 copies of core's sort, over the 2 in web\/scripts\/wasm-sort-copies.json/);
+    expect(over.error).toContain('\n  cpl_fmt: ');
+    expect(over.error).toContain('\n  cpl_ir: ');
+    expect(checkSortCopies(copies, 5).lower).toMatch(/lower "max" in web\/scripts\/wasm-sort-copies.json to 3$/);
   });
 
   test('within budget passes', () => {

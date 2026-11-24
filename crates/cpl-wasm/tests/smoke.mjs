@@ -427,8 +427,8 @@ test("the worker client has every method the worker answers", () => {
 
 // Go to definition through the module's language server, as the site's
 // editors ask it, over every hill-climb port: the first use of each word
-// (the walk of crates/cpl-lsp/tests/ports.rs) resolves at least as often as
-// the floor `definition-floors.json` holds the native server to, and every
+// (the walk of crates/cpl-lsp/tests/ports.rs) resolves exactly as often as
+// `definition-floors.json` records for the native server, and every
 // answer in std is a /std/<module>.cp file the site maps to its docs page,
 // on the name asked, the item it belongs to or the module's first line.
 test("definition reaches as many names as the native server, std ones on their docs", () => {
@@ -503,5 +503,5 @@ test("definition reaches as many names as the native server, std ones on their d
   }
   assert.deepEqual(wrong, []);
   const permille = Math.floor((resolved * 1000) / asked);
-  assert.ok(permille >= floors.hillclimb, `definition reached ${resolved} of ${asked} names = ${permille} permille, under ${floors.hillclimb}`);
+  assert.equal(permille, floors.hillclimb, `definition reached ${resolved} of ${asked} names = ${permille} permille, where the native server and definition-floors.json say ${floors.hillclimb}`);
 });

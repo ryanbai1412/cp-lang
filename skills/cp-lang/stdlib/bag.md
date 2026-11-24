@@ -101,7 +101,7 @@ Order-statistic ordered map from `K` to `V`, each value beside its key in the `S
 Fields: `ks: SortedBag<K>`, `vals: List<V>`, `vfree: List<Int>`.
 
 - `fn new() -> SortedMap<K, V>` — \(O(1)\); Create an empty `SortedMap<K, V>`.
-- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise; Reserve the key pool and the value list for at least `cap` entries.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate key and value storage for at least `cap` entries.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of key-value pairs.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the map is empty.
 - `fn clear(mut self)` — \(O(1)\); Remove all entries.
@@ -138,7 +138,7 @@ Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtr
 Fields: `bag: SortedBag<K>`, `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 
 - `fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedBag<K, T>` — \(O(1)\); Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
-- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` elements.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate leaf storage for at least `cap` distinct keys.
 - `@get fn len(self) -> Int` — \(O(1)\); Total number of elements (with multiplicity).
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the bag is empty.
 - `@get fn all(self) -> T` — \(O(1)\); Fold of all elements in the bag.
@@ -162,7 +162,7 @@ Fields: `bag: SortedBag<K>`, `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 Fields: `bag: AugSortedBag<K, T>`.
 
 - `fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedSet<K, T>` — \(O(1)\); Create an empty `AugSortedSet<K, T>` with associative `op`, identity `id`, and key map `leaf`.
-- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` keys.
+- `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate leaf storage for at least `cap` keys.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of distinct keys.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the set is empty.
 - `@get fn all(self) -> T` — \(O(1)\); Fold of all keys in the set.

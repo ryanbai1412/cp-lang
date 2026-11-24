@@ -638,8 +638,8 @@ fn a_windowed_trace_is_the_full_traces_window_and_the_whole_run() {
             let at = format!("from {from:?} of {source}");
             assert_eq!(out, full_out, "{at}");
             assert_eq!(
-                windowed.trap.map(|t| t.message),
-                full.trap.map(|t| t.message),
+                windowed.trap.map(|t| t.into_message()),
+                full.trap.map(|t| t.into_message()),
                 "{at}"
             );
             let (rec, whole) = (windowed.recording.unwrap(), full.recording.unwrap());

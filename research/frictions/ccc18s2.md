@@ -18,6 +18,17 @@
 - **General fix:** accept a total `T -> T` step in `iterate`.
 - **Severity:** low
 
+## No grid rotation in std
+- **Where:** `fn turned(g: [I, I]Int) -> [I, I]Int = [I, I] (r, c) => g[I(n - 1 - c.ord), r]`.
+- **What felt wrong:** std has `transposed` for grids but no rotation, so the clockwise index
+  arithmetic is written by hand. `cpl run` of `g.rotated_cw()` fails with
+  `error[E0203]: an [I, I]Int has no method rotated_cw`.
+- **Goal it hurts:** coherent stdlib; obvious way is correct (rotation direction is easy to flip).
+- **Ideal code:** `iterate(given, g => g.rotated_cw())`.
+- **General fix:** `rotated_cw`, `rotated_ccw` and `flipped` next to `transposed` in `std.grid`.
+- **Severity:** low
+- **Owner:** stdlib.
+
 ## Dream
 
 ```cp

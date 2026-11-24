@@ -28,7 +28,7 @@ fn forests():
     var lc = LinkCut<V, Int>(+)
     var lz = LazyLinkCut<V, Int, Int>.new(
         Action<Int,
-        Int>(0, (f, g) => f + g, (d, x, n) => x + d * n, Monoid<Int>(0, (a, b) => a + b)),
+        Int>(0, (f, g) => f + g, (d, x, n) => x + d * n, Monoid<Int>(0, (a, b) => a + b, x => x)),
     )
     for step in 0..400:
         let (u, v) = (V.nth(rand(0, 7)), V.nth(rand(0, 7)))
@@ -72,7 +72,7 @@ fn lazy_link_cut_matches_a_brute_forest():
         0,
         (f, g) => f + g,
         (d, x, n) => x + d * n,
-        Monoid<Int>(0, (a, b) => a + b),
+        Monoid<Int>(0, (a, b) => a + b, x => x),
     )
     var lct = LazyLinkCut<V, Int, Int>.new(add, Some(w))
     var adj: [V]List<V> = []

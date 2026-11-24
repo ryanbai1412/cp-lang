@@ -238,7 +238,7 @@ impl<'a> Lowerer<'a> {
                 return self.lower_first_or_last_where(base, &test.value, false, span);
             }
         }
-        // `xs.reach(while: (a, b) => ..., cyclic: Bool = false)` returns `List<Int>`.
+        // `xs.reach(while: (a, b) => ...; cyclic: Bool = false)` returns `List<Int>`.
         if name.text == "reach" && base_is_seq {
             return self.lower_reach(base, args, span);
         }
@@ -361,7 +361,7 @@ impl<'a> Lowerer<'a> {
                 let Some(exprs) = self.positional_any("filled", args, 2, span) else {
                     return self.err_expr(span);
                 };
-                let count = self.expect(exprs[0], &Ty::Int);
+                let count = self.expr_as(exprs[0], &Ty::Int);
                 let val_hint = match hint {
                     Some(Ty::List(e)) => Some(&**e),
                     _ => None,
@@ -371,7 +371,7 @@ impl<'a> Lowerer<'a> {
                 let val = match val_hint {
                     Some(elem) if !matches!(elem, Ty::Error) => {
                         let elem = elem.clone();
-                        self.expect(exprs[1], &elem)
+                        self.expr_as(exprs[1], &elem)
                     }
                     _ => self.expr(exprs[1], None),
                 };
@@ -1131,14 +1131,14 @@ impl<'a> Lowerer<'a> {
                             } else {
                                 let lo_e = match lo.as_deref() {
                                     Some(l) => {
-                                        let lv = self.expect(l, &key_ty);
+                                        let lv = self.expr_as(l, &key_ty);
                                         self.mk_some(lv, opt_k.clone(), span)
                                     }
                                     None => self.mk(ExprKind::None, opt_k.clone(), span),
                                 };
                                 let hi_e = match hi.as_deref() {
                                     Some(h) => {
-                                        let hv = self.expect(h, &key_ty);
+                                        let hv = self.expr_as(h, &key_ty);
                                         self.mk_some(hv, opt_k.clone(), span)
                                     }
                                     None => self.mk(ExprKind::None, opt_k.clone(), span),
@@ -1496,8 +1496,8 @@ impl<'a> Lowerer<'a> {
                         } = &args[0].value.kind
                         {
                             let container = self.expr(base, None);
-                            let lo = lo.as_ref().map(|x| (self.expect(x, &key_ty), true));
-                            let hi = hi.as_ref().map(|x| (self.expect(x, &key_ty), *inclusive));
+                            let lo = lo.as_ref().map(|x| (self.expr_as(x, &key_ty), true));
+                            let hi = hi.as_ref().map(|x| (self.expr_as(x, &key_ty), *inclusive));
                             return Some((
                                 Iter::TreeRange {
                                     container,

@@ -281,17 +281,24 @@ impl StrViewVal {
         }
     }
 
+    /// Where walk position `idx` (below `len`) sits in `base`.
     #[inline]
-    pub fn get(&self, idx: usize) -> Option<u8> {
-        if idx >= self.len {
-            return None;
-        }
-        let pos = if self.rev {
+    pub fn pos(&self, idx: usize) -> usize {
+        if self.rev {
             self.lo + self.len - 1 - idx
         } else {
             self.lo + idx
-        };
-        Some(self.base[pos])
+        }
+    }
+
+    #[inline]
+    pub fn get(&self, idx: usize) -> Option<u8> {
+        (idx < self.len).then(|| self.base[self.pos(idx)])
+    }
+
+    /// The bytes in walk order.
+    pub fn iter(&self) -> impl Iterator<Item = u8> + '_ {
+        (0..self.len).map(move |i| self.base[self.pos(i)])
     }
 
     /// The cells `rel` counted in storage order from `lo`, whatever the walk direction.
@@ -356,16 +363,7 @@ impl StrViewVal {
             return self.base[self.lo..self.lo + self.len]
                 .cmp(&other.base[other.lo..other.lo + other.len]);
         }
-        let n = self.len.min(other.len);
-        for i in 0..n {
-            let a = self.get(i).unwrap();
-            let b = other.get(i).unwrap();
-            let ord = a.cmp(&b);
-            if ord != Ordering::Equal {
-                return ord;
-            }
-        }
-        self.len.cmp(&other.len)
+        self.iter().cmp(other.iter())
     }
 
     pub fn contains_byte(&self, b: u8) -> bool {
@@ -412,22 +410,24 @@ impl ListViewVal {
         }
     }
 
+    /// Where walk position `idx` (below `len`) sits in `base`.
     #[inline]
-    pub fn get(&self, idx: usize) -> Option<Value> {
-        if idx >= self.len {
-            return None;
-        }
-        let pos = if self.rev {
+    pub fn pos(&self, idx: usize) -> usize {
+        if self.rev {
             self.lo + self.len - 1 - idx
         } else {
             self.lo + idx
-        };
-        Some(self.base.get_unchecked_val(pos))
+        }
+    }
+
+    #[inline]
+    pub fn get(&self, idx: usize) -> Option<Value> {
+        (idx < self.len).then(|| self.base.get_unchecked_val(self.pos(idx)))
     }
 
     /// The cells in walk order.
     pub fn iter(&self) -> impl Iterator<Item = Value> + '_ {
-        (0..self.len).map(move |i| self.get(i).unwrap())
+        (0..self.len).map(move |i| self.base.get_unchecked_val(self.pos(i)))
     }
 
     /// The cells `rel` counted in storage order from `lo`, whatever the walk direction.
@@ -819,9 +819,7 @@ pub(crate) fn show(
             if !v.rev {
                 out.extend_from_slice(&v.base[v.lo..v.lo + v.len]);
             } else {
-                for i in 0..v.len {
-                    out.push(v.get(i).unwrap());
-                }
+                out.extend(v.iter());
             }
         }
         (Value::Opt(OptVal::None), _) => out.extend_from_slice(b"none"),
@@ -898,11 +896,11 @@ pub(crate) fn show(
         }
         (Value::ListView(view), Ty::ListView(elem, _) | Ty::Keyed(elem, _)) => {
             let sep = sep_of(elem, &program.structs);
-            for i in 0..view.len {
+            for (i, item) in view.iter().enumerate() {
                 if i > 0 {
                     out.extend_from_slice(sep.bytes());
                 }
-                rec(out, &view.get(i).unwrap(), elem);
+                rec(out, &item, elem);
             }
         }
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {

@@ -87,7 +87,7 @@ impl<'a> Lowerer<'a> {
             if let ast::ExprKind::Field { base, name } = &callee.kind {
                 if let Some(Sym::Domain(id)) = self.sym(base) {
                     if matches!(name.text.as_str(), "after" | "before") && args.len() == 1 {
-                        let pos = self.expect(&args[0].value, &Ty::Pos(id));
+                        let pos = self.expr_as(&args[0].value, &Ty::Pos(id));
                         let (lo, hi) = if name.text == "after" {
                             (
                                 self.int_add(self.cast(Cast::Ord, pos, Ty::Int), 1),
@@ -229,7 +229,7 @@ impl<'a> Lowerer<'a> {
                     );
                     return error(self);
                 }
-                let mut hi = self.expect(hi, &ty);
+                let mut hi = self.expr_as(hi, &ty);
                 let mut lo = lo;
                 if ty != Ty::Int {
                     lo = self.cast(Cast::Ord, lo, Ty::Int);
@@ -240,7 +240,7 @@ impl<'a> Lowerer<'a> {
                 if *inclusive && !closed {
                     hi = self.int_add(hi, 1);
                 }
-                let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
+                let step = step.as_ref().map(|s| self.expr_as(s, &Ty::Int));
                 (
                     Iter::Range {
                         lo,
@@ -267,7 +267,7 @@ impl<'a> Lowerer<'a> {
                         if cuts {
                             hi = self.int_add(hi, 1);
                         }
-                        let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
+                        let step = step.as_ref().map(|s| self.expr_as(s, &Ty::Int));
                         (
                             Iter::Range {
                                 lo: lo_ord,
@@ -282,7 +282,7 @@ impl<'a> Lowerer<'a> {
                     // `for i in 3..:` counts up until the body leaves.
                     Ty::Int => {
                         let hi = self.int_lit(INF, span);
-                        let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
+                        let step = step.as_ref().map(|s| self.expr_as(s, &Ty::Int));
                         (
                             Iter::Range {
                                 lo,
@@ -312,7 +312,7 @@ impl<'a> Lowerer<'a> {
                 step,
             } => {
                 let hi = self.expr(hi, None);
-                let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
+                let step = step.as_ref().map(|s| self.expr_as(s, &Ty::Int));
                 match hi.ty {
                     Ty::Pos(d) | Ty::Bound(d) => {
                         let cuts = Self::walks_cuts(&hi.ty);
@@ -431,7 +431,7 @@ impl<'a> Lowerer<'a> {
             // of `lo'..hi by step` backward, where `lo'` is the last one.
             ast::ExprKind::By { walk, step } => {
                 let (iter, ty) = self.iter(walk);
-                let step = self.expect(step, &Ty::Int);
+                let step = self.expr_as(step, &Ty::Int);
                 let Iter::Range {
                     lo,
                     hi,

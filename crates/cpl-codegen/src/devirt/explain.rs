@@ -298,7 +298,7 @@ pub(super) fn explain_locals_in_block(
     let params = home.map_or(0, |id| devirt.program.fns[id].params.len());
     let hoisted = crate::scope::hoisted(block, params);
     let mut memo_pairs = devirt.memo_pairs(block);
-    memo_pairs.retain(|w, (b, _)| !hoisted.contains(w) && !hoisted.contains(b));
+    memo_pairs.retain(|w, (b, ..)| !hoisted.contains(w) && !hoisted.contains(b));
     walk::deep_stmts(block, &mut |stmt| {
         let Stmt::Let(slot, init) = stmt else {
             return;

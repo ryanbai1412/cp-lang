@@ -125,9 +125,17 @@ impl<'a> Lowerer<'a> {
             .filter(|(_, f)| f.cached)
             .map(|(i, _)| i)
             .collect();
+        self.structs[id].def.bits_fields = decl
+            .fields
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.bits)
+            .map(|(i, _)| i)
+            .collect();
         self.structs[id].def.hidden = self.hidden_fields(self.structs[id].mod_id, decl);
         self.structs[id].def.fixed = self.fixed_rows(decl);
         self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
+        self.structs[id].def.int_ranges = self.int_field_ranges(decl);
         self.collect_struct_field_ranges(id, decl);
 
         // 3. Collect methods, getters, projections, laws, constants.
@@ -289,10 +297,16 @@ impl<'a> Lowerer<'a> {
 
     /// Finds and attaches all `impl` blocks matching concrete struct `sid`.
     pub(in crate::lower) fn attach_impls_for_struct(&mut self, sid: StructId) {
-        let Some(sdecl) = self.structs[sid].decl else {
-            return;
+        let item = self
+            .item_types
+            .iter()
+            .find(|(_, s)| *s == sid)
+            .map(|(k, _)| k.clone());
+        let struct_decl_name = match self.structs[sid].decl {
+            Some(sdecl) => sdecl.name.text.clone(),
+            None if item.is_some() => String::new(),
+            None => return,
         };
-        let struct_decl_name = sdecl.name.text.clone();
         let struct_mod = self.structs[sid].mod_id;
         let origin_args: Vec<GenArg> = self.structs[sid]
             .origin_gen
@@ -309,23 +323,26 @@ impl<'a> Lowerer<'a> {
             let imp_target = self.impls[idx].target;
             let imp_body = self.impls[idx].body;
 
-            let ast::TypeKind::Named {
-                name: tname,
-                args: targs,
-            } = &imp_target.kind
-            else {
-                continue;
-            };
-            // Check whether `tname` in `imp_mod` refers to the same struct.
-            let keyed = cpl_check::arity_key(&tname.text, targs.len());
-            let syms = &self.mod_syms[imp_mod];
-            let target_matches = match syms.get(&keyed).or_else(|| syms.get(&tname.text)).copied() {
-                Some(Sym::Struct(id)) => id == sid,
-                Some(Sym::GenStruct(gid)) => self.structs[sid]
-                    .origin_gen
-                    .as_ref()
-                    .is_some_and(|(g, _)| *g == gid),
-                _ => tname.text == struct_decl_name && imp_mod == struct_mod,
+            let (target_matches, targs): (bool, &[ast::Type]) = match &imp_target.kind {
+                ast::TypeKind::Named {
+                    name: tname,
+                    args: targs,
+                } if item.is_none() => {
+                    // Check whether `tname` in `imp_mod` refers to the same struct.
+                    let keyed = cpl_check::arity_key(&tname.text, targs.len());
+                    let syms = &self.mod_syms[imp_mod];
+                    let hit = match syms.get(&keyed).or_else(|| syms.get(&tname.text)).copied() {
+                        Some(Sym::Struct(id)) => id == sid,
+                        Some(Sym::GenStruct(gid)) => self.structs[sid]
+                            .origin_gen
+                            .as_ref()
+                            .is_some_and(|(g, _)| *g == gid),
+                        _ => tname.text == struct_decl_name && imp_mod == struct_mod,
+                    };
+                    (hit, targs)
+                }
+                ast::TypeKind::ItemOf(of) => (item.is_some() && of.fn_item_ident() == item, &[]),
+                _ => continue,
             };
             if !target_matches {
                 continue;
@@ -465,7 +482,7 @@ impl<'a> Lowerer<'a> {
                             let generic = self.structs[sid].origin_gen.is_some();
                             if let (true, Some(dom_id)) = (generic, self.structs[sid].index_domain)
                             {
-                                let len = self.expect(init, &Ty::Int);
+                                let len = self.expr_as(init, &Ty::Int);
                                 self.size_library_domain(dom_id, len);
                             }
                         }
@@ -508,12 +525,15 @@ impl<'a> Lowerer<'a> {
                     let t_offset = self.traits[tid].offset;
                     let t_methods = self.traits[tid].methods.clone();
                     let t_env = self.default_fn_env(tid, &imp_trait_args, imp_body, &env);
+                    let t_fns: Vec<String> =
+                        t_methods.iter().map(|m| m.name.text.clone()).collect();
                     for m in t_methods {
                         if !matches!(m.body, ast::FnBody::None)
                             && !self.structs[sid].methods.contains_key(&m.name.text)
                         {
                             let fn_id =
                                 self.declare_fn_in(m, t_mod, t_offset, Some(sid), t_env.clone());
+                            self.default_trait_fns.insert(fn_id, t_fns.clone());
                             self.resolve_fn_sig(fn_id, Some(tname.as_str()));
                             self.structs[sid].methods.insert(m.name.text.clone(), fn_id);
                             let key = (tname.clone(), m.name.text.clone());

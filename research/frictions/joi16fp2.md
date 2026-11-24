@@ -12,9 +12,10 @@ print(sum(first of each stretch) - 1 + last + gains.top(spare).sum())
 
 The first rewrite used `for (from, to) in express.pairs()` to walk consecutive express stops
 and was wrong: on a table `pairs()` gives every `i < j` pair. The port goes back to
-`for e in E: let Some(f) = E.at(e + 1) else: continue`. A named `adjacent()` (or
-`windows(2)`) on tables and lists would make the consecutive walk one spelling, and a lint on
-`pairs()` over a sorted domain table might catch the mix-up.
+`for e in E: let Some(f) = E.at(e + 1) else: continue`. std `.adjacent` already gives the
+consecutive pairs of a table (`for (x, y) in a.adjacent` over a `[E]Int` runs on a fresh
+`cpl`), so the port owes that rewrite. A lint on `pairs()` over a sorted domain table might
+catch the mix-up (Owner: lint-fmt).
 
 ## Taking the largest k
 

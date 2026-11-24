@@ -58,6 +58,16 @@ fn run(program: &Path, traced: bool) -> Run {
     let stats = |line: &str| line.starts_with('{') && line.contains("\"total_fallbacks\"");
     // A run that runs its program more than once prints a line for each.
     let lines: Vec<&str> = stderr.lines().filter(|l| stats(l)).collect();
+    // A program with an `@cpp` body runs untraced as its C++ build, so no
+    // engine of cpl's runs it and there is nothing to fall back from.
+    let cpp = !traced && std::fs::read_to_string(program).is_ok_and(|s| s.contains("@cpp("));
+    if lines.is_empty() && cpp {
+        return Run {
+            stdout,
+            stderr,
+            kinds: Vec::new(),
+        };
+    }
     if lines.is_empty() {
         return Run {
             stdout,

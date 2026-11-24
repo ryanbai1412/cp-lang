@@ -424,12 +424,12 @@ impl<'a> Lowerer<'a> {
         };
         match cond {
             ast::Cond::Expr(test) => {
-                let test = self.expect(test, &Ty::Bool);
+                let test = self.expr_as(test, &Ty::Bool);
                 leave_unless(self, test, stmts);
                 true
             }
             ast::Cond::Guard { test, and } => {
-                let test = self.expect(test, &Ty::Bool);
+                let test = self.expr_as(test, &Ty::Bool);
                 leave_unless(self, test, stmts);
                 self.while_clauses(and, stmts)
             }
@@ -460,7 +460,7 @@ impl<'a> Lowerer<'a> {
     ) {
         match cond {
             ast::Cond::Expr(cond) => {
-                let cond = self.worked_out_here(cond.span, |lw| lw.expect(cond, &Ty::Bool));
+                let cond = self.worked_out_here(cond.span, |lw| lw.expr_as(cond, &Ty::Bool));
                 let id = self.open_loop(None);
                 let else_flag = self.begin_loop_else(id, else_body, out);
                 let body = self.block(body, Tail::Discard);

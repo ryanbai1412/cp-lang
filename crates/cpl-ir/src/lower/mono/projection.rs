@@ -124,7 +124,11 @@ impl<'a> Lowerer<'a> {
             for s in pre_stmts {
                 lw.stmt(s, out);
             }
+            // The view's bounds read the projection's arguments, so they
+            // are worked out after those are bound, not with the caller's.
+            let pending = lw.cx.pending.len();
             lent_place = Some(lw.place(lend_place_ast));
+            out.extend(lw.cx.pending.drain(pending..));
             for s in post_stmts {
                 lw.stmt(s, post_out);
             }
@@ -171,7 +175,7 @@ impl<'a> Lowerer<'a> {
         let mut arg_slots = Vec::new();
         let mut arg_globals = Vec::new();
         for ((pname, pty), arg) in param_tys.iter().zip(call_args) {
-            let v = self.expect(&arg.value, pty);
+            let v = self.expr_as(&arg.value, pty);
             // A read-only variable is lent, not copied: the checker holds it
             // while the result lives.
             if !arg.mutable && v.ty == *pty {

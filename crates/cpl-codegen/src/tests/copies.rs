@@ -674,3 +674,49 @@ fn a_let_of_a_lent_node_is_a_reference_unless_its_slot_is_written_while_it_lives
         "a read through `at` builds no node: {cpp}"
     );
 }
+
+#[test]
+fn an_optional_struct_param_the_fn_only_reads_is_lent_not_copied() {
+    let cpp = cpp(concat!(
+        "struct H(pre: List<Int>):\n",
+        "    fn at(self, i: Int, of: ?H = None) -> Int:\n",
+        "        if let o = of: return o.pre[i]\n",
+        "        self.pre[i]\n",
+        "let h = H([1, 2, 3])\n",
+        "let h2 = H([4, 5, 6])\n",
+        "print(h.at(0), h.at(1, of: h2))\n",
+    ));
+    assert!(
+        cpp.contains("cpl::Lent<H> of)") && cpp.contains("cpl::Lent<H>& t0 = of;"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("cpl::lend(h2)"),
+        "`h2` is passed by pointer, not copied into an optional:\n{cpp}"
+    );
+    assert!(!cpp.contains("std::optional<H>(h2)"), "{cpp}");
+}
+
+#[test]
+fn a_mut_self_call_through_a_lend_runs_on_the_slot() {
+    let cpp = cpp(concat!(
+        "use std.marks.{Arena, Id}\n",
+        "struct C:\n    var n: Int\n    fn bump(mut self, by: Int):\n        n += by\n",
+        "struct N:\n    var kids: List<Int>\n    var c: C\n",
+        "fn grow(mut ar: Arena<N>, i: Id<N>):\n",
+        "    ar.at(i).kids.push(3)\n    ar[i].c.bump(2)\n",
+        "var ar = Arena<N>()\n",
+        "let i = ar.alloc(N([1], C(0)))\n",
+        "grow(mut ar, i)\n",
+        "print(ar.at(i).kids, ar.at(i).c.n)\n",
+    ));
+    assert!(
+        cpp.contains("ar_2._xs, ll(i_2.raw)).kids.push_back(3);"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("C_bump(cpl::at(ar_2._xs, ll(i_2.raw)).c, 2);"),
+        "{cpp}"
+    );
+    assert!(!cpp.contains("N t"), "no node is copied: {cpp}");
+}

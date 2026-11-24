@@ -18,6 +18,18 @@
   `Semiring`; helps every min-plus/max-plus matrix port (path products, DP transitions).
 - **Severity:** medium (worked around with a user `Monoid`).
 
+## 1.67x slower than the accepted C++ on the largest input
+- **Where:** the whole port; k = 5, n = 5e4, m = 2.5e5, q = 1e4.
+- **What felt wrong:** `cpl build` C++ 0.05 s against the accepted C++'s 0.03 s (the
+  measurement below), over the 1.1x line (idiomatic-code/R10). Not profiled.
+- **Goal it hurts:** performance.
+- **Ideal code:** the port as written.
+- **General fix:** profile the `[Slot, Slot]?Int` table product (a fresh table per `mat_mul`,
+  `?Int` cells) against the C++'s plain arrays; the fix belongs in how fixed-size `?Int`
+  tables are built and copied, so every small-matrix port gains.
+- **Severity:** low (20 ms absolute, 1000 ms limit).
+- **Owner:** perf. Repro: the largest generated input, port against `orig.cpp`.
+
 ## Measurements
 
 Largest input (k = 5, n = 5e4, m = 2.5e5, q = 1e4): accepted C++ 0.03 s; `cpl build` C++

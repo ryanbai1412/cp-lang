@@ -22,7 +22,8 @@ borrow of `queue`) would make the round one expression, with `last` updated from
 
 ## `for _ in 0..t` for a plain repeat
 
-There is no `repeat t:`; the unused `_` loop variable is the only spelling of "do this t times".
+`repeat t:` exists (`repeat n: print(1)` runs on a fresh `cpl`); the port owes it in place of
+the unused `_` loop variable.
 
 ## Verification
 

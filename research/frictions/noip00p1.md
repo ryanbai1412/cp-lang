@@ -7,6 +7,8 @@
 - **Ideal code:** `Char.digit(d)`; `x.digits(base: base)` accepting negative bases.
 - **General fix:** `Char.digit(d: 0..36)` and `Int.digits(base:)` for any base with |base| >= 2.
 - **Severity:** low.
+- **Run:** `print(x.digits(base: base).rev.map(Char.digit))` gives `error[E0201]: no value named `Char` here`, and
+  `5.digits(base: -2)` stops with `error[R0401]: assertion failed: self >= 0 and base >= 2`.
 
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC 5067849 on gen.py inputs; max (x = 32767, base -2) 0.004 s vs C++ 0.003 s, same output.

@@ -124,7 +124,7 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             let lowered = arg.map(|a| match ty {
-                Some(ty) => self.expect(&a.value, ty),
+                Some(ty) => self.expr_as(&a.value, ty),
                 None => self.expr(&a.value, None),
             });
             if let (Some(pat), Some(arg)) = (p.ty.as_ref().filter(|t| generic(t)), &lowered) {
@@ -162,7 +162,7 @@ impl<'a> Lowerer<'a> {
             let arg = match (arg, &p.default) {
                 (Some(arg), _) => arg,
                 (None, Some(default)) => match ty {
-                    Some(ty) => self.expect(default, ty),
+                    Some(ty) => self.expr_as(default, ty),
                     None => self.expr(default, None),
                 },
                 (None, None) => self.err_expr(span),

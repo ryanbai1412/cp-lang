@@ -68,7 +68,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             UnOp::Not => {
-                let value = self.expect(operand, &Ty::Bool);
+                let value = self.expr_as(operand, &Ty::Bool);
                 self.mk_unary(op, value, Ty::Bool, span)
             }
             UnOp::BitNot => {
@@ -109,12 +109,12 @@ impl<'a> Lowerer<'a> {
         use BinOp::*;
         match op {
             And | Or => {
-                let l = self.expect(lhs, &Ty::Bool);
+                let l = self.expr_as(lhs, &Ty::Bool);
                 let past = self.cx.present.len();
                 let mutators = self.mutators.clone();
                 let held = narrow::in_rhs(op, lhs, rhs, &mut |f, x| mutators.writes(f, x));
                 self.cx.present.extend(held.into_iter().map(String::from));
-                let r = self.worked_out_here(rhs.span, |lw| lw.expect(rhs, &Ty::Bool));
+                let r = self.worked_out_here(rhs.span, |lw| lw.expr_as(rhs, &Ty::Bool));
                 self.cx.present.truncate(past);
                 return self.mk_binary(op, l, r, Ty::Bool, span);
             }

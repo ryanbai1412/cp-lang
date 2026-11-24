@@ -176,10 +176,15 @@ subarray), `MinCount`/`MaxCount` (extreme and multiplicity), `Affine`
 operand on ties, so it already returns the first minimum (section 3).
 
 **Reversal.** A fold along a path goes one way up and the other way down.
-That is free for a `Commutative` op. Otherwise the value type implements
-`Reversible` (`x.rev()`: the fold of the same elements read backwards), as
-`MaxSub` and `Hash` do. `fold_path` requires one of the two; asking without
-either is a compile error naming both fixes.
+Reversal belongs to the op, not the value: a `Monoid` carries
+`rev: ?(T -> T)`, read by `m.reversed(x)`. `Monoid.of` gives every stock op
+(all commutative) and `.commutative()` the identity, which compiles away; a
+non-commutative value implements `Reversible` (`x.rev()`: the fold of the same
+elements read backwards, as `MaxSub` does) and its `monoid()` passes
+`x => x.rev()`. No type is "its own reverse". `fold_path` and the link-cut
+trees read a climbing stretch through `reversed`, and a monoid without `rev`
+stops there naming the three fixes (`rev:`, `.commutative()`,
+`impl Reversible`).
 
 **An `Op` without an identity** still builds every structure; its folds
 return `?T`, `None` for an empty range. The `?` is in the return type, so it
@@ -519,9 +524,9 @@ duplicate structures with one body.
    never undefined behaviour. Stress runs sample every promised law on
    random inputs and say which one failed. `--laws=off` turns the
    specializations off, so you can compare.
-4. **Missing laws are errors, not silent wrongness.** `t.fold_path` with a
-   non-`Commutative` op whose `T` doesn't implement `Reversible` is a
-   compile error. Today it silently assumes "its own reverse".
+4. **Missing laws are errors, not silent wrongness.** `t.fold_path` over a
+   monoid without `rev` stops with the fix instead of assuming the value is
+   its own reverse; it becomes a compile error when the monoid is known.
    `Fenwick` is `+`-only; any other op is an error that suggests `SegTree`.
 
 ## 10. Groups: subtract instead of store
@@ -650,7 +655,7 @@ A law is a promise; the tools make it cheap to check:
   so a law that fails only on real data is found too.
 - `--laws=off` disables every law-driven strategy, so a wrong answer that
   disappears with it is a broken promise, not a broken algorithm.
-- Debug builds check the laws that are cheap per operation: Dijkstra's
+- Checked builds check the laws that are cheap per operation: Dijkstra's
   `step(d, w) >= d`, `Ord`'s antisymmetry on the compared pair.
 ## 16. Examples from the dreams
 

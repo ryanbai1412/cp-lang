@@ -210,6 +210,7 @@ fn other_args_ok(
             ) || (devirt.param_elidable(fid, s) && devirt.skippable_value(v))
                 || matches!(v.kind, ExprKind::Closure(cid) if value_closure(program, devirt, pure, cid))
                 || program.fns[fid].locals[s].ty == Ty::Unit && matches!(v.kind, ExprKind::Unit)
+                || matches!(&v.kind, ExprKind::Tuple(items) if items.is_empty())
         }
         _ => false,
     })

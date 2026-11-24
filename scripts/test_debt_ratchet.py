@@ -1,3 +1,5 @@
+import contextlib
+import io
 import importlib.util
 import json
 import os
@@ -165,6 +167,12 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             subprocess.run(["git", "-C", str(root), "add", "."], check=True)
             self.assertEqual(dr.ports_unreported(root), [f"{PKGS}/b/port.cp", f"{PKGS}/c/port.cp"])
+
+    def test_a_port_without_a_report_fails_the_ratchet(self) -> None:
+        self.assertIn("ports_unreported", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"ports_unreported": 1}, {"ports_unreported": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
 
     def test_reviews_pending_counts_only_an_unscored_port_line(self) -> None:
         with tempfile.TemporaryDirectory() as d:
@@ -426,7 +434,7 @@ class DebtRatchetTest(unittest.TestCase):
             os.environ.pop("CPL", None)
             root = Path(tmp)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
-            self._write(root, "corpus/problems/p/port.cp", "print(1)\n")
+            self._write(root, f"{PKGS}/p/port.cp", "print(1)\n")
             self._write(root, "crates/x/src/lib.rs", "\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             with self.assertRaisesRegex(dr.MeasureError, "no cpl at target/debug/cpl; build it with `cargo build -p cpl-cli`"):
@@ -953,6 +961,12 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertIn("must stay at 0", errs[0])
 
+    def test_a_port_without_a_limits_line_fails_the_ratchet(self) -> None:
+        self.assertIn("corpus_no_limits", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"corpus_no_limits": 1}, {"corpus_no_limits": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
     def test_an_optional_copies_header_fails_the_ratchet(self) -> None:
         self.assertIn("cpp_optional_copies", dr.HARD_ZERO)
         errs, _, _ = dr.evaluate({"cpp_optional_copies": 1}, {"cpp_optional_copies": 0})
@@ -1198,6 +1212,31 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--show", "rust_ignore", "--root", str(root)]), 0)
             self.assertEqual(dr.main(["--list", "stdlib_todo", "--root", str(root)]), 0)
             self.assertEqual(dr.main(["--list", "nope", "--root", str(root)]), 2)
+
+    def test_a_counter_that_cannot_measure_is_one_error_line_and_the_rest_still_print(self) -> None:
+        def stale(_root):
+            raise dr.MeasureError("cpl: target/debug/cpl is stale: run cargo build -p cpl-cli")
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._make_repo(root)
+            label, _, gated = dr.COUNTERS["corpus_fmt_dirty"]
+            with mock.patch.dict(dr.COUNTERS, {"corpus_fmt_dirty": (label, stale, gated)}):
+                for flags in (["--show", "corpus_fmt_dirty", "rust_ignore"], ["--zero"]):
+                    out = io.StringIO()
+                    with contextlib.redirect_stdout(out):
+                        self.assertEqual(dr.main([*flags, "--root", str(root)]), 1)
+                    self.assertIn("corpus_fmt_dirty ERROR cpl: target/debug/cpl is stale: run cargo build -p cpl-cli",
+                                  out.getvalue())
+                    self.assertNotIn("Traceback", out.getvalue())
+                    if flags[0] == "--show":
+                        self.assertRegex(out.getvalue(), r"\nrust_ignore \d+\n")
+
+    def test_std_gaps_counts_each_open_line(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.assertEqual(dr.std_gaps(root), [])
+            self._write(root, "std/GAPS.md", "# Gaps\n\nWhy.\n\n- seq: a\n- tree: b\n")
+            self.assertEqual(dr.std_gaps(root), ["std/GAPS.md:5", "std/GAPS.md:6"])
 
     def test_stdlib_todo_marks_stubs_in_test_fns(self):
         with tempfile.TemporaryDirectory() as d:

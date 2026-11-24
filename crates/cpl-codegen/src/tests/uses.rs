@@ -116,6 +116,21 @@ print(f([[1], [2]]))
 }
 
 #[test]
+fn a_loop_that_walks_a_copy_of_a_place_lists_the_copy() {
+    assert_eq!(
+        copy_reasons(
+            "let n: Int = read()
+let sieve = Sieve(n)
+for a in sieve.primes:
+    if sieve.is_prime(2 * n - a):
+        print(a)
+"
+        ),
+        [crate::uses::WALKED_COPY]
+    );
+}
+
+#[test]
 fn a_value_that_owns_no_heap_memory_is_never_listed_as_a_copy() {
     let modular = "type Z = Mod<1000000007>\nlet x: Z = 3\nprint(x ** 4, x ** 0)\n";
     assert_eq!(copy_reasons(modular), [] as [&str; 0]);
@@ -307,4 +322,24 @@ fn a_clone_written_in_a_library_fn_is_listed_at_its_fn() {
         .map(|(_, what, _)| what)
         .collect();
     assert_eq!(whats, ["a read in inversions"]);
+}
+
+#[test]
+fn an_if_let_over_a_place_written_after_its_last_read_is_lent() {
+    let source = concat!(
+        "fn longest(xs: List<Str>) -> ?Str:\n",
+        "    var best: ?Str = None\n",
+        "    for x in xs:\n",
+        "        if let b = best:\n",
+        "            if x.len > b.len: best = Some(x)\n",
+        "        else: best = Some(x)\n",
+        "    best\n",
+        "print(longest(read<List<Str>>())!)\n",
+    );
+    assert_eq!(copy_reasons(source), [] as [&str; 0]);
+    let out = super::cpp(source);
+    assert!(
+        !out.contains("std::optional<std::string> t0 = best;"),
+        "`best` is set only after `b`'s last read, so the `if let` reads it in place:\n{out}"
+    );
 }

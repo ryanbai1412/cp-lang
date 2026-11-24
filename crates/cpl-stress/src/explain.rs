@@ -87,7 +87,7 @@ pub fn trap_report_in(
         }
         None => cpl_interp::run_with(&program, io, &mut sink).err()?,
     };
-    if trap.message == cpl_interp::OUT_OF_TIME.text() {
+    if trap.message() == cpl_interp::OUT_OF_TIME.text() {
         return None;
     }
     let lines = cpl_diag::LineIndex::new(&text);
@@ -108,7 +108,7 @@ pub fn trap_report_in(
         .get(trap.span.start as usize..trap.span.end as usize)
         .unwrap_or("");
     let locals = match (tail.trap, tail.recording) {
-        (Some(again), Some(recording)) if again.message == trap.message => {
+        (Some(again), Some(recording)) if again.message() == trap.message() => {
             cpl_interp::trace::trap_locals(&recording, &text, at)
         }
         _ => None,
@@ -145,7 +145,7 @@ pub fn checker_trap_in(
         }
         None => cpl_interp::run_with(&program, io, &mut sink).err()?,
     };
-    if trap.message == cpl_interp::OUT_OF_TIME.text() {
+    if trap.message() == cpl_interp::OUT_OF_TIME.text() {
         return None;
     }
     let lines = cpl_diag::LineIndex::new(text);

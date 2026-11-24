@@ -1028,20 +1028,6 @@
   }
  },
  "problems": {
-  "996warmup8p3": {
-   "family": "other",
-   "canonical": "proto/ports/scout_batch_32/today/996warmup8p3.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_32/996warmup8p3.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_32/996warmup8p3.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_32"
-   ]
-  },
   "aac4p2": {
    "family": "DMOJ contests",
    "canonical": "proto/ports/aac4p2.cp",
@@ -1736,18 +1722,6 @@
    "port_files": 1,
    "groups": [
     "scout_batch_21"
-   ]
-  },
-  "ccc14s4hard": {
-   "family": "CCC",
-   "canonical": "proto/ports/scout_batch_7/ccc14s4hard.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": null,
-   "duplicates": [],
-   "port_files": 1,
-   "groups": [
-    "scout_batch_7"
    ]
   },
   "ccc17s4": {
@@ -4745,20 +4719,6 @@
    "spec_port": "proto/ports/scout_batch_43/etsr23r1p4.cp",
    "duplicates": [
     "proto/ports/scout_batch_43/etsr23r1p4.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_43"
-   ]
-  },
-  "etsr23r2p2": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_43/today/etsr23r2p2.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_43/etsr23r2p2.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_43/etsr23r2p2.cp"
    ],
    "port_files": 2,
    "groups": [
@@ -21482,24 +21442,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_32/996warmup8p3.cp",
-   "group": "scout_batch_32",
-   "form": "spec",
-   "problem": "996warmup8p3",
-   "mapped_by": "header",
-   "submission": "5324670",
-   "original": "corpus/submissions/5324670.cpp",
-   "generation": "v2",
-   "cp_loc": 36,
-   "wish_markers": 1,
-   "harness": null,
-   "cpp_raw_loc": 122,
-   "cpp_stripped_loc": 90,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_32/aac5p3.cp",
    "group": "scout_batch_32",
    "form": "spec",
@@ -21642,25 +21584,6 @@
    "strip_source": "auto",
    "original_language": "cpp",
    "verified": "no harness"
-  },
-  {
-   "path": "proto/ports/scout_batch_32/today/996warmup8p3.cp",
-   "group": "scout_batch_32",
-   "form": "runnable",
-   "problem": "996warmup8p3",
-   "mapped_by": "header",
-   "submission": "5324670",
-   "original": "corpus/submissions/5324670.cpp",
-   "generation": "v2",
-   "cp_loc": 42,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_32/check.py",
-   "cpp_raw_loc": 122,
-   "cpp_stripped_loc": 90,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "[PASS] 996warmup8p3 OK (40/40 cases match 5324670.cpp)"
   },
   {
    "path": "proto/ports/scout_batch_32/today/aac5p3.cp",
@@ -25432,24 +25355,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_43/etsr23r2p2.cp",
-   "group": "scout_batch_43",
-   "form": "spec",
-   "problem": "etsr23r2p2",
-   "mapped_by": "header",
-   "submission": "5494433",
-   "original": "corpus/submissions/5494433.cpp",
-   "generation": "v2",
-   "cp_loc": 33,
-   "wish_markers": 0,
-   "harness": null,
-   "cpp_raw_loc": 90,
-   "cpp_stripped_loc": 54,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_43/etsr23r2p4.cp",
    "group": "scout_batch_43",
    "form": "spec",
@@ -25539,25 +25444,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "PASS etsr23r1p4: 30/30 cases matched 5495163.cpp"
-  },
-  {
-   "path": "proto/ports/scout_batch_43/today/etsr23r2p2.cp",
-   "group": "scout_batch_43",
-   "form": "runnable",
-   "problem": "etsr23r2p2",
-   "mapped_by": "header",
-   "submission": "5494433",
-   "original": "corpus/submissions/5494433.cpp",
-   "generation": "v2",
-   "cp_loc": 58,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_43/check.py",
-   "cpp_raw_loc": 90,
-   "cpp_stripped_loc": 54,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "PASS etsr23r2p2: 30/30 cases matched 5494433.cpp"
   },
   {
    "path": "proto/ports/scout_batch_43/today/etsr23r2p4.cp",
@@ -29800,25 +29686,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "nccc8s3: stress OK: 42 tests agree (8 rejected by where)"
-  },
-  {
-   "path": "proto/ports/scout_batch_7/ccc14s4hard.cp",
-   "group": "scout_batch_7",
-   "form": "runnable",
-   "problem": "ccc14s4hard",
-   "mapped_by": "file name is the problem code, id from check.py",
-   "submission": "5672273",
-   "original": "corpus/submissions/5672273.cpp",
-   "generation": "v1",
-   "cp_loc": 47,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_7/check.py",
-   "cpp_raw_loc": 152,
-   "cpp_stripped_loc": 125,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "ccc14s4hard: OK (60 inputs)"
   },
   {
    "path": "proto/ports/scout_batch_7/cco17p3.cp",

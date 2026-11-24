@@ -153,4 +153,7 @@ super::msgs! {
     WORD_OUTSIDE_ALPHABET = BAD_INPUT_TOKEN, "expected a `{}`, found `{}`: `{}` is not in its alphabet";
     /// What failed to read, then where in the input.
     READ_FAILED_AT = RUNTIME, "{} ({})";
+    /// Text the program or its input wrote: an `assert`'s message, a lowered
+    /// `Trap`, a read's failure.
+    WRITTEN = RUNTIME, "{}";
 }

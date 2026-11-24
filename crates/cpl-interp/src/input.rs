@@ -151,7 +151,7 @@ impl<'a> Input<'a> {
         self.more.is_some()
             && self.data[(self.pos - self.gone).min(self.data.len())..]
                 .iter()
-                .all(u8::is_ascii_whitespace)
+                .all(|&b| is_space(b))
     }
 
     /// True when only blanks are left to read.
@@ -185,7 +185,7 @@ impl<'a> Input<'a> {
     }
 
     fn skip_space(&mut self) {
-        while self.byte(self.pos).is_some_and(|b| b.is_ascii_whitespace()) {
+        while self.byte(self.pos).is_some_and(is_space) {
             self.pos += 1;
         }
     }
@@ -240,10 +240,7 @@ impl<'a> Input<'a> {
         self.skip_space();
         let start = self.pos;
         self.mark = start;
-        while self
-            .byte(self.pos)
-            .is_some_and(|b| !b.is_ascii_whitespace())
-        {
+        while self.byte(self.pos).is_some_and(|b| !is_space(b)) {
             self.pos += 1;
         }
         if start == self.pos {
@@ -395,4 +392,10 @@ fn lossy(bytes: &[u8]) -> String {
             }
         })
         .collect()
+}
+
+/// What separates tokens: space and `\t` through `\r`, the bytes C's
+/// `isspace` and a native build's `is_space` skip, `\v` included.
+fn is_space(b: u8) -> bool {
+    b == b' ' || (b'\t'..=b'\r').contains(&b)
 }

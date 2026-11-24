@@ -326,25 +326,36 @@ class CliTest(unittest.TestCase):
 
 
 class InterpSlowTest(Corpus):
-    def test_a_case_past_the_interpreter_is_reported_and_then_skipped(self):
+    def check_twice(self, *builds):
+        """check_stress on one slow case once per `cpl` build in `builds`; the cpl runs it made."""
         d = self.package("p", port_cp="print(1)\n")
         case = self.root / "01.in"
         case.write_text("1\n")
+        cpl = self.root / "cpl"
         runs = []
 
         def run_result(cmd, data):
             runs.append(cmd[0])
-            return None if cmd[0] == "cpl" else (0, b"1\n", b"")
-        ctx = corpus.Context("cpl", named=["p"])
+            return None if cmd[0] == str(cpl) else (0, b"1\n", b"")
+        corpus.build_id.cache_clear()
         with mock.patch.object(corpus, "INTERP_SLOW", str(self.root / "slow")), \
                 mock.patch.object(corpus, "native", lambda pkg, ctx: ("exe", 1)), \
                 mock.patch.object(corpus, "generated", lambda pkg: [case]), \
                 mock.patch.object(corpus, "run_result", run_result):
             pkg = corpus.Package.at(d)
-            self.assertEqual(corpus.check_stress(pkg, ctx), [])
-            self.assertEqual(corpus.check_stress(pkg, ctx), [])
-        self.assertEqual(runs, ["cpl"])
-        self.assertEqual(ctx.slow, ["p 01.in", "p 01.in"])
+            for build in builds:
+                cpl.write_bytes(build)
+                corpus.build_id.cache_clear()
+                ctx = corpus.Context(str(cpl), named=["p"])
+                self.assertEqual(corpus.check_stress(pkg, ctx), [])
+                self.assertEqual(ctx.slow, ["p 01.in"])
+        return runs.count(str(cpl))
+
+    def test_a_case_past_the_interpreter_is_reported_and_then_skipped(self):
+        self.assertEqual(self.check_twice(b"v1", b"v1"), 1)
+
+    def test_a_new_cpl_build_runs_a_slow_case_again(self):
+        self.assertEqual(self.check_twice(b"v1", b"v2"), 2)
 
 
 class CompareTest(unittest.TestCase):
@@ -555,6 +566,16 @@ class BoundsTest(unittest.TestCase):
         self.assertEqual(corpus.bounds_findings("p", "// Bounds: s: [q](1..=3, Col); c.0: Col; c.1: 0..n\n" + port), [])
         self.assertEqual(corpus.bounds_findings("p", "// Bounds: s: [q](1..=3, 1..=2e5); c: Cell\n" + port),
                          ["bounds-narrow p s.1: reads 1..=w, statement 1..=2e5"])
+
+    def test_a_read_of_a_range_or_a_parsed_line_is_checked(self):
+        port = ("let n = read(1..=5000)\ndomain I = read(2..=2e5)\nlet a: [0..read(1..=10)]1..=9 = read()\n"
+                "let m = read_line().parse<1..=100>()!\nprint(read(0..3))\n")
+        self.assertEqual(corpus.port_ranges(port), {"n": ("1", "5000"), "I.count": ("2", "2e5"), "a.len": ("1", "10"),
+                                                    "a": ("1", "9"), "m": ("1", "100"), "read(0..3)": ("0", "3 - 1")})
+        self.assertEqual(corpus.bounds_findings("p", port), ["no-header-bounds p -"])
+        const = "// Bounds: n: 2..=5e5\nconst N = 500_000\nlet n: 2..=N = read()\n"
+        self.assertEqual(corpus.bounds_findings("p", const), [])
+        self.assertEqual(corpus.bounds_findings("p", const.replace("5e5", "6e5")), ["bounds-narrow p n: reads 2..=N, statement 2..=6e5"])
 
     def test_bounds_end_at_the_next_header_key(self):
         text = "// Bounds: n: 1..=9\n// limits: 1000 ms, 256 MB\n//   q: 1..=5\nlet n: 1..=9 = read()\n"
@@ -796,6 +817,9 @@ class AtMax(unittest.TestCase):
 
     def test_a_checked_trap_is_a_finding(self):
         self.assertEqual(self.findings((3, b"", 0.1, 10), (0, b"1\n", 0.05, 10)), ["traps p --max"])
+
+    def test_a_checked_run_past_its_budget_is_not_called_a_trap(self):
+        self.assertEqual(self.findings(None, (0, b"1\n", 0.05, 10)), ["checked-over-limit p --max"])
 
     def test_over_the_time_limit(self):
         self.assertIn("over-limit p --max", self.findings((0, b"1\n", 1, 10), (0, b"1\n", 2.5, 10), (0, b"1\n", 2.4, 10)))
@@ -1129,6 +1153,11 @@ class DanglingReferenceTest(unittest.TestCase):
         self.track(f"{PKGS}/p1/notes.md", f"{PKGS}/gone\n")
         (self.root / "loose.md").write_text(f"{PKGS}/gone\n")
         self.assertEqual(corpus.dangling_references(), [])
+
+    def test_a_script_tests_fixture_is_not_a_reference(self):
+        self.track("scripts/test_x.py", f"{PKGS}/gone\n")
+        self.track("scripts/x.py", f"{PKGS}/gone\n")
+        self.assertEqual(corpus.dangling_references(), [("scripts/x.py", 1, f"{PKGS}/gone")])
 
     def test_check_fails_on_a_dangling_reference(self):
         err = io.StringIO()

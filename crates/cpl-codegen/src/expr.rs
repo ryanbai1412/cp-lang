@@ -5,7 +5,7 @@ use crate::emit::{
     UNARY,
 };
 use crate::names::{
-    cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_bitset_ty, is_plain_enum,
+    bits_field, cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_plain_enum,
 };
 use crate::walk;
 pub(crate) const FLOAT_DIGITS: &str = "10";

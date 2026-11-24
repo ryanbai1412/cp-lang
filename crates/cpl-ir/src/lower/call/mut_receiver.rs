@@ -7,6 +7,9 @@ impl<'a> Lowerer<'a> {
     /// Where `method`'s `mut self` lives. A temporary has nowhere to keep
     /// the change, so the error names the method, not an assignment.
     pub(in crate::lower) fn mut_receiver(&mut self, recv: &ast::Expr, method: &str) -> Place {
+        if let Some(place) = self.lent_receiver(recv) {
+            return place;
+        }
         if !is_place(recv) && self.builtin_at(recv).is_none() {
             let span = self.span(recv.span);
             self.report(
@@ -21,6 +24,18 @@ impl<'a> Lowerer<'a> {
             };
         }
         self.place(recv)
+    }
+
+    /// `a.at(i).kids.push(x)`: a receiver at or under a `lends mut` call is the lent slot
+    /// itself (R05.6.3). The call's lead runs ahead of the statement, its tail after it.
+    fn lent_receiver(&mut self, recv: &ast::Expr) -> Option<Place> {
+        let (mut lead, mut tail) = (Vec::new(), Vec::new());
+        let (path, alias) = self.lent_path(recv, &mut lead, &mut tail)?;
+        let place = self.place(&path);
+        self.cx.mut_aliases.remove(&alias);
+        self.cx.pending.append(&mut lead);
+        self.cx.after.append(&mut tail);
+        Some(place)
     }
 
     /// The place a `mut` argument names; a receiver goes through

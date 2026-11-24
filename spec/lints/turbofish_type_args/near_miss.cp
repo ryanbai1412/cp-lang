@@ -1,2 +1,3 @@
+fn scale<const M: Int>(x: Int) -> Int = x % M
 let x = read<Int>()
-print(x)
+print(scale::<998244353>(x))

@@ -132,6 +132,14 @@ def _git(root: Path, *args: str, env: dict[str, str] | None = None) -> list[str]
     return out.stdout.splitlines() if out.returncode == 0 else []
 
 
+def std_gaps(root: Path) -> list[str]:
+    """Each open line of `std/GAPS.md` (a std body waiting on the compiler) as `std/GAPS.md:line`."""
+    p = root / "std" / "GAPS.md"
+    if not p.is_file():
+        return []
+    return [f"std/GAPS.md:{i}" for i, line in enumerate(_lines(p), 1) if line.startswith("- ")]
+
+
 def stdlib_todo(root: Path) -> list[str]:
     """Each `todo` stub as `path:line`, with ` @test` when it sits in an `@test` fn."""
     out = []
@@ -2058,6 +2066,24 @@ def or_true(root: Path) -> list[str]:
     return _grep_all(root, r"\|\|[[:space:]]*true\b")
 
 
+TRACE_CEILING_RE = re.compile(r'^\s*\("(\w+)", (\d+(?:\.\d+)?)\),$')
+
+
+def trace_budget_gap(root: Path) -> list[str]:
+    """Tenths of a slowdown over the 1.2x trace budget that trace_log's
+    `OVER_BUDGET` ceilings allow, one entry per tenth."""
+    path = root / "crates/cpl-interp/tests/trace_log.rs"
+    lines = _lines(path) if path.is_file() else []
+    start = next((i for i, l in enumerate(lines) if l.startswith("const OVER_BUDGET")), len(lines))
+    out = []
+    for line in lines[start + 1:]:
+        m = TRACE_CEILING_RE.match(line)
+        if not m:
+            break
+        out += [f"{m[1]} {k + 1}" for k in range(max(0, round((float(m[2]) - 1.2) * 10)))]
+    return out
+
+
 def trace_engine_refs(root: Path) -> list[str]:
     """`CPL_TRACE_ENGINE` mentions: the switch back to the tree-walker for traces."""
     return _grep_all(root, "CPL_TRACE_ENGINE")
@@ -2434,10 +2460,11 @@ DIAG_SITE_RE = re.compile(r"\bDiagnostic::(?:error|warning)\(")
 
 
 # A crate's own funnel that takes message text and builds the diagnostic itself:
-# each call passes text the registry should hold, so each call counts.
+# each call passes text the registry should hold, so each call counts. A
+# `said.error(span)` renders a registry row's `Said`, which only cpl-diag builds.
 DIAG_TEXT_FUNNELS = {
-    "crates/cpl-check/src": re.compile(r"\b[a-z_][a-z0-9_]*\.error\("),
-    "crates/cpl-ir/src": re.compile(r"\b[a-z_][a-z0-9_]*\.error\("),
+    "crates/cpl-check/src": re.compile(r"\b(?!said\.)[a-z_][a-z0-9_]*\.error\("),
+    "crates/cpl-ir/src": re.compile(r"\b(?!said\.)[a-z_][a-z0-9_]*\.error\("),
     "crates/cpl-lint/src": re.compile(r"\b[a-z_][a-z0-9_]*\.warn\("),
 }
 
@@ -2610,7 +2637,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "corpus/sets/sketches.txt": (None, "idioms", "data: a corpus set"),
     "corpus/sets/v03.txt": (None, "idioms", "data: a corpus set"),
     "crates/cpl-cli/tests/std-check-errors.txt": ("known_lists", "stdlib", "kept empty"),
-    "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "close each gap"),
+    "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "deleted: tool_matrix.rs fails on any gap"),
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
     "crates/cpl-conform/silent_unknowns.txt": ("silent_unknowns", "core", "deleted: the checker types every expression or reports why not"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
@@ -2706,14 +2733,14 @@ HARD_ZERO = frozenset({
     "stdlib_todo",
     "uncached_installs",
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
-    "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
+    "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_no_limits", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "unchecked_fix_paths", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
-    "measure_broken", "mono_unguarded", "ts_ignore",
+    "measure_broken", "mono_unguarded", "ts_ignore", "ports_unreported",
     "site_rederived", "browser_lsp_gaps",
-    "unrun_script_tests", "trap_text_outside_registry",
+    "unrun_script_tests", "trap_text_outside_registry", "diag_text_outside_registry",
     "permits", "written_twice",
     "plan_delta_lines", "idioms_evidenced_unlinted", "v02_port_files", "judge_tables",
     "trait_gaps",
@@ -2745,6 +2772,7 @@ HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
 COUNTERS = {
     "stdlib_todo": ("stdlib todo stubs", stdlib_todo, True),
+    "std_gaps": ("open std/GAPS.md lines", std_gaps, True),
     "rust_ignore": ("Rust #[ignore] attributes", rust_ignore, True),
     "pending_tests": ("crates/cpl-cli/tests/pending/ files", pending_tests, True),
     "dead_code_allows": ("allow(dead_code) attributes", dead_code_allows, True),
@@ -2833,6 +2861,8 @@ COUNTERS = {
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
     "uncached_installs": ("CI tool installs outside the cached install-tools action (Factory)", uncached_installs, True),
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
+    "trace_budget_gap": ("tenths over the 1.2x trace budget trace_log's ceilings allow (VM-trace)",
+                         trace_budget_gap, True),
     "std_types_shown_empty": ("std types a trace shows as `{}`: no pub field, no Show (Content)",
                               std_types_shown_empty, True),
     "std_trait_matrix": ("std containers missing Show, a walk or is_empty (std-api/R12, Content)",
@@ -3238,30 +3268,44 @@ def main(argv: list[str] | None = None) -> int:
     if args.ratchet.is_file():
         max_lines = int(json.loads(args.ratchet.read_text(encoding="utf-8")).get("max_rs_lines", max_lines))
 
+    def offenders(name: str) -> list[str]:
+        if name == "rs_over_cap":
+            return [f"{k} {v}" for k, v in rs_over_cap(args.root, max_lines).items()]
+        return COUNTERS[name][1](args.root)
+
     if args.zero:
-        left = {n: len(fn(args.root)) for n, (_, fn, gated) in COUNTERS.items() if gated}
-        left = {"rs_over_cap": len(rs_over_cap(args.root, max_lines)), **left}
+        left, failed = {}, 0
+        for n in ["rs_over_cap", *(n for n, (_, _, gated) in COUNTERS.items() if gated)]:
+            try:
+                left[n] = len(offenders(n))
+            except MeasureError as e:
+                print(f"debt-ratchet: {n} ERROR {e}")
+                failed += 1
         left = {n: c for n, c in left.items() if c}
         for n, c in left.items():
             print(f"debt-ratchet: {n} {c} (target 0; `--list {n}` shows them)")
         print(f"debt-ratchet: {len(left)} counter(s) above 0" if left else "debt-ratchet: every counter at 0")
-        return 1 if left else 0
+        return 1 if left or failed else 0
 
     if args.show is not None or args.list:
         names = [args.list] if args.list else (args.show or ["rs_over_cap", *COUNTERS])
+        unknown = [n for n in names if n != "rs_over_cap" and n not in COUNTERS]
+        if unknown:
+            print(f"debt-ratchet: unknown counter {unknown[0]}; one of rs_over_cap, {', '.join(COUNTERS)}",
+                  file=sys.stderr)
+            return 2
+        failed = 0
         for name in names:
-            if name == "rs_over_cap":
-                items = [f"{k} {v}" for k, v in rs_over_cap(args.root, max_lines).items()]
-            elif name in COUNTERS:
-                items = COUNTERS[name][1](args.root)
-            else:
-                print(f"debt-ratchet: unknown counter {name}; one of rs_over_cap, {', '.join(COUNTERS)}",
-                      file=sys.stderr)
-                return 2
+            try:
+                items = offenders(name)
+            except MeasureError as e:
+                print(f"{name} ERROR {e}")
+                failed += 1
+                continue
             print(f"{name} {len(items)}")
             if args.list:
                 print("\n".join(f"  {x}" for x in items))
-        return 0
+        return 1 if failed else 0
 
     if args.update is not None:
         data = measure(args.root, max_lines)

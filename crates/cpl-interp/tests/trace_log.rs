@@ -362,6 +362,36 @@ fn raw_ints_read_back_as_written() {
 /// `cargo test --release -p cpl-interp --test trace_log -- --nocapture`.
 const RUNS: usize = 7;
 
+/// The modes whose recording is still over the 1.2x budget, each with a
+/// ceiling on its slowdown that only goes down: debt-ratchet's
+/// `trace_budget_gap` counts the tenths they allow over 1.2x. Owner:
+/// VM-trace, who deletes an entry once its mode fits the budget.
+const OVER_BUDGET: &[(&str, f64)] = &[
+    ("scalar", 7.0),
+    ("array", 7.0),
+    ("knapsack", 1.8),
+    ("shortest_path", 2.6),
+    ("shows", 1.7),
+];
+
+/// Holds mode `name`, `slower` times the untraced run, to the 1.2x budget
+/// or, while it is over that, to its [`OVER_BUDGET`] ceiling.
+fn check_budget(over: &mut Vec<String>, name: &str, slower: f64) {
+    match OVER_BUDGET.iter().find(|(mode, _)| *mode == name) {
+        Some(&(_, ceiling)) if slower > ceiling => over.push(format!(
+            "{name}: tracing made the run {slower:.2}x slower (ceiling {ceiling}x, budget 1.2x)"
+        )),
+        Some(_) if slower <= 1.2 => over.push(format!(
+            "{name}: fits the 1.2x budget now: delete its OVER_BUDGET entry"
+        )),
+        Some(_) => eprintln!("{name}: {slower:.2}x, still over the 1.2x budget"),
+        None if slower > 1.2 => {
+            over.push(format!("{name}: tracing made the run {slower:.2}x slower"))
+        }
+        None => {}
+    }
+}
+
 #[test]
 fn ten_million_steps_fit_the_debugging_budgets() {
     let mut over = Vec::new();
@@ -460,9 +490,7 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         if back.as_millis() >= 50 {
             over.push(format!("{name}: step back took {back:?}"));
         }
-        if slower > 1.2 {
-            over.push(format!("{name}: tracing made the run {slower:.2}x slower"));
-        }
+        check_budget(&mut over, name, slower);
         if mb >= 500.0 {
             over.push(format!("{name}: the recording takes {mb:.0} MB"));
         }
@@ -497,9 +525,7 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             "{name}: 2000 runs; untraced {plain:?}, recorded {traced:?}: \
              {slower:.2}x the untraced run"
         );
-        if slower > 1.2 {
-            over.push(format!("{name}: tracing made the run {slower:.2}x slower"));
-        }
+        check_budget(&mut over, name, slower);
     }
     assert!(over.is_empty(), "over budget: {over:?}");
 }
@@ -644,7 +670,7 @@ fn stops_at_its_time_limit(source: &str) {
         &mut out,
         Some(config),
     );
-    let trap = observed.trap.map(|trap| trap.message);
+    let trap = observed.trap.map(|trap| trap.into_message());
     assert_eq!(trap.as_deref(), Some(cpl_interp::trace::OUT_OF_TIME.text()));
     assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
 }

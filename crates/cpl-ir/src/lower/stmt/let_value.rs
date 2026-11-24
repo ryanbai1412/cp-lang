@@ -232,7 +232,7 @@ impl<'a> Lowerer<'a> {
                 if let Some(absent) = args
                     .iter()
                     .find(|a| a.name.as_ref().is_some_and(|n| n.text == "none"))
-                    .map(|a| self.expect(&a.value, &Ty::Int))
+                    .map(|a| self.expr_as(&a.value, &Ty::Int))
                 {
                     if !crate::lower::call::reads_none_as(&mut spec, &absent) {
                         self.report(
@@ -247,7 +247,7 @@ impl<'a> Lowerer<'a> {
         }
         if let Some(none_arg) = read_none_arg(init) {
             let mut spec = spec;
-            let absent = self.expect(none_arg, &Ty::Int);
+            let absent = self.expr_as(none_arg, &Ty::Int);
             if !crate::lower::call::reads_none_as(&mut spec, &absent) {
                 self.report(
                     init.span,
@@ -316,7 +316,7 @@ impl<'a> Lowerer<'a> {
             if let (Ty::List(_), ast::ExprKind::List(items)) = (&elem_ty, &init.kind) {
                 let holds = items.first().and_then(|item| self.probe_ty_silent(item));
                 if holds.is_some_and(|ty| !matches!(ty, Ty::List(_))) {
-                    let value = self.expect(init, &elem_ty);
+                    let value = self.expr_as(init, &elem_ty);
                     return Some(self.fill_with_index_domains(
                         dims.clone(),
                         Some(Box::new(value)),
@@ -400,7 +400,7 @@ impl<'a> Lowerer<'a> {
                         let values: Vec<Expr> = cells
                             .iter()
                             .map(|item| {
-                                let v = lw.expect(item, &elem_ty);
+                                let v = lw.expr_as(item, &elem_ty);
                                 match elem_range.as_ref() {
                                     Some(b) => lw.check_range(v, b, item.span),
                                     None => v,
@@ -452,7 +452,7 @@ impl<'a> Lowerer<'a> {
             if (builds_a_cell && matches!(elem_ty, Ty::Struct(_)))
                 || (empty_list && matches!(elem_ty, Ty::List(_)))
             {
-                let value = self.expect(init, &elem_ty);
+                let value = self.expr_as(init, &elem_ty);
                 return Some(self.fill_with_index_domains(
                     dims.clone(),
                     Some(Box::new(value)),
@@ -500,7 +500,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        let val = self.expect(init, &want);
+        let val = self.expr_as(init, &want);
         if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(&spec) {
             return Some(self.check_range(val, &bounds, init.span));
         }
@@ -514,7 +514,7 @@ impl<'a> Lowerer<'a> {
     /// cell that is itself an array is filled the same way.
     pub(in crate::lower) fn fill_literal(&mut self, spec: &Spec, init: &ast::Expr) -> Expr {
         let Spec::Array { dims, elem } = spec else {
-            let v = self.expect(init, &spec.ty());
+            let v = self.expr_as(init, &spec.ty());
             if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(spec) {
                 return self.check_range(v, &bounds, init.span);
             }

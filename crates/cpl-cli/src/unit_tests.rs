@@ -168,7 +168,7 @@ pub(crate) fn run_unit_tests(
                         continue;
                     };
                     if let Err(trap) = ran {
-                        let _ = writeln!(stdout, "  FAIL {label}: {}", trap.message);
+                        let _ = writeln!(stdout, "  FAIL {label}: {}", trap.message());
                         failed += 1;
                         continue;
                     }

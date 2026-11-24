@@ -65,7 +65,12 @@ impl Ord for Frac:
   override the trait method instead (decision 486). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,
-  `Show`, `Read`, `Unwrap`). Compound assignment comes from the
+  `Show`, `Read`, `Unwrap`). `Eq<Rhs = Self>` and `Ord<Rhs = Self>` take
+  the right side's type the way `Add` does, so `impl Eq for X` is
+  `Eq<X>` and `a == b` with `b` of another type needs an
+  `impl Eq<B> for A` (no other mixed comparison type-checks: `1 == "a"`
+  is E0606). std's one walk-order impl over `Seq` is how a view and a
+  list compare (R07.4.2). Compound assignment comes from the
   operator. (R08.1.5)
 - **Derived impls are structural**: tuples, records, structs and enums
   get `Eq`, `Ord` (lexicographic in declaration order, variants in
@@ -77,10 +82,12 @@ impl Ord for Frac:
 - **Field traits**: a trait may require fields (`trait Target<V>: to:
   V`); a bodiless `@get fn` member is the same requirement, met by a
   field of that name. A record or tuple satisfies a trait structurally
-  when a field meets each member the trait leaves without a body; a named
-  struct satisfies it only through an `impl`, bodiless when its fields
-  meet those members. One relation decides a bound, a parameter typed by
-  the trait and `if T: Trait` (decision 361). (R08.1.7)
+  when a field meets each member the trait and its supertraits leave
+  without a body, and then has the trait's default methods as its own:
+  `(3, 4).rev()` is `Reversible`'s identity. A named struct satisfies it
+  only through an `impl`, bodiless when its fields meet those members.
+  One relation decides a bound, a parameter typed by the trait, `if T:
+  Trait` and a default method's receiver (decision 361). (R08.1.7)
 - Library-authored diagnostics: a trait may attach a message to "not
   implemented" and to each law, so `SegTree(f, a)` with a non-associative
   `f` says what to write. (R08.1.8)
@@ -89,6 +96,8 @@ impl Ord for Frac:
   of type may choose differently: `impl<T> Op<T> for Monoid<T>` chooses
   `type Fold = T` and the impl for a bare `(T, T) -> T` chooses `?T`, so one
   generic `SegTree(op, a)` folds `T` over a monoid and `?T` over a closure
+  (`max`/`min` are monoids with `Fold = T` over a bounded `T`, and `?T`
+  otherwise, chosen by one impl with `if T: Bounded:`; decision 602)
   (decision 456). A fn type is a type an impl may be for, and an impl may
   cover every domain (`impl<domain D> Search for D`) beside one for a
   concrete type (`impl Search for F64`). A generic fn names the choice as
@@ -124,6 +133,12 @@ struct Pair<A, B = Int>: a: A, b: B
 - A generic fn may not reach itself, directly or mutually, at a type that
   grows on every call: `wrap([x], n - 1)` inside `wrap<T>` would need
   `wrap<List<T>>`, `wrap<List<List<T>>>` and so on (E0319). (R08.2.10)
+- A fn value with unwritten parameter types (an operator such as `+`, an
+  overload set such as `max`, or `(a, b) => a * b + 1`) given to a type
+  parameter nothing else fixes takes `Int` parameters, as a literal does:
+  `ap(+)` for `fn ap<X>(op: X) -> X` is an `(Int, Int) -> Int`, and so is
+  `SegTree(max, xs)`'s op. When its body does not check with `Int`s it is
+  E0806, never an unknown type (decision 592). (R08.2.11)
 - `domain` is a kind on type parameters; `const N: Int` parameters take
   compile-time values (`Mod<998244353>`, `SegTree<0..=4e9>`); range
   types are types and may be arguments. (R08.2.4)

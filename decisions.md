@@ -9118,9 +9118,17 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** These names were string-matched in IR, codegen, the interpreter and the checker, so a user library could not define its own `ctz` and std could not change their signatures.
 - **Reverse.** Restore the `Builtin` variants and the prelude arm, and drop the four entries.
 
-## 592. (reserved, compiler)
+## 592. A fn value with unwritten parameter types given to an open type parameter takes `Int`s (spec, 2026-11-24)
 
-## 593. (reserved, compiler)
+- **Call.** An operator (`+`), an overload set (`max`) or a lambda with unwritten parameter types (`(a, b) => a * b + 1`), given to a type parameter that no bound and no other parameter fixes, takes `Int` parameters, the way an integer literal does: `fn ap<X>(op: X) -> X` makes `ap(+)` an `(Int, Int) -> Int`. A bound whose fn-type impl leaves its names open (`impl<T> Lawful for (T, T) -> T` under `X: Lawful`) fills them with `Int` too, after any impl the bound fixes. A lambda whose body does not check with `Int`s is E0806 naming the parameter, never an unknown type. A bare operator keeps its identity in its type (one empty type per operator, so `same(m, +)` and zero-cost folds still work); that value is the fn wherever a fn is called or wanted. (R08.2.11)
+- **Why.** `laws_hold(+, xs)`, `use_op(max)` and `SegTree(max, xs)` reached std bodies with the op's type silently unknown (the checker) or `()` (the IR, which could not call it), so std could not own them without a compiler intercept. One literal-style default keeps every such op value typed by the ordinary rule.
+- **Reverse.** Drop `lambda_defaults` (cpl-check `check/lambda.rs`), the open-param fallback in cpl-ir `lower/mono/gen_call.rs`, the `open_takes_int` pass in `lower/fn_impl.rs`, and make `GenArg::Op` resolve to `()` again in `lower/resolve_ty.rs`.
+
+## 593. `Eq` and `Ord` take `Rhs = Self`; two sequences compare by one std impl over `Seq` (compiler, 2026-11-24)
+
+- **Call.** `Eq<Rhs = Self>` and `Ord<Rhs = Self>` take the right side's type the way `Add`..`Rem` do, through the same operator trait-argument path in the checker and lowering. Every existing `impl Eq for X` is `Eq<X>`, unchanged. std/seq.cp has one walk-order impl, `Eq<R>`/`Ord<R>` for any `S: Seq<T>` with `R: Seq<T>`, which walks both sides in lockstep (R07.4.2), so `a.filter(p) == b`, `a.map(f) < b.rev` and `xs == ys` type-check and run the same on the VM and in C++. When both sides are contiguous (a list, a slice, a string) codegen picks the existing contiguous compare from the representation, not from a type name, so list-to-list code is unchanged. `cpl explain` gives a lockstep compare as O(n). A mixed comparison with no impl, such as `1 == "a"`, is still E0606 with the same message.
+- **Why.** "Small core, no privileged stdlib": `Mapped`, `Filtered` and `Stepped` are std structs, and the checker's rule that `==` needs `Eq` on the left type alone rejected `a.map(f) == b`, which R07.4.2 promises. Materializing one side to a list would hide an O(n) copy ("costs are visible"), and a checker exception for sequences would be a second operator path.
+- **Reverse.** Drop `Rhs` from `Eq` and `Ord` and the std impl over `Seq`, and coerce both sides of a sequence comparison to a list by walking them.
 
 ## 594. (reserved, compiler)
 
@@ -9134,4 +9142,28 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Two values can't share a node list, so returning or absorbing a treap must copy; the shared pool is how C++ solutions get \(O(\log n)\) split/merge, and it closes the GAPS line on `LazyTreap.split_at`/`append`.
 - **Reverse.** Drop `LazyForest`/`ForestSeq`; put the GAPS line back.
 
-## 599. (reserved, content)
+## 600. (reserved, stdlib)
+
+## 601. (reserved, unknown)
+
+## 602. Bounded `max`/`min` fold to `T`; unbounded ones and identity-less ops fold to `?T` (stdlib, 2026-11-24)
+
+- **Call.** Under R5 (`std-api/R5`) and `Op<T>`'s associated `Fold` (decision 456), `max` and `min` over a bounded `T` (one with `T.MIN`/`T.MAX`: `Int`, a range type, `Char`, `Bool`, decision 580's ends) are monoids with `Fold = T`, identity `T.MIN`/`T.MAX`, and also `Selective<T>`. Over a `T` with no ends (`Str`, a user `Ord` type) they fold `?T`. One impl chooses with `if T: Bounded:` (Core's G7.3 ruling, 2026-11-24 04:22 PST); overlapping impls stay an error. So `SegTree(max)` stays non-optional with unchanged C++, an empty `Window(max).all` over `Int` is `Int.MIN` once `Window.all` is `M.Fold`, and `max.opt()` is the fold that is `None` when empty. This replaces decision 575's `Max.Fold = ?T`.
+- **Why.** Max over a bounded type has an identity, so R5's own rule ("a fold of a monoid is `T`") gives `T`; a `?T` fold would put an unwrap on every `SegTree(max)` and change its C++. `None` on empty stays one call away through `opt()`, the same helper every identity-less op uses.
+- **Reverse.** Give `max`/`min` `Fold = ?T` for every `T` and make `SegTree(max)` fold `?T`.
+## 602. (reserved, stdlib)
+## 599. Reversal belongs to the op: `Monoid(id, op, rev)`, and no value is its own reverse (stdlib, 2026-11-24)
+
+`Reversible` had a default `rev(self) -> Self = self`, and the lowering answered any other
+`x.rev()` by returning `x`. So a path fold over a non-commutative op whose value had no impl
+silently read climbing stretches forwards: wrong answers, no diagnostic. A blanket
+`impl<T> Reversible for T` would keep that hole open. Instead, `Monoid` carries
+`rev: T -> T`. `Monoid.of` gives every stock op (all commutative) `x => x`, and so does
+`Comm.monoid()` (`.commutative()`). A `Reversible` value's `monoid()` passes `x => x.rev()`.
+`fold_path` and the link-cut trees call `m.reversed(x)`. When `rev:` is left out, the
+default is a private std fn that stops with the three fixes: `rev:`, `.commutative()`,
+`impl Reversible`. `Reversible.rev` has no default. One closure per program is
+devirtualized, so `SegTree(+, ..)`'s path fold compiles the identity away. A struct
+field's default now resolves names in the struct's module, as a fn param's default
+already did. Next, a known missing `rev` becomes a compile error through a general
+mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.

@@ -1609,7 +1609,7 @@ fn reach_completes_hovers_helps_and_fixes_its_options() {
     assert_eq!(reach.at(&["kind"]).as_u32(), Some(2));
     assert_eq!(
         reach.at(&["detail"]).as_str(),
-        Some("reach(while: (Int, Int) -> Bool, cyclic: Bool = false) -> List<Int>")
+        Some("reach(while: (Int, Int) -> Bool; cyclic: Bool = false) -> List<Int>")
     );
     let (mut server, _) =
         open("let xs = [1, 2, 4]\nprint(xs.reach(while: (a, b) => b - a <= 3))\n");

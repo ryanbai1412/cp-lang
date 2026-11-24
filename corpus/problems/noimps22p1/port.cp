@@ -7,6 +7,7 @@
 // Solution: keep macros in a Map. expand(line) walks the line's runs of identifier
 //   and other characters; a run naming a macro not being expanded becomes its body,
 //   expanded with the name marked active until it returns; every other run is copied. The bounds are tiny.
+// Bounds: n: 1..=100
 // Original C++: corpus/submissions/4533698.cpp (116 LOC raw, ~76 LOC stripped)
 let n = read_line().parse<1..=100>()!
 let lines: List<Str> = [read_line() for _ in 0..n]

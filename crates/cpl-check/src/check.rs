@@ -561,14 +561,7 @@ impl<'a> Checker<'a> {
         msg: cpl_diag::msgs::Msg,
         args: &[&dyn std::fmt::Display],
     ) -> Option<&mut Diagnostic> {
-        if self.sink.encloses_poison(span) {
-            return None;
-        }
-        let before = self.sink.len();
-        self.sink.push(msg.at(args).error(span));
-        (self.sink.len() > before)
-            .then(|| self.sink.last_mut())
-            .flatten()
+        self.report_as(msg.code(), span, msg.at(args))
     }
 
     fn report_as(
@@ -581,7 +574,7 @@ impl<'a> Checker<'a> {
             return None;
         }
         let before = self.sink.len();
-        self.sink.push(said.error_as(code, span));
+        self.sink.push(said.with_code(code).error(span));
         (self.sink.len() > before)
             .then(|| self.sink.last_mut())
             .flatten()

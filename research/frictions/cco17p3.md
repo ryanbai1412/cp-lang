@@ -17,6 +17,19 @@ coordinate follows for both tries. The package gains tests.toml.
 - **Where:** `fn walk`, which collects the nodes `step` reaches until it fails.
 - **Ideal:** `t.path(word)` yielding the matched prefix's nodes.
 
+## The port is 1.85x slower than the C++
+- **Where:** the two-level trie walk in `walk` and `colour_along`, with node payloads in
+  `column_at: HashMap<Int, Int>` and `colour: List<Int>`.
+- **What felt wrong:** at `--max` the port takes 1.33 s and 260356 KB against 0.72 s and
+  157336 KB for the C++ (see the measurements below), outside the 1.1x bar; the payload hash map
+  per x node is the likely cost.
+- **Goal it hurts:** performance.
+- **Ideal code:** the dream's `Trie<Bit, ?Trie<Bit, Int>>`, with payloads stored in the node arrays.
+- **General fix:** per-node payload storage in std `Trie` (no hash lookup per step), then
+  re-measure this port.
+- **Severity:** medium
+- **Owner domain:** perf
+
 ## Dream
 ```cp
 var xs = Trie<Bit, ?Trie<Bit, Int>>.new()

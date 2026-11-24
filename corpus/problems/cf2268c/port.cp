@@ -8,6 +8,7 @@
 //   whose masked prefix xors p, p ^ v share the class min(p, p ^ v) with opposite parity. Per
 //   class (interned, so a counting sort by class id groups the cuts in O(n)), a monotonic stack over the gaps between consecutive cuts (gap maxima by a max SegTree)
 //   merges groups at each gap's maximum, the maximum of every pair it joins. O(18 n).
+// Bounds: I.count: 2..=2e5
 use std.marks.{Interner}
 use std.prefix.{prefix_fold}
 

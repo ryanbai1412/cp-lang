@@ -40,7 +40,10 @@ fn prod_is_a_monoid_and_not_a_group() {
     // No integer inverse: there is no `inv` with a * inv(a) == 1.
     let fields = [("id", "1"), ("op", "(a, b) => a * b"), ("inv", "a => a")];
     let report = Structure::group().check(&INT, &fields).unwrap();
-    assert!(report.verdict("assoc").is_proved() && report.verdict("ident").is_proved());
+    assert!(
+        report.verdict("assoc").unwrap().is_proved()
+            && report.verdict("ident").unwrap().is_proved()
+    );
     let broken = report.law("inverse").unwrap();
     assert_eq!(broken.verdict.to_string(), "fails for a = 0");
 }
@@ -117,8 +120,11 @@ fn bit_and_gcd_monoids() {
     // gcd(0, a) is |a|: the identity law needs non-negative values.
     let gcd = [("id", "0"), ("op", "(a, b) => gcd(a, b)")];
     let report = Structure::monoid().check(&INT, &gcd).unwrap();
-    assert!(report.verdict("assoc").is_proved());
-    assert_eq!(report.verdict("ident").to_string(), "fails for a = -1");
+    assert!(report.verdict("assoc").unwrap().is_proved());
+    assert_eq!(
+        report.verdict("ident").unwrap().to_string(),
+        "fails for a = -1"
+    );
     proved(
         &Structure::monoid()
             .commutative()
@@ -155,8 +161,11 @@ fn a_comparison_that_is_not_strict_is_not_an_order() {
     let report = Structure::order()
         .check(&[("T", "Int")], &[("lt", "(a, b) => a <= b")])
         .unwrap();
-    assert_eq!(report.verdict("irreflexive").to_string(), "fails for a = 0");
-    assert!(report.verdict("transitive").is_proved());
+    assert_eq!(
+        report.verdict("irreflexive").unwrap().to_string(),
+        "fails for a = 0"
+    );
+    assert!(report.verdict("transitive").unwrap().is_proved());
     // "Close enough" is not transitive.
     let near = Structure::order()
         .check(
@@ -164,9 +173,9 @@ fn a_comparison_that_is_not_strict_is_not_an_order() {
             &[("lt", "(a, b) => a + 1 < b or b + 1 < a")],
         )
         .unwrap();
-    assert!(near.verdict("irreflexive").is_proved());
+    assert!(near.verdict("irreflexive").unwrap().is_proved());
     assert_eq!(
-        near.verdict("transitive").to_string(),
+        near.verdict("transitive").unwrap().to_string(),
         "fails for a = 0, b = 2, c = 0"
     );
 }
@@ -198,7 +207,10 @@ fn opt_lifts_a_semigroup_to_a_monoid() {
         ),
     ];
     let report = Structure::monoid().check(&[("T", "?Int")], &lossy).unwrap();
-    assert_eq!(report.verdict("ident").to_string(), "fails for a = 0");
+    assert_eq!(
+        report.verdict("ident").unwrap().to_string(),
+        "fails for a = 0"
+    );
 }
 
 #[test]
@@ -239,7 +251,7 @@ fn flip_keeps_the_laws_and_loses_nothing() {
         .check_in(&ctx, &[("T", "?Int")], &[("op", "first")])
         .unwrap();
     assert_eq!(
-        commutes.verdict("commutes").to_string(),
+        commutes.verdict("commutes").unwrap().to_string(),
         "fails for a = 1, b = 0"
     );
 }
@@ -271,9 +283,9 @@ fn the_count_of_the_maximum() {
         .commutative()
         .check(&[("T", "(Int, Int)")], &ties)
         .unwrap();
-    assert!(report.verdict("assoc").is_proved());
+    assert!(report.verdict("assoc").unwrap().is_proved());
     assert_eq!(
-        report.verdict("commutes").to_string(),
+        report.verdict("commutes").unwrap().to_string(),
         "fails for a = (0, 1), b = (0, 0)"
     );
 }
@@ -323,7 +335,7 @@ fn maximum_subarray_sum() {
     let wrong = "(x, y) => (sum: x.sum + y.sum, pre: max(x.pre, x.sum + y.pre), \
                  suf: max(y.suf, y.sum + x.suf), best: max(x.best, y.best, x.pre + y.suf))";
     let report = Structure::semigroup().check(&ty, &[("op", wrong)]).unwrap();
-    let Verdict::Refuted(counterexample) = report.verdict("assoc") else {
+    let Some(Verdict::Refuted(counterexample)) = report.verdict("assoc") else {
         panic!("{report}");
     };
     assert_eq!(counterexample.bindings.len(), 3);
@@ -369,7 +381,7 @@ fn arithmetic_modulo_a_constant() {
         .check(&ty, &raw)
         .unwrap();
     assert_eq!(
-        report.verdict("closed").to_string(),
+        report.verdict("closed").unwrap().to_string(),
         "fails for a = 998244352, b = 1"
     );
 }
@@ -403,7 +415,7 @@ fn arithmetic_modulo_a_runtime_modulus() {
     // but it is not a value of `0..m` there, which is its own obligation.
     let one = [("id", "1"), ("op", "(a, b) => a * b % m")];
     let report = Structure::monoid().check_in(&ctx, &ty, &one).unwrap();
-    assert!(report.verdict("ident").is_proved(), "{report}");
+    assert!(report.verdict("ident").unwrap().is_proved(), "{report}");
     assert_eq!(
         ctx.clone().check_index("1", "0..m").unwrap().to_string(),
         "fails for m = 1"
@@ -458,10 +470,13 @@ fn an_empty_marker_inside_int_breaks_composition() {
         .distributive()
         .check(&types, &fields)
         .unwrap();
-    assert!(report.verdict("ident").is_proved(), "{report}");
-    assert!(report.verdict("distributes").is_proved(), "{report}");
+    assert!(report.verdict("ident").unwrap().is_proved(), "{report}");
+    assert!(
+        report.verdict("distributes").unwrap().is_proved(),
+        "{report}"
+    );
     assert_eq!(
-        report.verdict("composes").to_string(),
+        report.verdict("composes").unwrap().to_string(),
         "fails for f = 1, g = -1, a = -9223372036854775806"
     );
     // Clamping the sum above the marker does not repair it: the clamp
@@ -476,7 +491,7 @@ fn an_empty_marker_inside_int_breaks_composition() {
         fields[3],
     ];
     let report = Structure::action().check(&types, &clamped).unwrap();
-    assert!(!report.verdict("composes").is_proved(), "{report}");
+    assert!(!report.verdict("composes").unwrap().is_proved(), "{report}");
 }
 
 #[test]
@@ -507,7 +522,10 @@ fn add_on_sum_needs_the_length() {
         .distributive()
         .check(&[("T", "Int"), ("F", "Int")], &no_len)
         .unwrap();
-    assert!(report.verdict("ident").is_proved() && report.verdict("composes").is_proved());
+    assert!(
+        report.verdict("ident").unwrap().is_proved()
+            && report.verdict("composes").unwrap().is_proved()
+    );
     assert_eq!(
         report
             .law("distributes")
@@ -556,9 +574,10 @@ fn affine_maps_compose_in_one_order_only() {
         op,
     ];
     let report = Structure::action().check(&types, &swapped).unwrap();
-    assert!(report.verdict("ident").is_proved());
+    assert!(report.verdict("ident").unwrap().is_proved());
     let counterexample = report
         .verdict("composes")
+        .unwrap()
         .counterexample()
         .expect("a counterexample");
     assert_eq!(
@@ -598,8 +617,8 @@ fn sampling_settles_what_the_solver_cannot() {
         .commutative()
         .check(&[("T", "Int")], &fields)
         .unwrap();
-    assert!(report.verdict("commutes").is_proved());
-    assert!(matches!(report.verdict("assoc"), Verdict::Refuted(_)));
+    assert!(report.verdict("commutes").unwrap().is_proved());
+    assert!(matches!(report.verdict("assoc"), Some(Verdict::Refuted(_))));
     // An unbound type parameter is an error, not a verdict.
     let err = Structure::monoid()
         .check(&[], &[("id", "0"), ("op", "(a, b) => a + b")])
@@ -622,8 +641,8 @@ fn a_valid_law_of_a_file_is_proved_and_a_broken_one_is_refuted() {
          @law shift(a: Int) = add(a, K) == a + 3\n\
          @law sub_comm(a: Int, b: Int) = a - b == b - a\n",
     );
-    assert!(report.verdict("comm").is_proved(), "{report}");
-    assert!(report.verdict("shift").is_proved(), "{report}");
+    assert!(report.verdict("comm").unwrap().is_proved(), "{report}");
+    assert!(report.verdict("shift").unwrap().is_proved(), "{report}");
     assert!(!report.holds());
     let broken = report.law("sub_comm").unwrap();
     assert!(matches!(broken.verdict, Verdict::Refuted(_)), "{report}");
@@ -637,7 +656,35 @@ fn a_law_about_a_fn_the_prover_cannot_read_is_not_proved() {
          @law idem(x: Int) = clamp(clamp(x)) == clamp(x)\n",
     );
     assert!(
-        matches!(report.verdict("idem"), Verdict::Unknown(_)),
+        matches!(report.verdict("idem"), Some(Verdict::Unknown(_))),
         "{report}"
     );
+}
+
+#[test]
+fn every_builtin_structure_parses_and_unknown_laws_have_no_verdict() {
+    let int = [("T", "Int"), ("F", "Int")];
+    let fields = [
+        ("id", "0"),
+        ("op", "(a, b) => a + b"),
+        ("inv", "(a) => -a"),
+        ("compose", "(f, g) => f + g"),
+        ("apply", "(f, a) => a + f"),
+        ("lt", "(a, b) => a < b"),
+    ];
+    for structure in [
+        Structure::semigroup().commutative().idempotent(),
+        Structure::monoid(),
+        Structure::group(),
+        Structure::action().distributive(),
+        Structure::order(),
+    ] {
+        let report = structure.check(&int, &fields);
+        assert!(report.is_ok(), "{}: {report:?}", structure.name);
+    }
+    let report = Structure::monoid().check(&int, &fields).unwrap();
+    assert!(report.verdict("assoc").is_some_and(|v| v.is_proved()));
+    assert!(report.verdict("no_such_law").is_none());
+    assert!(Structure::new("Broken", &["law ("]).is_err());
+    assert!(Structure::monoid().with_law("not a law").is_err());
 }

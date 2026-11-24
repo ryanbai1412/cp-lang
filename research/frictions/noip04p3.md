@@ -8,6 +8,7 @@
 - **Ideal code:** `let up = h.lis_ending()`, `let down = h.rev.lis_ending().rev`.
 - **General fix:** a per-position LIS (`lis_ending(by:)`) beside the length.
 - **Severity:** low.
+- **Run:** `h.lis_ending()` on a `[3]Int` gives `error[E0203]: a `[3]Int` has no method `lis_ending``.
 
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC 5117143 on gen.py inputs; max (N = 100) 0.004 s vs C++ 0.004 s, same output.

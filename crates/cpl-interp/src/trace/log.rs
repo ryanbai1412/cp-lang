@@ -71,10 +71,6 @@ const _: () = assert!(std::mem::size_of::<Delta>() == 8);
 
 type Var = u16;
 
-fn narrow(var: usize) -> Var {
-    Var::try_from(var).expect("a trace names fewer than 65536 variables")
-}
-
 impl Delta {
     fn var(self) -> Option<u32> {
         match self {
@@ -286,7 +282,11 @@ impl Log {
     }
 
     /// `var` holds `json` now; a change only if it held something else.
+    /// A trace shows the first 65536 variables.
     pub fn set(&mut self, var: usize, json: &str) {
+        let Ok(small) = Var::try_from(var) else {
+            return;
+        };
         if !self
             .now
             .values
@@ -295,12 +295,15 @@ impl Log {
             .is_some_and(|slot| self.holds(slot, json))
         {
             let text = self.keep(json);
-            self.push(Delta::Set(narrow(var), text));
+            self.push(Delta::Set(small, text));
         }
     }
 
     /// `var` holds the `Int` `value` now.
     pub fn set_int(&mut self, var: usize, value: i64) {
+        let Ok(small_var) = Var::try_from(var) else {
+            return;
+        };
         // An `Int` held already is set here, as `apply` would.
         let applied = match self.now.values.get_mut(var) {
             Some(Some(Slot::Int(now))) if *now == value => return,
@@ -311,10 +314,10 @@ impl Log {
             _ => false,
         };
         let delta = match i32::try_from(value) {
-            Ok(small) => Delta::SmallInt(narrow(var), small),
+            Ok(small) => Delta::SmallInt(small_var, small),
             Err(_) => {
                 self.ints.push(value);
-                Delta::Int(narrow(var), self.ints.len() as u32 - 1)
+                Delta::Int(small_var, self.ints.len() as u32 - 1)
             }
         };
         if applied {
@@ -397,12 +400,18 @@ impl Log {
     }
 
     pub fn unset(&mut self, var: usize) {
+        let Ok(small) = Var::try_from(var) else {
+            return;
+        };
         if self.now.values.get(var).is_some_and(Option::is_some) {
-            self.push(Delta::Unset(narrow(var)));
+            self.push(Delta::Unset(small));
         }
     }
 
     pub fn set_tree(&mut self, var: usize, json: &str) {
+        let Ok(small) = Var::try_from(var) else {
+            return;
+        };
         let now = self
             .now
             .trees
@@ -412,7 +421,7 @@ impl Log {
             .map(|t| self.get(t));
         if now != Some(json) {
             let text = self.keep(json);
-            self.push(Delta::Tree(narrow(var), text));
+            self.push(Delta::Tree(small, text));
         }
     }
 
@@ -428,9 +437,11 @@ impl Log {
         }
     }
 
-    /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their values.
-    pub fn locals_ints(&mut self, names: &str, values: &[i64]) {
+    /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their
+    /// values. `renamed` when `names` differs from the last call's.
+    pub fn locals_ints(&mut self, names: &str, renamed: bool, values: &[i64]) {
         let named = match &self.int_names {
+            Some((_, text)) if !renamed => *text,
             Some((kept, text)) if kept == names => *text,
             _ => {
                 let text = self.keep(names);
@@ -688,7 +699,7 @@ impl Log {
                     Some((var as usize, item_of(&self.text, text).0 as usize))
                 }
                 Delta::SmallIntItem(var, _) | Delta::IntItem(var, _) => {
-                    Some((var as usize, int_item(*delta, &self.ints).0))
+                    int_item(*delta, &self.ints).map(|(index, _)| (var as usize, index))
                 }
                 _ => None,
             })
@@ -1170,14 +1181,14 @@ fn ints_of(bytes: &[u8], whole: Piece) -> Option<Vec<i64>> {
 }
 
 /// The index and the value a [`Delta::SmallIntItem`] or [`Delta::IntItem`] writes.
-fn int_item(delta: Delta, ints: &[i64]) -> (usize, i64) {
+fn int_item(delta: Delta, ints: &[i64]) -> Option<(usize, i64)> {
     match delta {
         Delta::SmallIntItem(_, at) => {
             let packed = ints[at as usize];
-            ((packed >> 32) as usize, packed as i32 as i64)
+            Some(((packed >> 32) as usize, packed as i32 as i64))
         }
-        Delta::IntItem(_, at) => (ints[at as usize] as usize, ints[at as usize + 1]),
-        _ => unreachable!("not an item of Ints"),
+        Delta::IntItem(_, at) => Some((ints[at as usize] as usize, ints[at as usize + 1])),
+        _ => None,
     }
 }
 
@@ -1198,8 +1209,9 @@ fn apply(state: &mut State, delta: Delta, bytes: &[u8], ints: &[i64]) {
             let (index, item) = item_of(bytes, text);
             let slot = &mut state.values[var as usize];
             if let Some(Slot::Whole(whole)) = slot {
-                let items = split(bytes, piece_of(bytes, *whole)).expect("an array");
-                *slot = Some(Slot::Items(Arc::new(items)));
+                if let Some(items) = split(bytes, piece_of(bytes, *whole)) {
+                    *slot = Some(Slot::Items(Arc::new(items)));
+                }
             }
             if let Some(Slot::Items(items)) = slot {
                 Arc::make_mut(items)[index as usize] = item;
@@ -1218,14 +1230,13 @@ fn apply(state: &mut State, delta: Delta, bytes: &[u8], ints: &[i64]) {
             state.values[var as usize] = Some(Slot::Int(value.into()));
         }
         Delta::SmallIntItem(var, _) | Delta::IntItem(var, _) => {
-            let (index, value) = int_item(delta, ints);
             let slot = &mut state.values[var as usize];
             if let Some(Slot::Whole(whole)) = slot {
-                *slot = Some(Slot::Ints(Arc::new(
-                    ints_of(bytes, piece_of(bytes, *whole)).expect("an array of Ints"),
-                )));
+                if let Some(items) = ints_of(bytes, piece_of(bytes, *whole)) {
+                    *slot = Some(Slot::Ints(Arc::new(items)));
+                }
             }
-            if let Some(Slot::Ints(items)) = slot {
+            if let (Some(Slot::Ints(items)), Some((index, value))) = (slot, int_item(delta, ints)) {
                 Arc::make_mut(items)[index] = value;
             }
         }

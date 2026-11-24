@@ -269,7 +269,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::ListView(view) => {
                         let n = view.len;
                         for k in checkpoint::rounds(n, *rev, from) {
-                            round!(view.get(k).unwrap().clone());
+                            round!(view.base.get_unchecked_val(view.pos(k)));
                         }
                     }
                     Value::MutView(mv) => {
@@ -294,7 +294,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::StrView(view) => {
                         let n = view.len;
                         for k in checkpoint::rounds(n, *rev, from) {
-                            round!(Value::Char(view.get(k).unwrap()));
+                            round!(Value::Char(view.base[view.pos(k)]));
                         }
                     }
                     Value::Set(items) => {

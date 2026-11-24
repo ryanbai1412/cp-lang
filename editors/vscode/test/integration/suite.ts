@@ -247,7 +247,7 @@ const tests: [string, () => Promise<void>][] = [
                 'vscode.executeCodeLensProvider',
                 document.uri,
             );
-            assert.ok(lenses.some(lens => lens.command?.command === 'cp.stress'), 'no Stress lens');
+            assert.ok(lenses.some(lens => lens.command?.title === 'Stress'), 'no Stress lens');
             await vscode.commands.executeCommand('cp.stress', document.uri);
             const saved = await until(
                 'the saved failing case',
@@ -376,9 +376,10 @@ const tests: [string, () => Promise<void>][] = [
                     [0, 'Run on all 2 samples', 'cpl.exec'],
                     [0, 'Trace on i1', 'cpl.exec'],
                     [0, 'Stress', 'cpl.exec'],
+                    [0, 'Memory: bounds allow 3.2 MB of 256 MB on generic', 'cpl.exec'],
                     [8, 'Stress against count_brute', 'cpl.exec'],
                     [8, 'Trace', 'cpl.exec'],
-                    [0, 'Memory: bounds allow 3.2 MB of 256 MB on generic', 'cpl.exec'],
+                    [17, 'Trace', 'cpl.exec'],
                 ],
             );
         },
@@ -420,10 +421,14 @@ const tests: [string, () => Promise<void>][] = [
             const config = vscode.workspace.getConfiguration('cp');
             await config.update('server.path', process.env.CPL_STUB, vscode.ConfigurationTarget.Workspace);
             const document = await open('d.cp');
-            const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
-                'vscode.executeCodeLensProvider',
-                document.uri,
-            );
+            // The new server.path restarts the server, which lenses the file once it is back.
+            const lenses = await until('the trace lens', async () => {
+                const found = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+                    'vscode.executeCodeLensProvider',
+                    document.uri,
+                );
+                return found?.some(lens => lens.command?.title === 'Trace on i1') ? found : undefined;
+            });
             // Run each lens exactly as a click would.
             for (const lens of lenses) {
                 await vscode.commands.executeCommand(lens.command!.command, ...(lens.command!.arguments ?? []));

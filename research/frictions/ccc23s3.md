@@ -1,14 +1,16 @@
 # Friction Report: ccc23s3
 
-## A transpose is a coordinate swap at every write
+## A transpose is a coordinate swap at every write (not a gap: `transposed()` exists)
 - **Where:** `flip`, `(lines, len, pal, cross)` and `if flip: letter(j.ord, i.ord) else: letter(i.ord, j.ord)`.
-- **What felt wrong:** half the cases are the transpose of the other half. The port builds the
-  poster from a cell function on plain `Int` coordinates and swaps them, because a `[Row, Col]`
-  array can't be built as `[Col, Row]` and transposed.
+- **What felt wrong:** half the cases are the transpose of the other half, and the port builds the
+  poster from a cell function on plain `Int` coordinates and swaps them. That is an owed rewrite,
+  not a language gap: std's `transposed()` (`std/grid.cp`) turns a `[Col, Row]` array into a
+  `[Row, Col]` one. `cpl run` of
+  `let g: [Col, Row]Char = [Col, Row] (c, r) => ...; let p: [Row, Col]Char = g.transposed()`
+  compiles and prints the transposed grid.
 - **Goal it hurts:** types carry the proofs (the swapped coordinates lose their domains).
-- **Ideal code:** `let poster = if flip: frame(Col, Row, c, r).transposed else: frame(Row, Col, r, c)`.
-- **General fix:** `transposed` on 2-D arrays (a view swapping the two domains), and functions
-  generic over the two domains of the grid they build.
+- **Ideal code:** `let poster = if flip: frame<Col, Row>(c, r).transposed() else: frame<Row, Col>(r, c)`.
+- **General fix:** none in std; rewrite the port over domain-typed `frame<A, B>`.
 - **Severity:** low
 
 ## Dream
@@ -17,7 +19,7 @@
 fn frame<A, B>(pal: Int, cross: Int) -> ?[A, B]Char  // all A-lines or none palindromic
 let poster = if r > 0 and r < n and c > 0 and c < m:
                  Some([Row, Col] (i, j) => if i.ord >= r and j.ord >= c: 'b' else: 'a')
-             elif r != 0 and (c == 0 or r != n): frame<Col, Row>(c, r).map(.transposed)
+             elif r != 0 and (c == 0 or r != n): frame<Col, Row>(c, r).map(p => p.transposed())
              else: frame<Row, Col>(r, c)
 if let p = poster: print(p) else: print("IMPOSSIBLE")
 ```

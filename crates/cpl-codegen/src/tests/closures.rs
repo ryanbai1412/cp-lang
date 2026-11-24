@@ -795,3 +795,46 @@ fn a_top_level_fn_let_only_main_uses_is_its_closures_own_type() {
         "{explained:?}"
     );
 }
+
+#[test]
+fn local_fns_that_call_each_other_pass_each_other_instead_of_a_std_function() {
+    let out = cpp(concat!(
+        "fn walk(n: Int, k: Int) -> Int:\n",
+        "    fn down(i: Int) -> Int = if i <= 0: 0 else: k + up(i - 1)\n",
+        "    fn up(i: Int) -> Int = if i <= 0: 0 else: 1 + down(i - 1)\n",
+        "    down(n) + up(n)\n",
+        "let (n, k): (Int, Int) = read()\n",
+        "print(walk(n, k))\n",
+    ));
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("cpl::memo("), "{out}");
+}
+
+#[test]
+fn a_closure_passed_in_an_optional_the_callee_only_calls_borrows_its_list() {
+    let source = concat!(
+        "fn total(n: Int, weight: ?(Int -> Int) = None) -> Int:\n",
+        "    var t = 0\n",
+        "    for i in 0..n:\n",
+        "        if let w = weight: t += w(i)\n",
+        "        else: t += 1\n",
+        "    t\n",
+        "fn go(k: Int) -> Int:\n",
+        "    let xs = [k, 2, 3]\n",
+        "    var s = 0\n",
+        "    for weighted in [false, true]:\n",
+        "        s += total(3, weight: if weighted: Some((i: Int) => xs[i]) else: None)\n",
+        "    s\n",
+        "print(go(read<Int>()))\n",
+    );
+    let out = cpp(source);
+    assert!(
+        out.contains("[&xs_2 = xs]"),
+        "the closure lives only for the call to `total`, so it borrows `xs`:\n{out}"
+    );
+    let explained = crate::explain_copies(&super::lower(source));
+    assert!(
+        explained.is_empty(),
+        "no copy is left to explain: {explained:?}"
+    );
+}

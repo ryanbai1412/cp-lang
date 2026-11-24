@@ -1,4 +1,5 @@
-//! `?T` parameters holding a container that the fn only reads: each is a
+//! `?T` parameters whose `T` holds a heap buffer (a container, or a
+//! struct, tuple or enum holding one) that the fn only reads: each is a
 //! `cpl::Lent<T>`, a pointer to the caller's value, so `f(xs)` for
 //! `fn f(a: ?List<Int> = None)` passes `xs` without copying it into a
 //! `std::optional`. A local the fn binds to one, as `if let` does, is one
@@ -8,11 +9,9 @@ use crate::walk;
 use cpl_ir::{Arg, ExprKind, Program, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
-fn opt_container(ty: &Ty) -> bool {
-    matches!(ty, Ty::Opt(inner) if matches!(
-        **inner,
-        Ty::List(_) | Ty::Array { .. } | Ty::Str | Ty::Map(..) | Ty::HashMap(..) | Ty::Set(_) | Ty::HashSet(_)
-    ))
+fn opt_heap(program: &Program, ty: &Ty) -> bool {
+    matches!(ty, Ty::Opt(inner) if !matches!(**inner, Ty::Opt(_))
+        && crate::lend::holds_heap(program, inner))
 }
 
 /// Per fn, the slots taken or held as a `cpl::Lent`: a parameter or a
@@ -25,7 +24,8 @@ pub(crate) fn lent_opts(program: &Program) -> Vec<BTreeSet<usize>> {
         .map(|f| {
             (0..f.locals.len())
                 .filter(|&s| {
-                    opt_container(&f.locals[s].ty) && (s >= f.params.len() || !f.params[s].mutable)
+                    opt_heap(program, &f.locals[s].ty)
+                        && (s >= f.params.len() || !f.params[s].mutable)
                 })
                 .collect()
         })

@@ -8,6 +8,8 @@
 - **Ideal code:** a `fn` with `return` per outcome, or `Month.find` over a running scan.
 - **General fix:** a `scan`/`try_fold` that stops with a value (`Month.try_fold(state, f) -> Result`).
 - **Severity:** low.
+- **Update:** not a gap today: a top-level `return print(-m)` inside a `for` runs (`for m in 0..3: if m == 1:
+  return print(-m)` prints `-1` on cpl at 6a989896d), so the dream's spelling is available to the port.
 
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC 5117097 on gen.py inputs; max 0.007 s vs C++ 0.004 s (process start), same output.

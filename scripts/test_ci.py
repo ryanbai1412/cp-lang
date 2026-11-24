@@ -644,7 +644,8 @@ class GateTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(ev, ["cargo nextest run --workspace --no-fail-fast -E " + ci.wall_filter()
                               + " or test(=every_corpus_program_and_conformance_case_is_served)"
-                              " or test(=every_port_compiles_with_every_judges_flags)"])
+                              " or test(=every_port_compiles_with_every_judges_flags)",
+                              "scripts/affected.py --run-slices all"])
         self.assertEqual(GateTest.FakeTier.made, [])
 
 

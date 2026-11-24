@@ -530,6 +530,15 @@ impl Ty {
     }
 
     /// True when this type implements the built-in `IndexedMut` trait (O(1) random read/write).
+    /// What a `mut` argument of this type lends: a slice read as a view
+    /// is lent as the mutable view of the same cells.
+    pub fn lent_mut(self) -> Ty {
+        match self {
+            Ty::ListView(elem, key) => Ty::MutView(elem, key),
+            other => other,
+        }
+    }
+
     pub fn is_indexed_mut(&self) -> bool {
         match self {
             Ty::List(_) | Ty::MutView(..) | Ty::Str => true,
@@ -1419,12 +1428,18 @@ pub struct StructDef {
     /// A generic instance's arguments, shown as `Pair<Int>`.
     pub targs: Vec<Ty>,
     pub fields: Vec<(String, Ty)>,
+    /// The empty type of one operator's value (`+`, `max`), which tools show as a fn.
+    pub is_op: bool,
     /// The fields that are a row of a length written as a number, `kid:
     /// [0..2]?Int`, by position: every value of the struct holds exactly
     /// that many cells there.
     pub fixed: std::collections::BTreeMap<usize, u32>,
     /// Ranged `Int` fields whose static bounds fit in 32 bits, by position.
     pub narrow_ints: std::collections::BTreeMap<usize, IntWidth>,
+    /// Scalar ranged `Int` fields whose ends are known while lowering, by
+    /// position: `Mod<P>(v: 0..P)` holds `(0, P - 1)`. Every value of the
+    /// struct holds a field in its range.
+    pub int_ranges: std::collections::BTreeMap<usize, (i64, i64)>,
     /// From `impl Show for S`: `fn show(a: S) -> Str`.
     pub show_fn: Option<FnId>,
     /// From `impl Eq for S`: `fn eq(a: S, b: S) -> Bool`.
@@ -1433,6 +1448,9 @@ pub struct StructDef {
     pub ord: Option<OrdHook>,
     /// Field indices marked `@cache` (interior-mutable, skipped by `==`).
     pub cached_fields: std::collections::BTreeSet<usize>,
+    /// Field indices marked `@bits`: a `List<U64>` of one bit per position
+    /// of the struct's domain, the words past it zero (R05.10.15).
+    pub bits_fields: std::collections::BTreeSet<usize>,
     /// Field indices private to a module other than the program's own:
     /// what a std type is made of, which no tool shows the program.
     pub hidden: std::collections::BTreeSet<usize>,

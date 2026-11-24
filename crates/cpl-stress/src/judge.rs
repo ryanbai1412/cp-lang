@@ -353,9 +353,9 @@ pub(crate) fn failure(outcome: &Outcome) -> Option<Verdict> {
 
 /// What an interpreted run that trapped is called.
 pub(crate) fn interp_failure(trap: cpl_interp::Trap) -> Verdict {
-    match trap.message.as_str() {
+    match trap.message() {
         m if m == cpl_interp::OUT_OF_TIME.text() => Verdict::TimeLimit,
-        _ => Verdict::RuntimeError(trap.message),
+        _ => Verdict::RuntimeError(trap.into_message()),
     }
 }
 

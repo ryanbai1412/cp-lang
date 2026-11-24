@@ -27,14 +27,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             self.write_out(true);
         }
         let fail = |error: input::InputError| -> Box<Trap> {
-            Box::new(Trap {
-                message: error.message,
-                code: error.code,
-                span,
-                call_stack: Vec::new(),
-                case: None,
-                notes: Vec::new(),
-            })
+            let said = cpl_diag::msgs::interp::WRITTEN.at(&[&error.message]);
+            Box::new(Trap::said(span, said.with_code(error.code)))
         };
         Ok(match spec {
             Spec::Line => Value::Str(Rc::new(self.input.line().map_err(fail)?)),

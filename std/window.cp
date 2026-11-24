@@ -30,6 +30,9 @@ pub fn window_fold<S: Indexed, T, M>(self: S, k: Int, op: M) -> yields T:
         if i >= k - 1: yield w.all!
 
 /// A sliding fold queue over `op`. `push` and `pop` are \(O(1)\) amortized; `all` is \(O(1)\).
+/// `all` is `None` when empty for every op today. `SegTree` already folds an empty bounded
+/// `max`/`min` to `T.MIN`/`T.MAX` (decision 602); `Window` takes the same rule when `all` becomes
+/// `M.Fold`, and `Window(max.opt())` is the fold that stays `None` when empty.
 pub struct Window<T, M>(op: M):
     q: List<T>
     front: List<T>

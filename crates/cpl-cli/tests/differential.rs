@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-const SHARDS: usize = 8;
+const SHARDS: usize = 16;
 
 const GXX_FLAGS: [&str; 7] = [
     "-std=c++17",
@@ -477,6 +477,14 @@ shards! {
     interpreter_and_sanitized_cpp_agree_shard_5 = 5,
     interpreter_and_sanitized_cpp_agree_shard_6 = 6,
     interpreter_and_sanitized_cpp_agree_shard_7 = 7,
+    interpreter_and_sanitized_cpp_agree_shard_8 = 8,
+    interpreter_and_sanitized_cpp_agree_shard_9 = 9,
+    interpreter_and_sanitized_cpp_agree_shard_10 = 10,
+    interpreter_and_sanitized_cpp_agree_shard_11 = 11,
+    interpreter_and_sanitized_cpp_agree_shard_12 = 12,
+    interpreter_and_sanitized_cpp_agree_shard_13 = 13,
+    interpreter_and_sanitized_cpp_agree_shard_14 = 14,
+    interpreter_and_sanitized_cpp_agree_shard_15 = 15,
 }
 
 #[test]
@@ -1186,6 +1194,10 @@ fn edge_body(member: &cpl_check::BuiltinMember) -> String {
             "let got{ann} = {}\nif let v = got: print(v)\nelse: print(\"none\")",
             member.example
         ),
+        // A walk of a hash table has no defined order (containers.md 1.7): print it sorted.
+        ty if ty.starts_with("List<") && member.receiver.ordered().is_some() => {
+            format!("let got{ann} = {}\nprint(got.sorted())", member.example)
+        }
         _ => format!("let got{ann} = {}\nprint(got)", member.example),
     };
     if member.mutates {
@@ -1205,6 +1217,26 @@ fn edge_body(member: &cpl_check::BuiltinMember) -> String {
 
 fn indented(text: &str) -> String {
     text.lines().map(|line| format!("    {line}\n")).collect()
+}
+
+#[test]
+fn an_edge_row_prints_a_hash_walk_sorted() {
+    let raw: Vec<_> = cpl_check::BUILTIN_MEMBERS
+        .iter()
+        .filter(|m| m.receiver.ordered().is_some() && m.example_ty.starts_with("List<"))
+        .filter(|m| !edge_body(m).contains(".sorted()"))
+        .map(|m| format!("{}.{}", m.receiver.name(), m.name))
+        .collect();
+    assert!(raw.is_empty(), "printed in hash order: {raw:?}");
+    let keys = cpl_check::BUILTIN_MEMBERS
+        .iter()
+        .find(|m| m.receiver.name() == "HashMap" && m.name == "keys")
+        .expect("HashMap.keys row");
+    assert!(
+        edge_body(keys).ends_with("print(got.sorted())"),
+        "{}",
+        edge_body(keys)
+    );
 }
 
 /// Every built-in member (`cpl_check::BUILTIN_MEMBERS`) on empty, extreme

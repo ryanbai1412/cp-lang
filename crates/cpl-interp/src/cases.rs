@@ -26,7 +26,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Err(error) => {
                     let said = cpl_diag::msgs::interp::READING_NUMBER_TESTS.at(&[&error.message]);
                     let mut failed = trap::<()>(program.multitest_span, said).unwrap_err();
-                    failed.code = error.code;
+                    failed.set_code(error.code);
                     return Err(failed);
                 }
             }

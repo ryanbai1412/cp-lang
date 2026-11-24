@@ -1,4 +1,3 @@
-996warmup8p3
 aac4p2
 aac4p3
 aac4p4
@@ -79,7 +78,6 @@ ccc04s5
 ccc05s5
 ccc10s4
 ccc14s4
-ccc14s4hard
 ccc17s4
 ccc18s2
 ccc18s3
@@ -553,7 +551,6 @@ egoi23p6
 egoi23p7
 egoi23p8
 etsr23r1p4
-etsr23r2p2
 etsr23r2p4
 etsr23r3p3
 etsr23r4p2

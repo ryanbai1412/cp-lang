@@ -189,6 +189,7 @@ for v in V:
     a[v] = v.ord
 print(sum_all<V>(a))
 ");
+    // A param that only reads takes its caller's narrow storage.
     assert!(
         widened.contains("std::vector<uint32_t> a")
             && widened.contains("(const std::vector<uint32_t>& xs)"),
@@ -415,4 +416,56 @@ print(f(a), f(b))
 ");
     assert!(out.contains("std::vector<ll> a"), "{out}");
     assert!(out.contains("std::vector<ll> b"), "{out}");
+}
+
+#[test]
+fn printing_a_narrow_list_whole_keeps_its_storage() {
+    // cf2201b, cf2211d: `print(out)` reads each element; it is no reason to
+    // store the list at 64 bits.
+    let out = cpp("let n: 1..=300_000 = read()
+var out: List<0..=536_870_911> = []
+for v in 1..=n: out.push(v)
+var grid: [0..n, 0..2]-1..=1 = 0
+grid[0, 1] = -1
+print(out)
+print(grid)
+");
+    assert!(out.contains("std::vector<uint32_t> out;"), "{out}");
+    assert!(out.contains("cpl::Grid<int8_t, 2> grid;"), "{out}");
+    assert!(!out.contains("std::vector<ll> out"), "{out}");
+}
+
+#[test]
+fn a_range_with_a_runtime_bound_stores_at_the_width_its_bound_is_proven_to() {
+    // dmopc21c5p4, cf2187f1, coci21c4p4: `n: 1..=1e6` keeps `1..=n`, `0..m`
+    // with `m = 2 * n - 1`, and each field of a read edge in 32 bits or less.
+    let out = cpp("let n: 2..=1_000_000 = read()
+let m = 2 * n - 1
+var walk: List<1..=n> = []
+walk.push(n)
+var kid: [0..m]0..m = 0
+kid[1] = m - 1
+let roads: [0..n](u: 1..=n, v: 1..=n, w: 1..=1000) = read()
+print(walk.len, kid[1], roads[0].w)
+");
+    assert!(out.contains("std::vector<uint32_t> walk;"), "{out}");
+    assert!(out.contains("std::vector<uint32_t> kid;"), "{out}");
+    assert!(
+        out.contains("std::vector<std::tuple<uint32_t, uint32_t, uint16_t>> roads;"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_read_table_handed_to_a_reading_fn_keeps_its_declared_width() {
+    // apio09p1: `oil: [Row, Col]0..=500` given to a fn that only reads it
+    // stays a table of 16-bit cells, and so does the fn's parameter.
+    let out = cpp(
+        "fn total(a: [0..3, 0..3]Int) -> Int = sum(a[i, j] for i in 0..3 for j in 0..3)
+let oil: [0..3, 0..3]0..=500 = read()
+print(total(oil))
+",
+    );
+    assert!(out.contains("cpl::Grid<uint16_t, 2> oil;"), "{out}");
+    assert!(out.contains("(const cpl::Grid<uint16_t, 2>& a)"), "{out}");
 }

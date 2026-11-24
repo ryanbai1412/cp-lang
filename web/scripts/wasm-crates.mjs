@@ -29,8 +29,8 @@ export function crateOf(name) {
   return (roots.find(([c]) => c.startsWith('cpl_')) ?? roots[0])?.[0] ?? RUNTIME;
 }
 
-/** [crate, raw code bytes, gzipped bytes] for a cpl.wasm built with names, largest first. */
-export function contributors(wasm) {
+/** The code bodies, function names (index -> name) and data segment of a cpl.wasm built with names. */
+function sections(wasm) {
   let at = 8;
   const leb = () => {
     let v = 0, shift = 0, b;
@@ -83,6 +83,15 @@ export function contributors(wasm) {
     }
     at = end;
   }
+  return { bodies, imported, names, data };
+}
+
+/** Every function name in a cpl.wasm built with names. */
+export const functionNames = (wasm) => [...sections(wasm).names.values()];
+
+/** [crate, raw code bytes, gzipped bytes] for a cpl.wasm built with names, largest first. */
+export function contributors(wasm) {
+  const { bodies, imported, names, data } = sections(wasm);
   const by = new Map([[DATA, [data]]]);
   bodies.forEach((body, i) => {
     const c = crateOf(names.get(i + imported) ?? '');
@@ -94,6 +103,33 @@ export function contributors(wasm) {
       return [c, all.length, gzipSync(all, { level: 9 }).length];
     })
     .sort((a, b) => b[1] - a[1]);
+}
+
+// Each element type and order a crate sorts by compiles its own copy of core's
+// sort (ipnsort for sort_unstable*, driftsort_main for sort* and BTreeMap's
+// collect), a few KB each. The count only shrinks: sort through a key type that
+// already has a copy, or keep the list sorted as it is built.
+const SORT_ENTRY = /4core5slice4sort(?:8unstable7ipnsort|6stable14driftsort_main)/;
+export const sortCopiesFile = 'web/scripts/wasm-sort-copies.json';
+
+/** The function names in `names` that are a copy of core's sort, one per element type and order. */
+export const sortCopies = (names) => [...new Set(names.filter((name) => SORT_ENTRY.test(name)))].sort();
+
+// The cpl crate a sort copy was compiled for: its last cpl root, which for a
+// sort on a std type (`&str`) is the crate that calls it, not its type's crate.
+const sortedIn = (name) => [...name.matchAll(ROOT)].map((m) => name.substr(m.index + m[0].length, +m[1])).filter((c) => c.startsWith('cpl_')).at(-1) ?? crateOf(name);
+
+/** Why `copies` (from sortCopies) is over `max`, or the lower `max` to write, or neither. */
+export function checkSortCopies(copies, max) {
+  if (copies.length > max) {
+    const list = copies.map((c) => `\n  ${sortedIn(c)}: ${c}`).join('');
+    return {
+      error: `cpl.wasm has ${copies.length} copies of core's sort, over the ${max} in ${sortCopiesFile}: sort through a key type`
+        + ` that already has one, or keep the list sorted as it is built (never raise the count)${list}`,
+      lower: null,
+    };
+  }
+  return { error: null, lower: copies.length < max ? `${copies.length} copies of core's sort: lower "max" in ${sortCopiesFile} to ${copies.length}` : null };
 }
 
 /**
@@ -179,11 +215,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   const t = process.argv.indexOf('--touched');
   const touched = t < 0 ? [] : (process.argv[t + 1] ?? '').split(',').filter(Boolean);
-  const rows = contributors(readFileSync(process.argv[at + 1]));
+  const wasm = readFileSync(process.argv[at + 1]);
+  const rows = contributors(wasm);
   const here = dirname(fileURLToPath(import.meta.url));
   const budgets = JSON.parse(readFileSync(join(here, 'wasm-crate-budgets.json'), 'utf8'));
   const map = owners(readCharters(join(here, '../../handbook/domains')));
   const { errors, warnings } = touchedOverBudget(rows, budgets, map, touched);
+  const sorts = checkSortCopies(sortCopies(functionNames(wasm)), JSON.parse(readFileSync(join(here, '../..', sortCopiesFile), 'utf8')).max);
+  if (sorts.error) errors.push(sorts.error);
+  if (sorts.lower) console.error(`wasm-crates: ${sorts.lower}`);
   for (const w of warnings) console.error(`wasm-crates: warning: ${w} (not touched here)`);
   for (const e of errors) console.error(`wasm-crates: ${e}`);
   if (errors.length) process.exit(1);

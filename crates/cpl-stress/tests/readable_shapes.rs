@@ -115,7 +115,10 @@ fn std_gap(module: &str, ty: &str, src: &str, program: &cpl_ir::Program) -> Opti
         let input = case.render();
         let mut out = Vec::new();
         if let Err(trap) = cpl_interp::run(program, input.as_bytes(), &mut out) {
-            return Some(format!("{module}.{ty}: {} reading {input:?}", trap.message));
+            return Some(format!(
+                "{module}.{ty}: {} reading {input:?}",
+                trap.message()
+            ));
         }
     }
     None

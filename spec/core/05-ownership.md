@@ -50,7 +50,7 @@ anyone hold a live view this write would break?
 | Tier | Spellings | If broken | Surfaced by |
 |---|---|---|---|
 | Proved | moves, lends, R1 to R12 | can't be | the compiler |
-| Trap | `!`, indexing, `assert`, preconditions such as sortedness | stops with a message | debug builds check every one |
+| Trap | `!`, indexing, `assert`, preconditions such as sortedness | stops with a message | checked builds check every one |
 | Promise | `@cache`, `@law` | wrong answers, never undefined behaviour | `cpl explain` lists each; stress runs check them |
 | Unsafe | `@trusted:` blocks, `@cpp("...")` bodies | anything | `cpl explain` lists each; debug shadow checks where possible |
 
@@ -548,6 +548,25 @@ two comparable, so no struct needs its own checker.
 let d = build_dsu(edges)            // a let
 for v in V: print(d.find(v))        // fine: find takes read self
 ```
+
+## 10b. Bit rows: `@bits` fields
+
+A struct over a domain parameter can mark one `List<U64>` field `@bits`:
+the field holds one bit per position of the domain, 64 to a word, and
+every bit past the domain's count is zero. std's `Bitset<D>` is declared
+this way; a user struct gets the same treatment from the same attribute.
+(R05.10.15)
+
+Promised by the author:
+
+- **P2. The words are the set.** `count`/`len` is the words' popcount,
+  `is_empty` is every word zero, and `bitand`/`bitor`/`bitxor` combine the
+  words of both operands one by one. (R05.10.16)
+
+P2 lets the build keep the words inline when the domain has a small static
+bound and compute a chain like `(a & b & c).len` in one popcount loop over
+the words, with no set built in between. Only `@bits` licenses this; the
+struct's name never does.
 
 ## 11. Top-level state
 

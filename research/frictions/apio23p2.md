@@ -14,6 +14,20 @@
   `Pre(Int(p) + 1)`; the block ends are `[Int(p) for p in at[v]] + [n]`.
 - **Goal it hurt:** express; a `Cut`-like successor from `I` into `0..=n` would say it directly.
 
+## A scan that carries its own state
+- **Where:** `port.cp` lines 57-63 build the block spans with `var (from, base) = (0, 0)`,
+  `base += w.sum` and `from = to + 1` around `walk.fold(Pre(from)..=Pre(to))`.
+- **What felt wrong:** a running offset threaded by hand through a loop; the dream says
+  `ends.scan_with(start: I.cuts.first!, (from, to) => walk.fold(from..=to), then)`.
+- **Goal it hurts:** express.
+- **Ideal code:** the dream's `scan_with` line.
+- **Run:** `let spans = ends.scan_with(start: 0, (from, to) => to - from, (x, y) => x + y)` under
+  `cpl run` (c8a46b201): `` error[E0203]: a `List<Int>` has no method `scan_with` ``.
+- **General fix:** a stateful scan over consecutive pairs of a sequence of cuts (each element
+  folded over the span from the previous cut), so per-block prefix walks stop threading a base.
+- **Severity:** low.
+- **Owner:** stdlib.
+
 ## Dream
 
 ```cp

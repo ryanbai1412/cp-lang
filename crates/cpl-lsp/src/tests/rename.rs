@@ -195,3 +195,47 @@ fn rename_reaches_every_open_file_and_the_library_that_declares_the_name() {
     let message = reply[0].at(&["error", "message"]).as_str().unwrap_or("");
     assert!(message.contains("standard library"), "{reply:?}");
 }
+
+/// The new texts a rename at the cursor edits in, in source order.
+fn renamed_texts(src: &str, to: &str) -> Vec<String> {
+    let reply = ask_at_with("textDocument/rename", src, obj([("newName", to.into())]));
+    let changes = reply
+        .at(&["changes"])
+        .as_object()
+        .cloned()
+        .unwrap_or_default();
+    changes
+        .values()
+        .flat_map(|edits| edits.as_array().unwrap_or(&[]).to_vec())
+        .map(|e| e.at(&["newText"]).as_str().unwrap_or("").to_string())
+        .collect()
+}
+
+/// A shorthand argument keeps its label (`f(best:)` becomes
+/// `f(best: top)`).
+#[test]
+fn rename_keeps_shorthand_argument_labels() {
+    let src = "fn f(best: Int) -> Int = best + 1\nlet best| = 2\nprint(f(best:))\n";
+    assert_eq!(renamed_texts(src, "top"), ["top", "best: top"]);
+}
+
+/// A variant `read` parses by its name keeps the name: the input spells it.
+#[test]
+fn rename_refuses_a_variant_the_input_spells() {
+    let read = "enum Axis = |X | Y\nlet a = read<(d: Int, axis: Axis)>()\nprint(a.d)\n";
+    let reply = ask_at_with("textDocument/prepareRename", read, obj([]));
+    let why = reply.at(&["message"]).as_str().unwrap_or("");
+    assert!(why.contains("how the input spells"), "{reply:?}");
+    let unread = "enum Axis = |X | Y\nfn f(a: Axis) -> Int = 1\nprint(f(X))\n";
+    assert_eq!(renamed_texts(unread, "Z"), ["Z", "Z"]);
+}
+
+/// A member (`s.len`, `dijkstra(..).dist`) is not the top-level value that
+/// shares its name, so renaming the value leaves the member alone.
+#[test]
+fn rename_leaves_a_member_named_like_a_top_level_value() {
+    let src = "let len| = 3\nlet s = \"ab\"\nprint(s.len + len)\n";
+    assert_eq!(renamed_texts(src, "size"), ["size", "size"]);
+    let src = "var dist| = 3\nlet g: [3]List<(to: Int, w: Int)> = [[], [], []]\ndist = dijkstra(g, from: [(0, 0)]).dist[0]!\nprint(dist)\n";
+    assert_eq!(renamed_texts(src, "d"), ["d", "d", "d"]);
+}

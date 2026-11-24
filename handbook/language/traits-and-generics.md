@@ -126,8 +126,12 @@ use commutativity safely. A trait may attach a message to each law, so
 **Chosen.** `a + b` calls `Add`; `Add`, `Sub`, `Mul`, `Div` and `Rem`
 take an optional `Rhs` type and an `Out` associated type, so
 `Vec * F64` and `Mat2 * Vec` coexist with `Mat2 * Mat2` on one struct.
-An operator is declared like any function: `fn (a: Frac) + (b: Frac) ->
-Frac`. Compound assignment comes from the operator.
+`Eq` and `Ord` take `Rhs` too, defaulting to `Self`, so `impl Eq for
+Frac` means what it always did, while std's one walk-order impl over
+`Seq` lets a view compare with a list in O(n) without copying either
+side (decision 593). An operator is declared like any function:
+`fn (a: Frac) + (b: Frac) -> Frac`. Compound assignment comes from the
+operator.
 
 **Lost.** Overloading by type, which C++ uses for the same job (R08.5.2,
 decision 127). With `Rhs` the trait, not an overload set, picks the

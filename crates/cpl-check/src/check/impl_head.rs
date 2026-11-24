@@ -10,6 +10,7 @@ use cpl_syntax::ast::{self, TypeKind};
 pub(crate) fn impl_target_head(ty: &ast::Type) -> Option<String> {
     match &ty.kind {
         TypeKind::Fn { .. } => Some("fn".into()),
+        TypeKind::ItemOf(item) => item.fn_item_type(),
         _ => type_head(ty),
     }
 }
@@ -214,5 +215,39 @@ impl Checker<'_> {
             };
         }
         Ty::Unknown
+    }
+
+    /// R08.1.7: a record or tuple meets a trait by its shape, so it has the trait's default
+    /// methods as a type with an empty impl would: `(3, 4).rev()` is `Reversible`'s.
+    pub(super) fn shape_default_member(&mut self, ty: &Ty, name: &str) -> Option<Ty> {
+        let fields = match ty {
+            Ty::Record(fields) => fields.clone(),
+            Ty::Tuple(items) => super::types::positional(items),
+            _ => return None,
+        };
+        for trait_name in self.env.names() {
+            let Some(Def::Trait {
+                methods,
+                generics,
+                alias: false,
+                ..
+            }) = self.global(&trait_name).as_deref().cloned()
+            else {
+                continue;
+            };
+            if !generics.is_empty() {
+                continue;
+            }
+            let Some(method) = methods.iter().find(|m| m.name == name && !m.required) else {
+                continue;
+            };
+            if !self.meets_by_shape(&fields, &trait_name) {
+                continue;
+            }
+            let mut on = crate::ty::Bindings::default();
+            on.insert("Self".into(), ty.clone());
+            return Some(method.ty.subst(&on));
+        }
+        None
     }
 }

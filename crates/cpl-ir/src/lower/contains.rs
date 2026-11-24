@@ -34,9 +34,9 @@ impl Lowerer<'_> {
                 inclusive,
                 step: None,
             } if self.probe_ty_silent(lo) != Some(Ty::Float) => {
-                let value = self.expect(item, &Ty::Int);
-                let lo = self.expect(lo, &Ty::Int);
-                let hi = self.expect(hi, &Ty::Int);
+                let value = self.expr_as(item, &Ty::Int);
+                let lo = self.expr_as(lo, &Ty::Int);
+                let hi = self.expr_as(hi, &Ty::Int);
                 between(self, value, lo, hi, *inclusive)
             }
             ast::ExprKind::Name(name)
@@ -51,7 +51,7 @@ impl Lowerer<'_> {
                         _ => unreachable!(),
                     },
                 };
-                let value = self.expect(item, &Ty::Int);
+                let value = self.expr_as(item, &Ty::Int);
                 let lo = self.mk(ExprKind::DomainLo(id), Ty::Int, span);
                 let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                 let hi = self.mk_binary(BinOp::Add, lo.clone(), len, Ty::Int, span);
@@ -81,7 +81,7 @@ impl Lowerer<'_> {
                     }
                 }
                 if matches!(&holder.ty, Ty::Range(e) if **e == Ty::Float) {
-                    let value = self.expect(item, &Ty::Float);
+                    let value = self.expr_as(item, &Ty::Float);
                     let mut stmts = Vec::new();
                     let holder = self.hold(holder, &mut stmts);
                     let lo = self.mk_builtin(Builtin::RangeLo, [holder.clone()], Ty::Float, span);
@@ -120,7 +120,7 @@ impl Lowerer<'_> {
                         return self.err_expr(span);
                     }
                 };
-                let value = self.expect(item, &elem);
+                let value = self.expr_as(item, &elem);
                 self.mk_builtin(Builtin::Contains, [holder, value], Ty::Bool, span)
             }
         }

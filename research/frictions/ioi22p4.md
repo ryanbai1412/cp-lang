@@ -40,6 +40,20 @@ downward one, relying on `P[i] < i`. `Rooted` from a parent array with `fold_up`
 
 `init` / `count_ways` are grader functions; the port reads their arguments from stdin.
 
+## A domain that is a stretch of another
+
+`Source = n..n + m` is the tail of `Node`, but nothing says so: indexing `worth` by a source is
+`worth[Node(Int(s))]`. Dream line: `Flip.of(lit[s], worth[s], Z(0))`. Run on a fresh `cpl`:
+
+```text
+error[E0301]: `w` is indexed by Node, but `s` is a Source
+  = help: index with a Node
+```
+
+(`domain Node = 0..n + m`, `domain Source = n..n + m`, `w: [Node]Int`, `w[s]`.) General fix: a
+subdomain declaration (`domain Source = Node.from(n)`) that widens implicitly to its parent.
+Owner: check. Severity: low.
+
 ## Verification
 
 30 random cases agree with the v0.2 port and 30 with the accepted C++ (`orig.cpp`, the AC

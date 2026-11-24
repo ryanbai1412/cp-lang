@@ -70,6 +70,7 @@ helix-smoke cpl="target/debug/cpl":
 zed-smoke cpl="target/debug/cpl":
     editors/zed/smoke.sh "$(realpath {{cpl}})"
 
+# Parse the tree-sitter grammar's smoke corpus.
 tree-sitter-smoke:
     editors/tree-sitter-cp/smoke.sh
 
@@ -112,6 +113,7 @@ workflow-lint:
 jetbrains-fetch *flags:
     cd editors/jetbrains && . ../../scripts/retry.sh && retry ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle prefetch {{flags}}
 
+# Run Gradle tasks in the JetBrains plugin, offline against the prefetched mirror.
 jetbrains-gradle *tasks:
     cd editors/jetbrains && ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle --offline {{tasks}}
 
@@ -159,6 +161,7 @@ web-build:
 web-typecheck:
     pnpm --dir web typecheck
 
+# Run the web workspace's tests.
 web-test:
     pnpm --dir web test
 

@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { promisify } from 'node:util';
 import * as vscode from 'vscode';
 import { CpClient, missingCpl, serverBinary } from './client';
-import { Overlays, viewOf } from './overlays';
+import { Overlays, View, viewOf } from './overlays';
 
 /** What the extension gives other extensions and its tests. */
 export interface CpApi {
@@ -37,6 +37,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
             error => ({ stdout: String(error.stdout ?? ''), stderr: String(error.stderr || error.message) }),
         );
     };
+    /** Draws a report's `view`: its panel, its overlays on `uri`, and its status as a notification. */
+    const show = (uri: vscode.Uri, view: View) => {
+        output.append(view.panel);
+        overlays.show(uri, view);
+        const notify = view.status?.ok ? vscode.window.showInformationMessage : vscode.window.showWarningMessage;
+        void (view.status && notify(view.status.label));
+    };
     /** Runs `cpl <args>` and shows what it returns as is: its `view`, its trace page, or its text. */
     const run = async (args: string[], stdin?: string) => {
         output.show(true);
@@ -49,10 +56,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
         });
         const view = result && viewOf(result.stdout);
         if (view) {
-            output.append(view.panel);
-            overlays.show(vscode.Uri.file(args[1]), view);
-            const show = view.status?.ok ? vscode.window.showInformationMessage : vscode.window.showWarningMessage;
-            void (view.status && show(view.status.label));
+            show(vscode.Uri.file(args[1]), view);
         } else if (result && /^\s*<(!doctype|html)/i.test(result.stdout)) {
             if (!tracePanel) {
                 const column = { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true };
@@ -185,28 +189,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
                 return new vscode.DebugAdapterExecutable(binary, ['dap']);
             },
         }),
-        command('cp.replayCall', async (target?: unknown, call?: { fn?: string }) => {
+        command('cp.replayCall', async (target?: { frameId?: number }, call?: { fn?: string }) => {
+            // From the call stack VS Code passes the frame; from a lens, the fn. The adapter picks the call and lays out its view.
             const session = vscode.debug.activeDebugSession;
-            if (session?.type !== 'cp') {
-                void vscode.window.showInformationMessage('Replay needs a CP Lang debug session stopped at the call.');
-                return;
-            }
-            // From the call stack VS Code passes the frame; from a lens, the document and the fn.
-            const frameId = (target as { frameId?: unknown } | undefined)?.frameId;
-            const args = call?.fn ? { fn: call.fn } : typeof frameId === 'number' ? { frameId } : {};
-            try {
-                const body = await session.customRequest('replayCall', args);
-                const report = String(body?.report ?? '');
-                output.appendLine(report);
-                const [first, second] = report.split('\n');
-                void vscode.window.showInformationMessage(`${first}: ${second}`, 'Show report').then(choice => {
-                    if (choice) {
-                        output.show(true);
-                    }
-                });
-            } catch (error) {
-                void vscode.window.showErrorMessage(`Replay: ${error instanceof Error ? error.message : String(error)}`);
-            }
+            const view = await Promise.resolve(session?.customRequest('replayCall', { frameId: target?.frameId, fn: call?.fn })).then(
+                body => body?.view ?? { panel: 'Replay needs a CP Lang debug session stopped at the call.\n' },
+                (error: Error) => ({ panel: `Replay: ${error.message}\n` }),
+            );
+            show(vscode.Uri.file(session?.configuration.program ?? ''), view);
         }),
         // A server lens's `cpl` arguments, run as they are.
         command('cpl.exec', (...args: string[]) => {

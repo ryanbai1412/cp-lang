@@ -17,6 +17,8 @@ super::msgs! {
     USED_IN_OWN_DEFINITION = USED_BEFORE_SET, "`{}` is used in its own definition";
     /// `UNRESOLVED_NAME` instead when the use is in a lambda.
     USED_BEFORE_SET = USED_BEFORE_SET, "`{}` is used here before it is set on line {}";
+    /// R08.2.11: a fn value given to an open type parameter takes `Int`s, and this one cannot.
+    FN_VALUE_NO_DEFAULT = INFERENCE_NEEDS_ANNOTATION, "`{}`'s `{}` takes its type from `{}`, but its parameters' types are unwritten and its body does not check with `Int`s";
     PRIVATE_NAME = PRIVATE_NAME, "`{}` is private to `{}`";
     MODULE_HAS_NO = UNRESOLVED_NAME, "`{}` has no `{}`";
     MODULE_HAS_NO_REMOVED = UNRESOLVED_NAME, "`{}` has no `{}`: std removed it";

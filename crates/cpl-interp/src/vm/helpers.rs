@@ -1,6 +1,6 @@
 use super::ir::*;
 use crate::value::{Array, Cells, TupleVal, Value};
-use crate::{release, trap, Res};
+use crate::{release, trap, Part, Res};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
@@ -158,6 +158,76 @@ pub(super) fn sync_refs_from_stack(
                 let slot = slot as usize;
                 let loc = &chunk.slot_map[slot];
                 slot_from_stack(slot, loc, regs_i, regs_v, stack, base, chunk.traced);
+            }
+        }
+    }
+}
+
+/// The slots of `chunk`'s frame a call can reach while the frame lends
+/// `lent`: the lent ones and those a closure captures by reference, or
+/// `None` for every slot.
+fn reachable_slots(chunk: &Chunk, lent: &[(usize, Rc<Part>)], base: usize) -> Option<Vec<usize>> {
+    let refs = chunk.ref_slots.as_ref().filter(|_| !chunk.traced)?;
+    let mut slots: Vec<usize> = (lent.iter().rev())
+        .take_while(|l| l.0 >= base)
+        .map(|l| l.0 - base)
+        .chain(refs.iter().map(|&s| s as usize))
+        .collect();
+    slots.sort_unstable();
+    slots.dedup();
+    Some(slots)
+}
+
+/// Puts on the stack the slots a call can reach while the frame lends
+/// `lent` (see `reachable_slots`).
+pub(super) fn sync_reachable_to_stack(
+    chunk: &Chunk,
+    lent: &[(usize, Rc<Part>)],
+    regs_i: &[i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+) {
+    match reachable_slots(chunk, lent, base) {
+        None => sync_to_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced),
+        Some(slots) => {
+            for slot in slots {
+                slot_to_stack(
+                    slot,
+                    &chunk.slot_map[slot],
+                    regs_i,
+                    regs_v,
+                    stack,
+                    base,
+                    false,
+                );
+            }
+        }
+    }
+}
+
+/// Takes back what `sync_reachable_to_stack` put on the stack.
+pub(super) fn sync_reachable_from_stack(
+    chunk: &Chunk,
+    lent: &[(usize, Rc<Part>)],
+    regs_i: &mut [i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+) {
+    match reachable_slots(chunk, lent, base) {
+        None => sync_from_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced),
+        Some(slots) => {
+            for slot in slots {
+                slot_from_stack(
+                    slot,
+                    &chunk.slot_map[slot],
+                    regs_i,
+                    regs_v,
+                    stack,
+                    base,
+                    false,
+                );
             }
         }
     }

@@ -236,6 +236,13 @@ pub(super) fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode
                 out.push_str(&text);
             }
         }
+        (Value::Tuple(_), Ty::Struct(id)) if view.program.structs[*id].is_op => {
+            if json {
+                string(out, "…");
+            } else {
+                out.push('…');
+            }
+        }
         (Value::Tuple(fields), _) => {
             let mut scratch = [Value::Unit];
             let fields = fields.as_slice(&mut scratch);

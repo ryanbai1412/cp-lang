@@ -632,69 +632,12 @@ impl Database {
                 {
                     continue;
                 }
-                let mut prev_dot = false;
                 let tokens = &lexed.tokens[range.tokens.0..range.tokens.1];
                 if walks::some_walk_needs_seq(tokens) {
                     // std.seq is where `contains` and those `Seq` impls live.
                     dot_ident_tokens.insert("contains");
                 }
-                for tok in tokens {
-                    if tok.kind == cpl_syntax::TokenKind::Ident {
-                        let s = &text[tok.span.start as usize..tok.span.end as usize];
-                        ident_tokens.insert(s);
-                        if prev_dot {
-                            dot_ident_tokens.insert(s);
-                        }
-                    } else if tok.kind == cpl_syntax::TokenKind::Str {
-                        let s = &text[tok.span.start as usize..tok.span.end as usize];
-                        if s.contains('{') {
-                            let mut i = 0;
-                            let bytes = s.as_bytes();
-                            while i < bytes.len() {
-                                if bytes[i] == b'\\' {
-                                    i += 2;
-                                    continue;
-                                }
-                                if bytes[i] == b'{' {
-                                    if i + 1 < bytes.len() && bytes[i + 1] == b'{' {
-                                        i += 2;
-                                        continue;
-                                    }
-                                    let start = i + 1;
-                                    let mut depth = 1usize;
-                                    i = start;
-                                    while i < bytes.len() && depth > 0 {
-                                        match bytes[i] {
-                                            b'{' => depth += 1,
-                                            b'}' => depth -= 1,
-                                            _ => {}
-                                        }
-                                        i += 1;
-                                    }
-                                    if depth == 0 && i > start {
-                                        let inner = &s[start..i - 1];
-                                        let mut inner_prev_dot = false;
-                                        for itok in cpl_syntax::lex(inner).tokens {
-                                            if itok.kind == cpl_syntax::TokenKind::Ident {
-                                                let is = &inner[itok.span.start as usize
-                                                    ..itok.span.end as usize];
-                                                ident_tokens.insert(is);
-                                                if inner_prev_dot {
-                                                    dot_ident_tokens.insert(is);
-                                                }
-                                            }
-                                            inner_prev_dot =
-                                                itok.kind == cpl_syntax::TokenKind::Dot;
-                                        }
-                                    }
-                                    continue;
-                                }
-                                i += 1;
-                            }
-                        }
-                    }
-                    prev_dot = tok.kind == cpl_syntax::TokenKind::Dot;
-                }
+                note_idents(&text, tokens, &mut ident_tokens, &mut dot_ident_tokens);
             }
             let uses = |name: &str| ident_tokens.contains(name);
             // A method the library adds to a type is used as `.name`.
@@ -727,26 +670,8 @@ impl Database {
                 let bare = (key != name.text)
                     .then(|| scope.imports.remove(&name.text))
                     .flatten();
-                let had_imports = scope.has_imports;
-                let mods_before = scope.modules.len();
-                let hits_before = self.cycle_hits;
-                let mut diags = Vec::new();
-                self.import(
-                    path,
-                    module,
-                    std::slice::from_ref(name),
-                    false,
-                    None,
-                    &mut scope,
-                    &mut diags,
-                );
-                scope.has_imports = had_imports;
-                let cycled = scope.modules[mods_before..].iter().any(|m| {
-                    m.analysis
-                        .diagnostics
-                        .iter()
-                        .any(|d| d.code == codes::UNRESOLVED_MODULE)
-                });
+                let (mods_before, hits_before) = (scope.modules.len(), self.cycle_hits);
+                let (mut diags, cycled) = self.prelude_import(path, module, name, &mut scope);
                 // A std module the host has not given yet: the name stays
                 // imported from its outline, and the wait is reported where
                 // the file first uses it, as for a `use` of it.
@@ -805,28 +730,10 @@ impl Database {
                     if !uses(word) || scope.imports.contains_key(sym) {
                         continue;
                     }
-                    let had_imports = scope.has_imports;
-                    let mods_before = scope.modules.len();
-                    let hits_before = self.cycle_hits;
-                    let mut diags = Vec::new();
-                    let module = vec![bare("std"), bare(std_mod)];
-                    let name = bare(sym);
-                    self.import(
-                        path,
-                        &module,
-                        std::slice::from_ref(&name),
-                        false,
-                        None,
-                        &mut scope,
-                        &mut diags,
-                    );
-                    scope.has_imports = had_imports;
-                    let cycled = scope.modules[mods_before..].iter().any(|m| {
-                        m.analysis
-                            .diagnostics
-                            .iter()
-                            .any(|d| d.code == codes::UNRESOLVED_MODULE)
-                    });
+                    let (mods_before, hits_before) = (scope.modules.len(), self.cycle_hits);
+                    let module = [bare("std"), bare(std_mod)];
+                    let (diags, cycled) =
+                        self.prelude_import(path, &module, &bare(sym), &mut scope);
                     if cycled || !diags.is_empty() {
                         self.cycle_hits = hits_before;
                         scope.modules.truncate(mods_before);
@@ -1209,7 +1116,8 @@ impl Database {
                 };
                 let mut diag = row
                     .at(&[&r.name, &line])
-                    .error_as(code, r.span.shift(offset));
+                    .with_code(code)
+                    .error(r.span.shift(offset));
                 if def_index != index {
                     diag = diag
                         .with_label(decl_span, "set here")
@@ -1333,6 +1241,28 @@ impl Database {
             .find('\n')
             .map_or(text.len(), |i| at + i + 1) as u32;
         Some(Span::new(start.max(base) - base, end - base))
+    }
+
+    /// Imports `name` from `module` as the prelude does, keeping whether the
+    /// file has imports of its own; also whether a module it loaded was cut
+    /// by a cycle.
+    #[inline(never)]
+    fn prelude_import(
+        &mut self,
+        from: &str,
+        module: &[ast::Name],
+        name: &ast::Name,
+        scope: &mut Scope,
+    ) -> (Vec<Diagnostic>, bool) {
+        let (had_imports, mods_before) = (scope.has_imports, scope.modules.len());
+        let mut diags = Vec::new();
+        let names = std::slice::from_ref(name);
+        self.import(from, module, names, false, None, scope, &mut diags);
+        scope.has_imports = had_imports;
+        let cycled = scope.modules[mods_before..]
+            .iter()
+            .any(|m| (m.analysis.diagnostics.iter()).any(|d| d.code == codes::UNRESOLVED_MODULE));
+        (diags, cycled)
     }
 
     /// Loads what one `use` names into `scope`.
@@ -1875,3 +1805,53 @@ mod scoping;
 mod silent;
 #[cfg(test)]
 mod tests;
+
+/// Notes each identifier `tokens` name, and those right after a `.`,
+/// looking inside a string's `{..}` interpolations too.
+#[inline(never)]
+fn note_idents<'t>(
+    text: &'t str,
+    tokens: &[cpl_syntax::Token],
+    idents: &mut crate::fx::HashSet<&'t str>,
+    dotted: &mut crate::fx::HashSet<&'t str>,
+) {
+    let mut prev_dot = false;
+    for tok in tokens {
+        let s = &text[tok.span.start as usize..tok.span.end as usize];
+        if tok.kind == cpl_syntax::TokenKind::Ident {
+            idents.insert(s);
+            if prev_dot {
+                dotted.insert(s);
+            }
+        } else if tok.kind == cpl_syntax::TokenKind::Str && s.contains('{') {
+            let bytes = s.as_bytes();
+            let mut i = 0;
+            while i < bytes.len() {
+                if bytes[i] == b'\\' || (bytes[i] == b'{' && bytes.get(i + 1) == Some(&b'{')) {
+                    i += 2;
+                    continue;
+                }
+                if bytes[i] != b'{' {
+                    i += 1;
+                    continue;
+                }
+                let start = i + 1;
+                let mut depth = 1usize;
+                i = start;
+                while i < bytes.len() && depth > 0 {
+                    match bytes[i] {
+                        b'{' => depth += 1,
+                        b'}' => depth -= 1,
+                        _ => {}
+                    }
+                    i += 1;
+                }
+                if depth == 0 && i > start {
+                    let inner = &s[start..i - 1];
+                    note_idents(inner, &cpl_syntax::lex(inner).tokens, idents, dotted);
+                }
+            }
+        }
+        prev_dot = tok.kind == cpl_syntax::TokenKind::Dot;
+    }
+}

@@ -14,6 +14,7 @@ accepted C++ passes the same interactor.
 ## A typed `Dir4` read
 - **Where:** `let facing: Char = read()` then `Dir4.from("NESW", facing)!`.
 - **Ideal:** `var face: Dir4 = read(letters: "NESW")`.
+- **Run:** `cpl run` of that line fails with `error[E0310]: read has no argument named letters`.
 
 ## Dream
 ```cp

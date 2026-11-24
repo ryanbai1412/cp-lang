@@ -19,7 +19,7 @@ fn outcome(source: &str, input: &str) -> (String, Option<String>) {
     let mut out = Vec::new();
     let failure = run(&program, input.as_bytes(), &mut out).err().map(|trap| {
         let at = &source[trap.span.start as usize..trap.span.end as usize];
-        format!("{} @ {at}", trap.message)
+        format!("{} @ {at}", trap.message())
     });
     (String::from_utf8(out).expect("ASCII"), failure)
 }
@@ -151,7 +151,7 @@ fn recursion_without_end_is_reported_not_crashed() {
         .join()
         .expect("the run does not crash")
         .expect_err("the run stops");
-    let message = trap.message;
+    let message = trap.into_message();
     assert!(
         message.contains("`f` never stops calling itself?"),
         "{message}"
@@ -484,6 +484,72 @@ print(acc, ys.len, ys[2])
     let (out, trap) = outcome(source, "");
     assert_eq!(trap, None);
     assert_eq!(out, "15 3 3\n");
+}
+
+#[test]
+fn vm_runs_closures_that_capture_by_reference_itself() {
+    // Nested fns reading and writing their fn's variables, one calling
+    // another, as `split_best` keeps its heap; and one writing a global.
+    let source = "
+var calls = 0
+fn heap_order(xs: List<Int>) -> List<Int>:
+    var vals: List<Int> = []
+    var heap: List<Int> = []
+    var swaps = 0
+    fn less(a: Int, b: Int) -> Bool:
+        calls += 1
+        vals[a] < vals[b]
+    fn push(x: Int):
+        vals.push(x)
+        heap.push(vals.len - 1)
+        var i = heap.len - 1
+        while i > 0 and less(heap[i], heap[(i - 1) >> 1]):
+            let p = (i - 1) >> 1
+            let t = heap[i]
+            heap[i] = heap[p]
+            heap[p] = t
+            swaps += 1
+            i = p
+    for x in xs: push(x)
+    var out: List<Int> = []
+    while heap.len > 0:
+        out.push(vals[heap[0]])
+        let last = heap.pop()!
+        if heap.len > 0:
+            heap[0] = last
+            var i = 0
+            while true:
+                var m = i
+                for c in [2 * i + 1, 2 * i + 2]:
+                    if c < heap.len and less(heap[c], heap[m]): m = c
+                if m == i: break
+                let t = heap[i]
+                heap[i] = heap[m]
+                heap[m] = t
+                i = m
+    out.push(swaps)
+    out
+print(heap_order([5, 3, 8, 1, 9, 2]), calls)
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    for (cid, def) in program.closures.iter().enumerate() {
+        if def.captures.iter().any(|cap| cap.by_ref) {
+            assert!(compiled.closures[cid].is_some(), "closure {cid} is walked");
+        }
+    }
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "1 2 3 5 8 9 4 15\n");
 }
 
 #[test]
@@ -1617,6 +1683,38 @@ fn a_value_is_three_words() {
 }
 
 #[test]
+fn packed_cells_move_like_a_vec_of_their_values() {
+    use crate::value::{Cells, OptVal, Value};
+
+    let kinds: [fn(i64) -> Value; 4] = [
+        |i| Value::Bool(i % 2 == 0),
+        |i| Value::Char(b'a' + i as u8),
+        |i| {
+            if i % 3 == 0 {
+                Value::Opt(OptVal::None)
+            } else {
+                Value::some(Value::Int(i))
+            }
+        },
+        |i| Value::Int(i * 7),
+    ];
+    for make in kinds {
+        let mut want: Vec<Value> = (0..6).map(make).collect();
+        let mut cells = Cells::from(want.clone());
+        cells.insert(1, make(9));
+        want.insert(1, make(9));
+        cells.insert(cells.len(), make(10));
+        want.push(make(10));
+        assert_eq!(cells.remove(2), want.remove(2));
+        assert_eq!(cells.remove(0), want.remove(0));
+        cells.reverse();
+        want.reverse();
+        assert_eq!(cells.to_values(), want);
+        assert!(!matches!(cells, Cells::Values(_)));
+    }
+}
+
+#[test]
 fn a_list_of_small_enums_is_packed() {
     use crate::value::{Cells, Value};
     use std::rc::Rc;
@@ -1699,7 +1797,7 @@ fn at_checks(source: &str, checks: cpl_ir::checks::Checks) -> (String, Option<St
     let io = crate::Io::fixed(b"").at(checks);
     let failure = crate::run_with(&program, io, &mut out)
         .err()
-        .map(|t| t.message);
+        .map(|t| t.into_message());
     (String::from_utf8(out).expect("ASCII"), failure)
 }
 
@@ -1774,4 +1872,46 @@ fn a_table_of_optional_nested_tuples_is_packed() {
     cells.set(0, Value::some(Value::Int(1)));
     assert!(matches!(cells, Cells::Values(_)));
     assert_eq!(cells.get(4), Some(back(5, -7)));
+}
+
+#[test]
+fn slices_walk_print_and_join_in_order() {
+    let prog = "let a = [1, 2, 3, 4]\nlet s = a[1..]\nfor x in s: print(x)\nprint(s)\nprint(a + s)\nlet t = \"abcd\"\nlet u = t[1..]\nfor c in u: print(c)\nprint(u)\nprint(t + u)\nprint(yes(u < t))\n";
+    let want = "2\n3\n4\n2 3 4\n1 2 3 4 2 3 4\nb\nc\nd\nbcd\nabcdbcd\nNO\n";
+    assert_eq!(outcome(prog, ""), (want.into(), None));
+}
+
+#[test]
+fn vm_nested_loop_and_do_exits_land_on_their_own_targets() {
+    let src = "\
+fn walk(n: Int) -> Int:
+    var s = 0
+    'outer: for a in 0..n:
+        for b in 0..n:
+            if b == a: continue 'outer
+            if a + b > 6: break 'outer
+            if b == 2: continue
+            s += a * 10 + b
+    return s
+
+fn pick(n: Int) -> Int:
+    let x = do:
+        var t = 0
+        for i in 0..n:
+            if i == 3: break
+            t += i
+        t
+    let name = do:
+        var w = \"\"
+        for i in 0..n:
+            if i % 2 == 0: continue
+            w = w + \"o\"
+        w
+    return x * 100 + name.len
+
+print(walk(5), pick(6), pick(2))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "193 303 101\n");
 }

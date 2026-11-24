@@ -222,15 +222,12 @@ impl Node {
     /// Record `x == by` and replace `x` in everything known so far.
     fn solve(&mut self, x: Var, by: Poly) -> bool {
         self.in_use.insert(x);
-        let affected: Vec<Poly> = self
-            .forms
-            .keys()
-            .filter(|form| form.mentions(x))
-            .cloned()
-            .collect();
+        let (affected, kept): (BTreeMap<_, _>, BTreeMap<_, _>) = std::mem::take(&mut self.forms)
+            .into_iter()
+            .partition(|(form, _)| form.mentions(x));
+        self.forms = kept;
         let mut again = Vec::new();
-        for form in affected {
-            let interval = self.forms.remove(&form).unwrap();
+        for (form, interval) in affected {
             let Some(form) = form.substitute(x, &by) else {
                 continue;
             };

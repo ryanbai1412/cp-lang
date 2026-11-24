@@ -223,7 +223,7 @@ Fields: `k: Int,`.
 - `fn pairs<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(n^2)\) to walk, \(O(1)\) per pair; Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`, `(20, 30)`.
 - `@get fn with_prev<S: Seq<T>, T>(self: S) -> yields (?T, T)` — \(O(1)\) per step; Every element paired with the one before it, starting with `(None, first)`: `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`.
 - `fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Every element with the one after it, the last with the first: the sides of a polygon, the links of a ring.
-- `fn zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)` — \(O(\min(\lvert a \rvert, \lvert b \rvert))\); The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
+- `fn zip<A: Seq<T>, B: Positional<U>, T, U>(a: A, b: B) -> yields (T, U)` — \(O(\min(\lvert a \rvert, \lvert b \rvert))\); The pairs `(x, b.nth(i))` for the `i`th `x` that `a` walks, as many as the shorter sequence has.
 - `fn unzip<S: Seq<(A, B)>, A, B>(self: S) -> (List<A>, List<B>)` — \(O(n)\), two new lists; The first and second halves of each pair, as two lists: the inverse of `zip`.
 - `fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V` — \(O(\log n)\); The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)` gives each new name the next id.
 - `fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)` — \(O(\log n)\), plus one call of `f`; Replace the value under `k` by `f` of it, starting from `init` when `m` holds none: `cnt.update(x, 0, c => c + 1)`.

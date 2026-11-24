@@ -275,7 +275,6 @@ impl<'p> CompiledProgram<'p> {
             fast_closures.push(recognize_fast_closure(def, program).filter(|_| !profiled));
             let can_compile = def.locals.len() <= 512
                 && def.muts.is_empty()
-                && def.captures.iter().all(|cap| !cap.by_ref)
                 && def.params.iter().enumerate().all(|(i, &s)| s == i);
             if !can_compile {
                 closures.push(None);
@@ -294,7 +293,11 @@ impl<'p> CompiledProgram<'p> {
                 if chunk.has_by_ref_closure {
                     chunk.needs_stack = true;
                 }
-                closures.push(Some(chunk));
+                // A variable captured by reference is lent to the chunk's slot.
+                let lendable = (def.captures.iter()).all(|cap| {
+                    !cap.by_ref || !matches!(chunk.slot_map[cap.inner], SlotLoc::SmallTuple { .. })
+                });
+                closures.push(lendable.then_some(chunk));
             }
         }
         let mut main_c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0);

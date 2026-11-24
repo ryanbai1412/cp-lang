@@ -238,17 +238,21 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
         permille / 10,
         permille % 10
     );
-    // In tenths of a percent, shared with the wasm module's smoke test;
-    // raise it as definition reaches more names.
+    // In tenths of a percent, shared with the wasm module's smoke test and
+    // held both ways: a gain fails until the file records it.
     let floors = std::fs::read_to_string(root.join("crates/cpl-lsp/tests/definition-floors.json"));
     let floor = cpl_json::parse(&floors.unwrap())
         .unwrap()
         .at(&["hillclimb"])
         .as_u32()
-        .unwrap();
+        .unwrap() as usize;
     assert!(
-        permille >= floor as usize,
+        permille >= floor,
         "definition fell to {permille} permille, under {floor}"
+    );
+    assert!(
+        permille == floor,
+        "definition rose to {permille} permille: set \"hillclimb\": {permille} in crates/cpl-lsp/tests/definition-floors.json"
     );
     assert!(
         storage >= 88,

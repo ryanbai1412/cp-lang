@@ -345,7 +345,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "first_gt", Method, "x: T", "?Int", false, "In a sorted list, the index of the first element `> x`. O(log n).\n\ncost: \\(O(\\log n)\\)", "xs.first_gt(2)", "?Int"),
     row!(List, "last_le", Method, "x: T", "?Int", false, "In a sorted list, the index of the last element `<= x`. O(log n).\n\ncost: \\(O(\\log n)\\)", "xs.last_le(2)", "?Int"),
     row!(List, "last_lt", Method, "x: T", "?Int", false, "In a sorted list, the index of the last element `< x`. O(log n).\n\ncost: \\(O(\\log n)\\)", "xs.last_lt(2)", "?Int"),
-    row!(List, "reach", Method, "while: (T, T) -> Bool, cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(xs[i], xs[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; checked builds trap when `while` is not monotone.\n\ncost: \\(O(n)\\)", "xs.reach(while: (a, b) => a + b <= 10)", "List<Int>"),
+    row!(List, "reach", Method, "while: (T, T) -> Bool; cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(xs[i], xs[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; checked builds trap when `while` is not monotone.\n\ncost: \\(O(n)\\)", "xs.reach(while: (a, b) => a + b <= 10)", "List<Int>"),
 
     row!(Str, "len", Get, "", "Int", false, "How many characters.", "s.len", "Int"),
     row!(Str, "items", Get, "", "List<(Int, Char)>", false, "Each character with its index: `for (i, c) in s.items`.", "s.items", "List<(Int, Char)>"),
@@ -383,7 +383,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Str, "first_gt", Method, "c: Char", "?Int", false, "In a sorted string, the index of the first character `> c`. O(log n).\n\ncost: \\(O(\\log n)\\)", "s.first_gt('e')", "?Int"),
     row!(Str, "last_le", Method, "c: Char", "?Int", false, "In a sorted string, the index of the last character `<= c`. O(log n).\n\ncost: \\(O(\\log n)\\)", "s.last_le('l')", "?Int"),
     row!(Str, "last_lt", Method, "c: Char", "?Int", false, "In a sorted string, the index of the last character `< c`. O(log n).\n\ncost: \\(O(\\log n)\\)", "s.last_lt('l')", "?Int"),
-    row!(Str, "reach", Method, "while: (Char, Char) -> Bool, cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(s[i], s[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; checked builds trap when `while` is not monotone.\n\ncost: \\(O(n)\\)", "s.reach(while: (a, b) => a <= b)", "List<Int>"),
+    row!(Str, "reach", Method, "while: (Char, Char) -> Bool; cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(s[i], s[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; checked builds trap when `while` is not monotone.\n\ncost: \\(O(n)\\)", "s.reach(while: (a, b) => a <= b)", "List<Int>"),
 
     row!(Map, "len", Get, "", "Int", false, "How many keys.", "m.len", "Int"),
     row!(Map, "items", Get, "", "List<(K, V)>", false, "Each key with its value, smallest key first: `for (k, v) in m.items`.\n\ncost: \\(O(n)\\)", "m.items", "List<(Int, Int)>"),
@@ -483,7 +483,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Array, "first_gt", Method, "x: T", "?I", false, "In a sorted array, the index of the first cell `> x`. O(log n).\n\ncost: \\(O(\\log n)\\)", "a.first_gt(2)", "?Int"),
     row!(Array, "last_le", Method, "x: T", "?I", false, "In a sorted array, the index of the last cell `<= x`. O(log n).\n\ncost: \\(O(\\log n)\\)", "a.last_le(2)", "?Int"),
     row!(Array, "last_lt", Method, "x: T", "?I", false, "In a sorted array, the index of the last cell `< x`. O(log n).\n\ncost: \\(O(\\log n)\\)", "a.last_lt(2)", "?Int"),
-    row!(Array, "reach", Method, "while: (T, T) -> Bool, cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(a[i], a[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; checked builds trap when `while` is not monotone.\n\ncost: \\(O(n)\\)", "a.reach(while: (x, y) => x + y <= 10)", "List<Int>"),
+    row!(Array, "reach", Method, "while: (T, T) -> Bool; cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(a[i], a[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; checked builds trap when `while` is not monotone.\n\ncost: \\(O(n)\\)", "a.reach(while: (x, y) => x + y <= 10)", "List<Int>"),
 ];
 
 /// The members an optional has of its own, whatever std declares: each
@@ -570,6 +570,12 @@ pub fn split_params(text: &str) -> Vec<&str> {
             ',' if depth == 0 => {
                 out.push(text[start..i].trim());
                 start = i + 1;
+            }
+            // `while: (T, T) -> Bool; cyclic: ..`: the options start a new
+            // piece that keeps its `;`.
+            ';' if depth == 0 && angles == 0 && !text[start..i].trim().is_empty() => {
+                out.push(text[start..i].trim());
+                start = i;
             }
             _ => {}
         }

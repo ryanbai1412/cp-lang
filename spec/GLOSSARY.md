@@ -20,7 +20,7 @@ spellings in the right column.
 | `Ordering` | the result of `cmp`: `Less`, `Equal`, `Greater` | `Order` |
 | `Mod<P>` | the modular integer type | `Mint`, `ModInt` |
 | getter | an O(1) member read without parentheses, declared `@get pub fn` | property; `pub @get fn` |
-| checked / release build | the two build modes of chapter 9 | debug build (for the checked mode) |
+| checked / release build | the two build modes of chapter 9 | debug build |
 | trap | a checked-build stop with a source-level report | panic, abort, crash |
 | `todo` | a placeholder expression; reaching it traps | `unimplemented`, `...` |
 | arc | one stored direction of a graph edge in CSR | half-edge, adjacency entry |

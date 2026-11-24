@@ -76,6 +76,17 @@ impl<'a> Parser<'a> {
     }
 
     fn ty_atom(&mut self) -> Type {
+        if self.at_ident("type_of") && self.peek_n(1) == T::LParen {
+            let start = self.start();
+            self.bump();
+            self.bump();
+            let item = self.fn_shorthand().unwrap_or_else(|| self.expr());
+            self.close_list(T::RParen, "`type_of(..)`");
+            return Type {
+                kind: TypeKind::ItemOf(Box::new(item)),
+                span: self.span_from(start),
+            };
+        }
         if self.at_ident("dyn") && self.peek_n(1) == T::Ident {
             let span = self.span();
             self.not_in_language(

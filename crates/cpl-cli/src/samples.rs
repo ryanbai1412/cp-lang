@@ -182,7 +182,7 @@ fn view(path: &str, text: &str, ran: &[Ran], live: usize) -> View {
         match (&r.trap, &r.differs) {
             (Some(trap), _) => {
                 panel += &indent(&render_trap(path, text, trap));
-                detail.push(format!("{}: {}", r.head(), trap.message));
+                detail.push(format!("{}: {}", r.head(), trap.message()));
             }
             (None, Some(why)) => {
                 panel += &indent(why);
@@ -203,7 +203,7 @@ fn view(path: &str, text: &str, ran: &[Ran], live: usize) -> View {
             ok,
             label: one.head(),
             detail: Some(match (&one.trap, &one.differs) {
-                (Some(trap), _) => trap.message.clone(),
+                (Some(trap), _) => trap.message().to_string(),
                 (None, Some(why)) => why.clone(),
                 (None, None) if one.output.trim().is_empty() => "(empty output)".to_string(),
                 (None, None) => one.output.trim_end().to_string(),
@@ -260,7 +260,7 @@ fn report(ran: &[Ran], view: &View) -> String {
             let why = r
                 .trap
                 .as_ref()
-                .map(|t| t.message.as_str())
+                .map(|t| t.message())
                 .or(r.differs.as_deref());
             match why {
                 Some(why) => w.key("why").str(why),

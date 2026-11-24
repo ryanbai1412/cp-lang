@@ -15,6 +15,19 @@ filtered by comprehensions, and the hit test is `(c.p <= mid) == hit`.
 - **Where:** `(x + v) % n` and `(c.p + c.v) % n`.
 - **Ideal:** a cyclic domain `domain Pos = 0..n` with wrapping `+`, as `D.step` gives for one step.
 
+## No selection of the k-th smallest
+- **Where:** `cands.sort()` then `cands[(cands.len - 1) / 2].p`, once per round.
+- **What felt wrong:** the round wants the median candidate; sorting all of them says more than
+  that and costs O(m log m) where selection is O(m). There is no value-returning selection:
+  `print(xs.select(1))` on `var xs = [5, 1, 4]` fails under `cpl run` (0.2) with
+  `error[E0302]: this has no value to print`.
+- **Goal it hurts:** express, performance.
+- **Ideal code:** `let mid = cands.select((cands.len - 1) / 2).p` (or `cands.median`).
+- **General fix:** a std `select(k) -> T` (introselect, like C++ `nth_element`) on lists, by key
+  as `sort` is.
+- **Severity:** low
+- **Owner domain:** stdlib
+
 ## Dream
 ```cp
 let n: 2..=1e5 = ask("GetSize")

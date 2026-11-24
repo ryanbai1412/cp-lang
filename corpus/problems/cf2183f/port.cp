@@ -9,6 +9,7 @@
 //   match, else 1 plus the sum of f over (strictly below u) x (strictly below v). In
 //   preorder that is a rectangle of a 2D suffix sum filled in reverse preorder, and the
 //   answer for i is the sum over sub(i) x sub(i). O(n^2) time and memory.
+// Bounds: n: 1..=5000
 type Z = Mod<998_244_353>
 
 @!multitest

@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod layout;
 pub mod lowered;
-mod reach;
+pub(crate) mod reach;
 
 /// The closures no code that runs makes (see [`reach::Reach`]).
 pub(crate) fn unreached_closures(program: &Program) -> std::collections::BTreeSet<usize> {
@@ -138,7 +138,7 @@ pub(crate) struct Emitter<'p> {
     /// The slot the next emitted closure is bound to when it names itself.
     pub rec_slot: Option<usize>,
     /// The current fn's local `@memo` fns ([`crate::devirt::Devirt::memo_pairs`]).
-    pub memo_pairs: BTreeMap<usize, (usize, bool)>,
+    pub memo_pairs: BTreeMap<usize, (usize, bool, bool)>,
     /// Globals stored once, with a literal: emitted as `static constexpr`.
     pub const_globals: BTreeSet<usize>,
     /// What follows the `let` being written, in its block.
@@ -587,7 +587,7 @@ impl<'p> Emitter<'p> {
         }
         self.hoisted = crate::scope::hoisted(body, params);
         let mut memo_pairs = self.devirt.memo_pairs(body);
-        memo_pairs.retain(|w, (b, _)| !self.hoisted.contains(w) && !self.hoisted.contains(b));
+        memo_pairs.retain(|w, (b, ..)| !self.hoisted.contains(w) && !self.hoisted.contains(b));
         self.memo_pairs = memo_pairs;
         self.reused = crate::scope::reused(self.program, fn_id, body);
         self.spent = crate::scope::spent(self.program, body);

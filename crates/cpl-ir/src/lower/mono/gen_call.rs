@@ -148,6 +148,10 @@ impl<'a> Lowerer<'a> {
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
                 {
+                    if let Some(g) = self.item_arg_for(&decl.bounds, &name.text, &arg.value) {
+                        inferred.insert(name.text.clone(), g);
+                        continue;
+                    }
                     // `go(+, [2, 3])` with `M: Op<E>`: `+` takes `Monoid<E>` once
                     // a later argument gives `E`.
                     if self.monoid_bare_op(&arg.value).is_some()
@@ -187,8 +191,9 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             self.call_hint.1 = self.want_bound(pty, decl, tpl_mod, tpl_offset, &inferred);
-            if let Some(concrete) =
-                self.probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
+            if let Some(concrete) = self
+                .probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
+                .map(|ty| if arg.mutable { ty.lent_mut() } else { ty })
             {
                 if concrete == Ty::DomainVal {
                     let dom_id = if let Some(Sym::Domain(d)) = self.sym(&arg.value) {
@@ -301,6 +306,11 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        if let Some(sid) = self.gen_fns[gfid].owner {
+            for (_, _, param) in &waiting_ops {
+                self.bind_op_from_owner(sid, decl, param, &owner_env, &mut inferred);
+            }
+        }
         for (pty, value, param) in waiting_ops {
             let tpl = (tpl_mod, tpl_offset, &inferred);
             match self.bare_op_for(&decl.bounds, &param, value, tpl) {
@@ -481,6 +491,21 @@ impl<'a> Lowerer<'a> {
                     }
                     continue;
                 }
+                if let (ast::ExprKind::Name(_), ast::TypeKind::Named { name, args: targs }) =
+                    (&expr.kind, &pty.kind)
+                {
+                    let open = targs.is_empty()
+                        && gen_names.contains(&name.text)
+                        && !inferred.contains_key(&name.text);
+                    if open && self.detect_bare_op(expr).is_some() {
+                        let tpl = (tpl_mod, tpl_offset);
+                        if let Some(f) =
+                            self.fn_impl_shape(&decl.bounds, &name.text, tpl, &inferred)
+                        {
+                            inferred.insert(name.text.clone(), GenArg::Ty(f));
+                        }
+                    }
+                }
                 let ast::ExprKind::Lambda {
                     params: lparams,
                     body: lbody,
@@ -598,6 +623,49 @@ impl<'a> Lowerer<'a> {
                         &gen_names,
                         &mut inferred,
                     );
+                }
+                if inferred.len() == before {
+                    // A lambda with unwritten parameter types given to an open
+                    // `X` takes `Int`s, as a literal does (R08.2.11).
+                    for (param, arg) in ast_params.iter().zip(&matched) {
+                        let (Some(pty), Some(arg)) = (&param.ty, arg) else {
+                            continue;
+                        };
+                        let (
+                            ast::TypeKind::Named { name, args: targs },
+                            ast::ExprKind::Lambda {
+                                params: lparams,
+                                param_tys,
+                                body: lbody,
+                                ..
+                            },
+                        ) = (&pty.kind, &arg.value.kind)
+                        else {
+                            continue;
+                        };
+                        let bounded = decl.bounds.iter().any(|b| b.name.text == name.text);
+                        if bounded
+                            || !targs.is_empty()
+                            || !gen_names.contains(&name.text)
+                            || inferred.contains_key(&name.text)
+                            || lparams.is_empty()
+                            || param_tys.iter().any(Option::is_some)
+                        {
+                            continue;
+                        }
+                        let ptys = vec![Ty::Int; lparams.len()];
+                        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                        let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
+                        let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+                        let ret_ty = self.probe_lambda_ret(lparams, &ptys, lbody);
+                        self.cur_mod = saved_mod;
+                        self.offset = saved_offset;
+                        self.gen_env = saved_env;
+                        if let Some(ret_ty) = ret_ty {
+                            let f = Ty::Fn(ptys, Box::new(ret_ty));
+                            inferred.insert(name.text.clone(), GenArg::Ty(f));
+                        }
+                    }
                 }
                 if inferred.len() == before {
                     break;

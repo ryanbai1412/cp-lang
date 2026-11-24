@@ -795,7 +795,7 @@ fn a_view_made_from_variables_points_to_them_while_nothing_changes_them() {
             "use std.persistent.{{PArena, PMultiset}}\ndomain V = 0..100\nvar mar = PArena<PMultiset<V>>()\nvar ms = PMultiset<V>.empty()\nfor i in 0..100: ms = ms.with(mut mar, V(i))\n{rest}"
         )
     };
-    let lent = cpp(&src("let w = ms.within(mar)\nprint(w.len)\n"));
+    let lent = cpp(&src("let w = ms.within(mar)\nprint(w.each().count())\n"));
     assert!(lent.contains("{&mar, &ms}"), "{lent}");
     assert!(
         !lent.contains("= std::move(mar);") && !lent.contains("= mar;"),
@@ -803,7 +803,7 @@ fn a_view_made_from_variables_points_to_them_while_nothing_changes_them() {
     );
     // A variable written after the view is made may change under it.
     let owned = cpp(&src(
-        "let w = ms.within(mar)\nprint(w.len)\nmar = PArena<PMultiset<V>>()\nprint(ms.len)\n",
+        "let w = ms.within(mar)\nprint(w.each().count())\nmar = PArena<PMultiset<V>>()\nprint(ms.len)\n",
     ));
     assert!(!owned.contains("{&mar, &ms}"), "{owned}");
     // The same holds for a local of a block.

@@ -15,7 +15,7 @@ diagnostics, completion, `gd` to the definition and formatting on save.
 Vim gets the filetype and highlighting, and `cpl lsp` through vim-lsp,
 which it installs beside CP Lang unless vim-lsp or yegappan/lsp is already
 there. Emacs gets `cp-mode` as a package in its `elpa` folder, with `cpl
-lsp` for eglot and lsp-mode. Neovim, Vim, Emacs and JetBrains get the
+lsp` for eglot and lsp-mode. Neovim, Vim, Emacs, VS Code and JetBrains get the
 absolute path of this `cpl` (the installer's launcher when it ran through
 it) in their settings, so an editor started without the shell's PATH runs
 it. VS Code gets the extension from the
@@ -489,11 +489,72 @@ fn install_vscode(vsix: Option<PathBuf>) -> Result<String, String> {
             "`{code} --install-extension` succeeded, but `{code} --list-extensions` does not list cp-lang.cp-lang"
         ));
     };
+    let cpl = recorded()?;
+    let settings = vscode_settings(&code).ok_or("no home folder to record cpl in")?;
+    let runs = record_vscode_cpl(&settings, &cpl)?;
     Ok(format!(
-        "installed CP Lang for VS Code ({}) from {}\nopen a .cp file to start; it runs the `cpl` on the PATH, else the installer's ~/.cpl/bin/cpl (set `cp.server.path` for another)",
+        "installed CP Lang for VS Code ({}) from {}\nopen a .cp file to start; it runs {runs} (`cp.server.path` in {})",
         installed.trim(),
-        file.shown()
+        file.shown(),
+        settings.shown()
     ))
+}
+
+/// The user `settings.json` of the VS Code that `code` (or `codium`,
+/// `cursor`, ...) starts.
+fn vscode_settings(code: &str) -> Option<PathBuf> {
+    let var = |name: &str| {
+        std::env::var_os(name)
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
+    };
+    let command = Path::new(code)
+        .file_stem()?
+        .to_string_lossy()
+        .to_lowercase();
+    let product = match command.as_str() {
+        "code-insiders" => "Code - Insiders",
+        "codium" => "VSCodium",
+        "cursor" => "Cursor",
+        _ => "Code",
+    };
+    let config = if cfg!(windows) {
+        var("APPDATA")?
+    } else if cfg!(target_os = "macos") {
+        cpl_check::home_dir()?.join("Library/Application Support")
+    } else {
+        var("XDG_CONFIG_HOME").or_else(|| Some(cpl_check::home_dir()?.join(".config")))?
+    };
+    Some(config.join(product).join("User/settings.json"))
+}
+
+/// Sets `cp.server.path` to `cpl` in `settings`, unless the user set it:
+/// the `cpl` VS Code will run.
+fn record_vscode_cpl(settings: &Path, cpl: &Path) -> Result<String, String> {
+    let old = std::fs::read_to_string(settings).unwrap_or_default();
+    let mut value = if old.trim().is_empty() {
+        cpl_json::obj([])
+    } else {
+        cpl_json::parse(&old).map_err(|_| {
+            format!(
+                "can't read {} as JSON to record cpl in it\nhelp: set `cp.server.path` to {} in VS Code's settings",
+                settings.shown(),
+                cpl.display()
+            )
+        })?
+    };
+    let fields = value
+        .as_object_mut()
+        .ok_or_else(|| format!("{} is not a JSON object", settings.shown()))?;
+    if let Some(set) = fields.get("cp.server.path").and_then(|v| v.as_str()) {
+        return Ok(set.to_string());
+    }
+    let path = cpl.display().to_string();
+    fields.insert("cp.server.path".into(), path.as_str().into());
+    std::fs::create_dir_all(settings.parent().unwrap_or(settings))
+        .and_then(|()| std::fs::write(settings, cpl_json::to_string_pretty(&value) + "\n"))
+        .map_err(|e| format!("can't write {}: {e}", settings.shown()))?;
+    Ok(path)
 }
 
 /// The plugin zip's top folder, `rootProject.name` in editors/jetbrains.

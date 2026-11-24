@@ -517,6 +517,8 @@ struct FnCx {
     /// when one of its arms leaves with `return`, `break` or `continue`.
     exits: Option<Span>,
     pending: Vec<Stmt>,
+    /// What runs after the statement being lowered: a lend's tail (R05.6.3).
+    after: Vec<Stmt>,
     is_main: bool,
     is_closure: bool,
     captures: Vec<Capture>,
@@ -650,6 +652,7 @@ struct Lowerer<'a> {
     gen_structs: Vec<GenStructTemplate<'a>>,
     /// The empty struct each bare operator value has as its type (`op_value`).
     op_types: Vec<(BareOp, StructId)>,
+    item_types: Vec<(String, StructId)>,
     struct_insts: HashMap<(GenStructId, Vec<GenArg>), StructId>,
     /// `w.Idx` by the place of `w` and the struct's own `Idx`.
     value_domain_ids: HashMap<((bool, usize), DomainId), DomainId>,
@@ -796,6 +799,8 @@ struct Lowerer<'a> {
     self_struct: Option<StructId>,
     /// The trait fns a law being lowered names unqualified (`LawInfo::trait_fns`).
     law_fns: Vec<String>,
+    /// A trait default copied into an impl: the trait's fns, which its body calls unqualified.
+    default_trait_fns: HashMap<FnId, Vec<String>>,
     /// Start of the item being lowered; its spans are relative to it.
     offset: u32,
     /// Declared types shown as their source writes them, innermost last.
@@ -830,6 +835,7 @@ impl<'a> Lowerer<'a> {
             structs: Vec::new(),
             gen_structs: Vec::new(),
             op_types: Vec::new(),
+            item_types: Vec::new(),
             struct_insts: HashMap::new(),
             value_domain_ids: HashMap::new(),
             range_domains: HashMap::new(),
@@ -934,6 +940,7 @@ impl<'a> Lowerer<'a> {
             call_hint: (None, None),
             self_struct: None,
             law_fns: Vec::new(),
+            default_trait_fns: HashMap::new(),
             offset: 0,
             asked_at: report::Asked::default(),
             sig_param_at: HashMap::new(),

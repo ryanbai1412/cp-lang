@@ -2,7 +2,7 @@
 
 # std.lazy
 
-Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `SeqFold`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
+Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `LazyForest`, `SeqFold`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
 
 In prelude (no `use` needed): `Flip`.
 
@@ -18,6 +18,27 @@ Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTre
 Arena-backed randomized treap with subtree-size-aware lazy tag propagation.
 
 Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose_fn: (F, F) -> F,`, `before_fn: (T, T) -> Bool,`, `mirror_fn: (F, Int) -> F,`.
+
+## `struct ForestSeq`
+
+One sequence of a `LazyForest`, from `seq()` or `split_at`.
+
+Fields: `id: Int`.
+
+## `struct LazyForest<T, F>`
+
+Many `LazyTreap` sequences in one shared node pool, so splitting one in two or appending one onto another is \(O(\log n)\) expected, where two separate treaps' `split_at`/`splice_back` copy the smaller side.
+
+- `fn new(apply: (T, Int, F) -> T, compose: (F, F) -> F, split: (F, Int) -> (F, F) = (f, _) => (f, f), mirror: (F, Int) -> F = (f, _) => f) -> LazyForest<T, F>` — \(O(1)\); A forest with no sequences, with the tag operations its lazy updates use (see `LazyTreap.new`).
+- `fn seq(mut self) -> ForestSeq` — \(O(1)\); A new empty sequence.
+- `fn len(self, s: ForestSeq) -> Int` — \(O(1)\); The number of elements in `s`.; traps: when `s` is not from this forest
+- `fn push(mut self, s: ForestSeq, x: T)` — \(O(\log n)\) expected; Append `x` to the end of `s`.; traps: when `s` is not from this forest, or the forest reaches `2^31` nodes
+- `fn split_at(mut self, s: ForestSeq, k: Int) -> ForestSeq` — \(O(\log n)\) expected; Split off positions `k..len` of `s` into a new sequence and return it; `s` keeps `0..k`.; traps: when `k < 0` or `k > len(s)`
+- `fn append(mut self, s: ForestSeq, other: ForestSeq)` — \(O(\log n)\) expected; Move every element of `other` onto the end of `s`, in order, leaving `other` empty.; traps: when `other` is `s`, or either is not from this forest
+- `fn apply(mut self, s: ForestSeq, r: Range<Int>, f: F)` — \(O(\log n)\) expected; Tag the elements at positions `r` of `s` with `f`.; traps: unless `0 <= r.lo <= r.hi <= len(s)`
+- `fn reverse(mut self, s: ForestSeq, r: Range<Int>)` — \(O(\log n)\) expected; Reverse the elements at positions `r` of `s`.; traps: unless `0 <= r.lo <= r.hi <= len(s)`
+- `fn get(mut self, s: ForestSeq, pos: Int) -> T` — \(O(\log n)\) expected; The element at 0-based position `pos` of `s`, with its pending tags applied.; traps: when `pos < 0` or `pos >= len(s)`
+- `fn to_list(self, s: ForestSeq) -> List<T>` — \(O(n)\); Every element of `s` in order, with pending tags applied.; traps: when `s` is not from this forest
 
 ## `struct Rope<D, T>`
 

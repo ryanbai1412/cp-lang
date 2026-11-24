@@ -392,6 +392,13 @@ impl<'a> Lowerer<'a> {
                     methods,
                     fields,
                     generics: generics.iter().map(|g| g.text.as_str()).collect(),
+                    supers: supers
+                        .iter()
+                        .filter_map(|t| match &t.kind {
+                            ast::TypeKind::Named { name, .. } => Some(name.text.clone()),
+                            _ => None,
+                        })
+                        .collect(),
                     assoc_defaults: body
                         .stmts
                         .iter()

@@ -39,7 +39,7 @@ impl<'a> Lowerer<'a> {
             let push_call = self.mk_mutate(Mutation::Extend, acc_place, vec![seq], Ty::Unit, span);
             out.push(Stmt::Expr(push_call));
         } else {
-            let v = self.expect(value, &elem_ty);
+            let v = self.expr_as(value, &elem_ty);
             let push_call = self.mk_mutate(Mutation::Push, acc_place, vec![v], Ty::Unit, span);
             out.push(Stmt::Expr(push_call));
         }

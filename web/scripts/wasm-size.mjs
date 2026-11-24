@@ -23,7 +23,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { budgetFor, checkBudgets, contributors, owners, readCharters } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, contributors, functionNames, owners, readCharters, sortCopies, sortCopiesFile } from './wasm-crates.mjs';
 import { sizeDelta } from './wasm-delta.mjs';
 
 // A shrink-only ratchet: after each cut, lower the cap to the new size plus
@@ -93,13 +93,17 @@ const fullLine = existsSync(full)
 const names = process.env.WASM_NAMES;
 let over = [];
 if (names && existsSync(names)) {
-  const rows = contributors(readFileSync(names));
+  const wasm = readFileSync(names);
+  const rows = contributors(wasm);
   if (update) {
     writeFileSync(budgetsFile, `${JSON.stringify(Object.fromEntries(rows.map(([c, , g]) => [c, budgetFor(g)]).sort(([a], [b]) => (a < b ? -1 : 1))), null, 2)}\n`);
     console.log(`wasm-size: wrote ${rows.length} crate budgets to web/scripts/wasm-crate-budgets.json`);
   }
   const budgets = JSON.parse(readFileSync(budgetsFile, 'utf8'));
   const { errors, lower } = checkBudgets(rows, budgets, owners(readCharters(join(repo, 'handbook/domains'))));
+  const sorts = checkSortCopies(sortCopies(functionNames(wasm)), JSON.parse(readFileSync(join(repo, sortCopiesFile), 'utf8')).max);
+  if (sorts.error) errors.push(sorts.error);
+  if (sorts.lower) console.log(`wasm-size: ${sorts.lower}`);
   over = errors;
   for (const e of errors) {
     console.error(`wasm-size: ${e}`);

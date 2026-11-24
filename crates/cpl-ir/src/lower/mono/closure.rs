@@ -557,7 +557,7 @@ impl<'a> Lowerer<'a> {
             let sm = std::mem::replace(&mut self.cur_mod, self.sigs[fn_id].mod_id);
             let so = std::mem::replace(&mut self.offset, self.sigs[fn_id].offset);
             let se = std::mem::replace(&mut self.gen_env, self.sigs[fn_id].env.clone());
-            let value = self.expect(default, &p.ty);
+            let value = self.expr_as(default, &p.ty);
             self.cur_mod = sm;
             self.offset = so;
             self.gen_env = se;

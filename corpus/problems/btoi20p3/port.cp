@@ -8,9 +8,9 @@
 //   compression): each level adds the edges its halves share, then undoes them.
 //   O(m log m log n).
 // original: corpus/submissions/4656866.cpp
-// Bounds: edges.u, edges.v: 1..=n; queries.l, queries.r: 1..=m
+// Bounds: n, m, q: 1..=2e5; edges.u, edges.v: 1..=n; queries.l, queries.r: 1..=m
 
-let (n, m, q): (Int, Int, Int) = read()
+let (n, m, q): (1..=2e5, 1..=2e5, 1..=2e5) = read()
 domain V = 1..=n
 domain E = 1..=m
 domain Q = 0..q
@@ -109,4 +109,4 @@ dnc(1, m, 1, m)
 for qi in Q:
     let ql = queries[qi].l
     let qr = queries[qi].r.ord + 1
-    print(if qr < limit[ql]: "YES" else: "NO")
+    print(yes(qr < limit[ql]))

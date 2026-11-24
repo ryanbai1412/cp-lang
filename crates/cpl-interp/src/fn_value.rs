@@ -145,10 +145,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 .map(Flow::Return),
             _ => self.block(&def.body),
         };
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(dom_mark);
         self.in_closure = in_closure;
         self.frame_locals.pop();
         self.base = saved;

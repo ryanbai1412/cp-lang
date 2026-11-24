@@ -15,3 +15,6 @@ print(end.len)
 Reading the signals as an enum needs each variant's input spelling, so the port reads `Char`
 and asks `heard(sig, 'N')`. A grid bitset over `(Row, Col)` with a shift by a grid step would
 replace the per-row `[Row]Bitset<Col>` table and its row-above/row-below cases.
+
+Run (c8a46b201): `enum Signal: N = 'N' | E = 'E' | S = 'S' | W = 'W' | Any = '?'` under
+`cpl run` gives `` error[E0107]: expected the end of the statement, found `=` ``.

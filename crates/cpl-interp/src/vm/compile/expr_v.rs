@@ -755,19 +755,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Do(block) => {
                 let dst = self.alloc_v();
-                let prev_pinned = self.pinned_v;
-                self.pinned_v = self.next_v;
-                self.give_targets.push(GiveTarget::V {
-                    dst,
-                    exits: Vec::new(),
-                });
-                self.compile_do_stmts(&block.stmts);
-                let mut target = self.give_targets.pop().unwrap();
-                self.pinned_v = prev_pinned;
-                let end_pc = self.ops.len() as u32;
-                for j in target.exits_mut().drain(..) {
-                    self.patch(j, end_pc);
-                }
+                self.give_body(
+                    GiveTarget::V {
+                        dst,
+                        exits: Vec::new(),
+                    },
+                    &block.stmts,
+                    Self::compile_do_stmts,
+                );
                 dst
             }
             ExprKind::Call(fn_id, args) => {

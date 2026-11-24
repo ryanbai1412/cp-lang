@@ -706,6 +706,7 @@ impl Session {
                         self.send_output(writer, "console", &report)?;
                         let call =
                             crate::replay::call_text(&replay.recorded.name, &replay.recorded.args);
+                        let view = crate::replay::view(&replay, &report);
                         let mut body = obj([
                             ("report", report.into()),
                             ("call", call.into()),
@@ -719,6 +720,7 @@ impl Session {
                         ] {
                             with(&mut body, key, value.as_deref().map(Json::from));
                         }
+                        with(&mut body, "view", Some(view.to_value()));
                         with(
                             &mut body,
                             "changeLine",
@@ -790,8 +792,7 @@ impl Session {
             .map(|t| render_trap(&program, &compiled.text, t));
         // A run stopped from outside would not end at the same step again.
         let ended = !observed.trap.as_ref().is_some_and(|t| {
-            [cpl_interp::OUT_OF_TIME.text(), cpl_interp::CANCELLED.text()]
-                .contains(&t.message.as_str())
+            [cpl_interp::OUT_OF_TIME.text(), cpl_interp::CANCELLED.text()].contains(&t.message())
         });
         self.stopped = !ended;
         self.pager = (self.recording.truncated && ended).then(|| {

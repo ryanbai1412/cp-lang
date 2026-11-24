@@ -391,7 +391,9 @@ fn a_fn_whose_every_arm_returns_a_part_of_self_lends_it_and_explain_lists_no_cop
         ),
         (
             "spec/conformance/std-matrix/min-plus-gaps-fold-in-a-segtree.cp",
-            &["SegTree.blank_at", "SegTree.seen"],
+            // `seen` keeps `Mat v = c ? blank_at(..) : self.t[p]` by value, a copy
+            // explain lists.
+            &["SegTree.blank_at"],
         ),
     ] {
         let src = repo().join(case);

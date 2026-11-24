@@ -84,7 +84,7 @@ pub(super) fn box_small_enum(word: &[i64]) -> Value {
 /// (`Int`, `Pos`, `Bound`, 1-field `Int` structs like `Mod<P>`, `Bool`,
 /// `Char`, `Float`, and tuples, structs and small enums of them) avoid 24-byte
 /// `Value` tagging and `Rc`/`Clone`/`Drop` overhead.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) enum Cells {
     Int(Vec<i64>),
     OneIntStruct(Vec<i64>),
@@ -315,23 +315,7 @@ impl Cells {
     }
 
     pub fn reverse(&mut self) {
-        match &mut *self {
-            Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => v.reverse(),
-            Cells::OptInt(v) => v.reverse(),
-            Cells::Bool(v) | Cells::Char(v) => v.reverse(),
-            Cells::Rows { stride, data, .. } => {
-                let s = *stride as usize;
-                let n = data.len() / s;
-                for i in 0..n / 2 {
-                    let a = i * s;
-                    let b = (n - 1 - i) * s;
-                    for k in 0..s {
-                        data.swap(a + k, b + k);
-                    }
-                }
-            }
-            Cells::Values(v) => v.reverse(),
-        }
+        self.reverse_range(0, self.len());
     }
 
     pub fn swap(&mut self, i: usize, j: usize) {
@@ -385,7 +369,6 @@ impl Cells {
             (Cells::Int(a), Cells::Int(b))
             | (Cells::OneIntStruct(a), Cells::OneIntStruct(b))
             | (Cells::Float(a), Cells::Float(b)) => a.cmp(b),
-            (Cells::Bool(a), Cells::Bool(b)) | (Cells::Char(a), Cells::Char(b)) => a.cmp(b),
             (Cells::Values(a), Cells::Values(b)) => a.cmp(b),
             _ => {
                 let n = self.len().min(other.len());
@@ -521,13 +504,18 @@ impl Cells {
         }
         match self {
             Cells::Int(v) | Cells::OneIntStruct(v) | Cells::Float(v) => turn(&mut v[at..], 1, up),
-            Cells::OptInt(v) => turn(&mut v[at..], 1, up),
-            Cells::Bool(v) | Cells::Char(v) => turn(&mut v[at..], 1, up),
             Cells::Rows { stride, data, .. } => {
                 let s = *stride as usize;
                 turn(&mut data[at * s..], s, up);
             }
             Cells::Values(v) => turn(&mut v[at..], 1, up),
+            Cells::OptInt(_) | Cells::Bool(_) | Cells::Char(_) => {
+                let n = self.len();
+                for k in at + 1..n {
+                    let k = if up { at + n - k } else { k };
+                    self.swap(k - 1, k);
+                }
+            }
         }
     }
 
@@ -539,6 +527,12 @@ impl Cells {
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = Value> + ExactSizeIterator + '_ {
         (0..self.len()).map(move |i| self.get_unchecked_val(i))
+    }
+}
+
+impl std::fmt::Debug for Cells {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.to_values().fmt(f)
     }
 }
 
