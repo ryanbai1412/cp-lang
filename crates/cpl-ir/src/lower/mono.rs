@@ -2234,14 +2234,20 @@ impl<'a> Lowerer<'a> {
                             || (matches!(ty, Ty::Struct(_))
                                 && self.implements(ty, tr_name.text.as_str()))
                     }
-                    // Any other bound, by impl or by shape, the checker has verified.
-                    _ => true,
+                    // A fn value implements no trait; any other bound, by impl
+                    // or by shape, the checker has verified.
+                    _ => !matches!(ty, Ty::Fn(..)),
                 };
                 if !ok {
                     self.error(
-                        codes::TYPE_MISMATCH,
+                        codes::MISSING_IMPL,
                         span,
-                        format!("`{}` does not implement `{}`", self.show(ty), tr_name.text),
+                        format!(
+                            "`{}` does not implement `{}` required by `{}`",
+                            self.show(ty),
+                            tr_name.text,
+                            decl.name.text
+                        ),
                     );
                     let own = match self.get_sym(&tr_name.text) {
                         Some(Sym::Trait(tid)) => self.traits[tid].unimplemented.clone(),
