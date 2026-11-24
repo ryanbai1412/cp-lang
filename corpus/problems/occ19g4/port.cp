@@ -10,123 +10,85 @@
 //   the compressed second); on the reversed order, the smaller-radius squares covering each
 //   goose (range add, point query). O(N log^2 N).
 // original: corpus/submissions/3578469.cpp
+// Bounds: n: 1..=60_000; at.x, at.y: 1..=60_000
 
-let n: Int = read()
-domain P = 0..(2 * n)
+let n: 1..=60_000 = read()
+domain Goose = 0..2 * n
+let at: [Goose](x: 1..=60_000, y: 1..=60_000) = read()
 
-var raw_x: [P]Int = [P] _ => 0
-var raw_y: [P]Int = [P] _ => 0
-for p in P:
-    let (x, y): (Int, Int) = read()
-    raw_x[p] = x
-    raw_y[p] = y
+// Rotated to (u, v) = (x - y, x + y), Manhattan distance is Chebyshev.
+fn u(g: Goose) -> Int = at[g].x - at[g].y
+fn v(g: Goose) -> Int = at[g].x + at[g].y
+fn mate(g: Goose) -> Goose = Goose.nth(if g.ord % 2 == 0: g.ord + 1 else: g.ord - 1)
+// how far a goose honks; the points are distinct, so it is never negative
+let radius: [Goose]Int = [Goose] g => max(abs(u(g) - u(mate(g))), abs(v(g) - v(mate(g)))) - 1
 
-var pts: List<(key_d: Int, id: Int, u: Int, v: Int, d: Int)> = []
-var all_v: List<Int> = []
-for k in 0..n:
-    let a = P(2 * k)
-    let b = P(2 * k + 1)
-    let ua = raw_x[a] - raw_y[a]
-    let va = raw_x[a] + raw_y[a]
-    let ub = raw_x[b] - raw_y[b]
-    let vb = raw_x[b] + raw_y[b]
-    let d = max(abs(ua - ub), abs(va - vb)) - 1
-    pts.push((key_d: -d, id: 2 * k, u: ua, v: va, d:))
-    pts.push((key_d: -d, id: 2 * k + 1, u: ub, v: vb, d:))
-    all_v.push(va)
-    all_v.push(vb)
-    if d >= 0:
-        all_v.push(va - d)
-        all_v.push(va + d)
-        all_v.push(va + d + 1)
-        all_v.push(vb - d)
-        all_v.push(vb + d)
-        all_v.push(vb + d + 1)
+var coords: List<Int> = []
+for g in Goose:
+    for w in [v(g), v(g) - radius[g], v(g) + radius[g], v(g) + radius[g] + 1]: coords.push(w)
+let (domain Y, ys) = compress(coords)
+// each goose's second coordinate and its square's edges, compressed
+let y = [Goose] g => ys.index_of(v(g))
+let lo = [Goose] g => ys.index_of(v(g) - radius[g])
+let hi = [Goose] g => ys.index_of(v(g) + radius[g])
+let past = [Goose] g => ys.index_of(v(g) + radius[g] + 1)
 
-let sv = all_v.sorted()
-var ys: List<Int> = []
-for v in sv:
-    if ys.len == 0 or ys.last! != v: ys.push(v)
-domain Y = 0..ys.len
-
-fn y_at(val: Int) -> Y:
-    let lo = ys.first_ge(val) ?? ys.len
-    Y(lo)
-
-// each goose's compressed second coordinate and square edges, looked up once
-let geese = [
-    (
-        key_d: p.key_d,
-        id: p.id,
-        u: p.u,
-        d: p.d,
-        y: y_at(p.v),
-        lo: y_at(p.v - max(p.d, 0)),
-        hi: y_at(p.v + max(p.d, 0)),
-        hi1: y_at(p.v + p.d + 1),
-    ) for p in pts
-].sorted()
+// largest radius first, ties by number
+let order = Goose.sort(by: g => (-radius[g], g.ord))
 
 var bit = Fenwick<Y, Int>()
-var ans: [P]Int = [P] _ => 0
+var ans: [Goose]Int = 0
 
+// each goose's larger-radius geese inside its square: for the right half,
+// count the left half's points in the strip u - r..=u + r, as two prefix sweeps
 fn cdq_query(l: Int, r: Int):
     if r - l <= 1: return
     let m = (l + r) / 2
     cdq_query(l, m)
     cdq_query(m, r)
-    var left: List<(u: Int, y: Y)> = []
-    for i in l..m:
-        left.push((u: geese[i].u, y: geese[i].y))
-    var right: List<(u: Int, sgn: Int, lo: Y, hi: Y, id: Int)> = []
-    for i in m..r:
-        let p = geese[i]
-        if p.d < 0: continue
-        right.push((u: p.u + p.d, sgn: 1, lo: p.lo, hi: p.hi, id: p.id))
-        right.push((u: p.u - p.d - 1, sgn: -1, lo: p.lo, hi: p.hi, id: p.id))
-    left.sort(by: e => e.u)
-    right.sort(by: e => e.u)
+    let left = order[l..m].sorted(by: u)
+    var edges: List<(u: Int, sgn: Int, g: Goose)> = []
+    for g in order[m..r]:
+        edges.push((u: u(g) + radius[g], sgn: 1, g:))
+        edges.push((u: u(g) - radius[g] - 1, sgn: -1, g:))
+    edges.sort(by: e => e.u)
     var li = 0
-    for q in right:
-        while li < left.len and left[li].u <= q.u:
-            bit.add(left[li].y, 1)
+    for e in edges:
+        while li < left.len and u(left[li]) <= e.u:
+            bit.add(y[left[li]], 1)
             li += 1
-        ans[P(q.id)] += q.sgn * bit.fold(q.lo..=q.hi)
-    for j in 0..li:
-        bit.add(left[j].y, -1)
+        ans[e.g] += e.sgn * bit.fold(lo[e.g]..=hi[e.g])
+    for g in left[..li]: bit.add(y[g], -1)
 
 cdq_query(0, 2 * n)
 
-let rev = geese.rev.collect()
+let rev = order.rev.collect()
 
+// each goose's smaller-radius squares covering it: the left half's squares
+// are range adds over their strip, the right half's points are point reads
 fn cdq_cover(l: Int, r: Int):
     if r - l <= 1: return
     let m = (l + r) / 2
     cdq_cover(l, m)
     cdq_cover(m, r)
-    var left: List<(u: Int, sgn: Int, lo: Y, hi1: Y)> = []
-    for i in l..m:
-        let p = rev[i]
-        if p.d < 0: continue
-        left.push((u: p.u - p.d, sgn: 1, lo: p.lo, hi1: p.hi1))
-        left.push((u: p.u + p.d + 1, sgn: -1, lo: p.lo, hi1: p.hi1))
-    var right: List<(u: Int, y: Y, id: Int)> = []
-    for i in m..r:
-        let p = rev[i]
-        right.push((u: p.u, y: p.y, id: p.id))
-    left.sort(by: e => e.u)
-    right.sort(by: e => e.u)
+    var edges: List<(u: Int, sgn: Int, g: Goose)> = []
+    for g in rev[l..m]:
+        edges.push((u: u(g) - radius[g], sgn: 1, g:))
+        edges.push((u: u(g) + radius[g] + 1, sgn: -1, g:))
+    edges.sort(by: e => e.u)
+    let right = rev[m..r].sorted(by: u)
     var li = 0
-    for q in right:
-        while li < left.len and left[li].u <= q.u:
-            bit.add(left[li].lo, left[li].sgn)
-            bit.add(left[li].hi1, -left[li].sgn)
+    for g in right:
+        while li < edges.len and edges[li].u <= u(g):
+            let e = edges[li]
+            bit.add(lo[e.g], e.sgn)
+            bit.add(past[e.g], -e.sgn)
             li += 1
-        ans[P(q.id)] += bit.prefix(q.y.r)
-    for j in 0..li:
-        bit.add(left[j].lo, -left[j].sgn)
-        bit.add(left[j].hi1, left[j].sgn)
+        ans[g] += bit.prefix(y[g].r)
+    for e in edges[..li]:
+        bit.add(lo[e.g], -e.sgn)
+        bit.add(past[e.g], e.sgn)
 
 cdq_cover(0, 2 * n)
 
-for p in P: print(ans[p])
+for g in Goose: print(ans[g])
