@@ -19,7 +19,7 @@
 // model: opt
 // std_functions: 1
 use std.rand.{Rng}
-use std.algebra.{Affine, Group, MaxCount, MaxSub, MinCount, Monoid, Semigroup, cmp, desc, each, fold, minmax, point_action, pow}
+use std.algebra.{Affine, Group, MaxCount, MaxSub, MinCount, Monoid, Semigroup, cmp, desc, each, minmax, point_action, pow}
 
 const P = 1000003
 
@@ -50,25 +50,25 @@ for k in 0..n:
             hi = max(hi, x)
             lo = min(lo, x)
             pr *= x
-        if fold(+, xs) != s or fold(max, xs) != hi or fold(min, xs) != lo or fold(*, xs) != pr: bad = "op {k}: fold over {xs}"
+        if xs.fold(+) != s or xs.fold(max) != hi or xs.fold(min) != lo or xs.fold(*) != pr: bad = "op {k}: fold over {xs}"
         let mine = Monoid<Int>(0, (a, b) => a + b)
-        if bad == "" and (fold(mine, xs) != s or mine.monoid().op(3, 4) != 7 or mine.commutative().monoid().id != 0 or mine.commutative().op(2, 5) != 7):
+        if bad == "" and (xs.fold(mine) != s or mine.monoid().op(3, 4) != 7 or mine.commutative().monoid().id != 0 or mine.commutative().op(2, 5) != 7):
             bad = "op {k}: a Monoid of your own over {xs}"
         let g = Group<Int>.of(+)
         let x = rng.int(-9, 9)
         if bad == "" and (g.inv(x) != -x or g.op(x, g.inv(x)) != g.id or Group<Int>.of(^).inv(x) != x): bad = "op {k}: Group inverse of {x}"
-        let (e, hm) = fold(each(+, max), [(x, x) for x in xs])
+        let (e, hm) = [(x, x) for x in xs].fold(each(+, max))
         if bad == "" and (e != s or hm != hi): bad = "op {k}: each(+, max) over {xs} = ({e}, {hm})"
     elif op == 1:
-        let m = fold(MaxSub.monoid(), [MaxSub.of(x) for x in xs])
+        let m = [MaxSub.of(x) for x in xs].fold(MaxSub.monoid())
         let want = best_run(xs)
         if m.try_best != want: bad = "op {k}: MaxSub over {xs} = {m.try_best ?? -99} want {want ?? -99}"
         let c = rng.int(0, 3)
-        let sc = fold(MaxSub.monoid(), [MaxSub.of(x * c) for x in xs])
+        let sc = [MaxSub.of(x * c) for x in xs].fold(MaxSub.monoid())
         if bad == "" and m.scale(c).try_best != sc.try_best: bad = "op {k}: MaxSub.scale({c}) over {xs}"
         if bad == "" and not xs.is_empty and (m.total != xs.sum() or (MaxSub.of(xs[0]) + MaxSub.of(-1)).try_best != Some(max(xs[0], -1))): bad = "op {k}: MaxSub total or + over {xs}"
-        let mc = fold(MinCount.monoid(), [MinCount.of(x) for x in xs])
-        let xc = fold(MaxCount.monoid(), [MaxCount.of(x) for x in xs])
+        let mc = [MinCount.of(x) for x in xs].fold(MinCount.monoid())
+        let xc = [MaxCount.of(x) for x in xs].fold(MaxCount.monoid())
         if bad == "" and not xs.is_empty:
             let lo = xs.min()!
             let hi = xs.max()!
@@ -80,7 +80,7 @@ for k in 0..n:
         let x = rng.int(-5, 5)
         var want = x
         for f in fs: want = f.a * want + f.b
-        let got = fold(Affine.monoid(), fs).eval(x)
+        let got = fs.fold(Affine.monoid()).eval(x)
         if got != want: bad = "op {k}: Affine fold applied to {x} = {got} want {want}"
         let t = rng.int(0, 5)
         if bad == "" and fs.len > 0:
@@ -105,8 +105,8 @@ for k in 0..n:
                 want = if let w = want: Some((w * 10 + v) % P) else: Some(v)
                 left = if let w = left: Some(w - v) else: Some(v)
         let f = (a: Int, b: Int) => (a * 10 + b) % P
-        if bad == "" and fold(f.opt(), ys) != want: bad = "op {k}: opt fold = {fold(f.opt(), ys) ?? -1} want {want ?? -1}"
-        elif bad == "" and fold(Semigroup((a: Int, b: Int) => a - b).opt(), ys) != left: bad = "op {k}: Semigroup.opt fold"
+        if bad == "" and ys.fold(f.opt()) != want: bad = "op {k}: opt fold = {ys.fold(f.opt()) ?? -1} want {want ?? -1}"
+        elif bad == "" and ys.fold(Semigroup((a: Int, b: Int) => a - b).opt()) != left: bad = "op {k}: Semigroup.opt fold"
     elif op == 4:
         let a = rng.int(-3, 3)
         let b = rng.int(-3, 3)

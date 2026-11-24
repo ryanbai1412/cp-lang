@@ -42,6 +42,6 @@ if any(deg2[v] >= 3 for v in V):
     return
 
 if spine_edges >= 1:
-    print(Z(4) * fold(*, comb.fact(deg[v] - deg2[v]) for v in V if deg[v] > 1))
+    print(Z(4) * V.filter(v => deg[v] > 1).map(v => comb.fact(deg[v] - deg2[v])).fold(*))
 else:
     print(Z(2) * comb.fact(n - 1))

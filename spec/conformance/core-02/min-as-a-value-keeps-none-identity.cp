@@ -7,4 +7,4 @@ print(min(a, b) ?? -1, Monoid<?Int>(None, min).op(a, b) ?? -1, Monoid<?Int>(None
 let m = Monoid<?Int>(None, max)
 print(m.op(a, b) ?? -1, m.op(b, a) ?? -1, m.op(a, a) ?? -1)
 let f = min
-print([4, 1, 7].fold(min)!, [4, 1, 7].fold(max)!, [2.5, 0.5].fold(min)!, Monoid<Int>(0, max).op(2, 5), f(3, 2))
+print([4, 1, 7].fold(min), [4, 1, 7].fold(max), [2.5, 0.5].fold(min), Monoid<Int>(0, max).op(2, 5), f(3, 2))

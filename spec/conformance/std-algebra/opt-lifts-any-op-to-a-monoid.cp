@@ -8,4 +8,4 @@ let lighter = (i: V, j: V) => if ws[i] <= ws[j]: i else: j
 var st = SegTree(lighter.opt(), [V] v => Some(v))
 print(st.all!, st.fold(V(2)..)!, Int(st.fold(V(2)..V(2)) == None))
 let cat = (a: Int, b: Int) => a * 10 + b
-print(fold(cat.opt(), [Some(1), None, Some(2)])!, fold(Semigroup((a: Int, b: Int) => a - b).opt(), [Some(5), Some(2)])!)
+print([Some(1), None, Some(2)].fold(cat.opt())!, [Some(5), Some(2)].fold(Semigroup((a: Int, b: Int) => a - b).opt())!)

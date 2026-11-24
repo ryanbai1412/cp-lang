@@ -1074,6 +1074,11 @@ impl<'a> Checker<'a> {
         }
         if name.text == "fold" {
             if let ExprKind::Call { args, .. } = &call.kind {
+                if let [arg] = args.as_slice() {
+                    if self.type_name_as_op(&arg.value) {
+                        return Some(Ty::Error);
+                    }
+                }
                 if let Some(acc) = self.seeded_fold(&base_ty, name, args) {
                     return Some(acc);
                 }

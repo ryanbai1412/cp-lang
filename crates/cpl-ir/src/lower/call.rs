@@ -140,6 +140,12 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        if let [op] = args {
+            let relower = |lw: &mut Self| lw.method(whole, base, name, args, hint);
+            if let Some(checked) = self.checking_laws(base, op, span, relower) {
+                return checked;
+            }
+        }
         if args.is_empty() && name.text == "parse" && self.parse_without_type(base, name, hint) {
             return self.err_expr(span);
         }
@@ -291,9 +297,6 @@ impl<'a> Lowerer<'a> {
             };
             match (args, name.text.as_str()) {
                 ([], "sum") => return self.reduce(Reduce::Sum, base, span),
-                ([op], "fold") if op.name.is_none() && !op.mutable => {
-                    return self.fold_seq(base, op, false, name.span, span);
-                }
                 (_, "sorted")
                     if !matches!(
                         seq_ty,

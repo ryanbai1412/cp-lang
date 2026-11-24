@@ -1503,11 +1503,11 @@ print(b.|)
 #[test]
 fn hover_shows_the_documented_cost_and_the_proven_range() {
     let src = "\
-use std.algebra.{fold, Monoid}
+use std.algebra.{Monoid}
 let n: 1..=100 = read()
 let m = n * n + 1
 let xs = [3, 1, 2]
-print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
+print(xs.sorted(), xs.rev, xs.fold(Monoid.sum), m)
 ";
     let (mut server, _) = open(src);
     let shown = |server: &mut Server, line, character| {
@@ -1527,7 +1527,7 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
         rev.starts_with("```cp\nrev: Rev<List<Int>>\n  storage: none of its own; a view of its source\ncost: O(1)\n```"),
         "{rev}"
     );
-    let fold = shown(&mut server, 4, 28);
+    let fold = shown(&mut server, 4, 31);
     assert!(
         fold.contains("-> T\ncost: O(n) calls of `op`\n```"),
         "{fold}"

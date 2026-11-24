@@ -1,5 +1,5 @@
 //! Sampled laws (R09.3.9): a stress build checks the laws an operation
-//! value's type promises, on the values each fold by it is handed.
+//! value's type promises, on the values of each sequence it is handed with.
 
 use super::*;
 
@@ -9,12 +9,12 @@ pub(in crate::lower) enum Stress {
     Off,
     /// Read-only `self` methods undo `@cache` writes at exit.
     ColdCache,
-    /// A fold by an operation value checks its type's laws first.
+    /// A call handing a sequence an operation value checks the value's laws first.
     Laws,
 }
 
-/// Lowers a file for `cpl stress`: a fold by an operation value first
-/// checks the laws its type and its traits declare on the folded values.
+/// Lowers a file for `cpl stress`: a call handing a sequence an operation
+/// value first checks the laws its type and its traits declare on the sequence's values.
 pub fn lower_sampling_laws(analysis: &Analysis) -> Result<Program, Vec<Diagnostic>> {
     super::super::lower_entry_with_cold(analysis, None, false, Stress::Laws)
 }
@@ -69,21 +69,22 @@ impl<'a> Lowerer<'a> {
         laws
     }
 
-    /// `xs.fold(op)` in a stress build, for an `op` whose type has laws:
-    /// `laws_hold(op, xs)` checked, then the fold.
-    pub(in crate::lower) fn fold_checking_laws(
+    /// `xs.m(op)` in a stress build, for a sequence `xs` and an `op` whose type has laws:
+    /// `laws_hold(op, xs)` checked, then the call.
+    pub(in crate::lower) fn checking_laws(
         &mut self,
         base: &ast::Expr,
         op: &ast::Arg,
         span: Span,
-        fold: impl FnOnce(&mut Self) -> Expr,
+        call: impl FnOnce(&mut Self) -> Expr,
     ) -> Option<Expr> {
-        if self.stress != Stress::Laws {
+        if self.stress != Stress::Laws || op.name.is_some() {
             return None;
         }
         let Some(Ty::Struct(sid)) = self.probe_ty_silent(&op.value) else {
             return None;
         };
+        self.probe_ty_silent(base).and_then(|t| t.seq_elem())?;
         if self.struct_laws(sid).is_empty() {
             return None;
         }
@@ -94,7 +95,7 @@ impl<'a> Lowerer<'a> {
             value: base.clone(),
         };
         let check = self.lower_laws_hold(&[op.clone(), samples], span);
-        let folded = fold(self);
+        let folded = call(self);
         self.stress = Stress::Laws;
         let ty = folded.ty.clone();
         Some(self.mk(

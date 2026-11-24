@@ -14,7 +14,7 @@ fn answer(colors: List<Bitset<V>>):
         print(c.len)
         print(c)
 
-if fold(gcd, gomory_hu(edges).map(e => e.w)) != 1: return answer([Bitset<V>.full()])
+if gomory_hu(edges).map(e => e.w).fold(gcd) != 1: return answer([Bitset<V>.full()])
 
 var odd = Bitset<V>.undirected(edges.filter(e => e.w % 2 == 1))
 

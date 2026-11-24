@@ -37,5 +37,5 @@ for k in 0..=n:
     if k > 0:
         for i in 0..n: kraw[i + 1] -= kraw[i]
         for i in (0..n).rev: kraw[i + 1] -= kraw[i]
-    ans += fold(*, kraw[i] ** freq[i] for i in 0..=n if freq[i] > 0) * comb.choose(n, k)
+    ans += (0..=n).filter(i => freq[i] > 0).map(i => kraw[i] ** freq[i]).fold(*) * comb.choose(n, k)
 print(ans / (Z(2) ** n))

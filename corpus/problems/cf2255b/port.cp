@@ -23,4 +23,4 @@ for run in s.runs():
     let d = Bit(run.first! - '0')
     total[d] += run.len
     blocks[d] += 1
-print(fold(*, comb.choose(total[d] - 1, blocks[d] - 1) for d in Bit if blocks[d] > 0))
+print(Bit.filter(d => blocks[d] > 0).map(d => comb.choose(total[d] - 1, blocks[d] - 1)).fold(*))

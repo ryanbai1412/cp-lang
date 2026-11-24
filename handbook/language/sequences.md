@@ -371,7 +371,7 @@ Folds on generators and filters, and a range's own closed-form sum:
 fn sq(n: Int) -> yields Int:
     for i in 1..=n: yield i * i
 print(sq(4).sum(), sq(4).max()!, sq(4).count(x => x % 2 == 0))
-print([3, 1, 2].filter(x => x > 1).fold(+)!)
+print([3, 1, 2].filter(x => x > 1).fold(+))
 print((0..3e9).sum(), (3..4e9).step(2).sum())
 ```
 
