@@ -1297,7 +1297,9 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
     let since = format!(" - {x}.begin()");
     let (new, extra) = match (f, arg) {
         ("sort" | "reverse", None) => (format!("{x}.{f}()"), 0),
-        ("sort", Some(g)) if g.starts_with("greater<") && g.ends_with(">()") => {
+        ("sort", Some(g))
+            if g == "greater()" || g.starts_with("greater<") && g.ends_with(">()") =>
+        {
             (format!("{x}.sort(desc: true)"), 0)
         }
         ("max_element", None) => (format!("{x}.max()!"), 0),
@@ -1618,5 +1620,55 @@ fn infinity(text: &str) -> Option<&'static str> {
         "inf" | "infinity" => Some("inf"),
         "-inf" | "-infinity" => Some("-inf"),
         _ => None,
+    }
+}
+
+fn method_call<'e>(e: &'e Expr, method: &str) -> Option<(&'e Expr, &'e [Arg])> {
+    match &e.kind {
+        ExprKind::Call { callee, args } => match &callee.kind {
+            ExprKind::Field { base, name } if name.text == method => Some((base, args)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+impl Checker<'_> {
+    /// C++'s `s.find(k) != s.end()` on a set, a map or a list: `k in s`.
+    pub(super) fn keyed_find(
+        &mut self,
+        whole: &Expr,
+        first: &Expr,
+        rest: &[(CmpOp, Expr)],
+    ) -> Option<Ty> {
+        let [(op, end)] = rest else { return None };
+        let op = match op {
+            CmpOp::Ne => "in",
+            CmpOp::Eq => "not in",
+            _ => return None,
+        };
+        let (base, [key]) = method_call(first, "find")? else {
+            return None;
+        };
+        let (other, []) = method_call(end, "end")? else {
+            return None;
+        };
+        let text = |s: Span| &self.src[s.start as usize..s.end as usize];
+        if key.name.is_some() || text(base.span) != text(other.span) {
+            return None;
+        }
+        let base_ty = self.quietly(|c| c.infer(base));
+        let names = ["Set", "Map", "HashMap", "List"];
+        if !matches!(&base_ty, Ty::Named { name, .. } if names.contains(&name.as_str())) {
+            return None;
+        }
+        self.infer(&key.value);
+        let new = format!("{} {op} {}", text(key.value.span), text(base.span));
+        let message = "C++'s `find(..) != end()`: whether an item is in it is `in`".to_string();
+        if let Some(diag) = self.error(codes::UNKNOWN_FIELD, whole.span, message) {
+            diag.help = Some(format!("CP Lang has no iterators: write `{new}`"));
+            diag.fix(format!("write `{new}`"), whole.span, new);
+        }
+        Some(Ty::Bool)
     }
 }

@@ -1365,6 +1365,21 @@ impl<'a> Parser<'a> {
         Some((pat, iter))
     }
 
+    /// C++'s `greater<>()`: CP Lang infers type arguments, or they are written.
+    pub(super) fn empty_type_args(&mut self) {
+        if self.at(T::Lt) && self.peek_n(1) == T::Gt && self.peek_n(2) == T::LParen {
+            let lo = self.span();
+            self.bump();
+            let at = Span::new(lo.start, self.span().end);
+            self.bump();
+            self.error(
+                Diagnostic::error(codes::REMOVED_SYNTAX, at, "empty type arguments `<>`")
+                    .with_help("leave the `<>` off: CP Lang infers type arguments")
+                    .with_fix("remove `<>`", at, ""),
+            );
+        }
+    }
+
     /// Whether the loop body starting at token `from` (braced, on the line, or
     /// indented under it) assigns one of `names`, as `x += 1` or `cin >> x`.
     fn body_assigns(&self, from: usize, names: &[&str]) -> bool {

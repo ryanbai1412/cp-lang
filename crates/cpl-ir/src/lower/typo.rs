@@ -482,7 +482,7 @@ impl<'a> Lowerer<'a> {
 
     /// `new`, which replaces the code at `span`, in parentheses unless it
     /// stands alone.
-    fn parenthesized(&self, span: Span, new: String) -> String {
+    pub(in crate::lower) fn parenthesized(&self, span: Span, new: String) -> String {
         match self.stands_alone(span) {
             (true, true) => new,
             _ => format!("({new})"),

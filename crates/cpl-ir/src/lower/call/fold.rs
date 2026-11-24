@@ -392,6 +392,17 @@ impl<'a> Lowerer<'a> {
         if let Some(named) = args.iter().find_map(|a| a.name.as_ref()) {
             let message = format!("`{name}` has no argument named `{}`", named.text);
             self.unknown_arg_name(message, named, &["by"]);
+            // Python's `max(a, default=0)`: an empty list has no max, `a.max() ?? 0`.
+            if let ([seq, d], "default") = (args, named.text.as_str()) {
+                let (a, b) = (self.source(seq.value.span), self.source(d.value.span));
+                let new = self.parenthesized(span, format!("{a}.{name}() ?? {b}"));
+                let at = self.span(span);
+                if let Some(last) = self.diags.last_mut() {
+                    last.help = Some(format!("an empty list has no {name}: `{new}`"));
+                    last.fixes.clear();
+                    last.fix(format!("write `{new}`"), at, new);
+                }
+            }
             return self.err_expr(span);
         }
         match args {

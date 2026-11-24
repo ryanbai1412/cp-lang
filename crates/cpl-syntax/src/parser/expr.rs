@@ -1099,6 +1099,7 @@ impl<'a> Parser<'a> {
                 // comparison.
                 // A lowercase fn takes them when they are all types and a
                 // call follows: `read<(Int, Int)>()`.
+                self.empty_type_args();
                 if self.at(T::Lt) {
                     let args = self.speculate(|p| {
                         let args = p.type_args();

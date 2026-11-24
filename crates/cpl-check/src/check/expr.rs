@@ -89,6 +89,9 @@ impl<'a> Checker<'a> {
                 }
             }
             ExprKind::Compare { first, rest } => {
+                if let Some(ty) = self.keyed_find(expr, first, rest) {
+                    return ty;
+                }
                 // `f<A>(x)` is two comparisons: a fn's type arguments are
                 // written `f::<A>(x)`.
                 if let ExprKind::Name(name) = &first.kind {
