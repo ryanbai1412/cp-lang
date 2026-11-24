@@ -1589,6 +1589,17 @@ impl Lowerer<'_> {
         }
     }
 
+    /// What a `yields T` parameter takes `ty` as: a struct's walk is the list of
+    /// what it yields, as a generator's value is.
+    pub(in crate::lower) fn as_yielded(&mut self, pat: &ast::Type, ty: Ty, span: Span) -> Ty {
+        match (&pat.kind, &ty) {
+            (ast::TypeKind::Yields(_), Ty::Struct(_)) => {
+                self.walk_elem(&ty, span).map_or(ty, Ty::list)
+            }
+            _ => ty,
+        }
+    }
+
     /// `seq` as a built-in sequence a loop walks: a struct becomes the call of its walk.
     pub(in crate::lower) fn walked_struct(&mut self, seq: Expr) -> Expr {
         let Ty::Struct(sid) = seq.ty else {

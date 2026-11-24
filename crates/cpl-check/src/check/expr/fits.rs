@@ -6,7 +6,8 @@ use cpl_diag::msgs;
 impl<'a> Checker<'a> {
     /// A struct value seen as a struct with fewer fields, when one is
     /// wanted: a `Group<Int>` has the `id` and `op` of a `Monoid<Int>`, so
-    /// it is one (decision 14.1). Anything else is returned as it is.
+    /// it is one (decision 14.1), and a `Seq<T>` as the `Gen<T>` its `iter`
+    /// yields. Anything else is returned as it is.
     pub(crate) fn narrowed(&mut self, got: &Ty, want: &Ty) -> Ty {
         let (
             Ty::Named {
@@ -22,6 +23,16 @@ impl<'a> Checker<'a> {
         };
         if got_name == want_name {
             return got.clone();
+        }
+        // A `yields T` parameter takes any `Seq<T>`, walked through its `iter` (R06.3.6).
+        if want_name == "Gen" {
+            return match self.trait_args_of(got, "Seq", 1) {
+                Some(args) => Ty::Named {
+                    name: want_name.clone(),
+                    args,
+                },
+                None => got.clone(),
+            };
         }
         let (Some(got_members), Some(want_members)) =
             (self.members_of(got_name), self.members_of(want_name))
@@ -135,11 +146,14 @@ impl<'a> Checker<'a> {
             }
             // A struct passes where a trait it implements is written, by the
             // arguments its impl gives that trait: a std view such as
-            // `Mapped<S, T, U>` is a `Seq<U>` (R07.1.2).
+            // `Mapped<S, T, U>` is a `Seq<U>` (R07.1.2); a `yields T` parameter
+            // takes any `Seq<T>` (R06.3.6).
             (Ty::Named { .. }, Ty::Named { name, args })
                 if !args.is_empty()
-                    && matches!(self.type_def(name).as_deref(), Some(Def::Trait { .. })) =>
+                    && (name == "Gen"
+                        || matches!(self.type_def(name).as_deref(), Some(Def::Trait { .. }))) =>
             {
+                let name = if name == "Gen" { "Seq" } else { name };
                 if let Some(given) = self.trait_args_of(got, name, args.len()) {
                     return given.iter().zip(args).all(|(g, w)| self.fits(g, w));
                 }

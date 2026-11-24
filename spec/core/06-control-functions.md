@@ -136,6 +136,10 @@ let s = divisors(n).filter(d => d % 2 == 0).sum()
   yield events (`Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)`). (R06.3.4)
 - Generators are push-only; there is no cursor. Lockstep over two
   generators is `List(g)` first, a visible allocation. (R06.3.5)
+- A `yields T` parameter takes any `Seq<T>`, not only a generator: a
+  list, a view (`xs.map(f)`, `xs.filter(p)`) or a user struct with an
+  `impl Seq<T>`. The fn walks it through its `iter`, so it costs what
+  walking it costs, and a generic `T` binds to its element. (R06.3.6)
 - Sequences, views, chains and capabilities are chapter 7.
 
 ## 6.4 Decorators

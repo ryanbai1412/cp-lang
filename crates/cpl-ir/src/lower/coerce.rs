@@ -324,10 +324,10 @@ impl<'a> Lowerer<'a> {
             }
             // A struct that walks (a std view such as `Mapped`) where a `List`/`Seq` is
             // wanted is the walk of its `Seq` impl (R07.1.2).
-            (Ty::List(_), Ty::Struct(sid)) if self.struct_walk(*sid, span).is_some() => {
-                let walked = self.walked_struct(e);
-                self.try_coerce(walked, want)
-            }
+            (Ty::List(_), Ty::Struct(_)) => match self.walked_struct(e) {
+                e if matches!(e.ty, Ty::Struct(_)) => Err(e),
+                walked => self.try_coerce(walked, want),
+            },
             (Ty::List(elem), Ty::Array { elem: aelem, .. }) if *elem == *aelem => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ArrayToList, vec![e]),
                 ty: want.clone(),

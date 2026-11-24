@@ -353,10 +353,11 @@ impl Checker<'_> {
         };
         // `self: [D]T` takes `List<Int>` with `D` and `T` bound to its parts.
         let mut bindings = crate::ty::Bindings::default();
+        let base = &self.narrowed(base, &first.ty);
         first.ty.unify(base, &mut bindings);
         let takes = first.ty.subst(&bindings);
         // `self: Range<F64>` has `Range<Int>`'s shape but doesn't take it.
-        let named = matches!(first.ty, Ty::Named { .. });
+        let named = matches!(&first.ty, Ty::Named { name, .. } if name != "Gen");
         (same_shape && (!named || self.fits(base, &takes))) || (!named && self.fits(base, &takes))
     }
 
@@ -582,7 +583,9 @@ impl Checker<'_> {
         let builtin = super::call::catalog_owner(base)
             .is_some_and(|owner| crate::builtins::builtin_member(owner, name).is_some());
         if let Some(first) = params.first().filter(|_| !builtin) {
-            first.ty.unify(base, &mut bindings);
+            first
+                .ty
+                .unify(&self.narrowed(base, &first.ty), &mut bindings);
         }
         self.bind_bound_params(generics, bounds, &mut bindings);
         let ty = Ty::Fn {

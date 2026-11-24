@@ -195,6 +195,7 @@ impl<'a> Lowerer<'a> {
             if let Some(concrete) = self
                 .probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
                 .map(|ty| if arg.mutable { ty.lent_mut() } else { ty })
+                .map(|ty| self.as_yielded(pty, ty, arg.value.span))
             {
                 if concrete == Ty::DomainVal {
                     let dom_id = if let Some(Sym::Domain(d)) = self.sym(&arg.value) {
