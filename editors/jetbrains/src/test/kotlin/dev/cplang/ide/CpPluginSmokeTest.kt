@@ -28,6 +28,12 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         CplSettings.get().state.path = cpl.path
     }
 
+    fun `test the server runs the cpl settings name, else the one on the PATH`() {
+        assertEquals(listOf(cpl.path, "lsp"), Cpl.commandLine(Cpl.lspArgs(), null).getCommandLineList(null))
+        CplSettings.get().state.path = " "
+        assertEquals("cpl", Cpl.commandLine(Cpl.lspArgs(), null).exePath)
+    }
+
     fun `test a cp file in LightEdit says it gets no language server`() {
         val notice = com.intellij.ui.EditorNotificationProvider.EP_NAME.getExtensions(project)
             .filterIsInstance<CpLightEditNotice>().single()
