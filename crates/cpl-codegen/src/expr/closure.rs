@@ -17,6 +17,11 @@ impl<'p> Emitter<'p> {
         if !skip_captures && self.devirt.functor(cid) {
             return self.functor_value(cid);
         }
+        if !skip_captures {
+            if let Some(code) = self.bound_value(cid) {
+                return code;
+            }
+        }
         let t = self.closure_text(cid, skip_captures);
         Code::primary(format!(
             "[{}]({}) mutable -> {} {{\n{}",
@@ -25,6 +30,61 @@ impl<'p> Emitter<'p> {
             t.ret,
             t.body
         ))
+    }
+
+    /// `cpl::bind_env([](env&, ..) {..}, {a, b})`: a capturing closure whose
+    /// signature only ever holds closures with captures of these types, so
+    /// its fn value is a plain function beside its captures.
+    fn bound_value(&mut self, cid: usize) -> Option<Code> {
+        let def = &self.program.closures[cid];
+        if def.captures.is_empty() || !def.muts.is_empty() || self.rec_slot.is_some() {
+            return None;
+        }
+        let args: Vec<Ty> = def
+            .params
+            .iter()
+            .map(|&p| def.locals[p].ty.clone())
+            .collect();
+        let env = crate::names::fn_bound(self.program, &args, &def.ret)?;
+        let fn_ty = self.ty(&Ty::Fn(args, Box::new(def.ret.clone())));
+        if !fn_ty.starts_with("cpl::Bound<") {
+            return None;
+        }
+        let outers: Vec<String> = def
+            .captures
+            .iter()
+            .map(|cap| self.names[cap.outer].clone())
+            .collect();
+        let env_ty = format!(
+            "cpl::Env<{}>",
+            env.iter()
+                .map(|t| self.value_ty(t))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        self.need("bound");
+        let t = self.closure_text(cid, true);
+        let aliases: String = t
+            .captured
+            .iter()
+            .enumerate()
+            .map(|(k, name)| {
+                format!(
+                    "{}[[maybe_unused]] auto& {name} = cpl::at<{k}>(cpl_env);\n",
+                    pad(self.indent + 1)
+                )
+            })
+            .collect();
+        let params: Vec<String> = std::iter::once(format!("{env_ty}& cpl_env"))
+            .chain(t.params)
+            .collect();
+        Some(Code::primary(format!(
+            "cpl::bind_env([]({}) -> {} {{\n{aliases}{}, {env_ty}{{{}}})",
+            params.join(", "),
+            t.ret,
+            t.body,
+            outers.join(", ")
+        )))
     }
 
     /// `cpl_clN{a, b}`: closure `cid` built as its own type, each capture

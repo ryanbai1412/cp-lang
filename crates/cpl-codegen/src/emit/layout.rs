@@ -284,6 +284,11 @@ impl<'p> Emitter<'p> {
             Ty::Fn(args, ret) => {
                 args.iter().for_each(|t| self.needs_complete(t, out));
                 self.needs_complete(ret, out);
+                if !crate::names::fn_pointer(self.program, args, ret) {
+                    for t in crate::names::fn_bound(self.program, args, ret).unwrap_or_default() {
+                        self.needs_complete(&t, out);
+                    }
+                }
             }
             Ty::Tuple(items) => items.iter().for_each(|t| self.needs_complete(t, out)),
             Ty::Record(fields) => fields.iter().for_each(|(_, t)| self.needs_complete(t, out)),

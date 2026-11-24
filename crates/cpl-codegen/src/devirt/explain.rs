@@ -203,7 +203,77 @@ pub fn explain_closures(
             }
         });
     }
+
+    // A fn inside a tuple, record or container is spelled by its type
+    // alone, so its lowering is the one its signature gets everywhere.
+    let mut nested = Vec::new();
+    for (sid, s) in program.structs.iter().enumerate() {
+        if written.structs.contains(&sid) {
+            s.fields
+                .iter()
+                .for_each(|(_, t)| nested_fns(t, true, &mut nested));
+        }
+    }
+    for (fid, f) in program.fns.iter().enumerate() {
+        if written.fns.contains(&fid) {
+            f.locals
+                .iter()
+                .for_each(|l| nested_fns(&l.ty, true, &mut nested));
+            nested_fns(&f.ret, true, &mut nested);
+        }
+    }
+    for (cid, c) in program.closures.iter().enumerate() {
+        if written.closures.contains(&cid) {
+            c.locals
+                .iter()
+                .for_each(|l| nested_fns(&l.ty, true, &mut nested));
+            nested_fns(&c.ret, true, &mut nested);
+        }
+    }
+    program
+        .main_locals
+        .iter()
+        .for_each(|l| nested_fns(&l.ty, true, &mut nested));
+    program
+        .globals
+        .iter()
+        .for_each(|g| nested_fns(&g.ty, true, &mut nested));
+    for ty in nested {
+        out.push(ClosureLowering {
+            site: format!("fn {ty:?} inside a tuple, record or container"),
+            mode: erased(program, &ty, "fn inside a tuple, record or container"),
+        });
+    }
     out
+}
+
+/// Each fn type `ty` holds below its top, once.
+fn nested_fns(ty: &Ty, top: bool, out: &mut Vec<Ty>) {
+    match ty {
+        Ty::Fn(args, ret) => {
+            if !top && !out.contains(ty) {
+                out.push(ty.clone());
+            }
+            args.iter().for_each(|a| nested_fns(a, false, out));
+            nested_fns(ret, false, out);
+        }
+        Ty::Opt(t) | Ty::Mut(t) => nested_fns(t, top, out),
+        Ty::Tuple(ts) => ts.iter().for_each(|t| nested_fns(t, false, out)),
+        Ty::Record(fs) => fs.iter().for_each(|(_, t)| nested_fns(t, false, out)),
+        Ty::List(t)
+        | Ty::Range(t)
+        | Ty::Set(t)
+        | Ty::HashSet(t)
+        | Ty::ListView(t, _)
+        | Ty::Keyed(t, _)
+        | Ty::MutView(t, _)
+        | Ty::Array { elem: t, .. } => nested_fns(t, false, out),
+        Ty::Map(k, v) | Ty::HashMap(k, v) => {
+            nested_fns(k, false, out);
+            nested_fns(v, false, out);
+        }
+        _ => {}
+    }
 }
 
 pub(super) fn explain_locals_in_block(

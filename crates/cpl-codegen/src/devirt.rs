@@ -57,6 +57,9 @@ pub enum ClosureMode {
     /// Every closure that can reach it captures nothing: a plain function
     /// pointer, no `std::function`.
     FnPointer,
+    /// Every capturing closure that can reach it copies captures of the
+    /// same types: a function beside those captures (`cpl::Bound`).
+    Bound,
     /// Genuinely dynamic fn value: falls back to `std::function`.
     DynamicStdFunction { reason: String },
 }
@@ -70,6 +73,9 @@ fn erased(program: &Program, ty: &Ty, reason: &str) -> ClosureMode {
     };
     match fn_ty {
         Ty::Fn(args, ret) if crate::names::fn_pointer(program, args, ret) => ClosureMode::FnPointer,
+        Ty::Fn(args, ret) if crate::names::fn_bound(program, args, ret).is_some() => {
+            ClosureMode::Bound
+        }
         _ => ClosureMode::DynamicStdFunction {
             reason: reason.to_string(),
         },

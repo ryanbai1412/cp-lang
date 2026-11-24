@@ -52,7 +52,9 @@ for t in 0..n:
     print(pre(t) + suf(t))
 ");
     assert!(
-        !out.contains("std::function") && !out.contains("std::get<"),
+        !out.contains("std::function")
+            && out.matches("std::get<").count()
+                == out.matches("{ return std::get<K>(e); }").count(),
         "each part is bound from its own closure, never through a tuple:\n{out}"
     );
 }
@@ -175,7 +177,10 @@ fn a_variable_holding_two_closures_keeps_its_struct_whole() {
         "    print(b.op(k))\n",
         "go(read::<Int>())\n",
     ));
-    assert!(out.contains("std::function<ll(ll)> op;"), "{out}");
+    assert!(
+        out.contains("cpl::Bound<cpl::Env<ll>, ll(ll)> op;"),
+        "{out}"
+    );
 }
 
 #[test]
@@ -486,4 +491,15 @@ print(m.op((1, 2, 3), (4, 0, 9)))
         !out.contains("std::function"),
         "`each(+, max, min)` holds only op values, so its op captures nothing:\n{out}"
     );
+}
+
+#[test]
+fn closures_stored_in_a_list_of_records_are_fn_pointers_or_bound() {
+    let out = cpp(concat!(
+        "fn mk(k: Int) -> List<(n: Int, f: Int -> Int, g: (Int, Int) -> Int)> = [(n: 1, f: x => x + k, g: (a, b) => a + b), (n: 2, f: x => x * k, g: (a, b) => a * b)]\n",
+        "for r in mk(read::<Int>()): print(r.n, r.f(3), r.g(3, 4))\n",
+    ));
+    assert!(!out.contains("std::function<"), "{out}");
+    assert!(out.contains("cpl::Bound<cpl::Env<ll>, ll(ll)>"), "{out}");
+    assert!(out.contains("std::add_pointer_t<ll(ll, ll)>"), "{out}");
 }

@@ -147,6 +147,14 @@ pub fn report_with(
                         entry.site
                     );
                 }
+                ClosureMode::Bound => {
+                    static_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [static: bound]    {} -> every closure it can hold copies captures of the same types (no std::function)",
+                        entry.site
+                    );
+                }
                 ClosureMode::DynamicStdFunction { reason } => {
                     dynamic_count += 1;
                     let _ = writeln!(

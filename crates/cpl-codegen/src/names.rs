@@ -1,6 +1,7 @@
 //! C++ names for the program's names, and C++ types for its types.
 
 use cpl_ir::{JudgeTy, Program, Ty};
+use std::collections::BTreeSet;
 
 /// Names the emitted file can't give to the user's things: C++ keywords,
 /// macros of the headers it includes, and the names the file itself uses.
@@ -341,12 +342,18 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         Ty::Mut(of) => format!("{}&", cty(program, niches, of)),
         Ty::Fn(args, ret) => {
             let pointer = fn_pointer(program, args, ret);
+            let bound = if pointer {
+                None
+            } else {
+                fn_bound(program, args, ret)
+            };
+            let exact = pointer || bound.is_some();
             let ps: Vec<String> = args
                 .iter()
                 .map(|t| match t {
                     // A lambda takes these by `const&` (see `Emitter::closure`), and
                     // a function pointer must name the lambda's exact parameters.
-                    _ if pointer
+                    _ if exact
                         && !matches!(t, Ty::Mut(_))
                         && !t.is_scalar()
                         && !cached(program, t) =>
@@ -356,6 +363,15 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
                     _ => value_ty(program, niches, t),
                 })
                 .collect();
+            if let Some(env) = bound {
+                let env: Vec<String> = env.iter().map(|t| value_ty(program, niches, t)).collect();
+                return format!(
+                    "cpl::Bound<cpl::Env<{}>, {}({})>",
+                    env.join(", "),
+                    cty(program, niches, ret),
+                    ps.join(", ")
+                );
+            }
             let erased = if pointer {
                 "std::add_pointer_t"
             } else {
@@ -464,6 +480,78 @@ pub(crate) fn fn_pointer(program: &Program, args: &[Ty], ret: &Ty) -> bool {
                 .zip(args)
                 .all(|(&p, a)| same(&c.locals[p].ty, a))
     })
+}
+
+/// The capture types shared by every capturing closure a fn of this
+/// signature can hold, when each copies its captures in the same order:
+/// the fn value is then a function beside its captures (`cpl::Bound`).
+pub(crate) fn fn_bound(program: &Program, args: &[Ty], ret: &Ty) -> Option<Vec<Ty>> {
+    let same = |param: &Ty, arg: &Ty| param == arg || matches!(arg, Ty::Mut(of) if **of == *param);
+    let mut env: Option<Vec<Ty>> = None;
+    for (cid, c) in program.closures.iter().enumerate() {
+        if c.captures.is_empty()
+            || program.unreached_closures.contains(&cid)
+            || c.ret != *ret
+            || c.params.len() != args.len()
+            || !c
+                .params
+                .iter()
+                .zip(args)
+                .all(|(&p, a)| same(&c.locals[p].ty, a))
+        {
+            continue;
+        }
+        if c.captures.iter().any(|cap| cap.is_global || cap.by_ref) {
+            return None;
+        }
+        let tys: Vec<Ty> = c
+            .captures
+            .iter()
+            .map(|cap| c.locals[cap.inner].ty.clone())
+            .collect();
+        // A capture holding an erased fn could name this type inside
+        // itself, and one holding a heap value is lent where the closure is
+        // local.
+        if tys.iter().any(|t| {
+            holds_erased_fn(program, t, &mut BTreeSet::new()) || crate::lend::holds_heap(program, t)
+        }) {
+            return None;
+        }
+        match &env {
+            Some(e) if *e != tys => return None,
+            Some(_) => {}
+            None => env = Some(tys),
+        }
+    }
+    env
+}
+
+/// Whether `ty` holds by value a fn that is not a plain function pointer.
+fn holds_erased_fn(program: &Program, ty: &Ty, seen: &mut BTreeSet<(bool, usize)>) -> bool {
+    match ty {
+        Ty::Fn(args, ret) => !fn_pointer(program, args, ret),
+        Ty::Tuple(items) => items.iter().any(|t| holds_erased_fn(program, t, seen)),
+        Ty::Record(fields) => fields
+            .iter()
+            .any(|(_, t)| holds_erased_fn(program, t, seen)),
+        Ty::Opt(inner) | Ty::Mut(inner) | Ty::List(inner) => holds_erased_fn(program, inner, seen),
+        Ty::Array { elem, .. } => holds_erased_fn(program, elem, seen),
+        Ty::Struct(id) => {
+            seen.insert((false, *id))
+                && program.structs[*id]
+                    .fields
+                    .iter()
+                    .any(|(_, t)| holds_erased_fn(program, t, seen))
+        }
+        Ty::Enum(id) => {
+            seen.insert((true, *id))
+                && program.enums[*id]
+                    .variants
+                    .iter()
+                    .any(|(_, fields)| fields.iter().any(|t| holds_erased_fn(program, t, seen)))
+        }
+        _ => false,
+    }
 }
 
 /// Whether reading a value may fill a cache: a struct with a `@cache`

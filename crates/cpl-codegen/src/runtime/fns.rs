@@ -44,6 +44,33 @@ template <class L> FnRef<typename FnSig<decltype(&std::decay_t<L>::operator())>:
 ",
     },
     Piece {
+        name: "bound",
+        needs: &[],
+        code: "\
+// A fn value whose closures all capture values of the same types: a plain
+// function taking those captures, beside them, with no type erasure.
+template <class... T> using Env = std::tuple<T...>;
+template <std::size_t K, class E> auto& at(E& e) { return std::get<K>(e); }
+template <class E, class S> struct Bound;
+template <class E, class R, class... A> struct Bound<E, R(A...)> {
+  R (*f)(E&, A...) = nullptr; mutable E env{}; R (*g)(A...) = nullptr;
+  Bound() = default;
+  Bound(R (*f)(E&, A...), E env) : f(f), env(env) {}
+  // A captureless closure or a named fn of the same signature.
+  template <class F, class = std::enable_if_t<std::is_convertible_v<F, R (*)(A...)>>> Bound(F l) : g(l) {}
+  R operator()(A... a) const { return f ? f(env, (A)a...) : g((A)a...); }
+};
+// One closure before it is stored: called inline, and turned into the
+// `Bound` of the signature it is stored as.
+template <class E, class F> struct BoundL {
+  F f; mutable E env;
+  template <class... A> decltype(auto) operator()(A&&... a) const { return f(env, (A&&)a...); }
+  template <class R, class... A> operator Bound<E, R(A...)>() const { return {f, env}; }
+};
+template <class E, class F> BoundL<E, F> bind_env(F f, E env) { return {f, env}; }
+",
+    },
+    Piece {
         name: "lazy",
         needs: &[],
         code: "\

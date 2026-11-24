@@ -89,7 +89,7 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
     let acc = &out[out.find("struct Acc {").expect("Acc")..];
     assert!(!acc[..acc.find("};").unwrap()].contains("hook"), "{out}");
     assert!(
-        out.contains("std::optional<std::function<ll(ll)>> pick;"),
+        out.contains("std::optional<cpl::Bound<cpl::Env<ll>, ll(ll)>> pick;"),
         "{out}"
     );
     let mut db = cpl_check::Session::new();
@@ -103,7 +103,7 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
         "{explained:?}"
     );
     assert!(
-        matches!(mode("struct Tagged.pick"), crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("read")),
+        mode("struct Tagged.pick") == &crate::ClosureMode::Bound,
         "{explained:?}"
     );
 }
@@ -187,7 +187,7 @@ fn recursive_local_closure_takes_itself_instead_of_std_function() {
 }
 
 #[test]
-fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
+fn local_closure_lowers_to_auto_and_a_field_of_like_closures_is_a_bound_fn() {
     let src = concat!(
         "struct Box(op: Int -> Int)\n",
         "fn run(k: Int) -> Int:\n",
@@ -203,7 +203,10 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
     assert!(out.contains("auto loc ="), "{out}");
-    assert!(out.contains("std::function<ll(ll)> op;"), "{out}");
+    assert!(
+        out.contains("cpl::Bound<cpl::Env<ll>, ll(ll)> op;"),
+        "{out}"
+    );
     let explained = crate::explain_closures(&program);
     assert!(
         explained
@@ -214,7 +217,7 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
     assert!(
         explained
             .iter()
-            .any(|e| matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
+            .any(|e| e.mode == crate::ClosureMode::Bound),
         "{explained:?}"
     );
 }
@@ -357,11 +360,12 @@ fn a_bound_method_value_is_its_lambda_not_a_std_function() {
 #[test]
 fn explain_names_closure_params_and_top_level_fn_vars() {
     let src = concat!(
-        "fn go(k: Int):\n",
+        "fn go(k: Int, m: Int):\n",
         "    let g = x => x + k\n",
+        "    let e = (x: Int) => x + k * m\n",
         "    let h = (f: Int -> Int, x: Int) => f(x) * 2\n",
-        "    print(h(g, 3), g(1))\n",
-        "go(read::<Int>())\n",
+        "    print(h(g, 3), h(e, 3), g(1))\n",
+        "go(read::<Int>(), read::<Int>())\n",
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
@@ -617,7 +621,7 @@ fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
 }
 
 #[test]
-fn a_struct_field_two_capturing_closures_reach_stays_std_function() {
+fn a_struct_field_two_closures_with_like_captures_reach_is_a_bound_fn() {
     let src = concat!(
         "struct Op2(f: (Int, Int) -> Int)\n",
         "fn run(k: Int):\n",
@@ -627,15 +631,20 @@ fn a_struct_field_two_capturing_closures_reach_stays_std_function() {
         "run(k)\n",
     );
     let out = cpp(src);
-    assert!(out.contains("std::function<ll(ll, ll)> f;"), "{out}");
+    assert!(
+        out.contains("cpl::Bound<cpl::Env<ll>, ll(ll, ll)> f;"),
+        "{out}"
+    );
+    assert!(!out.contains("std::function<"), "{out}");
     assert!(!out.contains("cpl_cl"), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
     let explained = crate::explain_closures(&program);
     assert!(
-        explained.iter().any(|e| e.site == "struct Op2.f"
-            && matches!(&e.mode, crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("different closures"))),
+        explained
+            .iter()
+            .any(|e| e.site == "struct Op2.f" && e.mode == crate::ClosureMode::Bound),
         "{explained:?}"
     );
 }
@@ -722,4 +731,26 @@ fn a_generator_over_a_recursive_one_passes_its_own_lambda() {
     let calls = pusher_calls(&cpp, "twice");
     assert_eq!(calls.len(), 1, "{cpp}");
     assert!(calls[0].contains("cpl::fn_ref([&]"), "{cpp}");
+}
+
+#[test]
+fn explain_lists_a_fn_inside_a_record_that_stays_std_function() {
+    let src = concat!(
+        "fn mk(k: Int, m: Int) -> List<(n: Int, f: Int -> Int)> = [(n: 1, f: x => x + k), (n: 2, f: x => x * k * m)]\n",
+        "let (k, m): (Int, Int) = read()\n",
+        "for r in mk(k, m): print(r.n, r.f(3))\n",
+    );
+    let out = cpp(src);
+    assert!(out.contains("std::function<ll(ll)>"), "{out}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained
+            .iter()
+            .any(|e| e.site.contains("inside a tuple, record or container")
+                && matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
+        "{explained:?}"
+    );
 }
