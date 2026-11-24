@@ -53,6 +53,14 @@ impl<'p> Emitter<'p> {
             self.dropped_value(value, out);
             return;
         }
+        if let Some(base) = self.absent_field_base(place) {
+            if !crate::uses::effects::safe_place(base) {
+                let held = self.place(base);
+                self.line(out, &format!("(void){held};"));
+            }
+            self.dropped_value(value, out);
+            return;
+        }
         if let (AssignOp::Set, PlaceKind::Global(id)) = (op, &place.kind) {
             if self.const_globals.contains(id) {
                 return;
