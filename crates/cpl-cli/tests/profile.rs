@@ -285,6 +285,29 @@ fn profile_of_a_failed_run_still_reports_and_fails() {
 }
 
 #[test]
+fn a_native_profile_at_checks_all_stops_on_a_ranged_return() {
+    if !has_gxx() {
+        return;
+    }
+    let file = scratch(
+        "ranged.cp",
+        "fn f(x: Int) -> 0..10 = x\nlet a: Int = read()\nprint(f(a))\nprint(1)\n",
+    );
+    let input = scratch("ranged.in", "11\n");
+    let (file, input) = (file.to_str().unwrap(), input.to_str().unwrap());
+    let (interp, _, code) = cpl(&["profile", file, input, "--format", "json"]);
+    assert_eq!(code, 3, "{interp}");
+    let (native, err, _) = cpl(&[
+        "profile", file, input, "--native", "--checks", "all", "--format", "json",
+    ]);
+    assert_eq!(hits(&native), hits(&interp), "{err}");
+    assert!(
+        !hits(&native).iter().any(|&(line, _)| line == 4),
+        "{native}"
+    );
+}
+
+#[test]
 fn cover_lists_lines_and_branches_no_input_reached() {
     let file = scratch("cover.cp", SUM);
     let zero = scratch("zero.in", "0\n");
@@ -377,8 +400,14 @@ fn native_agrees_on_shard(shard: usize) {
             empty_input()
         };
         let program = program.to_string_lossy();
-        let (interp, _, _) = cpl(&["profile", &program, &input, "--format", "json"]);
-        let (native, err, _) = cpl(&["profile", &program, &input, "--native", "--format", "json"]);
+        let (interp, _, code) = cpl(&["profile", &program, &input, "--format", "json"]);
+        // A run the interpreter stops may stop on a check only `--checks
+        // all` keeps (a range store, overflow), so its C++ keeps them all;
+        // one that runs through is counted at the judge's `traps`.
+        let checks = if code == 3 { "all" } else { "traps" };
+        let (native, err, _) = cpl(&[
+            "profile", &program, &input, "--native", "--checks", checks, "--format", "json",
+        ]);
         if !native.contains("\"lines\"") {
             failures.push(format!("{program}: native profile failed: {err}"));
         } else if hits(&interp) != hits(&native) {

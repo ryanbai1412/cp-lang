@@ -24,6 +24,8 @@ options:
                    each statement (with the flags of the file's judge, on its
                    stack); the counts are the interpreter's, the times are
                    the judge's
+  --checks LEVEL   with `--native`, the checks the C++ keeps: `none`,
+                   `traps` (the default) or `all`, every check `cpl run` has
   --format json    one JSON object: the lines with their hits, nanoseconds
                    and starts (runs of the line's first statement)
 ";
@@ -37,6 +39,8 @@ no input at all means the cases in `<file>.tests/`.
 
 options:
   --native         run the C++ of `cpl build` instead of the interpreter
+  --checks LEVEL   with `--native`, the checks the C++ keeps: `none`,
+                   `traps` (the default) or `all`
   --format json    one JSON object: covered and uncovered lines, branches
 ";
 
@@ -44,6 +48,7 @@ struct Options<'a> {
     file: &'a str,
     inputs: Vec<&'a str>,
     native: bool,
+    checks: cpl_codegen::Checks,
     json: bool,
 }
 
@@ -52,6 +57,7 @@ fn options<'a>(rest: &[&'a str], usage: &str, stdout: &mut dyn Write) -> Result<
         file: "",
         inputs: Vec::new(),
         native: false,
+        checks: cpl_codegen::Checks::default(),
         json: false,
     };
     let mut files = Vec::new();
@@ -63,6 +69,10 @@ fn options<'a>(rest: &[&'a str], usage: &str, stdout: &mut dyn Write) -> Result<
                 return Err(0);
             }
             "--native" => options.native = true,
+            "--checks" => match args.next().and_then(|n| cpl_codegen::Checks::parse(n)) {
+                Some(level) => options.checks = level,
+                None => return Err(EXIT_USAGE),
+            },
             "--format" => match args.next() {
                 Some(&"json") => options.json = true,
                 Some(&"text") => options.json = false,
@@ -86,9 +96,15 @@ struct Run {
     failure: Option<String>,
 }
 
-fn run(file: &str, compiled: &Compiled, input: &[u8], native: bool) -> Result<Run, String> {
-    if native {
-        return run_native(file, compiled, input);
+/// `native` is the checks of the C++ to run, or `None` for the interpreter.
+fn run(
+    file: &str,
+    compiled: &Compiled,
+    input: &[u8],
+    native: Option<cpl_codegen::Checks>,
+) -> Result<Run, String> {
+    if let Some(checks) = native {
+        return run_native(file, compiled, input, checks);
     }
     let mut sink = Vec::new();
     let observed =
@@ -106,14 +122,19 @@ fn run(file: &str, compiled: &Compiled, input: &[u8], native: bool) -> Result<Ru
 
 /// The program built as the file's judge builds it, with the judge's flags
 /// this compiler accepts, and run on the judge's stack.
-fn run_native(file: &str, compiled: &Compiled, input: &[u8]) -> Result<Run, String> {
+fn run_native(
+    file: &str,
+    compiled: &Compiled,
+    input: &[u8],
+    checks: cpl_codegen::Checks,
+) -> Result<Run, String> {
     let judge = cpl_judge::resolve(Path::new(file), &compiled.text, None)?;
     let target = cpl_codegen::Target {
         stamp: Some(judge.stamp()),
         thread_stack: judge.thread_stack,
         windows: judge.os == cpl_judge::Os::Windows,
         cpu: judge.cpu.clone(),
-        ..cpl_codegen::Target::default()
+        checks,
     };
     let dir = std::env::temp_dir().join(format!("cpl-profile-{}", std::process::id()));
     std::fs::create_dir_all(&dir).map_err(|e| format!("can't make `{}`: {e}", dir.shown()))?;
@@ -261,7 +282,12 @@ pub fn profile(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8
             return EXIT_USAGE;
         }
     };
-    let run = match run(options.file, &compiled, &input, options.native) {
+    let run = match run(
+        options.file,
+        &compiled,
+        &input,
+        options.native.then_some(options.checks),
+    ) {
         Ok(run) => run,
         Err(message) => {
             *stderr += &format!("cpl: {message}\n");
@@ -453,7 +479,12 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
                 return EXIT_USAGE;
             }
         };
-        let run = match run(options.file, &compiled, &bytes, options.native) {
+        let run = match run(
+            options.file,
+            &compiled,
+            &bytes,
+            options.native.then_some(options.checks),
+        ) {
             Ok(run) => run,
             Err(message) => {
                 *stderr += &format!("cpl: {message}\n");

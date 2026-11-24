@@ -19,7 +19,7 @@ platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 | `cpl explain d [name]` | layouts, widths, niches, peak memory, specializations, checks, copies (`tools/explain.md`) |
 | `cpl replay d --trace t.json --step n` | runs one recorded call again with the file's edited fn |
 | `cpl dap` | the time-travel debug adapter (DAP) on stdio, the editors' debugger over the interpreter |
-| `cpl profile d input` | per-line time and allocation on the release C++ |
+| `cpl profile d input` | per-line time and allocation on the release C++ (`--native`; `--checks` as for `build`, `traps` by default, and `all` keeps every check `cpl run` has, so a run the interpreter stops stops there too) |
 | `cpl cover d` | which lines and branches the tests reach |
 | `cpl bench d` | release runtime against the profile's limits and against a matched C++ file if given |
 | `cpl fmt [files]` | canonical formatting (`tools/fmt-lint.md`) |

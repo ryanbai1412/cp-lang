@@ -197,14 +197,14 @@ pub(crate) const COMMANDS: &[Command] = &[
         args: "<file> [input]",
         summary: &["run, then show each line's hits and share of the time"],
         json: Json::Format,
-        options: Some(&["--native", "--format"]),
+        options: Some(&["--native", "--checks", "--format"]),
     },
     Command {
         name: "cover",
         args: "<file> [input]...",
         summary: &["list the lines and branches no input reached"],
         json: Json::Format,
-        options: Some(&["--native", "--format"]),
+        options: Some(&["--native", "--checks", "--format"]),
     },
     Command {
         name: "watch",
