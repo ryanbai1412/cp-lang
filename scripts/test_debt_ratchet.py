@@ -394,6 +394,19 @@ class DebtRatchetTest(unittest.TestCase):
                "mod tests {", "    fn x() { y.unwrap(); }", "}"]
         self.assertEqual([i for i, _ in dr._ungated_lines(src)], [1, 8, 11])
 
+    def test_timeout_passes_finds_a_timeout_that_ends_in_success(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "scripts/land.sh", 'case "$rc" in\n    124) echo slow ;;\n    124) exit 1 ;;\nesac\n')
+            self._write(root, "scripts/run.py", "try:\n    f()\nexcept subprocess.TimeoutExpired:\n    return None\n"
+                        "try:\n    f()\nexcept TimeoutExpired:\n    return 'timed out'\n"
+                        "try:\n    f()\nexcept (subprocess.TimeoutExpired, OSError):\n    pass\n"
+                        "try:\n    f()\nexcept subprocess.TimeoutExpired:\n    return None  # timeout fails: g reports it\n")
+            self._write(root, "scripts/test_run.py", "try:\n    f()\nexcept subprocess.TimeoutExpired:\n    pass\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.timeout_passes(root), ["scripts/land.sh:2", "scripts/run.py:12", "scripts/run.py:4"])
+
     def test_ci_retries_spares_only_the_helper(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

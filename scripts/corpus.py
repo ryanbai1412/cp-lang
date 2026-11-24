@@ -685,7 +685,7 @@ def run_out(exe, data):
             r = subprocess.run(exe if isinstance(exe, list) else [exe], input=data, capture_output=True,
                                timeout=TIMEOUT, cwd=scratch, preexec_fn=judge_stack)
     except subprocess.TimeoutExpired:
-        return None
+        return None  # timeout fails: every caller reports a None
     return r.stdout if r.returncode == 0 else None
 
 
@@ -842,11 +842,15 @@ def agrees(pkg, data, got, want):
         return subprocess.run([sys.executable, str(pkg.checker), *files], capture_output=True).returncode == 0
 
 
+TIMED_OUT = "timed-out"
+
+
 def rejects(cmd, data):
+    """Whether `cmd` refuses `data` as out of range, or TIMED_OUT when it can't say in TIMEOUT."""
     try:
         r = subprocess.run(cmd, input=data, capture_output=True, timeout=TIMEOUT)
     except subprocess.TimeoutExpired:
-        return False
+        return TIMED_OUT
     return r.returncode != 0 and bool(RANGE.search(r.stderr))
 
 
@@ -937,11 +941,14 @@ def check_stress(pkg, ctx):
             data = gen_out(pkg, (seed, size))
             if data is None:
                 found.append(f"gen-fails {pkg.id} {seed}/{size}")
-            elif rejects([ctx.cpl, "run", str(pkg.port)], data):
-                found.append(f"invalid-input {pkg.id} {seed}/{size}")
+            elif why := rejects([ctx.cpl, "run", str(pkg.port)], data):
+                found.append(f"{'interp-timeout' if why == TIMED_OUT else 'invalid-input'} {pkg.id} {seed}/{size}")
             elif orig:
                 got, want = run_out(exe, data), run_out(orig, data)
-                if got is not None and want is not None and not agrees(pkg, data, got, want):
+                if got is None or want is None:
+                    found.append(f"no-verdict {pkg.id} {seed}/{size}: "
+                                 f"{'the port' if got is None else 'the reference'} fails or passes {TIMEOUT} s")
+                elif not agrees(pkg, data, got, want):
                     found.append(f"disagrees {pkg.id} {seed}/{size}")
     return found
 
@@ -1127,8 +1134,8 @@ def check_max(pkg, ctx):
         ok, _ = judged(pkg, pkg.solution, [data.decode()], ctx.cpl)
         return [] if ok else [f"max-fails {pkg.id} --max"]
     exe, _ = native(pkg, ctx)
-    if exe and rejects([exe], data):
-        return [f"invalid-input {pkg.id} --max"]
+    if exe and (why := rejects([exe], data)):
+        return [f"{'max-timeout' if why == TIMED_OUT else 'invalid-input'} {pkg.id} --max"]
     ref = pkg.reference()
     orig = built(ref) if ref else None
     if ref and not orig:

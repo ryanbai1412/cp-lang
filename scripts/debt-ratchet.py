@@ -2076,6 +2076,24 @@ def trace_budget_gap(root: Path) -> list[str]:
     return out
 
 
+TIMEOUT_ARM = re.compile(r"^\s*124\)(?!.*\bexit\s+(?:[1-9]|\"?\$))")
+TIMEOUT_EXCEPT = re.compile(r"^(.+?\.py)-(\d+)-\s*(?:return(?:\s+(?:None|False|True))?|pass|continue)\s*$")
+
+
+def timeout_passes(root: Path) -> list[str]:
+    """A timeout that ends in success: a shell `124)` arm that doesn't exit non-zero, or a
+    Python `except TimeoutExpired:` whose next line gives no verdict (None, False, True, pass,
+    continue) unless a `# timeout fails: <where>` note names who reports it."""
+    skip = (":!scripts/debt-ratchet.py", ":!scripts/test_*.py", ":!**/test_*.py", ":!**/tests/**")
+    arms = [":".join(h.split(":", 2)[:2]) for h in
+            _git(root, "grep", "-n", "-E", "-e", r"^[[:space:]]*124\)", "--", ".", *skip)
+            if TIMEOUT_ARM.match(h.split(":", 2)[2])]
+    py = [f"{m[1]}:{m[2]}" for h in
+          _git(root, "grep", "-n", "-A1", "-E", "-e", r"except[[:space:]]*\(?[[:alnum:]_.]*TimeoutExpired", "--", "*.py", *skip)
+          if (m := TIMEOUT_EXCEPT.match(h))]
+    return sorted(arms + py)
+
+
 def trace_engine_refs(root: Path) -> list[str]:
     """`CPL_TRACE_ENGINE` mentions: the switch back to the tree-walker for traces."""
     return _grep_all(root, "CPL_TRACE_ENGINE")
@@ -2850,6 +2868,8 @@ COUNTERS = {
     "std_lint_findings": ("entries of scripts/std-lint-baseline.txt", std_lint_findings, True),
     "corpus_lint_warnings": ("entries of crates/cpl-lint/corpus_warnings.txt", corpus_lint_warnings, True),
     "or_true": ("`|| true` anywhere (scoreboard CI2)", or_true, True),
+    "timeout_passes": ("a timeout that ends in success: shell `124)` or a verdict-less TimeoutExpired (Factory)",
+                       timeout_passes, True),
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
     "uncached_installs": ("CI tool installs outside the cached install-tools action (Factory)", uncached_installs, True),
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),

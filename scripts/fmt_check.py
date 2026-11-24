@@ -93,7 +93,7 @@ def run(cpl, cwd, args, stdin=b""):
     try:
         p = subprocess.run([cpl] + args, cwd=cwd, input=stdin, capture_output=True, timeout=RUN_TIMEOUT)
     except subprocess.TimeoutExpired:
-        return None
+        return None  # timeout fails: compare reports a None
     err = p.stderr.decode(errors="replace") + p.stdout.decode(errors="replace") * (args[0] == "check")
     return p.returncode, p.stdout if args[0] == "run" else b"", sorted(CODE.findall(err))
 
@@ -102,7 +102,7 @@ def compare(cpl, scratch, path, original, base=ROOT):
     a = run(cpl, base, ["check", path])
     b = run(cpl, scratch, ["check", path])
     if a is None:
-        return None
+        return f"cpl check passes {RUN_TIMEOUT} s on the original, so formatting can't be checked"
     if a != b:
         return f"cpl check differs: original {a[0]} {a[2][:5]}, formatted {b and (b[0], b[2][:5])}"
     if a[0] != 0:
@@ -110,7 +110,7 @@ def compare(cpl, scratch, path, original, base=ROOT):
     stdin = sample_input(path, original)
     a = run(cpl, base, ["run", path], stdin)
     if a is None:
-        return None
+        return f"cpl run passes {RUN_TIMEOUT} s on the original, so formatting can't be checked"
     b = run(cpl, scratch, ["run", path], stdin)
     if a != b:
         if b is None:
