@@ -7,29 +7,31 @@
 //   with that bit. Go k = n down to 1: subtract the bits already known to have cnt > k; what is
 //   left is the sum of 2^bit over bits with cnt == k (below 2^29 < mod, so read it directly).
 //   The element output at step k holds every bit with cnt >= k, so each bit lands in exactly
-//   cnt elements. O(29 n) with a factorial table.
+//   cnt elements. C(cnt, k) = cnt!/(cnt-k)! * 1/k!, with 2^bit * cnt! kept per bit. O(29 n).
 // Bounds: n: 1..=200_000
 
 const MOD = 1_000_000_007
 const L = 29
 type Z = Mod<MOD>
-let comb = Comb<Z>()
+let comb = Comb<Z>(200_000)
 
 @!multitest
 let n: 1..=200_000 = read()
 let b: [1..=n]Z = read()
 
 var cnts: [0..L]Int = 0
+var seen = 0
+var w: [0..L]Z = Z(0)
 var out: List<Int> = []
 for i in (1..=n).rev:
     var val = b[i]
-    var a = 0
+    let ki = comb.inv_fact(i)
     for bit in 0..L if cnts[bit] > 0:
-        val -= (1 << bit) * comb.choose(cnts[bit], i)
-        a += 1 << bit
+        val -= w[bit] * comb.inv_fact(cnts[bit] - i) * ki
     if val != 0:
         for bit in 0..L if val.v.bit(bit):
             cnts[bit] = i
-            a += 1 << bit
-    out.push(a)
+            w[bit] = Z(1 << bit) * comb.fact(i)
+        seen |= val.v
+    out.push(seen)
 print(out)
