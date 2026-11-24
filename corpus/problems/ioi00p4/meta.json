@@ -9,13 +9,24 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ioi00p4/dream.cp"
+  ],
   "port": [
    "corpus/problems/ioi00p4/port.cp"
+  ],
+  "spec": [
+   "corpus/problems/ioi00p4/spec.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
- "spec": "none",
- "notes": ""
+ "dream": "draft",
+ "spec": "draft",
+ "notes": "Walls cross by cyclic_pairs round each border, std floyd_warshall on the regions. Dream to spec: spec.cp keys homes by a Member domain where the dream reads [k]Town, and names the sorted wall pair and sets both hops in one loop where the dream writes the pair out twice and the two hops apart (style, no spec change).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 7,
+  "sha": "5f2eb213b97745a962ce1dfddf667089cc3b4862"
+ }
 }
