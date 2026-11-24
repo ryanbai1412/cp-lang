@@ -664,7 +664,11 @@ impl<'a> Checker<'a> {
         };
         let entry = p.entry();
         let fits = |ty: &Ty, want: &str| match ty {
-            Ty::Named { name, .. } if f.generics.iter().any(|g| &g.text == name) => true,
+            Ty::Named { name, .. } | Ty::Param(name)
+                if f.generics.iter().any(|g| &g.text == name) =>
+            {
+                true
+            }
             _ => want.split('|').any(|w| w == ty.to_string()),
         };
         let params_fit = f.params.len() == entry.params.len()
