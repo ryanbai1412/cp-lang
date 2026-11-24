@@ -18,6 +18,8 @@ pub struct Vm {
     pub program: cpl_ir::Program,
     pub name: String,
     pub lines: cpl_diag::LineIndex,
+    /// The file's text, to show where it stops as `cpl run` does.
+    source: std::sync::Arc<str>,
     /// Stack byte limit when running on the calling thread (wasm).
     pub stack_limit: Option<u32>,
     /// Tells this program's [`PRELUDES`] from another's.
@@ -161,25 +163,29 @@ fn ran(run: Interpreted) -> Ran {
     }
 }
 
-/// What a judge's trap says of the run: a bug in the judge, or its verdict.
-fn ruling(run: Interpreted) -> Ruling {
-    match run {
-        Ok(_) => Ruling::Accepted,
-        Err((_, trap)) if crate::judge::judge_bug(trap.code().0) => {
-            Ruling::Broke(trap.into_message())
-        }
-        Err((_, trap)) => Ruling::Rejected(Some(trap.into_message())),
-    }
-}
-
 impl Vm {
     pub fn new(program: cpl_ir::Program, name: &str, source: &str, stack_limit: Option<u32>) -> Vm {
         Vm {
             program,
             name: name.to_string(),
             lines: cpl_diag::LineIndex::new(source),
+            source: source.into(),
             stack_limit,
             id: VMS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+        }
+    }
+
+    /// What this judge's trap says of the run: a bug in the judge, shown as
+    /// `cpl run` shows it, or its verdict.
+    fn ruling(&self, run: Interpreted) -> Ruling {
+        match run {
+            Ok(_) => Ruling::Accepted,
+            Err((_, trap)) if crate::judge::judge_bug(trap.code().0) => {
+                let diagnostic = trap.to_diagnostic(&self.name, &self.lines);
+                let shown = cpl_diag::render(&diagnostic, &self.name, &self.source, &self.lines);
+                Ruling::Broke(shown)
+            }
+            Err((_, trap)) => Ruling::Rejected(Some(trap.into_message())),
         }
     }
 
@@ -265,7 +271,7 @@ impl Runner {
                 let mut printed = Some(got.as_bytes().to_vec());
                 let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()));
                 let limit = crate::case::judge_limit(limit);
-                Ok(ruling(run_ir(&vm.program, io, vm.stack_limit, limit)))
+                Ok(vm.ruling(run_ir(&vm.program, io, vm.stack_limit, limit)))
             }
             Runner::Process(checker) => crate::judge::check(checker, input, got, expected, limit)
                 .map_err(unrunnable(&checker.name)),
@@ -301,7 +307,7 @@ impl Runner {
                     .map_or(Ok(String::new()), |t| Err((String::new(), Box::new(t))));
                 Ok(Talked {
                     solution: ran(spoken.solution.map_err(|(out, t)| (out, Box::new(t)))),
-                    ruling: ruling(ruled),
+                    ruling: interactor.ruling(ruled),
                     transcript: spoken.transcript,
                     trap,
                     solution_trap,
@@ -319,7 +325,7 @@ impl Runner {
                         stop: crate::judge::failure(&outcome),
                         cost: Some(outcome),
                     },
-                    ruling: ruling(ruled),
+                    ruling: interactor.ruling(ruled),
                     transcript,
                     trap: json,
                     solution_trap: None,
