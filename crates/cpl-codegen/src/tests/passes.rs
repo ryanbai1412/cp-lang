@@ -2,7 +2,7 @@
 //! rewrite has a row, each row's firing test exists, and each Uses query a
 //! row claims is asked in its module.
 
-use super::cpp;
+use super::{cpp, lower};
 use crate::passes::{Evidence, PASSES};
 use std::path::{Path, PathBuf};
 
@@ -165,4 +165,31 @@ fn a_loop_local_list_is_one_static_buffer() {
         "print(s)\n",
     ));
     assert!(out.contains("static std::vector<ll> seen;"), "{out}");
+}
+
+#[test]
+fn each_written_reports_every_store_set_and_mut_arg() {
+    let program = lower(concat!(
+        "fn add(mut l: List<Int>):\n",
+        "    l.push(1)\n",
+        "var a = 0\n",
+        "var b: List<Int> = []\n",
+        "var c: List<Int> = []\n",
+        "a = 1\n",
+        "add(mut b)\n",
+        "c.push(2)\n",
+        "print(a, b.len, c.len)\n",
+    ));
+    let mut roots = std::collections::BTreeSet::new();
+    let blocks = [&program.setup, &program.main];
+    for block in blocks {
+        crate::uses::places::each_written(block, &mut |p| {
+            roots.insert(crate::walk::root(p));
+        });
+    }
+    assert_eq!(
+        roots.len(),
+        3,
+        "a stored, b passed mut, c pushed: {roots:?}"
+    );
 }

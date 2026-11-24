@@ -8,6 +8,7 @@
 //! block's value) keeps it live to the end of the block.
 
 pub(crate) mod effects;
+pub(crate) mod places;
 
 use crate::lend::{copied_at_test, Tail};
 use crate::walk;

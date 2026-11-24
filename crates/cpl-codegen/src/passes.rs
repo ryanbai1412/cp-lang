@@ -211,7 +211,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "niche",
         "niche.rs",
-        Unasked,
+        Uses(&["each_written"]),
         "an_optional_of_a_position_a_bool_or_a_char_is_one_scalar",
     ),
     pass(

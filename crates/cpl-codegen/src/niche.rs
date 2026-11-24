@@ -11,8 +11,8 @@
 //! with the raw `INT64_MIN` as `none`.
 
 use crate::names::Niches;
-use crate::walk;
-use cpl_ir::{Arg, Block, ExprKind, Place, PlaceKind, Program, Stmt, Ty};
+use crate::uses::places::each_written;
+use cpl_ir::{Block, Place, PlaceKind, Program, Ty};
 
 /// True when the inside of a `?Bool` or `?Char` is taken as a place
 /// somewhere in `block`: `(o ??= x) = y`.
@@ -28,22 +28,7 @@ fn small_place(block: &Block, bools: &mut bool, chars: &mut bool) {
             PlaceKind::Index(base, _) | PlaceKind::Field(base, _) => place = base,
         }
     };
-    walk::deep_stmts(block, &mut |stmt| {
-        if let Stmt::Assign(target, ..) = stmt {
-            place(target);
-        }
-    });
-    walk::deep_exprs(block, &mut |e| match &e.kind {
-        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-            for arg in args {
-                if let Arg::Mut(target) = arg {
-                    place(target);
-                }
-            }
-        }
-        ExprKind::Mutate(_, target, _) | ExprKind::Sort(target, _, _) => place(target),
-        _ => {}
-    });
+    each_written(block, &mut place);
 }
 
 /// Whether `?Bool` and `?Char` are packed in this program.
