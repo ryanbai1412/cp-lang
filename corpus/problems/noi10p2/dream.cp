@@ -8,4 +8,4 @@ fn best(from: Note.cuts, ends: Range<Note.cuts>) -> (Int, Note.cuts):
     let (p, at) = peak.fold(ends)
     (p - pre[from], at)
 
-print(split_best(Note.cuts, range: s => s.shift(len), best).take(k).sum())
+print(split_best(Note.cuts, range: s => s.shift(len), best: best).take(k).sum())

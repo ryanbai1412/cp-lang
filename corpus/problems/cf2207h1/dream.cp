@@ -19,9 +19,9 @@ var nodes = [Node(i..i + 1, None) for i in 0..n]
 
 fn ask() -> Int:
     print("?", [v + 1 for v in x])
-    x.position(of: read::<Int>() - 1)!
+    x.keys.find(i => x[i] == read::<Int>() - 1)!
 
-fn join(a: Int, b: Int, is_max: Bool) -> Int = nodes.push_id(
+fn join(a: Int, b: Int, is_max: Bool) -> Int = nodes.push(
     Node(nodes[a].span.start..nodes[b].span.end, Some((is_max, a, b)))
 )
 

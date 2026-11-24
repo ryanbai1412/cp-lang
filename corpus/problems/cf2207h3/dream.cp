@@ -30,7 +30,7 @@ fn probe() -> Int:
     let winner: Int = read()
     x.find(winner)!
 
-fn join(a: Int, b: Int, is_max: Bool) -> Int = gates.push_id(
+fn join(a: Int, b: Int, is_max: Bool) -> Int = gates.push(
     Gate(gates[a].span.start..gates[b].span.end, Some((is_max, a, b)))
 )
 
