@@ -7,13 +7,16 @@
 //   the other bottles by that cap, and recurse on the smaller and the larger halves. One query
 //   per element per level: about 4 n ln n = 3.7e5 expected queries at n = 1e4.
 // Bounds: n: 1..=10_000
+use std.rand.{Rng}
+
 let n: 1..=10_000 = read()
 domain Cap = 1..=n
 domain Bottle = 1..=n
 fn fit(c: Cap, b: Bottle) -> -1..=1 = ask(0, c, b)
+var rng = Rng.new(2009)
 fn pair_up(caps: List<Cap>, bottles: List<Bottle>):
-    if caps.len == 0: return
-    let pivot = bottles[rand(0, bottles.len - 1)]
+    if caps.is_empty: return
+    let pivot = rng.pick(bottles)!
     let by_fit = caps.group(by: c => fit(c, pivot))
     let cap = by_fit[0][0]
     print(1, cap, pivot)
