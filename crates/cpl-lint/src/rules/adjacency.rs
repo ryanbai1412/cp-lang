@@ -1,7 +1,9 @@
 //! `manual_adjacency_list` (L0537): C++'s `vector<vector<int>> adj(n + 1)`
 //! filled by `adj[u].push_back(v)` as each edge is read. `std.graph`'s
 //! `Graph.undirected(es)` / `Graph.directed(es)` build it from the edge list
-//! read in one go, over a vertex domain.
+//! read in one go, over a vertex domain. An edge that needs its own logic (a
+//! push under `if` or `match`, as when a field picks the directions) is not
+//! that list, and streaming it uses less memory than reading every edge first.
 
 use crate::facts::Facts;
 use crate::std_fn;
@@ -20,6 +22,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         facts: Option<&'a Facts>,
         empty: Vec<(String, Span)>,
         pushed_per_edge: Vec<String>,
+        pushed_by_branch: Vec<String>,
     }
     impl Visitor for Lists<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
@@ -102,10 +105,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                         }
                     }
                     for s in &body.stmts {
-                        walk_stmt(
-                            &mut Pushes(&mut self.pushed_per_edge, &reads, self.facts, self.base),
-                            s,
-                        );
+                        let into = if branches(s) {
+                            &mut self.pushed_by_branch
+                        } else {
+                            &mut self.pushed_per_edge
+                        };
+                        walk_stmt(&mut Pushes(into, &reads, self.facts, self.base), s);
                     }
                 }
                 _ => {}
@@ -117,11 +122,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         facts: file.facts,
         empty: Vec::new(),
         pushed_per_edge: Vec::new(),
+        pushed_by_branch: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
     v.empty
         .into_iter()
-        .filter(|(name, _)| v.pushed_per_edge.contains(name))
+        .filter(|(name, _)| v.pushed_per_edge.contains(name) && !v.pushed_by_branch.contains(name))
         .map(|(name, span)| {
             let diag = lint_rules::MANUAL_ADJACENCY_LIST
                 .warning(span, &[&name])
@@ -136,6 +142,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 
 fn is_list(ty: &Ty) -> bool {
     ty.is_list()
+}
+
+/// Whether `s` is an `if` or `match`: an edge with its own logic.
+fn branches(s: &Stmt) -> bool {
+    matches!(&s.kind, StmtKind::Expr(e) if matches!(e.kind, ExprKind::If { .. } | ExprKind::Match { .. }))
 }
 
 fn is_empty_list(e: &Expr) -> bool {

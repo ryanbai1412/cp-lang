@@ -676,6 +676,19 @@ fn manual_adjacency_list_reads_the_list_type_from_the_checker() {
     assert!(!fires("var adj: List<Set<Int>> = [[] for _ in 0..=n]"));
 }
 
+/// noip09p3: a field picks each road's directions, so the roads stream into
+/// the list; reading them all first for `Graph` peaks at more memory.
+#[test]
+fn manual_adjacency_list_leaves_an_edge_with_its_own_logic() {
+    let src = "let (n, m): (1..=100000, 0..=500000) = read()\nvar road: [1..=n]List<Int> = []\nfor _ in 0..m:\n    let (u, v, ways): (1..=n, 1..=n, 1..=2) = read()\n    road[u].push(v)\n    if ways == 2: road[v].push(u)\nprint(road[1].len)\n";
+    assert!(!codes(src).contains(&"L0537"), "{:?}", codes(src));
+    let plain = src.replace(
+        "    if ways == 2: road[v].push(u)\n",
+        "    road[v].push(u)\n",
+    );
+    assert!(codes(&plain).contains(&"L0537"), "{:?}", codes(&plain));
+}
+
 #[test]
 fn sentinel_table_reads_the_element_type_from_the_checker() {
     let fires = |decl: &str| {
