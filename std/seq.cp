@@ -14,6 +14,7 @@ use std.algebra.{Monoid}
 use std.hashmap.{Counter}
 use std.prefix.{Prefix}
 use std.range.{RingRange, ends, first_true, last_true}
+use std.rand.{shuffle}
 
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V

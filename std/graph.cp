@@ -21,6 +21,7 @@ use std.dsu.{Dsu}
 use std.heap.{Heap, MinHeap}
 use std.math.{gcd}
 use std.opt.{is_none_or}
+use std.rand.{shuffle}
 use std.seq.{collect, reverse, count, Slice}
 
 /// \(O(\deg u)\) per walk of `out(u)`.

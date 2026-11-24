@@ -1007,8 +1007,6 @@ pub enum Mutation {
     Reserve,
     /// `xs.extend(other)` on a list.
     Extend,
-    /// `shuffle(mut xs)` on a list.
-    Shuffle,
     /// `a.fill(val)` on an array.
     Fill,
     /// `xs.take()`: gives the value and leaves an empty one, in O(1).

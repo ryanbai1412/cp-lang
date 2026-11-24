@@ -1104,10 +1104,6 @@ impl<'p> Emitter<'p> {
                                 pad(this.indent)
                             ));
                         }),
-                        Mutation::Shuffle => {
-                            this.need("rng");
-                            Code::primary(format!("cpl::shuffle({p})"))
-                        }
                         Mutation::Fill if place.ty == Ty::Str => Code::primary(format!(
                             "std::fill({p}.begin(), {p}.end(), {})",
                             cast("char", &arg)

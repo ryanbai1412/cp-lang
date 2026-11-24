@@ -6,7 +6,7 @@ use super::Compiler;
 use crate::apply::{applies, operands};
 use crate::vm::helpers::quiet;
 use crate::vm::ir::*;
-use cpl_ir::{Dim, Expr, ExprKind, Mutation, Program, Ty};
+use cpl_ir::{Dim, Expr, ExprKind, Program, Ty};
 
 /// Whether comparing values of `ty` never runs user code (a struct's `eq`
 /// or `lt`), so the frame can stay in registers.
@@ -96,14 +96,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// `Op::MutatePlace`, when the VM can walk to its place and the values
     /// are [`owned`].
     pub(super) fn try_compile_mutate_place(&mut self, expr: &'p Expr) -> Option<u16> {
-        let ExprKind::Mutate(op, place, args) = &expr.kind else {
+        let ExprKind::Mutate(_, place, args) = &expr.kind else {
             return None;
         };
         let program = self.program;
-        if *op == Mutation::Shuffle
-            || !owned(&place.ty, program)
-            || !args.iter().all(|a| owned(&a.ty, program))
-        {
+        if !owned(&place.ty, program) || !args.iter().all(|a| owned(&a.ty, program)) {
             return None;
         }
         let saved = (self.ops.len(), self.spans.len(), self.places.len());

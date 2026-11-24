@@ -504,22 +504,6 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            "shuffle" => {
-                if args.len() != 1 {
-                    self.error(
-                        codes::WRONG_ARG_COUNT,
-                        span,
-                        "`shuffle` takes 1 list argument",
-                    );
-                    return self.err_expr(span);
-                }
-                let place = self.place(&args[0].value);
-                self.mk(
-                    ExprKind::Mutate(Mutation::Shuffle, Box::new(place), Vec::new()),
-                    Ty::Unit,
-                    span,
-                )
-            }
             "copy" => match self.positional_any(name, args, 1, span) {
                 Some(exprs) => {
                     let val = self.expr(exprs[0], hint);

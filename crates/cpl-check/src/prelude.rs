@@ -676,7 +676,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "argmin",
     "sort",
     "sorted",
-    "shuffle",
     "swap",
     "copy",
     "rand",
