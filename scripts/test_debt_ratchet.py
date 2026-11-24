@@ -269,10 +269,13 @@ class DebtRatchetTest(unittest.TestCase):
     def test_unrun_script_tests(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self._write(root, "scripts/check.sh", "python3 -m unittest scripts/test_a.py\n")
-            self._write(root, "scripts/test_a.py", "")
-            self._write(root, "scripts/test_b.py", "")
-            self.assertEqual(dr.unrun_script_tests(root), ["scripts/test_b.py"])
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "scripts/check.sh", "mapfile -t script_tests < <(git ls-files 'scripts/test_*.py')\n"
+                        "uv run python -m unittest tools/x/test_named.py\n")
+            for rel in ("scripts/test_a.py", "tools/x/test_named.py", "tools/y/test_b.py", "corpus/test_c.py"):
+                self._write(root, rel, "")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.unrun_script_tests(root), ["corpus/test_c.py", "tools/y/test_b.py"])
 
     def test_stale_arch_paths_skips_ignored_and_known_debt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

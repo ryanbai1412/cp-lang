@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
 import re
+import sys
 import tempfile
 import unittest
 
+sys.path.insert(0, str(Path(__file__).parent))
 from emit import embed_payload, render_html, safe_json
 from samples import all_samples
 

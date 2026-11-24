@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import fnmatch
 import functools
 import glob
 import hashlib
@@ -617,10 +618,14 @@ def direct_python(root: Path) -> list[str]:
 
 
 def unrun_script_tests(root: Path) -> list[str]:
-    """`scripts/test_*.py` files the gate never names, so nothing runs them."""
+    """Tracked `test_*.py` files the gate neither names nor globs in its `script_tests`."""
     gate = root / "scripts/check.sh"
     text = gate.read_text() if gate.is_file() else ""
-    return sorted(_rel(root, p) for p in (root / "scripts").glob("test_*.py") if p.name not in text)
+    m = re.search(r"^mapfile -t script_tests < <\(git ls-files (.*)\)$", text, re.M)
+    globs = re.findall(r"'([^']+)'", m[1]) if m else []
+    return sorted(rel for rel in _git(root, "ls-files", "*test_*.py")
+                  if Path(rel).name.startswith("test_") and Path(rel).name not in text
+                  and not any(fnmatch.fnmatchcase(rel, g) for g in globs))
 
 
 def last_touched(root: Path, rel: str, n: int = 3) -> list[str]:

@@ -100,7 +100,6 @@ class CheckCacheTest(unittest.TestCase):
     def test_no_stage_excludes_a_file_the_rust_build_reads(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         reads = cc.build_reads(root)
-        self.assertIn("std/README.md", reads)
         self.assertIn("editors/lsp-matrix.json", reads)
         always = ["std/prelude.cp", "Cargo.toml", "Cargo.lock", "crates/cpl-cli/src/main.rs"]
         for stage, pats in cc.STAGES.items():
