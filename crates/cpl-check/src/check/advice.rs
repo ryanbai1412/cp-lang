@@ -580,6 +580,22 @@ impl Checker<'_> {
                     "a tuple is written in parentheses",
                 )
             }
+            ("__builtin_popcount" | "__builtin_popcountll", [x]) => (
+                format!("popcount({})", self.text(x.value.span)),
+                "the 1 bits are counted with `popcount`",
+            ),
+            ("bisect_left" | "bisect_right", [xs, x]) => {
+                let m = if name == "bisect_left" {
+                    "first_ge"
+                } else {
+                    "first_gt"
+                };
+                let xs = operand(self, xs);
+                (
+                    format!("({xs}.{m}({}) ?? {xs}.len)", self.text(x.value.span)),
+                    "a sorted list is searched with `first_ge` and `first_gt`",
+                )
+            }
             ("enumerate", [xs]) => (
                 format!("{}.items", operand(self, xs)),
                 "index-element pairs are a member",
@@ -1073,6 +1089,14 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
         "max_element" | "min_element" => {
             Some("a list's largest and smallest values are `a.max()!` and `a.min()!`")
         }
+        "accumulate" => Some("a list's sum is `a.sum()`"),
+        "__builtin_popcount" | "__builtin_popcountll" => {
+            Some("the 1 bits are counted with `popcount(x)`")
+        }
+        "lower_bound" | "upper_bound" | "bisect_left" | "bisect_right" => Some(
+            "a sorted list is searched with `a.first_ge(x)` and `a.first_gt(x)`: \
+             the index, or `None` past the end",
+        ),
         "memset" => Some("a list is filled with its `fill`: `a.fill(0)`"),
         "make_pair" | "make_tuple" => Some("a tuple is written in parentheses: `(a, b)`"),
         "endl" => Some("`print` ends the line itself: `print(a, b)` writes `a b` and a newline"),
@@ -1231,27 +1255,60 @@ pub(super) fn index_of(src: &str, base: Span, name: &Name, ty: &Ty) -> Option<(S
     Some((help, fix))
 }
 
-/// `sort(a.begin(), a.end())` as `a.sort()`, `max_element(..)` as `a.max()!`.
+/// `sort(a.begin(), a.end())` as `a.sort()`, `max_element(..)` as
+/// `a.max()!`, `lower_bound(.., x) - a.begin()` as `(a.first_ge(x) ?? a.len)`.
 pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix> {
     let x = src.get(base.start as usize..base.end as usize)?;
-    let tail = format!("(), {x}.end())");
-    if !src.get(name.end as usize..)?.starts_with(&tail) {
-        return None;
-    }
+    let rest = src
+        .get(name.end as usize..)?
+        .strip_prefix(&format!("(), {x}.end()"))?;
     let head = src.get(..base.start as usize)?;
-    let (f, ours) = [
-        ("sort", "sort()"),
-        ("reverse", "reverse()"),
-        ("max_element", "max()!"),
-        ("min_element", "min()!"),
+    let f = [
+        "sort",
+        "reverse",
+        "max_element",
+        "min_element",
+        "accumulate",
+        "count",
+        "lower_bound",
+        "upper_bound",
     ]
     .into_iter()
-    .find(|(f, _)| head.ends_with(&format!("{f}(")))?;
+    .find(|f| {
+        head.strip_suffix(&format!("{f}("))
+            .is_some_and(|h| !h.ends_with(|c: char| c.is_alphanumeric() || c == '_' || c == '.'))
+    })?;
+    let (arg, rest) = match rest.strip_prefix(", ") {
+        Some(r) => {
+            let close = r.find(')')?;
+            let arg = r[..close].trim();
+            (!arg.contains('(')).then_some((Some(arg), &r[close + 1..]))?
+        }
+        None => (None, rest.strip_prefix(')')?),
+    };
+    let since = format!(" - {x}.begin()");
+    let (new, extra) = match (f, arg) {
+        ("sort" | "reverse", None) => (format!("{x}.{f}()"), 0),
+        ("max_element", None) => (format!("{x}.max()!"), 0),
+        ("min_element", None) => (format!("{x}.min()!"), 0),
+        ("accumulate", Some("0" | "0LL" | "0ll")) => (format!("{x}.sum()"), 0),
+        ("count", Some(v)) => (format!("{x}.count({v})"), 0),
+        // The end position when no element qualifies, as C++'s `end()`.
+        ("lower_bound" | "upper_bound", Some(v)) if rest.starts_with(&since) => {
+            let m = if f == "lower_bound" {
+                "first_ge"
+            } else {
+                "first_gt"
+            };
+            (format!("({x}.{m}({v}) ?? {x}.len)"), since.len())
+        }
+        _ => return None,
+    };
     let start = base.start - f.len() as u32 - 1;
-    let new = format!("{x}.{ours}");
+    let end = (src.len() - rest.len() + extra) as u32;
     Some(Fix {
         title: format!("write `{new}`"),
-        edits: vec![(Span::new(start, name.end + tail.len() as u32), new)],
+        edits: vec![(Span::new(start, end), new)],
     })
 }
 

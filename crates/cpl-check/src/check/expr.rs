@@ -1842,7 +1842,17 @@ impl<'a> Checker<'a> {
             let twin = self.method_twin(base, name, &base_ty);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             let pair = super::advice::iterator_pair_fix(self.src, base.span, name.span);
-            if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+            // `lower_bound(..) - a.begin()`: an earlier fix already rewrites it.
+            let rewritten = self.sink.diagnostics().iter().any(|d| {
+                d.fixes
+                    .iter()
+                    .any(|f| f.edits.iter().any(|(at, _)| at.contains(name.span)))
+            });
+            let diag = match rewritten {
+                true => None,
+                false => self.error(codes::UNKNOWN_FIELD, name.span, message),
+            };
+            if let Some(diag) = diag {
                 if let Some((help, fix)) = twin {
                     diag.help = Some(help);
                     diag.fixes.push(fix);
