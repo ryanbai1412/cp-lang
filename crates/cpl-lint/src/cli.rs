@@ -215,8 +215,7 @@ pub fn run_with(
             });
             continue;
         }
-        db.set_file(&key, src.as_str());
-        let mut analysis = db.analyze(&key).expect("the file was just set");
+        let mut analysis = db.analyze_text(&key, src.as_str());
         let mut diagnostics = lint_analysis(&analysis, &config);
         diagnostics.retain(keep);
         if fix {
@@ -224,8 +223,7 @@ pub fn run_with(
                 apply_lint_fixes_where(&mut db, &key, src, &config, reported_of, &keep);
             fixed += applied;
             src = text;
-            db.set_file(&key, src.as_str());
-            analysis = db.analyze(&key).expect("the file was just set");
+            analysis = db.analyze_text(&key, src.as_str());
             diagnostics = lint_analysis(&analysis, &config);
             diagnostics.retain(keep);
             if let Err(e) = std::fs::write(file, &src) {

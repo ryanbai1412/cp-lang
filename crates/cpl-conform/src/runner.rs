@@ -11,8 +11,7 @@ use cpl_diag::{Diagnostic, LineIndex, Severity};
 /// Runs `cpl check` semantics, returning rendered
 /// diagnostics and whether any error diagnostic occurred.
 pub fn check_spec(db: &mut Session, path: &str, text: &str) -> (String, bool) {
-    db.set_file(path, text);
-    let analysis = db.analyze(path).expect("the file was just set");
+    let analysis = db.analyze_text(path, text);
     db.remove_file(path);
     let diagnostics: Vec<Diagnostic> = cpl_ir::reported(&analysis);
     let failed = diagnostics.iter().any(|d| d.severity == Severity::Error);
@@ -28,8 +27,7 @@ pub fn check_spec(db: &mut Session, path: &str, text: &str) -> (String, bool) {
 /// a case header names a lint, not a check error.
 pub fn lint_spec(db: &mut Session, path: &str, text: &str) -> String {
     let (config, _) = cpl_lint::Config::discover(Path::new(path));
-    db.set_file(path, text);
-    let analysis = db.analyze(path).expect("the file was just set");
+    let analysis = db.analyze_text(path, text);
     db.remove_file(path);
     let lints = cpl_lint::lint_analysis(&analysis, &config);
     if lints.is_empty() {
@@ -54,8 +52,7 @@ pub fn compile_program(
     path: &str,
     text: &str,
 ) -> Result<CompiledProgram, CompileError> {
-    db.set_file(path, text);
-    let analysis = db.analyze(path).expect("the file was just set");
+    let analysis = db.analyze_text(path, text);
     db.remove_file(path);
     if !analysis.diagnostics.is_empty()
         && analysis

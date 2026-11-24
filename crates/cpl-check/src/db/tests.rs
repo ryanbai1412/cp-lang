@@ -327,3 +327,17 @@ fn a_silent_unknown_names_its_cause() {
     let causes: Vec<&str> = a.silent_unknown_causes().iter().map(|(_, c)| *c).collect();
     assert_eq!(causes, ["list"]);
 }
+
+#[test]
+fn analyze_text_sets_the_file_and_reuses_an_unchanged_analysis() {
+    let mut db = Database::new();
+    let first = db.analyze_text("a.cp", "print(1)\n");
+    assert!(Arc::ptr_eq(&first, &db.analyze_text("a.cp", "print(1)\n")));
+    assert!(Arc::ptr_eq(&first, &db.analyze("a.cp").unwrap()));
+    let edited = db.analyze_text("a.cp", "let x: Int = \"no\"\n");
+    assert!(!edited.diagnostics.is_empty());
+    assert_eq!(
+        db.file_text("a.cp").as_deref(),
+        Some("let x: Int = \"no\"\n")
+    );
+}

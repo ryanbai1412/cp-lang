@@ -371,8 +371,7 @@ fn emit_cpp(
         ))
     };
     let mut db = cpl_check::Session::new();
-    db.set_file(&name, text.as_str());
-    let analysis = db.analyze(&name).expect("the file was just set");
+    let analysis = db.analyze_text(&name, text.as_str());
     let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
     if analysis.diagnostics.iter().any(is_error) {
         return Err(errors(&analysis.diagnostics));
@@ -835,8 +834,7 @@ impl Program {
         let text = std::fs::read_to_string(path)
             .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
         let mut db = cpl_check::Session::new();
-        db.set_file(&name, text.as_str());
-        let analysis = db.analyze(&name).expect("the file was just set");
+        let analysis = db.analyze_text(&name, text.as_str());
         let failed = |diagnostics: &[cpl_diag::Diagnostic]| {
             BuildError(format!(
                 "{name} does not build:\n{}",

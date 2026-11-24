@@ -219,8 +219,7 @@ pub fn apply_lint_fixes_where(
 ) -> (String, usize) {
     let mut applied = 0;
     for _ in 0..8 {
-        db.set_file(path, text.as_str());
-        let analysis = db.analyze(path).expect("the file was just set");
+        let analysis = db.analyze_text(path, text.as_str());
         let mut findings = lint_analysis(&analysis, config);
         findings.retain(|d| keep(d));
         let errors = error_codes(&check(&analysis));

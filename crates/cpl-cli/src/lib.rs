@@ -775,10 +775,7 @@ pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_check::Session) -> R) -> R {
 
 /// Checks and lowers `text` as the file at `path`.
 fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
-    let analysis = with_db(|db| {
-        db.set_file(path, text.as_str());
-        db.analyze(path).expect("the file was just set")
-    });
+    let analysis = with_db(|db| db.analyze_text(path, text.as_str()));
     if !analysis.diagnostics.is_empty() {
         *stderr += &cpl_diag::render_all(&analysis.diagnostics, path, &text);
         if analysis

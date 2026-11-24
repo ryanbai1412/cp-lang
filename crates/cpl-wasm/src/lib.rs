@@ -147,8 +147,7 @@ impl Playground {
 
     /// `cpl check`: every diagnostic in `source`.
     pub fn check(&mut self, name: &str, source: &str) -> Value {
-        self.db.set_file(name, source);
-        let analysis = self.db.analyze(name).expect("the file was just set");
+        let analysis = self.db.analyze_text(name, source);
         let diagnostics = cpl_ir::check(&analysis);
         let code = if diagnostics.iter().any(|d| d.severity == Severity::Error) {
             EXIT_ERRORS
@@ -181,8 +180,7 @@ impl Playground {
     /// their fixes, as `check` reports diagnostics. Empty when `source` has
     /// a syntax error. Kept apart from `check` so that matches `cpl check`.
     pub fn lint(&mut self, name: &str, source: &str) -> Value {
-        self.db.set_file(name, source);
-        let analysis = self.db.analyze(name).expect("the file was just set");
+        let analysis = self.db.analyze_text(name, source);
         let diagnostics = cpl_lint::lint_analysis(&analysis, &cpl_lint::Config::default());
         let stderr = rendered(&diagnostics, name, source);
         outcome(0, &diagnostics, source, stderr, [])
@@ -613,8 +611,7 @@ impl Playground {
     /// The gate `run` and `build` both go through, as in `cpl`: check, then
     /// lower. On failure, the finished result.
     fn compile(&mut self, name: &str, source: &str) -> Result<Compiled, Value> {
-        self.db.set_file(name, source);
-        let analysis = self.db.analyze(name).expect("the file was just set");
+        let analysis = self.db.analyze_text(name, source);
         let mut diagnostics = analysis.diagnostics.clone();
         let mut stderr = rendered(&diagnostics, name, source);
         if analysis.has_errors() {

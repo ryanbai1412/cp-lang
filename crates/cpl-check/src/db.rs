@@ -341,12 +341,17 @@ impl Database {
         self.store(path, text.into(), false);
     }
 
-    fn store(&mut self, path: &str, text: Arc<str>, loaded: bool) {
+    /// Stores `text` as `path` and returns the file's id.
+    fn store(&mut self, path: &str, text: Arc<str>, loaded: bool) -> u32 {
         match self.files.get_mut(path) {
             // What the editor holds wins over what is on disk.
-            Some(file) if loaded && !file.loaded => {}
-            Some(file) if file.text == text => file.loaded &= loaded,
+            Some(file) if loaded && !file.loaded => file.id,
+            Some(file) if file.text == text => {
+                file.loaded &= loaded;
+                file.id
+            }
             Some(file) => {
+                let id = file.id;
                 file.text = text;
                 file.loaded = loaded;
                 file.forget();
@@ -360,6 +365,7 @@ impl Database {
                         file.forget();
                     }
                 }
+                id
             }
             None => {
                 let id = self.next_file;
@@ -374,6 +380,7 @@ impl Database {
                         loaded,
                     },
                 );
+                id
             }
         }
     }
@@ -421,17 +428,37 @@ impl Database {
         imported_module: bool,
     ) -> Option<Arc<Analysis>> {
         let file = self.files.get(path)?;
-        let cached = if imported_module {
-            &file.module
-        } else {
-            &file.program
-        };
+        let (id, text) = (file.id, file.text.clone());
+        Some(self.analyze_file(path, id, text, imported_module))
+    }
+
+    /// `set_file` then `analyze`: the file is there, so there is always an analysis.
+    pub fn analyze_text(&mut self, path: &str, text: impl Into<Arc<str>>) -> Arc<Analysis> {
+        let text = text.into();
+        self.edits += 1;
+        let id = self.store(path, text.clone(), false);
+        self.analyze_file(path, id, text, false)
+    }
+
+    fn analyze_file(
+        &mut self,
+        path: &str,
+        id: u32,
+        text: Arc<str>,
+        imported_module: bool,
+    ) -> Arc<Analysis> {
+        let cached = self.files.get(path).and_then(|file| {
+            if imported_module {
+                file.module.clone()
+            } else {
+                file.program.clone()
+            }
+        });
         if let Some(analysis) = cached {
-            if !self.reaches_open(analysis) {
-                return Some(analysis.clone());
+            if !self.reaches_open(&analysis) {
+                return analysis;
             }
         }
-        let (id, text) = (file.id, file.text.clone());
         self.revision += 1;
         let revision = self.revision;
 
@@ -1279,7 +1306,7 @@ impl Database {
                 *slot = Some(analysis.clone());
             }
         }
-        Some(analysis)
+        analysis
     }
 
     /// Every diagnostic for a file, in source order.
