@@ -217,6 +217,13 @@ impl<'a> Checker<'a> {
                         .is_some_and(|e| self.literal_shape_fits(e, got, want))
                 })
             }
+            (ExprKind::None, _, Ty::Optional(_)) => true,
+            (ExprKind::Call { callee, args }, Ty::Optional(g), Ty::Optional(w))
+                if matches!(&callee.kind, ExprKind::Name(n) if n == "some")
+                    && matches!(args.as_slice(), [a] if a.name.is_none()) =>
+            {
+                part(self, &args[0].value, g, w)
+            }
             (_, _, Ty::Optional(inner)) => self.literal_shape_fits(at, got, inner),
             _ => false,
         }

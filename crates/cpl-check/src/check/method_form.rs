@@ -281,8 +281,17 @@ impl Checker<'_> {
                 self.record_getter(expr, expr, false);
             }
         }
-        match self.member_ty(expr, name, base) {
+        match self.member_ty(expr, name, base.clone()) {
             Ty::Unknown if !self.in_call_callee => self.getter_fn_read(expr).unwrap_or(Ty::Unknown),
+            // `p.up`, a free `@get fn` over a tuple, reads its value.
+            Ty::Fn { params, ret }
+                if params.is_empty()
+                    && !self.in_call_callee
+                    && matches!(self.pick_method(&base, &name.text),
+                        Pick::One(_, def) if matches!(&*def, Def::Fn { getter: true, .. })) =>
+            {
+                *ret
+            }
             ty => ty,
         }
     }

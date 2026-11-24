@@ -563,6 +563,21 @@ fn a_catalog_closure_takes_the_element_past_named_only_and_optional_params() {
 }
 
 #[test]
+fn some_of_a_value_is_an_optional_of_its_type_wherever_it_is_built() {
+    let src = "fn g<T>(x: T) -> ?T = Some(x)\nfn h(xs: List<Int>, k: Int) -> ?Int = if k < xs.len: Some(xs[k]) else: None\nlet n = read<1..=10>()\ndomain V = 0..n\nvar up: [V]?V = None\nlet p: V = 0\nup[p] = Some(p)\ndomain W = 0..3\nfn lay(t: W) -> ?(to: W, w: Int) = if t < 2: Some((to: t, w: 1)) else: None\nlet fs: List<?Int> = [None, Some(2)]\nlet s = Some(3)\nprint(g(1)!, h([1], 0)!, up[p]!, lay(0)!.w, fs.len, s!)\n";
+    let mut db = Database::new();
+    db.set_file("main.cp", src);
+    let at = src.rfind("s!").unwrap() as u32;
+    let hover = db.hover("main.cp", at).map(|h| h.text);
+    assert!(
+        hover.as_deref().is_some_and(|h| h.contains("s: ?Int")),
+        "{hover:?}"
+    );
+    let (rows, errors) = silent_unknowns_of(src);
+    assert!(rows.is_empty() && errors == 0, "{rows:?} {errors}");
+}
+
+#[test]
 fn a_free_max_by_with_no_dot_max_in_the_file_types_like_the_method() {
     let src = "fn sq(n: Int) -> yields Int:\n    for i in 0..n: yield i * i\nlet m = max(sq(4), by: x => -x)\nlet xs = [(1, 2), (3, 0)]\nlet p = min(xs, by: q => q.1)\nprint(m!, p!.0)\n";
     let mut db = Database::new();

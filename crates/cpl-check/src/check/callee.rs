@@ -60,6 +60,17 @@ impl Checker<'_> {
         {
             ty = Ty::Int;
         }
+        // `Some(x)` is a present `?T` of `x`'s type.
+        if ty == Ty::Unknown
+            && matches!(&callee.kind, ExprKind::Name(n) if n == "some" && self.local(n).is_none() && self.global(n).is_none())
+        {
+            if let [arg] = args {
+                match self.exprs.last_type(arg.value.span) {
+                    Some(inner) if !inner.is_vague() => ty = Ty::Optional(Box::new(inner.widen())),
+                    _ => {}
+                }
+            }
+        }
         if !self.exprs.calls.iter().any(|c| c.call == call.span) {
             if let Some((name, kind)) = self.callee_form(callee) {
                 let builtin = kind == CalleeKind::Method && self.builtin_method(callee, &name.0);

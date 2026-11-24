@@ -79,6 +79,8 @@ fn mk(g: List<List<F>>, r: Int, c: Int) -> Mat<F> = Mat<F>.from_flat(r, c, [g[i]
 
 fn grid(m: Mat<F>) -> List<List<F>> = [[m.get(i, j) for j in 0..m.cols] for i in 0..m.rows]
 
+fn shown(a: List<List<?Int>>) -> List<List<Int>> = [[v ?? -1 for v in r] for r in a]
+
 fn mp(a: List<List<?Int>>, b: List<List<?Int>>, c: Int) -> List<List<?Int>>:
     let none: ?Int = None
     var out = [List.filled(c, none) for _ in 0..a.len]
@@ -207,9 +209,9 @@ for k in 0..n:
         let none: ?Int = None
         var id = [List.filled(c, none) for _ in 0..c]
         for i in 0..c: id[i][i] = Some(0)
-        if [[z.get(i, j) for j in 0..s] for i in 0..r] != mp(a, b, s): bad = "op {k}: min-plus {a} * {b}"
+        if [[z.get(i, j) for j in 0..s] for i in 0..r] != mp(a, b, s): bad = "op {k}: min-plus {shown(a)} * {shown(b)}"
         elif [[mono.id.get(i, j) for j in 0..c] for i in 0..c] != id: bad = "op {k}: min-plus product({c}).id"
-        elif s == c and [[(y ** 2).get(i, j) for j in 0..s] for i in 0..c] != mp(ys, ys, s): bad = "op {k}: min-plus {b} ** 2"
+        elif s == c and [[(y ** 2).get(i, j) for j in 0..s] for i in 0..c] != mp(ys, ys, s): bad = "op {k}: min-plus {shown(b)} ** 2"
     if bad != "":
         break
 print(if bad == "": "ok" else: bad)
