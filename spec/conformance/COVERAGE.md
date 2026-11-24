@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3724 (3600 passing). Rules: 617.
+Cases: 3725 (3600 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 3724 (3600 passing). Rules: 617.
 - R04 (04-indices.md): 73 rules, 198 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 81 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 126 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 97 rules, 263 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -417,7 +417,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.10.9 [1+ 1-]: **C1. No lend escapes.** No `lends` result, projection or stored value borrows the field, ...
 - R05.10.10 [2+ 1-]: **C2. Only the struct's own methods write it.** Outside code can't, even through `mut`.
 - R05.10.11 [2+ 1-]: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
-- R05.10.12 [1+ 1-]: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
+- R05.10.12 [2+ 1-]: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
 - R05.10.13 [2+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
 - R05.10.14 [1+ 0-]: **P1. Cache writes change no answer.** Every sequence of public calls gives the same resul...
 
