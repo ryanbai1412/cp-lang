@@ -5,6 +5,24 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
+    /// A left-out `op: M = NoOp()`: its default's type, read where the template is.
+    #[inline(never)]
+    pub(crate) fn probe_default(
+        &mut self,
+        default: &'a ast::Expr,
+        (m, offset): (ModId, u32),
+        env: &GenEnv,
+    ) -> Option<Ty> {
+        let saved = (
+            std::mem::replace(&mut self.cur_mod, m),
+            std::mem::replace(&mut self.offset, offset),
+            std::mem::replace(&mut self.gen_env, env.clone()),
+        );
+        let probed = self.probe_ty_silent(default);
+        (self.cur_mod, self.offset, self.gen_env) = saved;
+        probed
+    }
+
     /// Calls a generic function or generic struct method, inferring any omitted type arguments
     /// via two-pass unification (non-lambda arguments first, then lambda arguments).
     pub(in crate::lower) fn call_gen_fn(
@@ -119,14 +137,8 @@ impl<'a> Lowerer<'a> {
                     && !matches!(default.kind, ast::ExprKind::Lambda { .. })
                 {
                     // An omitted `op: M = NoOp()` binds `M` before the bounds, so `M.Fold` resolves.
-                    let saved = (
-                        std::mem::replace(&mut self.cur_mod, tpl_mod),
-                        std::mem::replace(&mut self.offset, tpl_offset),
-                        std::mem::replace(&mut self.gen_env, inferred.clone()),
-                    );
-                    let probed = self.probe_ty_silent(default);
-                    (self.cur_mod, self.offset, self.gen_env) = saved;
-                    if let Some(dty) = probed.filter(|t| *t != Ty::Error) {
+                    if let Some(dty) = self.probe_default(default, (tpl_mod, tpl_offset), &inferred)
+                    {
                         inferred.insert(name.text.clone(), GenArg::Ty(dty));
                     }
                 }
@@ -826,14 +838,7 @@ impl<'a> Lowerer<'a> {
                     trait_params.push((decl_idx, probed.ty));
                 }
             } else if let Some(default) = &param.default {
-                let saved = (
-                    std::mem::replace(&mut self.cur_mod, tpl_mod),
-                    std::mem::replace(&mut self.offset, tpl_offset),
-                    std::mem::replace(&mut self.gen_env, inferred.clone()),
-                );
-                let probed = self.probe_ty_silent(default);
-                (self.cur_mod, self.offset, self.gen_env) = saved;
-                if let Some(dty) = probed.filter(|t| *t != Ty::Error) {
+                if let Some(dty) = self.probe_default(default, (tpl_mod, tpl_offset), &inferred) {
                     trait_params.push((decl_idx, dty));
                 }
             }
