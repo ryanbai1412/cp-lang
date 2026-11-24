@@ -5,19 +5,14 @@
 // Solution: keep each player's last spray time (None before the first); a spray scores
 //   150 if t - last <= 10, else 100, and goes to the team of the player number. O(n).
 // original: corpus/submissions/4080824.cpp
-let n: Int = read()
+let n: 1..=100 = read()
 domain Player = 1..=8
+domain Team = 0..2
+let sprays: [n](t: Int, who: Player, hit: Player) = read()
 var last: [Player]?Int = None
-var first = 0
-var second = 0
-for _ in 0..n:
-    let t: Int = read()
-    let who: Player = read()
-    let hit: Player = read()
-    var points = 100
-    if let before = last[who]:
-        if t - before <= 10: points = 150
-    if who.ord < 4: first += points
-    else: second += points
-    last[who] = t
-print(first, second)
+var score: [Team]Int = 0
+for (t, who, _) in sprays:
+    let worth = if last[who].is_some_and(s => t - s <= 10): 150 else: 100
+    last[who] = Some(t)
+    score[Team(who.ord / 4)] += worth
+print(score)

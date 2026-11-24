@@ -7,14 +7,12 @@
 //   less; track max of min(pays_a, pays_b) - (i + j) over all steps. O(n log n).
 // original: corpus/submissions/5324109.cpp
 let n: 1..=1e5 = read()
-let odds: [n](a: F64, b: F64) = read()  // WISH R9: 1.0..=1000.0
-let a = [o.a for o in odds].sorted(by: x => desc(x))
-let b = [o.b for o in odds].sorted(by: x => desc(x))
+let odds: [n](a: F64, b: F64) = read()
+let a = odds.map(o => o.a).sorted(by: desc)
+let b = odds.map(o => o.b).sorted(by: desc)
 
-// Only the best odds of each outcome are worth a bet, and the next bet
-// always goes on the outcome that would pay less.
 var (i, j, pays_a, pays_b, sure) = (0, 0, 0.0, 0.0, 0.0)
-while i < n or j < n:  // WISH R8: two lists, two hand-moved places
+while i < n or j < n:
     if j == n or (i < n and pays_a <= pays_b):
         pays_a += a[i]
         i += 1
