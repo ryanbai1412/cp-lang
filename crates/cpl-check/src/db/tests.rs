@@ -442,3 +442,11 @@ fn method_fits_imports_a_files_methods_once_per_analysis() {
     db.remove_file("main.cp");
     assert!(db.callings.is_empty());
 }
+
+#[test]
+fn a_static_fn_binds_its_structs_type_params_from_the_arguments() {
+    let pair = "struct Pair<T>(a: T, b: T):\n    pub fn twin(x: T) -> Pair<T> = Pair(x, x)\n    @get pub fn both(self) -> yields T:\n        yield self.a\n        yield self.b\nlet p = Pair.twin(4)\nlet xs = p.both.collect()\nvar s = 0\nfor x in p.both: s += x\nprint(xs.len, xs[0] + 1, s, p.a + 1)\n";
+    assert_eq!(silent_unknowns_of(pair), (vec![], 0));
+    let tree = "let n = read<1..=10>()\ndomain V = 0..n\nvar up: [V]?V = None\nlet f = Rooted.try_from_parents(up) else: return\nlet bs = f.roots.collect()\nfor c in bs: print(c)\nfor d in f.roots: print(f.depth(d))\n";
+    assert_eq!(silent_unknowns_of(tree), (vec![], 0));
+}
