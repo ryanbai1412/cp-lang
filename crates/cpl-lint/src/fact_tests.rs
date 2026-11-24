@@ -759,4 +759,18 @@ fn parsed_facts_agree_with_the_facts_of_the_source() {
     let fns = crate::proven_fns(src);
     assert!(!fns.is_empty());
     assert_eq!(crate::proven_fns_parsed(src, &items), fns);
+    let ranges = crate::proven_ranges(src);
+    assert!(!ranges.is_empty());
+    assert_eq!(crate::proven_ranges_parsed(src, &items), ranges);
+    let loops = crate::proven_loops(src);
+    assert!(!loops.is_empty());
+    assert_eq!(crate::proven_loops_parsed(src, &items), loops);
+    assert_eq!(
+        crate::proven_indexes_parsed(src, &items),
+        crate::proven_indexes(src)
+    );
+    assert_eq!(
+        crate::proven_expr_ranges_parsed(src, &items),
+        crate::proven_expr_ranges(src)
+    );
 }
