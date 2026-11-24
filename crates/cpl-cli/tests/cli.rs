@@ -991,6 +991,29 @@ fn test_fails_a_broken_law_with_the_values_that_break_it() {
 }
 
 #[test]
+fn test_samples_a_law_by_its_resolved_type_not_its_spelling() {
+    // `N` is an alias of `Int`; `Big` is a ranged `Int` whose samples stay in
+    // its bounds and include both ends.
+    let source = "type N = Int\ntype Big = 1..=1000000000\nfn f(x: Big) -> Int = x\n\
+        @law alias(a: N) = a + 0 == a\n@law ranged(x: Big) = f(x) >= 1\n\
+        @law below_top(x: Big) = x < 1000000000\n";
+    let path = scratch("laws-typed", "laws.cp", source.as_bytes());
+    let out = cpl(&["test".as_ref(), path.as_os_str()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("ok   ")
+            && stdout.contains("::law_alias")
+            && stdout.contains("::law_ranged"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("law `below_top` does not hold for x = 1000000000"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("2 passed, 1 failed"), "{stdout}");
+}
+
+#[test]
 fn messages_call_the_float_type_f64() {
     let path = scratch("f64-name", "f.cp", b"let x: F64 = 1.5\nlet y: Int = x\n");
     let out = cpl(&["check".as_ref(), path.as_os_str()], b"");

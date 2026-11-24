@@ -5,20 +5,62 @@
 //! sample values of its arguments. A broken law fails with the values
 //! that break it.
 
-use cpl_syntax::ast::{StmtKind, TypeKind};
+use cpl_check::Ty;
+use cpl_diag::Span;
+use cpl_syntax::ast::StmtKind;
 
-/// The values a law's argument is tried with, as source text.
-fn samples(ty: Option<&str>) -> Option<String> {
+const INTS: [i128; 13] = [
+    0,
+    1,
+    -1,
+    2,
+    -2,
+    3,
+    5,
+    -7,
+    10,
+    64,
+    1000,
+    1000000007,
+    -1000000007,
+];
+
+/// A range this short is walked whole: `0..=9`.
+const WALK_MAX: i128 = 64;
+
+/// The values a law's argument is tried with, as source text, by the type
+/// the checker resolved its written type to (`None`: no type written).
+fn samples(ty: Option<&Ty>) -> Option<String> {
+    let list = |xs: &[&str]| format!("[{}]", xs.join(", "));
     Some(match ty {
-        None | Some("Int" | "I64") => {
-            "[0, 1, -1, 2, -2, 3, 5, -7, 10, 64, 1000, 1000000007, -1000000007]".to_string()
-        }
-        Some("Bool") => "[false, true]".to_string(),
-        Some("F64") => "[0.0, 1.0, -1.0, 0.5, 2.0, -3.25, 1000.0]".to_string(),
-        Some("Char") => "['a', 'b', 'z', 'A', '0', ' ']".to_string(),
-        Some("Str") => "[\"\", \"a\", \"b\", \"ab\", \"ba\", \"abc\"]".to_string(),
-        // A domain or an enum is walked whole.
-        Some(name) if name.starts_with(|c: char| c.is_ascii_uppercase()) => name.to_string(),
+        None | Some(Ty::Int | Ty::I128) => list(
+            &INTS
+                .map(|x| x.to_string())
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+        ),
+        Some(Ty::Range { lo, hi, .. }) => match (lo, hi) {
+            (Some(lo), Some(hi)) if hi - lo <= WALK_MAX => format!("{lo}..={hi}"),
+            _ => {
+                let (lo, hi) = (lo.unwrap_or(i128::MIN), hi.unwrap_or(i128::MAX));
+                let ends = [lo, lo.saturating_add(1), hi.saturating_sub(1), hi];
+                let mut xs: Vec<i128> = (INTS.iter().chain(&ends).copied())
+                    .filter(|x| (lo..=hi).contains(x) && x.unsigned_abs() <= i64::MAX as u128)
+                    .collect();
+                xs.sort_unstable();
+                xs.dedup();
+                let xs: Vec<String> = xs.iter().map(i128::to_string).collect();
+                list(&xs.iter().map(String::as_str).collect::<Vec<_>>())
+            }
+        },
+        Some(Ty::Bool) => list(&["false", "true"]),
+        Some(Ty::Float) => list(&["0.0", "1.0", "-1.0", "0.5", "2.0", "-3.25", "1000.0"]),
+        Some(Ty::Char) => list(&["'a'", "'b'", "'z'", "'A'", "'0'", "' '"]),
+        Some(Ty::Str) => list(&["\"\"", "\"a\"", "\"b\"", "\"ab\"", "\"ba\"", "\"abc\""]),
+        // A position of a domain, or an enum, is walked whole.
+        Some(Ty::Pos(domain)) => domain.clone(),
+        Some(Ty::Named { name, args }) if args.is_empty() => name.clone(),
         Some(_) => return None,
     })
 }
@@ -29,9 +71,24 @@ pub fn test_name(law: &str) -> String {
 }
 
 /// `src` with one `@test` after it for each top-level `@law`, and the
-/// names of those tests. `None` when the file has no such law.
-pub fn with_law_tests(src: &str) -> Option<(String, Vec<String>)> {
+/// names of those tests. `None` when the file has no such law. Each
+/// argument's samples follow the type the checker resolved for it, so
+/// `x: Small` with `type Small = 1..=9` is walked as `1..=9`.
+pub fn with_law_tests(
+    db: &mut cpl_check::Session,
+    path: &str,
+    src: &str,
+) -> Option<(String, Vec<String>)> {
     let parsed = cpl_syntax::parse_file(src);
+    if !(parsed.items.iter()).any(|(_, item)| {
+        item.stmts
+            .iter()
+            .any(|s| matches!(s.kind, StmtKind::Law { .. }))
+    }) {
+        return None;
+    }
+    db.set_file(path, src);
+    let facts = db.facts(path);
     let mut out = String::new();
     let mut names = Vec::new();
     for (offset, item) in &parsed.items {
@@ -45,20 +102,17 @@ pub fn with_law_tests(src: &str) -> Option<(String, Vec<String>)> {
             let mut shown = Vec::new();
             let mut depth = 1;
             for param in params {
-                let ty = match param.ty.as_ref().map(|ty| (&ty.kind, ty.span)) {
-                    None => None,
-                    Some((TypeKind::Named { args, .. }, span)) if args.is_empty() => {
-                        Some(text(span.start, span.end))
-                    }
-                    // A range type is walked when it is small: `0..=9`.
-                    Some((TypeKind::Range { .. }, span)) => Some(text(span.start, span.end)),
-                    Some((_, span)) => Some(text(span.start, span.end)),
-                };
-                let values = match param.ty.as_ref().map(|ty| &ty.kind) {
-                    Some(TypeKind::Range { .. }) => ty.map(str::to_string),
-                    Some(TypeKind::Named { .. }) | None => samples(ty),
-                    Some(_) => None,
-                };
+                let written = param.ty.as_ref().map(|ty| {
+                    let at = Span {
+                        start: offset + ty.span.start,
+                        end: offset + ty.span.end,
+                    };
+                    facts
+                        .as_ref()
+                        .and_then(|f| f.written_type(at))
+                        .unwrap_or(&Ty::Unknown)
+                });
+                let values = samples(written);
                 let values = values
                     .unwrap_or_else(|| format!("__law_needs_samples_for_{}", param.name.text));
                 loops += &format!(

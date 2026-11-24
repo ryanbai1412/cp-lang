@@ -140,7 +140,7 @@
   "codegen_effect_guesses": 0,
   "opt_without_uses": 16,
   "near_dup_fns": 0,
-  "consumer_rederived": 13,
+  "consumer_rederived": 12,
   "rs_near_cap": [],
   "skip_lists": 28,
   "dead_code_allows": 0,

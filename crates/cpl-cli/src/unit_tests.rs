@@ -52,7 +52,7 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
         if let Ok(text) = std::fs::read_to_string(p) {
             let mut db = cpl_check::Session::new();
             db.set_file(paths[0], text.as_str());
-            if laws::with_law_tests(&text).is_some() {
+            if laws::with_law_tests(&mut db, paths[0], &text).is_some() {
                 return true;
             }
             if let Some(analysis) = db.analyze(paths[0]) {
@@ -130,7 +130,7 @@ pub(crate) fn run_unit_tests(
             }
         };
         // Each top-level `@law` is checked as a test of its own.
-        let text = match laws::with_law_tests(&text) {
+        let text = match laws::with_law_tests(&mut db, &path_str, &text) {
             Some((with_laws, _)) => with_laws,
             None => text,
         };
