@@ -28,3 +28,11 @@ print(Pos.argmax(by: p => wins[leaf(p)])!)
   e.g. `7 3 3 / 4 1 0 5 2 6 / 5 6 / 1 2 / 2 3` (brute and port: 1, C++: 0).
   The port is stressed against `brute.py` and the old port.
 - **Severity:** low.
+
+## The accepted C++ assumes the rounds end with one knight
+- **Where:** `orig.cpp`. Submission 4848321 walks only round `c - 1`'s tree, so
+  when the rounds stop with several knights left it misses every other tree
+  (`7 3 3 / 4 1 0 5 2 6 / 5 6 / 1 2 / 2 3`: answer 1, it prints 0). `orig.cpp`
+  walks every survivor's tree; it then agrees with `brute.py` and the port on 500
+  generated cases.
+- **Severity:** medium (evidence only).

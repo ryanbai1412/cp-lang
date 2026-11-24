@@ -15,3 +15,10 @@ size = 16
 [[case]]
 seed = 4
 size = 32
+
+[[case]]
+seed = 5
+size = 300
+
+[[case]]
+args = ["--max"]
