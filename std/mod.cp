@@ -142,11 +142,11 @@ impl Mul for Mod<P>:
     fn mul(a, b) = if P < 3_037_000_500: Mod(a.v * b.v % P) else: Mod(mul_mod(a.v, b.v, P))
 
 impl Div for Mod<P>:
-    fn div(a, b) = a * b.inv
+    fn div(a, b) = a * b.inv()
 
 impl Pow for Mod<P>:
     fn pow(a, e: Int) -> Mod<P>:
-        if e < 0: return a.inv ** (-e)
+        if e < 0: return a.inv() ** (-e)
         Mod(pow_mod(a.v, e, P))
 
 /// A number held as its residue in `0..modulus()`, so a sum of many residue products can stay
