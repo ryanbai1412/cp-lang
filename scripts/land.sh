@@ -69,10 +69,24 @@ fi
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
+# The files of this change that rustc rejects (error[E...]) in cargo's output
+# on stdin: two changes each green alone can combine into one that doesn't
+# compile, and that one must not land.
+own_compile_errors() {
+    awk '/^(error|warning)/ {e = /^error\[E/} e && /^ *--> / {sub(/^ *--> /, ""); sub(/:.*/, ""); print}' |
+        sort -u | grep -Fx -- "$changed" || [ $? = 1 ]
+}
+refuse_if_broken() {
+    bad=$(printf '%s\n' "$1" | own_compile_errors)
+    [ -z "$bad" ] || { printf '%s\n' "$1" | grep -E '^error|-->' | head -20 >&2
+        echo "land: $(echo $bad) no longer compiles at the rebased tip; fix it and land again" >&2; exit 1; }
+}
 # Clippy as CI runs it (-D warnings, every target) on the touched crates and
-# the workspace crates that depend on them, at the rebased tip; past
-# CPL_LAND_CLIPPY_SECS (cold cache) or on a failure it warns and lands,
-# leaving it to CI (whose regen job applies `clippy --fix`).
+# the workspace crates that depend on them, at the rebased tip. A compile
+# error in this change's own files refuses the land; past
+# CPL_LAND_CLIPPY_SECS (cold cache) or on any other failure it warns and
+# lands, leaving it to CI (whose regen job applies `clippy --fix`).
+users=""
 if [ -n "$crates" ]; then
     users=$(cargo metadata -q --format-version 1 --no-deps | uv run --quiet python -c '
 import json, sys
@@ -100,7 +114,8 @@ print(" ".join("-p " + n for n in sorted(seen)))
     case "$rc" in
         0) ;;
         124) echo "land: clippy over ${CPL_LAND_CLIPPY_SECS:-40}s; landing, CI will check it" >&2 ;;
-        *) printf '%s\n' "$out" | grep -E '^(error|warning)|-->' | head -20 >&2
+        *) refuse_if_broken "$out"
+           printf '%s\n' "$out" | grep -E '^(error|warning)|-->' | head -20 >&2
            echo "land: WARNING: clippy fails on $users (maybe already on main); landing, CI's regen applies clippy --fix" >&2 ;;
     esac
 fi
@@ -121,7 +136,11 @@ fi
 try=0
 push() {
     try=$((try + 1))
-    [ "$try" = 1 ] || pull || exit 1
+    if [ "$try" != 1 ]; then
+        pull || exit 1
+        # What landed meanwhile can break this change's files: check again.
+        [ -z "$users" ] || refuse_if_broken "$(timeout "${CPL_LAND_CLIPPY_SECS:-40}" cargo check -q $users --all-targets 2>&1)"
+    fi
     git push -q --no-verify "$remote" HEAD:main
 }
 RETRY_TRIES=$tries RETRY_WAIT=0 retry push || { echo "land: gave up after $tries tries" >&2; exit 1; }
