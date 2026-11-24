@@ -20,7 +20,6 @@
     "max-short ioi08p6 p: --max reads 30000, the statement allows 4e5",
     "max-short ioi12p5 k: --max reads 50000, the statement allows n",
     "max-short ioi13p1 m: --max reads 99997, the statement allows n - 1",
-    "max-short mccc4j3 n: --max reads 999423, the statement allows 1e6",
     "max-short noi18p2 n: --max reads 1, the statement allows 6e5",
     "max-short noip10p2 m: --max reads 115, the statement allows 120",
     "max-short noip10p2 n: --max reads 341, the statement allows 350",
