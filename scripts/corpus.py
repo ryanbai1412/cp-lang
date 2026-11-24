@@ -1529,10 +1529,20 @@ def named_by(name, pid):
 def delete(ids):
     """Remove packages and everything that names them, then rebuild the index,
     so a later `build` can't recreate one from info.json. A submission file
-    another tracked file still names stays, without its info.json entry."""
+    another tracked file still names stays, without its info.json entry, and a
+    path to a removed package or submission another tracked file still names is
+    reported and fails the deletion. A hill-climb problem is refused before
+    anything changes, since dropping it would shrink that fixed set."""
     known = {p.id for p in problems()}
     ipath = os.path.join(SUBS, "info.json")
     info = json.load(open(ipath))
+    hill = Path(ROOT, "corpus", "hillclimb.json")
+    climbs = set(json.loads(hill.read_text())["problems"]) if hill.exists() else set()
+    for pid in ids:
+        if pid in climbs:
+            sys.exit(f"corpus: {pid} is in corpus/hillclimb.json; add a replacement picked by its criteria "
+                     f"(sha1 of the problem id within its contest) and remove {pid} there first")
+    removed = set()
     for pid in ids:
         subs = [sid for sid, e in info.items() if canonical_id(e["problem"]) == pid]
         if pid not in known and not subs:
@@ -1545,18 +1555,24 @@ def delete(ids):
                     print(f"{pid}: kept {rel(str(f))}, named by {', '.join(users)}")
                 else:
                     f.unlink()
+                    removed.add(f.name)
         for listing in [*Path(SETS).glob("*.txt"), Path(UNKNOWNS)]:
             if listing.exists():
                 lines = listing.read_text().splitlines(keepends=True)
                 kept = [l for l in lines if l.strip() != pid and f"corpus/problems/{pid}/" not in l]
                 if kept != lines:
                     listing.write_text("".join(kept))
-        for d in (Path(PROBLEMS) / pid, Path(ROOT, "target", "corpus-tests", pid)):
+        for d in (Path(PROBLEMS) / pid, Path(ROOT, "target", "corpus-tests", pid),
+                  Path(ROOT, "tests", "v02-snapshot", pid)):
             shutil.rmtree(d, ignore_errors=True)
         print(f"{pid}: deleted with {len(subs)} submission(s)")
     with open(ipath, "w") as f:
         f.write(json.dumps(info, indent=4))
-    return main("build")
+    left = [(f, n, path) for f, n, path in dangling_references()
+            if path.split("/")[2].rstrip("*") in {*ids, *removed}]
+    for f, n, path in left:
+        print(f"{f}:{n}: still names deleted {path}; drop that row or path")
+    return main("build") or int(bool(left))
 
 
 def ls_mode(args):

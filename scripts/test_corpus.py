@@ -730,6 +730,66 @@ class DeleteTest(Corpus):
         self.assertEqual(json.loads((subs / "info.json").read_text()), {})
         self.assertIn("named by bench/audit.py", out.getvalue())
 
+    def test_its_v02_snapshot_goes_and_a_path_still_naming_it_fails_the_deletion(self):
+        subs = self.root / "subs"
+        subs.mkdir()
+        for name, value in (("ROOT", self.root), ("SUBS", subs)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        self.package("p2")
+        self.package("p3")
+        (subs / "info.json").write_text(json.dumps({"910000001": {"problem": "p2"}}, indent=4))
+        (subs / "910000001.cpp").write_text("")
+        for pid in ("p2", "p3"):
+            (self.root / "tests" / "v02-snapshot" / pid).mkdir(parents=True)
+            (self.root / "tests" / "v02-snapshot" / pid / "port.cp").write_text("")
+        (self.root / "bench").mkdir()
+        (self.root / "bench" / "audit.py").write_text(f"{PKGS}/p2/port.cp\n{PKGS}/p3/port.cp\n"
+                                                      f"{SUBS_DIR}/910000001.cpp\n")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        subprocess.run(["git", "add", "bench/audit.py"], cwd=self.root, check=True)
+        out = io.StringIO()
+        with mock.patch.object(corpus, "main", mock.Mock(return_value=0)), \
+                mock.patch.object(corpus, "named_by", lambda *_: []), contextlib.redirect_stdout(out):
+            self.assertEqual(corpus.delete(["p2"]), 1)
+        self.assertEqual(sorted(p.name for p in (self.root / "tests" / "v02-snapshot").iterdir()), ["p3"])
+        self.assertIn(f"bench/audit.py:1: still names deleted {PKGS}/p2", out.getvalue())
+        self.assertIn(f"bench/audit.py:3: still names deleted {SUBS_DIR}/910000001.cpp", out.getvalue())
+        self.assertNotIn("p3", out.getvalue())
+
+    def test_a_deletion_nothing_else_names_succeeds(self):
+        subs = self.root / "subs"
+        subs.mkdir()
+        for name, value in (("ROOT", self.root), ("SUBS", subs)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        self.package("p2")
+        (subs / "info.json").write_text("{}")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        with mock.patch.object(corpus, "main", mock.Mock(return_value=0)), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(corpus.delete(["p2"]), 0)
+
+    def test_a_hill_climb_problem_is_refused_before_anything_changes(self):
+        subs = self.root / "subs"
+        subs.mkdir()
+        for name, value in (("ROOT", self.root), ("SUBS", subs)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        (self.root / "corpus").mkdir()
+        (self.root / "corpus" / "hillclimb.json").write_text(json.dumps({"problems": ["p3"]}))
+        self.package("p2", port_cp="")
+        self.package("p3", port_cp="")
+        info = json.dumps({"910000001": {"problem": "p2"}, "910000002": {"problem": "p3"}}, indent=4)
+        (subs / "info.json").write_text(info)
+        (subs / "910000002.cpp").write_text("")
+        before = sorted(str(p.relative_to(self.root)) for p in self.root.rglob("*"))
+        with mock.patch.object(corpus, "main") as build, self.assertRaises(SystemExit) as e:
+            corpus.delete(["p2", "p3"])
+        self.assertIn("p3 is in corpus/hillclimb.json", str(e.exception))
+        build.assert_not_called()
+        self.assertEqual(sorted(str(p.relative_to(self.root)) for p in self.root.rglob("*")), before)
+        self.assertEqual((subs / "info.json").read_text(), info)
+
     def test_an_unknown_id_stops_before_anything_is_removed(self):
         with self.assertRaises(SystemExit) as e:
             corpus.delete(["nope"])
