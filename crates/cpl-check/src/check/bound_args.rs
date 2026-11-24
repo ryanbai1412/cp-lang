@@ -435,12 +435,12 @@ impl Checker<'_> {
                     seen.push((g, i, got.clone()));
                     continue;
                 };
-                if got.fits(first) || first.fits(got) {
+                if self.fits(got, first) || self.fits(first, got) {
                     continue;
                 }
                 let shown = |(p, t, a): &(String, String, Vec<Ty>)| {
-                    let a: Vec<String> = a.iter().map(|t| t.to_string()).collect();
-                    format!("{p}: {t}<{}>", a.join(", "))
+                    let (name, args) = (t.clone(), a.clone());
+                    format!("{p}: {}", Ty::Named { name, args })
                 };
                 let (fa, fb) = (&bound_args[j].0, param);
                 self.report(
