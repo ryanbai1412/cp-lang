@@ -108,6 +108,11 @@ pub(crate) fn name_spans(pat: &Pattern, is_var: bool, out: &mut Vec<(Span, bool)
                 name_spans(item, is_var, out);
             }
         }
+        PatternKind::Variant { args, .. } => {
+            for item in args {
+                name_spans(item, is_var, out);
+            }
+        }
         _ => {}
     }
 }
@@ -148,5 +153,72 @@ impl Checker<'_> {
             };
             self.bind_refutable(item, &item_ty, mutable, keyword);
         }
+    }
+
+    /// A comprehension's element. `[v for x in xs if x is Some(v)]`: an `is` pattern binds only
+    /// inside its own test (decision 111), so the element can't see `v`; its E0201 is fixed to
+    /// `if let Some(v) = x`, which binds for the element.
+    pub(super) fn comprehension_body(&mut self, body: &ast::Expr, clauses: &[ast::Clause]) -> Ty {
+        let ty = self.infer(body).widen();
+        for cond in clauses.iter().flat_map(|c| &c.conds) {
+            let ast::Cond::Expr(test) = cond else {
+                continue;
+            };
+            let ast::ExprKind::If { branches, .. } = &test.kind else {
+                continue;
+            };
+            let [(
+                ast::Cond::Let {
+                    pat,
+                    value,
+                    and: None,
+                },
+                _,
+            )] = branches.as_slice()
+            else {
+                continue;
+            };
+            let (p, x) = (
+                self.text(pat.span).to_string(),
+                self.text(value.span).to_string(),
+            );
+            let mut spans = Vec::new();
+            let pat: &Pattern = pat;
+            name_spans(pat, false, &mut spans);
+            let names: Vec<String> = spans
+                .iter()
+                .map(|(s, _)| self.text(*s).to_string())
+                .collect();
+            let binds = |name: &str| names.iter().any(|n| n == name);
+            let unseen = |d: &cpl_diag::Diagnostic| {
+                d.code == codes::UNRESOLVED_NAME
+                    && body.span.contains(d.span)
+                    && d.message.split('`').nth(1).is_some_and(binds)
+            };
+            let found: Vec<_> = self
+                .sink
+                .diagnostics()
+                .iter()
+                .filter(|d| unseen(d))
+                .cloned()
+                .collect();
+            if found.is_empty() {
+                continue;
+            }
+            self.sink.drop_where(|d| unseen(d));
+            for mut diag in found {
+                diag.help = Some(format!(
+                    "`{x} is {p}` binds only inside its own test; to bind for the element write `if let {p} = {x}` (decision 111)"
+                ));
+                diag.fixes.clear();
+                diag.fix(
+                    format!("write `let {p} = {x}`"),
+                    test.span,
+                    format!("let {p} = {x}"),
+                );
+                self.sink.push(diag);
+            }
+        }
+        ty
     }
 }

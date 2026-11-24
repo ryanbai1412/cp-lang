@@ -398,7 +398,7 @@ impl<'a> Checker<'a> {
                         self.cond(cond);
                     }
                 }
-                let body_ty = self.infer(body).widen();
+                let body_ty = self.comprehension_body(body, clauses);
                 self.branch -= 1;
                 self.pop_scope();
                 Ty::list(body_ty)
