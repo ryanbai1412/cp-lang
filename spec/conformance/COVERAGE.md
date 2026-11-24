@@ -1089,7 +1089,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `RangeKth`, `RangeKth.new`
 - **poly** (56/57 named by a case)
   - uncovered: `prod_linear`
-- **prefix** (47/59 named by a case)
+- **prefix** (46/58 named by a case)
   - uncovered: `FillPrefix`, `Prefix.of_rev_scan`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
 - **range** (15/16 named by a case)
@@ -1111,7 +1111,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2282 of 2392 std items are named by a case.
+2281 of 2391 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
