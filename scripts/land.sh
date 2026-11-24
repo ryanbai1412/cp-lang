@@ -27,11 +27,24 @@ domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
 # A conflict only in generated files is resolved by taking main's copy; CI's
 # regen job regenerates it on the pushed tip. Any other conflict stops here.
 generated='^(spec/conformance/|skills/|pnpm-lock\.yaml$|editors/vscode/src/languageData\.ts$|editors/vscode/syntaxes/)'
+ratchet=scripts/debt-ratchet.json
 rebasing() { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; }
 pull() {
     git pull -q --rebase --autostash "$remote" main && return 0
     while rebasing; do
         conflicts=$(git diff --name-only --diff-filter=U)
+        # Lanes tighten the ratchet all day; merge both sides' tightening.
+        if printf '%s\n' "$conflicts" | grep -qx "$ratchet"; then
+            uv run --quiet python scripts/ratchet_merge.py "$ratchet" && git add -- "$ratchet" ||
+                { echo "land: could not merge $ratchet" >&2; return 1; }
+            echo "land: merged main's and this commit's $ratchet" >&2
+            conflicts=$(git diff --name-only --diff-filter=U)
+            if [ -z "$conflicts" ]; then
+                GIT_EDITOR=true git rebase --continue >/dev/null 2>&1 || rebasing ||
+                    { echo "land: git rebase --continue failed" >&2; return 1; }
+                continue
+            fi
+        fi
         if [ -z "$conflicts" ] || printf '%s\n' "$conflicts" | grep -qvE "$generated"; then
             echo "land: rebase conflict in $(echo $conflicts); resolve it and run land.sh again" >&2
             return 1
