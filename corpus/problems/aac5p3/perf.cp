@@ -1,12 +1,15 @@
 // AAC 5 P3, tuned: port.cp's intervals pushed down a breadth-first order of the adjacency lists,
-// each list sorted in place once its parent's edge is dropped, as the original does, instead of
-// building a `Rooted` tree and a sorted copy of every node's children.
+// each list reserved to its degree and sorted in place once its parent's edge is dropped, as the
+// original does, instead of building a `Rooted` tree and a sorted copy of every node's children.
 let (n, k): (1..=2e5, 1..=2e5) = read()
 domain V = 1..=n
 let hills: [n - 1](u: V, v: V, d: 1..=1e9) = read()
 let skills = read<[k]1..=1e9>().sorted()
 
 var adj: [V]List<(to: V, d: Int)> = []
+var degree: [V]Int = 0
+for (u, v, _) in hills: (degree[u], degree[v]) = (degree[u] + 1, degree[v] + 1)
+for v in V: adj[v].reserve(degree[v])
 for (u, v, d) in hills:
     adj[u].push((to: v, d:))
     adj[v].push((to: u, d:))
