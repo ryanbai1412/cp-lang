@@ -977,6 +977,30 @@ exec {shutil.which("git")} "$@"
         self.assertIn("waiting for the land lock (land-lock rival", r.stderr)
         self.assertTrue(self.lock_on_remote().startswith(theirs))
 
+    def test_lost_lock_swaps_on_the_server_are_races_not_refusals(self):
+        # Six times another lane makes the lock between our look and our write,
+        # then drops it before our next look: the server's swap fails.
+        repo = self.clone("lane")
+        shim, count = self.tmp / "bin", self.tmp / "swaps"
+        shim.mkdir()
+        (shim / "git").write_text(
+            "#!/bin/sh\n"
+            'case "$*" in *"--force-with-lease=refs/land/lock-v2: "*)\n'
+            f'  if [ "$(wc -c <"{count}" 2>/dev/null || echo 0)" -lt 6 ]; then\n'
+            f'    printf x >>"{count}"\n'
+            "    echo \"error: cannot lock ref 'refs/land/lock-v2': reference already exists\" >&2\n"
+            "    exit 1\n"
+            "  fi ;;\n"
+            "esac\n"
+            f'exec "{shutil.which("git")}" "$@"\n')
+        (shim / "git").chmod(0o755)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("refuses", r.stderr)
+        self.assertEqual(count.read_text(), "xxxxxx")
+
     def test_a_refused_land_drops_the_land_lock(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         pending, runs = self._steps_runner(ours)

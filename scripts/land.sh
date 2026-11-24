@@ -557,7 +557,15 @@ take_lock() {
         if [ -z "$holder" ]; then
             # A lost compare-and-swap is a lane that took the lock and dropped it
             # before this look, not a refusal: counted as one, churn pushed unlocked.
-            case "$err" in *"stale info"*) continue ;; esac
+            # The server's own swap losing (a lock made between our look and our
+            # write, then dropped before this look) is a race too: the 19:58Z
+            # infra land refused on five of them in a row, behind fast holders.
+            case "$err" in
+            *"stale info"* | *"incorrect old value"* | *"cannot lock ref"* | *"failed to update ref"* | *"already exists"*)
+                raced=$((${raced:-0} + 1))
+                [ "$raced" -lt 60 ] || { echo "land: lost the land lock race $raced times in a row; land again" >&2; dequeue; return 1; }
+                continue ;;
+            esac
             # Fails closed: Idioms' land pushed unlocked after two HTTP 500s.
             refused=$((${refused:-0} + 1))
             [ "$refused" -lt 5 ] || { echo "land: $remote refuses $lock_ref (${err##*$'\n'}); land again" >&2; dequeue; return 1; }
