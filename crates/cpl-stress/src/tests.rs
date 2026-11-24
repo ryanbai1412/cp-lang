@@ -794,6 +794,12 @@ mod cli {
         assert_eq!(code, 1);
         let report = cpl_json::parse(&out).unwrap();
         assert_eq!(report.at(&["status"]).as_str(), Some("fail"), "{out}");
+        // The view's panel is the text report.
+        let panel = report.at(&["view", "panel"]).as_str().unwrap_or_default();
+        assert!(
+            panel.contains("FAIL on case") || panel.contains("FAIL on the saved case"),
+            "{out}"
+        );
         let case = report.at(&["counterexample"]);
         // The case the text run saved runs first and still fails.
         assert_eq!(
@@ -819,6 +825,11 @@ mod cli {
         ]);
         let report = cpl_json::parse(&out).unwrap();
         assert_eq!(report.at(&["status"]).as_str(), Some("ok"), "{out}");
+        assert_eq!(
+            report.at(&["view", "status", "ok"]).as_bool(),
+            Some(true),
+            "{out}"
+        );
         assert_eq!(report.at(&["case_count"]).as_i64(), Some(5), "{out}");
         assert_eq!(report.at(&["saved_count"]).as_i64(), Some(1), "{out}");
         assert!(report.at(&["tried"]).as_str().is_some(), "{out}");

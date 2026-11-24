@@ -251,6 +251,46 @@ fn stress_finds_the_planted_bug_with_the_files_own_brute_and_traces_both() {
     assert!(page.contains("\"checkpoint\":\"case 1 · debug piles\""));
 }
 
+/// `--format json`'s `view` marks the solution's line of the first wrong call with its headline,
+/// what every editor draws.
+#[test]
+fn stress_json_view_marks_the_first_wrong_call() {
+    let path = program("stress-view-part", "part_planted.cp");
+    let out = cpl(
+        &[
+            "stress".as_ref(),
+            path.as_os_str(),
+            "--explain".as_ref(),
+            "--format".as_ref(),
+            "json".as_ref(),
+        ],
+        b"",
+    );
+    let report = cpl_json::parse(&text(&out.stdout)).expect("JSON");
+    let view = report.at(&["view"]);
+    assert!(
+        (view.at(&["diagnostic", "message"]).as_str())
+            .is_some_and(|m| m.starts_with("first wrong call: `tri(k: 1)`, the 1st call of `tri`")),
+        "{}",
+        text(&out.stdout)
+    );
+    assert_eq!(
+        view.at(&["diagnostic", "line"]).as_i64(),
+        Some(3),
+        "{}",
+        text(&out.stdout)
+    );
+    assert_eq!(
+        view.at(&["lines"])
+            .at(&[])
+            .as_array()
+            .map(|l| l[0].at(&["kind"]).as_str()),
+        Some(Some("differs"))
+    );
+    assert!((view.at(&["panel"]).as_str())
+        .is_some_and(|p| p.contains("solution tri(k: 1) = 0 at line 4")));
+}
+
 #[test]
 fn stress_explain_names_the_first_call_of_a_part_its_alt_answers_differently() {
     let path = program("stress-explain-part", "part_planted.cp");

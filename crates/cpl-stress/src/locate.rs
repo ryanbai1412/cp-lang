@@ -88,10 +88,30 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let traced = crate::traced::trace(&name, &source, &text, false, Some(&versus), None, None);
         traced.ok().and_then(|traced| traced.divergence)
     };
+    let found = located.as_ref().and_then(|_| divergence());
+    let mut panel = Vec::new();
+    match &located {
+        None => {
+            let _ = writeln!(panel, "every part agrees with its alt on {shown}");
+        }
+        Some(l) => {
+            let (line, ours, theirs) = first_difference(&l.output, &l.alt_output);
+            let _ = writeln!(
+                panel,
+                "`{}` disagrees with its alt `{}` on {shown}: line {line} is {ours:?}, with `{}` swapped in it is {theirs:?}",
+                l.part, l.alt, l.alt
+            );
+            if let Some(d) = &found {
+                crate::cli::print_divergence(&mut panel, d);
+            }
+        }
+    }
     if json {
         let field = |v: Option<&String>| {
             v.map_or(cpl_json::Value::Null, |v| cpl_json::Value::from(v.as_str()))
         };
+        let panel = String::from_utf8_lossy(&panel).into_owned();
+        let view = crate::view::locate(panel, found.as_ref());
         let report = cpl_json::obj([
             ("input", cpl_json::Value::from(shown.as_str())),
             ("part", field(located.as_ref().map(|l| &l.part))),
@@ -100,31 +120,15 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             ("alt_output", field(located.as_ref().map(|l| &l.alt_output))),
             (
                 "divergence",
-                (located.as_ref())
-                    .and_then(|_| divergence())
-                    .map_or(cpl_json::Value::Null, |d| {
-                        crate::report::divergence_json(&d)
-                    }),
+                found
+                    .as_ref()
+                    .map_or(cpl_json::Value::Null, crate::report::divergence_json),
             ),
+            ("view", view.to_value()),
         ]);
         let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
     } else {
-        match &located {
-            None => {
-                let _ = writeln!(stdout, "every part agrees with its alt on {shown}");
-            }
-            Some(l) => {
-                let (line, ours, theirs) = first_difference(&l.output, &l.alt_output);
-                let _ = writeln!(
-                    stdout,
-                    "`{}` disagrees with its alt `{}` on {shown}: line {line} is {ours:?}, with `{}` swapped in it is {theirs:?}",
-                    l.part, l.alt, l.alt
-                );
-                if let Some(d) = divergence() {
-                    crate::cli::print_divergence(stdout, &d);
-                }
-            }
-        }
+        let _ = stdout.write_all(&panel);
     }
     u8::from(located.is_some())
 }

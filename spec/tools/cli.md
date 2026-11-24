@@ -182,7 +182,7 @@ when it fails (a wrong answer with a known answer as a `comparisonFailure` with
 `expected` and `actual`) and `testFinished`; a folder wraps each problem in a suite.
 `cpl stress --format json` prints `{"status", "build"?, "case_count", "saved_count"?,
 "tried"?, "counterexample"?, "view": {"panel", "status"?: {"line", "ok", "label"},
-"lines"?: [{"line", "kind", "label", "hover"?}]}}`: the toolchain that built the solution
+"lines"?: [{"line", "kind", "label", "hover"?}], "diagnostic"?}}`: the toolchain that built the solution
 (`build`, when the CLI built one), how many cases ran (`case_count`), then `saved_count` and
 what it `tried` when it found no counterexample, or the `counterexample`; and the `view`:
 the text `cpl stress` prints as the panel, a passing run's `stress: 1000 cases passed` as
@@ -190,9 +190,13 @@ the status, and on a failure the lines: each `debug(...)` stage's line `agrees` 
 brute = [none, 1]`) but the first that `differs` (`fast [0]  ≠  brute [1]  ← first
 difference`), the solution's line of the first divergence `differs` (`tri(k: 1) = 0  ≠
 brute 1  ← first wrong call`), and line 0 the `input` (`counterexample: n = 2  a = [7,
-7]  (fast 0 ≠ brute 1)`), each hover the case and both sides.
+7]  (fast 0 ≠ brute 1)`), each hover the case and both sides, and the first divergence as
+the `diagnostic` (`{"line", "message", "source"}`, its message the headline `first wrong
+call: ...`) for editors that draw no line marks.
 `cpl locate --json` prints `{"input", "part", "alt", "output", "alt_output",
-"divergence"}`.
+"divergence", "view": {"panel", "lines"?: [{"line", "kind", "label"}], "diagnostic"?:
+{"line", "message", "source"}}}`, its `view` its text and the first divergence marked as
+`cpl stress`'s is.
 `cpl bench --format json` prints `{"status", "time_limit_ms",
 "memory_limit_kb", "runs": [{"shape", "number_count", "status", "time_ms", "peak_kb",
 "error"}]}`.

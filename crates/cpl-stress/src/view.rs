@@ -5,7 +5,8 @@
 
 use crate::cli::divergence_title;
 use crate::report::StressResult;
-use cpl_diag::view::{code_block, Kind, Line, Status, View};
+use cpl_diag::view::{code_block, Diagnostic, Kind, Line, Status, View};
+use cpl_interp::trace::Divergence;
 
 pub fn view(result: &StressResult, panel: String) -> View {
     let report = &result.report;
@@ -129,9 +130,53 @@ pub fn view(result: &StressResult, panel: String) -> View {
             hover: Some(hover),
         });
     }
+    let diagnostic = match &result.explained {
+        Some(Ok(Some(d))) => wrong_call(d),
+        _ => None,
+    };
     View {
         panel,
         lines,
+        diagnostic,
+        ..View::default()
+    }
+}
+
+/// The first wrong call as a diagnostic on the solution's line, its
+/// headline the message: what an editor without line marks draws.
+pub fn wrong_call(d: &Divergence) -> Option<Diagnostic> {
+    let line = d.fast.as_ref()?.0.checked_sub(1)?;
+    Some(Diagnostic {
+        line,
+        col: None,
+        code: None,
+        message: divergence_title(d),
+        help: None,
+        source: Some("cpl".to_string()),
+    })
+}
+
+/// `cpl locate --json`'s view: its text, and where the part first parts
+/// from its alt, as `cpl stress` marks it.
+pub fn locate(panel: String, d: Option<&Divergence>) -> View {
+    let Some((d, diagnostic)) = d.and_then(|d| Some((d, wrong_call(d)?))) else {
+        return View {
+            panel,
+            ..View::default()
+        };
+    };
+    let fast = d.fast.as_ref().map_or("nothing", |(_, value)| value);
+    let brute = d.brute.as_ref().map_or("nothing", |(_, value)| value);
+    let line = Line {
+        line: diagnostic.line,
+        kind: Kind::Differs,
+        label: format!("{} = {fast}  \u{2260}  alt {brute}", d.name),
+        hover: None,
+    };
+    View {
+        panel,
+        lines: vec![line],
+        diagnostic: Some(diagnostic),
         ..View::default()
     }
 }

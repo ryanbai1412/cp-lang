@@ -41,9 +41,16 @@ vim.api.nvim_create_autocmd('TermClose', {
     callback = function(ev) status[ev.buf] = vim.v.event.status end,
 })
 
--- Waits for the terminal a command opened, returns its exit code and text, and goes back.
+-- Waits for the terminal a command opened, or the panel `cpl stress` and `cpl locate` fill
+-- from their JSON view, returns its exit code and text, and goes back.
 local function finished(what)
     local term = vim.api.nvim_get_current_buf()
+    if vim.bo[term].buftype == 'nofile' then
+        check(vim.wait(60000, function() return vim.b[term].cpl_exit ~= nil end), what .. ' did not finish')
+        local shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
+        vim.cmd('wincmd p')
+        return vim.b[term].cpl_exit, shown
+    end
     check(vim.bo[term].buftype == 'terminal', what .. ' did not open a terminal')
     check(vim.wait(60000, function() return status[term] ~= nil end), what .. ' did not finish')
     local code = status[term]
