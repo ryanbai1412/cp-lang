@@ -7,7 +7,6 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { clip } from '../../src/overlays';
 
 const folder = () => vscode.workspace.workspaceFolders![0].uri;
 const file = (name: string) => vscode.Uri.joinPath(folder(), name);
@@ -40,13 +39,6 @@ function hoverText(hovers: vscode.Hover[]): string {
 }
 
 const tests: [string, () => Promise<void>][] = [
-    [
-        'labels are clipped to the configured length',
-        async () => {
-            assert.equal(clip('[1,\n  2]', 20), '[1, 2]');
-            assert.equal(clip('abcdefghij', 5), 'abcd\u2026');
-        },
-    ],
     [
         'a .cp file is a cp document and starts the server',
         async () => {

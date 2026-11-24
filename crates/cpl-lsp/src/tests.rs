@@ -3,6 +3,8 @@ use cpl_json::{self as json, obj, Value};
 
 mod command;
 mod complete;
+#[cfg(unix)]
+mod exec;
 mod fixes;
 mod format;
 mod hover;

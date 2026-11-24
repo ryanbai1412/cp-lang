@@ -78,13 +78,3 @@ fn notification(method: &str, params: Value) -> Value {
         ("params", params),
     ])
 }
-
-/// Adds `cpl.import` to the commands the server runs itself.
-pub(super) fn advertise(mut caps: Value) -> Value {
-    if let Some(caps) = caps.as_object_mut().and_then(|c| c.get_mut("capabilities")) {
-        let commands = obj([("commands", vec![Value::from("cpl.import")].into())]);
-        caps.as_object_mut()
-            .map(|c| c.insert("executeCommandProvider".into(), commands));
-    }
-    caps
-}

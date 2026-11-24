@@ -84,6 +84,16 @@ fn every_vscode_setting_is_read_documented_and_defaults_alike() {
         }
     }
     let read_by = reads(&sources);
+    // The `cp` section VS Code sends the server (`synchronize`), with
+    // package.json's defaults filled in: what `cpl.exec` reads to complete a run.
+    let server = read("crates/cpl-lsp/src/server/exec.rs");
+    let synced = sources.contains("configurationSection: 'cp'");
+    let server_reads: Vec<String> = server
+        .split("setting(&[")
+        .skip(1)
+        .filter_map(|s| s.split_once("])"))
+        .map(|(path, _)| format!("cp.{}", path.replace(['"', ' '], "").replace(',', ".")))
+        .collect();
     let readme = read("editors/vscode/README.md");
     let table = readme
         .split("## Settings")
@@ -106,6 +116,8 @@ fn every_vscode_setting_is_read_documented_and_defaults_alike() {
             sources
                 .contains("new LanguageClient('cp'")
                 .then(|| default.clone())
+        } else if synced && server_reads.contains(key) {
+            Some(default.clone())
         } else {
             read_by.get(key).cloned()
         };

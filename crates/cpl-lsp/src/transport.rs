@@ -4,9 +4,6 @@
 use crate::server::Server;
 use cpl_json::{self as json, Value};
 use std::io::{self, BufRead, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
-use std::time::Duration;
 
 /// The largest message body accepted. A document sync of a huge file is a
 /// few megabytes; anything past this is a broken client.
@@ -62,67 +59,65 @@ pub fn write_message(output: &mut (impl Write + ?Sized), message: &Value) -> io:
 
 /// Serves the protocol until the client sends `exit` or closes the input.
 /// Returns the process exit code.
-pub fn serve(input: impl BufRead, output: impl Write + Send) -> io::Result<i32> {
+pub fn serve(input: impl BufRead + Send + 'static, output: impl Write) -> io::Result<i32> {
     serve_with(Server::new(), input, output)
 }
 
-/// [`serve`] with `server`, as the binary serving sets it up. What the
-/// server sends unasked (its outbox) is written between replies.
+/// [`serve`] with `server`, as the binary serving sets it up. The input is
+/// read on a thread of its own, so a `cpl` run that ends is answered, and
+/// what the server sends unasked (its outbox) is written, while the client
+/// is quiet.
 pub fn serve_with(
-    server: Server,
-    mut input: impl BufRead,
-    output: impl Write + Send,
+    mut server: Server,
+    mut input: impl BufRead + Send + 'static,
+    mut output: impl Write,
 ) -> io::Result<i32> {
-    let (outbox, unasked) = std::sync::mpsc::channel::<Value>();
+    enum Event {
+        Message(io::Result<Option<String>>),
+        #[cfg(not(target_arch = "wasm32"))]
+        Finished(Box<crate::server::exec::Finished>),
+        #[cfg(not(target_arch = "wasm32"))]
+        Unasked(Value),
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
     #[cfg(not(target_arch = "wasm32"))]
-    let mut server = server.with_outbox(outbox);
-    #[cfg(target_arch = "wasm32")]
-    let (mut server, _) = (server, outbox);
-    let output = Mutex::new(output);
-    let done = AtomicBool::new(false);
-    std::thread::scope(|scope| {
-        let (output, done) = (&output, &done);
-        scope.spawn(move || {
-            while !done.load(Ordering::Relaxed) {
-                if let Ok(message) = unasked.recv_timeout(Duration::from_millis(50)) {
-                    let _ = write_message(&mut *lock(output), &message);
+    {
+        let finished = std::sync::Mutex::new(tx.clone());
+        server.on_finish(std::sync::Arc::new(move |run| {
+            if let Ok(tx) = finished.lock() {
+                let _ = tx.send(Event::Finished(Box::new(run)));
+            }
+        }));
+        let (outbox, unasked) = std::sync::mpsc::channel::<Value>();
+        server = server.with_outbox(outbox);
+        let tx = tx.clone();
+        std::thread::spawn(move || {
+            for message in unasked {
+                if tx.send(Event::Unasked(message)).is_err() {
+                    break;
                 }
             }
         });
-        let served = serve_messages(&mut server, &mut input, output);
-        done.store(true, Ordering::Relaxed);
-        served
-    })
-}
-
-fn lock<W>(output: &Mutex<W>) -> std::sync::MutexGuard<'_, W> {
-    output
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-fn serve_messages(
-    server: &mut Server,
-    input: &mut impl BufRead,
-    output: &Mutex<impl Write>,
-) -> io::Result<i32> {
-    while let Some(body) = read_message(input)? {
-        let replies = match json::parse(&body) {
-            Ok(message) => server.respond(&message),
-            Err(what) => vec![json::obj([
-                ("jsonrpc", "2.0".into()),
-                ("id", Value::Null),
-                (
-                    "error",
-                    json::obj([
-                        ("code", (-32700i64).into()),
-                        ("message", what.to_string().into()),
-                    ]),
-                ),
-            ])],
+    }
+    std::thread::spawn(move || loop {
+        let message = read_message(&mut input);
+        let more = matches!(message, Ok(Some(_)));
+        if tx.send(Event::Message(message)).is_err() || !more {
+            break;
+        }
+    });
+    for event in rx {
+        let replies = match event {
+            Event::Message(Ok(Some(body))) => reply(&mut server, &body),
+            Event::Message(Ok(None)) => break,
+            Event::Message(Err(e)) => return Err(e),
+            #[cfg(not(target_arch = "wasm32"))]
+            Event::Finished(run) => server.finish(*run),
+            #[cfg(not(target_arch = "wasm32"))]
+            Event::Unasked(message) => vec![message],
         };
         for reply in replies.iter().chain(&server.idle()) {
-            write_message(&mut *lock(output), reply)?;
+            write_message(&mut output, reply)?;
         }
         if let Some(code) = server.exit_code() {
             return Ok(code);
@@ -130,4 +125,21 @@ fn serve_messages(
     }
     // The client went away without `exit`.
     Ok(1)
+}
+
+fn reply(server: &mut Server, body: &str) -> Vec<Value> {
+    match json::parse(body) {
+        Ok(message) => server.respond(&message),
+        Err(what) => vec![json::obj([
+            ("jsonrpc", "2.0".into()),
+            ("id", Value::Null),
+            (
+                "error",
+                json::obj([
+                    ("code", (-32700i64).into()),
+                    ("message", what.to_string().into()),
+                ]),
+            ),
+        ])],
+    }
 }

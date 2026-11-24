@@ -162,7 +162,7 @@ fn a_whole_session_over_the_wire() {
         notification("exit", Value::Null),
     ]);
     let mut output = Vec::new();
-    let code = serve(std::io::BufReader::new(&input[..]), &mut output).unwrap();
+    let code = serve(std::io::Cursor::new(input.clone()), &mut output).unwrap();
     assert_eq!(code, 0);
     let replies = unframed(&output);
     assert_eq!((replies.len(), &replies[2]), (5, &replies[1]));
@@ -190,7 +190,7 @@ fn bad_frames_and_bad_json_do_not_stop_the_server() {
     let mut output = Vec::new();
     // The input ends without `exit`: that is exit code 1.
     assert_eq!(
-        serve(std::io::BufReader::new(&input[..]), &mut output).unwrap(),
+        serve(std::io::Cursor::new(input.clone()), &mut output).unwrap(),
         1
     );
     let replies = unframed(&output);

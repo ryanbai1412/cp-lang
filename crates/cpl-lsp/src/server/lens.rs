@@ -3,12 +3,21 @@
 
 use super::*;
 
-/// `capabilities` with `codeLensProvider`.
+/// `capabilities` with `codeLensProvider` and `executeCommandProvider`.
 pub(super) fn advertise(mut caps: Value) -> Value {
     if let Some(caps) = caps.as_object_mut().and_then(|c| c.get_mut("capabilities")) {
         let lens = obj([("resolveProvider", false.into())]);
-        caps.as_object_mut()
-            .map(|c| c.insert("codeLensProvider".into(), lens));
+        let run = obj([
+            (
+                "commands",
+                super::exec::COMMANDS.map(Value::from).to_vec().into(),
+            ),
+            ("workDoneProgress", true.into()),
+        ]);
+        caps.as_object_mut().map(|c| {
+            c.insert("codeLensProvider".into(), lens);
+            c.insert("executeCommandProvider".into(), run)
+        });
     }
     caps
 }

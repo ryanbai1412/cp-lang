@@ -81,7 +81,7 @@ follows are in
 `transport.rs` (stdio framing: `read_message`, `write_message`, `serve`), `server.rs` (`Server`: document store, dispatch, diagnostics, hover, definition, code actions, formatting, semantic tokens), `complete.rs` (completion, signature help, parameter hints), `outline.rs` (document symbols), `rename.rs` (references, rename), `build.rs` (generates the `use std.` names from `std/`). Tests: `src/tests.rs`, `tests/{fixtures,fuzz,ports,latency}.rs`.
 
 ### `editors/`
-`vscode/` (TypeScript client: `client.ts`, `extension.ts` (each command runs `cpl` and draws its `view`), `overlays.ts`, `languageData.ts` tables; TextMate grammar; snippets; tests in `test/`), `neovim/` (Lua, `test/smoke.lua`), `vim/`, `emacs/` (`smoke.el`), `helix/`, `zed/`, `jetbrains/` (Gradle, LSP4IJ), `tree-sitter-cp/`, `smoke.sh` (keyword parity with `crates/cpl-syntax/src/token.rs`, then each editor's smoke test when its binary exists).
+`vscode/` (TypeScript client: `client.ts`, `extension.ts` (each command forwards to the server's `cpl.exec`), `languageData.ts` tables; TextMate grammar; snippets; tests in `test/`), `neovim/` (Lua, `test/smoke.lua`), `vim/`, `emacs/` (`smoke.el`), `helix/`, `zed/`, `jetbrains/` (Gradle, LSP4IJ), `tree-sitter-cp/`, `smoke.sh` (keyword parity with `crates/cpl-syntax/src/token.rs`, then each editor's smoke test when its binary exists).
 
 ## Dependencies
 

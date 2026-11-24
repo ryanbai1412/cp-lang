@@ -18,6 +18,7 @@
     {"method": "textDocument/prepareRename", "params": {"position": {"line": 5, "character": 4}}, "expect": ["\"placeholder\":\"far\""]},
     {"method": "textDocument/rename", "params": {"position": {"line": 5, "character": 4}, "newName": "go"}, "expect": ["\"newText\":\"go\""]},
     {"method": "textDocument/codeLens", "params": {}, "expect": ["cpl.exec", "Memory: bounds allow"]},
+    {"method": "workspace/executeCommand", "params": {"command": "cpl.clear", "arguments": ["file:///none.cp"]}, "expect": []},
     {"method": "workspace/symbol", "params": {"query": "Road"}, "expect": ["\"name\":\"Road\""]},
     {"method": "textDocument/documentSymbol", "params": {}, "expect": ["\"name\":\"far\"", "\"name\":\"Road\""]},
     {"method": "textDocument/codeAction", "params": {"range": {"start": {"line": 9, "character": 0}, "end": {"line": 9, "character": 9}}, "context": {"diagnostics": [], "only": ["quickfix"]}}, "expect": ["x += 1"]},

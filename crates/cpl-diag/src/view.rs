@@ -48,6 +48,15 @@ pub enum Kind {
 }
 
 impl Kind {
+    /// Every kind, strongest first.
+    pub const ALL: [Kind; 5] = [
+        Kind::Error,
+        Kind::Differs,
+        Kind::Agrees,
+        Kind::Input,
+        Kind::Live,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Kind::Error => "error",

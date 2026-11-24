@@ -26,6 +26,8 @@ mod calls;
 mod command;
 mod cost;
 mod diagnostics;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod exec;
 pub(crate) mod format;
 #[cfg(not(target_arch = "wasm32"))]
 mod import;
@@ -70,6 +72,9 @@ pub struct Server {
     /// for the problems `cpl.import` creates): the transport writes them.
     #[cfg(not(target_arch = "wasm32"))]
     outbox: Option<std::sync::mpsc::Sender<Value>>,
+    /// The `cpl` runs editors ask for and the views they show.
+    #[cfg(not(target_arch = "wasm32"))]
+    runs: exec::Runs,
     /// The semantic tokens last sent for each document, newest last, with
     /// their result ids: a client may hold any of the last few (VS Code asks
     /// again for a visible editor while another request is in flight).
@@ -102,6 +107,8 @@ impl Server {
             commands: Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
             outbox: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            runs: exec::Runs::new(),
             tokens: HashMap::new(),
             token_ids: 0,
             shutdown: false,
@@ -121,6 +128,20 @@ impl Server {
     pub fn with_outbox(mut self, outbox: std::sync::mpsc::Sender<Value>) -> Server {
         self.outbox = Some(outbox);
         self
+    }
+
+    /// The server, running this `cpl` for `cpl.exec`.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn with_cpl(mut self, cpl: std::path::PathBuf) -> Server {
+        self.runs.cpl = cpl;
+        self
+    }
+
+    /// Runs each `cpl.exec` on its own thread and hands it to `on_finish`
+    /// when it ends, for the transport to pass to [`Server::finish`].
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn on_finish(&mut self, on_finish: exec::OnFinish) {
+        self.runs.on_finish = Some(on_finish);
     }
 
     /// After the std modules the compiler has changed (`provide_std`):
@@ -149,13 +170,17 @@ impl Server {
             };
         };
         let is_request = !id.is_null();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.runs.request = id.clone();
+        }
         let outcome = catch_unwind(AssertUnwindSafe(|| {
             self.dispatch(method, message.get("params").unwrap_or(&Value::Null))
         }));
         match outcome {
             Ok(Ok(result)) => {
                 let mut out = Vec::new();
-                if is_request {
+                if is_request && !result.deferred {
                     out.push(obj([
                         ("jsonrpc", "2.0".into()),
                         ("id", id),
@@ -226,14 +251,21 @@ impl Server {
                         params.at(&["initializationOptions", "codeLens"]) == &Value::Bool(true);
                     self.replay =
                         params.at(&["initializationOptions", "replayLenses"]) == &Value::Bool(true);
+                    self.runs.refresh =
+                        params.at(&["capabilities", "workspace", "inlayHint", "refreshSupport"])
+                            == &Value::Bool(true);
                 }
                 Ok(Reply::result(capabilities()))
             }
-            "initialized"
-            | "$/cancelRequest"
-            | "$/setTrace"
-            | "textDocument/didSave"
-            | "workspace/didChangeConfiguration" => Ok(Reply::default()),
+            "initialized" | "$/cancelRequest" | "$/setTrace" => Ok(Reply::default()),
+            #[cfg(target_arch = "wasm32")]
+            "textDocument/didSave" | "workspace/didChangeConfiguration" => Ok(Reply::default()),
+            #[cfg(not(target_arch = "wasm32"))]
+            "textDocument/didSave" => self.saved(params),
+            #[cfg(not(target_arch = "wasm32"))]
+            "workspace/didChangeConfiguration" => Ok(self.configured(params)),
+            #[cfg(not(target_arch = "wasm32"))]
+            "workspace/executeCommand" => self.execute(params),
             "shutdown" => {
                 self.shutdown = true;
                 Ok(Reply::default())
@@ -268,12 +300,16 @@ impl Server {
                 }
                 self.db.set_file(uri, text.as_str());
                 self.docs.insert(uri.to_string(), text);
+                #[cfg(not(target_arch = "wasm32"))]
+                self.runs.edited(uri);
                 Ok(Reply::notify(self.first_diagnostics(uri)))
             }
             "textDocument/didClose" => {
                 let uri = uri_of(params)?;
                 self.docs.remove(uri);
                 self.proven.remove(uri);
+                #[cfg(not(target_arch = "wasm32"))]
+                self.runs.edited(uri);
                 self.db.remove_file(uri);
                 Ok(Reply::notify(publish(uri, Vec::new())))
             }
@@ -679,14 +715,6 @@ impl Server {
             "cpl/command" => Ok(Reply::result(command::command(params))),
             #[cfg(not(target_arch = "wasm32"))]
             "cpl/commands" => Ok(Reply::result(command::commands(&self.commands, params))),
-            #[cfg(not(target_arch = "wasm32"))]
-            "workspace/executeCommand" => match params.get("command").and_then(Value::as_str) {
-                Some("cpl.import") => {
-                    let arguments = params.get("arguments").and_then(Value::as_array);
-                    self.import(arguments.unwrap_or(&[])).map(Reply::result)
-                }
-                other => Err((INVALID_PARAMS, format!("no command {other:?}"))),
-            },
             "workspace/symbol" => {
                 let query = params
                     .get("query")
@@ -770,7 +798,7 @@ impl Server {
             "textDocument/inlayHint" => {
                 let uri = uri_of(params)?;
                 let Some(facts) = self.proven(uri) else {
-                    return Ok(Reply::result(Value::Array(Vec::new())));
+                    return Ok(Reply::result(Value::Array(self.run_hints(uri))));
                 };
                 let analysis = facts.analysis().clone();
                 let mut hints = Vec::new();
@@ -834,9 +862,9 @@ impl Server {
                     ));
                 }
                 cpl_diag::sort_by_key(&mut hints, |(at, _)| u64::from(*at));
-                Ok(Reply::result(Value::Array(
-                    hints.into_iter().map(|(_, h)| h).collect(),
-                )))
+                let mut hints: Vec<Value> = hints.into_iter().map(|(_, h)| h).collect();
+                hints.extend(self.run_hints(uri));
+                Ok(Reply::result(Value::Array(hints)))
             }
             // `cpl fmt` on the open text, in the style of the nearest
             // `cp.toml`: one edit that replaces the file, or none when it is
@@ -1118,20 +1146,22 @@ impl Server {
 struct Reply {
     response: Value,
     notifications: Vec<Value>,
+    /// Answered later, among the notifications of a run that ends.
+    deferred: bool,
 }
 
 impl Reply {
     fn result(response: Value) -> Reply {
         Reply {
             response,
-            notifications: Vec::new(),
+            ..Reply::default()
         }
     }
 
     fn notify(notification: Value) -> Reply {
         Reply {
-            response: Value::Null,
             notifications: vec![notification],
+            ..Reply::default()
         }
     }
 }
@@ -1145,7 +1175,11 @@ fn capabilities() -> Value {
                 // Open/close notifications, incremental changes.
                 (
                     "textDocumentSync",
-                    obj([("openClose", true.into()), ("change", 2.into())]),
+                    obj([
+                        ("openClose", true.into()),
+                        ("change", 2.into()),
+                        ("save", true.into()),
+                    ]),
                 ),
                 ("hoverProvider", true.into()),
                 (
@@ -1245,7 +1279,7 @@ fn capabilities() -> Value {
         ),
     ]);
     #[cfg(not(target_arch = "wasm32"))]
-    let caps = import::advertise(lens::advertise(caps));
+    let caps = lens::advertise(caps);
     caps
 }
 

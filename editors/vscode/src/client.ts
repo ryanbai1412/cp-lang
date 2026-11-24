@@ -36,7 +36,11 @@ export class CpClient implements vscode.Disposable {
     /** The `cpl` the server runs, shown in the status and the output. */
     private binary: string | undefined;
 
-    constructor(private readonly output: vscode.OutputChannel) {
+    /** `page` opens the page a trace answers with. */
+    constructor(
+        private readonly output: vscode.OutputChannel,
+        private readonly page: (html?: string | null) => void,
+    ) {
         this.status = vscode.languages.createLanguageStatusItem('cp.server', SELECTOR);
         this.status.name = 'CP language server';
         this.status.command = { command: 'cp.restartServer', title: 'Restart' };
@@ -65,9 +69,19 @@ export class CpClient implements vscode.Disposable {
                 codeLens: vscode.workspace.getConfiguration('cp').get('codeLens.enabled', true),
                 replayLenses: true,
             },
+            // The server reads the `cp` settings that complete what it runs.
+            synchronize: { configurationSection: 'cp' },
             outputChannel: this.output,
-            revealOutputChannelOn: RevealOutputChannelOn.Never,
+            // A run's panel comes as an Info log message; the server's own log is below that.
+            revealOutputChannelOn: RevealOutputChannelOn.Info,
             middleware: {
+                // The server runs `cpl.exec` on the files as saved, so save them first.
+                executeCommand: async (command, args, next) => {
+                    await vscode.workspace.saveAll(false);
+                    const result = await next(command, args);
+                    this.page(result?.html);
+                    return result;
+                },
                 // Replay lenses only while a CP Lang debug session runs.
                 provideCodeLenses: async (document, token, next) =>
                     vscode.debug.activeDebugSession?.type === 'cp'

@@ -1,6 +1,6 @@
 # CP Lang for VS Code
 
-VS Code support for **CP Lang 0.2.2** (`.cp` files): an ultra-lean 34-keyword TextMate grammar with zero stale tokens, high-signal contest snippets, `cpl lsp` integration (diagnostics, hover, type-aware completion, signature help, inlay hints, go-to-definition, find-references, rename, document symbols and quick fixes), CodeLens actions, live inline sample values, counterexample overlays, and `cpl stress` / `cpl trace` commands.
+VS Code support for **CP Lang 0.2.2** (`.cp` files): an ultra-lean 34-keyword TextMate grammar with zero stale tokens, high-signal contest snippets, `cpl lsp` integration (diagnostics, hover, type-aware completion, signature help, inlay hints, go-to-definition, find-references, rename, document symbols and quick fixes), CodeLens actions, and run, stress and trace commands whose results the server shows as inline hints, diagnostics and output.
 
 The language surface follows `docs/one-page-cheat-sheet.md`, `research/archive/architecture/language-architecture-v2.2.md`, and `decisions.md` §16–§19; editor UX follows `plan/60-editor.md`.
 
@@ -130,6 +130,6 @@ Every setting the extension reads; `crates/cpl-cli/tests/vscode_sync.rs` checks 
 
 - `syntaxes/cp.tmLanguage.json` (the grammar, generated: `just gen`), `language-configuration.json`, `snippets/cp.json` — grammar, indentation/bracket config, and contest snippets.
 - `src/languageData.ts` — a pure Node-testable module (no `vscode` import).
-- `src/extension.ts`, `src/client.ts`, `src/overlays.ts` — VS Code wiring; each command runs `cpl` and draws what it returns.
+- `src/extension.ts`, `src/client.ts` — VS Code wiring; each command forwards to the server's `cpl.exec`, which runs `cpl` and shows the report through the protocol.
 - `test/unit/*.test.ts` — grammar/0.2.2 table parity, corpus tokenization across `proto/`, `stdlib/`, and `examples/local-lib/`, snippet validation, and real `cpl lsp` stdio protocol checks.
 - `test/integration/suite.ts` — end-to-end VS Code extension host suite.

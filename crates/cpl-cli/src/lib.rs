@@ -1625,11 +1625,11 @@ pub fn dap() -> u8 {
 /// Serves the language server on stdin and stdout until the editor ends
 /// the session. Returns the exit status.
 pub fn lsp() -> u8 {
-    let stdin = std::io::stdin();
+    let stdin = std::io::BufReader::new(std::io::stdin());
     let stdout = std::io::stdout();
     let names = commands::COMMANDS.iter().map(|c| c.name).collect();
     let server = cpl_lsp::Server::new().with_commands(names);
-    match cpl_lsp::serve_with(server, stdin.lock(), stdout) {
+    match cpl_lsp::serve_with(server, stdin, stdout.lock()) {
         Ok(code) => code as u8,
         Err(error) => {
             eprintln!("cpl lsp: {error}");

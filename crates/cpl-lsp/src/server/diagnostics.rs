@@ -43,30 +43,44 @@ impl Server {
         let Some(analysis) = self.db.analyze(uri) else {
             return publish(uri, Vec::new());
         };
-        let items = analysis
+        let mut items: Vec<Value> = analysis
             .diagnostics
             .iter()
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();
+        items.extend(self.run_diagnostics(uri));
         publish(uri, items)
     }
 
     /// The `publishDiagnostics` notification for a document.
     pub(super) fn diagnostics(&mut self, uri: &str) -> Value {
         let Some(facts) = self.proven(uri) else {
-            return publish(uri, Vec::new());
+            return publish(uri, self.run_diagnostics(uri));
         };
         let analysis = facts.analysis().clone();
         let reported = reported(uri, &facts);
         // A lint on the same span (L0306) already says it, with a fix.
         let mut notes = overflows(&facts);
         notes.retain(|n| !reported.iter().any(|l| l.span == n.span));
-        let items = reported
+        let mut items: Vec<Value> = reported
             .iter()
             .chain(&notes)
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();
+        items.extend(self.run_diagnostics(uri));
         publish(uri, items)
+    }
+
+    /// The browser runs no `cpl`, so it shows no run's problem.
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn run_diagnostics(&self, _uri: &str) -> Vec<Value> {
+        Vec::new()
+    }
+
+    /// Nor a run's marks.
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn run_hints(&self, _uri: &str) -> Vec<Value> {
+        Vec::new()
     }
 }
 

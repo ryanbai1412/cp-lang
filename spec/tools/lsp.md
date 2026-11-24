@@ -61,6 +61,20 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   `window/showDocument`; it reports waiting and failure with
   `window/showMessage`. JetBrains' Import a Problem sends only this
   command (`crates/cpl-lsp/tests/import.rs`).
+- **Showing a run**: `workspace/executeCommand` runs `cpl.exec` itself: the
+  arguments after `cpl`, with an object among them giving `stdin`,
+  `expect` and flags by name (`{case: "i1"}` is `--case i1`), completed by
+  the client's `cp` settings (`cp.stress.args`, `cp.submit.copy`,
+  `cp.liveValues.input`, `cp.run.timeoutMs`) and `--format json` (a trace's
+  `html`). It answers `{view, html, code, stderr}` when the run ends and
+  shows the `view` through the protocol: the panel as a `window/logMessage`
+  (Info), the status as a `window/showMessage`, each line's strongest mark
+  and the status as inlay hints at the line's end (clipped to
+  `cp.liveValues.maxLength`, the full text on hover), and its diagnostic
+  among the document's, until the next edit. `cpl.show` `[uri, view]` shows
+  a view another tool made, `cpl.clear` `[uri]` takes one away, and with
+  `cp.liveValues.enabled` each save runs the samples quietly
+  (`crates/cpl-lsp/src/tests/exec.rs`).
 
 Editor settings, every one each editor exposes
 (`crates/cpl-cli/tests/editor_settings.rs` checks this table against each

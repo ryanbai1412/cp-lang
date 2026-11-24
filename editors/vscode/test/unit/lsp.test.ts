@@ -70,7 +70,7 @@ test('cpl lsp serves diagnostics, hover, quick fixes, completion, references, re
             retriggerCharacters: [','],
         });
         assert.deepEqual(init.capabilities.codeActionProvider, { codeActionKinds: ['quickfix', 'source.fixAll.cpl', 'source.organizeImports'] });
-        assert.deepEqual(init.capabilities.textDocumentSync, { openClose: true, change: 2 });
+        assert.deepEqual(init.capabilities.textDocumentSync, { openClose: true, change: 2, save: true });
         await connection.sendNotification('initialized', {});
 
         await connection.sendNotification('textDocument/didOpen', {

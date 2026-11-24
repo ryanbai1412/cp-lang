@@ -20,6 +20,7 @@ cpl-syntax.workspace = true
 
 # The samples and cases lenses run are files; a browser has none.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cpl-wait.workspace = true
 cpl-contest.workspace = true
 
 [dev-dependencies]
