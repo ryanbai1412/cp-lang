@@ -37,6 +37,8 @@ enum StoreOp {
     Set,
     /// `+=`, `*=`, `|=`, `^=`, `/=`, `>>=`, `max=`: preserves NonNeg if `rhs` is NonNeg/Positive.
     KeepNonNeg,
+    /// `v += rhs`: as `KeepNonNeg`, and bounded by the guards on `v` there.
+    Add,
     /// `&=`: preserves NonNeg regardless of `rhs`.
     BitAnd,
     /// `%=`: Euclidean remainder is always NonNeg.
@@ -51,6 +53,8 @@ type Store<'p> = (Option<usize>, StoreOp, &'p Expr);
 enum Fact<'p> {
     Le(&'p Expr, i64),
     Ge(&'p Expr, i64),
+    /// `v <= k`, from a shift by `v` that stays positive.
+    Most(i64),
 }
 
 /// A condition's facts: a guard on a local, and when the guard was made.
@@ -114,6 +118,14 @@ fn cond_facts<'p>(
                 op => op,
             };
             for (x, op, y) in [(l, op, r), (r, flip, l)] {
+                // `(x >> s) > k >= 0`: a shift of 63 or more leaves 0 or -1.
+                if let (ExprKind::Binary(BinOp::Shr, _, s), Gt | Ge, ExprKind::Int(k)) =
+                    (&x.kind, op, &y.kind)
+                {
+                    if let Some(s) = read_var(fn_id, s).filter(|_| *k >= i64::from(op == Ge)) {
+                        out.push((s, Fact::Most(62)));
+                    }
+                }
                 let Some(v) = read_var(fn_id, x) else {
                     continue;
                 };
@@ -276,7 +288,7 @@ impl<'p> Facts<'p> {
                     .iter()
                     .all(|&(home, sop, rhs)| match sop {
                         StoreOp::Rem | StoreOp::BitAnd => true,
-                        StoreOp::Set | StoreOp::KeepNonNeg => {
+                        StoreOp::Set | StoreOp::KeepNonNeg | StoreOp::Add => {
                             facts.sign(home, rhs) != Sign::Unknown
                         }
                     });
@@ -350,6 +362,10 @@ impl<'p> Facts<'p> {
         for &(home, sop, rhs) in stores {
             match sop {
                 StoreOp::Set => hi = hi.max(self.upper_bound(home, rhs, 1)?),
+                StoreOp::Add => {
+                    let before = self.guard_hi_at(at(rhs) + 1, 1)?;
+                    hi = hi.max(before.checked_add(self.upper_bound(home, rhs, 1)?)?);
+                }
                 StoreOp::Rem | StoreOp::BitAnd if self.nonneg_vars.contains(&v) => {}
                 _ => return None,
             }
@@ -427,13 +443,9 @@ impl<'p> Facts<'p> {
                         let sop = match op {
                             AssignOp::Set => Some(StoreOp::Set),
                             AssignOp::Max => Some(StoreOp::KeepNonNeg),
+                            AssignOp::Binary(BinOp::Add) => Some(StoreOp::Add),
                             AssignOp::Binary(
-                                BinOp::Add
-                                | BinOp::Mul
-                                | BinOp::BitOr
-                                | BinOp::BitXor
-                                | BinOp::Div
-                                | BinOp::Shr,
+                                BinOp::Mul | BinOp::BitOr | BinOp::BitXor | BinOp::Div | BinOp::Shr,
                             ) => Some(StoreOp::KeepNonNeg),
                             AssignOp::Binary(BinOp::BitAnd) => Some(StoreOp::BitAnd),
                             AssignOp::Binary(BinOp::Rem) => Some(StoreOp::Rem),
@@ -450,6 +462,14 @@ impl<'p> Facts<'p> {
                     }
                     self.place(fn_id, place);
                     self.expr(fn_id, value);
+                    // `v += value` reads `v` here too.
+                    if let (PlaceKind::Global(_) | PlaceKind::Local(_), Some(v)) =
+                        (&place.kind, var(fn_id, &place.kind))
+                    {
+                        for &g in self.active.iter().flatten().filter(|g| g.0 == v) {
+                            self.leaf_log.push((at(value) + 1, g));
+                        }
+                    }
                     self.kill_place(fn_id, place);
                 }
                 Stmt::Expr(e) | Stmt::Give(e) | Stmt::Return(Some(e)) => self.expr(fn_id, e),
@@ -648,9 +668,16 @@ impl<'p> Facts<'p> {
 
     /// The least upper bound the guards in force give the read `e`.
     fn guard_hi(&self, e: &Expr, depth: u8) -> Option<i64> {
-        (self.guarded.get(&at(e))?.iter())
+        self.guard_hi_at(at(e), depth)
+    }
+
+    /// As `guard_hi`, for the read at `read`; `at(value) + 1` is the read
+    /// of `v` that `v += value` makes.
+    fn guard_hi_at(&self, read: usize, depth: u8) -> Option<i64> {
+        (self.guarded.get(&read)?.iter())
             .filter_map(|&(v, fact)| match fact {
                 Fact::Le(b, k) => self.upper_bound(v.0, b, depth + 1)?.checked_add(k),
+                Fact::Most(k) => Some(k),
                 Fact::Ge(..) => None,
             })
             .min()
@@ -661,7 +688,7 @@ impl<'p> Facts<'p> {
         (self.guarded.get(&at(e))?.iter())
             .filter_map(|&(v, fact)| match fact {
                 Fact::Ge(b, k) => self.lower_bound(v.0, b, depth + 1)?.checked_add(k),
-                Fact::Le(..) => None,
+                Fact::Le(..) | Fact::Most(_) => None,
             })
             .max()
     }

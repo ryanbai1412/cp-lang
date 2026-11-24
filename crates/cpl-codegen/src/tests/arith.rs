@@ -489,3 +489,17 @@ fn a_ranged_parameter_is_bounded_by_its_range() {
     let open = cpp("fn g(n: 0..) -> Int = n + 63\nprint(g(read()))\n");
     assert!(open.contains("cpl::iadd(n, 63)"), "{open}");
 }
+
+#[test]
+fn a_shift_that_stays_positive_bounds_its_count() {
+    let src = |cond: &str| {
+        format!(
+            "let top: Int = read()\nvar bits = 0\nwhile {cond}: bits += 1\nprint(bits * 1000)\n"
+        )
+    };
+    let positive = body(&src("(top >> bits) > 0"));
+    assert!(positive.contains("put_int(bits * 1000,"), "{positive}");
+    // A negative `top` shifts to -1, never 0, so `!= 0` bounds nothing.
+    let nonzero = body(&src("(top >> bits) != 0"));
+    assert!(nonzero.contains("cpl::imul(bits, 1000)"), "{nonzero}");
+}
