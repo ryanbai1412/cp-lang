@@ -9,7 +9,8 @@
 //   the current city's total since arrival. A move repaints f..g, and each run it overwrites
 //   settles its gain there less the distance to c into a range-add `DualFenwick`. Repainting
 //   is amortized O(1) runs per move: O((m + q) log m + n log n).
-// Bounds: n, m, q: 1..=2e5; start: 1..=n; roads.u, roads.v: 1..=n
+// Bounds: n, m, q: 1..=2e5; start: 1..=n; roads.u, roads.v: 1..=n; f, g, v: 1..=m; c: 1..=n;
+//   d: 1..=1e9
 // original: corpus/submissions/5199667.cpp
 
 use std.fenwick.{DualFenwick}

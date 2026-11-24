@@ -6,7 +6,7 @@
 // Solution: the suffixes that start with t form one rank range of the suffix array, and the
 //   k-th occurrence is the k-th smallest start in that range: a persistent `RangeKth` over
 //   the suffix array answers it. O(n log n) build, O(|t| log n) per query.
-// Bounds: q: 1..=2e5
+// Bounds: q: 1..=2e5; k: 1..=2_147_483_647
 // original: corpus/submissions/4214399.cpp
 use std.persistent.{RangeKth}
 
