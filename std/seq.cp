@@ -1334,6 +1334,44 @@ pub trait Bidir<T>: Seq<T>:
     /// Walks the sequence from its end.
     fn iter_rev(self) -> yields T
 
+impl Seq<T> for List<T>:
+    fn iter(self) -> yields T:
+        for x in self: yield x
+
+impl Bidir<T> for List<T>:
+    fn iter_rev(self) -> yields T:
+        var i = self.len - 1
+        while i >= 0:
+            yield self[i]
+            i -= 1
+
+impl Seq<D> for Range<D>:
+    fn iter(self) -> yields D:
+        for x in self: yield x
+
+impl Bidir<D> for Range<D>:
+    fn iter_rev(self) -> yields D:
+        for x in self.rev: yield x
+
+impl Seq<Char> for Str:
+    fn iter(self) -> yields Char:
+        for c in self: yield c
+
+impl Bidir<Char> for Str:
+    fn iter_rev(self) -> yields Char:
+        var i = self.len - 1
+        while i >= 0:
+            yield self[i]
+            i -= 1
+
+impl Seq<T> for [D]T:
+    fn iter(self) -> yields T:
+        for x in self: yield x
+
+impl Bidir<T> for [D]T:
+    fn iter_rev(self) -> yields T:
+        for x in self.rev: yield x
+
 /// A sized sequence read in \(O(1)\) by walk position: `s.nth(k)` is the element `k` steps into
 /// the walk. Every `Indexed` is one, and so is the `.rev` of one, which is what `zip`'s later
 /// arguments need (R07.6.4).
