@@ -450,3 +450,25 @@ fn each_stmt_expr_and_each_part_see_statements_and_their_parts() {
         "each_part sees inside the push, not only the push"
     );
 }
+
+#[test]
+fn each_let_run_breaks_a_run_of_lets_at_any_other_statement() {
+    use crate::uses::split::each_let_run;
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    let a = n + 1\n",
+        "    let b = a * 2\n",
+        "    print(b)\n",
+        "    let c = b - 1\n",
+        "    c\n",
+        "print(f(3))\n",
+    ));
+    let mut shape = String::new();
+    each_let_run(&program.fns[0].body, &mut |stmt| {
+        shape.push(if stmt.is_some() { 'L' } else { '-' });
+    });
+    assert!(
+        shape.contains("LL-L"),
+        "two lets, the print, then a let: {shape}"
+    );
+}

@@ -6,6 +6,9 @@
 //! declaration stays there; otherwise it moves to the top of the fn.
 
 use crate::uses::effects::Touch;
+use crate::uses::loops::{each_loop, Loop};
+use crate::uses::places::{each_part, each_put, each_write, Put, Write};
+use crate::uses::split::{each_let_run, each_sink, each_value, Sink};
 use crate::walk;
 use cpl_ir::{
     Arg, Block, Builtin, CmpOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty,
@@ -172,7 +175,7 @@ impl Scopes {
 pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> {
     let mut reads: BTreeMap<usize, usize> = BTreeMap::new();
     let mut barred = Touch::of_block(body).stored_locals();
-    walk::deep_exprs(body, &mut |e| match &e.kind {
+    each_value(body, &mut |e| match &e.kind {
         ExprKind::Local(slot) => *reads.entry(*slot).or_default() += 1,
         ExprKind::Closure(id) => {
             barred.extend(program.closures[*id].captures.iter().map(|c| c.outer));
@@ -191,8 +194,8 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
             }
         }
     };
-    walk::deep_stmts(body, &mut |stmt| {
-        if let Stmt::Let(_, Some(init)) = stmt {
+    each_let_run(body, &mut |stmt| {
+        if let Some((_, init)) = stmt {
             if let ExprKind::Field(base, index) = &init.kind {
                 if let (ExprKind::Local(slot), Some((of, fields, heap))) = (&base.kind, &mut run) {
                     if slot == of && fields.insert(*index) {
@@ -208,9 +211,9 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
             }
         }
         close(&mut run);
-        if let Stmt::Let(slot, Some(init)) = stmt {
+        if let Some((slot, init)) = stmt {
             if matches!(init.ty, cpl_ir::Ty::Tuple(_)) {
-                run = Some((*slot, BTreeSet::new(), false));
+                run = Some((slot, BTreeSet::new(), false));
             }
         }
     });
@@ -271,25 +274,25 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
     let mut twice: BTreeSet<usize> = BTreeSet::new();
     // `let xs = [.. for ..]`: `xs` names the list its block built and gave.
     let mut built: Vec<(usize, usize)> = Vec::new();
-    walk::deep_stmts(body, &mut |stmt| {
-        if let Stmt::Let(slot, Some(init)) = stmt {
+    each_put(body, &mut |put, init| {
+        if let Put::Let(slot) = put {
             if let ExprKind::Do(block) = &init.kind {
                 if let (Some(Stmt::Let(list, _)), Some(Stmt::Give(gave))) =
                     (block.stmts.first(), block.stmts.last())
                 {
                     if matches!(gave.kind, ExprKind::Local(l) if l == *list) {
-                        built.push((*slot, *list));
+                        built.push((slot, *list));
                     }
                 }
             }
             let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
                 && matches!(init.ty, Ty::List(_))
                 || matches!(&init.kind, ExprKind::Fill(dims, _) if dims.len() == 1)
-                || built.last().is_some_and(|(s, _)| s == slot);
-            if !empty || starts.contains(slot) {
-                twice.insert(*slot);
+                || built.last().is_some_and(|(s, _)| *s == slot);
+            if !empty || starts.contains(&slot) {
+                twice.insert(slot);
             }
-            starts.push(*slot);
+            starts.push(slot);
         }
     });
     // Every place the whole list is read as a value, against the ones
@@ -300,7 +303,7 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
             *seen.entry(slot).or_default() += by;
         }
     };
-    walk::deep_exprs(body, &mut |e| {
+    each_value(body, &mut |e| {
         plain(e, 1);
         match &e.kind {
             ExprKind::Index(base, _) => plain(base, -1),
@@ -313,8 +316,8 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
             _ => {}
         }
     });
-    walk::deep_stmts(body, &mut |stmt| {
-        if let Stmt::For(_, _, Iter::Seq(seq, _), _) = stmt {
+    each_loop(body, &mut |_, head| {
+        if let Loop::For(_, Iter::Seq(seq, _)) = head {
             plain(seq, -1);
         }
     });
@@ -370,7 +373,7 @@ pub(crate) fn rows(
                     }
                 }
                 if domain_id.is_none() {
-                    crate::walk::deep_exprs(&f.body, &mut |e| {
+                    each_value(&f.body, &mut |e| {
                         if domain_id.is_none() {
                             if let ExprKind::DomainLen(d) = e.kind {
                                 domain_id = Some(d);
@@ -407,23 +410,17 @@ pub(crate) fn rows(
         .chain(program.fns.iter().map(|f| &f.body))
         .chain(program.closures.iter().map(|c| &c.body));
     for body in bodies {
-        crate::walk::deep_stmts(body, &mut |stmt| {
-            if let Stmt::Assign(place, op, _) = stmt {
+        each_put(body, &mut |put, _| {
+            if let Put::Store(place, op) = put {
                 if *op != cpl_ir::AssignOp::Set {
                     whole(place, &mut rows);
                 }
             }
         });
-        crate::walk::deep_exprs(body, &mut |e| match &e.kind {
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => whole(place, &mut rows),
-            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                for arg in args {
-                    if let cpl_ir::Arg::Mut(place) = arg {
-                        whole(place, &mut rows);
-                    }
-                }
+        each_write(body, &mut |how, place| {
+            if let Write::Mutate(_) | Write::Sort | Write::Mut = how {
+                whole(place, &mut rows);
             }
-            _ => {}
         });
     }
     rows
@@ -438,8 +435,8 @@ pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
         .iter()
         .map(|f| {
             let mut sunk = BTreeSet::new();
-            walk::deep_stmts(&f.body, &mut |stmt| {
-                let Stmt::Return(Some(value)) = stmt else {
+            each_sink(&f.body, &mut |sink| {
+                let Sink::Return(value) = sink else {
                     return;
                 };
                 let ExprKind::Tuple(items) = &value.kind else {
@@ -465,7 +462,7 @@ pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
                     let elsewhere = items.iter().enumerate().any(|(j, other)| {
                         j != idx && {
                             let mut used = false;
-                            walk::deep_expr(other, &mut |e| {
+                            each_part(other, &mut |e| {
                                 used |= matches!(e.kind, ExprKind::Local(s) if s == slot);
                             });
                             used

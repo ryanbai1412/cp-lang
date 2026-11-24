@@ -62,3 +62,13 @@ pub(crate) fn each_sink<'a>(block: &'a Block, f: &mut dyn FnMut(Sink<'a>)) {
         _ => {}
     });
 }
+
+/// Every statement in `block`, at any depth (a `do` block's too), in order:
+/// `Some((slot, init))` for a `let` with a value, `None` for any other. A
+/// run of `Some` is a run of `let`s with nothing between them.
+pub(crate) fn each_let_run<'a>(block: &'a Block, f: &mut dyn FnMut(Option<(Slot, &'a Expr)>)) {
+    walk::deep_stmts(block, &mut |stmt| match stmt {
+        Stmt::Let(slot, Some(init)) => f(Some((*slot, init))),
+        _ => f(None),
+    });
+}

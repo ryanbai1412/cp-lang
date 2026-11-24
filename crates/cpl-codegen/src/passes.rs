@@ -315,7 +315,17 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "scope-hoist",
         "scope.rs",
-        Uses(&["copied_once", "Touch"]),
+        Uses(&[
+            "copied_once",
+            "Touch",
+            "each_value",
+            "each_let_run",
+            "each_put",
+            "each_loop",
+            "each_write",
+            "each_sink",
+            "each_part",
+        ]),
         "a_loop_local_list_is_one_static_buffer",
     ),
     pass(
