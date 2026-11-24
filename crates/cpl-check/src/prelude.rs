@@ -483,6 +483,56 @@ fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
 /// `prefix(a)` dispatches by what `a` is (`[D]T`, `[R, C]T`, or `List<T>`).
 pub const BUILT_ON: &[(&str, &str)] = &[("prefix", "Prefix"), ("subsets", "Subset")];
 
+/// The name a std item has now for one it was written with before, as
+/// `@was(Prefix1, PrefixN)` above `pub struct Prefix` states. A word built
+/// on that type was written in snake case: `prefix_n` for `PrefixN`.
+pub fn renamed(name: &str) -> Option<&'static str> {
+    static WAS: OnceLock<crate::fx::HashMap<String, &'static str>> = OnceLock::new();
+    let was = WAS.get_or_init(|| {
+        let mut was = crate::fx::HashMap::default();
+        let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
+        for (_, text) in crate::modules::std_index() {
+            if !text.contains("@was(") {
+                continue;
+            }
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in &item.stmts {
+                    let now = match &stmt.kind {
+                        ast::StmtKind::Struct(d) => &d.name.text,
+                        ast::StmtKind::Enum(d) => &d.name.text,
+                        ast::StmtKind::Fn(f) => &f.name.text,
+                        _ => continue,
+                    };
+                    let olds = stmt.decorators.iter().filter(|d| d.name.text == "was");
+                    for arg in olds.flat_map(|d| &d.args) {
+                        if let ast::ExprKind::Name(old) = &arg.value.kind {
+                            was.insert(old.clone(), leak(now));
+                        }
+                    }
+                }
+            }
+        }
+        let snake = |s: &str| {
+            let mut out = String::new();
+            for (i, c) in s.chars().enumerate() {
+                if c.is_uppercase() && i > 0 {
+                    out.push('_');
+                }
+                out.extend(c.to_lowercase());
+            }
+            out
+        };
+        let types: Vec<(String, &str)> = was.iter().map(|(o, n)| (o.clone(), *n)).collect();
+        for &(word, on) in BUILT_ON {
+            for (old, _) in types.iter().filter(|(_, now)| *now == on) {
+                was.insert(snake(old), word);
+            }
+        }
+        was
+    });
+    was.get(name).copied()
+}
+
 /// Internal shape specializations brought in from a stdlib module when a
 /// file uses the unified family name (`prefix`, `Prefix`, `Diff`), without
 /// spending prelude slots or exposing internal names to users.

@@ -304,6 +304,11 @@ implemented; costs are a doc convention; `@on_unimplemented` implemented (decisi
 mark a name deprecated with a replacement that `cpl fix` applies:
 `#deprecated(use: "xs.sort(by: f)")`. Status: partial (codemods are
 compiler-side).
+A std item states the names it replaced, `@was(Prefix1, PrefixN)` above
+`pub struct Prefix`; a program writing an old one gets E0201 or E0204
+naming the new one, with the fix (and a word built on the type, the
+snake-case forms: `prefix_n`). Status: checks
+(`std-prefix/was-diff1-names-diff.cp`).
 
 ## W14. Inline C++ (P14)
 

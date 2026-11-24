@@ -1097,7 +1097,7 @@ impl<'a> Checker<'a> {
         if name == "todo" || name == "unreachable" {
             return Ty::Unknown;
         }
-        if let Some(replacement) = renamed_prefix_name(name) {
+        if let Some(replacement) = crate::prelude::renamed(name) {
             if let Some(diag) = self.report(
                 span,
                 msgs::check::UNRESOLVED_NAME_WAS_REPLACED_BY,
@@ -1909,15 +1909,6 @@ fn collect_expr_names(expr: &cpl_syntax::ast::Expr, out: &mut Vec<(String, Span)
         }
     }
     walk_expr(expr, &mut NameCollector(out));
-}
-
-pub(crate) fn renamed_prefix_name(name: &str) -> Option<&'static str> {
-    match name {
-        "prefix1" | "prefix2" | "prefix_n" => Some("prefix"),
-        "Prefix1" | "Prefix2" | "PrefixN" => Some("Prefix"),
-        "Diff1" | "Diff2" => Some("Diff"),
-        _ => None,
-    }
 }
 
 /// A body still ending in `todo` is unwritten.

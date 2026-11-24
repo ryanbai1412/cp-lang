@@ -443,7 +443,7 @@ impl<'a> Checker<'a> {
         if self.env.declares_alias(lookup_name) {
             return self.alias_cycle(lookup_name, span);
         }
-        if let Some(replacement) = renamed_prefix_name(name) {
+        if let Some(replacement) = crate::prelude::renamed(name) {
             if let Some(diag) =
                 self.report(span, msgs::check::TYPE_REPLACED, &[&name, &replacement])
             {

@@ -118,6 +118,7 @@ pub struct FillPrefix<D, T: Add + Sub>:
 /// in fill order; `.fold(...)` and `.prefix(...)` are \(O(1)\) over the already-filled prefix or suffix.
 /// On `a: [R, C]T`, `Prefix(a)` is the 2-D `Prefix<R, C, T>`, folding rectangles with
 /// `fold(rows, cols)`; it is never a 1-D table over the cells.
+@was(Prefix1, Prefix2, PrefixN)
 pub struct Prefix<D, T: Add + Sub>:
     p: [D.cuts]T
     sums: Bool
@@ -553,6 +554,7 @@ pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
 
 /// Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.
 /// \(O(1)\) range/rectangle `add`, \(O(\lvert D \rvert)\) or \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
+@was(Diff1, Diff2)
 pub struct Diff<D, T: Add + Sub>:
     d: [D.cuts]T
 
