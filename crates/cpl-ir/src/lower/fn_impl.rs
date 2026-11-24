@@ -292,6 +292,73 @@ impl<'a> Lowerer<'a> {
             .map(GenArg::Op)
     }
 
+    /// `Tree<Int>(+)` through `fn new<M: Op<E>, E>(..) -> Tree<M.Fold>`: the owner's
+    /// `T = Int` is `M.Fold`, and the `Monoid<T>` impl a bare op takes chooses
+    /// `Fold = T` for its `Op<T>`, so `E = Int` before the op picks its impl.
+    pub(super) fn bind_op_from_owner(
+        &mut self,
+        owner: StructId,
+        decl: &ast::FnDecl,
+        param: &str,
+        owner_env: &GenEnv,
+        inferred: &mut GenEnv,
+    ) {
+        let Some((gid, _)) = &self.structs[owner].origin_gen else {
+            return;
+        };
+        let sdecl = self.gen_structs[*gid].decl;
+        let Some(ast::TypeKind::Named { name, args }) = decl.ret.as_ref().map(|t| &t.kind) else {
+            return;
+        };
+        if name.text != sdecl.name.text && name.text != "Self" {
+            return;
+        }
+        let wants = args.iter().zip(&sdecl.generics).filter_map(|(a, g)| {
+            let ast::TypeKind::Named { name, args } = &a.kind else {
+                return None;
+            };
+            let (of, assoc) = name.text.split_once('.')?;
+            (of == param && args.is_empty()).then(|| (assoc.to_string(), owner_env.get(&g.text)))
+        });
+        let wants: Vec<(String, GenArg)> =
+            wants.filter_map(|(a, w)| Some((a, w?.clone()))).collect();
+        let bound_traits = decl.bounds.iter().filter(|b| b.name.text == param);
+        for tr in bound_traits.flat_map(|b| &b.traits) {
+            let ast::TypeKind::Named {
+                name: tr,
+                args: bargs,
+            } = &tr.kind
+            else {
+                continue;
+            };
+            for imp in &self.impls {
+                let is_monoid = matches!(&imp.target.kind,
+                    ast::TypeKind::Named { name, .. } if name.text == "Monoid");
+                if !is_monoid || imp.trait_name.as_deref() != Some(tr.text.as_str()) {
+                    continue;
+                }
+                for (assoc, want) in &wants {
+                    let chosen = imp.body.stmts.iter().find_map(|s| match &s.kind {
+                        ast::StmtKind::TypeAlias { name, ty, .. } if name.text == *assoc => {
+                            bare_name(ty)
+                        }
+                        _ => None,
+                    });
+                    let Some(j) = chosen
+                        .and_then(|c| imp.trait_args.iter().position(|t| bare_name(t) == Some(c)))
+                    else {
+                        continue;
+                    };
+                    if let Some(x) = bargs.get(j).and_then(bare_name) {
+                        if decl.generics.iter().any(|g| g.text == x) && !inferred.contains_key(x) {
+                            inferred.insert(x.to_string(), want.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// Whether `param` is bound by a trait some fn type implements, as in
     /// `impl<T> Op<T> for (T, T) -> T`: a closure passed for it stays a fn
     /// value, so the impl's methods and associated types apply to it.
@@ -381,5 +448,12 @@ impl<'a> Lowerer<'a> {
             return Some(fn_id);
         }
         None
+    }
+}
+
+fn bare_name(t: &ast::Type) -> Option<&str> {
+    match &t.kind {
+        ast::TypeKind::Named { name, args } if args.is_empty() => Some(&name.text),
+        _ => None,
     }
 }

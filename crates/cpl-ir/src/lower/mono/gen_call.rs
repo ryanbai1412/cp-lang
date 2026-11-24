@@ -301,6 +301,11 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        if let Some(sid) = self.gen_fns[gfid].owner {
+            for (_, _, param) in &waiting_ops {
+                self.bind_op_from_owner(sid, decl, param, &owner_env, &mut inferred);
+            }
+        }
         for (pty, value, param) in waiting_ops {
             let tpl = (tpl_mod, tpl_offset, &inferred);
             match self.bare_op_for(&decl.bounds, &param, value, tpl) {
