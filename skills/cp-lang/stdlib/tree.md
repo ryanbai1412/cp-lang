@@ -150,7 +150,7 @@ Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `stk: List<V>`.
 
 Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `flip: [V]Bool`, `val: [V]T`, `agg: [V]T`, `lz: [V]F`, `stk: List<V>`.
 
-- `fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyLinkCut<V, T, F>` — \(O(n)\); `V.count` single-vertex trees holding `a`, or the identity of `act.over` everywhere when `a` is absent.
+- `fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>` — \(O(n)\); `V.count` single-vertex trees holding `a`, or the identity of `act.over` everywhere when `a` is absent.
 - `fn access(mut self, x: V) -> V` — amortized \(O(\log n)\); Makes the path from the root to `x` preferred, with `x` at the root of its splay tree.
 - `fn make_root(mut self, v: V)` — amortized \(O(\log n)\); Makes `v` the root of its tree.
 - `fn root_of(mut self, v: V) -> V` — amortized \(O(\log n)\); The root of the tree holding `v`, as for `LinkCut.root_of`.
@@ -251,7 +251,7 @@ Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg:
 
 - `fn first(mut self, x: Int) -> Int` — The first node of `x`'s sequence, splayed to the root: one name per tree.
 - `fn reroot(mut self, x: Int)` — Rotates `x`'s tour so that it starts at `x`.
-- `fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyEulerTourTree<V, T, F>` — \(O(n)\); Lone vertices with values `a`, or the identity of `act.over` everywhere when `a` is `None`.
+- `fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>` — \(O(n)\); Lone vertices with values `a`, or the identity of `act.over` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected \(O(\log n)\); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
 - `fn cut(mut self, u: V, v: V)` — expected \(O(\log n)\); Removes the edge `u`-`v`.; traps: when there is no edge `u`-`v`
 - `fn connected(mut self, a: V, b: V) -> Bool` — expected \(O(\log n)\); Whether `a` and `b` are in one tree.
