@@ -171,7 +171,11 @@ fn a_parse_between_reads_keeps_the_rest_of_a_long_input() {
     let n = 40_000u64;
     let mut input = format!("{n}\n");
     for i in 0..n {
-        input.push_str(&format!("{}-{}\n", (i * 2_654_435_761) % 1_000_003, i % 977));
+        input.push_str(&format!(
+            "{}-{}\n",
+            (i * 2_654_435_761) % 1_000_003,
+            i % 977
+        ));
     }
     assert!(input.len() > 4 * (1 << 16), "several pieces");
     let mut interp = Command::new(env!("CARGO_BIN_EXE_cpl"));

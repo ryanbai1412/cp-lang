@@ -199,12 +199,17 @@ impl<'a> Lowerer<'a> {
                     GenArg::Op(_) => Ty::Unit,
                 });
             }
-            let local = self.cx.local_type_aliases.get(&name.text).cloned().or_else(|| {
-                self.outer_cxs
-                    .iter()
-                    .rev()
-                    .find_map(|ocx| ocx.local_type_aliases.get(&name.text).cloned())
-            });
+            let local = self
+                .cx
+                .local_type_aliases
+                .get(&name.text)
+                .cloned()
+                .or_else(|| {
+                    self.outer_cxs
+                        .iter()
+                        .rev()
+                        .find_map(|ocx| ocx.local_type_aliases.get(&name.text).cloned())
+                });
             // A local `type Z = Mod(p)` reads by its struct's input format, as a top-level one does.
             match local {
                 Some(Ty::Struct(sid)) if values => return self.struct_spec(sid),
