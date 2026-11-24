@@ -47,3 +47,32 @@ for i in 0..3: x = x * x
     let trap = trap.expect("the third square overflows");
     assert!(trap.contains("does not fit in an `I128`"), "{trap}");
 }
+
+#[test]
+fn keyed_sort_and_runs_call_the_key_once_per_element() {
+    // cco16p2's `seen.sort(by: s => arg(s.dir))` then `seen.runs(by: ...)`:
+    // each key runs once per element, equal keys keep their order, and a run
+    // breaks where the user `Eq` says two neighbours' keys differ.
+    let source = "
+struct Half(v: Int)
+impl Ord for Half:
+    fn lt(a, b) = a.v / 2 < b.v / 2
+impl Eq for Half:
+    fn eq(a, b) = a.v / 2 == b.v / 2
+fn key(x: (Int, Int)) -> Half:
+    print(\"k\", x.1)
+    Half(x.0)
+var xs = [(3, 0), (1, 1), (2, 2), (0, 3), (3, 4), (5, 5)]
+xs.sort(by: x => key(x))
+print([x.1 for x in xs])
+print([r.len for r in xs.runs(by: x => key(x))])
+let none: List<(Int, Int)> = []
+print(none.runs(by: x => key(x)).count())
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    let keys = |ids: [u8; 6]| ids.map(|i| format!("k {i}\n")).concat();
+    let want =
+        keys([0, 1, 2, 3, 4, 5]) + "1 3 0 2 4 5\n" + &keys([1, 3, 0, 2, 4, 5]) + "2 3 1\n0\n";
+    assert_eq!(out, want);
+}

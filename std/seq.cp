@@ -911,11 +911,16 @@ pub fn runs<S: Indexed, T, K>(
             while j < n and linked(self.nth(j - 1), self.nth(j)): j += 1
             yield piece(self, i, j)
             i = j
-    else:
+    elif n > 0:
+        var k = by(self.nth(0))
         while i < n:
-            let k = by(self.nth(i))
             var j = i + 1
-            while j < n and by(self.nth(j)) == k: j += 1
+            while j < n:
+                let next = by(self.nth(j))
+                if not (next == k):
+                    k = next
+                    break
+                j += 1
             yield self[self.keys.nth(i)..=self.keys.nth(j - 1)]
             i = j
 
