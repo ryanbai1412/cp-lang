@@ -658,7 +658,7 @@ fn a_missing_member_with_no_close_name_lists_what_the_type_has() {
     let d = one(src);
     assert_eq!(d.code.0, "E0203");
     assert_eq!(d.help.as_deref(), Some("its fields are `x`"));
-    let d = one("let s = scan([3, 1, 2], +)\nprint(s.min())\n");
+    let d = one("let s = scan([3, 1, 2], +)\nprint(s.paint())\n");
     let help = d.help.unwrap_or_default();
     assert!(help.starts_with("its methods are `all`, `at`"), "{help}");
     assert!(
