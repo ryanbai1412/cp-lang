@@ -250,6 +250,52 @@ pub(crate) fn given_root(
     }
 }
 
+/// The fields from its variable down to the storage `e` reads, an index
+/// as `None`, when `e` is a path; `self.act!` is `[act]`.
+fn expr_fields(e: &Expr) -> Option<Vec<Option<usize>>> {
+    match &e.kind {
+        ExprKind::Local(_) | ExprKind::Global(_) => Some(Vec::new()),
+        ExprKind::Unwrap(base, _) => expr_fields(base),
+        ExprKind::Field(base, i) => expr_fields(base).map(|mut p| {
+            p.push(Some(*i));
+            p
+        }),
+        ExprKind::Index(base, _) => expr_fields(base).map(|mut p| {
+            p.push(None);
+            p
+        }),
+        _ => None,
+    }
+}
+
+fn place_fields(place: &cpl_ir::Place) -> Vec<Option<usize>> {
+    use cpl_ir::PlaceKind;
+    match &place.kind {
+        PlaceKind::Local(_) | PlaceKind::Global(_) => Vec::new(),
+        PlaceKind::Some(base) => place_fields(base),
+        PlaceKind::Field(base, i) => {
+            let mut p = place_fields(base);
+            p.push(Some(*i));
+            p
+        }
+        PlaceKind::Index(base, _) => {
+            let mut p = place_fields(base);
+            p.push(None);
+            p
+        }
+    }
+}
+
+/// Whether `value` and `place`, of one variable, are apart: they part at
+/// two different fields, `self.act` and `self.lz[p]`.
+pub(crate) fn apart(value: &Expr, place: &cpl_ir::Place) -> bool {
+    let Some(read) = expr_fields(value) else {
+        return false;
+    };
+    (read.iter().zip(place_fields(place)))
+        .any(|(a, b)| matches!((a, b), (Some(a), Some(b)) if *a != b))
+}
+
 /// The variable whose storage a place lives in, whatever its indices
 /// compute: `self.keys[i * 2]` is in `self`.
 fn storage_root(e: &Expr, lent_roots: &BTreeMap<cpl_ir::FnId, usize>) -> Option<(bool, usize)> {
