@@ -56,8 +56,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         )
                     }
                 },
-                Value::I128(v) => match v.checked_abs() {
-                    Some(v) => Value::I128(v),
+                Value::I128(v) => match v.get().checked_abs() {
+                    Some(v) => Value::I128(v.into()),
                     None => {
                         return trap(
                             span,
@@ -345,7 +345,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         }
                     }
                 }
-                Value::Range128(lo, hi) => {
+                Value::Range128(r) => {
+                    let (lo, hi) = (&r.0, &r.1);
                     if hi <= lo {
                         0
                     } else {
@@ -413,7 +414,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let x = needle.int();
                         x >= *lo && x < *hi
                     }
-                    Value::Range128(lo, hi) => {
+                    Value::Range128(r) => {
+                        let (lo, hi) = (&r.0, &r.1);
                         let x = needle.i128();
                         x >= *lo && x < *hi
                     }
@@ -907,13 +909,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             Builtin::RangeLo => match first {
                 Value::Range(lo, _) => Value::Int(lo),
-                Value::Range128(lo, _) => Value::I128(lo),
+                Value::Range128(r) => Value::I128(r.0.into()),
                 Value::RangeF(lo, _) => Value::Float(lo),
                 _ => Value::Int(0),
             },
             Builtin::RangeHi => match first {
                 Value::Range(_, hi) => Value::Int(hi),
-                Value::Range128(_, hi) => Value::I128(hi),
+                Value::Range128(r) => Value::I128(r.1.into()),
                 Value::RangeF(_, hi) => Value::Float(hi),
                 _ => Value::Int(0),
             },
@@ -950,11 +952,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                     Value::List(Rc::new(out))
                 }
-                Value::Range128(lo, hi) => {
+                Value::Range128(r) => {
+                    let (lo, hi) = *r;
                     let mut out = Vec::with_capacity(hi.saturating_sub(lo).max(0) as usize);
                     let mut v = hi - 1;
                     while v >= lo {
-                        out.push(Value::I128(v));
+                        out.push(Value::I128(v.into()));
                         if v == lo {
                             break;
                         }

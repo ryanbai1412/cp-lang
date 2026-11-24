@@ -51,7 +51,7 @@ pub use stop::{Limits, Stop, CANCELLED, OUT_OF_TIME};
 pub use threads::{run_for, run_on_this_thread, run_with_on_this_thread};
 use value::{
     show, zero, Array, CaptureVal, ListViewVal, MutViewVal, OptVal, Part, Step, StrViewVal,
-    TupleVal, Value,
+    TupleVal, Value, Wide,
 };
 
 /// Name of this crate.
@@ -1151,11 +1151,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         }
                     }
                 }
-                Value::Range128(lo, hi) if lo < hi => {
+                Value::Range128(r) if r.0 < r.1 => {
+                    let (lo, hi) = *r;
                     if *rev {
                         let mut v = hi - 1;
                         while v >= lo {
-                            round!(Value::I128(v));
+                            round!(Value::I128(v.into()));
                             if v == lo {
                                 break;
                             }
@@ -1164,7 +1165,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     } else {
                         let mut v = lo;
                         while v < hi {
-                            round!(Value::I128(v));
+                            round!(Value::I128(v.into()));
                             v += 1;
                         }
                     }
@@ -1496,16 +1497,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             },
             Value::Str(bytes) => pick(bytes.len()).map(|i| Value::Char(bytes[i])),
             Value::StrView(view) => pick(view.len).and_then(|i| view.get(i)).map(Value::Char),
-            Value::Array(array) => {
-                if last {
-                    array.last()
-                } else {
-                    array.first()
-                }
-            }
+            Value::Array(array) => pick(array.len()).and_then(|i| array.get(i)),
             Value::Range(lo, hi) => (lo < hi).then(|| Value::Int(if last { hi - 1 } else { *lo })),
-            Value::Range128(lo, hi) => {
-                (lo < hi).then(|| Value::I128(if last { hi - 1 } else { *lo }))
+            Value::Range128(r) => {
+                (r.0 < r.1).then(|| Value::I128((if last { r.1 - 1 } else { r.0 }).into()))
             }
             other => return trap(span, format!("internal: `first`/`last` of {other:?}")),
         })
@@ -2024,7 +2019,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::Float) {
                     Value::RangeF(self.eval(lo)?.float(), self.eval(hi)?.float())
                 } else if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
-                    Value::Range128(self.eval(lo)?.i128(), self.eval(hi)?.i128())
+                    Value::range128(self.eval(lo)?.i128(), self.eval(hi)?.i128())
                 } else {
                     let lo = self.eval(lo)?.int();
                     let hi = self.eval(hi)?.int();
@@ -2490,7 +2485,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn cast(&mut self, cast: Cast, value: Value, span: Span) -> Res<Value> {
         Ok(match cast {
             Cast::IntToFloat => Value::Float(value.int() as f64),
-            Cast::IntToI128 => Value::I128(i128::from(value.int())),
+            Cast::IntToI128 => Value::I128(i128::from(value.int()).into()),
             Cast::IntToU64 => Value::U64(value.int() as u64),
             Cast::I128ToInt => match (&value, i64::try_from(value.i128())) {
                 (_, Ok(v)) if v != i64::MIN => Value::Int(v),
@@ -2504,7 +2499,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Ok(v) => Value::U64(v),
                 Err(_) => return trap(span, format!("{} does not fit in a `U64`", value.i128())),
             },
-            Cast::U64ToI128 => Value::I128(i128::from(value.u64())),
+            Cast::U64ToI128 => Value::I128(i128::from(value.u64()).into()),
             Cast::I128ToFloat => Value::Float(value.i128() as f64),
             Cast::U64ToFloat => Value::Float(value.u64() as f64),
             Cast::FloatToInt => {
@@ -3610,7 +3605,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 }
             }
         }
-        (Value::I128(a), Value::I128(b)) => {
+        (Value::I128(Wide(a)), Value::I128(Wide(b))) => {
             let result = match op {
                 BinOp::Add => a.checked_add(b),
                 BinOp::Sub => a.checked_sub(b),
@@ -3640,7 +3635,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 _ => None,
             };
             match result {
-                Some(value) => Value::I128(value),
+                Some(value) => Value::I128(value.into()),
                 None => {
                     return trap(
                         span,
@@ -3652,7 +3647,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 }
             }
         }
-        (Value::I128(a), Value::Int(b)) => {
+        (Value::I128(Wide(a)), Value::Int(b)) => {
             if !(0..128).contains(&b) {
                 return trap(span, format!("a shift by {b} is outside 0..128"));
             }
@@ -3662,7 +3657,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 }
                 BinOp::Shl => {
                     match Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a) {
-                        Some(value) => Value::I128(value),
+                        Some(value) => Value::I128(value.into()),
                         None => {
                             return trap(
                                 span,
@@ -3673,7 +3668,7 @@ fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                         }
                     }
                 }
-                _ => Value::I128(a >> b),
+                _ => Value::I128((a >> b).into()),
             }
         }
         // A `U64` is the 64 bits: what does not fit is dropped.

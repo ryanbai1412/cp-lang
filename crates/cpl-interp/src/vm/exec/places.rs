@@ -278,7 +278,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_v[dst as usize] = if float {
                     Value::RangeF(lo.float(), hi.float())
                 } else {
-                    Value::Range128(lo.i128(), hi.i128())
+                    Value::range128(lo.i128(), hi.i128())
                 };
             }
             Op::ContainsV { dst, src_v, key_v } => {

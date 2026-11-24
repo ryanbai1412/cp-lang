@@ -1610,3 +1610,10 @@ fn only_a_closure_made_off_the_vm_syncs_the_whole_frame_around_calls() {
     assert!(by_ref);
     assert_eq!(slots.map(|s| s.len()), Some(1));
 }
+
+#[test]
+fn a_value_is_three_words() {
+    // Every list cell, register and stack slot is a Value; at 48 bytes a
+    // List<Int> cost six times the C++ vector<long long>.
+    assert_eq!(std::mem::size_of::<crate::value::Value>(), 24);
+}

@@ -37,8 +37,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                     },
-                    Value::Range128(lo, hi) if lo >= hi => 0,
-                    Value::Range128(lo, hi) => {
+                    Value::Range128(r) if r.0 >= r.1 => 0,
+                    Value::Range128(r) => {
+                        let (lo, hi) = (&r.0, &r.1);
                         match hi.checked_sub(*lo).and_then(|d| i64::try_from(d).ok()) {
                             Some(d) => d,
                             None => {

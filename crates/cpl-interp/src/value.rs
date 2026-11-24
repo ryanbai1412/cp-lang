@@ -177,13 +177,45 @@ impl PartialEq for TupleVal {
 
 impl Eq for TupleVal {}
 
+/// An `I128` kept at 8-byte alignment: a bare `i128` would make every
+/// [`Value`] 16-byte aligned and twice the size.
+#[derive(Clone, Copy)]
+#[repr(C, packed(8))]
+pub(crate) struct Wide(pub i128);
+
+impl Wide {
+    #[inline(always)]
+    pub fn get(self) -> i128 {
+        self.0
+    }
+}
+
+impl From<i128> for Wide {
+    #[inline(always)]
+    fn from(v: i128) -> Wide {
+        Wide(v)
+    }
+}
+
+impl std::fmt::Debug for Wide {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.get(), f)
+    }
+}
+
+impl std::fmt::Display for Wide {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.get(), f)
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) enum Value {
     #[default]
     Unit,
     /// Integers, and positions and bounds as their ordinals.
     Int(i64),
-    I128(i128),
+    I128(Wide),
     U64(u64),
     Float(f64),
     Bool(bool),
@@ -195,7 +227,7 @@ pub(crate) enum Value {
     /// A half-open range `(lo, hi)`.
     Range(i64, i64),
     /// A half-open 128-bit integer range `(lo, hi)`.
-    Range128(i128, i128),
+    Range128(Rc<(i128, i128)>),
     /// An interval of reals `(lo, hi)`: searched, never walked.
     RangeF(f64, f64),
     /// A runtime domain handle `(lo, len)`.
@@ -998,7 +1030,7 @@ impl Value {
 
     pub fn i128(&self) -> i128 {
         match self {
-            Value::I128(v) => *v,
+            Value::I128(v) => v.get(),
             _ => 0,
         }
     }
@@ -1019,6 +1051,10 @@ impl Value {
 
     pub fn bool(&self) -> bool {
         matches!(self, Value::Bool(true))
+    }
+
+    pub fn range128(lo: i128, hi: i128) -> Value {
+        Value::Range128(Rc::new((lo, hi)))
     }
 
     pub fn some(value: Value) -> Value {
@@ -1063,7 +1099,7 @@ impl Ord for Value {
     fn cmp(&self, other: &Value) -> Ordering {
         match (self, other) {
             (Value::Int(a), Value::Int(b)) => a.cmp(b),
-            (Value::I128(a), Value::I128(b)) => a.cmp(b),
+            (Value::I128(a), Value::I128(b)) => a.get().cmp(&b.get()),
             (Value::U64(a), Value::U64(b)) => a.cmp(b),
             (Value::Float(a), Value::Float(b)) => {
                 a.partial_cmp(b).unwrap_or_else(|| a.total_cmp(b))
@@ -1076,7 +1112,7 @@ impl Ord for Value {
             (Value::Str(a), Value::StrView(b)) => b.cmp_bytes(a).reverse(),
             (Value::Opt(a), Value::Opt(b)) => a.cmp(b),
             (Value::Range(a1, a2), Value::Range(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
-            (Value::Range128(a1, a2), Value::Range128(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
+            (Value::Range128(a), Value::Range128(b)) => a.cmp(b),
             (Value::RangeF(a1, a2), Value::RangeF(b1, b2)) => {
                 a1.total_cmp(b1).then_with(|| a2.total_cmp(b2))
             }
@@ -1115,7 +1151,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
     match ty {
         Ty::Unit | Ty::Error => Value::Unit,
         Ty::Int | Ty::Pos(_) | Ty::Bound(_) => Value::Int(0),
-        Ty::I128 => Value::I128(0),
+        Ty::I128 => Value::I128(0.into()),
         Ty::U64 => Value::U64(0),
         Ty::Float => Value::Float(0.0),
         Ty::Bool => Value::Bool(false),
@@ -1123,7 +1159,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Str => Value::Str(Rc::new(Vec::new())),
         Ty::StrView => Value::StrView(Rc::new(StrViewVal::whole(Rc::new(Vec::new()), false))),
         Ty::Opt(_) => Value::Opt(OptVal::None),
-        Ty::Range(inner) if **inner == Ty::I128 => Value::Range128(0, 0),
+        Ty::Range(inner) if **inner == Ty::I128 => Value::range128(0, 0),
         Ty::Range(_) => Value::Range(0, 0),
         Ty::DomainVal => Value::DomainVal(0, 0),
         Ty::Fn(..) | Ty::Mut(_) => Value::Unit,
@@ -1385,9 +1421,10 @@ pub(crate) fn show(
             }
         }
         // A range is a `Seq`: it shows its elements (R10.3.1).
-        (Value::Range128(lo, hi), Ty::Range(_)) => {
-            for i in *lo..*hi {
-                if i > *lo {
+        (Value::Range128(r), Ty::Range(_)) => {
+            let (lo, hi) = (r.0, r.1);
+            for i in lo..hi {
+                if i > lo {
                     out.push(b' ');
                 }
                 let _ = write!(out, "{i}");

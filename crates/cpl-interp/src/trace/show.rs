@@ -185,7 +185,8 @@ pub(super) fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode
                 out.push_str(&text);
             }
         }
-        (Value::Range128(lo, hi), _) => {
+        (Value::Range128(r), _) => {
+            let (lo, hi) = (r.0, r.1);
             let text = format!("{lo}..{hi}");
             if json {
                 string(out, &text);

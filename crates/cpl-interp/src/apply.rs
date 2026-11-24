@@ -211,8 +211,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         )
                     }
                 },
-                (UnOp::Neg, Value::I128(v)) => match v.checked_neg() {
-                    Some(v) => Value::I128(v),
+                (UnOp::Neg, Value::I128(v)) => match v.get().checked_neg() {
+                    Some(v) => Value::I128(v.into()),
                     None => {
                         return trap(
                             span,
@@ -227,7 +227,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
                 (UnOp::Pos, v) => v,
                 (UnOp::BitNot, Value::Int(v)) => Value::Int(!v),
-                (UnOp::BitNot, Value::I128(v)) => Value::I128(!v),
+                (UnOp::BitNot, Value::I128(v)) => Value::I128((!v.get()).into()),
                 (UnOp::BitNot, Value::U64(v)) => Value::U64(!v),
                 (_, other) => other,
             },

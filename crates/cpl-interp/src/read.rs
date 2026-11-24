@@ -40,7 +40,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Spec::List(_) => unreachable!("lowering spells out a counted list read"),
             Spec::Plain(ty) => match ty {
                 Ty::Int => Value::Int(self.input.int().map_err(fail)?.0),
-                Ty::I128 => Value::I128(self.input.wide("an `I128`").map_err(fail)?),
+                Ty::I128 => Value::I128(self.input.wide::<i128>("an `I128`").map_err(fail)?.into()),
                 Ty::U64 => Value::U64(self.input.wide("a `U64`").map_err(fail)?),
                 Ty::Float => Value::Float(self.input.float().map_err(fail)?),
                 Ty::Char => Value::Char(self.input.char().map_err(fail)?),
