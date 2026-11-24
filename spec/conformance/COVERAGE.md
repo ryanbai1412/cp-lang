@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3297 (1093 passing). Rules: 609.
+Cases: 3309 (1093 passing). Rules: 609.
 
 ## Summary per chapter
 
@@ -1055,8 +1055,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **fenwick** (42/42 named by a case)
 - **flow** (58/67 named by a case)
   - uncovered: `CostFlow.potentials`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
-- **geometry** (153/160 named by a case)
-  - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
+- **geometry** (155/160 named by a case)
+  - uncovered: `ByAngle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
 - **graph** (117/128 named by a case)
   - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `TwoSat.add_or`, `Complement`
 - **grid** (39/39 named by a case)
@@ -1099,7 +1099,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2259 of 2378 std items are named by a case.
+2261 of 2378 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
