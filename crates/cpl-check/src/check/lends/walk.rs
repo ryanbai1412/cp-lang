@@ -11,7 +11,9 @@ impl Checker<'_> {
     pub(super) fn hold_walk(&mut self, stmt: &Stmt, iter: &Expr) -> bool {
         let mut sources = self.walk_sources(iter);
         if sources.is_empty() {
+            // A walk over a plain element (`for x in a[i]`) is the loop's own place lend.
             sources = (self.extra_holds(iter).into_iter())
+                .filter(|(kind, ..)| *kind != "element")
                 .map(|(_, place, _, force_mut)| (place, force_mut))
                 .collect();
         }

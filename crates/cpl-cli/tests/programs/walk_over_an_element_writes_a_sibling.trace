@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"pool":{"name":"pool","type":"List\u003cSortedSet\u003cInt>>","kind":"json"},"a":{"name":"a","type":"Int","kind":"scalar"},"b":{"name":"b","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"var pool = [SortedSet.of([x]) for x in 0..2]","stage":"main","values":{"stdout":[],"pool":["0","1"]},"locals":{"x":1},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":4,"label":"pool[1].add(5)","stage":"main","values":{"stdout":[],"pool":["0","1 5"]},"locals":{"x":1},"frames":[{"fn":"main","line":4}]},
+{"id":2,"line":5,"label":"var a = 0","stage":"main","values":{"stdout":[],"pool":["0","1 5"],"a":0},"locals":{"x":1},"frames":[{"fn":"main","line":5}]},
+{"id":3,"line":6,"label":"var b = 1","stage":"main","values":{"stdout":[],"pool":["0","1 5"],"a":0,"b":1},"locals":{"x":1},"frames":[{"fn":"main","line":6}]},
+{"id":4,"line":7,"label":"if pool[a].len \u003c pool[b].len: (a, b) = (b, a)","stage":"main","values":{"stdout":[],"pool":["0","1 5"],"a":1,"b":1},"locals":{"x":1},"frames":[{"fn":"main","line":7}]},
+{"id":5,"line":7,"label":"if pool[a].len \u003c pool[b].len: (a, b) = (b, a)","stage":"main","values":{"stdout":[],"pool":["0","1 5"],"a":1,"b":0},"locals":{"x":1},"frames":[{"fn":"main","line":7}]},
+{"id":6,"line":8,"label":"for x in pool[b]: pool[a].add(x)","stage":"main","values":{"stdout":[],"pool":["0","0 1 5"],"a":1,"b":0},"locals":{"x":1,"x":0},"frames":[{"fn":"main","line":8}]},
+{"id":7,"line":9,"label":"print → 3 1","stage":"main","values":{"stdout":["3 1"],"pool":["0","0 1 5"],"a":1,"b":0},"locals":{"x":1,"x":0},"checkpoint":"print 1","frames":[{"fn":"main","line":9}]},
+{"id":8,"line":9,"label":"the program ended","stage":"main","values":{"stdout":["3 1"],"pool":["0","0 1 5"],"a":1,"b":0},"locals":{"x":1,"x":0},"checkpoint":"end","frames":[{"fn":"main","line":9}]}]}}}
+stderr:

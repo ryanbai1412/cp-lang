@@ -1606,12 +1606,12 @@ impl<'a> Checker<'a> {
                     .iter()
                     .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })) =>
             {
-                // An element of a lent view (`g.rows[r]`) carries its lend.
+                // An element of a lent view (`g.rows[r]`), not of an element, carries its lend.
+                let ty = self.quietly(|c| c.infer(e));
                 let lent = self.extra_holds(base);
-                if !lent.is_empty() {
+                if !ty.is_plain_value() && lent.first().is_some_and(|l| l.0 != "element") {
                     return lent;
                 }
-                let ty = self.quietly(|c| c.infer(e));
                 if self.is_heap_type(&ty) {
                     if let Some(place) = self.place(e) {
                         return vec![("element", place, true, false)];

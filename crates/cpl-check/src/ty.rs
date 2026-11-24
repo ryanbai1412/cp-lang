@@ -109,6 +109,18 @@ impl Ty {
         }
     }
 
+    /// A copied value that can't hold a lend: a number, character, position
+    /// or a tuple, record or option of them (R05.2.1).
+    pub fn is_plain_value(&self) -> bool {
+        match self {
+            Ty::Tuple(items) => items.iter().all(Ty::is_plain_value),
+            Ty::Record(fields) => fields.iter().all(|(_, t)| t.is_plain_value()),
+            Ty::Optional(inner) => inner.is_plain_value(),
+            Ty::Pos(_) | Ty::Unit => true,
+            t => t.is_fixed_size(),
+        }
+    }
+
     /// The `min` or `max` of `elem`s: `?T` for `T`s, and `?T` again for
     /// `?T`s, whose `None`s are skipped (R02.4.6, decision 410).
     pub fn min_max_of(elem: Ty) -> Ty {
