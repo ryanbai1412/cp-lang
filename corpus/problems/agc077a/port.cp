@@ -14,7 +14,7 @@ let n: 2..=500_000 = read()
 let xs: Str = read()
 let ys: Str = read()
 
-if xs.count('B') != ys.count('B'): return print("No")
+if xs.count(c => c == 'B') != ys.count(c => c == 'B'): return print("No")
 if xs == ys: return print("Yes\n0")
 let l = common_prefix_len(xs, ys)
 let r = n - 1 - common_suffix_len(xs, ys)

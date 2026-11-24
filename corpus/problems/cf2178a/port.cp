@@ -7,4 +7,4 @@
 
 @!multitest
 let s: Str = read()
-print(yes(s.count('Y') <= 1))
+print(yes(s.count(c => c == 'Y') <= 1))

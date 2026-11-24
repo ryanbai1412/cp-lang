@@ -31,8 +31,8 @@ fn can_shift(mut over: List<Int>, cap: Int, other_avail: Int, need0: Int) -> Boo
     false
 
 fn possible() -> Bool:
-    let cnt_a = s.count('A')
-    let cnt_b = s.count('B')
+    let cnt_a = s.count(c => c == 'A')
+    let cnt_b = s.count(c => c == 'B')
     let base_need = max(0, cnt_a - a, cnt_b - b)
     if base_need > ab + ba: return false
 

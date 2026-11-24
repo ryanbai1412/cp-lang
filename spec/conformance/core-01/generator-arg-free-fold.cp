@@ -8,6 +8,6 @@ let g: [Row, Col]Char = [Row, Col] (r, c) => if (Int(r) + Int(c)) % 2 == 0: '#' 
 print(max(x * 2 for x in xs)!)
 print(min(x * 2 for x in xs)!)
 print(min(x for x in xs[0..0]) ?? -1)
-print(max(g[.., c].count('#') for c in Col)!)
-print(sum(g[r].count('#') for r in Row))
+print(max(g[.., c].count(x => x == '#') for c in Col)!)
+print(sum(g[r].count(c => c == '#') for r in Row))
 print(count(x > 1 for x in xs))

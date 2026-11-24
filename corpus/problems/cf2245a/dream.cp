@@ -11,4 +11,4 @@ let s: [0..n]Char = read()
 if n < 2 * k:
     print(-1)
     return
-print(2 * k - s[0..k].count('R') - s[n - k..n].count('L'))
+print(2 * k - s[0..k].count(c => c == 'R') - s[n - k..n].count(c => c == 'L'))

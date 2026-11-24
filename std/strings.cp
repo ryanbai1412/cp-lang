@@ -69,19 +69,6 @@ pub fn search<S: Indexed, K, P>(self: S, p: P) -> ?K:
     for k in find_all(self, "" + p): return Some(k)
     None
 
-/// How many times the character `c` stands in `self`: `"banana".count('a')` is `3`.
-///
-/// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `0`
-/// traps: never
-/// example: `"banana".count('a') == 3`
-/// example: `"".count('a') == 0`
-pub fn count(self: Str, c: Char) -> Int:
-    var n = 0
-    for x in self:
-        if x == c: n += 1
-    n
-
 /// The key where `p` last starts in `self`, or `None`. `p` is a `Str` or one `Char`.
 ///
 /// Like `find`, the result is a key of `self`. An empty `p` stands at the end key, the cut
@@ -3478,7 +3465,7 @@ fn digit_is_the_value_of_a_decimal_character():
 
 @test
 fn count_counts_one_character():
-    assert "banana".count('a') == 3 and "banana".count('z') == 0 and "".count('a') == 0
+    assert "banana".count(c => c == 'a') == 3 and "banana".count(c => c == 'z') == 0 and "".count(c => c == 'a') == 0
 
 @test
 fn rsearch_gives_the_last_place():

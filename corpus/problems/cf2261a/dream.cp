@@ -8,7 +8,7 @@
 @!multitest
 let n: 1..=200_000 = read()
 let s: [0..n]Char = read()
-let cnt = s.count('1')
+let cnt = s.count(c => c == '1')
 if cnt <= 2:
     print(cnt - 1)
 else:

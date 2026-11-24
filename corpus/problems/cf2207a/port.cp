@@ -12,6 +12,6 @@ var s: [0..n]Char = read()
 fn sandwiched(i: Int) -> Bool: s[i] == '1' and s[i + 2] == '1'
 
 for i in 0..n - 2 if sandwiched(i): s[i + 1] = '1'
-let max_cnt = s.count('1')
+let max_cnt = s.count(c => c == '1')
 for i in 0..n - 2 if sandwiched(i): s[i + 1] = '0'
-print(s.count('1'), max_cnt)
+print(s.count(c => c == '1'), max_cnt)

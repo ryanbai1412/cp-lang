@@ -14,7 +14,7 @@ let op: Str = read()
 @!multitest
 let n: 1..=500 = read()
 let g: [0..n]Str = read()
-let black = sum(row.count('#') for row in g)
+let black = sum(row.count(c => c == '#') for row in g)
 let ink = if black > n * n - black: '.' else: '#'
 let w = min(black, n * n - black)
 let sr = sum(i for i in 0..n for j in 0..n if g[i][j] == ink) % n
