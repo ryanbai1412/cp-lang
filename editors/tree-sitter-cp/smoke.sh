@@ -17,7 +17,8 @@ echo '{"parser-directories": ["'"$root/editors"'"]}' >"$work/config.json"
 # of std moves this too; only committed files count.
 std="$(sed -n 's|.*manifest\.join("\.\./\.\./\([^"]*\)").*|\1|p' "$root/crates/cpl-check/build.rs" | head -1)"
 [ -n "$std" ] && [ -d "$root/$std" ] || { echo "editors: no std folder named by crates/cpl-check/build.rs" >&2; exit 1; }
-git -C "$root" ls-files -- "corpus/problems/*.cp" "$std/*.cp" | grep -v '/dream\.cp$' | sed "s|^|$root/|" >"$work/files"
+{ (cd "$root" && uv run --quiet python scripts/corpus.py ls --file '*.cp') && git -C "$root" ls-files -- "$std/*.cp"; } \
+    | grep -v '/dream\.cp$' | sed "s|^|$root/|" >"$work/files"
 stat="$(cd "$grammar" && "$ts" parse --config-path "$work/config.json" --quiet --stat --paths "$work/files" 2>&1)"
 grep -q "failed parses: 0;" <<<"$stat" || { echo "$stat" >&2; echo "editors: the grammar fails on a .cp file" >&2; exit 1; }
 for query in "$grammar/queries/highlights.scm" "$root/editors/helix/runtime/queries/cp/highlights.scm" "$root/editors/zed/languages/cp/highlights.scm"; do
