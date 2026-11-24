@@ -70,10 +70,7 @@ fn std_errors_never_grow() {
 
 /// `@test` fns in std that fail today because of a gap outside std, each with
 /// its reason. Drop a line when its test passes; the test below says so.
-const KNOWN_FAILING_STD_TESTS: &[(&str, &str)] = &[(
-    "std/mod.cp::a_modulus_read_at_run_time",
-    "`type Z = Mod(q)` with a fn-local `let q` is E0005 (compiler)",
-)];
+const KNOWN_FAILING_STD_TESTS: &[(&str, &str)] = &[];
 
 #[test]
 fn std_own_tests_pass() {
