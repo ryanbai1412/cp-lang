@@ -1054,7 +1054,7 @@ prepends it.
 - 06-control-functions.md: 3 blocks, 0 with a case, 0 spec-only, 3 neither
   - line 23: `fn dist(a: P, b: P) -> Int = abs(a.x - b.x) + abs(a.y - b.y)`
   - line 75: `fn go(v: V):`
-  - line 110: `fn divisors(n: Int) -> yields Int:`
+  - line 111: `fn divisors(n: Int) -> yields Int:`
 - 07-sequences.md: 7 blocks, 0 with a case, 0 spec-only, 7 neither
   - line 92: `a[l..=r]`
   - line 132: `let w = a[l..=r]`
@@ -1078,7 +1078,7 @@ prepends it.
   - line 174: `let n: Int = read(base: 1)`
   - line 182: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 0 spec-only, 1 neither
-  - line 38: `use std.segtree`
+  - line 38: `use std.graph.{dijkstra, Paths}`
 
 57 of 112 blocks have neither a case nor a spec-only reason.
 
