@@ -37,9 +37,11 @@ template <class T, class S, S NONE> struct Niche {
     explicit operator std::optional<T>() const { return *this ? std::optional<T>(**this) : std::nullopt; }
     friend bool operator==(Niche a, Niche b) { return a.raw == b.raw; }
     friend bool operator!=(Niche a, Niche b) { return a.raw != b.raw; }
-    // `none` is below every value; when NONE is the least S, the raw order says so already.
+    // A negative `none` is below every value it stands for (positions and bytes are never
+    // negative, Int and I32 take the least), so the order is the raw one: no branch.
+    static constexpr bool none_first = NONE < S(0);
     friend bool operator<(Niche a, Niche b) {
-        if constexpr (NONE == std::numeric_limits<S>::min()) return a.raw < b.raw;
+        if constexpr (none_first) return a.raw < b.raw;
         else return b && (!a || *a < *b);
     }
 };
