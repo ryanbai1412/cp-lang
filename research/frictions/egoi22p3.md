@@ -1,37 +1,18 @@
-# egoi22p3 friction
+# Friction report: egoi22p3
 
-The task is a grader function with judge-provided `GetMove`/`MakeMove`. `cpl run` has no stub
-for a `@grader fn` (tools worklog, from apio23p1) and the corpus suite runs no interactor
-(spec worklog, research/frictions/cco18p4.md), so spec.cp plays the game over stdin with a
-`Wire` and the tests are transcripts of spec.cp against `interactor.py` on `tests/NN.case`.
-`Graph.only(...)` not being a `Next` (stdlib, apio23p1) is why the per-component roots come
-from a `Dsu` and not `components(rest)`.
+The v0.2 port hand-built the DFS forest (recursive `build_tree` with `vis`, `par`, `kids`) and climbed parents to spell out each path. The v0.3 port uses `Rooted.forest` over `g.only(...)` (the graph without vertex 1) and `forest.path(a, b)` for each paired path. The odd-degree test folds into the odd-component test. Reads are typed (`[m](u: V, v: V)`).
 
-## An inline comprehension argument to `Graph.undirected` mismatches its own key domain
+Gap: the grader is played over stdin with `Wire`, as the package has no local `@grader` stub, so the port cannot be the `social_engineering(n, edges)` function of the dream. Also, `open.chunks(2)` yields a trailing single chunk; pairs are indexed as `open[2 * i], open[2 * i + 1]`.
 
-- **Repro:** `fn f(n: Int, edges: List<(Int, Int)>): domain V = 1..=n; let g =
-  Graph.undirected([edges.keys] e => (u: V(edges[e].0), v: V(edges[e].1)))` is E0302
-  "expected `[keys_5](u: V_0, v: V_0)`, found `[keys_7](u: V_0, v: V_0)`"; binding the same
-  comprehension to `let es` first and passing `es` checks and runs.
-- **Goal it hurt:** express (the old spec.cp wrote it inline and stopped checking).
-- **Routed:** compiler worklog.
+## Dream
 
-## `g.next(u)` on a `Graph.undirected` is E0203
+```cp
+for (a, b) in open.chunks_exact(2):
+    route[a] = forest.path(a, b)
+    route[b] = forest.path(b, a)
+open.len.is_odd().then(open.last!)
+```
 
-- **Repro:** `domain V = 1..=3; let es: [0..2](u: V, v: V) = [(u: 1, v: 2), (u: 1, v: 3)];
-  print(Graph.undirected(es).next(V(1)).collect())` is E0203 "a `[V]List<V>` has no method
-  `next` that `cpl run` knows", in `cpl check` too, though spec/lib/graphs-trees.md lists
-  `g.next(u)` for every graph. spec.cp writes `g[home]`.
-- **Goal it hurt:** express (one spelling for "where `u`'s arcs lead").
-- **Routed:** compiler worklog.
+## Measurements
 
-## `Rooted.forest` wants exactly one root per tree, covering every vertex
-
-- **Repro:** with `rest = g.only(v => v != home)`, `Rooted.forest(rest, from: List(g[home]))`
-  traps `assertion failed: not seen[r]` (std/tree.cp:163) as soon as two friends of `home`
-  share a component, and `home` itself is reached from no root.
-- **Goal it hurt:** express. The natural "a DFS forest from the friends" needs a `Dsu` to keep
-  one friend per component and `[home] +` so the isolated `home` is a tree of its own. `dfs`
-  already skips a discovered source; `Rooted.forest` could do the same (skip a root already
-  reached, leave unreached vertices out of every tree).
-- **Routed:** stdlib worklog.
+Times include the Python interactor. A 2e5-vertex cycle (pair_up recursion 2e5 deep, 8 MB stack) took 1.25 s and 110 MB. gen.py seed 3 at size 2e5 (8864 Maria moves) took 7.7 s for the port and 8.0 s for the v0.2 port. The accepted C++ is grader-only (`GetMove` undefined), so it was not run.
