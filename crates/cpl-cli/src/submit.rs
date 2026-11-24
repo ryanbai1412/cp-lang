@@ -181,28 +181,61 @@ pub(crate) fn ready_to_send(
     0
 }
 
+/// Environment variables set for one tool's run.
+type Env = &'static [(&'static str, &'static str)];
+
+/// A system clipboard tool `--copy` can pipe the C++ into.
+#[derive(Debug, PartialEq)]
+pub(crate) struct ClipTool {
+    pub(crate) words: &'static [&'static str],
+    /// Set for the run: pbcopy decodes its input by the locale, and under
+    /// `C` turns UTF-8 into mojibake.
+    pub(crate) env: Env,
+}
+
+const fn tool(words: &'static [&'static str]) -> ClipTool {
+    ClipTool { words, env: &[] }
+}
+
+/// The clipboard tools to try on `os` (a `std::env::consts::OS`), in order;
+/// the first that runs and succeeds wins.
+pub(crate) fn clipboard_tools(os: &str) -> &'static [ClipTool] {
+    const MAC: &[ClipTool] = &[ClipTool {
+        env: &[("LC_ALL", "en_US.UTF-8")],
+        ..tool(&["pbcopy"])
+    }];
+    const WINDOWS: &[ClipTool] = &[tool(&["clip"])];
+    // Wayland, X11, then WSL's bridge to the Windows clipboard.
+    const UNIX: &[ClipTool] = &[
+        tool(&["wl-copy"]),
+        tool(&["xclip", "-selection", "clipboard"]),
+        tool(&["xsel", "--clipboard", "--input"]),
+        tool(&["clip.exe"]),
+    ];
+    match os {
+        "macos" => MAC,
+        "windows" => WINDOWS,
+        _ => UNIX,
+    }
+}
+
 /// Puts `text` on the clipboard with the first tool this machine has, or
 /// the command in `CPL_CLIPBOARD`. Returns the tool's name.
 pub(crate) fn copy_to_clipboard(text: &str) -> Result<String, String> {
     use std::process::{Command, Stdio};
     let chosen = cpl_env::CLIPBOARD.text();
-    let candidates: Vec<Vec<String>> = match &chosen {
-        Some(command) => vec![vec!["sh".into(), "-c".into(), command.clone()]],
-        None => [
-            &["pbcopy"][..],
-            &["wl-copy"],
-            &["xclip", "-selection", "clipboard"],
-            &["xsel", "--clipboard", "--input"],
-            &["clip.exe"],
-            &["clip"],
-        ]
-        .iter()
-        .map(|words| words.iter().map(|w| w.to_string()).collect())
-        .collect(),
+    let tools = clipboard_tools(std::env::consts::OS);
+    let candidates: Vec<(Vec<String>, Env)> = match &chosen {
+        Some(command) => vec![(vec!["sh".into(), "-c".into(), command.clone()], &[])],
+        None => tools
+            .iter()
+            .map(|tool| (tool.words.iter().map(|w| w.to_string()).collect(), tool.env))
+            .collect(),
     };
-    for words in &candidates {
+    for (words, env) in &candidates {
         let Ok(mut child) = Command::new(&words[0])
             .args(&words[1..])
+            .envs(env.iter().copied())
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -210,8 +243,8 @@ pub(crate) fn copy_to_clipboard(text: &str) -> Result<String, String> {
         else {
             continue;
         };
-        if let Some(mut input) = child.stdin.take() {
-            let _ = input.write_all(text.as_bytes());
+        if let Some(mut pipe) = child.stdin.take() {
+            let _ = pipe.write_all(text.as_bytes());
         }
         if child.wait().is_ok_and(|status| status.success()) {
             return Ok(chosen.clone().unwrap_or_else(|| words.join(" ")));
@@ -219,7 +252,13 @@ pub(crate) fn copy_to_clipboard(text: &str) -> Result<String, String> {
     }
     Err(match chosen {
         Some(command) => format!("`CPL_CLIPBOARD` (`{command}`) failed"),
-        None => "no clipboard tool here (pbcopy, wl-copy, xclip, xsel or clip); set `CPL_CLIPBOARD` to one".into(),
+        None => {
+            let names: Vec<&str> = tools.iter().map(|tool| tool.words[0]).collect();
+            format!(
+                "no clipboard tool here ({}); set `CPL_CLIPBOARD` to one",
+                names.join(", ")
+            )
+        }
     })
 }
 
@@ -357,6 +396,27 @@ pub(crate) fn list_judges(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn each_os_gets_its_own_clipboard_tools() {
+        let names = |os| -> Vec<String> {
+            clipboard_tools(os)
+                .iter()
+                .map(|tool| tool.words.join(" "))
+                .collect()
+        };
+        assert_eq!(names("macos"), ["pbcopy"]);
+        assert_eq!(names("windows"), ["clip"]);
+        let unix = [
+            "wl-copy",
+            "xclip -selection clipboard",
+            "xsel --clipboard --input",
+            "clip.exe",
+        ];
+        assert_eq!(names("linux"), unix);
+        assert_eq!(names("freebsd"), unix);
+        assert_eq!(clipboard_tools("macos")[0].env, [("LC_ALL", "en_US.UTF-8")]);
+    }
 
     fn label(ready: bool, build: &str, test: &str, said: &str) -> (String, String) {
         let parse = |text: &str| cpl_json::parse(text).unwrap();

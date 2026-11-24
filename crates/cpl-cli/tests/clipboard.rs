@@ -1,7 +1,7 @@
-//! `cpl b -c` reaches each OS's clipboard tool: pbcopy (macOS), wl-copy,
-//! xclip and xsel (Linux), clip.exe and clip (Windows and WSL). Each is
-//! stubbed alone on PATH; the stub must get the built C++ byte for byte, with
-//! the arguments that select the clipboard.
+//! `cpl b -c` reaches each of this OS's clipboard tools: pbcopy on macOS;
+//! wl-copy, xclip, xsel and WSL's clip.exe elsewhere. Each is stubbed alone on
+//! PATH; the stub must get the built C++ byte for byte, with the arguments that select the clipboard. The real clipboards are
+//! checked by `scripts/clipboard-roundtrip.sh`.
 #![cfg(unix)]
 
 use std::os::unix::fs::PermissionsExt;
@@ -14,7 +14,11 @@ fn scratch(name: &str) -> PathBuf {
         .join(name);
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("bin")).unwrap();
-    std::fs::write(dir.join("a.cp"), "let n: Int = read()\nprint(n * 2)\n").unwrap();
+    std::fs::write(
+        dir.join("a.cp"),
+        "// naïve → ok\nlet n: Int = read()\nprint(n * 2)\n",
+    )
+    .unwrap();
     dir
 }
 
@@ -45,17 +49,21 @@ fn build_and_copy(dir: &Path) -> (i32, String) {
     )
 }
 
-#[test]
-fn each_os_clipboard_tool_gets_the_built_cpp() {
-    let tools = [
-        ("pbcopy", ""),
+/// This OS's tools, with the arguments each gets.
+const TOOLS: &[(&str, &str)] = if cfg!(target_os = "macos") {
+    &[("pbcopy", "")]
+} else {
+    &[
         ("wl-copy", ""),
         ("xclip", "-selection clipboard"),
         ("xsel", "--clipboard --input"),
         ("clip.exe", ""),
-        ("clip", ""),
-    ];
-    for (tool, args) in tools {
+    ]
+};
+
+#[test]
+fn each_os_clipboard_tool_gets_the_built_cpp() {
+    for &(tool, args) in TOOLS {
         let dir = scratch(tool);
         stub(&dir, tool);
         let (code, stderr) = build_and_copy(&dir);
@@ -67,6 +75,7 @@ fn each_os_clipboard_tool_gets_the_built_cpp() {
         );
         let cpp = std::fs::read(dir.join("a.cpp")).expect("cpl b writes a.cpp");
         assert!(cpp.len() > 100, "{tool}: a.cpp is {} bytes", cpp.len());
+        assert!(!cpp.is_ascii(), "{tool}: the C++ keeps the comment's UTF-8");
         assert_eq!(std::fs::read(dir.join("clip")).unwrap(), cpp, "{tool}");
         let got = std::fs::read_to_string(dir.join("args")).unwrap();
         assert_eq!(got.trim(), args, "{tool}");
@@ -76,11 +85,15 @@ fn each_os_clipboard_tool_gets_the_built_cpp() {
 #[test]
 fn the_first_tool_wins_and_no_tool_warns() {
     let dir = scratch("both");
-    stub(&dir, "pbcopy");
-    stub(&dir, "xclip");
+    for &(tool, _) in TOOLS.iter().rev() {
+        stub(&dir, tool);
+    }
     let (code, stderr) = build_and_copy(&dir);
     assert_eq!(code, 0, "{stderr}");
-    assert!(stderr.contains("with `pbcopy`"), "{stderr}");
+    assert!(
+        stderr.contains(&format!("with `{}", TOOLS[0].0)),
+        "{stderr}"
+    );
 
     let dir = scratch("none");
     let (code, stderr) = build_and_copy(&dir);
