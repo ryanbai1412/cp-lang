@@ -2,15 +2,15 @@
 // Problem: a tree of n <= 5e4 junctions with road lengths <= 1e4. Build m <= n - 1 tracks,
 //   each a path, no road in two tracks; print the largest possible length of the shortest.
 // Solution: binary search the length k. For one k, go up the tree: each junction gets the
+//   pairs them in a SortedBag (the shortest unpaired takes the shortest partner that reaches
+//   k) and passes the longest unpaired chain to its parent. O(n log n log(sum of lengths)).
 //   chains ending at its children (plus their up-road; a chain of length >= k is a track),
-//   greedily pairs them into tracks (the shortest unpaired takes the shortest unused partner
 //   that reaches k, found by binary search, used ones skipped by path compression) and
-//   passes the longest unpaired chain to its parent. O(n log n log(sum of lengths)).
-
-let (n, m): (Int, Int) = read()
+// original: corpus/submissions/4002963.cpp
+let (n, m): (2..=5e4, 1..=5e4) = read()
 domain Junction = 1..=n
 domain Road = 1..n
-let roads: [Road](u: Junction, v: Junction, len: Int) = read()
+let roads: [Road](u: Junction, v: Junction, len: 1..=1e4) = read()
 let g = Graph<Junction, Road>.undirected(roads)
 let tree = Rooted(u => g.out(u), Junction.first!)
 
@@ -22,25 +22,10 @@ for (u, v, len) in roads:
 // the shortest partner that completes it. Returns the pairs made and the
 // longest chain left alone.
 fn pair_up(chains: List<Int>, k: Int) -> (tracks: Int, spare: Int):
-    let a = chains.sorted()
-    var skip = [i for i in 0..=a.len]  // skip[i]: the first unused chain at or after i
-    fn unused(i: Int) -> Int:
-        var j = i
-        while skip[j] != j:
-            skip[j] = skip[skip[j]]
-            j = skip[j]
-        j
+    var bag = SortedBag.of(chains)
     var (tracks, spare) = (0, 0)
-    for i in 0..a.len:
-        if unused(i) != i: continue
-        skip[i] = i + 1
-        let lo = (i + 1..a.len).first_true(mid => a[mid] >= k - a[i]) ?? a.len  // the first chain after i that is at least k - a[i]
-        let j = unused(lo)
-        if j < a.len:
-            skip[j] = j + 1
-            tracks += 1
-        else:
-            spare = a[i]
+    while let x = bag.pop_first():
+        if bag.take_first(y => x + y >= k) != None: tracks += 1 else: spare = x
     (tracks:, spare:)
 
 fn tracks_of(k: Int) -> Int:
@@ -55,4 +40,4 @@ fn tracks_of(k: Int) -> Int:
     tracks
 
 // the longest k that still gives m tracks
-print((1..=sum(r.len for r in roads)).last_true(k => tracks_of(k) >= m) ?? 0)
+print((1..=sum(r.len for r in roads)).last_true(k => tracks_of(k) >= m)!)

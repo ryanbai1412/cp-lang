@@ -8,9 +8,11 @@ shuffled.
 import random
 import sys
 
+MAX = sys.argv[1] == "--max"  # n = 5e4
+if MAX: sys.argv[1:] = ["0", "50000"]
 rng = random.Random(int(sys.argv[1]))
 S = max(2, min(int(sys.argv[2]) if len(sys.argv) > 2 else 8, 50_000))
-n = S if rng.random() < 0.3 else rng.randint(2, S)
+n = S if MAX or rng.random() < 0.3 else rng.randint(2, S)
 kind = rng.randrange(7)
 par = [0] * n
 for i in range(1, n):

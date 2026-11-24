@@ -1,13 +1,13 @@
-# noip18p3 friction
+# Friction Report: noip18p3
 
-## `t.child_arcs(v)` yields vertices, not arcs
+## 1. Chains passed up through a table
+- **Where:** `var chains = [Junction] v => List<Int>()` and the `tree.at.rev` loop.
+- **What felt wrong:** "each child returns its spare chain" is a post-order fold; the port collects
+  children's chains in a per-vertex list because a recursive fn over 5e4 depth is not safe to write.
+- **Goal it hurts:** express.
+- **Ideal code:** `tree.fold_up(v => ...)` passing each child's result to the parent.
+- **General fix:** a bottom-up fold on `Rooted` that hands a vertex its children's results.
+- **Severity:** low.
 
-- **Repro:** `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5),
-  (u: 1, v: 2, w: 7)]; let t = Rooted(Graph.undirected(es), root: 0);
-  print(t.child_arcs(1).map(a => a.w).collect())` is E0203 "an `Int` has no member `w`"
-  (want `[7]`). The built-in `Rooted` yields child vertices typed `Int`; std/tree.cp's
-  `child_arcs` and `up_arc` bodies are `todo`.
-- **Goal it hurt:** express (spec/lib/graphs-trees.md spells edge data on a tree as
-  `up(a.to) + a.w` over `child_arcs`; the old spec.cp did and stopped checking).
-- **Workaround:** `t.children(v).map(c => up(c) + t.w(c))`, the parent-edge length.
-- **Routed:** compiler worklog.
+## Measurements
+Stress: 30/30 agree with the v0.2 port and with AC 4002963; max (n = 5e4) 0.14 s vs C++ 0.12 s, same output. The v0.2 skip-pointer union-find is now `SortedBag.take_first`.
