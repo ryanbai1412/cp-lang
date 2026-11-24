@@ -126,8 +126,8 @@ pub struct Var {
     /// The type as the file would write it.
     pub ty: String,
     pub kind: &'static str,
-    /// More fields of the descriptor, as JSON members with a leading comma.
-    pub extra: String,
+    /// More fields of the descriptor, in the order the file writes them.
+    pub extra: Vec<(&'static str, cpl_json::Value)>,
     /// Compared between the solution and the brute.
     pub compare: bool,
     /// Too large to keep whole at some step, so drawn by a window of its first cells.
@@ -513,7 +513,7 @@ impl Tracer {
                 name: "stdout".into(),
                 ty: "what the program printed, a line at a time".into(),
                 kind: "json",
-                extra: String::new(),
+                extra: Vec::new(),
                 compare: true,
                 window: false,
             },
@@ -1099,7 +1099,7 @@ impl Tracer {
                         name: format!("debug({name})"),
                         ty: format!("line {line}"),
                         kind: "json",
-                        extra: String::new(),
+                        extra: Vec::new(),
                         compare: true,
                         window: false,
                     },
@@ -1196,7 +1196,7 @@ impl Tracer {
             }
             if self.tree[var] {
                 self.rec.vars[var].kind = "tree";
-                self.rec.vars[var].extra = String::new();
+                self.rec.vars[var].extra.clear();
                 self.rec.log.draw_as_tree(var);
             }
         }

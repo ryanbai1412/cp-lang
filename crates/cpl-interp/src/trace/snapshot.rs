@@ -47,7 +47,7 @@ pub(super) fn target(elem: &Ty) -> Option<usize> {
     }
 }
 
-pub(super) fn labels(dim: Dim, len: i64, view: &View) -> String {
+pub(super) fn labels(dim: Dim, len: i64, view: &View) -> cpl_json::Value {
     let lo = match dim {
         Dim::Pos(d) | Dim::Bound(d) => view.domains[d].0,
         Dim::Sym(_) => 0,
@@ -55,15 +55,7 @@ pub(super) fn labels(dim: Dim, len: i64, view: &View) -> String {
         Dim::Int => 0,
         Dim::IntFrom(first) => first,
     };
-    let mut out = String::from("[");
-    for i in 0..len.clamp(0, 1000) {
-        if i > 0 {
-            out.push(',');
-        }
-        out.push_str(&(lo + i).to_string());
-    }
-    out.push(']');
-    out
+    cpl_json::Value::Array((0..len.clamp(0, 1000)).map(|i| (lo + i).into()).collect())
 }
 
 pub(super) fn dim_len(dim: Dim, view: &View) -> Option<i64> {
@@ -89,21 +81,24 @@ pub(super) fn dim_name(dim: Dim, view: &View<'_>) -> Option<String> {
     }
 }
 
+/// The descriptor fields of a variable past its kind.
+pub(super) type Extra = Vec<(&'static str, cpl_json::Value)>;
+
 /// How a variable of type `ty` is drawn, and the rest of its descriptor.
-pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, String) {
+pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, Extra) {
     let program = view.program;
     match ty {
-        _ if is_cell(ty, program) => (Kind::Scalar, String::new()),
+        _ if is_cell(ty, program) => (Kind::Scalar, Vec::new()),
         Ty::Array { dims, elem } if dims.len() == 1 => {
             let dim = dims[0];
             if let (Dim::Pos(d), Some(to)) = (dim, target(elem)) {
                 if d == to {
-                    return (Kind::Adjacency, ",\"directed\":true".to_string());
+                    return (Kind::Adjacency, vec![("directed", true.into())]);
                 }
             }
-            let mut extra = String::new();
+            let mut extra = Vec::new();
             if let Some(len) = dim_len(dim, view) {
-                extra = format!(",\"labels\":{}", labels(dim, len, view));
+                extra.push(("labels", labels(dim, len, view)));
             }
             match &**elem {
                 Ty::Opt(inner) if matches!(dim, Dim::Pos(d) if **inner == Ty::Pos(d)) => {
@@ -119,21 +114,20 @@ pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, String) {
                 {
                     (Kind::Json, extra)
                 }
-                _ => (Kind::Json, String::new()),
+                _ => (Kind::Json, Vec::new()),
             }
         }
         Ty::Array { dims, elem } if dims.len() == 2 && is_cell(elem, program) => {
-            let mut extra = String::new();
+            let mut extra = Vec::new();
             for (dim, labels_key, domain_key) in [
                 (dims[0], "rowLabels", "rowDomain"),
                 (dims[1], "colLabels", "colDomain"),
             ] {
                 if let Some(len) = dim_len(dim, view) {
-                    extra += &format!(",\"{labels_key}\":{}", labels(dim, len, view));
+                    extra.push((labels_key, labels(dim, len, view)));
                 }
                 if let Some(name) = dim_name(dim, view) {
-                    extra += &format!(",\"{domain_key}\":");
-                    string(&mut extra, &name);
+                    extra.push((domain_key, name.into()));
                 }
             }
             let kind = match &**elem {
@@ -145,7 +139,7 @@ pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, String) {
             };
             (kind, extra)
         }
-        Ty::List(elem) if is_cell(elem, program) => (Kind::Array, String::new()),
+        Ty::List(elem) if is_cell(elem, program) => (Kind::Array, Vec::new()),
         Ty::Struct(id) => {
             let def = &program.structs[*id];
             let field = |name: &str| {
@@ -171,16 +165,16 @@ pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, String) {
             if field("start") == Some(&Ty::List(Box::new(Ty::Int)))
                 && field("arcs").is_some_and(arcs_from)
             {
-                (Kind::Csr, ",\"directed\":true".to_string())
+                (Kind::Csr, vec![("directed", true.into())])
             } else if matches!(field("root"), Some(Ty::Pos(_)))
                 && field("par").is_some_and(parent_per)
             {
-                (Kind::Rooted, String::new())
+                (Kind::Rooted, Vec::new())
             } else {
-                (Kind::Json, String::new())
+                (Kind::Json, Vec::new())
             }
         }
-        _ => (Kind::Json, String::new()),
+        _ => (Kind::Json, Vec::new()),
     }
 }
 
@@ -235,21 +229,17 @@ pub(super) fn bytes_text(bytes: &[u8]) -> String {
 
 /// The named `params` among the locals, as a JSON object.
 pub(crate) fn args_json(view: &View, params: &[&str]) -> String {
-    let mut out = String::from("{");
-    for (name, ty, value) in view
-        .locals
-        .iter()
-        .filter(|(name, ..)| params.contains(name))
-    {
-        if out.len() > 1 {
-            out.push(',');
+    cpl_json::write_with(|w| {
+        w.object();
+        for (name, ty, value) in view
+            .locals
+            .iter()
+            .filter(|(name, ..)| params.contains(name))
+        {
+            w.key(name).json(&json_of(value, ty, view));
         }
-        string(&mut out, name);
-        out.push(':');
-        out.push_str(&json_of(value, ty, view));
-    }
-    out.push('}');
-    out
+        w.end();
+    })
 }
 
 /// A graph value of the viewer from its vertices' labels and its edges.
@@ -257,26 +247,32 @@ pub(super) fn graph(
     nodes: impl Iterator<Item = i64>,
     edges: &[(i64, i64, Option<String>)],
 ) -> String {
-    let mut out = String::from("{\"nodes\":[");
-    for (i, node) in nodes.enumerate() {
-        if i > 0 {
-            out.push(',');
+    cpl_json::write_with(|w| {
+        w.object().key("nodes").array();
+        for node in nodes {
+            w.object()
+                .key("id")
+                .int(node)
+                .key("label")
+                .str(&node.to_string())
+                .end();
         }
-        out += &format!("{{\"id\":{node},\"label\":\"{node}\"}}");
-    }
-    out.push_str("],\"edges\":[");
-    for (i, (from, to, weight)) in edges.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
+        w.end().key("edges").array();
+        for (i, (from, to, weight)) in edges.iter().enumerate() {
+            w.object()
+                .key("id")
+                .int(i)
+                .key("from")
+                .int(*from)
+                .key("to")
+                .int(*to);
+            if let Some(weight) = weight {
+                w.key("weight").json(weight);
+            }
+            w.end();
         }
-        out += &format!("{{\"id\":{i},\"from\":{from},\"to\":{to}");
-        if let Some(weight) = weight {
-            out += &format!(",\"weight\":{weight}");
-        }
-        out.push('}');
-    }
-    out.push_str("]}");
-    out
+        w.end().end();
+    })
 }
 
 /// The edges a parent array holds, parent to child, when it is one

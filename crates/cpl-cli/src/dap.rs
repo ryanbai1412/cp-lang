@@ -947,9 +947,11 @@ impl Session {
         let mut names = BTreeMap::new();
         for (index, value) in &step.values {
             let var = &self.recording.vars[*index];
-            let labels = cpl_json::parse(&format!("{{\"_\":0{}}}", var.extra))
-                .ok()
-                .and_then(|extra| extra.get("labels").cloned());
+            let labels = var
+                .extra
+                .iter()
+                .find(|(key, _)| *key == "labels")
+                .map(|(_, labels)| labels.clone());
             if let Ok(json) = cpl_json::parse(value) {
                 names.insert(var.name.clone(), Valued { json, labels });
             }

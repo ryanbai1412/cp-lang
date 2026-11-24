@@ -58,49 +58,54 @@ pub fn document(
             }
         }
     }
-    let mut out = String::from("{\"schemaVersion\":1,\"title\":");
-    string(&mut out, title);
-    out.push_str(",\"description\":");
-    string(&mut out, description);
-    out.push_str(",\"source\":{\"file\":");
-    string(&mut out, file);
-    out.push_str(",\"code\":");
-    string(&mut out, source);
-    out.push_str("},\"variables\":{");
-    for (i, var) in vars.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
-        }
-        string(&mut out, &var.id);
-        out.push_str(":{\"name\":");
-        string(&mut out, &var.name);
-        out.push_str(",\"type\":");
-        string(&mut out, &var.ty);
-        let window = if var.window { ",\"window\":true" } else { "" };
-        out += &format!(",\"kind\":\"{}\"{}{window}}}", var.kind, var.extra);
-    }
     let is_dropped = |name: &str| dropped.contains(name);
-    out.push_str("},\"runs\":{\"fast\":");
-    out += &compare::run_json(fast_label, fast, &fast_ids, &is_dropped);
-    if let Some((slow_label, slow)) = slow {
-        out.push_str(",\"slow\":");
-        out += &compare::run_json(slow_label, slow, &slow_ids, &is_dropped);
-        // Compared: what both runs have and mean alike.
-        let compare: Vec<&Var> = vars
-            .iter()
-            .filter(|var| var.compare && fast_ids.contains(&var.id) && slow_ids.contains(&var.id))
-            .collect();
-        out.push_str("},\"compare\":[");
-        for (i, var) in compare.iter().enumerate() {
-            if i > 0 {
-                out.push(',');
+    cpl_json::write_with(|w| {
+        w.object().key("schemaVersion").int(1);
+        w.key("title")
+            .str(title)
+            .key("description")
+            .str(description);
+        w.key("source")
+            .object()
+            .key("file")
+            .str(file)
+            .key("code")
+            .str(source)
+            .end();
+        w.key("variables").object();
+        for var in &vars {
+            w.key(&var.id).object();
+            w.key("name")
+                .str(&var.name)
+                .key("type")
+                .str(&var.ty)
+                .key("kind")
+                .str(var.kind);
+            for (key, value) in &var.extra {
+                w.key(key).value(value);
             }
-            string(&mut out, &var.id);
+            if var.window {
+                w.key("window").bool(true);
+            }
+            w.end();
         }
-        out.push(']');
-    } else {
-        out.push('}');
-    }
-    out.push('}');
-    out
+        w.end().key("runs").object().key("fast");
+        compare::run_json(w, fast_label, fast, &fast_ids, &is_dropped);
+        if let Some((slow_label, slow)) = slow {
+            w.key("slow");
+            compare::run_json(w, slow_label, slow, &slow_ids, &is_dropped);
+            w.end();
+            // Compared: what both runs have and mean alike.
+            w.key("compare").array();
+            for var in &vars {
+                if var.compare && fast_ids.contains(&var.id) && slow_ids.contains(&var.id) {
+                    w.str(&var.id);
+                }
+            }
+            w.end();
+        } else {
+            w.end();
+        }
+        w.end();
+    })
 }
