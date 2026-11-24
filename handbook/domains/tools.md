@@ -199,7 +199,7 @@ their front ends.
 | Multi-answer problems are judged by their checker | problems with `@check` or `checker.py` judged by it | hand-written suite | `crates/cpl-contest/src/tests.rs` |
 | Interactive problems run with correct flushing | interactive problems run end to end | hand-written suite | `crates/cpl-cli/tests/cli.rs`, `crates/cpl-contest/src/tests.rs`; `crates/cpl-cli/tests/interactive_corpus.rs`: every corpus problem with an `interactor.py` (25) is solved on each `tests/*.case` and two `gen.py` cases, by `cpl run` and `cpl run --release` (196 runs) |
 | Adding a custom test is one step | `cpl test --add` paths and editor Add Test | hand-written suite | `crates/cpl-contest/src/tests.rs`, `editors/vscode/test/unit/` |
-| Editor test panels show what `cpl test` shows | panels whose cases, order and verdicts match | differential; rule `commands/R15` | `editors/vscode/test/unit/results.test.ts`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
+| Editor test panels show what `cpl test` shows | panels whose cases, order and verdicts match | differential; rule `commands/R15` | `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
 | `cpl watch` reruns on save and never shows stale results | saves after which the shown result is current | hand-written suite | `crates/cpl-cli/tests/golden.rs` (watch) |
 
 ### Submitting (J9)

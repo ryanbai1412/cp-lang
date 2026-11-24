@@ -10,8 +10,7 @@ import * as path from 'node:path';
 import { promisify } from 'node:util';
 import * as vscode from 'vscode';
 import { missingCpl, serverBinary } from './client';
-import { Overlays } from './overlays';
-import { viewOf } from './results';
+import { Overlays, viewOf } from './overlays';
 
 interface CplResult {
     /** The exit status, or null when the process was killed or never started. */

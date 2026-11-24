@@ -165,8 +165,8 @@ Every setting the extension reads; `crates/cpl-cli/tests/vscode_sync.rs` checks 
 ## Layout and tests
 
 - `syntaxes/cp.tmLanguage.in.json` (the grammar; `scripts/language-data.js` fills in the std names as `syntaxes/cp.tmLanguage.json` at compile time, not committed), `language-configuration.json`, `snippets/cp.json` — grammar, indentation/bracket config, and contest snippets.
-- `src/languageData.ts`, `src/samples.ts`, `src/results.ts` — pure Node-testable modules (no `vscode` import).
-- `src/extension.ts`, `src/client.ts`, `src/lenses.ts`, `src/overlays.ts`, `src/runner.ts` — VS Code wiring.
+- `src/languageData.ts` — a pure Node-testable module (no `vscode` import).
+- `src/extension.ts`, `src/client.ts`, `src/overlays.ts`, `src/runner.ts` — VS Code wiring.
 - `test/grammar/*.cp` — `vscode-tmgrammar-test` scope assertions (including `test/grammar/v2_2.cp`).
-- `test/unit/*.test.ts` — grammar/0.2.2 table parity, corpus tokenization across `proto/`, `stdlib/`, and `examples/local-lib/`, snippet validation, sample/lens planning, stress/run JSON parsing, and real `cpl lsp` stdio protocol checks.
+- `test/unit/*.test.ts` — grammar/0.2.2 table parity, corpus tokenization across `proto/`, `stdlib/`, and `examples/local-lib/`, snippet validation, and real `cpl lsp` stdio protocol checks.
 - `test/integration/suite.ts` — end-to-end VS Code extension host suite.
