@@ -24,6 +24,6 @@ let grundy: List<Int> = [
 
 let n: 1..=1e6 = read()
 let m: 1..=100 = read()
-let sides = read<[n]1..=100>()
-let need = sides.map(side => grundy[side]).fold(^)
+let sides: [n]1..=100 = read()
+let need = sides.fold_from(0, (acc, side) => acc ^ grundy[side])
 print((1..=m).find(side => grundy[side] == need) ?? -1)
