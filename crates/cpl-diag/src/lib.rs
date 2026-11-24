@@ -116,6 +116,24 @@ pub fn sort_by_key<T>(v: &mut [T], key: impl Fn(&T) -> u64) {
     permute(order, &mut |i, j| v.swap(i, j));
 }
 
+/// Sorts `v` stably by a string key, through the same one sort as [`sort_by_key`]: the
+/// keys are ranked by one `sort_unstable` of `&str` shared by every caller.
+pub fn sort_by_str_key<T>(v: &mut [T], key: impl Fn(&T) -> &str) {
+    let order = str_order(v.iter().map(key).collect());
+    permute(order, &mut |i, j| v.swap(i, j));
+}
+
+fn str_order(keys: Vec<&str>) -> Vec<u32> {
+    let mut ranks = keys.clone();
+    ranks.sort_unstable();
+    ranks.dedup();
+    sorted_order(
+        keys.iter()
+            .map(|k| ranks.partition_point(|r| r < k) as u64)
+            .collect(),
+    )
+}
+
 /// The indices of `keys`, sorted by key and then by index, so that equal keys keep their
 /// order. Each key is split into its high and low halves so the sort is std's
 /// `sort_unstable` of `(u32, u32, u32)`, which cpl.wasm already has from cpl-check, and so
@@ -638,6 +656,16 @@ mod tests {
             std.sort_by_key(|p| p.0);
             assert_eq!(ours, std);
         }
+    }
+
+    #[test]
+    fn sort_by_str_key_is_stable_and_matches_std() {
+        let words = ["b", "", "ab", "b", "a", "ab", "ba", "a"];
+        let v: Vec<(&str, usize)> = words.iter().copied().zip(0..).collect();
+        let (mut ours, mut std) = (v.clone(), v);
+        super::sort_by_str_key(&mut ours, |p| p.0);
+        std.sort_by_key(|p| p.0);
+        assert_eq!(ours, std);
     }
 
     use super::*;

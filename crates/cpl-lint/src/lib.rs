@@ -245,7 +245,7 @@ pub(crate) fn span_key((start, end): (u32, u32)) -> u64 {
 /// The codes of `codes` in text order, once each, for [`code_rank`].
 pub(crate) fn code_order(codes: impl Iterator<Item = cpl_diag::Code>) -> Vec<&'static str> {
     let mut all: Vec<&'static str> = codes.map(|c| c.0).collect();
-    all.sort_unstable();
+    cpl_diag::sort_by_str_key(&mut all, |c| c);
     all.dedup();
     all
 }
