@@ -30,5 +30,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "peel::<Cell> on a closure graph; max_closure joins the prelude; grid step(Dir4.left())"
+ "notes": "peel::<Cell> on a closure graph; max_closure joins the prelude; grid step(Dir4.left())",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "e41b7b4d3b386e4826f9af18fd7f71f6b625fa1a"
+ }
 }
