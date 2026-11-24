@@ -2026,7 +2026,7 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
 /// declared member wins.
 ///
 /// cost: \(O(n)\) comparisons
-/// empty: `let a: List<Int> = []; (3 in a) == false`
+/// empty: `let a: List<Int> = []; a.contains(3) == false`
 /// traps: never
 /// example: `(1..=3).map(x => x * x).contains(4)`
 pub fn contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool:
