@@ -1292,7 +1292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.clear",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1300,7 +1300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.each",
-   "measured": 1.07,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -1308,7 +1308,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.each_rev",
-   "measured": 1.06,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -1316,7 +1316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.first",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1324,7 +1324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.get",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1332,7 +1332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.is_empty",
-   "measured": 1.06,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1340,7 +1340,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.items",
-   "measured": 1.06,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -1348,7 +1348,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.last",
-   "measured": 1.03,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1356,7 +1356,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.len",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1364,7 +1364,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.new",
-   "measured": 1.06,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1372,7 +1372,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "deque.Deque.of",
-   "measured": 4.12,
+   "measured": 4.57,
    "n": 16384,
    "ok": true
   },
@@ -1380,7 +1380,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.pop",
-   "measured": 1.05,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1388,7 +1388,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.pop_front",
-   "measured": 1.07,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1396,7 +1396,7 @@
    "cost": "k",
    "documented": 4.0,
    "fn": "deque.Deque.pop_front_while",
-   "measured": 4.04,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -1404,7 +1404,7 @@
    "cost": "k",
    "documented": 4.0,
    "fn": "deque.Deque.pop_while",
-   "measured": 4.04,
+   "measured": 3.96,
    "n": 16384,
    "ok": true
   },
@@ -1412,7 +1412,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.push_front",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1420,7 +1420,7 @@
    "cost": "\\mathit{cap}",
    "documented": 4.0,
    "fn": "deque.Deque.reserve",
-   "measured": 3.9,
+   "measured": 4.07,
    "n": 16384,
    "ok": true
   },
@@ -1428,7 +1428,7 @@
    "cost": "\\min(k, n - k)",
    "documented": 4.0,
    "fn": "deque.Deque.rotate_left",
-   "measured": 3.93,
+   "measured": 3.49,
    "n": 16384,
    "ok": true
   },
@@ -1436,7 +1436,7 @@
    "cost": "\\min(k, n - k)",
    "documented": 4.0,
    "fn": "deque.Deque.rotate_right",
-   "measured": 3.75,
+   "measured": 4.05,
    "n": 16384,
    "ok": true
   },
@@ -1444,7 +1444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.set",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1452,7 +1452,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.Deque.take",
-   "measured": 1.02,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1468,7 +1468,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.clear",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1476,7 +1476,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.each",
-   "measured": 1.07,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -1484,7 +1484,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.each_rev",
-   "measured": 1.05,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -1492,7 +1492,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.first",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1500,7 +1500,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "deque.LinkedList.from_list",
-   "measured": 4.24,
+   "measured": 4.01,
    "n": 16384,
    "ok": true
   },
@@ -1508,7 +1508,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.is_empty",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1516,7 +1516,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.last",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1524,7 +1524,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.len",
-   "measured": 1.06,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -1532,7 +1532,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.new",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1540,7 +1540,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.of",
-   "measured": 1.06,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1548,7 +1548,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.pop",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1556,7 +1556,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.pop_front",
-   "measured": 1.08,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1564,7 +1564,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.push",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1572,7 +1572,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.push_front",
-   "measured": 1.08,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1580,7 +1580,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "deque.LinkedList.reverse",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1588,7 +1588,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
    "fn": "deque.LinkedList.splice_back",
-   "measured": 1.05,
+   "measured": 4.46,
    "n": 16384,
    "ok": true
   },
@@ -1596,7 +1596,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
    "fn": "deque.LinkedList.splice_front",
-   "measured": 1.08,
+   "measured": 4.51,
    "n": 16384,
    "ok": true
   },

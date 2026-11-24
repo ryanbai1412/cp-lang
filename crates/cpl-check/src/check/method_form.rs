@@ -491,7 +491,7 @@ impl Checker<'_> {
     /// Whether the type `base` declares a fn `name` of its own, in its body,
     /// an impl or a trait it implements: that member, not a top-level fn
     /// of the name, is what `base.name` calls.
-    fn declares_member(&mut self, base: &Ty, name: &str) -> bool {
+    pub(super) fn declares_member(&mut self, base: &Ty, name: &str) -> bool {
         let Ty::Named { name: owner, .. } = base else {
             return false;
         };

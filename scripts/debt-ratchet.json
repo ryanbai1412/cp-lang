@@ -22,7 +22,7 @@
   "dup_fn_bodies": 3,
   "layer_violations": 1,
   "tree_walker": 1,
-  "v02_port_files": 9,
+  "v02_port_files": 7,
   "direct_python": 0,
   "unrun_script_tests": 0,
   "crate_edges": [
@@ -137,7 +137,7 @@
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 0,
-    "debugger": 1,
+    "debugger": 0,
     "diagnostics": 0,
     "idioms": 1,
     "infra": 0,
