@@ -727,5 +727,16 @@ class GenTimeoutTest(unittest.TestCase):
         self.assertEqual(pkg.case_input.call_args.kwargs["timeout"], 60)
 
 
+class GraderTest(Corpus):
+    def test_a_program_of_grader_fns_is_linked_with_the_packages_grader(self):
+        d = self.package("p1", port_cp="// the judge form is `@grader fn f`\nprint(1)\n", dream_cp="@grader fn f(n: Int) -> Int = n\n", checker_py="")
+        (d / "dream.tests").mkdir()
+        (d / "dream.tests" / "grader.cpp").write_text("int main(){}\n")
+        pkg = corpus.Package.at(d)
+        self.assertEqual(corpus.judge_args(pkg, pkg.dream),
+                         ["--checker", str(d / "checker.py"), "--grader", str(d / "dream.tests" / "grader.cpp")])
+        self.assertEqual(corpus.judge_args(pkg, pkg.port), ["--checker", str(d / "checker.py")])
+
+
 if __name__ == "__main__":
     unittest.main()

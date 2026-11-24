@@ -62,6 +62,7 @@ class Package:
     checker: Optional[Path]
     interactor: Optional[Path]
     tests: Optional[Path]
+    grader: Optional[Path] = None
 
     @classmethod
     def at(cls, d):
@@ -69,7 +70,8 @@ class Package:
         f = lambda name: d / name if (d / name).is_file() else None
         return cls(id=d.name, dir=d, meta=f("meta.json"), port=f("port.cp"), spec=f("spec.cp"),
                    dream=f("dream.cp"), orig=f("orig.cpp"), gen=f("gen.py"), checker=f("checker.py"),
-                   interactor=f("interactor.py"), tests=f("tests.toml"))
+                   interactor=f("interactor.py"), tests=f("tests.toml"),
+                   grader=f("grader.cpp") or f("dream.tests/grader.cpp"))
 
     def read_meta(self):
         return json.loads(self.meta.read_text()) if self.meta else {}
@@ -193,10 +195,16 @@ def stress_inputs(pkg):
     return []
 
 
-def judge_args(pkg):
-    """How `cpl test` judges the package: its interactor, else its checker, else the answers."""
-    return ["--interactor", str(pkg.interactor)] if pkg.interactor else \
+GRADER = re.compile(r"^\s*@grader\b", re.M)
+
+
+def judge_args(pkg, source):
+    """How `cpl test` judges `source`: its interactor, else its checker, else the answers;
+    a program of `@grader` fns is linked with the package's grader.cpp, as the judge runs it."""
+    judge = ["--interactor", str(pkg.interactor)] if pkg.interactor else \
         ["--checker", str(pkg.checker)] if pkg.checker else []
+    graded = pkg.grader and GRADER.search(Path(source).read_text(errors="replace"))
+    return judge + (["--grader", str(pkg.grader)] if graded else [])
 
 
 def package_limits(pkg):
@@ -225,7 +233,7 @@ def judged(pkg, source, inputs, cpl):
                 if r.returncode:
                     raise InfraError(f"{pkg.id}: accepted C++ exits {r.returncode} on case {i}")
                 Path(cases, f"{i:02}.ans").write_text(r.stdout)
-        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge_args(pkg), *package_limits(pkg)],
+        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge_args(pkg, source), *package_limits(pkg)],
                            cwd=ROOT, capture_output=True, text=True)
         try:
             results = json.loads(r.stdout)["cases"]
@@ -705,7 +713,7 @@ def check_tests(pkg, ctx):
         return [f"reference-fails {pkg.id} {e.case}"]
     except (RuntimeError, subprocess.SubprocessError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
-    cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg), *package_limits(pkg))
+    cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg, pkg.port), *package_limits(pkg))
     if isinstance(cases, str):
         return [f"{cases} {pkg.id} -"]
     found = [f"cpl-test-fails {pkg.id} {c['name']}" for c in cases if c["verdict"] not in (None, "ok")]
