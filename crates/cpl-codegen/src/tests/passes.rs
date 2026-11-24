@@ -564,3 +564,29 @@ fn has_jump_sees_a_break_nested_in_an_if() {
     assert!(has_jump(&program.fns[0].body), "f breaks out of its loop");
     assert!(!has_jump(&program.fns[1].body), "g only runs to its end");
 }
+
+#[test]
+fn branches_and_binds_only_rejects_a_store_or_a_loop() {
+    use crate::uses::places::branches_and_binds_only;
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    if n > 0:\n",
+        "        return 1\n",
+        "    let x = n + 1\n",
+        "    x\n",
+        "fn g(n: Int) -> Int:\n",
+        "    var s = 0\n",
+        "    for i in 0..n:\n",
+        "        s += i\n",
+        "    s\n",
+        "print(f(3) + g(3))\n",
+    ));
+    assert!(
+        branches_and_binds_only(&program.fns[0].body),
+        "f only binds and branches"
+    );
+    assert!(
+        !branches_and_binds_only(&program.fns[1].body),
+        "g stores in a loop"
+    );
+}

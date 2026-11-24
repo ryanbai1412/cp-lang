@@ -1,6 +1,7 @@
 //! Loops: for statements, their bodies, and loops that push.
 
 use super::*;
+use crate::uses::split::each_value;
 
 impl<'p> Emitter<'p> {
     /// The body of a loop, its `}` and the labels a `break` or
@@ -49,7 +50,7 @@ impl<'p> Emitter<'p> {
             return true;
         }
         let mut consumers = Vec::new();
-        crate::walk::deep_exprs(body, &mut |e| {
+        each_value(body, &mut |e| {
             let ExprKind::Mutate(cpl_ir::Mutation::Push, place, _) = &e.kind else {
                 return;
             };
@@ -685,7 +686,7 @@ impl<'p> Emitter<'p> {
                         (format!("const {cpp}& {var}"), &first)
                     };
                     let mut read = !pushed_first.is_empty();
-                    crate::walk::deep_exprs(body, &mut |e| {
+                    each_value(body, &mut |e| {
                         read |= matches!(e.kind, ExprKind::Local(s) if s == slot)
                     });
                     let decl = if read {

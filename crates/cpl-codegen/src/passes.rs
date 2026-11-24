@@ -398,25 +398,34 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "last-use-move",
         "stmt.rs",
-        Uses(&["unread_after", "mentions_any", "lends", "is_cheap_pure_key"]),
+        Uses(&[
+            "unread_after",
+            "mentions_any",
+            "lends",
+            "is_cheap_pure_key",
+            "each_part",
+            "each_value",
+            "each_write",
+            "branches_and_binds_only",
+        ]),
         "a_local_read_for_the_last_time_moves_into_its_place",
     ),
     pass(
         "assign-move",
         "stmt/assign.rs",
-        Uses(&["safe_place"]),
+        Uses(&["safe_place", "each_part", "has_jump"]),
         "a_last_read_assigned_inside_an_if_moves",
     ),
     pass(
         "loop-in-place",
         "stmt/loops.rs",
-        Uses(&["in_place", "trap_free_stmts", "pure_call"]),
+        Uses(&["in_place", "trap_free_stmts", "pure_call", "each_value"]),
         "map_keys_and_values_iterate_without_copying",
     ),
     pass(
         "return-move",
         "stmt/ret.rs",
-        Uses(&["mentions_any"]),
+        Uses(&["mentions_any", "each_sink"]),
         "a_return_moves_each_local_it_is_the_last_use_of",
     ),
     pass(

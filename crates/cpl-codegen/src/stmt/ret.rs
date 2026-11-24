@@ -2,6 +2,7 @@
 //! whose last use it is moves into it.
 
 use crate::emit::Emitter;
+use crate::uses::split::{each_sink, Sink};
 use cpl_ir::{Block, Expr, ExprKind, Slot, Stmt, Ty};
 use std::collections::BTreeSet;
 
@@ -9,9 +10,9 @@ use std::collections::BTreeSet;
 /// so each one dies at every `give`.
 pub(crate) fn block_lets(block: &Block) -> BTreeSet<Slot> {
     let mut lets = BTreeSet::new();
-    cpl_ir::walk::deep_stmts(block, &mut |s| {
-        if let Stmt::Let(slot, _) = s {
-            lets.insert(*slot);
+    each_sink(block, &mut |sink| {
+        if let Sink::Let(slot, _) = sink {
+            lets.insert(slot);
         }
     });
     lets

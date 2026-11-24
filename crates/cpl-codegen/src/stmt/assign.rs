@@ -1,6 +1,8 @@
 //! Assignments: stores to places, rekeyed locals and counted globals.
 
 use super::*;
+use crate::uses::loops::has_jump;
+use crate::uses::places::each_part;
 
 impl<'p> Emitter<'p> {
     /// The `+`/`-` of `global += k`, an `Int` global stepped by a
@@ -19,7 +21,7 @@ impl<'p> Emitter<'p> {
         let owned = local >= self.program.fns[id].params.len() || self.sunk[id].contains(&local);
         let read_again = args[1..].iter().any(|arg| {
             let mut used = false;
-            crate::walk::deep_expr(arg, &mut |e| {
+            each_part(arg, &mut |e| {
                 used |= matches!(e.kind, ExprKind::Local(s) if s == local);
             });
             used
@@ -125,7 +127,7 @@ impl<'p> Emitter<'p> {
                 && (same_path(k, key) || self.key_temp_of(key, k))
         };
         let (mut read, mut copies, mut mentions, mut exits) = (None, Vec::new(), 0, false);
-        walk::deep_expr(value, &mut |e| match &e.kind {
+        each_part(value, &mut |e| match &e.kind {
             ExprKind::Local(s) if root == (false, *s) => mentions += 1,
             ExprKind::Global(g) if root == (true, *g) => mentions += 1,
             ExprKind::Binary(BinOp::Coalesce, got, d) => {
@@ -145,9 +147,7 @@ impl<'p> Emitter<'p> {
             ExprKind::Builtin(Builtin::Copy, of) if of.len() == 1 => {
                 copies.push((e as *const Expr, &of[0] as *const Expr))
             }
-            ExprKind::Do(block) => walk::deep_stmts(block, &mut |s| {
-                exits |= matches!(s, Stmt::Return(_) | Stmt::Break(_) | Stmt::Continue(_))
-            }),
+            ExprKind::Do(block) => exits |= has_jump(block),
             _ => {}
         });
         let (at, map, d) = read?;

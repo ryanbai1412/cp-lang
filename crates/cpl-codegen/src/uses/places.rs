@@ -181,3 +181,17 @@ pub(crate) fn each_return(block: &Block, f: &mut dyn FnMut(Option<&Expr>)) {
         }
     });
 }
+
+/// Whether every statement of `block`, at any depth, only evaluates, binds,
+/// branches, returns or gives: no store, loop, `break`, `continue`, assert,
+/// domain or trap.
+pub(crate) fn branches_and_binds_only(block: &Block) -> bool {
+    let mut only = true;
+    walk::deep_stmts(block, &mut |stmt| {
+        only &= matches!(
+            stmt,
+            Stmt::Expr(_) | Stmt::Return(_) | Stmt::Give(_) | Stmt::If(..) | Stmt::Let(..)
+        );
+    });
+    only
+}

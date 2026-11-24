@@ -5,6 +5,8 @@ use crate::expr::string_literal;
 use crate::lend::Hold;
 use crate::names::{dom_ident, fn_name};
 use crate::uses::effects::{is_cheap_pure_key, writes_nothing, Touch};
+use crate::uses::places::{branches_and_binds_only, each_part, each_write};
+use crate::uses::split::each_value;
 use crate::walk;
 use cpl_ir::{
     AssignOp, BinOp, Block, Builtin, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind,
@@ -1227,7 +1229,7 @@ impl<'p> Emitter<'p> {
 /// (which an open-addressing `HashMap` insert/rehash on the LHS could invalidate).
 fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
     let mut alias = false;
-    walk::deep_expr(e, &mut |sub| match &sub.kind {
+    each_part(e, &mut |sub| match &sub.kind {
         ExprKind::Local(id) if !root.0 && *id == root.1 => alias = true,
         ExprKind::Global(id) if root.0 && *id == root.1 => alias = true,
         _ => {}
@@ -1274,7 +1276,7 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
         rest.stmts.len() < then.stmts.len(),
         Touch::of_block(&rest).quiet(),
     );
-    walk::deep_exprs(then, &mut |e| match &e.kind {
+    each_value(then, &mut |e| match &e.kind {
         ExprKind::Index(base, at)
             if at.len() == 1 && same_path(base, map) && same_path(&at[0], key) =>
         {
@@ -1282,14 +1284,7 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
         }
         _ => {}
     });
-    walk::deep_stmts(&rest, &mut |stmt| {
-        if !matches!(
-            stmt,
-            Stmt::Expr(_) | Stmt::Return(_) | Stmt::Give(_) | Stmt::If(..) | Stmt::Let(..)
-        ) {
-            quiet = false;
-        }
-    });
+    quiet &= branches_and_binds_only(&rest);
     (uses && quiet).then_some((map, key))
 }
 
@@ -1422,24 +1417,7 @@ fn fields_untouched(seq: &Expr, body: &Block) -> bool {
         return false;
     }
     let mut stores: Vec<&Place> = Vec::new();
-    walk::deep_stmts(body, &mut |stmt| {
-        if let Stmt::Assign(place, ..) = stmt {
-            stores.push(place);
-        }
-    });
-    walk::deep_exprs(body, &mut |e| match &e.kind {
-        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-            stores.extend(args.iter().filter_map(|a| match a {
-                cpl_ir::Arg::Mut(place) => Some(place),
-                cpl_ir::Arg::Value(_) => None,
-            }));
-        }
-        ExprKind::MutSlice(place, _, _)
-        | ExprKind::MutLine(place, _, _)
-        | ExprKind::Mutate(_, place, _)
-        | ExprKind::Sort(place, _, _) => stores.push(place),
-        _ => {}
-    });
+    each_write(body, &mut |_, place| stores.push(place));
     stores.iter().all(|place| {
         let (global, root, path, _) = stored_fields(place);
         global || root != slot || (!path.starts_with(&walked) && !walked.starts_with(&path))
