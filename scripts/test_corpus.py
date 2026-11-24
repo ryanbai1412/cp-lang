@@ -401,6 +401,11 @@ class BoundsTest(unittest.TestCase):
         got = corpus.port_ranges("type City = 1..=n\nlet roads: [0..n]List<(u: City, v: 1..=n)> = read()\n")
         self.assertEqual((got["roads.u"], got["roads.v"]), (("1", "n"), ("1", "n")))
 
+    def test_an_enum_read_is_checked_by_its_variants_fields(self):
+        got = corpus.port_ranges("domain W = 1..=n\nenum Op:\n    @tag(1) Join(u: W, v: W)\n    @tag(2) Split(u: W)\n"
+                                 "    Ask(s: Str, k: 1..=50)\n    Stop\nlet ops = read<[q]Op>()\n")
+        self.assertEqual(got, {"ops.u": ("1", "n"), "ops.v": ("1", "n"), "ops.k": ("1", "50")})
+
     def test_a_read_inside_an_expression_or_a_for_is_checked(self):
         got = corpus.port_ranges("let xs: List<P> = read<[c](x: 1..=n, y: 1..=m)>().sorted()\n"
                                  "for a in read<[0..m]1..=n>():\n    print(a)\nlet z = unread<1..=3>()\n")

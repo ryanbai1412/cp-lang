@@ -427,6 +427,8 @@ def header_fields(text):
 READ_LINE = re.compile(r"^\s*(?:let|var) (?:(.+?): (.+) = read\(\)|([^:=]+?) = read<(.+)>\(\))\s*$")
 DOMAIN_LINE = re.compile(r"^(?:domain|type) (\w+) = (.+?)\s*$")
 STRUCT_LINE = re.compile(r"^struct (\w+)(\(.*\))\s*$")
+ENUM_LINE = re.compile(r"^enum (\w+):$")
+ENUM_VARIANT = re.compile(r"^(?:@\w+(?:\([^)]*\))?\s+)*\w+(\(.*\))$")
 READ_RANGE = re.compile(r"^(-?[\w.]+(?:\s*[-+*/^]\s*[\w.]+)*)\s*\.\.(=?)\s*(.+)$")
 def split_top(s):
     out, depth, cur = [], 0, ""
@@ -480,10 +482,21 @@ def read_of(line):
             return line[i + 5:j] if line.startswith("()", j + 1) else None
     return None
 def port_domains(text):
-    """Each `domain`/`type`/`struct` the port declares: name -> its type text."""
-    domains = {}
+    """Each `domain`/`type`/`struct` the port declares: name -> its type text. An enum is
+    the struct of its variants' named fields, so `ops.u` names `Join(u: W, v: W)`'s u."""
+    domains, enum = {}, None
     for line in text.split("\n"):
-        m = DOMAIN_LINE.match(line.split("//")[0].strip()) or STRUCT_LINE.match(line.split("//")[0].strip())
+        code = line.split("//")[0].rstrip()
+        if enum and code[:1] in (" ", "\t"):
+            v = ENUM_VARIANT.match(code.strip())
+            for f in split_top(v.group(1)[1:-1]) if v else []:
+                if ":" in f:
+                    fields.setdefault(f.partition(":")[0].strip(), f.strip())
+            domains[enum] = "(" + ", ".join(fields.values()) + ")"
+            continue
+        e = ENUM_LINE.match(code.strip())
+        enum, fields = (e.group(1), {}) if e else (None, None)
+        m = DOMAIN_LINE.match(code.strip()) or STRUCT_LINE.match(code.strip())
         if m: domains[m.group(1)] = m.group(2)
     return domains
 def port_ranges(text):
