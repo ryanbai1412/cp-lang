@@ -1279,3 +1279,119 @@ impl<'a> Lowerer<'a> {
         None
     }
 }
+
+/// Slices `a[lo..hi]` made from their bounds: views of lists, strings and arrays, sub-ranges of ranges.
+impl<'a> Lowerer<'a> {
+    /// `base[lo..hi]` in key terms on a view and positions otherwise.
+    pub(super) fn slice_builtin(&mut self, base: Expr, lo: Expr, hi: Expr, span: Span) -> Expr {
+        let keyed = Self::keyed_view(&base.ty);
+        let (op, ty) = match &base.ty {
+            Ty::Str | Ty::StrView => (
+                if keyed {
+                    Builtin::KeySlice
+                } else {
+                    Builtin::StrSlice
+                },
+                Ty::StrView,
+            ),
+            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => (
+                if keyed {
+                    Builtin::KeySlice
+                } else {
+                    Builtin::ListSlice
+                },
+                Ty::ListView(e.clone(), base.ty.seq_key().unwrap_or(Dim::Int)),
+            ),
+            // R04b.1.2: a slice of an array keeps its positions as keys.
+            Ty::Array { elem, dims } => (Builtin::KeySlice, Ty::ListView(elem.clone(), dims[0])),
+            _ => unreachable!(),
+        };
+        self.mk(ExprKind::Builtin(op, vec![base, lo, hi]), ty, span)
+    }
+
+    /// `r[lo..hi]` of a `Range`: the keys `lo..hi`, which must lie inside `r`.
+    pub(super) fn slice_range(
+        &mut self,
+        base: Expr,
+        lo: Option<&ast::Expr>,
+        hi: Option<&ast::Expr>,
+        inclusive: bool,
+        span: Span,
+    ) -> Expr {
+        let range_ty = base.ty.clone();
+        let elem = range_ty.seq_elem().unwrap_or(Ty::Int);
+        self.do_expr(Some(&range_ty), span, |lw, out| {
+            let src_slot = lw.temp(range_ty.clone());
+            out.push(Stmt::Let(src_slot, Some(base)));
+            let src = lw.local(src_slot, span);
+            let src_lo = lw.mk(
+                ExprKind::Builtin(Builtin::RangeLo, vec![src.clone()]),
+                Ty::Int,
+                span,
+            );
+            let src_hi = lw.mk(
+                ExprKind::Builtin(Builtin::RangeHi, vec![src]),
+                Ty::Int,
+                span,
+            );
+            let key = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
+                let v = lw.expr(e, Some(&elem));
+                let v = match v.ty {
+                    Ty::Int => v,
+                    Ty::Pos(_) => lw.cast(Cast::Ord, v, Ty::Int),
+                    _ => lw.coerce(v, &Ty::Int, e.span),
+                };
+                lw.int_add(v, i64::from(is_end && inclusive))
+            };
+            let lo_e = match lo {
+                Some(l) => key(lw, l, false),
+                None => src_lo.clone(),
+            };
+            let hi_e = match hi {
+                Some(h) => key(lw, h, true),
+                None => src_hi.clone(),
+            };
+            let (lo_slot, hi_slot) = (lw.temp(Ty::Int), lw.temp(Ty::Int));
+            out.push(Stmt::Let(lo_slot, Some(lo_e)));
+            out.push(Stmt::Let(hi_slot, Some(hi_e)));
+            let (lo_e, hi_e) = (lw.local(lo_slot, span), lw.local(hi_slot, span));
+            let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
+                lw.mk(
+                    ExprKind::Cmp(op, Box::new(l.clone()), Box::new(r.clone())),
+                    Ty::Bool,
+                    span,
+                )
+            };
+            let or = |lw: &mut Self, l: Expr, r: Expr| {
+                lw.mk(
+                    ExprKind::Binary(BinOp::Or, Box::new(l), Box::new(r)),
+                    Ty::Bool,
+                    span,
+                )
+            };
+            let below = cmp(lw, CmpOp::Lt, &lo_e, &src_lo);
+            let reversed = cmp(lw, CmpOp::Lt, &hi_e, &lo_e);
+            let beyond = cmp(lw, CmpOp::Gt, &hi_e, &src_hi);
+            let bad = or(lw, below, reversed);
+            let bad = or(lw, bad, beyond);
+            let message =
+                "a slice `r[lo..hi]` of a range needs r.first <= lo <= hi <= r.end".to_string();
+            out.push(Stmt::If(
+                bad,
+                Block {
+                    stmts: vec![Stmt::Trap(message, lw.span(span))],
+                },
+                Block::default(),
+            ));
+            let res = lw.mk(
+                ExprKind::Range {
+                    lo: Box::new(lo_e),
+                    hi: Box::new(hi_e),
+                },
+                range_ty.clone(),
+                span,
+            );
+            out.push(Stmt::Give(res));
+        })
+    }
+}

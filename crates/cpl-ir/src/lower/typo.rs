@@ -23,10 +23,9 @@ impl<'a> Lowerer<'a> {
         const RANGE_MEMBERS: [&str; 10] = [
             "end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step",
         ];
-        const DOMAIN_MEMBERS: [&str; 22] = [
+        const DOMAIN_MEMBERS: [&str; 21] = [
             "after", "all", "any", "at", "before", "count", "cuts", "first", "is_empty", "last",
             "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "subsets", "sum",
-            "windows",
         ];
         const SEQ_EXTRA: [&str; 6] = [
             "adjacent", "inverse", "items", "resized", "reverse", "reversed",

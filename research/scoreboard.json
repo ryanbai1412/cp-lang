@@ -1174,6 +1174,8 @@
         "core-07/range-in-brackets-help-names-list.cp": "pass",
         "core-07/range-indexed-not-view.cp": "pass",
         "core-07/range-min-max-compile-without-walk.cp": "pass",
+        "core-07/range-slice-is-a-sub-range.cp": "pass",
+        "core-07/range-slice-outside-traps.cp": "pass",
         "core-07/range-sum-closed-form-exact-near-limit.cp": "pass",
         "core-07/range-sum-closed-form-traps-on-overflow.cp": "pass",
         "core-07/range-sum-is-ranges-own.cp": "pass",
@@ -3690,10 +3692,10 @@
       ],
       "counts": {
         "fail": 9,
-        "pass": 3602
+        "pass": 3604
       },
-      "passed": 3602,
-      "total": 3611
+      "passed": 3604,
+      "total": 3613
     },
     "corpus": {
       "cases": {

@@ -3283,33 +3283,6 @@ impl<'a> Lowerer<'a> {
         !wants(|t, d| matches!(t, Ty::Pos(ed) if *ed == d))
     }
 
-    /// `base[lo..hi]` in key terms on a view and positions otherwise.
-    fn slice_builtin(&mut self, base: Expr, lo: Expr, hi: Expr, span: Span) -> Expr {
-        let keyed = Self::keyed_view(&base.ty);
-        let (op, ty) = match &base.ty {
-            Ty::Str | Ty::StrView => (
-                if keyed {
-                    Builtin::KeySlice
-                } else {
-                    Builtin::StrSlice
-                },
-                Ty::StrView,
-            ),
-            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => (
-                if keyed {
-                    Builtin::KeySlice
-                } else {
-                    Builtin::ListSlice
-                },
-                Ty::ListView(e.clone(), base.ty.seq_key().unwrap_or(Dim::Int)),
-            ),
-            // R04b.1.2: a slice of an array keeps its positions as keys.
-            Ty::Array { elem, dims } => (Builtin::KeySlice, Ty::ListView(elem.clone(), dims[0])),
-            _ => unreachable!(),
-        };
-        self.mk(ExprKind::Builtin(op, vec![base, lo, hi]), ty, span)
-    }
-
     pub(super) fn hoist_view_base(&mut self, base: Expr, span: Span) -> Expr {
         if matches!(
             base.ty,
@@ -3691,6 +3664,12 @@ impl<'a> Lowerer<'a> {
                     }
                 };
                 return self.slice_builtin(base, lo_e, hi_e, span);
+            }
+        }
+        // R07.3.1: a range is keyed by its values, so its slice is the sub-range between two keys.
+        if let Ty::Range(elem) = &base.ty {
+            if matches!(**elem, Ty::Int | Ty::Pos(_)) {
+                return self.slice_range(base, lo.as_deref(), hi.as_deref(), *inclusive, span);
             }
         }
         let is_str = base.ty == Ty::Str;
