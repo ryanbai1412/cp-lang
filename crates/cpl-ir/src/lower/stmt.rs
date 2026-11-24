@@ -1068,6 +1068,7 @@ impl<'a> Lowerer<'a> {
                 name, generics, ty, ..
             } if !self.at_top_level() => {
                 if generics.is_empty() {
+                    self.mirror_value_args(ty, out);
                     let resolved = self.resolve_ty(ty);
                     self.cx
                         .local_type_aliases
@@ -1428,8 +1429,6 @@ impl<'a> Lowerer<'a> {
                     (None, None, Some(proj)) => self.map_proj_bind(pat, proj, &mut stmts),
                     (None, None, None) => self.loop_var(pat, elem, &mut stmts),
                 };
-                // If an `Int` loop variable is used as a runtime generic value arg (`for d in 0..=6: type F = Fixed<d>`),
-                // mirror it into a global so monomorphized methods can read it at run time.
                 if elem_is_int
                     && body
                         .stmts
@@ -1437,29 +1436,7 @@ impl<'a> Lowerer<'a> {
                         .any(|s| matches!(s.kind, ast::StmtKind::TypeAlias { .. }))
                 {
                     if let ast::PatternKind::Name(vname) = &pat.kind {
-                        if let Some(vslot) = self.lookup(vname) {
-                            let gid = self.globals.len();
-                            self.globals.push(Global {
-                                name: format!("{vname}_rt_{gid}"),
-                                ty: Ty::Int,
-                                span: Span::default(),
-                            });
-                            let vref = self.local(vslot, pat.span);
-                            stmts.push(Stmt::Assign(
-                                Place {
-                                    kind: PlaceKind::Global(gid),
-                                    ty: Ty::Int,
-                                    span: self.span(pat.span),
-                                },
-                                AssignOp::Set,
-                                vref,
-                            ));
-                            self.cx
-                                .local_syms
-                                .last_mut()
-                                .unwrap()
-                                .insert(vname.clone(), Sym::Global(gid));
-                        }
+                        self.mirror_local_int(vname, pat.span, &mut stmts);
                     }
                 }
                 stmts.extend(self.block(body, Tail::Discard).stmts);

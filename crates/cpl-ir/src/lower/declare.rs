@@ -4,6 +4,53 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// A local `Int` named as a type's value argument (`type Z = Mod(q)`,
+    /// `for d in 0..=6: type F = Fixed<d>`) is mirrored into a global, so
+    /// monomorphized methods read it at run time.
+    pub(super) fn mirror_value_args(&mut self, ty: &ast::Type, out: &mut Vec<Stmt>) {
+        let ast::TypeKind::Named { args, .. } = &ty.kind else {
+            return;
+        };
+        for arg in args {
+            match &arg.kind {
+                ast::TypeKind::Value(e) => {
+                    if let ast::ExprKind::Name(n) = &e.kind {
+                        self.mirror_local_int(n, e.span, out);
+                    }
+                }
+                ast::TypeKind::Named { name, args } if args.is_empty() => {
+                    self.mirror_local_int(&name.text, name.span, out);
+                }
+                _ => self.mirror_value_args(arg, out),
+            }
+        }
+    }
+
+    pub(super) fn mirror_local_int(&mut self, name: &str, span: Span, out: &mut Vec<Stmt>) {
+        let Some(slot) = self.lookup(name) else {
+            return;
+        };
+        let value = self.local(slot, span);
+        if !matches!(value.ty, Ty::Int) {
+            return;
+        }
+        let gid = self.globals.len();
+        self.globals.push(Global {
+            name: format!("{name}_rt_{gid}"),
+            ty: Ty::Int,
+            span: Span::default(),
+        });
+        let place = Place {
+            kind: PlaceKind::Global(gid),
+            ty: Ty::Int,
+            span: self.span(span),
+        };
+        out.push(Stmt::Assign(place, AssignOp::Set, value));
+        if let Some(scope) = self.cx.local_syms.last_mut() {
+            scope.insert(name.to_string(), Sym::Global(gid));
+        }
+    }
+
     /// Declares `name` with the value `init`: a global at the top level of
     /// the file, a local anywhere else.
     pub(super) fn declare(&mut self, name: &str, init: Expr, mutable: bool, out: &mut Vec<Stmt>) {
