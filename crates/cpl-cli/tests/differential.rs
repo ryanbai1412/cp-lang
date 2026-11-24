@@ -1330,7 +1330,8 @@ fn float_ops_round_as_the_interpreter_under_fma_flags() {
 }
 
 /// A `std::move(x)` whose nearest declaration of `x` above it is a
-/// `const T& x`: newer g++ rejects it as -Wredundant-move, older ones copy quietly.
+/// `const T& x`, as a local or a range-for element: newer g++ rejects it as
+/// -Wredundant-move, older ones copy quietly.
 fn moved_const_ref(cpp: &str) -> Option<String> {
     let lines: Vec<&str> = cpp.lines().collect();
     for (at, line) in lines.iter().enumerate() {
@@ -1351,9 +1352,12 @@ fn moved_const_ref(cpp: &str) -> Option<String> {
                 .find(|l| {
                     l.contains(&format!(" {name} = "))
                         && !l.trim_start().starts_with(&format!("{name} "))
+                        || l.contains(&format!("& {name} : "))
                 });
-            if declared.is_some_and(|l| l.contains("const ") && l.contains(&format!("& {name} = ")))
-            {
+            if declared.is_some_and(|l| {
+                l.contains("const ")
+                    && (l.contains(&format!("& {name} = ")) || l.contains(&format!("& {name} : ")))
+            }) {
                 return Some(line.trim().to_string());
             }
         }

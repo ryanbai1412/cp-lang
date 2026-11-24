@@ -58,6 +58,9 @@ pub(crate) struct Uses {
     /// ([`dying_lets`]), and those of fns that read a global for the last
     /// time ([`dying_global_lets`]).
     pub(crate) dying: BTreeSet<*const Stmt>,
+    /// The loops that walk a local list for the last time ([`dying_loop`]):
+    /// each element may be moved out.
+    pub(crate) dying_loops: BTreeSet<cpl_ir::LoopId>,
 }
 
 impl Uses {
@@ -68,6 +71,7 @@ impl Uses {
             bindings: BTreeMap::new(),
             table,
             dying: dying_global_lets(program),
+            dying_loops: main_dying_loops(program).into_iter().collect(),
         };
         let bodies = [&program.setup, &program.main]
             .into_iter()
@@ -77,6 +81,7 @@ impl Uses {
             walk::blocks(body, &mut |block| {
                 for k in 0..block.stmts.len() {
                     uses.dying.extend(dying_lets(program, block, k));
+                    uses.dying_loops.extend(dying_loop(program, block, k));
                 }
             });
         }
@@ -1062,6 +1067,89 @@ fn dying_lets(program: &Program, block: &Block, k: usize) -> Vec<*const Stmt> {
         })
         .map(|stmt| stmt as *const Stmt)
         .collect()
+}
+
+/// Statement `k` of `block` when it is `for x in xs` over a local list
+/// `block` declared, which the body never names and nothing after reads.
+fn dying_loop(program: &Program, block: &Block, k: usize) -> Option<cpl_ir::LoopId> {
+    let Stmt::For(id, _, Iter::Seq(seq, _), body) = &block.stmts[k] else {
+        return None;
+    };
+    if !matches!(seq.ty, Ty::List(_)) {
+        return None;
+    }
+    let dies = match seq.kind {
+        ExprKind::Local(xs) => {
+            !mentions(program, &body.stmts, xs).any
+                && dead_after(program, block, k, xs, &BTreeSet::new())
+        }
+        _ => false,
+    };
+    dies.then_some(*id)
+}
+
+/// The loops of `main`, run once (in no other loop), over a list of `main`
+/// that the loop's statement names only there and that nothing after it,
+/// nor any fn or closure, names.
+fn main_dying_loops(program: &Program) -> Vec<cpl_ir::LoopId> {
+    let others: Vec<&Block> = (program.fns.iter().map(|f| &f.body))
+        .chain(program.closures.iter().map(|c| &c.body))
+        .collect();
+    let stmts = &program.main.stmts;
+    let mut out = Vec::new();
+    for (k, stmt) in stmts.iter().enumerate() {
+        let mut fors = Vec::new();
+        unlooped_fors(stmt, &mut fors);
+        for (id, g) in fors {
+            if names_global(std::slice::from_ref(stmt), g) == 1
+                && names_global(&stmts[k + 1..], g) == 0
+                && others.iter().all(|b| names_global(&b.stmts, g) == 0)
+            {
+                out.push(id);
+            }
+        }
+    }
+    out
+}
+
+/// The `for x in g` over a global list in `stmt` that run at most once: in
+/// no loop's body.
+fn unlooped_fors(stmt: &Stmt, out: &mut Vec<(cpl_ir::LoopId, usize)>) {
+    match stmt {
+        Stmt::For(id, _, Iter::Seq(seq, _), _) => {
+            if let (ExprKind::Global(g), Ty::List(_) | Ty::Array { .. }) = (&seq.kind, &seq.ty) {
+                out.push((*id, *g));
+            }
+            return;
+        }
+        Stmt::For(..) | Stmt::While(..) => return,
+        _ => {}
+    }
+    fn in_expr(e: &Expr, out: &mut Vec<(cpl_ir::LoopId, usize)>) {
+        if let ExprKind::Do(block) = &e.kind {
+            block.stmts.iter().for_each(|s| unlooped_fors(s, out));
+        }
+        walk::children(e, &mut |c| in_expr(c, out));
+    }
+    walk::stmt_exprs(stmt, &mut |e| in_expr(e, out));
+    walk::stmt_blocks(stmt, &mut |b| {
+        b.stmts.iter().for_each(|s| unlooped_fors(s, out))
+    });
+}
+
+/// How often `stmts` read or write the global `g`.
+fn names_global(stmts: &[Stmt], g: usize) -> usize {
+    let block = Block {
+        stmts: stmts.to_vec(),
+    };
+    let mut found = 0;
+    walk::deep_exprs(&block, &mut |e| {
+        found += usize::from(matches!(e.kind, ExprKind::Global(id) if id == g));
+    });
+    places::each_write(&block, &mut |_, place| {
+        found += usize::from(walk::root(place) == (true, g));
+    });
+    found
 }
 
 /// The variable a `let` takes whole: `src` of `let x = src`, of
