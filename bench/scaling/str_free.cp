@@ -42,7 +42,7 @@ for r in 0..16384:
     acc += lyndon_factorization(rot).len // timed: strings.lyndon_factorization
     acc += min_rotation(rot) ?? 0 // timed: strings.min_rotation
     acc += max_rotation(rot) ?? 0 // timed: strings.max_rotation
-for r in 0..2048:
+for r in 0..4096:
     let (s, ab) = (ss[r % 2], abs[r % 2])
     acc += "a".repeat(n).len // timed: strings.repeat [fixed: self]
     acc += ab.search(miss) ?? 0 // timed: strings.search

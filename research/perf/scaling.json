@@ -332,7 +332,7 @@
    "cost": "\\lvert \\mathit{text} \\rvert",
    "documented": 4.0,
    "fn": "strings.KmpAutomaton.find_all",
-   "measured": 6.92,
+   "measured": 4.02,
    "n": 512,
    "ok": true
   },
@@ -340,7 +340,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.KmpAutomaton.len",
-   "measured": 1.16,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -348,7 +348,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.KmpAutomaton.link",
-   "measured": 1.06,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -356,7 +356,7 @@
    "cost": "\\lvert \\mathit{pat} \\rvert \\cdot \\lvert A \\rvert",
    "documented": 4.0,
    "fn": "strings.KmpAutomaton.new",
-   "measured": 5.24,
+   "measured": 3.83,
    "n": 512,
    "ok": true
   },
@@ -364,7 +364,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.KmpAutomaton.step",
-   "measured": 1.57,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -372,7 +372,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.add_word",
-   "measured": 4.26,
+   "measured": 3.87,
    "n": 512,
    "ok": true
   },
@@ -380,7 +380,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.contains",
-   "measured": 4.63,
+   "measured": 3.83,
    "n": 512,
    "ok": true
   },
@@ -388,7 +388,7 @@
    "cost": "\\mathit{states}",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.distinct",
-   "measured": 3.87,
+   "measured": 3.41,
    "n": 512,
    "ok": true
   },
@@ -396,7 +396,7 @@
    "cost": "\\mathit{states}",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.endpos_tree",
-   "measured": 5.61,
+   "measured": 4.05,
    "n": 512,
    "ok": true
   },
@@ -404,7 +404,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.find",
-   "measured": 5.28,
+   "measured": 3.75,
    "n": 512,
    "ok": true
   },
@@ -412,7 +412,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.first_pos",
-   "measured": 1.15,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -420,7 +420,7 @@
    "cost": "\\mathit{states} \\cdot \\lvert A \\rvert",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.kth_substring",
-   "measured": 5.19,
+   "measured": 3.46,
    "n": 512,
    "ok": true
   },
@@ -428,7 +428,7 @@
    "cost": "\\lvert \\mathit{other} \\rvert",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.lcs",
-   "measured": 4.94,
+   "measured": 3.87,
    "n": 512,
    "ok": true
   },
@@ -436,7 +436,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.len",
-   "measured": 1.11,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -444,7 +444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.link",
-   "measured": 1.48,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -452,7 +452,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.longest",
-   "measured": 1.32,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -460,7 +460,7 @@
    "cost": "\\lvert A \\rvert",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.new",
-   "measured": 1.67,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -468,7 +468,7 @@
    "cost": "\\mathit{states}",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.occ_counts",
-   "measured": 4.87,
+   "measured": 3.93,
    "n": 512,
    "ok": true
   },
@@ -476,7 +476,7 @@
    "cost": "\\lvert s \\rvert \\cdot \\lvert A \\rvert",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.of",
-   "measured": 4.65,
+   "measured": 3.63,
    "n": 512,
    "ok": true
   },
@@ -484,7 +484,7 @@
    "cost": "\\lvert A \\rvert",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.push",
-   "measured": 1.3,
+   "measured": 0.96,
    "n": 512,
    "ok": true
   },
@@ -492,7 +492,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.reset",
-   "measured": 1.02,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -500,7 +500,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.root",
-   "measured": 1.09,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -508,7 +508,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.shortest",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -516,7 +516,7 @@
    "cost": "\\mathit{states}",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.states",
-   "measured": 5.66,
+   "measured": 3.88,
    "n": 512,
    "ok": true
   },
@@ -524,7 +524,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.SuffixAutomaton.step",
-   "measured": 1.67,
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -532,7 +532,7 @@
    "cost": "\\mathit{states}",
    "documented": 4.0,
    "fn": "strings.SuffixAutomaton.topo_order",
-   "measured": 4.32,
+   "measured": 3.64,
    "n": 512,
    "ok": true
   },
@@ -8216,11 +8216,11 @@
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/search.cp::search.bsearch_real": {
+  "bench/scaling/search.cp::search.bsearch": {
    "cost": "\\mathit{steps}",
    "documented": 4.0,
-   "fn": "search.bsearch_real",
-   "measured": 4.13,
+   "fn": "search.bsearch",
+   "measured": 4.01,
    "n": 16384,
    "ok": true
   },
@@ -8228,7 +8228,7 @@
    "cost": "\\log(1 / \\mathit{eps})",
    "documented": 1.0,
    "fn": "search.dinkelbach",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -8236,7 +8236,7 @@
    "cost": "\\log d",
    "documented": 1.14,
    "fn": "search.gallop_first",
-   "measured": 1.13,
+   "measured": 1.19,
    "n": 16384,
    "ok": true
   },
@@ -8244,7 +8244,7 @@
    "cost": "(n + \\mathit{queries}) \\log n",
    "documented": 4.57,
    "fn": "search.parallel_bsearch",
-   "measured": 4.37,
+   "measured": 4.72,
    "n": 16384,
    "ok": true
   },
@@ -8252,7 +8252,7 @@
    "cost": "\\mathit{steps}",
    "documented": 4.0,
    "fn": "search.peak",
-   "measured": 4.14,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -8260,7 +8260,7 @@
    "cost": "n + k",
    "documented": 4.0,
    "fn": "search.split_best",
-   "measured": 4.22,
+   "measured": 4.48,
    "n": 16384,
    "ok": true
   },
@@ -8268,15 +8268,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "search.ternary_max",
-   "measured": 1.18,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/search.cp::search.ternary_max_real": {
-   "cost": "\\mathit{steps}",
-   "documented": 4.0,
-   "fn": "search.ternary_max_real",
-   "measured": 4.12,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
@@ -8284,15 +8276,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "search.ternary_min",
-   "measured": 1.21,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/search.cp::search.ternary_min_real": {
-   "cost": "\\mathit{steps}",
-   "documented": 4.0,
-   "fn": "search.ternary_min_real",
-   "measured": 4.12,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -8300,7 +8284,7 @@
    "cost": "\\mathit{steps}",
    "documented": 4.0,
    "fn": "search.valley",
-   "measured": 4.13,
+   "measured": 3.95,
    "n": 16384,
    "ok": true
   },
@@ -8740,7 +8724,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.borders",
-   "measured": 3.82,
+   "measured": 3.88,
    "n": 512,
    "ok": true
   },
@@ -8748,7 +8732,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
    "fn": "strings.common_prefix_len",
-   "measured": 1.73,
+   "measured": 3.87,
    "n": 512,
    "ok": true
   },
@@ -8756,7 +8740,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
    "documented": 4.0,
    "fn": "strings.common_suffix_len",
-   "measured": 3.0,
+   "measured": 3.53,
    "n": 512,
    "ok": true
   },
@@ -8764,7 +8748,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.digit",
-   "measured": 1.02,
+   "measured": 0.92,
    "n": 512,
    "ok": true
   },
@@ -8772,7 +8756,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{pat} \\rvert)",
    "documented": 4.0,
    "fn": "strings.ends_with",
-   "measured": 2.39,
+   "measured": 3.32,
    "n": 512,
    "ok": true
   },
@@ -8780,7 +8764,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
    "documented": 4.0,
    "fn": "strings.find_all",
-   "measured": 2.92,
+   "measured": 3.8,
    "n": 512,
    "ok": true
   },
@@ -8788,7 +8772,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert \\cdot \\lvert \\mathit{pat} \\rvert",
    "documented": 16.0,
    "fn": "strings.find_all_wildcard",
-   "measured": 10.16,
+   "measured": 11.86,
    "n": 512,
    "ok": true
   },
@@ -8796,7 +8780,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_alnum",
-   "measured": 0.87,
+   "measured": 0.97,
    "n": 512,
    "ok": true
   },
@@ -8804,7 +8788,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_alpha",
-   "measured": 0.81,
+   "measured": 0.98,
    "n": 512,
    "ok": true
   },
@@ -8812,7 +8796,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_digit",
-   "measured": 0.74,
+   "measured": 0.97,
    "n": 512,
    "ok": true
   },
@@ -8820,7 +8804,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_lower",
-   "measured": 0.98,
+   "measured": 0.96,
    "n": 512,
    "ok": true
   },
@@ -8828,7 +8812,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.is_palindrome",
-   "measured": 3.29,
+   "measured": 2.92,
    "n": 512,
    "ok": true
   },
@@ -8836,7 +8820,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_space",
-   "measured": 0.89,
+   "measured": 0.97,
    "n": 512,
    "ok": true
   },
@@ -8844,7 +8828,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.is_upper",
-   "measured": 0.97,
+   "measured": 0.98,
    "n": 512,
    "ok": true
   },
@@ -8852,7 +8836,7 @@
    "cost": "\\lvert \\mathit{output} \\rvert",
    "documented": 4.0,
    "fn": "strings.join",
-   "measured": 3.47,
+   "measured": 3.7,
    "n": 512,
    "ok": true
   },
@@ -8860,7 +8844,7 @@
    "cost": "\\sum_w \\lvert w \\rvert \\cdot \\log n",
    "documented": 4.89,
    "fn": "strings.lcs_all",
-   "measured": 3.88,
+   "measured": 3.17,
    "n": 512,
    "ok": true
   },
@@ -8868,7 +8852,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.lower",
-   "measured": 1.0,
+   "measured": 0.98,
    "n": 512,
    "ok": true
   },
@@ -8876,7 +8860,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.lyndon_factorization",
-   "measured": 3.2,
+   "measured": 3.64,
    "n": 512,
    "ok": true
   },
@@ -8884,7 +8868,7 @@
    "cost": "n \\log n",
    "documented": 4.89,
    "fn": "strings.lyndon_runs",
-   "measured": 5.39,
+   "measured": 4.14,
    "n": 512,
    "ok": true
   },
@@ -8892,7 +8876,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.manacher",
-   "measured": 4.63,
+   "measured": 3.57,
    "n": 512,
    "ok": true
   },
@@ -8900,7 +8884,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.max_rotation",
-   "measured": 3.12,
+   "measured": 3.75,
    "n": 512,
    "ok": true
   },
@@ -8908,7 +8892,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.min_rotation",
-   "measured": 2.48,
+   "measured": 4.02,
    "n": 512,
    "ok": true
   },
@@ -8916,7 +8900,7 @@
    "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
    "documented": 4.0,
    "fn": "strings.overlap",
-   "measured": 3.96,
+   "measured": 3.88,
    "n": 512,
    "ok": true
   },
@@ -8924,7 +8908,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.parse",
-   "measured": 3.87,
+   "measured": 3.69,
    "n": 512,
    "ok": true
   },
@@ -8932,7 +8916,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.parse_int",
-   "measured": 3.02,
+   "measured": 3.73,
    "n": 512,
    "ok": true
   },
@@ -8940,7 +8924,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.period",
-   "measured": 3.0,
+   "measured": 3.76,
    "n": 512,
    "ok": true
   },
@@ -8948,7 +8932,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.prefix_function",
-   "measured": 3.97,
+   "measured": 3.75,
    "n": 512,
    "ok": true
   },
@@ -8956,7 +8940,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
    "documented": 4.0,
    "fn": "strings.prefix_matches",
-   "measured": 3.9,
+   "measured": 3.69,
    "n": 512,
    "ok": true
   },
@@ -8964,7 +8948,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert \\cdot n",
    "documented": 4.0,
    "fn": "strings.repeat",
-   "measured": 2.76,
+   "measured": 3.74,
    "n": 512,
    "ok": true
   },
@@ -8980,7 +8964,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
    "documented": 4.0,
    "fn": "strings.rsearch",
-   "measured": 2.51,
+   "measured": 3.8,
    "n": 512,
    "ok": true
   },
@@ -8988,7 +8972,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
    "documented": 4.0,
    "fn": "strings.search",
-   "measured": 3.76,
+   "measured": 3.81,
    "n": 512,
    "ok": true
   },
@@ -8996,7 +8980,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.split_once",
-   "measured": 3.2,
+   "measured": 3.14,
    "n": 512,
    "ok": true
   },
@@ -9004,7 +8988,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.split_whitespace",
-   "measured": 2.46,
+   "measured": 3.51,
    "n": 512,
    "ok": true
   },
@@ -9012,7 +8996,7 @@
    "cost": "\\min(\\lvert \\mathit{self} \\rvert - \\mathit{at}, \\lvert \\mathit{pat} \\rvert)",
    "documented": 4.01,
    "fn": "strings.starts_with",
-   "measured": 2.65,
+   "measured": 3.3,
    "n": 512,
    "ok": true
   },
@@ -9020,7 +9004,7 @@
    "cost": "n \\log n",
    "documented": 4.89,
    "fn": "strings.suffix_array",
-   "measured": 4.2,
+   "measured": 3.94,
    "n": 512,
    "ok": true
   },
@@ -9028,7 +9012,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.suffix_tree_edges",
-   "measured": 5.06,
+   "measured": 4.07,
    "n": 512,
    "ok": true
   },
@@ -9036,7 +9020,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.to_lower",
-   "measured": 3.52,
+   "measured": 3.78,
    "n": 512,
    "ok": true
   },
@@ -9044,7 +9028,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.to_upper",
-   "measured": 3.86,
+   "measured": 3.79,
    "n": 512,
    "ok": true
   },
@@ -9052,7 +9036,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.trim",
-   "measured": 4.02,
+   "measured": 3.32,
    "n": 512,
    "ok": true
   },
@@ -9060,7 +9044,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.trim_end",
-   "measured": 3.45,
+   "measured": 3.55,
    "n": 512,
    "ok": true
   },
@@ -9068,7 +9052,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert",
    "documented": 4.0,
    "fn": "strings.trim_start",
-   "measured": 3.21,
+   "measured": 3.37,
    "n": 512,
    "ok": true
   },
@@ -9076,7 +9060,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.upper",
-   "measured": 1.02,
+   "measured": 0.97,
    "n": 512,
    "ok": true
   },
@@ -9084,7 +9068,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.z_function",
-   "measured": 3.74,
+   "measured": 3.62,
    "n": 512,
    "ok": true
   },
@@ -9092,7 +9076,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.DynamicHash.all",
-   "measured": 1.01,
+   "measured": 0.96,
    "n": 256,
    "ok": true
   },
@@ -9100,7 +9084,7 @@
    "cost": "\\log n",
    "documented": 1.25,
    "fn": "strings.DynamicHash.get",
-   "measured": 1.23,
+   "measured": 1.12,
    "n": 256,
    "ok": true
   },
@@ -9108,7 +9092,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.DynamicHash.is_empty",
-   "measured": 1.01,
+   "measured": 0.95,
    "n": 256,
    "ok": true
   },
@@ -9116,7 +9100,7 @@
    "cost": "\\log n",
    "documented": 1.25,
    "fn": "strings.DynamicHash.is_palindrome",
-   "measured": 1.23,
+   "measured": 1.15,
    "n": 256,
    "ok": true
   },
@@ -9132,7 +9116,7 @@
    "cost": "n \\log n",
    "documented": 5.0,
    "fn": "strings.DynamicHash.new",
-   "measured": 4.52,
+   "measured": 4.29,
    "n": 256,
    "ok": true
   },
@@ -9140,7 +9124,7 @@
    "cost": "\\log n",
    "documented": 1.25,
    "fn": "strings.DynamicHash.rev_get",
-   "measured": 1.23,
+   "measured": 1.07,
    "n": 256,
    "ok": true
   },
@@ -9148,7 +9132,7 @@
    "cost": "\\log n",
    "documented": 1.25,
    "fn": "strings.DynamicHash.set",
-   "measured": 1.17,
+   "measured": 1.06,
    "n": 256,
    "ok": true
   },
@@ -9156,7 +9140,7 @@
    "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
    "documented": 4.0,
    "fn": "strings.Hash2D.new",
-   "measured": 3.73,
+   "measured": 3.97,
    "n": 256,
    "ok": true
   },
@@ -9164,7 +9148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Hash2D.rect",
-   "measured": 1.03,
+   "measured": 0.98,
    "n": 256,
    "ok": true
   },
@@ -9172,7 +9156,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.HashVal.hash_token",
-   "measured": 1.13,
+   "measured": 0.96,
    "n": 256,
    "ok": true
   },
@@ -9180,7 +9164,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash.all",
-   "measured": 1.12,
+   "measured": 1.01,
    "n": 256,
    "ok": true
   },
@@ -9188,7 +9172,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash.combine",
-   "measured": 1.02,
+   "measured": 0.95,
    "n": 256,
    "ok": true
   },
@@ -9196,7 +9180,7 @@
    "cost": "\\lvert \\mathit{parts} \\rvert",
    "documented": 4.0,
    "fn": "strings.RollingHash.concat",
-   "measured": 3.52,
+   "measured": 3.38,
    "n": 256,
    "ok": true
   },
@@ -9204,7 +9188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash.get",
-   "measured": 1.13,
+   "measured": 0.97,
    "n": 256,
    "ok": true
   },
@@ -9212,7 +9196,7 @@
    "cost": "\\lvert \\mathit{seq} \\rvert",
    "documented": 4.0,
    "fn": "strings.RollingHash.hash_of",
-   "measured": 3.98,
+   "measured": 3.92,
    "n": 256,
    "ok": true
   },
@@ -9220,7 +9204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash.is_empty",
-   "measured": 1.03,
+   "measured": 0.97,
    "n": 256,
    "ok": true
   },
@@ -9228,7 +9212,7 @@
    "cost": "\\log n",
    "documented": 1.25,
    "fn": "strings.RollingHash.lcp",
-   "measured": 1.11,
+   "measured": 1.02,
    "n": 256,
    "ok": true
   },
@@ -9236,7 +9220,7 @@
    "cost": "\\log n",
    "documented": 1.25,
    "fn": "strings.RollingHash.lcs",
-   "measured": 1.02,
+   "measured": 1.04,
    "n": 256,
    "ok": true
   },
@@ -9244,7 +9228,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash.len",
-   "measured": 1.02,
+   "measured": 0.96,
    "n": 256,
    "ok": true
   },
@@ -9252,7 +9236,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.RollingHash.new",
-   "measured": 3.95,
+   "measured": 3.38,
    "n": 256,
    "ok": true
   },
@@ -9260,7 +9244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash.pop",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 256,
    "ok": true
   },
@@ -9268,7 +9252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash.push",
-   "measured": 0.91,
+   "measured": 0.99,
    "n": 256,
    "ok": true
   },
@@ -9276,7 +9260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash.slice",
-   "measured": 1.07,
+   "measured": 1.01,
    "n": 256,
    "ok": true
   },
@@ -9284,7 +9268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash61.all",
-   "measured": 1.04,
+   "measured": 0.97,
    "n": 256,
    "ok": true
   },
@@ -9292,7 +9276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash61.combine",
-   "measured": 1.01,
+   "measured": 0.96,
    "n": 256,
    "ok": true
   },
@@ -9300,7 +9284,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash61.get",
-   "measured": 1.04,
+   "measured": 0.99,
    "n": 256,
    "ok": true
   },
@@ -9308,7 +9292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash61.is_empty",
-   "measured": 1.01,
+   "measured": 0.96,
    "n": 256,
    "ok": true
   },
@@ -9316,7 +9300,7 @@
    "cost": "\\log n",
    "documented": 1.25,
    "fn": "strings.RollingHash61.lcp",
-   "measured": 1.18,
+   "measured": 1.08,
    "n": 256,
    "ok": true
   },
@@ -9324,7 +9308,7 @@
    "cost": "\\log n",
    "documented": 1.25,
    "fn": "strings.RollingHash61.lcs",
-   "measured": 1.17,
+   "measured": 1.11,
    "n": 256,
    "ok": true
   },
@@ -9332,7 +9316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash61.len",
-   "measured": 1.0,
+   "measured": 0.96,
    "n": 256,
    "ok": true
   },
@@ -9340,7 +9324,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.RollingHash61.new",
-   "measured": 3.58,
+   "measured": 3.61,
    "n": 256,
    "ok": true
   },
@@ -9348,7 +9332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.RollingHash61.pop",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 256,
    "ok": true
   },
@@ -9908,7 +9892,7 @@
    "cost": "\\lvert \\mathit{text} \\rvert + \\mathit{states}",
    "documented": 4.0,
    "fn": "strings.AhoCorasick.counts",
-   "measured": 4.68,
+   "measured": 3.8,
    "n": 512,
    "ok": true
   },
@@ -9916,7 +9900,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.AhoCorasick.exit_link",
-   "measured": 1.44,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -9924,7 +9908,7 @@
    "cost": "\\mathit{states}",
    "documented": 4.0,
    "fn": "strings.AhoCorasick.fail_order",
-   "measured": 3.12,
+   "measured": 2.98,
    "n": 512,
    "ok": true
   },
@@ -9932,7 +9916,7 @@
    "cost": "\\lvert \\mathit{text} \\rvert + \\mathit{output}",
    "documented": 4.0,
    "fn": "strings.AhoCorasick.find_all",
-   "measured": 3.86,
+   "measured": 3.75,
    "n": 512,
    "ok": true
   },
@@ -9940,7 +9924,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.AhoCorasick.hit",
-   "measured": 1.44,
+   "measured": 0.99,
    "n": 512,
    "ok": true
   },
@@ -9948,7 +9932,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.AhoCorasick.len",
-   "measured": 0.85,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -9956,7 +9940,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.AhoCorasick.link",
-   "measured": 0.9,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -9964,7 +9948,7 @@
    "cost": "\\sum_p \\lvert p \\rvert \\cdot \\lvert A \\rvert",
    "documented": 4.0,
    "fn": "strings.AhoCorasick.new",
-   "measured": 4.0,
+   "measured": 3.88,
    "n": 512,
    "ok": true
   },
@@ -9972,7 +9956,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.AhoCorasick.pattern_state",
-   "measured": 1.3,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -9980,7 +9964,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.AhoCorasick.root",
-   "measured": 1.06,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -9988,7 +9972,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.AhoCorasick.step",
-   "measured": 0.73,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -9996,7 +9980,7 @@
    "cost": "\\mathit{output}",
    "documented": 4.0,
    "fn": "strings.AhoCorasick.words_at",
-   "measured": 4.28,
+   "measured": 3.31,
    "n": 512,
    "ok": true
   },
@@ -10004,7 +9988,7 @@
    "cost": "\\lvert \\mathit{pattern} \\rvert \\cdot \\lvert A \\rvert \\cdot \\log n",
    "documented": 1.22,
    "fn": "strings.DynamicAhoCorasick.add",
-   "measured": 1.1,
+   "measured": 1.21,
    "n": 512,
    "ok": true
   },
@@ -10012,7 +9996,7 @@
    "cost": "\\lvert \\mathit{text} \\rvert \\cdot \\log n",
    "documented": 4.89,
    "fn": "strings.DynamicAhoCorasick.count_matches",
-   "measured": 4.1,
+   "measured": 3.79,
    "n": 512,
    "ok": true
   },
@@ -10020,7 +10004,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.DynamicAhoCorasick.is_empty",
-   "measured": 0.98,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -10028,7 +10012,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.DynamicAhoCorasick.len",
-   "measured": 1.08,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -10036,7 +10020,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.DynamicAhoCorasick.new",
-   "measured": 1.04,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -10044,7 +10028,7 @@
    "cost": "\\lvert \\mathit{pattern} \\rvert \\cdot \\lvert A \\rvert \\cdot \\log n",
    "documented": 1.22,
    "fn": "strings.DynamicAhoCorasick.remove",
-   "measured": 1.3,
+   "measured": 1.25,
    "n": 512,
    "ok": true
   },
@@ -10052,7 +10036,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert \\cdot \\lvert A \\rvert",
    "documented": 4.0,
    "fn": "strings.Trie.add",
-   "measured": 5.16,
+   "measured": 3.3,
    "n": 512,
    "ok": true
   },
@@ -10060,7 +10044,7 @@
    "cost": "\\lvert A \\rvert",
    "documented": 1.0,
    "fn": "strings.Trie.clear",
-   "measured": 1.18,
+   "measured": 0.99,
    "n": 512,
    "ok": true
   },
@@ -10068,7 +10052,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert",
    "documented": 4.0,
    "fn": "strings.Trie.contains",
-   "measured": 3.79,
+   "measured": 3.2,
    "n": 512,
    "ok": true
   },
@@ -10076,7 +10060,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert",
    "documented": 4.0,
    "fn": "strings.Trie.count",
-   "measured": 4.28,
+   "measured": 3.38,
    "n": 512,
    "ok": true
   },
@@ -10084,7 +10068,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert \\cdot \\lvert A \\rvert",
    "documented": 4.0,
    "fn": "strings.Trie.count_less",
-   "measured": 4.96,
+   "measured": 3.45,
    "n": 512,
    "ok": true
   },
@@ -10092,7 +10076,7 @@
    "cost": "\\lvert \\mathit{prefix} \\rvert",
    "documented": 4.0,
    "fn": "strings.Trie.count_prefix",
-   "measured": 4.08,
+   "measured": 3.46,
    "n": 512,
    "ok": true
   },
@@ -10100,7 +10084,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Trie.ends_at",
-   "measured": 1.16,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -10108,7 +10092,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert",
    "documented": 4.0,
    "fn": "strings.Trie.find",
-   "measured": 2.98,
+   "measured": 2.72,
    "n": 512,
    "ok": true
   },
@@ -10116,7 +10100,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Trie.is_empty",
-   "measured": 1.58,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -10124,7 +10108,7 @@
    "cost": "\\mathit{depth} \\cdot \\lvert A \\rvert",
    "documented": 4.0,
    "fn": "strings.Trie.kth",
-   "measured": 2.75,
+   "measured": 2.38,
    "n": 512,
    "ok": true
   },
@@ -10132,7 +10116,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Trie.len",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -10140,7 +10124,7 @@
    "cost": "\\lvert A \\rvert",
    "documented": 1.0,
    "fn": "strings.Trie.new",
-   "measured": 1.23,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -10148,7 +10132,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Trie.pass_at",
-   "measured": 1.06,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -10156,7 +10140,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert",
    "documented": 4.0,
    "fn": "strings.Trie.remove",
-   "measured": 5.57,
+   "measured": 3.75,
    "n": 512,
    "ok": true
   },
@@ -10164,7 +10148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Trie.root",
-   "measured": 0.95,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -10172,7 +10156,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Trie.step",
-   "measured": 1.26,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },

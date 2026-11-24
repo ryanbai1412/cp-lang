@@ -19,7 +19,7 @@ for r in 0..2048:
     let h = RollingHash(ss[r % 2])
     acc += h.hash_of(s).h1 // timed: strings.RollingHash.hash_of
     let parts = [(hash: h.get(8 * q..8 * q + 8), len: 8) for q in 0..n / 8]
-    for _ in 0..4:
+    for _ in 0..8:
         acc += h.concat(parts).h1 // timed: strings.RollingHash.concat
 for r in 0..512:
     let s = ss[r % 2]

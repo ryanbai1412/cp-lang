@@ -11,10 +11,12 @@ for r in 0..1024:
     let w = ws[r % 2]
     acc += KmpAutomaton<L>(pats[r % 2]).len // timed: strings.KmpAutomaton.new
     let m = SuffixAutomaton<L>.of(w) // timed: strings.SuffixAutomaton.of
-    for _ in 0..8:
+    for _ in 0..16:
         acc += m.distinct() // timed: strings.SuffixAutomaton.distinct
-    acc += m.topo_order().len // timed: strings.SuffixAutomaton.topo_order
-    acc += m.occ_counts().len // timed: strings.SuffixAutomaton.occ_counts
+    for _ in 0..3:
+        acc += m.topo_order().len // timed: strings.SuffixAutomaton.topo_order
+    for _ in 0..2:
+        acc += m.occ_counts().len // timed: strings.SuffixAutomaton.occ_counts
     for v in m.states(): acc += v // timed: strings.SuffixAutomaton.states
     acc += m.endpos_tree().len // timed: strings.SuffixAutomaton.endpos_tree
     if let x = m.kth_substring(r * 7): acc += x.len // timed: strings.SuffixAutomaton.kth_substring
@@ -25,14 +27,15 @@ for r in 0..1024:
     var g = SuffixAutomaton<L>()
     for c in w:
         g.push(c) // timed: strings.SuffixAutomaton.push
-    g.reset()
-    g.add_word(w) // timed: strings.SuffixAutomaton.add_word
+    for _ in 0..2:
+        g.reset()
+        g.add_word(w) // timed: strings.SuffixAutomaton.add_word
     acc += g.len
 let kmp = KmpAutomaton<L>(probe)
 let m0 = SuffixAutomaton<L>.of(ws[0])
 let states = m0.len
 var g0 = SuffixAutomaton<L>.of(probe)
-for r in 0..2048:
+for r in 0..4096:
     for k in kmp.find_all(ws[r % 2]): acc += k // timed: strings.KmpAutomaton.find_all
 for i in 0..1 << 18:
     let v = i * 7 % states

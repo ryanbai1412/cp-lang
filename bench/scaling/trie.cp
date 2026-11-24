@@ -40,11 +40,11 @@ for r in 0..512:
     for _ in 0..4:
         acc += ac.counts(text).len // timed: strings.AhoCorasick.counts
     for h in ac.find_all(text): acc += h.at // timed: strings.AhoCorasick.find_all
-    for _ in 0..16:
+    for _ in 0..32:
         acc += ac.fail_order().len // timed: strings.AhoCorasick.fail_order
 let deep = AhoCorasick<L>(runs)
 let top = deep.pattern_state(m - 1)
-for r in 0..8192:
+for r in 0..32768:
     acc += deep.words_at(top).len // timed: strings.AhoCorasick.words_at
 var t = Trie<L>()
 for w in words: let _ = t.add(w)

@@ -3,11 +3,11 @@
   "rs_file_size_allowlist": {
     "crates/cpl-ir/src/lower/stmt.rs": 5950,
     "crates/cpl-ir/src/lower/expr.rs": 4870,
-    "crates/cpl-ir/src/lower/mod.rs": 4857,
-    "crates/cpl-check/src/check/expr.rs": 3760,
+    "crates/cpl-ir/src/lower/mod.rs": 4844,
+    "crates/cpl-check/src/check/expr.rs": 3749,
     "crates/cpl-interp/src/lib.rs": 3491,
-    "crates/cpl-ir/src/lower/mono.rs": 3419,
-    "crates/cpl-check/src/check/stmt.rs": 2938,
+    "crates/cpl-ir/src/lower/mono.rs": 3415,
+    "crates/cpl-check/src/check/stmt.rs": 2929,
     "crates/cpl-check/src/check/lends.rs": 2439
   },
   "stdlib_todo": 7,
@@ -22,7 +22,7 @@
   "dup_fn_bodies": 3,
   "layer_violations": 1,
   "tree_walker": 1,
-  "v02_port_files": 25,
+  "v02_port_files": 9,
   "direct_python": 0,
   "unrun_script_tests": 0,
   "crate_edges": [
@@ -123,17 +123,17 @@
   "cpp_deep_copies": 17,
   "cpp_std_functions": 83,
   "codegen_effect_guesses": 0,
-  "near_dup_fns": 10,
+  "near_dup_fns": 9,
   "consumer_rederived": 39,
   "rs_near_cap": [
     "crates/cpl-check/src/db.rs",
     "crates/cpl-interp/src/vm/exec/mod.rs"
   ],
-  "skip_lists": 35,
+  "skip_lists": 34,
   "dead_code_allows": 6,
   "external_crates": 5,
   "corpus_test_files": 0,
-  "corpus_no_max": 7,
+  "corpus_no_max": 2,
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 0,
