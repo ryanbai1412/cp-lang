@@ -5,11 +5,15 @@
   {"id": "4564032", "language": "CPP17", "result": "TLE", "time": 8.000049678, "memory_kb": 3184.0, "file": "corpus/submissions/4564032.cpp"},
   {"id": "4564058", "language": "CPP17", "result": "WA", "time": 7.965452887, "memory_kb": 3480.0, "file": "corpus/submissions/4564058.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc21c9p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp models arrangements as perfect matchings between cards and seats (official editorial, subtask 2) and finds the fixed cards from the SCCs of the alternating graph (Tassa), with a prefix chain so unreported cards add O(1) arcs. It matches a brute force over all permutations on small gen.py cases and a per-edge Kuhn matching check for N <= 60."
 }
