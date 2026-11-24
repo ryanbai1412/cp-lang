@@ -24,6 +24,46 @@ pub struct Lexed {
     pub comments: Vec<Span>,
 }
 
+/// The open blocks' indentation widths. The file's own level, 0, is the
+/// bottom and is never closed, so there is always a top.
+struct Indents {
+    outer: Vec<u32>,
+    top: u32,
+}
+
+impl Indents {
+    fn new() -> Self {
+        Indents {
+            outer: Vec::new(),
+            top: 0,
+        }
+    }
+
+    fn top(&self) -> u32 {
+        self.top
+    }
+
+    fn len(&self) -> usize {
+        self.outer.len() + 1
+    }
+
+    fn push(&mut self, width: u32) {
+        self.outer.push(self.top);
+        self.top = width;
+    }
+
+    /// Closes the innermost block; the file's level stays open.
+    fn pop(&mut self) {
+        if let Some(width) = self.outer.pop() {
+            self.top = width;
+        }
+    }
+
+    fn iter(&self) -> impl Iterator<Item = u32> + '_ {
+        self.outer.iter().copied().chain([self.top])
+    }
+}
+
 struct Opener {
     kind: TokenKind,
     span: Span,
@@ -43,7 +83,7 @@ struct Lexer<'a> {
     bytes: &'a [u8],
     pos: usize,
     out: Lexed,
-    indents: Vec<u32>,
+    indents: Indents,
     openers: Vec<Opener>,
     /// Indented blocks (e.g. `=>\n    ...`) active inside open brackets.
     layout_blocks: Vec<LayoutBlock>,
@@ -65,7 +105,7 @@ pub fn lex(src: &str) -> Lexed {
         bytes: src.as_bytes(),
         pos: 0,
         out: Lexed::default(),
-        indents: vec![0],
+        indents: Indents::new(),
         openers: Vec::new(),
         layout_blocks: Vec::new(),
         line_indent: 0,
@@ -167,12 +207,13 @@ impl<'a> Lexer<'a> {
                             self.end_line(at);
                             self.line_start();
                         }
-                    } else if self
+                    } else if let Some(blk) = self
                         .layout_blocks
                         .last()
-                        .is_some_and(|b| b.opener_depth == self.openers.len())
+                        .copied()
+                        .filter(|b| b.opener_depth == self.openers.len())
                     {
-                        self.layout_block_line(at);
+                        self.layout_block_line(at, blk);
                     } else if self.last_kind() == Some(TokenKind::FatArrow)
                         || (self.last_kind() == Some(TokenKind::Colon)
                             && self.line_opens_bracket_block())
@@ -483,7 +524,7 @@ impl<'a> Lexer<'a> {
         let Some(width) = self.measure_indent() else {
             return;
         };
-        let top = *self.indents.last().unwrap();
+        let top = self.indents.top();
         let same_indent_logical = width == top
             && matches!(self.last_kind(), Some(TokenKind::And | TokenKind::Or))
             && !self.starts_statement_keyword();
@@ -577,16 +618,16 @@ impl<'a> Lexer<'a> {
         };
         self.line_indent = width;
         self.stmt_indent = width;
-        let top = *self.indents.last().unwrap();
+        let top = self.indents.top();
         if width > top {
             self.indents.push(width);
             self.push_empty(TokenKind::Indent, self.pos);
         } else if width < top {
-            while *self.indents.last().unwrap() > width {
+            while self.indents.top() > width {
                 self.indents.pop();
                 self.push_empty(TokenKind::Dedent, self.pos);
             }
-            let enclosing = *self.indents.last().unwrap();
+            let enclosing = self.indents.top();
             if enclosing != width {
                 // The line sits between two levels. Treat it as part of the
                 // enclosing block it is indented past.
@@ -636,13 +677,12 @@ impl<'a> Lexer<'a> {
 
     /// Handles a newline inside an indented block that lives within brackets
     /// (such as `xs.sort(by: x =>\n    ...\n)`).
-    fn layout_block_line(&mut self, at: usize) {
+    fn layout_block_line(&mut self, at: usize, blk: LayoutBlock) {
         self.end_line(at);
         let line_start = self.pos;
         let Some(width) = self.measure_indent() else {
             return;
         };
-        let blk = *self.layout_blocks.last().unwrap();
         if width <= blk.base_indent {
             while self.indents.len() > blk.indent_depth {
                 self.indents.pop();
@@ -666,13 +706,12 @@ impl<'a> Lexer<'a> {
         }
         self.line_indent = width;
         self.stmt_indent = width;
-        let top = *self.indents.last().unwrap();
+        let top = self.indents.top();
         if width > top {
             self.indents.push(width);
             self.push_empty(TokenKind::Indent, self.pos);
         } else if width < top {
-            while self.indents.len() > blk.indent_depth + 1 && *self.indents.last().unwrap() > width
-            {
+            while self.indents.len() > blk.indent_depth + 1 && self.indents.top() > width {
                 self.indents.pop();
                 self.push_empty(TokenKind::Dedent, self.pos);
             }
@@ -692,12 +731,10 @@ impl<'a> Lexer<'a> {
     }
 
     fn close_layout_blocks(&mut self, min_opener_depth: usize, at: usize) {
-        while self
+        while let Some(blk) = self
             .layout_blocks
-            .last()
-            .is_some_and(|b| b.opener_depth >= min_opener_depth)
+            .pop_if(|b| b.opener_depth >= min_opener_depth)
         {
-            let blk = self.layout_blocks.pop().unwrap();
             self.end_line(at);
             while self.indents.len() > blk.indent_depth {
                 self.indents.pop();
@@ -797,12 +834,11 @@ impl<'a> Lexer<'a> {
         let fix_at = split.map(|(_, at, _)| at).unwrap_or(close_at);
         let insert_at = split.and_then(|(idx, at, insert)| insert.then_some((idx, at)));
         self.close_layout_blocks(keep + 1, close_at);
-        while self.openers.len() > keep {
-            let opener = self.openers.pop().unwrap();
+        for (i, opener) in self.openers.split_off(keep).into_iter().enumerate().rev() {
             let (open, close, closer_kind) = delimiter_text(opener.kind);
             // Only the outermost is reported: inner ones are the same typo
             // far more often than a second one.
-            if self.openers.len() == keep {
+            if i == 0 {
                 let mut diag = cpl_diag::msgs::lexer::NEVER_CLOSED
                     .error(opener.span, &[&open])
                     .with_help(format!("add `{close}` at the end of the expression"))
@@ -1175,7 +1211,9 @@ impl<'a> Lexer<'a> {
             (b'|', _, _) => (Pipe, 1),
             (b'~', _, _) => (Tilde, 1),
             _ => {
-                let ch = self.src[start..].chars().next().unwrap();
+                let Some(ch) = self.src[start..].chars().next() else {
+                    return;
+                };
                 self.pos += ch.len_utf8();
                 let span = Span::new(start as u32, self.pos as u32);
                 let mut diag = cpl_diag::msgs::lexer::UNUSED_CHAR.error(span, &[&ch]);
@@ -1276,17 +1314,15 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
-        let in_bracket = self
-            .openers
-            .last()
-            .is_some_and(|o| o.kind == TokenKind::LBracket);
         let unclosed = !self.src[self.pos..]
             .lines()
             .next()
             .unwrap_or("")
             .contains(']');
-        if in_bracket && unclosed && !radix_prefix && !float && self.peek().is_ascii_uppercase() {
-            return self.size_before_type(start);
+        if unclosed && !radix_prefix && !float && self.peek().is_ascii_uppercase() {
+            if let Some(opener) = self.openers.pop_if(|o| o.kind == TokenKind::LBracket) {
+                return self.size_before_type(start, opener);
+            }
         }
         // `12abc` is one bad token, not a number followed by a name.
         let digits_end = self.pos;
@@ -1338,8 +1374,7 @@ impl<'a> Lexer<'a> {
 
     /// `[n - 1Int`: the `]` of `[n]Int` is missing between size and type,
     /// one error at the `[` rather than a bad number `1Int`.
-    fn size_before_type(&mut self, start: usize) {
-        let opener = self.openers.pop().unwrap();
+    fn size_before_type(&mut self, start: usize, opener: Opener) {
         self.push(TokenKind::Int, start);
         let rest = &self.src[self.pos..];
         let ty = rest

@@ -66,3 +66,53 @@ fn a_missing_close_paren_before_an_infix_line_goes_before_it() {
     );
     assert_eq!(d.labels[0].span, cpl_diag::Span::point(at));
 }
+
+/// Every bracket left open at a line end is closed there, innermost first,
+/// and only the outermost is reported.
+#[test]
+fn nested_unclosed_brackets_close_innermost_first_with_one_error() {
+    let src = "let x = f(g([1\nprint(x)\n";
+    let lexed = lexer::lex(src);
+    assert_eq!(lexed.diagnostics.len(), 1, "{:#?}", lexed.diagnostics);
+    assert_eq!(
+        lexed.diagnostics[0].span.start, 9,
+        "{:#?}",
+        lexed.diagnostics
+    );
+    let kinds: Vec<_> = lexed.tokens.iter().map(|t| t.kind).collect();
+    use token::TokenKind::*;
+    let closers = kinds
+        .iter()
+        .position(|k| *k == Newline)
+        .unwrap_or(kinds.len());
+    assert_eq!(
+        kinds[closers - 3..closers],
+        [RBracket, RParen, RParen],
+        "{kinds:?}"
+    );
+}
+
+/// A stray character as the very last byte, and an `[n` size missing its
+/// `]`, are one error each.
+#[test]
+fn a_stray_last_char_and_a_size_before_its_type_are_one_error_each() {
+    for src in ["let a = 1 ≤", "var a: [n - 1Int = 0\n"] {
+        let lexed = lexer::lex(src);
+        assert_eq!(
+            lexed.diagnostics.len(),
+            1,
+            "{src:?}: {:#?}",
+            lexed.diagnostics
+        );
+    }
+}
+
+/// Indents inside a bracketed layout block close back to the block's own
+/// level, then to the file's.
+#[test]
+fn a_layout_block_inside_brackets_dedents_to_its_level() {
+    let src = "xs.sort(by: a =>\n    if a > 0:\n        1\n    else:\n        2\n)\nprint(1)\n";
+    let parsed = parse_file(src);
+    assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
+    assert_eq!(parsed.items.len(), 2);
+}
