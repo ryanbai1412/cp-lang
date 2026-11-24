@@ -230,6 +230,19 @@ class DreamStressTest(Corpus):
         got = self.run_dream("let _t = read<Int>()\nlet x = read<Int>()\nprint(x + 1)\n")
         self.assertFalse(got["ok"])
 
+    def test_a_file_the_accepted_cpp_writes_stays_out_of_the_working_directory(self):
+        writes = ECHO_CPP.replace("int main(){", "int main(){fclose(fopen(\"output.txt\",\"w\"));")
+        d = self.package("p1", dream_cp="let _t = read<Int>()\nlet x = read<Int>()\nprint(x)\n",
+                         orig_cpp=writes, gen_py=GEN, meta_json="{}")
+        cwd = self.root / "cwd"
+        cwd.mkdir()
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(cwd)
+        pkg = corpus.Package.at(d)
+        self.assertTrue(corpus.dream_stress(pkg, os.path.join(corpus.ROOT, "target", "release", "cpl"))["ok"])
+        self.assertEqual(corpus.run_out(corpus.binary(pkg.orig), b"1 5\n"), b"5\n")
+        self.assertEqual(list(cwd.iterdir()), [])
+
     def check(self, dream, meta_json="{}"):
         d = self.package("p1", dream_cp=dream, orig_cpp=ECHO_CPP, gen_py=GEN, meta_json=meta_json)
         cpl = os.path.join(corpus.ROOT, "target", "release", "cpl")

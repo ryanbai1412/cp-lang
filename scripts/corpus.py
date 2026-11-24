@@ -244,7 +244,8 @@ def judged(pkg, source, inputs, cpl):
         for i, text in enumerate(inputs, 1):
             Path(cases, f"{i:02}.in").write_text(text)
             if exe:
-                r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=60, preexec_fn=judge_stack)
+                r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=60, cwd=cases,
+                                   preexec_fn=judge_stack)
                 if r.returncode:
                     raise InfraError(f"{pkg.id}: accepted C++ exits {r.returncode} on case {i}")
                 Path(cases, f"{i:02}.ans").write_text(r.stdout)
@@ -626,9 +627,12 @@ def tokens(data):
 
 
 def run_out(exe, data):
+    """`exe`'s stdout on `data`, or None if it fails. It runs in a scratch directory, so
+    a file it writes (an accepted C++ that opens output.txt) never lands in the repo."""
     try:
-        r = subprocess.run(exe if isinstance(exe, list) else [exe], input=data, capture_output=True,
-                           timeout=TIMEOUT, preexec_fn=judge_stack)
+        with tempfile.TemporaryDirectory() as scratch:
+            r = subprocess.run(exe if isinstance(exe, list) else [exe], input=data, capture_output=True,
+                               timeout=TIMEOUT, cwd=scratch, preexec_fn=judge_stack)
     except subprocess.TimeoutExpired:
         return None
     return r.stdout if r.returncode == 0 else None
