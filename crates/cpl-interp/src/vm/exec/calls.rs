@@ -5,7 +5,7 @@ use crate::value::{Array, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{bug, interp_failed, trap, Flow, Interp, Res};
-use cpl_ir::{BinOp, CmpOp};
+use cpl_ir::CmpOp;
 use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
@@ -542,37 +542,21 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Float(f64::from_bits(chunk.consts_i[idx as usize] as u64));
             }
             Op::FloatBin { dst, a, b, op } => {
-                let (Value::Float(fa), Value::Float(fb)) =
-                    (&regs_v[a as usize], &regs_v[b as usize])
-                else {
-                    return bug(spans[cur_pc], "expected float");
-                };
-                let res = match op {
-                    BinOp::Add => *fa + *fb,
-                    BinOp::Sub => *fa - *fb,
-                    BinOp::Mul => *fa * *fb,
-                    BinOp::Div => *fa / *fb,
-                    BinOp::Pow => fa.powf(*fb),
-                    _ => return bug(spans[cur_pc], "unsupported float op"),
-                };
-                regs_v[dst as usize] = Value::Float(res);
+                let (l, r) = (regs_v[a as usize].clone(), regs_v[b as usize].clone());
+                regs_v[dst as usize] = crate::arith::binary(op, l, r, spans[cur_pc])?;
             }
             Op::FloatMinMax { dst, a, b, is_max } => {
-                let (Value::Float(fa), Value::Float(fb)) =
-                    (&regs_v[a as usize], &regs_v[b as usize])
-                else {
-                    return bug(spans[cur_pc], "expected float");
-                };
+                let (fa, fb) = (regs_v[a as usize].float(), regs_v[b as usize].float());
                 let res = if is_max {
-                    if *fa >= *fb {
-                        *fa
+                    if fa >= fb {
+                        fa
                     } else {
-                        *fb
+                        fb
                     }
-                } else if *fa <= *fb {
-                    *fa
+                } else if fa <= fb {
+                    fa
                 } else {
-                    *fb
+                    fb
                 };
                 regs_v[dst as usize] = Value::Float(res);
             }

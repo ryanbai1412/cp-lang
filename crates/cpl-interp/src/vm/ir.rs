@@ -1176,6 +1176,7 @@ pub(crate) enum Op {
         dst: u16,
         idx: u16,
     },
+    /// `F64` or `I128` arithmetic, by `arith::binary`.
     FloatBin {
         dst: u16,
         a: u16,
@@ -1414,9 +1415,11 @@ pub(crate) enum Op {
         dst: u16,
         src: u16,
     },
+    /// An `Int` as an `F64`, or as an `I128` when not `float`.
     IntToFloat {
         dst: u16,
         src: u16,
+        float: bool,
     },
     FloatSqrt {
         dst: u16,

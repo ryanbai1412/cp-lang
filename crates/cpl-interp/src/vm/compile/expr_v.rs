@@ -247,14 +247,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::ConstF64 { dst, idx }, span);
                 dst
             }
-            ExprKind::Binary(op, a, b)
-                if matches!(a.ty, Ty::Float)
-                    && matches!(b.ty, Ty::Float)
-                    && matches!(
-                        op,
-                        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow
-                    ) =>
-            {
+            ExprKind::Binary(op, a, b) if a.ty == b.ty && matches!(a.ty, Ty::Float | Ty::I128) => {
                 let ra = self.compile_expr_v(a);
                 let rb = self.compile_expr_v(b);
                 let dst = self.alloc_v();
@@ -802,10 +795,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_fallback_expr_v(expr)
                 }
             }
-            ExprKind::Cast(Cast::IntToFloat, inner) => {
+            ExprKind::Cast(c @ (Cast::IntToFloat | Cast::IntToI128), inner) => {
                 let src = self.compile_expr_i(inner);
                 let dst = self.alloc_v();
-                self.emit(Op::IntToFloat { dst, src }, span);
+                let float = matches!(c, Cast::IntToFloat);
+                self.emit(Op::IntToFloat { dst, src, float }, span);
                 dst
             }
             ExprKind::Intrinsic(Prim::Sqrt, args) if args.len() == 1 && args[0].ty == Ty::Float => {

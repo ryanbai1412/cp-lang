@@ -363,8 +363,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst as usize] =
                     i64::from(64 - (regs_i[src as usize] as u64).leading_zeros());
             }
-            Op::IntToFloat { dst, src } => {
-                regs_v[dst as usize] = Value::Float(regs_i[src as usize] as f64);
+            Op::IntToFloat { dst, src, float } => {
+                let x = regs_i[src as usize];
+                regs_v[dst as usize] = match float {
+                    true => Value::Float(x as f64),
+                    false => Value::I128(i128::from(x).into()),
+                };
             }
             Op::FloatSqrt { dst, src } => {
                 let x = regs_v[src as usize].float();

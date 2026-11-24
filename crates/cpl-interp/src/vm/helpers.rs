@@ -34,6 +34,7 @@ pub(super) fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
         Ty::List(t) | Ty::Opt(t) => ty_uses_structural_cmp(t, program),
         Ty::Array { elem, .. } => ty_uses_structural_cmp(elem, program),
         Ty::Int
+        | Ty::I128
         | Ty::Float
         | Ty::Bool
         | Ty::Char

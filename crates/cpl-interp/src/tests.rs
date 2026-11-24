@@ -6,6 +6,7 @@ use crate::{run, run_on_this_thread, Limits};
 
 mod scaling;
 mod vm_alone;
+mod vm_ops;
 
 /// Runs `source` on `input`: what it printed, and the failure if it
 /// ended in one.
