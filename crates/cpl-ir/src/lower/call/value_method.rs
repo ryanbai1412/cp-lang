@@ -1123,6 +1123,28 @@ impl<'a> Lowerer<'a> {
                 let Some(k) = self.one_arg(method, args, &Ty::Int, span) else {
                     return self.err_expr(span);
                 };
+                // A named range of positions cut by a constant: the new ends are
+                // plain arithmetic on its ends, with no copy, as `lead[r.drop(1)]` wants.
+                let fixed = crate::lower::range::const_int_expr(&k).filter(|k| *k >= 0);
+                if let (Some(k), ExprKind::Local(_), Ty::Pos(_)) = (fixed, &value.kind, &**inner) {
+                    let end =
+                        |lw: &mut Self, which| lw.mk_builtin(which, [value.clone()], Ty::Int, span);
+                    let (lo, hi) = (end(self, Builtin::RangeLo), end(self, Builtin::RangeHi));
+                    let len = self.mk_binary(BinOp::Sub, hi.clone(), lo.clone(), Ty::Int, span);
+                    let zero = self.int_lit(0, span);
+                    let len = self.mk_builtin(Builtin::Max, [len, zero], Ty::Int, span);
+                    let k = self.int_lit(k, span);
+                    let shift = self.mk_builtin(Builtin::Min, [len, k], Ty::Int, span);
+                    let (from, op) = if from_hi {
+                        (hi.clone(), BinOp::Sub)
+                    } else {
+                        (lo.clone(), BinOp::Add)
+                    };
+                    let point = self.mk_binary(op, from, shift, Ty::Int, span);
+                    let (lo, hi) = if cut_lo { (point, hi) } else { (lo, point) };
+                    let (lo, hi) = (Box::new(lo), Box::new(hi));
+                    return self.mk(ExprKind::Range { lo, hi }, range_ty, span);
+                }
                 self.do_expr(Some(&range_ty), span, |lw, out| {
                     let range = lw.new_slot("range", range_ty.clone());
                     out.push(Stmt::Let(range, Some(value)));

@@ -183,3 +183,31 @@ fn a_grids_keys_walk_one_loop_per_axis_and_divide_nothing() {
         "{body}"
     );
 }
+
+#[test]
+fn a_ranges_table_is_indexed_by_plain_index_math() {
+    let body = body(concat!(
+        "let n: 1..=3000 = read()\ndomain I = 1..=n\nlet a: [I]Int = read()\n",
+        "var lead: [I.ranges]Int = 0\nvar cost: [I.ranges]Int = 0\n",
+        "for r in I.ranges:\n",
+        "    lead[r] = if r.len == 1: a[r.first] else: max(\n",
+        "        a[r.first] - lead[r.drop(1)],\n        a[r.last] - lead[r.drop_last(1)],\n    )\n",
+        "    if r.len >= 2:\n",
+        "        cost[r] = min(cost[x] + cost[y] for (x, y) in r.splits)!\n",
+        "print(lead[I.range], cost[I.range])\n",
+    ));
+    // End-major cells, ends already in order: no swap per read.
+    assert!(body.contains("cpl::tri_idx("), "{body}");
+    assert!(!body.contains("cpl::sym_idx("), "{body}");
+    // `r` is a key, so its own cell has no empty check; `drop`, `drop_last`
+    // and the split pieces read the ends without copying a `Range`.
+    let checks = body.matches("an empty range has no cell").count();
+    assert_eq!(
+        checks, 6,
+        "the two drops, the two pieces and the two `I.range`s: {body}"
+    );
+    assert!(!body.contains("cpl::Range<int> piece"), "{body}");
+    assert!(!body.contains("cpl::Range<int> range = r"), "{body}");
+    // `min` over the splits starts from its identity: no first-value branch.
+    assert!(body.contains("9223372036854775807LL"), "{body}");
+}

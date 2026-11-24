@@ -462,6 +462,10 @@ impl<'p> Emitter<'p> {
                 self.need("sym_idx");
                 Code::primary(format!("cpl::sym_idx({}, {})", text(0), text(1)))
             }
+            Builtin::TriIdx => {
+                self.need("sym_idx");
+                Code::primary(format!("cpl::tri_idx({}, {})", text(0), text(1)))
+            }
             Builtin::PosOffset(d) => {
                 self.need("pos_ops");
                 let dn = dom_ident(self.program, d);

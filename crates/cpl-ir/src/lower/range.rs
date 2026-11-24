@@ -1314,26 +1314,39 @@ impl<'a> Lowerer<'a> {
     pub(super) fn piece_idx(&mut self, piece: Expr, d: DomainId, span: Span) -> Expr {
         let ty = piece.ty.clone();
         let of_ints = matches!(&ty, Ty::Range(inner) if **inner == Ty::Int);
+        // A `V.ranges` key is non-empty by its type, so its cell needs no check.
+        let proven = !of_ints && matches!(self.expr_range(&piece), Some(RangeInfo::Piece));
         let sym = self.do_expr(Some(&Ty::Int), span, |lw, out| {
-            let r = lw.new_slot("piece", ty);
-            out.push(Stmt::Let(r, Some(piece)));
+            // The ends straight from a range literal or a local, with no copy of the range.
+            let (lo_e, hi_e) = match piece.kind {
+                ExprKind::Range { lo, hi } if lo.ty == Ty::Int && hi.ty == Ty::Int => (*lo, *hi),
+                kind => {
+                    let mut value = Expr { kind, ..piece };
+                    if !matches!(value.kind, ExprKind::Local(_)) {
+                        let r = lw.new_slot("piece", ty);
+                        out.push(Stmt::Let(r, Some(value)));
+                        value = lw.local(r, span);
+                    }
+                    let lo = lw.mk_builtin(Builtin::RangeLo, [value.clone()], Ty::Int, span);
+                    (lo, lw.mk_builtin(Builtin::RangeHi, [value], Ty::Int, span))
+                }
+            };
             let (lo, hi) = (lw.new_slot("lo", Ty::Int), lw.new_slot("hi", Ty::Int));
-            for (slot, end) in [(lo, Builtin::RangeLo), (hi, Builtin::RangeHi)] {
-                let value = lw.local(r, span);
-                let value = lw.mk_builtin(end, [value], Ty::Int, span);
-                out.push(Stmt::Let(slot, Some(value)));
+            out.push(Stmt::Let(lo, Some(lo_e)));
+            out.push(Stmt::Let(hi, Some(hi_e)));
+            if !proven {
+                let (l, h) = (lw.local(lo, span), lw.local(hi, span));
+                let empty = lw.mk_cmp(CmpOp::Le, h, l, Ty::Bool, span);
+                let trap = Stmt::Trap(
+                    "an empty range has no cell in `V.ranges`".into(),
+                    lw.span(span),
+                );
+                out.push(Stmt::If(
+                    empty,
+                    Block { stmts: vec![trap] },
+                    Block::default(),
+                ));
             }
-            let (l, h) = (lw.local(lo, span), lw.local(hi, span));
-            let empty = lw.mk_cmp(CmpOp::Le, h, l, Ty::Bool, span);
-            let trap = Stmt::Trap(
-                "an empty range has no cell in `V.ranges`".into(),
-                lw.span(span),
-            );
-            out.push(Stmt::If(
-                empty,
-                Block { stmts: vec![trap] },
-                Block::default(),
-            ));
             if of_ints {
                 let (l, h) = (lw.local(lo, span), lw.local(hi, span));
                 let zero = lw.int_lit(0, span);
@@ -1354,7 +1367,7 @@ impl<'a> Lowerer<'a> {
             let last = lw.local(hi, span);
             let last = lw.int_add(last, -1);
             let first = lw.local(lo, span);
-            let idx = lw.mk_builtin(Builtin::SymIdx, [first, last], Ty::Int, span);
+            let idx = lw.mk_builtin(Builtin::TriIdx, [first, last], Ty::Int, span);
             out.push(Stmt::Give(idx));
         });
         self.cast(Cast::Raw, sym, Ty::Int)

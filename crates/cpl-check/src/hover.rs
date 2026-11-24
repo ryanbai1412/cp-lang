@@ -975,7 +975,20 @@ fn structs_in(ty: &Ty, out: &mut Vec<String>) {
 
 /// How many values an array's index type has at most: a domain's
 /// positions or cuts, or a range's numbers.
+/// `[V.ranges]T`: one cell per non-empty range, a triangle of n(n + 1)/2.
+const RANGES_LAYOUT: &str =
+    "end-major triangle, n(n + 1)/2 cells: lo..hi at (hi - 1) * hi / 2 + lo";
+
+fn range_keys(index: &Ty) -> bool {
+    matches!(index, Ty::Named { name, args } if name == "Range" && matches!(args.as_slice(), [Ty::Pos(_)]))
+}
+
 fn index_size(index: &Ty, lookup: &mut Lookup) -> Option<i128> {
+    if let Ty::Named { args, .. } = index {
+        if let (true, [Ty::Pos(name)]) = (range_keys(index), args.as_slice()) {
+            return domain_size(name, lookup).map(|n| n * (n + 1) / 2);
+        }
+    }
     match index {
         Ty::Pos(name) => match name.strip_suffix(".cuts") {
             Some(domain) => domain_size(domain, lookup).map(|n| n + 1),
@@ -1101,6 +1114,8 @@ pub struct Representation {
     /// field's offset, and the padding between and after them.
     pub field_offsets: Vec<u64>,
     pub padding: u64,
+    /// How an array's cells are laid out, when it is not row-major.
+    pub layout: Option<&'static str>,
 }
 
 pub(crate) fn represent(ty: &Ty, lookup: &mut Lookup) -> Representation {
@@ -1110,6 +1125,9 @@ pub(crate) fn represent(ty: &Ty, lookup: &mut Lookup) -> Representation {
     };
     let cell = match ty {
         Ty::Array { index, elem } => {
+            if index.iter().any(range_keys) {
+                out.layout = Some(RANGES_LAYOUT);
+            }
             out.bytes = size(elem, lookup);
             out.max_cells = index
                 .iter()

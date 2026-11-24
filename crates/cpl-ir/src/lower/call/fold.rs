@@ -1054,7 +1054,18 @@ impl<'a> Lowerer<'a> {
                 let acc = self.temp(ty.clone());
                 let have = self.temp(Ty::Bool);
                 let cur = self.temp(ty.clone());
-                stmts.push(Stmt::Let(acc, None));
+                // An `Int` starts from the identity of `min=`/`max=`, so the loop
+                // body has no first-value branch; `have` only says whether it ran.
+                let identity = (ty == Ty::Int).then(|| {
+                    let end = if kind == Reduce::Max {
+                        i64::MIN
+                    } else {
+                        i64::MAX
+                    };
+                    lit(ExprKind::Int(end), Ty::Int)
+                });
+                let flat = identity.is_some();
+                stmts.push(Stmt::Let(acc, identity));
                 stmts.push(Stmt::Let(have, Some(lit(ExprKind::Bool(false), Ty::Bool))));
                 let op = if kind == Reduce::Max {
                     AssignOp::Max
@@ -1071,23 +1082,31 @@ impl<'a> Lowerer<'a> {
                 };
                 let mut keep = Vec::new();
                 self.emit_assign(place(acc, &ty), op, local(cur, &ty), span, &mut keep);
-                let inner = vec![
-                    Stmt::Let(cur, Some(value)),
-                    Stmt::If(
-                        local(have, &Ty::Bool),
-                        Block { stmts: keep },
-                        Block {
-                            stmts: vec![
-                                Stmt::Assign(place(acc, &ty), AssignOp::Set, local(cur, &ty)),
-                                Stmt::Assign(
-                                    place(have, &Ty::Bool),
-                                    AssignOp::Set,
-                                    lit(ExprKind::Bool(true), Ty::Bool),
-                                ),
-                            ],
-                        },
-                    ),
-                ];
+                let ran = Stmt::Assign(
+                    place(have, &Ty::Bool),
+                    AssignOp::Set,
+                    lit(ExprKind::Bool(true), Ty::Bool),
+                );
+                let inner = if flat {
+                    let mut inner = vec![Stmt::Let(cur, Some(value))];
+                    inner.extend(keep);
+                    inner.push(ran);
+                    inner
+                } else {
+                    vec![
+                        Stmt::Let(cur, Some(value)),
+                        Stmt::If(
+                            local(have, &Ty::Bool),
+                            Block { stmts: keep },
+                            Block {
+                                stmts: vec![
+                                    Stmt::Assign(place(acc, &ty), AssignOp::Set, local(cur, &ty)),
+                                    ran,
+                                ],
+                            },
+                        ),
+                    ]
+                };
                 let inner = match read {
                     Some((held, value, opt)) => vec![
                         Stmt::Let(held, Some(value)),

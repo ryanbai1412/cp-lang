@@ -2,6 +2,8 @@
 # Every std.dp bench against its matched C++: best of 5 wall-clock runs,
 # equal outputs asserted, then p50 and max of the ratios.
 set -euo pipefail
+# atcoder_dp_l's accepted C++ keeps its 3000 x 3000 table on the stack.
+if ! ulimit -s unlimited 2>/dev/null; then echo "run.sh: no unlimited stack; interval_l's C++ may crash" >&2; fi
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 cpl="$root/target/release/cpl"
 [ -x "$cpl" ] || cargo build -q --release -p cpl-cli
@@ -10,9 +12,19 @@ trap 'rm -rf "$tmp"' EXIT
 python3 "$root/bench/dp/gen.py" "$tmp"
 # std.slope is cf2084g2's port at n = 5e5 against the original's slope treap.
 python3 "$root/corpus/problems/cf2084g2/gen.py" 1 500000 > "$tmp/slope.in"
-for name in frog3 dnc knuth mono monge aliens slope; do
+# Interval DP over `[I.ranges]Int`: the atcoder_dp_l and atcoder_dp_n ports
+# at `gen.py --max` against their accepted C++.
+python3 "$root/corpus/problems/atcoder_dp_l/gen.py" --max > "$tmp/interval_l.in"
+python3 "$root/corpus/problems/atcoder_dp_n/gen.py" --max > "$tmp/interval_n.in"
+for name in frog3 dnc knuth mono monge aliens slope interval_l interval_n; do
     src="$root/bench/dp/$name.cp"; ref="$root/bench/dp/${name}_matched.cpp"
     if [ "$name" = slope ]; then src="$root/corpus/problems/cf2084g2/port.cp"; fi
+    if [ "$name" = interval_l ]; then
+        src="$root/corpus/problems/atcoder_dp_l/port.cp"; ref="$root/corpus/submissions/4131776.cpp"
+    fi
+    if [ "$name" = interval_n ]; then
+        src="$root/corpus/problems/atcoder_dp_n/port.cp"; ref="$root/corpus/submissions/4131779.cpp"
+    fi
     "$cpl" build "$src" -o "$tmp/${name}_cp.cpp" >/dev/null
     g++ -std=c++17 -O2 "$tmp/${name}_cp.cpp" -o "$tmp/${name}_cp"
     g++ -std=c++17 -O2 "$ref" -o "$tmp/${name}_ref" 2>/dev/null

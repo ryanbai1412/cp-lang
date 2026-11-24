@@ -101,7 +101,9 @@ struct DomGuard {
         name: "sym_idx",
         needs: &[],
         code: "\
-inline ll sym_idx(ll a, ll b) { if (a > b) std::swap(a, b); return b * (b + 1) / 2 + a; }
+// `[Sym<V>]T` and `[V.ranges]T` cells, end-major: `(a, b)`, `a <= b`, is at `b * (b + 1) / 2 + a`.
+inline ll tri_idx(ll a, ll b) { return b * (b + 1) / 2 + a; }
+inline ll sym_idx(ll a, ll b) { if (a > b) std::swap(a, b); return tri_idx(a, b); }
 ",
     },
     Piece {

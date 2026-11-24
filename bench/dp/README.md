@@ -3,6 +3,8 @@
 Each `NAME.cp` calls one DP entry point; `NAME_matched.cpp` is the
 same algorithm written the way a contestant writes it in C++ (same tree
 layout, same loop order, the cost inlined). `gen.py` writes the inputs.
+`interval_l` and `interval_n` are the `atcoder_dp_l` and `atcoder_dp_n`
+ports at `gen.py --max` against their accepted C++ (median of 15 below).
 
 ```sh
 bash bench/dp/run.sh
@@ -24,6 +26,8 @@ Best of 5 wall-clock runs, g++ 11 `-O2`, equal outputs on every pair:
 | `monge` | `monge_path`, n = 1e6, `(pre[i] - pre[j])^2 + c` | 0.085 s | 0.070 s | 0.82x | |
 | `aliens` | `aliens` over an O(n) penalized DP, n = 1e6, k = 5000 | 0.132 s | 0.090 s | 0.68x | |
 | `slope` | `std.slope.Concave`, `cf2084g2` at n = 5e5 | 0.096 s | 0.119 s | 1.24x | |
+| `interval_l` | `[I.ranges]Int` by `drop`/`drop_last`, `atcoder_dp_l` at n = 3000 | 0.044 s | 0.041 s | 0.93x | |
+| `interval_n` | `[I.ranges]Int` by `splits`, `atcoder_dp_n` at n = 400 | 0.0099 s | 0.0132 s | 1.34x | |
 
 `run.sh` on the seven: p50 0.85x (target 1.1x), max 1.20x (target 1.5x; 1.1x once tuned).
 The first four rows are the older measurements; `run.sh` gives frog3

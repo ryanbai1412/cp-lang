@@ -996,6 +996,9 @@ pub enum Builtin {
     PosTryOrd(DomainId),
     /// Triangular packed index for `[Sym<V>]T`: `(a, b) -> hi * (hi + 1) / 2 + lo`.
     SymIdx,
+    /// `SymIdx` of ends known to be in order, `lo <= last`: the cell of a
+    /// `V.ranges` key, whose non-emptiness is already checked or proven.
+    TriIdx,
     /// `v.offset(k)` / `v + k` -> `?V`, and `v.cyc(k)` -> `V`.
     PosOffset(DomainId),
     PosCyc(DomainId),

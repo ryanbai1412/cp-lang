@@ -931,6 +931,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
                 Value::Int(hi * (hi + 1) / 2 + lo)
             }
+            Builtin::TriIdx => {
+                let lo = first.int();
+                let last = values.next().unwrap_or_default().int();
+                Value::Int(last * (last + 1) / 2 + lo)
+            }
             Builtin::PosOffset(d) => {
                 let (_, len) = self.domains[d];
                 let ord = first.int();

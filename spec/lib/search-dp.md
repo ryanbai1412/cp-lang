@@ -103,7 +103,9 @@ if dp[i] min= dp[j] + cost(j..i): from[i] = j
 
 `V.ranges` is the domain of all non-empty ranges of `V`, stored as a
 triangle (n(n+1)/2 slots). Iterating it goes by length, then left end, so a
-piece comes after all its sub-pieces. `r.splits` yields every way to cut `r`
+piece comes after all its sub-pieces. The triangle is end-major: `lo..hi` sits at
+`(hi - 1) * hi / 2 + lo`, so the right pieces of `r.splits` are read in order
+and `cpl explain` names the layout. Both engines use the same cells. `r.splits` yields every way to cut `r`
 into two non-empty pieces, as `(left, right)` with `left.r == right.l`: one
 pair per cut strictly inside `r`, so `len - 1` of them, none for one element.
 \(O(1)\) to make, nothing allocated; the cut itself is `left.r`. A `Range<V>` goes wherever a

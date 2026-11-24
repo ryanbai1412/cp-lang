@@ -92,6 +92,9 @@ pub fn describe(rep: &cpl_check::Representation) -> String {
         Some(false) => out += ", None takes a flag beside the value",
         None => {}
     }
+    if let Some(layout) = rep.layout {
+        out += &format!(", {layout}");
+    }
     if !rep.field_offsets.is_empty() {
         let at: Vec<String> = rep.field_offsets.iter().map(|o| format!("@{o}")).collect();
         out += &format!(", fields {}", at.join(" "));

@@ -789,6 +789,27 @@ fn explain_reports_the_peak_against_the_judges_memory_limit() {
     assert!(out.contains("of 16 MB on small"), "{out}");
 }
 
+/// A `[V.ranges]T` table is a triangle, not a grid: explain counts its
+/// n(n + 1)/2 cells and names the end-major order the C++ and the
+/// interpreter share.
+#[test]
+fn explain_names_a_ranges_tables_layout() {
+    let dir = scratch("explain_ranges");
+    std::fs::write(
+        dir.join("r.cp"),
+        "domain I = 0..400\nvar cost: [I.ranges]Int = 0\nprint(cost[I.range])\n",
+    )
+    .unwrap();
+    let out = text(&cpl(&dir, &["explain", "r.cp"]).stdout);
+    assert!(
+        out.contains(
+            "8 B per element x 80200 = 641 KB, end-major triangle, n(n + 1)/2 cells: \
+             lo..hi at (hi - 1) * hi / 2 + lo"
+        ),
+        "{out}"
+    );
+}
+
 /// A file's explanation opens with each top-level value's bytes: per
 /// element and at the input bounds for an array, the niche of an optional,
 /// field offsets and padding, and the peak the fixed-size ones take; the
