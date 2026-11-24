@@ -13,6 +13,7 @@ over the side's rule on the tip's tree, and the lower of the sides stands.
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import types
@@ -64,6 +65,42 @@ def rule(module, name):
     return parts
 
 
+class Refused(RuntimeError):
+    pass
+
+
+def build_cpl():
+    """The debug cpl at the rebased tip, as $CPL: the hook's build predates the rebase."""
+    if subprocess.run(["cargo", "build", "-q", "-p", "cpl-cli"]).returncode:
+        return False
+    target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
+    os.environ["CPL"] = str((target if target.is_absolute() else Path.cwd() / target) / "debug" / "cpl")
+    return True
+
+
+def measure(mods, name, sides, root, build=build_cpl):
+    """Each side's count by its rule, or None when a counter can't measure here and
+    keeps the merged count. A hard-zero counter never passes unmeasured (99bc5b2b0
+    landed past corpus_fmt_dirty on a stale release cpl): it builds the debug cpl
+    and measures again, or refuses."""
+    def run():
+        return {side: len(mods[side].COUNTERS[name][1](root)) for side in sides}
+    try:
+        return run()
+    except Exception as err:
+        first = err
+    if type(first).__name__ == "MeasureError" and str(first).startswith("cpl:") and build():
+        try:
+            return run()
+        except Exception as err:
+            first = err
+    if name in getattr(mods["tip"], "HARD_ZERO", ()):
+        raise Refused(f"{name} is hard-zero and could not be re-measured by both rules, so it can't pass"
+                      f" unmeasured: {first}; fix that, then land again")
+    print(f"land: WARNING: could not re-measure {name} by both rules: {first}", file=sys.stderr)
+    return None
+
+
 def main(argv):
     sys.dont_write_bytecode = True
     revs = {"before": argv[1], "upstream": argv[2], "tip": "HEAD"}
@@ -80,9 +117,11 @@ def main(argv):
         if not gated or name not in current or not moved:
             continue
         try:
-            measured = {side: len(mods[side].COUNTERS[name][1](root)) for side in ["tip", *moved]}
-        except Exception as err:  # A counter that can't measure here keeps the merged count; CI's check measures it.
-            print(f"land: WARNING: could not re-measure {name} by both rules: {err}", file=sys.stderr)
+            measured = measure(mods, name, ["tip", *moved], root)
+        except Refused as err:
+            print(f"land: {err}", file=sys.stderr)
+            return 1
+        if measured is None:
             continue
         value = max(0, min(int(counts[s][name]) + (measured["tip"] - measured[s] if s in moved else 0) for s in sides))
         if value != current[name]:
