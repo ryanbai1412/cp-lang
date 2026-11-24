@@ -120,7 +120,16 @@ impl Checker<'_> {
         let Ty::Named { name, args } = base_ty else {
             return false;
         };
-        if !matches!(name.as_str(), "Prefix" | "FillPrefix") {
+        // A table that also reads by count, `cut(k: Int)`, is keyed by cuts.
+        let counts_cuts = |ty: &Ty| {
+            matches!(ty, Ty::Fn { params, .. }
+                if params.iter().filter(|p| p.name != "self").map(|p| &p.ty).eq([&Ty::Int]))
+        };
+        let cut_table = self.type_def(name).is_some_and(|d| {
+            matches!(&*d, Def::Struct { methods, .. }
+                if methods.iter().any(|(m, ty)| m == "cut" && counts_cuts(ty)))
+        });
+        if !cut_table {
             return false;
         }
         if let Some(Ty::Pos(d)) = args.first() {
