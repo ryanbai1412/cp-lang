@@ -1052,7 +1052,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
 - **graph** (117/128 named by a case)
   - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `TwoSat.add_or`, `Complement`
-- **grid** (27/27 named by a case)
+- **grid** (37/39 named by a case)
+  - uncovered: `GridRows`, `GridCols`
 - **hashmap** (37/37 named by a case)
 - **heap** (101/101 named by a case)
 - **interval** (44/44 named by a case)
@@ -1092,7 +1093,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2235 of 2356 std items are named by a case.
+2245 of 2368 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

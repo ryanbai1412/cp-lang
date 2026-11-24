@@ -28,6 +28,24 @@ One of the eight directions, clockwise from up: the four of `Dir4` and the diago
 - `@get fn back(self) -> Dir8` — \(O(1)\); The opposite direction, four eighths round: its delta is the negated delta.
 - `@get fn delta(self) -> (Int, Int)` — \(O(1)\); The change in (row, column) of one step; each part is `-1`, `0` or `1`.
 
+## `struct GridRows<R, C, T>(g: [R, C]T)`
+
+The rows of a grid, made by `g.rows`; lends the grid.
+
+- `@get fn len(self) -> Int` — \(O(1)\)
+- `@get fn is_empty(self) -> Bool` — \(O(1)\)
+- `fn at(self, r: R) -> lends [C]T` — \(O(1)\)
+- `fn each(self) -> yields [C]T` — \(O(1)\) per row; The rows in `R` order.
+
+## `struct GridCols<R, C, T>(g: [R, C]T)`
+
+The columns of a grid, made by `g.cols`; lends the grid.
+
+- `@get fn len(self) -> Int` — \(O(1)\)
+- `@get fn is_empty(self) -> Bool` — \(O(1)\)
+- `fn at(self, c: C) -> lends [R]T` — \(O(1)\)
+- `fn each(self) -> yields [R]T` — \(O(1)\) per column; The columns in `C` order.
+
 ## Functions
 
 - `@get fn up<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row up from `self` (towards row 0), or `None` on the top row.
@@ -39,6 +57,8 @@ One of the eight directions, clockwise from up: the four of `Dir4` and the diago
 - `@get fn adj4<R, C>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in `Dir4.all()`, skipping steps that leave the grid.
 - `@get fn adj8<R, C>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in `Dir8.all()`, skipping steps that leave the grid.
 - `fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every cell.
+- `@get fn rows<R, C, T>(self: [R, C]T) -> lends GridRows<R, C, T>` — \(O(1)\) to make, \(O(1)\) per row; \(O(1)\).
+- `@get fn cols<R, C, T>(self: [R, C]T) -> lends GridCols<R, C, T>` — \(O(1)\) to make, \(O(1)\) per column; \(O(1)\).
 
 ## Example
 
