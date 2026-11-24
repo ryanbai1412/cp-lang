@@ -27,6 +27,14 @@ let m = read<Int>()
 for i in 0..m: b.t[i % 1000] = b.t[i % 1000] + i
 print(b.t[5])",
     ),
+    (
+        "a key slice of an array",
+        "var a: [65536]Int = [i for i in 0..65536]
+let m = read<Int>()
+var t = 0
+for i in 0..m: t += a[i..=i + 2].len
+print(t)",
+    ),
 ];
 
 fn bytes(prog: &cpl_ir::Program, m: usize) -> usize {
