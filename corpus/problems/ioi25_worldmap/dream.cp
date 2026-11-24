@@ -5,20 +5,27 @@
 // which places each back edge side by side. Diagonals shrink toward the far corner;
 // touring the deepest root path last keeps every ancestor list inside its diagonal.
 @grader
-fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n][2 * n]1..=n:
+fn create_map(n: 1..=40, m: Int, a: List<1..=n>, b: List<1..=n>) -> List<List<1..=n>>:
     domain V = 1..=n
-    let g = Graph<V>.undirected(zip(a, b))
-    let tree = g.dfs_tree(root: V.first)
-    let deep = tree.path(V.first, V.max_by(v => tree.depth[v]))
-    let up = adjacency(g.edges.filter(e => not tree.has(e)).map(e => tree.orient_down(e).rev))
+    domain E = 0..m
+    let edges: [E](u: V, v: V) = [E] i => (u: V(a[i.ord]), v: V(b[i.ord]))
+    let g = Graph.undirected(edges)
+    let (tree, tree_edge) = g.dfs_tree(root: V.first!)
+    let deep = tree.path(V.first!, V.max(by: v => tree.depth(v))!)
+    var up: [V]List<V> = []  // up[v]: the ancestors v's back edges reach
+    for e in g.edges().filter(e => not tree_edge[e.e]):
+        if tree.depth(e.u) > tree.depth(e.v): up[e.u].push(e.v) else: up[e.v].push(e.u)
 
     var diags: List<List<V>> = []
-    var expanded = Bitset<V>.empty
-    for v in tree.euler_tour(order: c => c in deep):  // the deep child last
+    var expanded = Bitset<V>.empty()
+    for v in tree.euler_tour(by: c => deep.contains(c)):  // the deep child last
         diags.push([v])
-        if up[v].len > 0 and expanded.insert(v): diags.extend([up[v], [v]])
-    diags.pad_to(4 * n - 1, with: diags.last!)
+        if up[v].len > 0 and not expanded.contains(v):
+            expanded.add(v)
+            diags.extend([up[v], [v]])
+    while diags.len < 4 * n - 1: diags.push(diags.last!)
 
-    return [2 * n][2 * n] (x, y) =>
+    let map = [2 * n] x => [2 * n] y =>
         let d = diags[x + y]
-        d.get(x - max(0, x + y - (2 * n - 1))) ?? d.last!
+        (d.get(x - max(0, x + y - (2 * n - 1))) ?? d.last!).ord + 1
+    return map.map(row => row.collect()).collect()
