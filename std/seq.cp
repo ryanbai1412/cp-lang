@@ -87,6 +87,10 @@ pub enum Ties = First | Last
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] < a[j]:\n    j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = min(x, y)", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y < x:\n        x = y", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
+@lint(sort_for_extreme, from: "self.sorted()[0]", to: "self.min()!")
+@lint(sort_for_extreme, from: "self.sorted().first!", to: "self.min()!")
+@lint(sort_for_extreme, from: "self.sorted(by: by)[0]", to: "self.min(by: by)!")
+@lint(sort_for_extreme, from: "self.sorted(by: by).first!", to: "self.min(by: by)!")
 pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -115,6 +119,8 @@ pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.Firs
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] > a[j]:\n    j = i", to: "var j = self.max(by: i => a[i])!", holes: "a")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = max(x, y)", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y > x:\n        x = y", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
+@lint(sort_for_extreme, from: "self.sorted().last!", to: "self.max()!")
+@lint(sort_for_extreme, from: "self.sorted(by: by).last!", to: "self.max(by: by, ties: Ties.Last)!")
 pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None

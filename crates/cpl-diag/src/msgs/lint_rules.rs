@@ -53,7 +53,6 @@ super::msgs! {
     SHADOWS_TOP_LEVEL = "L0203", "this {} hides the top-level `{}`";
     SLIDING_MIN_BY_HAND = "L0566", "`{}` is a monotone deque kept by hand for the {} of each window";
     SMALL_TO_LARGE_BY_HAND = "L0568", "`{}` is merged into `{}` smaller-into-larger by hand";
-    SORT_FOR_EXTREME = "L0572", "this sorts a copy of the list to read one element: it is `{}`";
     SPLIT_RANGE_CHECK = "L0551", "a range check written as {} comparisons";
     STALE_ENTRY_SKIP = "L0553", "`{}` is checked against the best distance of `{}` to skip a stale heap entry";
     STATE_ABOVE_MULTITEST = "L0211", "`{}` is declared above `@!multitest`, so each test starts from the value the last one left";

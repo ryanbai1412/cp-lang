@@ -458,6 +458,27 @@ fn a_compound_to_needs_pure_holes_and_a_comment_drops_the_fix() {
     );
 }
 
+/// std's `sort_for_extreme` spellings: a `by:` key carries over, and
+/// `.last!` of a stable sort is the last greatest, so `max` takes
+/// `ties: Ties.Last`. Rule: R06.4.10.
+#[test]
+fn sort_for_extreme_keeps_the_key_and_the_tie() {
+    let src = "let p = [(1, 2), (1, 3)]\nprint(p.sorted(by: q => q.0).last!, p.sorted(by: q => q.0)[0], p.sorted().first!)\n";
+    let fixes: Vec<String> = crate::lint(src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "L0572")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(
+        fixes,
+        [
+            "p.max(by: q => q.0, ties: Ties.Last)!",
+            "p.min(by: q => q.0)!",
+            "p.min()!"
+        ]
+    );
+}
+
 /// A hole does not match a bare generator: `total(x * x for x in a)` folds
 /// the generator, and `(x * x for x in a).total()` is no value to call on.
 /// Rule: R06.4.9.
