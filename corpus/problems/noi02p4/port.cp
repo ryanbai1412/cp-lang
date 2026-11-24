@@ -15,16 +15,12 @@ struct Caveman:
     cave: 1..=100
     pace: 1..=100
     life: 0..=1e6
-let men: [n]Caveman = read()
+domain Man = 0..n
+let men: [Man]Caveman = read()
 
-fn meet(a: Caveman, b: Caveman, m: Int) -> Bool:
-    if let year = linear_congruence(a.pace - b.pace, b.cave - a.cave, m):
-        year.r <= min(a.life, b.life)
-    else:
-        false
+fn meet(a: Caveman, b: Caveman, m: Int) -> Bool =
+    linear_congruence(a.pace - b.pace, b.cave - a.cave, m).is_some_and(year => year.r <= min(a.life, b.life))
 
-fn peaceful(m: Int) -> Bool:
-    not any(meet(men[i], men[j], m) for i in 0..n for j in 0..i)
+fn peaceful(m: Int) -> Bool = not any(meet(a, b, m) for (a, b) in men.pairs())
 
-let widest = [x.cave for x in men].max()!
-print((widest..=1_000_000).find(peaceful)!)
+print((max(x.cave for x in men)!..=1_000_000).find(peaceful)!)
