@@ -2683,3 +2683,10 @@ t.add(Line(2, 1))
 print(t)
 """
 out = "no lines\n2 1"
+
+[case."Hashable/HashVal/hash_token"]
+code = """
+use std.strings.{HashVal}
+print(HashVal(1, 2).hash_token)
+"""
+out = "2147483650"
