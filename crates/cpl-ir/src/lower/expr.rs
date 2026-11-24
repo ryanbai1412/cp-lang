@@ -3676,6 +3676,8 @@ impl<'a> Lowerer<'a> {
         };
         let cell = |lw: &mut Self, e: &ast::Expr, end: bool| {
             let hint = match dim {
+                // `g[.., 2..4]` over `C = 0..4`: an exclusive end is a cut.
+                Dim::Pos(d) if end && !*inclusive => Some(Ty::Bound(d)),
                 Dim::Pos(d) => Some(Ty::Pos(d)),
                 Dim::Bound(d) => Some(Ty::Bound(d)),
                 Dim::Enum(_) | Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => None,
