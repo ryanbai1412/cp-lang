@@ -189,6 +189,21 @@ impl Checker<'_> {
                     let outer = std::mem::replace(&mut self.call_bound_args, Some(bound_args));
                     self.bind_bound_args(&mut bindings);
                     self.call_bound_args = outer;
+                    // `new(..) -> SegTree<D, T, F, N>`: a struct param `new` fixes isn't its default.
+                    let new_ret = (methods.iter().filter(|_| !is_generated_ctor)).find_map(
+                        |(m, t)| match t {
+                            Ty::Fn { ret, .. } if m == "new" => Some(ret),
+                            _ => None,
+                        },
+                    );
+                    if let Some(Ty::Named { args: rargs, .. }) = new_ret.map(|r| r.as_ref()) {
+                        for ((g, r), d) in generics.iter().zip(rargs).zip(defaults) {
+                            let r = r.subst(&bindings);
+                            if d.is_some() && !bindings.contains_key(g) && !r.mentions_param() {
+                                bindings.insert(g.clone(), r);
+                            }
+                        }
+                    }
                     if !is_generated_ctor && self.sink.len() > before {
                         self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
                     }
