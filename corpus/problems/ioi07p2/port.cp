@@ -24,8 +24,7 @@ domain Side = 0..2 * m              // wall w has sides 2w and 2w + 1
 fn side(w: W, first: Bool) -> Side = Side.nth(2 * w.ord + if first: 0 else: 1)
 fn flip(s: Side) -> Side = Side.nth(s.ord ^ 1)  // the other side of the same wall
 
-let dirs = [d for d in Dir]
-fn turn(d: Dir, k: Int) -> Dir = dirs[((0..4).find(i => dirs[i] == d)! + k) % 4]  // k quarter turns counter-clockwise
+fn turn(d: Dir, k: Int) -> Dir = Dir.nth((d.ord + k) % 4)  // k quarter turns counter-clockwise
 
 fn heading(a: Pt, b: Pt) -> Dir:
     if a.y == b.y: (if b.x > a.x: East else: West) else: (if b.y > a.y: North else: South)
@@ -43,18 +42,13 @@ var faces = Dsu<Side>.new()
 for p in P:
     for d in Dir:
         let here = out[p, d] else: continue
-        var next = here  // the next wall round p
-        for k in 1..=4:
-            if let s = out[p, turn(d, k)]:
-                next = s
-                break
+        let next = (1..=4).first_some(k => out[p, turn(d, k)])!  // the next wall round p
         faces.unite(here, flip(next))
 
 var across: [Side]List<Side> = []
 for w in W:
     let (a, b) = (faces.find(side(w, true)), faces.find(side(w, false)))
-    across[a].push(b)
-    across[b].push(a)
+    for (x, y) in [(a, b), (b, a)]: across[x].push(y)
 
 var wet_at: [Side]?Int = None
 var queue = Deque<Side>()
@@ -62,9 +56,7 @@ for p in sorted(P, by: p => (pts[p].x, pts[p].y)):
     // The leftmost, then lowest, point of a group has no west or south wall:
     // outside is the face turning counter-clockwise from its north wall, or
     // from its east wall if it has no north wall.
-    var outer = out[p, North]
-    if outer == None: outer = out[p, East]
-    let start = outer else: continue
+    let start = [North, East].first_some(d => out[p, d]) else: continue
     let f = faces.find(start)
     if wet_at[f] != None: continue
     wet_at[f] = 0
