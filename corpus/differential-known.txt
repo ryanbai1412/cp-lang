@@ -22,8 +22,6 @@ cpl-test-fails cf2211b sample1
 cpl-test-fails cf2219c sample1
 cpl-test-fails cf2229c1 sample1
 cpl-test-fails cf2229c2 sample1
-cpl-test-fails cf2255c sample2
-cpl-test-fails cf2261h sample2
 cpl-test-no-cases ucup5s02f -
 over-32kb cf2201e -
 over-32kb cf2229i -
