@@ -165,6 +165,15 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
     if let Some(path) = line.trim_start().strip_prefix("use ") {
         return use_completion(cursor, std, path, word);
     }
+    if head.ends_with('@') {
+        return DECORATORS
+            .iter()
+            .map(|(name, detail)| item_json(&plain(name, Kind::Keyword, (*detail).into(), ""), 0))
+            .collect();
+    }
+    if let Some(args) = lint_args(line) {
+        return lint_completion(args);
+    }
     match trigger {
         Some('(' | ',') => return argument_names(cursor, std, offset),
         Some('{') => return Vec::new(),
@@ -195,6 +204,69 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
 
 /// `xs.sorted(b|`: each parameter of the open call that no argument gives
 /// yet, offered as `name:`, the named-only ones first.
+/// The closed set of decorators (spec/core/06-control-functions.md, 6.4).
+const DECORATORS: &[(&str, &str)] = &[
+    ("test", "tool role: a test fn `cpl test` runs"),
+    (
+        "alt",
+        "tool role: `@alt(f, caps)`, another implementation of `f`",
+    ),
+    ("gen", "tool role: a stress generator"),
+    ("check", "tool role: the checker of an output"),
+    (
+        "interactor",
+        "tool role: the judge side of an interactive problem",
+    ),
+    ("memo", "`@memo(array)` / `@memo(map)`: cache a function"),
+    ("get", "an O(1) read-only method called without parentheses"),
+    ("cache", "on a struct field: interior mutability"),
+    ("trusted", "`@trusted:` block: the unsafe tier"),
+    ("cpp", "an item written in C++: the unsafe tier"),
+    ("grader", "`@grader(..)`: a judge entry point"),
+    (
+        "laws",
+        "`@laws(sample: n)`: stress sampling of a type's laws",
+    ),
+    (
+        "tag",
+        "`@tag(lit)` on a variant: the token it reads and prints as",
+    ),
+    (
+        "droppable",
+        "the result may be dropped without the unused-result lint",
+    ),
+    (
+        "lint",
+        "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint",
+    ),
+];
+
+/// The text after `with lint(` while the cursor is inside its parentheses.
+fn lint_args(line: &str) -> Option<&str> {
+    let at = line.rfind("lint(")?;
+    let args = &line[at + "lint(".len()..];
+    (!args.contains(')') && line[..at].trim_end().ends_with("with")).then_some(args)
+}
+
+/// In `with lint(..)`: the lints by name, then after `name:` the levels.
+fn lint_completion(args: &str) -> Vec<Value> {
+    if args.rsplit(',').next().unwrap_or("").contains(':') {
+        return ["allow", "warn", "deny"]
+            .iter()
+            .map(|level| item_json(&plain(level, Kind::Keyword, "lint level".into(), ""), 0))
+            .collect();
+    }
+    cpl_lint::LINTS
+        .iter()
+        .map(|lint| {
+            item_json(
+                &plain(lint.name, Kind::Const, lint.title.into(), lint.summary),
+                0,
+            )
+        })
+        .collect()
+}
+
 fn argument_names(cursor: &Cursor, std: &mut StdLib, offset: usize) -> Vec<Value> {
     let text = &*cursor.analysis.text;
     let Some(item) = item_at(cursor.analysis, cursor.offset) else {
@@ -1084,6 +1156,14 @@ fn scope_completion(
             PreludeKind::Std(_) => continue,
         };
         add(&plain(name, kind, detail.into(), ""), 3, &mut items);
+    }
+    // `?T`'s variants are prelude names like any other (R01.3.6).
+    for (name, detail) in [("Some", "Some(x: T) -> ?T"), ("None", "None: ?T")] {
+        add(
+            &plain(name, Kind::Variant, detail.into(), ""),
+            3,
+            &mut items,
+        );
     }
     for keyword in cpl_syntax::KEYWORDS {
         add(

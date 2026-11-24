@@ -1,0 +1,482 @@
+[
+ {
+  "context": "dot/field",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(e.$0)",
+  "want": [
+   "to",
+   "w"
+  ]
+ },
+ {
+  "context": "dot/list",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(xs.$0)",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/prefix",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(xs.so$0)",
+  "want": [
+   "sorted"
+  ]
+ },
+ {
+  "context": "dot/after-call",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(runs(\"aab\").$0)",
+  "want": [
+   "count"
+  ]
+ },
+ {
+  "context": "dot/after-index",
+  "source": "let g: List<List<Int>> = [[1]]\nprint(g[0].$0)",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/chain",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(xs.sorted().$0)",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/loop-var",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nfor x in es:\n    print(x.$0)",
+  "want": [
+   "to"
+  ]
+ },
+ {
+  "context": "dot/lambda-param",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(es.map(x => x.$0))",
+  "want": [
+   "to"
+  ]
+ },
+ {
+  "context": "dot/lambda-param-int",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(xs.map(x => x.$0))",
+  "want": [
+   "isqrt"
+  ]
+ },
+ {
+  "context": "dot/self",
+  "source": "struct P:\n    x: Int\n    fn get(self) -> Int = self.$0\n",
+  "want": [
+   "x"
+  ]
+ },
+ {
+  "context": "dot/self-block",
+  "source": "struct P:\n    x: Int\n    fn get(self) -> Int:\n        self.$0\n",
+  "want": [
+   "x"
+  ]
+ },
+ {
+  "context": "dot/optional",
+  "source": "let m: ?Int = None\nprint(m.$0)",
+  "want": [
+   "is_some_and"
+  ]
+ },
+ {
+  "context": "dot/tuple",
+  "source": "let p = (1, 2)\nprint(p.$0)",
+  "want": [
+   "0"
+  ]
+ },
+ {
+  "context": "dot/map",
+  "source": "var m: Map<Int, Int> = {}\nm.$0",
+  "want": [
+   "get"
+  ]
+ },
+ {
+  "context": "dot/str",
+  "source": "let s = \"ab\"\nprint(s.$0)",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/int-range",
+  "source": "let n: 1..=10 = read()\nprint(n.$0)",
+  "want": [
+   "divmod"
+  ]
+ },
+ {
+  "context": "dot/std-type",
+  "source": "use std.segtree.*\nlet t = SegTree(min, [3, 1, 2])\nprint(t.$0)",
+  "want": [
+   "fold"
+  ]
+ },
+ {
+  "context": "dot/static",
+  "source": "use std.graph.{Graph}\nlet g = Graph.$0",
+  "want": [
+   "undirected"
+  ]
+ },
+ {
+  "context": "dot/enum",
+  "source": "enum Dir:\n    Up\n    Down\nlet d = Dir.$0",
+  "want": [
+   "Up",
+   "Down"
+  ]
+ },
+ {
+  "context": "dot/domain",
+  "source": "domain V = 0..5\nprint(V.$0)",
+  "want": [
+   "first"
+  ]
+ },
+ {
+  "context": "dot/incomplete-after",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nlet y = xs.$0\nlet z = \n",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/broken-before",
+  "source": "fn f(:\nstruct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(xs.$0)",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/multiline-call",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(\n    xs.$0\n)",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/fstring",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(\"{xs.$0}\")",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/eof-no-newline",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nxs.$0",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/in-fn-param",
+  "source": "fn f(ys: List<Int>) -> Int:\n    ys.$0\n",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/in-fn-local",
+  "source": "fn f() -> Int:\n    let ys = [1]\n    ys.$0\n",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "named/std-empty",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(xs.sorted($0))",
+  "want": [
+   "by"
+  ]
+ },
+ {
+  "context": "named/std-prefix",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(xs.sorted(b$0))",
+  "want": [
+   "by"
+  ]
+ },
+ {
+  "context": "named/user-fn",
+  "source": "fn f(a: Int, scale: Int = 1) -> Int = a\nprint(f(1, sc$0))",
+  "want": [
+   "scale"
+  ]
+ },
+ {
+  "context": "named/ctor",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet e = Edge(t$0",
+  "want": [
+   "to"
+  ]
+ },
+ {
+  "context": "named/ctor-second",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet e = Edge(to: 1, $0)",
+  "want": [
+   "w"
+  ]
+ },
+ {
+  "context": "name/prefix-call",
+  "source": "print(ru$0)",
+  "want": [
+   "runs"
+  ]
+ },
+ {
+  "context": "name/local",
+  "source": "let total = 3\nprint(tot$0)",
+  "want": [
+   "total"
+  ]
+ },
+ {
+  "context": "name/param",
+  "source": "fn f(count: Int) -> Int:\n    co$0\n",
+  "want": [
+   "count"
+  ]
+ },
+ {
+  "context": "name/lambda-param",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint(xs.map(value => val$0))",
+  "want": [
+   "value"
+  ]
+ },
+ {
+  "context": "name/loop-var",
+  "source": "for idx in 0..3:\n    print(id$0)",
+  "want": [
+   "idx"
+  ]
+ },
+ {
+  "context": "name/later-fn",
+  "source": "print(hel$0)\nfn helper() -> Int = 1\n",
+  "want": [
+   "helper"
+  ]
+ },
+ {
+  "context": "name/struct",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nlet f = Ed$0",
+  "want": [
+   "Edge"
+  ]
+ },
+ {
+  "context": "name/keyword",
+  "source": "whi$0",
+  "want": [
+   "while"
+  ]
+ },
+ {
+  "context": "name/empty",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nprint($0)",
+  "want": [
+   "xs"
+  ]
+ },
+ {
+  "context": "name/unimported",
+  "source": "let t = SegT$0",
+  "want": [
+   "SegTree"
+  ]
+ },
+ {
+  "context": "name/annotation",
+  "source": "@$0\nfn brute():\n    print(1)\n",
+  "want": [
+   "test",
+   "alt",
+   "gen",
+   "check",
+   "interactor"
+  ]
+ },
+ {
+  "context": "use/module",
+  "source": "use std.$0",
+  "want": [
+   "graph",
+   "segtree"
+  ]
+ },
+ {
+  "context": "use/module-prefix",
+  "source": "use std.gr$0",
+  "want": [
+   "graph"
+  ]
+ },
+ {
+  "context": "use/items",
+  "source": "use std.graph.{$0}",
+  "want": [
+   "Graph"
+  ]
+ },
+ {
+  "context": "use/items-prefix",
+  "source": "use std.graph.{Gr$0}",
+  "want": [
+   "Graph"
+  ]
+ },
+ {
+  "context": "use/items-second",
+  "source": "use std.graph.{Graph, $0}",
+  "want": [
+   "Graph"
+  ]
+ },
+ {
+  "context": "use/item-dot",
+  "source": "use std.graph.$0",
+  "want": [
+   "Graph"
+  ]
+ },
+ {
+  "context": "type/let",
+  "source": "let x: Li$0",
+  "want": [
+   "List"
+  ]
+ },
+ {
+  "context": "type/let-user",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nlet f: Ed$0",
+  "want": [
+   "Edge"
+  ]
+ },
+ {
+  "context": "type/generic-arg",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nlet ys: List<Ed$0>",
+  "want": [
+   "Edge"
+  ]
+ },
+ {
+  "context": "type/param",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nfn f(q: Ed$0)",
+  "want": [
+   "Edge"
+  ]
+ },
+ {
+  "context": "type/return",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nfn f() -> Ed$0",
+  "want": [
+   "Edge"
+  ]
+ },
+ {
+  "context": "type/field",
+  "source": "struct Edge:\n    to: Int\nstruct G:\n    es: List<Ed$0>\n",
+  "want": [
+   "Edge"
+  ]
+ },
+ {
+  "context": "type/std",
+  "source": "use std.segtree.*\nlet t: SegT$0",
+  "want": [
+   "SegTree"
+  ]
+ },
+ {
+  "context": "type/opt",
+  "source": "struct Edge:\n    to: Int\n    w: Int\nlet es: List<Edge> = []\nlet e = Edge(to: 1, w: 2)\nlet xs = [3, 1, 2]\nlet o: ?Ed$0",
+  "want": [
+   "Edge"
+  ]
+ },
+ {
+  "context": "match/variant",
+  "source": "enum Dir:\n    Up\n    Down\nlet d = Dir.Up\nmatch d:\n    Dir.U$0",
+  "want": [
+   "Up"
+  ]
+ },
+ {
+  "context": "lint/name",
+  "source": "fn f():\n    with lint(va$0",
+  "want": [
+   "var_never_reassigned"
+  ]
+ },
+ {
+  "context": "lint/level",
+  "source": "fn f():\n    with lint(var_never_reassigned: $0",
+  "want": [
+   "allow",
+   "warn",
+   "deny"
+  ]
+ },
+ {
+  "context": "match/optional",
+  "source": "let m: ?Int = None\nmatch m:\n    $0",
+  "want": [
+   "Some",
+   "None"
+  ]
+ },
+ {
+  "context": "match/field-pattern",
+  "source": "struct P:\n    x: Int\n    y: Int\nlet p = P(x: 1, y: 2)\nmatch p:\n    P($0",
+  "want": [
+   "x",
+   "y"
+  ]
+ },
+ {
+  "context": "test/body",
+  "source": "fn f(a: Int) -> Int = a\n@test\nfn t():\n    $0",
+  "want": [
+   "assert"
+  ]
+ },
+ {
+  "context": "dot/unwrap",
+  "source": "let m: ?List<Int> = None\nprint(m!.$0)",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "dot/optional-chain",
+  "source": "let m: ?List<Int> = None\nprint(m?.$0)",
+  "want": [
+   "len"
+  ]
+ },
+ {
+  "context": "domain/rhs",
+  "source": "let n = read<1..=10>()\ndomain V = 0..$0",
+  "want": [
+   "n"
+  ]
+ },
+ {
+  "context": "type/read-arg",
+  "source": "let n = read<$0",
+  "want": [
+   "Int"
+  ]
+ }
+]

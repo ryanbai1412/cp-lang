@@ -26,7 +26,9 @@ context has to answer:
   and std names not imported yet, which bring their `use`;
 - a `use`: modules after `use std.`, items after `std.graph.` and inside
   `{..}`;
-- a type: annotations, parameters, returns, generic arguments and fields.
+- a type: annotations, parameters, returns, generic arguments and fields;
+- the rest: decorators after `@`, lints and levels in `with lint(`,
+  match arms, `m!.` and `m?.`, a domain's bounds.
 
 **Off the happy path.** The file almost never parses while you type, so
 completion reads what does parse and the text around the cursor. A
@@ -42,6 +44,9 @@ the corpus, recall is a ratchet below 100%
 - In a type position, values are listed beside the types and ranked
   above them.
 - The value after `by:` isn't ranked by the parameter's type.
+- The browser editor is checked on 2 contexts, not all of them, and
+  its loading and keyboard states are unchecked.
+- `with lint(` doesn't offer a library's own `@lint`s.
 
 **Against the usual setup.** A C++ contestant has clangd, which completes
 members once the file compiles but offers nothing for a lambda's `auto`

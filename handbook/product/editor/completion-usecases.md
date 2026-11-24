@@ -104,8 +104,8 @@ Evidence: integration `crates/cpl-lsp/tests/latency.rs`
 
 ### complete/U18: in the browser editor
 Need: the same completion in the playground and the guide's code blocks, with nothing installed.
-Design: the language server built to wasm behind the site's editor.
-Milestone: M1-critical. Status: supported
+Design: the language server built to wasm behind the site's editor, answering every context of `crates/cpl-lsp/tests/completion-contexts.json` as `cpl lsp` does.
+Milestone: M1-critical. Status: partial (the browser test types 2 of the contexts; the rest wait for a parity test over the shared cases)
 Evidence: integration `web/tests/intelligence.mjs`
 
 ### complete/U19: in VS Code
@@ -119,3 +119,75 @@ Need: completion in the editor you already use.
 Design: `cpl setup <editor>` configures the editor's LSP client for `cpl lsp`.
 Milestone: M1-differentiating. Status: supported
 Evidence: integration `editors/lsp-smoke.py`
+
+### complete/U21: lints and levels in `with lint(..)`
+Need: allow one lint on one block without looking up its exact name.
+Design: in `with lint(`, every lint by name with its title; after `name:`, `allow`, `warn` and `deny`.
+Milestone: M1-differentiating. Status: partial (a library's own `@lint`s are not offered yet)
+Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases lint/name, lint/level
+
+### complete/U22: match arms on an optional or a struct
+Need: write the arms of a `match` without remembering how the variants or fields are spelled.
+Design: `Some` and `None` as the prelude names they are; a struct pattern's fields after `P(`.
+Milestone: M1-critical. Status: supported
+Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases match/optional, match/field-pattern
+
+### complete/U23: a member through `!` or `?`
+Need: call a method of the value inside an optional, after asserting or propagating it.
+Design: after `m!.` and `m?.`, the members of `T` in `?T`.
+Milestone: M1-critical. Status: supported
+Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases dot/unwrap, dot/optional-chain
+
+### complete/U24: inside a `@test` fn
+Need: write a quick property check next to the solution.
+Design: `assert` and the file's fns, as in any body.
+Milestone: M1-differentiating. Status: supported
+Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases test/body
+
+### complete/U25: the bounds of a domain and the type of a `read`
+Need: declare an index space and its input from names already read.
+Design: names in scope on the right of `domain V = 0..`; types in `read<..>`.
+Milestone: M1-critical. Status: supported
+Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion_offers_what_each_context_needs`), cases domain/rhs, type/read-arg
+
+### complete/U26: snippets for contest shapes
+Need: the skeleton of a multitest loop, a `@check` or a stress setup in one step.
+Design: the VS Code extension ships contest snippets; the server offers none, so the other editors and the browser have none.
+Milestone: M1-differentiating. Status: partial (VS Code only)
+Evidence: integration `editors/vscode/smoke.sh`
+
+### complete/U27: a browser example with a hidden setup prefix
+Need: completion in a doc or Learn block that hides its setup lines.
+Design: the prefix's names are offered and the cursor maps past the prefix.
+Milestone: M1-critical. Status: gap
+Evidence: none yet; site plans a browser parity test over the shared cases
+
+### complete/U28: the practice judge editor and std reference examples
+Need: the same completion wherever the site lets you edit code.
+Design: every editable block runs the same wasm server.
+Milestone: M1-differentiating. Status: gap
+Evidence: none yet
+
+### complete/U29: read-only examples offer nothing
+Need: a static example never pops up a menu while you select text in it.
+Design: completion only in editable blocks.
+Milestone: M1-differentiating. Status: gap
+Evidence: none yet
+
+### complete/U30: before the compiler loads, or after it fails
+Need: know completion isn't ready yet rather than think it is broken.
+Design: until cpl.wasm loads, or after it fails, the editor says so and completion recovers when it loads.
+Milestone: M1-critical. Status: gap
+Evidence: none yet
+
+### complete/U31: the keyboard in the browser editor
+Need: the keys you use in any editor.
+Design: Ctrl+Space opens the menu, Enter and Tab accept, Esc closes.
+Milestone: M1-differentiating. Status: gap
+Evidence: none yet
+
+### complete/U32: the menu on a phone
+Need: read and pick a completion on a narrow screen.
+Design: the menu and its detail fit the viewport width.
+Milestone: later. Status: gap
+Evidence: none yet
