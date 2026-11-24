@@ -1292,6 +1292,23 @@ fn a_whole_read_moves_when_its_source_is_overwritten_before_its_next_read() {
         read_by_a_call.contains("xs = ys;"),
         "a fn reads ys before it is set again: {read_by_a_call}"
     );
+    let in_a_branch = cpp(concat!(
+        "fn f(xs: List<Int>) -> Int:\n",
+        "    var cur = [1]\n",
+        "    var prev = [1]\n",
+        "    for i in 0..xs.len:\n",
+        "        var next = cur.clone()\n",
+        "        next.push(xs[i] + prev.len)\n",
+        "        if xs[i] > 2:\n",
+        "            prev = cur\n",
+        "        cur = next\n",
+        "    cur.len + prev.len\n",
+        "print(f([1, 5, 3]))\n",
+    ));
+    assert!(
+        in_a_branch.contains("prev = std::move(cur);"),
+        "cur is set again after the if before anything reads it: {in_a_branch}"
+    );
 }
 
 #[test]

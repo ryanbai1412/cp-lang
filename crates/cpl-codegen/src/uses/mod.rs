@@ -292,7 +292,8 @@ pub(crate) fn dead_after(
 }
 
 /// The locals dead once statement `k` of `block`, an `if`, ends: what
-/// each of its branches may move. `outer` is the same for `block`.
+/// each of its branches may move. `outer` is the same for `block`. A local
+/// the statements after `k` set before reading it is dead there too.
 pub(crate) fn dead_past(
     program: &Program,
     block: &Block,
@@ -303,15 +304,34 @@ pub(crate) fn dead_past(
         Stmt::Let(s, _) => Some(*s),
         _ => None,
     });
+    let mut read = BTreeSet::new();
+    let here = Block {
+        stmts: vec![block.stmts[k].clone()],
+    };
+    walk::deep_exprs(&here, &mut |e| {
+        if let ExprKind::Local(s) = e.kind {
+            read.insert(s);
+        }
+    });
+    let set_again = read.into_iter().filter(|&s| {
+        !captured_in(program, block, s)
+            && crate::lend::local_set_before_read(s, &block.stmts[k + 1..])
+    });
     (outer.iter().copied().chain(lets))
         .filter(|&s| unread_after(program, block, k, s))
+        .chain(set_again)
         .collect()
 }
 
 /// True when nothing after statement `k` of `block`, nor a closure in it
 /// that captures `slot`, reads `slot`.
 pub(crate) fn unread_after(program: &Program, block: &Block, k: usize, slot: usize) -> bool {
-    // A closure made before `k` may hold the slot by reference and run later.
+    !captured_in(program, block, slot) && !mentions(program, &block.stmts[k + 1..], slot).any
+}
+
+/// Whether a closure in `block` captures the local `slot`: one made before a
+/// statement may hold it by reference and run later.
+fn captured_in(program: &Program, block: &Block, slot: usize) -> bool {
     let mut held = false;
     walk::deep_exprs(block, &mut |e| {
         if let ExprKind::Closure(cid) = e.kind {
@@ -319,7 +339,7 @@ pub(crate) fn unread_after(program: &Program, block: &Block, k: usize, slot: usi
                 (program.closures[cid].captures.iter()).any(|c| !c.is_global && c.outer == slot);
         }
     });
-    !held && !mentions(program, &block.stmts[k + 1..], slot).any
+    held
 }
 
 /// Why the place a lent `let` reads may change while the name lives.

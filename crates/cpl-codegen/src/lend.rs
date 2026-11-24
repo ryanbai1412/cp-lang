@@ -1919,17 +1919,23 @@ fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
 /// statements after its `let` before any of them reads it, changes it or
 /// leaves: the `let` may take its value instead of copying it.
 pub(crate) fn overwritten_before_read(init: &Expr, rest: &[Stmt]) -> bool {
-    let Some(path) = path_of(init) else {
-        return false;
-    };
+    path_of(init).is_some_and(|path| set_before_read(&path, rest))
+}
+
+/// Whether `rest` sets the local `slot` whole before anything reads it.
+pub(crate) fn local_set_before_read(slot: usize, rest: &[Stmt]) -> bool {
+    set_before_read(&((false, slot), Vec::new()), rest)
+}
+
+fn set_before_read(path: &((bool, usize), Vec<usize>), rest: &[Stmt]) -> bool {
     for stmt in rest {
         if let Stmt::Assign(place, AssignOp::Set, value) = stmt {
-            if place_path(place).as_ref() == Some(&path) {
+            if place_path(place).as_ref() == Some(path) {
                 let value = Stmt::Expr(value.clone());
-                return !touches(&value, &path);
+                return !touches(&value, path);
             }
         }
-        if touches(stmt, &path) {
+        if touches(stmt, path) {
             return false;
         }
     }
