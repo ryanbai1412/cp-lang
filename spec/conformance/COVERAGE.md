@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3736 (3600 passing). Rules: 617.
+Cases: 3738 (3600 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 3736 (3600 passing). Rules: 617.
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 97 rules, 263 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 31 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 31 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -563,7 +563,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.1.8 [1+ 1-]: Library-authored diagnostics: a trait may attach a message to "not implemented" and to eac...
 - R08.2.7 [1+ 0-]: **An impl chooses each associated type** its trait declares, with `type Name = T` in its b...
 - R08.2.2 [2+ 2-]: , and its body is checked against the bound alone
-- R08.1.9 [4+ 3-]: , so a type has one choice.
+- R08.1.9 [6+ 3-]: , so a type has one choice.
 - R08.2.1 [2+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
 - R08.2.10 [1+ 1-]: A generic fn may not reach itself, directly or mutually, at a type that grows on every cal...
