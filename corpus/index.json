@@ -1,16 +1,16 @@
 {
- "problems": 1133,
+ "problems": 1120,
  "with_cpp_ac": 1087,
  "dream": {
   "draft": 126,
   "gold": 0,
-  "none": 1007,
+  "none": 994,
   "reviewed": 0
  },
  "spec": {
   "draft": 99,
   "gold": 0,
-  "none": 1034,
+  "none": 1021,
   "reviewed": 0
  },
  "by_source": {
@@ -54,7 +54,6 @@
   "ioi": 120,
   "jloi": 1,
   "joi": 2,
-  "math": 13,
   "mccc": 16,
   "miraclesort": 1,
   "mmcc": 1,

@@ -21548,83 +21548,6 @@
         "status": "D",
         "time": 84.219529935
     },
-    "4804174": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-29T23:30:05+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math03",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004208259
-    },
-    "4804180": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-08-29T23:36:50+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math03",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004216933
-    },
-    "4804203": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-29T23:48:09+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math04",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004261524
-    },
-    "4804228": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-29T23:58:24+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math04",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003762284
-    },
-    "4804250": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-30T00:06:28+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math04",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003652598
-    },
-    "4804276": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-30T00:23:38+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math04",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003869527
-    },
-    "4804284": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-08-30T00:25:38+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math04",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003573482
-    },
     "4804312": {
         "case_points": 1.0,
         "case_total": 1.0,
@@ -21646,50 +21569,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.112647132
-    },
-    "4806679": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-31T03:20:31+00:00",
-        "language": "TEXT",
-        "memory": 1904.0,
-        "problem": "math01",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003454218
-    },
-    "4806682": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-08-31T03:22:56+00:00",
-        "language": "TEXT",
-        "memory": 1904.0,
-        "problem": "math01",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003576449
-    },
-    "4806759": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-31T04:08:23+00:00",
-        "language": "TEXT",
-        "memory": 1904.0,
-        "problem": "math02",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003381267
-    },
-    "4806769": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-08-31T04:12:46+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math02",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003469622
     },
     "4806776": {
         "case_points": 150.0,
@@ -21713,149 +21592,6 @@
         "status": "D",
         "time": 0.02353736
     },
-    "4808724": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T02:35:22+00:00",
-        "language": "TEXT",
-        "memory": 1920.0,
-        "problem": "math01",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003365628
-    },
-    "4810219": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:00:31+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math05",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004158125
-    },
-    "4810223": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:08:52+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003517945
-    },
-    "4810226": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:10:02+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004033711
-    },
-    "4810230": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:15:47+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003477066
-    },
-    "4810241": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:20+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003442114
-    },
-    "4810242": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:25+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003306751
-    },
-    "4810243": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:31+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003368748
-    },
-    "4810244": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:36+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.00334423
-    },
-    "4810245": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:41+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004524959
-    },
-    "4810246": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:46+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004112602
-    },
-    "4810247": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:50+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004153521
-    },
-    "4810251": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:25:57+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003416327
-    },
     "4810274": {
         "case_points": 6.0,
         "case_total": 6.0,
@@ -21877,28 +21613,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.025784977
-    },
-    "4810294": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:58:06+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math06",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003489012
-    },
-    "4811880": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-02T23:30:42+00:00",
-        "language": "TEXT",
-        "memory": 1828.0,
-        "problem": "math07",
-        "result": "AC",
-        "status": "D",
-        "time": 0.00346895
     },
     "4811886": {
         "case_points": 100.0,
@@ -21944,17 +21658,6 @@
         "status": "D",
         "time": 5.259533811
     },
-    "4817718": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-05T22:45:19+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math08",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004716563
-    },
     "4817803": {
         "case_points": 200.0,
         "case_total": 200.0,
@@ -21976,94 +21679,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.457784327
-    },
-    "4817903": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-05T23:58:59+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math09",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003467183
-    },
-    "4819616": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:16:02+00:00",
-        "language": "TEXT",
-        "memory": 1852.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004145572
-    },
-    "4819625": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:22:00+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003959307
-    },
-    "4819632": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:28:27+00:00",
-        "language": "TEXT",
-        "memory": 1888.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004229657
-    },
-    "4819637": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:32:53+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003366143
-    },
-    "4819638": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:33:01+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003465679
-    },
-    "4819639": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:35:42+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003378698
-    },
-    "4819640": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:36:29+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003297787
     },
     "4819641": {
         "case_points": 3.0,
@@ -22197,28 +21812,6 @@
         "status": "D",
         "time": 6.226484329
     },
-    "4826965": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-10T18:36:09+00:00",
-        "language": "TEXT",
-        "memory": 1860.0,
-        "problem": "math11",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004258171
-    },
-    "4827101": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-10T19:07:16+00:00",
-        "language": "TEXT",
-        "memory": 1876.0,
-        "problem": "math12",
-        "result": "AC",
-        "status": "D",
-        "time": 0.00384084
-    },
     "4827139": {
         "case_points": 75.0,
         "case_total": 100.0,
@@ -22351,50 +21944,6 @@
         "status": "D",
         "time": 0.170871022
     },
-    "4829055": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T03:42:50+00:00",
-        "language": "TEXT",
-        "memory": 1928.0,
-        "problem": "math13",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003381214
-    },
-    "4829069": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T03:47:56+00:00",
-        "language": "TEXT",
-        "memory": 1900.0,
-        "problem": "math13",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003749494
-    },
-    "4829073": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T03:52:46+00:00",
-        "language": "TEXT",
-        "memory": 1892.0,
-        "problem": "math13",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004174465
-    },
-    "4829074": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T03:53:23+00:00",
-        "language": "TEXT",
-        "memory": 1900.0,
-        "problem": "math13",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003422411
-    },
     "4829127": {
         "case_points": 100.0,
         "case_total": 100.0,
@@ -22405,17 +21954,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.211121953
-    },
-    "4829138": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T04:30:05+00:00",
-        "language": "TEXT",
-        "memory": 1892.0,
-        "problem": "math13",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004187951
     },
     "4829179": {
         "case_points": 0.0,
