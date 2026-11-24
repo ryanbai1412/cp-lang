@@ -276,6 +276,7 @@ impl<'a> Checker<'a> {
         steps.read(stmts, 0, &mut |f, x| self.call_writes(f, x));
         self.steps = steps;
         self.stmts(stmts, true);
+        self.value_exits(stmts);
     }
 
     /// Checks a block in its own scope. Its type is that of its last

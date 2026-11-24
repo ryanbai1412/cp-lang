@@ -1327,7 +1327,7 @@ fn an_arm_leaves_only_where_the_match_is_the_whole_value() {
     let source = "for i in 0..3:\n    let x = 1 + match i:\n        1 => continue\n        v => v\n    print(x)\n";
     let stderr = check_errors("leaving-arm-inside", source);
     assert!(
-        stderr.contains("`continue` out of a block that is used as a value"),
+        stderr.contains("error[E0410]: `continue` leaves from a statement"),
         "{stderr}"
     );
 }

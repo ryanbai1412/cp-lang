@@ -53,6 +53,7 @@ pub(crate) use stmt::runs;
 use views::{binding_kw, Keep};
 mod types;
 mod value_domain;
+mod value_exits;
 
 pub(crate) use impl_head::impl_file_head;
 pub(crate) use pattern::domain_binding;

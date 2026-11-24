@@ -612,6 +612,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0410"),
+        title: "Leaving from inside part of a value",
+        summary: "A `return`, `break` or `continue` sits in an `if`, `match` or block that is only part of a statement's value: an argument, an operand or a condition.",
+        explanation: "When the `if` is the whole value of a `let`, an assignment, a `return` or an expression statement, each arm is run as statements and an arm can leave: `let v = if xs.len == 0: return 0 else: xs[0]`. Inside an argument or an operand the rest of the expression is half worked out when the arm would leave, so the leave has no place to go. Give the `if` its own `let` first, then use the name.",
+        trigger: "fn first(xs: List<Int>) -> Int:\n    print(1 + match xs.len:\n        0 => return 0\n        _ => xs[0])\n    xs[0]\nprint(first([3]))\n",
+        fix: "fn first(xs: List<Int>) -> Int:\n    let v = match xs.len:\n        0 => return 0\n        _ => xs[0]\n    print(1 + v)\n    xs[0]\nprint(first([3]))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0701"),
         title: "Ambiguous trait method",
         summary: "Two traits implemented for this type define a method with the same name.",

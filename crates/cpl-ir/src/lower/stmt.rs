@@ -1204,7 +1204,11 @@ impl<'a> Lowerer<'a> {
             }
             ast::StmtKind::Return(value) => {
                 if self.cx.dos.iter().any(|frame| !frame.open) {
-                    self.unsupported(stmt.span, "`return` inside a block that is used as a value");
+                    self.report(
+                        stmt.span,
+                        msgs::check::LEAVES_A_PART_OF_A_VALUE,
+                        &[&"return"],
+                    );
                     return;
                 }
                 if let Some((acc, _)) = self.cx.yield_slot {
@@ -1270,10 +1274,7 @@ impl<'a> Lowerer<'a> {
                     return;
                 };
                 if self.cx.dos.last().is_some_and(|frame| index < frame.loops) {
-                    self.unsupported(
-                        stmt.span,
-                        &format!("`{word}` out of a block that is used as a value"),
-                    );
+                    self.report(stmt.span, msgs::check::LEAVES_A_PART_OF_A_VALUE, &[&word]);
                     return;
                 }
                 let to = self.cx.loops[index].1;
@@ -1708,18 +1709,19 @@ fn leaves(stmt: &ast::Stmt) -> bool {
     )
 }
 
-/// Whether `e` is a `match` or `if` with an arm that ends in `return`,
-/// `break` or `continue`.
+/// Whether `e` is a `match`, an `if` with an `else`, or a block with a
+/// `return`, `break` or `continue` that leaves it: as a statement's whole
+/// value its arms then run as statements.
 fn has_leaving_arm(e: &ast::Expr) -> bool {
-    let ends = |block: &ast::Block| block.stmts.last().is_some_and(leaves);
-    match &e.kind {
-        ast::ExprKind::Match { arms, .. } => arms.iter().any(|arm| ends(&arm.body)),
-        ast::ExprKind::If {
-            branches,
-            otherwise: Some(otherwise),
-        } => ends(otherwise) || branches.iter().any(|(_, block)| ends(block)),
-        _ => false,
-    }
+    matches!(
+        e.kind,
+        ast::ExprKind::Match { .. }
+            | ast::ExprKind::If {
+                otherwise: Some(_),
+                ..
+            }
+            | ast::ExprKind::Block(_)
+    ) && !cpl_syntax::visit::leaves_out_of(e).is_empty()
 }
 
 /// The `return`, `break` or `continue` on the right of `x ?? return`.

@@ -151,6 +151,8 @@ super::msgs! {
     TYPE_MISMATCH_IS_A_VARIANT_BUT = TYPE_MISMATCH, "`{}` is a variant, but the value matched is a `{}`";
     QUESTION_IN_CONDITION_IS_A_IN_A = QUESTION_IN_CONDITION, "`{}` is a `?` in a condition: a `None` gives the test no value";
     FN_FALLS_THROUGH_AND_THEN_ENDS_WITHOUT = FN_FALLS_THROUGH, "{}, and then `{}` ends without a value";
+    LEAVES_A_PART_OF_A_VALUE = LEAVES_A_PART,
+        "`{}` leaves from a statement, or from the `if`, `match` or block that is a statement's whole value, not from inside a part of one";
     MISSING_IMPL_IMPL_FOR_REQUIRES_IMPL = MISSING_IMPL, "`impl {} for {}` requires `impl {} for {}`";
     WRONG_DOMAIN_IS_INDEXED_BY_INT = WRONG_DOMAIN, "`{}` is indexed by `Int`, but `{}` is {}";
     NEGATIVE_LITERAL_INDEX_KEYS_NEVER_WRAP_SO = NEGATIVE_LITERAL_INDEX, "`{}[-{}]`: keys never wrap, so a negative key is out of range";

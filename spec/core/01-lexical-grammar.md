@@ -331,6 +331,13 @@ match dir: L => -1, R => 1, U => 0, D => 0  // one-line match
   labels and `else` exactly like built-in loops (decision 126). (R01.7.4)
 - `@!multitest` on its own line is the multitest divider: code above it
   runs once, code below runs per test case (decision 20; chapter 10). (R01.7.5)
+- `return`, `break` and `continue` leave from a statement, or from an arm
+  of the `if`, `match` or block that is a statement's whole value: of a
+  `let`, an assignment, a `return` or an expression statement, at any depth
+  inside the arm (`let v = if xs.len == 0: return 0 else: xs[0]`). Inside
+  an argument, an operand or a condition the expression around it is half
+  worked out, so a leave there is E0410: give the `if` its own `let`. A
+  lambda's or `fn`'s body is a whole value of its own. (R01.7.6)
 
 ## 1.8 Expressions
 

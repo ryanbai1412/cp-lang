@@ -609,9 +609,14 @@ impl<'a> Lowerer<'a> {
                 body,
             } => self.lower_lambda(params, param_tys, param_mut, body, inner_hint, span),
             ast::ExprKind::Keep { target, max, value } => self.keep(target, *max, value, span),
-            ast::ExprKind::Block(block) => self.do_expr(hint, span, |lw, out| {
-                out.extend(lw.block(block, Tail::Give).stmts);
-            }),
+            ast::ExprKind::Block(block) => {
+                if self.cx.exits == Some(e.span) {
+                    return self.leaving_value(e, hint, span);
+                }
+                self.do_expr(hint, span, |lw, out| {
+                    out.extend(lw.block(block, Tail::Give).stmts);
+                })
+            }
             ast::ExprKind::If {
                 branches,
                 otherwise,

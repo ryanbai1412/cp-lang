@@ -6,6 +6,7 @@
 //! does this loop assign?") are written as a visitor.
 
 use crate::ast::*;
+use cpl_diag::Span;
 
 pub trait Visitor {
     fn stmt(&mut self, _stmt: &Stmt) {}
@@ -329,4 +330,52 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
         | ExprKind::Missing
         | ExprKind::Error => {}
     }
+}
+
+/// The `return`, `break` and `continue` statements under `e` that leave
+/// it: not inside a `fn` or lambda written under `e`, and, for a `break`
+/// or `continue`, not aimed at a loop under `e`.
+pub fn leaves_out_of(e: &Expr) -> Vec<Span> {
+    #[derive(Default)]
+    struct Under {
+        /// Each leave, with the loop label a `break` or `continue` aims at.
+        leaves: Vec<(Span, Option<Option<String>>)>,
+        loops: Vec<(Span, Option<String>)>,
+        fns: Vec<Span>,
+    }
+    impl Visitor for Under {
+        fn stmt(&mut self, stmt: &Stmt) {
+            let text = |label: &Option<Name>| label.as_ref().map(|l| l.text.clone());
+            match &stmt.kind {
+                StmtKind::Return(_) => self.leaves.push((stmt.span, None)),
+                StmtKind::Break(label) | StmtKind::Continue(label) => {
+                    self.leaves.push((stmt.span, Some(text(label))))
+                }
+                StmtKind::While { body, .. } => self.loops.push((body.span, None)),
+                StmtKind::For { label, body, .. } => self.loops.push((body.span, text(label))),
+                StmtKind::Fn(_) => self.fns.push(stmt.span),
+                _ => {}
+            }
+        }
+        fn expr(&mut self, expr: &Expr) {
+            if matches!(expr.kind, ExprKind::Lambda { .. }) {
+                self.fns.push(expr.span);
+            }
+        }
+    }
+    let mut under = Under::default();
+    walk_expr(e, &mut under);
+    let in_fn = |at: Span| under.fns.iter().any(|f| f.contains(at));
+    let in_loop = |at: Span, label: &Option<String>| {
+        under
+            .loops
+            .iter()
+            .any(|(body, name)| (label.is_none() || name == label) && body.contains(at))
+    };
+    under
+        .leaves
+        .iter()
+        .filter(|(at, aim)| !in_fn(*at) && !aim.as_ref().is_some_and(|label| in_loop(*at, label)))
+        .map(|(at, _)| *at)
+        .collect()
 }
