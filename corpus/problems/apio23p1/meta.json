@@ -10,6 +10,9 @@
   "dream": [
    "corpus/problems/apio23p1/dream.cp"
   ],
+  "original": [
+   "corpus/problems/apio23p1/orig.cpp"
+  ],
   "port": [
    "corpus/problems/apio23p1/port.cp"
   ],

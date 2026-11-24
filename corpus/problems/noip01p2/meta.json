@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/noip01p2/orig.cpp"
+  ],
   "port": [
    "corpus/problems/noip01p2/port.cp"
   ]

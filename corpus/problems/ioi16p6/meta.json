@@ -16,6 +16,9 @@
   "dream": [
    "corpus/problems/ioi16p6/dream.cp"
   ],
+  "original": [
+   "corpus/problems/ioi16p6/orig.cpp"
+  ],
   "port": [
    "corpus/problems/ioi16p6/port.cp"
   ],

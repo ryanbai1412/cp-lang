@@ -12,9 +12,6 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/nccc10s4/dream.cp"
-  ],
   "port": [
    "corpus/problems/nccc10s4/port.cp"
   ],
