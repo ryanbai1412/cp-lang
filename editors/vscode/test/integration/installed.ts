@@ -1,5 +1,6 @@
 // Runs in an extension host started the way a desktop launcher starts VS
-// Code: no `cpl` on PATH and no setting, only the installer's `~/.cpl/bin`.
+// Code: no `cpl` on PATH, only the installer's `~/.cpl/bin/cpl` that
+// `cpl setup` records in `cp.server.path`.
 
 import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
@@ -17,5 +18,5 @@ export async function run(): Promise<void> {
         }
         await new Promise(resolve => setTimeout(resolve, 100));
     }
-    console.log(`ok - found the installed cpl without PATH: ${serverBinary()}`);
+    console.log(`ok - ran the recorded cpl without PATH: ${serverBinary()}`);
 }

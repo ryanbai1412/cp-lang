@@ -11,7 +11,9 @@ import { runTests } from '@vscode/test-electron';
 async function main(): Promise<void> {
     const extensionRoot = path.resolve(__dirname, '..', '..', '..');
     const repoRoot = path.resolve(extensionRoot, '..', '..');
-    const cpl = process.env.CPL ?? [path.join(repoRoot, 'target', 'debug', 'cpl')].find(fs.existsSync);
+    const windows = process.platform === 'win32';
+    const exe = windows ? 'cpl.exe' : 'cpl';
+    const cpl = process.env.CPL ?? [path.join(repoRoot, 'target', 'debug', exe)].find(fs.existsSync);
     if (!cpl) {
         throw new Error('no cpl binary: run `cargo build -p cpl-cli` or set CPL');
     }
@@ -36,11 +38,10 @@ async function main(): Promise<void> {
                 path.join(scratch, 'user-data'),
             ],
         });
-        // As a desktop launcher starts it: a home with only the installer's
-        // `.cpl/bin/cpl`, no setting, and a PATH without `cpl`.
-        const windows = process.platform === 'win32';
+        // As a desktop launcher starts it after `cpl setup`: a PATH without
+        // `cpl`, and the installer's `.cpl/bin/cpl` recorded in the settings.
         const home = path.join(scratch, 'home');
-        const installed = path.join(home, '.cpl', 'bin', windows ? 'cpl.exe' : 'cpl');
+        const installed = path.join(home, '.cpl', 'bin', exe);
         fs.mkdirSync(path.dirname(installed), { recursive: true });
         fs.copyFileSync(cpl, installed);
         fs.chmodSync(installed, 0o755);
@@ -49,6 +50,9 @@ async function main(): Promise<void> {
             fs.mkdirSync(path.join(home, 'Library'), { recursive: true });
             fs.symlinkSync(path.join(os.homedir(), 'Library', 'Keychains'), path.join(home, 'Library', 'Keychains'));
         }
+        const user = path.join(scratch, 'user-data-installed', 'User');
+        fs.mkdirSync(user, { recursive: true });
+        fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ 'cp.server.path': installed }));
         const bare = path.join(scratch, 'bare');
         fs.cpSync(path.join(extensionRoot, 'test', 'fixtures', 'workspace'), bare, { recursive: true });
         const system = windows ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32') : '/usr/bin:/bin';
