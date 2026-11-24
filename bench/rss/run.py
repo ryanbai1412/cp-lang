@@ -121,6 +121,7 @@ CASES = {
     "sort_comp": lambda: ints(2_000_000),  # sorted([(a[i], i) for i in 0..n]): 8 B pairs, reserved (cf2187a)
     "ucup5s02e": lambda: gen("ucup5s02e"),  # rank.pairs() over three 2e5 rows, then a row's inverse
     "sort_links": lambda: costs(1_000_000, 2),  # (cost, enum) pairs of two lists, sorted by cost, moved
+    "sorted_by_tuples": lambda: "1000000\n",  # xs.sorted(by: p => p.0 % 1000) over 1e6 (Int, Int): one n/2 buffer
 }
 
 

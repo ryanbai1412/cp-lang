@@ -330,13 +330,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             SortBy::Key(slot, key) => {
                 let base = self.base;
-                let mut keyed = Vec::with_capacity(items_vec.len());
-                for item in items_vec {
+                let mut keys = Vec::with_capacity(items_vec.len());
+                for item in &items_vec {
                     self.stack[base + slot] = item.clone();
-                    keyed.push((self.eval(key)?, item));
+                    keys.push(self.eval(key)?);
                 }
-                keyed = self.merge_sort_keyed(keyed, &key.ty, desc, span)?;
-                items_vec = keyed.into_iter().map(|(_, item)| item).collect();
+                let order =
+                    self.keyed_order(keys.len(), &|i| keys[i].clone(), &key.ty, desc, span)?;
+                items_vec = crate::sort::permuted(items_vec, order);
             }
             SortBy::Fn { func, is_order } => {
                 let fv = self.eval(func)?;
@@ -349,13 +350,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         Ty::Fn(_, r) => (**r).clone(),
                         _ => Ty::Int,
                     };
-                    let mut keyed = Vec::with_capacity(items_vec.len());
-                    for item in items_vec {
-                        let k = self.call_value(fv.clone(), vec![item.clone()], span)?;
-                        keyed.push((k, item));
+                    let mut keys = Vec::with_capacity(items_vec.len());
+                    for item in &items_vec {
+                        keys.push(self.call_value(fv.clone(), vec![item.clone()], span)?);
                     }
-                    keyed = self.merge_sort_keyed(keyed, &key_ty, desc, span)?;
-                    items_vec = keyed.into_iter().map(|(_, item)| item).collect();
+                    let order =
+                        self.keyed_order(keys.len(), &|i| keys[i].clone(), &key_ty, desc, span)?;
+                    items_vec = crate::sort::permuted(items_vec, order);
                 }
             }
         }

@@ -656,16 +656,22 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
         let (a, b) = (keys.get_unchecked_val(a), keys.get_unchecked_val(b));
         Ok(if desc { a > b } else { a < b })
     })?;
+    permute_seq(seq, order, span)
+}
+
+/// A list or array with its elements moved in place so that `order[i]`
+/// comes `i`-th: the sort's only buffer is `order`.
+pub(super) fn permute_seq(seq: Value, mut order: Vec<u32>, span: Span) -> Res<Value> {
     match seq {
-        Value::List(items) => Ok(Value::List(Rc::new(
-            order.iter().map(|&k| items.get_unchecked_val(k)).collect(),
-        ))),
-        Value::Array(arr) => {
-            let values = order.iter().map(|&k| arr.get_unchecked_val(k)).collect();
-            Ok(Value::Array(Rc::new(Array::from_values(
-                arr.dims.clone(),
-                values,
-            ))))
+        Value::List(mut items) => {
+            let cells = Rc::make_mut(&mut items);
+            crate::sort::apply_order(&mut order, &mut |a, b| cells.swap(a, b));
+            Ok(Value::List(items))
+        }
+        Value::Array(mut arr) => {
+            let cells = &mut **Rc::make_mut(&mut arr);
+            crate::sort::apply_order(&mut order, &mut |a, b| cells.swap(a, b));
+            Ok(Value::Array(arr))
         }
         _ => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
     }

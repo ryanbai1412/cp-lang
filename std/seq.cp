@@ -310,15 +310,39 @@ fn sort_cmp<S: IndexedMut, T>(mut self: S, before: (T, T) -> Bool):
 /// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0309)
 pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None):
     if let before = cmp: return sort_cmp(mut self, before)
+    // One buffer: each key with its position, heap-sorted in place (ties go by
+    // position, so the order is stable), then the elements moved by its cycles.
     let n = self.len
-    let ks = self.keys
-    var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
-    var b = a.clone()
-    let in_a = merge_passes(mut a, mut b, n, (p, q) => p.0 < q.0)
-    var t = 0
-    for k in ks:
-        self[k] = if in_a: a[t].1 else: b[t].1
-        t += 1
+    var a: List<(K, Int)> = []
+    for k in self.keys: a.push((by(self[k]), a.len))
+    var end = n
+    var i = n / 2
+    while end > 1:
+        if i > 0: i -= 1
+        else:
+            end -= 1
+            a.swap_idx(0, end)
+        sift_keyed(mut a, i, end)
+    for s in 0..n:
+        var cur = s
+        while a[cur].1 >= 0:
+            let next = a[cur].1
+            a[cur] = (a[cur].0, -1)
+            if next == s: break
+            self.swap_idx(cur, next)
+            cur = next
+
+/// Sifts `a[i]` down the max-heap `a[..end]` of keys with their positions.
+fn sift_keyed<K: Ord>(mut a: List<(K, Int)>, i: Int, end: Int):
+    var p = i
+    while 2 * p + 1 < end:
+        var c = 2 * p + 1
+        if c + 1 < end and keyed_before(a[c], a[c + 1]): c += 1
+        if not keyed_before(a[p], a[c]): return
+        a.swap_idx(p, c)
+        p = c
+
+fn keyed_before<K: Ord>(x: (K, Int), y: (K, Int)) -> Bool = x.0 < y.0 or (not (y.0 < x.0) and x.1 < y.1)
 
 /// The bottom-up passes of `sort` over `a`, using `b` as the other buffer; true when the
 /// sorted result ends in `a`.

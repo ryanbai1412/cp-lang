@@ -658,12 +658,16 @@ impl Cells {
             Cells::Rows { stride, data, .. } => {
                 let k = *stride as usize;
                 let row = |i: usize| &data[i * k..i * k + k];
-                let Ok(order) =
+                let Ok(mut order) =
                     crate::sort::stable_order(data.len() / k, &mut |a, b| Ok(row(a) < row(b)))
                 else {
                     return;
                 };
-                *data = order.iter().flat_map(|&i| row(i)).copied().collect();
+                crate::sort::apply_order(&mut order, &mut |a, b| {
+                    for f in 0..k {
+                        data.swap(a * k + f, b * k + f);
+                    }
+                });
             }
         }
     }

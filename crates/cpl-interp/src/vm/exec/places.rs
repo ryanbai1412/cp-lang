@@ -263,8 +263,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 else {
                     return bug(span, "expected the sort keys");
                 };
-                let (items, dims) = seq_items(seq, span)?;
-                let keyed: Vec<(Value, Value)> = by.iter().zip(items).collect();
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 sync_to_stack(
                     &chunk.slot_map,
@@ -275,11 +273,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     chunk.traced,
                 );
                 self.show_lent()?;
-                let sorted = self.merge_sort_keyed(keyed, key_ty, desc, span);
+                let order =
+                    self.keyed_order(by.len(), &|i| by.get_unchecked_val(i), key_ty, desc, span);
                 self.hide_lent()?;
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
-                let sorted = seq_of_items(sorted?.into_iter().map(|(_, x)| x).collect(), dims);
+                let sorted = permute_seq(seq, order?, span)?;
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);

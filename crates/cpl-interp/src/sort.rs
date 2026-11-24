@@ -30,50 +30,72 @@ pub(crate) fn sorted_packed(cells: &value::Cells, ty: &Ty, desc: bool) -> Option
 }
 
 /// `0..n` in the stable order of `less(later, earlier)`: runs of at most `SORT_RUN`
-/// by insertion, then halves merged right half first, as `cpl::merge_sort` does. One
-/// `dyn` comparator serves every sort, so cpl.wasm carries one merge sort.
+/// by insertion, then halves merged right half first with the left half moved
+/// to a buffer of `n / 2`, as `cpl::merge_sort` does. One `dyn` comparator
+/// serves every sort, so cpl.wasm carries one merge sort.
 pub(crate) fn stable_order(
     n: usize,
     less: &mut dyn FnMut(usize, usize) -> Res<bool>,
-) -> Res<Vec<usize>> {
-    /// Sorts into `dst`, with `src` holding the same items as scratch.
+) -> Res<Vec<u32>> {
     fn sort(
-        src: &mut [usize],
-        dst: &mut [usize],
+        xs: &mut [u32],
+        buf: &mut [u32],
         less: &mut dyn FnMut(usize, usize) -> Res<bool>,
     ) -> Res<()> {
-        let n = dst.len();
+        let n = xs.len();
         if n <= SORT_RUN {
             for i in 1..n {
                 for j in (1..=i).rev() {
-                    if !less(dst[j], dst[j - 1])? {
+                    if !less(xs[j] as usize, xs[j - 1] as usize)? {
                         break;
                     }
-                    dst.swap(j, j - 1);
+                    xs.swap(j, j - 1);
                 }
             }
             return Ok(());
         }
         let m = n / 2;
-        sort(&mut dst[m..], &mut src[m..], less)?;
-        sort(&mut dst[..m], &mut src[..m], less)?;
-        let (mut i, mut j) = (0, m);
-        for slot in dst.iter_mut() {
+        sort(&mut xs[m..], buf, less)?;
+        sort(&mut xs[..m], buf, less)?;
+        buf[..m].copy_from_slice(&xs[..m]);
+        let (mut i, mut j, mut k) = (0, m, 0);
+        while i < m && j < n {
             // One `<` per step, as in the C++: the right goes first when smaller.
-            let right = i == m || (j < n && less(src[j], src[i])?);
-            *slot = if right { src[j] } else { src[i] };
-            if right {
+            if less(xs[j] as usize, buf[i] as usize)? {
+                xs[k] = xs[j];
                 j += 1;
             } else {
+                xs[k] = buf[i];
                 i += 1;
             }
+            k += 1;
         }
+        xs[k..k + m - i].copy_from_slice(&buf[i..m]);
         Ok(())
     }
-    let mut order: Vec<usize> = (0..n).collect();
-    let mut scratch = order.clone();
-    sort(&mut scratch, &mut order, less)?;
+    let mut order: Vec<u32> = (0..n as u32).collect();
+    let mut buf = vec![0; n / 2];
+    sort(&mut order, &mut buf, less)?;
     Ok(order)
+}
+
+/// Rearranges `order.len()` cells in place, through `swap`, so that the cell
+/// `order[i]` comes `i`-th: each cycle of the permutation is walked once and
+/// marked done in `order`, so no second copy of the cells is made.
+pub(crate) fn apply_order(order: &mut [u32], swap: &mut dyn FnMut(usize, usize)) {
+    const DONE: u32 = u32::MAX;
+    for s in 0..order.len() {
+        let mut cur = s;
+        while order[cur] != DONE {
+            let next = order[cur] as usize;
+            order[cur] = DONE;
+            if next == s {
+                break;
+            }
+            swap(cur, next);
+            cur = next;
+        }
+    }
 }
 
 /// Sorts `xs` by `Value`'s order through `stable_order`, so cpl.wasm carries no
@@ -82,13 +104,13 @@ pub(crate) fn sort_values(xs: &mut Vec<Value>) {
     let Ok(order) = stable_order(xs.len(), &mut |a, b| Ok(xs[a] < xs[b])) else {
         return;
     };
-    *xs = permuted(std::mem::take(xs), &order);
+    *xs = permuted(std::mem::take(xs), order);
 }
 
-/// `xs` rearranged so that `order[i]` comes `i`-th.
-fn permuted<T>(xs: Vec<T>, order: &[usize]) -> Vec<T> {
-    let mut slots: Vec<Option<T>> = xs.into_iter().map(Some).collect();
-    order.iter().filter_map(|&i| slots[i].take()).collect()
+/// `xs` rearranged in place so that `order[i]` comes `i`-th.
+pub(crate) fn permuted(mut xs: Vec<Value>, mut order: Vec<u32>) -> Vec<Value> {
+    apply_order(&mut order, &mut |a, b| xs.swap(a, b));
+    xs
 }
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
@@ -107,25 +129,23 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             };
             self.less_ty_val(ty, a, b, span)
         })?;
-        Ok(permuted(xs, &order))
+        Ok(permuted(xs, order))
     }
 
-    pub(crate) fn merge_sort_keyed(
+    /// `0..n` in the stable order of the keys `key(i)` of type `key_ty` (`desc`:
+    /// larger first), compared as `<` on that type, user `Ord` included.
+    pub(crate) fn keyed_order(
         &mut self,
-        xs: Vec<(Value, Value)>,
+        n: usize,
+        key: &dyn Fn(usize) -> Value,
         key_ty: &Ty,
         desc: bool,
         span: Span,
-    ) -> Res<Vec<(Value, Value)>> {
-        let order = stable_order(xs.len(), &mut |a, b| {
-            let (a, b) = if desc {
-                (&xs[b], &xs[a])
-            } else {
-                (&xs[a], &xs[b])
-            };
-            self.less_ty_val(key_ty, &a.0, &b.0, span)
-        })?;
-        Ok(permuted(xs, &order))
+    ) -> Res<Vec<u32>> {
+        stable_order(n, &mut |a, b| {
+            let (a, b) = if desc { (b, a) } else { (a, b) };
+            self.less_ty_val(key_ty, &key(a), &key(b), span)
+        })
     }
 
     pub(crate) fn checked_merge_sort_by(
@@ -184,7 +204,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let order = stable_order(xs.len(), &mut |a, b| {
             self.sort_by_less(&xs[a], &xs[b], cmp, desc, span)
         })?;
-        Ok(permuted(xs, &order))
+        Ok(permuted(xs, order))
     }
 
     /// Whether `later` goes before `earlier` under a sort's `cmp:` (`desc`: after),
