@@ -18,11 +18,11 @@ pub mod rng;
 pub mod run;
 pub mod shrink;
 pub mod spec;
+pub mod traced;
 
 pub use case::{judge_case, Failed, Ran, Ruling, Side, Sides, Talked, Transcript, Wrong};
 pub use engine::{
-    stress_source, ChoiceSource, Engine, InterpChoices, InterpEngine, ProcessChoices,
-    ProcessEngine, STUCK_STEPS,
+    stress_source, ChoiceSource, Engine, InterpChoices, InterpEngine, ProcessChoices, ProcessEngine,
 };
 pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
 pub use judge::{Judge, Judged, Launch, Verdict};
@@ -31,6 +31,7 @@ pub use report::StressResult;
 pub use rng::Rng;
 pub use shrink::{fit, shrink};
 pub use spec::{InputSpec, Shape, SpecError};
+pub use traced::STUCK_STEPS;
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

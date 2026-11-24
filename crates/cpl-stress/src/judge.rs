@@ -880,15 +880,18 @@ pub enum Explaining {
 
 /// What `--explain` shows of a case failing with `verdict`, for an
 /// `interactive` solution or one with a `brute` in its file, or why it
-/// shows nothing.
-pub fn explaining(verdict: &Verdict, interactive: bool, brute: bool) -> Result<Explaining, String> {
-    match verdict {
+/// shows nothing. A case the brute, checker or interactor failed on is no
+/// test of the solution: nothing explains it.
+pub fn explaining(
+    verdict: &Verdict,
+    interactive: bool,
+    brute: bool,
+) -> Option<Result<Explaining, String>> {
+    Some(match verdict {
+        _ if verdict.helper_failed() => return None,
         _ if interactive => Ok(Explaining::Answer),
         Verdict::TimeLimit => Ok(Explaining::Stuck),
-        Verdict::BruteError(_) => {
-            Err("the brute failed, so there is no run to compare".to_string())
-        }
         _ if brute => Ok(Explaining::Versus),
         _ => Err("`--explain` runs the file against its own `@alt` fns".to_string()),
-    }
+    })
 }

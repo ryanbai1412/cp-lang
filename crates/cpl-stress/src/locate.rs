@@ -91,7 +91,9 @@ pub fn run_with(
     };
     let shown = input.shown();
     let divergence = || {
-        let traced = tracer.and_then(|trace| trace(file, &text, false, false).ok());
+        // A part's wrong call: the file and its `@alt` fns lined up.
+        let versus = Ok(crate::judge::Explaining::Versus);
+        let traced = tracer.and_then(|trace| trace(file, &text, false, Some(&versus)).ok());
         traced.and_then(|traced| traced.divergence)
     };
     if json {

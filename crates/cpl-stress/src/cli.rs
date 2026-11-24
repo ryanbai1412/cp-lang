@@ -71,9 +71,14 @@ pub struct Traced {
 /// Runs a `.cp` file and its `@alt(program)` fn on an input in the debug
 /// interpreter. `cpl` passes its own; this crate does not link one.
 /// The `bool` asks for [`Traced::divergence`].
-/// Traces the file on a failing input: the input, `--explain`, and whether
-/// the solution ran out of time on it.
-pub type Tracer<'a> = &'a dyn Fn(&Path, &str, bool, bool) -> Result<Traced, String>;
+/// Traces the file on a failing input: the input, `--explain`, and what
+/// [`crate::judge::explaining`] chose to explain.
+pub type Tracer<'a> = &'a dyn Fn(
+    &Path,
+    &str,
+    bool,
+    Option<&Result<crate::judge::Explaining, String>>,
+) -> Result<Traced, String>;
 
 struct Args {
     file: PathBuf,
@@ -714,6 +719,11 @@ pub fn run_with(
         || (args.brute.is_none() && judge != Judge::Tokens);
     // Not a case the solution never finished: run again, it would only be stopped again.
     let finished = |failure: &crate::run::Failure| !failure.verdict.timed_out();
+    let how = (report.failure.as_ref()).and_then(|failure| {
+        let interactive = matches!(judge, Judge::Interactor(..));
+        let brute = own_brute.is_some() || part_brute.is_some();
+        crate::judge::explaining(&failure.verdict, interactive, brute)
+    });
     let traced = match (&report.failure, tracer) {
         (Some(failure), Some(tracer))
             if args.fast.is_none()
@@ -725,7 +735,7 @@ pub fn run_with(
                 &args.file,
                 &failure.input,
                 args.explain,
-                !finished(failure),
+                how.as_ref(),
             ))
         }
         _ => None,
@@ -734,13 +744,8 @@ pub fn run_with(
         Some(Ok(traced)) => (traced.stages.as_slice(), Some(traced.html.as_str())),
         _ => (&[][..], None),
     };
-    let explaining = (report.failure.as_ref()).map(|failure| {
-        let interactive = matches!(judge, Judge::Interactor(..));
-        let brute = own_brute.is_some() || part_brute.is_some();
-        crate::judge::explaining(&failure.verdict, interactive, brute)
-    });
-    let explained = match (&report.failure, &traced, explaining) {
-        (Some(failure), ..) if helper_failed(failure) => None,
+    let explained = match (&report.failure, &traced, how) {
+        (Some(_), _, None) => None,
         // A part's wrong call is shown without `--explain`: calls are always kept.
         (Some(_), Some(Ok(traced)), _) if part_brute.is_some() && traced.divergence.is_some() => {
             Some(Ok(traced.divergence.clone()))

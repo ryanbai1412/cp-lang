@@ -13,7 +13,7 @@
 
 use crate::case::{judge_case, Ran, Ruling, Sides, Talked, Wrong};
 use crate::choices::{self, Drawn};
-use crate::cli::{swap_in_part_brutes, Stage};
+use crate::cli::swap_in_part_brutes;
 use crate::judge::{explaining, Explaining};
 use crate::judge::{Judge, Trapped};
 use crate::program::Program;
@@ -21,10 +21,8 @@ use crate::report::StressResult;
 use crate::run::StressError as Error;
 use crate::run::{stress_with, InputSource, Options, StressError};
 use crate::spec::InputSpec;
+use crate::traced::retrace;
 use cpl_diag::Severity;
-use cpl_interp::trace::{
-    answered_divergence, explain_divergence, stages as trace_stages, stuck_divergence, TraceConfig,
-};
 use std::time::Duration;
 
 /// Runs the solution (and optional brute / judge) on one input.
@@ -277,34 +275,6 @@ fn run_ir(
     match res {
         Ok(()) => Ok(text),
         Err(trap) => Err((text, trap)),
-    }
-}
-
-/// How long the traced run that explains a counterexample may take.
-const TRACE_LIMIT: Duration = Duration::from_secs(10);
-
-/// The first steps of a run that never finishes: enough to see it go round.
-pub const STUCK_STEPS: usize = 100_000;
-
-fn observe_ir(
-    program: &cpl_ir::Program,
-    input: &[u8],
-    stack_limit: Option<u32>,
-    config: TraceConfig,
-) -> cpl_interp::Observed {
-    let mut sink = Vec::new();
-    let io = cpl_interp::Io::fixed(input).until(cpl_interp::Stop::after(TRACE_LIMIT));
-    match stack_limit {
-        Some(bytes) => cpl_interp::observe_on_this_thread(
-            program,
-            io,
-            &mut sink,
-            cpl_interp::Limits {
-                stack_bytes: bytes as usize,
-            },
-            Some(config),
-        ),
-        None => cpl_interp::run_observed(program, io, &mut sink, Some(config)),
     }
 }
 
@@ -606,92 +576,35 @@ pub fn stress_source(
     single.jobs = 1;
     let report = stress_with(&input_source, &engine, &single)?;
 
-    let config = |assignments: bool| TraceConfig {
-        source: source.to_string(),
-        assignments,
-        record_frames: true,
-        ..TraceConfig::default()
-    };
-    let mut stages = Vec::new();
-    let mut explained = None;
     let failed = report.failure.as_ref();
-    let brute_prog = engine.brute.as_ref();
-    let interactive = engine.interactor.is_some();
-    let explaining = failed.map(|f| explaining(&f.verdict, interactive, brute_prog.is_some()));
-    if let (Some(failure), true) = (failed, explain) {
-        explained = Some(match explaining.clone() {
-            Some(Ok(Explaining::Answer)) => {
-                let interactor = engine.interactor.as_ref().map(|i| &i.program);
-                let sent = interactor.map(|interactor| {
-                    let input = failure.input.as_bytes();
-                    crate::duplex::talk(&engine.fast, interactor, input, engine.limit, stack_limit)
-                        .sent
-                });
-                let sent = sent.unwrap_or_default();
-                let rec = observe_ir(&engine.fast, &sent, stack_limit, config(true));
-                Ok(answered_divergence(
-                    source,
-                    &rec.recording.unwrap_or_default(),
-                ))
-            }
-            Some(Ok(Explaining::Stuck)) => {
-                let rec = observe_ir(
-                    &engine.fast,
-                    failure.input.as_bytes(),
-                    stack_limit,
-                    TraceConfig {
-                        max_steps: Some(STUCK_STEPS),
-                        stop_when_full: true,
-                        record_frames: true,
-                        ..config(false)
-                    },
-                )
-                .recording
-                .unwrap_or_default();
-                stuck_divergence(source, &rec).map(Some).ok_or(format!(
-                    "the solution never finishes, and none of its first {STUCK_STEPS} steps repeats an earlier one"
-                ))
-            }
-            Some(Ok(Explaining::Versus)) => Ok(None),
-            Some(Err(why)) => Err(why),
-            None => Ok(None),
-        });
-    }
-    if let (Some(failure), Some(brute_prog)) = (failed, brute_prog) {
-        if matches!(explaining, Some(Ok(Explaining::Versus))) {
-            let fast_rec = observe_ir(
-                &engine.fast,
-                failure.input.as_bytes(),
+    let programs = crate::traced::Programs {
+        fast: &engine.fast,
+        brute: engine.brute.as_ref(),
+        interactor: engine.interactor.as_ref().map(|i| &i.program),
+    };
+    let interactive = programs.interactor.is_some();
+    let how = failed.and_then(|f| explaining(&f.verdict, interactive, programs.brute.is_some()));
+    let retraced = match (failed, &how) {
+        (Some(failure), Some(how)) if explain || matches!(how, Ok(Explaining::Versus)) => {
+            let input = &failure.input;
+            Some(retrace(
+                source,
+                programs,
+                input,
+                Some(how),
+                explain,
                 stack_limit,
-                config(explain),
-            )
-            .recording
-            .unwrap_or_default();
-            let slow_rec = observe_ir(
-                brute_prog,
-                failure.input.as_bytes(),
-                stack_limit,
-                config(explain),
-            )
-            .recording
-            .unwrap_or_default();
-            stages = trace_stages(&fast_rec, &slow_rec)
-                .into_iter()
-                .map(|s| Stage {
-                    name: s.name,
-                    line: s.line,
-                    fast: s.fast,
-                    brute: s.brute,
-                })
-                .collect();
-            // A part's wrong call is the explanation; else the first value they differ in.
-            let call = crate::calls::first_call_divergence(source, &fast_rec, &slow_rec);
-            if explain {
-                let value = || explain_divergence(source, &fast_rec, &slow_rec);
-                explained = Some(Ok(call.or_else(value)));
-            }
+            ))
         }
-    }
+        _ => None,
+    };
+    let (stages, explained) = match (retraced, how) {
+        (Some(retraced), Some(how)) => (
+            retraced.stages,
+            explain.then(|| how.and(retraced.divergence)),
+        ),
+        _ => (Vec::new(), None),
+    };
 
     let error = report.failure.as_ref().and_then(|failure| {
         if failure.trap.is_some() || failure.transcript.is_some() {

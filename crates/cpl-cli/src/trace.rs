@@ -2,11 +2,9 @@
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
 use cpl_diag::Shown;
-use cpl_interp::trace::{
-    answered_divergence, document, explain_divergence, stages, stuck_divergence, Recording,
-    TraceConfig,
-};
-use cpl_stress::STUCK_STEPS;
+use cpl_interp::trace::{document, Recording, TraceConfig};
+use cpl_stress::judge::Explaining;
+use cpl_stress::traced::{retrace, Programs};
 use std::path::Path;
 
 /// The trace viewer: one page with nothing to fetch. A trace is put in
@@ -133,7 +131,7 @@ pub fn against_brute(
     path: &Path,
     input: &str,
     explain: bool,
-    timed_out: bool,
+    how: Option<&Result<Explaining, String>>,
 ) -> Result<cpl_stress::cli::Traced, String> {
     let name = path.shown();
     let source = std::fs::read_to_string(path).map_err(|e| format!("can't read {name}: {e}"))?;
@@ -151,7 +149,7 @@ pub fn against_brute(
     let (brute_fn, slow) = match cpl_ir::brute(&analysis) {
         Some((brute_fn, _)) => {
             let slow = cpl_ir::lower_brute(&analysis, &brute_fn).map_err(first)?;
-            (Some(brute_fn), Some(slow))
+            (brute_fn, Some(slow))
         }
         None => match cpl_stress::cli::swap_in_part_brutes(&source) {
             Some(swapped) => {
@@ -160,98 +158,35 @@ pub fn against_brute(
                 let analysis = (swapped_db.analyze(&name))
                     .ok_or("the file with its `@alt` fns swapped in can't be checked")?;
                 let slow = cpl_ir::lower(&analysis).map_err(first)?;
-                (Some("its @alt fns".to_string()), Some(slow))
+                ("its @alt fns".to_string(), Some(slow))
             }
-            None => (None, None),
+            None => (String::new(), None),
         },
     };
-    let record = |program: &cpl_ir::Program| {
-        let mut sink = Vec::new();
-        let io = cpl_interp::Io::fixed(input.as_bytes())
-            .until(cpl_interp::Stop::after(std::time::Duration::from_secs(10)));
-        let config = cpl_interp::trace::TraceConfig {
-            assignments: explain,
-            ..config(&source, None)
-        };
-        cpl_interp::run_observed(program, io, &mut sink, Some(config))
-            .recording
-            .unwrap_or_default()
-    };
     // An interactive solution talks to the file's `@interactor`.
-    if fast.interactive {
-        let judge = cpl_ir::interactor(&analysis).ok_or(
-            "an interactive solution judged by another program is traced with `cpl run --trace`",
-        )?;
-        let judge = cpl_ir::lower_judge(&analysis, &judge).map_err(first)?;
-        let config = cpl_interp::trace::TraceConfig {
-            assignments: explain,
-            ..config(&source, None)
-        };
-        let ran = crate::interact::run_traced(
-            &fast,
-            &judge,
-            input.as_bytes(),
-            &mut Vec::new(),
-            config,
-            true,
-        );
-        let rec = ran.recording.unwrap_or_default();
-        return Ok(cpl_stress::cli::Traced {
-            stages: Vec::new(),
-            html: html(&single(&name, &source, &rec)),
-            divergence: explain
-                .then(|| answered_divergence(&source, &rec))
-                .flatten(),
-        });
-    }
-    if timed_out {
-        // Its first steps only: they are enough to see it go round.
-        let mut sink = Vec::new();
-        let io = cpl_interp::Io::fixed(input.as_bytes())
-            .until(cpl_interp::Stop::after(std::time::Duration::from_secs(10)));
-        let config = cpl_interp::trace::TraceConfig {
-            max_steps: Some(STUCK_STEPS),
-            stop_when_full: true,
-            ..config(&source, None)
-        };
-        let fast = (cpl_interp::run_observed(&fast, io, &mut sink, Some(config)).recording)
-            .unwrap_or_default();
-        let divergence = stuck_divergence(&source, &fast).ok_or(format!(
-            "the solution never finishes, and none of its first {STUCK_STEPS} steps repeats an earlier one"
-        ))?;
-        return Ok(cpl_stress::cli::Traced {
-            stages: Vec::new(),
-            html: html(&single(&name, &source, &fast)),
-            divergence: Some(divergence),
-        });
-    }
-    let fast = record(&fast);
-    let (Some(brute_fn), Some(slow)) = (brute_fn, slow) else {
-        return Ok(cpl_stress::cli::Traced {
-            stages: Vec::new(),
-            html: html(&single(&name, &source, &fast)),
-            divergence: None,
-        });
+    let interactor = match fast.interactive {
+        true => {
+            let judge = cpl_ir::interactor(&analysis).ok_or(
+                "an interactive solution judged by another program is traced with `cpl run --trace`",
+            )?;
+            Some(cpl_ir::lower_judge(&analysis, &judge).map_err(first)?)
+        }
+        false => None,
     };
-    let slow = record(&slow);
-    let stages = stages(&fast, &slow)
-        .into_iter()
-        .map(|stage| cpl_stress::cli::Stage {
-            name: stage.name,
-            line: stage.line,
-            fast: stage.fast,
-            brute: stage.brute,
-        })
-        .collect();
+    let programs = Programs {
+        fast: &fast,
+        brute: slow.as_ref(),
+        interactor: interactor.as_ref(),
+    };
+    let retraced = retrace(&source, programs, input, how, explain, None);
+    let html = html(&match &retraced.slow {
+        Some(slow) => versus(&name, &source, &brute_fn, &retraced.fast, slow),
+        None => single(&name, &source, &retraced.fast),
+    });
     Ok(cpl_stress::cli::Traced {
-        stages,
-        // The wrong call of a part needs no `explain`: calls are always kept.
-        divergence: cpl_stress::calls::first_call_divergence(&source, &fast, &slow).or_else(|| {
-            explain
-                .then(|| explain_divergence(&source, &fast, &slow))
-                .flatten()
-        }),
-        html: html(&versus(&name, &source, &brute_fn, &fast, &slow)),
+        stages: retraced.stages,
+        divergence: retraced.divergence?,
+        html,
     })
 }
 
