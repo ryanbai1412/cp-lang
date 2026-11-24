@@ -95,7 +95,7 @@
   {"id": "5718445", "language": "CPP17", "result": "AC", "time": 2.072678793, "memory_kb": 38624.0, "file": "corpus/submissions/5718445.cpp"},
   {"id": "5718456", "language": "CPP17", "result": "AC", "time": 0.849800462, "memory_kb": 39332.0, "file": "corpus/submissions/5718456.cpp"},
   {"id": "5718464", "language": "CPP17", "result": "AC", "time": 0.85048447, "memory_kb": 39332.0, "file": "corpus/submissions/5718464.cpp"},
-  {"id": "5719108", "language": "CPP17", "result": "AC", "time": 1.719876209, "memory_kb": 31900.0, "file": "corpus/submissions/5719108.cpp"},
+  {"id": "5719108", "language": "CPP17", "result": "AC", "time": 1.719876209, "memory_kb": 31900.0, "file": null},
   {"id": "5719109", "language": "CPP17", "result": "AC", "time": 1.841323627, "memory_kb": 31880.0, "file": "corpus/submissions/5719109.cpp"},
   {"id": "6400745", "language": "CPP17", "result": "TLE", "time": 3.727930519, "memory_kb": 39024.0, "file": "corpus/submissions/6400745.cpp"},
   {"id": "6400746", "language": "CPP17", "result": "TLE", "time": 3.754381606, "memory_kb": 38968.0, "file": "corpus/submissions/6400746.cpp"},
@@ -143,7 +143,7 @@
   {"id": "7249408", "language": "CPP17", "result": "WA", "time": 1.981352121, "memory_kb": 37128.0, "file": "corpus/submissions/7249408.cpp"},
   {"id": "7249409", "language": "CPP17", "result": "AC", "time": 0.8405448629999999, "memory_kb": 40256.0, "file": "corpus/submissions/7249409.cpp"}
  ],
- "cpp_ac": 50,
+ "cpp_ac": 49,
  "artifacts": {
   "port": [
    "corpus/problems/noi05p2/port.cp"
@@ -153,5 +153,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "5719108 passed the judge's data but prints 0 for MAX-SUM over a sequence of negatives (tests.toml case 1: -3), where the statement's sum is over a non-empty run and the port and every other AC print -3; it is no reference, its file is gone and this record stays."
 }
