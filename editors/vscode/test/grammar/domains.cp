@@ -220,3 +220,7 @@ let raw = rows.len
 let reqs: [q](l: I, r: I, x: X) = read()
 //            ^ variable.parameter.label.cp
 //                                ^^^^ support.function.builtin.cp
+
+fn stops<domain I, domain J>() -> Int = 0
+//       ^^^^^^ storage.type.domain.cp
+//                 ^^^^^^ storage.type.domain.cp

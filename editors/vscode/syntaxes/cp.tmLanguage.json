@@ -178,7 +178,13 @@
             "1": { "name": "storage.type.function.cp" },
             "2": { "name": "entity.name.function.cp" },
             "3": { "name": "punctuation.definition.generic.begin.cp" },
-            "4": { "patterns": [{ "include": "#type-names" }, { "include": "#punctuation" }] },
+            "4": {
+              "patterns": [
+                { "name": "storage.type.domain.cp", "match": "\\bdomain\\b" },
+                { "include": "#type-names" },
+                { "include": "#punctuation" }
+              ]
+            },
             "5": { "name": "punctuation.definition.generic.end.cp" }
           }
         },
