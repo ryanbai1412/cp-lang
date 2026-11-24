@@ -1030,7 +1030,10 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         if mode == "timing":
             print("\n==> wall-clock budgets (reported, never blocking)", flush=True)
             expr = " or ".join([wall_filter(), *(f"test(={t})" for t in TIMING_EXTRA)])
-            return run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr], cwd=ROOT).returncode
+            walls = run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr], cwd=ROOT).returncode
+            print("\n==> every touched-path slice against its limit (reported, never blocking)", flush=True)
+            slices = run([sys.executable, "scripts/affected.py", "--run-slices", "all"], cwd=ROOT).returncode
+            return walls or slices
         if g["kind"] != "checks":
             return tail_cls(mode, part, cpl, cache_dir, manifest).part(since)
         sel: dict[str, str] = {}

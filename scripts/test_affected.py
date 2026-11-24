@@ -194,6 +194,25 @@ class AffectedTest(unittest.TestCase):
                 mock.patch("sys.stdout", new_callable=io.StringIO):
             self.assertEqual(affected.run_slices(["vm-trace"]), 100)
 
+    def test_ci_runs_every_slice_and_counts_the_slow_ones_in_its_summary(self):
+        out = ("        PASS [  33.800s] (1/2) cpl-cli::vm_fallbacks shrink\n"
+               "        PASS [   2.000s] (2/2) cpl-cli::read_only_copies every_program\n")
+        done = subprocess.CompletedProcess([], 0, out, "")
+        ran = []
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(affected, "ROOT", tmp), \
+                mock.patch.object(affected, "build_slices", lambda names: ran.append(names) or 0), \
+                mock.patch.object(affected.subprocess, "run", lambda *a, **k: done), \
+                mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true",
+                                             "GITHUB_STEP_SUMMARY": os.path.join(tmp, "summary.md")}), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as printed:
+            self.assertEqual(affected.run_slices(["all"]), 0)
+            with open(os.path.join(tmp, "summary.md"), encoding="utf-8") as f:
+                self.assertEqual(f.read(), f"slow slices: 1 of {len(affected.SLICES)} over 20 s\n"
+                                           "- vm-trace 33.8s (consumers (trace))\n")
+        self.assertEqual(ran, [[s[0] for s in affected.SLICES]])
+        self.assertIn("::warning::affected: WARNING: slice vm-trace took 33.8s", printed.getvalue())
+
     def test_every_slice_has_an_owner_paths_and_tests(self):
         names = [s[0] for s in affected.SLICES]
         self.assertEqual(len(names), len(set(names)))

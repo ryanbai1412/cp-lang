@@ -4,7 +4,8 @@ Rule: handbook/guidelines/ci-checklist.md#cir3.
 
     affected.py [--json] [path ...]     default: the staged paths
     affected.py [--json] --base REV     the paths changed between REV and HEAD
-    affected.py --run-slices NAME ...   run touched-path slices, refusing one over 20 s
+    affected.py --run-slices NAME ...   run touched-path slices; one over 20 s warns its owner
+    affected.py --run-slices all        every slice (CI's wall-clock job reports the slow ones)
 
 A path under a crate selects that crate and, through nextest's `rdeps()`,
 every crate that depends on it. Prose selects nothing. Any path this file
@@ -183,6 +184,8 @@ def build_slices(names):
 
 
 def run_slices(names):
+    if names == ["all"]:
+        names = [s[0] for s in SLICES]
     unknown = [n for n in names if n not in {s[0] for s in SLICES}]
     if unknown:
         print(f"affected: unknown slice {' '.join(unknown)}; one of {', '.join(s[0] for s in SLICES)}")
@@ -202,10 +205,15 @@ def run_slices(names):
     for name, secs in slow.items():
         line = (f"affected: WARNING: slice {name} took {secs:.1f}s, over the {SLICE_LIMIT_S} s limit; "
                 f"its owner ({owners[name]}) splits it or makes it faster")
-        print(line)
+        print(f"::warning::{line}" if os.environ.get("GITHUB_ACTIONS") else line)
         if log:
             with open(log, "a", encoding="utf-8") as f:
                 f.write(f"{int(time.time())} {name} {secs:.1f}s {owners[name]}\n")
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as f:
+            f.write(f"slow slices: {len(slow)} of {len(names)} over {SLICE_LIMIT_S} s"
+                    + "".join(f"\n- {n} {t:.1f}s ({owners[n]})" for n, t in sorted(slow.items())) + "\n")
     return run.returncode
 
 
