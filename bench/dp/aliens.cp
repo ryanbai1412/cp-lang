@@ -14,4 +14,4 @@ fn solve(lam: Int) -> (val: Int, count: Int):
         started = true
         if better(open, out): out = open
     out
-print(-aliens(k, 0..=2 * 10 ** 6, solve))
+print(-aliens(k, solve, lambdas: 0..=2 * 10 ** 6))

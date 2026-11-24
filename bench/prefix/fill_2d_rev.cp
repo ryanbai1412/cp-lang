@@ -14,6 +14,6 @@ for r in R.rev:
             let r1 = r.ord + 1 + (s & (rr - 1))
             s = (s * 1103515245 + 12345) & 0x7fffffff
             let c1 = c.ord + 1 + (s & (rc - 1))
-            dp.sum(R(r.ord + 1)..=R(r1), C(c.ord + 1)..=C(c1)) + Z(1)
+            dp.fold(R(r.ord + 1)..=R(r1), C(c.ord + 1)..=C(c1)) + Z(1)
         dp.set(r, c, val)
-print(dp.sum(R.first..=R.last, C.first..=C.last))
+print(dp.fold(R.first!..=R.last!, C.first!..=C.last!))

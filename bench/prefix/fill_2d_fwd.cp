@@ -12,6 +12,6 @@ for r in R:
             let r0 = s & (r.ord - 1)
             s = (s * 1103515245 + 12345) & 0x7fffffff
             let c0 = s & (c.ord - 1)
-            dp.sum(R(r0)..r, C(c0)..c) + Z(1)
+            dp.fold(R(r0)..r, C(c0)..c) + Z(1)
         dp.set(r, c, val)
-print(dp.sum(R.first..=R.last, C.first..=C.last))
+print(dp.fold(R.first!..=R.last!, C.first!..=C.last!))

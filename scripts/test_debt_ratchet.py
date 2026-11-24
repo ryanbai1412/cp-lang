@@ -180,6 +180,18 @@ class DebtRatchetTest(unittest.TestCase):
                         "`web/out` and `web/gone.ts`\n## Known debt\n- `scripts/deleted.py` is gone\n")
             self.assertEqual(dr.stale_arch_paths(root), ["plan/domains/x/ARCHITECTURE.md:1 web/gone.ts"])
 
+    def test_bench_lists_count_entries_of_tracked_bench_lists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "bench/oversize.txt", "# why\nbench/a.cp 40000\n\nbench/b.cp\n")
+            self._write(root, "bench/dp/notes.txt", "x\n")
+            self._write(root, "bench/a.cp", "print(1)\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "bench/untracked.txt", "y\n")
+            self.assertEqual(sorted(dr.bench_lists(root)), [
+                "bench/dp/notes.txt", "bench/oversize.txt", "bench/oversize.txt"])
+
     def test_skip_lists_count_entries_of_exemption_lists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -9,6 +9,6 @@ for i in D.rev:
     let rem = n - 1 - i.ord
     let val = if rem == 0: Z(1) else:
         let hi = i.ord + 1 + (s & (rem - 1))
-        dp.sum(D(i.ord + 1)..=D(hi)) + Z(1)
+        dp.fold(D(i.ord + 1)..=D(hi)) + Z(1)
     dp.set(i, val)
-print(dp.sum(D.first..=D.last))
+print(dp.fold(D.first!..=D.last!))

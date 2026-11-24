@@ -4,7 +4,8 @@ let n: 2..=200_000 = read()
 domain V = 1..=n
 let a: [V]-1e9..=1e9 = read()
 let par: [2..=n]V = read()
-var lct = LazyLinkCut.new(AddSum, [V] v => a[v])
+let add_sum = Action<Int, Int>(0, (f, g) => f + g, (d, x, n) => x + d * n, Monoid<Int>(0, (x, y) => x + y))
+var lct = LazyLinkCut<V, Int, Int>.new(add_sum, Some(a))
 for v in 2..=n: lct.link(V(v), par[v])
 let q: 0..=1_000_000 = read()
 var hash = 0

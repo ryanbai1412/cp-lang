@@ -1,5 +1,3 @@
-use std.seq.{scan_in_place, suffix_scan_in_place}
-
 let n = 200_000
 var v: List<Int> = [0 for _ in 0..n]
 var seed = 123456789
@@ -9,9 +7,11 @@ for i in 0..n:
 
 var acc = 0
 for r in 0..400:
-    v.scan_in_place(min)
+    let lo = v.scan(min)
+    for i in 0..n: v[i] = lo.prefix(i + 1)
     acc += v[n - 1 - r]
-    v.suffix_scan_in_place(max)
+    let hi = v.rev.scan(max)
+    for i in 0..n: v[i] = hi.prefix(n - i)
     acc += v[r]
     v[r] = r - 1000
 

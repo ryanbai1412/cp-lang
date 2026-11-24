@@ -8,6 +8,6 @@ for i in D:
     s = (s * 1103515245 + 12345) & 0x7fffffff
     let val = if i.ord == 0: Z(1) else:
         let lo = s & (i.ord - 1)
-        dp.sum(D(lo)..i) + Z(1)
+        dp.fold(D(lo)..i) + Z(1)
     dp.set(i, val)
-print(dp.sum(D.first..=D.last))
+print(dp.fold(D.first!..=D.last!))

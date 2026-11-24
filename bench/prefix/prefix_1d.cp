@@ -15,5 +15,5 @@ for _ in 0..q:
     let y = s & mask
     let l = min(x, y)
     let r = max(x, y)
-    acc += p.sum(D(l)..=D(r))
+    acc += p.fold(D(l)..=D(r))
 print(acc)

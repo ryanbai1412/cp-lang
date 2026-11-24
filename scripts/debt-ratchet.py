@@ -662,6 +662,15 @@ def skip_lists(root: Path) -> list[str]:
     return found
 
 
+def bench_lists(root: Path) -> list[str]:
+    """Entries in tracked `bench/**/*.txt` files: every such file exempts programs from a bench
+    gate (oversize, unmatched), so the bench gates hold only once there are none."""
+    found = []
+    for rel in _git(root, "ls-files", "bench/*.txt"):
+        found += [rel] * sum(1 for l in _lines(root / rel) if l.strip() and not l.lstrip().startswith("#"))
+    return found
+
+
 REGISTER_SPAN_RE = re.compile(r"`([^`]+)`")
 REGISTER_COMMANDS = {"cargo", "cpl", "cpl-conform", "just"}
 REGISTER_CARGO_GATES = {"test", "nextest", "clippy", "fuzz", "mutants"}
@@ -884,6 +893,7 @@ COUNTERS = {
     "dead_code_allows": ("allow(dead_code) attributes", dead_code_allows, True),
     "external_crates": ("third-party packages in Cargo.lock", external_crates, True),
     "written_twice": ("hand-kept files listing most of a sourced fact", written_twice, True),
+    "bench_lists": ("entries in bench/*.txt exemption lists", bench_lists, True),
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),

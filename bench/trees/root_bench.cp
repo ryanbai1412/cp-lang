@@ -2,7 +2,7 @@
 let n: 1..=1_000_000 = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
-let t = Rooted.new(Graph.undirected(edges), V.first)
+let t = Rooted.new(Graph.undirected(edges), V(1))
 var s: [V]Int = [V] v => v.ord
 for v in t.at.rev:
     if let p = t.parent(v): s[p] += s[v]

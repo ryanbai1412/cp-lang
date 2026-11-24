@@ -9,9 +9,8 @@ research/dryrun/v03/*.cp, bench/*/*.cp and bench/zero-cost/*/*.cp. A
 program that does not build is listed, not sized. --report writes one line
 per program (bytes, the largest part, the path). --check fails when a built
 program is over the bar but not in bench/oversize.txt, or is in it and fits,
-and when a bench program does not build but is not in bench/unbuilt.txt, or
-is in it and builds: nothing else builds the bench programs, so a rename
-would rot them unseen. Enforces performance/R8.
+and when any bench program does not build: nothing else builds the bench
+programs, so a rename would rot them unseen. Enforces performance/R8.
 """
 import argparse, glob, os, re, statistics, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -20,7 +19,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BAR = 32 * 1024
 WARN = 24 * 1024
 OVERSIZE = os.path.join(ROOT, "bench", "oversize.txt")
-UNBUILT = os.path.join(ROOT, "bench", "unbuilt.txt")
 SETS = (
     "corpus/problems/*/spec.cp",
     "corpus/problems/*/port.cp",
@@ -44,22 +42,11 @@ def oversize():
     return listed(OVERSIZE)
 
 
-def unbuilt():
-    return listed(UNBUILT)
-
-
-def build_verdict(broken, built, known):
-    """What to say about the bench programs `broken` (path, why) and `built`
-    (paths), given the paths `known` not to build, and whether --check fails."""
-    messages, failed = [], False
-    for p, why in broken:
-        if p.startswith("bench/") and p not in known:
-            failed = True
-            messages.append(f"sizes: {p} does not build ({why}); fix it or add it to bench/unbuilt.txt with why")
-    for p in sorted(known & set(built)):
-        failed = True
-        messages.append(f"sizes: {p} builds now: take it off bench/unbuilt.txt")
-    return messages, failed
+def build_verdict(broken):
+    """What to say about the programs `broken` (path, why), and whether --check
+    fails: every bench program must build; corpus programs are left to their suites."""
+    bench = [(p, why) for p, why in broken if p.startswith("bench/")]
+    return [f"sizes: {p} does not build ({why}); fix it" for p, why in bench], bool(bench)
 
 
 def size(cpl, judge, path):
@@ -120,7 +107,7 @@ def main():
     for n, p in warn:
         print(f"sizes: warning: {p} is {n} bytes, over the {WARN}-byte warning", file=sys.stderr)
     messages, failed = verdict(over, oversize())
-    more, broke = build_verdict(broken, [p for _, _, p in built], unbuilt())
+    more, broke = build_verdict(broken)
     messages, failed = messages + more, failed or broke
     for m in messages:
         print(m, file=sys.stderr)

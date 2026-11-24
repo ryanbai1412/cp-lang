@@ -20,5 +20,5 @@ for _ in 0..q:
     let c1 = s & cmask
     s = (s * 1103515245 + 12345) & 0x7fffffff
     let c2 = s & cmask
-    acc += p.sum(R(min(r1, r2))..=R(max(r1, r2)), C(min(c1, c2))..=C(max(c1, c2)))
+    acc += p.fold(R(min(r1, r2))..=R(max(r1, r2)), C(min(c1, c2))..=C(max(c1, c2)))
 print(acc)
