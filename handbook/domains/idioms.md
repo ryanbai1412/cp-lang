@@ -314,6 +314,7 @@ the chunks touched (4); find a planted off-by-one with stress and trace
 - 2026-11-23: the spelling and 32 KB rows name `scripts/corpus.py verify` (`stress`, `size`, `lint`).
 - 2026-11-23: the accepted-C++ agreement row names `corpus/generators.py`.
 - 2026-11-24: `corpus/differential.py` is a hard gate; `corpus/differential-known.txt` is gone.
+- 2026-11-24: the generator, max-bound and accepted-C++ rows name `scripts/corpus.py verify` (`max`), which replaced the old generators checker; `corpus_no_max` counts packages without a `--max`.
 - 2026-11-23: the verdict and privacy rows name their checks.
 - 2026-11-23: the dream-and-spec row names `scripts/corpus.py verify --only package`.
 - 2026-11-23: the deep-recursion and catalog rows name their checks.
