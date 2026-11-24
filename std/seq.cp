@@ -3734,9 +3734,7 @@ pub fn split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>:
     yield piece(self, i, self.len)
 
 /// The ordinals `i..j` of `s` as a slice keeping its keys; an empty piece sits at key `i` when there is one.
-fn clamp_count(k: Int, n: Int) -> Int:
-    assert k >= 0, "a count must not be negative"
-    if k < n: k else: n
+fn clamp_count(k: Len, n: Int) -> Int = if k < n: k else: n
 
 fn piece<S: Indexed>(s: S, i: Int, j: Int) -> Slice<S>:
     let n = s.len

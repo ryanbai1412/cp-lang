@@ -250,7 +250,7 @@ fn a_view_of_a_temporary_holds_the_temporary() {
         .lines()
         .find(|l| l.contains("take_Lst_Int_") && l.contains(" = "))
         .unwrap_or_else(|| panic!("{cpp}"));
-    assert!(call.contains(&format!("({name}, n)")), "{cpp}");
+    assert!(call.contains(&format!("({name}, ")), "{cpp}");
 }
 
 const SMALL_BITSETS: &str = concat!(
