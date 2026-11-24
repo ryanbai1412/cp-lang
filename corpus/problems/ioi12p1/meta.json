@@ -14,5 +14,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": "Output-only: the accepted submissions are odometer programs, not C++. Packaged as a judged program: the input is a subtask (1-5) and the output its odometer program, which checker.py (the statement's simulator) runs on that subtask's edge and random grids within its program size and execution length (for subtasks 4 and 5, the limits where the score reaches 0). orig.cpp was written for the corpus and prints a program that passes for each subtask."
+ "notes": "Output-only: the accepted submissions are odometer programs, not C++. Packaged as a judged program: the input is a subtask (1-5) and the output its odometer program, which checker.py parses and its C++ simulator runs on that subtask's edge and random grids within the full-score program size and execution length. orig.cpp was written for the corpus and scores full marks on each subtask (subtask 4: size 197, at most 187346 steps; subtask 5: size 435, after the IOI 2012 solution booklet)."
 }
