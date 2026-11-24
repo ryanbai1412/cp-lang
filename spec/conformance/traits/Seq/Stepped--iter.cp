@@ -1,2 +1,3 @@
-// expect: ok, output "3\n2\n5"
-for x in [3, 1, 2, 4, 5].step(2): print(x)
+// expect: ok, output "3\n4\n5"
+let s = [3, 1, 4, 1, 5].step(2)
+for x in s.iter(): print(x)
