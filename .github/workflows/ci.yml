@@ -534,9 +534,15 @@ jobs:
   corpus-audit:
     # handbook/guidelines/problem-packages-checklist.md R1-R4, compiling and
     # running each problem's accepted C++; results are cached by content.
-    name: corpus packages pass the audit
+    # Every M-th package by id per shard (corpus.py --shard), so each shard
+    # stays near 4 min and no package is skipped.
+    name: corpus packages pass the audit (${{ matrix.shard }}/8)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -554,19 +560,21 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/cpl/cxx/corpus
-          key: corpus-audit-cxx-${{ steps.hour.outputs.hour }}
-          restore-keys: corpus-audit-cxx-
+          key: corpus-audit-cxx-${{ matrix.shard }}-${{ steps.hour.outputs.hour }}
+          restore-keys: |
+            corpus-audit-cxx-${{ matrix.shard }}-
+            corpus-audit-cxx-
       - name: Audit every problem package
         timeout-minutes: 12
         # The step's own timeout leaves g++ running into the save below, whose
         # tar then fails ("file changed as we read it") and the cache never
         # warms; `timeout` ends the whole process group first.
-        run: timeout 660 just corpus-verify --only package --cpl target/ci/cpl -j "$(nproc)"
+        run: timeout 660 just corpus-verify --only package --cpl target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/8
       - uses: actions/cache/save@v4
         if: always()
         with:
           path: ~/.cache/cpl/cxx/corpus
-          key: corpus-audit-cxx-${{ steps.hour.outputs.hour }}
+          key: corpus-audit-cxx-${{ matrix.shard }}-${{ steps.hour.outputs.hour }}
 
   site:
     name: site build
