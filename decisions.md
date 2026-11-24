@@ -9319,8 +9319,6 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Why.** No privileged stdlib: a std name the compiler spells is one a user library cannot match; `@aka` is the sibling of `@was` (older std names) and any library may write it. Diagnostics are unchanged.
 - **Reverse.** Restore the table in `builtins/foreign.rs` and drop the decorator.
 
-## 635. (reserved, compiler)
-
 ## 636. (reserved, compiler)
 
 ## 637. (reserved, compiler)
@@ -9360,3 +9358,9 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 ## 641. (reserved, compiler)
 
 ## 642. (reserved, compiler)
+
+## 635. `std_names_outside_rt` scans name resolution, lowering and codegen, not flag tables (compiler, 2026-11-24)
+
+- **Call.** The name-ban counter skips the build-option tables a CLI flag parses, listed by path in `NAME_BAN_OUT_OF_SCOPE` in `scripts/debt-ratchet.py`: today only `crates/cpl-ir/src/checks.rs`, whose `"all"` is the `--checks all` value. A std name in any lowering, checker or codegen module still counts. Factory ruling of 2026-11-24.
+- **Why.** The counter measures compiler code that matches a std name. A flag value that happens to be spelled like a std fn is not such a match. A path scope keeps it structural, where a name allowlist would also hide real arms that use the same spelling.
+- **Reverse.** Empty `NAME_BAN_OUT_OF_SCOPE`. The counter then scans every module of the four crates again.

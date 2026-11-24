@@ -365,6 +365,9 @@ def backend_std_names(root: Path) -> list[str]:
 
 STD_PUB_NAME_RE = re.compile(r"^pub (?:fn|struct|enum|trait|type) (\w+)")
 NAME_BAN_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
+# Modules outside name resolution, lowering and codegen: the build-option tables a CLI flag
+# parses (`cpl build --checks all`), whose strings are flag values, not std names (decision 635).
+NAME_BAN_OUT_OF_SCOPE = ("crates/cpl-ir/src/checks.rs",)
 
 
 def std_names_outside_rt(root: Path) -> list[str]:
@@ -374,7 +377,7 @@ def std_names_outside_rt(root: Path) -> list[str]:
              for line in _lines(root / rel) if (m := STD_PUB_NAME_RE.match(line))}
     hits: set[str] = set()
     for p in _rs_files(root, *(f"crates/{c}/src" for c in NAME_BAN_CRATES), tests=False):
-        if "test" in p.name:
+        if "test" in p.name or _rel(root, p) in NAME_BAN_OUT_OF_SCOPE:
             continue
         for line in _lines(p):
             if not line.lstrip().startswith("//"):

@@ -1809,6 +1809,16 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "std/vec.cp", "pub struct Vec<T>():\n")
             self.assertEqual(dr.std_shadowed(root), ["Subset", "runs", "take"])
 
+    def test_std_names_outside_rt_skips_flag_values_not_lowering(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            self._write(root, "std/seq.cp", "pub fn all<S>(self: S) -> Bool = true\npub fn any<S>(self: S) -> Bool = true\n")
+            self._write(root, "crates/cpl-ir/src/checks.rs", 'match name { "all" => Checks::All, _ => None }\n')
+            self._write(root, "crates/cpl-ir/src/lower/call.rs", 'match name { "any" => {}, _ => {} }\n')
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+            self.assertEqual(dr.std_names_outside_rt(root), ["any"])
+
     def test_ir_builtin_names_reads_tuple_arms(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
