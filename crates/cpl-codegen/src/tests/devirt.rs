@@ -385,3 +385,19 @@ print(first_le(mut st, 1))
         "`source` holds tuples but is None in every tree the program builds:\n{out}"
     );
 }
+
+#[test]
+fn a_dropped_field_at_a_product_position_drops_its_local_and_stores() {
+    let out = cpp(concat!(
+        "use std.graph.{fixed_cost_paths}\n",
+        "domain R = 0..5\n",
+        "domain T = 0..3\n",
+        "let p = fixed_cost_paths([(R(0), Subset<T>.empty)], [1, 2], cost: m => m, ",
+        "step: (m, s) => if Int(s.0) + m < 5: Some((R(Int(s.0) + m), s.1)) else: None)\n",
+        "print(p[(R(4), Subset<T>.empty)])\n",
+    ));
+    assert!(
+        !out.contains(" back(") && !out.contains("back["),
+        "nothing reads `Paths.back`, so neither its array nor a store into it is written:\n{out}"
+    );
+}

@@ -306,7 +306,7 @@ pub fn in_domain(ty: &Ty, idxs: &[Expr]) -> bool {
 pub fn pure_path(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Local(_) | ExprKind::Global(_) => true,
-        ExprKind::Field(base, _) => pure_path(base),
+        ExprKind::Field(base, _) | ExprKind::Cast(Cast::Trust, base) => pure_path(base),
         _ => false,
     }
 }
