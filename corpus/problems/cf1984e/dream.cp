@@ -5,8 +5,8 @@
 @!multitest
 domain V = 1..=read(2..=2e5)
 let g = Graph.undirected(read<[V.count - 1](V, V)>())
-let greedy = Rooted(g, V.first).reroot(
-    (count: +, taken: or),
-    finish: s => (count: s.count + (not s.taken).int, taken: not s.taken),
+let greedy = Rooted(g, V.first!).reroot(
+    each(count: +, taken: or),
+    finish: (s: (count: Int, taken: Bool), _) => (count: s.count + Int(not s.taken), taken: not s.taken),
 )
-print(V.filter(r => g.deg(r) == 1).max(r => greedy[r].count - greedy[r].taken.int + 1))
+print(max(greedy[r].count - Int(greedy[r].taken) + 1 for r in V if g.deg(r) == 1)!)
