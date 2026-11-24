@@ -31,7 +31,7 @@ use std.math.{bit}
 /// cost: \(O(n + m)\)
 /// traps: when the graph is not connected from `V.first`, or `V` is empty
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Graph.undirected(es).spanning_tree(); t.parent(2) == Some(1) and t.parent(0) == None`
-pub fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _> = Rooted.new(self, V.first!)
+pub fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _, _> = Rooted.new(self, V.first!)
 
 /// The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the
 /// edges it uses.
@@ -46,7 +46,7 @@ pub fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _> = Rooted.new(self, 
 /// order: children in the order the search reached them
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let (tree, tree_edge) = Graph.undirected(es).dfs_tree(0); tree.parent(2) == Some(1) and tree.depth(2) == 2 and tree_edge == [true, true, false]`
-pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _>, tree_edge: [E]Bool) where A: Edged<E>:
+pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _, _>, tree_edge: [E]Bool) where A: Edged<E>:
     var par: [V]?V = None
     var tree_edge: [E]Bool = false
     var path: List<V> = []
@@ -64,7 +64,7 @@ pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _>, tre
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in \(O(n)\) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child
 /// lists.
-pub struct Rooted<V, Pre>:
+pub struct Rooted<V, Pre, A>:
     pub root: V
     /// The parent; `None` at the root.
     pub par: [V]?V
@@ -84,6 +84,8 @@ pub struct Rooted<V, Pre>:
     pub tin: [V]Pre
     /// The inverse of `tin` / `pos`.
     pub at: [Pre]V
+    /// The arc each vertex was entered by; `None` at a root.
+    in_arc: [V]?A
 
     /// Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`,
     /// `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and
@@ -101,7 +103,7 @@ pub struct Rooted<V, Pre>:
     /// cost: \(O(n + m)\) for m listed arcs, without recursion
     /// traps: when some vertex is not reachable from `root`
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(0).collect() == [1, 2] and t.children(1).collect() == [3, 4] and t.depth(4) == 2`
-    pub fn new(next: Next<V>, root: V) -> Rooted<V, _> = Rooted.build(next, [root])
+    pub fn new(next: Next<V>, root: V) -> Rooted<V, _, _> = Rooted.build(next, [root])
 
     /// Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or
     /// the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one missing key
@@ -114,7 +116,7 @@ pub struct Rooted<V, Pre>:
     /// empty: a `par` with no root, empty or cyclic, traps
     /// traps: when the parents have a cycle; `try_from_parents` is for input that may
     /// example: `domain V = 0..3; let par: [V]?V = [None, Some(0), Some(1)]; let t = Rooted.from_parents(par); t.depth(2) == 2 and t.parent(1) == Some(0)`
-    pub fn from_parents(par: [V]?V) -> Rooted<V, _> = Rooted.try_from_parents(par)!
+    pub fn from_parents(par: [V]?V) -> Rooted<V, _, _> = Rooted.try_from_parents(par)!
 
     /// `from_parents` for parents that may not form a forest: `None` when they have a cycle.
     ///
@@ -124,7 +126,7 @@ pub struct Rooted<V, Pre>:
     /// empty: `None` when `par` has no root
     /// traps: never
     /// example: `domain V = 0..2; let par: [V]?V = [Some(1), Some(0)]; Rooted.try_from_parents(par) == None`
-    pub fn try_from_parents(par: [V]?V) -> ?Rooted<V, _>:
+    pub fn try_from_parents(par: [V]?V) -> ?Rooted<V, _, _>:
         var kids: [V]List<V> = []
         var roots: List<V> = []
         for v in V:
@@ -149,15 +151,16 @@ pub struct Rooted<V, Pre>:
     /// empty: `from: []` (the default) roots each component at its smallest vertex
     /// traps: when `V` is empty
     /// example: `domain V = 0..4; let adj: [V]List<V> = [[1], [0], [3], [2]]; let t = Rooted.forest(adj, from: [2, 0]); t.roots.collect() == [2, 0] and t.root_of(1) == 0`
-    pub fn forest(next: Next<V>, from: List<V> = []) -> Rooted<V, _> =
+    pub fn forest(next: Next<V>, from: List<V> = []) -> Rooted<V, _, _> =
         Rooted.build(next, from, span: true)
 
     // Breadth-first from each root in turn, then sizes, heavy children and the heavy-first
     // preorder. Unless `span`, traps when a root is reached twice or some vertex is never
     // reached; with `span`, skips reached roots and roots each unreached vertex in `V` order.
-    fn build(next: Next<V>, roots: List<V>, span: Bool = false) -> Rooted<V, _>:
+    fn build<N: Next<V>>(next: N, roots: List<V>, span: Bool = false) -> Rooted<V, _, N.Arc>:
         var seen: [V]Bool = false
         var par: [V]?V = None
+        var in_arc: [V]?N.Arc = None
         var dep: [V]0..=V.count = 0
         var far: [V]Int = 0
         var bfs: List<V> = []
@@ -182,6 +185,7 @@ pub struct Rooted<V, Pre>:
                     if not seen[v]:
                         seen[v] = true
                         par[v] = Some(u)
+                        in_arc[v] = Some(a)
                         dep[v] = dep[u] + 1
                         far[v] = far[u] + arc_len(a)
                         bfs.push(v)
@@ -218,7 +222,7 @@ pub struct Rooted<V, Pre>:
                     tin[bfs[j]] = at
                     at += sz[bfs[j]]
         domain Order = 0..V.count
-        Rooted<V, Order>(
+        Rooted<V, Order, N.Arc>(
             bfs[0],
             par,
             dep,
@@ -231,6 +235,7 @@ pub struct Rooted<V, Pre>:
             top,
             [V] v => Order.nth(tin[v]),
             [Order] p => order[p.ord],
+            in_arc,
         )
 
     /// The roots in the order given: one for `new`, one per tree for `forest`, key order for
@@ -277,7 +282,7 @@ pub struct Rooted<V, Pre>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Rooted(Graph.undirected(es), root: 0); t.up_arc(2)!.to == 2 and t.up_arc(0) == None`
-    pub fn up_arc<A>(self, v: V) -> ?A = todo
+    pub fn up_arc(self, v: V) -> ?A = in_arc[v]
 
     /// Reorders a vertex-indexed array into preorder: `out[t.pos(v)] == a[v]`, ready to build a
     /// `SegTree` or `Fenwick` over `t.Pre`.
@@ -308,7 +313,8 @@ pub struct Rooted<V, Pre>:
     /// order: child order
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Rooted(Graph.undirected(es), root: 0); t.child_arcs(1).map(a => a.to).collect() == [2]`
-    pub fn child_arcs<A>(self, v: V) -> yields A = todo
+    pub fn child_arcs(self, v: V) -> yields A:
+        for i in k0[v]..k1[v]: yield in_arc[bfs[i]]!
 
     /// For each child `c` of `v`, in child order, the fold with `op` of `f` over `v`'s other
     /// children: the step of a rerooting DP, with no division or inverse.
@@ -1292,7 +1298,7 @@ fn random_tree<V>(any: V) -> [V]List<V>:
     adj
 
 /// The vertices from `a` to `b`, by climbing parents.
-fn slow_path<V, Pre>(r: Rooted<V, Pre>, a: V, b: V) -> List<V>:
+fn slow_path<V, Pre, A>(r: Rooted<V, Pre, A>, a: V, b: V) -> List<V>:
     var (x, y) = (a, b)
     var (left, right) = (List<V>(), List<V>())
     while x != y:
@@ -2341,7 +2347,7 @@ pub struct PreferredPaths<V>:
     /// cost: \(O(n)\)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var pp = PreferredPaths(t); pp.access(0).count() == 0`
-    pub fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V> =
+    pub fn new<P, A>(t: Rooted<V, P, A>) -> PreferredPaths<V> =
         PreferredPaths([V] _ => None, [V] _ => None, [V] v => t.parent(v), [V] v => v, [])
 
     /// Makes the path from the root to `v` one preferred path, yielding each switch bottom-up.
@@ -3310,7 +3316,7 @@ pub struct LcaTable<V>:
     /// cost: \(O(n \log n)\) time and memory
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lt = LcaTable(t); lt.lca(3, 4) == 1`
-    pub fn new<Pre>(t: Rooted<V, Pre>) -> LcaTable<V>:
+    pub fn new<Pre, A>(t: Rooted<V, Pre, A>) -> LcaTable<V>:
         let n = V.count
         let at = t.reorder([V] v => v)
         var far: [V]Int = 0
@@ -3942,7 +3948,7 @@ pub struct KruskalTree<V, N, W>:
     /// cost: \(O(1)\); built with the tree
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.tree.parent(kt.leaf[1]) == kt.tree.parent(kt.leaf[2]) and kt.tree.size(kt.leaf[0]) == 1`
-    @get pub fn tree(self) -> Rooted<N, _> = Rooted.from_parents(lift.up)
+    @get pub fn tree(self) -> Rooted<N, _, _> = Rooted.from_parents(lift.up)
 
     /// The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when
     /// None is); its leaves are what `v` reaches by edges of weight at most `limit`.
@@ -4112,7 +4118,7 @@ pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
 
 /// `gen<Rooted<V>>(shape:)`, with the shape by its place in path, star,
 /// binary, caterpillar, random: each vertex hangs from one drawn before it.
-fn gen_rooted<V>(shape: Int) -> Rooted<V, _>:
+fn gen_rooted<V>(shape: Int) -> Rooted<V, _, _>:
     let n = V.count
     var label = V.collect()
     shuffle(mut label)

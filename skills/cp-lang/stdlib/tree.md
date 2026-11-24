@@ -6,22 +6,24 @@ Rooted trees: parents, subtree ranges, LCA, and path folds over one range struct
 
 In prelude (no `use` needed): `JumpTree`, `KruskalTree`, `LcaTable`, `Lift`, `PreferredPaths`, `Rooted`, `kruskal_tree`.
 
-## `struct Rooted<V, Pre>`
+## `struct Rooted<V, Pre, A>`
 
 A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 
-- `fn new(next: Next<V>, root: V) -> Rooted<V, _>` — \(O(n + m)\) for m listed arcs, without recursion; Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`, `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and `Rooted(root: r, next: u => ...)` for anything else.; traps: when some vertex is not reachable from `root`
-- `fn from_parents(par: [V]?V) -> Rooted<V, _>` — \(O(n)\); Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one missing key is the root.; traps: when the parents have a cycle; `try_from_parents` is for input that may
-- `fn try_from_parents(par: [V]?V) -> ?Rooted<V, _>` — \(O(n)\); `from_parents` for parents that may not form a forest: `None` when they have a cycle.
-- `fn forest(next: Next<V>, from: List<V> = []) -> Rooted<V, _>` — \(O(n + m)\); A spanning forest: walks `from` as `dfs` does, skipping a root already reached, then roots each unreached vertex in `V` order, so `from: []` spans every component (decision 451).; traps: when `V` is empty
+Fields: `in_arc: [V]?A`.
+
+- `fn new(next: Next<V>, root: V) -> Rooted<V, _, _>` — \(O(n + m)\) for m listed arcs, without recursion; Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`, `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and `Rooted(root: r, next: u => ...)` for anything else.; traps: when some vertex is not reachable from `root`
+- `fn from_parents(par: [V]?V) -> Rooted<V, _, _>` — \(O(n)\); Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one missing key is the root.; traps: when the parents have a cycle; `try_from_parents` is for input that may
+- `fn try_from_parents(par: [V]?V) -> ?Rooted<V, _, _>` — \(O(n)\); `from_parents` for parents that may not form a forest: `None` when they have a cycle.
+- `fn forest(next: Next<V>, from: List<V> = []) -> Rooted<V, _, _>` — \(O(n + m)\); A spanning forest: walks `from` as `dfs` does, skipping a root already reached, then roots each unreached vertex in `V` order, so `from: []` spans every component (decision 451).; traps: when `V` is empty
 - `@get fn roots(self) -> yields V` — \(O(1)\) to make, \(O(1)\) per root; The roots in the order given: one for `new`, one per tree for `forest`, key order for `from_parents`.
 - `@get fn order(self) -> List<V>` — \(O(1)\); the list is the tree's own breadth-first order; Every vertex, parents before children: breadth-first from the roots, each vertex's children in child order.
 - `fn pos(self, v: V) -> Pre` — \(O(1)\); The position of `v` in this tree's own preorder domain `t.Pre`; the inverse of `at`.
 - `fn parent(self, v: V) -> ?V` — \(O(1)\); The parent of `v`; `None` at a root.
-- `fn up_arc<A>(self, v: V) -> ?A` — \(O(1)\); The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost` on a tree read with a `cost` field); `None` at a root.
+- `fn up_arc(self, v: V) -> ?A` — \(O(1)\); The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost` on a tree read with a `cost` field); `None` at a root.
 - `fn reorder<T>(self, a: [V]T) -> [Pre]T` — \(O(n)\); Reorders a vertex-indexed array into preorder: `out[t.pos(v)] == a[v]`, ready to build a `SegTree` or `Fenwick` over `t.Pre`.
 - `fn children(self, v: V) -> yields V` — \(O(1)\) to start, \(O(1)\) per child; The children of `v`, in the order `next` listed them.
-- `fn child_arcs<A>(self, v: V) -> yields A` — \(O(1)\) per child; The arcs from `v` down to its children, with every field `next` gave them (`for a in t.child_arcs(v): up(a.to) + a.w`), so edge data needs no side array.
+- `fn child_arcs(self, v: V) -> yields A` — \(O(1)\) per child; The arcs from `v` down to its children, with every field `next` gave them (`for a in t.child_arcs(v): up(a.to) + a.w`), so edge data needs no side array.
 - `fn excl_fold<T, M>(self, v: V, op: M, f: V -> T) -> yields (c: V, rest: T)` — \(O(k)\) calls of `f` and of `op`, \(O(k)\) memory; For each child `c` of `v`, in child order, the fold with `op` of `f` over `v`'s other children: the step of a rerooting DP, with no division or inverse.
 - `fn depth(self, v: V) -> Int` — \(O(1)\); The number of edges between `v` and its root.
 - `fn size(self, v: V) -> Int` — \(O(1)\); The number of vertices in the subtree of `v`, `v` included.
@@ -141,7 +143,7 @@ The preferred-path half of a link-cut tree over a fixed rooted tree: every node 
 
 Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `stk: List<V>`.
 
-- `fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V>` — \(O(n)\); The preferred paths of `t` with every vertex its own path.
+- `fn new<P, A>(t: Rooted<V, P, A>) -> PreferredPaths<V>` — \(O(n)\); The preferred paths of `t` with every vertex its own path.
 - `fn access(mut self, v: V) -> yields (lost: ?V, gained: ?V)` — amortized \(O(\log n)\) switches; Makes the path from the root to `v` one preferred path, yielding each switch bottom-up.
 
 ## `struct LazyLinkCut<V, T, F>(act: Action<T, F>)`
@@ -221,7 +223,7 @@ Lowest common ancestors in \(O(1)\) after \(O(n \log n)\) preprocessing, by a sp
 
 Fields: `par: [V]?V`, `dep: [V]Int`, `far: [V]Int`.
 
-- `fn new<Pre>(t: Rooted<V, Pre>) -> LcaTable<V>` — \(O(n \log n)\) time and memory; A sparse table over the Euler walk of `t`, for \(O(1)\) lowest common ancestors on a fixed tree.
+- `fn new<Pre, A>(t: Rooted<V, Pre, A>) -> LcaTable<V>` — \(O(n \log n)\) time and memory; A sparse table over the Euler walk of `t`, for \(O(1)\) lowest common ancestors on a fixed tree.
 - `fn lca(self, a: V, b: V) -> V` — \(O(1)\); The lowest common ancestor of `a` and `b`.; traps: when `a` and `b` are in different trees
 - `fn dist(self, a: V, b: V) -> Int` — \(O(1)\); The distance between `a` and `b`, weighted as the tree was built.; traps: when `a` and `b` are in different trees
 
@@ -265,7 +267,7 @@ The Kruskal reconstruction tree: each edge that merges two components, in increa
 
 Fields: `edge: [N]Int`, `lift: Lift<N, Int>`.
 
-- `@get fn tree(self) -> Rooted<N, _>` — \(O(1)\); built with the tree; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
+- `@get fn tree(self) -> Rooted<N, _, _>` — \(O(1)\); built with the tree; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
 - `fn reach(self, v: V, limit: W) -> N` — \(O(\log n)\); The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when None is); its leaves are what `v` reaches by edges of weight at most `limit`.
 - `fn top<E>(self, v: V, ok: E -> Bool) -> N` — \(O(\log n)\) calls of `ok`; The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`.
 - `fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T` — \(O(n)\) calls of `op` and `leaf`; For every node, `op` folded over the `leaf` values of the leaves under it.
@@ -273,8 +275,8 @@ Fields: `edge: [N]Int`, `lift: Lift<N, Int>`.
 
 ## Functions
 
-- `fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _>` — \(O(n + m)\); A BFS spanning tree rooted at `V.first`, as a `Rooted`.; traps: when the graph is not connected from `V.first`, or `V` is empty
-- `fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _>, tree_edge: [E]Bool) where A: Edged<E>` — \(O(n + m)\); The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the edges it uses.
+- `fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _, _>` — \(O(n + m)\); A BFS spanning tree rooted at `V.first`, as a `Rooted`.; traps: when the graph is not connected from `V.first`, or `V` is empty
+- `fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _, _>, tree_edge: [E]Bool) where A: Edged<E>` — \(O(n + m)\); The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the edges it uses.
 - `fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x <y) -> [D]?D: var par: [D]?D = None var stack: List<D> = [] for i in D: var last: ?D = None while not stack.is_empty and by(a[i], a[stack.last!]): last = stack.pop() if let l = last: par[l] = Some(i) if not stack.is_empty: par[i] = Some(stack.last!) stack.push(i) par` — \(O(n)\), one stack pass; The Cartesian tree of `a` as parent links: the root is the least element by `by` (the leftmost among equals) and every subtree is a contiguous range of `D`.
 - `fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (domain N, KruskalTree<V, N, W>)` — \(O(m \log m)\) for m edges; The Kruskal reconstruction tree of `edges` weighted by `w`, over the vertices `V`, taking the same arguments as `std.graph.kruskal`; its nodes are a fresh domain bound by the caller: `let (domain N, kt) = kruskal_tree(es, w: f)`.
 - `fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>` — \(O(n)\); The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour, until two vertices remain.; traps: when `V` has fewer than two vertices, or `edges` is not a tree
