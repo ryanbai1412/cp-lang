@@ -695,11 +695,15 @@ impl<'a> Checker<'a> {
         {
             return None;
         }
-        self.quietly(|c| {
+        // The method form's facts inside the other arguments stay: in
+        // `max(g, by: x => -x)` `x` is the element.
+        let within = |at: &Span| (rest.iter()).any(|a| a.value.span.contains(*at));
+        let (ty, types, hovers) = self.quietly(|c| {
             let over = c.infer(&first.value);
             if over.is_vague() || c.element_ty(&over).is_vague() {
                 return None;
             }
+            let (types, hovers) = (c.exprs.types.len(), c.hovers.len());
             let base = Box::new(first.value.clone());
             let name = cpl_syntax::ast::Name {
                 text: name.clone(),
@@ -719,8 +723,19 @@ impl<'a> Checker<'a> {
             });
             let failed =
                 (c.sink.diagnostics().iter()).any(|d| d.severity == cpl_diag::Severity::Error);
-            (!failed && !ty.has_vague()).then_some(ty)
-        })
+            let types: Vec<_> = (c.exprs.types[types..].iter())
+                .filter(|(at, _)| within(at))
+                .cloned()
+                .collect();
+            let hovers: Vec<_> = (c.hovers[hovers..].iter())
+                .filter(|h| within(&h.span))
+                .cloned()
+                .collect();
+            (!failed && !ty.has_vague()).then_some((ty, types, hovers))
+        })?;
+        self.exprs.types.extend(types);
+        self.hovers.extend(hovers);
+        Some(ty)
     }
 
     /// The type of `base.name(args)` when `name` is a top-level fn taking

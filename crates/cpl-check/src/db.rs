@@ -671,14 +671,16 @@ impl Database {
                 }
             }
             let uses = |name: &str| ident_tokens.contains(name);
-            // A method the library adds to a type is used as `.name`.
+            // A method the library adds to a type is used as `.name`, or as
+            // the free form of a word of the language: `max(g, by: f)`.
             let calls = |name: &str| dot_ident_tokens.contains(name);
             let listed = crate::prelude::names().iter().map(|entry| (entry, false));
             let methods = crate::prelude::methods().iter().map(|entry| (entry, true));
             for ((module, name), method) in listed.chain(methods) {
                 let used = if method {
                     calls(&name.text)
-                        || (crate::prelude::SEQUENCE_FORMS.contains(&name.text.as_str())
+                        || ((crate::prelude::SEQUENCE_FORMS.contains(&name.text.as_str())
+                            || crate::prelude::VALUE_NAMES.contains(&name.text.as_str()))
                             && uses(&name.text))
                 } else {
                     uses(&name.text)

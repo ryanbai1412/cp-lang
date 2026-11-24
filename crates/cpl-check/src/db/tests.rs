@@ -563,6 +563,29 @@ fn a_catalog_closure_takes_the_element_past_named_only_and_optional_params() {
 }
 
 #[test]
+fn a_free_max_by_with_no_dot_max_in_the_file_types_like_the_method() {
+    let src = "fn sq(n: Int) -> yields Int:\n    for i in 0..n: yield i * i\nlet m = max(sq(4), by: x => -x)\nlet xs = [(1, 2), (3, 0)]\nlet p = min(xs, by: q => q.1)\nprint(m!, p!.0)\n";
+    let mut db = Database::new();
+    db.set_file("main.cp", src);
+    for (name, ty, at) in [
+        ("x", "Int", "x)"),
+        ("q", "(Int, Int)", "q.1"),
+        ("m", "?Int", "m!"),
+    ] {
+        let at = src.rfind(at).unwrap() as u32;
+        let hover = db.hover("main.cp", at).map(|h| h.text);
+        assert!(
+            hover
+                .as_deref()
+                .is_some_and(|h| h.contains(&format!("{name}: {ty}"))),
+            "{name}: {hover:?}"
+        );
+    }
+    let (rows, _) = silent_unknowns_of(src);
+    assert!(rows.is_empty(), "{rows:?}");
+}
+
+#[test]
 fn a_bare_indexed_bound_gives_t_the_element_and_runs_takes_it() {
     let src = "let xs = [1, 2, 2, 5]\nlet n = runs(xs, by: x => x % 2).count() + xs.nth(1) + 1\nfor r in xs.runs(by: y => y > 1):\n    print(r.first!)\nlet s = \"aab\"\nprint(n, s.runs(by: c => c.ord).count(), (\"ab\".nth(0)).ord)\nlet a = [0..4] i => i / 2\nprint(a.runs(by: v => v * 3).count())\n";
     let mut db = Database::new();
@@ -584,7 +607,8 @@ fn a_bare_indexed_bound_gives_t_the_element_and_runs_takes_it() {
     }
     let (rows, _) = silent_unknowns_of(src);
     assert!(
-        rows.iter().all(|r| !r.contains("% 2") && !r.contains("nth") && !r.contains("* 3")),
+        rows.iter()
+            .all(|r| !r.contains("% 2") && !r.contains("nth") && !r.contains("* 3")),
         "{rows:?}"
     );
 }
