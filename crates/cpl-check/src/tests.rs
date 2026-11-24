@@ -857,7 +857,6 @@ fn hidden() -> Int = 1
 ";
 
 #[test]
-#[ignore = "spec/conformance/core-05/a-user-method-on-self-does-not-change-its-receiver.cp"]
 fn a_generic_struct_is_used_with_the_types_given_there() {
     let src = "\
 let n: 1..=9 = read()
@@ -870,11 +869,11 @@ let q = p.swap()
 let d: Char = q.first
 ";
     assert_eq!(check(src), vec![]);
-    // `p.first!` is a `City`, not a `Char`: the argument fixed `A`.
-    let diag = one(&src.replace("let c: City = p.first!", "let c: Char = p.first!"));
+    // `p.first` is a `City`, not a `Char`: the argument fixed `A`.
+    let diag = one(&src.replace("let c: City = p.first", "let c: Char = p.first"));
     assert_eq!(
         diag.message,
-        "`c` is declared a Char, but `p.first!` is a City"
+        "`c` is declared a Char, but `p.first` is a City"
     );
     // The swapped pair's parameters swapped too.
     let diag = one(&src.replace("let d: Char = q.first", "let d: City = q.first"));
@@ -1398,7 +1397,6 @@ fn a_range_or_span_stays_in_one_domain() {
 }
 
 #[test]
-#[ignore = "spec/conformance/diagnostics/max-of-a-slice-is-optional.cp"]
 fn the_max_of_a_slice_is_optional() {
     let head =
         "let n: 1..=5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet f = V.first!\n";
@@ -1409,7 +1407,7 @@ fn the_max_of_a_slice_is_optional() {
     );
     for body in [
         "let k: Int = a[f..f].max() ?? 0\n",
-        "let k: Int = max(a)\n",
+        "let k: Int = a.max()!\n",
         "let k: Int = min(a[f], 3)\n",
     ] {
         let src = format!("{head}{body}print(k)\n");

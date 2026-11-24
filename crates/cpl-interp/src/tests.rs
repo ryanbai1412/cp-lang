@@ -265,7 +265,6 @@ print(st.a, st.b ?? 0, idx)
 }
 
 #[test]
-#[ignore = "spec/conformance/core-04/prefix-and-z-function-over-domain-array-and-range.cp"]
 fn seq_and_indexed_traits_unify_sequences_and_reject_non_sequences() {
     let ok_src = "\
 use std.seq.{runs, prod, is_sorted}
@@ -292,7 +291,7 @@ print(s.first!, s.last!, r[2], sum(r), prod(r), yes(is_sorted(r)))
     assert_eq!(
         outcome(ok_src, ""),
         (
-            "5 5 5 5\n1 1 2\n2 2 1\n0 1 0 0 1\n0 1 0 1 2\n0 0 0 0 0\n5 1 0 2 1\na a 3 15 120 YES\n"
+            "5 5 5 5\n1 1 2\n2 2 1\n0 1 0 0 1\n0 1 0 1 2\n0 0 0 0 0\n5 1 0 2 1\na a 2 15 120 YES\n"
                 .to_string(),
             None
         )

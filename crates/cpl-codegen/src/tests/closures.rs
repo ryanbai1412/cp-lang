@@ -220,14 +220,12 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
 }
 
 #[test]
-#[ignore = "spec/conformance/std-lazy/flip-action-on-a-segtree.cp"]
 fn higher_order_combinator_devirtualizes_to_zero_std_function() {
     let cpp = cpp(concat!(
-        "use std.lazy.{Flip, flip_action}\n",
+        "use std.lazy.{flip_action}\n",
         "domain I = 0..4\n",
-        "let m = Monoid<Int>(0, (a, b) => a + b)\n",
-        "let act = flip_action<Int>(m)\n",
-        "var st = SegTree<I, Flip<Int>>(act.over, [I] i => if i.ord % 2 == 0: Flip(1, 0) else: Flip(0, 1), act: act)\n",
+        "let act = flip_action<Int>((a, b) => a + b)\n",
+        "var st = SegTree<I, Flip<Int>, Bool>(act.over, [I] i => if i.ord % 2 == 0: Flip(1, 0) else: Flip(0, 1), act: act)\n",
         "st.apply(I(0)..I(3), true)\n",
         "print(st.all.now)\n",
     ));
