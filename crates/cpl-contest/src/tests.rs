@@ -1124,6 +1124,71 @@ fn a_problems_checker_py_judges_its_cases_unless_the_file_declares_one() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
+#[test]
+fn a_problems_interactor_py_judges_each_case_once() {
+    let python = cpl_stress::program::python();
+    let ran = std::process::Command::new(&python[0])
+        .args(&python[1..])
+        .arg("--version")
+        .stdin(std::process::Stdio::null())
+        .output();
+    if !ran.is_ok_and(|out| out.status.success()) {
+        return;
+    }
+    // tle17c5p1's shape: the case holds the secret, the solution asks once
+    // and answers. The interactor uses the corpus harness and notes each run.
+    let dir = std::env::temp_dir().join(format!("cpl-interactor-py-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("tests")).unwrap();
+    std::fs::write(dir.join("tests/1.in"), "7\n").unwrap();
+    std::fs::write(dir.join("tests/2.in"), "-3\n").unwrap();
+    let lib = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/lib");
+    let runs = dir.join("runs");
+    std::fs::write(
+        dir.join("interactor.py"),
+        format!(
+            "import sys\nsys.path.insert(0, {lib:?})\nfrom interactor_lib import run_interactor\n\
+             def drive(case, io):\n    open({runs:?}, 'a').write('run\\n')\n    secret = int(case)\n\
+             \x20   kind, g = io.recv_line().split()\n    assert kind == 'guess'\n\
+             \x20   io.send(str(secret - int(g)))\n    kind, x = io.recv_line().split()\n\
+             \x20   if kind != 'answer' or int(x) != secret:\n        sys.exit('wrong answer ' + x)\n\
+             run_interactor(drive)\n",
+            lib = lib.display().to_string(),
+            runs = runs.display().to_string(),
+        ),
+    )
+    .unwrap();
+    let port = dir.join("port.cp");
+    let port = port.to_str().unwrap();
+    std::fs::write(
+        port,
+        "let diff: -2e9..=2e9 = ask(\"guess\", -50)\nprint(\"answer\", diff - 50)\n",
+    )
+    .unwrap();
+    let (code, out, err) = cli(test::run, &[port]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.ends_with("  2/2 passed\n"), "{out}");
+    assert_eq!(std::fs::read_to_string(&runs).unwrap(), "run\nrun\n");
+    std::fs::write(
+        port,
+        "let diff: -2e9..=2e9 = ask(\"guess\", -50)\nprint(\"answer\", diff - 49)\n",
+    )
+    .unwrap();
+    let (code, out, _) = cli(test::run, &[port]);
+    assert_eq!(code, 1, "{out}");
+    assert!(out.contains("interactor: wrong answer 8"), "{out}");
+    assert!(out.ends_with("  0/2 passed\n"), "{out}");
+    assert_eq!(std::fs::read_to_string(&runs).unwrap().lines().count(), 4);
+    std::fs::write(dir.join("checker.py"), "").unwrap();
+    let (code, _, err) = cli(test::run, &[port]);
+    assert_eq!(code, 1);
+    assert!(
+        err.contains("a checker or an interactor, not both"),
+        "{err}"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
 /// `cpl run` traps on an overflow (R0202); a local build of the same file
 /// must trap too, in `cpl test` and in stress's solution, brute and generator.
 #[test]

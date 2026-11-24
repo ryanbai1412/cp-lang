@@ -83,5 +83,38 @@ class SeedListTest(unittest.TestCase):
         self.assertGreater(cases[1]["size"] * 20, ct.INLINE + 1)
 
 
+class InteractiveTest(unittest.TestCase):
+    def test_an_interactive_package_writes_hidden_tests_and_judges_the_cpp_with_cpl_test(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        problems, out = root / "problems", root / "out"
+        p = problems / "p1"
+        p.mkdir(parents=True)
+        (p / "gen.py").write_text(GEN)
+        (p / "port.cp").write_text("")
+        (p / "interactor.py").write_text("")
+        (p / "tests.toml").write_text("[[case]]\nseed = 1\nsize = 4\n\n[[case]]\nseed = 2\nsize = 4\n")
+        (p / "meta.json").write_text('{"submissions": [{"result": "AC", "file": "%s"}]}' % (root / "ac.cpp"))
+        (root / "ac.cpp").write_text("")
+        calls = root / "calls"
+        cpl = root / "cpl"
+        cpl.write_text("#!/bin/sh\necho \"$@\" >> %s\n"
+                       "echo '{\"cases\": [{\"name\": \"01\", \"verdict\": \"ok\"}, {\"name\": \"02\", \"verdict\": \"ok\"}]}'\n" % calls)
+        cpl.chmod(0o755)
+        for name, value in (("PROBLEMS", str(problems)), ("CPL", str(cpl))):
+            self.addCleanup(setattr, ct, name, getattr(ct, name))
+            setattr(ct, name, value)
+        old = ct.binary
+        ct.binary = lambda src: self.fail("an interactive package's C++ never runs alone")
+        self.addCleanup(setattr, ct, "binary", old)
+        ct.make(type("A", (), {"ids": ["p1"], "seeded": False, "out": str(out), "cases": 8}))
+        self.assertEqual(sorted(f.name for f in (out / "p1").iterdir()), [".stamp", "01.in", "02.in"])
+        argv = calls.read_text().split()
+        self.assertEqual(argv[:2], ["test", str(root / "ac.cpp")])
+        self.assertEqual(argv[argv.index("--interactor") + 1], str(p / "interactor.py"))
+        self.assertEqual(len(calls.read_text().splitlines()), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -22,6 +22,11 @@ Usage:
 `verify` reruns the accepted C++ on every committed `tests/*.in` and counts
 the answers it reproduces byte for byte: the evidence a committed answer is
 derivable (decisions.md 278).
+
+A package with an `interactor.py` has no answers: `make` writes only the
+hidden tests, and both commands judge the accepted C++ on them with
+`cpl test --interactor` (`$CPL`, default `target/debug/cpl`), the same
+judge `cpl test` and `cpl stress` use, so each case runs the interactor once.
 """
 import argparse, hashlib, inspect, json, os, random, resource, shutil, subprocess, sys, tempfile, tomllib
 
@@ -30,6 +35,7 @@ PROBLEMS = os.path.join(ROOT, "corpus", "problems")
 CACHE = os.path.join(ROOT, "target", "corpus-cxx")
 OUT = os.path.join(ROOT, "target", "corpus-tests")
 INLINE = 200
+CPL = os.environ.get("CPL", os.path.join(ROOT, "target", "debug", "cpl"))
 
 
 def problems(ids):
@@ -130,6 +136,22 @@ def accepted_cpp(p):
     return None
 
 
+def interactor(p):
+    path = os.path.join(PROBLEMS, p, "interactor.py")
+    return path if os.path.exists(path) else None
+
+
+def judged(p, cpp, tests):
+    """The verdict of each case in `tests` for the accepted C++, judged by the package's interactor."""
+    r = subprocess.run([CPL, "test", cpp, "--tests", tests, "--interactor", interactor(p), "--format", "json"],
+                       capture_output=True, text=True, timeout=600)
+    try:
+        cases = json.loads(r.stdout)["cases"]
+    except (ValueError, KeyError):
+        raise RuntimeError(f"cpl test: {r.stderr.strip()[:200]}")
+    return {c["name"]: c["verdict"] for c in cases}
+
+
 def binary(src):
     os.makedirs(CACHE, exist_ok=True)
     key = hashlib.sha1(open(src, "rb").read()).hexdigest()[:16]
@@ -175,15 +197,22 @@ def make(args):
                 if seed_list(p) is not None and os.path.exists(key) and open(key).read() == stamp(p, cpp):
                     made += 1
                     continue
-                exe = binary(cpp)
+                exe = None if interactor(p) else binary(cpp)
                 shutil.rmtree(tests, ignore_errors=True)
                 os.makedirs(tests, exist_ok=True)
                 for i, inp in enumerate(inputs(p, gens, args.cases, tmp), 1):
+                    if interactor(p):
+                        open(os.path.join(tests, f"{i:02}.in"), "w").write(inp)
+                        continue
                     r = subprocess.run([exe], input=inp, capture_output=True, text=True, timeout=20, preexec_fn=judge_stack)
                     if r.returncode:
                         raise RuntimeError(f"accepted C++ exits {r.returncode} on case {i}")
                     open(os.path.join(tests, f"{i:02}.in"), "w").write(inp)
                     open(os.path.join(tests, f"{i:02}.ans"), "w").write(r.stdout)
+                if interactor(p):
+                    rejected = [n for n, v in judged(p, cpp, tests).items() if v != "ok"]
+                    if rejected:
+                        raise RuntimeError(f"the interactor rejects the accepted C++ on {', '.join(rejected)}")
                 if seed_list(p) is not None:
                     open(key, "w").write(stamp(p, cpp))
                 made += 1
@@ -233,6 +262,17 @@ def verify(args):
         cpp = accepted_cpp(p) if ins else None
         if ins and not cpp:
             total["no accepted C++"] += len(ins)
+            continue
+        if ins and interactor(p):
+            try:
+                verdicts = judged(p, cpp, tests)
+            except (RuntimeError, subprocess.TimeoutExpired):
+                verdicts = {}
+            same = sum(v == "ok" for v in verdicts.values())
+            total["same"] += same
+            total["differ"] += len(verdicts) - same if verdicts else len(ins)
+            if verdicts and same == len(verdicts):
+                derivable.append(p)
             continue
         same = 0
         for f in ins:

@@ -1,6 +1,6 @@
 //! `cpl stress`.
 
-use crate::judge::{declared, Judge};
+use crate::judge::{declared, Judge, Launch};
 use crate::program::Program;
 use crate::run::{save, stress_with_cold, Options, Source};
 use crate::spec::InputSpec;
@@ -27,7 +27,9 @@ options:
   --gen PROG         make inputs with `PROG <seed> <size>` instead of from the
                      file's `@gen fn` or its types; such a case is not shrunk
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
-  --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
+  --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts; with a
+                     `# interactor: spawn` comment, `PROG <input> -- <solution>`
+                     runs the solution itself
   --cases N          how many cases to run (default 1000)
   --time T           stop starting cases after T (`30s`, `500ms`, `2m`); with
                      no --cases, run cases until then
@@ -171,7 +173,9 @@ pub fn select_judge(
     let resolve = |path: &Path| Program::resolve(path).map_err(|e| e.to_string());
     match (checker, interactor, declared(src).first()) {
         (Some(path), _, _) => resolve(path).map(Judge::Checker),
-        (_, Some(path), _) => resolve(path).map(Judge::Interactor),
+        (_, Some(path), _) => {
+            resolve(path).map(|program| Judge::Interactor(program, Launch::declared(path)))
+        }
         // The interactor in the file is run by `cpl judge`.
         (None, None, Some(judge)) if judge.kind == "interactor" => {
             let cpl = std::env::current_exe().map_err(|e| {
@@ -180,15 +184,18 @@ pub fn select_judge(
                     judge.name
                 )
             })?;
-            Ok(Judge::Interactor(Program {
-                name: format!("{name} (`{}`)", judge.name),
-                argv: vec![
-                    cpl.display().to_string(),
-                    "judge".to_string(),
-                    name.to_string(),
-                ],
-                env: Vec::new(),
-            }))
+            Ok(Judge::Interactor(
+                Program {
+                    name: format!("{name} (`{}`)", judge.name),
+                    argv: vec![
+                        cpl.display().to_string(),
+                        "judge".to_string(),
+                        name.to_string(),
+                    ],
+                    env: Vec::new(),
+                },
+                Launch::Stdio,
+            ))
         }
         // The checker in the file is run by `cpl judge` too: it is
         // given the input, the output and the answer.
@@ -737,7 +744,7 @@ pub fn run_with(
         (Some(failure), _) if helper_failed(failure) => None,
         (Some(_), Some(Ok(traced)))
             if (part_brute.is_some()
-                || (args.explain && matches!(judge, Judge::Interactor(_))))
+                || (args.explain && matches!(judge, Judge::Interactor(..))))
                 && traced.divergence.is_some() =>
         {
             Some(Ok(traced.divergence.clone()))
@@ -798,7 +805,7 @@ pub fn run_with(
             }
             crate::Verdict::BruteError(_) => brute_trap(&failure.input).map(|t| t.json()),
             crate::Verdict::JudgeError("interactor", _) => match &judge {
-                Judge::Interactor(interactor) => crate::judge::interactor_trap_json(
+                Judge::Interactor(interactor, _) => crate::judge::interactor_trap_json(
                     &fast,
                     interactor,
                     &failure.input,
@@ -840,7 +847,7 @@ pub fn run_with(
         Judge::Tokens if unjudged => "checker: none; only runtime errors and the time limit fail a case, and an `@alt(program)` fn would check the answers".to_string(),
         Judge::Tokens => "checker: none".to_string(),
         Judge::Checker(program) => format!("checker: {}", program.name),
-        Judge::Interactor(program) => format!("interactor: {}", program.name),
+        Judge::Interactor(program, _) => format!("interactor: {}", program.name),
     };
     let _ = writeln!(
         stdout,

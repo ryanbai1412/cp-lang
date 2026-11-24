@@ -12,7 +12,8 @@
 //! ```
 
 use crate::problem::{
-    cases_in, find_checker, find_tests_dir, source_path, tests_dir, Limits, TestCase,
+    cases_in, find_checker, find_interactor, find_tests_dir, hidden_cases_in, source_path,
+    tests_dir, Limits, TestCase,
 };
 use cpl_diag::Shown;
 use cpl_stress::args::Args;
@@ -28,7 +29,8 @@ usage: cpl test <problem> [options]
 Runs the solution on every case in <problem>.tests/ (or a sibling tests/
 folder). A contest folder (`cpl fetch <contest page>`) runs each problem in it
 with cases, then says how many pass. A case is N.in with an optional N.out or
-N.ans; without one, the output is shown instead of judged.
+N.ans; without one, the output is shown instead of judged. A checker.py or
+interactor.py in the cases folder (or beside a sibling tests/) judges each case.
 
 options:
   --tests DIR        read cases from DIR instead of <problem>.tests/
@@ -37,7 +39,9 @@ options:
                      then run it; with --expect OUT, OUT is its answer
   --fast PROG        run this instead of building the problem
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
-  --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
+  --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts; with a
+                     `# interactor: spawn` comment, `PROG <input> -- <solution>`
+                     runs the solution itself
   --time-limit MS    per case (default: the problem's limit)
   --memory-limit MB  peak memory per case, past which a case is MLE (default:
                      the problem's limit)
@@ -287,14 +291,23 @@ pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, Stri
     if path("--checker").is_some() && path("--interactor").is_some() {
         return Err("a problem has a checker or an interactor, not both".to_string());
     }
-    // The problem's `checker.py`, unless a flag or the file names a judge.
-    let found = (path("--checker").is_none()
+    // The problem's `interactor.py` or `checker.py`, unless a flag or the
+    // file names a judge.
+    let package = (path("--checker").is_none()
         && path("--interactor").is_none()
         && cpl_stress::judge::declared(src).is_empty())
-    .then(|| find_checker(source))
-    .flatten();
-    let checker = path("--checker").or(found.as_deref());
-    let judge = select_judge(src, &name, checker, path("--interactor"))?;
+    .then(|| (find_interactor(source), find_checker(source)));
+    let (found_interactor, found_checker) = package.unwrap_or_default();
+    if let (Some(interactor), Some(checker)) = (&found_interactor, &found_checker) {
+        return Err(format!(
+            "a problem has a checker or an interactor, not both: {} and {}",
+            checker.display(),
+            interactor.display()
+        ));
+    }
+    let checker = path("--checker").or(found_checker.as_deref());
+    let interactor = path("--interactor").or(found_interactor.as_deref());
+    let judge = select_judge(src, &name, checker, interactor)?;
     let mut limits = Limits::of(source, src);
     if let Some(ms) = args.number("--time-limit")? {
         limits.time = Duration::from_millis(ms);
@@ -438,7 +451,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 );
                 only = Some(name);
             }
-            let mut cases = cases_in(&dir);
+            let ready = ready(&source, &src, &args)?;
+            let mut cases = match ready.judge {
+                Judge::Interactor(..) => hidden_cases_in(&dir),
+                _ => cases_in(&dir),
+            };
             if let Some(name) = only.as_deref() {
                 let names: Vec<&str> = cases.iter().map(|c| c.name.as_str()).collect();
                 if !names.contains(&name) {
@@ -456,7 +473,6 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                     dir.display()
                 ));
             }
-            let ready = ready(&source, &src, &args)?;
             let mut results = run_cases(&ready.solution, &ready.judge, &cases, ready.limits)
                 .map_err(|e| format!("can't run {}: {e}", ready.solution.name))?;
             if args.value("--fast").is_none() {

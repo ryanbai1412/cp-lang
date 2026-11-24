@@ -415,9 +415,10 @@ fn an_interactive_failure_is_not_explained_by_a_run_without_its_interactor() {
 
 #[test]
 fn a_solution_over_its_query_limit_is_blamed_not_the_starved_interactor() {
-    let interactor = Judge::Interactor(sh(
-        "read guess || { echo \"the solution's output ended where a word was expected\" >&2; exit 1; }",
-    ));
+    let interactor = Judge::Interactor(
+        sh("read guess || { echo \"the solution's output ended where a word was expected\" >&2; exit 1; }"),
+        Launch::Stdio,
+    );
     let over = sh("echo 'query limit exceeded: the limit is 30' >&2; exit 3");
     let judged = interactor
         .run(&over, "2\n", None, Duration::from_secs(10))
@@ -431,9 +432,10 @@ fn a_solution_over_its_query_limit_is_blamed_not_the_starved_interactor() {
 #[test]
 fn an_interactor_talks_to_the_solution_and_rules() {
     // The secret is the input; the solution may ask three questions.
-    let interactor = Judge::Interactor(sh(
-        "secret=$(cat \"$0\"); for turn in 1 2 3; do read guess || exit 1; if [ \"$guess\" = \"$secret\" ]; then echo yes; exit 0; fi; echo no; done; echo 'too many guesses' >&2; exit 1",
-    ));
+    let interactor = Judge::Interactor(
+        sh("secret=$(cat \"$0\"); for turn in 1 2 3; do read guess || exit 1; if [ \"$guess\" = \"$secret\" ]; then echo yes; exit 0; fi; echo no; done; echo 'too many guesses' >&2; exit 1"),
+        Launch::Stdio,
+    );
     let limit = Duration::from_secs(10);
     let counts_up =
         sh("for g in 1 2 3 4 5; do echo $g; read answer; [ \"$answer\" = yes ] && exit 0; done");
@@ -451,8 +453,41 @@ fn an_interactor_talks_to_the_solution_and_rules() {
 }
 
 #[test]
+fn a_spawning_interactor_runs_the_solution_itself_as_often_as_it_needs() {
+    // A run-twice judge: the first run's output, transformed, is the
+    // second run's input (cf2237g's shape).
+    let dir = scratch("spawn");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("interactor.sh");
+    std::fs::write(
+        &path,
+        "#!/bin/sh\n# interactor: spawn\ncase=$1; shift 2\n\
+         first=$(\"$@\" < \"$case\") || { echo 'first run failed' >&2; exit 1; }\n\
+         second=$(echo \"again $first\" | \"$@\")\n\
+         [ \"$second\" = \"done $(cat \"$case\")\" ] || { echo \"got $second\" >&2; exit 1; }\n",
+    )
+    .unwrap();
+    assert_eq!(crate::Launch::declared(&path), crate::Launch::Spawn);
+    let interactor = Judge::Interactor(Program::resolve(&path).unwrap(), crate::Launch::Spawn);
+    let limit = Duration::from_secs(10);
+    let twice = sh("read a b; if [ \"$a\" = again ]; then echo done $b; else echo $a; fi");
+    let judged = interactor.run(&twice, "5\n", None, limit).unwrap();
+    assert_eq!(judged.verdict, Verdict::Accepted);
+    let once = sh("read a b; echo $a");
+    let judged = interactor.run(&once, "5\n", None, limit).unwrap();
+    assert_eq!(
+        judged.verdict,
+        Verdict::Wrong("interactor: got again".to_string())
+    );
+    let stdio = dir.join("stdio.sh");
+    std::fs::write(&stdio, "#!/bin/sh\n# a judge on stdio\nread x\n").unwrap();
+    assert_eq!(crate::Launch::declared(&stdio), crate::Launch::Stdio);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn an_accepted_interactive_solution_finishing_slowly_is_not_killed_as_re() {
-    let interactor = Judge::Interactor(sh("read ans; [ \"$ans\" = 42 ]"));
+    let interactor = Judge::Interactor(sh("read ans; [ \"$ans\" = 42 ]"), Launch::Stdio);
     let slow_exit = sh("echo 42; sleep 0.08; exit 0");
     let judged = interactor
         .run(&slow_exit, "", None, Duration::from_secs(5))

@@ -24,7 +24,7 @@ pub use engine::{
     ProcessEngine, STUCK_STEPS,
 };
 pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
-pub use judge::{Judge, Judged, Verdict};
+pub use judge::{Judge, Judged, Launch, Verdict};
 pub use program::{missing_compiler, BuildError, Exit, Outcome, Program};
 pub use report::StressResult;
 pub use rng::Rng;

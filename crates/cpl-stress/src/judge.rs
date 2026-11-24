@@ -25,7 +25,37 @@ pub enum Judge {
     /// The output must equal the expected one, ignoring whitespace.
     Tokens,
     Checker(Program),
-    Interactor(Program),
+    Interactor(Program, Launch),
+}
+
+/// How an interactor meets the solution (spec/tools/cli.md, `--interactor`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Launch {
+    /// `PROG <case>`, talking to the solution on its standard input and
+    /// output.
+    #[default]
+    Stdio,
+    /// `PROG <case> -- <solution argv>`: the interactor runs the solution
+    /// itself, as often as the problem needs (a run-twice problem runs it,
+    /// transforms what it printed, and runs it again).
+    Spawn,
+}
+
+impl Launch {
+    /// What the interactor at `path` declares: `Spawn` when a line of its
+    /// leading `#` comments is `# interactor: spawn`.
+    pub fn declared(path: &std::path::Path) -> Launch {
+        let text = std::fs::read_to_string(path).unwrap_or_default();
+        let spawns = text
+            .lines()
+            .take_while(|line| line.starts_with('#'))
+            .any(|line| line.trim_end() == "# interactor: spawn");
+        if spawns {
+            Launch::Spawn
+        } else {
+            Launch::Stdio
+        }
+    }
 }
 
 /// The result of one case.
@@ -348,10 +378,11 @@ impl Sides for Answered<'_> {
     }
 
     fn interact(&self, input: &str, limit: Duration) -> Result<Option<Talked>, StressError> {
-        let Judge::Interactor(interactor) = self.judge else {
+        let Judge::Interactor(interactor, launch) = self.judge else {
             return Ok(None);
         };
-        let (talked, outcome) = self.keep(interact(self.solution, interactor, input, limit))?;
+        let (talked, outcome) =
+            self.keep(interact(self.solution, interactor, *launch, input, limit))?;
         self.outcome.replace(Some(outcome));
         Ok(Some(talked))
     }
@@ -411,19 +442,24 @@ pub fn interactor_trap_json(
     interactor
         .env
         .push(("CPL_JUDGE_DIAGNOSTIC".to_string(), out.path().to_string()));
-    interact(solution, &interactor, input, limit).ok()?;
+    interact(solution, &interactor, Launch::Stdio, input, limit).ok()?;
     let json = std::fs::read_to_string(out.path()).ok()?;
     Some(json.trim().to_string()).filter(|json| !json.is_empty())
 }
 
 /// Runs the solution against the interactor, each reading what the other
-/// writes; the interactor reads the hidden test from a file.
+/// writes; the interactor reads the hidden test from a file. With
+/// `Launch::Spawn` the interactor runs the solution itself.
 pub(crate) fn interact(
     solution: &Program,
     interactor: &Program,
+    launch: Launch,
     input: &str,
     limit: Duration,
 ) -> std::io::Result<(Talked, Outcome)> {
+    if launch == Launch::Spawn {
+        return spawned(solution, interactor, input, limit);
+    }
     let input_file = Scratch::new("in", input)?;
     let start = Instant::now();
     let mut judge = interactor
@@ -496,14 +532,77 @@ pub(crate) fn interact(
         elapsed: start.elapsed(),
         peak_kb: None,
     };
-    let ruling = if judge_status.success() {
+    Ok(talked(rule(judge_status.success(), &judge_stderr), outcome))
+}
+
+/// `interactor <case> -- <solution argv>`: the interactor owns the
+/// solution's processes, so the case's deadline covers every run it makes,
+/// and only its exit and what it says decide.
+fn spawned(
+    solution: &Program,
+    interactor: &Program,
+    input: &str,
+    limit: Duration,
+) -> std::io::Result<(Talked, Outcome)> {
+    use std::io::Read;
+    let input_file = Scratch::new("in", input)?;
+    let mut args = vec![input_file.path(), "--"];
+    args.extend(solution.argv.iter().map(String::as_str));
+    let mut command = interactor.with_args(&args).to_command();
+    command.envs(solution.env.iter().map(|(key, value)| (key, value)));
+    let start = Instant::now();
+    let mut judge = command
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let pid = judge.id();
+    let mut pipe = judge.stderr.take().unwrap();
+    let said = std::thread::spawn(move || {
+        let mut text = String::new();
+        let _ = pipe.read_to_string(&mut text);
+        text
+    });
+    let (done, exited) = std::sync::mpsc::channel();
+    let waiter = std::thread::spawn(move || {
+        let status = judge.wait();
+        let _ = done.send(());
+        status
+    });
+    let timed_out = exited.recv_timeout(judge_limit(limit)).is_err();
+    // Whatever it started and left running ends with it.
+    crate::program::kill_group(pid);
+    let status = waiter
+        .join()
+        .map_err(|_| std::io::Error::other("the interactor's waiter panicked"))??;
+    let judge_stderr = said.join().unwrap_or_default();
+    let outcome = Outcome {
+        stdout: String::new(),
+        stderr: String::new(),
+        exit: if timed_out {
+            Exit::TimedOut
+        } else {
+            Exit::Code(0)
+        },
+        elapsed: start.elapsed(),
+        peak_kb: None,
+    };
+    Ok(talked(rule(status.success(), &judge_stderr), outcome))
+}
+
+/// The interactor's ruling from its exit and the first line it said.
+fn rule(success: bool, said: &str) -> Ruling {
+    if success {
         Ruling::Accepted
-    } else if let Some(trap) = broke(&judge_stderr) {
+    } else if let Some(trap) = broke(said) {
         Ruling::Broke(trap)
     } else {
-        let said = judge_stderr.lines().next().unwrap_or("").trim();
+        let said = said.lines().next().unwrap_or("").trim();
         Ruling::Rejected((!said.is_empty()).then(|| said.to_string()))
-    };
+    }
+}
+
+fn talked(ruling: Ruling, outcome: Outcome) -> (Talked, Outcome) {
     let talked = Talked {
         solution: Ran {
             out: String::new(),
@@ -514,7 +613,7 @@ pub(crate) fn interact(
         trap: None,
         solution_trap: None,
     };
-    Ok((talked, outcome))
+    (talked, outcome)
 }
 
 #[cfg(test)]

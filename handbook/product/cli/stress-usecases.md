@@ -32,7 +32,7 @@ Evidence: integration `crates/cpl-cli/tests/debugger.rs` (`the_loop_reruns_a_che
 
 ### stress/U6: an interactive problem
 Need: stress a solution that talks to a judge.
-Design: the file's `@interactor` plays the judge on each generated hidden test; `--interactor prog` for an outside one.
+Design: the file's `@interactor` plays the judge on each generated hidden test; `--interactor prog` for an outside one, which with a `# interactor: spawn` comment gets `prog <case> -- <solution argv>` and runs the solution itself (run-twice problems).
 Milestone: M1-critical. Status: supported
 Evidence: integration `crates/cpl-cli/tests/debugger.rs` (`the_loop_reruns_an_interactive_multitest_through_the_files_interactor`)
 

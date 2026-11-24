@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# interactor: spawn
 """Run-twice judge for CF 2261 H: `interactor.py CASE -- SOLUTION...`.
 
 CASE is a first-run input. The solution runs as Isabel; in each tree Lord Verity

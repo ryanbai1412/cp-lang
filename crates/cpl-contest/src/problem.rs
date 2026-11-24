@@ -151,13 +151,24 @@ fn generated_cases(package: &Path) -> Option<PathBuf> {
 /// accepts): in the cases folder, or beside it when that is a sibling
 /// `tests/` (as in `corpus/problems/<id>/`).
 pub fn find_checker(source: &Path) -> Option<PathBuf> {
+    find_judge(source, "checker.py")
+}
+
+/// The problem's own interactor, `interactor.py <case>` talking to the
+/// solution on its standard input and output, found where `find_checker`
+/// looks.
+pub fn find_interactor(source: &Path) -> Option<PathBuf> {
+    find_judge(source, "interactor.py")
+}
+
+fn find_judge(source: &Path, file: &str) -> Option<PathBuf> {
     let cases = find_tests_dir(source);
     let beside = match cases.file_name() {
-        Some(name) if name == "tests" => cases.parent().map(|p| p.join("checker.py")),
-        _ if cases != tests_dir(source) => source.parent().map(|p| p.join("checker.py")),
+        Some(name) if name == "tests" => cases.parent().map(|p| p.join(file)),
+        _ if cases != tests_dir(source) => source.parent().map(|p| p.join(file)),
         _ => None,
     };
-    [Some(cases.join("checker.py")), beside]
+    [Some(cases.join(file)), beside]
         .into_iter()
         .flatten()
         .find(|path| path.is_file())
@@ -187,6 +198,11 @@ pub fn cases_in(dir: &Path) -> Vec<TestCase> {
             }
         })
         .collect();
+    sort(&mut cases);
+    cases
+}
+
+fn sort(cases: &mut [TestCase]) {
     cases.sort_by(
         |a, b| match (a.name.parse::<u64>(), b.name.parse::<u64>()) {
             (Ok(x), Ok(y)) => x.cmp(&y).then_with(|| a.name.cmp(&b.name)),
@@ -195,6 +211,39 @@ pub fn cases_in(dir: &Path) -> Vec<TestCase> {
             (Err(_), Err(_)) => a.name.cmp(&b.name),
         },
     );
+}
+
+/// The cases in `dir` for an interactor, which reads the hidden test and
+/// needs no answer: each `N.case` (beside the transcript `N.in`/`N.ans` a
+/// replayed run reads), else `N.in` itself.
+pub fn hidden_cases_in(dir: &Path) -> Vec<TestCase> {
+    let mut cases = cases_in(dir);
+    let hidden: Vec<PathBuf> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter(|path| path.extension().is_some_and(|e| e == "case"))
+        .filter(|path| !path.with_extension("in").is_file())
+        .collect();
+    cases.extend(hidden.into_iter().map(|input| {
+        TestCase {
+            name: input
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned(),
+            input: input.with_extension("in"),
+            expected: None,
+        }
+    }));
+    for case in &mut cases {
+        let secret = case.input.with_extension("case");
+        if secret.is_file() {
+            case.input = secret;
+        }
+        case.expected = None;
+    }
+    sort(&mut cases);
     cases
 }
 

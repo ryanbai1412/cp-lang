@@ -118,8 +118,8 @@ impl Sides for ProcessEngine<'_> {
 
     fn interact(&self, input: &str, limit: Duration) -> Result<Option<Talked>, Error> {
         match self.judge {
-            Judge::Interactor(interactor) => {
-                crate::judge::interact(self.fast, interactor, input, limit)
+            Judge::Interactor(interactor, launch) => {
+                crate::judge::interact(self.fast, interactor, *launch, input, limit)
                     .map(|(talked, _)| Some(talked))
                     .map_err(unrunnable(interactor))
             }
