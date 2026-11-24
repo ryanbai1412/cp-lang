@@ -32,7 +32,7 @@
 {"id":31,"line":15,"label":"for x in xs:","stage":"main","values":{"stdout":["6 1 8"],"calls":8,"log":[],"xs":[0,1,4,9,16]},"locals":{"xs":[0,1,4,9,16],"t":14,"x":16},"frames":[{"fn":"total","line":15},{"fn":"main","line":72}]},
 {"id":32,"line":16,"label":"t += x","stage":"main","values":{"stdout":["6 1 8"],"calls":8,"log":[],"xs":[0,1,4,9,16]},"locals":{"xs":[0,1,4,9,16],"t":30,"x":16},"frames":[{"fn":"total","line":16},{"fn":"main","line":72}]},
 {"id":33,"line":72,"label":"print → 0 1 4 9 16 30","stage":"main","values":{"stdout":["6 1 8","0 1 4 9 16 30"],"calls":8,"log":[],"xs":[0,1,4,9,16]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":72}]},
-{"id":34,"line":20,"label":"var ys = xs","stage":"main","values":{"stdout":["6 1 8","0 1 4 9 16 30"],"calls":8,"log":[],"xs":[0,1,4,9,16]},"locals":{"xs":[0,1,4,9,16],"ys":[0,1,4,9,16]},"frames":[{"fn":"bumped","line":20},{"fn":"main","line":73}]},
+{"id":34,"line":20,"label":"var ys = xs.clone()","stage":"main","values":{"stdout":["6 1 8","0 1 4 9 16 30"],"calls":8,"log":[],"xs":[0,1,4,9,16]},"locals":{"xs":[0,1,4,9,16],"ys":[0,1,4,9,16]},"frames":[{"fn":"bumped","line":20},{"fn":"main","line":73}]},
 {"id":35,"line":21,"label":"for i in 0..ys.len:","stage":"main","values":{"stdout":["6 1 8","0 1 4 9 16 30"],"calls":8,"log":[],"xs":[0,1,4,9,16]},"locals":{"xs":[0,1,4,9,16],"ys":[0,1,4,9,16],"i":0},"frames":[{"fn":"bumped","line":21},{"fn":"main","line":73}]},
 ... 59 more lines, 20627 bytes, fnv64 63d9e36a293f88d1
 stderr:
