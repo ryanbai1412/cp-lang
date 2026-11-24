@@ -271,6 +271,13 @@ impl<'a> Checker<'a> {
                 self.ambiguous_candidates(base, name, keys);
                 return Some(Ty::Error);
             }
+            // `(m.get(0) ?? []).bsearch(f)` before the receiver is known: no
+            // candidate is chosen by the order the fns were declared in.
+            Pick::Unsettled
+                if base_ty.is_vague() && self.method_candidates(&name.text).len() > 1 =>
+            {
+                return None;
+            }
             Pick::Unsettled | Pick::NoFit => {
                 self.method_candidates(&name.text).into_iter().next()?.0
             }

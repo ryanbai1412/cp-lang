@@ -1525,7 +1525,7 @@ impl Checker<'_> {
             .map_or_else(|| vec![takes], split_top);
         takes
             .iter()
-            .map(|t| catalog_ty(t, &elem).unwrap_or(Ty::Unknown))
+            .map(|t| catalog_ty(t, &elem, &[]).unwrap_or(Ty::Unknown))
             .collect()
     }
 
@@ -1563,9 +1563,14 @@ impl Checker<'_> {
         {
             return None;
         }
+        // `m.get(k)` on a `Map<K, V>` is a `?V`.
+        let key_value = match self.quietly(|c| c.infer(base)) {
+            Ty::Named { name, args } if matches!(name.as_str(), "Map" | "HashMap") => args,
+            _ => Vec::new(),
+        };
         let ret = match (name.text.as_str(), elem) {
             ("min" | "max", Some(elem)) if member.ret == "?T" => Ty::min_max_of(elem),
-            (_, elem) => catalog_ty(member.ret, &elem)?,
+            (_, elem) => catalog_ty(member.ret, &elem, &key_value)?,
         };
         // A sum of `1..=1e9`s leaves that range, and may not hold its `0`.
         if name.text == "sum" && matches!(ret, Ty::Range { .. }) {
@@ -1600,18 +1605,25 @@ impl Checker<'_> {
 }
 
 /// A catalog type string the checker can read without the row's generics.
-fn catalog_ty(text: &str, elem: &Option<Ty>) -> Option<Ty> {
+/// A catalog row's type `text`, with `T` the element and, for a map's rows,
+/// `K` and `V` its `key_value` arguments.
+fn catalog_ty(text: &str, elem: &Option<Ty>, key_value: &[Ty]) -> Option<Ty> {
     if let Some(inner) = text.trim().strip_prefix('?') {
-        return Some(Ty::Optional(Box::new(catalog_ty(inner, elem)?)));
+        return Some(Ty::Optional(Box::new(catalog_ty(inner, elem, key_value)?)));
     }
-    match text.trim() {
+    match (text.trim(), key_value) {
+        ("K", [k, _]) => Some(k.clone()),
+        ("V", [_, v]) => Some(v.clone()),
+        _ => None,
+    }
+    .or_else(|| match text.trim() {
         "T" => elem.clone(),
         "Char" => Some(Ty::Char),
         "Int" => Some(Ty::Int),
         "Bool" => Some(Ty::Bool),
         "Str" => Some(Ty::Str),
         _ => None,
-    }
+    })
 }
 
 /// `a: Int, f: (T, T) -> Bool` split at its top-level commas.

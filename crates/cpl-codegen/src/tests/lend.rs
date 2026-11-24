@@ -164,7 +164,7 @@ fn a_named_map_get_lends_when_every_read_takes_a_lent_entry() {
         !lent.contains("map_get("),
         "reads that take a lent entry never copy it: {lent}"
     );
-    let printed = cpp(&src("    print(o)\n"));
+    let printed = cpp(&src("    print(o!)\n"));
     assert!(
         printed.contains("cpl::map_get(m_2, k)"),
         "a read that needs the optional itself keeps the copy: {printed}"
