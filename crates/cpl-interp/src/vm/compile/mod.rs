@@ -2,7 +2,7 @@ use super::ir::*;
 use crate::value::Value;
 use cpl_diag::Span;
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId, Place,
+    Arg, AssignOp, BinOp, Block, Builtin, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId, Place,
     PlaceKind, Program, Slot, Stmt, Ty, UnOp,
 };
 
@@ -1012,14 +1012,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 ExprKind::Binary(op, a, b) => {
                     let safe_op = match op {
                         BinOp::Div | BinOp::Rem => matches!(b.kind, ExprKind::Int(v) if v != 0),
-                        BinOp::Shl | BinOp::Shr => {
-                            matches!(b.kind, ExprKind::Int(v) if (0..64).contains(&v))
-                        }
+                        // A shift by `x % m` is in 0..64: `%` is Euclidean.
+                        BinOp::Shl | BinOp::Shr => match &b.kind {
+                            ExprKind::Int(v) => (0..64).contains(v),
+                            ExprKind::Binary(BinOp::Rem, _, m) => {
+                                matches!(m.kind, ExprKind::Int(m) if (1..=64).contains(&m))
+                            }
+                            _ => false,
+                        },
                         _ => true,
                     };
                     safe_op && simple_expr(a, f, program) && simple_expr(b, f, program)
                 }
                 ExprKind::Cmp(_, a, b) => simple_expr(a, f, program) && simple_expr(b, f, program),
+                ExprKind::Builtin(Builtin::Popcount | Builtin::Ctz | Builtin::Clz, args) => {
+                    args.len() == 1 && simple_expr(&args[0], f, program)
+                }
                 ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], f, program),
                 ExprKind::Index(base, indices) => {
                     let container_ok = match &base.ty {
