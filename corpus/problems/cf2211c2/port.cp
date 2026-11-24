@@ -9,6 +9,7 @@
 //   if a is constant then b must be constant too (fixed values agree). The constant classes
 //   give the first window's multiset: count a's value up, the fixed b value down, and the free
 //   classes fill the rest iff no count goes negative. O(n).
+// Bounds: n, k: 1..=200_000; a: 1..=n
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

@@ -5,6 +5,7 @@
 // Solution: simulate the 12 months: cash += 300 - budget; the first negative cash ends it,
 //   else bank cash / 100 * 100 and keep cash % 100. Answer cash + banked * 6 / 5.
 // original: corpus/submissions/5117097.cpp
+// Bounds: budget: 0..=350
 domain Month = 1..=12
 let budget: [Month]0..=350 = read()
 

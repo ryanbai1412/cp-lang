@@ -6,6 +6,7 @@
 //   A move slides the hole one step, swapping with the marble when it is the neighbour. BFS
 //   over the n^4 states; the answer is the nearest state with the marble on the goal.
 // original: corpus/submissions/5323330.cpp
+// Bounds: n: 2..=15
 let n: 2..=15 = read()
 domain Row = 1..=n
 domain Col = 1..=n

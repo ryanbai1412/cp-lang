@@ -7,6 +7,7 @@
 //   already placed except the single tallest. So the volumes are a subset sum: each pillar
 //   after the first two adds 0 or (an earlier height - its own). O(n * 50 * 50n) bit DP.
 // original: corpus/submissions/4575277.cpp
+// Bounds: n: 1..=500; height: 1..=50
 let n: 1..=500 = read()
 domain Pillar = 0..n
 let height: [Pillar]1..=50 = read()

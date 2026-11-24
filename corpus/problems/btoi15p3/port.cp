@@ -7,6 +7,7 @@
 //   to leaf i + L/2 for i < ceil(L / 2). The leaves under any tree edge are a block of that
 //   list, shorter than L, so some new link leaves the block and covers the edge. O(n).
 // original: corpus/submissions/5640865.cpp
+// Bounds: n: 3..=5e5; edges.u, edges.v: 1..=n
 
 let n: 3..=5e5 = read()
 domain V = 1..=n

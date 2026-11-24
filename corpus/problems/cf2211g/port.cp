@@ -7,6 +7,7 @@
 //   result must be constant, which needs the exact-mean cuts (diff(i) = 0) to split a into
 //   blocks of length <= 2, each levelled by one operation: every element is next to such a cut.
 //   Exact integers on prefix sums, O(n).
+// Bounds: n: 1..=1_000_000; a: 0..=1_000_000
 
 @!multitest
 let n: 1..=1_000_000 = read()

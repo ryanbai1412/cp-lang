@@ -8,6 +8,7 @@
 //   value, and 0 if it has an odd cycle (an inner edge joins equal BFS depth parities). Fixed
 //   weights force their component's value; a conflict gives 0, and each unforced component
 //   multiplies by V. Bridge decomposition and BFS, O(n + m).
+// Bounds: n: 2..=200_000; m: 1..=400_000; lim: 1..=10 ** 9; edges.u, edges.v: 1..=n
 
 use std.graph.{two_edge_components}
 

@@ -9,6 +9,7 @@
 //   first row probe (down r rows, then right) whose simulated ends separate the survivors,
 //   else a fixed fallback probe. O(H W |moves|) simulation per query.
 // original: corpus/submissions/5678051.cpp
+// Bounds: h, w: 1..=100
 let h: 1..=100 = read()
 let w: 1..=100 = read()
 domain Row = 0..h

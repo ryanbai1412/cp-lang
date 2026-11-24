@@ -7,6 +7,7 @@
 //   smallest sum with L, R within the drawers. O(2^n n).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/5325518.cpp
+// Bounds: n: 1..=20
 let n: 1..=20 = read()
 domain C = 0..n
 let a: [C]Int = read()

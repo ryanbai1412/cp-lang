@@ -6,6 +6,7 @@
 //   strictly falling one starting there, each an O(N^2) LIS DP. A formation peaking at i keeps
 //   up[i] + down[i] - 1; print N minus the best.
 // original: corpus/submissions/5117143.cpp
+// Bounds: n: 2..=100; h: 130..=230
 let n: 2..=100 = read()
 domain I = 1..=n
 let h: [I]130..=230 = read()

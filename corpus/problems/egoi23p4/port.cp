@@ -10,6 +10,7 @@
 //   offered streets reproduce both matrices, the minimum and the maximum spanning trees of them
 //   by b (Kruskal both ways) keep both bottlenecks with <= 2(n - 1) streets. O(n^3).
 // original: corpus/submissions/5678052.cpp
+// Bounds: n: 1..=500; kv: 1..=1e9
 let n: 1..=500 = read()
 let kv: 1..=1e9 = read()
 domain V = 0..n

@@ -4,6 +4,7 @@
 // Solution: an IntervalSet over the coordinates merges overlapping and touching intervals into
 //   maximal runs; a query is Y iff one run covers it. O((N + Q) log N).
 // original: corpus/submissions/4575559.cpp
+// Bounds: n, q: 1..=1e5
 use std.interval.{IntervalSet}
 
 let n: 1..=1e5 = read()

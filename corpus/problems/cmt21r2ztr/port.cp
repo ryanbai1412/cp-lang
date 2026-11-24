@@ -9,6 +9,7 @@
 //   and gives each slot its bound, O(n + m log m).
 // original: corpus/submissions/4016530.cpp
 // checker: proto/ports/scout_batch_9/harness/cmt21r2ztr_check.cpp
+// Bounds: n, m: 1..=1e5; facts.i, facts.j, facts.k: 1..=n; facts.x: 1..=1e9
 let n: 1..=1e5 = read()
 let m: 1..=1e5 = read()
 domain Slot = 1..=n

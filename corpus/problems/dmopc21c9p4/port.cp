@@ -8,6 +8,7 @@
 //   coin that is heads iff it holds an odd number of heads. Peel the rows as such coins; at
 //   its turn a row has been flipped iff its parity was even, so peel its coins inverted
 //   then. If the order misses a coin, print -1: O(NM log M).
+// Bounds: rows, cols: 1..=1000
 let rows: 1..=1000 = read()
 let cols: 1..=1000 = read()
 domain Row = 1..=rows

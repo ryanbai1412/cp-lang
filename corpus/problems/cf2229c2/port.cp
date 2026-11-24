@@ -7,6 +7,7 @@
 //   maximising (sum of 2|a_j| over negative a_j, j < p) - 2 a_p, if that gain is positive. Sweep
 //   i from p - 1 down, operating on i whenever a_i's current sign is positive, so every earlier
 //   element is negative before the final operation on p flips them all. O(n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let n: 1..=200_000 = read()

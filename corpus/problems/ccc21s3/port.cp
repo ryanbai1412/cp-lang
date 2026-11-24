@@ -8,6 +8,7 @@
 //   turns non-negative at the weighted median of the 2N ends (weight W_i each). Sort the ends,
 //   take the first whose prefix weight reaches sum W_i, and evaluate there. O(N log N).
 // original: corpus/submissions/4323533.cpp
+// Bounds: n: 1..=2e5; friends.p, friends.d: 0..=1e9; friends.w: 1..=1000
 let n: 1..=2e5 = read()
 let friends: [n](p: 0..=1e9, w: 1..=1000, d: 0..=1e9) = read()
 

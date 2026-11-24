@@ -7,6 +7,7 @@
 //   longest weighted path in the acyclic part. Kahn's topological order driven by a min-heap
 //   of finish times: an event is pushed when its last prerequisite pops (the latest finish,
 //   since pops come in time order), and the last pop is the answer. O((n + R) log n).
+// Bounds: n: 1..=5000; tasks.time: 1..=1e4
 let n: 1..=5000 = read()
 domain V = 1..=n
 let tasks: [V](time: 1..=1e4, deps: List<V>) = read()

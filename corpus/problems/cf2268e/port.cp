@@ -8,6 +8,7 @@
 //   even one gives 1 - s_i s_j for a subtree covering (i, j], and a gap d is a subtree in
 //   C_d C_(n-d) trees. So subtract sum_d C_d C_(n-d) corr(d), the autocorrelation of s, as
 //   one NTT per bit. O(18 n log n).
+// Bounds: n: 1..=200_000; xs: 0..=MAX_X
 
 use std.ntt.{ntt}
 

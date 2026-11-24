@@ -6,6 +6,7 @@
 //   its length and shrink from the left. `unmet` counts required symbols still short in the
 //   window, so "all met" is one comparison. O(N + K).
 // original: corpus/submissions/4456171.cpp
+// Bounds: dna: 0..=k - 1
 let (n, k, r): (Int, Int, Int) = read()
 domain Pos = 0..n
 domain Sym = 0..k

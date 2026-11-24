@@ -9,6 +9,7 @@
 //   weight w), trying d = 2, 3, ... until (d - 1) * 1000 reaches the best cost (d = 1 costs
 //   n(n - 1)/2). A DFS over the chosen tuples in reverse lex order emits each pass's jumps
 //   (difficulty x, length start - x); passes print last first. O(n) per tried d.
+// Bounds: n: 1..=250_000
 
 use std.math.{choose}
 

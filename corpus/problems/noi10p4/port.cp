@@ -8,6 +8,7 @@
 //   everything that must precede it, then give the unmarked flights the latest slots their
 //   deadlines allow, going down from slot n; u takes the highest slot left free. O(n (n + m)).
 // original: corpus/submissions/5670273.cpp
+// Bounds: n: 1..=2000; m: 0..=10000; k, rules.u, rules.v: 1..=n
 let (n, m): (1..=2000, 0..=10000) = read()
 domain Plane = 1..=n
 domain Rule = 0..m

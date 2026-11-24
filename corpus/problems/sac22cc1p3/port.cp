@@ -8,6 +8,7 @@
 //   reachable cell), then collect every W with an empty cell below and drop them all at once.
 //   Each round moves blood down or left, so a step costs O((NM)^2) at worst.
 // original: corpus/submissions/3992599.cpp
+// Bounds: n, m, q: 1..=50
 let n: 1..=50 = read()
 let m: 1..=50 = read()
 domain Row = 0..n

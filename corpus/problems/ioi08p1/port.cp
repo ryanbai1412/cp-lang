@@ -7,6 +7,7 @@
 //   word: at each node visit the child on that word's path last and never delete it.
 //   O(total letters * 26).
 // original: corpus/submissions/5034409.cpp
+// Bounds: n: 1..=25_000
 use std.strings.{Trie}
 
 domain Letter = 'a'..='z'

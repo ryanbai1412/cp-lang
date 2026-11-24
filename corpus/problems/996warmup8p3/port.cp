@@ -9,6 +9,7 @@
 //   is not, its remaining hits come from the balls heading for it at t1, nearest first.
 //   O(n log(kl / n)).
 // original: corpus/submissions/5324670.cpp
+// Bounds: n: 1..=1e5; kl, kr: 1..=1e9; pos: 0..=L; dir: 0..=1
 const L = 1_000_000_001
 let (n, kl, kr): (1..=1e5, 1..=1e9, 1..=1e9) = read()
 domain Ball = 0..n

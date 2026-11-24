@@ -7,6 +7,7 @@
 //   may take it, and the one furthest right (MaxHeap) is the cheapest to bring there; none
 //   means -1. The moves are the inversions of the order built, counted with a Fenwick of
 //   exercises already given a later day that started further left. O(n log n).
+// Bounds: n: 1..=2e5; due: 1..=n
 
 let n: 1..=2e5 = read()
 domain Ex = 1..=n  // an exercise, by where it starts

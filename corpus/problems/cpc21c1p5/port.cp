@@ -9,6 +9,7 @@
 //   per distinct rectangle.
 // original: corpus/submissions/4899391.cpp; interactor: tests/interactor.py
 // As it builds today: a reply needs a `let` of its own (R10).
+// Bounds: n: 1..=500
 let n: 1..=500 = read()
 type Box = (x1: Int, x2: Int, y1: Int, y2: Int)
 var found: List<Box> = []

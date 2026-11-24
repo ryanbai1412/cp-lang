@@ -9,6 +9,7 @@
 //   (range-add min SegTree); a "no" interval fits iff no live "some" interval lies inside the
 //   covered run it creates (left_while/right_while), via a min SegTree of the shortest live end
 //   per start (a sliding Window each): O((m + q) log n).
+// Bounds: n, m: 1..=200_000; st.a, st.b: 1..=n
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()
 domain V = 1..=n

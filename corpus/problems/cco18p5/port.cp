@@ -8,6 +8,7 @@
 //   change the entries of the position and of its old best partner on each side, so refresh
 //   those three: O((N + Q) log N).
 // original: corpus/submissions/4801867.cpp
+// Bounds: upds.pos: 1..=n
 
 let (n, k, q): (Int, Int, Int) = read()
 domain I = 1..=n

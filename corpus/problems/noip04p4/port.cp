@@ -8,6 +8,7 @@
 //   `plausible` rejects any fully known column where neither a + b nor a + b + 1 gives c mod n,
 //   which prunes the search hard. Exponential worst case, fast in practice.
 // original: corpus/submissions/5117252.cpp
+// Bounds: n: 1..=26
 let n: 1..=26 = read()
 domain Letter = 0..n
 domain Digit = 0..n

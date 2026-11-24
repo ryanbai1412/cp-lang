@@ -10,6 +10,7 @@
 //   (all, seen, chain, above) answer every x in one DFS. c counts unless the cut leaves its
 //   heaviest remaining child above half. O(n log n) per tree.
 // original: corpus/submissions/5148136.cpp
+// Bounds: tests: 1..=5
 
 let tests: 1..=5 = read()
 for _ in 0..tests:

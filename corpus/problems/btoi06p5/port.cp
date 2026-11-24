@@ -11,6 +11,7 @@
 //   an ordered set of touched (cost, symbol) for the minimum. O(m + runs log n), then a
 //   forward pass replays the recorded switches to emit the code.
 // original: corpus/submissions/4156310.cpp
+// Bounds: n: 2..=100_000; m: 1..=2_000_000; code: 0..=n - 1
 let n: 2..=100_000 = read()
 let m: 1..=2_000_000 = read()
 domain Sym = 0..n

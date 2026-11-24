@@ -11,6 +11,7 @@
 // original: corpus/submissions/4731161.cpp (grader functions give_initial_chart / swap_seats)
 // stdin: h w q, the h * w seats (row, column) of contestants 0.., then q lines a b.
 // stdout: the number of beautiful prefixes after each swap.
+// Bounds: h, w: 1..=1000; q: 0..=50_000; seat.r: 0..=h - 1; seat.c: 0..=w - 1
 use std.algebra.{MinCount}
 
 let h: 1..=1000 = read()

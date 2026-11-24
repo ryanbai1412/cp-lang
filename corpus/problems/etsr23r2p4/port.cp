@@ -10,6 +10,7 @@
 //   k + B_{i+k} for every unserved k < j; once i is served the window slides to i + 1. Sweep i
 //   upward keeping two layers: O(n * 2^8 * 16 * 8) per test.
 // original: corpus/submissions/5494510.cpp
+// Bounds: n: 1..=1000
 @!multitest
 let n: 1..=1000 = read()
 struct Student:

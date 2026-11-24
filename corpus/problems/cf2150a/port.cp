@@ -7,6 +7,7 @@
 //   except that a B now skips the cell just painted. Keep cur, the position after s[0..i]: step
 //   it (skipping black cells on a B), paint it, and on a B skip again to get the next person's
 //   position. cur only moves right, so the skips total O(n + m) set operations.
+// Bounds: n, m: 1..=100_000; a: 1..=10 ** 9
 
 @!multitest
 let (n, m): (1..=100_000, 1..=100_000) = read()

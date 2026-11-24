@@ -10,6 +10,7 @@
 //   two halves in O(60^4) once. [L, R + 1) splits into O(60) aligned blocks (prefix ones o,
 //   height k); a DP over them keeps dp[p], the best so far ending at popcount >= p,
 //   O(60^3) per block. `@alt(program)` is the direct O(R - L) scan.
+// Bounds: l: 1..=1e18; r: l..=1e18
 
 // F[k][a][b] = max weakly-decreasing-popcount subsequence in [0, 2^k)
 // starting with popcount allowance <= a and ending with allowance >= b (0 <= b <= a <= k).

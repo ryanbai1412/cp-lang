@@ -8,6 +8,7 @@
 //   over the 32 masks of the window starting at p. DP round the ring with the window's mask as
 //   state: fix the first window's mask, slide one pen at a time (drop the old pen, decide the
 //   new one) adding happy[p, mask], and end on the starting mask. O(32 * 32 * 2 * n).
+// Bounds: n: 10..=1e4; c: 1..=5e4
 let n: 10..=1e4 = read()
 let c: 1..=5e4 = read()
 domain Pen = 1..=n

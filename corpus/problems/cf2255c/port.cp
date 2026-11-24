@@ -10,6 +10,7 @@
 //   ink cell by (dr, dc) onto a non-ink cell so the centroid lands on the target; such a cell
 //   exists because ink shifted by (dr, dc) != 0 can't equal itself when gcd(n, w) = 1. Second
 //   run: solve r * w = sr, c * w = sc (mod n). O(n^2) per run.
+// Bounds: n: 2..=800; r, c: 1..=n
 
 let op: Str = read()
 

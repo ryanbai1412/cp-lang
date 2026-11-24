@@ -8,6 +8,7 @@
 //   down gives the bottom edge. Hop diagonally by m, then by 2m left and down, while still
 //   flattened, to reach the bottom-left square; the centre is that corner + 2m + m / 2.
 // original: corpus/submissions/5111683.cpp
+// Bounds: n: 15..=2e9; x0, y0: 1..=n
 let n: 15..=2e9 = read()
 let x0: 1..=n = read()
 let y0: 1..=n = read()

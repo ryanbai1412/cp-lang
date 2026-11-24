@@ -6,6 +6,7 @@
 //   lexicographic order, which puts ones as far left as possible first, so the patterns come out
 //   in descending order. O(C(n, k) * n) per case.
 // original: corpus/submissions/5515585.cpp
+// Bounds: n: 1..=30; k: 0..=min(n, 7)
 @!multitest
 let n: 1..=30 = read()
 let k: 0..=min(n, 7) = read()

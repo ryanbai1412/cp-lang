@@ -6,6 +6,7 @@
 //   the block's raisins (2D prefix sums) plus the best split by a row cut or a column cut.
 //   O(n^2 m^2 (n + m)).
 // original: corpus/submissions/4817803.cpp
+// Bounds: n, m: 1..=50; raisins: 1..=1000
 let n: 1..=50 = read()
 let m: 1..=50 = read()
 domain Row = 1..=n

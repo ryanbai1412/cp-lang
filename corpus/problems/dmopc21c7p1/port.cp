@@ -7,6 +7,7 @@
 //   leaves the most room for the cells above and to the left, so if this grid fails a final
 //   check (positive, at most 1e18, rows and columns increasing) every filling fails. O(NM).
 // original: corpus/submissions/4452959.cpp
+// Bounds: n, m: 1..=1500; given: 0..=1e9
 
 let n: 1..=1500 = read()
 let m: 1..=1500 = read()

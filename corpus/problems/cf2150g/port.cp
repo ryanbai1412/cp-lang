@@ -9,6 +9,7 @@
 //   While a's prefix is below k, the states where s + rest first reaches LNDS k lie on one
 //   anti-diagonal with ballot (reflection) counts, recorded as rays in a [Cnt, Cnt] grid and swept
 //   once, O(k^2); once a's prefix reaches k, restart there and each flip adds a completion count.
+// Bounds: x, y: 1..=5000; k: 1..=9999
 @!multitest
 use std.mod.{Comb, Mod}
 

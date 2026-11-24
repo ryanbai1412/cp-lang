@@ -12,6 +12,7 @@
 // original: corpus/submissions/4453037.cpp
 // forward adjacency as linked lists: head[u] -> edge, nxt[edge]
 // DFS colours over what the lit lamps reach: 1 = on the stack, 2 = done
+// Bounds: n: 1..=1e6; m: 0..=1e6; up: 0..=1; links.from, links.to: 1..=n
 
 let n: 1..=1e6 = read()
 let m: 0..=1e6 = read()

@@ -10,6 +10,7 @@
 //   A box exactly rows mid..<hi x band takes 2^(stars inside) minus the sets already counted as
 //   smaller or several boxes, and is stacked on the sets below mid in the other columns.
 //   O(2^n n^4).
+// Bounds: n: 1..=14
 type Z = Mod<1_000_000_007>
 @!multitest
 let n: 1..=14 = read()

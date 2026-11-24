@@ -10,6 +10,7 @@
 //   min(t - up[c], par_w[c]) of v's threshold t (covered capped at t). v draws
 //   e_top = min(t - covered, par_w[v]) from its own parent edge, sets up[v] = e_top and pays
 //   the rest, t - covered - e_top, as x[v]. O(n) per query, O(n q) total.
+// Bounds: n: 2..=250_000; raw.u, raw.v: 1..=n; raw.w, queries: 1..=10 ** 9; q: 1..=10
 
 @!multitest
 let n: 2..=250_000 = read()

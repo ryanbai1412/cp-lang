@@ -10,6 +10,7 @@
 //   junction so both new roads match their part. When the path is all x, recolour it as the
 //   second part. O(1) amortized per building, O(n^2) in all; print the path reversed.
 // original: corpus/submissions/6416816.cpp
+// Bounds: n: 2..=2000
 let n: 2..=2000 = read()
 domain City = 0..n
 var red: [City, City]Bool = false

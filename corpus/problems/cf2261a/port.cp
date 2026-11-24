@@ -9,6 +9,7 @@
 //   c = the number of 1s in s. c = 1 scores 0 and c = 2 scores 1 (Kalamakity can always answer
 //   with a neighbour). With c >= 3 he keeps his outermost two and only passes middle ones
 //   around, so the score is the span last 1 minus first 1. One scan, O(n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let n: 1..=200_000 = read()

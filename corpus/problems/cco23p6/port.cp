@@ -9,6 +9,7 @@
 //   the right part's pairs. The unmatched pairs make 2 triangles per 3 pairs: made +
 //   (pairs - made) * 2 / 3. An event updates two leaves: O(log N).
 // original: corpus/submissions/5618725.cpp
+// Bounds: n, q: 1..=2e5; have: 0..=1e9; changes.len: 1..=n; changes.by: -1e9..=1e9
 let n: 1..=2e5 = read()
 let q: 1..=2e5 = read()
 domain Len = 1..=n

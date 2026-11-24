@@ -9,6 +9,7 @@
 //   them leaves the same problem on n - 1 floors: ways(n, m) = sum C(c, k) ways(n - 1, m - k),
 //   ways(1, m) = [m == c]. That is the x^(m-c) coefficient of (1 + x)^(c (n - 1)), so print
 //   C(c (n - 1), m - c) from a factorial table (`Comb`), O(1) per test.
+// Bounds: n, c: 1..=100; m: c..=n * c; _: 0..=0
 type M = Mod<1_000_000_007>
 let comb = Comb<M>(10_000)
 

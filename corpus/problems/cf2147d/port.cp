@@ -6,6 +6,7 @@
 //   splits evenly (the other player mirrors moves on it), so both get sum floor(x / 2). Each
 //   odd distinct value leaves one unpaired move worth its frequency; the players take these
 //   in descending order, alternating. A tally and a sort, O(n log n).
+// Bounds: n: 1..=200_000; a: 1..=10 ** 9
 
 @!multitest
 let n: 1..=200_000 = read()

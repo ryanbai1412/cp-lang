@@ -8,6 +8,7 @@
 //   value small and closes the gap by 2, and the answer is the max deficit over i. Values
 //   > sqrt(k) matter only through k / b, so a Small and a Big histogram over 1..=isqrt(k) are
 //   kept by Mo's algorithm and scanned per query: O(n sqrt(q) + q sqrt(k)).
+// Bounds: n: 2..=100_000; q: 1..=100_000; k: 1..=1_000_000; b: 1..=k; days.l, days.r: 1..=n
 
 use std.mo.{mo}
 

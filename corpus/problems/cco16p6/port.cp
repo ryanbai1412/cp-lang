@@ -13,6 +13,7 @@
 //   pirates' buckets are cleared down to price 1 (amortized, each bucket cleared once per
 //   insertion).
 // original: corpus/submissions/4849378.cpp
+// Bounds: n: 2..=1e6; kv: 1..=1e18; arr: 1..=n
 let n: 2..=1e6 = read()
 let kv: 1..=1e18 = read()
 let arr: [0..n](1..=n) = read()

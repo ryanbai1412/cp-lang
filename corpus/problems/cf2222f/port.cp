@@ -9,6 +9,7 @@
 //   rollback DSU carrying one colored vertex per component; adding one half's edges merges
 //   colored components at the other half's least x, joined in a second DSU. Each edge is added
 //   O(log m) times: O(m log m log n).
+// Bounds: n, m, q: 1..=300_000; edges.u, edges.v, colors: 1..=n; edges.w: 0..=m
 @!multitest
 use std.dsu.DsuOf
 

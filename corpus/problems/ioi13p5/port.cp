@@ -9,6 +9,7 @@
 // As it builds today: sizes are negated for the min-heap and the cursor over the sorted toys is
 //   an index (K9, K10, K6).
 // original: corpus/submissions/4688418.cpp (a grader-style `putaway`; check.sh adds a main)
+// Bounds: a, b: 0..=5e4; t: 1..=1e6; weak, small, toys.weight, toys.size: 1..=2e9
 let a: 0..=5e4 = read()
 let b: 0..=5e4 = read()
 let t: 1..=1e6 = read()

@@ -5,6 +5,7 @@
 // Solution: where b_i does not divide b_{i+1}, b_i was multiplied and b_{i+1} was not, so b_i / x
 //   divides b_{i+1}: b_i / gcd(b_i, b_{i+1}) divides x. The lcm of those over all such adjacent
 //   pairs (1 if none) is valid: O(n log 1e9).
+// Bounds: n: 2..=600_000; b: 1..=10 ** 9
 
 @!multitest
 let n: 2..=600_000 = read()

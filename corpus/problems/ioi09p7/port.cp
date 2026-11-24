@@ -9,6 +9,7 @@
 //   and counts r2's positions inside each subtree range by binary search, memoized per
 //   (r1, r2): O(N sqrt N + Q sqrt N log N).
 // original: corpus/submissions/5032754.cpp
+// Bounds: n, q: 1..=2e5; r: 1..=25000; head: 1..=r
 
 let (n, r, q): (1..=2e5, 1..=25000, 1..=2e5) = read()
 domain V = 1..=n

@@ -5,6 +5,7 @@
 //   squares, mod 1e9+7.
 // Solution: ways[r, c] = ways[r - 1, c] + ways[r, c - 1] on an open square (0 on a wall),
 //   filled row by row from ways[first, first] = 1: O(hw).
+// Bounds: h, w: 2..=1000
 type Z = Mod<1_000_000_007>
 let (h, w): (2..=1000, 2..=1000) = read()
 domain Row = 1..=h

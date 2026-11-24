@@ -9,6 +9,7 @@
 //   range assign and one range min (ties to the smallest j), O(Q log Q); the groups follow the
 //   stored argmins.
 // original: corpus/submissions/4157744.cpp
+// Bounds: m, n: 1..=100_000
 let m: 1..=100_000 = read()
 let n: 1..=100_000 = read()
 domain P = 0..n

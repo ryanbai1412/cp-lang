@@ -9,6 +9,7 @@
 //   blocks on one side is crossed by w * (N - w) pairs; do the same with the axes swapped:
 //   O(N log N) for the sort and the run map.
 // original: proto/ports/scout_batch_17/harness/ioi12p4_main.cpp (wraps corpus/submissions/4951048.cpp)
+// Bounds: n: 1..=1e5
 let n: 1..=1e5 = read()
 domain Block = 0..n
 type Coord = 0..=2147483647

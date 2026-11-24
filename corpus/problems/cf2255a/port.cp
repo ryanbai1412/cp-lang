@@ -10,6 +10,7 @@
 //   holds one and the next cell does too (blocked), or holds none and the previous one holds
 //   one. Count those cells by team, Red's score first (even leprechauns, odd 0-based indices),
 //   with indices taken mod 2n; O(n).
+// Bounds: n: 1..=200_000; _k: 1..=10 ** 9
 
 @!multitest
 let (n, _k): (1..=200_000, 1..=10 ** 9) = read()

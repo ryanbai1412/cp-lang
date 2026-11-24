@@ -8,6 +8,7 @@
 // - After `2t + 1` elements, the sum is `(2t + 1) * p`, average `p`.
 // - After `2t` elements, the sum is `2t * p - t`, whose ceiling average is
 //   `ceil((2t * p - t) / (2t)) = p`.
+// Bounds: n: 2..=100_000
 
 @!multitest
 let n: 2..=100_000 = read()

@@ -7,6 +7,7 @@
 //   iff k <= max(x - lo, hi - x); then it can reach any slot by swaps through lo or hi. So the
 //   answer is the minimum of max(x - lo, hi - x) over the elements whose slot in the stable
 //   sort of (value, index) is not their own index, or -1 if none; O(n log n).
+// Bounds: n: 1..=200_000; a: 1..=10 ** 9
 
 @!multitest
 let n: 1..=200_000 = read()

@@ -7,6 +7,7 @@
 //   4) holds at most 300 values and each other (type 2) at most 60 (2037 of 2040 slots). A query
 //   asks for the positions of its values; holding no more than it returns, it returns them all, so
 //   each position collects its value's subset, which a map inverts. 30 queries, O(30 n) work.
+// Bounds: n: 2..=845
 
 @!interactive
 domain Query = 0..30

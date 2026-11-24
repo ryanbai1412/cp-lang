@@ -10,6 +10,7 @@
 //   values <= dep(x) + k in x's subtree range, O((N + Q) log^2 N).
 // Stdin: n, n-1 edges (1-based), init[0..n] (0/1), q, then q queries (ty, u, k).
 // original: corpus/submissions/5052303.cpp
+// Bounds: n, q: 1..=200_000; knows: 0..=1; qs.ty: 1..=2; qs.x: 1..=n; qs.k: 0..=n
 
 use std.segtree.{DynamicOrderTree}
 

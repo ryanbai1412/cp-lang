@@ -8,6 +8,7 @@
 //   upper-left region gives the best start-to-pivot cost per zero count, a 3 x 3 forward DP
 //   the pivot-to-end cost; a query takes the best split of K. O(nm K) per pivot, O(K^2) a query.
 // original: corpus/submissions/5150025.cpp
+// Bounds: n, m: 1..=200; q: 1..=200_000
 const MAXK = 5
 domain KDom = 0..=MAXK
 domain D3 = 0..3

@@ -7,6 +7,7 @@
 //   works still works shrunk. So the furthest y that works from x (`reach[x]`) never moves left
 //   as x grows: two pointers make O(N) checks, O(N (N + K)) in all, then O(1) per query.
 // original: corpus/submissions/4801881.cpp
+// Bounds: n: 2..=3000; k: 2..=n; q: 1..=1e6; line: 1..=k
 let n: 2..=3000 = read()
 let k: 2..=n = read()
 let q: 1..=1e6 = read()

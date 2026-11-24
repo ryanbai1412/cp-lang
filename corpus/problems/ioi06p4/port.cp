@@ -7,6 +7,7 @@
 //   at l or r; it returns the next city (cw(r) or ccw(l)) from which the rest can be finished.
 //   Try every start, then follow the choices. O(c^2) states, O(1) each.
 // original: corpus/submissions/5032736.cpp
+// Bounds: n: 1..=1000; m: 0..=1e5; deals.a, deals.b: 1..=n
 let n: 1..=1000 = read()
 let m: 0..=1e5 = read()
 domain City = 1..=n

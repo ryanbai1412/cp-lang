@@ -7,6 +7,7 @@
 //   cell reaches; otherwise cover 0..m with the fewest intervals, greedily extending as far
 //   right as possible each time. O(n m + m^2).
 // original: corpus/submissions/5205786.cpp
+// Bounds: n, m: 1..=500; h: 0..=1_000_000
 use std.grid
 let n: 1..=500 = read()
 let m: 1..=500 = read()

@@ -8,6 +8,7 @@
 //   1 in the lone case of 5 left and 4 needed). A Fenwick tree over free positions finds the
 //   chosen one. O(N log N).
 // original: corpus/submissions/4537755.cpp
+// Bounds: n: 1..=1e6; k: 0..=1e18
 
 let n: 1..=1e6 = read()
 let k: 0..=1e18 = read()

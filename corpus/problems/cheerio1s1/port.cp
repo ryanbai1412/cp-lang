@@ -5,6 +5,7 @@
 // Solution: walk the lights in order, adding each distance to t; at a light, phase = t mod
 //   (r + g), and if phase < r he waits r - phase. Answer t + D - p_n: O(n).
 // original: corpus/submissions/5337471.cpp
+// Bounds: n: 1..=2e5; k: 1..=1e9
 let n: 1..=2e5 = read()
 let k: 1..=1e9 = read()
 type Light = (p: 1..=1e9, r: 1..=1e9, g: 1..=1e9)

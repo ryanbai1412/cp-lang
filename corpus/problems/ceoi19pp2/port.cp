@@ -7,6 +7,7 @@
 //   than the new element is removed from the top. Each value enters and leaves once, so the
 //   whole run is O(n log n); s_i is the set's size.
 // original: corpus/submissions/5343197.cpp
+// Bounds: q: 1..=1e6
 let q: 1..=1e6 = read()
 var good = Set<Int>()
 var mx = -1

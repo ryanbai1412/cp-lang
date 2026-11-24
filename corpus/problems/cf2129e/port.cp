@@ -9,6 +9,7 @@
 //   both ends when an edge's arc count crosses 2, O(1) per step. All n values of f sit in a
 //   sqrt-bucketed count (O(1) update, O(sqrt n) k-th); the vertices outside l..=r have f = 0,
 //   so the answer is the (k + n - (r - l + 1))-th overall. O(m sqrt q + q sqrt n).
+// Bounds: n: 2..=150_000; m, q: 1..=150_000; raw.u, raw.v, asks.l, asks.r, asks.k: 1..=n
 @!multitest
 use std.bag.{BucketCount}
 use std.mo.{mo}

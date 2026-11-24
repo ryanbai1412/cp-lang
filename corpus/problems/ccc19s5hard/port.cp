@@ -7,6 +7,7 @@
 //   cover it. Grow s by about 1.5x up to k, updating one table in place (the
 //   apex rows read only rows below them): O(n^2 log k).
 // original: corpus/submissions/5119931.cpp
+// Bounds: n: 1..=3000; k: 1..=n
 let n: 1..=3000 = read()
 let k: 1..=n = read()
 // best[i, j] (j <= i): the largest entry of the current-side triangle with apex (i, j)

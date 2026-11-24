@@ -10,6 +10,7 @@
 //   (row prefix sums); a router splits the count between its children with its own flag
 //   set by the count. O(4^N N) time over all levels.
 // original: corpus/submissions/5032743.cpp
+// Bounds: m: 1..=10
 let m: 1..=10 = read()
 let n = 1 << m
 

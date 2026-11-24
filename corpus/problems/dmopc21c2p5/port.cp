@@ -9,6 +9,7 @@
 //   d! (parent edge unused) or (d + 1)! (used) gives v's two answers for its parent. Since
 //   998244352 = 2^23 * 7 * 17 divides 26!, d stops at 26: O(26 n^2).
 // original: corpus/submissions/3968384.cpp
+// Bounds: n: 1..=3000; k: 0..=n - 1; edges.u, edges.v: 1..=n
 
 const MOD = 998_244_352
 type Z = Mod<MOD>

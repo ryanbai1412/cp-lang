@@ -9,6 +9,7 @@
 //   x >= ceil(a / atk). Merge the congruences with general CRT (mul_mod against overflow),
 //   then lift the residue to the least value >= the largest bound. O((n + m) log).
 // original: corpus/submissions/6517796.cpp
+// Bounds: n, m: 1..=1e5; life, regrow: 1..=1e12; reward: 1..=1e6
 use std.math.{ext_gcd, crt, mul_mod}
 
 /// The solutions of a x = b (mod m) as one congruence x = r (mod m'), or none.

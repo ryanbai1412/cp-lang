@@ -7,6 +7,7 @@
 //   and largest value of the chain of len + 1 vertices from vertex i round the ring: + combines
 //   lo with lo and hi with hi, * all four products. O(N^3).
 // original: corpus/submissions/4810287.cpp
+// Bounds: n: 1..=50
 let n: 1..=50 = read()
 var times: List<Bool> = []
 var val: List<Int> = []

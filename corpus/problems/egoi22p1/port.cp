@@ -6,6 +6,7 @@
 //   need[n] = 1: the shortfall need[i] - f_i, if positive, costs that many operations and adds
 //   it to need[j] for every j < i. The answer is the total shortfall, O(n^2).
 // original: corpus/submissions/5198974.cpp
+// Bounds: n: 1..=50
 @multitest
 let n: 1..=50 = read()
 let have: [0..n]Int = read()

@@ -5,6 +5,7 @@
 //   < k. Colour greedily in reverse BFS order: every other vertex still has an uncoloured BFS
 //   parent, so at most k - 1 colours are taken around it. O(m + nk).
 // original: corpus/submissions/5325567.cpp
+// Bounds: n: 1..=9999; m: 0..=1e5
 let n: 1..=9999 = read()
 let m: 0..=1e5 = read()
 domain V = 1..=n

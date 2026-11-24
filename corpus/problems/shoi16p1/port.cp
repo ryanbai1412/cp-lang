@@ -10,6 +10,7 @@
 //   guard on v; 0 <= r < D lets one child bring reach r + 1 while the others need only -r;
 //   r < 0 asks r + 1 of every child; an unmarked v may leave itself open at r = 0. O(N D).
 // original: corpus/submissions/5445691.cpp
+// Bounds: n: 1..=5e5; k: 1..=20; cost: 1..=1000; m, must: 1..=n
 let n: 1..=5e5 = read()
 let k: 1..=20 = read()
 domain V = 1..=n

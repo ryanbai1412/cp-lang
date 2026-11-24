@@ -8,6 +8,7 @@
 //   sets its ranges tied, then unties each range's first cell and the cell after it. A query sums
 //   tied over its ranges and compares stamps across each range's top edge. O(m log^2 n).
 // original: corpus/submissions/3859087.cpp
+// Bounds: t: 1..=3
 let t: 1..=3 = read()
 for _ in 0..t:
     let n: 1..=1e5 = read()

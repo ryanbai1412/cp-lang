@@ -10,6 +10,7 @@
 //   that count is a linear recurrence in k of order 2n + 1 <= 101 (measured with
 //   `berlekamp_massey` for every n), so the 601 tabulated counts pin it and
 //   `guess_at` (Berlekamp-Massey, then Kitamasa) extends it to k = m.
+// Bounds: n: 1..=I.len; m: 1..=1e15
 use std.spec.{guess_at}
 type Z = Mod<1_000_000_007>
 

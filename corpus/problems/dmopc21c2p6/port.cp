@@ -13,6 +13,7 @@
 // original: corpus/submissions/3968585.cpp
 // Pass 1: Parallel binary search over values 0..n-1.
 // Pass 2: Sweep values descending with two Fenwick trees (count and index sum).
+// Bounds: n, q: 1..=3e5; p: 1..=n
 use std.search.{parallel_bsearch}
 
 let n: 1..=3e5 = read()

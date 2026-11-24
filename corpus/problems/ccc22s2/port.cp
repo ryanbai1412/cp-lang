@@ -4,6 +4,7 @@
 // Solution: map each name to its group (Map<Str, Group>), then count the must-share pairs in
 //   different groups and the must-not pairs in one group. O((X + Y + G) log G).
 // original: corpus/submissions/4371343.cpp
+// Bounds: x, y: 0..=1e5; g: 1..=1e5
 let x: 0..=1e5 = read()
 let together: [x](a: Str, b: Str) = read()
 let y: 0..=1e5 = read()

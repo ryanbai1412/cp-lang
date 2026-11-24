@@ -10,6 +10,7 @@
 //   Fill i right to left, scanning j with the running length cur_best: a[j] = a[i] adds one,
 //   a[i] < a[j] <= cur_best + 1 jumps to max_len[first such a[j] after i, j]. The answer is
 //   cur_best at the sentinel. O(n^2) time, a triangle of 16-bit entries.
+// Bounds: n0: 1..=15_000; raw: 1..=n0
 
 fn tidx(i: Int, j: Int) -> Int = j * (j + 1) / 2 + i
 

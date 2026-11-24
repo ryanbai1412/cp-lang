@@ -8,6 +8,7 @@
 //   spell the flipped position. The tree stores the code twisted: below a node holding 1 its
 //   children are swapped, so flip-and-swap only flips that node's bit and untwist recovers the
 //   code. O(2^h * h) per test.
+// Bounds: h: 2..=20
 let op: Str = read()
 
 fn size(h: Int) -> Int = (1 << h) - 1

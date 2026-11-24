@@ -12,6 +12,7 @@
 // The three stack pools are plain Set<Int> refreshed by hand and the script
 // is a List of (kind, a, b) printed line by line: the prototype has no
 // print of a tuple without its unused field and no Set<(size, stack)>.first_ge.
+// Bounds: tests: 1..=10
 let tests: 1..=10 = read()
 for _ in 0..tests:
     let n: 1..=300 = read()

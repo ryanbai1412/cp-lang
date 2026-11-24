@@ -9,6 +9,7 @@
 //   flush merges what is left. Each boundary between balls vanishes once; record when. A query
 //   ends as two blocks split at its boundary that vanished last: a sparse table of
 //   (time, boundary) and prefix sums give it, O((n + q) log n) with O(1) queries.
+// Bounds: balls.w: 1..=1e9
 enum Dir: Left | Right
 
 let n: Int = read()

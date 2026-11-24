@@ -6,6 +6,7 @@
 //   pairings of the first |t| men with exactly the women in t. The last of those men takes
 //   some woman w in t he likes, so ways[t] = sum of ways[t without w]. O(2^n n).
 // original: corpus/submissions/4131780.cpp
+// Bounds: n: 1..=21; likes: 0..=1
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=21 = read()

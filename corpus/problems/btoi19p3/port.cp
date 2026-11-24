@@ -9,6 +9,7 @@
 //   offline in preorder, where a table over depth holds the path to E, so the minimum is one
 //   SegTree range fold: O((n + q) log n).
 // original: corpus/submissions/4456164.cpp
+// Bounds: n: 2..=1e5; s, exit, shops, asks.from: 1..=n; q: 1..=1e5; asks.closed: 1..=n - 1
 let n: 2..=1e5 = read()
 let s: 1..=n = read()
 let q: 1..=1e5 = read()

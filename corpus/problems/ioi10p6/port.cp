@@ -7,6 +7,7 @@
 //   each child k carries below[k] and the road to the parent the total - below[c]; take the
 //   city with the smallest maximum. O(n).
 // original: corpus/problems/ioi10p6/orig.cpp (submission 4693330 plus the sample grader)
+// Bounds: n: 1..=1e6; fans: 1..=2e9
 let n: 1..=1e6 = read()
 domain City = 0..n
 domain Road = 1..n

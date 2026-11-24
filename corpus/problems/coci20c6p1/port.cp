@@ -7,6 +7,7 @@
 //   its right, below and below-right (bounds checked with at). O(nm).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/4188008.cpp
+// Bounds: n, m: 1..=100
 let n: 1..=100 = read()
 let m: 1..=100 = read()
 domain Row = 0..n

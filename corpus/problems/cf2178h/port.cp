@@ -9,6 +9,7 @@
 //   state is the value sum mod m and the set of started types. All moves have fixed costs, so
 //   fixed_cost_paths (no heap) finds the cheapest way to (0, all started) over 8m states and 7
 //   moves, O(56 m); subtract a + b + c for the free initial presents.
+// Bounds: x, k: 1..=500_000; m: 2..=500_000
 use std.graph.{fixed_cost_paths}
 
 domain T = 0..3

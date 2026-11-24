@@ -9,6 +9,7 @@
 //   that is the subtractive Euclid walk run backwards, so `walk` reaches x from (z, x - z)
 //   iff gcd(x, z) = 1. Try z outward from x / phi (keeps the walk near log_phi x long) until
 //   a walk fits in MAX_N = 80; x <= 1 is the 1 x 1 matrix [x]. O(MAX_N) per candidate z.
+// Bounds: x: 0..=10_000_000
 
 const MAX_N = 80
 

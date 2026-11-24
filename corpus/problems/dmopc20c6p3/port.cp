@@ -8,6 +8,7 @@
 //   once all of them do (`free` counts routes not yet known to lead in). Every other city
 //   lets the robber stay out forever. O(N + M).
 // original: corpus/submissions/3917634.cpp
+// Bounds: n, m: 1..=5e5; police: 0..=1; routes.u, routes.v: 1..=n
 let n: 1..=5e5 = read()
 let m: 1..=5e5 = read()
 domain City = 1..=n

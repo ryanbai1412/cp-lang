@@ -6,6 +6,7 @@
 //   at a time, adding |h[i - j] - h[i + j + off]|, and length 2j + 1 + off keeps the least.
 //   O(n^2).
 // original: corpus/submissions/5350805.cpp
+// Bounds: n: 1..=5000; h: 0..=1e5
 let n: 1..=5000 = read()
 let h: [n]0..=1e5 = read()
 domain Len = 1..=n

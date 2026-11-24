@@ -5,6 +5,7 @@
 //   the answer is the sum of |2k - pos_k| over the I's. One scan, O(n).
 // Buildable under proto/cpc today. See ../nccc9s2.cp.
 // original: corpus/submissions/4051671.cpp
+// Bounds: n: 1..=1_000_000
 let n: 1..=1_000_000 = read()
 let s: [0..2 * n]Char = read()
 var ans = 0

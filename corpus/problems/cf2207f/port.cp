@@ -10,6 +10,7 @@
 //   maximises the saved clues: cut r scores the best earlier cut plus 1 if rank r is not forced,
 //   and each run lo..=r adds 1 to every cut <= lo.l. A max SegTree with range add holds it; the
 //   answer is n + runs - best - 1, O(n m + n log n).
+// Bounds: n, m: 1..=200_000; ranks: 1..=n; colors: 1..=m
 
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()

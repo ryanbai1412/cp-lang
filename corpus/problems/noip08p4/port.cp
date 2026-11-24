@@ -7,6 +7,7 @@
 //   component with its earliest position on stack 1, then simulate: before each push pop
 //   every due value (stack 1 first), then push onto the colour's stack. O(n^2).
 // original: corpus/submissions/5185830.cpp
+// Bounds: n: 1..=1000; a: 1..=n
 use std.graph.{two_color}
 
 let n: 1..=1000 = read()

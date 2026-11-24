@@ -11,6 +11,7 @@
 //   best[2]: O((n + m) log m) per test. One always remains: a K4 subdivision puts each branch
 //   vertex on 6 simple cycles, so the graph has no K4 minor, and reduced K4-minor-free graphs
 //   keep a vertex of degree <= 2.
+// Bounds: n: 3..=30; m: n - 1..=n * (n - 1) / 2
 
 domain Deg = 0..=2
 type Edge = [Deg, Deg]Int

@@ -8,6 +8,7 @@
 //   answer is the least s with best[0, 0, s] >= t: O(f n * n^2/2) = 5e7.
 // original: corpus/submissions/5678056.cpp
 // Runnable on proto/cpc today.
+// Bounds: n: 1..=100; m: 1..=n; k: 0..=1e11; a: 0..=1e9
 let n: 1..=100 = read()
 let m: 1..=n = read()
 let k: 0..=1e11 = read()

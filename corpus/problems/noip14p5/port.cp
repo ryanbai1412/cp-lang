@@ -7,6 +7,7 @@
 //   all its out-neighbours are marked. If s is safe, BFS from s over the edges between safe
 //   vertices gives the answer. O(n + m).
 // original: corpus/submissions/5205459.cpp
+// Bounds: n: 1..=10000; m: 0..=200000; edges.u, edges.v, s, t: 1..=n
 
 let n: 1..=10000 = read()
 let m: 0..=200000 = read()

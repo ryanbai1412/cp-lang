@@ -9,6 +9,7 @@
 //   both uncovered. So k >= ceil(n / 2) for n >= 2 (0 for n = 1). With half = ceil(n / 2),
 //   the segments [p, p + half - 1] for p = 1..half reach it: spot i lies in those starting
 //   at max(1, i - half + 1)..min(i, half), a different range for every spot. O(n).
+// Bounds: n: 1..=200_000; _m: 0..=0
 
 @!multitest
 let (n, _m): (1..=200_000, 0..=0) = read()

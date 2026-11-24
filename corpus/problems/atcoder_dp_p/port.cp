@@ -6,6 +6,7 @@
 // Solution: tree DP rooted at vertex 1: white[v] / black[v] count paintings of v's subtree
 //   with v white / black; a child c multiplies white[p] by white[c] + black[c] and black[p]
 //   by white[c], children before parents in reverse visit order. O(n).
+// Bounds: n: 1..=1e5; edges.u, edges.v: 1..=n
 type Z = Mod<1_000_000_007>
 let n: 1..=1e5 = read()
 domain V = 1..=n

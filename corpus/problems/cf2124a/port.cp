@@ -5,6 +5,7 @@
 //   remains: print NO, or YES, its length and its elements. Multitest.
 // Solution: if a is non-decreasing every subsequence is sorted, so NO. Otherwise some adjacent
 //   pair has x > y, and [x, y] differs from its sorted [y, x] at both positions: print it. O(n).
+// Bounds: n, a: 1..=100
 
 @!multitest
 let n: 1..=100 = read()

@@ -5,6 +5,7 @@
 //   list the sums of all rectangles with a corner there in each quadrant (2-D prefix sums),
 //   and count equal pairs between top-left and bottom-right, and between top-right and
 //   bottom-left, with a count map: O(n^2) points times O(n^2) rectangles, O(n^4).
+// Bounds: n: 1..=50; a: -1000..=1000
 let n: 1..=50 = read()
 domain I = 1..=n
 let a: [I, I]-1000..=1000 = read()

@@ -10,6 +10,7 @@
 //   length holds the single; only values seen twice there are candidates. Bisect each
 //   candidate: a sub-range without it is dropped, and a value present in both sub-halves
 //   is a split pair, not the single, so most candidates die in a query or two.
+// Bounds: n: 1..=300
 
 @!interactive
 use std.rand.Rng

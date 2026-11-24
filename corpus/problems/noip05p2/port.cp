@@ -7,6 +7,7 @@
 //   points; fewest[p], the stones landed on from p onwards, is stone[p] plus the min of
 //   fewest[p + hop] over the hops, filled right to left. O(2520 m t).
 // original: corpus/submissions/5156196.cpp
+// Bounds: len: 1..=1_000_000_000; s: 1..=10; t: s..=10; m: 1..=100; stones: 1..=len - 1
 const CYCLE = 2520
 let len: 1..=1_000_000_000 = read()
 let s: 1..=10 = read()

@@ -9,6 +9,8 @@
 //   the best below; `split` tries every cut, and the transposed garden every vertical cut.
 //   O(l w (l + w)).
 // original: corpus/submissions/5034025.cpp
+// Bounds: length, width: 1..=250; roses: 2..=5000; k: 1..=roses; at.r: 1..=length;
+//   at.c: 1..=width
 let length: 1..=250 = read()
 let width: 1..=250 = read()
 let roses: 2..=5000 = read()

@@ -10,6 +10,7 @@
 //   plan from the best one: land on the root, clear lighter children and recall their
 //   detectives, then step into the heaviest.
 // original: corpus/submissions/3756630.cpp
+// Bounds: n: 1..=1000; roads.u, roads.v: 1..=n
 let n: 1..=1000 = read()
 domain City = 1..=n
 domain Road = 1..n

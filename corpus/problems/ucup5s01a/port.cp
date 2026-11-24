@@ -18,6 +18,7 @@
 // vertices (mark one of the deg(v) children now, or stay unmarked). At the end
 // every vertex must be marked, so the answer is sum dp[i, 0] / i, divided by
 // the prod (n + z) equally likely growth sequences.
+// Bounds: n: 1..=500; m: 0..=500; parent: 1..=n
 type Z = Mod<998_244_353>
 
 let (n, m): (1..=500, 0..=500) = read()

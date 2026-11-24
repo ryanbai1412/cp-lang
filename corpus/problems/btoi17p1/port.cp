@@ -9,6 +9,7 @@
 // original: corpus/submissions/4456179.cpp
 // As it builds today: one set of pairs, a lazy heap of (degree, person), and subsets as
 //   bit masks (K9, K18).
+// Bounds: n: 1..=5e4; k: 1..=10
 let n: 1..=5e4 = read()
 let k: 1..=10 = read()
 domain P = 0..n

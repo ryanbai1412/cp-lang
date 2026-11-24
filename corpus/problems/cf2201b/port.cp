@@ -6,6 +6,7 @@
 // Solution: possible iff n <= k <= 2n - 1. With braid = k - n + 1, values above braid go first
 //   as adjacent pairs [v, v], one turn each; 1..=braid form a braided block [1, 2], [i + 2, i],
 //   ..., [braid - 1, braid] of overlapping spans that takes 2 braid - 1 turns. O(n).
+// Bounds: n: 1..=300_000; k: 1..=1e6
 
 @!multitest
 let (n, k): (1..=300_000, 1..=1e6) = read()

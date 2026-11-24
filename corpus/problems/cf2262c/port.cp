@@ -7,6 +7,7 @@
 //   (half - 1)d and top, top - d, .. (half = n/2, top = a_n), so d is top - a[n-2] or
 //   a[n-2] / (half - 1); check each candidate by sorting. Every valid d gives
 //   half! * (n - half - 2)! good orders. O(n log n).
+// Bounds: n: 4..=2e5
 const MOD = 1e9 + 7
 type Z = Mod<MOD>
 let comb = Comb<Z>()

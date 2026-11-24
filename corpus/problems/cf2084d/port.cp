@@ -7,6 +7,7 @@
 //   The code walks the positions residue class by residue class mod k (stride k, starting from
 //   the class of n - 1) and gives the cells in that order cur / (m + 1): 0, 0, ..., 1, 1, ...,
 //   each value m + 1 times. O(n).
+// Bounds: n: 2..=200_000; m, k: 1..=200_000
 
 @!multitest
 let (n, m, k): (2..=200_000, 1..=200_000, 1..=200_000) = read()

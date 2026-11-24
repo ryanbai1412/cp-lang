@@ -9,6 +9,7 @@
 //   longest cycles first; with none left, each pair of crossing teleporters adds 4 and a last
 //   single one adds 1. Endpoints are bucketed by spot: O(n log n + 2e6) with the loop sort.
 // original: corpus/submissions/5637680.cpp
+// Bounds: n, m: 1..=1e6
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 domain Tele = 1..=n

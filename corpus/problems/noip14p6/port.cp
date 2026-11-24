@@ -7,6 +7,7 @@
 //   Horner's rule (`eval`); x is reported when the value is 0, which a nonzero value
 //   passes only by bad luck (about n / 2^61 per x). O(n m).
 // original: corpus/submissions/5445671.cpp
+// Bounds: n: 1..=100; m: 1..=1e6
 let n: 1..=100 = read()
 let m: 1..=1e6 = read()
 

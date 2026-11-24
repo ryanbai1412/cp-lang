@@ -7,6 +7,7 @@
 //   arrangement keeping both is reachable. Sort each class; if the parities (Fenwick tree
 //   inversion counts) differ, swap positions n - 3 and n - 1, the last two of one class.
 //   O(n log n).
+// Bounds: n: 4..=200_000; a: 1..=n
 
 @!multitest
 let n: 4..=200_000 = read()

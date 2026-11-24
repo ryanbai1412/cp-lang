@@ -8,6 +8,7 @@
 //   as corners (as a side, both ways, or as a diagonal), sort them, and add back 1, 2 or 3 for
 //   squares with 2, 3 or 4 deleted corners (1, 3 or 6 pairs). O(min(N, M) + K^2 log K).
 // original: corpus/submissions/5445692.cpp
+// Bounds: n, m: 1..=1e6; k: 0..=2000
 const MOD = 100000007
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()

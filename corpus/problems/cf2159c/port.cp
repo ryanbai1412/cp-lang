@@ -8,6 +8,7 @@
 //   values force (a clash or a value > n gives 0). Of the `free` open indices in 1..n-1 choose
 //   i to be nonzero and pair them, with n if still open, in invs[i + extra] ways, where
 //   invs[k] = invs[k-1] + (k-1) invs[k-2]. Sum over i: O(n).
+// Bounds: n: 1..=400_000
 
 const MOD = 1_000_000_007
 type Z = Mod<MOD>

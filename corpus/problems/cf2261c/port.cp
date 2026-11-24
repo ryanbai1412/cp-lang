@@ -8,6 +8,7 @@
 //   Otherwise the lost positions are exactly (evens, odds) = (1, 1) and (0, 3), and from any other
 //   Moggity reaches one by an even-sum removal (keep one even and one odd, or three odds). So
 //   Moggity loses iff evens + odds / 2 == 1: count the odds, O(n).
+// Bounds: n, a: 1..=1e6
 
 @!multitest
 let n: 1..=1e6 = read()

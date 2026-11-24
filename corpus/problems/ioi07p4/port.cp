@@ -6,6 +6,7 @@
 //   food) is the best total so far. Each shipment goes to mine one or two, shifting that mine's
 //   pair and adding coal(older, old, new). O(4^4 N).
 // original: corpus/submissions/5033986.cpp
+// Bounds: n: 1..=1e5
 let n: 1..=1e5 = read()
 domain Ship = 1..=n
 

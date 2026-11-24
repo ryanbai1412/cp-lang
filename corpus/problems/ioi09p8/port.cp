@@ -9,6 +9,7 @@
 //   the day's fairs once downstream and once upstream, then store the better of the two at each
 //   fair. The answer is reach(home); O((n + L) log L).
 // original: corpus/submissions/4811954.cpp
+// Bounds: n: 1..=500000; up, down: 1..=10; home: 1..=500001
 let n: 1..=500000 = read()
 let up: 1..=10 = read()
 let down: 1..=10 = read()

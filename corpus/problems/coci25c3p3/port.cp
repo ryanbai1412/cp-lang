@@ -9,6 +9,7 @@
 //   of non-pair edges, so dp[v] (the longest chain of pairs ending at v) relaxes along it,
 //   with a parent pointer to rebuild the path. O(N + M).
 // original: corpus/submissions/7730378.cpp
+// Bounds: edges.u, edges.v: 1..=2 * n
 use scout.connectivity.{two_color}
 
 let (n, m): (Int, Int) = read()

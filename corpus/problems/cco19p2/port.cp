@@ -7,6 +7,7 @@
 //   empty cells between them. An object falls by its shortest distance from the floor
 //   (Dijkstra): O(NM log NM).
 // original: corpus/submissions/3613676.cpp
+// Bounds: n, m: 1..=1e6
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 domain Row = 0..n

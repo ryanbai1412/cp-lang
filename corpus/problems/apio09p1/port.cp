@@ -7,6 +7,7 @@
 //   either horizontally (best in the row band + up) or vertically (prefix and suffix column
 //   maxima). O(nm) per orientation.
 // original: corpus/submissions/5536569.cpp
+// Bounds: n, m, k: 1..=1500
 let n: 1..=1500 = read()
 let m: 1..=1500 = read()
 let k: 1..=1500 = read()

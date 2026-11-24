@@ -8,6 +8,7 @@
 //   Per case a digit DP over bits 30..0 with state (p has left x, q has left y in the guessed
 //   direction) tries the bit pairs 00, 01, 10 and keeps the least (cost, p, q).
 //   O(4 * 31 * 4 * 3) per test.
+// Bounds: x, y: 0..=2 ** 30 - 1
 
 fn step(sep: Bool, ge: Bool, v: Bool, bit: Bool) -> ?(Bool, Int):
     if not sep and v != bit and v != ge: return None

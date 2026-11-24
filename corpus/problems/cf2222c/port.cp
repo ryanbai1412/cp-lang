@@ -8,6 +8,7 @@
 //   median med. dp[j] = most segments for the prefix of length j, over odd segments (i, j]
 //   with median med (count < med and <= med by prefix sums). The whole array always works.
 //   O(n^2).
+// Bounds: n: 1..=5_000; a: 1..=10 ** 9
 
 @!multitest
 let n: 1..=5_000 = read()

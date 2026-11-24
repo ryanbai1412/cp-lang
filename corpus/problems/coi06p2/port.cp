@@ -7,6 +7,7 @@
 //   exactly one is under the bottom. Closing C strands the child subtree of C holding x iff
 //   low[child] is not above C; A and B stay joined iff they are stranded in the same piece or
 //   both not at all. O(N + E + Q log N).
+// Bounds: n: 2..=1e5; m: 1..=5e5; roads.u, roads.v: 1..=n; q: 1..=3e5
 with io(answers: ("yes", "no"))
 let (n, m): (2..=1e5, 1..=5e5) = read()
 domain Town = 1..=n

@@ -8,6 +8,7 @@
 //   p + K; otherwise t is too small, and raising it by half the remaining gap (everyone
 //   before shifts right as much, this one comes left as much) closes it. O(n).
 // original: corpus/submissions/5323995.cpp
+// Bounds: n: 1..=1e5
 let (k, n): (F64, 1..=1e5) = read()
 let xs: [0..n]F64 = read()
 

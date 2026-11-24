@@ -9,6 +9,7 @@
 //   tails). @memo best(d, a, b) is the most kindness still to collect, over the 4 move pairs.
 //   O((m + n) m^2) states, O(1) each.
 // original: corpus/submissions/5185022.cpp
+// Bounds: n, m: 1..=50; kind: 0..=100
 let n: 1..=50 = read()
 let m: 1..=50 = read()
 let kind: [n, m]0..=100 = read()

@@ -9,6 +9,7 @@
 //   SegTrees over values); a fixed v needs both at its own cell. Earliest deadline first fills
 //   the free positions in order from a MinHeap of (hi, v) over the free values, failing on a
 //   missed deadline; ties go to the smaller value, which keeps the order. O(n log n).
+// Bounds: a: 1..=Pos.count
 
 @!multitest
 use std.seq.{buckets}

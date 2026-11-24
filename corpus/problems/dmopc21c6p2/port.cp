@@ -6,6 +6,7 @@
 //   run lengths descending. O(n log n).
 // original: corpus/submissions/4342045.cpp
 // Lengths of the maximal runs of '0'; a trailing sentinel closes the last run.
+// Bounds: n: 1..=1e6; k: 1..=n
 
 let n: 1..=1e6 = read()
 let k: 1..=n = read()

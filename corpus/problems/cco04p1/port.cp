@@ -4,6 +4,7 @@
 // Solution: count each word's letters; it is playable iff no count exceeds that letter's
 //   tiles, and then it scores the sum of its letters. O(total length).
 // original: corpus/submissions/5430016.cpp
+// Bounds: m: 0..=26; n: 0..=100_000
 let m: 0..=26 = read()
 domain Alpha = 0..256
 var score: [Alpha]Int = 0

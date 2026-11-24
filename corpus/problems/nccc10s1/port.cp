@@ -6,6 +6,7 @@
 //   gets wrong (popcount of key ^ answers) and maximise that; complementing the key swaps
 //   wrong and right, so it is the same maximum. O(2^k n k).
 // original: corpus/submissions/4214147.cpp
+// Bounds: n: 1..=1_000; k: 1..=10
 let n: 1..=1_000 = read()
 let k: 1..=10 = read()
 let s: [0..n, 0..k]Char = read()

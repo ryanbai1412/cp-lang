@@ -8,6 +8,7 @@
 //   cell 1. With both sides odd, an open path ends at (1, 1), next to 1 and next to 2 (n*m is
 //   odd). O(nm) per test.
 // original: corpus/submissions/5705152.cpp
+// Bounds: t: 1..=100_000
 
 let t: 1..=100_000 = read()
 

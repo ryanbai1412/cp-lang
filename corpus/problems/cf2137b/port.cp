@@ -4,6 +4,7 @@
 //   gcd(p_i + q_i, p_{i+1} + q_{i+1}) >= 3 for every adjacent pair. Multitest, sum n <= 2e5.
 // Solution: q_i = n + 1 - p_i makes every p_i + q_i equal n + 1 >= 3, so every gcd is n + 1.
 //   O(n).
+// Bounds: n: 2..=200_000; p: 1..=n
 
 @!multitest
 let n: 2..=200_000 = read()

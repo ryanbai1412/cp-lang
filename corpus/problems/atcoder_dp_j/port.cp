@@ -8,6 +8,7 @@
 //   steps[a, b, c] = (N + a steps[a-1, b, c] + b steps[a+1, b-1, c] + c steps[a, b+1, c-1])
 //   / (a + b + c). Filling c, then b, then a ascending computes those first; O(N^3) states.
 // original: corpus/submissions/4131649.cpp
+// Bounds: n: 1..=300; plates: 1..=3
 let n: 1..=300 = read()
 domain Pieces = 1..=3
 let plates: [n]Pieces = read()

@@ -11,6 +11,7 @@
 //   first t cards came from the top: weigh the old polynomial there by the falling-factorial
 //   probability of that origin sequence, and interpolate the new values at 0, 1, 2. O(m + Q).
 // original: corpus/submissions/5652798.cpp
+// Bounds: n: 3..=1e7; m, q: 1..=5e5; kind: 1..=2
 use std.math.{choose}
 use std.poly.{interpolate}
 

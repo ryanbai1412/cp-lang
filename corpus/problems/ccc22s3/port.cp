@@ -6,6 +6,7 @@
 //   turn takes the most it can (a fresh pitch of the cycle when it takes all) while leaving 1
 //   for every later note; print -1 unless that uses up exactly k. O(n).
 // original: corpus/submissions/4371344.cpp
+// Bounds: n, m: 1..=1e6; k: 1..=1e18
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 let k: 1..=1e18 = read()

@@ -7,6 +7,7 @@
 //   whose cost prefix sums give in O(1). The cost only grows as the block widens, so slide
 //   two pointers: for each right end, advance the left end while over budget. O(n).
 // original: corpus/problems/ioi11p3/orig.cpp (submission 3732163, its grader reading B as 64-bit)
+// Bounds: n: 1..=1e5; budget: 0..=2e15
 let n: 1..=1e5 = read()
 type Spot = 1..=1e9
 let len: Spot = read()

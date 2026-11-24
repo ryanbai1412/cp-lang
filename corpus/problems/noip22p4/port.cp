@@ -10,6 +10,7 @@
 //   right end r folds H over l..=r. All sums and products are U64, which wraps mod 2^64
 //   exactly as the answer asks. O((n + Q) log n).
 // original: corpus/submissions/5445685.cpp
+// Bounds: test_id: 0..=25; n, q: 1..=250_000; a, b, qs.l, qs.r: 1..=n
 
 let (test_id, n): (0..=25, 1..=250_000) = read()
 domain I = 1..=n

@@ -7,6 +7,7 @@
 //   a step onto q lands at land(q): the small letter for a capital, nowhere for '#' or a small
 //   letter, q itself otherwise. O(RC) per leg; an unreachable leg makes the total -1.
 // original: corpus/submissions/4224399.cpp
+// Bounds: n, m: 1..=200
 let n: 1..=200 = read()
 let m: 1..=200 = read()
 domain Row = 1..=n

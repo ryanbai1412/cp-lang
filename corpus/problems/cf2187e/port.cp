@@ -9,6 +9,7 @@
 //   max(a_i, dp[k]) + max(1, 2k - 1), or spend one of k + 1 keys: dp[k+1] + 2k + 1. States
 //   worse than n + 1 + max a (waiting everywhere) are popped, so O(sqrt(n + max a)) remain:
 //   O(n sqrt(n + max a)). The answer for i is dp[0].
+// Bounds: n: 1..=200_000; a: 0..=10 ** 9
 
 @!multitest
 let n: 1..=200_000 = read()

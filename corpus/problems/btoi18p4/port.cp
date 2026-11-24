@@ -10,6 +10,7 @@
 //   neighbours, and b..c by the children of b and c plus the arcs either side; try each pair,
 //   alternate from c and verify with a coverage sweep. O((n + m) log m).
 // original: corpus/submissions/4656863.cpp
+// Bounds: n, m: 1..=1e5
 let n: 1..=1e5 = read()
 let m: 1..=1e5 = read()
 domain Wire = 0..m

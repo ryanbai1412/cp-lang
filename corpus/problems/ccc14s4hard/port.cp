@@ -10,6 +10,8 @@
 //   heights and one pending add; a range add rebuilds at most two blocks and the measure is a
 //   binary search per block. O(n sqrt(n) log n).
 // original: corpus/submissions/5672273.cpp
+// Bounds: n: 1..=1e5; need, panes.tint: 1..=1e9;
+//   panes.x0, panes.y0, panes.x1, panes.y1: 0..=1e9
 let n: 1..=1e5 = read()
 let need: 1..=1e9 = read()
 let panes: [n](x0: 0..=1e9, y0: 0..=1e9, x1: 0..=1e9, y1: 0..=1e9, tint: 1..=1e9) = read()

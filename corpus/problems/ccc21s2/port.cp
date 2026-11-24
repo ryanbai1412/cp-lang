@@ -6,6 +6,7 @@
 //   per row and per column; with r odd rows and c odd columns the gold cells number
 //   r (N - c) + c (M - r). O(M + N + K).
 // original: corpus/submissions/4323443.cpp
+// Bounds: rows, cols: 1..=5e6; k: 1..=1e6
 let rows: 1..=5e6 = read()
 let cols: 1..=5e6 = read()
 let k: 1..=1e6 = read()

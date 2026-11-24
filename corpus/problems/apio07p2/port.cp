@@ -9,6 +9,7 @@
 // As it builds today: the halving is a recursive function over list offsets, and the merge
 //   of two convex cost lists is written out (R7, R8).
 // original: corpus/submissions/5532752.cpp
+// Bounds: n: 2..=1e5; k: 1..=n / 2
 let n: 2..=1e5 = read()
 let k: 1..=n / 2 = read()
 

@@ -9,6 +9,7 @@
 //   row or column in the tilt direction with a monotone deque of (far - place), reset at
 //   furniture. O(K N M).
 // original: corpus/submissions/5032738.cpp
+// Bounds: n, m, q: 1..=200; tilts.way: 1..=4
 let n: 1..=200 = read()
 let m: 1..=200 = read()
 domain Row = 1..=n

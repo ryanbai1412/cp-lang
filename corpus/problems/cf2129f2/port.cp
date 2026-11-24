@@ -10,6 +10,7 @@
 //   masks: 60. The type-2 answers spell each position's mask, which names one value or a pair
 //   (v, v + 436). One type-3 query on a random position of each pair (at most 436) reports every
 //   larger value among them, since about half hold one, far below 300. O(n^2).
+// Bounds: n: 2..=890
 use std.rand.{Rng}
 
 @!interactive

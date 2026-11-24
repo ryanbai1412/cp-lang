@@ -10,6 +10,7 @@
 //   the counts left and right of it plus one equal its window's count, then split the window.
 //   O(n log n).
 // original: corpus/submissions/5536701.cpp
+// Bounds: n: 1..=2e5
 let n: 1..=2e5 = read()
 domain I = 0..n
 var segs: List<(Int, Int, Int)> = []

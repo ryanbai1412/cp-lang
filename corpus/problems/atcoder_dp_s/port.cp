@@ -6,6 +6,7 @@
 //   (same length, leading zeros) with digit sum r mod d, and `own` is the prefix's own residue.
 //   A digit extends every number below by 0..=9 and K's prefix by the digits smaller than its
 //   own. Then add K itself and drop 0: O(10 d len(K)).
+// Bounds: d: 1..=100
 type Z = Mod<1_000_000_007>
 let k: Str<1..=10000> = read()
 let d: 1..=100 = read()

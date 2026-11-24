@@ -7,6 +7,7 @@
 //   (by which side's out-degree is used). Reflecting the positions of one parity turns both
 //   directions into "earlier carried position < pos"; sweep v = 0..=2n and greedily match
 //   each position of v to any carried unmatched position of v - 1 before it. O(n) per test.
+// Bounds: n: 1..=1_000_000; vals: 1..=2 * n
 
 enum Flip:
     Even

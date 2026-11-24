@@ -5,6 +5,7 @@
 // Solution: the pair holding max(a) adds both its values and every other pair adds its b, best its
 //   larger value. So the answer is the sum of max(a[i], b[i]) plus the largest min(a[i], b[i])
 //   (that pair puts its larger value in a, which is then max(a)). O(n).
+// Bounds: n: 1..=200_000; a, b: 1..=10 ** 9
 
 @!multitest
 let n: 1..=200_000 = read()

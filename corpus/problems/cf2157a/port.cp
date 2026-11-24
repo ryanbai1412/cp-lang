@@ -4,6 +4,7 @@
 //   x times. Print the fewest deletions that make it balanced. Multitest.
 // Solution: values are independent: with f copies of v, keep v of them when f >= v (delete f - v),
 //   else delete all f (so every 0 goes). Count frequencies and sum the deletions, O(n).
+// Bounds: n: 1..=100; a: 0..=n
 
 @!multitest
 let n: 1..=100 = read()

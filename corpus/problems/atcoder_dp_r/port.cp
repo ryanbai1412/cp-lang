@@ -5,6 +5,7 @@
 // Solution: the walks of length k from i to j are entry (i, j) of adj^k, so the answer is
 //   the sum of all entries of adj^k. `Mat ** k` powers by squaring with n^3 products:
 //   O(n^3 log k).
+// Bounds: n: 1..=50; k: 1..=1e18; adj: 0..=1
 type Z = Mod<1_000_000_007>
 let n: 1..=50 = read()
 let k: 1..=1e18 = read()

@@ -9,6 +9,7 @@
 //   segment's flow is paid when the cut has its tail at 0 and its head at 1, so it becomes one
 //   directed dual arc across it. Dijkstra from low to high, O(n^2 log n).
 // original: corpus/submissions/5672180.cpp
+// Bounds: n: 1..=500; east, south, west, north: 0..=1e6
 
 let n: 1..=500 = read()
 let east: [0..=n, 1..=n]0..=1e6 = read()

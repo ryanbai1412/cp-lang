@@ -7,6 +7,7 @@
 //   Every airport pair is one hop at its price; the all-pairs closure (Floyd-Warshall over the
 //   4n airports, O(n^3)) gives the trip, the cheapest of the 16 corner pairs.
 // original: corpus/submissions/5086731.cpp
+// Bounds: n: 1..=100; air, city.rail: 1..=1000; from, to: 1..=n
 let n: 1..=100 = read()
 let air: 1..=1000 = read()
 domain City = 1..=n

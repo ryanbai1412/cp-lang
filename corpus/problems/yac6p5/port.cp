@@ -9,6 +9,7 @@
 //   median (prefix sums) and pay a turn per sheep in the low group looking down or in the high
 //   group looking up. Everyone at one spot needs no turns. Sum the two axes; O(N log N).
 // original: corpus/submissions/5149823.cpp
+// Bounds: n: 2..=1e6
 
 let n: 2..=1e6 = read()
 struct Sheep:

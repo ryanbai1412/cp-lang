@@ -12,6 +12,7 @@
 //   multiply open^(gap), times n if no original survives. O(n log n).
 // original: corpus/submissions/4684567.cpp (grader functions valid, replacement, countReplacement)
 // stdin: task (1 valid, 2 replacement, 3 count), n, then the n gondola numbers.
+// Bounds: task: 1..=3; n: 1..=100000
 type Z = Mod<1_000_000_009>
 let task: 1..=3 = read()
 let n: 1..=100000 = read()

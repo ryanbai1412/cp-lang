@@ -8,6 +8,7 @@
 //   (x, y) -> (y, z). Intern the pairs, take SCCs, and BFS each SCC from one root inside it;
 //   an SCC has a cycle of length not divisible by 3 iff some edge inside it breaks
 //   dist[v] = dist[u] + 1 (mod 3). O(m) plus hashing.
+// Bounds: m: 1..=200_000
 
 use std.marks.{Interner}
 

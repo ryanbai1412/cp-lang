@@ -8,6 +8,7 @@
 //   query tests 13 positions at once: k copies of "o p" then one o add k(k+1)/2 balanced
 //   substrings iff s[p] = ')'. The k are picked so each weight beats the sum of the smaller
 //   ones within 1000 indices, so the count decodes greedily, largest first. About 77 + 10 queries.
+// Bounds: n: 2..=1000
 
 @!interactive
 

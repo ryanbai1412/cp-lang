@@ -6,6 +6,7 @@
 // Solution: with values 1..3 these are exactly 1, then one or more 2s, then 3. Scan once:
 //   ones counts 1s, open counts "1 then a nonempty set of 2s" (a 2 doubles open and adds
 //   ones), and each 3 adds open to the answer. O(n).
+// Bounds: n: 3..=200_000
 @!multitest
 type Z = Mod<998_244_353>
 

@@ -7,6 +7,7 @@
 //   line, each squeezed against its wall, shooting the wider one. Each shot shrinks a
 //   window, O(n) shots.
 // original: corpus/submissions/5072008.cpp
+// Bounds: n: 1..=1000; s, c: 0..=1000
 let n: 1..=1000 = read()
 let s: 0..=1000 = read()
 let c: 0..=1000 = read()

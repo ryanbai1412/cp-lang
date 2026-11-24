@@ -7,6 +7,7 @@
 //   Raise the (n + 1)^2 matrix to the k with std `pow` over the matrix-product monoid, O(n^3 log k). By symmetry the answer is
 //   P(0 -> d) / C(n, d) for the starting distance d.
 // original: corpus/submissions/3718293.cpp
+// Bounds: n: 1..=128; m: 0..=n; k: 0..=1e9
 const P = 1000000007
 type Z = Mod<P>
 

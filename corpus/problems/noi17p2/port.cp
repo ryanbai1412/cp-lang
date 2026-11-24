@@ -7,6 +7,7 @@
 //   join adds the runs crossing the new joint (a suffix of i's queue plus a prefix of j's, at
 //   most 50 long) and a split removes them; each run is made once between splits, so that is
 //   O(50 n + 50^2 c) map updates. A query hashes s and multiplies the counts of its windows.
+// Bounds: n: 1..=200_000; q: 1..=500_000; size: 1..=6
 
 use std.strings.{HashVal}
 

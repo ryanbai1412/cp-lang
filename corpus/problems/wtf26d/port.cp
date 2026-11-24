@@ -30,6 +30,7 @@
 // satisfying `cond.max_v`; every unused element in `min_p..=hi_bound` with
 // value `>= p[min_p]` can then move freely into this block in decreasing order,
 // and shrinking `right_end = p_thresh.prev` keeps all blocks pairwise disjoint.
+// Bounds: n: 2..=1e6; p, q: 1..=n
 
 struct Cond(max_p: Pos, max_v: Val)
 

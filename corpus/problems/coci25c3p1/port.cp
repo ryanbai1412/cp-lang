@@ -8,6 +8,7 @@
 //   `Col.at` give None off the grid), and a paint rewrites every cell within distance k - 1.
 //   O(|word| n^2), about 1e5 steps.
 // original: corpus/submissions/7730233.cpp
+// Bounds: n, k: 1..=50
 let n: 1..=50 = read()
 let k: 1..=50 = read()
 let moves: Str = read()

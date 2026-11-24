@@ -11,6 +11,7 @@
 //   and the added history are constants. Tags compose in O(1): a SegTree with range apply and
 //   point get, plus a `record` tag on the whole array after each operation, O((n + q) log n).
 //   The code is the hard version's (any |a|, |x| <= 1e9).
+// Bounds: n, q: 1..=500_000; a: -1e9..=1e9
 use std.algebra.{MaxSub}
 
 type Sign = -1..=1

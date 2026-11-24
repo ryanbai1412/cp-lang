@@ -5,6 +5,7 @@
 // Solution: only the original orientation increases both ways: try up to four clockwise rotations,
 //   checking every row and column, and print the first that passes. O(n^2).
 // original: corpus/submissions/4329456.cpp
+// Bounds: n: 2..=100; given: 1..=1e9
 let n: 2..=100 = read()
 domain I = 0..n
 let given: [I, I]1..=1e9 = read()

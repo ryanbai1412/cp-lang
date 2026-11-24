@@ -9,6 +9,7 @@
 //   after it starts the next search. dp[j], player j's expectation when player 0 moves first,
 //   averages shifted[(j - s) mod n] over s, where shifted[j] = dp_(i-1)[j - 1] + [j == 0].
 //   Prefix sums with wrap counts give each cyclic window in O(1): O(n l).
+// Bounds: n: 1..=100; l: 1..=5_000; _k: 0..=0
 
 const MOD = 1_000_000_007
 type Z = Mod<MOD>

@@ -7,6 +7,7 @@
 //   and it can be made iff the frequencies in S sum to at least the largest frequency. So
 //   knapsack over the distinct values on total frequency, each value weighted by its
 //   freq[v] choices (dp[i + f] += dp[i] * f), and sum dp[i] for i >= max freq: O(n^2).
+// Bounds: n: 1..=5_000; a: 1..=n
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

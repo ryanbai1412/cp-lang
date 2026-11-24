@@ -10,6 +10,7 @@
 //   the original author; XOR the given boards into need and print the least side in 1..=M whose
 //   value is need. O(N + M).
 // original: corpus/submissions/5149666.cpp
+// Bounds: n: 1..=1e6; m, s: 1..=100
 
 // Grundy values of pile sizes 0..=100, precomputed offline by the original author
 let grundy: List<Int> = [

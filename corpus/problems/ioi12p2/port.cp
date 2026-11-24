@@ -10,6 +10,7 @@
 // original: corpus/submissions/4689474.cpp (grader functions Init / Link / CountCritical)
 // stdin: n and the number of calls, then one call per line: "u v" for
 // Link(u, v), "-1 -1" for CountCritical. stdout: one count per CountCritical.
+// Bounds: n: 1..=1000000; calls: 0..=1000000
 let n: 1..=1000000 = read()
 let calls: 0..=1000000 = read()
 

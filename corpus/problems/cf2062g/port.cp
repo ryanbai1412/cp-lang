@@ -12,6 +12,7 @@
 // by maximality of l in r's cycle, perm[r] <= l < r <= perm[l]. Swapping (l, r)
 // therefore reduces sum |x - perm[x]| by exactly 2 * (r - l) — twice the swap
 // cost — matching the Manhattan lower bound without re-sorting cycles.
+// Bounds: n: 2..=100; p, q: 1..=n
 
 use std.flow.min_weight_matching
 use std.seq.{swap_at}

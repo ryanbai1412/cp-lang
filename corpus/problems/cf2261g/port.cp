@@ -13,6 +13,7 @@
 //   its left ends, merged when two ANDs coincide. Walking a group's trie along pref ^ mask
 //   counts, at each set bit b of mask, the left ends whose XOR agrees with the AND on bits
 //   >= b; add 2^b times that. O(n * 25^2) plus trie merges.
+// Bounds: n: 1..=4e5
 use std.bitset.{BitTrie}
 
 const L = 25

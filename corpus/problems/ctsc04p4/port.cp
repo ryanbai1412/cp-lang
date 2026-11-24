@@ -9,6 +9,8 @@
 //   by distance from u, u either uses a or a closer core opened at c_a. The answer is the best
 //   last step of plan(root)[v] plus c_v. About O(n^2 p).
 // original: corpus/submissions/4529641.cpp
+// Bounds: n: 1..=400; p: 1..=1e9; cost: 0..=1e9; links.u, links.v: 1..=n;
+//   links.len: 0..=20_000 - 1
 let n: 1..=400 = read()
 let p: 1..=1e9 = read()
 domain Switch = 1..=n

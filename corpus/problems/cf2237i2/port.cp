@@ -36,6 +36,7 @@
 // `parent` open (`Deferred` closing at `u`) and by starting the chain at `u`;
 // subtracting `1` cancels that double count. At the root, `Deferred` states are
 // excluded because no parent edge can close them.
+// Bounds: n: 2..=3000
 
 type Z = Mod<1_000_000_007>
 enum Label: Zero | One | Any

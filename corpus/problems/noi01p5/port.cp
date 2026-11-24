@@ -4,6 +4,7 @@
 // Solution: meet in the middle: every value of the first half's sum (at most M^3 = 3.4e6)
 //   into a counts map, then for each sum s of the second half add the count of -s.
 //   O(M^(n/2)) values per half.
+// Bounds: n: 1..=6; m: 1..=150; terms.k: -20..=20; terms.p: 1..=3
 let n: 1..=6 = read()
 let m: 1..=150 = read()
 domain T = 0..n

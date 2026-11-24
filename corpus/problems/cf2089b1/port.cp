@@ -7,6 +7,7 @@
 //   needs to wrap past the cut. In that order each demand b[i] drains the nearest earlier
 //   unspent supply a[pos] (a stack of (qty, pos)), which arrives after i + 1 - pos rounds; the
 //   answer is the largest such value. O(n) amortized.
+// Bounds: n: 1..=200_000; _k: 0..=10 ** 14; a, b: 0..=10 ** 9
 
 struct Supply(qty: Int, pos: Int)
 

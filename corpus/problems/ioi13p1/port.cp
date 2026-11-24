@@ -8,6 +8,7 @@
 //   radius: the answer is the max of all diameters, r1 + r2 + L and r2 + r3 + 2L for the
 //   radii sorted down: O(N + T log T) for T trees.
 // original: proto/ports/scout_batch_17/harness/ioi13p1_main.cpp (wraps corpus/submissions/4687433.cpp)
+// Bounds: n: 1..=1e5; m: 0..=n - 1; l: 1..=1e4
 let n: 1..=1e5 = read()
 let m: 0..n = read()
 let l: 1..=1e4 = read()

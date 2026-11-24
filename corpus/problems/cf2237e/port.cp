@@ -9,6 +9,7 @@
 //   of whose values are used; pair them smallest-first (the k-th smallest index cycle gets
 //   the k-th smallest value cycle, minimum to minimum), else NO. Then from every fixed entry
 //   walk b[a[i]] = a[b[i]] until a filled entry, which must agree. O(n).
+// Bounds: n: 1..=500_000; a: 1..=n
 @!multitest
 let n: 1..=500_000 = read()
 domain I = 1..=n

@@ -9,6 +9,7 @@
 //   inversion gives ans[k] = C(2n, k) / (k + 1) [u^(n+1)] S^(k+1), S = sum C_i^2 u^(i+1).
 //   Powers of S by convolve modulo three NTT primes and CRT, O(n^2 log n); then exact
 //   counts by inclusion-exclusion, out[j] = sum_k (-1)^(k-j) C(k, j) ans[k], O(n^2).
+// Bounds: n: 1..=500; m: 2..=2 * 10 ** 9
 
 use std.ntt.{ntt}
 

@@ -8,6 +8,7 @@
 //   known '(' and ')'; if the whole string answers 0 it is ")...(", so s[n] s[1] is "()".
 //   Then each pair (p1, p2) costs one query, [p1, ')', '(', p2, '(', p2], whose answer
 //   0, 1, 3 or 6 tells both brackets (odd n repeats the last index). log n + n/2 queries.
+// Bounds: n: 2..=1_000
 
 @!interactive
 

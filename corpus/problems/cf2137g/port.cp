@@ -9,6 +9,7 @@
 //   reverse topological order. Painting red only turns win bits from true to false, so each node
 //   changes class at most twice; `propagate` re-evaluates the in-neighbours of a changed node and
 //   recurses, O(n + m + q) in total.
+// Bounds: n, q: 1..=200_000; m: 0..=200_000; edges.u, edges.v: 1..=n
 
 enum Outcome: BothCry | FirstWins | SecondWins | BothRiver
 

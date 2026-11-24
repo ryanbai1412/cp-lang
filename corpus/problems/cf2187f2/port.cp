@@ -8,6 +8,7 @@
 //   multiply their children's ways. Down a decreasing chain, ends(v)[k] counts v's ways with k
 //   single-vertex right children still free to climb; each such leaf adds a slot and lets every
 //   open one move up (a prefix sum). O(n^2).
+// Bounds: n: 2..=5000; a, b: 1..=n
 use std.tree.{PermTree, PermKind}
 
 type Z = Mod<998_244_353>

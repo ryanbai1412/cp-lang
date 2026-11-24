@@ -8,6 +8,7 @@
 //   small sides allow. A small prime used by nobody is counted three times, so
 //   inclusion-exclusion with weight (-2)^|S| over primes forced to nobody fixes it. O(3^8 n).
 // original: corpus/submissions/3782724.cpp
+// Bounds: n: 2..=500; p: 1..=1e9
 
 let (n, p): (2..=500, 1..=1e9) = read()
 type Z = Mod<p>

@@ -5,6 +5,7 @@
 // Solution: each black tile has 3 sides, and each side two black tiles share takes 2 off the
 //   tape: neighbours in a row, and at even columns the two tiles across. O(c).
 // original: corpus/submissions/5350804.cpp
+// Bounds: n: 1..=2e5; black: 0..=1
 let n: 1..=2e5 = read()
 domain Row = 0..2
 domain Col = 0..n

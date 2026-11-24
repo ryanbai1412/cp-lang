@@ -8,6 +8,7 @@
 //   lists, binary-searching each element of the shorter list in the longer one, memoised per
 //   pair in a Map. Initial count by a Fenwick tree; O(n sqrt(q) log n) over distinct pairs.
 // original: corpus/submissions/4538969.cpp
+// Bounds: a: 1..=k
 
 let (n, k, q): (Int, Int, Int) = read()
 domain Pos = 1..=n

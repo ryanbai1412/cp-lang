@@ -5,6 +5,7 @@
 // Solution: a window without 0 has mex 0, so it is constant; one with 0 has min 0 and needs
 //   mex = max, impossible since max is in it and mex is not. So the array is one positive
 //   constant: YES iff the fixed entries are all equal and positive. O(n).
+// Bounds: n: 3..=100
 
 @!multitest
 let n: 3..=100 = read()

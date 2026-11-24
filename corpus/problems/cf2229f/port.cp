@@ -9,6 +9,7 @@
 //   `subset_sums`. can_reach(thresh) is a mask DP keeping the lexicographically largest
 //   (closed blocks, running remainder), a block closing once it reaches thresh: O(m 2^m) per
 //   check, O(m^2 2^m) total.
+// Bounds: n: 1..=18; k: 1..=n; a_in: 1..=10 ** 9
 
 use std.dp.{subset_sums}
 use std.seq.{argmax}

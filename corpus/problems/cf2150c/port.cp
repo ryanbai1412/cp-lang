@@ -8,6 +8,7 @@
 //   its value to dp[0..pos]; then prefix-max restores monotonicity. dp is kept as a base plus
 //   a map of positive increments, a negative increment cancelling the next positive ones;
 //   the answer is dp[n]. O(n log n) amortised.
+// Bounds: n: 1..=200_000; a, b: 1..=n
 
 @!multitest
 let n: 1..=200_000 = read()

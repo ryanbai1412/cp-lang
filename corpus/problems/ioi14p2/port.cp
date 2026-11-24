@@ -8,6 +8,7 @@
 //   action applies each operation in O(log n), then each column is read once:
 //   O((n + k) log n).
 // original: corpus/problems/ioi14p2/orig.cpp (submission 4683906 plus the sample grader)
+// Bounds: n: 1..=2e6; k: 1..=5e5
 
 let (n, k): (1..=2e6, 1..=5e5) = read()
 domain Col = 0..n

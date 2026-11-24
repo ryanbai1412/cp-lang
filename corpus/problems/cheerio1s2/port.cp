@@ -5,6 +5,7 @@
 //   leave a gap. A MinHeap holds each floor's next room (A i + B for floors 1..=N); pop the
 //   cheapest N times, pushing that floor's next room (+B). O(N log N).
 // original: corpus/submissions/5337643.cpp
+// Bounds: n: 1..=1e5; a, b: 1..=1e4
 let n: 1..=1e5 = read()
 let a: 1..=1e4 = read()
 let b: 1..=1e4 = read()

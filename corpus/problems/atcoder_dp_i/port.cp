@@ -5,6 +5,7 @@
 //   moves chance[h] * p up to h + 1 and keeps chance[h] * (1 - p); going down over h updates
 //   in place. Sum chance[h] over 2h > N. O(N^2).
 // original: corpus/submissions/4131648.cpp
+// Bounds: n: 1..=2999
 let n: 1..=2999 = read()
 let heads: [n]F64 = read()
 

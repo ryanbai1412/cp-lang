@@ -7,6 +7,7 @@
 //   closer, which is the lowest colour of the closest sources. O(NM).
 // original: corpus/submissions/4342005.cpp
 // Smaller colours start first, so they win every tie.
+// Bounds: n, m: 1..=1500; k: 0..=3000; paint: 0..=1e9
 
 let n: 1..=1500 = read()
 let m: 1..=1500 = read()

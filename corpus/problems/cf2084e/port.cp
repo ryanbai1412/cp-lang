@@ -7,6 +7,7 @@
 //   segment with f blanks covering the span of the placed ones counts P(f, need) (m - need)!.
 //   Keep covering[f], the segments with f blanks covering the span; as v grows the span widens
 //   and each segment leaves the count once, so O(n^2) per test.
+// Bounds: n: 1..=5000
 @!multitest
 use std.mod.{Comb, Mod}
 

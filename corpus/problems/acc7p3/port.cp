@@ -6,6 +6,7 @@
 //   neighbouring pairs between them at the same total cost, so only the n - 1 neighbouring pairs
 //   are candidates. Kruskal over the friendships at cost 0 and those pairs: O((n + m) log(n + m)).
 // original: corpus/submissions/3540475.cpp
+// Bounds: n: 1..=1e5; m: 0..=1e5; f: 0..=1e9; friends.u, friends.v: 1..=n
 
 let (n, m): (1..=1e5, 0..=1e5) = read()
 domain U = 1..=n

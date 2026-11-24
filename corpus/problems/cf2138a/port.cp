@@ -6,6 +6,7 @@
 // Solution: backwards each move is forced: the giver ends with the smaller pile, so undo it
 //   ((x, y) -> (x - y, 2y) if x > y, else (2x, y - x)). Each undo raises the lowest set bit of
 //   both piles, so it ends at (2^k, 2^k) within k steps; print the moves reversed. O(k).
+// Bounds: k: 1..=60; x: 1..=2 ** 61 - 1
 
 @!multitest
 let k: 1..=60 = read()

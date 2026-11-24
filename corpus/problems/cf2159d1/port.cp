@@ -8,6 +8,7 @@
 //   block at x: cost 1 starts after the nearest smaller value; cost l in 2..=3 starts after the
 //   last stack entry below ceil(x / l), found by binary search (none: the whole prefix is one
 //   block). O(n log n).
+// Bounds: n: 1..=400_000; a: 1..=10 ** 18
 
 @!multitest
 let n: 1..=400_000 = read()

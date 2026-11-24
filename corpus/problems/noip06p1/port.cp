@@ -8,6 +8,7 @@
 //   len - k and releases mark[i] * mark[i + k] * mark[i + len]. Memoised over n^2 states with
 //   O(n) splits each, O(n^3); the answer is the max of best(i, n) over every start i.
 // original: corpus/submissions/5165686.cpp
+// Bounds: n: 4..=100; mark: 1..=1000
 let n: 4..=100 = read()
 domain Bead = 0..n
 let mark: [Bead]1..=1000 = read()

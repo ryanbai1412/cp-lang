@@ -6,6 +6,7 @@
 //   pivot bottle to split the caps three ways and find its cap, report the pair, partition
 //   the other bottles by that cap, and recurse on the smaller and the larger halves. One query
 //   per element per level: about 4 n ln n = 3.7e5 expected queries at n = 1e4.
+// Bounds: n: 1..=10_000
 let n: 1..=10_000 = read()
 domain Cap = 1..=n
 domain Bottle = 1..=n

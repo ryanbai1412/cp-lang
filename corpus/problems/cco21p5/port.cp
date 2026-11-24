@@ -11,6 +11,7 @@
 //   costs one road for every next-block start past it: a lazy SegTree of ?Int minimums with
 //   range add (cuts not yet solved are None). O((n + m) log n).
 // original: corpus/submissions/4554642.cpp
+// Bounds: n: 2..=2e5; m: 1..=2e5
 let (n, m): (2..=2e5, 1..=2e5) = read()
 domain Town = 1..=n
 var earliest: [Town]?Town = None

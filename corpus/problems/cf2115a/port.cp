@@ -10,6 +10,7 @@
 //   with a k-tuple of gcd 1, and by Mobius sum_d mu(d) c_d^k counts those, c_d the elements
 //   divisible by d. Each value weighs a random hash mod p, so the count is nonzero mod p
 //   whenever it is truly nonzero (with high probability). O(V log V) per k.
+// Bounds: n: 1..=5000; a: 1..=V
 use std.math.{Sieve}
 use std.rand.{Rng}
 

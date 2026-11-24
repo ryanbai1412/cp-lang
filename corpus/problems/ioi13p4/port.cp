@@ -11,6 +11,7 @@
 // The judge sends N, answers each `try S` with the first closed door (or -1) and takes
 //   `answer S D` (interactor.py).
 // original: corpus/submissions/4687973.cpp
+// Bounds: n: 1..=5000
 let n: 1..=5000 = read()
 domain Switch = 0..n
 domain Door = 0..n

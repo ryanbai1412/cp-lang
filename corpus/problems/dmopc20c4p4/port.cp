@@ -8,6 +8,7 @@
 //   throw as spare. When a exceeds h, some spare j must have been a new hole: that adds 1 to b_j
 //   and to every b between, i - j in all, so reopen the latest spare. Amortised O(n).
 // original: corpus/submissions/3485716.cpp
+// Bounds: n: 1..=2e6
 let n: 1..=2e6 = read()
 domain Throw = 0..n
 var holes = 0

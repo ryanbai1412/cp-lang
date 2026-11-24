@@ -7,6 +7,7 @@
 //   walk; where two tiles meet, leave by the tile that was not just walked, skipping the shared
 //   edge, until back at the start. O(N log N).
 // original: corpus/submissions/3686612.cpp
+// Bounds: n: 1..=2e5; center.x, center.y: -1e9..=1e9
 let n: 1..=2e5 = read()
 domain Tile = 0..n
 let center: [Tile](x: -1e9..=1e9, y: -1e9..=1e9) = read()

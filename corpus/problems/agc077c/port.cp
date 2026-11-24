@@ -17,6 +17,7 @@
 //   parity in [odd % 2, sz - (sz - odd) % 2]; sum the intervals into [lo, hi] and test
 //   floor(n/2), whose parity is right. `components(complement(...))` walks the unvisited
 //   vertices only, O(n + m).
+// Bounds: n: 4..=200_000; m: 0..=200_000; k: 2..=n - 2
 
 use std.graph.{complement, components}
 

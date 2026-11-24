@@ -7,6 +7,7 @@
 //   p's entry points are an interval; a rival with the same x and a lower y wins everywhere.
 //   Coordinates are scaled to integers and interval ends kept as exact `Ratio`s. O(n^2).
 // original: corpus/submissions/4584542.cpp
+// Bounds: n: 1..=1000
 const SCALE = 1000  // the coordinates have two decimals; a third keeps rounding exact
 
 let n: 1..=1000 = read()

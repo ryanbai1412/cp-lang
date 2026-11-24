@@ -5,6 +5,7 @@
 //   each holding only the entries of its parity (0 elsewhere). An update sets the entry in
 //   its index's tree; a query is the range sum over [L, R] in L's tree. O((N + Q) log N).
 // original: corpus/submissions/4121099.cpp
+// Bounds: n, q: 1..=1_000_000; a: -1e9..=1e9
 
 let n: 1..=1_000_000 = read()
 let q: 1..=1_000_000 = read()

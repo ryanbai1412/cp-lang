@@ -13,6 +13,7 @@
 //   T = 308. Measured S = 13 (full marks need S <= 15) on random, path, star, caterpillar,
 //   broom and binary trees; not proven for every tree. O(N^2) to find the root, O(N T) output.
 // original: corpus/submissions/6435484.cpp
+// Bounds: n: 100..=100
 let n: 100..=100 = read()
 
 domain V = 0..n

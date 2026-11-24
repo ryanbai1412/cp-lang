@@ -8,6 +8,7 @@
 //   overlapping palindromic windows reflect t[i] onto t[i + 2] (resp. t[i + 1]). Prefix counts of
 //   s[i] != s[i - d] test the periods, Manacher the palindrome, and the good k form two arithmetic
 //   series: O(n) setup, O(1) per query.
+// Bounds: n: 2..=2e5; q: 1..=2e5
 @!multitest
 use std.strings.{manacher}
 

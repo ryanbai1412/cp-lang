@@ -6,6 +6,7 @@
 //   see what each bit becomes from 0 and from 1. Then greedily from the top bit: a 0 that
 //   comes out 1 is free; else take a 1 if it comes out 1 and the start stays <= m. O(n + 30).
 // original: corpus/submissions/3595714.cpp
+// Bounds: n: 1..=1e5; m, doors.t: 0..=1e9
 let (n, m): (1..=1e5, 0..=1e9) = read()
 let doors: [0..n](op: Str, t: 0..=1e9) = read()
 fn through(x: Int) -> Int = doors.fold((v, d) => if d.op == "AND": v & d.t elif d.op == "OR": v | d.t else: v ^ d.t, x)

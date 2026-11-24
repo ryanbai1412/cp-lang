@@ -9,6 +9,7 @@
 //   strictly right of the line. A slight turn about p moves the line's points ahead of p to one
 //   side and those behind to the other, so a side takes p and the points ahead, behind or both.
 //   O(n^2 log n).
+// Bounds: n: 2..=4000
 use std.geometry.{arg}
 
 let n: 2..=4000 = read()

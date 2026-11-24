@@ -6,6 +6,7 @@
 //   blocks of k (`floor_quotients`), so add block size * trees(q) per block. Memoised; only
 //   values n / d are reached, about O(n^(3/4)) total.
 // original: corpus/submissions/4329681.cpp
+// Bounds: n: 1..=1e9
 @memo
 fn trees(w: 1..=1e9) -> Int:
     if w == 1: return 1

@@ -9,6 +9,7 @@
 //   the worst case, far less in practice.
 // Runnable on proto/cpc today.
 // original: corpus/submissions/3944717.cpp
+// Bounds: n: 1..=100; coins, bombs: 0..=1000
 let n: 1..=100 = read()
 let coins: 0..=1000 = read()
 let bombs: 0..=1000 = read()

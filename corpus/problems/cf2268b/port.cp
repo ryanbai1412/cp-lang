@@ -8,6 +8,7 @@
 //   every multiple of 3 below 16 has even popcount, and all even-popcount values can be
 //   made multiples of 3 at once. So the answer is the count of even-popcount values,
 //   kept in O(1) per update.
+// Bounds: n: 2..=200_000; q: 0..=200_000; a: 0..=16 - 1
 
 fn even(x: 0..16) -> Int: Int(popcount(x) % 2 == 0)
 

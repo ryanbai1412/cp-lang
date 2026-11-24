@@ -8,6 +8,7 @@
 //   suffix minimum turns that into bad_r[l], the first end that breaks start l (the reversed
 //   scan gives bad_l). Cute subarrays are the union of rectangles
 //   [bad_l[i]+1..=i] x [i..bad_r[i]]; subtracting adjacent overlaps counts each once. O(n).
+// Bounds: n: 1..=200_000; a: 1..=n
 
 
 @!multitest

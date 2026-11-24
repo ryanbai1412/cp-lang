@@ -8,6 +8,7 @@
 //   of its type, else dp of that last one. Scan from the back with a suffix sum; the answer is
 //   sum dp / n. O(N + M).
 // original: corpus/submissions/5032745.cpp
+// Bounds: n: 1..=1e6; fav: 1..=5e5
 let n: 1..=1e6 = read()
 domain Pos = 0..n
 domain Kind = 1..=5e5

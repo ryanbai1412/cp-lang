@@ -6,6 +6,7 @@
 //   Giving `take` more positions bit b multiplies by C(n - used, take) v_b^take and fixes bit
 //   (carry + take) & 1; at the end the carry adds its popcount. O(m n^3 k), about 1e8.
 // original: corpus/submissions/5445677.cpp
+// Bounds: n, k: 1..=30; m: 0..=100; val: 0..=P - 1
 const P = 998244353
 type Z = Mod<P>
 let n: 1..=30 = read()

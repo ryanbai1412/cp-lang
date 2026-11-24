@@ -11,6 +11,8 @@
 //   stretch: enter at one, sweep to an end and back to the exit; two prefix and two suffix
 //   running-max passes over prefix gains give every exit. The trip ends by arriving home.
 //   O(N log L).
+// Bounds: n, fairs.t: 1..=500_000; up: 1..=10; down: 1..=up; home, fairs.at: 1..=500_001;
+//   fairs.gain: 1..=4000
 let n: 1..=500_000 = read()
 let up: 1..=10 = read()
 let down: 1..=up = read()

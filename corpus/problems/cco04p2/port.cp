@@ -8,6 +8,7 @@
 //   the smallest second number that is still at least its own, by binary search over the
 //   fronts, or open a new row; rows are printed reversed. O(s log s).
 // original: corpus/submissions/5430096.cpp
+// Bounds: n: 1..=1e5
 type Tile = (a: Int, b: Int)
 
 fn read_tile() -> Tile:

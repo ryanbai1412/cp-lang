@@ -9,6 +9,7 @@
 //   candidate cell tells which, and each cell follows from its sum and difference. O(1).
 // As it builds today: the four candidate cells are plain numbers checked by hand (K16).
 // original: corpus/submissions/5149597.cpp; judge: yac6p3_judge.py
+// Bounds: n, m: 1..=1e9
 let n: 1..=1e9 = read()
 let m: 1..=1e9 = read()
 domain X = 1..=n

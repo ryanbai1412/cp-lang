@@ -6,6 +6,7 @@
 // Solution: waste(a, b) is 0 if a x b is wanted, else the least of a * b and, over every
 //   vertical cut x <= a / 2 and horizontal cut y <= b / 2 (the other halves are symmetric),
 //   the waste of its two parts. Filled bottom-up over a <= W, b <= H: O(W H (W + H)).
+// Bounds: w, h: 1..=600; n: 1..=200; plates.w: 1..=w; plates.h: 1..=h
 let w: 1..=600 = read()
 let h: 1..=600 = read()
 let n: 1..=200 = read()

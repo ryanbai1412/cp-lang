@@ -10,6 +10,7 @@
 //   since every shifted unit passes through them; shifts go into a difference array over the
 //   markets between, applied at the end. O(n) amortized.
 // original: corpus/submissions/4801882.cpp
+// Bounds: n: 2..=1e6; room: 0..=2e9; people, umbrellas: 0..=1e9
 let n: 2..=1e6 = read()
 domain Stop = 0..n
 domain Market = 0..n - 1

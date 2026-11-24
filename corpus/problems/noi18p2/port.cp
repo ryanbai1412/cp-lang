@@ -8,6 +8,7 @@
 //   exceeds q at i, p_i is a new maximum >= max(mx, q_i) + 1, and those completions sum to one
 //   ballot term; stop once q's own prefix is not good. O(n) per test after factorials.
 // original: corpus/submissions/6512891.cpp
+// Bounds: n: 1..=6e5; q: 1..=n
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>(2 * 600_000 + 5)

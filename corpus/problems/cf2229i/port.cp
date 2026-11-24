@@ -15,6 +15,7 @@
 //   kids go smallest subtree first only for memory: the time is O(n^2) in any order, but
 //   the largest child is then in no stored prefix join (a star whose long path came first
 //   would copy the path into every leaf's prefix).
+// Bounds: n: 2..=4000; k, edges.u, edges.v: 1..=n; w: 1..=1_000_000_000
 @!multitest
 let (n, k): (2..=4000, 1..=n) = read()
 domain V = 1..=n

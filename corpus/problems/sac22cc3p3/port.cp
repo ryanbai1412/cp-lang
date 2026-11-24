@@ -6,6 +6,7 @@
 // Solution: a stable sort by d_r each round is the statement itself, and it is an LSD radix
 //   sort: after round r the array is ordered by the last r digits. O(digits * n log n).
 // original: corpus/submissions/4331598.cpp
+// Bounds: n: 1..=1e5; row: 1..=1e9
 
 let n: 1..=1e5 = read()
 var row: [n]1..=1e9 = read()

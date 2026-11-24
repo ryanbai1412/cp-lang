@@ -7,6 +7,7 @@
 //   ends within its length (a Dijkstra from one end over the kept graph, stopped once the other end settles). Shorter roads never
 //   need longer ones, so this is exact. O(M (N + M) log N).
 // original: corpus/submissions/5350808.cpp
+// Bounds: n, m: 1..=2000; roads.u, roads.v: 1..=n; roads.len: 0..=1e9; roads.cost: 1..=1e9
 let n: 1..=2000 = read()
 let m: 1..=2000 = read()
 domain V = 1..=n

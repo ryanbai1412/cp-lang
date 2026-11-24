@@ -11,6 +11,7 @@
 //   such hole costs the cottage an elf, and its own a_i elves fill the next a_i holes of the
 //   stream it passes on.
 // original: corpus/submissions/4227368.cpp
+// Bounds: n: 1..=1e6; k, a: 0..=1e9
 let (n, k): (1..=1e6, 0..=1e9) = read()
 domain I = 0..n
 var a: [I]0..=1e9 = read()

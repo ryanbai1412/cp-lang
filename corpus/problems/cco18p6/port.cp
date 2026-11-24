@@ -8,6 +8,7 @@
 //   (three run reversals), then recurse on the two sides. Print a's flops, then b's in reverse
 //   (each flop undoes itself). O(N log^2 N) flops.
 // original: corpus/submissions/4575245.cpp
+// Bounds: n: 1..=4096
 let n: 1..=4096 = read()
 var a0: List<Int> = []
 for _ in 0..n:

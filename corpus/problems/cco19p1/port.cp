@@ -8,6 +8,7 @@
 //   3 plus the side to move. A position's chance for the mover is the mean of 1 - (the
 //   opponent's chance) over his best `slack` moves, or 0 with no move.
 // original: corpus/submissions/3613457.cpp
+// Bounds: n, m: 1..=13
 let n: 1..=13 = read()
 let m: 1..=13 = read()                                    // at most 13 cells in all
 domain Row = 0..n

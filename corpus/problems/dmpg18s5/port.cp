@@ -6,6 +6,7 @@
 //   `Sieve.divisors`). A query scans its two partial blocks and adds the counts at x of the
 //   whole ones between. O((N + Q) (sqrt N + D)), D the most divisors, with N / 500 * V counters.
 // original: corpus/submissions/3476383.cpp
+// Bounds: n, q: 1..=2e5; a: 1..=MAX
 
 const MAX = 200_000
 const SIDE = 500

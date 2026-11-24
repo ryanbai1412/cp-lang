@@ -8,6 +8,7 @@
 //   remain. Cut a at the small values into gaps of thresh copies: a palindrome keeps
 //   min(gaps[i], gaps[g - 1 - i]) of each mirrored pair; YES iff that plus the small values is
 //   at least k - 1. O(n) with select for thresh.
+// Bounds: n, k, a: 1..=2e5
 @!multitest
 use std.strings.{is_palindrome}
 

@@ -11,6 +11,7 @@
 // stdin here: n, then the hidden species s[0..n) (0 = A, 1 = B; s[0] == 0); use_machine is
 //   simulated over them. stdout: the number of A mushrooms.
 // original: corpus/submissions/4736004.cpp (grader function count_mushrooms)
+// Bounds: n: 2..=20_000; hidden: 0..=1
 let n: 2..=20_000 = read()
 domain Mushroom = 0..n
 let hidden: [Mushroom]0..=1 = read()

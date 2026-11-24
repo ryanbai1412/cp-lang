@@ -11,6 +11,7 @@
 // original: corpus/submissions/4682555.cpp
 // stdin: n m w, then the n car types. stdout: the number of rounds, then
 // per round the number of drivers and their (from, to) slots.
+// Bounds: n: 1..=20000; m: 1..=50; w: 2..=50
 let n: 1..=20000 = read()
 let m: 1..=50 = read()
 let w: 2..=50 = read()

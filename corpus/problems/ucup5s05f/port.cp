@@ -9,6 +9,7 @@
 //   for j <= n (a size of 0 adds nothing for k >= 1), move them onto weights w at the points
 //   0..=n with the same power sums (transposed interpolation), and read
 //   sum_k answer[k] y^k = sum_m w[m] (1 + y)^m off a Taylor shift; O(n log^2 n).
+// Bounds: n: 1..=2e5
 use std.poly.{eval_all, power_sums, prod_linear, taylor_shift}
 use std.strings.{suffix_tree_edges}
 

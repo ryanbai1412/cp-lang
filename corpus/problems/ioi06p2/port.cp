@@ -8,6 +8,7 @@
 // Note: as it builds today, blocks are four plain numbers and the sliding minimum is a
 //   hand-kept deque over plain lists (K14).
 // original: corpus/submissions/5034372.cpp
+// Bounds: w, h: 3..=1000; bw: 3..=w; bh: 3..=h; cw: 1..=bw - 2; ch: 1..=bh - 2; height: 1..=100
 let w: 3..=1000 = read()
 let h: 3..=1000 = read()
 let bw: 3..=w = read()

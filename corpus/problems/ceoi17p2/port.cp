@@ -7,6 +7,7 @@
 //   both descending. Greedy: the next bet goes on the outcome that would currently pay
 //   less; track max of min(pays_a, pays_b) - (i + j) over all steps. O(n log n).
 // original: corpus/submissions/5324109.cpp
+// Bounds: n: 1..=1e5
 let n: 1..=1e5 = read()
 let odds: [n](a: F64, b: F64) = read()
 let a = odds.map(o => o.a).sorted(by: desc)

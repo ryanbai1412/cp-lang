@@ -7,6 +7,7 @@
 //   hand out values 2, 3, ... by walking: from the position cur just given a value, go to
 //   p0, its leftmost parent in S, when cur is p0's rightmost right child in S, else to its
 //   rightmost parent. Each step scans a row: O(n^2).
+// Bounds: n: 1..=3_000
 
 @!multitest
 let n: 1..=3_000 = read()

@@ -5,6 +5,8 @@
 // Solution: friend i sees the interval x_i +- (h_i Y - 1) / v_i clipped to L..=R. Sort the
 //   interval start/end events, sweep L..=R to count the positions seen by exactly c friends for
 //   every c, then print prefix sums. O(N log N).
+// Bounds: n: 1..=1e5; l: -1e9..=1e9; r: l..=1e9; y: 1..=1e6; friends.x: l..=r;
+//   friends.v, friends.h: 1..=100
 use std.prefix.{prefix_fold}
 
 let n: 1..=1e5 = read()

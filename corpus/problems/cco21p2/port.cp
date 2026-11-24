@@ -13,6 +13,7 @@
 //   range a number joins only the first layer that reaches it, so the search ends. Walking back
 //   from 0 through the kept layers reads the digits, most significant first.
 // original: corpus/submissions/4543410.cpp
+// Bounds: k: 2..=1e6; q: 1..=5; d: 1..=5001; m: 1..=2500; digits: -m..=m
 let (k, q, d, m): (2..=1e6, 1..=5, 1..=5001, 1..=2500) = read()
 domain Residue = 0..k
 let digits: [d](-m..=m) = read()

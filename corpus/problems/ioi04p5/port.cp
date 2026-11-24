@@ -7,6 +7,7 @@
 //   olive. Otherwise the answer is Q if some set of whole fields has exactly Q cypresses (a
 //   Bitset subset sum over 0..=Q, O(M Q / 64)), else Q - 1 (one field is cut).
 // original: corpus/submissions/4829839.cpp
+// Bounds: q: 1..=150000; n, m: 0..=2000; fields: 3..=150; strips: 2..=150
 
 let q: 1..=150000 = read()
 let n: 0..=2000 = read()

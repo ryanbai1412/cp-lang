@@ -1,3 +1,4 @@
+// Bounds: k: 1..=1e7
 
 let k: 1..=1e7 = read()
 

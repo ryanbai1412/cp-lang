@@ -10,6 +10,7 @@
 // original: corpus/submissions/4783516.cpp (grader functions init / count_ways)
 // stdin: n m q, the n + m parents (-1 for gate 0), the m source states, then
 // q lines l r. stdout: the count after each toggle.
+// Bounds: n, m: 1..=100_000; q: 0..=100_000; parent: -1..=n - 1; lit: 0..=1
 use std.lazy.{flip_action}
 
 type Z = Mod<1_000_002_022>

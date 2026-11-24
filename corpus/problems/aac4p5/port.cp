@@ -7,6 +7,7 @@
 //   earlier group to a later one add no SCC merges. Possible iff the cycles fit in m and
 //   m fits in the room; list the first m of those edges. O(n log n + m).
 // original: corpus/submissions/4140767.cpp
+// Bounds: n, x: 1..=5e5; m, q: 0..=5e5
 let (n, m, x, q): (1..=5e5, 0..=5e5, 1..=5e5, 0..=5e5) = read()
 domain V = 1..=n
 var dsu = Dsu<V>()

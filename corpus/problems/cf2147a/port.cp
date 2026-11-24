@@ -7,6 +7,7 @@
 // Solution: if x < y, two steps (x, then y). Otherwise two steps fail and three need
 //   x1 < y < x - x1 with x1 >= 1, possible iff y >= 2 and x - y >= 2 (take x1 = 1); longer walks
 //   never help, so else -1. O(1).
+// Bounds: x, y: 1..=10 ** 9
 
 @!multitest
 let (x, y): (1..=10 ** 9, 1..=10 ** 9) = read()

@@ -10,6 +10,8 @@
 //   `kt.reach(v, desc(p + 1))`, and `kt.up(min)` keeps the least walk in each subtree.
 //   O((n + m) log + q log n).
 // original: corpus/submissions/5521298.cpp
+// Bounds: n: 1..=2e5; m: 0..=4e5; roads.u, roads.v: 1..=n; roads.w: 1..=1e4;
+//   roads.alt: 1..=1e9; q: 1..=4e5; k: 0..=1; s: 0..=1e9
 
 @!multitest
 let n: 1..=2e5 = read()

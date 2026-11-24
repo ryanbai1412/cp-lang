@@ -7,6 +7,7 @@
 //   knapsack over total paid hours keeping the largest sum of min(B[j], n); the answer is the
 //   least total >= sum A that reaches n * k, minus sum A. O(m * sum B).
 // original: corpus/submissions/4456166.cpp
+// Bounds: n, m, k, need, hours: 1..=300
 let n: 1..=300 = read()
 let m: 1..=300 = read()
 let k: 1..=300 = read()

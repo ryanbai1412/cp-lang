@@ -9,6 +9,7 @@
 //   of ends from the next occurrences of its value: a light one must not repeat, a heavy one
 //   needs a later copy at a heavy place. dp[i] adds the sums where 0 are violated. O(N log N).
 // original: corpus/submissions/6435483.cpp
+// Bounds: n: 1..=500_000
 let mod = 1_000_003
 let n: 1..=500_000 = read()
 

@@ -8,6 +8,7 @@
 //   equals half, one operation (b = a). Otherwise the overshoot e is < a[mid]; b takes e
 //   greedily from the left of mid plus e at mid, which leaves a - b balanced right after mid:
 //   two operations, O(n).
+// Bounds: n: 2..=50_000
 
 @!multitest
 let n: 2..=50_000 = read()

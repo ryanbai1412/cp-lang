@@ -10,6 +10,8 @@
 //   lo[r]..=hi[r]; a taken cell caps hi of rows above and raises lo of rows below.
 //   O(NM + (N + M) N).
 // original: corpus/submissions/3601452.cpp
+// Bounds: x0, b, c: 0..=100_000_000; a: 0..=300; d: 1..=100_000_000; n, m: 1..=5000;
+//   q: 0..=50_000
 let x0: 0..=100_000_000 = read()
 let a: 0..=300 = read()
 let b: 0..=100_000_000 = read()

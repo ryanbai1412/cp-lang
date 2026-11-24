@@ -6,6 +6,7 @@
 //   marks itself. Labels only grow downward, so a reverse label scan joins each child into
 //   its parent: if the two shallowest marks are >= d apart keep both, else drop the
 //   shallower one (one fewer mark, the other is nearest). O(n).
+// Bounds: n, d: 1..=2e5
 let n: 1..=2e5 = read()
 let d: 1..=2e5 = read()
 domain V = 0..n

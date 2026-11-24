@@ -9,6 +9,7 @@
 //   leader at each match. O((N + M) log N).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/5678050.cpp
+// Bounds: n, m: 1..=2e5
 let n: 1..=2e5 = read()
 let m: 1..=2e5 = read()
 domain Player = 0..n

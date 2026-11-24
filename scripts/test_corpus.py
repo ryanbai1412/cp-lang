@@ -293,6 +293,37 @@ class CommittedInputsTest(Corpus):
         self.assertEqual(corpus.committed_inputs(corpus.Package.at(d)), [("01.in", "1")])
 
 
+class BoundsTest(unittest.TestCase):
+    """`// Bounds:` states the statement's input bounds; the read() types must take them all."""
+
+    PORT = ("// Source: x\n// Bounds: n: 2..=1e5; a.x, a.y: 1..=1e9;\n//   q: 1..=n\n"
+            "domain Q = 1..=n\nlet n: 2..=100_000 = read()  // items\nlet a: [n](x: 1..=1e9, y: {y}) = read()\n"
+            "let q: Q = read()\n")
+
+    def test_bounds_the_reads_take_are_clean(self):
+        self.assertEqual(corpus.bounds_findings("p", self.PORT.format(y="1..=1e9")), [])
+
+    def test_a_narrower_read_is_a_finding(self):
+        self.assertEqual(corpus.bounds_findings("p", self.PORT.format(y="1..=1e6")),
+                         ["bounds-narrow p a.y: reads 1..=1e6, statement 1..=1e9"])
+
+    def test_a_wider_read_and_an_exclusive_end_pass(self):
+        port = "// Bounds: n: 1..=10; k: 0..=n - 1\nlet n: 0..=1e9 = read()\nlet k: 0..n = read()\n"
+        self.assertEqual(corpus.bounds_findings("p", port), [])
+
+    def test_a_ranged_read_needs_the_header_and_every_read_in_it(self):
+        self.assertEqual(corpus.bounds_findings("p", "let n: 1..=9 = read()\n"), ["no-header-bounds p -"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\nlet n: 1..=9 = read()\nlet m: 1..=9 = read()\n"),
+                         ["bounds-undeclared p m"])
+        self.assertEqual(corpus.bounds_findings("p", "let n: Int = read()\n"), [])
+
+    def test_a_stated_bound_nothing_reads_is_a_finding(self):
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9; m\nlet n: 1..=9 = read()\n"),
+                         ["bounds-unparsed p m"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n, m: 1..=9\nlet n: 1..=9 = read()\n"),
+                         ["bounds-unread p m"])
+
+
 class InteractedTest(Corpus):
     """An interactive package: both sides judged by interactor.py, never fed the case."""
 

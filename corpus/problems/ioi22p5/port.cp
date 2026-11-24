@@ -8,6 +8,7 @@
 //   >= t: keep them and drop the rejected ones from the pool; else undo and search below t
 //   among the ones just added. O(N log N) operations.
 // original: corpus/submissions/4786085.cpp
+// Bounds: n: 2..=2000
 let n: 2..=2000 = read()
 domain Insect = [n]
 let kind = read<[Insect]0..=1e9>()

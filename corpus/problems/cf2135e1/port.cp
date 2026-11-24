@@ -10,6 +10,7 @@
 //   g(i) the sum of the periods p | i, i / p odd, that can hold a bad walk (period 1 never,
 //   period 2 only for even n). Odd-divisor sums come from a multiplicative sieve, binomials from
 //   factorials: O(lim) once, then O(n) per test.
+// Bounds: n: 1..=1e6
 use std.math.{sieve_multiplicative}
 
 type M = Mod<998_244_353>

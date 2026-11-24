@@ -8,6 +8,7 @@
 //   (b if also an end), a middle a + b, an end a or b by side, the highest 2a (a if also an end).
 //   DP over cities in y order on (cities chosen, roles filled: 5 stages) with 9 role transitions:
 //   O(n^2) per test.
+// Bounds: n: 2..=3000
 @!multitest
 let n: 2..=3000 = read()
 domain Stage = 0..5

@@ -8,6 +8,7 @@
 //   cheaper of a minimum spanning tree of the pens alone and of the pens plus the outside
 //   (`kruskal`), counting only spanning ones. Sides pair up by their sorted posts. O(E log E).
 // original: corpus/submissions/5341292.cpp
+// Bounds: pens: 1..=100
 let pens: 1..=100 = read()
 domain Region = 0..=pens
 let outside = Region.first!

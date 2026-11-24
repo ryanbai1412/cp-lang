@@ -10,6 +10,7 @@
 //   n log n reads.
 // Stdio-adapted: "A s", "C" and "Q s" are the three library calls, "!" prints the answer.
 // original: corpus/submissions/4692325.cpp
+// Bounds: n: 2..=128; w_lim, r_lim: 1..=10000
 let n: 2..=128 = read()
 let w_lim: 1..=10000 = read()
 let r_lim: 1..=10000 = read()

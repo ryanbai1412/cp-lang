@@ -7,6 +7,7 @@
 //   one per balanced string ending at j's parent, and open[v] becomes open[j's parent]. k[v] is
 //   k[parent] plus those. Everything comes from the parent and j's parent: one preorder, O(n).
 // original: corpus/submissions/5127828.cpp
+// Bounds: n: 1..=5e5
 
 let n: 1..=5e5 = read()
 domain V = 1..=n

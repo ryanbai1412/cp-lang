@@ -6,6 +6,7 @@
 //   non-primes, found by a sieve) under cyclic convolution mod p: binary exponentiation in
 //   O(p^2 log n) after an O(m log log m) sieve. The port's own bounds are m <= 200, p <= 20.
 // original: corpus/submissions/5463991.cpp
+// Bounds: n: 1..=1e9; m: 1..=200; k: 1..=20
 const P = 20170408
 type Z = Mod<P>
 

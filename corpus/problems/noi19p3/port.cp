@@ -10,6 +10,7 @@
 //   `IndexedHeap` per state pair keyed by what the move loses. The answer is the best total over
 //   all rounds; O(n log n) per test.
 // original: corpus/submissions/5669058.cpp
+// Bounds: n: 1..=2e5; k: 1..=n; l: 1..=k; a, b: 1..=1e9
 use std.heap.{IndexedHeap}
 
 enum Side: A | B | Both | Neither

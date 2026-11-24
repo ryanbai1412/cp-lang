@@ -8,6 +8,7 @@
 //   earlier branch (x_i <= x_{i-1}) must come before its children in value order, otherwise
 //   after them; it is impossible iff a vertex and its parent both must come first. Number the
 //   vertices in that mixed pre/post order with an iterative DFS and print each one's rank. O(n).
+// Bounds: n, x: 1..=200_000
 
 @!multitest
 let n: 1..=200_000 = read()

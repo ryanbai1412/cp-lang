@@ -7,6 +7,7 @@
 //   latest[all] exists, O(2^m * m). For m >= 22 the accepted C++ answers NO without the table
 //   (2^22 cuts would not fit; |s| is too short to hold that many orderings).
 // original: corpus/submissions/5494303.cpp
+// Bounds: m: 1..=26
 @!multitest
 let m: 1..=26 = read()
 let s: Str = read()

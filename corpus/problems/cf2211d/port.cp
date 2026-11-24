@@ -8,6 +8,7 @@
 //   left is the sum of 2^bit over bits with cnt == k (below 2^29 < mod, so read it directly).
 //   The element output at step k holds every bit with cnt >= k, so each bit lands in exactly
 //   cnt elements. O(29 n) with a factorial table.
+// Bounds: n: 1..=200_000
 
 const MOD = 1_000_000_007
 const L = 29

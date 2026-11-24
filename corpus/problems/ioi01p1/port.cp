@@ -4,6 +4,7 @@
 //   B <= Y <= T, "3" ends. At most 60002 commands; cells stay in 0..=32767.
 // Solution: a 2D Fenwick tree over X x Y: point add and rectangle sum in O(log^2 S) each.
 // original: corpus/submissions/3477640.cpp
+// Bounds: _: 0..=0; n: 1..=1024
 
 let (_, n): (0..=0, 1..=1024) = read()
 domain X = 0..n

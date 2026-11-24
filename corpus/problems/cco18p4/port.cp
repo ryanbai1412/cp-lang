@@ -7,6 +7,7 @@
 //   best row, then along that row for the best column. Probes are reused and scores cached,
 //   so it asks about 2 log_phi 1e7 + 6 = 73 questions.
 // original: corpus/submissions/4801866.cpp
+// Bounds: rows, cols: 1..=1e7; k: 1..=170
 let rows: 1..=1e7 = read()
 let cols: 1..=1e7 = read()
 let k: 1..=170 = read()

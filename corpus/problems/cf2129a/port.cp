@@ -6,6 +6,7 @@
 // Solution: for each left endpoint keep only the pair with the largest right end. The union is
 //   unchanged (each pair lies inside the kept one with its left end), and distinct left ends make
 //   the graph a forest, so g = 0. One `max=` per pair into best_end over positions: O(n).
+// Bounds: n: 1..=3_000
 
 @!multitest
 let n: 1..=3_000 = read()

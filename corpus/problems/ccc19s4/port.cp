@@ -9,6 +9,7 @@
 //   the best from i's block start to i, so best[i] = max(max_j best[j] + tail[j],
 //   max_j best[j] + head[i]): two suffix maxima over the previous block's cuts, O(N).
 // original: corpus/submissions/6032792.cpp
+// Bounds: n, k: 1..=1e6; score: 1..=1e9
 let n: 1..=1e6 = read()
 let k: 1..=1e6 = read()
 assert k <= n

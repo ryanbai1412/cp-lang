@@ -10,6 +10,7 @@
 // Every 5-subset has hull size 5, 4, or 3:
 // - each (triangle, interior point) pair extends to n - 4 five-subsets, counting 2*c4 + 4*c3;
 // - each (triangle, pair of interior points) uniquely counts a hull-3 five-subset (c3).
+// Bounds: n: 5..=300
 use std.math.{choose}
 
 let n: 5..=300 = read()

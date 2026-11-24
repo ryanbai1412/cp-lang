@@ -10,6 +10,7 @@
 //   u's counts from every start to v's, O(n_1 sum m_j), then Gaussian elimination mod p,
 //   O(n_1^3) (the counts are stored transposed; the determinant is the same).
 // original: corpus/submissions/3893923.cpp
+// Bounds: k: 2..=100
 
 const P = 998244353
 type Z = Mod<P>

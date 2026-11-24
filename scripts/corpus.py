@@ -408,11 +408,126 @@ def header_fields(text):
     return found
 
 
+READ_LINE = re.compile(r"^(?:let|var) (.+?): (.+) = read\(\)\s*$")
+DOMAIN_LINE = re.compile(r"^domain (\w+) = (.+?)\s*$")
+READ_RANGE = re.compile(r"^(-?[\w.]+(?:\s*[-+*/^]\s*[\w.]+)*)\s*\.\.(=?)\s*(.+)$")
+def split_top(s):
+    out, depth, cur = [], 0, ""
+    for ch in s:
+        if ch in "([": depth += 1
+        if ch in ")]": depth -= 1
+        if ch == "," and depth == 0: out.append(cur.strip()); cur = ""
+        else: cur += ch
+    return out + [cur.strip()] if cur.strip() else out
+def strip_index(t):
+    while t.startswith("["):
+        d = 0
+        for i, ch in enumerate(t):
+            d += ch == "["; d -= ch == "]"
+            if d == 0: t = t[i+1:].strip(); break
+    return t
+def read_ranges(names, t, domains):
+    """name -> (lo, hi) text for every ranged leaf of read type t."""
+    t = strip_index(t.strip())
+    if t.startswith("(") and t.endswith(")"):
+        parts = split_top(t[1:-1]); out = {}
+        if len(names) == len(parts):
+            for n, p in zip(names, parts): out.update(read_ranges([n], p, domains))
+        elif len(names) == 1:
+            for p in parts:
+                if ":" in p and not p.split(":")[0].strip().count(" "):
+                    f, ft = p.split(":", 1); out.update(read_ranges([f"{names[0]}.{f.strip()}"], ft, domains))
+        return out
+    t = domains.get(t, t)
+    m = READ_RANGE.match(t)
+    if not m: return {}
+    hi = m.group(3).strip()
+    return {n: (m.group(1).strip(), hi if m.group(2) else f"{hi} - 1") for n in names}
+def port_ranges(text):
+    """name (a field as name.field) -> (lo, hi) text of each ranged `read()` in the port."""
+    domains, out = {}, {}
+    for line in text.split("\n"):
+        line = line.split("//")[0].rstrip()
+        m = DOMAIN_LINE.match(line)
+        if m: domains[m.group(1)] = m.group(2)
+        m = READ_LINE.match(line)
+        if m:
+            pat = m.group(1).strip()
+            names = split_top(pat[1:-1]) if pat.startswith("(") else [pat]
+            out.update(read_ranges(names, m.group(2), domains))
+    return out
+
+
+def declared_bounds(text):
+    """The header's `// Bounds:` in `cpl new --constraints` form, as name -> (lo, hi)
+    text, or None without one; a part it can't read maps to None."""
+    lines, on = [], False
+    for line in text.split("\n"):
+        if not line.startswith("//"):
+            break
+        m = HEADER_LINE.match(line)
+        if m:
+            on = m.group(1) == "Bounds"
+            if on:
+                lines.append(line.split(":", 1)[1])
+        elif on and line.startswith("//   "):
+            lines.append(line[2:])
+    if not lines:
+        return None
+    out = {}
+    for part in " ".join(lines).split(";"):
+        if not part.strip():
+            continue
+        names, _, t = part.partition(":")
+        if not t:
+            out[part.strip()] = None
+            continue
+        got = read_ranges(["_"], t, {})
+        for n in split_top(names):
+            out[n] = got.get("_")
+    return out
+
+
+def bound_value(text):
+    """A bound as a number, or None when it names an input (`n`, `n * m`)."""
+    t = text.replace("_", "").replace("^", "**").replace(" ", "")
+    if not re.fullmatch(r"[-+*/().0-9e]+", t) or re.search(r"[a-df-z]", t):
+        return None
+    try:
+        return eval(t, {"__builtins__": {}})
+    except (SyntaxError, ZeroDivisionError, TypeError):
+        return None
+
+
+def bounds_findings(pid, text):
+    """Each ranged read the header's Bounds doesn't state, and each stated bound
+    the port reads narrower or differently: a valid judge input it would reject."""
+    declared, read = declared_bounds(text), port_ranges(text)
+    if declared is None:
+        return [f"no-header-bounds {pid} -"] if read else []
+    found = [f"bounds-unparsed {pid} {n}" for n, r in declared.items() if r is None]
+    found += [f"bounds-unread {pid} {n}" for n in declared if declared[n] and n not in read]
+    found += [f"bounds-undeclared {pid} {n}" for n in read if n not in declared]
+    for n, want in declared.items():
+        if not want or n not in read:
+            continue
+        got = read[n]
+        nums = [bound_value(x) for x in (*got, *want)]
+        if None in nums:
+            narrow = [" ".join(a.split()) for a in got] != [" ".join(b.split()) for b in want]
+        else:
+            narrow = nums[0] > nums[2] or nums[1] < nums[3]
+        if narrow:
+            found.append(f"bounds-narrow {pid} {n}: reads {got[0]}..={got[1]}, statement {want[0]}..={want[1]}")
+    return found
+
+
 def check_header(pkg, ctx):
     if not pkg.port:
         return []
     have = header_fields(pkg.port.read_text(errors="replace"))
-    return [f"no-header-{f.lower()} {pkg.id} -" for f in HEADER_FIELDS if f not in have]
+    missing = [f"no-header-{f.lower()} {pkg.id} -" for f in HEADER_FIELDS if f not in have]
+    return missing + bounds_findings(pkg.id, pkg.port.read_text(errors="replace"))
 
 
 def check_check(pkg, ctx):

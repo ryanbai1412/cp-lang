@@ -8,6 +8,7 @@
 //   the region sizes in decreasing order and print the first four. O(rc).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/3944584.cpp
+// Bounds: n, m: 0..=1000
 let n: 0..=1000 = read()
 let m: 0..=1000 = read()
 domain Row = 0..=2 * n

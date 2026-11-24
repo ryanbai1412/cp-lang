@@ -7,6 +7,7 @@
 //   i..=j of serve(i, j) + best(j + 1, k - 1), both memoised; then follow the optimal choices
 //   to print the medians. O(V^2 P), plus O(V^3) for serve.
 // original: corpus/submissions/4811886.cpp
+// Bounds: n: 1..=300; m: 1..=30; spots: 1..=10000
 let n: 1..=300 = read()
 let m: 1..=30 = read()
 let spots: [n]1..=10000 = read()

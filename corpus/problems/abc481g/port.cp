@@ -6,6 +6,7 @@
 //   and q straddle it, 2^(n-q) C(q, j) choices put exactly p + j values below, so
 //   ans[k] - ans[k-1] = [x^k] sum_t dv_t 2^(n-q_t) x^(p_t) (1 + x)^(q_t). Divide and conquer
 //   over the gaps, factoring out x^p_min (1 + x)^q_min, with NTT products (Poly *): O(n log^2 n).
+// Bounds: n: 1..=120_000; cakes.a, cakes.b: 1..=998_244_352
 
 use std.poly.{Poly}
 

@@ -8,6 +8,7 @@
 //   nodes heavier than u in its subtree, so after it nothing heavier is left. Scan weights
 //   downward keeping the LCA of all strictly heavier nodes; the first v that is not an
 //   ancestor of it wins. O(n log n).
+// Bounds: n: 1..=400_000; w: 1..=n
 
 @!multitest
 let n: 1..=400_000 = read()

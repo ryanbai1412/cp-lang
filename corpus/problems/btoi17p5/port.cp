@@ -7,6 +7,7 @@
 //   rows with measured cells must agree, the rest are free, 2^(free rows) (a Map per row).
 //   Columns likewise; subtract the checkerboards counted twice (0, 1 or 2). O(K log K).
 // original: corpus/submissions/4456190.cpp
+// Bounds: n, m: 1..=1e9; k: 0..=100000
 type Z = Mod<1000000007>
 let n: 1..=1e9 = read()
 let m: 1..=1e9 = read()

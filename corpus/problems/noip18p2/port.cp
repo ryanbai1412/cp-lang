@@ -6,6 +6,7 @@
 //   unbounded-knapsack table of payable amounts 0..25000: a coin not yet payable is
 //   counted and added to the table. O(n * 25000) per test.
 // original: corpus/submissions/4002899.cpp
+// Bounds: n: 1..=100; coins: 1..=TOP
 const TOP = 25000
 domain Amount = 0..=TOP
 

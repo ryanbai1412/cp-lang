@@ -7,6 +7,7 @@
 //   powers. Killers are not monotone in size, so test every size and corner: O(R C min(R, C)).
 // Agrees with 4183051.cpp on 500 random grids fed by a script (the typed generator
 //   cannot make this input).
+// Bounds: rows, cols: 1..=300
 const P = 1000000007
 let rows: 1..=300 = read()
 let cols: 1..=300 = read()

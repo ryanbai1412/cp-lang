@@ -7,6 +7,7 @@
 //   within it. Then go round each cycle once from a start: for islands a before b the best is
 //   reach[a] + reach[b] plus the longer way round, taken from running maxima of reach[a] - at[a]
 //   and reach[a] + at[a]. O(n).
+// Bounds: bridge.to: 1..=n
 let n: Int = read()
 domain I = 1..=n
 let bridge: [I](to: I, len: Int) = read()

@@ -5,6 +5,7 @@
 // Solution: the worst draw takes max(l_i, r_i) of every colour (no pair) and min(l_i, r_i) of
 //   the k - 1 colours with the largest min (k - 1 pairs); one more glove makes a k-th. Sort the
 //   mins descending: sum of maxes + top k - 1 mins + 1, O(n log n).
+// Bounds: n, k: 1..=200_000; l, r: 0..=10 ** 9
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

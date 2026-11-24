@@ -11,6 +11,7 @@
 //   all of their profits count) and up to 3 named children, each with its own (done, back);
 //   a named child of each kind is among that kind's top 3. The route replays the best plans.
 //   O(n log n) for sorting children.
+// Bounds: n: 1..=2e5; k: 1..=3; profit: 1..=1e9
 let (n, k): (1..=2e5, 1..=3) = read()
 domain City = 1..=n
 let t = Rooted(Graph.undirected(read<Tree<City>>()), root: City.first!)

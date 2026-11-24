@@ -9,6 +9,7 @@
 //   exceeds its running sum, which at least doubles per top, so its walk takes O(log max a)
 //   searches. Answer removals backwards as insertions, with a Fenwick tree of skills and sorted
 //   sets of the tops and the eaters.
+// Bounds: n: 1..=200_000; a: 1..=1_000_000_000; p: 1..=n
 @!multitest
 let n: 1..=200_000 = read()
 domain I = 1..=n

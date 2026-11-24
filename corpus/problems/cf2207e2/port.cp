@@ -8,6 +8,7 @@
 //   turn, keeping pool, the free values below the current a. Going from a_i to a_{i-1}: if a
 //   rises to cur, the values strictly between join the pool and b_i is a pool value or any of
 //   cur..n (pool + n - cur + 1 ways); if it stays, b_i takes one pool value. O(n).
+// Bounds: n: 1..=200_000
 
 type Z = Mod<1_000_000_007>
 

@@ -6,6 +6,7 @@
 //   the interiors of columns floor(m r / n) up to ceil(m (r + 1) / n) - 1; a corner it only
 //   touches falls outside that range. Rows come out in order, so no sort: O(n + m).
 // original: corpus/submissions/3591332.cpp
+// Bounds: n, m: 1..=1e6
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 domain Row = 0..n

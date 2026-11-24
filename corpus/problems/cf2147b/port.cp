@@ -4,6 +4,7 @@
 //   of x a multiple of x apart. Multitest, sum n <= 2e5.
 // Solution: print n - 1, ..., 1, n, 1, ..., n - 1, n: each x < n sits x places either side of the
 //   first n, so its copies are 2x apart, and the two n's are n apart. O(n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let n: 1..=200_000 = read()

@@ -9,6 +9,7 @@
 //   (O((5n)^2 log T) each) and add the bonus at the festival's city. The walk's answer is
 //   the row at city 1 after day T.
 // original: corpus/submissions/3890258.cpp
+// Bounds: roads.u, roads.v, fests.city: 1..=n
 const NONE = -4e18  // "no walk": the zero of max-plus
 
 let (n, m, t, k): (Int, Int, Int, Int) = read()

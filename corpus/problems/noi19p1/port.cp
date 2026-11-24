@@ -10,6 +10,8 @@
 //   from a Li Chao tree per station over 0..=max time; a departure inserts its line. A
 //   dummy train 1 -> 1 at time 0 holds the answer. O(m log T).
 // original: corpus/submissions/3790564.cpp
+// Bounds: n: 2..=1e5; m: 1..=2e5; a: 0..=10; b, c: 0..=1e6; given.u, given.v: 1..=n;
+//   given.s, given.e: 0..=1000
 let (n, m, a, b, c): (2..=1e5, 1..=2e5, 0..=10, 0..=1e6, 0..=1e6) = read()
 domain Station = 1..=n
 domain Train = 0..=m  // train m is the dummy 1 -> 1 at time 0

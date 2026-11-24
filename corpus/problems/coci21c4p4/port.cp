@@ -11,6 +11,7 @@
 // As it builds today: the parks of the best radius are worked out a second time (R2), and
 // the road lengths are stored beside the tree (B14).
 // original: corpus/submissions/5120081.cpp
+// Bounds: n: 1..=2e5; k: 1..=n
 let n: 1..=2e5 = read()
 let k: 1..=n = read()
 domain Town = 1..=n

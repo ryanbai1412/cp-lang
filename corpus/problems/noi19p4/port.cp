@@ -8,6 +8,8 @@
 //   cities live in a `PointSet`, and a portal drains its rectangle from it.
 //   O((n + m) log^2 n + (n + m) log(n + m)).
 // original: corpus/submissions/3800719.cpp
+// Bounds: n, w, h: 1..=70000; m: 1..=150000; at.x, portal.xl, portal.xr: 1..=w;
+//   at.y, portal.yl, portal.yr: 1..=h; portal.from: 1..=n; portal.t: 1..=1e4
 use std.geometry.{PointSet}
 
 let n: 1..=70000 = read()

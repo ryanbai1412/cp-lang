@@ -8,6 +8,7 @@
 //   second-best (neighbour's worth + corridor). Dijkstra from all exits, settling a chamber the
 //   second time it comes off the heap; stop when chamber 0 settles. O((N + M) log M).
 // original: corpus/submissions/3734919.cpp
+// Bounds: n, k: 1..=1e5; m: 1..=1e6; halls.u, halls.v, exits: 0..=n - 1; halls.len: 1..=1e9
 
 let (n, m, k): (1..=1e5, 1..=1e6, 1..=1e5) = read()
 domain Room = 0..n

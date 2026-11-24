@@ -7,6 +7,7 @@
 // Solution: in a subarray starting at L, position i matches iff a_i == b_i, or some a_j with
 //   L <= j < i is >= max(a_i, b_i). A strictly decreasing monotone stack and a binary search
 //   give the last such j; i adds (lo + 1) * (n - i) for its valid L and R. O(n log n).
+// Bounds: n: 1..=200_000; a, b: 1..=2 * n
 
 @!multitest
 let n: 1..=200_000 = read()

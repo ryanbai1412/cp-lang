@@ -9,6 +9,7 @@
 //   block keeps its smallest ceil(len / 2) values in a max skew heap (top = median), so a
 //   merge melds the heaps and pops down to size: O(N log N); z_i = median + i.
 // original: corpus/submissions/5270736.cpp
+// Bounds: n: 1..=1e6
 let n: 1..=1e6 = read()
 domain V = 0..n
 let a: [V]Int = read()

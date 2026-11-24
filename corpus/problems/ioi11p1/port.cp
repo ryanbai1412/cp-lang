@@ -11,6 +11,8 @@
 // The original is a grader function; this port reads `n m p q`, the m
 // trails, then the q lengths.
 // original: corpus/problems/ioi11p1/orig.cpp (submission 3732440 plus the sample grader)
+// Bounds: n: 2..=150000; m: 1..=150000; p, ends.a, ends.b: 0..=n - 1; q: 1..=2000;
+//   lengths: 1..=1e9
 
 let (n, m): (2..=150000, 1..=150000) = read()
 let p: 0..n = read()

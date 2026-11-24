@@ -8,6 +8,7 @@
 //   cheapest state its parent allows, and an N vertex upgrades the one child whose push costs
 //   least extra. O(n); the answer is min(done, push) at the root.
 // original: corpus/submissions/4371349.cpp
+// Bounds: edges.u, edges.v: 1..=n
 
 let n: Int = read()
 domain V = 1..=n

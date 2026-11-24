@@ -8,6 +8,7 @@
 //   q^-v_q(phi(m)); the p^(k-1) parts of phi fold into the start prod (p - 1) / m over the primes
 //   p | m, leaving e = v_q(prod (p - 1)). Otherwise q | a has probability 0 if q | m, else 1/q by
 //   CRT. Factor x, y, z and each p - 1: a product over the primes q.
+// Bounds: xs: 1..=10 ** 6
 
 use std.math.{factor}
 

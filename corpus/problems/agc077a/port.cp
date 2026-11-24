@@ -9,6 +9,7 @@
 //   middle, so reconcile X's middle with Y's reversed middle: past equal heads, binary-search
 //   the shortest prefix whose B counts agree again (A…B on one side, B…A on the other), reverse
 //   it on the side where it reads left to right, recurse into both parts. O(N log N).
+// Bounds: n: 2..=500_000
 
 @!multitest
 let n: 2..=500_000 = read()

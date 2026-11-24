@@ -6,6 +6,7 @@
 //   held by f <= n weights cannot fill both ends, so only a mass with f > n balances, f - n
 //   scales, which no pairing avoids. O(n log n).
 // original: corpus/submissions/3686504.cpp
+// Bounds: n: 1..=5e5; mass: 1..=1e9
 let n: 1..=5e5 = read()
 domain Weight = 1..=2 * n
 let mass: [Weight]1..=1e9 = read()

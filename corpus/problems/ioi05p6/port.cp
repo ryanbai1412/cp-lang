@@ -8,6 +8,7 @@
 //   seeing `mill`, or v builds one and they see v. spread() min-plus merges the children's rows,
 //   O(k^2) per child, so O(n^2 k^2) overall; the answer is Bytetown's spread with k mills.
 // cp: 0.1 8ef64b9+dirty
+// Bounds: n: 2..=100; k: 1..=50
 let n: 2..=100 = read()
 let k: 1..=50 = read()
 domain Village = 1..=n

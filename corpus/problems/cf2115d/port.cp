@@ -8,6 +8,7 @@
 //   from the last round with a reduced XOR basis of later d's: if d_i reduces to 0, later
 //   players can undo it; else its new pivot bit is touched by no other basis vector, so player
 //   c_i alone sets that bit. Then apply each pivot vector iff it helps its owner: O(60 n).
+// Bounds: n: 1..=100_000; a, b: 0..=1 << 60 - 1
 
 @!multitest
 let n: 1..=100_000 = read()

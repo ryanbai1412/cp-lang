@@ -8,6 +8,7 @@
 //   the blank with the fewest free digits, marking and unmarking the three subsets, and keeps the
 //   best score at a full board. Exponential, but the fewest-options rule prunes it hard.
 // original: corpus/submissions/5185258.cpp
+// Bounds: board: 0..=9
 domain Line = 0..9
 domain Box = 0..9
 domain Digit = 1..=9

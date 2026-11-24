@@ -5,6 +5,7 @@
 // Solution: sort; each run of equal values is one output line, its value and its length.
 //   O(n log n).
 // original: corpus/submissions/5184805.cpp
+// Bounds: n: 1..=200000; xs: 0..=1500000000
 let n: 1..=200000 = read()
 let xs: [0..n]0..=1500000000 = read()
 for run in xs.sorted().runs(): print(run.first!, run.len)

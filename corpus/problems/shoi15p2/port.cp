@@ -9,6 +9,7 @@
 // original: corpus/submissions/5450923.cpp
 // The lazy tree is written out by hand: the prototype has no LazySegTree
 // with a custom Action and no max_right.
+// Bounds: n: 1..=2e5; q: 0..=2e5
 let n: 1..=2e5 = read()
 let q: 0..=2e5 = read()
 

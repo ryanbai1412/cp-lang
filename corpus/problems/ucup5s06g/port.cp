@@ -9,6 +9,7 @@
 //   with no cycle goes on forever. peel removes the vertices not reachable from a cycle; a
 //   bfs01 from the rest (edge forward cost 0, backward cost 1) gives the largest x, and
 //   any vertex it misses means -1. O(n + m).
+// Bounds: n: 2..=1e5; m: 1..=2e5; edges.u, edges.v: 1..=n
 
 use std.graph.{bfs01}
 

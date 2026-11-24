@@ -12,6 +12,7 @@
 //   prefix-max trees (indexed by r, holding l, and a mirrored one) with undo logs.
 //   O(Q log Q log C).
 // original: corpus/submissions/4562195.cpp
+// Bounds: q: 1..=500_000
 let q: 1..=500_000 = read()
 domain Q = 0..q
 

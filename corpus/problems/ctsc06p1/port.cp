@@ -6,6 +6,7 @@
 //   that is also a suffix), the whole name included. The failure function lists the proper
 //   borders in O(len); add the powers mod 10^4 and print four digits.
 // original: corpus/submissions/4528004.cpp
+// Bounds: m: 1..=100_000; t: 1..=50
 type Z = Mod<10_000>
 let m: 1..=100_000 = read()
 let t: 1..=50 = read()

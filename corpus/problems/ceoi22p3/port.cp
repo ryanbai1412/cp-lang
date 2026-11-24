@@ -10,6 +10,7 @@
 //   tree, in tree 1 they are chosen vertices, and both tie graphs are connected. One BFS per tree
 //   fixes the depths up to a shift; then d(p, q) = dep p + dep q - 2 dep lca. O((N + T) log N).
 // original: corpus/submissions/4728198.cpp
+// Bounds: n: 2..=1_000_000; k: 2..=100_000; _, t: 1..=100_000; pairs.a, pairs.b: 1..=n
 
 let (n, k, _, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read()
 domain V = 1..=n

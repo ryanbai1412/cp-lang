@@ -7,6 +7,7 @@
 //   one, so rows and columns are independent. Rows i - 1, i raised by p, q in {0, 1} clash when
 //   some column has h[i, j] - h[i - 1, j] = p - q; mark those pairs, then a 2-state chain DP
 //   gives the cheapest rows (and, the same way, columns). Answer: the sum, O(n^2).
+// Bounds: n: 1..=1000; a, b: 0..=10 ** 9
 
 @!multitest
 let n: 1..=1000 = read()

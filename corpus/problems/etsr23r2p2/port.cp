@@ -9,6 +9,7 @@
 //   fewest signs making s[..c] a sum of products of value v, the last term being s[a..=c.l],
 //   O(n^2 * CAP^2). The C++ sums over every interval instead, a factor n slower.
 // original: corpus/submissions/5494433.cpp
+// Bounds: k: 0..=CAP
 const CAP = 254
 domain Val = 0..=CAP
 fn sat(x: Int) -> Val = Val(min(x, CAP))

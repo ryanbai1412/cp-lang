@@ -11,6 +11,7 @@
 //   1..n in order; dp(c) is concave: each step adds the concave quadratic gain(k, .), then a free
 //   value takes max(dp(c), dp(c - 1)) (max-convolve with a flat 0..=1) and a fixed one shifts by
 //   its parity. Slope trick (Concave, a lazy treap of slopes): O(n log n); answer at c = n / 2.
+// Bounds: n: 1..=500_000
 @!multitest
 use std.slope.{Concave}
 

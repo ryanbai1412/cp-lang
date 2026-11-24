@@ -8,6 +8,7 @@
 //   at d + k (binary search on sorted starts). So a DP over the count of slides seen, layer by
 //   layer, keeps each state's earliest time: 4 (n1 + n2) states, O((n1 + n2) log) in all.
 // original: corpus/submissions/4801968.cpp
+// Bounds: n1, n2: 1..=3e5; k: 1..=1e9
 let (n1, n2, k): (1..=3e5, 1..=3e5, 1..=1e9) = read()
 domain Room = 0..2
 let first = read<[n1](a: 0..=1e9, b: 0..=1e9)>().sorted()

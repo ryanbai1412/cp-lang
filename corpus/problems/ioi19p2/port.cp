@@ -9,6 +9,8 @@
 //   fits the middle set (a BFS patch from the hub). No such group: all zeros. O((n + m) α(n)).
 // original: corpus/submissions/5661848.cpp (grader function find_split)
 // checker: corpus/problems/ioi19p2/checker.py
+// Bounds: n: 3..=100_000; m: n - 1..=200_000; a: 1..=n - 2; b: 1..=n - 1 - a;
+//   links.u, links.v: 0..=n - 1
 let n: 3..=100_000 = read()
 let m: n - 1..=200_000 = read()
 let a: 1..=n - 2 = read()

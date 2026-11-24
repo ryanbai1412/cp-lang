@@ -8,6 +8,7 @@
 //   grows from the block boundary and the O(B) left part is added and rolled back per query.
 //   Ties compare (count, value) pairs. O(q B + n^2 / B).
 // original: corpus/submissions/4145494.cpp
+// Bounds: n, q: 1..=100_000; a, qs.l, qs.r: 1..=n
 const B = 270
 const HEAVY = 800
 

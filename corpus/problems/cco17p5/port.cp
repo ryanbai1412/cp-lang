@@ -1,3 +1,4 @@
+// Bounds: n: 1..=2e5; people.need: 0..=n; people.price: 0..=1e4
 
 let n: 1..=2e5 = read()
 let people: [n](need: 0..=n, price: 0..=1e4) = read()

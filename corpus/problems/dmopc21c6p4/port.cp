@@ -8,6 +8,7 @@
 //   needs (2 if it met D, else 1). O(n + m).
 // original: corpus/submissions/4342347.cpp
 // No top-level early exit on the prototype, so the program lives in a function.
+// Bounds: n, m: 1..=2e5; roads.u, roads.v, a, b, c, d: 1..=n
 
 let n: 1..=2e5 = read()
 let m: 1..=2e5 = read()

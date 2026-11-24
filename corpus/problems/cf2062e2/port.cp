@@ -10,6 +10,7 @@
 //   heavier preorder positions gives g(x) (lca of the first and last outside sub(x)); Fenwicks
 //   over preorder mark x, g(x) and lca(x, g(x)) so inclusion-exclusion counts dangerous replies
 //   with both outside sub(u). O(n log n).
+// Bounds: n: 1..=400_000; w: 1..=n
 
 enum Mark: Reply | Target | Meet
 

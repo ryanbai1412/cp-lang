@@ -8,6 +8,7 @@
 //   onto maps: O(2^n n^3). The map counts reach 17^17 > 2^64, so they wrap in U64; the
 //   answer itself is at most 17!, so the wrapped sum is exact.
 // original: corpus/submissions/5635626.cpp
+// Bounds: n: 1..=17; m: 0..=n * (n - 1) / 2; tree_edges.u, tree_edges.v: 1..=n
 
 let n: 1..=17 = read()
 let m: 0..=n * (n - 1) / 2 = read()

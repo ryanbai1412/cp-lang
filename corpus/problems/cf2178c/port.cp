@@ -6,6 +6,7 @@
 //   added or subtracted freely, and every later child is subtracted. Relative to all -1:
 //   `cur` is 2 a[0] + sum of max(0, 2x) over a[1..k], leaving a[k] adds a[k], and k = 0
 //   gives a[0]; answer = best - a.sum(). One scan, O(n).
+// Bounds: n: 2..=200_000
 
 @!multitest
 let n: 2..=200_000 = read()

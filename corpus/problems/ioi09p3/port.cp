@@ -7,6 +7,7 @@
 //   a solved count; P's rank is one plus the contestants whose key (-score, -solved, id) is
 //   smaller. O(N T).
 // original: corpus/submissions/5106576.cpp
+// Bounds: n, tasks, p: 1..=2000; solved: 0..=1
 let (n, tasks, p): (1..=2000, 1..=2000, 1..=2000) = read()
 domain C = 1..=n
 domain Task = 1..=tasks

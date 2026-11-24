@@ -8,6 +8,7 @@
 //   two swaps each. O(n + q).
 // original: corpus/submissions/4698075.cpp (grader functions init / get_distance)
 // stdin: n q, a, b, then q queries x y. stdout: the answer per query.
+// Bounds: n, q: 1..=100_000
 let (n, q): (1..=100_000, 1..=100_000) = read()
 domain Pos = 0..n
 domain Base = 0..3

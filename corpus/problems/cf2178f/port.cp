@@ -8,6 +8,7 @@
 //   s_1..s_k. A conquered tree chains the even parts below the root part: s_0 places to hang
 //   the chain, an entry and an exit vertex in each part but the last. Summing over orders:
 //   s_0 * (k - 1)! * prod s_i^2 * sum 1/s_i, or 1 if k = 0. One bottom-up pass, O(n).
+// Bounds: n: 1..=200_000; edges.u, edges.v: 1..=n
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

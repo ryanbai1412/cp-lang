@@ -9,6 +9,7 @@
 //   blocks). SegTrees give the max y per block and the prefix product mod p: O(30 log n) each.
 // original: corpus/submissions/5723351.cpp (the three grader functions)
 // stdin here: n, x, y, m, then m updates `kind year value`, kind 1 setting x and 2 setting y.
+// Bounds: n: 1..=500_000; x, y: 1..=1_000_000_000; m: 1..=100_000
 type Z = Mod<1_000_000_007>
 
 let n: 1..=500_000 = read()

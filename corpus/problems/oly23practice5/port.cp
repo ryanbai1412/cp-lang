@@ -7,6 +7,7 @@
 //   appear next to each other carry a penalty: try those, and for every other x the
 //   best penalty-free y in order of odd count.
 // original: corpus/submissions/6415646.cpp
+// Bounds: n: 1..=300_000
 @!multitest
 let n: 1..=300_000 = read()
 domain I = 0..n

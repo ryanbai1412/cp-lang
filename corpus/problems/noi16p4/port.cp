@@ -7,6 +7,7 @@
 //   over the compressed endpoints; take the length gap, then drop the left interval.
 //   O(n log n).
 // original: corpus/submissions/4791678.cpp
+// Bounds: n: 1..=5e5; m: 1..=2e5; given.l, given.r: 0..=1e9
 
 let (n, m): (1..=5e5, 1..=2e5) = read()
 domain I = 0..n

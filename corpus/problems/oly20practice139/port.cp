@@ -10,6 +10,7 @@
 //   Line i of the hull wins from t = from[i], the ceil of its crossing with line i - 1;
 //   std's MonotoneHull cross-multiplies and overflows on these sizes (friction).
 // original: corpus/submissions/6415690.cpp
+// Bounds: n: 1..=150_000
 
 const B = 400
 

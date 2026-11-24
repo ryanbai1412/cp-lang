@@ -11,6 +11,7 @@
 // Reversed callback interactive, stdio-adapted today-form: print READY, then read each pair
 // and print the previous reply.
 // original: corpus/submissions/4683972.cpp
+// Bounds: n: 2..=1500
 let n: 2..=1500 = read()
 domain V = 0..n
 

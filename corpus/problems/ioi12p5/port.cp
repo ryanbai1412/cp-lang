@@ -13,6 +13,7 @@
 // stdin here: n k, then the n requested colours. stdout: the n + k advice
 // bits on one line, then the colour the assistant puts back at each step
 // where the requested colour is not on the scaffold.
+// Bounds: n: 1..=100_000; k: 1..=n; req: 0..=n - 1
 let n: 1..=100_000 = read()
 let k: 1..=n = read()
 domain Colour = 0..n

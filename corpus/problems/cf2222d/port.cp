@@ -8,6 +8,7 @@
 //   P_{i-1} < P_{j-1}. Ranking the positions by descending P_{i-1} makes every positive pair an
 //   inversion and no negative one, so it is optimal. Sort indices by (prefix before i, i),
 //   invert that order to get ranks, print n - rank; O(n log n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let n: 1..=200_000 = read()

@@ -8,6 +8,7 @@
 //   virtual tree of the <= 6 key components plus the extra edges, BFS forward from s and
 //   backward from t, and count each component (or inner path of a tree edge) both reach.
 //   O(n + m) setup, O(k log n) per query.
+// Bounds: edges.u, edges.v: 1..=n
 
 let (n, m, q, kv): (Int, Int, Int, Int) = read()
 domain V = 1..=n

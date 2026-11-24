@@ -6,6 +6,7 @@
 //   neighbours c of (1 + ways[c] rooted at v). `reroot` computes that for every root at once
 //   from prefix/suffix folds of the siblings, so no division is needed (M may not be prime).
 //   O(N).
+// Bounds: n: 1..=1e5; m: 2..=1e9
 let (n, m): (1..=1e5, 2..=1e9) = read()
 domain V = 1..=n
 let tree = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first!)

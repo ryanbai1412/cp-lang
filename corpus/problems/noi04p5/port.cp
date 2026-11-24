@@ -14,6 +14,7 @@
 // Each price is read as two Ints, `whole` then `digit`: the prototype has no
 // F64, a Str cannot be indexed, and its Int reader swallows the one byte after
 // a number, here the decimal point. So the input must spell out one decimal.
+// Bounds: n, m: 1..=100
 fn read_tenths() -> Int:
     let whole: 0..=1e6 = read()
     let frac: 0..=9 = read()

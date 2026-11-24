@@ -10,6 +10,7 @@
 //   that starts with 1. Sum around[v] over v. Rooted at vertex 1 the depth is below 36, so the
 //   products cost O(36 n^2) in all.
 // original: corpus/submissions/7730380.cpp
+// Bounds: n: 1..=3000
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=3000 = read()

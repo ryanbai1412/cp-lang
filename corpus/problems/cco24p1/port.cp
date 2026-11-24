@@ -6,6 +6,7 @@
 // Solution: the answer at x is -min over y of (-v_y + dist(y, x)), a shortest path from a
 //   virtual source joined to each y by weight -v_y. So one `dijkstra` starts every island y
 //   at -v_y (route costs are nonnegative). O((N + M) log M).
+// Bounds: n: 1..=1e6; m: 0..=1e6; coins, routes.w: 0..=1e9; routes.u, routes.v: 1..=n
 let (n, m): (1..=1e6, 0..=1e6) = read()
 domain Island = 1..=n
 domain Route = 0..m

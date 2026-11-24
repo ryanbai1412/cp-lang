@@ -9,6 +9,7 @@
 //   peeled vertex magnitude n - z, positive for kind 1, negative for kind 2: it outweighs every
 //   later neighbour, so its sign settles all its remaining constraints (self-loops included).
 //   A queue of ready vertices with per-kind counts; if peeling stalls, print NO. O(n + m).
+// Bounds: n: 1..=2e5; m: 0..=min(1e6, n * (n + 1) / 2); raw.kind: 1..=2; raw.u, raw.v: 1..=n
 @!multitest
 let n: 1..=2e5 = read()
 let m: 0..=min(1e6, n * (n + 1) / 2) = read()

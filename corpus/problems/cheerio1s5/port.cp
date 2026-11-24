@@ -9,6 +9,7 @@
 //   best[i, used] picks consecutive blocks over s[i..] holding at most K H's, O(N^2 K).
 // Written in today's buildable form.
 // original: corpus/submissions/5339756.cpp
+// Bounds: k: 0..=1000
 let s: [domain S]Char = read()
 let k: 0..=1000 = read()
 let n = S.len

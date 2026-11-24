@@ -7,6 +7,7 @@
 // Solution: every element can end negative. Sweep i from n down with `flip`, the parity of the
 //   operations so far (all of which cover i): if a_i is positive now, operate at i, which makes it
 //   negative; later operations stop below i. At most n operations, O(n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let n: 1..=200_000 = read()

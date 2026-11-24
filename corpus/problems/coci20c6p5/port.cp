@@ -4,6 +4,7 @@
 // Solution: Mo's algorithm (blocks of sqrt n, alternating right-end order). Adding or removing a
 //   paper changes h by at most one, so the window keeps counts by citations (capped at n), h and
 //   how many papers have at least h citations, fixing h in O(1) per step: O((n + q) sqrt n).
+// Bounds: asks.l, asks.r: 1..=n
 let (n, q): (Int, Int) = read()
 domain Paper = 1..=n
 domain Ask = 0..q

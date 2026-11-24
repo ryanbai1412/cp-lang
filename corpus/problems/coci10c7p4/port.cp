@@ -7,6 +7,7 @@
 //   heights inside [floor, ceiling] reaches every K. O(N^2) window steps, each an O(N^2)
 //   fill: O(N^4).
 // original: corpus/submissions/5245379.cpp
+// Bounds: n: 2..=50; high: 1..=1e6
 let n: 2..=50 = read()
 domain Row = 1..=n
 domain Col = 1..=n

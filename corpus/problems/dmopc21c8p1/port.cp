@@ -13,6 +13,7 @@
 // that was once a good neighbour stays one: `small` gives numbers out from its
 // front and promotes them from its back, and the promoted ones form a stack
 // with the smallest on top.
+// Bounds: n: 1..=1e6; m: 1..=2e9; a: 1..=1e9
 
 let n: 1..=1e6 = read()
 let m: 1..=2e9 = read()

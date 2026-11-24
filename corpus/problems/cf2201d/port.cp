@@ -12,6 +12,7 @@
 //   its prefix and suffix runs, whether all leaves reach it and the count of such runs. Each
 //   value's positions sit in an ordered Set; an update resyncs the old and the new value:
 //   O(log n) per query.
+// Bounds: n, q: 1..=200_000; a: 1..=n
 
 struct SegNode(mx: Int, pref: Int, suff: Int, all: Bool, cnt: Int):
     fn empty() -> SegNode = SegNode(0, 0, 0, false, 0)

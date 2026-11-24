@@ -9,6 +9,7 @@
 //   one per round. Per parity a monotone `Staircase` stack stores tops minus the shared `lift`
 //   and keeps the visible sum `hidden` up to date on push. The last run's length multiplies
 //   the result. O(n) amortised.
+// Bounds: n: 3..=2_000_000
 @!multitest
 use std.seq.runs
 

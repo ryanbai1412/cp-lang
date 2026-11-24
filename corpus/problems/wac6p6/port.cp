@@ -11,6 +11,7 @@
 //   in the bowls; a colour without a bowl that passes b copies takes over R's bowl.
 //   O(100) per factory.
 // original: corpus/submissions/5122001.cpp
+// Bounds: tcs: 1..=10_000
 
 let tcs: 1..=10_000 = read()
 domain Col = 0..3

@@ -9,6 +9,7 @@
 //   positions and an even x one of the even positions. A class with cnt > 0 marks gets 1 to
 //   cnt marked elements of our choice: mark its largest, then each further largest while it
 //   is positive and marks remain. Sort each class: O(n log n).
+// Bounds: n, m: 1..=200_000; xs: 1..=10 ** 9
 
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()

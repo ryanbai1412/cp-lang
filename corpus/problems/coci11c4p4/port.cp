@@ -8,6 +8,7 @@
 //   0) only keep the slope: rising slopes get theirs left to right, then falling ones right
 //   to left. O(n log n).
 // original: corpus/submissions/5325112.cpp
+// Bounds: n: 2..=3e5; old, boards: 1..=1e9
 let n: 2..=3e5 = read()
 domain I = 1..=n
 let old: [I]1..=1e9 = read()

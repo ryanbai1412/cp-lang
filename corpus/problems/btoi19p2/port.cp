@@ -6,6 +6,7 @@
 //   row's words one step (OR of all four for '?') and masks them with the water bits, then count
 //   the bits at the end. O(R C M / 30).
 // original: corpus/submissions/4456161.cpp
+// Bounds: r, c: 1..=500; m: 1..=5000
 let r: 1..=500 = read()
 let c: 1..=500 = read()
 let m: 1..=5000 = read()

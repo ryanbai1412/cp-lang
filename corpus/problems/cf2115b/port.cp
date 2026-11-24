@@ -9,6 +9,7 @@
 //   node holding b = v gets v, every unfixed predecessor gets v (its tightest lower bound),
 //   and a node whose both inputs are now fixed gets v too (its min). A final node already
 //   fixed to another value means -1; unconstrained initial slots get 0. O(n + q) after sort.
+// Bounds: n: 1..=300_000; q: 0..=300_000
 
 @!multitest
 let (n, q): (1..=300_000, 0..=300_000) = read()

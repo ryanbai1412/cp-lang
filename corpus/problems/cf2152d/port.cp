@@ -9,6 +9,7 @@
 //   ceil(log2(x - 1)) (1 for x = 2) if Poby halves it first; these differ by 1 only for
 //   x = 2^k + 1, and the players split those elements evenly, so the value is the floor of
 //   the mean of the two sums. Two prefix sums (`bit_width`), O(1) per query.
+// Bounds: n, q: 1..=250_000; a: 2..=10 ** 9
 
 @!multitest
 let (n, q): (1..=250_000, 1..=250_000) = read()

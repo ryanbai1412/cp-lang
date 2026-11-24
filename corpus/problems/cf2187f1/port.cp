@@ -7,6 +7,7 @@
 //   the common trees come from the cuts of that sequence's binary permutation tree (PermTree, O(n)
 //   to build). A leaf is 1 deep; a Decr node whose right child is a leaf hangs its
 //   left part one level deeper; any other node is as deep as its deeper child. O(n).
+// Bounds: n: 2..=1_000_000; a, b: 1..=n
 use std.tree.{PermTree, PermKind}
 
 @!multitest

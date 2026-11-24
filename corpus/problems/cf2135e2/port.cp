@@ -11,6 +11,7 @@
 //   g(i) = sum of p | i with i/p odd, less periods 1 (always) and 2 (n odd) that hold no bad
 //   walk. One multiplicative sieve of odd-divisor sums to max n, then O(n) per test.
 // A brute force agrees for n <= 12.
+// Bounds: t: 1..=10_000; ns: 1..=20_000_000
 use std.math.{sieve_multiplicative}
 
 type M = Mod<998_244_353>

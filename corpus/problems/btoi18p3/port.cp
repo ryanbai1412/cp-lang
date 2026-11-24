@@ -9,6 +9,7 @@
 //   of Q / 2 random cells, then walk uphill. Heights are memoised; a cell off the box reads 0.
 // dream.cp has the form with a product-domain sheet and `@memo` questions.
 // original: corpus/submissions/4656860.cpp
+// Bounds: n, m, k: 1..=1e6; q: 1..=1e5
 use std.rand.{Rng}
 
 let (n, m, k, q): (1..=1e6, 1..=1e6, 1..=1e6, 1..=1e5) = read()

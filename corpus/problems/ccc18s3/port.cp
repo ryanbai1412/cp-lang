@@ -7,6 +7,7 @@
 //   BFS by levels: a conveyor moves to its next cell at cost 0, any other cell steps to its
 //   four neighbours at cost 1, skipping walls and seen cells. O(nm) plus the rays.
 // original: corpus/submissions/4329580.cpp
+// Bounds: n, m: 4..=100
 use std.graph.{bfs01}
 
 let n: 4..=100 = read()

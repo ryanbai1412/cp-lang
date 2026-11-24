@@ -6,6 +6,7 @@
 //   the circle, min(t, 360 - t) with t the difference reduced into 0..360. The first point with
 //   the smallest gap wins. O(n).
 // original: corpus/submissions/4416076.cpp
+// Bounds: n: 1..=1e5; aim: 0..=359; points.x, points.y: -1e9..=1e9
 use real.float.{PI}
 
 let n: 1..=1e5 = read()

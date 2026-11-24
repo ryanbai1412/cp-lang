@@ -10,6 +10,7 @@
 //   O(n log n) hash operations.
 // The IOI grader calls best_path(N, K, H, L); like orig.cpp's main, this port reads n and k,
 //   then the n - 1 roads as `u v len` lines.
+// Bounds: n: 1..=2e5; k: 1..=1e6
 let n: 1..=2e5 = read()
 let k: 1..=1e6 = read()
 domain City = 0..n

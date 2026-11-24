@@ -10,6 +10,7 @@
 // original: corpus/submissions/5655455.cpp
 // Note: proto/cpc lacks `Pool<Node>` + `Node.Id` today, so parallel List<Int>
 // arrays model the node pool (exact same O(N log N) implicit segtree merge).
+// Bounds: edges.u, edges.v, paths.u, paths.v: 1..=n
 
 let mod = 998244353
 

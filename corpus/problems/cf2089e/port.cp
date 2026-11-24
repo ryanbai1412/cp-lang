@@ -10,6 +10,7 @@
 //   weighted by k!). Retiring t moves the states parked at t + 1 down to t's path and lifts
 //   every state on the path to the root, taking siblings out by transposed products; the
 //   root's constant term is the next answer. O(n^2) series products of length <= n.
+// Bounds: n: 3..=80
 use std.poly.{integral}
 
 type Z = Mod<998_244_353>

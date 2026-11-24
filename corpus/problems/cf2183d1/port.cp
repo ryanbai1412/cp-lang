@@ -8,6 +8,7 @@
 //   share one parent p, p (one layer up) can join none of them, so it needs one more. The answer
 //   is the max over layers of size + [one shared parent], which is achievable. Group the vertices
 //   by depth: O(n).
+// Bounds: n: 2..=200_000; edges.u, edges.v: 1..=n
 
 @!multitest
 let n: 2..=200_000 = read()

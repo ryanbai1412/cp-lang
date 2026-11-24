@@ -6,6 +6,7 @@
 // Solution: dp[j] = the longest neat subsequence of a[j..]. Going right to left, inds[x] holds
 //   the positions of x up to i; a block of x ending at i best starts at the x-th last of them,
 //   so dp[start] max= dp[i + 1] + x, and dp[i] max= dp[i + 1]. O(n).
+// Bounds: n: 1..=200_000; a: 1..=n
 
 @!multitest
 let n: 1..=200_000 = read()

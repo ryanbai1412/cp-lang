@@ -8,6 +8,7 @@
 //   then 1..x0. Bans are grouped by diagonal pos - val, so a run is ban-free when the next ban
 //   on its diagonal is past it (bans sorted, popped as i passes). [1..L] then [1..M] with M < L
 //   is also [1..M] then the shift [M+1..L, 1..M], so dp subtracts each such pair once. O(n^3).
+// Bounds: n: 1..=100; m: 0..=10_000
 
 @!multitest
 type Z = Mod<998_244_353>

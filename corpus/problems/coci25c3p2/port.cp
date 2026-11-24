@@ -8,6 +8,7 @@
 //   or goes right after one of the i - 1 items before it, so c(i, c) = c(i - 1, c - 1) +
 //   (i - 1) c(i - 1, c). One row rolled from high c down: O(n^2).
 // original: corpus/submissions/7730377.cpp
+// Bounds: n: 1..=5000; k: 1..=n
 const P = 1000000007
 type Z = Mod<P>
 

@@ -7,6 +7,7 @@
 //   and w < u can precede u iff w exceeds every label in u's child subtrees (at the root the
 //   child subtree holding n-1 is exempt). With pv[u] that largest label, dp[u] = sum of dp[w]
 //   for pv[u] < w < u, dp[largest leaf] = 1, answer dp[n]; a prefix-sum array makes it O(n).
+// Bounds: n: 2..=300_000; edges.u, edges.v: 1..=n
 const MOD = 998_244_353
 type Z = Mod<MOD>
 

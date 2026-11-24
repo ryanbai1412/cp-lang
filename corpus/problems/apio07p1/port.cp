@@ -7,6 +7,7 @@
 //   children if the left's shallowest >= the right's deepest, swap (count it) if the mirrored
 //   test holds, else -1; at the root check deepest - shallowest <= 1. O(n).
 // cp: 0.1 8ef64b9+dirty
+// Bounds: n: 1..=1e5
 let n: 1..=1e5 = read()
 domain Bar = 1..=n
 type Kids = (l: ?Bar, r: ?Bar)

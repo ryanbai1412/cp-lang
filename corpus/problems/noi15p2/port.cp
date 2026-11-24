@@ -7,6 +7,7 @@
 //   preorder the path is O(log n) chain ranges and the subtree one range, so a segment tree with
 //   range assignment and sum counts installed packages before each assignment: O(log^2 n) per
 //   command.
+// Bounds: n, q: 1..=1e5; needs: 0..=n - 1
 
 let n: 1..=1e5 = read()
 domain Pkg = 0..n

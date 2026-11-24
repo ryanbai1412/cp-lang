@@ -7,6 +7,7 @@
 //   one at mid - 1 to split them by breaking; the spare goes to the side left one short. Recurse
 //   into the half nearer the current floor first, and split small ranges next to it, to keep the
 //   elevator moving one way. Each level asks each egg at most once: about n log2 n questions.
+// Bounds: n: 1..=1e4
 let n: 1..=1e4 = read()
 domain Egg = 1..=n
 var floor_of: [Egg]Int = 0

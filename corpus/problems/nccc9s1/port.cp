@@ -8,6 +8,7 @@
 //   (a >= c). Without Ls, an odd b leaves the rows 2 apart, needing two 1x1s (a >= 2) unless
 //   b is even. The area a + 2b + 3c must be even too. O(1) per test.
 // original: corpus/submissions/4051682.cpp
+// Bounds: a, b, c: 0..=1e8
 @!multitest
 let a: 0..=1e8 = read()
 let b: 0..=1e8 = read()

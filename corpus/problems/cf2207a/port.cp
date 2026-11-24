@@ -6,6 +6,7 @@
 //   block is independent. Filling every 0 between two 1s left to right gives the most; then
 //   clearing every 1 between two 1s left to right leaves 1010...1, floor(L / 2) + 1 ones per
 //   block of length L, the least since no move makes two adjacent 0s inside a block. O(n).
+// Bounds: n: 3..=100
 
 @!multitest
 let n: 3..=100 = read()

@@ -1,3 +1,4 @@
+// Bounds: n: 1..=1000; geese, hawks: 1..=1e6
 
 let n: 1..=1000 = read()
 domain Game = 0..n

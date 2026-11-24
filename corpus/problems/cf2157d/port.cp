@@ -8,6 +8,7 @@
 //   entirely below l claims both ">=" (l - a each), entirely above r both "<=" (a - r each).
 //   The term max(0, max(l, a[n-1-i]) - min(r, a[i])) over all i gives exactly these amounts,
 //   the self-paired middle included. O(n log n) for the sort.
+// Bounds: n: 1..=200_000; l, r, raw: 1..=10 ** 9
 
 @!multitest
 let (n, l, r): (1..=200_000, 1..=10 ** 9, 1..=10 ** 9) = read()

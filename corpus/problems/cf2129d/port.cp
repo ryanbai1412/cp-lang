@@ -9,6 +9,7 @@
 //   black cells l - 1 and r) charges vl to l - 1 and vr to r and meets every fixed score
 //   inside: the first cell k is uniform, charges its nearer side, and splits the gap, with
 //   s_k shared between its two halves. Multiply by n!. O(n^3 log^3 n).
+// Bounds: n: 1..=100
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()

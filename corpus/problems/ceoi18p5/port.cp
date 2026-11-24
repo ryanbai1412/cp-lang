@@ -8,6 +8,7 @@
 //   non-decreasing and each factorisation comes once. An ordered Set collects the scores; the cost
 //   is the number of factorisations times the divisor scan.
 // original: corpus/submissions/5323876.cpp
+// Bounds: n: 1..=1e9
 let n: 1..=1e9 = read()
 
 // std.math.divisors, inlined: the prototype compiler cannot import it yet.

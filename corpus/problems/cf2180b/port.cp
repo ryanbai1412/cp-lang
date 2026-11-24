@@ -6,6 +6,7 @@
 // Solution: all candidates after a step have the same length, and s1 < s2 gives both
 //   s1 + a < s2 + a and a + s1 < a + s2, so keeping only s = min(s + a, a + s) is optimal.
 //   O(n L) character copies.
+// Bounds: n: 1..=1_000
 
 @!multitest
 let n: 1..=1_000 = read()

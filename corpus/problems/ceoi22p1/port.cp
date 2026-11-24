@@ -9,6 +9,7 @@
 //   holds run lengths; first_ge finds the run at a position. Sort queries by t and shuffle
 //   until the middle falls between runs (at most N shuffles). O((N + Q) log N + Q log Q).
 // original: corpus/submissions/4728849.cpp
+// Bounds: deck, qs.i: 1..=n
 
 let (n, q): (Int, Int) = read()
 domain Pos = 1..=n

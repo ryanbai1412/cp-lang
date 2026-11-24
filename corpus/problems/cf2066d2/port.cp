@@ -9,6 +9,7 @@
 //   on lower floors, floor f stops after c more, so all its launches lie in the first used + c
 //   (which must cover its last fixed launch). DP over used: choosing k launches for floor f
 //   picks k - fixed[f] of the free slots in that prefix, a binomial. O(n m c).
+// Bounds: n, c: 1..=100; m: c..=n * c
 
 type M = Mod<1_000_000_007>
 let comb = Comb<M>(100)

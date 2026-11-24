@@ -8,6 +8,7 @@
 //   times vr - vl or vr + vl (a triangle wave on the low q bits), picked by the parity of
 //   pop(((l ^ r) >> q) & hi). Bucket the two factors by (l ^ r) >> q; a multiplicative butterfly
 //   gives the product for every high part hi, and an inverse FWHT recovers f. O((n + 2^m) m).
+// Bounds: n: 1..=200_000; m: 1..=18
 use std.ntt.{fwht}
 
 type Z = Mod<998_244_353>

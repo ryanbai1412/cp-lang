@@ -7,6 +7,7 @@
 //   'a' when C = M; impossible if M is even and C odd; else a symmetric bottom row of 'b' with C
 //   'a's from both ends and the middle. O(N M).
 // original: corpus/submissions/5350806.cpp
+// Bounds: n, m: 2..=2000; r: 0..=n; c: 0..=m
 let n: 2..=2000 = read()
 let m: 2..=2000 = read()
 let r: 0..=n = read()

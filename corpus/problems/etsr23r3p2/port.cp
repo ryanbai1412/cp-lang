@@ -6,6 +6,7 @@
 //   its mirror image before it, and nothing is on the right. Recurse over the folds, at
 //   most 2^n paths per query.
 // original: corpus/submissions/5529780.cpp. No today/ form: every coordinate is a float (F15).
+// Bounds: n: 1..=10; q: 1..=1e5
 use std.geometry.{Vec, reflect}  // WISH F1, K17
 
 let n: 1..=10 = read()

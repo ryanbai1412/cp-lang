@@ -9,6 +9,8 @@
 //   goes right after them. Each further stop serves no more than the one before, so make up to
 //   K - M per stretch and add the K - M largest. O(MK log(MK)).
 // original: corpus/submissions/5331716.cpp
+// Bounds: stations: 2..=1e9; n: 2..=3000; k: n..=3000; slow, fast, semi: 1..=1e9;
+//   limit: 1..=1e18
 let stations: 2..=1e9 = read()
 let n: 2..=3000 = read()
 let k: n..=3000 = read()

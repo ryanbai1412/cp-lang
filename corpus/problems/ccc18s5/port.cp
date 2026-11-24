@@ -8,6 +8,8 @@
 //   a flight that joins two city groups is kept once per current planet group, a portal
 //   once per current city group. O((p + q) log).
 // original: corpus/submissions/4329864.cpp
+// Bounds: n, m, p, q: 1..=1e5; flights.a, flights.b: 1..=m;
+//   flights.cost, portals.cost: 1..=1e8; portals.a, portals.b: 1..=n
 let (n, m, p, q): (1..=1e5, 1..=1e5, 1..=1e5, 1..=1e5) = read()
 domain Planet = 1..=n
 domain City = 1..=m

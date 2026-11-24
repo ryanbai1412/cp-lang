@@ -9,6 +9,7 @@
 //   keeps its parent and one skew-binary jump (its parent's jump's jump when the two jumps span
 //   equal lengths, else its parent), so a climb is O(log n) steps and a new node is O(1).
 // original: corpus/problems/ioi12p3/orig.cpp (submission 4682651 plus the sample grader)
+// Bounds: n: 1..=1e6
 let n: 1..=1e6 = read()
 domain Text = 0..=n  // Text.first is the empty text
 var len: [Text]Int = 0

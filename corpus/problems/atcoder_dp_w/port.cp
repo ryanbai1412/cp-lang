@@ -6,6 +6,7 @@
 //   ending at i adds a to best[l..=i], the states whose last 1 lies inside it. The answer is the
 //   max over all states: O((n + m) log n).
 // original: corpus/submissions/4133460.cpp
+// Bounds: n, m: 1..=2e5; rules.l, rules.r: 1..=n; rules.a: -1e9..=1e9
 let (n, m): (1..=2e5, 1..=2e5) = read()
 domain Pos = 1..=n
 let rules: [m](l: Pos, r: Pos, a: -1e9..=1e9) = read()

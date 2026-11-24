@@ -6,6 +6,7 @@
 //   goes into a[0] (then a[0] + a[1] is no smaller), so the sum is >= a[0] + min(a[0], a[1]).
 //   Moving a[1] into a[0] when a[1] <= a[0], else a[2] into a[1], zeroes every later minimum and
 //   meets it. O(1).
+// Bounds: n: 2..=200_000; a: 0..=2 * n
 
 @!multitest
 let n: 2..=200_000 = read()

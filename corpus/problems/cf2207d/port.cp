@@ -8,6 +8,7 @@
 //   k + 2). If two children of u give escapes at total distance <= k + 1, Snorlax cannot block
 //   both in time, so u counts as an escape itself (dist 0); else dist[u] is the closest child's
 //   + 1. Bottom-up, O(n); YES iff dist[v] == 0.
+// Bounds: n: 3..=500_000; k, start, edges.u, edges.v: 1..=n
 
 @!multitest
 let n: 3..=500_000 = read()

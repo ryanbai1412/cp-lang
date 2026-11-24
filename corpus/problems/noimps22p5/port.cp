@@ -11,6 +11,7 @@
 //   but the second lightest, which stays and hosts it, and at size 2 one sweep keeps the heavier,
 //   one the lighter, the cheaper wins; (0, 0): every move is free, 0. O(n log n).
 // original: corpus/submissions/5448138.cpp
+// Bounds: n: 2..=4e5; x, y: 0..=1; w: 1..=1e7
 let n: 2..=4e5 = read()
 let x: 0..=1 = read()
 let y: 0..=1 = read()

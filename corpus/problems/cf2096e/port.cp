@@ -8,6 +8,7 @@
 //   on odd indices by one. With D = |P's on odd indices - odd indices among the final P slots| the
 //   answer is D + (inv - D) / 2 = (inv + D) / 2. One scan from the right counts the inversions and
 //   the P's on odd indices (both counted from the right end). O(n).
+// Bounds: n: 1..=200_000
 
 @!multitest
 let n: 1..=200_000 = read()

@@ -7,6 +7,7 @@
 //   values need k Increases, with a Smash between each two (adjacent Increases merge): 2k - 1,
 //   reached by smashing the elements that end lower before each later Increase. k is
 //   `Set(a).len`, O(n).
+// Bounds: n, a: 1..=100
 
 @!multitest
 let n: 1..=100 = read()

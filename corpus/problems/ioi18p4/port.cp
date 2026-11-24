@@ -11,6 +11,7 @@
 // checker: corpus/problems/ioi18p4/checker.py
 // stdin here: M n, then A[0..n).
 // stdout: three lines, C[0..=M], X and Y (each X/Y line starts with the count).
+// Bounds: m: 1..=100_000; n: 1..=200_000; a: 1..=m
 let m: 1..=100_000 = read()
 let n: 1..=200_000 = read()
 domain Seq = 0..n

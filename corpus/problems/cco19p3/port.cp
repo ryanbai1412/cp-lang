@@ -9,6 +9,7 @@
 //   inward branches, so pick s nearest half: one branch if it outweighs the rest, else a
 //   meet-in-the-middle over subset sums of the at most 36 branches. O(N + sum 2^(deg/2) deg).
 // original: corpus/submissions/3618571.cpp
+// Bounds: n: 2..=2e5; a: 1..=1e4
 let n: 2..=2e5 = read()
 domain V = 1..=n
 domain Kid = 2..=n  // every city but the first has a parent

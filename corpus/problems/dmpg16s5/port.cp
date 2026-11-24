@@ -5,6 +5,7 @@
 // Solution: unroll the circle twice; a run ending at slice p is the prefix sum after p
 //   minus the smallest prefix sum at the k cuts before it: a sliding-window minimum, kept
 //   in a deque of (cut, prefix) with prefix sums rising towards the back. O(n).
+// Bounds: n: 1..=1e5; k: 1..=n; taste: -1e8..=1e8
 let n: 1..=1e5 = read()
 let k: 1..=n = read()
 let taste: [0..n]-1e8..=1e8 = read()

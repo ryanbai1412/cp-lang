@@ -9,6 +9,7 @@
 //   on the right, adding one value as tall as all gaps so far, or on the left, lifting the
 //   i + 1 earlier values by it. Only <= 600 gaps are nonzero, so O(600 * n * 600) states.
 // original: corpus/submissions/5445678.cpp
+// Bounds: n: 1..=10000; a: 1..=600
 
 use std.prefix.{prefix_fold}
 

@@ -5,6 +5,7 @@
 // Solution: take cells in increasing value: the paths ending at a cell are 1 at a
 //   valley, else the sum over its smaller neighbours. Sum over all cells, O(n^2).
 // original: corpus/submissions/4955728.cpp
+// Bounds: n: 1..=1500
 let n: 1..=1500 = read()
 domain Row = 0..n
 domain Col = 0..n

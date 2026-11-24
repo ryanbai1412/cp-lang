@@ -5,6 +5,7 @@
 //   ending at v that use exactly the colour set s: 1 if s is v's colour alone, else the sum
 //   of ways[s minus v's colour, u] over neighbours u. Subsets in increasing order come after
 //   their own subsets; add every ways[s, v] with |s| >= 2. O(2^k (n + m)).
+// Bounds: n: 1..=3e5; m: 0..=3e5; k: 1..=5; colour: 1..=k; edges.u, edges.v: 1..=n
 let n: 1..=3e5 = read()
 let m: 0..=3e5 = read()
 let k: 1..=5 = read()

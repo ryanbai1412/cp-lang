@@ -6,6 +6,7 @@
 //   below; a soldier goes on a child whose uncovered vertex would be D + 1 away, and one on
 //   the root if anything is left uncovered. O(n log n).
 // original: corpus/submissions/5120083.cpp
+// Bounds: n, k: 1..=2e5; edges.u, edges.v: 1..=n
 
 let (n, k): (1..=2e5, 1..=2e5) = read()
 domain V = 1..=n

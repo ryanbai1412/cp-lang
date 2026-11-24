@@ -7,6 +7,7 @@
 //   (p_i - p_j) x = c_j - c_i (mod m); linear_congruence gives its least solution, and m fails
 //   if that is at most both lifetimes. O(answer * n^2 log m).
 // original: corpus/submissions/3741279.cpp
+// Bounds: n: 1..=15
 use std.math.{linear_congruence}
 
 let n: 1..=15 = read()

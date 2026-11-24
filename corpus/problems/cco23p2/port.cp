@@ -10,6 +10,7 @@
 //   (sz >= 2). Level sums use x(x+1)/2; the least-above-x terms are deferred to a prefix and a
 //   suffix sweep of successor queries on a SortedSet. O(N log N).
 // original: corpus/submissions/5579928.cpp
+// Bounds: n: 1..=1e6; h: 1..=1e9
 
 type Z = Mod<1_000_003>
 let n: 1..=1e6 = read()

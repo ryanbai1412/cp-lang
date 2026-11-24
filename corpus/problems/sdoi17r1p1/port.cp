@@ -7,6 +7,7 @@
 //   a harmonic loop in O(N log N), keep prefix products of g and their inverses; per query
 //   n/T and m/T are constant on O(sqrt n) blocks, one power each: O(sqrt(n) log P).
 // original: corpus/submissions/5463988.cpp
+// Bounds: t: 1..=1000; asks.n, asks.m: 1..=1e6
 
 use std.prefix.{prefix_fold}
 
