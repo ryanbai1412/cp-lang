@@ -613,7 +613,7 @@ fn max_sub_monoid_laws_and_kadane():
     assert laws_hold(MaxSub.monoid(), samples)
     assert MaxSub.zero.try_best == None
     let xs = [-3, 4, -1, 2, -5, 3, 2, -1]
-    let got = sum(MaxSub.of(x) for x in xs)
+    let got = fold(MaxSub.monoid(), [MaxSub.of(x) for x in xs])
     var want = Int.MIN
     for l in 0..xs.len:
         var s = 0
