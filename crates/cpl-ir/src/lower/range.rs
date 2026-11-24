@@ -210,7 +210,7 @@ impl RangeInfo {
                 let tys: Vec<&Ty> = match ty {
                     Ty::Tuple(ts) => ts.iter().collect(),
                     Ty::Record(fs) => fs.iter().map(|(_, t)| t).collect(),
-                    _ => unreachable!(),
+                    _ => return None,
                 };
                 if tys.is_empty() || items.len() != tys.len() {
                     return None;
@@ -1317,12 +1317,17 @@ impl<'a> Lowerer<'a> {
         }
         if let (Ty::Opt(_), AssignOp::Set, ExprKind::Some(_)) = (&place.ty, op, &value.kind) {
             if let Some(RangeInfo::Opt(inner)) = self.place_range(&place) {
-                if let RangeInfo::Scalar(bounds) = *inner {
-                    let (ty, at) = (value.ty.clone(), value.span);
-                    let ExprKind::Some(x) = value.kind else {
-                        unreachable!()
-                    };
-                    let x = self.check_range(*x, &bounds, span);
+                if let (
+                    RangeInfo::Scalar(bounds),
+                    Expr {
+                        kind: ExprKind::Some(x),
+                        ty,
+                        span: at,
+                    },
+                ) = (*inner, &value)
+                {
+                    let (ty, at) = (ty.clone(), *at);
+                    let x = self.check_range((**x).clone(), &bounds, span);
                     out.push(Stmt::Assign(
                         place,
                         op,
@@ -1573,7 +1578,16 @@ impl<'a> Lowerer<'a> {
             ),
             // R04b.1.2: a slice of an array keeps its positions as keys.
             Ty::Array { elem, dims } => (Builtin::KeySlice, Ty::ListView(elem.clone(), dims[0])),
-            _ => unreachable!(),
+            Ty::Error => return self.err_expr(span),
+            other => {
+                let shown = self.show(other);
+                self.report(
+                    span,
+                    cpl_diag::msgs::ir::BAD_OPERANDS_CAN_T_SLICE_A,
+                    &[&shown],
+                );
+                return self.err_expr(span);
+            }
         };
         self.mk_builtin(op, [base, lo, hi], ty, span)
     }
