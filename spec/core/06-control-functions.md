@@ -237,7 +237,8 @@ library or by this spec:
   base it indexes, and a hole does not match a bare generator (`x * x
   for x in xs` in `sum(..)`), a fold's argument rather than a value. The
   finding spans the matched
-  tokens and labels what `to`'s first hole matched, or with none, the first
+  tokens (with no fix, those before a statement hole: the statements it
+  matched stay, so the findings in them stand) and labels what `to`'s first hole matched, or with none, the first
   hole `from` calls a method on (the receiver a record's `on` types name);
   with no fix, `to` may drop a statement hole whatever its statements call,
   and a named argument's label (`from:`) is never a hole; where a comment

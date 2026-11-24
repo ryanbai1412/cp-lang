@@ -550,8 +550,21 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             } else {
                 format!("`{}`", d.module)
             };
+            // With no fix the statements a hole matched stay, so the finding
+            // ends before them and the findings inside them stand.
+            let kept = (d.from.iter().zip(&d.stmt_holes))
+                .filter(|(_, s)| **s)
+                .filter_map(|((_, h), _)| holes[d.decl.holes.iter().position(|x| x == h)?])
+                .map(|(a, _)| a)
+                .min();
+            let shown = match kept {
+                Some(a) if d.lint.no_fix.is_some() && a > 0 => {
+                    Span::new(span.start, toks[a - 1].span.end)
+                }
+                _ => span,
+            };
             let mut diag = cpl_diag::msgs::lint_rules::LIBRARY_LINT_FIX
-                .warning_as(d.lint.code, span, &[&fix])
+                .warning_as(d.lint.code, shown, &[&fix])
                 .with_help(format!(
                     "{from} declares this lint with `@lint` on `{}`",
                     d.decl.fn_name

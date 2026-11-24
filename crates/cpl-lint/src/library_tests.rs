@@ -441,6 +441,20 @@ fn a_no_fix_lint_drops_a_statement_hole_and_keeps_its_on_types() {
     assert!(found("settle_all", heap).is_empty());
 }
 
+/// With no fix, a finding ends before its statement hole: those statements
+/// stay, so the findings in them stand. Rule: R06.4.9.
+#[test]
+fn a_no_fix_finding_ends_before_its_statement_hole() {
+    let decl = "@lint(manual_mex, from: \"while i < q.len:\\n    let v = q[i]\\n    i += 1\\n    rest\", to: \"walk(q)\", holes: \"i, rest\")\npub fn walk(q: List<Int>) -> Int = 0\n";
+    let src = format!("{decl}var q = [1]\nvar i = 0\nwhile i < q.len:\n    let v = q[i]\n    i += 1\n    print(v)\n");
+    let spans: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.message == "write `walk(q)`")
+        .map(|d| d.span.text(&src).to_string())
+        .collect();
+    assert_eq!(spans, ["while i < q.len:\n    let v = q[i]\n    i += 1"]);
+}
+
 /// Std's `@lint`s are read from its outline, so they reach a program that
 /// loads none of their module: hand-written code is what does without it.
 /// Rule: R06.4.9.
