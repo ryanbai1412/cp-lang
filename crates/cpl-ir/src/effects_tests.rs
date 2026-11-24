@@ -59,10 +59,54 @@ fn a_division_traps_only_in_a_build_that_checks() {
 }
 
 #[test]
-fn calling_a_fn_value_is_an_unknown_call() {
+fn calling_a_fn_value_does_what_the_closures_it_may_run_do() {
     let (program, table) = table(SOURCE, true);
     let apply = of(&program, &table, "apply");
-    assert!(apply.traps && apply.unknown_call);
+    // Its one closure reads `total` and writes nothing.
+    assert!(apply.traps && !apply.unknown_call && apply.writes.is_empty());
+}
+
+#[test]
+fn a_closure_that_writes_its_makers_local_is_unknown_to_a_fn_it_is_passed_to_only() {
+    let (program, table) = table(
+        concat!(
+            "fn apply(f: Int -> Int, x: Int) -> Int = f(x)\n",
+            "fn count(n: Int) -> Int:\n",
+            "    var seen = 0\n",
+            "    let r = apply(y => do: seen += 1; y, n)\n",
+            "    r + seen\n",
+            "fn sorted(xs: List<Int>) -> List<Int>:\n",
+            "    var ys = xs\n",
+            "    ys.sort(by: y => -y)\n",
+            "    ys\n",
+            "let n: 1..=9 = read()\n",
+            "print(count(n), sorted([n, 1]))\n",
+        ),
+        true,
+    );
+    assert!(of(&program, &table, "apply").unknown_call);
+    // `seen` is `count`'s own: a caller of `count` never sees it change.
+    assert!(!of(&program, &table, "count").unknown_call);
+    // Making a closure does nothing: `sorted` only builds one and passes it on.
+    assert!(!of(&program, &table, "sorted").unknown_call);
+}
+
+#[test]
+fn a_named_fn_run_as_a_value_writes_what_it_writes() {
+    let (program, table) = table(
+        concat!(
+            "var total = 0\n",
+            "fn bump(x: Int) -> Int:\n",
+            "    total += x\n",
+            "    total\n",
+            "fn run(f: Int -> Int, x: Int) -> Int = f(x)\n",
+            "let n: 1..=9 = read()\n",
+            "print(run(bump, n))\n",
+        ),
+        true,
+    );
+    let run = of(&program, &table, "run");
+    assert!(run.unknown_call || !run.writes.is_empty(), "{run:?}");
 }
 
 #[test]

@@ -50,7 +50,7 @@ impl Table {
         let summaries = summarize(program);
         let pure = pure_fns(program, traps, target);
         let fns = (0..program.fns.len())
-            .map(|f| of_summary(&summaries[f], !pure.contains(&f)))
+            .map(|f| of_summary(&summaries[f], !pure.contains(&f), Some(f)))
             .collect();
         Table {
             fns,
@@ -93,16 +93,24 @@ impl Table {
         }
         let ok = |e: &Expr| pure_call(program, &|_, _| None, &self.pure, None, self.traps, e);
         let pure = c.muts.is_empty() && pure_body(&c.body, self.traps, &ok);
-        of_summary(&summary, !pure)
+        of_summary(&summary, !pure, None)
     }
 }
 
-fn of_summary(s: &FnSummary, traps: bool) -> Effects {
+/// `home` is the fn the summary is of. Making a closure does nothing, and
+/// what a call through a value does is already in the summary (the
+/// closures it may run, [`summarize`]), but for the locals such a closure
+/// writes by reference: only another frame's are a caller's to see.
+fn of_summary(s: &FnSummary, traps: bool, home: Option<FnId>) -> Effects {
+    let unknown_call = match home {
+        Some(f) => s.lent_written_from.iter().any(|&owner| owner != f),
+        None => s.opaque || (s.calls_values && traps),
+    };
     Effects {
         writes: s.writes.clone(),
         io: s.io,
         traps,
-        unknown_call: s.opaque || (s.calls_values && traps),
+        unknown_call,
     }
 }
 
