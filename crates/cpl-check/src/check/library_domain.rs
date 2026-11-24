@@ -27,8 +27,21 @@ impl Checker<'_> {
         }
         match self.library_domain_walk(iter) {
             Some(ty) => ty,
-            None => self.element_ty(iter_ty),
+            None => match iter_ty {
+                Ty::Param(p) => self.bound_walk_elem(p).unwrap_or(Ty::Unknown),
+                _ => self.element_ty(iter_ty),
+            },
         }
+    }
+
+    /// `for x in s` with `s: S` and `S: Seq<Int>`: what the bound's `iter`
+    /// yields, once the bound names it.
+    fn bound_walk_elem(&mut self, param: &str) -> Option<Ty> {
+        let Some(Ty::Fn { ret, .. }) = self.bound_method(param, "iter") else {
+            return None;
+        };
+        let elem = self.element_ty(&ret);
+        (!elem.mentions_param() && !elem.has_vague()).then_some(elem)
     }
 
     /// `for x in T` or `for x in Sub<V>`, with `T` a type with `impl Index`, walks the type's
