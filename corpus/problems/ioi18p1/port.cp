@@ -6,37 +6,32 @@
 //   one of the pair. That finds the first letter; a, b, c are the other three. Each middle letter
 //   takes one press of s+a + s+b+a + s+b+b + s+b+c (length 4|s| + 6 <= 4N), which scores |s| + 1
 //   for a, |s| + 2 for b, |s| for c. The last letter takes two presses again: N + 2 in all.
-// The task is a grader function and the judge supplies `press`; this plays the sample grader:
-// it reads S, answers each press the way the judge does, and prints `Accepted: q`.
 // original: corpus/submissions/4707803.cpp
 use std.strings.{prefix_matches}
 
-const BUTTONS = "ABXY"
 let word = read<Str of "ABXY">()
 assert 1 <= word.len <= 2000
-
 var presses = 0
 fn press(p: Str) -> Int:
     presses += 1
     assert presses <= 8000 and p.len <= 4 * word.len
     prefix_matches(p, word).max() ?? 0
 
-// One letter in two presses: is it one of the first pair, then which one.
+// One letter after s in two presses: is it in the pair A B, then which of the pair.
 fn letter_after(s: Str) -> Char:
-    let pair = if press("{s}A{s}B") > s.len: "AB" else: "XY"
-    if press("{s}{pair[0]}") > s.len: pair[0] else: pair[1]
+    let hit = (p: Str) => press(p) > s.len
+    if hit("{s}A{s}B"): (if hit("{s}A"): 'A' else: 'B') else: (if hit("{s}X"): 'X' else: 'Y')
 
 fn guess_sequence(n: Int) -> Str:
     let first = letter_after("")
-    if n == 1: return Str([first])
-    let o = BUTTONS.filter(x => x != first).collect()
+    let o = "ABXY".filter(ch => ch != first).collect()
     let (a, b, c) = (o[0], o[1], o[2])
     var s = Str([first])
-    // One press per middle letter: s+a scores 1, s+b+anything scores 2, c scores 0.
-    for _ in 1..n - 1:
-        let got = press("{s}{a}{s}{b}{a}{s}{b}{b}{s}{b}{c}") - s.len
-        s.push([c, a, b][got])
-    s + Str([letter_after(s)])
+    for _ in 2..n:
+        let grew = press("{s}{a}{s}{b}{a}{s}{b}{b}{s}{b}{c}") - s.len
+        s.push([c, a, b][grew])
+    if n >= 2: s.push(letter_after(s))
+    s
 
 assert guess_sequence(word.len) == word
 print("Accepted:", presses)

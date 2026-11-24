@@ -7,36 +7,20 @@
 //   it, one swap per shoe still standing between them, plus one swap if the pair is the wrong
 //   way round, then forget both. A SegTree of standing shoes counts them: O(n log n).
 // original: corpus/submissions/5661847.cpp
-let n: 1..=100000 = read()
-domain Pos = 0..2 * n
-let shoe: [Pos]Int = read()
-
-domain Size = 1..=n
-
-fn swaps(shoe: [Pos]Int) -> Int:
-    // Per size, the shoes still waiting for a partner, oldest first. They
-    // are all the same foot, so a new shoe either pairs with the oldest or
-    // joins the queue.
-    var waiting: [Size]List<Pos> = []
-    var served: [Size]Int = 0
-    var partner: [Pos]?Pos = None
-    for p in Pos:
-        let size = Size(abs(shoe[p]))
-        let k = served[size]
-        if k < waiting[size].len and shoe[waiting[size][k]] != shoe[p]:
-            partner[waiting[size][k]] = p
-            served[size] = k + 1
-        else:
-            waiting[size].push(p)
-    var standing = SegTree<Pos, Int>(+, fill: 0)
-    for p in Pos: standing.set(p, 1)
-    var total = 0
-    for p in Pos:
-        if let q = partner[p]:
-            standing.set(p, 0)
-            standing.set(q, 0)
-            total += standing.fold(p..=q)
-            if shoe[p] > 0: total += 1
-    total
-
-print(swaps(shoe))
+let n = read<1..=100_000>()
+domain P = [2 * n]
+domain Shoe = -n..=n
+let s = read<[P]Shoe>()
+var next_of: [Shoe]Deque<P> = Deque()
+for (i, x) in s.items:
+    next_of[x].push(i)
+var standing = Fenwick([P] i => 1)
+var paired: [P]Bool = false
+var swaps = 0
+for (i, x) in s.items if not paired[i]:
+    next_of[x].pop_front()
+    let j = next_of[Shoe(-Int(x))].pop_front()!
+    paired[j] = true
+    standing.add(j, -1)
+    swaps += standing.fold(i.r..j.l) + Int(x > 0)
+print(swaps)

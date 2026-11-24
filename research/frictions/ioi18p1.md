@@ -23,3 +23,8 @@
   (plus `print(f(1))`) `cpl check` is E0201.
 - **Goal it hurt:** dependable submission (a grader task's body is never checked).
 - **Routed:** compiler worklog.
+
+## Measurements
+
+Contestant-written tokens: port 287, original 241 (`corpus/audit.py` count). Emitted C++: 19585 bytes (`cpl build`, judge `generic`).
+Max input not timed: the accepted C++ is a grader function with no main.

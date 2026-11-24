@@ -7,87 +7,72 @@
 //   while the button stays <= t, stopping at t * k inside. Reaching t * k means each type has
 //   >= t: keep them and drop the rejected ones from the pool; else undo and search below t
 //   among the ones just added. O(N log N) operations.
-// Runnable today/ port of IOI '22 P5 (Insects) for real Rust `cpl build`.
-// Stdin: n, then hidden bug color IDs c[0..n] (in 0..n). Simulates move_inside,
-// move_outside, press_button, verifies <= 3*n button/move calls, prints min_cardinality(n).
 // original: corpus/submissions/4786085.cpp
+let n: 2..=2000 = read()
+domain Insect = [n]
+let kind = read<[Insect]0..=1e9>()
 
-fn ri() -> Int:
-    let x: Int = read()
-    return x
+let limit = 40000
+var (ins, outs, presses) = (0, 0, 0)
+var in_machine: [Insect]Bool = false
+var held: Counter<Int, Int> = Counter()
+var types_with: [0..=n]Int = 0
+var top = 0
 
-fn main_solve():
-    let n: Int = read()
-    var col: List<Int> = [ri() for _ in 0..n]
+fn move_inside(i: Int):
+    ins += 1
+    assert ins <= limit, "too many calls to move_inside"
+    let x = Insect(i)
+    if in_machine[x]: return
+    in_machine[x] = true
+    let c = held[kind[x]]
+    types_with[c] -= 1
+    types_with[c + 1] += 1
+    held[kind[x]] = c + 1
+    top max= c + 1
 
-    var cnt = [0..n + 1] _ => 0
-    var in_box = [0..n] _ => false
-    var max_cnt = 0
+fn move_outside(i: Int):
+    outs += 1
+    assert outs <= limit, "too many calls to move_outside"
+    let x = Insect(i)
+    if not in_machine[x]: return
+    in_machine[x] = false
+    let c = held[kind[x]]
+    types_with[c] -= 1
+    types_with[c - 1] += 1
+    held[kind[x]] = c - 1
+    if top == c and types_with[c] == 0: top -= 1
 
-    fn move_inside(i: Int):
-        if not in_box[i]:
-            in_box[i] = true
-            cnt[col[i]] += 1
-            max_cnt max= cnt[col[i]]
+fn press_button() -> Int:
+    presses += 1
+    assert presses <= limit, "too many calls to press_button"
+    top
 
-    fn move_outside(i: Int):
-        if in_box[i]:
-            in_box[i] = false
-            cnt[col[i]] -= 1
-            max_cnt = 0
-            for j in 0..n:
-                if in_box[j]: max_cnt max= cnt[col[j]]
+fn min_cardinality(n: Int) -> Int:
+    domain Insect = [n]
+    var inside: [Insect]Bool = false
 
-    fn press_button() -> Int = max_cnt
-
-    var perm: List<Int> = [i for i in 0..n]
-    // Deterministic Fisher-Yates shuffle
-    var seed = 1412345
-    var idx = n - 1
-    while idx > 0:
-        seed = (seed * 1103515245 + 12345) % 2147483647
-        let j = seed % (idx + 1)
-        perm.swap(idx, j)
-        idx -= 1
-
-    var inside: List<Int> = []
-    var outside: List<Int> = []
-    for i in perm:
-        move_inside(i)
-        if press_button() > 1:
-            move_outside(i)
-            outside.push(i)
-        else:
-            inside.push(i)
-
-    let k = inside.len
-    var lo = 1
-    var hi = n / k
-    while lo < hi:
-        let mid = (lo + hi + 1) / 2
-        var cur = inside.len
-        var added: List<Int> = []
-        var rem_out: List<Int> = []
-        for i in outside:
-            if cur >= mid * k:
-                rem_out.push(i)
-                continue
-            move_inside(i)
-            if press_button() <= mid:
-                added.push(i)
-                cur += 1
+    fn fill(cap: Int) -> List<Insect>:
+        var added = List<Insect>()
+        for i in Insect if not inside[i]:
+            move_inside(Int(i))
+            if press_button() > cap:
+                move_outside(Int(i))
             else:
-                move_outside(i)
-                rem_out.push(i)
-        if cur == mid * k:
-            lo = mid
-            for i in added: inside.push(i)
-            outside = rem_out
-        else:
-            hi = mid - 1
-            for i in added: move_outside(i)
-            outside = added
+                inside[i] = true
+                added.push(i)
+        added
 
-    print(lo)
+    let kinds = fill(1).len
+    fn holds(cap: Int) -> Bool:
+        let added = fill(cap)
+        if inside.count(x => x) >= kinds * cap:
+            return true
+        for i in added:
+            move_outside(Int(i))
+            inside[i] = false
+        false
 
-main_solve()
+    (1..=n / kinds).last_true(holds)!
+
+print(min_cardinality(n))

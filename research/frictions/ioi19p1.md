@@ -22,3 +22,8 @@ both engines run.
   379).
 - **General fix:** lower an anonymous range axis with a non-literal start as
   an offset by its start, the same as a named domain.
+
+## Measurements
+
+Contestant-written tokens: port 203, original 423 (`corpus/audit.py` count). Emitted C++: 14896 bytes (`cpl build`, judge `generic`).
+Max input not timed: the accepted C++ is a grader function with no main.
