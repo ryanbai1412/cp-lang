@@ -154,7 +154,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'prefix_matches', 'present', 'prev_same', 'prev_smaller', 'prim', 'prime_count', 'primes_in',
     'prod_linear', 'prufer', 'push', 'radix_sort', 'ray_hits_segment', 'reach_sets', 'read_fields',
     'record_highs', 'rects_union_area', 'recurrence_at', 'rekey', 'replace', 'resized', 'rfind',
-    'rows', 'rsearch', 'sample_points_shift', 'scc_times', 'search', 'segment_intersect',
+    'rows', 'rsearch', 'sample_points_shift', 'scc_times', 'search', 'segment_intersect', 'shift',
     'shift_and', 'show_fields', 'simplex', 'smallest_topo', 'sort', 'sorted', 'sorted_diff',
     'sorted_intersect', 'sorted_union', 'spanning_forest', 'spanning_tree', 'spans', 'sparse_det',
     'sparse_solve', 'sphere_dist', 'split', 'split_once', 'split_whitespace', 'sqrt',

@@ -1127,7 +1127,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **prefix** (46/58 named by a case)
   - uncovered: `FillPrefix`, `Prefix.of_rev_scan`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
-- **range** (18/18 named by a case)
+- **range** (19/19 named by a case)
 - **search** (11/11 named by a case)
 - **segtree** (66/66 named by a case)
 - **seq** (228/235 named by a case)
@@ -1145,7 +1145,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (23/24 named by a case)
   - uncovered: `Undo`
 
-2370 of 2455 std items are named by a case.
+2371 of 2456 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
