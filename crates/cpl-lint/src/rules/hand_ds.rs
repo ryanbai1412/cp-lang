@@ -66,9 +66,14 @@ impl HandDs<'_> {
     }
 
     /// `if a.len < b.len: (a, b) = (b, a)` then `for x in b: a.add(x)`.
-    fn small_to_large(&mut self, stmts: &[Stmt]) {
+    fn small_to_large(&mut self, stmts: &[(u32, &Stmt)]) {
+        let base = self.base;
         for pair in stmts.windows(2) {
-            let StmtKind::Expr(e) = &pair[0].kind else {
+            let [(b0, s0), (b1, s1)] = *pair else {
+                continue;
+            };
+            self.base = base + b0;
+            let StmtKind::Expr(e) = &s0.kind else {
                 continue;
             };
             let ExprKind::If {
@@ -116,9 +121,10 @@ impl HandDs<'_> {
             let (Some(big), Some(small)) = (a, b) else {
                 continue;
             };
-            let StmtKind::For { iter, body, .. } = &pair[1].kind else {
+            let StmtKind::For { iter, body, .. } = &s1.kind else {
                 continue;
             };
+            self.base = base + b1;
             let Some((recv, _)) = single(body)
                 .and_then(|s| call_stmt(s, &[std_fn::ADD, std_fn::INSERT], self.calls()))
             else {
@@ -137,9 +143,10 @@ impl HandDs<'_> {
                 continue;
             }
             let (into, from) = (into.to_string(), from.to_string());
+            self.base = base;
             self.warn_at(
                 &SMALL_TO_LARGE_BY_HAND,
-                pair[0].span.to(pair[1].span),
+                s0.span.shift(b0).to(s1.span.shift(b1)),
 &lint_rules::SMALL_TO_LARGE_BY_HAND, &[&from, &into],
                 format!("`{into}.absorb(mut {from})` swaps so the smaller side moves, then empties `{from}` (`SortedSet`, `SortedBag`, `SortedMap`, `FlatMap`, `Counter`, `MeldHeap`)"),
             );
@@ -148,7 +155,7 @@ impl HandDs<'_> {
 }
 
 impl Visitor for HandDs<'_> {
-    fn stmts(&mut self, stmts: &[Stmt]) {
+    fn stmts(&mut self, stmts: &[(u32, &Stmt)]) {
         self.small_to_large(stmts);
     }
 }

@@ -335,10 +335,12 @@ fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {
 
 impl File<'_> {
     /// Walks every item, telling `visit` which offset its spans start at.
+    /// The top-level statements, one item each, reach `stmts` as one sequence.
     pub(crate) fn walk<V: Visitor>(&self, visitor: &mut V, mut set_base: impl FnMut(&mut V, u32)) {
+        set_base(visitor, 0);
+        visitor.stmts(&self.top_level().collect::<Vec<_>>());
         for (base, item) in self.items {
             set_base(visitor, *base);
-            visitor.stmts(&item.stmts);
             for stmt in &item.stmts {
                 walk::walk_stmt(visitor, stmt);
             }

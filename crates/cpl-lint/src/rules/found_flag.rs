@@ -128,20 +128,20 @@ impl Visitor for Flags {
         }
     }
 
-    fn stmts(&mut self, stmts: &[Stmt]) {
-        for flag in stmts {
+    fn stmts(&mut self, stmts: &[(u32, &Stmt)]) {
+        for &(fb, flag) in stmts {
             let Some((f, true)) = set_name(flag) else {
                 continue;
             };
-            for other in stmts {
+            for &(ob, other) in stmts {
                 if let Some((name, _)) =
                     set_name(other).filter(|(n, _)| *n != f && plain_set(other))
                 {
                     self.beside.push((
                         f.to_string(),
-                        flag.span.shift(self.base),
+                        flag.span.shift(self.base + fb),
                         name.to_string(),
-                        other.span.shift(self.base),
+                        other.span.shift(self.base + ob),
                     ));
                 }
             }

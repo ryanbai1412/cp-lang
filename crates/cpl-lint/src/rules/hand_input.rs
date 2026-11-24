@@ -17,10 +17,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
-    // A file's top-level statements come in several items, each with its own
-    // offset, so they are also read as one run.
-    let top: Vec<(u32, &Stmt)> = file.top_level().collect();
-    v.parallel_coords(&top);
     let order = crate::code_order(v.out.iter().map(|f| f.diag.code));
     cpl_diag::sort_by_key(&mut v.out, |f| crate::code_rank(&order, f.diag.code));
     cpl_diag::sort_by_key(&mut v.out, |f| f.diag.span.start as u64);
@@ -173,8 +169,8 @@ impl HandInput<'_> {
 }
 
 impl Visitor for HandInput<'_> {
-    fn stmts(&mut self, stmts: &[Stmt]) {
-        let at: Vec<(u32, &Stmt)> = stmts.iter().map(|s| (self.base, s)).collect();
+    fn stmts(&mut self, stmts: &[(u32, &Stmt)]) {
+        let at: Vec<(u32, &Stmt)> = stmts.iter().map(|&(b, s)| (self.base + b, s)).collect();
         self.parallel_coords(&at);
     }
 }

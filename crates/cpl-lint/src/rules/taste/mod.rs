@@ -49,8 +49,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             }
         }
     }
-    let top: Vec<(u32, &Stmt)> = file.top_level().collect();
-    rule.sequence(&top);
     struct Declared<'s>(&'s mut HashSet<String>);
     impl Visitor for Declared<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
@@ -86,46 +84,21 @@ fn is_int_lit(e: &Expr, want: i128) -> bool {
     matches!(walk::unparen(e).kind, ExprKind::Int(v) if v == want)
 }
 
-/// Hands every nested statement list to [`Taste::block`].
+/// Hands every statement sequence, the top level's too, to [`Taste::sequence`].
 struct Blocks<'a, 'b> {
     taste: &'b mut Taste<'a>,
 }
 
 impl Visitor for Blocks<'_, '_> {
-    fn stmt(&mut self, stmt: &Stmt) {
-        match &stmt.kind {
-            StmtKind::Fn(FnDecl {
-                body: FnBody::Block(body),
-                ..
-            })
-            | StmtKind::While { body, .. }
-            | StmtKind::For { body, .. }
-            | StmtKind::Unchecked(body) => self.taste.block(&body.stmts),
-            StmtKind::Let {
-                otherwise: Some(body),
-                ..
-            } => self.taste.block(&body.stmts),
-            _ => {}
-        }
+    fn stmts(&mut self, stmts: &[(u32, &Stmt)]) {
+        let base = self.taste.base;
+        let all: Vec<(u32, &Stmt)> = stmts.iter().map(|&(b, s)| (base + b, s)).collect();
+        self.taste.sequence(&all);
+        self.taste.base = base;
     }
     fn expr(&mut self, expr: &Expr) {
         self.taste.free_fold(expr);
         self.taste.domain_spelling(expr);
-        match &expr.kind {
-            ExprKind::Block(body) => self.taste.block(&body.stmts),
-            ExprKind::If {
-                branches,
-                otherwise,
-            } => {
-                for (_, body) in branches {
-                    self.taste.block(&body.stmts);
-                }
-                if let Some(body) = otherwise {
-                    self.taste.block(&body.stmts);
-                }
-            }
-            _ => {}
-        }
     }
 }
 
@@ -208,13 +181,6 @@ impl<'a> Taste<'a> {
             lint,
             diag: diag.shift(self.base),
         });
-    }
-
-    fn block(&mut self, stmts: &[Stmt]) {
-        let base = self.base;
-        let all: Vec<(u32, &Stmt)> = stmts.iter().map(|s| (base, s)).collect();
-        self.sequence(&all);
-        self.base = base;
     }
 
     fn sequence(&mut self, stmts: &[(u32, &Stmt)]) {

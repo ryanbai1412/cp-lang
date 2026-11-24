@@ -371,10 +371,10 @@ struct Spans {
 }
 
 impl Visitor for Spans {
-    fn stmts(&mut self, stmts: &[Stmt]) {
+    fn stmts(&mut self, stmts: &[(u32, &Stmt)]) {
         let base = self.base;
         self.blocks
-            .push(stmts.iter().map(|s| s.span.shift(base)).collect());
+            .push(stmts.iter().map(|(b, s)| s.span.shift(base + b)).collect());
     }
     fn expr(&mut self, expr: &Expr) {
         let span = expr.span.shift(self.base);
@@ -486,7 +486,6 @@ pub(crate) fn find(file: &File, declared: &[Declared], only: Option<Code>) -> Ve
     }
     let mut spans = Spans::default();
     file.walk(&mut spans, |s, base| s.base = base);
-    (spans.blocks).push(file.top_level().map(|(b, s)| s.span.shift(b)).collect());
     // A statement's span can run past its last token (a block's newline).
     // How many tokens start before each offset, looked up once per site and lint.
     let mut starting_before = Vec::with_capacity(file.src.len() + 1);

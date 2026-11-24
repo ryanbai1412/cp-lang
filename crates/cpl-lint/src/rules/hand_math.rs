@@ -29,7 +29,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         out: Vec::new(),
     };
     let top: Vec<_> = file.top_level().collect();
-    v.diff(&top);
     file.walk(&mut v, |v, base| v.base = base);
     // A memo map is reported at its declaration.
     let memos = std::mem::take(&mut v.memos);
@@ -485,9 +484,9 @@ impl HandMath<'_> {
 }
 
 impl Visitor for HandMath<'_> {
-    fn stmts(&mut self, stmts: &[Stmt]) {
+    fn stmts(&mut self, stmts: &[(u32, &Stmt)]) {
         let base = self.base;
-        let stmts: Vec<_> = stmts.iter().map(|s| (base, s)).collect();
+        let stmts: Vec<_> = stmts.iter().map(|&(b, s)| (base + b, s)).collect();
         self.diff(&stmts);
     }
 

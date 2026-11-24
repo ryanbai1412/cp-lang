@@ -27,10 +27,18 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 }
             }
         }
-        fn stmts(&mut self, stmts: &[Stmt]) {
-            for (i, stmt) in stmts.iter().enumerate() {
-                self.guard(stmt, &stmts[i + 1..]);
+        fn stmts(&mut self, stmts: &[(u32, &Stmt)]) {
+            // A guard reads the statements after it in its own item.
+            let base = self.base;
+            for (i, &(b, stmt)) in stmts.iter().enumerate() {
+                let after: Vec<Stmt> = (stmts[i + 1..].iter())
+                    .take_while(|(ob, _)| *ob == b)
+                    .map(|(_, s)| (*s).clone())
+                    .collect();
+                self.base = base + b;
+                self.guard(stmt, &after);
             }
+            self.base = base;
         }
     }
     impl<'a> Tests<'a> {

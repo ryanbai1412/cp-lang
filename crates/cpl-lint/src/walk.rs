@@ -31,8 +31,10 @@ pub(crate) enum Bind {
 /// A rule's view of the walk. Spans are relative to the item being walked.
 pub(crate) trait Visitor {
     fn stmt(&mut self, _stmt: &Stmt) {}
-    /// The statements of a block, in order, before each is walked.
-    fn stmts(&mut self, _stmts: &[Stmt]) {}
+    /// The statements of a block, in order, before each is walked, each with
+    /// the offset its spans start at past the walk's base: 0 inside an item,
+    /// and the item's offset for the file's top level, which is one sequence.
+    fn stmts(&mut self, _stmts: &[(u32, &Stmt)]) {}
     fn expr(&mut self, _expr: &Expr) {}
     fn ty(&mut self, _ty: &Type) {}
     fn bind(&mut self, _name: &str, _span: Span, _how: Bind) {}
@@ -201,7 +203,7 @@ fn walk_fn(v: &mut dyn Visitor, decl: &FnDecl) {
 }
 
 fn walk_stmts(v: &mut dyn Visitor, stmts: &[Stmt]) {
-    v.stmts(stmts);
+    v.stmts(&stmts.iter().map(|s| (0, s)).collect::<Vec<_>>());
     for stmt in stmts {
         walk_stmt(v, stmt);
     }

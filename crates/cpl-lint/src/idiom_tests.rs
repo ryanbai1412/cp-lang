@@ -771,3 +771,19 @@ fn read_loop_takes_the_item_type_from_the_written_list() {
         .collect();
     assert_eq!(fix, ["let xs: [1..=n]Int = read()"]);
 }
+
+/// The file's top level is one sequence, though each statement is its own
+/// item: a rule over consecutive statements sees two at the top level.
+#[test]
+fn a_sequence_rule_sees_the_top_level_as_one_sequence() {
+    let src = "let n: 2..=10 = read()\nvar sets: List<SortedSet<Int>> = [SortedSet.of([x]) for x in 0..n]\nvar big = 0\nvar small = 1\nif sets[big].len < sets[small].len:\n    (big, small) = (small, big)\nfor w in sets[small].clone():\n    sets[big].add(w)\nprint(sets[big].len)\n";
+    let found: Vec<_> = crate::lint(src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "L0568")
+        .map(|d| d.span.text(src).to_string())
+        .collect();
+    assert_eq!(
+        found,
+        ["if sets[big].len < sets[small].len:\n    (big, small) = (small, big)\nfor w in sets[small].clone():\n    sets[big].add(w)\n"]
+    );
+}

@@ -13,8 +13,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         out: Vec<Finding>,
     }
     impl Visitor for Dead {
-        fn stmts(&mut self, stmts: &[Stmt]) {
-            let Some(at) = stmts.iter().position(|s| {
+        fn stmts(&mut self, stmts: &[(u32, &Stmt)]) {
+            let Some(at) = stmts.iter().position(|(_, s)| {
                 matches!(
                     s.kind,
                     StmtKind::Return(_) | StmtKind::Break(_) | StmtKind::Continue(_)
@@ -22,25 +22,33 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             }) else {
                 return;
             };
-            let (Some(next), Some(last)) = (stmts.get(at + 1), stmts.last()) else {
+            let (Some(&(nb, next)), Some(&(lb, last))) = (stmts.get(at + 1), stmts.last()) else {
                 return;
             };
-            let word = match stmts[at].kind {
+            let (ab, leave) = stmts[at];
+            let word = match leave.kind {
                 StmtKind::Return(_) => "return",
                 StmtKind::Break(_) => "break",
                 _ => "continue",
             };
-            let dead = Span::new(next.span.start, last.span.end).shift(self.base);
+            let base = self.base;
+            let dead = Span::new(
+                next.span.shift(base + nb).start,
+                last.span.shift(base + lb).end,
+            );
             let mut diag = lint_rules::UNREACHABLE_CODE
                 .warning(dead, &[&word])
-                .with_label(stmts[at].span.shift(self.base), "the block leaves here")
+                .with_label(leave.span.shift(base + ab), "the block leaves here")
                 .with_help(format!(
                     "delete it, or move the `{word}` below it if it was meant to run first"
                 ));
             diag.fixes.push(Fix {
                 title: "delete the code that never runs".into(),
                 edits: vec![(
-                    Span::new(stmts[at].span.end, last.span.end).shift(self.base),
+                    Span::new(
+                        leave.span.shift(base + ab).end,
+                        last.span.shift(base + lb).end,
+                    ),
                     String::new(),
                 )],
             });
