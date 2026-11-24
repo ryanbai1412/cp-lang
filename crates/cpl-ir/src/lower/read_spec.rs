@@ -17,10 +17,10 @@ impl<'a> Lowerer<'a> {
             };
             let left = lw.temp(Ty::Int);
             let count = lw.mk_read(Spec::Plain(Ty::Int), Ty::Int, span);
-            out.push(Stmt::Let(left, Some(count)));
+            out.push_let(left, count);
             let acc = lw.temp(list.clone());
             let empty = lw.mk(ExprKind::Tuple(Vec::new()), list.clone(), span);
-            out.push(Stmt::Let(acc, Some(empty)));
+            out.push_let(acc, empty);
             let lid = lw.open_loop(None);
             let item = lw.read(each, span);
             let push =
@@ -34,7 +34,7 @@ impl<'a> Lowerer<'a> {
             let (rest, zero) = (lw.local(left, span), lw.int_lit(0, span));
             let more = lw.mk_cmp(CmpOp::Gt, rest, zero, Ty::Bool, span);
             out.push(Stmt::While(lid, more, Block { stmts: body }));
-            out.push(Stmt::Give(lw.local(acc, span)));
+            out.push_give(lw.local(acc, span));
         });
         Spec::Call(Box::new(call))
     }

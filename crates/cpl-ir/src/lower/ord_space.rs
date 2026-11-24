@@ -89,7 +89,7 @@ impl Lowerer<'_> {
         let some = self.mk_some(at, ty.clone(), span);
         let none = self.mk(ExprKind::None, ty.clone(), span);
         let pick = self.mk_if(ok, some, none, ty.clone(), span);
-        stmts.push(Stmt::Give(pick));
+        stmts.push_give(pick);
         self.mk(ExprKind::Do(Block { stmts }), ty, span)
     }
 

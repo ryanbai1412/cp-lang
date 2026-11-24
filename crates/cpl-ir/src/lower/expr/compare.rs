@@ -138,7 +138,7 @@ impl<'a> Lowerer<'a> {
         if stmts.is_empty() {
             return both;
         }
-        stmts.push(Stmt::Give(both));
+        stmts.push_give(both);
         self.mk(ExprKind::Do(Block { stmts }), Ty::Bool, span)
     }
 

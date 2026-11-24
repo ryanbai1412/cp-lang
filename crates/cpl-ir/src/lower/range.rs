@@ -1287,7 +1287,7 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 let slot = self.temp(Ty::Int);
-                out.push(Stmt::Let(slot, Some(value)));
+                out.push_let(slot, value);
                 let rhs = self.local(slot, span);
                 let cur = super::stmt::place_to_expr(&place);
                 let cmp = if op == AssignOp::Max {
@@ -1325,7 +1325,7 @@ impl<'a> Lowerer<'a> {
                     let mut value = Expr { kind, ..piece };
                     if !matches!(value.kind, ExprKind::Local(_)) {
                         let r = lw.new_slot("piece", ty);
-                        out.push(Stmt::Let(r, Some(value)));
+                        out.push_let(r, value);
                         value = lw.local(r, span);
                     }
                     let lo = lw.mk_builtin(Builtin::RangeLo, [value.clone()], Ty::Int, span);
@@ -1333,8 +1333,8 @@ impl<'a> Lowerer<'a> {
                 }
             };
             let (lo, hi) = (lw.new_slot("lo", Ty::Int), lw.new_slot("hi", Ty::Int));
-            out.push(Stmt::Let(lo, Some(lo_e)));
-            out.push(Stmt::Let(hi, Some(hi_e)));
+            out.push_let(lo, lo_e);
+            out.push_let(hi, hi_e);
             if !proven {
                 let (l, h) = (lw.local(lo, span), lw.local(hi, span));
                 let empty = lw.mk_cmp(CmpOp::Le, h, l, Ty::Bool, span);
@@ -1369,7 +1369,7 @@ impl<'a> Lowerer<'a> {
             let last = lw.int_add(last, -1);
             let first = lw.local(lo, span);
             let idx = lw.mk_builtin(Builtin::TriIdx, [first, last], Ty::Int, span);
-            out.push(Stmt::Give(idx));
+            out.push_give(idx);
         });
         self.cast(Cast::Raw, sym, Ty::Int)
     }
@@ -1401,7 +1401,7 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         let slot = self.temp(place.ty.clone());
-        out.push(Stmt::Let(slot, Some(value)));
+        out.push_let(slot, value);
         let held = self.local(slot, span);
         let op = if is_max { CmpOp::Gt } else { CmpOp::Lt };
         let current = super::stmt::place_to_expr(&place);
@@ -1511,7 +1511,7 @@ impl<'a> Lowerer<'a> {
         let elem = range_ty.seq_elem().unwrap_or(Ty::Int);
         self.do_expr(Some(&range_ty), span, |lw, out| {
             let src_slot = lw.temp(range_ty.clone());
-            out.push(Stmt::Let(src_slot, Some(base)));
+            out.push_let(src_slot, base);
             let src = lw.local(src_slot, span);
             let src_lo = lw.mk_builtin(Builtin::RangeLo, [src.clone()], Ty::Int, span);
             let src_hi = lw.mk_builtin(Builtin::RangeHi, [src], Ty::Int, span);
@@ -1533,8 +1533,8 @@ impl<'a> Lowerer<'a> {
                 None => src_hi.clone(),
             };
             let (lo_slot, hi_slot) = (lw.temp(Ty::Int), lw.temp(Ty::Int));
-            out.push(Stmt::Let(lo_slot, Some(lo_e)));
-            out.push(Stmt::Let(hi_slot, Some(hi_e)));
+            out.push_let(lo_slot, lo_e);
+            out.push_let(hi_slot, hi_e);
             let (lo_e, hi_e) = (lw.local(lo_slot, span), lw.local(hi_slot, span));
             let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
                 lw.mk_cmp(op, l.clone(), r.clone(), Ty::Bool, span)
@@ -1563,7 +1563,7 @@ impl<'a> Lowerer<'a> {
                 range_ty.clone(),
                 span,
             );
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 

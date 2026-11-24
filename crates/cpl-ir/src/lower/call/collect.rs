@@ -22,7 +22,7 @@ impl<'a> Lowerer<'a> {
             let pred_val = lw.hold(pred, out);
             let found = lw.temp(opt_ty.clone());
             let init = lw.mk(ExprKind::None, opt_ty.clone(), span);
-            out.push(Stmt::Let(found, Some(init)));
+            out.push_let(found, init);
             let item = lw.temp(elem_ty.clone());
             let lid = lw.fresh_loop();
             let item_expr = lw.local(item, span);
@@ -54,7 +54,7 @@ impl<'a> Lowerer<'a> {
                 )],
             };
             out.push(Stmt::For(lid, item, iter, body));
-            out.push(Stmt::Give(lw.local(found, span)));
+            out.push_give(lw.local(found, span));
         })
     }
 
@@ -148,7 +148,7 @@ impl<'a> Lowerer<'a> {
                 arr_ty.clone(),
                 span,
             );
-            out.push(Stmt::Let(acc, Some(fill)));
+            out.push_let(acc, fill);
             let mut loop_pre = Vec::new();
             let (edge, filter_cond) = if let Some((pat, cond_ast)) = filter_lambda {
                 lw.cx.scopes.push(HashMap::new());
@@ -194,7 +194,7 @@ impl<'a> Lowerer<'a> {
             };
             let lid = lw.fresh_loop();
             out.push(Stmt::For(lid, edge, iter, loop_body));
-            out.push(Stmt::Give(lw.local(acc, span)));
+            out.push_give(lw.local(acc, span));
         })
     }
 
@@ -253,10 +253,7 @@ impl<'a> Lowerer<'a> {
         let ty = Ty::list(elem);
         self.do_expr(Some(&ty), span, |lw, out| {
             let acc = lw.temp(ty.clone());
-            out.push(Stmt::Let(
-                acc,
-                Some(lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span)),
-            ));
+            out.push_let(acc, lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span));
             let list_ty = ty.clone();
             let push = move |lw: &mut Self, value: Expr| {
                 let place = Place {
@@ -267,7 +264,7 @@ impl<'a> Lowerer<'a> {
                 Stmt::Expr(lw.mk_mutate(Mutation::Push, place, vec![value], Ty::Unit, span))
             };
             build(lw, out, &push);
-            out.push(Stmt::Give(lw.local(acc, span)));
+            out.push_give(lw.local(acc, span));
         })
     }
 
@@ -324,10 +321,10 @@ impl<'a> Lowerer<'a> {
         let struct_ty = Ty::Struct(sid);
         self.do_expr(Some(&struct_ty), span, |lw, out| {
             let m_slot = lw.temp(map_ty.clone());
-            out.push(Stmt::Let(
+            out.push_let(
                 m_slot,
-                Some(lw.mk(ExprKind::Tuple(Vec::new()), map_ty.clone(), span)),
-            ));
+                lw.mk(ExprKind::Tuple(Vec::new()), map_ty.clone(), span),
+            );
             let item = lw.temp(elem);
             let lid = lw.fresh_loop();
             let place = Place {
@@ -356,7 +353,7 @@ impl<'a> Lowerer<'a> {
                 struct_ty.clone(),
                 span,
             );
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 
@@ -463,10 +460,10 @@ impl<'a> Lowerer<'a> {
         let list_ty = Ty::list(elem);
         self.do_expr(Some(&list_ty), span, |lw, out| {
             let src = lw.temp(list_ty.clone());
-            out.push(Stmt::Let(src, Some(xs)));
+            out.push_let(src, xs);
             let acc = lw.temp(list_ty.clone());
             let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
-            out.push(Stmt::Let(acc, Some(empty)));
+            out.push_let(acc, empty);
             let place = Place {
                 kind: PlaceKind::Local(acc),
                 ty: list_ty.clone(),
@@ -489,7 +486,7 @@ impl<'a> Lowerer<'a> {
                 stmts: vec![Stmt::Expr(extend)],
             };
             out.push(Stmt::For(lid, i, walk, body));
-            out.push(Stmt::Give(lw.local(acc, span)));
+            out.push_give(lw.local(acc, span));
         })
     }
 }

@@ -638,7 +638,7 @@ impl<'a> Lowerer<'a> {
                         }
                         let out_ty = Ty::Record(kept_tys);
                         let res = self.mk(ExprKind::Tuple(kept_vals), out_ty.clone(), span);
-                        stmts.push(Stmt::Give(res));
+                        stmts.push_give(res);
                         self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
                     }
                     _ if kept_tys.is_empty() => b,
@@ -660,14 +660,14 @@ impl<'a> Lowerer<'a> {
                     Ty::Struct(sid) => lw.structs[*sid].def.fields.clone(),
                     Ty::Record(fields) => fields.clone(),
                     Ty::Error => {
-                        out.push(Stmt::Give(lw.err_expr(span)));
+                        out.push_give(lw.err_expr(span));
                         return;
                     }
                     other => {
                         let msg =
                             cpl_diag::msgs::ir::WITH_UPDATES_FIELDS_STRUCT.at(&[&lw.show(other)]);
                         lw.report(span, msg);
-                        out.push(Stmt::Give(lw.err_expr(span)));
+                        out.push_give(lw.err_expr(span));
                         return;
                     }
                 };
@@ -685,7 +685,7 @@ impl<'a> Lowerer<'a> {
                     .any(|(fname, _)| !updates.iter().any(|(n, _)| &n.text == fname));
                 let tmp = if needs_tmp {
                     let tmp = lw.temp(ty.clone());
-                    out.push(Stmt::Let(tmp, Some(base_val)));
+                    out.push_let(tmp, base_val);
                     Some(tmp)
                 } else {
                     if !matches!(base_val.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
@@ -705,7 +705,7 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 let built = lw.mk(ExprKind::Tuple(values), ty, span);
-                out.push(Stmt::Give(built));
+                out.push_give(built);
             }),
             ast::ExprKind::Mut(inner) => self.expr(inner, inner_hint),
             ast::ExprKind::Try(inner) => self.try_expr(inner, span),

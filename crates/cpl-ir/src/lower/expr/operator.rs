@@ -163,7 +163,7 @@ impl<'a> Lowerer<'a> {
                         let dos = std::mem::take(&mut self.cx.dos);
                         self.stmt(way_out, &mut leave);
                         self.cx.dos = dos;
-                        self.cx.pending.push(Stmt::Let(slot, Some(l)));
+                        self.cx.pending.push_let(slot, l);
                         self.cx.pending.push(Stmt::If(
                             missing,
                             Block { stmts: leave },
@@ -380,7 +380,7 @@ impl<'a> Lowerer<'a> {
                 return self.do_expr(Some(&list_ty), span, |lw, out| {
                     let slot = lw.temp(list_ty.clone());
                     let cloned = lw.mk_builtin(Builtin::Copy, [l], list_ty.clone(), span);
-                    out.push(Stmt::Let(slot, Some(cloned)));
+                    out.push_let(slot, cloned);
                     let ext = lw.mk_mutate(
                         Mutation::Extend,
                         Place {
@@ -394,7 +394,7 @@ impl<'a> Lowerer<'a> {
                     );
                     out.push(Stmt::Expr(ext));
                     let res = lw.local(slot, span);
-                    out.push(Stmt::Give(res));
+                    out.push_give(res);
                 });
             }
             (Ty::Char, Ty::Char) if op == Sub => {
@@ -451,7 +451,7 @@ impl<'a> Lowerer<'a> {
             for side in [l, r] {
                 let side_ty = side.ty.clone();
                 let slot = lw.temp(side_ty.clone());
-                out.push(Stmt::Let(slot, Some(side)));
+                out.push_let(slot, side);
                 let held = lw.local(slot, span);
                 let value = if let Ty::Opt(inner) = &side_ty {
                     let some = lw.mk_is_some(held.clone(), Ty::Bool, span);
@@ -472,7 +472,7 @@ impl<'a> Lowerer<'a> {
             let none = lw.mk(ExprKind::None, ty.clone(), span);
             let cond = present.expect("one side is optional");
             let value = lw.mk_if(cond, some, none, ty.clone(), span);
-            out.push(Stmt::Give(value));
+            out.push_give(value);
         })
     }
 

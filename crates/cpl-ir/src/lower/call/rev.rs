@@ -149,7 +149,7 @@ impl<'a> Lowerer<'a> {
         self.cx.scopes.push(HashMap::new());
         let this = self.temp(value.ty.clone());
         self.cx.view_rev.insert(this);
-        self.cx.pending.push(Stmt::Let(this, Some(value)));
+        self.cx.pending.push_let(this, value);
         self.bind_local("self", this);
         let op_params: Vec<String> = ops.iter().map(|(name, _)| name.clone()).collect();
         for (name, op) in ops {
@@ -168,7 +168,7 @@ impl<'a> Lowerer<'a> {
                 (None, None) => self.err_expr(span),
             };
             let slot = self.temp(arg.ty.clone());
-            self.cx.pending.push(Stmt::Let(slot, Some(arg)));
+            self.cx.pending.push_let(slot, arg);
             self.bind_local(&p.name.text, slot);
         }
         let out = match body {

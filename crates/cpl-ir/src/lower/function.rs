@@ -160,10 +160,10 @@ impl<'a> Lowerer<'a> {
             };
             let acc = self.new_slot("__yields", list_ty.clone());
             self.cx.mut_slots.insert(acc);
-            out.push(Stmt::Let(
+            out.push_let(
                 acc,
-                Some(self.mk(ExprKind::Tuple(Vec::new()), list_ty, decl.name.span)),
-            ));
+                self.mk(ExprKind::Tuple(Vec::new()), list_ty, decl.name.span),
+            );
             self.cx.yield_slot = Some((acc, elem_ty));
         }
 

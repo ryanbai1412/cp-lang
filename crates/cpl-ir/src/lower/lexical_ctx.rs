@@ -53,10 +53,7 @@ impl<'a> Lowerer<'a> {
             let gid = self.context_global(name);
             let ty = self.globals[gid].ty.clone();
             let save = self.temp(ty.clone());
-            stmts.push(Stmt::Let(
-                save,
-                Some(self.mk(ExprKind::Global(gid), ty.clone(), span)),
-            ));
+            stmts.push_let(save, self.mk(ExprKind::Global(gid), ty.clone(), span));
             let value = self.lexical_value(name, span);
             let place = Place {
                 kind: PlaceKind::Global(gid),
@@ -71,12 +68,12 @@ impl<'a> Lowerer<'a> {
         self.lexical_call_at = held;
         let ty = call.ty.clone();
         let result = self.temp(ty.clone());
-        stmts.push(Stmt::Let(result, Some(call)));
+        stmts.push_let(result, call);
         for (place, save) in saved {
             let back = self.local(save, span);
             stmts.push(Stmt::Assign(place, AssignOp::Set, back));
         }
-        stmts.push(Stmt::Give(self.local(result, span)));
+        stmts.push_give(self.local(result, span));
         Some(self.mk(ExprKind::Do(Block { stmts }), ty, span))
     }
 

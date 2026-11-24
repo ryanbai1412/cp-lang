@@ -160,7 +160,7 @@ impl<'a> Lowerer<'a> {
             _ => Ty::Int,
         };
         let r_slot = self.temp(range_ty);
-        self.cx.pending.push(Stmt::Let(r_slot, Some(range_val)));
+        self.cx.pending.push_let(r_slot, range_val);
         let r_ref = self.local(r_slot, span);
         let lo_bound =
             self.mk_builtin(Builtin::RangeLo, [r_ref.clone()], range_inner.clone(), span);
@@ -226,7 +226,7 @@ impl<'a> Lowerer<'a> {
             return view;
         }
         let slot = self.temp(view.ty.clone());
-        self.cx.pending.push(Stmt::Let(slot, Some(view)));
+        self.cx.pending.push_let(slot, view);
         self.local(slot, span)
     }
 
@@ -275,7 +275,7 @@ impl<'a> Lowerer<'a> {
             return base;
         }
         let slot = self.temp(base.ty.clone());
-        self.cx.pending.push(Stmt::Let(slot, Some(base)));
+        self.cx.pending.push_let(slot, base);
         self.local(slot, span)
     }
 
@@ -305,7 +305,7 @@ impl<'a> Lowerer<'a> {
                 _ => Ty::Int,
             };
             let r_slot = self.temp(range_ty);
-            self.cx.pending.push(Stmt::Let(r_slot, Some(range_val)));
+            self.cx.pending.push_let(r_slot, range_val);
             let r_ref = self.local(r_slot, span);
             let lo_bound =
                 self.mk_builtin(Builtin::RangeLo, [r_ref.clone()], range_inner.clone(), span);
@@ -348,16 +348,16 @@ impl<'a> Lowerer<'a> {
         };
         self.do_expr(Some(&result_ty), span, |lw, out| {
             let b_slot = lw.temp(base_ty.clone());
-            out.push(Stmt::Let(b_slot, Some(base)));
+            out.push_let(b_slot, base);
             let r_slot = lw.temp(range_ty.clone());
-            out.push(Stmt::Let(r_slot, Some(range_val)));
+            out.push_let(r_slot, range_val);
             let acc_slot = lw.temp(result_ty.clone());
             let init = if is_str {
                 lw.mk(ExprKind::Str(Vec::new()), Ty::Str, span)
             } else {
                 lw.mk(ExprKind::Tuple(Vec::new()), result_ty.clone(), span)
             };
-            out.push(Stmt::Let(acc_slot, Some(init)));
+            out.push_let(acc_slot, init);
             let r_ref = lw.local(r_slot, span);
             let lo_bound =
                 lw.mk_builtin(Builtin::RangeLo, [r_ref.clone()], range_inner.clone(), span);
@@ -417,7 +417,7 @@ impl<'a> Lowerer<'a> {
                 },
             ));
             let res = lw.local(acc_slot, span);
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 
@@ -479,8 +479,8 @@ impl<'a> Lowerer<'a> {
             None => len.clone(),
         };
         let (lo_slot, hi_slot) = (self.temp(Ty::Int), self.temp(Ty::Int));
-        out.push(Stmt::Let(lo_slot, Some(lo_e)));
-        out.push(Stmt::Let(hi_slot, Some(hi_e)));
+        out.push_let(lo_slot, lo_e);
+        out.push_let(hi_slot, hi_e);
         let (lo_e, hi_e) = (self.local(lo_slot, span), self.local(hi_slot, span));
         let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
             lw.mk_cmp(op, l.clone(), r.clone(), Ty::Bool, span)
@@ -662,7 +662,7 @@ impl<'a> Lowerer<'a> {
         };
         self.do_expr(Some(&out_ty), span, |lw, out| {
             let base_slot = lw.temp(base.ty.clone());
-            out.push(Stmt::Let(base_slot, Some(base)));
+            out.push_let(base_slot, base);
             let base_ref = lw.local(base_slot, span);
             let len_expr = match dim_dom {
                 Some(d) => lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
@@ -696,8 +696,8 @@ impl<'a> Lowerer<'a> {
             // program: `a[..-1]` is not "all but the last", and going on
             // with an empty list would hide the mistake.
             let (lo_slot, hi_slot) = (lw.temp(Ty::Int), lw.temp(Ty::Int));
-            out.push(Stmt::Let(lo_slot, Some(lo_e)));
-            out.push(Stmt::Let(hi_slot, Some(hi_e)));
+            out.push_let(lo_slot, lo_e);
+            out.push_let(hi_slot, hi_e);
             let (lo_e, hi_e) = (lw.local(lo_slot, span), lw.local(hi_slot, span));
             let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
                 lw.mk_cmp(op, l.clone(), r.clone(), Ty::Bool, span)
@@ -728,7 +728,7 @@ impl<'a> Lowerer<'a> {
             } else {
                 lw.mk(ExprKind::Tuple(Vec::new()), out_ty.clone(), span)
             };
-            out.push(Stmt::Let(acc_slot, Some(empty_init)));
+            out.push_let(acc_slot, empty_init);
             let idx_slot = lw.temp(Ty::Int);
             let idx_e = lw.local(idx_slot, span);
             let index_arg = match dim_dom {
@@ -759,7 +759,7 @@ impl<'a> Lowerer<'a> {
                 },
             ));
             let res = lw.local(acc_slot, span);
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 }

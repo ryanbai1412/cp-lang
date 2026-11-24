@@ -137,7 +137,7 @@ impl<'a> Lowerer<'a> {
                             ty: value.ty.clone(),
                             span: value.span,
                         };
-                        ahead.push(Stmt::Let(slot, Some(std::mem::replace(value, held))));
+                        ahead.push_let(slot, std::mem::replace(value, held));
                     }
                 }
                 values = values
@@ -184,7 +184,7 @@ impl<'a> Lowerer<'a> {
                     return print;
                 }
                 ahead.push(Stmt::Expr(print));
-                ahead.push(Stmt::Give(self.mk(ExprKind::Unit, Ty::Unit, span)));
+                ahead.push_give(self.mk(ExprKind::Unit, Ty::Unit, span));
                 self.mk(ExprKind::Do(Block { stmts: ahead }), Ty::Unit, span)
             }
             // `debug(i, best)`: shown on a local run, and a checkpoint
@@ -278,7 +278,7 @@ impl<'a> Lowerer<'a> {
                     return self.do_expr(Some(&Ty::Unit), span, |lw, out| {
                         out.push(Stmt::Expr(counted));
                         out.push(Stmt::Expr(query));
-                        out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                        out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
                     });
                 };
                 let Some(spec) = self.spec_of(want) else {
@@ -294,7 +294,7 @@ impl<'a> Lowerer<'a> {
                     out.extend(counted.map(Stmt::Expr));
                     out.push(Stmt::Expr(query));
                     let answer = lw.read(spec, span);
-                    out.push(Stmt::Give(answer));
+                    out.push_give(answer);
                 })
             }
             "read" => {
@@ -453,12 +453,12 @@ impl<'a> Lowerer<'a> {
                         lw.mk_mutate(Mutation::Take, place.clone(), Vec::new(), ty.clone(), span)
                     };
                     let from_a = take(lw, &pa);
-                    out.push(Stmt::Let(tmp, Some(from_a)));
+                    out.push_let(tmp, from_a);
                     let from_b = take(lw, &pb);
                     out.push(Stmt::Assign(pa, AssignOp::Set, from_b));
                     let from_tmp = take(lw, &held);
                     out.push(Stmt::Assign(pb, AssignOp::Set, from_tmp));
-                    out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                    out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
                 })
             }
             "gen" => self.gen_call(None, args, span),
@@ -609,10 +609,7 @@ impl<'a> Lowerer<'a> {
                 };
                 self.do_expr(Some(&ty), span, |lw, out| {
                     let acc = lw.temp(ty.clone());
-                    out.push(Stmt::Let(
-                        acc,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span)),
-                    ));
+                    out.push_let(acc, lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span));
                     let lid = lw.open_loop(None);
                     let slot = lw.temp(elem);
                     let item = lw.local(slot, span);
@@ -637,7 +634,7 @@ impl<'a> Lowerer<'a> {
                         },
                     ));
                     let res = lw.local(acc, span);
-                    out.push(Stmt::Give(res));
+                    out.push_give(res);
                 })
             }
             "Map" | "HashMap" => {
@@ -751,13 +748,13 @@ impl<'a> Lowerer<'a> {
         let none_text = none_text.clone();
         self.do_expr(Some(&Ty::Str), span, |lw, out| {
             let slot = lw.temp(value.ty.clone());
-            out.push(Stmt::Let(slot, Some(value)));
+            out.push_let(slot, value);
             let held = lw.local(slot, span);
             let some = lw.mk_is_some(held.clone(), Ty::Bool, span);
             let inside = lw.mk_unwrap(held, false, *inner, span);
             let shown = lw.mk_builtin(Builtin::ShowStr, [inside], Ty::Str, span);
             let text = lw.mk_if(some, shown, none_text, Ty::Str, span);
-            out.push(Stmt::Give(text));
+            out.push_give(text);
         })
     }
 
@@ -976,7 +973,7 @@ impl<'a> Lowerer<'a> {
         self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
             let all = lw.temp(list_ty.clone());
             let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
-            out.push(Stmt::Let(all, Some(empty)));
+            out.push_let(all, empty);
             let at = lw.temp(Ty::Pos(d));
             let item = lw.local(at, span);
             let push = lw.mk_mutate(
@@ -1007,7 +1004,7 @@ impl<'a> Lowerer<'a> {
                     stmts: vec![Stmt::Expr(push)],
                 },
             ));
-            out.push(Stmt::Give(lw.local(all, span)));
+            out.push_give(lw.local(all, span));
         })
     }
 
@@ -1120,7 +1117,7 @@ impl<'a> Lowerer<'a> {
                 _ => lw.walked_list(Iter::Seq(value, false), elem.clone(), span),
             };
             let slot = lw.temp(list_ty.clone());
-            out.push(Stmt::Let(slot, Some(init)));
+            out.push_let(slot, init);
             let place = Place {
                 kind: PlaceKind::Local(slot),
                 ty: list_ty.clone(),
@@ -1129,7 +1126,7 @@ impl<'a> Lowerer<'a> {
             let sort_expr = lw.sort_place(place, &elem, args, span);
             out.push(Stmt::Expr(sort_expr));
             let res = lw.local(slot, span);
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 
@@ -1147,9 +1144,9 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Expr(swap.clone()));
             let printed = lw.read(spec, span);
             let slot = lw.temp(printed.ty.clone());
-            out.push(Stmt::Let(slot, Some(printed)));
+            out.push_let(slot, printed);
             out.push(Stmt::Expr(swap));
-            out.push(Stmt::Give(lw.local(slot, span)));
+            out.push_give(lw.local(slot, span));
         })
     }
 
@@ -1187,7 +1184,7 @@ impl<'a> Lowerer<'a> {
                     let mut end = || {
                         let slot = lw.temp(Ty::Int);
                         let read = lw.mk_read(Spec::Plain(Ty::Int), Ty::Int, span);
-                        out.push(Stmt::Let(slot, Some(read)));
+                        out.push_let(slot, read);
                         lw.local(slot, span)
                     };
                     let (l, r) = (end(), end());
@@ -1206,7 +1203,7 @@ impl<'a> Lowerer<'a> {
                         range.clone(),
                         span,
                     );
-                    out.push(Stmt::Give(value));
+                    out.push_give(value);
                 });
                 Spec::Call(Box::new(call))
             }
@@ -1255,7 +1252,7 @@ impl<'a> Lowerer<'a> {
                         Ty::Pos(d),
                         span,
                     );
-                    out.push(Stmt::Give(pos));
+                    out.push_give(pos);
                 });
                 Spec::Call(Box::new(call))
             }
@@ -1318,7 +1315,7 @@ impl<'a> Lowerer<'a> {
         Some(self.do_expr(Some(&ty), span, |lw, out| {
             let token = lw.temp(tok_ty.clone());
             let read = lw.mk_read(Spec::Plain(tok_ty.clone()), tok_ty.clone(), span);
-            out.push(Stmt::Let(token, Some(read)));
+            out.push_let(token, read);
             for (tag, (_, specs)) in variants.iter().zip(fields).enumerate() {
                 let tags = [tokens[tag].clone()];
                 let mut cond: Option<Expr> = None;
@@ -1339,14 +1336,14 @@ impl<'a> Lowerer<'a> {
                 for spec in specs {
                     let value = lw.read(spec, span);
                     let slot = lw.temp(value.ty.clone());
-                    body.push(Stmt::Let(slot, Some(value)));
+                    body.push_let(slot, value);
                     values.push(lw.local(slot, span));
                 }
                 let value = match sum {
                     Some(d) => lw.encode_sum_variant(d, tag, values, span),
                     None => lw.mk(ExprKind::Variant(tag, values), ty.clone(), span),
                 };
-                body.push(Stmt::Give(value));
+                body.push_give(value);
                 let cond = cond.expect("a variant has a name");
                 out.push(Stmt::If(cond, Block { stmts: body }, Block::default()));
             }
@@ -1442,7 +1439,7 @@ impl<'a> Lowerer<'a> {
                 .map(|i| lw.decode_product_field(d, held.clone(), i, span))
                 .collect();
             let tuple = lw.mk(ExprKind::Tuple(parts), ty, span);
-            out.push(Stmt::Give(tuple));
+            out.push_give(tuple);
         })
     }
 }

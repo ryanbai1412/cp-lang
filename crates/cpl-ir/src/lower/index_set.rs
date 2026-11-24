@@ -46,7 +46,7 @@ impl<'a> Lowerer<'a> {
         let (key, target) = if held {
             let value = self.expr(key, None);
             let slot = self.temp(value.ty.clone());
-            out.push(Stmt::Let(slot, Some(value)));
+            out.push_let(slot, value);
             let mut scope = HashMap::new();
             scope.insert(HELD_KEY.to_string(), slot);
             self.cx.scopes.push(scope);
@@ -134,7 +134,7 @@ impl<'a> Lowerer<'a> {
         let value = self.expr(e, None);
         let held = self.temp(value.ty.clone());
         let ty = value.ty.clone();
-        out.push(Stmt::Let(held, Some(value)));
+        out.push_let(held, value);
         Place {
             kind: PlaceKind::Local(held),
             ty,

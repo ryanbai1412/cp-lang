@@ -24,7 +24,7 @@ impl Lowerer<'_> {
             if stmts.is_empty() {
                 return both;
             }
-            stmts.push(Stmt::Give(both));
+            stmts.push_give(both);
             lw.mk(ExprKind::Do(Block { stmts }), Ty::Bool, span)
         };
         match &inner.kind {
@@ -90,7 +90,7 @@ impl Lowerer<'_> {
                     if stmts.is_empty() {
                         return found;
                     }
-                    stmts.push(Stmt::Give(found));
+                    stmts.push_give(found);
                     return self.mk(ExprKind::Do(Block { stmts }), Ty::Bool, span);
                 }
                 let elem = match &holder.ty {

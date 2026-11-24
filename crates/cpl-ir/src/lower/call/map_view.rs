@@ -162,7 +162,7 @@ impl<'a> Lowerer<'a> {
             }
             None => {
                 let slot = self.temp(base_val.ty.clone());
-                out.push(Stmt::Let(slot, Some(base_val)));
+                out.push_let(slot, base_val);
                 ViewBase::Local(slot)
             }
         };
@@ -233,12 +233,12 @@ impl<'a> Lowerer<'a> {
                     lw.cx.scopes.push(HashMap::new());
                     let mut bind_stmts = Vec::new();
                     let item = lw.loop_var(&params[0], elem.ty.clone(), &mut bind_stmts);
-                    out.push(Stmt::Let(item, Some(elem)));
+                    out.push_let(item, elem);
                     out.extend(bind_stmts);
                     let mapped = lw.expr(body, None);
                     out_ty = mapped.ty.clone();
                     lw.cx.scopes.pop();
-                    out.push(Stmt::Give(mapped));
+                    out.push_give(mapped);
                 });
                 return Expr { ty: out_ty, ..expr };
             }

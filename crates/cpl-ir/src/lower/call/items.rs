@@ -49,7 +49,7 @@ impl<'a> Lowerer<'a> {
             .map(|axis| {
                 let k = self.temp(Ty::Int);
                 let start = self.int_lit(if axis == last { -1 } else { 0 }, span);
-                out.push(Stmt::Let(k, Some(start)));
+                out.push_let(k, start);
                 k
             })
             .collect();
@@ -235,12 +235,9 @@ impl<'a> Lowerer<'a> {
         let found_ty = Ty::opt(elem.clone());
         self.do_expr(Some(&found_ty), span, |lw, out| {
             let holds = lw.temp(test_ty);
-            out.push(Stmt::Let(holds, Some(test)));
+            out.push_let(holds, test);
             let found = lw.temp(found_ty.clone());
-            out.push(Stmt::Let(
-                found,
-                Some(lw.mk(ExprKind::None, found_ty.clone(), span)),
-            ));
+            out.push_let(found, lw.mk(ExprKind::None, found_ty.clone(), span));
             let item = lw.temp(elem.clone());
             let lid = lw.fresh_loop();
             let asked = vec![Arg::Value(lw.local(item, span))];
@@ -269,7 +266,7 @@ impl<'a> Lowerer<'a> {
                 _ => Iter::Seq(value, rev),
             };
             out.push(Stmt::For(lid, item, iter, body));
-            out.push(Stmt::Give(lw.local(found, span)));
+            out.push_give(lw.local(found, span));
         })
     }
 
@@ -330,14 +327,14 @@ impl<'a> Lowerer<'a> {
             // field would copy the whole list on every call.
             let c_ref = lw.hold(container, out);
             let t_slot = lw.temp(target_ty.clone());
-            out.push(Stmt::Let(t_slot, Some(target)));
+            out.push_let(t_slot, target);
             let t_ref = lw.local(t_slot, span);
             let n_expr = match dom {
                 Some(d) => lw.mk(ExprKind::DomainLen(d), Ty::Int, span),
                 None => lw.len_of(c_ref.clone(), span),
             };
             let n_slot = lw.temp(Ty::Int);
-            out.push(Stmt::Let(n_slot, Some(n_expr)));
+            out.push_let(n_slot, n_expr);
             let n_ref = lw.local(n_slot, span);
             let make_idx = |lw: &mut Self, i: Expr| -> Expr {
                 match dom {
@@ -351,10 +348,7 @@ impl<'a> Lowerer<'a> {
             };
             if method == "find" || method == "rfind" {
                 let res_slot = lw.temp(out_ty.clone());
-                out.push(Stmt::Let(
-                    res_slot,
-                    Some(lw.mk(ExprKind::None, out_ty.clone(), span)),
-                ));
+                out.push_let(res_slot, lw.mk(ExprKind::None, out_ty.clone(), span));
                 let i_slot = lw.temp(Ty::Int);
                 let i_ref = lw.local(i_slot, span);
                 let pos_e = make_idx(lw, i_ref);
@@ -393,7 +387,7 @@ impl<'a> Lowerer<'a> {
                         )],
                     },
                 ));
-                out.push(Stmt::Give(lw.local(res_slot, span)));
+                out.push_give(lw.local(res_slot, span));
             } else {
                 // Binary search:
                 // - `first_ge` / `last_lt`: partition at first `i` with `c[i] >= t`.
@@ -402,8 +396,8 @@ impl<'a> Lowerer<'a> {
                 let is_first = matches!(method, "first_ge" | "first_gt");
                 let lo_slot = lw.temp(Ty::Int);
                 let hi_slot = lw.temp(Ty::Int);
-                out.push(Stmt::Let(lo_slot, Some(lw.int_lit(0, span))));
-                out.push(Stmt::Let(hi_slot, Some(n_ref.clone())));
+                out.push_let(lo_slot, lw.int_lit(0, span));
+                out.push_let(hi_slot, n_ref.clone());
                 let lo_ref = lw.local(lo_slot, span);
                 let hi_ref = lw.local(hi_slot, span);
                 let cond = lw.mk_cmp(CmpOp::Lt, lo_ref.clone(), hi_ref.clone(), Ty::Bool, span);
@@ -416,7 +410,7 @@ impl<'a> Lowerer<'a> {
                 let mut loop_stmts = vec![Stmt::Let(mid_slot, Some(mid))];
                 let cur_val = if let Some(key_ast) = by_key {
                     let Some(k) = lw.apply_key(key_ast, cur, &mut loop_stmts, span) else {
-                        out.push(Stmt::Give(lw.err_expr(span)));
+                        out.push_give(lw.err_expr(span));
                         return;
                     };
                     k
@@ -484,7 +478,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     )
                 };
-                out.push(Stmt::Give(res));
+                out.push_give(res);
             }
         })
     }
@@ -519,7 +513,7 @@ impl<'a> Lowerer<'a> {
                         ty: value.ty.clone(),
                         span,
                     };
-                    out.push(Stmt::Let(held, Some(value)));
+                    out.push_let(held, value);
                     let call = lw.user_call(fn_id, Some(Arg::Mut(place)), args, span);
                     ty = call.ty.clone();
                     out.push(if ty == Ty::Unit {
@@ -601,9 +595,9 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Expr(swap.clone()));
             let heard = lw.read(spec, span);
             let slot = lw.temp(heard.ty.clone());
-            out.push(Stmt::Let(slot, Some(heard)));
+            out.push_let(slot, heard);
             out.push(Stmt::Expr(swap));
-            out.push(Stmt::Give(lw.local(slot, span)));
+            out.push_give(lw.local(slot, span));
         })
     }
 }

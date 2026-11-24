@@ -14,7 +14,7 @@ impl<'a> Lowerer<'a> {
         let span = value.span;
         let slot = self.temp(value.ty.clone());
         let ty = value.ty.clone();
-        out.push(Stmt::Let(slot, Some(value)));
+        out.push_let(slot, value);
         Expr {
             kind: ExprKind::Local(slot),
             ty,
@@ -119,7 +119,7 @@ impl<'a> Lowerer<'a> {
                 ty: value.ty.clone(),
                 span: value.span,
             };
-            out.push(Stmt::Let(slot, Some(value)));
+            out.push_let(slot, value);
             for (i, (t, ty)) in targets.iter().zip(fields).enumerate() {
                 let place = self.place(t);
                 let field = Expr {
@@ -266,7 +266,7 @@ impl<'a> Lowerer<'a> {
                             ty: ity.clone(),
                             span: ispan,
                         };
-                        out.push(Stmt::Let(slot, Some(index)));
+                        out.push_let(slot, index);
                         match wrap {
                             Some(cast) => Expr {
                                 kind: ExprKind::Cast(cast, Box::new(held)),
@@ -359,11 +359,11 @@ impl<'a> Lowerer<'a> {
                     let (r_some, r_val) = if let ExprKind::Some(x) = rhs.kind {
                         // `p min= Some(e)`: the value is there, so only `p` is tested.
                         let slot = self.temp((*inner).clone());
-                        out.push(Stmt::Let(slot, Some(*x)));
+                        out.push_let(slot, *x);
                         (None, self.local(slot, span))
                     } else {
                         let r_slot = self.temp(place.ty.clone());
-                        out.push(Stmt::Let(r_slot, Some(rhs)));
+                        out.push_let(r_slot, rhs);
                         let r_expr = self.local(r_slot, span);
                         let r_some = self.mk_is_some(r_expr.clone(), Ty::Bool, span);
                         let r_val = self.mk_unwrap(r_expr, false, (*inner).clone(), span);
@@ -406,7 +406,7 @@ impl<'a> Lowerer<'a> {
                         AssignOp::Min
                     };
                     let slot = self.temp(value.ty.clone());
-                    out.push(Stmt::Let(slot, Some(value)));
+                    out.push_let(slot, value);
                     let held = self.local(slot, span);
                     let some = self.mk_is_some(held.clone(), Ty::Bool, span);
                     let inside = self.mk_unwrap(held, false, place.ty.clone(), span);

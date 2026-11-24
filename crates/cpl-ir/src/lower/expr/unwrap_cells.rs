@@ -95,10 +95,10 @@ impl<'a> Lowerer<'a> {
             rev: false,
             closed: false,
         };
-        stmts.push(Stmt::Let(
+        stmts.push_let(
             acc,
-            Some(self.mk(ExprKind::Fill(vec![spec], None), ty.clone(), span)),
-        ));
+            self.mk(ExprKind::Fill(vec![spec], None), ty.clone(), span),
+        );
         stmts.push(Stmt::For(
             id,
             slot,
@@ -107,7 +107,7 @@ impl<'a> Lowerer<'a> {
                 stmts: vec![gap, Stmt::Assign(place, AssignOp::Set, got)],
             },
         ));
-        stmts.push(Stmt::Give(self.local(acc, span)));
+        stmts.push_give(self.local(acc, span));
         let cells = self.mk(ExprKind::Do(Block { stmts }), ty, span);
         if !list {
             return cells;

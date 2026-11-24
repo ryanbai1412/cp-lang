@@ -135,7 +135,7 @@ impl<'a> Lowerer<'a> {
         };
         let rhs_val = self.expr(rhs, None);
         let rhs_slot = self.temp(rhs_val.ty.clone());
-        out.push(Stmt::Let(rhs_slot, Some(rhs_val)));
+        out.push_let(rhs_slot, rhs_val);
         let saved_aliases = self.cx.mut_aliases.clone();
         let mut bound = Vec::new();
         for (p, arg) in decl.params.iter().zip(args) {
@@ -154,7 +154,7 @@ impl<'a> Lowerer<'a> {
                 self.offset = saved;
                 let v = self.expect(&arg.value, &ty);
                 let slot = self.new_slot(&p.name.text, ty);
-                out.push(Stmt::Let(slot, Some(v)));
+                out.push_let(slot, v);
                 bound.push((p.name.text.clone(), slot));
             }
         }

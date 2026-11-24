@@ -100,15 +100,15 @@ impl<'a> Lowerer<'a> {
             // is rather than copy it into a temporary first.
             return self.do_expr(Some(&want), span, |lw, out| {
                 lw.push_count_checks(&value, counts, span, out);
-                out.push(Stmt::Give(value));
+                out.push_give(value);
             });
         }
         self.do_expr(Some(&want), span, |lw, out| {
             let slot = lw.temp(want.clone());
-            out.push(Stmt::Let(slot, Some(value)));
+            out.push_let(slot, value);
             let held = lw.local(slot, span);
             lw.push_count_checks(&held, counts, span, out);
-            out.push(Stmt::Give(held));
+            out.push_give(held);
         })
     }
 
@@ -224,7 +224,7 @@ impl<'a> Lowerer<'a> {
             .into_iter()
             .map(|(axis, len)| {
                 let slot = self.temp(Ty::Int);
-                out.push(Stmt::Let(slot, Some(len)));
+                out.push_let(slot, len);
                 (axis, self.local(slot, ty.span))
             })
             .collect()

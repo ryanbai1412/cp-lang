@@ -181,7 +181,7 @@ impl<'a> Lowerer<'a> {
                                 span: lw.span(span),
                             };
                             out.push(Stmt::Assign(cell, AssignOp::Set, val));
-                            out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                            out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
                         })
                     }
                     None => self.err_expr(span),
@@ -224,16 +224,16 @@ impl<'a> Lowerer<'a> {
                         None => arg,
                     };
                     let held = lw.temp(arg.ty.clone());
-                    out.push(Stmt::Let(held, Some(arg)));
+                    out.push_let(held, arg);
                     let id = lw.temp(Ty::Int);
                     let list = super::stmt::place_to_expr(&place);
                     let len = lw.mk_builtin(Builtin::Len, [list], Ty::Int, span);
-                    out.push(Stmt::Let(id, Some(len)));
+                    out.push_let(id, len);
                     let arg = lw.local(held, span);
                     let push = lw.mk_mutate(Mutation::Push, place, vec![arg], Ty::Unit, span);
                     out.push(Stmt::Expr(push));
                     let id = lw.local(id, span);
-                    out.push(Stmt::Give(id));
+                    out.push_give(id);
                 }),
                 None => self.err_expr(span),
             },
@@ -286,7 +286,7 @@ impl<'a> Lowerer<'a> {
                             let place = lw.place(base);
                             let place = lw.settle_indexes(place, out);
                             let i = lw.temp(Ty::Int);
-                            out.push(Stmt::Let(i, Some(at)));
+                            out.push_let(i, at);
                             let mut margs = vec![lw.local(i, span)];
                             if let Some(val) = val {
                                 let val = match lw
@@ -297,7 +297,7 @@ impl<'a> Lowerer<'a> {
                                     None => val,
                                 };
                                 let held = lw.temp(val.ty.clone());
-                                out.push(Stmt::Let(held, Some(val)));
+                                out.push_let(held, val);
                                 margs.push(lw.local(held, span));
                             }
                             let list = super::stmt::place_to_expr(&place);
@@ -329,9 +329,9 @@ impl<'a> Lowerer<'a> {
                             let m = lw.mk_mutate(op, place, margs, result.clone(), span);
                             if inserting {
                                 out.push(Stmt::Expr(m));
-                                out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                                out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
                             } else {
-                                out.push(Stmt::Give(m));
+                                out.push_give(m);
                             }
                         })
                     }
@@ -466,7 +466,7 @@ impl<'a> Lowerer<'a> {
                         let place = lw.place(base);
                         let place = lw.settle_indexes(place, out);
                         let key = lw.temp(arg.ty.clone());
-                        out.push(Stmt::Let(key, Some(arg)));
+                        out.push_let(key, arg);
                         let map = super::stmt::place_to_expr(&place);
                         let key_expr = lw.local(key, span);
                         let found = lw.mk_builtin(
@@ -476,13 +476,13 @@ impl<'a> Lowerer<'a> {
                             span,
                         );
                         let held = lw.temp(found_ty.clone());
-                        out.push(Stmt::Let(held, Some(found)));
+                        out.push_let(held, found);
                         let remove =
                             lw.mk_mutate(Mutation::Remove, place, vec![key_expr], Ty::Bool, span);
                         // Whether it was there is already known.
                         out.push(Stmt::If(remove, Block::default(), Block::default()));
                         let held = lw.local(held, span);
-                        out.push(Stmt::Give(held));
+                        out.push_give(held);
                     }),
                     None => self.err_expr(span),
                 }
@@ -512,7 +512,7 @@ impl<'a> Lowerer<'a> {
                             let place = lw.place(base);
                             let place = lw.settle_indexes(place, out);
                             let k_slot = lw.temp(k_val.ty.clone());
-                            out.push(Stmt::Let(k_slot, Some(k_val)));
+                            out.push_let(k_slot, k_val);
                             let k_ref = lw.local(k_slot, span);
                             let ins = lw.mk_mutate(
                                 Mutation::Insert,
@@ -532,7 +532,7 @@ impl<'a> Lowerer<'a> {
                                     stmts: vec![Stmt::Expr(rem)],
                                 },
                             ));
-                            out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                            out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
                         })
                     }
                     _ => self.err_expr(span),
@@ -571,20 +571,20 @@ impl<'a> Lowerer<'a> {
                     let place = lw.place(base);
                     let place = lw.settle_indexes(place, out);
                     let pred_slot = lw.temp(pred_ty.clone());
-                    out.push(Stmt::Let(pred_slot, Some(pred_val)));
+                    out.push_let(pred_slot, pred_val);
                     let out_slot = lw.temp(out_ty.clone());
-                    out.push(Stmt::Let(
+                    out.push_let(
                         out_slot,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), out_ty.clone(), span)),
-                    ));
+                        lw.mk(ExprKind::Tuple(Vec::new()), out_ty.clone(), span),
+                    );
                     let after_slot = after_val.map(|v| {
                         let s = lw.temp(opt_elem.clone());
-                        out.push(Stmt::Let(s, Some(v)));
+                        out.push_let(s, v);
                         s
                     });
                     let before_slot = before_val.map(|v| {
                         let s = lw.temp(opt_elem.clone());
-                        out.push(Stmt::Let(s, Some(v)));
+                        out.push_let(s, v);
                         s
                     });
                     if let (Some(a_s), Some(b_s)) = (after_slot, before_slot) {
@@ -729,7 +729,7 @@ impl<'a> Lowerer<'a> {
                         None => after_branch,
                     };
                     out.push(top_stmt);
-                    out.push(Stmt::Give(lw.local(out_slot, span)));
+                    out.push_give(lw.local(out_slot, span));
                 })
             }
             (
@@ -789,7 +789,7 @@ impl<'a> Lowerer<'a> {
                     value
                 } else {
                     let slot = self.new_slot("cells", value.ty.clone());
-                    self.cx.pending.push(Stmt::Let(slot, Some(value)));
+                    self.cx.pending.push_let(slot, value);
                     self.local(slot, span)
                 };
                 let res = if matches!(ty, Ty::List(_) | Ty::Array { .. }) {
@@ -802,7 +802,7 @@ impl<'a> Lowerer<'a> {
                     let lo = lw.mk_builtin(Builtin::RangeLo, [keys.clone()], Ty::Int, span);
                     let hi = lw.mk_builtin(Builtin::RangeHi, [keys], Ty::Int, span);
                     let view = lw.mk_builtin(Builtin::Rekey, [value, lo, hi], res, span);
-                    out.push(Stmt::Give(view));
+                    out.push_give(view);
                 })
             }
             // How many cells equal `x`: `[1, 2, 1].count(1)` is 2,
@@ -830,7 +830,7 @@ impl<'a> Lowerer<'a> {
                     Some(arg) => self.do_expr(Some(&Ty::Int), span, |lw, out| {
                         let (seq, arg) = (lw.hold(value, out), lw.hold(arg, out));
                         let (acc, each) = (lw.temp(Ty::Int), lw.temp(elem.clone()));
-                        out.push(Stmt::Let(acc, Some(lw.int_lit(0, span))));
+                        out.push_let(acc, lw.int_lit(0, span));
                         let same = lw.mk_cmp(CmpOp::Eq, lw.local(each, span), arg, Ty::Bool, span);
                         let place = Place {
                             kind: PlaceKind::Local(acc),
@@ -848,7 +848,7 @@ impl<'a> Lowerer<'a> {
                         };
                         let lid = lw.fresh_loop();
                         out.push(Stmt::For(lid, each, Iter::Seq(seq, false), body));
-                        out.push(Stmt::Give(lw.local(acc, span)));
+                        out.push_give(lw.local(acc, span));
                     }),
                     None => self.err_expr(span),
                 }
@@ -944,22 +944,19 @@ impl<'a> Lowerer<'a> {
                 let out_ty_hint = out_ty.clone();
                 self.do_expr(Some(&out_ty_hint), span, |lw, out| {
                     let s_slot = lw.temp(value.ty.clone());
-                    out.push(Stmt::Let(s_slot, Some(value)));
+                    out.push_let(s_slot, value);
                     let s_ref = lw.local(s_slot, span);
                     let p_slot = lw.temp(pat.ty.clone());
-                    out.push(Stmt::Let(p_slot, Some(pat)));
+                    out.push_let(p_slot, pat);
                     let p_ref = lw.local(p_slot, span);
                     let n_slot = lw.temp(Ty::Int);
                     let s_len = lw.mk_builtin(Builtin::Len, [s_ref.clone()], Ty::Int, span);
-                    out.push(Stmt::Let(n_slot, Some(s_len)));
+                    out.push_let(n_slot, s_len);
                     let m_slot = lw.temp(Ty::Int);
                     let p_len = lw.mk_builtin(Builtin::Len, [p_ref.clone()], Ty::Int, span);
-                    out.push(Stmt::Let(m_slot, Some(p_len)));
+                    out.push_let(m_slot, p_len);
                     let res_slot = lw.temp(out_ty.clone());
-                    out.push(Stmt::Let(
-                        res_slot,
-                        Some(lw.mk(ExprKind::None, out_ty.clone(), span)),
-                    ));
+                    out.push_let(res_slot, lw.mk(ExprKind::None, out_ty.clone(), span));
                     let diff = lw.mk_binary(
                         BinOp::Sub,
                         lw.local(n_slot, span),
@@ -1053,7 +1050,7 @@ impl<'a> Lowerer<'a> {
                             ],
                         },
                     ));
-                    out.push(Stmt::Give(lw.local(res_slot, span)));
+                    out.push_give(lw.local(res_slot, span));
                 })
             }
             (ty, "first_ge" | "first_gt" | "last_le" | "last_lt" | "find" | "rfind")
@@ -1147,23 +1144,17 @@ impl<'a> Lowerer<'a> {
                 }
                 self.do_expr(Some(&range_ty), span, |lw, out| {
                     let range = lw.new_slot("range", range_ty.clone());
-                    out.push(Stmt::Let(range, Some(value)));
+                    out.push_let(range, value);
                     let lo_s = lw.new_slot("lo", Ty::Int);
                     let hi_s = lw.new_slot("hi", Ty::Int);
                     let r1 = lw.local(range, span);
                     let r2 = lw.local(range, span);
-                    out.push(Stmt::Let(
-                        lo_s,
-                        Some(lw.mk_builtin(Builtin::RangeLo, [r1], Ty::Int, span)),
-                    ));
-                    out.push(Stmt::Let(
-                        hi_s,
-                        Some(lw.mk_builtin(Builtin::RangeHi, [r2], Ty::Int, span)),
-                    ));
+                    out.push_let(lo_s, lw.mk_builtin(Builtin::RangeLo, [r1], Ty::Int, span));
+                    out.push_let(hi_s, lw.mk_builtin(Builtin::RangeHi, [r2], Ty::Int, span));
                     let k_s = lw.new_slot("k", Ty::Int);
                     let zero = lw.mk(ExprKind::Int(0), Ty::Int, span);
                     let k_clamped = lw.mk_builtin(Builtin::Max, [k, zero], Ty::Int, span);
-                    out.push(Stmt::Let(k_s, Some(k_clamped)));
+                    out.push_let(k_s, k_clamped);
                     let avail = lw.range_room(lo_s, hi_s, span);
                     let shift =
                         lw.mk_builtin(Builtin::Min, [avail, lw.local(k_s, span)], Ty::Int, span);
@@ -1186,7 +1177,7 @@ impl<'a> Lowerer<'a> {
                         range_ty.clone(),
                         span,
                     );
-                    out.push(Stmt::Give(res));
+                    out.push_give(res);
                 })
             }
             // `(lo..hi).step(k)`: lo, lo + k, ... below hi, as a list.
@@ -1196,10 +1187,10 @@ impl<'a> Lowerer<'a> {
                 let list_ty = Ty::list(Ty::Int);
                 self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
                     let range = lw.new_slot("range", value.ty.clone());
-                    out.push(Stmt::Let(range, Some(value)));
+                    out.push_let(range, value);
                     let acc = lw.new_slot("steps", list_ty.clone());
                     let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
-                    out.push(Stmt::Let(acc, Some(empty)));
+                    out.push_let(acc, empty);
                     let i = lw.new_slot("i", Ty::Int);
                     let bound = |lw: &mut Self, which| {
                         let range = lw.local(range, span);
@@ -1234,7 +1225,7 @@ impl<'a> Lowerer<'a> {
                             stmts: vec![Stmt::Expr(push)],
                         },
                     ));
-                    out.push(Stmt::Give(lw.local(acc, span)));
+                    out.push_give(lw.local(acc, span));
                 })
             }
             // `xs.last(k)`: the element `k` back from the last one, so
@@ -1258,16 +1249,16 @@ impl<'a> Lowerer<'a> {
                         value
                     } else {
                         let kept = lw.temp(value.ty.clone());
-                        out.push(Stmt::Let(kept, Some(value)));
+                        out.push_let(kept, value);
                         lw.local(kept, span)
                     };
                     let k = lw.temp(Ty::Int);
-                    out.push(Stmt::Let(k, Some(back)));
+                    out.push_let(k, back);
                     let len = lw.mk_builtin(Builtin::Len, [list.clone()], Ty::Int, span);
                     let last = lw.int_add(len, -1);
                     let at = lw.temp(Ty::Int);
                     let from_end = lw.mk_binary(BinOp::Sub, last, lw.local(k, span), Ty::Int, span);
-                    out.push(Stmt::Let(at, Some(from_end)));
+                    out.push_let(at, from_end);
                     let cmp = |lw: &mut Self, slot| {
                         let zero = lw.int_lit(0, span);
                         lw.mk_cmp(CmpOp::Ge, lw.local(slot, span), zero, Ty::Bool, span)
@@ -1286,7 +1277,7 @@ impl<'a> Lowerer<'a> {
                     let opt = Ty::opt(elem);
                     let some = lw.mk_some(item, opt.clone(), span);
                     let none = lw.mk(ExprKind::None, opt.clone(), span);
-                    out.push(Stmt::Give(lw.mk_if(there, some, none, opt, span)));
+                    out.push_give(lw.mk_if(there, some, none, opt, span));
                 })
             }
             (Ty::Str | Ty::StrView, "rev") if args.is_empty() => {
@@ -1315,20 +1306,20 @@ impl<'a> Lowerer<'a> {
                 let tup_ty = Ty::Tuple(vec![r_ty.clone(), r_ty.clone()]);
                 self.do_expr(Some(&tup_ty.clone()), span, |lw, out| {
                     let r_slot = lw.temp(r_ty.clone());
-                    out.push(Stmt::Let(r_slot, Some(value)));
+                    out.push_let(r_slot, value);
                     let r_ref = lw.local(r_slot, span);
                     let lo_slot = lw.temp(Ty::Int);
                     let hi_slot = lw.temp(Ty::Int);
                     let lo_expr = lw.mk_builtin(Builtin::RangeLo, [r_ref.clone()], Ty::Int, span);
                     let raw_hi = lw.mk_builtin(Builtin::RangeHi, [r_ref], Ty::Int, span);
-                    out.push(Stmt::Let(lo_slot, Some(lo_expr)));
+                    out.push_let(lo_slot, lo_expr);
                     let hi_expr = lw.mk_builtin(
                         Builtin::Max,
                         [raw_hi, lw.local(lo_slot, span)],
                         Ty::Int,
                         span,
                     );
-                    out.push(Stmt::Let(hi_slot, Some(hi_expr)));
+                    out.push_let(hi_slot, hi_expr);
                     let diff = lw.mk_binary(
                         BinOp::Sub,
                         lw.local(hi_slot, span),
@@ -1346,7 +1337,7 @@ impl<'a> Lowerer<'a> {
                     let mid_slot = lw.temp(Ty::Int);
                     let mid_expr =
                         lw.mk_binary(BinOp::Add, lw.local(lo_slot, span), left_len, Ty::Int, span);
-                    out.push(Stmt::Let(mid_slot, Some(mid_expr)));
+                    out.push_let(mid_slot, mid_expr);
                     let left = lw.mk(
                         ExprKind::Range {
                             lo: Box::new(lw.local(lo_slot, span)),
@@ -1364,7 +1355,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     let pair = lw.mk(ExprKind::Tuple(vec![left, right]), tup_ty.clone(), span);
-                    out.push(Stmt::Give(pair));
+                    out.push_give(pair);
                 })
             }
             // `r.find(i => ..)`: the first of the range the test holds
@@ -1416,7 +1407,7 @@ impl<'a> Lowerer<'a> {
                             arr_ty.clone(),
                             span,
                         );
-                        out.push(Stmt::Let(m_slot, Some(fill)));
+                        out.push_let(m_slot, fill);
                         let x_slot = lw.temp(elem_ty.clone());
                         let x_val = lw.coerce(lw.local(x_slot, span), &Ty::Pos(d), span);
                         let place = Place {
@@ -1445,7 +1436,7 @@ impl<'a> Lowerer<'a> {
                                 )],
                             },
                         ));
-                        out.push(Stmt::Give(lw.local(m_slot, span)));
+                        out.push_give(lw.local(m_slot, span));
                     })
                 } else {
                     self.err_expr(span)

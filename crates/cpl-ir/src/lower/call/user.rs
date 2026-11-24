@@ -56,7 +56,7 @@ impl<'a> Lowerer<'a> {
         self.do_expr(Some(&ty), span, |lw, out| {
             let acc = lw.temp(ty.clone());
             let empty = lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span);
-            out.push(Stmt::Let(acc, Some(empty)));
+            out.push_let(acc, empty);
             let (iter, elem) = lw.iter(src);
             let lid = lw.open_loop(None);
             let slot = lw.temp(elem);
@@ -80,7 +80,7 @@ impl<'a> Lowerer<'a> {
             let set = Stmt::Assign(place, AssignOp::Set, value);
             out.push(Stmt::For(lid, slot, iter, Block { stmts: vec![set] }));
             let res = lw.local(acc, span);
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 
@@ -847,10 +847,7 @@ impl<'a> Lowerer<'a> {
                 let is_set = matches!(ty, Ty::Set(_) | Ty::HashSet(_));
                 return self.do_expr(Some(&ty), span, |lw, out| {
                     let acc = lw.temp(ty.clone());
-                    out.push(Stmt::Let(
-                        acc,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span)),
-                    ));
+                    out.push_let(acc, lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span));
                     let (iter, elem) = lw.iter(&args[0].value);
                     let lid = lw.open_loop(None);
                     let slot = lw.temp(elem);
@@ -882,7 +879,7 @@ impl<'a> Lowerer<'a> {
                         },
                     ));
                     let res = lw.local(acc, span);
-                    out.push(Stmt::Give(res));
+                    out.push_give(res);
                 });
             }
         }
@@ -1321,14 +1318,8 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             let (lo, len) = (self.temp(Ty::Int), self.temp(Ty::Int));
-            pre_stmts.push(Stmt::Let(
-                lo,
-                Some(self.mk(ExprKind::DomainLo(d), Ty::Int, span)),
-            ));
-            pre_stmts.push(Stmt::Let(
-                len,
-                Some(self.mk(ExprKind::DomainLen(d), Ty::Int, span)),
-            ));
+            pre_stmts.push_let(lo, self.mk(ExprKind::DomainLo(d), Ty::Int, span));
+            pre_stmts.push_let(len, self.mk(ExprKind::DomainLen(d), Ty::Int, span));
             put_back.push(Stmt::DefDomain {
                 id: d,
                 lo: self.local(lo, span),
@@ -1535,12 +1526,12 @@ impl<'a> Lowerer<'a> {
             if ret == Ty::Unit {
                 stmts.push(Stmt::Expr(call_expr));
                 stmts.extend(post_stmts);
-                stmts.push(Stmt::Give(self.mk(ExprKind::Unit, Ty::Unit, span)));
+                stmts.push_give(self.mk(ExprKind::Unit, Ty::Unit, span));
             } else {
                 let res_slot = self.temp(ret.clone());
-                stmts.push(Stmt::Let(res_slot, Some(call_expr)));
+                stmts.push_let(res_slot, call_expr);
                 stmts.extend(post_stmts);
-                stmts.push(Stmt::Give(self.local(res_slot, span)));
+                stmts.push_give(self.local(res_slot, span));
             }
             self.mk(ExprKind::Do(Block { stmts }), ret, span)
         };
@@ -1613,7 +1604,7 @@ impl<'a> Lowerer<'a> {
                 }
             };
             let slot = self.temp(v.ty.clone());
-            stmts.push(Stmt::Let(slot, Some(v)));
+            stmts.push_let(slot, v);
             temps.push((slot, a.value.span, tys));
         }
         let mut items = Vec::new();
@@ -1648,13 +1639,13 @@ impl<'a> Lowerer<'a> {
                 None => v,
             };
             let slot = self.temp(fty.clone());
-            stmts.push(Stmt::Let(slot, Some(v)));
+            stmts.push_let(slot, v);
             items.push(self.local(slot, body.span));
             self.cx.local_syms.pop();
             self.cx.scopes.pop();
         }
         let value = self.mk(ExprKind::Tuple(items), own.clone(), span);
-        stmts.push(Stmt::Give(value));
+        stmts.push_give(value);
         Some(self.mk(ExprKind::Do(Block { stmts }), own, span))
     }
 

@@ -616,7 +616,7 @@ impl<'a> Lowerer<'a> {
                     value
                 } else {
                     let slot = self.new_slot("r", value.ty.clone());
-                    self.cx.pending.push(Stmt::Let(slot, Some(value)));
+                    self.cx.pending.push_let(slot, value);
                     self.local(slot, span)
                 };
                 let lo = builtin(
@@ -765,14 +765,14 @@ impl<'a> Lowerer<'a> {
                 let list_ty = Ty::list(pair(&shape));
                 self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
                     let held = lw.temp(held_ty);
-                    out.push(Stmt::Let(held, Some(value)));
+                    out.push_let(held, value);
                     let seq = lw.local(held, span);
                     let items = lw.items_of(&seq, span).expect("the same type");
                     let acc = lw.temp(list_ty.clone());
-                    out.push(Stmt::Let(
+                    out.push_let(
                         acc,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
-                    ));
+                        lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span),
+                    );
                     let k = lw.temp(Ty::Int);
                     let (at, cell) = lw.item_at(&items, k, span);
                     let both = lw.mk(ExprKind::Tuple(vec![at, cell]), pair(&items), span);
@@ -791,7 +791,7 @@ impl<'a> Lowerer<'a> {
                             stmts: vec![Stmt::Expr(push)],
                         },
                     ));
-                    out.push(Stmt::Give(lw.local(acc, span)));
+                    out.push_give(lw.local(acc, span));
                 })
             }
             (
@@ -1225,7 +1225,7 @@ impl<'a> Lowerer<'a> {
             && !matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_))
         {
             let held = self.temp(seq.ty.clone());
-            self.cx.pending.push(Stmt::Let(held, Some(seq)));
+            self.cx.pending.push_let(held, seq);
             self.local(held, e.span)
         } else {
             seq

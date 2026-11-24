@@ -46,10 +46,10 @@ impl<'a> Lowerer<'a> {
         };
         self.do_expr(Some(&map_ty), span, |lw, out| {
             let slot = lw.temp(map_ty.clone());
-            out.push(Stmt::Let(
+            out.push_let(
                 slot,
-                Some(lw.mk(ExprKind::Tuple(Vec::new()), map_ty.clone(), span)),
-            ));
+                lw.mk(ExprKind::Tuple(Vec::new()), map_ty.clone(), span),
+            );
             for (k, v) in pairs {
                 let place = Place {
                     kind: PlaceKind::Index(
@@ -66,7 +66,7 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::Assign(place, AssignOp::Set, v));
             }
             let res = lw.local(slot, span);
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 
@@ -278,7 +278,7 @@ impl<'a> Lowerer<'a> {
                     ));
                     let slot = lw.temp(ty.clone());
                     let blank = lw.mk(ExprKind::Fill(vec![dim], None), ty.clone(), span);
-                    out.push(Stmt::Let(slot, Some(blank)));
+                    out.push_let(slot, blank);
                     for (i, value) in values.into_iter().enumerate() {
                         let at = lw.mk(ExprKind::Int(i as i64), index_ty.clone(), span);
                         let whole = Place {
@@ -293,7 +293,7 @@ impl<'a> Lowerer<'a> {
                         };
                         out.push(Stmt::Assign(cell, AssignOp::Set, value));
                     }
-                    out.push(Stmt::Give(lw.local(slot, span)));
+                    out.push_give(lw.local(slot, span));
                 })
             }
             Some(ty @ (Ty::Map(..) | Ty::HashMap(..))) if items.is_empty() => {

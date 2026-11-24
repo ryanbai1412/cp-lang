@@ -62,10 +62,7 @@ impl<'a> Lowerer<'a> {
                     if let Arg::Value(e) = arg {
                         let held = lw.temp(e.ty.clone());
                         let e_span = e.span;
-                        out.push(Stmt::Let(
-                            held,
-                            Some(std::mem::replace(e, lw.local(held, e_span))),
-                        ));
+                        out.push_let(held, std::mem::replace(e, lw.local(held, e_span)));
                     }
                 }
             }
@@ -86,7 +83,7 @@ impl<'a> Lowerer<'a> {
                 };
                 let f_name = format!("__take_f{i}");
                 let f_slot = lw.new_slot(&f_name, fv.ty.clone());
-                out.push(Stmt::Let(f_slot, Some(fv)));
+                out.push_let(f_slot, fv);
                 let x_name = format!("__take_x{i}");
                 scope.insert(f_name.clone(), f_slot);
                 scope.insert(x_name.clone(), cur);
@@ -110,15 +107,15 @@ impl<'a> Lowerer<'a> {
             let count = lw.expr(&k.value, Some(&Ty::Int));
             let count = lw.coerce(count, &Ty::Int, k.value.span);
             let k_slot = lw.temp(Ty::Int);
-            out.push(Stmt::Let(k_slot, Some(count)));
+            out.push_let(k_slot, count);
             let acc = lw.temp(list_ty.clone());
             let taken = lw.temp(Ty::Int);
             lw.cx.mut_slots.insert(acc);
             lw.cx.mut_slots.insert(taken);
             let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
-            out.push(Stmt::Let(acc, Some(empty)));
+            out.push_let(acc, empty);
             let zero = lw.int_lit(0, span);
-            out.push(Stmt::Let(taken, Some(zero)));
+            out.push_let(taken, zero);
             let id = lw.next_loop;
             lw.next_loop += 1;
             let place = |slot, ty| Place {
@@ -180,7 +177,7 @@ impl<'a> Lowerer<'a> {
                 Block { stmts: vec![walk] },
                 Block::default(),
             ));
-            out.push(Stmt::Give(lw.local(acc, span)));
+            out.push_give(lw.local(acc, span));
         });
         taken.ty = ty;
         Some(taken)

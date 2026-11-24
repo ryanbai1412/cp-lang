@@ -189,7 +189,7 @@ impl<'a> Lowerer<'a> {
             return;
         }
         if !(memo && plain) || matches!(ret_ty, Ty::Unit | Ty::Error) {
-            out.push(Stmt::Let(fn_slot, Some(init)));
+            out.push_let(fn_slot, init);
             return;
         }
         // `@memo`: the body is kept under a name of its own, and the fn
@@ -204,7 +204,7 @@ impl<'a> Lowerer<'a> {
             .insert(body_name.clone(), body_slot);
         // The body calls the wrapper, so the wrapper's variable comes first.
         out.push(Stmt::Let(fn_slot, None));
-        out.push(Stmt::Let(body_slot, Some(init)));
+        out.push_let(body_slot, init);
 
         let mut fresh = FnCx {
             is_closure: true,
@@ -676,8 +676,8 @@ impl<'a> Lowerer<'a> {
         }
         self.do_expr(Some(&fn_ty), span, |lw, out| {
             let temp = lw.temp(recv_ty.clone());
-            out.push(Stmt::Let(temp, Some(recv)));
-            out.push(Stmt::Give(build(lw, temp, false)));
+            out.push_let(temp, recv);
+            out.push_give(build(lw, temp, false));
         })
     }
 }

@@ -24,7 +24,7 @@ impl<'a> Lowerer<'a> {
             return Err(base_place);
         };
         let lo_slot = self.temp(Ty::Int);
-        self.cx.pending.push(Stmt::Let(lo_slot, Some(lo)));
+        self.cx.pending.push_let(lo_slot, lo);
         let lo = self.local(lo_slot, span);
         let view_ty = Self::mut_view_ty(&base_place.ty, elem_ty);
         let view = self.mk(
@@ -33,7 +33,7 @@ impl<'a> Lowerer<'a> {
             span,
         );
         let tmp = self.temp(view_ty.clone());
-        self.cx.pending.push(Stmt::Let(tmp, Some(view)));
+        self.cx.pending.push_let(tmp, view);
         Ok(Place {
             kind: PlaceKind::Local(tmp),
             ty: view_ty,

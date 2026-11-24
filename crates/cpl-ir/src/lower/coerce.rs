@@ -112,7 +112,7 @@ impl<'a> Lowerer<'a> {
                     }
                     if ok {
                         let tup = lw.mk(ExprKind::Tuple(elems), want_ty.clone(), span);
-                        out.push(Stmt::Give(tup));
+                        out.push_give(tup);
                     }
                 });
                 if ok {
@@ -185,7 +185,7 @@ impl<'a> Lowerer<'a> {
                 if stmts.is_empty() {
                     Ok(encoded)
                 } else {
-                    stmts.push(Stmt::Give(encoded));
+                    stmts.push_give(encoded);
                     Ok(self.mk(ExprKind::Do(Block { stmts }), Ty::Pos(d), span))
                 }
             }
@@ -208,7 +208,7 @@ impl<'a> Lowerer<'a> {
                 if stmts.is_empty() {
                     Ok(encoded)
                 } else {
-                    stmts.push(Stmt::Give(encoded));
+                    stmts.push_give(encoded);
                     Ok(self.mk(ExprKind::Do(Block { stmts }), Ty::Pos(d), span))
                 }
             }
@@ -226,7 +226,7 @@ impl<'a> Lowerer<'a> {
                 if stmts.is_empty() {
                     Ok(tup)
                 } else {
-                    stmts.push(Stmt::Give(tup));
+                    stmts.push_give(tup);
                     Ok(self.mk(ExprKind::Do(Block { stmts }), want.clone(), span))
                 }
             }
@@ -244,7 +244,7 @@ impl<'a> Lowerer<'a> {
                 if stmts.is_empty() {
                     Ok(rec)
                 } else {
-                    stmts.push(Stmt::Give(rec));
+                    stmts.push_give(rec);
                     Ok(self.mk(ExprKind::Do(Block { stmts }), want.clone(), span))
                 }
             }
@@ -361,10 +361,10 @@ impl<'a> Lowerer<'a> {
                 Ok(self.do_expr(Some(&dst_ty), span, |lw, out| {
                     let src_ref = lw.hold(e, out);
                     let acc_slot = lw.temp(dst_ty.clone());
-                    out.push(Stmt::Let(
+                    out.push_let(
                         acc_slot,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), dst_ty.clone(), span)),
-                    ));
+                        lw.mk(ExprKind::Tuple(Vec::new()), dst_ty.clone(), span),
+                    );
                     let item_slot = lw.temp(e_elem.clone());
                     let item_expr = lw.local(item_slot, span);
                     let coerced = lw.try_coerce(item_expr, &w_elem).unwrap_or_else(|x| x);
@@ -389,7 +389,7 @@ impl<'a> Lowerer<'a> {
                             stmts: vec![Stmt::Expr(push)],
                         },
                     ));
-                    out.push(Stmt::Give(lw.local(acc_slot, span)));
+                    out.push_give(lw.local(acc_slot, span));
                 }))
             }
             (
@@ -426,14 +426,10 @@ impl<'a> Lowerer<'a> {
                                 }
                             };
                             let arr_slot = lw.temp(dst_ty.clone());
-                            out.push(Stmt::Let(
+                            out.push_let(
                                 arr_slot,
-                                Some(lw.mk(
-                                    ExprKind::Fill(vec![dim_spec], None),
-                                    dst_ty.clone(),
-                                    span,
-                                )),
-                            ));
+                                lw.mk(ExprKind::Fill(vec![dim_spec], None), dst_ty.clone(), span),
+                            );
                             let idx_ty = match dim {
                                 Dim::Pos(d) => Ty::Pos(d),
                                 Dim::Bound(d) => Ty::Bound(d),
@@ -515,7 +511,7 @@ impl<'a> Lowerer<'a> {
                                     stmts: vec![Stmt::Let(elem_slot, Some(elem_expr)), set_stmt],
                                 },
                             ));
-                            out.push(Stmt::Give(lw.local(arr_slot, span)));
+                            out.push_give(lw.local(arr_slot, span));
                         }));
                     }
                 }

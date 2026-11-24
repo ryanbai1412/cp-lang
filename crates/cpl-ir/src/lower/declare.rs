@@ -106,7 +106,7 @@ impl<'a> Lowerer<'a> {
                 .last_mut()
                 .expect("a scope")
                 .insert(name.to_string(), slot);
-            out.push(Stmt::Let(slot, Some(init)));
+            out.push_let(slot, init);
         }
     }
 

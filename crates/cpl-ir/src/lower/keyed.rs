@@ -72,7 +72,7 @@ impl<'a> Lowerer<'a> {
             seq
         } else {
             let slot = self.new_slot("cells", seq.ty.clone());
-            self.cx.pending.push(Stmt::Let(slot, Some(seq)));
+            self.cx.pending.push_let(slot, seq);
             self.local(slot, span)
         };
         let lo = match keys {
@@ -181,7 +181,7 @@ impl<'a> Lowerer<'a> {
             ExprKind::Global(id) => ((true, id), PlaceKind::Global(id)),
             _ => {
                 let slot = self.temp(owner.ty.clone());
-                self.cx.pending.push(Stmt::Let(slot, Some(owner.clone())));
+                self.cx.pending.push_let(slot, owner.clone());
                 ((false, slot), PlaceKind::Local(slot))
             }
         };
@@ -235,7 +235,7 @@ impl<'a> Lowerer<'a> {
             ExprKind::Global(id) => (PlaceKind::Global(id), value),
             _ => {
                 let slot = self.temp(value.ty.clone());
-                self.cx.pending.push(Stmt::Let(slot, Some(value)));
+                self.cx.pending.push_let(slot, value);
                 (PlaceKind::Local(slot), self.local(slot, span))
             }
         };
@@ -283,7 +283,7 @@ impl<'a> Lowerer<'a> {
             return mapped;
         };
         let cells = self.new_slot("cells", mapped.ty.clone());
-        self.cx.pending.push(Stmt::Let(cells, Some(mapped)));
+        self.cx.pending.push_let(cells, mapped);
         let cells = self.local(cells, span);
         self.mk_builtin(
             Builtin::Rekey,
@@ -382,12 +382,12 @@ impl<'a> Lowerer<'a> {
         self.do_expr(Some(&ty.clone()), span, |lw, out| {
             out.insert(0, Stmt::Let(first, None));
             let held = lw.temp(cells.ty.clone());
-            out.push(Stmt::Let(held, Some(cells)));
+            out.push_let(held, cells);
             let (cells, lo) = (lw.local(held, span), lw.local(first, span));
             let len = lw.len_of(cells.clone(), span);
             let hi = lw.int_sum(lo.clone(), len);
             let keyed = lw.mk_builtin(Builtin::Rekey, [cells, lo, hi], ty, span);
-            out.push(Stmt::Give(keyed));
+            out.push_give(keyed);
         })
     }
 

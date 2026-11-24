@@ -59,7 +59,7 @@ impl<'a> Lowerer<'a> {
                         let slot = self.temp(idx.ty.clone());
                         let ispan = idx.span;
                         let ity = idx.ty.clone();
-                        out.push(Stmt::Let(slot, Some(idx)));
+                        out.push_let(slot, idx);
                         let held = Expr {
                             kind: ExprKind::Local(slot),
                             ty: ity.clone(),

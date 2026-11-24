@@ -112,7 +112,7 @@ impl<'a> Lowerer<'a> {
         let dst_ty = Ty::list(want_elem_ty.clone());
         let dst = self.temp(dst_ty.clone());
         let empty = self.mk(ExprKind::Tuple(Vec::new()), dst_ty.clone(), span);
-        out.push(Stmt::Let(dst, Some(empty)));
+        out.push_let(dst, empty);
         let item = self.temp(elem_ty);
         let coerced = self.coerce(self.local(item, span), &want_elem_ty, span);
         let push = Stmt::Expr(self.mk_mutate(
@@ -178,7 +178,7 @@ impl<'a> Lowerer<'a> {
                             held
                         };
                         let array = ExprKind::Builtin(Builtin::ListToArray, vec![list_expr]);
-                        out.push(Stmt::Give(lw.mk(array, want.clone(), span)));
+                        out.push_give(lw.mk(array, want.clone(), span));
                     }));
                 }
                 // Cells keyed by `d`'s positions (`cells.rekey(s.keys)` with `s: [d]T`) are a
@@ -206,7 +206,7 @@ impl<'a> Lowerer<'a> {
                         ));
                         let list = lw.mk_builtin(Builtin::ToList, [held], list_ty, span);
                         let array = ExprKind::Builtin(Builtin::ListToArray, vec![list]);
-                        out.push(Stmt::Give(lw.mk(array, want.clone(), span)));
+                        out.push_give(lw.mk(array, want.clone(), span));
                     }));
                 }
                 _ => e,
@@ -230,7 +230,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     let dst = lw.coerce_list_elems(raw, elem_ty, want_elem_ty, span, out);
-                    out.push(Stmt::Give(dst));
+                    out.push_give(dst);
                 }));
             }
             (Ty::List(want_elem), Ty::List(have_elem))
@@ -240,7 +240,7 @@ impl<'a> Lowerer<'a> {
                 let have_elem_ty = (**have_elem).clone();
                 return Ok(self.do_expr(Some(want), span, |lw, out| {
                     let dst = lw.coerce_list_elems(e, have_elem_ty, want_elem_ty, span, out);
-                    out.push(Stmt::Give(dst));
+                    out.push_give(dst);
                 }));
             }
             _ => e,
@@ -264,7 +264,7 @@ impl<'a> Lowerer<'a> {
                     let lo = lw.mk(ExprKind::DomainLo(d), Ty::Int, span);
                     let ord = lw.mk_binary(BinOp::Sub, e, lo, Ty::Int, span);
                     let slot = lw.temp(Ty::Int);
-                    out.push(Stmt::Let(slot, Some(ord)));
+                    out.push_let(slot, ord);
                     let below = lw.mk_cmp(
                         CmpOp::Lt,
                         lw.local(slot, span),
@@ -285,7 +285,7 @@ impl<'a> Lowerer<'a> {
                         Block::default(),
                     ));
                     let bound = lw.cast(Cast::Trust, lw.local(slot, span), Ty::Bound(d));
-                    out.push(Stmt::Give(bound));
+                    out.push_give(bound);
                 }))
             }
             (Ty::Range(want_of), Ty::Range(have_of)) => {
@@ -302,7 +302,7 @@ impl<'a> Lowerer<'a> {
                         let op = if into { BinOp::Sub } else { BinOp::Add };
                         let moved = lw.mk_binary(op, at, first, Ty::Int, span);
                         let slot = lw.temp(Ty::Int);
-                        out.push(Stmt::Let(slot, Some(moved)));
+                        out.push_let(slot, moved);
                         lw.local(slot, span)
                     };
                     let (lo, hi) = (end(lw, Builtin::RangeLo), end(lw, Builtin::RangeHi));
@@ -336,7 +336,7 @@ impl<'a> Lowerer<'a> {
                         lo: Box::new(lo),
                         hi: Box::new(hi),
                     };
-                    out.push(Stmt::Give(lw.mk(range, want.clone(), span)));
+                    out.push_give(lw.mk(range, want.clone(), span));
                 }))
             }
             (Ty::Opt(want_inner), Ty::Opt(have_inner))
@@ -346,7 +346,7 @@ impl<'a> Lowerer<'a> {
                 let (want_inner, have) = ((**want_inner).clone(), have.clone());
                 Ok(self.do_expr(Some(want), span, |lw, out| {
                     let slot = lw.temp(have);
-                    out.push(Stmt::Let(slot, Some(e)));
+                    out.push_let(slot, e);
                     let held = lw.local(slot, span);
                     let inner_ty = match &held.ty {
                         Ty::Opt(inner) => (**inner).clone(),
@@ -357,13 +357,7 @@ impl<'a> Lowerer<'a> {
                     let some = lw.mk_some(inner, want.clone(), span);
                     let none = lw.mk(ExprKind::None, want.clone(), span);
                     let is_some = lw.mk_is_some(held, Ty::Bool, span);
-                    out.push(Stmt::Give(lw.mk_if(
-                        is_some,
-                        some,
-                        none,
-                        want.clone(),
-                        span,
-                    )));
+                    out.push_give(lw.mk_if(is_some, some, none, want.clone(), span));
                 }))
             }
             (
@@ -426,10 +420,10 @@ impl<'a> Lowerer<'a> {
                         let size = lw.size_domain(d, lo, len, span);
                         out.push(size);
                     }
-                    out.push(Stmt::Give(Expr {
+                    out.push_give(Expr {
                         ty: want.clone(),
                         ..held
-                    }));
+                    });
                 }))
             }
             _ => Err(e),

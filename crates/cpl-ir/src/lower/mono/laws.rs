@@ -21,14 +21,11 @@ impl<'a> Lowerer<'a> {
                 };
                 return self.do_expr(Some(&Ty::Bool), span, |lw, out| {
                     let fn_slot = lw.temp(obj.ty.clone());
-                    out.push(Stmt::Let(fn_slot, Some(obj)));
+                    out.push_let(fn_slot, obj);
                     let samp_slot = lw.temp(samples.ty.clone());
-                    out.push(Stmt::Let(samp_slot, Some(samples)));
+                    out.push_let(samp_slot, samples);
                     let ok_slot = lw.temp(Ty::Bool);
-                    out.push(Stmt::Let(
-                        ok_slot,
-                        Some(lw.mk(ExprKind::Bool(true), Ty::Bool, span)),
-                    ));
+                    out.push_let(ok_slot, lw.mk(ExprKind::Bool(true), Ty::Bool, span));
                     let a_slot = lw.temp(elem_ty.clone());
                     let b_slot = lw.temp(elem_ty.clone());
                     let c_slot = lw.temp(elem_ty.clone());
@@ -88,7 +85,7 @@ impl<'a> Lowerer<'a> {
                         },
                     );
                     out.push(loop_a);
-                    out.push(Stmt::Give(lw.local(ok_slot, span)));
+                    out.push_give(lw.local(ok_slot, span));
                 });
             }
         }
@@ -117,18 +114,18 @@ impl<'a> Lowerer<'a> {
 
         self.do_expr(Some(&Ty::Bool), span, |lw, out| {
             let obj_slot = lw.temp(Ty::Struct(sid));
-            out.push(Stmt::Let(obj_slot, Some(obj)));
+            out.push_let(obj_slot, obj);
 
             // Materialize sample lists in locals once.
             let def_slot = default_samples.map(|e| {
                 let s = lw.temp(e.ty.clone());
-                out.push(Stmt::Let(s, Some(e)));
+                out.push_let(s, e);
                 s
             });
             let mut kw_slots: HashMap<String, Slot> = HashMap::new();
             for (k, e) in named_samples {
                 let s = lw.temp(e.ty.clone());
-                out.push(Stmt::Let(s, Some(e)));
+                out.push_let(s, e);
                 kw_slots.insert(k, s);
             }
 
@@ -141,7 +138,7 @@ impl<'a> Lowerer<'a> {
                     ty: fty.clone(),
                     span: lw.span(span),
                 };
-                out.push(Stmt::Let(fslot, Some(fexpr)));
+                out.push_let(fslot, fexpr);
                 lw.cx
                     .scopes
                     .last_mut()
@@ -191,7 +188,7 @@ impl<'a> Lowerer<'a> {
             lw.cx.receiver = saved_recv;
             lw.cx.scopes.pop();
             let ok = lw.mk(ExprKind::Bool(true), Ty::Bool, span);
-            out.push(Stmt::Give(ok));
+            out.push_give(ok);
         })
     }
 

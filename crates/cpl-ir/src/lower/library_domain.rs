@@ -299,7 +299,7 @@ impl<'a> Lowerer<'a> {
                     span,
                 };
                 body.stmts.insert(0, Stmt::Let(item, Some(value)));
-                stmts.push(Stmt::Let(n, Some(len)));
+                stmts.push_let(n, len);
                 let ords = Iter::Range {
                     lo: self.int_lit(0, span),
                     hi: at(n),

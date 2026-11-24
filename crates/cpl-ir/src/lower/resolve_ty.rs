@@ -420,7 +420,7 @@ impl<'a> Lowerer<'a> {
             },
             Block { stmts: vec![body] },
         ));
-        stmts.push(Stmt::Give(self.local(acc, span)));
+        stmts.push_give(self.local(acc, span));
         self.mk(ExprKind::Do(Block { stmts }), list_ty, span)
     }
 

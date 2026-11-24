@@ -366,7 +366,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let slot = self.temp(Ty::Int);
-        self.cx.pending.push(Stmt::Let(slot, Some(k)));
+        self.cx.pending.push_let(slot, k);
         let k = self.local(slot, span);
         let zero = self.int_lit(0, span);
         let below = self.mk_cmp(CmpOp::Lt, k.clone(), zero, Ty::Bool, span);
@@ -603,7 +603,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.scopes.push(HashMap::new());
                 let p_slot = self.loop_var(&param, (*inner_ty).clone(), &mut then_stmts);
                 let init_p = self.local(val_slot, span);
-                then_stmts.push(Stmt::Let(p_slot, Some(init_p)));
+                then_stmts.push_let(p_slot, init_p);
                 let res = if is_map {
                     self.expr(body, None)
                 } else {
@@ -801,16 +801,16 @@ impl<'a> Lowerer<'a> {
         self.do_expr(Some(&ret_ty), span, |lw, out| {
             let arr_ty = arr.ty.clone();
             let arr_slot = lw.temp(arr_ty.clone());
-            out.push(Stmt::Let(arr_slot, Some(arr)));
+            out.push_let(arr_slot, arr);
             let inv_slot = lw.temp(inv_ty.clone());
-            out.push(Stmt::Let(
+            out.push_let(
                 inv_slot,
-                Some(lw.mk(
+                lw.mk(
                     ExprKind::Fill(vec![target_dim.clone()], None),
                     inv_ty.clone(),
                     span,
-                )),
-            ));
+                ),
+            );
             let (src_lo, src_hi) = match &src_dim {
                 Dim::Pos(d) => (
                     lw.int_lit(0, span),
@@ -916,13 +916,13 @@ impl<'a> Lowerer<'a> {
             };
             if is_partial {
                 let cell_slot = lw.temp(cell_ty);
-                body.push(Stmt::Let(cell_slot, Some(cell)));
+                body.push_let(cell_slot, cell);
                 let has_val = lw.mk_is_some(lw.local(cell_slot, span), Ty::Bool, span);
                 let mut then_stmts = Vec::new();
                 let v_slot = lw.temp(val_ty.clone());
                 let unwrapped =
                     lw.mk_unwrap(lw.local(cell_slot, span), false, val_ty.clone(), span);
-                then_stmts.push(Stmt::Let(v_slot, Some(unwrapped)));
+                then_stmts.push_let(v_slot, unwrapped);
                 record_value(lw, v_slot, &mut then_stmts);
                 body.push(Stmt::If(
                     has_val,
@@ -931,7 +931,7 @@ impl<'a> Lowerer<'a> {
                 ));
             } else {
                 let v_slot = lw.temp(val_ty.clone());
-                body.push(Stmt::Let(v_slot, Some(cell)));
+                body.push_let(v_slot, cell);
                 record_value(lw, v_slot, &mut body);
             }
             lw.cx.loops.pop();
@@ -948,13 +948,13 @@ impl<'a> Lowerer<'a> {
                 Block { stmts: body },
             ));
             if is_partial {
-                out.push(Stmt::Give(lw.local(inv_slot, span)));
+                out.push_give(lw.local(inv_slot, span));
             } else {
                 let out_slot = lw.temp(ret_ty.clone());
-                out.push(Stmt::Let(
+                out.push_let(
                     out_slot,
-                    Some(lw.mk(ExprKind::Fill(vec![target_dim], None), ret_ty.clone(), span)),
-                ));
+                    lw.mk(ExprKind::Fill(vec![target_dim], None), ret_ty.clone(), span),
+                );
                 let v_slot = lw.temp(val_ty.clone());
                 let lid2 = lw.open_loop(None);
                 let v_idx = tgt_idx_for_arr(lw, v_slot);
@@ -992,7 +992,7 @@ impl<'a> Lowerer<'a> {
                         stmts: vec![Stmt::Assign(out_place, AssignOp::Set, unwrapped)],
                     },
                 ));
-                out.push(Stmt::Give(lw.local(out_slot, span)));
+                out.push_give(lw.local(out_slot, span));
             }
         })
     }
@@ -1192,7 +1192,7 @@ impl<'a> Lowerer<'a> {
                     }
                 };
                 let func_slot = self.temp(func.ty.clone());
-                pre_stmts.push(Stmt::Let(func_slot, Some(func)));
+                pre_stmts.push_let(func_slot, func);
                 let func_val = self.local(func_slot, span);
                 let mapped =
                     self.mk_call_expr(func_val, vec![Arg::Value(cell)], out_elem.clone(), span);
@@ -1205,7 +1205,7 @@ impl<'a> Lowerer<'a> {
         };
         let acc = self.temp(out_ty.clone());
         let blank = self.mk(ExprKind::Fill(dim_specs, None), out_ty.clone(), span);
-        pre_stmts.push(Stmt::Let(acc, Some(blank)));
+        pre_stmts.push_let(acc, blank);
 
         let whole = Place {
             kind: PlaceKind::Local(acc),
@@ -1232,7 +1232,7 @@ impl<'a> Lowerer<'a> {
             body = vec![Stmt::For(lid, k, iter, Block { stmts: body })];
         }
         pre_stmts.extend(body);
-        pre_stmts.push(Stmt::Give(self.local(acc, span)));
+        pre_stmts.push_give(self.local(acc, span));
         self.mk(ExprKind::Do(Block { stmts: pre_stmts }), out_ty, span)
     }
 
@@ -1274,7 +1274,7 @@ impl<'a> Lowerer<'a> {
                 return self.do_expr(Some(&list_ty), span, |lw, out| {
                     let acc = lw.temp(list_ty.clone());
                     let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
-                    out.push(Stmt::Let(acc, Some(empty)));
+                    out.push_let(acc, empty);
                     let push = Stmt::Expr(lw.mk_mutate(
                         Mutation::Push,
                         Place {
@@ -1290,7 +1290,7 @@ impl<'a> Lowerer<'a> {
                     stmts.push(push);
                     let lid = lw.fresh_loop();
                     out.push(Stmt::For(lid, item, iter, Block { stmts }));
-                    out.push(Stmt::Give(lw.local(acc, span)));
+                    out.push_give(lw.local(acc, span));
                 });
             }
         }
@@ -1409,8 +1409,8 @@ impl<'a> Lowerer<'a> {
             let no = lw.temp(list_ty.clone());
             let empty_yes = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
             let empty_no = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
-            out.push(Stmt::Let(yes, Some(empty_yes)));
-            out.push(Stmt::Let(no, Some(empty_no)));
+            out.push_let(yes, empty_yes);
+            out.push_let(no, empty_no);
             let item = lw.temp(elem_ty.clone());
             let lid = lw.fresh_loop();
             let item_expr = lw.local(item, span);
@@ -1459,7 +1459,7 @@ impl<'a> Lowerer<'a> {
                 pair_ty.clone(),
                 span,
             );
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 }

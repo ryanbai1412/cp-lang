@@ -198,7 +198,7 @@ impl<'a> Lowerer<'a> {
         let eb = else_body?;
         let flag = self.temp(Ty::Bool);
         let init = self.mk(ExprKind::Bool(true), Ty::Bool, eb.span);
-        out.push(Stmt::Let(flag, Some(init)));
+        out.push_let(flag, init);
         self.cx.loop_else.insert(loop_id, flag);
         Some(flag)
     }
@@ -288,7 +288,7 @@ impl<'a> Lowerer<'a> {
             let v = self.expr(&a.value, None);
             let ty = v.ty.clone();
             let slot = self.temp(ty.clone());
-            out.push(Stmt::Let(slot, Some(v)));
+            out.push_let(slot, v);
             temps.push((slot, ty, a.value.span));
         }
         if let Ty::Enum(eid) = temps[0].1 {

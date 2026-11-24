@@ -31,7 +31,7 @@ impl<'a> Lowerer<'a> {
                     Some(changed) => lw.local(changed, span),
                     None => lw.err_expr(span),
                 };
-                out.push(Stmt::Give(changed));
+                out.push_give(changed);
             });
         }
         self.do_expr(Some(&Ty::Bool), span, |lw, out| {
@@ -43,7 +43,7 @@ impl<'a> Lowerer<'a> {
             let place = lw.settle_indexes(place, out);
             let rhs = lw.expr(value, Some(&place.ty));
             if place.ty == Ty::Error {
-                out.push(Stmt::Give(lw.err_expr(span)));
+                out.push_give(lw.err_expr(span));
                 return;
             }
             if lw.is_row(&place.ty) {
@@ -52,7 +52,7 @@ impl<'a> Lowerer<'a> {
                     Some(changed) => lw.local(changed, span),
                     None => lw.err_expr(span),
                 };
-                out.push(Stmt::Give(changed));
+                out.push_give(changed);
                 return;
             }
             let now = place_to_expr(&place);
@@ -69,7 +69,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     let slot = lw.temp(Ty::Bool);
-                    out.push(Stmt::Let(slot, Some(has)));
+                    out.push_let(slot, has);
                     Some(lw.local(slot, span))
                 }
                 _ => None,
@@ -90,7 +90,7 @@ impl<'a> Lowerer<'a> {
                         Block::default(),
                     ));
                 }
-                None => out.push(Stmt::Let(old, Some(now.clone()))),
+                None => out.push_let(old, now.clone()),
             }
             lw.emit_assign_place(place, op, rhs, target.span, out);
             let before = lw.local(old, span);
@@ -99,7 +99,7 @@ impl<'a> Lowerer<'a> {
                 let fresh = lw.mk_unary(UnOp::Not, had, Ty::Bool, span);
                 changed = lw.mk_binary(BinOp::Or, fresh, changed, Ty::Bool, span);
             }
-            out.push(Stmt::Give(changed));
+            out.push_give(changed);
         })
     }
 
@@ -582,16 +582,16 @@ impl Lowerer<'_> {
                         ty: taken.ty.clone(),
                         span: taken.span,
                     };
-                    stmts.push(Stmt::Let(slot, Some(taken)));
+                    stmts.push_let(slot, taken);
                     held
                 }
             };
         }
-        stmts.push(Stmt::Give(Expr {
+        stmts.push_give(Expr {
             kind: shape(parts),
             ty: ty.clone(),
             span,
-        }));
+        });
         Expr {
             kind: ExprKind::Do(Block { stmts }),
             ty,

@@ -239,7 +239,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                out.push(Stmt::Give(value));
+                out.push_give(value);
             }
         }
     }
@@ -344,7 +344,7 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 let tmp = self.temp(value.ty.clone());
-                out.push(Stmt::Let(tmp, Some(value)));
+                out.push_let(tmp, value);
                 let local = self.local(tmp, init.span);
                 let mut binds = Vec::new();
                 if let Some(test) = self.pattern(pat, &local, &mut binds) {
@@ -1381,10 +1381,7 @@ impl<'a> Lowerer<'a> {
                         let gid = self.ensure_io_global();
                         let io_ty = self.globals[gid].ty.clone();
                         let save = self.temp(io_ty.clone());
-                        out.push(Stmt::Let(
-                            save,
-                            Some(self.mk(ExprKind::Global(gid), io_ty.clone(), span)),
-                        ));
+                        out.push_let(save, self.mk(ExprKind::Global(gid), io_ty.clone(), span));
                         saved_ctx_slot = Some((gid, save));
                         let Ty::Record(fields) = &io_ty else {
                             unreachable!()
@@ -1441,10 +1438,10 @@ impl<'a> Lowerer<'a> {
                         if let Some((gid, fields)) = self.context_defs.get(other).cloned() {
                             let ctx_ty = self.globals[gid].ty.clone();
                             let save = self.temp(ctx_ty.clone());
-                            out.push(Stmt::Let(
+                            out.push_let(
                                 save,
-                                Some(self.mk(ExprKind::Global(gid), ctx_ty.clone(), span)),
-                            ));
+                                self.mk(ExprKind::Global(gid), ctx_ty.clone(), span),
+                            );
                             saved_ctx_slot = Some((gid, save));
                             for arg in args {
                                 let Some(k) = &arg.name else { continue };

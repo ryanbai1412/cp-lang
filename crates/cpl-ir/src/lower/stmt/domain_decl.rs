@@ -207,7 +207,7 @@ impl<'a> Lowerer<'a> {
         let lo = self.domain_end(id, lo);
         let hi = self.domain_end(id, hi);
         let slot = self.temp(Ty::Int);
-        out.push(Stmt::Let(slot, Some(lo)));
+        out.push_let(slot, lo);
         let lo = self.local(slot, def.span);
         let len = self.mk_binary(BinOp::Sub, hi, lo.clone(), Ty::Int, def.span);
         let len = if *inclusive {

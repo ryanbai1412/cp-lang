@@ -203,7 +203,7 @@ impl<'a> Lowerer<'a> {
             });
         }
         let pos = self.encode_product(id, parts, span);
-        out.push(Stmt::Give(pos));
+        out.push_give(pos);
         self.mk(ExprKind::Do(Block { stmts: out }), Ty::Pos(id), span)
     }
 
@@ -227,7 +227,7 @@ impl<'a> Lowerer<'a> {
             .map(|i| self.mk_field(held.clone(), i, tys[i].clone(), span))
             .collect();
         let pos = self.encode_product(id, parts, span);
-        out.push(Stmt::Give(pos));
+        out.push_give(pos);
         self.mk(ExprKind::Do(Block { stmts: out }), Ty::Pos(id), span)
     }
 
@@ -284,7 +284,7 @@ impl<'a> Lowerer<'a> {
             let pick = ExprKind::If(Box::new(check), Box::new(found), Box::new(none));
             found = self.mk(pick, want.clone(), span);
         }
-        out.push(Stmt::Give(found));
+        out.push_give(found);
         self.mk(ExprKind::Do(Block { stmts: out }), want, span)
     }
 

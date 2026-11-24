@@ -24,7 +24,7 @@ impl<'a> Lowerer<'a> {
         let ty = value.ty.clone();
         self.do_expr(Some(&ty), span, |_, out| {
             out.extend(needs);
-            out.push(Stmt::Give(value));
+            out.push_give(value);
         })
     }
 

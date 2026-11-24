@@ -71,7 +71,7 @@ impl<'a> Lowerer<'a> {
         self.do_expr(Some(&ty.clone()), span, |lw, out| {
             let word = lw.temp(Ty::Str);
             let token = lw.mk_read(Spec::Plain(Ty::Str), Ty::Str, span);
-            out.push(Stmt::Let(word, Some(token)));
+            out.push_let(word, token);
             let len =
                 |lw: &Self| lw.mk_builtin(Builtin::Len, [lw.local(word, span)], Ty::Int, span);
             out.push(Stmt::DefDomain {
@@ -85,7 +85,7 @@ impl<'a> Lowerer<'a> {
                 ty.clone(),
                 span,
             );
-            out.push(Stmt::Let(cells, Some(blank)));
+            out.push_let(cells, blank);
             let at = lw.temp(Ty::Int);
             let pos = lw.mk(
                 ExprKind::Cast(Cast::Trust, Box::new(lw.local(at, span))),
@@ -121,7 +121,7 @@ impl<'a> Lowerer<'a> {
             };
             let copy = Stmt::Assign(cell, AssignOp::Set, byte);
             out.push(Stmt::For(lid, at, iter, Block { stmts: vec![copy] }));
-            out.push(Stmt::Give(lw.local(cells, span)));
+            out.push_give(lw.local(cells, span));
         })
     }
 
@@ -171,7 +171,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.scopes.push(HashMap::new());
                 let mut pre = Vec::new();
                 let slot = self.loop_var(&param, elem_expr.ty.clone(), &mut pre);
-                out.push(Stmt::Let(slot, Some(elem_expr)));
+                out.push_let(slot, elem_expr);
                 out.extend(pre);
                 let key = self.expr(body, None);
                 self.cx.scopes.pop();
@@ -258,7 +258,7 @@ impl<'a> Lowerer<'a> {
             ExprKind::Local(s) if self.cx.locals[s].name.is_empty() => s,
             _ => {
                 let s = self.temp(elem_ty.clone());
-                inner.push(Stmt::Let(s, Some(value)));
+                inner.push_let(s, value);
                 s
             }
         };
@@ -285,7 +285,7 @@ impl<'a> Lowerer<'a> {
         let best_slot = self.temp(out_ty.clone());
         let best_key_slot = self.temp(opt_key_ty.clone());
         let k_slot = self.temp(key_ty.clone());
-        inner.push(Stmt::Let(k_slot, Some(key_expr)));
+        inner.push_let(k_slot, key_expr);
 
         let bk_is_some = self.mk_is_some(local(best_key_slot, &opt_key_ty), Ty::Bool, span);
         let bk_none = self.mk_unary(UnOp::Not, bk_is_some, Ty::Bool, span);
@@ -337,7 +337,7 @@ impl<'a> Lowerer<'a> {
             ),
         ];
         stmts.extend(loops);
-        stmts.push(Stmt::Give(local(best_slot, &out_ty)));
+        stmts.push_give(local(best_slot, &out_ty));
         self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
     }
 
@@ -410,7 +410,7 @@ impl<'a> Lowerer<'a> {
                         for value in values {
                             let slot = lw.temp(value.ty.clone());
                             slots.push((slot, value.ty.clone()));
-                            out.push(Stmt::Let(slot, Some(value)));
+                            out.push_let(slot, value);
                         }
                         let best = lw.temp(plain.clone());
                         let first = slots
@@ -418,7 +418,7 @@ impl<'a> Lowerer<'a> {
                             .position(|(_, ty)| *ty == plain)
                             .expect("one value is plain");
                         let start = lw.local(slots[first].0, span);
-                        out.push(Stmt::Let(best, Some(start)));
+                        out.push_let(best, start);
                         for (i, (slot, ty)) in slots.iter().enumerate() {
                             if i == first {
                                 continue;
@@ -448,7 +448,7 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                         let result = lw.local(best, span);
-                        out.push(Stmt::Give(result));
+                        out.push_give(result);
                     });
                 }
                 let ty = if values.iter().any(|v| v.ty == Ty::Float) {
@@ -481,8 +481,8 @@ impl<'a> Lowerer<'a> {
                         acc_expr = self.do_expr(Some(&ty), span, |lw, out| {
                             let a_slot = lw.temp(lhs_ty.clone());
                             let b_slot = lw.temp(lhs_ty.clone());
-                            out.push(Stmt::Let(a_slot, Some(acc_expr)));
-                            out.push(Stmt::Let(b_slot, Some(rhs_expr)));
+                            out.push_let(a_slot, acc_expr);
+                            out.push_let(b_slot, rhs_expr);
                             let a = lw.local(a_slot, span);
                             let b = lw.local(b_slot, span);
                             let a_some = lw.mk_is_some(a.clone(), Ty::Bool, span);
@@ -497,7 +497,7 @@ impl<'a> Lowerer<'a> {
                             );
                             let inner_if = lw.mk_if(b_some, both, a, lhs_ty.clone(), span);
                             let res = lw.mk_if(a_some, inner_if, b, lhs_ty, span);
-                            out.push(Stmt::Give(res));
+                            out.push_give(res);
                         });
                     }
                     return acc_expr;
@@ -585,11 +585,11 @@ impl<'a> Lowerer<'a> {
         let (mut loops, outer) = self.close_loops(frames, inner);
         retarget_break(&mut loops, outer, 0);
         stmts.extend(loops);
-        stmts.push(Stmt::Give(Expr {
+        stmts.push_give(Expr {
             kind: ExprKind::Local(acc),
             ty: res_ty.clone(),
             span: at,
-        }));
+        });
         self.mk(ExprKind::Do(Block { stmts }), res_ty, span)
     }
 
@@ -833,12 +833,12 @@ impl<'a> Lowerer<'a> {
         let ty = if optional { Ty::opt(Ty::Int) } else { Ty::Int };
         Some(self.do_expr(Some(&ty.clone()), span, |lw, out| {
             let r = lw.new_slot("r", range.ty.clone());
-            out.push(Stmt::Let(r, Some(range)));
+            out.push_let(r, range);
             let (lo, hi) = (lw.new_slot("lo", Ty::Int), lw.new_slot("hi", Ty::Int));
             for (slot, end) in [(lo, Builtin::RangeLo), (hi, Builtin::RangeHi)] {
                 let value = lw.local(r, span);
                 let value = lw.mk_builtin(end, [value], Ty::Int, span);
-                out.push(Stmt::Let(slot, Some(value)));
+                out.push_let(slot, value);
             }
             let (l, h) = (lw.local(lo, span), lw.local(hi, span));
             let empty = lw.mk_cmp(CmpOp::Le, h.clone(), l.clone(), Ty::Bool, span);
@@ -857,7 +857,7 @@ impl<'a> Lowerer<'a> {
                 ));
                 end
             };
-            out.push(Stmt::Give(result));
+            out.push_give(result);
         }))
     }
 
@@ -945,7 +945,7 @@ impl<'a> Lowerer<'a> {
                         let zero = self.eval_struct_const(sid, zero, span);
                         let zero = self.coerce(zero, &ty, span);
                         let acc = self.temp(ty.clone());
-                        stmts.push(Stmt::Let(acc, Some(zero)));
+                        stmts.push_let(acc, zero);
                         let total = lit(ExprKind::Local(acc), ty.clone());
                         let next = lit(
                             ExprKind::Call(add, vec![Arg::Value(total), Arg::Value(value)]),
@@ -984,13 +984,13 @@ impl<'a> Lowerer<'a> {
                     }
                 };
                 let acc = self.temp(ty.clone());
-                stmts.push(Stmt::Let(acc, Some(lit(zero, ty.clone()))));
+                stmts.push_let(acc, lit(zero, ty.clone()));
                 let add = Stmt::Assign(place(acc, &ty), AssignOp::Binary(BinOp::Add), value);
                 (acc, ty, vec![add], Vec::new())
             }
             Reduce::Count => {
                 let acc = self.temp(Ty::Int);
-                stmts.push(Stmt::Let(acc, Some(lit(ExprKind::Int(0), Ty::Int))));
+                stmts.push_let(acc, lit(ExprKind::Int(0), Ty::Int));
                 let add = Stmt::Assign(
                     place(acc, &Ty::Int),
                     AssignOp::Binary(BinOp::Add),
@@ -1002,7 +1002,7 @@ impl<'a> Lowerer<'a> {
             Reduce::All | Reduce::Any => {
                 let all = kind == Reduce::All;
                 let acc = self.temp(Ty::Bool);
-                stmts.push(Stmt::Let(acc, Some(lit(ExprKind::Bool(all), Ty::Bool))));
+                stmts.push_let(acc, lit(ExprKind::Bool(all), Ty::Bool));
                 let set = Stmt::Assign(
                     place(acc, &Ty::Bool),
                     AssignOp::Set,
@@ -1066,7 +1066,7 @@ impl<'a> Lowerer<'a> {
                 });
                 let flat = identity.is_some();
                 stmts.push(Stmt::Let(acc, identity));
-                stmts.push(Stmt::Let(have, Some(lit(ExprKind::Bool(false), Ty::Bool))));
+                stmts.push_let(have, lit(ExprKind::Bool(false), Ty::Bool));
                 let op = if kind == Reduce::Max {
                     AssignOp::Max
                 } else {
@@ -1158,7 +1158,7 @@ impl<'a> Lowerer<'a> {
         }
         stmts.extend(loops);
         stmts.extend(after);
-        stmts.push(Stmt::Give(local(acc, &ty)));
+        stmts.push_give(local(acc, &ty));
         self.mk(ExprKind::Do(Block { stmts }), ty, span)
     }
 

@@ -237,7 +237,7 @@ impl Lowerer<'_> {
             Some(self.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span)),
         )];
         stmts.extend(loops);
-        stmts.push(Stmt::Give(self.local(acc, span)));
+        stmts.push_give(self.local(acc, span));
         self.mk(ExprKind::Do(Block { stmts }), ty, span)
     }
 
@@ -613,7 +613,7 @@ impl Lowerer<'_> {
                 };
                 let mut pre = Vec::new();
                 let slot = self.loop_var(param, value.ty.clone(), &mut pre);
-                binds.push(Stmt::Let(slot, Some(value)));
+                binds.push_let(slot, value);
                 binds.extend(pre);
             }
             if let Some((_, _, _, inner)) = loops.last_mut() {
@@ -635,7 +635,7 @@ impl Lowerer<'_> {
             let mut pre = Vec::new();
             let slot = self.loop_var(&params[0], Ty::Pos(p), &mut pre);
             if let Some((_, _, _, inner)) = loops.last_mut() {
-                inner.push(Stmt::Let(slot, Some(encoded)));
+                inner.push_let(slot, encoded);
                 inner.extend(pre);
             }
         }
@@ -682,12 +682,9 @@ impl Lowerer<'_> {
             pre.extend(inner);
             inner = vec![Stmt::For(id, slot, iter, Block { stmts: pre })];
         }
-        stmts.push(Stmt::Let(
-            acc,
-            Some(self.mk(ExprKind::Fill(dims, None), ty.clone(), span)),
-        ));
+        stmts.push_let(acc, self.mk(ExprKind::Fill(dims, None), ty.clone(), span));
         stmts.extend(inner);
-        stmts.push(Stmt::Give(self.local(acc, span)));
+        stmts.push_give(self.local(acc, span));
         self.mk(ExprKind::Do(Block { stmts }), ty, span)
     }
 }

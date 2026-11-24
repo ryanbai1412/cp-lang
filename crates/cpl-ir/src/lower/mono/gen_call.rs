@@ -927,7 +927,7 @@ impl<'a> Lowerer<'a> {
             lw.cx.scopes.push(HashMap::new());
             for (p, val) in decl.params.iter().zip(arg_vals) {
                 let slot = lw.temp(val.ty.clone());
-                out.push(Stmt::Let(slot, Some(val)));
+                out.push_let(slot, val);
                 lw.cx
                     .scopes
                     .last_mut()
@@ -937,7 +937,7 @@ impl<'a> Lowerer<'a> {
             match &decl.body {
                 ast::FnBody::Expr(e) => {
                     let v = lw.expr(e, Some(&ret_ty));
-                    out.push(Stmt::Give(v));
+                    out.push_give(v);
                 }
                 ast::FnBody::Block(b) => {
                     let blk = lw.block(

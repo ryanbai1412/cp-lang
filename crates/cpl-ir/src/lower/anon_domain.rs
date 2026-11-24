@@ -494,7 +494,7 @@ impl<'a> Lowerer<'a> {
         self.do_expr(Some(&opt_ty.clone()), span, |lw, out| {
             let s = lw.temp(Ty::Int);
             let moved = lw.int_add(ord, if next { 1 } else { -1 });
-            out.push(Stmt::Let(s, Some(moved)));
+            out.push_let(s, moved);
             let sv = lw.local(s, span);
             let edge = lw.int_lit(if next { n } else { -1 }, span);
             let off = lw.mk_cmp(CmpOp::Eq, sv.clone(), edge, Ty::Bool, span);
@@ -502,7 +502,7 @@ impl<'a> Lowerer<'a> {
             let some = lw.mk_some(variant, opt_ty.clone(), span);
             let none = lw.mk(ExprKind::None, opt_ty.clone(), span);
             let res = lw.mk_if(off, none, some, opt_ty, span);
-            out.push(Stmt::Give(res));
+            out.push_give(res);
         })
     }
 }

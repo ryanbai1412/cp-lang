@@ -32,7 +32,7 @@ impl<'a> Lowerer<'a> {
                     let v = recv_val.unwrap();
                     let slot = lw.temp(v.ty.clone());
                     let sp = v.span;
-                    out.push(Stmt::Let(slot, Some(v)));
+                    out.push_let(slot, v);
                     Place {
                         kind: PlaceKind::Local(slot),
                         ty: Ty::Struct(proj.owner),
@@ -47,7 +47,7 @@ impl<'a> Lowerer<'a> {
                 let val = lw.expr(lend_place_ast, None);
                 let result_slot = lw.temp(val.ty.clone());
                 let res_ty = val.ty.clone();
-                out.push(Stmt::Let(result_slot, Some(val)));
+                out.push_let(result_slot, val);
                 for s in post_stmts {
                     lw.stmt(s, out);
                 }
@@ -55,7 +55,7 @@ impl<'a> Lowerer<'a> {
                     frame.ty = Some(res_ty);
                 }
                 let res = lw.local(result_slot, span);
-                out.push(Stmt::Give(res));
+                out.push_give(res);
             });
         })
     }
@@ -75,7 +75,7 @@ impl<'a> Lowerer<'a> {
         let rhs_val = self.expr(rhs, None);
         let rhs_slot = self.temp(rhs_val.ty.clone());
         let rhs_ty = rhs_val.ty.clone();
-        out.push(Stmt::Let(rhs_slot, Some(rhs_val)));
+        out.push_let(rhs_slot, rhs_val);
 
         let recv_place = self.place(base);
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
@@ -193,7 +193,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             let slot = self.new_slot(pname, pty.clone());
-            out.push(Stmt::Let(slot, Some(v)));
+            out.push_let(slot, v);
             arg_slots.push((pname.clone(), slot));
         }
 
@@ -258,11 +258,11 @@ impl<'a> Lowerer<'a> {
                 span,
             });
         }
-        stmts.push(Stmt::Give(Expr {
+        stmts.push_give(Expr {
             kind: ExprKind::Tuple(vals),
             ty: Ty::Struct(want_id),
             span,
-        }));
+        });
         Some(Expr {
             kind: ExprKind::Do(Block { stmts }),
             ty: Ty::Struct(want_id),

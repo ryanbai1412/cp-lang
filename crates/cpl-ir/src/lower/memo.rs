@@ -286,7 +286,7 @@ impl<'a> Lowerer<'a> {
             ty: ret.clone(),
             binds: None,
         });
-        out.push(Stmt::Let(answer, Some(fill)));
+        out.push_let(answer, fill);
         let keep = ast::StmtKind::Assign {
             target: cell,
             op: ast::AssignOp::Set,
@@ -538,7 +538,7 @@ impl<'a> Lowerer<'a> {
             let seen = self.memo_var(&mut memo, "seen", Ty::list(Ty::Bool));
             let vals = self.memo_var(&mut memo, "vals", Ty::list(ret.clone()));
             let cells = self.temp(Ty::Int);
-            start.push(Stmt::Let(cells, Some(self.int_lit(1, span))));
+            start.push_let(cells, self.int_lit(1, span));
             if let Some(flat) = &flat {
                 start.push(set(flat, yes.clone()));
             }
@@ -730,7 +730,7 @@ impl<'a> Lowerer<'a> {
             let empty = self.mk(ExprKind::Tuple(Vec::new()), table_ty, span);
             start.push(set(&table, empty));
             let k = self.temp(key.ty.clone());
-            out.push(Stmt::Let(k, Some(key)));
+            out.push_let(k, key);
             let got_ty = Ty::opt(ret.clone());
             let got = self.temp(got_ty.clone());
             let lookup = self.mk_builtin(
@@ -739,7 +739,7 @@ impl<'a> Lowerer<'a> {
                 got_ty.clone(),
                 span,
             );
-            out.push(Stmt::Let(got, Some(lookup)));
+            out.push_let(got, lookup);
             let known = self.mk_is_some(self.local(got, span), Ty::Bool, span);
             let stored = self.mk_unwrap(self.local(got, span), false, ret.clone(), span);
             out.push(Stmt::If(

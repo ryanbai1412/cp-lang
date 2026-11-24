@@ -75,6 +75,23 @@ use mono::*;
 use range::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+/// Out-of-line pushes of the two commonest statements: an inlined
+/// `Vec::push` of a whole `Stmt` at each of hundreds of sites costs more.
+trait PushStmt {
+    fn push_let(&mut self, slot: Slot, value: Expr);
+    fn push_give(&mut self, value: Expr);
+}
+
+impl PushStmt for Vec<Stmt> {
+    fn push_let(&mut self, slot: Slot, value: Expr) {
+        self.push(Stmt::Let(slot, Some(value)));
+    }
+
+    fn push_give(&mut self, value: Expr) {
+        self.push(Stmt::Give(value));
+    }
+}
+
 /// Lists the names of all `@test` functions declared at the top level of `analysis`.
 pub fn list_tests(analysis: &Analysis) -> Vec<String> {
     let mut out = Vec::new();

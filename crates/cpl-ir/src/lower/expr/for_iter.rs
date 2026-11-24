@@ -661,7 +661,7 @@ impl<'a> Lowerer<'a> {
                             let elem = self.ret_of(nth_fn, span);
                             let recv = self.temp(value.ty.clone());
                             let at = self.mk(ExprKind::Local(recv), value.ty.clone(), span);
-                            self.cx.pending.push(Stmt::Let(recv, Some(value)));
+                            self.cx.pending.push_let(recv, value);
                             let len = self.mk(
                                 ExprKind::Call(len_fn, vec![Arg::Value(at.clone())]),
                                 Ty::Int,

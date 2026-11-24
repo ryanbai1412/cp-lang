@@ -408,7 +408,7 @@ impl<'a> Lowerer<'a> {
                         let first = values.next().map(Box::new);
                         let held = lw.temp(want.clone());
                         let filled = lw.mk(ExprKind::Fill(dims, first), want.clone(), at);
-                        out.push(Stmt::Let(held, Some(filled)));
+                        out.push_let(held, filled);
                         for (i, value) in values.enumerate() {
                             // The cell's place along each index, last index fastest.
                             let mut rest = i + 1;
@@ -430,7 +430,7 @@ impl<'a> Lowerer<'a> {
                             };
                             out.push(Stmt::Assign(cell, AssignOp::Set, value));
                         }
-                        out.push(Stmt::Give(lw.local(held, at)));
+                        out.push_give(lw.local(held, at));
                     }));
                 }
             }
@@ -558,7 +558,7 @@ impl<'a> Lowerer<'a> {
                     len: k_val,
                 });
             }
-            out.push(Stmt::Give(fill_expr));
+            out.push_give(fill_expr);
         })
     }
 

@@ -84,7 +84,7 @@ impl<'a> Lowerer<'a> {
                             lw.shifted(field, b, span)
                         })
                         .collect();
-                    out.push(Stmt::Give(lw.mk(ExprKind::Tuple(parts), to, span)));
+                    out.push_give(lw.mk(ExprKind::Tuple(parts), to, span));
                 })
             }
             Ty::Opt(inner) => self.do_expr(Some(&to.clone()), span, |lw, out| {
@@ -94,7 +94,7 @@ impl<'a> Lowerer<'a> {
                 let inside = lw.shifted(inside, b, span);
                 let some_val = lw.mk_some(inside, to.clone(), span);
                 let none = lw.mk(ExprKind::None, to.clone(), span);
-                out.push(Stmt::Give(lw.mk_if(some, some_val, none, to, span)));
+                out.push_give(lw.mk_if(some, some_val, none, to, span));
             }),
             Ty::Array { dims, elem } if dims.len() > 1 => {
                 let cell = self.shifted_ty(&elem).expect("a cell that shifts");
@@ -107,7 +107,7 @@ impl<'a> Lowerer<'a> {
                             let len =
                                 lw.mk(ExprKind::Builtin(Builtin::AxisLen, args), Ty::Int, span);
                             let slot = lw.temp(Ty::Int);
-                            out.push(Stmt::Let(slot, Some(len)));
+                            out.push_let(slot, len);
                             lw.local(slot, span)
                         })
                         .collect();
@@ -115,7 +115,7 @@ impl<'a> Lowerer<'a> {
                     let flat = lw.hold(flat, out);
                     let zero = lw.int_lit(0, span);
                     let rows = lw.nest_rows(&flat, &lens, &cell, zero, span);
-                    out.push(Stmt::Give(rows));
+                    out.push_give(rows);
                 })
             }
             from => {

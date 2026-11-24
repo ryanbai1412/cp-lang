@@ -85,7 +85,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let tmp = self.temp(value_expr.ty.clone());
-        before.push(Stmt::Let(tmp, Some(value_expr)));
+        before.push_let(tmp, value_expr);
         let local = self.local(tmp, value.span);
         let test = self.pattern(pat, &local, binds);
         Some(test.unwrap_or_else(|| self.mk(ExprKind::Bool(true), Ty::Bool, value.span)))

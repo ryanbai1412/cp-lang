@@ -208,7 +208,7 @@ impl<'a> Lowerer<'a> {
                         {
                             let tag_expr = self.do_expr(Some(&Ty::Int), index.span, |lw, stmts| {
                                 let tmp = lw.temp(Ty::Enum(eid));
-                                stmts.push(Stmt::Let(tmp, Some(value)));
+                                stmts.push_let(tmp, value);
                                 let mut acc = lw.int_lit((count - 1) as i64, index.span);
                                 for tag in (0..count - 1).rev() {
                                     let is_t = lw.mk(
@@ -222,7 +222,7 @@ impl<'a> Lowerer<'a> {
                                     let idx_lit = lw.int_lit(tag as i64, index.span);
                                     acc = lw.mk_if(is_t, idx_lit, acc, Ty::Int, index.span);
                                 }
-                                stmts.push(Stmt::Give(acc));
+                                stmts.push_give(acc);
                             });
                             out.push(self.cast(Cast::Raw, tag_expr, Ty::Int));
                             continue;

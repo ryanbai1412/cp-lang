@@ -154,7 +154,7 @@ impl<'a> Lowerer<'a> {
                     let label = self.coerce(label, &Ty::Int, value.span);
                     let at = self.domain_try_label(id, label, value.span);
                     let slot = self.temp(at.ty.clone());
-                    before.push(Stmt::Let(slot, Some(at)));
+                    before.push_let(slot, at);
                     let held = self.local(slot, value.span);
                     let present = self.mk_is_some(held.clone(), Ty::Bool, value.span);
                     let inner = self.mk_unwrap(held, false, Ty::Pos(id), value.span);
@@ -170,7 +170,7 @@ impl<'a> Lowerer<'a> {
             let value_expr = self.expr(value, None);
             if self.is_enum_ty(&value_expr.ty) {
                 let tmp = self.temp(value_expr.ty.clone());
-                before.push(Stmt::Let(tmp, Some(value_expr)));
+                before.push_let(tmp, value_expr);
                 let local = self.local(tmp, value.span);
                 let test = self.pattern(pat, &local, binds);
                 return Some(
@@ -210,7 +210,7 @@ impl<'a> Lowerer<'a> {
             ty: value_expr.ty.clone(),
             span,
         };
-        out.push(Stmt::Let(slot, Some(value_expr)));
+        out.push_let(slot, value_expr);
         let present = Expr {
             kind: ExprKind::IsSome(Box::new(held.clone())),
             ty: Ty::Bool,
@@ -333,7 +333,7 @@ impl<'a> Lowerer<'a> {
             ty: Ty::Bool,
             span,
         };
-        out.push(Stmt::Let(done, Some(flag(false))));
+        out.push_let(done, flag(false));
         for arm in arms {
             self.cx.scopes.push(HashMap::new());
             let mut body = Vec::new();

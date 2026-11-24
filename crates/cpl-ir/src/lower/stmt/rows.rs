@@ -121,10 +121,7 @@ impl<'a> Lowerer<'a> {
         };
         let changed = asked.then(|| {
             let changed = self.temp(Ty::Bool);
-            out.push(Stmt::Let(
-                changed,
-                Some(self.mk(ExprKind::Bool(false), Ty::Bool, span)),
-            ));
+            out.push_let(changed, self.mk(ExprKind::Bool(false), Ty::Bool, span));
             changed
         });
         // The cell of the target the loop is at.
@@ -196,7 +193,7 @@ impl<'a> Lowerer<'a> {
                 let (their_lo, their_hi) = (self.hold(their_lo, out), self.hold(their_hi, out));
                 let step = self.mk_binary(BinOp::Add, their_lo.clone(), offset, Ty::Int, span);
                 let step = self.cast(Cast::Trust, step, slot_ty(their_dims[their_axis]));
-                body.push(Stmt::Let(their_at, Some(step)));
+                body.push_let(their_at, step);
                 let their_count = self.mk_binary(BinOp::Sub, their_hi, their_lo, Ty::Int, span);
                 (
                     self.mk_index(other, their_cell, elem.clone(), value.span),
@@ -561,10 +558,7 @@ impl<'a> Lowerer<'a> {
     ) -> Option<Slot> {
         let changed = asked.then(|| {
             let changed = self.temp(Ty::Bool);
-            out.push(Stmt::Let(
-                changed,
-                Some(self.mk(ExprKind::Bool(false), Ty::Bool, span)),
-            ));
+            out.push_let(changed, self.mk(ExprKind::Bool(false), Ty::Bool, span));
             changed
         });
         let value = self.coerce(value, &place.ty, span);

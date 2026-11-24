@@ -289,10 +289,7 @@ impl<'a> Lowerer<'a> {
         };
         self.do_expr(Some(&ty), span, |lw, out| {
             let slot = lw.temp(ty.clone());
-            out.push(Stmt::Let(
-                slot,
-                Some(lw.mk(ExprKind::None, ty.clone(), span)),
-            ));
+            out.push_let(slot, lw.mk(ExprKind::None, ty.clone(), span));
             let place = Place {
                 kind: PlaceKind::Local(slot),
                 ty: ty.clone(),
@@ -302,7 +299,7 @@ impl<'a> Lowerer<'a> {
             body.push(Stmt::Break(Some(lid)));
             let yes = lw.mk(ExprKind::Bool(true), Ty::Bool, span);
             out.push(Stmt::While(lid, yes, Block { stmts: body }));
-            out.push(Stmt::Give(lw.local(slot, span)));
+            out.push_give(lw.local(slot, span));
         })
     }
 
@@ -323,7 +320,7 @@ impl<'a> Lowerer<'a> {
             // Hoisted ahead of the left side of `??`, inside its loop: a
             // `break` from a value block would not reach the loop in C++.
             let slot = self.temp(opt.ty.clone());
-            self.cx.pending.push(Stmt::Let(slot, Some(opt)));
+            self.cx.pending.push_let(slot, opt);
             let held = self.local(slot, span);
             let is_some = self.mk_is_some(held.clone(), Ty::Bool, span);
             let is_none = self.mk_unary(UnOp::Not, is_some, Ty::Bool, span);
@@ -342,7 +339,7 @@ impl<'a> Lowerer<'a> {
             .unwrap_or_else(|| Ty::opt((*inner_ty).clone()));
         self.do_expr(Some(&inner_ty), span, |lw, out| {
             let slot = lw.temp(opt.ty.clone());
-            out.push(Stmt::Let(slot, Some(opt)));
+            out.push_let(slot, opt);
             let held = lw.local(slot, span);
             let is_some = lw.mk_is_some(held.clone(), Ty::Bool, span);
             let is_none = lw.mk_unary(UnOp::Not, is_some, Ty::Bool, span);
@@ -355,7 +352,7 @@ impl<'a> Lowerer<'a> {
                 Block::default(),
             ));
             let val = lw.mk_unwrap(held, false, (*inner_ty).clone(), span);
-            out.push(Stmt::Give(val));
+            out.push_give(val);
         })
     }
 }
