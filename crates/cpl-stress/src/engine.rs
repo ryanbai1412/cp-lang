@@ -12,14 +12,15 @@
 //!   `cpl-wasm` in the browser.
 
 use crate::choices::{self, Drawn};
-use crate::cli::{report_json, swap_in_part_brutes, Stage};
+use crate::cli::{swap_in_part_brutes, Stage};
 use crate::judge::{first_difference, Judge, Verdict};
 use crate::program::Program;
-use crate::run::{stress_with, InputSource, Options, Report, StressError};
+use crate::report::StressResult;
+use crate::run::{stress_with, InputSource, Options, StressError};
 use crate::spec::InputSpec;
 use cpl_diag::Severity;
 use cpl_interp::trace::{
-    explain_divergence, stages as trace_stages, stuck_divergence, Divergence, TraceConfig,
+    explain_divergence, stages as trace_stages, stuck_divergence, TraceConfig,
 };
 use std::time::Duration;
 
@@ -404,34 +405,6 @@ impl ChoiceSource for InterpChoices {
     }
 }
 
-/// Full outcome of an in-process stress run, serializable to the same JSON as
-/// `cpl stress --format json`.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct SourceStressResult {
-    pub report: Report,
-    pub stages: Vec<Stage>,
-    pub explained: Option<Result<Option<Divergence>, String>>,
-    /// The runtime error the failing case stops the solution (or the
-    /// brute, for `brute RE`) with, as `cpl check --format json` gives it.
-    pub error: Option<String>,
-}
-
-impl SourceStressResult {
-    /// Serializes to the exact JSON format of `cpl stress --format json`.
-    pub fn to_json(&self) -> String {
-        report_json(
-            &self.report,
-            None,
-            &self.stages,
-            None,
-            self.explained.as_ref(),
-            self.error.as_deref(),
-            false,
-            None,
-        )
-    }
-}
-
 /// Runs stress testing completely in-process (no filesystem, no subprocesses, no
 /// threads) on CP Lang `source`, using the shared generator and shrinker.
 pub fn stress_source(
@@ -440,7 +413,7 @@ pub fn stress_source(
     options: &Options,
     stack_limit: Option<u32>,
     explain: bool,
-) -> Result<SourceStressResult, StressError> {
+) -> Result<StressResult, StressError> {
     let mut db = cpl_check::Database::new();
     db.set_file(name, source);
     let analysis = db
@@ -641,18 +614,19 @@ pub fn stress_source(
                     source,
                     &failure.input,
                     &failure.got,
-                    true,
                     stack_limit,
-                );
+                )
+                .map(|t| t.json());
             }
             _ => return None,
         };
-        crate::explain::trap_report_in(path, source, &failure.input, brute, true, stack_limit)
+        crate::explain::trap_report_in(path, source, &failure.input, brute, stack_limit)
+            .map(|t| t.json())
     });
-    Ok(SourceStressResult {
-        report,
+    Ok(StressResult {
         stages,
         explained,
-        error,
+        trap: error,
+        ..StressResult::new(report)
     })
 }

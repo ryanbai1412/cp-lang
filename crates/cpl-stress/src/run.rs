@@ -96,7 +96,7 @@ pub struct Failure {
     pub saved: bool,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct Report {
     /// How many cases ran, the failing one included.
     pub cases: usize,

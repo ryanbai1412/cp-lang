@@ -17,15 +17,42 @@ use std::path::Path;
 const LIMIT: std::time::Duration = std::time::Duration::from_secs(10);
 
 pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
-    trap_report(path, input, false, false)
+    trap_report(path, input, false).map(|trapped| trapped.text())
+}
+
+/// Where a debug run stopped: the trap as a diagnostic on the file.
+pub struct Trapped {
+    diagnostic: cpl_diag::Diagnostic,
+    name: String,
+    text: String,
+}
+
+impl Trapped {
+    fn new(diagnostic: cpl_diag::Diagnostic, name: &str, text: &str) -> Trapped {
+        Trapped {
+            diagnostic,
+            name: name.to_string(),
+            text: text.to_string(),
+        }
+    }
+
+    /// As `cpl run` prints it.
+    pub fn text(&self) -> String {
+        let lines = cpl_diag::LineIndex::new(&self.text);
+        cpl_diag::render(&self.diagnostic, &self.name, &self.text, &lines)
+    }
+
+    /// As `cpl check --format json` gives it.
+    pub fn json(&self) -> cpl_json::Value {
+        cpl_diag::json::diagnostic(&self.diagnostic, &cpl_diag::LineIndex::new(&self.text))
+    }
 }
 
 /// Where a debug run of the file's solution, or with `brute` of its own
-/// `@alt(program)` fn, stops on `input`: the trap with its locals, rendered
-/// as `cpl run` prints it or, with `json`, as `cpl check --format json` does.
-pub fn trap_report(path: &Path, input: &str, brute: bool, json: bool) -> Option<String> {
+/// `@alt(program)` fn, stops on `input`: the trap with its locals.
+pub fn trap_report(path: &Path, input: &str, brute: bool) -> Option<Trapped> {
     let text = std::fs::read_to_string(path).ok()?;
-    trap_report_in(path, &text, input, brute, json, None)
+    trap_report_in(path, &text, input, brute, None)
 }
 
 /// [`trap_report`] of `text` in place of the file's own source, such as the
@@ -37,9 +64,8 @@ pub fn trap_report_in(
     text: &str,
     input: &str,
     brute: bool,
-    json: bool,
     stack_limit: Option<u32>,
-) -> Option<String> {
+) -> Option<Trapped> {
     let (name, analysis) = analyzed(path, text)?;
     let text = text.to_string();
     let program = match brute {
@@ -68,7 +94,7 @@ pub fn trap_report_in(
     let mut diagnostic = trap.to_diagnostic(&name, &lines);
     // The locals where it stopped, as `cpl run` names them.
     if stack_limit.is_some() {
-        return Some(render(&diagnostic, &name, &text, &lines, json));
+        return Some(Trapped::new(diagnostic, &name, &text));
     }
     let config = cpl_interp::trace::trap_config(&text);
     let tail = cpl_interp::trace::resumed_tail(
@@ -90,33 +116,19 @@ pub fn trap_report_in(
     if let Some(locals) = locals {
         diagnostic = diagnostic.with_note(format!("locals: {locals}"));
     }
-    Some(render(&diagnostic, &name, &text, &lines, json))
-}
-
-fn render(
-    diagnostic: &cpl_diag::Diagnostic,
-    name: &str,
-    text: &str,
-    lines: &cpl_diag::LineIndex,
-    json: bool,
-) -> String {
-    match json {
-        true => cpl_diag::json::diagnostic(diagnostic, lines).to_string(),
-        false => cpl_diag::render(diagnostic, name, text, lines),
-    }
+    Some(Trapped::new(diagnostic, &name, &text))
 }
 
 /// The trap the file's `@check` fn stops at, judging `got` for `input`,
-/// rendered as `cpl check` renders a diagnostic. `None` when it has no
+/// `None` when it has no
 /// `@check` fn, or the fn accepts or rejects the output without a trap.
 pub fn checker_trap_in(
     path: &Path,
     text: &str,
     input: &str,
     got: &str,
-    json: bool,
     stack_limit: Option<u32>,
-) -> Option<String> {
+) -> Option<Trapped> {
     let (name, analysis) = analyzed(path, text)?;
     let (checker, _) = cpl_ir::checker(&analysis)?;
     let program = cpl_ir::lower_checker(&analysis, &checker).ok()?;
@@ -138,7 +150,7 @@ pub fn checker_trap_in(
     }
     let lines = cpl_diag::LineIndex::new(text);
     let diagnostic = trap.to_diagnostic(&name, &lines);
-    Some(render(&diagnostic, &name, text, &lines, json))
+    Some(Trapped::new(diagnostic, &name, text))
 }
 
 /// What the debug interpreter prints running the `.cp` file at `path` on

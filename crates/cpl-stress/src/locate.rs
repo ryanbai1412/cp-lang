@@ -95,19 +95,25 @@ pub fn run_with(
         traced.and_then(|traced| traced.divergence)
     };
     if json {
-        let field = |v: Option<&String>| v.map_or("null".into(), |v| cpl_json::escape_string(v));
-        let _ = writeln!(
-            stdout,
-            "{{\"input\":{},\"part\":{},\"alt\":{},\"output\":{},\"alt_output\":{},\"divergence\":{}}}",
-            cpl_json::escape_string(&shown),
-            field(located.as_ref().map(|l| &l.part)),
-            field(located.as_ref().map(|l| &l.alt)),
-            field(located.as_ref().map(|l| &l.output)),
-            field(located.as_ref().map(|l| &l.alt_output)),
-            (located.as_ref())
-                .and_then(|_| divergence())
-                .map_or("null".into(), |d| crate::cli::divergence_json(&d)),
-        );
+        let field = |v: Option<&String>| {
+            v.map_or(cpl_json::Value::Null, |v| cpl_json::Value::from(v.as_str()))
+        };
+        let report = cpl_json::obj([
+            ("input", cpl_json::Value::from(shown.as_str())),
+            ("part", field(located.as_ref().map(|l| &l.part))),
+            ("alt", field(located.as_ref().map(|l| &l.alt))),
+            ("output", field(located.as_ref().map(|l| &l.output))),
+            ("alt_output", field(located.as_ref().map(|l| &l.alt_output))),
+            (
+                "divergence",
+                (located.as_ref())
+                    .and_then(|_| divergence())
+                    .map_or(cpl_json::Value::Null, |d| {
+                        crate::report::divergence_json(&d)
+                    }),
+            ),
+        ]);
+        let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
     } else {
         match &located {
             None => {

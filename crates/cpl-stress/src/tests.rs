@@ -652,29 +652,36 @@ mod cli {
             file, "--fast", &bad, "--brute", &good, "--cases", "300", "--format", "json",
         ]);
         assert_eq!(code, 1);
-        assert!(
-            out.starts_with("{\"status\":\"fail\",\"case_count\":"),
-            "{out}"
-        );
+        let report = cpl_json::parse(&out).unwrap();
+        assert_eq!(report.at(&["status"]).as_str(), Some("fail"), "{out}");
+        let case = report.at(&["counterexample"]);
         // The case the text run saved runs first and still fails.
-        assert!(
-            out.contains("\"raw_input\":\"1 1\\n1001\\n1 1\\n\""),
+        assert_eq!(
+            case.at(&["raw_input"]).as_str(),
+            Some("1 1\n1001\n1 1\n"),
             "{out}"
         );
-        assert!(out.contains("\"rerun\":true"), "{out}");
+        assert_eq!(case.at(&["rerun"]).as_bool(), Some(true), "{out}");
+        assert_eq!(case.at(&["verdict"]).as_str(), Some("WA"), "{out}");
+        // No `debug(...)` ran on both sides: these are scripts.
+        assert_eq!(
+            case.at(&["stages"]).as_array().map(<[_]>::len),
+            Some(0),
+            "{out}"
+        );
+        assert!(case.at(&["saved"]).as_str().is_some(), "{out}");
         assert!(
-            // No `debug(...)` ran on both sides: these are scripts.
-            out.contains("\"verdict\":\"WA\",\"stages\":[],\"saved\":\"")
-                && out.contains(",\"trace\":null}"),
+            case.at(&["trace"]).is_null() && case.get("trace").is_some(),
             "{out}"
         );
         let (_, out, _) = stress(&[
             file, "--fast", &good, "--brute", &good, "--cases", "5", "--format", "json",
         ]);
-        assert!(
-            out.starts_with("{\"status\":\"ok\",\"case_count\":5,\"saved_count\":1,\"tried\":\""),
-            "{out}"
-        );
+        let report = cpl_json::parse(&out).unwrap();
+        assert_eq!(report.at(&["status"]).as_str(), Some("ok"), "{out}");
+        assert_eq!(report.at(&["case_count"]).as_i64(), Some(5), "{out}");
+        assert_eq!(report.at(&["saved_count"]).as_i64(), Some(1), "{out}");
+        assert!(report.at(&["tried"]).as_str().is_some(), "{out}");
         std::fs::remove_dir_all(dir).unwrap();
     }
 

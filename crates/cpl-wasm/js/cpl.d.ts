@@ -100,9 +100,19 @@ export interface StressStage {
 export interface StressDivergence {
   name: string;
   nth: number;
+  /** `name` is a call, `f(k: 1)`, and `nth` which call of `f` it is. */
+  call: boolean;
+  /** The solution never finishes: `name` is the loop it goes round in. */
+  stuck?: true;
   fast: { line: number; value: string } | null;
   brute: { line: number; value: string } | null;
+  /** The solution's own last steps in the wrong call. */
+  inside?: { line: number; locals: string }[];
+  /** The lines to look at, each with why. */
+  blame?: { line: number; why: string }[];
 }
+
+export type StressVerdict = "WA" | "RE" | "TLE" | "MLE" | "brute RE" | "checker RE" | "interactor RE";
 
 export interface StressCounterexample {
   case: number;
@@ -113,16 +123,25 @@ export interface StressCounterexample {
   raw_input: string;
   expected: string;
   got: string;
-  verdict: "WA" | "RE" | "TLE" | "MLE";
+  verdict: StressVerdict;
+  /** The trap the case stops at, as `cpl check --format json` gives a diagnostic. */
+  error?: Diagnostic;
+  /** The built solution and the interpreter disagree on the case (CLI only). */
+  toolchain_bug?: true;
   stages: StressStage[];
+  /** Where the case was saved; null in the browser. */
   saved: string | null;
+  /** The case was a saved one, run again. */
+  rerun: boolean;
+  /** Where its trace was written; null in the browser. */
   trace: string | null;
   explain?: { divergence: StressDivergence | null } | { error: string };
 }
 
+/** Keys are sorted; the CLI's `cpl stress --format json` prints the same bytes, but `build` (CLI only). */
 export type StressOutcome =
-  | { status: "ok"; cases: number }
-  | { status: "fail"; cases: number; counterexample: StressCounterexample }
+  | { status: "ok"; build?: string; case_count: number; saved_count: number; tried: string }
+  | { status: "fail"; build?: string; case_count: number; counterexample: StressCounterexample }
   | { status: "error"; error: string };
 
 /** One call replayed with its fn edited; values are trace JSON. */

@@ -47,7 +47,7 @@ fn a_runtime_error_in_the_in_process_report_is_a_diagnostic() {
     for stack in [Some(1 << 26), None] {
         let json = stress_source("o.cp", source, &options, stack, false)
             .unwrap()
-            .to_json();
+            .render();
         let report = cpl_json::parse(&json).unwrap();
         let error = report
             .get("counterexample")
@@ -72,7 +72,7 @@ fn a_trapping_checker_in_process_is_a_checker_re() {
     let result = stress_source("c.cp", source, &options, Some(1 << 26), false).unwrap();
     let failure = result.report.failure.expect("the checker fails");
     assert_eq!(failure.verdict.code(), "checker RE", "{failure:?}");
-    let error = result.error.expect("the checker's trap");
-    assert!(error.contains("\"code\":\"R0101\""), "{error}");
-    assert!(error.contains("\"line\":9"), "{error}");
+    let error = result.trap.expect("the checker's trap");
+    assert_eq!(error.at(&["code"]).as_str(), Some("R0101"), "{error:?}");
+    assert_eq!(error.at(&["start", "line"]).as_i64(), Some(9), "{error:?}");
 }

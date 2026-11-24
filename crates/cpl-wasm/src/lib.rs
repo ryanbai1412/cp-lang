@@ -368,11 +368,8 @@ impl Playground {
             None
         };
         match cpl_stress::stress_source(name, source, &options, stack_limit, true) {
-            Ok(result) => result.to_json(),
-            Err(error) => format!(
-                "{{\"status\":\"error\",\"error\":{}}}\n",
-                cpl_json::escape_string(&error.0)
-            ),
+            Ok(result) => result.render(),
+            Err(error) => cpl_stress::report::render_error(&error),
         }
     }
 
@@ -388,13 +385,11 @@ impl Playground {
                 cpl_stress::generate(&spec, &mut cpl_stress::Rng::new(seed), size)
                     .ok_or_else(|| "no input fits its `read()` types".to_string())
             });
-        match made {
-            Ok(case) => format!(
-                "{{\"input\":{}}}\n",
-                cpl_json::escape_string(&case.render())
-            ),
-            Err(error) => format!("{{\"error\":{}}}\n", cpl_json::escape_string(&error)),
-        }
+        let report = match made {
+            Ok(case) => cpl_json::obj([("input", case.render().into())]),
+            Err(error) => cpl_json::obj([("error", error.into())]),
+        };
+        format!("{}\n", cpl_json::to_string(&report))
     }
 
     /// `cpl build`: checks `source`, then writes it as one C++17 file.

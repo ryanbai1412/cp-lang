@@ -2,10 +2,9 @@
 
 use crate::judge::{declared, Judge};
 use crate::program::Program;
-use crate::run::{save, stress_with_cold, Options, Report, Source};
+use crate::run::{save, stress_with_cold, Options, Source};
 use crate::spec::InputSpec;
 use cpl_diag::Span;
-use cpl_interp::trace::Divergence;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -337,108 +336,6 @@ pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result
 }
 
 use cpl_diag::Shown;
-use cpl_json::escape_string as json_string;
-
-/// One divergence as JSON, as `cpl stress --json` (under `explain`) and
-/// `cpl locate --json` give it.
-pub fn divergence_json(d: &Divergence) -> String {
-    let side = |side: &Option<(u32, String)>| {
-        side.as_ref().map_or("null".to_string(), |(line, value)| {
-            format!("{{\"line\":{line},\"value\":{}}}", json_string(value))
-        })
-    };
-    let inside = if d.inside.is_empty() {
-        String::new()
-    } else {
-        let steps: Vec<_> = (d.inside.iter())
-            .map(|(line, locals)| format!("{{\"line\":{line},\"locals\":{}}}", json_string(locals)))
-            .collect();
-        format!(",\"inside\":[{}]", steps.join(","))
-    };
-    let blame = if d.blame.is_empty() {
-        String::new()
-    } else {
-        let lines: Vec<_> = (d.blame.iter())
-            .map(|(line, why)| format!("{{\"line\":{line},\"why\":{}}}", json_string(why)))
-            .collect();
-        format!(",\"blame\":[{}]", lines.join(","))
-    };
-    let stuck = if d.stuck { ",\"stuck\":true" } else { "" };
-    format!(
-        "{{\"name\":{},\"nth\":{},\"call\":{}{stuck},\"fast\":{},\"brute\":{}{inside}{blame}}}",
-        json_string(&d.name),
-        d.nth,
-        d.call,
-        side(&d.fast),
-        side(&d.brute),
-    )
-}
-
-/// The report in the shape the editor reads (`editors/vscode/README.md`).
-#[allow(clippy::too_many_arguments)]
-pub fn report_json(
-    report: &Report,
-    saved: Option<&Path>,
-    stages: &[Stage],
-    trace: Option<&Path>,
-    explained: Option<&Result<Option<Divergence>, String>>,
-    error: Option<&str>,
-    toolchain_bug: bool,
-    build: Option<&str>,
-) -> String {
-    let build = build.map_or(String::new(), |build| {
-        format!(",\"build\":{}", json_string(build))
-    });
-    let Some(failure) = &report.failure else {
-        return format!(
-            "{{\"status\":\"ok\"{build},\"case_count\":{},\"saved_count\":{},\"tried\":{}}}\n",
-            report.cases,
-            report.saved,
-            json_string(&report.reached.describe())
-        );
-    };
-    let stages: Vec<String> = stages
-        .iter()
-        .map(|stage| {
-            format!(
-                "{{\"name\":{},\"line\":{},\"fast\":{},\"brute\":{}}}",
-                json_string(&stage.name),
-                stage.line,
-                json_string(&stage.fast),
-                json_string(&stage.brute)
-            )
-        })
-        .collect();
-    let path =
-        |path: Option<&Path>| path.map_or("null".to_string(), |path| json_string(&path.shown()));
-    let explain = match explained {
-        None => String::new(),
-        Some(Ok(None)) => ",\"explain\":{\"divergence\":null}".to_string(),
-        Some(Ok(Some(d))) => format!(",\"explain\":{{\"divergence\":{}}}", divergence_json(d)),
-        Some(Err(why)) => format!(",\"explain\":{{\"error\":{}}}", json_string(why)),
-    };
-    let error = error.map_or(String::new(), |error| format!(",\"error\":{error}"));
-    let toolchain = match toolchain_bug {
-        true => ",\"toolchain_bug\":true",
-        false => "",
-    };
-    format!(
-        "{{\"status\":\"fail\"{build},\"case_count\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error}{toolchain},\"stages\":[{}],\"saved\":{},\"rerun\":{},\"trace\":{}{explain}}}}}\n",
-        report.cases,
-        failure.case,
-        failure.seed,
-        json_string(failure.described.as_deref().unwrap_or(failure.input.trim_end())),
-        json_string(&failure.input),
-        // A Windows build writes CRLF; the report reads the same on every OS.
-        json_string(&failure.expected),
-        json_string(&failure.got),
-        json_string(failure.verdict.code()),
-        stages.join(","),
-        path(saved),
-        failure.saved,
-        path(trace),
-    )
-}
 
 /// `1st`, `2nd`, `3rd`, `11th`.
 /// Where the solution and its alt part ways, as `cpl stress` and
@@ -884,11 +781,11 @@ pub fn run_with(
     };
     // Where a debug run of the brute stops: its own `@alt(program)` fn, or
     // the file with its `@alt(f)` fns swapped in.
-    let brute_trap = |input: &str, json: bool| match (&own_brute, &part_brute) {
+    let brute_trap = |input: &str| match (&own_brute, &part_brute) {
         _ if args.fast.is_some() => None,
-        (Some(_), _) => crate::explain::trap_report(&args.file, input, true, json),
+        (Some(_), _) => crate::explain::trap_report(&args.file, input, true),
         (None, Some(swapped)) => {
-            crate::explain::trap_report_in(&args.file, swapped, input, false, json, None)
+            crate::explain::trap_report_in(&args.file, swapped, input, false, None)
         }
         (None, None) => None,
     };
@@ -897,16 +794,17 @@ pub fn run_with(
         .filter(|_| args.json && args.fast.is_none())
         .and_then(|failure| match failure.verdict {
             crate::Verdict::RuntimeError(_) => {
-                crate::explain::trap_report(&args.file, &failure.input, false, true)
+                crate::explain::trap_report(&args.file, &failure.input, false).map(|t| t.json())
             }
-            crate::Verdict::BruteError(_) => brute_trap(&failure.input, true),
+            crate::Verdict::BruteError(_) => brute_trap(&failure.input).map(|t| t.json()),
             crate::Verdict::JudgeError("interactor", _) => match &judge {
                 Judge::Interactor(interactor) => crate::judge::interactor_trap_json(
                     &fast,
                     interactor,
                     &failure.input,
                     args.options.limit,
-                ),
+                )
+                .and_then(|json| cpl_json::parse(&json).ok()),
                 _ => None,
             },
             crate::Verdict::JudgeError("checker", _) => {
@@ -916,31 +814,26 @@ pub fn run_with(
                         &text,
                         &failure.input,
                         &failure.got,
-                        true,
                         None,
                     )
+                    .map(|t| t.json())
                 })
             }
             _ => None,
         });
     if args.json {
-        let _ = write!(
-            stdout,
-            "{}",
-            report_json(
-                &report,
-                saved.as_deref(),
-                stages,
-                trace_path.as_deref(),
-                explained.as_ref(),
-                trap_json.as_deref(),
-                report
-                    .failure
-                    .as_ref()
-                    .is_some_and(|failure| toolchain_bug(&args, failure)),
-                build_stamp(&args, &src).as_deref(),
-            )
-        );
+        let toolchain_bug = (report.failure.as_ref()).is_some_and(|f| toolchain_bug(&args, f));
+        let result = crate::StressResult {
+            build: build_stamp(&args, &src),
+            saved: saved.as_deref().map(|path| path.shown()),
+            trace: trace_path.as_deref().map(|path| path.shown()),
+            stages: stages.to_vec(),
+            explained: explained.clone(),
+            trap: trap_json,
+            toolchain_bug,
+            report: report.clone(),
+        };
+        let _ = write!(stdout, "{}", result.render());
         return report.failure.is_some() as u8;
     }
     let judged_by = match &judge {
@@ -1087,7 +980,7 @@ pub fn run_with(
         }
         crate::Verdict::BruteError(why) => {
             let brute_name = brute.as_ref().map_or("brute", |b| b.name.as_str());
-            let trap = brute_trap(&failure.input, false);
+            let trap = brute_trap(&failure.input).map(|t| t.text());
             let _ = match trap {
                 Some(trap) => writeln!(
                     stdout,

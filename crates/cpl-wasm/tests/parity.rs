@@ -292,6 +292,21 @@ fn error_and_trap_stderr_matches_cli_verbatim() {
     }
 }
 
+/// The CLI's stress JSON as the browser gives it: `saved` is a path and
+/// `build` the toolchain, neither of which a browser has.
+fn cli_as_browser(json: &str) -> Value {
+    let mut value = cpl_json::parse(json).expect("valid CLI JSON");
+    if let Value::Object(members) = &mut value {
+        members.remove("build");
+        if let Some(Value::Object(ce)) = members.get_mut("counterexample") {
+            if let Some(saved) = ce.get_mut("saved") {
+                *saved = Value::Null;
+            }
+        }
+    }
+    value
+}
+
 #[test]
 fn stress_matches_cpl_stress_json() {
     let dir = std::env::temp_dir().join(format!("cpl-wasm-stress-parity-{}", std::process::id()));
@@ -337,16 +352,8 @@ fn slow():
     let cli_json = String::from_utf8(cli.stdout).unwrap();
     let wasm_json = playground.stress(bug_name, buggy, 50, 1, 6);
 
-    let mut cli_val = cpl_json::parse(&cli_json).expect("valid CLI JSON");
+    let cli_val = cli_as_browser(&cli_json);
     let wasm_val = cpl_json::parse(&wasm_json).expect("valid wasm JSON");
-    // Normalize `saved` (filesystem path on CLI, null in wasm).
-    if let Value::Object(members) = &mut cli_val {
-        if let Some(Value::Object(ce)) = members.get_mut("counterexample") {
-            if let Some(saved) = ce.get_mut("saved") {
-                *saved = Value::Null;
-            }
-        }
-    }
     assert_eq!(wasm_val, cli_val, "wasm:\n{wasm_json}\ncli:\n{cli_json}");
     assert_eq!(wasm_val.at(&["status"]).as_str(), Some("fail"));
     assert_eq!(
@@ -371,7 +378,8 @@ fn slow():
     ]);
     assert_eq!(cli_ok.code, 0, "{}", cli_ok.stderr);
     let wasm_ok = playground.stress(clean_name, &clean, 20, 1, 6);
-    assert_eq!(wasm_ok, String::from_utf8(cli_ok.stdout).unwrap());
+    let cli_ok_val = cli_as_browser(&String::from_utf8(cli_ok.stdout).unwrap());
+    assert_eq!(wasm_ok, format!("{}\n", cpl_json::to_string(&cli_ok_val)));
 
     // 3. A solution that never finishes: the same shrunk case, and the
     //    loop it goes round in named alike.
@@ -398,14 +406,8 @@ fn slow():
         "json",
     ]);
     let cli_json = String::from_utf8(cli_stuck.stdout).unwrap();
-    let mut cli_val = cpl_json::parse(&cli_json).expect("valid CLI JSON");
-    if let Value::Object(members) = &mut cli_val {
-        if let Some(Value::Object(ce)) = members.get_mut("counterexample") {
-            if let Some(saved) = ce.get_mut("saved") {
-                *saved = Value::Null;
-            }
-        }
-    }
+    assert!(!cli_json.is_empty(), "{}", cli_stuck.stderr);
+    let cli_val = cli_as_browser(&cli_json);
     let wasm_json = playground.stress(stuck_name, &stuck, 5, 1, 8);
     let wasm_val = cpl_json::parse(&wasm_json).expect("valid wasm JSON");
     assert_eq!(wasm_val, cli_val, "wasm:\n{wasm_json}\ncli:\n{cli_json}");

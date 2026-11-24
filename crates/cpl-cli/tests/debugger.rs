@@ -215,19 +215,27 @@ fn stress_finds_the_planted_bug_with_the_files_own_brute_and_traces_both() {
     );
     let report = text(&out.stdout);
     assert_eq!(out.status.code(), Some(1), "{report}{}", text(&out.stderr));
-    assert!(report.starts_with("{\"status\":\"fail\""), "{report}");
+    let parsed = cpl_json::parse(&report).unwrap();
+    assert_eq!(parsed.at(&["status"]).as_str(), Some("fail"), "{report}");
+    let case = parsed.at(&["counterexample"]);
     // One test case under the `@!multitest` header, shrunk.
-    assert!(
-        report.contains("\"raw_input\":\"1\\n3\\n0 0 1\\n\""),
+    assert_eq!(
+        case.at(&["raw_input"]).as_str(),
+        Some("1\n3\n0 0 1\n"),
         "{report}"
     );
-    assert!(
-        report.contains("\"expected\":\"4\\n\",\"got\":\"3\\n\""),
-        "{report}"
-    );
+    assert_eq!(case.at(&["expected"]).as_str(), Some("4\n"), "{report}");
+    assert_eq!(case.at(&["got"]).as_str(), Some("3\n"), "{report}");
     // The `debug(\"piles\", ...)` both sides ran, with what each showed.
-    assert!(
-        report.contains("\"stages\":[{\"name\":\"case 1 · debug piles\",\"line\":17,\"fast\":\"3, 1\",\"brute\":\"4, 4\"}]"),
+    let stage = cpl_json::obj([
+        ("name", "case 1 · debug piles".into()),
+        ("line", 17.into()),
+        ("fast", "3, 1".into()),
+        ("brute", "4, 4".into()),
+    ]);
+    assert_eq!(
+        case.at(&["stages"]),
+        &cpl_json::Value::Array(vec![stage]),
         "{report}"
     );
     let page =
@@ -319,10 +327,27 @@ fn stress_explain_names_the_first_value_the_solution_and_brute_give_differently(
     );
     let out = cpl(&args(true), b"");
     let report = text(&out.stdout);
-    assert!(
-        report.contains(
-            "\"explain\":{\"divergence\":{\"name\":\"s\",\"nth\":2,\"call\":false,\"fast\":{\"line\":6,\"value\":\"4\"},\"brute\":{\"line\":12,\"value\":\"2\"},\"blame\":[{\"line\":6,\"why\":\"`s`, which line 7 prints, last changed here, to 4\"}]}}"
+    let parsed = cpl_json::parse(&report).unwrap();
+    let side =
+        |line: i64, value: &str| cpl_json::obj([("line", line.into()), ("value", value.into())]);
+    let blame = cpl_json::obj([
+        ("line", 6.into()),
+        (
+            "why",
+            "`s`, which line 7 prints, last changed here, to 4".into(),
         ),
+    ]);
+    let divergence = cpl_json::obj([
+        ("name", "s".into()),
+        ("nth", 2.into()),
+        ("call", false.into()),
+        ("fast", side(6, "4")),
+        ("brute", side(12, "2")),
+        ("blame", cpl_json::Value::Array(vec![blame])),
+    ]);
+    assert_eq!(
+        parsed.at(&["counterexample", "explain", "divergence"]),
+        &divergence,
         "{report}"
     );
     // Without the flag, nothing is traced and the report has no `explain`.

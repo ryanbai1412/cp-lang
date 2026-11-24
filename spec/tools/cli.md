@@ -115,8 +115,9 @@ per choice it explains.
 "examples", "links"}]}`.
 `cpl test --format json` prints `{"passed_count", "case_count", "cases": [{"name",
 "verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
-`cpl stress --format json` prints `{"status", "case_count", "saved_count"?,
-"tried"?, "counterexample"?}`: how many cases ran (`case_count`), then `saved_count` and
+`cpl stress --format json` prints `{"status", "build"?, "case_count", "saved_count"?,
+"tried"?, "counterexample"?}`: the toolchain that built the solution (`build`, when the
+CLI built one), how many cases ran (`case_count`), then `saved_count` and
 what it `tried` when it found no counterexample, or the `counterexample`.
 `cpl locate --json` prints `{"input", "part", "alt", "output", "alt_output",
 "divergence"}`.

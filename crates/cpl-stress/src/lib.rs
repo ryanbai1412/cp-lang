@@ -10,6 +10,7 @@ pub mod gen;
 pub mod judge;
 pub mod locate;
 pub mod program;
+pub mod report;
 pub mod rng;
 pub mod run;
 pub mod shrink;
@@ -17,11 +18,12 @@ pub mod spec;
 
 pub use engine::{
     stress_source, ChoiceSource, Engine, InterpChoices, InterpEngine, ProcessChoices,
-    ProcessEngine, SourceStressResult, Wrong, STUCK_STEPS,
+    ProcessEngine, Wrong, STUCK_STEPS,
 };
 pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
 pub use judge::{Judge, Judged, Verdict};
 pub use program::{missing_compiler, BuildError, Exit, Outcome, Program};
+pub use report::StressResult;
 pub use rng::Rng;
 pub use shrink::{fit, shrink};
 pub use spec::{InputSpec, Shape, SpecError};
