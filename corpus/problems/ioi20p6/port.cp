@@ -45,7 +45,7 @@ fn next_hop(s: Label, t: Label, near: List<Label>) -> Label:
         near.take(kids).find(c => s < t <= c) ?? near.last!
     else:
         // the mirror image: the parent first, each child opening a stretch below s
-        near.drop(1).rev().find(c => c <= t < s) ?? near[0]
+        near.drop(1).rev.find(c => c <= t < s) ?? near[0]
 
 let q: 1..=100_000 = read()
 for _ in 0..q:
