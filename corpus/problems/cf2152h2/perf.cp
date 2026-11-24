@@ -1,6 +1,5 @@
 // Tuned: the breakpoint heap keeps positions, counts and children in three parallel lists,
-// so a meld compares two plain Int positions instead of loading whole nodes, and the edges
-// sort heaviest first as packed Int keys (weight, index) instead of a stable keyed sort.
+// so a meld compares two plain Int positions instead of loading whole nodes.
 //
 // Source: Codeforces 2152H2 (Victorious Coloring, Hard Version),
 //   https://codeforces.com/contest/2152/problem/H2
@@ -68,9 +67,7 @@ fn raise(h: Int, d: Int) -> ?Int:
     rest = br.meld(br.single(cross, slope - 1 - part), rest)
     br.meld(br.single(d, 1), rest)
 
-let heaviest_first = [(1e9 - e.w) * n + i for (i, e) in edges.items].sorted()
-for key in heaviest_first:
-    let (u, v, w) = edges[key % n]
+for (u, v, w) in edges.sorted(by: e => desc(e.w)):
     let (kept, merged) = dsu.merge(u, v)!
     set[kept] = br.meld(set[kept], set[merged])
     bound[kept] += bound[merged] - 2 * w
