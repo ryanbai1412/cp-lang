@@ -370,6 +370,29 @@ fn a_lambda_in_a_generic_body_takes_the_bodys_own_type_params() {
 }
 
 #[test]
+fn a_built_in_getter_has_the_type_its_row_writes() {
+    let src = "fn f(m: Map<Int, Str>, t: Set<Int>, h: HashMap<Int, Int>) -> Int:\n    let (n, k, e, x) = (m.len, m.keys, t.first, h.len)\n    n + k.len + t.len + x + (e ?? 0)\nprint(f([1: \"a\"], Set<Int>(), HashMap<Int, Int>()))\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    let mut db = Database::new();
+    db.set_file("main.cp", src);
+    for (name, ty, at) in [
+        ("n", "Int", "n + k"),
+        ("k", "List<Int>", "k.len"),
+        ("e", "?Int", "e ??"),
+        ("x", "Int", "x + ("),
+    ] {
+        let at = src.find(at).unwrap() as u32 + 1;
+        let hover = db.hover("main.cp", at).map(|h| h.text);
+        assert!(
+            hover
+                .as_deref()
+                .is_some_and(|h| h.contains(&format!("{name}: {ty}"))),
+            "{name}: {hover:?}"
+        );
+    }
+}
+
+#[test]
 fn a_silent_unknown_names_its_cause() {
     let mut db = Database::new();
     db.set_file("main.cp", "print([])\n");

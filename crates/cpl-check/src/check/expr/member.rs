@@ -1086,6 +1086,11 @@ impl<'a> Checker<'a> {
                 }
                 return Ty::Error;
             }
+            if !self.in_call_callee {
+                if let Some(ty) = self.catalog_get_ty(&base_ty, &name.text, name.span) {
+                    return ty;
+                }
+            }
             // Members of library types, arrays and domains (`xs.len`,
             // `V.rev`) come from `std`, which is not loaded yet.
             return if base_ty == Ty::Error {
