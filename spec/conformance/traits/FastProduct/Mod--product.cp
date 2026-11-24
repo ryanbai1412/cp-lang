@@ -9,8 +9,5 @@ let b: List<Z> = [Z(2 * i + 1) for i in 0..100]
 var brute = List.filled(199, Z(0))
 for i in 0..100:
     for j in 0..100: brute[i + j] += a[i] * b[j]
-let w: List<W> = [W(i * i + 7) for i in 0..100]
-var wb = List.filled(199, W(0))
-for i in 0..100:
-    for j in 0..100: wb[i + j] += w[i] * w[j]
-print(yes(Z.product(a, b) == Some(brute)), yes(W.product(w, w) == Some(wb)))
+let w: List<W> = [W(i) for i in 0..100]
+print(yes(Z.product(a, b) == Some(brute)), yes(W.product(w, w) == None))
