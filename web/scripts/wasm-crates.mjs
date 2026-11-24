@@ -4,7 +4,8 @@
 // CI (the hosted build is the truth); each crate's owner is the domain whose
 // charter in handbook/domains/ describes it.
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 export const DATA = 'data (std source, strings)';
@@ -145,3 +146,31 @@ export function checkBudgets(rows, budgets, map) {
 
 /** A new budget for a crate measured at `gz`: 2% and 512 B of room, to the next 100. */
 export const budgetFor = (gz) => Math.ceil((gz * 1.02 + 512) / 100) * 100;
+
+/** Why the data segment of a names build's `rows` is over its budget, or null. */
+export function dataOverBudget(rows, budgets) {
+  const gz = rows.find(([crate]) => crate === DATA)?.[2];
+  const budget = budgets[DATA];
+  if (gz === undefined || budget === undefined || gz <= budget) return null;
+  return `${DATA} is ${gz.toLocaleString('en-US')} B gzipped, over its budget of ${budget.toLocaleString('en-US')}:`
+    + ' cut what the browser build embeds (crates/cpl-check/src/std_bundle.rs) or std itself, never the budget';
+}
+
+// `node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm` (a scripts/build-wasm.sh
+// --names build): the commit gate's check that the data segment is within its budget.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const at = process.argv.indexOf('--data');
+  if (at < 0 || !process.argv[at + 1]) {
+    console.error('usage: node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm');
+    process.exit(2);
+  }
+  const rows = contributors(readFileSync(process.argv[at + 1]));
+  const budgets = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'wasm-crate-budgets.json'), 'utf8'));
+  const over = dataOverBudget(rows, budgets);
+  const gz = rows.find(([crate]) => crate === DATA)?.[2] ?? 0;
+  if (over) {
+    console.error(`wasm-crates: ${over}`);
+    process.exit(1);
+  }
+  console.log(`wasm-crates: ${DATA} is ${gz.toLocaleString('en-US')} B gzipped, within its budget of ${budgets[DATA].toLocaleString('en-US')}`);
+}

@@ -37,7 +37,8 @@ pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 /// each top-level line of code, each line that declares a `fn` (a `///`
 /// doc aside), and the rest of a header still open on its next line. A fn
 /// whose body is on the lines below gets `todo` for it; the other lines
-/// are blank, so a line number in the outline is the file's.
+/// are blank, so a line number in the outline is the file's. A one-line
+/// fn with its return type written keeps `= todo` for its body.
 pub fn outline(text: &str) -> String {
     let mut out = String::with_capacity(text.len() / 4);
     let mut open = 0i32;
@@ -51,6 +52,14 @@ pub fn outline(text: &str) -> String {
         let declares = code.contains("fn ") && !comment;
         if top {
             open = 0;
+        }
+        if open == 0 && declares && nesting(code) == 0 {
+            if let Some(head) = typed_head(code) {
+                out.push_str(head);
+                out.push_str(" = todo");
+                out.push_str(&line[code.len()..]);
+                continue;
+            }
         }
         if open > 0 || top || declares {
             out.push_str(line);
@@ -77,6 +86,26 @@ pub fn outline(text: &str) -> String {
         }
     }
     out
+}
+
+/// `fn f(..) -> T` of a fn `line` writes as `fn f(..) -> T = body`: with
+/// the type written, the body says nothing a scan reads.
+fn typed_head(line: &str) -> Option<&str> {
+    let mut depth = 0i32;
+    let mut typed = false;
+    for (at, c) in line.char_indices() {
+        match c {
+            '(' | '[' => depth += 1,
+            ')' | ']' => depth -= 1,
+            _ if depth != 0 => {}
+            '-' if line[at..].starts_with("->") => typed = true,
+            '=' if typed && line[at..].starts_with("= ") && line[..at].ends_with(' ') => {
+                return Some(line[..at].trim_end());
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 /// How many more brackets `line` opens than it closes.
@@ -107,4 +136,29 @@ pub fn without_tests(text: &str) -> String {
         }
     }
     out
+}
+
+/// The words of `texts` a `.name` can be, sorted, each once: the names
+/// `call_table` gives counts for, in order, so it need not write them.
+pub fn call_names<'a>(texts: impl IntoIterator<Item = &'a str>) -> Vec<&'a str> {
+    let mut names = std::collections::BTreeSet::new();
+    for text in texts {
+        let bytes = text.as_bytes();
+        let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_';
+        let mut at = 0;
+        while at < bytes.len() {
+            if !word(bytes[at]) {
+                at += 1;
+                continue;
+            }
+            let start = at;
+            while at < bytes.len() && word(bytes[at]) {
+                at += 1;
+            }
+            if bytes[start].is_ascii_lowercase() || bytes[start] == b'_' {
+                names.insert(&text[start..at]);
+            }
+        }
+    }
+    names.into_iter().collect()
 }

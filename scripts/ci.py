@@ -476,24 +476,37 @@ class Tail:
                 self.end_step()
         return 0
 
-    def wasm(self) -> None:
+    def wasm(self) -> bool:
         """The playground build. CI's site job builds cpl-wasm itself, and a lane box
-        without the wasm32 target warns and skips."""
+        without the wasm32 target warns and skips. Whether it checked."""
         self.step("cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)")
         if os.environ.get("CI"):
             print("skipped in CI: the site build job builds cpl-wasm")
-            return
+            return False
         lib = self.run(["rustc", "--print", "target-libdir", "--target", "wasm32-unknown-unknown"],
                        cwd=ROOT, capture_output=True, text=True)
         libdir = lib.stdout.strip() if lib.returncode == 0 else ""
         if not libdir or not Path(libdir).is_dir():
             print("WARNING: skipped; the wasm32 target is not installed (run: rustup target add wasm32-unknown-unknown)",
                   file=sys.stderr)
-            return
+            return False
         env = {**os.environ, "RUSTFLAGS": f"{os.environ.get('RUSTFLAGS', '')} -D warnings"}
         if self.call(["cargo", "check", "-q", "-p", "cpl-wasm", "--target", "wasm32-unknown-unknown"], env=env):
             raise Failed("cpl-wasm does not check for wasm32; rerun:"
                          " RUSTFLAGS=-Dwarnings cargo check -p cpl-wasm --target wasm32-unknown-unknown")
+        return True
+
+    def wasm_data(self) -> None:
+        """The data segment of a names build of cpl.wasm (std's outlines and every
+        crate's strings) within its budget, so a change that grows it fails at
+        commit and land time, not later in the site job."""
+        self.step("cpl.wasm data segment within its budget (scripts/build-wasm.sh --names)")
+        out = target_dir() / "wasm-data-gate"
+        if self.call(["scripts/build-wasm.sh", "--names", str(out)]):
+            raise Failed(f"scripts/build-wasm.sh --names failed; rerun: scripts/build-wasm.sh --names {out}")
+        if self.call(["node", "web/scripts/wasm-crates.mjs", "--data", str(out / "cpl.wasm")]):
+            raise Failed("the data segment of cpl.wasm is over its budget (named above); rerun:"
+                         f" node web/scripts/wasm-crates.mjs --data {out / 'cpl.wasm'}")
 
     def _build(self) -> None:
         self.step("cargo fmt --all --check")
@@ -537,8 +550,8 @@ class Tail:
                              "normal", "--prefix", "none"], cwd=ROOT, capture_output=True, text=True)
             if tree.returncode:
                 raise Failed(f"cargo tree -p cpl-wasm failed:\n{tree.stderr}")
-            if {line.split()[0] for line in tree.stdout.splitlines() if line.strip()} & set(pkgs):
-                self.wasm()
+            if {line.split()[0] for line in tree.stdout.splitlines() if line.strip()} & set(pkgs) and self.wasm():
+                self.wasm_data()
             expr = f"({sel.get('filter', '')}){not_slow}"
             if slice_filter := sel.get("slice_filter"):
                 expr += f" & not ({slice_filter})"

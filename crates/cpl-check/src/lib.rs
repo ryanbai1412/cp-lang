@@ -27,6 +27,8 @@ mod multitest;
 mod nav;
 mod prelude;
 mod session;
+#[cfg(test)]
+mod std_bundle;
 mod std_files;
 mod ty;
 

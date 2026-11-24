@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, crateOf, DATA, ownerOf, owners, readCharters } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, crateOf, DATA, dataOverBudget, ownerOf, owners, readCharters } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -23,6 +23,13 @@ describe('wasm crate budgets', () => {
     expect(crateOf(drop)).toBe('cpl_check');
     expect(crateOf(`${drop}Csamg1HCxCxBg_7cpl_lsp`)).toBe('cpl_check');
     expect(crateOf('_RNvMNtCsiErZIu7dPQ0_4core5slice6reverseCsamg1HCxCxBg_7cpl_doc')).toBe('core');
+  });
+
+  test('the data segment over its budget is named, and within it is not', () => {
+    const rows = [['cpl_check', 10, 5], [DATA, 900, 300]];
+    expect(dataOverBudget(rows, { [DATA]: 300 })).toBeNull();
+    expect(dataOverBudget(rows, { [DATA]: 299 })).toMatch(/300 B gzipped, over its budget of 299/);
+    expect(dataOverBudget([['cpl_check', 10, 5]], { [DATA]: 1 })).toBeNull();
   });
 
   test('owners come from each charter\'s Describes row', () => {

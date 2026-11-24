@@ -5,8 +5,11 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
+#[path = "src/std_bundle.rs"]
+mod std_bundle;
 #[path = "src/std_files.rs"]
 mod std_files;
+use std_bundle::{browser_index, call_table, without_comments};
 use std_files::{collect, outline, without_tests, EMBEDDED};
 
 fn main() {
@@ -14,6 +17,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     // `outline` and the rest of the modules `#[path]` puts in: their edits change what is written.
     println!("cargo:rerun-if-changed=src/std_files.rs");
+    println!("cargo:rerun-if-changed=src/std_bundle.rs");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo"));
     let std = manifest.join("../../std");
     let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32");
@@ -44,6 +48,10 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
     let lazy = std::env::var_os("CARGO_FEATURE_LAZY_STD").is_some();
     let mut table = String::from("&[\n");
     let mut index = String::from("&[\n");
+    // Each module's whole text, which `std_calls` counts, and the text its
+    // index entry carries, whose words `call_table` keys the counts on.
+    let mut sources = Vec::new();
+    let mut indexed = Vec::new();
     for (name, path) in &modules {
         if track {
             println!("cargo:rerun-if-changed={}", path.display());
@@ -52,19 +60,24 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
         let bundled = out.join(folder).join(format!("{name}.cp"));
         std::fs::create_dir_all(bundled.parent().expect("under OUT_DIR"))
             .expect("a writable OUT_DIR");
+        sources.push(text.clone());
         let text = without_tests(&text);
         if wasm {
             if !lazy || EMBEDDED.contains(&name.as_str()) {
-                std::fs::write(&bundled, without_comments(&text)).expect("a writable OUT_DIR");
+                let whole = if lazy {
+                    browser_index(name, sources.last().expect("pushed above"))
+                } else {
+                    without_comments(&text)
+                };
+                std::fs::write(&bundled, &whole).expect("a writable OUT_DIR");
+                indexed.push(whole);
                 writeln!(
                     table,
                     "    ({name:?}, include_str!({:?})),",
                     bundled.display().to_string()
                 )
                 .expect("writing to a string");
-            }
-            if !lazy {
-                // It carries every text already, and the scans read the
+                // It carries the text already, and the scans read the
                 // same off it as off the outline.
                 writeln!(
                     index,
@@ -88,7 +101,13 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
             .join(format!("{name}.cp"));
         std::fs::create_dir_all(outlined.parent().expect("under OUT_DIR"))
             .expect("a writable OUT_DIR");
-        std::fs::write(&outlined, outline(&text)).expect("a writable OUT_DIR");
+        let outlined_text = if wasm {
+            browser_index(name, sources.last().expect("pushed above"))
+        } else {
+            outline(&text)
+        };
+        std::fs::write(&outlined, &outlined_text).expect("a writable OUT_DIR");
+        indexed.push(outlined_text);
         writeln!(
             index,
             "    ({name:?}, include_str!({:?})),",
@@ -100,56 +119,13 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
     index.push_str("]\n");
     std::fs::write(out.join(format!("{prefix}_modules.rs")), table).expect("a writable OUT_DIR");
     std::fs::write(out.join(format!("{prefix}_index.rs")), index).expect("a writable OUT_DIR");
-    std::fs::write(out.join(format!("{prefix}_calls.rs")), std_calls(&modules))
-        .expect("a writable OUT_DIR");
-}
-
-/// How often std's own text, its doc examples included, writes `.name`:
-/// the `std_calls` table, by name, of the names written at least twice.
-fn std_calls(modules: &[(String, PathBuf)]) -> String {
-    let mut counts: std::collections::BTreeMap<String, u32> = Default::default();
-    for (_, path) in modules {
-        let text = std::fs::read_to_string(path).expect("a readable module");
-        let bytes = text.as_bytes();
-        for (at, _) in text.match_indices('.') {
-            if at > 0 && bytes[at - 1] == b'.' {
-                continue;
-            }
-            let name: String = text[at + 1..]
-                .chars()
-                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
-                .collect();
-            if name.starts_with(|c: char| c.is_ascii_lowercase() || c == '_') {
-                *counts.entry(name).or_default() += 1;
-            }
-        }
-    }
-    let mut table = String::from("&[\n");
-    for (name, count) in counts.iter().filter(|(_, n)| **n >= 2) {
-        writeln!(table, "    ({name:?}, {count}),").expect("writing to a string");
-    }
-    table.push_str("]\n");
-    table
-}
-
-/// `text` with each `@test` fn blanked to empty lines. A program that
-/// imports a module never runs its tests, and `cpl test` reads the file
-/// itself; keeping every line keeps spans into the module exact.
-/// The browser build blanks whole-line comments: nothing it runs reads std's
-/// docs, and they are half of std's compressed size. Blank lines keep every
-/// line number, so std diagnostics point at the same line on every target.
-fn without_comments(text: &str) -> String {
-    text.split_inclusive('\n')
-        .map(|line| {
-            if line.trim_start().starts_with("//") {
-                if line.ends_with('\n') {
-                    "\n"
-                } else {
-                    ""
-                }
-            } else {
-                line
-            }
-        })
-        .collect()
+    let calls = call_table(
+        sources.iter().map(String::as_str),
+        indexed.iter().map(String::as_str),
+    );
+    std::fs::write(
+        out.join(format!("{prefix}_calls.rs")),
+        format!("{calls:?}\n"),
+    )
+    .expect("a writable OUT_DIR");
 }

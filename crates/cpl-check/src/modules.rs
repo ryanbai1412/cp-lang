@@ -134,7 +134,7 @@ fn module_key(path: &Path) -> String {
 
 /// The modules of `std` as they were when the compiler was built, by
 /// their path below it (`"seq"`).
-pub(crate) const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
+pub(crate) static BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
 
 /// The modules of `std` as they are now on disk, so a std edit needs no
 /// rebuild of `cpl`: in the `CPL_STD_DIR` folder when it is set, else, in a
@@ -298,10 +298,26 @@ pub(crate) fn std_modules() -> &'static [(&'static str, &'static str)] {
 /// How often std's own text writes `.name`, a method's name: how common
 /// a member is, for ordering completion.
 pub fn std_calls(name: &str) -> u32 {
-    const CALLS: &[(&str, u32)] = include!(concat!(env!("OUT_DIR"), "/std_calls.rs"));
-    CALLS
+    static TEXT: &str = include!(concat!(env!("OUT_DIR"), "/std_calls.rs"));
+    static CALLS: std::sync::OnceLock<Vec<(&'static str, u32)>> = std::sync::OnceLock::new();
+    let calls = CALLS.get_or_init(|| {
+        let (counts, rest) = TEXT.split_once('\n').unwrap_or((TEXT, ""));
+        let names = crate::std_files::call_names(BUILT_INDEX.iter().map(|(_, text)| *text));
+        let mut calls: Vec<(&str, u32)> = names
+            .into_iter()
+            .zip(counts.split(' '))
+            .filter_map(|(name, count)| Some((name, count.parse().ok()?)))
+            .chain(rest.lines().filter_map(|line| {
+                let (name, count) = line.split_once(' ')?;
+                Some((name, count.parse().ok()?))
+            }))
+            .collect();
+        calls.sort_unstable();
+        calls
+    });
+    calls
         .binary_search_by(|(known, _)| (*known).cmp(name))
-        .map_or(0, |at| CALLS[at].1)
+        .map_or(0, |at| calls[at].1)
 }
 
 /// Every module of the standard library, by name, with its
@@ -316,7 +332,10 @@ pub fn std_index() -> &'static [(&'static str, &'static str)] {
     FROM_DISK.get_or_init(|| outlines(modules()))
 }
 
-pub(crate) const BUILT_INDEX: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_index.rs"));
+// `static`, not `const`: a const is copied into every crate that inlines a
+// reader of it, and cpl.wasm carried std's index twice.
+pub(crate) static BUILT_INDEX: &[(&str, &str)] =
+    include!(concat!(env!("OUT_DIR"), "/std_index.rs"));
 
 fn outlines(modules: &[(&'static str, &str)]) -> Vec<(&'static str, &'static str)> {
     let leak = |s: String| &*Box::leak(s.into_boxed_str());
@@ -767,6 +786,86 @@ mod tests {
         let outlines = crate::prelude::public_names(BUILT_INDEX.iter().copied());
         assert!(!files.is_empty());
         assert_eq!(outlines, files);
+    }
+
+    /// Each module of `std/` as its file has it, by name.
+    fn std_sources() -> Vec<(String, String)> {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+        let mut modules = Vec::new();
+        crate::std_files::collect(&dir, &dir, &mut modules);
+        modules.sort();
+        modules
+            .into_iter()
+            .map(|(name, path)| (name, std::fs::read_to_string(path).unwrap()))
+            .collect()
+    }
+
+    /// The counts keyed on the index's words read back as the ones the
+    /// sources have, the names no index text has included.
+    #[test]
+    fn std_calls_reads_back_each_count_of_the_sources() {
+        let sources = std_sources();
+        let mut counts: std::collections::BTreeMap<String, u32> = Default::default();
+        for (_, text) in &sources {
+            for (at, _) in text.match_indices('.') {
+                if at > 0 && text.as_bytes()[at - 1] == b'.' {
+                    continue;
+                }
+                let name: String = text[at + 1..]
+                    .chars()
+                    .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                    .collect();
+                if name.starts_with(|c: char| c.is_ascii_lowercase() || c == '_') {
+                    *counts.entry(name).or_default() += 1;
+                }
+            }
+        }
+        assert!(counts.get("len").is_some_and(|n| *n > 100));
+        for (name, count) in counts {
+            let want = if count >= 2 { count } else { 0 };
+            assert_eq!(std_calls(&name), want, "{name}");
+        }
+        assert_eq!(std_calls("no_such_name_anywhere"), 0);
+    }
+
+    /// The gzipped bytes of std in a browser build's `data` (its index and
+    /// the `std_calls` table), as `gzip -9` gives them. A shrink-only cap:
+    /// a std change over it fails here, at land time, rather than at the
+    /// site's wasm budget for `data` (web/scripts/wasm-crate-budgets.json),
+    /// which holds every crate's strings too. Make room by cutting what the
+    /// browser embeds or std itself; after a cut, lower the cap with it.
+    #[test]
+    fn std_in_the_browser_build_is_within_its_gzipped_cap() {
+        const CAP: usize = 47_900;
+        let sources = std_sources();
+        let indexed: Vec<String> = sources
+            .iter()
+            .map(|(name, text)| crate::std_bundle::browser_index(name, text))
+            .collect();
+        let calls = crate::std_bundle::call_table(
+            sources.iter().map(|(_, text)| text.as_str()),
+            indexed.iter().map(String::as_str),
+        );
+        let mut data = indexed.concat();
+        data.push_str(&calls);
+        let mut gzip = std::process::Command::new("gzip")
+            .args(["-9", "-c"])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .expect("gzip on PATH");
+        let mut stdin = gzip.stdin.take().unwrap();
+        let writer = std::thread::spawn(move || {
+            std::io::Write::write_all(&mut stdin, data.as_bytes()).unwrap()
+        });
+        let out = gzip.wait_with_output().unwrap();
+        writer.join().unwrap();
+        let bytes = out.stdout.len();
+        assert!(
+            bytes <= CAP,
+            "std in cpl.wasm is {bytes} B gzipped, over its cap of {CAP}: \
+             cut what the browser build embeds (std_bundle::browser_index) or std itself"
+        );
     }
 
     #[test]

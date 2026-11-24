@@ -473,6 +473,18 @@ class CommitTest(unittest.TestCase):
         code, ev, _, _, _, _ = self._commit(sel, outs={self.TREE: "cpl-wasm v0.1.0\n"})
         self.assertFalse([e for e in ev if e.startswith("rustc")])
 
+    def test_a_touched_wasm_crate_holds_the_data_segment_to_its_budget(self) -> None:
+        sel = {"packages": "cpl-check", "filter": "rdeps(cpl-check)"}
+        outs = {self.TREE: "cpl-check v0.1.0\n", "rustc --print target-libdir": f"{ci.ROOT}\n"}
+        code, ev, _, _, _, _ = self._commit(sel, outs=outs)
+        self.assertEqual(code, 0)
+        gate = [e for e in ev if e.startswith(("cargo check -q -p cpl-wasm", "scripts/build-wasm.sh", "node web/scripts/wasm-crates.mjs"))]
+        self.assertEqual([g.split()[0] for g in gate], ["cargo", "scripts/build-wasm.sh", "node"])
+        self.assertTrue(gate[2].endswith("wasm-data-gate/cpl.wasm"))
+        code, _, _, err, _, _ = self._commit(sel, outs=outs, codes={"node": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("the data segment of cpl.wasm is over its budget", err)
+
     def test_a_failed_check_names_its_rerun_and_stops_the_tier(self) -> None:
         sel = {"packages": "cpl-fmt", "filter": "x", "site": "1"}
         code, ev, _, err, _, _ = self._commit(sel, codes={"cargo fmt --check -p cpl-fmt": 1})

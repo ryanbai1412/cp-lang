@@ -13,17 +13,21 @@ use std::collections::HashSet;
 use std::sync::OnceLock;
 
 /// `(module, name)` for each name `std/prelude.cp` lists, the module
-/// written `std.tree`.
+/// written `std.tree`, read off the prelude the checker reads.
 fn prelude() -> &'static HashSet<(String, String)> {
     static NAMES: OnceLock<HashSet<(String, String)>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        let text = crate::std_source!("prelude.cp");
         let mut found = HashSet::new();
-        for (_, item) in cpl_syntax::parse_file(text).items {
-            for stmt in item.stmts {
-                if let StmtKind::Use { path, names, .. } = stmt.kind {
-                    let module = dotted(&path);
-                    found.extend(names.iter().map(|n| (module.clone(), n.text.clone())));
+        let preludes = cpl_check::loaded_std()
+            .iter()
+            .filter(|(name, _)| *name == "prelude");
+        for (_, text) in preludes {
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in item.stmts {
+                    if let StmtKind::Use { path, names, .. } = stmt.kind {
+                        let module = dotted(&path);
+                        found.extend(names.iter().map(|n| (module.clone(), n.text.clone())));
+                    }
                 }
             }
         }
