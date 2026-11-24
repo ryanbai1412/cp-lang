@@ -64,17 +64,20 @@ pub(crate) fn fill(text: &str, args: &[&dyn Display]) -> String {
     out
 }
 
-/// `NAME = CODE, "text with {} holes";` rows, and `ALL` listing them.
+/// `NAME = CODE, "text with {} holes";` rows, and `ALL` listing them. A
+/// lint's row names its code as a string, `NAME = "L0566", ".."`: lint
+/// codes are cpl-lint's, which checks every row's code is one of its lints.
 macro_rules! msgs {
-    ($($(#[$doc:meta])* $name:ident = $code:ident, $text:expr;)*) => {
+    (@code $code:ident) => { $crate::codes::$code };
+    (@code $code:literal) => { $crate::Code($code) };
+    ($($(#[$doc:meta])* $name:ident = $code:tt, $text:expr;)*) => {
         $($(#[$doc])* pub static $name: $crate::msgs::Msg = $crate::msgs::Msg {
             #[cfg(test)]
             key: stringify!($name),
-            code: $crate::codes::$code,
+            code: $crate::msgs::msgs!(@code $code),
             text: $text,
         };)*
-        #[cfg(test)]
-        pub(crate) static ALL: &[&$crate::msgs::Msg] = &[$(&$name),*];
+        pub static ALL: &[&$crate::msgs::Msg] = &[$(&$name),*];
     };
 }
 pub(crate) use msgs;
@@ -125,7 +128,7 @@ mod tests {
                 m.key
             );
             assert!(
-                crate::registry::lookup(m.code.0).is_some(),
+                m.code.0.starts_with('L') || crate::registry::lookup(m.code.0).is_some(),
                 "{file}::{} has no registry row for {}",
                 m.key,
                 m.code.0
