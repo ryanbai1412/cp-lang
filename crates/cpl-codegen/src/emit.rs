@@ -322,6 +322,9 @@ impl<'p> Emitter<'p> {
         for &(f, p) in &lent_fields.by_ref {
             sunk[f].remove(&p);
         }
+        for (f, p) in crate::uses::sinks::unmovable_sinks(program, &sunk) {
+            sunk[f].remove(&p);
+        }
         let mut emitter = Emitter {
             program,
             facts,

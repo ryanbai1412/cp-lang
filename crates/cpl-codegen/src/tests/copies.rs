@@ -749,3 +749,55 @@ fn a_local_dead_after_a_let_of_a_call_moves_into_its_param() {
         "the param dead after the let moves into the call: {out}"
     );
 }
+
+#[test]
+fn a_top_level_list_moves_into_a_call_inside_print_at_its_last_read() {
+    let last = cpp("let a = [1, 2].step(5)\nlet z = [1, 2, 3]\nprint(a.len, z.step(2).len)\n");
+    assert!(
+        last.contains("(std::move(z), 2)"),
+        "the last read should move z:\n{last}"
+    );
+    let again = cpp(
+        "let a = [1, 2].step(5)\nlet z = [1, 2, 3]\nprint(a.len, z.step(2).len)\nprint(z.len)\n",
+    );
+    assert!(
+        !again.contains("std::move(z)"),
+        "z is read again, so it is not moved:\n{again}"
+    );
+    let in_fn = cpp("let a = [1, 2].step(5)\nlet z = [1, 2, 3]\nfn later() -> Int = z.len\nprint(a.len, z.step(2).len)\nprint(later())\n");
+    assert!(
+        !in_fn.contains("std::move(z)"),
+        "a fn reads z later, so it is not moved:\n{in_fn}"
+    );
+    // A fn that copies a global may run more than once per call site.
+    for case in [
+        "global-copied-by-a-fn-a-closure-calls-twice",
+        "global-copied-by-a-fn-called-in-a-loop",
+        "global-copied-by-a-recursive-fn",
+    ] {
+        let path = format!(
+            "{}/../../spec/conformance/core-05/{case}.cp",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let out = cpp(&std::fs::read_to_string(path).unwrap());
+        assert!(
+            !out.contains("std::move(base)"),
+            "{case}: base is copied each run:\n{out}"
+        );
+    }
+}
+
+#[test]
+fn a_struct_param_no_call_can_move_into_is_lent_and_copied_where_written() {
+    let src = "struct Box(v: List<Int>):\n    fn of(xs: List<Int>) -> Box = Box(List(xs))\nvar a = [1, 2]\nlet b = Box.of(a)\na.push(3)\nprint(a.len, b.v.len)\n";
+    let live = cpp(src);
+    assert!(
+        live.contains("Box_of(const std::vector<ll>& xs)"),
+        "a stays live, so of lends it:\n{live}"
+    );
+    let last = cpp(&src.replace("a.push(3)\nprint(a.len, b.v.len)", "print(b.v.len)"));
+    assert!(
+        last.contains("Box_of(std::move(a))"),
+        "a dies at the call, so it moves in:\n{last}"
+    );
+}

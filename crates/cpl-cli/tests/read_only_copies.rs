@@ -300,7 +300,7 @@ fn disagreements(src: &Path, out: &Path) -> Vec<String> {
                 wrong.push(format!("{} {name}: a read made into a copy", count(cpp)));
             }
         }
-        let copies = deep_copies(cpp) + optional_copies(cpp);
+        let copies = deep_copies(cpp) + optional_copies(cpp) + sunk_copies(cpp);
         let explained = if copies > 0 { explained_copies(src) } else { 0 };
         if explained < copies {
             wrong.push(format!(

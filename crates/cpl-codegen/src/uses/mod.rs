@@ -11,6 +11,7 @@ pub(crate) mod effects;
 pub(crate) mod fn_refs;
 pub(crate) mod loops;
 pub(crate) mod places;
+pub(crate) mod sinks;
 pub(crate) mod split;
 
 use crate::lend::{copied_at_test, Tail};
@@ -709,21 +710,47 @@ pub(crate) fn pushed_last_reads(
         .collect()
 }
 
-/// The arguments of the call statement `k` of `block` is, `f(xs, ..)` or
-/// `let r = f(xs, ..)`, that are locals named once in it and dead after it:
-/// each may move into a parameter taken by value.
+/// The arguments of the calls statement `k` of `block` runs once, `f(xs, ..)`,
+/// `let r = f(xs, ..)`, `r = g(f(xs))` or `print(f(xs))`, that are locals
+/// named once in it and dead after it, or globals that die there: each may
+/// move into a parameter taken by value.
 pub(crate) fn called_last_reads(
     program: &Program,
     block: &Block,
     k: usize,
     outer: &BTreeSet<usize>,
 ) -> Vec<*const Expr> {
-    let (Stmt::Expr(e) | Stmt::Let(_, Some(e))) = &block.stmts[k] else {
-        return Vec::new();
+    let e = match &block.stmts[k] {
+        Stmt::Expr(e) | Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) => e,
+        _ => return Vec::new(),
     };
-    let ExprKind::Call(_, args) = &e.kind else {
-        return Vec::new();
-    };
+    // The calls the statement runs once each: `f(x)`, `g(f(x)).len`,
+    // `print(f(x))` and the `let`s of a `do` block, never one inside a
+    // closure or a loop.
+    fn once<'e>(e: &'e Expr, out: &mut Vec<&'e Arg>) {
+        match &e.kind {
+            ExprKind::Call(_, args) => {
+                for arg in args {
+                    out.push(arg);
+                    if let Arg::Value(v) = arg {
+                        once(v, out);
+                    }
+                }
+            }
+            ExprKind::Builtin(_, args) => args.iter().for_each(|a| once(a, out)),
+            ExprKind::Print(args, _) => args.iter().for_each(|a| once(&a.value, out)),
+            ExprKind::Do(block) => {
+                for stmt in &block.stmts {
+                    if let Stmt::Let(_, Some(x)) | Stmt::Expr(x) = stmt {
+                        once(x, out);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut args = Vec::new();
+    once(e, &mut args);
     let named = |slot: usize| {
         let mut n = 0;
         walk::deep_expr(e, &mut |x| {
@@ -731,15 +758,19 @@ pub(crate) fn called_last_reads(
         });
         n
     };
-    args.iter()
+    args.into_iter()
         .filter_map(|arg| match arg {
             Arg::Value(value) => match value.kind {
-                ExprKind::Local(slot) => Some((value, slot)),
+                ExprKind::Local(slot) => Some((value, (false, slot))),
+                ExprKind::Global(g) => Some((value, (true, g))),
                 _ => None,
             },
             Arg::Mut(_) => None,
         })
-        .filter(|&(_, slot)| named(slot) == 1 && dead_after(program, block, k, slot, outer))
+        .filter(|&(_, src)| match src {
+            (false, slot) => named(slot) == 1 && dead_after(program, block, k, slot, outer),
+            (true, _) => dies_in(program, block, k, src, None),
+        })
         .map(|(value, _)| value as *const Expr)
         .collect()
 }

@@ -270,33 +270,42 @@ impl<'p> Emitter<'p> {
         args: &[Arg],
         text: &str,
     ) -> bool {
-        let ExprKind::Local(local) = value.kind else {
-            return false;
+        // A global moves only from the top level, which `dies_in` checks.
+        let (global, local) = match value.kind {
+            ExprKind::Local(local) => (false, local),
+            ExprKind::Global(g) if self.fn_id.is_none() => (true, g),
+            _ => return false,
         };
-        let Some(caller) = self.fn_id else {
-            return false;
-        };
-        let cf = &self.program.fns[caller];
-        let owned = local >= cf.params.len()
-            || (!cf.params[local].mutable
-                && (self.sunk[caller].contains(&local)
-                    || self.facts.stores((Some(caller), false, local)) > 2));
+        // The program's top level has no parameters: every local is its own.
+        let owned = global
+            || self.fn_id.is_none_or(|caller| {
+                let cf = &self.program.fns[caller];
+                local >= cf.params.len()
+                    || (!cf.params[local].mutable
+                        && (self.sunk[caller].contains(&local)
+                            || self.facts.stores((Some(caller), false, local)) > 2))
+            });
         if !owned
             || value.ty.is_scalar()
             || matches!(value.ty, Ty::Fn(..))
             || self.devirt.param_known(id, slot)
-            || text != self.names[local]
+            || (!global && text != self.names[local])
+            || (global && text != crate::names::global_ident(self.program, local))
         {
             return false;
         }
         !args.iter().enumerate().any(|(j, arg)| {
             j != slot
                 && match arg {
-                    Arg::Mut(place) => walk::root(place) == (false, local),
+                    Arg::Mut(place) => walk::root(place) == (global, local),
                     Arg::Value(other) => {
                         let mut used = false;
                         walk::deep_expr(other, &mut |e| {
-                            used |= matches!(e.kind, ExprKind::Local(s) if s == local);
+                            used |= match e.kind {
+                                ExprKind::Local(s) => !global && s == local,
+                                ExprKind::Global(g) => global && g == local,
+                                _ => false,
+                            };
                         });
                         used
                     }
