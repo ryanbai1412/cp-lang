@@ -1,7 +1,7 @@
 // The language server's editing and navigation requests, beyond the hover,
 // completion, hints and definition in intelligence.ts: occurrences,
 // references, rename, quick fixes, formatting, folding, outlines, call
-// hierarchy, links, lenses, linked edits and semantic tokens. Every one
+// hierarchy, links, linked edits and semantic tokens. Every one
 // asks the server; none of it is worked out here.
 import { foldGutter, foldKeymap, foldService } from "@codemirror/language";
 import {
@@ -22,7 +22,6 @@ import {
   type Tooltip,
   type ViewUpdate,
   ViewPlugin,
-  WidgetType,
 } from "@codemirror/view";
 import { started } from "@/lib/cpl";
 import { capabilities } from "@/lib/lsp";
@@ -46,9 +45,6 @@ type Symbol = {
 type CallItem = { name: string; uri: string; range: Range; selectionRange: Range };
 
 
-/** A code lens; a `cpl.exec` one runs `cpl` with its arguments, as `["stress", path]`. */
-export type CodeLens = { range: Range; command?: { title: string; command?: string; arguments?: string[] } };
-export const CPL_EXEC = "cpl.exec";
 
 export type Lsp = {
   editable: boolean;
@@ -178,21 +174,6 @@ function decorations() {
     provide: (f) => EditorView.decorations.from(f),
   });
   return { set, field };
-}
-
-class LensWidget extends WidgetType {
-  constructor(readonly text: string) {
-    super();
-  }
-  eq(other: LensWidget) {
-    return other.text === this.text;
-  }
-  toDOM() {
-    const el = document.createElement("div");
-    el.className = "cm-lsp-lens";
-    el.textContent = this.text;
-    return el;
-  }
 }
 
 /** The extensions, and `link` for a Ctrl+click to try before going to a definition. */
@@ -460,22 +441,6 @@ export function lspActions(lsp: Lsp): { extension: Extension; link: (view: Edito
     return true;
   }
 
-  // What the server says about the file as a whole, above its first line (codeLens).
-  const lenses = decorations();
-  const lensPlugin = onDocument(
-    lsp,
-    800,
-    (view) => lsp.request<CodeLens[]>(view, "textDocument/codeLens"),
-    (view, got) => {
-      // `cpl.exec` lenses (Run, Trace, Stress) are the runner's buttons.
-      const marks: CmRange<Decoration>[] = got.filter((l) => l.command?.command !== CPL_EXEC).flatMap((l) => {
-        const pos = lsp.fromLsp(view, l.range.start) ?? 0;
-        return l.command?.title ? [Decoration.widget({ widget: new LensWidget(l.command.title), block: true, side: -1 }).range(view.state.doc.lineAt(pos).from)] : [];
-      });
-      view.dispatch({ effects: lenses.set.of(Decoration.set(marks, true)) });
-    },
-  );
-
   // What each name is, which the grammar can't know (semanticTokens).
   const tokens = decorations();
   const tokenPlugin = onDocument(
@@ -514,8 +479,6 @@ export function lspActions(lsp: Lsp): { extension: Extension; link: (view: Edito
     foldsField,
     fold,
     lsp.editable ? foldGutter() : [],
-    lenses.field,
-    lensPlugin,
     tokens.field,
     tokenPlugin,
     lsp.editable ? [onType, linkedField, linkedFilter, linked, EditorState.allowMultipleSelections.of(true)] : [],
@@ -538,7 +501,6 @@ export function lspActions(lsp: Lsp): { extension: Extension; link: (view: Edito
     EditorView.theme({
       ".cm-lsp-occurrence": { backgroundColor: "color-mix(in srgb, var(--accent) 60%, transparent)", borderRadius: "2px" },
       ".cm-lsp-written": { outline: "1px solid var(--border)" },
-      ".cm-lsp-lens": { color: "var(--muted-foreground)", fontSize: "0.8em", padding: "0 0 2px" },
       ".cm-lsp-menu": { display: "flex", flexDirection: "column", padding: "4px", maxHeight: "16rem", overflow: "auto", fontFamily: "var(--font-mono)" },
       ".cm-lsp-menu-title": { color: "var(--muted-foreground)", padding: "2px 6px" },
       ".cm-lsp-menu button": { textAlign: "left", padding: "2px 6px", borderRadius: "4px", whiteSpace: "pre" },
