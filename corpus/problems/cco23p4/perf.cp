@@ -1,5 +1,6 @@
 // Tuned: count the pattern's occurrences by comparing characters in place, not one Str per
-// window.
+// window, and only for the patterns that need them; the zero runs are counted in one pass, not
+// split into strings.
 //
 // Source: CCO 2023 P4 (Flip it and Stick it), https://dmoj.ca/problem/cco23p4
 // limits: 1000 ms, 1024 MB
@@ -17,11 +18,17 @@ fn plain(x: Str) -> Str = Str(x.map(c => if c == t[0]: '0' else: '1'))
 let (w, p) = (plain(s), plain(t))
 let zeros = w.count(c => c == '0')
 let ones = w.len - zeros
-var hits = 0
-for i in 0..w.len - p.len + 1:
-    var j = 0
-    while j < p.len and w[i + j] == p[j]: j += 1
-    if j == p.len: hits += 1
+fn hits() -> Int = (0..w.len - p.len + 1).count(i => (0..p.len).all(j => w[i + j] == p[j]))
+// the zero runs between ones
+fn gaps() -> List<Int>:
+    var (out, run) = ([], 0)
+    for c in w:
+        if c == '0': run += 1
+        else:
+            out.push(run)
+            run = 0
+    out.push(run)
+    out
 
 fn spread(gaps: List<Int>) -> Int:
     var empty = gaps.count(g => g == 0)
@@ -48,7 +55,7 @@ fn spread(gaps: List<Int>) -> Int:
 
 print(match p:
     "0" => if zeros > 0: -1 else: 0
-    "00" => if zeros > ones + 1: -1 else: hits
-    "010" => (hits + 1) / 2
-    "000" => if zeros > 2 * (ones + 1): -1 else: spread([g.len for g in w.split('1')])
-    _ => hits)
+    "00" => if zeros > ones + 1: -1 else: hits()
+    "010" => (hits() + 1) / 2
+    "000" => if zeros > 2 * (ones + 1): -1 else: spread(gaps())
+    _ => hits())
