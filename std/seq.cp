@@ -1283,8 +1283,6 @@ pub fn remove<T>(mut self: List<T>, i: Int) -> T:
 /// A sequence: `for x in s` walks it in order, and each `for` runs it from the start
 /// (R07.3.1). Generators, adapters, collections and ranges implement it (decision 509).
 pub trait Seq<T>:
-    /// The view `take`/`drop` give: a lazy walk here, a slice for an `Indexed` sequence.
-    type Taken = Gen<T>
     /// Walks the sequence from its start.
     fn iter(self) -> yields T
 
@@ -1627,9 +1625,11 @@ pub fn keyed<S: Seq, I: Indexed, T, K>(
 /// The view `keyed` returns.
 pub struct Keys<S, I, T, K>(pub src: S, pub keys: I, by: ?(T -> K))
 
-impl Keyed<K, T> for Keys<S, I, T, K>:
+impl Seq<T> for Keys<S, I, T, K>:
     fn iter(self) -> yields T:
         for x in src: yield x
+
+impl Keyed<K, T> for Keys<S, I, T, K>:
     fn items(self) -> yields (K, T):
         var j = 0
         for x in src:
