@@ -23,22 +23,21 @@ for (u, v, w) in edges:
     bound[u] += w
     bound[v] += w
 var pool = MeldHeaps<(at: Int, cnt: Int)>()
-var set: [V]Meld<(at: Int, cnt: Int)> = [V] v => pool.of([(at: bound[v], cnt: 1)])
+pool.reserve(4 * n)  // n starting breakpoints, then at most 3 per raise
+var set: [V]Meld<(at: Int, cnt: Int)> = Meld()
+for v in V: pool.push(mut set[v], (at: bound[v], cnt: 1))
 var dsu = Dsu<V>()
 
 // Raise F (the breakpoints of component `u`) to max(F, l - d) at the integers.
 fn raise(u: V, d: Int):
-    var (pos, slope, val) = (pool.top(set[u])!.at, 0, 0)   // F(pos) = val, slope just right of pos
+    var (pos, slope, val) = (pool.top(set[u])!.at, 0, 0)  // F(pos) = val, slope just right of pos
     while let b = pool.top(set[u]), val + slope * (b.at - pos) < b.at - d:
         (val, pos, slope) = (val + slope * (b.at - pos), b.at, slope + b.cnt)
         pool.pop(mut set[u])
     let (step, part) = (pos - val - d).divmod(slope - 1)
-    let added = [
-        (at: d, cnt: 1),
-        (at: pos + step, cnt: slope - 1 - part),
-        (at: pos + step + 1, cnt: part),
-    ].filter(b => b.cnt > 0)
-    pool.push_all(mut set[u], added)
+    pool.push(mut set[u], (at: d, cnt: 1))
+    if slope - 1 - part > 0: pool.push(mut set[u], (at: pos + step, cnt: slope - 1 - part))
+    if part > 0: pool.push(mut set[u], (at: pos + step + 1, cnt: part))
 
 for (u, v, w) in edges.sorted(by: e => -e.w):
     let (kept, merged) = dsu.merge(u, v)!

@@ -937,6 +937,17 @@ pub struct MeldHeaps<T>:
             i += 2
         self.seal(if q.len > 0: q.last! else: -1, xs.len)
 
+    /// Preallocate room for `nodes` heap nodes in total (one per item ever pushed), so later
+    /// pushes do not regrow the pool. Changes no heap and no handle.
+    ///
+    /// cost: \(O(\mathit{nodes})\)
+    /// traps: when `nodes < 0`
+    /// example: `var p = MeldHeaps<Int>(); p.reserve(100); let h = p.of([3, 1]); p.top(h) == Some(1)`
+    pub fn reserve(mut self, nodes: Int):
+        assert nodes >= 0, "reserve requires nodes >= 0"
+        _nodes.reserve(nodes)
+        if _adds.len > 0: _adds.reserve(nodes)
+
     /// The smallest element of `h`, or `None` if it is empty.
     ///
     /// cost: \(O(1)\)
