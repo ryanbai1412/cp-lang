@@ -26,39 +26,36 @@ impl<'p> Compiler<'p, '_> {
             globals: &globals,
             seen: Vec::new(),
         };
-        let held = |s: Slot| self.held.contains(&(s as u16));
+        // A fn value may read a by-ref capture of a slot this frame holds
+        // lent: one made before the call, or a closure the call makes.
+        let reaches_held = !self.held.is_empty()
+            && (self.ref_all || self.ref_slots.iter().any(|s| self.held.contains(s)));
         (args.iter().enumerate()).any(|(i, arg)| {
             let ty = &f.locals[i].ty;
-            // A fn arg may reach a `mut` arg: the callee would call it while
-            // that arg is taken out.
-            let mut_fn = has_mut && matches!(ty, Ty::Fn(..));
-            match arg {
-                Arg::Value(Expr {
-                    kind: ExprKind::Closure(cid),
-                    ..
-                }) => {
-                    let caps = &self.program.closures[*cid].captures;
-                    (ty.has_fn(self.program)
-                        && caps
-                            .iter()
-                            .any(|c| c.by_ref && !c.is_global && held(c.outer)))
-                        || mut_fn
-                            && (caps.iter().any(|c| {
-                                c.by_ref
-                                    && match c.is_global {
-                                        true => globals.contains(&(c.outer as GlobalId)),
-                                        false => locals.contains(&c.outer),
-                                    }
-                            }) || reach.closure(*cid))
-                }
-                Arg::Value(_) => {
-                    mut_fn
-                        || !self.held.is_empty()
-                            && ty.has_fn(self.program)
-                            && (self.ref_all || self.ref_slots.iter().any(|&s| held(s as Slot)))
-                }
-                Arg::Mut(_) => false,
-            }
+            let Arg::Value(e) = arg else {
+                return false;
+            };
+            let (cid, caps) = match e.kind {
+                ExprKind::Closure(cid) => (Some(cid), &self.program.closures[cid].captures[..]),
+                _ => (None, &[][..]),
+            };
+            let held = caps
+                .iter()
+                .any(|c| c.by_ref && !c.is_global && self.held.contains(&(c.outer as u16)));
+            ty.has_fn(self.program) && (reaches_held || held)
+                // A fn arg may reach a `mut` arg: the callee would call it
+                // while that arg is taken out.
+                || has_mut
+                    && matches!(ty, Ty::Fn(..))
+                    && cid.is_none_or(|cid| {
+                        caps.iter().any(|c| {
+                            c.by_ref
+                                && match c.is_global {
+                                    true => globals.contains(&(c.outer as GlobalId)),
+                                    false => locals.contains(&c.outer),
+                                }
+                        }) || reach.closure(cid)
+                    })
         })
     }
 }
