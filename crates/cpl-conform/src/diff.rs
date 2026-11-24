@@ -25,7 +25,7 @@ enum DiffTarget {
         /// An interactive package's interactor: both engines are judged by it.
         interactor: Option<PathBuf>,
     },
-    /// A corpus `port.cp` with side-effect probes (`variants`), on its smallest input.
+    /// A corpus `port.cp` with side-effect probes (`variants`), on its first (sample) input.
     Variant {
         id: String,
         port_path: PathBuf,
@@ -88,17 +88,9 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
         if filter.is_some_and(|f| !id.contains(f)) {
             continue;
         }
-        let smallest = prob
-            .tests
-            .into_iter()
-            .map(|(inp, _)| inp)
-            .min_by_key(|inp| {
-                (
-                    std::fs::metadata(inp).map(|m| m.len()).unwrap_or(u64::MAX),
-                    inp.clone(),
-                )
-            });
-        if let Some(input) = smallest {
+        // The package's first case, its sample: the fewest bytes is not the
+        // least work (cf2124f2's 16-byte `5000 1` took the interpreter 33 s).
+        if let Some((input, _)) = prob.tests.into_iter().min() {
             targets.push(DiffTarget::Variant {
                 id,
                 port_path: prob.spec_path,
@@ -108,12 +100,17 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
         }
     }
 
-    targets
+    let mut mine: Vec<DiffTarget> = targets
         .into_iter()
         .enumerate()
         .filter(|(i, _)| runner::in_shard(*i))
         .map(|(_, t)| t)
-        .collect()
+        .collect();
+    // Problems run real judge inputs and take up to a minute; queued after
+    // the thousand small conformance cases, the last one ran alone at the
+    // end of the shard. Started first, the small cases fill in around them.
+    mine.sort_by_key(|t| matches!(t, DiffTarget::Conformance { .. }));
+    mine
 }
 
 fn fnv1a_hex(data: &[u8]) -> String {
