@@ -1355,8 +1355,9 @@ def checked(pid, port, cpl):
             os.remove(cpp)
 
 
-def at_max(pkg, cpl, exe, orig, data):
-    """The findings of the max input: it passes the checked C++, fits the limits, matches the accepted C++."""
+def at_max(pkg, cpl, exe, orig, data, later=None):
+    """The findings of the max input: it passes the checked C++, fits the limits, matches the accepted C++.
+    Given a `later` list, the timed runs go on it instead, to run once every build is done."""
     pid, port = pkg.id, str(pkg.port)
     ms, mb = limits(port)
     found = []
@@ -1371,6 +1372,27 @@ def at_max(pkg, cpl, exe, orig, data):
             found.append(f"traps {pid} --max")
     if not exe:
         return found
+    if later is not None:
+        os.makedirs(MAX_INPUTS, exist_ok=True)
+        fd, path = tempfile.mkstemp(dir=MAX_INPUTS)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        later.append(lambda: timed_max(pkg, exe, orig, Path(path), ms, mb))
+        return found
+    return found + timed_max(pkg, exe, orig, data, ms, mb)
+
+
+# A --max input waiting for its timed runs.
+MAX_INPUTS = os.path.join(ROOT, "target", "corpus-max-inputs")
+
+
+def timed_max(pkg, exe, orig, data, ms, mb):
+    """The port's judge build against the accepted C++ on the max input (`data`, or a file of it,
+    removed once read): the over-limit, traps, disagrees and slow findings."""
+    if isinstance(data, Path):
+        path, data = data, data.read_bytes()
+        path.unlink()
+    pid, found = pkg.id, []
     # The port and the accepted C++ take turns, each going first in turn, and
     # each side keeps its best CPU time: a burst of load hits both sides.
     runs, wants = [], []
@@ -1454,7 +1476,7 @@ def check_max(pkg, ctx):
     orig = built(ref) if ref else None
     if ref and not orig:
         return short + [f"no-ref-build {pkg.id} {Path(ref).name}"]
-    return short + at_max(pkg, ctx.cpl, exe, orig, data)
+    return short + at_max(pkg, ctx.cpl, exe, orig, data, getattr(ctx, "later", None))
 
 
 def check_size(pkg, ctx):
@@ -1533,6 +1555,8 @@ class Context:
     def __init__(self, cpl, run=True, named=()):
         self.named = set(named)
         self.cpl, self.run, self.natives, self._hill, self._tests = cpl, run, {}, None, None
+        # The timed runs at_max leaves for after the builds; None runs them as it goes.
+        self.later = None
         self.run_ids = set_ids(RUN_SET) if os.path.exists(os.path.join(SETS, RUN_SET + ".txt")) else set()
 
     def runs(self, pkg):
@@ -1837,9 +1861,13 @@ def verify(args):
         if (secs := time.monotonic() - t0) > SLOW_PACKAGE:
             print(f"corpus: {pkg.id} took {secs:.0f} s", file=sys.stderr, flush=True)
         return fs
+    # The timed --max runs wait until every package is built: a g++ beside them slows
+    # the port more than the accepted C++ (noi21p1: 1.25x alone, 1.61x beside builds).
+    ctx.later = [] if "max" in modes else None
     try:
         with concurrent.futures.ThreadPoolExecutor(opt("j", os.cpu_count() or 4)) as pool:
-            found = sorted(f for fs in pool.map(timed, wanted) for f in fs)
+            found = [f for fs in pool.map(timed, wanted) for f in fs]
+        found = sorted(found + [f for job in ctx.later or () for f in job()])
     except InfraError as e:
         print(f"corpus: no verdict, the toolchain failed: {e}", file=sys.stderr)
         return 2

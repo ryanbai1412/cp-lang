@@ -987,7 +987,7 @@ class NativeTest(Corpus):
 class AtMax(unittest.TestCase):
     """`at_max` on scripted runs: the checked C++, then three judge runs taking turns with three accepted runs."""
 
-    def findings(self, safe, mine, theirs=(0, b"1\n", 0.05, 10), limits=(2000, 256)):
+    def findings(self, safe, mine, theirs=(0, b"1\n", 0.05, 10), limits=(2000, 256), later=None):
         self.order = []
         result = {"safe": safe, "exe": mine, "orig": theirs}
         def measure(exe, data, t):
@@ -1001,7 +1001,7 @@ class AtMax(unittest.TestCase):
             self.addCleanup(setattr, corpus, name, getattr(corpus, name))
             setattr(corpus, name, fake)
         pkg = types.SimpleNamespace(id="p", port="port.cp", checker=None)
-        return corpus.at_max(pkg, "cpl", "exe", "orig", b"")
+        return corpus.at_max(pkg, "cpl", "exe", "orig", b"7\n", later)
 
     def test_a_fast_matching_run_is_no_finding(self):
         self.assertEqual(self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10)), [])
@@ -1035,6 +1035,19 @@ class AtMax(unittest.TestCase):
     def test_the_port_and_the_accepted_cpp_take_turns(self):
         self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
         self.assertEqual(self.order, ["safe", "exe", "orig", "orig", "exe", "exe", "orig"])
+
+    def test_given_a_later_list_the_timed_runs_wait_for_it(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        self.addCleanup(setattr, corpus, "MAX_INPUTS", corpus.MAX_INPUTS)
+        corpus.MAX_INPUTS = tmp
+        later = []
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.5, 10), (0, b"1\n", 0.2, 10), later=later), [])
+        self.assertEqual(self.order, ["safe"])
+        self.assertEqual([job() for job in later],
+                         [["slow p --max: 0.500 s of CPU, 2.50x the accepted C++'s 0.200 s, over 1.5x"]])
+        self.assertEqual(self.order, ["safe", "exe", "orig", "orig", "exe", "exe", "orig"])
+        self.assertEqual(os.listdir(tmp), [])
 
     def test_the_timed_runs_hold_the_lock_and_let_it_go(self):
         self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
