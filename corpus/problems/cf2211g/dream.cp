@@ -10,12 +10,12 @@
 //   (`diff(i) == 0 or diff(i + 1) == 0` for all `i in 0..n`).
 
 @!multitest
-let n: 1..=200_000 = read()
-let a: [0..n]0..=10 ** 9 = read()
+let n: 1..=1_000_000 = read()
+let a: [0..n]0..=1_000_000 = read()
 let p = prefix(a)
 let tot = a.sum()
 fn diff(i: Int) -> Int: p.fold(..i) * n - tot * i
 
 let below = any(diff(i) < 0 for i in 1..n)
 let no_gap = all(diff(i) == 0 or diff(i + 1) == 0 for i in 0..n)
-print(if below or no_gap: "Yes" else: "No")
+print(yes(below or no_gap, answers: ("Yes", "No")))

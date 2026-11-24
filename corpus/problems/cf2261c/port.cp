@@ -12,10 +12,8 @@
 
 @!multitest
 let n: 1..=1e6 = read()
-var odd = 0
-repeat n:
-    let a: 1..=1e6 = read()
-    if a % 2 == 1: odd += 1
+let a: [0..n]1..=1e6 = read()
+let odd = count(x % 2 == 1 for x in a)
 let even = n - odd
 let win = odd % 2 == 0 or n == 1 or even + odd / 2 != 1
 print(if win: "Moggity" else: "Larpity")

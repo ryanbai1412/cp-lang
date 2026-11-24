@@ -12,15 +12,10 @@
 @!multitest
 let n: 1..=1_000_000 = read()
 let a: [0..n]0..=1_000_000 = read()
+let p = prefix(a)
 let tot = a.sum()
-var run = 0  // a[..i + 1].sum()
-var below = false
-var no_gap = true
-var zero_before = true  // diff(0) is 0
-for i in 0..n:
-    run += a[i]
-    let d = run * n - tot * (i + 1)  // diff(i + 1): a[..i + 1].sum() * n - tot * (i + 1)
-    if i + 1 < n and d < 0: below = true
-    if not zero_before and d != 0: no_gap = false
-    zero_before = d == 0
+fn diff(i: Int) -> Int: p.fold(..i) * n - tot * i
+
+let below = any(diff(i) < 0 for i in 1..n)
+let no_gap = all(diff(i) == 0 or diff(i + 1) == 0 for i in 0..n)
 print(yes(below or no_gap, answers: ("Yes", "No")))

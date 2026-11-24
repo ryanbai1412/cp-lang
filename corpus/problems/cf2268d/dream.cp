@@ -19,7 +19,7 @@
 use std.seq.*
 
 @!multitest
-let n: 1..=5e5 = read()
+let n: 1..=1e6 = read()
 domain I = 0..n
 let p: [I](1..=n) = read()
 

@@ -16,7 +16,7 @@ let n: 1..=1e6 = read()
 domain I = 0..n
 let p: [I](1..=n) = read()
 
-let up = p.next_smaller(by: x => desc(x))
+let up = p.next_smaller(by: desc)
 var first: [I]?I = None
 var kids: [I]Int = 0
 for i in I if let u = up[i]:

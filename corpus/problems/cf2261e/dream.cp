@@ -15,7 +15,8 @@
 //   `bsearch_first` for the earliest `j` with `f(j) <= 2 * k` (depth `open.len - j`).
 
 @!multitest
-let (n, k): (1..=200_000, 0..=200_000) = read()
+let n: 2..=4e5 = read()
+let k: 0..=n / 2 = read()
 let s: [0..n]Char = read()
 
 var open: List<Int> = []
