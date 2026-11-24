@@ -48,11 +48,31 @@ impl<'a> Lowerer<'a> {
                 if let Some(k) = key {
                     self.unify_ast_ty(k, &seq.key_ty(), m, &open, env);
                 }
-                if let (Some(t), Some(e)) = (elem, seq.seq_elem()) {
+                if let (Some(t), Some(e)) = (elem, self.seq_elem_of(&seq)) {
                     self.unify_ast_ty(t, &e, m, &open, env);
                 }
             }
         }
         true
+    }
+
+    /// What walking a value of `ty` gives: a built-in sequence's element, or what the `iter`
+    /// of a struct's `impl Seq` yields.
+    pub(super) fn seq_elem_of(&mut self, ty: &Ty) -> Option<Ty> {
+        if let Some(e) = ty.seq_elem() {
+            return Some(e);
+        }
+        let Ty::Struct(sid) = ty else {
+            return None;
+        };
+        let f = *self.structs[*sid].methods.get("iter")?;
+        if !self.sigs[f].params.is_empty() {
+            return None;
+        }
+        self.queue_fn(f);
+        match self.ret_of(f, Span::default()) {
+            Ty::List(elem) => Some(*elem),
+            _ => None,
+        }
     }
 }

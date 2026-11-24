@@ -1677,9 +1677,9 @@ impl<'a> Lowerer<'a> {
                         if !is_seq_bound {
                             return None;
                         }
-                        match inferred.get(&b.name.text) {
-                            Some(GenArg::Ty(t)) => t.seq_elem(),
-                            Some(GenArg::Domain(d)) => Some(Ty::Pos(*d)),
+                        match inferred.get(&b.name.text).cloned() {
+                            Some(GenArg::Ty(t)) => self.seq_elem_of(&t),
+                            Some(GenArg::Domain(d)) => Some(Ty::Pos(d)),
                             _ => None,
                         }
                     });
@@ -1692,7 +1692,7 @@ impl<'a> Lowerer<'a> {
                     });
                     let elem_ty = match (inner, elem_ty) {
                         (Some(u), Some(ety)) => {
-                            let inner_elem = ety.seq_elem();
+                            let inner_elem = self.seq_elem_of(&ety);
                             inferred.insert(u.name.text.clone(), GenArg::Ty(ety));
                             inner_elem
                         }
@@ -1775,7 +1775,10 @@ impl<'a> Lowerer<'a> {
         // A domain passed as `S` is the sequence of its positions.
         for b in &decl.bounds {
             let (key, elem) = match inferred.get(&b.name.text) {
-                Some(GenArg::Ty(seq)) => (seq.seq_key(), seq.seq_elem()),
+                Some(GenArg::Ty(seq)) => {
+                    let seq = seq.clone();
+                    (seq.seq_key(), self.seq_elem_of(&seq))
+                }
                 Some(GenArg::Domain(d)) => (None, Some(Ty::Pos(*d))),
                 _ => continue,
             };
@@ -1976,12 +1979,18 @@ impl<'a> Lowerer<'a> {
                 // fall back to deducing an unbound `T`/`E`/`X` from a bound container generic `S`.
                 for g in &gen_names {
                     if !inferred.contains_key(g) && (g == "T" || g == "E" || g == "X") {
-                        let elem_ty = inferred.values().find_map(|ga| match ga {
-                            GenArg::Ty(t) => t.seq_elem().or_else(|| match t {
+                        let containers: Vec<Ty> = inferred
+                            .values()
+                            .filter_map(|ga| match ga {
+                                GenArg::Ty(t) => Some(t.clone()),
+                                _ => None,
+                            })
+                            .collect();
+                        let elem_ty = containers.iter().find_map(|t| {
+                            self.seq_elem_of(t).or_else(|| match t {
                                 Ty::Set(e) | Ty::HashSet(e) => Some((**e).clone()),
                                 _ => None,
-                            }),
-                            _ => None,
+                            })
                         });
                         if let Some(ety) = elem_ty {
                             inferred.insert(g.clone(), GenArg::Ty(ety));

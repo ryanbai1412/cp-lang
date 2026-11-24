@@ -1,6 +1,7 @@
 //! Calls to the user's fns and generic fns, and struct constructors.
 
 use super::*;
+use crate::lower::lambda_infer::unwrap_optional;
 
 impl<'a> Lowerer<'a> {
     /// `Some(e)`: `e` takes the wanted `?T`'s `T`, so `Some(3)` is a `?Mod<7>` where one is wanted.
@@ -1145,6 +1146,14 @@ impl<'a> Lowerer<'a> {
                     if let Some(pty) = self.probe_ty_silent(&arg.value) {
                         self.unify_ast_ty(&f.ty, &pty, tpl_mod, &gen_names, &mut inferred);
                     }
+                }
+            }
+            // `f: T -> U` given a lambda: once `T` is known, `U` is what its body gives back.
+            let tpl = (tpl_mod, self.gen_structs[gid].offset);
+            for (f, arg) in decl.fields.iter().zip(args) {
+                if let ast::ExprKind::Lambda { params, body, .. } = &arg.value.kind {
+                    let fty = unwrap_optional(&f.ty);
+                    self.unify_lambda_ret(fty, params, body, tpl, &gen_names, &mut inferred, false);
                 }
             }
         }

@@ -92,9 +92,6 @@ impl<'a> Lowerer<'a> {
                 if matches!(self.probe_ty_silent(base), Some(Ty::Array { .. })) {
                     return self.lower_array_map(base, &func.value, span);
                 }
-                if base_is_seq {
-                    return self.lower_map(base, &func.value, span);
-                }
             }
         }
         if name.text == "keyed" {
@@ -102,12 +99,7 @@ impl<'a> Lowerer<'a> {
                 return keyed;
             }
         }
-        // `xs.filter(x => cond)` returns a `List<T>` of elements satisfying `cond`.
-        if let ([test], "filter") = (args, name.text.as_str()) {
-            if base_is_seq {
-                return self.lower_filter(base, &test.value, span);
-            }
-        }
+
         // `xs.partition(x => cond)` returns `(List<T>, List<T>)`.
         if let ([test], "partition") = (args, name.text.as_str()) {
             if base_is_seq {
