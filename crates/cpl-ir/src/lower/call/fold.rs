@@ -737,13 +737,28 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         };
-        let [clause] = clauses.as_slice() else {
-            self.unsupported(span, "`argmax` / `argmin` over more than one `for`");
-            return self.err_expr(span);
-        };
-        let ast::PatternKind::Name(var) = &clause.pat.kind else {
-            self.unsupported(span, "`argmax` / `argmin` over a pattern");
-            return self.err_expr(span);
+        // The position is what the `for`s bind: one name, or the tuple of
+        // all of them, in order.
+        let mut names = Vec::new();
+        for clause in &clauses {
+            bound_names(&clause.pat, &mut names);
+        }
+        let (position, param) = match names.as_slice() {
+            [one] => (name(one), ast::PatternKind::Name(one.clone())),
+            _ => (
+                mk(ast::ExprKind::Tuple(
+                    names.iter().map(|n| name(n)).collect(),
+                )),
+                ast::PatternKind::Tuple(
+                    names
+                        .iter()
+                        .map(|n| ast::Pattern {
+                            kind: ast::PatternKind::Name(n.clone()),
+                            span: at,
+                        })
+                        .collect(),
+                ),
+            ),
         };
         // Are the values optionals? Then the ones that are `none` are left out.
         let values = mk(ast::ExprKind::Comprehension {
@@ -755,23 +770,25 @@ impl<'a> Lowerer<'a> {
             matches!(self.expr(&values, None).ty, Ty::List(elem) if matches!(*elem, Ty::Opt(_)));
         self.diags.truncate(diags);
         self.cx.pending.truncate(pending);
-        let mut clause = clause.clone();
+        let mut clauses = clauses;
         let mut key = body;
         if optional {
             let test = mk(ast::ExprKind::Compare {
                 first: Box::new(key.clone()),
                 rest: vec![(CmpOp::Ne, mk(ast::ExprKind::None))],
             });
-            clause.conds.push(ast::Cond::Expr(test));
+            if let Some(last) = clauses.last_mut() {
+                last.conds.push(ast::Cond::Expr(test));
+            }
             key = mk(ast::ExprKind::Unwrap(Box::new(key)));
         }
         let picks = mk(ast::ExprKind::Comprehension {
-            body: Box::new(name(var)),
-            clauses: vec![clause],
+            body: Box::new(position),
+            clauses,
         });
         let by = mk(ast::ExprKind::Lambda {
             params: vec![ast::Pattern {
-                kind: ast::PatternKind::Name(var.clone()),
+                kind: param,
                 span: at,
             }],
             param_tys: Vec::new(),
@@ -1201,5 +1218,21 @@ impl<'a> Lowerer<'a> {
             GenArg::RuntimeInt(id) => Some(self.mk(ExprKind::Global(*id), Ty::Int, span)),
             _ => None,
         }
+    }
+}
+
+/// The names `pat` binds, in source order, as `argmax` lists them.
+fn bound_names(pat: &ast::Pattern, out: &mut Vec<String>) {
+    match &pat.kind {
+        ast::PatternKind::Name(n) => out.push(n.clone()),
+        ast::PatternKind::Domain(n) => out.push(n.text.clone()),
+        ast::PatternKind::Var(inner) => bound_names(inner, out),
+        ast::PatternKind::Tuple(items) | ast::PatternKind::Variant { args: items, .. } => {
+            items.iter().for_each(|p| bound_names(p, out))
+        }
+        ast::PatternKind::Record { fields, .. } => {
+            fields.iter().for_each(|(_, p)| bound_names(p, out))
+        }
+        _ => {}
     }
 }

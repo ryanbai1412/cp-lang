@@ -26,6 +26,45 @@ impl<'a> Checker<'a> {
                 && matches!(arg.value.kind, ExprKind::Comprehension { .. }))
     }
 
+    /// `argmax(f(v) for v in V)`: the language's position form over one
+    /// walk, even beside `std.seq`'s `argmax` of that name.
+    pub(super) fn position_walk(callee: &Expr, args: &[Arg]) -> bool {
+        matches!(&callee.kind, ExprKind::Name(n) if crate::prelude::SEQUENCE_FORMS.contains(&n.as_str()))
+            && matches!(args, [arg] if arg.name.is_none()
+                && !arg.mutable
+                && matches!(arg.value.kind, ExprKind::Comprehension { .. }))
+    }
+
+    /// What `argmax(f(v) for v in V)` names: the value its `for` binds, or
+    /// over several `for`s or a pattern the tuple of the names they bind.
+    fn walk_position(&mut self, clauses: &[cpl_syntax::ast::Clause]) -> Ty {
+        self.push_scope();
+        self.branch += 1;
+        let mut names = Vec::new();
+        for clause in clauses {
+            let iter_ty = self.infer(&clause.iter);
+            let elem = self.walk_elem_ty(&clause.iter, &iter_ty);
+            self.bind_whole(&clause.pat, &elem, false, "for");
+            for cond in &clause.conds {
+                self.cond(cond);
+            }
+            super::pattern::name_spans(&clause.pat, false, &mut names);
+        }
+        let mut tys: Vec<Ty> = names
+            .iter()
+            .map(|(span, _)| {
+                let name = self.text(*span).to_string();
+                self.local(&name).map_or(Ty::Unknown, |l| l.ty.clone())
+            })
+            .collect();
+        self.branch -= 1;
+        self.pop_scope();
+        match tys.len() {
+            1 => tys.remove(0),
+            _ => Ty::Tuple(tys),
+        }
+    }
+
     /// `xs.sort(x => -x)` on a built-in row: the key goes by name (decision 290).
     pub(super) fn sort_key_by_position(&mut self, callee: &Expr, args: &[Arg]) {
         let ExprKind::Field { base, name } = &callee.kind else {
@@ -95,7 +134,8 @@ impl<'a> Checker<'a> {
             matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
                 if params.first().is_some_and(|p| p.name == "self"))
         };
-        let core = (Self::binary_min_max(callee, args) || generator)
+        let position = Self::position_walk(callee, args);
+        let core = (Self::binary_min_max(callee, args) || generator || position)
             && (self.env.origin(name).is_some()
                 || self.free_global(name).is_some_and(|d| fold(&d)));
         let shadowed = name != "zip" && !core;
@@ -203,6 +243,14 @@ impl<'a> Checker<'a> {
                     Ty::Unknown => None,
                     elem => Some(Ty::Optional(Box::new(elem))),
                 }
+            }
+            // `position` holds only for the `SEQUENCE_FORMS`.
+            _ if position => {
+                let ExprKind::Comprehension { clauses, .. } = &args[0].value.kind else {
+                    return None;
+                };
+                let at = self.quietly(|c| c.walk_position(clauses));
+                Some(Ty::Optional(Box::new(at)))
             }
             // `none` is neither skipped nor passed on by `sum` (v2.2).
             ("sum", [over]) => {

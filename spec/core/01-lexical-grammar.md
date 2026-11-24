@@ -524,7 +524,10 @@ parameter at most once; parameters after `;` are named-only. A generator
 argument (`expr for clause`) is a lazy sequence, the free fold form of
 decision 53: `sum(f(x) for x in xs)`, `count(c == x for c in cs)`,
 `max(g[.., c].count('#') for c in Col)!`; each is the method fold of the
-same sequence (`max` gives `?T`). A generator is only ever a call
+same sequence (`max` gives `?T`). `argmax(f(v) for v in V)` and `argmin`
+give the position, what the `for`s bind: `v`, or over several `for`s or a
+pattern the tuple of the names bound, in order, so
+`argmax(g[i, j] for i in R for j in C)` is a `?(R, C)`. A generator is only ever a call
 argument: `(f(x) for x in xs).max()` is E0103, with `max(f(x) for x in xs)`
 as the fix. A `mut`
 parameter is marked `mut` at the call too (`link(mut d, a, b)`), except
