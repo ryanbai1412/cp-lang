@@ -230,7 +230,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Any value a program gets, it can name without a `use` | std types named by prelude signatures but not exported | rule `std-api/R18`; `scripts/prelude-signatures.py` (in `scripts/check.sh`) |
 | Spec tables and the prelude agree | missing prelude names | `scripts/conformance-prelude.py --check`; `scripts/spec-stub.py --check` the other way |
 | Findable without knowing the name (`lower_bound` finds `first_ge`) | common C++/Python names with no alias line in docs | `missing` (alias table checked against the docs index) |
-| Hover and completion show the full signature, options and bounds | std fns whose `cpl doc --format json` lacks bounds or defaults | rule `std-docs/R5`; `missing` (doc JSON shape test) |
+| Hover and completion show the full signature, options and bounds | std fns whose `cpl doc --format json` lacks bounds or defaults | rule `std-docs/R5`; `scripts/test_std_doc_json.py` (every public fn's bounds and defaults in its doc JSON signature) |
 | Go-to-definition opens readable std source | std files over the size cap, fns with no doc | `scripts/debt-ratchet.py` caps; `scripts/spec-stub.py --audit` |
 
 ### Documented truthfully (J2, J5, J8)
@@ -241,7 +241,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Every spec/lib example compiles and runs | failing code blocks in `spec/lib/*.md` | `crates/cpl-conform/src/spec_blocks.rs` in `cpl-conform all --check` |
 | Every public fn states cost, traps and edge cases | fns missing a required label | rule `std-docs/R1`; `scripts/spec-stub.py --audit` |
 | The documented cost is the real cost | fns slower than their `cost:` | rule `std-docs/R3`; `missing` (scaling test per fn: time at n and 4n) |
-| Docs show trait bounds and required labels | rendered docs missing bounds | rule `std-docs/R5`; `missing` (doc JSON shape test) |
+| Docs show trait bounds and required labels | rendered docs missing bounds | rule `std-docs/R5`; `scripts/test_std_doc_json.py` |
 | Docs are readable: summary first, short, example near the top | pages over the length limit, summaries over one line | rule `std-docs/R8`; `scripts/std-docs-lint.py` (in `scripts/check.sh`, shrink-only) |
 | A person or model writes correct code from the docs alone | unseen problems solved first try from docs only | process: cold-reader rounds, each miss traced to a row here |
 | Every std page is verified against the docs checklist | modules not verified in `plan/domains/stdlib/docs-tracker.md` | rule `std-docs/R11`; process, the verified count only goes up |

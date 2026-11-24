@@ -59,7 +59,7 @@ cannot claim a check the code skips.
 
 - **Why:** a contestant needs to know a type must be `Ord` before calling, not from the error.
 - **Example:** hover on `sorted` shows `T: Ord` and `by: T -> K = x => x`.
-- **Enforced by:** `missing` (doc JSON shape test over `cpl doc --format json std`).
+- **Enforced by:** `scripts/test_std_doc_json.py` over `cpl doc --format json std`.
 
 ## Examples
 
