@@ -8,7 +8,17 @@ use std::process::Command;
 /// Makes the cases of the packages `ids` (a no-op for those already made).
 pub fn make(root: &Path, ids: &[&str]) {
     let out = Command::new("uv")
-        .args(["run", "--quiet", "python", "scripts/corpus.py", "make"])
+        // One package at a time: nextest already runs a process per test, so a
+        // pool per caller would put cores x tests reference runs past their timeout.
+        .args([
+            "run",
+            "--quiet",
+            "python",
+            "scripts/corpus.py",
+            "make",
+            "-j",
+            "1",
+        ])
         .args(ids)
         .current_dir(root)
         .output()

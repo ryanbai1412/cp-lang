@@ -59,14 +59,13 @@ fn programs() -> Vec<String> {
         &mut paths,
     );
     // A port runs on its tests; one with none has nothing to compare.
-    corpus_cases::make(&r, &[]);
     for port in cpl_corpus::files(&r, "port.cp") {
-        if !port_inputs(port.parent().unwrap()).is_empty() {
+        if has_cases(port.parent().unwrap()) {
             paths.push(port);
         }
     }
     for port in corpus_programs::v02_snapshot_ports(&r) {
-        if !port_inputs(&corpus_programs::problem_dir(&port)).is_empty() {
+        if has_cases(&corpus_programs::problem_dir(&port)) {
             paths.push(port);
         }
     }
@@ -82,6 +81,12 @@ fn programs() -> Vec<String> {
     out.sort();
     assert!(out.len() > 1300, "found only {} programs", out.len());
     out
+}
+
+/// A package with a tests.toml has the cases `scripts/corpus.py make` writes
+/// from it, so listing the programs makes none; each shard makes its own.
+fn has_cases(dir: &Path) -> bool {
+    dir.join("tests.toml").is_file() || !port_inputs(dir).is_empty()
 }
 
 /// The three smallest `tests/*.in` of a port's directory, or of what
@@ -190,6 +195,18 @@ fn shard(n: usize) {
         let text = std::fs::read_to_string(&src).unwrap();
         std::fs::write(&file, &text).unwrap();
         copies.push((rel, file, text));
+    }
+    let packages: Vec<String> = copies
+        .iter()
+        .map(|(rel, _, _)| root().join(rel))
+        .filter(|src| src.file_name().is_some_and(|n| n == "port.cp"))
+        .map(|src| corpus_programs::problem_dir(&src))
+        .filter(|dir| dir.join("tests.toml").is_file())
+        .map(|dir| dir.file_name().unwrap().to_string_lossy().into_owned())
+        .collect();
+    let packages: Vec<&str> = packages.iter().map(String::as_str).collect();
+    if !packages.is_empty() {
+        corpus_cases::make(&root(), &packages);
     }
     // One `cpl fix` over the shard checks the stdlib once; only the
     // programs it edits are run.
