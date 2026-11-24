@@ -265,6 +265,13 @@
   ]
  },
  {
+  "context": "name/untyped-local",
+  "source": "for arc in nowhere():\n    print($0)",
+  "want": [
+   "arc"
+  ]
+ },
+ {
   "context": "dot/view",
   "source": "let xs = [1, 2, 3]\nlet ys = xs.filter(v => v > 1).$0",
   "want": [

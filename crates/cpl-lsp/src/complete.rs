@@ -405,7 +405,10 @@ fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String>
         return Some(ty.trim().to_string());
     }
     if decl.is_none() && !lhs.is_empty() && lhs.chars().all(is_ident) {
-        if let Some((_, ty)) = locals(cursor).into_iter().find(|(name, _)| name == lhs) {
+        if let Some((_, ty)) = locals(cursor)
+            .into_iter()
+            .find(|(name, ty)| name == lhs && !ty.has_vague())
+        {
             return Some(ty.to_string());
         }
         let entry = outline_of(cursor.analysis).find(lhs)?.clone();
@@ -1246,11 +1249,12 @@ fn scope_completion(
         }
     };
     for (name, ty) in locals(cursor) {
-        add(
-            &plain(&name, Kind::Value, format!("{name}: {ty}"), ""),
-            0,
-            &mut items,
-        );
+        // A local the checker could not type is still in scope.
+        let detail = match ty.has_vague() {
+            true => name.clone(),
+            false => format!("{name}: {ty}"),
+        };
+        add(&plain(&name, Kind::Value, detail, ""), 0, &mut items);
     }
     let own = outline_of(analysis);
     for entry in &own.entries {
@@ -1407,7 +1411,7 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty)> {
     for entry in &item.check.hovers {
         let declares = entry.decl == Some(entry.span)
             && matches!(entry.keyword, "let" | "var" | "param" | "for" | "fn");
-        if !declares || entry.span.end >= rel || entry.ty.has_vague() {
+        if !declares || entry.span.end >= rel {
             continue;
         }
         // A nested fn's name is inside its own span; its scope is the fn around it.

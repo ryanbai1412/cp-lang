@@ -223,7 +223,7 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
     let floors = [
         (Kind::Member, 840),
         (Kind::AfterCall, 690),
-        (Kind::Scope, 930),
+        (Kind::Scope, 980),
     ];
     for (kind, floor) in floors {
         let (hit, all) = tally.get(&kind).copied().unwrap_or_default();
