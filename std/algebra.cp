@@ -113,6 +113,10 @@ fn unreversed<T>(x: T) -> T:
 /// - `apply(f, val, span)` returns the folded value `val` of `span` covered leaves after applying `f`.
 /// - `commutes: true` promises tags commute (`compose(f, g)` acts as `compose(g, f)`), so a
 ///   `SegTree` applies a range tag without pushing tags down first.
+/// - `replaces: f => ...` says which tags set the value outright: when `replaces(f)` holds,
+///   `apply(f, val, span)` is the same for every `val`, as with assignment. A `SegTree` fold
+///   then answers from the first such tag it meets instead of reading below it. Leave it out
+///   (the default) when no tag does; `id` never does.
 ///
 /// The positional form `Action(id, compose, apply, over: op)` is the same call. A flipped
 /// `compose` still type-checks, so check a hand-written action once with
@@ -123,8 +127,10 @@ pub struct Action<T, F>(
     pub apply: (F, T, Int) -> T,
     pub over: Monoid<T>,
     pub commutes: Bool = false,
+    pub replaces: ?(F -> Bool) = None,
 ):
     law ident(a: T) = apply(id, a, 1) == a
+    law replace(f: F, a: T, b: T) = not (replaces ?? (_ => false))(f) or apply(f, a, 1) == apply(f, b, 1)
     law commute(f: F, g: F, a: T) = not commutes or apply(compose(f, g), a, 1) == apply(compose(g, f), a, 1)
     // `compose(f, g)` applies `g` first, then `f`.
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
@@ -146,8 +152,9 @@ pub struct Action<T, F>(
         apply: (F, T, Int) -> T,
         over: M = (+),
         commutes: Bool = false,
+        replaces: ?(F -> Bool) = None,
     ) -> Action<T, F>:
-        Action(id, compose, apply, Monoid<T>.of(over), commutes)
+        Action(id, compose, apply, Monoid<T>.of(over), commutes, replaces)
 
     /// Resolve a stock action (`add`, `assign`, `affine`, `flip`) or an `Action` against fold `op`.
     ///
@@ -173,8 +180,9 @@ impl<T> Acts<T, T> for AddAction:
 
 impl<T> Acts<T, ?T> for AssignAction:
     fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, ?T>:
-        if sums: return Action(None, (nf, of) => nf ?? of, (f, v, span) => if let x = f: x * span else: v, over)
-        Action(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, over)
+        let set: ?((?T) -> Bool) = Some(f => f != None)
+        if sums: return Action(None, (nf, of) => nf ?? of, (f, v, span) => if let x = f: x * span else: v, over, false, set)
+        Action(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, over, false, set)
 
 impl<T> Acts<T, (T, T)> for AffineAction:
     fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, (T, T)> = Action(
@@ -188,8 +196,9 @@ impl<T> Acts<T, (set: ?T, add: T)> for AssignAddAction:
     fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, (set: ?T, add: T)>:
         let keep: ?T = None
         let id = (set: keep, add: T.zero)
-        if sums: return Action(id, (nf, of) => if let _ = nf.set: nf else: (set: of.set, add: of.add + nf.add), (f, v, span) => if let x = f.set: x * span + f.add * span else: v + f.add * span, over)
-        Action(id, (nf, of) => if let _ = nf.set: nf else: (set: of.set, add: of.add + nf.add), (f, v, span) => if let x = f.set: x + f.add else: v + f.add, over)
+        let set: ?((set: ?T, add: T) -> Bool) = Some(f => f.set != None)
+        if sums: return Action(id, (nf, of) => if let _ = nf.set: nf else: (set: of.set, add: of.add + nf.add), (f, v, span) => if let x = f.set: x * span + f.add * span else: v + f.add * span, over, false, set)
+        Action(id, (nf, of) => if let _ = nf.set: nf else: (set: of.set, add: of.add + nf.add), (f, v, span) => if let x = f.set: x + f.add else: v + f.add, over, false, set)
 
 impl<T> Acts<T, Bool> for FlipAction:
     fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, Bool> =

@@ -9180,7 +9180,13 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Why.** With both in one counter its target 0 meant breaking the spec, and the 12 required copies hid any avoidable one that came back in the corpus. Split, a corpus copy fails at once, and raising a conformance header to hide a regression is a visible bump of its own counter.
 - **Reverse.** Fold `spec_required_copies` back into `cpp_deep_copies` with a baseline of their sum.
 
-## 607. (reserved, unknown)
+## 607. `Action.replaces`: a predicate saying which tags set the value outright (stdlib, 2026-11-24)
+
+- **Call.** `Action` gets an opt-in `replaces: ?(F -> Bool) = None`, with the law `replace(f, a, b) = not replaces(f) or apply(f, a, 1) == apply(f, b, 1)`. `assign` (`f => f != None`) and `assign_add` (`f => f.set != None`) declare it, and every other action keeps the default. A dense lazy `SegTree` whose action declares it folds top-down, stopping at the first node whose pending tag replaces and answering `apply(tag, t[p], overlap)`, as a recursive lazy tree does. `fold`'s signature and results are unchanged; its body changed with Core's OK under the decision-456 hold. Cases: `std-segtree/replacing-and-plain-actions-match-brute.cp`, `std-segtree/replaces-true-on-id-breaks-the-law.cp`.
+- **Why a predicate.** Whether a tag replaces depends on the tag, not on the action: `assign`'s `None` is its `id` and must not stop a fold, `Some(x)` must. A `Bool` flag can't say that, and `id` never satisfies the law (`apply(id, a, 1) == a`), so `laws_hold` stops a predicate that claims it.
+- **Numbers.** Fastest of 11 interleaved, x the accepted recursive C++: shoi15p2 1.11x -> 0.75x, `bench/ranges/lazy_assign` 1.41x -> 1.19x, and fold's branch mispredicts 2.54M -> 0.57M. `lazy_assign` is still an open gap above 1.1x: the rest is non-inlined `push_at` calls in `apply` (about 60M instructions), a codegen item. The dispatch reads `replaces` off the unwrapped action, so prune folds `fold_set` away when no reached action fills it: the dense lazy prune case emits the same 24,598 B as before.
+- **Core.** OK under the decision-456 hold (compiler, 2026-11-24) on four conditions: `replaces` is an ordinary std member the compiler knows nothing of (prune drops `fold_set` through its general known-`None`-field rule); its law is in `Action`'s laws and `laws_hold` catches a wrongly declared one (`replaces-true-on-id-breaks-the-law.cp`); both engines fold equal to brute force with and without `replaces` (`replacing-and-plain-actions-match-brute.cp`); the prune case stays at 27,943 B.
+- **Reverse.** Drop the field and `fold_set`; every action folds bottom-up again.
 
 ## 608. (reserved, stdlib)
 

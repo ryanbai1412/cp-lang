@@ -31,6 +31,7 @@ let paint = Action<Run, ?Bool>(
     (new, old) => if new == None: old else: new,
     (f, v, len) => if let hole = f: solid(hole, len) else: v,
     over: Monoid<Run>(solid(true, 0), join),
+    replaces: f => f != None,
 )
 var brain = SegTree(paint.over, [Cell] _ => solid(false, 1), act: paint)
 
