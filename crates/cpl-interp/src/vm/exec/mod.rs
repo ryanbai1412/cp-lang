@@ -1450,15 +1450,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
                         Value::ListView(view) => {
-                            let len = view.len as i64;
-                            if idx < 0 || idx >= len {
+                            let Some(item) = usize::try_from(idx).ok().and_then(|i| view.get(i))
+                            else {
+                                let len = view.len as i64;
                                 return trap(
                                     spans[cur_pc],
                                     rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
-                            }
-                            regs_i[dst as usize] =
-                                ScalarKind::unbox_val(&view.get(idx as usize).unwrap());
+                            };
+                            regs_i[dst as usize] = ScalarKind::unbox_val(&item);
                         }
                         _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[])),
                     }
@@ -1567,15 +1567,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
                         Value::ListView(view) => {
-                            let len = view.len as i64;
-                            if idx < 0 || idx >= len {
+                            let Some(item) = usize::try_from(idx).ok().and_then(|i| view.get(i))
+                            else {
+                                let len = view.len as i64;
                                 return trap(
                                     spans[cur_pc],
                                     rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
-                            }
-                            regs_i[dst as usize] =
-                                ScalarKind::unbox_val(&view.get(idx as usize).unwrap());
+                            };
+                            regs_i[dst as usize] = ScalarKind::unbox_val(&item);
                         }
                         _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[])),
                     }

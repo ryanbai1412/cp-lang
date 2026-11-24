@@ -1841,3 +1841,10 @@ fn a_table_of_optional_nested_tuples_is_packed() {
     assert!(matches!(cells, Cells::Values(_)));
     assert_eq!(cells.get(4), Some(back(5, -7)));
 }
+
+#[test]
+fn slices_walk_print_and_join_in_order() {
+    let prog = "let a = [1, 2, 3, 4]\nlet s = a[1..]\nfor x in s: print(x)\nprint(s)\nprint(a + s)\nlet t = \"abcd\"\nlet u = t[1..]\nfor c in u: print(c)\nprint(u)\nprint(t + u)\nprint(yes(u < t))\n";
+    let want = "2\n3\n4\n2 3 4\n1 2 3 4 2 3 4\nb\nc\nd\nbcd\nabcdbcd\nNO\n";
+    assert_eq!(outcome(prog, ""), (want.into(), None));
+}

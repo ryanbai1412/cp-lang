@@ -672,15 +672,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         return Ok(None);
                     }
                     Value::ListView(view) => {
-                        let n_len = view.len as i64;
-                        if idx < 0 || idx >= n_len {
+                        let Some(item) = usize::try_from(idx).ok().and_then(|i| view.get(i)) else {
+                            let n_len = view.len as i64;
                             return trap(
                                 spans[cur_pc],
                                 cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
                                     .at(&[&idx, &n_len]),
                             );
-                        }
-                        view.get(idx as usize).unwrap()
+                        };
+                        item
                     }
                     _ => {
                         return trap(
