@@ -365,3 +365,14 @@ fn a_project_says_its_judge_has_avx2() {
     assert!(fast.avx2);
     assert!(builtins().iter().all(|p| !p.avx2));
 }
+
+#[test]
+fn every_fetched_site_is_a_builtin_profile_known_by_its_host() {
+    for site in SITES {
+        assert!(builtin(site.profile).is_some(), "{}", site.profile);
+        let on = |sub: &str| site_of(&format!("{sub}{}/x", site.domain)).map(|s| s.profile);
+        assert_eq!(on(""), Some(site.profile));
+        assert_eq!(on("mirror."), Some(site.profile));
+        assert_eq!(on("not"), None);
+    }
+}
