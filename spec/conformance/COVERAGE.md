@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3758 (3737 passing). Rules: 618.
+Cases: 3760 (3737 passing). Rules: 618.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3758 (3737 passing). Rules: 618.
 - R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 128 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 97 rules, 266 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 267 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 21 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -531,7 +531,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.2 [8+ 1-]: | `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bo...
 - R07.9.3 [6+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty...
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
-- R07.9.5 [4+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
+- R07.9.5 [5+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [5+ 4-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.4.16 [4+ 3-]: **One spelling for suffix and all-but-one folds.** A suffix fold is `a.rev.scan(op)` and t...
 - R07.11.1 [5+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
@@ -1129,7 +1129,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **range** (19/19 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (67/67 named by a case)
-- **seq** (235/238 named by a case)
+- **seq** (236/239 named by a case)
   - uncovered: `Filtered`, `Mapped`, `RingWindows`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -1142,7 +1142,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2443 of 2478 std items are named by a case.
+2444 of 2479 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

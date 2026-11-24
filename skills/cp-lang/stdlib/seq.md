@@ -288,6 +288,7 @@ Fields: `k: Int,`.
 - `fn with_next<S: Seq<T>, T>(self: S) -> yields (T, ?T)` — \(O(1)\) per step
 - `fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step; traps: when `a.len != b.len`
 - `fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>` — \(O(k)\) per chunk; \(O(n)\).; traps: when `k < 1`
+- `fn contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool` — \(O(n)\) comparisons; \(O(n)\).
 - `fn reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T` — \(O(n)\) calls of `f`; \(O(n)\).
 - `fn fold<S: Seq<T>, T, M>(self: S, op: M) -> T` — \(O(n)\) calls of `op`; \(O(n)\).; traps: never (an `op` without a known identity is a compile-time error)
 - `fn fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc` — \(O(n)\) calls of `f`; \(O(n)\).
