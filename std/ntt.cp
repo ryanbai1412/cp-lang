@@ -7,7 +7,7 @@
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 use std.algebra.{Monoid, Semiring}
-use std.math.{is_pow2, primitive_root, bit, gcd, lcm}
+use std.math.{is_pow2, primitive_root, bit, gcd, lcm, isqrt}
 use std.mod.{Mod}
 use std.seq.{collect}
 
@@ -130,7 +130,7 @@ pub const subset = Disjoint()
 /// for `max`, slopes merged; `Right`: only `b`, `monotone_minima`; `Neither`: the \(O(n m)\) loop by
 /// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
 ///
-/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; three NTT primes and Garner's CRT for any other `Mod<P>` while `(P - 1)^2 * min(n, m)` is under 7.8e25, and for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25; a complex FFT for `F64`), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
+/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; four complex FFTs over sqrt(P)-split halves for any other `Mod<P>` below 2^31 while `n log2 n * P` is under 8.6e14, else three NTT primes and Garner's CRT while `(P - 1)^2 * min(n, m)` is under 7.8e25, and for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25; a complex FFT for `F64`), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
 /// empty: `let e: List<Int> = []; convolve([1, 2], e) == [] and convolve(e, [1, 2]) == []`
 /// order: by output index `0..len`; a new `List`, keyed from 0
 /// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows; never for `F64`, whose FFT outputs are each off from the exact sum by up to about `(sum of a[i]^2 + sum of b[j]^2) * log2(n) * 2^-52` (inputs up to 60 long take the exact loop)
@@ -222,7 +222,7 @@ impl FastProduct for Mod<P>:
                     for j in 0..nb: out[i + j] += ai * b[j]
             return Some(out)
         let need = bit_ceil(n_out)
-        if (P - 1) % need != 0: return crt_product(a, b)
+        if (P - 1) % need != 0: return split_product(a, b) ?? crt_product(a, b)
         var fa = List.filled(need, Mod<P>(0))
         var fb = List.filled(need, Mod<P>(0))
         unchecked:
@@ -284,6 +284,58 @@ fn garner3(c: Int, r3: Mod<NTT_P3>) -> I128 = I128(c) + I128(garner_digit(c, r3)
 fn garner_digit(c: Int, r3: Mod<NTT_P3>) -> Int = Int(((r3 - Mod<NTT_P3>(c)) * Mod<NTT_P3>(115_990_628)).v)
 
 // `a * b` for a `Mod<P>` whose `P - 1` lacks the power of two: the exact product of the residues,
+// Splits each value as hi * cut + lo with cut about sqrt(P), packs hi + i lo into one complex
+// list per input and gets the four cross products from four FFTs (KACTL's convMod). `None` when
+// P >= 2^31 or n log2 n * P reaches 8.6e14, where a coefficient could round wrong.
+fn split_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> ?List<Mod<P>>:
+    let n_out = a.len + b.len - 1
+    let n = bit_ceil(n_out)
+    var lg = 0
+    while (1 << lg) < n: lg += 1
+    if P >= 1 << 31 or F64(n) * F64(lg) * F64(P) >= 8.6e14: return None
+    let cut = P.isqrt + 1
+    var lr = List.filled(n, 0.0)
+    var li = List.filled(n, 0.0)
+    var rr = List.filled(n, 0.0)
+    var ri = List.filled(n, 0.0)
+    unchecked:
+        for i in 0..a.len:
+            let x = Int(a[i].v)
+            lr[i] = F64(x / cut)
+            li[i] = F64(x % cut)
+        for i in 0..b.len:
+            let x = Int(b[i].v)
+            rr[i] = F64(x / cut)
+            ri[i] = F64(x % cut)
+    fft(mut lr, mut li)
+    fft(mut rr, mut ri)
+    var olr = List.filled(n, 0.0)
+    var oli = List.filled(n, 0.0)
+    var osr = List.filled(n, 0.0)
+    var osi = List.filled(n, 0.0)
+    let s = 2.0 * F64(n)
+    unchecked:
+        for i in 0..n:
+            let j = (n - i) & (n - 1)
+            let (pr, pi) = (lr[i] + lr[j], li[i] - li[j])
+            let (qr, qi) = (lr[i] - lr[j], li[i] + li[j])
+            let (xr, xi) = (rr[i], ri[i])
+            olr[j] = (pr * xr - pi * xi) / s
+            oli[j] = (pr * xi + pi * xr) / s
+            osr[j] = (qr * xi + qi * xr) / s
+            osi[j] = -(qr * xr - qi * xi) / s
+    fft(mut olr, mut oli)
+    fft(mut osr, mut osi)
+    let c = Mod<P>(cut)
+    var out = List.filled(n_out, Mod<P>(0))
+    unchecked:
+        for k in 0..n_out:
+            let hh = Mod<P>(round(olr[k]))
+            let hl = Mod<P>(round(oli[k]) + round(osr[k]))
+            let ll = Mod<P>(round(osi[k]))
+            out[k] = (hh * c + hl) * c + ll
+    Some(out)
+
 // modulo the three NTT primes, rebuilt by Garner and reduced mod `P`. `None` when a coefficient
 // could reach p1 p2 p3 (about 7.9e25), past which the residues no longer pin it down.
 fn crt_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> ?List<Mod<P>>:
@@ -340,17 +392,33 @@ fn fft(mut re: List<F64>, mut im: List<F64>):
     bit_reverse(mut re)
     bit_reverse(mut im)
     let pi = acos(-1.0)
-    var k = 1
+    // rt[k + j] = e^(i pi j / k): each level's odd entries are the level above times one root,
+    // so a transform takes log n trig calls, not n.
+    var wr = List.filled(max(n, 2), 1.0)
+    var wi = List.filled(max(n, 2), 0.0)
+    var k = 2
     while k < n:
-        let wr = [cos(pi * F64(j) / F64(k)) for j in 0..k]
-        let wi = [sin(pi * F64(j) / F64(k)) for j in 0..k]
+        let (xr, xi) = (cos(pi / F64(k)), sin(pi / F64(k)))
+        unchecked:
+            for i in k..2 * k:
+                let (ar, ai) = (wr[i / 2], wi[i / 2])
+                if i % 2 == 0:
+                    wr[i] = ar
+                    wi[i] = ai
+                else:
+                    wr[i] = ar * xr - ai * xi
+                    wi[i] = ar * xi + ai * xr
+        k *= 2
+    k = 1
+    while k < n:
         unchecked:
             var i = 0
             while i < n:
                 for j in 0..k:
                     let (xr, xi) = (re[i + j + k], im[i + j + k])
-                    let zr = wr[j] * xr - wi[j] * xi
-                    let zi = wr[j] * xi + wi[j] * xr
+                    let (cr, ci) = (wr[j + k], wi[j + k])
+                    let zr = cr * xr - ci * xi
+                    let zi = cr * xi + ci * xr
                     re[i + j + k] = re[i + j] - zr
                     im[i + j + k] = im[i + j] - zi
                     re[i + j] += zr
