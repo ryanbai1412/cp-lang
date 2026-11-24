@@ -21,7 +21,7 @@ mod types;
 
 use crate::ast::*;
 use crate::token::{Token, TokenKind};
-use cpl_diag::{codes, Code, Diagnostic, Sink, Span};
+use cpl_diag::{codes, msgs, Code, Diagnostic, Sink, Span};
 use TokenKind as T;
 
 /// One parsed top-level item: usually one statement, with spans relative to
