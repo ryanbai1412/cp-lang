@@ -763,3 +763,26 @@ fn a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it() {
         assert!(out.contains("  std::vector<ll> xs;"), "{src}\n{out}");
     }
 }
+
+#[test]
+fn a_tuple_of_rows_binds_each_name_in_place() {
+    let lent = body(concat!(
+        "let n: Int = read()\n",
+        "var t: List<List<Int>> = List.filled(n, [])\n",
+        "for i in 0..n: t[i].push(i)\n",
+        "var s = 0\n",
+        "for q in 0..n:\n",
+        "    let (mine, theirs) = (t[q], t[(q + 1) % n])\n",
+        "    s += mine.len + theirs[0]\n",
+        "print(s)\n",
+    ));
+    assert!(
+        lent.contains("const std::vector<ll>& mine = ")
+            && lent.contains("const std::vector<ll>& theirs = "),
+        "each row is read in place: {lent}"
+    );
+    assert!(
+        !lent.contains("std::get<"),
+        "no tuple holds copies of both rows: {lent}"
+    );
+}
