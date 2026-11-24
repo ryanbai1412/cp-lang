@@ -306,31 +306,36 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         if let f = pend: return Some(act!.compose(f, lz[p]))
         Some(lz[p])
 
-    // Walk right from `from` under node `p` (covering `nl..nr`): the first leaf where `ok` fails,
-    // or -1, and the fold so far. Reads pending tags on the way down instead of pushing them.
-    fn right_from(self, p: Int, nl: Int, nr: Int, from: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
-        if nr <= from: return (-1, acc)
+    // Walk right from `from` under node `p` (covering `nl..nr`), folding the leaves `ok` holds on
+    // into `acc` (None before the first): the first leaf where `ok` fails, or -1. Reads pending
+    // tags on the way down instead of pushing them.
+    fn right_from(self, p: Int, nl: Int, nr: Int, from: Int, pend: ?F, mut acc: ?T, ok: T -> Bool) -> Int:
+        if nr <= from: return -1
         if from <= nl:
-            let w = m.op(acc, self.seen(pend, p, nl, nr))
-            if ok(w): return (-1, w)
-            if nr - nl == 1: return (nl, acc)
+            let w = if acc == None: self.seen(pend, p, nl, nr) else: m.op(acc!, self.seen(pend, p, nl, nr))
+            if ok(w):
+                acc = Some(w)
+                return -1
+            if nr - nl == 1: return nl
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
-        let (at, x) = self.right_from(self.kid(p, false), nl, mid, from, down, acc, ok)
-        if at >= 0: return (at, x)
-        self.right_from(self.kid(p, true), mid, nr, from, down, x, ok)
+        let at = self.right_from(self.kid(p, false), nl, mid, from, down, mut acc, ok)
+        if at >= 0: return at
+        self.right_from(self.kid(p, true), mid, nr, from, down, mut acc, ok)
 
-    fn left_from(self, p: Int, nl: Int, nr: Int, to: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
-        if nl >= to: return (-1, acc)
+    fn left_from(self, p: Int, nl: Int, nr: Int, to: Int, pend: ?F, mut acc: ?T, ok: T -> Bool) -> Int:
+        if nl >= to: return -1
         if nr <= to:
-            let w = m.op(self.seen(pend, p, nl, nr), acc)
-            if ok(w): return (-1, w)
-            if nr - nl == 1: return (nr, acc)
+            let w = if acc == None: self.seen(pend, p, nl, nr) else: m.op(self.seen(pend, p, nl, nr), acc!)
+            if ok(w):
+                acc = Some(w)
+                return -1
+            if nr - nl == 1: return nr
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
-        let (at, x) = self.left_from(self.kid(p, true), mid, nr, to, down, acc, ok)
-        if at >= 0: return (at, x)
-        self.left_from(self.kid(p, false), nl, mid, to, down, x, ok)
+        let at = self.left_from(self.kid(p, true), mid, nr, to, down, mut acc, ok)
+        if at >= 0: return at
+        self.left_from(self.kid(p, false), nl, mid, to, down, mut acc, ok)
 
     // `x`, folded over `n` leaves under node `p`, with the tags of `p`'s ancestors applied.
     fn lift(self, x: T, n: Int, p: Int) -> T:
@@ -473,7 +478,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         let k = self.count
         let x = from.ord - base
         if x == k: return from
-        let (at, _) = self.right_from(1, 0, size, x, None, m.id, ok)
+        var acc: ?T = None
+        let at = self.right_from(1, 0, size, x, None, mut acc, ok)
         D.cut(base + (if at < 0: k else: at))
 
     /// The first cut `d` at or left of `to` such that `ok(fold(d..to))` holds. `ok` must be
@@ -489,7 +495,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         assert ok(m.id), "`ok` must hold on the identity"
         let x = to.ord - base
         if x == 0: return to
-        let (at, _) = self.left_from(1, 0, size, x, None, m.id, ok)
+        var acc: ?T = None
+        let at = self.left_from(1, 0, size, x, None, mut acc, ok)
         D.cut(base + (if at < 0: 0 else: at))
 
     /// A tree whose position `i` holds `f(i)`. `f` is kept: when something it reads changes,

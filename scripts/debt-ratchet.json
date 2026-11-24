@@ -141,7 +141,7 @@
   "cpp_deep_copies": 0,
   "spec_required_copies": 12,
   "cpp_std_functions": 0,
-  "cpp_sunk_copies": 1,
+  "cpp_sunk_copies": 0,
   "codegen_effect_guesses": 0,
   "opt_without_uses": 0,
   "opt_private_walks": 0,
