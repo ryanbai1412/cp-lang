@@ -17,6 +17,8 @@ In prelude (no `use` needed): `bsearch_real`, `split_best`, `ternary_max`, `tern
 - `fn gallop_first<I: Add>(from: I, ok: I -> Bool) -> ?I` — \(O(\log d)\) calls of `ok`, for d the distance from `from` to the answer; The first `i >= from` with `ok(i)`, for a monotone `ok` (false then true) whose upper end is unknown, or `None` when `ok` stays false to the end of `I`.
 - `fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64` — \(O(\log(1 / \mathit{eps}))\) calls of `solve`, usually a handful; The largest ratio `num / den` over a family of choices (Dinkelbach's method), where `solve(l)` returns the choice maximizing `num - l * den`.; traps: when `solve` returns `den <= 0`
 - `fn split_best<G, D, T: Ord>(groups: Seq<G>, range: G -> Range<D>, best: (G, Range<D>) -> (T, D)) -> yields T` — \(O(n + k)\) calls of `best` and \(O((n + k) \log(n + k))\) queue work for the first k values; The values of a family of ranges, largest first, lazily.; traps: when `best` returns a position outside the range it was given
+- `fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64` — `steps + 2` calls of `by`; A point of `self` where a continuous unimodal `by` is largest, by golden-section search, within `(hi - lo) * 0.618^steps` of the maximizer: the real `peak`, picked by the range's element type (decision 419).; traps: when the range is written backwards or `steps < 0`
+- `fn valley(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64` — `steps + 2` calls of `by`; A point of `self` where a continuous unimodal `by` is smallest, by golden-section search, within `(hi - lo) * 0.618^steps` of the minimizer.; traps: when the range is written backwards or `steps < 0`
 
 ## Example
 

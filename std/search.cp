@@ -357,3 +357,24 @@ pub fn split_best<G, D, T: Ord>(
         let after = p + 1
         if after < r.r:
             push_entry(g, after..r.r, g_idx)
+
+/// A point of `self` where a continuous unimodal `by` is largest, by golden-section search,
+/// within `(hi - lo) * 0.618^steps` of the maximizer: the real `peak`, picked by the range's
+/// element type (decision 419).
+///
+/// cost: `steps + 2` calls of `by`
+/// ties: on a plateau at the maximum, whichever plateau point the bracket closes on
+/// traps: when the range is written backwards or `steps < 0`
+/// example: `abs((0.0..4.0).peak(by: x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
+pub fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
+    golden_real(self.start, self.end, by, steps, larger: true)
+
+/// A point of `self` where a continuous unimodal `by` is smallest, by golden-section search,
+/// within `(hi - lo) * 0.618^steps` of the minimizer.
+///
+/// cost: `steps + 2` calls of `by`
+/// ties: on a plateau at the minimum, whichever plateau point the bracket closes on
+/// traps: when the range is written backwards or `steps < 0`
+/// example: `abs((-3.0..3.0).valley(by: x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`
+pub fn valley(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
+    golden_real(self.start, self.end, by, steps, larger: false)

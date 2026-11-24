@@ -142,9 +142,9 @@ export const STDLIB_VALUES: readonly string[] = [
     'monge_paths', 'monotone_minima', 'mul_mod', 'mult_order', 'negative_cycle', 'newton', 'next',
     'next_same', 'next_smaller', 'nth', 'ntt', 'odd_cycle', 'offline_over', 'on_segment', 'only',
     'opt', 'outermost', 'parallel_bsearch', 'parse', 'parse_int', 'partial_inverse',
-    'partition_in_place', 'partition_table', 'perm_cycles', 'perm_order', 'perm_pow', 'perm_rank',
-    'perm_sign', 'perm_unrank', 'permutations', 'pick_boundary', 'pick_interior', 'pieces',
-    'planar_faces', 'point_action', 'point_location_planar', 'poly_at', 'poly_degree',
+    'partition_in_place', 'partition_table', 'peak', 'perm_cycles', 'perm_order', 'perm_pow',
+    'perm_rank', 'perm_sign', 'perm_unrank', 'permutations', 'pick_boundary', 'pick_interior',
+    'pieces', 'planar_faces', 'point_action', 'point_location_planar', 'poly_at', 'poly_degree',
     'polygon_area', 'polygon_centroid', 'polygon_cut', 'polygon_kernel', 'polygon_triangulate',
     'polyhedron_volume6', 'pop', 'pop_if', 'pop_while', 'pow', 'pow_mod_poly', 'power_sums',
     'prefix_fold', 'prefix_matches', 'present', 'prev_same', 'prev_smaller', 'prim', 'prime_count',
@@ -163,8 +163,8 @@ export const STDLIB_VALUES: readonly string[] = [
     'symmetric', 'take', 'take_all', 'take_last', 'taylor_shift', 'to_lower', 'to_upper',
     'transpose', 'transposed', 'transposed_mul', 'triangles', 'trim', 'trim_end', 'trim_start',
     'turn_eps', 'two_color', 'two_edge_components', 'unimodality_break', 'unzip', 'update',
-    'upper_hull', 'upper_hull_idx', 'valleys', 'voronoi_cells', 'with_domain', 'with_next',
-    'zip_exact',
+    'upper_hull', 'upper_hull_idx', 'valley', 'valleys', 'voronoi_cells', 'with_domain',
+    'with_next', 'zip_exact',
 ];
 
 /** Public `std/*.cp` constants the prelude imports (no INF sentinel; use ?Int / None). */
