@@ -725,10 +725,8 @@ impl<'p> Emitter<'p> {
                                             return self.expr_with_elem_layout(item, Some(&l)).text;
                                         }
                                         let v = self.expr(item).text;
-                                        match struct_id
-                                            .and_then(|s| self.narrow_ints.get(&(s, idx)))
-                                        {
-                                            Some(w) => format!("{}({v})", w.cpp()),
+                                        match struct_id {
+                                            Some(s) => self.narrow_field_store(s, idx, &v),
                                             None => v,
                                         }
                                     })

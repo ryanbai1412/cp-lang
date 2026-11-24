@@ -698,7 +698,7 @@ impl<'a> Lowerer<'a> {
     /// written as numbers: `kid: [0..2]?Int`, `cnt: [1..=26]Int`.
     /// What a zero-argument alias declared in this module names: `Sign` in
     /// `type Sign = -1..=1` is the range `-1..=1`.
-    fn local_alias_target(&self, ty: &ast::Type) -> Option<&'a ast::Type> {
+    pub(super) fn local_alias_target(&self, ty: &ast::Type) -> Option<&'a ast::Type> {
         let ast::TypeKind::Named { name, args } = &ty.kind else {
             return None;
         };
@@ -790,60 +790,6 @@ impl<'a> Lowerer<'a> {
             }
             _ => None,
         }
-    }
-
-    pub(super) fn narrow_range_width(&self, ty: &ast::Type) -> Option<IntWidth> {
-        // `type Sign = -1..=1`: a field of the alias narrows as its range would.
-        if let ast::TypeKind::Named { .. } = &ty.kind {
-            return self
-                .local_alias_target(ty)
-                .and_then(|aliased| self.narrow_range_width(aliased));
-        }
-        let ast::TypeKind::Range {
-            lo: Some(lo),
-            hi: Some(hi),
-            inclusive,
-        } = &ty.kind
-        else {
-            return None;
-        };
-        let (lo_min, _) = self.range_bound_limits(lo)?;
-        let (_, hi_raw) = self.range_bound_limits(hi)?;
-        let hi_max = if *inclusive {
-            hi_raw
-        } else {
-            hi_raw.checked_sub(1)?
-        };
-        IntWidth::of(lo_min, hi_max)
-    }
-
-    /// The ranged `Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.
-    pub(super) fn narrow_int_fields(
-        &self,
-        decl: &ast::StructDecl,
-    ) -> std::collections::BTreeMap<usize, IntWidth> {
-        let mut narrow = std::collections::BTreeMap::new();
-        for (at, field) in decl.fields.iter().enumerate() {
-            let width = match &field.ty.kind {
-                ast::TypeKind::Range { .. } => self.narrow_range_width(&field.ty),
-                ast::TypeKind::Named { args, .. } if args.is_empty() => {
-                    self.narrow_range_width(&field.ty)
-                }
-                ast::TypeKind::Array { index, elem } if index.len() == 1 => {
-                    self.narrow_range_width(elem)
-                }
-                ast::TypeKind::Named { name, args }
-                    if (name.text == "List" || name.text == "ListView") && args.len() == 1 =>
-                {
-                    self.narrow_range_width(&args[0])
-                }
-                _ => None,
-            };
-            if let Some(w) = width {
-                narrow.insert(at, w);
-            }
-        }
-        narrow
     }
 
     /// Instantiates a generic struct template with concrete `args`, memoized.

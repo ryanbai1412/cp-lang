@@ -256,6 +256,70 @@ pub(super) fn is_narrowable_elem_ty(ty: &Ty) -> bool {
 }
 
 impl<'a> Lowerer<'a> {
+    pub(super) fn narrow_range_width(&self, ty: &ast::Type) -> Option<IntWidth> {
+        self.static_range_limits(ty)
+            .and_then(|(lo, hi)| IntWidth::of(lo, hi))
+    }
+
+    /// The ends of a range type known while lowering, through a local alias.
+    fn static_range_limits(&self, ty: &ast::Type) -> Option<(i64, i64)> {
+        // `type Sign = -1..=1`: a field of the alias narrows as its range would.
+        if let ast::TypeKind::Named { .. } = &ty.kind {
+            return self
+                .local_alias_target(ty)
+                .and_then(|aliased| self.static_range_limits(aliased));
+        }
+        let ast::TypeKind::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            inclusive,
+        } = &ty.kind
+        else {
+            return None;
+        };
+        let (lo_min, _) = self.range_bound_limits(lo)?;
+        let (_, hi_raw) = self.range_bound_limits(hi)?;
+        let hi_max = if *inclusive {
+            hi_raw
+        } else {
+            hi_raw.checked_sub(1)?
+        };
+        Some((lo_min, hi_max))
+    }
+
+    /// The ranged `Int`, `?Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.
+    pub(super) fn narrow_int_fields(
+        &self,
+        decl: &ast::StructDecl,
+    ) -> std::collections::BTreeMap<usize, IntWidth> {
+        let mut narrow = std::collections::BTreeMap::new();
+        for (at, field) in decl.fields.iter().enumerate() {
+            let width = match &field.ty.kind {
+                ast::TypeKind::Range { .. } => self.narrow_range_width(&field.ty),
+                ast::TypeKind::Named { args, .. } if args.is_empty() => {
+                    self.narrow_range_width(&field.ty)
+                }
+                ast::TypeKind::Array { index, elem } if index.len() == 1 => {
+                    self.narrow_range_width(elem)
+                }
+                ast::TypeKind::Named { name, args }
+                    if (name.text == "List" || name.text == "ListView") && args.len() == 1 =>
+                {
+                    self.narrow_range_width(&args[0])
+                }
+                // `?lo..hi` inside an `int32_t` above INT32_MIN, which is `none`.
+                ast::TypeKind::Optional(inner) => (self.static_range_limits(inner))
+                    .filter(|&(lo, hi)| lo > i64::from(i32::MIN) && hi <= i64::from(i32::MAX))
+                    .map(|_| IntWidth::I32),
+                _ => None,
+            };
+            if let Some(w) = width {
+                narrow.insert(at, w);
+            }
+        }
+        narrow
+    }
+
     pub(super) fn record_narrow_locals(
         &mut self,
         scope: ScopeId,

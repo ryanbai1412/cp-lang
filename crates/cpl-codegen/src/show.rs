@@ -478,8 +478,8 @@ impl<'p> Emitter<'p> {
                     .enumerate()
                     .map(|(i, field)| {
                         let v = self.read(field).text;
-                        match struct_id.and_then(|id| self.narrow_ints.get(&(id, i))) {
-                            Some(w) => format!("{}({v})", w.cpp()),
+                        match struct_id {
+                            Some(id) => self.narrow_field_store(id, i, &v),
                             None => v,
                         }
                     })

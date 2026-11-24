@@ -155,6 +155,38 @@ impl<'p> Emitter<'p> {
         self.ty(ty)
     }
 
+    /// Whether field `idx` of struct `sid` is a narrowed `?Int`, held as `cpl::OptI32`.
+    fn narrow_opt_field(&self, sid: usize, idx: usize) -> bool {
+        self.narrow_ints.contains_key(&(sid, idx))
+            && crate::scope::is_opt_int(self.program.structs[sid].fields.get(idx).map(|(_, t)| t))
+    }
+
+    /// The C++ type of a narrowed field: one rule for `Int` and `?Int` (R03.2).
+    pub fn narrow_field_cpp(&self, sid: usize, idx: usize, w: cpl_ir::IntWidth) -> String {
+        if self.narrow_opt_field(sid, idx) {
+            self.niche_types.set(self.niche_types.get() | 1 << 6);
+            return "cpl::OptI32".into();
+        }
+        w.cpp().into()
+    }
+
+    /// `v` stored into a narrowed field.
+    pub fn narrow_field_store(&self, sid: usize, idx: usize, v: &str) -> String {
+        match self.narrow_ints.get(&(sid, idx)) {
+            Some(w) => format!("{}({v})", self.narrow_field_cpp(sid, idx, *w)),
+            None => v.to_string(),
+        }
+    }
+
+    /// A narrowed field read back at its full width.
+    pub fn narrow_field_load(&self, sid: usize, idx: usize, access: &str) -> String {
+        if self.narrow_opt_field(sid, idx) {
+            format!("cpl::OptInt({access})")
+        } else {
+            format!("ll({access})")
+        }
+    }
+
     pub fn narrow_cell_value(&self, text: &str, layout: &cpl_ir::NarrowLayout) -> String {
         match layout {
             cpl_ir::NarrowLayout::Int(w) => format!("{}({text})", w.cpp()),
@@ -261,7 +293,7 @@ impl<'p> Emitter<'p> {
                         cpp = format!("cpl::Row<{cell}, {k}>");
                         self.need("row");
                     } else if let Some(w) = self.narrow_ints.get(&(*id, field_idx)) {
-                        cpp = w.cpp().into();
+                        cpp = self.narrow_field_cpp(*id, field_idx, *w);
                     } else if let Some(l) = self
                         .narrow_elems
                         .get(&cpl_ir::ElemLoc::Field(*id, field_idx))

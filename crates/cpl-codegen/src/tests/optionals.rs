@@ -183,3 +183,17 @@ fn optional_mut_param_does_not_emit_optional_of_reference() {
     assert!(!out.contains("std::optional<std::vector<char>&>"), "{out}");
     assert!(out.contains("std::optional<std::vector<char>>"), "{out}");
 }
+
+#[test]
+fn an_optional_field_of_a_32_bit_range_is_an_opt_i32() {
+    let field = |ty: &str| {
+        let cpp = cpp(&format!(
+            "type Cost = 0..=1e7\nstruct Node(best: {ty}, at: Int)\nlet nd = Node(Some(2), 1)\nprint(nd.at, nd.best ?? -1)\n"
+        ));
+        decl(&cpp, "best")
+    };
+    assert_eq!(field("?Cost"), "cpl::OptI32");
+    assert_eq!(field("?(0..=1e7)"), "cpl::OptI32");
+    // Past `i32::MAX` the field keeps all 64 bits.
+    assert_eq!(field("?(0..=3_000_000_000)"), "cpl::OptInt");
+}
