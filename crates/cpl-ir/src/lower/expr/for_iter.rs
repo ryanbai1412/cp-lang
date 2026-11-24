@@ -148,8 +148,7 @@ impl<'a> Lowerer<'a> {
         };
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.iter(inner),
-            ast::ExprKind::Name(n) if self.alias_factors(n).is_some() => {
-                let factors = self.alias_factors(n).unwrap();
+            ast::ExprKind::Name(n) if let Some(factors) = self.alias_factors(n) => {
                 self.product_walk(factors, span)
             }
             ast::ExprKind::Tuple(items) if !items.is_empty() => {
@@ -358,9 +357,9 @@ impl<'a> Lowerer<'a> {
                 error(self)
             }
             ast::ExprKind::Name(name)
-                if self.lookup(name).is_none() && self.resolve_domain_name(name).is_some() =>
+                if self.lookup(name).is_none()
+                    && let Some(id) = self.resolve_domain_name(name) =>
             {
-                let id = self.resolve_domain_name(name).unwrap();
                 let lo = self.int_lit(0, span);
                 let hi = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                 (
@@ -376,11 +375,8 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
-                    && matches!(self.gen_env.get(name), Some(GenArg::Ty(Ty::Bound(_)))) =>
+                    && let Some(GenArg::Ty(Ty::Bound(id))) = self.gen_env.get(name).cloned() =>
             {
-                let Some(GenArg::Ty(Ty::Bound(id))) = self.gen_env.get(name).cloned() else {
-                    unreachable!()
-                };
                 let lo = self.int_lit(0, span);
                 let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
                 let hi = self.int_add(len, 1);
@@ -397,11 +393,9 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
-                    && matches!(self.get_sym(name), Some(Sym::Enum(eid)) if self.enums[eid].variants.iter().all(|(_, f)| f.is_empty())) =>
+                    && let Some(Sym::Enum(eid)) = self.get_sym(name)
+                    && self.enums[eid].variants.iter().all(|(_, f)| f.is_empty()) =>
             {
-                let Some(Sym::Enum(eid)) = self.get_sym(name) else {
-                    unreachable!()
-                };
                 let lo = self.int_lit(0, span);
                 let hi = self.int_lit(self.enums[eid].variants.len() as i64, span);
                 (
@@ -416,12 +410,9 @@ impl<'a> Lowerer<'a> {
                 )
             }
             ast::ExprKind::Name(_) | ast::ExprKind::Generic { .. }
-                if self.index_struct_of(e).is_some() =>
+                if let Some(sid) = self.index_struct_of(e)
+                    && let Some(dom) = self.structs[sid].index_domain =>
             {
-                let Some(sid) = self.index_struct_of(e) else {
-                    unreachable!()
-                };
-                let dom = self.structs[sid].index_domain.unwrap();
                 if let Some(nth) = self.own_method(sid, "nth") {
                     return (self.walk(dom, nth, span), Ty::Struct(sid));
                 }
