@@ -390,7 +390,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
             if seen[e]:
                 yield Edge(e, us[e]!, vs[e]!)
 
-    // blocked: `Graph` resolves to a compiler built-in typed over `Int` (GAPS.md graph)
     /// `peel(g, ready:, on_remove:)` as a method; see the free `peel`.
     ///
     /// cost: \(O(n + m)\) plus the calls of `ready` and `on_remove`
