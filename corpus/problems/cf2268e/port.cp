@@ -20,8 +20,9 @@ let comb = Comb<Z>()
 let n: 1..=200_000 = read()
 let xs: [1..=n]0..=MAX_X = read()
 // The dot product sum_d weight[d] corr[n - d] in the frequency domain: with A = ntt(a) and
-//   W = ntt(weight), it is sum_f A[f] A[-f] W[f] / L, one transform per bit.
-let size = bit_ceil(2 * n + 1)
+//   W = ntt(weight), it is sum_f A[f] A[-f] W[f] / L, one transform per bit. Lags reach
+//   n - 1, so a length of 2n keeps the cyclic wrap off them.
+let size = bit_ceil(2 * n)
 var w = List.filled(size, Z(0))
 for d in 1..n: w[d] = comb.catalan(d) * comb.catalan(n - d)
 ntt(mut w)
@@ -34,6 +35,6 @@ for b in 0..BITS:
     var cur = comb.catalan(n) * (n - 1)
     if a[n] == 1:
         ntt(mut a)
-        cur -= scale * sum(a[f] * a[(size - f) % size] * w[f] for f in 0..size)
+        cur -= scale * (a[0] * a[0] * w[0] + sum(a[f] * a[size - f] * w[f] for f in 1..size))
     ans += cur * (1 << b)
 print(ans)
