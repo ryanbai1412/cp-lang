@@ -5,7 +5,7 @@ let (domain C, comp) = compress(a)
 var bit = Fenwick<C, Int>()
 var smaller: List<Int> = []
 for i in I:
-    let id = comp.at(a[i])
+    let id = comp.index_of(a[i])
     smaller.push(bit.prefix(id.l))
     bit.add(id, 1)
 print(smaller)

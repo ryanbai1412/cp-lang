@@ -230,10 +230,12 @@ fn every_lint_has_a_fix_or_says_why_not() {
 }
 
 #[test]
-fn every_record_after_passes_cpl_check() {
+fn every_record_after_and_near_miss_pass_cpl_check() {
     for lint in LINTS {
         let errors = crate::fix_tests::checker_errors(lint.fix);
         assert!(errors.is_empty(), "{}: after.cp: {errors:?}", lint.name);
+        let errors = crate::fix_tests::checker_errors(lint.near_miss);
+        assert!(errors.is_empty(), "{}: near_miss.cp: {errors:?}", lint.name);
     }
 }
 
