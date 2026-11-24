@@ -197,8 +197,8 @@ pub struct FlowGraph<V>:
             if a.id % 2 == 0: yield a
 
     /// The added arcs crossing the minimum cut `min_cut(s)` from the source side to the other, after
-    /// `max_flow(s, t)` ran to completion. Every one is saturated and their capacities sum to the
-    /// flow value.
+    /// `max_flow(s, t)` ran to completion, in arc order; an `add_both` arc crossing from its `v` side
+    /// comes back as its `rev`. Every one is saturated and their capacities sum to the flow value.
     ///
     /// cost: \(O(V + E)\)
     /// order: the order `add` returned them
@@ -206,13 +206,14 @@ pub struct FlowGraph<V>:
     /// example: `var g = FlowGraph<0..3>(); g.add(0, 1, Some(5)); let b = g.add(1, 2, Some(1)); g.max_flow(0, 2); g.cut_arcs(0) == [b]`
     pub fn cut_arcs(self, s: V) -> List<Arc>:
         let side = self.min_cut(s)
-        [Arc(2 * k) for k in 0..to.len / 2 if side[to[2 * k + 1]] and not side[to[2 * k]]]
+        [Arc(k) for k in 0..to.len if (k % 2 == 0 or cap0[k] > 0) and side[to[k ^ 1]] and not side[to[k]]]
 
     /// The current `s`-`t` flow split into paths, each with the amount it carries; the amounts sum
     /// to the net flow out of `s`. Cycles of flow are skipped. Does not change the flow.
     ///
     /// Each path walks from `s` along the first arc, in `add` order, that still carries unclaimed
-    /// flow, until it reaches `t`; its amount is the least unclaimed flow on the way.
+    /// flow, until it reaches `t`; its amount is the least unclaimed flow on the way. Flow on an
+    /// `add_both` arc from its `v` to its `u` is walked as its `rev`.
     ///
     /// cost: \(O(P (V + E))\) for P paths
     /// empty: `var g = FlowGraph<0..2>(); g.add(0, 1, Some(1)); g.paths(0, 1).count() == 0`
@@ -221,7 +222,7 @@ pub struct FlowGraph<V>:
     /// example: `var g = FlowGraph<0..4>(); let a = g.add(0, 1, Some(1)); let b = g.add(1, 3, Some(1)); let c = g.add(0, 2, Some(1)); let d = g.add(2, 3, Some(1)); g.max_flow(0, 3); g.paths(0, 3).collect() == [(arcs: [a, b], amount: 1), (arcs: [c, d], amount: 1)]`
     pub fn paths(self, s: V, t: V) -> yields (arcs: List<Arc>, amount: Int):
         assert s != t, "`paths(s, t)` needs `s != t`"
-        var spare = [if k % 2 == 0: cap0[k] - left[k] else: 0 for k in 0..to.len]
+        var spare = [max(0, cap0[k] - left[k]) for k in 0..to.len]
         var next: [V]Int = 0
         var on: [V]?Int = None
         while true:
@@ -1276,7 +1277,8 @@ pub fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int:
     r.flow
 
 /// The largest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every vertex
-/// but `s` and `t`, or `None` when no such flow exists. `value` is the net flow out of `s`.
+/// but `s` and `t`, never sending more back into `s` than leaves it (`value >= 0`), or `None`
+/// when no such flow exists. `value` is the net flow out of `s`.
 ///
 /// cost: \(O(V^2 (V + E))\), two `max_flow`s on V + 2 vertices and E + V + 1 arcs
 /// ties: `domain E = 0..3; domain V = 0..3; let es: [E](u: V, v: V, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 0, hi: 1), (u: 0, v: 1, lo: 0, hi: 1), (u: 1, v: 2, lo: 0, hi: 1)]; max_bounded_flow(es, 0, 2) == Some((value: 1, flow: [1, 0, 1]))`
