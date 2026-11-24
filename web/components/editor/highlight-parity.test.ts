@@ -1,6 +1,6 @@
-// The editors' highlighter (cp-language.ts) colours each word as the TextMate
-// grammar, which vscode_sync.rs keeps in step with the compiler, colours it on
-// the repo's programs (site/R16).
+// The editor's runner of the TextMate grammar (cp-language.ts) colours each
+// word as Shiki's runner of the same grammar does on the repo's programs
+// (site/R16).
 import { StringStream } from '@codemirror/language';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -10,9 +10,6 @@ import { expect, test } from 'vitest';
 import { cpParser } from './cp-language';
 
 const repo = join(__dirname, '../../..');
-// Where the grammar is the one that's wrong, sent to tools (who own it): it
-// doesn't read `yields` in `-> yields T` as a keyword.
-const known = new Set(['yields: grammar other, editor keyword']);
 type Class = 'keyword' | 'atom' | 'string' | 'comment' | 'number' | 'other';
 
 function grammarClass(scopes: string[]): Class {
@@ -71,8 +68,7 @@ test('the editor colours words as the grammar does', async () => {
       }
     });
   }
-  const fresh = [...differ].filter(([k]) => !known.has(k)).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} (${n}x, e.g. ${example.get(k)})`);
-  console.log(`highlight parity: ${files.length} files, ${words} words, ${differ.size} kinds differ (${known.size} known)`);
+  const fresh = [...differ].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} (${n}x, e.g. ${example.get(k)})`);
+  console.log(`highlight parity: ${files.length} files, ${words} words, ${differ.size} kinds differ`);
   expect(fresh, 'colour these as the grammar does').toEqual([]);
-  expect([...known].filter((k) => !differ.has(k)), 'fixed now: delete from known').toEqual([]);
 }, 300_000);
