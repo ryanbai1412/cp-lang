@@ -649,7 +649,7 @@ fn a_port_over_the_target_as_written_is_shrunk_under_it_and_agrees_with_the_inte
     )
     .unwrap();
     let mut samples = 0;
-    for case in std::fs::read_dir(port.with_file_name("tests")).unwrap() {
+    for case in std::fs::read_dir(cpl_contest::problem::find_tests_dir(&port)).unwrap() {
         let case = case.unwrap().path();
         if case.extension().is_none_or(|ext| ext != "in") {
             continue;
