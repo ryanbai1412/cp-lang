@@ -3272,7 +3272,7 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
             if next == None or best[v]! < best[next!]!: next = Some(v)
         if next == None: break
         at = next!
-        total = total + best[at]!
+        total += best[at]!
     for v in V:
         if not done[v]: return None
     Some((total:, parent:))

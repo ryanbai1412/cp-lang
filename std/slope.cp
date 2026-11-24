@@ -380,7 +380,7 @@ fn concave_matches_a_table_dp():
                 lo += d
                 var u = [Int.MIN for _ in 0..t.len + w]
                 for i in 0..t.len:
-                    for j in 0..=w: u[i + j] = max(u[i + j], t[i])
+                    for j in 0..=w: u[i + j] max= t[i]
                 t = u
         assert f.lo == lo and f.hi == lo + t.len - 1
         for i in 0..t.len: assert f.at(lo + i) == t[i]
