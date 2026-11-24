@@ -58,4 +58,12 @@ seed = 2
 size = 20
 
 [[case]]
+seed = 3
+size = 8
+
+[[case]]
+seed = 4
+size = 12
+
+[[case]]
 args = ["--max"]
