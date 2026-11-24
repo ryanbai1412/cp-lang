@@ -216,7 +216,7 @@ pub struct GlobalRef {
 struct Hushed {
     lens: [usize; 7],
     exprs: [usize; 6],
-    moved: HashMap<String, Span>,
+    moved: crate::names::NameMap<Span>,
     lambda_params: Vec<(Span, Vec<Ty>)>,
     chosen: Vec<(Span, Resolved)>,
     sink: Sink,
@@ -263,7 +263,7 @@ pub(crate) struct Checker<'a> {
     /// Name, return type, whether declared, and scope depth at fn entry.
     fns: Vec<(String, Ty, bool, usize)>,
     /// Where `-> T` goes in each fn declared without one.
-    ret_slots: HashMap<String, Option<Span>>,
+    ret_slots: crate::names::NameMap<Option<Span>>,
     /// The `mut` parameters something changes, by their names' spans.
     changed_params: crate::fx::HashSet<Span>,
     /// For each of `fns`: whether its body has given a value so far.
@@ -296,13 +296,13 @@ pub(crate) struct Checker<'a> {
     /// A `for` over `j..i` with two cut ends iterates cuts (§124).
     iterating_range: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
-    pub(crate) local_product_domains: HashMap<String, Vec<(Option<String>, Ty)>>,
+    pub(crate) local_product_domains: crate::names::NameMap<Vec<(Option<String>, Ty)>>,
     /// The computed range of each `let` with a constant initializer (R02.10.2).
-    pub(crate) let_ranges: HashMap<String, (i128, i128)>,
+    pub(crate) let_ranges: crate::names::NameMap<(i128, i128)>,
     /// `let`s bound to a walk-only sequence such as `filter` (R07.1.2).
     pub(crate) walk_only: crate::fx::HashSet<String>,
     /// Structs and enums declared inside a fn body, visible to the whole block.
-    local_defs: HashMap<String, Arc<Def>>,
+    local_defs: crate::names::NameMap<Arc<Def>>,
     /// The types a lambda passed to a built-in method gives its unwritten
     /// parameters, from the method's catalog row, by the lambda's span.
     lambda_params: Vec<(Span, Vec<Ty>)>,
@@ -311,7 +311,7 @@ pub(crate) struct Checker<'a> {
     call_bound_args: Option<Vec<(String, String, Vec<crate::ty::Ty>)>>,
     /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
     /// mapped to the span of the move (§128).
-    pub(crate) moved: HashMap<String, Span>,
+    pub(crate) moved: crate::names::NameMap<Span>,
     /// Span of the bare name on the LHS of a plain assignment `x = ...`,
     /// which overwrites `x` rather than reading it.
     pub(crate) assigning_name: Option<Span>,
@@ -319,7 +319,7 @@ pub(crate) struct Checker<'a> {
     /// `(var_name, memo_fn_name, memo_span)`. Writing one while the cache lives is E0311.
     pub(crate) memo_captured: Vec<(String, String, Span)>,
     /// Effects of nested/local fns declared in the current block (for E0601 capture aliasing).
-    pub(crate) local_effects: HashMap<String, lends::Effects>,
+    pub(crate) local_effects: crate::names::NameMap<lends::Effects>,
     /// Parallel to `fns`: true when the enclosing fn has a `lends` clause.
     pub(crate) fn_lends: Vec<bool>,
     /// Sibling local fns and the sibling `let`/`var` names they capture.
@@ -327,8 +327,8 @@ pub(crate) struct Checker<'a> {
     /// `@cache` field names on the enclosing `struct`.
     pub(crate) cached_fields: Vec<String>,
     /// Variables/params constrained to a finite literal union (`'+' | '-'`).
-    pub(crate) lit_unions: HashMap<String, Vec<String>>,
-    pub(crate) row_bounds: HashMap<String, Vec<(String, Ty)>>,
+    pub(crate) lit_unions: crate::names::NameMap<Vec<String>>,
+    pub(crate) row_bounds: crate::names::NameMap<Vec<(String, Ty)>>,
 }
 
 pub(crate) struct Checked {
@@ -369,7 +369,7 @@ impl<'a> Checker<'a> {
             io_costs: Vec::new(),
             exprs: crate::ExprFacts::default(),
             fns: Vec::new(),
-            ret_slots: HashMap::default(),
+            ret_slots: Default::default(),
             changed_params: Default::default(),
             gives: Vec::new(),
             in_fn: 0,
@@ -384,21 +384,21 @@ impl<'a> Checker<'a> {
             in_call_callee: false,
             call_types_from: usize::MAX,
             iterating_range: false,
-            local_product_domains: HashMap::default(),
-            let_ranges: HashMap::default(),
+            local_product_domains: Default::default(),
+            let_ranges: Default::default(),
             walk_only: Default::default(),
-            local_defs: HashMap::default(),
+            local_defs: Default::default(),
             lambda_params: Vec::new(),
             call_bound_args: None,
-            moved: HashMap::default(),
+            moved: Default::default(),
             assigning_name: None,
             memo_captured: Vec::new(),
-            local_effects: HashMap::default(),
+            local_effects: Default::default(),
             fn_lends: Vec::new(),
             local_fn_captures: Vec::new(),
             cached_fields: Vec::new(),
-            lit_unions: HashMap::default(),
-            row_bounds: HashMap::default(),
+            lit_unions: Default::default(),
+            row_bounds: Default::default(),
         }
     }
 

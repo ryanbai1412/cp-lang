@@ -104,7 +104,7 @@ impl Checker<'_> {
                 }
                 let mut args = args;
                 if args.len() < defaults.len() {
-                    let mut bindings: HashMap<String, Ty> = generics
+                    let mut bindings: crate::ty::Bindings = generics
                         .iter()
                         .zip(&args)
                         .map(|(g, a)| (g.clone(), a.clone()))

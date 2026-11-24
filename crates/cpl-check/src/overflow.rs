@@ -6,7 +6,6 @@
 use cpl_syntax::ast::Expr;
 #[cfg(not(target_arch = "wasm32"))]
 use cpl_syntax::ast::{BinOp, ExprKind, UnOp};
-use std::collections::HashMap;
 
 /// A name the prover can be told about: an input of a declared range, or an
 /// immutable `let` of arithmetic over such names, as prover text.
@@ -23,7 +22,7 @@ enum Def {
 /// How each name the prover can reason about got its value, in scope order.
 #[derive(Clone, Debug, Default)]
 pub struct Overflow {
-    defs: HashMap<String, Def>,
+    defs: crate::names::NameMap<Def>,
 }
 
 impl Overflow {

@@ -24,6 +24,7 @@ mod hover;
 mod labels;
 mod modules;
 mod multitest;
+mod names;
 mod nav;
 mod overflow;
 mod prelude;

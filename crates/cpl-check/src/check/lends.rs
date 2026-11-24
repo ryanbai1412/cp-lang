@@ -429,7 +429,7 @@ pub(crate) struct Lends {
     /// name is declared: plain values themselves (decision 471).
     pub(super) plain_closures: HashSet<Span>,
     /// Top-level `let`-bound views from earlier statements, by name.
-    pub(super) global_views: HashMap<String, Lent>,
+    pub(super) global_views: crate::names::NameMap<Lent>,
     facts: Vec<Fact>,
     pub(super) holds: Vec<Hold>,
     /// Uses already reported as conflicting with a hold: `xs.push(x)` is
@@ -452,7 +452,7 @@ pub(crate) struct Lends {
     /// Locals holding a key of `V.ranges`, by where the name is declared.
     pub(super) range_keys: HashSet<Span>,
     /// The same for top-level `let`s, by name.
-    pub(super) global_keyed: HashMap<String, Keyed>,
+    pub(super) global_keyed: crate::names::NameMap<Keyed>,
     /// The one statement where `lend` may stand: the `lend` of the
     /// projection being checked.
     lend_at: Option<Span>,

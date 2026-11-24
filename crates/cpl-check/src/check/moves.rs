@@ -154,7 +154,7 @@ impl Checker<'_> {
     /// moved when the loop started; call it after the body's scope is gone.
     pub(crate) fn no_move_across_rounds(
         &mut self,
-        before: &HashMap<String, Span>,
+        before: &crate::names::NameMap<Span>,
         body: &ast::Block,
     ) {
         // A name the body declares is its own value, gone with the body.

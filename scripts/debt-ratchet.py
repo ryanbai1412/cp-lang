@@ -1009,6 +1009,21 @@ def ir_reinfer(root: Path) -> list[str]:
     return out
 
 
+STRING_KEYED_MAP_RE = re.compile(r"HashMap<\s*(?:String|&(?:'\w+\s+)?str|Box<str>|Arc<str>)\s*,")
+
+
+def string_keyed_maps(root: Path) -> list[str]:
+    """A `HashMap` keyed by a name in cpl-check: each one builds the hash table's code
+    again for its value type. `crate::names::NameMap<V>` shares one index for all of them."""
+    out = []
+    for p in _rs_files(root, "crates/cpl-check/src", tests=False):
+        rel = _rel(root, p)
+        if rel == "crates/cpl-check/src/names.rs":
+            continue
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if STRING_KEYED_MAP_RE.search(line)]
+    return out
+
+
 def stress_hand_json(root: Path) -> list[str]:
     """JSON assembled by hand in the stress engine and its browser entry; `cpl_json` values render it."""
     out = []
@@ -2887,6 +2902,7 @@ COUNTERS = {
     "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
+    "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
     "cpp_deep_copies": ("`// copies:` header sum over corpus programs (read_only_copies)", cpp_deep_copies, True),

@@ -2,9 +2,8 @@
 //! there, so the innermost one needs no check.
 
 use super::Local;
-use crate::fx::HashMap;
 
-pub(crate) type Scope = HashMap<String, Local>;
+pub(crate) type Scope = crate::names::NameMap<Local>;
 
 #[derive(Default)]
 pub(crate) struct Scopes {

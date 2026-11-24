@@ -66,7 +66,7 @@ pub enum Ty {
 }
 
 /// What each type parameter stands for at one use.
-pub type Bindings = crate::fx::HashMap<String, Ty>;
+pub type Bindings = crate::names::NameMap<Ty>;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Param {

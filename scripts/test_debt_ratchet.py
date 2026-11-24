@@ -1467,6 +1467,17 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.ir_reinfer(root),
                              ["crates/cpl-ir/src/lower/a.rs:1", "crates/cpl-ir/src/lower/a.rs:3"])
 
+    def test_string_keyed_maps_counts_name_keyed_hash_maps_in_cpl_check(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "crates/cpl-check/src/a.rs"
+            src.parent.mkdir(parents=True)
+            src.write_text("x: HashMap<String, Ty>,\ny: HashMap<&'a str, usize>,\nz: HashMap<u32, String>,\n"
+                           "w: NameMap<Ty>,\n")
+            (root / "crates/cpl-check/src/names.rs").write_text("index: HashMap<String, u32>,\n")
+            self.assertEqual(dr.string_keyed_maps(root),
+                             ["crates/cpl-check/src/a.rs:1", "crates/cpl-check/src/a.rs:2"])
+
     def test_own_databases_and_copy_baselines(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
