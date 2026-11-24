@@ -682,7 +682,16 @@ impl<'p> Emitter<'p> {
                 let effects = Touch::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
-                let untouched_by_body = |seq: &Expr| match held_root(crate::uses::in_place(seq)) {
+                // What a fn lends from its argument (`t.order`) lives in that argument.
+                let walked_root = |seq: &Expr| {
+                    held_root(crate::uses::in_place(seq)).or_else(|| match &seq.kind {
+                        ExprKind::Call(f, _) if self.lent_roots.contains_key(f) => {
+                            crate::lend::given_root(seq, &self.lent_roots)
+                        }
+                        _ => None,
+                    })
+                };
+                let untouched_by_body = |seq: &Expr| match walked_root(seq) {
                     Some((false, local)) => {
                         !effects.writes.contains(&(false, local))
                             || fields_untouched(crate::uses::in_place(seq), body)

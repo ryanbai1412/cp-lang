@@ -450,6 +450,25 @@ print(t)
 }
 
 #[test]
+fn a_loop_over_what_a_get_lends_reads_it_in_place() {
+    // E0602 keeps the body from changing `h`, so the walk needs no copy.
+    let out = cpp(concat!(
+        "struct H:\n    xs: List<Int>\n    @get pub fn items(self) -> List<Int> = xs\n",
+        "let n: Int = read()\nlet h = H([i for i in 0..n])\nvar t = 0\n",
+        "for v in h.items.rev: t = t * 3 + v\n",
+        "print(t)\n",
+    ));
+    let solve = &out[out.find("void solve()").unwrap()..];
+    assert!(
+        solve
+            .lines()
+            .any(|l| l.contains("const std::vector<ll>& t") && l.contains("= H_items(h);")),
+        "{solve}"
+    );
+    assert!(!solve.contains("std::vector<ll> t1 = H_items"), "{solve}");
+}
+
+#[test]
 fn a_returned_literal_moves_the_parts_of_a_dead_local() {
     let out = cpp(concat!(
         "struct S: pub a: List<Int>\n",
