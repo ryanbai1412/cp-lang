@@ -32,7 +32,8 @@ pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 /// doc aside), and the rest of a header still open on its next line. A fn
 /// whose body is on the lines below gets `todo` for it; the other lines
 /// are blank, so a line number in the outline is the file's. A one-line
-/// fn with its return type written keeps `= todo` for its body.
+/// fn with its return type written, its `=` body on that line or the
+/// next, keeps `= todo` for its body.
 pub fn outline(text: &str) -> String {
     let mut out = String::with_capacity(text.len() / 4);
     let mut open = 0i32;
@@ -100,7 +101,10 @@ fn typed_head(line: &str) -> Option<&str> {
             ')' | ']' => depth -= 1,
             _ if depth != 0 => {}
             '-' if line[at..].starts_with("->") => typed = true,
-            '=' if typed && line[at..].starts_with("= ") && line[..at].ends_with(' ') => {
+            '=' if typed
+                && (line[at..].starts_with("= ") || line[at..].trim_end() == "=")
+                && line[..at].ends_with(' ') =>
+            {
                 return Some(line[..at].trim_end());
             }
             _ => {}
@@ -162,4 +166,13 @@ pub fn call_names<'a>(texts: impl IntoIterator<Item = &'a str>) -> Vec<&'a str> 
         }
     }
     names.into_iter().collect()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_typed_fn_whose_body_is_on_the_next_line_keeps_its_signature() {
+        let text = "pub fn f(x: Int) -> Int =\n    x + 1\n";
+        assert_eq!(super::outline(text), "pub fn f(x: Int) -> Int = todo\n\n");
+    }
 }
