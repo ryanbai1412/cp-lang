@@ -2,6 +2,9 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-24
+- 2026-11-24 landed (VM-stmt, tree-walker deletion): a mutation of a struct, enum or a container of them with no fn inside (`owned` in vm/compile/apply.rs) runs on the VM by `Op::MutatePlace` through the shared `mutation::mutate_cell`, as plain data did; `batch19_list_plus` and `modulus_from_a_local_let` no longer fall back.
+
 ## 2026-11-23
 - 2026-11-23 landed (from site): the outline drops the doc lines again (they cost 55 KB gz of the 113 KB lazy-std freed). A completion item from a std module not given yet carries `data: {module, owner?}`; the LSP now resolves completion items (`completionItem/resolve`), and once the host has given that module the reply carries the item's full docs. Test: lazy_std.rs.
 - 2026-11-23 landed (from parent and site): a std module that hasn't been given reads as its outline until it is. The check still reports E0206 and `needs`, and hover, completion (including `.` methods: `m.is_some_and`, `xs.sorted().scan`) and types use the outline's signatures. The outline also keeps each item's first `///` line just above the item, so hover shows it. That costs about 55 KB gz: the lazy cpl.wasm is 1,817,929 B gz, 57 KB under the cap. Tests: lazy_std.rs (hover and `.` completion before the module is given), outline doc placement. bfs_named_product in wasm was already fixed by 80eb62d81. Open: cut_beside_walk_order.cp (b3501f224) fails with E0301 natively and in wasm on main.
