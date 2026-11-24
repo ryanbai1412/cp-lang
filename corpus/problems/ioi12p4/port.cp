@@ -8,7 +8,7 @@
 //   shortest path crosses exactly the tree edges between its ends' runs. So an edge with w
 //   blocks on one side is crossed by w * (N - w) pairs; do the same with the axes swapped:
 //   O(N log N) for the sort and the run map.
-// Bounds: n: 1..=1e5
+// Bounds: n: 1..=1e5; at.x, at.y: 0..=2147483647
 // original: corpus/problems/ioi12p4/orig.cpp (corpus/submissions/4951048.cpp with a main)
 use std.graph.{undirected_of_pairs}
 

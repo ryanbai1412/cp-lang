@@ -6,7 +6,7 @@
 //   largest-size toys among those light enough (a heap of sizes, toys sorted by weight); then
 //   small robots by falling limit each take the m largest left, failing when one is too big.
 //   O(T log^2 T).
-// Bounds: a, b: 0..=5e4; t: 1..=1e6
+// Bounds: a, b: 0..=5e4; t: 1..=1e6; weak, small, toys.weight, toys.size: 1..=2e9
 // original: corpus/submissions/4688418.cpp (a grader-style `putaway`; orig.cpp adds a main)
 type Limit = 1..=2e9
 let (a, b, t): (0..=5e4, 0..=5e4, 1..=1e6) = read()

@@ -9,7 +9,7 @@
 //   point reads: O(n log^2 q). The maps' coefficients wrap mod 2^64 as U64: a start that is
 //   never clamped can multiply past Int while its value stays in lo..=hi, and the value comes
 //   out right mod 2^64.
-// Bounds: n: 1..=1e6; hi: lo..=2147483647; ops.kind: 1..=4; q: 1..=1e6
+// Bounds: n: 1..=1e6; lo, ops.x, starts: 0..=2147483647; hi: lo..=2147483647; ops.kind: 1..=4; q: 1..=1e6
 // original: corpus/submissions/5527625.cpp
 // The statement is not public: the bounds are the reference's ints, and it is right only on
 // non-negative values (a negative start can leave lo..=hi in it).
