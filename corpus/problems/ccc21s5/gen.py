@@ -1,5 +1,7 @@
 import sys, random
 from math import gcd
+# gen.py SEED SIZE | --max (N = M = 150000, a consistent answer)
+if sys.argv[1] == "--max": sys.argv[1:] = ["0", "1000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 # statement: 1 <= N, M <= 150000, 1 <= X <= Y <= N, 1 <= Z <= 16
 MAX = 150_000
@@ -13,7 +15,7 @@ while (1 << len(sp)) <= n:
 def g(l, rr):
     k = (rr - l + 1).bit_length() - 1
     return gcd(sp[k][l], sp[k][rr - (1 << k) + 1])
-bad = r.random() < 0.5
+bad = r.random() < 0.5 and sys.argv[1] != "0"
 print(n, m)
 for _ in range(m):
     l = r.randint(1, n); rr = r.randint(l, min(n, l + r.choice([0, 1, 3, 10, n])))

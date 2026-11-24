@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-# gen.py SEED SIZE: SIZE 0/1 small; SIZE >= 2 N = M = 2000 with costs up to 1e9 (total > 2^32).
+# gen.py SEED SIZE | --max: SIZE 0/1 small; --max is SIZE 2 with seed 0; SIZE >= 2 N = M = 2000 with costs up to 1e9 (total > 2^32).
 import random, sys
+if sys.argv[1] == "--max": sys.argv[1:] = ["0", "2"]
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 if S <= 1:

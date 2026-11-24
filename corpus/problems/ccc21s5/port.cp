@@ -5,22 +5,20 @@
 //   (at most lcm(1..16) = 720720) is the smallest choice, so if it fails nothing works. Per
 //   z, a difference array over the cuts marks the covered positions (O(16 n)); then a gcd
 //   SegTree checks every requirement, O(m log n).
+// original: corpus/submissions/4323513.cpp
 let (n, m): (1..=150_000, 1..=150_000) = read()
 domain I = 1..=n
-let reqs: [0..m](l: I, r: I, x: 1..=16) = read()
+let reqs: [m](l: I, r: I, z: 1..=16) = read()
 
-// delta[x, b]: change at boundary b in how many requirements with value x are open
-var delta: [0..=16, I.cuts]Int = 0
-for (l, r, x) in reqs:
-    delta[x, l.l] += 1
-    delta[x, r.r] -= 1
+fn covered(z: 1..=16) -> [I]Int:
+    var d = Diff<I, Int>()
+    for q in reqs if q.z == z: d.add(q.l..=q.r, 1)
+    d.finish()
 
 var a: [I]Int = 1
-for x in 1..=16:
-    var open = 0
-    for i in I:
-        open += delta[x, i.l]
-        if open > 0: a[i] = lcm(a[i], x)
+for z in 1..=16:
+    let c = covered(z)
+    for i in I if c[i] > 0: a[i] = lcm(a[i], z)
 
 let gcds = SegTree<I, Int>(gcd, a)
-if all(gcds.fold(l..=r) == x for (l, r, x) in reqs): print(a) else: print("Impossible")
+if reqs.all(q => gcds.fold(q.l..=q.r) == q.z): print(a) else: print("Impossible")

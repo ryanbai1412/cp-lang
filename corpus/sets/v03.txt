@@ -44,6 +44,9 @@ ccc19s2
 ccc20s4
 ccc21s2
 ccc21s3
+ccc21s5
+ccc22s4
+ccc23s4
 cco16p3
 cco21p3
 cco22p5
