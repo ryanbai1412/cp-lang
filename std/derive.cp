@@ -44,8 +44,8 @@ pub fn show_fields<T>(a: T) -> Str:
         first = false
     s
 
-/// A `T` read from input field by field, each with its own type's `read()`, in declaration
-/// order: `read_fields<Edge>()` with no `impl` of its own.
+/// A `T` read from input field by field, each with its own type's `read()`, in
+/// declaration order: `read_fields<Edge>()` with no `impl` of its own.
 ///
 /// cost: \(O(\mathit{fields})\) plus the tokens read
 /// empty: reads nothing for a struct with no fields

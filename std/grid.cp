@@ -40,8 +40,8 @@ pub struct Dir4(k: Int):
     /// traps: never
     /// example: `Dir4.all() == [Dir4.up, Dir4.right, Dir4.down, Dir4.left]`
     pub fn all() -> List<Dir4> = [Dir4(k) for k in 0..4]
-    /// The direction a letter stands for, given the letters for up, right, down and left in that
-    /// order: `Dir4.from("URDL", ch)`, `Dir4.from("NESW", ch)`. `None` for another letter.
+    /// The direction a letter stands for, given the letters for up, right, down and left in
+    /// that order: `Dir4.from("URDL", ch)`, `Dir4.from("NESW", ch)`. `None` for another letter.
     ///
     /// Matching is exact (case-sensitive). If a letter appears more than once in `letters`, the
     /// first position wins.

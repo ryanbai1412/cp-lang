@@ -2180,8 +2180,8 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
         span >>= 8
     for i in 0..n: self[i] = cur[i].1
 
-/// Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their
-/// order: one count per position of `K`, then each element goes to its slot.
+/// Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in
+/// their order: one count per position of `K`, then each element goes to its slot.
 ///
 /// ```cp
 /// domain K = 0..2
