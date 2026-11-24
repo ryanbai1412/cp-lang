@@ -56,14 +56,6 @@ object Cpl {
 
     fun lspArgs() = listOf("lsp")
 
-    /** `cpl new --listen`: wait for Competitive Companion, then create each problem it sends. */
-    fun companionArgs(port: Int) = listOf("new", "--listen", "--json", "--port", port.toString())
-
-    /** The `.cp` files `cpl new --json` created: one JSON object per line. */
-    fun createdFiles(stdout: String): List<String> = stdout.lines().mapNotNull { line ->
-        runCatching { com.google.gson.JsonParser.parseString(line).asJsonObject.get("path")?.asString }.getOrNull()
-    }
-
     /** The first wrong call a report's `view` marks: its 0-based line and headline. */
     data class WrongCall(val line: Int, val message: String)
 

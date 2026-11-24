@@ -53,6 +53,14 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   draws (`cpl stress`, `cpl locate`) instead of a terminal. `cpl/commands`
   takes `{line}` and answers the `cpl` command names completing its second
   word. Neovim's plugin uses both (`crates/cpl-lsp/src/tests/command.rs`).
+- **Import a Problem**: `workspace/executeCommand` of `cpl.import` with
+  arguments `[path, port?]` waits on `127.0.0.1:port` (default `10043`)
+  for Competitive Companion and answers `{port}`. Each problem it sends is
+  created as `cpl new --listen` would create it in `path` (or the folder of
+  the file `path` names), and the server opens it with
+  `window/showDocument`; it reports waiting and failure with
+  `window/showMessage`. JetBrains' Import a Problem sends only this
+  command (`crates/cpl-lsp/tests/import.rs`).
 
 Editor settings, every one each editor exposes
 (`crates/cpl-cli/tests/editor_settings.rs` checks this table against each

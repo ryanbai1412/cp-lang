@@ -12,14 +12,6 @@ class CplTest {
     }
 
     @Test
-    fun `importing a problem runs cpl new --listen and opens what it created`() {
-        assertEquals(listOf("new", "--listen", "--json", "--port", "10043"), Cpl.companionArgs(COMPANION_PORT))
-        val out = "{\"path\":\"cf1A.cp\",\"created\":true,\"tests\":\"cf1A.tests\",\"samples\":2}\n" +
-            "not json\n{\"path\":\"cf1B.cp\",\"created\":true,\"tests\":\"cf1B.tests\",\"samples\":1}\n"
-        assertEquals(listOf("cf1A.cp", "cf1B.cp"), Cpl.createdFiles(out))
-    }
-
-    @Test
     fun `the view a cpl report gives is drawn as is`() {
         val json = """{"status":"fail","view":{"panel":"FAIL\n","lines":[],"diagnostic":{"line":3,"message":"first wrong call: `tri(k: 1)`, the 1st call of `tri`","source":"cpl"}}}"""
         assertEquals(Cpl.View("FAIL\n", Cpl.WrongCall(3, "first wrong call: `tri(k: 1)`, the 1st call of `tri`")), Cpl.view(json))

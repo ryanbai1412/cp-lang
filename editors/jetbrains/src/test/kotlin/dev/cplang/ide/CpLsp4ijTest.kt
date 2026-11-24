@@ -1,12 +1,15 @@
 package dev.cplang.ide
 
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.junit.Assume
 import java.io.File
+import java.net.Socket
 import java.nio.file.Files
 
 /**
@@ -49,6 +52,26 @@ class CpLsp4ijTest : BasePlatformTestCase() {
     fun `test the server's code lenses run through the cpl exec action`() {
         assertEquals(mapOf("codeLens" to true), CpLsp4ijFactory.INITIALIZATION_OPTIONS)
         assertTrue(com.intellij.openapi.actionSystem.ActionManager.getInstance().getAction("cpl.exec") is CplExecAction)
+    }
+
+    fun `test import a problem opens the file the server creates`() {
+        open("seed.cp", "fn main():\n    print(1)\n")
+        myFixture.testAction(ActionManager.getInstance().getAction("CpLang.ImportProblem"))
+        val problem = """{"name":"D. Range Max","group":"Codeforces","url":"https://codeforces.com/problemset/problem/1/D",""" +
+            """"tests":[{"input":"3\n","output":"6\n"}],"timeLimit":1500,"memoryLimit":512,"batch":{"id":"b","size":1}}"""
+        eventually("Competitive Companion's port") {
+            runCatching {
+                Socket("127.0.0.1", 10043).use { socket ->
+                    val body = problem.toByteArray()
+                    socket.getOutputStream().write("POST / HTTP/1.1\r\nContent-Length: ${body.size}\r\n\r\n".toByteArray() + body)
+                    socket.getInputStream().readBytes()
+                }
+            }.getOrNull()
+        }
+        val opened = eventually("opened problem") {
+            FileEditorManager.getInstance(project).openFiles.firstOrNull { it.extension == "cp" && it.name != "seed.cp" }
+        }
+        assertTrue(String(opened.contentsToByteArray()).contains("Range Max"))
     }
 
     fun `test a wrong file gets the server's diagnostic`() {

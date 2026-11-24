@@ -4,6 +4,9 @@
 use crate::server::Server;
 use cpl_json::{self as json, Value};
 use std::io::{self, BufRead, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
+use std::time::Duration;
 
 /// The largest message body accepted. A document sync of a huge file is a
 /// few megabytes; anything past this is a broken client.
@@ -59,17 +62,51 @@ pub fn write_message(output: &mut (impl Write + ?Sized), message: &Value) -> io:
 
 /// Serves the protocol until the client sends `exit` or closes the input.
 /// Returns the process exit code.
-pub fn serve(input: impl BufRead, output: impl Write) -> io::Result<i32> {
+pub fn serve(input: impl BufRead, output: impl Write + Send) -> io::Result<i32> {
     serve_with(Server::new(), input, output)
 }
 
-/// [`serve`] with `server`, as the binary serving sets it up.
+/// [`serve`] with `server`, as the binary serving sets it up. What the
+/// server sends unasked (its outbox) is written between replies.
 pub fn serve_with(
-    mut server: Server,
+    server: Server,
     mut input: impl BufRead,
-    mut output: impl Write,
+    output: impl Write + Send,
 ) -> io::Result<i32> {
-    while let Some(body) = read_message(&mut input)? {
+    let (outbox, unasked) = std::sync::mpsc::channel::<Value>();
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut server = server.with_outbox(outbox);
+    #[cfg(target_arch = "wasm32")]
+    let (mut server, _) = (server, outbox);
+    let output = Mutex::new(output);
+    let done = AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        let (output, done) = (&output, &done);
+        scope.spawn(move || {
+            while !done.load(Ordering::Relaxed) {
+                if let Ok(message) = unasked.recv_timeout(Duration::from_millis(50)) {
+                    let _ = write_message(&mut *lock(output), &message);
+                }
+            }
+        });
+        let served = serve_messages(&mut server, &mut input, output);
+        done.store(true, Ordering::Relaxed);
+        served
+    })
+}
+
+fn lock<W>(output: &Mutex<W>) -> std::sync::MutexGuard<'_, W> {
+    output
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn serve_messages(
+    server: &mut Server,
+    input: &mut impl BufRead,
+    output: &Mutex<impl Write>,
+) -> io::Result<i32> {
+    while let Some(body) = read_message(input)? {
         let replies = match json::parse(&body) {
             Ok(message) => server.respond(&message),
             Err(what) => vec![json::obj([
@@ -85,7 +122,7 @@ pub fn serve_with(
             ])],
         };
         for reply in replies.iter().chain(&server.idle()) {
-            write_message(&mut output, reply)?;
+            write_message(&mut *lock(output), reply)?;
         }
         if let Some(code) = server.exit_code() {
             return Ok(code);

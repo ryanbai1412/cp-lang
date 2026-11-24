@@ -7,5 +7,11 @@
     </extensions>
     <actions>
         <action id="cpl.exec" class="dev.cplang.ide.CplExecAction" text="CP Lang: Run a Code Lens"/>
+        <action id="CpLang.ImportProblem" class="dev.cplang.ide.CplImportProblemAction" text="CP Lang: Import a Problem"
+                description="Wait for Competitive Companion, then create and open the problem and its samples"
+                icon="AllIcons.Actions.Download">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

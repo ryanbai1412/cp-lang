@@ -1629,7 +1629,7 @@ pub fn lsp() -> u8 {
     let stdout = std::io::stdout();
     let names = commands::COMMANDS.iter().map(|c| c.name).collect();
     let server = cpl_lsp::Server::new().with_commands(names);
-    match cpl_lsp::serve_with(server, stdin.lock(), stdout.lock()) {
+    match cpl_lsp::serve_with(server, stdin.lock(), stdout) {
         Ok(code) => code as u8,
         Err(error) => {
             eprintln!("cpl lsp: {error}");

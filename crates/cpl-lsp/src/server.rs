@@ -28,6 +28,8 @@ mod cost;
 mod diagnostics;
 pub(crate) mod format;
 #[cfg(not(target_arch = "wasm32"))]
+mod import;
+#[cfg(not(target_arch = "wasm32"))]
 mod lens;
 mod nav;
 mod proven;
@@ -64,6 +66,10 @@ pub struct Server {
     /// The `cpl` commands `cpl/commands` completes, from the binary serving.
     #[cfg(not(target_arch = "wasm32"))]
     commands: Vec<&'static str>,
+    /// Where messages the server sends unasked go (`window/showDocument`
+    /// for the problems `cpl.import` creates): the transport writes them.
+    #[cfg(not(target_arch = "wasm32"))]
+    outbox: Option<std::sync::mpsc::Sender<Value>>,
     /// The semantic tokens last sent for each document, newest last, with
     /// their result ids: a client may hold any of the last few (VS Code asks
     /// again for a visible editor while another request is in flight).
@@ -94,6 +100,8 @@ impl Server {
             replay: false,
             #[cfg(not(target_arch = "wasm32"))]
             commands: Vec::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            outbox: None,
             tokens: HashMap::new(),
             token_ids: 0,
             shutdown: false,
@@ -105,6 +113,13 @@ impl Server {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn with_commands(mut self, names: Vec<&'static str>) -> Server {
         self.commands = names;
+        self
+    }
+
+    /// The server, sending the messages it sends unasked to `outbox`.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn with_outbox(mut self, outbox: std::sync::mpsc::Sender<Value>) -> Server {
+        self.outbox = Some(outbox);
         self
     }
 
@@ -654,6 +669,14 @@ impl Server {
             "cpl/command" => Ok(Reply::result(command::command(params))),
             #[cfg(not(target_arch = "wasm32"))]
             "cpl/commands" => Ok(Reply::result(command::commands(&self.commands, params))),
+            #[cfg(not(target_arch = "wasm32"))]
+            "workspace/executeCommand" => match params.get("command").and_then(Value::as_str) {
+                Some("cpl.import") => {
+                    let arguments = params.get("arguments").and_then(Value::as_array);
+                    self.import(arguments.unwrap_or(&[])).map(Reply::result)
+                }
+                other => Err((INVALID_PARAMS, format!("no command {other:?}"))),
+            },
             "workspace/symbol" => {
                 let query = params
                     .get("query")
@@ -1208,7 +1231,7 @@ fn capabilities() -> Value {
         ),
     ]);
     #[cfg(not(target_arch = "wasm32"))]
-    let caps = lens::advertise(caps);
+    let caps = import::advertise(lens::advertise(caps));
     caps
 }
 

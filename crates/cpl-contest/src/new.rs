@@ -44,7 +44,7 @@ options:
 ";
 
 /// One of the ports Competitive Companion posts to by default.
-const COMPANION_PORT: u16 = 10043;
+pub const COMPANION_PORT: u16 = 10043;
 
 /// The body of one HTTP `POST`, answered with an empty `200`.
 fn read_post(stream: &mut std::net::TcpStream) -> Result<String, String> {
@@ -141,6 +141,26 @@ pub fn listen_on(
         }
     }
     Ok(())
+}
+
+/// `cpl new --listen` for an editor: each problem the extension sends to
+/// `listener` is created in `dir`, named as `cpl new --listen` names it
+/// there, and `created` gets the solution's path.
+pub fn import(
+    listener: std::net::TcpListener,
+    dir: &Path,
+    stderr: &mut dyn Write,
+    created: &mut dyn FnMut(&Path),
+) -> Result<(), String> {
+    listen_on(listener, stderr, &mut |text| {
+        let scaffold = Scaffold::from_companion(text)?;
+        let source = contest_source(&scaffold, batch_size(text), dir)
+            .ok_or("the problem has no URL to name it after")?;
+        let source = dir.join(source);
+        scaffold.create(&source)?;
+        created(&source);
+        Ok(())
+    })
 }
 
 /// `cpl test` compares outputs exactly until this is uncommented and finished.

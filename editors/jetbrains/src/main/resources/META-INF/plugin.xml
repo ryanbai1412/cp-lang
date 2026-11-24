@@ -28,13 +28,4 @@
         <notificationGroup id="CP Lang" displayType="BALLOON"/>
         <editorNotificationProvider implementation="dev.cplang.ide.CpLightEditNotice"/>
     </extensions>
-
-    <actions>
-        <action id="CpLang.ImportProblem" class="dev.cplang.ide.CplImportProblemAction" text="CP Lang: Import a Problem"
-                description="Wait for Competitive Companion, then create the problem and its samples with cpl new --listen"
-                icon="AllIcons.Actions.Download">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-        </action>
-    </actions>
 </idea-plugin>
