@@ -4,10 +4,13 @@
 // subtree, so a lazy segment tree over preorder maintains `(ends, first, last)`
 // for both the active monster set and its complement, swapping on subtree flip.
 
+use std.lazy.{Flip, flip_action}
+
 @!multitest
-domain V = read(1..=250_000)
-let monster: [V]Bool = read()
-let t = Rooted(Graph<V>.undirected(read<[V.count - 1](V, V)>()), V.first)
+let n: 2..=250_000 = read()
+domain V = 1..=n
+let monster = read<[V]0..=1>().map(f => f == 1)
+let t = Rooted(Graph<V>.undirected(read<[V.count - 1](V, V)>()), V.first!)
 
 struct Side(ends: 0..=V.count, first: ?V, last: ?V):
     const empty = Side(0, None, None)
@@ -16,10 +19,11 @@ struct Side(ends: 0..=V.count, first: ?V, last: ?V):
         if let u = x.last, let w = y.first, t.is_anc(u, w): ends -= 1
         Side(ends, x.first ?? y.first, y.last ?? x.last)
 
-var st = SegTree<t.Pre, Flip<Side>>(
-    Flip.op(Side),
-    t.reorder([V] v => if monster[v]: Side(1, v, v) else: Side.empty),
-    act: flip,
+let toggle = flip_action<Side>(Monoid(Side.empty, (x, y) => Side.join(x, y)))
+var st = SegTree(
+    toggle.over,
+    t.reorder([V] v => Flip<Side>.of(monster[v], Side(1, v, v), Side.empty)),
+    act: toggle,
 )
 print(st.all.now.ends)
 repeat read():
