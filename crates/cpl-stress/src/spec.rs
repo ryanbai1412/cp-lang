@@ -20,11 +20,11 @@ use cpl_syntax::ast::{
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-mod build;
 mod choice;
 mod syntax;
-use build::*;
+mod walk;
 use syntax::*;
+use walk::*;
 
 /// The values `Int` takes when a program gives it no range.
 pub const DEFAULT_INT: (i128, i128) = (-1_000_000_000, 1_000_000_000);

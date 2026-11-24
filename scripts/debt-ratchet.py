@@ -1424,13 +1424,19 @@ def escapes_open(root: Path) -> list[str]:
 NON_TEST_RS_PARTS = {"tests", "benches", "examples"}
 
 
+def _cargo_build_script(rel: str) -> bool:
+    parts = Path(rel).parts
+    return len(parts) == 3 and parts[0] == "crates" and parts[2] == "build.rs"
+
+
 def _src_lines(root: Path, *subdirs: str) -> Iterator[tuple[str, int, str]]:
     """Non-test, non-comment Rust lines under `subdirs`: tests/, tests.rs, *_tests.rs,
-    build.rs and each item a `#[cfg(test)]` gates are left out; the rest of the file counts."""
+    a crate's Cargo build script and each item a `#[cfg(test)]` gates are left out; the rest
+    of the file counts (a module named `build.rs` under src/ counts like any other)."""
     for p in _rs_files(root, *subdirs, tests=False):
         rel = _rel(root, p)
         parts = set(Path(rel).parts[:-1])
-        if parts & NON_TEST_RS_PARTS or p.name == "build.rs" or p.name.endswith("_tests.rs") or p.name.startswith("tests_") \
+        if parts & NON_TEST_RS_PARTS or _cargo_build_script(rel) or p.name.endswith("_tests.rs") or p.name.startswith("tests_") \
                 or "/src/tests/" in rel:
             continue
         for i, line in _ungated_lines(_lines(p)):

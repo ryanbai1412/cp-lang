@@ -409,9 +409,9 @@ impl Builder<'_> {
             // `SimpleGraph<V, E>`, `ConnectedGraph<V, E>` and `Dag<V, E>`:
             // one edge on `V` for each value of `E`.
             TypeKind::Named { name, args }
-                if args.len() == 2 && GraphKind::named(&name.text).is_some() =>
+                if args.len() == 2
+                    && let Some(kind) = GraphKind::named(&name.text) =>
             {
-                let kind = GraphKind::named(&name.text).expect("a graph name");
                 let (lo, hi) = self.index(&args[0])?;
                 let (first, last) = self.index(&args[1])?;
                 let len = binary(BinOp::Add, binary(BinOp::Sub, last, first), int(1));
@@ -614,11 +614,8 @@ impl Builder<'_> {
         if !self.rows(stmts, &mut inside, &mut parts, &mut binds)? {
             return Ok(None);
         }
-        let elem = match parts.len() {
-            0 => return Ok(None),
-            1 => parts.pop().expect("one part"),
-            _ if binds.iter().all(Vec::is_empty) => Shape::tuple(parts),
-            _ => Shape::Tuple { parts, binds },
+        let Some(elem) = pass(parts, binds) else {
+            return Ok(None);
         };
         names_in(&lo, &mut self.spec.sizes);
         names_in(&hi, &mut self.spec.sizes);
@@ -653,11 +650,8 @@ impl Builder<'_> {
         if !self.rows(&body.stmts, &mut inside, &mut parts, &mut binds)? {
             return Ok(None);
         }
-        let elem = match parts.len() {
-            0 => return Ok(None),
-            1 => parts.pop().expect("one part"),
-            _ if binds.iter().all(Vec::is_empty) => Shape::tuple(parts),
-            _ => Shape::Tuple { parts, binds },
+        let Some(elem) = pass(parts, binds) else {
+            return Ok(None);
         };
         shapes.push(Shape::Array {
             len,
@@ -1054,14 +1048,10 @@ impl Builder<'_> {
             if !this.inline(body, &mut inner)? {
                 return Ok(false);
             }
-            if inner.is_empty() {
+            let Some(elem) = pass(inner, Vec::new()) else {
                 return Ok(true);
-            }
-            names_in(&len, &mut this.spec.sizes);
-            let elem = match inner.len() {
-                1 => inner.pop().expect("one shape"),
-                _ => Shape::tuple(inner),
             };
+            names_in(&len, &mut this.spec.sizes);
             out.push(Shape::Array {
                 len,
                 elem: Box::new(elem),
@@ -1097,11 +1087,9 @@ impl Builder<'_> {
                 domains,
                 params,
                 body,
-            } if self.skipped_cell(domains, params, body).is_some() => {
-                let (body, _) = self
-                    .skipped_cell(domains, params, body)
-                    .expect("tested above");
-                let (lo, hi) = self.cells(&domains[0]).expect("tested above");
+            } if let Some((body, _)) = self.skipped_cell(domains, params, body)
+                && let Some((lo, hi)) = self.cells(&domains[0]) =>
+            {
                 each(self, body, binary(BinOp::Sub, hi, lo), out)
             }
             ExprKind::Table {
@@ -1334,8 +1322,7 @@ impl Builder<'_> {
                     ty,
                     init: Some(init),
                     ..
-                } if typed_read(ty.as_ref(), init).is_some() => {
-                    let (ty, none) = typed_read(ty.as_ref(), init).expect("tested above");
+                } if let Some((ty, none)) = typed_read(ty.as_ref(), init) => {
                     let mut used = HashSet::new();
                     Sizes(&mut used).of_type(&ty);
                     type_names(&ty, &mut used);
@@ -1426,8 +1413,7 @@ impl Builder<'_> {
                     target,
                     op: AssignOp::Set,
                     value,
-                } if self.elem_read(target, value).is_some() => {
-                    let (base, ty) = self.elem_read(target, value).expect("tested above");
+                } if let Some((base, ty)) = self.elem_read(target, value) => {
                     let mut used = HashSet::new();
                     Sizes(&mut used).of_type(&ty);
                     type_names(&ty, &mut used);
@@ -1708,8 +1694,8 @@ impl Builder<'_> {
                 }
                 let tag = match letters {
                     Some(letters) => Shape::Char {
-                        lo: *letters.iter().min().expect("variants"),
-                        hi: *letters.iter().max().expect("variants"),
+                        lo: letters.iter().copied().min().unwrap_or(b'a'),
+                        hi: letters.iter().copied().max().unwrap_or(b'a'),
                     },
                     None => Shape::Words(variants.iter().map(|(tag, _)| tag.clone()).collect()),
                 };
@@ -1860,5 +1846,15 @@ fn generic_count(stmt: &Stmt) -> Option<usize> {
         StmtKind::Enum(decl) => Some(decl.generics.len()),
         StmtKind::TypeAlias { generics, .. } => Some(generics.len()),
         _ => None,
+    }
+}
+
+/// What one pass reads: its one part, or its parts as a tuple, `binds`
+/// naming each part's fields; `None` when it reads nothing.
+fn pass(mut parts: Vec<Shape>, binds: Vec<Vec<Option<String>>>) -> Option<Shape> {
+    match parts.len() {
+        0 | 1 => parts.pop(),
+        _ if binds.iter().all(Vec::is_empty) => Some(Shape::tuple(parts)),
+        _ => Some(Shape::Tuple { parts, binds }),
     }
 }

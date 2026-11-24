@@ -404,6 +404,7 @@ class DebtRatchetTest(unittest.TestCase):
                 "// z.unwrap()", "#[cfg(test)]", "mod tests { fn t() { q.unwrap(); } }", ""]))
             self._write(root, "crates/a/src/x_tests.rs", "fn t() { q.unwrap(); }\n")
             self._write(root, "crates/a/build.rs", "fn main() { q.unwrap(); }\n")
+            self._write(root, "crates/a/src/spec/build.rs", "fn f() { q.unwrap(); }\n")
             self._write(root, "crates/cpl-ir/src/lower/m.rs",
                         'self.unsupported(span, "x");\nlet c = "E0501";\n')
             self._write(root, "crates/cpl-lsp/src/hover.rs",
@@ -432,7 +433,7 @@ class DebtRatchetTest(unittest.TestCase):
             blob = subprocess.run(["git", "rev-parse", ":corpus/problems/q/dream.cp"], cwd=root, check=True,
                                   capture_output=True, text=True, env=dr._git_env()).stdout.strip()
             self._write(root, "corpus/problems/q/meta.json", json.dumps({"dream_stress": {"ok": True, "sha": blob}}))
-            self.assertEqual(dr.unwrap_input(root), ["crates/a/src/lib.rs:1"] * 3)
+            self.assertEqual(dr.unwrap_input(root), ["crates/a/src/lib.rs:1"] * 3 + ["crates/a/src/spec/build.rs:1"])
             self.assertEqual(len(dr.unsupported_sites(root)), 2)
             self.assertEqual(dr.lsp_string_types(root), ["crates/cpl-lsp/src/hover.rs:1", "crates/cpl-lsp/src/hover.rs:2"])
             self.assertEqual(dr.lint_post_filters(root), ["crates/cpl-lint/src/typed.rs TYPED"] * 2)
