@@ -6,8 +6,8 @@ let i = V.first!
 let j = V.last!
 let l = V.first!
 let r = V.last!
-let queries = List((V.first!, V.last!))
-var best: ?[V]Int = None
+let queries = [(V.first!, V.last!)]
+var best: ?Slice<[V]Int> = None
 for (l2, r2) in queries:
     best = a[l2..r2]
 print(best!.sum())
