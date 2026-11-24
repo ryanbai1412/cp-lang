@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3502 (3483 passing). Rules: 616.
+Cases: 3503 (3483 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -29,7 +29,7 @@ Cases: 3502 (3483 passing). Rules: 616.
 - Rbundle (bundle.md): 5 rules, 7 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rjudge (judge-profiles.md): 8 rules, 14 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rjudge (judge-profiles.md): 8 rules, 15 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlsp (lsp.md): 9 rules, 11 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 2 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -726,7 +726,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rjudge.3 [2+ 2-]: `I128` on a profile without `__int128` is an error naming the judge
 - Rjudge.4 [2+ 1-]: Size: a warning above 32 KB (or half of a smaller `source_kb`), an error above 64 KB or `s...
 - Rjudge.6 [2+ 2-]: `time_ms` and `memory_mb` are a problem's limits when its `cp.toml` has no `[limits]`.
-- Rjudge.7 [1+ 0-]: `memory_mb` feeds `cpl explain`'s peak-memory check and the LSP's code lens; `time_ms` fee...
+- Rjudge.7 [2+ 1-]: , and feeds `cpl explain`'s peak line and the LSP's code lens; `time_ms` feeds `cpl bench`...
 - Rjudge.8 [2+ 1-]: Local release runs build with the profile's flags and run under its stack (`ulimit -s`), s...
 
 ### Rlint: fmt-lint.md
@@ -853,7 +853,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0901 No fixed-width integer types: 3 case(s)
 - E0902 Range store not provable: 9 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
-- E0904 memory_over_profile *(0.3)*: 1 case(s)
+- E0904 Memory over the judge's limit: 1 case(s)
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
 - L0001 unknown_lint: 2 case(s)
