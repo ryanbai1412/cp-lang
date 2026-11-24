@@ -8,7 +8,7 @@
 //   O(10 C^2). A SegTree over blocks multiplies them in the (min, +) semiring, with `?Cost`
 //   (None = no route) as its zero. Routes from neighbouring tops never need to cross, so the
 //   best middle column is monotone (opt[i][j-1] <= k <= opt[i+1][j]) and a product is O(C^2).
-//   A change rebuilds one block and its O(log R) ancestors; an escape reads the root.
+//   A change rebuilds one block and its O(log R) ancestors and keeps the root; an escape reads it.
 // limits: 9000 ms, 256 MB
 // Bounds: r: 1..=5000; c: 1..=200; east, south, w: 0..=1000; events: 1..=2e5 + 500; kind: 1..=3; row: 0..r; gap: 0..c - 1; drop: 0..r - 1; col, v1, v2: 0..c
 // original: corpus/submissions/4722414.cpp (orig.cpp enables its sample grader)
@@ -64,6 +64,7 @@ fn block(b: Block) -> Matrix:
     out
 
 var routes = SegTree<Block, Matrix>(Monoid(identity(), mul), [Block] b => block(b))
+var root = routes.all
 fn block_of(row: Int) -> Block = Block(row / BLOCK)
 
 let events: 1..=2e5 + 500 = read()
@@ -73,10 +74,12 @@ for _ in 0..events:
         let (row, gap, w): (Row, Gap, Wombats) = read()
         east[row, gap] = w
         routes.set(block_of(row.ord), block(block_of(row.ord)))
+        root = routes.all
     elif kind == 2:
         let (drop, col, w): (Drop, Col, Wombats) = read()
         south[drop, col] = w
         routes.set(block_of(drop.ord), block(block_of(drop.ord)))
+        root = routes.all
     else:
         let (v1, v2): (Col, Col) = read()
-        print(routes.all[v1, v2]!)
+        print(root[v1, v2]!)

@@ -57,9 +57,11 @@ fn solve_block(blk: Block) -> Matrix:
     out
 
 var seg = SegTree<Block, Matrix>(Monoid(identity, mul), [Block] b => solve_block(b))
+var root = seg.all
 fn refresh(row: Int):
     let blk = Block(row / B)
     seg.set(blk, solve_block(blk))
+    root = seg.all
 
 let events: 1..=2e5 + 500 = read()
 for _ in 0..events:
@@ -74,4 +76,4 @@ for _ in 0..events:
         refresh(p.ord)
     else:
         let (v1, v2): (Col, Col) = read()
-        print(seg.all[v1, v2]!)
+        print(root[v1, v2]!)
