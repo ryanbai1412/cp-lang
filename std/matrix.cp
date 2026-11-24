@@ -23,13 +23,13 @@ pub struct Mat<T>:
     cells: List<T>
     ring: ?Ring<T> = None
     /// Under a [`TropicalProduct`] ring, the entries a product left in a std-owned sentinel form,
-    /// then the largest `|entry|`; `cells` is then `[]` until an entry is set.
+    /// then the largest `|entry|`; `cells` is then `[]` until an entry is set; empty otherwise.
     raw: List<Int> = []
 
     /// The entries, row by row, as a new list: `get(r, c)` is `data[r * cols + c]`.
     /// \(O(\mathit{rows} \cdot \mathit{cols})\); `get` reads one entry in \(O(1)\).
     @get pub fn data(self) -> List<T>:
-        if cells.len < rows * cols: return [ring!.peek!(raw[i]) for i in 0..rows * cols]
+        if self.sentinel: return [ring!.peek!(raw[i]) for i in 0..rows * cols]
         cells.clone()
 
     /// A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`):
@@ -147,13 +147,20 @@ pub struct Mat<T>:
     /// trap: `Mat<Int>.zeros(2, 2).get(0, 2)`
     /// trap: `Mat<Int>.zeros(2, 2).get(-1, 0)`
     pub fn get(self, r: Int, c: Int) -> T:
-        if cells.len < rows * cols: return ring!.peek!(raw[self.cell(r, c)])
+        if self.sentinel: return ring!.peek!(raw[self.cell(r, c)])
         cells[self.cell(r, c)]
+
+    /// Whether a product left the entries in `raw`. Only a lifted `?W` ring has that form, so
+    /// for an `Add` entry type it is `false` at compile time and the accessors test nothing.
+    @get fn sentinel(self) -> Bool:
+        if T: Add: return false
+        raw.len > 0
 
     /// Bring the entries back from the sentinel form, so they can be changed.
     fn settle(mut self):
-        if cells.len < rows * cols: cells = self.data
-        raw = []
+        if self.sentinel:
+            cells = self.data
+            raw = []
 
     /// Set the entry at `(r, c)` to `val`.
     ///
@@ -188,7 +195,7 @@ pub struct Mat<T>:
     /// traps: never
     /// example: `Mat<Int>.from_rows([[1, 2, 3], [4, 5, 6]]).transpose().get(2, 1) == 6`
     pub fn transpose(self) -> Mat<T>:
-        if cells.len < rows * cols: return Mat(rows, cols, self.data, ring).transpose()
+        if self.sentinel: return Mat(rows, cols, self.data, ring).transpose()
         var d = List.filled(rows * cols, T.zero)
         // In 16 x 16 tiles, so the strided writes stay in cache.
         let b = 16
@@ -212,7 +219,7 @@ pub struct Mat<T>:
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).mul_vec([1, 1]) == [3, 7]`
     pub fn mul_vec(self, v: List<T>) -> List<T>:
         assert v.len == cols, "vector length must match matrix columns"
-        if cells.len < rows * cols: return Mat(rows, cols, self.data, ring).mul_vec(v)
+        if self.sentinel: return Mat(rows, cols, self.data, ring).mul_vec(v)
         if T: Add:
             if T: Mul:
                 if ring == None:
@@ -624,8 +631,7 @@ pub struct Mat<T>:
 impl Eq for Mat<T>:
     fn eq(a, b):
         if a.rows != b.rows or a.cols != b.cols: return false
-        if a.cells.len == a.rows * a.cols and
-            b.cells.len == b.rows * b.cols: return a.cells == b.cells
+        if not a.sentinel and not b.sentinel: return a.cells == b.cells
         a.data == b.data
 
 impl Add for Mat<T>:
@@ -667,7 +673,7 @@ impl Mul for Mat<T>:
                 c,
                 g.most,
             ): return Mat(r, c, [], a.ring, out)
-            if a.cells.len < r * m or b.cells.len < m * c:
+            if a.sentinel or b.sentinel:
                 return Mat(r, m, a.data, a.ring) * Mat(m, c, b.data, b.ring)
         var acc = List.filled(r * c, g.zero)
         for i in 0..r:
@@ -700,11 +706,11 @@ struct Ring<T>:
     plus: (T, T) -> T
     times: (T, T) -> T
     /// The whole product at once, row by row, or `None` to run the loop: a [`TropicalProduct`]'s.
-    flat: ?((List<T>, List<Int>, List<T>, List<Int>, Int, Int, Int, Bool) -> ?List<Int>) = None
+    var flat: ?((List<T>, List<Int>, List<T>, List<Int>, Int, Int, Int, Bool) -> ?List<Int>) = None
     /// Whether `flat` adds with `max` (else `min`).
-    most: Bool = false
+    var most: Bool = false
     /// An entry of `flat`'s sentinel form.
-    peek: ?(Int -> T) = None
+    var peek: ?(Int -> T) = None
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
