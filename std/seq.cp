@@ -3726,14 +3726,17 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// The n windows of `k` elements, one starting at each position, wrapping. \(O(n)\) to walk.
     /// An empty ring traps for every `k`: no `k` is in `1..=n`.
     ///
-    /// cost: \(O(1)\) per window
+    /// A lazy view: walking it, either way, is \(O(1)\) per window, and `.last` is the window
+    /// starting at the last position.
+    ///
+    /// cost: \(O(1)\) to build, \(O(1)\) per window walked
     /// empty: `let e: List<Int> = []; e.ring.windows(1).count() == 0` (traps R0401)
     /// order: by start position, increasing
     /// traps: when `k` is not in `1..=n`
     /// example: `[1, 2, 3].ring.windows(2).count() == 3`
-    pub fn windows(self, k: Int) -> yields RingSlice<D, T>:
+    pub fn windows(self, k: Int) -> RingWindows<D, T>:
         assert 1 <= k <= D.count
-        for i in D: yield RingSlice<D, T>(rr: self.span(i, k))
+        RingWindows(self, k)
 
     /// Two pointers round the cycle: for each position as the last element, the longest
     /// wrapping piece (at most n elements) ending there that is `ok`, fed through
@@ -3789,6 +3792,23 @@ pub struct Ring<D, T>(pub src: [D]T):
         out
 
 /// A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
+/// The windows of `k` elements round a `Ring`, one per start position: `r.windows(k)`.
+pub struct RingWindows<D, T>(
+    pub src: Ring<D, T>,
+    k: Int,
+)
+
+impl Seq<RingSlice<D, T>> for RingWindows<D, T>:
+    fn iter(self) -> yields RingSlice<D, T>:
+        for i in D: yield RingSlice<D, T>(rr: src.span(i, k))
+
+impl Bidir<RingSlice<D, T>> for RingWindows<D, T>:
+    fn iter_rev(self) -> yields RingSlice<D, T>:
+        for j in (0..D.count).rev: yield RingSlice<D, T>(rr: src.span(D.nth(j), k))
+
+impl Sized for RingWindows<D, T>:
+    @get fn len(self) -> Int = D.count
+
 pub struct RingSlice<D, T>():
     rr: RingRange<D> = RingRange<D>()
 
