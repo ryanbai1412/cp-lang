@@ -153,8 +153,8 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 fn repeat(self: Str, n: Int) -> Str                                           // O(n * self.len)
 fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool  // O(p.len)
 fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool                 // O(p.len)
-fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K                     // O(self.len + p.len)
-fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K                    // O(self.len + p.len)
+fn search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K                     // O(self.len + p.len)
+fn rsearch<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K                    // O(self.len + p.len)
 @get fn lower(self: Char) -> Char                                             // O(1)
 @get fn upper(self: Char) -> Char                                             // O(1)
 @get fn digit(self: Char) -> Int                                              // O(1); traps outside '0'..'9'
