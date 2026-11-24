@@ -828,16 +828,15 @@ pub fn pow_exp(a: Int, x: Exp, m: Int) -> Exp:
 /// example: `pow_tower([0, 0], 5) == 1 and pow_tower([0, 3], 5) == 0`
 pub fn pow_tower(xs: List<Int>, m: Int) -> Int:
     assert m >= 1, "`pow_tower(xs, m)` takes `m >= 1`"
-    let a = xs
-    if a.is_empty: return 1 % m
+    if xs.is_empty: return 1 % m
     var chain = [m]
-    while chain.len < a.len: chain.push(if chain.last! == 1: 1 else: phi(chain.last!))
-    assert a.last! >= 0, "`pow_tower` takes non-negative entries"
-    var x = Exp.of(a.last!, chain[a.len - 1])
-    var i = a.len - 1
+    while chain.len < xs.len: chain.push(if chain.last! == 1: 1 else: phi(chain.last!))
+    assert xs.last! >= 0, "`pow_tower` takes non-negative entries"
+    var x = Exp.of(xs.last!, chain[xs.len - 1])
+    var i = xs.len - 1
     while i > 0:
         i -= 1
-        x = pow_exp(a[i], x, chain[i])
+        x = pow_exp(xs[i], x, chain[i])
     x.v % m
 
 /// The smallest primitive root modulo the prime `p`: the least `g >= 1` whose powers reach every
