@@ -1,6 +1,6 @@
 use super::ir::*;
 use crate::value::{Array, Cells, TupleVal, Value};
-use crate::{bug, release, trap, Part, Res};
+use crate::{bug, interp_failed, release, trap, Part, Res};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
@@ -792,9 +792,7 @@ pub(super) fn array_flat_index(
     span: Span,
 ) -> Res<usize> {
     match step {
-        PlaceStep::Key(_) | PlaceStep::Some => {
-            trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]))
-        }
+        PlaceStep::Key(_) | PlaceStep::Some => Err(interp_failed(span)),
         PlaceStep::Index1(r_i) => {
             let idx = regs_i[r_i as usize];
             let len = arr.dims[0];
@@ -931,7 +929,7 @@ pub(super) fn with_place_cell<R>(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 let Some(mut cell) = a.get(flat) else {
-                    return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+                    return Err(interp_failed(span));
                 };
                 let out = f(&mut cell)?;
                 a.set(flat, cell);
@@ -1017,7 +1015,7 @@ pub(super) fn store_place_leaf_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) => Err(interp_failed(span)),
         PlaceStep::Some => {
             *crate::assign::inside_mut(container, span)? = kind.box_val(raw);
             Ok(())
@@ -1098,7 +1096,7 @@ pub(super) fn store_place_leaf_opt_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) => Err(interp_failed(span)),
         PlaceStep::Some => {
             *crate::assign::inside_mut(container, span)? = kind.box_opt(raw, some);
             Ok(())
@@ -1160,7 +1158,7 @@ pub(super) fn store_place_leaf_val(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) => Err(interp_failed(span)),
         PlaceStep::Some => {
             *crate::assign::inside_mut(container, span)? = val;
             Ok(())
@@ -1359,7 +1357,7 @@ pub(super) fn assign_place_leaf_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+        PlaceStep::Key(_) => Err(interp_failed(span)),
         PlaceStep::Some => {
             let cell = crate::assign::inside_mut(container, span)?;
             let next = apply_scalar_assign_op(ScalarKind::unbox_val(cell), rhs, op, kind, span)?;

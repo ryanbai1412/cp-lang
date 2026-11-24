@@ -54,7 +54,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         };
         Ok(match spec {
             Spec::Line => Value::Str(Rc::new(self.input.line().map_err(fail)?)),
-            Spec::List(_) => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+            Spec::List(_) => return Err(interp_failed(span)),
             Spec::Plain(ty) => match ty {
                 Ty::Int => Value::Int(self.input.int().map_err(fail)?.0),
                 Ty::I128 => Value::I128(self.input.wide::<i128>("an `I128`").map_err(fail)?.into()),

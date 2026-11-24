@@ -27,7 +27,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// the loop, and the fn stops where it is.
     pub(super) fn feed(&mut self, value: Value, span: Span) -> Res<Value> {
         let Some(fed) = self.fed_loops.last() else {
-            return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+            return Err(interp_failed(span));
         };
         let (callee, caller, slot, id, body) = (fed.callee, fed.caller, fed.slot, fed.id, fed.body);
         let locals = self.frame_locals.pop();
@@ -58,7 +58,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         };
         match self.fed_loops.last_mut() {
             Some(fed) => fed.left = Some(left),
-            None => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+            None => return Err(interp_failed(span)),
         }
         Err(Box::new(Trap::said(
             span,

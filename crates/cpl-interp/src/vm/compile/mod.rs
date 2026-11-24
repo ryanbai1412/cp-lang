@@ -272,6 +272,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
             || self.applies_sync
             || !self.trace_points.is_empty()
             || (self.ops.iter()).any(|op| matches!(op, Op::CallTraced { .. }));
+        // `dom_clears` counts the calls, feeds and fallbacks `emit` saw.
+        let leaf = !needs_stack
+            && self.dom_clears == 0
+            && !(self.ops.iter()).any(|op| {
+                matches!(
+                    op,
+                    Op::MakeClosure { .. }
+                        | Op::MutatePlace { .. }
+                        | Op::SortPlaceCmp { .. }
+                        | Op::SortByKeysPlaceCmp { .. }
+                        | Op::Print { .. }
+                        | Op::Format { .. }
+                )
+            });
         Chunk {
             ops: self.ops,
             spans: self.spans,
@@ -305,6 +319,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             param_count: 0,
             ret_kind: None,
             guarded_domains: Vec::new(),
+            leaf: leaf && !self.ref_all && self.ref_slots.is_empty(),
             needs_stack: needs_stack || self.ref_all || !self.ref_slots.is_empty(),
             has_by_ref_closure: self.ref_all || !self.ref_slots.is_empty(),
             ref_slots: (!self.ref_all).then_some(self.ref_slots),

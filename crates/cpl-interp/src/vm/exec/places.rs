@@ -4,7 +4,7 @@ use crate::value::keys::{tree_only, Edge};
 use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{bug, trap, Flow, Interp, Res};
+use crate::{bug, interp_failed, trap, Flow, Interp, Res};
 use cpl_ir::{CmpOp, LoopId};
 use std::rc::Rc;
 
@@ -105,10 +105,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let Some((&last, prefix)) = pp.steps.split_last() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 store_place_leaf_scalar(container, last, raw, kind, regs_i, spans[cur_pc])?;
@@ -125,10 +122,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let Some((&last, prefix)) = pp.steps.split_last() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 store_place_leaf_opt_scalar(
@@ -147,10 +141,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let Some((&last, prefix)) = pp.steps.split_last() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 // A map entry (a `mut` arg taken by its path) is put back whole.
                 if let PlaceStep::Key(_) = last {
@@ -171,10 +162,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let Some((&last, prefix)) = pp.steps.split_last() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 assign_place_leaf_scalar(container, last, rhs, op, kind, regs_i, spans[cur_pc])?;
@@ -1110,10 +1098,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::CallVmFeed { spec } => {
                 let fc = &chunk.feed_calls[spec as usize];
                 let Some(fed_chunk) = compiled.fed_fns[fc.fn_id].as_ref() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let callee_base_i = vm_regs_i.len();
                 vm_regs_i.resize(callee_base_i + fed_chunk.num_i, 0);
@@ -1143,12 +1128,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 callee_regs_v[r as usize] = regs_v[fc.args_v[iv] as usize].clone();
                                 iv += 1;
                             }
-                            SlotLoc::SmallTuple { .. } => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                )
-                            }
+                            SlotLoc::SmallTuple { .. } => return Err(interp_failed(spans[cur_pc])),
                         }
                     }
                 }
@@ -1240,21 +1220,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                         vm_regs_i[callee_base_i + some as usize],
                                     )
                                 }
-                                _ => {
-                                    return trap(
-                                        spans[cur_pc],
-                                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                    )
-                                }
+                                _ => return Err(interp_failed(spans[cur_pc])),
                             };
                             let (FeedBack::Place(path)
                             | FeedBack::PlaceI(path, _)
                             | FeedBack::PlaceOptI(path, _)) = to
                             else {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                );
+                                return Err(interp_failed(spans[cur_pc]));
                             };
                             let pp = &chunk.places[path as usize];
                             let keys = place_keys(pp, regs_v);
@@ -1293,10 +1265,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::FeedYieldI { src, kind, back } => {
                 let raw = regs_i[src as usize];
                 let Some(ctx) = fed.as_deref_mut() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 match ctx.var_loc {
                     SlotLoc::I(r, _) => {
@@ -1310,10 +1279,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         ctx.caller_regs_v[r as usize] = kind.box_val(raw);
                     }
                     SlotLoc::SmallTuple { .. } => {
-                        return trap(
-                            spans[cur_pc],
-                            cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                        );
+                        return Err(interp_failed(spans[cur_pc]));
                     }
                 }
                 // The body may run a yielded closure that writes this frame's locals.
@@ -1354,10 +1320,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[src as usize].clone()
                 };
                 let Some(ctx) = fed.as_deref_mut() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 store_fed_val(ctx, vm_regs_i, val);
                 // The body may run a yielded closure that writes this frame's locals.
@@ -1393,10 +1356,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::FeedYieldExtend { src } => {
                 let seq = regs_v[src as usize].clone();
                 let Some(ctx) = fed.as_deref_mut() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let items = yielded_items(seq, spans[cur_pc])?;
                 for item in items {
@@ -1650,12 +1610,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let val = val?;
                 regs_v[dst as usize] = val;
             }
-            _ => {
-                return trap(
-                    spans[cur_pc],
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
+            _ => return Err(interp_failed(spans[cur_pc])),
         }
         Ok(None)
     }

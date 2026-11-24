@@ -4,7 +4,7 @@ use crate::observe::Observer;
 use crate::value::{Array, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{bug, trap, Flow, Interp, Res};
+use crate::{bug, interp_failed, trap, Flow, Interp, Res};
 use cpl_ir::{BinOp, CmpOp};
 use std::rc::Rc;
 
@@ -599,10 +599,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.tick(spans[cur_pc])?;
                 self.stack_left(spans[cur_pc], Some(&f.name))?;
                 let Some(callee) = compiled.fns[fn_id as usize].as_ref() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let ab = arg_base as usize;
                 let mut arg_buf = [0i64; 8];
@@ -754,10 +751,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.tick(spans[cur_pc])?;
                 self.stack_left(spans[cur_pc], Some(&f.name))?;
                 let Some(callee) = compiled.fns[fn_id as usize].as_ref() else {
-                    return trap(
-                        spans[cur_pc],
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(spans[cur_pc]));
                 };
                 let mut ni = 0usize;
                 let mut nv = 0usize;
@@ -1005,7 +999,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if !by_val && has_frame {
                         sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                     }
-                    let needs_stack = callee.needs_stack || !by_val;
+                    // A leaf borrows the variables in place: nothing it runs can look.
+                    let leaf = callee.leaf;
+                    let needs_stack = callee.needs_stack || !(by_val || leaf);
                     let saved_base = self.base;
                     if needs_stack {
                         self.base = self.stack.len();
@@ -1059,18 +1055,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     for (cap, cval) in def.captures.iter().zip(caps.iter()) {
                         let (loc, c_regs_i) =
                             (&callee.slot_map[cap.inner], &mut vm_regs_i[c_base_i..]);
-                        let part = match cval {
-                            crate::CaptureVal::Val(v) => {
-                                write_slot(loc, c_regs_i, &mut c_regs_v, v.clone());
-                                continue;
+                        let v = match cval {
+                            crate::CaptureVal::Val(v) => v.clone(),
+                            _ if leaf => std::mem::replace(self.held_mut(cval)?, Value::Moved),
+                            _ => {
+                                let part = match cval {
+                                    &crate::CaptureVal::StackRef(at) => self.alias_part(false, at),
+                                    &crate::CaptureVal::GlobalRef(id) => self.alias_part(true, id),
+                                    crate::CaptureVal::PartRef(part) => Rc::clone(part),
+                                    crate::CaptureVal::Val(_) => {
+                                        return Err(interp_failed(spans[cur_pc]))
+                                    }
+                                };
+                                let v = std::mem::replace(self.lender(&part)?, Value::Moved);
+                                self.lent.push((self.base + cap.inner, part));
+                                v
                             }
-                            &crate::CaptureVal::StackRef(at) => self.alias_part(false, at),
-                            &crate::CaptureVal::GlobalRef(id) => self.alias_part(true, id),
-                            crate::CaptureVal::PartRef(part) => Rc::clone(part),
                         };
-                        let v = std::mem::replace(self.lender(&part)?, Value::Moved);
                         write_slot(loc, c_regs_i, &mut c_regs_v, v);
-                        self.lent.push((self.base + cap.inner, part));
                     }
                     let dom_mark = self.saved_domains.len();
                     for &d in &callee.guarded_domains {
@@ -1085,6 +1087,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         0,
                     );
                     let c_regs_i = &vm_regs_i[c_base_i..];
+                    if leaf {
+                        for (cap, cval) in def.captures.iter().zip(caps.iter()) {
+                            if !matches!(cval, crate::CaptureVal::Val(_)) {
+                                let loc = &callee.slot_map[cap.inner];
+                                let v = take_slot(loc, c_regs_i, &mut c_regs_v);
+                                *self.held_mut(cval)? =
+                                    v.unwrap_or_else(|| read_slot(loc, c_regs_i, &c_regs_v));
+                            }
+                        }
+                    }
                     let held = self.lent.split_off(lent_mark);
                     self.give_back(callee, held, c_regs_i, &mut c_regs_v)?;
                     if res.is_ok() && muts != 0 {
@@ -1094,12 +1106,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             match take_slot(&callee.slot_map[pslot], c_regs_i, &mut c_regs_v) {
                                 Some(v) => lent_back.push(v),
-                                None => {
-                                    return trap(
-                                        spans[cur_pc],
-                                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                    )
-                                }
+                                None => return Err(interp_failed(spans[cur_pc])),
                             }
                         }
                     }
@@ -1300,12 +1307,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
             }
-            _ => {
-                return trap(
-                    spans[cur_pc],
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
+            _ => return Err(interp_failed(spans[cur_pc])),
         }
         Ok(None)
     }

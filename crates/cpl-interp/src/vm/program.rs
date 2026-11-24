@@ -69,6 +69,10 @@ pub(crate) struct Chunk<'p> {
     pub ret_kind: Option<ScalarKind>,
     pub guarded_domains: Vec<cpl_ir::DomainId>,
     pub needs_stack: bool,
+    /// Runs no code but its own (no call, closure, feed, fallback, print or
+    /// format) and needs no stack frame, so nothing it runs can read a
+    /// variable while it is lent to the chunk.
+    pub leaf: bool,
     pub has_by_ref_closure: bool,
     /// The slots `has_by_ref_closure` syncs around a call; `None` is all.
     pub ref_slots: Option<Vec<u16>>,

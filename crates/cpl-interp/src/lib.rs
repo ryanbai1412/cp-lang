@@ -300,10 +300,7 @@ fn observe(
             .take();
         let Some(io) = taken else {
             return Observed {
-                trap: Some(Trap::said(
-                    Span::default(),
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )),
+                trap: Some(*interp_failed(Span::default())),
                 ..Observed::default()
             };
         };
@@ -550,11 +547,18 @@ fn stmt_failure(stmt: &Stmt, message: Option<Value>) -> Box<Trap> {
             failed
         }
         Stmt::Trap(message, span) => Box::new(Trap::written(*span, message.clone())),
-        _ => Box::new(Trap::said(
-            Span::default(),
-            cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-        )),
+        _ => interp_failed(Span::default()),
     }
+}
+
+/// The trap for a value or shape the VM's compiler should have ruled out.
+#[cold]
+#[inline(never)]
+fn interp_failed(span: Span) -> Box<Trap> {
+    Box::new(Trap::said(
+        span,
+        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+    ))
 }
 
 fn trap<T>(span: Span, said: cpl_diag::msgs::Said) -> Res<T> {

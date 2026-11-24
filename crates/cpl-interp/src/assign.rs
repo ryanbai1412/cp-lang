@@ -159,12 +159,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             _ => &mut self.stack[at],
                         }
                     }
-                    _ => {
-                        return trap(
-                            place.span,
-                            cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                        )
-                    }
+                    _ => return Err(interp_failed(place.span)),
                 };
                 let span = place.span;
                 let cell: &mut Value = match holder {
@@ -268,10 +263,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let PlaceKind::Index(base, _) = &place.kind {
             if matches!(base.ty, Ty::Str | Ty::Map(..) | Ty::HashMap(..)) {
                 let Some((key, rest)) = indices.split_last() else {
-                    return trap(
-                        place.span,
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    );
+                    return Err(interp_failed(place.span));
                 };
                 let program = self.program;
                 let holder = self.resolve(base, &mut rest.iter())?;
@@ -311,7 +303,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let mut held = std::mem::replace(holder, Value::Moved);
                         let Value::Map(entries) = &mut held else {
                             *holder = held;
-                            return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+                            return Err(interp_failed(span));
                         };
                         let done = assign_entry(
                             Rc::make_mut(entries),

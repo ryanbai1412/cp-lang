@@ -208,10 +208,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         // Inserted one by one: `collect` would sort first, a second
                         // sort of `Value` in cpl.wasm.
                         let Value::Set(mut set) = crate::value::zero(&e.ty, self.program) else {
-                            return trap(
-                                e.span,
-                                cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                            );
+                            return Err(interp_failed(e.span));
                         };
                         let span = e.span;
                         let keys = Rc::make_mut(&mut set);

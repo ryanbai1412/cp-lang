@@ -7,7 +7,7 @@ use crate::observe::Observer;
 use crate::value::Value;
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{trap, Flow, Interp, Res};
+use crate::{interp_failed, trap, Flow, Interp, Res};
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// Frame `k` of `frames`, its locals on the stack at `self.base`, on the
@@ -148,12 +148,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[iv] = v;
                     iv += 1;
                 }
-                SlotLoc::SmallTuple { .. } => {
-                    return trap(
-                        cpl_diag::Span::default(),
-                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                    )
-                }
+                SlotLoc::SmallTuple { .. } => return Err(interp_failed(cpl_diag::Span::default())),
             }
         }
         Ok(())

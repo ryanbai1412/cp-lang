@@ -205,14 +205,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 FmtPiece::Text(bytes) => text.extend_from_slice(bytes),
                 FmtPiece::Value(FmtArg { value, digits }) => {
                     let Some(v) = vals.next() else {
-                        return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+                        return Err(interp_failed(span));
                     };
                     self.show_val(&mut text, v, &value.ty, *digits, span)?;
                 }
                 FmtPiece::Number(_, fmt) => match vals.next() {
                     Some(Value::Int(v)) => text.extend(fmt.int(*v).bytes()),
                     Some(Value::Float(v)) => text.extend(fmt.float(*v).bytes()),
-                    _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+                    _ => return Err(interp_failed(span)),
                 },
             }
         }

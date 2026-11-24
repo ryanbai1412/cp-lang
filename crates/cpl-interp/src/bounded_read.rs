@@ -28,12 +28,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let word = self.input.word_in(len, alphabet.as_deref(), text);
                 Value::Str(Rc::new(word.map_err(fail)?))
             }
-            _ => {
-                return trap(
-                    Span::default(),
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
+            _ => return Err(interp_failed(Span::default())),
         })
     }
 

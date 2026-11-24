@@ -2,7 +2,7 @@ use crate::observe::Observer;
 use crate::value::{OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{bug, trap, Interp, Res};
+use crate::{bug, interp_failed, trap, Interp, Res};
 use cpl_ir::CmpOp;
 use std::rc::Rc;
 
@@ -1116,12 +1116,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     _ => return bug(spans[cur_pc], "expected array or list"),
                 }
             }
-            _ => {
-                return trap(
-                    spans[cur_pc],
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
+            _ => return Err(interp_failed(spans[cur_pc])),
         }
         Ok(())
     }

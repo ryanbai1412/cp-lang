@@ -12,12 +12,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     ) -> Res<Flow> {
         let base = self.base;
         let span = match iter {
-            Iter::Walk { .. } => {
-                return trap(
-                    Span::default(),
-                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                )
-            }
+            Iter::Walk { .. } => return Err(interp_failed(Span::default())),
             Iter::Range { lo: e, .. }
             | Iter::RangeVal(e, _)
             | Iter::Seq(e, _)
@@ -47,9 +42,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         };
         match iter {
-            Iter::Walk { .. } => {
-                return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]))
-            }
+            Iter::Walk { .. } => return Err(interp_failed(span)),
             Iter::Range {
                 lo,
                 hi,
@@ -172,7 +165,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (ExprKind::Call(callee, args), Some((_, acc))) =
                     (&seq.kind, self.is_fed(id, seq, body))
                 else {
-                    return trap(seq.span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+                    return Err(interp_failed(seq.span));
                 };
                 let fed = Fed {
                     callee: 0,
@@ -219,7 +212,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 .collect(),
             Value::Range(lo, hi) => (*lo..*hi).map(Value::Int).collect(),
             Value::Range128(r) => (r.0..r.1).map(|v| Value::I128(v.into())).collect(),
-            _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+            _ => return Err(interp_failed(span)),
         })
     }
 
@@ -256,7 +249,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Value::Map(entries) => (entries.range(lo, hi, &mut cmp)?)
                 .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
                 .collect(),
-            _ => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
+            _ => return Err(interp_failed(span)),
         })
     }
 }
