@@ -115,11 +115,17 @@ impl Checker<'_> {
     pub(super) fn construct(
         &mut self,
         name: &str,
-        type_args: Vec<Ty>,
+        mut type_args: Vec<Ty>,
         callee_text: &str,
         args: &[Arg],
         call: &Expr,
     ) -> Ty {
+        // `SegTree<D, P, Int>(..)`: the args left out follow `new`, not the struct's defaults.
+        if let ExprKind::Call { callee, .. } = &call.kind {
+            if let ExprKind::Generic { args: written, .. } = &callee.kind {
+                type_args.truncate(written.len());
+            }
+        }
         if let Some(def) = self.type_def(name) {
             return match &*def {
                 Def::Struct {
@@ -196,9 +202,14 @@ impl Checker<'_> {
                         },
                     );
                     if let Some(Ty::Named { args: rargs, .. }) = new_ret.map(|r| r.as_ref()) {
-                        for ((g, r), d) in generics.iter().zip(rargs).zip(defaults) {
+                        let unwritten = generics
+                            .iter()
+                            .zip(rargs)
+                            .zip(defaults)
+                            .skip(type_args.len());
+                        for ((g, r), d) in unwritten {
                             let r = r.subst(&bindings);
-                            if d.is_some() && !bindings.contains_key(g) && !r.mentions_param() {
+                            if d.is_some() && !r.mentions_param() {
                                 bindings.insert(g.clone(), r);
                             }
                         }
