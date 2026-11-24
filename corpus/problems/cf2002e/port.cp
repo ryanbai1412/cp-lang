@@ -13,8 +13,7 @@
 @!multitest
 let n: 1..=300_000 = read()
 var stack: List<(dies: Int, val: Int)> = []
-var strength: List<Int> = []
-for _ in 0..n:
+for i in 0..n:
     var dies: Int = read<1..=1_000_000_000>()
     let val: 0..=n = read()
     var gone = 0  // when the runs popped so far died
@@ -24,5 +23,4 @@ for _ in 0..n:
         gone = top.dies
         stack.pop()
     stack.push((dies:, val:))
-    strength.push(stack[0].dies)
-print(strength)
+    print(stack[0].dies, end: if i == n - 1: "\n" else: " ")
