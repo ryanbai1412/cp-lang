@@ -167,7 +167,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
             {
                 self.compile_traced_writing_let(*slot, init);
             }
-            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) => return false,
+            // A trap ends the run: the tracer takes it from the failure.
+            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) | Stmt::Trap(..) => {
+                return false
+            }
+            // A domain's bounds are no value the trace shows.
+            Stmt::DefDomain { lo, len, .. } if self.traced_quiet(lo) && self.traced_quiet(len) => {
+                return false
+            }
+            Stmt::DefDomainFromVal { val, .. } if self.traced_quiet(val) => return false,
             Stmt::Assign(place, AssignOp::Set, value)
                 if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_take(value) =>
             {

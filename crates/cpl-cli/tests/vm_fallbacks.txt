@@ -4,8 +4,6 @@ expr:CallExpr
 expr:Read
 traced stmt:Assert
 traced stmt:Assign(Global,Set)
-traced stmt:DefDomain
-traced stmt:DefDomainFromVal
 traced stmt:Expr(CallExpr)
 traced stmt:Expr(Mutate)
 traced stmt:Expr(Print)
@@ -16,10 +14,8 @@ traced stmt:Let(Call)
 traced stmt:Let(CallExpr)
 traced stmt:Let(Uninit)
 traced stmt:Let(Unwrap)
-traced stmt:Trap
 traced stmt:While
 untraced fn:SortedSet_Int.each(feeding)
-untraced stmt:DefDomain
 untraced stmt:Expr(Call)
 untraced stmt:Expr(CallExpr)
 untraced stmt:Expr(Mutate)
@@ -27,4 +23,3 @@ untraced stmt:Expr(Print)
 untraced stmt:Expr(Sort)
 untraced stmt:For(Range)
 untraced stmt:For(Seq)
-untraced stmt:Trap
