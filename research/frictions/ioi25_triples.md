@@ -112,8 +112,8 @@ built `cpl`.
   `fn f(m: 1..=10) -> List<Int>:` / `fn g(seed: Int) -> List<Int>:` /
   `var h: [0..m]?Int = None` / `h[seed % m] = seed` / `h.map(v => v ?? 0)` / `g(1)`, then
   `print(f(read<1..=10>()))`: `cpl explain` reports the same copy at `h`.
-- **What felt wrong:** `h` is dead after the map, so the map can read it in place. The port now
-  writes `var h: [0..m]Int = m` with `m` as a "no peak yet" sentinel, fills the sentinels in a
+- **What felt wrong:** `h` is dead after the map, so the map can read it in place. The port
+  wrote `var h: [0..m]Int = m` with `m` as a "no peak yet" sentinel, fills the sentinels in a
   loop and returns `List(h)`: a sentinel where `?Int` said the same thing exactly.
 - **Goal it hurts:** zero-cost safety, costs are visible.
 - **Ideal code:** the dream's `h.map(v => v ?? rng.int(1, 2))` with no copy.
@@ -122,6 +122,40 @@ built `cpl`.
 - **Severity:** medium (one O(M) copy per try; 8e5 / M tries).
 - **Status:** no longer reproduces on 63669f09c: `cpl explain` reports no copy for the repro,
   and the dream's `h.map(v => v ?? rng.int(1, 2))` makes none (read_only_copies).
+  The port has taken the dream's form too (`var h: [0..m]?Int = None`, then
+  `h.map(v => v ?? rng.int(1, 2))`), and the sentinel is gone. It makes no copy and gives the
+  same output on all 29 package cases.
+
+## Counting from the `candidates` generator is 1.7-1.9x slower than `fn try`
+- **Where:** the dream's `count_triples(h) = count(mythical(h, c) for c in candidates(h))`, a
+  `yields (Int, Int, Int, Int)` fn. The port's `count_triples` calls a nested `fn try(i, j, k,
+  top)` that adds to a captured `var found`. Its crossed-pair loop also checks only
+  `h[k] == j - i`, because i and j sharing h[x] − x settles the rest.
+- **Measured:** case 08 (`2 / 200000 12000000`, four tries), user CPU over 5 runs, g++ 14. The
+  three versions differ only in `count_triples`, and all give the same output.
+
+| `count_triples` | `-O2` | `-O2 -DLOCAL` (`cpl test`) |
+|---|---|---|
+| port: `fn try`, crossed pairs checked directly | 0.48-0.70 s, median 0.56 | 0.68-1.09 s, median 0.75 |
+| port, but crossed pairs go through `try` too | 0.57-0.90 s, median 0.64 | 0.82-1.17 s, median 0.84 |
+| dream: `count(mythical(h, c) for c in candidates(h))` | 0.78-1.42 s, median 1.01 | 0.95-1.94 s, median 1.13 |
+
+  A second run of five gave the port 0.47-0.63 s (`-DLOCAL` 0.70-1.11 s) and the dream
+  0.81-1.05 s (`-DLOCAL` 1.08-2.62 s). The full check on crossed pairs explains about 15%.
+  The other 55-60% comes from switching `fn try` for the generator. The emitted generator does
+  stream: `cpl_each_candidates` takes a lambda, and `group.pairs()` inside it is
+  `cpl_each_m4_pairs_...`, so nothing is collected. The cost is in the nested
+  callbacks, each `yield` returning an `int` status the caller tests. That attribution is an
+  inference from reading the emitted C++; it was not profiled.
+- **What felt wrong:** "count the candidates that pass a predicate" is the clearest spelling of
+  Part I, and std offers it. But under `cpl test` the slowest dream run (2.62 s) is over the
+  2000 ms limit, so the port keeps the captured counter.
+- **Goal it hurts:** performance (the obvious way should be the fast way).
+- **Ideal code:** the dream's form, at the port's speed.
+- **General fix (codegen):** when a `yields` fn's only consumer is a fold such as `count`/`sum`,
+  inline the body with the fold's accumulator in place of `yield`, as the port does by hand. At
+  least, drop the status check from yields whose consumer never stops early. Owner: codegen.
+- **Severity:** medium.
 
 ## `max(by:)!.1` copies the winning element
 - **Where:** `construct_range`,
