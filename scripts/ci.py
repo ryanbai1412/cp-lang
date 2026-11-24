@@ -376,6 +376,11 @@ def target_dir() -> Path:
     return t if t.is_absolute() else ROOT / t
 
 
+def release_profile(env) -> str:
+    """The optimized profile: CI restores main's `ci`-profile target/ (setup-rust target: release)."""
+    return "ci" if env.get("CI") else "release"
+
+
 def bare_home(home: str, env=None) -> dict[str, str]:
     """A CI runner's environment for the script tests: an empty HOME, no system git config
     and no git identity, while the toolchains keep their real homes. A commit hook's
@@ -841,9 +846,13 @@ class Tail:
             if self.hit("fmt_corpus"):
                 print(CACHED)
             else:
-                if self.call(["cargo", "build", "-q", "-p", "cpl-cli"]):
-                    raise Failed("cargo build -p cpl-cli failed")
-                if self.call([sys.executable, "scripts/fmt_check.py", "--cpl", self.cpl]):
+                # Its 20 s bar is on the cpl users run; CI restores main's `ci`-profile
+                # target/ for this part (setup-rust target: release).
+                profile = release_profile(env)
+                if self.call(["cargo", "build", "-q", "--profile", profile, "-p", "cpl-cli"]):
+                    raise Failed(f"cargo build --profile {profile} -p cpl-cli failed")
+                cpl = str(target_dir() / profile / "cpl")
+                if self.call([sys.executable, "scripts/fmt_check.py", "--cpl", cpl]):
                     raise Failed("cpl fmt is unstable or changes meaning; rerun: scripts/fmt_check.py")
                 self.save("fmt_corpus")
             return "fmt part"
@@ -870,8 +879,7 @@ class Tail:
         else CHECK_BASE, else origin/main."""
         base = env.get("CPL_STD_MUTANTS_BASE") or env.get("CHECK_BASE") or "origin/main"
         self.step(f"std mutants since {base} (scripts/mutation-score.py --std --since {base} --min 1.0)")
-        # CI restores main's `ci`-profile target/ (setup-rust target: release).
-        profile = "ci" if env.get("CI") else "release"
+        profile = release_profile(env)
         if self.call(["cargo", "build", "-q", "--profile", profile, "-p", "cpl-cli", "-p", "cpl-conform"]):
             raise Failed(f"cargo build --profile {profile} -p cpl-cli -p cpl-conform failed")
         argv = [sys.executable, "scripts/mutation-score.py", "--std", "--since", base, "--min", "1.0",

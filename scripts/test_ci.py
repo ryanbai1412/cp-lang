@@ -398,9 +398,13 @@ class TailTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertFalse([e for e in ev if e.startswith(("cargo", "scripts/fmt_check.py", "save"))])
         self.assertIn(ci.CACHED, out)
-        code, ev, out, _, _, _ = self._part("fmt")
-        self.assertEqual(ev[-3:], ["cargo build -q -p cpl-cli", "scripts/fmt_check.py --cpl target/debug/cpl", "save fmt_corpus"])
-        self.assertIn("check: fmt part passed in", out)
+        # fmt_check's 20 s bar is on the optimized cpl, CI's `ci` profile, not the debug one.
+        for ci_env, profile in (("", "release"), ("true", "ci")):
+            code, ev, out, _, _, _ = self._part("fmt", env={"CI": ci_env})
+            cpl = str(ci.target_dir() / profile / "cpl").replace(str(ci.ROOT) + "/", "")
+            self.assertEqual(ev[-3:], [f"cargo build -q --profile {profile} -p cpl-cli",
+                                       f"scripts/fmt_check.py --cpl {cpl}", "save fmt_corpus"])
+            self.assertIn("check: fmt part passed in", out)
 
     def test_the_corpus_part_runs_the_static_modes_alone(self) -> None:
         code, ev, out, _, _, _ = self._part("corpus")

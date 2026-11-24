@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-rust
         with:
-          target: ${{ matrix.part == 'checks' && 'clippy' || 'dev' }}
+          target: ${{ matrix.part == 'checks' && 'clippy' || matrix.part == 'fmt' && 'release' || 'dev' }}
       - uses: ./.github/actions/install-tools
         with:
           tools: cargo-nextest@0.9.152
