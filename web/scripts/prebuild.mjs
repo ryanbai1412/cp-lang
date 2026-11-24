@@ -60,11 +60,11 @@ const results = await Promise.allSettled(
     for (const step of steps) if (!only.length || only.includes(step)) await run(byName.get(step));
   }),
 );
-if (results.every((r) => r.status === 'fulfilled')) {
-  for (const step of alone)
-    if (!only.length || only.includes(step))
-      await run(byName.get(step)).catch((e) => results.push({ status: 'rejected', reason: e }));
-}
+// After the chains, even when one failed: a red docs stage must not hide
+// whether the browser keeps stress parity.
+for (const step of alone)
+  if (!only.length || only.includes(step))
+    await run(byName.get(step)).catch((e) => results.push({ status: 'rejected', reason: e }));
 saveMemo();
 const failed = results.filter((r) => r.status === 'rejected');
 for (const f of failed) console.error(f.reason.message);
