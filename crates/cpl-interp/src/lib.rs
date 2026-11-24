@@ -112,7 +112,7 @@ impl Trap {
             codes::TODO_REACHED
         } else if m.contains(" is not in `") {
             codes::DOMAIN_CAST
-        } else if (m.starts_with("index ") && m.contains("outside"))
+        } else if ((m.starts_with("index ") || m.starts_with("swap(")) && m.contains("outside"))
             || (m.starts_with("key ") && m.contains("is not one of the view's keys"))
         {
             codes::INDEX_OUT_OF_RANGE

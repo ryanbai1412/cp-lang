@@ -3,7 +3,7 @@
 {"id":2,"line":3,"label":"print → before the swap","stage":"main","values":{"stdout":["before the swap"],"n":5,"xs":[1,2,3]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":3}]},
 {"id":3,"line":4,"label":"failed: swap(0, 5) is outside a list of length 3","stage":"main","values":{"stdout":["before the swap"],"n":5,"xs":[1,2,3]},"locals":{},"frames":[{"fn":"main","line":4}]}]}}}
 stderr:
-error[R0001]: swap(0, 5) is outside a list of length 3
+error[R0101]: swap(0, 5) is outside a list of length 3
   --> batch25_print_then_swap_traps.cp:4:1
   |
 4 | xs.swap(0, n)
