@@ -109,22 +109,27 @@ fn disagreements(src: &Path, out: &Path) -> Option<Vec<String>> {
     Some(wrong)
 }
 
-#[test]
-fn explain_claims_only_what_the_cpp_does() {
+/// The programs split into this many tests, so nextest spreads them over
+/// CI's test partitions instead of one job running them all.
+const SHARDS: usize = 8;
+
+fn explain_claims_on_shard(shard: usize) {
     let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join("explain_accuracy");
     std::fs::create_dir_all(&out).unwrap();
-    let sources = sources();
-    let chunk = sources.len().div_ceil(8);
+    let sources: Vec<PathBuf> = sources().into_iter().skip(shard).step_by(SHARDS).collect();
+    let next = std::sync::atomic::AtomicUsize::new(0);
     let checked = std::sync::atomic::AtomicUsize::new(0);
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let wrong: Vec<String> = std::thread::scope(|s| {
-        let jobs: Vec<_> = sources
-            .chunks(chunk)
-            .enumerate()
-            .map(|(n, part)| {
-                let (out, checked) = (out.join(format!("{n}.cpp")), &checked);
+        let jobs: Vec<_> = (0..threads)
+            .map(|n| {
+                let out = out.join(format!("{shard}-{n}.cpp"));
+                let (sources, next, checked) = (&sources, &next, &checked);
                 s.spawn(move || {
                     let mut wrong = Vec::new();
-                    for src in part {
+                    while let Some(src) =
+                        sources.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                    {
                         let Some(found) = disagreements(src, &out) else {
                             continue;
                         };
@@ -138,11 +143,51 @@ fn explain_claims_only_what_the_cpp_does() {
         jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
     });
     let checked = checked.into_inner();
-    assert!(checked >= 1000, "only {checked} programs built");
+    assert!(checked >= 1000 / SHARDS, "only {checked} programs built");
     assert!(
         wrong.is_empty(),
         "{} disagreements:\n{}",
         wrong.len(),
         wrong.join("\n")
     );
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_0() {
+    explain_claims_on_shard(0);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_1() {
+    explain_claims_on_shard(1);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_2() {
+    explain_claims_on_shard(2);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_3() {
+    explain_claims_on_shard(3);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_4() {
+    explain_claims_on_shard(4);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_5() {
+    explain_claims_on_shard(5);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_6() {
+    explain_claims_on_shard(6);
+}
+
+#[test]
+fn explain_claims_only_what_the_cpp_does_7() {
+    explain_claims_on_shard(7);
 }
