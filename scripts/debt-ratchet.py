@@ -37,6 +37,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from typing import Iterator
 import tomllib
 import zlib
 from collections import defaultdict
@@ -878,11 +879,259 @@ def escapes_open(root: Path) -> list[str]:
     return found
 
 
+NON_TEST_RS_PARTS = {"tests", "benches", "examples"}
+
+
+def _src_lines(root: Path, *subdirs: str) -> Iterator[tuple[str, int, str]]:
+    """Non-test, non-comment Rust lines under `subdirs`: tests/, tests.rs, *_tests.rs,
+    build.rs and everything after a `#[cfg(test)]` are left out."""
+    for p in _rs_files(root, *subdirs, tests=False):
+        rel = _rel(root, p)
+        parts = set(Path(rel).parts[:-1])
+        if parts & NON_TEST_RS_PARTS or p.name == "build.rs" or p.name.endswith("_tests.rs") \
+                or "/src/tests/" in rel:
+            continue
+        for i, line in enumerate(_lines(p), 1):
+            if line.strip() == "#[cfg(test)]":
+                break
+            if not line.lstrip().startswith("//"):
+                yield rel, i, line
+
+
+UNWRAP_RE = re.compile(r"\.unwrap\(\)|\.expect\(|\bpanic!\(|\bunreachable!\(")
+
+
+def unwrap_input(root: Path) -> list[str]:
+    """`.unwrap()`, `.expect(`, `panic!(`, `unreachable!(` in shipped crate code:
+    input errors become diagnostics, invariants go behind one counted helper per crate."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root) for _ in UNWRAP_RE.finditer(line)]
+
+
+def unsupported_sites(root: Path) -> list[str]:
+    """Lowering's `unsupported(` calls and `"E0501"` literals: programs the backend refuses."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-ir/src")
+            for _ in re.finditer(r"\bunsupported\(|\"E0501\"", line)]
+
+
+LSP_STRING_TYPE_RE = re.compile(
+    r'(?:starts_with|strip_prefix|strip_suffix|ends_with|split_once|rsplit_once|find)\("(?:fn |->|: |cost|O\()'
+    r'|"cost: O\(')
+
+
+def lsp_string_types(root: Path) -> list[str]:
+    """LSP lines reading types or costs back out of rendered text instead of checker facts."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-lsp/src")
+            if LSP_STRING_TYPE_RE.search(line)]
+
+
+# Tables in cpl-lint that patch findings after the rules ran (owner: lint-fmt).
+LINT_POST_FILTERS = {
+    "crates/cpl-lint/src/typed.rs": ("TYPED",),
+    "crates/cpl-lint/src/lib.rs": ("SUPERSEDED_BY", "LIBRARY_LOOPS", "NAME_THE_CALL"),
+    "crates/cpl-lint/src/corpus_tests.rs": ("DISTINCT", "KNOWN_WORSE"),
+    "crates/cpl-lint/src/std_tests.rs": ("NOT_PARSED",),
+}
+ARRAY_DECL_RE = re.compile(
+    r"^\s*(?:pub(?:\([a-z]+\))?\s+)?(?:const|static)\s+([A-Z][A-Z0-9_]*)\s*:[^=]*=\s*&?\[", re.M)
+
+
+def lint_post_filters(root: Path) -> list[str]:
+    """Entries of cpl-lint's after-the-fact tables (typed.rs's TYPED, SUPERSEDED_BY, ...)."""
+    found = []
+    for rel, names in LINT_POST_FILTERS.items():
+        if not (root / rel).is_file():
+            continue
+        text = (root / rel).read_text(encoding="utf-8")
+        for m in ARRAY_DECL_RE.finditer(text):
+            if m.group(1) in names:
+                found += [f"{rel} {m.group(1)}"] * _array_items(text[m.end():])
+    return found
+
+
+def _list_entries(root: Path, rel: str) -> int:
+    p = root / rel
+    return sum(1 for l in _lines(p) if l.strip() and not l.lstrip().startswith("#")) if p.is_file() else 0
+
+
+def _registered_entries(root: Path, counter: str) -> list[str]:
+    return [rel for rel, (c, _, _) in LISTS.items() if c == counter for _ in range(_list_entries(root, rel))]
+
+
+def bench_lists(root: Path) -> list[str]:
+    """Entries of bench/unbuilt.txt, unmatched.txt and oversize.txt: problems the bench can't compare."""
+    return _registered_entries(root, "bench_lists")
+
+
+def known_lists(root: Path) -> list[str]:
+    """Entries of *-known.txt and other accepted-finding baselines."""
+    return _registered_entries(root, "known_lists")
+
+
+def prelude_gaps(root: Path) -> list[str]:
+    """Entries of spec/conformance/prelude-gaps.txt: prelude names with no conformance case."""
+    return _registered_entries(root, "prelude_gaps")
+
+
+def permits(root: Path) -> list[str]:
+    """Entries of spec/conformance/permits.txt."""
+    return _registered_entries(root, "permits")
+
+
+def _workflow_lines(root: Path) -> Iterator[tuple[str, int, str]]:
+    for rel in _git(root, "ls-files", ".github/workflows/*.yml", ".github/actions/*", "scripts/*.sh",
+                    "scripts/**/*.sh", "justfile"):
+        for i, line in enumerate(_lines(root / rel) if (root / rel).is_file() else [], 1):
+            if not line.lstrip().startswith("#"):
+                yield rel, i, line
+
+
+def or_true(root: Path) -> list[str]:
+    """`|| true` in workflows, scripts and the justfile: a failure swallowed."""
+    return [f"{rel}:{i}" for rel, i, line in _workflow_lines(root) if re.search(r"\|\|\s*true\b", line)]
+
+
+CONTINUE_RE = re.compile(r"^(\s*)(?:-\s+)?continue-on-error:\s*(.+?)\s*$")
+
+
+def continue_on_error(root: Path) -> list[str]:
+    """Steps marked `continue-on-error` (not `false`): a red step that turns nothing red."""
+    return [f"{rel}:{i}" for rel, i, line in _workflow_lines(root)
+            if (m := CONTINUE_RE.match(line)) and m.group(2) != "false" and len(m.group(1)) > 4]
+
+
+def nonblocking_jobs(root: Path) -> list[str]:
+    """Workflow jobs marked `continue-on-error` (not `false`): checks that decide nothing."""
+    return [f"{rel}:{i}" for rel, i, line in _workflow_lines(root)
+            if (m := CONTINUE_RE.match(line)) and m.group(2) != "false" and len(m.group(1)) == 4]
+
+
+def dream_unverified(root: Path) -> list[str]:
+    """corpus/problems/*/dream.cp whose meta.json has no `dream_stress` record with ok=true
+    for the current blob (written by `scripts/corpus.py verify`)."""
+    found = []
+    for line in _git(root, "ls-files", "-s", "corpus/problems/*/dream.cp"):
+        meta_sha, rel = line.split()[1], line.split("\t", 1)[1]
+        meta = root / Path(rel).parent / "meta.json"
+        try:
+            rec = json.loads(meta.read_text(encoding="utf-8")).get("dream_stress") or {}
+        except (OSError, ValueError):
+            rec = {}
+        if rec.get("ok") is not True or rec.get("sha") != meta_sha:
+            found.append(rel)
+    return found
+
+
+def measure_untested(root: Path) -> list[str]:
+    """plan/domains/*/measure.py with no scripts/test_<domain>_measure.py to catch "0 of 0"."""
+    return [_rel(root, p) for p in sorted((root / "plan/domains").glob("*/measure.py"))
+            if not (root / f"scripts/test_{p.parent.name}_measure.py").is_file()]
+
+
+def mono_unguarded(root: Path) -> list[str]:
+    """1 while no shipped cpl-check or cpl-ir code raises E0319 (`GROWING_INSTANTIATION`):
+    monomorphization without a termination guard."""
+    used = any("GROWING_INSTANTIATION" in line for _, _, line in _src_lines(root, "crates/cpl-check/src", "crates/cpl-ir/src"))
+    return [] if used else ["crates/cpl-check, crates/cpl-ir: no GROWING_INSTANTIATION use"]
+
+
+def std_shadowed(root: Path) -> list[str]:
+    """Names lowering string-matches that std also defines and the builtin floor
+    (decision 266) doesn't keep: a std body the compiler bypasses."""
+    public: set[str] = set()
+    for p in sorted((root / "std").glob("*.cp")):
+        public.update(re.findall(r"^\s*pub\s+(?:fn|struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
+    floor: set[str] = set()
+    table = root / "plan/domains/tech-debt/architecture/builtin-floor.md"
+    for line in _lines(table) if table.is_file() else []:
+        cells = line.split("|")
+        if len(cells) > 3 and cells[2].strip() == "intrinsic":
+            floor.update(re.findall(r"`(\w+)`", cells[3]))
+    return sorted((set(ir_builtin_names(root)) & public) - floor)
+
+
+WALK_RE = re.compile(r"\b(?:glob|rglob|iglob|listdir|iterdir|scandir|walk|read_dir|readdir\w*|ls)\b|\*")
+
+
+def corpus_walkers(root: Path) -> list[str]:
+    """Files besides scripts/corpus.py that list corpus/problems themselves: a second corpus walker."""
+    found = []
+    for rel in _git(root, "ls-files", "*.py", "*.sh", "*.rs", "*.js", "*.mjs", "*.ts", "justfile"):
+        if rel == "scripts/corpus.py" or rel.startswith(("research/", "corpus/problems/")) \
+                or "node_modules/" in rel or not (root / rel).is_file():
+            continue
+        lines = _lines(root / rel)
+        for i, line in enumerate(lines):
+            if "corpus/problems" in line or re.search(r"[\"']problems[\"']", line):
+                if any(WALK_RE.search(l) for l in lines[max(0, i - 3):i + 4]):
+                    found.append(rel)
+                    break
+    return found
+
+
+# Every tracked list file outside test data: the counter that counts its
+# entries (None for a data list that exempts nothing), its owner, and how it
+# goes away. A new list without a row here fails `unregistered_lists`.
+LISTS: dict[str, tuple[str | None, str, str]] = {
+    "bench/oversize.txt": ("bench_lists", "perf", "shrink inputs or give the bench a size cap"),
+    "bench/unbuilt.txt": ("bench_lists", "perf", "build each port"),
+    "bench/unmatched.txt": ("bench_lists", "perf", "match each port's output"),
+    "corpus/audit-known.txt": ("known_lists", "idioms", "fix each audited port"),
+    "corpus/differential-known.txt": ("known_lists", "idioms", "fix each differing port"),
+    "corpus/generators-known.txt": ("known_lists", "idioms", "write each generator"),
+    "corpus/port-check-failing.txt": ("skip_lists", "idioms", "fix each port"),
+    "corpus/gold/GOLD.txt": (None, "idioms", "data: the gold set"),
+    "corpus/newcomer/acceptance.txt": (None, "idioms", "data: newcomer acceptance expectations"),
+    "corpus/sets/ecnerwala.txt": (None, "idioms", "data: a corpus set"),
+    "corpus/sets/sketches.txt": (None, "idioms", "data: a corpus set"),
+    "corpus/sets/v03.txt": (None, "idioms", "data: a corpus set"),
+    "crates/cpl-cli/tests/std-check-errors.txt": ("known_lists", "stdlib", "kept empty"),
+    "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "close each gap"),
+    "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
+    "crates/cpl-lint/corpus_warnings.txt": ("known_lists", "lint-fmt", "fix or accept each warning"),
+    "crates/cpl-stress/tests/generate-gaps.txt": ("skip_lists", "stress", "generate each shape"),
+    "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
+    "scripts/std-lint-baseline.txt": ("known_lists", "stdlib", "fix each std lint finding"),
+    "spec/conformance/permits.txt": ("permits", "spec", "a case per permit"),
+    "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "a case per prelude name"),
+    "spec/conformance/rule-gaps.txt": ("skip_lists", "spec", "a case per rule"),
+    "spec/conformance/sig-gaps.txt": ("skip_lists", "spec", "a case per signature"),
+    "spec/conformance/trait-gaps.txt": ("skip_lists", "spec", "a case per trait"),
+    "spec/idioms/lints-known.txt": ("known_lists", "idioms", "a lint per idiom"),
+    "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "fix each example"),
+    "web/scripts/practice-mutants-equivalent.txt": ("known_lists", "site", "data: equivalent mutants"),
+    "web/tests/a11y-known.txt": ("known_lists", "site", "fix each a11y finding"),
+    "web/tests/completion-known.txt": ("known_lists", "site", "fix each completion miss"),
+    "web/tests/search-known.txt": ("known_lists", "site", "fix each search miss"),
+    "std/doc-baseline.json": (None, "stdlib", "data: per-module undocumented counts spec-stub.py ratchets"),
+}
+# Directories of test data and fixtures, not lists of exemptions.
+LIST_DATA_DIRS = ("research/", "corpus/problems/", "corpus/submissions/", "bench/stress/", "node_modules/")
+LIST_NAME_RE = re.compile(
+    r"(known|gaps|failing|allow|xfail|skip|exempt|baseline|unbuilt|unmatched|oversize|permits|equivalent)"
+    r"[^/]*\.(txt|json|toml|ya?ml)$")
+
+
+def unregistered_lists(root: Path) -> list[str]:
+    """Tracked list files with no `LISTS` row: a list must land with its counter, owner and plan."""
+    found = []
+    for rel in _git(root, "ls-files"):
+        name = rel.rsplit("/", 1)[-1]
+        top_txt = rel.endswith(".txt") and not rel.startswith(LIST_DATA_DIRS) \
+            and not re.match(r"spec/conformance/[^/]+/|crates/[^/]+/tests/[^/]+/", rel)
+        if (top_txt or LIST_NAME_RE.search(name) and not rel.startswith(LIST_DATA_DIRS)) and rel not in LISTS \
+                and rel != "scripts/debt-ratchet.json":
+            found.append(rel)
+    found += [f"LISTS {rel}: no counter {c}" for rel, (c, _, _) in LISTS.items()
+              if c is not None and c not in COUNTERS]
+    return found
+
+
 # Counters that are paid off: any instance fails, and no baseline, `--update` or
 # main's own measurement can raise them above 0. Every gated counter whose
 # committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
 HARD_ZERO = frozenset({
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers",
+    "continue_on_error", "unregistered_lists",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
@@ -927,6 +1176,23 @@ COUNTERS = {
     "register_rows": ("quality-register rows naming no existing check", register_rows, False),
     "escapes_open": ("escaped bugs whose suite isn't fixed yet", escapes_open, False),
     "uncited_rules": ("lints and gates citing no handbook rule", uncited_rules, True),
+    "unwrap_input": ("unwrap/expect/panic!/unreachable! in shipped crate code", unwrap_input, True),
+    "unsupported_sites": ("lowering unsupported( calls and E0501 literals", unsupported_sites, True),
+    "lsp_string_types": ("LSP lines reading types out of rendered text", lsp_string_types, True),
+    "lint_post_filters": ("entries of cpl-lint after-the-fact tables", lint_post_filters, True),
+    "bench_lists": ("entries of bench unbuilt/unmatched/oversize lists", bench_lists, True),
+    "known_lists": ("entries of known-finding lists", known_lists, True),
+    "prelude_gaps": ("prelude names with no conformance case", prelude_gaps, True),
+    "permits": ("entries of spec/conformance/permits.txt", permits, True),
+    "or_true": ("`|| true` in workflows, scripts and the justfile", or_true, True),
+    "continue_on_error": ("workflow steps marked continue-on-error", continue_on_error, True),
+    "nonblocking_jobs": ("workflow jobs marked continue-on-error", nonblocking_jobs, True),
+    "dream_unverified": ("dream.cp files with no passing stress record", dream_unverified, True),
+    "measure_untested": ("plan measure.py scripts with no test", measure_untested, True),
+    "mono_unguarded": ("monomorphization with no termination guard", mono_unguarded, True),
+    "std_shadowed": ("std names lowering bypasses off the builtin floor", std_shadowed, True),
+    "corpus_walkers": ("files listing corpus/problems besides scripts/corpus.py", corpus_walkers, True),
+    "unregistered_lists": ("list files with no LISTS row (counter, owner, plan)", unregistered_lists, True),
 }
 
 

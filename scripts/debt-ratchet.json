@@ -151,5 +151,21 @@
   "written_twice": 6,
   "lint_type_syntax": 27,
   "idioms_evidenced_unlinted": 13,
-  "bench_lists": 13
+  "bench_lists": 13,
+  "unwrap_input": 721,
+  "unsupported_sites": 43,
+  "lsp_string_types": 11,
+  "lint_post_filters": 68,
+  "known_lists": 449,
+  "prelude_gaps": 100,
+  "permits": 26,
+  "or_true": 38,
+  "continue_on_error": 0,
+  "nonblocking_jobs": 6,
+  "dream_unverified": 421,
+  "measure_untested": 1,
+  "mono_unguarded": 1,
+  "std_shadowed": 55,
+  "corpus_walkers": 49,
+  "unregistered_lists": 0
 }

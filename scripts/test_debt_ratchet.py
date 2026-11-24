@@ -223,6 +223,58 @@ class DebtRatchetTest(unittest.TestCase):
                 "#3 x: c (no such register row: 'Nope')",
             ])
 
+    def test_new_debt_counters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "crates/a/src/lib.rs", "\n".join([
+                "fn f() { x.unwrap(); y.expect(\"e\"); panic!(\"p\") }",
+                "// z.unwrap()", "#[cfg(test)]", "mod tests { fn t() { q.unwrap(); } }", ""]))
+            self._write(root, "crates/a/src/x_tests.rs", "fn t() { q.unwrap(); }\n")
+            self._write(root, "crates/a/build.rs", "fn main() { q.unwrap(); }\n")
+            self._write(root, "crates/cpl-ir/src/lower/m.rs",
+                        'self.unsupported(span, "x");\nlet c = "E0501";\n')
+            self._write(root, "crates/cpl-lsp/src/hover.rs",
+                        'if t.starts_with("fn ") {}\nl.find(|l| l.starts_with("cost: O("));\nl.starts_with("use ");\n')
+            self._write(root, "crates/cpl-lint/src/lib.rs",
+                        "const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[\n    (&A, &B),\n    (&C, &D),\n];\n")
+            self._write(root, ".github/workflows/ci.yml", "\n".join([
+                "jobs:", "  a:", "    continue-on-error: true", "    steps:",
+                "      - run: make || true", "        continue-on-error: true",
+                "      - run: x", "        continue-on-error: false", "      # a || true comment", ""]))
+            self._write(root, "bench/unbuilt.txt", "# why\ncf1\ncf2\n")
+            self._write(root, "corpus/problems/p/dream.cp", "print(1)\n")
+            self._write(root, "corpus/problems/p/meta.json", "{}")
+            self._write(root, "corpus/problems/q/dream.cp", "print(2)\n")
+            self._write(root, "plan/domains/stdlib/measure.py", "")
+            self._write(root, "plan/domains/tools/measure.py", "")
+            self._write(root, "scripts/test_stdlib_measure.py", "")
+            self._write(root, "scripts/walk.py", "for p in glob.glob('corpus/problems/*'):\n    pass\n")
+            self._write(root, "scripts/corpus.py", "os.listdir('corpus/problems')\n")
+            self._write(root, "tools/new-allow.txt", "x\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            blob = subprocess.run(["git", "rev-parse", ":corpus/problems/q/dream.cp"], cwd=root, check=True,
+                                  capture_output=True, text=True, env=dr._git_env()).stdout.strip()
+            self._write(root, "corpus/problems/q/meta.json", json.dumps({"dream_stress": {"ok": True, "sha": blob}}))
+            self.assertEqual(dr.unwrap_input(root), ["crates/a/src/lib.rs:1"] * 3)
+            self.assertEqual(len(dr.unsupported_sites(root)), 2)
+            self.assertEqual(dr.lsp_string_types(root), ["crates/cpl-lsp/src/hover.rs:1", "crates/cpl-lsp/src/hover.rs:2"])
+            self.assertEqual(dr.lint_post_filters(root), ["crates/cpl-lint/src/lib.rs SUPERSEDED_BY"] * 2)
+            self.assertEqual(dr.or_true(root), [".github/workflows/ci.yml:5"])
+            self.assertEqual(dr.continue_on_error(root), [".github/workflows/ci.yml:6"])
+            self.assertEqual(dr.nonblocking_jobs(root), [".github/workflows/ci.yml:3"])
+            self.assertEqual(dr.bench_lists(root), ["bench/unbuilt.txt"] * 2)
+            self.assertEqual(dr.dream_unverified(root), ["corpus/problems/p/dream.cp"])
+            self.assertEqual(dr.measure_untested(root), ["plan/domains/tools/measure.py"])
+            self.assertEqual(dr.mono_unguarded(root), ["crates/cpl-check, crates/cpl-ir: no GROWING_INSTANTIATION use"])
+            self.assertEqual(dr.corpus_walkers(root), ["scripts/walk.py"])
+            self.assertEqual(dr.unregistered_lists(root), ["tools/new-allow.txt"])
+
+    def test_every_list_row_names_a_counter(self) -> None:
+        for rel, (counter, owner, plan) in dr.LISTS.items():
+            self.assertTrue(counter is None and plan.startswith("data:") or counter in dr.COUNTERS, rel)
+            self.assertTrue(owner and plan, rel)
+
     def test_register_rows_never_miss_ignored_or_build_output_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
