@@ -332,3 +332,22 @@ fn a_sort_by_negated_or_desc_cells_compares_in_place_unstably() {
         assert!(profiled.contains(kept), "{profiled}");
     }
 }
+
+#[test]
+fn a_profile_counts_a_users_key_fn_a_library_closure_calls_directly() {
+    let source =
+        "var h: Heap<Int> = Heap(by: x => desc(x))\nh.push(1)\nh.push(5)\nprint(h.pop()!)\n";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let (profiled, _) = crate::emit_profiled(&program, "t.cp", &crate::Target::default(), "t.prof");
+    let key = &profiled[profiled
+        .find("static auto cpl_fn")
+        .expect("a direct key fn")..];
+    let key = &key[..key.find("};").unwrap()];
+    assert!(
+        key.contains("cpl_prof::mark("),
+        "the key fn's line counts each call: {key}"
+    );
+}

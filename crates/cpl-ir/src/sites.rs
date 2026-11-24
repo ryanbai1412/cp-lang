@@ -144,10 +144,34 @@ fn library_closures(program: &Program) -> HashSet<usize> {
             }
         });
     }
+    let written = user_made(program, &found);
     while let Some(block) = work.pop() {
         walk::deep_exprs(block, &mut |e| {
             if let ExprKind::Closure(id) = e.kind {
-                if found.insert(id) {
+                if !written.contains(&id) && found.insert(id) {
+                    work.push(&program.closures[id].body);
+                }
+            }
+        });
+    }
+    found
+}
+
+/// The closures the user's own code makes, other than `made` (the compiler's):
+/// a library body may still name one, once a pass calls a known fn param's
+/// closure directly, and it stays the user's.
+fn user_made(program: &Program, made: &HashSet<usize>) -> HashSet<usize> {
+    let mut found = HashSet::new();
+    let mut work: Vec<&Block> = vec![&program.setup, &program.main];
+    work.extend(
+        (program.fns.iter().enumerate())
+            .filter(|(id, _)| !program.library_fns.get(*id).copied().unwrap_or(false))
+            .map(|(_, f)| &f.body),
+    );
+    while let Some(block) = work.pop() {
+        walk::deep_exprs(block, &mut |e| {
+            if let ExprKind::Closure(id) = e.kind {
+                if !made.contains(&id) && found.insert(id) {
                     work.push(&program.closures[id].body);
                 }
             }
