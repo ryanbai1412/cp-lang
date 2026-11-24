@@ -40,6 +40,7 @@ dependencies = [
  "cpl-lsp",
  "cpl-stress",
  "cpl-syntax",
+ "cpl-wait",
  "mimalloc",
 ]
 
@@ -67,6 +68,7 @@ dependencies = [
  "cpl-lint",
  "cpl-stress",
  "cpl-syntax",
+ "cpl-wait",
 ]
 
 [[package]]
@@ -82,6 +84,7 @@ dependencies = [
  "cpl-lint",
  "cpl-stress",
  "cpl-syntax",
+ "cpl-wait",
 ]
 
 [[package]]
@@ -189,6 +192,7 @@ dependencies = [
  "cpl-judge",
  "cpl-lint",
  "cpl-syntax",
+ "cpl-wait",
 ]
 
 [[package]]
@@ -197,6 +201,10 @@ version = "0.3.0"
 dependencies = [
  "cpl-diag",
 ]
+
+[[package]]
+name = "cpl-wait"
+version = "0.3.0"
 
 [[package]]
 name = "cpl-wasm"

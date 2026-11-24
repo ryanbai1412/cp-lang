@@ -570,8 +570,7 @@ pub(crate) fn interact(
     {
         Ok(contestant) => contestant,
         Err(e) => {
-            crate::program::kill_group(judge.id());
-            let _ = judge.kill();
+            cpl_wait::kill(judge.id());
             let _ = judge.wait();
             return Err(e);
         }
@@ -588,6 +587,7 @@ pub(crate) fn interact(
         piped(judge.stderr.take())?,
     );
     let (heard, to_solution, said, to_judge, solution_err, judge_err) = pipes;
+    let (mut contestant, mut judge) = (cpl_wait::on_exit(contestant), cpl_wait::on_exit(judge));
     let (statuses, own, timed_out, solution_stdout, solution_stderr, judge_stderr) =
         std::thread::scope(|scope| {
             let (clock, transcript) = (&clock, &transcript);
@@ -615,9 +615,12 @@ pub(crate) fn interact(
             let spent = |cpu: Option<Duration>| cpu.unwrap_or_else(|| locked(clock).own());
             let statuses = loop {
                 if own.is_none() {
-                    cpu = crate::program::cpu_time(contestant.id()).or(cpu);
+                    cpu = crate::program::cpu_time(contestant.pid()).or(cpu);
                 }
-                let (a, b) = (contestant.try_wait()?, judge.try_wait()?);
+                // The solution's exit wakes this at once; the interactor's within a tick.
+                let tick = Instant::now() + Duration::from_micros(300);
+                let a = contestant.by(tick)?;
+                let b = judge.by(if a.is_some() { tick } else { Instant::now() })?;
                 if a.is_some() && own.is_none() {
                     own = Some(spent(cpu));
                 }
@@ -641,13 +644,8 @@ pub(crate) fn interact(
                 let grace_over = reject_deadline.is_some_and(|d| Instant::now() >= d);
                 if expired || grace_over {
                     timed_out = expired;
-                    crate::program::kill_group(contestant.id());
-                    crate::program::kill_group(judge.id());
-                    let _ = contestant.kill();
-                    let _ = judge.kill();
-                    break (contestant.wait()?, judge.wait()?);
+                    break (contestant.kill()?, judge.kill()?);
                 }
-                std::thread::sleep(Duration::from_micros(300));
             };
             let own = match idled {
                 true => locked(clock).own(),
@@ -807,23 +805,16 @@ fn spawned(
         .spawn()?;
     let pid = judge.id();
     let mut pipe = piped(judge.stderr.take())?;
+    let mut judge = cpl_wait::on_exit(judge);
     let said = std::thread::spawn(move || {
         let mut text = String::new();
         let _ = pipe.read_to_string(&mut text);
         text
     });
-    let (done, exited) = std::sync::mpsc::channel();
-    let waiter = std::thread::spawn(move || {
-        let status = judge.wait();
-        let _ = done.send(());
-        status
-    });
-    let timed_out = exited.recv_timeout(judge_limit(limit)).is_err();
+    let timed_out = judge.within(judge_limit(limit))?.is_none();
     // Whatever it started and left running ends with it.
-    crate::program::kill_group(pid);
-    let status = waiter
-        .join()
-        .map_err(|_| std::io::Error::other("the interactor's waiter panicked"))??;
+    cpl_wait::kill(pid);
+    let status = judge.kill()?;
     let judge_stderr = said.join().unwrap_or_default();
     let outcome = Outcome {
         stdout: String::new(),

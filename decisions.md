@@ -8948,6 +8948,10 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** The ratchet measures interpreter correctness. Max cases are judge workloads, and `corpus.py verify` (`max`, `stress`) already judges them on the C++. In the interpreter they turned eight passes into timeouts that said nothing about correctness. Dropping them would have hidden the interpreter's speed; a counter keeps it visible and owned.
 - **Reverse.** Once `interp_max_over_20s` is 0, judge the max cases in the ratchet too and delete the counter.
 
-## 557. (reserved, infra)
+## 557. One place to wait, `cpl-wait`; no other sleep in shipped Rust (infra, 2026-11-24)
+
+- **Call.** Shipped Rust waits only through `cpl-wait`: `on_exit` hands a child to a thread that owns `Child::wait`, so the caller blocks with a deadline (or a sampling tick) and an exit wakes it at once; `kill` stops a child and its process group; `files::Watch` is the file-change wait `cpl watch` and `cpl run --live` share; `Pace` is the judge fetcher's one-page-a-second rate limit. A worker building a C++ binary another worker is building waits on that binary's lock file. `poll_sleeps` counts `thread::sleep` outside `files.rs` and `pace.rs` and is a hard zero.
+- **Why.** Nine `thread::sleep` polls (four `try_wait` loops, a memory watcher, a g++ backoff, two file watchers, a rate limit) each slept on their own schedule and lagged the event they waited for. A portable blocking file-change wait needs a crate, and external_crates is gated, so the file watch keeps its poll in one module, and the rate limit's sleep is the limit itself.
+- **Reverse.** If a file-notification crate is admitted, replace `files.rs`'s poll with it and drop it from `SLEEP_OWNERS`.
 
 ## 558. (reserved, content)

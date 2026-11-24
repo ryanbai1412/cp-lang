@@ -98,10 +98,11 @@ fn say(text: std::fmt::Arguments) {
 
 fn watch(path: &str, recorded: Option<Vec<u8>>, live: &Live, record: Record) -> ! {
     let mut last = recorded;
+    let mut files = cpl_wait::files::Watch::new(Duration::from_millis(200), || vec![path.into()]);
     loop {
-        std::thread::sleep(Duration::from_millis(200));
         let now = std::fs::read(path).ok();
         if now.is_none() || now == last {
+            files.changed();
             continue;
         }
         last = now;

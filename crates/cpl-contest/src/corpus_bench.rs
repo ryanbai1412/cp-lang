@@ -231,17 +231,11 @@ fn run_bin(bin: &Path, input: &Path) -> Result<(f64, Vec<u8>), String> {
         buf
     });
     let timeout = Duration::from_secs(10);
-    let status = loop {
-        match child.try_wait().map_err(|e| e.to_string())? {
-            Some(s) => break s,
-            None if start.elapsed() >= timeout => {
-                let _ = child.kill();
-                let _ = child.wait();
-                let _ = reader_handle.join();
-                return Err("timeout".to_string());
-            }
-            None => std::thread::sleep(Duration::from_micros(200)),
-        }
+    let mut exit = cpl_wait::on_exit(child);
+    let Some(status) = exit.by(start + timeout).map_err(|e| e.to_string())? else {
+        let _ = exit.kill();
+        let _ = reader_handle.join();
+        return Err("timeout".to_string());
     };
     let secs = start.elapsed().as_secs_f64();
     let stdout = reader_handle.join().unwrap_or_default();

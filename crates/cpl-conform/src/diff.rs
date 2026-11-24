@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Condvar, Mutex};
-use std::time::Duration;
 
 use cpl_check::Session;
 
@@ -198,6 +197,14 @@ pub(crate) fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCom
     if bin.is_file() {
         return Ok(bin);
     }
+    // A worker building the same binary holds its lock; the others wait on
+    // it and then find the binary built.
+    let _lock = std::fs::File::create(cache_dir.join(format!("{key}.lock")))
+        .and_then(|f| f.lock().map(|()| f))
+        .map_err(|e| CppCompileError::Infra(format!("cannot lock the build of {key}: {e}")))?;
+    if bin.is_file() {
+        return Ok(bin);
+    }
     let tid = std::thread::current().id();
     let unique = format!("{key}_{}_{tid:?}", std::process::id())
         .chars()
@@ -215,14 +222,7 @@ pub(crate) fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCom
         .map_err(|e| CppCompileError::Infra(format!("cannot write cpp: {e}")))?;
 
     let mut last_infra: Option<String> = None;
-    for attempt in 0..3 {
-        if attempt > 0 {
-            std::thread::sleep(Duration::from_millis(150 * attempt as u64));
-            if bin.is_file() {
-                let _ = std::fs::remove_file(&src);
-                return Ok(bin);
-            }
-        }
+    for _ in 0..3 {
         let _permit = GXX_GATE.acquire();
         let out = match Command::new("g++")
             .args(flags.split_whitespace())

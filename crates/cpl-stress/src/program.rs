@@ -888,7 +888,7 @@ impl Program {
                 let _ = stderr.read_to_end(&mut buffer);
                 buffer
             });
-            let ended = supervise(&mut child, start, limit);
+            let ended = supervise(child, start, limit);
             (out.join().unwrap(), err.join().unwrap(), ended)
         });
         Ok(Outcome {
@@ -937,7 +937,7 @@ impl Program {
                 let _ = stderr.read_to_end(&mut buffer);
                 buffer
             });
-            let ended = supervise(&mut child, start, limit);
+            let ended = supervise(child, start, limit);
             (err.join().unwrap(), ended)
         });
         Ok(Outcome {
@@ -951,25 +951,21 @@ impl Program {
 }
 
 /// Waits for `child` to end, stopping it after `limit`, and samples its
-/// peak memory meanwhile.
-fn supervise(
-    child: &mut std::process::Child,
-    start: Instant,
-    limit: Duration,
-) -> (Exit, Option<u64>) {
+/// peak memory meanwhile; its exit wakes the wait at once.
+fn supervise(child: std::process::Child, start: Instant, limit: Duration) -> (Exit, Option<u64>) {
     let pid = child.id();
+    let mut child = cpl_wait::on_exit(child);
     let mut peak = None;
     loop {
         peak = peak_memory(pid).max(peak);
-        match child.try_wait() {
+        let tick = (Instant::now() + Duration::from_micros(300)).min(start + limit);
+        match child.by(tick) {
             Ok(Some(status)) => return (status.code().map_or(Exit::Signal, Exit::Code), peak),
             Ok(None) if start.elapsed() >= limit => {
-                kill_group(pid);
                 let _ = child.kill();
-                let _ = child.wait();
                 return (Exit::TimedOut, peak);
             }
-            Ok(None) => std::thread::sleep(Duration::from_micros(300)),
+            Ok(None) => {}
             Err(_) => return (Exit::Signal, peak),
         }
     }
@@ -1035,27 +1031,6 @@ pub(crate) fn cpu_time(pid: u32) -> Option<Duration> {
         .map(|field| field.parse::<u64>().ok())
         .sum::<Option<u64>>()?;
     Some(Duration::from_millis(ticks * 10))
-}
-
-/// Stops a program and everything it started. A shell script's children
-/// would otherwise keep its pipes open after the script is killed.
-pub(crate) fn kill_group(pid: u32) {
-    #[cfg(unix)]
-    let _ = Command::new("kill")
-        .args(["-KILL", "--", &format!("-{pid}")])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-    // `py -3` runs the script in a child python.exe, which `Child::kill`
-    // leaves running with the pipes open.
-    #[cfg(windows)]
-    let _ = Command::new("taskkill")
-        .args(["/F", "/T", "/PID", &pid.to_string()])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-    #[cfg(not(any(unix, windows)))]
-    let _ = pid;
 }
 
 #[cfg(test)]

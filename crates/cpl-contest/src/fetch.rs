@@ -578,11 +578,9 @@ fn fetch_contest(
     };
     let json = args.has("--json");
     let (mut rows, mut failed, mut first) = (Vec::new(), 0, None);
-    for (index, page) in problems.iter().enumerate() {
-        if index > 0 {
-            // One page a second, as a person clicking through would.
-            std::thread::sleep(Duration::from_secs(1));
-        }
+    let mut pace = cpl_wait::Pace::new(Duration::from_secs(1));
+    for page in &problems {
+        pace.wait();
         let fetched = download(page)
             .and_then(|html| parse(judge, page, &html))
             .and_then(|scaffold| {

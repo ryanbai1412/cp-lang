@@ -492,6 +492,17 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.retry_calls(root), ["scripts/a.sh:2", "scripts/b.py:2"])
             self.assertEqual(dr.poll_sleeps(root), ["crates/a/src/lib.rs:1"])
 
+    def test_only_the_file_watch_and_the_rate_limiter_may_sleep(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            for owner in dr.SLEEP_OWNERS:
+                self._write(root, owner, "std::thread::sleep(self.every);\n")
+            self._write(root, "crates/cpl-contest/src/third.rs", "std::thread::sleep(tick);\n")
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, env=dr._git_env())
+            self.assertEqual(dr.poll_sleeps(root), ["crates/cpl-contest/src/third.rs:1"])
+            self.assertIn("poll_sleeps", dr.HARD_ZERO)
+
     def test_addendum_five_counters(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

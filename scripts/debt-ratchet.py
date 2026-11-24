@@ -1514,9 +1514,16 @@ def retry_calls(root: Path) -> list[str]:
     return [":".join(h.split(":", 2)[:2]) for h in hits if not h.split(":", 2)[2].lstrip().startswith("#") and " import retry" not in h]
 
 
+# The two sleeps a blocking wait can't replace without a crate: the file-change
+# poll and the judge's rate limit. Every other caller reuses one of them.
+SLEEP_OWNERS = ("crates/cpl-wait/src/files.rs", "crates/cpl-wait/src/pace.rs")
+
+
 def poll_sleeps(root: Path) -> list[str]:
-    """`thread::sleep` in shipped Rust: a poll or backoff where an event or a blocking wait belongs."""
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root) if "thread::sleep" in line]
+    """`thread::sleep` in shipped Rust outside cpl-wait's file watch and rate limiter:
+    a poll or backoff where `cpl_wait::on_exit`, a channel or a lock belongs."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if "thread::sleep" in line and rel not in SLEEP_OWNERS]
 
 
 RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
@@ -2032,7 +2039,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "corpus_walkers",
+    "corpus_walkers", "poll_sleeps",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",

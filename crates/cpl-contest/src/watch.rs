@@ -7,7 +7,7 @@ use cpl_json::{obj, Value};
 use cpl_stress::args::Args;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 pub const USAGE: &str = "\
 usage: cpl watch <problem> [options]
@@ -28,30 +28,15 @@ options:
                      `error` that stopped the round
 ";
 
-/// The state of the files a problem is made of: when each last changed.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Stamp(Vec<(PathBuf, Option<SystemTime>)>);
-
-impl Stamp {
-    /// Stamps the source, the `extra` programs, and everything in its
-    /// tests folder. A file that appears or disappears changes the stamp.
-    pub fn of(source: &Path, extra: &[PathBuf]) -> Stamp {
-        let mut paths = vec![source.to_path_buf()];
-        paths.extend(extra.iter().cloned());
-        if let Ok(entries) = std::fs::read_dir(find_tests_dir(source)) {
-            paths.extend(entries.filter_map(|entry| entry.ok().map(|e| e.path())));
-        }
-        paths.sort();
-        Stamp(
-            paths
-                .into_iter()
-                .map(|path| {
-                    let modified = std::fs::metadata(&path).and_then(|m| m.modified()).ok();
-                    (path, modified)
-                })
-                .collect(),
-        )
+/// The files a watch follows: the source, the `extra` programs, and
+/// everything in its tests folder.
+pub fn watched(source: &Path, extra: &[PathBuf]) -> Vec<PathBuf> {
+    let mut paths = vec![source.to_path_buf()];
+    paths.extend(extra.iter().cloned());
+    if let Ok(entries) = std::fs::read_dir(find_tests_dir(source)) {
+        paths.extend(entries.filter_map(|entry| entry.ok().map(|e| e.path())));
     }
+    paths
 }
 
 /// One problem being watched. The checker's database lives across
@@ -264,19 +249,15 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         .collect();
     let mut watch = Watch::new(source.clone());
     watch.json = parsed.has("--json");
-    let mut seen = Stamp::of(&source, &extra);
+    let mut files =
+        cpl_wait::files::Watch::new(Duration::from_millis(150), || watched(&source, &extra));
     let mut passed = watch.round(args, stdout);
     let _ = stdout.flush();
     if parsed.has("--once") {
         return !passed as u8;
     }
     loop {
-        std::thread::sleep(Duration::from_millis(150));
-        let now = Stamp::of(&source, &extra);
-        if now == seen {
-            continue;
-        }
-        seen = now;
+        files.changed();
         if !watch.json {
             let _ = writeln!(stdout, "\n--- {} changed", source.shown());
         }
