@@ -1,5 +1,6 @@
 // Tuned: a written-out implicit treap keeps one product per node and reverses it by
-// swapping its diagonal, where SeqFold keeps a forward and a backward product.
+// swapping its diagonal, where SeqFold keeps a forward and a backward product; its links,
+// sizes and priorities are 32-bit.
 //
 // Source: NOI 2021 P5 (Code), https://dmoj.ca/problem/noi21p5
 // limits: 3000 ms, 1024 MB
@@ -32,10 +33,10 @@ let s: Str = read()
 // An implicit treap; node 0 is the empty one. all[u] is the product over u's subtree. Flipping
 // every letter swaps a product's entries end for end; reversing these step products swaps
 // its diagonal, so one product per node serves both.
-var lc = [0]
-var rc = [0]
-var pri = [0]
-var sz = [0]
+var lc: List<0..=2e5> = [0]
+var rc: List<0..=2e5> = [0]
+var pri: List<0..=1 << 30> = [0]
+var sz: List<0..=2e5> = [0]
 var east = [false]
 var all = [(Z(1), Z(0), Z(0), Z(1))]
 var flipped = [false]
