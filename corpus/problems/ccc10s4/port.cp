@@ -5,21 +5,24 @@
 //   meet in one pen or outside.
 // Solution: pens and the outside are vertices, fences are weighted edges; the answer is the
 //   cheaper of a minimum spanning tree of the pens alone and of the pens plus the outside
-//   (`kruskal`), counting only spanning ones. Fences meet by their sorted post pair. O(E log E).
+//   (`kruskal`), counting only spanning ones. Sides pair up by their sorted posts. O(E log E).
 // original: corpus/submissions/5341292.cpp
 let pens: 1..=100 = read()
 domain Region = 0..=pens
 let outside = Region.first!
 
-// each side, by its sorted posts, with the pens and costs that list it
-var sides = Map<(Int, Int), List<(pen: Region, cost: Int)>>()
+// a side seen once is open, waiting for the pen on its other side; what stays open faces outside
+var fences: List<(u: Region, v: Region, w: Int)> = []
+var open = Map<(Int, Int), (pen: Region, cost: Int)>()
 for pen in Region.after(outside):
     let m: 3..=8 = read()
     let posts: [m]1..=1000 = read()
     let costs: [m]1..=5000 = read()
     for ((a, b), cost) in zip(posts.cyclic_pairs(), costs):
-        sides.update((min(a, b), max(a, b)), [], l => l + [(pen:, cost:)])
-let fences = [(u: s[0].pen, v: if s.len == 2: s[1].pen else: outside, w: s[0].cost) for (_, s) in sides]
+        let side = (min(a, b), max(a, b))
+        if let other = open.remove(side): fences.push((u: other.pen, v: pen, w: cost))
+        else: open[side] = (pen:, cost:)
+fences += [(u: o.pen, v: outside, w: o.cost) for (_, o) in open]
 
 fn spanning(regions: Int, keep: (u: Region, v: Region, w: Int) -> Bool) -> ?Int:
     let (total, take) = kruskal(fences.filter(keep).collect())
