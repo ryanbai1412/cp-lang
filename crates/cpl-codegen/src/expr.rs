@@ -922,6 +922,20 @@ impl<'p> Emitter<'p> {
                 hi,
                 text,
             } => {
+                let bound = |b: &Option<Box<Expr>>, open: i64| match b.as_deref().map(|b| &b.kind) {
+                    Some(ExprKind::Int(v)) => Some(*v),
+                    None => Some(open),
+                    _ => None,
+                };
+                let (lo_c, hi_c) = (bound(lo, i64::MIN), bound(hi, i64::MAX));
+                if let (Some(lo_c), Some(hi_c)) = (lo_c, hi_c) {
+                    if self
+                        .facts
+                        .proves_within(self.facts_home(), value, lo_c, hi_c)
+                    {
+                        return self.expr(value);
+                    }
+                }
                 self.need("check_range");
                 let v = self.expr(value);
                 let lo_code = match lo {

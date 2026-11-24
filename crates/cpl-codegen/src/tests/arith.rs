@@ -574,3 +574,17 @@ fn explain_marks_each_int_op_as_the_cpp_checks_it() {
         .sum::<usize>();
     assert_eq!(checked, 2, "{cpp}");
 }
+
+#[test]
+fn a_range_check_codegen_proves_holds_is_not_written() {
+    let field = |hi: &str| {
+        body(&format!(
+            "struct S:\n    n: 0..2_000_000\nlet m: 1..={hi} = read()\nlet s = S(n: bit_ceil(m))\nprint(s.n)\n"
+        ))
+    };
+    let proven = field("1000");
+    assert!(!proven.contains("check_range"), "{proven}");
+    // bit_ceil(2e6) is 2^21, past the field's bound.
+    let open = field("2_000_000");
+    assert!(open.contains("check_range"), "{open}");
+}
