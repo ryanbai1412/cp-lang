@@ -26,6 +26,15 @@ impl<'a> Lowerer<'a> {
         self.diags.truncate(diags);
         (ty != Ty::Error).then_some(ty)
     }
+
+    /// Whether the checker resolved the call or getter `e` to a user `yields`
+    /// fn: a call to one is typed `Gen`.
+    pub(in crate::lower) fn checked_generator_call(&mut self, e: &ast::Expr) -> bool {
+        let at = e.span.shift(self.offset);
+        let facts = self.checked_facts(at);
+        facts.callee(at).is_some_and(|c| !c.builtin)
+            && matches!(facts.type_of(at), Some(Checked::Named { name, .. }) if name == "Gen")
+    }
 }
 
 impl Lowerer<'_> {

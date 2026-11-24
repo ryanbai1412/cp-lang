@@ -45,11 +45,8 @@ impl<'a> Lowerer<'a> {
                 self.gen_fns[id].decl.ret.as_ref().map(|t| &t.kind),
                 Some(ast::TypeKind::Yields(_))
             ),
-            // `x.g(a)` or `x.g`: which `g` only lowering the receiver tells.
-            _ => matches!(
-                self.probe_expr(base, None).kind,
-                ExprKind::Call(id, _) if self.sigs.get(id).is_some_and(|s| s.is_generator)
-            ),
+            // `x.g(a)` or `x.g`: the checker resolved which `g`.
+            _ => self.checked_generator_call(base),
         };
         if !generator {
             return None;
