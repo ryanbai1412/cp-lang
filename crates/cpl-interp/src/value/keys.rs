@@ -1,7 +1,7 @@
 //! The keys of a `Set` or a `Map`. A key type whose order is the structural one keeps them in
-//! a B-tree ordered by `Value`'s own `Ord`; a key type with a user `Ord` anywhere in it keeps them
-//! in sorted runs ordered by that `Ord`, which runs user code, so every search there takes the one
-//! compare the rest of the interpreter orders with (`Interp::less_ty_val`).
+//! a B-tree ordered by `Value`'s own `Ord`; a key type with a user `Ord` or `Eq` anywhere in it
+//! keeps them in sorted runs ordered by that `Ord`, which runs user code, so every search there
+//! takes the one compare the rest of the interpreter orders with (`Interp::less_ty_val`).
 
 use super::Value;
 use crate::Res;
@@ -55,7 +55,9 @@ pub(crate) fn user_ordered(ty: &Ty, program: &cpl_ir::Program) -> bool {
     match ty {
         Ty::Struct(id) => {
             let s = &program.structs[*id];
-            s.ord.is_some() || s.fields.iter().any(|(_, t)| user_ordered(t, program))
+            s.ord.is_some()
+                || s.eq_fn.is_some()
+                || s.fields.iter().any(|(_, t)| user_ordered(t, program))
         }
         Ty::Tuple(ts) => ts.iter().any(|t| user_ordered(t, program)),
         Ty::Record(fs) => fs.iter().any(|(_, t)| user_ordered(t, program)),

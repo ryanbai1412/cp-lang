@@ -273,7 +273,8 @@ pub(crate) fn find(program: &Program) -> (Vec<Ty>, Vec<Ty>) {
 }
 
 /// Whether a key has `Hash` (R08.1.6): an `F64` inside has only `Ord`, so
-/// its table stays a tree.
+/// its table stays a tree, as does a struct with its own `Eq` or `Ord` but
+/// no own `Hash`, whose fields' hash would not agree with it.
 fn hashable(program: &Program, ty: &Ty, seen: &mut Vec<usize>) -> bool {
     match ty {
         Ty::Float => false,
@@ -281,8 +282,14 @@ fn hashable(program: &Program, ty: &Ty, seen: &mut Vec<usize>) -> bool {
         Ty::Tuple(items) => items.iter().all(|t| hashable(program, t, seen)),
         Ty::Struct(id) if !seen.contains(id) => {
             seen.push(*id);
-            let fields = &program.structs[*id].fields;
-            fields
+            let s = &program.structs[*id];
+            if s.hash_fn.is_some() {
+                return true;
+            }
+            if s.eq_fn.is_some() || s.ord.is_some() {
+                return false;
+            }
+            s.fields
                 .iter()
                 .all(|(_, field)| hashable(program, field, seen))
         }

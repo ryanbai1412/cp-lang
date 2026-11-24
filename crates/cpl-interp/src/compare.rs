@@ -106,6 +106,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if let Some(hook) = self.program.structs[*id].ord {
                     return self.user_order(hook, l, r, span);
                 }
+                // Its own `Eq` with no own `Ord`: keys it calls equal are one key.
+                if self.program.structs[*id].eq_fn.is_some() && self.eq_ty_val(ty, l, r, span)? {
+                    return Ok(Ordering::Equal);
+                }
                 let fields = self.program.structs[*id].fields.clone();
                 let cached = self.program.structs[*id].cached_fields.clone();
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {

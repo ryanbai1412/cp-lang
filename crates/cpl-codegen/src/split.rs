@@ -102,6 +102,7 @@ fn candidates(program: &Program) -> BTreeSet<StructId> {
     for (s, def) in structs.iter().enumerate() {
         if def.show_fn.is_some()
             || def.eq_fn.is_some()
+            || def.hash_fn.is_some()
             || def.ord.is_some()
             || !def.cached_fields.is_empty()
         {

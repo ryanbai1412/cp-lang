@@ -463,6 +463,7 @@ impl<'a> Lowerer<'a> {
                             match (imp_trait.as_deref(), f.name.text.as_str()) {
                                 (Some("Show"), "show") => def.show_fn = Some(fn_id),
                                 (Some("Eq"), "eq") => def.eq_fn = Some(fn_id),
+                                (Some("Hash"), "hash") => def.hash_fn = Some(fn_id),
                                 (Some("Ord"), "lt") => def.ord = Some(OrdHook::Lt(fn_id)),
                                 (Some("Ord"), "cmp") => def.ord = Some(OrdHook::Cmp(fn_id)),
                                 _ => {}

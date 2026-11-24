@@ -350,9 +350,14 @@ fn reached<'p>(program: &'p Program, nones: &Nones) -> Vec<&'p Block> {
         .collect();
     for s in &program.structs {
         fns.extend(
-            [s.eq_fn, s.ord.map(cpl_ir::OrdHook::id), s.show_fn]
-                .into_iter()
-                .flatten(),
+            [
+                s.eq_fn,
+                s.hash_fn,
+                s.ord.map(cpl_ir::OrdHook::id),
+                s.show_fn,
+            ]
+            .into_iter()
+            .flatten(),
         );
     }
     fns.extend(program.enums.iter().filter_map(|e| e.show_fn));
