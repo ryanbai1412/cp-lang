@@ -902,7 +902,7 @@ impl<'a> Lowerer<'a> {
                 let of = (**of).clone();
                 self.reversed_range(value, of, span)
             }
-            (Ty::Struct(sid), "len") if self.counter_key.contains_key(sid) => {
+            (Ty::Struct(sid), "len" | "distinct") if self.counter_key.contains_key(sid) => {
                 let map_ty = self.structs[*sid].def.fields[0].1.clone();
                 let map_expr = self.mk_field(value, 0, map_ty, span);
                 self.len_of(map_expr, span)
