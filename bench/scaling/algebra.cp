@@ -15,6 +15,7 @@ for i in 0..8 * n:
     let t = MaxSub.of(i % 5 - 2) // timed: algebra.MaxSub.of
     let u = MaxSub.join(s, t) // timed: algebra.MaxSub.join
     acc += u.scale(2).try_best ?? 0 // timed: algebra.MaxSub.scale
+    acc += u.repeat(i % 4).try_best ?? 0 // timed: algebra.MaxSub.repeat
     acc += u.try_best ?? 0 // timed: algebra.MaxSub.try_best
     acc += u.reversed().total // timed: algebra.MaxSub.reversed
     acc += MaxSub.monoid().op(u, t).try_best ?? 0 // timed: algebra.MaxSub.monoid
