@@ -30,7 +30,7 @@ for _ in 0..n:
         word = word + Str(x)
         digits = digits * 10 + x
         diff = Some(if let d = diff: d - x else: x)
-    let words = xs.map(x => Str(x))
+    let words = [Str(x) for x in xs]
     if xs.fold(+) != sum: bad = "fold(+) on {xs}"
     elif xs.fold(max) != big: bad = "fold(max) on {xs}"
     elif fold(cat, words) != word: bad = "fold(cat) on {xs}"
