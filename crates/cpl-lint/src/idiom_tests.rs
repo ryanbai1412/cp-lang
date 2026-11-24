@@ -54,10 +54,7 @@ fn search_loops_newcomers_write_from_corpus_newcomer() {
 #[test]
 fn yes_no_printed_from_each_branch_is_yes() {
     let src = "let ok = true\nif ok:\n    print(\"YES\")\nelse:\n    print(\"NO\")\n";
-    assert_eq!(
-        only(src).help.as_deref(),
-        Some("write `print(yes(ok))`; `YES` and `NO` are the default words")
-    );
+    assert_eq!(only(src).message, "write `print(yes(ok))`");
     let mixed = "let ok = true\nif ok:\n    print(\"YES\")\nelse:\n    \"NO\"\n";
     assert!(codes(mixed).iter().all(|c| *c != "L0524"));
 }

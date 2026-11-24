@@ -2,7 +2,6 @@
 //! file positions; `lint` applies levels and `with lint` afterwards.
 
 mod adjacency;
-mod answers;
 mod assign;
 mod bag;
 mod bounds;
@@ -75,7 +74,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));
-    findings.extend(answers::check(file));
     findings.extend(pops::check(file));
     findings.extend(while_pop::check(file));
     findings.extend(while_pop::coalesce(file));

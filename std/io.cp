@@ -16,6 +16,10 @@
 /// example: `yes(true) == "YES"`
 /// example: `yes(false) == "NO"`
 /// example: `yes(false, answers: ("Possible", "Impossible")) == "Impossible"`
+@lint(bool_ternary_print, from: "if ok: \"YES\" else: \"NO\"", to: "yes(ok)")
+@lint(bool_ternary_print, from: "if ok:\n    print(\"YES\")\nelse:\n    print(\"NO\")", to: "print(yes(ok))")
+@lint(bool_ternary_print, from: "if ok: \"Yes\" else: \"No\"", to: "yes(ok)")
+@lint(bool_ternary_print, from: "if ok:\n    print(\"Yes\")\nelse:\n    print(\"No\")", to: "print(yes(ok))")
 pub fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str = match answers:
     Some((t, f)) => if ok: t else: f
     None => if ok: io.answers.0 else: io.answers.1
