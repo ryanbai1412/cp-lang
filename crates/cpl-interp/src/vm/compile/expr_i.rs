@@ -264,38 +264,27 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Unary(UnOp::Pos, inner) => self.compile_expr_i(inner),
             ExprKind::Binary(op, lhs, rhs)
-                if expr.ty == Ty::U64 && lhs.ty == Ty::U64 && rhs.ty == Ty::U64 =>
+                if expr.ty == Ty::U64
+                    && lhs.ty == Ty::U64
+                    && (rhs.ty == Ty::U64 || matches!(op, BinOp::Shl | BinOp::Shr)) =>
             {
                 let a = self.compile_expr_i(lhs);
                 let b = self.compile_expr_i(rhs);
                 let dst = self.alloc_i();
                 let inst = match op {
-                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Pow => {
-                        Op::BinU64 { dst, a, b, op: *op }
-                    }
                     BinOp::BitAnd => Op::BitAndU64 { dst, a, b },
                     BinOp::BitOr => Op::BitOrU64 { dst, a, b },
                     BinOp::BitXor => Op::BitXorU64 { dst, a, b },
-                    _ => return self.emit_fallback_expr_i(expr),
+                    _ => Op::BinU64 { dst, a, b, op: *op },
                 };
                 self.emit(inst, span);
                 dst
             }
             ExprKind::Binary(op, lhs, rhs)
-                if expr.ty == Ty::U64
-                    && lhs.ty == Ty::U64
-                    && matches!(op, BinOp::Shl | BinOp::Shr) =>
-            {
-                let a = self.compile_expr_i(lhs);
-                let b = self.compile_expr_i(rhs);
-                let dst = self.alloc_i();
-                self.emit(Op::BinU64 { dst, a, b, op: *op }, span);
-                dst
-            }
-            ExprKind::Binary(op, lhs, rhs)
                 if matches!(expr.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
                     && matches!(lhs.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
-                    && matches!(rhs.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_)) =>
+                    && matches!(rhs.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
+                    && !matches!(op, BinOp::Pow | BinOp::And | BinOp::Or | BinOp::Coalesce) =>
             {
                 let a = self.compile_expr_i(lhs);
                 if *op == BinOp::Add {
@@ -330,8 +319,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     BinOp::BitOr => Op::BitOrI { dst, a, b },
                     BinOp::BitXor => Op::BitXorI { dst, a, b },
                     BinOp::Shl => Op::ShlI { dst, a, b },
-                    BinOp::Shr => Op::ShrI { dst, a, b },
-                    _ => return self.emit_fallback_expr_i(expr),
+                    // The guard leaves only `>>`.
+                    _ => Op::ShrI { dst, a, b },
                 };
                 self.emit(inst, span);
                 dst
@@ -463,10 +452,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         || self.is_small_tuple_local(rhs)
                         || self.small_tuple_is_cheap(lhs) && self.small_tuple_is_cheap(rhs)) =>
             {
-                let Some((len, _)) = crate::vm::scalar::small_tuple_shape(&lhs.ty, self.program)
-                else {
-                    return self.emit_fallback_expr_i(expr);
-                };
+                let len = crate::vm::scalar::small_tuple_shape(&lhs.ty, self.program)
+                    .map_or(0, |(len, _)| len);
                 let a_base = self.small_tuple_operand(lhs, len);
                 let b_base = self.small_tuple_operand(rhs, len);
                 let dst = self.alloc_i();
