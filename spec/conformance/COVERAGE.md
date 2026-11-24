@@ -7,22 +7,22 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3246 (1093 passing). Rules: 608.
+Cases: 3259 (1093 passing). Rules: 608.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 190 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 28 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 247 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 91 rules, 225 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 30 rules, 98 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 28 rules, 68 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 20 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 20 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 33 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -35,7 +35,7 @@ Cases: 3246 (1093 passing). Rules: 608.
 - Rstress (stress.md): 2 rules, 2 cases; 1 uncovered, 0 happy-path only, 0 negative only
 - Rtrace (trace-debug.md): 6 rules, 5 cases; 2 uncovered, 2 happy-path only, 0 negative only
 
-27 rules match a forbidding word but only permit or define something;
+26 rules match a forbidding word but only permit or define something;
 `permits.txt` lists them with the reason, so they need no reject case.
 
 ## Accept and reject coverage per chapter
@@ -56,7 +56,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R06 | 25 | 25 (100%) | 17 | 17 (100%) | 25 (100%) |
 | R07 | 91 | 91 (100%) | 27 | 27 (100%) | 91 (100%) |
 | R08 | 30 | 30 (100%) | 11 | 11 (100%) | 30 (100%) |
-| R09 | 28 | 28 (100%) | 16 | 16 (100%) | 28 (100%) |
+| R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
 | R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 608 | 604 (99%) | 246 | 238 (96%) | 598 (98%) |
+| all | 608 | 604 (99%) | 247 | 239 (96%) | 598 (98%) |
 
 ## Rules
 
@@ -233,9 +233,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.7 [1+ 1-]: | `V(x)` | integer to position, trapping outside `V` | \(O(1)\)
 - R04.2.8 [1+ 0-]: | `V.at(x)` | integer to position, `?V`: `None` outside `V` | \(O(1)\)
 - R04.2.9 [3+ 0-]: | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` d...
-- R04.2.10 [10+ 3-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
+- R04.2.10 [11+ 3-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [3+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
-- R04.2.11 [8+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
+- R04.2.11 [9+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [2+ 1-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
 - R04.2.13 [4+ 0-]: | `V.wrap(x)` | integer to position, Euclidean mod `V.count` (`V.wrap(-1)` is the last pos...
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\)
@@ -358,7 +358,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.4.4 [1+ 0-]: | An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that o...
 - R04b.4.5 [1+ 0-]: | Results back in the caller's keys | `table.rekey(s.keys)` | \(O(1)\) re-key
 - R04b.5.1 [3+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`; a match st...
-- R04b.5.2 [4+ 0-]: | `find_all`, `shift_and` | `yields Int` | `yields K`; an empty pattern matches at each ke...
+- R04b.5.2 [5+ 0-]: | `find_all`, `shift_and` | `yields Int` | `yields K`; an empty pattern matches at each ke...
 - R04b.5.3 [7+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
 - R04b.5.4 [1+ 0-]: | `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty
 - R04b.5.5 [1+ 0-]: | `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts
@@ -585,7 +585,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.1.5 [1+ 1-]: Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one field per lint: `with ...
 - R09.2.1 [1+ 2-]: | checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C...
 - R09.2.2 [4+ 1-]: | release | `cpl build`, `cpl submit`, the bundle on the judge | no runtime checks unless ...
-- R09.2.3 [2+ 0-]: **Checks never call user code.** A checked build makes exactly the calls to user functions...
+- R09.2.3 [3+ 1-]: **Checks never call user code.** A checked build makes exactly the calls to user functions...
 - R09.3.1 [1+ 0-]: | index `a[i]` with `i: D` on `[D]T` | always (the type is the proof) | none | none
 - R09.3.2 [2+ 2-]: | `D(x)` from an `Int`, raw index, `List` index | range facts show it fits | trap with val...
 - R09.3.3 [1+ 1-]: | store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming val...
@@ -608,7 +608,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R10: 10-io.md
 
-- R10.3.7 [1+ 1-]: `?T` is not a `Seq`: `for v in x` on a `?Int` is E0302 naming `if let`. A sequence prints ...
+- R10.3.7 [1+ 2-]: `?T` is not a `Seq`: `for v in x` on a `?Int` is E0302 naming `if let`. A sequence prints ...
 - R10.1.1 [14+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
@@ -627,7 +627,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.3.4 [3+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`; with neither it prints 10 decimals,...
 - R10.3.5 [8+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [2+ 0-]: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
-- R10.3.8 [1+ 1-]: `HashMap` and `HashSet` are not `Show`, like `?T`: walking one has no defined order (lib/c...
+- R10.3.8 [2+ 2-]: `HashMap` and `HashSet` are not `Show`, like `?T`: walking one has no defined order (lib/c...
 
 ### R11: 11-modules-prelude.md
 
@@ -822,7 +822,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 37 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
-- E0606 Missing trait implementation for operator: 26 case(s)
+- E0606 Missing trait implementation for operator: 28 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
 - E0608 Use of moved value: 16 case(s)
 - E0701 Ambiguous trait method: 2 case(s)
@@ -974,10 +974,10 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0101 Index out of range: 34 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
-- R0202 Integer overflow: 47 case(s)
+- R0202 Integer overflow: 48 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 87 case(s)
+- R0401 Assertion failed: 88 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
@@ -1108,6 +1108,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-02/alias-walks-as-aliased-type.cp
 - core-02/generic-variant-compares-with-typed-side.cp
 - core-02/list-of-str-is-chars.cp
+- core-02/lowercase-none-local-beside-none-named-arg.cp
+- core-02/none-names-a-param-and-a-field.cp
 - core-02/optional-min-assign-skips-none.cp
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp
@@ -1115,7 +1117,9 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-02/str-len-and-charset-compose.cp
 - core-02/str-of-charset-escapes.cp
 - core-02/struct-literal-named-fields-any-order.cp
+- core-03/int-range-len-overflow-traps.cp
 - core-03/mod-array-fills-from-int-literal.cp
+- core-03/narrow-range-len-spans-32-bits.cp
 - core-04/char-from-idx.cp
 - core-04/domain-subsets-needs-no-import.cp
 - core-04/from-ord-after-a-checked-one-still-traps.cp

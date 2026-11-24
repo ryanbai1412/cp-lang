@@ -209,4 +209,5 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/closure-capturing-a-view-keeps-its-source-lent.cp: compiler: a closure capturing a view keeps the source lent
 - std-bag/closure-captures-a-range-view.cp: compiler: a captured bag range view is typed `()`
 - core-04/grid-rows-view-lends-the-grid.cp: compiler: a bound `lends` getter view (`g.rows`) keeps the grid lent
+- core-02/none-names-a-param-and-a-field.cp: compiler: lowercase `none` as a parameter or field name is E0108 (c973f0d5f made it a name only in expressions)
 - core-04/grid-row-from-rows-lends-the-grid.cp: compiler: a row from a bound `lends` getter view keeps the grid lent
