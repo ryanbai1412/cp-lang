@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3521 (3494 passing). Rules: 616.
+Cases: 3523 (3494 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -31,7 +31,7 @@ Cases: 3521 (3494 passing). Rules: 616.
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rjudge (judge-profiles.md): 8 rules, 15 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rlsp (lsp.md): 9 rules, 11 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rlsp (lsp.md): 9 rules, 13 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 2 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rtrace (trace-debug.md): 6 rules, 9 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
@@ -740,7 +740,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rlsp.6 [1+ 1-]: **Hover**: the type, where `None` lives, storage width and peak bytes, proven ranges, the ...
 - Rlsp.7 [1+ 1-]: **Storage sizes** (decision 149): hover on a type or variable gives its size, field storag...
 - Rlsp.8 [1+ 0-]: **Inlay hints**: inferred types, parameter names past two positional arguments, opt-in liv...
-- Rlsp.2 [2+ 1-]: **Completion** ranked by type (positions of `V` inside `a[` for `a: [V]T`, operation value...
+- Rlsp.2 [4+ 1-]: **Completion** ranked by type (positions of `V` inside `a[` for `a: [V]T`, operation value...
 - Rlsp.3 [1+ 0-]: **Navigation and refactoring**: definition, references, rename, extract nested fn, inline,...
 - Rlsp.9 [1+ 0-]: **Editors**: a VS Code extension (highlighting, run/test/stress buttons, debugger, trace p...
 - Rlsp.4 [1+ 1-]: **Formatting**: `textDocument/formatting` returns exactly what `cpl fmt` writes, so an edi...
