@@ -1571,3 +1571,90 @@ fn every_stress_decorator_gives_the_file_a_judge_and_a_mention_does_not() {
     let mentioned = "// @alt, @brute and @interactor\nlet s = \"@check\"\nprint(s)\n";
     assert!(!crate::stress_targets(mentioned));
 }
+
+/// The edges a bug hides at: an empty array, one element, the largest
+/// size asked for, the lowest and the highest value, and all-equal values.
+#[test]
+fn generated_cases_reach_every_edge_shape() {
+    let src = "let n: 0..=8 = read()\nlet a: [0..n]1..=1e9 = read()\nprint(n)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let mut seen = HashSet::new();
+    for seed in 0..400 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
+        let Value::Seq(a) = &case.values[1] else {
+            panic!("{case:?}")
+        };
+        let a: Vec<i128> = a.iter().filter_map(Value::number).collect();
+        let edges = [
+            ("empty", a.is_empty()),
+            ("one", a.len() == 1),
+            ("max size", a.len() == 8),
+            ("lowest value", a.contains(&1)),
+            ("highest value", a.contains(&1_000_000_000)),
+            ("all equal", a.len() >= 2 && a.iter().all(|&x| x == a[0])),
+        ];
+        seen.extend(
+            edges
+                .into_iter()
+                .filter(|(_, hit)| *hit)
+                .map(|(name, _)| name),
+        );
+    }
+    let all = [
+        "empty",
+        "one",
+        "max size",
+        "lowest value",
+        "highest value",
+        "all equal",
+    ];
+    let missed: Vec<_> = all.iter().filter(|edge| !seen.contains(*edge)).collect();
+    assert!(missed.is_empty(), "no case in 400 seeds is {missed:?}");
+}
+
+/// A shrunk case is a local minimum: shrinking it again, with every
+/// delete and decrement the shrinker knows, finds nothing smaller that
+/// still fails.
+#[test]
+fn a_shrunk_case_shrinks_no_further() {
+    let spec = spec();
+    let numbers = |case: &Case, field: usize| -> Vec<i128> {
+        match &case.values[field] {
+            Value::Seq(items) => items.iter().filter_map(Value::number).collect(),
+            other => panic!("{other:?}"),
+        }
+    };
+    let backwards = |case: &Case| match &case.values[2] {
+        Value::Seq(queries) => queries.iter().any(|q| match q {
+            Value::Tuple(ends) => ends[0].number() > ends[1].number(),
+            _ => false,
+        }),
+        _ => false,
+    };
+    let bugs: [(&str, &dyn Fn(&Case) -> bool); 3] = [
+        ("a value of 5 or more", &|case| {
+            numbers(case, 1).iter().any(|&x| x >= 5)
+        }),
+        ("a sum over 20", &|case| {
+            numbers(case, 1).iter().sum::<i128>() > 20
+        }),
+        ("a backwards query", &backwards),
+    ];
+    for (bug, fails) in bugs {
+        for seed in 0..40 {
+            let Some(start) = generate(&spec, &mut Rng::new(seed), Size::Small(8)) else {
+                continue;
+            };
+            if !fails(&start) {
+                continue;
+            }
+            let smallest = shrink(&spec, &start, 5000, &mut |case: &Case| fails(case));
+            assert!(fails(&smallest), "{bug}: shrunk to a passing {smallest:?}");
+            let again = shrink(&spec, &smallest, 5000, &mut |case: &Case| fails(case));
+            assert_eq!(
+                again, smallest,
+                "{bug} (seed {seed}): one more shrink still fails"
+            );
+        }
+    }
+}

@@ -137,7 +137,7 @@ tests for wording.
 | Generated inputs satisfy their declared types | invalid cases per spec shape | property tests per shape | `crates/cpl-stress/src/tests.rs` (`cases_are_valid_small_and_the_same_for_the_same_seed`, `simple_connected_and_acyclic_graphs_are_generated_valid`, ...) |
 | Every generated input is one the program's own reader accepts | cases the program rejects on read | generated suite over every saved-trace program and corpus problem ([debugging/R10](../guidelines/debugging-checklist.md#r10-a-generated-input-is-one-the-program-reads)) | `crates/cpl-cli/tests/stress_inputs.rs` |
 | Every readable input shape can be generated | programs whose input stress can't generate (hard 0: `generate_gaps`, no list) | generated sweep over every corpus spec, saved-trace and conformance program ([debugging/R11](../guidelines/debugging-checklist.md#r11-every-input-a-program-reads-can-be-generated)) | `crates/cpl-stress/tests/readable_shapes.rs`, `crates/cpl-stress/src/tests.rs` `types_the_generator_cannot_make_are_reported_where_they_are` |
-| Inputs cover the edges (empty, one, max, equal values, paths and stars) | edge shapes reached per spec | property tests for trees; `missing` for others | `crates/cpl-stress/src/tests.rs` `random_trees_include_paths_and_stars`, `full_size_cases_use_the_whole_range`; `missing` |
+| Inputs cover the edges (empty, one, max, equal values, paths and stars) | edge shapes reached per spec | property tests: arrays reach empty, one, the largest size, the lowest and highest value and all-equal; trees reach paths and stars | `crates/cpl-stress/src/tests.rs` `generated_cases_reach_every_edge_shape`, `random_trees_include_paths_and_stars`, `full_size_cases_use_the_whole_range` |
 | `@gen` generators work without a C++ compiler and still shrink | seeded bugs shrunk with no `g++` on PATH | hand-written suite | `crates/cpl-cli/tests/stress_corpus.rs` `cpl_stress_interprets_a_gen_fn_where_no_cpp_compiler_is` |
 | A wrong brute or a crashing generator is blamed, not the solution | misattributed failures | hand-written suite | `crates/cpl-stress/src/tests.rs` `a_failing_brute_stops_the_run_with_the_input` |
 | Multitest, checker and interactive problems stress as easily as plain ones | loop tests per problem kind | hand-written suite | `crates/cpl-cli/tests/debugger.rs` (the tests built on its `stress_loop` helper) |
@@ -150,7 +150,7 @@ tests for wording.
 | The counterexample is minimal | seeded bugs shrunk to their known minimal input | hand-written suite | `crates/cpl-cli/tests/seeded_bugs.rs` |
 | Shrinking never returns a passing or invalid case | invalid or passing results | property tests | `crates/cpl-stress/src/tests.rs` `shrinking_respects_its_budget_and_never_returns_a_passing_case`, `shrinking_keeps_graphs_simple_connected_and_acyclic` |
 | A multitest failure shrinks to the tests it needs | tests left after shrinking | hand-written suite | `crates/cpl-stress/src/tests.rs` `a_bug_that_needs_two_tests_shrinks_both_of_them` |
-| Shrinking is local-minimal in general, not just on seeded bugs | cases where one more delete or decrement still fails | `missing`: a property check that re-shrinks every result one step | `missing` |
+| Shrinking is local-minimal in general, not just on seeded bugs | cases where one more delete or decrement still fails | property test: every shrunk case, shrunk again with the same failure, stays the same | `crates/cpl-stress/src/tests.rs` `a_shrunk_case_shrinks_no_further` |
 
 ### Explaining it
 
