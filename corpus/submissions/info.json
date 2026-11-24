@@ -29182,50 +29182,6 @@
         "status": "D",
         "time": 0.017332259
     },
-    "5200823": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-01-09T06:06:43+00:00",
-        "language": "CPP17",
-        "memory": 4484.0,
-        "problem": "dmpg17g3",
-        "result": "TLE",
-        "status": "D",
-        "time": 4.383161956
-    },
-    "5200825": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-01-09T06:08:16+00:00",
-        "language": "CPP17",
-        "memory": 4692.0,
-        "problem": "dmpg17g3",
-        "result": "RTE",
-        "status": "D",
-        "time": 4.691997323
-    },
-    "5200826": {
-        "case_points": 15.0,
-        "case_total": 100.0,
-        "date": "2023-01-09T06:09:12+00:00",
-        "language": "CPP17",
-        "memory": 4484.0,
-        "problem": "dmpg17g3",
-        "result": "TLE",
-        "status": "D",
-        "time": 11.141657871
-    },
-    "5200842": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-01-09T06:33:49+00:00",
-        "language": "CPP17",
-        "memory": 4488.0,
-        "problem": "dmpg17g3",
-        "result": "AC",
-        "status": "D",
-        "time": 0.401869658
-    },
     "5201973": {
         "case_points": 34.0,
         "case_total": 100.0,
