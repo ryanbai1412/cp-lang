@@ -57,9 +57,12 @@ jobs:
       - name: Compiler versions
         run: g++ --version | head -1 && rustc --version
       # A workflow GitHub can't parse fails with no jobs and nothing in any gate.
+      # install-action has no actionlint: in setup-rust it failed every job (exit 76).
       - name: Workflow lint
         if: matrix.part == 'checks'
-        run: just workflow-lint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7 "$HOME/.cargo/bin"
+          just workflow-lint
       # The cxx and corpus caches are saved once an hour, not once a run:
       # per-run saves passed GitHub's cache limit and evicted the warm ones.
       - name: Cache hour
