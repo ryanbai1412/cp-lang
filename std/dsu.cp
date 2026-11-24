@@ -745,7 +745,7 @@ pub struct PersistentDsu<V>:
     /// The representative of `v`'s set, chosen by union by size as in [`Dsu.find`](Dsu.find).
     ///
     /// cost: \(O(\log^2 n)\)
-    /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
+    /// ties: `use std.persistent.{PArena}; domain V = 0..2; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); d.unite(mut ar, 0, 1).find(ar, 1) == 0`
     /// traps: never
     /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar); let e = d.unite(mut ar, 2, 1); e.find(ar, 1) == 2 and d.find(ar, 1) == 1`
     pub fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V = V.nth(self.root_ord(ar, v.ord))

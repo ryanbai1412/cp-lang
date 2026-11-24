@@ -25,7 +25,8 @@ ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "spec/conformance/std-models"
 MODEL = re.compile(r"^// model: (\w+)\s*$", re.M)
 BRUTE = re.compile(r"^// brute: (\w+)\s*$", re.M)
-FN = re.compile(r"^(?:@\w+ )*pub fn ([a-zA-Z]\w*)(?:<[^(]*>)?\((?:mut )?(?:self: ([A-Za-z]\w*))?")
+FN = re.compile(r"^(?:@\w+ )*pub fn ([a-zA-Z]\w*)")
+SELF = re.compile(r"\s*\((?:mut )?self: ([A-Za-z]\w*)")
 TYPE = re.compile(r"^pub (?:struct|enum) ([A-Za-z]\w*)")
 IMPL = re.compile(r"^impl(?:<[^>]*>)? (?:[\w<>, ]+ for )?([A-Za-z]\w*)")
 METHOD = re.compile(r"^\s+(?:@\w+ )*pub fn \w+")
@@ -49,14 +50,32 @@ def std_types(texts):
     return found
 
 
+def after_generics(rest):
+    """`rest` past a leading `<...>`, whose bounds may hold `(..)` rows and nested `<>`."""
+    if not rest.startswith("<"):
+        return rest
+    depth = 0
+    for i, c in enumerate(rest):
+        depth += {"<": 1, ">": -1}.get(c, 0)
+        if depth == 0:
+            return rest[i + 1:]
+    return ""
+
+
 def public_fns(texts):
     """Pub top-level std fns, as {name: (file, self type or None)}."""
     found = {}
     for rel, text in texts:
         for line in text.splitlines():
             if m := FN.match(line):
-                found.setdefault(m.group(1), (rel, m.group(2)))
+                recv = SELF.match(after_generics(line[m.end():]))
+                found.setdefault(m.group(1), (rel, recv and recv.group(1)))
     return found
+
+
+def public_types(texts):
+    """Every `pub struct`/`pub enum` name in std."""
+    return {m.group(1) for _, text in texts for line in text.splitlines() if (m := TYPE.match(line))}
 
 
 def modelled(cases):
@@ -73,7 +92,7 @@ def gaps(texts, cases):
             for f, (rel, recv) in sorted(fns.items())
             if f not in have and f not in brute and recv not in have]
     out += [f"{rel}: `// model: {t}` names no std type or pub std fn"
-            for t, rel in sorted(have.items()) if t not in types and t not in fns]
+            for t, rel in sorted(have.items()) if t not in public_types(texts) and t not in fns]
     return out
 
 

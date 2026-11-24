@@ -2028,6 +2028,8 @@ HARD_ZERO = frozenset({
     "plan_delta_lines",
     "trait_gaps",
     "std_trait_matrix",
+    "edge_labels_unrun",
+    "std_model_gaps",
     "idiom_lint_gaps",
     "rule_gaps",
     "direct_python",

@@ -210,8 +210,8 @@
   "scaling_mismatches": 0,
   "std_fns_unscaled": 1018,
   "std_types_shown_empty": 49,
-  "edge_labels_unrun": 1,
-  "std_model_gaps": 6,
+  "edge_labels_unrun": 0,
+  "std_model_gaps": 0,
   "cpp_optional_copies": 9,
   "std_trait_matrix": 0
 }

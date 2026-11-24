@@ -396,13 +396,21 @@ fn claims_program(group: &[&DocExample], import_module: bool) -> String {
         lines.push(build_example_program(ex, code, false));
         return lines.join("\n") + "\n";
     }
+    let mut bodies = Vec::new();
     for (k, ex) in group.iter().enumerate() {
         let code = ex.snippet.as_deref().unwrap_or_default();
-        lines.push(format!("fn claim_{k}():"));
+        bodies.push(format!("fn claim_{k}():"));
         for line in build_example_program(ex, code, false).lines() {
-            lines.push(format!("    {line}"));
+            if line.starts_with("use ") {
+                if !lines.iter().any(|l| l == line) {
+                    lines.push(line.to_string());
+                }
+            } else {
+                bodies.push(format!("    {line}"));
+            }
         }
     }
+    lines.extend(bodies);
     lines.extend((0..group.len()).map(|k| format!("claim_{k}()")));
     lines.join("\n") + "\n"
 }
@@ -489,6 +497,15 @@ mod tests {
             super::claims_program(&group, true),
             "use std.seq.*\nfn claim_0():\n    assert([1].len == 1)\nfn claim_1():\n    \
              let a = [2]\n    assert(a.first == Some(2))\nclaim_0()\nclaim_1()\n"
+        );
+        let with_use = super::DocExample {
+            snippet: Some("use std.persistent.{PArena}; PArena<Int>().len == 0".into()),
+            ..docs[1].clone()
+        };
+        assert_eq!(
+            super::claims_program(&[&docs[0], &with_use], false),
+            "use std.persistent.{PArena}\nfn claim_0():\n    assert([1].len == 1)\nfn claim_1():\n    \
+             assert(PArena<Int>().len == 0)\nclaim_0()\nclaim_1()\n"
         );
         assert!(super::runnable_label("`[].max()` (traps R0401)"));
         assert!(!super::runnable_label("`0`"));
