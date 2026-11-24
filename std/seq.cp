@@ -1297,11 +1297,9 @@ pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 /// empty: `var a: List<Int> = []; a.insert(0, 5); a == [5]`
 pub fn insert<T>(mut self: List<T>, i: Int, x: T):
     assert 0 <= i <= self.len
-    self.push(x)
-    var j = self.len - 1
-    while j > i:
-        self.swap(j - 1, j)
-        j -= 1
+    var carry = x
+    for j in i..self.len: swap(mut carry, mut self[j])
+    self.push(carry)
 
 /// \(O(n)\). Remove and return the element at index `i` (`0 <= i < self.len`), shifting `i + 1..` left.
 ///
@@ -1311,9 +1309,9 @@ pub fn insert<T>(mut self: List<T>, i: Int, x: T):
 /// empty: `var a: List<Int> = []; a.remove(0) == 0` (traps R0401)
 pub fn remove<T>(mut self: List<T>, i: Int) -> T:
     assert 0 <= i < self.len
-    for j in i..self.len - 1:
-        self.swap(j, j + 1)
-    self.pop()!
+    var carry = self.pop()!
+    for j in (i..self.len).rev: swap(mut carry, mut self[j])
+    carry
 
 // =============================================================================
 // Spec surface (`= todo` where not yet implemented)
