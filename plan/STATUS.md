@@ -12,7 +12,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | [compiler](domains/compiler/README.md) | 15 | 0 | 2 |
 | [debugger](domains/debugger/README.md) | 19 | 0 | 0 |
 | [diagnostics](domains/diagnostics/README.md) | 20 | 0 | 0 |
-| [idioms](domains/idioms/README.md) | 14 | 0 | 3 |
+| [idioms](domains/idioms/README.md) | 15 | 0 | 3 |
 | [infra](domains/infra/README.md) | 15 | 0 | 0 |
 | [lint-fmt](domains/lint-fmt/README.md) | 20 | 0 | 0 |
 | [perf](domains/perf/README.md) | 19 | 3 | 0 |
@@ -109,6 +109,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | acceptance_steps | run 6 (2026-11-23-6, edge e9c6b2eb, one agent per OS): Linux 7/8 (install), macOS 7/8 (install), Windows 6/8 (install, design); judge solve 10/10 / 10/10 / 9/10 (Windows cf2285E TLE), compete 5/5 each; P0 open: rev-view-index-not-reversed, runs-slice-index-silent-in-cpp, partition-point-copies-list | 8/8 steps on Linux, macOS and Windows; solve >= 8/10, compete >= 4/5 in 2 h; 0 open blocker rows (Milestone 1) |
 | newcomer_lint_flagged | 82/110 marked spots (75%), 59 files, 7 unmarked diagnostics, 59/59 still pass cpl check after --fix (2026-11-22 22:20, main 395e1a17a) | >= 90% flagged, 0 files broken by fixes (Milestone 1, 09:30 PST 2026-11-23) |
 | reviews_pending | 487 | 0 |
+| reviews_uncapped | 0 | 0 |
 
 ## infra
 
@@ -332,18 +333,16 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 Process costing more than 10% of a change is skipped with a trailer
 (`handbook/process/handbook-and-rfcs.md`); this counts them.
 
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
 | Day | Lane | Skipped |
 |---|---|---|
-| 2026-11-24 | tools | 2 |
+| 2026-11-24 | tools | 4 |
+| 2026-11-24 | stress | 1 |
 | 2026-11-24 | stdlib | 11 |
-| 2026-11-24 | perf | 11 |
+| 2026-11-24 | perf | 15 |
 | 2026-11-24 | infra | 4 |
 | 2026-11-24 | idioms | 7 |
-| 2026-11-24 | debugger | 1 |
-| 2026-11-24 | compiler | 11 |
+| 2026-11-24 | debugger | 2 |
+| 2026-11-24 | compiler | 12 |
 | 2026-11-23 | perf | 1 |
 | 2026-11-23 | debugger | 1 |
 

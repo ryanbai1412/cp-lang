@@ -249,5 +249,6 @@
   "trap_text_outside_registry": 0,
   "reviews_pending": 0,
   "std_gaps": 6,
-  "reviews_orphan": 0
+  "reviews_orphan": 0,
+  "reviews_uncapped": 0
 }

@@ -91,3 +91,10 @@ command = "python3 scripts/debt-ratchet.py --show reviews_pending"
 today = 487
 target = "0"
 note = "Shrink-only in scripts/debt-ratchet.py: every review lands scored, so this only falls as the existing stubs get cold reviews."
+
+[[metric]]
+name = "reviews_uncapped"
+command = "python3 scripts/debt-ratchet.py --show reviews_uncapped"
+today = 0
+target = "0"
+note = "Shrink-only in scripts/debt-ratchet.py: a port with no dream (no dream.cp, no friction ## Dream) scores at most 3 (research/reviews/README.md)."

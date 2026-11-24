@@ -729,6 +729,22 @@ def ports_unreported(root: Path) -> list[str]:
             if not {f"research/frictions/{p.split('/')[2]}.md", f"research/reviews/{p.split('/')[2]}.md"} <= have]
 
 
+def reviews_uncapped(root: Path) -> list[str]:
+    """Reviews scoring a port 4 or 5 when it has no dream, neither dream.cp nor a `## Dream` in
+    its friction report: research/reviews/README.md caps a port with no dream at 3."""
+    dreams = {f.split("/")[2] for f in _git(root, "ls-files", "corpus/problems/*/dream.cp")}
+    dreams |= {Path(f).stem for f in _git(root, "ls-files", "research/frictions/*.md")
+               if any(l.startswith("## Dream") for l in _lines(root / f))}
+    ports = {f.split("/")[2] for f in _git(root, "ls-files", "corpus/problems/*/port.cp")}
+    out = []
+    for f in _git(root, "ls-files", "research/reviews/*.md"):
+        name = Path(f).stem
+        score = next((l for l in _lines(root / f) if l.startswith("Score:")), "")
+        if name in ports and name not in dreams and re.match(r"Score:\s*[45]\s*/\s*5", score):
+            out.append(f)
+    return out
+
+
 def reviews_pending(root: Path) -> list[str]:
     """Taste reviews whose port score is still `Score: pending` (research/reviews/README.md):
     a port lands with its cold review scored, so an unscored review is debt, not a state."""
@@ -2770,7 +2786,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 HARD_ZERO = frozenset({
     "cpp_deep_copies",
-    "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "lint_std_names", "cpl_env_reads", "dead_code_allows",
+    "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
     "stdlib_todo",
@@ -2857,6 +2873,7 @@ COUNTERS = {
     "ports_unreported": ("corpus ports without a friction report or review (idioms)", ports_unreported, True),
     "reviews_pending": ("taste reviews still at Score: pending (idioms)", reviews_pending, True),
     "reviews_orphan": ("taste reviews whose package has no port or dream (idioms)", reviews_orphan, True),
+    "reviews_uncapped": ("reviews scoring a port with no dream above 3 (idioms)", reviews_uncapped, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),

@@ -20,7 +20,9 @@ new one fails the ratchet.
   friction report.
 - **3** correct but translated, or a standard algorithm hand-rolled because
   the stdlib lacks it or is measured too slow, with the gap reported and
-  measured. A port with no dream scores at most 3.
+  measured. A port with no dream (no `dream.cp` and no `## Dream` in its
+  friction report) scores at most 3; the shrink-only counter `reviews_uncapped`
+  (`scripts/debt-ratchet.py`) counts any review above that.
 - **2** hand-rolled standard algorithms or bookkeeping the language already
   removes, or a fact kept in two places, unreported or reported with an
   excuse that does not hold.

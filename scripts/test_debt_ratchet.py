@@ -174,6 +174,25 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertIn("must stay at 0", errs[0])
 
+    def test_reviews_uncapped_counts_a_high_score_without_a_dream(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            files = {"corpus/problems/a/port.cp": "", "corpus/problems/b/port.cp": "",
+                     "corpus/problems/b/dream.cp": "", "corpus/problems/c/port.cp": "",
+                     "corpus/problems/d/port.cp": "",
+                     "research/frictions/d.md": "# d\n\n## Dream\n\n```cpl\n```\n",
+                     "research/reviews/d.md": "# d\n\nScore: 4/5\nDream: 4/5\n",
+                     "research/reviews/a.md": "# a\n\nScore: 4/5\nDream: none\n",
+                     "research/reviews/b.md": "# b\n\nScore: 5/5\nDream: 5/5\n",
+                     "research/reviews/c.md": "# c\n\nScore: 3/5\n\nReads as a 5.\n",
+                     "research/reviews/README.md": "Score: 5/5\n"}
+            for f, text in files.items():
+                (root / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / f).write_text(text)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            self.assertEqual(dr.reviews_uncapped(root), ["research/reviews/a.md"])
+
     def test_reviews_pending_counts_only_an_unscored_port_line(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
