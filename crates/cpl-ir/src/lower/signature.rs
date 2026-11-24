@@ -668,28 +668,26 @@ impl<'a> Lowerer<'a> {
         trait_args: &[Ty],
         owner: &Ty,
     ) -> Option<Ty> {
-        let pick = |f: &'a ast::FnDecl| -> Option<&'a ast::Type> {
-            match at {
-                Some(i) => f.params.get(i)?.ty.as_ref(),
-                None => f.ret.as_ref(),
-            }
-        };
-        let (ty, generics, place) = match self.traits.iter().find(|t| t.name == trait_name) {
-            Some(t) => {
-                let f: &'a ast::FnDecl =
-                    t.methods.iter().copied().find(|f| f.name.text == method)?;
-                (pick(f)?, t.generics.clone(), Some((t.mod_id, t.offset)))
-            }
-            None => {
-                let (generics, body) = cpl_check::core_trait_decl(trait_name)?;
-                let f = body.iter().find_map(|s| match &s.kind {
-                    ast::StmtKind::Fn(f) if f.name.text == method => Some(f),
-                    _ => None,
-                })?;
-                let generics = generics.iter().map(|g| g.text.as_str()).collect();
-                (pick(f)?, generics, None)
-            }
-        };
+        let (f, generics, place): (&'a ast::FnDecl, Vec<&str>, _) =
+            match self.traits.iter().find(|t| t.name == trait_name) {
+                Some(t) => (
+                    t.methods.iter().find(|f| f.name.text == method)?,
+                    t.generics.clone(),
+                    Some((t.mod_id, t.offset)),
+                ),
+                None => {
+                    let (generics, body) = cpl_check::core_trait_decl(trait_name)?;
+                    let f = body.iter().find_map(|s| match &s.kind {
+                        ast::StmtKind::Fn(f) if f.name.text == method => Some(f),
+                        _ => None,
+                    })?;
+                    (f, generics.iter().map(|g| g.text.as_str()).collect(), None)
+                }
+            };
+        let ty = match at {
+            Some(i) => f.params.get(i)?.ty.as_ref(),
+            None => f.ret.as_ref(),
+        }?;
         let mut env = self.gen_env.clone();
         env.insert("Self".into(), GenArg::Ty(owner.clone()));
         for (k, g) in generics.into_iter().enumerate() {
