@@ -380,10 +380,7 @@ pub(super) fn split_projection_body(
 pub(super) fn let_const_name(pat: &ast::Pattern) -> Option<&str> {
     match &pat.kind {
         ast::PatternKind::Name(name) => Some(name),
-        ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
-            Some(&path[0].text)
-        }
-        _ => None,
+        _ => pat.bare_variant(),
     }
 }
 

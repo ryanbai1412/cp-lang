@@ -911,5 +911,17 @@ pub fn site_of(url: &str) -> Option<&'static Site> {
     })
 }
 
+/// The first line of `g++ --version`, when there is a `g++` here.
+pub fn gxx_version() -> Option<String> {
+    std::process::Command::new("g++")
+        .arg("--version")
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .and_then(|s| s.lines().next().map(|l| l.trim().to_string()))
+        .filter(|l| !l.is_empty())
+}
+
 #[cfg(test)]
 mod tests;

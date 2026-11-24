@@ -16,6 +16,7 @@ pub mod checks;
 pub mod effects;
 pub mod fix;
 mod lower;
+mod place;
 /// How many decimals a `Float` is written with when none are asked for:
 /// enough for a judge that compares to within 1e-9.
 pub const FLOAT_DIGITS: u32 = 10;

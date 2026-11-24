@@ -456,17 +456,6 @@ fn bench_problem(prob_dir: &Path, runs: usize) -> PortRecord {
     }
 }
 
-fn gxx_version() -> String {
-    Command::new("g++")
-        .arg("--version")
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .and_then(|s| s.lines().next().map(str::trim).map(ToString::to_string))
-        .unwrap_or_else(|| "unknown".to_string())
-}
-
 fn git_short_commit() -> String {
     Command::new("git")
         .args(["rev-parse", "--short", "HEAD"])
@@ -516,7 +505,10 @@ fn build_json(
         w.object().key("meta").object();
         w.key("commit").str(&git_short_commit());
         w.key("cpl_version").str(env!("CARGO_PKG_VERSION"));
-        w.key("gxx").str(&gxx_version()).key("runs").int(runs);
+        w.key("gxx")
+            .str(&cpl_judge::gxx_version().unwrap_or_else(|| "unknown".to_string()))
+            .key("runs")
+            .int(runs);
         w.key("problems").int(total_problems);
         w.key("cpu")
             .str(std::env::consts::ARCH)

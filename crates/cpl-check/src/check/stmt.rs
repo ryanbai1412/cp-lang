@@ -980,7 +980,7 @@ impl<'a> Checker<'a> {
             StmtKind::Fn(f) => {
                 // `@memo(into: dp)` on a fn inside a fn or a loop: the
                 // table is a `var` where the fn stands.
-                if let (false, Some((table, at))) = (top_level, crate::check::memo_table(stmt)) {
+                if let (false, Some((table, at))) = (top_level, stmt.memo_into()) {
                     if let Ty::Fn { params, ret } = self.fn_sig(f, None) {
                         let ty = Ty::Array {
                             index: params.iter().map(|p| p.ty.clone()).collect(),

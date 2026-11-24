@@ -55,7 +55,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) => Some(slot),
                     TracePoint::Assign(place)
                     | TracePoint::Cell(place, _)
-                    | TracePoint::Mutated(place, _) => crate::root_local(place),
+                    | TracePoint::Mutated(place, _) => place.root_local(),
                     _ => None,
                 };
                 if local.is_some_and(|slot| self.trace_local_unseen(slot)) {
@@ -248,7 +248,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 PlaceKind::Global(id) if tracer.raw_write(*id, &view, place.span, &[]) => {}
                 PlaceKind::Global(id) => tracer.declared(*id, &view, place.span),
                 _ => {
-                    let global = crate::root_global(place).expect("a global's cell");
+                    let global = place.root_global().expect("a global's cell");
                     if !tracer.raw_write(global, &view, place.span, &path) {
                         tracer.changed(global, &view, place.span, &path);
                     }

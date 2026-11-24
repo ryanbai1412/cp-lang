@@ -68,19 +68,6 @@ pub(super) struct MemoFast {
     vals: Place,
 }
 
-/// The table a `@memo(into: dp)` fn keeps its answers in.
-pub(super) fn into_table(stmt: &ast::Stmt) -> Option<&str> {
-    let memo = stmt.decorators.iter().find(|d| d.name.text == "memo")?;
-    memo.args
-        .iter()
-        .find_map(|arg| match (&arg.name, &arg.value.kind) {
-            (Some(label), ast::ExprKind::Name(table)) if label.text == "into" => {
-                Some(table.as_str())
-            }
-            _ => None,
-        })
-}
-
 /// The name of a local the wrapper of a `@memo(into:)` fn makes. No
 /// program can write a name with a space in it.
 const HIT: &str = "memo hit";

@@ -284,7 +284,7 @@ impl<'a> Lowerer<'a> {
                     self.mod_syms[m].insert(key, Sym::Fn(id));
                     if stmt.decorators.iter().any(|d| d.name.text == "memo") {
                         self.memo_fns.insert(id);
-                        if let Some(table) = memo::into_table(stmt) {
+                        if let Some(table) = stmt.memo_into().map(|(table, _)| table) {
                             self.memo_into.insert(id, table.to_string());
                         }
                     }

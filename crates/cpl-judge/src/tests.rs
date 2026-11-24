@@ -379,3 +379,13 @@ fn every_fetched_site_is_a_builtin_profile_known_by_its_host() {
         assert_eq!(on("not"), None);
     }
 }
+
+#[test]
+fn gxx_version_is_one_line_or_none() {
+    if let Some(version) = gxx_version() {
+        assert!(
+            !version.is_empty() && !version.contains('\n'),
+            "{version:?}"
+        );
+    }
+}

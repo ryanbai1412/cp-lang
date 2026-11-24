@@ -2,28 +2,6 @@
 
 use super::*;
 
-/// The global a place is in, when it is in one.
-pub(crate) fn root_global(place: &Place) -> Option<usize> {
-    match &place.kind {
-        PlaceKind::Global(id) => Some(*id),
-        PlaceKind::Local(_) => None,
-        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
-            root_global(base)
-        }
-    }
-}
-
-/// The local a place is in, when it is in one.
-pub(super) fn root_local(place: &Place) -> Option<usize> {
-    match &place.kind {
-        PlaceKind::Local(slot) => Some(*slot),
-        PlaceKind::Global(_) => None,
-        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
-            root_local(base)
-        }
-    }
-}
-
 pub(super) fn leading_indices(place: &Place) -> usize {
     match &place.kind {
         PlaceKind::Global(_) | PlaceKind::Local(_) => 0,

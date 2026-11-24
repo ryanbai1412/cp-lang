@@ -973,7 +973,7 @@ impl<'a> Checker<'a> {
                 let mut out = Vec::new();
                 // `@memo(into: dp)`: the answers, indexed by the arguments,
                 // `none` where the fn has not been asked yet.
-                if let (Some((table, _)), Ty::Fn { params, ret }) = (memo_table(stmt), &ty) {
+                if let (Some((table, _)), Ty::Fn { params, ret }) = (stmt.memo_into(), &ty) {
                     out.push((
                         table.to_string(),
                         Def::Value {
@@ -1493,22 +1493,6 @@ impl<'a> Checker<'a> {
             factors,
         }
     }
-}
-
-/// Calls `f` with each name a pattern binds and the type it gets from a
-/// value of type `ty`.
-/// The table a `@memo(into: dp)` fn keeps its answers in: its name and
-/// where the name is written.
-pub(crate) fn memo_table(stmt: &ast::Stmt) -> Option<(&str, Span)> {
-    let memo = stmt.decorators.iter().find(|d| d.name.text == "memo")?;
-    memo.args
-        .iter()
-        .find_map(|arg| match (&arg.name, &arg.value.kind) {
-            (Some(label), ExprKind::Name(table)) if label.text == "into" => {
-                Some((table.as_str(), arg.value.span))
-            }
-            _ => None,
-        })
 }
 
 /// The name a type starts with: `Mod` for `Mod<P>`.

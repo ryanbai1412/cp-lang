@@ -15,7 +15,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Div | BinOp::Rem if b == 0 => {
                     return release::div_zero(
                         span,
-                        format!("division by zero: `{a} {} 0`", binop_sym(op)),
+                        format!("division by zero: `{a} {} 0`", op.text()),
                     )
                     .map(Value::Int)
                 }
@@ -55,7 +55,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 None => {
                     let why = format!(
                         "integer overflow: `{a} {} {b}` does not fit in an `Int` (64 bits)",
-                        binop_sym(op)
+                        op.text()
                     );
                     return release::overflow(span, why, release::wrapping(op, a, b))
                         .map(Value::Int);
@@ -68,7 +68,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Sub => a.checked_sub(b),
                 BinOp::Mul => a.checked_mul(b),
                 BinOp::Div | BinOp::Rem if b == 0 => {
-                    return trap(span, format!("division by zero: `{a} {} 0`", binop_sym(op)))
+                    return trap(span, format!("division by zero: `{a} {} 0`", op.text()))
                 }
                 BinOp::Div => a.checked_div_euclid(b),
                 BinOp::Rem => a.checked_rem_euclid(b),
@@ -98,7 +98,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                         span,
                         format!(
                             "integer overflow: `{a} {} {b}` does not fit in an `I128` (128 bits)",
-                            binop_sym(op)
+                            op.text()
                         ),
                     )
                 }
@@ -134,11 +134,8 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             BinOp::Sub => a.wrapping_sub(b),
             BinOp::Mul => a.wrapping_mul(b),
             BinOp::Div | BinOp::Rem if b == 0 => {
-                return release::div_zero(
-                    span,
-                    format!("division by zero: `{a} {} 0`", binop_sym(op)),
-                )
-                .map(Value::U64)
+                return release::div_zero(span, format!("division by zero: `{a} {} 0`", op.text()))
+                    .map(Value::U64)
             }
             BinOp::Div => a / b,
             BinOp::Rem => a % b,

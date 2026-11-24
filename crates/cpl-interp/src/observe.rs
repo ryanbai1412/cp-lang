@@ -5,7 +5,7 @@
 
 use crate::trace::{Recording, Tracer, View};
 use crate::Value;
-use crate::{leading_indices, relifetime, root_global, root_local, trace, Interp};
+use crate::{leading_indices, relifetime, trace, Interp};
 use cpl_diag::Span;
 use cpl_ir::{Place, PlaceKind, Stmt};
 
@@ -361,8 +361,8 @@ impl<O: Observer> Interp<'_, '_, O> {
         if !self.observed() {
             return;
         }
-        let Some(global) = root_global(place) else {
-            if let Some(slot) = root_local(place) {
+        let Some(global) = place.root_global() else {
+            if let Some(slot) = place.root_local() {
                 // A view or a reference writes through to what it names.
                 let through = matches!(
                     self.stack[self.base + slot],
@@ -402,7 +402,7 @@ impl<O: Observer> Interp<'_, '_, O> {
         if !self.observed() || self.assignments() {
             return false;
         }
-        let Some(id) = root_global(place) else {
+        let Some(id) = place.root_global() else {
             return false;
         };
         let depth = self.call_frames.len();
@@ -441,12 +441,12 @@ impl<O: Observer> Interp<'_, '_, O> {
     /// variable `place` is in, which was just given a value.
     /// `mut` work on `place` (`push`, `sort`, ...) is done: a step for it.
     pub(crate) fn trace_mutated(&mut self, place: &Place, span: Span) {
-        match root_global(place) {
+        match place.root_global() {
             Some(global) if self.observed() => {
                 self.traced(|tracer, view| tracer.mutated(global, view, span))
             }
             _ => {
-                if let Some(slot) = root_local(place) {
+                if let Some(slot) = place.root_local() {
                     self.trace_local(slot, span);
                 }
             }
@@ -459,9 +459,9 @@ impl<O: Observer> Interp<'_, '_, O> {
             return;
         }
         let span = place.span;
-        if let Some(id) = root_global(place) {
+        if let Some(id) = place.root_global() {
             self.traced(|tracer, view| tracer.assigned_global(view, span, id));
-        } else if let Some(slot) = root_local(place) {
+        } else if let Some(slot) = place.root_local() {
             self.trace_assigned_local(slot, span);
         }
     }

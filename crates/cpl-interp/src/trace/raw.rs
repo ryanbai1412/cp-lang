@@ -14,7 +14,7 @@ impl Tracer {
         if self.assignments || self.recording(depth) {
             return false;
         }
-        let Some(id) = crate::root_global(place).filter(|&id| self.visible[id]) else {
+        let Some(id) = place.root_global().filter(|&id| self.visible[id]) else {
             return false;
         };
         self.touch(id, None);

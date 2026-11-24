@@ -1693,7 +1693,7 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
             }
             StmtKind::Const { name, .. } => push(out, name, DeclKind::Value),
             StmtKind::Fn(f) => {
-                if let Some((table, span)) = crate::check::memo_table(stmt) {
+                if let Some((table, span)) = stmt.memo_into() {
                     out.push(Decl {
                         name: table.to_string(),
                         span,

@@ -52,7 +52,7 @@ mod value_domain;
 
 pub(crate) use impl_head::impl_file_head;
 pub(crate) use pattern::domain_binding;
-pub(crate) use types::{memo_table, own_domains, trait_impl_key, type_head};
+pub(crate) use types::{own_domains, trait_impl_key, type_head};
 
 use crate::def::Def;
 use crate::fx::HashMap;

@@ -3,7 +3,6 @@
 use std::backtrace::Backtrace;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -335,7 +334,7 @@ pub fn report(
     let _ = std::fs::remove_dir_all(&scratch);
 
     let redactor = Redactor::new(&extra_paths);
-    let gxx = gxx_version();
+    let gxx = cpl_judge::gxx_version().unwrap_or_else(|| "not found".to_string());
     let version_line = format!("cpl {VERSION} ({CHANNEL}, {GIT_COMMIT})");
     let os_arch = format!("{}/{}", std::env::consts::OS, std::env::consts::ARCH);
 
@@ -778,18 +777,6 @@ fn truncate_bytes(bytes: &[u8], limit: usize) -> (String, Option<String>) {
         bytes.len()
     );
     (shown, Some(note))
-}
-
-fn gxx_version() -> String {
-    Command::new("g++")
-        .arg("--version")
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .and_then(|s| s.lines().next().map(str::trim).map(ToString::to_string))
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "not found".to_string())
 }
 
 fn issue_title(source_name: &str, diff: Option<&DiffSummary>, is_ice: bool) -> String {

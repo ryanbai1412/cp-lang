@@ -775,7 +775,7 @@ fn made_by(program: &Program) -> BTreeMap<(FnId, usize), Made> {
                 lets.insert(*slot, maker.filter(|_| !again));
             }
             Stmt::Assign(place, _, _) => {
-                written.insert(place_root(place));
+                written.insert(place.root_local());
             }
             Stmt::For(_, slot, _, _) => {
                 written.insert(Some(*slot));
@@ -786,7 +786,7 @@ fn made_by(program: &Program) -> BTreeMap<(FnId, usize), Made> {
             ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
                 for arg in args {
                     if let Arg::Mut(place) = arg {
-                        written.insert(place_root(place));
+                        written.insert(place.root_local());
                     }
                 }
             }
@@ -798,7 +798,7 @@ fn made_by(program: &Program) -> BTreeMap<(FnId, usize), Made> {
                 }
             }
             ExprKind::Mutate(_, place, _) => {
-                written.insert(place_root(place));
+                written.insert(place.root_local());
             }
             _ => {}
         });
@@ -809,17 +809,6 @@ fn made_by(program: &Program) -> BTreeMap<(FnId, usize), Made> {
         }
     }
     out
-}
-
-/// The local a place writes into, if it is one.
-fn place_root(place: &cpl_ir::Place) -> Option<usize> {
-    match &place.kind {
-        PlaceKind::Local(slot) => Some(*slot),
-        PlaceKind::Global(_) => None,
-        PlaceKind::Field(base, _) | PlaceKind::Index(base, _) | PlaceKind::Some(base) => {
-            place_root(base)
-        }
-    }
 }
 
 fn place_base_ty(place: &cpl_ir::Place) -> &Ty {

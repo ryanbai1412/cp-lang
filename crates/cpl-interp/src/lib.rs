@@ -56,8 +56,7 @@ use cpl_ir::{Prim, Scalar};
 use input::Input;
 pub use input::More;
 use observe::Observer;
-pub(crate) use place::root_global;
-use place::{leading_indices, root_local};
+use place::leading_indices;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Write;
@@ -1335,7 +1334,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                 }
                 // Not a step of its own, as before: the next step shows it.
-                if let (Some(_), Some(tracer)) = (root_global(place), self.tracer.as_mut()) {
+                if let (Some(_), Some(tracer)) = (place.root_global(), self.tracer.as_mut()) {
                     tracer.globals_may_change();
                 }
                 Value::Unit
@@ -1814,25 +1813,6 @@ fn bits64(value: &Value) -> u64 {
 }
 
 const LENT: &str = "this variable is being changed by a call that has not returned yet";
-
-fn binop_sym(op: BinOp) -> &'static str {
-    match op {
-        BinOp::Add => "+",
-        BinOp::Sub => "-",
-        BinOp::Mul => "*",
-        BinOp::Div => "/",
-        BinOp::Rem => "%",
-        BinOp::Pow => "**",
-        BinOp::BitAnd => "&",
-        BinOp::BitOr => "|",
-        BinOp::BitXor => "^",
-        BinOp::Shl => "<<",
-        BinOp::Shr => ">>",
-        BinOp::And => "and",
-        BinOp::Or => "or",
-        BinOp::Coalesce => "??",
-    }
-}
 
 /// A domain for a message: `1..=5`, or that it is empty.
 pub(crate) fn describe(lo: i64, len: i64) -> String {

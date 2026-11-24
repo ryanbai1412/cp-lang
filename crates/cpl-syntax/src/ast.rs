@@ -124,6 +124,20 @@ impl Stmt {
         }
         rhs.bare_try().map(|_| e.span)
     }
+
+    /// The table a `@memo(into: dp)` fn keeps its answers in: its name and
+    /// where the name is written.
+    pub fn memo_into(&self) -> Option<(&str, Span)> {
+        let memo = self.decorators.iter().find(|d| d.name.text == "memo")?;
+        memo.args
+            .iter()
+            .find_map(|arg| match (&arg.name, &arg.value.kind) {
+                (Some(label), ExprKind::Name(table)) if label.text == "into" => {
+                    Some((table.as_str(), arg.value.span))
+                }
+                _ => None,
+            })
+    }
 }
 
 /// `T: Ord + Bounded`, from a type parameter list or a `where` clause.
@@ -771,6 +785,17 @@ pub struct Pattern {
 }
 
 impl Pattern {
+    /// A capitalized name alone, `L` or `MOD`, which parses as a variant
+    /// with no arguments: the name.
+    pub fn bare_variant(&self) -> Option<&str> {
+        match &self.kind {
+            PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
+                Some(&path[0].text)
+            }
+            _ => None,
+        }
+    }
+
     /// The patterns directly inside a tuple, variant or record pattern.
     pub fn parts(&self) -> Box<dyn Iterator<Item = &Pattern> + '_> {
         match &self.kind {
@@ -1039,5 +1064,29 @@ impl Clone for Type {
             kind: self.kind.clone(),
             span: self.span,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn memo_into_names_the_table_and_bare_variant_a_capitalized_name() {
+        let s: Vec<Stmt> = crate::parse_file(
+            "@memo(into: dp)\nfn f(i: Int) -> Int:\n    return i\nlet MOD = 5\nlet m = 5\n",
+        )
+        .items
+        .into_iter()
+        .flat_map(|(_, item)| item.stmts)
+        .collect();
+        assert_eq!(s[0].memo_into().map(|(t, _)| t), Some("dp"));
+        assert_eq!(s[1].memo_into(), None);
+        let pat = |s: &Stmt| match &s.kind {
+            StmtKind::Let { pat, .. } => pat.bare_variant().map(str::to_string),
+            _ => panic!("a let"),
+        };
+        assert_eq!(pat(&s[1]), Some("MOD".to_string()));
+        assert_eq!(pat(&s[2]), None);
     }
 }

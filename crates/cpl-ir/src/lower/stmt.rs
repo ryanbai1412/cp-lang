@@ -930,7 +930,7 @@ impl<'a> Lowerer<'a> {
             }
             ast::StmtKind::Fn(decl) if !self.at_top_level() => {
                 let memo = stmt.decorators.iter().any(|d| d.name.text == "memo");
-                let into = super::memo::into_table(stmt);
+                let into = stmt.memo_into().map(|(table, _)| table);
                 if let Some(table) = into {
                     self.memo_into_table(table, decl, out);
                 }
@@ -938,7 +938,7 @@ impl<'a> Lowerer<'a> {
             }
             // Top-level declarations were handled by `collect_all`.
             ast::StmtKind::Fn(decl) => {
-                if let Some(table) = super::memo::into_table(stmt) {
+                if let Some(table) = stmt.memo_into().map(|(table, _)| table) {
                     self.memo_into_table(table, decl, out);
                 }
             }

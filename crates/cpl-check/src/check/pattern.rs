@@ -78,10 +78,7 @@ pub(crate) fn typed_pattern(
 pub(crate) fn domain_binding(pat: &ast::Pattern) -> Option<&str> {
     match &pat.kind {
         ast::PatternKind::Domain(name) => Some(&name.text),
-        ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
-            Some(&path[0].text)
-        }
-        _ => None,
+        _ => pat.bare_variant(),
     }
 }
 
