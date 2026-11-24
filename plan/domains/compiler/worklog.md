@@ -2,6 +2,9 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-24
+- 2026-11-24 (for std-unshadow, on devin/generic-in): the method pick is arity-aware in one place. `pick_method_for` keeps, of the candidates the receiver fits alike, those the positional count fits (`takes_count`), and `past_builtin_row` asks it with the call's args, so a file's `fn contains(self: [0..2]Int, i, x)` beside std's one-arg `contains` is the call in check and in lowering (it goes past the built-in row to the UFCS call). The separate Ambiguous arm in `method_form_call` is gone. Case: core-05/a-free-fn-named-like-a-builtin-method-is-callable (E0303 on the branch before). std-search/real-bsearch-is-a-range-method is red on 3d26dff84 before and after.
+
 ## 2026-11-23
 - 2026-11-23 landed (from site): the outline drops the doc lines again (they cost 55 KB gz of the 113 KB lazy-std freed). A completion item from a std module not given yet carries `data: {module, owner?}`; the LSP now resolves completion items (`completionItem/resolve`), and once the host has given that module the reply carries the item's full docs. Test: lazy_std.rs.
 - 2026-11-23 landed (from parent and site): a std module that hasn't been given reads as its outline until it is. The check still reports E0206 and `needs`, and hover, completion (including `.` methods: `m.is_some_and`, `xs.sorted().scan`) and types use the outline's signatures. The outline also keeps each item's first `///` line just above the item, so hover shows it. That costs about 55 KB gz: the lazy cpl.wasm is 1,817,929 B gz, 57 KB under the cap. Tests: lazy_std.rs (hover and `.` completion before the module is given), outline doc placement. bfs_named_product in wasm was already fixed by 80eb62d81. Open: cut_beside_walk_order.cp (b3501f224) fails with E0301 natively and in wasm on main.

@@ -154,6 +154,13 @@ impl Checker<'_> {
             .collect();
         let mut beaten = beaten.into_iter();
         fit.retain(|_| !beaten.next().unwrap_or(false));
+        // Of candidates the receiver fits alike, those the argument count fits.
+        if let Some(args) = args.filter(|_| fit.len() > 1) {
+            let given = args.iter().filter(|a| a.name.is_none()).count();
+            if fit.iter().any(|(_, d)| takes_count(d, given)) {
+                fit.retain(|(_, d)| takes_count(d, given));
+            }
+        }
         match fit.len() {
             0 => Pick::NoFit,
             1 => {
@@ -304,23 +311,6 @@ impl<'a> Checker<'a> {
         }
         let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
             Pick::NoFit => self.pick_method(&base_ty, &name.text),
-            pick => pick,
-        };
-        // Of candidates the receiver fits alike, the one the arguments fit is the call.
-        let pick = match pick {
-            Pick::Ambiguous(keys) => {
-                let mut takes: Vec<(String, Arc<Def>)> = (self.method_candidates(&name.text))
-                    .into_iter()
-                    .filter(|(k, d)| keys.contains(k) && takes_count(d, args.len()))
-                    .collect();
-                match takes.len() {
-                    1 => {
-                        let (key, def) = takes.pop().unwrap_or_else(|| unreachable!());
-                        Pick::One(key, def)
-                    }
-                    _ => Pick::Ambiguous(keys),
-                }
-            }
             pick => pick,
         };
         let key = match &pick {
@@ -541,7 +531,11 @@ impl Checker<'_> {
             return false;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
+        let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
+            Pick::NoFit => self.pick_method(&base_ty, &name.text),
+            pick => pick,
+        };
+        let Pick::One(_, def) = pick else {
             return false;
         };
         let params = row_params(row.params);
