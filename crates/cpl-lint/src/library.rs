@@ -1061,7 +1061,10 @@ fn fill(
             let delimited = ((labelled
                 || matches!(before, Some(K::LParen | K::LBracket | K::Comma) | None))
                 && matches!(after, Some(K::RParen | K::RBracket | K::Comma) | None))
-                || (before == Some(K::Eq) && after.is_none());
+                || (before == Some(K::Eq) && after.is_none())
+                || (before == Some(K::LBracket)
+                    && after == Some(K::For)
+                    && !clauses(m.trim_matches(['(', ')'])));
             let inner = m
                 .strip_prefix('(')
                 .and_then(|m| m.strip_suffix(')'))
@@ -1105,6 +1108,20 @@ fn balanced(s: &str) -> bool {
 }
 
 /// No operator outside brackets: `xs[i].len`, `f(a + b)`, `3`.
+/// Whether `src` has a `for`, `if` or `=>` outside brackets, which would
+/// run on into a comprehension's `for` (`[e for i in r]`).
+fn clauses(src: &str) -> bool {
+    let mut depth = 0;
+    library_lint::tokens(src).iter().any(|t| {
+        match t.kind {
+            K::LParen | K::LBracket => depth += 1,
+            K::RParen | K::RBracket => depth -= 1,
+            _ => {}
+        }
+        depth == 0 && matches!(t.kind, K::For | K::If | K::FatArrow)
+    })
+}
+
 fn atomic(src: &str) -> bool {
     let mut depth = 0;
     library_lint::tokens(src).iter().all(|t| {

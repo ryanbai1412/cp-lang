@@ -236,7 +236,9 @@ library or by this spec:
   `let x = s.pop()!`, declared on `last`), its fix titled "drop `f`". A hole
   that `from` evaluates once per item of a comprehension (anywhere in its
   brackets but its first `for`'s iterable) and `to` evaluates once matches
-  only code that calls nothing. A compound `to` runs its right side before the
+  only code that calls nothing. A hole `to` writes as a comprehension's
+  item (`[e for i in 0..n]`) takes the code bare unless it has its own
+  `for`, `if` or `=>`. A compound `to` runs its right side before the
   place's indices, so then every hole matches only code that calls
   nothing. A hole whose parameter is written
   as a scalar type (`Int`, `I128`, `U64`, `F64`, `Bool`, `Char`, `Str`)

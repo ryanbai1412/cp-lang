@@ -771,3 +771,28 @@ fn a_no_fix_lint_reports_in_the_program_s_fn_of_its_name() {
         .collect();
     assert_eq!(found.len(), 1, "{found:?}");
 }
+
+/// A hole `to` writes as a comprehension's item, `[e for i in 0..n]`, takes
+/// the matched code bare, as the brackets delimit it; code that has its own
+/// `for`, `if` or `=>` keeps its parentheses. Rule: R06.4.9.
+#[test]
+fn a_comprehension_item_hole_takes_its_code_bare() {
+    let decl = "@lint(table_by_hand, from: \"for i in 0..n:\\n    p[i + 1] = p[i] + e\", to: \"p = table([e for i in 0..n])\", holes: \"n, p, e\")\npub fn table(xs: List<Int>) -> List<Int> = xs\n";
+    let fixed = |e: &str| {
+        let src = format!("{decl}let a = [1, 2]\nvar p = [0, 0, 0]\nfor i in 0..2:\n    p[i + 1] = p[i] + {e}\nprint(p)\n");
+        let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "table_by_hand")
+            .collect();
+        let (text, _) = cpl_diag::splice_fixes(&src, &found);
+        text[decl.len()..]
+            .lines()
+            .nth(2)
+            .unwrap_or_default()
+            .to_string()
+    };
+    assert_eq!(fixed("a[i] * 2"), "p = table([a[i] * 2 for i in 0..2])");
+    assert_eq!(
+        fixed("(if a[i] > 1: a[i] else: 0)"),
+        "p = table([(if a[i] > 1: a[i] else: 0) for i in 0..2])"
+    );
+}
