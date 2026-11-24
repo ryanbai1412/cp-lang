@@ -60,6 +60,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0319 | growing_instantiation | `wrap` calls itself at a type that grows on every call: `wrap<Int>` needs `wrap<List<Int>>`, and so on without end; a generic fn is compiled once per type, so recurse at the same type or keep the growing part in a value of one fixed type (R08.2.10) |
 | E0320 | int_index_on_cut_table | `pre[k]`: an `Int` index into a cut table can't say position or cut; write `pre.cut(k)` for the fold of the first `k`, or index by a typed cut or position (R07.1.6) |
 | E0321 | negative_literal_index *(0.3)* | `a[-1]`: keys never wrap; the last element is `a.last!`, the `k`-th from the end `a[a.len - k]` (R07.2.17) |
+| E0322 | recursive_field | `l: ?N` stores `N` inside `N` itself, so its size would never end; keep the nodes in a `var nodes = PArena<N>()` from `std.persistent` and link them by handle, `?Id<N>`, or hold them in a `List<N>` (R03.2.9) |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | `a` is a `let`, so it can't be passed as `mut` |

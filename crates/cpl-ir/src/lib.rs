@@ -317,6 +317,15 @@ impl Ty {
 
     /// True when values of this type can be compared with `==` and `<` in C++.
     pub fn is_comparable(&self, program: &Program) -> bool {
+        self.comparable_in(program, &mut Vec::new())
+    }
+
+    /// `seen` holds the structs and enums being walked: a type that holds itself
+    /// (`kids: List<N>`) is comparable when the rest of it is.
+    fn comparable_in(&self, program: &Program, seen: &mut Vec<(bool, usize)>) -> bool {
+        let all = |ts: Vec<&Ty>, seen: &mut Vec<(bool, usize)>| {
+            ts.into_iter().all(|t| t.comparable_in(program, seen))
+        };
         match self {
             Ty::Fn(..) | Ty::DomainVal | Ty::HashMap(..) | Ty::HashSet(_) => false,
             Ty::Opt(t)
@@ -325,19 +334,34 @@ impl Ty {
             | Ty::Keyed(t, _)
             | Ty::MutView(t, _)
             | Ty::Set(t)
-            | Ty::Range(t) => t.is_comparable(program),
-            Ty::Array { elem, .. } => elem.is_comparable(program),
-            Ty::Map(k, v) => k.is_comparable(program) && v.is_comparable(program),
-            Ty::Tuple(ts) => ts.iter().all(|t| t.is_comparable(program)),
-            Ty::Record(fs) => fs.iter().all(|(_, t)| t.is_comparable(program)),
-            Ty::Struct(id) => program.structs[*id]
-                .fields
-                .iter()
-                .all(|(_, t)| t.is_comparable(program)),
-            Ty::Enum(id) => program.enums[*id]
-                .variants
-                .iter()
-                .all(|(_, fs)| fs.iter().all(|t| t.is_comparable(program))),
+            | Ty::Range(t) => t.comparable_in(program, seen),
+            Ty::Array { elem, .. } => elem.comparable_in(program, seen),
+            Ty::Map(k, v) => k.comparable_in(program, seen) && v.comparable_in(program, seen),
+            Ty::Tuple(ts) => all(ts.iter().collect(), seen),
+            Ty::Record(fs) => all(fs.iter().map(|(_, t)| t).collect(), seen),
+            Ty::Struct(id) | Ty::Enum(id) => {
+                let key = (matches!(self, Ty::Enum(_)), *id);
+                if seen.contains(&key) {
+                    return true;
+                }
+                seen.push(key);
+                let ok = match self {
+                    Ty::Struct(_) => all(
+                        program.structs[*id].fields.iter().map(|(_, t)| t).collect(),
+                        seen,
+                    ),
+                    _ => all(
+                        program.enums[*id]
+                            .variants
+                            .iter()
+                            .flat_map(|(_, fs)| fs.iter())
+                            .collect(),
+                        seen,
+                    ),
+                };
+                seen.pop();
+                ok
+            }
             _ => true,
         }
     }

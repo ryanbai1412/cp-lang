@@ -37,6 +37,14 @@ impl Env for FileCtx<'_> {
         self.scope.names.get(name).copied()
     }
 
+    fn declares_type(&mut self, name: &str) -> bool {
+        let Some(k) = self.decl_order(name) else {
+            return false;
+        };
+        let first = self.items[k].parsed.stmts.first().map(|s| &s.kind);
+        matches!(first, Some(StmtKind::Struct(_) | StmtKind::Enum(_)))
+    }
+
     fn lent_before(&mut self) -> Vec<Replay> {
         let fingerprint = self.replays_fingerprint();
         self.record(DEP_LENT, fingerprint);

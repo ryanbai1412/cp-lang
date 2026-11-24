@@ -133,7 +133,7 @@ impl<'a> Checker<'a> {
     }
 
     /// 0.3 writes `enum Dir = N | E`; `enum Dir: N, E` is gone.
-    fn no_comma_variants(&mut self, variants: &[cpl_syntax::ast::Variant]) {
+    pub(super) fn no_comma_variants(&mut self, variants: &[cpl_syntax::ast::Variant]) {
         for pair in variants.windows(2) {
             let (a, b) = (&pair[0].name, &pair[1].name);
             if !pair[0].fields.is_empty() || pair[0].value.is_some() || pair[1].tag.is_some() {
@@ -1254,7 +1254,7 @@ impl<'a> Checker<'a> {
                     args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
                 let body = self.enter_body(&generics, self_ty.clone());
-                self.no_comma_variants(&e.variants);
+                self.enum_decl_rules(e);
                 self.enum_tags(stmt, e);
                 for variant in &e.variants {
                     let fields: Vec<Ty> = variant

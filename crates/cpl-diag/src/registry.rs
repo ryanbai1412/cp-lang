@@ -772,6 +772,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0322"),
+        title: "Field that stores its own type",
+        summary: "A struct or enum field holds the type itself by value, directly or through an optional, tuple or other struct.",
+        explanation: "A struct or enum stores its fields inside it, so a field `l: ?N` in `N` would make every `N` hold another `N`, without end. Keep the nodes in a `var nodes = PArena<N>()` from `std.persistent` and link them by handle, `l: ?Id<N>`, or hold them in a `List<N>`, which stores its elements apart.",
+        trigger: "struct N:\n    k: Int\n    l: ?N\nprint(N(1, None).k)\n",
+        fix: "struct N:\n    k: Int\n    kids: List<N>\nprint(N(1, []).k)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

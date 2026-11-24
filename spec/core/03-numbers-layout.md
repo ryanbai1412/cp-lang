@@ -212,6 +212,15 @@ observes addresses, so reordering never changes behaviour, and it only
 removes padding. A struct passed to `@cpp` code keeps declaration order,
 since C++ would see the storage. `cpl explain` shows the storage order. (R03.2.8, permits)
 
+### A value never holds itself
+
+A struct or enum stores its fields inline, so no field may hold the type
+itself by value: not directly, not as `?N`, and not through a tuple, record,
+array or other struct that does (E0322). `l: ?N` in `N` would make every `N`
+hold another `N`. Link nodes by handle instead: keep them in a
+`var nodes = PArena<N>()` from `std.persistent` and store `l: ?Id<N>`, or
+hold them in a `List<N>`, which stores its elements apart. (R03.2.9)
+
 ### Cache layout
 
 Width is half of cache behaviour; layout is the other half. The defaults

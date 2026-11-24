@@ -166,6 +166,8 @@ pub mod codes {
     pub const GROWING_INSTANTIATION: Code = Code("E0319");
     /// `pre[k]` with an `Int` `k` into a cut table on `Int` keys (R07.1.6, decision 507).
     pub const INT_INDEX_ON_CUT_TABLE: Code = Code("E0320");
+    /// A struct or enum field that stores the type itself (`l: ?N` in `N`).
+    pub const RECURSIVE_FIELD: Code = Code("E0322");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");

@@ -1,0 +1,37 @@
+error[E0322]: `l: ?N` stores `N` inside `N` itself, so its size would never end
+  --> a_struct_or_enum_that_holds_itself_never_ends.cp:3:8
+  |
+1 | struct N:
+  |        - `N` is declared here
+3 |     l: ?N
+  |        ^^
+  = help: keep the nodes in a `var nodes = PArena<N>()` from `std.persistent` and link them by handle, `?Id<N>`, or hold them in a `List<N>` (R03.2.9)
+
+error[E0322]: `b: ?(Int, B)` stores `A` inside `A` itself, so its size would never end
+  --> a_struct_or_enum_that_holds_itself_never_ends.cp:5:8
+  |
+4 | struct A:
+  |        - `A` is declared here
+5 |     b: ?(Int, B)
+  |        ^^^^^^^^^
+  = help: keep the nodes in a `var nodes = PArena<A>()` from `std.persistent` and link them by handle, `?Id<A>`, or hold them in a `List<A>` (R03.2.9)
+
+error[E0322]: `a: A` stores `B` inside `B` itself, so its size would never end
+  --> a_struct_or_enum_that_holds_itself_never_ends.cp:7:8
+  |
+6 | struct B:
+  |        - `B` is declared here
+7 |     a: A
+  |        ^
+  = help: keep the nodes in a `var nodes = PArena<B>()` from `std.persistent` and link them by handle, `?Id<B>`, or hold them in a `List<B>` (R03.2.9)
+
+error[E0322]: `l: T` stores `T` inside `T` itself, so its size would never end
+  --> a_struct_or_enum_that_holds_itself_never_ends.cp:10:13
+   |
+ 8 | enum T:
+   |      - `T` is declared here
+10 |     Node(l: T, r: List<T>)
+   |             ^
+   = help: keep the nodes in a `var nodes = PArena<T>()` from `std.persistent` and link them by handle, `?Id<T>`, or hold them in a `List<T>` (R03.2.9)
+
+a_struct_or_enum_that_holds_itself_never_ends.cp: 4 errors

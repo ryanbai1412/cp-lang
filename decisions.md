@@ -8801,6 +8801,10 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** Ryan's call 5: a library keeps no hidden module-level state, so a pool is a value the user declares, and one declared in a `@!multitest` case is fresh per case. A struct cannot hold itself by value (`?N` fields are a check error pointing here), and a pool owned by each value would copy on every update.
 - **Reverse.** Give each persistent value its own node list, at \(O(n)\) per update.
 
-## 520. (reserved, compiler)
+## 520. A struct or enum that holds itself by value is E0322 (compiler, 2026-11-24)
+
+- **Call.** A struct or enum field that holds the type itself by value, directly (`l: N`), as `?N`, or through a tuple, record, array or another struct that does, is E0322 at the field; the help names `std.persistent.PArena` and `?Id<N>` handles (R03.2.9). `List<N>` and `?Id<N>` fields stay valid. Ryan's call 5.
+- **Why.** Fields are stored inline (decision 519 keeps nodes in a pool the caller holds), so `l: ?N` would make every `N` hold another `N`: `cpl build` overflowed the compiler's stack and the C++ it emitted did not compile. A pointer-boxed `?N` would be a hidden allocation per node.
+- **Reverse.** Box a self-holding field behind a pointer and drop E0322.
 
 ## 521. (reserved, content)

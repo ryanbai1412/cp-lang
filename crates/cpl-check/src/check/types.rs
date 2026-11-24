@@ -403,6 +403,10 @@ impl<'a> Checker<'a> {
             });
             return self.def_type(&def, lookup_name, span, args);
         }
+        if self.env.declares_type(name) {
+            let name = name.to_string();
+            return Ty::Named { name, args };
+        }
         if let Some(replacement) = renamed_prefix_name(name) {
             let msg = format!("`{name}` was replaced by `{replacement}`");
             if let Some(diag) = self.error(codes::UNKNOWN_TYPE, span, msg) {

@@ -110,6 +110,11 @@ pub(crate) trait Env {
     fn decl_order(&mut self, _name: &str) -> Option<usize> {
         None
     }
+    /// True if this file declares `name` as a struct or enum, even while its
+    /// definition is being computed (`struct A: b: ?B` inside `B`'s fields).
+    fn declares_type(&mut self, _name: &str) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Debug)]
