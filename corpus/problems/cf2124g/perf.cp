@@ -1,7 +1,7 @@
 // Codeforces 2124 G: Maximise Sum, tuned.
 // port.cp's algorithm with orig.cpp's layout: one `mins` row and one suffix
 // sum row, rewritten in place over each prefix-minimum block and restored
-// after it, instead of four new lists per block (`scan`, `suffix_fold` and
+// after it, instead of four new lists per block (`scan`, `rev.scan` and
 // two re-indexed copies), which cost a malloc each when every block is one
 // element long. The candidate count `k` walks down the block once per block.
 

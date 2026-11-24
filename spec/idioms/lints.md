@@ -165,7 +165,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | diff_array_by_hand | `d[l] += v; d[r + 1] -= v` then scan | `Diff` / `SweepAdd` | fix | #1 | loop |
 | arith_diff_by_hand | second-order difference for arithmetic adds | `ArithDiff` | fix? | #1 | loop |
 | scan_loop | running max/min/gcd stored per index | `xs.scan(op)` | fix | #2 | loop |
-| suffix_loop | backwards running fold | `suffix_fold` / `xs.rev.scan(op)` | fix | #2 | loop |
+| suffix_loop | backwards running fold | `xs.rev.scan(op)` | fix | #2 | loop |
 | record_highs_loop | "new maximum so far" filter | `xs.record_highs()` | fix | #1 | loop |
 | sliding_deque | monotone deque for window min/max | `xs.windows(k).fold(min)` / `Window(op)` | fix? | #1 | loop |
 | refold_window | window re-folded at every position | `windows(k).fold(op)` (O(n) total) | fix? | #10 | loop |

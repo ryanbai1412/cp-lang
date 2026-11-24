@@ -8,7 +8,6 @@
 //   scan gives bad_l). Cute subarrays are the union of rectangles
 //   [bad_l[i]+1..=i] x [i..bad_r[i]]; subtracting adjacent overlaps counts each once. O(n).
 
-use std.prefix.{suffix_fold}
 
 @!multitest
 let n: 1..=200_000 = read()
@@ -27,7 +26,7 @@ fn first_bad(xs: [Pos]Int) -> [Pos]Int:
             cur[Pos(min(x.pos, y.pos))] min= i.ord
         lo.push((v, i.ord))
         hi.push((v, i.ord))
-    let suf = suffix_fold(min, cur)
+    let suf = cur.rev.scan(min)
     [Pos] i => suf[i.l]
 
 let bad_r = first_bad([Pos] i => a[i])

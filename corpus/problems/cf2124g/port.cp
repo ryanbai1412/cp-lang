@@ -10,7 +10,6 @@
 //   from suffix sums, and stop once a[i] + a[j] reaches the cap pref_min[i - 1]. The walks
 //   telescope to O(n) steps, O(n log n) in all.
 
-use std.prefix.{suffix_fold}
 
 @!multitest
 let n: 1..=1_000_000 = read()
@@ -19,12 +18,12 @@ let a: [Pos]0..=2_000_000 = read()
 
 let pm = a.scan(min)
 let pref_min = [Pos] i => pm.cut(i.ord + 1)
-let os = suffix_fold(+, pref_min)
+let os = pref_min.rev.scan(+)
 let orig_suff = [Pos] p => os[p.l]
 let base_ans = orig_suff[Pos.first!]
 
 // Strict suffix maxima in reverse order; `suffix_max_pos.last!` is the global max.
-let sm = suffix_fold(max, a)
+let sm = a.rev.scan(max)
 let suff_max = [Pos] p => sm[p.l]
 let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.next!]]
 let top_val = a[suffix_max_pos.last!]
@@ -42,7 +41,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
     domain Blk = 0..blk_len
     let lm = ([Blk] t => if t == Blk.first: cap else: a[i.offset(t.ord)!]).scan(min)
     let lifted = [Blk] t => lm.cut(t.ord + 1)
-    let ls = suffix_fold(+, lifted)
+    let ls = lifted.rev.scan(+)
     let lifted_suff = [Blk] t => ls[t.l]
 
     for pos in suffix_max_pos if pos > i:
@@ -58,5 +57,5 @@ for i in Pos.rev if pref_min[i] == a[i]:
 
     next_min = Some(i)
 
-let sa = suffix_fold(max, ans)
-print([sa[i] for i in 0..n])
+let sa = ans.rev.scan(max)
+print([sa.cut(i) for i in 0..n])

@@ -11,7 +11,6 @@
 //   the next element lies in i+1 ..< need_suf[i], a window kept as a running sum `tot` while
 //   scanning i down. The buckets total sum ceil(n / k) = O(n log n).
 
-use std.prefix.{suffix_fold}
 
 const MOD = 1e9 + 7
 type Z = Mod<MOD>
@@ -26,7 +25,7 @@ for i in 1..=n:
     diff[min(n, a[i] * i)] += 1
     diff[min(n, a[i] * i + i)] -= 1
 let cover = prefix(diff)
-let need_suf = suffix_fold(min, need)
+let need_suf = need.rev.scan(min)
 
 var ways: [0..=n]Z = 0
 ways[n] = 1
@@ -36,7 +35,7 @@ for i in (0..n).rev:
     if cover.cut(i + 1) == 0:
         ways[i] = tot
         tot += ways[i]
-    while hi > need_suf[i]:
+    while hi > need_suf.cut(i):
         hi -= 1
         tot -= ways[hi]
 print(tot)

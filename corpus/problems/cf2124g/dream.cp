@@ -29,7 +29,6 @@
 //   over all prefix minima telescopes to `a[0] - pref_min[n - 1] <= 2n`, so
 //   the inner loop runs O(n) times total (`O(n log n)` with binary search).
 
-use std.prefix.{suffix_fold}
 
 @!multitest
 let n: 1..=1_000_000 = read()
@@ -38,11 +37,11 @@ let a: [Pos]0..=2_000_000 = read()
 
 let pm = a.scan(min)
 let pref_min = [Pos] i => pm.cut(i.ord + 1)
-let orig_suff = suffix_fold(+, pref_min)
+let orig_suff = pref_min.rev.scan(+)
 let base_ans = orig_suff[Pos.first!.l]
 
 // Strict suffix maxima in reverse order; `suffix_max_pos.last!` is the global max.
-let suff_max = suffix_fold(max, a)
+let suff_max = a.rev.scan(max)
 let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.next!.l]]
 let top_val = a[suffix_max_pos.last!]
 
@@ -59,7 +58,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
     domain Blk = 0..blk_len
     let lm = ([Blk] t => if t == Blk.first: cap else: a[i.offset(t.ord)!]).scan(min)
     let lifted = [Blk] t => lm.cut(t.ord + 1)
-    let lifted_suff = suffix_fold(+, lifted)
+    let lifted_suff = lifted.rev.scan(+)
 
     for pos in suffix_max_pos if pos > i:
         let cur_cap = min(cap, ai + a[pos])
@@ -74,5 +73,5 @@ for i in Pos.rev if pref_min[i] == a[i]:
 
     next_min = Some(i)
 
-let sa = suffix_fold(max, ans)
-print([sa[i] for i in 0..n])
+let sa = ans.rev.scan(max)
+print([sa.cut(i) for i in 0..n])

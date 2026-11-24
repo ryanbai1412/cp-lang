@@ -33,10 +33,9 @@ fn first_bad(xs: [Pos]Int) -> [Pos]Int:
             cur[Pos(min(x.pos, y.pos))] min= i.ord
         lo.push((v, i.ord))
         hi.push((v, i.ord))
-    let suf = suffix_fold(min, cur)
+    let suf = cur.rev.scan(min)
     [Pos] i => suf[i.l]
 
-use std.prefix.{suffix_fold}
 
 @!multitest
 let n: 1..=200_000 = read()

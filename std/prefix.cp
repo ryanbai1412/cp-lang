@@ -532,28 +532,6 @@ pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
         p[i.r] = acc
     p
 
-/// Suffix monoid folds of `a`, indexed by `Cut<D>`: `s[b]` is the fold of `b..`,
-/// with `s[D.cuts.nth(D.count)] == m.id`. With `prefix_fold`, the fold outside `r` is
-/// `m.op(pref[r.start], suff[r.end])`. \(O(n)\).
-///
-/// Each suffix keeps the elements' left-to-right order, `s[c] == op(a[c.r], s[c.next])`, so
-/// `op` need not be commutative.
-///
-/// cost: \(O(n)\) calls of `op`; \(O(n)\) space
-/// empty: one cut, holding the identity
-/// order: keyed by `D.cuts`; each entry folds left to right
-/// traps: never (beyond what `op` traps on)
-/// example: `suffix_fold(*, [2, 3, 4])[1] == 12`
-/// example: `suffix_fold(*, [2, 3, 4])[3] == 1`
-pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
-    let m = Monoid<T>.of(op)
-    var s: [D.cuts]T = m.id
-    var acc = m.id
-    for i in D.rev:
-        acc = m.op(a[i], acc)
-        s[i.l] = acc
-    s
-
 /// Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.
 /// \(O(1)\) range/rectangle `add`, \(O(\lvert D \rvert)\) or \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
 pub struct Diff<D, T: Add + Sub>:
@@ -797,7 +775,7 @@ fn prefix_and_suffix_folds_cover_outside_ranges():
     domain V = 1..=8
     let a = [V] _ => rand(-15, 15)
     let pref = prefix_fold(max, a)
-    let suff = suffix_fold(max, a)
+    let suff = Prefix<V, Int>.of_rev_scan(a, max, None)
     for l in V:
         for r in l..=V.last!:
             let range = l..=r
@@ -904,10 +882,10 @@ fn scan_folds_every_prefix():
 fn suffix_scan_matches_right_to_left_fold():
     domain V = 1..=4
     let a = [V] i => [2, 3, 5, 7][i.ord]
-    let sf = suffix_fold(*, a)
+    let sf = Prefix<V, Int>.of_rev_scan(a, *, None)
     assert [sf[c] for c in V.cuts] == [210, 105, 35, 7, 1]
     let p = a.scan(+)
-    let sp = suffix_fold(+, a)
+    let sp = Prefix<V, Int>.of_rev_scan(a, +, None)
     for c in V.cuts: assert p.suffix(c) == sp[c]
 
 @test
