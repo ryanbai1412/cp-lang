@@ -1,4 +1,5 @@
 // Source: CTSC 2004 (Network Upgrade), https://dmoj.ca/problem/ctsc04p4
+// limits: 10000 ms, 128 MB
 // Problem: a tree of n <= 400 switches with link lengths below 20000 and upgrade costs c_i.
 //   Upgrade 1 to p switches to cores; the cost is the sum of their c_i plus, for every other
 //   switch, the distance to its nearest core. Print the least cost, then the fewest cores that
@@ -31,6 +32,7 @@ fn staircase(best: [0..=extra]?Int) -> Steps:
 
 fn plan(u: Switch) -> [Switch]Steps:
     let kids = tree.children(u).sorted(by: c => desc(tree.size(c)))
+    let near = Switch.sort(by: a => dist[u, a])
     let kid_plans = [(c, plan(c)) for c in kids]
     let alone: [Switch]Steps = [Switch] v =>
         var best: [0..=extra]?Int = None
@@ -48,7 +50,7 @@ fn plan(u: Switch) -> [Switch]Steps:
         staircase(best)
     var out: [Switch]Steps = []
     var closer: [0..=extra]?Int = None
-    for a in Switch.sort(by: a => dist[u, a]):
+    for a in near:
         var at_a: [0..=extra]?Int = None
         for s in alone[a]: at_a[s.cores] = s.cost
         for j in 1..=extra: at_a[j] min= at_a[j - 1]
