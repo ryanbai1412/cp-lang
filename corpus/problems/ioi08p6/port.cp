@@ -21,17 +21,15 @@ let boxes: [p](x0: 1..=m, y0: 1..=n, x1: 1..=m, y1: 1..=n, cost: 1..=7000) = rea
 fn cheapest(k: Int) -> Int:
     domain X = 1..=m - k + 1  // where the base's lowest corner can be
     domain Y = 1..=n - k + 1
-    var starts: [X]List<(lo: Y, hi: Y, cost: Int)> = []
-    var stops: [X]List<(lo: Y, hi: Y, cost: Int)> = []
+    var events: [X]List<(lo: Y, hi: Y, add: -7000..=7000)> = []
     for b in boxes:
-        let span = (lo: Y(max(b.y0 - k + 1, 1)), hi: Y(min(b.y1, n - k + 1)), cost: b.cost)
-        starts[X(max(b.x0 - k + 1, 1))].push(span)
-        if let after = X.at(b.x1 + 1): stops[after].push(span)
+        let (lo, hi) = (Y(max(b.y0 - k + 1, 1)), Y(min(b.y1, n - k + 1)))
+        events[X(max(b.x0 - k + 1, 1))].push((lo, hi, b.cost))
+        if let after = X.at(b.x1 + 1): events[after].push((lo, hi, -b.cost))
     var cost = SegTree<Y, Int, Int>(min, act: add, a: [Y] _ => 0)
     var best: ?Int = None
     for x in X:
-        for s in stops[x]: cost.apply(s.lo..=s.hi, -s.cost)
-        for s in starts[x]: cost.apply(s.lo..=s.hi, s.cost)
+        for e in events[x]: cost.apply(e.lo..=e.hi, e.add)
         best min= cost.all
     best!
 
