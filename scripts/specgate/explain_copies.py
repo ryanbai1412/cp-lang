@@ -396,7 +396,7 @@ def deep_copies(cpp):
     return count
 
 
-def one(cpl, case, tmp, exact):
+def one(cpl, case, tmp, exact, base=specgate.ROOT):
     text = case.read_text()
     if not text.startswith("// expect: ok") or "\n// tool:" in text:
         return None
@@ -408,7 +408,7 @@ def one(cpl, case, tmp, exact):
     if subprocess.run([cpl, "build", str(case), "--full", "-o", str(out)], capture_output=True, timeout=120).returncode:
         return None
     made = deep_copies(out.read_text())
-    return case.relative_to(specgate.CONFORMANCE.parent.parent), claimed, made
+    return case.relative_to(base), claimed, made
 
 
 def args(ap) -> None:

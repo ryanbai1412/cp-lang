@@ -261,5 +261,6 @@
   "tools_tests_over_30s": 67,
   "ports_over_bar": 205,
   "perf_twins_stale": 22,
-  "unreferenced_scripts": 0
+  "unreferenced_scripts": 0,
+  "explain_copy_mismatches": 13
 }

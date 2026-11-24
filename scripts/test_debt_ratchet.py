@@ -1655,6 +1655,23 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(dr.cpp_std_functions(root)), 1)
             self.assertEqual(len(dr.cpp_sunk_copies(root)), 2)
 
+    def test_explain_copy_mismatches_lists_cases_whose_explain_and_cpp_differ(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.assertEqual(dr.explain_copy_mismatches(root), [])
+            for name, cpp in (("same", "auto b = std::vector<ll>(a);"), ("hides", "auto b = a;")):
+                case = root / f"spec/conformance/core-05/{name}.cp"
+                case.parent.mkdir(parents=True, exist_ok=True)
+                case.write_text(f"// expect: ok\n// {cpp}\n")
+            cpl = root / "cpl"
+            cpl.write_text("#!/usr/bin/env python3\nimport sys\nsrc = open(sys.argv[2]).read().splitlines()[1][3:]\n"
+                           "if sys.argv[1] == 'explain': print('[copy] b')\n"
+                           "else: open(sys.argv[sys.argv.index('-o') + 1], 'w').write(src + '\\n')\n")
+            cpl.chmod(0o755)
+            with mock.patch.object(dr, "_built_cpl", return_value=cpl):
+                self.assertEqual(dr.explain_copy_mismatches(root),
+                                 ["spec/conformance/core-05/hides.cp: explain lists 1, the C++ makes 0"])
+
     def test_std_shadowed_counts_receivers_a_builtin_arm_catches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

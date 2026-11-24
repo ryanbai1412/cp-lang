@@ -1205,6 +1205,43 @@ def cpp_sunk_copies(root: Path) -> list[str]:
     return _header_counts(root, "sunk_copies")
 
 
+def explain_copy_mismatches(root: Path) -> list[str]:
+    """Ok conformance cases whose `cpl explain` lists more or fewer copies than their judge C++
+    makes (owner: tools). Rule: costs are visible (spec/tools/explain.md): explain lists each
+    copy the C++ makes, no more. The same check as `spec-gate.py explain-copies --exact`."""
+    cases = sorted((root / "spec" / "conformance").rglob("*.cp"))
+    if not cases:
+        return []
+    cpl = str(_built_cpl(root).resolve())
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import concurrent.futures
+    from specgate import explain_copies
+    # cpl embeds std, so its bytes and a case's text decide the row: land.sh's re-measures
+    # after each lost push race rerun a cpl they already ran.
+    binary = hashlib.sha256(Path(cpl).read_bytes()).hexdigest()[:16]
+    cache_path = root / "target" / "explain-copies-cache" / f"{binary}.json"
+    try:
+        cache = json.loads(cache_path.read_text())
+    except (OSError, ValueError):
+        cache = {}
+    key = lambda c: hashlib.sha256(c.read_bytes()).hexdigest()[:16]
+
+    def row(case):
+        k = key(case)
+        if k not in cache:
+            r = explain_copies.one(cpl, case, tmp, True, root)
+            cache[k] = r and [r[1], r[2]]
+        return cache[k] and (str(case.relative_to(root)), *cache[k])
+
+    with tempfile.TemporaryDirectory() as tmp, concurrent.futures.ThreadPoolExecutor(os.cpu_count() or 4) as pool:
+        rows = [r for r in pool.map(row, cases) if r]
+    if cache_path.parent.parent.is_dir():
+        cache_path.parent.mkdir(exist_ok=True)
+        cache_path.write_text(json.dumps(cache))
+    return sorted(f"{path}: explain lists {claimed}, the C++ makes {made}"
+                  for path, claimed, made in rows if claimed != made)
+
+
 _RUNS_CODE = re.compile(r"ExprKind::(Call|CallExpr)\(\.\.\)|ExprKind::Closure\(_\)")
 _EFFECTS_DIRECT = re.compile(r"cpl_ir::effects|walk::Effects\b|walk::\{[^}]*\bEffects\b")
 _PURITY_FN = re.compile(r"\bfn ([a-z_]*_)?(pure|impure|trap_free|effects?|writes_(nothing|own)|may_touch|"
@@ -3110,6 +3147,8 @@ COUNTERS = {
                             cpp_optional_copies, True),
     "cpp_std_functions": ("`// std_functions:` header sum over the corpus (read_only_copies)", cpp_std_functions, True),
     "cpp_sunk_copies": ("`// sunk_copies:` header sum over the corpus (read_only_copies)", cpp_sunk_copies, True),
+    "explain_copy_mismatches": ("ok conformance cases whose `cpl explain` copy list differs from the C++ (spec-gate explain-copies --exact)",
+                                explain_copy_mismatches, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "opt_without_uses": ("codegen passes deciding what code does without the Uses table (PASSES)", opt_without_uses, True),
     "opt_private_walks": ("codegen lines walking IR themselves instead of a named uses/ query", opt_private_walks, True),
@@ -3225,7 +3264,7 @@ def _count(name: str, root: Path) -> int:
     return len(COUNTERS[name][1](root))
 
 
-SLOW_COUNTERS = ("std_model_gaps", "near_dup_fns", "corpus_no_statement", "unwrap_input", "written_twice",
+SLOW_COUNTERS = ("explain_copy_mismatches", "std_model_gaps", "near_dup_fns", "corpus_no_statement", "unwrap_input", "written_twice",
                  "corpus_walkers")
 
 
