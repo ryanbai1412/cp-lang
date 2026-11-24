@@ -1681,7 +1681,7 @@ impl<'a> Parser<'a> {
     /// tests, any number, each holding only if those before it did.
     /// A `,` that joins two tests, as `and` does; in a `for` clause's `if`,
     /// `, b in ys` starts the next clause instead.
-    fn eat_guard_comma(&mut self) -> bool {
+    pub(super) fn eat_guard_comma(&mut self) -> bool {
         if !self.at(T::Comma) || (self.for_filter && self.comma_starts_clause()) {
             return false;
         }
@@ -1689,7 +1689,7 @@ impl<'a> Parser<'a> {
         true
     }
 
-    fn more_clauses(&mut self) -> Cond {
+    pub(super) fn more_clauses(&mut self) -> Cond {
         if self.at(T::Let) {
             self.bump();
             return self.let_cond();

@@ -172,7 +172,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 
 ## Known gaps
 
-- core-01/comprehension-filter-if-let.cp: compiler
 - core-01/stepped-range-is-a-value.cp: compiler
 - core-03/memory-over-profile.cp: compiler
 - core-04/grid-keys-are-cells.cp: compiler
