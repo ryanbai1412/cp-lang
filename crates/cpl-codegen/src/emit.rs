@@ -1836,8 +1836,11 @@ static bool cpl_on(size_t n) {
 
 /// glibc trims the heap's free top back to the OS, so a sort's merge buffer,
 /// freed and built again on every call, faults its pages in anew: keep them.
+/// Setting the trim threshold also freezes the mmap threshold at 128 KB, so a
+/// big buffer is still mapped and unmapped on its own; on the heap, the blocks
+/// a growing list frees would stay as holes its next buffer can't use.
 const KEEP_HEAP: &str = "    // Freed heap is kept, not trimmed and faulted back in.
-    mallopt(M_TRIM_THRESHOLD, -1), mallopt(M_MMAP_THRESHOLD, 32 << 20);
+    mallopt(M_TRIM_THRESHOLD, -1);
 ";
 
 fn without_keep_heap(text: &str) -> String {

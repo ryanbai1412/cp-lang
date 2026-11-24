@@ -759,10 +759,10 @@ fn a_program_that_sorts_keeps_its_freed_heap() {
         "    print(v[0])\n",
     ));
     assert!(cpp.contains("#include <malloc.h>\n"), "{cpp}");
-    assert!(
-        cpp.contains("mallopt(M_TRIM_THRESHOLD, -1), mallopt(M_MMAP_THRESHOLD, 32 << 20);"),
-        "{cpp}"
-    );
+    assert!(cpp.contains("mallopt(M_TRIM_THRESHOLD, -1);"), "{cpp}");
+    // A big buffer stays mapped: on the untrimmed heap, the blocks a growing
+    // list frees pile up (ioi08p1 went from 61 to 103 MB).
+    assert!(!cpp.contains("M_MMAP_THRESHOLD"), "{cpp}");
 }
 
 #[test]

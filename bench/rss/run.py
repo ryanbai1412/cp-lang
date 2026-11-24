@@ -19,6 +19,9 @@ from corpus import launcher  # noqa: E402
 
 # How far above the hand C++ a program's peak may be, in KiB.
 BOUND_KB = 2048
+# Cases the whole program of is gated nearer its hand C++: a small peak hides
+# a regression of a megabyte under BOUND_KB (2587e0258 took cf2268b 4148 -> 5120).
+TIGHT_KB = {"cf2268b": 512}
 
 
 def ints(n, per=1):
@@ -98,6 +101,8 @@ CASES = {
     "row_lists": lambda: "50000 200\n",  # [Row]List<Int> made anew 200 times, as dmpg16g2 does
     "sort_neg": lambda: ints(2_000_000),  # sort(by: i => (-a[i], i)) and (desc(a[i]), i), 2e6 positions
     "sort_distinct": lambda: ints(1_000_000),  # sorted(I, by: i => a[i] % 1000): ties kept by position
+    "heap_grow": lambda: "2000000\n",  # two lists pushed to 2e6 in a program that sorts (ioi08p1)
+    "cf2268b": lambda: gen("cf2268b"),  # 2e5 point updates into a pushed answer list: within 512 KiB
 }
 
 
@@ -118,8 +123,8 @@ def verdict(rows):
     for case, ours, hand, same in rows:
         if not same:
             bad.append(f"rss: {case} prints something else than its hand C++")
-        elif ours > hand + BOUND_KB:
-            bad.append(f"rss: {case} peaks at {ours} KiB, over {hand} KiB + {BOUND_KB} for its hand C++")
+        elif ours > hand + TIGHT_KB.get(case, BOUND_KB):
+            bad.append(f"rss: {case} peaks at {ours} KiB, over {hand} KiB + {TIGHT_KB.get(case, BOUND_KB)} for its hand C++")
     return bad, bool(bad)
 
 
