@@ -187,8 +187,9 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             self.call_hint.1 = self.want_bound(pty, decl, tpl_mod, tpl_offset, &inferred);
-            if let Some(concrete) =
-                self.probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
+            if let Some(concrete) = self
+                .probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
+                .map(|ty| if arg.mutable { ty.lent_mut() } else { ty })
             {
                 if concrete == Ty::DomainVal {
                     let dom_id = if let Some(Sym::Domain(d)) = self.sym(&arg.value) {

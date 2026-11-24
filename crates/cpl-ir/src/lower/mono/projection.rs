@@ -124,7 +124,11 @@ impl<'a> Lowerer<'a> {
             for s in pre_stmts {
                 lw.stmt(s, out);
             }
+            // The view's bounds read the projection's arguments, so they
+            // are worked out after those are bound, not with the caller's.
+            let pending = lw.cx.pending.len();
             lent_place = Some(lw.place(lend_place_ast));
+            out.extend(lw.cx.pending.drain(pending..));
             for s in post_stmts {
                 lw.stmt(s, post_out);
             }

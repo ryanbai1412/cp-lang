@@ -530,6 +530,15 @@ impl Ty {
     }
 
     /// True when this type implements the built-in `IndexedMut` trait (O(1) random read/write).
+    /// What a `mut` argument of this type lends: a slice read as a view
+    /// is lent as the mutable view of the same cells.
+    pub fn lent_mut(self) -> Ty {
+        match self {
+            Ty::ListView(elem, key) => Ty::MutView(elem, key),
+            other => other,
+        }
+    }
+
     pub fn is_indexed_mut(&self) -> bool {
         match self {
             Ty::List(_) | Ty::MutView(..) | Ty::Str => true,
