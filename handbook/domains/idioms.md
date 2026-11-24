@@ -97,7 +97,7 @@ of user impact.
   `research/reviews/` (cold taste reviews), `research/frictions/`,
   `research/PORTS.md` (generated), and the corpus suite's entries in
   `research/scoreboard.json`.
-- Dream-versus-spec gap logs in `plan/domains/spec/delta/`.
+- Dream-versus-spec notes in each record's `meta.json` (history in `research/design-history/spec-delta/`).
 - `handbook/process/porting.md`.
 
 **Doesn't own:**
@@ -200,7 +200,7 @@ GCC and LLVM's differential testing against a reference.
 | Every port has the standard header (Source, Problem, Solution) | ports with all three | `handbook/process/porting.md#the-header`; generated count | `corpus/header.py` |
 | Every port has a dream and a review | ports newer than the baseline without either | gate | `scripts/review-check.py --check` |
 | Every gap between a port and its dream is reported with a repro and an owner | frictions with severity, goal and a run showing the failure | `handbook/guidelines/idiomatic-code-checklist.md#r11`; gate on format; process on content | `research/frictions/` (parsed in the gate) |
-| Dream and spec differences are logged | `dream.cp` and `spec.cp` diffs without a log entry | generated check (`dream-unlogged`: a code difference with no `plan/domains/spec/delta/hillclimb.md` line or `meta.json` note) | `corpus/audit.py` |
+| Dream and spec differences are logged | `dream.cp` and `spec.cp` diffs without a log entry | generated check (`dream-unlogged`: a code difference with no `meta.json` note or line in `research/design-history/spec-delta/hillclimb.md`) | `corpus/audit.py` |
 
 ### Correctness of the corpus (J6, J7)
 
@@ -269,9 +269,8 @@ GCC and LLVM's differential testing against a reference.
 
 - A port sits beside its accepted original; nobody edits `corpus/submissions/`.
 - `dream.cp` is written without the checker and never edited to pass it.
-  `spec.cp` passes `cpl check`, except on forms listed in
-  `plan/domains/spec/delta/parser-gaps.md`, and every difference between a
-  dream and its spec is logged in `plan/domains/spec/delta/hillclimb.md`.
+  `spec.cp` passes `cpl check`, except on forms with a `// gap:` conformance case, and every difference
+  between a dream and its spec is logged in its `meta.json` notes.
 - Reviewers score without reading `orig.cpp`; a port without a dream scores
   at most 3.
 - Judge resolution is `--judge`, then `// judge:`, then `cp.toml`, then

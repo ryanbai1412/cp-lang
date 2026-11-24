@@ -86,7 +86,6 @@ plain-Unicode fallback (`O(n log n)`). Code blocks are source and keep their
   the port dreams to the stubs. A failing dream is either a spec gap (add
   the signature or the power) or a dream that ignores a decision (fix the
   dream). Never weaken a dream to make it pass.
-- `delta/0.2.md` measures this branch against the tree (gold dreams, all
-  dreams, stubs, code blocks) and points to the per-area gaps.
-- `delta/parser-gaps.md` lists decided syntax the front end does not
-  accept yet.
+- Decided syntax the front end does not accept yet is a conformance case
+  with a `// gap:` line; `research/design-history/spec-delta/` keeps the
+  0.2 measurements and the old parser-gap list.

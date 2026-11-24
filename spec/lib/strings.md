@@ -614,12 +614,12 @@ Every power from `spec/core/12-powers.md` (and any gap beyond it) needed by `std
    - Smallest example: `dh[i] = 'a'; if dh.is_palindrome(l..r): ans += 1`.
 4. **W12 (Cost on first `///` line):**
    - Signatures: All 191 public declarations in `std/strings.cp`.
-5. **Defaulted named arguments (Decision 134 / `plan/domains/spec/delta/parser-gaps.md`):**
+5. **Defaulted named arguments (Decision 134):**
    - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = None)`, `RollingHash61.new(s, base: ?Int = None)`, `DynamicHash.new(s, bases: ?(Int, Int) = None)`, `find_all_wildcard(self, pat, wildcard: Char = '?')`.
    - Smallest example: `let h2 = RollingHash.new(t, bases: h1.bases)`.
 6. **Gaps beyond `spec/core/12-powers.md`:**
    - **Existential / struct-owned domains** (for `SuffixArray` rank domain `sa.Rank` and `SuffixAutomaton`/`PalindromicTree`/`AhoCorasick` state domains): today states and SA ranks are plain `Int`, so `sam.step(v, c)` and `sa.lcp_of_ranks(l, r)` cannot statically distinguish state IDs from string positions. Smallest example: `struct SuffixArray<T>: domain Rank = 0..s.len; sa: [Rank]Int`.
-   - **Constrained alphabet strings `Str of "01?"`** (Decision 134 / `plan/domains/spec/delta/parser-gaps.md`, used by `cf2187d`): syntax-level refinement type rather than a `std.strings` API.
+   - **Constrained alphabet strings `Str of "01?"`** (Decision 134, used by `cf2187d`): syntax-level refinement type rather than a `std.strings` API.
    - **128-bit modular multiplication primitive (`mul_mod` / `u128`)** for `RollingHash61` (`mod 2^61 - 1`): needed in user/stdlib CP Lang so `RollingHash61` can be written in ordinary CP Lang without compiler privilege.
 
 ## Dreams
@@ -630,4 +630,4 @@ All dreams in `proto/ports/*/dream/` touching strings:
 - `proto/ports/ecnerwala/dream/cf2124d.cp`: uses `std.strings.is_palindrome` — in spec (`have`), passes.
 - `proto/ports/ecnerwala/dream/cf1909g.cp`: uses `std.strings.{common_prefix_len, common_suffix_len}` — in spec (`have`), passes.
 - `proto/ports/ecnerwala/dream/ucup5s05f.cp`: imports `std.strings.suffix_tree_edges` — **now in spec (`new`)**; both `std.strings.suffix_tree_edges` and `suffix_tree_edges` errors are resolved (remaining error in `ucup5s05f.cp` is `std.poly.SubproductTree`).
-- `proto/ports/ecnerwala/dream/cf2187d.cp`: uses `Str of "01?"` (language syntax, Decision 134 in `plan/domains/spec/delta/parser-gaps.md`) and `s.split_once('?')` (**now in spec (`new`)**).
+- `proto/ports/ecnerwala/dream/cf2187d.cp`: uses `Str of "01?"` (language syntax, Decision 134) and `s.split_once('?')` (**now in spec (`new`)**).

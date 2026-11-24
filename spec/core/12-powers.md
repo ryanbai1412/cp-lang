@@ -2,7 +2,7 @@
 
 A power is a mechanism that lets library code feel built in. The stdlib has
 no power a user library lacks: if a stub in `std/` needs something, it
-is listed here, or it is core syntax in `delta/parser-gaps.md`. A power earns its place
+is listed here, or it is core syntax in `spec/core/`. A power earns its place
 by the stdlib families it unlocks; one family means look for another design.
 
 Each entry: the decision, the smallest example, what needs it, and whether

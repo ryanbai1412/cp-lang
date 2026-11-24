@@ -111,7 +111,7 @@
   "lint_dup_helpers": 0,
   "why_written_twice": 0,
   "authority_drift": 0,
-  "plan_delta_lines": 1627,
+  "plan_delta_lines": 0,
   "vm_fallbacks": 29,
   "own_databases": 29,
   "cpp_deep_copies": 36,

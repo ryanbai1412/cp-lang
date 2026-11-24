@@ -10,3 +10,5 @@ whole programs. `decisions-design.md` logs the calls made while drafting;
 newer calls are in the root `decisions.md`. `spec/v2/` and `archive/` are
 earlier drafts, kept for the reasoning; where they disagree with `spec/`,
 `spec/` wins.
+
+`spec-delta/` holds the 0.2-era spec notes from `plan/domains/spec/delta/` (hill-climb ledger, blind-dream comparisons, parser gaps); their open items are now conformance cases.

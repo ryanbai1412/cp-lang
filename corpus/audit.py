@@ -12,7 +12,7 @@ Each finding is `<rule> <problem> <detail>`:
   interactor-no-gen an interactive problem with no gen.py for its hidden
                     inputs (problem-packages/R4)
   dream-unlogged    dream.cp and spec.cp differ in more than comments, and
-                    neither a mention in plan/domains/spec/delta/hillclimb.md nor the
+                    neither a mention in research/design-history/spec-delta/hillclimb.md nor the
                     record's meta.json notes say why (handbook/domains/idioms.md#invariants)
   no-reference      a problem with tests and no accepted C++ with a `main`
                     (a grader-style submission), so its answers can't be
@@ -44,7 +44,7 @@ TIMEOUT = 20
 STANDARDS = ("-std=c++17", "-std=gnu++2b")
 MAIN = re.compile(r"\bmain\s*\(")
 UNBUILT = []
-HILLCLIMB = open(os.path.join(ROOT, "plan", "domains", "spec", "delta", "hillclimb.md")).read()
+HILLCLIMB = open(os.path.join(ROOT, "research", "design-history", "spec-delta", "hillclimb.md")).read()
 
 
 def rel(p):

@@ -585,9 +585,11 @@ def why_written_twice(root: Path) -> list[str]:
 
 
 def plan_delta_lines(root: Path) -> list[str]:
-    """Lines of working notes under plan/domains/*/delta, to fold into spec/ or archive."""
-    return [f"{f}:{i}" for f in _git(root, "ls-files", "plan/domains/*/delta/*")
-            for i, _ in enumerate(_lines(root / f), 1)]
+    """Lines of working notes under plan/domains/*/delta, plus each such directory on disk:
+    findings become conformance cases, history goes under research/design-history/."""
+    out = [f"{f}:{i}" for f in _git(root, "ls-files", "plan/domains/*/delta/*")
+           for i, _ in enumerate(_lines(root / f), 1)]
+    return out + [f"{d.relative_to(root)}/" for d in sorted(root.glob("plan/domains/*/delta"))]
 
 
 def _code_lines(p: Path) -> int:
@@ -1337,6 +1339,7 @@ HARD_ZERO = frozenset({
     "measure_broken", "mono_unguarded",
     "unrun_script_tests",
     "permits",
+    "plan_delta_lines",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
