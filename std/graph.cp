@@ -2064,7 +2064,7 @@ fn dfs_walk<V, G: Next<V>>(g: G, from: Seq<V>, mut vis: [V]Bool) -> yields Visit
 /// [s]).count()`, `List(...)` or `.contains(v)` ask the usual questions; to avoid some
 /// arcs, pass `g` filtered (`v => g.next(v).filter(a => ok(a))`).
 ///
-/// cost: \(O(n + m)\) total, \(O(1)\) per step
+/// cost: \(O(n)\) for `seen`, then \(O(1)\) per reached vertex and per arc out of one
 /// empty: an empty `from` yields nothing
 /// order: discovery order, the order of `dfs`'s `Enter` events; over a `Complement`, the
 ///   order of its unvisited-set walk (each vertex's newly reached vertices together, ascending)
@@ -2090,24 +2090,23 @@ pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
                     yield v
                     todo.push(v)
         return
-    let out = [V] v => [a.to for a in g.out(v)]
-    var path: List<(V, Int)> = []
+    var stack: List<V> = []
     for s in from:
-        if seen[s]: continue
-        seen[s] = true
-        yield s
-        path.push((s, 0))
-        while path.len > 0:
-            let (u, i) = path.last!
-            if i < out[u].len:
-                path[path.len - 1] = (u, i + 1)
-                let v = out[u][i]
-                if not seen[v]:
-                    seen[v] = true
-                    yield v
-                    path.push((v, 0))
-            else:
-                path.pop()
+        stack.push(s)
+        while let u = stack.pop():
+            if seen[u]: continue
+            seen[u] = true
+            yield u
+            let base = stack.len
+            for a in g.out(u) if not seen[a.to]: stack.push(a.to)
+            var i = base
+            var j = stack.len - 1
+            while i < j:
+                let t = stack[i]
+                stack[i] = stack[j]
+                stack[j] = t
+                i += 1
+                j -= 1
 
 /// \(O(1)\): one event of `dfs`, the same shape as `Rooted.tour` yields: `via` is the arc that
 /// discovered `v` (`None` for a source); `Again(from, via)` is an arc into a discovered vertex.
