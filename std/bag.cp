@@ -263,13 +263,14 @@ pub struct SortedBag<K>:
         if let v = x: let _ = self.remove(v)
         x
 
-    /// \(O(\log n + k)\). Removes the elements whose value lies in `r`, yielding them in order.
+    /// Removes the elements whose value lies in `r`, yielding them in order; each removal is a
+    /// full \(O(\log n)\) `remove`.
     ///
     /// Each copy is yielded once, so a key with count `c` is yielded `c` times. A loop that
     /// stops early leaves the elements not yet yielded in the bag. `r` may be any ordered range
     /// (`a..b`, `a..=b`, `..b`, `a..`, `..`).
     ///
-    /// cost: \(O(\log n + k)\) expected for `k` removed
+    /// cost: \(O(k \log n)\) expected for `k` removed elements
     /// empty: `var b = SortedBag.of([1, 2]); var e = SortedBag<Int>(); b.drain_range(2..2).collect() == [] and e.drain_range(0..9).collect() == [] and b.len == 2`
     /// order: ascending
     /// traps: never
@@ -1362,7 +1363,7 @@ pub struct SortedSet<K>:
         for (k, _) in other.bag.entries(): let _ = bag.add_unique(k)
         other.bag.clear()
 
-/// Order-statistic ordered map from `K` to `V` backed by a randomized treap.
+/// Order-statistic ordered map from `K` to `V`, each value beside its key in the `SortedBag` B+tree (decision 579).
 /// `get`, `set`, `remove`, `rank`, `nth`, `first_ge`/`last_le`, `first_true`/`last_true`, `split_at`, `join` are \(O(\log n)\).
 ///
 /// Entries are ordered by key; keys are distinct, so no lookup has a tie to break. Every

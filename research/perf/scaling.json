@@ -15876,7 +15876,7 @@
    "cost": "\\min(n, m) \\log(n + m)",
    "documented": 4.53,
    "fn": "bag.SortedBag.absorb",
-   "measured": 4.13,
+   "measured": 4.44,
    "n": 16384,
    "ok": true
   },
@@ -15884,7 +15884,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.add_many",
-   "measured": 1.16,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -15892,7 +15892,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.clear",
-   "measured": 0.97,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -15900,15 +15900,15 @@
    "cost": "k \\log n",
    "documented": 4.57,
    "fn": "bag.SortedBag.drain",
-   "measured": 3.96,
+   "measured": 4.23,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/sortedbag_edits.cp::bag.SortedBag.drain_range": {
-   "cost": "\\log n + k",
-   "documented": 1.13,
+   "cost": "k \\log n",
+   "documented": 1.14,
    "fn": "bag.SortedBag.drain_range",
-   "measured": 1.1,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -15916,7 +15916,7 @@
    "cost": "\\log n + s \\log n",
    "documented": 4.57,
    "fn": "bag.SortedBag.join",
-   "measured": 4.27,
+   "measured": 4.31,
    "n": 16384,
    "ok": true
   },
@@ -15924,7 +15924,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.new",
-   "measured": 0.97,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -15932,7 +15932,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.pop_first",
-   "measured": 0.97,
+   "measured": 0.87,
    "n": 16384,
    "ok": true
   },
@@ -15940,7 +15940,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.pop_last",
-   "measured": 1.16,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -15948,7 +15948,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.remove_all",
-   "measured": 1.11,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -15956,7 +15956,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.remove_at",
-   "measured": 1.1,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -15964,7 +15964,7 @@
    "cost": "\\log n + s \\log n",
    "documented": 4.57,
    "fn": "bag.SortedBag.split_at",
-   "measured": 4.02,
+   "measured": 4.41,
    "n": 16384,
    "ok": true
   },
@@ -15972,7 +15972,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.SortedBag.take",
-   "measured": 0.97,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -15980,7 +15980,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedBag.take_first",
-   "measured": 1.25,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
