@@ -514,7 +514,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.6.3 [2+ 0-]: **Steering.** The yielded item may carry methods the generator reads after `yield` returns...
 - R07.6.4 [3+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
 - R07.7.1 [1+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
-- R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` |
+- R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.drop_while(p)` | `Seq` |
 - R07.7.3 [3+ 0-]: | `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consumi...
 - R07.7.4 [3+ 1-]: | `chain(a, b, ...)` | `Seq` of each argument in turn, any number of them, as `min` and `m...
 - R07.7.5 [1+ 0-]: | `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, \(O(1)\) per step
@@ -1096,7 +1096,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `RingRange`
 - **search** (11/11 named by a case)
 - **segtree** (55/55 named by a case)
-- **seq** (221/228 named by a case)
+- **seq** (220/227 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rebased`, `StepKeys`, `SubseqStep`, `Ring`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -1111,7 +1111,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2283 of 2393 std items are named by a case.
+2282 of 2392 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
