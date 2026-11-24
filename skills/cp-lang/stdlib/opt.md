@@ -11,6 +11,8 @@ In prelude (no `use` needed): `and_then`, `is_none_or`, `is_some_and`.
 - `fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool` — \(O(1)\) plus one call of `p`; Whether there is a value and `p` holds for it; `false` on `None`.; traps: only where `p` traps
 - `fn and_then<T, U>(self: ?T, f: T -> ?U) -> ?U` — \(O(1)\) plus one call of `f`; The optional `f` gives for the value; `None` on `None`, without calling `f`.; traps: only where `f` traps
 - `fn is_none_or<T>(self: ?T, p: T -> Bool) -> Bool` — \(O(1)\) plus one call of `p`; Whether there is no value or `p` holds for it; `true` on `None`.; traps: only where `p` traps
+- `fn is_some<T>(self: ?T) -> Bool` — \(O(1)\); Whether there is a value.
+- `fn is_none<T>(self: ?T) -> Bool` — \(O(1)\); Whether there is no value.
 
 ## Example
 
