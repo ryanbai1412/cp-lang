@@ -1,4 +1,5 @@
 // Source: Mock CCC '22 2 S4 (Kaguya Wants to Build a Great Wall), https://dmoj.ca/problem/nccc10s4
+// limits: 8000 ms, 1024 MB
 // Problem: n <= 12 distinct lines, each given by two lattice points with |coordinate| <= 2000.
 //   Count the distinct simple n-sided polygons with exactly one side (of positive length) on
 //   each line.
@@ -46,9 +47,9 @@ for i in L:
         if not id.contains(p): id[p] = id.len
 domain Corner = 0..id.len
 let along: [L]List<Corner> = [L] i => hits[i].map(p => Corner(id[p])).collect()
-var place: Map<(Corner, L), Int> = Map()  // where a corner sits in along[line]
+var place: [Corner, L]?Int = None  // where a corner sits in along[line]
 for i in L:
-    for (k, c) in along[i].items: place[(c, i)] = k
+    for (k, c) in along[i].items: place[c, i] = k
 
 var used: [L]Bool = false
 var spent: [Corner]Bool = false
@@ -60,7 +61,7 @@ fn walk(corner: Corner, start: Corner):
     if sides == n: return
     for i in L:
         if used[i]: continue
-        let here = place.get((corner, i)) else: continue
+        let here = place[corner, i] else: continue
         used[i] = true
         sides += 1
         for dir in [1, -1]:
