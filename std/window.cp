@@ -145,7 +145,7 @@ pub fn track<S, T>(
 pub struct Tracked<S, T>(pub state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()):
     /// Apply `x` at the back: one call of `add(state, x)`.
     ///
-    /// cost: one call of `add`
+    /// cost: \(O(1)\) plus one call of `add`
     /// traps: never (beyond what `add` traps on)
     /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.state == 3`
     pub fn push(mut self, x: T):
@@ -153,7 +153,7 @@ pub struct Tracked<S, T>(pub state: S, add: (mut S, T) -> (), remove: (mut S, T)
     /// Take the front element `x` back out: one call of `remove(state, x)`. `x` is passed through
     /// as given; nothing checks that it is the oldest element.
     ///
-    /// cost: one call of `remove`
+    /// cost: \(O(1)\) plus one call of `remove`
     /// traps: never (beyond what `remove` traps on)
     /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.push(4); t.pop(3); t.state == 4`
     pub fn pop(mut self, x: T):
@@ -307,22 +307,21 @@ pub struct Sweep<D, S>(pub state: S):
     /// traps: never (beyond what the state traps on)
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(1..4); s.move(2..5); s.range == 2..5`
     pub fn move(mut self, to: Range<D>):
-        let keys = D.collect()
         var (l, r) = (0, 0)
         if not to.is_empty:
-            l = Int(to.first!) - Int(keys[0])
-            r = Int(to.last!) - Int(keys[0]) + 1
+            l = Int(to.first!) - Int(D.nth(0))
+            r = Int(to.last!) - Int(D.nth(0)) + 1
         while hi < r:
-            state.push(keys[hi])
+            state.push(D.nth(hi))
             hi += 1
         while lo > l:
             lo -= 1
-            state.push(keys[lo])
+            state.push(D.nth(lo))
         while hi > r:
             hi -= 1
-            state.pop(keys[hi])
+            state.pop(D.nth(hi))
         while lo < l:
-            state.pop(keys[lo])
+            state.pop(D.nth(lo))
             lo += 1
 
     /// The current interval: the positions whose pushes the state holds.
@@ -332,5 +331,4 @@ pub struct Sweep<D, S>(pub state: S):
     /// order: increasing positions of `D`
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>()); s.move(0..2); s.range.len == 2`
     @get pub fn range(self) -> Range<D>:
-        let keys = D.collect()
-        if lo < hi: keys[lo]..=keys[hi - 1] else: keys[0]..keys[0]
+        if lo < hi: D.nth(lo)..=D.nth(hi - 1) else: D.nth(0)..D.nth(0)

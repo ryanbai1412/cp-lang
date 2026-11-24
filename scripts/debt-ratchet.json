@@ -197,6 +197,6 @@
   "conformance_wrong_output": 2,
   "rust_idiom_lints": 77,
   "scaling_mismatches": 0,
-  "std_fns_unscaled": 1790,
+  "std_fns_unscaled": 1741,
   "std_types_shown_empty": 99
 }
