@@ -13,8 +13,7 @@ let s: [I]Char = read(gen: word)
 var inner: [I]Int = 0  // the row for i + 1
 for i in I.rev:
     var need: [I]Int = 0
-    for j in I:
-        if j > i:
-            need[j] = if s[i] == s[j]: inner[j.prev!] else: 1 + min(inner[j], need[j.prev!])
+    for j in i.after:
+        need[j] = if s[i] == s[j]: inner[j.prev!] else: 1 + min(inner[j], need[j.prev!])
     inner = need
 print(inner[I.last!])
