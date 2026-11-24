@@ -9,7 +9,7 @@ use cpl_syntax::ast::{self, Expr, ExprKind};
 /// A view that keeps its source's keys: what `w[0]` would name.
 #[derive(Clone)]
 pub(crate) struct Keyed {
-    /// `lo..hi` when both ends are literals.
+    /// `lo..hi` when both ends are literals; an open end is `i128::MAX`.
     pub(crate) keys: Option<(i128, i128)>,
     /// The source, as written.
     pub(crate) source: String,
@@ -165,10 +165,11 @@ impl Checker<'_> {
                     _ => (None, None),
                 };
                 let lo_key = if lo.is_some() { int(lo) } else { src_lo };
+                // `s[2..]` runs to the source's end: every key from 2 on is its own.
                 let hi_key = if hi.is_some() {
                     int(hi).map(|h| h + *inclusive as i128)
                 } else {
-                    src_hi
+                    src_hi.or(Some(i128::MAX))
                 };
                 let keys = lo_key.zip(hi_key);
                 Some(Keyed {
