@@ -1137,6 +1137,45 @@ def default_cpl():
     return os.environ.get("CPL") or os.path.join(ROOT, "target", "release", "cpl")
 
 
+CPL_BUILD = "cargo build --release -p cpl-cli"
+
+
+def cpl_sources(crate="cpl-cli"):
+    """The workspace files a `cpl` binary is built from: the workspace manifests and
+    Cargo.lock, and the Cargo.toml, build.rs and src/ of cpl-cli and every crate it
+    depends on by path."""
+    files, seen, todo = [os.path.join(ROOT, "Cargo.toml"), os.path.join(ROOT, "Cargo.lock")], set(), [crate]
+    while todo:
+        name = todo.pop()
+        manifest = os.path.join(ROOT, "crates", name, "Cargo.toml")
+        if name in seen or not os.path.isfile(manifest):
+            continue
+        seen.add(name)
+        with open(manifest, "rb") as f:
+            toml = tomllib.load(f)
+        tables = [toml.get("dependencies", {}), toml.get("build-dependencies", {})]
+        tables += [t.get("dependencies", {}) for t in toml.get("target", {}).values()]
+        todo += [dep for t in tables for dep in t]
+        files += [manifest, os.path.join(ROOT, "crates", name, "build.rs")]
+        for top, _, names in os.walk(os.path.join(ROOT, "crates", name, "src")):
+            files += [os.path.join(top, n) for n in names]
+    return [f for f in files if os.path.isfile(f)]
+
+
+def require_cpl(cpl):
+    """Exit with one line saying how to build `cpl` when it is missing, or when a
+    build under target/ is older than a source it is built from: a stale binary
+    may lack a command corpus.py runs (`cpl test --make`) and fail with its usage."""
+    rel = os.path.relpath(cpl, ROOT)
+    if not os.path.exists(cpl):
+        sys.exit(f"corpus: no cpl at {rel}; build it with `{CPL_BUILD}`")
+    target = os.path.join(ROOT, "target")
+    if os.path.commonpath([os.path.abspath(cpl), target]) == target:
+        built = os.path.getmtime(cpl)
+        if any(os.path.getmtime(f) > built for f in cpl_sources()):
+            sys.exit(f"corpus: {rel} is stale: run {CPL_BUILD}")
+
+
 def make_cases(pkg, out=OUT, cpl=None):
     """<out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++ (an interactive
     package's NN.in is the interactor's hidden data, with no answer), and an empty NN.max
@@ -1170,6 +1209,8 @@ def make(args):
         if not ids:
             return 0
     wanted = [p for p in problems(sets=args.set or None, ids=ids or None) if p.tests]
+    if wanted:
+        require_cpl(args.cpl or default_cpl())
     jobs = [(p.id, args.out or OUT, args.cpl) for p in wanted]
     with concurrent.futures.ProcessPoolExecutor(max(1, args.j), mp_context=multiprocessing.get_context("fork")) as pool:
         failed = [f for f in pool.map(make_one, jobs) if f]
@@ -1257,8 +1298,8 @@ def verify(args):
     bad = [m for m in modes if m not in CHECKS]
     if bad:
         sys.exit(f"corpus: no mode {', '.join(bad)}; modes: {', '.join(MODES)}")
-    if not opt("no_run") and set(modes) - {"header", "package"} and not os.path.exists(cpl):
-        sys.exit(f"corpus: no cpl at {os.path.relpath(cpl, ROOT)}; build it with `cargo build --release -p cpl-cli`")
+    if not opt("no_run") and set(modes) - {"header", "package"}:
+        require_cpl(cpl)
     ctx = Context(cpl, run=not opt("no_run"), check=bool(opt("check")), named=() if opt("changed") else ids)
     try:
         with concurrent.futures.ThreadPoolExecutor(opt("j", os.cpu_count() or 4)) as pool:

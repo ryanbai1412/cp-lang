@@ -24,6 +24,7 @@ sys.modules["corpus"] = corpus  # make's worker processes find its functions by 
 _SPEC.loader.exec_module(corpus)
 
 GEN = "import sys\nprint(1)\nprint(sys.argv[1])\n"
+REQUIRE_CPL = corpus.require_cpl
 ECHO_CPP = "#include <cstdio>\nint main(){int t,x;scanf(\"%d %d\",&t,&x);printf(\"%d\\n\",x);}\n"
 
 
@@ -37,6 +38,10 @@ class Corpus(unittest.TestCase):
             setattr(corpus, name, str(value))
         (self.root / "sets").mkdir()
         (self.root / "sets" / "small.txt").write_text("p2\n# comment\n")
+        # Fake cpls stand in for the build here; StaleCplTest covers the check on the real one.
+        fresh = mock.patch.object(corpus, "require_cpl", lambda cpl: None)
+        fresh.start()
+        self.addCleanup(fresh.stop)
 
     def package(self, pid, **files):
         d = self.root / "problems" / pid
@@ -833,10 +838,80 @@ class VerifyCplTest(Corpus):
         d = self.package("p1", gen_py=GEN)
         args = argparse.Namespace(ids=["p1"], cpl=str(self.root / "no-cpl"), only="tests")
         with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
-                self.assertRaises(SystemExit) as e:
+                mock.patch.object(corpus, "require_cpl", REQUIRE_CPL), self.assertRaises(SystemExit) as e:
             corpus.verify(args)
         self.assertIn("cargo build --release -p cpl-cli", str(e.exception))
 
+
+class StaleCplTest(unittest.TestCase):
+    """A `cpl` under target/ older than a source it is built from is stale."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.addCleanup(setattr, corpus, "ROOT", corpus.ROOT)
+        corpus.ROOT = str(self.root)
+        for path, text in (("Cargo.toml", "[workspace]\n"),
+                           ("crates/cpl-cli/Cargo.toml", "[dependencies]\ncpl-a.workspace = true\n"),
+                           ("crates/cpl-cli/src/main.rs", ""),
+                           ("crates/cpl-a/Cargo.toml", "[dependencies]\n"),
+                           ("crates/cpl-a/src/lib.rs", ""),
+                           ("crates/cpl-other/Cargo.toml", "[dependencies]\n"),
+                           ("crates/cpl-other/src/lib.rs", ""),
+                           ("target/release/cpl", "")):
+            (self.root / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / path).write_text(text)
+        self.cpl = self.root / "target/release/cpl"
+        for f in self.root.rglob("*"):
+            os.utime(f, (1000, 1000))
+        os.utime(self.cpl, (2000, 2000))
+
+    def stale(self, cpl=None):
+        with self.assertRaises(SystemExit) as e:
+            corpus.require_cpl(str(cpl or self.cpl))
+        return str(e.exception)
+
+    def test_a_cpl_newer_than_its_sources_runs(self):
+        corpus.require_cpl(str(self.cpl))
+
+    def test_a_cpl_older_than_a_dependency_source_says_to_rebuild_it(self):
+        os.utime(self.root / "crates/cpl-a/src/lib.rs", (3000, 3000))
+        self.assertEqual(self.stale(), "corpus: target/release/cpl is stale: run cargo build --release -p cpl-cli")
+
+    def test_a_crate_cpl_does_not_depend_on_leaves_it_fresh(self):
+        os.utime(self.root / "crates/cpl-other/src/lib.rs", (3000, 3000))
+        corpus.require_cpl(str(self.cpl))
+
+    def test_a_cpl_outside_target_is_never_stale(self):
+        cpl = self.root / "elsewhere-cpl"
+        cpl.write_text("")
+        os.utime(cpl, (500, 500))
+        corpus.require_cpl(str(cpl))
+
+    def test_a_missing_cpl_says_to_build_it(self):
+        self.assertIn("cargo build --release -p cpl-cli", self.stale(self.root / "target/release/none"))
+
+    def test_verify_stops_on_a_stale_cpl_before_running_anything(self):
+        os.utime(self.root / "crates/cpl-cli/src/main.rs", (3000, 3000))
+        args = argparse.Namespace(ids=["p1"], cpl=None, only="tests")
+        pkg = types.SimpleNamespace(id="p1")
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([pkg])), \
+                mock.patch.object(corpus, "findings", side_effect=AssertionError("ran a check")), \
+                self.assertRaises(SystemExit) as e:
+            corpus.verify(args)
+        self.assertEqual(str(e.exception), "corpus: target/release/cpl is stale: run cargo build --release -p cpl-cli")
+
+    def test_make_stops_on_a_stale_cpl_before_running_anything(self):
+        os.utime(self.root / "Cargo.toml", (3000, 3000))
+        args = argparse.Namespace(ids=["p1"], cpl=None, set=None, out=None, j=1)
+        pkg = types.SimpleNamespace(id="p1", tests=True)
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([pkg])), \
+                mock.patch.dict(os.environ, {"CPL": ""}), \
+                mock.patch.object(corpus, "make_one", side_effect=AssertionError("made a case")), \
+                self.assertRaises(SystemExit) as e:
+            corpus.make(args)
+        self.assertEqual(str(e.exception), "corpus: target/release/cpl is stale: run cargo build --release -p cpl-cli")
 
 class GenTimeoutTest(unittest.TestCase):
     def test_a_max_generator_gets_the_briefs_60_seconds(self):
