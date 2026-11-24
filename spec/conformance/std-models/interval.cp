@@ -46,7 +46,7 @@ for k in 0..n:
     let op = rng.int(0, 6)
     let lo = rng.int(0, 20)
     let hi = rng.int(lo, 20)
-    let r = D.cuts.nth(lo)..D.cuts.nth(hi)
+    let r: Range<D> = D.cuts.nth(lo)..D.cuts.nth(hi)
     let i = rng.int(0, 19)
     let v = rng.int(0, 3)
     if op == 0:

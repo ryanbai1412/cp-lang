@@ -28,8 +28,8 @@ for k in 0..n:
     let r1 = rng.int(r0, 6)
     let c0 = rng.int(0, 9)
     let c1 = rng.int(c0, 9)
-    let rows = R.cuts.nth(r0)..R.cuts.nth(r1)
-    let cols = C.cuts.nth(c0)..C.cuts.nth(c1)
+    let rows: Range<R> = R.cuts.nth(r0)..R.cuts.nth(r1)
+    let cols: Range<C> = C.cuts.nth(c0)..C.cuts.nth(c1)
     if r0 == r1 or c0 == c1:
         if st.try_fold(rows, cols) != None: bad = "op {k}: try_fold {r0}..{r1} x {c0}..{c1} not None"
     elif st.fold(rows, cols) != brute(g, r0, r1, c0, c1) or st.try_fold(rows, cols) != Some(brute(g, r0, r1, c0, c1)):

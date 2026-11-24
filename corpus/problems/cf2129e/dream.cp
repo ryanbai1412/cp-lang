@@ -36,7 +36,11 @@ fn step(p: Arc, by: Int):
             f[x] ^= y.label
             values.add(f[x], 1)
 
-let windows = [first_arc[x.l.l]..first_arc[x.r.r] for x in asks]
+// A stored cut range is no piece (R04.4.5): the annotated literal makes one.
+fn window(l: V, r: V) -> Range<Arc>:
+    let w: Range<Arc> = first_arc[l.l]..first_arc[r.r]
+    w
+let windows = [window(x.l, x.r) for x in asks]
 print(
     mo(
         windows,

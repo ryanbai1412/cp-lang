@@ -20,7 +20,7 @@ for k in 0..n:
     let y = rng.int(-7, 22)
     var ys = [a[Q(i)] for i in lo..hi]
     ys.sort()
-    let r = Q.cuts.nth(lo)..Q.cuts.nth(hi)
+    let r: Range<Q> = Q.cuts.nth(lo)..Q.cuts.nth(hi)
     let ge = [u for u in ys if u >= x]
     let le = [u for u in ys if u <= x]
     if t.count_lt(r, x) != ys.count(u => u < x): bad = "op {k}: count_lt"

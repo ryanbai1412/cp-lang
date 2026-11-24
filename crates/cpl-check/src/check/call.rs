@@ -1457,6 +1457,16 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
+                if let Some(Def::Fn {
+                    generics,
+                    bounds,
+                    bound_args,
+                    ..
+                }) = callee_def.as_deref()
+                {
+                    let generics = Self::bound_bindable(generics, &params, &ret);
+                    self.bind_bound_params(&generics, (bounds, bound_args), &mut bindings);
+                }
                 if let Some(def) = callee_def.as_deref() {
                     self.fn_items_take_their_type(def, &params, args, &mut bindings);
                     if let Def::Fn { bound_args, .. } = def {

@@ -320,7 +320,9 @@ impl Checker<'_> {
             ty.or_else(|| c.exprs.last_type(expr.span).cloned())
         };
         let settled = self.quietly(|c| {
-            read(c).filter(|t| c.sink.is_empty() && !t.has_vague() && !names_param(t))
+            read(c).filter(|t| {
+                c.sink.is_empty() && !t.has_vague() && !names_free_param(t, &base_ty, &c.generics)
+            })
         });
         settled.as_ref()?;
         // The read's hover is the value it reads, not the fn it calls.
@@ -596,6 +598,7 @@ impl Checker<'_> {
             ty: Ty::Fn { params, ret },
             generics,
             bounds,
+            bound_args,
             ..
         } = &*def
         else {
@@ -609,7 +612,8 @@ impl Checker<'_> {
         if let Some(first) = params.first().filter(|_| !builtin) {
             first.ty.unify(base, &mut bindings);
         }
-        self.bind_bound_params(generics, bounds, &mut bindings);
+        let generics = Self::bound_bindable(generics, params, ret);
+        self.bind_bound_params(&generics, (bounds, bound_args), &mut bindings);
         let ty = Ty::Fn {
             params: params[1..].to_vec(),
             ret: ret.clone(),
@@ -1241,14 +1245,17 @@ impl Members {
     }
 }
 
-/// True when a type parameter (`D`) is left in `ty`: it was not worked out.
-fn names_param(ty: &Ty) -> bool {
-    let mut found = false;
-    ty.map(&mut |t| {
-        found |= matches!(t, Ty::Param(_));
-        found.then(|| t.clone())
-    });
-    found
+/// True when a type parameter is left in `ty` that the read did not work
+/// out: one the receiver does not carry from the caller's own generics, as
+/// `D` of `r: Range<D>` gives `r.first` its `?D`.
+fn names_free_param(ty: &Ty, base: &Ty, generics: &[String]) -> bool {
+    let carried = |p: &str| {
+        generics.iter().any(|g| g == p)
+            && super::bound_args::params_named(base).contains(&p.to_string())
+    };
+    super::bound_args::params_named(ty)
+        .iter()
+        .any(|p| !carried(p))
 }
 
 /// Whether the method `def` takes `given` positional arguments after `self`.

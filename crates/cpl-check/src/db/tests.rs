@@ -476,3 +476,17 @@ fn a_static_fn_binds_its_structs_type_params_from_the_arguments() {
     let tree = "let n = read<1..=10>()\ndomain V = 0..n\nvar up: [V]?V = None\nlet f = Rooted.try_from_parents(up) else: return\nlet bs = f.roots.collect()\nfor c in bs: print(c)\nfor d in f.roots: print(f.depth(d))\n";
     assert_eq!(silent_unknowns_of(tree), (vec![], 0));
 }
+
+#[test]
+fn a_generic_ranges_ends_are_its_domains_positions() {
+    let src = "fn span<D: Domain>(r: Range<D>) -> Int:\n    if r.is_empty: return 0\n    let (lo, hi) = (r.first!.ord, r.last!.ord + 1)\n    hi - lo\ndomain W = 0..4\nprint(span(W(1)..W(3)))\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}
+
+#[test]
+fn a_bare_bound_gives_the_fn_its_free_trait_arg() {
+    let src = "domain W = 0..4\n\
+        let xs = [1, 2, 3]\n\
+        print(yes(xs.contains(W.cuts.nth(1).ord)), W.cuts.nth(0).ord + 1)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}

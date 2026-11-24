@@ -21,7 +21,7 @@ for k in 0..n:
     let lo = rng.int(0, 13)
     let hi = rng.int(lo, 13)
     let x = rng.int(-25, 25)
-    let r = H.cuts.nth(lo)..H.cuts.nth(hi)
+    let r: Range<H> = H.cuts.nth(lo)..H.cuts.nth(hi)
     if op == 0: t.chmin(r, x)
     elif op == 1: t.chmax(r, x)
     else: t.add(r, x)
@@ -34,7 +34,7 @@ for k in 0..n:
         hs[j] += a[j]
     let qlo = rng.int(0, 13)
     let qhi = rng.int(qlo, 13)
-    let q = H.cuts.nth(qlo)..H.cuts.nth(qhi)
+    let q: Range<H> = H.cuts.nth(qlo)..H.cuts.nth(qhi)
     let js = [H(j) for j in qlo..qhi]
     if t.sum(q) != sum(a[j] for j in js): bad = "op {k}: sum {qlo}..{qhi}"
     elif t.max_val(q) != [a[j] for j in js].max(): bad = "op {k}: max_val {qlo}..{qhi}"

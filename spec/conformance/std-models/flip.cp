@@ -22,7 +22,7 @@ for k in 0..n:
     let op = rng.int(0, 2)
     let lo = rng.int(0, 15)
     let hi = rng.int(lo, 15)
-    let r = P.cuts.nth(lo)..P.cuts.nth(hi)
+    let r: Range<P> = P.cuts.nth(lo)..P.cuts.nth(hi)
     if op <= 1:
         let f = rng.int(0, 3) > 0
         s.apply(r, f)
@@ -37,7 +37,7 @@ for k in 0..n:
         t.set(i, Flip.of(on[i], x[i], Int.MIN))
     let qlo = rng.int(0, 15)
     let qhi = rng.int(qlo, 15)
-    let q = P.cuts.nth(qlo)..P.cuts.nth(qhi)
+    let q: Range<P> = P.cuts.nth(qlo)..P.cuts.nth(qhi)
     let js = [P(j) for j in qlo..qhi]
     let got = s.fold(q)
     let m = t.fold(q)

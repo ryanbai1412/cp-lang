@@ -24,7 +24,7 @@ for k in 0..n:
     let j = rng.int(0, hi - lo)
     var ys = [a[W(p)] for p in lo..hi]
     ys.sort()
-    let r = W.cuts.nth(lo)..W.cuts.nth(hi)
+    let r: Range<W> = W.cuts.nth(lo)..W.cuts.nth(hi)
     if t.get(i) != x: bad = "op {k}: get"
     elif t.count_lt(r, u) != ys.count(y => y < u): bad = "op {k}: count_lt {lo}..{hi} {u}"
     elif t.count_in(r, u, v) != ys.count(y => u <= y and y <= v): bad = "op {k}: count_in {u} {v}"
