@@ -279,6 +279,11 @@ impl<'a> Checker<'a> {
             }
         }
         if matches!(ty, Ty::Unknown) {
+            if let Some(known) = self.free_as_method(call, callee, args) {
+                ty = known;
+            }
+        }
+        if matches!(ty, Ty::Unknown) {
             if let Some(read) = self.read_ty(callee, args) {
                 ty = read;
             }

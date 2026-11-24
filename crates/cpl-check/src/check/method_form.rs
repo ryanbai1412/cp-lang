@@ -459,6 +459,36 @@ impl Checker<'_> {
 }
 
 impl<'a> Checker<'a> {
+    /// `sorted(s)` for a prelude fold nothing else types: the same type as
+    /// `s.sorted()`, whose element comes from `s` by the one `Seq` rule.
+    pub(super) fn free_as_method(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Name(name) = &callee.kind else {
+            return None;
+        };
+        let (first, rest) = args.split_first()?;
+        if first.name.is_some()
+            || first.mutable
+            || !crate::prelude::VALUE_NAMES.contains(&name.as_str())
+            || self.local(name).is_some()
+            || self.free_global(name).is_some()
+        {
+            return None;
+        }
+        self.quietly(|c| {
+            let over = c.infer(&first.value);
+            if over.is_vague() || c.element_ty(&over).is_vague() {
+                return None;
+            }
+            let base = Box::new(first.value.clone());
+            let name = cpl_syntax::ast::Name { text: name.clone(), span: callee.span };
+            let field = Expr { kind: ExprKind::Field { base, name }, span: callee.span };
+            let kind = ExprKind::Call { callee: Box::new(field), args: rest.to_vec() };
+            let ty = c.infer(&Expr { kind, span: call.span });
+            let failed = (c.sink.diagnostics().iter()).any(|d| d.severity == cpl_diag::Severity::Error);
+            (!failed && !ty.has_vague()).then_some(ty)
+        })
+    }
+
     /// The type of `base.name(args)` when `name` is a top-level fn taking
     /// `self`, found by checking the free form `name(base, args)`, when that
     /// checks cleanly to a plain value type. Its resolution, and its hover
@@ -803,8 +833,10 @@ impl Checker<'_> {
         let Ty::Named { name, args } = ty else {
             return false;
         };
-        // A `yields` fn's stream is a `Seq` of its element (R07.3.1).
+        // A `yields` fn's stream is a `Seq` of its element (R07.3.1), and so
+        // is a range, `0..n` (R07.3.5).
         let catalogued = name == "Gen"
+            || name == "Range"
             || (crate::builtins::BUILTIN_TYPES.iter())
                 .any(|b| b.name == name && b.members.is_some());
         catalogued && args.iter().all(|a| self.modelled(a))

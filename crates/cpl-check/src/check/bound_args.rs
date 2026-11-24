@@ -409,7 +409,8 @@ impl Checker<'_> {
         let key = match ty {
             Ty::Array { index, .. } if index.len() == 1 => index[0].clone(),
             Ty::Str => Ty::list_index(),
-            Ty::Named { name, .. } if name == "List" => Ty::list_index(),
+            // A range is indexed by position, `(lo..hi)[i]` (R07.3.5).
+            Ty::Named { name, .. } if name == "List" || name == "Range" => Ty::list_index(),
             _ => Ty::Unknown,
         };
         let mut out = vec![Ty::Unknown; n - 1];

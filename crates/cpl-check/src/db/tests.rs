@@ -359,3 +359,11 @@ fn a_std_yields_method_and_argmin_are_typed() {
     let arg = "domain R = 0..3\nlet t: [R]Int = [R] r => 5 - r.ord\nlet m = t.argmin()!\nprint(t[m])\nlet xs = [3, 1]\nprint(xs.argmax()!)\nlet i: ?R = t.argmax()\nprint(i)\n";
     assert_eq!(silent_unknowns_of(arg), (vec![], 0));
 }
+
+#[test]
+fn a_free_fold_and_a_stepped_range_type_by_the_seq_element() {
+    let sorted = "let xs = [3, 1, 2]\nlet s = sorted([x * 2 for x in xs])\nfor v in s: print(v + s.len)\n";
+    assert_eq!(silent_unknowns_of(sorted), (vec![], 0));
+    let step = "let r = 0..10\nlet q = r.step(2)\nfor v in q: print(v + q.len)\nfor w in (0..9).step(3): print(w + 1)\n";
+    assert_eq!(silent_unknowns_of(step), (vec![], 0));
+}
