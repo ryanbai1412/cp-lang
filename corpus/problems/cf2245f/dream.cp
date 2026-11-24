@@ -19,23 +19,26 @@ let comb = Comb<Z>()
 @!multitest
 let n: 1..=500 = read()
 domain Pos = 0..=n
-let a: [Pos]?Int = read<[0..n]?Int>(None: -1).padded(to: Pos, with: None)
+let given: [0..n]?Int = read(none: -1)
+let a: [Pos]?Int = [Pos] i => if i.ord < n: given[i.ord] else: None
 
-let runs = Runs<Pos>(sizes: [i => (a[i] ?? 0) + 1])
-domain State = runs.items
-fn next(s: State) -> ?State:
-    guard let c = a[s.owner] else: return Some(s)
-    if s.rank < c: Some(s + 1) else: None
+let ends = prefix([Pos] i => (a[i] ?? 0) + 1)
+fn first(i: Pos) -> Int = ends.prefix(i.l)
+fn last(i: Pos) -> Int = ends.prefix(i.r) - 1
+let owner = [i for i in Pos for _ in first(i)..=last(i)]
+fn next(s: Int) -> ?Int:
+    guard let c = a[owner[s]] else: return Some(s)
+    if s - first(owner[s]) < c: Some(s + 1) else: None
 
 print(
-    if a.map(c => c ?? 0).scan(+).items.any((i, t) => t > i): 0
-    else: dp(Pos.first, runs[Pos.last].last) * comb.fact(n)
+    if Pos.any(i => ends.fold(..=i) - (i.ord + 1) > i.ord): 0
+    else: dp(Pos.first!, last(Pos.last!)) * comb.fact(n)
 )
 
 @memo
-fn dp(i: Pos, s: State) -> Z:
-    if s == runs[i].first: return 1
+fn dp(i: Pos, s: Int) -> Z:
+    if s == first(i): return 1
     sum(
-        dp(i, runs[j].last) * dp(j.next!, k) * comb.inv(k.owner - i)
-        for j in i..Pos.last for k in runs.items(from: j.next!) if next(k) == Some(s)
+        dp(i, last(j)) * dp(j.next!, k) * comb.inv(owner[k].ord - i.ord)
+        for k in [s - 1, s] for j in i..owner[k] if next(k) == Some(s)
     )
