@@ -5,6 +5,8 @@ workflow) has a recipe that runs it."""
 import glob
 import os
 import re
+import shutil
+import subprocess
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -56,6 +58,13 @@ class JustfileTest(unittest.TestCase):
                 with open(p, encoding="utf-8", errors="replace") as f:
                     docs.append((rel, f.read()))
         self.assertEqual(unknown_recipes(docs, self.recipes), [], "add the recipe to justfile or fix the doc (ci/R36)")
+
+    @unittest.skipUnless(shutil.which("just"), "just is not installed")
+    def test_just_parses_the_justfile(self):
+        # A comment that swallows the recipe line under it still reads as a recipe to
+        # recipes() but breaks every `just` call (0b6150bd8).
+        run = subprocess.run(["just", "--summary"], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stderr)
 
     def test_every_recipe_says_what_it_does(self):
         self.assertEqual([n for n, (doc, _) in self.recipes.items() if not doc and n != "default"], [],
