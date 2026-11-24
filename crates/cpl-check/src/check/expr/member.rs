@@ -366,6 +366,13 @@ impl<'a> Checker<'a> {
                     return Ty::Int;
                 }
                 "is_empty" => return Ty::Bool,
+                "nth"
+                    if base_ty.is_indexed()
+                        && !matches!(base_ty, Ty::Domain(_))
+                        && !matches!(elem, Ty::Pos(_)) =>
+                {
+                    return int_fn(elem);
+                }
                 "last" | "rev" if !base_ty.is_bidir() => {
                     self.report(
                         name.span,
@@ -860,6 +867,16 @@ impl<'a> Checker<'a> {
                     {
                         Ty::Int
                     }
+                    // A number type's constants (`T.zero`, `T.MIN`) are of that type.
+                    None if !self.in_call_callee
+                        && matches!(name.text.as_str(), "zero" | "one" | "MIN" | "MAX") =>
+                    {
+                        Ty::Param(param.clone())
+                    }
+                    // A generic domain has a named domain's members (`D.count`, `D.cuts`).
+                    None if self.param_has_bound(param, "Domain") => {
+                        self.member_ty(expr, name, Ty::Domain(param.clone()))
+                    }
                     other => other.unwrap_or(Ty::Unknown),
                 };
             }
@@ -1001,6 +1018,11 @@ impl<'a> Checker<'a> {
             }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {
+                if let Some(num) = crate::prelude::ty(type_name).filter(Ty::is_numeric) {
+                    if matches!(name.text.as_str(), "zero" | "one" | "MIN" | "MAX") {
+                        return num;
+                    }
+                }
                 if let Some(Def::Enum { variants, .. }) = self.type_def(type_name).as_deref() {
                     if let Some((_, fields)) = variants.iter().find(|(v, _)| *v == name.text) {
                         return Def::variant_value(type_name, fields);
@@ -1081,6 +1103,23 @@ impl<'a> Checker<'a> {
                         && !projects(ty) =>
                 {
                     ty.clone()
+                }
+                // A static fn's own generics (`Tree.new<M, E>`) bind at the call.
+                Some((_, ty)) if self.in_call_callee && matches!(base_ty, Ty::TypeName(_)) => {
+                    let ours = match self.type_def(&base_ty.to_string()).as_deref() {
+                        Some(Def::Struct { generics, .. }) => generics.clone(),
+                        _ => Vec::new(),
+                    };
+                    let mut keep = self.generics.clone();
+                    ty.map(&mut |t| {
+                        if let Ty::Param(p) = t {
+                            if !ours.contains(p) && !keep.contains(p) {
+                                keep.push(p.clone());
+                            }
+                        }
+                        None
+                    });
+                    self.resolve_assoc(ty).settle(&keep)
                 }
                 Some((_, ty)) => self.settle(ty),
                 // `fn area(self: Sq) -> Int` at the top of the file is

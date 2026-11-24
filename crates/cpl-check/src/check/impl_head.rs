@@ -49,6 +49,7 @@ impl Checker<'_> {
                     None => match self.name_ty(n, inner.span) {
                         Ty::Unknown | Ty::Error => return Ty::Unknown,
                         Ty::Fn { .. } => None,
+                        Ty::Named { name, .. } if name.starts_with("type_of(") => None,
                         Ty::TypeName(_) | Ty::Domain(_) => {
                             Some(("a type".to_string(), Ty::Unknown))
                         }

@@ -347,6 +347,8 @@ pub(crate) struct Checker<'a> {
     /// The bounds with trait arguments of the fn whose arguments are being
     /// checked: binding `S` binds what `S: Seq<T>` says of `T`.
     call_bound_args: Option<Vec<(String, String, Vec<crate::ty::Ty>)>>,
+    /// The trait arguments a call's bound gave a fn item's own type: `go(+)` at `M: Op<Int>`.
+    item_args: Vec<(String, String, Vec<crate::ty::Ty>)>,
     /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
     /// mapped to the span of the move (§128).
     pub(crate) moved: crate::names::NameMap<Span>,
@@ -435,6 +437,7 @@ impl<'a> Checker<'a> {
             local_defs: Default::default(),
             lambda_params: Vec::new(),
             call_bound_args: None,
+            item_args: Vec::new(),
             moved: Default::default(),
             assigning_name: None,
             memo_captured: Vec::new(),
@@ -1166,6 +1169,14 @@ impl<'a> Checker<'a> {
                 owner: None,
             };
             self.resolved.push((span, resolved));
+            // A prelude fn with impls on its own type is a value of that type.
+            let item = format!("type_of({name})");
+            if ty.is_vague() && !self.in_call_callee && !self.env.impls(&item).is_empty() {
+                return Ty::Named {
+                    name: item,
+                    args: Vec::new(),
+                };
+            }
             return ty;
         }
         // A spec stub's body: `pub fn f(x: Int) -> Int = todo`.

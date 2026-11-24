@@ -50,8 +50,14 @@ impl Checker<'_> {
             Ty::Fn { .. } => "fn".into(),
             _ => return None,
         };
-        for (_, def) in self.env.impls(&key) {
-            let Def::Impl { target, assoc, .. } = &*def else {
+        for (implemented, def) in self.env.impls(&key) {
+            let Def::Impl {
+                target,
+                assoc,
+                trait_args,
+                ..
+            } = &*def
+            else {
                 continue;
             };
             let Some((_, chosen)) = assoc.iter().find(|(n, _)| n == name) else {
@@ -59,6 +65,16 @@ impl Checker<'_> {
             };
             let mut bindings = crate::ty::Bindings::default();
             target.unify(of, &mut bindings);
+            // A fn item's own type gives the impl's generics through the bound's trait arguments.
+            let tr = implemented.as_deref().and_then(|t| t.split('<').next());
+            let given = self
+                .item_args
+                .iter()
+                .rev()
+                .find(|(i, t, _)| *i == key && Some(&**t) == tr);
+            for (want, got) in trait_args.iter().zip(given.map_or(&[][..], |(.., a)| a)) {
+                want.unify(got, &mut bindings);
+            }
             if of.fits(&target.subst(&bindings)) {
                 return Some(chosen.subst(&bindings));
             }
