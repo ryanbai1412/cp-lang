@@ -173,11 +173,19 @@ fn one_item_proves_what_the_whole_file_proves_there() {
             continue;
         }
         let items: Vec<(u32, &ParsedItem)> = parsed.items.iter().map(|(o, p)| (*o, p)).collect();
-        let (loops, indexes) = proven_loops_and_indexes_parsed(&src, &items);
+        // The file is checked once: each item reads the same facts an editor holds.
+        let analysis = crate::analyze_alone(&src);
+        let file = crate::File {
+            src: &src,
+            items: &items,
+            facts: analysis.as_deref().map(|a| &**a.facts()),
+            proven: &Default::default(),
+        };
+        let (loops, indexes) = crate::rules::proven_loops_and_indexes(&file);
         for (i, (start, _)) in items.iter().enumerate() {
             let end = items.get(i + 1).map_or(u32::MAX, |(b, _)| *b);
             let inside = |at: u32| *start <= at && at < end;
-            let (one_loops, one_indexes) = proven_loops_and_indexes_in_item(&src, &items, i);
+            let (one_loops, one_indexes) = crate::rules::proven_loops_and_indexes_in(&file, i);
             let want_loops: Vec<_> = loops.iter().filter(|l| inside(l.head.0)).cloned().collect();
             let want_indexes: Vec<_> = indexes
                 .iter()
