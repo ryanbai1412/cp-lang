@@ -350,6 +350,62 @@ impl Checker<'_> {
         self.call_bound_args = Some(bound_args);
     }
 
+    /// `fn f<A: Keyed<K, _>, B: Keyed<K, _>, K>`: a type parameter named in several bounds is
+    /// one type, so every bound's argument must give the same `K` (decision 543).
+    pub(crate) fn shared_bound_args_agree(
+        &mut self,
+        fn_name: &str,
+        bound_args: &BoundArgs,
+        bindings: &crate::ty::Bindings,
+        span: Span,
+    ) {
+        let mut seen: Vec<(String, usize, Ty)> = Vec::new();
+        for (i, (param, trait_name, args)) in bound_args.iter().enumerate() {
+            let Some(actual) = bindings.get(param) else {
+                continue;
+            };
+            let actual = self.settle(actual);
+            let Some(given) = self.trait_args_of(&actual, trait_name, args.len()) else {
+                continue;
+            };
+            for (want, got) in args.iter().zip(&given) {
+                let Ty::Param(g) = want else {
+                    continue;
+                };
+                if got.mentions_param() || got.has_vague() {
+                    continue;
+                }
+                let Some((_, j, first)) = seen.iter().find(|(h, ..)| h == g).cloned() else {
+                    seen.push((g.clone(), i, got.clone()));
+                    continue;
+                };
+                if got.fits(&first) || first.fits(got) {
+                    continue;
+                }
+                let shown = |(p, t, a): &(String, String, Vec<Ty>)| {
+                    let a: Vec<String> = a.iter().map(|t| t.to_string()).collect();
+                    format!("{p}: {t}<{}>", a.join(", "))
+                };
+                let (fa, fb) = (&bound_args[j].0, param);
+                self.report(
+                    span,
+                    msgs::check::SHARED_BOUND_ARG,
+                    &[
+                        &fn_name,
+                        g,
+                        &shown(&bound_args[j]),
+                        &shown(&bound_args[i]),
+                        fa,
+                        &first,
+                        fb,
+                        got,
+                    ],
+                );
+                return;
+            }
+        }
+    }
+
     /// The arguments `ty` gives trait `trait_name`: a bound's in a generic
     /// body, an `impl`'s as written, or a built-in sequence's key and
     /// element.

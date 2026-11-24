@@ -1377,6 +1377,12 @@ impl<'a> Checker<'a> {
                         self.bare_ops_take_monoid(bound_args, &params, args, &mut bindings);
                     }
                 }
+                if let (Some(fn_name), Some(Def::Fn { bound_args, .. })) =
+                    (callee_name, callee_def.as_deref())
+                {
+                    let bound_args = bound_args.clone();
+                    self.shared_bound_args_agree(fn_name, &bound_args, &bindings, call.span);
+                }
                 if let Some(fn_name) = callee_name {
                     if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
                         for (param, traits) in bounds {

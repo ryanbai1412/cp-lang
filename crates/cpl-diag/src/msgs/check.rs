@@ -343,5 +343,7 @@ super::msgs! {
     EXPECTS_BUT = TYPE_MISMATCH, "`{}` expects {}, but `{}` is {}";
     OTHER_SIDE_ONE_TOO = TYPE_MISMATCH, "`{}` is {}, so the other side is one too, cell for cell; `{}` is {}";
     FIELD_BUT = TYPE_MISMATCH, "the field `{}` is {}, but `{}` is {}";
+    /// Decision 543: a type parameter named in several bounds is one type.
+    SHARED_BOUND_ARG = TYPE_MISMATCH, "`{}` needs one `{}` for `{}` and `{}`, but `{}` gives `{}` and `{}` gives `{}`";
     BUT_2 = TYPE_MISMATCH, "`{}` {} {}{}, but `{}` is {}";
 }

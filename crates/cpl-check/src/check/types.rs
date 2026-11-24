@@ -1535,6 +1535,9 @@ impl<'a> Checker<'a> {
             match cur.as_str() {
                 "Ord" => stack.push("Eq".into()),
                 "IndexedMut" => stack.push("Indexed".into()),
+                // A file sees std/seq.cp's core traits without their decls.
+                "Keyed" | "Bidir" | "Positional" => stack.push("Seq".into()),
+                "Indexed" => stack.extend(["Keyed".into(), "Positional".into(), "Bidir".into()]),
                 _ => {}
             }
             if let Some(Def::Trait { supers, .. }) = self.type_def(&cur).as_deref() {
