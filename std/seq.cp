@@ -1204,7 +1204,7 @@ pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = [A] a => g[f[a]]
 /// traps: when `p` is not a permutation
 /// example: `perm_cycles([1, 0, 2]) == [[0, 1], [2]]`
 /// trap: `perm_cycles([0, 0, 1])`
-pub fn perm_cycles<V>(p: [V]V) -> List<List<V>>:
+pub fn perm_cycles<V>(self: [V]V) -> List<List<V>>:
     var vis: [V]Bool = false
     var out: List<List<V>> = []
     for start in V:
@@ -1214,8 +1214,8 @@ pub fn perm_cycles<V>(p: [V]V) -> List<List<V>>:
         while not vis[u]:
             vis[u] = true
             cyc.push(u)
-            u = p[u]
-        assert u == start, "`p` is not a permutation: {u} is reached twice"
+            u = self[u]
+        assert u == start, "not a permutation: {u} is reached twice"
         out.push(cyc)
     out
 
@@ -2294,17 +2294,17 @@ pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool:
 /// traps: when `|V| > 20` or `p` is not a permutation
 /// example: `perm_rank([1, 0, 2]) == 2`
 /// trap: `perm_rank([0, 0, 1])`
-pub fn perm_rank<V>(p: [V]V) -> Int:
+pub fn perm_rank<V>(self: [V]V) -> Int:
     let n = V.count
     var seen: [V]Bool = false
     for v in V:
-        assert not seen[p[v]], "`p` is not a permutation: {p[v]} appears twice"
-        seen[p[v]] = true
+        assert not seen[self[v]], "not a permutation: {self[v]} appears twice"
+        seen[self[v]] = true
     var bit: List<Int> = List.filled(n + 1, 0)
     var rank = 0
     var fact = 1
     for k in (0..n).rev:
-        let v = p[V.nth(k)].ord
+        let v = self[V.nth(k)].ord
         var (j, smaller) = (v, 0)
         while j > 0:
             smaller += bit[j]
@@ -2360,7 +2360,7 @@ pub fn perm_unrank<V>(rank: Int) -> [V]V:
 /// traps: when `p` is not a permutation
 /// example: `perm_sign([1, 0, 2]) == -1`
 /// trap: `perm_sign([0, 0, 1])`
-pub fn perm_sign<V>(p: [V]V) -> Int:
+pub fn perm_sign<V>(self: [V]V) -> Int:
     var seen: [V]Bool = false
     var sign = 1
     for v in V:
@@ -2368,9 +2368,9 @@ pub fn perm_sign<V>(p: [V]V) -> Int:
         var (u, len) = (v, 0)
         while not seen[u]:
             seen[u] = true
-            u = p[u]
+            u = self[u]
             len += 1
-        assert u == v, "`p` is not a permutation: {u} is reached twice"
+        assert u == v, "not a permutation: {u} is reached twice"
         if len % 2 == 0: sign = -sign
     sign
 
@@ -2380,7 +2380,7 @@ pub fn perm_sign<V>(p: [V]V) -> Int:
 /// empty: `1`
 /// traps: never; the order can overflow `Int` past about |V| = 400
 /// example: `perm_order([1, 0, 3, 4, 2]) == 6`
-pub fn perm_order<V>(p: [V]V) -> Int:
+pub fn perm_order<V>(self: [V]V) -> Int:
     var seen: [V]Bool = false
     var ord = 1
     for v in V:
@@ -2388,7 +2388,7 @@ pub fn perm_order<V>(p: [V]V) -> Int:
         var (u, len) = (v, 0)
         while not seen[u]:
             seen[u] = true
-            u = p[u]
+            u = self[u]
             len += 1
         var (a, b) = (ord, len)
         while b != 0: (a, b) = (b, a % b)

@@ -201,8 +201,8 @@ Walk the sequence in pieces: maximal runs, groups by key, fixed windows and adja
 ### seq/U10: runs of equal values or keys
 Need: compress `aabccc` into blocks, with their lengths.
 Design: `a.runs(by:)` yields each run as a view over `a`; also on `Str`.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u10-runs.cp`; cost program `seq-u10-runs-cost.cp`; a run has no `.l`/`.r` cuts (`r.l` is E0302).
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u10-runs.cp`, whose cuts are `r.keys.l` and `r.keys.r` as for any slice; cost program `seq-u10-runs-cost.cp`.
 
 ### seq/U40: runs walked backward with their cuts
 Need: process blocks from the right, knowing where each starts.
@@ -289,8 +289,8 @@ Evidence: `inverse()` on `[I, I]` is E0302.
 ### seq/U49: permutations: next, cycles, rank, parity
 Need: walk all permutations, or decompose one into cycles.
 Design: `a.next_permutation()`, `a.permutations()`, `p.perm_cycles()`, `p.perm_sign()`, `p.perm_rank()`.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u49-permutation-tools.cp`; `[1, 2, 0].perm_cycles()` and `perm_order()` are E0203: the std fns take `p`, not `self`.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u49-permutation-tools.cp`.
 
 ### seq/U50: combinations, subsequences and products
 Need: try every pair, every k-subset, every pair of options.
@@ -438,7 +438,7 @@ Evidence: program `spec/conformance/std-seq/seq-u24-separator.cp`.
 Need: the call you know for arrays also works on a list, a slice, a `Str`, a range or a generator.
 Design: every sequence fn takes `self`, so `a.f(..)` works whatever `a` is.
 Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u25-one-api-every-shape.cp`; U30, U38, U49 and U55 fail because the std fn has no `self`.
+Evidence: program `spec/conformance/std-seq/seq-u25-one-api-every-shape.cp`; U30, U38 and U55 fail because the std fn has no `self`.
 
 ### seq/U62: every call states cost, laziness and empty input
 Need: know before calling whether it is \(O(n)\), lazy, or traps on empty.

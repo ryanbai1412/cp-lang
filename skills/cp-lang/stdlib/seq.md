@@ -223,7 +223,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); Last index in sorted `self` with `by(self[i]) < target`, or `None`.; traps: never; unsorted input gives an unspecified key
 - `fn inverse<I, V>(self: [I]V) -> [V]I` — \(O(\lvert I \rvert)\); Inverse of bijection `self: [I]V`: `inv[self[i]] == i` for all `i in I`.; traps: when `self` is not a bijection
 - `fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C` — \(O(\lvert A \rvert)\); Function composition: `compose(f, g)[a] == g[f[a]]`.
-- `fn perm_cycles<V>(p: [V]V) -> List<List<V>>` — \(O(\lvert V \rvert)\); Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.; traps: when `p` is not a permutation
+- `fn perm_cycles<V>(self: [V]V) -> List<List<V>>` — \(O(\lvert V \rvert)\); Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.; traps: when `p` is not a permutation
 - `fn perm_pow<V>(p: [V]V, k: Int) -> [V]V` — \(O(\lvert V \rvert)\); `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.; traps: when `k < 0` or `p` is not a permutation
 - `fn inversions<S: Seq, T>(self: S) -> Int` — \(O(n \log n)\); Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`.
 - `fn swap_at<D, T>(mut self: [D]T, i: D, j: D)` — \(O(1)\); Swap two positions of a domain array in place; safely a no-op when `i == j`.
@@ -283,10 +283,10 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory; Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their
 - `fn is_permutation<A: Seq, B: Seq, T>(a: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
 - `fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\)
-- `fn perm_rank<V>(p: [V]V) -> Int` — \(O(n \log n)\), \(O(n)\) memory; traps: when `|V| > 20` or `p` is not a permutation
+- `fn perm_rank<V>(self: [V]V) -> Int` — \(O(n \log n)\), \(O(n)\) memory; traps: when `|V| > 20` or `p` is not a permutation
 - `fn perm_unrank<V>(rank: Int) -> [V]V` — \(O(n \log n)\), \(O(n)\) memory; traps: when `rank` is not in `0..|V|!`
-- `fn perm_sign<V>(p: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: when `p` is not a permutation
-- `fn perm_order<V>(p: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: never; the order can overflow `Int` past about |V| = 400
+- `fn perm_sign<V>(self: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: when `p` is not a permutation
+- `fn perm_order<V>(self: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: never; the order can overflow `Int` past about |V| = 400
 - `fn partial_inverse<I, V>(self: [I]?V) -> [V]?I` — \(O(\lvert I \rvert + \lvert V \rvert)\), \(O(\lvert I \rvert + \lvert V \rvert)\) memory; traps: when two keys map to the same value
 - `fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T>` — \(O(k)\) per combination; traps: when `k < 0`
 - `fn index_pairs<D>(self: Range<D>) -> yields (D, D)` — \(O(1)\) per pair
