@@ -165,7 +165,8 @@ class AffectedTest(unittest.TestCase):
 
 
     def test_std_and_vm_paths_select_their_owners_slices(self):
-        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings", "ports-check", "browser-std", "silent-unknowns", "copies"])
+        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings", "ports-check", "browser-std", "silent-unknowns",
+                                                         "copies", "editor-contract"])
         noip = affected.shard_of("corpus/problems/noip18p4/port.cp", 16)
         self.assertEqual(self.sel("corpus/problems/noip18p4/port.cp")["slices"], ["silent-unknowns", f"copies@{noip}"])
         bag = affected.shard_of("spec/conformance/std-bag/x.cp", 16)
@@ -204,6 +205,16 @@ class AffectedTest(unittest.TestCase):
         lowering and the VM run it, so a change to any of them can stop it checking."""
         for c in ("cpl-syntax", "cpl-diag", "cpl-check", "cpl-ir", "cpl-interp"):
             self.assertIn("vm-trace", self.sel(f"crates/{c}/src/lib.rs")["slices"], c)
+
+    def test_what_an_editor_reads_runs_the_editor_contract_slice(self):
+        """The server, the commands' output and the extensions' settings got past land
+        unrun (06ca25c43, d641b26af, 426b6cd57), since the commit tier skips cpl-cli's and
+        cpl-lsp's integration tests."""
+        for path in ("crates/cpl-lsp/src/server/exec.rs", "editors/vscode/src/extension.ts",
+                     "editors/jetbrains/src/main/kotlin/Cpl.kt", "crates/cpl-cli/src/run_view.rs",
+                     "crates/cpl-diag/src/view.rs",
+                     "spec/tools/cli.md", "spec/tools/lsp.md"):
+            self.assertIn("editor-contract", self.sel(path)["slices"], path)
 
     def test_a_lint_or_checker_change_runs_the_corpus_warnings_slice(self):
         for path in ("crates/cpl-lint/src/rules.rs", "crates/cpl-check/src/lib.rs"):

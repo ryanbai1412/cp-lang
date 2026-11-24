@@ -81,6 +81,14 @@ SLICES = [
     ("readable-inputs", "debugger (stress)",
      [f"{PACKAGES}/*/spec.cp", "spec/conformance/*.cp", "crates/cpl-cli/tests/programs/*", "crates/cpl-stress/*"],
      ["cpl-stress::readable_shapes"]),
+    # What an editor reads: the server's answers, the JSON and text every command prints,
+    # and the settings each extension declares, so a change to any of them can't land unrun.
+    ("editor-contract", "tools",
+     ["std/*", "editors/*", "crates/cpl-lsp/*", "crates/cpl-cli/src/*", "crates/cpl-diag/src/view.rs",
+      "spec/tools/cli.md", "spec/tools/lsp.md"],
+     ["cpl-lsp::import", "cpl-lsp::fixtures",
+      "cpl-lsp::std_items every_builtin_member_hovers_signs_and_completes_with_its_parameters",
+      "cpl-cli::json_contract", "cpl-cli::output_pins", "cpl-cli::vscode_sync"]),
 ]
 # A sharded slice's binary has a test `shard_NN` per shard of its programs, NN being the
 # FNV-1a hash of the program's path mod the shard count (shard_of in
