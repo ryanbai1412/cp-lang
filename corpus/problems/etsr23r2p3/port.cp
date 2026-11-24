@@ -5,6 +5,7 @@
 //   gaps of the sorted triple are multiples of 2^(ctz(min) + 1).
 // Solution: sort, take the step 2^(v + 1) with v the 2-adic valuation of the smallest, and
 //   test both gaps. O(1) per case.
+// Bounds: xs: 1..=1e9
 // original: corpus/submissions/5494453.cpp
 @!multitest
 let xs = read<[3]1..=1e9>().sorted()

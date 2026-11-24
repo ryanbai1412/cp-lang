@@ -7,7 +7,7 @@
 //   leaf layers its own colour, so it adds the size of the next layer; an even budget adds a
 //   star of deg - 1 fresh colours at the highest-degree vertex left. Peel layers keeping the
 //   degrees in a SortedBag, O(n log n).
-// Bounds: n: 2..=300_000
+// Bounds: n: 2..=300_000; g.0, g.1: 1..=n
 
 @!multitest
 let n: 2..=300_000 = read()
