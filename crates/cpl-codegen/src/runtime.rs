@@ -908,7 +908,9 @@ template <class T> std::optional<T> set_max(const std::set<T>& s) { return s.emp
         name: "sorted",
         needs: &[],
         code: "\
-template <class T> std::vector<T> sorted(std::vector<T> v) { std::sort(v.begin(), v.end()); return v; }
+// Every sort is stable; only a number's ties are indistinguishable.
+template <class T> void sort_seq(T* b, T* e) { if constexpr (std::is_integral_v<T>) std::sort(b, e); else std::stable_sort(b, e); }
+template <class T> std::vector<T> sorted(std::vector<T> v) { sort_seq(v.data(), v.data() + v.size()); return v; }
 template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
 ",
     },
@@ -1754,7 +1756,7 @@ inline ll cut_beside(bool rev, ll k0, ll n, ll k, bool after) { if (k < k0 || k 
     },
     Piece {
         name: "list_view",
-        needs: &["fail"],
+        needs: &["fail", "sorted"],
         code: "\
 // O(1) read-only slice/reverse view into a `List<T>` (pointer + length + reverse bit).
 template <class T> struct ListView {
@@ -1817,7 +1819,7 @@ template <class T> std::optional<T> first(ListView<T> v) { return v.empty() ? st
 template <class T> std::optional<T> last(ListView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
 template <class T> T first_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
 template <class T> T last_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
-template <class T> std::vector<T> sorted(ListView<T> v) { auto o = to_list(v); std::sort(o.begin(), o.end()); return o; }
+template <class T> std::vector<T> sorted(ListView<T> v) { auto o = to_list(v); sort_seq(o.data(), o.data() + o.size()); return o; }
 template <class T, class U> bool has(ListView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i] == x) return true; return false; }
 inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size()); for (u8 c : v) s.push_back((char)c); return s; }
 ",
@@ -1842,7 +1844,7 @@ template <class T> Keyed<T> rekey_own(std::vector<T> v, ll lo, ll hi) { if (hi -
     },
     Piece {
         name: "mut_view",
-        needs: &["fail"],
+        needs: &["fail", "sorted"],
         code: "\
 // O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T` (pointer + length).
 template <class T> struct MutView {
@@ -1882,7 +1884,7 @@ template <class T> std::optional<T> first(MutView<T> v) { return v.empty() ? std
 template <class T> std::optional<T> last(MutView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
 template <class T> T first_val(MutView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
 template <class T> T last_val(MutView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
-template <class T> std::vector<T> sorted(MutView<T> v) { auto o = to_list(v); std::sort(o.begin(), o.end()); return o; }
+template <class T> std::vector<T> sorted(MutView<T> v) { auto o = to_list(v); sort_seq(o.data(), o.data() + o.size()); return o; }
 template <class T, class U> bool has(MutView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i] == x) return true; return false; }
 ",
     },
