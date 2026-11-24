@@ -1,56 +1,26 @@
 # Friction Report: noi19p4
 
-## 1. No std structure that drains the points of a rectangle
-- **Where:** `cell`, `place`, `harvest`: an x-segment tree of `SortedSet<(Int, City)>`, written by hand.
-- **What felt wrong:** the idea is "remove every unreached city in this rectangle"; the port spells the tree's index
-  arithmetic and recursion, and `cpl lint` flags it (L0514 hand-rolled recursive segment tree) while its suggested
-  `SegTree` cannot hold drainable per-node sets (`walk` yields node values, not places).
-- **Goal it hurts:** express, fast (R3, R9).
-- **Ideal code:** `var unreached = PointSet.of(at)`, `for c in unreached.drain(xs, ys): ...`.
-- **General fix:** a std 2D point set with remove and rectangle drain (segment tree of sorted runs with next-alive
-  links, or a k-d tree), amortized O(log^2) per point; also any "segment tree of containers" (`SegTree.walk_mut` or a
-  `SegTreeOf<D, C>`) for offline rectangle problems.
-- **Severity:** high.
-
-## 2. Ranges as row fields
-- **Where:** `xl: X, xr: X, yl: 1..=h, yr: 1..=h`.
-- **Ideal code:** `xs: 1..=w ..= 1..=w`: read a pair as a range.
-- **General fix:** a range type readable from two numbers.
+## 1. Rectangle drain needed a std structure (fixed)
+- **Where:** `unreached.drain(Int(r.xl)..Int(r.xr) + 1, r.yl..r.yr + 1)`.
+- **What felt wrong:** the earlier port hand-rolled an x-segment tree of `SortedSet<(Int, City)>` to
+  remove every unreached city in a rectangle once. `std.geometry.PointSet` now does exactly that.
+- **Remaining gap:** `PointSet` names points by `Int` index into the build list, so the port converts
+  with `City.nth(i)` and the ranges are half-open `Int` ranges over typed bounds.
+- **Ideal code:** `PointSet<City>.of(at)` with `drain(r.xl..=r.xr, r.yl..=r.yr) -> yields City`.
+- **General fix:** a `PointSet<D>` keyed by a domain, taking inclusive typed ranges.
 - **Severity:** low.
 
-## 3. Performance
-- **Where:** the treap-backed `SortedSet` per node.
-- **What felt wrong:** 2.4x the C++ (static per-node arrays with path-compressed next-alive links).
-- **General fix:** the `PointSet` of item 1 over static arrays.
-- **Severity:** medium (R10 miss).
-
 ## Measurements
-Stress: 30/30 agree with AC 3800719 on gen.py inputs (every city reachable). Max input (`gen.py --max`, n = 7e4,
-m = 1.5e5): port 1.76 s, C++ 0.72 s, same output. The frozen v0.2 port no longer checks (E0602/E0603 lent
-bucket elements), so the AC is the oracle.
+Stress: 30/30 agree with AC 3800719 (the v0.2 port does not check today); max (n = 7e4,
+m = 1.5e5) 0.51 s vs C++ 0.65 s, same output.
 
 ## Dream
-The ungated ideal (does not check today; the gaps above are the difference):
+The ungated ideal (does not check today):
 
 ```cp
-let (n, m, w, h) = read<(1..=7e4, 1..=1.5e5, 1..=7e4, 1..=7e4)>()
-domain City = 1..=n
-let at = read<[City](x: 1..=w, y: 1..=h)>()
-let portal = read<[m](from: City, t: 1..=1e4, xs: 1..=w ..= 1..=w, ys: 1..=h ..= 1..=h)>()
-let out = portal.map(.from).buckets()
-
-enum Node: At(City) | Via(portal.Index)
-var unreached = PointSet.of(at)
-var frontier = Settle<Node, Int>()
-var dist: [City]Int = 0
-frontier.offer(At(City.first!), 0)
-while let (u, d) = frontier.pop():
-    match u:
-        At(c):
-            dist[c] = d
-            unreached.remove(c)
-            for p in out[c]: frontier.offer(Via(p), d + portal[p].t)
-        Via(p):
-            for c in unreached.drain(portal[p].xs, portal[p].ys): frontier.offer(At(c), d)
-print(dist[c] for c in City.drop(1), sep: "\n")
+var unreached = PointSet<City>.of(at)
+for (u, d) in dijkstra(At(City.first!), next: u => match u:
+        At(c): out[c].map(p => (Via(p), portal[p].t))
+        Via(p): unreached.drain(portal[p].xl..=portal[p].xr, portal[p].yl..=portal[p].yr).map(c => (At(c), 0))):
+    if let At(c) = u: dist[c] = d
 ```
