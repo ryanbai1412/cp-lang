@@ -83,6 +83,14 @@ impl<'a> Lowerer<'a> {
     /// `impl Next<V> for Graph<V, A>` on `Graph<X, Y>` binds `V = X`, `A = Y`.
     pub(super) fn struct_impl_env(&self, idx: usize, sid: StructId) -> Option<GenEnv> {
         let (m, target) = (self.impls[idx].mod_id, self.impls[idx].target);
+        if let ast::TypeKind::ItemOf(of) = &target.kind {
+            let ident = of.fn_item_ident()?;
+            let fits = self
+                .item_types
+                .iter()
+                .any(|(k, s)| *s == sid && *k == ident);
+            return fits.then(|| self.structs[sid].env.clone());
+        }
         let ast::TypeKind::Named {
             name: head,
             args: targs,
