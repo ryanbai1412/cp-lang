@@ -1462,7 +1462,9 @@ impl Emitter<'_> {
                 self.give_owned = give_owned;
                 code
             }
-            _ => unreachable!("join_leaves gives only ifs, dos and their leaves"),
+            _ => crate::invariant::broken_invariant(
+                "join_leaves gives only ifs, dos and their leaves",
+            ),
         }
     }
 }
