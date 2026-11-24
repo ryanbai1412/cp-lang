@@ -481,14 +481,18 @@ impl Spelled<'_> {
         ) {
             return;
         }
-        for inner in &body.stmts {
+        // `.pairs()` replaces both loops, so any other work per `i` stays.
+        let [inner] = body.stmts.as_slice() else {
+            return;
+        };
+        {
             let StmtKind::For {
                 pat: jpat,
                 iter: jiter,
                 ..
             } = &inner.kind
             else {
-                continue;
+                return;
             };
             let ExprKind::Range {
                 lo: Some(lo),
@@ -496,7 +500,7 @@ impl Spelled<'_> {
                 ..
             } = &jiter.kind
             else {
-                continue;
+                return;
             };
             let ExprKind::Binary {
                 op: BinOp::Add,
@@ -505,21 +509,21 @@ impl Spelled<'_> {
                 ..
             } = &unparen(lo).kind
             else {
-                continue;
+                return;
             };
             if super::shapes::name(lhs) != Some(i)
                 || !matches!(rhs.kind, ExprKind::Int(1))
                 || self.text(jhi) != self.text(hi)
                 || pat_name(jpat).is_none()
             {
-                continue;
+                return;
             }
             let StmtKind::For { body: jbody, .. } = &inner.kind else {
-                continue;
+                return;
             };
             let j = self.text_pat(jpat);
             let Some(seq) = self.indexes_only(&body.stmts, inner, &jbody.stmts, [i, j]) else {
-                continue;
+                return;
             };
             self.push(
                 &MANUAL_PAIR_LOOP,
