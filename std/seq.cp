@@ -1411,6 +1411,13 @@ impl Bidir<T> for List<T>:
             yield self[i]
             i -= 1
 
+impl Sized for List<T>:
+    @get fn len(self) -> Int = self.len
+
+impl Keyed<Int, T> for List<T>:
+    fn items(self) -> yields (Int, T):
+        for (i, x) in self.items: yield (i, x)
+
 impl Seq<D> for Range<D>:
     fn iter(self) -> yields D:
         for x in self: yield x
@@ -1418,6 +1425,9 @@ impl Seq<D> for Range<D>:
 impl Bidir<D> for Range<D>:
     fn iter_rev(self) -> yields D:
         for x in self.rev: yield x
+
+impl Sized for Range<D>:
+    @get fn len(self) -> Int = self.len
 
 impl Seq<Char> for Str:
     fn iter(self) -> yields Char:
@@ -1429,6 +1439,13 @@ impl Bidir<Char> for Str:
         while i >= 0:
             yield self[i]
             i -= 1
+
+impl Sized for Str:
+    @get fn len(self) -> Int = self.len
+
+impl Keyed<Int, Char> for Str:
+    fn items(self) -> yields (Int, Char):
+        for (i, c) in self.items: yield (i, c)
 
 impl Seq<T> for [D]T:
     fn iter(self) -> yields T:
