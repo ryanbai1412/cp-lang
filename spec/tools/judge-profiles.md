@@ -34,10 +34,10 @@ isa = "x86-64"               # later: "avx2" enables target pragmas
 answers = ["YES", "NO"]
 ```
 
-- `I128` on a profile without `__int128` is an error naming the judge.
+- `I128` on a profile without `__int128` is an error naming the judge (Rjudge.3).
 - Size: a warning above 32 KB (or half of a smaller `source_kb`), an
   error above 64 KB or `source_kb`, whichever is smaller; `--size`
-  breaks the file down by part.
+  breaks the file down by part (decision 188) (Rjudge.4).
 - `time_ms` and `memory_mb` are a problem's limits when its `cp.toml`
   has no `[limits]`.
 - `memory_mb` feeds `cpl explain`'s peak-memory check and the LSP's

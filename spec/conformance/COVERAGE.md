@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3118 (1093 passing). Rules: 590.
+Cases: 3121 (1093 passing). Rules: 592.
 
 ## Summary per chapter
 
@@ -29,11 +29,11 @@ Cases: 3118 (1093 passing). Rules: 590.
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rjudge (judge-profiles.md): 2 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rjudge (judge-profiles.md): 4 rules, 6 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlsp (lsp.md): 5 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 2 rules, 2 cases; 1 uncovered, 0 happy-path only, 0 negative only
-- Rtrace (trace-debug.md): 6 rules, 4 cases; 3 uncovered, 1 happy-path only, 0 negative only
+- Rtrace (trace-debug.md): 6 rules, 5 cases; 2 uncovered, 2 happy-path only, 0 negative only
 
 27 rules match a forbidding word but only permit or define something;
 `permits.txt` lists them with the reason, so they need no reject case.
@@ -64,12 +64,12 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rbundle | 3 | 3 (100%) | 0 | 0 (0%) | 3 (100%) |
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
-| Rjudge | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
+| Rjudge | 4 | 4 (100%) | 3 | 1 (33%) | 2 (50%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
-| Rtrace | 6 | 3 (50%) | 4 | 1 (25%) | 2 (33%) |
-| all | 590 | 586 (99%) | 239 | 235 (98%) | 585 (99%) |
+| Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
+| all | 592 | 589 (99%) | 241 | 235 (97%) | 585 (98%) |
 
 ## Rules
 
@@ -706,6 +706,8 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - Rjudge.1 [3+ 1-]: Chosen by `--judge`, else a `// judge: name` line, else `cp.toml`. `[judge.<name>]` tables...
 - Rjudge.2 [2+ 1-]: The C++ file's second line names the profile, its compiler command and its stack, so the f...
+- Rjudge.3 [1+ 0-] *happy-path only*: `I128` on a profile without `__int128` is an error naming the judge
+- Rjudge.4 [1+ 0-] *happy-path only*: Size: a warning above 32 KB (or half of a smaller `source_kb`), an error above 64 KB or `s...
 
 ### Rlint: fmt-lint.md
 
@@ -728,7 +730,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### Rtrace: trace-debug.md
 
 - Rtrace.1 [1+ 1-]: **Traps** (checked builds) print the rule, the place and local values in source terms (pos...
-- Rtrace.2 [0+ 0-] **uncovered**: **`cpl run d input --trace`** writes one HTML file: every top-level statement and part cal...
+- Rtrace.2 [1+ 0-] *happy-path only*: **`cpl run d input --trace`** writes one HTML file: every top-level statement and part cal...
 - Rtrace.3 [0+ 0-] **uncovered**: **Stage snapshots**: `cpl snap` saves a part's inputs; `cpl run d --stage snap` reruns onl...
 - Rtrace.4 [1+ 0-]: **`debug(x)`** prints with a source location in checked builds and is removed from submiss...
 - Rtrace.5 [0+ 0-] **uncovered**: **The debugger** (the editors' debugger over `cpl dap`) runs on the interpreter: breakpoin...
