@@ -1,0 +1,154 @@
+//! `cpl explain`: codes, copies, storage and memory against the judge.
+
+use super::*;
+
+#[test]
+fn explain_shows_a_code_and_rejects_an_unknown_one() {
+    misused("explain", &["explain"], "`explain` takes a code or a file");
+    misused(
+        "explain",
+        &["explain", "E7777"],
+        "`E7777` is not a diagnostic or lint code",
+    );
+    let out = cpl(Path::new("."), &["explain", "E0302"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).starts_with("E0302: "),
+        "{}",
+        text(&out.stdout)
+    );
+    let unknown = cpl(Path::new("."), &["explain", "E7777"]);
+    assert_eq!(unknown.status.code(), Some(EXIT_USAGE.into()));
+    assert!(text(&unknown.stderr).contains("`E7777` is not a diagnostic or lint code"));
+    let json = cpl(Path::new("."), &["explain", "--json"]);
+    let json = cpl_json::parse(&text(&json.stdout)).expect("cpl explain --json is JSON");
+    assert!(json
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e.at(&["code"]).as_str() == Some("E0302")));
+}
+
+/// `cpl explain --json` lists each heap copy left in the C++, with where and
+/// why it owns its value, as the text report does.
+#[test]
+fn explain_json_lists_each_copy_and_why() {
+    let dir = scratch("explain_json_copies");
+    std::fs::write(
+        dir.join("c.cp"),
+        "fn f(rows: List<List<Int>>) -> Int:\n    var own = rows[0]\n    own.push(5)\n    own.len\nprint(f([[1], [2]]))\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["explain", "c.cp", "--json"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("JSON");
+    let copy = json
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e.at(&["lowering"]).as_str() == Some("copy"))
+        .unwrap_or_else(|| panic!("{}", text(&out.stdout)));
+    assert_eq!(copy.at(&["site"]).as_str(), Some("2:15"));
+    assert!(copy
+        .at(&["detail"])
+        .as_str()
+        .unwrap()
+        .contains("changed later"));
+}
+
+/// A file's explanation names the sections it can't fill yet
+/// (plan/QUESTIONS.md tools-3), on a file with closures and on one with
+/// none.
+#[test]
+fn explain_a_file_names_the_sections_not_shown_yet() {
+    let dir = scratch("explain_not_shown");
+    std::fs::write(
+        dir.join("f.cp"),
+        "let xs = [3, 1, 2]\nprint(xs.map(x => x * 2))\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("plain.cp"), "print(1)\n").unwrap();
+    for file in ["f.cp", "plain.cp"] {
+        let out = cpl(&dir, &["explain", file]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        let stdout = text(&out.stdout);
+        assert!(
+            stdout.ends_with("Not shown yet:\n  specializations chosen\n  checks left per build\n"),
+            "{file}: {stdout}"
+        );
+    }
+}
+
+/// The peak is reported against the memory limit of the file's judge
+/// (spec/tools/judge-profiles.md, Rjudge.7).
+#[test]
+fn explain_reports_the_peak_against_the_judges_memory_limit() {
+    let dir = scratch("explain_against_limit");
+    let small = "[judge.small]\nextends = \"generic\"\nmemory_mb = 16\n";
+    std::fs::write(dir.join("cp.toml"), small).unwrap();
+    let src = "// judge: small\nvar a: [0..1000000]Int = 0\na[5] = 1\nprint(a[5])\n";
+    std::fs::write(dir.join("m.cp"), src).unwrap();
+    let out = text(&cpl(&dir, &["explain", "m.cp"]).stdout);
+    assert!(out.contains("of 16 MB on small"), "{out}");
+}
+
+/// A `[V.ranges]T` table is a triangle, not a grid: explain counts its
+/// n(n + 1)/2 cells and names the end-major order the C++ and the
+/// interpreter share.
+#[test]
+fn explain_names_a_ranges_tables_layout() {
+    let dir = scratch("explain_ranges");
+    std::fs::write(
+        dir.join("r.cp"),
+        "domain I = 0..400\nvar cost: [I.ranges]Int = 0\nprint(cost[I.range])\n",
+    )
+    .unwrap();
+    let out = text(&cpl(&dir, &["explain", "r.cp"]).stdout);
+    assert!(
+        out.contains(
+            "8 B per element x 80200 = 641 KB, end-major triangle, n(n + 1)/2 cells: \
+             lo..hi at (hi - 1) * hi / 2 + lo"
+        ),
+        "{out}"
+    );
+}
+
+/// A file's explanation opens with each top-level value's bytes: per
+/// element and at the input bounds for an array, the niche of an optional,
+/// field offsets and padding, and the peak the fixed-size ones take; the
+/// same numbers hover shows, also in `--json`.
+#[test]
+fn explain_a_file_shows_each_values_storage() {
+    let dir = scratch("explain_storage");
+    std::fs::write(
+        dir.join("s.cp"),
+        "domain V = 0..1000\nlet n: Int = read()\nlet a: [V](Int, 0..=9) = (0, 0)\n\
+         let o: ?V = None\nlet xs: [n]Int = read()\nprint(n, o, a[0].0, xs.len)\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["explain", "s.cp"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).starts_with(
+            "Storage for s.cp (at the input bounds):\n\
+             \x20 n   Int              8 B\n\
+             \x20 a   [V](Int, 0..=9)  16 B per element x 1000 = 16 KB, fields @0 @8, 7 B padding\n\
+             \x20 o   ?V               2 B, None is a spare value (no flag)\n\
+             \x20 xs  [n]Int           8 B per element, no bound on the count\n\
+             \x20 peak 16 KB of 256 MB on generic, not counting xs\n"
+        ),
+        "{}",
+        text(&out.stdout)
+    );
+    let json = cpl_json::parse(&text(&cpl(&dir, &["explain", "s.cp", "--json"]).stdout)).unwrap();
+    let rows = json.as_array().unwrap();
+    let o = rows
+        .iter()
+        .find(|r| r.at(&["site"]).as_str() == Some("o"))
+        .unwrap();
+    assert_eq!(o.at(&["lowering"]).as_str(), Some("storage"));
+    assert_eq!(
+        o.at(&["detail"]).as_str(),
+        Some("?V: 2 B, None is a spare value (no flag)")
+    );
+}

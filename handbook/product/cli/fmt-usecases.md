@@ -10,7 +10,7 @@ Evidence: integration `crates/cpl-lsp/src/tests/format.rs` (`formatting_replaces
 Need: every file in the project in the canonical layout, in one command.
 Design: `cpl fmt .`; a directory stands for every `.cp` file under it.
 Milestone: M1-critical. Status: supported
-Evidence: `crates/cpl-fmt/src/tests.rs` (`rewrites_files_under_a_directory`); integration `crates/cpl-cli/tests/golden.rs` (`fmt_check_reports_without_writing_and_fmt_rewrites`)
+Evidence: `crates/cpl-fmt/src/tests.rs` (`rewrites_files_under_a_directory`); integration `crates/cpl-cli/tests/golden/style.rs` (`fmt_check_reports_without_writing_and_fmt_rewrites`)
 
 ### fmt/U3: check without writing
 Need: a hook or CI step fails when a file isn't formatted, and changes nothing.
@@ -70,7 +70,7 @@ Evidence: `crates/cpl-fmt/src/tests.rs` (`keeps_crlf_line_endings_of_a_windows_c
 Need: a tool knows which files changed and why one wasn't formatted.
 Design: `cpl fmt --json`: `files`, each with `path`, `changed`, `ok`, `diagnostics` and `error`.
 Milestone: later. Status: supported
-Evidence: integration `crates/cpl-cli/tests/golden.rs` (`fmt_json_says_which_files_changed_and_why_one_was_not_formatted`)
+Evidence: integration `crates/cpl-cli/tests/golden/style.rs` (`fmt_json_says_which_files_changed_and_why_one_was_not_formatted`)
 
 ### fmt/U13: docs show formatted code
 Need: every snippet a reader copies is already in the canonical layout.

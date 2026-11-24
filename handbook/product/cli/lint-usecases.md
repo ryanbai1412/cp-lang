@@ -34,7 +34,7 @@ Evidence: `crates/cpl-lint/src/tests.rs` (`cp_toml_sets_levels`, `cp_toml_sets_a
 Need: a warning never stops `cpl run` or `cpl lint` from succeeding; a deny does.
 Design: exit 0 on warnings alone, 1 on a denied lint.
 Milestone: M1-critical. Status: supported
-Evidence: `crates/cpl-lint/src/tests.rs` (`warnings_do_not_fail_and_deny_does`); integration `crates/cpl-cli/tests/golden.rs` (`lint_warns_with_its_code_and_exits_0_on_warnings_alone`)
+Evidence: `crates/cpl-lint/src/tests.rs` (`warnings_do_not_fail_and_deny_does`); integration `crates/cpl-cli/tests/golden/style.rs` (`lint_warns_with_its_code_and_exits_0_on_warnings_alone`)
 
 ### lint/U7: a file that doesn't check is not called clean
 Need: never read "0 warnings" on a file with errors.
@@ -118,4 +118,4 @@ Evidence: none yet
 Need: an editor or script consumes findings.
 Design: `cpl lint --json` prints what `cpl check --json` prints.
 Milestone: later. Status: supported
-Evidence: integration `crates/cpl-cli/tests/golden.rs` (`lint_json_prints_the_files_cpl_check_json_prints`)
+Evidence: integration `crates/cpl-cli/tests/golden/style.rs` (`lint_json_prints_the_files_cpl_check_json_prints`)

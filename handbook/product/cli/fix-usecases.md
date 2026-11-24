@@ -4,7 +4,7 @@
 Need: errors that name their fix are fixed in one command.
 Design: `cpl fix a.cp` applies each error's fix, re-checks, and rewrites the file.
 Milestone: M1-critical. Status: supported
-Evidence: integration `crates/cpl-cli/tests/golden.rs` (`fix_applies_every_fix_and_reports_what_is_left`); integration `crates/cpl-cli/tests/catalogue.rs` (`every_emitted_code_has_an_exact_trigger_and_a_clean_fix`)
+Evidence: integration `crates/cpl-cli/tests/golden/style.rs` (`fix_applies_every_fix_and_reports_what_is_left`); integration `crates/cpl-cli/tests/catalogue.rs` (`every_emitted_code_has_an_exact_trigger_and_a_clean_fix`)
 
 ### fix/U2: then the safe lint fixes
 Need: once the file checks, the lint fixes too, without a second command.
@@ -28,7 +28,7 @@ Evidence: `crates/cpl-lint/src/corpus_tests.rs` (`fixes_never_add_checker_errors
 Need: know which errors still need a human, and fail a script while any remain.
 Design: `cpl fix` prints the errors left in the rewritten file and exits 1 while one is left.
 Milestone: M1-critical. Status: supported
-Evidence: integration `crates/cpl-cli/tests/golden.rs` (`fix_applies_every_fix_and_reports_what_is_left`)
+Evidence: integration `crates/cpl-cli/tests/golden/style.rs` (`fix_applies_every_fix_and_reports_what_is_left`)
 
 ### fix/U6: overlapping fixes
 Need: two fixes on the same text don't corrupt it.
@@ -52,7 +52,7 @@ Evidence: `crates/cpl-lint/src/record_tests.rs` (`every_record_before_passes_cpl
 Need: an editor or script knows how many fixes applied and what is left.
 Design: `cpl fix --json`: `files`, the number `applied`, `ok`, and the `diagnostics` left.
 Milestone: later. Status: supported
-Evidence: integration `crates/cpl-cli/tests/golden.rs` (`fix_json_reports_what_it_applied_and_what_is_left`)
+Evidence: integration `crates/cpl-cli/tests/golden/style.rs` (`fix_json_reports_what_it_applied_and_what_is_left`)
 
 ### fix/U10: a fix that needs a choice
 Need: a fix that could be wrong is never applied unread.

@@ -154,7 +154,7 @@ their front ends.
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | The playground means what `cpl` means | entry points with a parity test (check, lint, fix, run, build, trace, explain, stress) | differential on every conformance case, `spec.cp` port and example; rule `commands/R9` | `crates/cpl-wasm/tests/parity.rs` |
-| One step installs the editor support | editors whose `cpl setup <editor>` is tested | hand-written suite | `crates/cpl-cli/tests/golden.rs` (setup; `setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp`: an empty home holding only the installer's launcher, no `--dir`, Vim's folder the one the Vim on the PATH reads, then Vim opens a `.cp` file from each package and its client runs that `cpl lsp`, which answers `initialize`; on every OS through the gate and CI `cli`) |
+| One step installs the editor support | editors whose `cpl setup <editor>` is tested | hand-written suite | `crates/cpl-cli/tests/golden/setup.rs` (setup; `setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp`: an empty home holding only the installer's launcher, no `--dir`, Vim's folder the one the Vim on the PATH reads, then Vim opens a `.cp` file from each package and its client runs that `cpl lsp`, which answers `initialize`; on every OS through the gate and CI `cli`) |
 | Each editor works from that step | editors passing the shared smoke (highlighting, diagnostics, completion, formatting, definition) | the same smoke on each editor | CI `neovim`, `vscode`, `jetbrains` and `editors` jobs; Vim in `editors/smoke.sh` |
 | A failed install or setup says why and what to do | failure modes with a tested message (no network, no compiler, unwritable folder, unknown editor) | hand-written suite | `crates/cpl-cli/tests/failures.rs` (`setup_failures_say_why_and_what_to_do`; with `golden.rs`'s `setup_writes_the_editor_files`: no network, no curl, unwritable folder, unknown editor, each with its `help:`; `a_missing_compiler_is_named_where_the_cpp_would_run`: no C++ compiler) |
 | Toolchains, pins and channels behave as documented | `cpl self` paths tested, including offline | hand-written suite | `crates/cpl-cli/tests/toolchain.rs` |
@@ -165,10 +165,10 @@ their front ends.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Companion import lands title, URL, limits, judge and samples | fields kept from a Companion problem | hand-written suite | `crates/cpl-contest/src/tests.rs`, `crates/cpl-cli/tests/golden.rs` (`new_creates_the_solution_and_its_tests_folder`) |
-| A whole contest imports as one folder | problems and samples kept from a contest page | hand-written suite | `crates/cpl-cli/tests/golden.rs` (`fetch_writes_a_pages_samples_and_keeps_other_tests`) |
+| Companion import lands title, URL, limits, judge and samples | fields kept from a Companion problem | hand-written suite | `crates/cpl-contest/src/tests.rs`, `crates/cpl-cli/tests/golden/project.rs` (`new_creates_the_solution_and_its_tests_folder`) |
+| A whole contest imports as one folder | problems and samples kept from a contest page | hand-written suite | `crates/cpl-cli/tests/golden/project.rs` (`fetch_writes_a_pages_samples_and_keeps_other_tests`) |
 | Editors import like the CLI | editors with an import action calling `cpl new --listen` | hand-written suite | `editors/vscode/test/unit/`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
-| The user's own layout and template work | layouts `cpl test`, `run` and the editors find the cases in (`a.tests/`, sibling `tests/`) | differential against `crates/cpl-contest` (`find_tests_dir`); rule `commands/R15` | `crates/cpl-cli/tests/golden.rs` (`new_lays_out_a_project_by_its_template_and_the_tools_find_it`), `crates/cpl-lsp/src/tests/lenses.rs` (`lenses_run_the_cases_cpl_test_finds_in_each_layout`, the VS Code lenses), `crates/cpl-contest/src/tests.rs`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
+| The user's own layout and template work | layouts `cpl test`, `run` and the editors find the cases in (`a.tests/`, sibling `tests/`) | differential against `crates/cpl-contest` (`find_tests_dir`); rule `commands/R15` | `crates/cpl-cli/tests/golden/project.rs` (`new_lays_out_a_project_by_its_template_and_the_tools_find_it`), `crates/cpl-lsp/src/tests/lenses.rs` (`lenses_run_the_cases_cpl_test_finds_in_each_layout`, the VS Code lenses), `crates/cpl-contest/src/tests.rs`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
 
 ### Writing and revising in the editor (J2, J5)
 
@@ -201,28 +201,28 @@ their front ends.
 | Interactive problems run with correct flushing | interactive problems run end to end | hand-written suite | `crates/cpl-cli/tests/cli.rs`, `crates/cpl-contest/src/tests.rs`; `crates/cpl-cli/tests/interactive_corpus.rs`: every corpus problem with an `interactor.py` (25) is solved on each `tests/*.case` and two `gen.py` cases, by `cpl run` and `cpl run --release` (196 runs) |
 | Adding a custom test is one step | `cpl test --add` paths and editor Add Test | hand-written suite | `crates/cpl-contest/src/tests.rs`, `editors/vscode/test/unit/` |
 | Editor test panels show what `cpl test` shows | panels whose cases, order and verdicts match | differential; rule `commands/R15` | `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
-| `cpl watch` reruns on save and never shows stale results | saves after which the shown result is current | hand-written suite | `crates/cpl-cli/tests/golden.rs` (watch) |
+| `cpl watch` reruns on save and never shows stale results | saves after which the shown result is current | hand-written suite | `crates/cpl-cli/tests/golden/run.rs` (watch) |
 
 ### Submitting (J9)
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | `cpl b -c` puts the judge's file on the clipboard on every OS | OSes with a tested copy | the same suite on each OS | `crates/cpl-cli/tests/clipboard.rs` (each of the 6 tools stubbed alone on PATH gets the C++ byte for byte with its clipboard arguments; the first tool wins; none warns and keeps the file), in the CI `cli` job on Linux and macOS; a real clipboard round trip per OS: `missing` |
-| Submission problems are caught before pasting (size, failed samples, checks) | `submit` refusals tested | hand-written suite | `crates/cpl-cli/tests/golden.rs` |
+| Submission problems are caught before pasting (size, failed samples, checks) | `submit` refusals tested | hand-written suite | `crates/cpl-cli/tests/golden/run.rs` |
 
 ### Every command (all journeys)
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Every command is discoverable from `cpl --help` | commands with `--help`, help lines within 80 columns | generated: one case per command listed by `cpl --help`; rule `commands/R1` | `crates/cpl-cli/tests/golden.rs` (`every_command_has_help_and_rejects_an_unknown_option`, `every_help_fits_80_columns`) |
+| Every command is discoverable from `cpl --help` | commands with `--help`, help lines within 80 columns | generated: one case per command listed by `cpl --help`; rule `commands/R1` | `crates/cpl-cli/tests/golden/help.rs` (`every_command_has_help_and_rejects_an_unknown_option`, `every_help_fits_80_columns`) |
 | The spec and the binary name the same commands | mismatches | differential, with a shrink-only allowlist; rule `commands/R4` | `crates/cpl-cli/tests/spec_sync.rs` |
-| A usage error names the right invocation | commands with a usage-error test | generated over the command list; rule `commands/R1` | `crates/cpl-cli/tests/golden.rs` |
+| A usage error names the right invocation | commands with a usage-error test | generated over the command list; rule `commands/R1` | `crates/cpl-cli/tests/golden/help.rs` |
 | Every command's output is pinned | commands with a snapshot of text and `--json` output | generated over the command list | `crates/cpl-cli/tests/output_pins.rs` (`every_command_prints_its_pinned_output`): stdout, stderr and exit status of a text and a JSON run of every command `cpl --help --json` lists, pinned in `crates/cpl-cli/tests/pins/`; a command without both pins fails |
-| One `--json` contract | commands with `--json`; one flag spelling; outputs valid against a published schema | hand-written suite; rule `commands/R3` | `crates/cpl-cli/tests/golden.rs` (`json_and_format_json_are_one_flag_on_every_command_with_json`); `crates/cpl-cli/tests/json_contract.rs`: 31 runs of every command with JSON output checked key for key against the 29 shapes `spec/tools/cli.md` publishes, each diagnostic against its key list, and every `--help --json` command with JSON output has a shape |
-| Exit codes mean the same on every command | commands asserting success and failure codes | hand-written suite; rule `commands/R5` | `crates/cpl-cli/tests/golden.rs` |
+| One `--json` contract | commands with `--json`; one flag spelling; outputs valid against a published schema | hand-written suite; rule `commands/R3` | `crates/cpl-cli/tests/golden/help.rs` (`json_and_format_json_are_one_flag_on_every_command_with_json`); `crates/cpl-cli/tests/json_contract.rs`: 31 runs of every command with JSON output checked key for key against the 29 shapes `spec/tools/cli.md` publishes, each diagnostic against its key list, and every `--help --json` command with JSON output has a shape |
+| Exit codes mean the same on every command | commands asserting success and failure codes | hand-written suite; rule `commands/R5` | `crates/cpl-cli/tests/golden/` |
 | Every command starts in under 100 ms | median and p90 per command, release build | generated over the command list and the largest corpus ports; rule `commands/R7` | `crates/cpl-cli/tests/cold_start.rs`; CI `lsp latency` job on macOS and Windows |
 | The same input prints the same bytes | `cpl-json` output order | architecture: objects are a `BTreeMap`; rule `commands/R6` | `crates/cpl-json` unit tests |
-| Paths shown are ones the user can open | printed paths going through one helper | architecture: `cpl_diag::Shown`; rule `commands/R8` | `crates/cpl-cli/tests/golden.rs` |
+| Paths shown are ones the user can open | printed paths going through one helper | architecture: `cpl_diag::Shown`; rule `commands/R8` | `crates/cpl-cli/tests/golden/` |
 | Help, errors, hover and explain use the spec's words | spellings `spec/GLOSSARY.md`'s Never column bans, in prose | generated scan: every `--help`, every `cpl explain` entry, `cpl explain` and hover over 200 conformance files | `scripts/spec-gate.py tool-vocab` (in `check.sh`); error messages over the corpus: `missing` |
 | Names are guessable | wrong guesses on fixed tasks given only `cpl --help` | process: a cold run on fixed tasks | `missing` as a suite |
 
@@ -230,7 +230,7 @@ their front ends.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Old solutions keep building, and `cpl migrate` moves them | removed spellings rewritten under a folder | hand-written suite | `crates/cpl-cli/tests/golden.rs` (`migrate_rewrites_removed_spellings_under_a_folder`) |
+| Old solutions keep building, and `cpl migrate` moves them | removed spellings rewritten under a folder | hand-written suite | `crates/cpl-cli/tests/golden/project.rs` (`migrate_rewrites_removed_spellings_under_a_folder`) |
 | Personal libraries get completion, hover and definition like std | user-library names covered by the completion, hover and definition metrics | generated, as for std: std copied into a `cp.toml` library with its names renamed | `crates/cpl-lsp/tests/std_items.rs` (`a_personal_library_gets_what_std_gets`: each renamed item hovers, signs, completes and goes to its definition as often as the same std item) |
 | Editor settings are few and documented | settings each editor exposes that are documented and tested | hand-written suite | `crates/cpl-cli/tests/editor_settings.rs` (VS Code, Neovim and Vim, Emacs, JetBrains and Zed: 19 settings, exactly the table in `spec/tools/lsp.md`, defaulted alike, each in its README, at most 15 per editor); `crates/cpl-cli/tests/vscode_sync.rs` (each VS Code setting read with its default) |
 | One analysis per command | databases each command opens (`own_databases`) | ratchet now; architecture once every tool takes one `cpl_check::Session`; rule `commands/R11` | `scripts/debt-ratchet.py` |

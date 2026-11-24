@@ -22,7 +22,7 @@ example `handbook/guidelines/commands-checklist.md#r1-help`.
 help line fits in 80 columns.
 - Reason: contestants learn the tool from `cpl --help`, in any terminal.
 - Example: `cpl test --help` names `--checker`, `--add` and `--json`.
-- Enforced by: `crates/cpl-cli/tests/golden.rs`
+- Enforced by: `crates/cpl-cli/tests/golden/`
   (`every_command_has_help_and_rejects_an_unknown_option`,
   `every_help_fits_80_columns`).
 
@@ -33,7 +33,7 @@ that shows the command's usage line.
 - Reason: the fix is in the message, not in a search.
 - Example: `cpl test --chekcer c.py` says the option is unknown and
   prints `usage: cpl test [FILE|FOLDER] ...`.
-- Enforced by: `crates/cpl-cli/tests/golden.rs`
+- Enforced by: `crates/cpl-cli/tests/golden/`
   (`every_command_has_help_and_rejects_an_unknown_option`).
 
 ### R3. One spelling
@@ -41,7 +41,7 @@ that shows the command's usage line.
 `commands/R3`: one flag per idea, spelled the same on every command.
 - Reason: a flag learned on one command works on the next.
 - Example: `--json` everywhere, with `--format json` as the same flag.
-- Enforced by: `crates/cpl-cli/tests/golden.rs`
+- Enforced by: `crates/cpl-cli/tests/golden/`
   (`json_and_format_json_are_one_flag_on_every_command_with_json`).
 
 ### R4. The spec names the commands
@@ -61,7 +61,7 @@ test failed.
 - Reason: editors, scripts and `cpl watch` act on the code.
 - Example: `cpl test` with a wrong answer exits 3, as `cpl run` does on a
   trap.
-- Enforced by: `crates/cpl-cli/tests/golden.rs`.
+- Enforced by: `crates/cpl-cli/tests/golden/`.
 
 ### R6. Machine output
 
@@ -70,7 +70,7 @@ one object per line for a stream, and is valid JSON even on failure.
 - Reason: editors parse it, and a reordered field breaks them silently.
 - Example: `cpl new --json` prints `{"path": ...}` per created file.
 - Enforced by: `crates/cpl-json` (objects are ordered maps),
-  `crates/cpl-cli/tests/golden.rs`.
+  `crates/cpl-cli/tests/golden/`.
 
 ### R7. Cold start
 
@@ -86,7 +86,7 @@ one object per line for a stream, and is valid JSON even on failure.
 `cpl_diag::Shown`, so it opens on the user's OS.
 - Reason: a path that does not open costs a search.
 - Example: `a.cp:3:5` relative to the working folder, with `\` on Windows.
-- Enforced by: `crates/cpl-cli/tests/golden.rs`.
+- Enforced by: `crates/cpl-cli/tests/golden/`.
 
 ### R9. Commands are functions
 
