@@ -213,7 +213,7 @@ impl Lowerer<'_> {
             narrow_elems: lw.narrow_elems,
             written_back: {
                 let mut spans = lw.written_back;
-                spans.sort_by_key(|s| (s.start, s.end));
+                cpl_diag::sort_by_key(&mut spans, |s| s.order());
                 spans.dedup();
                 spans
             },
