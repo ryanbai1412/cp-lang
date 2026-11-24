@@ -9,6 +9,7 @@ that no test notices. Mutants that don't build or time out aren't scored.
 Usage:
     python3 scripts/mutation-score.py -p cpl-lint [--since REV] [--shard K/N] [-o DIR]
         [--test-package cpl-lsp ...]   # also run tests of crates that call it
+        [--nextest] [--profile ci]     # stop at the first failing test; optimized tests
     python3 scripts/mutation-score.py --report DIR   # score a finished run
     add --min 0.98 to fail (exit 1) when the score is below 0.98
 """
@@ -60,12 +61,19 @@ def below(s: dict, least: float | None) -> int:
     return 1
 
 
-def mutants_command(package: str, out: Path, jobs: str, test_packages: list[str]) -> list[str]:
+def mutants_command(package: str, out: Path, jobs: str, test_packages: list[str],
+                    nextest: bool = False, profile: str | None = None) -> list[str]:
     """The cargo-mutants run. It keeps the baseline: skipping it turns a test
-    already red on the tree into a caught mutant each, and a 100% score."""
+    already red on the tree into a caught mutant each, and a 100% score.
+    Under nextest a caught mutant ends at its first failing test, so a crate
+    whose corpus tests take minutes is scored in hours, not days."""
     cmd = ["cargo", "mutants", "-p", package, "-o", str(out), "-j", jobs, "--no-shuffle"]
     if test_packages:
         cmd += ["--test-package", ",".join([package, *test_packages])]
+    if nextest:
+        cmd += ["--test-tool", "nextest"]
+    if profile:
+        cmd += ["--profile", profile]
     return cmd
 
 
@@ -78,6 +86,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--test-package", action="append", default=[],
                         help="also run this crate's tests, e.g. a caller whose tests cover the mutated code")
     parser.add_argument("-j", "--jobs", default="4")
+    parser.add_argument("--nextest", action="store_true",
+                        help="run tests with nextest, which stops at the first failure")
+    parser.add_argument("--profile", help="cargo profile to build tests in, e.g. ci")
     parser.add_argument("--report", type=Path, help="only score a finished run in DIR")
     parser.add_argument("--min", type=float, help="exit 1 when the score is below this, e.g. 0.98")
     args = parser.parse_args(argv)
@@ -86,7 +97,8 @@ def main(argv: list[str] | None = None) -> int:
     if not args.package:
         parser.error("-p/--package is required unless --report is given")
     out = args.output or Path(tempfile.mkdtemp(prefix=f"mutants-{args.package}-"))
-    cmd = mutants_command(args.package, out, args.jobs, args.test_package)
+    cmd = mutants_command(args.package, out, args.jobs, args.test_package,
+                          args.nextest, args.profile)
     if args.shard:
         cmd += ["--shard", args.shard]
     if args.since:

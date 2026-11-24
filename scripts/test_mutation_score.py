@@ -32,6 +32,11 @@ class ScoreTest(unittest.TestCase):
         self.assertNotIn("--baseline", cmd)
         self.assertEqual(cmd[-2:], ["--test-package", "cpl-fmt,cpl-cli"])
 
+    def test_nextest_and_a_profile_are_passed_on(self) -> None:
+        cmd = ms.mutants_command("cpl-lint", Path("o"), "3", [], nextest=True, profile="ci")
+        self.assertEqual(cmd[-4:], ["--test-tool", "nextest", "--profile", "ci"])
+        self.assertNotIn("--test-tool", ms.mutants_command("cpl-lint", Path("o"), "3", []))
+
 
 if __name__ == "__main__":
     unittest.main()
