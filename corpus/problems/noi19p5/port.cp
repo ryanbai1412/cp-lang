@@ -1,80 +1,37 @@
 // Source: NOI 2019 P5 Landlords (斗主地), https://dmoj.ca/problem/noi19p5
-// Problem: a deck of n <= 1e7 cards, card i scoring i (type 1) or i^2 (type 2). Each of m <= 5e5
-//   shuffles cuts off the top A_i cards and merges the two piles, taking the next card from a pile
-//   with probability proportional to its remaining size. Then Q <= 5e5 queries: print the
-//   expected score of the card at position c, mod 998244353.
-// Solution: the expected score stays a polynomial of degree <= 2 in the position, since the merge
-//   sends each pile's j-th card to a position distributed linearly. Keep its coefficients; after
-//   each shuffle compute the new expectations at positions 1, 2 and n from the old polynomial
-//   (which card can land there and with what probability) and refit. n <= 2 is special-cased.
-//   O(m + Q).
+// limits: 1000 ms, 512 MB
+// Problem: a deck of 3 <= n <= 1e7 cards, the card at (0-indexed) position t scoring t + 1
+//   (type 1) or (t + 1)^2 (type 2). Each of m <= 5e5 shuffles cuts off the top A_i cards and
+//   merges the two piles, taking the next card from a pile with probability proportional to its
+//   remaining size. Then Q <= 5e5 queries: print the expected score of the card at position c,
+//   mod 998244353.
+// Solution: every interleaving of the two piles is equally likely, so the expected score stays a
+//   polynomial of degree <= 2 in the position. Keep its coefficients; after a shuffle the card at
+//   position t <= 2 is the top pile's j-th or the bottom pile's (t - j)-th card, where j of the
+//   first t cards came from the top: weigh the old polynomial there by the falling-factorial
+//   probability of that origin sequence, and interpolate the new values at 0, 1, 2. O(m + Q).
+// original: corpus/submissions/5652798.cpp
+use std.math.{choose}
+use std.poly.{interpolate}
 
-type Z = Mod<998244353>
+type Z = Mod<998_244_353>
 
-let (n, m, kind): (Int, Int, Int) = read()
-var cuts: List<Int> = []
-for _ in 0..m:
-    let a: Int = read()
-    cuts.push(a)
-let q: Int = read()
-var asks: List<Int> = []
-for _ in 0..q:
-    let c: Int = read()
-    asks.push(c)
+let (n, m, kind): (3..=1e7, 1..=5e5, 1..=2) = read()
+let xs = [Z(t) for t in 0..3]
+var f = interpolate(xs, [Z(t + 1) ** kind for t in 0..3])
 
-fn eval(a: Z, b: Z, c: Z, x: Int) -> Z:
-    let zx = Z(x)
-    (a * zx + b) * zx + c
+fn falling(x: Int, k: Int) -> Z = prod(Z(x - i) for i in 0..k)
 
-var a: Z = if kind == 1: 0 else: 1
-var b: Z = Int(kind == 1)
-var c: Z = 0
-if n == 1:
-    for i in 0..q:
-        print(1)
-elif n == 2:
-    let inv2 = Z(2).inv()
-    for idx in 0..m:
-        let cut = cuts[idx]
-        if cut == 1:
-            let f1 = eval(a, b, c, 1)
-            let f2 = eval(a, b, c, 2)
-            let avg = (f1 + f2) * inv2
-            a = 0
-            b = 0
-            c = avg
-    for i in 0..q:
-        print(eval(a, b, c, asks[i]))
-else:
-    let inv_n = Z(n).inv()
-    let inv_n1 = Z(n - 1).inv()
-    let inv_2 = Z(2).inv()
-    let inv_n2 = Z(n - 2).inv()
+repeat m:
+    let a: 1..=n = read()
+    let b = n - a
+    f = interpolate(xs, [
+        sum(Z(choose(t, j)) * (falling(a, j + 1) * falling(b, t - j) * f.eval(Z(j))
+            + falling(a, j) * falling(b, t - j + 1) * f.eval(Z(a + t - j))) for j in 0..=t)
+            / falling(n, t + 1)
+        for t in 0..3])
 
-    for idx in 0..m:
-        let cut = cuts[idx]
-        let r = n - cut
-        let p = Z(cut) * inv_n
-        let q_prob = Z(r) * inv_n
-
-        let g1 = p * eval(a, b, c, 1) + q_prob * eval(a, b, c, cut + 1)
-
-        var g2: Z = 0
-        if cut >= 2:
-            g2 += p * Z(cut - 1) * inv_n1 * eval(a, b, c, 2)
-        if cut >= 1 and r >= 1:
-            g2 += p * Z(r) * inv_n1 * eval(a, b, c, cut + 1)
-            g2 += q_prob * Z(cut) * inv_n1 * eval(a, b, c, 1)
-        if r >= 2:
-            g2 += q_prob * Z(r - 1) * inv_n1 * eval(a, b, c, cut + 2)
-
-        let gn = p * eval(a, b, c, cut) + q_prob * eval(a, b, c, n)
-
-        let d1 = g2 - g1
-        let slope = (gn - g1) * inv_n1
-        a = (slope - d1) * inv_n2
-        b = d1 - 3 * a
-        c = g1 - a - b
-
-    for i in 0..q:
-        print(eval(a, b, c, asks[i]))
+let q: 1..=5e5 = read()
+repeat q:
+    let c: 1..=n = read()
+    print(f.eval(Z(c - 1)))
