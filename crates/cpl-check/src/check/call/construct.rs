@@ -272,12 +272,20 @@ impl Checker<'_> {
             ("argument", "arguments")
         };
         let mut supplied: Vec<&str> = Vec::new();
-        let mut next = 0usize;
         let mut extra = 0usize;
         let mut misnamed = false;
         let mut pack: Vec<Ty> = Vec::new();
         let mut named_pack: Vec<(String, Ty)> = Vec::new();
-        for (i, arg) in args.iter().enumerate() {
+        // A lambda is checked after the other arguments, so the generics they
+        // bind give its parameters their types (R05.10.4: whether it may keep
+        // one depends on that type). A pack keeps the order it was written.
+        let late = !variadic && verb != "has";
+        for k in 0..2 * args.len() {
+            let i = k % args.len();
+            let arg = &args[i];
+            if (late && matches!(arg.value.kind, ExprKind::Lambda { .. })) != (k >= args.len()) {
+                continue;
+            }
             let param = match &arg.name {
                 Some(name) if labeled => match params.iter().find(|p| p.name == name.text) {
                     Some(param) => Some(param),
@@ -324,12 +332,12 @@ impl Checker<'_> {
                 },
                 Some(_) => None,
                 None => {
+                    let next = args[..i].iter().filter(|a| a.name.is_none()).count();
                     let param = if variadic && next >= positional.len() - 1 {
                         positional.last().copied()
                     } else {
                         positional.get(next).copied()
                     };
-                    next += 1;
                     if param.is_none() {
                         extra += 1;
                     }

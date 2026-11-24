@@ -9414,3 +9414,21 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** The name-ban counter skips the build-option tables a CLI flag parses, listed by path in `NAME_BAN_OUT_OF_SCOPE` in `scripts/debt-ratchet.py`: today only `crates/cpl-ir/src/checks.rs`, whose `"all"` is the `--checks all` value. A std name in any lowering, checker or codegen module still counts. Factory ruling of 2026-11-24.
 - **Why.** The counter measures compiler code that matches a std name. A flag value that happens to be spelled like a std fn is not such a match. A path scope keeps it structural, where a name allowlist would also hide real arms that use the same spelling.
 - **Reverse.** Empty `NAME_BAN_OUT_OF_SCOPE`. The counter then scans every module of the four crates again.
+
+## 643. A lambda's parameter is lent on the call's final types (compiler, 2026-11-24)
+
+- **Call.** Storing a lambda parameter of heap type into an outer `var` is E0603
+  whether or not the call had bound the parameter's generic when the lambda was
+  checked: a store on a parameter whose type is still open is held back and judged
+  once the call's arguments bind it (`settle_param_stores` in
+  `check/lends/escape.rs`). To keep it without a copy, the lambda sinks it:
+  `undo: (var m) => cnt = m`.
+- **Why.** R05.10.4 makes a closure a parameter of its callee and R4 makes
+  parameters lent, so `m` is lent by the lambda's signature, not by where the
+  callee's body passes it. Before, `drive(mark: () => cnt.clone(), undo: m => cnt = m)`
+  passed only because clone's builtin row left `M` open, and the same call with
+  `mark: () => [1, 2]` was E0603.
+- **Reverse.** Drop the held-back store in `no_escape_assign`; an open type then
+  passes again.
+- **Status.** Accepted (Core); a `var` parameter in a fn type (`(var M) -> ()`) is
+  a separate language question for Ryan.

@@ -20,7 +20,7 @@ fn read_then_write():
 fn in_fn():
     var cnt = List.filled(3, 0)
     var resets = 0
-    drive(mark: () => cnt.clone(), add: p => cnt[p] += 1, undo: m => cnt = m, reset: () =>
+    drive(mark: () => cnt.clone(), add: p => cnt[p] += 1, undo: (var m) => cnt = m, reset: () =>
         resets += 1
         cnt = List.filled(3, 0))
     print(cnt, resets)
@@ -28,7 +28,7 @@ read_then_write()
 in_fn()
 var cnt = List.filled(3, 0)
 var resets = 0
-drive(mark: () => cnt.clone(), add: p => cnt[p] += 1, undo: m => cnt = m, reset: () =>
+drive(mark: () => cnt.clone(), add: p => cnt[p] += 1, undo: (var m) => cnt = m, reset: () =>
     resets += 1
     cnt = List.filled(3, 0))
 print(cnt, resets)
