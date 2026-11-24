@@ -143,3 +143,9 @@ fn a_generic_fn_value_takes_its_params_from_the_fn_param() {
         hover(src, "y = ap")
     );
 }
+
+#[test]
+fn a_position_indexes_a_built_prefix_as_its_right_cut() {
+    let src = "domain D = 0..3\nlet a: [D]Int = [D] v => 1 + Int(v)\nlet p = Prefix(a)\nlet s: Prefix<D, Int> = a.scan(+)\nprint(p[D(1)], s[D(1)], p[D(1).r])\n";
+    assert!(check(src).is_empty(), "{:?}", check(src));
+}

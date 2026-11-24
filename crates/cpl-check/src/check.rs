@@ -15,6 +15,7 @@ mod domain_use;
 mod expr;
 mod extension;
 mod fall_through;
+mod index_at;
 mod known;
 pub(crate) mod lends;
 mod library_domain;
