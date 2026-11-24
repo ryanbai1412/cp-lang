@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3449 (3427 passing). Rules: 616.
+Cases: 3450 (3427 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 3449 (3427 passing). Rules: 616.
 - R07 (07-sequences.md): 96 rules, 251 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 20 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 20 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 33 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -635,7 +635,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.3.4 [3+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`; with neither it prints 10 decimals,...
 - R10.3.5 [8+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [2+ 0-]: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
-- R10.3.8 [2+ 2-]: `HashMap` and `HashSet` are not `Show`, like `?T`: walking one has no defined order (lib/c...
+- R10.3.8 [3+ 2-]: `HashMap` and `HashSet` are not `Show`, like `?T`: walking one has no defined order (lib/c...
 
 ### R11: 11-modules-prelude.md
 
