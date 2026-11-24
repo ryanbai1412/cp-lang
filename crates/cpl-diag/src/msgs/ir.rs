@@ -199,4 +199,27 @@ super::msgs! {
     CAN_T_APPLIED_2 = BAD_OPERANDS, "`-` can't be applied to a `{}`";
     READ_FROM_INPUT_WHICH = UNRESOLVED_NAME, "`{}` is read from the input, which a `@gen` fn is there to make";
     SOLUTION_S_OWN_WORK = UNRESOLVED_NAME, "`{}` is the solution's own work: a brute or a checker shares only the input";
+    TYPE_MISMATCH_FOUND_VIEWS = TYPE_MISMATCH,
+        "expected `{}`, found `{}` made of views into another sequence, not copies";
+    TYPE_MISMATCH_WANTS_VIEWS = TYPE_MISMATCH,
+        "expected `{}` made of views into another sequence (it was built from a slice such as `xs[a..b]`), found an owned `{}`; build it from copies, `xs[a..b].to_list()`";
+    CANT_COMPARE = TYPE_MISMATCH, "can't compare a `{}` with a `{}`";
+    SORT_HAS_NO_PARAMETER = UNKNOWN_ARG_NAME, "`sort` has no parameter named `{}`";
+    FN_HAS_NO_PARAMETER = UNKNOWN_ARG_NAME, "`{}` has no parameter named `{}`";
+    GEN_TAKES = UNSUPPORTED, "`gen` takes a range, `gen(1..=n)`, or a type, `gen<[V]Int>()`";
+    GEN_STR_LEN = UNSUPPORTED, "a `gen<Str of ...>` takes its length range: `len: 1..=10`";
+    GEN_TREE_SHAPE = UNSUPPORTED, "a tree's `shape` is path, star, binary, caterpillar or random";
+    GEN_NEEDS_MODULE = UNSUPPORTED, "`gen` needs `std.{}`, which this build did not load";
+    GEN_MAKES = UNSUPPORTED,
+        "`gen` makes ranges, arrays of them, `Str of`, and named types with a `Random` impl";
+    COPIES_PAIRS_HOLDS = TYPE_MISMATCH, "`{}({})` copies `(key, value)` pairs, but `{}` holds `{}`s";
+    COPIES_PAIRS_NOT = TYPE_MISMATCH, "`{}({})` copies `(key, value)` pairs, not {} `{}`";
+    COPIES_SEQUENCE_NOT = TYPE_MISMATCH, "`{}({})` copies a sequence, not {} `{}`";
+    STRUCT_HAS_NO_FIELD = WRONG_ARG_COUNT, "`{}` has no field `{}`";
+    STRUCT_FIELD_COUNT = WRONG_ARG_COUNT, "`{}` has {} fields, but {} values were given";
+    MEMBER_TAKES = WRONG_ARG_COUNT, "`{}` takes `{}`, as in `{}`";
+    NEEDS_ELEMENT_TYPE = UNKNOWN_TYPE, "`{}` needs its element type: `{}<Int>`";
+    MORE_TYPE_ARGS = UNKNOWN_TYPE, "`{}` takes more type arguments: `{}<{}>`";
+    RECORD_PATTERN_CANT_MATCH = TYPE_MISMATCH, "a record pattern can't match a `{}`";
+    LIBRARY_GAP = UNSUPPORTED, "`{}` (`{}`) does not work on the types it was given here: {}";
 }

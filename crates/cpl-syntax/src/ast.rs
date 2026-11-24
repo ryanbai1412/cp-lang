@@ -811,7 +811,7 @@ impl Pattern {
     /// A record pattern as the tuple pattern over a record with fields
     /// `names`, in their order, `_` where `..` skips one. `Err` names a
     /// field the record lacks, or one the pattern leaves out without `..`.
-    pub fn record_as_tuple(&self, names: &[&str]) -> Result<Pattern, String> {
+    pub fn record_as_tuple(&self, names: &[&str]) -> Result<Pattern, cpl_diag::msgs::Said> {
         let PatternKind::Record { fields, rest } = &self.kind else {
             return Ok(self.clone());
         };
@@ -819,7 +819,7 @@ impl Pattern {
             .iter()
             .find(|(n, _)| !names.contains(&n.text.as_str()))
         {
-            return Err(format!("the record has no field `{}`", name.text));
+            return Err(cpl_diag::msgs::syntax::RECORD_HAS_NO_FIELD.at(&[&name.text]));
         }
         let mut items = Vec::with_capacity(names.len());
         for &name in names {
@@ -829,7 +829,7 @@ impl Pattern {
                     kind: PatternKind::Wildcard,
                     span: self.span,
                 }),
-                None => return Err(format!("the pattern leaves out `{name}`; add it or `..`")),
+                None => return Err(cpl_diag::msgs::syntax::PATTERN_LEAVES_OUT.at(&[&name])),
             }
         }
         Ok(Pattern {

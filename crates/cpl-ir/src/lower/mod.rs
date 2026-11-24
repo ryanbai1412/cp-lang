@@ -971,8 +971,8 @@ impl<'a> Lowerer<'a> {
         if want.mentions_error() || found.mentions_error() {
             return;
         }
-        let message = crate::show::mismatch(&self.show(want), &self.show(found), want, found);
-        self.type_mismatch(span, want, found, message);
+        let said = crate::show::mismatch(&self.show(want), &self.show(found), want, found);
+        self.type_mismatch(span, want, found, said);
     }
 
     /// Each domain by the name it is written with: one made for a `D`

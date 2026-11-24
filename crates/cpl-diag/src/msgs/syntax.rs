@@ -55,4 +55,6 @@ super::msgs! {
     LINT_TO_EXTRA = BAD_LIBRARY_LINT, "`to` of `@lint({})` uses `{}`, which `from` does not match";
     LINT_TO_NO_CALL = BAD_LIBRARY_LINT, "`to` of `@lint({})` does not call `{}`";
     LINT_TWICE = BAD_LIBRARY_LINT, "`@lint({})` is declared twice in this module";
+    RECORD_HAS_NO_FIELD = TYPE_MISMATCH, "the record has no field `{}`";
+    PATTERN_LEAVES_OUT = TYPE_MISMATCH, "the pattern leaves out `{}`; add it or `..`";
 }

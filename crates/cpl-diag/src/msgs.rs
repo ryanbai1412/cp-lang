@@ -158,6 +158,28 @@ impl Said {
         self.text
     }
 
+    pub fn as_str(&self) -> &str {
+        &self.text
+    }
+
+    /// The same text under the code a site picks from the types, e.g. the
+    /// wrong domain for a position where another domain's is wanted.
+    pub fn with_code(self, code: Code) -> Said {
+        Said { code, ..self }
+    }
+
+    /// `row` said with `args` and then this text, keeping this code: a row
+    /// that places another message, such as where in a library it arose.
+    pub fn wrapped(self, row: Msg, args: &[&dyn Display]) -> Said {
+        let mut all = args.to_vec();
+        all.push(&self.text);
+        let text = row.say(&all);
+        Said {
+            code: self.code,
+            text,
+        }
+    }
+
     pub fn error(self, span: Span) -> Diagnostic {
         Diagnostic::error(self.code, span, self.text)
     }

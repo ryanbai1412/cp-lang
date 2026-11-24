@@ -565,9 +565,9 @@ impl Lowerer<'_> {
                     Err(message) => message,
                 }
             }
-            _ => format!("a record pattern can't match a `{}`", self.show(ty)),
+            _ => msgs::ir::RECORD_PATTERN_CANT_MATCH.at(&[&self.show(ty)]),
         };
-        self.error(codes::TYPE_MISMATCH, pat.span, message);
+        self.report_said(pat.span, message);
         None
     }
 }

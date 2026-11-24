@@ -146,18 +146,20 @@ pub(crate) fn source_name(name: &str) -> &str {
 }
 
 /// "expected `want`, found `found`", naming views when both read the same.
-pub(crate) fn mismatch(want: &str, found: &str, want_ty: &Ty, found_ty: &Ty) -> String {
+pub(crate) fn mismatch(
+    want: &str,
+    found: &str,
+    want_ty: &Ty,
+    found_ty: &Ty,
+) -> cpl_diag::msgs::Said {
+    use cpl_diag::msgs;
     if want != found {
-        format!("expected `{want}`, found `{found}`")
+        msgs::check::TYPE_MISMATCH_EXPECTED_FOUND.at(&[&want, &found])
     } else if Ty::holds_view(found_ty) {
-        format!(
-            "expected `{want}`, found `{found}` made of views into another sequence, not copies"
-        )
+        msgs::ir::TYPE_MISMATCH_FOUND_VIEWS.at(&[&want, &found])
     } else if Ty::holds_view(want_ty) {
-        format!(
-            "expected `{want}` made of views into another sequence (it was built from a slice such as `xs[a..b]`), found an owned `{found}`; build it from copies, `xs[a..b].to_list()`"
-        )
+        msgs::ir::TYPE_MISMATCH_WANTS_VIEWS.at(&[&want, &found])
     } else {
-        format!("expected `{want}`, found `{found}`")
+        msgs::check::TYPE_MISMATCH_EXPECTED_FOUND.at(&[&want, &found])
     }
 }

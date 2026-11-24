@@ -29,10 +29,7 @@ impl<'a> Lowerer<'a> {
                         },
                     ..
                 }] => self.gen_range(lo, hi, *inclusive, span),
-                _ => self.gen_error(
-                    "`gen` takes a range, `gen(1..=n)`, or a type, `gen<[V]Int>()`",
-                    span,
-                ),
+                _ => self.gen_error(cpl_diag::msgs::ir::GEN_TAKES.at(&[]), span),
             };
         };
         let named = |name: &str| {
@@ -81,10 +78,7 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 };
                 let Some((lo, hi, inclusive)) = by_arg.or(by_type) else {
-                    return self.gen_error(
-                        "a `gen<Str of ...>` takes its length range: `len: 1..=10`",
-                        span,
-                    );
+                    return self.gen_error(cpl_diag::msgs::ir::GEN_STR_LEN.at(&[]), span);
                 };
                 let alphabet = alphabet
                     .clone()
@@ -124,16 +118,22 @@ impl<'a> Lowerer<'a> {
                         let shape = match named("shape").map(|a| &a.value.kind) {
                             None => 4,
                             Some(ast::ExprKind::Name(shape)) => {
-                                match ["path", "star", "binary", "caterpillar", "random"].iter().position(|s| s == shape) {
-                                Some(at) => at as i128,
-                                None => return self.gen_error("a tree's `shape` is path, star, binary, caterpillar or random", span),
-                            }
+                                match ["path", "star", "binary", "caterpillar", "random"]
+                                    .iter()
+                                    .position(|s| s == shape)
+                                {
+                                    Some(at) => at as i128,
+                                    None => {
+                                        return self.gen_error(
+                                            cpl_diag::msgs::ir::GEN_TREE_SHAPE.at(&[]),
+                                            span,
+                                        )
+                                    }
+                                }
                             }
                             Some(_) => {
-                                return self.gen_error(
-                                    "a tree's `shape` is path, star, binary, caterpillar or random",
-                                    span,
-                                )
+                                return self
+                                    .gen_error(cpl_diag::msgs::ir::GEN_TREE_SHAPE.at(&[]), span)
                             }
                         };
                         let shape = ast::Arg {
@@ -225,22 +225,16 @@ impl<'a> Lowerer<'a> {
                 self.call_gen_fn(id, explicit, None, args, span)
             }
             Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
-            _ => self.gen_error(
-                &format!("`gen` needs `std.{module}`, which this build did not load"),
-                span,
-            ),
+            _ => self.gen_error(cpl_diag::msgs::ir::GEN_NEEDS_MODULE.at(&[&module]), span),
         }
     }
 
     fn gen_unsupported(&mut self, span: Span) -> Expr {
-        self.gen_error(
-            "`gen` makes ranges, arrays of them, `Str of`, and named types with a `Random` impl",
-            span,
-        )
+        self.gen_error(cpl_diag::msgs::ir::GEN_MAKES.at(&[]), span)
     }
 
-    fn gen_error(&mut self, message: &str, span: Span) -> Expr {
-        self.error(codes::UNSUPPORTED, span, message.to_string());
+    fn gen_error(&mut self, said: cpl_diag::msgs::Said, span: Span) -> Expr {
+        self.report_said(span, said);
         self.err_expr(span)
     }
 }

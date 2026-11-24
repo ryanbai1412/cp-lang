@@ -72,26 +72,16 @@ impl<'a> Lowerer<'a> {
         msg: cpl_diag::msgs::Msg,
         args: &[&dyn std::fmt::Display],
     ) {
-        self.error_text(msg.code(), span, msg.say(args));
+        self.report_said(span, msg.at(args));
     }
 
-    pub(super) fn report_said(&mut self, span: Span, said: cpl_diag::msgs::Said) {
-        self.error(said.code(), span, said.text())
-    }
-
-    pub(super) fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
-        self.error_text(code, span, message.into());
-    }
-
-    fn error_text(&mut self, code: cpl_diag::Code, span: Span, mut message: String) {
+    pub(super) fn report_said(&mut self, span: Span, mut said: cpl_diag::msgs::Said) {
         let at = span.shift(self.offset);
         let span = self.span(span);
         let mut notes = Vec::new();
         if self.cur_mod != 0 {
             if let Some((module, line, inside)) = self.library_place(self.cur_mod, at) {
-                message = format!(
-                    "`{inside}` (`{module}`) does not work on the types it was given here: {message}"
-                );
+                said = said.wrapped(msgs::ir::LIBRARY_GAP, &[&inside, &module]);
                 notes.push(format!(
                     "{}.cp:{line}: inside `{inside}`; the gap is in `{module}`, not in your code",
                     module.replace('.', "/")
@@ -103,9 +93,9 @@ impl<'a> Lowerer<'a> {
                     notes.push(format!("{file}.cp:{line}: called from `{inside}`"));
                 }
             }
-            self.in_library.insert(message.clone());
+            self.in_library.insert(said.as_str().to_string());
         }
-        let diag = Diagnostic::error(code, span, message);
+        let diag = said.error(span);
         self.diags
             .push(notes.into_iter().fold(diag, Diagnostic::with_note));
     }

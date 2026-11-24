@@ -1191,8 +1191,7 @@ impl<'a> Lowerer<'a> {
                 Some(arg_name) => match params.iter().position(|p| p.label == arg_name.text) {
                     Some(index) => index,
                     None => {
-                        let message =
-                            format!("`{name}` has no parameter named `{}`", arg_name.text);
+                        let message = msgs::ir::FN_HAS_NO_PARAMETER.at(&[&name, &arg_name.text]);
                         let labels: Vec<&str> = params.iter().map(|p| p.label.as_str()).collect();
                         self.unknown_arg_name(message, arg_name, &labels);
                         ok = false;
@@ -1592,17 +1591,17 @@ impl<'a> Lowerer<'a> {
                     match index {
                         Some(index) => given[index] = Some(arg),
                         None => {
-                            let message = match &arg.name {
+                            let said = match &arg.name {
                                 Some(arg_name) => {
-                                    format!("`{name}` has no field `{}`", arg_name.text)
+                                    msgs::ir::STRUCT_HAS_NO_FIELD.at(&[&name, &arg_name.text])
                                 }
-                                None => format!(
-                                    "`{name}` has {} fields, but {} values were given",
-                                    fields.len(),
-                                    args.len()
-                                ),
+                                None => msgs::ir::STRUCT_FIELD_COUNT.at(&[
+                                    &name,
+                                    &fields.len(),
+                                    &args.len(),
+                                ]),
                             };
-                            self.error(codes::WRONG_ARG_COUNT, arg.value.span, message);
+                            self.report_said(arg.value.span, said);
                             return self.err_expr(span);
                         }
                     }
@@ -1639,15 +1638,15 @@ impl<'a> Lowerer<'a> {
             match index {
                 Some(index) => given[index] = Some(arg),
                 None => {
-                    let message = match &arg.name {
-                        Some(arg_name) => format!("`{name}` has no field `{}`", arg_name.text),
-                        None => format!(
-                            "`{name}` has {} fields, but {} values were given",
-                            fields.len(),
-                            args.len()
-                        ),
+                    let said = match &arg.name {
+                        Some(arg_name) => {
+                            msgs::ir::STRUCT_HAS_NO_FIELD.at(&[&name, &arg_name.text])
+                        }
+                        None => {
+                            msgs::ir::STRUCT_FIELD_COUNT.at(&[&name, &fields.len(), &args.len()])
+                        }
                     };
-                    self.error(codes::WRONG_ARG_COUNT, arg.value.span, message);
+                    self.report_said(arg.value.span, said);
                     return self.err_expr(span);
                 }
             }

@@ -328,7 +328,7 @@ impl<'a> Lowerer<'a> {
 
     /// A one-character string where a `Char` or a `Char` test is wanted:
     /// `'a'`, or `c => c == 'a'`; a statement where a value is wanted.
-    pub(super) fn type_mismatch(&mut self, span: Span, want: &Ty, found: &Ty, message: String) {
+    pub(super) fn type_mismatch(&mut self, span: Span, want: &Ty, found: &Ty, said: msgs::Said) {
         // A position or cut of one domain where another's is wanted is the wrong domain.
         let code = match (want, found) {
             (Ty::Pos(a), Ty::Pos(b)) | (Ty::Bound(a), Ty::Bound(b)) if a != b => {
@@ -336,7 +336,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => codes::TYPE_MISMATCH,
         };
-        self.error(code, span, message);
+        self.report_said(span, said.with_code(code));
         let text = self.source(span);
         if matches!(found, Ty::Unit) && !text.contains('\n') {
             if let Some(last) = self
@@ -409,16 +409,12 @@ impl<'a> Lowerer<'a> {
 
     /// `l == r` with types that don't meet; `s[0] == "a"` gets `'a'`.
     pub(super) fn compare_mismatch(&mut self, span: Span, l: &Expr, r: &Expr) {
-        let message = format!(
-            "can't compare a `{}` with a `{}`",
-            self.show(&l.ty),
-            self.show(&r.ty)
-        );
+        let said = msgs::ir::CANT_COMPARE.at(&[&self.show(&l.ty), &self.show(&r.ty)]);
         let code = match (&l.ty, &r.ty) {
             (Ty::Pos(_), Ty::Pos(_)) => codes::WRONG_DOMAIN,
             _ => codes::TYPE_MISMATCH,
         };
-        self.error(code, span, message);
+        self.report_said(span, said.with_code(code));
         // Lowered spans are already absolute in the module's text.
         let lit = match (&l.ty, &r.ty) {
             (Ty::Char, Ty::Str) => r,
@@ -748,15 +744,15 @@ impl<'a> Lowerer<'a> {
         else {
             return false;
         };
-        let message = format!("`sort` has no parameter named `{}`", named.text);
-        self.unknown_arg_name(message, named, &["by"]);
+        let said = msgs::ir::SORT_HAS_NO_PARAMETER.at(&[&named.text]);
+        self.unknown_arg_name(said, named, &["by"]);
         true
     }
 
     /// A named argument the callee lacks; suggests the label meant, including
     /// Python's names for the same option (`key=` and `cmp=` are `by:`).
-    pub(super) fn unknown_arg_name(&mut self, message: String, name: &ast::Name, labels: &[&str]) {
-        self.error(codes::UNKNOWN_ARG_NAME, name.span, message);
+    pub(super) fn unknown_arg_name(&mut self, said: msgs::Said, name: &ast::Name, labels: &[&str]) {
+        self.report_said(name.span, said);
         let foreign = match name.text.as_str() {
             "key" | "cmp" => Some("by"),
             _ => None,
@@ -962,12 +958,12 @@ fn split_pair(inner: &str) -> Option<(String, String)> {
     (!k.is_empty() && !v.is_empty()).then(|| (k.to_string(), v.to_string()))
 }
 
-pub(super) fn missing_type_args(name: &str, given: usize) -> String {
+pub(super) fn missing_type_args(name: &str, given: usize) -> msgs::Said {
     if given == 0 {
-        return format!("`{name}` needs its element type: `{name}<Int>`");
+        return msgs::ir::NEEDS_ELEMENT_TYPE.at(&[&name, &name]);
     }
     let args = vec!["Int"; given + 1].join(", ");
-    format!("`{name}` takes more type arguments: `{name}<{args}>`")
+    msgs::ir::MORE_TYPE_ARGS.at(&[&name, &name, &args])
 }
 
 /// The built-in type whose members `ty` has.
@@ -987,10 +983,7 @@ fn receiver_of(ty: &Ty) -> Option<cpl_check::Receiver> {
 
 /// The error for a built-in member called with arguments it doesn't take:
 /// `xs.fold()` names what `fold` takes rather than saying it is missing.
-pub(super) fn builtin_misuse(ty: &Ty, method: &str) -> Option<String> {
+pub(super) fn builtin_misuse(ty: &Ty, method: &str) -> Option<msgs::Said> {
     let row = cpl_check::builtin_members(receiver_of(ty)?).find(|m| m.name == method)?;
-    Some(format!(
-        "`{method}` takes `{}`, as in `{}`",
-        row.params, row.example
-    ))
+    Some(msgs::ir::MEMBER_TAKES.at(&[&method, &row.params, &row.example]))
 }

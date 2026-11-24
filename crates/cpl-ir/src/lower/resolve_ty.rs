@@ -174,11 +174,7 @@ impl<'a> Lowerer<'a> {
         let arg = |lw: &mut Self, i: usize| match args.get(i) {
             Some(ty) => lw.resolve_ty(ty),
             None => {
-                lw.error(
-                    codes::UNKNOWN_TYPE,
-                    name.span,
-                    typo::missing_type_args(&name.text, i),
-                );
+                lw.report_said(name.span, typo::missing_type_args(&name.text, i));
                 Ty::Error
             }
         };

@@ -32,22 +32,24 @@ impl<'a> Lowerer<'a> {
         };
         let (message, help) = match ty.seq_elem() {
             Some(elem) if map => (
-                format!(
-                    "`{name}({text})` copies `(key, value)` pairs, but `{text}` holds `{}`s",
-                    self.show(&elem)
-                ),
+                cpl_diag::msgs::ir::COPIES_PAIRS_HOLDS.at(&[
+                    &name,
+                    &text,
+                    &text,
+                    &self.show(&elem),
+                ]),
                 format!("pair each with its value: `{name}((x, v) for x in {text})`"),
             ),
             _ if map => (
-                format!("`{name}({text})` copies `(key, value)` pairs, not {article} `{shown}`"),
+                cpl_diag::msgs::ir::COPIES_PAIRS_NOT.at(&[&name, &text, &article, &shown]),
                 format!("write `{name}()` for an empty map"),
             ),
             _ => (
-                format!("`{name}({text})` copies a sequence, not {article} `{shown}`"),
+                cpl_diag::msgs::ir::COPIES_SEQUENCE_NOT.at(&[&name, &text, &article, &shown]),
                 format!("write `[0 for _ in 0..{text}]` for {text} zeros, or `[{text}]`"),
             ),
         };
-        self.error(codes::TYPE_MISMATCH, span, message);
+        self.report_said(span, message);
         self.help(help);
         self.err_expr(span)
     }

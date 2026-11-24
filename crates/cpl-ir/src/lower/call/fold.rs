@@ -372,8 +372,9 @@ impl<'a> Lowerer<'a> {
             }
         }
         if let Some(named) = args.iter().find_map(|a| a.name.as_ref()) {
-            let message = format!("`{name}` has no argument named `{}`", named.text);
-            self.unknown_arg_name(message, named, &["by"]);
+            let said = cpl_diag::msgs::ir::UNKNOWN_ARG_NAME_HAS_NO_ARGUMENT_NAMED
+                .at(&[&name, &named.text]);
+            self.unknown_arg_name(said, named, &["by"]);
             // Python's `max(a, default=0)`: an empty list has no max, `a.max() ?? 0`.
             if let ([seq, d], "default") = (args, named.text.as_str()) {
                 let (a, b) = (self.source(seq.value.span), self.source(d.value.span));

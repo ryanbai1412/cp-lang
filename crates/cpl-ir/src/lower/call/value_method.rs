@@ -1499,7 +1499,7 @@ impl<'a> Lowerer<'a> {
                     return res;
                 }
                 if let Some(message) = typo::builtin_misuse(&ty, method) {
-                    self.error(codes::WRONG_ARG_COUNT, name.span, message);
+                    self.report_said(name.span, message);
                     return self.err_expr(span);
                 }
                 self.report(
