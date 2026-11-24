@@ -4165,12 +4165,13 @@ pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
     [0..V.count - 1] i => out[i]
 
 /// The shape of tree `gen<Rooted<V>>(shape:)` draws: a path, a star, a binary heap, a
-/// caterpillar (a spine with legs), or a random one (each vertex below a uniform earlier one).
-pub enum TreeShape = Path | Star | Binary | Caterpillar | Random
+/// caterpillar (a spine with legs), or a random recursive tree (each vertex below a uniform
+/// earlier one).
+pub enum TreeShape = Path | Star | Binary | Caterpillar | Recursive
 
 /// `gen<Rooted<V>>(shape:)`: each vertex hangs from one drawn before it, in `shape`.
 impl<V, Pre, A> Random for Rooted<V, Pre, A>:
-    fn gen(shape: TreeShape = Random) -> Rooted<V, _, _>:
+    fn gen(shape: TreeShape = Recursive) -> Rooted<V, _, _>:
         let n = V.count
         var label = V.collect()
         shuffle(mut label)
