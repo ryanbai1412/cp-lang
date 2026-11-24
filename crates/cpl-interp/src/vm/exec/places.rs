@@ -1288,6 +1288,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     ExecExit::FeedBreak if fed.is_some() => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::FeedNext | ExecExit::FeedBreak => {}
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
+                    ExecExit::ReturnTuple => return Ok(Some(ExecExit::ReturnTuple)),
                 }
             }
             Op::FeedYieldI { src, kind, back } => {
@@ -1343,6 +1344,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     ExecExit::FeedNext => {}
                     ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
+                    ExecExit::ReturnTuple => return Ok(Some(ExecExit::ReturnTuple)),
                 }
             }
             Op::FeedYieldV { src, back } => {
@@ -1386,6 +1388,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     ExecExit::FeedNext => {}
                     ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
+                    ExecExit::ReturnTuple => return Ok(Some(ExecExit::ReturnTuple)),
                 }
             }
             Op::FeedYieldExtend { src } => {
@@ -1417,6 +1420,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         ExecExit::FeedNext => {}
                         ExecExit::FeedBreak => return Ok(Some(ExecExit::FeedBreak)),
                         ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
+                        ExecExit::ReturnTuple => return Ok(Some(ExecExit::ReturnTuple)),
                     }
                 }
             }

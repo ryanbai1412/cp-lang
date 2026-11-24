@@ -1038,7 +1038,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         jumps.push(pc);
                     }
                 } else if self.cur_fn.is_some() {
-                    if ScalarKind::of_ty(&e.ty, self.program).is_some() {
+                    if let Some((len, kinds)) = self.tuple_ret_of(e) {
+                        let base = self.small_tuple_operand(e, len);
+                        self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
+                    } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
                         let r = self.compile_expr_i(e);
                         self.emit(Op::RetI { src: r }, e.span);
                     } else {
@@ -1072,7 +1075,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 } else if self.feed_acc.is_some() {
                     self.emit(Op::FeedEnd, Span::default());
                 } else if let Some(e) = val {
-                    if ScalarKind::of_ty(&e.ty, self.program).is_some() {
+                    if let Some((len, kinds)) = self.tuple_ret_of(e) {
+                        let base = self.small_tuple_operand(e, len);
+                        self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
+                    } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
                         let r = self.compile_expr_i(e);
                         self.emit(Op::RetI { src: r }, e.span);
                     } else {

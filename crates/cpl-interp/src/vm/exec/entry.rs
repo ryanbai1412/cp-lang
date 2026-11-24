@@ -74,6 +74,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             ExecExit::FeedNext => Flow::Next,
             ExecExit::FeedBreak => Flow::Break(Some(id)),
             ExecExit::Return(value) => Flow::Return(value),
+            ExecExit::ReturnTuple => Flow::Return(self.boxed_ret_tuple()),
         }))
     }
 

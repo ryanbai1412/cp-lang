@@ -255,7 +255,7 @@ impl Cells {
 
     /// Pushes the small tuple in `vals`, boxing only when the cells hold
     /// something else.
-    pub fn push_small_tuple(&mut self, len: usize, vals: &[i64], kinds: &[SmallFieldKind; 4]) {
+    pub fn push_small_tuple(&mut self, len: usize, vals: &[i64], kinds: &[SmallFieldKind; 5]) {
         let flat = shape::flat(kinds, len);
         if let Cells::Rows {
             stride,
@@ -277,7 +277,7 @@ impl Cells {
         idx: usize,
         len: usize,
         vals: &[i64],
-        kinds: &[SmallFieldKind; 4],
+        kinds: &[SmallFieldKind; 5],
     ) {
         match &mut *self {
             Cells::Rows { shape, data, .. } if *shape == shape::flat(kinds, len) => {

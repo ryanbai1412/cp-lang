@@ -691,6 +691,8 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
 
 pub(super) enum ExecExit {
     Return(Value),
+    /// A `RetSmallTuple`: the fields are in `Interp::ret_tuple`.
+    ReturnTuple,
     FeedNext,
     FeedBreak,
 }

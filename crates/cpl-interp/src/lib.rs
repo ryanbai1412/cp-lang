@@ -460,6 +460,9 @@ fn run_from<O: Observer>(
         fed_left: None,
         vm: None,
         vm_regs_i: Vec::new(),
+        ret_tuple: [0; 5],
+        ret_tuple_len: 0,
+        ret_tuple_kinds: [value::SmallFieldKind::Int; 5],
         fed_bodies: 0,
         fed_hosts: Vec::new(),
         lent: Vec::new(),
@@ -729,6 +732,10 @@ struct Interp<'p, 'o, O: Observer> {
     vm: Option<Rc<vm::CompiledProgram<'p>>>,
     /// Shared unboxed `i64` register stack for the VM.
     vm_regs_i: Vec<i64>,
+    /// The fields a VM `RetSmallTuple` returned, until its caller takes them.
+    ret_tuple: [i64; 5],
+    ret_tuple_len: u8,
+    ret_tuple_kinds: [value::SmallFieldKind; 5],
     /// Fed loop bodies running, which take no checkpoint.
     fed_bodies: u32,
     /// Traced VM frames, by base, running a fallback that may feed a loop their chunk holds.

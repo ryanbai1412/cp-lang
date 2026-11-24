@@ -769,7 +769,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         SlotLoc::SmallTuple { len, .. } => ni += *len as usize,
                     }
                 }
-                let mut arg_buf_i = [0i64; 8];
+                let mut arg_buf_i = [0i64; 16];
                 let abi = arg_base_i as usize;
                 arg_buf_i[..ni].copy_from_slice(&regs_i[abi..abi + ni]);
                 let abv = arg_base_v as usize;
@@ -811,7 +811,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.stack.truncate(self.base);
                     self.base = saved_base;
                 }
-                let val = res?;
+                let exit = res?;
                 self.call_frames.pop();
                 regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 if chunk.has_by_ref_closure {
@@ -820,7 +820,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 if f.params.iter().any(|p| p.mutable) {
                     regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);
                 }
-                put_ret(ret_mode, regs_i, regs_v, (dst_i, dst_some, dst_v), val);
+                // A tuple the caller takes in registers stays in `ret_tuple`.
+                match (ret_mode, exit) {
+                    (CallRet::Tuple(len), ExecExit::ReturnTuple) => {
+                        let (d, n) = (dst_i as usize, len as usize);
+                        regs_i[d..d + n].copy_from_slice(&self.ret_tuple[..n]);
+                    }
+                    (_, exit) => {
+                        let val = self.exit_value(exit);
+                        put_ret(ret_mode, regs_i, regs_v, (dst_i, dst_some, dst_v), val);
+                    }
+                }
                 self.keep_result(chunk, cur_pc, regs_i, regs_v);
             }
             Op::CallClosure {
@@ -953,6 +963,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 regs_i[dst_some as usize] = 1;
                             }
                             CallRet::V => regs_v[dst_v as usize] = Value::Int(res_i),
+                            CallRet::Tuple(_) => {
+                                return bug(spans[cur_pc], "a tuple from an Int closure")
+                            }
                         }
                         self.keep_result(chunk, cur_pc, regs_i, regs_v);
                         return Ok(None);
@@ -1192,6 +1205,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     &mut regs_v[src as usize],
                     Value::Unit,
                 ))));
+            }
+            Op::RetSmallTuple { base, len, kinds } => {
+                let (b, n) = (base as usize, len as usize);
+                self.ret_tuple[..n].copy_from_slice(&regs_i[b..b + n]);
+                self.ret_tuple_len = len;
+                self.ret_tuple_kinds = kinds;
+                return Ok(Some(ExecExit::ReturnTuple));
             }
             Op::RetUnit => return Ok(Some(ExecExit::Return(Value::Unit))),
             Op::IsSomeV { dst_i, src_v } => {

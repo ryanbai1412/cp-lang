@@ -38,6 +38,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
             CallRet::I => (self.alloc_i(), 0, 0),
             CallRet::OptI => (self.alloc_i(), 0, self.alloc_i()),
             CallRet::V => (0, self.alloc_v(), 0),
+            CallRet::Tuple(len) => {
+                let base = self.next_i;
+                for _ in 0..len {
+                    self.alloc_i();
+                }
+                (base, 0, 0)
+            }
         };
         self.emit(
             Op::CallVmMix {
@@ -68,7 +75,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let scalar = match ret_mode {
             CallRet::Unit | CallRet::V => false,
             CallRet::I => true,
-            CallRet::OptI => return None,
+            CallRet::OptI | CallRet::Tuple(_) => return None,
         };
         let dst = self.emit_traced_call(span, Callee::Fn(fn_id), args, scalar);
         Some(match scalar {
@@ -702,4 +709,26 @@ pub(super) enum MutTake<'p> {
 pub(super) enum ElemRoot {
     Local(u16),
     Global(u16),
+}
+
+impl Compiler<'_, '_> {
+    /// The shape `RetSmallTuple` returns `e` in, when this body returns small tuples of `e`'s.
+    pub(super) fn tuple_ret_of(&self, e: &Expr) -> Option<(u8, [crate::value::SmallFieldKind; 5])> {
+        let (len, kinds) = self.tuple_ret?;
+        let (l, k) = small_tuple_shape(&e.ty, self.program)?;
+        (l == len && k == kinds).then_some((len, kinds))
+    }
+
+    /// Whether the call `e` returns a small tuple of `len` fields.
+    pub(super) fn call_returns_small_tuple(&self, e: &Expr, len: u8) -> bool {
+        let ret = match &e.kind {
+            ExprKind::Call(fn_id, _) => &self.program.fns[*fn_id].ret,
+            ExprKind::CallExpr(callee, _) => match &callee.ty {
+                Ty::Fn(_, ret) => &**ret,
+                _ => return false,
+            },
+            _ => return false,
+        };
+        small_tuple_shape(ret, self.program).is_some_and(|(l, _)| l == len)
+    }
 }

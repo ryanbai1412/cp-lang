@@ -707,7 +707,8 @@ print(cuts, rcuts, yes(b != None), yes(n == None), yes(b == None), max(xs[0], xs
 #[test]
 fn vm_builds_wide_int_structs_from_int_registers() {
     // bench/ranges/lazy_assign's `join`: a 5-field struct of bounded Ints is
-    // built straight from Int registers, each field checked against constant bounds.
+    // built straight from Int registers, each field checked against constant bounds,
+    // and returned in them: no tuple is boxed.
     let source = "
 struct Run(a: 0..=100, b: 0..=100, c: 0..=100, d: 0..=100, e: 0..=100)
 fn join(x: Run, y: Run) -> Run = Run(x.a + y.a, x.b + y.b, x.c, y.d, x.e + 1)
@@ -731,7 +732,8 @@ print(big.a)
     let chunk = compiled.fns[join].as_ref().expect("join is on the VM");
     let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
     let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
-    assert_eq!(count("MakeTupleI"), 1, "{ops:?}");
+    assert_eq!(count("MakeTupleI"), 0, "{ops:?}");
+    assert_eq!(count("RetSmallTuple"), 1, "{ops:?}");
     assert_eq!(count("RangeCheckImmI"), 3, "{ops:?}");
     assert_eq!(count("BoxI"), 0, "{ops:?}");
     assert_eq!(count("ConstImmI"), 0, "{ops:?}");

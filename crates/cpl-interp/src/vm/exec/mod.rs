@@ -51,7 +51,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         args_v: &mut [Value],
         params: &[cpl_ir::ParamDef],
         vm_regs_i: &mut Vec<i64>,
-    ) -> Res<Value> {
+    ) -> Res<ExecExit> {
         let base_i = vm_regs_i.len();
         vm_regs_i.resize(base_i + chunk.num_i, 0);
         let mut regs_v = self.take_regs_v(chunk.num_v);
@@ -83,7 +83,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         for &d in &chunk.guarded_domains {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v, 0);
+        let res = self.exec_chunk_exit(compiled, chunk, base_i, vm_regs_i, &mut regs_v, 0);
         self.restore_domains(dom_mark);
         if res.is_ok() && params.iter().any(|p| p.mutable) {
             let mut ii = 0usize;
@@ -128,6 +128,34 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         regs_v: &mut [Value],
         start_pc: usize,
     ) -> Res<Value> {
+        let exit = self.exec_chunk_exit(compiled, chunk, base_i, vm_regs_i, regs_v, start_pc)?;
+        Ok(self.exit_value(exit))
+    }
+
+    fn exit_value(&mut self, exit: ExecExit) -> Value {
+        match exit {
+            ExecExit::Return(v) => v,
+            ExecExit::ReturnTuple => self.boxed_ret_tuple(),
+            ExecExit::FeedNext | ExecExit::FeedBreak => Value::Unit,
+        }
+    }
+
+    /// What the last `RetSmallTuple` returned, boxed.
+    pub(super) fn boxed_ret_tuple(&self) -> Value {
+        let (n, kinds) = (self.ret_tuple_len as usize, self.ret_tuple_kinds);
+        let fs = crate::value::Shared::collect(n, |k| kinds[k].box_val(self.ret_tuple[k]));
+        Value::Tuple(TupleVal::Boxed(fs))
+    }
+
+    fn exec_chunk_exit(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        chunk: &Chunk<'p>,
+        base_i: usize,
+        vm_regs_i: &mut Vec<i64>,
+        regs_v: &mut [Value],
+        start_pc: usize,
+    ) -> Res<ExecExit> {
         let exit = self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, regs_v, start_pc, None);
         if chunk.traced {
             // The end of the run and a trap show the locals as they were left.
@@ -144,10 +172,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.keep_trap_frame();
             }
         }
-        match exit? {
-            ExecExit::Return(v) => Ok(v),
-            ExecExit::FeedNext | ExecExit::FeedBreak => Ok(Value::Unit),
-        }
+        exit
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1826,6 +1851,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::CallClosure { .. }
             | Op::RetI { .. }
             | Op::RetV { .. }
+            | Op::RetSmallTuple { .. }
             | Op::RetUnit
             | Op::IsSomeV { .. }
             | Op::UnwrapV { .. }

@@ -18,7 +18,7 @@ pub(crate) enum SlotLoc {
     SmallTuple {
         base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     V(u16),
 }
@@ -29,6 +29,8 @@ pub(crate) enum CallRet {
     I,
     OptI,
     V,
+    /// A small tuple of this many fields, in the Int registers from `dst_i`.
+    Tuple(u8),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -367,14 +369,14 @@ pub(crate) enum Op {
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     StoreLArr1SmallTuple {
         arr_v: u16,
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     LoadGArr2SmallTuple {
         dst_base: u16,
@@ -396,7 +398,7 @@ pub(crate) enum Op {
         r_j: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     StoreLArr2SmallTuple {
         arr_v: u16,
@@ -404,13 +406,13 @@ pub(crate) enum Op {
         r_j: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     BoxSmallTuple {
         dst_v: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     UnboxSmallTuple {
         dst_base: u16,
@@ -785,6 +787,13 @@ pub(crate) enum Op {
     RetV {
         src: u16,
     },
+    /// Returns the small tuple in `len` Int registers from `base`: a
+    /// `CallRet::Tuple` call takes them as they are, any other caller boxed.
+    RetSmallTuple {
+        base: u16,
+        len: u8,
+        kinds: [SmallFieldKind; 5],
+    },
     RetUnit,
 
     // General V-channel optionals & sequence/range/bit/list ops
@@ -969,7 +978,7 @@ pub(crate) enum Op {
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     StoreLFieldIdx1OptI {
         obj_v: u16,
@@ -991,7 +1000,7 @@ pub(crate) enum Op {
         field: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     ListPushFieldLV {
         obj_v: u16,
@@ -1620,7 +1629,7 @@ pub(crate) enum CapSrc {
     LocalSmallTuple {
         base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 4],
+        kinds: [SmallFieldKind; 5],
     },
     LocalV(u16),
     /// A local captured by reference: its stack slot, and the register that

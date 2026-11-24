@@ -1326,7 +1326,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let span = expr.span;
         match &expr.kind {
             ExprKind::Tuple(fs) if fs.len() == len as usize => {
-                let mut regs = [0u16; 4];
+                let mut regs = [0u16; 5];
                 for (k, f) in fs.iter().enumerate() {
                     regs[k] = self.compile_expr_i(f);
                 }
@@ -1500,6 +1500,38 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             span,
                         );
                     }
+                }
+            }
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args)
+                if self.call_returns_small_tuple(expr, len) =>
+            {
+                let call = match &expr.kind {
+                    ExprKind::Call(fn_id, _) => {
+                        self.try_compile_call_mix(*fn_id, args, CallRet::Tuple(len), span)
+                    }
+                    ExprKind::CallExpr(callee, _) => {
+                        self.try_compile_call_closure(callee, args, CallRet::Tuple(len), span)
+                    }
+                    _ => None,
+                };
+                if let Some((dst_i, _, _)) = call {
+                    for k in 0..u16::from(len) {
+                        if dst_i + k != dst_base + k {
+                            let mv = Op::MoveI {
+                                dst: dst_base + k,
+                                src: dst_i + k,
+                            };
+                            self.emit(mv, span);
+                        }
+                    }
+                } else {
+                    let src_v = self.compile_expr_v(expr);
+                    let unbox = Op::UnboxSmallTuple {
+                        dst_base,
+                        len,
+                        src_v,
+                    };
+                    self.emit(unbox, span);
                 }
             }
             _ => {

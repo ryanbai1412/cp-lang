@@ -144,7 +144,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     } else {
                         let vs = a.as_mut_values();
-                        let mut cur = [0i64; 4];
+                        let mut cur = [0i64; 5];
                         if let Value::Tuple(TupleVal::Boxed(fs)) = &vs[idx as usize] {
                             for k in 0..n {
                                 cur[k] = ScalarKind::unbox_val(&fs[k]);
@@ -197,7 +197,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     } else {
                         let vs = a.as_mut_values();
-                        let mut cur = [0i64; 4];
+                        let mut cur = [0i64; 5];
                         if let Value::Tuple(TupleVal::Boxed(fs)) = &vs[idx as usize] {
                             for k in 0..n {
                                 cur[k] = ScalarKind::unbox_val(&fs[k]);

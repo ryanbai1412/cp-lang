@@ -85,17 +85,17 @@ impl ScalarKind {
     }
 }
 
-pub(super) fn small_tuple_shape(ty: &Ty, program: &Program) -> Option<(u8, [SmallFieldKind; 4])> {
+pub(super) fn small_tuple_shape(ty: &Ty, program: &Program) -> Option<(u8, [SmallFieldKind; 5])> {
     let field_tys: Vec<&Ty> = match ty {
         Ty::Tuple(fs) => fs.iter().collect(),
         Ty::Struct(id) => program.structs[*id].fields.iter().map(|(_, t)| t).collect(),
         _ => return None,
     };
     let len = field_tys.len();
-    if !(2..=4).contains(&len) {
+    if !(2..=5).contains(&len) {
         return None;
     }
-    let mut kinds = [SmallFieldKind::Int; 4];
+    let mut kinds = [SmallFieldKind::Int; 5];
     for (i, t) in field_tys.iter().enumerate() {
         let sk = ScalarKind::of_ty(t, program)?;
         kinds[i] = match sk {

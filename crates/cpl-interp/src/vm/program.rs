@@ -277,6 +277,9 @@ impl<'p> CompiledProgram<'p> {
             c.traced = traced;
             c.profiled = profiled;
             let ret_kind = ScalarKind::of_ty(ret, program);
+            if !traced && !profiled {
+                c.tuple_ret = small_tuple_shape(ret, program);
+            }
             c.compile_block(body, ret_kind, true);
             let mut chunk = c.finish();
             chunk.param_count = params;

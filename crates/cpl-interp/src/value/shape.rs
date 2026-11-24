@@ -157,7 +157,7 @@ fn take(shape: u64, s: &mut usize, row: &[i64], d: &mut usize) -> Value {
 }
 
 /// The shape of a tuple of `kinds[..len]`.
-pub(crate) fn flat(kinds: &[SmallFieldKind; 4], len: usize) -> u64 {
+pub(crate) fn flat(kinds: &[SmallFieldKind; 5], len: usize) -> u64 {
     let mut shape = TUP | (len as u64) << 4;
     for (i, kind) in kinds[..len].iter().enumerate() {
         shape |= (*kind as u64) << (8 + 4 * i);

@@ -118,6 +118,8 @@ pub(super) struct Compiler<'p, 'f> {
     give_targets: Vec<GiveTarget>,
     cur_fn: Option<FnId>,
     pub(in crate::vm) feed_acc: Option<usize>,
+    /// The small tuple shape this body returns in registers (`RetSmallTuple`).
+    pub(in crate::vm) tuple_ret: Option<(u8, [crate::value::SmallFieldKind; 5])>,
     pub(in crate::vm) allow_fed_loops: bool,
     inline_slots: Option<Vec<SlotLoc>>,
     inline_ret: Option<(u16, Vec<usize>)>,
@@ -242,6 +244,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             give_targets: Vec::new(),
             cur_fn,
             feed_acc: None,
+            tuple_ret: None,
             allow_fed_loops: true,
             inline_slots: None,
             inline_ret: None,
@@ -519,6 +522,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     kind: ScalarKind::of_opt_ty(ret(fn_id), self.program)?,
                 }),
                 CallRet::V => Some(SlotLoc::V(dst_v)),
+                CallRet::Tuple(len) => Some(SlotLoc::SmallTuple {
+                    base: dst_i,
+                    len,
+                    kinds: small_tuple_shape(ret(fn_id), self.program)?.1,
+                }),
             },
             Op::CallClosure {
                 dst_i,
@@ -538,6 +546,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     kind: ScalarKind::of_opt_ty(&call.ty, self.program)?,
                 }),
                 CallRet::V => Some(SlotLoc::V(dst_v)),
+                CallRet::Tuple(_) => None,
             },
             _ => return None,
         })
@@ -608,6 +617,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
             CallRet::I => (self.alloc_i(), 0, 0),
             CallRet::OptI => (self.alloc_i(), 0, self.alloc_i()),
             CallRet::V => (0, self.alloc_v(), 0),
+            CallRet::Tuple(len) => {
+                let base = self.next_i;
+                for _ in 0..len {
+                    self.alloc_i();
+                }
+                (base, 0, 0)
+            }
         };
         self.emit(
             Op::CallClosure {
