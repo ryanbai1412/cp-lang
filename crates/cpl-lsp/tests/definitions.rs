@@ -73,8 +73,8 @@ struct Asked {
 }
 
 /// Opens each file at its own path, asks definition at the first use of
-/// every name (an identifier token: keywords and literals are not names),
-/// and closes it.
+/// every name (an identifier token: keywords, literals and a decorator's
+/// own words are not names), and closes it.
 fn ask_all(files: &[PathBuf]) -> Vec<Asked> {
     let mut server = Server::new();
     server.handle(&message(Some(1), "initialize", obj([])));
@@ -96,11 +96,14 @@ fn ask_all(files: &[PathBuf]) -> Vec<Asked> {
             obj([("textDocument", item)]),
         ));
         let mut seen = HashSet::new();
-        for token in cpl_syntax::lex(&src).tokens {
+        let tokens = cpl_syntax::lex(&src).tokens;
+        let words = decorator_words(&tokens, &src);
+        for (at, token) in tokens.iter().enumerate() {
             let (start, end) = (token.span.start as usize, token.span.end as usize);
             let name = &src[start..end];
             if token.kind != cpl_syntax::TokenKind::Ident
                 || cpl_syntax::LITERAL_WORDS.contains(&name)
+                || words.contains(&at)
                 || !seen.insert(name)
             {
                 continue;
@@ -132,6 +135,85 @@ fn ask_all(files: &[PathBuf]) -> Vec<Asked> {
         ));
     }
     out
+}
+
+/// The tokens a decorator spells as its own vocabulary, which no program
+/// declares: its name (`@lint`, `@!multitest`), its argument labels
+/// (`from:`) and its bare-word arguments (the lint id, `allow`, `program`).
+/// Names inside an argument's expression are still names.
+fn decorator_words(tokens: &[cpl_syntax::Token], src: &str) -> HashSet<usize> {
+    use cpl_syntax::TokenKind::{At, Colon, Comma, Ident, LParen, RParen};
+    let kind = |i: usize| tokens.get(i).map(|t| t.kind);
+    let mut words = HashSet::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        if tokens[i].kind != At {
+            i += 1;
+            continue;
+        }
+        i += 1;
+        if tokens
+            .get(i)
+            .is_some_and(|t| &src[t.span.start as usize..t.span.end as usize] == "!")
+        {
+            i += 1;
+        }
+        if kind(i) != Some(Ident) {
+            continue;
+        }
+        words.insert(i);
+        i += 1;
+        if kind(i) != Some(LParen) {
+            continue;
+        }
+        let mut depth = 0;
+        while i < tokens.len() {
+            match tokens[i].kind {
+                LParen => depth += 1,
+                RParen => depth -= 1,
+                Ident if depth == 1 => {
+                    let labelled = kind(i + 1) == Some(Colon);
+                    let bare = matches!(kind(i - 1), Some(LParen | Comma))
+                        && matches!(kind(i + 1), Some(Comma | RParen));
+                    if labelled || bare {
+                        words.insert(i);
+                    }
+                }
+                _ => {}
+            }
+            i += 1;
+            if depth == 0 {
+                break;
+            }
+        }
+    }
+    words
+}
+
+#[test]
+fn a_decorators_own_words_are_not_names() {
+    let src = "@lint(chmin_chmax_if, from: \"x = min(x, e)\", holes: \"x, e\")\n@!multitest\n@memo(map)\n@tag(f(k), by: g)\nfn f(k: Int) = k\n";
+    let tokens = cpl_syntax::lex(src).tokens;
+    let words = decorator_words(&tokens, src);
+    let mut marked: Vec<&str> = words
+        .iter()
+        .map(|&i| &src[tokens[i].span.start as usize..tokens[i].span.end as usize])
+        .collect();
+    marked.sort_unstable();
+    assert_eq!(
+        marked,
+        [
+            "by",
+            "chmin_chmax_if",
+            "from",
+            "holes",
+            "lint",
+            "map",
+            "memo",
+            "multitest",
+            "tag"
+        ]
+    );
 }
 
 /// [`ask_all`] over `files` in a few threads with room for deep programs.
