@@ -246,7 +246,7 @@ function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared =
     for (const e of examples) lines.push(...renderExample(e, module, shared, ctx.ran, ctx.failing, `${module}.${name}`));
   }
   lines.push(`[Source](${blob}/${ctx.paths[module]}${item.line ? `#L${item.line}` : ''})`, '');
-  if (['fn', 'struct', 'enum', 'trait', 'builtin'].includes(item.kind)) {
+  if (item.indexed) {
     index.push({ name, module, kind: item.kind, cost: facts.find(([k]) => k === 'cost')?.[1] ?? '' });
   }
   const memberShared = item.members?.length ? commonSetup(memberExamples(item)) : [];

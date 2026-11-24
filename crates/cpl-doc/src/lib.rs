@@ -89,6 +89,7 @@ pub mod json {
         let scope = owner.or((!item.members.is_empty()).then_some(item.name.as_str()));
         let links = links::targets(modules, m, scope, &item.doc);
         w.object().key("kind").str(item.kind.as_str());
+        w.key("indexed").bool(item.kind.indexed());
         w.key("name").str(&item.name);
         w.key("signature").str(&item.signature);
         w.key("doc").str(&item.doc);

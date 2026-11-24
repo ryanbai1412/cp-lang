@@ -2406,6 +2406,7 @@ HARD_ZERO = frozenset({
     "prelude_gaps",
     "json_outside_cpl_json", "rust_ignore", "dream_unverified", "trace_engine_refs", "lsp_string_types",
     "edit_engines",
+    "web_hand_copied",
 })
 # Paid down to the one place the thing lives: above the floor fails, with no baseline.
 HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader
