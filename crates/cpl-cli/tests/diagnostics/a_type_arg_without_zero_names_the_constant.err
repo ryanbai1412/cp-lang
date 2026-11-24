@@ -1,0 +1,10 @@
+error[E0606]: `Monoid.of` (`std.algebra`) does not work on the types it was given here: a `Low` has no `zero`
+  --> a_type_arg_without_zero_names_the_constant.cp:4:9
+  |
+2 | struct Low(c: Int)
+  |        --- `Low` is declared here
+4 | let m = Monoid<Low>.of(+)
+  |         ^^^^^^^^^^^^^^^^^
+  = note: std/algebra.cp:_: inside `Monoid.of`; the gap is in `std.algebra`, not in your code
+
+a_type_arg_without_zero_names_the_constant.cp: 1 error

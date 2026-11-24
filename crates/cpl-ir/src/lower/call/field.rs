@@ -313,7 +313,7 @@ impl<'a> Lowerer<'a> {
                 // it was given lacks the constant, so the call can't use it.
                 if let Some(GenArg::Ty(ty)) = self.gen_env.get(type_name).cloned() {
                     if matches!(name.text.as_str(), "zero" | "one" | "MAX" | "MIN")
-                        && !matches!(ty, Ty::Error | Ty::Struct(_))
+                        && !matches!(ty, Ty::Error)
                     {
                         let message = format!("{} has no `{}`", self.a_ty(&ty), name.text);
                         self.error(codes::MISSING_IMPL, span, message);
