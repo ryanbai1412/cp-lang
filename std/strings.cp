@@ -937,12 +937,8 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
         for c in vec: counts[c] += 1
         for i in (0..n - 1).rev:
             is_l[i] = vec[i] > vec[i + 1] or (vec[i] == vec[i + 1] and is_l[i + 1])
-            if is_l[i] and not is_l[i + 1]: lms.push(i + 1)
-    unchecked:
-        for i in 0..lms.len / 2:
-            let t = lms[i]
-            lms[i] = lms[lms.len - 1 - i]
-            lms[lms.len - 1 - i] = t
+        for i in 1..n:
+            if is_l[i - 1] and not is_l[i]: lms.push(i)
     induced_sort(vec, counts, is_l, lms, mut sa)
     let m = lms.len
     var sorted_lms = List.filled(m, 0)
@@ -983,40 +979,45 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
     induced_sort(vec, counts, is_l, sorted_lms, mut sa)
     sa
 
+// The first position in the sorted `a` whose value is not below `x`.
+fn lower_in<T: Ord>(a: List<T>, x: T) -> Int:
+    var (lo, hi) = (0, a.len)
+    unchecked:
+        while lo < hi:
+            let mid = (lo + hi) >> 1
+            if a[mid] < x: lo = mid + 1 else: hi = mid
+    lo
+
 fn sa_order<S: Indexed>(s: S) -> List<Int>:
     with lint(unproven_list_index: allow)
     let n = s.len
     if n <= 1: return [i for i in 0..n]
     var vec = List.filled(n + 1, 0)
     var alpha = 0
+    // up to 256 distinct values: keep them sorted with the id each got on first sight
     var uniq = [s.nth(0)]
     var ids = [0]
     var small = true
     unchecked:
         for i in 1..n:
             let x = s.nth(i)
-            var (lo, hi) = (0, uniq.len)
-            while lo < hi:
-                let mid = (lo + hi) >> 1
-                if uniq[mid] < x: lo = mid + 1 else: hi = mid
+            let lo = lower_in(uniq, x)
             if lo < uniq.len and uniq[lo] == x:
                 vec[i] = ids[lo]
-            elif uniq.len == 256:
+                continue
+            if uniq.len == 256:
                 small = false
                 break
-            else:
-                let id = uniq.len
-                uniq.push(x)
-                ids.push(id)
-                for j in (lo + 1..uniq.len).rev:
-                    uniq[j] = uniq[j - 1]
-                    ids[j] = ids[j - 1]
-                uniq[lo] = x
-                ids[lo] = id
-                vec[i] = id
+            vec[i] = uniq.len
+            uniq.push(x)
+            ids.push(uniq.len - 1)
+            for j in (lo + 1..uniq.len).rev:
+                uniq[j] = uniq[j - 1]
+                ids[j] = ids[j - 1]
+            uniq[lo] = x
+            ids[lo] = vec[i]
     if small:
         alpha = uniq.len
-        if alpha == 1: return [n - 1 - i for i in 0..n]
         var remap = List.filled(alpha, 0)
         unchecked:
             for r in 0..alpha: remap[ids[r]] = r + 1
