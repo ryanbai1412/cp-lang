@@ -44,7 +44,16 @@ pub fn user_spans(program: &Program) -> Vec<Span> {
 
 fn each_user_stmt<'p>(program: &'p Program, f: &mut dyn FnMut(&'p Stmt)) {
     let library = library_closures(program);
-    let mut add = |block: &'p Block| written(block, f);
+    // One statement a span in a body: the ones a lowering writes for an
+    // expression (an inline `all`'s loop) carry its statement's span.
+    let mut add = |block: &'p Block| {
+        let mut spans = HashSet::new();
+        written(block, &mut |stmt: &'p Stmt| {
+            if stmt.span().is_some_and(|span| spans.insert(span)) {
+                f(stmt)
+            }
+        })
+    };
     add(&program.setup);
     add(&program.main);
     for (id, f) in program.fns.iter().enumerate() {

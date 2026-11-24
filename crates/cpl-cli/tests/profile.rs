@@ -163,6 +163,28 @@ fn a_lines_starts_count_its_entries_and_made_closures_add_no_hits() {
 }
 
 #[test]
+fn a_reduce_lowered_inline_starts_its_line_once() {
+    // `all` lowers to a loop whose statements carry the call's span: the
+    // line starts once a run however many elements the loop tests.
+    let file = scratch(
+        "reduce.cp",
+        "let xs = [i for i in 0..50]\nlet pos = (x: Int) => x >= 0\n\
+         for _ in 0..3:\n    let every = xs.all(pos)\n    let some = xs.any(pos)\n    print(Int(every) + Int(some))\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        let starts = field(&out, "start_count");
+        assert_eq!(&starts[3..5], [(4, 3), (5, 3)], "{engine:?}");
+    }
+}
+
+#[test]
 fn native_profile_charges_the_caller_again_after_a_user_fn_returns() {
     if !has_gxx() {
         return;
