@@ -1142,7 +1142,8 @@ fn run_file(
     // An interactive problem with its judge in the file: the input is
     // the hidden test, and the two talk to each other.
     if let Some((name, judge)) = &compiled.judge {
-        let ruling = interact::run(&compiled.program, judge, &input.whole(), stdout);
+        let hidden = input.whole();
+        let ruling = interact::run(&compiled.program, judge, &hidden, stdout);
         // A side that stops leaves the other with nothing to read: that
         // second failure only follows from the first.
         let starved = |trap: &cpl_interp::Trap| {
@@ -1172,6 +1173,11 @@ fn run_file(
         if let Some(trap) = &judge_trap {
             *stderr += &format!("cpl: the interactor `{name}` rejected the run\n");
             *stderr += &render_trap(path, &compiled.text, trap);
+            if let Some(read) =
+                interact::last_read(&compiled.program, judge, &hidden, &compiled.text)
+            {
+                *stderr += &format!("cpl: the solution last read {read}\n");
+            }
         }
         return EXIT_FAILED;
     }

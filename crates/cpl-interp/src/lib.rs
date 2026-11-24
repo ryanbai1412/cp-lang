@@ -846,10 +846,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn view_in<'s>(&'s self, mut locals: Vec<(&'s str, &'s Ty, &'s Value)>) -> trace::View<'s> {
         // The map shortens the locals' `'p` to `'s`.
         #[allow(clippy::map_identity)]
-        locals.extend(
-            self.named_locals()
-                .map(|(name, ty, value)| (name, ty, value)),
-        );
+        locals.extend(self.named_locals().map(|(n, t, v)| (n, t, v)));
         trace::View {
             program: self.program,
             globals: &self.globals,
@@ -859,6 +856,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             depth: self.call_frames.len(),
             call_frames: &self.call_frames,
             shown: &self.trace_shown,
+            read: self.input.cursor(),
         }
     }
 

@@ -180,6 +180,8 @@ pub struct Assigned {
     pub line: u32,
     pub name: String,
     pub value: String,
+    /// Bytes of input the run had read when it was given.
+    pub read: usize,
 }
 
 /// What a run left behind.
@@ -426,6 +428,8 @@ pub(crate) struct View<'a> {
     pub call_frames: &'a [(&'a str, Span)],
     /// What each value of a type with an `impl Show` shows as.
     pub shown: &'a ShowTexts,
+    /// Bytes of input read so far.
+    pub read: usize,
 }
 
 impl Tracer {
@@ -1052,6 +1056,7 @@ impl Tracer {
             line,
             name: name.to_string(),
             value: text,
+            read: view.read,
         });
     }
 
@@ -1222,6 +1227,7 @@ mod tests {
                     line,
                     name: name.to_string(),
                     value: value.to_string(),
+                    read: 0,
                 })
                 .collect(),
             ..Recording::default()

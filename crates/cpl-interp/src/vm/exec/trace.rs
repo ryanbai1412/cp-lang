@@ -223,6 +223,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 depth: self.call_frames.len(),
                 call_frames: &self.call_frames,
                 shown: &self.trace_shown,
+                read: self.input.cursor(),
             };
             match &place.kind {
                 PlaceKind::Global(id) if tracer.raw_write(*id, &view, place.span, &[]) => {}

@@ -517,6 +517,23 @@ fn run_reports_the_interactor_rejecting_a_wrong_answer() {
 }
 
 #[test]
+fn a_rejected_run_says_what_the_solution_last_read() {
+    // The solution reads the judge's `<` as "go higher".
+    let source = GUESS
+        .replace("LIMIT", "10")
+        .replace("ANSWER", "lo")
+        .replace("if answer == \"<\"", "if answer == \">=\"");
+    let path = scratch("interactor-misread", "guess.cp", source.as_bytes());
+    let out = cpl(&["run".as_ref(), path.as_os_str()], b"8 3\n");
+    assert_eq!(out.status.code(), Some(3));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("the solution last read `<` at line 6, into `answer`"),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn run_stops_a_solution_that_asks_more_than_its_limit() {
     let path = guess("interactor-limit", "2", "lo");
     let out = cpl(&["run".as_ref(), path.as_os_str()], b"1000 637\n");
