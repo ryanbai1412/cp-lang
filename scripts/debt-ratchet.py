@@ -1802,19 +1802,21 @@ def unchecked_fix_paths(root: Path) -> list[str]:
 
 
 def stress_engines(root: Path) -> list[str]:
-    """Stress-case runners picking a verdict: `fn run_case|stress_source|judge_case`
-    definitions in cpl-stress, plus files besides judge.rs constructing `Verdict::`.
+    """Stress front ends and verdict pickers in cpl-stress: definitions of the
+    old twins (`fn run_case|stress_source|judge_case`), files besides judge.rs
+    constructing `Verdict::`, and files besides stress.rs calling `stress_with`.
 
-    Its floor is 2 (decision 545): `judge_case`, the one verdict path, and
-    `stress_source`, the in-process front end the browser runs. The CLI's
-    front end builds C++ and runs external programs (`--brute`, `--checker`,
-    `--interactor`, `--gen`, `--fast`) as processes, which wasm can't; both
-    share `stress_with`, `judge_case`, `traced::retrace` and `Verdict`."""
+    Its floor is 1 (decision 561, superseding 545): `case.rs` `Roles::judge`,
+    the one place a case gets its verdict. `Stress::build`/`Stress::run` is
+    the one front end the CLI and the browser call; how a role's program runs
+    (in the VM, or as a native process) is a `Runner` below it."""
     lines = list(_src_lines(root, "crates/cpl-stress/src"))
     defs = [f"{rel}:{i}" for rel, i, line in lines if re.search(r"\bfn (run_case|stress_source|judge_case)\b", line)]
     files = sorted({rel for rel, _, line in lines
                     if "Verdict::" in line and Path(rel).name != "judge.rs"})
-    return defs + [f for f in files if not any(d.startswith(f + ":") for d in defs)]
+    loops = sorted({f"{rel}:{i}" for rel, i, line in lines
+                    if re.search(r"(?<!fn )\bstress_with\(", line) and Path(rel).name != "stress.rs"})
+    return defs + loops + [f for f in files if not any(d.startswith(f + ":") for d in defs)]
 
 
 def or_true(root: Path) -> list[str]:

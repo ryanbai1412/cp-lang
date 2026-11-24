@@ -59,7 +59,7 @@ Deferred past both: the rest of workstream 4 (the split, the VM on wasm) and wor
 3. **Seeded bugs by P0 class (M2).** Tag each of the 21 bugs with its P0 class; add bugs for the empty classes (I/O flushing, floating point, mutation surprises are the likely gaps); keep median < 1 s.
 4. **Trace speed and the split (M3).** Ask the compiler domain for a narrow observer interface (declared / changed / call / return / print / case events, with a value view); move `trace.rs`, `trace/log.rs`, `replay.rs` into `crates/cpl-trace` behind it, with a contract test next to the core. Then delete `CPL_TRACE_ENGINE=tree`, swap `trace_engines.rs` for recorded goldens, and lift the `cfg(not(wasm32))` so the browser traces on the VM too.
 5. **Viewer quality (M1 small, M3 browser test).** Version from the build, not `0.2.2`; v0.3 vocabulary; a headless-Chrome browser test of the three demos (first divergence visible, step back, trap step) in the gate.
-6. **Generators beyond a row (after M2).** Graph, tree, grid and anti-hash generators through `gen<T>`; shrinking in the browser through `InterpEngine`.
+6. **Generators beyond a row (after M2).** Graph, tree, grid and anti-hash generators through `gen<T>`; shrinking in the browser through `Runner::InProcess`.
 
 ## Order and why
 

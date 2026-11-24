@@ -1,7 +1,6 @@
 //! The in-process engine (`cpl-wasm`'s stress, on the calling thread).
 
 use cpl_stress::run::Options;
-use cpl_stress::stress_source;
 
 const WORKS_OUT_THEN_READS: &str = "var sq: [0..=100000]Int = 0
 for i in 0..=100000:
@@ -25,7 +24,7 @@ fn a_case_started_past_the_precompute_fails_as_a_whole_run_does() {
         jobs: 1,
         ..Options::default()
     };
-    let run = |stack| stress_source("p.cp", WORKS_OUT_THEN_READS, &options, stack, false).unwrap();
+    let run = |stack| stress_in_vm("p.cp", WORKS_OUT_THEN_READS, &options, stack, false).unwrap();
     let (resumed, whole) = (run(Some(1 << 26)), run(None));
     let failure = resumed.report.failure.as_ref().expect("n = 7 fails");
     assert_eq!(failure.input.trim(), "7");
@@ -45,7 +44,7 @@ fn a_runtime_error_in_the_in_process_report_is_a_diagnostic() {
         ..Options::default()
     };
     for stack in [Some(1 << 26), None] {
-        let json = stress_source("o.cp", source, &options, stack, false)
+        let json = stress_in_vm("o.cp", source, &options, stack, false)
             .unwrap()
             .render();
         let report = cpl_json::parse(&json).unwrap();
@@ -69,7 +68,7 @@ fn a_trapping_checker_in_process_is_a_checker_re() {
         jobs: 1,
         ..Options::default()
     };
-    let result = stress_source("c.cp", source, &options, Some(1 << 26), false).unwrap();
+    let result = stress_in_vm("c.cp", source, &options, Some(1 << 26), false).unwrap();
     let failure = result.report.failure.expect("the checker fails");
     assert_eq!(failure.verdict.code(), "checker RE", "{failure:?}");
     let error = result.trap.expect("the checker's trap");
@@ -115,7 +114,7 @@ fn interactive(cases: usize) -> Options {
 #[test]
 fn an_interactive_solution_is_judged_by_its_interactor_in_process() {
     for stack in [Some(1 << 26), None] {
-        let result = stress_source("g.cp", GUESS, &interactive(100), stack, false).unwrap();
+        let result = stress_in_vm("g.cp", GUESS, &interactive(100), stack, false).unwrap();
         assert_eq!(result.report.failure, None, "{}", result.render());
         assert_eq!(result.report.cases, 100);
     }
@@ -126,7 +125,7 @@ fn an_interactive_solution_is_judged_by_its_interactor_in_process() {
 fn an_interactive_failure_has_its_transcript_and_the_interactors_words() {
     let wrong = GUESS.replace("hi = mid\n", "hi = mid - 1\n");
     for stack in [Some(1 << 26), None] {
-        let result = stress_source("g.cp", &wrong, &interactive(100), stack, false).unwrap();
+        let result = stress_in_vm("g.cp", &wrong, &interactive(100), stack, false).unwrap();
         let json = cpl_json::parse(&result.render()).unwrap();
         let case = json.at(&["counterexample"]);
         assert_eq!(case.at(&["verdict"]).as_str(), Some("WA"), "{json:?}");
@@ -163,7 +162,7 @@ fn an_interactor_that_traps_is_an_interactor_re_with_its_trap() {
         "    sol.send(n)\n",
         "    let a: [n]Int = 0\n    sol.send(a[n])\n",
     );
-    let result = stress_source("g.cp", &broken, &interactive(5), Some(1 << 26), false).unwrap();
+    let result = stress_in_vm("g.cp", &broken, &interactive(5), Some(1 << 26), false).unwrap();
     let failure = result
         .report
         .failure
@@ -189,7 +188,7 @@ fn an_interactive_failure_is_explained_by_the_answer_it_printed() {
         limit: std::time::Duration::from_millis(1000),
         ..Options::default()
     };
-    let result = stress_source("g.cp", source, &options, Some(1 << 26), true).unwrap();
+    let result = stress_in_vm("g.cp", source, &options, Some(1 << 26), true).unwrap();
     let json = cpl_json::parse(&result.render()).unwrap();
     let divergence = json.at(&["counterexample", "explain", "divergence"]);
     assert_eq!(
@@ -230,7 +229,7 @@ fn a_parts_wrong_call_is_explained_as_the_cli_explains_it() {
             jobs: 1,
             ..Options::default()
         };
-        let result = stress_source("p.cp", source, &options, Some(1 << 26), true).unwrap();
+        let result = stress_in_vm("p.cp", source, &options, Some(1 << 26), true).unwrap();
         let json = cpl_json::parse(&result.render()).unwrap();
         let divergence = json.at(&["counterexample", "explain", "divergence"]);
         assert_eq!(divergence.at(&["name"]).as_str(), Some(name), "{json:?}");
@@ -246,7 +245,7 @@ fn a_part_brute_that_traps_is_reported_at_its_trap() {
         jobs: 1,
         ..Options::default()
     };
-    let result = stress_source("p.cp", source, &options, Some(1 << 26), false).unwrap();
+    let result = stress_in_vm("p.cp", source, &options, Some(1 << 26), false).unwrap();
     let json = cpl_json::parse(&result.render()).unwrap();
     let counterexample = json.at(&["counterexample"]);
     assert_eq!(
@@ -256,4 +255,18 @@ fn a_part_brute_that_traps_is_reported_at_its_trap() {
     );
     let error = counterexample.at(&["error"]);
     assert!(error.at(&["code"]).as_str().is_some(), "{json:?}");
+}
+
+/// The browser's stress: the file built and run in the calling thread's VM.
+fn stress_in_vm(
+    name: &str,
+    source: &str,
+    options: &cpl_stress::run::Options,
+    stack_limit: Option<u32>,
+    explain: bool,
+) -> Result<cpl_stress::StressResult, cpl_stress::run::StressError> {
+    let place = cpl_stress::Place::InProcess { stack_limit };
+    let stress =
+        cpl_stress::Stress::build(std::path::Path::new(name), name, source, place, options)?;
+    Ok(stress.run(options, explain, None)?.result)
 }

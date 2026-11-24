@@ -38,16 +38,6 @@ pub struct Located {
 }
 
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
-    run_with(args, stdout, stderr, None)
-}
-
-/// [`run`], naming the wrong call of the part with `tracer` when given.
-pub fn run_with(
-    args: &[String],
-    stdout: &mut dyn Write,
-    stderr: &mut dyn Write,
-    tracer: Option<crate::cli::Tracer>,
-) -> u8 {
     let json = args.iter().any(|a| a == "--json");
     let rest: Vec<&str> = args
         .iter()
@@ -93,8 +83,10 @@ pub fn run_with(
     let divergence = || {
         // A part's wrong call: the file and its `@alt` fns lined up.
         let versus = Ok(crate::judge::Explaining::Versus);
-        let traced = tracer.and_then(|trace| trace(file, &text, false, Some(&versus)).ok());
-        traced.and_then(|traced| traced.divergence)
+        let source = std::fs::read_to_string(file).ok()?;
+        let name = file.shown();
+        let traced = crate::traced::trace(&name, &source, &text, false, Some(&versus), None, None);
+        traced.ok().and_then(|traced| traced.divergence)
     };
     if json {
         let field = |v: Option<&String>| {

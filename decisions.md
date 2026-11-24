@@ -8905,7 +8905,9 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** R07.6.4 reads the later arguments by walk position, and the checker granted that only by quietly rewriting their `Indexed` bound to "Indexed (or its .rev)". A named trait says it in the signature. `Rev` keeps its keys, as its doc says, so it is `Positional` rather than an `Indexed` with reversed keys.
 - **Reverse.** Delete `Positional`, bound `zip`'s later arguments `Indexed` again, and drop known.rs from `std_shadowed`.
 
-## 545. Stress keeps two front ends over one engine (debugger, 2026-11-24)
+## 545. Stress keeps two front ends over one engine (debugger, 2026-11-24; superseded by 561)
+
+Superseded by 561: the CLI and the browser call one front end, and spawning is a runner's concern.
 
 - **Call.** `stress_engines` stops at 2: `case.rs` `judge_case`, the one place a case gets its verdict, and `engine.rs` `stress_source`, the in-process front end `cpl-wasm` runs. Everything after the build is shared by `cpl stress` and the browser: the `stress_with` loop, `judge_case`, `traced::retrace` for `--explain`, `judge::explaining`, and `Verdict::trapped` for the reported trap. Verdicts are built and matched only in `judge.rs`.
 - **Why.** The CLI's front end builds the file to C++ and runs `--brute`, `--checker`, `--interactor`, `--gen` and `--fast` programs (`.cpp`, `.py`, executables) as processes, at native speed over 1000 cases. The browser can't spawn processes, so it lowers the file to IR and interprets it. Merging the two would mean either interpreting in the CLI or spawning in wasm. Splitting `stress_source` only to rename it would drop the count without removing anything.
@@ -8967,4 +8969,8 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** The impl walked `items`, which are in hash order, so the interpreter and the C++ printed one `Counter` differently. A tally is printed often, and its keys are usually ordered, so key order serves better than taking `Show` away.
 - **Reverse.** Drop `Show` from `Counter` as 460 did for `HashMap`, and name `c.items.sorted()` in the E0606 help.
 
-## 561. (reserved, stress)
+## 561. Stress has one front end over a runner per role (stress, 2026-11-24; supersedes 545)
+
+- **Call.** `stress_engines` is 1: `case.rs` `Roles::judge`, the one place a case gets its verdict. `Stress::build` (stress.rs) reads the file once and picks each role's `Runner` (solution, brute, gen, checker, interactor, cold): `Runner::InProcess` runs a lowered program in the VM (the browser, and `.cp` helpers), `Runner::Process` runs a native program (`.cpp`, `.py`, executables, the built C++). `Stress::run` owns the case loop (`stress_with`), narrowing and shrinking, what to explain, the retrace (`traced::trace`), the trap report and the `StressResult`. `cli::run_with` and `cpl-wasm`'s `Playground::stress` both call it; `judge_case`, `Sides`, `Engine`, `ProcessEngine`, `InterpEngine`, `stress_source` and `stress_with_cold` are deleted. `cli::run_with` keeps argument parsing, the bound-lint inputs and saved cases, and printing; `cpl` passes only the trace page renderer.
+- **Why.** 545 kept two front ends because the CLI spawns processes and the browser can't. That is a difference in how a program runs, not in the pipeline above it, so it belongs in the runner. Two front ends had already drifted twice (what to explain for interactors, `@alt(f)` divergences).
+- **Reverse.** None planned; a second front end or verdict picker raises `stress_engines` and fails the gate.

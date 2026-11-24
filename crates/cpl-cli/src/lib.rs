@@ -236,20 +236,14 @@ pub fn exec<S: AsRef<str>>(
         Some("stress") => {
             let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
             let mut errors = Vec::new();
-            let code =
-                cpl_stress::cli::run_with(&args, stdout, &mut errors, Some(&trace::against_brute));
+            let code = cpl_stress::cli::run_with(&args, stdout, &mut errors, Some(&trace::page));
             *stderr += &String::from_utf8_lossy(&errors);
             code
         }
         Some("locate") => {
             let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
             let mut errors = Vec::new();
-            let code = cpl_stress::locate::run_with(
-                &args,
-                stdout,
-                &mut errors,
-                Some(&trace::against_brute),
-            );
+            let code = cpl_stress::locate::run(&args, stdout, &mut errors);
             *stderr += &String::from_utf8_lossy(&errors);
             code
         }

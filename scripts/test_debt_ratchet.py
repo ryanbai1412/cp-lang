@@ -570,7 +570,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-diag/src/habits.rs", 'shape("a", c, "x", "");\nshape("gone", c, "y", "");\n')
             self._write(root, "crates/cpl-cli/tests/habits/a.cp", "let x = 1  // <- here\n")
             self._write(root, "crates/cpl-stress/src/engine.rs", "fn run_case() {}\n")
-            self._write(root, "crates/cpl-stress/src/cli.rs", "Verdict::Ok\n")
+            self._write(root, "crates/cpl-stress/src/cli.rs", "Verdict::Ok\nstress_with(&s, &r, &o)\n")
+            self._write(root, "crates/cpl-stress/src/stress.rs", "stress_with(&s, &r, &o)\n")
             self._write(root, "crates/cpl-stress/src/judge.rs", "Verdict::Ok\n")
             self._write(root, "crates/b/src/lib.rs", "cpl_diag::fix::apply_fixes(x);\n// XFAIL\n")
             self._write(root, "decisions.md", "the known-fail list is gone (xfail_markers)\n")
@@ -587,7 +588,7 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.todo_fixme(root), ["std/a.cp:1"])
             self.assertEqual(dr.xfail_markers(root), ["crates/b/src/lib.rs:2", "spec/conformance/c.cp:1"])
             self.assertEqual(len(dr.habit_matchers(root)), 2)
-            self.assertEqual(dr.stress_engines(root), ["crates/cpl-stress/src/engine.rs:1", "crates/cpl-stress/src/cli.rs"])
+            self.assertEqual(dr.stress_engines(root), ["crates/cpl-stress/src/engine.rs:1", "crates/cpl-stress/src/cli.rs:2", "crates/cpl-stress/src/cli.rs"])
             self.assertEqual(dr.unchecked_fix_paths(root), ["crates/b/src/lib.rs:1"])
 
     def test_a_counter_at_zero_is_never_raised(self) -> None:

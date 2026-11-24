@@ -214,7 +214,7 @@
   "ts_ignore": 0,
   "habit_matchers": 0,
   "unchecked_fix_paths": 6,
-  "stress_engines": 2,
+  "stress_engines": 1,
   "conformance_failing": 7,
   "conformance_wrong_output": 1,
   "rust_idiom_lints": 76,

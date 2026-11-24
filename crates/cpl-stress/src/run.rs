@@ -1,13 +1,12 @@
 //! The stress loop: make a case, run the solution and the brute, judge,
 //! and on the first failure shrink it and save it.
 
-use crate::case::{Failed, Ruling, Transcript, Wrong};
-use crate::choices::{self, Drawn};
-use crate::engine::{ChoiceSource, Engine, ProcessChoices, ProcessEngine};
+use crate::case::{Failed, Roles, Ruling, Transcript, Wrong};
+use crate::choices::{self, ChoiceSource, Drawn};
 use crate::gen::{generate, Case, Size};
-use crate::judge::{Judge, Trapped, Verdict};
-use crate::program::Program;
+use crate::judge::{Trapped, Verdict};
 use crate::rng::Rng;
+use crate::runner::Runner;
 use crate::shrink::shrink;
 use crate::spec::{InputSpec, DEFAULT_INT};
 use std::cell::{Cell, RefCell};
@@ -15,30 +14,12 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-/// Where inputs come from (process-based CLI form).
-#[derive(Clone, Debug)]
-pub enum Source {
-    /// Made from the program's own `read()` types, and shrinkable.
-    Typed(InputSpec),
-    /// A generator run as `gen <seed> <size>`; its output is the input.
-    Generator(Program),
-    /// The file's own `@gen` fn, built for one size. It shrinks through
-    /// the choices its `rand` and `shuffle` made.
-    InFile(Program, Option<Box<crate::InterpChoices>>),
-    /// The file's own `@gen` fn, interpreted where no C++ compiler is.
-    Interpreted {
-        program: Box<cpl_ir::Program>,
-        name: String,
-        lines: cpl_diag::LineIndex,
-    },
-}
-
-/// Engine-agnostic input source for [`stress_with`].
+/// Where [`stress_with`] takes its inputs from.
 pub enum InputSource<'a> {
     /// Made from the program's own `read()` types, and shrinkable.
     Typed(&'a InputSpec),
     /// An external generator run as `gen <seed> <size>`; its output is the input.
-    Generator(&'a Program),
+    Generator(&'a Runner),
     /// An in-file `@gen` fn behind a [`ChoiceSource`].
     Choices(&'a dyn ChoiceSource),
 }
@@ -181,14 +162,14 @@ enum Tried {
 }
 
 /// Like `engine.run`, for an input made from guessed ranges.
-fn attempt(engine: &dyn Engine, input: &str) -> Result<Tried, StressError> {
+fn attempt(engine: &Roles, input: &str) -> Result<Tried, StressError> {
     tried(engine, input, engine.run(input))
 }
 
 /// What `ran`, the run of `input` under the full limit, says of an input
 /// made from guessed ranges.
 fn tried(
-    engine: &dyn Engine,
+    engine: &Roles,
     input: &str,
     ran: Result<Wrong, StressError>,
 ) -> Result<Tried, StressError> {
@@ -216,13 +197,13 @@ pub(crate) const TLE_RUNS: u32 = 4;
 /// it, no more candidates are tried under it. Runs under a shorter limit
 /// are cheap, and their timing is not kept: a busy machine can slow one.
 struct Runs<'e> {
-    engine: &'e dyn Engine,
+    engine: &'e Roles,
     seen: RefCell<HashMap<String, Wrong>>,
     timeouts: Cell<u32>,
 }
 
 impl<'e> Runs<'e> {
-    fn new(engine: &'e dyn Engine) -> Self {
+    fn new(engine: &'e Roles) -> Self {
         Runs {
             engine,
             seen: RefCell::default(),
@@ -284,66 +265,12 @@ impl<'e> Runs<'e> {
     }
 }
 
-/// Runs `options.cases` cases using OS processes. Stops at the first one, by
-/// case number, that the solution gets wrong.
-pub fn stress(
-    source: &Source,
-    fast: &Program,
-    brute: Option<&Program>,
-    judge: &Judge,
-    options: &Options,
-) -> Result<Report, StressError> {
-    stress_with_cold(source, fast, brute, None, judge, options)
-}
-
-/// Like [`stress`], also comparing each accepted run against a `@cache`
-/// cold-mode build when `cold` is `Some`.
-pub fn stress_with_cold(
-    source: &Source,
-    fast: &Program,
-    brute: Option<&Program>,
-    cold: Option<&Program>,
-    judge: &Judge,
-    options: &Options,
-) -> Result<Report, StressError> {
-    let engine = ProcessEngine {
-        fast,
-        brute,
-        cold,
-        judge,
-        limit: options.limit,
-    };
-    let (choices, interpreted);
-    let input_source = match source {
-        Source::Typed(spec) => InputSource::Typed(spec),
-        Source::Generator(program) => InputSource::Generator(program),
-        Source::InFile(program, interpreted) => {
-            choices = ProcessChoices(program, interpreted.as_deref());
-            InputSource::Choices(&choices)
-        }
-        Source::Interpreted {
-            program,
-            name,
-            lines,
-        } => {
-            interpreted = crate::InterpChoices {
-                program: (**program).clone(),
-                name: name.clone(),
-                lines: lines.clone(),
-                stack_limit: None,
-                limit: options.limit,
-            };
-            InputSource::Choices(&interpreted)
-        }
-    };
-    stress_with(&input_source, &engine, options)
-}
-
-/// Engine-agnostic stress loop: generates inputs from `source`, evaluates them
-/// through `engine`, narrows guessed ranges, and shrinks the first failure.
+/// The case loop of [`crate::stress::Stress`]: makes inputs from `source`,
+/// judges them by `engine`'s runners, narrows guessed ranges, and shrinks
+/// the first failure.
 pub fn stress_with(
     source: &InputSource<'_>,
-    engine: &dyn Engine,
+    engine: &Roles,
     options: &Options,
 ) -> Result<Report, StressError> {
     for (index, (seed, input)) in options.saved.iter().enumerate() {
@@ -397,26 +324,7 @@ pub fn stress_with(
                     (Made::Typed(case), input)
                 })),
                 InputSource::Generator(generator) => {
-                    let outcome = generator
-                        .with_args(&[&seed.to_string(), &size_arg])
-                        .run("", Duration::from_secs(10))
-                        .map_err(|e| StressError(format!("can't run {}: {e}", generator.name)))?;
-                    if !outcome.ok() {
-                        let said = outcome.stderr.trim_end();
-                        let said = said.rsplit('\n').take(5).collect::<Vec<_>>();
-                        let said: Vec<&str> = said.into_iter().rev().collect();
-                        return Err(StressError(format!(
-                            "the generator {} failed on seed {seed} ({:?}){}",
-                            generator.name,
-                            outcome.exit,
-                            if said.is_empty() || said == [""] {
-                                String::new()
-                            } else {
-                                format!(":\n{}", said.join("\n"))
-                            }
-                        )));
-                    }
-                    Ok(Some((Made::Opaque, outcome.stdout)))
+                    Ok(Some((Made::Opaque, generator.generate(seed, &size_arg)?)))
                 }
                 InputSource::Choices(generator) => {
                     let drawn = generator.draw(seed)?;
@@ -605,7 +513,7 @@ const SHORT_LIMIT: Duration = Duration::from_millis(30);
 /// one first; the case it reaches must still run past the full limit, or
 /// it shrinks under the short one again, as a busy machine can slow a
 /// run past it, and then under the full one.
-fn shrink_limits(engine: &dyn Engine, time_limit: bool) -> Vec<Duration> {
+fn shrink_limits(engine: &Roles, time_limit: bool) -> Vec<Duration> {
     let full = engine.limit();
     if time_limit {
         let short = (full / TLE_SHRINK_SPLIT).max(SHORT_LIMIT.min(full));
