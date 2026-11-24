@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3428 (3312 passing). Rules: 616.
+Cases: 3428 (3305 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -542,7 +542,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.12.2 [1+ 0-]: | `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order...
 - R07.12.3 [1+ 0-]: | `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | \(O(1)...
 - R07.12.4 [1+ 0-]: | `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | \(O(n)\)
-- R07.12.5 [3+ 1-]: | `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone...
+- R07.12.5 [3+ 1-]: | `a.bsearch(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` tu...
 - R07.12.6 [1+ 0-]: | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in...
 - R07.12.7 [1+ 0-]: | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rot...
 - R07.12.8 [1+ 0-]: | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ...
@@ -1106,8 +1106,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (159/164 named by a case)
   - uncovered: `ByAngle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (117/128 named by a case)
-  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `TwoSat.add_or`, `Complement`
+- **graph** (115/127 named by a case)
+  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `Lit.neg`, `TwoSat.add_or`, `Complement`
 - **grid** (39/39 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (102/102 named by a case)
@@ -1150,7 +1150,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2283 of 2395 std items are named by a case.
+2281 of 2394 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
