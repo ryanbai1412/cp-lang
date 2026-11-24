@@ -591,6 +591,16 @@ impl Checker<'_> {
                 }
             }
             ("dict", []) => ("Map()".to_string(), "an empty map is written"),
+            // A missing key already reads as 0 under `+=`.
+            ("defaultdict", [t]) if matches!(self.text(t.value.span), "int" | "float") => {
+                let at = t.value.span;
+                self.sink
+                    .drop_where(|d| d.code == codes::UNRESOLVED_NAME && d.span == at);
+                (
+                    "Map()".to_string(),
+                    "a `defaultdict(int)` is a plain map, whose missing keys read as 0,",
+                )
+            }
             ("input", []) => (
                 "read_line()".to_string(),
                 "a line is read with `read_line` (a value with `read()`)",
@@ -1173,7 +1183,18 @@ pub(super) fn stream_fix(src: &str, name: &str, span: Span) -> Option<(Span, Str
         // `cout << a << " " << b << "\n"`: values a space apart, then the
         // line's end, is `print(a, b)`.
         "cout" => {
-            let ops: Vec<&str> = rest.strip_prefix(" << ")?.split(" << ").collect();
+            let mut ops: Vec<&str> = rest.strip_prefix(" << ")?.split(" << ").collect();
+            // `cout << fixed << setprecision(9) << x`: `{x:.9f}`.
+            let digits = match ops.as_slice() {
+                ["fixed", p, ..] => p
+                    .strip_prefix("setprecision(")
+                    .and_then(|d| d.strip_suffix(')'))
+                    .filter(|d| !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit())),
+                _ => None,
+            };
+            if digits.is_some() {
+                ops.drain(..2);
+            }
             let (end, vals) = ops.split_last()?;
             let space = |o: &str| matches!(o, "\" \"" | "' '");
             let lit = |o: &str| o.starts_with(['"', '\'']);
@@ -1187,12 +1208,16 @@ pub(super) fn stream_fix(src: &str, name: &str, span: Span) -> Option<(Span, Str
                     }
                 });
             let args: Vec<&str> = vals.iter().step_by(2).copied().collect();
-            ok.then(|| {
-                (
-                    Span::new(span.start, span.end + rest.len() as u32),
-                    format!("print({})", args.join(", ")),
-                )
-            })
+            let simple = |a: &&str| a.chars().all(|c| c.is_alphanumeric() || "_.".contains(c));
+            let new = match digits {
+                Some(d) if args.iter().all(simple) => {
+                    let f: Vec<String> = args.iter().map(|a| format!("{{{a}:.{d}f}}")).collect();
+                    format!("print(\"{}\")", f.join(" "))
+                }
+                Some(_) => return None,
+                None => format!("print({})", args.join(", ")),
+            };
+            ok.then(|| (Span::new(span.start, span.end + rest.len() as u32), new))
         }
         // `scanf("%d %d", &a, &b)`: plain specs, then the places read into.
         "scanf" => {
@@ -1298,6 +1323,7 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
         "count",
         "lower_bound",
         "upper_bound",
+        "unique",
     ]
     .into_iter()
     .find(|f| {
@@ -1321,7 +1347,20 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
         None => (None, rest.strip_prefix(')')?),
     };
     let since = format!(" - {x}.begin()");
+    // `a.erase(unique(a.begin(), a.end()), a.end())`: drop repeats in place.
+    let erase = format!("{x}.erase(");
+    let tail = format!(", {x}.end())");
+    let mut lead = 0;
     let (new, extra) = match (f, arg) {
+        ("unique", None)
+            if head
+                .strip_suffix("unique(")
+                .is_some_and(|h| h.ends_with(&erase))
+                && rest.starts_with(&tail) =>
+        {
+            lead = erase.len() as u32;
+            (format!("{x}.dedup()"), tail.len())
+        }
         ("sort" | "reverse", None) => (format!("{x}.{f}()"), 0),
         ("sort", Some(g))
             if g == "greater()" || g.starts_with("greater<") && g.ends_with(">()") =>
@@ -1343,7 +1382,7 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
         }
         _ => return None,
     };
-    let start = base.start - f.len() as u32 - 1;
+    let start = base.start - f.len() as u32 - 1 - lead;
     let end = (src.len() - rest.len() + extra) as u32;
     Some(Fix {
         title: format!("write `{new}`"),

@@ -1845,6 +1845,10 @@ impl<'a> Checker<'a> {
             let twin = self.method_twin(base, name, &base_ty);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             let pair = super::advice::iterator_pair_fix(self.src, base.span, name.span);
+            let replaced = pair
+                .as_ref()
+                .and_then(|f| f.edits.first())
+                .map(|(at, _)| *at);
             let listed = matches!(&base_ty, Ty::Str | Ty::Array { .. })
                 || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
             let position = listed
@@ -1877,6 +1881,18 @@ impl<'a> Checker<'a> {
                 } else if generator {
                     diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
                 }
+            }
+            // `a.erase(unique(a.begin(), a.end()), a.end())`: the fix rewrites the
+            // whole call, so `erase` and `unique` have no error of their own.
+            if let Some(at) =
+                replaced.filter(|_| super::advice::foreign_method(&name.text).is_some())
+            {
+                let own = name.span;
+                self.sink.drop_where(|d| {
+                    matches!(d.code, codes::UNRESOLVED_NAME | codes::UNKNOWN_FIELD)
+                        && at.contains(d.span)
+                        && d.span != own
+                });
             }
             self.iter_call_help(base, &base_ty, name);
         } else if ty == Ty::Unknown && built_in && self.no_extension_takes(&base_ty, name) {

@@ -1753,6 +1753,11 @@ impl<'a> Checker<'a> {
                 {
                     if !matches!(ty, Ty::Unit | Ty::Unknown | Ty::Error) {
                         // Decision 20.3: there is no caller to receive a non-unit value.
+                        let before = &self.src[..value.span.start as usize];
+                        let at = before
+                            .strip_suffix(' ')
+                            .filter(|b| b.ends_with("return"))
+                            .map(|b| Span::new(b.len() as u32, value.span.end));
                         let diag = self.error(
                             codes::UNEXPECTED_TOKEN,
                             value.span,
@@ -1763,6 +1768,9 @@ impl<'a> Checker<'a> {
                                 "write a bare `return`: it ends the program, or the test case below `@!multitest`"
                                     .to_string(),
                             );
+                            if let Some(at) = at {
+                                diag.fix("write a bare `return`", at, "");
+                            }
                         }
                     }
                 }
