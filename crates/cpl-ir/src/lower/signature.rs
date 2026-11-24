@@ -668,6 +668,13 @@ impl<'a> Lowerer<'a> {
                 _ => None,
             },
         };
+        // A fn not declared `lends` returns no lent value (R05.7.8): a bare
+        // `-> T` whose `T` binds a view is the owned value the view is lent from.
+        if returns_unlent_param(decl) {
+            if let Some((_, owned)) = self.sigs[id].ret.as_ref().and_then(Ty::owned_of_view) {
+                self.sigs[id].ret = Some(owned);
+            }
+        }
 
         self.cur_mod = saved_mod;
         self.offset = saved_offset;
@@ -682,4 +689,15 @@ impl<'a> Lowerer<'a> {
 enum AssocSrc<'a> {
     Impl(&'a ast::Type),
     Default(usize, &'a ast::Type),
+}
+
+/// Whether `decl` returns a bare type parameter without being declared
+/// `lends`: a view that parameter binds can't be returned (R05.7.8).
+pub(super) fn returns_unlent_param(decl: &ast::FnDecl) -> bool {
+    match (&decl.lends, decl.ret.as_ref().map(|t| &t.kind)) {
+        (None, Some(ast::TypeKind::Named { name, args })) => {
+            args.is_empty() && decl.generics.iter().any(|g| g.text == name.text)
+        }
+        _ => false,
+    }
 }

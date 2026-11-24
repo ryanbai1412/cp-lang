@@ -203,6 +203,20 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `value` checked against the fn's range return type (R03.1.4), unless proven inside it.
+    /// E0603 for a fn not declared `lends` returning the view its type
+    /// parameter bound (R05.7.8): copying it there would hide an O(n) cost.
+    fn no_lent_return(&mut self, value: &Expr, span: Span) {
+        if !self.cx.unlent_ret || value.ty.owned_of_view().is_none() {
+            return;
+        }
+        let Some(id) = self.growth.cur else { return };
+        let name = self.sigs[id].decl.name.text.clone();
+        self.report(span, msgs::ir::LENT_ESCAPES_WOULD_RETURN_A_VIEW, &[&name]);
+        self.help(format!(
+            "write `copy(..)` to return an owned value, or declare `{name}` with `lends`"
+        ));
+    }
+
     fn checked_ret(&mut self, value: Expr, span: Span) -> Expr {
         match self.cx.ret_bounds.clone() {
             Some(bounds) => self.check_range(value, &bounds, span),
@@ -223,6 +237,7 @@ impl<'a> Lowerer<'a> {
                 match hint {
                     Some(Ty::Unit) => out.push(Stmt::Expr(value)),
                     Some(ty) => {
+                        self.no_lent_return(&value, e.span);
                         let value = self.coerce(value, &ty, e.span);
                         let value = self.checked_ret(value, e.span);
                         out.push(Stmt::Return(Some(value)));
@@ -1243,6 +1258,7 @@ impl<'a> Lowerer<'a> {
                         }
                         match hint {
                             Some(ty) => {
+                                self.no_lent_return(&value, e.span);
                                 value = self.coerce(value, &ty, e.span);
                                 value = self.checked_ret(value, e.span);
                             }

@@ -47,6 +47,7 @@ impl<'a> Lowerer<'a> {
 
         let mut cx = FnCx {
             ret: self.sigs[id].ret.clone(),
+            unlent_ret: signature::returns_unlent_param(decl),
             in_body: true,
             ..FnCx::default()
         };

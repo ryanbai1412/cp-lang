@@ -502,6 +502,9 @@ struct FnCx {
     /// The forward sequence a reversed view local reverses, read for its `.src`.
     rev_src: HashMap<Slot, Expr>,
     ret: Option<Ty>,
+    /// The fn returns a bare type parameter without `lends`, so a view
+    /// can't be what it returns.
+    unlent_ret: bool,
     /// A scalar range return type (`-> 0..10`): what each returned value is checked against.
     ret_bounds: Option<range::RangeBounds>,
     new_domain_slots: Vec<DomainId>,

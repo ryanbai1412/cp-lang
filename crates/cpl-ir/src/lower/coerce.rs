@@ -156,19 +156,14 @@ impl<'a> Lowerer<'a> {
                     ..e
                 })
             }
-            (Ty::Str, Ty::StrView) => Ok(Expr {
-                kind: ExprKind::Builtin(Builtin::ToStr, vec![e]),
-                ty: Ty::Str,
-                span,
-            }),
-            (
-                Ty::List(want_elem),
-                Ty::ListView(got_elem, _) | Ty::Keyed(got_elem, _) | Ty::MutView(got_elem, _),
-            ) if want_elem == got_elem => Ok(Expr {
-                kind: ExprKind::Builtin(Builtin::ToList, vec![e]),
-                ty: want.clone(),
-                span,
-            }),
+            (want, got) if got.owned_of_view().is_some_and(|(_, owned)| owned == *want) => {
+                let (op, ty) = got.owned_of_view().expect("a view");
+                Ok(Expr {
+                    kind: ExprKind::Builtin(op, vec![e]),
+                    ty,
+                    span,
+                })
+            }
             (Ty::Pos(d), Ty::Tuple(ts))
                 if self
                     .product_domains

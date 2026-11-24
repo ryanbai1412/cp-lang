@@ -462,8 +462,11 @@ impl<'a> Lowerer<'a> {
             "copy" => match self.positional_any(name, args, 1, span) {
                 Some(exprs) => {
                     let val = self.expr(exprs[0], hint);
-                    let ty = val.ty.clone();
-                    self.mk_builtin(Builtin::Copy, [val], ty, span)
+                    let (op, ty) = val
+                        .ty
+                        .owned_of_view()
+                        .unwrap_or_else(|| (Builtin::Copy, val.ty.clone()));
+                    self.mk_builtin(op, [val], ty, span)
                 }
                 None => self.err_expr(span),
             },
