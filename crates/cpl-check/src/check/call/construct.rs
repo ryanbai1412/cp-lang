@@ -356,6 +356,9 @@ impl Checker<'_> {
                     self.expected_bounds_range = true;
                 }
                 self.expected_piece = Self::expects_piece(&expected);
+                let shape = (self.bound_fn_shape(&expected, bindings))
+                    .map(|s| self.fixed_by_later_args(s, args, i, params, bindings));
+                let expected = shape.unwrap_or(expected);
                 typed_lambda = self.lambda_defaults(arg, &expected, callee, params)
                     || self.lambda_takes(arg, &expected, own, bindings);
             }
@@ -690,6 +693,77 @@ impl Checker<'_> {
     /// A type parameter left in them is fixed when it is the enclosing
     /// body's (`T` inside `impl<T>`), not one of the callee's `own` the
     /// call has yet to bind.
+    /// The fn type a lambda given for `M` takes, where `M`'s bound has an impl for fn
+    /// types: `M: Op<Int>` with `impl<T> Op<T> for (T, T) -> T` wants `(Int, Int) -> Int`.
+    fn bound_fn_shape(&mut self, expected: &Ty, bindings: &Bindings) -> Option<Ty> {
+        let Ty::Param(m) = expected else {
+            return None;
+        };
+        let bounds = self.call_bound_args.clone()?;
+        let impls = self.env.impls("fn");
+        for (param, trait_name, args) in bounds.iter().filter(|(p, _, _)| p == m) {
+            let _ = param;
+            for (key, def) in &impls {
+                let named = key.as_deref().and_then(|t| t.split('<').next());
+                let Def::Impl {
+                    trait_args,
+                    target: target @ Ty::Fn { .. },
+                    ..
+                } = &**def
+                else {
+                    continue;
+                };
+                if named != Some(trait_name.as_str()) || trait_args.len() != args.len() {
+                    continue;
+                }
+                let mut open = Bindings::default();
+                for (have, want) in trait_args.iter().zip(args) {
+                    have.unify(&want.subst(bindings), &mut open);
+                }
+                return Some(target.subst(&open));
+            }
+        }
+        None
+    }
+
+    /// `shape` with the generics the arguments after `at` fix: the `T` of
+    /// `prefix_fold((x, y) => x ^ y, a)` is `a`'s.
+    fn fixed_by_later_args(
+        &mut self,
+        shape: Ty,
+        args: &[Arg],
+        at: usize,
+        params: &[crate::ty::Param],
+        bindings: &Bindings,
+    ) -> Ty {
+        if !shape.mentions_param() {
+            return shape;
+        }
+        let positional: Vec<&crate::ty::Param> = params.iter().filter(|p| !p.named_only).collect();
+        let mut known = bindings.clone();
+        let mut next = 0;
+        for (j, arg) in args.iter().enumerate() {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name == n.text),
+                None => {
+                    next += 1;
+                    positional.get(next - 1).copied()
+                }
+            };
+            let Some(param) = param.filter(|_| j > at) else {
+                continue;
+            };
+            if matches!(arg.value.kind, ExprKind::Lambda { .. }) {
+                continue;
+            }
+            let got = self.quietly(|c| c.infer(&arg.value));
+            if !got.has_vague() {
+                param.ty.unify(&got, &mut known);
+            }
+        }
+        shape.subst(&known)
+    }
+
     fn lambda_takes(
         &mut self,
         arg: &Arg,
