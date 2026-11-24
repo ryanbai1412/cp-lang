@@ -1,4 +1,5 @@
 // Source: NOI 2001 P5 (Equation Solutions), https://dmoj.ca/problem/noi01p5
+// limits: 1000 ms, 64 MB
 // Problem: n <= 6 terms (k_i, p_i), M <= 150, p_i >= 1, sum of |k_i M^p_i| < 2^31. Count
 //   x in [1..=M]^n with k_1 x_1^p_1 + ... + k_n x_n^p_n = 0.
 // Solution: meet in the middle: every value of the first half's sum (at most M^3 = 3.4e6)
@@ -15,18 +16,16 @@ let terms: [T](k: -2147483647..=2147483647, p: 1..=2147483647) = read()
 fn term(t: T, x: Int) -> Int = if terms[t].k == 0: 0 else: terms[t].k * x ** terms[t].p
 let values = [T] t => [term(t, x) for x in 1..=m]
 
-// every value of the sum of k_t x_t^p_t over the terms `ts`
-fn sums(ts: List<T>) -> List<Int>:
-    var cur = [0]
-    for t in ts:
-        cur = [s + v for s in cur for v in values[t]]
-    cur
-
 let (left, right) = T.collect().partition(t => Int(t) < n / 2)
-let left_sums = sums(left)
 var low: Counter<Sum, 0..=3_375_000> = Counter()  // at most M^3 left sums
-low.reserve(left_sums.len)
-for s in left_sums: low.add(s, 1)
+low.reserve(m ** left.len)
+// the left half's sums go into the counter as they are made, never listed
+fn count_left(at: Int, s: Int):
+    if at == left.len:
+        low.add(s, 1)
+        return
+    for v in values[left[at]]: count_left(at + 1, s + v)
+count_left(0, 0)
 
 // the right half's sums one at a time, so only the left half is ever stored
 fn matches(at: Int, s: Int) -> Int:
