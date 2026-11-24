@@ -196,8 +196,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-08/trait-message-bound-holds.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf
 - core-10/test-position-stored-above-multitest.cp: compiler
-- core-11/prelude-has-components.cp: compiler
-- core-11/strings-table-in-prelude.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - std-seq/keyed-by-answers-with-the-key.cp: compiler (a `Keys` view's `.items` doesn't walk; the `keys` + `at` walk rule)
