@@ -417,6 +417,62 @@ impl<'p> Facts<'p> {
         self.const_int(fn_id, lo, 0)
     }
 
+    /// `domain`'s count when every run gives it the same one, folded from its
+    /// one definition: literals, variables stored once, other such domains,
+    /// `+`, `-`, `*`, `max` and `min`.
+    pub fn fixed_domain_len(&self, id: usize) -> Option<i64> {
+        let (fn_id, len) = self.domain_len.get(&id).copied().flatten()?;
+        self.exact(fn_id, len, 0).map(|n| n.max(0))
+    }
+
+    /// [`Self::fixed_domain_len`] when it fits a position: the C++ holds it as a constant.
+    pub fn constexpr_domain_len(&self, id: usize) -> Option<i64> {
+        self.fixed_domain_len(id)
+            .filter(|n| *n <= i64::from(i32::MAX))
+    }
+
+    fn exact(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {
+        if depth > 8 {
+            return None;
+        }
+        let var = |v: Var| (self.stores(v) == 1).then(|| self.init(v)).flatten();
+        match &e.kind {
+            ExprKind::Int(n) => Some(*n),
+            ExprKind::Local(slot) => {
+                let v = self.local(fn_id, *slot);
+                self.exact(v.0, var(v)?, depth + 1)
+            }
+            ExprKind::Global(id) => self.exact(None, var((None, true, *id))?, depth + 1),
+            ExprKind::DomainLen(d) => {
+                let (f, len) = self.domain_len.get(d).copied().flatten()?;
+                self.exact(f, len, depth + 1)
+            }
+            ExprKind::Binary(op @ (BinOp::Add | BinOp::Sub | BinOp::Mul), l, r) => {
+                let (l, r) = (
+                    self.exact(fn_id, l, depth + 1)?,
+                    self.exact(fn_id, r, depth + 1)?,
+                );
+                match op {
+                    BinOp::Add => l.checked_add(r),
+                    BinOp::Sub => l.checked_sub(r),
+                    _ => l.checked_mul(r),
+                }
+            }
+            ExprKind::Builtin(op @ (Builtin::Max | Builtin::Min), args) => {
+                let vs: Vec<i64> = args
+                    .iter()
+                    .map(|a| self.exact(fn_id, a, depth + 1))
+                    .collect::<Option<_>>()?;
+                if *op == Builtin::Max {
+                    vs.into_iter().max()
+                } else {
+                    vs.into_iter().min()
+                }
+            }
+            _ => None,
+        }
+    }
+
     fn const_int(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {
         if depth > 8 {
             return None;

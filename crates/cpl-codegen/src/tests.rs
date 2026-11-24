@@ -113,6 +113,29 @@ print(s, cnt[Side.Left])
 }
 
 #[test]
+fn an_array_over_a_constant_domain_is_a_std_array_in_every_position() {
+    let source = "\
+domain K = 0..3
+struct Sum:
+    c: [K]Int
+fn join(a: [K]Int, b: [K]Int) -> [K]Int = [K] k => a[k] + b[k]
+fn pick(p: ([K]Int, Int)) -> ?[K]Int = if p.1 > 0: Some(p.0) else: None
+let x: [K]Int = [K] k => k.ord
+let s = Sum(join(x, x))
+let o = pick((s.c, 1))
+print(join(x, x)[K(1)], s.c[K(2)], (o ?? x)[K(0)])
+";
+    let out = cpp(source);
+    let body = &out[out.find("namespace prog {").expect("prog")..];
+    assert!(
+        body.contains(
+            "std::array<ll, 3> join(const std::array<ll, 3>& a, const std::array<ll, 3>& b)"
+        ) && !body.contains("std::vector<"),
+        "params, returns, fields, tuples and optionals all hold the array inline:\n{body}"
+    );
+}
+
+#[test]
 fn the_same_source_gives_the_same_bytes() {
     let source = "var m: Map<Str, Int> = []\nm[\"b\"] = 1\nm[\"a\"] = 2\nvar s: Set<Int> = []\ns.insert(3)\nprint(m, s)\n";
     assert_eq!(cpp(source), cpp(source));

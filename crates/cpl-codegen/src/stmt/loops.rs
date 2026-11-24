@@ -250,9 +250,24 @@ impl<'p> Emitter<'p> {
                                      {left} > 0; {left}--, {var} = ({cpp})(({wide}){var} + ({wide})({step}))) {{"
                                 )
                             }
-                            None if !closed => format!(
-                                "for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++) {{"
-                            ),
+                            None if !closed => {
+                                // A few rounds known before the program runs (a fixed domain's
+                                // positions) are unrolled, as a hand-written fixed array would be.
+                                let known = |e: &Expr| match &e.kind {
+                                    ExprKind::Int(n) => Some(*n),
+                                    ExprKind::DomainLen(d) => self.facts.constexpr_domain_len(*d),
+                                    _ => None,
+                                };
+                                let unroll = match (known(lo), known(hi)) {
+                                    (Some(lo), Some(hi)) if (1..=16).contains(&(hi - lo)) => {
+                                        format!("_Pragma(\"GCC unroll {}\") ", hi - lo)
+                                    }
+                                    _ => String::new(),
+                                };
+                                format!(
+                                    "{unroll}for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++) {{"
+                                )
+                            }
                             // Up to a last value that is not the largest
                             // of its type: `<=` ends the loop.
                             None if cpp == "int"

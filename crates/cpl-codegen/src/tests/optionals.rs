@@ -180,8 +180,11 @@ fn optional_mut_param_does_not_emit_optional_of_reference() {
         "print(f())\n",
     );
     let out = cpp(src);
-    assert!(!out.contains("std::optional<std::vector<char>&>"), "{out}");
-    assert!(out.contains("cpl::Lent<std::vector<char>>"), "{out}");
+    assert!(
+        !out.contains("std::optional<std::array<char, 2>&>"),
+        "{out}"
+    );
+    assert!(out.contains("cpl::Lent<std::array<char, 2>>"), "{out}");
 }
 
 #[test]

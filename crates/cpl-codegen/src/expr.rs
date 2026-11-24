@@ -1242,6 +1242,9 @@ impl<'p> Emitter<'p> {
                     return Code::primary("(void)0");
                 };
                 let cell = elem_ty(program, self.niches, elem);
+                if let Some(k) = self.ty_fixed_len(&e.ty) {
+                    return self.expr_with_fixed_len(e, Some(k));
+                }
                 if dims.len() == 1 {
                     let args = self.fill_args(dims, value.as_deref());
                     Code::primary(format!("std::vector<{cell}>({args})"))

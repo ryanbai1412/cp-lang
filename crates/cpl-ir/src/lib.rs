@@ -1446,6 +1446,9 @@ pub struct Global {
     pub span: Span,
 }
 
+/// The largest count whose arrays are held inline as a `std::array`.
+pub const FIXED_MAX: i64 = 64;
+
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Program {
     /// What the lowering found that is allowed but almost surely a
@@ -1473,6 +1476,10 @@ pub struct Program {
     /// sum domain with no proven bound under it. Filled in by the code
     /// generator.
     pub wide_domains: Vec<bool>,
+    /// By domain, its count when every run gives it the same one, at most
+    /// [`FIXED_MAX`]: an array over it is a `std::array`. Filled in by the
+    /// code generator.
+    pub fixed_lens: Vec<Option<u32>>,
     pub globals: Vec<Global>,
     pub fns: Vec<Function>,
     /// By [`FnId`]: whether the fn is an imported module's, not the file's.

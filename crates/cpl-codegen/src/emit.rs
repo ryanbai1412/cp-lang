@@ -743,7 +743,11 @@ impl<'p> Emitter<'p> {
             let ty = &locals[slot].ty;
             let loc = cpl_ir::ElemLoc::Local(scope, slot);
             let cpp = self.ty_for_loc(ty, loc);
-            let init = if self.fixed_array_len(loc).is_some() {
+            let init = if self
+                .fixed_array_len(loc)
+                .or_else(|| self.ty_fixed_len(ty))
+                .is_some()
+            {
                 "{}"
             } else {
                 self.zero_init(ty)
@@ -922,7 +926,10 @@ impl<'p> Emitter<'p> {
                 self.const_globals.insert(id);
                 continue;
             }
-            let is_fixed = self.fixed_array_len(loc).is_some();
+            let is_fixed = self
+                .fixed_array_len(loc)
+                .or_else(|| self.ty_fixed_len(&global.ty))
+                .is_some();
             let init = if is_fixed {
                 "{}"
             } else {
@@ -1312,9 +1319,16 @@ impl<'p> Emitter<'p> {
                     || self.shows.iter().any(|s| names(s, name))
             };
             let has_lo = used_in(&lo_name);
-            let has_len = used_in(&len_name);
+            let mut has_len = used_in(&len_name);
             if !has_lo && !has_len {
                 continue;
+            }
+            if let Some(n) = self.facts.constexpr_domain_len(id).filter(|_| has_len) {
+                dom_vars.push_str(&format!("static constexpr ll {len_name} = {n};\n"));
+                has_len = false;
+                if !has_lo {
+                    continue;
+                }
             }
             if let Some(lo) = self.facts.const_domain_lo(id) {
                 if has_lo {

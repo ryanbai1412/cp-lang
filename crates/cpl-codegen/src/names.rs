@@ -261,9 +261,10 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             _ => "cpl::Range<ll>".into(),
         },
         Ty::DomainVal => "cpl::DomainVal".into(),
-        Ty::Array { dims, elem } if dims.len() == 1 => {
-            format!("std::vector<{}>", elem_ty(program, niches, elem))
-        }
+        Ty::Array { dims, elem } if dims.len() == 1 => match fixed_len(program, &dims[0]) {
+            Some(n) => format!("std::array<{}, {n}>", elem_ty(program, niches, elem)),
+            None => format!("std::vector<{}>", elem_ty(program, niches, elem)),
+        },
         Ty::Array { dims, elem } => {
             format!(
                 "cpl::Grid<{}, {}>",
@@ -483,5 +484,14 @@ fn cached_in(program: &Program, ty: &Ty, seen: &mut Vec<usize>) -> bool {
         Ty::Tuple(items) => items.iter().any(|t| cached_in(program, t, seen)),
         Ty::Opt(inner) => cached_in(program, inner, seen),
         _ => false,
+    }
+}
+
+/// How many cells an array axis has when every run gives it the same small
+/// count: the array is then a `std::array` in every position it appears.
+pub(crate) fn fixed_len(program: &Program, dim: &cpl_ir::Dim) -> Option<u32> {
+    match dim {
+        cpl_ir::Dim::Pos(d) => program.fixed_lens.get(*d).copied().flatten(),
+        _ => None,
     }
 }

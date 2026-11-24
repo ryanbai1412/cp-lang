@@ -477,7 +477,7 @@ impl<'p> Emitter<'p> {
                 let ty = self.locals()[*slot].ty.clone();
                 let name = self.names[*slot].clone();
                 let loc = cpl_ir::ElemLoc::Local(self.current_scope(), *slot);
-                let fixed_len = self.fixed_array_len(loc);
+                let fixed_len = self.fixed_array_len(loc).or_else(|| self.ty_fixed_len(&ty));
                 let elem_l = self.elem_layout(loc).cloned();
                 let cpp = self.ty_for_loc(&ty, loc);
                 let hoisted = self.hoisted.contains(slot);
@@ -554,7 +554,7 @@ impl<'p> Emitter<'p> {
                         if fixed_len.is_some() {
                             self.line(out, &format!("{cpp} {name}{{}};"));
                             if let Some(v) = value {
-                                let val = self.expr(v).text;
+                                let val = self.fill_value(v, elem_l.as_ref());
                                 self.line(out, &format!("{name}.fill({val});"));
                             }
                             return;
@@ -748,12 +748,17 @@ impl<'p> Emitter<'p> {
                 } else {
                     self.expr(lo).text
                 };
-                let len = self.expr(len).text;
                 if !lo_const {
                     self.line(out, &format!("{d}_lo = {lo};"));
                 }
-                self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
-                self.domain_fits(out, *id, &d);
+                let len_text = self.expr(len).text;
+                if self.facts.constexpr_domain_len(*id).is_none() {
+                    self.line(out, &format!("{d}_len = std::max<ll>({len_text}, 0);"));
+                    self.domain_fits(out, *id, &d);
+                } else if reads_a_local(len) {
+                    // The locals it was folded from are read, though its count is a constant.
+                    self.line(out, &format!("(void)({len_text});"));
+                }
             }
             Stmt::DefDomainFromVal { id, val } => {
                 let d = dom_ident(program, *id);
@@ -971,4 +976,10 @@ impl<'p> Emitter<'p> {
         self.line(out, &format!("auto* {at} = cpl::map_slot({m}, {name});"));
         self.map_slots.insert((self.closure_id, slot), at);
     }
+}
+
+fn reads_a_local(e: &Expr) -> bool {
+    let mut found = matches!(e.kind, ExprKind::Local(_));
+    crate::walk::children(e, &mut |child| found |= reads_a_local(child));
+    found
 }

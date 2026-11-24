@@ -73,7 +73,20 @@ impl<'p> Emitter<'p> {
             .map(|(_, k)| *k as u32)
     }
 
+    /// The cell count of an array whose type fixes it: a `std::array` wherever it is held.
+    pub fn ty_fixed_len(&self, ty: &Ty) -> Option<u32> {
+        match ty {
+            Ty::Array { dims, .. } if dims.len() == 1 => {
+                crate::names::fixed_len(self.program, &dims[0])
+            }
+            _ => None,
+        }
+    }
+
     pub fn place_fixed_len(&self, p: &cpl_ir::Place) -> Option<u32> {
+        if let Some(k) = self.ty_fixed_len(&p.ty) {
+            return Some(k);
+        }
         let scope = self.current_scope();
         match &p.kind {
             cpl_ir::PlaceKind::Global(g) => self.fixed_array_len(cpl_ir::ElemLoc::Global(*g)),
@@ -83,6 +96,9 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn expr_fixed_len(&self, e: &cpl_ir::Expr) -> Option<u32> {
+        if let Some(k) = self.ty_fixed_len(&e.ty) {
+            return Some(k);
+        }
         let scope = self.current_scope();
         match &e.kind {
             cpl_ir::ExprKind::Global(g) => self.fixed_array_len(cpl_ir::ElemLoc::Global(*g)),
@@ -133,7 +149,9 @@ impl<'p> Emitter<'p> {
             match ty {
                 Ty::Array { dims, elem } => {
                     if let Some(cell) = l.cpp_elem(elem) {
-                        return if dims.len() == 1 {
+                        return if let Some(k) = self.ty_fixed_len(ty) {
+                            format!("std::array<{cell}, {k}>")
+                        } else if dims.len() == 1 {
                             format!("std::vector<{cell}>")
                         } else {
                             format!("cpl::Grid<{cell}, {}>", dims.len())

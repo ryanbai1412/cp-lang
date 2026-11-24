@@ -8981,8 +8981,21 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Towers mod `m` (etsr23r4p2, a^b^c problems) were hand-written totient chains with a reached-the-threshold flag beside each value. `pow_exp` sits beside `pow_mod` with the same argument order and only the exponent's type changes; `shift_saturating` is the clamped form of a step and pairs with the range-valued `shift`.
 - **Reverse.** Fold `Exp` into an `Int` exponent with a `phi:` argument on `pow_mod`, or rename `shift_saturating` to a `next(k, saturate: true)` option.
 
-## 564. (reserved, perf)
+## 564. An array over a fixed-size domain is a `std::array` wherever it is held (codegen, 2026-11-24)
 
-## 565. (reserved, perf)
+- **Call.** A domain whose count the program fixes (`domain K = 0..3`, folded from its one definition: literals, variables stored once, other such domains, `+ - * max min`) has a `static constexpr` length, and `[K]T` with at most `FIXED_MAX` (64) cells is a `std::array<T, N>` in every position: locals, globals, params, returns, struct fields, tuple and optional elements. `names::cty` decides it from the type alone (`Program.fixed_lens`), so no boundary converts between `std::vector` and `std::array`. A forward loop of at most 16 known rounds is unrolled.
+- **Why.** Small fixed summaries (a 3-counter Misra-Gries monoid in a SegTree, dmpg15g6) were `std::vector`s at fn boundaries and allocated on every merge, while the same array in a local was already a `std::array`. `bench/zero-cost/fixed_arrays` runs at the speed of four scalar counters.
+- **Reverse.** Return `std::vector` from `cty` for fixed lengths and delete `fixed_lens`; the location-based `scope::fixed_arrays` still covers locals and globals.
 
-## 566. (reserved, perf)
+## 565. `List.insert` and `List.remove` are one tail move, not a swap per step (codegen, 2026-11-24)
+
+- **Call.** Both are floor storage writes (decision 535), so they lower in the core like `push`: the index is held by an `assert` that keeps the std contract and its R0401 report (`0 <= i <= self.len`, `0 <= i < self.len`), then `Mutation::Insert`/`Remove` on the list. The C++ is `cpl::list_insert` (`vector::insert`) and `cpl::list_remove` (move the cell out, `vector::erase`), and the interpreter does the same `Vec::insert`/`Vec::remove`. The swap-per-step bodies in `std/seq.cp` are gone; the docs live in the `List` builtin rows.
+- **Why.** The std bodies paid a checked `swap_at` per moved cell: 200k front inserts took 29.8 s against 2.95 s with `vector::insert` (idioms 08c49b68). One block move is what a C++ contestant writes, and the bound the prover can show still drops the assert.
+- **Reverse.** Restore the two std bodies and delete the `(Ty::List(_), "insert" | "remove")` lowering arm and the two runtime pieces.
+
+
+## 566. `?T max=` is the max of the order `none` first; a built `Some` is not tested (codegen, 2026-11-24)
+
+- **Call.** `p max= r` on a `?T` whose `T` has a built-in order lowers to one `AssignOp::Max` on the optional: `none` sorts below every value, so keeping the larger is exactly "skip a `none` on the right, take any value over a `none` on the left". `min=` keeps its two tests, but when `r` is `Some(e)` it binds `e` and tests only `p`. A `Niche` whose `none` is negative (Int, I32, positions, bytes) compares by its raw scalar (`none_first`), so the C++ `std::max` on it is one signed compare with no branch; `?Bool` (`none` = 2) keeps the tested order.
+- **Why.** noi20p1's max-plus product spent its inner loop on `has_value` tests of a `Some` it had just built (idioms 99962d3b). Both engines already order `?T` with `none` first, so no new semantics are introduced.
+- **Reverse.** Drop the `AssignOp::Max` arm and the `Some(e)` binding in the `?T` `max=`/`min=` lowering (`lower/stmt.rs`) and `none_first` in `runtime/opt.rs`.
