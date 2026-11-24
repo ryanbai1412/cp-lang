@@ -782,6 +782,35 @@ fn a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it() {
 }
 
 #[test]
+fn a_struct_built_from_an_owning_conversion_of_a_param_owns_its_field() {
+    // R05.5.2: `List(xs)` is an owned copy, so the field the caller reads
+    // after changing `a` is never `&xs`.
+    for (ctor, call) in [
+        (
+            "struct Box(v: List<Int>):\n    fn of(xs: List<Int>) -> Box = Box(List(xs))\n",
+            "Box.of(a)",
+        ),
+        (
+            "struct Box(v: List<Int>)\nfn of(xs: List<Int>) -> Box = Box(List(xs))\n",
+            "of(a)",
+        ),
+        (
+            "struct Box(v: List<Int>):\n    fn of(self, xs: List<Int>) -> Box = Box(List(xs))\n",
+            "Box([]).of(a)",
+        ),
+    ] {
+        let src =
+            format!("{ctor}var a = [1, 2]\nlet b = {call}\na.push(3)\nprint(a.len, b.v.len)\n");
+        let out = cpp(&src);
+        assert!(
+            out.contains("  std::vector<ll> v;"),
+            "the field owns its list: {src}\n{out}"
+        );
+        assert!(!out.contains("{&xs}"), "{src}\n{out}");
+    }
+}
+
+#[test]
 fn a_tuple_of_rows_binds_each_name_in_place() {
     let lent = body(concat!(
         "let n: Int = read()\n",
@@ -1505,4 +1534,31 @@ fn only_move_of_spells_a_move() {
         spelled.len() == 1 && spelled[0].contains("lend.rs"),
         "a move goes through `Emitter::move_of`: {spelled:#?}"
     );
+}
+
+#[test]
+fn a_library_copy_of_a_list_it_only_reads_names_the_list() {
+    // `pairs` reads `List(self)`: of a list nothing changes, that is the list.
+    let out = cpp("let a = [1, 2, 3]\nprint(a.pairs().count())\n");
+    assert!(out.contains("const std::vector<ll>& xs = self;"), "{out}");
+}
+
+#[test]
+fn a_copy_sink_a_caller_keeps_is_lent_and_copied_in_the_fn() {
+    // `Functional(p)` of a loop's `p`: taken by value, the copy would move to the call.
+    let out = cpp(concat!(
+        "struct Box(v: List<Int>):\n    fn of(xs: List<Int>) -> Box = Box(List(xs))\n",
+        "let a = [[1], [2]]\n",
+        "for p in a: print(Box.of(p).v.len)\n",
+    ));
+    assert!(out.contains("Box_of(const std::vector<ll>& xs)"), "{out}");
+}
+
+#[test]
+fn an_owning_conversion_of_a_fresh_value_is_that_value() {
+    // A generator's call and a collected walk own what they give: `List(..)`
+    // of one copies nothing, so `.len` still counts without a list.
+    let out = cpp("fn evens(n: Int) -> yields Int:\n    for i in 0..n:\n        if i % 2 == 0: yield i\nprint(List(evens(4)).len)\nlet r = List((0..10).rev by 3)\nprint(r)\n");
+    assert!(!out.contains("__yields"), "{out}");
+    assert!(!out.contains("std::vector<ll>([&]"), "{out}");
 }

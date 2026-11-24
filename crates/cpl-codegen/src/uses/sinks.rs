@@ -10,9 +10,14 @@ use std::collections::BTreeSet;
 /// its block still reads. Taken by value, such a parameter only moves the
 /// copy from where the body writes it to the call, so it is taken by
 /// `const&` instead. A parameter the body copies into a local or a store
-/// stays sunk, since the copy is where the source names it whole.
-pub(crate) fn unmovable_sinks(program: &Program, sunk: &[BTreeSet<usize>]) -> Vec<(usize, usize)> {
-    let (mut called, mut movable) = (BTreeSet::new(), BTreeSet::new());
+/// stays sunk, since the copy is where the source names it whole. One of
+/// `copies`, returned only as a copy, is lent once any call can't move in.
+pub(crate) fn unmovable_sinks(
+    program: &Program,
+    sunk: &[BTreeSet<usize>],
+    copies: &[BTreeSet<usize>],
+) -> Vec<(usize, usize)> {
+    let (mut called, mut movable, mut kept) = (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
     let reads = |stmts: &[Stmt], var: (bool, usize)| {
         let mut found = false;
         for stmt in stmts {
@@ -66,8 +71,42 @@ pub(crate) fn unmovable_sinks(program: &Program, sunk: &[BTreeSet<usize>]) -> Ve
                         ExprKind::Global(g) => Some((true, g)),
                         _ => None,
                     };
-                    if !var.is_some_and(|var| reads(&block.stmts[k + 1..], var)) {
+                    let unread = !var.is_some_and(|var| reads(&block.stmts[k + 1..], var));
+                    if unread {
                         movable.insert((*fid, slot));
+                    }
+                    // A copy sink moves in only a temporary, or a local this block
+                    // made or a global that nothing reads after the call; any
+                    // other place is copied.
+                    let place = matches!(
+                        super::in_place(value).kind,
+                        ExprKind::Local(_)
+                            | ExprKind::Global(_)
+                            | ExprKind::Field(..)
+                            | ExprKind::Index(..)
+                            | ExprKind::Payload(..)
+                            | ExprKind::Unwrap(..)
+                    );
+                    let dropped = match value.kind {
+                        ExprKind::Local(s) => {
+                            block.stmts[..k]
+                                .iter()
+                                .any(|st| matches!(st, Stmt::Let(l, _) if *l == s))
+                                && super::unread_after(program, block, k, s)
+                        }
+                        // The top level moves a global from a statement's own call,
+                        // not from a loop's or a branch's head.
+                        ExprKind::Global(_) => {
+                            unread
+                                && matches!(
+                                    block.stmts[k],
+                                    Stmt::Let(..) | Stmt::Assign(..) | Stmt::Expr(_)
+                                )
+                        }
+                        _ => false,
+                    };
+                    if copies[*fid].contains(&slot) && place && !dropped {
+                        kept.insert((*fid, slot));
                     }
                 }
             }
@@ -85,5 +124,6 @@ pub(crate) fn unmovable_sinks(program: &Program, sunk: &[BTreeSet<usize>]) -> Ve
     };
     (called.difference(&movable).copied())
         .filter(|sink| !named_whole(sink))
+        .chain(kept)
         .collect()
 }

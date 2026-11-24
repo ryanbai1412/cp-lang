@@ -375,6 +375,19 @@ impl Ty {
         Ty::List(Box::new(elem))
     }
 
+    /// What an owned copy of a view is, and the builtin that makes it: the
+    /// `List` or `Str` the view is lent from (R05.6.4). `None` for a value
+    /// that owns its storage.
+    pub fn owned_of_view(&self) -> Option<(Builtin, Ty)> {
+        match self {
+            Ty::StrView => Some((Builtin::ToStr, Ty::Str)),
+            Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
+                Some((Builtin::ToList, Ty::list((**elem).clone())))
+            }
+            _ => None,
+        }
+    }
+
     pub fn range(elem: Ty) -> Ty {
         Ty::Range(Box::new(elem))
     }

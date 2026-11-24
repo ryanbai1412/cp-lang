@@ -100,7 +100,8 @@ impl Emitter<'_> {
                     && self.closure_id.is_none()
                     && self.fn_id.is_some()
                     && self.call_item_alone(items, idx);
-                if let (ExprKind::Local(slot), true) = (&item.kind, dies) {
+                let whole = crate::uses::copied(item).unwrap_or(item);
+                if let (ExprKind::Local(slot), true) = (&whole.kind, dies) {
                     let moved = self.move_of(&item.ty, &self.names[*slot]);
                     return match struct_id {
                         Some(s) => self.narrow_field_store(s, idx, &moved),
@@ -151,7 +152,15 @@ impl Emitter<'_> {
     /// block's lambda (for a `give`) owns and never reads again.
     fn handed_item_dies(&self, items: &[Expr], idx: usize, is_return: bool) -> bool {
         if is_return {
-            return self.returned_item_dies(items, idx);
+            // A copy of a local that dies here takes it.
+            return match crate::uses::copied(&items[idx]) {
+                Some(src) if matches!(src.kind, ExprKind::Local(_)) => {
+                    let mut taken = items.to_vec();
+                    taken[idx] = src.clone();
+                    self.returned_item_dies(&taken, idx)
+                }
+                _ => self.returned_item_dies(items, idx),
+            };
         }
         let item = &items[idx];
         let Some(slot) = local_root(item) else {

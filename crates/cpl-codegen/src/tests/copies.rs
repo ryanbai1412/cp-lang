@@ -902,7 +902,7 @@ fn a_struct_param_no_call_can_move_into_is_lent_and_copied_where_written() {
         live.contains("Box_of(const std::vector<ll>& xs)"),
         "a stays live, so of lends it:\n{live}"
     );
-    let last = cpp("struct Box(v: List<Int>):\n    fn of(xs: List<Int>) -> Box = Box(List(xs))\nfn make() -> Box:\n    var a = [1, 2]\n    Box.of(a)\nprint(make().v.len)\n");
+    let last = cpp(&src.replace("a.push(3)\nprint(a.len, b.v.len)", "print(b.v.len)"));
     assert!(
         last.contains("Box_of(std::move(a))"),
         "a dies at the call, so it moves in:\n{last}"

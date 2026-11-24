@@ -429,12 +429,15 @@ pub(crate) fn rows(
 /// Value parameters each fn returns as a field of the struct or tuple it
 /// builds, with nothing else in that return naming them. They are taken by
 /// value so the return moves them, and a caller at its last use moves in.
-pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
+/// The second sets are those returned only as a copy (`Box(List(xs))`):
+/// taken by value only where every call moves in, as a caller that keeps
+/// its value would make the copy the fn no longer does.
+pub(crate) fn sunk_params(program: &Program) -> (Vec<BTreeSet<usize>>, Vec<BTreeSet<usize>>) {
     program
         .fns
         .iter()
         .map(|f| {
-            let mut sunk = BTreeSet::new();
+            let (mut sunk, mut copies) = (BTreeSet::new(), BTreeSet::new());
             each_sink(&f.body, &mut |sink| {
                 let Sink::Return(value) = sink else {
                     return;
@@ -449,7 +452,8 @@ pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
                     return;
                 }
                 for (idx, item) in items.iter().enumerate() {
-                    let ExprKind::Local(slot) = item.kind else {
+                    let copy = crate::uses::copied(item);
+                    let ExprKind::Local(slot) = copy.unwrap_or(item).kind else {
                         continue;
                     };
                     if slot >= f.params.len()
@@ -469,15 +473,20 @@ pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
                         }
                     });
                     if !elsewhere {
-                        sunk.insert(slot);
+                        match copy {
+                            Some(_) => copies.insert(slot),
+                            None => sunk.insert(slot),
+                        };
                     }
                 }
             });
             sunk.extend(crate::uses::copied_once(f));
             sunk.extend(crate::uses::stored_last(program, f));
-            sunk
+            copies.retain(|slot| !sunk.contains(slot));
+            sunk.extend(&copies);
+            (sunk, copies)
         })
-        .collect()
+        .unzip()
 }
 
 /// 1D fixed-size arrays in locals and globals whose length is a compile-time

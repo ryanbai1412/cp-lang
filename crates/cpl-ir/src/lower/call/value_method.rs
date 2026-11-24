@@ -379,28 +379,6 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::Str | Ty::StrView, "to_str") => match self.positional_any(method, args, 0, span) {
-                Some(_) => self.mk_builtin(Builtin::ToStr, [value], Ty::Str, span),
-                None => self.err_expr(span),
-            },
-            (Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _), "to_list") => {
-                let out_ty = Ty::list((**e).clone());
-                match self.positional_any(method, args, 0, span) {
-                    Some(_) => self.mk_builtin(Builtin::ToList, [value], out_ty, span),
-                    None => self.err_expr(span),
-                }
-            }
-            (Ty::StrView, "copy" | "clone") => match self.positional_any(method, args, 0, span) {
-                Some(_) => self.mk_builtin(Builtin::ToStr, [value], Ty::Str, span),
-                None => self.err_expr(span),
-            },
-            (Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _), "copy" | "clone") => {
-                let out_ty = Ty::list((**e).clone());
-                match self.positional_any(method, args, 0, span) {
-                    Some(_) => self.mk_builtin(Builtin::ToList, [value], out_ty, span),
-                    None => self.err_expr(span),
-                }
-            }
             (
                 Ty::List(_)
                 | Ty::Array { .. }
@@ -408,12 +386,28 @@ impl<'a> Lowerer<'a> {
                 | Ty::HashMap(..)
                 | Ty::Set(_)
                 | Ty::HashSet(_)
-                | Ty::Str,
+                | Ty::Str
+                | Ty::StrView
+                | Ty::ListView(..)
+                | Ty::Keyed(..)
+                | Ty::MutView(..),
                 "copy" | "clone",
-            ) => match self.positional_any(method, args, 0, span) {
-                Some(_) => self.mk_builtin(Builtin::Copy, [value], ty.clone(), span),
-                None => self.err_expr(span),
-            },
+            )
+            | (Ty::Str | Ty::StrView, "to_str")
+            | (Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..), "to_list") => {
+                match self.positional_any(method, args, 0, span) {
+                    Some(_) => match (&ty, method) {
+                        (Ty::Str, "to_str") => {
+                            self.mk_builtin(Builtin::ToStr, [value], Ty::Str, span)
+                        }
+                        (Ty::List(_), "to_list") => {
+                            self.mk_builtin(Builtin::ToList, [value], ty.clone(), span)
+                        }
+                        _ => self.copy_of(value, span),
+                    },
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::Set(_) | Ty::HashSet(_), "insert" | "add") => {
                 match self.one_arg(method, args, &elem, span) {
                     Some(arg) => mutate(self, Mutation::Insert, vec![arg], Ty::Bool),

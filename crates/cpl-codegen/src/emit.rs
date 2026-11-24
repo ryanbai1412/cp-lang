@@ -356,11 +356,11 @@ impl<'p> Emitter<'p> {
         let lent_fields = crate::lent_fields::lent_fields(program, &|s, i| {
             rows.contains_key(&(s, i)) || narrow_elems.contains_key(&cpl_ir::ElemLoc::Field(s, i))
         });
-        let mut sunk = crate::scope::sunk_params(program);
+        let (mut sunk, copies) = crate::scope::sunk_params(program);
         for &(f, p) in &lent_fields.by_ref {
             sunk[f].remove(&p);
         }
-        for (f, p) in crate::uses::sinks::unmovable_sinks(program, &sunk) {
+        for (f, p) in crate::uses::sinks::unmovable_sinks(program, &sunk, &copies) {
             sunk[f].remove(&p);
         }
         let mut emitter = Emitter {

@@ -551,9 +551,8 @@ impl<'a> Lowerer<'a> {
                 }
                 let val = self.expr(src, None);
                 match val.ty.clone() {
-                    Ty::List(_) => val,
-                    Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
-                        self.mk_builtin(Builtin::ToList, [val], Ty::List(elem), span)
+                    Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..) => {
+                        self.owned_copy(val, span)
                     }
                     Ty::Str | Ty::StrView => {
                         self.mk_builtin(Builtin::StrToList, [val], Ty::list(Ty::Char), span)
@@ -1506,5 +1505,40 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
             out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
         })
+    }
+
+    /// An owned copy of `value` (`List(xs)`, `copy(x)`): what it gives is
+    /// never lent from `value`, so a struct field it fills owns its value.
+    pub(in crate::lower) fn owned_copy(&self, value: Expr, span: Span) -> Expr {
+        if value.ty.owned_of_view().is_none() && self.gives_its_own(&value) {
+            return value;
+        }
+        self.copy_of(value, span)
+    }
+
+    /// `value` copied to its owned type (R05.6.4): a view's `List` or `Str`.
+    pub(in crate::lower) fn copy_of(&self, value: Expr, span: Span) -> Expr {
+        let (op, ty) = value
+            .ty
+            .owned_of_view()
+            .unwrap_or_else(|| (Builtin::Copy, value.ty.clone()));
+        self.mk_builtin(op, [value], ty, span)
+    }
+
+    /// A value nothing else holds: the result of a fn without `lends`
+    /// (R05.5.2), or a local a block makes and gives.
+    fn gives_its_own(&self, value: &Expr) -> bool {
+        match &value.kind {
+            ExprKind::Call(id, _) => self
+                .sigs
+                .get(*id)
+                .is_some_and(|sig| sig.decl.lends.is_none()),
+            ExprKind::Do(block) => matches!(
+                block.stmts.last(),
+                Some(Stmt::Give(Expr { kind: ExprKind::Local(made), .. }))
+                    if block.stmts.iter().any(|s| matches!(s, Stmt::Let(slot, _) if slot == made))
+            ),
+            _ => false,
+        }
     }
 }

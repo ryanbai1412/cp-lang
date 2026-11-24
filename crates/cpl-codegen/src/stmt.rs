@@ -1140,6 +1140,17 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("const cpl::Held<{cpp}> {name}_h = {call};"));
                     self.line(out, &format!("const {cpp}& {name} = *{name}_h;"));
                     self.ref_bound.insert(*slot);
+                } else if let Some(src) = crate::uses::copied(init).filter(|src| {
+                    !taken
+                        && self.in_library()
+                        && src.ty == init.ty
+                        && self.lends(*slot, src, tail.as_ref())
+                }) {
+                    // `let xs: List<T> = List(self)` of a list the library only
+                    // reads while nothing changes it: a name for it, not a copy.
+                    let text = self.expr(src).text;
+                    self.line(out, &format!("const {cpp}& {name} = {text};"));
+                    self.ref_bound.insert(*slot);
                 } else if !taken && self.lends(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list. One a return
