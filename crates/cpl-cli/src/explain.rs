@@ -172,7 +172,7 @@ pub(crate) fn explain_file(
             };
             rows.push(row(&format!("{line}:{col}"), lowering, index.why()));
         }
-        for (name, rep) in crate::with_db(|db| cpl_lsp::explain::storage(db, path)).0 {
+        for (name, rep) in crate::with_db(|db| cpl_lsp::explain::storage(db, path)).rows {
             let detail = format!("{}: {}", rep.ty, cpl_lsp::explain::describe(&rep));
             rows.push(row(&name, "storage", &detail));
         }

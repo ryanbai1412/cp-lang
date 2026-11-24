@@ -947,33 +947,37 @@ fn render_trap_noting(
 
 /// The `@interactor` of the file at `path`, lowered, with the file's
 /// text; `None` if the file has none or is not CP source.
-fn release_judge(
-    path: &str,
-    stderr: &mut String,
-) -> Result<Option<(String, cpl_ir::Program, String)>, u8> {
+/// A file's `@interactor`: its name, its program, and the file's text.
+struct Interactor {
+    name: String,
+    judge: cpl_ir::Program,
+    text: String,
+}
+
+fn release_judge(path: &str, stderr: &mut String) -> Result<Option<Interactor>, u8> {
     if !path.ends_with(".cp") {
         return Ok(None);
     }
     let compiled = compile_side(path, Side::Solution, &mut String::new())
         .inspect_err(|_| *stderr += &format!("cpl: `{path}` no longer checks\n"))?;
-    Ok(compiled
-        .judge
-        .map(|(name, judge)| (name, judge, compiled.text)))
+    Ok(compiled.judge.map(|(name, judge)| Interactor {
+        name,
+        judge,
+        text: compiled.text,
+    }))
 }
 
 /// `cpl run --release` on an interactive file: the built solution, as a
 /// process, against the file's `@interactor`.
-#[allow(clippy::too_many_arguments)]
 fn run_release_judged(
     args: &RunArgs,
     program: &cpl_stress::Program,
-    name: &str,
-    judge: &cpl_ir::Program,
-    text: &str,
+    interactor: &Interactor,
     input: &[u8],
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
+    let Interactor { name, judge, text } = interactor;
     let ruling = match interact::run_built(&program.argv, judge, input, stdout) {
         Ok(ruling) => ruling,
         Err(error) => {
@@ -1117,13 +1121,11 @@ fn run_release(
     // hidden test, which the judge reads, as without `--release`.
     if !args.brute && grader.is_none() {
         match release_judge(args.file, stderr) {
-            Ok(Some((name, judge, text))) => {
+            Ok(Some(interactor)) => {
                 return run_release_judged(
                     args,
                     &program,
-                    &name,
-                    &judge,
-                    &text,
+                    &interactor,
                     &input.whole(),
                     stdout,
                     stderr,

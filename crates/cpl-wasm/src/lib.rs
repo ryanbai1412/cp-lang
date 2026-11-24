@@ -63,6 +63,14 @@ pub struct StressLimits {
     pub time_ms: u32,
 }
 
+/// The call of a recorded run that [`Playground::replay`] runs again: the
+/// one open at `step` (0-based), `frame` callers out of the innermost.
+#[derive(Clone, Copy)]
+pub struct CallAt {
+    pub step: u32,
+    pub frame: u32,
+}
+
 /// One compiler session. It keeps the incremental database between calls,
 /// so checking a file again after an edit redoes only the items the edit
 /// touched.
@@ -303,20 +311,18 @@ impl Playground {
         (stdout, json)
     }
 
-    /// `cpl replay`: the call open at `step` (0-based) of the run of
-    /// `original` on `input`, `frame` callers out of the innermost, run again
+    /// `cpl replay`: the call `at` of the run of `original` on `input`, run
+    /// again
     /// with the fns of `edited`. The answer is
     /// [`cpl_interp::replay::Replay::json`], or `{"error": ...}`: the same
     /// engine and report as `cpl run --trace --live` serves.
-    #[allow(clippy::too_many_arguments)]
     pub fn replay(
         &mut self,
         name: &str,
         original: &str,
         edited: &str,
         input: &[u8],
-        step: u32,
-        frame: u32,
+        at: CallAt,
         stack: u32,
     ) -> String {
         use cpl_interp::trace::TraceConfig;
@@ -346,7 +352,8 @@ impl Playground {
         let recorded = observe(&before, input, &mut Vec::new(), stack, config(original))
             .recording
             .unwrap_or_default();
-        let call = match cpl_interp::replay::call_at(&recorded, step as usize, frame as usize) {
+        let call = match cpl_interp::replay::call_at(&recorded, at.step as usize, at.frame as usize)
+        {
             Ok(call) => call,
             Err(message) => return error(&message),
         };

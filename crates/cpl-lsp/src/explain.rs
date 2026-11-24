@@ -1,17 +1,17 @@
 //! The storage section `cpl explain` opens with, shared by the CLI and
 //! the playground: the checker's representation query, as hover reads it.
 
+/// Each top-level value's representation, and the most bytes the
+/// fixed-size ones take with the names of those that grow.
+pub struct Storage {
+    pub rows: Vec<(String, cpl_check::Representation)>,
+    pub total: Option<(u128, Vec<String>)>,
+}
+
 /// Each top-level value's representation, and the most bytes the fixed-size
 /// ones take with the names of those that grow: the checker's query, the
 /// data hover shows.
-#[allow(clippy::type_complexity)]
-pub fn storage(
-    db: &mut cpl_check::Session,
-    path: &str,
-) -> (
-    Vec<(String, cpl_check::Representation)>,
-    Option<(u128, Vec<String>)>,
-) {
+pub fn storage(db: &mut cpl_check::Session, path: &str) -> Storage {
     let rows = db
         .symbols(path)
         .into_iter()
@@ -21,12 +21,12 @@ pub fn storage(
     let total = db
         .storage(path)
         .map(|(bytes, grows)| (bytes, grows.into_iter().map(|(name, _)| name).collect()));
-    (rows, total)
+    Storage { rows, total }
 }
 
 /// `cpl explain`'s types and memory section (spec/tools/explain.md).
 pub fn storage_section(db: &mut cpl_check::Session, path: &str) -> String {
-    let (rows, total) = storage(db, path);
+    let Storage { rows, total } = storage(db, path);
     if rows.is_empty() {
         return format!("Storage for {path}: no top-level values\n");
     }

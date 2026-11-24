@@ -55,12 +55,12 @@ fn three_way(name: &str, src: &str, cases: &[(String, Expect)]) -> Vec<String> {
     let path = program(name, src);
     let built = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args([
-            OsStr("build"),
+            os_str("build"),
             path.as_os_str(),
-            OsStr("--checks"),
-            OsStr("traps"),
-            OsStr("-o"),
-            OsStr("-"),
+            os_str("--checks"),
+            os_str("traps"),
+            os_str("-o"),
+            os_str("-"),
         ])
         .output()
         .expect("cpl build runs");
@@ -109,8 +109,7 @@ fn three_way(name: &str, src: &str, cases: &[(String, Expect)]) -> Vec<String> {
     failures
 }
 
-#[allow(non_snake_case)]
-fn OsStr(text: &str) -> &std::ffi::OsStr {
+fn os_str(text: &str) -> &std::ffi::OsStr {
     text.as_ref()
 }
 

@@ -19,12 +19,20 @@ fn check(file: &Path, src: &str) -> String {
     String::from_utf8_lossy(&out.stderr).into_owned() + &String::from_utf8_lossy(&out.stdout)
 }
 
+struct Suggestion {
+    code: String,
+    line: usize,
+    col: usize,
+    len: usize,
+    text: String,
+    module: Option<String>,
+}
+
 /// Each "did you mean" in `rendered`: code, line, column, underline
 /// length and the suggested text.
 /// A suggestion from another module ("did you mean `x`, from `std.m`?")
 /// carries the module, whose `use` it takes.
-#[allow(clippy::type_complexity)]
-fn suggestions(rendered: &str) -> Vec<(String, usize, usize, usize, String, Option<String>)> {
+fn suggestions(rendered: &str) -> Vec<Suggestion> {
     let mut out = Vec::new();
     for block in rendered
         .split("\nerror[")
@@ -59,7 +67,14 @@ fn suggestions(rendered: &str) -> Vec<(String, usize, usize, usize, String, Opti
                         .strip_prefix(", from `")
                         .and_then(|m| m.split_once('`'))
                         .map(|(m, _)| m.to_string());
-                    out.push((code.clone(), line, col, len, x.to_string(), module));
+                    out.push(Suggestion {
+                        code: code.clone(),
+                        line,
+                        col,
+                        len,
+                        text: x.to_string(),
+                        module,
+                    });
                 }
             }
         }
@@ -151,7 +166,15 @@ fn every_did_you_mean_names_something_that_exists() {
                     let (mut seen, mut wrong) = (0, Vec::new());
                     let file = dir.join(format!("t{t}.cp"));
                     for (name, src) in chunk {
-                        for (code, line, col, len, x, module) in suggestions(&check(&file, src)) {
+                        for Suggestion {
+                            code,
+                            line,
+                            col,
+                            len,
+                            text: x,
+                            module,
+                        } in suggestions(&check(&file, src))
+                        {
                             seen += 1;
                             let Some(mut fixed) = replaced(src, line, col, len, &x) else {
                                 continue;
@@ -164,7 +187,7 @@ fn every_did_you_mean_names_something_that_exists() {
                             let again = check(&file, &fixed);
                             let still = suggestions(&again)
                                 .iter()
-                                .any(|s| s.0 == code && s.1 == line && s.2 == col)
+                                .any(|s| s.code == code && s.line == line && s.col == col)
                                 || again.contains(&format!("error[{code}]"))
                                     && again.contains(&format!(":{line}:{col}\n"));
                             if still {

@@ -343,22 +343,22 @@ pub fn report(
         _ => None,
     };
 
-    let body = build_markdown(
-        &version_line,
-        &os_arch,
-        &gxx,
-        &judge_profile,
-        &source_name,
-        source_text.as_deref(),
-        &input_bytes,
-        shrunk_note.as_deref(),
-        interp_run.as_ref(),
-        cpp_run.as_ref(),
-        diff_summary.as_ref(),
-        ice_meta.as_deref(),
-        ice_backtrace.as_deref(),
-        &redactor,
-    );
+    let body = build_markdown(Parts {
+        version_line: &version_line,
+        os_arch: &os_arch,
+        gxx: &gxx,
+        judge_profile: &judge_profile,
+        source_name: &source_name,
+        source_text: source_text.as_deref(),
+        input_bytes: &input_bytes,
+        shrunk_note: shrunk_note.as_deref(),
+        interp_run: interp_run.as_ref(),
+        cpp_run: cpp_run.as_ref(),
+        diff: diff_summary.as_ref(),
+        ice_meta: ice_meta.as_deref(),
+        ice_backtrace: ice_backtrace.as_deref(),
+        redactor: &redactor,
+    });
 
     let hash = short_hash(body.as_bytes());
     let report_filename = format!("cpl-report-{hash}.md");
@@ -644,23 +644,42 @@ fn compare_runs(ir: &RunCapture, cr: &RunCapture) -> DiffSummary {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn build_markdown(
-    version_line: &str,
-    os_arch: &str,
-    gxx: &str,
-    judge_profile: &str,
-    source_name: &str,
-    source_text: Option<&str>,
-    input_bytes: &[u8],
-    shrunk_note: Option<&str>,
-    interp_run: Option<&RunCapture>,
-    cpp_run: Option<&RunCapture>,
-    diff: Option<&DiffSummary>,
-    ice_meta: Option<&str>,
-    ice_backtrace: Option<&str>,
-    redactor: &Redactor,
-) -> String {
+/// What a report's markdown is built from.
+#[derive(Clone, Copy)]
+struct Parts<'a> {
+    version_line: &'a str,
+    os_arch: &'a str,
+    gxx: &'a str,
+    judge_profile: &'a str,
+    source_name: &'a str,
+    source_text: Option<&'a str>,
+    input_bytes: &'a [u8],
+    shrunk_note: Option<&'a str>,
+    interp_run: Option<&'a RunCapture>,
+    cpp_run: Option<&'a RunCapture>,
+    diff: Option<&'a DiffSummary>,
+    ice_meta: Option<&'a str>,
+    ice_backtrace: Option<&'a str>,
+    redactor: &'a Redactor,
+}
+
+fn build_markdown(parts: Parts) -> String {
+    let Parts {
+        version_line,
+        os_arch,
+        gxx,
+        judge_profile,
+        source_name,
+        source_text,
+        input_bytes,
+        shrunk_note,
+        interp_run,
+        cpp_run,
+        diff,
+        ice_meta,
+        ice_backtrace,
+        redactor,
+    } = parts;
     let mut md = String::new();
     md.push_str("## Environment\n\n");
     md.push_str(&format!("- **cpl**: `{version_line}`\n"));

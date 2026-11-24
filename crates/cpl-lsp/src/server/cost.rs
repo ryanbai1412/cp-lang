@@ -140,17 +140,30 @@ fn size_in(cost: &str, size: &str) -> String {
     out
 }
 
+/// The steps of one call at max input, and its `O(..)` when that is short.
+pub(super) struct Steps {
+    pub(super) steps: f64,
+    pub(super) cost: Option<String>,
+}
+
+/// A call with a documented cost that can be evaluated: its span, the
+/// steps it takes per call of the fn it is in, and its `O(..)` term.
+struct Evaluated {
+    span: Span,
+    steps: f64,
+    term: Option<String>,
+}
+
 /// The calls in `f`'s body with a documented cost, each with how often it
 /// runs per call: `.sorted O(n log n) n * q = 2e8 times`; and the steps of
 /// one call at max input, with its `O(..)` when that is short, if every
 /// loop has a count and every call a documented cost that can be evaluated.
-#[allow(clippy::type_complexity)]
 pub(super) fn fn_call_costs(
     db: &mut cpl_check::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     facts: &Proven,
-) -> (Vec<String>, Option<(f64, Option<String>)>) {
+) -> (Vec<String>, Option<Steps>) {
     const MOST: usize = 4;
     const LONGEST: usize = 100;
     let (mut out, evaluated, documented) = fn_documented(db, uri, f, facts);
@@ -174,7 +187,7 @@ pub(super) fn fn_call_costs(
         let cost = terms
             .map(|t: Vec<String>| format!("O({})", t.join(" + ")))
             .filter(|c| c.len() <= LONGEST);
-        (steps, cost)
+        Steps { steps, cost }
     });
     (out, total)
 }
@@ -182,15 +195,14 @@ pub(super) fn fn_call_costs(
 /// The calls in `f`'s body with a documented cost, each described with how
 /// often it runs; the steps of those that can be evaluated, by span, with
 /// their `O(..)` terms; and whether any call has a documented cost.
-#[allow(clippy::type_complexity)]
 fn fn_documented(
     db: &mut cpl_check::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     facts: &Proven,
-) -> (Vec<String>, Vec<(Span, f64, Option<String>)>, bool) {
+) -> (Vec<String>, Vec<Evaluated>, bool) {
     let mut out = Vec::new();
-    let mut evaluated: Vec<(Span, f64, Option<String>)> = Vec::new();
+    let mut evaluated = Vec::new();
     let costs = db.costs_in(uri, f.body.0, f.body.1);
     let text = facts.text();
     let sizes = if costs.is_empty() {
@@ -259,7 +271,11 @@ fn fn_documented(
                 (Some(c), Some(i)) if c.contains(' ') => Some(format!("({c}) * ({i})")),
                 (Some(c), Some(i)) => Some(format!("{c} * ({i})")),
             };
-            evaluated.push((*span, s * r as f64, term));
+            evaluated.push(Evaluated {
+                span: *span,
+                steps: s * r as f64,
+                term,
+            });
         }
         let cost = match steps {
             Some(s) if times == "once" => {
@@ -282,7 +298,7 @@ fn fn_extra(
     db: &mut cpl_check::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
-    evaluated: &[(Span, f64, Option<String>)],
+    evaluated: &[Evaluated],
     facts: &Proven,
     depth: usize,
 ) -> Option<(f64, Option<Vec<String>>)> {
@@ -293,9 +309,9 @@ fn fn_extra(
     let mut steps = 0.0;
     let mut terms = Some(Vec::new());
     for &(start, end) in &f.callees {
-        if let Some((_, s, term)) = evaluated
+        if let Some(Evaluated { steps: s, term, .. }) = evaluated
             .iter()
-            .find(|(span, ..)| span.start == start && span.end == end)
+            .find(|e| e.span.start == start && e.span.end == end)
         {
             steps += s;
             terms = terms.zip(term.clone()).map(|(mut t, term)| {

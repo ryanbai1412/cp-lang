@@ -366,7 +366,7 @@ impl Server {
                     if !calls.is_empty() {
                         hover.text += &format!("\n  documented costs: {}", calls.join("; "));
                     }
-                    if let Some((steps, cost)) = total {
+                    if let Some(cost::Steps { steps, cost }) = total {
                         let cost = cost.map_or(String::new(), |c| format!("{c}, "));
                         hover.text += &format!(
                             "\n  estimated cost: {cost}about {} steps at max input",

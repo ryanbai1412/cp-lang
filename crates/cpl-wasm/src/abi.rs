@@ -187,7 +187,14 @@ pub extern "C" fn cpl_replay(step: u32, frame: u32, stack: u32) {
         String::from_utf8_lossy(&state.borrow().inputs[EDITED as usize]).into_owned()
     });
     command(|playground, name, text, stdin, _| {
-        playground.replay(name, text, &edited, stdin, step, frame, stack)
+        playground.replay(
+            name,
+            text,
+            &edited,
+            stdin,
+            crate::CallAt { step, frame },
+            stack,
+        )
     });
 }
 

@@ -33,7 +33,7 @@ fn hover_states_the_storage_explain_lists() {
             std::fs::read_to_string(root.join(format!("corpus/problems/{pid}/spec.cp"))).unwrap();
         let mut db = Session::new();
         db.set_file(&path, src.as_str());
-        let explained = cpl_lsp::explain::storage(&mut db, &path).0;
+        let explained = cpl_lsp::explain::storage(&mut db, &path).rows;
         for symbol in db.symbols(&path) {
             if !matches!(symbol.kind, DeclKind::Value) {
                 continue;
