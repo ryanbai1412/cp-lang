@@ -74,7 +74,8 @@ and value are wanted.
 
 One finding from writing this: our `partition_point(ok)` wants `ok` false
 then true, but C++'s `std::partition_point` wants true then false. Under
-`cpl run`, the C++ direction (`s.partition_point(v => v < 5)`) returns a
-wrong cut with no trap. Whatever model wins, the cut-returning search
+`cpl run`, the C++ direction (`s.partition_point(v => v < 5)`) used to
+return a wrong cut with no trap; it now stops and names `last_true`.
+Whatever model wins, the cut-returning search
 should say its direction in its name, as `first_true` does, and
 `partition_point` should either match C++ or go.
