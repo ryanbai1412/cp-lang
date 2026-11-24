@@ -86,7 +86,7 @@ impl Lin {
     fn combine(&self, k1: i128, other: &Lin, k2: i128) -> Res<Lin> {
         let mut terms = Vec::with_capacity(self.terms.len() + other.terms.len());
         let (mut i, mut j) = (0, 0);
-        while i < self.terms.len() || j < other.terms.len() {
+        loop {
             let left = self.terms.get(i);
             let right = other.terms.get(j);
             let (v, c) = match (left, right) {
@@ -107,7 +107,7 @@ impl Lin {
                     j += 1;
                     (*b, mul(*y, k2)?)
                 }
-                (None, None) => unreachable!(),
+                (None, None) => break,
             };
             if c != 0 {
                 terms.push((v, c));
@@ -256,13 +256,14 @@ impl Solver<'_> {
         let mut solved: Vec<(Var, Lin)> = Vec::new();
         while let Some(mut eq) = eqs.pop() {
             self.spend(eqs.len() + ges.len())?;
-            let g = eq.terms.iter().fold(0, |g, (_, c)| gcd(g, *c));
-            if g == 0 {
+            // Coefficients are never zero, so `g > 0`.
+            let Some(&(x, a)) = eq.terms.iter().min_by_key(|(_, c)| c.abs()) else {
                 if eq.constant != 0 {
                     return Ok(None);
                 }
                 continue;
-            }
+            };
+            let g = eq.terms.iter().fold(0, |g, (_, c)| gcd(g, *c));
             if eq.constant % g != 0 {
                 return Ok(None);
             }
@@ -270,15 +271,14 @@ impl Solver<'_> {
                 *c /= g;
             }
             eq.constant /= g;
-            let unit = eq.terms.iter().find(|(_, c)| c.abs() == 1).copied();
-            let (var, by) = match unit {
-                // c*x + rest == 0 with c = +-1: x = -c * rest.
-                Some((x, c)) => (x, eq.without(x).combine(-c, &Lin::default(), 0)?),
-                None => {
+            let a = a / g;
+            let (var, by) = match a.abs() {
+                // a*x + rest == 0 with a = +-1: x = -a * rest.
+                1 => (x, eq.without(x).combine(-a, &Lin::default(), 0)?),
+                _ => {
                     // No unit coefficient: trade the variable with the
                     // smallest one for a fresh variable; the equation
                     // comes back with smaller coefficients.
-                    let (x, a) = *eq.terms.iter().min_by_key(|(_, c)| c.abs()).unwrap();
                     let m = add(a.abs(), 1)?;
                     let sign = a.signum();
                     let sigma = self.fresh;
@@ -357,9 +357,6 @@ impl Solver<'_> {
             ges.retain(|ge| ge.terms != eq.terms && ge.terms != negated);
             return self.solve(vec![eq], ges);
         }
-        if ges.is_empty() {
-            return Ok(Some(Model::new()));
-        }
         self.spend(ges.len())?;
 
         // Pick the variable that is cheapest to eliminate: one bounded on
@@ -383,8 +380,12 @@ impl Solver<'_> {
             let growth = (lowers * uppers) as i64 - (lowers + uppers) as i64;
             (!one_sided, !exact, growth)
         };
-        let (x, (lowers, uppers, unit_lowers, unit_uppers)) =
-            shape.into_iter().min_by_key(|(_, s)| rank(*s)).unwrap();
+        // No variable left: every constraint was a constant one, and held.
+        let Some((x, (lowers, uppers, unit_lowers, unit_uppers))) =
+            shape.into_iter().min_by_key(|(_, s)| rank(*s))
+        else {
+            return Ok(Some(Model::new()));
+        };
         let exact = lowers == 0 || uppers == 0 || unit_lowers || unit_uppers;
 
         let (mut lower, mut upper, mut rest) = (Vec::new(), Vec::new(), Vec::new());
@@ -442,13 +443,20 @@ impl Solver<'_> {
             return Ok(Some(model));
         }
         debug_assert!(!exact, "an exact projection always leaves room");
+        // The dark shadow always leaves room; were it not to, the
+        // splinters below still search every remaining solution.
         if let Some(mut model) = self.solve_inequalities(shadow(true)?)? {
-            let value = room(&model)?.expect("the dark shadow leaves room for an integer");
-            model.insert(x, value);
-            return Ok(Some(model));
+            if let Some(value) = room(&model)? {
+                model.insert(x, value);
+                return Ok(Some(model));
+            }
         }
         // Splinters: any solution left sits just above one of the lower bounds.
-        let widest = upper.iter().map(|up| -up.coeff(x)).max().unwrap();
+        // With no upper bound the real shadow already left room; should
+        // that ever fail, answer "unknown" rather than search nothing.
+        let Some(widest) = upper.iter().map(|up| -up.coeff(x)).max() else {
+            return Err(Stop::Budget);
+        };
         for lo in &lower {
             let a = lo.coeff(x);
             let last = (mul(widest, a)? - widest - a) / widest;
@@ -496,6 +504,29 @@ mod tests {
             Constraint::Eq(lin) => lin.eval(model).unwrap() == 0,
             Constraint::Ge(lin) => lin.eval(model).unwrap() >= 0,
         })
+    }
+
+    #[test]
+    fn non_unit_equations_constant_rows_and_splinters() {
+        // 3x + 5y == 7: no unit coefficient, solved by trading x.
+        assert!(run(&[eq(&[(0, 3), (1, 5)], -7)]).is_some());
+        // 2x == 3 has no integer solution.
+        assert!(run(&[eq(&[(0, 2)], -3)]).is_none());
+        // Only constant rows: nothing left to eliminate.
+        assert!(run(&[ge(&[], 3)]).is_some());
+        assert!(run(&[ge(&[], -1)]).is_none());
+        // Pugh's example: the real shadow is non-empty, the dark one is
+        // empty, and the splinters show there is no integer point.
+        let pugh = |lo: i128| {
+            run(&[
+                ge(&[(0, 11), (1, 13)], -lo),
+                ge(&[(0, -11), (1, -13)], 45),
+                ge(&[(0, 7), (1, -9)], 10),
+                ge(&[(0, -7), (1, 9)], 4),
+            ])
+        };
+        assert!(pugh(27).is_none());
+        assert!(pugh(0).is_some());
     }
 
     #[test]
