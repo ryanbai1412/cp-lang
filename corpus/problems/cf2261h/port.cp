@@ -10,7 +10,6 @@
 //   children are swapped, so flip-and-swap only flips that node's bit and untwist recovers the
 //   code. O(2^h * h) per test.
 // Bounds: h: 2..=20
-// copies: 1
 let op: Str = read()
 
 fn size(h: Int) -> Int = (1 << h) - 1
@@ -18,12 +17,13 @@ fn size(h: Int) -> Int = (1 << h) - 1
 // Heap numbering: node i has children 2i and 2i + 1 and sits at s[i - 1].
 fn untwist(h: Int, s: Str) -> Str:
     var from: [1..=size(h)]Int = 1  // from[i]: the node of `s` that lands on node i
-    var out = s
+    var out = ""
     for i in 1..=size(h):
-        out[i - 1] = s[from[i] - 1]
+        let c = s[from[i] - 1]
+        out.push(c)
         if 2 * i > size(h): continue
         let (kept, swapped) = (2 * from[i], 2 * from[i] + 1)
-        (from[2 * i], from[2 * i + 1]) = if out[i - 1] == '1': (swapped, kept) else: (kept, swapped)
+        (from[2 * i], from[2 * i + 1]) = if c == '1': (swapped, kept) else: (kept, swapped)
     out
 
 fn data_slots(h: Int) -> List<Int> = [i for i in (0..size(h)).rev if i == 0 or i & (i - 1) != 0]
