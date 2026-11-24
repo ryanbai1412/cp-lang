@@ -119,8 +119,9 @@ pull() {
 # Where this commit's hook ran: main's tip before the pull, as far as HEAD has it.
 checked=${CPL_LAND_CHECKED:-$(git merge-base HEAD FETCH_HEAD 2>/dev/null || git rev-parse FETCH_HEAD)}
 # A running bash keeps the land.sh it started with (perf's land waited 320 s on the
-# old lock after main fixed it), and reads on from a file the rebase rewrote; once
-# per land, a pull that changed it lands with the new copy from here.
+# old lock after main fixed it), and reads on from a file the rebase rewrote: each
+# pull that changed it lands with the new copy from here (Site A's 2807 s land kept
+# a fail-open copy past its one re-exec). CPL_LAND_REEXEC=1 opts out.
 reexec_if_land_changed() {
     [ -z "${CPL_LAND_REEXEC:-}" ] && [ -f scripts/land.sh ] || return 0
     [ "$(git hash-object scripts/land.sh)" != "$self_blob" ] || return 0
@@ -128,7 +129,7 @@ reexec_if_land_changed() {
     # Set only once push() ran, after drop_lock is defined; the first pull holds no lock.
     [ -z "${lock_held:-}" ] || drop_lock
     [ -z "${queued:-}" ] || dequeue
-    CPL_LAND_REEXEC=1 CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked CPL_LAND_TICKET=${ticket:-} \
+    CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked CPL_LAND_TICKET=${ticket:-} \
         exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
 }
 pull || exit 1
@@ -400,7 +401,13 @@ stop_beat() {
 # (or lock) that stops changing is dead.
 ticket=${CPL_LAND_TICKET:-refs/locks/queue/$(date +%s%N)-$$-$(printf %s "${domain:-none}" | tr -c 'A-Za-z0-9_-' _)}
 queued=""
+beat=0
+# A waiter this far back looks every $queue_poll s, not 2: at 58 waiters,
+# 2 s polls and 10 s heartbeats drew GitHub 504s (about 35 requests/s).
+queue_poll=${CPL_LAND_QUEUE_POLL:-15}
+heartbeat=${CPL_LAND_HEARTBEAT:-30}
 enqueue() {
+    beat=$(date +%s)
     git push -q --no-verify -f "$remote" \
         "$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land ticket $(hostname) $$ $domain"):$ticket" 2>/dev/null &&
         queued=1
@@ -414,18 +421,21 @@ drop_ticket() {
     echo "land: dropping queue ticket ${1##*/}: $3" >&2
     git push -q --no-verify --force-with-lease="$1:$2" "$remote" ":$1" 2>/dev/null || :
 }
-# Sets $first to the oldest live ticket. A ticket is live while its sha changes
+# Sets $first to the oldest live ticket, $ahead to the live tickets before ours
+# and $lock_now to the lock's sha (empty when free), from one ls-remote. A ticket is live while its sha changes
 # (each heartbeat is a new commit), timed by this land's clock from ls-remote
 # alone: fetching the tickets' commits failed whole on one bad ref (HTTP 500),
 # and that let every waiter skip the line. Fails if the queue can't be listed.
 declare -A ticket_sha=() ticket_seen=()
 first_in_line() {
-    local list sha ref name now re='^[0-9]{19}-[0-9]+-[A-Za-z0-9_-]+$'
-    first=""
-    list=$(git ls-remote "$remote" 'refs/locks/queue/*' 2>/dev/null) || return 1
+    local list sha ref name now mine="" re='^[0-9]{19}-[0-9]+-[A-Za-z0-9_-]+$'
+    first="" ahead=0
+    lock_now=""
+    list=$(git ls-remote "$remote" 'refs/locks/queue/*' "$lock_ref" 2>/dev/null) || return 1
     now=$(date +%s)
     while read -r sha ref; do
         [ -n "$ref" ] || continue
+        [ "$ref" != "$lock_ref" ] || { lock_now=$sha; continue; }
         name=${ref#refs/locks/queue/}
         [[ $name =~ $re ]] || { drop_ticket "$ref" "$sha" "malformed name"; continue; }
         if [ "${ticket_sha[$name]:-}" != "$sha" ]; then
@@ -436,11 +446,13 @@ first_in_line() {
             continue
         fi
         first=${first:-$ref}
+        [ "$ref" = "$ticket" ] || [ -n "${mine:-}" ] || ahead=$((ahead + 1))
+        [ "$ref" != "$ticket" ] || mine=1
     done < <(printf '%s\n' "$list" | sort -k2)
 }
 take_lock() {
-    local me holder held_by at waited=0 lined="" blind=""
-    enqueue || :
+    local me holder held_by at waited=0 lined="" blind="" nap nap_said="" stuck_head="" stuck_since=0
+    [ -z "${CPL_LAND_QUEUE:-}" ] || enqueue || :
     while :; do
         first=""
         if [ -n "$queued" ] && ! first_in_line; then
@@ -450,10 +462,25 @@ take_lock() {
         if [ -n "$first" ] && [ "$first" != "$ticket" ]; then
             [ "$first" = "$lined" ] || [ "$first" = "?" ] || echo "land: waiting in line behind ${first##*/}" >&2
             lined=$first
+            # A live head that leaves the lock free isn't landing (Idioms' 30 min
+            # behind one ticket): past $lock_stale s it loses its place.
+            if [ "$first" = "?" ] || [ -n "$lock_now" ] || [ "$first" != "$stuck_head" ]; then
+                stuck_head=$first stuck_since=$(date +%s)
+            elif [ $(($(date +%s) - stuck_since)) -gt "$lock_stale" ]; then
+                drop_ticket "$first" "${ticket_sha[${first#refs/locks/queue/}]}" \
+                    "first in line but left the land lock free for over ${lock_stale}s"
+                stuck_head=""
+                continue
+            fi
             [ -z "$lock_wait" ] || [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
-            sleep 2
-            waited=$((waited + 2))
-            [ $((waited % 10)) != 0 ] || enqueue || :
+            nap=2
+            if [ "${ahead:-0}" -gt 2 ]; then
+                [ "$nap_said" = "$queue_poll" ] || echo "land: $ahead ahead in line; looking every ${queue_poll}s" >&2
+                nap=$queue_poll nap_said=$queue_poll
+            fi
+            sleep "$nap"
+            waited=$((waited + nap))
+            [ $(($(date +%s) - beat)) -lt "$heartbeat" ] || enqueue || :
             continue
         fi
         # Stamped at each try, so a lock is as old as its holder has held it, not
@@ -493,7 +520,7 @@ take_lock() {
         [ -z "$lock_wait" ] || [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
         sleep 2
         waited=$((waited + 2))
-        [ $((waited % 10)) != 0 ] || [ -z "$queued" ] || enqueue || :
+        [ -z "$queued" ] || [ $(($(date +%s) - beat)) -lt "$heartbeat" ] || enqueue || :
     done
 }
 drop_lock() {
