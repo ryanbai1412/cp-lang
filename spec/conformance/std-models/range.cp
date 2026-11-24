@@ -11,10 +11,12 @@
 // model: last_true
 // model: bsearch
 // model: RingRange
+// model: shift
 // Range helpers on random `lo..hi` against loops over the range's elements: cuts, halves, splits,
-// clip, the three binary searches on a threshold, and a random ring span against its listed keys.
+// clip, the three binary searches on a threshold, shift on positions and cuts, and a random ring span against its listed keys.
 // Reads `seed n`; prints the first op that differs.
 use std.rand.{Rng}
+domain V = 0..12
 let seed0 = read<Int>()
 let n = read<Int>()
 var rng = Rng(seed0)
@@ -51,6 +53,14 @@ for k in 0..n:
     elif r.last_true(x => x <= t) != last: bad = "op {k}: last_true {lo}..{hi} <= {t}"
     elif r.bsearch(x => x >= t).ord != lo + below: bad = "op {k}: bsearch {lo}..{hi} >= {t}"
     elif r.bsearch(x => x <= t, last: true).ord != lo + upto: bad = "op {k}: bsearch last {lo}..{hi} <= {t}"
+    if bad != "": break
+    let sv = rng.int(0, 11)
+    let sa = rng.int(-14, 14)
+    let sb = rng.int(sa - 1, 14)
+    if [p.ord for p in V(sv).shift(sa..=sb)] != [x for x in 0..12 if sa <= x - sv <= sb]:
+        bad = "op {k}: V({sv}).shift({sa}..={sb})"
+    elif [c.ord for c in V(sv).l.shift(sa..=sb)] != [x for x in 0..=12 if sa <= x - sv <= sb]:
+        bad = "op {k}: V({sv}).l.shift({sa}..={sb})"
     if bad != "": break
     let m = rng.int(1, 8)
     let ring = List.filled(m, 0).ring

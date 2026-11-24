@@ -143,6 +143,23 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
     let lo = flip_at(n, m => ok(self.nth(m)) != last, wrong_way)
     if lo < n: (self.nth(lo)..self.nth(lo)).l else: self.r
 
+/// The elements at distances `r` after `self`, clipped to its domain and possibly empty. One
+/// definition for positions and cuts, since `V.cuts` is a domain: the chords of length `lo..=hi`
+/// from a cut `c` end in `c.shift(lo..=hi)`, and `v.shift(-1..=1)` is `v` and its neighbours.
+///
+/// cost: \(O(1)\)
+/// empty: `domain V = 0..3; V.cuts.last!.shift(1..=5).len == 0`
+/// order: increasing
+/// traps: never
+/// example: `domain V = 0..6; V(0).l.shift(2..=3).len == 2 and V(0).l.shift(2..=3).first!.ord == 2`
+/// example: `domain V = 0..6; V(4).shift(-2..=9).len == 4`
+pub fn shift<D>(self: D, r: Range<Int>) -> Range<D>:
+    let n = D.count
+    let lo = min(max(self.ord + r.start, 0), n)
+    let hi = min(max(self.ord + r.start + r.len, lo), n)
+    if lo == hi: return D.nth(0)..D.nth(0)
+    D.nth(lo)..=D.nth(hi - 1)
+
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
 /// as if it were empty. `l..l` is in order and empty.
