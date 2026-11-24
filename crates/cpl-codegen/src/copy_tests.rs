@@ -236,21 +236,32 @@ fn a_yields_fn_run_as_pushes_reserves_no_list() {
 
 #[test]
 fn a_view_of_a_temporary_holds_the_temporary() {
-    let cpp = cpp(concat!(
-        "let n: Int = read()\n",
-        "let v = [n, 3, 2].sorted().take(n)\n",
-        "print(v)\n",
+    let (owner, call, cpp) = take_of_sorted("Len");
+    assert!(call.contains(&format!("({owner}, n)")), "{cpp}");
+}
+
+#[test]
+fn a_view_of_a_temporary_holds_it_past_the_count_check() {
+    let (owner, call, cpp) = take_of_sorted("Int");
+    assert!(call.contains(&format!("({owner}, cpl::check_range(n, 0")), "{cpp}");
+}
+
+/// The owner `sorted` gives `take`, the line that calls `take`, and the C++.
+fn take_of_sorted(n: &str) -> (String, String, String) {
+    let cpp = cpp(&format!(
+        "let n: {n} = read()\nlet v = [n, 3, 2].sorted().take(n)\nprint(v)\n"
     ));
     let owner = cpp
         .lines()
         .find(|l| l.contains("std::vector<ll> t") && l.contains("sorted"))
         .unwrap_or_else(|| panic!("{cpp}"));
-    let name = owner.split_whitespace().nth(1).unwrap();
+    let owner = owner.split_whitespace().nth(1).unwrap().to_string();
     let call = cpp
         .lines()
         .find(|l| l.contains("take_Lst_Int_") && l.contains(" = "))
-        .unwrap_or_else(|| panic!("{cpp}"));
-    assert!(call.contains(&format!("({name}, ")), "{cpp}");
+        .unwrap_or_else(|| panic!("{cpp}"))
+        .to_string();
+    (owner, call, cpp)
 }
 
 const SMALL_BITSETS: &str = concat!(
