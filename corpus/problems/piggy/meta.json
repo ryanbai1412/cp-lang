@@ -46,11 +46,15 @@
   {"id": "3448883", "language": "TEXT", "result": "WA", "time": 0.002202968, "memory_kb": 1692.0, "file": null},
   {"id": "3448884", "language": "TEXT", "result": "AC", "time": 0.002166537, "memory_kb": 1692.0, "file": null}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/piggy/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The ACs are plain-text submissions with no stored file, so orig.cpp is a corpus-written reference printing one ASCII piggy; any drawing within 1000 x 1000 is accepted, so checker.py judges only the shape."
 }

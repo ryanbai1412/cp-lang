@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "3461777", "language": "PERL", "result": "WA", "time": 0.033667467, "memory_kb": 5972.0, "file": null}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/perlgolf/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission (only a Perl WA), so orig.cpp is a corpus-written reference printing the fixed line. The statement's sample input `Wait, what?` contradicts its own 0-byte input bound, so the inline sample is empty. Scoring by program length is not judged."
 }

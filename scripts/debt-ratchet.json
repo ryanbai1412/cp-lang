@@ -224,6 +224,6 @@
   "std_model_gaps": 0,
   "cpp_optional_copies": 9,
   "std_trait_matrix": 0,
-  "corpus_no_tests": 147,
+  "corpus_no_tests": 144,
   "silent_unknowns": 42493
 }
