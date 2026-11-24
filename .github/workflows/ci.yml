@@ -429,7 +429,7 @@ jobs:
           key: corpus-tests-${{ github.run_id }}
           restore-keys: corpus-tests-
       - name: The interpreter and the C++ agree on this shard's v03 ports
-        # corpus/differential.py; its baseline corpus/differential-known.txt only shrinks.
+        # corpus/differential.py: a hard gate, no list.
         if: ${{ !cancelled() }}
         timeout-minutes: 6
         run: |
