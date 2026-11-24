@@ -1016,7 +1016,7 @@ prepends it.
   - line 373: `use std.segtree.{SegTree}`
   - line 415: `file := (directive | item)*`
 - 02-values-types.md: 3 blocks, 2 with a case, 0 spec-only, 1 neither
-  - line 260: `domain V = 1..=read<1..=2e5>()`
+  - line 263: `domain V = 1..=read<1..=2e5>()`
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 8 blocks, 1 with a case, 0 spec-only, 7 neither
   - line 24: `domain V = 1..=n`
