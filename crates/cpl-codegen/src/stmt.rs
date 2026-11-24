@@ -710,9 +710,14 @@ impl<'p> Emitter<'p> {
                 };
                 let text = self.take_if_overwritten(init, text);
                 // A payload taken from an optional nothing reads again is owned:
-                // a reference into the optional could not be moved on.
-                let taken =
-                    text.starts_with("std::move(") && matches!(init.kind, ExprKind::Unwrap(..));
+                // a reference into the optional could not be moved on. So is a
+                // named source taken here: the name owns it, so later stores move it on.
+                let taken = text.starts_with("std::move(")
+                    && match init.kind {
+                        ExprKind::Unwrap(..) | ExprKind::Global(_) => true,
+                        ExprKind::Local(src) => !self.locals()[src].name.is_empty(),
+                        _ => false,
+                    };
                 // A kept comprehension's list stays in its buffer: name it.
                 if let ExprKind::Local(built) = init.kind {
                     if reused && self.reused.contains(&built) && built_in(whole, built) {

@@ -1022,3 +1022,42 @@ fn a_never_written_global_sorted_into_a_generator_moves_at_its_last_read() {
     );
     assert!(!out.contains("= seen;"), "no copy of seen:\n{out}");
 }
+
+#[test]
+fn a_tuple_assignment_moves_each_item_into_its_place() {
+    let out = cpp(concat!(
+        "var far = List.filled(4, -1)\n",
+        "var next = List.filled(4, -1)\n",
+        "var third = List.filled(4, 7)\n",
+        "for t in 0..3:\n",
+        "    for i in 0..4: next[i] = far[i] + t\n",
+        "    (far, next, third) = (next, third, far)\n",
+        "print(far, next, third)\n",
+    ));
+    let in_fn = cpp(concat!(
+        "fn spin(k: Int) -> Int:\n",
+        "    var far = List.filled(4, k)\n",
+        "    var next = List.filled(4, -1)\n",
+        "    for t in 0..k:\n",
+        "        (far, next) = (next, far)\n",
+        "    far[0]\n",
+        "print(spin(read()))\n",
+    ));
+    assert!(in_fn.contains("far = std::move(t"), "{in_fn}");
+    assert!(in_fn.contains("next = std::move(t"), "{in_fn}");
+    assert!(!in_fn.contains("const std::vector<ll>& t"), "{in_fn}");
+    assert!(
+        !out.contains("std::tuple"),
+        "a permutation needs no tuple:\n{out}"
+    );
+    assert!(
+        !out.contains("const std::vector<ll>& t"),
+        "a taken source is owned:\n{out}"
+    );
+    for place in ["far", "next", "third"] {
+        assert!(
+            out.contains(&format!("{place} = std::move(t")),
+            "{place} takes its item:\n{out}"
+        );
+    }
+}

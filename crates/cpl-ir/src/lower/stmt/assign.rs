@@ -100,8 +100,34 @@ impl<'a> Lowerer<'a> {
                 .iter()
                 .map(|t| self.try_place(t).map(|place| place.ty))
                 .collect();
+            // `(a, b) = (b, a)` of lists: each right-hand item is held whole
+            // before any store, in a temp of its own, so each store moves it in.
+            let owning = wanted
+                .as_ref()
+                .is_some_and(|w| w.iter().any(|t| !t.is_scalar()));
+            if let (ast::ExprKind::Tuple(items), true) = (&value.kind, owning) {
+                if items.len() == targets.len() {
+                    let mut held = Vec::new();
+                    for (k, item) in items.iter().enumerate() {
+                        let want = wanted.as_ref().map(|w| &w[k]);
+                        let item = self.expr(item, want);
+                        let slot = self.temp(item.ty.clone());
+                        held.push(Expr {
+                            kind: ExprKind::Local(slot),
+                            ty: item.ty.clone(),
+                            span: item.span,
+                        });
+                        out.push(Stmt::Let(slot, Some(item)));
+                    }
+                    for (t, item) in targets.iter().zip(held) {
+                        let place = self.place(t);
+                        let item = self.coerce(item, &place.ty, t.span);
+                        self.emit_assign(place, AssignOp::Set, item, t.span, out);
+                    }
+                    return;
+                }
+            }
             let wanted = wanted.map(Ty::Tuple);
-            // `(a, b) = (b, a)`: the right side is whole before any store.
             let value = self.expr(value, wanted.as_ref());
             let Some(fields) = value.ty.fields().filter(|f| f.len() == targets.len()) else {
                 if value.ty != Ty::Error {
