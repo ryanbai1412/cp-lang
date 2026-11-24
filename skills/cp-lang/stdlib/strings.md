@@ -16,13 +16,13 @@ In prelude (no `use` needed): `Palindromes`, `RollingHash`, `SuffixArray`, `comm
 - `fn link(self, state: Int) -> Int` — \(O(1)\); The failure link of `state`: the length of the longest proper border of `pat[..state]`, and `0` at state `0`.; traps: when `state` is outside `0..self.len`
 - `fn find_all<S: Seq>(self, text: S) -> yields Int` — \(O(\lvert \mathit{text} \rvert)\); The start position (0-based, counted in `text`'s iteration order) of every occurrence of `pat` in `text`, overlapping ones included.; traps: when an element of `text` is not in `A`
 
-## `struct Palindromes(pub odd: List<Int>, even: List<Int>)`
+## `struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0)`
 
 \(O(n)\) space, \(O(1)\) queries.
 
 - `@get fn len(self) -> Int` — \(O(1)\); The length of the sequence the radii were computed for.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the sequence the radii were computed for is empty.
-- `fn longest_at(self, i: Int) -> Int` — \(O(1)\); The length of the longest odd-length palindrome centred on position `i`, `2 * odd[i] - 1`.; traps: when `i` is outside `0..self.len`
+- `fn longest_at<K>(self, i: K) -> Int` — \(O(1)\); The length of the longest odd-length palindrome centred on the element at key `i` of the sequence the radii were computed for, so a slice is asked in its own keys (R04b.5.6).; traps: when `i` is not one of the sequence's keys
 - `fn longest_between(self, i: Int) -> Int` — \(O(1)\); The length of the longest even-length palindrome centred on the cut `i` (between positions `i - 1` and `i`), `2 * even[i]`; `0` at the cuts `0` and `self.len`.; traps: when `i` is outside `0..=self.len`
 - `fn is_palindrome<R>(self, r: R) -> Bool` — \(O(1)\); True when the positions `r` (`l..r`, `l..=r`, or a `Range<D>`) of the original sequence form a palindrome: `p.is_palindrome(l..r) == is_palindrome(s[l..r])`.; traps: when `r` reaches outside `0..=self.len`
 - `fn count(self) -> Int` — \(O(n)\); The number of non-empty palindromic substrings, each occurrence counted: `sum(odd) + sum(even)`.
