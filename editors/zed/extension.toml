@@ -14,5 +14,5 @@ languages = ["CP Lang"]
 # scripts/zed-rev.py writes (gen.toml `zed-rev`) and editors/zed/smoke.sh checks.
 [grammars.cp]
 repository = "https://github.com/ryanbai1412/cp-lang"
-rev = "0a80878fe6688a9e820692ad4f363c82049fbcaa"
+rev = "27ed2f4f07ffc32c9ca0dab8156d108d25262980"
 path = "editors/tree-sitter-cp"
