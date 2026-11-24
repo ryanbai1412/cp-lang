@@ -353,8 +353,40 @@ fi
 # hence retry.
 lock_ref=refs/land/lock
 lock_stale=${CPL_LAND_LOCK_STALE:-120}
+# Seconds, not minutes: 30 let consumers' land take 4 live lands' locks in 3 minutes.
+case "$lock_stale" in '' | *[!0-9]*) lock_stale=0 ;; esac
+if [ "$lock_stale" -lt 120 ]; then
+    echo "land: CPL_LAND_LOCK_STALE=${CPL_LAND_LOCK_STALE} is under 120 s and would take live lands' locks; using 120" >&2
+    lock_stale=120
+fi
 lock_wait=${CPL_LAND_LOCK_WAIT:-1200}
+# The holder restamps the lock this often, so a lock is stale only when its holder
+# stopped beating: a live one is never taken over however long it holds.
+lock_beat=${CPL_LAND_LOCK_BEAT:-30}
 lock_held=""
+lock_file=$(mktemp)
+beat_pid=""
+start_beat() {
+    echo "$lock_held" >"$lock_file"
+    (
+        stop=""
+        trap 'stop=1' TERM
+        while [ -z "$stop" ]; do
+            sleep "$lock_beat" & wait $! 2>/dev/null
+            [ -z "$stop" ] || break
+            new=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $(hostname) $$ $(date +%s) $domain")
+            git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" "$new:$lock_ref" 2>/dev/null &&
+                echo "$new" >"$lock_file"
+        done
+    ) &
+    beat_pid=$!
+}
+stop_beat() {
+    [ -n "$beat_pid" ] || return 0
+    kill -TERM "$beat_pid" 2>/dev/null || :
+    wait "$beat_pid" 2>/dev/null || :
+    beat_pid=""
+}
 take_lock() {
     local me holder held_by at waited=0
     while :; do
@@ -363,6 +395,7 @@ take_lock() {
         me=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $(hostname) $$ $(date +%s) $domain")
         if err=$(git push -q --no-verify --force-with-lease="$lock_ref:" "$remote" "$me:$lock_ref" 2>&1); then
             lock_held=$me
+            start_beat
             [ "$waited" = 0 ] || echo "land: took the land lock after ${waited}s" >&2
             return 0
         fi
@@ -386,7 +419,7 @@ take_lock() {
         if [ $(( $(date +%s) - ${at:-0} )) -gt "$lock_stale" ]; then
             echo "land: taking over a land lock held over ${lock_stale}s ($(git log -1 --format=%s "$holder" 2>/dev/null))" >&2
             git push -q --no-verify --force-with-lease="$lock_ref:$holder" "$remote" "$me:$lock_ref" 2>/dev/null &&
-                { lock_held=$me; return 0; }
+                { lock_held=$me; start_beat; return 0; }
             continue
         fi
         [ "$waited" != 0 ] || echo "land: waiting for the land lock ($held_by)" >&2
@@ -397,10 +430,11 @@ take_lock() {
 }
 drop_lock() {
     [ -n "$lock_held" ] || return 0
-    git push -q --no-verify --force-with-lease="$lock_ref:$lock_held" "$remote" ":$lock_ref" 2>/dev/null || :
+    stop_beat
+    git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" ":$lock_ref" 2>/dev/null || :
     lock_held=""
 }
-trap drop_lock EXIT
+trap 'drop_lock; rm -f "$lock_file"' EXIT
 # Whether the rebased tip owes a rerun (the commit tier, the skipped steps or a
 # cargo check) too slow to hold the lock through: 120 s makes it stale.
 reruns_due() {

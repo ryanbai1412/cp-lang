@@ -559,6 +559,38 @@ exec {shutil.which("git")} "$@"
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("taking over a land lock held over 120s", r.stderr)
 
+    def test_a_stale_threshold_under_120s_is_raised_to_120(self):
+        # CPL_LAND_LOCK_STALE=30, read as minutes, let consumers' land take 4 live lands' locks.
+        repo = self.clone("lane")
+        held = self.lock(repo, age=60)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_LOCK_STALE="30", CPL_LAND_LOCK_WAIT="2")
+        self.assertNotEqual(r.returncode, 0, r.stderr)
+        self.assertIn("CPL_LAND_LOCK_STALE=30 is under 120 s", r.stderr)
+        self.assertNotIn("taking over", r.stderr)
+        self.assertTrue(self.lock_on_remote().startswith(held), self.lock_on_remote())
+
+    def test_a_holder_restamps_its_lock_while_it_holds_it(self):
+        # A live holder's lock never ages past the threshold, however long its push takes.
+        repo = self.clone("lane")
+        shim, log = self.tmp / "bin", self.tmp / "beats"
+        shim.mkdir()
+        real = shutil.which("git")
+        (shim / "git").write_text(
+            "#!/bin/sh\n"
+            'case "$*" in *" HEAD:main"*) sleep 4 ;; esac\n'
+            'case "$*" in *"--force-with-lease=refs/land/lock:"[0-9a-f]*" "[0-9a-f]*":refs/land/lock"*) '
+            f'echo beat >>"{log}" ;; esac\n'
+            f'exec "{real}" "$@"\n')
+        (shim / "git").chmod(0o755)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}", CPL_LAND_LOCK_BEAT="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertGreaterEqual(len(log.read_text().split()) if log.exists() else 0, 2)
+        self.assertEqual(self.lock_on_remote(), "")
+
     def test_a_lock_whose_holder_cant_be_read_is_never_taken_over(self):
         repo = self.clone("lane")
         empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
