@@ -43,7 +43,7 @@ documented.
 | R02.4 | 2.4 Optionals | supported |  |
 | R02.5 | 2.5 Tuples and records | supported |  |
 | R02.6 | 2.6 Structs | supported |  |
-| R02.7 | 1.3 Names | supported |  |
+| R02.7 | 2.7 Enums | supported |  |
 | R02.8 | 2.8 Arrays and lists | supported |  |
 | R02.9 | 2.9 Fresh types: domains and runtime-parameterized types | supported |  |
 | R02.10 | 2.10 Type inference | supported |  |
@@ -58,13 +58,13 @@ documented.
 | R04.4 | Two kinds of range, one type | supported |  |
 | R04.7 | Middle of a range | supported |  |
 | R04.8 | Decided (decision 137) | supported |  |
-| R05.2 | Open-ended ranges | supported |  |
+| R05.2 | 2. Plain and heap values (R1, R2) | supported |  |
 | R05.3 | 3. Bindings and places | supported |  |
 | R05.4 | 4. Parameters and calls (R4) | supported |  |
 | R05.5 | 5. Returns (R5) | supported |  |
 | R05.6 | 6. `lends` fns and projections | supported |  |
 | R05.7 | 7. Lent values (R6 to R8) | supported | 1 known gap |
-| R05.8 | Contest code | supported |  |
+| R05.8 | 8. Overlap and order (R9 to R11) | supported |  |
 | R05.9 | 9. Generators and views (R12) | supported |  |
 | R05.10 | 10. Closures and nested fns | supported |  |
 | R06.1 | 6.1 Functions | supported |  |
@@ -74,29 +74,29 @@ documented.
 | R06.5 | 6.5 Where state lives | supported |  |
 | R07.1 | Key decisions | supported |  |
 | R07.2 | Terms | supported |  |
-| R07.3 | User helpers | supported |  |
+| R07.3 | The capabilities | supported |  |
 | R07.4 | Slices: which keys survive | supported |  |
-| R07.5 | The rules | supported |  |
+| R07.5 | Under the hood | supported |  |
 | R07.6 | Generators | supported |  |
 | R07.7 | Adapters (each makes a view: \(O(1)\), lazy) | supported |  |
 | R07.8 | Making containers | supported |  |
 | R07.9 | Folds | supported |  |
 | R07.11 | Ordering and grouping | supported |  |
 | R07.12 | More vocabulary | supported |  |
-| R08.1 | Folds | supported | 1 known gap |
+| R08.1 | 8.1 Traits and impls | supported | 1 known gap |
 | R08.2 | 8.1 Traits and impls | supported |  |
 | R08.3 | 8.3 Laws | supported |  |
 | R08.4 | 8.4 Record row types (trial) | supported |  |
-| R08.5 | 1.4 Literals | supported |  |
+| R08.5 | 8.5 What is deliberately missing | supported |  |
 | R09.1 | 9.1 Contexts | supported |  |
 | R09.2 | 9.2 Build modes | supported |  |
 | R09.3 | 9.3 What is checked | supported |  |
-| R09.4 | Domains | supported |  |
+| R09.4 | 9.4 Turning checks on and off | supported |  |
 | R09.5 | 9.5 Trust tiers | supported |  |
 | R09.6 | 9.6 Recursion and the stack | supported |  |
-| R10.1 | 6.1 Functions | supported |  |
+| R10.1 | 10.1 Program shape | supported |  |
 | R10.2 | 10.2 Reading | supported |  |
-| R10.3 | 2.4 Optionals | supported |  |
+| R10.3 | 10.3 Printing | supported |  |
 | R11.1 | 11.1 Program files and library files | supported |  |
 | R11.2 | 11.2 `use` | supported |  |
 | R11.3 | 11.3 The prelude | supported |  |
@@ -116,7 +116,7 @@ documented.
 | R04a.8 | G. Revision: changing your mind | supported |  |
 | R04a.9 | H. Keys of the other views | supported |  |
 | R04a.11 | Recommendation: identity everywhere (I) | supported |  |
-| R04b.1 | Methods | supported | 1 known gap |
+| R04b.1 | The rules | supported | 1 known gap |
 | R04b.3 | User helpers | supported |  |
 | R04b.4 | Library code | supported |  |
 | R04b.5 | Spec changes this implies | supported |  |

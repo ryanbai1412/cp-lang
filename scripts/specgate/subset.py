@@ -58,7 +58,10 @@ def sections() -> dict[str, str]:
             if line.startswith("#"):
                 heading = line.lstrip("#").strip()
             for m in RULE_DEF.finditer(line):
-                out.setdefault(section_of(m.group(1)), heading)
+                rid = m.group(1)
+                if rid[:1].isdigit() and path.parent.name == "core" and rid.split(".")[0] != path.stem.split("-")[0]:
+                    continue  # another chapter's rule, cited here
+                out.setdefault(section_of(rid), heading)
     for fam in sorted(d for d in specgate.CONFORMANCE.glob("std-*") if d.is_dir() and any(d.glob("*.cp"))):
         out[fam.name] = f"library: {fam.name[4:]}"
     return out

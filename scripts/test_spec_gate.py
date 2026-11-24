@@ -401,7 +401,8 @@ class GatesTest(unittest.TestCase):
     def test_subset(self):
         from specgate import subset
         files = {"spec/core/01-x.md": "# 1. Lexing\n\n## 1.5 Literals\n\nA rule (R01.5.1).\n",
-                 "spec/core/02-y.md": "## 2.1 Types\n\nA rule (R02.1.1).\n",
+                 "spec/core/02-y.md": "## 2.1 Types\n\nA rule (R02.1.1).\n\n## 2.2 Casts\n\nAs in (R01.6.1).\n",
+                 "spec/core/03-z.md": "## 3.6 Ints\n\nA rule (R01.6.1).\n",
                  "spec/conformance/c/f.cp": "// expect: ok\n// rule: 01.5.1\nx\n",
                  "research/scoreboard.json": '{"suites": {"conformance": {"cases": {"c/f.cp": "fail"}}}}',
                  "spec/SUBSET.md": "| R02.1 | 2.1 Types | documented | later |\n"}
@@ -412,6 +413,7 @@ class GatesTest(unittest.TestCase):
             text = t.read("spec/SUBSET.md")
             self.assertIn("| R01.5 | 1.5 Literals | supported | 1 known gap |", text)
             self.assertIn("| R02.1 | 2.1 Types | documented | later |", text)
+            self.assertNotIn("R01.6 | 2.2 Casts", text)
             self.assertIn("- c/f.cp: fail", text)
             self.assertEqual(run("subset"), [])
 
