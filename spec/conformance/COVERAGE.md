@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3316 (1093 passing). Rules: 609.
+Cases: 3318 (1093 passing). Rules: 610.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 3316 (1093 passing). Rules: 609.
 - R05 (05-ownership.md): 50 rules, 250 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 92 rules, 230 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 30 rules, 100 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 31 rules, 102 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -55,7 +55,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 25 | 25 (100%) | 17 | 17 (100%) | 25 (100%) |
 | R07 | 92 | 92 (100%) | 29 | 29 (100%) | 92 (100%) |
-| R08 | 30 | 30 (100%) | 11 | 11 (100%) | 30 (100%) |
+| R08 | 31 | 31 (100%) | 12 | 12 (100%) | 31 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
 | R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 609 | 605 (99%) | 249 | 241 (96%) | 599 (98%) |
+| all | 610 | 606 (99%) | 250 | 242 (96%) | 600 (98%) |
 
 ## Rules
 
@@ -559,6 +559,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.1.9 [3+ 3-]: , so a type has one choice.
 - R08.2.1 [2+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
+- R08.2.10 [1+ 1-]: A generic fn may not reach itself, directly or mutually, at a type that grows on every cal...
 - R08.2.4 [3+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
 - R08.2.5 [4+ 1-]: Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static ca...
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
@@ -804,6 +805,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0316 Field bound from input: 1 case(s)
 - E0317 Getter needs defaults: 1 case(s)
 - E0318 Unreachable match arm: 1 case(s)
+- E0319 Generic fn recursion at a growing type: 1 case(s)
 - E0320 int_index_on_cut_table *(0.3)*: **no case**
 - E0401 Assignment to immutable `let` binding: 5 case(s)
 - E0402 Missing `mut` at call site: 4 case(s)
@@ -987,7 +989,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-87 of 224 testable codes have no negative case.
+87 of 225 testable codes have no negative case.
 
 ## Spec code blocks
 
