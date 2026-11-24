@@ -141,4 +141,82 @@ impl Checker<'_> {
         }
         true
     }
+
+    /// `List(a)` keeps `a`'s elements, not its keys: it is indexed by `Int` (R04a.8.1).
+    pub(super) fn list_index_by_position(
+        &mut self,
+        base: &Expr,
+        indices: &[Expr],
+        index_tys: &[Ty],
+    ) {
+        if let ([Ty::Pos(_)], [index]) = (index_tys, indices) {
+            let message = format!(
+                "`{}` is indexed by `Int`, but `{}` is {}",
+                self.quote(base.span),
+                self.quote(index.span),
+                index_tys[0].with_article()
+            );
+            let help = format!(
+                "a `List` is indexed by number: write `{}[Int({})]`",
+                self.quote(base.span),
+                self.quote(index.span)
+            );
+            if let Some(diag) = self.error(codes::WRONG_DOMAIN, index.span, message) {
+                diag.help = Some(help);
+            }
+        }
+    }
+}
+
+impl Checker<'_> {
+    /// R04.4.5, R04.4.6: only a literal half-open `j..i` of cuts is a piece.
+    pub(super) fn cut_range_not_piece(
+        &mut self,
+        base_ty: &Ty,
+        indices: &[Expr],
+        index_tys: &[Ty],
+    ) -> bool {
+        if !matches!(base_ty, Ty::Array { .. }) {
+            return false;
+        }
+        for (index, ty) in indices.iter().zip(index_tys) {
+            let Ty::Named { name, args } = ty else {
+                continue;
+            };
+            let [Ty::Pos(d)] = args.as_slice() else {
+                continue;
+            };
+            if name != "Range" || !d.ends_with(".cuts") {
+                continue;
+            }
+            let shown = self.quote(index.span);
+            let (message, help) = match &crate::check::lends::unparen(index).kind {
+                ExprKind::Range {
+                    inclusive: true,
+                    lo,
+                    hi,
+                    ..
+                } => (
+                    format!("`{shown}` is a closed range of cuts, which names no piece"),
+                    match (lo, hi) {
+                        (Some(lo), Some(hi)) => {
+                            format!("write `{}..{}`", self.quote(lo.span), self.quote(hi.span))
+                        }
+                        _ => "write the half-open `j..i`".to_string(),
+                    },
+                ),
+                _ => (
+                    format!(
+                        "`{shown}` is a stored `Range<{d}>`; only a literal `j..i` of cuts becomes a piece"
+                    ),
+                    "write the range where it is used: `a[j..i]`".to_string(),
+                ),
+            };
+            if let Some(diag) = self.error(codes::TYPE_MISMATCH, index.span, message) {
+                diag.help = Some(help);
+            }
+            return true;
+        }
+        false
+    }
 }

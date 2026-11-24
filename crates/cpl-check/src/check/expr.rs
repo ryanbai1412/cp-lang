@@ -3969,56 +3969,6 @@ impl Checker<'_> {
     }
 }
 
-impl Checker<'_> {}
-
-impl Checker<'_> {
-    /// R04.4.5, R04.4.6: only a literal half-open `j..i` of cuts is a piece.
-    fn cut_range_not_piece(&mut self, base_ty: &Ty, indices: &[Expr], index_tys: &[Ty]) -> bool {
-        if !matches!(base_ty, Ty::Array { .. }) {
-            return false;
-        }
-        for (index, ty) in indices.iter().zip(index_tys) {
-            let Ty::Named { name, args } = ty else {
-                continue;
-            };
-            let [Ty::Pos(d)] = args.as_slice() else {
-                continue;
-            };
-            if name != "Range" || !d.ends_with(".cuts") {
-                continue;
-            }
-            let shown = self.quote(index.span);
-            let (message, help) = match &crate::check::lends::unparen(index).kind {
-                ExprKind::Range {
-                    inclusive: true,
-                    lo,
-                    hi,
-                    ..
-                } => (
-                    format!("`{shown}` is a closed range of cuts, which names no piece"),
-                    match (lo, hi) {
-                        (Some(lo), Some(hi)) => {
-                            format!("write `{}..{}`", self.quote(lo.span), self.quote(hi.span))
-                        }
-                        _ => "write the half-open `j..i`".to_string(),
-                    },
-                ),
-                _ => (
-                    format!(
-                        "`{shown}` is a stored `Range<{d}>`; only a literal `j..i` of cuts becomes a piece"
-                    ),
-                    "write the range where it is used: `a[j..i]`".to_string(),
-                ),
-            };
-            if let Some(diag) = self.error(codes::TYPE_MISMATCH, index.span, message) {
-                diag.help = Some(help);
-            }
-            return true;
-        }
-        false
-    }
-}
-
 impl Checker<'_> {
     /// R04b.1.7: `let t = w.rebase` is `[t.Idx]T`, keyed by a domain of its own.
     pub(crate) fn rebased(&mut self, name: &str, init: &Expr) -> Option<Ty> {
