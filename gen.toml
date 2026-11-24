@@ -118,6 +118,14 @@ check = "diff"
 tier = "ci"
 
 [[gen]]
+name = "textmate"
+files = ["editors/vscode/syntaxes/cp.tmLanguage.json"]
+inputs = ["crates/cpl-syntax/src/token.rs", "crates/cpl-syntax/src/grammar.rs", "crates/cpl-cli/src/setup.rs"]
+write = ["sh", "-c", "cargo run -q -p cpl-cli -- setup vscode --grammar > editors/vscode/syntaxes/cp.tmLanguage.json"]
+check = "diff"
+tier = "ci"
+
+[[gen]]
 name = "tree-sitter"
 files = ["editors/tree-sitter-cp/src/parser.c"]
 inputs = ["editors/tree-sitter-cp/grammar.js", "editors/words.json"]

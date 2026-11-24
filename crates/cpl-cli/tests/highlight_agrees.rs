@@ -261,16 +261,7 @@ fn every_editor_grammar_classifies_tokens_as_the_lexer_does() {
     for engine in ["textmate", "jetbrains", "vim", "emacs", "tree-sitter"] {
         let out = work.join(format!("{engine}.json"));
         let got = match engine {
-            // VS Code's grammar is the VS Code lane's to bring into agreement; until then it
-            // runs where CPL_HIGHLIGHT names it.
-            "textmate"
-                if required(engine)
-                    && node
-                    && vscode.join("node_modules/vscode-textmate").is_dir() =>
-            {
-                run(Command::new("node")
-                    .current_dir(&vscode)
-                    .arg("scripts/language-data.js"));
+            "textmate" if node && vscode.join("node_modules/vscode-textmate").is_dir() => {
                 run(Command::new("node")
                     .arg(highlight.join("agree.mjs"))
                     .arg(engine)

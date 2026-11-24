@@ -358,6 +358,9 @@ jobs:
         working-directory: editors/vscode
         run: |
           just vscode-test
+      - name: The TextMate grammar agrees with the lexer
+        if: matrix.os == 'ubuntu-latest'
+        run: just highlight-agree textmate
 
   # The contest CLI on macOS and Windows (Linux runs it in the gate, the
   # clipboard round trip in neovim): paths, the clipboard command, CRLF input, `cpl setup`, the contest flow.

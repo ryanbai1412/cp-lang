@@ -66,6 +66,24 @@ fn setup_writes_the_editor_files() {
     );
 }
 
+/// VS Code's grammar is what `cpl setup vscode --grammar` writes from the lexer's tables.
+#[test]
+fn the_vscode_grammar_is_generated() {
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["setup", "vscode", "--grammar"])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let file = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../editors/vscode/syntaxes/cp.tmLanguage.json");
+    let committed = std::fs::read_to_string(file).unwrap_or_default();
+    assert_eq!(
+        committed.replace("\r\n", "\n"),
+        text(&out.stdout),
+        "cp.tmLanguage.json is stale; run: just gen"
+    );
+}
+
 /// `cpl setup vscode --vsix FILE` hands the file to `code --install-extension`.
 #[cfg(unix)]
 #[test]

@@ -2,7 +2,7 @@ import { StreamLanguage, type StreamParser, type StringStream } from '@codemirro
 import grammar from '../../../editors/vscode/syntaxes/cp.tmLanguage.json';
 
 // The editor runs the one TextMate grammar (editors/vscode/syntaxes/
-// cp.tmLanguage.json, which vscode_sync.rs keeps in step with the compiler)
+// cp.tmLanguage.json, generated from the compiler's lexer tables)
 // itself, line by line: there is no second list of keywords to drift.
 // highlight-parity.test.ts holds this runner to Shiki's on the repo's programs.
 
@@ -30,8 +30,8 @@ function compile(raw: Raw): Rule {
   rule = { ...raw };
   compiled.set(raw, rule);
   const src = raw.match ?? raw.begin;
-  if (src) rule.re = new RegExp(src, 'dg');
-  if (raw.end) rule.endRe = new RegExp(raw.end, 'dg');
+  if (src) rule.re = new RegExp(src, 'dgu');
+  if (raw.end) rule.endRe = new RegExp(raw.end, 'dgu');
   return rule;
 }
 

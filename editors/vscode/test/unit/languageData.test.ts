@@ -1,4 +1,4 @@
-// The extension's word lists and TextMate grammar must match edition 0.3,
+// The extension's word lists must match edition 0.3,
 // the one the server checks against: the compiler's prelude, `std/*.cp`
 // and `std/prelude.cp`, with zero stale v1/v2.1/v0.2 tokens.
 
@@ -21,9 +21,7 @@ import {
     STDLIB_TYPES,
     STDLIB_VALUES,
 } from '../../src/languageData';
-import { GRAMMAR_PATH, REPO_ROOT, scopesOf } from './grammar';
-
-const grammarText = fs.readFileSync(GRAMMAR_PATH, 'utf8');
+import { REPO_ROOT, scopesOf } from './grammar';
 
 function sorted(names: Iterable<string>): string[] {
     return [...names].sort();
@@ -203,82 +201,12 @@ test('stale v1 and removed v2.1 names stay out of the tables; decorators match 0
     }
 });
 
-test('a std fn the prelude imports is scoped std, not built in', async () => {
-    for (const word of PRELUDE_VALUES.filter(name => !BUILTIN_VALUES.includes(name))) {
-        const scopes = await scopesOf(`let v = ${word}(x)`, word);
-        assert.ok(!scopes.includes('support.function.builtin.cp'), `\`${word}\` is scoped ${JSON.stringify(scopes)}`);
-    }
-});
-
-test('the grammar lists the exact same prelude and stdlib tables as languageData.ts', () => {
-    const alternation = (scope: string) => {
-        const rule = new RegExp(`"name": "${scope}",\\s*"match": "[^"]*?\\(([A-Za-z0-9_|]+)\\)`).exec(grammarText);
-        assert.ok(rule, `no rule for ${scope}`);
-        return rule[1].split('|');
-    };
-    assert.deepEqual(sorted(alternation('support.type.builtin.cp')), sorted(PRELUDE_TYPES));
-    assert.deepEqual(sorted(alternation('support.type.stdlib.cp')), sorted(STDLIB_TYPES));
-    assert.deepEqual(sorted(alternation('support.function.builtin.cp')), sorted(BUILTIN_VALUES));
-    assert.deepEqual(
-        sorted(alternation('support.function.stdlib.cp')),
-        sorted([...PRELUDE_VALUES.filter(name => !BUILTIN_VALUES.includes(name)), ...STDLIB_VALUES]),
-    );
-    assert.deepEqual(sorted(alternation('support.constant.stdlib.cp')), sorted([...PRELUDE_CONSTANTS, ...STDLIB_CONSTANTS]));
-});
-
-test('the grammar gives every 0.2.2 reserved word a keyword/storage/literal scope', async () => {
+test('the grammar gives every reserved word a keyword or literal scope', async () => {
     for (const word of KEYWORDS) {
         const scopes = await scopesOf(`x ${word} y`, word);
         assert.ok(
-            scopes.some(scope => /^(keyword|storage|constant\.language|variable\.language)\./.test(scope)),
+            scopes.some(scope => /^(keyword|constant\.language)\./.test(scope)),
             `\`${word}\` is scoped ${JSON.stringify(scopes)}`,
         );
     }
-});
-
-test('contextual keywords are plain names where they are not keywords', async () => {
-    for (const word of CONTEXTUAL_KEYWORDS) {
-        const scopes = await scopesOf(`let total = ${word} + 1`, word);
-        assert.deepEqual(scopes, [], `\`${word}\` as a name is scoped ${JSON.stringify(scopes)}`);
-    }
-});
-
-test('contextual keywords are keywords in their one position', async () => {
-    const cases: [string, string, string][] = [
-        ['    law assoc(a: T, b: T) = op(a, b) == op(b, a)', 'law', 'keyword.other.law.cp'],
-        ['fn walk(self) -> yields (v: V, d: Int):', 'yields', 'keyword.other.yields.cp'],
-        ['let ans: ?Int = do:', 'do', 'keyword.control.do.cp'],
-    ];
-    for (const [line, word, scope] of cases) {
-        const scopes = await scopesOf(line, word);
-        assert.ok(scopes.includes(scope), `\`${word}\` in \`${line}\` is scoped ${JSON.stringify(scopes)}`);
-    }
-});
-
-test('stale v1 and removed v2.1 tokens do not get keyword, builtin or deprecated scopes in the grammar', async () => {
-    for (const word of [...STALE_V1_KEYWORDS, ...REMOVED_V21_KEYWORDS]) {
-        const scopes = await scopesOf(`let x = ${word} + 1`, word);
-        assert.deepEqual(scopes, [], `stale/removed word \`${word}\` got scopes ${JSON.stringify(scopes)}`);
-    }
-    for (const ty of STALE_V1_TYPES) {
-        const scopes = await scopesOf(`let x: ${ty} = y`, ty);
-        assert.ok(
-            !scopes.some(scope => scope.startsWith('support.type.')),
-            `stale v1 type \`${ty}\` got builtin scope ${JSON.stringify(scopes)}`,
-        );
-    }
-    const infScopes = await scopesOf('let x = INF', 'INF');
-    assert.ok(
-        !infScopes.some(scope => scope.startsWith('support.constant.')),
-        `stale INF got builtin constant scope ${JSON.stringify(infScopes)}`,
-    );
-});
-
-test('file-level directives (@!...) are scoped distinctly from item attributes (@...)', async () => {
-    const directiveScopes = await scopesOf('@!multitest', 'multitest');
-    assert.ok(directiveScopes.includes('keyword.control.directive.cp'), `got ${JSON.stringify(directiveScopes)}`);
-    assert.ok(!directiveScopes.includes('entity.name.function.decorator.cp'), `got ${JSON.stringify(directiveScopes)}`);
-    const decoratorScopes = await scopesOf('@memo', 'memo');
-    assert.ok(decoratorScopes.includes('entity.name.function.decorator.cp'), `got ${JSON.stringify(decoratorScopes)}`);
-    assert.ok(!decoratorScopes.includes('keyword.control.directive.cp'), `got ${JSON.stringify(decoratorScopes)}`);
 });

@@ -1,7 +1,6 @@
 // CP Lang 0.2.2 language tables for fallback completion and grammar checks.
 // `test/unit/languageData.test.ts` checks them against the compiler's prelude
-// (`crates/cpl-check/src/prelude.rs`), `std/*.cp` and `std/prelude.cp`,
-// and keeps `syntaxes/cp.tmLanguage.json` in lockstep with them.
+// (`crates/cpl-check/src/prelude.rs`), `std/*.cp` and `std/prelude.cp`.
 
 /** 29 contestant keywords (including 2 literals) in CP Lang 0.2.2. */
 export const CONTESTANT_KEYWORDS: readonly string[] = [
