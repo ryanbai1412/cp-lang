@@ -216,14 +216,14 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
     }
     let mut ranked: Vec<_> = misses.into_iter().collect();
     ranked.sort_by(|a, b| b.1 .0.cmp(&a.1 .0).then_with(|| a.0.cmp(&b.0)));
-    for ((kind, word), (n, first)) in ranked.iter().take(25) {
+    for ((kind, word), (n, first)) in ranked.iter().take(40) {
         println!("missed {n:4}  {kind:?}  {word}  (first: {first:.100})");
     }
     // Recall per kind in tenths of a percent; raise these as completion improves.
     let floors = [
         (Kind::Member, 840),
         (Kind::AfterCall, 710),
-        (Kind::Scope, 990),
+        (Kind::Scope, 995),
     ];
     for (kind, floor) in floors {
         let (hit, all) = tally.get(&kind).copied().unwrap_or_default();

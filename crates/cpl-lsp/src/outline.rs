@@ -236,9 +236,10 @@ impl Reader<'_> {
     /// The names a top-level `let (n, k) = ..` binds, each a value.
     fn destructured(&self, stmt: &Stmt) -> Vec<Entry> {
         use cpl_syntax::ast::{Pattern, PatternKind};
-        fn names(pat: &Pattern, out: &mut Vec<(String, cpl_diag::Span)>) {
+        fn names(pat: &Pattern, out: &mut Vec<(String, cpl_diag::Span, Kind)>) {
             match &pat.kind {
-                PatternKind::Name(text) => out.push((text.clone(), pat.span)),
+                PatternKind::Name(text) => out.push((text.clone(), pat.span, Kind::Value)),
+                PatternKind::Domain(name) => out.push((name.text.clone(), pat.span, Kind::Domain)),
                 PatternKind::Tuple(parts) => parts.iter().for_each(|p| names(p, out)),
                 PatternKind::Record { fields, .. } => {
                     fields.iter().for_each(|(_, p)| names(p, out))
@@ -257,9 +258,9 @@ impl Reader<'_> {
         names(pat, &mut found);
         found
             .into_iter()
-            .map(|(name, span)| Entry {
+            .map(|(name, span, kind)| Entry {
                 name,
-                kind: Kind::Value,
+                kind,
                 public: stmt.public,
                 detail: self.header(span),
                 doc: self.doc(stmt),
