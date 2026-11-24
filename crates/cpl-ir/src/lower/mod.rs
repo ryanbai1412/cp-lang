@@ -12,6 +12,7 @@ mod alias_impl;
 mod anon_domain;
 mod cache;
 mod call;
+mod checked;
 mod calls;
 mod capture;
 mod coerce;
