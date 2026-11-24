@@ -94,7 +94,7 @@ fn loop_counters_and_lengths_are_known_non_negative() {
     let body =
         body("let xs: List<Int> = [1, 2, 3]\nfor i in 0..10:\n    print(i % 3, xs.len / 2)\n");
     assert!(body.contains("cpl::put_int(i % 3)"), "{body}");
-    assert!(body.contains("(ll)xs.size() / 2"), "{body}");
+    assert!(body.contains("(ll)xs.size() >> 1"), "{body}");
 }
 
 #[test]
@@ -161,4 +161,28 @@ fn a_ranged_param_divides_with_cpps_own_operator() {
     assert!(!cpp.contains("cpl::emod("), "{cpp}");
     // Every call checks its argument into the range the body relies on.
     assert!(cpp.contains("step(cpl::check_range(n, 0, 1000,"), "{cpp}");
+}
+
+/// A domain position's ord is never negative, so `/ 64` and `% 64` on it
+/// are a shift and a mask, and a shift by the mask needs no `shamt`.
+#[test]
+fn a_bit_index_from_an_ord_is_a_shift_and_a_mask() {
+    let out = cpp(
+        "domain D = 0..=1000\nlet b = Bitset<D>.single(D(4))\nlet i: 0..=1000 = read()\nprint(yes(b.contains(D(i))))\n",
+    );
+    let body = out
+        .split("_contains(const ")
+        .nth(1)
+        .expect("contains is emitted");
+    let line = body.lines().nth(1).expect("its body");
+    assert!(line.contains(" >> 6)") && line.contains(" & 63)"), "{line}");
+    assert!(!line.contains("shamt") && !line.contains("/ 64"), "{line}");
+}
+
+/// An amount proven in `0..64` shifts without `shamt`; an unproven one keeps it.
+#[test]
+fn a_shift_by_a_proven_amount_has_no_shamt() {
+    let out = cpp("let k: Int = read()\nvar x = 1\nx <<= k % 64\nprint(x >> (k & 63), x << k)\n");
+    assert!(out.contains("x = cpl::ishl(x, k & 63);"), "{out}");
+    assert_eq!(out.matches("cpl::shamt(").count(), 1, "{out}");
 }

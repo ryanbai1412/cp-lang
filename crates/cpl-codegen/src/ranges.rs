@@ -506,6 +506,19 @@ impl<'p> Facts<'p> {
             ExprKind::Binary(BinOp::Div, l, r) if self.sign(fn_id, r) == Sign::Positive => {
                 Some(self.upper_bound(fn_id, l, depth + 1)?.max(0))
             }
+            // Euclidean: below the divisor, whatever the dividend.
+            ExprKind::Binary(BinOp::Rem, _, r) if self.sign(fn_id, r) == Sign::Positive => {
+                Some(self.upper_bound(fn_id, r, depth + 1)? - 1)
+            }
+            // At most either operand that is never negative.
+            ExprKind::Binary(BinOp::BitAnd, l, r) => [l, r]
+                .into_iter()
+                .filter(|x| self.sign(fn_id, x) != Sign::Unknown)
+                .filter_map(|x| self.upper_bound(fn_id, x, depth + 1))
+                .min(),
+            ExprKind::Binary(BinOp::Shr, l, _) if self.sign(fn_id, l) != Sign::Unknown => {
+                self.upper_bound(fn_id, l, depth + 1)
+            }
             ExprKind::Builtin(Builtin::Max, args) if !args.is_empty() => {
                 let mut hi = i64::MIN;
                 for arg in args {
@@ -531,6 +544,12 @@ impl<'p> Facts<'p> {
             && self
                 .upper_bound(fn_id, e, 0)
                 .is_some_and(|hi| hi <= i64::from(u32::MAX))
+    }
+
+    /// True when `e` is proven in `0..n`.
+    pub fn within(&self, fn_id: Option<usize>, e: &Expr, n: i64) -> bool {
+        self.sign(fn_id, e) != Sign::Unknown
+            && self.upper_bound(fn_id, e, 0).is_some_and(|hi| hi < n)
     }
 
     pub fn below_max(&self, fn_id: Option<usize>, e: &Expr) -> bool {

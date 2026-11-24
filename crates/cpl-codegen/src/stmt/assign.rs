@@ -258,6 +258,10 @@ impl<'p> Emitter<'p> {
                     let f = self.overflow_checked(&place.ty, bop);
                     twice(self, out, &|p, v| format!("{p} = {f}({p}, {v});"));
                 }
+                (Ty::Int, BinOp::Shl) if self.facts.within(self.facts_home(), value, 64) => {
+                    self.need("ishl");
+                    twice(self, out, &|p, v| format!("{p} = cpl::ishl({p}, {v});"));
+                }
                 (Ty::Int, BinOp::Shl) => {
                     self.need("ishl");
                     self.need("shamt");

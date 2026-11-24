@@ -25,6 +25,22 @@ impl<'p> Emitter<'p> {
         b: &Code,
         both_narrow: bool,
     ) -> Code {
+        // Floor and Euclidean agree for a positive divisor, and a shift or
+        // mask is that floor whatever the dividend's sign.
+        if let Some(shift) = pow2(r) {
+            return match (div, shift) {
+                (true, 0) => a.clone(),
+                (false, 0) => Code::primary("0"),
+                (true, _) => Code {
+                    narrow: a.narrow,
+                    ..Code::new(format!("{} >> {shift}", a.at(UNARY)), SHIFT)
+                },
+                (false, _) => Code {
+                    narrow: both_narrow,
+                    ..Code::new(format!("{} & {}", a.at(MUL), (1i64 << shift) - 1), BIT)
+                },
+            };
+        }
         let dividend = self.facts.sign(self.facts_home(), l);
         let divisor = self.facts.sign(self.facts_home(), r);
         if dividend != Sign::Unknown && divisor == Sign::Positive {
@@ -45,20 +61,6 @@ impl<'p> Emitter<'p> {
             let mut code = infix(a, sym, b, MUL);
             code.narrow = both_narrow;
             return code;
-        }
-        if let Some(shift) = pow2(r) {
-            return match (div, shift) {
-                (true, 0) => a.clone(),
-                (false, 0) => Code::primary("0"),
-                (true, _) => Code {
-                    narrow: a.narrow,
-                    ..Code::new(format!("{} >> {shift}", a.at(UNARY)), SHIFT)
-                },
-                (false, _) => Code {
-                    narrow: both_narrow,
-                    ..Code::new(format!("{} & {}", a.at(MUL), (1i64 << shift) - 1), BIT)
-                },
-            };
         }
         let helper = match (divisor == Sign::Positive, div) {
             (true, true) => "divp",
