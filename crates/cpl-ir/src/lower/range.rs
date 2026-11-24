@@ -8,6 +8,11 @@ pub(super) struct RangeBounds {
     pub hi: Option<Expr>,
     pub lo_const: Option<i64>,
     pub hi_const: Option<i64>,
+    /// The least `lo` and greatest `hi` can be when they are runtime
+    /// values of proven range: `0..n` with `n: 1..=300_000` stays below
+    /// 300_000, so its values fit 32 bits.
+    pub lo_min: Option<i64>,
+    pub hi_max: Option<i64>,
     pub text: String,
 }
 
@@ -47,9 +52,11 @@ impl RangeBounds {
     pub(super) fn limits(&self) -> Option<(i64, i64)> {
         let lo_min = self
             .lo_const
+            .or(self.lo_min)
             .or_else(|| self.lo.as_ref().and_then(expr_limits).map(|(lo, _)| lo))?;
         let hi_max = self
             .hi_const
+            .or(self.hi_max)
             .or_else(|| self.hi.as_ref().and_then(expr_limits).map(|(_, hi)| hi))?;
         (lo_min <= hi_max).then_some((lo_min, hi_max))
     }
@@ -57,9 +64,11 @@ impl RangeBounds {
     pub(super) fn narrow_width(&self) -> Option<IntWidth> {
         let lo_min = self
             .lo_const
+            .or(self.lo_min)
             .or_else(|| self.lo.as_ref().and_then(expr_limits).map(|(lo, _)| lo))?;
         let hi_max = self
             .hi_const
+            .or(self.hi_max)
             .or_else(|| self.hi.as_ref().and_then(expr_limits).map(|(_, hi)| hi))?;
         IntWidth::of(lo_min, hi_max)
     }
@@ -265,6 +274,8 @@ impl RangeInfo {
                     hi: hi_expr,
                     lo_const,
                     hi_const,
+                    lo_min: None,
+                    hi_max: None,
                     text: text.clone(),
                 }))
             }
@@ -466,11 +477,21 @@ impl<'a> Lowerer<'a> {
                 });
                 let lo_const = lo_expr.as_ref().and_then(const_int_expr);
                 let hi_const = hi_expr.as_ref().and_then(const_int_expr);
+                let lo_min = lo_expr
+                    .as_ref()
+                    .and_then(|e| self.bound_limits(e))
+                    .map(|l| l.0);
+                let hi_max = hi_expr
+                    .as_ref()
+                    .and_then(|e| self.bound_limits(e))
+                    .map(|l| l.1);
                 Some(RangeInfo::Scalar(RangeBounds {
                     lo: lo_expr,
                     hi: hi_expr,
                     lo_const,
                     hi_const,
+                    lo_min,
+                    hi_max,
                     text: self.source(ty.span),
                 }))
             }
@@ -742,6 +763,38 @@ impl<'a> Lowerer<'a> {
         match self.place_range(place)? {
             RangeInfo::Scalar(b) => Some(b),
             _ => None,
+        }
+    }
+
+    /// The least and greatest a range bound can be: a constant, or a
+    /// local or global of proven range, through `+`, `-` and negation.
+    fn bound_limits(&self, e: &Expr) -> Option<(i64, i64)> {
+        match &e.kind {
+            ExprKind::Local(slot) => match self.expr_range(e) {
+                Some(r) => r.scalar()?.limits(),
+                None => self.cx.let_bounds.get(slot).copied(),
+            },
+            ExprKind::Global(gid) => match self.expr_range(e) {
+                Some(r) => r.scalar()?.limits(),
+                None => self.global_bounds.get(gid).copied(),
+            },
+            ExprKind::Unary(UnOp::Neg, inner) => {
+                let (lo, hi) = self.bound_limits(inner)?;
+                Some((hi.checked_neg()?, lo.checked_neg()?))
+            }
+            ExprKind::Binary(BinOp::Add, a, b) => {
+                let ((alo, ahi), (blo, bhi)) = (self.bound_limits(a)?, self.bound_limits(b)?);
+                Some((alo.checked_add(blo)?, ahi.checked_add(bhi)?))
+            }
+            ExprKind::Binary(BinOp::Sub, a, b) => {
+                let ((alo, ahi), (blo, bhi)) = (self.bound_limits(a)?, self.bound_limits(b)?);
+                Some((alo.checked_sub(bhi)?, ahi.checked_sub(blo)?))
+            }
+            ExprKind::RangeCheck { value, .. } => self.bound_limits(value),
+            _ => match self.expr_const_bounds(e) {
+                (Some(lo), Some(hi)) => Some((lo, hi)),
+                _ => expr_limits(e),
+            },
         }
     }
 
@@ -1192,6 +1245,8 @@ impl<'a> Lowerer<'a> {
             hi: hi.map(|v| self.int_lit(v, span)),
             lo_const: lo,
             hi_const: hi,
+            lo_min: lo,
+            hi_max: hi,
             text: format!(
                 "{}..={}",
                 lo.map_or(String::new(), |v| v.to_string()),

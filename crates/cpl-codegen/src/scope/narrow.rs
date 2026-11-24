@@ -220,11 +220,13 @@ pub(crate) fn narrow_elems(
                     if !f.locals.get(i).is_some_and(|l| is_narrowable_seq(&l.ty)) {
                         continue;
                     }
+                    let p = ElemLoc::Local(ScopeId::Fn(*fid), i);
                     let layout = match arg {
+                        // A recursive fn forwarding its own param agrees with every other call.
+                        Arg::Value(v) if expr_loc(scope, v) == Some(p) => continue,
                         Arg::Value(v) => expr_loc(scope, v).and_then(|l| narrow.get(&l)).cloned(),
                         Arg::Mut(_) => None,
                     };
-                    let p = ElemLoc::Local(ScopeId::Fn(*fid), i);
                     match passed.get(&p) {
                         Some(seen) if *seen != layout => {
                             passed.insert(p, None);
@@ -520,7 +522,12 @@ pub(crate) fn narrow_elems(
             }
             // These read the sequence's shape or one element, as an index does.
             ExprKind::Builtin(
-                Builtin::Len | Builtin::PosKey | Builtin::KeyPos | Builtin::First | Builtin::Last,
+                Builtin::Len
+                | Builtin::AxisLen
+                | Builtin::PosKey
+                | Builtin::KeyPos
+                | Builtin::First
+                | Builtin::Last,
                 args,
             ) => {
                 for a in args {
@@ -533,15 +540,15 @@ pub(crate) fn narrow_elems(
             }
             ExprKind::Print(parts, end) => {
                 for p in parts {
-                    check_val(program, scope, &p.value, narrow, changed);
+                    check_shown(program, scope, &p.value, narrow, changed);
                 }
                 if let Some(e) = end {
-                    check_val(program, scope, e, narrow, changed);
+                    check_shown(program, scope, e, narrow, changed);
                 }
             }
             ExprKind::Debug(_, parts) => {
                 for p in parts {
-                    check_val(program, scope, &p.value, narrow, changed);
+                    check_shown(program, scope, &p.value, narrow, changed);
                 }
             }
             ExprKind::Builtin(
@@ -782,6 +789,22 @@ pub(crate) fn narrow_elems(
             widen_expr(scope, e, narrow, changed);
         }
         check_expr(program, scope, e, narrow, changed);
+    }
+
+    /// A shown value is only read, one element at a time: a narrow list
+    /// prints as it is stored, and each element widens as it is written.
+    fn check_shown(
+        program: &Program,
+        scope: ScopeId,
+        e: &Expr,
+        narrow: &mut BTreeMap<ElemLoc, NarrowLayout>,
+        changed: &mut bool,
+    ) {
+        if is_narrowable_seq(&e.ty) {
+            check_nested_base(program, scope, e, narrow, changed);
+        } else {
+            check_val(program, scope, e, narrow, changed);
+        }
     }
 
     fn check_nested_base(
