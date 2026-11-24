@@ -382,10 +382,13 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
-        // `(x, y) => ..` where a one-argument fn of a pair is expected unpacks that pair.
+        // `(x, y) => ..` where a one-argument fn of a pair, or of a product
+        // position, is expected unpacks it.
         let pair_arity = match hint {
             Some(Ty::Fn(ps, _)) => match ps.as_slice() {
                 [Ty::Tuple(items)] => items.len(),
+                [Ty::Record(fields)] => fields.len(),
+                [Ty::Pos(d)] => self.product_domains.get(d).map_or(0, Vec::len),
                 _ => 0,
             },
             _ => 0,
