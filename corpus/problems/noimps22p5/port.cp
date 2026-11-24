@@ -16,7 +16,7 @@ let n: 2..=4e5 = read()
 let x: 0..=1 = read()
 let y: 0..=1 = read()
 let s: [domain S]Char = read()
-let w: [0..n]1..=1e7 = read()
+let w: [n](1..=1e7) = read()
 
 // level[d]: weights of the brackets nested d deep
 var level: List<List<Int>> = [[] for _ in 0..n]
@@ -32,20 +32,21 @@ for i in S:
 
 // One sweep down the levels: each level's weights join the bag, then one leaves.
 // x = 0, y = 1 pays for everything that stays; x = 1, y = 1 also pays the lightest once per
-// sunk bracket. Only the heaviest ever leaves and the bag never empties before the last level,
-// so the lightest in the bag is the lightest seen.
+// sunk bracket. Only the heaviest ever leaves, so the lightest in the bag is the lightest seen
+// since the bag was last empty.
 fn sweep_heavy(escort: Bool) -> Int:
     var bag = MaxHeap<Int>()
-    var least = w.max()!
+    var least: ?Int = None
     var sum = 0
     var cost = 0
     for d in 0..n:
         for v in level[d]:
             bag.push(v)
-            least min= v
+            least = Some(min(least ?? v, v))
             sum += v
-        if escort: cost += sum + (bag.len - 2) * least
+        if escort: cost += sum + (bag.len - 2) * least!
         sum -= bag.pop()!
+        if bag.is_empty: least = None
         if not escort: cost += sum
     cost
 
@@ -64,7 +65,7 @@ fn sweep_light(prefer_min: Bool) -> Int:
             bag.push(least)
     cost
 
-if x == 0 and y == 1: print(sweep_heavy(false))
-elif x == 1 and y == 1: print(sweep_heavy(true))
-elif x == 1 and y == 0: print(min(sweep_light(false), sweep_light(true)))
+if x == 0 and y == 1: print(sweep_heavy(escort: false))
+elif x == 1 and y == 1: print(sweep_heavy(escort: true))
+elif x == 1 and y == 0: print(min(sweep_light(prefer_min: false), sweep_light(prefer_min: true)))
 else: print(0)

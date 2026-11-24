@@ -18,3 +18,10 @@ size = 16
 [[case]]
 seed = 5
 size = 32
+
+[[case]]
+args = ["--max"]
+
+# the bag empties at the top level, so the lightest seen must reset (main had 16, not 12)
+[[case]]
+input = "3 1 1\n(()())\n1 5 7\n"
