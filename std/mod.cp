@@ -292,6 +292,9 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().choose(5, 6) == Z(0)`
     /// example: `type Z = Mod<7>; Comb<Z>().choose(10, 3) == Z(1)`
     /// example: `type Z = Mod<7>; Comb<Z>().choose(7, 1) == Z(0)`
+    @lint(binom_by_hand, from: "fact[n] * inv(fact[k]) % m * inv(fact[n - k]) % m", to: "c.choose(n, k)", holes: "fact, inv, m")
+    @lint(binom_by_hand, from: "fact[n] * ifact[k] % m * ifact[n - k] % m", to: "c.choose(n, k)", holes: "fact, ifact, m")
+    @lint(binom_by_hand, from: "fact[n + k] * inv_fact[n] * inv_fact[k]", to: "c.choose(n + k, n)", holes: "fact")
     pub fn choose(self, n: Int, k: Int) -> M:
         if n < 0 or k < 0 or k > n: return M(0)
         if n >= M.MOD: return self.choose_lucas(n, k)

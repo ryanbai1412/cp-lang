@@ -742,3 +742,21 @@ fn a_no_fix_lint_reports_in_the_program_s_fn_of_its_name() {
         .collect();
     assert_eq!(found.len(), 1, "{found:?}");
 }
+
+/// A std module's lint reaches a file that writes its idiom by hand and so
+/// never loads the module (`std.math` here); its `to` is then advice unless
+/// it calls a prelude fn. Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_std_lint_reaches_a_file_that_never_loads_its_module() {
+    let src = "let x = 36\nvar n = 0\nvar d = 1\nwhile d * d <= x:\n    if x % d == 0:\n        n += 1\n    d += 1\nprint(n)\n";
+    let found: Vec<_> = crate::lint(src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "L0561")
+        .collect();
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].message, "write `divisors(x)`");
+    assert!(
+        (found[0].help.as_deref()).is_some_and(|h| h.contains("`std.math`")),
+        "{found:?}"
+    );
+}

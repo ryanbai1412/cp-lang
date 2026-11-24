@@ -3887,6 +3887,7 @@ pub fn dot(a: Pt, b: Pt) -> Int = a.x * b.x + a.y * b.y
 /// cost: \(O(1)\)
 /// traps: overflow when a product leaves `Int`
 /// example: `cross(Pt(1, 0), Pt(0, 1)) == 1 and cross(Pt(0, 1), Pt(1, 0)) == -1`
+@lint(cross_by_hand, from: "xs[i] * ys[j] - xs[j] * ys[i]", to: "cross(Pt(xs[i], ys[i]), Pt(xs[j], ys[j]))", holes: "xs, ys, i, j")
 pub fn cross(a: Pt, b: Pt) -> Int = a.x * b.y - a.y * b.x
 
 // ---- tests

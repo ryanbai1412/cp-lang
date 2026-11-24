@@ -785,7 +785,9 @@ impl Fns {
             let calls =
                 |h: &str| h.contains(&format!("`{name}(")) || h.contains(&format!(".{name}("));
             (lint.quiet_in_namesake && diag.message.contains(&format!("`{name}`")))
-                || (library && diag.help.as_deref().is_some_and(calls))
+                || (library
+                    && (diag.help.as_deref().is_some_and(calls)
+                        || (f.public && calls(&diag.message))))
         };
         if self
             .fns

@@ -714,6 +714,7 @@ pub fn transpose<V>(self: [V]List<V>) -> [V]List<V>:
 /// order: `C` by smallest vertex; `comp` keyed by `V`
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[2], [], [0], []]; let (domain C, comp) = components(g); C.count == 3 and comp[0] == comp[2] and Int(comp[3]) == 2`
+@lint(components_by_dfs, from: "for u in vs:\n    if not seen[u]:\n        count += 1\n        visit(u)", to: "components(adj)", holes: "vs, seen, count, visit")
 pub fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C):
     var cid: [V]?Int = None
     var k = 0

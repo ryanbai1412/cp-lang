@@ -898,6 +898,8 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs(link: (x, y) => y == x + 1)] == [2, 3]`
+@lint(runs_by_hand, from: "for c in self:\n    if p:\n        run += 1\n    else:\n        body\n        run = 0", to: "self.runs()", holes: "p, run, body")
+@lint(runs_by_hand, from: "for c in self:\n    if p:\n        run += 1\n    else:\n        run = 0", to: "self.runs()", holes: "p, run")
 pub fn runs<S: Indexed, T, K>(
     self: S,
     by: T -> K = x => x,

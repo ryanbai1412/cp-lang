@@ -51,12 +51,6 @@ pub(crate) fn compare(e: &Expr) -> Option<(&Expr, CmpOp, &Expr)> {
     }
 }
 
-/// `var += 1`.
-pub(crate) fn is_step(stmt: &Stmt, var: &str) -> bool {
-    matches!(&stmt.kind, StmtKind::Assign { target, op: AssignOp::Binary(BinOp::Add), value }
-        if name(target) == Some(var) && int(value) == Some(1))
-}
-
 /// `text` without whitespace, to compare code as written.
 pub(crate) fn squash(text: &str) -> String {
     text.chars().filter(|c| !c.is_whitespace()).collect()

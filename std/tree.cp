@@ -653,6 +653,7 @@ pub struct Rooted<V, Pre, A>:
     /// cost: \(O(\log n)\)
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lca(3, 4) == 1 and t.lca(3, 2) == 0 and t.lca(1, 3) == 1`
+    @lint(lca_by_hand, from: "while depth[a] > depth[b]:\n    a = parent[a]", to: "t.lca(a, b)", holes: "depth, parent")
     pub fn lca(self, a: V, b: V) -> V:
         var (x, y) = (a, b)
         while top[x] != top[y]:

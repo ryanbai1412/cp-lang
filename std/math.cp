@@ -703,6 +703,8 @@ pub fn splitmix64(x: U64) -> U64:
 /// example: `factor(1) == []`
 /// example: `factor(600_851_475_143) == [(71, 1), (839, 1), (1471, 1), (6857, 1)]`
 /// example: `factor(1_000_000_007) == [(1_000_000_007, 1)]`
+@lint(trial_division, from: "while d * d <= x:\n    if x % d == 0:\n        a\n        while x % d == 0:\n            body\n        b\n    d += 1", to: "factor(x)", holes: "d, a, body, b")
+@lint(trial_division, from: "while d * d <= x:\n    while x % d == 0:\n        body\n    d += 1", to: "factor(x)", holes: "d, body")
 pub fn factor(x: 1..) -> List<(Int, Int)>:
     assert x >= 1
     if x <= 1_000_000:
@@ -747,6 +749,7 @@ pub fn factor(x: 1..) -> List<(Int, Int)>:
 /// traps: when `x < 1`
 /// example: `divisors(12) == [1, 2, 3, 4, 6, 12]`
 /// example: `divisors(1) == [1] and 12.divisors().len == 6`
+@lint(trial_division, from: "while d * d <= self:\n    if self % d == 0:\n        body\n    d += 1", to: "divisors(self)", holes: "d, body")
 pub fn divisors(self: Int) -> List<Int>:
     var (small, large) = (List<Int>(), List<Int>())
     for d in 1..=max(self, 0).isqrt:

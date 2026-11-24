@@ -469,10 +469,7 @@ fn trial_division_under_an_if_factors() {
     let src = "fn f(x: Int) -> List<(Int, Int)>:\n    var out = List<(Int, Int)>()\n    var (rest, p) = (x, 2)\n    while p * p <= rest:\n        if rest % p == 0:\n            var e = 0\n            while rest % p == 0:\n                rest /= p\n                e += 1\n            out.push((p, e))\n        p += 1\n    if rest > 1: out.push((rest, 1))\n    out\nprint(f(12))\n";
     let d = lint(src, &all_on());
     let d = d.iter().find(|d| d.code.0 == "L0561").expect("L0561");
-    assert!(
-        d.help.as_deref().unwrap().contains("`factor(rest)`"),
-        "{d:#?}"
-    );
+    assert!(d.message.contains("`factor(rest)`"), "{d:#?}");
 }
 
 #[test]
