@@ -4,6 +4,11 @@ agc077c
 agc079a
 agc079c
 apio09p3
+atcoder_dp_e
+atcoder_dp_f
+atcoder_dp_g
+atcoder_dp_h
+atcoder_dp_i
 btoi17p2
 btoi19p6
 btoi20p3

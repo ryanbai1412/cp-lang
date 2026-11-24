@@ -1,0 +1,24 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "axyb\nabyxb\n"
+
+[[case]]
+input = "aa\nxayaz\n"
+
+[[case]]
+input = "a\nz\n"
+
+[[case]]
+input = "abracadabra\navadakedavra\n"
+
+[[case]]
+seed = 1
+size = 10
+
+[[case]]
+seed = 2
+size = 300
+
+[[case]]
+args = ["--max"]

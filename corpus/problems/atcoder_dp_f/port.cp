@@ -1,37 +1,30 @@
 // Source: AtCoder Educational DP Contest F (LCS), https://atcoder.jp/contests/dp/tasks/dp_f
-// Problem: two lowercase strings s, t of length <= 3000. Print one longest common subsequence.
-// Solution: dp[i, j] is the LCS length of the suffixes from i and j: max of skipping either
-//   head, or 1 + dp[i+1, j+1] on equal heads. Walk from (0, 0), skipping a head while the value
-//   stays the same and taking the character otherwise. O(nm).
+// Problem: two lowercase strings s, t of length 1..=3000. Print one longest common
+//   subsequence (any one is accepted; the empty line when there is none).
+// Solution: common[i, j] is the LCS length of the suffixes from i and j. Equal heads are
+//   always worth taking (any LCS can be changed to use them), so common[i, j] is
+//   1 + common[i+1, j+1] then, else the better of dropping either head. Walk from the start:
+//   take equal heads, otherwise drop a head whose loss keeps the length. O(|s| |t|).
 // original: corpus/submissions/4131645.cpp
-let a: Str = read()
-let b: Str = read()
-let n = a.len
-let m = b.len
-domain R = 0..=n
-domain C = 0..=m
+let a: Str<1..=3000> = read()
+let b: Str<1..=3000> = read()
+domain I = 0..=a.len
+domain J = 0..=b.len
 
-var dp: [R, C]Int = 0
-for ii in 0..n:
-    let i = n - 1 - ii
-    for jj in 0..m:
-        let j = m - 1 - jj
-        var v = max(dp[R(i + 1), C(j)], dp[R(i), C(j + 1)])
-        if a[i] == b[j]:
-            v max= 1 + dp[R(i + 1), C(j + 1)]
-        dp[R(i), C(j)] = v
+var common: [I, J]Int = 0
+for i in I.rev:
+    for j in J.rev:
+        if let i1 = i.next and let j1 = j.next:
+            common[i, j] = if a[i.label] == b[j.label]: 1 + common[i1, j1] else: max(common[i1, j], common[i, j1])
 
 var out: List<Char> = []
-var i = 0
-var j = 0
-while i < n and j < m:
-    let cur = dp[R(i), C(j)]
-    if dp[R(i + 1), C(j)] == cur:
-        i += 1
-    elif dp[R(i), C(j + 1)] == cur:
-        j += 1
-    else:
-        out.push(a[i])
-        i += 1
-        j += 1
+var i = I.first!
+var j = J.first!
+while common[i, j] > 0:
+    if a[i.label] == b[j.label]:
+        out.push(a[i.label])
+        i = i.next!
+        j = j.next!
+    elif common[i.next!, j] == common[i, j]: i = i.next!
+    else: j = j.next!
 print(Str(out))
