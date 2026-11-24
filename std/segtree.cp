@@ -36,7 +36,8 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// on first touch; positions outside the touched ones hold `fill` or the identity.
     ///
     /// cost: \(O(\lvert D \rvert)\); \(O(1)\) with `over:`
-    /// empty: an empty `D` gives a tree whose every fold is the identity
+    /// empty: an empty `D` gives a tree whose every fold is the identity; for an op with no
+    /// identity, build over `op.opt()` and `Some` cells, and each fold is `None` when empty
     /// order: positions keep the domain `D` of `a`
     /// traps: when both `a` and `fill` are given, or `over:` is given together with `a`
     /// example: `SegTree(+, [1, 2, 3]).all == 6`
@@ -298,7 +299,8 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// update site.
     ///
     /// cost: \(O(\lvert D \rvert)\), calling `f` once per position in key order
-    /// empty: an empty `D` gives a tree whose every fold is the identity
+    /// empty: an empty `D` gives a tree whose every fold is the identity; for an op with no
+    /// identity, build over `op.opt()` and `Some` cells, and each fold is `None` when empty
     /// order: position `i` holds `f(i)`
     /// traps: never
     ///
@@ -388,7 +390,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// The fold of every position, left to right.
     ///
     /// cost: \(O(1)\)
-    /// empty: the identity for an empty `D`
+    /// empty: the identity for an empty `D` (`None` on an `op.opt()` tree)
     /// traps: never
     /// example: `SegTree(max, [3, 9, 4]).all == 9`
     @get pub fn all(self) -> T = t[1]
