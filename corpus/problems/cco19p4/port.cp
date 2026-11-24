@@ -3,105 +3,32 @@
 // Problem: n <= 1e6 cards with values in 1..=n, drawn in order; keep or discard each, the
 //   hand holds one value only, and scoring a hand of x cards gives x^(k/2), 2 <= k <= 4.
 //   Print the maximum total score (relative error 1e-6).
-// Solution: k = 2 scores n (every card alone). Otherwise dp[i] = best from card i on =
-//   max over later cards j of the same value of score(#value in i..=j) + dp[j + 1]. Going
-//   right to left, each value keeps a Li Chao tree over its occurrence ranks of the curves
-//   score(m - x) + dp[j + 1] (score is convex, so two cross once). O(n log n).
+// Solution: dp after card i = max over later cards j of the same value of
+//   score(#value in i..=j) + dp after j. Going right to left, each value keeps a std `LiChao`
+//   over how many of its cards are still ahead, holding one curve score(m - x) + dp per card
+//   (score is convex, so two curves cross once). O(n log n).
 // original: corpus/submissions/3617807.cpp
-let k: Int = read()
-let n: Int = read()
+// Bounds: k: 2..=4; n: 1..=1e6; a: 1..=n
+let (k, n): (2..=4, 1..=1e6) = read()
+domain Card = 0..n
+domain Value = 1..=n
+let a: [Card]Value = read()
 
-if k == 2:
-    print(F64(n))
-else:
-    domain Card = 0..n
-    domain Rank = 0..n
-    domain Diff = 0..=n
-    let raw: [Card]Int = read()
-    let a: [Card]Int = [Card] i => raw[i] - 1
+fn score(x: Int) -> F64:
+    let s = sqrt(F64(x))
+    if k == 2: F64(x) elif k == 3: s * s * s else: F64(x * x)
 
-    fn score_of(d: Int) -> F64:
-        if k == 4:
-            return F64(d) * F64(d)
-        let s = sqrt(F64(d))
-        s * s * s
+// keeping cards of one value from here up to the one with m cards left ahead, then dp after it
+struct Run(m: Int, after: F64):
+    fn at(self, x: Int) -> F64 = score(m - x) + after
 
-    let score: [Diff]F64 = [Diff] d => score_of(d.ord)
+var ahead: [Value]Int = 0  // cards of each value not passed yet
+for v in a: ahead[v] += 1
+var runs: [Value]LiChao<Run, F64> = [Value] v => LiChao<Run, F64>(max, over: 0..ahead[v] + 1)
 
-    var cnt: [Rank]Int = [Rank] _ => 0
-    for i in Card: cnt[Rank(a[i])] += 1
-
-    // Flat per-rank Li Chao trees stored in one offset-indexed arena.
-    var off: [Rank]Int = [Rank] _ => 0
-    var tsz: [Rank]Int = [Rank] _ => 0
-    var tot = 0
-    for r in Rank:
-        let sz = cnt[r] + 1
-        off[r] = tot
-        tsz[r] = sz
-        tot += 4 * sz + 2
-
-    var has_c: List<Bool> = []
-    var cm: List<Int> = []
-    var cb: List<F64> = []
-    for _ in 0..tot:
-        has_c.push(false)
-        cm.push(0)
-        cb.push(0.0)
-
-    fn eval_c(m: Int, b: F64, x: Int) -> F64:
-        if x > m: -1e300 else: score[Diff(m - x)] + b
-
-    fn lc_insert(base: Int, o: Int, l: Int, r: Int, m0: Int, b0: F64):
-        let idx = base + o
-        if not has_c[idx]:
-            has_c[idx] = true
-            cm[idx] = m0
-            cb[idx] = b0
-            return
-        var cur_m = cm[idx]
-        var cur_b = cb[idx]
-        var nm = m0
-        var nb = b0
-        let mid = (l + r) / 2
-        let lv = eval_c(nm, nb, l) > eval_c(cur_m, cur_b, l)
-        let mv = eval_c(nm, nb, mid) > eval_c(cur_m, cur_b, mid)
-        if mv:
-            cm[idx] = nm
-            cb[idx] = nb
-            nm = cur_m
-            nb = cur_b
-        if l < r:
-            if lv != mv or mid > nm:
-                lc_insert(base, o * 2, l, mid, nm, nb)
-            else:
-                lc_insert(base, o * 2 + 1, mid + 1, r, nm, nb)
-
-    fn lc_query(base: Int, sz: Int, x: Int) -> F64:
-        var o = 1
-        var l = 0
-        var r = sz - 1
-        var best = -1e300
-        while true:
-            let idx = base + o
-            if has_c[idx]:
-                let v = eval_c(cm[idx], cb[idx], x)
-                best max= v
-            if l == r: return best
-            let mid = (l + r) / 2
-            if x <= mid:
-                o *= 2
-                r = mid
-            else:
-                o = o * 2 + 1
-                l = mid + 1
-
-    var dp: [Diff]F64 = [Diff] _ => 0.0
-    var i = n - 1
-    while i >= 0:
-        let r = Rank(a[Card(i)])
-        cnt[r] -= 1
-        lc_insert(off[r], 1, 0, tsz[r] - 1, cnt[r] + 1, dp[Diff(i + 1)])
-        dp[Diff(i)] = lc_query(off[r], tsz[r], cnt[r])
-        i -= 1
-    print(dp[Diff(0)])
+var best = 0.0  // the best score from the current card on
+for v in a.rev:
+    ahead[v] -= 1
+    runs[v].add(Run(ahead[v] + 1, best), on: 0..ahead[v] + 2)
+    best = runs[v].at(ahead[v])!
+print(best)
