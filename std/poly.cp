@@ -3,6 +3,7 @@
 //! Series are plain `List<Mod<P>>` (lowest degree first: `a[k]` is `[x^k] a(x)`),
 //! matching `std.ntt.convolve`. Every truncated operation takes an explicit output
 //! length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).
+use std.algebra as algebra
 use std.math.{mod_sqrt, pow_mod}
 use std.mod.{Mod}
 use std.ntt.{convolve, ntt}
@@ -890,14 +891,8 @@ pub struct Poly<T: Div>(pub c: List<T>):
     pub fn pow(self, k: Int, n: Int) -> Poly<T>:
         assert n >= 0, "Poly.pow requires n >= 0"
         if k < 0: return self.inv(n).pow(-k, n)
-        var out = Poly<T>.one.truncated(n)
-        var base = self.truncated(n)
-        var e = k
-        while e > 0:
-            if e % 2 == 1: out = (out * base).truncated(n)
-            base = (base * base).truncated(n)
-            e /= 2
-        out
+        let m = algebra.Monoid(Poly<T>.one.truncated(n), (a, b) => (a * b).truncated(n))
+        algebra.pow(self.truncated(n), k, op: m)
 
     /// The formal square root mod `x^n`, or `None`, as the free `sqrt`.
     ///
@@ -1570,3 +1565,16 @@ fn binomial_transform_matches_the_sum_and_inverts():
         assert b[i] == want
     assert binomial_transform(b, inverse: true) == a
     assert binomial_transform(binomial_transform(a, inverse: true)) == a
+
+@test
+fn poly_pow_matches_repeated_products():
+    type Z = Mod<998_244_353>
+    let a = Poly<Z>([1, 3, 2, 5])
+    let n = 6
+    var brute = Poly<Z>.one.truncated(n)
+    for k in 0..7:
+        let p = a.pow(k, n)
+        for i in 0..n: assert p.at(i) == brute.at(i)
+        brute = (brute * a).truncated(n)
+    let q = (a.pow(-2, n) * a.pow(2, n)).truncated(n)
+    for i in 0..n: assert q.at(i) == (if i == 0: Z(1) else: Z(0))
