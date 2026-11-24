@@ -3196,7 +3196,26 @@ impl<'a> Checker<'a> {
             Ty::Named { name, args } if name == "Rebased" && args.len() == 1 => {
                 self.element_ty(&args[0])
             }
-            Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
+            Ty::Named { name, args } if name == "List" && args.len() == 1 => {
+                // `List(a)` keeps `a`'s elements, not its keys: it is indexed by `Int` (R04a.8.1).
+                if let ([Ty::Pos(_)], [index]) = (index_tys.as_slice(), indices) {
+                    let message = format!(
+                        "`{}` is indexed by `Int`, but `{}` is {}",
+                        self.quote(base.span),
+                        self.quote(index.span),
+                        index_tys[0].with_article()
+                    );
+                    let help = format!(
+                        "a `List` is indexed by number: write `{}[Int({})]`",
+                        self.quote(base.span),
+                        self.quote(index.span)
+                    );
+                    if let Some(diag) = self.error(codes::WRONG_DOMAIN, index.span, message) {
+                        diag.help = Some(help);
+                    }
+                }
+                args[0].clone()
+            }
             Ty::Named { name, .. } if matches!(name.as_str(), "Filter" | "Rev") => {
                 let message = format!(
                     "`{}` has type `{base_ty}`, which is not indexed",
