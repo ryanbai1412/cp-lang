@@ -287,7 +287,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             } else {
                 format!("`{}`", d.module)
             };
-            let mut diag = Diagnostic::warning(d.lint.code, span, format!("write `{fix}`"))
+            let mut diag = cpl_diag::msgs::lint_rules::LIBRARY_LINT_FIX
+                .warning_as(d.lint.code, span, &[&fix])
                 .with_help(format!(
                     "{from} declares this lint with `@lint` on `{}`",
                     d.decl.fn_name

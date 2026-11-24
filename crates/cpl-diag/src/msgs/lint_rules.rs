@@ -121,4 +121,5 @@ super::msgs! {
     UNWRAP_ON_POSSIBLY_EMPTY = "L0305", "the declared bounds let `{}` be empty, and then `{}` traps";
     VAR_NEVER_REASSIGNED = "L0201", "{} {} declared `var` but never changed";
     WHILE_NOT_EMPTY_POP = "L0591", "`{}` is tested for empty, then `{}.{}()!` unwraps";
+    LIBRARY_LINT_FIX = BAD_LIBRARY_LINT, "write `{}`";
 }

@@ -125,6 +125,12 @@ impl Msg {
         Diagnostic::warning(self.code(), span, self.say(args))
     }
 
+    /// The row as a warning under `code`: for a lint a library declares
+    /// with `@lint`, whose code is its own name.
+    pub fn warning_as(&self, code: Code, span: Span, args: &[&dyn Display]) -> Diagnostic {
+        Diagnostic::warning(code, span, self.say(args))
+    }
+
     /// The row said with `args`, for a crate's own funnel to report.
     pub fn at(&self, args: &[&dyn Display]) -> Said {
         Said {
@@ -149,6 +155,14 @@ impl Said {
 
     pub fn text(self) -> String {
         self.text
+    }
+
+    pub fn error(self, span: Span) -> Diagnostic {
+        Diagnostic::error(self.code, span, self.text)
+    }
+
+    pub fn warning(self, span: Span) -> Diagnostic {
+        Diagnostic::warning(self.code, span, self.text)
     }
 }
 
