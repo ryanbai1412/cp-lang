@@ -5,7 +5,7 @@
 //   chosen one's value, the first takes the last's) leaves s regular, modulo 998244353.
 // Solution: one scan with the prefix balance pref and the counts ways_open / ways_close of
 //   chosen prefixes ending in '(' / ')' that a later ')' can still end. A subsequence ending
-//   at '(' is always valid (2^i of them); ending at ')' gives 1 + ways_open + ways_close valid
+//   at '(' is always valid (2^i of them, kept as a running power); ending at ')' gives 1 + ways_open + ways_close valid
 //   ones, which also join ways_close. Once pref < 2 no pending prefix ending in '(' can take a
 //   later ')', so ways_open resets to 0. O(n).
 // Bounds: n: 2..=300_000
@@ -18,10 +18,11 @@ let n: 2..=300_000 = read()
 let s: [0..n]Char = read()
 
 var (ways_open, ways_close, ans): (Z, Z, Z) = (0, 0, 0)
+var ends_at_open: Z = 1  // 2^i
 var pref = 0
-for (i, c) in s.items:
+for c in s:
     if c == '(':
-        ans += Z(2) ** i
+        ans += ends_at_open
         ways_open += ways_open + ways_close + 1
         pref += 1
     else:
@@ -30,4 +31,5 @@ for (i, c) in s.items:
         ways_close += add
         pref -= 1
     if pref < 2: ways_open = 0
+    ends_at_open *= 2
 print(ans)
