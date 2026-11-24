@@ -740,6 +740,24 @@ impl Database {
                         scope.imports.remove(sym);
                     }
                 }
+                for (module, name) in crate::prelude::names() {
+                    if !scope.imports.contains_key(&name.text) {
+                        continue;
+                    }
+                    for &sym in crate::prelude::companions(&name.text) {
+                        if declared.contains(sym) || scope.imports.contains_key(sym) {
+                            continue;
+                        }
+                        let (mods_before, hits_before) = (scope.modules.len(), self.cycle_hits);
+                        let (diags, cycled) =
+                            self.prelude_import(path, module, &bare(sym), &mut scope);
+                        if cycled || !diags.is_empty() {
+                            self.cycle_hits = hits_before;
+                            scope.modules.truncate(mods_before);
+                            scope.imports.remove(sym);
+                        }
+                    }
+                }
             }
         }
         let mut inline_mod_diags: Vec<Diagnostic> = Vec::new();

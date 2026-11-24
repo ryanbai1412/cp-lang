@@ -534,16 +534,69 @@ pub fn renamed(name: &str) -> Option<&'static str> {
 }
 
 /// Internal shape specializations brought in from a stdlib module when a
-/// file uses the unified family name (`prefix`, `Prefix`, `Diff`), without
-/// spending prelude slots or exposing internal names to users.
-pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
-    ("gen", "strings", "_gen_str"),
-    ("prefix", "prefix", "FillPrefix"),
-    ("prefix", "prefix", "FillOrder"),
-    ("Prefix", "prefix", "FillPrefix"),
-    ("Prefix", "prefix", "FillOrder"),
-    ("FillPrefix", "prefix", "FillOrder"),
-];
+/// file uses a word, without spending prelude slots or exposing internal
+/// names to users.
+pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[("gen", "strings", "_gen_str")];
+
+/// The types a prelude type's public signatures name from its own std
+/// module, followed through theirs: `Prefix.filling(order: FillOrder) ->
+/// FillPrefix` gives `FillPrefix` and `FillOrder`. A program that gets the
+/// type gets these with it, so what its methods take and return can be named.
+pub fn companions(name: &str) -> &'static [&'static str] {
+    static ALL: OnceLock<crate::fx::HashMap<&'static str, Vec<&'static str>>> = OnceLock::new();
+    let all = ALL.get_or_init(|| {
+        let mut all = crate::fx::HashMap::default();
+        for (module, ty) in names() {
+            if !ty.text.starts_with(char::is_uppercase) || module.len() < 2 {
+                continue;
+            }
+            let module: Vec<&str> = module[1..].iter().map(|n| n.text.as_str()).collect();
+            let Some(&(_, text)) = crate::modules::std_index()
+                .iter()
+                .find(|(m, _)| *m == module.join("/"))
+            else {
+                continue;
+            };
+            let found = signature_types(text, &ty.text);
+            all.insert(&*Box::leak(ty.text.clone().into_boxed_str()), found);
+        }
+        all
+    });
+    all.get(name).map_or(&[], |v| v.as_slice())
+}
+
+fn signature_types(text: &'static str, ty: &str) -> Vec<&'static str> {
+    let word = |s: &'static str| s.split(|c: char| !c.is_alphanumeric() && c != '_').next();
+    let types: Vec<&str> = text
+        .lines()
+        .filter_map(|l| {
+            ["pub struct ", "pub enum "]
+                .iter()
+                .find_map(|k| l.strip_prefix(k))
+        })
+        .filter_map(word)
+        .collect();
+    let mut found: Vec<&'static str> = vec![];
+    let mut todo = vec![ty.to_string()];
+    while let Some(of) = todo.pop() {
+        let mut inside = false;
+        for line in text.lines() {
+            if !line.starts_with(char::is_whitespace) && !line.is_empty() {
+                inside = line.strip_prefix("pub struct ").and_then(word) == Some(of.as_str());
+            } else if inside && line.trim_start().starts_with("pub fn ") {
+                for id in line.split(|c: char| !c.is_alphanumeric() && c != '_') {
+                    if let Some(&t) = types.iter().find(|&&t| t == id) {
+                        if t != ty && !found.contains(&t) {
+                            found.push(t);
+                            todo.push(t.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    found
+}
 
 /// The std module and struct of each shape specialization a family name
 /// stands for, as `Prefix<T>` for `_PrefixList<T>`.
