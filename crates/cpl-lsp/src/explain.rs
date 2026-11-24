@@ -44,12 +44,31 @@ pub fn storage_section(db: &mut cpl_check::Database, path: &str) -> String {
     }
     if let Some((bytes, grows)) = total {
         out += &format!("  peak {}", cpl_check::human_bytes(bytes));
+        out += &judge_limit(db, path, bytes);
         if !grows.is_empty() {
             out += &format!(", not counting {}", grows.join(", "));
         }
         out += "\n";
     }
     out
+}
+
+/// How a peak compares with the memory limit of the judge the build is
+/// for, worded as the editor's memory lens words it (Rjudge.7).
+fn judge_limit(db: &cpl_check::Database, path: &str, bytes: u128) -> String {
+    let text = db
+        .file_text(path)
+        .map(|text| text.to_string())
+        .or_else(|| std::fs::read_to_string(path).ok())
+        .unwrap_or_default();
+    let Ok(judge) = cpl_judge::resolve(std::path::Path::new(path), &text, None) else {
+        return String::new();
+    };
+    let (mb, name) = (judge.memory_mb, judge.name);
+    match bytes > u128::from(mb) << 20 {
+        true => format!(", over the {mb} MB limit on {name}"),
+        false => format!(" of {mb} MB on {name}"),
+    }
 }
 
 /// One value's bytes: per element and at most for an array, then where an

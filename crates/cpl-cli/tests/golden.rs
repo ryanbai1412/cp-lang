@@ -776,6 +776,19 @@ fn explain_a_file_names_the_sections_not_shown_yet() {
     }
 }
 
+/// The peak is reported against the memory limit of the file's judge
+/// (spec/tools/judge-profiles.md, Rjudge.7).
+#[test]
+fn explain_reports_a_peak_over_the_judges_memory_limit() {
+    let dir = scratch("explain_over_limit");
+    let small = "[judge.small]\nextends = \"generic\"\nmemory_mb = 1\n";
+    std::fs::write(dir.join("cp.toml"), small).unwrap();
+    let src = "// judge: small\nvar a: [0..1000000]Int = 0\na[5] = 1\nprint(a[5])\n";
+    std::fs::write(dir.join("m.cp"), src).unwrap();
+    let out = text(&cpl(&dir, &["explain", "m.cp"]).stdout);
+    assert!(out.contains(", over the 1 MB limit on small\n"), "{out}");
+}
+
 /// A file's explanation opens with each top-level value's bytes: per
 /// element and at the input bounds for an array, the niche of an optional,
 /// field offsets and padding, and the peak the fixed-size ones take; the
@@ -798,7 +811,7 @@ fn explain_a_file_shows_each_values_storage() {
              \x20 a   [V](Int, 0..=9)  16 bytes per element x 1000 = 16 KB, fields @0 @8, 7 bytes padding\n\
              \x20 o   ?V               2 bytes, None is a spare value (no flag)\n\
              \x20 xs  [n]Int           8 bytes per element, no bound on the count\n\
-             \x20 peak 16 KB, not counting xs\n"
+             \x20 peak 16 KB of 256 MB on generic, not counting xs\n"
         ),
         "{}",
         text(&out.stdout)
