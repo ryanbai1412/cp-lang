@@ -1497,10 +1497,6 @@ pub(crate) fn path_of_uri(uri: &str) -> Option<String> {
         .then(|| cpl_check::file_path(uri))
 }
 
-/// The run, stress and trace lenses of the file at `path`, each a title and
-/// the `cpl` arguments it runs: the same samples VS Code finds (`i1` beside
-/// the file, `<stem>.tests/*.in`, `<stem>.samples/*.in`), the first of them
-/// run and traced, and stress when the file has a brute, checker or interactor.
 fn lens_json(line: u32, title: String, command: &str, args: Vec<Value>) -> Value {
     let at = position_json(LineCol { line, col: 0 });
     obj([
@@ -1544,43 +1540,18 @@ fn replay_lenses(text: &str) -> Vec<(u32, String)> {
 
 /// Each lens's 0-based line, title and `cpl` arguments: Run, Run on all,
 /// Trace, Test and Stress above the file, and a Stress lens above each fn
-/// `cpl stress` judges by.
+/// `cpl stress` judges by. The samples and cases are the ones `cpl run
+/// --samples` and `cpl test` find (`cpl_contest::problem`, commands/R15).
 fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
     let file = std::path::Path::new(path);
-    let (Some(folder), Some(stem)) = (file.parent(), file.file_stem().and_then(|s| s.to_str()))
-    else {
+    if file.parent().is_none() || file.file_stem().is_none() {
         return Vec::new();
-    };
-    let names = |dir: &std::path::Path| -> Vec<String> {
-        let mut names: Vec<String> = std::fs::read_dir(dir)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
-            .filter_map(|e| e.file_name().into_string().ok())
-            .collect();
-        names.sort_by_key(|n| {
-            let digits: String = n.chars().filter(char::is_ascii_digit).collect();
-            (digits.parse::<u64>().unwrap_or(u64::MAX), n.clone())
-        });
-        names
-    };
-    let mut samples: Vec<(String, String)> = names(folder)
-        .into_iter()
-        .filter(|n| n.len() > 1 && n.starts_with('i') && n[1..].bytes().all(|b| b.is_ascii_digit()))
-        .map(|n| (n.clone(), folder.join(&n).display().to_string()))
-        .collect();
-    for dir in [format!("{stem}.tests"), format!("{stem}.samples")] {
-        let dir = folder.join(dir);
-        for n in names(&dir) {
-            if let Some(base) = n.strip_suffix(".in") {
-                samples.push((base.to_string(), dir.join(&n).display().to_string()));
-            }
-        }
     }
-    let has_tests = names(&folder.join(format!("{stem}.tests")))
-        .iter()
-        .any(|n| n.ends_with(".in"));
+    let samples: Vec<(String, String)> = cpl_contest::problem::samples(file)
+        .into_iter()
+        .map(|case| (case.name, case.input.display().to_string()))
+        .collect();
+    let has_tests = !cpl_contest::problem::cases(file).is_empty();
     let mut lenses = Vec::new();
     let with_input = |title: &str, mut args: Vec<String>| match samples.first() {
         Some((label, input)) => {

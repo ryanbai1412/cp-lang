@@ -114,7 +114,7 @@ that check them.
 | Exit codes and `--json` output | `spec/tools/cli.md` | editors, site, CI scripts |
 | `cpl_cli::{run, run_with_input, exec}`: every command is `fn(args, stdout, stderr) -> u8` and never exits the process | `crates/cpl-cli/src/lib.rs` | `crates/cpl-wasm`, end-to-end tests of every domain |
 | `cpl_lsp::Server`, its transport, and `cpl_lsp::fix::document` (the one fix-all path) | `crates/cpl-lsp/src/` | `cpl lsp`, `crates/cpl-wasm`, every editor package |
-| `cpl_contest::problem` (`find_tests_dir`, `find_checker`, samples) | `crates/cpl-contest/src/problem.rs` | `cpl run`, `cpl stress`, `cpl test`, the editors' test panels |
+| `cpl_contest::problem` (`find_tests_dir`, `find_checker`, samples) | `crates/cpl-contest/src/problem.rs` | `cpl run`, `cpl stress`, `cpl test`, the editors' test panels, the language server's lenses |
 | `cpl_doc::{extract, json}` | `crates/cpl-doc/src/lib.rs` | site's std reference |
 | `cpl_json` (objects print in key order) | `crates/cpl-json/src/lib.rs` | most crates |
 
@@ -167,7 +167,7 @@ their front ends.
 | Companion import lands title, URL, limits, judge and samples | fields kept from a Companion problem | hand-written suite | `crates/cpl-contest/src/tests.rs`, `crates/cpl-cli/tests/golden.rs` (`new_creates_the_solution_and_its_tests_folder`) |
 | A whole contest imports as one folder | problems and samples kept from a contest page | hand-written suite | `crates/cpl-cli/tests/golden.rs` (`fetch_writes_a_pages_samples_and_keeps_other_tests`) |
 | Editors import like the CLI | editors with an import action calling `cpl new --listen` | hand-written suite | `editors/vscode/test/unit/`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
-| The user's own layout and template work | layouts `cpl test`, `run` and the editors find the cases in (`a.tests/`, sibling `tests/`) | differential against `crates/cpl-contest` (`find_tests_dir`); rule `commands/R15` | `crates/cpl-contest/src/tests.rs`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt`; VS Code test panel and lenses: `missing` |
+| The user's own layout and template work | layouts `cpl test`, `run` and the editors find the cases in (`a.tests/`, sibling `tests/`) | differential against `crates/cpl-contest` (`find_tests_dir`); rule `commands/R15` | `crates/cpl-cli/tests/golden.rs` (`new_lays_out_a_project_by_its_template_and_the_tools_find_it`), `crates/cpl-lsp/src/tests/lenses.rs` (`lenses_run_the_cases_cpl_test_finds_in_each_layout`, the VS Code lenses), `crates/cpl-contest/src/tests.rs`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
 
 ### Writing and revising in the editor (J2, J5)
 

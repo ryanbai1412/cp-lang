@@ -94,6 +94,7 @@
     "cpl-lint -> cpl-syntax",
     "cpl-lsp -> cpl-check",
     "cpl-lsp -> cpl-config",
+    "cpl-lsp -> cpl-contest",
     "cpl-lsp -> cpl-diag",
     "cpl-lsp -> cpl-doc",
     "cpl-lsp -> cpl-fmt",
@@ -161,7 +162,7 @@
     "spec": 0,
     "stdlib": 7,
     "tech-debt": 0,
-    "tools": 10
+    "tools": 9
   },
   "written_twice": 0,
   "lint_type_syntax": 9,

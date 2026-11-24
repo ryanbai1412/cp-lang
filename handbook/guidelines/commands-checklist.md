@@ -151,7 +151,8 @@ replaying every corpus solution, each measure a ratchet that only goes up.
 - Reason: a test panel that lists other cases than the terminal is not
   trusted.
 - Example: numbered cases by number, then the rest by name.
-- Enforced by: `editors/vscode/test/unit/results.test.ts`,
+- Enforced by: `crates/cpl-lsp/src/tests/lenses.rs` (the lenses VS Code
+  draws),
   `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt`.
 
 ## Changes

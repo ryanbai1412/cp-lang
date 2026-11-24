@@ -115,7 +115,7 @@ signature model below does not exist yet.
 | Quick fix for one diagnostic | `cpl_ir::fix::checked_fix` on the server's own database | | code action | code action | `crates/cpl-lsp/tests/fixtures/fixes.cp` |
 | Run and trace | `cpl_cli::run`, `cpl run --trace` | `cpl run` | lenses, trace view | Run, Trace | `crates/cpl-wasm/tests/parity.rs` |
 | Storage and costs | the compiler's representation query | `cpl explain` | hover | explain | `crates/cpl-lsp/tests/explain_hover.rs` |
-| Cases of a problem | `cpl_contest::problem::find_tests_dir` | `cpl test` | test panels | | `editors/vscode/test/unit/results.test.ts`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
+| Cases of a problem | `cpl_contest::problem::find_tests_dir` | `cpl test` | test panels, lenses | | `crates/cpl-lsp/src/tests/lenses.rs`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
 
 A new job gets a row here and a parity test before a second caller uses it
 (`handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job`).

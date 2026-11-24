@@ -220,6 +220,91 @@ fn new_creates_the_solution_and_its_tests_folder() {
 }
 
 #[test]
+fn new_lays_out_a_project_by_its_template_and_the_tools_find_it() {
+    // commands/R15: a cp.toml project with its own template.cp, a problem
+    // made a folder down, and a corpus-style sibling `tests/` beside it.
+    let dir = scratch("new-template");
+    std::fs::write(dir.join("cp.toml"), "[limits]\ntime_ms = 4000\n").unwrap();
+    let template = "let n: 1..=10 = read()\nprint(n * 2)\n";
+    std::fs::write(dir.join("template.cp"), template).unwrap();
+    let round = dir.join("round1");
+    std::fs::create_dir_all(round.join("tests")).unwrap();
+    let out = cpl(&round, &["new", "a", "--json"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "{\"path\":\"a.cp\",\"created\":true,\"tests\":\"a.tests\",\"sample_count\":0}\n"
+    );
+    let mut layout = Vec::new();
+    let mut stack = vec![dir.clone()];
+    while let Some(d) = stack.pop() {
+        for entry in std::fs::read_dir(&d).unwrap().flatten() {
+            let path = entry.path();
+            let rel = path
+                .strip_prefix(&dir)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/");
+            if path.is_dir() {
+                stack.push(path);
+                layout.push(format!("{rel}/"));
+            } else {
+                layout.push(rel);
+            }
+        }
+    }
+    layout.sort();
+    assert_eq!(
+        layout,
+        [
+            "cp.toml",
+            "round1/",
+            "round1/a.cp",
+            "round1/a.tests/",
+            "round1/tests/",
+            "template.cp"
+        ]
+    );
+    assert_eq!(
+        std::fs::read_to_string(round.join("a.cp")).unwrap(),
+        template
+    );
+    for (case, input, output) in [("a.tests/1", "3\n", "6\n"), ("tests/1", "4\n", "9\n")] {
+        std::fs::write(round.join(format!("{case}.in")), input).unwrap();
+        std::fs::write(round.join(format!("{case}.out")), output).unwrap();
+    }
+    let test = cpl(&round, &["test", "a.cp"]);
+    assert_eq!(test.status.code(), Some(0), "{}", text(&test.stdout));
+    assert!(
+        text(&test.stdout).ends_with("  1/1 passed\n"),
+        "{}",
+        text(&test.stdout)
+    );
+    let run = cpl(&round, &["run", "a.cp", "--samples"]);
+    assert_eq!(run.status.code(), Some(0), "{}", text(&run.stderr));
+    assert_eq!(
+        text(&run.stdout).split(' ').next(),
+        Some("1:"),
+        "{}",
+        text(&run.stdout)
+    );
+    assert!(
+        text(&run.stdout).contains("passed"),
+        "{}",
+        text(&run.stdout)
+    );
+    // Without `a.tests/`, the sibling `tests/` holds the cases.
+    std::fs::remove_dir_all(round.join("a.tests")).unwrap();
+    let test = cpl(&round, &["test", "a.cp"]);
+    assert_ne!(test.status.code(), Some(0), "{}", text(&test.stdout));
+    assert!(
+        text(&test.stdout).contains("0/1 passed"),
+        "{}",
+        text(&test.stdout)
+    );
+}
+
+#[test]
 fn doc_writes_each_comment_as_json_or_a_site() {
     helps("doc");
     misused(
