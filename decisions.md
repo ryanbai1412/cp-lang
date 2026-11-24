@@ -9014,7 +9014,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Its case counts changed with every new case, so 425 of main's 521 regen commits on 2026-11-23/24 rewrote it, and spec rebases conflicted on it. A count nobody gates on belongs to the run that measured it.
 - **Reverse.** Commit the report again only for content that changes when coverage does (the gaps), never the counts.
 
-## 571. (reserved, content)
+## 571. `AugSortedBag` sits on the `SortedBag` B+tree, with a fold per node beside its weights (stdlib, 2026-11-24; extends 579)
+
+- **Call.** `AugSortedBag<K, T>`, and through it `AugSortedSet`, wraps the `SortedBag<K>` of decision 579 and keeps one list `agg`, indexed by node id, holding each node's fold. A leaf's fold takes `leaf(k)` once per copy, repeated copies folded by doubling; an inner node's fold takes its children's `agg` entries. `add` and `remove` refold the path to the key, plus the path child's neighbours when the edit may split, borrow or merge (a full node on add, a half-empty one on remove). The folds take the slots left of the search path (`fold_lt`, `fold_le`), right of it (`fold_ge`, `fold_gt`), or between the two paths where they fork (`fold_between`), in key order, so `op` still need not commute. The augmented treap is gone, so `std/bag.cp` has one ordered tree. Every public signature and documented cost stays; the costs are now worst case instead of expected. `range(..).len` on every Sorted* walks the path its two bounds share once (`below_diff`) instead of two full rank walks.
+- **Why.** Two ordered trees in one file meant two sets of balancing, cursor and bound code to keep right, and only one got 579's speed-up and stale-cursor trap. A count is the fold of `(Int, +)` with `leaf(k) = 1`, so the tree's per-child weights were already one instance of per-child folds. On the max inputs, cf2066e, the v03 user, goes from 1.28 s to 0.36 s and its C++ from 31,745 B to 27,578 B; ioi09p7, whose loop is `range(..).len`, goes from 1.30 s to 1.12 s.
+- **Reverse.** Put back the treap `AugSortedBag` from before this decision if a monoid whose `op` is expensive shows the \(O(B \log_B n)\) slot folds per `add` costing more than the treap's \(O(\log n)\) `op` calls.
 
 ## 572. The VS Code name tables and grammar are generated at compile time, not committed (infra, 2026-11-24)
 

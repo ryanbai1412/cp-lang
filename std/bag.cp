@@ -346,6 +346,9 @@ pub struct SortedBag<K>:
             return if self.lo_ok(k, lo, lo_inc): k else: None
 
     fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int:
+        if let a = lo:
+            if let b = hi:
+                return self.below_diff(x => if lo_inc: x < a else: not (a < x), x => if hi_inc: not (b < x) else: x < b)
         let cnt_hi = if let b = hi:
             if hi_inc: self.rank_le(b) else: self.rank(b)
         else:
@@ -993,16 +996,30 @@ pub struct SortedBag<K>:
         return if ok(k): s else: -1
 
     // Elements whose key passes monotone `ok` (true, then false).
-    fn below(self, ok: K -> Bool) -> Int:
-        if root < 0: return 0
+    fn below(self, ok: K -> Bool) -> Int = if root < 0: 0 else: self.below_in(root, height, ok)
+
+    // `below` within node `n0` at height `h0`.
+    fn below_in(self, n0: Int, h0: Int, ok: K -> Bool) -> Int:
         var t = 0
-        var n = root
-        for _ in 0..height:
+        var n = n0
+        for _ in 0..h0:
             let i = self.pos(n, 1, ok) - 1
             for j in 0..i: t += ws[n * BAG_B + j]
             n = self.kid(n, i)
         for j in 0..self.pos(n, 0, ok): t += ws[n * BAG_B + j]
         t
+
+    // `below(wide) - below(narrow)` (0 when negative) for monotone `narrow` implying `wide`: one walk
+    // down the shared path, then both walks from where they fork.
+    fn below_diff(self, narrow: K -> Bool, wide: K -> Bool) -> Int:
+        if root < 0: return 0
+        var n = root
+        var h = height
+        while h > 0 and self.pos(n, 1, narrow) == self.pos(n, 1, wide):
+            n = self.kid(n, self.pos(n, 1, wide) - 1)
+            h -= 1
+        let d = self.below_in(n, h, wide) - self.below_in(n, h, narrow)
+        if d > 0: d else: 0
 
     fn ge(self, a: K, inc: Bool) -> Int = self.first_where(k => if inc: not (k < a) else: a < k)
 
@@ -1784,100 +1801,92 @@ pub struct SortedMap<K, V>:
 /// Every fold combines `leaf(k)` over the chosen elements in ascending key order, one `leaf(k)`
 /// per copy, starting from `id`; `op` need not be commutative. An empty selection folds to `id`.
 pub struct AugSortedBag<K, T>:
-    _len: Int
+    bag: SortedBag<K>
     op: (T, T) -> T
     id: T
     leaf: K -> T
-    pub keys: List<K> = []
-    pri: List<Int> = []
-    ls: List<Int> = []
-    rs: List<Int> = []
-    sz: List<Int> = []
+    // The fold of each node's subtree, by node id.
     agg: List<T> = []
-    root: Int = -1
-    seed: Int = 1
-    lo_k: ?K = None
-    hi_k: ?K = None
 
-    fn sub(self, t: Int) -> T = if t < 0: id else: agg[t]
-    fn size(self, t: Int) -> Int = if t < 0: 0 else: sz[t]
+    // `c` copies of `v` folded together, by doubling.
+    fn times(self, v: T, c: Int) -> T:
+        if c == 1: return v
+        var out = id
+        var p = v
+        var k = c
+        while k > 0:
+            if k % 2 == 1: out = op(out, p)
+            k /= 2
+            if k > 0: p = op(p, p)
+        out
 
-    fn pull(mut self, t: Int):
-        sz[t] = self.size(ls[t]) + 1 + self.size(rs[t])
-        agg[t] = op(op(self.sub(ls[t]), leaf(keys[t])), self.sub(rs[t]))
+    // The fold of entry `j` of node `n` at height `h`: a child's fold, or `leaf(k)` per copy.
+    fn part(self, n: Int, h: Int, j: Int) -> T:
+        let s = n * BAG_B + j
+        unchecked:
+            return if h > 0: agg[bag.kid(n, j)] else: self.times(leaf(bag.keys[s]), bag.ws[s])
 
-    // (keys < x, keys >= x)
-    fn split(mut self, t: Int, x: K) -> (Int, Int):
-        if t < 0: return (-1, -1)
-        if keys[t] < x:
-            let (a, b) = self.split(rs[t], x)
-            rs[t] = a
-            self.pull(t)
-            (t, b)
-        else:
-            let (a, b) = self.split(ls[t], x)
-            ls[t] = b
-            self.pull(t)
-            (a, t)
+    fn node_fold(self, n: Int, h: Int) -> T:
+        var acc = id
+        unchecked:
+            for j in 0..bag.fill[n]: acc = op(acc, self.part(n, h, j))
+        acc
 
-    fn merge(mut self, a: Int, b: Int) -> Int:
-        if a < 0: return b
-        if b < 0: return a
-        if pri[a] > pri[b]:
-            rs[a] = self.merge(rs[a], b)
-            self.pull(a)
-            a
-        else:
-            ls[b] = self.merge(a, ls[b])
-            self.pull(b)
-            b
+    fn route(self, n: Int, x: K) -> Int = bag.at(n, 1, x, true) - 1
 
-    fn drop_min(mut self, t: Int) -> Int:
-        if ls[t] < 0: return rs[t]
-        ls[t] = self.drop_min(ls[t])
-        self.pull(t)
-        t
+    // Whether an edit at `x` may split (`grow`) or merge and even out nodes on its path, which
+    // then touches the path's neighbours as well.
+    fn tight(self, x: K, grow: Bool) -> Bool:
+        if bag.root < 0: return false
+        var n = bag.root
+        unchecked:
+            if grow and bag.fill[n] >= BAG_B: return true
+            for _ in 0..bag.height:
+                n = bag.kid(n, self.route(n, x))
+                if (if grow: bag.fill[n] >= BAG_B else: bag.fill[n] <= BAG_B / 4): return true
+        false
 
-    fn extreme(self, right: Bool) -> ?K:
-        var t = root
-        if t < 0: return None
-        while (if right: rs[t] else: ls[t]) >= 0: t = if right: rs[t] else: ls[t]
-        Some(keys[t])
+    // Refold the path to `x` below node `n` at height `h`, with its neighbours when `wide`.
+    fn refold_at(mut self, n: Int, h: Int, x: K, wide: Bool):
+        if h > 0:
+            let i = self.route(n, x)
+            self.refold_at(bag.kid(n, i), h - 1, x, wide)
+            if wide:
+                if i > 0:
+                    let l = bag.kid(n, i - 1)
+                    agg[l] = self.node_fold(l, h - 1)
+                if i + 1 < bag.fill[n]:
+                    let r = bag.kid(n, i + 1)
+                    agg[r] = self.node_fold(r, h - 1)
+        agg[n] = self.node_fold(n, h)
 
-    fn rank_le(self, k: K) -> Int:
-        var (t, n) = (root, 0)
-        while t >= 0:
-            if keys[t] <= k:
-                n += self.size(ls[t]) + 1
-                t = rs[t]
-            else: t = ls[t]
-        n
+    fn refold(mut self, x: K, wide: Bool):
+        while agg.len < bag.fill.len: agg.push(id)
+        if bag.root >= 0: self.refold_at(bag.root, bag.height, x, wide)
 
-    fn fold_from(self, start: Int, lo: K, strict: Bool) -> T:
-        var t = start
-        while t >= 0 and not (keys[t] > lo or (not strict and keys[t] == lo)): t = rs[t]
-        if t < 0: return id
-        var res = op(leaf(keys[t]), self.sub(rs[t]))
-        t = ls[t]
-        while t >= 0:
-            if keys[t] > lo or (not strict and keys[t] == lo):
-                res = op(op(leaf(keys[t]), self.sub(rs[t])), res)
-                t = ls[t]
-            else: t = rs[t]
-        res
+    // The fold of the keys `< x` (`<= x` with `le`) under node `n0` at height `h0`.
+    fn prefix(self, n0: Int, h0: Int, x: K, le: Bool) -> T:
+        var acc = id
+        var n = n0
+        unchecked:
+            for h in (1..=h0).rev:
+                let i = self.route(n, x)
+                for j in 0..i: acc = op(acc, self.part(n, h, j))
+                n = bag.kid(n, i)
+            for j in 0..bag.at(n, 0, x, le): acc = op(acc, self.part(n, 0, j))
+        acc
 
-    fn fold_upto(self, start: Int, hi: K, strict: Bool) -> T:
-        var t = start
-        while t >= 0 and not (keys[t] < hi or (not strict and keys[t] == hi)): t = ls[t]
-        if t < 0: return id
-        var res = op(self.sub(ls[t]), leaf(keys[t]))
-        t = rs[t]
-        while t >= 0:
-            if keys[t] < hi or (not strict and keys[t] == hi):
-                res = op(res, op(self.sub(ls[t]), leaf(keys[t])))
-                t = rs[t]
-            else: t = ls[t]
-        res
+    // The fold of the keys `>= x` (`> x` with `gt`) under node `n0` at height `h0`.
+    fn suffix(self, n0: Int, h0: Int, x: K, gt: Bool) -> T:
+        var acc = id
+        var n = n0
+        unchecked:
+            for h in (1..=h0).rev:
+                let i = self.route(n, x)
+                for j in (i + 1..bag.fill[n]).rev: acc = op(self.part(n, h, j), acc)
+                n = bag.kid(n, i)
+            for j in (bag.at(n, 0, x, gt)..bag.fill[n]).rev: acc = op(self.part(n, 0, j), acc)
+        acc
 
     /// Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
     ///
@@ -1888,7 +1897,7 @@ pub struct AugSortedBag<K, T>:
         op: (T, T) -> T,
         id: T,
         leaf: K -> T,
-    ) -> AugSortedBag<K, T> = AugSortedBag<K, T>(_len: 0, op:, id:, leaf:)
+    ) -> AugSortedBag<K, T> = AugSortedBag<K, T>(bag: SortedBag<K>.new(), op:, id:, leaf:)
 
     /// Preallocate treap node pool for at least `cap` elements.
     ///
@@ -1897,26 +1906,21 @@ pub struct AugSortedBag<K, T>:
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.reserve(100); b.len == 0`
     pub fn reserve(mut self, cap: Int):
         assert cap >= 0
-        keys.reserve(cap)
-        pri.reserve(cap)
-        ls.reserve(cap)
-        rs.reserve(cap)
-        sz.reserve(cap)
-        agg.reserve(cap)
+        bag.reserve(cap)
 
     /// Total number of elements (with multiplicity).
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.len == 2`
-    @get pub fn len(self) -> Int = _len
+    @get pub fn len(self) -> Int = bag.len
 
     /// Whether the bag is empty.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.is_empty`
-    @get pub fn is_empty(self) -> Bool = _len == 0
+    @get pub fn is_empty(self) -> Bool = bag.is_empty
 
     /// Fold of all elements in the bag.
     ///
@@ -1924,7 +1928,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.all == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.all == 7`
-    @get pub fn all(self) -> T = self.sub(root)
+    @get pub fn all(self) -> T = if bag.root < 0: id else: agg[bag.root]
 
     /// Insert one copy of `x`.
     ///
@@ -1932,19 +1936,9 @@ pub struct AugSortedBag<K, T>:
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.count(3) == 2`
     pub fn add(mut self, x: K):
-        seed = (seed * 1103515245 + 12345) % 2147483648
-        keys.push(x)
-        pri.push(seed)
-        ls.push(-1)
-        rs.push(-1)
-        sz.push(1)
-        agg.push(leaf(x))
-        let (a, b) = self.split(root, x)
-        let m = self.merge(a, keys.len - 1)
-        root = self.merge(m, b)
-        _len += 1
-        if lo_k == None or x < lo_k!: lo_k = Some(x)
-        if hi_k == None or hi_k! < x: hi_k = Some(x)
+        let wide = self.tight(x, true)
+        let _ = bag.add(x)
+        self.refold(x, wide)
 
     /// Remove one copy of `x`; returns false if absent.
     ///
@@ -1952,13 +1946,9 @@ pub struct AugSortedBag<K, T>:
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.remove(3) and b.all == 4 and not b.remove(2)`
     pub fn remove(mut self, x: K) -> Bool:
-        if self.count(x) == 0: return false
-        let (a, b) = self.split(root, x)
-        let c = self.drop_min(b)
-        root = self.merge(a, c)
-        _len -= 1
-        lo_k = self.extreme(false)
-        hi_k = self.extreme(true)
+        let wide = self.tight(x, false)
+        if not bag.remove(x): return false
+        self.refold(x, wide)
         true
 
     /// Multiplicity of `x`.
@@ -1966,7 +1956,7 @@ pub struct AugSortedBag<K, T>:
     /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.count(3) == 2 and b.count(1) == 0`
-    pub fn count(self, x: K) -> Int = self.rank_le(x) - self.rank(x)
+    pub fn count(self, x: K) -> Int = bag.count(x)
 
     /// Number of elements strictly less than `k`.
     ///
@@ -1974,14 +1964,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.rank(3) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.rank(3) == 1`
-    pub fn rank(self, k: K) -> Int:
-        var (t, n) = (root, 0)
-        while t >= 0:
-            if keys[t] < k:
-                n += self.size(ls[t]) + 1
-                t = rs[t]
-            else: t = ls[t]
-        n
+    pub fn rank(self, k: K) -> Int = bag.rank(k)
 
     /// The `i`-th smallest element (0-based), or `None`.
     ///
@@ -1991,17 +1974,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.nth(0) == None`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.nth(2) == Some(3) and b.nth(3) == None`
-    pub fn nth(self, i: Int) -> ?K:
-        if i < 0 or i >= _len: return None
-        var (t, j) = (root, i)
-        while true:
-            let l = self.size(ls[t])
-            if j < l: t = ls[t]
-            elif j == l: return Some(keys[t])
-            else:
-                j -= l + 1
-                t = rs[t]
-        None
+    pub fn nth(self, i: Int) -> ?K = bag.nth(i)
 
     /// Smallest element, or `None`. \(O(1)\), kept current by every update.
     ///
@@ -2010,7 +1983,7 @@ pub struct AugSortedBag<K, T>:
     /// ties: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(1); b.first == Some(1)`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.first == Some(1)`
-    @get pub fn first(self) -> ?K = lo_k
+    @get pub fn first(self) -> ?K = bag.first
 
     /// Largest element, or `None`. \(O(1)\), kept current by every update.
     ///
@@ -2019,7 +1992,7 @@ pub struct AugSortedBag<K, T>:
     /// ties: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.last == Some(3)`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.last == Some(3)`
-    @get pub fn last(self) -> ?K = hi_k
+    @get pub fn last(self) -> ?K = bag.last
 
     /// Fold elements with key `< hi`.
     ///
@@ -2027,7 +2000,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.fold_lt(5) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_lt(3) == 1`
-    pub fn fold_lt(self, hi: K) -> T = self.fold_upto(root, hi, true)
+    pub fn fold_lt(self, hi: K) -> T = if bag.root < 0: id else: self.prefix(bag.root, bag.height, hi, false)
 
     /// Fold elements with key `<= hi`.
     ///
@@ -2035,7 +2008,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.fold_le(5) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_le(3) == 7`
-    pub fn fold_le(self, hi: K) -> T = self.fold_upto(root, hi, false)
+    pub fn fold_le(self, hi: K) -> T = if bag.root < 0: id else: self.prefix(bag.root, bag.height, hi, true)
 
     /// Fold elements with key `>= lo`.
     ///
@@ -2043,7 +2016,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.fold_ge(0) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_ge(2) == 6`
-    pub fn fold_ge(self, lo: K) -> T = self.fold_from(root, lo, false)
+    pub fn fold_ge(self, lo: K) -> T = if bag.root < 0: id else: self.suffix(bag.root, bag.height, lo, false)
 
     /// Fold elements with key `> lo`.
     ///
@@ -2051,7 +2024,7 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.fold_gt(0) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_gt(1) == 6 and b.fold_gt(3) == 0`
-    pub fn fold_gt(self, lo: K) -> T = self.fold_from(root, lo, true)
+    pub fn fold_gt(self, lo: K) -> T = if bag.root < 0: id else: self.suffix(bag.root, bag.height, lo, true)
 
     /// Fold the elements with key in `keys`, in ascending key order, one `leaf(k)` per copy;
     /// the one fold for any ordered range (`a..b`, `a..=b`, `..b`, `a..`), as `range(r)` is on
@@ -2074,12 +2047,22 @@ pub struct AugSortedBag<K, T>:
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_between(1, 3) == 1 and b.fold_between(2, 4) == 6`
     pub fn fold_between(self, lo: K, hi: K) -> T:
-        if not (lo < hi): return id
-        var t = root
-        while t >= 0 and not (lo <= keys[t] and keys[t] < hi):
-            t = if keys[t] < lo: rs[t] else: ls[t]
-        if t < 0: return id
-        op(op(self.fold_from(ls[t], lo, false), leaf(keys[t])), self.fold_upto(rs[t], hi, true))
+        if bag.root < 0 or not (lo < hi): return id
+        var n = bag.root
+        var h = bag.height
+        unchecked:
+            while h > 0:
+                let i = self.route(n, lo)
+                let j = self.route(n, hi)
+                if i != j:
+                    var acc = self.suffix(bag.kid(n, i), h - 1, lo, false)
+                    for k in i + 1..j: acc = op(acc, self.part(n, h, k))
+                    return op(acc, self.prefix(bag.kid(n, j), h - 1, hi, false))
+                n = bag.kid(n, i)
+                h -= 1
+            var acc = id
+            for k in bag.at(n, 0, lo, false)..bag.at(n, 0, hi, false): acc = op(acc, self.part(n, 0, k))
+            return acc
 
     /// Yield all elements in ascending order.
     ///
@@ -2089,21 +2072,9 @@ pub struct AugSortedBag<K, T>:
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.each().collect() == [1, 3, 3]`
     pub fn each(self) -> yields K:
-        var stack: List<Int> = []
-        var t = root
-        while t >= 0 or stack.len > 0:
-            while t >= 0:
-                stack.push(t)
-                t = ls[t]
-            let u = stack.pop()!
-            yield keys[u]
-            t = rs[u]
+        for (k, c) in bag.entries():
+            for _ in 0..c: yield k
 
-/// Monoid-augmented ordered unique set maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
-/// Covers dynamic range sums and consecutive-gap monoids (`cf2066e`) in \(O(\log n)\).
-///
-/// Every fold combines `leaf(k)` over the chosen keys in ascending order, starting from `id`;
-/// `op` need not be commutative. An empty selection folds to `id`.
 pub struct AugSortedSet<K, T>:
     _len: Int
     bag: AugSortedBag<K, T>
@@ -2662,6 +2633,11 @@ fn check_bag_against_counts(b: SortedBag<Int>, cnt: List<Int>):
             assert b.first_true(v => v >= x) == plain.find(v => v >= x)
             assert b.last_true(v => v < x) == plain.rfind(v => v < x)
             assert b.range(x..x + 40).len == plain.count(v => x <= v < x + 40)
+            for w in (if x % 49 == 0: [0, 1, 3, 700] else: []):
+                let y = x + w
+                assert b.range(x..=y).len == plain.count(v => x <= v <= y)
+                assert b.range(y..x).len == plain.count(v => y <= v < x)
+                assert b.range(x..y).len == plain.count(v => x <= v < y)
         if x < cnt.len:
             assert b.count(x) == cnt[x]
             below += cnt[x]
@@ -2892,3 +2868,57 @@ impl Show for BagCursor:
 
 // One copy for every key type: the weights are `Int` whatever `K` is.
 fn slot_sum(ws: List<Int>, a: Int, f: Int) -> Int = sum(ws[a + i] for i in 0..f)
+
+const AFF_MOD = 1_000_003
+
+fn aff(f: (Int, Int), g: (Int, Int)) -> (Int, Int) = (f.0 * g.0 % AFF_MOD, (f.1 * g.0 + g.1) % AFF_MOD)
+
+fn aff_fold(have: List<Int>, ok: Int -> Bool) -> (Int, Int):
+    var acc = (1, 0)
+    for x in have:
+        if ok(x): acc = aff(acc, (x % 7 + 2, x))
+    acc
+
+fn check_aug(b: AugSortedBag<Int, (Int, Int)>, cnt: List<Int>):
+    var have: List<Int> = []
+    for x in 0..cnt.len:
+        for _ in 0..cnt[x]: have.push(x)
+    assert b.len == have.len and b.each().collect() == have
+    assert b.all == aff_fold(have, _ => true)
+    if have.len > 0: assert b.first == Some(have[0]) and b.last == have.last
+    for _ in 0..12:
+        let lo = rand(0, cnt.len)
+        let hi = rand(0, cnt.len)
+        assert b.fold_lt(lo) == aff_fold(have, x => x < lo)
+        assert b.fold_le(lo) == aff_fold(have, x => x <= lo)
+        assert b.fold_ge(lo) == aff_fold(have, x => x >= lo)
+        assert b.fold_gt(lo) == aff_fold(have, x => x > lo)
+        assert b.fold_between(lo, hi) == aff_fold(have, x => lo <= x < hi)
+        assert b.count(lo) == (if lo < cnt.len: cnt[lo] else: 0)
+        assert b.rank(lo) == have.count(x => x < lo)
+        if lo < have.len: assert b.nth(lo) == Some(have[lo])
+
+@test
+fn aug_sorted_bag_folds_stay_right_across_splits_and_merges():
+    let k = 1200
+    var b = AugSortedBag<Int, (Int, Int)>((f, g) => aff(f, g), (1, 0), x => (x % 7 + 2, x))
+    var cnt = [0 for _ in 0..k]
+    for x in 0..k:
+        b.add(x * 7 % k)
+        cnt[x * 7 % k] += 1
+    check_aug(b, cnt)
+    for step in 0..4000:
+        let x = rand(0, k - 1)
+        if rand(0, 2) == 0:
+            b.add(x)
+            cnt[x] += 1
+        else:
+            assert b.remove(x) == (cnt[x] > 0)
+            if cnt[x] > 0: cnt[x] -= 1
+        if step % 800 == 799: check_aug(b, cnt)
+    for x in 0..k:
+        while cnt[x] > 0:
+            assert b.remove(x)
+            cnt[x] -= 1
+        if x % 300 == 0: check_aug(b, cnt)
+    assert b.is_empty and b.all == (1, 0) and b.first == None
