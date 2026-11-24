@@ -35,7 +35,7 @@
  "notes": "bfs over Int states needed hashed storage: searches gain hashed: true, spelled like @memo(map).",
  "dream_stress": {
   "ok": true,
-  "cases": 11,
-  "sha": "61eebcb3ab231171174bad86e3a7158c8627fa8d"
+  "cases": 12,
+  "sha": "a2d7daa16f2f1dc60c0d667a54b83ea331f80fbb"
  }
 }
