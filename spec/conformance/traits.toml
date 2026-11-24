@@ -2138,3 +2138,196 @@ code = """
 print([1, 2, 3, 4].ring.windows(2).len)
 """
 out = "4"
+
+[case."Next/Reweighted/out"]
+code = """
+use std.graph.{Graph}
+domain V = 0..3
+domain E = 0..2
+let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2)]
+let g = Graph.directed(es).weighted(a => 10 * (a.e.ord + 1))
+for a in g.out(V(0)): print(a.to.ord, a.w)
+"""
+out = "1 10\n2 20"
+
+[case."Bidir/Filtered/iter_rev"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for x in a.filter(x => x > 1).rev: print(x)
+"""
+out = "5\n4\n3"
+
+[case."Bidir/Items/iter_rev"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for (k, x) in a.items.rev: print(k, x)
+"""
+out = "4 5\n3 1\n2 4\n1 1\n0 3"
+
+[case."Bidir/Mapped/iter_rev"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for x in a.map(x => x * 2).rev: print(x)
+"""
+out = "10\n2\n8\n2\n6"
+
+[case."Bidir/Rebased/iter_rev"]
+code = """
+let a = [3, 1, 4, 1, 5]
+let r = a[2..].rebase
+for x in r.rev: print(x)
+"""
+out = "5\n1\n4"
+
+[case."Indexed/Items/at"]
+code = """
+let a = [3, 1, 4, 1, 5]
+print(a.items[2].1)
+"""
+out = "4"
+
+[case."Indexed/Items/keys"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for k in a.items.keys: print(k)
+"""
+out = "0\n1\n2\n3\n4"
+
+[case."Indexed/Mapped/at"]
+code = """
+let a = [3, 1, 4, 1, 5]
+print(a.map(x => x * 2)[4])
+"""
+out = "10"
+
+[case."Indexed/Mapped/keys"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for k in a.map(x => x * 2).keys: print(k)
+"""
+out = "0\n1\n2\n3\n4"
+
+[case."Indexed/Rebased/at"]
+code = """
+let a = [3, 1, 4, 1, 5]
+let r = a[2..].rebase
+for k in r.keys: print(r[k])
+"""
+out = "4\n1\n5"
+
+[case."Indexed/Rebased/keys"]
+code = """
+let a = [3, 1, 4, 1, 5]
+let r = a[2..].rebase
+for k in r.keys: print(k)
+"""
+out = "0\n1\n2"
+
+[case."Keyed/Filtered/items"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for (k, x) in a.filter(x => x > 1).items: print(k, x)
+"""
+out = "0 3\n2 4\n4 5"
+
+[case."Keyed/Items/items"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for (k, e) in a.items.items: print(k, e.1)
+"""
+out = "0 3\n1 1\n2 4\n3 1\n4 5"
+
+[case."Keyed/Mapped/items"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for (k, x) in a.map(x => x * 2).items: print(k, x)
+"""
+out = "0 6\n1 2\n2 8\n3 2\n4 10"
+
+[case."Keyed/Rebased/items"]
+code = """
+let a = [3, 1, 4, 1, 5]
+let r = a[2..].rebase
+for (k, x) in r.items: print(k, x)
+"""
+out = "0 4\n1 1\n2 5"
+
+[case."Positional/Items/nth"]
+code = """
+let a = [3, 1, 4, 1, 5]
+print(a.items.nth(2))
+"""
+out = "2 4"
+
+[case."Positional/Mapped/nth"]
+code = """
+let a = [3, 1, 4, 1, 5]
+print(a.map(x => x * 2).nth(2))
+"""
+out = "8"
+
+[case."Positional/Rebased/nth"]
+code = """
+let a = [3, 1, 4, 1, 5]
+let r = a[2..].rebase
+print(r.nth(1))
+"""
+out = "1"
+
+[case."Positional/Rev/nth"]
+code = """
+let a = [3, 1, 4, 1, 5]
+print(a.rev.nth(0), a.rev.nth(4))
+"""
+out = "5 3"
+
+[case."Seq/Filtered/iter"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for x in a.filter(x => x > 1): print(x)
+"""
+out = "3\n4\n5"
+
+[case."Seq/Items/iter"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for (k, x) in a.items: print(k, x)
+"""
+out = "0 3\n1 1\n2 4\n3 1\n4 5"
+
+[case."Seq/Mapped/iter"]
+code = """
+let a = [3, 1, 4, 1, 5]
+for x in a.map(x => x * 2): print(x)
+"""
+out = "6\n2\n8\n2\n10"
+
+[case."Seq/Rebased/iter"]
+code = """
+let a = [3, 1, 4, 1, 5]
+let r = a[2..].rebase
+for x in r: print(x)
+"""
+out = "4\n1\n5"
+
+[case."Sized/Items/len"]
+code = """
+let a = [3, 1, 4, 1, 5]
+print(a.items.len)
+"""
+out = "5"
+
+[case."Sized/Mapped/len"]
+code = """
+let a = [3, 1, 4, 1, 5]
+print(a.map(x => x * 2).len)
+"""
+out = "5"
+
+[case."Sized/Rebased/len"]
+code = """
+let a = [3, 1, 4, 1, 5]
+let r = a[2..].rebase
+print(r.len)
+"""
+out = "3"
