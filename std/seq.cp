@@ -2008,6 +2008,20 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
 
 // --- Reductions, folds, frequencies, and selection ---
 
+/// \(O(n)\). Whether some element equals `x`; `x in s` reads the same. A type with a faster
+/// `contains` of its own (a set, a map, a bag, a hashed or keyed type) declares it, and its
+/// declared member wins.
+///
+/// cost: \(O(n)\) comparisons
+/// empty: `let a: List<Int> = []; (3 in a) == false`
+/// traps: never
+/// example: `(1..=3).map(x => x * x).contains(4)`
+pub fn contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool:
+    for y in self:
+        if y == x: return true
+    false
+
+
 /// \(O(n)\). Seedless left fold returning `None` on empty (never traps).
 ///
 /// cost: \(O(n)\) calls of `f`

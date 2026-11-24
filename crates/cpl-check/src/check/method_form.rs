@@ -243,6 +243,13 @@ impl Checker<'_> {
             .collect();
         let mut beaten = beaten.into_iter();
         fit.retain(|_| !beaten.next().unwrap_or(false));
+        // Of candidates the receiver fits alike, those the argument count fits.
+        if let Some(args) = args.filter(|_| fit.len() > 1) {
+            let given = args.iter().filter(|a| a.name.is_none()).count();
+            if fit.iter().any(|(_, d)| takes_count(d, given)) {
+                fit.retain(|(_, d)| takes_count(d, given));
+            }
+        }
         match fit.len() {
             0 => Pick::NoFit,
             1 => {
@@ -633,7 +640,11 @@ impl Checker<'_> {
             return false;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        let Pick::One(_, def) = self.pick_method(&base_ty, &name.text) else {
+        let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
+            Pick::NoFit => self.pick_method(&base_ty, &name.text),
+            pick => pick,
+        };
+        let Pick::One(_, def) = pick else {
             return false;
         };
         let params = row_params(row.params);
@@ -852,4 +863,18 @@ fn names_param(ty: &Ty) -> bool {
         found.then(|| t.clone())
     });
     found
+}
+
+/// Whether the method `def` takes `given` positional arguments after `self`.
+fn takes_count(def: &Def, given: usize) -> bool {
+    let Def::Fn {
+        ty: Ty::Fn { params, .. },
+        ..
+    } = def
+    else {
+        return false;
+    };
+    let after: Vec<_> = params.iter().skip(1).filter(|p| !p.named_only).collect();
+    let required = after.iter().filter(|p| !p.has_default).count();
+    after.iter().any(|p| p.variadic) || (required <= given && given <= after.len())
 }
