@@ -33,8 +33,15 @@ impl<'a> Lowerer<'a> {
             let Some(arg) = arg.filter(|a| a.mutable == param.mutable) else {
                 continue;
             };
-            // A reversed view is read in its own order, so it becomes a fresh `[V]T`.
-            if self.reordered_view(&arg.value) {
+            // A reversed view is read in its own order, so it becomes a fresh `[V]T`; a `[D]T`
+            // over the fn's own generic `D` takes it as it is (R07.4.7).
+            let own_generic = matches!(
+                self.sigs[id].decl.params.get(at).and_then(|p| p.ty.as_ref()).map(|t| &t.kind),
+                Some(ast::TypeKind::Array { index, .. }) if matches!(index.as_slice(),
+                    [ast::Type { kind: ast::TypeKind::Named { name, args }, .. }]
+                        if args.is_empty() && self.sigs[id].decl.generics.iter().any(|g| g.text == name.text))
+            );
+            if !own_generic && self.reordered_view(&arg.value) {
                 continue;
             }
             let Ty::Array { dims, elem } = &param.ty else {
