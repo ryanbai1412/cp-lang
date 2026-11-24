@@ -6,7 +6,6 @@ mod bag;
 mod bounds;
 mod domain_first;
 mod empty_range;
-mod euclid;
 mod extreme;
 mod fields;
 mod floats;
@@ -64,7 +63,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(while_pop::coalesce(file));
     findings.extend(map_lookup::check(file));
     findings.extend(test_count::check(file));
-    findings.extend(euclid::check(file));
     findings.extend(isqrt::check(file));
     findings.extend(found_flag::check(file));
     findings.extend(mod_reduce::check(file));

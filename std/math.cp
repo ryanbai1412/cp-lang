@@ -191,6 +191,9 @@ pub fn ceil_div(self: Int, b: Int) -> Int = if b > 0: -((-self) / b) else: -(sel
 /// example: `(-7).divmod(3) == (-3, 2)`
 /// example: `7.divmod(-3) == (-2, 1)`
 /// example: `(-7).divmod(-3) == (3, 2)`
+@lint(neg_mod_fixup, from: "(self % d + d) % d", to: "self % d")
+@lint(neg_mod_fixup, from: "((self % d) + d) % d", to: "self % d")
+@lint(neg_mod_fixup, from: "(self + d) % d", to: "self % d")
 pub fn divmod(self: Int, d: Int) -> (Int, Int) = (self / d, self % d)
 
 /// The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality

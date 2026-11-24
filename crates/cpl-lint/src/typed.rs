@@ -8,7 +8,7 @@
 use crate::facts::Facts;
 use crate::{
     COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LOOP_REDUCTION,
-    MANUAL_BIT_TEST, NEG_MOD_FIXUP, UNPROVEN_LIST_INDEX,
+    MANUAL_BIT_TEST, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
@@ -139,10 +139,6 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         c if c == FLOAT_SQRT_FOR_INT.code => {
             matches!(label(), Some(Some(Ty::Int | Ty::Range { .. })))
         }
-        c if c == NEG_MOD_FIXUP.code => match label() {
-            None => true,
-            Some(ty) => matches!(ty, Some(Ty::Int | Ty::I128 | Ty::Range { .. })),
-        },
         c if c == MANUAL_BIT_TEST.code => {
             matches!(label(), Some(Some(Ty::Int | Ty::Range { .. })))
         }
