@@ -1,4 +1,5 @@
 // Source: EGOI 2023 Day 2 Problem 4 (Guessing Game), https://dmoj.ca/problem/egoi23p8
+// limits: 4000 ms, 1024 MB
 // Problem: two runs, N = 1e5 houses. Run 1 prints K, then labels each of N - 1 houses, given in
 //   an adversarial order, with 1..=K; Emma labels the last house (hers) arbitrarily. Run 2 reads
 //   all N labels and prints two guesses, one of which must be her house. Smaller K scores more.
