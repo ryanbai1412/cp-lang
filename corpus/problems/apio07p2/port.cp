@@ -1,4 +1,5 @@
 // Source: APIO 2007 P2 (Backup), https://dmoj.ca/problem/apio07p2
+// limits: 1000 ms, 32 MB
 // Problem: n <= 1e5 offices at sorted positions <= 1e9 on a street; join k <= n / 2 disjoint
 //   pairs by cables. Print the least total cable length.
 // Solution: an optimal pairing uses k gaps between neighbours, no two adjacent, so choose k
