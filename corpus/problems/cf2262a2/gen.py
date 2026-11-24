@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Valid CF 2262A2 input: a comes from a hidden set A of {0..n-1}; n, sum n <= 1e5."""
 import random, sys
+if sys.argv[1] == "--max":  # sum n = 1e5: one n = 1e5 case, A dense (97%), so the mex runs are long
+    sys.argv[1:] = ["2", "1000"]
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 

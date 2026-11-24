@@ -1,4 +1,5 @@
 // Source: Codeforces 2237F, https://codeforces.com/contest/2237/problem/F
+// limits: 2000 ms, 256 MB
 // Problem: multitest; a of n values in 1..=m (m <= n <= 5e5, sum n <= 5e5). A paint writes
 //   1, 2, .., m over a length-m interval, later paints overwrite earlier ones; a is valid if
 //   some paints cover every position. Print the fewest elements to change to make a valid.

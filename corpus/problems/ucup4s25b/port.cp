@@ -1,5 +1,6 @@
 // Source: The 4th Universal Cup, Stage 25 (Grand Prix of Zagreb), problem B (Big Balls),
 //   qoj.ac/contest/3773/problem/18402
+// limits: 4000 ms, 1024 MB
 // Problem: n <= 1e6 balls on a line, each with weight w <= 1e9 rolling left or right at equal
 //   speed; colliding balls merge, the sum moving as the heavier one (ties: right). For each of
 //   q <= 1e6 subarrays [l, r] alone, print the total weight finally moving left and right.

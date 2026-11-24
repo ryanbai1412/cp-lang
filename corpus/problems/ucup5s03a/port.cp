@@ -1,5 +1,6 @@
 // Source: The 5th Universal Cup, Stage 3 (Grand Prix of Gorkovskaya), problem A (Adjacent
 //   Decrements), qoj.ac/contest/4565/problem/20729
+// limits: 7000 ms, 1024 MB
 // Problem: an operation picks adjacent a_i, a_{i+1}: if equal, both drop by 1, else the smaller
 //   drops by 1, never below 0. Count arrays of length n with 0 <= a_i <= k that can reach all
 //   zeros, modulo 998244353 (n, k <= 2.5e5).

@@ -1,5 +1,6 @@
 // Source: The 4th Universal Cup, Stage 25 (Grand Prix of Zagreb), problem C (Crooked Cycles),
 //   qoj.ac/contest/3773/problem/18403
+// limits: 3000 ms, 1024 MB
 // Problem: m unordered triples of distinct numbers (m, values <= 2e5, sum of m <= 2e5,
 //   t <= 2e4 tests). A cycle v_1..v_k has every three cyclically consecutive numbers form a liked
 //   triple; it is crooked if 3 does not divide k. Print whether a crooked cycle exists.

@@ -1,5 +1,6 @@
 // Source: Codeforces 2261D2 (Come Be My Friend, Don't Be So Scared, Hard Version),
 //   https://codeforces.com/contest/2261/problem/D2
+// limits: 2000 ms, 256 MB
 // Problem: n spots in a row and m distinct detector segments [l, r], each reporting whether the
 //   hidden spot is inside it. Add the fewest segments so the reports always identify the spot;
 //   print the count and the segments. n, m <= 2e5 (sums over all tests). Multitest.

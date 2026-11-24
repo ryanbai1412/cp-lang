@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # usage: gen.py seed size; size caps the sum of n (the statement allows 5e5)
 import random, sys
+if sys.argv[1] == "--max":  # one case n = 5e5 (sum n), m = 700, overlapping paints with noise
+    rng = random.Random(0); n, m = 500000, 700
+    a = [rng.randint(1, m) for _ in range(n)]
+    for _ in range(3 * n // m):
+        l = rng.randint(0, n - m); a[l:l + m] = range(1, m + 1)
+    for _ in range(n // 10): a[rng.randrange(n)] = rng.randint(1, m)
+    print(1); print(n, m); print(*a); sys.exit()
 r = random.Random(int(sys.argv[1]))
 budget = max(1, min(int(sys.argv[2]), 500_000))
 sizes = []

@@ -1,4 +1,5 @@
 // Source: Codeforces 2245F (Familiar?), https://codeforces.com/contest/2245/problem/F
+// limits: 5000 ms, 128 MB
 // Problem: mystery(p) pushes p[1..n] on a stack, first popping every larger top; b[i] is how many
 //   it pops for p[i]. Given a[1..n] (-1 = free), count permutations p of 1..n with b[i] = a[i]
 //   wherever a[i] != -1, mod 998244353. n <= 500, sum n^3 <= 500^3, memory 128 MB. Multitest.

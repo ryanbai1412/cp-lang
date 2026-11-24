@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # gen.py SEED SIZE: SIZE 0/1 small; SIZE >= 2 sum of m = 2e5 with values up to 2e5.
 import random, sys
+MAX = sys.argv[1] == "--max"  # sum m = 2e5 in one dense test over 120 values (huge SCCs)
+if MAX:
+    sys.argv[1:] = ["0", "2"]
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 V = 2 * 10 ** 5
@@ -19,7 +22,7 @@ if S <= 1:
         m = r.randint(1, 2 * S + 2)
         tests.append(triples(m, r.randint(max(3, 5 if m > 1 else 3), min(8, m + 3))))
 else:
-    shape = r.randint(0, 3)
+    shape = 1 if MAX else r.randint(0, 3)
     if shape == 0:
         tests.append(triples(V, V))  # sparse over the full value range
     elif shape == 1:

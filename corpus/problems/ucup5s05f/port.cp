@@ -1,4 +1,5 @@
 // Source: The 5th Universal Cup, Stage 5 (Grand Prix of Chengdu), problem F
+// limits: 5000 ms, 1024 MB
 // Problem: multitest. A string s of n <= 2e5 lowercase letters. For a distinct substring u let
 //   d(u) be the number of distinct substrings of s that start with u. For every k in 1..=n print
 //   the sum over distinct substrings u of choose(d(u), k), modulo 998244353.

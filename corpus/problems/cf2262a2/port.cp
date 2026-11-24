@@ -1,5 +1,6 @@
 // Source: Codeforces 2262A2 (Floor of MEX, Hard Version),
 //   https://codeforces.com/contest/2262/problem/A2
+// limits: 2000 ms, 256 MB
 // Problem: f(B, k) = mex of {floor(y / k) : y in B}. Given a[1..n] (0 <= a[k] <= n), count sets
 //   B of {0..n-1} with f(B, k) = a[k] for all k, mod 1e9+7 (one is guaranteed to exist).
 //   n, sum n <= 1e5; multitest.
