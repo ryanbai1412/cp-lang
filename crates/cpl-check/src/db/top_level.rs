@@ -263,7 +263,7 @@ pub(super) fn view_rereads(
     let item = &items[index];
     let mut out = Vec::new();
     if let Some(stmt) = item.parsed.stmts.first() {
-        let chain = rewalk_kind(items, index, false).is_some();
+        let chain = rewalk_kind(items, checks, index, false).is_some();
         let later = (index + 1..items.len()).map(|k| {
             let refs = checks.get(k).map_or(&[][..], |c| &c.refs[..]);
             (items[k].parsed.stmts.as_slice(), Binder::Global(refs))
@@ -299,6 +299,7 @@ pub(super) fn view_rereads(
 /// such as `std.graph.dfs`.
 pub(super) fn rewalk_kind(
     items: &[Arc<ItemSyntax>],
+    checks: &[Arc<ItemCheck>],
     index: usize,
     gen_typed: bool,
 ) -> Option<(cpl_diag::Code, &'static str)> {
@@ -312,20 +313,33 @@ pub(super) fn rewalk_kind(
     else {
         return None;
     };
-    fn lazy(e: &ast::Expr) -> bool {
+    let types = checks.get(index).map_or(&[][..], |c| &c.exprs.types[..]);
+    fn lazy(e: &ast::Expr, types: &[(Span, Ty)]) -> bool {
         let ExprKind::Call { callee, .. } = &crate::check::lends::unparen(e).kind else {
             return false;
         };
         let ExprKind::Field { base, name } = &callee.kind else {
             return false;
         };
+        let ty_at = |e: &ast::Expr| {
+            types
+                .iter()
+                .rev()
+                .find(|(s, _)| *s == e.span)
+                .map(|(_, t)| t)
+        };
         match name.text.as_str() {
-            "filter" | "take_while" | "drop_while" | "flat_map" => true,
-            "map" | "take" | "drop" | "enumerate" => lazy(base),
-            _ => false,
+            "filter" | "flat_map" => true,
+            "map" | "take" | "drop" | "enumerate" => lazy(base, types),
+            // A method over a sequence whose value is walk-only: a generator
+            // (`-> yields T`) such as `take_while`.
+            _ => {
+                ty_at(e).is_some_and(|t| t.is_seq() && !t.is_sized())
+                    && ty_at(base).is_some_and(Ty::is_seq)
+            }
         }
     }
-    if lazy(init) {
+    if lazy(init, types) {
         return Some((codes::CHAIN_WALKED_TWICE, "a lazy chain"));
     }
     let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {

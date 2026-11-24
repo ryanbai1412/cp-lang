@@ -1098,7 +1098,7 @@ impl Database {
                 let gen_typed = checks[def_index].hovers.iter().any(|h| {
                     h.name == r.name && matches!(&h.ty, Ty::Named { name, .. } if name == "Gen")
                 });
-                let Some((code, what)) = rewalk_kind(&items, def_index, gen_typed) else {
+                let Some((code, what)) = rewalk_kind(&items, &checks, def_index, gen_typed) else {
                     continue;
                 };
                 let Some(first) = (def_index + 1..index).find(|&k| {
