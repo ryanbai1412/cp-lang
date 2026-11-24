@@ -233,3 +233,19 @@ fn a_run_ending_in_a_block_is_replaced_up_to_its_last_token() {
         ["var s = [0]\n    for v in a:\n        s.push(s.last! + v)"]
     );
 }
+
+/// A struct's method declares a lint like a top-level fn; `to` calls it as
+/// a method. Rule: R06.4.9.
+#[test]
+fn a_method_declares_a_lint() {
+    let decl = "pub struct W(pub v: Int):\n    @lint(w_by_hand, from: \"x + 1\", to: \"W(x).inc()\", holes: \"x\")\n    pub fn inc(self) -> Int = self.v + 1\n";
+    let fixes: Vec<String> = crate::lint(
+        &format!("{decl}let y = 3\nprint(y + 1)\n"),
+        &crate::Config::default(),
+    )
+    .into_iter()
+    .filter(|d| d.code.0 == "w_by_hand")
+    .map(|d| d.fixes[0].edits[0].1.clone())
+    .collect();
+    assert_eq!(fixes, ["W(y).inc()"]);
+}

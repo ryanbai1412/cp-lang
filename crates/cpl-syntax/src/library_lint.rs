@@ -78,9 +78,25 @@ pub fn bounds(src: &str) -> Option<Vec<Bound>> {
         .collect()
 }
 
-/// The `@lint` declarations on `stmt`, an item at `offset`, and the errors
-/// for those that cannot be used.
+/// The `@lint` declarations on `stmt`, an item at `offset`, and on its
+/// methods (a struct's or enum's), and the errors for those that cannot be
+/// used.
 pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) {
+    let (mut lints, mut errors) = declared_on(stmt, offset);
+    let methods = match &stmt.kind {
+        StmtKind::Struct(s) => s.methods.as_slice(),
+        StmtKind::Enum(e) => e.methods.as_slice(),
+        _ => &[],
+    };
+    for m in methods {
+        let (l, e) = declared_on(m, offset);
+        lints.extend(l);
+        errors.extend(e);
+    }
+    (lints, errors)
+}
+
+fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) {
     let (mut lints, mut errors) = (Vec::new(), Vec::new());
     for d in stmt
         .decorators

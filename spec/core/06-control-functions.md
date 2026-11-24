@@ -171,7 +171,8 @@ library or by this spec:
 - `@from_op` on a struct's static fn (std's `Monoid.of`): a bare operator
   (`+`, `max`) passed where that struct is wanted, or for a bound the struct
   has an impl of, becomes a call of the fn (R08.1.9).
-- `@lint(name, from: "<code>", to: "<code>")` on a `pub fn`: a lint the
+- `@lint(name, from: "<code>", to: "<code>")` on a `pub fn` or a struct's
+  or enum's method: a lint the
   library declares, so its users are told to call the fn where they write
   the code it replaces. `from` and `to` are plain strings: `to` is one
   expression or statement, and `from` is one expression or statement or a
