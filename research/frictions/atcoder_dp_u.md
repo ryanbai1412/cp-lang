@@ -18,3 +18,13 @@ accepted C++.
 
 The header has no `limits:` line though meta.json records 2000 ms / 1024 MB. Header
 edit owed by idioms; the lint that requires it is with Consumers (see atcoder_dp_g).
+
+## Addendum: pairs inside a subset
+- **Where:** `score[g] = sum(a[i, j] for i in g for j in g if i < j)` visited every ordered pair
+  to keep half of them.
+- **Fix (this port and its dream):** `score[g] = sum(a[i, j] for (i, j) in g.pairs())`.
+  `Subset.pairs()` already existed. The friction left is discoverability: a lint that turns
+  `for i in X for j in X if i < j` into `X.pairs()` would catch the same shape in every pairwise
+  sum. Owner: lint-fmt.
+- **Measurements after the rewrite:** port 132 tokens, 18,276 bytes of C++; `--max` best of 3:
+  port 0.06 s / 4.1 MB, accepted 0.09 s / 4.5 MB, same output. `corpus.py verify`: 0 findings.

@@ -17,6 +17,6 @@ domain Last = 0..=n
 var best = SegTree<Last, Int, Int>(max, fill: 0, act: add)
 for i in Pos:
     let at = Last(i.label)
-    best.set(at, best.fold(Last.first!..at))
+    best.set(at, best.fold(..at))
     for (l, a) in by_end[i]: best.apply(Last(l.label)..=at, a)
-print(best.fold(Last.first!..=Last.last!))
+print(best.fold(..))

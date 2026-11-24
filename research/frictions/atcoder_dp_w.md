@@ -27,3 +27,18 @@ Port: `corpus/problems/atcoder_dp_w/port.cp`, dream: `corpus/problems/atcoder_dp
 - Owner: Core (language design note), no code change requested.
 
 The header has no `limits:` line (header edit, idioms).
+
+## Addendum: open ranges, and the emitted size
+- **Open ranges (fixed in this port and its dream):** `best.fold(Last.first!..at)` and
+  `best.fold(Last.first!..=Last.last!)` are now `best.fold(..at)` and `best.fold(..)`, which
+  `SegTree` already accepts.
+- **The emitted C++ is over the judge's size target.** `cpl build` warns W0201: with comments
+  the C++ is 34,583 bytes, over `generic`'s 32,768-byte target. It fits (31,968 bytes) only
+  because the build drops the comments. A five-line repro (`domain P = 0..=n`;
+  `SegTree<P, Int, Int>(max, fill: 0, act: add)`; one `apply(.., 1)`; `print(t.fold(..))`)
+  emits 29,207 bytes, against 6,549 for `print(n)` alone. solve() calls only `new`, `apply` and
+  `fold`, yet 25 SegTree functions (12,245 bytes) are emitted. They include the growing-tree
+  paths (`grow`, `open_node`, `blank_at`, `kid`, `dense_width`), which a dense fixed domain never
+  uses. Goal it hurts: submission. Severity: medium. Owner: Core (codegen); repro sent.
+- **Measurements after the rewrite:** port 196 tokens; `--max` best of 3: port 0.13 s / 22.2 MB,
+  accepted 0.47 s / 34.5 MB, same output. `corpus.py verify`: 0 findings.

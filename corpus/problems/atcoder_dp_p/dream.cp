@@ -19,4 +19,5 @@ for v in tree.at.rev:
     if let p = tree.parent(v):
         white[p] *= white[v] + black[v]
         black[p] *= white[v]
-print(white[V.first!] + black[V.first!])
+let root = tree.root
+print(white[root] + black[root])
