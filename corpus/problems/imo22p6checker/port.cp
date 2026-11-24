@@ -14,7 +14,8 @@ type Cell = (Row, Col)
 type M = Mod<998244353>
 let a: [Row, Col]Value = read()
 var at: [Value]Cell = (Row.first!, Col.first!)
-for p in a.keys: at[a[p]] = p
+for r in Row:
+    for c in Col: at[a[r, c]] = (r, c)
 
 // Paths ending at a cell, taken in increasing order of value: 1 at a valley, else the sum below.
 var ways: [Row, Col]M = 0
