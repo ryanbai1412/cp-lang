@@ -31,4 +31,9 @@ fn walk(skip: ?E) -> List<V>:
 
 // with one cycle the best walk leaves exactly one cycle edge unused
 if m == n - 1: print(walk(None))
-else: print(min(w for w in E.map(e => walk(e)) if w.len == n)!)
+else:
+    var best: ?List<V> = None
+    for e in E:
+        let w = walk(e)
+        if w.len == n and (best == None or w < best!): best = w
+    print(best!)
