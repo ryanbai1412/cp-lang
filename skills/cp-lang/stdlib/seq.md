@@ -260,8 +260,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T` — \(O(1)\) per step
 - `fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T` — \(O(1)\) per step
 - `fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U` — \(O(1)\) per step
-- `fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V` — \(O(1)\) per yielded element
-- `fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T` — \(O(1)\) per yielded element
+- `fn flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V` — \(O(1)\) per yielded element
+- `fn flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T` — \(O(1)\) per yielded element
 - `fn present<S: Seq, T>(self: S) -> yields T` — \(O(1)\) per step
 - `fn all_some<S: Seq, T>(self: S) -> ?List<T>` — \(O(n)\), \(O(n)\) memory
 - `fn chain<Ss, T>(..seqs: Ss) -> yields T` — \(O(1)\) per step
