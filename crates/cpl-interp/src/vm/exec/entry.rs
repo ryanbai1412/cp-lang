@@ -27,9 +27,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     pub(crate) fn fed_body_vm(&mut self, id: LoopId, caller: usize) -> Option<Res<Flow>> {
         let &(_, host) = self.fed_hosts.iter().rev().find(|h| h.0 == caller)?;
         let compiled = self.vm.clone()?;
-        // SAFETY: the host chunk is in `compiled`, held here, and is
-        // running the fallback this body is run from.
-        let chunk: &Chunk<'p> = unsafe { &*host };
+        let chunk = compiled
+            .chunks()
+            .find(|c| std::ptr::eq(*c as *const Chunk<'p> as *const (), host))?;
         let &(_, pc) = chunk.fed_bodies.iter().find(|b| b.0 == id)?;
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         let base_i = vm_regs_i.len();

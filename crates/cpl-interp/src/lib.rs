@@ -683,7 +683,7 @@ struct Interp<'p, 'o, O: Observer> {
     /// Fed loop bodies running, which take no checkpoint.
     fed_bodies: u32,
     /// Traced VM frames, by base, running a fallback that may feed a loop their chunk holds.
-    fed_hosts: Vec<(usize, *const vm::Chunk<'p>)>,
+    fed_hosts: Vec<(usize, *const ())>,
     /// Lent params of running VM calls: the stack slot holding each value, and its place.
     lent: Vec<(usize, Rc<Part>)>,
     /// The base of the frame whose VM callee runs without a frame of its own.

@@ -173,6 +173,14 @@ pub(crate) struct CompiledProgram<'p> {
 }
 
 impl<'p> CompiledProgram<'p> {
+    /// Every compiled chunk: main, setup, fns, fed fns and closures.
+    pub(crate) fn chunks(&self) -> impl Iterator<Item = &Chunk<'p>> {
+        let bodies = self.fns.iter().chain(&self.fed_fns).chain(&self.closures);
+        std::iter::once(&self.main)
+            .chain(self.setup.as_ref())
+            .chain(bodies.flatten())
+    }
+
     /// With `traced`, every write, print and call is reported to the
     /// tracer as the tree-walker reports it; with `profiled`, each
     /// statement's start is a step for the profiler.

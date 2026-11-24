@@ -1513,7 +1513,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
                 let hosts = !chunk.fed_bodies.is_empty();
                 if hosts {
-                    self.fed_hosts.push((self.base, chunk as *const Chunk<'p>));
+                    self.fed_hosts
+                        .push((self.base, chunk as *const Chunk<'p> as *const ()));
                 }
                 self.show_lent();
                 let flow = self.stmt(stmt);
