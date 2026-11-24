@@ -151,7 +151,7 @@ documented.
 | std-matrix | library: matrix | documented | stdlib: outside the Milestone 1 contest staples |
 | std-mo | library: mo | documented | stdlib: outside the Milestone 1 contest staples |
 | std-mod | library: mod | supported |  |
-| std-models | library: models | supported | 1 known gap |
+| std-models | library: models | supported |  |
 | std-ntt | library: ntt | documented | stdlib: outside the Milestone 1 contest staples |
 | std-opt | library: opt | documented | stdlib: outside the Milestone 1 contest staples |
 | std-pair | library: pair | documented | stdlib: outside the Milestone 1 contest staples |
@@ -176,6 +176,5 @@ documented.
 
 ## Known gaps
 
-- std-models/mo.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail

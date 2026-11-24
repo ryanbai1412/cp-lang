@@ -3024,7 +3024,7 @@
         "std-models/merge-segs.cp": "pass",
         "std-models/merge-sort-tree.cp": "pass",
         "std-models/merge-trees.cp": "pass",
-        "std-models/mo.cp": "fail",
+        "std-models/mo.cp": "pass",
         "std-models/mod.cp": "pass",
         "std-models/ntt-convolve.cp": "pass",
         "std-models/ntt-transforms.cp": "pass",
@@ -4213,10 +4213,10 @@
         }
       ],
       "counts": {
-        "fail": 3,
-        "pass": 4188
+        "fail": 2,
+        "pass": 4189
       },
-      "passed": 4188,
+      "passed": 4189,
       "total": 4191
     },
     "corpus": {
