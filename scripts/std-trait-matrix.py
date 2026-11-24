@@ -11,7 +11,7 @@ container is a `pub struct` in std/*.cp with `pub fn len(self) -> Int`.
 - `Eq` is structural for every struct (core 12-powers), so it isn't listed.
 
 A struct whose doc says `not a container: <why>` is skipped. Shrink-only:
-`--max` in scripts/check.sh is today's count of missing (type, trait) pairs.
+`--max` in scripts/ci.py is today's count of missing (type, trait) pairs.
 
     uv run python scripts/std-trait-matrix.py [--max N]
 """

@@ -1,4 +1,6 @@
 import subprocess
+import contextlib
+import io
 import sys
 import unittest
 from pathlib import Path
@@ -59,41 +61,74 @@ class FilterTest(unittest.TestCase):
 
 
 
-class GatesTest(unittest.TestCase):
+class StepsTest(unittest.TestCase):
+    @staticmethod
+    def _name(cmd):
+        script = Path(cmd[1])
+        return cmd[2] if script == ci.SPEC_GATE else script.stem
+
     def _run(self, codes, healed=False):
         calls = []
 
-        def run(cmd, capture_output, text):
-            calls.append(cmd[2:])
-            return subprocess.CompletedProcess(cmd, codes.get(cmd[2], 0), "out\n", "")
-        return ci.run_gates("checks", run=run, healed=healed), calls
+        def run(cmd, **kw):
+            calls.append(self._name(cmd))
+            return subprocess.CompletedProcess(cmd, codes.get(self._name(cmd), 0), "out\n", "")
+        return ci.run_steps("checks", run=run, healed=healed), calls
 
-    def test_every_gate_is_a_spec_gate(self) -> None:
+    def test_every_step_runs_a_script_that_exists(self) -> None:
         import importlib.util
         spec = importlib.util.spec_from_file_location("spec_gate", ci.SPEC_GATE)
         sg = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(sg)
-        for tier in ci.GATES.values():
-            for gate in tier:
-                self.assertIn(gate.args[0], sg.GATES)
+        for tier in ci.STEPS.values():
+            for step in tier:
+                self.assertTrue((ci.ROOT / step.argv[0]).is_file(), step.argv[0])
+                if step.argv[0] == "scripts/spec-gate.py":
+                    self.assertIn(step.argv[1], sg.GATES)
+
+    def test_every_failure_says_how_to_fix_it(self) -> None:
+        from test_check_cache import FIX_HINT
+        for tier in ci.STEPS.values():
+            for step in tier:
+                self.assertRegex(step.fail, FIX_HINT, "say the command to rerun or the fix (ci/R31)")
 
     def test_stops_at_the_first_failure(self) -> None:
         status, calls = self._run({"matrix": 1})
         self.assertEqual(status, 1)
-        self.assertEqual(calls[-1], ["matrix"])
-        self.assertNotIn(["widths"], calls)
+        self.assertEqual(calls[-1], "matrix")
+        self.assertNotIn("widths", calls)
 
-    def test_a_derived_gate_only_warns_once_healed(self) -> None:
-        self.assertEqual(self._run({"coverage": 1})[0], 1)
-        status, calls = self._run({"coverage": 1}, healed=True)
-        self.assertEqual(status, 0)
-        self.assertEqual(len(calls), len(ci.GATES["checks"]))
+    def test_a_derived_step_only_warns_once_healed(self) -> None:
+        for name in ("coverage", "skill-gen"):
+            self.assertEqual(self._run({name: 1})[0], 1)
+            status, calls = self._run({name: 1}, healed=True)
+            self.assertEqual(status, 0)
+            self.assertEqual(len(calls), len(ci.STEPS["checks"]))
 
-    def test_check_sh_runs_no_spec_gate_itself(self) -> None:
+    def test_the_cpl_binary_is_passed_through(self) -> None:
+        seen = []
+        ci.run_steps("checks", cpl="/x/cpl", run=lambda cmd, **kw: seen.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", ""))
+        self.assertIn(["--cpl", "/x/cpl"], [c[-2:] for c in seen])
+        self.assertFalse(any("{cpl}" in a for c in seen for a in c))
+
+    def test_dropped_lines_stay_hidden(self) -> None:
+        sizes = next(s for s in ci.STEPS["checks"] if s.drop)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            ci.run_steps("checks", run=lambda cmd, **kw: subprocess.CompletedProcess(
+                cmd, 0, f"a.cpp: warning: big\nok {sizes.argv[0]}\n" if Path(cmd[1]).name == "sizes.py" else "", ""))
+        self.assertNotIn("warning", out.getvalue())
+        self.assertIn("ok bench/sizes.py", out.getvalue())
+
+    def test_check_sh_runs_no_step_itself(self) -> None:
         check = (Path(__file__).parent / "check.sh").read_text(encoding="utf-8")
-        self.assertNotIn("spec-gate.py ", check.replace("runs each scripts/spec-gate.py gate", ""))
-        for tier in ci.GATES:
-            self.assertIn(f"scripts/ci.py gates {tier}", check)
+        self.assertNotIn("spec-gate.py ", check)
+        for tier in ci.STEPS.values():
+            for step in tier:
+                self.assertNotIn(f"python {step.argv[0]}", check)
+        for tier in ci.STEPS:
+            self.assertIn(f"scripts/ci.py steps {tier}", check)
+
 
 if __name__ == "__main__":
     unittest.main()

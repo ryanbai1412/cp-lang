@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The CI driver's decisions, tested (scripts/test_ci.py): which tests each tier
-leaves out, what a CPL_GATE_PART runs, and which spec gates each tier runs.
-scripts/check.sh evals `ci.py plan` and runs `ci.py gates <tier>`.
+leaves out, what a CPL_GATE_PART runs, and which checking scripts and spec gates
+each tier runs. scripts/check.sh evals `ci.py plan` and runs `ci.py steps <tier>`.
 
 CI splits --fast across parallel jobs (.github/workflows/ci.yml):
   checks            everything but the workspace tests, the conformance ratchet and fmt
@@ -103,70 +103,137 @@ def plan(mode: str, part: str) -> str:
             + "".join(f"{k}=({' '.join(map(shlex.quote, v))})\n" for k, v in arrays.items()))
 
 
-SPEC_GATE = Path(__file__).resolve().parent / "spec-gate.py"
+ROOT = Path(__file__).resolve().parent.parent
+SPEC_GATE = ROOT / "scripts/spec-gate.py"
 
 
 @dataclass(frozen=True)
-class Gate:
-    """One `spec-gate.py` run and what check says when it fails. A `derived`
-    gate checks generated files the regen job rewrites, so it only warns once
-    CPL_DERIVED_HEALED=1; a `quiet` one shows its output only on failure."""
-    args: tuple[str, ...]
+class Step:
+    """One checking script check.sh runs and what it says when the script fails.
+    `argv` starts with the script's repo path; `{cpl}` is the debug cpl binary.
+    A `derived` step checks generated files the regen job rewrites, so it only
+    warns once CPL_DERIVED_HEALED=1; a `quiet` one shows its output only on
+    failure; `stdout=False` never shows stdout; `drop` hides matching lines."""
+    title: str
+    argv: tuple[str, ...]
     fail: str
     derived: bool = False
     quiet: bool = False
+    stdout: bool = True
+    drop: str | None = None
 
 
-def _stale(what: str, gate: str) -> str:
-    return f"{what} is stale; run: uv run scripts/spec-gate.py {gate} --write"
+def gate(*args: str, fail: str, **kw) -> Step:
+    """A `scripts/spec-gate.py <gate>` step."""
+    return Step(f"spec-gate.py {' '.join(args)}", ("scripts/spec-gate.py", *args), fail, **kw)
 
 
-# Every spec and conformance gate check.sh runs, by tier, through scripts/spec-gate.py.
-GATES = {
+def _stale(what: str, name: str) -> str:
+    return f"{what} is stale; run: uv run scripts/spec-gate.py {name} --write"
+
+
+RATCHET = Step("tech-debt ratchet (scripts/debt-ratchet.py --check)", ("scripts/debt-ratchet.py", "--check"),
+               "tech-debt ratchet failed; see scripts/debt-ratchet.json")
+USECASES = Step("use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)",
+                ("scripts/check-usecases.py", "--check"), "use-case catalogue check failed; see above", stdout=False)
+
+# Every checking script check.sh runs, by tier, in order: `commit` before a
+# commit, `checks` after --fast's build, `full` after --full's.
+STEPS = {
+    "commit": (RATCHET, USECASES),
     "checks": (
-        Gate(("coverage",), "rule coverage gate failed; see above, then rerun: uv run scripts/spec-gate.py coverage",
+        RATCHET,
+        Step("handbook reads for an outsider (scripts/check-handbook.py)", ("scripts/check-handbook.py",),
+             "handbook doc leans on shared context; see above"),
+        USECASES,
+        Step("bundled skill (scripts/skill-gen.py --check)", ("scripts/skill-gen.py", "--check", "--cpl", "{cpl}"),
+             "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check", derived=True),
+        Step("skill prose uses current spellings (scripts/skill-prose.py)", ("scripts/skill-prose.py", "--cpl", "{cpl}"),
+             "inline code in the skill's prose uses a removed spelling; the finding above names the span and its current form"),
+        Step("emitted C++ fits 32 KB and every bench program builds (bench/sizes.py --check)",
+             ("bench/sizes.py", "--check", "--cpl", "{cpl}"),
+             "a program is over the 32 KB bar or a bench program stopped building; see above", drop=": warning: "),
+        Step("g++ -O2 compile time of the bench programs within its bars (bench/compile_time.py --check)",
+             ("bench/compile_time.py", "--check", "--cpl", "{cpl}"),
+             "the bench programs' g++ -O2 time is over a bar in bench/compile_time.py; see above"),
+        Step("every std fn with a case grows as its cost: says (bench/scaling.py --check)",
+             ("bench/scaling.py", "--check", "--cpl", "{cpl}"),
+             "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"),
+        gate("coverage", fail="rule coverage gate failed; see above, then rerun: uv run scripts/spec-gate.py coverage",
              derived=True),
-        Gate(("subset",), _stale("spec/SUBSET.md", "subset")),
-        Gate(("matrix",), "matrix gate failed; see above"),
-        Gate(("widths",), _stale("spec/conformance/widths/", "widths")),
-        Gate(("ownership",), _stale("spec/conformance/ownership/", "ownership")),
-        Gate(("xref",), "a rule id names no rule in spec/core; see above"),
-        Gate(("changelog",), "a spelling the spec removes has no changelog line; see above"),
-        Gate(("tool-rules",), "a tool feature in spec/tools/ has no rule id; see above"),
-        Gate(("std-signatures",), "a spec/lib chapter and std disagree on a return type; see above"),
-        Gate(("decisions-explained",), "a decision cited in spec/ has no handbook explanation; see above"),
-        Gate(("traits",), "trait gate failed; see above"),
-        Gate(("sigs",), "sig gate failed; see above"),
-        Gate(("prelude",), "prelude gate failed; see above"),
-        Gate(("std-docs", "--audit"), "a public std fn lacks a required doc label; see above", quiet=True),
-        Gate(("vocab",), "a spelling spec/GLOSSARY.md bans; see above"),
+        gate("subset", fail=_stale("spec/SUBSET.md", "subset")),
+        gate("matrix", fail="matrix gate failed; see above"),
+        gate("widths", fail=_stale("spec/conformance/widths/", "widths")),
+        gate("ownership", fail=_stale("spec/conformance/ownership/", "ownership")),
+        gate("xref", fail="a rule id names no rule in spec/core; see above"),
+        gate("changelog", fail="a spelling the spec removes has no changelog line; see above"),
+        gate("tool-rules", fail="a tool feature in spec/tools/ has no rule id; see above"),
+        gate("std-signatures", fail="a spec/lib chapter and std disagree on a return type; see above"),
+        gate("decisions-explained", fail="a decision cited in spec/ has no handbook explanation; see above"),
+        gate("traits", fail="trait gate failed; see above"),
+        gate("sigs", fail="sig gate failed; see above"),
+        gate("prelude", fail="prelude gate failed; see above"),
+        gate("std-docs", "--audit", fail="a public std fn lacks a required doc label; see above", quiet=True),
+        gate("vocab", fail="a spelling spec/GLOSSARY.md bans; see above"),
+        Step("std containers print, walk and have is_empty (scripts/std-trait-matrix.py)",
+             ("scripts/std-trait-matrix.py", "--max", "76"), "a std container lacks a common trait; see above"),
+        Step("std docs follow the std-docs checklist (scripts/std-docs-lint.py)",
+             ("scripts/std-docs-lint.py", "--max", "0"), "a std doc breaks a std-docs rule; see above"),
+        Step("std signatures follow the std-api checklist (scripts/std-api-lint.py)",
+             ("scripts/std-api-lint.py", "--max", "0"), "a std signature breaks a std-api rule; see above"),
+        Step("std model cases match their brute force on both engines (scripts/std-models.py)",
+             ("scripts/std-models.py",),
+             "a std type disagrees with its model; the line above gives the shortest failing op sequence"),
+        Step("every inventory spelling is a documented std name (scripts/std-inventory.py)",
+             ("scripts/std-inventory.py",), "spec/lib/inventory.md names something cpl doc does not document; see above"),
+        Step("std's public signatures match their snapshot (scripts/std-api-snapshot.py)",
+             ("scripts/std-api-snapshot.py",),
+             "std's public API changed; review the diff above and run scripts/std-api-snapshot.py --write"),
+        Step("std is lint-clean (scripts/std-lint-ratchet.py)", ("scripts/std-lint-ratchet.py", "--cpl", "{cpl}"),
+             "std has a lint hit; fix it in the code"),
+        Step("prelude exports what its fns return (scripts/prelude-signatures.py)", ("scripts/prelude-signatures.py",),
+             "a prelude fn returns a std type the prelude does not export; see above"),
+        Step("std trap examples trap (scripts/std-trap-examples.py)", ("scripts/std-trap-examples.py", "--cpl", "{cpl}"),
+             "a std `trap:` doc example did not trap; see above"),
+        Step("taste reviews (scripts/review-check.py --check)", ("scripts/review-check.py", "--check"),
+             "taste review gate failed; see research/reviews/README.md"),
     ),
     "full": (
-        Gate(("metamorphic",), "a meaning-preserving edit changed a case's output; see above"),
-        Gate(("speed",), "the conformance and spec-block suites went over their CPU budget; see above"),
-        Gate(("explain-copies", "--max", "1"), "cpl explain claims more copies than the C++ makes in more cases; see above"),
-        Gate(("tool-vocab",), "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"),
-        Gate(("flakes", "--runs", "2"), "a conformance case changed verdict between runs; see above"),
+        gate("metamorphic", fail="a meaning-preserving edit changed a case's output; see above"),
+        gate("speed", fail="the conformance and spec-block suites went over their CPU budget; see above"),
+        gate("explain-copies", "--max", "1",
+             fail="cpl explain claims more copies than the C++ makes in more cases; see above"),
+        gate("tool-vocab", fail="help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"),
+        gate("flakes", "--runs", "2", fail="a conformance case changed verdict between runs; see above"),
     ),
 }
 
 
-def run_gates(tier: str, run=subprocess.run, healed: bool | None = None) -> int:
-    """Runs the tier's gates in order and stops at the first that fails."""
+def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, healed: bool | None = None) -> int:
+    """Runs the tier's steps in order and stops at the first that fails."""
     if healed is None:
         healed = os.environ.get("CPL_DERIVED_HEALED") == "1"
-    for gate in GATES[tier]:
-        print(f"\n==> spec-gate.py {' '.join(gate.args)}", flush=True)
-        done = run([sys.executable, str(SPEC_GATE), *gate.args], capture_output=gate.quiet, text=True)
+    for step in STEPS[tier]:
+        print(f"\n==> {step.title}", flush=True)
+        script, *args = (a.replace("{cpl}", cpl) for a in step.argv)
+        cmd = [sys.executable, str(ROOT / script), *args]
+        if step.drop:
+            done = run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            sys.stdout.writelines(l for l in done.stdout.splitlines(True) if step.drop not in l)
+        elif step.quiet:
+            done = run(cmd, capture_output=True, text=True)
+            if done.returncode:
+                sys.stdout.write(done.stdout)
+                sys.stderr.write(done.stderr)
+        else:
+            done = run(cmd, stdout=None if step.stdout else subprocess.DEVNULL, text=True)
+        sys.stdout.flush()
         if done.returncode == 0:
             continue
-        if gate.quiet:
-            sys.stdout.write(done.stdout)
-            sys.stderr.write(done.stderr)
-        if gate.derived and healed:
-            print(f"warning: {gate.fail} (the regen job commits the fix)", file=sys.stderr)
+        if step.derived and healed:
+            print(f"warning: {step.fail} (the regen job commits the fix)", file=sys.stderr)
             continue
-        print(f"check: {gate.fail}", file=sys.stderr)
+        print(f"check: {step.fail}", file=sys.stderr)
         return 1
     return 0
 
@@ -177,11 +244,12 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("plan", help="print the tier's filters and gate part as shell assignments")
     p.add_argument("--mode", choices=MODES, required=True)
     p.add_argument("--gate-part", default="")
-    g = sub.add_parser("gates", help="run a tier's spec gates (scripts/spec-gate.py)")
-    g.add_argument("tier", choices=sorted(GATES))
+    g = sub.add_parser("steps", help="run a tier's checking scripts, spec gates among them")
+    g.add_argument("tier", choices=sorted(STEPS))
+    g.add_argument("--cpl", default="target/debug/cpl")
     args = ap.parse_args(argv)
-    if args.cmd == "gates":
-        return run_gates(args.tier)
+    if args.cmd == "steps":
+        return run_steps(args.tier, args.cpl)
     try:
         sys.stdout.write(plan(args.mode, args.gate_part))
     except ValueError as e:

@@ -10,7 +10,7 @@
 - R10 (#r10-each-module-opens-with-what-it-is-for): a std module whose
   first line is not a `//!` line.
 
-Shrink-only: `--max` in scripts/check.sh is today's count.
+Shrink-only: `--max` in scripts/ci.py is today's count.
 
     uv run python scripts/std-docs-lint.py [--max N]
 """

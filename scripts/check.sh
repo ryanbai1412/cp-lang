@@ -347,11 +347,8 @@ if [ "$mode" = land ] || [ "$mode" = commit ]; then
     fi
 fi
 if [ "$mode" = commit ]; then
-    step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
-    uv run --quiet python scripts/debt-ratchet.py --check \
-        || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
-    step "use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)"
-    uv run --quiet python scripts/check-usecases.py --check >/dev/null || fail "use-case catalogue check failed; see above"
+    step "checking scripts (scripts/ci.py steps commit)"
+    uv run --quiet python scripts/ci.py steps commit --cpl "$cpl" || exit 1
     step "generated files current: skill pages, COVERAGE.md, gap lists (scripts/gen.py --check)"
     # CI's regen job regenerates stale files on main, so a commit isn't
     # blocked by staleness it may not have caused.
@@ -573,88 +570,9 @@ else
     cache_save fmt_corpus
 fi
 
-# Tech-debt ratchet: .rs file-size cap allowlist (shrink-only) + stdlib todo / #[ignore] / pending counts.
-step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
-uv run --quiet python scripts/debt-ratchet.py --check \
-    || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
-
-step "handbook reads for an outsider (scripts/check-handbook.py)"
-uv run --quiet python scripts/check-handbook.py || fail "handbook doc leans on shared context; see above"
-step "use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)"
-uv run --quiet python scripts/check-usecases.py --check >/dev/null || fail "use-case catalogue check failed; see above"
-
-# On a main push CI sets CPL_DERIVED_HEALED=1: the regen job in the same run
-# commits these files (and goes red if it can't), so staleness only warns.
-derived() {
-    if [ "${CPL_DERIVED_HEALED:-}" = 1 ]; then
-        echo "warning: $1 (the regen job commits the fix)" >&2
-    else
-        fail "$1"
-    fi
-}
-step "bundled skill (scripts/skill-gen.py --check)"
-uv run python scripts/skill-gen.py --check --cpl "$cpl" \
-    || derived "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check"
-step "skill prose uses current spellings (scripts/skill-prose.py)"
-uv run --quiet python scripts/skill-prose.py --cpl "$cpl" \
-    || fail "inline code in the skill's prose uses a removed spelling; the finding above names the span and its current form"
-
-step "emitted C++ fits 32 KB and every bench program builds (bench/sizes.py --check)"
-sizes_status=0
-uv run --quiet python bench/sizes.py --check --cpl "$cpl" >"$target/sizes.log" 2>&1 || sizes_status=1
-grep -v ': warning: ' "$target/sizes.log"
-[ "$sizes_status" -eq 0 ] \
-    || fail "a program is over the 32 KB bar or a bench program stopped building; see above"
-step "g++ -O2 compile time of the bench programs within its bars (bench/compile_time.py --check)"
-uv run --quiet python bench/compile_time.py --check --cpl "$cpl" \
-    || fail "the bench programs' g++ -O2 time is over a bar in bench/compile_time.py; see above"
-step "every std fn with a case grows as its cost: says (bench/scaling.py --check)"
-uv run --quiet python bench/scaling.py --check --cpl "$cpl" \
-    || fail "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"
-
-step "spec and conformance gates (scripts/ci.py gates checks runs each scripts/spec-gate.py gate)"
-uv run --quiet python scripts/ci.py gates checks || exit 1
-
-step "std containers print, walk and have is_empty (scripts/std-trait-matrix.py)"
-uv run --quiet python scripts/std-trait-matrix.py --max 76 \
-    || fail "a std container lacks a common trait; see above"
-
-step "std docs follow the std-docs checklist (scripts/std-docs-lint.py)"
-uv run --quiet python scripts/std-docs-lint.py --max 0 \
-    || fail "a std doc breaks a std-docs rule; see above"
-
-step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
-uv run --quiet python scripts/std-api-lint.py --max 0 \
-    || fail "a std signature breaks a std-api rule; see above"
-
-step "std model cases match their brute force on both engines (scripts/std-models.py)"
-uv run --quiet python scripts/std-models.py \
-    || fail "a std type disagrees with its model; the line above gives the shortest failing op sequence"
-
-step "every inventory spelling is a documented std name (scripts/std-inventory.py)"
-uv run --quiet python scripts/std-inventory.py \
-    || fail "spec/lib/inventory.md names something cpl doc does not document; see above"
-
-step "std's public signatures match their snapshot (scripts/std-api-snapshot.py)"
-uv run --quiet python scripts/std-api-snapshot.py \
-    || fail "std's public API changed; review the diff above and run scripts/std-api-snapshot.py --write"
-
-step "std is lint-clean (scripts/std-lint-ratchet.py)"
-uv run --quiet python scripts/std-lint-ratchet.py --cpl "$cpl" \
-    || fail "std has a lint hit; fix it in the code"
-
-step "prelude exports what its fns return (scripts/prelude-signatures.py)"
-uv run --quiet python scripts/prelude-signatures.py \
-    || fail "a prelude fn returns a std type the prelude does not export; see above"
-
-step "std trap examples trap (scripts/std-trap-examples.py)"
-uv run --quiet python scripts/std-trap-examples.py --cpl "$cpl" \
-    || fail "a std \`trap:\` doc example did not trap; see above"
-
-# Taste reviews: always run (fast, checks working-tree/staged ports).
-step "taste reviews (scripts/review-check.py --check)"
-uv run --quiet python scripts/review-check.py --check \
-    || fail "taste review gate failed; see research/reviews/README.md"
+# The checking scripts and spec gates, in order (scripts/ci.py STEPS).
+step "checking scripts (scripts/ci.py steps checks)"
+uv run --quiet python scripts/ci.py steps checks --cpl "$cpl" || exit 1
 
 step "site snippet gate (node web/scripts/gate.mjs)"
 if [ -n "$site_gate_pid" ]; then
@@ -726,7 +644,7 @@ if [ "$mode" = full ]; then
     uv run scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
         --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
     uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
-    uv run --quiet python scripts/ci.py gates full || exit 1
+    uv run --quiet python scripts/ci.py steps full --cpl "$cpl" || exit 1
 
     step "cargo test: every port compiled with every judge profile's flags"
     cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags

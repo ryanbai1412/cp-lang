@@ -21,7 +21,7 @@
   R13 table with no `// journey: <name>` line in its type's case,
   spec/conformance/std-journeys/<type>.cp, or a journey line the table lacks.
 
-Shrink-only: `--max` in scripts/check.sh is today's count.
+Shrink-only: `--max` in scripts/ci.py is today's count.
 
     uv run python scripts/std-api-lint.py [--max N]
 """

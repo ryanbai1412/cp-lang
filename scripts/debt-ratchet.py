@@ -1187,9 +1187,9 @@ def uncited_rules(root: Path) -> list[str]:
         text = "".join((d / f).read_text(encoding="utf-8") for f in ("lint.toml", "explain.md") if (d / f).is_file())
         if not _cites_guideline(root, text):
             found.append(f"lint {d.name}")
-    check = root / "scripts/check.sh"
-    gates = sorted(set(re.findall(r"scripts/[\w-]+\.(?:py|sh|mjs)", check.read_text(encoding="utf-8")))) \
-        if check.is_file() else []
+    runners = [root / "scripts/check.sh", root / "scripts/ci.py"]
+    gates = sorted({g for f in runners if f.is_file()
+                    for g in re.findall(r"scripts/[\w-]+\.(?:py|sh|mjs)", f.read_text(encoding="utf-8"))})
     for g in gates:
         name = Path(g).name
         if name.startswith("test_") or name in ("check.sh", "gate-env.sh") or not (root / g).is_file():
