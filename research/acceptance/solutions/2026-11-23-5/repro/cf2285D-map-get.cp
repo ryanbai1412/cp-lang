@@ -19,7 +19,7 @@ for x in 1..n:
 fn count(h: Int, lo: Int, hi: Int) -> Int:
     if lo > hi: return 0
     let ps = at.get(h) ?? []
-    return ps.partition_point(p => p > hi) - ps.partition_point(p => p >= lo)
+    return ps.bsearch(p => p > hi) - ps.bsearch(p => p >= lo)
 for _ in 0..q:
     let (i, v): (1..=n, -1e9..=1e9) = read()
     let (blo, bhi) = (i, n - i)

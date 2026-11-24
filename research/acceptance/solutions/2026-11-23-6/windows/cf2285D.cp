@@ -20,7 +20,7 @@ for s in 1..n:
 fn count_in(x: Int, l: Int, r: Int) -> Int:
     if l > r: return 0
     let ps = pos.get(x) ?? []
-    ps.partition_point(p => p > r) - ps.partition_point(p => p >= l)
+    ps.bsearch(p => p > r) - ps.bsearch(p => p >= l)
 for (i, v) in qs:
     var (l, r, target) = (i, n - i, -v)
     if i > n - i:
