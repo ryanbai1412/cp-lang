@@ -527,11 +527,10 @@ fn a_file_over_its_judges_limit_says_where_its_bytes_go() {
     );
 }
 
-/// Ryan's budget, on every judge: over 24 KB warns, over 32 KB warns that
-/// it is over the target, over 64 KB fails,
-/// even where the judge itself takes more.
+/// Ryan's budget, on every judge: over 32 KB warns, over 64 KB fails,
+/// even where the judge itself takes more (decision 188).
 #[test]
-fn every_judge_warns_over_24_kb_and_refuses_over_64_kb() {
+fn every_judge_warns_over_32_kb_and_refuses_over_64_kb() {
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-budget");
     std::fs::create_dir_all(&scratch).unwrap();
     let file = scratch.join("a.cp");
@@ -572,15 +571,38 @@ fn every_judge_warns_over_24_kb_and_refuses_over_64_kb() {
         "{}",
         out.stdout.len()
     );
-    assert!(
-        out.stderr
-            .contains("over 24576 bytes, near the 32768-byte target"),
-        "{}",
-        out.stderr
-    );
+    assert!(!out.stderr.contains("warning"), "{}", out.stderr);
     std::fs::write(&file, "print(1)\n").unwrap();
     let out = cpl_cli::run(&["build", path, "--judge", "codeforces", "-o", "-"]);
     assert!(!out.stderr.contains("warning"), "{}", out.stderr);
+}
+
+/// A judge whose limit is under 64 KB warns past half of it (decision 188,
+/// R13.1.1): `print(1)` is about 2.5 KB, over half of a 4 KB limit.
+#[test]
+fn a_judge_with_a_small_limit_warns_past_half_of_it() {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-half-limit");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let file = scratch.join("a.cp");
+    std::fs::write(&file, "print(1)\n").unwrap();
+    std::fs::write(
+        scratch.join("cp.toml"),
+        "[judge]\njudge = \"small\"\n\n[judge.small]\nextends = \"generic\"\nsource_kb = 4\n",
+    )
+    .unwrap();
+    let out = cpl_cli::run(&["build", file.to_str().unwrap(), "-o", "-"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(
+        out.stdout.len() > 2048 && out.stdout.len() <= 4096,
+        "{}",
+        out.stdout.len()
+    );
+    assert!(
+        out.stderr
+            .contains("over 2048 bytes, near the 4096-byte target"),
+        "{}",
+        out.stderr
+    );
 }
 
 /// A port whose C++ is over 32 KB as written is shrunk under it, and the

@@ -73,7 +73,7 @@ pub struct Profile {
 pub const THREAD_STACK: u64 = 1 << 30;
 
 /// The size every solution aims under: `cpl build` shrinks the C++ to fit
-/// it, and warns at three quarters of it.
+/// it, and warns past it (decision 188).
 pub const TARGET_BYTES: usize = 32 * 1024;
 
 /// The most any build writes, whatever the judge accepts.
@@ -92,9 +92,10 @@ impl Profile {
         TARGET_BYTES.min(self.limit())
     }
 
-    /// The source size worth a warning: three quarters of [`Profile::aim`].
+    /// The source size worth a warning: [`TARGET_BYTES`], or half of a
+    /// smaller limit (decision 188).
     pub fn warn_at(&self) -> usize {
-        self.aim() / 4 * 3
+        TARGET_BYTES.min(self.limit() / 2)
     }
 
     /// What a contestant must know before submitting to a judge that

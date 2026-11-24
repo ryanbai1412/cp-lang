@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The size of the C++ `cpl build --judge` writes for every v0.3 program,
-against the 32 KB bar (warn at 24 KB).
+against the 32 KB bar.
 
     python3 bench/sizes.py [--judge J] [--cpl PATH] [--report FILE] [--check]
 
