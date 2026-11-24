@@ -11,7 +11,7 @@ use cpl_check::{
     HoverEntry, Loader, MemberKind, PreludeKind, Receiver, Ty,
 };
 use cpl_json::{obj, Value};
-use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
+use cpl_syntax::ast::{BinOp, Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_stmt, Visitor};
 use std::collections::BTreeMap;
 use std::collections::{HashMap, HashSet};
@@ -215,7 +215,7 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
         let dot = (offset - word.len() - 1) as u32;
         return dot_completion(cursor, std, dot)
             .into_iter()
-            .map(|(entry, sort)| item_json(&entry, rank(&entry, sort)))
+            .map(|(entry, sort)| member_json(&entry, rank(&entry, sort)))
             .collect();
     }
     let mut items = argument_names(cursor, std, offset);
@@ -656,6 +656,18 @@ fn item_json(entry: &Entry, sort: u8) -> Value {
     Value::Object(members)
 }
 
+/// A member after `.`: within its group, the members std itself calls
+/// most come first, so `len` and `map` lead a list's long tail.
+fn member_json(entry: &Entry, sort: u8) -> Value {
+    let mut item = item_json(entry, sort);
+    let rare = 9999 - cpl_check::std_calls(&entry.name).min(9999);
+    if let Value::Object(members) = &mut item {
+        let text = format!("{sort}{rare:04}{}", entry.name);
+        members.insert("sortText".to_string(), text.into());
+    }
+    item
+}
+
 fn plain(name: &str, kind: Kind, detail: String, doc: &str) -> Entry {
     Entry {
         name: name.to_string(),
@@ -787,6 +799,54 @@ fn local_type(cursor: &Cursor, name: &str, at: u32) -> Option<Ty> {
                 .find(|e| named(e) && e.decl == Some(e.span))
         })
         .map(|e| e.ty.clone())
+        .or_else(|| declared_type(cursor, name))
+}
+
+/// What `let name = init` or `for name in iter` holds when the checker left
+/// `name` untyped: `t.at.filter(p).collect()` is a list whatever the
+/// context will want.
+fn declared_type(cursor: &Cursor, name: &str) -> Option<Ty> {
+    cursor.analysis.items.iter().find_map(|item| {
+        let decl = item
+            .check
+            .hovers
+            .iter()
+            .find(|e| e.name == name && e.decl == Some(e.span))?;
+        let mut finder = Declared {
+            at: decl.span,
+            found: None,
+        };
+        for stmt in &item.syntax.parsed.stmts {
+            walk_stmt(stmt, &mut finder);
+        }
+        match finder.found? {
+            (init, false) => type_of(item, &init),
+            (iter, true) => type_of(item, &iter)?.seq_elem(),
+        }
+    })
+}
+
+/// The value bound at `at`, and whether a `for` walks it.
+struct Declared {
+    at: cpl_diag::Span,
+    found: Option<(Expr, bool)>,
+}
+
+impl Visitor for Declared {
+    fn stmt(&mut self, stmt: &Stmt) {
+        match &stmt.kind {
+            StmtKind::Let {
+                pat,
+                init: Some(init),
+                ty: None,
+                ..
+            } if pat.span == self.at => self.found = Some((init.clone(), false)),
+            StmtKind::For { pat, iter, .. } if pat.span == self.at => {
+                self.found = Some((iter.clone(), true))
+            }
+            _ => {}
+        }
+    }
 }
 
 struct FieldBase {
@@ -813,6 +873,18 @@ fn hover_at(item: &AnalyzedItem, span: cpl_diag::Span) -> Option<&Ty> {
         .map(|e| &e.ty)
 }
 
+/// What calling `callee` gives.
+fn call_type(item: &AnalyzedItem, callee: &Expr) -> Option<Ty> {
+    match type_of(item, callee)? {
+        Ty::Fn { ret, .. } => Some(*ret),
+        Ty::TypeName(name) => Some(Ty::Named {
+            name,
+            args: Vec::new(),
+        }),
+        _ => None,
+    }
+}
+
 /// What the checker found `expr` to be, from the types it left behind.
 fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
     if let Some((_, ty)) = item
@@ -822,10 +894,30 @@ fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
         .rev()
         .find(|(span, _)| *span == expr.span)
     {
-        return (!matches!(ty, Ty::Error | Ty::Unknown)).then(|| ty.clone());
+        if !matches!(ty, Ty::Error | Ty::Unknown) {
+            return Some(ty.clone());
+        }
     }
     let ty = match &expr.kind {
         ExprKind::Paren(inner) => return type_of(item, inner),
+        ExprKind::Binary {
+            op: BinOp::Coalesce,
+            lhs,
+            rhs,
+            ..
+        } => match type_of(item, lhs) {
+            Some(Ty::Optional(inner)) => *inner,
+            _ => type_of(item, rhs)?,
+        },
+        ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
+            ExprKind::Field { base, name } if name.text == "collect" => {
+                match type_of(item, base)? {
+                    ty @ Ty::Array { .. } => ty,
+                    ty => Ty::list(ty.seq_elem()?),
+                }
+            }
+            _ => call_type(item, callee)?,
+        },
         ExprKind::Str(_) => Ty::Str,
         ExprKind::Int(_) => Ty::Int,
         ExprKind::Bool(_) => Ty::Bool,
@@ -839,14 +931,7 @@ fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
         ExprKind::Comprehension { body, .. } => Ty::list(type_of(item, body)?),
         ExprKind::Field { name, .. } => hover_at(item, name.span)?.clone(),
         ExprKind::Generic { base, .. } => return type_of(item, base),
-        ExprKind::Call { callee, .. } => match type_of(item, callee)? {
-            Ty::Fn { ret, .. } => *ret,
-            Ty::TypeName(name) => Ty::Named {
-                name,
-                args: Vec::new(),
-            },
-            _ => return None,
-        },
+        ExprKind::Call { callee, .. } => call_type(item, callee)?,
         ExprKind::Index { base, .. } => match type_of(item, base)? {
             Ty::Array { elem, .. } => *elem,
             Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
