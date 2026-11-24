@@ -420,7 +420,8 @@ impl Lowerer<'_> {
                 }
             }
         }
-        if groups.len() < dims.len() {
+        // `[P] (r, c) => …` names each factor (R04.2.10): no tuple to build.
+        if groups.len() < dims.len() && params.len() != dims.len() {
             let whole = Whole::Tuples(groups);
             return self.build_table(dims, params, body, elem.as_ref(), None, span, whole);
         }

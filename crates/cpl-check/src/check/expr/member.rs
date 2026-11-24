@@ -915,7 +915,9 @@ impl<'a> Checker<'a> {
             Ty::Assoc { of, name: assoc } => {
                 if let Ty::Param(param) = &**of {
                     match self.assoc_bound_method(param, assoc, &name.text) {
-                        Some(Ty::Fn { params, ret }) if !self.in_call_callee && params.is_empty() => {
+                        Some(Ty::Fn { params, ret })
+                            if !self.in_call_callee && params.is_empty() =>
+                        {
                             return *ret;
                         }
                         Some(ty) => return ty,
@@ -1083,10 +1085,16 @@ impl<'a> Checker<'a> {
                     {
                         return ty.clone();
                     }
-                    if let Ok(idx) = name.text.parse::<usize>() {
-                        if let Some((_, ty)) = factors.get(idx) {
-                            return ty.clone();
-                        }
+                }
+                // R04.2.10: a product position viewed as its factor tuple.
+                if let Some(parts) = self.position_factors(&base_ty) {
+                    if let Some(ty) = name.text.parse::<usize>().ok().and_then(|i| parts.get(i)) {
+                        return ty.clone();
+                    }
+                    let viewed = Ty::Tuple(parts);
+                    if self.own_method(&viewed, &name.text).is_some() {
+                        let ty = self.own_method_at(&viewed, name).unwrap_or(Ty::Unknown);
+                        return ty.map(&mut |t| (*t == viewed).then(|| base_ty.clone()));
                     }
                 }
                 return self.domain_impl_member(&base_ty, &name.text);
