@@ -915,3 +915,18 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 2026-11-23: spec dropped `get_or_insert_with(k, f)` for `get_or_insert(k, v)` (R07.12.8), so the compiler's tests stop using it. The tests of a closure reading the map it mutates (mut_self_closure, mut_cell_receiver, map_update_field, batch27_closure_reads_len, and the checks.rs borrow case) now do it through `update`, whose `v => ..` reads the map's `len` while the map is lent. perf6_get_or_insert keeps only the eager form. The three `m1_get_or_insert_with` fallback kinds go with the calls.
 
 2026-11-23: a frame synced every local to the stack around each call whenever a statement or expression the tree-walker runs could make a closure, and the test for that counted any `read()` as one. So cf2124f2's and cf2180f1's main loops, whose only off-VM expressions are ranged reads, copied all 25 locals around every call. The test now looks only for a closure, at any depth. cf2124f2 goes from 10.4 s to 6.2 s and cf2180f1 (1000×1000) from 10.4 s to 5.2 s, with the same output as the C++. Test: `only_a_closure_made_off_the_vm_syncs_the_whole_frame_around_calls`.
+
+### Requests from compiler and stdlib (2026-11-23): `.rev` is std's `Rev<S>`
+
+- `Rev` is in the prelude, so `Rev<S>` names a binding or a parameter; lowering resolves it like
+  `Slice<S>` (a view of `S`), and a `Rev`-typed parameter walks backwards in its body.
+- The catalog's `List.rev`/`Str.rev` rows are gone: the checker types `.rev` as `Rev<S>`, and
+  `xs.rev()` still says it is read without parentheses.
+- A std fn whose `self` is a concrete sequence (`scan`'s `[D]T`) is no longer handed the source
+  when called on a `.rev`: it walked forwards, so `a.rev.scan(+)` gave the prefix folds. It is
+  E0606 until `Rev` declares it (stdlib writes `Rev.scan`/`Rev.runs`). The capability members
+  (`items`, `keys`, `len`, `last`, `rev`) still walk the view.
+- `Rev`'s methods now run for an array's `.rev` too: `raw.rev.take(2)` over `[P]Int` walked the
+  source's first two backwards (5 4) instead of its last two (6 5).
+- Cases: core-07/rev-runs-is-not-indexed, core-07/rev-is-a-nameable-view; program
+  rev_views_of_arrays (interp == C++).

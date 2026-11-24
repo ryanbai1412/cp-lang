@@ -189,7 +189,9 @@ impl<'a> Lowerer<'a> {
             if let Some(rinfo) = p.ty.as_ref().and_then(|t| self.range_info_from_ast(t)) {
                 self.cx.local_ranges.insert(slot, rinfo);
             }
-            if self.gen_env.contains_key(&rev_param_key(&p.name.text)) {
+            let declared_rev = matches!(p.ty.as_ref().map(|t| &t.kind),
+                Some(ast::TypeKind::Named { name, args }) if name.text == "Rev" && args.len() == 1);
+            if declared_rev || self.gen_env.contains_key(&rev_param_key(&p.name.text)) {
                 self.cx.view_rev.insert(slot);
             }
         }

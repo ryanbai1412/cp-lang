@@ -2592,8 +2592,8 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        // `Slice<S>` is the view a slice of `S` is.
-        if name.text == "Slice" && args.len() == 1 {
+        // `Slice<S>` and `Rev<S>` are views of `S`; a `Rev` binding walks backwards.
+        if matches!(name.text.as_str(), "Slice" | "Rev") && args.len() == 1 {
             match self.resolve_ty(&args[0]) {
                 Ty::List(e) => return Spec::Plain(Ty::ListView(e, Dim::Int)),
                 Ty::ListView(e, key) | Ty::Keyed(e, key) | Ty::MutView(e, key) => {
@@ -2612,7 +2612,7 @@ impl<'a> Lowerer<'a> {
             "Char" => Ty::Char,
             "Str" => Ty::Str,
             "List" | "Iter" | "Seq" => Ty::list(arg(self, 0)),
-            "Slice" => match arg(self, 0) {
+            "Slice" | "Rev" => match arg(self, 0) {
                 Ty::List(e) => Ty::ListView(e, Dim::Int),
                 Ty::ListView(e, d) | Ty::MutView(e, d) => Ty::ListView(e, d),
                 Ty::Str | Ty::StrView => Ty::StrView,

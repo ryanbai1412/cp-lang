@@ -259,6 +259,38 @@ impl Checker<'_> {
                 .is_some_and(|m| m.members.iter().any(|(n, _)| n == name))
     }
 
+    /// A std fn whose `self` is a concrete sequence (`[D]T`, `List<T>`),
+    /// called on a `.rev`: it would walk the source forwards (R07.3.5).
+    pub(super) fn rev_walks_source(&mut self, base_ty: &Ty, source: &Ty, name: &ast::Name) -> bool {
+        let builtin = super::call::catalog_owner(source)
+            .is_some_and(|owner| crate::builtins::builtin_member(owner, &name.text).is_some());
+        if builtin || CAPABILITY_MEMBERS.contains(&name.text.as_str()) {
+            return false;
+        }
+        let def = self.method_def(base_ty, &name.text);
+        let Some(Def::Fn {
+            ty: Ty::Fn { params, .. },
+            ..
+        }) = def.as_deref()
+        else {
+            return false;
+        };
+        let Some(this) = params.first().filter(|p| p.name == "self") else {
+            return false;
+        };
+        if matches!(this.ty, Ty::Param(_)) {
+            return false;
+        }
+        let message = format!(
+            "`{base_ty}` has no `{}`: it takes a `{}`, which walks in key order",
+            name.text, this.ty
+        );
+        if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
+            diag.help = Some("copy the reversed view first: `List(a.rev)`".into());
+        }
+        true
+    }
+
     /// A method whose `self` must be `Indexed`, called on a `.rev`: a
     /// reversed view keeps its source's keys, so it isn't (R07.3.5).
     pub(super) fn rev_not_indexed(&mut self, base_ty: &Ty, name: &ast::Name) -> bool {
@@ -312,7 +344,7 @@ impl Checker<'_> {
         if self.rev_owns(&name.text) {
             return None;
         }
-        if self.rev_not_indexed(base_ty, name) {
+        if self.rev_not_indexed(base_ty, name) || self.rev_walks_source(base_ty, &source, name) {
             return Some(Ty::Error);
         }
         Some(self.member_ty(expr, name, source))
@@ -333,6 +365,10 @@ impl Checker<'_> {
         (!own).then(|| args[0].clone())
     }
 }
+
+/// The members the sequence capabilities give a `.rev` itself (R07.3.2-R07.3.4):
+/// they walk its order whatever fn spells them for the source.
+const CAPABILITY_MEMBERS: &[&str] = &["items", "keys", "len", "last", "rev"];
 
 /// Where a lent value would be kept: a variable being declared here, or
 /// the variable at the root of a place.
