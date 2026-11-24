@@ -70,18 +70,30 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn block(&mut self, block: &Block, out: &mut String) {
-        for k in 0..block.stmts.len() {
+        let mut k = 0;
+        while k < block.stmts.len() {
             if self.cold_suffix(block, k, out) {
                 break;
             }
-            self.tail = self.tail_at(&block.stmts, k);
-            self.slot_written_next = self.slot_written_next(&block.stmts, k);
-            self.blank_next = self.filled_next(&block.stmts, k);
-            self.stmt_owning(block, k, out);
-            self.slot_written_next = false;
-            self.blank_next = false;
+            let each = |this: &mut Self, k: usize, out: &mut String| this.stmt_at(block, k, out);
+            k = match self.open_at(&block.stmts, k, out, &each) {
+                Some(next) => next,
+                None => {
+                    self.stmt_at(block, k, out);
+                    k + 1
+                }
+            };
         }
         self.tail = None;
+    }
+
+    pub(crate) fn stmt_at(&mut self, block: &Block, k: usize, out: &mut String) {
+        self.tail = self.tail_at(&block.stmts, k);
+        self.slot_written_next = self.slot_written_next(&block.stmts, k);
+        self.blank_next = self.filled_next(&block.stmts, k);
+        self.stmt_owning(block, k, out);
+        self.slot_written_next = false;
+        self.blank_next = false;
     }
 
     /// `let p = mut m[k]` right before `p += v` (or `-=`, `|=`, `^=`): that write puts an absent
@@ -238,18 +250,25 @@ impl<'p> Emitter<'p> {
     pub(crate) fn flatten<'a>(&mut self, mut e: &'a Expr, out: &mut String) -> &'a Expr {
         while crate::expr::map_remove_do(e).is_none() {
             let Some((stmts, value)) = flat(e) else { break };
-            for k in 0..stmts.len() {
+            let each = |this: &mut Self, k: usize, out: &mut String| {
                 // The value is read inside the statement the block is in,
                 // whose other parts this cannot see: a `let` it reads owns.
-                self.tail = match &stmts[k] {
-                    Stmt::Let(slot, _) if crate::uses::mentions_any(self.program, value, *slot) => {
+                this.tail = match &stmts[k] {
+                    Stmt::Let(slot, _) if crate::uses::mentions_any(this.program, value, *slot) => {
                         None
                     }
-                    _ => self.tail_at(stmts, k),
+                    _ => this.tail_at(stmts, k),
                 };
-                self.moves_last = self.dies_here(&stmts[k]);
-                self.stmt_presized(stmts, k, out);
-                self.moves_last = false;
+                this.moves_last = this.dies_here(&stmts[k]);
+                this.stmt_presized(stmts, k, out);
+                this.moves_last = false;
+            };
+            let mut k = 0;
+            while k < stmts.len() {
+                k = self.open_at(stmts, k, out, &each).unwrap_or_else(|| {
+                    each(self, k, out);
+                    k + 1
+                });
             }
             self.tail = None;
             self.take_block_lets(stmts, value);

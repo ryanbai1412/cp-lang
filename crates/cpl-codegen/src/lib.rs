@@ -24,6 +24,7 @@ mod lentopt;
 mod main_lend;
 mod names;
 mod niche;
+mod opened;
 mod optfn;
 mod order;
 #[cfg(test)]

@@ -260,6 +260,8 @@ pub(crate) struct Emitter<'p> {
     /// Of `ref_bound`, those bound as `T&` to a local the fn owns, so a
     /// return may move a part out of it.
     pub mut_bound: BTreeSet<usize>,
+    /// Optionals emitted as their parts (see [`crate::opened`]).
+    pub(crate) opened: BTreeMap<usize, crate::opened::Parts>,
     pub taken: BTreeSet<String>,
     pub fresh: usize,
     /// Loops that a `break` or `continue` names from an inner loop.
@@ -364,6 +366,7 @@ impl<'p> Emitter<'p> {
             ref_bound: BTreeSet::new(),
             given_parts: BTreeSet::new(),
             mut_bound: BTreeSet::new(),
+            opened: BTreeMap::new(),
             taken: BTreeSet::new(),
             fresh: 0,
             break_targets: BTreeSet::new(),

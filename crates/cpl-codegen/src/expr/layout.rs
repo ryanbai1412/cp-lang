@@ -250,6 +250,17 @@ impl<'p> Emitter<'p> {
     /// Whether optional `x` holds a value. `m.get(k)` finds the entry and
     /// copies nothing.
     pub(super) fn has_value(&mut self, x: &Expr) -> String {
+        if let ExprKind::Local(s) = x.kind {
+            if self.opened.contains_key(&s) {
+                return self
+                    .expr(&Expr {
+                        kind: ExprKind::IsSome(Box::new(x.clone())),
+                        ty: Ty::Bool,
+                        span: x.span,
+                    })
+                    .text;
+            }
+        }
         if let ExprKind::Builtin(Builtin::MapGet, got) = &x.kind {
             self.need("map_lend");
             let (m, k) = (self.expr(&got[0]), self.expr(&got[1]));

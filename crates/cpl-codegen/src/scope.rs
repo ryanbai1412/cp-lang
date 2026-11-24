@@ -240,7 +240,7 @@ pub(crate) fn start_guard(slot: usize, body: &Block) -> Option<(&Expr, &Block)> 
 /// The local lists of fn `id` that can live in one buffer for the whole
 /// run: each starts empty (`var xs: List<T> = []`) or as one filled row
 /// (`var seen: [0..n]Bool = false`), is only indexed,
-/// measured, walked and changed in place, and the fn can't be running
+/// measured, read at an end, walked and changed in place, and the fn can't be running
 /// twice at once (neither it nor anything it calls reaches it again or
 /// calls a fn value). The top-level code (`id` is `None`) is never
 /// running twice, so a scratch list made anew on every turn of a loop
@@ -305,6 +305,11 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
         match &e.kind {
             ExprKind::Index(base, _) => plain(base, -1),
             ExprKind::Builtin(Builtin::Len, args) => args.iter().for_each(|a| plain(a, -1)),
+            // An end is read like an element: `xs.last` copies it out.
+            ExprKind::Builtin(
+                Builtin::First | Builtin::Last | Builtin::FirstVal | Builtin::LastVal,
+                args,
+            ) => plain(&args[0], -1),
             _ => {}
         }
     });

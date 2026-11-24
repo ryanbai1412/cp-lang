@@ -244,6 +244,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "an_optional_of_a_position_a_bool_or_a_char_is_one_scalar",
     ),
     pass(
+        "open-optional",
+        "opened.rs",
+        Uses(&["live"]),
+        "a_last_opened_where_it_is_made_is_a_check_and_a_read",
+    ),
+    pass(
         "known-optional-fn",
         "optfn.rs",
         Uses(&["each_call", "each_closure", "each_write", "each_loop"]),

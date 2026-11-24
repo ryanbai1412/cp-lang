@@ -303,3 +303,34 @@ fn prev_of_a_position_past_a_loop_start_is_one_sub() {
     // A loop from the first position reaches a `j` with no `prev`.
     assert_eq!(cpp.matches("cpl::prev_pos(j").count(), 1, "{cpp}");
 }
+
+/// The program's own code: what follows the runtime.
+fn prog(cpp: &str) -> &str {
+    cpp.split_once("namespace prog {").map_or(cpp, |(_, p)| p)
+}
+
+#[test]
+fn a_last_opened_where_it_is_made_is_a_check_and_a_read() {
+    let cpp = cpp("let xs: List<0..9> = read()\nvar s = 0\nif let a = xs.last: s += a\nlet b = xs.last!\nlet c = xs.first ?? 7\nprint(s, b, c)\n");
+    let p = prog(&cpp);
+    assert!(
+        p.contains("if (!xs.empty()) {") && p.contains("= xs.back();"),
+        "{p}"
+    );
+    assert!(p.contains("(!xs.empty() ? (void)0 : cpl::fail(\"`!` on `None`: there is no value here\"), xs.back())"), "{p}");
+    assert!(p.contains("!xs.empty() ? xs.front() : 7"), "{p}");
+    for built in ["cpl::last(", "cpl::first(", "has_value()", "cpl::have("] {
+        assert!(!p.contains(built), "{built} builds an optional:\n{p}");
+    }
+}
+
+#[test]
+fn a_domain_position_mapped_and_tested_builds_no_position_optional() {
+    let cpp = cpp("let w: 1..=9 = read()\ndomain Col = 0..w\nfn step(c: Col, d: Int) -> ?(Col, Int) = Col.at(c + d).map(n => (n, d))\nlet c: Col = Col.first!\nif let (n, d) = step(c, 1): print(n.idx, d)\n");
+    let p = prog(&cpp);
+    assert!(p.contains(" < Col_len) {"), "{p}");
+    assert!(
+        !p.contains("cpl::pos_try_ord(") && !p.contains("cpl::OptPos t"),
+        "{p}"
+    );
+}

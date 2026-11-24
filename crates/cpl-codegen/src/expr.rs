@@ -240,6 +240,9 @@ impl<'p> Emitter<'p> {
         if let Some((_, owner)) = self.pinned.iter().find(|(p, _)| std::ptr::eq(*p, e)) {
             return Code::primary(owner.clone());
         }
+        if let Some(code) = self.opened_expr(e) {
+            return code;
+        }
         if let Some(row) = self.cached_row(crate::rowcache::of_expr(e)) {
             return Code::primary(row);
         }
