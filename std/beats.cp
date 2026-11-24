@@ -5,6 +5,18 @@
 //! (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
 use std.range.{ends}
 
+// One node's aggregates as seen from above: the stored ones with every ancestor's pending tag
+// applied, and `add` the pending add its children have not seen yet.
+struct BeatsView:
+    var s: Int
+    var mx1: Int
+    var mx2: Int
+    var mx_c: Int
+    var mn1: Int
+    var mn2: Int
+    var mn_c: Int
+    var add: Int
+
 /// Segment Tree Beats over a domain `D` of `Int` values.
 /// Supports `chmin`, `chmax`, `add`, `sum`, `min_val`, `max_val`, and `get`.
 pub struct BeatsSegTree<D>:
@@ -199,31 +211,56 @@ pub struct BeatsSegTree<D>:
         if lo == hi: return
         self.add_rec(1, 0, n, lo, hi, x)
 
-    fn sum_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int:
-        if qr <= nl or nr <= ql: return 0
-        if ql <= nl and nr <= qr: return s[u]
-        self.push(u, nl, nr)
-        let mid = (nl + nr) / 2
-        self.sum_rec(2 * u, nl, mid, ql, qr) + self.sum_rec(2 * u + 1, mid, nr, ql, qr)
+    fn root_view(self) -> BeatsView =
+        BeatsView(s[1], mx1[1], mx2[1], mx_c[1], mn1[1], mn2[1], mn_c[1], lz_add[1])
 
-    /// The sum of the current values in `r`. Takes `mut self` because it pushes pending tags.
+    // Node `c` as a push from parent view `p` would leave it, without writing it back.
+    fn seen(self, c: Int, len: Int, p: BeatsView) -> BeatsView:
+        let a = p.add
+        var v = BeatsView(
+            s[c] + a * len,
+            mx1[c] + a,
+            if mx2[c] != Int.MIN: mx2[c] + a else: Int.MIN,
+            mx_c[c],
+            mn1[c] + a,
+            if mn2[c] != Int.MAX: mn2[c] + a else: Int.MAX,
+            mn_c[c],
+            lz_add[c] + a,
+        )
+        if p.mx1 < v.mx1:
+            v.s += (p.mx1 - v.mx1) * v.mx_c
+            if v.mn1 == v.mx1: v.mn1 = p.mx1
+            elif v.mn2 == v.mx1: v.mn2 = p.mx1
+            v.mx1 = p.mx1
+        if p.mn1 > v.mn1:
+            v.s += (p.mn1 - v.mn1) * v.mn_c
+            if v.mx1 == v.mn1: v.mx1 = p.mn1
+            elif v.mx2 == v.mn1: v.mx2 = p.mn1
+            v.mn1 = p.mn1
+        v
+
+    // `kind` 0 sums, 1 takes the minimum, 2 the maximum of `ql..qr` under view `v` of node `u`.
+    fn read(self, u: Int, v: BeatsView, nl: Int, nr: Int, ql: Int, qr: Int, kind: Int) -> Int:
+        if qr <= nl or nr <= ql: return if kind == 0: 0 elif kind == 1: Int.MAX else: Int.MIN
+        if ql <= nl and nr <= qr: return if kind == 0: v.s elif kind == 1: v.mn1 else: v.mx1
+        let mid = (nl + nr) / 2
+        let a = self.read(2 * u, self.seen(2 * u, mid - nl, v), nl, mid, ql, qr, kind)
+        let b = self.read(2 * u + 1, self.seen(2 * u + 1, nr - mid, v), mid, nr, ql, qr, kind)
+        if kind == 0: a + b elif kind == 1: min(a, b) else: max(a, b)
+
+    /// The sum of the current values in `r`. Reads pending tags on the way down instead of
+    /// pushing them, so a query never changes the tree.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: zero
     /// traps: when a non-empty `r` reaches outside `D`
-    /// example: `var t = BeatsSegTree([5, 1, 4]); t.sum(1..3) == 5`
-    /// example: `var t = BeatsSegTree([5, 1, 4]); t.sum(1..1) == 0`
-    pub fn sum(mut self, r: Range<D>) -> Int:
+    /// example: `BeatsSegTree([5, 1, 4]).sum(1..3) == 5`
+    /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..3, 2); t.sum(0..2) == 3`
+    /// example: `BeatsSegTree([5, 1, 4]).sum(1..1) == 0`
+    pub fn sum(self, r: Range<D>) -> Int:
         let (lo, hi) = r.ends
         if lo == hi: return 0
-        self.sum_rec(1, 0, n, lo, hi)
-
-    fn min_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int:
-        if qr <= nl or nr <= ql: return Int.MAX
-        if ql <= nl and nr <= qr: return mn1[u]
-        self.push(u, nl, nr)
-        let mid = (nl + nr) / 2
-        min(self.min_rec(2 * u, nl, mid, ql, qr), self.min_rec(2 * u + 1, mid, nr, ql, qr))
+        self.read(1, self.root_view(), 0, n, lo, hi, 0)
 
     /// The least current value in `r`, or `None` when `r` is empty.
     ///
@@ -231,19 +268,12 @@ pub struct BeatsSegTree<D>:
     /// empty: `None`
     /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: when a non-empty `r` reaches outside `D`
-    /// example: `var t = BeatsSegTree([5, 1, 4]); t.min_val(0..3) == Some(1)`
-    /// example: `var t = BeatsSegTree([5, 1, 4]); t.min_val(2..2) == None`
-    pub fn min_val(mut self, r: Range<D>) -> ?Int:
+    /// example: `BeatsSegTree([5, 1, 4]).min_val(0..3) == Some(1)`
+    /// example: `BeatsSegTree([5, 1, 4]).min_val(2..2) == None`
+    pub fn min_val(self, r: Range<D>) -> ?Int:
         let (lo, hi) = r.ends
         if lo == hi: return None
-        self.min_rec(1, 0, n, lo, hi)
-
-    fn max_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int:
-        if qr <= nl or nr <= ql: return Int.MIN
-        if ql <= nl and nr <= qr: return mx1[u]
-        self.push(u, nl, nr)
-        let mid = (nl + nr) / 2
-        max(self.max_rec(2 * u, nl, mid, ql, qr), self.max_rec(2 * u + 1, mid, nr, ql, qr))
+        self.read(1, self.root_view(), 0, n, lo, hi, 1)
 
     /// The greatest current value in `r`, or `None` when `r` is empty.
     ///
@@ -252,17 +282,17 @@ pub struct BeatsSegTree<D>:
     /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..1, 2); t.max_val(0..3) == Some(4)`
-    pub fn max_val(mut self, r: Range<D>) -> ?Int:
+    pub fn max_val(self, r: Range<D>) -> ?Int:
         let (lo, hi) = r.ends
         if lo == hi: return None
-        self.max_rec(1, 0, n, lo, hi)
+        self.read(1, self.root_view(), 0, n, lo, hi, 2)
 
     /// The current value at position `i`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
-    /// example: `var t = BeatsSegTree([5, 1, 4]); t.get(2) == 4`
-    pub fn get(mut self, i: D) -> Int = self.sum(i..=i)
+    /// example: `BeatsSegTree([5, 1, 4]).get(2) == 4`
+    pub fn get(self, i: D) -> Int = self.sum(i..=i)
 
     fn div_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, d: Int, rem: Bool):
         if qr <= nl or nr <= ql: return
