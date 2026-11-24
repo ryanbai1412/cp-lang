@@ -822,6 +822,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0325"),
+        title: "`@stress` that says no kind",
+        summary: "An `@stress` on anything but a type alias, or with anything but one of `perm`, `tree`, `simple`, `connected`, `dag` and `digraph`.",
+        explanation: "`@stress(kind)` above a type alias tells `cpl stress` to make and shrink its values as that kind: a permutation, a tree, a simple, connected or acyclic graph, or a digraph (decision 25.32).",
+        trigger: "@stress(forest)\ntype T = [0..2](u: 1..=3, v: 1..=3)\nprint(1)\n",
+        fix: "@stress(tree)\ntype T = [0..2](u: 1..=3, v: 1..=3)\nprint(1)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

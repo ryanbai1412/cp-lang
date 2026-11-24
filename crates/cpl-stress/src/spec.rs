@@ -153,17 +153,31 @@ pub enum GraphKind {
     Digraph,
 }
 
-impl GraphKind {
-    fn named(name: &str) -> Option<GraphKind> {
-        match name {
-            "SimpleGraph" => Some(GraphKind::Simple),
-            "ConnectedGraph" => Some(GraphKind::Connected),
-            "Dag" => Some(GraphKind::Dag),
-            "Digraph" => Some(GraphKind::Digraph),
-            _ => None,
-        }
-    }
+/// What `@stress(..)` on a type alias says stress makes its values as:
+/// `@stress(tree)` above `pub type Tree<V>`, or above a user's weighted
+/// `type Tree = [0..n - 1](u: V, v: V, w: W)`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Made {
+    Perm,
+    Tree,
+    Graph(GraphKind),
+}
 
+impl Made {
+    pub(crate) fn of(decorators: &[cpl_syntax::ast::Decorator]) -> Option<Made> {
+        use cpl_syntax::stress::Stress;
+        Some(match Stress::of(decorators)? {
+            Stress::Perm => Made::Perm,
+            Stress::Tree => Made::Tree,
+            Stress::Simple => Made::Graph(GraphKind::Simple),
+            Stress::Connected => Made::Graph(GraphKind::Connected),
+            Stress::Dag => Made::Graph(GraphKind::Dag),
+            Stress::Digraph => Made::Graph(GraphKind::Digraph),
+        })
+    }
+}
+
+impl GraphKind {
     pub fn directed(self) -> bool {
         matches!(self, GraphKind::Dag | GraphKind::Digraph)
     }
@@ -621,6 +635,7 @@ impl InputSpec {
             counted: HashSet::new(),
             io_base: 0,
             aliases: HashMap::new(),
+            alias_made: HashMap::new(),
             records: HashMap::new(),
             std_scope: None,
             bound: Rc::default(),
@@ -790,6 +805,9 @@ impl InputSpec {
                     builder
                         .aliases
                         .insert(name.text.clone(), (builder.base, ty.clone()));
+                    if let Some(made) = Made::of(&stmt.decorators) {
+                        builder.alias_made.insert(name.text.clone(), made);
+                    }
                 }
                 StmtKind::Struct(decl) if decl.generics.is_empty() => {
                     let fields = decl.fields.iter().map(|f| f.ty.clone()).collect();

@@ -23,6 +23,8 @@ pub(super) struct Builder<'a> {
     /// Each alias with the base of the item that declares it, which its
     /// spans are relative to.
     pub(super) aliases: HashMap<String, (u32, Type)>,
+    /// What `@stress(..)` says each alias above makes.
+    pub(super) alias_made: HashMap<String, Made>,
     /// Each record type `read()` reads field by field: a struct's fields,
     /// or an `@tags` enum's variants each with the letter it is written as.
     pub(super) records: HashMap<String, (u32, Record)>,
@@ -363,15 +365,13 @@ impl Builder<'_> {
                         .unwrap_or_else(|| Err(unsupported(self)));
                 };
                 let outer = std::mem::replace(&mut self.base, base);
-                // `type Perm = [V]V` and `type Tree = [E](u: V, v: V)`
-                // say what the values are, beyond their type.
-                let shape = match name.text.as_str() {
-                    "Perm" => Ok(self.perm(&alias)),
-                    "Tree" => Ok(self.tree(&alias)),
-                    other => match GraphKind::named(other) {
-                        Some(kind) => Ok(self.graph(&alias, kind)),
-                        None => self.shape(&alias).map(Some),
-                    },
+                // `@stress(tree) type Tree = [E](u: V, v: V, w: W)` says
+                // what the values are, beyond their type.
+                let shape = match self.alias_made.get(&name.text).copied() {
+                    Some(Made::Perm) => Ok(self.perm(&alias)),
+                    Some(Made::Tree) => Ok(self.tree(&alias)),
+                    Some(Made::Graph(kind)) => Ok(self.graph(&alias, kind)),
+                    None => self.shape(&alias).map(Some),
                 };
                 self.base = outer;
                 shape?.ok_or_else(|| unsupported(self))
@@ -435,12 +435,14 @@ impl Builder<'_> {
             // `Perm<V>` and `Tree<V>`: a permutation of a domain, and the
             // edges of a tree on it.
             TypeKind::Named { name, args }
-                if args.len() == 1 && matches!(name.text.as_str(), "Perm" | "Tree") =>
+                if args.len() == 1
+                    && let Some(made @ (Made::Perm | Made::Tree)) =
+                        self.std_made(ty, &name.text) =>
             {
                 let (lo, hi) = self.index(&args[0])?;
                 names_in(&lo, &mut self.spec.sizes);
                 names_in(&hi, &mut self.spec.sizes);
-                Ok(if name.text == "Perm" {
+                Ok(if made == Made::Perm {
                     let len = binary(BinOp::Add, binary(BinOp::Sub, hi, lo.clone()), int(1));
                     Shape::Perm { lo, len }
                 } else {
@@ -455,7 +457,7 @@ impl Builder<'_> {
             // one edge on `V` for each value of `E`.
             TypeKind::Named { name, args }
                 if args.len() == 2
-                    && let Some(kind) = GraphKind::named(&name.text) =>
+                    && let Some(Made::Graph(kind)) = self.std_made(ty, &name.text) =>
             {
                 let (lo, hi) = self.index(&args[0])?;
                 let (first, last) = self.index(&args[1])?;
@@ -541,6 +543,22 @@ impl Builder<'_> {
                 .map(Shape::tuple),
             _ => Err(unsupported(self)),
         }
+    }
+
+    /// What `@stress(..)` on the std declaration the written type `ty`
+    /// names says it makes: the declaration the checker resolved `ty` to,
+    /// so a user's own `Perm` is not std's, or, inside a std type, the
+    /// module's own `name`.
+    pub(super) fn std_made(&self, ty: &Type, name: &str) -> Option<Made> {
+        let (module, name) = match self.std_scope {
+            Some(module) => (module, name),
+            None => {
+                let facts = self.read_types.facts.as_ref()?;
+                let decl = facts.imported_type(ty.span.shift(self.base))?;
+                (decl.module.strip_prefix("std.")?, decl.name.as_str())
+            }
+        };
+        Made::of(&std_decl(module, name)?.2.decorators)
     }
 
     /// `[V]V` as a permutation of `V`.

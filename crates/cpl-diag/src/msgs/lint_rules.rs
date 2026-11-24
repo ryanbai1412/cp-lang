@@ -12,14 +12,12 @@ super::msgs! {
     COMPOUND_SELF_REF = "L0210", "`{}` is written in terms of itself; this is `{} {} ...`";
     CONTAINS_THEN_ADD = "L0552", "`{}` is tested for a key before `+=`";
     COPY_COMPREHENSION = "L0549", "`{}` copies a sequence one element at a time";
-    COUNTER_BY_MAP = "L0579", "`{}` counts by hand: it is a `Counter`";
     CROSS_BY_HAND = "L0556", "`{}` is a cross product of points kept in two lists";
     DIFF_BY_HAND = "L0559", "`{}` is a difference array kept by hand";
     DOMAIN_EMPTY_THEN_FIRST_LAST = "L0304", "`{}` is empty when `{}` is {}, and then `{}` traps";
     DOMAIN_KEYED_MAP = "L0412", "`{}` is keyed by the domain `{}`";
     EMPTY_THEN_FIRST_LAST = "L0305", "`{}` is empty when `{}` is {}, and then `{}` traps";
     FACT_TABLES_BY_HAND = "L0587", "a factorial table built by hand";
-    FERMAT_INVERSE = "L0573", "`pow_mod({}, {} - 2, {})` is the inverse of `{}` modulo `{}`, by hand";
     FLOAT_EQUALITY = "L0301", "`{}` compares floats bit for bit";
     FLOAT_SQRT_FOR_INT = "L0529", "`{}` takes the root through `F64`";
     FOUND_FLAG_PAIR = "L0596", "`{}` only says whether {} {} been set";

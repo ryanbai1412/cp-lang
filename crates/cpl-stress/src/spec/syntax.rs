@@ -253,6 +253,9 @@ pub(super) struct ReadFacts {
     /// The file spans of the expressions typed `Char`, so a domain whose
     /// bounds are characters reads as characters.
     pub(super) chars: HashSet<Span>,
+    /// The checker's facts about `src`, for what each written type
+    /// resolves to.
+    pub(super) facts: Option<std::sync::Arc<cpl_check::Facts>>,
 }
 
 pub(super) fn read_types(src: &str) -> ReadFacts {
@@ -276,6 +279,7 @@ pub(super) fn read_types(src: &str) -> ReadFacts {
             out.reads.insert(span, format!("let _: {ty} = read()"));
         }
     }
+    out.facts = Some(facts);
     out
 }
 

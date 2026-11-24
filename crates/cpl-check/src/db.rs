@@ -31,7 +31,7 @@ use crate::ty::Ty;
 use cpl_diag::msgs::check as msgs;
 use cpl_diag::{codes, Diagnostic, LineIndex, Sink, Span};
 use cpl_syntax::ast::{self, StmtKind};
-use cpl_syntax::{library_lint, ParsedItem};
+use cpl_syntax::{library_lint, stress, ParsedItem};
 use std::sync::Arc;
 
 mod bodies;
@@ -986,6 +986,13 @@ impl Database {
         library_lint::module_errors(parsed)
             .into_iter()
             .for_each(|e| sink.push(e));
+        for (item, range) in items.iter().zip(&ranges) {
+            for stmt in &item.parsed.stmts {
+                stress::errors(stmt, range.span.start)
+                    .into_iter()
+                    .for_each(|e| sink.push(e));
+            }
+        }
         for (index, item) in items.iter().enumerate() {
             for stmt in &item.parsed.stmts {
                 if let StmtKind::Use { names, alias, .. } = &stmt.kind {

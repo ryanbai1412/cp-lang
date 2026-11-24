@@ -20,6 +20,7 @@ use std.range.{Len, RingRange, ends, first_true, last_true}
 use std.rand.{shuffle}
 
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
+@stress(perm)
 pub type Perm<V> = [V]V
 
 /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`.

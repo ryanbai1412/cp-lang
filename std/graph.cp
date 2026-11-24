@@ -124,25 +124,30 @@ impl Next<V> for Reweighted<V, E, A, W>:
 /// \(O(n)\) to read.
 /// The `V.len - 1` edges of a tree on `V`, one `u v` pair per line, as an input
 /// gives them. `cpl stress` makes and shrinks it as a tree.
+@stress(tree)
 pub type Tree<V> = [0..V.len - 1](u: V, v: V)
 
 /// \(O(m)\) to read.
 /// One edge on `V` for each value of `E`, `u v` per line, with no loop and no
 /// pair twice. `cpl stress` makes and shrinks it so.
+@stress(simple)
 pub type SimpleGraph<V, E> = [E](u: V, v: V)
 
 /// \(O(n + m)\) to read (connectivity is validated).
 /// A `SimpleGraph` in which every vertex reaches every other.
+@stress(connected)
 pub type ConnectedGraph<V, E> = [E](u: V, v: V)
 
 /// \(O(m)\) to read.
 /// One arc `u -> v` on `V` for each value of `E`, with no arc twice and no
 /// directed cycle. `cpl stress` makes and shrinks it so.
+@stress(dag)
 pub type Dag<V, E> = [E](u: V, v: V)
 
 /// \(O(n + m)\) to read (acyclicity is validated).
 /// One arc `u -> v` on `V` for each value of `E`, with no loop and no arc
 /// twice; `u v` and `v u` are two arcs. `cpl stress` makes and shrinks it so.
+@stress(digraph)
 pub type Digraph<V, E> = [E](u: V, v: V)
 
 /// A fixed graph in compressed sparse row form: n + 1 offsets and one arcs list, the arcs of each

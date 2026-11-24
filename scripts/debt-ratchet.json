@@ -146,7 +146,7 @@
   "opt_without_uses": 0,
   "opt_private_walks": 49,
   "near_dup_fns": 0,
-  "consumer_rederived": 8,
+  "consumer_rederived": 0,
   "rs_near_cap": [],
   "skip_lists": 0,
   "dead_code_allows": 0,

@@ -9,7 +9,8 @@ The key is the real compiler's identity, every argument except the output
 path, the bytes of each source file (or of stdin), and a fingerprint of every
 system header and library directory the compiler searches. Only successful
 compiles are kept, entries appear by atomic rename, and the least recently used
-are evicted past CPL_CXX_CACHE_MAX_BYTES. Anything the cache can't key (a
+are evicted past CPL_CXX_CACHE_MAX_BYTES; only the shim's own entries count
+and go, not the builds other tools keep in the same cache. Anything the cache can't key (a
 quoted include, an include or library flag, a search-path variable) runs the
 real compiler.
 """
@@ -111,10 +112,21 @@ def system_key(gxx):
     return h.hexdigest()
 
 
+def own_dirs(cache):
+    """The shim's entry dirs, `<cache>/<2 hex>/`. cpl-conform and corpus.py keep their
+    builds in named dirs of the same cache, which eviction must not touch or count."""
+    try:
+        names = os.listdir(cache)
+    except OSError:
+        return []
+    return [os.path.join(cache, d) for d in names
+            if len(d) == 2 and all(c in "0123456789abcdef" for c in d)]
+
+
 def evict(cache, max_bytes):
     entries = []
     total = 0
-    for r, _, fs in os.walk(cache):
+    for r, fs in ((d, os.listdir(d)) for d in own_dirs(cache)):
         for f in fs:
             path = os.path.join(r, f)
             try:
