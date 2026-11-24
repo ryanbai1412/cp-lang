@@ -75,8 +75,8 @@ call the setup once and print one `can_reach` per query.
   (ranges, tuples, structs), or have the checker reject the key. Owner: codegen.
 - **Severity:** medium.
 
-## The port's C++ is 45 KB, over the 32 KB target
-- **Where:** `cpl build --judge codeforces port.cp --size`: 44993 bytes. Runtime 19859 (45%:
+## The dream's C++ is 47 KB, over the 32 KB target
+- **Where:** `cpl build --judge codeforces dream.cp --size`: 47342 bytes today (44993 when first measured). Runtime 19859 (45%:
   hashcore 3290, cphash 1814, cphashmap 1470, ...), library fns 14356 (32%: `Lift.new`
   1466, `SparseTable.new` 1146, `SortedBag.erase_at` 930, ...), your code 4804 (11%).
   Replacing `distinct(by:)` with a check on `open` saves only 1.6 KB (43417 bytes): the hash
@@ -85,7 +85,9 @@ call the setup once and print one `can_reach` per query.
 - **Goal it hurts:** submission.
 - **General fix (codegen):** emit only the runtime the program reaches, and only the fields of
   `Lift`/`SparseTable`/`SortedMap` that it uses.
-- **Severity:** low (69% of the 64 KB Codeforces limit).
+- **Severity:** low (73% of the 64 KB Codeforces limit). To fit the target, the port walks each
+  run by column over `open: [Col]?Col` and `placed: [Col]Bool` instead of `SortedMap.drain`
+  and `distinct(by:)`: 28465 bytes, but a hand cursor where the dream states the drain.
 
 ## Measurements
 
@@ -93,7 +95,7 @@ call the setup once and print one `can_reach` per query.
   sample grader main excluded) 1814.
 - **Runtime and memory:** on the `--max` case (N = M = Q = 2e5), port 0.45 s / 149 MB,
   `orig.cpp` 0.62 s / 81 MB, with identical output.
-- **Emitted C++:** port 44993 bytes, dream 44920 bytes.
+- **Emitted C++:** port 28465 bytes, dream 47342 bytes (`--judge codeforces`).
 - **Agreement:** `orig.cpp` (the official model solution) passes all 76 official tests and
   matches a BFS brute on 800 random grids. The dream matches it on the 76 official tests, the
   14 package cases (`dream_stress`) and 1500 more gen.py seeds.

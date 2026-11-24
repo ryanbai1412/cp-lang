@@ -27,7 +27,7 @@ let sign = [Mask] mask => if popcount(mask.ord) % 2 == 1: -1 else: 1
 let holding = [0..M] b => Mask.filter(mask => left_out[mask, b]).collect()
 
 // last[c, b]: the lowest row so far (at or above bot) where letter b last occurs in column c.
-var last: [Col, 0..M]-1..n = -1
+var last: [Col, 0..M]?Row = None
 // seen[c]: the letters occurring in column c at or above bot, as a bit mask.
 var seen: [Col]0..MASKS = 0
 var ans = 0
@@ -36,7 +36,7 @@ for bot in Row:
     for c in Col:
         let ch = g[bot, c]
         if ch != '.':
-            last[c, Int(ch) - 65] = bot.ord
+            last[c, Int(ch) - 65] = Some(bot)
             seen[c] |= 1 << (Int(ch) - 65)
 
     // blocked[mask, c]: letters of mask still present in column c between top and bot.
@@ -48,8 +48,8 @@ for bot in Row:
         for c in Col:
             if blocked[mask, c] == 0:
                 run += 1
-                if c.ord > 0 and blocked[mask, Col(c.ord - 1)] == 0:
-                    runs[mask].unite(Col(c.ord - 1), c)
+                if let d = c.prev:
+                    if blocked[mask, d] == 0: runs[mask].unite(d, c)
             else:
                 total[mask] += c2(run)
                 run = 0
@@ -58,8 +58,7 @@ for bot in Row:
     var drops: [Row]List<(c: Col, b: Int)> = []
     for c in Col:
         for b in 0..M:
-            if last[c, b] >= 0:
-                drops[Row(last[c, b])].push((c, b))
+            if let r = last[c, b]: drops[r].push((c, b))
 
     for top in Row(0)..=bot:
         for mask in Mask:
@@ -68,10 +67,11 @@ for bot in Row:
             for mask in holding[b]:
                 blocked[mask, c] -= 1
                 if blocked[mask, c] == 0:
-                    for d in c.ord - 1..=c.ord + 1:
-                        if d != c.ord and d in Col and blocked[mask, Col(d)] == 0:
-                            total[mask] -= c2(runs[mask].size(Col(d)))
-                            runs[mask].unite(c, Col(d))
+                    for d in [c.prev, c.next]:
+                        if let d = d:
+                            if blocked[mask, d] == 0:
+                                total[mask] -= c2(runs[mask].size(d))
+                                runs[mask].unite(c, d)
                     total[mask] += c2(runs[mask].size(c))
 
 print(ans)

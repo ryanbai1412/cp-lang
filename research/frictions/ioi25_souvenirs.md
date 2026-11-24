@@ -11,9 +11,10 @@ while T.any(i => price[i] == None):
             break if e.types.len == 1: learn(i, e.sum) else: pay(e.sum / e.types.len)
 ```
 
-The port follows the official model solution (leads walked forward, then peeled from the
-right). The dream keeps one equation per smallest unknown type and scans from the right. Both
-are stdin programs that simulate the sample grader's `transaction`.
+The port is the dream: one equation per smallest unknown type, scanning from the right. It
+replaced a port of the official model solution (leads walked forward, then peeled from the
+right) whose `lead_cost` used `-1` for "unknown". Both are stdin programs that simulate the
+sample grader's `transaction`.
 
 ## `break` takes no value, so a last call can't ride on it
 - **Where:** `dream.cp`, the scan's two exits, which now read
@@ -80,10 +81,10 @@ are stdin programs that simulate the sample grader's `transaction`.
 
 ## Measurements
 
-- **Tokens:** solution only, grader simulation excluded: port 299, dream 352, original
+- **Tokens:** solution only, grader simulation excluded: port and dream 352 (the model-solution port was 299), original
   (author_solution.cpp) 410.
 - **Runtime and memory:** on the `--max` case (N = 100), port 0.00 s / 3.7 MB, accepted C++
   0.00 s / 3.7 MB.
-- **Emitted C++:** port 15835 bytes, dream 20778 bytes.
-- **Agreement:** the port and dream match `orig.cpp` on all 54 official tests and on 400 or
-  more (port) and 2000 (dream) gen.py seeds.
+- **Emitted C++:** port and dream 20778 bytes (the model-solution port was 15835).
+- **Agreement:** the port and dream match `orig.cpp` on all 54 official tests and on 2000 gen.py
+  seeds; the port again on 30 seeds and its 12 package cases.

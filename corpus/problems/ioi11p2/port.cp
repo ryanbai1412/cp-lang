@@ -16,10 +16,11 @@ let k: 1..=1e6 = read()
 domain City = 0..n
 domain Road = 1..n
 
-fn random_tree() -> [Road](u: City, v: City, len: 0..=1e6):
-    [Road] t => (City(rand(0, t.label - 1)), City(t.label), rand(0, 1e6))
+const LONGEST = 1e6
+fn random_tree() -> [Road](u: City, v: City, len: 0..=LONGEST):
+    [Road] t => (City(rand(0, t.label - 1)), City(t.label), rand(0, LONGEST))
 
-let roads: [Road](u: City, v: City, len: 0..=1e6) = read(gen: random_tree)
+let roads: [Road](u: City, v: City, len: 0..=LONGEST) = read(gen: random_tree)
 let tree = Rooted(Graph.undirected(roads).weighted(a => roads[a.e].len), City.first!)
 
 // Small-to-large over the subtrees. reach[v] maps a distance from the root

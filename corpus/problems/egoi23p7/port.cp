@@ -3,123 +3,67 @@
 // Problem: N <= 3e5 buildings, M <= 3e5 existing directed tubes (u sends garbage to v) that
 //   must be used and K <= 3e5 ordered pairs where no tube may be built. Print N - 1 tubes that
 //   form a tree directed toward one root, including the existing ones, or "NO".
-// Solution: the existing tubes must form a forest: a DFS from every building without an
-//   outgoing tube, reporting NO on a revisit or an unreached building. Contract each tree to
-//   its root; the root of tree c may hang below tree k unless it is forbidden from all of k's
-//   buildings (counted per tree from c's root's forbidden list). DFS the complement of those
-//   bans, keeping a set of unvisited trees so each step scans only bans; a tree whose DFS ended
-//   stays available to hang below later ones. NO unless N_trees - 1 links are found; each link
-//   takes the first allowed building. O((N + M + K) log N).
+// Solution: the required tubes must form a forest (Rooted.try_from_parents, else NO); each
+//   tree is a block that hangs under another block. Block c may not hang under block k when
+//   every building of k is a banned parent of c's root (tallied by root). Search the
+//   complement of that "may not" graph, scanning only unreached blocks so each kept one is
+//   paid for by a ban; search from the last start to get one root, then again from it.
+//   NO unless every block hangs; each link takes the first allowed building of k's tree.
+//   O((N + M + K) log N).
 // original: corpus/submissions/5678057.cpp
-// Bounds: n: 1..=3e5; m1, m2: 0..=3e5; child, parent: 0..n
-let n: 1..=3e5 = read()
-let m1: 0..=3e5 = read()
-let m2: 0..=3e5 = read()
+// Bounds: n: 1..=3e5; m1, m2: 0..=3e5; need.child, need.parent, e.child, e.parent: 0..n
+let (n, m1, m2) = read<(1..=3e5, 0..=3e5, 0..=3e5)>()
 domain V = 0..n
+let need = read<[m1](child: V, parent: V)>()
+var bans: [V]Set<V> = []
+var banned_by: [V]List<V> = []
+for e in read<[m2](child: V, parent: V)>():
+    if e.parent not in bans[e.child]:
+        bans[e.child].insert(e.parent)
+        banned_by[e.child].push(e.parent)
 
-var req_u: List<V> = []
-var req_v: List<V> = []
-var adj1: [V]List<V> = []
-var ideg: [V]Int = 0
-for _ in 0..m1:
-    let child: V = read()
-    let parent: V = read()
-    req_u.push(parent)
-    req_v.push(child)
-    adj1[parent].push(child)
-    ideg[child] += 1
-
-var forb_in: [V]Set<V> = []
-for _ in 0..m2:
-    let child: V = read()
-    let parent: V = read()
-    forb_in[child].insert(parent)
-
-var vis: [V]Bool = false
-var has_cyc = false
-var ord: List<V> = []
-fn dfs_req(u: V):
-    if vis[u]:
-        has_cyc = true
-        return
-    vis[u] = true
-    for v in adj1[u]: dfs_req(v)
-    ord.push(u)
-
-fn solve():
-    var rep: List<V> = []
-    var comps: List<List<V>> = []
-    var comp_of: [V]Int = 0
-    for u in V:
-        if ideg[u] != 0: continue
-        ord = []
-        dfs_req(u)
-        let cid = rep.len
-        rep.push(u)
-        comps.push(ord)
-        for x in ord: comp_of[x] = cid
-
-    if has_cyc:
+var up: [V]?V = None
+for e in need:
+    if up[e.child] != None:
         print("NO")
         return
-    for u in V:
-        if not vis[u]:
-            print("NO")
-            return
+    up[e.child] = Some(e.parent)
+let forest = Rooted.try_from_parents(up) else: print("NO"); return
+let blocks = forest.roots.collect()
+var cannot: [V]List<V> = []
+for c in blocks:
+    for (k, hits) in banned_by[c].tally(by: v => forest.root_of(v)).items():
+        if hits == forest.size(k): cannot[k].push(c)
 
-    let ccnt = rep.len
-    domain Comp = 0..ccnt
-    var cc_adj: [Comp]List<Comp> = []
-    for c in Comp:
-        var cnt = Map<Int, 0..=3e5>()
-        for u in forb_in[rep[c.idx]]:
-            cnt[comp_of[u]] += 1
-        for (k, v) in cnt:
-            if v == comps[k].len:
-                cc_adj[Comp(k)].push(c)
+// The block each reached block hangs below, searching from `starts` in turn, and the last start.
+fn search(starts: List<V>) -> (root: V, below: [V]?V):
+    var below: [V]?V = None
+    var seen: [V]Bool = false
+    var mark: [V]?V = None
+    var left = blocks
+    var root = starts.first!
+    for s in starts:
+        if seen[s]: continue
+        (root, seen[s]) = (s, true)
+        var todo = [s]
+        while let k = todo.pop():
+            for c in cannot[k]: mark[c] = Some(k)
+            var rest: List<V> = []
+            for c in left:
+                if seen[c]: continue
+                if mark[c] == Some(k):
+                    rest.push(c)
+                else:
+                    (seen[c], below[c]) = (true, Some(k))
+                    todo.push(c)
+            left = rest
+    (root:, below:)
 
-    var cvis: [Comp]Bool = false
-    var to_vis = Set<Comp>()
-    for c in Comp: to_vis.insert(c)
-    var comp_u: List<Comp> = []
-    var comp_v: List<Comp> = []
-
-    fn dfs_comp(u: Comp, p: ?Comp):
-        if let par = p:
-            comp_u.push(par)
-            comp_v.push(u)
-        if cvis[u]: return
-        cvis[u] = true
-        var can_vis = Set<Comp>()
-        var cant_vis = Set<Comp>()
-        for c in to_vis: can_vis.insert(c)
-        to_vis = Set<Comp>()
-        for v in cc_adj[u]:
-            if v in can_vis:
-                can_vis.remove(v)
-                cant_vis.insert(v)
-        for c in cant_vis: to_vis.insert(c)
-        for v in can_vis: dfs_comp(v, u)
-
-    for c in Comp:
-        if c in to_vis:
-            to_vis.remove(c)
-            dfs_comp(c, None)
-            to_vis.insert(c)
-
-    if comp_u.len != ccnt - 1:
-        print("NO")
-        return
-
-    for i in 0..m1:
-        print(req_v[i].idx, req_u[i].idx)
-    for i in 0..comp_u.len:
-        let u = comp_u[i]
-        let v = comp_v[i]
-        let rv = rep[v.idx]
-        for a in comps[u.idx]:
-            if a not in forb_in[rv]:
-                print(rv.idx, a.idx)
-                break
-
-solve()
+let top = search(blocks).root
+let hang = search([top]).below
+if not blocks.all(c => c == top or hang[c] != None):
+    print("NO")
+else:
+    for e in need: print(e.child, e.parent)
+    for c in blocks:
+        if let k = hang[c]: print(c, forest.subtree(k).find(v => v not in bans[c])!)

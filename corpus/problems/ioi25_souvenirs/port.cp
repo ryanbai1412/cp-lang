@@ -27,31 +27,31 @@ fn transaction(m: Int) -> (List<T>, Int):
     (bought, change)
 
 var counters: [T]Int = 0
-var lead_cost: [T]Int = -1
+var lead_cost: [T]?Int = None
 var lead_bought: [T]List<T> = []
 
 fn buy_next_lead(i: T) -> T:
     let s = lead_bought[i].len
-    var m = lead_cost[i] / s
+    var m = lead_cost[i]! / s
     if s == 1: m -= 1
     let (got, change) = transaction(m)
     for j in got: counters[j] += 1
     let l = got[0]
-    lead_cost[l] = m - change
+    lead_cost[l] = Some(m - change)
     lead_bought[l] = got
     l
 
 fn buy_souvenirs(p0: Int):
     let last = T.last!
-    lead_cost[T.first!] = p0
+    lead_cost[T.first!] = Some(p0)
     lead_bought[T.first!] = [T.first!]
     var lead = T.first!
     while lead < last: lead = buy_next_lead(lead)
     var prices = last
     while prices > T.first!:
-        if lead_cost[lead] != -1:
-            while lead_bought[lead].len > 1 and lead_cost[lead_bought[lead].last!] != -1:
-                lead_cost[lead] -= lead_cost[lead_bought[lead].last!]
+        if lead_cost[lead] != None:
+            while lead_bought[lead].len > 1 and lead_cost[lead_bought[lead].last!] != None:
+                lead_cost[lead] = Some(lead_cost[lead]! - lead_cost[lead_bought[lead].last!]!)
                 lead_bought[lead].pop()
             if lead == prices:
                 prices = prices.prev!
@@ -61,7 +61,7 @@ fn buy_souvenirs(p0: Int):
         else:
             lead = lead.prev!
     for i in T:
-        repeat i.ord - counters[i]: transaction(lead_cost[i])
+        repeat i.ord - counters[i]: transaction(lead_cost[i]!)
 
 buy_souvenirs(p0)
 print("!")
