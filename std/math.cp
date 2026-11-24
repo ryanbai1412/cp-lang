@@ -568,7 +568,7 @@ pub fn divisors(self: Int) -> List<Int>:
 /// them; it is not checked. The empty factorization is that of 1.
 ///
 /// cost: \(O(d \log d)\) for `d` divisors
-/// empty: `[1]`
+/// empty: `divisors_from_factors([]) == [1]`
 /// order: ascending; a new `List`, keyed from 0
 /// traps: when an exponent is negative, or a divisor overflows `Int`
 /// example: `divisors_from_factors([(2, 2), (3, 1)]) == [1, 2, 3, 4, 6, 12]`
@@ -632,7 +632,7 @@ pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
 /// `0 <= r < m`, or `None` if inconsistent: `crt` folded left to right from `(0, 1)`.
 ///
 /// cost: \(O(\mathit{eqs}.\mathit{len} \cdot \log \mathit{lcm})\)
-/// empty: `Some((0, 1))`
+/// empty: `crt_all([]) == Some((0, 1))`
 /// traps: when some `m < 1`, or the running lcm overflows
 /// example: `crt_all([(2, 3), (3, 5), (2, 7)]) == Some((23, 105))`
 /// example: `crt_all([(0, 2), (1, 2)]) == None`
@@ -775,7 +775,7 @@ pub fn primitive_root(p: Int) -> Int:
 /// baby-step giant-step). `a^0` is `1 % m`, and `a` and `b` are reduced first.
 ///
 /// cost: \(O(\sqrt m)\)
-/// ties: the least `x`
+/// ties: `mod_log(2, 4, 7) == Some(2)`
 /// traps: when `m < 1`
 /// example: `mod_log(3, 6, 7) == Some(3)`
 /// example: `mod_log(2, 3, 7) == None`
@@ -817,7 +817,7 @@ pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int:
 /// first.
 ///
 /// cost: \(O(\log^2 p)\)
-/// ties: the smaller root
+/// ties: `mod_sqrt(4, 7) == Some(2)`
 /// traps: when `p` is not prime
 /// example: `mod_sqrt(2, 7) == Some(3)`
 /// example: `mod_sqrt(9, 7) == Some(3)`
@@ -933,7 +933,7 @@ pub fn prime_count(n: Int) -> Int:
 /// The first range is clipped to start at `from`. Nothing is yielded when `n < from`.
 ///
 /// cost: \(O(\sqrt n)\)
-/// empty: yields nothing when `n < from`
+/// empty: `floor_quotients(3, from: 4).collect() == []`
 /// order: by `i`, increasing (so `q` decreasing)
 /// traps: when `from < 1`
 /// example: `floor_quotients(10).collect() == [(10, 1, 2), (5, 2, 3), (3, 3, 4), (2, 4, 6), (1, 6, 11)]`
@@ -993,7 +993,7 @@ pub fn submasks(mask: Int) -> yields Int:
 /// hack).
 ///
 /// cost: \(O(C(n, k))\)
-/// empty: yields nothing when `k > n`; yields just 0 when `k == 0`
+/// empty: `bit_subsets(2, 3).collect() == [] and bit_subsets(2, 0).collect() == [0]`
 /// order: ascending
 /// traps: when `n < 0`, `k < 0` or `n > 62`
 /// example: `bit_subsets(4, 2).collect() == [3, 5, 6, 9, 10, 12]`
@@ -1014,7 +1014,7 @@ pub fn bit_subsets(n: Int, k: Int) -> yields Int:
 /// `a` and `b` are indexed by the integer itself: index 0 is ignored and `c[0]` is `T.zero`.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[T.zero]` when `n == 0`
+/// empty: `dirichlet_convolve([0], [0], 0) == [0]`
 /// order: `c[k]` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
 /// example: `dirichlet_convolve([0, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, 2, 2, 3, 2, 4]`
@@ -1034,7 +1034,7 @@ pub fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: Int) -> List<
 /// invertible in `T`; for `Int` that means `a[1]` is 1 or -1.
 ///
 /// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[T.zero]` when `n == 0`
+/// empty: `dirichlet_inv([0], 0) == [0]`
 /// order: `b[k]` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
 /// example: `dirichlet_inv([0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, -1, -1, 0, -1, 1]`
@@ -1072,7 +1072,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     /// memoized. A table of about `n^(2/3)` entries gives the stated cost.
     ///
     /// cost: \(O(\mathit{f\_small}.\mathit{len})\) to build; queries as `sum`
-    /// empty: an empty `f_small` makes every query use the recursion
+    /// empty: `var ds = DirichletSum<Int>(10, [], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     /// traps: when `n < 0`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     pub fn new(n: Int, f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>:
@@ -1168,7 +1168,7 @@ fn du_limit(n: Int) -> Int:
 /// 5, 10).
 ///
 /// cost: \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory
-/// empty: `T.zero` when `n == 0` (with `prime_sum == []`)
+/// empty: `sum_multiplicative(0, (p, e, pe) => 1, []) == 0`
 /// order: `prime_sum` is read in ascending order of `v`
 /// traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`
 /// example: `sum_multiplicative(10, (p, e, pe) => 1, [0, 1, 2, 3, 4]) == 10`
@@ -1253,7 +1253,7 @@ pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int):
 /// `a` is reduced first; the root of 0 is 0.
 ///
 /// cost: \(O(p^{1/4} + \sqrt p)\) expected to find one root, plus \(O(\mathit{gcd}(k, p - 1))\) to pick the least
-/// ties: the least root
+/// ties: `mod_kth_root(6, 3, 7) == Some(3)`
 /// traps: when `p` is not prime or `k < 1`
 /// example: `mod_kth_root(6, 3, 7) == Some(3)`
 /// example: `mod_kth_root(2, 3, 7) == None`
@@ -1342,7 +1342,7 @@ pub fn carmichael(n: Int) -> Int:
 /// The least `x >= 0` with `lo <= (a * x) % m <= hi`, or `None`; `a` is reduced first.
 ///
 /// cost: \(O(\log m)\)
-/// ties: the least `x`
+/// ties: `min_mod_in_range(3, 7, 5, 6) == Some(2)`
 /// traps: unless `m >= 1` and `0 <= lo <= hi < m`
 /// example: `min_mod_in_range(3, 7, 5, 6) == Some(2)`
 /// example: `min_mod_in_range(2, 4, 1, 1) == None`
@@ -1384,7 +1384,7 @@ pub fn continued_fraction(p: Int, q: Int) -> List<Int>:
 /// The reduced fraction `p / q` with `1 <= q <= max_den` closest to `num / den` (Stern-Brocot).
 ///
 /// cost: \(O(\log \mathit{max\_den})\)
-/// ties: the smaller denominator, then the smaller value
+/// ties: `best_rational(5, 12, 3) == Ratio(1, 2) and best_rational(1, 2, 1) == Ratio(0, 1)`
 /// traps: when `den == 0` or `max_den < 1`
 /// example: `best_rational(31_416, 10_000, 10) == Ratio(22, 7)`
 /// example: `best_rational(1, 2, 10) == Ratio(1, 2)`
