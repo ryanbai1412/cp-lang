@@ -71,3 +71,28 @@ fn xor_or_of_non_negative_ranges_stays_under_the_top_bit() {
         "2 ^ 1 is 3: {three}"
     );
 }
+
+#[test]
+fn a_position_param_and_a_length_are_below_2_to_31() {
+    let out = cpp("let n: Int = read()
+domain I = 0..n
+fn f(p: I) -> Int: p.ord * 2 + 1
+fn g(a: List<Int>) -> Int: a.len * 3 - 1
+for p in I: print(f(p))
+print(g([1, 2]), I.len * 4)
+");
+    for check in ["cpl::imul", "cpl::iadd", "cpl::isub"] {
+        assert!(!out.contains(check), "{check} left in:\n{out}");
+    }
+}
+
+#[test]
+fn a_local_set_twice_keeps_the_larger_bound() {
+    let out = cpp("let k: Int = read()
+var x = 5
+if k > 0: x = 7
+print(x * 3, k * 3)
+");
+    assert!(!out.contains("cpl::imul(x, 3)"), "{out}");
+    assert!(out.contains("cpl::imul(k, 3)"), "{out}");
+}

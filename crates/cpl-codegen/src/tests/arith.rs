@@ -156,7 +156,9 @@ print(acc)
 ");
     let body = out.split("void solve()").nth(1).expect("solve emitted");
     assert!(
-        body.contains("ll(uint64_t(s) % 1000)") && body.contains("cpl::modp(x, 1000)"),
+        body.contains(" s % 1000")
+            && !body.contains("modp(s")
+            && body.contains("cpl::modp(x, 1000)"),
         "bitmask-updated var should prove NonNeg while sub-updated var stays tainted:\n{body}"
     );
 }

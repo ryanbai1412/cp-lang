@@ -16,6 +16,9 @@ use cpl_ir::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+/// The most elements a list or string holds: memory runs out first.
+const LEN_MAX: i64 = 1 << 31;
+
 /// A variable: a global, or a local of one fn (`None` is the top level).
 pub(crate) type Var = (Option<usize>, bool, usize);
 
@@ -62,6 +65,11 @@ pub(crate) struct Facts<'p> {
     domain_len: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
     /// Struct fields whose declared range narrows to unsigned 32-bit (`>= 0`).
     u32_fields: BTreeSet<(usize, usize)>,
+    /// Struct fields' declared ranges (`StructDef::int_ranges`): every value holds them.
+    field_ranges: BTreeMap<(usize, usize), (i64, i64)>,
+    /// The domains whose positions are held in 64 bits; `None` when the
+    /// facts were not collected over a whole program, so no count is bounded.
+    wide: Option<BTreeSet<usize>>,
     /// Each domain's lower-bound expression, when defined once at top level.
     domain_lo: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
     /// Ranged params: every call checks its argument into the range, and
@@ -78,6 +86,9 @@ pub(crate) struct Facts<'p> {
     /// Variables only set to bounded values `>= 0` and stepped by one: see
     /// [`Facts::unit_step`].
     unit_steps: BTreeSet<Var>,
+    /// Variables set more than once, each time to a value under the bound
+    /// (or kept under it by `&=`/`%=` while `>= 0`): see [`Facts::stores_hi`].
+    var_hi: BTreeMap<Var, i64>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -134,7 +145,17 @@ impl<'p> Facts<'p> {
                 facts.captured.insert(inner, outer);
             }
         }
+        // `width::domain_sizes` collects facts before it decides the widths.
+        facts.wide = (!program.wide_domains.is_empty()).then(|| {
+            (program.wide_domains.iter().enumerate())
+                .filter(|(_, w)| **w)
+                .map(|(d, _)| d)
+                .collect()
+        });
         for (sid, s) in program.structs.iter().enumerate() {
+            for (&fi, &range) in &s.int_ranges {
+                facts.field_ranges.insert((sid, fi), range);
+            }
             for (&fi, &w) in &s.narrow_ints {
                 if w.is_unsigned() {
                     facts.u32_fields.insert((sid, fi));
@@ -204,7 +225,36 @@ impl<'p> Facts<'p> {
             })
             .collect();
         facts.unit_steps = unit;
+        let hi: BTreeMap<Var, i64> = facts
+            .var_stores
+            .keys()
+            .filter_map(|&v| Some((v, facts.stores_hi(v)?)))
+            .collect();
+        facts.var_hi = hi;
         facts
+    }
+
+    /// The largest value variable `v` is ever set to, when every store to
+    /// it is a plain set of a bounded value, or a `&=`/`%=` of a variable
+    /// proven `>= 0`, which never grows it. A store that reads `v` itself
+    /// is unbounded here, so one pass over the stores decides it.
+    fn stores_hi(&self, v: Var) -> Option<i64> {
+        let stores = self.var_stores.get(&v)?;
+        if self.tainted.contains(&v)
+            || self.odd_stores.contains(&v)
+            || self.stores(v) as usize != stores.len()
+        {
+            return None;
+        }
+        let mut hi = i64::MIN;
+        for &(home, sop, rhs) in stores {
+            match sop {
+                StoreOp::Set => hi = hi.max(self.upper_bound(home, rhs, 1)?),
+                StoreOp::Rem | StoreOp::BitAnd if self.nonneg_vars.contains(&v) => {}
+                _ => return None,
+            }
+        }
+        Some(hi)
     }
 
     /// A variable only ever set to a value in `0..2^62` and stepped by one
@@ -470,6 +520,15 @@ impl<'p> Facts<'p> {
         self.upper_bound(fn_id, len, depth)
     }
 
+    /// The most positions `domain` has: its length's bound, else below
+    /// 2^31 when its positions are held in an `int`.
+    fn domain_len_hi(&self, id: usize, depth: u8) -> Option<i64> {
+        self.domain_max_len_at(id, depth).or_else(|| {
+            let narrow = self.wide.as_ref().is_some_and(|w| !w.contains(&id));
+            narrow.then_some(i64::from(i32::MAX))
+        })
+    }
+
     /// `domain`'s length expression, when it is defined once.
     pub fn domain_len_expr(&self, id: usize) -> Option<&'p Expr> {
         self.domain_len
@@ -583,7 +642,7 @@ impl<'p> Facts<'p> {
                         .get(&v)
                         .and_then(|init| self.upper_bound(v.0, init, depth + 1))
                 } else {
-                    None
+                    self.var_hi.get(&v).copied()
                 }
             }
             ExprKind::Global(id) => {
@@ -593,10 +652,15 @@ impl<'p> Facts<'p> {
                         .get(&v)
                         .and_then(|init| self.upper_bound(None, init, depth + 1))
                 } else {
-                    None
+                    self.var_hi.get(&v).copied()
                 }
             }
-            ExprKind::DomainLen(d) => self.domain_max_len_at(*d, depth + 1),
+            // A count held in an `int` is below 2^31.
+            ExprKind::DomainLen(d) => self.domain_len_hi(*d, depth + 1),
+            ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) => Some(LEN_MAX),
+            ExprKind::Field(base, idx) if self.field_range(&base.ty, *idx).is_some() => {
+                self.field_range(&base.ty, *idx).map(|r| r.1)
+            }
             ExprKind::Binary(BinOp::Mul, l, r)
                 if self.sign_at(fn_id, l, u32::from(depth) * 2) != Sign::Unknown
                     && self.sign_at(fn_id, r, u32::from(depth) * 2) != Sign::Unknown =>
@@ -668,14 +732,14 @@ impl<'p> Facts<'p> {
                     ExprKind::Cast(Cast::Trust, ref k) if matches!(k.kind, ExprKind::Int(_)) => {
                         self.upper_bound(fn_id, k, depth + 1)?
                     }
-                    _ => self.domain_max_len_at(*d, depth + 1)? - 1,
+                    _ => self.domain_len_hi(*d, depth + 1)? - 1,
                 };
                 self.const_domain_lo(*d)?.checked_add(ord)
             }
             ExprKind::Cast(Cast::Ord, p) if matches!(p.ty, Ty::Pos(_)) => {
                 let own = self.upper_bound(fn_id, p, depth + 1);
                 let len = match p.ty {
-                    Ty::Pos(d) => self.domain_max_len_at(d, depth + 1).map(|n| n - 1),
+                    Ty::Pos(d) => self.domain_len_hi(d, depth + 1).map(|n| n - 1),
                     _ => None,
                 };
                 own.into_iter().chain(len).min()
@@ -761,6 +825,14 @@ impl<'p> Facts<'p> {
                 self.below_max_at(fn_id, a, depth + 1) && self.below_max_at(fn_id, b, depth + 1)
             }
             _ => false,
+        }
+    }
+
+    /// The declared range of field `idx` of a value of type `ty`.
+    pub(crate) fn field_range(&self, ty: &Ty, idx: usize) -> Option<(i64, i64)> {
+        match ty {
+            Ty::Struct(sid) => self.field_ranges.get(&(*sid, idx)).copied(),
+            _ => None,
         }
     }
 

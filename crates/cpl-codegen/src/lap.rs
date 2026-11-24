@@ -190,19 +190,12 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    /// Constant bounds of the `Int` `e`: a field by its struct's declared
-    /// range, else what the range facts prove.
+    /// Constant bounds of the `Int` `e`: sums and products in 128 bits over
+    /// what the range facts prove of each leaf.
     fn bounds(&self, e: &Expr) -> Option<Bounds> {
         let of = |x: &Expr| self.bounds(x);
         match &e.kind {
             ExprKind::Int(n) => Some((i128::from(*n), i128::from(*n))),
-            ExprKind::Field(base, i) => match base.ty {
-                Ty::Struct(sid) => {
-                    let (lo, hi) = *self.program.structs.get(sid)?.int_ranges.get(i)?;
-                    Some((i128::from(lo), i128::from(hi)))
-                }
-                _ => None,
-            },
             ExprKind::Binary(BinOp::Add, l, r) => {
                 let ((a, b), (c, d)) = (of(l)?, of(r)?);
                 Some((a + c, b + d))

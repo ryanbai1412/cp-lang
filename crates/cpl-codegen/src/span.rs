@@ -56,6 +56,7 @@ impl Facts<'_> {
                 at(l)?.checked_sub(self.upper_bound(fn_id, r, depth + 1)?)
             }
             ExprKind::If(_, a, b) => Some(at(a)?.min(at(b)?)),
+            ExprKind::Field(base, idx) => self.field_range(&base.ty, *idx).map(|r| r.0),
             ExprKind::Cast(Cast::Label(d), p) => {
                 let ord = match &p.kind {
                     ExprKind::Cast(Cast::Trust, k) => match k.kind {
