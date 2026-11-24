@@ -2504,6 +2504,16 @@ print(r.len)
 """
 out = "3"
 
+[case."Seq/SortedRange/iter"]
+code = """
+use std.bag.{SortedSet}
+var st: SortedSet<Int> = SortedSet()
+for x in [1, 4, 6, 8, 9]: st.add(x)
+let xs = st.range(4..9).collect()
+print(xs.len, xs[0], xs[2])
+"""
+out = "3 4 8"
+
 [case."Seq/Deque/iter"]
 code = """
 use std.deque.{Deque}
