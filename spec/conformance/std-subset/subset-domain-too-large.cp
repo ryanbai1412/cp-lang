@@ -1,7 +1,7 @@
-// expect: R0401 at 4
+// expect: R0401
 // input: "30\n"
 // A `Subset` over more than 25 values traps where its domain is sized, in both engines.
 let n: Int = read()
 domain V = 0..n
-var dp: [Subset<V>]Int = 0
+var dp: [Subset<V>]Int = 0 // <- here
 print(len(dp))

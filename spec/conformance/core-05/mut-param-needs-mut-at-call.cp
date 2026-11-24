@@ -1,6 +1,6 @@
-// expect: E0402 at 4
+// expect: E0402
 // rule: 05.4.1
 fn grow(mut xs: List<Int>):
     xs.push(1)
 var a = List<Int>()
-grow(a)
+grow(a) // <- here

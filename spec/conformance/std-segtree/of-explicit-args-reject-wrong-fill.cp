@@ -1,3 +1,3 @@
-// expect: E0302 at 2
+// expect: E0302
 domain V = 0..5
-let t = SegTree<V, Int>.of(max, v => "x")
+let t = SegTree<V, Int>.of(max, v => "x") // <- here

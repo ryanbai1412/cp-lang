@@ -1,3 +1,3 @@
-// expect: E0203 at 2
+// expect: E0203
 let x = 2
-print(x.pow(10))
+print(x.pow(10)) // <- here

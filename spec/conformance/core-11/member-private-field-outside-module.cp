@@ -1,4 +1,4 @@
-// expect: E0207 at 11
+// expect: E0207
 // rule: 11.1.4
 // A field without `pub` is private to its module; the fix adds `pub`.
 mod m:
@@ -10,4 +10,4 @@ mod m:
     pub fn make() -> P = P(x: 1, y: 2)
     pub fn peek(p: P) -> Int = p.y + p.secret()
 let p = m.make()
-print(p.y)
+print(p.y) // <- here

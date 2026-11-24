@@ -1,4 +1,4 @@
-// expect: E0203 at 2
+// expect: E0203
 // rule: 02.6.4
 let xs = [1, 2, 3]
-print(xs.buf)
+print(xs.buf) // <- here

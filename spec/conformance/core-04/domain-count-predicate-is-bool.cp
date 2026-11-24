@@ -1,4 +1,4 @@
-// expect: E0302 at 2
+// expect: E0302
 // rule: 04.2.20
 domain V = 0..4
-print(V.count(v => Int(v)))
+print(V.count(v => Int(v))) // <- here

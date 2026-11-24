@@ -1,4 +1,4 @@
-// expect: R0401 at 2 (checked)
+// expect: R0401 (checked)
 var w = Window(+)
-w.pop(0)
+w.pop(0) // <- here
 print(w.len)

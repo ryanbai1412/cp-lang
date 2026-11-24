@@ -1,4 +1,4 @@
-// expect: E0602 at 13
+// expect: E0602
 // rule: 05.9.1
 domain V = 1..=4
 var a: [V]Int = 0
@@ -12,4 +12,4 @@ let g = Graph.undirected(es)
 let s = V.first!
 var seen: [V]Bool = false
 for step in dfs(g, from: [s], seen: mut seen):
-    if seen[s]: print(s)
+    if seen[s]: print(s) // <- here

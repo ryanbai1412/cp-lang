@@ -1,4 +1,4 @@
-// expect: E0706 at 2
+// expect: E0706
 // rule: 07.9.2
 let a = [3, 1, 2]
-let x: Int = a.fold((x, y) => x * 10 + y)
+let x: Int = a.fold((x, y) => x * 10 + y) // <- here

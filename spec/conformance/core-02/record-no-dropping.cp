@@ -1,4 +1,4 @@
-// expect: E0302 at 2
+// expect: E0302
 // rule: 02.5.4
 fn span(r: (lo: Int, hi: Int)) -> Int = r.hi - r.lo
-print(span((lo: 1, hi: 4, w: 9)))
+print(span((lo: 1, hi: 4, w: 9))) // <- here

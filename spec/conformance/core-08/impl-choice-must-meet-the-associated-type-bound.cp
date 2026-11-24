@@ -1,4 +1,4 @@
-// expect: E0606 at 7
+// expect: E0606
 // rule: 08.1.1
 // An impl's choice for an associated type must have the traits the trait's bound names.
 trait Keyed:
@@ -6,6 +6,6 @@ trait Keyed:
     fn key(self) -> Self.K
 struct P(a: Int)
 impl Keyed for P:
-    type K = Int -> Int
+    type K = Int -> Int // <- here
     fn key(self) -> Int -> Int = x => x + self.a
 print(P(3).key()(1))

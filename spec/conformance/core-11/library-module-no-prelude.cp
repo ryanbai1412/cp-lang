@@ -1,4 +1,4 @@
-// expect: E0201 at 3
+// expect: E0201
 // rule: 11.3.1
 // tool: run
 // file: cp.toml "[libs]\nkit = \"kit\"\n"
@@ -6,4 +6,4 @@
 // has: "gcd"
 // A library module does not see the prelude: `gcd` there needs a `use`.
 use kit.m.{g}
-print(g())
+print(g()) // <- here

@@ -1,3 +1,3 @@
-// expect: E0108 at 1
-fn 123():
+// expect: E0108
+fn 123(): // <- here
     print(1)

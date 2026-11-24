@@ -1,3 +1,3 @@
-// expect: E0201 at 1
+// expect: E0201
 // rule: 11.3.3
-print(ans)
+print(ans) // <- here

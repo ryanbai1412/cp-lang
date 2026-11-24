@@ -1,6 +1,6 @@
-// expect: E0804 at 2
+// expect: E0804
 // rule: 02.4.7
 fn f(x: ?Int) -> ?Int:
-    x?
+    x? // <- here
     return x
 print(f(Some(1)) ?? 0)

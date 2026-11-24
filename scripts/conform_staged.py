@@ -4,8 +4,8 @@
     scripts/conform_staged.py CPL_CONFORM CASE...
 
 A case that fails blocks the commit unless research/scoreboard.json already
-records it as failing (conformance/R1, conformance/R3). cpl-conform's message names the fix, e.g. the right
-`at N`.
+records it as failing (conformance/R1, conformance/R3). cpl-conform's message names the fix, e.g. the line
+to mark `// <- here`.
 """
 import json
 import re

@@ -1,4 +1,4 @@
-// expect: L0601 at 10
+// expect: L0601
 // rule: 05.8.4
 domain V = 1..=4
 var a: [V]Int = 0
@@ -9,4 +9,4 @@ let r = V.last!
 fn inc(mut x: Int) -> Int:
     x += 1
     x
-a[l] += inc(mut a[l])
+a[l] += inc(mut a[l]) // <- here

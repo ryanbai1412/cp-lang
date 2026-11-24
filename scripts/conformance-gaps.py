@@ -7,7 +7,7 @@ in it hides until the gap closes. This runs the suite (or reads a saved
 the case rather than the compiler:
 
   same-code  the case expects code X and the run reports code X, so its
-             `at N` or `has:` is wrong
+             `// <- here` line or `has:` is wrong
   optional   the run reports E0606 because a `?T` (now returned by min, max,
              pop and the searches) is printed without `!` or `??`
 

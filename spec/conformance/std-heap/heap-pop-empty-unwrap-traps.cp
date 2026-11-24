@@ -1,4 +1,4 @@
-// expect: R0301 at 2 (checked)
+// expect: R0301 (checked)
 // rule: std.heap.Heap.pop
 var h = Heap<Int>()
-print(h.pop()!)
+print(h.pop()!) // <- here

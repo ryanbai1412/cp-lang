@@ -1,3 +1,3 @@
-// expect: R0401 at 2 (checked)
+// expect: R0401 (checked)
 use std.geometry.{closest_pair}
-print(closest_pair([Pt(0, 0)]))
+print(closest_pair([Pt(0, 0)])) // <- here

@@ -1,5 +1,5 @@
-// expect: E0301 at 3
+// expect: E0301
 // rule: std.seq.span
 domain I = 0..4
 domain J = 0..4
-print(span(I(0).l, J(3).r).len)
+print(span(I(0).l, J(3).r).len) // <- here

@@ -1,3 +1,3 @@
-// expect: R0401 at 2 (checked)
+// expect: R0401 (checked)
 use std.math.{primitive_root}
-print(primitive_root(9))
+print(primitive_root(9)) // <- here

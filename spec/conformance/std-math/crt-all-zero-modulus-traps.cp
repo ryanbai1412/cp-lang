@@ -1,3 +1,3 @@
-// expect: R0401 at 2 (checked)
+// expect: R0401 (checked)
 use std.math.{crt_all}
-print(yes(crt_all([(1, 3), (0, 0)]) == None))
+print(yes(crt_all([(1, 3), (0, 0)]) == None)) // <- here

@@ -1,4 +1,4 @@
-// expect: E0602 at 13
+// expect: E0602
 // rule: 05.10.11
 struct Dsu:
     @cache parent: List<Int>
@@ -12,5 +12,5 @@ struct Dsu:
     pub fn roots(self) -> Int:
         var c = 0
         for p in self.parent:
-            if self.find(p) == p: c += 1
+            if self.find(p) == p: c += 1 // <- here
         c

@@ -1,4 +1,4 @@
-// expect: R0301 at 2 (checked)
+// expect: R0301 (checked)
 // rule: 09.3.5
 let x: ?Int = None
-print(x!)
+print(x!) // <- here

@@ -43,7 +43,7 @@ def case(source, storage, scope):
             lines.append("print(ps.len)")
     else:
         lines = body
-    at = lines.index(next(l for l in lines if l.strip() == keep)) + 2
+    at = lines.index(next(l for l in lines if l.strip() == keep))
     if source == "temp":
         verdict, rule, why = "E0603", "07.5.10 05.7.8", "an unnamed temporary dies at the end of its statement"
     elif kind == "out":
@@ -54,7 +54,9 @@ def case(source, storage, scope):
         verdict, rule, why = "ok", "05.7.8", "the storage dies no later than its source"
     if scope == "top":
         rule += " 05.7.10"
-    head = f'// expect: ok, output "4"' if verdict == "ok" else f"// expect: E0603 at {at}"
+    head = f'// expect: ok, output "4"' if verdict == "ok" else "// expect: E0603"
+    if verdict != "ok":
+        lines[at] += " // <- here"
     return "\n".join([head, f"// rule: {rule}", f"// A {source} source kept by `{keep.split(' = ')[0] if kind in ('let', 'var') else keep.split('(')[0] + '(...)' if kind != 'assign' else 'w = ...'}` in a {scope} body: {why}. {GEN}"] + lines) + "\n"
 
 

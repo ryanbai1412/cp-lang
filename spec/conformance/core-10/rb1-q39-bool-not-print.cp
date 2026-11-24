@@ -1,3 +1,3 @@
-// expect: E0606 at 1
+// expect: E0606
 // rule: 10.3.3
-print(true)
+print(true) // <- here

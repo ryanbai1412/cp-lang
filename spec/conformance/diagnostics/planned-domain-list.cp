@@ -1,4 +1,4 @@
-// expect: E0504 at 2
+// expect: E0504
 // Several domains on one line is planned syntax; the error names the one-per-line form.
-domain A = 0..3, B = 0..4
+domain A = 0..3, B = 0..4 // <- here
 print(1)

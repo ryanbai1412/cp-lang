@@ -1,4 +1,4 @@
-// expect: L0202 at 1
-struct Pt(x: Int, y: Int)
+// expect: L0202
+struct Pt(x: Int, y: Int) // <- here
 let p = Pt(x: 1, y: 2)
 print(p.x)

@@ -368,13 +368,7 @@ fn untimed(text: &str) -> String {
 
 /// A `// tool:` case: runs the tool twice (tool output is deterministic),
 /// then checks the expectation and every `// has:` / `// lacks:` string.
-fn run_tool_case(
-    case: &ConformanceCase,
-    text: &str,
-    args: &str,
-    expect: Expect,
-    offset: usize,
-) -> CaseOutcome {
+fn run_tool_case(case: &ConformanceCase, text: &str, args: &str, expect: Expect) -> CaseOutcome {
     let fail = |detail: String| CaseOutcome {
         status: "fail".into(),
         detail,
@@ -391,10 +385,8 @@ fn run_tool_case(
     let met = match &expect {
         Expect::Ok => first.status == 0,
         Expect::OkOutput(want) => first.status == 0 && first.stdout.trim_end_matches('\n') == want,
-        Expect::Diag { code, line } => diag_lines(&all, code).any(|l| l == line + offset),
-        Expect::Trap { code, line } => {
-            all.contains(code.as_str()) && rendered_at(&all, line + offset)
-        }
+        Expect::Diag { code, line } => diag_lines(&all, code).any(|l| l == *line),
+        Expect::Trap { code, line } => all.contains(code.as_str()) && rendered_at(&all, *line),
         Expect::Exit(code) => first.status == *code,
     };
     if !met {
@@ -437,94 +429,105 @@ fn rendered_at(rendered: &str, line: usize) -> bool {
     rendered.contains(&format!(":{line}:"))
 }
 
-/// Parses `// expect: ...` and computes the line offset after the header lines (`// expect:`, `// rule:`, `// input:`, `// timeout:` ...).
-pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
+/// The marker that ends the line a `// expect: CODE` diagnostic or trap
+/// points at (decision 473): the case says where, so no line count can drift
+/// when a header line comes or goes.
+pub const HERE: &str = "// <- here";
+
+/// The 1-based file lines that end with the `// <- here` marker.
+pub fn marked_lines(text: &str) -> Vec<usize> {
+    text.split('\n')
+        .enumerate()
+        .filter(|(_, l)| l.trim_end().ends_with(HERE))
+        .map(|(i, _)| i + 1)
+        .collect()
+}
+
+/// Parses `// expect: ...`. A diagnostic or trap's line is the file line
+/// marked `// <- here`.
+pub fn parse_header(text: &str) -> Result<Expect, String> {
     let lines: Vec<&str> = text.split('\n').collect();
     let head = lines.first().copied().unwrap_or("").trim();
-    let offset = lines
-        .iter()
-        .position(|l| {
-            let trimmed = l.trim_start();
-            if let Some(rest) = trimmed.strip_prefix("//") {
-                let rest = rest.trim_start();
-                !(rest.starts_with("expect:")
-                    || rest.starts_with("rule:")
-                    || rest.starts_with("input:")
-                    || rest.starts_with("tool:")
-                    || rest.starts_with("file:")
-                    || rest.starts_with("has:")
-                    || rest.starts_with("lacks:")
-                    || rest.starts_with("rewritten:")
-                    || rest.starts_with("timeout:"))
-            } else {
-                true
-            }
-        })
-        .unwrap_or(lines.len());
-
+    let bad = || format!("first line is not `// expect: ...`: {head}");
     let Some(after_slashes) = head.strip_prefix("//") else {
-        return Err(format!("first line is not `// expect: ...`: {head}"));
+        return Err(bad());
     };
     let Some(spec) = after_slashes.trim_start().strip_prefix("expect:") else {
-        return Err(format!("first line is not `// expect: ...`: {head}"));
+        return Err(bad());
     };
     let spec = spec.trim();
+    let marks = marked_lines(text);
+    let unmarked = |e: Expect| {
+        if marks.is_empty() {
+            Ok(e)
+        } else {
+            Err(format!(
+                "line {} ends with `{HERE}`, but `// expect: {spec}` names no diagnostic to point at",
+                marks[0]
+            ))
+        }
+    };
 
     if let Some(n) = spec.strip_prefix("exit ") {
         if let Ok(code) = n.trim().parse::<i32>() {
-            return Ok((Expect::Exit(code), offset));
+            return unmarked(Expect::Exit(code));
         }
     }
     if spec == "ok" {
-        return Ok((Expect::Ok, offset));
+        return unmarked(Expect::Ok);
     }
     if let Some(rest) = spec.strip_prefix("ok,") {
         let rest = rest.trim();
         if let Some(rest) = rest.strip_prefix("output") {
             let rest = rest.trim();
             if let Some(inner) = rest.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
-                return Ok((Expect::OkOutput(unescape_python_like(inner)), offset));
+                return unmarked(Expect::OkOutput(unescape_python_like(inner)));
             }
         }
-        return Err(format!("first line is not `// expect: ...`: {head}"));
+        return Err(bad());
     }
 
-    // `E0601 at 4` or `R0301 at 2 (checked)`
+    // `E0601` or `R0301 (checked)`, with the line marked `// <- here`.
     let parts: Vec<&str> = spec.split_whitespace().collect();
-    if parts.len() >= 3 && parts[1] == "at" {
-        let code = parts[0];
-        if is_diag_code(code) {
-            if let Ok(line) = parts[2].parse::<usize>() {
-                if parts.len() == 3
-                    || (parts.len() == 4
-                        && parts[3].starts_with('(')
-                        && parts[3].ends_with(')')
-                        && parts[3][1..parts[3].len() - 1]
-                            .chars()
-                            .all(|c| c.is_alphanumeric() || c == '_'))
-                {
-                    if code.starts_with('R') {
-                        return Ok((
-                            Expect::Trap {
-                                code: code.to_string(),
-                                line,
-                            },
-                            offset,
-                        ));
-                    }
-                    return Ok((
-                        Expect::Diag {
-                            code: code.to_string(),
-                            line,
-                        },
-                        offset,
-                    ));
-                }
-            }
-        }
+    if parts.get(1) == Some(&"at") {
+        return Err(format!(
+            "`// expect: {spec}`: `at N` is gone (decision 473); write `// expect: {}` and end the line it points at with `{HERE}`",
+            parts[0]
+        ));
     }
-
-    Err(format!("first line is not `// expect: ...`: {head}"))
+    let tag_ok = |t: &str| {
+        t.len() > 2
+            && t.starts_with('(')
+            && t.ends_with(')')
+            && t[1..t.len() - 1]
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '_')
+    };
+    let Some(&code) = parts.first() else {
+        return Err(bad());
+    };
+    if !is_diag_code(code) || parts.len() > 2 || (parts.len() == 2 && !tag_ok(parts[1])) {
+        return Err(bad());
+    }
+    let line = match marks.as_slice() {
+        [line] => *line,
+        [] => {
+            return Err(format!(
+                "`// expect: {spec}` needs the line it points at to end with `{HERE}`"
+            ))
+        }
+        more => {
+            return Err(format!(
+                "`{HERE}` marks lines {more:?}; mark only the line `{code}` points at"
+            ))
+        }
+    };
+    let code = code.to_string();
+    Ok(if code.starts_with('R') {
+        Expect::Trap { code, line }
+    } else {
+        Expect::Diag { code, line }
+    })
 }
 
 /// `E0601`, or the name of a library's `@lint` (`square_by_hand`, R06.4.9).
@@ -594,7 +597,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
             };
         }
     };
-    let (expect, offset) = match parse_header(&text) {
+    let expect = match parse_header(&text) {
         Ok(h) => h,
         Err(why) => {
             return CaseOutcome {
@@ -604,7 +607,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
         }
     };
     if let Some(args) = header_values(&text, "tool:").first() {
-        return run_tool_case(case, &text, args, expect, offset);
+        return run_tool_case(case, &text, args, expect);
     }
     let path_str = case.path.to_string_lossy();
     let mut backend = match cli_override() {
@@ -631,7 +634,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
             if let Some(skip) = release_trap_outcome(release()) {
                 return skip;
             }
-            let target_line = line + offset;
+            let target_line = line;
             let run = match backend.run(&path_str, &text, &header_input(&text)) {
                 Ok(r) => r,
                 Err(d) => {
@@ -677,7 +680,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
             } else {
                 diag
             };
-            let target_line = line + offset;
+            let target_line = line;
             let unmet = unmet_has_lacks(&text, &diag);
             if let Some(why) = unmet {
                 return CaseOutcome {
@@ -697,13 +700,8 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     runner::truncate_chars(diag.trim(), 200)
                 };
                 let hint = diag_line(&diag, &code)
-                    .filter(|&l| l > offset && l != target_line)
-                    .map(|l| {
-                        format!(
-                            " (it is on file line {l}: write `at {}`, counted from the first line after the headers)",
-                            l - offset
-                        )
-                    })
+                    .filter(|&l| l != target_line)
+                    .map(|l| format!(" (it is on line {l}: move `{HERE}` there)"))
                     .unwrap_or_default();
                 CaseOutcome {
                     status: "fail".into(),
@@ -895,13 +893,13 @@ mod tests {
     fn input_header_is_stdin_and_not_a_source_line() {
         let text = "// expect: ok, output \"1\"\n// input: \"3 4\\n\"\nprint(1)\n";
         assert_eq!(header_input(text), b"3 4\n");
-        assert_eq!(parse_header(text).unwrap().1, 2);
+        assert_eq!(parse_header(text).unwrap(), Expect::OkOutput("1".into()));
         assert!(header_input("// expect: ok\nprint(1)\n").is_empty());
     }
 
     #[test]
     fn has_and_lacks_are_checked_against_any_output() {
-        let text = "// expect: R0203 at 1\n// has: \"call stack: f\"\n// lacks: zzz\nprint(1)\n";
+        let text = "// expect: R0203\n// has: \"call stack: f\"\n// lacks: zzz\nprint(1)\n";
         assert_eq!(unmet_has_lacks(text, "note: call stack: f (a.cp:3)"), None);
         assert!(unmet_has_lacks(text, "note: locals: a = 1").is_some());
         assert!(unmet_has_lacks(text, "call stack: f zzz").is_some());

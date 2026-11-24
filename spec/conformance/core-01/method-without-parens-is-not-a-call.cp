@@ -1,4 +1,4 @@
-// expect: E0302 at 7
+// expect: E0302
 // rule: 01.8.7
 // has: "a.inv()"
 struct Z(v: Int)
@@ -7,4 +7,4 @@ impl Mul for Z:
 impl Z:
     fn inv(self) -> Z = Z(self.v)
 let a = Z(3)
-print((a * a.inv).v)
+print((a * a.inv).v) // <- here

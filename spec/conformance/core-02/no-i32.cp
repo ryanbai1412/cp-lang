@@ -1,3 +1,3 @@
-// expect: E0901 at 1
+// expect: E0901
 // rule: 02.2.1
-let x: I32 = 5
+let x: I32 = 5 // <- here

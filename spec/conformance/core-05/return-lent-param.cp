@@ -1,3 +1,3 @@
-// expect: E0603 at 1
+// expect: E0603
 // rule: 05.7.8
-fn same(xs: List<Int>) -> List<Int> = xs
+fn same(xs: List<Int>) -> List<Int> = xs // <- here

@@ -1,3 +1,3 @@
-// expect: E0203 at 1
+// expect: E0203
 // rule: 08.4.4 12.11.4
-fn f<R: (u: Int, ..)>(x: R) -> Int = x.w
+fn f<R: (u: Int, ..)>(x: R) -> Int = x.w // <- here

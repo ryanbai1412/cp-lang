@@ -1,4 +1,4 @@
-// expect: R0001 at 16 (checked)
+// expect: R0001 (checked)
 // rule: 04.2.27
 // input: "6\n"
 // R04.2.27: `T.nth(k)` outside `0..T.count` traps; the impl's `nth` never sees it.
@@ -16,4 +16,4 @@ impl Index for Two:
         Two(a, a + 1 + r)
 
 let k: Int = read()
-print(Two.nth(k).ord)
+print(Two.nth(k).ord) // <- here

@@ -1,7 +1,7 @@
-// expect: E0602 at 4
+// expect: E0602
 // rule: 05.7.6
 // A push may reallocate the list, so it is rejected while a named view of the list is used below it.
 var a = [1, 2, 3]
 let v = a[0..2]
-a.push(4)
+a.push(4) // <- here
 print(v.len)

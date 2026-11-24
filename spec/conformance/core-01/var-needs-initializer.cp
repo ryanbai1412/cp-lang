@@ -1,4 +1,4 @@
-// expect: E0103 at 1
+// expect: E0103
 // rule: 01.10.2
-var x: Int
+var x: Int // <- here
 print(x)

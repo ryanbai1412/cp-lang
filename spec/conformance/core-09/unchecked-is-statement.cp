@@ -1,4 +1,4 @@
-// expect: E0102 at 1
+// expect: E0102
 // rule: 09.4.3
-let x: Int = unchecked:
+let x: Int = unchecked: // <- here
     5

@@ -23,34 +23,57 @@ fn make_board(suite_name: &str, cases: &[(&str, &str)]) -> Scoreboard {
 
 #[test]
 fn header_parser_handles_all_expect_forms() {
-    let (exp, off) = parse_header("// expect: ok\n// rule: R-01\nlet x = 1\n").unwrap();
+    let exp = parse_header("// expect: ok\n// rule: R-01\nlet x = 1\n").unwrap();
     assert_eq!(exp, Expect::Ok);
-    assert_eq!(off, 2);
 
-    let (exp, off) =
-        parse_header("// expect: ok, output \"hello\\n\"\nprint(\"hello\")\n").unwrap();
+    let exp = parse_header("// expect: ok, output \"hello\\n\"\nprint(\"hello\")\n").unwrap();
     assert_eq!(exp, Expect::OkOutput("hello\n".into()));
-    assert_eq!(off, 1);
 
-    let (exp, _) = parse_header("// expect: E0601 at 4\n").unwrap();
+    let exp = parse_header(
+        "// expect: E0601\n// rule: 05.1\n// gap: compiler why\nlet a = 1\nf(a) // <- here\n",
+    )
+    .unwrap();
     assert_eq!(
         exp,
         Expect::Diag {
             code: "E0601".into(),
-            line: 4,
+            line: 5,
         }
     );
 
-    let (exp, _) = parse_header("// expect: R0301 at 2 (checked)\n").unwrap();
+    let exp = parse_header("// expect: R0301 (checked)\nlet a = [1]\nprint(a[3])   // <- here  \n")
+        .unwrap();
     assert_eq!(
         exp,
         Expect::Trap {
             code: "R0301".into(),
+            line: 3,
+        }
+    );
+
+    let exp = parse_header("// expect: square_by_hand\nx * x // <- here\n").unwrap();
+    assert_eq!(
+        exp,
+        Expect::Diag {
+            code: "square_by_hand".into(),
             line: 2,
         }
     );
 
     assert!(parse_header("let x = 1\n").is_err());
+}
+
+#[test]
+fn header_parser_rejects_line_counts_and_stray_markers() {
+    let why = parse_header("// expect: E0601 at 4\nlet a = 1\n").unwrap_err();
+    assert!(why.contains("`at N` is gone"), "{why}");
+    let why = parse_header("// expect: E0601\nlet a = 1\n").unwrap_err();
+    assert!(why.contains("needs the line it points at"), "{why}");
+    let why = parse_header("// expect: E0601\na // <- here\nb // <- here\n").unwrap_err();
+    assert!(why.contains("mark only"), "{why}");
+    let why = parse_header("// expect: ok\nlet a = 1 // <- here\n").unwrap_err();
+    assert!(why.contains("names no diagnostic"), "{why}");
+    assert!(parse_header("// expect: E0601 (bad tag!)\na // <- here\n").is_err());
 }
 
 #[test]

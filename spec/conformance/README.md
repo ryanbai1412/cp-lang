@@ -8,16 +8,16 @@ expectation:
 ```
 // expect: ok
 // expect: ok, output "3"
-// expect: E0601 at 4
-// expect: L0601 at 3
-// expect: R0301 at 2 (checked)
+// expect: E0601
+// expect: L0601
+// expect: R0301 (checked)
 ```
 
-Line numbers count from the first line after the header, so `at 1` is the
-first line of the program. The header is the `// key: value` lines only: a
-plain `// ...` comment after them is line 1, so in a case with three header
-lines and one comment, a diagnostic on file line 6 is `at 2`. A failing case
-names the `at N` its diagnostic is on. A second header line `// rule: 05.4.2 05.4.3`
+A code names no line number: the line the diagnostic or trap points at
+ends with the marker `// <- here`, and exactly one line carries it
+(decision 473). Header lines can come and go without moving it. A failing
+case names the line its diagnostic is on; `scripts/spec-gate.py markers
+--fix` rewrites an old `at N` case. A second header line `// rule: 05.4.2 05.4.3`
 names the numbered rules (`(R05.4.2)` in `spec/core`) the case tests,
 without the `R`; `cpl-conform --rules` lists the rules no case cites.
 A rule is defined where `(Rnn.n.n)` ends its sentence; a reference to a
@@ -37,8 +37,8 @@ A case for a rule only a tool can show names the tool in a header line
 and runs `cpl build <copy> -o -` there, twice, and fails the case when
 the two runs differ (tool output is deterministic). The `// expect:`
 line then reads against that run: `ok` is exit status 0, `ok, output
-"..."` also compares standard output, a code `at N` must appear with
-its line in the output, and `exit N` (tool cases only) wants that exit
+"..."` also compares standard output, a code must appear with
+the marked line in the output, and `exit N` (tool cases only) wants that exit
 status (`spec/tools/cli.md`). Each `// has: "..."` line names text the
 output must contain and each `// lacks: "..."` line text it must not;
 each `// rewritten: "..."` line (tool cases only) text the case file

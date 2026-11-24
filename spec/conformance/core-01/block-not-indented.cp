@@ -1,4 +1,4 @@
-// expect: E0104 at 2
+// expect: E0104
 // rule: 01.2.3
 if true:
-print(1)
+print(1) // <- here

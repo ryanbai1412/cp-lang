@@ -1,3 +1,3 @@
-// expect: R0401 at 2 (checked)
+// expect: R0401 (checked)
 let h = RollingHash("abab")
-print(h.slice(2, 1).h1)
+print(h.slice(2, 1).h1) // <- here

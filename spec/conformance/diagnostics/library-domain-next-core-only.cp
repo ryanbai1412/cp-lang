@@ -1,4 +1,4 @@
-// expect: E0203 at 15
+// expect: E0203
 // rule: 04.2.28
 // R04.2.28: a library domain walks in `ord` order but has no neighbours: `.next` belongs to the ordered core domains.
 struct Two(a: Int, b: Int)
@@ -14,4 +14,4 @@ impl Index for Two:
             a += 1
         Two(a, a + 1 + r)
 
-print(Two.nth(0).next)
+print(Two.nth(0).next) // <- here

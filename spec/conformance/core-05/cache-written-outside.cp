@@ -1,4 +1,4 @@
-// expect: L0609 at 11
+// expect: L0609
 // rule: 05.10.10
 struct Dsu:
     @cache parent: List<Int>
@@ -10,4 +10,4 @@ struct Dsu:
         r
 
 var d = Dsu(parent: [0, 0, 1])
-d.parent[2] = 2
+d.parent[2] = 2 // <- here

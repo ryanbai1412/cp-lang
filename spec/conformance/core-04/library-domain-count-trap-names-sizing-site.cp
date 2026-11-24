@@ -1,4 +1,4 @@
-// expect: R0401 at 5
+// expect: R0401
 // input: "30\n"
 // rule: 09.4.5
 // tool: run
@@ -9,5 +9,5 @@
 use kit.m.{P}
 let n: Int = read()
 domain V = 0..n
-var dp: [P<V>]Int = 0
+var dp: [P<V>]Int = 0 // <- here
 print(len(dp))

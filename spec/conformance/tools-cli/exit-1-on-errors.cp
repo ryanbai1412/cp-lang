@@ -1,4 +1,4 @@
-// expect: E0201 at 1
+// expect: E0201
 // rule: cli.1
 // tool: check
-print(nope)
+print(nope) // <- here

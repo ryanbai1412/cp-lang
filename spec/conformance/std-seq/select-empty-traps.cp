@@ -1,5 +1,5 @@
-// expect: R0401 at 2 (checked)
+// expect: R0401 (checked)
 // rule: std.seq.select
 var a: List<Int> = []
-a.select(0)
+a.select(0) // <- here
 print(a.len)

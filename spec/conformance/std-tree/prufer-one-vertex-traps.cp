@@ -1,5 +1,5 @@
-// expect: R0401 at 4
+// expect: R0401
 use std.tree.{prufer}
 domain V = 0..1
 let tr: Tree<V> = []
-print(prufer(tr).len)
+print(prufer(tr).len) // <- here

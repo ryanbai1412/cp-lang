@@ -1,4 +1,4 @@
-// expect: E0310 at 2
+// expect: E0310
 // rule: 06.1.5
 fn f(x: Int) -> Int = x
-print(f(y: 1))
+print(f(y: 1)) // <- here

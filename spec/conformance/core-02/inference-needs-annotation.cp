@@ -1,4 +1,4 @@
-// expect: E0806 at 1
+// expect: E0806
 // rule: 02.10.1
-var x = None
+var x = None // <- here
 x = 3

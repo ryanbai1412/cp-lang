@@ -1,4 +1,4 @@
-// expect: E0602 at 11
+// expect: E0602
 // rule: 05.10.12
 struct Dsu:
     @cache parent: List<Int>
@@ -10,4 +10,4 @@ struct Dsu:
         r
 
     pub fn each(self, f: (Int) -> Int):
-        for p in self.parent: f(p)
+        for p in self.parent: f(p) // <- here

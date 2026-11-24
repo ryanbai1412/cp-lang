@@ -1,3 +1,3 @@
-// expect: E0501 at 1
+// expect: E0501
 // rule: 08.5.3
-fn f<F<_>>(x: F<Int>) -> Int = 0
+fn f<F<_>>(x: F<Int>) -> Int = 0 // <- here

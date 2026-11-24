@@ -1,4 +1,4 @@
-// expect: R0101 at 5
+// expect: R0101
 // rule: trace.1
 // tool: run
 // input: "5"
@@ -8,4 +8,4 @@
 print("before")
 let xs = [1, 2, 3]
 let i: Int = read()
-print(xs[i])
+print(xs[i]) // <- here

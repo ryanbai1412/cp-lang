@@ -1,4 +1,4 @@
-// expect: E0502 at 1
+// expect: E0502
 // rule: 01.1.1
-let s = "café"
+let s = "café" // <- here
 print(s)

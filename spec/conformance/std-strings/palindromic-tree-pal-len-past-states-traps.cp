@@ -1,4 +1,4 @@
-// expect: R0101 at 3
+// expect: R0101
 use std.strings.{PalindromicTree}
 let t = PalindromicTree<Char>.of("")
-print(t.pal_len(2))
+print(t.pal_len(2)) // <- here

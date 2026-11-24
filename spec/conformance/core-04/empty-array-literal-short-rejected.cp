@@ -1,4 +1,4 @@
-// expect: E0302 at 1
+// expect: E0302
 // rule: 04.8.10
-let a: [0..1]Int = []
+let a: [0..1]Int = [] // <- here
 print(a.len)

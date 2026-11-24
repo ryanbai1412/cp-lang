@@ -1,3 +1,3 @@
-// expect: E0107 at 1
-let x = 1 2
+// expect: E0107
+let x = 1 2 // <- here
 print(x)

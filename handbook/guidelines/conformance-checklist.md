@@ -29,7 +29,7 @@ both sides of a boundary, empty and one-element inputs.
 ### conformance/R3. A known gap fails for the reason it names
 
 A case listed in `spec/SUBSET.md` as a known gap is expected to fail, so a
-mistake in the case itself (a wrong `at N`, a stale API) hides until the
+mistake in the case itself (a wrong `// <- here` line, a stale API) hides until the
 implementation catches up. Before you list a gap, check that the failure is
 the bug named in the gap line. Enforced by `scripts/conformance-gaps.py`
 (the case's own code at another line, or a printed `?T` without `!`) and by

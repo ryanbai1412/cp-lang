@@ -1,5 +1,5 @@
-// expect: E0203 at 3
+// expect: E0203
 // has: "combines a range with `fold`"
 var f = Fenwick<0..4>()
 let l = 1
-print(f.sum(l..=l))
+print(f.sum(l..=l)) // <- here

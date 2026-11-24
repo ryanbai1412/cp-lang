@@ -1,4 +1,4 @@
-// expect: E0604 at 10
+// expect: E0604
 // rule: 05.10.9
 struct Dsu:
     @cache parent: List<Int>
@@ -9,4 +9,4 @@ struct Dsu:
         self.parent[x] = r
         r
 
-    pub fn parents(self) -> lends List<Int> = self.parent
+    pub fn parents(self) -> lends List<Int> = self.parent // <- here

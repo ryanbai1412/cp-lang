@@ -1,6 +1,6 @@
-// expect: R0501 at 1 (checked)
+// expect: R0501 (checked)
 // rule: 10.1.1
 // input: ""
-@!multitest
+@!multitest // <- here
 let n: Int = read()
 print(n)

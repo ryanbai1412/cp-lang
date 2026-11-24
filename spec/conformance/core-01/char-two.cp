@@ -1,3 +1,3 @@
-// expect: E0007 at 1
+// expect: E0007
 // rule: 01.4.3
-let c = 'ab'
+let c = 'ab' // <- here

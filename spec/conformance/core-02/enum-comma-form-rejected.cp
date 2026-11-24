@@ -1,4 +1,4 @@
-// expect: E0103 at 1
+// expect: E0103
 // rule: 01.10.2
-enum Dir: N, E
+enum Dir: N, E // <- here
 print(1)

@@ -1,4 +1,4 @@
-// expect: E0301 at 3
+// expect: E0301
 domain B = 0..3
 var best: [Subset<B>]Int = -1
-best[{}] = 0
+best[{}] = 0 // <- here

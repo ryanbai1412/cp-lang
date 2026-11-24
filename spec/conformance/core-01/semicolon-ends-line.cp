@@ -1,4 +1,4 @@
-// expect: E0107 at 2
+// expect: E0107
 // rule: 01.2.5
 let a = 1
-print(a);
+print(a); // <- here

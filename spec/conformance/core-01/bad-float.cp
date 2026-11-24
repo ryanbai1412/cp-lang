@@ -1,3 +1,3 @@
-// expect: E0005 at 1
+// expect: E0005
 // rule: 01.4.2
-let x = .5
+let x = .5 // <- here

@@ -1,7 +1,7 @@
-// expect: E0505 at 1
+// expect: E0505
 // rule: 06.4.9
 // tool: check
 // has: "`to` of `@lint(square_by_hand)` is not one expression or statement"
-@lint(square_by_hand, from: "x * x", to: "sq(x")
+@lint(square_by_hand, from: "x * x", to: "sq(x") // <- here
 pub fn sq(x: Int) -> Int:
     x * x

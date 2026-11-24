@@ -81,13 +81,13 @@ def cases():
         step = max(1, len(traps) // TRAPS_PER_OP)
         for i, (a, b) in enumerate(traps[::step][:TRAPS_PER_OP]):
             out[f"{op}-traps-{i}.cp"] = (
-                "// expect: R0202 at 4 (checked)\n" + HEAD
+                "// expect: R0202 (checked)\n" + HEAD
                 + f"// {a} {sym} {b} is outside `Int`, so a checked build traps.\n" + ID
-                + f"print({lit(a)} {sym} {lit(b)})\n")
+                + f"print({lit(a)} {sym} {lit(b)}) // <- here\n")
             out[f"{op}-assign-traps-{i}.cp"] = (
-                "// expect: R0202 at 5 (checked)\n" + HEAD
+                "// expect: R0202 (checked)\n" + HEAD
                 + f"// {a} {sym}= {b} is outside `Int`, so a checked build traps.\n" + ID
-                + f"var t = {lit(a)}\nt {sym}= {lit(b)}\nprint(t)\n")
+                + f"var t = {lit(a)}\nt {sym}= {lit(b)} // <- here\nprint(t)\n")
     neg = [v for v in VALUES]
     out["neg-in-range.cp"] = (
         "// expect: ok, output \"" + "\\n".join(str(-v) for v in neg) + "\"\n" + HEAD

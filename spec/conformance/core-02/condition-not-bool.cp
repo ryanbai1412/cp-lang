@@ -1,5 +1,5 @@
-// expect: E0307 at 2
+// expect: E0307
 // rule: 02.11.1
 let x = 1
-if x:
+if x: // <- here
     print(1)

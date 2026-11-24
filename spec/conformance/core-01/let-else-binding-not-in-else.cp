@@ -1,7 +1,7 @@
-// expect: E0201 at 3
+// expect: E0201
 // rule: 01.6.2
 fn f(x: ?Int) -> Int:
     let v = x else:
-        return v
+        return v // <- here
     v
 print(f(None))

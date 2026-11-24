@@ -1,3 +1,3 @@
-// expect: E0206 at 1
+// expect: E0206
 // rule: 11.2.1
-use std.nonesuch
+use std.nonesuch // <- here

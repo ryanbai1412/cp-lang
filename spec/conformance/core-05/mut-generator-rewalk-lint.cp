@@ -1,4 +1,4 @@
-// expect: L0604 at 8
+// expect: L0604
 // rule: 05.9.4 06.3.1 07.6.2
 fn mark(mut seen: List<Bool>) -> yields Int:
     for i in seen.keys if not seen[i]:
@@ -7,4 +7,4 @@ fn mark(mut seen: List<Bool>) -> yields Int:
 var seen = [false, false]
 let g = mark(mut seen)
 print(g.count(x => true))
-print(g.count(x => true))
+print(g.count(x => true)) // <- here

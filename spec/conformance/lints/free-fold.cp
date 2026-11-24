@@ -1,3 +1,3 @@
-// expect: L0509 at 2
+// expect: L0509
 let xs = [3, 1, 4]
-print(sum(xs), count(xs, x => x > 2))
+print(sum(xs), count(xs, x => x > 2)) // <- here

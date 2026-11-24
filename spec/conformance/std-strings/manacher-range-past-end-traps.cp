@@ -1,3 +1,3 @@
-// expect: R0401 at 2 (checked)
+// expect: R0401 (checked)
 let p = manacher("abc")
-print(yes(p.is_palindrome(2..5)))
+print(yes(p.is_palindrome(2..5))) // <- here

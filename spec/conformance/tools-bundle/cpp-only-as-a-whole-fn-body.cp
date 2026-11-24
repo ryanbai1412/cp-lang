@@ -1,6 +1,6 @@
-// expect: E0501 at 3
+// expect: E0501
 // rule: bundle.5
 fn f(a: Int) -> Int:
     let b = a + 1
-    @cpp("return b;")
+    @cpp("return b;") // <- here
 print(f(1))

@@ -1,3 +1,3 @@
-// expect: E0606 at 1
+// expect: E0606
 // rule: 08.2.2
-fn twice<T>(x: T) -> T = x + x
+fn twice<T>(x: T) -> T = x + x // <- here

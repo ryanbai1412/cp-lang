@@ -1,4 +1,4 @@
-// expect: R0402 at 1
+// expect: R0402
 // rule: 01.6.7
-fn f() -> Int = todo
+fn f() -> Int = todo // <- here
 print(f())

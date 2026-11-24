@@ -54,10 +54,7 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
         let Ok(text) = std::fs::read_to_string(&case.path) else {
             continue;
         };
-        if matches!(
-            conformance::parse_header(&text),
-            Ok((Expect::OkOutput(_), _))
-        ) {
+        if matches!(conformance::parse_header(&text), Ok(Expect::OkOutput(_))) {
             targets.push(DiffTarget::Conformance {
                 id,
                 path: case.path,
@@ -410,7 +407,7 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
     // An `@cpp` body runs only in C++: a case's written output stands in
     // for the interpreter's run (decision 449).
     let written = match conformance::parse_header(&text) {
-        Ok((Expect::OkOutput(want), _)) if !compiled.program.cpp_bodies.is_empty() => Some(want),
+        Ok(Expect::OkOutput(want)) if !compiled.program.cpp_bodies.is_empty() => Some(want),
         _ => None,
     };
     for (_, inp) in &inputs {

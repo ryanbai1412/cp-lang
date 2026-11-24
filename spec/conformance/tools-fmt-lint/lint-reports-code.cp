@@ -1,5 +1,5 @@
-// expect: L0201 at 1
+// expect: L0201
 // rule: lint.1
 // tool: lint
-var x = 1
+var x = 1 // <- here
 print(x)

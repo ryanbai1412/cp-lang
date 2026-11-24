@@ -1,3 +1,3 @@
-// expect: E0201 at 1
+// expect: E0201
 // rule: 11.3.4
-print(trim(" a "))
+print(trim(" a ")) // <- here

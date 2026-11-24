@@ -1,5 +1,5 @@
-// expect: E0006 at 2
+// expect: E0006
 // rule: 01.2.4
 let x = 1
-    2
+    2 // <- here
 print(x)

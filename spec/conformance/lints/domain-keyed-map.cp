@@ -1,5 +1,5 @@
-// expect: L0412 at 2
+// expect: L0412
 domain V = 1..=5
-var m: Map<V, Int> = Map()
+var m: Map<V, Int> = Map() // <- here
 m[V(1)] = 42
 print(m.get(V(1)) ?? 0)
