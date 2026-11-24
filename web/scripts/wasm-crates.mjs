@@ -257,8 +257,9 @@ export function dataOverBudget(rows, budgets) {
 // with slack after a pass (lowered).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--sizes') {
   const wasm = readFileSync(process.argv[3]);
-  const crates = Object.fromEntries(contributors(wasm).map(([c, , gz]) => [c, gz]));
-  writeFileSync(process.argv[4], `${JSON.stringify({ crates, sorts: sortCopies(functionNames(wasm)).length })}\n`);
+  // A sizes file standing in for a build (scripts/test_land.py's builds) is its own sizes.
+  const crates = wasm[0] === 0x7b ? null : Object.fromEntries(contributors(wasm).map(([c, , gz]) => [c, gz]));
+  writeFileSync(process.argv[4], crates ? `${JSON.stringify({ crates, sorts: sortCopies(functionNames(wasm)).length })}\n` : wasm);
 } else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const at = process.argv.indexOf('--data');
   if (at < 0 || !process.argv[at + 1]) {

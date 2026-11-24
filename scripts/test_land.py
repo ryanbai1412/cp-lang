@@ -795,10 +795,11 @@ class LandTest(unittest.TestCase):
         self.assertIn("cpl_y is 101 B gzipped, over its budget of 100", r.stderr)
         self.assertNotIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
 
-    def _check(self, ours_gz, budgets, parent_gz=None):
+    def _check(self, ours_gz, budgets, parent_gz=None, built_gz=None):
         """The commit tier's wasm step (ci.py wasm_data runs scripts/wasm-warm.sh --check)
         through the real wasm-crates.mjs: a build measuring `ours_gz` (crate -> B gz)
-        against HEAD's recorded sizes `parent_gz`, or none, under `budgets`."""
+        against HEAD's recorded sizes `parent_gz`, or none, under `budgets`; with none,
+        a build of HEAD's tree measures `built_gz`, or fails when that is None."""
         data = "data (std source, strings)"
         repo = self.clone("ours")
         web = repo / "web" / "scripts"
@@ -809,6 +810,11 @@ class LandTest(unittest.TestCase):
         shutil.copytree(HERE.parent / "handbook" / "domains", repo / "handbook" / "domains")
         (repo / "crates" / "cpl-x").mkdir(parents=True)
         (repo / "crates" / "cpl-x" / "lib.rs").write_text("x\n")
+        built = self.tmp / "built.wasm"
+        if built_gz is not None:
+            built.write_text(json.dumps({"crates": {data: 90, **built_gz}, "sorts": 0}))
+        (repo / "scripts" / "build-wasm.sh").write_text(f'#!/bin/sh\nmkdir -p "$2"\ncp "{built}" "$2/cpl.wasm"\n')
+        (repo / "scripts" / "build-wasm.sh").chmod(0o755)
         self.commit(repo, "gate")
         wasm = self.tmp / "gate.wasm"
         wasm.write_text(json.dumps({"crates": {data: 90, **ours_gz}, "sorts": 0}))
@@ -832,11 +838,23 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("it grew 1 B against its parent's 150 B", r.stderr)
 
-    def test_the_commit_tier_without_parent_sizes_holds_touched_crates_to_their_budgets(self):
-        r = self._check({"cpl_x": 149}, {"cpl_x": 100})
+    def test_an_unrecorded_base_is_built_and_holds_an_over_budget_crate_at_net_0(self):
+        # VM-trace's c9d4caff8: main's newest tip had no sizes, so cpl_ir at net 0 met
+        # its absolute budget and was refused twice.
+        r = self._check({"cpl_x": 150}, {"cpl_x": 100}, built_gz={"cpl_x": 150})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("building it to hold the crates to it", r.stderr)
+        self.assertEqual(len(list((self.tmp / "tgt" / "wasm-warm" / "sizes").glob("*.json"))), 1)
+
+    def test_growth_against_a_built_base_refuses(self):
+        r = self._check({"cpl_x": 151}, {"cpl_x": 100}, built_gz={"cpl_x": 150})
         self.assertEqual(r.returncode, 1, r.stderr)
-        self.assertIn("wasm-warm: no wasm sizes of HEAD's tree", r.stderr)
-        self.assertIn("cpl_x is 149 B gzipped, over its budget of 100", r.stderr)
+        self.assertIn("it grew 1 B against its parent's 150 B", r.stderr)
+
+    def test_a_base_that_cant_be_built_refuses_instead_of_using_budgets(self):
+        r = self._check({"cpl_x": 90}, {"cpl_x": 100})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("could not build HEAD's wasm", r.stderr)
 
     def test_land_never_waits_on_a_wasm_build_it_lacks(self):
         ours = self._crate_change("cpl-y")

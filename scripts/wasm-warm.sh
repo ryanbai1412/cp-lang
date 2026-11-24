@@ -17,8 +17,8 @@
 #                                   the wasm rule the commit tier (ci.py) and land.sh share:
 #                                   with BASE's sizes, every crate is held to the shrink-only
 #                                   ratchet (one over its budget refuses only if it grew);
-#                                   without them, says so and holds the touched crates to
-#                                   their budgets
+#                                   without them, builds BASE's tree to record them first,
+#                                   and refuses if it can't
 # Each recorded build writes its sizes to sizes/<tree>.json, and --wait also builds
 # HEAD's merge-base with origin/main when it has none, so land can hold a crate over
 # its budget to its parent's size (web/scripts/wasm-crates.mjs --parent).
@@ -35,6 +35,19 @@ target="${CARGO_TARGET_DIR:-target}"
 case "$target" in /*) ;; *) target="$PWD/$target" ;; esac
 out="$target/wasm-warm"
 inputs=(crates std Cargo.toml Cargo.lock scripts/build-wasm.sh)
+# Records the per-crate sizes of a build of BASE's tree, built in a scratch worktree.
+record_base() {
+    local src="$out/base-src" ok=0
+    git worktree remove --force "$src" 2>/dev/null || rm -rf "$src"
+    git worktree prune
+    git worktree add -q --detach "$src" "$1" || return 1
+    (cd "$src" && CARGO_TARGET_DIR="$target" scripts/build-wasm.sh --names "$out/base") &&
+        mkdir -p "$out/sizes" &&
+        node web/scripts/wasm-crates.mjs --sizes "$out/base/cpl.wasm" "$out/sizes/$(git rev-parse "$1^{tree}").json" || ok=1
+    git worktree remove --force "$src"
+    ls -t "$out"/sizes/*.json 2>/dev/null | tail -n +9 | xargs -r rm -f
+    return "$ok"
+}
 case "${1:-}" in
     --current)
         shift
@@ -59,11 +72,20 @@ case "${1:-}" in
         wasm=$2 base=$3
         shift 3
         touched=$(printf '%s\n' "$@" | tr - _ | paste -sd, -)
-        if sizes=$(bash "$0" --parent "$base" "$@"); then
-            exec node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$sizes" --touched "$touched"
+        # A base nobody has built yet (main's newest tip) is built now: held to the
+        # absolute budgets instead, a crate already over its budget refuses at net 0.
+        if ! sizes=$(bash "$0" --parent "$base" "$@"); then
+            mkdir -p "$out"
+            exec 9>"$out.lock"
+            flock 9
+            if ! sizes=$(bash "$0" --parent "$base" "$@"); then
+                echo "wasm-warm: no wasm sizes of $base's tree; building it to hold the crates to it" >&2
+                record_base "$base" >&2 && sizes=$(bash "$0" --parent "$base" "$@") ||
+                    { echo "wasm-warm: could not build $base's wasm, so no crate can be held to it; fix that build and run again" >&2; exit 1; }
+            fi
+            exec 9>&-
         fi
-        echo "wasm-warm: no wasm sizes of $base's tree (scripts/wasm-warm.sh --wait records them); holding the touched crates to their budgets" >&2
-        exec node web/scripts/wasm-crates.mjs --data "$wasm" --touched "$touched" ;;
+        exec node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$sizes" --touched "$touched" ;;
     --wait)
         mkdir -p "$out"
         exec 9>"$out.lock"
@@ -85,14 +107,7 @@ case "${1:-}" in
         # The parent's sizes, unless land would already find them.
         base=$(git merge-base HEAD "${CPL_WARM_MAIN:-origin/main}" 2>/dev/null) || exit 0
         [ ! -s "$out/sizes/$(git rev-parse "$base^{tree}").json" ] || exit 0
-        src="$out/base-src"
-        git worktree remove --force "$src" 2>/dev/null || rm -rf "$src"
-        git worktree prune
-        git worktree add -q --detach "$src" "$base"
-        (cd "$src" && CARGO_TARGET_DIR="$target" scripts/build-wasm.sh --names "$out/base")
-        node web/scripts/wasm-crates.mjs --sizes "$out/base/cpl.wasm" "$out/sizes/$(git rev-parse "$base^{tree}").json"
-        git worktree remove --force "$src"
-        ls -t "$out"/sizes/*.json | tail -n +9 | xargs -r rm -f
+        record_base "$base"
         echo "wasm-warm: recorded the sizes of $base, HEAD's merge-base" ;;
     "")
         mkdir -p "$out"
