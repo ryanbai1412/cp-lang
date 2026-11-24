@@ -171,7 +171,7 @@
   "std_shadowed": 60,
   "corpus_walkers": 31,
   "unregistered_lists": 0,
-  "json_outside_cpl_json": 3,
+  "json_outside_cpl_json": 0,
   "config_schemas": 7,
   "std_doc_parsers": 0,
   "edit_engines": 4,
@@ -203,7 +203,7 @@
   "rust_idiom_lints": 77,
   "scaling_mismatches": 0,
   "std_fns_unscaled": 1605,
-  "std_types_shown_empty": 97,
-  "edge_labels_unrun": 1181,
+  "std_types_shown_empty": 87,
+  "edge_labels_unrun": 1178,
   "std_model_gaps": 703
 }
