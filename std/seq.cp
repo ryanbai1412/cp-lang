@@ -1280,23 +1280,6 @@ pub struct Rev<S>():
     /// example: `let a = [1, 2]; a.rev.src == a`
     @get pub fn src(self) -> S = todo
 
-
-    /// \(O(n)\) calls of `f`.
-    ///
-    /// The n + 1 suffix folds of the source, indexed by its cuts: `suf[c]` folds everything right of
-    /// cut `c` (`from`, or `f`'s identity, at the last cut), so `suf[a.cut_before(i)]` folds `a[i..]`.
-    /// The folds run right to left, `suf[c] == f(a[c.r], suf[c.next])`, keeping the elements'
-    /// left-to-right order inside each fold, so `f` need not be commutative. `all` is the whole fold,
-    /// `suffix(b)` reads a stored fold, and `prefix(b)` and `fold` subtract, so they need `f` to be `+`.
-    ///
-    /// cost: \(O(n)\) calls of `f`; \(O(n)\) space
-    /// empty: one cut, holding `from` or the identity
-    /// order: keyed by the source's cuts, right to left
-    /// traps: never (beyond what `f` traps on); see `fold` for range reads
-    /// example: `[3, 1, 4].rev.scan(+).suffix(1) == 5`
-    /// example: `[3, 1, 4].rev.scan(+).all == 8`
-    /// example: `[3, 1, 4].rev.scan(max).suffix(2) == 4`
-
     /// \(O(1)\). The element `k` steps into the walk: `a.rev.nth(0)` is `a`'s last.
     ///
     /// cost: \(O(1)\)
@@ -3217,16 +3200,21 @@ pub trait Sep<T>:
 impl Rev<[D]T>:
     /// \(O(n)\) calls of `f`.
     ///
-    /// The n + 1 suffix folds, keyed by the source's own cuts: `suf[c]` folds everything right of
-    /// cut `c` (`from`, or `f`'s identity, at the last cut). The value at `c` is
-    /// `f(a[c.r], suf[c.next])`, so `f` need not be commutative.
+    /// The n + 1 suffix folds of the source, keyed by its own cuts: `suf[c]` folds everything right
+    /// of cut `c` (`from`, or `f`'s identity, at the last cut), so `suf[a.cut_before(i)]` folds
+    /// `a[i..]`. The folds run right to left, `suf[c] == f(a[c.r], suf[c.next])`, keeping the
+    /// elements' left-to-right order inside each fold, so `f` need not be commutative. `all` is the
+    /// whole fold, `suffix(b)` reads a stored fold, and `prefix(b)` and `fold` subtract, so they
+    /// need `f` to be `+`.
     ///
     /// cost: \(O(n)\) calls of `f`; \(O(n)\) space
     /// empty: one cut, holding `from` or the identity
     /// order: keyed by `D.cuts`, right to left
-    /// traps: never (beyond what `f` traps on)
+    /// traps: never (beyond what `f` traps on); see `fold` for range reads
     /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(*).at(D(1).l) == 12`
     /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(+).all == 9`
+    /// example: `domain D = 0..3; let a: [D]Int = [3, 1, 4]; a.rev.scan(+).suffix(D(1).l) == 5`
+    /// example: `domain D = 0..3; let a: [D]Int = [3, 1, 4]; a.rev.scan(max).suffix(D(2).l) == 4`
     pub fn scan<M>(self, f: M, from: ?T = None) -> Prefix<D, T> = Prefix<D, T>.of_rev_scan(self.src, f, from)
 
 impl<T> Sep<T> for T -> Bool:
