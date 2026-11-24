@@ -2587,6 +2587,39 @@ def trap_text_outside_registry(root: Path) -> list[str]:
     return sites
 
 
+# The languages whose habits the compiler recovers, as a doc comment names one: `Python's
+# \`a.index(x)\``, `the C++/Rust spelling`, `a lambda from Kotlin`.
+FOREIGN_LANG = r"(?:C\+\+|C|Python|Rust|Java|Kotlin|JavaScript|TypeScript|Swift|Lua|Pascal|Go)"
+FOREIGN_HABIT_DOC_RE = re.compile(r"(?<![\w`])" + FOREIGN_LANG + r"(?:'s\b|/(?=[A-Z]))|\bfrom " + FOREIGN_LANG + r"(?![\w`+])")
+FN_ITEM_RE = re.compile(r"(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?fn\s")
+RECOVERY_CRATES = ("crates/cpl-syntax/src", "crates/cpl-check/src", "crates/cpl-ir/src")
+
+
+def foreign_outside_modules(root: Path) -> list[str]:
+    """Fns in the parser, checker and lowering whose doc comment names another language's
+    habit they recover (`Python's ...`, `C++/Rust ...`, `from Kotlin`), outside a `foreign/`
+    module (or a `foreign.rs`): each language's recovery lives in its own module, so it is
+    found, and shrinks, in one place. Tests are left out."""
+    found = []
+    for p in _rs_files(root, *RECOVERY_CRATES, tests=False):
+        rel = _rel(root, p)
+        if "foreign" in Path(rel).parts[:-1] or p.stem == "foreign" or "/src/tests/" in rel \
+                or p.name.endswith("_tests.rs") or p.name.startswith("tests_"):
+            continue
+        doc: list[str] = []
+        for i, line in _ungated_lines(_lines(p)):
+            s = line.strip()
+            if s.startswith("///"):
+                doc.append(s[3:])
+                continue
+            if s.startswith("#["):
+                continue
+            if FN_ITEM_RE.match(s) and FOREIGN_HABIT_DOC_RE.search(" ".join(doc)):
+                found.append(f"{rel}:{i}")
+            doc = []
+    return found
+
+
 # The VM's one event model: the `observe::Observer` its `tracer` slot holds.
 EVENT_SINK_TYPE_RE = re.compile(r"^\s*(?:pub(?:\(crate\))?\s+)?(\w+):\s*Option<[^>]*(?:Profiler|Stats|Recorder|Counter|Observer)\b")
 
@@ -2830,7 +2863,7 @@ HARD_ZERO = frozenset({
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
     "measure_broken", "mono_unguarded", "ts_ignore", "ports_unreported",
     "site_rederived", "browser_lsp_gaps",
-    "unrun_script_tests", "trap_text_outside_registry", "diag_text_outside_registry",
+    "unrun_script_tests", "trap_text_outside_registry", "diag_text_outside_registry", "foreign_outside_modules",
     "permits", "written_twice", "reviews_orphan", "reviews_pending",
     "plan_delta_lines", "idioms_evidenced_unlinted", "v02_port_files", "judge_tables",
     "trait_gaps",
@@ -3009,6 +3042,8 @@ COUNTERS = {
                                    diag_text_outside_registry, True),
     "trap_text_outside_registry": ("runtime trap messages with inline text outside cpl-diag's registry (Consumers)",
                                    trap_text_outside_registry, True),
+    "foreign_outside_modules": ("fns recovering another language's habit outside a foreign/ module (Consumers)",
+                                foreign_outside_modules, True),
     "event_models": ("event sinks beside the Observer slot, hooks beside Observer::on (Core, Consumers)", event_models, True),
     "width_tables": ("integer-width match arms outside cpl_ir::IntWidth (Core)", width_tables, True),
     "judge_tables": ("judges named outside cpl-judge's table (Core, Consumers)", judge_tables, True),

@@ -152,7 +152,7 @@ pub fn lexer_rules() -> Vec<(&'static str, String)> {
 /// The JetBrains plugin's highlighting lexer, editors/lexer.tsv: one rule per line, tried
 /// in order at each offset, the first that matches taking the text, as five tab-separated
 /// fields: the token, its color key (`CP_<key>`), the key's `DefaultLanguageHighlighterColors`
-/// default, its name on the color settings page, and the regex in Java's syntax. No rule
+/// default, its name on the color settings page, and the regex as Java reads it. No rule
 /// spans a line, so the IDE can relex from any line.
 pub fn jetbrains() -> String {
     let mut out = String::from(

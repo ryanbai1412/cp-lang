@@ -529,6 +529,21 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(sorted(dr.web_skip_only(root)), ["web/lib/b.mjs:1", "web/tests/a.test.ts:1"])
 
+    def test_foreign_outside_modules_counts_habit_docs_off_foreign_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            doc = "/// Python's `a.index(x)`: `a.find(x)!`.\n"
+            self._write(root, "crates/cpl-check/src/check/advice.rs",
+                        doc + "pub(super) fn index_of() {}\n/// A C-style loop counter.\nfn counter() {}\n"
+                        "#[cfg(test)]\nmod t {\n" + doc + "fn gated() {}\n}\n")
+            self._write(root, "crates/cpl-ir/src/lower/typo.rs", "/// The C++/Rust spelling.\n#[inline]\nfn by() {}\n")
+            self._write(root, "crates/cpl-check/src/check/foreign/python.rs", doc + "fn index_of() {}\n")
+            self._write(root, "crates/cpl-syntax/src/lexer/foreign.rs", doc + "fn floor() {}\n")
+            self._write(root, "crates/cpl-codegen/src/rt.rs", "/// As C's `printf` writes it.\nfn show() {}\n")
+            self.assertEqual(sorted(dr.foreign_outside_modules(root)),
+                             ["crates/cpl-check/src/check/advice.rs:2", "crates/cpl-ir/src/lower/typo.rs:3"])
+        self.assertIn("foreign_outside_modules", dr.HARD_ZERO)
+
     def test_unrun_script_tests(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
