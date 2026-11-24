@@ -70,11 +70,13 @@ impl<'p> Emitter<'p> {
             summaries: std::mem::take(&mut self.summaries),
             pushers: std::mem::take(&mut self.pushers),
             eager: std::mem::take(&mut self.eager),
+            scope: std::mem::take(&mut self.feed_scope),
         };
         let fed = feeds.feeds(id, seq, body);
         self.summaries = feeds.summaries;
         self.pushers = feeds.pushers;
         self.eager = feeds.eager;
+        self.feed_scope = feeds.scope;
         if fed.is_none() {
             return false;
         }

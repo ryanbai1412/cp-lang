@@ -274,6 +274,36 @@ fn a_yields_loop_whose_body_calls_a_fn_value_runs_as_the_fn_yields() {
 }
 
 #[test]
+fn a_fed_loop_calling_a_fn_value_sees_only_that_fn_types_effects() {
+    let cpp = cpp(concat!(
+        "var g = [1, 2, 3]\n",
+        "fn gen() -> yields Int:\n    for x in g: yield x\n",
+        "fn bump(x: Int) -> Int:\n    if x < 3: g.push(x + 10)\n    x\n",
+        "fn show(s: Bool) -> Bool: s\n",
+        "fn run(f: Int -> Int, h: Bool -> Bool) -> Int:\n",
+        "    var t = 0\n    for x in gen(): t = t * 100 + f(x)\n    if h(true): t else: 0\n",
+        "print(run(bump, show), g.len)\n",
+    ));
+    // `f` grows `g` while `gen` walks it, so the walk is not fed.
+    assert!(!cpp.contains("cpl_each_gen("), "{cpp}");
+}
+
+#[test]
+fn a_nested_fn_writing_the_callers_var_still_streams_a_generator() {
+    let cpp = cpp(concat!(
+        "fn solve(n: Int) -> Int:\n",
+        "    let h = [i % 7 for i in 0..n]\n",
+        "    var found = 0\n",
+        "    fn crossed(i: Int, j: Int):\n        if (h[i] + h[j]) % 3 == 0: found += 1\n",
+        "    let groups = (0..n).group(by: x => h[x])\n",
+        "    for (_, group) in groups:\n        for (i, j) in group.pairs(): crossed(i, j)\n",
+        "    found\n",
+        "let n: 1..=1000 = read()\nprint(solve(n))\n",
+    ));
+    assert!(cpp.contains("cpl_each_m1_pairs"), "{cpp}");
+}
+
+#[test]
 fn closure_mutating_a_captured_local_is_not_hoisted_static() {
     let cpp = cpp(concat!(
         "fn each(f: (Int) -> ()):\n",

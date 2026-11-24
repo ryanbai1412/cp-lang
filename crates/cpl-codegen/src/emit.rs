@@ -194,6 +194,8 @@ pub(crate) struct Emitter<'p> {
     pub pushers: BTreeMap<usize, usize>,
     /// The pushers that run to their end, never feeding a loop.
     pub eager: BTreeSet<usize>,
+    /// Where each loop is, for [`cpl_ir::pushed::Feeds::feeds`].
+    pub feed_scope: cpl_ir::pushed::FeedScope,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
     /// The loops over a `yields` fn being written as its callback, innermost last.
@@ -339,6 +341,7 @@ impl<'p> Emitter<'p> {
             pushed_moves: Vec::new(),
             pushers: BTreeMap::new(),
             eager: BTreeSet::new(),
+            feed_scope: cpl_ir::pushed::FeedScope::default(),
             sinks: BTreeMap::new(),
             sink_pure: BTreeSet::new(),
             sinking: None,
@@ -371,6 +374,7 @@ impl<'p> Emitter<'p> {
         );
         emitter.pushers = feeds.pushers;
         emitter.eager = feeds.eager;
+        emitter.feed_scope = feeds.scope;
         emitter
     }
 
