@@ -609,6 +609,8 @@ jobs:
           restore-keys: |
             acceptance-${{ matrix.shard }}-
             acceptance-
+      - name: Note when this job starts using the cache
+        run: echo "CXX_SINCE=$(date +%s)" >> "$GITHUB_ENV"
       - name: The interpreter and the C++ agree on this shard's v03 ports
         # scripts/corpus.py verify: cpl test, interpreter vs C++ and size, with no known list.
         if: ${{ !cancelled() }}
@@ -618,7 +620,14 @@ jobs:
         run: |
           # shellcheck disable=SC2016  # the inner bash expands $(nproc)
           timeout 340 bash -c 'just corpus-tests-make --cpl target/ci/cpl --set v03 --shard ${{ matrix.shard }}/16 >/dev/null &&
-            just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" --set v03 --shard ${{ matrix.shard }}/16'
+            just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" --set v03 --shard ${{ matrix.shard }}/16' \
+            || { s=$?; [ "$s" != 124 ] || touch "$RUNNER_TEMP/cut-short"; exit "$s"; }
+      # Only what this shard used, so a save restored from another shard isn't
+      # both of theirs: 16 shards of 160-610 MB took 5.7 GB of the 10 GB. A
+      # shard cut short keeps all it restored: it never reached the rest.
+      - name: Drop the builds and cases this shard didn't use
+        if: ${{ !cancelled() }}
+        run: "[ -f \"$RUNNER_TEMP/cut-short\" ] || just cxx-trim \"$CXX_SINCE\" --dir ~/.cache/cpl/cxx/corpus --dir target/corpus-generators --dir target/corpus-tests"
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() }}
         with:
@@ -663,12 +672,20 @@ jobs:
           restore-keys: |
             corpus-audit-cxx-${{ matrix.shard }}-
             corpus-audit-cxx-
+      - name: Note when this job starts using the cache
+        run: echo "CXX_SINCE=$(date +%s)" >> "$GITHUB_ENV"
       - name: Audit every problem package
         timeout-minutes: 12
         # The step's own timeout leaves g++ running into the save below, whose
         # tar then fails ("file changed as we read it") and the cache never
         # warms; `timeout` ends the whole process group first.
-        run: timeout 660 just corpus-verify --only package --cpl target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/8
+        run: |
+          timeout 660 just corpus-verify --only package --cpl target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/8 \
+            || { s=$?; [ "$s" != 124 ] || touch "$RUNNER_TEMP/cut-short"; exit "$s"; }
+      # Only the builds this shard used (8 shards held 2.8 GB); a shard cut short keeps all.
+      - name: Drop the builds this shard didn't use
+        if: always()
+        run: "[ -f \"$RUNNER_TEMP/cut-short\" ] || just cxx-trim \"$CXX_SINCE\" --dir ~/.cache/cpl/cxx/corpus"
       - uses: actions/cache/save@v4
         if: always()
         with:

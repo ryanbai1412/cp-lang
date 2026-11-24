@@ -862,6 +862,18 @@ class CheckTest(unittest.TestCase):
             ci.cxx_trim(cache, 200)
             self.assertEqual(sorted(n for n, f in files.items() if f.exists()), ["ab/hit.bin", "ab/hit.err", "corpus/used"])
 
+    def test_cxx_trim_trims_each_dir_it_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dirs = [Path(tmp, "a"), Path(tmp, "b")]
+            for d in dirs:
+                d.mkdir()
+                (d / "old").write_text("x")
+                os.utime(d / "old", (100, 100))
+                (d / "used").write_text("x")
+            self.assertEqual(ci.main(["cxx-trim", "--since", "200", "--dir", str(dirs[0]), "--dir", str(dirs[1]),
+                                      "--dir", str(Path(tmp, "missing"))]), 0)
+            self.assertEqual([sorted(p.name for p in d.iterdir()) for d in dirs], [["used"], ["used"]])
+
     def test_the_cxx_cache_shims_g_plus_plus_and_prunes_week_old_binaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp, "bin")

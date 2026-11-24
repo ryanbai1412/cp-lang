@@ -489,6 +489,17 @@ class MakeTest(Corpus):
         self.assertEqual(calls, [["my-cpl", "test", "--make", str(pkg.dir), "--tests", os.path.join("out", "p")]])
         self.assertEqual(e.exception.case, "02")
 
+    def test_made_cases_count_as_used_even_when_their_stamp_is_current(self):
+        pkg = corpus.Package.at(self.package("p", tests_toml='[[case]]\ninput = "1"\n'))
+        made = self.root / "out" / "p"
+        made.mkdir(parents=True)
+        for name in (".stamp", "01.in", "01.ans"):
+            (made / name).write_text("x")
+            os.utime(made / name, (100, 100))
+        with mock.patch.object(corpus.subprocess, "run", lambda argv, **kw: mock.Mock(returncode=0, stderr="")):
+            corpus.make_cases(pkg, str(self.root / "out"), "my-cpl")
+        self.assertTrue(all(f.stat().st_mtime > 100 for f in made.iterdir()))
+
     def test_a_reference_past_its_budget_fails_the_case_it_ran_on(self):
         pkg = corpus.Package.at(self.package("p", tests_toml='[[case]]\ninput = "1"\n'))
         failed = mock.Mock(returncode=1, stderr="cpl: p: accepted C++ runs past 20 s on case 03\n")

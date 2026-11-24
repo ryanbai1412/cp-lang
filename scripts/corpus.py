@@ -1163,6 +1163,8 @@ def checked(pid, port, cpl):
             if subprocess.run(["g++", "-std=c++17", "-O2", "-o", tmp, cpp], capture_output=True).returncode:
                 return None
             os.replace(tmp, exe)
+        else:
+            os.utime(exe)  # used: CI's cache trim keeps it
         return exe
     finally:
         if os.path.exists(cpp):
@@ -1501,6 +1503,9 @@ def make_cases(pkg, out=OUT, cpl=None):
             raise ReferenceFails(m.group(2), m.group(1))
         lines = r.stderr.strip().splitlines()
         raise RuntimeError(lines[-1] if lines else f"cpl test --make exits {r.returncode}")
+    made = Path(out, pkg.id)
+    for f in made.iterdir() if made.is_dir() else ():
+        os.utime(f)  # used, even when the stamp says current: CI's cache trim keeps it
 
 
 def make_one(job):

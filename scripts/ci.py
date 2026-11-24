@@ -1251,7 +1251,7 @@ def main(argv: list[str] | None = None) -> int:
     gd.add_argument("--mode", choices=MODES, required=True)
     tr = sub.add_parser("cxx-trim", help="drop the g++ cache's binaries unused since --since (epoch seconds)")
     tr.add_argument("--since", type=float, required=True)
-    tr.add_argument("--dir", default=str(Path.home() / ".cache" / "cpl" / "cxx"))
+    tr.add_argument("--dir", action="append", help="a cache dir to trim, repeatable; default ~/.cache/cpl/cxx")
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["check"]:
         return check(argv[1:])
@@ -1264,7 +1264,9 @@ def main(argv: list[str] | None = None) -> int:
             ap.error(f"no commit-tier step {', '.join(unknown)}; the steps: {', '.join(COMMIT_STEPS)}")
         return run_gate("commit", cpl=args.cpl, only=only)
     if args.cmd == "cxx-trim":
-        return cxx_trim(Path(args.dir), args.since) or 0
+        for d in args.dir or [str(Path.home() / ".cache" / "cpl" / "cxx")]:
+            cxx_trim(Path(d), args.since)
+        return 0
     if args.cmd == "gate":
         return run_gate(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest, args.since)
     if args.cmd == "steps":
