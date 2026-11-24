@@ -5,14 +5,11 @@ import { missingCpl } from './cpl';
 import { LensProvider } from './lenses';
 import { Overlays } from './overlays';
 import { Runner } from './runner';
-import { TestPanel } from './testPanel';
 import { TraceView } from './traceView';
 
 /** What the extension gives other extensions and its tests. */
 export interface CpApi {
     request(method: string, params: unknown): Promise<unknown>;
-    /** The Testing panel's problems and cases. */
-    tests: TestPanel;
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<CpApi> {
@@ -22,7 +19,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
     const lenses = new LensProvider();
     const traces = new TraceView();
     const runner = new Runner(output, overlays, traces);
-    const tests = new TestPanel();
     const command = (id: string, run: (...args: never[]) => unknown) =>
         vscode.commands.registerCommand(id, run as (...args: unknown[]) => unknown);
 
@@ -32,7 +28,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
         overlays,
         traces,
         lenses,
-        tests,
         vscode.languages.registerCodeLensProvider(SELECTOR, lenses),
         command('cp.runSample', (uri?: vscode.Uri, name?: string) => runner.runSample(uri, name)),
         command('cp.runAllSamples', (uri?: vscode.Uri) => runner.runAllSamples(uri)),
@@ -136,7 +131,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
         }),
     );
     await client.start();
-    return { request: (method, params) => client.request(method, params), tests };
+    return { request: (method, params) => client.request(method, params) };
 }
 
 export function deactivate(): void {
