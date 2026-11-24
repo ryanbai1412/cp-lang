@@ -1,8 +1,9 @@
 //! The stress loop: make a case, run the solution and the brute, judge,
 //! and on the first failure shrink it and save it.
 
+use crate::case::{Failed, Ruling, Transcript, Wrong};
 use crate::choices::{self, Drawn};
-use crate::engine::{ChoiceSource, Engine, ProcessChoices, ProcessEngine, Wrong};
+use crate::engine::{ChoiceSource, Engine, ProcessChoices, ProcessEngine};
 use crate::gen::{generate, Case, Size};
 use crate::judge::{Judge, Verdict};
 use crate::program::Program;
@@ -76,7 +77,7 @@ impl Default for Options {
 }
 
 /// A case the solution got wrong.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Failure {
     /// 1-based.
     pub case: usize,
@@ -94,9 +95,46 @@ pub struct Failure {
     pub shrunk: Option<(usize, usize)>,
     /// One of [`Options::saved`], still failing.
     pub saved: bool,
+    /// What an interactive run's two sides said.
+    pub transcript: Option<Transcript>,
+    /// The interactor's ruling, for an interactive run.
+    pub ruling: Option<Ruling>,
+    /// Where a helper stopped during the run, as a diagnostic.
+    pub trap: Option<cpl_json::Value>,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Default)]
+impl Failure {
+    fn new(case: usize, seed: u64, input: String, failed: Failed, saved: bool) -> Failure {
+        let mut failure = Failure {
+            case,
+            seed,
+            input,
+            described: None,
+            expected: String::new(),
+            got: String::new(),
+            verdict: Verdict::Accepted,
+            shrunk: None,
+            saved,
+            transcript: None,
+            ruling: None,
+            trap: None,
+        };
+        failure.take(failed);
+        failure
+    }
+
+    /// Takes the run of a smaller input that fails the same way.
+    fn take(&mut self, failed: Failed) {
+        self.verdict = failed.verdict;
+        self.expected = failed.expected;
+        self.got = failed.got;
+        self.transcript = failed.transcript;
+        self.ruling = failed.ruling;
+        self.trap = failed.trap;
+    }
+}
+
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct Report {
     /// How many cases ran, the failing one included.
     pub cases: usize,
@@ -144,10 +182,14 @@ enum Tried {
 /// Like `engine.run`, for an input made from guessed ranges.
 fn attempt(engine: &dyn Engine, input: &str) -> Result<Tried, StressError> {
     match engine.run(input) {
-        Ok(Some((Verdict::RuntimeError(_) | Verdict::TimeLimit, _, _))) if !engine.has_brute() => {
-            Ok(Tried::Stopped)
-        }
-        Ok(Some((Verdict::BruteError(_), _, _))) if engine.stops(input) => Ok(Tried::Stopped),
+        Ok(Some(Failed {
+            verdict: Verdict::RuntimeError(_) | Verdict::TimeLimit,
+            ..
+        })) if !engine.has_brute() => Ok(Tried::Stopped),
+        Ok(Some(Failed {
+            verdict: Verdict::BruteError(_),
+            ..
+        })) if engine.stops(input) => Ok(Tried::Stopped),
         Ok(wrong) => Ok(Tried::Judged(wrong)),
         Err(_) if engine.stops(input) => Ok(Tried::Stopped),
         Err(e) => Err(e),
@@ -217,18 +259,8 @@ pub fn stress_with(
     options: &Options,
 ) -> Result<Report, StressError> {
     for (index, (seed, input)) in options.saved.iter().enumerate() {
-        if let Some((verdict, expected, got)) = engine.run(input)? {
-            let failure = Failure {
-                case: index + 1,
-                seed: *seed,
-                input: input.clone(),
-                described: None,
-                expected,
-                got,
-                verdict,
-                shrunk: None,
-                saved: true,
-            };
+        if let Some(failed) = engine.run(input)? {
+            let failure = Failure::new(index + 1, *seed, input.clone(), failed, true);
             return Ok(Report {
                 cases: index + 1,
                 skipped: 0,
@@ -380,24 +412,14 @@ pub fn stress_with(
                         engine.run(&input)?
                     }
                 };
-                let Some((verdict, expected, got)) = wrong else {
+                let Some(failed) = wrong else {
                     match (&current, &case) {
                         (InputSource::Typed(spec), Made::Typed(case)) => reached.add(spec, case),
                         _ => reached.add_text(&input),
                     }
                     continue;
                 };
-                let mut failure = Failure {
-                    case: index + 1,
-                    seed,
-                    input,
-                    described: None,
-                    expected,
-                    got,
-                    verdict,
-                    shrunk: None,
-                    saved: false,
-                };
+                let mut failure = Failure::new(index + 1, seed, input, failed, false);
                 // Same bug only: a candidate must fail the same way.
                 let kind = std::mem::discriminant(&failure.verdict);
                 let fails_as = |verdict: &Verdict| std::mem::discriminant(verdict) == kind;
@@ -407,16 +429,14 @@ pub fn stress_with(
                     for &within in &limits {
                         let found = shrink(spec, case, options.shrink_budget, &mut |candidate| {
                             matches!(engine.run_within(&candidate.render(), within),
-                                Ok(Some((verdict, _, _))) if fails_as(&verdict))
+                                Ok(Some(failed)) if fails_as(&failed.verdict))
                         });
                         if found == *case {
                             break;
                         }
-                        if let Some((verdict, expected, got)) = engine.run(&found.render())? {
-                            if fails_as(&verdict) {
-                                failure.verdict = verdict;
-                                failure.expected = expected;
-                                failure.got = got;
+                        if let Some(failed) = engine.run(&found.render())? {
+                            if fails_as(&failed.verdict) {
+                                failure.take(failed);
                                 failure.input = found.render();
                                 smallest = found;
                                 break;
@@ -433,16 +453,14 @@ pub fn stress_with(
                             *generator,
                             drawn,
                             options.shrink_budget,
-                            &mut |input| matches!(engine.run_within(input, within), Ok(Some((verdict, _, _))) if fails_as(&verdict)),
+                            &mut |input| matches!(engine.run_within(input, within), Ok(Some(failed)) if fails_as(&failed.verdict)),
                         );
                         if found == *drawn {
                             break;
                         }
-                        if let Some((verdict, expected, got)) = engine.run(&found.input)? {
-                            if fails_as(&verdict) {
-                                failure.verdict = verdict;
-                                failure.expected = expected;
-                                failure.got = got;
+                        if let Some(failed) = engine.run(&found.input)? {
+                            if fails_as(&failed.verdict) {
+                                failure.take(failed);
                                 failure.input = found.input.clone();
                                 smallest = found;
                                 break;

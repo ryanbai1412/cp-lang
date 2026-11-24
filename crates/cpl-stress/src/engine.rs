@@ -11,11 +11,13 @@
 //!   no filesystem, subprocesses, or threads — shared by native tests and
 //!   `cpl-wasm` in the browser.
 
+use crate::case::{judge_case, Ran, Ruling, Sides, Talked, Wrong};
 use crate::choices::{self, Drawn};
 use crate::cli::{swap_in_part_brutes, Stage};
 use crate::judge::{first_difference, Judge, Verdict};
 use crate::program::Program;
 use crate::report::StressResult;
+use crate::run::StressError as Error;
 use crate::run::{stress_with, InputSource, Options, StressError};
 use crate::spec::InputSpec;
 use cpl_diag::Severity;
@@ -23,10 +25,6 @@ use cpl_interp::trace::{
     explain_divergence, stages as trace_stages, stuck_divergence, TraceConfig,
 };
 use std::time::Duration;
-
-/// One run's result: `None` when the solution is accepted, or
-/// `Some((verdict, expected, got))` when it failed.
-pub type Wrong = Option<(Verdict, String, String)>;
 
 /// Runs the solution (and optional brute / judge) on one input.
 pub trait Engine: Sync {
@@ -80,60 +78,77 @@ impl Engine for ProcessEngine<'_> {
     }
 
     fn run_within(&self, input: &str, limit: Duration) -> Result<Wrong, StressError> {
-        let io = |program: &Program, e: std::io::Error| {
-            StressError(format!("can't run {}: {e}", program.name))
+        judge_case(self, input, limit)
+    }
+}
+
+/// Why `program` could not be run at all.
+fn unrunnable(program: &Program) -> impl Fn(std::io::Error) -> Error + '_ {
+    move |e| Error(format!("can't run {}: {e}", program.name))
+}
+
+impl Sides for ProcessEngine<'_> {
+    fn brute(&self, input: &str, limit: Duration) -> Result<Option<Ran>, Error> {
+        let Some(brute) = self.brute else {
+            return Ok(None);
         };
-        let expected = match self.brute {
-            Some(brute) => {
-                // A brute is slow by design; it gets ten times the limit.
-                let outcome = brute.run(input, limit * 10).map_err(|e| io(brute, e))?;
-                if !outcome.ok() {
-                    let why = match crate::judge::failure(&outcome) {
-                        Some(Verdict::RuntimeError(why)) => why,
-                        _ => "it ran past ten times the time limit".to_string(),
-                    };
-                    return Ok(Some((
-                        Verdict::BruteError(why),
-                        String::new(),
-                        String::new(),
-                    )));
-                }
-                Some(outcome.stdout)
+        let ran = crate::judge::run(brute, input, crate::case::brute_limit(limit));
+        ran.map(|(ran, _)| Some(ran)).map_err(unrunnable(brute))
+    }
+
+    fn solution(&self, input: &str, limit: Duration) -> Result<Ran, Error> {
+        let ran = crate::judge::run(self.fast, input, limit);
+        ran.map(|(ran, _)| ran).map_err(unrunnable(self.fast))
+    }
+
+    fn check(
+        &self,
+        input: &str,
+        got: &str,
+        expected: Option<&str>,
+        limit: Duration,
+    ) -> Result<Option<Ruling>, Error> {
+        match self.judge {
+            Judge::Checker(checker) => crate::judge::check(checker, input, got, expected, limit)
+                .map(Some)
+                .map_err(unrunnable(checker)),
+            _ => Ok(None),
+        }
+    }
+
+    fn interact(&self, input: &str, limit: Duration) -> Result<Option<Talked>, Error> {
+        match self.judge {
+            Judge::Interactor(interactor) => {
+                crate::judge::interact(self.fast, interactor, input, limit)
+                    .map(|(talked, _)| Some(talked))
+                    .map_err(unrunnable(interactor))
             }
-            None => None,
+            _ => Ok(None),
+        }
+    }
+
+    fn recheck(&self, input: &str, got: &str, limit: Duration) -> Result<Wrong, Error> {
+        let Some(cold) = self.cold else {
+            return Ok(None);
         };
-        let judged = self
-            .judge
-            .run(self.fast, input, expected.as_deref(), limit)
-            .map_err(|e| io(self.fast, e))?;
-        if !judged.verdict.accepted() {
-            return Ok(Some((
-                judged.verdict,
-                expected.unwrap_or_default(),
-                judged.outcome.stdout,
+        let cold_out = cold
+            .run(input, crate::case::brute_limit(limit))
+            .map_err(unrunnable(cold))?;
+        let wrong = |why: String| {
+            Some(crate::case::Failed::new(
+                Verdict::Wrong(why),
+                cold_out.stdout.clone(),
+                got.to_string(),
+            ))
+        };
+        if !cold_out.ok() {
+            return Ok(wrong(format!(
+                "@cache cold run failed ({:?}) while cached run succeeded",
+                cold_out.exit
             )));
         }
-        if let Some(cold) = self.cold {
-            let cold_out = cold.run(input, limit * 10).map_err(|e| io(cold, e))?;
-            if !cold_out.ok() {
-                return Ok(Some((
-                    Verdict::Wrong(format!(
-                        "@cache cold run failed ({:?}) while cached run succeeded",
-                        cold_out.exit
-                    )),
-                    cold_out.stdout,
-                    judged.outcome.stdout,
-                )));
-            }
-            if let Some(why) = first_difference(&cold_out.stdout, &judged.outcome.stdout) {
-                return Ok(Some((
-                    Verdict::Wrong(format!("@cache changed the output ({why})")),
-                    cold_out.stdout,
-                    judged.outcome.stdout,
-                )));
-            }
-        }
-        Ok(None)
+        Ok(first_difference(&cold_out.stdout, got)
+            .and_then(|why| wrong(format!("@cache changed the output ({why})"))))
     }
 }
 
@@ -312,46 +327,67 @@ impl Engine for InterpEngine {
     }
 
     fn run_within(&self, input: &str, limit: Duration) -> Result<Wrong, StressError> {
-        let expected = match &self.brute {
-            Some(brute) => match self.run_case(Role::Brute, brute, input, limit) {
-                Ok(out) => Some(out),
-                Err((_, trap)) => {
-                    return Ok(Some((
-                        Verdict::BruteError(trap.message),
-                        String::new(),
-                        String::new(),
-                    )));
-                }
-            },
-            None => None,
-        };
-        let got = match self.run_case(Role::Fast, &self.fast, input, limit) {
-            Ok(out) => out,
-            Err((out, trap)) => {
-                let verdict = match trap.message.as_str() {
-                    cpl_interp::OUT_OF_TIME => Verdict::TimeLimit,
-                    _ => Verdict::RuntimeError(trap.message),
-                };
-                return Ok(Some((verdict, expected.unwrap_or_default(), out)));
-            }
-        };
-        if let Some(checker) = &self.checker {
+        judge_case(self, input, limit)
+    }
+}
+
+/// How an interpreted run ended, as [`Sides`] takes it.
+fn ran(run: Result<String, (String, cpl_interp::Trap)>) -> Ran {
+    match run {
+        Ok(out) => Ran { out, stop: None },
+        Err((out, trap)) => Ran {
+            out,
+            stop: Some(match trap.message.as_str() {
+                cpl_interp::OUT_OF_TIME => Verdict::TimeLimit,
+                _ => Verdict::RuntimeError(trap.message),
+            }),
+        },
+    }
+}
+
+/// What a judge's trap says of the run: a bug in the judge, or its verdict.
+fn ruling(run: Result<String, (String, cpl_interp::Trap)>) -> Ruling {
+    match run {
+        Ok(_) => Ruling::Accepted,
+        Err((_, trap)) if crate::judge::judge_bug(trap.code().0) => Ruling::Broke(trap.message),
+        Err((_, trap)) => Ruling::Rejected(Some(trap.message)),
+    }
+}
+
+impl Sides for InterpEngine {
+    fn brute(&self, input: &str, limit: Duration) -> Result<Option<Ran>, Error> {
+        let limit = crate::case::brute_limit(limit);
+        Ok(self
+            .brute
+            .as_ref()
+            .map(|brute| ran(self.run_case(Role::Brute, brute, input, limit))))
+    }
+
+    fn solution(&self, input: &str, limit: Duration) -> Result<Ran, Error> {
+        Ok(ran(self.run_case(Role::Fast, &self.fast, input, limit)))
+    }
+
+    fn check(
+        &self,
+        input: &str,
+        got: &str,
+        _: Option<&str>,
+        limit: Duration,
+    ) -> Result<Option<Ruling>, Error> {
+        Ok(self.checker.as_ref().map(|checker| {
             let mut printed = Some(got.as_bytes().to_vec());
             let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()));
-            return match run_ir(checker, io, self.stack_limit, limit) {
-                Ok(_) => Ok(None),
-                Err((_, trap)) => Ok(Some((
-                    match crate::judge::judge_bug(trap.code().0) {
-                        true => Verdict::JudgeError("checker", trap.message),
-                        false => Verdict::Wrong(trap.message),
-                    },
-                    expected.unwrap_or_default(),
-                    got,
-                ))),
-            };
-        }
-        let exp = expected.unwrap_or_default();
-        Ok(first_difference(&exp, &got).map(|why| (Verdict::Wrong(why), exp, got)))
+            ruling(run_ir(
+                checker,
+                io,
+                self.stack_limit,
+                crate::case::judge_limit(limit),
+            ))
+        }))
+    }
+
+    fn interact(&self, _: &str, _: Duration) -> Result<Option<Talked>, Error> {
+        Ok(None)
     }
 }
 

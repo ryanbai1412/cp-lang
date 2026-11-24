@@ -9,8 +9,11 @@
 //! - `interactor <input>` talks to the solution over stdin and stdout and
 //!   exits 0 to accept.
 
+use crate::case::{judge_case, judge_limit, Ran, Ruling, Sides, Talked, Transcript};
 use crate::program::{Exit, Outcome, Program};
+use crate::run::StressError;
 use cpl_syntax::ast::StmtKind;
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -264,9 +267,8 @@ pub struct Judged {
 }
 
 impl Judge {
-    /// Runs `solution` on `input` and judges it. `expected` is the
-    /// brute's or the saved output; a checker gets it as the answer file,
-    /// and with no expected output a token judge accepts any clean run.
+    /// Runs `solution` on `input` and judges it: by the interactor, by
+    /// the checker, or token by token against `expected`.
     pub fn run(
         &self,
         solution: &Program,
@@ -274,47 +276,130 @@ impl Judge {
         expected: Option<&str>,
         limit: Duration,
     ) -> std::io::Result<Judged> {
-        if let Judge::Interactor(interactor) = self {
-            return interact(solution, interactor, input, limit);
-        }
-        let outcome = solution.run(input, limit)?;
-        let verdict = match (failure(&outcome), self) {
-            (Some(verdict), _) => verdict,
-            (None, Judge::Checker(checker)) => {
-                let input_file = Scratch::new("in", input)?;
-                let output_file = Scratch::new("out", &outcome.stdout)?;
-                let answer_file = Scratch::new("ans", expected.unwrap_or(""))?;
-                let checked = checker
-                    .with_args(&[input_file.path(), output_file.path(), answer_file.path()])
-                    .run("", limit.max(Duration::from_secs(10)))?;
-                if checked.ok() {
-                    Verdict::Accepted
-                } else if let Some(trap) = broke(&checked.stderr) {
-                    Verdict::JudgeError("checker", trap)
-                } else {
-                    let said = format!("{}{}", checked.stderr, checked.stdout);
-                    let said = said.lines().next().unwrap_or("").trim();
-                    Verdict::Wrong(if said.is_empty() {
-                        "the checker rejected the output".to_string()
-                    } else {
-                        format!("checker: {said}")
-                    })
-                }
-            }
-            (None, _) => {
-                match expected.and_then(|expected| first_difference(expected, &outcome.stdout)) {
-                    Some(difference) => Verdict::Wrong(difference),
-                    None => Verdict::Accepted,
-                }
-            }
+        let answered = Answered {
+            judge: self,
+            solution,
+            expected,
+            outcome: RefCell::new(None),
+            failed: RefCell::new(None),
         };
+        let wrong = judge_case(&answered, input, limit).map_err(|e| {
+            answered
+                .failed
+                .take()
+                .unwrap_or_else(|| std::io::Error::other(e.0))
+        })?;
+        let outcome = answered
+            .outcome
+            .take()
+            .ok_or_else(|| std::io::Error::other("no run"))?;
+        let verdict = wrong.map_or(Verdict::Accepted, |wrong| wrong.verdict);
         Ok(Judged { verdict, outcome })
     }
 }
 
-/// The trap the file's own interactor stops at on `input` against
-/// `solution`, as `cpl check --format json` gives a diagnostic: `cpl
-/// judge` writes it to the file `CPL_JUDGE_DIAGNOSTIC` names (stress/U30).
+/// A case whose expected output is known: [`judge_case`] with that output
+/// as a brute that has already run.
+struct Answered<'a> {
+    judge: &'a Judge,
+    solution: &'a Program,
+    expected: Option<&'a str>,
+    outcome: RefCell<Option<Outcome>>,
+    failed: RefCell<Option<std::io::Error>>,
+}
+
+impl Answered<'_> {
+    fn keep<T>(&self, run: std::io::Result<T>) -> Result<T, StressError> {
+        run.map_err(|e| {
+            let said = StressError(e.to_string());
+            self.failed.replace(Some(e));
+            said
+        })
+    }
+}
+
+impl Sides for Answered<'_> {
+    fn brute(&self, _: &str, _: Duration) -> Result<Option<Ran>, StressError> {
+        Ok(self.expected.map(|out| Ran {
+            out: out.to_string(),
+            stop: None,
+        }))
+    }
+
+    fn solution(&self, input: &str, limit: Duration) -> Result<Ran, StressError> {
+        let (ran, outcome) = self.keep(run(self.solution, input, limit))?;
+        self.outcome.replace(Some(outcome));
+        Ok(ran)
+    }
+
+    fn check(
+        &self,
+        input: &str,
+        got: &str,
+        expected: Option<&str>,
+        limit: Duration,
+    ) -> Result<Option<Ruling>, StressError> {
+        match self.judge {
+            Judge::Checker(checker) => self
+                .keep(check(checker, input, got, expected, limit))
+                .map(Some),
+            _ => Ok(None),
+        }
+    }
+
+    fn interact(&self, input: &str, limit: Duration) -> Result<Option<Talked>, StressError> {
+        let Judge::Interactor(interactor) = self.judge else {
+            return Ok(None);
+        };
+        let (talked, outcome) = self.keep(interact(self.solution, interactor, input, limit))?;
+        self.outcome.replace(Some(outcome));
+        Ok(Some(talked))
+    }
+}
+
+/// Runs `program` on `input`: what it printed and why it stopped early.
+pub(crate) fn run(
+    program: &Program,
+    input: &str,
+    limit: Duration,
+) -> std::io::Result<(Ran, Outcome)> {
+    let outcome = program.run(input, limit)?;
+    let ran = Ran {
+        out: outcome.stdout.clone(),
+        stop: failure(&outcome),
+    };
+    Ok((ran, outcome))
+}
+
+/// Runs a testlib-style checker, `checker input output answer`, on `got`.
+pub(crate) fn check(
+    checker: &Program,
+    input: &str,
+    got: &str,
+    expected: Option<&str>,
+    limit: Duration,
+) -> std::io::Result<Ruling> {
+    let input_file = Scratch::new("in", input)?;
+    let output_file = Scratch::new("out", got)?;
+    let answer_file = Scratch::new("ans", expected.unwrap_or(""))?;
+    let checked = checker
+        .with_args(&[input_file.path(), output_file.path(), answer_file.path()])
+        .run("", judge_limit(limit))?;
+    if checked.ok() {
+        return Ok(Ruling::Accepted);
+    }
+    if let Some(trap) = broke(&checked.stderr) {
+        return Ok(Ruling::Broke(trap));
+    }
+    let said = format!("{}{}", checked.stderr, checked.stdout);
+    let said = said.lines().next().unwrap_or("").trim();
+    Ok(Ruling::Rejected(
+        (!said.is_empty()).then(|| said.to_string()),
+    ))
+}
+
+/// The interactor's trap as `cpl check --format json` gives it, from a
+/// second run that asks the interactor to write it.
 pub fn interactor_trap_json(
     solution: &Program,
     interactor: &Program,
@@ -331,14 +416,14 @@ pub fn interactor_trap_json(
     Some(json.trim().to_string()).filter(|json| !json.is_empty())
 }
 
-/// Runs a solution against an interactor: each one's stdout is the
-/// other's stdin. The interactor's exit code is the verdict.
-fn interact(
+/// Runs the solution against the interactor, each reading what the other
+/// writes; the interactor reads the hidden test from a file.
+pub(crate) fn interact(
     solution: &Program,
     interactor: &Program,
     input: &str,
     limit: Duration,
-) -> std::io::Result<Judged> {
+) -> std::io::Result<(Talked, Outcome)> {
     let input_file = Scratch::new("in", input)?;
     let start = Instant::now();
     let mut judge = interactor
@@ -411,33 +496,24 @@ fn interact(
         elapsed: start.elapsed(),
         peak_kb: None,
     };
-    let verdict = if timed_out {
-        Verdict::TimeLimit
-    } else if judge_status.success() {
-        // The interactor accepted; a crash after the last answer still counts.
-        failure(&outcome).unwrap_or(Verdict::Accepted)
+    let ruling = if judge_status.success() {
+        Ruling::Accepted
+    } else if let Some(trap) = broke(&judge_stderr) {
+        Ruling::Broke(trap)
     } else {
         let said = judge_stderr.lines().next().unwrap_or("").trim();
-        // A judge left with nothing to read after the solution failed (say,
-        // over its query limit) only follows from that failure.
-        if said.starts_with("the solution's output ended") {
-            if let Some(verdict) = failure(&outcome) {
-                return Ok(Judged { verdict, outcome });
-            }
-        }
-        if let Some(trap) = broke(&judge_stderr) {
-            return Ok(Judged {
-                verdict: Verdict::JudgeError("interactor", trap),
-                outcome,
-            });
-        }
-        Verdict::Wrong(if said.is_empty() {
-            "the interactor rejected the run".to_string()
-        } else {
-            format!("interactor: {said}")
-        })
+        Ruling::Rejected((!said.is_empty()).then(|| said.to_string()))
     };
-    Ok(Judged { verdict, outcome })
+    let talked = Talked {
+        solution: Ran {
+            out: String::new(),
+            stop: failure(&outcome),
+        },
+        ruling,
+        transcript: Transcript::default(),
+        trap: None,
+    };
+    Ok((talked, outcome))
 }
 
 #[cfg(test)]

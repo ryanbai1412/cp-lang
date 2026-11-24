@@ -2,6 +2,7 @@
 //! case that still fails (`plan/40-tooling.md`, sections 7b and 8).
 
 pub mod args;
+pub mod case;
 pub mod choices;
 pub mod cli;
 pub mod engine;
@@ -16,9 +17,10 @@ pub mod run;
 pub mod shrink;
 pub mod spec;
 
+pub use case::{judge_case, Failed, Ran, Ruling, Side, Sides, Talked, Transcript, Wrong};
 pub use engine::{
     stress_source, ChoiceSource, Engine, InterpChoices, InterpEngine, ProcessChoices,
-    ProcessEngine, Wrong, STUCK_STEPS,
+    ProcessEngine, STUCK_STEPS,
 };
 pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
 pub use judge::{Judge, Judged, Verdict};
