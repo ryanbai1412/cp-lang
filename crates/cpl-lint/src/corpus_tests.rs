@@ -31,21 +31,27 @@ fn warnings(root: &Path) -> Vec<String> {
         .iter()
         .flat_map(|(_, dir, leaf)| files(root, dir, leaf))
         .collect();
-    let of = |file: &PathBuf| {
-        let src = std::fs::read_to_string(file).unwrap();
-        let (config, _) = Config::discover(file);
-        lint(&src, &config)
-            .into_iter()
-            .map(|diag| format!("{}: {}: {}", file.display(), diag.code.0, diag.message))
-            .collect::<Vec<_>>()
+    // As `cpl lint` runs: one database per thread checks std once, not once
+    // per file, and each thread takes the next file when it is free.
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let worker = || {
+        let mut db = cpl_check::Session::new();
+        let mut out = Vec::new();
+        while let Some(file) = all.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed)) {
+            let src = std::fs::read_to_string(file).unwrap();
+            let (config, _) = Config::discover(file);
+            let analysis = db.analyze_text("<lint>.cp", src.as_str());
+            out.extend(
+                lint_analysis(&analysis, &config)
+                    .into_iter()
+                    .map(|diag| format!("{}: {}: {}", file.display(), diag.code.0, diag.message)),
+            );
+        }
+        out
     };
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let chunk = all.len().div_ceil(threads).max(1);
     std::thread::scope(|scope| {
-        let jobs: Vec<_> = all
-            .chunks(chunk)
-            .map(|part| scope.spawn(move || part.iter().flat_map(of).collect::<Vec<_>>()))
-            .collect();
+        let jobs: Vec<_> = (0..threads).map(|_| scope.spawn(worker)).collect();
         jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
     })
 }
