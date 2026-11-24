@@ -15,6 +15,9 @@ mod loops;
 
 mod assign;
 
+mod ret;
+pub(crate) use ret::block_lets;
+
 /// A block with a value that is statements and then the value, with no
 /// other way out: it can be written in line.
 fn flat(e: &Expr) -> Option<(&[Stmt], &Expr)> {
@@ -95,6 +98,7 @@ impl<'p> Emitter<'p> {
                 self.moves_last = false;
             }
             self.tail = None;
+            self.take_block_lets(stmts, value);
             e = value;
         }
         e
@@ -675,98 +679,14 @@ impl<'p> Emitter<'p> {
                         .then(|| self.rekeyed_local(value))
                         .flatten();
                     let moved_some = is_return.then(|| self.moved_some(value));
+                    let handed = (is_return && self.closure_id.is_none())
+                        || (!is_return && !self.give_ref && self.give_owned.is_some());
                     let mut text = if let Some(Some(text)) = moved_some {
                         text
-                    } else if is_return && self.closure_id.is_none() {
-                        if let ExprKind::Tuple(items) = &value.kind {
-                            if !items.is_empty()
-                                && !matches!(
-                                    value.ty,
-                                    Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)
-                                )
-                            {
-                                let ty = self.ty(&value.ty);
-                                let struct_id = match value.ty {
-                                    Ty::Struct(s) => Some(s),
-                                    _ => None,
-                                };
-                                let dropped: Vec<bool> = (0..items.len())
-                                    .map(|idx| {
-                                        struct_id.is_some_and(|s| self.devirt.dropped_field(s, idx))
-                                    })
-                                    .collect();
-                                let rendered: Vec<String> = items
-                                    .iter()
-                                    .enumerate()
-                                    .filter(|(idx, _)| !dropped[*idx])
-                                    .map(|(idx, item)| {
-                                        if struct_id.is_some_and(|s| {
-                                            self.devirt.field_elidable(s, idx)
-                                                && self.devirt.skippable_value(item)
-                                        }) {
-                                            return "false".to_string();
-                                        }
-                                        if let Some(lent) = self.lent_item(struct_id, idx, item) {
-                                            return lent;
-                                        }
-                                        if let Some(sid) = struct_id {
-                                            if let Some(&k) = self.rows.get(&(sid, idx)) {
-                                                let cell = self
-                                                    .ty(&item.ty)
-                                                    .strip_prefix("std::vector<")
-                                                    .and_then(|c| c.strip_suffix('>'))
-                                                    .map(str::to_string);
-                                                if let Some(cell) = cell {
-                                                    if let Some(row_init) =
-                                                        self.emit_row_init(item, sid, idx, &cell, k)
-                                                    {
-                                                        return row_init;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        let dies = self.returned_item_dies(items, idx);
-                                        if let (ExprKind::Local(slot), true) = (&item.kind, dies) {
-                                            return format!("std::move({})", self.names[*slot]);
-                                        }
-                                        if let Some(l) = struct_id
-                                            .and_then(|s| {
-                                                self.elem_layout(cpl_ir::ElemLoc::Field(s, idx))
-                                            })
-                                            .cloned()
-                                        {
-                                            let v = self.expr_with_elem_layout(item, Some(&l)).text;
-                                            return self.moved_if(dies, v);
-                                        }
-                                        let v = self.expr(item).text;
-                                        let v = self.moved_if(dies, v);
-                                        match struct_id {
-                                            Some(s) => self.narrow_field_store(s, idx, &v),
-                                            None => v,
-                                        }
-                                    })
-                                    .collect();
-                                format!("{ty}{{{}}}", rendered.join(", "))
-                            } else {
-                                let ret_l = if is_return {
-                                    self.fn_id
-                                        .and_then(|id| self.elem_layout(cpl_ir::ElemLoc::FnRet(id)))
-                                        .cloned()
-                                } else {
-                                    None
-                                };
-                                self.expr_with_elem_layout(value, ret_l.as_ref()).text
-                            }
-                        } else {
-                            let ret_l = if is_return {
-                                self.fn_id
-                                    .and_then(|id| self.elem_layout(cpl_ir::ElemLoc::FnRet(id)))
-                                    .cloned()
-                            } else {
-                                None
-                            };
-                            self.expr_with_elem_layout(value, ret_l.as_ref()).text
-                        }
+                    } else if let Some(text) =
+                        handed.then(|| self.handed_out(value, is_return)).flatten()
+                    {
+                        text
                     } else {
                         let ret_l = if is_return {
                             self.fn_id

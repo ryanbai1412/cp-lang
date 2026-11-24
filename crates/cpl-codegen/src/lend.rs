@@ -237,8 +237,11 @@ impl<'p> Emitter<'p> {
             None => ret.clone(),
         };
         let outer = std::mem::replace(&mut self.give_ref, by_ref || own.is_some());
+        let owned = (!by_ref && own.is_none()).then(|| crate::stmt::block_lets(block));
+        let outer_owned = std::mem::replace(&mut self.give_owned, owned);
         let mut code = self.lambda(&header, |this, out| this.block(block, out));
         self.give_ref = outer;
+        self.give_owned = outer_owned;
         if let Some(slots) = own {
             let lent = slots.iter().all(|s| self.ref_bound.contains(s));
             let ret = if lent { "decltype(auto)" } else { &ret };
