@@ -28,7 +28,7 @@ accept.
 |---|---|---|---|
 | 1 | pieces are views with keys | `w.keys`, `w.len`, `a[w]` | round 2 |
 | 2 | cutting into pieces | `windows`, `chunks`, `runs`, `split`, `maximal`, `minimal`, `spans` | this doc |
-| 3 | folding a piece | `w.fold(op)`, `w.sum()`, `w.max(by:)`; `pieces.fold(op)` as a sliding fold | round 5 |
+| 3 | folding a piece | `w.fold(op)`, `w.sum()`, `w.max(by:)`; `a.window_fold(k, op)` as a sliding fold | round 5 |
 | 4 | prefix folds over cuts | `a.scan(op)`, `pre[r]` | round 2 |
 | 5 | state that grows and shrinks | `Track<T>`: `push(x)`, `pop(x)` | this doc |
 | 6 | nearest neighbour by order | `prev_smaller`, `next_smaller`, `prev_same`, `next_same` | this doc |
@@ -70,9 +70,9 @@ own option because equal-key runs are the common case and need no lambda.
 
 ### Folding pieces: the sliding fold
 
-A sequence of pieces has `.fold(op)`, which yields one value per piece.
-On `windows(k)` it is the sliding fold, \(O(1)\) amortized per window, with
-the strategy chosen by the op's laws exactly as `Window(op)` chooses it:
+`a.window_fold(k, op)` yields one fold per length-`k` window (decision
+534), \(O(1)\) amortized per window, with the strategy chosen by the op's
+laws exactly as `Window(op)` chooses it:
 
 | Law of `op` | Strategy | Cost per step |
 |---|---|---|
@@ -89,10 +89,10 @@ a.window_fold(k, min)                 // sliding minimum, one per window
 a.window_fold(k, gcd).count(g => g > 1)
 ```
 
-On other pieces (`runs`, `chunks`, `split`) `.fold(op)` folds each piece
-directly, which is already \(O(n)\) total since they don't overlap. Writing
-`for w in a.windows(k): w.sum()` is \(O(\mathit{nk})\); the lint `window_refold`
-suggests `.fold(+)`.
+On other pieces (`runs`, `chunks`, `split`) folding each piece with
+`w.fold(op)` is already \(O(n)\) total since they don't overlap. Writing
+`for w in a.windows(k): w.sum()` is \(O(\mathit{nk})\);
+`a.window_fold(k, +)` is the \(O(n)\) form.
 
 This replaces `sliding_min`, `sliding_max`, `sliding_fold`, `MonoDeque`
 used for fixed windows, and the hand-written two-stack queue.
