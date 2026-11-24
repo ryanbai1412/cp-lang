@@ -2,6 +2,7 @@
 
 use super::*;
 use cpl_diag::habits;
+use cpl_diag::msgs;
 use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, BinOp, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
@@ -168,8 +169,8 @@ impl Checker<'_> {
         if !runs || names.len() != 2 || args.iter().any(|a| a.name.is_some()) {
             return;
         }
-        let message = "each run is a slice, so it can't be taken apart into 2 names".to_string();
-        if let Some(diag) = self.error(codes::TYPE_MISMATCH, pat.span, message) {
+        if let Some(diag) = self.report(pat.span, msgs::check::TYPE_MISMATCH_EACH_RUN_IS_A.at(&[]))
+        {
             let pair = ".map(r => (r.first!, r.len))";
             diag.help = Some(habits::LOOP_ADVICE.say(&[&pair]));
             let end = Span::new(iter.span.end, iter.span.end);
@@ -240,8 +241,10 @@ impl Checker<'_> {
         };
         let core_only =
             library_domain && super::library_domain::CORE_DOMAIN_ONLY.contains(&name.text.as_str());
-        let message = format!("{base_ty} has no field or method `{}`", name.text);
-        let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) else {
+        let Some(diag) = self.report(
+            name.span,
+            msgs::check::UNKNOWN_FIELD_HAS_NO_FIELD_OR.at(&[&base_ty, &name.text]),
+        ) else {
             return;
         };
         let renamed = library_domain
@@ -371,8 +374,10 @@ impl Checker<'_> {
         if old == "none" && self.global(old).is_some() {
             return;
         }
-        let message = format!("`{old}` is spelled `{new}` since 0.3");
-        if let Some(diag) = self.error(codes::REMOVED_SYNTAX, span, message) {
+        if let Some(diag) = self.report(
+            span,
+            msgs::check::REMOVED_SYNTAX_IS_SPELLED_SINCE_0.at(&[&old, &new]),
+        ) {
             diag.help = Some(habits::OLD_OPTIONAL_SPELLING.say(&[&old]));
             diag.fix(habits::WRITE.say(&[&new]), span, new);
         }
@@ -830,7 +835,6 @@ impl Checker<'_> {
     }
 
     pub(super) fn list_in(&mut self, op: CmpOp, x: &Expr, xs: &Expr, ty: &Ty, alone: bool) {
-        let message = format!("`in` requires `Contains`, which `{ty}` does not implement");
         let (l, r) = (self.text(x.span), self.text(xs.span));
         let bracketed = r.starts_with('[') && r.ends_with(']');
         let r = if r.contains(' ') && !bracketed {
@@ -845,7 +849,10 @@ impl Checker<'_> {
         };
         let scan = format!("{not}{r}.contains({l})");
         let whole = Span::new(x.span.start, xs.span.end);
-        if let Some(diag) = self.error(codes::MISSING_IMPL, xs.span, message) {
+        if let Some(diag) = self.report(
+            xs.span,
+            msgs::check::MISSING_IMPL_IN_REQUIRES_CONTAINS_WHICH.at(&[&ty]),
+        ) {
             diag.help = Some(habits::LIST_IN.say(&[]));
             if alone {
                 diag.fix(habits::LIST_IN_2.say(&[&scan]), whole, scan);
@@ -897,8 +904,10 @@ impl Checker<'_> {
             if self.index_like(base_ty, &name.text) {
                 // `from_idx` gave an optional; `try_at` keeps that, `nth` traps instead.
                 let fix = if new == "nth" { "try_at" } else { new };
-                let message = format!("`{}` was renamed to `{new}` in 0.3", name.text);
-                if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+                if let Some(diag) = self.report(
+                    name.span,
+                    msgs::check::REMOVED_SYNTAX_WAS_RENAMED_TO_IN.at(&[&name.text, &new]),
+                ) {
                     diag.help = Some(habits::MEMBER_ADVICE.say(&[]));
                     diag.fix(habits::WRITE.say(&[&fix]), name.span, fix);
                 }
@@ -906,8 +915,10 @@ impl Checker<'_> {
             }
         }
         if name.text == "bounds" && matches!(base_ty, Ty::Domain(_)) {
-            let message = "`D.bounds` was renamed to `D.cuts`".to_string();
-            if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+            if let Some(diag) = self.report(
+                name.span,
+                msgs::check::REMOVED_SYNTAX_D_BOUNDS_WAS_RENAMED.at(&[]),
+            ) {
                 diag.fix(habits::MEMBER_ADVICE_2.say(&[]), name.span, "cuts");
             }
             return true;
@@ -929,8 +940,10 @@ impl Checker<'_> {
             return false;
         };
         let last = parts.len() - 1;
-        let message = format!("a tuple has no `.{}`: its parts have numbers", name.text);
-        if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::UNKNOWN_FIELD_A_TUPLE_HAS_NO.at(&[&name.text]),
+        ) {
             diag.help = Some(habits::MEMBER_ADVICE_3.say(&[&last]));
             diag.fix(habits::MEMBER_ADVICE_4.say(&[&i]), name.span, i.to_string());
         }
@@ -956,8 +969,10 @@ impl Checker<'_> {
 
     /// `.len` on a lazy sequence, which has no stored length.
     pub(super) fn lazy_len(&mut self, base_ty: &Ty, name: &Name) {
-        let message = format!("`.len` requires `Sized`, which `{base_ty}` does not implement");
-        if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::MISSING_IMPL_LEN_REQUIRES_SIZED_WHICH.at(&[&base_ty]),
+        ) {
             diag.help = Some(habits::LAZY_LEN.say(&[]));
             diag.fix(habits::LAZY_LEN_2.say(&[]), name.span, "count()");
         }
@@ -1041,8 +1056,10 @@ impl Checker<'_> {
         let Some(slot) = self.ret_slots.remove(&name) else {
             return;
         };
-        let message = format!("`{name}` returns a value, but its signature has no return type");
-        if let Some(diag) = self.error(codes::TYPE_MISMATCH, value.span, message) {
+        if let Some(diag) = self.report(
+            value.span,
+            msgs::check::TYPE_MISMATCH_RETURNS_A_VALUE_BUT.at(&[&name]),
+        ) {
             diag.help = Some(habits::UNDECLARED_RETURN.say(&[&ty]));
             if let Some(slot) = slot {
                 diag.fix(habits::WITHOUT.say(&[&ty]), slot, format!(" -> {ty}"));
@@ -1775,8 +1792,8 @@ impl Checker<'_> {
         }
         self.infer(&key.value);
         let new = format!("{} {op} {}", text(key.value.span), text(base.span));
-        let message = "C++'s `find(..) != end()`: whether an item is in it is `in`".to_string();
-        if let Some(diag) = self.error(codes::UNKNOWN_FIELD, whole.span, message) {
+        if let Some(diag) = self.report(whole.span, msgs::check::UNKNOWN_FIELD_C_S_FIND_END.at(&[]))
+        {
             diag.help = Some(habits::KEYED_FIND.say(&[&new]));
             diag.fix(habits::WRITE.say(&[&new]), whole.span, new);
         }
@@ -1798,11 +1815,10 @@ impl Checker<'_> {
                 continue;
             };
             let prev = *prev;
-            let message = format!(
-                "enum `{}` already has a variant with `@tag({text})`",
-                e.name.text
-            );
-            if let Some(diag) = self.error(codes::DUPLICATE_VARIANT_TAG, tag.span, message) {
+            if let Some(diag) = self.report(
+                tag.span,
+                msgs::check::DUPLICATE_VARIANT_TAG_ENUM_ALREADY_HAS_A.at(&[&e.name.text, &text]),
+            ) {
                 duplicate_tag(diag, prev);
             }
         }

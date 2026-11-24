@@ -2,6 +2,7 @@
 
 use super::lends::show;
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Expr, ExprKind};
 
 impl Checker<'_> {
@@ -23,8 +24,10 @@ impl Checker<'_> {
             return;
         }
         let base = show(base);
-        let message = format!("`{base}` is a `Range`, which has no storage to write");
-        if let Some(diag) = self.error(codes::ASSIGN_INTO_RANGE, target.span, message) {
+        if let Some(diag) = self.report(
+            target.span,
+            msgs::check::ASSIGN_INTO_RANGE_IS_A_RANGE_WHICH.at(&[&base]),
+        ) {
             diag.help = Some(format!("copy it with `List({base})` first"));
         }
     }

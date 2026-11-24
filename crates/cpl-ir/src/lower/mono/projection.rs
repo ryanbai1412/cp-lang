@@ -2,6 +2,7 @@
 //! projection coercion.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// Inlines a `lends` / `lends mut` projection for a **read** expression: `base.proj(args)`.
@@ -20,11 +21,7 @@ impl<'a> Lowerer<'a> {
         };
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.error(
-                codes::UNSUPPORTED,
-                span,
-                "projection has no `lend` statement",
-            );
+            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND.at(&[]));
             return self.err_expr(span);
         };
 
@@ -83,11 +80,7 @@ impl<'a> Lowerer<'a> {
         let recv_place = self.place(base);
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.error(
-                codes::UNSUPPORTED,
-                span,
-                "projection has no `lend` statement",
-            );
+            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND.at(&[]));
             return;
         };
 
@@ -119,11 +112,7 @@ impl<'a> Lowerer<'a> {
         let recv_place = self.place(base);
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.error(
-                codes::UNSUPPORTED,
-                span,
-                "projection has no `lend` statement",
-            );
+            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND.at(&[]));
             return Place {
                 kind: PlaceKind::Local(0),
                 ty: Ty::Error,

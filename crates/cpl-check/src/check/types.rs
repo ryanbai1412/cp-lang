@@ -4,6 +4,7 @@ use super::pattern::{domain_binding, typed_pattern};
 use super::*;
 use crate::def::DomainInfo;
 use crate::ty::{human_int, Param};
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Expr, ExprKind, TypeKind};
 
 /// Types by the name they are filed under: a body's method signatures.
@@ -218,10 +219,9 @@ impl<'a> Checker<'a> {
                     if let Some(req) = self.row_bounds.get(p).cloned() {
                         for r in removed {
                             if !req.iter().any(|(fnm, _)| fnm == &r.text) {
-                                self.error(
-                                    codes::UNKNOWN_FIELD,
+                                self.report(
                                     r.span,
-                                    format!("row `{p}` has no named field `{}` to remove", r.text),
+                                    msgs::check::UNKNOWN_FIELD_ROW_HAS_NO_NAMED.at(&[&p, &r.text]),
                                 );
                             }
                         }
@@ -303,8 +303,7 @@ impl<'a> Checker<'a> {
                 return match self.global(name) {
                     Some(def) => self.def_type(&def, member, span, args),
                     None => {
-                        let message = format!("module `{head}` has no public type `{member}`");
-                        self.error(codes::UNKNOWN_TYPE, span, message);
+                        self.report(span, msgs::check::NO_PUBLIC_TYPE.at(&[&head, &member]));
                         Ty::Error
                     }
                 };
@@ -351,8 +350,10 @@ impl<'a> Checker<'a> {
                     }
                     None => {
                         let member_span = Span::new(head_span.end + 1, span.end);
-                        let message = format!("`{owner}` declares no domain `{member}`");
-                        self.error(codes::UNKNOWN_TYPE, member_span, message);
+                        self.report(
+                            member_span,
+                            msgs::check::NO_DOMAIN_MEMBER.at(&[&owner, &member]),
+                        );
                         Ty::Error
                     }
                 },
@@ -429,8 +430,9 @@ impl<'a> Checker<'a> {
             return self.alias_cycle(lookup_name, span);
         }
         if let Some(replacement) = renamed_prefix_name(name) {
-            let msg = format!("`{name}` was replaced by `{replacement}`");
-            if let Some(diag) = self.error(codes::UNKNOWN_TYPE, span, msg) {
+            if let Some(diag) =
+                self.report(span, msgs::check::TYPE_REPLACED.at(&[&name, &replacement]))
+            {
                 diag.help = Some(format!(
                     "write `{replacement}` (or run `cpl fix` to migrate)"
                 ));
@@ -452,12 +454,9 @@ impl<'a> Checker<'a> {
             if let Some(want) = expected_arity {
                 if args.is_empty() {
                     let plural = if want == 1 { "" } else { "s" };
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         span,
-                        format!(
-                            "`{name}` is a built-in type that takes {want} type argument{plural}"
-                        ),
+                        msgs::check::BUILTIN_NEEDS_ARGS.at(&[&name, &want, &plural]),
                     );
                     return Ty::Error;
                 }
@@ -597,11 +596,10 @@ impl<'a> Checker<'a> {
                 None => Ty::Unknown,
             };
             if p.variadic && !matches!(ty, Ty::Param(_) | Ty::Error) {
-                let message = format!(
-                    "`..{}` collects its arguments into a tuple, so its type is a type parameter, not `{ty}`",
-                    p.name.text
-                );
-                if let Some(diag) = self.error(codes::TYPE_MISMATCH, p.span, message) {
+                if let Some(diag) = self.report(
+                    p.span,
+                    msgs::check::VARIADIC_NOT_PARAM.at(&[&p.name.text, &ty]),
+                ) {
                     diag.help = Some(format!(
                         "write `fn {}<Ts>(..{}: Ts)`, or take a `List<{ty}>` and pass `[a, b, c]`",
                         f.name.text, p.name.text
@@ -612,11 +610,10 @@ impl<'a> Checker<'a> {
                 && !matches!(&ty, Ty::Fn { params, .. } if params.is_empty())
                 && ty != Ty::Error
             {
-                let message = format!(
-                    "`lazy {}` is passed as an expression the fn runs when it calls `{}()`, so its type is `() -> T`, not `{ty}`",
-                    p.name.text, p.name.text
-                );
-                if let Some(diag) = self.error(codes::TYPE_MISMATCH, p.span, message) {
+                if let Some(diag) = self.report(
+                    p.span,
+                    msgs::check::LAZY_NOT_FN.at(&[&p.name.text, &p.name.text, &ty]),
+                ) {
                     diag.help = Some(format!("write `lazy {}: () -> {ty}`", p.name.text));
                 }
             }
@@ -1963,10 +1960,6 @@ impl<'a> Checker<'a> {
             return;
         }
         let quoted = self.quote(expr.span);
-        let message = format!(
-            "{what} needs a Bool, but `{quoted}` is {}",
-            ty.widen().with_article()
-        );
         let zero = match ty {
             Ty::Optional(_) => Some("None"),
             t if t.is_numeric() => Some("0"),
@@ -1981,7 +1974,10 @@ impl<'a> Checker<'a> {
                 | ExprKind::Unary { .. }
         ) || matches!(&expr.kind, ExprKind::Binary { op, .. }
             if !matches!(op, ast::BinOp::And | ast::BinOp::Or | ast::BinOp::Coalesce));
-        if let Some(diag) = self.error(codes::CONDITION_NOT_BOOL, expr.span, message) {
+        if let Some(diag) = self.report(
+            expr.span,
+            msgs::check::NEEDS_A_BOOL.at(&[&what, &quoted, &ty.widen().with_article()]),
+        ) {
             let Some(zero) = zero else {
                 diag.help = Some("write a comparison".to_string());
                 return;

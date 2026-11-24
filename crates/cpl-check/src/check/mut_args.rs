@@ -1,6 +1,7 @@
 //! `mut` at the call for library fns and core builtins (R01.10.1).
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 impl Checker<'_> {
@@ -33,11 +34,12 @@ impl Checker<'_> {
                 continue;
             }
             let quoted = self.quote(arg.value.span);
-            let message = format!(
-                "`{name}` changes `{quoted}`, so the argument must be passed as `mut {quoted}`"
-            );
             let at = arg.value.span;
-            if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, at, message) {
+            if let Some(diag) = self.report(
+                at,
+                msgs::check::MISSING_MUT_AT_CALL_CHANGES_SO_THE_ARGUMENT
+                    .at(&[&name, &quoted, &quoted]),
+            ) {
                 diag.fix("add `mut`", Span::point(at.start), "mut ");
             }
         }

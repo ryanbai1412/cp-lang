@@ -67,6 +67,7 @@ pub(crate) use collect::is_cpp;
 use crate::*;
 use calls::*;
 use cpl_check::Analysis;
+use cpl_diag::msgs;
 use cpl_diag::{codes, Diagnostic, Span};
 use cpl_syntax::{ast, narrow};
 use mono::*;
@@ -942,11 +943,7 @@ impl<'a> Lowerer<'a> {
 
     /// Reports something the language has but the back ends don't yet.
     fn unsupported(&mut self, span: Span, what: &str) {
-        self.error(
-            codes::UNSUPPORTED,
-            span,
-            format!("`cpl run` and `cpl build` can't handle {what} yet"),
-        );
+        self.report(span, msgs::ir::UNSUPPORTED_CPL_RUN_AND_CPL.at(&[&what]));
     }
 
     fn mismatch(&mut self, span: Span, want: &Ty, found: &Ty) {

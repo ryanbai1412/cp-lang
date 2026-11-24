@@ -3,6 +3,7 @@
 use super::stmt::place_to_expr;
 use super::*;
 use blocks::block_leaves;
+use cpl_diag::msgs;
 
 mod blocks;
 mod compare;
@@ -94,11 +95,7 @@ impl<'a> Lowerer<'a> {
                     self.cast(Cast::IntToU64, bits, Ty::U64)
                 }
                 Err(_) => {
-                    self.error(
-                        codes::BAD_NUMBER,
-                        span,
-                        "this number does not fit in an `Int` (64 bits)",
-                    );
+                    self.report(span, msgs::ir::BAD_NUMBER_THIS_NUMBER_DOES_NOT.at(&[]));
                     self.err_expr(span)
                 }
             },
@@ -107,7 +104,7 @@ impl<'a> Lowerer<'a> {
                 match clean.parse::<f64>() {
                     Ok(value) => self.mk(ExprKind::Float(value), Ty::Float, span),
                     Err(_) => {
-                        self.error(codes::BAD_NUMBER, span, "this is not a number");
+                        self.report(span, msgs::ir::BAD_NUMBER_THIS_IS_NOT_A.at(&[]));
                         self.err_expr(span)
                     }
                 }
@@ -122,11 +119,7 @@ impl<'a> Lowerer<'a> {
                 Some(ty @ Ty::Opt(_)) => self.mk(ExprKind::None, ty.clone(), span),
                 Some(Ty::Error) => self.err_expr(span),
                 _ => {
-                    self.error(
-                        codes::TYPE_MISMATCH,
-                        span,
-                        "can't tell which optional this `none` is",
-                    );
+                    self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHICH.at(&[]));
                     self.help("say the type where it is stored: `let best: ?Int = None`");
                     self.err_expr(span)
                 }
@@ -158,7 +151,10 @@ impl<'a> Lowerer<'a> {
                         return self.local(slot, span);
                     }
                 }
-                self.error(codes::UNRESOLVED_NAME, span, "`self` outside a method");
+                self.report(
+                    span,
+                    msgs::ir::UNRESOLVED_NAME_SELF_OUTSIDE_A_METHOD.at(&[]),
+                );
                 self.err_expr(span)
             }
             ast::ExprKind::Cpp(_) | ast::ExprKind::Intrinsic(_) => self.err_expr(span),
@@ -238,10 +234,9 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Struct(sid) = base_expr.ty {
                     if let Some(key_ty) = self.counter_key.get(&sid).cloned() {
                         if indices.len() != 1 {
-                            self.error(
-                                codes::WRONG_ARG_COUNT,
+                            self.report(
                                 span,
-                                format!("a counter takes 1 index, found {}", indices.len()),
+                                msgs::ir::WRONG_ARG_COUNT_A_COUNTER_TAKES_1.at(&[&indices.len()]),
                             );
                             return self.err_expr(span);
                         }
@@ -728,11 +723,10 @@ impl<'a> Lowerer<'a> {
                     // `(base + mid)!` is a no-op when `base + mid` is already non-optional `Int`.
                     _ if !self.gen_env.is_empty() => value,
                     other => {
-                        let message = format!(
-                            "`!` takes the value out of an optional, but this is a `{}`",
-                            self.show(&other)
+                        self.report(
+                            span,
+                            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT.at(&[&self.show(&other)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, span, message);
                         self.err_expr(span)
                     }
                 }

@@ -1,6 +1,7 @@
 //! Calls to the user's fns and generic fns, and struct constructors.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `Some(e)`: `e` takes the wanted `?T`'s `T`, so `Some(3)` is a `?Mod<7>` where one is wanted.
@@ -250,10 +251,9 @@ impl<'a> Lowerer<'a> {
     ) -> Expr {
         let Ty::Fn(param_tys, ret_ty) = callee.ty.clone() else {
             if callee.ty != Ty::Error {
-                self.error(
-                    codes::NOT_CALLABLE,
+                self.report(
                     span,
-                    format!("a `{}` can't be called", self.show(&callee.ty)),
+                    msgs::ir::NOT_CALLABLE_A_CAN_T_BE.at(&[&self.show(&callee.ty)]),
                 );
             }
             return self.err_expr(span);
@@ -283,8 +283,10 @@ impl<'a> Lowerer<'a> {
                     Arg::Value(self.err_expr(arg.value.span))
                 }
                 (Some(_), true) => {
-                    let message = "this parameter is not `mut`: the fn takes a copy".to_string();
-                    self.error(codes::ASSIGN_TO_LET, arg.value.span, message);
+                    self.report(
+                        arg.value.span,
+                        msgs::ir::ASSIGN_TO_LET_THIS_PARAMETER_IS_NOT.at(&[]),
+                    );
                     self.help("drop the `mut`, or declare the parameter `mut`");
                     Arg::Value(self.err_expr(arg.value.span))
                 }
@@ -547,10 +549,9 @@ impl<'a> Lowerer<'a> {
                                 )
                             }
                             _ => {
-                                self.error(
-                                    codes::NOT_CALLABLE,
+                                self.report(
                                     callee.span,
-                                    format!("`{name}` is a type and can't be called"),
+                                    msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND.at(&[&name]),
                                 );
                                 self.err_expr(span)
                             }
@@ -598,10 +599,9 @@ impl<'a> Lowerer<'a> {
                                 return self.call_gen_struct(gsid, Vec::new(), args, hint, span);
                             }
                         }
-                        self.error(
-                            codes::NOT_CALLABLE,
+                        self.report(
                             callee.span,
-                            format!("`{name}` is a type and can't be called"),
+                            msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND.at(&[&name]),
                         );
                         self.err_expr(span)
                     }
@@ -612,10 +612,9 @@ impl<'a> Lowerer<'a> {
                         | Sym::Mod(_)
                         | Sym::GenConst(_),
                     ) => {
-                        self.error(
-                            codes::NOT_CALLABLE,
+                        self.report(
                             callee.span,
-                            format!("`{name}` is a type and can't be called"),
+                            msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND.at(&[&name]),
                         );
                         self.err_expr(span)
                     }
@@ -921,11 +920,7 @@ impl<'a> Lowerer<'a> {
                 self.err_expr(span)
             }
             None => {
-                self.error(
-                    codes::UNSUPPORTED,
-                    span,
-                    format!("`{name}` is not in scope during lowering"),
-                );
+                self.report(span, msgs::ir::UNSUPPORTED_IS_NOT_IN_SCOPE.at(&[&name]));
                 self.err_expr(span)
             }
             Some(sym) => {
@@ -942,12 +937,9 @@ impl<'a> Lowerer<'a> {
                     Sym::Mod(_) => "module",
                     Sym::GenFn(_) | Sym::GenStruct(_) | Sym::GenAlias(_) => unreachable!(),
                 };
-                self.error(
-                    codes::UNSUPPORTED,
+                self.report(
                     span,
-                    format!(
-                        "`{name}` is a {kind} and cannot be called with explicit type arguments"
-                    ),
+                    msgs::ir::UNSUPPORTED_IS_A_AND_CANNOT.at(&[&name, &kind]),
                 );
                 self.err_expr(span)
             }
@@ -1201,18 +1193,23 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Option<Vec<&'b ast::Expr>> {
         if let Some(named) = args.iter().find_map(|a| a.name.as_ref()) {
-            let message = format!("`{what}` has no argument named `{}`", named.text);
-            self.error(codes::UNKNOWN_ARG_NAME, named.span, message);
+            self.report(
+                named.span,
+                msgs::ir::UNKNOWN_ARG_NAME_HAS_NO_ARGUMENT_NAMED.at(&[&what, &named.text]),
+            );
             return None;
         }
         if args.len() != n {
-            let message = format!(
-                "`{what}` takes {n} argument{}, but {} {} given",
-                if n == 1 { "" } else { "s" },
-                args.len(),
-                if args.len() == 1 { "was" } else { "were" }
+            self.report(
+                span,
+                msgs::ir::WRONG_ARG_COUNT_TAKES_ARGUMENT_BUT_GIVEN.at(&[
+                    &what,
+                    &n,
+                    &if n == 1 { "" } else { "s" },
+                    &args.len(),
+                    &if args.len() == 1 { "was" } else { "were" },
+                ]),
             );
-            self.error(codes::WRONG_ARG_COUNT, span, message);
             return None;
         }
         Some(args.iter().map(|a| &a.value).collect())
@@ -1286,13 +1283,15 @@ impl<'a> Lowerer<'a> {
                 }
             };
             if index >= params.len() {
-                let message = format!(
-                    "`{name}` takes {} argument{}, but {} were given",
-                    params.len(),
-                    if params.len() == 1 { "" } else { "s" },
-                    args.len()
+                self.report(
+                    span,
+                    msgs::ir::WRONG_ARG_COUNT_TAKES_ARGUMENT_BUT_WERE.at(&[
+                        &name,
+                        &params.len(),
+                        &if params.len() == 1 { "" } else { "s" },
+                        &args.len(),
+                    ]),
                 );
-                self.error(codes::WRONG_ARG_COUNT, span, message);
                 ok = false;
                 break;
             }
@@ -1456,12 +1455,16 @@ impl<'a> Lowerer<'a> {
                         lowered.push(Arg::Value(self.coerce(value, &param.ty, arg.value.span)));
                     } else if let Some((d, first, other)) = self.other_first(&param.ty, &arg.value)
                     {
-                        let message = format!(
-                            "`{name}` takes `{}` indexed by the same `{}` as an argument before it, which starts at {first}; this one starts at {other}",
-                            param.name,
-                            self.domain_said(d)
+                        self.report(
+                            arg.value.span,
+                            msgs::ir::TYPE_MISMATCH_TAKES_INDEXED_BY_THE.at(&[
+                                &name,
+                                &param.name,
+                                &self.domain_said(d),
+                                &first,
+                                &other,
+                            ]),
                         );
-                        self.error(codes::TYPE_MISMATCH, arg.value.span, message);
                         ok = false;
                     } else {
                         let declared = self.sigs[id]
@@ -1501,8 +1504,11 @@ impl<'a> Lowerer<'a> {
                     }
                     _ => {
                         if ok {
-                            let message = format!("`{name}` needs the argument `{}`", param.name);
-                            self.error(codes::WRONG_ARG_COUNT, span, message);
+                            self.report(
+                                span,
+                                msgs::ir::WRONG_ARG_COUNT_NEEDS_THE_ARGUMENT
+                                    .at(&[&name, &param.name]),
+                            );
                             self.split_on_space(&name, &param.name, span);
                         }
                         ok = false;
@@ -1596,11 +1602,11 @@ impl<'a> Lowerer<'a> {
             let tys = match self.field_tys(&v.ty) {
                 Some(tys) if tys.len() == field_tys.len() => tys,
                 _ => {
-                    let message = format!(
-                        "`fields` here walks values with the fields of the type it builds, `{own_name}`; this is a `{}`",
-                        self.show(&v.ty)
+                    self.report(
+                        a.value.span,
+                        msgs::ir::TYPE_MISMATCH_FIELDS_HERE_WALKS_VALUES
+                            .at(&[&own_name, &self.show(&v.ty)]),
                     );
-                    self.error(codes::TYPE_MISMATCH, a.value.span, message);
                     return Some(self.err_expr(span));
                 }
             };
@@ -1692,23 +1698,19 @@ impl<'a> Lowerer<'a> {
                     if let Some(arg) = arg {
                         values.push(self.expect(&arg.value, ty));
                     } else {
-                        self.error(
-                            codes::WRONG_ARG_COUNT,
+                        self.report(
                             span,
-                            format!("`{name}` needs a value for `{field}`"),
+                            msgs::ir::WRONG_ARG_COUNT_NEEDS_A_VALUE_FOR.at(&[&name, &field]),
                         );
                         return self.err_expr(span);
                     }
                 }
                 return self.mk(ExprKind::Tuple(values), Ty::Struct(id), span);
             }
-            self.error(
-                codes::NOT_CALLABLE,
+            self.report(
                 span,
-                format!(
-                    "`{}` cannot be constructed directly",
-                    self.structs[id].def.name
-                ),
+                msgs::ir::NOT_CALLABLE_CANNOT_BE_CONSTRUCTED_DIRECTLY
+                    .at(&[&self.structs[id].def.name]),
             );
             return self.err_expr(span);
         };
@@ -1771,8 +1773,10 @@ impl<'a> Lowerer<'a> {
                     self.offset = saved;
                 }
                 (None, None) => {
-                    let message = format!("`{name}` needs a value for its field `{field}`");
-                    self.error(codes::WRONG_ARG_COUNT, span, message);
+                    self.report(
+                        span,
+                        msgs::ir::WRONG_ARG_COUNT_NEEDS_A_VALUE_FOR_2.at(&[&name, &field]),
+                    );
                     return self.err_expr(span);
                 }
             }

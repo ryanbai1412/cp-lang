@@ -1,13 +1,16 @@
 //! `read`, and the folds and reductions over a sequence: min/max, sum, count.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn read(&mut self, spec: Spec, span: Span) -> Expr {
         let spec = self.readable(spec);
         if let Some(ty) = super::read_spec::unreadable(&spec) {
-            let message = format!("`read()` has no input format for a `{}`", self.show(&ty));
-            self.error(codes::UNSUPPORTED, span, message);
+            self.report(
+                span,
+                msgs::ir::UNSUPPORTED_READ_HAS_NO_INPUT.at(&[&self.show(&ty)]),
+            );
             if let Ty::Struct(id) = ty {
                 if self.private_fields(id) {
                     self.help("its fields are private to the module that declares it (R11.1.4); read the values it is built from and build it");
@@ -38,11 +41,7 @@ impl<'a> Lowerer<'a> {
         }
         if names_domain(&spec, &self.own_domains) {
             let shown = self.show(&spec.ty());
-            self.error(
-                codes::UNSUPPORTED,
-                span,
-                format!("`read()` can't size a domain named inside a `{shown}`"),
-            );
+            self.report(span, msgs::ir::UNSUPPORTED_READ_CAN_T_SIZE.at(&[&shown]));
             self.help(
                 "read it on its own: `let s: [domain S]Char = read()`, then the rest".to_string(),
             );
@@ -63,11 +62,7 @@ impl<'a> Lowerer<'a> {
     ) -> Expr {
         if elem.ty() != Ty::Char {
             let shown = self.show(&ty);
-            self.error(
-                codes::UNSUPPORTED,
-                span,
-                format!("`read()` can't tell how many values a `{shown}` has"),
-            );
+            self.report(span, msgs::ir::UNSUPPORTED_READ_CAN_T_TELL.at(&[&shown]));
             self.help(
                 "read the count first, name a domain of that size, and read a `[D]T`".to_string(),
             );
@@ -191,10 +186,9 @@ impl<'a> Lowerer<'a> {
             }
             Ty::Error => None,
             _ => {
-                self.error(
-                    codes::BAD_OPERANDS,
+                self.report(
                     key_ast.span,
-                    "`by:` expects a one-argument key function",
+                    msgs::ir::BAD_OPERANDS_BY_EXPECTS_A_ONE.at(&[]),
                 );
                 None
             }
@@ -231,11 +225,11 @@ impl<'a> Lowerer<'a> {
                     Some(e) => e,
                     None if seq.ty == Ty::Error => return self.err_expr(span),
                     None => {
-                        let message = format!(
-                            "this needs a sequence of values, not a `{}`",
-                            self.show(&seq.ty)
+                        self.report(
+                            seq_ast.span,
+                            msgs::ir::TYPE_MISMATCH_THIS_NEEDS_A_SEQUENCE
+                                .at(&[&self.show(&seq.ty)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, seq_ast.span, message);
                         return self.err_expr(span);
                     }
                 };
@@ -279,8 +273,10 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         if !self.ordered(&key_ty) {
-            let message = format!("a `{}` has no order for `{name}`", self.show(&key_ty));
-            self.error(codes::BAD_OPERANDS, key_ast.span, message);
+            self.report(
+                key_ast.span,
+                msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_2.at(&[&self.show(&key_ty), &name]),
+            );
             self.close_loops(frames, Vec::new());
             return self.err_expr(span);
         }
@@ -379,10 +375,9 @@ impl<'a> Lowerer<'a> {
         }
         match args {
             [] => {
-                self.error(
-                    codes::WRONG_ARG_COUNT,
+                self.report(
                     span,
-                    format!("`{name}` needs something to compare"),
+                    msgs::ir::WRONG_ARG_COUNT_NEEDS_SOMETHING_TO_COMPARE.at(&[&name]),
                 );
                 self.err_expr(span)
             }
@@ -463,8 +458,10 @@ impl<'a> Lowerer<'a> {
                 };
                 if let Ty::Opt(inner) = ty.clone() {
                     if !self.ordered(&inner) {
-                        let message = format!("a `{}` has no order for `{name}`", self.show(&ty));
-                        self.error(codes::BAD_OPERANDS, span, message);
+                        self.report(
+                            span,
+                            msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_2.at(&[&self.show(&ty), &name]),
+                        );
                         return self.err_expr(span);
                     }
                     // Optional min/max: `none` is the identity element.
@@ -506,8 +503,10 @@ impl<'a> Lowerer<'a> {
                     return acc_expr;
                 }
                 if !self.ordered(&ty) {
-                    let message = format!("a `{}` has no order for `{name}`", self.show(&ty));
-                    self.error(codes::BAD_OPERANDS, span, message);
+                    self.report(
+                        span,
+                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_2.at(&[&self.show(&ty), &name]),
+                    );
                     return self.err_expr(span);
                 }
                 for (i, arg) in args.iter().enumerate() {
@@ -541,11 +540,11 @@ impl<'a> Lowerer<'a> {
                     Some(e) => e,
                     None if seq.ty == Ty::Error => return self.err_expr(span),
                     None => {
-                        let message = format!(
-                            "this needs a sequence of values, not a `{}`",
-                            self.show(&seq.ty)
+                        self.report(
+                            arg.span,
+                            msgs::ir::TYPE_MISMATCH_THIS_NEEDS_A_SEQUENCE
+                                .at(&[&self.show(&seq.ty)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, arg.span, message);
                         return self.err_expr(span);
                     }
                 };
@@ -912,11 +911,11 @@ impl<'a> Lowerer<'a> {
                     Some(e) => e,
                     None if seq.ty == Ty::Error => return self.err_expr(span),
                     None => {
-                        let message = format!(
-                            "this needs a sequence of values, not a `{}`",
-                            self.show(&seq.ty)
+                        self.report(
+                            arg.span,
+                            msgs::ir::TYPE_MISMATCH_THIS_NEEDS_A_SEQUENCE
+                                .at(&[&self.show(&seq.ty)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, arg.span, message);
                         return self.err_expr(span);
                     }
                 };
@@ -970,8 +969,10 @@ impl<'a> Lowerer<'a> {
                         return self.err_expr(span);
                     }
                     _ => {
-                        let message = format!("`sum` adds numbers, not `{}`", self.show(&ty));
-                        self.error(codes::BAD_OPERANDS, arg.span, message);
+                        self.report(
+                            arg.span,
+                            msgs::ir::BAD_OPERANDS_SUM_ADDS_NUMBERS_NOT.at(&[&self.show(&ty)]),
+                        );
                         if matches!(ty, Ty::Opt(_)) {
                             self.help("`sum` does not skip or absorb `none`: add `x ?? 0`, or filter with `if let`");
                         }
@@ -1043,8 +1044,10 @@ impl<'a> Lowerer<'a> {
                 };
                 let optional = optional || held.is_some();
                 if matches!(ty, Ty::Opt(_)) || !self.ordered(&ty) {
-                    let message = format!("a `{}` has no order to compare by", self.show(&ty));
-                    self.error(codes::BAD_OPERANDS, arg.span, message);
+                    self.report(
+                        arg.span,
+                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_3.at(&[&self.show(&ty)]),
+                    );
                     self.close_loops(frames, Vec::new());
                     return self.err_expr(span);
                 }

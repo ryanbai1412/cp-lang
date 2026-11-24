@@ -1,6 +1,7 @@
 //! The receiver of a method that changes it in place.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// Where `method`'s `mut self` lives. A temporary has nowhere to keep
@@ -8,12 +9,9 @@ impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn mut_receiver(&mut self, recv: &ast::Expr, method: &str) -> Place {
         if !is_place(recv) && self.builtin_at(recv).is_none() {
             let span = self.span(recv.span);
-            self.error(
-                codes::ASSIGN_TO_LET,
+            self.report(
                 recv.span,
-                format!(
-                    "`{method}` changes its receiver in place, so it needs a mutable place; bind this value to a `var` first"
-                ),
+                msgs::ir::ASSIGN_TO_LET_CHANGES_ITS_RECEIVER_IN.at(&[&method]),
             );
             return Place {
                 kind: PlaceKind::Local(0),

@@ -4,6 +4,7 @@
 //! `Range<Int>`, since its body yields the unwrapped `y`.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `yield v` pushes `v` onto the generator's list; `yield from s` extends it by `s`.
@@ -25,7 +26,10 @@ impl<'a> Lowerer<'a> {
             return;
         }
         let Some((acc, elem_ty)) = self.cx.yield_slot.clone() else {
-            self.error(codes::UNSUPPORTED, span, "`yield` outside a generator");
+            self.report(
+                span,
+                msgs::ir::UNSUPPORTED_YIELD_OUTSIDE_A_GENERATOR.at(&[]),
+            );
             return;
         };
         let acc_place = Place {

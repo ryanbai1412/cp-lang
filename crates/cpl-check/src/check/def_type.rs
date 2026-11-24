@@ -2,6 +2,7 @@
 //! type arguments checked and defaults filled, an enum, an alias, a domain.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl Checker<'_> {
     /// A struct's type arguments meet its parameters' bounds, reported at the type the
@@ -52,8 +53,10 @@ impl Checker<'_> {
                 continue;
             }
             let param = generics.get(*i).map_or("", String::as_str);
-            let message = format!("`{ty}` is not {wants}, which `{name}` needs for `{param}`");
-            if let Some(diag) = self.error(codes::MISSING_IMPL, span, message) {
+            if let Some(diag) = self.report(
+                span,
+                msgs::check::MISSING_IMPL_IS_NOT_WHICH_NEEDS.at(&[&ty, &wants, &name, &param]),
+            ) {
                 diag.help = Some(format!(
                     "drop the type arguments and let `{name}` infer them, or pass {wants} for `{param}`"
                 ));
@@ -80,19 +83,21 @@ impl Checker<'_> {
                 // `Pt<1..=100>` on a struct with no generics, or `Q<Int, Int>`
                 // on `Q<T>`: arguments past the declared ones (R08.2.5).
                 if args.len() > generics.len() {
-                    let message = format!(
-                        "`{name}` takes {}, but {} given",
-                        match generics.len() {
-                            0 => "no type arguments".to_string(),
-                            n => super::expr::plural(n, "type argument", "type arguments"),
-                        },
-                        if args.len() == 1 {
-                            "1 was".to_string()
-                        } else {
-                            format!("{} were", args.len())
-                        }
+                    self.report(
+                        span,
+                        msgs::check::WRONG_ARG_COUNT_TAKES_BUT_GIVEN.at(&[
+                            &name,
+                            &match generics.len() {
+                                0 => "no type arguments".to_string(),
+                                n => super::expr::plural(n, "type argument", "type arguments"),
+                            },
+                            &if args.len() == 1 {
+                                "1 was".to_string()
+                            } else {
+                                format!("{} were", args.len())
+                            },
+                        ]),
                     );
-                    self.error(codes::WRONG_ARG_COUNT, span, message);
                     return Ty::Error;
                 }
                 let mut args = args;
@@ -128,11 +133,7 @@ impl Checker<'_> {
             // Declared by a broken statement: its error is already reported.
             Def::Value { ty: Ty::Error, .. } | Def::Fn { ty: Ty::Error, .. } => Ty::Error,
             Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. } | Def::Impl { .. } => {
-                self.error(
-                    codes::UNKNOWN_TYPE,
-                    span,
-                    format!("`{name}` is a value, not a type"),
-                );
+                self.report(span, msgs::check::UNKNOWN_TYPE_IS_A_VALUE_NOT.at(&[&name]));
                 Ty::Error
             }
         }

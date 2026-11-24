@@ -1,6 +1,7 @@
 //! Sorting, domain members, and the seq adapters map, filter and partition.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `xs.sort()`, `xs.sort(by: x => key)`, `xs.sort(by: (a, b) => a < b)`, `xs.sort(by: ord)`.
@@ -124,18 +125,16 @@ impl<'a> Lowerer<'a> {
             .iter()
             .any(|a| a.name.as_ref().is_some_and(|n| n.text == "cmp"));
         if has_by && has_cmp {
-            self.error(
-                codes::BAD_OPERANDS,
-                span,
-                "`sort` takes either `by:` or `cmp:`, not both",
-            );
+            self.report(span, msgs::ir::BAD_OPERANDS_SORT_TAKES_EITHER_BY.at(&[]));
             return self.err_expr(span);
         }
         let key = match args {
             [] => {
                 if !self.ordered(elem) {
-                    let message = format!("a `{}` has no order to sort by", self.show(elem));
-                    self.error(codes::BAD_OPERANDS, span, message);
+                    self.report(
+                        span,
+                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4.at(&[&self.show(elem)]),
+                    );
                     self.help("sort by a key (`xs.sort(by: x => x.w)`) or comparator (`xs.sort(cmp: (a, b) => a < b)`)");
                     return self.err_expr(span);
                 }
@@ -157,10 +156,9 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Error => return self.err_expr(span),
                     _ => {
-                        self.error(
-                            codes::BAD_OPERANDS,
+                        self.report(
                             value.span,
-                            "`cmp:` expects a comparator `(a, b) -> Bool`",
+                            msgs::ir::BAD_OPERANDS_CMP_EXPECTS_A_COMPARATOR.at(&[]),
                         );
                         return self.err_expr(span);
                     }
@@ -185,8 +183,10 @@ impl<'a> Lowerer<'a> {
                     return self.err_expr(span);
                 }
                 if key.ty != Ty::Error && (matches!(key.ty, Ty::Opt(_)) || !self.ordered(&key.ty)) {
-                    let message = format!("a `{}` has no order to sort by", self.show(&key.ty));
-                    self.error(codes::BAD_OPERANDS, body.span, message);
+                    self.report(
+                        body.span,
+                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4.at(&[&self.show(&key.ty)]),
+                    );
                     return self.err_expr(span);
                 }
                 if let Some(inner) = self.reversed_key(&key) {
@@ -207,11 +207,10 @@ impl<'a> Lowerer<'a> {
                 ..
             }] if by.text == "by" && params.len() > 1 => {
                 let (first, last) = (&params[0], &params[params.len() - 1]);
-                let message = format!(
-                    "`sort(by:)` takes a key of one element, but this lambda takes {} parameters",
-                    params.len()
+                self.report(
+                    first.span.to(last.span),
+                    msgs::ir::WRONG_ARG_COUNT_SORT_BY_TAKES_A.at(&[&params.len()]),
                 );
-                self.error(codes::WRONG_ARG_COUNT, first.span.to(last.span), message);
                 let key = match &elem {
                     Ty::Record(fields) => format!(
                         "x => ({})",
@@ -254,20 +253,15 @@ impl<'a> Lowerer<'a> {
                                 is_order: true,
                             }
                         } else {
-                            self.error(
-                                codes::BAD_OPERANDS,
+                            self.report(
                                 value.span,
-                                "`by:` expects a key fn or Order",
+                                msgs::ir::BAD_OPERANDS_BY_EXPECTS_A_KEY.at(&[]),
                             );
                             return self.err_expr(span);
                         }
                     }
                     _ => {
-                        self.error(
-                            codes::BAD_OPERANDS,
-                            value.span,
-                            "`by:` expects a key fn or Order",
-                        );
+                        self.report(value.span, msgs::ir::BAD_OPERANDS_BY_EXPECTS_A_KEY.at(&[]));
                         return self.err_expr(span);
                     }
                 }
@@ -275,10 +269,9 @@ impl<'a> Lowerer<'a> {
             _ if self.sort_reverse_arg(args) => return self.err_expr(span),
             _ if self.sort_unknown_arg(args) => return self.err_expr(span),
             _ => {
-                self.error(
-                    codes::WRONG_ARG_COUNT,
+                self.report(
                     span,
-                    "`sort` takes nothing, or a key: `xs.sort(by: x => x.w)`",
+                    msgs::ir::WRONG_ARG_COUNT_SORT_TAKES_NOTHING_OR.at(&[]),
                 );
                 return self.err_expr(span);
             }
@@ -426,11 +419,11 @@ impl<'a> Lowerer<'a> {
                 if info.variants[tag].1.is_empty() {
                     return self.encode_sum_variant(id, tag, Vec::new(), span);
                 }
-                let message = format!(
-                    "the variant `{}` holds values: write `{}(...)`",
-                    name.text, name.text
+                self.report(
+                    span,
+                    msgs::ir::WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES
+                        .at(&[&name.text, &name.text]),
                 );
-                self.error(codes::WRONG_ARG_COUNT, span, message);
                 return self.err_expr(span);
             }
         }
@@ -535,8 +528,10 @@ impl<'a> Lowerer<'a> {
                 ];
                 match cpl_check::closest(other, MEMBERS.into_iter()) {
                     Some(s) => {
-                        let message = format!("a domain has no member `{other}`");
-                        self.error(codes::UNKNOWN_FIELD, name.span, message);
+                        self.report(
+                            name.span,
+                            msgs::ir::UNKNOWN_FIELD_A_DOMAIN_HAS_NO.at(&[&other]),
+                        );
                         self.suggest_last(name.span, s);
                     }
                     None => {
@@ -632,13 +627,13 @@ impl<'a> Lowerer<'a> {
                     self.mk_index(callee_val, vec![val_expr.clone()], *elem, span)
                 }
                 _ => {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         fn_ast.span,
-                        format!(
-                            "`{}` expects a function, lambda, or array",
-                            if is_map { "map" } else { "filter" }
-                        ),
+                        msgs::ir::TYPE_MISMATCH_EXPECTS_A_FUNCTION_LAMBDA.at(&[&if is_map {
+                            "map"
+                        } else {
+                            "filter"
+                        }]),
                     );
                     self.err_expr(span)
                 }
@@ -1012,10 +1007,9 @@ impl<'a> Lowerer<'a> {
         let mut cyclic_ast: Option<&ast::Expr> = None;
         for arg in args {
             if arg.mutable {
-                self.error(
-                    codes::WRONG_ARG_COUNT,
+                self.report(
                     arg.value.span,
-                    "`reach` takes no `mut` arguments",
+                    msgs::ir::WRONG_ARG_COUNT_REACH_TAKES_NO_MUT.at(&[]),
                 );
                 return self.err_expr(span);
             }
@@ -1023,28 +1017,25 @@ impl<'a> Lowerer<'a> {
                 None | Some("while") if pred_ast.is_none() => pred_ast = Some(&arg.value),
                 Some("cyclic") if cyclic_ast.is_none() => cyclic_ast = Some(&arg.value),
                 Some(other) => {
-                    self.error(
-                        codes::UNKNOWN_ARG_NAME,
+                    self.report(
                         arg.value.span,
-                        format!("`reach` has no `{other}:` option (expected `while:` and optional `cyclic:`)"),
+                        msgs::ir::UNKNOWN_ARG_NAME_REACH_HAS_NO_OPTION.at(&[&other]),
                     );
                     return self.err_expr(span);
                 }
                 None => {
-                    self.error(
-                        codes::WRONG_ARG_COUNT,
+                    self.report(
                         arg.value.span,
-                        "`reach` takes one `while:` predicate and optional `cyclic: Bool`",
+                        msgs::ir::WRONG_ARG_COUNT_REACH_TAKES_ONE_WHILE.at(&[]),
                     );
                     return self.err_expr(span);
                 }
             }
         }
         let Some(pred_ast) = pred_ast else {
-            self.error(
-                codes::WRONG_ARG_COUNT,
+            self.report(
                 span,
-                "`reach` requires a `while: (T, T) -> Bool` predicate",
+                msgs::ir::WRONG_ARG_COUNT_REACH_REQUIRES_A_WHILE.at(&[]),
             );
             return self.err_expr(span);
         };
@@ -1077,10 +1068,9 @@ impl<'a> Lowerer<'a> {
                     (list, e)
                 }
                 other => {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         base.span,
-                        format!("`reach` expects a sequence, not `{}`", self.show(other)),
+                        msgs::ir::TYPE_MISMATCH_REACH_EXPECTS_A_SEQUENCE.at(&[&self.show(other)]),
                     );
                     return self.err_expr(span);
                 }
@@ -1194,10 +1184,9 @@ impl<'a> Lowerer<'a> {
                     Ty::Fn(_, ret) if !matches!(ret.as_ref(), Ty::Error) => (**ret).clone(),
                     Ty::Error => return self.err_expr(span),
                     other => {
-                        self.error(
-                            codes::TYPE_MISMATCH,
+                        self.report(
                             func_ast.span,
-                            format!("`map` expects a function, not `{}`", self.show(other)),
+                            msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION.at(&[&self.show(other)]),
                         );
                         return self.err_expr(span);
                     }
@@ -1311,10 +1300,9 @@ impl<'a> Lowerer<'a> {
             Ty::Fn(_, ret) if !matches!(ret.as_ref(), Ty::Error) => (**ret).clone(),
             Ty::Error => return self.err_expr(span),
             other => {
-                self.error(
-                    codes::TYPE_MISMATCH,
+                self.report(
                     func_ast.span,
-                    format!("`map` expects a function, not `{}`", self.show(other)),
+                    msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION.at(&[&self.show(other)]),
                 );
                 return self.err_expr(span);
             }

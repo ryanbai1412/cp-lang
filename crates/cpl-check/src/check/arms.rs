@@ -1,6 +1,7 @@
 //! A `match` arm after one that takes every value never runs (R01.7.3).
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Arm, Pattern, PatternKind};
 
 impl Checker<'_> {
@@ -19,10 +20,6 @@ impl Checker<'_> {
         if self.sink.encloses_poison(catch_all.span) {
             return;
         }
-        let message = format!(
-            "unreachable arm: `{}` above already matches everything",
-            self.quote(catch_all.span)
-        );
         let variant = self.variant_spelled_like(scrutinee, catch_all);
         // `less`, `greater`, `equal`: every miscased variant is spelled right at once.
         let mut edits = Vec::new();
@@ -31,7 +28,11 @@ impl Checker<'_> {
                 edits.push((arm.pat.span, v));
             }
         }
-        if let Some(diag) = self.error(codes::UNREACHABLE_ARM, next.pat.span, message) {
+        if let Some(diag) = self.report(
+            next.pat.span,
+            msgs::check::UNREACHABLE_ARM_UNREACHABLE_ARM_ABOVE_ALREADY
+                .at(&[&self.quote(catch_all.span)]),
+        ) {
             match variant {
                 Some(v) => {
                     diag.help = Some(format!(

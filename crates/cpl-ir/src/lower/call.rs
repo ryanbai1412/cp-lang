@@ -2,6 +2,7 @@
 //! provides.
 
 use super::*;
+use cpl_diag::msgs;
 
 mod collect;
 mod field;
@@ -136,10 +137,9 @@ impl<'a> Lowerer<'a> {
         if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
             return self.call_gen_fn(gfid, Vec::new(), None, args, span);
         }
-        self.error(
-            codes::UNKNOWN_FIELD,
+        self.report(
             name.span,
-            format!("`{}` has no fn `{}`", decl.name.text, name.text),
+            msgs::check::UNKNOWN_FIELD_HAS_NO_FN.at(&[&decl.name.text, &name.text]),
         );
         self.err_expr(span)
     }
@@ -492,10 +492,10 @@ impl<'a> Lowerer<'a> {
                     if self.structs[sid].index_domain.is_some() {
                         return self.library_domain_seq(base, sid, name, Some(args), span);
                     }
-                    self.error(
-                        codes::UNKNOWN_FIELD,
+                    self.report(
                         name.span,
-                        format!("`{}` has no fn `{}`", self.structs[sid].def.name, name.text),
+                        msgs::check::UNKNOWN_FIELD_HAS_NO_FN
+                            .at(&[&self.structs[sid].def.name, &name.text]),
                     );
                     return self.err_expr(span);
                 }
@@ -536,10 +536,9 @@ impl<'a> Lowerer<'a> {
                     }
                     Some(Sym::Variant(id, tag)) => self.variant(id, tag, args, span),
                     _ => {
-                        self.error(
-                            codes::UNKNOWN_FIELD,
+                        self.report(
                             name.span,
-                            format!("module has no fn `{}`", name.text),
+                            msgs::ir::UNKNOWN_FIELD_MODULE_HAS_NO_FN.at(&[&name.text]),
                         );
                         self.err_expr(span)
                     }
@@ -559,10 +558,10 @@ impl<'a> Lowerer<'a> {
                 if self.structs[id].index_domain.is_some() {
                     return self.library_domain_seq(base, id, name, Some(args), span);
                 }
-                self.error(
-                    codes::UNKNOWN_FIELD,
+                self.report(
                     name.span,
-                    format!("`{}` has no fn `{}`", self.structs[id].def.name, name.text),
+                    msgs::check::UNKNOWN_FIELD_HAS_NO_FN
+                        .at(&[&self.structs[id].def.name, &name.text]),
                 );
                 return self.err_expr(span);
             }

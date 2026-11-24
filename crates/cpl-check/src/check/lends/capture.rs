@@ -1,6 +1,7 @@
 //! What a closure or a `lends` getter holds while its value lives (R05.10.1).
 
 use super::*;
+use cpl_diag::msgs;
 
 impl Checker<'_> {
     /// What a closure holds while it lives: each name it captures by reference, and for a
@@ -75,10 +76,11 @@ impl Checker<'_> {
             ExprKind::Name(name) => {
                 if let Some(local) = self.local(name).cloned() {
                     if local.keyword == "param" && self.is_lent_param_ty(&local.ty) {
-                        let message = format!(
-                            "{what} would return lent parameter `{name}` without a `lends` clause"
+                        self.report(
+                            e.span,
+                            msgs::check::LENT_ESCAPES_WOULD_RETURN_LENT_PARAMETER
+                                .at(&[&what, &name]),
                         );
-                        self.error(codes::LENT_ESCAPES, e.span, message);
                     }
                 }
             }
@@ -99,10 +101,10 @@ impl Checker<'_> {
                             .is_some_and(|l| self.captured_by_ref(&l))
                 });
                 if let Some(cap) = escaped {
-                    let message = format!(
-                        "{what} returns a closure that captures local `{cap}`, which does not outlive this fn"
+                    self.report(
+                        e.span,
+                        msgs::check::LENT_ESCAPES_RETURNS_A_CLOSURE_THAT.at(&[&what, &cap]),
                     );
-                    self.error(codes::LENT_ESCAPES, e.span, message);
                 }
             }
             _ => self.escape_built_from_param(e, what),

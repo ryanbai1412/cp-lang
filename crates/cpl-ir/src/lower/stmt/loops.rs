@@ -2,6 +2,7 @@
 //! blocks, `for f in fields(x)` unrolling and `while let` clauses.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// The loop heads and cell value of `for (r, c) in Square` over a
@@ -292,11 +293,10 @@ impl<'a> Lowerer<'a> {
         }
         if let Ty::Enum(eid) = temps[0].1 {
             if let Some((_, ty, span)) = temps.iter().find(|(_, ty, _)| *ty != temps[0].1) {
-                let message = format!(
-                    "`fields` walks values of one type together; this is a `{}`",
-                    self.show(ty)
+                self.report(
+                    *span,
+                    msgs::ir::TYPE_MISMATCH_FIELDS_WALKS_VALUES_OF.at(&[&self.show(ty)]),
                 );
-                self.error(codes::TYPE_MISMATCH, *span, message);
                 return;
             }
             // Each value is the same variant, or the body doesn't run.
@@ -348,20 +348,18 @@ impl<'a> Lowerer<'a> {
                 return;
             }
             let Some(tys) = self.field_tys(ty) else {
-                let message = format!(
-                    "`fields` walks the fields of a struct or a tuple, not of a `{}`",
-                    self.show(ty)
+                self.report(
+                    *span,
+                    msgs::check::TYPE_MISMATCH_FIELDS_WALKS_THE_FIELDS.at(&[&self.show(ty)]),
                 );
-                self.error(codes::TYPE_MISMATCH, *span, message);
                 return;
             };
             if let Some(first) = shapes.first().filter(|f| f.len() != tys.len()) {
-                let message = format!(
-                    "`fields` walks values with as many fields together; this has {}, the first {}",
-                    tys.len(),
-                    first.len()
+                self.report(
+                    *span,
+                    msgs::ir::TYPE_MISMATCH_FIELDS_WALKS_VALUES_WITH
+                        .at(&[&tys.len(), &first.len()]),
                 );
-                self.error(codes::TYPE_MISMATCH, *span, message);
                 return;
             }
             shapes.push(tys);

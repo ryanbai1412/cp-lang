@@ -2,6 +2,7 @@
 //! `xs.find(..)`, `x.m(..)` on a user type.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `g.items` in a `for`, when `g` names a grid: one loop over the
@@ -534,13 +535,17 @@ impl<'a> Lowerer<'a> {
             (Some(false), Some((_, value))) => Some(Arg::Value(self.receiver_domains(value, span))),
             (None, None) => None,
             (Some(_), None) => {
-                let message = format!("`{name}` is called on a value: `x.{name}(...)`");
-                self.error(codes::WRONG_ARG_COUNT, span, message);
+                self.report(
+                    span,
+                    msgs::ir::WRONG_ARG_COUNT_IS_CALLED_ON_A.at(&[&name, &name]),
+                );
                 return self.err_expr(span);
             }
             (None, Some(_)) => {
-                let message = format!("`{name}` takes no `self`: call it on the type");
-                self.error(codes::WRONG_ARG_COUNT, span, message);
+                self.report(
+                    span,
+                    msgs::ir::WRONG_ARG_COUNT_TAKES_NO_SELF_CALL.at(&[&name]),
+                );
                 return self.err_expr(span);
             }
         };
@@ -568,17 +573,22 @@ impl<'a> Lowerer<'a> {
             return self.mk(ExprKind::Print(values, None), Ty::Unit, span);
         }
         if !args.is_empty() {
-            self.error(codes::WRONG_ARG_COUNT, span, "`recv` takes no arguments");
+            self.report(
+                span,
+                msgs::ir::WRONG_ARG_COUNT_RECV_TAKES_NO_ARGUMENTS.at(&[]),
+            );
             return self.err_expr(span);
         }
         let Some(want) = hint.filter(|want| **want != Ty::Unit) else {
-            self.error(codes::TYPE_MISMATCH, span, "`recv` can't tell what to read");
+            self.report(span, msgs::ir::TYPE_MISMATCH_RECV_CAN_T_TELL.at(&[]));
             self.help("say what the solution printed: `let x: Int = sol.recv()`");
             return self.err_expr(span);
         };
         let Some(spec) = self.spec_of(want) else {
-            let message = format!("`recv` can't tell how much a `{}` is", self.show(want));
-            self.error(codes::TYPE_MISMATCH, span, message);
+            self.report(
+                span,
+                msgs::ir::TYPE_MISMATCH_RECV_CAN_T_TELL_2.at(&[&self.show(want)]),
+            );
             return self.err_expr(span);
         };
         let want = want.clone();

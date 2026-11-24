@@ -2,6 +2,7 @@
 //! and return types read from the body.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn pattern_names(pat: &ast::Pattern, out: &mut HashSet<String>) {
@@ -212,10 +213,9 @@ impl<'a> Lowerer<'a> {
                     ))));
                 } else {
                     // Never an empty body: a std newer than this compiler fails here.
-                    self.error(
-                        codes::UNKNOWN_INTRINSIC,
+                    self.report(
                         *span,
-                        format!("no intrinsic `{name}` in this compiler's table"),
+                        msgs::ir::UNKNOWN_INTRINSIC_NO_INTRINSIC_IN_THIS.at(&[&name]),
                     );
                 }
             }
@@ -248,10 +248,9 @@ impl<'a> Lowerer<'a> {
             // Its own calls were read as giving nothing, but its last
             // line gives a value.
             let name = decl.name.text.clone();
-            self.error(
-                codes::UNKNOWN_TYPE,
+            self.report(
                 decl.name.span,
-                format!("`{name}` calls itself, so it needs its return type written"),
+                msgs::ir::UNKNOWN_TYPE_CALLS_ITSELF_SO_IT.at(&[&name]),
             );
             let shown = self.show(&ret);
             self.help(format!("add `-> {shown}` to `fn {name}`"));
@@ -443,11 +442,7 @@ impl<'a> Lowerer<'a> {
                 return Ty::Unit;
             }
             let name = self.sigs[id].decl.name.text.clone();
-            self.error(
-                codes::UNKNOWN_TYPE,
-                span,
-                format!("`{name}` calls itself, so it needs its return type written"),
-            );
+            self.report(span, msgs::ir::UNKNOWN_TYPE_CALLS_ITSELF_SO_IT.at(&[&name]));
             self.help(format!(
                 "add `-> Int`, or the type it returns, to `fn {name}`"
             ));

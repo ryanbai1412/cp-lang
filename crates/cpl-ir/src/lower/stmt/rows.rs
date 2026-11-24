@@ -2,6 +2,7 @@
 //! `a[l..r] += x`, a cell at a time.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// True for an array of one dimension, or a list, of values with an
@@ -106,11 +107,10 @@ impl<'a> Lowerer<'a> {
         }
         let (dims, elem) = Self::axes_of(&place.ty)?;
         if max.is_some() && !self.ordered(&elem) {
-            let message = format!(
-                "`{word}` needs cells that have an order, and these are `{}`",
-                self.show(&elem)
+            self.report(
+                span,
+                msgs::ir::TYPE_MISMATCH_NEEDS_CELLS_THAT_HAVE.at(&[&word, &self.show(&elem)]),
             );
-            self.error(codes::TYPE_MISMATCH, span, message);
             return None;
         }
         let slot_ty = |dim: Dim| match dim {
@@ -163,12 +163,14 @@ impl<'a> Lowerer<'a> {
                     return changed;
                 };
                 if their_elem != elem {
-                    let message = format!(
-                        "`{word}` goes cell by cell: these are `{}`, and the other side has `{}`",
-                        self.show(&elem),
-                        self.show(&their_elem)
+                    self.report(
+                        value.span,
+                        msgs::ir::TYPE_MISMATCH_GOES_CELL_BY_CELL.at(&[
+                            &word,
+                            &self.show(&elem),
+                            &self.show(&their_elem),
+                        ]),
                     );
-                    self.error(codes::TYPE_MISMATCH, value.span, message);
                     return changed;
                 }
                 let their_at = self.temp(slot_ty(their_dims[their_axis]));
@@ -215,12 +217,14 @@ impl<'a> Lowerer<'a> {
                     Ty::List(theirs) if **theirs == elem => Dim::Int,
                     Ty::Error => return changed,
                     _ => {
-                        let message = format!(
-                            "`{word}` goes cell by cell: this side is a row of `{}`, and the other is `{}`",
-                            self.show(&elem),
-                            self.show(&other.ty)
+                        self.report(
+                            value.span,
+                            msgs::ir::TYPE_MISMATCH_GOES_CELL_BY_CELL_2.at(&[
+                                &word,
+                                &self.show(&elem),
+                                &self.show(&other.ty),
+                            ]),
                         );
-                        self.error(codes::TYPE_MISMATCH, value.span, message);
                         return changed;
                     }
                 };

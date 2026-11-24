@@ -2,6 +2,7 @@
 //! passed to, its result from its body.
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Expr, ExprKind};
 
 impl Checker<'_> {
@@ -73,10 +74,9 @@ impl Checker<'_> {
         self.pop_scope();
         let final_ret = if let Some(dret) = declared_ret {
             if !matches!(ret, Ty::Unknown | Ty::Error) && !self.fits(&ret, &dret) {
-                self.error(
-                    codes::TYPE_MISMATCH,
+                self.report(
                     body.span,
-                    format!("expected `{dret}`, found `{ret}`"),
+                    msgs::check::TYPE_MISMATCH_EXPECTED_FOUND.at(&[&dret, &ret]),
                 );
             }
             dret

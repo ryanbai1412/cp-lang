@@ -4,6 +4,7 @@
 
 use super::lends::{show, unparen};
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Expr, ExprKind};
 
 /// A view that keeps its source's keys: what `w[0]` would name.
@@ -82,10 +83,10 @@ impl Checker<'_> {
         };
         if let Ty::Array { index, .. } = self.quietly(|c| c.infer(base)) {
             if let [Ty::Domain(d) | Ty::Pos(d)] = index.as_slice() {
-                let message = format!(
-                    "`{w}` is a slice of a `{d}` table, so it is indexed by `{d}`, not by the raw `Int` {v}"
-                );
-                if let Some(diag) = self.error(codes::WRONG_DOMAIN, indices[0].span, message) {
+                if let Some(diag) = self.report(
+                    indices[0].span,
+                    msgs::check::WRONG_DOMAIN_IS_A_SLICE_OF.at(&[&w, &d, &d, &v]),
+                ) {
                     diag.help = Some(format!(
                         "index it with a `{d}`: `{w}[{d}({v})]`, or use `{w}.nth({v})!`"
                     ));
@@ -103,11 +104,10 @@ impl Checker<'_> {
             );
             return;
         }
-        let message = format!(
-            "`{w}[{v}]` reads key {v}, which isn't known to be one of `{w}.keys`: a view keeps the keys of `{}`",
-            keyed.source
-        );
-        if let Some(diag) = self.error(codes::NOT_INDEXABLE, index.span, message) {
+        if let Some(diag) = self.report(
+            index.span,
+            msgs::check::NOT_INDEXABLE_READS_KEY_WHICH_ISN.at(&[&w, &v, &v, &w, &keyed.source]),
+        ) {
             let (by_position, by_key) = (format!("{w}.nth({v})"), format!("{}[{v}]", keyed.source));
             diag.help = Some(format!(
                 "write `{by_position}` for its element {v}, or `{by_key}` for the source's key {v}"
@@ -313,11 +313,10 @@ impl Checker<'_> {
         if matches!(this.ty, Ty::Param(_)) {
             return false;
         }
-        let message = format!(
-            "`{base_ty}` has no `{}`: it takes a `{}`, which walks in key order",
-            name.text, this.ty
-        );
-        if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::MISSING_IMPL_HAS_NO_IT_TAKES.at(&[&base_ty, &name.text, &this.ty]),
+        ) {
             diag.help = Some("copy the reversed view first: `List(a.rev)`".into());
         }
         true
@@ -346,11 +345,10 @@ impl Checker<'_> {
             _ => false,
         };
         if indexed {
-            let message = format!(
-                "`{base_ty}` does not implement `Indexed` required by `{}`",
-                name.text
-            );
-            if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
+            if let Some(diag) = self.report(
+                name.span,
+                msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_INDEXED.at(&[&base_ty, &name.text]),
+            ) {
                 diag.help =
                     Some("a reversed view isn't Indexed; copy it with `List(a.rev)`".into());
             }
@@ -426,10 +424,10 @@ impl Checker<'_> {
         };
         if let Some(temp) = self.temp_source(e) {
             let (src, temp) = (self.quote(e.span), self.quote(temp.span));
-            let message = format!(
-                "{what} would keep `{src}`, a view of the temporary `{temp}`, which lives only to the end of this statement"
-            );
-            if let Some(diag) = self.error(codes::LENT_ESCAPES, e.span, message) {
+            if let Some(diag) = self.report(
+                e.span,
+                msgs::check::LENT_ESCAPES_WOULD_KEEP_A_VIEW.at(&[&what, &src, &temp]),
+            ) {
                 diag.help = Some(format!(
                     "name the source first (`let s = {temp}`), or keep a copy: `List({src})`"
                 ));
@@ -591,11 +589,14 @@ impl Checker<'_> {
             if j == k || !self.captures(&other.value).iter().any(|c| c == root) {
                 continue;
             }
-            let message = format!(
-                "`{root}` can't be passed `mut` to `{name}`: `{}` captures it and uses it during the same call",
-                self.quote(other.value.span),
-            );
-            if let Some(diag) = self.error(codes::USED_WHILE_LENT, args[k].value.span, message) {
+            if let Some(diag) = self.report(
+                args[k].value.span,
+                msgs::check::USED_WHILE_LENT_CAN_T_BE_PASSED.at(&[
+                    &root,
+                    &name,
+                    &self.quote(other.value.span),
+                ]),
+            ) {
                 diag.help = Some(format!(
                     "pass `{root}` to the closure as a parameter instead of capturing it"
                 ));

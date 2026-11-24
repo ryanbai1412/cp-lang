@@ -2,6 +2,7 @@
 //! filled arrays, literal grids and default zeros.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `let g = gen(args)` names a generator value, a recipe that runs
@@ -211,11 +212,7 @@ impl<'a> Lowerer<'a> {
     ) -> Option<Expr> {
         let Some(ty) = ty else {
             let Some(init) = init else {
-                self.error(
-                    codes::UNKNOWN_TYPE,
-                    span,
-                    "a variable needs a type or a value",
-                );
+                self.report(span, msgs::ir::UNKNOWN_TYPE_A_VARIABLE_NEEDS_A.at(&[]));
                 return None;
             };
             return Some(self.expr(init, None));
@@ -238,11 +235,10 @@ impl<'a> Lowerer<'a> {
                     .map(|a| self.expect(&a.value, &Ty::Int))
                 {
                     if !crate::lower::call::reads_none_as(&mut spec, &absent) {
-                        let message = format!(
-                            "`none:` is for reading a `?T`, and a `{}` has none",
-                            self.show(&want)
+                        self.report(
+                            init.span,
+                            msgs::ir::UNKNOWN_ARG_NAME_NONE_IS_FOR_READING.at(&[&self.show(&want)]),
                         );
-                        self.error(codes::UNKNOWN_ARG_NAME, init.span, message);
                     }
                 }
             }
@@ -252,11 +248,10 @@ impl<'a> Lowerer<'a> {
             let mut spec = spec;
             let absent = self.expect(none_arg, &Ty::Int);
             if !crate::lower::call::reads_none_as(&mut spec, &absent) {
-                let message = format!(
-                    "`none:` is for reading a `?T`, and a `{}` has none",
-                    self.show(&want)
+                self.report(
+                    init.span,
+                    msgs::ir::UNKNOWN_ARG_NAME_NONE_IS_FOR_READING.at(&[&self.show(&want)]),
                 );
-                self.error(codes::UNKNOWN_ARG_NAME, init.span, message);
             }
             return Some(self.read(spec, init.span));
         }
@@ -356,10 +351,9 @@ impl<'a> Lowerer<'a> {
                     None
                 };
                 if let (true, Some(Err(at))) = (lens.len() > 1, &shape) {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         *at,
-                        format!("a list for a `{}` is rows of one length, nested as deep as the array has indices", self.show(&want)),
+                        msgs::ir::TYPE_MISMATCH_A_LIST_FOR_A.at(&[&self.show(&want)]),
                     );
                     return Some(self.err_expr(init.span));
                 }
@@ -590,11 +584,10 @@ impl<'a> Lowerer<'a> {
                 }
                 Ty::Error => ExprKind::Error,
                 _ => {
-                    let message = format!(
-                        "a `{}` has no starting value: give this variable one",
-                        self.show(&ty)
+                    self.report(
+                        span,
+                        msgs::ir::UNKNOWN_TYPE_A_HAS_NO_STARTING.at(&[&self.show(&ty)]),
                     );
-                    self.error(codes::UNKNOWN_TYPE, span, message);
                     ExprKind::Error
                 }
             },

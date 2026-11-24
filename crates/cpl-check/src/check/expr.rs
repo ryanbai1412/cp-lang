@@ -7,6 +7,7 @@ mod member;
 
 use super::*;
 use binary::split_chain;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, BinOp, Cond, Expr, ExprKind, StrPiece, UnOp};
 use fits::convert_to;
 pub(super) use fits::rename_fields;
@@ -64,12 +65,11 @@ impl<'a> Checker<'a> {
                         if ty.is_vague() {
                             return ty;
                         }
-                        let message = format!(
-                            "unary `+` needs a number, but `{}` is {}",
-                            self.quote(inner.span),
-                            ty.with_article()
+                        self.report(
+                            inner.span,
+                            msgs::check::TYPE_MISMATCH_UNARY_NEEDS_A_NUMBER
+                                .at(&[&self.quote(inner.span), &ty.with_article()]),
                         );
-                        self.error(codes::TYPE_MISMATCH, inner.span, message);
                         Ty::Error
                     }
                     UnOp::Neg | UnOp::BitNot if ty.is_numeric() => ty.widen(),
@@ -107,10 +107,10 @@ impl<'a> Checker<'a> {
                             Some(Def::Fn { generics, .. }) if !generics.is_empty()
                         );
                     if generic {
-                        let message = format!(
-                            "`{name}` is a generic fn and is only called, as `{name}(...)`: its type parameters come from its arguments"
-                        );
-                        if let Some(diag) = self.error(codes::BAD_OPERANDS, expr.span, message) {
+                        if let Some(diag) = self.report(
+                            expr.span,
+                            msgs::check::BAD_OPERANDS_IS_A_GENERIC_FN.at(&[&name, &name]),
+                        ) {
                             diag.help = Some(format!(
                                 "to name one that no argument gives, write `{name}<T>(...)`"
                             ));
@@ -165,19 +165,19 @@ impl<'a> Checker<'a> {
                         edits: vec![(expr.span, text)],
                     });
                     if has_eq {
-                        if let Some(diag) = self.error(
-                            codes::MIXED_COMPARISON_CHAIN,
+                        if let Some(diag) = self.report(
                             expr.span,
-                            "chained comparisons cannot contain `==` or `!=`".to_string(),
+                            msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN
+                                .at(&[]),
                         ) {
                             diag.help = Some("join the comparisons with `and` instead".to_string());
                             diag.fixes.extend(split);
                         }
                     } else if has_lt && has_gt {
-                        if let Some(diag) = self.error(
-                            codes::MIXED_COMPARISON_CHAIN,
+                        if let Some(diag) = self.report(
                             expr.span,
-                            "chained comparisons must point in one direction".to_string(),
+                            msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_MUST_POINT
+                                .at(&[]),
                         ) {
                             diag.help =
                                 Some("split mixed `<` and `>` comparisons with `and`".to_string());
@@ -314,17 +314,18 @@ impl<'a> Checker<'a> {
                     // read off the arguments.
                     (_, Some((ty, generics))) => {
                         if args.len() > generics.len() {
-                            let message = format!(
-                                "`{}` takes {}, but {} given",
-                                self.quote(base.span),
-                                plural(generics.len(), "type argument", "type arguments"),
-                                if args.len() == 1 {
-                                    "1 was".to_string()
-                                } else {
-                                    format!("{} were", args.len())
-                                }
+                            self.report(
+                                expr.span,
+                                msgs::check::WRONG_ARG_COUNT_TAKES_BUT_GIVEN.at(&[
+                                    &self.quote(base.span),
+                                    &plural(generics.len(), "type argument", "type arguments"),
+                                    &if args.len() == 1 {
+                                        "1 was".to_string()
+                                    } else {
+                                        format!("{} were", args.len())
+                                    },
+                                ]),
                             );
-                            self.error(codes::WRONG_ARG_COUNT, expr.span, message);
                             return Ty::Error;
                         }
                         let bindings = generics.into_iter().zip(args).collect();
@@ -353,8 +354,11 @@ impl<'a> Checker<'a> {
                 let mut out = Vec::with_capacity(fields.len());
                 for (name, value) in fields {
                     if seen.contains(&name.text.as_str()) {
-                        let message = format!("duplicate field `{}` in record", name.text);
-                        self.error(codes::DUPLICATE_DEFINITION, name.span, message);
+                        self.report(
+                            name.span,
+                            msgs::check::DUPLICATE_DEFINITION_DUPLICATE_FIELD_IN_RECORD
+                                .at(&[&name.text]),
+                        );
                     } else {
                         seen.push(&name.text);
                     }
@@ -675,13 +679,10 @@ impl<'a> Checker<'a> {
                         if let Some(req) = self.row_bounds.get(&p).cloned() {
                             for r in removed {
                                 if !req.iter().any(|(fnm, _)| fnm == &r.text) {
-                                    self.error(
-                                        codes::UNKNOWN_FIELD,
+                                    self.report(
                                         r.span,
-                                        format!(
-                                            "row `{p}` has no named field `{}` to remove",
-                                            r.text
-                                        ),
+                                        msgs::check::UNKNOWN_FIELD_ROW_HAS_NO_NAMED
+                                            .at(&[&p, &r.text]),
                                     );
                                 }
                             }
@@ -699,10 +700,10 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Try(inner) if self.branch > 0 => {
                 let inner_text = self.quote(inner.span);
-                let message = format!(
-                    "`{inner_text}?` is inside a branch, a lambda or a comprehension, and can't leave the fn from there"
-                );
-                if let Some(diag) = self.error(codes::BAD_OPERANDS, expr.span, message) {
+                if let Some(diag) = self.report(
+                    expr.span,
+                    msgs::check::BAD_OPERANDS_IS_INSIDE_A_BRANCH.at(&[&inner_text]),
+                ) {
                     diag.help = Some(format!("bind it first: `let x = {inner_text}?`"));
                 }
                 self.infer(inner);
@@ -785,8 +786,10 @@ impl<'a> Checker<'a> {
         if missing.is_empty() {
             return;
         }
-        let message = format!("this `match` has no arm for {}", missing.join(", "));
-        if let Some(diag) = self.error(codes::NON_EXHAUSTIVE_MATCH, span, message) {
+        if let Some(diag) = self.report(
+            span,
+            msgs::check::NON_EXHAUSTIVE_MATCH_THIS_MATCH_HAS_NO.at(&[&missing.join(", ")]),
+        ) {
             diag.help = Some("add an arm for each, or `_:` for whatever is left".to_string());
         }
     }
@@ -810,11 +813,10 @@ impl<'a> Checker<'a> {
         {
             return;
         }
-        let message = format!(
-            "`{name}` is a variant, but the value matched is a `{}`",
-            ty.widen()
-        );
-        if let Some(diag) = self.error(codes::TYPE_MISMATCH, pat.span, message) {
+        if let Some(diag) = self.report(
+            pat.span,
+            msgs::check::TYPE_MISMATCH_IS_A_VARIANT_BUT.at(&[&name, &ty.widen()]),
+        ) {
             diag.help = Some(
                 "a capitalized name in a pattern is a variant or constant; bind with a lowercase name, or write `_`"
                     .to_string(),
@@ -862,8 +864,10 @@ impl<'a> Checker<'a> {
         if missing.is_empty() {
             return;
         }
-        let message = format!("this `match` has no arm for {}", missing.join(", "));
-        if let Some(diag) = self.error(codes::NON_EXHAUSTIVE_MATCH, span, message) {
+        if let Some(diag) = self.report(
+            span,
+            msgs::check::NON_EXHAUSTIVE_MATCH_THIS_MATCH_HAS_NO.at(&[&missing.join(", ")]),
+        ) {
             diag.help = Some("add an arm for each, or `_:` for whatever is left".to_string());
         }
     }
@@ -964,16 +968,15 @@ impl<'a> Checker<'a> {
         let Some(at) = find.found else {
             return false;
         };
-        let message = format!(
-            "`{}` is a `?` in a condition: a `None` gives the test no value",
-            self.quote(at)
-        );
         let help = format!(
             "say what `None` means: `({}) ?? false`",
             self.quote(expr.span)
         );
         let replacement = format!("({}) ?? false", self.quote(expr.span));
-        if let Some(diag) = self.error(codes::QUESTION_IN_CONDITION, at, message) {
+        if let Some(diag) = self.report(
+            at,
+            msgs::check::QUESTION_IN_CONDITION_IS_A_IN_A.at(&[&self.quote(at)]),
+        ) {
             diag.help = Some(help);
             diag.fixes.push(cpl_diag::Fix {
                 title: "treat `None` as false".to_string(),

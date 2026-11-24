@@ -1,6 +1,7 @@
 //! Indexing: element types, typed and double indices, and walks over slices.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
     /// What a `for` over a value of type `ty` yields.
@@ -246,15 +247,16 @@ impl<'a> Checker<'a> {
                     return (**elem).clone();
                 }
                 if indices.len() != 2 {
-                    let message = format!(
-                        "`{}` takes 2 indices ({}, {}), but {} {} given",
-                        self.quote(base.span),
-                        dom_ty,
-                        dom_ty,
-                        indices.len(),
-                        if indices.len() == 1 { "was" } else { "were" },
-                    );
-                    if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, expr.span, message) {
+                    if let Some(diag) = self.report(
+                        expr.span,
+                        msgs::check::WRONG_ARG_COUNT_TAKES_2_INDICES_BUT.at(&[
+                            &self.quote(base.span),
+                            &dom_ty,
+                            &dom_ty,
+                            &indices.len(),
+                            &if indices.len() == 1 { "was" } else { "were" },
+                        ]),
+                    ) {
                         diag.help =
                             Some("index a symmetric table with two positions: `adj[u, v]`".into());
                     }
@@ -262,14 +264,15 @@ impl<'a> Checker<'a> {
                 }
                 for (got, index_expr) in index_tys.iter().zip(indices) {
                     if !self.fits(got, dom_ty) && !self.literal_position(index_expr, dom_ty) {
-                        let message = format!(
-                            "`{}` is indexed by {}, but `{}` is {}",
-                            self.quote(base.span),
-                            dom_ty,
-                            self.quote(index_expr.span),
-                            got.with_article()
+                        self.report(
+                            index_expr.span,
+                            msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
+                                &self.quote(base.span),
+                                &dom_ty,
+                                &self.quote(index_expr.span),
+                                &got.with_article(),
+                            ]),
                         );
-                        self.error(codes::TYPE_MISMATCH, index_expr.span, message);
                     }
                 }
                 (**elem).clone()
@@ -376,18 +379,19 @@ impl<'a> Checker<'a> {
                 }
                 if index.len() != indices.len() {
                     let wanted: Vec<String> = index.iter().map(Ty::to_string).collect();
-                    let message = format!(
-                        "`{}` takes {} ({}), but {} given",
-                        self.quote(base.span),
-                        plural(index.len(), "index", "indices"),
-                        wanted.join(", "),
-                        if indices.len() == 1 {
-                            "1 was".to_string()
-                        } else {
-                            format!("{} were", indices.len())
-                        },
-                    );
-                    if let Some(diag) = self.error(codes::NOT_INDEXABLE, expr.span, message) {
+                    if let Some(diag) = self.report(
+                        expr.span,
+                        msgs::check::NOT_INDEXABLE_TAKES_BUT_GIVEN.at(&[
+                            &self.quote(base.span),
+                            &plural(index.len(), "index", "indices"),
+                            &wanted.join(", "),
+                            &if indices.len() == 1 {
+                                "1 was".to_string()
+                            } else {
+                                format!("{} were", indices.len())
+                            },
+                        ]),
+                    ) {
                         diag.help = Some(
                             "all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`"
                                 .into(),
@@ -413,13 +417,11 @@ impl<'a> Checker<'a> {
                         if name == "Range" && args.len() == 1 {
                             if let Ty::Pos(cut) = &args[0] {
                                 if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
-                                    let msg = format!(
-                                        "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
-                                        self.quote(hi.span)
-                                    );
-                                    if let Some(diag) =
-                                        self.error(codes::WRONG_DOMAIN, index_expr.span, msg)
-                                    {
+                                    if let Some(diag) = self.report(
+                                        index_expr.span,
+                                        msgs::check::WRONG_DOMAIN_ENDS_AT_A_POSITION
+                                            .at(&[&self.quote(hi.span)]),
+                                    ) {
                                         diag.help = Some(
                                             "use half-open `..` for the positions between two cuts"
                                                 .to_string(),
@@ -437,12 +439,14 @@ impl<'a> Checker<'a> {
                             if matches!(args.as_slice(), [Ty::Pos(d)] if d.ends_with(".cuts"))
                                 && !matches!(want, Ty::Pos(w) if w.ends_with(".cuts"))
                             {
-                                let message = format!(
-                                    "`{}` is a cut range (`{got}`), not a position range for `{}`",
-                                    self.quote(index_expr.span),
-                                    self.quote(base.span)
+                                self.report(
+                                    index_expr.span,
+                                    msgs::check::TYPE_MISMATCH_IS_A_CUT_RANGE.at(&[
+                                        &self.quote(index_expr.span),
+                                        &got,
+                                        &self.quote(base.span),
+                                    ]),
                                 );
-                                self.error(codes::TYPE_MISMATCH, index_expr.span, message);
                             }
                             slice = true;
                             kept.push(want.clone());
@@ -469,8 +473,11 @@ impl<'a> Checker<'a> {
                                 _ => false,
                             };
                             if out_of_bounds {
-                                let message = format!("literal `{v}` is outside domain `{d}`");
-                                self.error(codes::RANGE_STORE_CONST, index_expr.span, message);
+                                self.report(
+                                    index_expr.span,
+                                    msgs::check::RANGE_STORE_CONST_LITERAL_IS_OUTSIDE_DOMAIN
+                                        .at(&[&v, &d]),
+                                );
                             }
                         }
 
@@ -566,35 +573,34 @@ impl<'a> Checker<'a> {
                 args[0].clone()
             }
             Ty::Named { name, .. } if matches!(name.as_str(), "Filter" | "Rev") => {
-                let message = format!(
-                    "`{}` has type `{base_ty}`, which is not indexed",
-                    self.quote(base.span)
+                self.report(
+                    expr.span,
+                    msgs::check::NOT_INDEXABLE_HAS_TYPE_WHICH_IS
+                        .at(&[&self.quote(base.span), &base_ty]),
                 );
-                self.error(codes::NOT_INDEXABLE, expr.span, message);
                 Ty::Error
             }
             Ty::Named { name, .. } if matches!(name.as_str(), "Gen" | "Iter") => {
-                let message = format!(
-                    "`{}` has type `{base_ty}`, which does not implement `Indexed`",
-                    self.quote(base.span)
+                self.report(
+                    expr.span,
+                    msgs::check::MISSING_IMPL_HAS_TYPE_WHICH_DOES
+                        .at(&[&self.quote(base.span), &base_ty]),
                 );
-                self.error(codes::MISSING_IMPL, expr.span, message);
                 Ty::Error
             }
             Ty::Named { name, args } if name == "Range" && args.len() == 1 => args[0].clone(),
             Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
             Ty::Str => Ty::Char,
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Char | Ty::Fn { .. }) => {
-                let message = format!(
-                    "`{}` is {} and can't be indexed",
-                    self.quote(base.span),
-                    ty.widen().with_article()
-                );
                 let help = match ty {
                     Ty::Fn { .. } => "call it with `(...)`",
                     _ => "`[...]` reads arrays, maps, ranges and strings",
                 };
-                if let Some(diag) = self.error(codes::NOT_INDEXABLE, base.span, message) {
+                if let Some(diag) = self.report(
+                    base.span,
+                    msgs::check::NOT_INDEXABLE_IS_AND_CAN_T
+                        .at(&[&self.quote(base.span), &ty.widen().with_article()]),
+                ) {
                     diag.help = Some(help.into());
                 }
                 Ty::Error
@@ -673,17 +679,18 @@ impl Checker<'_> {
             .map(|e| self.quote(e.span))
             .collect();
         let fixed = format!("{}[{}]", self.quote(inner.span), parts.join(", "));
-        let message = format!(
-            "`{}[{}]` indexes twice; 0.3 writes one index with commas",
-            self.quote(base.span),
-            indices
-                .iter()
-                .map(|e| self.quote(e.span))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
         let span = base.span.to(indices.last().map_or(base.span, |e| e.span));
-        if let Some(diag) = self.error(codes::REMOVED_SYNTAX, span, message) {
+        if let Some(diag) = self.report(
+            span,
+            msgs::check::REMOVED_SYNTAX_INDEXES_TWICE_0_3.at(&[
+                &self.quote(base.span),
+                &indices
+                    .iter()
+                    .map(|e| self.quote(e.span))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ]),
+        ) {
             diag.help = Some(format!("write `{fixed}`"));
         }
         true

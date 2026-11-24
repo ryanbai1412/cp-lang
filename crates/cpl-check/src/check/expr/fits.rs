@@ -1,6 +1,7 @@
 //! Whether a type fits where another is wanted, and the diagnostics when it does not.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
     /// A struct value seen as a struct with fewer fields, when one is
@@ -246,11 +247,11 @@ impl<'a> Checker<'a> {
                 if an == "Range" && bn == "Range" && aa.len() == 1 && ba.len() == 1 {
                     if let (Ty::Pos(cut), Ty::Pos(dom)) = (&aa[0], &ba[0]) {
                         if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
-                            let msg = format!(
-                                "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
-                                self.quote(hi.span)
-                            );
-                            if let Some(diag) = self.error(codes::WRONG_DOMAIN, at.span, msg) {
+                            if let Some(diag) = self.report(
+                                at.span,
+                                msgs::check::WRONG_DOMAIN_ENDS_AT_A_POSITION
+                                    .at(&[&self.quote(hi.span)]),
+                            ) {
                                 diag.help = Some(
                                     "use half-open `..` for the positions between two cuts"
                                         .to_string(),
@@ -272,8 +273,11 @@ impl<'a> Checker<'a> {
             let out_low = matches!((vhi, want_lo), (Some(vh), Some(wl)) if vh < *wl);
             let out_high = matches!((vlo, want_hi), (Some(vl), Some(wh)) if vl > *wh);
             if out_low || out_high {
-                let msg = format!("`{}` is out of range for `{want}`", self.quote(at.span));
-                self.error(codes::RANGE_STORE_CONST, at.span, msg);
+                self.report(
+                    at.span,
+                    msgs::check::RANGE_STORE_CONST_IS_OUT_OF_RANGE
+                        .at(&[&self.quote(at.span), &want]),
+                );
                 return false;
             }
         }
@@ -303,12 +307,17 @@ impl<'a> Checker<'a> {
                             {
                                 if variants.iter().all(|(_, fs)| fs.is_empty()) {
                                     if items.len() != variants.len() {
-                                        let msg = format!(
-                                            "`{inner_want}` holds {} elements (one per `{ename}` variant), found {}",
-                                            variants.len(),
-                                            items.len()
+                                        self.report(
+                                            at.span,
+                                            msgs::check::TYPE_MISMATCH_HOLDS_ELEMENTS_ONE_PER.at(
+                                                &[
+                                                    &inner_want,
+                                                    &variants.len(),
+                                                    &ename,
+                                                    &items.len(),
+                                                ],
+                                            ),
                                         );
-                                        self.error(codes::TYPE_MISMATCH, at.span, msg);
                                         return false;
                                     }
                                     if elem_ok {
@@ -561,8 +570,10 @@ impl Checker<'_> {
         } else {
             domain.to_string()
         };
-        let message = format!("`{v}` is outside `{what}`, which is {lo}..={hi}");
-        if let Some(diag) = self.error(codes::RANGE_STORE_CONST, at.span, message) {
+        if let Some(diag) = self.report(
+            at.span,
+            msgs::check::RANGE_STORE_CONST_IS_OUTSIDE_WHICH_IS.at(&[&v, &what, &lo, &hi]),
+        ) {
             diag.help = Some(format!("use a literal in {lo}..={hi}"));
         }
     }

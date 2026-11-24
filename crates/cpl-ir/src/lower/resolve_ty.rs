@@ -2,6 +2,7 @@
 //! domains, and the ranges a read struct's fields carry.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn resolve_ty(&mut self, ty: &ast::Type) -> Ty {
@@ -355,10 +356,9 @@ impl<'a> Lowerer<'a> {
                     return self.gen_alias_spec(gaid, args, name.span, values)
                 }
                 _ => {
-                    self.error(
-                        codes::UNKNOWN_TYPE,
+                    self.report(
                         name.span,
-                        format!("`{}` is not a type", name.text),
+                        msgs::ir::UNKNOWN_TYPE_IS_NOT_A_TYPE.at(&[&name.text]),
                     );
                     Ty::Error
                 }
@@ -791,11 +791,7 @@ impl<'a> Lowerer<'a> {
                 Some(DimSpec::Int(Box::new(self.coerce(v, &Ty::Int, expr.span))))
             }
             _ => {
-                self.error(
-                    codes::UNKNOWN_TYPE,
-                    ty.span,
-                    "an array is indexed by a domain or a length: `[V]Int`, `[n]Int`",
-                );
+                self.report(ty.span, msgs::ir::UNKNOWN_TYPE_AN_ARRAY_IS_INDEXED.at(&[]));
                 None
             }
         }

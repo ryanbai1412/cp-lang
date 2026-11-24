@@ -2,6 +2,7 @@
 //! negative literal key, which never wraps (R07.2.17, decision 508).
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Expr, ExprKind, UnOp};
 
 impl Checker<'_> {
@@ -15,18 +16,19 @@ impl Checker<'_> {
         let ([Ty::Pos(_)], [index]) = (index_tys, indices) else {
             return;
         };
-        let message = format!(
-            "`{}` is indexed by `Int`, but `{}` is {}",
-            self.quote(base.span),
-            self.quote(index.span),
-            index_tys[0].with_article()
-        );
         let help = format!(
             "a `List` is indexed by number: write `{}[Int({})]`",
             self.quote(base.span),
             self.quote(index.span)
         );
-        if let Some(diag) = self.error(codes::WRONG_DOMAIN, index.span, message) {
+        if let Some(diag) = self.report(
+            index.span,
+            msgs::check::WRONG_DOMAIN_IS_INDEXED_BY_INT.at(&[
+                &self.quote(base.span),
+                &self.quote(index.span),
+                &index_tys[0].with_article(),
+            ]),
+        ) {
             diag.help = Some(help);
         }
     }
@@ -93,8 +95,10 @@ impl Checker<'_> {
             let help = format!("keys never wrap: `{k}` from the end is `{fix}`");
             (fix, help)
         };
-        let message = format!("`{a}[-{k}]`: keys never wrap, so a negative key is out of range");
-        if let Some(diag) = self.error(codes::NEGATIVE_LITERAL_INDEX, index.span, message) {
+        if let Some(diag) = self.report(
+            index.span,
+            msgs::check::NEGATIVE_LITERAL_INDEX_KEYS_NEVER_WRAP_SO.at(&[&a, &k]),
+        ) {
             diag.help = Some(format!("{help} (R07.2.17)"));
             diag.fix(format!("write `{fix}`"), expr.span, fix);
         }

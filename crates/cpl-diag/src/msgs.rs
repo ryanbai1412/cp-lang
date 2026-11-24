@@ -36,6 +36,32 @@ impl Msg {
     pub fn warning(&self, span: Span, args: &[&dyn Display]) -> Diagnostic {
         Diagnostic::warning(self.code, span, self.say(args))
     }
+
+    /// The row said with `args`, for a crate's own funnel to report.
+    pub fn at(&self, args: &[&dyn Display]) -> Said {
+        Said {
+            code: self.code,
+            text: self.say(args),
+        }
+    }
+}
+
+/// A row's text with its arguments filled. Only a row makes one, so a funnel
+/// that takes a `Said` takes no text of its own.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Said {
+    code: Code,
+    text: String,
+}
+
+impl Said {
+    pub fn code(&self) -> Code {
+        self.code
+    }
+
+    pub fn text(self) -> String {
+        self.text
+    }
 }
 
 /// `text` with each `{}` replaced by the next argument; `{{` and `}}` are
@@ -144,7 +170,7 @@ mod tests {
     fn no_message_is_written_twice() {
         let mut seen = std::collections::HashMap::new();
         for (file, m) in all() {
-            if let Some(other) = seen.insert(m.text, (file, m.key)) {
+            if let Some(other) = seen.insert((m.code.0, m.text), (file, m.key)) {
                 panic!("{file}::{} repeats {other:?}: {:?}", m.key, m.text);
             }
         }

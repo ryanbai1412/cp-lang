@@ -1,6 +1,7 @@
 //! Resolving written type arguments into concrete generic arguments.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// Resolves a list of AST type arguments into concrete `GenArg`s.
@@ -57,10 +58,9 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                self.error(
-                    codes::BAD_NUMBER,
+                self.report(
                     expr.span,
-                    "expected a compile-time constant integer",
+                    msgs::ir::BAD_NUMBER_EXPECTED_A_COMPILE_TIME.at(&[]),
                 );
                 GenArg::Int(1)
             }

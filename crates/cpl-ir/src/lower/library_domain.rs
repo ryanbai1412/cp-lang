@@ -3,6 +3,7 @@
 
 use super::call::Reduce;
 use super::*;
+use cpl_diag::msgs;
 use std::collections::BTreeSet;
 
 impl<'a> Lowerer<'a> {
@@ -401,11 +402,7 @@ impl<'a> Lowerer<'a> {
                 Ty::Struct(self.instantiate_struct(gid, vec![GenArg::Domain(d)]))
             }
             _ => {
-                self.error(
-                    codes::UNKNOWN_TYPE,
-                    span,
-                    "`Subset` is not in scope".to_string(),
-                );
+                self.report(span, msgs::ir::UNKNOWN_TYPE_SUBSET_IS_NOT_IN.at(&[]));
                 Ty::Error
             }
         }

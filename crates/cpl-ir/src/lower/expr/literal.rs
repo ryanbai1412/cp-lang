@@ -1,6 +1,7 @@
 //! Literals: maps, lists, strings and the bytes of literal text.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn map_lit(
@@ -139,11 +140,11 @@ impl<'a> Lowerer<'a> {
                             continue;
                         }
                         (ty, _, _) => {
-                            let message = format!(
-                                "`{written}` is not a number format this value takes: it is a `{}`",
-                                self.show(ty)
+                            self.report(
+                                e.span,
+                                msgs::ir::TYPE_MISMATCH_IS_NOT_A_NUMBER
+                                    .at(&[&written, &self.show(ty)]),
                             );
-                            self.error(codes::TYPE_MISMATCH, e.span, message);
                             self.help(help);
                             continue;
                         }
@@ -247,12 +248,13 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 };
                 if let Some(cells) = cells.filter(|&c| c != items.len() as i64) {
-                    let message = format!(
-                        "this array has {}, but the list gives {}",
-                        crate::lower::stmt::plural(cells, "cell"),
-                        crate::lower::stmt::plural(items.len() as i64, "value"),
+                    self.report(
+                        span,
+                        msgs::ir::TYPE_MISMATCH_THIS_ARRAY_HAS_BUT.at(&[
+                            &crate::lower::stmt::plural(cells, "cell"),
+                            &crate::lower::stmt::plural(items.len() as i64, "value"),
+                        ]),
                     );
-                    self.error(codes::TYPE_MISMATCH, span, message);
                     return self.err_expr(span);
                 }
                 let index_ty = match dims[0] {
@@ -301,11 +303,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let Some((first, rest)) = items.split_first() else {
-                    self.error(
-                        codes::TYPE_MISMATCH,
-                        span,
-                        "can't tell what this empty list holds",
-                    );
+                    self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHAT_2.at(&[]));
                     self.help("say the type where it is stored: `var xs: List<Int> = []`");
                     return self.err_expr(span);
                 };

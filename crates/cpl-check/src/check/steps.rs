@@ -1,6 +1,7 @@
 //! `i + 1` and other `?I` values used where a position of `I` is wanted.
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Arg, Expr, ExprKind, Name};
 
 impl Checker<'_> {
@@ -14,11 +15,10 @@ impl Checker<'_> {
             return false;
         }
         let public = self.public_foreign_twin(owner, &name.text);
-        let message = format!(
-            "`{}` is private to the module that declares `{owner}`",
-            name.text
-        );
-        if let Some(diag) = self.error(codes::PRIVATE_NAME, name.span, message) {
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::PRIVATE_NAME_IS_PRIVATE_TO_THE.at(&[&name.text, &owner]),
+        ) {
             if let Some(own) = public {
                 diag.help = Some(format!("`{owner}`'s public member is `{own}`"));
                 diag.fix(format!("write `{own}`"), name.span, own);
@@ -150,8 +150,8 @@ impl Checker<'_> {
         {
             return false;
         }
-        let message = format!("`{n}` is a type, not an operation to fold with");
-        if let Some(diag) = self.error(codes::TYPE_MISMATCH, op.span, message) {
+        if let Some(diag) = self.report(op.span, msgs::check::TYPE_MISMATCH_IS_A_TYPE_NOT.at(&[&n]))
+        {
             diag.help = Some(format!(
                 "fold one summary per element: `.map({n}.of).fold(+)` (decision 472)"
             ));
@@ -175,15 +175,19 @@ impl Checker<'_> {
             return None;
         }
         let acc = self.infer(&init.value);
-        let message = "`fold` takes one op; a seeded fold is `fold_from(init, f)`".to_string();
-        self.error(codes::WRONG_ARG_COUNT, name.span, message);
+        self.report(
+            name.span,
+            msgs::check::WRONG_ARG_COUNT_FOLD_TAKES_ONE_OP.at(&[]),
+        );
         Some(acc)
     }
 
     /// R07.9.2: `fold(op)` takes only an op with an identity; a plain fn folds with `reduce`.
     pub(super) fn fold_is_reduce(&mut self, name: &Name) {
-        let message = "`fold` takes an op with an identity, and a plain fn has none".to_string();
-        if let Some(diag) = self.error(codes::EMPTY_FOLD_NO_IDENTITY, name.span, message) {
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::EMPTY_FOLD_NO_IDENTITY_FOLD_TAKES_AN_OP.at(&[]),
+        ) {
             diag.help =
                 Some("`reduce(f)` folds without an identity and gives `None` when empty".into());
             diag.fix("write `reduce`", name.span, "reduce");
@@ -212,11 +216,13 @@ impl Checker<'_> {
             return;
         }
         let shown = self.quote(init.span);
-        let message = format!(
-            "`{shown}` is {}: a fold by a lambda has no identity, so an empty sequence gives `None`",
-            Ty::Optional(Box::new(declared.clone())).with_article()
-        );
-        if let Some(diag) = self.error(codes::EMPTY_FOLD_NO_IDENTITY, init.span, message) {
+        if let Some(diag) = self.report(
+            init.span,
+            msgs::check::EMPTY_FOLD_NO_IDENTITY_IS_A_FOLD_BY.at(&[
+                &shown,
+                &Ty::Optional(Box::new(declared.clone())).with_article(),
+            ]),
+        ) {
             diag.help = Some(format!("unwrap: `{shown}!`, or `?? d` for a default"));
             diag.fix("unwrap it with `!`", Span::point(init.span.end), "!");
         }
@@ -229,8 +235,10 @@ impl Checker<'_> {
         if name.text != "copy" || !owned {
             return false;
         }
-        let message = "`.copy()` is spelled `.clone()` since 0.3".to_string();
-        if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::REMOVED_SYNTAX_COPY_IS_SPELLED_CLONE.at(&[]),
+        ) {
             diag.help = Some(
                 "an owned copy is `.clone()`; `cpl migrate` rewrites every `.copy()` in a folder"
                     .into(),
@@ -255,16 +263,18 @@ impl Checker<'_> {
             Ty::Optional(_) => (left_expr, left),
             _ => (right_expr, right),
         };
-        let message = format!(
-            "`{}` is {}: optional values can't be ordered with `{op_str}`",
-            self.quote(at.span),
-            ty.with_article()
-        );
         let (l, r) = (
             unwrap(self, left_expr, left),
             unwrap(self, right_expr, right),
         );
-        if let Some(diag) = self.error(codes::OPTIONAL_COMPARE, at.span, message) {
+        if let Some(diag) = self.report(
+            at.span,
+            msgs::check::OPTIONAL_COMPARE_IS_OPTIONAL_VALUES_CAN.at(&[
+                &self.quote(at.span),
+                &ty.with_article(),
+                &op_str,
+            ]),
+        ) {
             diag.help = Some(format!(
                 "`None` has no order: unwrap first, `{l} {op_str} {r}`, or give a default with `??`"
             ));

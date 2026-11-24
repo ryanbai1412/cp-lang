@@ -3,6 +3,7 @@
 //! walk's `Seq` members.
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Expr, ExprKind, Name, Stmt, StmtKind};
 
 /// Members of an ordered core domain that a library domain does not derive.
@@ -15,8 +16,9 @@ impl Checker<'_> {
     pub(crate) fn walk_elem_ty(&mut self, iter: &Expr, iter_ty: &Ty) -> Ty {
         if matches!(iter_ty, Ty::Named { name, args } if name == "Range" && args.as_slice() == [Ty::Float])
         {
-            let message = "a range of `F64`s is an interval with no elements to walk".to_string();
-            if let Some(diag) = self.error(codes::TYPE_MISMATCH, iter.span, message) {
+            if let Some(diag) =
+                self.report(iter.span, msgs::check::TYPE_MISMATCH_A_RANGE_OF_F64.at(&[]))
+            {
                 diag.help = Some(
                     "search it with `.bsearch(ok, steps:)`, `.peak` or `.valley`, or walk an `Int` range and scale".into(),
                 );
@@ -89,8 +91,10 @@ impl Checker<'_> {
             return None;
         }
         if let Some(new) = index_rename(&name.text) {
-            let message = format!("{type_name} has no member `{}`", name.text);
-            if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+            if let Some(diag) = self.report(
+                name.span,
+                msgs::check::UNKNOWN_FIELD_HAS_NO_MEMBER.at(&[&type_name, &name.text]),
+            ) {
                 diag.help = Some(format!(
                     "a library domain's `{}` is `{new}` since 0.3",
                     name.text
@@ -126,10 +130,10 @@ impl Checker<'_> {
                     let known = matches!(self.bounds(init), (Some(lo), Some(hi)) if lo == hi);
                     if !known {
                         let value = self.quote(init.span);
-                        let message = format!(
-                            "`const count = {value}`: `const` is compile-time only, and `{value}` is known only at run time"
-                        );
-                        if let Some(diag) = self.error(codes::BAD_INDEX_IMPL, stmt.span, message) {
+                        if let Some(diag) = self.report(
+                            stmt.span,
+                            msgs::check::BAD_INDEX_IMPL_CONST_COUNT_CONST_IS.at(&[&value, &value]),
+                        ) {
                             diag.help = Some(format!(
                                 "write `let count = {value}`; an associated `let` is evaluated once, where the impl is declared, and is frozen from then on"
                             ));
@@ -150,12 +154,10 @@ impl Checker<'_> {
                             ),
                         };
                         if mutable {
-                            let message = format!(
-                                "`count` can't be sized by the var `{name}`: it could change after arrays are made"
-                            );
-                            if let Some(diag) =
-                                self.error(codes::BAD_INDEX_IMPL, init.span, message)
-                            {
+                            if let Some(diag) = self.report(
+                                init.span,
+                                msgs::check::BAD_INDEX_IMPL_COUNT_CAN_T_BE.at(&[&name]),
+                            ) {
                                 diag.help = Some(format!("freeze it first: `let n = {name}`"));
                             }
                         }
@@ -189,8 +191,10 @@ impl Checker<'_> {
             }
             _ => None,
         };
-        let message = format!("`impl Index` names this member `{new}`, not `{old}`");
-        if let Some(diag) = self.error(codes::BAD_INDEX_IMPL, span, message) {
+        if let Some(diag) = self.report(
+            span,
+            msgs::check::BAD_INDEX_IMPL_IMPL_INDEX_NAMES_THIS.at(&[&new, &old]),
+        ) {
             diag.help = Some(format!(
                 "rename `{old}` to `{new}`; user code reads it as `T.count`, `x.ord` or `T.nth(k)`"
             ));

@@ -3,6 +3,7 @@
 
 use super::lends::{flow_of, unparen, Flow};
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Expr, ExprKind, Stmt, StmtKind};
 
 /// An `if`, `match` or loop standing as a statement.
@@ -181,10 +182,10 @@ impl Checker<'_> {
             if reported || !self.declared_before(&src, body.span.start) {
                 continue;
             }
-            let message = format!(
-                "`{src}` moves here in one round of the loop, so the next round finds it already moved"
-            );
-            if let Some(diag) = self.error(codes::USE_AFTER_MOVE, at, message) {
+            if let Some(diag) = self.report(
+                at,
+                msgs::check::USE_AFTER_MOVE_MOVES_HERE_IN_ONE.at(&[&src]),
+            ) {
                 diag.help = Some(format!(
                     "move a copy each round: `{src}.clone()`, or declare `{src}` inside the loop"
                 ));

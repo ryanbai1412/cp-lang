@@ -2,6 +2,7 @@
 //! library code.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// Where an error at `span` is shown. One inside library code is
@@ -65,14 +66,8 @@ impl<'a> Lowerer<'a> {
         (text, line, note)
     }
 
-    /// Reports `msg` with `args` at `span`, as `error` does.
-    pub(super) fn report(
-        &mut self,
-        msg: &'static cpl_diag::msgs::Msg,
-        span: Span,
-        args: &[&dyn std::fmt::Display],
-    ) {
-        self.error(msg.code, span, msg.say(args));
+    pub(super) fn report(&mut self, span: Span, said: cpl_diag::msgs::Said) {
+        self.error(said.code(), span, said.text())
     }
 
     pub(super) fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
@@ -169,8 +164,10 @@ impl<'a> Lowerer<'a> {
     /// `a: Mod<P>`, a struct whose one field already has the target type,
     /// the help names the field, `a.v`.
     pub(super) fn bad_conversion(&mut self, to: &str, from: &Ty, span: Span) {
-        let message = format!("a `{}` can't be turned into a `{to}`", self.show(from));
-        self.error(codes::TYPE_MISMATCH, span, message);
+        self.report(
+            span,
+            msgs::ir::TYPE_MISMATCH_A_CAN_T_BE.at(&[&self.show(from), &to]),
+        );
         let Ty::Struct(s) = from else { return };
         let into = matches!(to, "Int" | "F64").then(|| {
             format!(
@@ -217,11 +214,10 @@ impl<'a> Lowerer<'a> {
     /// with `i: D` the offset is an `Int`, and the fix is `D.at(i - 1)`,
     /// the `?D` that is `None` off the end.
     pub(super) fn not_optional(&mut self, what: &str, value: &Expr, span: Span) {
-        let message = format!(
-            "`{what}` takes the value out of an optional, but this is a `{}`",
-            self.show(&value.ty)
+        self.report(
+            span,
+            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT_2.at(&[&what, &self.show(&value.ty)]),
         );
-        self.error(codes::TYPE_MISMATCH, span, message);
         let ExprKind::Binary(_, lhs, _) = &value.kind else {
             return;
         };
@@ -270,8 +266,7 @@ impl<'a> Lowerer<'a> {
                 format!("a range's ends are `Int`s or positions of one domain, not `{shown}`s");
             return self.error(codes::TYPE_MISMATCH, span, message);
         };
-        let message = format!("a range's ends can't be optional, and these are `{shown}`s");
-        self.error(codes::TYPE_MISMATCH, span, message);
+        self.report(span, msgs::ir::TYPE_MISMATCH_A_RANGE_S_ENDS.at(&[&shown]));
         let (Some(lo), Some(hi)) = (lo, hi) else {
             return;
         };

@@ -3,6 +3,7 @@
 //! means for a call's arguments (R05.9).
 
 use super::*;
+use cpl_diag::msgs;
 
 /// What a fn touches outside itself, read off its source: the outer names
 /// it changes and reads, and the fns it calls. A name is outer unless the
@@ -220,11 +221,10 @@ impl<'a> Checker<'a> {
             let Some((at, what)) = self.change_in(&arg.value) else {
                 continue;
             };
-            let message = format!(
-                "`debug(..)` is left out of the C++ that `cpl build` writes, and this {what}: \
-                 the program would do it in `cpl run` and not on the judge"
-            );
-            if let Some(diag) = self.error(codes::DEBUG_CHANGES, at, message) {
+            if let Some(diag) = self.report(
+                at,
+                msgs::check::DEBUG_CHANGES_DEBUG_IS_LEFT_OUT.at(&[&what]),
+            ) {
                 diag.help = Some("do it in a statement before, and show the result: `let x = ..` then `debug(x)`".to_string());
             }
         }
@@ -408,10 +408,10 @@ impl<'a> Checker<'a> {
                 hold.in_loop,
             );
             if in_loop {
-                let message = format!(
-                    "`{name}` can't be called here: it {what} `{root}`, and the `for` loop is going over `{root}`"
-                );
-                if let Some(diag) = self.error(codes::USED_WHILE_LENT, call.span, message) {
+                if let Some(diag) = self.report(
+                    call.span,
+                    msgs::check::USED_WHILE_LENT_CAN_T_BE_CALLED.at(&[&name, &what, &root, &root]),
+                ) {
                     diag.labels.push(cpl_diag::Label {
                         span: at,
                         message: format!("the loop goes over `{root}`"),
@@ -422,11 +422,17 @@ impl<'a> Checker<'a> {
                 }
                 return;
             }
-            let message = format!(
-                "`{name}` can't be called here: it {what} `{root}`, and `{root}` is {}lent to `{lent_to}` until its last use",
-                if mutable { "mutably " } else { "" },
-            );
-            if let Some(diag) = self.error(codes::USED_WHILE_LENT, call.span, message) {
+            if let Some(diag) = self.report(
+                call.span,
+                msgs::check::USED_WHILE_LENT_CAN_T_BE_CALLED_2.at(&[
+                    &name,
+                    &what,
+                    &root,
+                    &root,
+                    &if mutable { "mutably " } else { "" },
+                    &lent_to,
+                ]),
+            ) {
                 if at != ELSEWHERE {
                     diag.labels.push(cpl_diag::Label {
                         span: at,
@@ -460,11 +466,16 @@ impl<'a> Checker<'a> {
             // `var` it came from.
             if let Some(what) = does(self, &root) {
                 if arg.mutable {
-                    let message = format!(
-                        "`{}` can't be passed to `{name}`: `{name}` also {what} `{root}` directly, so it would reach the same storage under two names",
-                        show(&arg.value),
-                    );
-                    if let Some(diag) = self.error(codes::LENT_TWICE, arg.value.span, message) {
+                    if let Some(diag) = self.report(
+                        arg.value.span,
+                        msgs::check::LENT_TWICE_CAN_T_BE_PASSED.at(&[
+                            &show(&arg.value),
+                            &name,
+                            &name,
+                            &what,
+                            &root,
+                        ]),
+                    ) {
                         diag.help = Some(format!(
                             "pass everything `{name}` needs from `{root}` as parameters, or copy the value out first"
                         ));
@@ -478,12 +489,14 @@ impl<'a> Checker<'a> {
                 if j == k || !self.changed_by(&other.value).contains(&root) {
                     continue;
                 }
-                let message = format!(
-                    "`{}` changes `{root}` while `{}` is lent to this call",
-                    show(&other.value),
-                    show(&arg.value),
-                );
-                if let Some(diag) = self.error(codes::LENT_TWICE, other.value.span, message) {
+                if let Some(diag) = self.report(
+                    other.value.span,
+                    msgs::check::LENT_TWICE_CHANGES_WHILE_IS_LENT.at(&[
+                        &show(&other.value),
+                        &root,
+                        &show(&arg.value),
+                    ]),
+                ) {
                     diag.help = Some("do it in a statement before the call".into());
                 }
             }

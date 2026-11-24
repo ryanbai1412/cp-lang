@@ -29,6 +29,7 @@ use super::moves::{is_compound, nested_moves};
 use super::views::Keyed;
 use super::*;
 use crate::fx::HashSet;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Arg, BinOp, Block, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_block, walk_expr, walk_stmt, Visitor};
 
@@ -1452,10 +1453,10 @@ impl<'a> Checker<'a> {
             let at = hold.at;
             let until = hold.until;
             if is_capture {
-                let message = format!(
-                    "`{src}` can't be moved here: it is captured by `{lent_to}`, which is still used below"
-                );
-                if let Some(diag) = self.error(codes::MOVED_WHILE_CAPTURED, span, message) {
+                if let Some(diag) = self.report(
+                    span,
+                    msgs::check::MOVED_WHILE_CAPTURED_CAN_T_BE_MOVED.at(&[&src, &lent_to]),
+                ) {
                     if at != ELSEWHERE {
                         diag.labels.push(cpl_diag::Label {
                             span: at,
@@ -1474,10 +1475,10 @@ impl<'a> Checker<'a> {
                     diag.fix(format!("clone `{src}`"), Span::point(span.end), ".clone()");
                 }
             } else {
-                let message = format!(
-                    "`{src}` can't be moved here: it is lent to `{lent_to}` until its last use"
-                );
-                if let Some(diag) = self.error(codes::USED_WHILE_LENT, span, message) {
+                if let Some(diag) = self.report(
+                    span,
+                    msgs::check::USED_WHILE_LENT_CAN_T_BE_MOVED.at(&[&src, &lent_to]),
+                ) {
                     if at != ELSEWHERE {
                         diag.labels.push(cpl_diag::Label {
                             span: at,
@@ -1830,21 +1831,19 @@ impl<'a> Checker<'a> {
         };
         let mutable = written_in_stmts(rest).iter().any(|n| n == name);
         if mutable && read_only {
-            let message = format!(
-                "`{name}` is a read-only {kind} into `{}` and can't be modified",
-                place.root
-            );
-            if let Some(diag) = self.error(codes::ASSIGN_TO_LET, stmt.span, message) {
+            if let Some(diag) = self.report(
+                stmt.span,
+                msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY_3.at(&[&name, &kind, &place.root]),
+            ) {
                 diag.help = Some(
                     "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
                 );
             }
         } else if mutable && !place.root_mutable {
-            let message = format!(
-                "`{name}` is changed below, but `{}` is not a var, so it can only be lent for reading",
-                place.root
-            );
-            if let Some(diag) = self.error(codes::ASSIGN_TO_LET, stmt.span, message) {
+            if let Some(diag) = self.report(
+                stmt.span,
+                msgs::check::ASSIGN_TO_LET_IS_CHANGED_BELOW_BUT.at(&[&name, &place.root]),
+            ) {
                 diag.help = Some(format!("declare it with `var {}`", place.root));
             }
         }
@@ -2024,12 +2023,14 @@ impl<'a> Checker<'a> {
             self.lends.conflicts.push(e.span);
             if in_loop {
                 let root = place.root;
-                let message = format!(
-                    "`{}` can't be {} here: the `for` loop is going over `{root}`, and that lends it for reading until the loop ends",
-                    show(e),
-                    if write { "changed" } else { "used" },
-                );
-                if let Some(diag) = self.error(codes::USED_WHILE_LENT, e.span, message) {
+                if let Some(diag) = self.report(
+                    e.span,
+                    msgs::check::USED_WHILE_LENT_CAN_T_BE_HERE.at(&[
+                        &show(e),
+                        &if write { "changed" } else { "used" },
+                        &root,
+                    ]),
+                ) {
                     diag.labels.push(cpl_diag::Label {
                         span: at,
                         message: format!("the loop goes over `{root}`"),
@@ -2040,14 +2041,17 @@ impl<'a> Checker<'a> {
                 }
                 return;
             }
-            let message = format!(
-                "`{}` can't be {} here: `{}` is {}lent to `{name}` until its last use ({why})",
-                show(e),
-                if write { "changed" } else { "used" },
-                place.root,
-                if mutable { "mutably " } else { "" },
-            );
-            if let Some(diag) = self.error(codes::USED_WHILE_LENT, e.span, message) {
+            if let Some(diag) = self.report(
+                e.span,
+                msgs::check::USED_WHILE_LENT_CAN_T_BE_HERE_2.at(&[
+                    &show(e),
+                    &if write { "changed" } else { "used" },
+                    &place.root,
+                    &if mutable { "mutably " } else { "" },
+                    &name,
+                    &why,
+                ]),
+            ) {
                 if at != ELSEWHERE {
                     diag.labels.push(cpl_diag::Label {
                         span: at,

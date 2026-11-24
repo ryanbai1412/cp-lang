@@ -2,6 +2,7 @@
 //! the way a test has shown them to hold.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// Whether the step `e`, a `?I`, is known to stay inside `I`: the
@@ -106,15 +107,19 @@ impl<'a> Lowerer<'a> {
                     if self.sum_enums[&d].variants[tag].1.is_empty() {
                         return self.encode_sum_variant(d, tag, Vec::new(), span);
                     }
-                    let message = format!("the variant `{name}` holds values: write `{name}(...)`");
-                    self.error(codes::WRONG_ARG_COUNT, span, message);
+                    self.report(
+                        span,
+                        msgs::ir::WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES.at(&[&name, &name]),
+                    );
                     return self.err_expr(span);
                 }
                 if self.enums[id].variants[tag].1.is_empty() {
                     return self.mk(ExprKind::Variant(tag, Vec::new()), Ty::Enum(id), span);
                 }
-                let message = format!("the variant `{name}` holds values: write `{name}(...)`");
-                self.error(codes::WRONG_ARG_COUNT, span, message);
+                self.report(
+                    span,
+                    msgs::ir::WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES.at(&[&name, &name]),
+                );
             }
             Some(Sym::Fn(id)) => return self.fn_as_closure(id, hint, span),
             Some(Sym::GenFn(gfid)) => return self.gen_fn_as_closure(gfid, name, hint, span),
@@ -196,15 +201,13 @@ impl<'a> Lowerer<'a> {
                         return self.mk(ExprKind::Tuple(doms), ty, span);
                     }
                 }
-                let message = format!("`{name}` is a type, and a value is needed here");
-                self.error(codes::TYPE_MISMATCH, span, message);
+                self.report(span, msgs::ir::TYPE_MISMATCH_IS_A_TYPE_AND.at(&[&name]));
                 if m == 0 && matches!(ty_ast.kind, ast::TypeKind::Range { .. }) {
                     self.range_alias_as_domain(name, ty_ast.span.shift(offset));
                 }
             }
             Some(Sym::GenStruct(_) | Sym::Enum(_) | Sym::GenEnum(_) | Sym::GenAlias(_)) => {
-                let message = format!("`{name}` is a type, and a value is needed here");
-                self.error(codes::TYPE_MISMATCH, span, message);
+                self.report(span, msgs::ir::TYPE_MISMATCH_IS_A_TYPE_AND.at(&[&name]));
             }
             _ if name == "INF" => return self.mk(ExprKind::Int(INF), Ty::Int, span),
             _ if matches!(name, "min" | "max" | "some" | "Some") => {
@@ -232,12 +235,16 @@ impl<'a> Lowerer<'a> {
                         "it sees every top-level line down to the last `read()`; compute the rest inside the fn"
                     });
                 } else if self.judge {
-                    let message = format!("an `@interactor` can't see the solution's `{name}`");
-                    self.error(codes::UNRESOLVED_NAME, span, message);
+                    self.report(
+                        span,
+                        msgs::ir::UNRESOLVED_NAME_AN_INTERACTOR_CAN_T.at(&[&name]),
+                    );
                     self.help("the judge is a program of its own: it reads the hidden test with `read()` and shares only `const`s with the solution");
                 } else if !self.reported_an_error() {
-                    let message = format!("no value named `{name}` here");
-                    self.error(codes::UNRESOLVED_NAME, span, message);
+                    self.report(
+                        span,
+                        msgs::ir::UNRESOLVED_NAME_NO_VALUE_NAMED_HERE.at(&[&name]),
+                    );
                     self.help("a top-level `let` is visible only after the line that sets it");
                 }
             }

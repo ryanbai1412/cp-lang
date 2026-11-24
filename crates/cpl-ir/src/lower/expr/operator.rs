@@ -2,6 +2,7 @@
 //! (tropical) `+` and `-`.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn unary(
@@ -127,11 +128,10 @@ impl<'a> Lowerer<'a> {
                 self.cx.as_written = false;
                 let Ty::Opt(inner) = l.ty.clone() else {
                     if l.ty != Ty::Error {
-                        let message = format!(
-                            "`??` gives a default for an optional, but the left side is a `{}`",
-                            self.show(&l.ty)
+                        self.report(
+                            span,
+                            msgs::ir::BAD_OPERANDS_GIVES_A_DEFAULT_FOR.at(&[&self.show(&l.ty)]),
                         );
-                        self.error(codes::BAD_OPERANDS, span, message);
                         self.expr(rhs, None);
                     }
                     return self.err_expr(span);
@@ -146,10 +146,9 @@ impl<'a> Lowerer<'a> {
                     }] = block.stmts.as_slice()
                     {
                         if self.cx.way_out.take() != Some(span) {
-                            self.error(
-                                codes::UNSUPPORTED,
+                            self.report(
                                 rhs.span,
-                                "`?? return`, `?? break` and `?? continue` have to be the whole right side of a `let`, an assignment or a statement",
+                                msgs::ir::UNSUPPORTED_RETURN_BREAK_AND_CONTINUE.at(&[]),
                             );
                             self.help("give the value a name first: `let u = o ?? return`");
                             return self.err_expr(span);
@@ -422,13 +421,14 @@ impl<'a> Lowerer<'a> {
                 return self.list_repeat(l, r, elem, span);
             }
             _ => {
-                let message = format!(
-                    "`{}` can't be applied to `{}` and `{}`",
-                    op.text(),
-                    self.show(&l.ty),
-                    self.show(&r.ty)
+                self.report(
+                    span,
+                    msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED.at(&[
+                        &op.text(),
+                        &self.show(&l.ty),
+                        &self.show(&r.ty),
+                    ]),
                 );
-                self.error(codes::BAD_OPERANDS, span, message);
                 return self.err_expr(span);
             }
         };

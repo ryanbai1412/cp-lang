@@ -2,6 +2,7 @@
 //! hoist, and the values they build.
 
 use super::*;
+use cpl_diag::msgs;
 
 /// One `for` of a comprehension while its body is being lowered.
 pub(super) struct LoopFrame {
@@ -470,12 +471,10 @@ impl Lowerer<'_> {
             Whole::Tuples(groups) => groups.len(),
         };
         if params.len() != named {
-            let message = format!(
-                "this table runs over {} domains but names {} positions",
-                dims.len(),
-                params.len()
+            self.report(
+                span,
+                msgs::ir::WRONG_ARG_COUNT_THIS_TABLE_RUNS_OVER.at(&[&dims.len(), &params.len()]),
             );
-            self.error(codes::WRONG_ARG_COUNT, span, message);
             return self.err_expr(span);
         }
         let at = self.span(span);

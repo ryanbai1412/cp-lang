@@ -44,6 +44,7 @@ mod tuple_bound;
 mod variant;
 mod views;
 use cpl_diag::habits::{self, Kind};
+use cpl_diag::msgs;
 pub(crate) use stmt::runs;
 use views::{binding_kw, Keep};
 mod types;
@@ -57,7 +58,6 @@ use crate::def::Def;
 use crate::fx::HashMap;
 use crate::prelude;
 use crate::ty::Ty;
-use cpl_diag::msgs::Msg;
 use cpl_diag::{codes, Code, Diagnostic, Sink, Span};
 use cpl_syntax::narrow;
 use std::sync::Arc;
@@ -558,30 +558,16 @@ impl<'a> Checker<'a> {
         }
     }
 
+    fn report(&mut self, span: Span, said: cpl_diag::msgs::Said) -> Option<&mut Diagnostic> {
+        self.error(said.code(), span, said.text())
+    }
+
     fn error(&mut self, code: Code, span: Span, message: String) -> Option<&mut Diagnostic> {
         if self.sink.encloses_poison(span) {
             return None;
         }
         let before = self.sink.len();
         self.sink.push(Diagnostic::error(code, span, message));
-        (self.sink.len() > before)
-            .then(|| self.sink.last_mut())
-            .flatten()
-    }
-
-    /// Reports `msg` with `args` at `span`, unless an earlier error already
-    /// covers it; the reported diagnostic, to add help to.
-    fn report(
-        &mut self,
-        msg: &'static Msg,
-        span: Span,
-        args: &[&dyn std::fmt::Display],
-    ) -> Option<&mut Diagnostic> {
-        if self.sink.encloses_poison(span) {
-            return None;
-        }
-        let before = self.sink.len();
-        self.sink.push(msg.error(span, args));
         (self.sink.len() > before)
             .then(|| self.sink.last_mut())
             .flatten()
@@ -670,8 +656,11 @@ impl<'a> Checker<'a> {
     ) {
         let Some(p) = cpl_rt::Prim::from_id(name) else {
             let known: Vec<&str> = cpl_rt::TABLE.iter().map(|e| e.id).collect();
-            let message = format!("no intrinsic `{name}`; the table has {}", known.join(", "));
-            self.error(codes::UNKNOWN_INTRINSIC, at, message);
+            self.report(
+                at,
+                msgs::check::UNKNOWN_INTRINSIC_NO_INTRINSIC_THE_TABLE
+                    .at(&[&name, &known.join(", ")]),
+            );
             return;
         };
         let entry = p.entry();
@@ -685,13 +674,15 @@ impl<'a> Checker<'a> {
                     .is_some_and(|l| fits(&l.ty, want))
             });
         if !params_fit || !fits(ret, entry.result) {
-            let message = format!(
-                "`{name}` is `({}) -> {}`; `{}` must have that signature",
-                entry.params.join(", "),
-                entry.result,
-                f.name.text,
+            self.report(
+                at,
+                msgs::check::UNKNOWN_INTRINSIC_IS_MUST_HAVE_THAT.at(&[
+                    &name,
+                    &entry.params.join(", "),
+                    &entry.result,
+                    &f.name.text,
+                ]),
             );
-            self.error(codes::UNKNOWN_INTRINSIC, at, message);
         }
     }
 
@@ -758,10 +749,10 @@ impl<'a> Checker<'a> {
             }
             if let Some((decl_depth, decl_span)) = self.domain_depth(&d) {
                 if decl_depth > max_depth {
-                    let msg = format!(
-                        "a value of fresh domain `{d}` cannot escape its declaring block ({how})"
-                    );
-                    if let Some(diag) = self.error(codes::DOMAIN_ESCAPES, at, msg) {
+                    if let Some(diag) = self.report(
+                        at,
+                        msgs::check::DOMAIN_ESCAPES_A_VALUE_OF_FRESH.at(&[&d, &how]),
+                    ) {
                         diag.labels.push(cpl_diag::Label {
                             span: decl_span,
                             message: format!("domain `{d}` is declared here"),
@@ -913,10 +904,9 @@ impl<'a> Checker<'a> {
                     .any(|d| d.code == codes::USE_AFTER_MOVE && d.span == *at)
         });
         if let (true, Some(at)) = (self.assigning_name != Some(span), moved_at) {
-            if let Some(diag) = self.error(
-                codes::USE_AFTER_MOVE,
+            if let Some(diag) = self.report(
                 span,
-                format!("`{name}` was already moved"),
+                msgs::check::USE_AFTER_MOVE_WAS_ALREADY_MOVED.at(&[&name]),
             ) {
                 diag.help = Some(format!(
                     "use `{name}.clone()` where it was moved if you still need `{name}`"
@@ -1046,8 +1036,10 @@ impl<'a> Checker<'a> {
             return Ty::Unknown;
         }
         if let Some(replacement) = renamed_prefix_name(name) {
-            let msg = format!("`{name}` was replaced by `{replacement}`");
-            if let Some(diag) = self.error(codes::UNRESOLVED_NAME, span, msg) {
+            if let Some(diag) = self.report(
+                span,
+                msgs::check::UNRESOLVED_NAME_WAS_REPLACED_BY.at(&[&name, &replacement]),
+            ) {
                 diag.help = Some(format!(
                     "write `{replacement}` (or run `cpl fix` to migrate)"
                 ));
@@ -1381,9 +1373,11 @@ impl<'a> Checker<'a> {
                     .filter(|l| l.keyword == "let")
                     .map(|l| l.span);
                 let var_at = decl.and_then(|d| let_before(self.src, d));
-                let message = format!("`{root}` is not a var, so it can't be {action}");
                 let param = self.param_span(&root);
-                if let Some(diag) = self.error(codes::ASSIGN_TO_LET, expr.span, message) {
+                if let Some(diag) = self.report(
+                    expr.span,
+                    msgs::check::ASSIGN_TO_LET_IS_NOT_A_VAR.at(&[&root, &action]),
+                ) {
                     diag.help = Some(format!("declare it with `var {root}` to change it"));
                     mut_param_help(diag, &root, param);
                     if let Some(decl) = decl {

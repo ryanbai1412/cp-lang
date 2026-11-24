@@ -1,6 +1,7 @@
 //! Constructor calls and argument lists: matching args to params and fields.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl Checker<'_> {
     /// `P(read() for _ in fields(P))` or `P(f + 1 for f in fields(p))`:
@@ -41,10 +42,10 @@ impl Checker<'_> {
             let reflected = self.reflect(&ty);
             if let (Some((name, _)), Ty::Named { name: got, .. }) = (own, &ty) {
                 if got != name && !same_arity(&reflected) {
-                    let message = format!(
-                        "`fields` here walks values of the type it builds, `{name}`; this is a `{ty}`"
+                    self.report(
+                        v.value.span,
+                        msgs::check::TYPE_MISMATCH_FIELDS_HERE_WALKS_VALUES.at(&[&name, &ty]),
                     );
-                    self.error(codes::TYPE_MISMATCH, v.value.span, message);
                 }
             }
             shapes.push(reflected.ok().flatten());
@@ -55,10 +56,9 @@ impl Checker<'_> {
             self.error(codes::UNSUPPORTED, clause.iter.span, message);
         }
         if shapes.is_empty() && !matches!(clause.pat.kind, PatternKind::Wildcard) {
-            if let Some(d) = self.error(
-                codes::TYPE_MISMATCH,
+            if let Some(d) = self.report(
                 clause.pat.span,
-                "`fields` of a type has no values to bind".to_string(),
+                msgs::check::TYPE_MISMATCH_FIELDS_OF_A_TYPE.at(&[]),
             ) {
                 d.help = Some("write `_`, as in `P(read() for _ in fields(P))`".to_string());
             }
@@ -396,11 +396,15 @@ impl Checker<'_> {
                 && self.view_kind(&arg.value) == Some("slice")
             {
                 let arg_text = self.quote(arg.value.span);
-                let message = format!(
-                    "`{callee}` {verb} {}, but `{arg_text}` is a slice view, not a `List`",
-                    want.with_article(),
-                );
-                if let Some(diag) = self.error(codes::TYPE_MISMATCH, arg.value.span, message) {
+                if let Some(diag) = self.report(
+                    arg.value.span,
+                    msgs::check::TYPE_MISMATCH_BUT_IS_A_SLICE.at(&[
+                        &callee,
+                        &verb,
+                        &want.with_article(),
+                        &arg_text,
+                    ]),
+                ) {
                     diag.help = Some(format!(
                         "copy it with `List({arg_text})` or accept `Seq` / `Indexed`"
                     ));
@@ -427,36 +431,34 @@ impl Checker<'_> {
                 } else {
                     &param.name
                 };
-                let message = format!(
-                    "`{callee}` changes `{changed}`, so the argument must be passed as `mut {quoted}`"
-                );
                 let at = arg.value.span;
-                if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, at, message) {
+                if let Some(diag) = self.report(
+                    at,
+                    msgs::check::MISSING_MUT_AT_CALL_CHANGES_SO_THE_ARGUMENT
+                        .at(&[&callee, &changed, &quoted]),
+                ) {
                     diag.fix("add `mut`", Span::point(at.start), "mut ");
                 }
             } else if arg.mutable && !param.mutable && verb == "takes" {
                 let amp = Span::new(arg.value.span.start.saturating_sub(1), arg.value.span.start);
                 if self.text(amp) == "&" {
-                    let message = format!(
-                        "`{callee}` doesn't change `{}`, so the argument is passed without `&`",
-                        param.name
-                    );
-                    if let Some(diag) =
-                        self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message)
-                    {
+                    if let Some(diag) = self.report(
+                        arg.value.span,
+                        msgs::check::MISSING_MUT_AT_CALL_DOESN_T_CHANGE_SO
+                            .at(&[&callee, &param.name]),
+                    ) {
                         diag.fix("drop the `&`", amp, String::new());
                     }
                     continue;
                 }
-                let message = format!(
-                    "`{callee}` doesn't change `{}`, so `mut` doesn't belong here",
-                    param.name
-                );
                 let at = Span::new(arg.value.span.start.saturating_sub(4), arg.value.span.start);
                 let written = (self.src.get(at.start as usize..at.end as usize) == Some("mut "))
                     .then_some(at);
-                if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message)
-                {
+                if let Some(diag) = self.report(
+                    arg.value.span,
+                    msgs::check::MISSING_MUT_AT_CALL_DOESN_T_CHANGE_SO_2
+                        .at(&[&callee, &param.name]),
+                ) {
                     diag.help = Some(format!(
                         "remove `mut`, or declare the parameter `mut {}`",
                         param.name
@@ -476,11 +478,10 @@ impl Checker<'_> {
             } else if pack.is_empty() {
                 last.ty.unify(&Ty::Record(named_pack), bindings);
             } else {
-                let message = format!(
-                    "`..{}` takes positional or named arguments in one call, not both",
-                    last.name
+                self.report(
+                    call.span,
+                    msgs::check::TYPE_MISMATCH_TAKES_POSITIONAL_OR_NAMED.at(&[&last.name]),
                 );
-                self.error(codes::TYPE_MISMATCH, call.span, message);
             }
         }
         // A misspelled name already explains a missing argument.
@@ -499,16 +500,20 @@ impl Checker<'_> {
         };
         let given = args.iter().filter(|a| a.name.is_none()).count();
         if extra > 0 {
-            let message = format!(
-                "`{callee}` {verb} {}{listed}, but {} given",
-                plural(positional.len(), noun.0, noun.1),
-                if given == 1 {
-                    "1 was".to_string()
-                } else {
-                    format!("{given} were")
-                }
+            self.report(
+                call.span,
+                msgs::check::WRONG_ARG_COUNT_BUT_GIVEN.at(&[
+                    &callee,
+                    &verb,
+                    &plural(positional.len(), noun.0, noun.1),
+                    &listed,
+                    &if given == 1 {
+                        "1 was".to_string()
+                    } else {
+                        format!("{given} were")
+                    },
+                ]),
             );
-            self.error(codes::WRONG_ARG_COUNT, call.span, message);
             return;
         }
         let missing: Vec<String> = params

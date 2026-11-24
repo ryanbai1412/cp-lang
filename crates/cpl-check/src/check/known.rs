@@ -1,6 +1,7 @@
 //! Prelude fns the checker knows more about than their signatures say.
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Arg, Expr, ExprKind, UnOp};
 
 impl<'a> Checker<'a> {
@@ -42,8 +43,7 @@ impl<'a> Checker<'a> {
         }
         let at = arg.value.span;
         let title = format!("write `by: {}`", self.quote(at));
-        let message = "a sort takes its key by name: `by: x => ..`".to_string();
-        if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, at, message) {
+        if let Some(diag) = self.report(at, msgs::check::WRONG_ARG_COUNT_A_SORT_TAKES_ITS.at(&[])) {
             diag.fix(title, Span::new(at.start, at.start), "by: ");
         }
     }
@@ -59,8 +59,10 @@ impl<'a> Checker<'a> {
         if self.element_ty(over) != Ty::Bool || own {
             return;
         }
-        let message = "`count()` with no test counts every element, the falses too".to_string();
-        if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, call.span, message) {
+        if let Some(diag) = self.report(
+            call.span,
+            msgs::check::WRONG_ARG_COUNT_COUNT_WITH_NO_TEST.at(&[]),
+        ) {
             diag.help = Some("the trues are `count(x => x)`; every element is `len`".into());
         }
     }
@@ -166,11 +168,11 @@ impl<'a> Checker<'a> {
                             if let [Ty::Pos(d)] = index.as_slice() {
                                 if let Some(prev) = first_dom {
                                     if prev != d {
-                                        let message = format!(
-                                            "`zip` expects matching domains, but `{}` is indexed by `{d}` instead of `{prev}`",
-                                            self.quote(arg.value.span)
+                                        self.report(
+                                            arg.value.span,
+                                            msgs::check::WRONG_DOMAIN_ZIP_EXPECTS_MATCHING_DOMAINS
+                                                .at(&[&self.quote(arg.value.span), &d, &prev]),
                                         );
-                                        self.error(codes::WRONG_DOMAIN, arg.value.span, message);
                                     }
                                 } else {
                                     first_dom = Some(d.as_str());
@@ -205,9 +207,10 @@ impl<'a> Checker<'a> {
             ("sum", [over]) => {
                 let elem = self.element_ty(over);
                 if matches!(elem, Ty::Optional(_)) {
-                    let message = format!("`sum` adds numbers, not {}", elem.with_article());
-                    if let Some(diag) = self.error(codes::BAD_OPERANDS, args[0].value.span, message)
-                    {
+                    if let Some(diag) = self.report(
+                        args[0].value.span,
+                        msgs::check::BAD_OPERANDS_SUM_ADDS_NUMBERS_NOT.at(&[&elem.with_article()]),
+                    ) {
                         diag.help = Some(
                             "`sum` does not skip or absorb `None`: add `x ?? 0`, or filter with `if let`".into(),
                         );
@@ -222,9 +225,6 @@ impl<'a> Checker<'a> {
                 Some(Ty::min_max_of(self.element_ty(over)))
             }
             ("max" | "min", [_]) => {
-                let message = format!(
-                    "`{name}` takes 2 arguments, but 1 was given; use `.{name}()` on a sequence"
-                );
                 let xs = self.text(args[0].value.span);
                 let xs = if xs.contains(' ') && !xs.starts_with('[') {
                     format!("({xs})")
@@ -232,7 +232,10 @@ impl<'a> Checker<'a> {
                     xs.to_string()
                 };
                 let ours = format!("{xs}.{name}()!");
-                if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, call.span, message) {
+                if let Some(diag) = self.report(
+                    call.span,
+                    msgs::check::WRONG_ARG_COUNT_TAKES_2_ARGUMENTS_BUT.at(&[&name, &name]),
+                ) {
                     diag.fix(format!("write `{ours}`"), call.span, ours);
                 }
                 Some(Ty::Error)
@@ -374,10 +377,10 @@ impl<'a> Checker<'a> {
                         .iter()
                         .map(|(v, _)| format!("@tag({v:?}) {v}"))
                         .collect();
-                    let message = format!(
-                        "reading a `{name}` needs to know how its variants are written in the input"
-                    );
-                    if let Some(diag) = self.error(codes::TYPE_MISMATCH, init.span, message) {
+                    if let Some(diag) = self.report(
+                        init.span,
+                        msgs::check::TYPE_MISMATCH_READING_A_NEEDS_TO.at(&[&name]),
+                    ) {
                         diag.help = Some(format!(
                             "write each variant's token: `{}`",
                             tags.join(" | ")
@@ -392,8 +395,8 @@ impl<'a> Checker<'a> {
     /// `Bool` is not an input token: a judge spells yes and no its own way
     /// (R10.2.3).
     pub(crate) fn not_a_token_type(&mut self, span: Span) {
-        let message = "`read()` can't read a `Bool`: it is not a token type".to_string();
-        if let Some(diag) = self.error(codes::NOT_A_TOKEN_TYPE, span, message) {
+        if let Some(diag) = self.report(span, msgs::check::NOT_A_TOKEN_TYPE_READ_CAN_T_READ.at(&[]))
+        {
             diag.help = Some("read a `Str` and compare it: `read<Str>() == \"YES\"`".to_string());
         }
     }
@@ -414,12 +417,16 @@ impl<'a> Checker<'a> {
             return *ret;
         };
         let noun = if given == 1 { "argument" } else { "arguments" };
-        let message = format!(
-            "`{method}` calls `{}` with {given} {noun}, but its parameter `{}` has no default",
-            self.quote(arg.span),
-            missing.name,
-        );
-        if let Some(diag) = self.error(codes::TYPE_MISMATCH, arg.span, message) {
+        if let Some(diag) = self.report(
+            arg.span,
+            msgs::check::TYPE_MISMATCH_CALLS_WITH_BUT_ITS.at(&[
+                &method,
+                &self.quote(arg.span),
+                &given,
+                &noun,
+                &missing.name,
+            ]),
+        ) {
             diag.help = Some(format!(
                 "give `{}` a default, or pass a lambda that supplies it",
                 missing.name
@@ -433,8 +440,11 @@ impl<'a> Checker<'a> {
     pub(crate) fn lambda_takes_elem(&mut self, params: usize, elem: &Ty, span: Span) -> Ty {
         let fields = elem.param_fields().map_or(1, |f| f.len());
         if params != fields {
-            let message = format!("lambda takes {params} parameters, but `{elem}` has {fields}");
-            self.error(codes::WRONG_ARG_COUNT, span, message);
+            self.report(
+                span,
+                msgs::check::WRONG_ARG_COUNT_LAMBDA_TAKES_PARAMETERS_BUT
+                    .at(&[&params, &elem, &fields]),
+            );
         }
         Ty::Unknown
     }
@@ -456,16 +466,20 @@ impl<'a> Checker<'a> {
             .map(|t| format!("`{t}`"))
             .collect::<Vec<_>>()
             .join(", ");
-        let message = format!(
-            "this lambda takes {} parameters, but the call passes it {passed} {noun}: {what}",
-            params.len()
-        );
         let help = if passed == 1 {
             "take one parameter".to_string()
         } else {
             format!("take {passed} parameters")
         };
-        if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, first.span.to(last.span), message) {
+        if let Some(diag) = self.report(
+            first.span.to(last.span),
+            msgs::check::WRONG_ARG_COUNT_THIS_LAMBDA_TAKES_PARAMETERS.at(&[
+                &params.len(),
+                &passed,
+                &noun,
+                &what,
+            ]),
+        ) {
             diag.help = Some(help);
         }
     }

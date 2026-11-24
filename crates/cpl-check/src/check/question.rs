@@ -1,6 +1,7 @@
 //! `?` and its extent (R02.4.7), and `!` on a whole array or list (R02.4.8).
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{ExprKind, Stmt, StmtKind};
 
 impl Checker<'_> {
@@ -12,15 +13,14 @@ impl Checker<'_> {
         }
         if let StmtKind::Expr(expr) = &stmt.kind {
             if let ExprKind::Try(inner) = &expr.kind {
-                let message = format!(
-                    "the result of `{}` is dropped: `?` makes its expression `None`, it never returns early",
-                    self.quote(expr.span)
-                );
                 let help = format!(
                     "to leave on `None`, bind it: `let v = {} else: return None` (R02.4.7)",
                     self.quote(inner.span)
                 );
-                if let Some(diag) = self.error(codes::DROPPED_QUESTION, expr.span, message) {
+                if let Some(diag) = self.report(
+                    expr.span,
+                    msgs::check::DROPPED_QUESTION_THE_RESULT_OF_IS.at(&[&self.quote(expr.span)]),
+                ) {
                     diag.help = Some(help);
                 }
             }

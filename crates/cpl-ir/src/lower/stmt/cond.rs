@@ -1,6 +1,7 @@
 //! `if`, `if let`, `match` and the pattern tests they lower to.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn if_chain(
@@ -428,20 +429,19 @@ impl<'a> Lowerer<'a> {
                 if path.len() == 1 && name.text == "some" {
                     let Ty::Opt(inner_ty) = value.ty.clone() else {
                         if value.ty != Ty::Error {
-                            let message = format!(
-                                "`some(...)` matches an optional, but the value is a `{}`",
-                                self.show(&value.ty)
+                            self.report(
+                                pat.span,
+                                msgs::ir::TYPE_MISMATCH_SOME_MATCHES_AN_OPTIONAL
+                                    .at(&[&self.show(&value.ty)]),
                             );
-                            self.error(codes::TYPE_MISMATCH, pat.span, message);
                         }
                         return None;
                     };
                     if args.len() != 1 {
-                        let message = format!(
-                            "`some` holds 1 value, but this pattern names {}",
-                            args.len()
+                        self.report(
+                            pat.span,
+                            msgs::ir::WRONG_ARG_COUNT_SOME_HOLDS_1_VALUE.at(&[&args.len()]),
                         );
-                        self.error(codes::WRONG_ARG_COUNT, pat.span, message);
                         return None;
                     }
                     let is_some = self.mk_is_some(value.clone(), Ty::Bool, pat.span);
@@ -459,13 +459,14 @@ impl<'a> Lowerer<'a> {
                         };
                         let factors = &info.variants[tag].1;
                         if !args.is_empty() && factors.len() != args.len() {
-                            let message = format!(
-                                "`{}` holds {} values, but this pattern names {}",
-                                name.text,
-                                factors.len(),
-                                args.len()
+                            self.report(
+                                pat.span,
+                                msgs::ir::WRONG_ARG_COUNT_HOLDS_VALUES_BUT_THIS.at(&[
+                                    &name.text,
+                                    &factors.len(),
+                                    &args.len(),
+                                ]),
                             );
-                            self.error(codes::WRONG_ARG_COUNT, pat.span, message);
                             return None;
                         }
                         let mut test = Some(self.is_sum_variant(d, tag, value.clone(), pat.span));
@@ -479,12 +480,11 @@ impl<'a> Lowerer<'a> {
                 }
                 let Ty::Enum(id) = value.ty else {
                     if value.ty != Ty::Error {
-                        let message = format!(
-                            "`{}` is a variant, but the value matched is a `{}`",
-                            name.text,
-                            self.show(&value.ty)
+                        self.report(
+                            pat.span,
+                            msgs::check::TYPE_MISMATCH_IS_A_VARIANT_BUT
+                                .at(&[&name.text, &self.show(&value.ty)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, pat.span, message);
                     }
                     return None;
                 };
@@ -497,13 +497,14 @@ impl<'a> Lowerer<'a> {
                 };
                 let fields = variants[tag].1.clone();
                 if !args.is_empty() && fields.len() != args.len() {
-                    let message = format!(
-                        "`{}` holds {} values, but this pattern names {}",
-                        name.text,
-                        fields.len(),
-                        args.len()
+                    self.report(
+                        pat.span,
+                        msgs::ir::WRONG_ARG_COUNT_HOLDS_VALUES_BUT_THIS.at(&[
+                            &name.text,
+                            &fields.len(),
+                            &args.len(),
+                        ]),
                     );
-                    self.error(codes::WRONG_ARG_COUNT, pat.span, message);
                     return None;
                 }
                 let mut test = Some(Expr {
@@ -528,12 +529,11 @@ impl<'a> Lowerer<'a> {
             ast::PatternKind::Tuple(pats) => {
                 let Some(fields) = value.ty.fields().filter(|f| f.len() == pats.len()) else {
                     if value.ty != Ty::Error {
-                        let message = format!(
-                            "a pattern of {} parts can't match a `{}`",
-                            pats.len(),
-                            self.show(&value.ty)
+                        self.report(
+                            pat.span,
+                            msgs::ir::TYPE_MISMATCH_A_PATTERN_OF_PARTS
+                                .at(&[&pats.len(), &self.show(&value.ty)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, pat.span, message);
                     }
                     return None;
                 };

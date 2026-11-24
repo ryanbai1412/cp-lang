@@ -1,6 +1,7 @@
 //! Fields and members, and the items/pairs/projection heads of a walk.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn field(
@@ -169,10 +170,9 @@ impl<'a> Lowerer<'a> {
                     }
                     Some(Sym::Fn(id)) => return self.fn_as_closure(id, hint, span),
                     _ => {
-                        self.error(
-                            codes::UNKNOWN_FIELD,
+                        self.report(
                             name.span,
-                            format!("module has no member `{}`", name.text),
+                            msgs::ir::UNKNOWN_FIELD_MODULE_HAS_NO_MEMBER.at(&[&name.text]),
                         );
                         return self.err_expr(span);
                     }
@@ -264,11 +264,11 @@ impl<'a> Lowerer<'a> {
                         self.mk(ExprKind::Variant(tag, Vec::new()), Ty::Enum(id), span)
                     }
                     Some(_) => {
-                        let message = format!(
-                            "the variant `{}` holds values: write `{}(...)`",
-                            name.text, name.text
+                        self.report(
+                            span,
+                            msgs::ir::WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES
+                                .at(&[&name.text, &name.text]),
                         );
-                        self.error(codes::WRONG_ARG_COUNT, span, message);
                         self.err_expr(span)
                     }
                     None if self.unit_enum(id) => self.enum_seq(base, id, name, None, span),
@@ -356,8 +356,10 @@ impl<'a> Lowerer<'a> {
                     if matches!(name.text.as_str(), "zero" | "one" | "MAX" | "MIN")
                         && !matches!(ty, Ty::Error)
                     {
-                        let message = format!("{} has no `{}`", self.a_ty(&ty), name.text);
-                        self.error(codes::MISSING_IMPL, span, message);
+                        self.report(
+                            span,
+                            msgs::ir::MISSING_IMPL_HAS_NO.at(&[&self.a_ty(&ty), &name.text]),
+                        );
                         return self.err_expr(span);
                     }
                 }
@@ -469,10 +471,9 @@ impl<'a> Lowerer<'a> {
                     // A product position is a plain vertex: its own `Target::to`.
                     value
                 } else {
-                    self.error(
-                        codes::UNKNOWN_FIELD,
+                    self.report(
                         name.span,
-                        format!("`{}` has no field `{}`", self.show(&ty), field),
+                        msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD.at(&[&self.show(&ty), &field]),
                     );
                     self.err_expr(span)
                 }
@@ -708,11 +709,7 @@ impl<'a> Lowerer<'a> {
                     })
                     .collect();
                 let Some(factors) = factors else {
-                    self.error(
-                        codes::UNSUPPORTED,
-                        span,
-                        "the keys of a grid with an integer axis aren't supported yet",
-                    );
+                    self.report(span, msgs::ir::UNSUPPORTED_THE_KEYS_OF_A.at(&[]));
                     return self.err_expr(span);
                 };
                 let p = self.intern_anon_product_domain(factors);
@@ -969,8 +966,10 @@ impl<'a> Lowerer<'a> {
                 {
                     return res;
                 }
-                let message = format!("{} has no member `{}`", self.a_ty(&ty), name.text);
-                self.error(codes::UNKNOWN_FIELD, name.span, message);
+                self.report(
+                    name.span,
+                    msgs::check::UNKNOWN_FIELD_HAS_NO_MEMBER.at(&[&self.a_ty(&ty), &name.text]),
+                );
                 self.member_typo(&ty, &name.text, name.span);
                 match (&ty, name.text.as_str()) {
                     // An arc of a graph built from a list of pairs is the

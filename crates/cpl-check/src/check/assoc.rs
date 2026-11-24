@@ -4,6 +4,7 @@
 
 use super::types::type_head;
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Stmt, StmtKind};
 
 /// The associated types a trait body declares, each with its bound's traits
@@ -147,8 +148,11 @@ impl Checker<'_> {
             .collect();
         for name in &chosen {
             if !assoc.contains(&name.text) {
-                let message = format!("`{trait_text}` declares no associated type `{}`", name.text);
-                if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                if let Some(diag) = self.report(
+                    name.span,
+                    msgs::check::UNKNOWN_FIELD_DECLARES_NO_ASSOCIATED_TYPE
+                        .at(&[&trait_text, &name.text]),
+                ) {
                     diag.help = Some(match assoc.is_empty() {
                         true => format!("`{trait_text}` declares no associated types"),
                         false => format!("it declares {}", super::expr::list_names(&assoc)),
@@ -174,11 +178,15 @@ impl Checker<'_> {
                 if self.implements_trait(&chosen, b) {
                     continue;
                 }
-                let message = format!(
-                    "`{chosen}` does not implement `{b}`, which `{trait_text}` requires of `{}`",
-                    name.text
-                );
-                if let Some(diag) = self.error(codes::MISSING_IMPL, ty.span, message) {
+                if let Some(diag) = self.report(
+                    ty.span,
+                    msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_WHICH.at(&[
+                        &chosen,
+                        &b,
+                        &trait_text,
+                        &name.text,
+                    ]),
+                ) {
                     diag.help = Some(format!(
                         "choose a type that implements `{b}`: the trait declares `type {}: {b}`",
                         name.text
@@ -193,13 +201,15 @@ impl Checker<'_> {
             .map(|(a, ..)| a.clone())
             .collect();
         if !missing.is_empty() {
-            let message = format!(
-                "`impl {trait_text} for {}` does not choose {}",
-                self.quote(target.span),
-                super::expr::list_names(&missing)
-            );
             let span = trait_ty.span.to(target.span);
-            if let Some(diag) = self.error(codes::MISSING_IMPL, span, message) {
+            if let Some(diag) = self.report(
+                span,
+                msgs::check::MISSING_IMPL_IMPL_FOR_DOES_NOT.at(&[
+                    &trait_text,
+                    &self.quote(target.span),
+                    &super::expr::list_names(&missing),
+                ]),
+            ) {
                 diag.help = Some(format!(
                     "write `type {} = ...` in the impl: each impl chooses its trait's associated types",
                     missing[0]

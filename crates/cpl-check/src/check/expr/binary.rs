@@ -1,6 +1,7 @@
 //! Binary operators: arithmetic, comparison chains, ranges and coalescing.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
     pub(super) fn bad_operand(&mut self, ty: &Ty, expr: &Expr, op: &str) -> Ty {
@@ -8,12 +9,14 @@ impl<'a> Checker<'a> {
             return ty.clone();
         }
         if matches!(ty, Ty::Bool | Ty::Str) {
-            let message = format!(
-                "`{op}` needs a number, but `{}` is {}",
-                self.quote(expr.span),
-                ty.with_article()
+            self.report(
+                expr.span,
+                msgs::check::BAD_OPERANDS_NEEDS_A_NUMBER_BUT.at(&[
+                    &op,
+                    &self.quote(expr.span),
+                    &ty.with_article(),
+                ]),
             );
-            self.error(codes::BAD_OPERANDS, expr.span, message);
             return Ty::Error;
         }
         Ty::Unknown
@@ -48,11 +51,14 @@ impl<'a> Checker<'a> {
             }
             if let Some(trait_name) = trait_name {
                 if !self.param_has_bound(param, trait_name) {
-                    let message = format!(
-                        "`{}` requires `{param}: {trait_name}`, which is not in the bounds",
-                        op.text()
+                    self.report(
+                        op_span,
+                        msgs::check::MISSING_IMPL_REQUIRES_WHICH_IS_NOT.at(&[
+                            &op.text(),
+                            &param,
+                            &trait_name,
+                        ]),
                     );
-                    self.error(codes::MISSING_IMPL, op_span, message);
                     self.infer(rhs);
                     return Ty::Error;
                 }
@@ -90,11 +96,9 @@ impl<'a> Checker<'a> {
                     );
                     let step = matches!(self.infer(first), Ty::Pos(_)) || left.is_vague();
                     if arithmetic && !step && !matches!(rhs.kind, ExprKind::Block(_)) {
-                        if let Some(diag) = self.error(
-                            codes::UNPARENTHESIZED_COALESCE,
-                            lhs.span,
-                            "`??` mixed with `+ - * / %` needs parentheses".to_string(),
-                        ) {
+                        if let Some(diag) =
+                            self.report(lhs.span, msgs::syntax::COALESCE_MIXED.at(&[]))
+                        {
                             diag.help = Some(
                                 "write `(a ?? 0) + b` for a default on `a` alone, or `(a + b) ?? 0` for a default on the sum".into(),
                             );
@@ -147,11 +151,14 @@ impl<'a> Checker<'a> {
                     })
                     .collect();
                 if matching.is_empty() {
-                    let message = format!(
-                        "`{}` needs `impl {trait_name} for {owner}`, and there is none",
-                        op.text()
-                    );
-                    if let Some(diag) = self.error(codes::MISSING_IMPL, op_span, message) {
+                    if let Some(diag) = self.report(
+                        op_span,
+                        msgs::check::MISSING_IMPL_NEEDS_IMPL_FOR_AND.at(&[
+                            &op.text(),
+                            &trait_name,
+                            &owner,
+                        ]),
+                    ) {
                         diag.help = Some(format!(
                             "an operator on a struct is the trait's fn: write `impl {trait_name} for {owner}`"
                         ));
@@ -171,8 +178,14 @@ impl<'a> Checker<'a> {
                     None if right == Ty::Error || right.is_vague() => left,
                     None if matches!((&left, &right), (Ty::Named { name: a, .. }, Ty::Named { name: b, .. }) if a == b) =>
                     {
-                        let message = format!("`{}` mixes a {left} and a {right}", op.text());
-                        self.error(codes::TYPE_MISMATCH, op_span, message);
+                        self.report(
+                            op_span,
+                            msgs::check::TYPE_MISMATCH_MIXES_A_AND_A.at(&[
+                                &op.text(),
+                                &left,
+                                &right,
+                            ]),
+                        );
                         Ty::Error
                     }
                     None => {
@@ -212,8 +225,10 @@ impl<'a> Checker<'a> {
             // beside an `I128` or a `U64` becomes one.
             BinOp::Shl | BinOp::Shr if left.is_int() && right.is_int() => left.widen(),
             _ if matches!((&left, &right), (Ty::I128, Ty::U64) | (Ty::U64, Ty::I128)) => {
-                let message = format!("`{}` can't combine an `I128` and a `U64`", op.text());
-                if let Some(diag) = self.error(codes::BAD_OPERANDS, op_span, message) {
+                if let Some(diag) = self.report(
+                    op_span,
+                    msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AN.at(&[&op.text()]),
+                ) {
                     diag.help = Some("say which one the result is: `I128(x)` or `U64(x)`".into());
                 }
                 Ty::Error
@@ -263,13 +278,14 @@ impl<'a> Checker<'a> {
                         (BinOp::Mul, l, Ty::Str) if l.is_int() => self.repeat_fix(rhs, lhs),
                         _ => None,
                     };
-                    let message = format!(
-                        "`{}` can't combine {} and {}",
-                        op.text(),
-                        left.widen().with_article(),
-                        right.widen().with_article()
-                    );
-                    if let Some(diag) = self.error(codes::BAD_OPERANDS, op_span, message) {
+                    if let Some(diag) = self.report(
+                        op_span,
+                        msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AND.at(&[
+                            &op.text(),
+                            &left.widen().with_article(),
+                            &right.widen().with_article(),
+                        ]),
+                    ) {
                         advice::bad_operands(diag, (op, op_span), (&left, &right), into_string);
                     }
                     return Ty::Error;
@@ -299,8 +315,10 @@ impl<'a> Checker<'a> {
         };
         if let (Some(a), Some(b)) = (domain(lo_ty), domain(hi_ty)) {
             if a != b {
-                let message = format!("range between {a} and {b}");
-                if let Some(diag) = self.error(codes::WRONG_DOMAIN, range.span, message) {
+                if let Some(diag) = self.report(
+                    range.span,
+                    msgs::check::WRONG_DOMAIN_RANGE_BETWEEN_AND.at(&[&a, &b]),
+                ) {
                     diag.help = Some("both ends of a range are in one domain".into());
                 }
                 return;
@@ -394,8 +412,10 @@ impl<'a> Checker<'a> {
             };
             if let Some(trait_name) = req {
                 if !self.implements_trait(left, trait_name) {
-                    let message = format!("`{left}` does not implement `{trait_name}`");
-                    self.error(codes::MISSING_IMPL, left_expr.span, message);
+                    self.report(
+                        left_expr.span,
+                        msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT.at(&[&left, &trait_name]),
+                    );
                     return;
                 }
             }
@@ -406,17 +426,14 @@ impl<'a> Checker<'a> {
         if a == b {
             return;
         }
-        let message = format!(
-            "`{}` is {} and `{}` is {}; positions of different domains can't be compared",
-            self.quote(left_expr.span),
-            left.with_article(),
-            self.quote(right_expr.span),
-            right.with_article()
-        );
-        self.error(
-            codes::WRONG_DOMAIN,
+        self.report(
             left_expr.span.to(right_expr.span),
-            message,
+            msgs::check::WRONG_DOMAIN_IS_AND_IS_POSITIONS.at(&[
+                &self.quote(left_expr.span),
+                &left.with_article(),
+                &self.quote(right_expr.span),
+                &right.with_article(),
+            ]),
         );
     }
 }
@@ -456,8 +473,10 @@ impl Checker<'_> {
             }
         }
         let sign = if bin == BinOp::Add { "+" } else { "-" };
-        let message = format!("`{sign}=` can't be applied to {}", target_ty.with_article());
-        if let Some(diag) = self.error(codes::BAD_OPERANDS, target.span, message) {
+        if let Some(diag) = self.report(
+            target.span,
+            msgs::check::BAD_OPERANDS_CAN_T_BE_APPLIED.at(&[&sign, &target_ty.with_article()]),
+        ) {
             diag.help = Some(format!(
                 "write `x = x {sign} y` when `None` should stay `None`, or `x min= y + w` for a transition"
             ));

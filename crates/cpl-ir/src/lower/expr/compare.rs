@@ -2,6 +2,7 @@
 //! left to right, and stops at the first false link. (R01.5.3)
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn compare_sides(
@@ -239,17 +240,15 @@ impl<'a> Lowerer<'a> {
         let _ = (l_span, r_span);
         if !matches!(op, CmpOp::Eq | CmpOp::Ne) {
             if matches!(l.ty, Ty::Opt(_)) {
-                self.error(
-                    codes::OPTIONAL_COMPARE,
-                    span,
-                    "an optional has no order: `none` is neither small nor large",
-                );
+                self.report(span, msgs::ir::OPTIONAL_COMPARE_AN_OPTIONAL_HAS_NO.at(&[]));
                 self.help("give it a value first: `(x ?? INF) < y`");
                 return self.err_expr(span);
             }
             if !self.ordered(&l.ty) {
-                let message = format!("a `{}` has no order to compare by", self.show(&l.ty));
-                self.error(codes::BAD_OPERANDS, span, message);
+                self.report(
+                    span,
+                    msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_3.at(&[&self.show(&l.ty)]),
+                );
                 return self.err_expr(span);
             }
         }

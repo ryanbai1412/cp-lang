@@ -3,6 +3,7 @@
 use super::expr::{list_names, plural};
 use super::*;
 use crate::ty::{Bindings, Param};
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, Type};
 
 mod construct;
@@ -150,10 +151,10 @@ impl<'a> Checker<'a> {
             {
                 for cap in caps {
                     if self.local(&cap).is_none() {
-                        self.error(
-                            codes::USED_BEFORE_SET,
+                        self.report(
                             callee.span,
-                            format!("`{fn_name}` captures `{cap}`, which is not initialized yet"),
+                            msgs::check::USED_BEFORE_SET_CAPTURES_WHICH_IS_NOT
+                                .at(&[&fn_name, &cap]),
                         );
                         break;
                     }
@@ -447,13 +448,9 @@ impl<'a> Checker<'a> {
             for a in args {
                 self.infer(&a.value);
             }
-            self.error(
-                codes::WRONG_ARG_COUNT,
+            self.report(
                 call.span,
-                format!(
-                    "`{cname}.range` takes 1 range argument, found {}",
-                    args.len()
-                ),
+                msgs::check::WRONG_ARG_COUNT_RANGE_TAKES_1_RANGE.at(&[&cname, &args.len()]),
             );
             return Some(Ty::Named {
                 name: "SortedRange".into(),
@@ -465,10 +462,9 @@ impl<'a> Checker<'a> {
             ExprKind::Range { lo, hi, step, .. } => {
                 if let Some(st) = step {
                     self.infer(st);
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         st.span,
-                        format!("`{cname}.range` does not take a stepped range"),
+                        msgs::check::TYPE_MISMATCH_RANGE_DOES_NOT_TAKE.at(&[&cname]),
                     );
                 }
                 let check_end = |this: &mut Self, e: &Expr| {
@@ -585,8 +581,10 @@ impl<'a> Checker<'a> {
             _ => return None,
         };
         let replace_span = Span::new(name.span.start, call.span.end);
-        let msg = format!("`{cname}.{}` was replaced by `{replacement}`", name.text);
-        if let Some(diag) = self.error(codes::UNKNOWN_FIELD, call.span, msg) {
+        if let Some(diag) = self.report(
+            call.span,
+            msgs::check::UNKNOWN_FIELD_WAS_REPLACED_BY.at(&[&cname, &name.text, &replacement]),
+        ) {
             diag.help = Some(format!(
                 "write `{replacement}` (or run `cpl fix` to migrate)"
             ));
@@ -690,11 +688,10 @@ impl<'a> Checker<'a> {
             return None;
         }
         let callee_text = self.quote(callee.span);
-        let message = format!(
-            "`{}` is read without parentheses: `{callee_text}`",
-            name.text
-        );
-        if let Some(diag) = self.error(codes::NOT_CALLABLE, call.span, message) {
+        if let Some(diag) = self.report(
+            call.span,
+            msgs::check::NOT_CALLABLE_IS_READ_WITHOUT_PARENTHESES.at(&[&name.text, &callee_text]),
+        ) {
             diag.help = Some(format!(
                 "write `{callee_text}` (or run `cpl fix` to drop `()`)"
             ));
@@ -838,8 +835,10 @@ impl<'a> Checker<'a> {
         if !prelude || args.is_empty() {
             return;
         }
-        let message = format!("`{name}<T>()` takes no arguments");
-        self.error(codes::WRONG_ARG_COUNT, call.span, message);
+        self.report(
+            call.span,
+            msgs::check::WRONG_ARG_COUNT_T_TAKES_NO_ARGUMENTS.at(&[&name]),
+        );
     }
 
     /// What a method call means beyond its signature: `g.row(r)` lends a
@@ -886,10 +885,11 @@ impl<'a> Checker<'a> {
         };
         let shown = self.quote(base.span);
         let method = &name.text;
-        let message = format!(
-            "`{shown}.{method}` is ambiguous: both `{first}` and `{second}` give `{owner}` a `{method}`"
-        );
-        if let Some(diag) = self.error(codes::AMBIGUOUS_METHOD, name.span, message) {
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND
+                .at(&[&shown, &method, &first, &second, &owner, &method]),
+        ) {
             diag.help = Some(format!("name the trait: `{first}.{method}({shown})`"));
         }
         true
@@ -1051,23 +1051,27 @@ impl<'a> Checker<'a> {
                     return Some(Ty::list(elem));
                 }
                 "argmax" | "argmin" if !base_ty.is_keyed() => {
-                    let message = format!(
-                        "`{}` requires `Keyed`, but `{}` has type `{base_ty}`",
-                        name.text,
-                        self.quote(base.span)
+                    self.report(
+                        name.span,
+                        msgs::check::MISSING_IMPL_REQUIRES_KEYED_BUT_HAS.at(&[
+                            &name.text,
+                            &self.quote(base.span),
+                            &base_ty,
+                        ]),
                     );
-                    self.error(codes::MISSING_IMPL, name.span, message);
                     return Some(Ty::Error);
                 }
                 "sort" | "reverse" if !matches!(base_ty, Ty::Domain(_)) => {
                     // A read-only view (`xs.rev`) is reported once, as not writable.
                     if !base_ty.is_indexed_mut() && !self.is_readonly_view(base) {
-                        let message = format!(
-                            "`{}` requires `IndexedMut`, but `{}` has type `{base_ty}`",
-                            name.text,
-                            self.quote(base.span)
+                        self.report(
+                            name.span,
+                            msgs::check::MISSING_IMPL_REQUIRES_INDEXEDMUT_BUT_HAS.at(&[
+                                &name.text,
+                                &self.quote(base.span),
+                                &base_ty,
+                            ]),
                         );
-                        self.error(codes::MISSING_IMPL, name.span, message);
                         return Some(Ty::Error);
                     }
                     self.require_mutable(base, "changed in place (needs `mut`)");
@@ -1157,10 +1161,10 @@ impl<'a> Checker<'a> {
                 if let Some(ret) = self.array_inverse_ret(index, elem) {
                     Some(ret)
                 } else if !elem.is_vague() {
-                    let message = format!(
-                        "`inverse()` requires elements of an index domain or bounded range, not `{elem}`"
+                    self.report(
+                        name.span,
+                        msgs::check::TYPE_MISMATCH_INVERSE_REQUIRES_ELEMENTS_OF.at(&[&elem]),
                     );
-                    self.error(codes::TYPE_MISMATCH, name.span, message);
                     Some(Ty::Error)
                 } else {
                     None
@@ -1227,13 +1231,17 @@ impl<'a> Checker<'a> {
                                     actual,
                                     &Ty::Record(req_fields.clone()),
                                 );
-                                let diag = self.error(
-                                    codes::ROW_MISSING_FIELD,
+                                let diag = self.report(
                                     call.span,
-                                    format!(
-                                        "`{callee_text}` needs a record with `{req_name}: {req_ty}`, but `{actual}` {}",
-                                        found.map_or(format!("has no `{req_name}`"), |(_, t)| format!("has `{req_name}: {t}`"))
-                                    ),
+                                    msgs::check::ROW_MISSING_FIELD_NEEDS_A_RECORD_WITH.at(&[
+                                        &callee_text,
+                                        &req_name,
+                                        &req_ty,
+                                        &actual,
+                                        &found.map_or(format!("has no `{req_name}`"), |(_, t)| {
+                                            format!("has `{req_name}: {t}`")
+                                        }),
+                                    ]),
                                 );
                                 if let Some(diag) = diag {
                                     if help.is_some() {
@@ -1248,12 +1256,13 @@ impl<'a> Checker<'a> {
                 }
                 Ty::Error | Ty::Unknown | Ty::Param(_) => {}
                 other => {
-                    self.error(
-                        codes::ROW_MISSING_FIELD,
+                    self.report(
                         call.span,
-                        format!(
-                            "`{callee_text}` needs a record for `{param}`, but this is `{other}`"
-                        ),
+                        msgs::check::ROW_MISSING_FIELD_NEEDS_A_RECORD_FOR.at(&[
+                            &callee_text,
+                            &param,
+                            &other,
+                        ]),
                     );
                 }
             }
@@ -1358,13 +1367,12 @@ impl<'a> Checker<'a> {
                                 let bound_ty = self.settle(bound_ty);
                                 for trait_name in traits {
                                     if !self.implements_trait(&bound_ty, &trait_name) {
-                                        let message = format!(
-                                            "`{bound_ty}` does not implement `{trait_name}` required by `{fn_name}`"
-                                        );
                                         let help = self.unmet_bound_help(&bound_ty);
-                                        if let Some(diag) =
-                                            self.error(codes::MISSING_IMPL, call.span, message)
-                                        {
+                                        if let Some(diag) = self.report(
+                                            call.span,
+                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED
+                                                .at(&[&bound_ty, &trait_name, &fn_name]),
+                                        ) {
                                             diag.help = help;
                                         }
                                     }
@@ -1399,12 +1407,10 @@ impl<'a> Checker<'a> {
                                         let found = actual_fs.iter().find(|(n, _)| n == req_name);
                                         if !matches!(found, Some((_, got_ty)) if self.fits(got_ty, req_ty))
                                         {
-                                            self.error(
-                                                codes::MISSING_IMPL,
+                                            self.report(
                                                 call.span,
-                                                format!(
-                                                    "record `{actual}` does not satisfy field trait `{tname}` (missing `{req_name}: {req_ty}`)"
-                                                ),
+                                                msgs::check::MISSING_IMPL_RECORD_DOES_NOT_SATISFY
+                                                    .at(&[&actual, &tname, &req_name, &req_ty]),
                                             );
                                         }
                                     }
@@ -1415,12 +1421,10 @@ impl<'a> Checker<'a> {
                                             == Some(tname.as_str())
                                     });
                                     if !has_impl {
-                                        self.error(
-                                            codes::MISSING_IMPL,
+                                        self.report(
                                             call.span,
-                                            format!(
-                                                "`{sname}` does not implement `{tname}`; structs must opt in with `impl {tname} for {sname}`"
-                                            ),
+                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_STRUCTS
+                                                .at(&[&sname, &tname, &tname, &sname]),
                                         );
                                     }
                                 }
@@ -1526,10 +1530,13 @@ impl<'a> Checker<'a> {
             }
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Str | Ty::Char | Ty::Pos(_)) => {
                 self.plain_args(args);
-                let message = format!("`{callee_text}` is {}, not a fn", ty.widen().with_article());
                 let product =
                     (ty.is_numeric() && args.len() == 1).then(|| self.quote(args[0].value.span));
-                if let Some(diag) = self.error(codes::NOT_CALLABLE, callee.span, message) {
+                if let Some(diag) = self.report(
+                    callee.span,
+                    msgs::check::NOT_CALLABLE_IS_NOT_A_FN
+                        .at(&[&callee_text, &ty.widen().with_article()]),
+                ) {
                     if let Some(arg) = product {
                         diag.help = Some(format!("to multiply, write `{callee_text} * ({arg})`"));
                     }

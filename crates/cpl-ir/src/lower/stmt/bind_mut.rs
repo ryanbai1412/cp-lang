@@ -2,6 +2,7 @@
 //! its part, so a read lends in place.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn bind_mut(
@@ -78,13 +79,14 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Pos(dom_id) = value.ty {
                     if let Some(factors) = self.product_domains.get(&dom_id).cloned() {
                         if factors.len() != pats.len() {
-                            let message = format!(
-                                "this pattern has {} names, but `{}` has {} factors",
-                                pats.len(),
-                                self.show(&value.ty),
-                                factors.len()
+                            self.report(
+                                pat.span,
+                                msgs::ir::TYPE_MISMATCH_THIS_PATTERN_HAS_NAMES.at(&[
+                                    &pats.len(),
+                                    &self.show(&value.ty),
+                                    &factors.len(),
+                                ]),
                             );
-                            self.error(codes::TYPE_MISMATCH, pat.span, message);
                             return;
                         }
                         let parts = self.decode_product(dom_id, value, pat.span, out);
@@ -96,22 +98,20 @@ impl<'a> Lowerer<'a> {
                 }
                 let Some(fields) = value.ty.fields() else {
                     if value.ty != Ty::Error {
-                        let message = format!(
-                            "a `{}` can't be taken apart into {} names",
-                            self.show(&value.ty),
-                            pats.len()
+                        self.report(
+                            pat.span,
+                            msgs::ir::TYPE_MISMATCH_A_CAN_T_BE_2
+                                .at(&[&self.show(&value.ty), &pats.len()]),
                         );
-                        self.error(codes::TYPE_MISMATCH, pat.span, message);
                     }
                     return;
                 };
                 if fields.len() != pats.len() {
-                    let message = format!(
-                        "this pattern has {} names, but the value has {} fields",
-                        pats.len(),
-                        fields.len()
+                    self.report(
+                        pat.span,
+                        msgs::ir::TYPE_MISMATCH_THIS_PATTERN_HAS_NAMES_2
+                            .at(&[&pats.len(), &fields.len()]),
                     );
-                    self.error(codes::TYPE_MISMATCH, pat.span, message);
                     return;
                 }
                 // `let (a, b) = (xs[i], xs[j])`: a name per part reads in place, not

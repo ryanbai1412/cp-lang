@@ -1,6 +1,7 @@
 //! Local fns, lambdas, and fns or bound methods as closure values.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// A fn written inside another, lowered as a closure bound to its name. `into` is the table of a
@@ -382,12 +383,11 @@ impl<'a> Lowerer<'a> {
                     && *slot_base != Ty::Error
                     && resolved != Ty::Error
                 {
-                    let msg = format!(
-                        "lambda parameter has type `{}`, but `{}` is expected",
-                        self.show(&resolved),
-                        self.show(slot_base),
+                    self.report(
+                        ann_ty.span,
+                        msgs::ir::TYPE_MISMATCH_LAMBDA_PARAMETER_HAS_TYPE
+                            .at(&[&self.show(&resolved), &self.show(slot_base)]),
                     );
-                    self.error(codes::TYPE_MISMATCH, ann_ty.span, msg);
                 }
                 *slot = if is_mut_slot {
                     Ty::Mut(Box::new(resolved))

@@ -16,6 +16,7 @@ mod slice_place;
 
 use super::*;
 use crate::walk::{find_pos_domain_in_ty, given};
+use cpl_diag::msgs;
 use place::{names_a_place, root_place};
 
 /// What writing through `x!` says when `x` is `none`; reading it says so too.
@@ -156,11 +157,7 @@ impl<'a> Lowerer<'a> {
     }
 
     fn needs_value(&mut self, span: Span) {
-        self.error(
-            codes::TYPE_MISMATCH,
-            span,
-            "this block is used as a value, so it has to end with an expression",
-        );
+        self.report(span, msgs::ir::TYPE_MISMATCH_THIS_BLOCK_IS_USED.at(&[]));
     }
 
     /// Lowers `e` where its value goes to `tail`. `if`, `match` and inline
@@ -183,11 +180,7 @@ impl<'a> Lowerer<'a> {
                 otherwise,
             } => match (otherwise, tail) {
                 (None, Tail::Give) => {
-                    self.error(
-                        codes::TYPE_MISMATCH,
-                        e.span,
-                        "an `if` used as a value needs an `else`",
-                    );
+                    self.report(e.span, msgs::ir::TYPE_MISMATCH_AN_IF_USED_AS.at(&[]));
                 }
                 // Without an `else` there is no value on one path: a
                 // statement, and the fn's value comes later.

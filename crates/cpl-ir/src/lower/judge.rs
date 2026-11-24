@@ -2,6 +2,7 @@
 //! (R10.1.3, R10.1.4).
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// The fns that cross to the judge's grader: those it supplies (no
@@ -52,10 +53,9 @@ impl<'a> Lowerer<'a> {
             (self.cur_mod, self.offset) = (self.sigs[id].mod_id, self.sigs[id].offset);
             if let Some(at) = changed {
                 let param = decl.params[at].name.text.clone();
-                self.error(
-                    codes::UNSUPPORTED,
+                self.report(
                     decl.params[at].name.span,
-                    format!("the judge's grader can't lend `{param}` to `{name}` to change"),
+                    msgs::ir::UNSUPPORTED_THE_JUDGE_S_GRADER.at(&[&param, &name]),
                 );
                 self.help(format!("take `{param}` by value and return what changed"));
             } else {
@@ -68,18 +68,16 @@ impl<'a> Lowerer<'a> {
                     Ok((sides, ret)) => self.judge_tys.push((id, sides, ret)),
                     Err(Uncrossable::Type(ty)) => {
                         let shown = self.show(&ty);
-                        self.error(
-                            codes::UNSUPPORTED,
+                        self.report(
                             decl.name.span,
-                            format!("a `{shown}` can't cross to the judge's grader in `{name}`"),
+                            msgs::ir::UNSUPPORTED_A_CAN_T_CROSS.at(&[&shown, &name]),
                         );
                         self.help("a `@grader fn` takes and gives `Int`, `F64`, `Bool`, `Char`, `Str`, and lists and tuples of them");
                     }
                     Err(Uncrossable::Open(open)) => {
-                        self.error(
-                            codes::UNSUPPORTED,
+                        self.report(
                             decl.name.span,
-                            format!("`{open}` can't cross to the judge's grader in `{name}`: no C++ integer holds a range with an open end"),
+                            msgs::ir::UNSUPPORTED_CAN_T_CROSS_TO.at(&[&open, &name]),
                         );
                         self.help("close the range, as in `0..=1e18`, or write `Int` for the grader's `int`");
                     }
@@ -101,10 +99,9 @@ impl<'a> Lowerer<'a> {
             .collect();
         for decl in dropped {
             let name = &decl.name.text;
-            self.error(
-                codes::UNSUPPORTED,
+            self.report(
                 decl.name.span,
-                format!("`{name}` can't be built for the judge's grader"),
+                msgs::ir::UNSUPPORTED_CAN_T_BE_BUILT.at(&[&name]),
             );
             self.help("a `@grader fn` is a top-level fn of the program's own file");
         }

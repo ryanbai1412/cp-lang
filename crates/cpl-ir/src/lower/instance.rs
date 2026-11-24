@@ -3,6 +3,7 @@
 
 use super::declare::{opt_mut_instance, param_marker};
 use super::*;
+use cpl_diag::msgs;
 
 /// Each instance's template, its type arguments as shown, and the fn whose
 /// lowering asked for it.
@@ -124,13 +125,10 @@ impl<'a> Lowerer<'a> {
     /// chain that grows without end.
     pub(super) fn growing_call(&mut self, gfid: GenFnId, name: &str, span: Span) -> Option<Expr> {
         let (outer, inner) = self.growing_instance(gfid)?;
-        self.error(
-            codes::GROWING_INSTANTIATION,
+        self.report(
             span,
-            format!(
-                "`{name}` calls itself at a type that grows on every call: \
-                 `{name}<{outer}>` needs `{name}<{inner}>`, and so on without end"
-            ),
+            msgs::ir::GROWING_INSTANTIATION_CALLS_ITSELF_AT_A
+                .at(&[&name, &name, &outer, &name, &inner]),
         );
         self.help(
             "a generic fn is compiled once per type: recurse at the same type, \

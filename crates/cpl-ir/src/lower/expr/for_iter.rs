@@ -2,6 +2,7 @@
 //! generators, and the type of each value.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// What a `for` walks over, and the type of each value.
@@ -160,8 +161,10 @@ impl<'a> Lowerer<'a> {
                     return self.product_walk(factors, span);
                 }
                 let value = self.expr(e, None);
-                let message = format!("a `for` can't walk over a `{}`", self.show(&value.ty));
-                self.error(codes::TYPE_MISMATCH, span, message);
+                self.report(
+                    span,
+                    msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T.at(&[&self.show(&value.ty)]),
+                );
                 error(self)
             }
             ast::ExprKind::Record(fields) if !fields.is_empty() => {
@@ -176,8 +179,10 @@ impl<'a> Lowerer<'a> {
                     return self.product_walk(factors, span);
                 }
                 let value = self.expr(e, None);
-                let message = format!("a `for` can't walk over a `{}`", self.show(&value.ty));
-                self.error(codes::TYPE_MISMATCH, span, message);
+                self.report(
+                    span,
+                    msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T.at(&[&self.show(&value.ty)]),
+                );
                 error(self)
             }
             // `for p in ?Col:` walks `none` and then every `Col`.
@@ -189,11 +194,10 @@ impl<'a> Lowerer<'a> {
                     Ty::Pos(domain) => domain,
                     Ty::Error => return error(self),
                     other => {
-                        let message = format!(
-                            "a `for` can walk the values of a domain's `?D`, and `{}` is not a domain",
-                            self.show(&other)
+                        self.report(
+                            span,
+                            msgs::ir::TYPE_MISMATCH_A_FOR_CAN_WALK.at(&[&self.show(&other)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, span, message);
                         return error(self);
                     }
                 };
@@ -215,11 +219,10 @@ impl<'a> Lowerer<'a> {
                 let lo = self.expr(lo, None);
                 let ty = lo.ty.clone();
                 if !matches!(ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_) | Ty::Error) {
-                    let message = format!(
-                        "a range runs over numbers or positions, not `{}`",
-                        self.show(&ty)
+                    self.report(
+                        span,
+                        msgs::ir::TYPE_MISMATCH_A_RANGE_RUNS_OVER.at(&[&self.show(&ty)]),
                     );
-                    self.error(codes::TYPE_MISMATCH, span, message);
                     return error(self);
                 }
                 let mut hi = self.expect(hi, &ty);
@@ -289,11 +292,10 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Error => error(self),
                     _ => {
-                        let message = format!(
-                            "a `for` over `lo..` counts from an `Int` or a domain value, found `{}`",
-                            self.show(&lo.ty)
+                        self.report(
+                            span,
+                            msgs::ir::TYPE_MISMATCH_A_FOR_OVER_LO.at(&[&self.show(&lo.ty)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, span, message);
                         error(self)
                     }
                 }
@@ -428,10 +430,9 @@ impl<'a> Lowerer<'a> {
                 };
                 // `for v in V by 2` steps along the positions of `V`.
                 if !matches!(ty, Ty::Int | Ty::Pos(_)) {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         span,
-                        format!("`by` steps a range of Int, not of `{}`", self.show(&ty)),
+                        msgs::ir::TYPE_MISMATCH_BY_STEPS_A_RANGE.at(&[&self.show(&ty)]),
                     );
                     return (
                         Iter::Range {
@@ -559,11 +560,7 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 };
                 let Some(id) = domain else {
-                    self.error(
-                        codes::UNKNOWN_FIELD,
-                        name.span,
-                        "`.cuts` belongs to a domain: `V.cuts`",
-                    );
+                    self.report(name.span, msgs::ir::UNKNOWN_FIELD_CUTS_BELONGS_TO_A.at(&[]));
                     return error(self);
                 };
                 let lo = self.int_lit(0, span);
@@ -698,17 +695,15 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Error => return error(self),
                     Ty::Int => {
-                        self.error(
-                            codes::TYPE_MISMATCH,
-                            span,
-                            "a `for` can't walk over an `Int`",
-                        );
+                        self.report(span, msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T_2.at(&[]));
                         self.help("count with a range: `for i in 0..n`");
                         return error(self);
                     }
                     other => {
-                        let message = format!("a `for` can't walk over a `{}`", self.show(other));
-                        self.error(codes::TYPE_MISMATCH, span, message);
+                        self.report(
+                            span,
+                            msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T.at(&[&self.show(other)]),
+                        );
                         return error(self);
                     }
                 };

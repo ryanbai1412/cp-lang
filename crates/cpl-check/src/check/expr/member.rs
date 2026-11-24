@@ -1,6 +1,7 @@
 //! Member access: fields, methods and members of a type, by name.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
     /// The type of field `name` on a value of type `ty`, if `ty` is a
@@ -120,8 +121,11 @@ impl<'a> Checker<'a> {
                     Some(def) => def.value_ty(&name.text),
                     None if name.text.is_empty() => Ty::Error,
                     None if self.env.is_private_member(alias, &name.text) => {
-                        let message = format!("`{}` is private to module `{alias}`", name.text);
-                        self.error(codes::PRIVATE_NAME, name.span, message);
+                        self.report(
+                            name.span,
+                            msgs::check::PRIVATE_NAME_IS_PRIVATE_TO_MODULE
+                                .at(&[&name.text, &alias]),
+                        );
                         Ty::Error
                     }
                     None => {
@@ -308,10 +312,9 @@ impl<'a> Checker<'a> {
                 if let Some((_, fty)) = req.iter().find(|(fnm, _)| fnm == &name.text) {
                     return fty.clone();
                 }
-                self.error(
-                    codes::UNKNOWN_FIELD,
+                self.report(
                     name.span,
-                    format!("row `{p}` does not name field `{}`", name.text),
+                    msgs::check::UNKNOWN_FIELD_ROW_DOES_NOT_NAME.at(&[&p, &name.text]),
                 );
                 return Ty::Error;
             }
@@ -342,19 +345,19 @@ impl<'a> Checker<'a> {
                 }
                 "is_empty" => return Ty::Bool,
                 "last" | "rev" if !base_ty.is_bidir() => {
-                    let message = format!(
-                        "`.{}` requires `Bidir`, which `{base_ty}` does not implement",
-                        name.text
+                    self.report(
+                        name.span,
+                        msgs::check::MISSING_IMPL_REQUIRES_BIDIR_WHICH_DOES
+                            .at(&[&name.text, &base_ty]),
                     );
-                    self.error(codes::MISSING_IMPL, name.span, message);
                     return Ty::Error;
                 }
                 "items" | "keys" if !base_ty.is_keyed() => {
-                    let message = format!(
-                        "`.{}` requires `Keyed`, which `{base_ty}` does not implement",
-                        name.text
+                    self.report(
+                        name.span,
+                        msgs::check::MISSING_IMPL_REQUIRES_KEYED_WHICH_DOES
+                            .at(&[&name.text, &base_ty]),
                     );
-                    self.error(codes::MISSING_IMPL, name.span, message);
                     return Ty::Error;
                 }
                 "first" | "last"
@@ -511,9 +514,11 @@ impl<'a> Checker<'a> {
         let own_pow =
             matches!(&base_ty, Ty::Named { .. }) && !self.implements_trait(&base_ty, "Pow");
         if name.text == "pow" && !own_pow {
-            let message = "power uses `**`, not `.pow(...)`".to_string();
             let fix = self.pow_fix(expr, name);
-            if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+            if let Some(diag) = self.report(
+                name.span,
+                msgs::check::UNKNOWN_FIELD_POWER_USES_NOT_POW.at(&[]),
+            ) {
                 let shown = fix.as_ref().map_or("a ** e", |f| f.edits[0].1.as_str());
                 diag.help = Some(format!("write `{shown}`"));
                 diag.fixes.extend(fix);
@@ -544,8 +549,10 @@ impl<'a> Checker<'a> {
             _ => None,
         };
         if let Some((to, help)) = renamed {
-            let message = format!("`.{}` is gone in 0.3; it is `.{to}`", name.text);
-            if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+            if let Some(diag) = self.report(
+                name.span,
+                msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0.at(&[&name.text, &to]),
+            ) {
                 diag.help = Some(help.to_string());
                 diag.fixes.push(cpl_diag::Fix {
                     title: format!("use `.{to}`"),
@@ -560,8 +567,10 @@ impl<'a> Checker<'a> {
             && matches!(&base_ty, Ty::Named { name: r, .. } if r == "Range")
         {
             let replacement = if name.text == "lo" { "start" } else { "end" };
-            let message = format!("`Range` uses `.{replacement}`, not `.{}`", name.text);
-            if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+            if let Some(diag) = self.report(
+                name.span,
+                msgs::check::REMOVED_SYNTAX_RANGE_USES_NOT.at(&[&replacement, &name.text]),
+            ) {
                 diag.help = Some(format!(
                     "write `.{replacement}` (`.end` is exclusive for `a..b` and `a..=b` alike)"
                 ));
@@ -669,12 +678,9 @@ impl<'a> Checker<'a> {
                 if name.text == "len" {
                     if let ExprKind::Field { base: recv, .. } = &expr.kind {
                         if let Some(owner) = self.uncounted_sorted_range_owner(recv) {
-                            if let Some(diag) = self.error(
-                                codes::TYPE_MISMATCH,
+                            if let Some(diag) = self.report(
                                 name.span,
-                                format!(
-                                    "`{owner}.range(...).len` is not available because counting a tree range costs O(log n + k)"
-                                ),
+                                msgs::check::TYPE_MISMATCH_RANGE_LEN_IS_NOT.at(&[&owner]),
                             ) {
                                 diag.help = Some(format!(
                                     "use `SortedSet` or `SortedBag` for O(log n) `range(r).len`, or count by iterating `{owner}.range(...)`"
@@ -790,8 +796,10 @@ impl<'a> Checker<'a> {
                 if matches!(type_name.as_str(), "List" | "Str" | "Map" | "Set")
                     && name.text == "buf"
                 {
-                    let message = format!("{base_ty} has no public field `{}`", name.text);
-                    self.error(codes::UNKNOWN_FIELD, name.span, message);
+                    self.report(
+                        name.span,
+                        msgs::check::UNKNOWN_FIELD_HAS_NO_PUBLIC_FIELD.at(&[&base_ty, &name.text]),
+                    );
                     return Ty::Error;
                 }
                 if args.is_empty() && self.finite_index_enum_size(type_name).is_some() {
@@ -847,13 +855,15 @@ impl<'a> Checker<'a> {
                             }
                         }
                         if trait_hits.len() >= 2 {
-                            let message = format!(
-                                "`{type_name}.{}` is ambiguous: both `{}` and `{}` define it",
-                                name.text, trait_hits[0], trait_hits[1]
-                            );
-                            if let Some(diag) =
-                                self.error(codes::AMBIGUOUS_METHOD, name.span, message)
-                            {
+                            if let Some(diag) = self.report(
+                                name.span,
+                                msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND_2.at(&[
+                                    &type_name,
+                                    &name.text,
+                                    &trait_hits[0],
+                                    &trait_hits[1],
+                                ]),
+                            ) {
                                 diag.help = Some(format!(
                                     "disambiguate with `{}.{}(...)` or `{}.{}(...)`",
                                     trait_hits[0], name.text, trait_hits[1], name.text

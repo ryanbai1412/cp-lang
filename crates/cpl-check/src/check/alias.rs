@@ -3,6 +3,7 @@
 //! (R02.6.2).
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast;
 
 impl<'a> Checker<'a> {
@@ -58,8 +59,10 @@ impl<'a> Checker<'a> {
     }
 
     pub(super) fn alias_cycle(&mut self, name: &str, span: Span) -> Ty {
-        let message = format!("`type {name}` is defined by itself, so it never names a type");
-        if let Some(diag) = self.error(codes::ALIAS_CYCLE, span, message) {
+        if let Some(diag) = self.report(
+            span,
+            msgs::check::ALIAS_CYCLE_TYPE_IS_DEFINED_BY.at(&[&name]),
+        ) {
             diag.help = Some(format!(
                 "write the type `{name}` stands for, or give the alias a name of its own (R02.6.2)"
             ));

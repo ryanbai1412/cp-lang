@@ -7,6 +7,7 @@ mod traits;
 
 use super::pattern::{name_spans, pattern_types};
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{
     self, AssignOp, Block, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
 };
@@ -150,8 +151,10 @@ impl<'a> Checker<'a> {
                 continue;
             }
             let names: Vec<&str> = variants.iter().map(|v| v.name.text.as_str()).collect();
-            let message = "an enum's variants are separated by `|`, not `,`".to_string();
-            if let Some(diag) = self.error(codes::EXPECTED_TOKEN, a.span.to(b.span), message) {
+            if let Some(diag) = self.report(
+                a.span.to(b.span),
+                msgs::check::EXPECTED_TOKEN_AN_ENUM_S_VARIANTS.at(&[]),
+            ) {
                 diag.help = Some(format!("write `= {}`", names.join(" | ")));
             }
             return;
@@ -493,12 +496,11 @@ impl<'a> Checker<'a> {
                 let mut out = Vec::new();
                 for (item, ty) in items.iter().zip(tys) {
                     out.push(inside(ty).unwrap_or_else(|ty| {
-                        let message = format!(
-                            "let-else needs a ?T for `{}`, and it is {}",
-                            self.quote(item.span),
-                            ty.with_article()
+                        self.report(
+                            item.span,
+                            msgs::check::TYPE_MISMATCH_LET_ELSE_NEEDS_A
+                                .at(&[&self.quote(item.span), &ty.with_article()]),
                         );
-                        self.error(codes::TYPE_MISMATCH, item.span, message);
                         Ty::Error
                     }));
                 }
@@ -506,12 +508,11 @@ impl<'a> Checker<'a> {
             }
             (ast::PatternKind::Name(_) | ast::PatternKind::Tuple(_), _, ty) => inside(ty)
                 .unwrap_or_else(|ty| {
-                    let message = format!(
-                        "let-else needs a ?T, and `{}` is {}",
-                        self.quote(init.span),
-                        ty.with_article()
+                    self.report(
+                        init.span,
+                        msgs::check::TYPE_MISMATCH_LET_ELSE_NEEDS_A_2
+                            .at(&[&self.quote(init.span), &ty.with_article()]),
                     );
-                    self.error(codes::TYPE_MISMATCH, init.span, message);
                     Ty::Error
                 }),
             (_, _, ty) => inside(ty).unwrap_or(Ty::Unknown),
@@ -555,9 +556,9 @@ impl<'a> Checker<'a> {
                                     if let Some(bad) = text.chars().find(|c| !alphabet.contains(*c))
                                     {
                                         self.report(
-                                            &cpl_diag::msgs::check::NOT_IN_STR_OF,
                                             init_expr.span,
-                                            &[&bad, &alphabet],
+                                            msgs::check::RANGE_STORE_CONST_IS_NOT_IN_STR
+                                                .at(&[&bad, &alphabet]),
                                         );
                                         break;
                                     }
@@ -645,12 +646,9 @@ impl<'a> Checker<'a> {
                                 .map(|before| {
                                     Span::new(before.len() as u32, before.len() as u32 + 3)
                                 });
-                            if let Some(diag) = self.error(
-                                codes::VAR_LAMBDA_RECURSION,
+                            if let Some(diag) = self.report(
                                 at,
-                                format!(
-                                    "`var {vname}` cannot refer to itself recursively; bind it with `let`"
-                                ),
+                                msgs::check::VAR_LAMBDA_RECURSION_VAR_CANNOT_REFER_TO.at(&[&vname]),
                             ) {
                                 if let Some(keyword) = keyword {
                                     diag.fixes.push(cpl_diag::Fix {
@@ -747,9 +745,10 @@ impl<'a> Checker<'a> {
                     };
                     self.block(otherwise);
                     if !otherwise.leaves() {
-                        let message = "the `else` block of this `let` can reach its end, and then there is nothing to bind".to_string();
-                        if let Some(diag) = self.error(codes::ELSE_FALLS_THROUGH, pat.span, message)
-                        {
+                        if let Some(diag) = self.report(
+                            pat.span,
+                            msgs::check::ELSE_FALLS_THROUGH_THE_ELSE_BLOCK_OF.at(&[]),
+                        ) {
                             diag.help = Some("end it with `return`, `break`, `continue` or a trap such as `todo`".to_string());
                         }
                     }
@@ -777,12 +776,15 @@ impl<'a> Checker<'a> {
                 if let (Some(declared), Some(init), Some(kind)) = (&declared, init, view) {
                     let kind = if kind == "slice" { "slice view" } else { kind };
                     let init_text = self.quote(init.span);
-                    let message = format!(
-                        "`{}` is declared {}, but `{init_text}` is a {kind}, not a `List`",
-                        self.quote(pat.span),
-                        declared.with_article(),
-                    );
-                    if let Some(diag) = self.error(codes::TYPE_MISMATCH, init.span, message) {
+                    if let Some(diag) = self.report(
+                        init.span,
+                        msgs::check::TYPE_MISMATCH_IS_DECLARED_BUT_IS.at(&[
+                            &self.quote(pat.span),
+                            &declared.with_article(),
+                            &init_text,
+                            &kind,
+                        ]),
+                    ) {
                         diag.help = Some(format!(
                             "a view borrows its source; copy it with `List({init_text})` (R07.2.11)"
                         ));
@@ -838,12 +840,11 @@ impl<'a> Checker<'a> {
                     ) && matches!(init_ty.as_ref(), Some(Ty::Unknown));
                     if is_bare_none {
                         let name = self.quote(pat.span);
-                        let message = format!(
-                            "`{name}` needs a type annotation because `None` has no element type"
-                        );
-                        if let Some(diag) =
-                            self.error(codes::INFERENCE_NEEDS_ANNOTATION, pat.span, message)
-                        {
+                        if let Some(diag) = self.report(
+                            pat.span,
+                            msgs::check::INFERENCE_NEEDS_ANNOTATION_NEEDS_A_TYPE_ANNOTATION
+                                .at(&[&name]),
+                        ) {
                             diag.help = Some(format!("write `{keyword} {name}: ?Int = None`"));
                         }
                     } else if is_bare_read {
@@ -934,10 +935,10 @@ impl<'a> Checker<'a> {
                                 Some(Def::Variant { .. })
                             ) =>
                     {
-                        let message = format!(
-                            "value `{name}` starts with an uppercase letter; values are lowercase (`{name}` reads as a type)"
+                        self.report(
+                            pat.span,
+                            msgs::check::VALUE_NAME_CASE_VALUE_STARTS_WITH_AN.at(&[&name, &name]),
                         );
-                        self.error(codes::VALUE_NAME_CASE, pat.span, message);
 
                         self.declare(name, pat.span, ty.clone(), is_mut, keyword);
                     }
@@ -1171,14 +1172,10 @@ impl<'a> Checker<'a> {
                         && !trait_local
                         && !matches!(&self_ty, Ty::Param(_) | Ty::Unknown | Ty::Error)
                     {
-                        self.error(
-                            codes::UNSUPPORTED,
+                        self.report(
                             tr.span,
-                            format!(
-                                "orphan `impl`: neither `{}` nor `{}` is defined in this module",
-                                self.quote(tr.span),
-                                self.quote(target.span)
-                            ),
+                            msgs::check::UNSUPPORTED_ORPHAN_IMPL_NEITHER_NOR
+                                .at(&[&self.quote(tr.span), &self.quote(target.span)]),
                         );
                     }
                 }
@@ -1302,13 +1299,11 @@ impl<'a> Checker<'a> {
                         if fixed_field {
                             let var_at = self.env.field_decl(sname, &name.text);
                             let base_text = self.quote(base.span);
-                            let message = format!(
-                                "field `{sname}.{}` is fixed (not `var`) and cannot be assigned",
-                                name.text
-                            );
-                            if let Some(diag) =
-                                self.error(codes::ASSIGN_FIXED_FIELD, target.span, message)
-                            {
+                            if let Some(diag) = self.report(
+                                target.span,
+                                msgs::check::ASSIGN_FIXED_FIELD_FIELD_IS_FIXED_NOT
+                                    .at(&[&sname, &name.text]),
+                            ) {
                                 diag.help = Some(match var_at {
                                     Some(_) => format!(
                                         "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",
@@ -1390,13 +1385,15 @@ impl<'a> Checker<'a> {
                 if let (AssignOp::Set, true, Some(cells)) = (*op, part, cells) {
                     let want = self.element_ty(&target_ty);
                     if !cells.is_vague() && !self.fits(&cells, &want) {
-                        let message = format!(
-                            "`{}` is a row of {want}, but `{}` is {}",
-                            self.quote(target.span),
-                            self.quote(value.span),
-                            value_ty.with_article()
+                        self.report(
+                            value.span,
+                            msgs::check::TYPE_MISMATCH_IS_A_ROW_OF_2.at(&[
+                                &self.quote(target.span),
+                                &want,
+                                &self.quote(value.span),
+                                &value_ty.with_article(),
+                            ]),
                         );
-                        self.error(codes::TYPE_MISMATCH, value.span, message);
                     }
                 } else if *op == AssignOp::Set && !not_assignable {
                     self.expect_moves(&value_ty, &target_ty, value, |c, got, want| {
@@ -1531,10 +1528,9 @@ impl<'a> Checker<'a> {
                             .strip_suffix(' ')
                             .filter(|b| b.ends_with("return"))
                             .map(|b| Span::new(b.len() as u32, value.span.end));
-                        let diag = self.error(
-                            codes::UNEXPECTED_TOKEN,
+                        let diag = self.report(
                             value.span,
-                            "a top-level `return` takes no value".to_string(),
+                            msgs::check::UNEXPECTED_TOKEN_A_TOP_LEVEL_RETURN.at(&[]),
                         );
                         if let Some(diag) = diag {
                             diag.help = Some(

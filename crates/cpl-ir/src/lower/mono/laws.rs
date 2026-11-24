@@ -1,16 +1,13 @@
 //! Lowering `laws_hold` into nested assertion loops over every law.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// Lowers `laws_hold(obj, samples_or_kw...)` into nested assertion loops checking every `law`.
     pub(in crate::lower) fn lower_laws_hold(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         if args.is_empty() {
-            self.error(
-                codes::WRONG_ARG_COUNT,
-                span,
-                "`laws_hold` takes an operation value and samples",
-            );
+            self.report(span, msgs::ir::WRONG_ARG_COUNT_LAWS_HOLD_TAKES_AN.at(&[]));
             return self.err_expr(span);
         }
         let obj = self.expr(&args[0].value, None);
@@ -96,10 +93,9 @@ impl<'a> Lowerer<'a> {
             }
         }
         let Ty::Struct(sid) = obj.ty else {
-            self.error(
-                codes::TYPE_MISMATCH,
+            self.report(
                 args[0].value.span,
-                "`laws_hold` expects a struct with `law`s",
+                msgs::ir::TYPE_MISMATCH_LAWS_HOLD_EXPECTS_A.at(&[]),
             );
             return self.err_expr(span);
         };

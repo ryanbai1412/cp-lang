@@ -1,4 +1,5 @@
 use super::*;
+use cpl_diag::msgs;
 
 impl Lowerer<'_> {
     /// `x in c`: a range, a domain, or anything that holds values.
@@ -111,8 +112,10 @@ impl Lowerer<'_> {
                     Ty::Str | Ty::StrView => Ty::Char,
                     Ty::Error => return self.err_expr(span),
                     other => {
-                        let message = format!("`in` can't look inside a `{}`", self.show(other));
-                        self.error(codes::BAD_OPERANDS, span, message);
+                        self.report(
+                            span,
+                            msgs::ir::BAD_OPERANDS_IN_CAN_T_LOOK.at(&[&self.show(other)]),
+                        );
                         return self.err_expr(span);
                     }
                 };

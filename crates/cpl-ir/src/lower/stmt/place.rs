@@ -2,6 +2,7 @@
 //! indexes run once.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// True for the `o` of `(o ??= init)`, which holds a value from there on.
@@ -152,11 +153,7 @@ impl<'a> Lowerer<'a> {
                     },
                     ExprKind::Error => error,
                     _ => {
-                        self.error(
-                            codes::ASSIGN_TO_LET,
-                            e.span,
-                            "this name can't be assigned to",
-                        );
+                        self.report(e.span, msgs::ir::ASSIGN_TO_LET_THIS_NAME_CAN_T.at(&[]));
                         error
                     }
                 }
@@ -182,12 +179,11 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Error => return error,
                     other => {
-                        let message = format!(
-                            "`.{}!` is a cell of a list or a `[n]T` array, and this is a `{}`",
-                            name.text,
-                            self.show(other)
+                        self.report(
+                            name.span,
+                            msgs::ir::UNKNOWN_FIELD_IS_A_CELL_OF
+                                .at(&[&name.text, &self.show(other)]),
                         );
-                        self.error(codes::UNKNOWN_FIELD, name.span, message);
                         return error;
                     }
                 };
@@ -229,11 +225,10 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Error => error,
                     other => {
-                        let message = format!(
-                            "`!` takes the value out of an optional, but this is a `{}`",
-                            self.show(&other)
+                        self.report(
+                            e.span,
+                            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT.at(&[&self.show(&other)]),
                         );
-                        self.error(codes::TYPE_MISMATCH, e.span, message);
                         error
                     }
                 }
@@ -275,12 +270,11 @@ impl<'a> Lowerer<'a> {
                     },
                     None => {
                         if base.ty != Ty::Error {
-                            let message = format!(
-                                "`{}` has no field `{}` to assign to",
-                                self.show(&base.ty),
-                                name.text
+                            self.report(
+                                name.span,
+                                msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD_TO
+                                    .at(&[&self.show(&base.ty), &name.text]),
                             );
-                            self.error(codes::UNKNOWN_FIELD, name.span, message);
                             self.last_place_fix(&base.ty, written.span, name);
                         }
                         error
@@ -291,11 +285,7 @@ impl<'a> Lowerer<'a> {
                 if let Some(index) = self.builtin_at(e) {
                     return self.place(&index);
                 }
-                self.error(
-                    codes::ASSIGN_TO_LET,
-                    e.span,
-                    "only a variable, a field, or an element can be assigned to",
-                );
+                self.report(e.span, msgs::ir::ASSIGN_TO_LET_ONLY_A_VARIABLE_A.at(&[]));
                 error
             }
         }

@@ -1,6 +1,7 @@
 //! `prefix(a)` and the `Prefix` shapes of `std.prefix`.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// The key of the struct `name` with `arity` type arguments, when it shares
@@ -84,11 +85,10 @@ impl<'a> Lowerer<'a> {
             if src.ty.mentions_error() {
                 return self.err_expr(span);
             }
-            let message = format!(
-                "`prefix` takes a `[D]T`, `[R, C]T`, or `List<T>` of numbers, found `{}`",
-                self.show(&src.ty)
+            self.report(
+                span,
+                msgs::ir::TYPE_MISMATCH_PREFIX_TAKES_A_D.at(&[&self.show(&src.ty)]),
             );
-            self.error(codes::TYPE_MISMATCH, span, message);
             return self.err_expr(span);
         };
         let struct_name = if doms.len() == 1 {
@@ -118,10 +118,9 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         let (Dim::Pos(r), Dim::Pos(c)) = (&dims[0], &dims[1]) else {
-            self.error(
-                codes::TYPE_MISMATCH,
+            self.report(
                 span,
-                format!("`{shape}` takes an array over two domains"),
+                msgs::ir::TYPE_MISMATCH_TAKES_AN_ARRAY_OVER.at(&[&shape]),
             );
             return self.err_expr(span);
         };

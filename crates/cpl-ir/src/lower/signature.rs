@@ -2,6 +2,7 @@
 //! for built-in types, and reading parameter and return types on demand.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `fn size(s: List<T>)`: an undeclared one-letter type in the signature
@@ -526,10 +527,10 @@ impl<'a> Lowerer<'a> {
                             } else if let Some(ot) = owner_ty.clone() {
                                 ot
                             } else {
-                                self.error(
-                                    codes::UNKNOWN_TYPE,
+                                self.report(
                                     param.span,
-                                    format!("parameter `{}` needs a type", param.name.text),
+                                    msgs::ir::UNKNOWN_TYPE_PARAMETER_NEEDS_A_TYPE
+                                        .at(&[&param.name.text]),
                                 );
                                 self.help(format!(
                                     "write `{}: Int`, or the type it has",
@@ -548,10 +549,10 @@ impl<'a> Lowerer<'a> {
                                 ) => ot,
                                 (_, Some(ot)) => ot,
                                 _ => {
-                                    self.error(
-                                        codes::UNKNOWN_TYPE,
+                                    self.report(
                                         param.span,
-                                        format!("parameter `{}` needs a type", param.name.text),
+                                        msgs::ir::UNKNOWN_TYPE_PARAMETER_NEEDS_A_TYPE
+                                            .at(&[&param.name.text]),
                                     );
                                     self.help(format!(
                                         "write `{}: Int`, or the type it has",

@@ -2,6 +2,7 @@
 //! row, `m[k] f= x` on a map, and the size of a literal domain.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
     /// True for `g[r, ..]`: an index with a range among several.
@@ -63,14 +64,15 @@ impl<'a> Checker<'a> {
             || !number
             || !(one_ty.is_vague() || self.fits(&one_ty, &cell))
         {
-            let message = format!(
-                "`{}` works each cell of `{}` with one number, but `{}` is {}",
-                self.quote(value.span),
-                self.quote(part.span),
-                self.quote(one.span),
-                one_ty.with_article()
-            );
-            if let Some(diag) = self.error(codes::BAD_OPERANDS, value.span, message) {
+            if let Some(diag) = self.report(
+                value.span,
+                msgs::check::BAD_OPERANDS_WORKS_EACH_CELL_OF.at(&[
+                    &self.quote(value.span),
+                    &self.quote(part.span),
+                    &self.quote(one.span),
+                    &one_ty.with_article(),
+                ]),
+            ) {
                 diag.help = Some(
                     "the cells and the value are one kind of number: `a[l..r] = b[l2..r2] + x`"
                         .to_string(),
@@ -123,16 +125,18 @@ impl<'a> Checker<'a> {
             {
                 return;
             }
-            let message = format!(
-                "`{}` is a row of {want}, so the other side is one too, cell for cell; `{}` is {}",
-                self.quote(target.span),
-                self.quote(value.span),
-                match got {
-                    Some(got) => format!("a row of {got}"),
-                    None => value_ty.with_article(),
-                }
+            self.report(
+                value.span,
+                msgs::check::TYPE_MISMATCH_IS_A_ROW_OF.at(&[
+                    &self.quote(target.span),
+                    &want,
+                    &self.quote(value.span),
+                    &match got {
+                        Some(got) => format!("a row of {got}"),
+                        None => value_ty.with_article(),
+                    },
+                ]),
             );
-            self.error(codes::TYPE_MISMATCH, value.span, message);
             return;
         }
         let row = match target_ty {
@@ -198,9 +202,6 @@ impl<'a> Checker<'a> {
             return;
         }
         let (target_text, key) = (self.quote(target.span), self.quote(indices[0].span));
-        let message = format!(
-            "`{target_text} {fold}= x` may meet a key that is not in the map yet, and `{fold}` has no identity to start it from"
-        );
         let base = self.quote(base.span);
         let help = match op {
             AssignOp::Binary(_) => format!(
@@ -210,7 +211,10 @@ impl<'a> Checker<'a> {
                 "say what a missing key means: `{target_text} = {fold}({base}.get({key}) ?? start, x)`"
             ),
         };
-        if let Some(diag) = self.error(codes::BAD_OPERANDS, target.span, message) {
+        if let Some(diag) = self.report(
+            target.span,
+            msgs::check::BAD_OPERANDS_X_MAY_MEET_A.at(&[&target_text, &fold, &fold]),
+        ) {
             diag.help = Some(help);
         }
     }
@@ -250,8 +254,10 @@ impl<'a> Checker<'a> {
         };
         let len = *hi - *lo + i128::from(*inclusive);
         if len > i128::from(i32::MAX) {
-            let message = format!("a domain holds at most 2^31 - 1 values, and this one has {len}");
-            self.error(codes::TYPE_MISMATCH, def.span, message);
+            self.report(
+                def.span,
+                msgs::check::TYPE_MISMATCH_A_DOMAIN_HOLDS_AT.at(&[&len]),
+            );
         }
     }
 }

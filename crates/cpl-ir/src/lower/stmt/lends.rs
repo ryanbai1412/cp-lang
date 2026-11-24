@@ -1,6 +1,7 @@
 //! Places a `lends mut` call names: `head(mut a) = 7`, `a.at(i) = v`.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `a.at(i)` on a list, array or view is the place `a[i]`: `at` is
@@ -129,11 +130,7 @@ impl<'a> Lowerer<'a> {
     ) {
         let (pre, lent, post) = super::mono::split_projection_body(decl);
         let Some(lent) = lent else {
-            self.error(
-                codes::UNSUPPORTED,
-                span,
-                "projection has no `lend` statement",
-            );
+            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND.at(&[]));
             return;
         };
         let rhs_val = self.expr(rhs, None);

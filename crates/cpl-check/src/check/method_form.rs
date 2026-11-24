@@ -5,6 +5,7 @@
 //! which lowering reads.
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Arg, Expr, ExprKind};
 use std::sync::Arc;
 
@@ -121,10 +122,9 @@ impl Checker<'_> {
                 continue;
             };
             if !more_specific(&this, &that) && !more_specific(&that, &this) {
-                self.error(
-                    codes::OVERLOAD_BY_TYPE,
+                self.report(
                     f.name.span,
-                    format!("a second `fn {name}` whose `self` is no more and no less specific than the first one's: fns are not overloaded by their other parameters"),
+                    msgs::check::OVERLOAD_BY_TYPE_A_SECOND_FN_WHOSE.at(&[&name]),
                 );
                 return;
             }
@@ -679,11 +679,10 @@ impl Checker<'_> {
             '\t' => "'\\t'".to_string(),
             c => format!("'{c}'"),
         };
-        let message = format!(
-            "`split` takes a `Char` separator, but `{}` is a `Str`",
-            self.quote(value.span)
-        );
-        if let Some(diag) = self.error(codes::TYPE_MISMATCH, value.span, message) {
+        if let Some(diag) = self.report(
+            value.span,
+            msgs::check::TYPE_MISMATCH_SPLIT_TAKES_A_CHAR.at(&[&self.quote(value.span)]),
+        ) {
             diag.help = Some(format!(
                 "a `Str` splits on one `Char` or a `Char -> Bool`: `{lit}`"
             ));
@@ -802,11 +801,15 @@ impl Checker<'_> {
         }
         let shown = self.quote(base.span);
         let method = &name.text;
-        let message = format!(
-            "`{shown}.{method}` is ambiguous: {} each give its type a `{method}`",
-            modules.join(" and ")
-        );
-        if let Some(diag) = self.error(codes::AMBIGUOUS_METHOD, name.span, message) {
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_EACH_GIVE.at(&[
+                &shown,
+                &method,
+                &modules.join(" and "),
+                &method,
+            ]),
+        ) {
             diag.help = Some(format!(
                 "import the one you mean and call it as `{method}({shown}, ..)`"
             ));

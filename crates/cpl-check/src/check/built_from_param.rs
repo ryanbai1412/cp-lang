@@ -3,6 +3,7 @@
 
 use super::lends::unparen;
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Expr, ExprKind};
 
 impl Checker<'_> {
@@ -19,10 +20,10 @@ impl Checker<'_> {
             &whole[..at],
             &whole[at + name.len()..]
         );
-        let message = format!(
-            "{what} would return a `{ty}` holding lent parameter `{name}` without a `lends` clause"
-        );
-        if let Some(diag) = self.error(codes::LENT_ESCAPES, e.span, message) {
+        if let Some(diag) = self.report(
+            e.span,
+            msgs::check::LENT_ESCAPES_WOULD_RETURN_A_HOLDING.at(&[&what, &ty, &name]),
+        ) {
             diag.help = Some(format!(
                 "build it from a copy, `{copied}`, or declare `lends {ty}`"
             ));

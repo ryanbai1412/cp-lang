@@ -1,6 +1,7 @@
 //! First/last where, adjacency, spans, counts and list-form calls.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn lower_first_or_last_where(
@@ -60,7 +61,10 @@ impl<'a> Lowerer<'a> {
     /// `adjacency(edges)` -> `[V]List<V>`.
     pub(in crate::lower) fn lower_adjacency(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         if args.len() != 1 {
-            self.error(codes::WRONG_ARG_COUNT, span, "`adjacency` takes `(edges)`");
+            self.report(
+                span,
+                msgs::ir::WRONG_ARG_COUNT_ADJACENCY_TAKES_EDGES.at(&[]),
+            );
             return self.err_expr(span);
         }
         // Fuse `edges.filter(e => cond)` to avoid materializing a temporary edge list.
@@ -96,19 +100,17 @@ impl<'a> Lowerer<'a> {
                     (Some(ui), Some(vi)) => match (&fields[ui].1, &fields[vi].1) {
                         (Ty::Pos(du), Ty::Pos(dv)) if du == dv => (*du, ui, vi),
                         _ => {
-                            self.error(
-                                codes::TYPE_MISMATCH,
+                            self.report(
                                 args[0].value.span,
-                                "`adjacency` edges must have `u` and `v` in the same vertex domain",
+                                msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_HAVE.at(&[]),
                             );
                             return self.err_expr(span);
                         }
                     },
                     _ => {
-                        self.error(
-                            codes::TYPE_MISMATCH,
+                        self.report(
                             args[0].value.span,
-                            "`adjacency` edges must be `(u: V, v: V, ...)` or `(V, V)`",
+                            msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_BE.at(&[]),
                         );
                         return self.err_expr(span);
                     }
@@ -117,20 +119,18 @@ impl<'a> Lowerer<'a> {
             Ty::Tuple(parts) if parts.len() >= 2 => match (&parts[0], &parts[1]) {
                 (Ty::Pos(du), Ty::Pos(dv)) if du == dv => (*du, 0, 1),
                 _ => {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         args[0].value.span,
-                        "`adjacency` edges must have endpoints in the same vertex domain",
+                        msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_HAVE_2.at(&[]),
                     );
                     return self.err_expr(span);
                 }
             },
             Ty::Error => return self.err_expr(span),
             _ => {
-                self.error(
-                    codes::TYPE_MISMATCH,
+                self.report(
                     args[0].value.span,
-                    "`adjacency` expects a sequence of `(u: V, v: V, ...)` or `(V, V)` edges",
+                    msgs::ir::TYPE_MISMATCH_ADJACENCY_EXPECTS_A_SEQUENCE.at(&[]),
                 );
                 return self.err_expr(span);
             }
@@ -299,8 +299,10 @@ impl<'a> Lowerer<'a> {
             Ty::Int | Ty::Char | Ty::Bool | Ty::Str | Ty::Pos(_) | Ty::Bound(_)
         );
         if !hashable && !self.ordered(&elem) {
-            let message = format!("a `{}` has no order to count by", self.show(&elem));
-            self.error(codes::BAD_OPERANDS, span, message);
+            self.report(
+                span,
+                msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER.at(&[&self.show(&elem)]),
+            );
             return self.err_expr(span);
         }
         let sid = match self.counter_structs.get(&elem) {

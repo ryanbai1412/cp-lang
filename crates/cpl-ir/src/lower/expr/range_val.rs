@@ -2,6 +2,7 @@
 //! `?` operator on positions and optionals.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `j..i` with integer literal ends where a `Range<V>` is wanted: the
@@ -311,10 +312,9 @@ impl<'a> Lowerer<'a> {
         self.cx.as_written = false;
         let Ty::Opt(inner_ty) = opt.ty.clone() else {
             if opt.ty != Ty::Error {
-                self.error(
-                    codes::TYPE_MISMATCH,
+                self.report(
                     span,
-                    format!("`?` needs an optional, found `{}`", self.show(&opt.ty)),
+                    msgs::ir::TYPE_MISMATCH_NEEDS_AN_OPTIONAL_FOUND.at(&[&self.show(&opt.ty)]),
                 );
             }
             return self.err_expr(span);

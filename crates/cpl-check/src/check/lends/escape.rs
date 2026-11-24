@@ -3,6 +3,7 @@
 //! in a projection's body.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
     /// Reports a lent slice or row put where it would outlive its block.
@@ -13,11 +14,11 @@ impl<'a> Checker<'a> {
             return;
         };
         let src = show(e);
-        let message = format!(
-            "{what} would keep the lent {kind} `{src}` after this block; a lent value lives only in the block that made it"
-        );
         let ro = self.is_readonly_view(e);
-        if let Some(diag) = self.error(codes::LENT_ESCAPES, e.span, message) {
+        if let Some(diag) = self.report(
+            e.span,
+            msgs::check::LENT_ESCAPES_WOULD_KEEP_THE_LENT.at(&[&what, &kind, &src]),
+        ) {
             diag.help = Some(if ro {
                 format!(
                     "copy it into an owned value with `{src}.to_str()` / `{src}.to_list()`, or keep the range and re-slice where it is used"
@@ -48,14 +49,16 @@ impl<'a> Checker<'a> {
         let src_depth = self.var_depth(src);
         if local.keyword == "param" && self.is_lent_param_ty(&local.ty) && target_depth < src_depth
         {
-            let message = format!("lent parameter `{src}` cannot be stored in an outer `var`");
-            self.error(codes::LENT_ESCAPES, e.span, message);
+            self.report(
+                e.span,
+                msgs::check::LENT_ESCAPES_LENT_PARAMETER_CANNOT_BE.at(&[&src]),
+            );
         } else if local.keyword == "for" && self.is_heap_type(&local.ty) && target_depth < src_depth
         {
-            let message = format!(
-                "loop item `{src}` is lent from the loop and cannot be stored in an outer `var`"
+            self.report(
+                e.span,
+                msgs::check::LENT_ESCAPES_LOOP_ITEM_IS_LENT.at(&[&src]),
             );
-            self.error(codes::LENT_ESCAPES, e.span, message);
         }
     }
 
@@ -113,10 +116,11 @@ impl<'a> Checker<'a> {
                 if let ExprKind::Name(src) = &unparen(&arg.value).kind {
                     if let Some(local) = self.local(src).cloned() {
                         if local.keyword == "param" && self.is_lent_param_ty(&local.ty) {
-                            let message = format!(
-                                "{what} cannot store lent parameter `{src}` into a `mut` parameter"
+                            self.report(
+                                arg.value.span,
+                                msgs::check::LENT_ESCAPES_CANNOT_STORE_LENT_PARAMETER
+                                    .at(&[&what, &src]),
                             );
-                            self.error(codes::LENT_ESCAPES, arg.value.span, message);
                         }
                     }
                 }
@@ -152,8 +156,10 @@ impl<'a> Checker<'a> {
         loop {
             if !(first && direct_list_range) && self.is_readonly_view(e) {
                 let kind = self.view_kind(e).unwrap_or("view");
-                let message = format!("`{}` is a read-only {kind} and can't be modified", show(e));
-                if let Some(diag) = self.error(codes::ASSIGN_TO_LET, target.span, message) {
+                if let Some(diag) = self.report(
+                    target.span,
+                    msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY.at(&[&show(e), &kind]),
+                ) {
                     diag.help = Some(
                         "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
                     );
@@ -170,13 +176,14 @@ impl<'a> Checker<'a> {
                     };
                     if let Some(call) = self.lends.proj_calls.get(&e.span).cloned() {
                         if !call.mutable {
-                            let message = format!(
-                                "`{}` is lent read-only: `{}` is declared `lends {}`",
-                                show(e),
-                                call.who,
-                                call.lent
-                            );
-                            if let Some(diag) = self.error(codes::ASSIGN_TO_LET, e.span, message) {
+                            if let Some(diag) = self.report(
+                                e.span,
+                                msgs::check::ASSIGN_TO_LET_IS_LENT_READ_ONLY.at(&[
+                                    &show(e),
+                                    &call.who,
+                                    &call.lent,
+                                ]),
+                            ) {
                                 diag.help = Some(format!(
                                     "declare it `lends mut {}` to allow writes through it",
                                     call.lent
@@ -224,12 +231,14 @@ impl<'a> Checker<'a> {
         let viewed = self.view_kind(base).is_some();
         if let Some(kind) = self.view_kind(base) {
             if self.is_readonly_view(base) {
-                let message = format!(
-                    "`{}` is a read-only {kind}, so `{}` can't modify it",
-                    show(base),
-                    show(call)
-                );
-                if let Some(diag) = self.error(codes::ASSIGN_TO_LET, base.span, message) {
+                if let Some(diag) = self.report(
+                    base.span,
+                    msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY_2.at(&[
+                        &show(base),
+                        &kind,
+                        &show(call),
+                    ]),
+                ) {
                     diag.help = Some(
                         "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
                     );
@@ -237,12 +246,10 @@ impl<'a> Checker<'a> {
                 return;
             }
             if kind == "slice" && LENGTH_CHANGING_MUTATORS.contains(&name.text.as_str()) {
-                let message = format!(
-                    "`{}` is a fixed-length slice view, so `{}` can't change its length",
-                    show(base),
-                    show(call)
-                );
-                if let Some(diag) = self.error(codes::ASSIGN_TO_LET, base.span, message) {
+                if let Some(diag) = self.report(
+                    base.span,
+                    msgs::check::ASSIGN_TO_LET_IS_A_FIXED_LENGTH.at(&[&show(base), &show(call)]),
+                ) {
                     diag.help = Some("copy it into an owned list first with `.to_list()`".into());
                 }
                 return;
@@ -305,10 +312,10 @@ impl<'a> Checker<'a> {
             _ => found.next().filter(|_| found.next().is_none()),
         };
         let Some((after, lend_at, mutable, place)) = single else {
-            let message = format!(
-                "`{name}` is declared `lends`, so every path through it must reach one `lend place`"
-            );
-            if let Some(diag) = self.error(codes::BAD_PROJECTION, f.name.span, message) {
+            if let Some(diag) = self.report(
+                f.name.span,
+                msgs::check::BAD_PROJECTION_IS_DECLARED_LENDS_SO.at(&[&name]),
+            ) {
                 diag.help = Some(
                     "give the body one `lend <place>`, the part of `self` it lends, as a statement of its own"
                         .into(),
@@ -333,11 +340,10 @@ impl<'a> Checker<'a> {
                 diag.help = Some("declare it `lends mut`".into());
             }
         } else if !mutable && lends.mutable {
-            let message = format!(
-                "`{name}` is declared `lends mut`, so the body ends with `mut {}`",
-                show(place)
+            self.report(
+                span,
+                msgs::check::BAD_PROJECTION_IS_DECLARED_LENDS_MUT.at(&[&name, &show(place)]),
             );
-            self.error(codes::BAD_PROJECTION, span, message);
         }
         let reaches = |e: &Expr| {
             root_name(e).is_some_and(|root| root == "self" || fields.iter().any(|f| f == root))
@@ -351,11 +357,10 @@ impl<'a> Checker<'a> {
         let mut foreign = Vec::new();
         super::foreign_lends(place, &lends_self, &mut foreign);
         for place in foreign {
-            let message = format!(
-                "a projection may only lend part of `self`; `{}` is not reached through a field",
-                show(place)
+            self.report(
+                place.span,
+                msgs::check::BAD_PROJECTION_A_PROJECTION_MAY_ONLY.at(&[&show(place)]),
             );
-            self.error(codes::BAD_PROJECTION, place.span, message);
         }
     }
 

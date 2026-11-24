@@ -2,6 +2,7 @@
 //! `fields(..)`, and the records a `with` context sets.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl Checker<'_> {
     /// The values of `fields(a, b, ..)` in a `for` head: the compile-time
@@ -97,12 +98,9 @@ impl Checker<'_> {
             });
             if enum_mismatch {
                 let first = first.as_ref().unwrap();
-                self.error(
-                    codes::TYPE_MISMATCH,
+                self.report(
                     v.value.span,
-                    format!(
-                        "`fields` walks values of one type together; this is a `{ty}`, the first is a `{first}`"
-                    ),
+                    msgs::check::TYPE_MISMATCH_FIELDS_WALKS_VALUES_OF.at(&[&ty, &first]),
                 );
             }
             if first.is_none() {
@@ -122,24 +120,18 @@ impl Checker<'_> {
                         .next()
                         .is_some_and(|f: &Vec<(String, Ty)>| f.len() != fields.len()) =>
                 {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         v.value.span,
-                        format!(
-                            "`fields` walks values with as many fields together; this `{ty}` has {}",
-                            fields.len()
-                        ),
+                        msgs::check::TYPE_MISMATCH_FIELDS_WALKS_VALUES_WITH
+                            .at(&[&ty, &fields.len()]),
                     );
                     shapes.push(None);
                 }
                 Ok(fields) => shapes.push(fields),
                 Err(()) => {
-                    if let Some(d) = self.error(
-                        codes::TYPE_MISMATCH,
+                    if let Some(d) = self.report(
                         v.value.span,
-                        format!(
-                            "`fields` walks the fields of a struct or a tuple, not of a `{ty}`"
-                        ),
+                        msgs::check::TYPE_MISMATCH_FIELDS_WALKS_THE_FIELDS.at(&[&ty]),
                     ) {
                         d.help =
                             Some("pass a struct or tuple value: `for f in fields(p):`".to_string());
@@ -149,11 +141,7 @@ impl Checker<'_> {
             }
         }
         if let Some(stmt) = loop_exit(&body.stmts) {
-            self.error(
-                codes::UNSUPPORTED,
-                stmt,
-                "a `fields` loop runs its body once per field at compile time, so it has no `break` or `continue`".to_string(),
-            );
+            self.report(stmt, msgs::check::UNSUPPORTED_A_FIELDS_LOOP_RUNS.at(&[]));
         }
         let elem = |i: Option<usize>, shapes: &[Option<Vec<(String, Ty)>>]| -> Ty {
             let one = |s: &Option<Vec<(String, Ty)>>| match (i, s) {
@@ -236,26 +224,23 @@ impl Checker<'_> {
             ];
             for arg in args {
                 let Some(name) = &arg.name else {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         arg.value.span,
-                        "arguments to `with checks(...)` must be named".to_string(),
+                        msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_CHECKS.at(&[]),
                     );
                     continue;
                 };
                 if !CHECK_FIELDS.contains(&name.text.as_str()) {
-                    self.error(
-                        codes::UNKNOWN_FIELD,
+                    self.report(
                         name.span,
-                        format!("context `checks` has no field `{}`", name.text),
+                        msgs::check::UNKNOWN_FIELD_CONTEXT_CHECKS_HAS_NO.at(&[&name.text]),
                     );
                 }
                 if !matches!(&arg.value.kind, ExprKind::Name(v) if matches!(v.as_str(), "on" | "off"))
                 {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         arg.value.span,
-                        "expected `on` or `off` for `checks` context field".to_string(),
+                        msgs::check::TYPE_MISMATCH_EXPECTED_ON_OR_OFF.at(&[]),
                     );
                 }
             }
@@ -264,10 +249,9 @@ impl Checker<'_> {
         if ctx.text == "lint" {
             for arg in args {
                 if arg.name.is_none() {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         arg.value.span,
-                        "arguments to `with lint(...)` must be named".to_string(),
+                        msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_LINT.at(&[]),
                     );
                     continue;
                 }
@@ -275,20 +259,18 @@ impl Checker<'_> {
                     &arg.value.kind,
                     ExprKind::Name(v) if matches!(v.as_str(), "allow" | "warn" | "deny")
                 ) {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         arg.value.span,
-                        "expected `allow`, `warn`, or `deny` for `lint` context field".to_string(),
+                        msgs::check::TYPE_MISMATCH_EXPECTED_ALLOW_WARN_OR.at(&[]),
                     );
                 }
             }
             return;
         }
         let Some(fields) = self.context_record_fields(&ctx.text) else {
-            self.error(
-                codes::UNRESOLVED_NAME,
+            self.report(
                 ctx.span,
-                format!("unknown context `{}`", ctx.text),
+                msgs::check::UNRESOLVED_NAME_UNKNOWN_CONTEXT.at(&[&ctx.text]),
             );
             for arg in args {
                 self.infer(&arg.value);
@@ -297,28 +279,27 @@ impl Checker<'_> {
         };
         for arg in args {
             if !context_constant(&arg.value) {
-                let message = "a context value is a compile-time constant; pass a runtime value as an argument instead".to_string();
-                if let Some(diag) = self.error(codes::CONTEXT_NOT_CONSTANT, arg.value.span, message)
-                {
+                if let Some(diag) = self.report(
+                    arg.value.span,
+                    msgs::check::CONTEXT_NOT_CONSTANT_A_CONTEXT_VALUE_IS.at(&[]),
+                ) {
                     diag.help = Some(
                         "write the value itself here: a number, character, string or `None`".into(),
                     );
                 }
             }
             let Some(name) = &arg.name else {
-                self.error(
-                    codes::TYPE_MISMATCH,
+                self.report(
                     arg.value.span,
-                    format!("arguments to `with {}(...)` must be named", ctx.text),
+                    msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_MUST.at(&[&ctx.text]),
                 );
                 self.infer(&arg.value);
                 continue;
             };
             let Some((_, expected)) = fields.iter().find(|(n, _)| n == &name.text) else {
-                self.error(
-                    codes::UNKNOWN_FIELD,
+                self.report(
                     name.span,
-                    format!("context `{}` has no field `{}`", ctx.text, name.text),
+                    msgs::check::UNKNOWN_FIELD_CONTEXT_HAS_NO_FIELD.at(&[&ctx.text, &name.text]),
                 );
                 self.infer(&arg.value);
                 continue;
@@ -341,10 +322,9 @@ impl Checker<'_> {
                         let in_lo = lo.is_none_or(|l| n >= l);
                         let in_hi = hi.is_none_or(|h| n <= h);
                         if !in_lo || !in_hi {
-                            self.error(
-                                codes::TYPE_MISMATCH,
+                            self.report(
                                 arg.value.span,
-                                format!("expected `{expected}`, got `{n}`"),
+                                msgs::check::TYPE_MISMATCH_EXPECTED_GOT.at(&[&expected, &n]),
                             );
                         }
                         continue;

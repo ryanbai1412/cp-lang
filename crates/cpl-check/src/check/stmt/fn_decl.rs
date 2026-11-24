@@ -2,6 +2,7 @@
 //! `@cache` and what they may capture or lend.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
     /// Reports a `@memo` that would not remember anything. Both back ends keep one table of
@@ -88,10 +89,10 @@ impl<'a> Checker<'a> {
                 if !self.is_bounded_memo_type(&ty_p.ty) {
                     let pname = &ast_p.name.text;
                     let pty = &ty_p.ty;
-                    let message = format!(
-                        "`@memo(array)` on `{name}` requires bounded parameter types, but `{pname}: {pty}` is unbounded"
-                    );
-                    if let Some(diag) = self.error(codes::BAD_MEMO, ast_p.name.span, message) {
+                    if let Some(diag) = self.report(
+                        ast_p.name.span,
+                        msgs::check::BAD_MEMO_MEMO_ARRAY_ON_REQUIRES.at(&[&name, &pname, &pty]),
+                    ) {
                         diag.help = Some(
                             "give the parameter a bounded type (a domain, range, `Bool`, or enum), or use `@memo(map)`".into(),
                         );
@@ -161,18 +162,14 @@ impl<'a> Checker<'a> {
                     let root = Self::expr_root_name(e);
                     let ok = root.is_some_and(|r| lends.sources.iter().any(|s| s.text == r));
                     if !ok {
-                        self.error(
-                            codes::LENT_ESCAPES,
+                        self.report(
                             e.span,
-                            format!(
-                                "lent value must come from `{}`",
-                                lends
-                                    .sources
-                                    .iter()
-                                    .map(|s| s.text.as_str())
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            ),
+                            msgs::check::LENT_ESCAPES_LENT_VALUE_MUST_COME.at(&[&lends
+                                .sources
+                                .iter()
+                                .map(|s| s.text.as_str())
+                                .collect::<Vec<_>>()
+                                .join(", ")]),
                         );
                     }
                 }
@@ -186,12 +183,10 @@ impl<'a> Checker<'a> {
                     for e in &returned {
                         if let Some(cf) = Self::expr_self_field(e) {
                             if cached.iter().any(|c| c == cf) {
-                                self.error(
-                                    codes::BAD_PROJECTION,
+                                self.report(
                                     e.span,
-                                    format!(
-                                        "cannot lend `@cache` field `self.{cf}` from `{sname}`"
-                                    ),
+                                    msgs::check::BAD_PROJECTION_CANNOT_LEND_CACHE_FIELD
+                                        .at(&[&cf, &sname]),
                                 );
                             }
                         }
@@ -251,10 +246,9 @@ impl<'a> Checker<'a> {
             if !matches!(ctx.text.as_str(), "checks" | "lint")
                 && self.context_record_fields(&ctx.text).is_none()
             {
-                self.error(
-                    codes::UNRESOLVED_NAME,
+                self.report(
                     ctx.span,
-                    format!("unknown context `{}` in `uses` clause", ctx.text),
+                    msgs::check::UNRESOLVED_NAME_UNKNOWN_CONTEXT_IN_USES.at(&[&ctx.text]),
                 );
             }
         }
@@ -290,10 +284,9 @@ impl<'a> Checker<'a> {
         if let Some(lends) = &f.lends {
             self.resolve_type(&lends.ty);
             if let Some(at) = lends.bare {
-                if let Some(diag) = self.error(
-                    codes::EXPECTED_TOKEN,
+                if let Some(diag) = self.report(
                     at,
-                    "expected `->` before `lends`: a lend is the fn's result".to_string(),
+                    msgs::check::EXPECTED_TOKEN_EXPECTED_BEFORE_LENDS_A.at(&[]),
                 ) {
                     diag.help = Some("write `-> lends T`".to_string());
                     diag.fixes.push(cpl_diag::Fix {
@@ -559,13 +552,10 @@ impl<'a> Checker<'a> {
                     _ => false,
                 };
                 if bad_self_method || bad_fn_param {
-                    self.error(
-                        codes::USED_WHILE_LENT,
+                    self.report(
                         expr.span,
-                        format!(
-                            "cannot call `{}` while `@cache` field `self.{cache_field}` is lent",
-                            self.quote(callee.span)
-                        ),
+                        msgs::check::USED_WHILE_LENT_CANNOT_CALL_WHILE_CACHE
+                            .at(&[&self.quote(callee.span), &cache_field]),
                     );
                 }
                 self.check_cache_lend_expr(callee, cache_field);

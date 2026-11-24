@@ -2,6 +2,7 @@
 //! and a top-level one keeps its base in a global the file's fns read too.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `let name = xs.map(f)` as a lazy view, which calls `f` on every read (R07.4.9); only an
@@ -248,10 +249,9 @@ impl<'a> Lowerer<'a> {
             Ty::Fn(_, ret) if !matches!(ret.as_ref(), Ty::Error) => (**ret).clone(),
             Ty::Error => return self.err_expr(span),
             other => {
-                self.error(
-                    codes::TYPE_MISMATCH,
+                self.report(
                     func_ast.span,
-                    format!("`map` expects a function, not `{}`", self.show(other)),
+                    msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION.at(&[&self.show(other)]),
                 );
                 return self.err_expr(span);
             }

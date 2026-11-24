@@ -4,6 +4,7 @@
 use super::*;
 use crate::ty::Bindings;
 use crate::{CallFact, CalleeKind};
+use cpl_diag::msgs;
 use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 impl Checker<'_> {
@@ -34,11 +35,10 @@ impl Checker<'_> {
             text(u.value.span),
             text(v.value.span)
         );
-        let message = format!(
-            "a list of lists has no `{}(u, v)`; an arc test asks `u`'s list",
-            name.text
-        );
-        if let Some(diag) = self.error(codes::REMOVED_SYNTAX, whole.span, message) {
+        if let Some(diag) = self.report(
+            whole.span,
+            msgs::check::REMOVED_SYNTAX_A_LIST_OF_LISTS.at(&[&name.text]),
+        ) {
             diag.help = Some(format!("write `{new}`"));
             diag.fix(format!("write `{new}`"), whole.span, new);
         }

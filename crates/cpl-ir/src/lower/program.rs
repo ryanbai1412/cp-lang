@@ -2,6 +2,7 @@
 //! `@alt` or `@check` fn run as the program, and gathering the result.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl Lowerer<'_> {
     /// Lowers every fn the program reaches and gathers the [`Program`].
@@ -260,10 +261,9 @@ impl<'a> Lowerer<'a> {
     /// the older spelling of the same divider.
     pub(in crate::lower) fn divide(&mut self, decorator: &ast::Decorator, out: &mut Vec<Stmt>) {
         if self.multitest {
-            self.error(
-                codes::UNEXPECTED_TOKEN,
+            self.report(
                 decorator.span,
-                "a second `@!multitest`".to_string(),
+                msgs::ir::UNEXPECTED_TOKEN_A_SECOND_MULTITEST.at(&[]),
             );
             return;
         }
@@ -274,10 +274,9 @@ impl<'a> Lowerer<'a> {
                 ast::ExprKind::Name(name) if arg.name.is_none() && name == "until_eof" => {
                     self.until_eof = true;
                 }
-                _ => self.error(
-                    codes::UNEXPECTED_TOKEN,
+                _ => self.report(
                     arg.value.span,
-                    "`@!multitest` takes nothing, or `until_eof`".to_string(),
+                    msgs::ir::UNEXPECTED_TOKEN_MULTITEST_TAKES_NOTHING_OR.at(&[]),
                 ),
             }
         }
@@ -351,10 +350,9 @@ impl<'a> Lowerer<'a> {
             };
             out.push(Stmt::Expr(call));
         } else {
-            self.error(
-                codes::UNRESOLVED_NAME,
+            self.report(
                 Span::default(),
-                format!("no `@test` fn named `{test_name}`"),
+                msgs::ir::UNRESOLVED_NAME_NO_TEST_FN_NAMED.at(&[&test_name]),
             );
         }
         let cx = std::mem::take(&mut self.cx);
@@ -477,13 +475,7 @@ impl<'a> Lowerer<'a> {
                     } else {
                         "@check"
                     };
-                    self.error(
-                        codes::WRONG_ARG_COUNT,
-                        at,
-                        format!(
-                            "a `{kind}` fn takes no parameters: it reads the input the file reads"
-                        ),
-                    );
+                    self.report(at, msgs::ir::WRONG_ARG_COUNT_A_FN_TAKES_NO.at(&[&kind]));
                     Vec::new()
                 }
             };

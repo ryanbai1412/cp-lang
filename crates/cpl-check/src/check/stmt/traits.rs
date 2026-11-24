@@ -2,6 +2,7 @@
 //! an impl supplies what it asks for.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
     /// Checks the fns, laws and constants of a struct, enum, trait or impl
@@ -126,13 +127,17 @@ impl<'a> Checker<'a> {
             Some(Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. }) | None
                 if name.text.is_empty() => {}
             Some(_) => {
-                let message = format!("`{}` is not a trait", name.text);
-                self.error(codes::UNKNOWN_TYPE, name.span, message);
+                self.report(
+                    name.span,
+                    msgs::check::UNKNOWN_TYPE_IS_NOT_A_TRAIT.at(&[&name.text]),
+                );
             }
             None if self.env.has_imports() => {}
             None => {
-                let message = format!("no trait named `{}`", name.text);
-                self.error(codes::UNKNOWN_TYPE, name.span, message);
+                self.report(
+                    name.span,
+                    msgs::check::UNKNOWN_TYPE_NO_TRAIT_NAMED.at(&[&name.text]),
+                );
             }
         }
         None
@@ -161,10 +166,10 @@ impl<'a> Checker<'a> {
                 .map(|s| format!("`impl {s} for {}`", self.quote(target.span)))
                 .collect::<Vec<_>>()
                 .join(" and ");
-            let message = format!(
-                "`{trait_text}` is a trait alias: it names bounds and has no impl of its own"
-            );
-            if let Some(diag) = self.error(codes::UNSUPPORTED, trait_ty.span, message) {
+            if let Some(diag) = self.report(
+                trait_ty.span,
+                msgs::check::UNSUPPORTED_IS_A_TRAIT_ALIAS.at(&[&trait_text]),
+            ) {
                 diag.help = Some(format!("write {impls} instead"));
             }
             return;
@@ -180,8 +185,10 @@ impl<'a> Checker<'a> {
             if methods.iter().all(|m| m.name != name.text) {
                 let known: Vec<String> = methods.iter().map(|m| m.name.clone()).collect();
                 let suggestion = closest(&name.text, known.iter().map(String::as_str));
-                let message = format!("`{trait_text}` has no fn `{}`", name.text);
-                if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                if let Some(diag) = self.report(
+                    name.span,
+                    msgs::check::UNKNOWN_FIELD_HAS_NO_FN.at(&[&trait_text, &name.text]),
+                ) {
                     match suggestion {
                         Some(s) => diag.suggest(name.span, s),
                         None => {
@@ -203,13 +210,15 @@ impl<'a> Checker<'a> {
             .map(|m| m.name.clone())
             .collect();
         if !missing.is_empty() {
-            let message = format!(
-                "`impl {trait_text} for {}` is missing {}",
-                self.quote(target.span),
-                super::expr::list_names(&missing)
-            );
             let span = trait_ty.span.to(target.span);
-            if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, span, message) {
+            if let Some(diag) = self.report(
+                span,
+                msgs::check::WRONG_ARG_COUNT_IMPL_FOR_IS_MISSING.at(&[
+                    &trait_text,
+                    &self.quote(target.span),
+                    &super::expr::list_names(&missing),
+                ]),
+            ) {
                 diag.help = Some(format!(
                     "`{trait_text}` declares {} without a body, so each impl writes {}",
                     if missing.len() == 1 { "it" } else { "them" },

@@ -2,6 +2,7 @@
 //! expressions, and storing into a place.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `value` as something cheap to mention twice: itself if it is a
@@ -104,12 +105,11 @@ impl<'a> Lowerer<'a> {
             let value = self.expr(value, wanted.as_ref());
             let Some(fields) = value.ty.fields().filter(|f| f.len() == targets.len()) else {
                 if value.ty != Ty::Error {
-                    let message = format!(
-                        "{} variables can't take a `{}`",
-                        targets.len(),
-                        self.show(&value.ty)
+                    self.report(
+                        target.span,
+                        msgs::ir::TYPE_MISMATCH_VARIABLES_CAN_T_TAKE
+                            .at(&[&targets.len(), &self.show(&value.ty)]),
                     );
-                    self.error(codes::TYPE_MISMATCH, target.span, message);
                 }
                 return;
             };
@@ -343,11 +343,10 @@ impl<'a> Lowerer<'a> {
             ast::AssignOp::Max | ast::AssignOp::Min => {
                 if let Ty::Opt(inner) = place.ty.clone() {
                     if !matches!(*inner, Ty::Error) && !self.ordered(&inner) {
-                        let message = format!(
-                            "`max=` and `min=` need values with an order, not `{}`",
-                            self.show(&place.ty)
+                        self.report(
+                            span,
+                            msgs::ir::BAD_OPERANDS_MAX_AND_MIN_NEED.at(&[&self.show(&place.ty)]),
                         );
-                        self.error(codes::BAD_OPERANDS, span, message);
                         return;
                     }
                     let is_max = op == ast::AssignOp::Max;
@@ -526,11 +525,11 @@ impl<'a> Lowerer<'a> {
                     }
                     let Ty::Opt(inner) = place.ty.clone() else {
                         if place.ty != Ty::Error {
-                            let message = format!(
-                                "`??=` fills in an optional, but this is a `{}`",
-                                self.show(&place.ty)
+                            self.report(
+                                span,
+                                msgs::ir::BAD_OPERANDS_FILLS_IN_AN_OPTIONAL
+                                    .at(&[&self.show(&place.ty)]),
                             );
-                            self.error(codes::BAD_OPERANDS, span, message);
                         }
                         return;
                     };
@@ -558,16 +557,15 @@ impl<'a> Lowerer<'a> {
                 // stays `none` hides a table that was never filled in.
                 if let (Ty::Opt(inner), Add | Sub) = (&place.ty, bin) {
                     if matches!(**inner, Ty::Int | Ty::Float) {
-                        let message = format!(
-                            "`{}=` can't be applied to a `{}`",
-                            bin.text(),
-                            self.show(&place.ty)
-                        );
                         let help = format!(
                             "write `x = x {} y` when `none` should stay `none`, or `x min= y + w` for a transition",
                             bin.text()
                         );
-                        self.error(codes::BAD_OPERANDS, span, message);
+                        self.report(
+                            span,
+                            msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED_2
+                                .at(&[&bin.text(), &self.show(&place.ty)]),
+                        );
                         self.help(help);
                         return;
                     }
@@ -593,12 +591,11 @@ impl<'a> Lowerer<'a> {
                     (Ty::Str, Add) => self.as_str(value, span),
                     (Ty::Error, _) => value,
                     _ => {
-                        let message = format!(
-                            "`{}=` can't be applied to a `{}`",
-                            bin.text(),
-                            self.show(&place.ty)
+                        self.report(
+                            span,
+                            msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED_2
+                                .at(&[&bin.text(), &self.show(&place.ty)]),
                         );
-                        self.error(codes::BAD_OPERANDS, span, message);
                         value
                     }
                 };

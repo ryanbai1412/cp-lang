@@ -2,6 +2,7 @@
 //! slices, keyed views and cut ranges.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// True when `e` refers to a mutable place whose backing storage can be
@@ -84,10 +85,9 @@ impl<'a> Lowerer<'a> {
                 ast::ExprKind::Unary { op: UnOp::Neg, expr } if matches!(expr.kind, ast::ExprKind::Int(n) if n > 0)
             );
             if negative {
-                self.error(
-                    codes::BAD_OPERANDS,
+                self.report(
                     bound.span,
-                    "a slice bound counts from the start, so it can't be negative",
+                    msgs::ir::BAD_OPERANDS_A_SLICE_BOUND_COUNTS.at(&[]),
                 );
                 self.help("count from the end with the length: `a[..a.len - 1]`");
                 return None;
@@ -526,10 +526,9 @@ impl<'a> Lowerer<'a> {
                 ast::ExprKind::Unary { op: UnOp::Neg, expr } if matches!(expr.kind, ast::ExprKind::Int(n) if n > 0)
             );
             if negative {
-                self.error(
-                    codes::BAD_OPERANDS,
+                self.report(
                     bound.span,
-                    "a slice bound counts from the start, so it can't be negative",
+                    msgs::ir::BAD_OPERANDS_A_SLICE_BOUND_COUNTS.at(&[]),
                 );
                 self.help("count from the end with the length: `a[..a.len - 1]`");
                 return self.err_expr(span);
@@ -649,10 +648,9 @@ impl<'a> Lowerer<'a> {
             }
             Ty::Error => return self.err_expr(span),
             other => {
-                self.error(
-                    codes::BAD_OPERANDS,
+                self.report(
                     span,
-                    format!("can't slice a `{}`", self.show(other)),
+                    msgs::ir::BAD_OPERANDS_CAN_T_SLICE_A.at(&[&self.show(other)]),
                 );
                 return self.err_expr(span);
             }

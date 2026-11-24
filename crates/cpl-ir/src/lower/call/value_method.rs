@@ -3,6 +3,7 @@
 //! and struct receivers.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     #[allow(clippy::too_many_arguments)]
@@ -548,10 +549,9 @@ impl<'a> Lowerer<'a> {
                         Some("before") if before_ast.is_none() => before_ast = Some(&a.value),
                         Some("while") if while_ast.is_none() => while_ast = Some(&a.value),
                         Some(other) => {
-                            self.error(
-                                codes::UNKNOWN_ARG_NAME,
+                            self.report(
                                 a.name.as_ref().unwrap().span,
-                                format!("`drain` has no parameter named `{other}`"),
+                                msgs::ir::UNKNOWN_ARG_NAME_DRAIN_HAS_NO_PARAMETER.at(&[&other]),
                             );
                             ok = false;
                         }
@@ -1369,12 +1369,10 @@ impl<'a> Lowerer<'a> {
                 Ty::Array { .. } | Ty::Set(_) | Ty::Map(..) | Ty::HashSet(_) | Ty::HashMap(..),
                 "rev",
             ) if args.is_empty() => {
-                let message = format!(
-                    "a reversed `{}` is something to loop over, not a value: \
-                     `for x in xs.rev`, or `[x for x in xs.rev]` for the list",
-                    self.show(&ty)
+                self.report(
+                    name.span,
+                    msgs::ir::UNSUPPORTED_A_REVERSED_IS_SOMETHING.at(&[&self.show(&ty)]),
                 );
-                self.error(codes::UNSUPPORTED, name.span, message);
                 self.err_expr(span)
             }
             (Ty::DomainVal, "mask") if args.len() == 1 && args[0].name.is_none() => {
@@ -1489,8 +1487,10 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::WRONG_ARG_COUNT, name.span, message);
                     return self.err_expr(span);
                 }
-                let message = format!("{} has no method `{method}`", self.a_ty(&ty));
-                self.error(codes::UNKNOWN_FIELD, name.span, message);
+                self.report(
+                    name.span,
+                    msgs::ir::UNKNOWN_FIELD_HAS_NO_METHOD.at(&[&self.a_ty(&ty), &method]),
+                );
                 self.member_typo(&ty, method, name.span);
                 self.foreign_call_fix(&ty, base, method, span);
                 self.slice_call_fix(&ty, base, method, args, span);

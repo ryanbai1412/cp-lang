@@ -1,6 +1,7 @@
 //! Indexing: `base[...]` on arrays, grids and lists, with vouched indices.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// The indices of `base[...]` and the type of the element.
@@ -98,10 +99,9 @@ impl<'a> Lowerer<'a> {
                             Ty::Tuple(ts) if ts.len() == 2 => (ts[0].clone(), ts[1].clone()),
                             Ty::Record(fs) if fs.len() == 2 => (fs[0].1.clone(), fs[1].1.clone()),
                             _ => {
-                                self.error(
-                                    codes::WRONG_ARG_COUNT,
+                                self.report(
                                     span,
-                                    "a symmetric table takes 2 indices `adj[u, v]` or a pair `(u, v)`",
+                                    msgs::ir::WRONG_ARG_COUNT_A_SYMMETRIC_TABLE_TAKES.at(&[]),
                                 );
                                 return (vec![self.err_expr(span)], (**elem).clone());
                             }
@@ -113,10 +113,9 @@ impl<'a> Lowerer<'a> {
                             self.coerce(f1, &Ty::Pos(*d), indices[0].span),
                         )
                     } else {
-                        self.error(
-                            codes::WRONG_ARG_COUNT,
+                        self.report(
                             span,
-                            format!("this takes 2 indices, but {} were given", indices.len()),
+                            msgs::ir::WRONG_ARG_COUNT_THIS_TAKES_2_INDICES.at(&[&indices.len()]),
                         );
                         return (vec![self.err_expr(span)], (**elem).clone());
                     };
@@ -136,13 +135,14 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 if dims.len() != indices.len() {
-                    let message = format!(
-                        "a `{}` takes {} indices, but {} were given",
-                        self.show(base),
-                        dims.len(),
-                        indices.len()
+                    self.report(
+                        span,
+                        msgs::ir::WRONG_ARG_COUNT_A_TAKES_INDICES_BUT.at(&[
+                            &self.show(base),
+                            &dims.len(),
+                            &indices.len(),
+                        ]),
                     );
-                    self.error(codes::WRONG_ARG_COUNT, span, message);
                     if dims.len() > 1 && indices.len() == 1 {
                         self.help("a grid is indexed `g[r, c]`, never `g[r][c]`");
                     }
@@ -264,12 +264,11 @@ impl<'a> Lowerer<'a> {
                                 Err(orig) => value = orig,
                             }
                         }
-                        let message = format!(
-                            "this is indexed by `{}`, but the index is a `{}`",
-                            self.show(&want),
-                            self.show(&value.ty)
+                        self.report(
+                            index.span,
+                            msgs::ir::WRONG_DOMAIN_THIS_IS_INDEXED_BY
+                                .at(&[&self.show(&want), &self.show(&value.ty)]),
                         );
-                        self.error(codes::WRONG_DOMAIN, index.span, message);
                     }
                     out.push(value);
                 }
@@ -300,8 +299,10 @@ impl<'a> Lowerer<'a> {
                 (vec![self.err_expr(span)], Ty::Error)
             }
             other => {
-                let message = format!("a `{}` can't be indexed", self.show(other));
-                self.error(codes::NOT_INDEXABLE, span, message);
+                self.report(
+                    span,
+                    msgs::ir::NOT_INDEXABLE_A_CAN_T_BE.at(&[&self.show(other)]),
+                );
                 self.tuple_index_fix(other, &indices[0], span);
                 (vec![self.err_expr(span)], Ty::Error)
             }

@@ -3,6 +3,7 @@
 
 use super::types::type_head;
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast::{self, TypeKind};
 
 /// The name an impl for `ty` is filed under: its head, or `fn` for every fn type.
@@ -153,10 +154,15 @@ impl Checker<'_> {
         for sup in supers {
             if !self.implements_trait(&target_ty, &sup) {
                 let (tr_text, target_text) = (self.quote(tr.span), self.quote(target.span));
-                let message = format!(
-                    "`impl {tr_text} for {target_text}` requires `impl {sup} for {target_text}`"
+                self.report(
+                    tr.span,
+                    msgs::check::MISSING_IMPL_IMPL_FOR_REQUIRES_IMPL.at(&[
+                        &tr_text,
+                        &target_text,
+                        &sup,
+                        &target_text,
+                    ]),
                 );
-                self.error(codes::MISSING_IMPL, tr.span, message);
             }
         }
         self.param_bounds.truncate(outer);

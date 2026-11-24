@@ -2,6 +2,7 @@
 //! arguments, binding range domains, and local generic fns.
 
 use super::*;
+use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// Calls a generic function or generic struct method, inferring any omitted type arguments
@@ -638,15 +639,13 @@ impl<'a> Lowerer<'a> {
                     _ => true,
                 };
                 if !ok {
-                    self.error(
-                        codes::MISSING_IMPL,
+                    self.report(
                         span,
-                        format!(
-                            "`{}` does not implement `{}` required by `{}`",
-                            self.show(ty),
-                            tr_name.text,
-                            decl.name.text
-                        ),
+                        msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED.at(&[
+                            &self.show(ty),
+                            &tr_name.text,
+                            &decl.name.text,
+                        ]),
                     );
                     let own = match self.get_sym(&tr_name.text) {
                         Some(Sym::Trait(tid)) => self.traits[tid].unimplemented.clone(),
