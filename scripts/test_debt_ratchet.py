@@ -1233,6 +1233,15 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, dr.TOOLS_TEST_TIMES, json.dumps({"over_limit": {"cpl-cli::a slow": 31.0}}))
             self.assertEqual(dr.tools_tests_over_30s(root), ["cpl-cli::a slow: 31.0 s"])
 
+    def test_corpus_max_short_and_unread_read_the_max_short_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(len(dr.corpus_max_short(root)), 1)
+            self.assertEqual(len(dr.corpus_max_unread(root)), 1)
+            self._write(root, dr.CORPUS_MAX_SHORT, json.dumps({"max_short": ["max-short a m"], "max_unread": []}))
+            self.assertEqual(dr.corpus_max_short(root), ["max-short a m"])
+            self.assertEqual(dr.corpus_max_unread(root), [])
+
     def test_interp_max_over_20s_reads_the_corpus_board(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

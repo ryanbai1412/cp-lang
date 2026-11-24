@@ -52,7 +52,7 @@ with a stable id that audits and tests cite. The ideas behind them are in
 **Rule:** the package has an input at the statement's bounds, shaped to be slowest for the obvious solution, judged on the C++ build.
 **Why:** the time limit is exercised, not assumed.
 **Example:** `max.py` in an acceptance judge.
-**Enforced by:** `research/acceptance/judge.py`; corpus: `scripts/corpus.py verify` (`max`), the `corpus_no_max` ratchet and the `corpus_no_limits` ratchet (every port has the line, shrink-only, target 0); on the `gen.py --max` input, `traps` and `checked-over-limit` (the checked C++, `--checks all`, past max(20 s, 10x the limit)), `over-limit` (the judge C++ against the port's `// limits: T ms, M MB` line, default 2000 ms, 256 MB), `disagrees` and `slow` (against the accepted C++), and `reference-fails` (the accepted C++ crashes or times out on the valid max input).
+**Enforced by:** `research/acceptance/judge.py`; corpus: `scripts/corpus.py verify` (`max`), the `corpus_no_max` ratchet and the `corpus_no_limits` ratchet (every port has the line, shrink-only, target 0); on the `gen.py --max` input, `traps` and `checked-over-limit` (the checked C++, `--checks all`, past max(20 s, 10x the limit)), `over-limit` (the judge C++ against the port's `// limits: T ms, M MB` line, default 2000 ms, 256 MB), `disagrees` and `slow` (against the accepted C++), `reference-fails` (the accepted C++ crashes or times out on the valid max input), and `max-short` (a read that sizes the input, a domain's bound or a read's index, under its `Bounds` at the `--max` values; every v03 port in `scripts/corpus.py max-short`, run by `ci-slow.yml`, behind the shrink-only `corpus_max_short` and `corpus_max_unread` ratchets).
 
 ### problem-packages/R7
 

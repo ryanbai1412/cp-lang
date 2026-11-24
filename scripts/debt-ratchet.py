@@ -1008,6 +1008,30 @@ def interp_max_over_20s(root: Path) -> list[str]:
     return list(board["interp_max_over_20s"])
 
 
+CORPUS_MAX_SHORT = "research/corpus-max-short.json"
+
+
+def _max_short_record(root: Path, key: str) -> list[str]:
+    p = root / CORPUS_MAX_SHORT
+    rec = json.loads(p.read_text()) if p.is_file() else {}
+    if key not in rec:
+        return [f"{CORPUS_MAX_SHORT}: no {key}; run `scripts/corpus.py max-short --write`"]
+    return list(rec[key])
+
+
+def corpus_max_short(root: Path) -> list[str]:
+    """v03 ports whose gen.py --max reads a size under its Bounds (`max-short P n`, owner: the
+    generator's lane). `scripts/corpus.py max-short --write` records them; ci-slow.yml fails a
+    record that differs from what it measures, and a missing record counts."""
+    return _max_short_record(root, "max_short")
+
+
+def corpus_max_unread(root: Path) -> list[str]:
+    """v03 ports whose --max sizes the max-short check can't read (a multitest port, a size its
+    prefix can't compute), so nothing shows they reach their Bounds (owner: Idioms)."""
+    return _max_short_record(root, "max_unread")
+
+
 TOOLS_TEST_TIMES = "research/perf/tools-test-times.json"
 
 
@@ -3096,6 +3120,9 @@ COUNTERS = {
                             corpus_no_statement, True),
     "corpus_fmt_dirty": ("corpus port, dream and spec files cpl fmt would change (Content)",
                          corpus_fmt_dirty, True),
+    "corpus_max_short": ("v03 --max inputs reading a size under the port's Bounds (generator's lane)",
+                         corpus_max_short, True),
+    "corpus_max_unread": ("v03 --max inputs whose sizes max-short can't read (Idioms)", corpus_max_unread, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "tools_tests_over_30s": ("tools crates' tests over 30 s (Tools)", tools_tests_over_30s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),

@@ -104,6 +104,26 @@ jobs:
           just corpus-tests-make --cpl target/ci/cpl "${ids[@]}" >/dev/null
           just corpus-verify --only dream --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
 
+  # Each v03 --max input reaches its port's Bounds: a `cpl run` per port, too slow for the
+  # commit tier. A finding the record doesn't hold fails; corpus_max_short only shrinks.
+  max-short:
+    name: every --max input reaches its Bounds
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: release
+      - name: Build cpl
+        run: cargo build --profile ci --bin cpl
+      - uses: ./.github/actions/install-tools
+        with:
+          tools: just@1.59.0
+      - name: --max inputs against research/corpus-max-short.json
+        run: just corpus-max-short --cpl target/ci/cpl -j "$(nproc)"
+
   # Coverage of each crate by its own tests and by all (handbook/process/quality.md#how-suites-are-measured).
   coverage:
     name: coverage matrix

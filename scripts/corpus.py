@@ -654,6 +654,127 @@ def bounds_findings(pid, text):
     return found
 
 
+TOP_READ = re.compile(r"^(?:let|var) (\w+|\([\w, ]+\))(?::.+?)? = read(?:\(\)|<.+>\(\))$")
+
+
+def size_reads(text):
+    """The top-level scalar reads that size the input, name -> their line index: each one a
+    domain's bound or a read's index names (`domain Piece = 1..=n`, `let a: [q]T = read()`)."""
+    lines = logical_lines(text)
+    reads = {}
+    for i, line in enumerate(lines):
+        m = TOP_READ.match(line)
+        if m:
+            for n in split_top(m.group(1).strip("()")):
+                reads.setdefault(n.strip(), i)
+    sizing = [l for l in lines if re.match(r"^domain \w+ = ", l)]
+    sizing += ["".join(re.findall(r"\[[^\]]*\]", l)) for l in lines if TOP_READ.match(l)]
+    return {n: i for n, i in reads.items() if any(re.search(rf"(?<![\w.])" + re.escape(n) + r"(?![\w(])", l) for l in sizing)}
+
+
+def read_prefix(text, upto):
+    """The port's top-level declarations and reads through line `upto`, the program that reads
+    the sizes and nothing else: what `cpl run --format json` takes to name each value."""
+    keep = re.compile(r"^(?:use |domain |type \w+ = |const |@)")
+    lines = logical_lines(text)
+    return "\n".join(l for l in lines[:upto + 1] if keep.match(l) or TOP_READ.match(l)) + "\n"
+
+
+def read_values(cpl, program, data):
+    """name -> value text of each top-level value `program` has after reading `data`, None when
+    it fails, or TIMED_OUT past INTERP_TIMEOUT."""
+    with tempfile.TemporaryDirectory() as d:
+        src = Path(d, "sizes.cp")
+        src.write_text(program)
+        try:
+            r = subprocess.run([cpl, "run", str(src), "--format", "json"], input=data, capture_output=True, text=True,
+                               timeout=INTERP_TIMEOUT)
+            return {v["name"]: v["value"] for v in json.loads(r.stdout)["values"]} if r.returncode == 0 else None
+        except subprocess.TimeoutExpired:
+            return TIMED_OUT
+        except (ValueError, KeyError):
+            return None
+
+
+def short_of(pid, text, values):
+    """`max-short` for each sizing read whose --max value is under the statement's bound: the
+    bound as a number, or one naming other reads (`m: 1..=n - 1`) taken at their --max values."""
+    declared, consts, found = declared_bounds(text) or {}, port_consts(text), []
+    nums = {**{k: bound_value(v) for k, v in consts.items()}, **values}
+    at = lambda t: bound_value(re.sub(r"(?<![\w.])[A-Za-z_]\w*", lambda w: f"({nums.get(w[0], w[0])})", t))
+    # A bound on an expression (`rows * cols: 1..=5e6`) that --max reaches saturates every read it names.
+    full = {w for e, r in declared.items() if r and not re.fullmatch(r"[\w.]+", e) and None not in (at(e), at(r[1]))
+            and at(e) >= at(r[1]) for w in re.findall(r"[A-Za-z_]\w*", e)}
+    for n in size_reads(text):
+        want = declared.get(n)
+        if not want or n not in values or n in full:
+            continue
+        hi = at(want[1])
+        if hi is not None and values[n] < hi:
+            found.append(f"max-short {pid} {n}: --max reads {values[n]}, the statement allows {want[1]}")
+    return found
+
+
+def max_short(pkg, cpl, data):
+    """The max-short findings of `data`, the package's --max input (problem-packages/R6)."""
+    text = pkg.port.read_text(errors="replace")
+    sizes = size_reads(text)
+    if not sizes:
+        return []
+    if re.search(r"(?m)^@!multitest", text):
+        # Each case reads its own sizes; what saturates is their sum, which no header states yet.
+        return [f"max-unread {pkg.id} multitest"]
+    got = read_values(cpl, read_prefix(text, max(sizes.values())), data)
+    if got is None or got is TIMED_OUT:
+        got = read_values(cpl, text, data)  # sizes a computed domain bound needs, read by the whole port
+    if got is TIMED_OUT:
+        return [f"max-unread {pkg.id} timeout"]
+    if got is None:
+        return [f"max-unread {pkg.id} -"]
+    ints = {k: int(v) for k, v in got.items() if re.fullmatch(r"-?\d+", v)}
+    return short_of(pkg.id, text, ints)
+
+
+MAX_SHORT = "research/corpus-max-short.json"
+
+
+def max_short_of(job):
+    """One package's max_short findings, in a worker process; gen.py failing is max-unread."""
+    pid, cpl = job
+    pkg = next(problems(ids=[pid]))
+    data = gen_out(pkg, ("--max",))
+    return [f"max-unread {pid} gen-fails"] if data is None else max_short(pkg, cpl, data.decode())
+
+
+def max_short_mode(args):
+    """Every v03 port's --max against its Bounds (max_short), -j at a time: a `cpl run` of
+    each, too slow for the commit tier, so ci-slow.yml runs it. `--write` records them in
+    research/corpus-max-short.json for the shrink-only corpus_max_short and corpus_max_unread
+    counters; without it, a record that differs from what it measures fails."""
+    import concurrent.futures
+    cpl = args.cpl or default_cpl()
+    pkgs = [p for p in problems(sets=["v03"]) if p.port and not p.interactor and has_max(p)]
+    with concurrent.futures.ProcessPoolExecutor(args.j) as ex:
+        found = sorted(f for fs in ex.map(max_short_of, [(p.id, cpl) for p in pkgs]) for f in fs)
+    got = {k: [f for f in found if f.startswith(k.replace("_", "-") + " ")] for k in ("max_short", "max_unread")}
+    for f in found:
+        print(f)
+    path = Path(ROOT, MAX_SHORT)
+    if args.write:
+        path.write_text(json.dumps(got, indent=2) + "\n")
+        return 0
+    had = json.loads(path.read_text()) if path.is_file() else {}
+    if had != got:
+        for k in got:
+            for f in sorted(set(got[k]) ^ set(had.get(k, []))):
+                print(f"corpus: {'new' if f in got[k] else 'gone'}: {f}", file=sys.stderr)
+        print(f"corpus: {MAX_SHORT} is stale; fix a new finding, or record a gone one with `max-short --write`",
+              file=sys.stderr)
+        return 1
+    print(f"corpus: {len(pkgs)} --max input(s): {len(got['max_short'])} max-short, {len(got['max_unread'])} max-unread")
+    return 0
+
+
 def check_header(pkg, ctx):
     if not pkg.port:
         return []
@@ -1135,14 +1256,16 @@ def check_max(pkg, ctx):
         # A dream through its grader: `cpl test` judges it at the limits.
         ok, _ = judged(pkg, pkg.solution, [data.decode()], ctx.cpl)
         return [] if ok else [f"max-fails {pkg.id} --max"]
+    # A port the size check can't read yet is counted by corpus_max_unread, not failed here.
+    short = [f for f in max_short(pkg, ctx.cpl, data.decode()) if f.startswith("max-short ")]
     exe, _ = native(pkg, ctx)
     if exe and (why := rejects([exe], data)):
-        return [f"{'max-timeout' if why == TIMED_OUT else 'invalid-input'} {pkg.id} --max"]
+        return short + [f"{'max-timeout' if why == TIMED_OUT else 'invalid-input'} {pkg.id} --max"]
     ref = pkg.reference()
     orig = built(ref) if ref else None
     if ref and not orig:
-        return [f"no-ref-build {pkg.id} {Path(ref).name}"]
-    return at_max(pkg, ctx.cpl, exe, orig, data)
+        return short + [f"no-ref-build {pkg.id} {Path(ref).name}"]
+    return short + at_max(pkg, ctx.cpl, exe, orig, data)
 
 
 def check_size(pkg, ctx):
@@ -1744,6 +1867,10 @@ def cli(argv):
     m.add_argument("--cpl")
     m.add_argument("-j", type=int, default=os.cpu_count() or 4)
     m.add_argument("--shard", metavar="N/M", help="only shard N of M (every M-th package by id)")
+    ms = sub.add_parser("max-short", help="each v03 --max input that doesn't reach its port's Bounds")
+    ms.add_argument("--write", action="store_true", help="record the findings in " + MAX_SHORT)
+    ms.add_argument("--cpl")
+    ms.add_argument("-j", type=int, default=os.cpu_count() or 4)
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
     ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")
@@ -1765,6 +1892,8 @@ def cli(argv):
         return make(args)
     if args.mode == "seed":
         return seed(args)
+    if args.mode == "max-short":
+        return max_short_mode(args)
     if args.mode == "gaps":
         return gaps(args)
     if args.mode == "ls":

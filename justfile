@@ -231,6 +231,10 @@ corpus-check:
 corpus-tests-make *args:
     uv run python scripts/corpus.py make {{args}}
 
+# Check each v03 --max input reaches its port's Bounds against research/corpus-max-short.json (--write records it).
+corpus-max-short *args:
+    uv run python scripts/corpus.py max-short {{args}}
+
 # Drop the g++ cache's binaries unused since `since` (epoch seconds); CI runs it before saving the cache.
 cxx-trim since:
     uv run python scripts/ci.py cxx-trim --since {{since}}

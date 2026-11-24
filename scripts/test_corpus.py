@@ -498,6 +498,71 @@ class MakeTest(Corpus):
         self.assertEqual((e.exception.case, str(e.exception)), ("03", "accepted C++ runs past 20 s on case 03"))
 
 
+class MaxShortTest(unittest.TestCase):
+    """max-short: a --max input whose sizing reads stay under the port's Bounds."""
+    DMPG = ("// Bounds: n, m, q: 1..=2e5; flavour: 1..=m; asks.l, asks.r: 1..=n\n"
+            "let n: 1..=2e5 = read()\nlet m: 1..=2e5 = read()\ndomain Piece = 1..=n\ndomain Flavour = 1..=m\n"
+            "let flavour: [Piece]Flavour = read()\nlet q: 1..=2e5 = read()\nlet asks: [q](l: Piece, r: Piece) = read()\n"
+            "fn main():\n    let unread: 1..=9 = read()\n")
+
+    def test_the_sizes_are_the_reads_a_domain_or_an_index_names(self):
+        self.assertEqual(corpus.size_reads(self.DMPG), {"n": 1, "m": 2, "q": 6})
+        self.assertEqual(corpus.read_prefix(self.DMPG, 6).splitlines(),
+                         self.DMPG.splitlines()[1:7])
+
+    def test_dmpg15g6s_three_flavours_under_a_bound_of_2e5_is_short(self):
+        self.assertEqual(corpus.short_of("dmpg15g6", self.DMPG, {"n": 200000, "m": 3, "q": 200000}),
+                         ["max-short dmpg15g6 m: --max reads 3, the statement allows 2e5"])
+        self.assertEqual(corpus.short_of("dmpg15g6", self.DMPG, {"n": 200000, "m": 200000, "q": 200000}), [])
+
+    REL = "// Bounds: n: 2..=1e5; m: 1..=n - 1\nlet n: 2..=1e5 = read()\nlet m: 1..=n - 1 = read()\nlet e: [m](1..=n) = read()\n"
+
+    def test_a_relative_bound_its_reads_reach_is_saturated(self):
+        self.assertEqual(corpus.short_of("p", self.REL, {"n": 100000, "m": 99999}), [])
+
+    def test_a_relative_bound_its_reads_stay_under_is_short(self):
+        self.assertEqual(corpus.short_of("p", self.REL, {"n": 100000, "m": 50000}),
+                         ["max-short p m: --max reads 50000, the statement allows n - 1"])
+
+    def test_a_bound_on_a_product_that_max_reaches_saturates_both_sides(self):
+        port = ("// Bounds: r, c: 1..=5e6; r * c: 1..=5e6\nlet r: 1..=5e6 = read()\nlet c: 1..=5e6 = read()\n"
+                "let g: [r][c]Bool = read()\n")
+        self.assertEqual(corpus.short_of("p", port, {"r": 2000, "c": 2500}), [])
+        self.assertEqual(corpus.short_of("p", port, {"r": 1000, "c": 2500}),
+                         ["max-short p r: --max reads 1000, the statement allows 5e6",
+                          "max-short p c: --max reads 2500, the statement allows 5e6"])
+
+    def test_a_port_it_cant_read_is_max_unread_not_passed(self):
+        pkg = types.SimpleNamespace(id="p", port=mock.Mock(read_text=lambda **_: "@!multitest\n" + self.REL))
+        self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p multitest"])
+        pkg.port.read_text = lambda **_: self.REL
+        with mock.patch.object(corpus, "read_values", return_value=None):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p -"])
+        with mock.patch.object(corpus, "read_values", return_value=corpus.TIMED_OUT):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p timeout"])
+        with mock.patch.object(corpus, "read_values", return_value={"n": "100000", "m": "7", "e": "7 values"}):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"),
+                             ["max-short p m: --max reads 7, the statement allows n - 1"])
+
+    def test_a_stale_record_fails_and_write_records_what_it_measures(self):
+        found = ["max-short a m: --max reads 3, the statement allows 2e5", "max-unread b multitest"]
+        with tempfile.TemporaryDirectory() as root, \
+                mock.patch.object(corpus, "ROOT", root), \
+                mock.patch.object(corpus, "problems", return_value=[]), \
+                mock.patch("concurrent.futures.ProcessPoolExecutor") as pool, \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            pool.return_value.__enter__.return_value.map.return_value = [found]
+            os.makedirs(os.path.join(root, "research"))
+            args = argparse.Namespace(cpl="cpl", j=1, write=False)
+            self.assertEqual(corpus.max_short_mode(args), 1)
+            self.assertEqual(corpus.max_short_mode(argparse.Namespace(cpl="cpl", j=1, write=True)), 0)
+            self.assertEqual(json.loads(Path(root, corpus.MAX_SHORT).read_text()),
+                             {"max_short": found[:1], "max_unread": found[1:]})
+            self.assertEqual(corpus.max_short_mode(args), 0)
+            pool.return_value.__enter__.return_value.map.return_value = [found[1:]]
+            self.assertEqual(corpus.max_short_mode(args), 1)
+
+
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
         d = self.package("p", port_cp="", interactor_py="")
