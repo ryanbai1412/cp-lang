@@ -165,9 +165,7 @@ pub fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
 /// traps: never
 /// example: `'\t'.is_space == true`
 /// example: `'x'.is_space == false`
-@get pub fn is_space(self: Char) -> Bool:
-    let c = Int(self)
-    c == 32 or (9 <= c <= 13)
+@get pub fn is_space(self: Char) -> Bool = self == ' ' or self == '\t' or self == '\n' or self == '\r'
 
 /// A copy of `self` with every ASCII capital replaced by its lowercase letter (`Char.lower`).
 ///

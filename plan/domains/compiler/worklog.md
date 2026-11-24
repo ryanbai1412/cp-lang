@@ -980,3 +980,7 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   backing hash map. The C++ `unordered_map` reserves; a sorted map, and the interpreter's
   tree map, have no capacity, so it only checks `n >= 0` there.
 - Case: core-10/map-reserve-keeps-entries.
+- The `Char` tests `is_digit` `is_lower` `is_upper` `is_alpha` `is_space` lower from their
+  std bodies in std/strings.cp; their five arms in lower/call/field.rs are gone
+  (`ir_builtin_derived` 38 -> 33). std.mod and std.math, which can't import std.strings,
+  compare the digit range directly. Case: std-strings/char-tests-run-std-bodies.

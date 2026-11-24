@@ -1520,7 +1520,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
             let lo = max(start, hi - 9)
             var v = 0
             for i in lo..hi:
-                assert s[i].is_digit, "BigInt.from_str needs decimal digits"
+                assert '0' <= s[i] <= '9', "BigInt.from_str needs decimal digits"
                 v = v * 10 + Int(s[i]) - Int('0')
             limbs.push(v)
             hi = lo

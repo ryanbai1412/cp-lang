@@ -155,7 +155,7 @@ impl Read for Mod<P>:
         var r = 0
         for c in s:
             if c != '-':
-                assert c.is_digit, "`read<Mod<P>>()` reads an integer token"
+                assert '0' <= c <= '9', "`read<Mod<P>>()` reads an integer token"
                 r = (r * 10 + Int(c) - Int('0')) % P
         return Mod(if s[0] == '-' and r > 0: P - r else: r)
 

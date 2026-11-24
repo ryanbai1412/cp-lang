@@ -23,16 +23,16 @@ Measured 89 before this note; 88 after `choose2` moved (below).
 | Bits | intrinsic | `popcount` `ctz` `clz` `bit_width` `bit_ceil` `bit` |
 | Numeric primitives | intrinsic | `abs` `min` `max` `sqrt` `floor` `ceil` `round` `trunc` `atan2` `sin` `cos` `tan` `asin` `acos` `exp` `ln` `hypot` |
 | Derived: std body exists | move | `isqrt` (math) `sum` `prod` `all` `any` `fold` `find` `rfind` `sort` `sorted` `runs` `distinct` `adjacent` `windows` `join` `extend` `fill` `reverse` `reversed` `clamp` (seq, strings, range) `prefix` `adjacency` `out` `AddAction` (algebra, prefix, graph) |
-| Derived: std body missing | move, body first | `counts` `shuffle` `laws_hold` `AffineAction` `AssignAction` `FlipAction` `is_alpha` `is_digit` `is_lower` `is_upper` `is_space` `gen` |
+| Derived: std body missing | move, body first | `counts` `shuffle` `laws_hold` `AffineAction` `AssignAction` `FlipAction` `gen` |
 | Derived: trait default getters | move, needs trait default bodies | `to` (`Target`) `hash_token` (`Hashable`) |
 | Derived: diagnostic help keyed by name | move to the diagnostic registry | `e` `indices` |
-| Moved | done | `choose2` `minmax` `span` |
+| Moved | done | `choose2` `minmax` `span` `is_alpha` `is_digit` `is_lower` `is_upper` `is_space` |
 
 Every name `ir_builtin_names` counts has a row. `ir_builtin_derived` (the ratchet) counts the
 names that are not on an `intrinsic` row and gates at 0: a new string-matched name either sits on
 the floor (a decision-266 line says why) or is a std body. 2026-11-24: the floor grew to cover the
 storage writes, views, optionals, positions and numeric functions the first pass left unlisted
-(decision 535); 38 derived names remain.
+(decision 535); 38 derived names remained, 33 after the `Char` tests moved.
 
 Reclassified after reading the arms: `rev` is an O(1) reverse view over a list, string, array or
 range, and `pairs` on a domain is the domain's own pair list (`domain_pairs_list`); both are
