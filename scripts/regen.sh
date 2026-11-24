@@ -6,7 +6,7 @@
 # `git push` needs no local step. Prints the changed paths.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-py() { if command -v uv >/dev/null; then uv run --quiet python "$@"; else python3 "$@"; fi; }
+py() { uv run --quiet python "$@"; }
 # Each step runs even when another fails (the gate still reports the failure),
 # so one broken generator never leaves every other file stale.
 run() { local out; out=$("$@" 2>&1) || { printf '%s\n' "$out" | tail -20 >&2; echo "regen: failed: $*" >&2; }; }

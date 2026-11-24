@@ -184,6 +184,7 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           key: ${{ matrix.target }}
+      - uses: astral-sh/setup-uv@v6
       - name: Install cargo-zigbuild
         if: contains(matrix.target, 'linux-musl')
         run: python3 -m pip install cargo-zigbuild==0.24.1
@@ -287,6 +288,7 @@ jobs:
       # workflow_run), not the built one, so an older build can't publish with
       # an older, delete-first publish.sh.
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
       - uses: actions/download-artifact@v4
         with:
           path: dist

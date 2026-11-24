@@ -22,7 +22,7 @@
   "layer_violations": 1,
   "tree_walker": 1,
   "v02_port_files": 551,
-  "direct_python": 11,
+  "direct_python": 0,
   "unrun_script_tests": 0,
   "crate_edges": [
     "cpl-check -> cpl-diag",

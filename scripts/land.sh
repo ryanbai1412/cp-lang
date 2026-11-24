@@ -58,11 +58,11 @@ if [ -n "$changed" ]; then
     marks=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' HEAD -- $changed ':!*.png' ':!*.gz' || true)
     [ -z "$marks" ] || { echo "land: merge conflict markers:"$'\n'"$marks" >&2; exit 1; }
 fi
-[ ! -f scripts/debt-ratchet.py ] || python3 scripts/debt-ratchet.py --check >/dev/null ||
-    { python3 scripts/debt-ratchet.py --check >&2; exit 1; }
+[ ! -f scripts/debt-ratchet.py ] || uv run --quiet python scripts/debt-ratchet.py --check >/dev/null ||
+    { uv run --quiet python scripts/debt-ratchet.py --check >&2; exit 1; }
 # A decision number is taken once it is on main (decision 505): a heading
 # main never had, even as a `--reserve` stub, would collide with another lane.
-[ ! -f scripts/next-decision.py ] || python3 scripts/next-decision.py --check-landing FETCH_HEAD || exit 1
+[ ! -f scripts/next-decision.py ] || uv run --quiet python scripts/next-decision.py --check-landing FETCH_HEAD || exit 1
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
@@ -71,7 +71,7 @@ crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p'
 # CPL_LAND_CLIPPY_SECS (cold cache) or on a failure it warns and lands,
 # leaving it to CI (whose regen job applies `clippy --fix`).
 if [ -n "$crates" ]; then
-    users=$(cargo metadata -q --format-version 1 --no-deps | python3 -c '
+    users=$(cargo metadata -q --format-version 1 --no-deps | uv run --quiet python -c '
 import json, sys
 meta = json.load(sys.stdin)
 names = {p["name"] for p in meta["packages"]}

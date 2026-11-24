@@ -32,15 +32,15 @@ manifest="$cache_dir/manifest.site.$$"
 trap 'rm -f "$manifest" "$manifest.reads"' EXIT
 if [ "$use_cache" -eq 1 ]; then
     mkdir -p "$cache_dir"
-    python3 scripts/check_cache.py manifest "$manifest" || use_cache=0
+    uv run --quiet python scripts/check_cache.py manifest "$manifest" || use_cache=0
 fi
 cache_hit() {
     [ "$use_cache" -eq 1 ] || return 1
-    python3 scripts/check_cache.py check "$cache_dir" "$1" "$manifest"
+    uv run --quiet python scripts/check_cache.py check "$cache_dir" "$1" "$manifest"
 }
 cache_save() {
     [ "$use_cache" -eq 1 ] || return 0
-    python3 scripts/check_cache.py save "$cache_dir" "$1" "$manifest"
+    uv run --quiet python scripts/check_cache.py save "$cache_dir" "$1" "$manifest"
 }
 if cache_hit site_smoke; then
     echo "site-check: cached (tree unchanged outside its excludes)"

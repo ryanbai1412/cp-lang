@@ -213,6 +213,16 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.rust_idiom_lints(root), ["spec/lints/in_rust"])
 
+    def test_direct_python_reads_every_script_shell(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "justfile", "a:\n    python3 scripts/a.py\n    uv run python scripts/b.py\n")
+            self._write(root, "scripts/release/b.sh", "# python3 x.py\nx=$(cat f | python3 -c 1)\n")
+            self._write(root, "web/c.sh", "python3 c.py\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.direct_python(root), ["justfile:2", "scripts/release/b.sh:2"])
+
     def test_architecture_counters(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

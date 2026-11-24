@@ -20,4 +20,4 @@ esac
 exe=cpl
 case "$target" in *windows*) exe=cpl.exe ;; esac
 bin="${CARGO_TARGET_DIR:-target}/$target/release/$exe"
-python3 scripts/release/package.py "$target" "$bin" "$out"
+uv run --quiet --no-project python scripts/release/package.py "$target" "$bin" "$out"

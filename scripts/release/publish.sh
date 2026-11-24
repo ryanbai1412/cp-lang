@@ -12,7 +12,7 @@ cd "$(dirname "$0")/../.."
 dir="$1" channel="$2" version="$3" commit="$4" date="$5" toolchain="$6" tags="$7"
 args=()
 for tag in $tags; do args+=(--tag "$tag"); done
-python3 scripts/release/manifest.py "$dir" --toolchain "$toolchain" --version "$version" \
+uv run --quiet --no-project python scripts/release/manifest.py "$dir" --toolchain "$toolchain" --version "$version" \
     --channel "$channel" --commit "$commit" --date "$date" "${args[@]}"
 files=("$dir"/*)
 notes="CP Lang $toolchain ($channel, ${commit:0:8}). Install: https://cp-lang.org/install.sh"

@@ -129,15 +129,15 @@ fail() { echo "check: $*" >&2; exit 1; }
 manifest="$cache_dir/manifest.$$"
 if [ "$use_cache" -eq 1 ]; then
     mkdir -p "$cache_dir"
-    python3 scripts/check_cache.py manifest "$manifest" || use_cache=0
+    uv run --quiet python scripts/check_cache.py manifest "$manifest" || use_cache=0
 fi
 cache_hit() {
     [ "$use_cache" -eq 1 ] || return 1
-    python3 scripts/check_cache.py check "$cache_dir" "$1" "$manifest"
+    uv run --quiet python scripts/check_cache.py check "$cache_dir" "$1" "$manifest"
 }
 cache_save() {
     [ "$use_cache" -eq 1 ] || return 0
-    python3 scripts/check_cache.py save "$cache_dir" "$1" "$manifest"
+    uv run --quiet python scripts/check_cache.py save "$cache_dir" "$1" "$manifest"
 }
 
 markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
@@ -533,7 +533,7 @@ elif cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     # cpl-conform is already built above; overlap it and script unit tests with nextest.
-    bare_home python3 -m unittest "${script_tests[@]}" >"$lib_logs/script_tests.log" 2>&1 &
+    bare_home uv run --quiet python -m unittest "${script_tests[@]}" >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
@@ -620,7 +620,7 @@ fi
 
 # Tech-debt ratchet: .rs file-size cap allowlist (shrink-only) + stdlib todo / #[ignore] / pending counts.
 step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
-python3 scripts/debt-ratchet.py --check \
+uv run --quiet python scripts/debt-ratchet.py --check \
     || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
 
 step "handbook reads for an outsider (scripts/check-handbook.py)"
@@ -704,7 +704,7 @@ uv run --quiet python scripts/std-trap-examples.py --cpl "$cpl" \
 
 # Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
-python3 scripts/review-check.py --check \
+uv run --quiet python scripts/review-check.py --check \
     || fail "taste review gate failed; see research/reviews/README.md"
 
 step "site snippet gate (node web/scripts/gate.mjs)"
@@ -746,7 +746,7 @@ elif [ -n "${scoreboard_pid:-}" ]; then
     wait "$scoreboard_pid" || sb_status=1
     cat "$lib_logs/script_tests.log" "$lib_logs/scoreboard.log"
     scoreboard_pid=""
-    [ "$script_status" -eq 0 ] || fail "script unit test failure; rerun: python3 -m unittest scripts/test_*.py"
+    [ "$script_status" -eq 0 ] || fail "script unit test failure; rerun: uv run python -m unittest scripts/test_*.py"
     [ "$sb_status" -eq 0 ] || fail "cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- all --check"
     cache_save scoreboard_fast
 fi

@@ -62,19 +62,19 @@ hooks:
 
 # Reserve the next decision number on main and print it.
 next-decision:
-    python3 scripts/next-decision.py --reserve
+    uv run python scripts/next-decision.py --reserve
 
 # Check that repo paths cited in live docs exist.
 check-links:
-    python3 scripts/check-doc-links.py
+    uv run python scripts/check-doc-links.py
 
 # Check corpus metadata integrity.
 corpus-check:
-    python3 scripts/corpus.py check
+    uv run python scripts/corpus.py check
 
 # Regenerate corpus/problems/<id>/tests/NN.{in,ans} from accepted C++ originals.
 corpus-tests-make *args:
-    python3 scripts/corpus-tests.py make {{args}}
+    uv run python scripts/corpus-tests.py make {{args}}
 
 # Run the normative spec checks (stub, vocab, dream-gaps).
 spec-check:
