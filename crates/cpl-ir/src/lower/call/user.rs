@@ -1121,9 +1121,7 @@ impl<'a> Lowerer<'a> {
                 {
                     continue;
                 }
-                if let Some(t) = self.probe_default(d, (tpl_mod, tpl_offset), &inferred) {
-                    inferred.insert(name.text.clone(), GenArg::Ty(t));
-                }
+                self.bind_default(&name.text, d, (tpl_mod, tpl_offset), &mut inferred);
             }
             let bounds: Vec<ast::Bound> =
                 new_fn.bounds.iter().chain(&decl.bounds).cloned().collect();
