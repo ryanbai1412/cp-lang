@@ -776,21 +776,21 @@ pub struct LazyTreap<T, F>(
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply(0..1, 4); t.get(0) == 5`
     pub fn get(mut self, pos: 0..) -> T:
         assert 0 <= pos < self.len
-        var cur = root
+        // `rem` stays below the size of the subtree at `i`, so the child the walk moves to exists.
+        var i = root!
         var rem = pos
         unchecked:
-            while let i = cur:
-                self.down(i)
-                let ls = self.sz_of(nodes[i].l)
+            self.down(i)
+            var ls = self.sz_of(nodes[i].l)
+            while rem != ls:
                 if rem < ls:
-                    cur = nodes[i].l
-                elif rem == ls:
-                    return nodes[i].val
+                    i = nodes[i].l!
                 else:
                     rem -= ls + 1
-                    cur = nodes[i].r
-            assert false
-            return nodes[0].val
+                    i = nodes[i].r!
+                self.down(i)
+                ls = self.sz_of(nodes[i].l)
+            return nodes[i].val
 
     // A read leaves the tree as it is: what `down` would push into a node rides along instead,
     // as whether it is toggled (`tog`) and the tag `pend` put on it after that.
