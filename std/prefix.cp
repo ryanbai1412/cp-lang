@@ -144,13 +144,16 @@ pub struct Prefix<D, T: Add + Sub>:
         var p: [D.cuts]T = from ?? m.id
         var acc = from ?? m.id
         var rises = true
+        var forward = true
         for (i, x) in a.items:
             let before = acc
             acc = m.op(acc, x)
             if T: Ord:
                 if acc < before: rises = false
-            p[i.r] = acc
-        Prefix(p, same(f, +), rises)
+            let c = a.cut_after(i)
+            if c != i.r: forward = false
+            p[c] = acc
+        Prefix(p, forward and same(f, +), forward and rises)
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
