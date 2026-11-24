@@ -145,6 +145,49 @@ impl<'a> Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
+    /// The position in `d` of a key of the `impl Index` struct that owns
+    /// `d`: the impl's `ord`, which is its own code, checked to land in
+    /// `0..T.count` before it picks a cell. Any other value comes back.
+    pub(super) fn library_key_pos(
+        &mut self,
+        d: DomainId,
+        value: Expr,
+        span: Span,
+    ) -> Result<Expr, Expr> {
+        let &Ty::Struct(sid) = &value.ty else {
+            return Err(value);
+        };
+        let ord = self.structs[sid].methods.get("ord").copied();
+        let Some(ord) = ord.filter(|_| self.structs[sid].index_domain == Some(d)) else {
+            return Err(value);
+        };
+        let ord = self.mk(ExprKind::Call(ord, vec![Arg::Value(value)]), Ty::Int, span);
+        Ok(self.cast(Cast::FromOrd(d), ord, Ty::Pos(d)))
+    }
+
+    /// `a[x1, ..., xn]` on an array keyed by an `impl Index` struct `K` is
+    /// `a[K(x1, ..., xn)]`, K's ordinary constructor call (decision 417).
+    pub(super) fn library_key_call(
+        &mut self,
+        d: DomainId,
+        indices: &[ast::Expr],
+        span: Span,
+    ) -> Option<Expr> {
+        let sid = self
+            .structs
+            .iter()
+            .position(|s| s.index_domain == Some(d))?;
+        let args: Vec<ast::Arg> = (indices.iter())
+            .map(|value| ast::Arg {
+                name: None,
+                mutable: false,
+                value: value.clone(),
+            })
+            .collect();
+        let key = self.construct_or_new(sid, &args, span);
+        self.library_key_pos(d, key, span).ok()
+    }
+
     /// The `nth` of the `impl Index` type whose positions `dim` runs over.
     pub(super) fn library_walk_nth(&self, dim: &DimSpec) -> Option<FnId> {
         let DimSpec::Pos(d) = dim else { return None };

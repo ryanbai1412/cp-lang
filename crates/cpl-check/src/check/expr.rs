@@ -2933,7 +2933,7 @@ impl<'a> Checker<'a> {
                         indices.len(),
                         if indices.len() == 1 { "was" } else { "were" },
                     );
-                    if let Some(diag) = self.error(codes::NOT_INDEXABLE, expr.span, message) {
+                    if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, expr.span, message) {
                         diag.help =
                             Some("index a symmetric table with two positions: `adj[u, v]`".into());
                     }

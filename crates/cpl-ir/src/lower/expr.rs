@@ -2995,6 +2995,11 @@ impl<'a> Lowerer<'a> {
                 if let Some(parts) = self.spread_indices(dims, indices) {
                     return (parts, (**elem).clone());
                 }
+                if let ([Dim::Pos(d)], 2..) = (dims.as_slice(), indices.len()) {
+                    if let Some(pos) = self.library_key_call(*d, indices, span) {
+                        return (vec![pos], (**elem).clone());
+                    }
+                }
                 if dims.len() != indices.len() {
                     let message = format!(
                         "a `{}` takes {} indices, but {} were given",
@@ -3033,20 +3038,14 @@ impl<'a> Lowerer<'a> {
                         out.push(self.cast(Cast::Raw, ord, Ty::Int));
                         continue;
                     }
-                    if let (Dim::Pos(d), &Ty::Struct(sid)) = (dim, &value.ty) {
-                        if self.structs[sid].index_domain == Some(*d) {
-                            if let Some(ord) = self.structs[sid].methods.get("ord").copied() {
-                                // `ord` is the impl's own code: check it lands in
-                                // `0..T.count` before it picks a cell.
-                                let ord = self.mk(
-                                    ExprKind::Call(ord, vec![Arg::Value(value)]),
-                                    Ty::Int,
-                                    index.span,
-                                );
-                                out.push(self.cast(Cast::FromOrd(*d), ord, Ty::Pos(*d)));
+                    if let Dim::Pos(d) = dim {
+                        value = match self.library_key_pos(*d, value, index.span) {
+                            Ok(pos) => {
+                                out.push(pos);
                                 continue;
                             }
-                        }
+                            Err(value) => value,
+                        };
                     }
                     // A domain that stands for an array's plain range is
                     // indexed by the plain `Int`, checked.
