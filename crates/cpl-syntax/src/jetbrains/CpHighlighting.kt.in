@@ -1,3 +1,4 @@
+@HEADER@
 package dev.cplang.ide
 
 import com.intellij.lang.ASTNode
@@ -27,7 +28,7 @@ object CpColors {
     @JvmField val BAD = createTextAttributesKey("CP_BAD_CHARACTER", HighlighterColors.BAD_CHARACTER)
 }
 
-/** Each token's color is the key editors/lexer.tsv names for it (see [CpTokens]). */
+/** Each token's color is the key the lexer's rules name for it (see [CpTokens]). */
 class CpSyntaxHighlighter : SyntaxHighlighterBase() {
     override fun getHighlightingLexer() = CpLexer()
 
@@ -40,10 +41,8 @@ class CpSyntaxHighlighterFactory : SingleLazyInstanceSyntaxHighlighterFactory() 
 }
 
 class CpColorSettingsPage : ColorSettingsPage {
-    private val descriptors = CpTokens.RULES
-        .mapNotNull { r -> r.color?.let { AttributesDescriptor(r.label, it) } }
-        .distinctBy { it.key }
-        .toTypedArray()
+    private val descriptors = arrayOf(
+@DESCRIPTORS@    )
 
     override fun getIcon() = CpIcons.FILE
     override fun getHighlighter() = CpSyntaxHighlighter()
@@ -85,10 +84,7 @@ class CpCommenter : Commenter {
 
 class CpBraceMatcher : PairedBraceMatcher {
     private val pairs = arrayOf(
-        BracePair(CpTokens.named("LPAREN"), CpTokens.named("RPAREN"), false),
-        BracePair(CpTokens.named("LBRACKET"), CpTokens.named("RBRACKET"), false),
-        BracePair(CpTokens.named("LBRACE"), CpTokens.named("RBRACE"), false),
-    )
+@BRACES@    )
 
     override fun getPairs() = pairs
     override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?) = true

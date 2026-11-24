@@ -1,0 +1,75 @@
+@HEADER@
+package dev.cplang.ide
+
+import com.intellij.lexer.LexerBase
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.openapi.editor.colors.TextAttributesKey.createTextAttributesKey
+import com.intellij.psi.TokenType
+import com.intellij.psi.tree.IElementType
+import com.intellij.psi.tree.TokenSet
+import java.util.regex.Pattern
+
+class CpTokenType(debugName: String) : IElementType(debugName, CpLanguage)
+
+/** The lexer's rules in order: per rule a token, its color, its name on the color settings page, and the regex. */
+object CpTokens {
+    class Rule(val token: IElementType, val color: TextAttributesKey?, val label: String, val pattern: Pattern)
+
+    private val tokens = mutableMapOf<String, IElementType>("WHITE_SPACE" to TokenType.WHITE_SPACE)
+
+    private fun rule(name: String, color: TextAttributesKey?, label: String, regex: String) =
+        Rule(tokens.getOrPut(name) { CpTokenType(name) }, color, label, Pattern.compile(regex))
+
+@KEYS@
+    val RULES: List<Rule> = listOf(
+@RULES@    )
+
+    fun named(name: String): IElementType = tokens.getValue(name)
+
+    val COLORS: Map<IElementType, TextAttributesKey> = mapOf(
+@COLORS@    )
+
+    val COMMENTS = TokenSet.create(named("LINE_COMMENT"), named("DOC_COMMENT"))
+    val STRINGS = TokenSet.create(named("STRING"), named("CHAR"))
+}
+
+/**
+ * The highlighting lexer: [CpTokens.RULES] tried in order at each offset. No rule spans a
+ * line, so every line starts in state 0 and the editor can relex from any line.
+ */
+class CpLexer : LexerBase() {
+    private var buffer: CharSequence = ""
+    private var end = 0
+    private var start = 0
+    private var stop = 0
+    private var type: IElementType? = null
+
+    override fun start(buffer: CharSequence, startOffset: Int, endOffset: Int, initialState: Int) {
+        this.buffer = buffer
+        this.end = endOffset
+        this.stop = startOffset
+        advance()
+    }
+
+    override fun getState() = 0
+    override fun getTokenType() = type
+    override fun getTokenStart() = start
+    override fun getTokenEnd() = stop
+    override fun getBufferSequence() = buffer
+    override fun getBufferEnd() = end
+
+    override fun advance() {
+        start = stop
+        type = null
+        if (start >= end) return
+        for (rule in CpTokens.RULES) {
+            val m = rule.pattern.matcher(buffer).region(start, end).useTransparentBounds(true)
+            if (m.lookingAt() && m.end() > start) {
+                stop = m.end()
+                type = rule.token
+                return
+            }
+        }
+    }
+}

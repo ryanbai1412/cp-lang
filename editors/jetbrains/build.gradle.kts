@@ -72,7 +72,7 @@ intellijPlatform {
 
 val repo: File = rootDir.parentFile.parentFile
 
-// CpLexer.kt, written from cpl-syntax's lexer rules (decision 611); not committed.
+// CpLexer.kt and CpHighlighting.kt, written from cpl-syntax's lexer rules (decision 611); not committed.
 val generated = layout.buildDirectory.dir("generated/cp")
 val generateLexer = tasks.register<Exec>("generateLexer") {
     workingDir = repo

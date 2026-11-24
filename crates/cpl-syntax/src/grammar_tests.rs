@@ -192,3 +192,36 @@ fn the_jetbrains_kotlin_lexer_has_every_rule_in_order() {
     }
     assert!(crate::grammar::jetbrains_kotlin("Other.kt").is_none());
 }
+
+#[test]
+fn the_jetbrains_highlighter_pairs_every_bracket_and_names_every_color() {
+    let lexer = crate::grammar::jetbrains_kotlin("CpLexer.kt").unwrap_or_default();
+    let highlighting = crate::grammar::jetbrains_kotlin("CpHighlighting.kt").unwrap_or_default();
+    for (open, close) in [
+        ("LPAREN", "RPAREN"),
+        ("LBRACKET", "RBRACKET"),
+        ("LBRACE", "RBRACE"),
+    ] {
+        let pair =
+            format!("BracePair(CpTokens.named(\"{open}\"), CpTokens.named(\"{close}\"), false)");
+        assert!(highlighting.contains(&pair), "{pair}");
+    }
+    assert_eq!(highlighting.matches("BracePair(CpTokens").count(), 3);
+    for line in lexer.lines().filter(|l| l.contains("@JvmField val COLOR_")) {
+        let key = line.split_whitespace().nth(2).unwrap_or_default();
+        assert!(highlighting.contains(&format!("CpTokens.{key})")), "{key}");
+    }
+    for placeholder in [
+        "@HEADER@",
+        "@KEYS@",
+        "@RULES@",
+        "@COLORS@",
+        "@DESCRIPTORS@",
+        "@BRACES@",
+    ] {
+        assert!(
+            !lexer.contains(placeholder) && !highlighting.contains(placeholder),
+            "{placeholder}"
+        );
+    }
+}

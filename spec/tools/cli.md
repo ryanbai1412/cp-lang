@@ -76,7 +76,7 @@ setup neovim` and `vim` write), Emacs's font-lock rules, syntax table and label-
 one `read`able plist (what `cp-mode.el` loads), or the JetBrains plugin's lexer, one rule per line tried in order
 (tab-separated: the token, its color key, the key's default, its settings name, and the
 regex in Java's syntax) (`editors/lexer.tsv`, which `just gen`
-writes and the plugin bundles; its build generates the Kotlin lexer, `CpLexer.kt`, from the same rules with `cargo run -p cpl-syntax --example jetbrains`). All are generated from the lexer's keyword and literal
+writes and the plugin bundles; its build generates the Kotlin lexer and highlighter, `CpLexer.kt` and `CpHighlighting.kt`, from the same rules with `cargo run -p cpl-syntax --example jetbrains`). All are generated from the lexer's keyword and literal
 tables, so neither is kept by hand; with the server running, its semantic tokens
 take over.
 
