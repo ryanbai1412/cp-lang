@@ -101,6 +101,25 @@ fn a_runtime_fn_named_only_by_a_comment_or_a_member_is_unused() {
 }
 
 #[test]
+fn a_reached_fn_template_keeps_its_whole_body() {
+    let file = concat!(
+        "namespace cpl {\n",
+        "template <class S, class F> void sort_by(S& seq, F&& key) {\n",
+        "    using K = std::decay_t<decltype(key(*seq.begin()))>;\n",
+        "    if constexpr (std::is_void_v<K>) {\n",
+        "        return;\n",
+        "    } else {\n",
+        "    std::vector<K> keys;\n",
+        "    std::stable_sort(seq.begin(), seq.end());\n",
+        "    }\n",
+        "}\n",
+        "}  // namespace cpl\n",
+        "int main() { std::vector<int> v; cpl::sort_by(v, [](int x) { return x; }); }\n",
+    );
+    assert_eq!(unused_runtime(file), Vec::<&str>::new());
+}
+
+#[test]
 fn a_runtime_struct_and_the_fns_only_it_reaches_go_together() {
     let file = concat!(
         "namespace cpl {\n",

@@ -118,10 +118,8 @@ fn body(file: &str, at: &Range<usize>) -> Option<Range<usize>> {
         if depth == 0 && !code.starts_with("//") {
             let opens = braces(line);
             if opens == 1 && line.trim_end().ends_with('{') {
-                let starts = code.starts_with("struct ")
-                    || code.starts_with("class ")
-                    || code.starts_with("template")
-                        && (code.contains(" struct ") || code.contains(" class "));
+                let kind = after_template(code).unwrap_or(code);
+                let starts = kind.starts_with("struct ") || kind.starts_with("class ");
                 if !starts {
                     return None;
                 }
@@ -134,6 +132,18 @@ fn body(file: &str, at: &Range<usize>) -> Option<Range<usize>> {
         head += line.len();
     }
     None
+}
+
+/// What follows a `template <...>` head in `code`, or None when `code` has
+/// no template head: a `class` in the parameter list is no struct.
+fn after_template(code: &str) -> Option<&str> {
+    let rest = code.strip_prefix("template")?.trim_start();
+    let mut depth = 0;
+    let close = rest.bytes().position(|c| {
+        depth += (c == b'<') as i32 - (c == b'>') as i32;
+        c == b'>' && depth == 0
+    })?;
+    Some(rest[close + 1..].trim_start())
 }
 
 /// The names the top-level definitions in namespace `ns` of `file` define,
