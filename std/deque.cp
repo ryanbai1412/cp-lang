@@ -41,7 +41,7 @@ pub struct Deque<T>:
     /// The contents and their order do not change; a `cap` no larger than the current
     /// capacity (including any `cap <= 0`) does nothing.
     ///
-    /// cost: \(O(1)\) when empty, \(O(\mathit{cap})\) otherwise
+    /// cost: \(O(\mathit{cap})\); \(O(1)\) when empty
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.reserve(100); q.to_list() == [1, 2]`
     pub fn reserve(mut self, cap: Int):
