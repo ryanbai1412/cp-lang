@@ -7,7 +7,6 @@ import com.intellij.lang.PairedBraceMatcher
 import com.intellij.lang.ParserDefinition
 import com.intellij.lang.PsiParser
 import com.intellij.extapi.psi.ASTWrapperPsiElement
-import com.intellij.openapi.editor.DefaultLanguageHighlighterColors as C
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.colors.TextAttributesKey.createTextAttributesKey
@@ -25,48 +24,15 @@ import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.IFileElementType
 
 object CpColors {
-    @JvmField val KEYWORD = createTextAttributesKey("CP_KEYWORD", C.KEYWORD)
-    @JvmField val TYPE_NAME = createTextAttributesKey("CP_TYPE_NAME", C.CLASS_NAME)
-    @JvmField val IDENTIFIER = createTextAttributesKey("CP_IDENTIFIER", C.IDENTIFIER)
-    @JvmField val NUMBER = createTextAttributesKey("CP_NUMBER", C.NUMBER)
-    @JvmField val STRING = createTextAttributesKey("CP_STRING", C.STRING)
-    @JvmField val LABEL = createTextAttributesKey("CP_LABEL", C.LABEL)
-    @JvmField val LINE_COMMENT = createTextAttributesKey("CP_LINE_COMMENT", C.LINE_COMMENT)
-    @JvmField val DOC_COMMENT = createTextAttributesKey("CP_DOC_COMMENT", C.DOC_COMMENT)
-    @JvmField val DECORATOR = createTextAttributesKey("CP_DECORATOR", C.METADATA)
-    @JvmField val OPERATOR = createTextAttributesKey("CP_OPERATOR", C.OPERATION_SIGN)
-    @JvmField val COMMA = createTextAttributesKey("CP_COMMA", C.COMMA)
-    @JvmField val DOT = createTextAttributesKey("CP_DOT", C.DOT)
-    @JvmField val PARENTHESES = createTextAttributesKey("CP_PARENTHESES", C.PARENTHESES)
-    @JvmField val BRACKETS = createTextAttributesKey("CP_BRACKETS", C.BRACKETS)
-    @JvmField val BRACES = createTextAttributesKey("CP_BRACES", C.BRACES)
     @JvmField val BAD = createTextAttributesKey("CP_BAD_CHARACTER", HighlighterColors.BAD_CHARACTER)
 }
 
+/** Each token's color is the key editors/lexer.tsv names for it (see [CpTokens]). */
 class CpSyntaxHighlighter : SyntaxHighlighterBase() {
     override fun getHighlightingLexer() = CpLexer()
 
-    override fun getTokenHighlights(type: IElementType?): Array<TextAttributesKey> = pack(
-        when (type) {
-            CpTokens.KEYWORD, CpTokens.LITERAL -> CpColors.KEYWORD
-            CpTokens.TYPE_NAME -> CpColors.TYPE_NAME
-            CpTokens.IDENTIFIER -> CpColors.IDENTIFIER
-            CpTokens.NUMBER -> CpColors.NUMBER
-            CpTokens.STRING, CpTokens.CHAR -> CpColors.STRING
-            CpTokens.LABEL -> CpColors.LABEL
-            CpTokens.LINE_COMMENT -> CpColors.LINE_COMMENT
-            CpTokens.DOC_COMMENT -> CpColors.DOC_COMMENT
-            CpTokens.DECORATOR -> CpColors.DECORATOR
-            CpTokens.OPERATOR -> CpColors.OPERATOR
-            CpTokens.COMMA -> CpColors.COMMA
-            CpTokens.DOT -> CpColors.DOT
-            CpTokens.LPAREN, CpTokens.RPAREN -> CpColors.PARENTHESES
-            CpTokens.LBRACKET, CpTokens.RBRACKET -> CpColors.BRACKETS
-            CpTokens.LBRACE, CpTokens.RBRACE -> CpColors.BRACES
-            TokenType.BAD_CHARACTER -> CpColors.BAD
-            else -> null
-        },
-    )
+    override fun getTokenHighlights(type: IElementType?): Array<TextAttributesKey> =
+        pack(if (type == TokenType.BAD_CHARACTER) CpColors.BAD else CpTokens.COLORS[type])
 }
 
 class CpSyntaxHighlighterFactory : SingleLazyInstanceSyntaxHighlighterFactory() {
@@ -74,21 +40,10 @@ class CpSyntaxHighlighterFactory : SingleLazyInstanceSyntaxHighlighterFactory() 
 }
 
 class CpColorSettingsPage : ColorSettingsPage {
-    private val descriptors = arrayOf(
-        AttributesDescriptor("Keyword", CpColors.KEYWORD),
-        AttributesDescriptor("Type name", CpColors.TYPE_NAME),
-        AttributesDescriptor("Identifier", CpColors.IDENTIFIER),
-        AttributesDescriptor("Number", CpColors.NUMBER),
-        AttributesDescriptor("String and char", CpColors.STRING),
-        AttributesDescriptor("Label", CpColors.LABEL),
-        AttributesDescriptor("Comment", CpColors.LINE_COMMENT),
-        AttributesDescriptor("Doc comment", CpColors.DOC_COMMENT),
-        AttributesDescriptor("Decorator", CpColors.DECORATOR),
-        AttributesDescriptor("Operator", CpColors.OPERATOR),
-        AttributesDescriptor("Braces and brackets//Parentheses", CpColors.PARENTHESES),
-        AttributesDescriptor("Braces and brackets//Brackets", CpColors.BRACKETS),
-        AttributesDescriptor("Braces and brackets//Braces", CpColors.BRACES),
-    )
+    private val descriptors = CpTokens.RULES
+        .mapNotNull { r -> r.color?.let { AttributesDescriptor(r.label, it) } }
+        .distinctBy { it.key }
+        .toTypedArray()
 
     override fun getIcon() = CpIcons.FILE
     override fun getHighlighter() = CpSyntaxHighlighter()
@@ -130,9 +85,9 @@ class CpCommenter : Commenter {
 
 class CpBraceMatcher : PairedBraceMatcher {
     private val pairs = arrayOf(
-        BracePair(CpTokens.LPAREN, CpTokens.RPAREN, false),
-        BracePair(CpTokens.LBRACKET, CpTokens.RBRACKET, false),
-        BracePair(CpTokens.LBRACE, CpTokens.RBRACE, false),
+        BracePair(CpTokens.named("LPAREN"), CpTokens.named("RPAREN"), false),
+        BracePair(CpTokens.named("LBRACKET"), CpTokens.named("RBRACKET"), false),
+        BracePair(CpTokens.named("LBRACE"), CpTokens.named("RBRACE"), false),
     )
 
     override fun getPairs() = pairs

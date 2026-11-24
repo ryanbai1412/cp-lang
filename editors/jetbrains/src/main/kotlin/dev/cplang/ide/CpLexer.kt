@@ -1,36 +1,42 @@
 package dev.cplang.ide
 
 import com.intellij.lexer.LexerBase
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.openapi.editor.colors.TextAttributesKey.createTextAttributesKey
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
+import java.util.regex.Pattern
 
 class CpTokenType(debugName: String) : IElementType(debugName, CpLanguage)
 
+/**
+ * The tokens, colors and rules of editors/lexer.tsv, which `cpl setup jetbrains --grammar`
+ * generates from cpl-syntax's token tables: per line a token, its color key, the key's
+ * default, its name on the color settings page, and the regex.
+ */
 object CpTokens {
-    @JvmField val KEYWORD = CpTokenType("KEYWORD")
-    @JvmField val LITERAL = CpTokenType("LITERAL")
-    @JvmField val IDENTIFIER = CpTokenType("IDENTIFIER")
-    @JvmField val TYPE_NAME = CpTokenType("TYPE_NAME")
-    @JvmField val NUMBER = CpTokenType("NUMBER")
-    @JvmField val STRING = CpTokenType("STRING")
-    @JvmField val CHAR = CpTokenType("CHAR")
-    @JvmField val LABEL = CpTokenType("LABEL")
-    @JvmField val LINE_COMMENT = CpTokenType("LINE_COMMENT")
-    @JvmField val DOC_COMMENT = CpTokenType("DOC_COMMENT")
-    @JvmField val DECORATOR = CpTokenType("DECORATOR")
-    @JvmField val OPERATOR = CpTokenType("OPERATOR")
-    @JvmField val COMMA = CpTokenType("COMMA")
-    @JvmField val DOT = CpTokenType("DOT")
-    @JvmField val LPAREN = CpTokenType("LPAREN")
-    @JvmField val RPAREN = CpTokenType("RPAREN")
-    @JvmField val LBRACKET = CpTokenType("LBRACKET")
-    @JvmField val RBRACKET = CpTokenType("RBRACKET")
-    @JvmField val LBRACE = CpTokenType("LBRACE")
-    @JvmField val RBRACE = CpTokenType("RBRACE")
+    class Rule(val token: IElementType, val color: TextAttributesKey?, val label: String, val pattern: Pattern)
 
-    @JvmField val COMMENTS = TokenSet.create(LINE_COMMENT, DOC_COMMENT)
-    @JvmField val STRINGS = TokenSet.create(STRING, CHAR)
+    private val tokens = mutableMapOf<String, IElementType>("WHITE_SPACE" to TokenType.WHITE_SPACE)
+
+    val RULES: List<Rule> = CpTokens::class.java.getResource("/cp/lexer.tsv")!!.readText().lines()
+        .filter { it.isNotBlank() && !it.startsWith("#") }
+        .map { it.split('\t', limit = 5) }
+        .map { (name, key, default, label, regex) ->
+            val color = key.takeIf { it != "-" }?.let {
+                createTextAttributesKey("CP_$it", DefaultLanguageHighlighterColors::class.java.getField(default).get(null) as TextAttributesKey)
+            }
+            Rule(tokens.getOrPut(name) { CpTokenType(name) }, color, label, Pattern.compile(regex))
+        }
+
+    val COLORS: Map<IElementType, TextAttributesKey> = RULES.mapNotNull { r -> r.color?.let { r.token to it } }.toMap()
+
+    fun named(name: String): IElementType = tokens.getValue(name)
+
+    val COMMENTS = TokenSet.create(named("LINE_COMMENT"), named("DOC_COMMENT"))
+    val STRINGS = TokenSet.create(named("STRING"), named("CHAR"))
 }
 
 /**
@@ -63,24 +69,13 @@ class CpLexer : LexerBase() {
         start = stop
         type = null
         if (start >= end) return
-        for ((token, pattern) in RULES) {
-            val m = pattern.matcher(buffer).region(start, end).useTransparentBounds(true)
+        for (rule in CpTokens.RULES) {
+            val m = rule.pattern.matcher(buffer).region(start, end).useTransparentBounds(true)
             if (m.lookingAt() && m.end() > start) {
                 stop = m.end()
-                type = token
+                type = rule.token
                 return
             }
         }
-    }
-
-    companion object {
-        private val TOKENS: Map<String, IElementType> = CpTokens::class.java.fields
-            .mapNotNull { f -> (f.get(null) as? IElementType)?.let { f.name to it } }
-            .toMap() + ("WHITE_SPACE" to TokenType.WHITE_SPACE)
-
-        val RULES: List<Pair<IElementType, java.util.regex.Pattern>> =
-            CpLexer::class.java.getResource("/cp/lexer.tsv")!!.readText().lines()
-                .filter { it.isNotBlank() && !it.startsWith("#") }
-                .map { line -> line.substringBefore('\t').let(TOKENS::getValue) to java.util.regex.Pattern.compile(line.substringAfter('\t')) }
     }
 }

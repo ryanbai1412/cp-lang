@@ -142,12 +142,20 @@ fn the_jetbrains_lexer_is_generated() {
     );
     let keywords = text
         .lines()
-        .find_map(|l| l.strip_prefix("KEYWORD\t(?:"))
+        .find_map(|l| {
+            l.strip_prefix("KEYWORD\t")
+                .and_then(|r| r.split('\t').nth(3))
+        })
+        .and_then(|l| l.strip_prefix("(?:"))
         .and_then(|l| l.split(')').next())
         .unwrap_or_default();
     let literals = text
         .lines()
-        .find_map(|l| l.strip_prefix("LITERAL\t(?:"))
+        .find_map(|l| {
+            l.strip_prefix("LITERAL\t")
+                .and_then(|r| r.split('\t').nth(3))
+        })
+        .and_then(|l| l.strip_prefix("(?:"))
         .and_then(|l| l.split(')').next())
         .unwrap_or_default();
     let mut words: Vec<&str> = keywords.split('|').chain(literals.split('|')).collect();

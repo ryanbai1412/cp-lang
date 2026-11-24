@@ -43,7 +43,7 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         assertSame(CpLanguage, myFixture.file.language)
         val highlighter = SyntaxHighlighterFactory.getSyntaxHighlighter(CpLanguage, project, myFixture.file.virtualFile)
         assertTrue(highlighter is CpSyntaxHighlighter)
-        assertEquals(CpColors.KEYWORD, highlighter.getTokenHighlights(CpTokens.KEYWORD).single())
+        assertEquals("CP_KEYWORD", highlighter.getTokenHighlights(CpTokens.named("KEYWORD")).single().externalName)
     }
 
     fun `test line comments toggle with two slashes`() {

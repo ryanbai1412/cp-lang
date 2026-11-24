@@ -45,8 +45,8 @@ function jetbrains() {
     const rules = read(path.join(root, 'editors', 'lexer.tsv')).split('\n')
         .filter(line => line && !line.startsWith('#'))
         .map(line => {
-            const tab = line.indexOf('\t');
-            return [line.slice(0, tab), new RegExp(line.slice(tab + 1).replace('(?s).', '[\\s\\S]'), 'uy')];
+            const fields = line.split('\t');
+            return [fields[0], new RegExp(fields.slice(4).join('\t').replace('(?s).', '[\\s\\S]'), 'uy')];
         });
     return (text, at) => {
         const tokens = [];

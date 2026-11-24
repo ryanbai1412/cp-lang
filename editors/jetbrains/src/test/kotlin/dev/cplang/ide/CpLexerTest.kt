@@ -34,10 +34,10 @@ class CpLexerTest {
         val compiler = Regex("\"([a-z]+)\" =>").findAll(body).map { it.groupValues[1] }.toSortedSet()
         assertTrue("found the keywords", compiler.size > 20)
         for (word in compiler) {
-            val token = if (word == "true" || word == "false") CpTokens.LITERAL else CpTokens.KEYWORD
+            val token = if (word == "true" || word == "false") CpTokens.named("LITERAL") else CpTokens.named("KEYWORD")
             assertEquals(word, listOf(token to word), lex(word))
         }
-        assertEquals(listOf(CpTokens.LITERAL to "None"), lex("None"))
+        assertEquals(listOf(CpTokens.named("LITERAL") to "None"), lex("None"))
     }
 
     @Test
