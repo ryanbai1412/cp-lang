@@ -19,4 +19,4 @@ if width <= 0: return print(0)
 
 let p = period(t[start..start + delta])
 let g = if delta % p == 0: p else: delta
-print([width - a + 1 for a in (g..=min(width, delta)).step(g) if delta % a == 0].sum())
+print(sum(width - j * g + 1 for j in 1..=min(width, delta) / g if delta % (j * g) == 0))
