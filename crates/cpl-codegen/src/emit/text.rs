@@ -16,7 +16,11 @@ pub(super) fn inline_hint(def: &str, signature: &str, recursive: bool) -> bool {
     let stmts = body
         .lines()
         .map(str::trim)
-        .filter(|l| !l.is_empty() && *l != "}" && *l != "} else {" && !l.starts_with("cpl::fail("))
+        .filter(|l| {
+            !l.is_empty()
+                && !matches!(*l, "{" | "}" | "} else {" | "}();" | "}()};" | "}());")
+                && !l.starts_with("cpl::fail(")
+        })
         .count();
     !signature.starts_with("template")
         && !signature.contains(" main(")

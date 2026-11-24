@@ -204,16 +204,22 @@ fn other_args_ok(
     args.iter().enumerate().all(|(s, arg)| match arg {
         _ if s == slot => true,
         Arg::Value(v) => {
-            matches!(
-                v.kind,
-                ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Char(_)
-            ) || (devirt.param_elidable(fid, s) && devirt.skippable_value(v))
+            constant(v)
+                || (devirt.param_elidable(fid, s) && devirt.skippable_value(v))
                 || matches!(v.kind, ExprKind::Closure(cid) if value_closure(program, devirt, pure, cid))
                 || program.fns[fid].locals[s].ty == Ty::Unit && matches!(v.kind, ExprKind::Unit)
-                || matches!(&v.kind, ExprKind::Tuple(items) if items.is_empty())
         }
         _ => false,
     })
+}
+
+/// A literal, or a tuple of them such as `fold_from`'s `(hi: 0, lo: 0)`.
+fn constant(v: &Expr) -> bool {
+    match &v.kind {
+        ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Char(_) => true,
+        ExprKind::Tuple(items) => items.iter().all(constant),
+        _ => false,
+    }
 }
 
 impl Emitter<'_> {

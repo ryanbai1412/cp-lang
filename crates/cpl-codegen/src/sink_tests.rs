@@ -268,3 +268,22 @@ fn a_loop_over_a_sorted_range_is_fed_by_its_walk() {
     assert!(solve.contains("cpl_each_"), "{solve}");
     assert!(!solve.contains("std::vector<ll> t"), "{solve}");
 }
+
+#[test]
+fn a_fold_from_a_record_seed_through_a_fixed_list_merge_builds_no_list() {
+    let cpp = cpp(concat!(
+        "type Top = (hi: Int, lo: Int)\n",
+        "fn both(a: Top, b: Top) -> Top:\n",
+        "    let hi = max(a.hi, b.hi)\n",
+        "    (hi, [x for x in [a.hi, a.lo, b.hi, b.lo] if x < hi].max() ?? 0)\n",
+        "let n: 1..=1000 = read()\n",
+        "for k in 0..n:\n",
+        "    print((k..k + 8).map(i => (hi: i * i % 7, lo: 0)).fold_from((hi: 0, lo: 0), both).lo)\n",
+    ));
+    assert!(cpp.contains("cpl_sink_"), "{cpp}");
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(
+        !solve.contains("push_back") && !solve.contains("std::vector"),
+        "the seed is a constant record and `both`'s 4-element list is a fixed array, so neither the mapped run nor that list is built:\n{solve}"
+    );
+}

@@ -227,7 +227,9 @@ pub fn trap_free_stmts(
             free(lo) && free(hi) && block_free(body)
         }
         Stmt::For(_, _, Iter::Seq(seq, _), body) => {
-            matches!(seq.kind, ExprKind::Local(_)) && block_free(body)
+            (matches!(seq.kind, ExprKind::Local(_))
+                || matches!(&seq.kind, ExprKind::Tuple(items) if items.iter().all(free)))
+                && block_free(body)
         }
         Stmt::Continue(None) => true,
         _ => false,
@@ -278,12 +280,20 @@ pub fn trap_free_with(e: &Expr, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) ->
             safe && l.ty != Ty::Str && free(l) && free(r)
         }
         ExprKind::Cmp(_, l, r) => free(l) && free(r),
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(free),
+        ExprKind::Builtin(Builtin::Min | Builtin::Max, items)
+        | ExprKind::Tuple(items)
+        | ExprKind::Variant(_, items) => items.iter().all(free),
         ExprKind::If(c, t, f) => match known(c) {
             Some(taken) => free(if taken { t } else { f }),
             None => free(c) && free(t) && free(f),
         },
         ExprKind::Closure(_) => true,
+        ExprKind::Do(block) => match block.stmts.split_last() {
+            Some((Stmt::Give(given), rest)) => {
+                trap_free_stmts(rest, usize::MAX, traps, call_ok) && free(given)
+            }
+            _ => false,
+        },
         ExprKind::Index(base, idxs) if !traps || in_domain(&base.ty, idxs) => {
             free(base) && idxs.iter().all(free)
         }
