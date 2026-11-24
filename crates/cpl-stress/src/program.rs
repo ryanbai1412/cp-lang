@@ -956,7 +956,7 @@ impl Program {
         let mut stdin = child.stdin.take().unwrap();
         let mut stdout = child.stdout.take().unwrap();
         let mut stderr = child.stderr.take().unwrap();
-        let (out, err, (exit, peak_kb)) = std::thread::scope(|scope| {
+        let (out, err, (exit, peak_kb, elapsed)) = std::thread::scope(|scope| {
             // Each pipe has its own thread, so a program that prints a
             // lot or never reads its input cannot block either side.
             scope.spawn(move || {
@@ -980,7 +980,7 @@ impl Program {
             stdout: String::from_utf8_lossy(&out).replace("\r\n", "\n"),
             stderr: String::from_utf8_lossy(&err).replace("\r\n", "\n"),
             exit,
-            elapsed: start.elapsed(),
+            elapsed,
             peak_kb,
         })
     }
@@ -1003,7 +1003,7 @@ impl Program {
             .spawn()?;
         let mut stdout = child.stdout.take().unwrap();
         let mut stderr = child.stderr.take().unwrap();
-        let (err, (exit, peak_kb)) = std::thread::scope(|scope| {
+        let (err, (exit, peak_kb, elapsed)) = std::thread::scope(|scope| {
             scope.spawn(move || {
                 let mut chunk = vec![0; 1 << 16];
                 while let Ok(read @ 1..) = stdout.read(&mut chunk) {
@@ -1028,30 +1028,81 @@ impl Program {
             stdout: String::new(),
             stderr: String::from_utf8_lossy(&err).replace("\r\n", "\n"),
             exit,
-            elapsed: start.elapsed(),
+            elapsed,
             peak_kb,
         })
     }
 }
 
-/// Waits for `child` to end, stopping it after `limit`, and samples its
-/// peak memory meanwhile; its exit wakes the wait at once.
-fn supervise(child: std::process::Child, start: Instant, limit: Duration) -> (Exit, Option<u64>) {
+/// Waits for `child` to end, stopping it once it is charged more than
+/// `limit`, and samples its peak memory meanwhile; its exit wakes the wait
+/// at once. It is charged its CPU time, as judges charge it, so a loaded
+/// machine doesn't make it late; the wall clock only stops one that idles
+/// (sleeps, or waits on something that never comes) at [`idle_limit`].
+fn supervise(
+    child: std::process::Child,
+    start: Instant,
+    limit: Duration,
+) -> (Exit, Option<u64>, Duration) {
     let pid = child.id();
     let mut child = cpl_wait::on_exit(child);
+    let mut charge = Charge::new(pid);
     let mut peak = None;
+    let idle = start + idle_limit(limit);
     loop {
         peak = peak_memory(pid).max(peak);
-        let tick = (Instant::now() + Duration::from_micros(300)).min(start + limit);
+        charge.sample();
+        let spent = charge.spent(|| start.elapsed());
+        let tick = (Instant::now() + Duration::from_micros(300)).min(idle);
         match child.by(tick) {
-            Ok(Some(status)) => return (status.code().map_or(Exit::Signal, Exit::Code), peak),
-            Ok(None) if start.elapsed() >= limit => {
+            Ok(Some(_)) if spent > limit => return (Exit::TimedOut, peak, spent),
+            Ok(Some(status)) => {
+                let exit = status.code().map_or(Exit::Signal, Exit::Code);
+                return (exit, peak, spent);
+            }
+            Ok(None) if spent > limit => {
                 let _ = child.kill();
-                return (Exit::TimedOut, peak);
+                return (Exit::TimedOut, peak, spent);
+            }
+            Ok(None) if Instant::now() >= idle => {
+                let _ = child.kill();
+                return (Exit::TimedOut, peak, start.elapsed());
             }
             Ok(None) => {}
-            Err(_) => return (Exit::Signal, peak),
+            Err(_) => return (Exit::Signal, peak, spent),
         }
+    }
+}
+
+/// How long a run may take by the wall clock while charged less than
+/// `limit`: a program this far behind is idle, not slow.
+fn idle_limit(limit: Duration) -> Duration {
+    limit * 3
+}
+
+/// What a program is charged for a run: its own CPU time, user and system,
+/// as judges charge it, sampled until it is reaped; where the system
+/// doesn't say, the caller's fallback clock. Every native run, piped or
+/// interactive, is charged through this.
+pub(crate) struct Charge {
+    pid: u32,
+    cpu: Option<Duration>,
+}
+
+impl Charge {
+    pub(crate) fn new(pid: u32) -> Self {
+        Charge { pid, cpu: None }
+    }
+
+    /// Notes the program's CPU time so far; the last note before it is
+    /// reaped is what it is charged.
+    pub(crate) fn sample(&mut self) {
+        self.cpu = cpu_time(self.pid).or(self.cpu);
+    }
+
+    /// The time charged so far: the CPU time, or `fallback` where there is none.
+    pub(crate) fn spent(&self, fallback: impl FnOnce() -> Duration) -> Duration {
+        self.cpu.unwrap_or_else(fallback)
     }
 }
 
@@ -1106,7 +1157,7 @@ fn peak_memory(pid: u32) -> Option<u64> {
 /// The CPU time a running process has spent, user and system, with that
 /// of the children it has waited for: what a judge charges it. `None`
 /// where the system doesn't say (no `/proc`) or once it is gone.
-pub(crate) fn cpu_time(pid: u32) -> Option<Duration> {
+fn cpu_time(pid: u32) -> Option<Duration> {
     let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
     // Fields after the parenthesized name: utime, stime, cutime and cstime
     // are the 12th to the 15th, in ticks of 1/100 s (USER_HZ).

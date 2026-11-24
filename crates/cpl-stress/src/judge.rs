@@ -550,22 +550,21 @@ pub(crate) fn interact(
             let wall = judge_limit(limit) * 3;
             let mut idled = false;
             let mut own = None;
-            let mut cpu = None;
+            let mut charge = crate::program::Charge::new(contestant.pid());
             let mut timed_out = false;
             let mut reject_deadline: Option<Instant> = None;
             // The solution is charged its own CPU time, as judges do; where
             // the system doesn't say, the wall clock while it has the turn.
-            let spent = |cpu: Option<Duration>| cpu.unwrap_or_else(|| locked(clock).own());
             let statuses = loop {
                 if own.is_none() {
-                    cpu = crate::program::cpu_time(contestant.pid()).or(cpu);
+                    charge.sample();
                 }
                 // The solution's exit wakes this at once; the interactor's within a tick.
                 let tick = Instant::now() + Duration::from_micros(300);
                 let a = contestant.by(tick)?;
                 let b = judge.by(if a.is_some() { tick } else { Instant::now() })?;
                 if a.is_some() && own.is_none() {
-                    own = Some(spent(cpu));
+                    own = Some(charge.spent(|| locked(clock).own()));
                 }
                 if let (Some(a), Some(b)) = (a, b) {
                     break (a, b);
@@ -581,7 +580,7 @@ pub(crate) fn interact(
                     }
                 }
                 // A solution blocked on its turn for twice its limit is idle.
-                let busy = own.unwrap_or_else(|| spent(cpu)) > limit;
+                let busy = own.unwrap_or_else(|| charge.spent(|| locked(clock).own())) > limit;
                 idled = locked(clock).own() > limit * 2;
                 let expired = busy || idled || start.elapsed() >= wall;
                 let grace_over = reject_deadline.is_some_and(|d| Instant::now() >= d);
@@ -592,7 +591,7 @@ pub(crate) fn interact(
             };
             let own = match idled {
                 true => locked(clock).own(),
-                false => own.unwrap_or_else(|| spent(cpu)),
+                false => own.unwrap_or_else(|| charge.spent(|| locked(clock).own())),
             };
             std::io::Result::Ok((
                 statuses,

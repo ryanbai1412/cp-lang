@@ -310,6 +310,29 @@ fn a_run_captures_output_exit_time_and_memory() {
     }
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn a_program_is_charged_its_cpu_time_not_its_idle_wait() {
+    let napping = sh("sleep 0.3; echo up")
+        .run("", Duration::from_millis(200))
+        .unwrap();
+    assert_eq!(
+        (&napping.exit, napping.stdout.as_str()),
+        (&Exit::Code(0), "up\n")
+    );
+    assert!(napping.elapsed < Duration::from_millis(100), "{napping:?}");
+    let spinning = sh("while :; do :; done")
+        .run("", Duration::from_millis(200))
+        .unwrap();
+    assert_eq!(spinning.exit, Exit::TimedOut);
+    assert!(
+        spinning.elapsed > Duration::from_millis(200),
+        "{spinning:?}"
+    );
+    let idle = sh("sleep 5").run("", Duration::from_millis(200)).unwrap();
+    assert_eq!(idle.exit, Exit::TimedOut);
+}
+
 #[test]
 fn programs_resolve_by_extension() {
     let dir = scratch("resolve");
