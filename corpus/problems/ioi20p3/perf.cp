@@ -1,5 +1,5 @@
-// Tuned: the upgrades as orig.cpp takes them, a MaxHeap of each colour's next gain packed with its
-// colour into one Int (gain << 11 | c), not a sort of all n*k tuples; each round gives the colours out
+// Tuned: the upgrades as orig.cpp takes them, a MaxHeap of each colour's next (gain, colour),
+// not a sort of all n*k tuples; each round gives the colours out
 // of lows or highs their only kind, then lows until half the colours are low, the rest high.
 // Source: IOI 2020 Day 1 (Carnival Tickets), https://dmoj.ca/problem/ioi20p3
 // Problem: n (even) colours of m tickets each, values sorted per colour; n, m <= 1500, k <= m
@@ -24,17 +24,14 @@ domain Ticket = 0..m
 let x: [Colour, Ticket]0..=1_000_000_000 = read()
 
 var high: [Colour]0..=k = 0
-var pq = MaxHeap<Int>()
+var pq = MaxHeap<(Int, Colour)>()
 fn offer(c: Colour):
-    if high[c] < k: pq.push(
-        (x[c, Ticket(k - 1 - high[c])] + x[c, Ticket(m - 1 - high[c])]) << 11 | c.ord
-    )
+    if high[c] < k: pq.push((x[c, Ticket(k - 1 - high[c])] + x[c, Ticket(m - 1 - high[c])], c))
 for c in Colour: offer(c)
 var prize = -sum(x[c, Ticket(j)] for c in Colour for j in 0..k)
 for _ in 0..n * k / 2:
-    let top = pq.pop()!
-    let c = Colour(top % (1 << 11))
-    prize += top >> 11
+    let (gain, c) = pq.pop()!
+    prize += gain
     high[c] += 1
     offer(c)
 print(prize)
