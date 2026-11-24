@@ -1,4 +1,5 @@
 // Source: NOI 2020 P1 (Delicacy), https://dmoj.ca/problem/noi20p1
+// limits: 2000 ms, 512 MB
 // Problem: n <= 50 cities with joy c_i, m <= 501 one-way roads taking w <= 5 days. A walk
 //   leaves city 1 on day 0 and must reach city 1 on exactly day T <= 1e9, never waiting; each
 //   arrival (start and end too) earns the city's joy, and k <= 200 festivals (distinct days
@@ -10,7 +11,7 @@
 //   the row at city 1 after day T.
 // original: corpus/submissions/3890258.cpp
 // Bounds: roads.u, roads.v, fests.city: 1..=n
-const NONE = -4e18  // "no walk": the zero of max-plus
+const NONE = -1e18  // "no walk": the zero of max-plus; real joy is never negative
 
 let (n, m, t, k): (Int, Int, Int, Int) = read()
 domain City = 1..=n
@@ -29,17 +30,16 @@ fn mul(a: Mat, b: Mat) -> Mat:
     var c: Mat = [State, State] (i, j) => NONE
     for i in State:
         for j in State:
-            if a[i, j] > NONE:
-                for l in State:
-                    if b[j, l] > NONE: c[i, l] max= a[i, j] + b[j, l]
+            let via = a[i, j]
+            if via >= 0:
+                for l in State: c[i, l] max= via + b[j, l]
     c
 
 fn apply(x: Row, a: Mat) -> Row:
     var y: Row = [State] i => NONE
     for i in State:
-        if x[i] > NONE:
-            for j in State:
-                if a[i, j] > NONE: y[j] max= x[i] + a[i, j]
+        if x[i] >= 0:
+            for j in State: y[j] max= x[i] + a[i, j]
     y
 
 var day: Mat = [State, State] (i, j) => NONE
@@ -58,5 +58,5 @@ for f in (fests.collect() + [(day: t, city: City(1), bonus: 0)]).sorted():
     for b in 0..pows.len:
         if (f.day - now) / 2 ** b % 2 == 1: best = apply(best, pows[b])
     now = f.day
-    if best[at(f.city, 0)] > NONE: best[at(f.city, 0)] += f.bonus
-print(if best[at(City(1), 0)] > NONE: best[at(City(1), 0)] else: -1)
+    if best[at(f.city, 0)] >= 0: best[at(f.city, 0)] += f.bonus
+print(if best[at(City(1), 0)] >= 0: best[at(City(1), 0)] else: -1)
