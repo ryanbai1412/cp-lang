@@ -37,10 +37,6 @@ fn check(path: &Path) -> cpl_cli::Outcome {
     cpl_cli::run(&["check", path.to_str().unwrap()])
 }
 
-/// Files this checker does not take as they stand. A file leaves this
-/// list when it checks clean, and the test below says so.
-const PENDING: &[&str] = &[];
-
 /// Files the checker takes and lowering does not: until `cpl check` ran
 /// lowering too, it called these clean while `cpl run` and `cpl build`
 /// rejected them (`research/archive/audits/anti-slop-audit-1.md`, finding 1). Each is a
@@ -146,13 +142,10 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         for path in sources(dir, nested) {
             checked += 1;
             let out = check(&path);
-            let pending = PENDING
-                .iter()
-                .chain(NOT_BUILT)
-                .any(|file| path.ends_with(file));
+            let pending = NOT_BUILT.iter().any(|file| path.ends_with(file));
             if pending && out.code == 0 {
                 failures.push(format!(
-                    "{} checks clean now: take it off `PENDING` or `NOT_BUILT`",
+                    "{} checks clean now: take it off `NOT_BUILT`",
                     path.display()
                 ));
             } else if !pending && out.code != 0 {
