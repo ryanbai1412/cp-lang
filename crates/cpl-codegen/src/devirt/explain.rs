@@ -117,7 +117,11 @@ pub fn explain_closures(
         if matches!(f.ret, Ty::Fn(..)) {
             out.push(ClosureLowering {
                 site: format!("fn {} result", f.name),
-                mode: erased(program, &f.ret, "fn returning a closure"),
+                mode: if devirt.returns_lambda(fid) {
+                    ClosureMode::StaticLocalAuto
+                } else {
+                    erased(program, &f.ret, "fn returning a closure")
+                },
             });
         }
 
@@ -173,12 +177,18 @@ pub fn explain_closures(
                 "closure returning a closure",
             ));
         }
+        let hoisted = crate::scope::hoisted(&c.body, c.params.len() + c.captures.len());
         walk::deep_stmts(&c.body, &mut |stmt| {
             if let Stmt::Let(slot, init) = stmt {
                 if matches!(c.locals[*slot].ty, Ty::Fn(..)) {
                     let site = format!("closure {cid} local {}", c.locals[*slot].name);
-                    let auto = matches!(init.as_ref().map(|e| &e.kind),
-                        Some(ExprKind::Closure(i)) if devirt.let_auto(Some(cid), *slot, *i, 0));
+                    let auto = match init.as_ref().map(|e| &e.kind) {
+                        Some(ExprKind::Closure(i)) => devirt.let_auto(Some(cid), *slot, *i, 0),
+                        Some(ExprKind::Call(f, _)) => {
+                            !hoisted.contains(slot) && devirt.let_auto_call(Some(cid), *slot, *f, 0)
+                        }
+                        _ => false,
+                    };
                     out.push(match auto {
                         true => ClosureLowering {
                             site,
@@ -211,6 +221,8 @@ pub(super) fn explain_locals_in_block(
         }
         _ => {}
     });
+    let params = home.map_or(0, |id| devirt.program.fns[id].params.len());
+    let hoisted = crate::scope::hoisted(block, params);
     walk::deep_stmts(block, &mut |stmt| {
         let Stmt::Let(slot, init) = stmt else {
             return;
@@ -252,6 +264,17 @@ pub(super) fn explain_locals_in_block(
                 &locals[*slot].ty,
                 "reassigned local closure",
             ),
+            ExprKind::Call(f, _)
+                if !hoisted.contains(slot)
+                    && devirt.let_auto_call(
+                        None,
+                        *slot,
+                        f,
+                        stores.get(slot).map_or(0, |&n| n as u32),
+                    ) =>
+            {
+                ClosureMode::StaticLocalAuto
+            }
             _ => erased(devirt.program, &locals[*slot].ty, "dynamic fn value"),
         };
         out.push(ClosureLowering { site, mode });

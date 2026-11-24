@@ -644,7 +644,9 @@ impl<'p> Emitter<'p> {
             .filter(|(_, p)| p.contains("const ") && p.contains("& "))
             .map(|(slot, _)| slot)
             .collect();
-        if self.lends_its_result(id, f, &by_ref) {
+        if self.devirt.returns_lambda(id) {
+            ret = "auto".into();
+        } else if self.lends_its_result(id, f, &by_ref) {
             ret = format!("const {ret}&");
         }
         format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "))

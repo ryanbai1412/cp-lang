@@ -612,7 +612,15 @@ impl<'p> Emitter<'p> {
                 };
                 let stores = self.facts.stores(self.facts_local(*slot));
                 let auto = matches!(ty, Ty::Fn(..))
-                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.let_auto(self.closure_id, *slot, cid, stores));
+                    && match init.kind {
+                        ExprKind::Closure(cid) => {
+                            self.devirt.let_auto(self.closure_id, *slot, cid, stores)
+                        }
+                        ExprKind::Call(f, _) => {
+                            !hoisted && self.devirt.let_auto_call(self.closure_id, *slot, f, stores)
+                        }
+                        _ => false,
+                    };
                 // Slots are per fn: one another fn lent says nothing of this one.
                 self.ref_bound.remove(slot);
                 if hoisted {

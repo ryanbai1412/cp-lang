@@ -123,6 +123,9 @@ pub(crate) struct Devirt<'p> {
     /// Fn-typed globals set once to a closure: each call goes to the
     /// closure, each read names it, and the global is never stored.
     globals: BTreeMap<usize, ClosureId>,
+    /// Fns whose result is one closure, made at their one `return`: the
+    /// C++ fn returns `auto`, that lambda's own type.
+    lambda_returns: BTreeSet<FnId>,
     changed: bool,
 }
 
@@ -153,6 +156,7 @@ impl<'p> Devirt<'p> {
             made_by: made_by(program),
             same,
             globals: BTreeMap::new(),
+            lambda_returns: BTreeSet::new(),
             changed: true,
         };
         // The judge's grader calls these with values of its own.
@@ -178,7 +182,56 @@ impl<'p> Devirt<'p> {
         pass.compute_elidable();
         pass.compute_template_params();
         pass.globals = pass.called_globals();
+        pass.lambda_returns = pass.lambda_returning_fns();
         pass
+    }
+
+    /// See [`Devirt::lambda_returns`]. A fn a closure calls or one in a
+    /// recursion may be declared ahead of its body, where `auto` has no
+    /// type yet, so those keep the erased result.
+    fn lambda_returning_fns(&self) -> BTreeSet<FnId> {
+        let program = self.program;
+        let mut ahead: BTreeSet<FnId> = BTreeSet::new();
+        for c in &program.closures {
+            walk::deep_exprs(&c.body, &mut |e| {
+                if let ExprKind::Call(id, _) = e.kind {
+                    ahead.insert(id);
+                }
+            });
+        }
+        (0..program.fns.len())
+            .filter(|&id| {
+                let f = &program.fns[id];
+                if !matches!(f.ret, Ty::Fn(..))
+                    || ahead.contains(&id)
+                    || self.recursive_fns.contains(&id)
+                    || program.entry_fns.contains(&id)
+                    || program.judge_fns.contains(&id)
+                    || is_hook_fn(program, id)
+                    || program.cpp_bodies.iter().any(|(c, _)| *c == id)
+                {
+                    return false;
+                }
+                let mut rets = Vec::new();
+                walk::deep_stmts(&f.body, &mut |stmt| {
+                    if let Stmt::Return(e) = stmt {
+                        rets.push(e);
+                    }
+                });
+                matches!(
+                    rets.as_slice(),
+                    [Some(Expr {
+                        kind: ExprKind::Closure(_),
+                        ..
+                    })]
+                )
+            })
+            .collect()
+    }
+
+    /// Fn `id` returns `auto` (see [`Devirt::lambda_returns`]).
+    pub fn returns_lambda(&self, id: FnId) -> bool {
+        self.lambda_returns.contains(&id)
     }
 
     /// See [`Devirt::globals`].
@@ -305,13 +358,25 @@ impl<'p> Devirt<'p> {
 
     /// Whether `let name = <closure cid>` in `home` (a closure, or the fn when None) binds `auto`.
     pub fn let_auto(&self, home: Option<ClosureId>, slot: usize, cid: ClosureId, n: u32) -> bool {
+        self.bound_once(home, slot, n) && self.local_auto(slot, cid)
+    }
+
+    /// Whether `let name = f(..)` binds `auto`: `f` returns a lambda's own
+    /// type (see [`Devirt::returns_lambda`]) and nothing stores to `name` again.
+    pub fn let_auto_call(&self, home: Option<ClosureId>, slot: usize, f: FnId, n: u32) -> bool {
+        self.bound_once(home, slot, n) && self.returns_lambda(f)
+    }
+
+    /// Local `slot` of `home` (a closure, or the fn when None, with `n`
+    /// stores) is never written after its `let`.
+    fn bound_once(&self, home: Option<ClosureId>, slot: usize, n: u32) -> bool {
         let mut stored = home.is_none() && n > 1;
         if let Some(h) = home {
             walk::deep_stmts(&self.program.closures[h].body, &mut |s| {
                 stored |= matches!(s, Stmt::Assign(p, _, _) if p.kind == PlaceKind::Local(slot));
             });
         }
-        !stored && self.local_auto(slot, cid)
+        !stored
     }
 
     /// Whether a local `let name = <closure>` that names itself can bind
