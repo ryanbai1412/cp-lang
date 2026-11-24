@@ -567,6 +567,13 @@ take_lock() {
         git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null || :
         held_by=$(git log -1 --format=%s "$holder" 2>/dev/null) || held_by="$holder, not fetched"
         at=$(echo "$held_by" | cut -d' ' -f4)
+        # Its own: a drop whose delete failed (idioms' three HTTP 500s on main, then
+        # on the lock) left it, and waiting it out cost 120 s with nobody holding it.
+        if [ "$(echo "$held_by" | cut -d' ' -f2,3)" = "$lock_who $$" ]; then
+            git push -q --no-verify --force-with-lease="$lock_ref:$holder" "$remote" "$me:$lock_ref" 2>/dev/null &&
+                { lock_held=$me; start_beat; dequeue; echo "land: took back this land's own lock" >&2; return 0; }
+            continue
+        fi
         # A holder this lane can't read (the fetch lost a race, or no stamp) is
         # never stale: it may be live, so wait and look again.
         case "$at" in '' | *[!0-9]*) at=$(date +%s) ;; esac
@@ -592,7 +599,8 @@ drop_lock() {
     [ -n "$lock_held" ] || return 0
     stop_beat
     [ -e "$lock_file.lost" ] ||
-        git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" ":$lock_ref" 2>/dev/null || :
+        RETRY_TRIES=3 RETRY_WAIT=1 retry git push -q --no-verify \
+            --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" ":$lock_ref" 2>/dev/null || :
     rm -f "$lock_file.lost"
     lock_held=""
 }
@@ -616,8 +624,22 @@ push() {
     done
     take_lock || exit 1
     git fetch -q "$remote" main
-    git merge-base --is-ancestor FETCH_HEAD HEAD || { drop_lock; return 1; }
-# A failed push (Idioms' "remote rejected ... (failed)") tries again holding
+    # The holder this land waited on pushed: rebase holding the lock, else every
+    # waiter's turn goes to the next push (compiler's land lost 5 of 5 tries so).
+    # A move of land.sh, or of the gates before their one rerun, still lets go.
+    while ! git merge-base --is-ancestor FETCH_HEAD HEAD; do
+        git diff --quiet "$main_base" FETCH_HEAD -- scripts/land.sh &&
+            { [ -n "$rechecked" ] || git diff --quiet "$checked" FETCH_HEAD -- $gate_paths; } ||
+            { drop_lock; return 1; }
+        echo "land: main moved while this land waited for the lock; rebasing holding it" >&2
+        pull || exit 1
+        main_base=$(git rev-parse FETCH_HEAD)
+        recheck
+        run_pending_steps
+        [ -z "$users" ] || refuse_if_broken "$(cargo check -q $users --all-targets 2>&1)"
+        git fetch -q "$remote" main
+    done
+    # A failed push (Idioms' "remote rejected ... (failed)") tries again holding
     # the lock; only main moving under it lets the lock and the turn go.
     moved=""
     RETRY_TRIES=3 RETRY_WAIT=1 retry push_held && [ -z "$moved" ] && return 0

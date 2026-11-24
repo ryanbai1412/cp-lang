@@ -916,6 +916,28 @@ exec {shutil.which("git")} "$@"
         self.assertEqual(self.lock_on_remote(), "")
         self.assertEqual(self.tickets_on_remote(repo), ["9000000000000000000-1-later"])
 
+    def test_a_land_whose_lock_delete_failed_takes_its_own_lock_back(self):
+        # idioms' main push got three HTTP 500s, then its lock delete did too: it waited
+        # 159 s on its own stale lock with nobody holding it.
+        repo = self.clone("lane")
+        n = self.tmp / "n"
+        hook = self.tmp / "remote.git" / "hooks" / "pre-receive"
+        hook.write_text("#!/bin/sh\nwhile read old new ref; do\n"
+                        f'  k="{n}.$(echo "$ref" | tr / _)"; echo x >>"$k"\n'
+                        f'  case "$ref $new" in refs/heads/main*) [ "$(wc -l <"$k")" -gt 3 ] && touch "$k.ok" || '
+                        "{ echo 'Internal Server Error' >&2; exit 1; } ;;\n"
+                        f'  "refs/land/lock-v2 0000000000000000000000000000000000000000") [ -e "{n}.refs_heads_main.ok" ] || '
+                        "{ echo 'Internal Server Error' >&2; exit 1; } ;; esac\n"
+                        "done\n")
+        hook.chmod(0o755)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_TRIES="2", CPL_LAND_LOCK_WAIT="5")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("took back this land's own lock", r.stderr)
+        self.assertNotIn("no land lock", r.stderr)
+        self.assertEqual(self.lock_on_remote(), "")
+
     def test_a_lock_whose_holder_cant_be_read_is_never_taken_over(self):
         repo = self.clone("lane")
         empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
@@ -994,6 +1016,34 @@ exec {shutil.which("git")} "$@"
         # Every rerun ran with the lock free; the land took it only to push.
         self.assertEqual(set(locks.read_text().split()), {"free"})
         self.assertNotIn("holding the land lock", r.stderr)
+        self.assertIn("(try 1)", r.stdout)
+        self.assertEqual(self.lock_on_remote(), "")
+        self.assertIn("theirs", git(ours, "log", "--format=%s", "origin/main"))
+
+    def test_main_moving_during_the_lock_wait_rebases_holding_the_lock(self):
+        # Compiler, idioms and consumers each lost 5 of 5 tries: whoever held the lock
+        # pushed, so main had moved by the time theirs came, and they let it go.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "theirs.txt").write_text("x\n")
+        self.commit(theirs, "theirs")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        self.lock(theirs)
+
+        def holder_pushes_and_lets_go():
+            remote = str(self.tmp / "remote.git")
+            while "refs/locks/queue/" not in git(self.tmp, "ls-remote", remote, "refs/locks/queue/*"):
+                time.sleep(0.1)
+            time.sleep(1)
+            git(theirs, "push", "-q", "origin", "HEAD:main")
+            git(theirs, "push", "-q", "origin", ":refs/land/lock-v2")
+
+        holder = threading.Thread(target=holder_pushes_and_lets_go)
+        holder.start()
+        r = self.land(ours, CPL_LAND_LOCK_WAIT="60")
+        holder.join()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("rebasing holding it", r.stderr)
         self.assertIn("(try 1)", r.stdout)
         self.assertEqual(self.lock_on_remote(), "")
         self.assertIn("theirs", git(ours, "log", "--format=%s", "origin/main"))
