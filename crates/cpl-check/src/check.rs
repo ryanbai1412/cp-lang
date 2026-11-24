@@ -28,6 +28,7 @@ mod expect;
 mod expr;
 mod extension;
 mod fall_through;
+mod fn_sig;
 mod index_at;
 mod index_end;
 mod known;
