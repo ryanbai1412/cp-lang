@@ -46,10 +46,22 @@ fn root() -> PathBuf {
         .unwrap()
 }
 
-fn floor(set: &str) -> usize {
-    let text = std::fs::read_to_string(root().join("crates/cpl-lsp/tests/definition-floors.json"));
-    let floors = cpl_json::parse(&text.unwrap()).unwrap();
-    floors.at(&[set]).as_u32().expect("a floor per set") as usize
+/// Holds `set`'s measured share to its floor in `definition-floors.json`
+/// both ways, as the debt ratchet does: under it is a regression, over it
+/// is a gain the file must record, so the floors rise without anyone
+/// remembering to raise them. The goal is 1000 in every set.
+fn hold(set: &str, permille: usize) {
+    let path = root().join("crates/cpl-lsp/tests/definition-floors.json");
+    let floors = cpl_json::parse(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let floor = floors.at(&[set]).as_u32().expect("a floor per set") as usize;
+    assert!(
+        permille >= floor,
+        "{set}: definition fell to {permille} permille, under {floor}"
+    );
+    assert!(
+        permille == floor,
+        "{set}: definition rose to {permille} permille: set \"{set}\": {permille} in crates/cpl-lsp/tests/definition-floors.json"
+    );
 }
 
 /// One definition asked: the file, the name, and where it went.
@@ -267,11 +279,7 @@ fn every_conformance_case_resolves_its_names_and_std_lands_on_docs() {
         failures.join("\n")
     );
     assert!(landed >= 1000, "only {landed} definitions reach std");
-    let floor = floor("conformance");
-    assert!(
-        permille >= floor,
-        "definition fell to {permille} permille, under {floor}"
-    );
+    hold("conformance", permille);
 }
 
 #[test]
@@ -282,9 +290,5 @@ fn every_std_module_resolves_its_names() {
     assert!(files.len() >= 30, "{} std modules", files.len());
     let asked = ask_parallel(&files);
     let permille = resolved("std", &asked);
-    let floor = floor("std");
-    assert!(
-        permille >= floor,
-        "definition fell to {permille} permille, under {floor}"
-    );
+    hold("std", permille);
 }
