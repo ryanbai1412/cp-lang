@@ -33,3 +33,15 @@ It now reads `1..=2e5` each (the statement's limits, stated in `// Bounds:`) and
 `perf.cp` (the accepted C++'s keep-left recursion) was added when the port measured over 1.1x. The
 port now measures 1.04x time and 0.85x RSS against `orig.cpp`, so performance-checklist R6 no longer
 needs it; it is deleted with this report.
+
+## Addendum: the dream lags spec.cp by four spellings
+- **Where:** `dream.cp`: `add: (mut d, s) => { let _ = d.unite(s.u, s.v) }`,
+  `not d.state.consistent()`, `read<[q](l: Street, r: Street)>()` with
+  `closed.r.ord - closed.l.ord + 1`, and `let (n, m, q): (Int, Int, Int) = read()`.
+- **What felt wrong:** `spec.cp` already has the better forms: `(mut d, s) => d.unite(s.u, s.v)`,
+  the `@get` `consistent` without parens, `read<[q]Range<Street>>()` with `closed.first!` and
+  `closed.len`, and `read<(1..=2e5, 1..=2e5, 1..=2e5)>()`. A copy of the dream with all four
+  passes `cpl check`, so no missing feature is holding the dream back.
+- **Goal it hurts:** express.
+- **General fix:** none. The dream owes the refresh, followed by `corpus.py verify`. Owner: idioms.
+- **Severity:** low.
