@@ -576,8 +576,19 @@ impl<'a> Lowerer<'a> {
         let saved_mod = std::mem::replace(&mut self.cur_mod, t_mod);
         let saved_offset = std::mem::replace(&mut self.offset, t_offset);
         let saved_env = std::mem::replace(&mut self.gen_env, t_env.clone());
+        let methods = self.traits[tid].methods.clone();
         for (name, ty) in defaults {
             let key = format!("Self.{name}");
+            // `type Taken = Slice<Self>` builds a deeper instance of each
+            // instance: a default is resolved only when a trait fn names it.
+            let named = |f: &&ast::FnDecl| {
+                let tys = f.params.iter().filter_map(|p| p.ty.as_ref());
+                tys.chain(f.ret.as_ref())
+                    .any(|t| mono::ty_mentions(t, &key))
+            };
+            if !methods.iter().any(named) {
+                continue;
+            }
             if let std::collections::hash_map::Entry::Vacant(slot) = t_env.entry(key) {
                 slot.insert(GenArg::Ty(self.resolve_ty(ty)));
             }

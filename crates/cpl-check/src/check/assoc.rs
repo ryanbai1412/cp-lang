@@ -81,12 +81,20 @@ impl Checker<'_> {
         assoc
     }
 
-    /// The methods impls for fn types give a fn value of type `of`.
-    pub(super) fn fn_impl_members(&mut self, of: &Ty) -> Vec<(String, Ty)> {
+    /// The members impls for `of`'s shape give it (a fn type, a domain position, a table or
+    /// record: `impl<V, R: (to: V, ..)> Tg<V> for R`), written in the impl or a default of its
+    /// trait; a `@get` reads as its value.
+    pub(super) fn shape_impl_members(&mut self, of: &Ty) -> Vec<(String, Ty)> {
         let mut out = Vec::new();
-        for (trait_name, def) in self.env.impls("fn") {
+        let Some(key) = super::impl_head::ty_impl_name(of) else {
+            return out;
+        };
+        for (trait_name, def) in self.env.impls(key) {
             let Def::Impl {
-                target, methods, ..
+                target,
+                methods,
+                getters,
+                ..
             } = &*def
             else {
                 continue;
@@ -96,7 +104,13 @@ impl Checker<'_> {
             if !of.fits(&target.subst(&bindings)) {
                 continue;
             }
-            out.extend(methods.iter().map(|(m, t)| (m.clone(), t.subst(&bindings))));
+            out.extend(methods.iter().map(|(m, t)| {
+                let t = match t.subst(&bindings) {
+                    Ty::Fn { ret, .. } if getters.contains(m) => *ret,
+                    t => t,
+                };
+                (m.clone(), t)
+            }));
             // What the impl leaves to its trait's defaults (`f.lift(x)`, `(+).laws`).
             let tr = trait_name.as_deref().and_then(|t| t.split('<').next());
             let Some(Def::Trait {
@@ -109,6 +123,14 @@ impl Checker<'_> {
             out.extend(inherited.into_iter().map(|(m, t)| (m, t.subst(&bindings))));
         }
         out
+    }
+
+    pub(super) fn shape_impl_member(&mut self, of: &Ty, name: &str) -> Ty {
+        let found = self
+            .shape_impl_members(of)
+            .into_iter()
+            .find(|(m, _)| m == name);
+        found.map_or(Ty::Unknown, |m| m.1)
     }
 
     /// Replaces each `M.Fold` whose `M` is now known with the type its impl chooses.

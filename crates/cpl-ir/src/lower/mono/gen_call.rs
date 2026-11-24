@@ -324,6 +324,7 @@ impl<'a> Lowerer<'a> {
         // Propagate bindings implied by row/trait bounds (e.g. `R: (u: V, v: V, ..)`,
         // `G: Next<V>`).
         self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
+        self.bind_bounds_open(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
         self.fn_graph_vertex_domains(&decl.bounds, tpl_mod, &mut inferred);
         let tpl = (tpl_mod, tpl_offset, explicit.is_empty());
         self.infer_yielded(decl, tpl, &gen_names, &mut inferred);
@@ -436,33 +437,6 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
-            // If an unbound generic `A` is used as a lambda parameter type (e.g. `w: A -> W` in `dijkstra`),
-            // deduce `A` from a bound `N` (`Graph<V, E>`'s `out` element type, or `Fn(_, List<Elem>)`).
-            for g in &gen_names {
-                if !inferred.contains_key(g) && g == "A" {
-                    let arc_ty = inferred.values().find_map(|ga| match ga {
-                        GenArg::Ty(Ty::Struct(sid)) => {
-                            let out_fn = self.own_method(*sid, "out")?;
-                            if let Some(Ty::List(elem)) = self.sigs[out_fn].ret.clone() {
-                                Some((*elem).clone())
-                            } else {
-                                None
-                            }
-                        }
-                        GenArg::Ty(Ty::Fn(_, ret) | Ty::Array { elem: ret, .. }) => {
-                            if let Ty::List(elem) = ret.as_ref() {
-                                Some((**elem).clone())
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    });
-                    if let Some(aty) = arc_ty {
-                        inferred.insert(g.clone(), GenArg::Ty(aty));
-                    }
-                }
-            }
             for (param, arg) in ast_params.iter().zip(&matched) {
                 let Some(pty) = param.ty.as_ref().map(lambda_infer::unwrap_optional) else {
                     continue;
@@ -499,7 +473,7 @@ impl<'a> Lowerer<'a> {
                     if open && self.detect_bare_op(expr).is_some() {
                         let tpl = (tpl_mod, tpl_offset);
                         if let Some(f) =
-                            self.fn_impl_shape(&decl.bounds, &name.text, tpl, &inferred)
+                            self.fn_impl_shape(&decl.bounds, &name.text, tpl, &inferred, true)
                         {
                             inferred.insert(name.text.clone(), GenArg::Ty(f));
                         }
@@ -520,7 +494,7 @@ impl<'a> Lowerer<'a> {
                     {
                         let tpl = (tpl_mod, tpl_offset);
                         if let Some(f) =
-                            self.fn_impl_shape(&decl.bounds, &name.text, tpl, &inferred)
+                            self.fn_impl_shape(&decl.bounds, &name.text, tpl, &inferred, false)
                         {
                             inferred.insert(name.text.clone(), GenArg::Ty(f));
                             continue;

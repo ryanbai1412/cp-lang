@@ -5,13 +5,14 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
-    /// The param a blanket `impl<D: Domain> Tr for D` is over.
+    /// The param a blanket `impl<D: Domain> Tr for D` is over; its bound makes
+    /// `D` the impl's own even where the module has a `D`.
     pub(super) fn domain_blanket_param(&self, idx: usize) -> Option<String> {
         let imp = &self.impls[idx];
         let ast::TypeKind::Named { name, args } = &imp.target.kind else {
             return None;
         };
-        if !args.is_empty() || self.mod_syms[imp.mod_id].contains_key(&name.text) {
+        if !args.is_empty() {
             return None;
         }
         let domain = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::Named { name: tn, .. } if tn.text == "Domain");
@@ -33,7 +34,7 @@ impl<'a> Lowerer<'a> {
             .find(|(t, m, _)| t == ty && m == method);
         prim.map(|p| p.2)
             .or_else(|| self.optional_impl_method(ty, method))
-            .or_else(|| self.fn_impl_method(ty, method))
+            .or_else(|| self.pattern_impl_method(ty, method))
             .or_else(|| self.shape_default_method(ty, method))
     }
 
@@ -179,27 +180,8 @@ impl<'a> Lowerer<'a> {
             if self.impls[idx].trait_name.as_deref() != Some(name) {
                 continue;
             }
-            let (m, offset, target) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].target,
-            );
-            if matches!(&target.kind, ast::TypeKind::Named { args, .. } if !args.is_empty()) {
-                return true;
-            }
-            if self.domain_blanket_param(idx).is_some() {
-                if matches!(ty, Ty::Pos(_) | Ty::Bound(_)) {
-                    return true;
-                }
-                continue;
-            }
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
-            let got = self.resolve_ty(target);
-            (self.cur_mod, self.offset) = saved;
-            if got == *ty || got == Ty::Error {
+            let generic = matches!(&self.impls[idx].target.kind, ast::TypeKind::Named { args, .. } if !args.is_empty());
+            if (generic && !matches!(ty, Ty::Struct(_))) || self.impl_env(idx, ty).is_some() {
                 return true;
             }
         }

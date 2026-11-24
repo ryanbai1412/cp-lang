@@ -773,6 +773,10 @@ impl<'a> Checker<'a> {
         let found = match &base_ty {
             Ty::Record(fields) => {
                 if !fields.iter().any(|(n, _)| *n == name.text) {
+                    let by_impl = self.shape_impl_member(&base_ty, &name.text);
+                    if by_impl != Ty::Unknown {
+                        return by_impl;
+                    }
                     if let Some(ty) = self.shape_default_member(&base_ty, &name.text) {
                         return ty;
                     }
@@ -1022,7 +1026,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                return self.domain_impl_member(&base_ty, &name.text);
+                return self.shape_impl_member(&base_ty, &name.text);
             }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {
@@ -1071,7 +1075,7 @@ impl<'a> Checker<'a> {
             // A fn type's impls answer their own members; any other name is a std fn
             // taking it as `self` (`f.opt()`), resolved once std is loaded.
             Ty::Fn { .. } => {
-                let methods = self.fn_impl_members(&base_ty);
+                let methods = self.shape_impl_members(&base_ty);
                 (methods.iter().any(|(m, _)| *m == name.text)).then(|| (None, Vec::new(), methods))
             }
             _ => None,

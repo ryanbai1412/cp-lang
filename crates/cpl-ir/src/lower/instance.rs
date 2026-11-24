@@ -14,6 +14,9 @@ pub(super) struct Growth {
     pub(super) cur: Option<FnId>,
     /// The module whose code asked for each instance.
     from: HashMap<FnId, usize>,
+    /// Each impl whose trait args are being solved, with its self type: an
+    /// impl met again for the same type is a cycle, not a proof.
+    pub(super) impl_args: Vec<(usize, Ty)>,
 }
 
 impl<'a> Lowerer<'a> {

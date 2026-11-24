@@ -1516,7 +1516,7 @@ impl<'a> Checker<'a> {
                     self.static_rows_hold(call, &callee_text, base, &name.text, args);
                 }
                 self.record_instantiation(call, &bindings);
-                self.settle(&ret.subst(&bindings))
+                self.settle(&ret.fresh_apart(&bindings).subst(&bindings))
             }
             Ty::Named {
                 name,

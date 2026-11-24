@@ -1212,7 +1212,8 @@ impl<'a> Checker<'a> {
                 };
                 let generics = self.impl_generics(trait_name.as_ref(), target, bounds);
                 let scope = self.enter_body(&generics, Ty::Unknown);
-                let self_ty = self.quietly(|c| c.resolve_type(target));
+                let shape = super::impl_head::row_bound(target, bounds).unwrap_or(target);
+                let self_ty = self.quietly(|c| c.resolve_type(shape));
                 self.self_ty = Some(self_ty.clone());
                 let (trait_args, bound_args) = self.impl_head_args(trait_name.as_ref(), bounds);
                 let out_ty: Option<Ty> = body.stmts.iter().find_map(|s| match &s.kind {
@@ -1609,19 +1610,7 @@ impl<'a> Checker<'a> {
                 .iter()
                 .all(|s| self.implements_trait_inner(ty, s, seen));
         }
-        let impl_key = match ty {
-            Ty::Named { name, .. } => Some(name.as_str()),
-            Ty::Int => Some("Int"),
-            Ty::I128 => Some("I128"),
-            Ty::U64 => Some("U64"),
-            Ty::Float => Some("F64"),
-            Ty::Bool => Some("Bool"),
-            Ty::Char => Some("Char"),
-            Ty::Str => Some("Str"),
-            Ty::Fn { .. } => Some("fn"),
-            Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
-            _ => None,
-        };
+        let impl_key = super::impl_head::ty_impl_name(ty);
         if impl_key.is_some_and(|name| self.impl_holds(name, ty, trait_name, seen)) {
             return true;
         }
@@ -1632,8 +1621,9 @@ impl<'a> Checker<'a> {
             "Seq" => ty.is_seq() || self.walks_by_each(ty),
             "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
-            "Positional" => ty.rev_source().unwrap_or(ty).is_indexed(),
-            super::views::INDEXED_BY_WALK => ty.rev_source().unwrap_or(ty).is_indexed(),
+            "Positional" | super::views::INDEXED_BY_WALK => {
+                ty.rev_source().unwrap_or(ty).is_indexed()
+            }
             "Bidir" => ty.is_bidir(),
             "Keyed" => ty.is_keyed(),
             "IndexedMut" => ty.is_indexed_mut(),
@@ -1665,7 +1655,6 @@ impl<'a> Checker<'a> {
                 Ty::Named { .. } => false,
                 _ => true,
             },
-            "Next" => matches!(ty, Ty::Array { .. } | Ty::Fn { .. }),
             _ => match ty {
                 Ty::Record(fields) => self.meets_by_shape(fields, trait_name),
                 Ty::Tuple(items) => self.meets_by_shape(&positional(items), trait_name),
@@ -1726,7 +1715,7 @@ impl<'a> Checker<'a> {
             fields: wanted,
             supers,
             ..
-        }) = self.global(trait_name).as_deref().cloned()
+        }) = self.type_def(trait_name).as_deref().cloned()
         else {
             return true;
         };

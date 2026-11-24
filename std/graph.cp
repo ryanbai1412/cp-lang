@@ -53,6 +53,22 @@ pub trait Target<V>:
     /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.to == 1`
     @get fn to(self) -> V = self
 
+impl<V: Domain> Target<V> for V:
+    @get fn to(self) -> V = self
+
+impl<V, R: (to: V, ..)> Target<V> for R:
+    @get fn to(self) -> V = self.to
+
+impl<V: Domain, S: Seq<A>, A: Target<V>> Next<V> for [V]S:
+    type Arc = A
+    fn out(self, u: V) -> yields A:
+        for a in self[u]: yield a
+
+impl<V: Domain, S: Seq<A>, A: Target<V>> Next<V> for V -> S:
+    type Arc = A
+    fn out(self, u: V) -> yields A:
+        for a in self(u): yield a
+
 // A record arc with a `to` field; a plain vertex arc is not one.
 trait ToField<V>:
     @get fn to(self) -> V

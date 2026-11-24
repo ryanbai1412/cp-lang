@@ -603,7 +603,9 @@ pub(super) fn ty_mentions(t: &ast::Type, name: &str) -> bool {
         | ast::TypeKind::Mut(elem)
         | ast::TypeKind::Yields(elem) => ty_mentions(elem, name),
         ast::TypeKind::Tuple(items) => items.iter().any(|i| ty_mentions(i, name)),
-        ast::TypeKind::Record(fields) => fields.iter().any(|(_, f)| ty_mentions(f, name)),
+        ast::TypeKind::Record(fields) | ast::TypeKind::Row(fields) => {
+            fields.iter().any(|(_, f)| ty_mentions(f, name))
+        }
         ast::TypeKind::Fn { params, ret } => {
             params.iter().any(|p| ty_mentions(p, name)) || ty_mentions(ret, name)
         }

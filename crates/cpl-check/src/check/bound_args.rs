@@ -481,7 +481,8 @@ impl Checker<'_> {
                 .bound_trait_args(p, trait_name)
                 .filter(|args| args.len() == n);
         }
-        if let Ty::Named { name, .. } = ty {
+        use super::impl_head::ty_impl_name;
+        if let Some(name) = ty_impl_name(ty) {
             let written = self.global(&crate::def::impl_name(Some(trait_name), name));
             let listed = (self.env.impls(name).into_iter())
                 .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
@@ -494,9 +495,9 @@ impl Checker<'_> {
                     ..
                 } = &*def
                 {
-                    if trait_args.len() == n {
-                        let mut on = crate::ty::Bindings::default();
-                        target.unify(ty, &mut on);
+                    let mut on = crate::ty::Bindings::default();
+                    target.unify(ty, &mut on);
+                    if trait_args.len() == n && ty.fits(&target.subst(&on)) {
                         // `impl<S: Indexed<K, T>, K, T> Seq<T> for Rebased<S>`: `T` is what `S` gives.
                         for (param, bound, args) in bound_args {
                             let Some(actual) = on.get(param).cloned() else {
