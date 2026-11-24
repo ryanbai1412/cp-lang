@@ -206,7 +206,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-10/test-position-stored-above-multitest.cp: compiler
 - core-11/prelude-has-components.cp: compiler
 - core-11/strings-table-in-prelude.cp: compiler
-- core-13/generics-monomorphized.cp: compiler (C++ has a `template`, regressed)
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - std-algebra/each-of-bool-operators.cp: stdlib
 - std-bag/range-view-keeps-the-bag-lent.cp: compiler lends of a std method returning a struct
