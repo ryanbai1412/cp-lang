@@ -21,12 +21,14 @@ domain Gap = 0..k - 1
 let size: [Layer]1..=200 = read()
 let edges: [Gap]0..=40_000 = read()
 let first = size[Layer.first!]
-var paths = Mat<Z>.identity(first)
+var paths = [[Z(if r == c: 1 else: 0) for c in 0..first] for r in 0..first]  // walks: start -> vertex
 for g in Gap:
     let (from, to) = (size[Layer(g.ord)], size[Layer(g.ord + 1)])
-    var next = Mat<Z>.zeros(to, first)
+    domain From = 1..=from
+    domain To = 1..=to
+    var next = [[Z(0) for _ in 0..first] for _ in To]
     repeat edges[g]:
-        let (u, v): (1..=from, 1..=to) = read()
-        for s in 0..first: next.at(v - 1, s) += paths.get(u - 1, s)
+        let (u, v): (From, To) = read()
+        for (s, walks) in paths[u.ord].items: next[v.ord][s] += walks
     paths = next
-print(paths.det())
+print(Mat<Z>.from_rows(paths).det())
