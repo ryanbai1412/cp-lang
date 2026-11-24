@@ -3098,8 +3098,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let mut out = Vec::with_capacity(left.len() + right.len());
         let (mut i, mut j) = (0, 0);
         while i < left.len() && j < right.len() {
-            let order = self.cmp_ty_val(key_ty, &right[j].0, &left[i].0, span)?;
-            if if desc { order.is_gt() } else { order.is_lt() } {
+            let (a, b) = [(&right[j].0, &left[i].0), (&left[i].0, &right[j].0)][desc as usize];
+            if self.less_ty_val(key_ty, a, b, span)? {
                 out.push(right[j].clone());
                 j += 1;
             } else {

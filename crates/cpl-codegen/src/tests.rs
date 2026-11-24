@@ -1175,7 +1175,7 @@ fn cheap_pure_sort_key_avoids_sort_by_buffers() {
         "xs.sort(by: p => (p.x, p.y))\n",
         "print(xs[0].x)\n",
     ));
-    assert!(cpp.contains("std::stable_sort("), "{cpp}");
+    assert!(cpp.contains("cpl::stable_sort_lt("), "{cpp}");
     assert!(!cpp.contains("cpl::sort_by("), "{cpp}");
 }
 

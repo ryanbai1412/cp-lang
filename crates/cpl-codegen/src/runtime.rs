@@ -908,7 +908,9 @@ template <class T> std::optional<T> set_max(const std::set<T>& s) { return s.emp
         needs: &[],
         code: "\
 template <class It, class V, class L> void merge_sort(It a, size_t n, std::vector<V>& buf, L& lt) { if (n <= 1) return; size_t m = n / 2, i = 0, j = m, k = 0; merge_sort(a + m, n - m, buf, lt); merge_sort(a, m, buf, lt); while (i < m && j < n) buf[k++] = lt(a[j], a[i]) ? std::move(a[j++]) : std::move(a[i++]); while (i < m) buf[k++] = std::move(a[i++]); std::move(buf.begin(), buf.begin() + k, a); }
-template <class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (std::is_integral_v<V>) std::sort(b, e, lt); else { std::vector<V> buf(b, e); merge_sort(b, (size_t)(e - b), buf, lt); } }
+// The interpreter's merge sort, so `cpl profile` counts the same comparisons natively.
+template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; std::vector<V> buf(b, e); merge_sort(b, (size_t)(e - b), buf, lt); }
+template <class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
 template <class T> std::vector<T> sorted(std::vector<T> v) { sort_seq(v.begin(), v.end()); return v; }
 template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
 ",
@@ -1421,7 +1423,7 @@ template <class T, size_t K> inline std::array<T, K> filled_array(const T& x) { 
     },
     Piece {
         name: "sort_by",
-        needs: &[],
+        needs: &["sorted"],
         code: "\
 // `sort(by: key)`: each key is worked out once, in order, before any is
 // compared; equal keys keep their order.
@@ -1439,7 +1441,7 @@ template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
     for (const auto& x : seq) keys.push_back(key(x));
     std::vector<size_t> order(keys.size());
     for (size_t i = 0; i < order.size(); i++) order[i] = i;
-    std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) { return desc ? keys[b] < keys[a] : keys[a] < keys[b]; });
+    stable_sort_lt(order.begin(), order.end(), [&](size_t a, size_t b) { return desc ? keys[b] < keys[a] : keys[a] < keys[b]; });
     std::vector<T> sorted;
     sorted.reserve(order.size());
     for (size_t i : order) sorted.push_back(std::move(seq[i]));

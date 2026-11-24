@@ -212,6 +212,7 @@ impl<'p> Emitter<'p> {
                     &format!("auto {kf} = [&]({param}) -> {key_ty} {{ return {key_text}; }};"),
                 );
                 if is_cheap_pure_key(key) {
+                    self.need("sorted");
                     let (a, b) = (self.temp(), self.temp());
                     let cmp = turned(
                         format!("{kf}({a}) < {kf}({b})"),
@@ -219,7 +220,7 @@ impl<'p> Emitter<'p> {
                     );
                     self.line(
                         out,
-                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
+                        &format!("cpl::stable_sort_lt({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
                     );
                 } else {
                     self.need("sort_by");
