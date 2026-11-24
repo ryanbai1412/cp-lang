@@ -34,6 +34,7 @@ mod scope;
 mod show;
 mod sink;
 mod site;
+mod span;
 mod splice;
 mod split;
 mod stmt;

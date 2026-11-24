@@ -42,7 +42,8 @@ fn division_by_a_positive_number_of_a_non_negative_one_is_plain_cpp() {
         body.contains("cpl::put_int(ll(uint32_t(a) % uint32_t(b))"),
         "{body}"
     );
-    assert!(body.contains("cpl::put_int(a % 1000000007"), "{body}");
+    // Below the modulus already: nothing to reduce.
+    assert!(body.contains("cpl::put_int(a, '\\n')"), "{body}");
     assert!(
         !body.contains("cpl::ediv") && !body.contains("cpl::divp"),
         "{body}"
@@ -298,4 +299,46 @@ fn a_restored_variable_is_not_its_first_value() {
         "let n: 1..=10 = read()\nvar c = 0\nfor i in 0..n:\n    c = c + 1000000000000000000\nprint(c)\n",
     );
     assert!(cpp.contains("cpl::iadd(c, 1000000000000000000"), "{cpp}");
+}
+
+#[test]
+fn a_wrap_reduces_once_by_how_far_its_value_can_lap() {
+    let src = |step: &str| {
+        format!(
+            "let d: 1..=100 = read()\ndomain Rem = 0..d\nvar t: [Rem]Int = 0\n\
+             for r in Rem:\n    for x in 0..=9: t[Rem.wrap(r.ord + {step})] += 1\nprint(t[Rem(0)])\n"
+        )
+    };
+    // Up to nine past the count: one remainder, in 32 bits, and no position check.
+    let body = body(&src("x"));
+    let far = body
+        .lines()
+        .find(|l| l.contains("t1 ="))
+        .expect("the wrapped index");
+    assert_eq!(far.matches('%').count(), 1, "{far}");
+    for helper in [
+        "cpl::emod",
+        "cpl::modn",
+        "cpl::modp",
+        "cpl::pos(",
+        "cpl::iadd",
+    ] {
+        assert!(!far.contains(helper), "{helper}: {far}");
+    }
+    // Under two laps: a conditional subtract, no division.
+    let near = super::body(&src("1"));
+    assert!(
+        near.contains("cpl::sub_if(") && !near.contains('%'),
+        "{near}"
+    );
+}
+
+#[test]
+fn bounded_operands_add_without_an_overflow_check_whatever_their_sign() {
+    let out = cpp("use std.mod.{Mod}\ntype Z = Mod<1_000_000_007>\nlet a: Int = read()\nprint((Z(a) + Z(a)).v)\n");
+    let add = out
+        .split("\ninline ")
+        .find(|s| s.contains("_add(const"))
+        .expect("Mod::add emitted");
+    assert!(!add.contains("cpl::iadd"), "{add}");
 }

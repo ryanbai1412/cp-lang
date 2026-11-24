@@ -562,7 +562,7 @@ impl<'p> Facts<'p> {
         }
     }
 
-    fn upper_bound(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {
+    pub(crate) fn upper_bound(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {
         if depth > 8 {
             return None;
         }
@@ -598,7 +598,8 @@ impl<'p> Facts<'p> {
             }
             ExprKind::DomainLen(d) => self.domain_max_len_at(*d, depth + 1),
             ExprKind::Binary(BinOp::Mul, l, r)
-                if self.sign(fn_id, l) != Sign::Unknown && self.sign(fn_id, r) != Sign::Unknown =>
+                if self.sign_at(fn_id, l, u32::from(depth) * 2) != Sign::Unknown
+                    && self.sign_at(fn_id, r, u32::from(depth) * 2) != Sign::Unknown =>
             {
                 self.upper_bound(fn_id, l, depth + 1)?
                     .checked_mul(self.upper_bound(fn_id, r, depth + 1)?)
@@ -610,7 +611,7 @@ impl<'p> Facts<'p> {
                 let l_hi = self.upper_bound(fn_id, l, depth + 1)?;
                 if let ExprKind::Int(c) = r.kind {
                     l_hi.checked_sub(c)
-                } else if self.sign(fn_id, r) != Sign::Unknown {
+                } else if self.sign_at(fn_id, r, u32::from(depth) * 2) != Sign::Unknown {
                     Some(l_hi)
                 } else {
                     None
@@ -628,20 +629,26 @@ impl<'p> Facts<'p> {
                 }
             }
             // Euclidean `l / r` with `r > 0` is at most `max(l, 0)`.
-            ExprKind::Binary(BinOp::Div, l, r) if self.sign(fn_id, r) == Sign::Positive => {
+            ExprKind::Binary(BinOp::Div, l, r)
+                if self.sign_at(fn_id, r, u32::from(depth) * 2) == Sign::Positive =>
+            {
                 Some(self.upper_bound(fn_id, l, depth + 1)?.max(0))
             }
             // Euclidean: below the divisor, whatever the dividend.
-            ExprKind::Binary(BinOp::Rem, _, r) if self.sign(fn_id, r) == Sign::Positive => {
+            ExprKind::Binary(BinOp::Rem, _, r)
+                if self.sign_at(fn_id, r, u32::from(depth) * 2) == Sign::Positive =>
+            {
                 Some(self.upper_bound(fn_id, r, depth + 1)? - 1)
             }
             // At most either operand that is never negative.
             ExprKind::Binary(BinOp::BitAnd, l, r) => [l, r]
                 .into_iter()
-                .filter(|x| self.sign(fn_id, x) != Sign::Unknown)
+                .filter(|x| self.sign_at(fn_id, x, u32::from(depth) * 2) != Sign::Unknown)
                 .filter_map(|x| self.upper_bound(fn_id, x, depth + 1))
                 .min(),
-            ExprKind::Binary(BinOp::Shr, l, _) if self.sign(fn_id, l) != Sign::Unknown => {
+            ExprKind::Binary(BinOp::Shr, l, _)
+                if self.sign_at(fn_id, l, u32::from(depth) * 2) != Sign::Unknown =>
+            {
                 self.upper_bound(fn_id, l, depth + 1)
             }
             ExprKind::Builtin(Builtin::Max, args) if !args.is_empty() => {
@@ -656,9 +663,26 @@ impl<'p> Facts<'p> {
                     .max(self.upper_bound(fn_id, otherwise, depth + 1)?),
             ),
             // A label is its ordinal plus the domain's first label.
-            ExprKind::Cast(Cast::Label(d), _) => self
-                .const_domain_lo(*d)?
-                .checked_add(self.domain_max_len_at(*d, depth + 1)? - 1),
+            ExprKind::Cast(Cast::Label(d), p) => {
+                let ord = match p.kind {
+                    ExprKind::Cast(Cast::Trust, ref k) if matches!(k.kind, ExprKind::Int(_)) => {
+                        self.upper_bound(fn_id, k, depth + 1)?
+                    }
+                    _ => self.domain_max_len_at(*d, depth + 1)? - 1,
+                };
+                self.const_domain_lo(*d)?.checked_add(ord)
+            }
+            ExprKind::Cast(Cast::Ord, p) if matches!(p.ty, Ty::Pos(_)) => {
+                let own = self.upper_bound(fn_id, p, depth + 1);
+                let len = match p.ty {
+                    Ty::Pos(d) => self.domain_max_len_at(d, depth + 1).map(|n| n - 1),
+                    _ => None,
+                };
+                own.into_iter().chain(len).min()
+            }
+            ExprKind::Field(base, idx) if matches!(base.ty, Ty::Struct(sid) if self.u32_fields.contains(&(sid, *idx))) => {
+                Some(i64::from(u32::MAX))
+            }
             ExprKind::Cast(_, inner) => self.upper_bound(fn_id, inner, depth + 1),
             _ => None,
         }
@@ -738,6 +762,11 @@ impl<'p> Facts<'p> {
             }
             _ => false,
         }
+    }
+
+    /// A loop variable's first value.
+    pub(crate) fn loop_lo(&self, v: Var) -> Option<&'p Expr> {
+        self.loop_lo.get(&v).copied()
     }
 
     /// The value of the variable's first store.
@@ -842,7 +871,7 @@ impl<'p> Facts<'p> {
             BinOp::Mul => matches!(a, Some(-1..=1)) || matches!(b, Some(-1..=1)),
             _ => false,
         };
-        if trivial {
+        if trivial || self.fits_bounds(fn_id, op, l, r) {
             return true;
         }
         if self.sign(fn_id, l) == Sign::Unknown || self.sign(fn_id, r) == Sign::Unknown {
@@ -867,7 +896,7 @@ impl<'p> Facts<'p> {
         self.sign_at(fn_id, e, 0)
     }
 
-    fn sign_at(&self, fn_id: Option<usize>, e: &Expr, depth: u32) -> Sign {
+    pub(crate) fn sign_at(&self, fn_id: Option<usize>, e: &Expr, depth: u32) -> Sign {
         use Sign::*;
         if depth > 16 || e.ty != Ty::Int {
             return Unknown;
@@ -930,6 +959,16 @@ impl<'p> Facts<'p> {
                     _ => Positive,
                 },
                 BinOp::Mul | BinOp::Pow => both(of(l), of(r)),
+                BinOp::Sub => {
+                    let d = depth as u8 + 1;
+                    let lo = self.lower_bound(fn_id, l, d);
+                    let hi = self.upper_bound(fn_id, r, d);
+                    match lo.zip(hi).and_then(|(a, b)| a.checked_sub(b)) {
+                        Some(x) if x > 0 => Positive,
+                        Some(0) => NonNeg,
+                        _ => Unknown,
+                    }
+                }
                 // Euclidean: never negative, whatever the operands.
                 BinOp::Rem => NonNeg,
                 BinOp::Div | BinOp::Shr | BinOp::BitOr | BinOp::BitXor => {
@@ -971,7 +1010,12 @@ impl<'p> Facts<'p> {
                     Unknown
                 }
             }
-            ExprKind::Cast(Cast::CharToInt | Cast::Ord, _) | ExprKind::DomainLen(_) => NonNeg,
+            // A count is positive when its one definition is.
+            ExprKind::DomainLen(d) => match self.domain_len.get(d).copied().flatten() {
+                Some((home, len)) if self.sign_at(home, len, depth + 1) == Positive => Positive,
+                _ => NonNeg,
+            },
+            ExprKind::Cast(Cast::CharToInt | Cast::Ord, _) => NonNeg,
             ExprKind::Cast(Cast::Label(d), _) => self.const_domain_lo(*d).map_or(Unknown, literal),
             ExprKind::If(_, a, b) => match both(of(a), of(b)) {
                 Unknown => Unknown,

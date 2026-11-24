@@ -41,6 +41,15 @@ inline ll divn(ll a, ll b) {
 ",
     },
     Piece {
+        name: "lap",
+        needs: &[],
+        code: "\
+// `a % n` for `a` less than one lap of `n > 0` outside `0..n`.
+inline ll sub_if(ll a, ll n) { return a >= n ? a - n : a; }
+inline ll add_if(ll a, ll n) { return a < 0 ? a + n : a; }
+",
+    },
+    Piece {
         name: "modn",
         needs: &[],
         code: "\

@@ -443,6 +443,10 @@ impl<'p> Emitter<'p> {
                         let pos = crate::width::pos_fn(program, e);
                         Code::primary(format!("{pos}({} - {d}_lo, {d}_len)", code.at(ADD)))
                     }
+                    Cast::FromOrd(d) if self.ord_inside(*d, inner) => Code::new(
+                        format!("({}){}", crate::width::pos_cpp(program, *d), code.at(UNARY)),
+                        UNARY,
+                    ),
                     Cast::FromOrd(d) => {
                         self.need("at");
                         let d = dom_ident(program, *d);

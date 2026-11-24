@@ -1,6 +1,7 @@
 //! Arithmetic and shifts: operators, widths and the checks each build keeps.
 
 use super::*;
+use crate::span::Reduce;
 
 impl<'p> Emitter<'p> {
     /// How far a shift goes, held to `0..width` in every build: outside
@@ -94,10 +95,60 @@ impl<'p> Emitter<'p> {
                     ));
                 })
             }
+            BinOp::Rem if e.ty == Ty::Int => match self.facts.reduce(self.facts_home(), l, r) {
+                Some(how) => self.reduced_rem(how, l, r),
+                None => self.sequence(&[l, r], &e.ty, |this, codes| {
+                    this.arith(op, l, r, &codes[0], &codes[1])
+                }),
+            },
             _ => self.sequence(&[l, r], &e.ty, |this, codes| {
                 this.arith(op, l, r, &codes[0], &codes[1])
             }),
         }
+    }
+
+    /// Whether the ordinal `ord` is proved in `0..d.count`: `d.wrap(x)` is.
+    pub(crate) fn ord_inside(&self, d: usize, ord: &Expr) -> bool {
+        let len = Expr {
+            kind: ExprKind::DomainLen(d),
+            ty: Ty::Int,
+            span: ord.span,
+        };
+        self.facts.reduce(self.facts_home(), ord, &len) == Some(Reduce::Keep)
+    }
+
+    /// `l % r` where `l`'s bounds against `r > 0` leave at most one lap
+    /// (`span::reduce`): no division, at most one compare.
+    fn reduced_rem(&mut self, how: Reduce, l: &Expr, r: &Expr) -> Code {
+        let pure = crate::stmt::same_path(r, r);
+        match how {
+            Reduce::Keep if pure => return self.expr(l),
+            // `(t + n) % n` with `t` in `[0, n)`: `t`.
+            Reduce::SubOnce if pure => {
+                if let ExprKind::Binary(BinOp::Add, t, m) = &l.kind {
+                    if crate::span::same_count(m, r) {
+                        return self.expr(t);
+                    }
+                }
+            }
+            _ => {}
+        }
+        self.sequence(&[l, r], &Ty::Int, |this, codes| {
+            let (a, b) = (&codes[0], &codes[1]);
+            match how {
+                Reduce::Keep => a.clone(),
+                Reduce::SubOnce => infix(a, "-", b, ADD),
+                Reduce::SubIf | Reduce::AddIf => {
+                    let helper = if how == Reduce::SubIf {
+                        "sub_if"
+                    } else {
+                        "add_if"
+                    };
+                    this.need("lap");
+                    Code::primary(format!("cpl::{helper}({}, {})", a.text, b.text))
+                }
+            }
+        })
     }
 
     /// The runtime fn for `+`, `-` or `*` on `Int`s or `I128`s not proved
