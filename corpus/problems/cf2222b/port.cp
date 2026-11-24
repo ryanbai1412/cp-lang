@@ -17,8 +17,8 @@ let a: [0..n]-10 ** 9..=10 ** 9 = read()
 let xs: [0..m]1..=10 ** 9 = read()
 
 let cnt0 = xs.count(x => x % 2 == 1)
-fn best_rem(vals: List<Int>, var cnt: Int) -> Int:
-    var s = vals.sorted()
+fn best_rem(var s: List<-10 ** 9..=10 ** 9>, var cnt: Int) -> Int:
+    s.sort()
     if cnt > 0:
         cnt -= 1
         s.pop()
