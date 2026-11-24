@@ -109,6 +109,19 @@ impl Ord for Frac:
   associated type breaks no existing impl (decision 469). An impl that
   leaves out one with no default is E0606 naming it. Two impls that apply to one type are
   E0202 (R08.1.2), so a type has one choice. (R08.1.9)
+- **Each fn item has a type of its own**, written `type_of(f)` for a
+  `fn` declared anywhere: a type of size zero that coerces to the fn's
+  type wherever one is wanted, so `var g = mn` then `g = mx`, `[mx, mn]`
+  and `if c: mx else: mn` all hold the fn type, and a fn-typed parameter
+  takes any fn. A generic fn has one item, `type_of(mx)`, not one per
+  instantiation. `type_of(x)` of anything else, a `let` holding a
+  closure, a parameter or a type, is E0324; of a name nothing defines,
+  E0201. (R08.1.10)
+- **An impl may be for `type_of(f)`**, with the fn declared in the impl's
+  module or the trait in its own: `impl Op<Int> for type_of(mx)`. Where
+  the fn itself is passed at a bound, its impl is the one chosen, while a
+  closure or another fn of the same type is not. Two impls of one trait
+  for one item are E0202. (R08.1.11)
 
 `cmp(a, b)` is the three-way comparison of two `Ord` values, an
 `Ordering` (`Less`, `Equal`, `Greater`); `desc(x)` flips an order.

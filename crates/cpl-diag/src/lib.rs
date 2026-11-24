@@ -238,6 +238,8 @@ pub mod codes {
     /// A struct or enum field that stores the type itself (`l: ?N` in `N`).
     pub const RECURSIVE_FIELD: Code = Code("E0322");
     pub const ALIAS_CYCLE: Code = Code("E0323");
+    /// `type_of(x)` of a name that is not a `fn` or an operator (R08.1.10).
+    pub const NOT_A_FN_ITEM: Code = Code("E0324");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");

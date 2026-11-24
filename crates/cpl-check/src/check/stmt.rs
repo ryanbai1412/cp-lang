@@ -1189,7 +1189,12 @@ impl<'a> Checker<'a> {
                     let file_names = self.env.declared();
                     let target_head = type_head(target);
                     let trait_head = type_head(tr);
-                    let target_local = target_head.as_ref().is_some_and(|t| file_names.contains(t));
+                    let target_local = match &target.kind {
+                        ast::TypeKind::ItemOf(item) => {
+                            item.fn_item_key().is_some_and(|k| file_names.contains(&k))
+                        }
+                        _ => target_head.as_ref().is_some_and(|t| file_names.contains(t)),
+                    };
                     let trait_local = trait_head.as_ref().is_some_and(|t| file_names.contains(t));
                     if !target_local
                         && !trait_local

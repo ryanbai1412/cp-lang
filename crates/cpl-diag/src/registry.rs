@@ -812,6 +812,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0324"),
+        title: "`type_of` of something that is not a fn item",
+        summary: "`type_of(x)` names the type of a `fn` or a bare operator, and `x` is a `let`, a parameter or another value.",
+        explanation: "Every `fn` and every operator passed bare has a zero-size type of its own, `type_of(f)`, so an impl can attach to that one fn (`impl Selective<Int> for type_of(mx)`). A closure held in a `let` or a parameter is a value of a fn type, with no item behind it. Declare it with `fn` to give it one, or write the fn type it has.",
+        trigger: "let sq = (x: Int) => x * x\nfn twice(f: type_of(sq), x: Int) -> Int = f(f(x))\nprint(twice(sq, 3))\n",
+        fix: "fn sq(x: Int) -> Int = x * x\nfn twice(f: type_of(sq), x: Int) -> Int = f(f(x))\nprint(twice(sq, 3))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

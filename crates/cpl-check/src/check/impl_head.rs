@@ -15,6 +15,61 @@ pub(crate) fn impl_target_head(ty: &ast::Type) -> Option<String> {
     }
 }
 
+impl Checker<'_> {
+    /// `type_of(f)`: the own type of the fn item `f` names (R08.1.10). A
+    /// name nothing defines is E0201; a `let`, a parameter or any other
+    /// value has no item behind it, E0324.
+    pub(crate) fn item_of_type(&mut self, item: &ast::Expr) -> Ty {
+        let mut inner = item;
+        while let ast::ExprKind::Paren(e) = &inner.kind {
+            inner = e;
+        }
+        let what = match &inner.kind {
+            ast::ExprKind::Name(n) => match self.local(n) {
+                Some(local) => match local.keyword {
+                    "" | "param" => Some(("a parameter".to_string(), local.ty.clone())),
+                    kw => Some((format!("a `{kw}`"), local.ty.clone())),
+                },
+                None => match self.global(n).as_deref() {
+                    Some(Def::Fn { .. }) => None,
+                    Some(Def::Value { .. }) => {
+                        let ty = self.name_ty(n, inner.span);
+                        Some(("a `let`".to_string(), ty))
+                    }
+                    Some(_) => Some(("a type".to_string(), Ty::Unknown)),
+                    None => match self.name_ty(n, inner.span) {
+                        Ty::Unknown | Ty::Error => return Ty::Unknown,
+                        Ty::Fn { .. } => None,
+                        Ty::TypeName(_) | Ty::Domain(_) => {
+                            Some(("a type".to_string(), Ty::Unknown))
+                        }
+                        ty => Some(("a value".to_string(), ty)),
+                    },
+                },
+            },
+            _ if inner.fn_item_key().is_some() => None,
+            _ => Some(("an expression".to_string(), Ty::Unknown)),
+        };
+        let Some((what, ty)) = what else {
+            return match item.fn_item_type() {
+                Some(name) => Ty::Named {
+                    name,
+                    args: Vec::new(),
+                },
+                None => Ty::Unknown,
+            };
+        };
+        let text = self.quote(inner.span);
+        if let Some(diag) = self.report(inner.span, msgs::check::NOT_A_FN_ITEM, &[&text, &what]) {
+            diag.help = Some(match ty {
+                Ty::Fn { .. } => format!("declare it with `fn`, or write its fn type `{ty}`"),
+                _ => "name a `fn`, or an operator written bare".to_string(),
+            });
+        }
+        Ty::Error
+    }
+}
+
 /// The name an impl is filed under: `impl<D: Domain> Tr for D` is every domain's, `domain`.
 pub(crate) fn impl_file_head(ty: &ast::Type, bounds: &[ast::Bound]) -> Option<String> {
     if let TypeKind::Named { name, args } = &ty.kind {

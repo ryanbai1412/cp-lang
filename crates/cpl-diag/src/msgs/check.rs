@@ -66,6 +66,7 @@ super::msgs! {
     TYPE_MISMATCH_RETURNS_A_VALUE_BUT = TYPE_MISMATCH, "`{}` returns a value, but its signature has no return type";
     UNKNOWN_FIELD_C_S_FIND_END = UNKNOWN_FIELD, "C++'s `find(..) != end()`: whether an item is in it is `in`";
     DUPLICATE_VARIANT_TAG_ENUM_ALREADY_HAS_A = DUPLICATE_VARIANT_TAG, "enum `{}` already has a variant with `@tag({})`";
+    NOT_A_FN_ITEM = NOT_A_FN_ITEM, "`{}` is {}, not a fn item: `type_of` names the own type of a `fn` or a bare operator";
     ALIAS_CYCLE_TYPE_IS_DEFINED_BY = ALIAS_CYCLE, "`type {}` is defined by itself, so it never names a type";
     UNREACHABLE_ARM_UNREACHABLE_ARM_ABOVE_ALREADY = UNREACHABLE_ARM, "unreachable arm: `{}` above already matches everything";
     UNKNOWN_FIELD_DECLARES_NO_ASSOCIATED_TYPE = UNKNOWN_FIELD, "`{}` declares no associated type `{}`";
