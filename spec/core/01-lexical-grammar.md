@@ -243,7 +243,8 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   bare name binds the payload, so `let y = x else:` and
   `let Some(y) = x else:` are the same. The bindings are in scope after
   the statement, unwrapped, at top level as in a `fn` or loop body, and
-  not inside the block (E0201). (R01.6.2)
+  not inside the block (E0201). Without `else`, `p` must always match:
+  `let (1, b) = p` and `for (a, 2) in xs` are E0106. (R01.6.2)
 - `var` inside a pattern makes that one binding mutable:
   `for (var left, v) in items:`. (R01.6.3)
 - Assignment `place = e`, destructuring `(a, b) = (b, a)` (its places may be elements of one

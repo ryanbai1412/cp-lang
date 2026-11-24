@@ -407,7 +407,7 @@ impl<'a> Checker<'a> {
                 for clause in clauses {
                     let iter_ty = self.infer(&clause.iter);
                     let elem = self.walk_elem_ty(&clause.iter, &iter_ty);
-                    self.bind(&clause.pat, &elem, false, "for");
+                    self.bind_whole(&clause.pat, &elem, false, "for");
                     for cond in &clause.conds {
                         self.cond(cond);
                     }

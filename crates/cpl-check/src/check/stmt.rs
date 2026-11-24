@@ -401,6 +401,28 @@ impl<'a> Checker<'a> {
         last
     }
 
+    /// Binds a `for` or plain `let` pattern, which has no other arm to take
+    /// when the value doesn't fit: one that can fail is an error. (R01.6.2)
+    pub(crate) fn bind_whole(
+        &mut self,
+        pat: &Pattern,
+        ty: &Ty,
+        mutable: bool,
+        keyword: &'static str,
+    ) {
+        if !refutable(pat) {
+            return self.bind(pat, ty, mutable, keyword);
+        }
+        if let Some(diag) = self.report(pat.span, msgs::check::REFUTABLE_BINDING, &[&keyword]) {
+            diag.help = Some(if keyword == "for" {
+                "match inside the loop: `for p in xs: if let ... = p:`".to_string()
+            } else {
+                format!("say what happens otherwise: `{keyword} ... = e else: ...`, or use `if let` or `match`")
+            });
+        }
+        self.bind_refutable(pat, ty, mutable, keyword);
+    }
+
     /// Binds the names in `pat` to parts of a value of type `ty`.
     pub(crate) fn bind(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
         match &pat.kind {
@@ -963,7 +985,7 @@ impl<'a> Checker<'a> {
                     _ if otherwise.is_some() && refutable(pat) => {
                         self.bind_refutable(pat, &ty, is_mut, keyword)
                     }
-                    _ => self.bind(pat, &ty, is_mut, keyword),
+                    _ => self.bind_whole(pat, &ty, is_mut, keyword),
                 }
                 if let Some(guard) = guard {
                     let ty = self.infer(guard);
@@ -1528,7 +1550,7 @@ impl<'a> Checker<'a> {
                     && matches!(&elem, Ty::Named { .. });
                 self.push_scope();
                 self.drop_facts_written(body, Some(pat));
-                self.bind(pat, &elem, steerable, "for");
+                self.bind_whole(pat, &elem, steerable, "for");
                 self.note_pieces(pat, iter);
                 let mark = self.lend_mark();
                 self.hold_iterated(stmt, iter, &iter_ty);
@@ -1781,7 +1803,9 @@ fn loop_exit(stmts: &[Stmt]) -> Option<Span> {
 
 fn refutable(pat: &ast::Pattern) -> bool {
     match &pat.kind {
-        ast::PatternKind::Variant { .. } | ast::PatternKind::Literal(_) => true,
+        // A bare `C` binds a name, as in `let (C, comp) = scc(g)`.
+        ast::PatternKind::Variant { path, args } => path.len() > 1 || !args.is_empty(),
+        ast::PatternKind::Literal(_) => true,
         ast::PatternKind::Tuple(_) | ast::PatternKind::Record { .. } => pat.parts().any(refutable),
         ast::PatternKind::Or(alts) => alts.iter().all(refutable),
         _ => false,

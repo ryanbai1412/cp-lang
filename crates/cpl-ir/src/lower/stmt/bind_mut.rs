@@ -208,8 +208,9 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::PatternKind::Var(inner) => self.bind_mut(inner, value, true, out),
-            ast::PatternKind::Error => {}
-            _ => self.unsupported(pat.span, "this pattern outside a `match`"),
+            // The rest can fail to match, which the checker rejects outside
+            // `match`, `if let` and `let ... else` (R01.6.2).
+            _ => {}
         }
     }
 }

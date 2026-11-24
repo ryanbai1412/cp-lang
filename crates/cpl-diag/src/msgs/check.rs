@@ -141,6 +141,7 @@ super::msgs! {
     BAD_OPERANDS_IS_A_GENERIC_FN = BAD_OPERANDS, "`{}` is a generic fn and is only called, as `{}(...)`: its type parameters come from its arguments";
     MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN = MIXED_COMPARISON_CHAIN, "chained comparisons cannot contain `==` or `!=`";
     MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_MUST_POINT = MIXED_COMPARISON_CHAIN, "chained comparisons must point in one direction";
+    REFUTABLE_BINDING = EXPECTED_PATTERN, "this pattern can fail to match, and `{}` binds only one that always does";
     MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN_IN = MIXED_COMPARISON_CHAIN, "chained comparisons cannot contain `in` or `not in`";
     DUPLICATE_DEFINITION_DUPLICATE_FIELD_IN_RECORD = DUPLICATE_DEFINITION, "duplicate field `{}` in record";
     UNKNOWN_FIELD_ROW_HAS_NO_NAMED = UNKNOWN_FIELD, "row `{}` has no named field `{}` to remove";

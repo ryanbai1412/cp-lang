@@ -163,7 +163,7 @@ impl Checker<'_> {
                 for ty in fields {
                     let ty = if n == 1 { ty } else { Ty::Tuple(vec![ty; n]) };
                     self.push_scope();
-                    self.bind(pat, &ty, false, "for");
+                    self.bind_whole(pat, &ty, false, "for");
                     self.block(body);
                     self.pop_scope();
                 }
@@ -178,7 +178,7 @@ impl Checker<'_> {
         for i in passes {
             let ty = elem(i, &shapes);
             self.push_scope();
-            self.bind(pat, &ty, false, "for");
+            self.bind_whole(pat, &ty, false, "for");
             self.block(body);
             self.pop_scope();
         }

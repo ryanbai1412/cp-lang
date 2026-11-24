@@ -80,7 +80,7 @@ impl Checker<'_> {
                 _ => Ty::Tuple(shapes.iter().map(one).collect()),
             };
             self.push_scope();
-            self.bind(&clause.pat, &elem, false, "for");
+            self.bind_whole(&clause.pat, &elem, false, "for");
             let got = self.infer(body);
             if let (Some(i), Some(fields)) = (i, want) {
                 let field = &fields[i];
