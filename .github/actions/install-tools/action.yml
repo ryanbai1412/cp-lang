@@ -2,17 +2,19 @@ name: install-tools
 description: >
   The one way CI installs a tool: each pinned `name@version` is restored from
   actions/cache, keyed on the OS, arch and versions, so a hit makes no network
-  call. Only a miss downloads, through scripts/retry.sh. debt-ratchet's
+  call. Only a miss downloads each tool's prebuilt release through
+  scripts/install-tools.sh (retry.sh), and saves it at once, so a job that
+  fails later still leaves the cache for the next run. debt-ratchet's
   uncached_installs counts any install outside this action.
 inputs:
   tools:
-    description: "Space-separated name@version: a crates.io crate, or actionlint@<version> (Linux x64)"
+    description: "Space-separated name@version, each with a release recipe in scripts/install-tools.sh"
     required: true
 runs:
   using: composite
   steps:
     - id: cache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: ~/.cpl-tools
         key: cpl-tools-${{ runner.os }}-${{ runner.arch }}-${{ inputs.tools }}
@@ -22,17 +24,18 @@ runs:
       env:
         TOOLS: ${{ inputs.tools }}
       run: |
-        . "$GITHUB_ACTION_PATH/../../../scripts/retry.sh"
-        mkdir -p ~/.cpl-tools/bin
-        for tool in $TOOLS; do
-          case $tool in
-            actionlint@*)
-              v=${tool#actionlint@}
-              fetch -o "$RUNNER_TEMP/actionlint.tgz" "https://github.com/rhysd/actionlint/releases/download/v$v/actionlint_${v}_linux_amd64.tar.gz"
-              tar -xzf "$RUNNER_TEMP/actionlint.tgz" -C ~/.cpl-tools/bin actionlint ;;
-            *) retry cargo install --locked --root ~/.cpl-tools "$tool" ;;
-          esac
-        done
+        # shellcheck disable=SC2086 # TOOLS is a space-separated list
+        "$GITHUB_ACTION_PATH/../../../scripts/install-tools.sh" ~/.cpl-tools $TOOLS
+        # A miss downloads releases; over 60 s means a tool fell back to a build
+        # or its host is slow. Timing budgets warn, never fail (decision 225).
+        if [ "$SECONDS" -gt 60 ]; then
+          echo "::warning::install-tools: cold install of $TOOLS took ${SECONDS}s, over its 60 s budget"
+        fi
+    - if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cpl-tools
+        key: ${{ steps.cache.outputs.cache-primary-key }}
     - name: Put the tools on PATH
       shell: bash
       run: |
