@@ -113,13 +113,14 @@ impl Checker<'_> {
             }));
             // What the impl leaves to its trait's defaults (`f.lift(x)`, `(+).laws`).
             let tr = trait_name.as_deref().and_then(|t| t.split('<').next());
+            let found = tr.and_then(|tr| self.type_def(tr));
             let Some(Def::Trait {
                 methods, generics, ..
-            }) = tr.and_then(|tr| self.type_def(tr)).as_deref().cloned()
+            }) = found.as_deref()
             else {
                 continue;
             };
-            let inherited = self.trait_members(&methods, &generics, &def);
+            let inherited = self.trait_members(methods, generics, &def);
             out.extend(inherited.into_iter().map(|(m, t)| (m, t.subst(&bindings))));
         }
         out

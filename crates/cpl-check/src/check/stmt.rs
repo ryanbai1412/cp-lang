@@ -233,9 +233,7 @@ impl<'a> Checker<'a> {
                     if let (ExprKind::List(items), Ty::Named { name: ename, .. }) =
                         (&init.kind, &index[0])
                     {
-                        if let Some(Def::Enum { variants, .. }) =
-                            self.type_def(ename).as_deref().cloned()
-                        {
+                        if let Some(Def::Enum { variants, .. }) = self.type_def(ename).as_deref() {
                             if variants.iter().all(|(_, fs)| fs.is_empty())
                                 && items.len() != variants.len()
                             {

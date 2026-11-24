@@ -1285,9 +1285,10 @@ fn struct_note(ty: &Ty, lookup: &mut Lookup) -> Option<String> {
     let Ty::Named { name, args } = ty else {
         return None;
     };
+    let def = lookup(name);
     let Some(Def::Struct {
         fields, generics, ..
-    }) = lookup(name).as_deref().cloned()
+    }) = def.as_deref()
     else {
         return None;
     };

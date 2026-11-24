@@ -63,13 +63,15 @@ impl Checker<'_> {
         let Ty::Named { name: ty, .. } = scrutinee else {
             return None;
         };
-        let Some(Def::Enum { variants, .. }) = self.type_def(ty).as_deref().cloned() else {
+        let def = self.type_def(ty);
+        let Some(Def::Enum { variants, .. }) = def.as_deref() else {
             return None;
         };
         variants
-            .into_iter()
+            .iter()
             .map(|(v, _)| v)
-            .find(|v| v != name && v.eq_ignore_ascii_case(name))
+            .find(|v| v.as_str() != name && v.eq_ignore_ascii_case(name))
+            .cloned()
     }
 }
 

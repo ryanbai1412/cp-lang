@@ -309,7 +309,7 @@ impl<'a> Checker<'a> {
                     match &index[0] {
                         Ty::Named { name: ename, .. } => {
                             if let Some(Def::Enum { variants, .. }) =
-                                self.type_def(ename).as_deref().cloned()
+                                self.type_def(ename).as_deref()
                             {
                                 if variants.iter().all(|(_, fs)| fs.is_empty()) {
                                     if items.len() != variants.len() {

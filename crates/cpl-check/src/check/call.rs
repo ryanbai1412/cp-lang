@@ -72,15 +72,16 @@ impl<'a> Checker<'a> {
     /// its parameters names, `fn mk<T: Default>() -> T`: only the type its
     /// value goes to can bind it.
     fn returns_only_its_own_param(&mut self, name: &str) -> bool {
+        let def = self.global(name);
         let Some(Def::Fn {
             ty: Ty::Fn { params, ret },
             generics,
             ..
-        }) = self.global(name).as_deref().cloned()
+        }) = def.as_deref()
         else {
             return false;
         };
-        let Ty::Param(p) = &*ret else {
+        let Ty::Param(p) = &**ret else {
             return false;
         };
         let names_p = |t: &Ty| {
@@ -875,10 +876,11 @@ impl<'a> Checker<'a> {
         if self.local(type_name).is_some() {
             return None;
         }
+        let def = self.type_def(type_name);
         let Some(Def::Struct {
             generics: struct_generics,
             ..
-        }) = self.type_def(type_name).as_deref().cloned()
+        }) = def.as_deref()
         else {
             return None;
         };
@@ -1478,16 +1480,15 @@ impl<'a> Checker<'a> {
                         let Some(actual) = bindings.get(param) else {
                             continue;
                         };
-                        let Some(Def::Trait { fields, .. }) =
-                            self.global(tname).as_deref().cloned()
-                        else {
+                        let def = self.global(tname);
+                        let Some(Def::Trait { fields, .. }) = def.as_deref() else {
                             continue;
                         };
                         if fields.is_empty() {
                             continue;
                         }
                         if let Ty::Record(actual_fs) = actual {
-                            for (req_name, req_ty) in &fields {
+                            for (req_name, req_ty) in fields {
                                 let found = actual_fs.iter().find(|(n, _)| n == req_name);
                                 if !matches!(found, Some((_, got_ty)) if self.fits(got_ty, req_ty))
                                 {

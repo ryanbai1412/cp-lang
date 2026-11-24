@@ -1281,7 +1281,8 @@ impl<'a> Checker<'a> {
             if !seen.insert(name.to_string()) {
                 return None;
             }
-            let Some(Def::Enum { variants, .. }) = env.type_def(name).as_deref().cloned() else {
+            let def = env.type_def(name);
+            let Some(Def::Enum { variants, .. }) = def.as_deref() else {
                 seen.remove(name);
                 return None;
             };
@@ -1290,7 +1291,7 @@ impl<'a> Checker<'a> {
                 return None;
             }
             let mut total: Option<i128> = Some(0);
-            for (_, fs) in &variants {
+            for (_, fs) in variants {
                 let mut prod: Option<i128> = Some(1);
                 for f in fs {
                     let fmax = match f {
@@ -1595,7 +1596,7 @@ impl<'a> Checker<'a> {
             supers,
             alias: true,
             ..
-        }) = self.type_def(trait_name).as_deref().cloned()
+        }) = self.type_def(trait_name).as_deref()
         {
             return supers
                 .iter()
@@ -1675,13 +1676,14 @@ impl<'a> Checker<'a> {
     /// The getters of a trait made only of `@get fn m(self) -> P = self`, each with the
     /// index of its `P` among the trait's generics: `Target<V>`'s `to` returns `V`.
     pub(crate) fn self_getters(&mut self, trait_name: &str) -> Option<Vec<(String, usize)>> {
+        let def = self.global(trait_name);
         let Some(Def::Trait {
             generics,
             methods,
             fields,
             supers,
             ..
-        }) = self.global(trait_name).as_deref().cloned()
+        }) = def.as_deref()
         else {
             return None;
         };
@@ -1689,10 +1691,10 @@ impl<'a> Checker<'a> {
             return None;
         }
         methods
-            .into_iter()
-            .map(|m| match m.ty {
-                Ty::Fn { ret, .. } if m.getter && m.default_self => match *ret {
-                    Ty::Param(p) => Some((m.name, generics.iter().position(|g| *g == p)?)),
+            .iter()
+            .map(|m| match &m.ty {
+                Ty::Fn { ret, .. } if m.getter && m.default_self => match &**ret {
+                    Ty::Param(p) => Some((m.name.clone(), generics.iter().position(|g| g == p)?)),
                     _ => None,
                 },
                 _ => None,
@@ -1701,26 +1703,24 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn meets_by_shape(&mut self, fields: &[(String, Ty)], trait_name: &str) -> bool {
+        let def = self.type_def(trait_name);
         let Some(Def::Trait {
             methods,
             fields: wanted,
             supers,
             ..
-        }) = self.type_def(trait_name).as_deref().cloned()
+        }) = def.as_deref()
         else {
             return true;
         };
         if !supers.iter().all(|s| self.meets_by_shape(fields, s)) {
             return false;
         }
-        let getters = methods
-            .into_iter()
-            .filter(|m| m.required)
-            .map(|m| match m.ty {
-                Ty::Fn { params, ret } if params.len() <= 1 => (m.name, *ret),
-                _ => (m.name, Ty::Unknown),
-            });
-        let wanted: Vec<(String, Ty)> = getters.chain(wanted).collect();
+        let getters = methods.iter().filter(|m| m.required).map(|m| match &m.ty {
+            Ty::Fn { params, ret } if params.len() <= 1 => (m.name.clone(), (**ret).clone()),
+            _ => (m.name.clone(), Ty::Unknown),
+        });
+        let wanted: Vec<(String, Ty)> = getters.chain(wanted.iter().cloned()).collect();
         wanted.iter().all(|(name, want)| {
             fields.iter().any(|(f, got)| {
                 f == name && (matches!(want, Ty::Param(_) | Ty::Unknown) || got.fits(want))
@@ -1773,7 +1773,7 @@ impl<'a> Checker<'a> {
                 if matches!(name.as_str(), "Cut" | "Range") {
                     return true;
                 }
-                match self.type_def(name).as_deref().cloned() {
+                match self.type_def(name).as_deref() {
                     Some(Def::Struct {
                         generics, fields, ..
                     }) => {
@@ -1891,7 +1891,7 @@ impl<'a> Checker<'a> {
                 if name == "List" && args.len() == 1 {
                     return self.derives_print(&args[0], allow_none, seen);
                 }
-                match self.type_def(name).as_deref().cloned() {
+                match self.type_def(name).as_deref() {
                     Some(Def::Struct {
                         generics, fields, ..
                     }) => {
@@ -1910,7 +1910,7 @@ impl<'a> Checker<'a> {
                     Some(Def::Enum {
                         variants, tagged, ..
                     }) => {
-                        if tagged {
+                        if *tagged {
                             return true;
                         }
                         seen.push(name.clone());

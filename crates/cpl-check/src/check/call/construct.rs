@@ -599,7 +599,8 @@ impl Checker<'_> {
         if self.local(name).is_some() {
             return ty;
         }
-        let Some(Def::Fn { generics, .. }) = self.global(name).as_deref().cloned() else {
+        let def = self.global(name);
+        let Some(Def::Fn { generics, .. }) = def.as_deref() else {
             return ty;
         };
         let (Ty::Fn { params, .. }, Ty::Fn { params: wanted, .. }) = (&ty, want) else {

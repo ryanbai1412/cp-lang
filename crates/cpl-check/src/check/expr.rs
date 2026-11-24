@@ -729,7 +729,8 @@ impl<'a> Checker<'a> {
         let Ty::Named { name, .. } = scrutinee else {
             return;
         };
-        let Some(Def::Enum { variants, .. }) = self.type_def(name).as_deref().cloned() else {
+        let def = self.type_def(name);
+        let Some(Def::Enum { variants, .. }) = def.as_deref() else {
             return;
         };
         fn irrefutable(pat: &Pattern) -> bool {
@@ -771,7 +772,7 @@ impl<'a> Checker<'a> {
         }
         let mut seen = Vec::new();
         for arm in arms.iter().filter(|arm| arm.guard.is_none()) {
-            if named(&arm.pat, &variants, &mut seen).is_none() {
+            if named(&arm.pat, variants, &mut seen).is_none() {
                 return;
             }
         }
