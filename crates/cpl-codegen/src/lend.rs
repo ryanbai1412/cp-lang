@@ -1506,7 +1506,12 @@ impl Emitter<'_> {
     /// Records the copy `return place;` makes when the fn or block gives a
     /// part of a named value it does not own by value: `return self.id;`.
     pub(crate) fn note_given_copy(&mut self, value: &Expr, text: &str, is_return: bool) {
-        let by_ref = self.give_ref || (is_return && self.closure_id.is_none() && self.lends_result);
+        let by_ref = self.give_ref
+            || (is_return
+                && match self.closure_id {
+                    Some(cid) => self.lending_closures.contains(&cid),
+                    None => self.lends_result,
+                });
         let mut value = value;
         while let (ExprKind::Builtin(_, args), true) = (&value.kind, is_place_text(text)) {
             match args.as_slice() {

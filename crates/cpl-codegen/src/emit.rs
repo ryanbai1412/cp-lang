@@ -109,6 +109,8 @@ pub(crate) struct Emitter<'p> {
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
+    /// Closures that return `const T&` to a place that outlives each call.
+    pub lending_closures: BTreeSet<usize>,
     /// Closures that live only through the call they are written in, as a
     /// sort key does: only their own writes can change what they read.
     pub call_scoped: BTreeSet<usize>,
@@ -363,6 +365,7 @@ impl<'p> Emitter<'p> {
             written: Default::default(),
             ties: true,
             borrow_closures: BTreeSet::new(),
+            lending_closures: BTreeSet::new(),
             call_scoped: BTreeSet::new(),
             capture_owns: Default::default(),
             copies: Vec::new(),

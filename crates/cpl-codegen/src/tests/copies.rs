@@ -469,6 +469,40 @@ fn a_loop_over_what_a_get_lends_reads_it_in_place() {
 }
 
 #[test]
+fn a_lambda_returning_an_element_of_a_name_nothing_changes_lends_it() {
+    let out = cpp(concat!(
+        "fn total(f: Int -> List<Int>, n: Int) -> Int:\n",
+        "    var t = 0\n",
+        "    for i in 0..n:\n",
+        "        for x in f(i): t += x\n",
+        "    t\n",
+        "fn local(n: Int) -> Int:\n",
+        "    let rows = [[i, i + 1] for i in 0..n]\n",
+        "    total(i => rows[i], n)\n",
+        "fn changed(n: Int) -> Int:\n",
+        "    var rows = [[i] for i in 0..n]\n",
+        "    let t = total(i => rows[i], n)\n",
+        "    rows[0].push(t)\n",
+        "    t + rows[0].len\n",
+        "let n: Int = read()\n",
+        "let grid = [[i * 2] for i in 0..n]\n",
+        "print(local(n), changed(n), total(i => grid[i], n), total(i => [i], n))\n",
+    ));
+    let lent = out.matches("mutable -> const std::vector<ll>& {").count();
+    assert_eq!(lent, 2, "`rows[i]` of a let and `grid[i]` lend:\n{out}");
+    assert_eq!(
+        out.matches("mutable -> std::vector<ll> {").count(),
+        2,
+        "`rows[i]` of a var set again and the built `[i]` return by value:\n{out}"
+    );
+    assert!(
+        out.lines()
+            .any(|l| l.contains("const std::vector<ll>& t") && l.contains("= f(i);")),
+        "the walk holds what the lambda gives by reference:\n{out}"
+    );
+}
+
+#[test]
 fn a_returned_literal_moves_the_parts_of_a_dead_local() {
     let out = cpp(concat!(
         "struct S: pub a: List<Int>\n",

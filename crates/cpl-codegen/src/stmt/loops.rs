@@ -833,6 +833,12 @@ impl<'p> Emitter<'p> {
                             &format!("const cpl::Held<{holder_ty}> {held}_h = {call};"),
                         );
                         self.line(out, &format!("const {holder_ty}& {held} = *{held}_h;"));
+                    } else if matches!(&seq.kind, ExprKind::CallExpr(_, args)
+                        if args.iter().all(|a| matches!(a, cpl_ir::Arg::Value(v) if v.ty.is_scalar())))
+                    {
+                        // A lambda given only scalars returns a temporary, or a place
+                        // nothing changes ([`Emitter::closure_lends`]): both outlive the walk.
+                        self.line(out, &format!("const {holder_ty}& {held} = {seq_text};"));
                     } else {
                         self.line(out, &format!("{holder_ty} {held} = {seq_text};"));
                         let lent = matches!(&seq.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(f));
