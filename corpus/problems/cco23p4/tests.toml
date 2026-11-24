@@ -1,6 +1,12 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
+input = "100110\n10\n"
+
+[[case]]
+input = "000\n00\n"
+
+[[case]]
 seed = 1
 size = 3
 
