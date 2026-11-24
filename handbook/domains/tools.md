@@ -157,7 +157,7 @@ their front ends.
 | Each editor works from that step | editors passing the shared smoke (highlighting, diagnostics, completion, formatting, definition) | the same smoke on each editor | CI `neovim`, `vscode`, `jetbrains` and `editors` jobs; Vim in `editors/smoke.sh` |
 | A failed install or setup says why and what to do | failure modes with a tested message (no network, no compiler, unwritable folder, unknown editor) | hand-written suite | `crates/cpl-cli/tests/failures.rs` (`setup_failures_say_why_and_what_to_do`; with `golden.rs`'s `setup_writes_the_editor_files`: no network, no curl, unwritable folder, unknown editor, each with its `help:`; `a_missing_compiler_is_named_where_the_cpp_would_run`: no C++ compiler) |
 | Toolchains, pins and channels behave as documented | `cpl self` paths tested, including offline | hand-written suite | `crates/cpl-cli/tests/toolchain.rs` |
-| Linux, macOS and Windows behave alike (paths, CRLF input, clipboard) | CLI suite passing per OS | the same suite on each OS | CI `cli` job (three OSes); CRLF sample and input files: `missing` as a dedicated case |
+| Linux, macOS and Windows behave alike (paths, CRLF input, clipboard) | CLI suite passing per OS | the same suite on each OS | CI `cli` job (three OSes); `crates/cpl-cli/tests/crlf.rs` (a CRLF source, input and answer through `check`, `run`, `test`, `fmt`, `run --release` and `submit`) |
 | Everything but `fetch` and `self update` works offline | commands that make no network call | the contest flow with `curl`, `wget` and `code` stubbed and proxies closed | `crates/cpl-cli/tests/offline.rs` (Unix: 14 commands, `new` through `submit`, 0 network calls; `fetch` reaching the stub is the control) |
 
 ### Starting problems and contests (J4)
