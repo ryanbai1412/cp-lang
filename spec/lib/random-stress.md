@@ -33,6 +33,9 @@ are the input spec:
 ```
 
 - `gen<Perm<V>>()` draws a uniformly random permutation: a `Perm<V>` is a `[V]V`.
+- `gen<T>(args)` for any other named type is `T.gen(args)`: a type is drawn by its
+  `std.rand.Random` impl, a user type like a std one, and its `gen` may take named
+  options (`fn gen(far: Bool = false) -> Pt`). A type without one has no `gen` to call.
 - Constraints types cannot state go in `@gen fn input()`, which prints
   the input exactly as the judge would, using `gen` calls.
 - Every `gen` choice is recorded, so the shrinker minimizes any failing

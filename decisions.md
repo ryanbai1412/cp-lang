@@ -9087,6 +9087,10 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 
 ## 586. (reserved, compiler)
 
-## 587. (reserved, unknown)
+## 587. `gen<T>(args)` is `T.gen(args)`, through a std `Random` trait (stdlib, 2026-11-24)
+
+- **Call.** `std/rand.cp` declares `trait Random: fn gen() -> Self`, in the prelude. `gen<T>(args)` on a named type is the call `T.gen(args)` (`ast::Type::gen_call`, used by the checker and lowering alike), so any type with a `Random` impl is drawn, user types included, and an impl may add named options. The trait is `Random`, not `Gen`, because `Gen<T>` is a generator's value (decision 509). `Perm`, `Rooted` and `Graph` keep their lowering rows until std can write their impls: an impl on a table type (`Perm<V> = [V]V`) and on a row record (a `Graph` arc's fields) wait on graph/domain 937427ea, and `Rooted`'s per-value `Pre` domain cannot be named in an impl head yet.
+- **Why.** "Small core, no privileged stdlib": a fixed list of drawable types in lowering keeps a user type from being generated at all.
+- **Reverse.** Drop the trait and the fallback; `gen<P>()` of a user type goes back to E0501.
 
 ## 588. (reserved, compiler)

@@ -185,7 +185,10 @@ impl<'a> Lowerer<'a> {
                         ];
                         self.std_call("graph", "gen_graph", tys, &call, span)
                     }
-                    _ => self.gen_unsupported(span),
+                    _ => match ty.gen_call(args, span) {
+                        Some(call) => self.expr(&call, None),
+                        None => self.gen_unsupported(span),
+                    },
                 }
             }
             _ => self.gen_unsupported(span),
@@ -231,7 +234,7 @@ impl<'a> Lowerer<'a> {
 
     fn gen_unsupported(&mut self, span: Span) -> Expr {
         self.gen_error(
-            "`gen` makes ranges, arrays of them, `Str of`, `Perm`, `Rooted` and `Graph` values",
+            "`gen` makes ranges, arrays of them, `Str of`, and named types with a `Random` impl",
             span,
         )
     }

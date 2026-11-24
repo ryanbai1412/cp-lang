@@ -886,6 +886,46 @@ impl Type {
         };
         Type { kind, span: e.span }
     }
+
+    /// `gen<T>(args)` for a named `T`: the call `T.gen(args)`, which a
+    /// `Random` impl gives (R06.4.3).
+    pub fn gen_call(&self, args: &[Arg], span: Span) -> Option<Expr> {
+        let TypeKind::Named { name, args: tys } = &self.kind else {
+            return None;
+        };
+        let head = Expr {
+            kind: ExprKind::Name(name.text.clone()),
+            span: name.span,
+        };
+        let base = if tys.is_empty() {
+            head
+        } else {
+            Expr {
+                kind: ExprKind::Generic {
+                    base: Box::new(head),
+                    args: tys.clone(),
+                },
+                span: self.span,
+            }
+        };
+        let callee = Expr {
+            kind: ExprKind::Field {
+                base: Box::new(base),
+                name: Name {
+                    text: "gen".into(),
+                    span: self.span,
+                },
+            },
+            span,
+        };
+        Some(Expr {
+            kind: ExprKind::Call {
+                callee: Box::new(callee),
+                args: args.to_vec(),
+            },
+            span,
+        })
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
