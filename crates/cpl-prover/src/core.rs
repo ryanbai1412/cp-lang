@@ -69,10 +69,10 @@ impl Formula {
                 other => out.push(other),
             }
         }
-        match out.len() {
-            0 => Formula::True,
-            1 => out.pop().unwrap(),
-            _ => Formula::And(out),
+        match <[Formula; 1]>::try_from(out) {
+            Ok([only]) => only,
+            Err(out) if out.is_empty() => Formula::True,
+            Err(out) => Formula::And(out),
         }
     }
 
@@ -86,10 +86,10 @@ impl Formula {
                 other => out.push(other),
             }
         }
-        match out.len() {
-            0 => Formula::False,
-            1 => out.pop().unwrap(),
-            _ => Formula::Or(out),
+        match <[Formula; 1]>::try_from(out) {
+            Ok([only]) => only,
+            Err(out) if out.is_empty() => Formula::False,
+            Err(out) => Formula::Or(out),
         }
     }
 
@@ -205,6 +205,9 @@ mod tests {
         assert_eq!(Formula::eq(Poly::constant(2)), Formula::False);
         let atom = Formula::ge(x.clone());
         assert_eq!(Formula::and([Formula::True, atom.clone()]), atom);
+        assert_eq!(Formula::or([atom.clone(), Formula::False]), atom);
+        assert_eq!(Formula::and([]), Formula::True);
+        assert_eq!(Formula::or([]), Formula::False);
         assert_eq!(
             Formula::or([Formula::False, atom.clone(), Formula::True]),
             Formula::True

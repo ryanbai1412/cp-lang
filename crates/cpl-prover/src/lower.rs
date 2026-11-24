@@ -594,16 +594,19 @@ impl<'a> Lowerer<'a> {
                 self.apply(&name, args, term)
             }
             SVal::Named(name) => {
-                if name == "some" && args.len() == 1 {
-                    let value = args.into_iter().next().unwrap();
-                    return Ok(match value {
-                        SVal::Opt { .. } | SVal::NoneLit => value,
-                        present => SVal::Opt {
-                            some: Formula::True,
-                            value: Box::new(present),
-                        },
-                    });
-                }
+                let args = match <[SVal; 1]>::try_from(args) {
+                    Ok([value]) if name == "some" => {
+                        return Ok(match value {
+                            SVal::Opt { .. } | SVal::NoneLit => value,
+                            present => SVal::Opt {
+                                some: Formula::True,
+                                value: Box::new(present),
+                            },
+                        });
+                    }
+                    Ok(one) => Vec::from(one),
+                    Err(args) => args,
+                };
                 let mut ints = Vec::with_capacity(args.len());
                 for arg in args {
                     match arg {
@@ -619,10 +622,16 @@ impl<'a> Lowerer<'a> {
                 let value = match (name.as_str(), ints.len()) {
                     ("min", 1..) => self.extreme(Ac::Min, ints)?,
                     ("max", 1..) => self.extreme(Ac::Max, ints)?,
-                    ("abs", 1) => {
-                        let negated = fit(ints[0].neg())?;
-                        self.extreme(Ac::Max, vec![ints.pop().unwrap(), negated])?
-                    }
+                    ("abs", _) => match <[Poly; 1]>::try_from(ints) {
+                        Ok([x]) => {
+                            let negated = fit(x.neg())?;
+                            self.extreme(Ac::Max, vec![x, negated])?
+                        }
+                        Err(ints) => {
+                            let n = ints.len();
+                            return Err(Error::new(format!("`abs` does not take {n} arguments")));
+                        }
+                    },
                     ("gcd", 1..) => self.bits(Ac::Gcd, ints)?,
                     (_, n) => {
                         return Err(Error::new(format!("`{name}` does not take {n} arguments")))
@@ -842,9 +851,10 @@ impl<'a> Lowerer<'a> {
         for (form, constant) in best {
             args.push(fit(form.add_const(constant))?);
         }
-        if args.len() == 1 {
-            return Ok(args.pop().unwrap());
-        }
+        let args = match <[Poly; 1]>::try_from(args) {
+            Ok([only]) => return Ok(only),
+            Err(args) => args,
+        };
         let key = (op, args);
         if let Some(v) = self.store.ac.get(&key) {
             return Ok(Poly::var(*v));
@@ -929,13 +939,14 @@ impl<'a> Lowerer<'a> {
         if absorbed || args.is_empty() {
             return Ok(int(constant));
         }
-        if args.len() == 1 && constant == identity {
-            let only = args.pop().unwrap();
-            return if op == Ac::Gcd {
-                let negated = fit(only.neg())?;
-                self.extreme(Ac::Max, vec![only, negated])
-            } else {
-                Ok(only)
+        if constant == identity {
+            args = match <[Poly; 1]>::try_from(args) {
+                Ok([only]) if op == Ac::Gcd => {
+                    let negated = fit(only.neg())?;
+                    return self.extreme(Ac::Max, vec![only, negated]);
+                }
+                Ok([only]) => return Ok(only),
+                Err(args) => args,
             };
         }
         if constant != identity {
