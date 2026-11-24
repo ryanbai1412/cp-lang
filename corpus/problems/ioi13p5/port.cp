@@ -24,7 +24,7 @@ small.sort(by: desc)
 var newly: [Weak]List<Desc<Int>> = []
 var heavy: List<Desc<Int>> = []
 for toy in toys:
-    if let r = weak.partition_point(w => w > toy.weight).right: newly[r].push(desc(toy.size))
+    if let r = weak.bsearch(w => w > toy.weight).right: newly[r].push(desc(toy.size))
     else: heavy.push(desc(toy.size))
 
 fn done_in(minutes: Int) -> Bool:
@@ -34,10 +34,8 @@ fn done_in(minutes: Int) -> Bool:
         for _ in 0..min(minutes, left.len): left.pop()
     left.push_all(heavy)
     for limit in small:
-        for _ in 0..minutes:
-            if let s = left.pop():
-                if s.x >= limit: return false
-            else: break
+        for s in left.drain().take(minutes):
+            if s.x >= limit: return false
     left.len == 0
 
 domain Minutes = 1..=t

@@ -47,9 +47,3 @@ print(Minutes.first_true(m => done_in(m)) ?? -1)
   case against 1.0s). The port stores `Desc` values instead of a key. Repro
   sent to Core.
 - **Severity:** high.
-
-## `drain().take(k)` empties the heap
-- **Where:** the small-robot pop loop: lint L0588 suggests
-  `for s in left.drain().take(minutes)`, but the generator runs to the end and
-  drops the rest (answers go wrong). Repro sent to Core.
-- **Severity:** high.
