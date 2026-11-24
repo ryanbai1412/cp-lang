@@ -106,6 +106,34 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn('.conclusion != "cancelled"', deployable)
         self.assertIn('[ "$sha" != "$live" ]', deployable)
 
+    def test_the_wasm_ratchet_compares_with_the_nearest_first_parent_that_saved_sizes(self):
+        with tempfile.TemporaryDirectory() as d:
+            repo, sizes, bin_dir = os.path.join(d, "r"), os.path.join(d, "sizes"), os.path.join(d, "bin")
+            os.makedirs(sizes)
+            os.makedirs(bin_dir)
+            with open(os.path.join(bin_dir, "node"), "w", encoding="utf-8") as f:
+                f.write(f'#!/usr/bin/env bash\necho "node $*" >>{d}/node.log\n')
+            os.chmod(os.path.join(bin_dir, "node"), 0o755)
+            run = lambda *a: subprocess.run(a, cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
+            os.makedirs(repo)
+            run("git", "init", "-q")
+            for i in range(3):
+                run("git", "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", str(i))
+            saved = run("git", "rev-parse", "HEAD~2")
+            with open(os.path.join(sizes, f"{saved}.json"), "w", encoding="utf-8") as f:
+                f.write("{}")
+            env = {**os.environ, "PATH": bin_dir + os.pathsep + os.environ["PATH"]}
+            script = os.path.join(ROOT, "scripts", "wasm-ratchet.sh")
+            out = subprocess.run(["bash", script, "check", "cpl.wasm", sizes], cwd=repo, env=env, capture_output=True, text=True)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertIn("wasm-ratchet: against", out.stdout)
+            with open(os.path.join(d, "node.log"), encoding="utf-8") as f:
+                self.assertEqual(f.read(), f"node web/scripts/wasm-crates.mjs --data cpl.wasm --parent {sizes}/{saved}.json\n")
+            os.remove(os.path.join(sizes, f"{saved}.json"))
+            out = subprocess.run(["bash", script, "check", "cpl.wasm", sizes], cwd=repo, env=env, capture_output=True, text=True)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertIn("no saved sizes", out.stdout)
+
     def test_site_selection_stops_at_runs_older_than_the_live_build(self):
         # The live commit's own run is usually cancelled, so it never matches
         # `$live`; without the time stop every listed run cost a `gh run view`
