@@ -20,6 +20,8 @@ names (a build error) refuses as before.
 """
 
 import argparse
+import contextlib
+import fcntl
 import json
 import os
 import re
@@ -83,10 +85,10 @@ def only(cmd, tests):
     return cmd
 
 
-def base_checkout(common, base, fresh=False):
-    """The scratch base worktree at `base`, rebuilt when it can't check out (slice 3's
-    `git checkout -f --detach` failed in it, and no base comparison ran)."""
-    wt = common / "cpl-base-wt"
+def base_checkout(common, base, fresh=False, wt=None):
+    """The scratch base worktree `wt` (default slot 0's) at `base`, rebuilt when it can't
+    check out (slice 3's `git checkout -f --detach` failed in it, and no base comparison ran)."""
+    wt = wt or common / "cpl-base-wt"
     if not fresh and (wt / ".git").exists() and not git("checkout", "-q", "-f", "--detach", base, cwd=wt, check=False, code=True):
         return wt
     if wt.exists():
@@ -100,10 +102,49 @@ def base_checkout(common, base, fresh=False):
     return wt
 
 
+BASE_SLOTS = 3
+
+
+@contextlib.contextmanager
+def base_slot(common, base):
+    """(worktree, CARGO_TARGET_DIR) at `base`, held under a flock through checkout, build and
+    rerun. Concurrent lands of one clone shared one worktree and target, so one's checkout
+    swapped the source under another's build (d2fc481a: "the base didn't build", E0599 on a
+    variant the base had, and main's reds counted as the change's). Each slot keeps its own
+    worktree and target, so a build there stays incremental and never mixes two bases."""
+    root = Path(os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target")))
+    slots = [(common / ("cpl-base-wt" + (f"-{i}" if i else "")), Path(f"{root}-{i}" if i else root))
+             for i in range(BASE_SLOTS)]
+    held = None
+    for wt, target in slots:
+        f = open(f"{wt}.lock", "w")
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            held = f, wt, target
+            break
+        except BlockingIOError:
+            f.close()
+    if held is None:
+        wt, target = slots[os.getpid() % BASE_SLOTS]
+        print(f"new-reds: every base worktree is busy; waiting for {wt}", file=sys.stderr)
+        f = open(f"{wt}.lock", "w")
+        fcntl.flock(f, fcntl.LOCK_EX)
+        held = f, wt, target
+    f, wt, target = held
+    try:
+        yield base_checkout(common, base, wt=wt), target
+    finally:
+        f.close()
+
+
 def at_base(cmd, tests, base, common):
     """({test: 'fail' | 'pass' | 'unbuilt'}, findings) for `tests` at `base`."""
-    wt = base_checkout(common, base)
-    env = {**base_env(), "CARGO_TARGET_DIR": os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))}
+    with base_slot(common, base) as (wt, target):
+        return rerun_at_base(cmd, tests, base, common, wt, target)
+
+
+def rerun_at_base(cmd, tests, base, common, wt, target):
+    env = {**base_env(), "CARGO_TARGET_DIR": str(target)}
     print(f"new-reds: rerunning {len(tests)} failing test(s) at the base {base[:9]}", file=sys.stderr)
     code, out = tee(only(cmd, tests), cwd=wt, env=env)
     if code not in (0, 4, 100):
@@ -111,7 +152,7 @@ def at_base(cmd, tests, base, common):
         # worktree, a generated msgs constant not found), and its reds counted as new.
         print(f"new-reds: the base {base[:9]} didn't build; rebuilding its worktree and trying once more",
               file=sys.stderr)
-        wt = base_checkout(common, base, fresh=True)
+        wt = base_checkout(common, base, fresh=True, wt=wt)
         code, out = tee(only(cmd, tests), cwd=wt, env=env)
     failed = set(failing_tests(out))
     if code not in (0, 4, 100):

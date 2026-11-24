@@ -1036,6 +1036,36 @@ class BaseCheckoutTest(unittest.TestCase):
         self.assertEqual((wt / "f").read_text(), "1\n")
         self.assertEqual(new_reds.base_checkout(common, g("rev-parse", "HEAD")), wt)
 
+    def test_two_concurrent_base_reruns_each_see_their_own_source(self) -> None:
+        # d2fc481a: two lands of one clone shared .git/cpl-base-wt and its target, so one's
+        # checkout swapped the source under the other's build ("the base didn't build").
+        import threading
+        import new_reds
+        repo = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        g = lambda *a, cwd=repo: subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+        g("init", "-q")
+        heads = []
+        for n in ("one", "two"):
+            (repo / "f").write_text(n + "\n")
+            g("add", "f")
+            g("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", n)
+            heads.append(g("rev-parse", "HEAD"))
+        common, both_inside, seen = repo / ".git", threading.Barrier(2, timeout=60), {}
+        def rerun(base):
+            with new_reds.base_slot(common, base) as (wt, target):
+                both_inside.wait()
+                seen[base] = (wt, target, (wt / "f").read_text())
+                both_inside.wait()
+        with contextlib.redirect_stderr(io.StringIO()):
+            threads = [threading.Thread(target=rerun, args=(h,)) for h in heads]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+        self.assertEqual([seen[h][2] for h in heads], ["one\n", "two\n"])
+        self.assertNotEqual(seen[heads[0]][0], seen[heads[1]][0])
+        self.assertNotEqual(seen[heads[0]][1], seen[heads[1]][1])
+
     def test_the_base_worktree_checks_out_from_a_real_pre_commit_hook(self) -> None:
         # Slice 3: git hands a pre-commit hook GIT_INDEX_FILE=.git/index, and in the base
         # worktree, whose .git is a file, every checkout failed with "Not a directory".

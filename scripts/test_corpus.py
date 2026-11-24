@@ -1505,7 +1505,7 @@ class AtBaseTest(unittest.TestCase):
         def run(argv, **kw):
             calls.append(argv)
             return subprocess.CompletedProcess(argv, build if argv[0] == "cargo" else code, out, "")
-        new_reds = types.SimpleNamespace(git=lambda *a, **k: "b" * 40, base_checkout=lambda common, rev: Path("/base"))
+        new_reds = types.SimpleNamespace(git=lambda *a, **k: "b" * 40, base_slot=lambda common, rev: contextlib.nullcontext((Path("/base"), Path("/target"))))
         with mock.patch.dict(sys.modules, {"new_reds": new_reds,
                                            "culprit": types.SimpleNamespace(describe=lambda sha, cwd: ("s", "idioms"))}), \
                 mock.patch("builtins.open", mock.mock_open()), mock.patch("sys.stderr", new_callable=io.StringIO) as err:
@@ -1526,7 +1526,7 @@ class AtBaseTest(unittest.TestCase):
         def run(argv, **kw):
             envs.append(kw.get("env", {}))
             return subprocess.CompletedProcess(argv, 0 if argv[0] == "cargo" else 1, "", "")
-        new_reds = types.SimpleNamespace(git=lambda *a, **k: "b" * 40, base_checkout=lambda common, rev: Path("/base"))
+        new_reds = types.SimpleNamespace(git=lambda *a, **k: "b" * 40, base_slot=lambda common, rev: contextlib.nullcontext((Path("/base"), Path("/target"))))
         with mock.patch.dict(sys.modules, {"new_reds": new_reds,
                                            "culprit": types.SimpleNamespace(describe=lambda sha, cwd: ("s", "x"))}), \
                 mock.patch("builtins.open", mock.mock_open()), mock.patch("sys.stderr", new_callable=io.StringIO):

@@ -90,21 +90,20 @@ def base_verdicts(cases, base, run=subprocess.run):
     cache = json.loads(cache_file.read_text()) if cache_file.is_file() else {}
     todo = [c for c in cases if f"conform:{c}" not in cache]
     if todo:
-        wt = new_reds.base_checkout(common, base)
-        target = Path(os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target")))
-        env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
-        print(f"conform_staged: rerunning {len(todo)} failing case(s) at the base {base[:9]}", file=sys.stderr)
-        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=wt, env=env).returncode:
-            return {c: cache.get(f"conform:{c}", "unbuilt") for c in cases}
-        for c in todo:
-            if not (wt / PREFIX / c).is_file():
-                cache[f"conform:{c}"] = "absent"
-                continue
-            r = run([str(target / "debug" / "cpl-conform"), "conformance", "--verbose", c], cwd=wt, env=env,
-                    capture_output=True, text=True)
-            cache[f"conform:{c}"] = verdict(c, r.stdout + r.stderr)
-        cache_file.parent.mkdir(exist_ok=True)
-        cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+        with new_reds.base_slot(common, base) as (wt, target):
+            env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
+            print(f"conform_staged: rerunning {len(todo)} failing case(s) at the base {base[:9]}", file=sys.stderr)
+            if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=wt, env=env).returncode:
+                return {c: cache.get(f"conform:{c}", "unbuilt") for c in cases}
+            for c in todo:
+                if not (wt / PREFIX / c).is_file():
+                    cache[f"conform:{c}"] = "absent"
+                    continue
+                r = run([str(target / "debug" / "cpl-conform"), "conformance", "--verbose", c], cwd=wt, env=env,
+                        capture_output=True, text=True)
+                cache[f"conform:{c}"] = verdict(c, r.stdout + r.stderr)
+            cache_file.parent.mkdir(exist_ok=True)
+            cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
     return {c: cache[f"conform:{c}"] for c in cases}
 
 
@@ -116,20 +115,19 @@ def base_checks(programs, base, run=subprocess.run):
     cache = json.loads(cache_file.read_text()) if cache_file.is_file() else {}
     todo = [p for p in programs if f"check:{p}" not in cache]
     if todo:
-        wt = new_reds.base_checkout(common, base)
-        target = Path(os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target")))
-        env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
-        print(f"conform_staged: checking {len(todo)} failing program(s) at the base {base[:9]}", file=sys.stderr)
-        if run(["cargo", "build", "-q", "-p", "cpl-cli"], cwd=wt, env=env).returncode:
-            return {p: cache.get(f"check:{p}", "unbuilt") for p in programs}
-        for p in todo:
-            if not (wt / p).is_file():
-                cache[f"check:{p}"] = "absent"
-                continue
-            r = run([str(target / "debug" / "cpl"), "check", p], cwd=wt, env=env, capture_output=True, text=True)
-            cache[f"check:{p}"] = "fail" if r.returncode else "pass"
-        cache_file.parent.mkdir(exist_ok=True)
-        cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+        with new_reds.base_slot(common, base) as (wt, target):
+            env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
+            print(f"conform_staged: checking {len(todo)} failing program(s) at the base {base[:9]}", file=sys.stderr)
+            if run(["cargo", "build", "-q", "-p", "cpl-cli"], cwd=wt, env=env).returncode:
+                return {p: cache.get(f"check:{p}", "unbuilt") for p in programs}
+            for p in todo:
+                if not (wt / p).is_file():
+                    cache[f"check:{p}"] = "absent"
+                    continue
+                r = run([str(target / "debug" / "cpl"), "check", p], cwd=wt, env=env, capture_output=True, text=True)
+                cache[f"check:{p}"] = "fail" if r.returncode else "pass"
+            cache_file.parent.mkdir(exist_ok=True)
+            cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
     return {p: cache[f"check:{p}"] for p in programs}
 
 

@@ -1889,38 +1889,37 @@ def base_findings(found, modes, base, cpl, run=subprocess.run):
     rev = new_reds.git("rev-parse", base, cwd=ROOT)
     common = Path(new_reds.git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=ROOT))
     ids = sorted({f.split()[1] for f in found if len(f.split()) > 1})
-    wt = new_reds.base_checkout(common, rev)
-    target = os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))
-    # The base gets half the timeout: a case near it (btoi06p5 08.in, 56 s either side of 60) times
-    # out or not with the box's load, so only a base well inside it makes a candidate timeout new.
-    # The base target sits under the main checkout's .git, so its dev cpl's std guard would
-    # see that checkout, not `wt`, and give no verdict (idioms' four interp timeouts).
-    env = {**os.environ, "CARGO_TARGET_DIR": target, "CPL_INTERP_TIMEOUT": str(INTERP_TIMEOUT // 2),
-           "CPL_STD_DIR": str(wt / "std")}
-    print(f"corpus: rerunning {len(ids)} package(s) with findings at the base {rev[:9]}", file=sys.stderr)
-    profile = "debug" if "debug" in Path(cpl).parts else "release"  # the timeouts are the candidate's build's
-    build = ["cargo", "build", "-q", "-p", "cpl-cli", *(["--release"] if profile == "release" else [])]
-    if (b := run(build, cwd=wt, env=env, capture_output=True, text=True)).returncode:
-        # Every finding then counts as new; say why, so a refusal names a broken base, not the change.
-        print(f"corpus: no verdict at the base {rev[:9]}: `{' '.join(build)}` exited {b.returncode} in {wt}:\n"
-              + "\n".join(((b.stderr or "") + (b.stdout or "")).splitlines()[-15:]), file=sys.stderr)
-        return set()
-    r = run([sys.executable, "scripts/corpus.py", "verify", *ids, "--only", ",".join(modes),
-             "--cpl", os.path.join(target, profile, "cpl")], cwd=wt, env=env, capture_output=True, text=True)
-    if r.returncode not in (0, 1):
-        print(f"corpus: no verdict at the base {rev[:9]}: its verify exited {r.returncode}:\n"
-              + "\n".join(((r.stderr or "") + (r.stdout or "")).splitlines()[-15:]), file=sys.stderr)
-        return set()
-    old = set(r.stdout.splitlines()) & set(found)
-    with open(common / "cpl-preexisting-reds.log", "a") as log:
-        for f in sorted(old):
-            pkg = f.split()[1]
-            sha = new_reds.git("log", "-1", "--format=%H", rev, "--", f"corpus/problems/{pkg}", cwd=ROOT, check=False)
-            who = (describe(sha, ROOT)[1] if sha else "") or "unknown"
-            print(f"corpus: pre-existing red, owner {who}: {f} at the base {rev[:9]} too; main's culprit job "
-                  "routes it, not refusing", file=sys.stderr)
-            log.write(f"{rev} {who} corpus:{f}\n")
-    return old
+    with new_reds.base_slot(common, rev) as (wt, target):
+        # The base gets half the timeout: a case near it (btoi06p5 08.in, 56 s either side of 60) times
+        # out or not with the box's load, so only a base well inside it makes a candidate timeout new.
+        # The base target sits under the main checkout's .git, so its dev cpl's std guard would
+        # see that checkout, not `wt`, and give no verdict (idioms' four interp timeouts).
+        env = {**os.environ, "CARGO_TARGET_DIR": str(target), "CPL_INTERP_TIMEOUT": str(INTERP_TIMEOUT // 2),
+               "CPL_STD_DIR": str(wt / "std")}
+        print(f"corpus: rerunning {len(ids)} package(s) with findings at the base {rev[:9]}", file=sys.stderr)
+        profile = "debug" if "debug" in Path(cpl).parts else "release"  # the timeouts are the candidate's build's
+        build = ["cargo", "build", "-q", "-p", "cpl-cli", *(["--release"] if profile == "release" else [])]
+        if (b := run(build, cwd=wt, env=env, capture_output=True, text=True)).returncode:
+            # Every finding then counts as new; say why, so a refusal names a broken base, not the change.
+            print(f"corpus: no verdict at the base {rev[:9]}: `{' '.join(build)}` exited {b.returncode} in {wt}:\n"
+                  + "\n".join(((b.stderr or "") + (b.stdout or "")).splitlines()[-15:]), file=sys.stderr)
+            return set()
+        r = run([sys.executable, "scripts/corpus.py", "verify", *ids, "--only", ",".join(modes),
+                 "--cpl", os.path.join(target, profile, "cpl")], cwd=wt, env=env, capture_output=True, text=True)
+        if r.returncode not in (0, 1):
+            print(f"corpus: no verdict at the base {rev[:9]}: its verify exited {r.returncode}:\n"
+                  + "\n".join(((r.stderr or "") + (r.stdout or "")).splitlines()[-15:]), file=sys.stderr)
+            return set()
+        old = set(r.stdout.splitlines()) & set(found)
+        with open(common / "cpl-preexisting-reds.log", "a") as log:
+            for f in sorted(old):
+                pkg = f.split()[1]
+                sha = new_reds.git("log", "-1", "--format=%H", rev, "--", f"corpus/problems/{pkg}", cwd=ROOT, check=False)
+                who = (describe(sha, ROOT)[1] if sha else "") or "unknown"
+                print(f"corpus: pre-existing red, owner {who}: {f} at the base {rev[:9]} too; main's culprit job "
+                      "routes it, not refusing", file=sys.stderr)
+                log.write(f"{rev} {who} corpus:{f}\n")
+        return old
 
 
 def canonical_id(problem):
