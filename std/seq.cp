@@ -1296,8 +1296,6 @@ pub struct Rev<S>():
     /// example: `[3, 1, 4].rev.scan(+).suffix(1) == 5`
     /// example: `[3, 1, 4].rev.scan(+).all == 8`
     /// example: `[3, 1, 4].rev.scan(max).suffix(2) == 4`
-    pub fn scan<D, T, M>(self: Rev<[D]T>, f: M, from: ?T = None) -> Prefix<D, T> =
-        Prefix<D, T>.of_rev_scan(self.src, f, from)
 
     /// \(O(1)\). The element `k` steps into the walk: `a.rev.nth(0)` is `a`'s last.
     ///
@@ -3214,6 +3212,21 @@ pub trait Sep<T>:
     fn is_sep(self, x: T) -> Bool
 
 /// A predicate cuts where it holds.
+impl Rev<[D]T>:
+    /// \(O(n)\) calls of `f`.
+    ///
+    /// The n + 1 suffix folds, keyed by the source's own cuts: `suf[c]` folds everything right of
+    /// cut `c` (`from`, or `f`'s identity, at the last cut). The value at `c` is
+    /// `f(a[c.r], suf[c.next])`, so `f` need not be commutative.
+    ///
+    /// cost: \(O(n)\) calls of `f`; \(O(n)\) space
+    /// empty: one cut, holding `from` or the identity
+    /// order: keyed by `D.cuts`, right to left
+    /// traps: never (beyond what `f` traps on)
+    /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(*).at(D(1).l) == 12`
+    /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(+).all == 9`
+    pub fn scan<M>(self, f: M, from: ?T = None) -> Prefix<D, T> = Prefix<D, T>.of_rev_scan(self.src, f, from)
+
 impl<T> Sep<T> for T -> Bool:
     fn is_sep(self, x: T) -> Bool = self(x)
 

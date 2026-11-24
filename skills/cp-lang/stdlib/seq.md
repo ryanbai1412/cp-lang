@@ -46,7 +46,6 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 \(O(1)\) to make.
 
 - `@get fn src(self) -> S` — \(O(1)\)
-- `fn scan<D, T, M>(self: Rev<[D]T>, f: M, from: ?T = None) -> Prefix<D, T>` — \(O(n)\) calls of `f`; \(O(n)\) space; \(O(n)\) calls of `f`.; traps: never (beyond what `f` traps on); see `fold` for range reads
 - `fn nth<T>(self, k: Int) -> T` — \(O(1)\); traps: unless `0 <= k < self.len`
 - `fn take(self, k: Int) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
 - `fn drop(self, k: Int = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
