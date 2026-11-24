@@ -357,7 +357,10 @@ fi
 # while it waits, and only the oldest ticket stamped within $lock_stale s may take
 # the lock; a dead waiter's ticket expires. A land keeps its ticket's place
 # across lost races.
-lock_ref=refs/land/lock
+# -v2: copies of land.sh from before c457bd860 never restamp and take every lock
+# held over 120 s; on their own ref they contend only with each other.
+lock_ref=refs/land/lock-v2
+old_lock_ref=refs/land/lock
 lock_stale=${CPL_LAND_LOCK_STALE:-120}
 # Seconds, not minutes: 30 let consumers' land take 4 live lands' locks in 3 minutes.
 case "$lock_stale" in '' | *[!0-9]*) lock_stale=0 ;; esac
@@ -371,25 +374,29 @@ ticket_stale=${CPL_LAND_TICKET_STALE:-$lock_stale}
 lock_wait=${CPL_LAND_LOCK_WAIT:-}
 # The holder restamps the lock this often, so a lock is stale only when its holder
 # stopped beating: a live one is never taken over however long it holds.
-lock_beat=${CPL_LAND_LOCK_BEAT:-30}
+lock_beat=${CPL_LAND_LOCK_BEAT:-20}
 # Every box is named devin-box: a random token tells holders apart.
 lock_who="$(hostname)-$(od -An -N4 -tx4 /dev/urandom | tr -d ' \n')"
 lock_held=""
-lock_file=$(mktemp)
+# In the git dir, not /tmp: a cleaned /tmp would lease every beat on nothing.
+lock_file=$(mktemp "$(git rev-parse --absolute-git-dir)/cpl-land-lock.XXXXXX")
 beat_pid=""
 start_beat() {
     echo "$lock_held" >"$lock_file"
+    rm -f "$lock_file.lost"
     (
-        stop="" nap=""
+        stop="" nap="" wait_s=$lock_beat
         # Kills the nap too: a live sleep holds the land's output open for $lock_beat s.
         trap 'stop=1; [ -z "$nap" ] || kill "$nap" 2>/dev/null' TERM
         while [ -z "$stop" ]; do
-            sleep "$lock_beat" &
+            sleep "$wait_s" &
             nap=$!
             wait "$nap" 2>/dev/null || :
             [ -z "$stop" ] || break
             new=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $lock_who $$ $(date +%s) $domain") || continue
-            if git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" "$new:$lock_ref" 2>/dev/null; then
+            wait_s=$lock_beat
+            # Bounded: a push hung on the proxy past 120 s let a live holder look stale.
+            if err=$(timeout 20 git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" "$new:$lock_ref" 2>&1); then
                 echo "$new" >"$lock_file"
                 continue
             fi
@@ -397,11 +404,23 @@ start_beat() {
             # behind, and every later beat fails: compiler took a live holder's lock
             # at 120 s. Adopt the lock while it still names this holder.
             cur=$(git ls-remote "$remote" "$lock_ref" 2>/dev/null | cut -f1) || cur=""
-            if [ -n "$cur" ] && git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null &&
+            if [ -n "$cur" ] && [ "$cur" = "$(cat "$lock_file")" ]; then
+                # Still ours, unchanged: the proxy's 429s and 504s pass, so try again
+                # in seconds, not at the next beat.
+                echo "land: a land lock heartbeat failed (${err##*$'\n'}); retrying" >&2
+                wait_s=3
+            elif [ -n "$cur" ] && git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null &&
                 [ "$(git log -1 --format=%s "$cur" 2>/dev/null | cut -d' ' -f2,3)" = "$lock_who $$" ]; then
                 echo "$cur" >"$lock_file"
+            elif { [ -n "$cur" ] && [ "$cur" != "$(cat "$lock_file")" ]; } ||
+                { [ -z "$cur" ] && [[ "$err" == *"stale info"* ]]; }; then
+                # Another lane holds it now: push() must not push main on this hold.
+                echo "land: lost the land lock (now ${cur:-free}); taking it again before pushing main" >&2
+                : >"$lock_file.lost"
+                break
             else
-                echo "land: a land lock heartbeat failed (the lock is now ${cur:-free})" >&2
+                echo "land: a land lock heartbeat failed (${err##*$'\n'}); retrying" >&2
+                wait_s=3
             fi
         done
     ) &
@@ -467,9 +486,25 @@ first_in_line() {
         [ "$ref" != "$ticket" ] || mine=1
     done < <(printf '%s\n' "$list" | sort -k2)
 }
+# Old copies read only refs/land/lock: parked with a stamp in 2100, it never looks
+# 120 s stale to them, so they wait it out instead of racing v2 lands onto main.
+park_old_lock() {
+    local old subj parked
+    old=$(git ls-remote "$remote" "$old_lock_ref" 2>/dev/null | cut -f1) || return 0
+    if [ -n "$old" ]; then
+        git fetch -q --no-write-fetch-head "$remote" "$old_lock_ref" 2>/dev/null || :
+        subj=$(git log -1 --format=%s "$old" 2>/dev/null) || subj="$old, not fetched"
+        case "$subj" in "land-lock retired-use-lock-v2 "*) return 0 ;; esac
+        echo "land: a land.sh from before c457bd860 holds $old_lock_ref ($subj); its lane should stop it, pull and land again. Parking the old lock" >&2
+    fi
+    parked=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock retired-use-lock-v2 0 4102444800 factory")
+    git push -q --no-verify --force-with-lease="$old_lock_ref:$old" "$remote" "$parked:$old_lock_ref" 2>/dev/null || :
+}
+
 take_lock() {
-    local me holder held_by at waited=0 lined="" blind="" nap nap_said="" stuck_head="" stuck_since=0
+    local me holder held_by at waited=0 lined="" blind="" nap nap_said="" stuck_head="" stuck_since=0 poll=""
     [ -z "${CPL_LAND_QUEUE:-}" ] || enqueue || :
+    park_old_lock
     while :; do
         first=""
         if [ -n "$queued" ] && ! first_in_line; then
@@ -535,18 +570,25 @@ take_lock() {
         fi
         [ "$waited" != 0 ] || echo "land: waiting for the land lock ($held_by)" >&2
         [ -z "$lock_wait" ] || [ "$waited" -lt "$lock_wait" ] || { echo "land: no land lock after ${waited}s; land again" >&2; dequeue; return 1; }
-        sleep 2
-        waited=$((waited + 2))
+        # Backs off 6 s to about 30 s, jittered: 19 waiters polling every 2 s drew the
+        # proxy's 429s that failed the holder's beats.
+        poll=$(( ${poll:-3} * 2 > 24 ? 24 : ${poll:-3} * 2 ))
+        nap=$((poll + RANDOM % 7))
+        [ -z "${CPL_LAND_LOCK_POLL:-}" ] || nap=$CPL_LAND_LOCK_POLL
+        sleep "$nap"
+        waited=$((waited + nap))
         [ -z "$queued" ] || [ $(($(date +%s) - beat)) -lt "$heartbeat" ] || enqueue || :
     done
 }
 drop_lock() {
     [ -n "$lock_held" ] || return 0
     stop_beat
-    git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" ":$lock_ref" 2>/dev/null || :
+    [ -e "$lock_file.lost" ] ||
+        git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" ":$lock_ref" 2>/dev/null || :
+    rm -f "$lock_file.lost"
     lock_held=""
 }
-trap 'drop_lock; dequeue; rm -f "$lock_file"' EXIT
+trap 'drop_lock; dequeue; rm -f "$lock_file" "$lock_file.lost"' EXIT
 # Rebase and recheck run without the lock: the non-force push already refuses a
 # half-gated tip, so the lock covers only the fast-forward check and the push.
 # Rechecking under it let one holder keep every lane waiting for minutes.
@@ -577,6 +619,8 @@ push() {
 # Succeeds once pushed, or once main moved under the lock (set $moved): then
 # only a rebase helps, not another try.
 push_held() {
+    # A lost lock let another lane push meanwhile: the try starts over.
+    [ ! -e "$lock_file.lost" ] || { moved=1; return 0; }
     git push -q --no-verify "$remote" HEAD:main && return 0
     echo "land: the push failed; trying again holding the land lock" >&2
     git fetch -q "$remote" main

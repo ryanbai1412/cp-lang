@@ -68,7 +68,7 @@ class LandTest(unittest.TestCase):
         git(repo, "commit", "-q", "--no-verify", "-m", msg, "-m", "Domain: infra")
 
     def land(self, repo, **extra):
-        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", **extra}
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_LOCK_POLL": "1", **extra}
         return subprocess.run(["bash", "scripts/land.sh"], cwd=repo, env=env, capture_output=True, text=True)
 
     def test_a_generated_file_conflict_takes_mains_copy_and_lands(self):
@@ -315,7 +315,7 @@ class LandTest(unittest.TestCase):
         shutil.copy(HERE.parent / ".githooks" / "pre-commit", hooks / "pre-commit")
         check = repo / "scripts" / "check.sh"
         check.write_text(f'#!/bin/sh\nprintf "{check_steps}" >"$CPL_COMMIT_PROGRESS"\n'
-                         '[ -z "$LOCKS" ] || git ls-remote origin refs/land/lock | cut -f1 | grep . >>"$LOCKS" || echo free >>"$LOCKS"\n'
+                         '[ -z "$LOCKS" ] || git ls-remote origin refs/land/lock-v2 | cut -f1 | grep . >>"$LOCKS" || echo free >>"$LOCKS"\n'
                          f'echo "==> cargo check -p cpl-wasm"\nexec sleep {sleep}\n')
         check.chmod(0o755)
         (repo / "scripts" / "ci.py").write_text(
@@ -328,7 +328,7 @@ class LandTest(unittest.TestCase):
             "        subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'race'], cwd=os.environ['RACE'], check=True)\n"
             "    subprocess.run(['git', 'push', '-q', 'origin', 'HEAD:main'], cwd=os.environ['RACE'], check=True)\n"
             "if os.environ.get('LOCKS'):\n"
-            "    held = subprocess.run(['git', 'ls-remote', 'origin', 'refs/land/lock'], capture_output=True, text=True).stdout\n"
+            "    held = subprocess.run(['git', 'ls-remote', 'origin', 'refs/land/lock-v2'], capture_output=True, text=True).stdout\n"
             "    open(os.environ['LOCKS'], 'a').write((held.split() or ['free'])[0] + '\\n')\n"
             "sys.exit('warning: field `0` is never read' if 'wasm' in sys.argv[-1] else 0)\n")
         self.commit(repo, "a commit tier")
@@ -383,14 +383,14 @@ class LandTest(unittest.TestCase):
         self.assertFalse(pending.exists())
 
     def lock(self, repo, age=0):
-        """Hold refs/land/lock on the remote as a lane that took it `age` s ago."""
+        """Hold refs/land/lock-v2 on the remote as a lane that took it `age` s ago."""
         empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
         sha = git(repo, "commit-tree", empty, "-m", f"land-lock other 1 {int(time.time()) - age} infra").strip()
-        git(repo, "push", "-q", "origin", f"{sha}:refs/land/lock")
+        git(repo, "push", "-q", "origin", f"{sha}:refs/land/lock-v2")
         return sha
 
     def lock_on_remote(self):
-        return git(self.tmp, "ls-remote", str(self.tmp / "remote.git"), "refs/land/lock").strip()
+        return git(self.tmp, "ls-remote", str(self.tmp / "remote.git"), "refs/land/lock-v2").strip()
 
     def test_a_land_takes_the_land_lock_and_drops_it(self):
         repo = self.clone("lane")
@@ -426,7 +426,7 @@ class LandTest(unittest.TestCase):
         repo = self.clone("lane")
         hook = self.tmp / "remote.git" / "hooks" / "pre-receive"
         hook.write_text("#!/bin/sh\nwhile read old new ref; do\n"
-                        '  [ "$ref" != refs/land/lock ] || { echo "HTTP 500" >&2; exit 1; }\n'
+                        '  [ "$ref" != refs/land/lock-v2 ] || { echo "HTTP 500" >&2; exit 1; }\n'
                         "done\n")
         hook.chmod(0o755)
         main = git(repo, "rev-parse", "origin/main").strip()
@@ -434,7 +434,7 @@ class LandTest(unittest.TestCase):
         self.commit(repo, "ours")
         r = self.land(repo)
         self.assertNotEqual(r.returncode, 0, r.stderr)
-        self.assertIn("refuses refs/land/lock", r.stderr)
+        self.assertIn("refuses refs/land/lock-v2", r.stderr)
         self.assertIn("land again", r.stderr)
         self.assertNotIn("without the land lock", r.stderr)
         self.assertEqual(git(repo, "ls-remote", "origin", "refs/heads/main").split()[0], main)
@@ -445,14 +445,14 @@ class LandTest(unittest.TestCase):
         stamps = self.tmp / "stamps"
         hook = self.tmp / "remote.git" / "hooks" / "pre-receive"
         hook.write_text("#!/bin/sh\nwhile read old new ref; do\n"
-                        f'  [ "$ref" != refs/land/lock ] || git log -1 --format=%s "$new" >>"{stamps}" 2>/dev/null || :\n'
+                        f'  [ "$ref" != refs/land/lock-v2 ] || git log -1 --format=%s "$new" >>"{stamps}" 2>/dev/null || :\n'
                         "done\n")
         hook.chmod(0o755)
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
         freed = []
         timer = threading.Timer(3, lambda: (freed.append(time.time()),
-                                            git(other, "push", "-q", "origin", ":refs/land/lock")))
+                                            git(other, "push", "-q", "origin", ":refs/land/lock-v2")))
         timer.start()
         r = self.land(repo)
         timer.join()
@@ -605,7 +605,7 @@ class LandTest(unittest.TestCase):
         (shim / "git").write_text(
             "#!/bin/sh\n"
             'case "$*" in *" HEAD:main"*) sleep 5 ;; esac\n'
-            'case "$*" in *"--force-with-lease=refs/land/lock:"[0-9a-f]*" "[0-9a-f]*":refs/land/lock"*)\n'
+            'case "$*" in *"--force-with-lease=refs/land/lock-v2:"[0-9a-f]*" "[0-9a-f]*":refs/land/lock-v2"*)\n'
             f'  "{real}" "$@"; rc=$?\n'
             f'  [ -e "{lost}" ] || {{ : >"{lost}"; exit 1; }}\n'
             f'  echo "$rc" >>"{log}"; exit $rc ;;\n'
@@ -630,7 +630,7 @@ class LandTest(unittest.TestCase):
         (shim / "git").write_text(
             "#!/bin/sh\n"
             'case "$*" in *" HEAD:main"*) sleep 4 ;; esac\n'
-            'case "$*" in *"--force-with-lease=refs/land/lock:"[0-9a-f]*" "[0-9a-f]*":refs/land/lock"*) '
+            'case "$*" in *"--force-with-lease=refs/land/lock-v2:"[0-9a-f]*" "[0-9a-f]*":refs/land/lock-v2"*) '
             f'echo beat >>"{log}" ;; esac\n'
             f'exec "{real}" "$@"\n')
         (shim / "git").chmod(0o755)
@@ -640,6 +640,84 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertGreaterEqual(len(log.read_text().split()) if log.exists() else 0, 2)
         self.assertEqual(self.lock_on_remote(), "")
+
+    def test_a_current_land_parks_an_old_copys_lock_and_old_copies_wait_on_it(self):
+        # Copies from before the heartbeat read only refs/land/lock and take any lock
+        # stamped over 120 s ago; parked with a stamp in 2100, it is never theirs.
+        repo, old_lane = self.clone("lane"), self.clone("old")
+        empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
+        old = git(repo, "commit-tree", empty, "-m", f"land-lock devin-box 1 {int(time.time())} compiler").strip()
+        git(repo, "push", "-q", "origin", f"{old}:refs/land/lock")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("a land.sh from before c457bd860 holds refs/land/lock (land-lock devin-box 1 ", r.stderr)
+        parked = git(repo, "ls-remote", "origin", "refs/land/lock").split()[0]
+        git(repo, "fetch", "-q", "origin", "refs/land/lock")
+        self.assertEqual(git(repo, "log", "-1", "--format=%s", parked).strip(),
+                         "land-lock retired-use-lock-v2 0 4102444800 factory")
+        # c457bd860's parent is the last copy without the heartbeat.
+        (old_lane / "scripts" / "land.sh").write_bytes(subprocess.run(
+            ["git", "show", "c457bd860^:scripts/land.sh"], cwd=HERE, capture_output=True, check=True).stdout)
+        (old_lane / "pkg2.txt").write_text("y\n")
+        self.commit(old_lane, "old copy's land")
+        main = git(repo, "ls-remote", "origin", "main").split()[0]
+        r = self.land(old_lane, CPL_LAND_LOCK_STALE="1", CPL_LAND_LOCK_WAIT="3")
+        self.assertNotEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("taking over", r.stderr)
+        self.assertIn("waiting for the land lock (land-lock retired-use-lock-v2", r.stderr)
+        self.assertEqual(git(repo, "ls-remote", "origin", "main").split()[0], main)
+        self.assertEqual(git(repo, "ls-remote", "origin", "refs/land/lock").split()[0], parked)
+        # A second current land sees it parked and says nothing.
+        git(repo, "pull", "-q", "--rebase", "origin", "main")
+        (repo / "pkg3.txt").write_text("z\n")
+        self.commit(repo, "ours again")
+        r = self.land(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("before c457bd860", r.stderr)
+
+    def beat_shim(self, body):
+        shim = self.tmp / "bin"
+        shim.mkdir()
+        (shim / "git").write_text(
+            "#!/bin/sh\n"
+            f'case "$*" in *--force-with-lease=refs/land/lock-v2:\\ *) touch "{shim}/locked" ;; esac\n'
+            f'case "$*" in "fetch -q origin main") [ ! -e "{shim}/locked" ] || sleep 5 ;; esac\n'
+            'case "$*" in *"--force-with-lease=refs/land/lock-v2:"[0-9a-f]*" "[0-9a-f]*":refs/land/lock-v2"*)\n'
+            f"{body}\n"
+            ";; esac\n"
+            f'exec "{shutil.which("git")}" "$@"\n')
+        (shim / "git").chmod(0o755)
+        return shim
+
+    def test_a_beat_the_proxy_refuses_retries_in_seconds_and_lands(self):
+        repo = self.clone("lane")
+        shim = self.beat_shim('[ -e "$0.failed" ] || { touch "$0.failed"; echo "error: HTTP 429" >&2; exit 1; }')
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}", CPL_LAND_LOCK_BEAT="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("a land lock heartbeat failed (error: HTTP 429); retrying", r.stderr,
+                      r.stdout + str(sorted(p.name for p in shim.iterdir())))
+        self.assertNotIn("lost the land lock", r.stderr)
+        self.assertEqual(self.lock_on_remote(), "")
+
+    def test_a_beat_that_finds_another_holder_never_pushes_main(self):
+        repo, rival = self.clone("lane"), self.clone("rival")
+        empty = git(rival, "hash-object", "-t", "tree", "/dev/null").strip()
+        theirs = git(rival, "commit-tree", empty, "-m", f"land-lock rival 1 {int(time.time())} infra").strip()
+        real = shutil.which("git")
+        shim = self.beat_shim(f'"{real}" -C "{rival}" push -q -f origin "{theirs}:refs/land/lock-v2" >>"{self.tmp}/rival.log" 2>&1; '
+                              'echo "error: HTTP 429" >&2; exit 1')
+        main = git(repo, "ls-remote", "origin", "main").split()[0]
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}", CPL_LAND_LOCK_BEAT="1", CPL_LAND_LOCK_WAIT="2")
+        self.assertNotEqual(r.returncode, 0, r.stderr + (self.tmp / "rival.log").read_text())
+        self.assertIn(f"lost the land lock (now {theirs})", r.stderr)
+        self.assertEqual(git(repo, "ls-remote", "origin", "main").split()[0], main)
+        self.assertTrue(self.lock_on_remote().startswith(theirs), self.lock_on_remote())
 
     def ticket(self, repo, name, age=0):
         empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
@@ -682,11 +760,11 @@ class LandTest(unittest.TestCase):
         shim = self.tmp / "shim"
         shim.mkdir()
         (shim / "git").write_text(f"""#!/bin/sh
-case "$*" in *--force-with-lease=refs/land/lock:\\ *|*--force-with-lease=refs/land/lock:) 
+case "$*" in *--force-with-lease=refs/land/lock-v2:\\ *|*--force-with-lease=refs/land/lock-v2:) 
     n=$(cat "{shim}/n" 2>/dev/null || echo 0)
     if [ "$n" -lt 6 ]; then
         echo $((n + 1)) >"{shim}/n"
-        echo " ! [rejected]        x -> refs/land/lock (stale info)" >&2
+        echo " ! [rejected]        x -> refs/land/lock-v2 (stale info)" >&2
         exit 1
     fi ;;
 esac
@@ -817,7 +895,7 @@ exec {shutil.which("git")} "$@"
         repo = self.clone("lane")
         empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
         held = git(repo, "commit-tree", empty, "-m", "land-lock other 1 unread infra").strip()
-        git(repo, "push", "-q", "origin", f"{held}:refs/land/lock")
+        git(repo, "push", "-q", "origin", f"{held}:refs/land/lock-v2")
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
         r = self.land(repo, CPL_LAND_LOCK_STALE="1", CPL_LAND_LOCK_WAIT="2")
@@ -838,9 +916,9 @@ exec {shutil.which("git")} "$@"
         real = shutil.which("git")
         (shim / "git").write_text(
             "#!/bin/sh\n"
-            'case "$*" in *"--force-with-lease=refs/land/lock:"[0-9a-f]*)\n'
+            'case "$*" in *"--force-with-lease=refs/land/lock-v2:"[0-9a-f]*)\n'
             f'  [ -e "{self.tmp}/rival.done" ] || {{ touch "{self.tmp}/rival.done"; '
-            f'"{real}" -C "{rival}" push -q -f origin "{theirs}:refs/land/lock"; }} ;;\n'
+            f'"{real}" -C "{rival}" push -q -f origin "{theirs}:refs/land/lock-v2"; }} ;;\n'
             "esac\n"
             f'exec "{real}" "$@"\n')
         (shim / "git").chmod(0o755)
