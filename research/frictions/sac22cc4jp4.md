@@ -9,6 +9,12 @@
 - **Goal it hurts:** express.
 - **Severity:** low.
 
+## Repro
+
+On a fresh `cpl run` with `let p: Perm<V>`: `p.cycles()` is `error[E0203]: a `[V]V` has no
+method `cycles``, `p.pow(2)` is `error[E0203]: power uses `**`, not `.pow(...)`` and `p ** 2` is
+`error[E0309]: `**` can't be applied to `[V]V` and `Int``.
+
 ## Dream
 
 ```cp

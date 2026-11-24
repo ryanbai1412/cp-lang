@@ -3,7 +3,10 @@
 ## Memoised evaluation is a hand-cleared `[Wire]?Bool`
 - **Where:** `port.cp`, `value` and the reset loop in `light`.
 - **What felt wrong:** `out` is a memo over wires that must be forgotten for every `light(k)` call; `@memo` has no scope, so the cache is a global array cleared by hand.
-- **General fix:** a scoped memo (`@memo(per: light)` or a `Memo<[Wire]Bool>` value passed in) that resets when the outer call returns.
+- **Not a gap now:** a `@memo fn` nested in `light` is fresh on each call: on a fresh `cpl run`,
+  `fn light(ones: Int) -> Int: @memo fn out(w: W) -> Int = ...; out(W(6))` prints 5 then 3 for
+  `light(2)`, `light(4)`. The port owes the rewrite.
+- **General fix (was):** a scoped memo (`@memo(per: light)` or a `Memo<[Wire]Bool>` value passed in) that resets when the outer call returns.
 - **Goal it hurts:** express.
 - **Severity:** low.
 

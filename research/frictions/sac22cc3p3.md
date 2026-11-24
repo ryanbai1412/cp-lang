@@ -8,6 +8,11 @@
 - **Goal it hurts:** express.
 - **Severity:** low.
 
+## Repro
+
+`for p in powers(10, upto: 500): print(p)` on a fresh `cpl run`: `error[E0201]: no `powers` in
+scope, and not in the stdlib (yet)`.
+
 ## Dream
 
 ```cp

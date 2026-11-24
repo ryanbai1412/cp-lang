@@ -1,11 +1,22 @@
-Score: pending
-Dream: pending
+# occ19g4
 
-Re-port for headroom: the previous port ran two CDQ passes over the radius
-order and re-sorted every half by u at every level, over a Fenwick on
-compressed v. This one ranks once and runs a single recursion that splits
-three presorted u orders stably, so no level sorts, and v keeps its own
-domain 0..=2 * 60_000 + 1 (the clamped square edges fit it, so nothing is
-compressed). `--max` under `cpl test` went from 747 ms to about 545 ms
-(1000 ms limit); natively 0.64 s to 0.40 s. Output matches the brute force
-on 30 stress cases and six N <= 6000 seeds, and the previous port on `--max`.
+Score: 3/5
+Dream: 3/5
+
+Cold review: the rotation to Chebyshev, rank by radius and one CDQ split with four Fenwick sweeps (lines 20-87) follow the header, but the CDQ machinery is all by hand.
+
+## Checklist failures
+
+- None beyond the reported gap.
+
+## Owed rewrites
+
+- None.
+
+## Language gaps
+
+- The offline dominance-count CDQ by hand: in research/frictions/occ19g4.md, now with the `cpl run` error for `cdq`.
+
+## Dream notes
+
+- A fragment: `square(g)` is undefined and the reads, radii and output are missing; the dream should be the whole program with the counts' shape named.

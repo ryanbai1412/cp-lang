@@ -11,6 +11,11 @@
 - **Goal it hurts:** fast.
 - **Severity:** medium.
 
+## Repro
+
+`h.windows(1, 1)` on a `Hash2D`, fresh `cpl run`: `error[E0203]: Hash2D<R, R> has no field or
+method `windows``.
+
 ## Dream
 
 ```cp

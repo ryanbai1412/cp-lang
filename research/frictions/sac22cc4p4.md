@@ -12,6 +12,12 @@
 - **What felt wrong:** "count(T) - count(B - 1)" needs a guard because `within` takes `0..=2e9`.
 - **Severity:** low.
 
+## Repro
+
+On a fresh `cpl run`, `Window((min, max))` then `push(3)` is `error[E0201]: `Window.push_back`
+(`std.window`) does not work on the types it was given here: no fn named `op` here`, and
+`a.two_pointers(keep: ...)` is `error[E0203]: a `List<Int>` has no method `two_pointers``.
+
 ## Dream
 
 ```cp

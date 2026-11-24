@@ -1,5 +1,10 @@
 # Friction Report: occ19g4
 
+## Repro
+
+`[1, 2].cdq(points: g => (g, g), boxes: g => g)` on a fresh `cpl run`: `error[E0203]: a
+`List<Int>` has no method `cdq``; std has no offline dominance-count helper under any name.
+
 ## Dream
 
 ```cp

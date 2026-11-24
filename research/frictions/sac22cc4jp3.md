@@ -8,6 +8,11 @@
 - **Goal it hurts:** express.
 - **Severity:** low.
 
+## Repro
+
+On a fresh `cpl run`, `F64(-30).rem_euclid(360.0)` is `error[E0203]: a `F64` has no method
+`rem_euclid`` and `x % 360.0` is `error[E0309]: `%` can't be applied to `F64` and `F64``.
+
 ## Dream
 
 ```cp

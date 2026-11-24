@@ -1,7 +1,22 @@
 # sdoi17r1p2
 
-Score: pending
-Dream: pending
+Score: 4/5
+Dream: 4/5
 
-Follow-up: the enum payloads are now `V` (`Paint(x: V) | Path(x: V, y: V) | Deepest(x: V)`)
-since Core's packed-width fix (3670b16c2), so the `V(x)` conversions at each use are gone.
+Cold review: painting is a `PreferredPaths` access, and each switch is a subtree add on a max `SegTree` over preorder (lines 13-31), the header's argument; the port is dream.cp line for line.
+
+## Checklist failures
+
+- None beyond the reported gap.
+
+## Owed rewrites
+
+- None.
+
+## Language gaps
+
+- `LcaTable` as a second object beside `Rooted`: in research/frictions/sdoi17r1p2.md.
+
+## Dream notes
+
+- None.

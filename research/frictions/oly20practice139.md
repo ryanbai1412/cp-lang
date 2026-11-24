@@ -17,6 +17,11 @@
 - **Where:** the v0.2 port's `let tx = h_at[bi][last]` then `h_at[bi].pop()`: E0602. Reported to Core with yac1p2's repro.
 - **Severity:** medium.
 
+## Repro
+
+`var g = KineticSegTree<Y>(max, lines: [Y] v => Line(v.ord, 0))` on a fresh `cpl run`:
+`error[E0201]: no `KineticSegTree` in scope, and not in the stdlib (yet)`.
+
 ## Dream
 
 The ungated ideal (it does not compile today, so it is kept here rather than as `dream.cp`):

@@ -14,6 +14,13 @@
 - **General fix:** `Mod ** Int` accepting negative exponents (inverse power).
 - **Severity:** low.
 
+## Repro
+
+`for (r, a, b) in quotient_blocks(10, 7)` on a fresh `cpl run`: `error[E0201]: no
+`quotient_blocks` in scope, and not in the stdlib (yet)`. The second gap is not one:
+`Mod<7>(3) ** -1` prints 5, the inverse, so `g[k] *= fib[d] ** mu[k / d]` runs today and the
+port owes the rewrite.
+
 ## Dream
 
 ```cp
