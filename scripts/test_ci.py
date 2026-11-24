@@ -2,6 +2,7 @@ import subprocess
 import contextlib
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -179,7 +180,7 @@ class StepsTest(unittest.TestCase):
                     self.assertNotIn(" ".join(step.argv), check)
         self.assertNotIn("npm test\n", check)
         # Every tier after the guards runs in `ci.py gate`; check.sh runs no cargo itself.
-        self.assertIn("scripts/ci.py gate --mode", check)
+        self.assertIn("scripts/ci.py check", check)
         self.assertNotRegex(check, r"(?m)^\s*cargo ")
         for owned in ("cpl-conform\" all", "--test recovery", "known_traps.cp"):
             self.assertNotIn(owned, check)
@@ -657,8 +658,111 @@ class GuardTest(unittest.TestCase):
 
     def test_check_sh_runs_the_guards_from_ci(self) -> None:
         check = (Path(__file__).parent / "check.sh").read_text(encoding="utf-8")
-        self.assertIn('scripts/ci.py guard --mode "$mode"', check)
+        self.assertIn('exec uv run --quiet python scripts/ci.py check "$@"', check)
         self.assertNotIn("staged_guard", check)
+
+
+class CheckTest(unittest.TestCase):
+    """`ci.py check`, which scripts/check.sh execs: flags, caches, guards, then the tier."""
+
+    def _check(self, argv, env=None, guard_code=0, manifest_ok=True, path=None):
+        calls, gates = [], []
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp, "bin")
+            bin_dir.mkdir()
+            cargo = bin_dir / "cargo"
+            cargo.write_text("#!/bin/sh\n")
+            cargo.chmod(0o755)
+            env = {"PATH": str(bin_dir) if path is None else path, "CHECK_NO_CXX_CACHE": "1", **(env or {})}
+
+            def run(cmd, **kw):
+                calls.append(cmd)
+                Path(cmd[-1]).write_text("m")
+                Path(cmd[-1] + ".reads").write_text("r")
+                return subprocess.CompletedProcess(cmd, 0 if manifest_ok else 1)
+
+            def gate(*a):
+                gates.append(a)
+                self.assertTrue(not a[4] or Path(a[4]).exists())
+                return 0
+
+            with mock.patch.dict(os.environ, {"CARGO_TARGET_DIR": str(Path(tmp, "t"))}):
+                Path(tmp, "t").mkdir()
+                Path(tmp, "t", "gate-fast-time.json").write_text("{}")
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err):
+                    code = ci.check(argv, env=env, run=run, clock=lambda: 7.0,
+                                    guard_fn=lambda mode: guard_code, gate_fn=gate)
+                left = sorted(f.name for f in Path(tmp, "t").rglob("*") if f.is_file())
+        return code, calls, gates, err.getvalue(), left
+
+    def test_the_last_mode_flag_wins_and_the_tier_gets_the_stage_manifest(self) -> None:
+        code, calls, gates, _, left = self._check(["--commit", "--land"], env={"CPL_GATE_PART": "x"})
+        self.assertEqual(code, 0)
+        self.assertEqual(calls[0][1:3], ["scripts/check_cache.py", "manifest"])
+        mode, part, cpl, cache_dir, manifest, since = gates[0]
+        self.assertEqual((mode, part, since), ("land", "x", 7.0))
+        self.assertTrue(cpl.endswith("t/debug/cpl") and cache_dir.endswith("t/check-cache"))
+        self.assertTrue(Path(manifest).name.startswith("manifest."))
+        # The manifest goes when the gate ends, and the last fast time with it at the start.
+        self.assertEqual(left, [])
+
+    def test_full_no_cache_and_a_broken_manifest_turn_the_stage_cache_off(self) -> None:
+        for argv, env in ((["--full"], {}), (["--no-cache"], {}), ([], {"CHECK_NO_CACHE": "1"})):
+            code, calls, gates, _, _ = self._check(argv, env=env)
+            self.assertEqual((code, calls, gates[0][4]), (0, [], ""), argv)
+        _, calls, gates, _, _ = self._check([], manifest_ok=False)
+        self.assertEqual((len(calls), gates[0][4]), (1, ""))
+
+    def test_an_unknown_flag_a_failed_guard_or_no_cargo_stops_before_the_tier(self) -> None:
+        code, _, gates, err, _ = self._check(["--fats"])
+        self.assertEqual((code, gates), (2, []))
+        self.assertIn("unknown argument `--fats`", err)
+        code, _, gates, _, _ = self._check([], guard_code=1)
+        self.assertEqual((code, gates), (1, []))
+        with tempfile.TemporaryDirectory() as empty:
+            code, _, gates, err, _ = self._check([], path=empty)
+        self.assertEqual((code, gates), (1, []))
+        self.assertIn("see https://rustup.rs", err)
+
+    def test_help_prints_check_sh_header(self) -> None:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(ci.check(["-h"], env={}), 0)
+        self.assertTrue(out.getvalue().startswith("The checks to run before a commit or a push."))
+        self.assertNotIn("set -euo", out.getvalue())
+
+    def test_the_cxx_cache_shims_g_plus_plus_and_prunes_week_old_binaries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp, "bin")
+            bin_dir.mkdir()
+            (bin_dir / "g++").write_text("#!/bin/sh\n")
+            (bin_dir / "g++").chmod(0o755)
+            cache = Path(tmp, "cache")
+            (cache / "ab").mkdir(parents=True)
+            old, new = cache / "ab" / "old", cache / "ab" / "new"
+            old.write_text("o")
+            new.write_text("n")
+            os.utime(old, (0, 0))
+            os.utime(new, (ci.CXX_CACHE_MAX_AGE_S, ci.CXX_CACHE_MAX_AGE_S))
+            target = Path(tmp, "t")
+            (target / "judge-probes").mkdir(parents=True)
+            env = {"PATH": str(bin_dir), "CPL_CXX_CACHE_DIR": str(cache)}
+            seen = []
+            run = lambda cmd, **kw: seen.append((cmd, kw["env"]["PATH"])) or subprocess.CompletedProcess(cmd, 0, "k1\n")
+            ci.cxx_cache(target, env, run, clock=lambda: ci.CXX_CACHE_MAX_AGE_S + 1.0)
+            shim = target / "cxx-shim"
+            self.assertEqual((shim / "g++").resolve(), (ci.ROOT / "scripts/cxx-cache.py").resolve())
+            self.assertEqual(env["PATH"].split(os.pathsep)[0], str(shim))
+            self.assertEqual(seen, [(["g++", "--cpl-system-key"], env["PATH"])])
+            self.assertEqual((env["CPL_CXX_SYSTEM_KEY"], env["CPL_CXX_SHIM_DIR"]), ("k1", str(shim)))
+            self.assertFalse((target / "judge-probes").exists())
+            self.assertEqual((old.exists(), new.exists()), (False, True))
+            ci.cxx_cache(target, env, lambda cmd, **kw: subprocess.CompletedProcess(cmd, 1, "x"))
+            self.assertEqual(env["CPL_CXX_SYSTEM_KEY"], "")
+            off = {"PATH": str(bin_dir), "CHECK_NO_CXX_CACHE": "1"}
+            ci.cxx_cache(target, off, run)
+            self.assertNotIn("CPL_CXX_SHIM_DIR", off)
 
 
 if __name__ == "__main__":

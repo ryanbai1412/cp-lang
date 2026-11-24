@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The CI driver's decisions, tested (scripts/test_ci.py): which tests each tier
 leaves out, what a CPL_GATE_PART runs, and which checking scripts and spec gates
-each tier runs, and every tier after the guards. scripts/check.sh sets up the
-environment and the stage cache, runs `ci.py guard`, then hands the rest to `ci.py gate`.
+each tier runs, and every tier after the guards. scripts/check.sh is `ci.py check`:
+it sets up the C++ and stage caches, runs the guards, then the tier.
 
 CI splits --fast across parallel jobs (.github/workflows/ci.yml):
   checks            everything but the workspace tests, the conformance ratchet and fmt
@@ -994,6 +994,78 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         print(f"\ncheck: all {mode} checks passed in {elapsed}s")
     return 0
 
+CHECK_FLAGS = {"--fast": "fast", "--commit": "commit", "--land": "land", "--full": "full", "--timing": "timing"}
+CXX_CACHE_MAX_AGE_S = 8 * 86400
+
+
+def cxx_cache(target: Path, env, run=subprocess.run, clock=time.time) -> None:
+    """Point g++ at scripts/cxx-cache.py, which reuses a binary built from the same
+    source, flags and g++, and drop cached binaries unused for over a week."""
+    if env.get("CHECK_NO_CXX_CACHE", "0") == "1" or not shutil.which("g++", path=env.get("PATH")):
+        return
+    shim = target / "cxx-shim"
+    home_cache = Path(env.get("XDG_CACHE_HOME") or Path(env.get("HOME") or Path.home()) / ".cache")
+    cache = Path(env.get("CPL_CXX_CACHE_DIR") or home_cache / "cpl" / "cxx")
+    shim.mkdir(parents=True, exist_ok=True)
+    cache.mkdir(parents=True, exist_ok=True)
+    link = shim / "g++"
+    if link.is_symlink() or link.exists():
+        link.unlink()
+    link.symlink_to(ROOT / "scripts" / "cxx-cache.py")
+    env.update(CPL_CXX_SHIM_DIR=str(shim), CPL_CXX_CACHE_DIR=str(cache),
+               PATH=f"{shim}{os.pathsep}{env.get('PATH', '')}")
+    key = run(["g++", "--cpl-system-key"], env=dict(env), capture_output=True, text=True)
+    env["CPL_CXX_SYSTEM_KEY"] = key.stdout.rstrip("\n") if key.returncode == 0 else ""
+    probes = target / "judge-probes"
+    env["CPL_JUDGE_PROBE_DIR"] = str(probes)
+    shutil.rmtree(probes, ignore_errors=True)
+    now = clock()
+    for f in cache.rglob("*"):
+        if f.is_file() and not f.is_symlink() and now - f.stat().st_mtime >= CXX_CACHE_MAX_AGE_S:
+            f.unlink()
+
+
+def check(argv: list[str], env=None, run=subprocess.run, clock=time.time, guard_fn=None, gate_fn=None) -> int:
+    """scripts/check.sh: parse its flags, set up the C++ and stage caches, run the
+    guards, then the tier (`run_gate`)."""
+    env = os.environ if env is None else env
+    since = clock()
+    target = target_dir()
+    (target / "gate-fast-time.json").unlink(missing_ok=True)
+    mode, use_cache = "fast", env.get("CHECK_NO_CACHE", "0") != "1"
+    for arg in argv:
+        if arg in CHECK_FLAGS:
+            mode = CHECK_FLAGS[arg]
+        elif arg == "--no-cache":
+            use_cache = False
+        elif arg in ("-h", "--help"):
+            head = (ROOT / "scripts" / "check.sh").read_text(encoding="utf-8").splitlines()[1:25]
+            print("\n".join(re.sub(r"^# ?", "", line) for line in head if line.startswith("#")))
+            return 0
+        else:
+            print(f"check: unknown argument `{arg}`", file=sys.stderr)
+            return 2
+    use_cache = use_cache and mode != "full"
+    cache_dir = target / "check-cache"
+    if mode in ("fast", "land"):
+        cxx_cache(target, env, run, clock)
+    manifest = cache_dir / f"manifest.{os.getpid()}"
+    try:
+        if use_cache:
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            use_cache = run([sys.executable, "scripts/check_cache.py", "manifest", str(manifest)],
+                            cwd=ROOT, env=dict(env)).returncode == 0
+        if (guard_fn or guard)(mode):
+            return 1
+        if not shutil.which("cargo", path=env.get("PATH")):
+            print("check: `cargo` is not installed; see https://rustup.rs", file=sys.stderr)
+            return 1
+        return (gate_fn or run_gate)(mode, env.get("CPL_GATE_PART", ""), str(target / "debug" / "cpl"),
+                                     str(cache_dir), str(manifest) if use_cache else "", since)
+    finally:
+        manifest.unlink(missing_ok=True)
+        Path(f"{manifest}.reads").unlink(missing_ok=True)
+
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1009,8 +1081,12 @@ def main(argv: list[str] | None = None) -> int:
     gt.add_argument("--cache-dir", default="")
     gt.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
     gt.add_argument("--since", type=float, default=None, help="when the gate started (epoch seconds)")
+    sub.add_parser("check", help="scripts/check.sh [--fast|--commit|--land|--full|--timing] [--no-cache]")
     gd = sub.add_parser("guard", help="the guards before the build: conflict markers, traces, secrets, lockfiles")
     gd.add_argument("--mode", choices=MODES, required=True)
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["check"]:
+        return check(argv[1:])
     args = ap.parse_args(argv)
     if args.cmd == "guard":
         return guard(args.mode)
