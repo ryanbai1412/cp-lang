@@ -8941,3 +8941,5 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** Give `BitTrie<W>` its own `nodes` list again, drop `BitTrieArena` and the arena parameters, and make `absorb` walk the smaller trie's nodes into the larger.
 
 ## 555. (reserved, content)
+
+## 556. (reserved, unknown)
