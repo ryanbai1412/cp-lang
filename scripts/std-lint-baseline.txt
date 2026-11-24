@@ -8,15 +8,6 @@ std/dp.cp L0532 1
 std/flow.cp L0504 6
 std/flow.cp L0506 1
 std/flow.cp L0536 2
-std/geometry.cp L0301 13
-std/geometry.cp L0501 3
-std/geometry.cp L0503 3
-std/geometry.cp L0506 2
-std/geometry.cp L0508 2
-std/geometry.cp L0536 3
-std/geometry.cp L0543 3
-std/geometry.cp L0547 1
-std/geometry.cp L0579 1
 std/graph.cp L0501 1
 std/graph.cp L0503 3
 std/graph.cp L0530 12

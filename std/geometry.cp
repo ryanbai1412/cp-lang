@@ -12,6 +12,7 @@
 
 use std.bag.{SortedSet}
 use std.seq.{collect}
+use std.hashmap.{Counter, push}
 use std.range.{first_true, last_true}
 
 fn igcd(a0: Int, b0: Int) -> Int:
@@ -1365,7 +1366,7 @@ pub fn polygon_centroid(poly: List<Vec>) -> Vec:
         a2 += c
         cx += (p.x + q.x) * c
         cy += (p.y + q.y) * c
-    assert a2 != 0.0, "polygon_centroid requires a polygon with non-zero area"
+    assert abs(a2) > 0.0, "polygon_centroid requires a polygon with non-zero area"
     Vec(cx / (3.0 * a2), cy / (3.0 * a2))
 
 /// The kernel of the counter-clockwise simple polygon `poly`: the points that see the whole
@@ -1397,6 +1398,16 @@ fn edge_planes(poly: List<Vec>) -> List<HalfPlane>:
 /// traps: when `poly` is not counter-clockwise
 /// example: `polygon_triangulate([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]).len == 2`
 /// example: `polygon_triangulate([Pt(0, 0), Pt(1, 0), Pt(0, 1)]).len == 1`
+fn in_corner(a: Pt, b: Pt, c: Pt, q: Pt) -> Bool =
+    cross128_3(a, b, q) >= 0 and cross128_3(b, c, q) >= 0 and cross128_3(c, a, q) >= 0
+
+fn is_ear(poly: List<Pt>, rem: List<Int>, i: Int) -> Bool:
+    let m = rem.len
+    let (ai, bi, ci) = (rem[(i + m - 1) % m], rem[i], rem[(i + 1) % m])
+    let (a, b, c) = (poly[ai], poly[bi], poly[ci])
+    if cross128_3(a, b, c) <= 0: return false
+    not rem.any(q => q != ai and q != bi and q != ci and in_corner(a, b, c, poly[q]))
+
 pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
     with lint(unproven_list_index: allow)
     let n = poly.len
@@ -1407,32 +1418,12 @@ pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
     var tris: List<(Int, Int, Int)> = []
     while rem.len > 3:
         let m = rem.len
-        var clipped = -1
-        for i in 0..m:
-            let ai = rem[(i + m - 1) % m]
-            let bi = rem[i]
-            let ci = rem[(i + 1) % m]
-            let (a, b, c) = (poly[ai], poly[bi], poly[ci])
-            if cross128_3(a, b, c) <= 0: continue
-            var ok = true
-            for j in 0..m:
-                let qi = rem[j]
-                if qi == ai or qi == bi or qi == ci: continue
-                let q = poly[qi]
-                if cross128_3(a, b, q) >= 0 and cross128_3(b, c, q) >= 0 and cross128_3(
-                    c,
-                    a,
-                    q,
-                ) >= 0:
-                    ok = false
-                    break
-            if ok:
-                tris.push((ai, bi, ci))
-                clipped = i
-                break
-        assert clipped != -1, "polygon_triangulate: polygon is not simple"
-        let next_rem: List<Int> = [rem[i] for i in 0..m if i != clipped]
-        rem = next_rem
+        let ear = (0..m).find(i => is_ear(poly, rem, i))
+        if let i = ear:
+            tris.push((rem[(i + m - 1) % m], rem[i], rem[(i + 1) % m]))
+            rem = [rem[k] for k in 0..m if k != i]
+        else:
+            assert false, "polygon_triangulate: polygon is not simple"
     tris.push((rem[0], rem[1], rem[2]))
     tris
 
@@ -1544,7 +1535,7 @@ pub struct Vec(pub x: F64, pub y: F64):
     /// example: `Vec(3.0, 4.0).unit == Vec(0.6, 0.8)`
     @get pub fn unit(self) -> Vec:
         let l = self.len
-        assert l != 0.0, "`unit` needs a nonzero vector"
+        assert l > 0.0, "`unit` needs a nonzero vector"
         Vec(x / l, y / l)
 
     /// `self` rotated by the direction `by`, as the complex product `self * by`:
@@ -1719,7 +1710,14 @@ pub fn segment_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> Lis
     if lo.dist(hi) <= eps: return [lo]
     [lo, hi]
 
-fn vless(p: Vec, q: Vec) -> Bool = p.x < q.x or (p.x == q.x and p.y < q.y)
+fn swallows(big: Circle, small: Circle, earlier: Bool, eps: F64) -> Bool:
+    let d = (small.c - big.c).len
+    let same = d <= eps and abs(small.r - big.r) <= eps
+    d + small.r <= big.r + eps and (not same or earlier)
+
+fn lcg(r: Int) -> Int = (r * 1103515245 + 12345) % 2147483647
+
+fn vless(p: Vec, q: Vec) -> Bool = (p.x, p.y) < (q.x, q.y)
 fn vmin(p: Vec, q: Vec) -> Vec = if vless(q, p): q else: p
 fn vmax(p: Vec, q: Vec) -> Vec = if vless(p, q): q else: p
 
@@ -1735,7 +1733,7 @@ fn vmax(p: Vec, q: Vec) -> Vec = if vless(p, q): q else: p
 /// example: `ray_hits_segment(Vec(0.0, 0.0), Vec(-1.0, 0.0), Vec(2.0, -1.0), Vec(2.0, 1.0)) == None`
 /// example: `ray_hits_segment(Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(3.0, 0.0), Vec(5.0, 0.0)) == Some(Vec(3.0, 0.0))`
 pub fn ray_hits_segment(o: Vec, dir: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> ?Vec:
-    assert dir.x != 0.0 or dir.y != 0.0, "ray_hits_segment needs a non-zero direction"
+    assert dir.norm2 > 0.0, "ray_hits_segment needs a non-zero direction"
     let d2 = b - a
     let cr = dir.cross(d2)
     if abs(cr) > eps:
@@ -1954,7 +1952,7 @@ fn lens_part(r: F64, o: F64, d: F64) -> F64:
 pub fn invert(p: Vec, across: Circle) -> Vec:
     let d = p - across.c
     let n = d.norm2
-    assert n != 0.0, "`invert` needs `p` away from the centre"
+    assert n > 0.0, "`invert` needs `p` away from the centre"
     across.c + d * (across.r * across.r / n)
 
 /// The area of the union of the disks `circles`, by Green's theorem over the arcs on the union's
@@ -1974,15 +1972,9 @@ pub fn circles_union_area(circles: List<Circle>, eps: F64 = 1e-9) -> F64:
     var cs: List<Circle> = []
     for i in 0..raw_n:
         if circles[i].r <= eps: continue
-        var covered = false
-        for j in 0..raw_n:
-            if i == j or circles[j].r <= eps: continue
-            let d = (circles[i].c - circles[j].c).len
-            if d + circles[i].r <= circles[j].r + eps:
-                let same = d <= eps and abs(circles[i].r - circles[j].r) <= eps
-                if not same or j < i:
-                    covered = true
-                    break
+        let covered = (0..raw_n).any(j =>
+            i != j and circles[j].r > eps and swallows(circles[j], circles[i], j < i, eps)
+        )
         if not covered: cs.push(circles[i])
     let n = cs.len
     var total = 0.0
@@ -2049,7 +2041,7 @@ pub struct HalfPlane(p: Vec, dir: Vec):
     /// example: `HalfPlane.from_line(1.0, 0.0, 0.0).side(Vec(3.0, 7.0)) == 3.0`
     pub fn from_line(a: F64, b: F64, c: F64) -> HalfPlane:
         let n = a * a + b * b
-        assert n != 0.0, "`HalfPlane.from_line` needs `a` or `b` nonzero"
+        assert n > 0.0, "`HalfPlane.from_line` needs `a` or `b` nonzero"
         HalfPlane(Vec(a, b) * (-c / n), Vec(b, -a))
 
     /// The signed value `dir.cross(q - p)`: positive left of the line (inside), 0 on it, negative
@@ -2101,7 +2093,7 @@ pub fn half_plane_intersect(
     if all.is_empty: return []
     var hs: List<(p: Vec, dir: Vec, ang: F64)> = []
     for h in all:
-        assert h.dir.x != 0.0 or h.dir.y != 0.0, "`half_plane_intersect` needs non-zero directions"
+        assert h.dir.norm2 > 0.0, "`half_plane_intersect` needs non-zero directions"
         hs.push((p: h.p, dir: h.dir, ang: atan2(h.dir.y, h.dir.x)))
     hs.sort(by: h => h.ang)
     let tau = 2.0 * pi()
@@ -2222,7 +2214,7 @@ pub fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> Circle:
     var ps = copy(pts)
     var rng = 123456789
     for i in (1..n).rev:
-        rng = (rng * 1103515245 + 12345) % 2147483647
+        rng = lcg(rng)
         let j = rng % (i + 1)
         let tmp = ps[i]
         ps[i] = ps[j]
@@ -2411,12 +2403,12 @@ fn sh_first_above_y(
     right_ch: List<Int>,
     lo: List<Pt>,
     hi: List<Pt>,
-) -> Int:
+) -> ?Int:
     var u = u0
-    var best = -1
+    var best: ?Int = None
     while u != -1:
         if sh_seg_above_y(lo[u], hi[u], cur_x, y, strict):
-            best = u
+            best = Some(u)
             u = left_ch[u]
         else:
             u = right_ch[u]
@@ -2457,7 +2449,7 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
             (s.b, s.a)
         lo.push(p)
         hi.push(q)
-        rng = (rng * 1103515245 + 12345) % 2147483647
+        rng = lcg(rng)
         left_ch.push(-1)
         right_ch.push(-1)
         prio.push(rng)
@@ -2474,21 +2466,21 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
     var root = -1
     var last_vert_x = 0
     var last_vert_hi = 0
-    var last_vert_id = -1
+    var last_vert_id: ?Int = None
 
     for ev in events:
         let cur_x = ev.x
         let id = ev.id
         if ev.kind == 1:
             if not strict:
-                if last_vert_id != -1 and last_vert_x == cur_x and last_vert_hi >= lo[id].y:
-                    return Some((min(last_vert_id, id), max(last_vert_id, id)))
-                if last_vert_id == -1 or last_vert_x != cur_x or hi[id].y > last_vert_hi:
+                if let v = last_vert_id and last_vert_x == cur_x and last_vert_hi >= lo[id].y:
+                    return Some((min(v, id), max(v, id)))
+                if last_vert_id == None or last_vert_x != cur_x or hi[id].y > last_vert_hi:
                     last_vert_x = cur_x
                     last_vert_hi = hi[id].y
-                    last_vert_id = id
-            let cand = sh_first_above_y(root, cur_x, lo[id].y, strict, left_ch, right_ch, lo, hi)
-            if cand != -1 and segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict:):
+                    last_vert_id = Some(id)
+            let above = sh_first_above_y(root, cur_x, lo[id].y, strict, left_ch, right_ch, lo, hi)
+            if let cand = above and segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict:):
                 return Some((min(id, cand), max(id, cand)))
         elif (not strict and ev.kind == 0) or (strict and ev.kind == 2):
             let lo_id = lo[id]
@@ -2839,8 +2831,7 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
     for (u, v) in edges:
         assert u != v, "`planar_faces` needs no edge from a vertex to itself"
         norm.push((min(u, v), max(u, v)))
-        adj[u].push(v)
-        adj[v].push(u)
+        for (x, y) in [(u, v), (v, u)]: adj[x].push(y)
     norm.sort()
     for i in 1..norm.len: assert norm[i] != norm[i - 1], "`planar_faces` needs no repeated edge"
     var off = List.filled(n + 1, 0)
@@ -2956,7 +2947,7 @@ fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> Li
             out.push(None)
             continue
         var f = below[i].0
-        while f != None and outer[f!]: f = parent[f!]
+        while let g = f and outer[g]: f = parent[g]
         out.push(f)
     out
 
@@ -2999,7 +2990,7 @@ fn sweep_below(
             si += 1
         let lo = active.last_true(s => turn(s.a, s.b, q) > 0)
         let hi = active.first_true(s => turn(s.a, s.b, q) <= 0)
-        let on = hi != None and turn(hi!.a, hi!.b, q) == 0
+        let on = if let h = hi: turn(h.a, h.b, q) == 0 else: false
         out[qi] = (if lo == None: None else: Some(walk.side(segs[lo!.id].0, segs[lo!.id].1)), on)
     out
 
@@ -3211,14 +3202,13 @@ fn voronoi_idx(ps: List<Pt>, bound: F64) -> List<List<Vec>>:
     let tris = delaunay_idx(ps)
     for (a, b, c) in tris:
         for (u, v) in [(a, b), (b, c), (c, a)]:
-            near[u].push(v)
-            near[v].push(u)
+            for (x, y) in [(u, v), (v, u)]: near[x].push(y)
     if tris.is_empty and n > 1:
         var order = (0..n).collect()
         order.sort(by: i => (ps[i].x, ps[i].y))
         for i in 1..n:
-            near[order[i - 1]].push(order[i])
-            near[order[i]].push(order[i - 1])
+            let (u, v) = (order[i - 1], order[i])
+            for (x, y) in [(u, v), (v, u)]: near[x].push(y)
     var cells: List<List<Vec>> = []
     for i in 0..n:
         let p = Vec(F64(ps[i].x), F64(ps[i].y))
@@ -3485,9 +3475,7 @@ fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int,
         )
         var hull = hull2_strict(uniq, proj)
         if not pos: hull = hull.reversed()
-        var s = 0
-        for i in 1..hull.len:
-            if hull[i] < hull[s]: s = i
+        let s = (0..hull.len).min(by: i => hull[i])!
         let ring = [hull[(s + i) % hull.len] for i in 0..hull.len]
         for i in 1..ring.len - 1: out.push((ring[0], ring[i], ring[i + 1]))
     out.sort()
@@ -3567,7 +3555,7 @@ pub struct Vec3(pub x: F64, pub y: F64, pub z: F64):
     /// example: `Vec3(0.0, 0.0, 2.0).unit == Vec3(0.0, 0.0, 1.0)`
     @get pub fn unit(self) -> Vec3:
         let l = self.len
-        assert l != 0.0, "`unit` needs a nonzero vector"
+        assert l > 0.0, "`unit` needs a nonzero vector"
         Vec3(x / l, y / l, z / l)
 
     /// The dot product `x * o.x + y * o.y + z * o.z`.
@@ -3907,10 +3895,7 @@ fn area_locate_diameter_and_extreme():
     for _ in 0..60:
         let pts = random_points(20, 10)
         let h = convex_hull(pts)
-        var want_d2 = 0
-        for i in 0..pts.len:
-            for j in i + 1..pts.len:
-                want_d2 max= dist2(pts[i], pts[j])
+        let want_d2 = pts.pairs().map(pq => dist2(pq.0, pq.1)).max() ?? 0
         assert diameter2(h) == want_d2
         if h.len > 0:
             for _ in 0..10:
@@ -3924,10 +3909,7 @@ fn closest_pair_matches_brute():
     for _ in 0..50:
         let n = rand(2, 30)
         let pts = random_points(n, 20)
-        var want = Int.MAX
-        for i in 0..n:
-            for j in i + 1..n:
-                want min= dist2(pts[i], pts[j])
+        let want = pts.pairs().map(pq => dist2(pq.0, pq.1)).min()!
         assert closest_pair2(pts) == want
     // domain-indexed closest pair
     domain P = 1..=25
@@ -4001,10 +3983,10 @@ fn float_vec_circles_and_half_planes():
         for _ in 0..8:
             let px = F64(rand(-4, 4))
             let py = F64(rand(-4, 4))
-            var dx = F64(rand(-5, 5))
-            let dy = F64(rand(-5, 5))
-            if dx == 0.0 and dy == 0.0: dx = 1.0
-            hps.push(HalfPlane(Vec(px, py), Vec(dx, dy)))
+            var dx = rand(-5, 5)
+            let dy = rand(-5, 5)
+            if dx == 0 and dy == 0: dx = 1
+            hps.push(HalfPlane(Vec(px, py), Vec(F64(dx), F64(dy))))
         let res = half_plane_intersect(hps)
         if res.len >= 3:
             for v in res:
@@ -4062,7 +4044,7 @@ fn polygon_area_and_cut():
 
 @test
 fn min_enclosing_circle_and_circle_polygon_area():
-    assert min_enclosing_circle([]).r == 0.0
+    assert close(min_enclosing_circle([]).r, 0.0)
     assert close(min_enclosing_circle([Vec(3.0, 4.0)]).r, 0.0)
     let sq = [Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]
     let mc = min_enclosing_circle(sq)
@@ -4132,17 +4114,9 @@ fn shamos_hoey_matches_brute():
             let b = Pt(rand(-6, 6), rand(-6, 6))
             segs.push((a:, b:))
         for strict_mode in [false, true]:
-            var brute = false
-            for i in 0..m:
-                for j in i + 1..m:
-                    if segments_meet(
-                        segs[i].a,
-                        segs[i].b,
-                        segs[j].a,
-                        segs[j].b,
-                        strict: strict_mode,
-                    ):
-                        brute = true
+            let brute = segs.pairs().any(st =>
+                segments_meet(st.0.a, st.0.b, st.1.a, st.1.b, strict: strict_mode)
+            )
             let got = any_segments_meet(segs, strict: strict_mode)
             assert (got != None) == brute
             if let (i, j) = got:
@@ -4182,16 +4156,14 @@ fn pt3_and_convex_hull_3d():
         let pts = [Pt3(rand(-50, 50), rand(-50, 50), rand(-50, 50)) for _ in 0..18]
         let faces = convex_hull_3d(pts)
         assert faces.len >= 4
-        var edges: Map<(Int, Int), Int> = []
+        var edges: Counter<(Int, Int)> = Counter()
         for (u, v, w) in faces:
             assert not col3(pts[u], pts[v], pts[w])
             for p in pts:
                 assert face_side128(pts[u], pts[v], pts[w], p) <= I128(0)
-            edges[(u, v)] = (edges.get((u, v)) ?? 0) + 1
-            edges[(v, w)] = (edges.get((v, w)) ?? 0) + 1
-            edges[(w, u)] = (edges.get((w, u)) ?? 0) + 1
-        for ((u, v), cnt) in edges:
-            assert cnt == 1 and (edges.get((v, u)) ?? 0) == 1
+            for e in [(u, v), (v, w), (w, u)]: edges.push(e)
+        for ((u, v), cnt) in edges.items:
+            assert cnt == 1 and edges[(v, u)] == 1
 
 @test
 fn test_float_eps_guards():
@@ -4345,14 +4317,7 @@ fn test_circles_union_area_against_analytic_and_grid():
         let x = lo + (F64(ix) + 0.5) * step
         for iy in 0..steps:
             let y = lo + (F64(iy) + 0.5) * step
-            var inside = false
-            for ci in cs:
-                let dx = x - ci.c.x
-                let dy = y - ci.c.y
-                if dx * dx + dy * dy <= ci.r * ci.r:
-                    inside = true
-                    break
-            if inside: hits += 1
+            if cs.any(ci => (Vec(x, y) - ci.c).norm2 <= ci.r * ci.r): hits += 1
     let grid_area = F64(hits) * step * step
     assert close(exact, grid_area, eps: 0.05)
 
