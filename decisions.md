@@ -9285,7 +9285,23 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Status.** Accepted; std's `sort`/`sorted` move to it with the arm's
   deletion.
 
-## 625. (reserved, compiler)
+## 625. Own Ord without own Eq gives `==` (compiler, 2026-11-24)
+
+- **Decision.** A struct that writes its own `Ord` and no own `Eq` gets
+  `==` and `!=` from that `Ord`: `a == b` when neither is before the
+  other (R08.1.6). Both engines read the same fact (`StructDef.ord` with
+  no `eq_fn`). Such a struct derives no `Hash` (E0606), so a table of it
+  stays ordered.
+- **Why.** One equality per type: `==`, `Set`/`Map` keys and
+  sort/dedup/runs agree. Before, tables merged keys by `Ord` while `==`
+  compared fields, so an unreduced `Frac(2, 4)` was a duplicate key of
+  `Frac(1, 2)` yet not `==` to it.
+- **Lowering and cost.** The C++ emits `operator==` as `!(a < b) &&
+  !(b < a)`, two calls of the type's own order; the interpreter calls the
+  `Ord` hook once.
+- **Reverse.** Drop the `ord` arm in the interpreter's `eq_ty_val` and
+  the emitted `operator==`; `==` is field by field again.
+- **Status.** Accepted (Core).
 
 ## 626. (reserved, stdlib)
 

@@ -90,7 +90,9 @@ impl Ord for Frac:
   struct holding it read, on every engine. A struct with its own `Eq`
   derives no `Ord` or `Hash`, which would compare fields its `Eq`
   ignores: it writes them too or goes without. A struct with its own
-  `Ord` but no own `Hash` is never hashed; its tables keep its order. Tuples and records (not
+  `Ord` and no own `Eq` gets `==` from that order (`a == b` when neither
+  is before the other, decision 625) and derives no `Hash`; its tables
+  keep its order. Tuples and records (not
   structs, whose fields may be private) also get `+`, `-` and `Zero`
   fieldwise when every field has them, so a rerooting DP over
   `(cnt: Int, sum: Int)` passes `+` as its operation. (R08.1.6)

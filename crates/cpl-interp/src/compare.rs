@@ -11,6 +11,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         .call_direct(eq_fn, vec![l.clone(), r.clone()], span)?
                         .bool());
                 }
+                // Its own `Ord` and no own `Eq`: equal is neither before the other (R08.1.6).
+                if let Some(hook) = self.program.structs[*id].ord {
+                    return Ok(self.user_order(hook, l, r, span)? == std::cmp::Ordering::Equal);
+                }
                 let fields = self.program.structs[*id].fields.clone();
                 let cached = self.program.structs[*id].cached_fields.clone();
                 if let (Value::Tuple(ls), Value::Tuple(rs)) = (l, r) {
