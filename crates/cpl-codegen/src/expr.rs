@@ -739,6 +739,9 @@ impl<'p> Emitter<'p> {
                     }
                 })
             }
+            ExprKind::Field(base, index) if self.spread_part(base, *index).is_some() => {
+                Code::primary(self.spread_part(base, *index).unwrap_or_default())
+            }
             ExprKind::Field(base, index)
                 if matches!(base.ty, Ty::Struct(id) if self.devirt.dropped_field(id, *index)
                     && e.ty == Ty::Unit) =>

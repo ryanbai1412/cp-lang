@@ -226,6 +226,9 @@ pub(crate) struct Emitter<'p> {
     pub branch_dead: Vec<(*const Block, BTreeSet<usize>)>,
     /// Each `for` body and its variable ([`crate::lend::loop_vars`]).
     pub loop_vars: BTreeMap<*const Block, usize>,
+    /// A `cpl_each_f` callback's tuple variable taken as its parts: each
+    /// part's parameter ([`crate::stmt::spread_parts`]).
+    pub spread: BTreeMap<(cpl_ir::ScopeId, usize), Vec<String>>,
     /// Items of the struct or tuple a `let` builds that read a place the
     /// next statements set before reading it (`let out = T(xs); xs = []`):
     /// each is moved in, not copied.
@@ -423,6 +426,7 @@ impl<'p> Emitter<'p> {
             moves_last: false,
             branch_dead: Vec::new(),
             loop_vars: crate::lend::loop_vars(program),
+            spread: BTreeMap::new(),
             taken_items: BTreeSet::new(),
             pushed_moves: Vec::new(),
             called_moves: Vec::new(),

@@ -1093,3 +1093,23 @@ fn a_value_if_of_closures_copying_lists_builds_only_the_picked_one() {
     assert!(out.contains("cpl::pick("), "{out}");
     assert!(out.contains("[&] { return "), "{out}");
 }
+
+#[test]
+fn a_fed_tuple_binds_part_by_part_and_is_never_built() {
+    // `(x, y)` over a yields fn or a comprehension's tuple binds each part
+    // straight from its expression: no `std::tuple`, no `std::get`.
+    let out = cpp(concat!(
+        "fn pairs(n: Int) -> yields (Int, Int):\n",
+        "    for i in 0..n:\n",
+        "        yield (i, i * i)\n",
+        "let n: 1..=100 = read()\n",
+        "var t = 0\n",
+        "for (i, sq) in pairs(n):\n",
+        "    t += i * sq\n",
+        "for (x, y) in (0..n).splits:\n",
+        "    t += x.len * y.len\n",
+        "print(t, min(x.len + 2 * y.len for (x, y) in (0..n + 1).splits)!)\n",
+    ));
+    assert!(!out.contains("std::tuple<"), "{out}");
+    assert!(!out.contains("std::get<"), "{out}");
+}

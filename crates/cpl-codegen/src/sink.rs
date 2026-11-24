@@ -257,8 +257,17 @@ impl Emitter<'_> {
                     .and_then(|rest| rest.strip_suffix(')'))?;
                 let sep = if call.is_empty() { "" } else { ", " };
                 let x = self.temp();
+                // A tuple comes part by part (`crate::stmt::spread_parts`).
+                let (each, elem) = match &self.program.fns[callee].ret {
+                    Ty::List(e)
+                        if self.sites.is_none() && crate::stmt::spread_parts(e).is_some() =>
+                    {
+                        ("auto&&...", format!("{}{{{x}...}}", self.ty(e)))
+                    }
+                    _ => ("auto&&", x.clone()),
+                };
                 texts.push(format!(
-                    "[&](auto&& {put}) {{ cpl_each_{name}({call}{sep}[&](auto&& {x}) -> int {{ {put}({x}); return 0; }}); }}"
+                    "[&](auto&& {put}) {{ cpl_each_{name}({call}{sep}[&]({each} {x}) -> int {{ {put}({elem}); return 0; }}); }}"
                 ));
             } else if s == slot {
                 let Some(p) = &p else { return None };
@@ -316,7 +325,7 @@ impl Emitter<'_> {
         let sep = if inner.is_empty() { "" } else { ", " };
         let n = self.temp();
         Code::primary(format!(
-            "[&]() -> ll {{ ll {n} = 0; cpl_each_{name}({inner}{sep}[&](auto&&) -> int {{ ++{n}; return 0; }}); return {n}; }}()"
+            "[&]() -> ll {{ ll {n} = 0; cpl_each_{name}({inner}{sep}[&](auto&&...) -> int {{ ++{n}; return 0; }}); return {n}; }}()"
         ))
     }
 

@@ -203,6 +203,50 @@ fn mentions(program: &Program, stmts: &[Stmt], slot: usize) -> Mentions {
     m
 }
 
+/// Which of the `n` fields of the local tuple `slot` `block` reads, when it
+/// reads `slot` only through its fields and no closure captures it.
+pub(crate) fn fields_only(
+    program: &Program,
+    block: &Block,
+    slot: usize,
+    n: usize,
+) -> Option<Vec<bool>> {
+    let (mut whole, mut read, mut captured) = (0isize, vec![false; n], false);
+    walk::deep_exprs(block, &mut |e| match &e.kind {
+        ExprKind::Local(s) if *s == slot => whole += 1,
+        ExprKind::Field(base, i) if matches!(base.kind, ExprKind::Local(s) if s == slot) => {
+            whole -= 1;
+            if let Some(r) = read.get_mut(*i) {
+                *r = true;
+            }
+        }
+        ExprKind::Closure(c) => {
+            captured |= program.closures[*c]
+                .captures
+                .iter()
+                .any(|c| !c.is_global && c.outer == slot)
+        }
+        _ => {}
+    });
+    (whole == 0 && !captured).then_some(read)
+}
+
+/// Whether any of `exprs` reads a local `hit` picks.
+pub(crate) fn reads_local(exprs: &[Expr], hit: &dyn Fn(usize) -> bool) -> bool {
+    let mut found = false;
+    for e in exprs {
+        walk::deep_expr(e, &mut |e| {
+            found |= matches!(e.kind, ExprKind::Local(s) if hit(s))
+        });
+    }
+    found
+}
+
+/// Whether `stmts` mention the local `slot`, directly or through a closure.
+pub(crate) fn mentions_in(program: &Program, stmts: &[Stmt], slot: usize) -> bool {
+    mentions(program, stmts, slot).any
+}
+
 /// Whether `e` mentions the local `slot`, directly or through a closure.
 pub(crate) fn mentions_any(program: &Program, e: &Expr, slot: usize) -> bool {
     mentions(program, &[Stmt::Give(e.clone())], slot).any

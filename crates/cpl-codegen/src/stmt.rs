@@ -706,19 +706,44 @@ impl<'p> Emitter<'p> {
                 && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
             {
                 let item = self.flatten(&items[0], out);
-                let text = match self.lent_parts(item) {
-                    Some(parts) => format!("std::forward_as_tuple({})", parts.join(", ")),
-                    None => self.yielded(item, out),
-                };
+                // A tuple of scalars goes to the callback part by part.
+                let spread = self.sites.is_none()
+                    && self.pushing.is_some_and(|v| {
+                        matches!(&self.locals()[v].ty, Ty::List(e) if spread_parts(e).is_some())
+                    });
                 match how {
                     Mutation::Extend => {
+                        let text = self.yielded(item, out);
                         let x = self.temp();
-                        self.line(out, &format!("for (auto&& {x} : {text}) if (int cpl_r = cpl_f({x})) return cpl_r;"));
+                        let call = if spread {
+                            format!("std::apply(cpl_f, {x})")
+                        } else {
+                            format!("cpl_f({x})")
+                        };
+                        self.line(
+                            out,
+                            &format!(
+                                "for (auto&& {x} : {text}) if (int cpl_r = {call}) return cpl_r;"
+                            ),
+                        );
                     }
-                    _ => self.line(
-                        out,
-                        &format!("if (int cpl_r = cpl_f({text})) return cpl_r;"),
-                    ),
+                    _ => {
+                        let call = match (&item.kind, &item.ty) {
+                            (ExprKind::Tuple(parts), Ty::Tuple(tys)) if spread => {
+                                format!("cpl_f({})", self.spread_args(parts, tys, out))
+                            }
+                            _ if spread => {
+                                format!("std::apply(cpl_f, {})", self.yielded(item, out))
+                            }
+                            _ => match self.lent_parts(item) {
+                                Some(parts) => {
+                                    format!("cpl_f(std::forward_as_tuple({}))", parts.join(", "))
+                                }
+                                None => format!("cpl_f({})", self.yielded(item, out)),
+                            },
+                        };
+                        self.line(out, &format!("if (int cpl_r = {call}) return cpl_r;"));
+                    }
                 }
             }
             Stmt::Return(Some(value)) if self.returns_into(value) => self.return_into(value, out),
@@ -969,7 +994,10 @@ impl<'p> Emitter<'p> {
                     _ => match &init.kind {
                         _ if pinned.is_some() => pinned.unwrap_or_default(),
                         ExprKind::Field(base, index) => match &base.kind {
-                            ExprKind::Local(of) if self.spent.contains(of) => {
+                            ExprKind::Local(of)
+                                if self.spent.contains(of)
+                                    && !self.spread.contains_key(&(self.current_scope(), *of)) =>
+                            {
                                 format!("std::get<{index}>(std::move({}))", self.names[*of])
                             }
                             _ => {
@@ -1600,6 +1628,46 @@ pub(crate) fn identity_order(program: &cpl_ir::Program, ty: &Ty, depth: usize) -
 impl Emitter<'_> {
     /// A pushed item; a tuple of closure literals keeps each closure's own
     /// type, each built first (side-effect free) so the rest still run in order.
+    /// The parts of a yielded tuple as the callback's arguments, made in
+    /// the tuple's order: each part but a plain local or literal is held
+    /// first, since C++ makes a call's arguments in no set order.
+    fn spread_args(&mut self, parts: &[Expr], tys: &[Ty], out: &mut String) -> String {
+        let plain = parts.iter().all(|p| {
+            matches!(
+                p.kind,
+                ExprKind::Local(_)
+                    | ExprKind::Int(_)
+                    | ExprKind::Bool(_)
+                    | ExprKind::Char(_)
+                    | ExprKind::Float(_)
+            )
+        });
+        let mut args = Vec::with_capacity(parts.len());
+        for (part, ty) in parts.iter().zip(tys) {
+            let text = self.expr(part).text;
+            if plain {
+                args.push(text);
+            } else {
+                let (cpp, held) = (self.ty(ty), self.temp());
+                self.line(out, &format!("{cpp} {held} = {text};"));
+                args.push(format!("std::move({held})"));
+            }
+        }
+        args.join(", ")
+    }
+
+    /// The text of `t.i` for a `cpl_each_f` callback's tuple `t` taken as
+    /// its parts.
+    pub(crate) fn spread_part(&self, base: &Expr, index: usize) -> Option<String> {
+        let ExprKind::Local(s) = base.kind else {
+            return None;
+        };
+        self.spread
+            .get(&(self.current_scope(), s))?
+            .get(index)
+            .cloned()
+    }
+
     fn yielded(&mut self, item: &Expr, out: &mut String) -> String {
         let (ExprKind::Tuple(parts), Ty::Tuple(tys)) = (&item.kind, &item.ty) else {
             return self.expr(item).text;
@@ -1634,5 +1702,23 @@ fn same_count(hi: &Expr, len: &Expr, again: Option<&crate::uses::effects::Touch>
         (ExprKind::Global(a), ExprKind::Global(b)) => a == b && kept((true, *a)),
         (ExprKind::Int(a), ExprKind::Int(b)) => a == b,
         _ => false,
+    }
+}
+
+/// The parts a `cpl_each_f` yield hands its callback one by one: a tuple's
+/// whose parts are all scalars or ranges. One with a closure keeps the
+/// closure's own type, and one with a heap part lends it
+/// ([`Emitter::lent_parts`]).
+pub(crate) fn spread_parts(ty: &Ty) -> Option<&[Ty]> {
+    match ty {
+        Ty::Tuple(ts)
+            if !ts.is_empty()
+                && ts
+                    .iter()
+                    .all(|t| t.is_scalar() || matches!(t, Ty::Range(_))) =>
+        {
+            Some(ts)
+        }
+        _ => None,
     }
 }

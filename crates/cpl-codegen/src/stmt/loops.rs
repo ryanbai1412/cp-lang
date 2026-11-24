@@ -66,6 +66,51 @@ impl<'p> Emitter<'p> {
         consumers.iter().any(|b| self.fed_body_stops(b))
     }
 
+    /// The callback parameters for a loop variable `slot` of a tuple the
+    /// yield hands over part by part ([`crate::stmt::spread_parts`]). A body
+    /// that only reads its parts reads the parameters; one that takes the
+    /// tuple whole builds it from them first.
+    fn spread_decl(
+        &mut self,
+        slot: usize,
+        decl: &str,
+        cpp: &str,
+        first: &[String],
+        moved: bool,
+        body: &Block,
+    ) -> Option<(String, Vec<String>)> {
+        // A profile counts each yield's tuple, so it keeps the tuple.
+        let ty = self.locals()[slot].ty.clone();
+        let parts = crate::stmt::spread_parts(&ty).filter(|_| self.sites.is_none())?;
+        let cpps: Vec<String> = parts.iter().map(|t| self.ty(t)).collect();
+        if cpp != format!("std::tuple<{}>", cpps.join(", ")) {
+            return None;
+        }
+        let names: Vec<String> = parts.iter().map(|_| self.temp()).collect();
+        let fields = crate::uses::fields_only(self.program, body, slot, parts.len());
+        let read = fields.clone().unwrap_or_else(|| vec![true; parts.len()]);
+        let written = Touch::of_block(body).writes.contains(&(false, slot));
+        let apart = !moved && first.is_empty() && !written && fields.is_some();
+        let params = names
+            .iter()
+            .zip(&cpps)
+            .zip(&read)
+            .map(|((n, c), r)| {
+                let unused = if apart && !r { "[[maybe_unused]] " } else { "" };
+                format!("{unused}{c} {n}")
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        if apart {
+            self.spread.insert((self.current_scope(), slot), names);
+            return Some((params, Vec::new()));
+        }
+        let moved_in: Vec<String> = names.iter().map(|n| format!("std::move({n})")).collect();
+        let mut lines = vec![format!("{decl} = {cpp}{{{}}};", moved_in.join(", "))];
+        lines.extend(first.iter().cloned());
+        Some((params, lines))
+    }
+
     /// `for x in f(..)` over a `yields` fn as `cpl_each_f(.., body)`: the
     /// body runs on each value as `f` makes it and no list is built.
     /// False when the loop has to walk the list instead.
@@ -700,7 +745,15 @@ impl<'p> Emitter<'p> {
                     } else {
                         format!("[[maybe_unused]] {decl}")
                     };
-                    if self.pushed_loop(id, &decl, pushed_first, seq, body, out) {
+                    let moved = hoisted || var != name;
+                    let (decl, pushed_first) =
+                        match self.spread_decl(slot, &decl, &cpp, pushed_first, moved, body) {
+                            Some(spread) => spread,
+                            None => (decl, pushed_first.to_vec()),
+                        };
+                    let fed = self.pushed_loop(id, &decl, &pushed_first, seq, body, out);
+                    self.spread.remove(&(self.current_scope(), slot));
+                    if fed {
                         return;
                     }
                 }

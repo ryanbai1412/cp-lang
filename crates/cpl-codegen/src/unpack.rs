@@ -1,11 +1,12 @@
-//! `let (a, b) = (x, y)` binds each part straight from its own expression:
-//! the tuple the pattern takes apart is never built, so a part that is a
-//! closure keeps its own type instead of a `std::function` slot of a
-//! `std::tuple`. It majorizes: the same expressions run in the same order.
+//! `let (a, b) = (x, y)`, and a `for (a, b) in` over a fused or spliced
+//! producer's `(x, y)`, binds each part straight from its own expression:
+//! the tuple the pattern takes apart is never built, so its parts are
+//! plain locals and a part that is a closure keeps its own type instead of
+//! a `std::function` slot of a `std::tuple`. It majorizes: the same expressions run in the same order.
 
 use crate::uses::read_counts;
 use crate::walk;
-use cpl_ir::{Block, Expr, ExprKind, Local, Program, Stmt, Ty};
+use cpl_ir::{Block, Expr, ExprKind, Local, Program, Stmt};
 
 pub(crate) fn unpack(program: &mut Program) {
     let Program {
@@ -84,13 +85,11 @@ fn parts(
     else {
         return None;
     };
-    // Only a tuple with a closure in it is taken apart. A part read from a
-    // variable stays in the tuple: bound alone it would be a copy the C++
-    // spells out, where the tuple's is the same copy.
-    if !items.iter().any(|item| matches!(item.ty, Ty::Fn(..)))
-        || items
-            .iter()
-            .any(|item| !item.ty.is_scalar() && crate::stmt::place_root(item).is_some())
+    // A part read from a variable stays in the tuple: bound alone it would
+    // be a copy the C++ spells out, where the tuple's is the same copy.
+    if items
+        .iter()
+        .any(|item| !item.ty.is_scalar() && crate::stmt::place_root(item).is_some())
     {
         return None;
     }

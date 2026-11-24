@@ -2111,7 +2111,8 @@ impl Emitter<'_> {
 
     /// Whether a yielded value of type `ty` is a tuple with a heap part, which a
     /// `cpl_each_` form hands its callback as references ([`Emitter::lent_parts`]).
+    /// A range is two numbers, not a heap part.
     pub(crate) fn lends_tuple_parts(&self, ty: &Ty) -> bool {
-        matches!(ty, Ty::Tuple(tys) if tys.iter().any(|t| !t.is_scalar() && !matches!(t, Ty::Fn(..))))
+        matches!(ty, Ty::Tuple(tys) if tys.iter().any(|t| !t.is_scalar() && !matches!(t, Ty::Fn(..) | Ty::Range(_))))
     }
 }

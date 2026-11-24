@@ -44,6 +44,20 @@ impl<'p> Emitter<'p> {
         let [elem] = args else {
             return false;
         };
+        if let Some(body) = self.parted(&consumer, elem) {
+            self.line(out, "{");
+            self.indent += 1;
+            let key: *const Block = &body;
+            let held = consumer.slot.and_then(|v| self.loop_vars.insert(key, v));
+            self.block(&body, out);
+            match held {
+                Some(v) => self.loop_vars.insert(key, v),
+                None => self.loop_vars.remove(&key),
+            };
+            self.indent -= 1;
+            self.line(out, "}");
+            return true;
+        }
         let elem = self.expr(elem).text;
         if let Some(put) = &consumer.sink {
             self.line(out, &format!("{put}({elem});"));
@@ -67,6 +81,55 @@ impl<'p> Emitter<'p> {
         self.indent -= 1;
         self.line(out, "}");
         true
+    }
+
+    /// The consumer body with its pattern bound part by part, when `elem`
+    /// is a tuple the body only takes apart: `for (x, y) in` over a push of
+    /// `(a, b)` binds `x = a` and `y = b`, and the tuple is never built.
+    /// The parts run in the tuple's order. A part read from a variable
+    /// keeps the tuple, whose copy it is anyway. A profile counts the
+    /// body's own statements, so it keeps them.
+    fn parted(&self, consumer: &FusedPush, elem: &Expr) -> Option<Block> {
+        let (Some(t), ExprKind::Tuple(items), None, true) = (
+            consumer.slot,
+            &elem.kind,
+            &self.sites,
+            consumer.first.is_empty() && consumer.sink.is_none(),
+        ) else {
+            return None;
+        };
+        let n = items.len();
+        let head = consumer.body.stmts.get(..n)?;
+        let mut stmts = Vec::with_capacity(consumer.body.stmts.len());
+        for (i, (item, stmt)) in items.iter().zip(head).enumerate() {
+            let Stmt::Let(
+                part,
+                Some(Expr {
+                    kind: ExprKind::Field(base, j),
+                    ..
+                }),
+            ) = stmt
+            else {
+                return None;
+            };
+            let named_in_items = |slot: usize| {
+                crate::uses::reads_local(items, &|s| self.names.get(s) == self.names.get(slot))
+            };
+            if *j != i
+                || !matches!(base.kind, ExprKind::Local(s) if s == t)
+                || (!item.ty.is_scalar() && crate::stmt::place_root(item).is_some())
+                || named_in_items(*part)
+            {
+                return None;
+            }
+            stmts.push(Stmt::Let(*part, Some(item.clone())));
+        }
+        let rest = &consumer.body.stmts[n..];
+        if n == 0 || crate::uses::mentions_in(self.program, rest, t) {
+            return None;
+        }
+        stmts.extend(rest.iter().cloned());
+        Some(Block { stmts })
     }
 
     #[allow(clippy::too_many_arguments)]
