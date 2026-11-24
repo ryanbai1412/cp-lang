@@ -638,11 +638,14 @@ impl<'p> Emitter<'p> {
             let lent_owner = walk::path_root(v).is_none()
                 && self.lent_fields.holds_lent(&v.ty)
                 && callee.is_some_and(|g| self.lent_fields.sources[g].contains(&k));
-            if !temporary_owner(v) && !lent_owner {
+            // A temporary `Keyed` may own its cells (`rekey_own`), after the
+            // owners of the view it keys, if it keys one.
+            let keyed = walk::path_root(v).is_none() && matches!(v.ty, Ty::Keyed(..));
+            if !temporary_owner(v) && !lent_owner && !keyed {
                 self.pin_owners(v, hold, out);
                 continue;
             }
-            if lent_owner {
+            if lent_owner || keyed {
                 self.pin_owners(v, hold, out);
             }
             let owner = self.temp();
