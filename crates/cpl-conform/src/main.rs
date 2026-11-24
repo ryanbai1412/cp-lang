@@ -12,7 +12,8 @@ usage: cpl-conform [conformance|corpus|docs|spec-blocks|diff|rewrites|all]... [o
 suites:
   conformance     spec/conformance/**/*.cp cases
   corpus          each corpus problem's spec.cp on its tests' .in vs .ans
-  docs            /// example: lines in std/*.cp
+  docs            /// example: lines in std/*.cp; a hard gate: every example runs
+                  or says how it stops with `(traps RXXXX)` / `(error EXXXX)`
   spec-blocks     fenced cp blocks in spec/core, spec/lib, spec/tools and handbook/language
   diff            interpreter vs g++ -O2 -std=c++17 differential, with
                   side-effect variants of corpus ports (variant/*)
@@ -242,7 +243,7 @@ fn main() -> ExitCode {
         }
         if verbose {
             for (case_id, status) in &report.cases {
-                if status != "pass" && status != "untested" && status != "skip" {
+                if status != "pass" && status != "untested" {
                     let detail = report
                         .details
                         .get(case_id)
@@ -262,6 +263,23 @@ fn main() -> ExitCode {
             exit_fail = true;
         }
         if strict && report.passed < report.total {
+            exit_fail = true;
+        }
+        // A std doc example is the contestant's first contact: every one runs, or its
+        // `(traps ..)` / `(error ..)` tag says how it stops. No baseline, no ratchet.
+        if suite == Suite::Docs && report.passed < report.total {
+            eprintln!(
+                "cpl-conform: docs is a hard gate: {} std doc example(s) do not run as written:",
+                report.total - report.passed
+            );
+            for (case_id, status) in report.cases.iter().filter(|(_, s)| *s != "pass") {
+                let detail = report
+                    .details
+                    .get(case_id)
+                    .map(String::as_str)
+                    .unwrap_or("");
+                eprintln!("  {case_id}: {status}: {detail}");
+            }
             exit_fail = true;
         }
     }
