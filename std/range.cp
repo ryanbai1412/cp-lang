@@ -68,9 +68,9 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>:
     if self.is_empty: return self
     if other.is_empty: return other
-    let lo = if self.first! < other.first!: other.first! else: self.first!
-    let hi = if self.last! < other.last!: self.last! else: other.last!
-    if hi < lo: lo..lo else: lo..=hi
+    let lo = max(self.l, other.l)
+    let hi = min(self.r, other.r)
+    if hi < lo: lo..lo else: lo..hi
 
 /// \(O(\log n)\) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
 /// `None` when it never does.
