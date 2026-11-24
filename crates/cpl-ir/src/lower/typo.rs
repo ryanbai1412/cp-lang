@@ -61,11 +61,7 @@ impl<'a> Lowerer<'a> {
         if let Some(module) = use_module(name) {
             return self.use_fix(&module, name, None);
         }
-        let mut names: Vec<&str> = receiver
-            .into_iter()
-            .flat_map(cpl_check::builtin_members)
-            .map(|m| m.name)
-            .collect();
+        let mut names = cpl_check::builtin_member_names(receiver);
         match ty {
             Ty::Record(fields) => {
                 names.extend(fields.iter().map(|(f, _)| f.as_str()));

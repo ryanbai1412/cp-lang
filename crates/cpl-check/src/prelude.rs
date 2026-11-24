@@ -346,6 +346,19 @@ fn self_methods_in(text: &str) -> SelfMethods {
 /// The top-level std methods that are only ever `@get`: every
 /// `pub fn name(self: S, ..)` of that name is a getter, so `g.rows()` is
 /// E0304 as `xs.len()` is (R06.4.2).
+/// Calls `f` on each top-level statement of the std files that mention
+/// `marker`, in file order.
+fn std_stmts(std: Std, marker: &str, f: &mut dyn FnMut(&ast::Stmt)) {
+    for (_, text) in std {
+        if !text.contains(marker) {
+            continue;
+        }
+        for (_, item) in cpl_syntax::parse_file(text).items {
+            item.stmts.iter().for_each(&mut *f);
+        }
+    }
+}
+
 pub fn getter_methods() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
     NAMES.get_or_init(|| getter_methods_in(crate::modules::std_index()))
@@ -354,25 +367,18 @@ pub fn getter_methods() -> &'static crate::fx::HashSet<String> {
 fn getter_methods_in(std: Std) -> crate::fx::HashSet<String> {
     let mut get = crate::fx::HashSet::default();
     let mut other = crate::fx::HashSet::default();
-    for (_, text) in std {
-        if !text.contains("self:") {
-            continue;
+    std_stmts(std, "self:", &mut |stmt| {
+        let ast::StmtKind::Fn(f) = &stmt.kind else {
+            return;
+        };
+        if !stmt.public || !f.params.first().is_some_and(|p| p.name.text == "self") {
+            return;
         }
-        for (_, item) in cpl_syntax::parse_file(text).items {
-            for stmt in &item.stmts {
-                let ast::StmtKind::Fn(f) = &stmt.kind else {
-                    continue;
-                };
-                if !stmt.public || !f.params.first().is_some_and(|p| p.name.text == "self") {
-                    continue;
-                }
-                match stmt.decorators.iter().any(|d| d.name.text == "get") {
-                    true => get.insert(f.name.text.clone()),
-                    false => other.insert(f.name.text.clone()),
-                };
-            }
-        }
-    }
+        match stmt.decorators.iter().any(|d| d.name.text == "get") {
+            true => get.insert(f.name.text.clone()),
+            false => other.insert(f.name.text.clone()),
+        };
+    });
     get.retain(|n| !other.contains(n));
     get
 }
@@ -535,24 +541,18 @@ pub fn word_type(name: &str) -> Option<&'static str> {
 fn struct_decorations(decorator: &str) -> Vec<(&'static str, &'static str)> {
     let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
     let mut out = Vec::new();
-    for (_, text) in crate::modules::std_index() {
-        if !text.contains(&format!("@{decorator}(")) {
-            continue;
-        }
-        for (_, item) in cpl_syntax::parse_file(text).items {
-            for stmt in &item.stmts {
-                let ast::StmtKind::Struct(d) = &stmt.kind else {
-                    continue;
-                };
-                let found = stmt.decorators.iter().filter(|d| d.name.text == decorator);
-                for arg in found.flat_map(|d| &d.args) {
-                    if let ast::ExprKind::Name(word) = &arg.value.kind {
-                        out.push((leak(word), leak(&d.name.text)));
-                    }
-                }
+    let marker = format!("@{decorator}(");
+    std_stmts(crate::modules::std_index(), &marker, &mut |stmt| {
+        let ast::StmtKind::Struct(d) = &stmt.kind else {
+            return;
+        };
+        let found = stmt.decorators.iter().filter(|d| d.name.text == decorator);
+        for arg in found.flat_map(|d| &d.args) {
+            if let ast::ExprKind::Name(word) = &arg.value.kind {
+                out.push((leak(word), leak(&d.name.text)));
             }
         }
-    }
+    });
     out
 }
 
@@ -580,27 +580,20 @@ pub fn renamed(name: &str) -> Option<&'static str> {
     let was = WAS.get_or_init(|| {
         let mut was = crate::names::NameMap::default();
         let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
-        for (_, text) in crate::modules::std_index() {
-            if !text.contains("@was(") {
-                continue;
-            }
-            for (_, item) in cpl_syntax::parse_file(text).items {
-                for stmt in &item.stmts {
-                    let now = match &stmt.kind {
-                        ast::StmtKind::Struct(d) => &d.name.text,
-                        ast::StmtKind::Enum(d) => &d.name.text,
-                        ast::StmtKind::Fn(f) => &f.name.text,
-                        _ => continue,
-                    };
-                    let olds = stmt.decorators.iter().filter(|d| d.name.text == "was");
-                    for arg in olds.flat_map(|d| &d.args) {
-                        if let ast::ExprKind::Name(old) = &arg.value.kind {
-                            was.insert(old.clone(), leak(now));
-                        }
-                    }
+        std_stmts(crate::modules::std_index(), "@was(", &mut |stmt| {
+            let now = match &stmt.kind {
+                ast::StmtKind::Struct(d) => &d.name.text,
+                ast::StmtKind::Enum(d) => &d.name.text,
+                ast::StmtKind::Fn(f) => &f.name.text,
+                _ => return,
+            };
+            let olds = stmt.decorators.iter().filter(|d| d.name.text == "was");
+            for arg in olds.flat_map(|d| &d.args) {
+                if let ast::ExprKind::Name(old) = &arg.value.kind {
+                    was.insert(old.clone(), leak(now));
                 }
             }
-        }
+        });
         let snake = |s: &str| {
             let mut out = String::new();
             for (i, c) in s.chars().enumerate() {

@@ -159,6 +159,15 @@ pub fn builtin_members(receiver: Receiver) -> impl Iterator<Item = &'static Buil
         .filter(move |member| member.receiver == receiver)
 }
 
+/// The member names of a built-in receiver, none without one.
+pub fn builtin_member_names(receiver: Option<Receiver>) -> Vec<&'static str> {
+    receiver
+        .into_iter()
+        .flat_map(builtin_members)
+        .map(|m| m.name)
+        .collect()
+}
+
 /// A one-character string literal's `Char` spelling: `"a"` is `'a'`.
 pub fn char_literal(text: &str) -> Option<String> {
     let inner = text.strip_prefix('"')?.strip_suffix('"')?;

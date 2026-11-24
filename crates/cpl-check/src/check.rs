@@ -1673,7 +1673,7 @@ pub(crate) fn spec_member_typo(
     name: &str,
     keep: &mut dyn FnMut(&str) -> bool,
 ) -> Option<String> {
-    use crate::builtins::{builtin_members, Receiver, BUILTIN_MEMBERS};
+    use crate::builtins::{builtin_member_names, Receiver, BUILTIN_MEMBERS};
     // A generator has only what std declares on sequences (R07.1.1).
     if matches!(base, Ty::Named { name, .. } if name == "Gen") {
         let methods = prelude::spec_receiver_method_names();
@@ -1699,29 +1699,23 @@ pub(crate) fn spec_member_typo(
     if let (Some(Receiver::Str), Some(own)) = (receiver, crate::builtins::foreign_str_fn(name)) {
         return Some(own.into());
     }
-    let own = receiver
-        .into_iter()
-        .flat_map(builtin_members)
-        .map(|m| m.name);
     // A list or string is offered only what it has: its own members and
     // the std methods on any receiver, never another struct's (`unite`).
+    // One candidate list keeps `closest` to one iterator type.
+    let mut cands = builtin_member_names(receiver);
     let range = matches!(base, Ty::Named { name, .. } if name == "Range");
     if receiver.is_some() && !range {
-        let methods = prelude::spec_receiver_method_names();
-        return closest(
-            name,
-            own.chain(methods.iter().map(String::as_str))
-                .filter(|m| keep(m)),
+        cands.extend(
+            prelude::spec_receiver_method_names()
+                .iter()
+                .map(String::as_str),
         );
+    } else {
+        cands.extend(prelude::spec_member_names().iter().map(String::as_str));
+        cands.extend(BUILTIN_MEMBERS.iter().map(|m| m.name));
     }
-    let spec = prelude::spec_member_names();
-    let all = BUILTIN_MEMBERS.iter().map(|m| m.name);
-    closest(
-        name,
-        own.chain(spec.iter().map(String::as_str))
-            .chain(all)
-            .filter(|m| keep(m)),
-    )
+    cands.retain(|m| keep(m));
+    closest(name, cands.into_iter())
 }
 
 /// Where a statement `back` bytes before the item being checked moves
