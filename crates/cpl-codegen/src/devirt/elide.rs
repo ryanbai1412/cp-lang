@@ -1,7 +1,8 @@
 //! Elision: fn params, struct fields and locals nothing reads, and which slots may drop their fn value.
 
 use super::*;
-use crate::uses::places::{each_call, each_closure, each_put, Put};
+use crate::uses::places::{each_call, each_closure, each_part, each_put, each_stmt_expr, Put};
+use crate::uses::split::{each_sink, each_value, Sink};
 
 impl<'p> Devirt<'p> {
     pub(super) fn compute_elidable(&mut self) {
@@ -183,20 +184,18 @@ impl<'p> Devirt<'p> {
         // for a closure's body.
         let mut scan = |home: Option<Option<FnId>>, block: &Block| {
             let mut gone: BTreeSet<*const Expr> = BTreeSet::new();
-            walk::deep_stmts(block, &mut |stmt| match stmt {
-                Stmt::Assign(place, op, _) if !self.skippable_store(place, *op) => {
+            each_put(block, &mut |put, init| match put {
+                Put::Store(place, op) if !self.skippable_store(place, *op) => {
                     place_fields(place, &mut unskippable);
                 }
-                Stmt::Let(slot, Some(init))
-                    if home.is_some_and(|home| self.dead_local(home, *slot)) =>
-                {
-                    walk::deep_expr(init, &mut |e| {
+                Put::Let(slot) if home.is_some_and(|home| self.dead_local(home, slot)) => {
+                    each_part(init, &mut |e| {
                         gone.insert(e as *const Expr);
                     });
                 }
                 _ => {}
             });
-            walk::deep_exprs(block, &mut |e| {
+            each_value(block, &mut |e| {
                 match &e.kind {
                     ExprKind::Field(base, idx) if !gone.contains(&(e as *const Expr)) => {
                         if let Ty::Struct(s) = base.ty {
@@ -334,14 +333,14 @@ impl<'p> Devirt<'p> {
         };
         for block in blocks {
             let mut gone: BTreeSet<*const Expr> = BTreeSet::new();
-            walk::deep_stmts(block, &mut |stmt| {
-                if let Stmt::Assign(place, op, value) = stmt {
+            each_put(block, &mut |put, value| {
+                if let Put::Store(place, op) = put {
                     match place.kind {
                         PlaceKind::Global(g)
                             if *op == AssignOp::Set && self.skippable_value(value) =>
                         {
                             if self.dead_globals.contains(&g) {
-                                walk::deep_expr(value, &mut |e| {
+                                each_part(value, &mut |e| {
                                     gone.insert(e as *const Expr);
                                 });
                             }
@@ -350,7 +349,7 @@ impl<'p> Devirt<'p> {
                     }
                 }
             });
-            walk::deep_exprs(block, &mut |e| match &e.kind {
+            each_value(block, &mut |e| match &e.kind {
                 ExprKind::Global(g) if !gone.contains(&(e as *const Expr)) => {
                     live.insert(*g);
                 }
@@ -392,29 +391,31 @@ impl<'p> Devirt<'p> {
         let mut written: BTreeSet<usize> = BTreeSet::new();
         let dead = |s: &Self, slot: usize| s.dead_locals.contains(&(home, slot));
         for block in blocks {
-            walk::deep_stmts(block, &mut |stmt| match stmt {
-                Stmt::Expr(e) => {
-                    if let Some(slot) = self.skippable_push(e) {
-                        written.insert(slot);
-                        pushes.insert(e as *const Expr);
-                        if dead(self, slot) {
-                            walk::deep_expr(e, &mut |inner| {
-                                dropped.insert(inner as *const Expr);
-                            });
-                        }
+            each_stmt_expr(block, &mut |e| {
+                if let Some(slot) = self.skippable_push(e) {
+                    written.insert(slot);
+                    pushes.insert(e as *const Expr);
+                    if dead(self, slot) {
+                        each_part(e, &mut |inner| {
+                            dropped.insert(inner as *const Expr);
+                        });
                     }
                 }
-                Stmt::Let(slot, init) => {
-                    *lets.entry(*slot).or_default() += 1;
-                    if let Some(e) = init.as_ref().filter(|e| !self.skippable_value(e)) {
+            });
+            each_sink(block, &mut |sink| {
+                if let Sink::Let(slot, init) = sink {
+                    *lets.entry(slot).or_default() += 1;
+                    if let Some(e) = init.filter(|e| !self.skippable_value(e)) {
                         if matches!(e.kind, ExprKind::Closure(_)) {
-                            live.insert(*slot);
+                            live.insert(slot);
                         } else {
-                            effectful.insert(*slot);
+                            effectful.insert(slot);
                         }
                     }
                 }
-                Stmt::Assign(place, op, value) => {
+            });
+            each_put(block, &mut |put, value| {
+                if let Put::Store(place, op) = put {
                     let root = walk::root(place);
                     if let (false, slot) = root {
                         written.insert(slot);
@@ -429,7 +430,7 @@ impl<'p> Devirt<'p> {
                         && self.skippable_store(place, *op)
                     {
                         let mut skip = |e: &Expr| {
-                            walk::deep_expr(e, &mut |inner| {
+                            each_part(e, &mut |inner| {
                                 dropped.insert(inner as *const Expr);
                             })
                         };
@@ -439,9 +440,8 @@ impl<'p> Devirt<'p> {
                         }
                     }
                 }
-                _ => {}
             });
-            walk::deep_exprs(block, &mut |e| {
+            each_value(block, &mut |e| {
                 if let ExprKind::CallExpr(callee, _) = &e.kind {
                     if skippable(callee) && self.target(home, callee).is_some() {
                         // The call is direct, so no part of the path is read.
@@ -470,7 +470,7 @@ impl<'p> Devirt<'p> {
             }
         };
         for block in blocks {
-            walk::deep_exprs(block, &mut |e| {
+            each_value(block, &mut |e| {
                 if dropped.contains(&(e as *const Expr)) {
                     return;
                 }

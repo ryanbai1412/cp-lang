@@ -17,7 +17,7 @@ pub(crate) enum Put<'a> {
 
 /// Every `let` with a value and every store in `block`, at any depth and in
 /// order: where it puts the value, and the value.
-pub(crate) fn each_put(block: &Block, f: &mut dyn FnMut(Put, &Expr)) {
+pub(crate) fn each_put<'p>(block: &'p Block, f: &mut dyn FnMut(Put<'p>, &'p Expr)) {
     walk::deep_stmts(block, &mut |stmt| match stmt {
         Stmt::Let(slot, Some(v)) => f(Put::Let(*slot), v),
         Stmt::Assign(target, op, v) => f(Put::Store(target, op), v),
@@ -146,6 +146,20 @@ pub(crate) fn each_opened(block: &Block, f: &mut dyn FnMut(&Expr)) {
     walk::deep_exprs(block, &mut |e| {
         if let ExprKind::IsSome(x) | ExprKind::Unwrap(x, false) = &e.kind {
             f(x);
+        }
+    });
+}
+
+/// Every expression inside `e`, `e` itself included, at any depth.
+pub(crate) fn each_part<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
+    walk::deep_expr(e, f);
+}
+
+/// Every expression statement in `block`, at any depth: the expression.
+pub(crate) fn each_stmt_expr<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {
+    walk::deep_stmts(block, &mut |stmt| {
+        if let Stmt::Expr(e) = stmt {
+            f(e);
         }
     });
 }

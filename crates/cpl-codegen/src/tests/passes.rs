@@ -426,3 +426,27 @@ fn each_write_hands_back_places_that_outlive_the_walk() {
         "the push and the store to k"
     );
 }
+
+#[test]
+fn each_stmt_expr_and_each_part_see_statements_and_their_parts() {
+    use crate::uses::places::{each_part, each_stmt_expr};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var t: List<Int> = []\n",
+        "    if n > 0:\n",
+        "        t.push(n + 1)\n",
+        "    t.len\n",
+        "print(f(3))\n",
+    ));
+    let mut stmts = 0;
+    let mut parts = 0;
+    each_stmt_expr(&program.fns[0].body, &mut |e| {
+        stmts += 1;
+        each_part(e, &mut |_| parts += 1);
+    });
+    assert!(stmts >= 1, "the push is an expression statement");
+    assert!(
+        parts > stmts,
+        "each_part sees inside the push, not only the push"
+    );
+}
