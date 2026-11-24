@@ -159,6 +159,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// traps: on a suffix table (`a.rev.scan(f)`) with `f` other than `+`, which subtracts
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(2) == 3`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
+    /// trap: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(max).prefix(D(1).l)`
     pub fn prefix(self, b: Cut<D>) -> T:
         if back:
             assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"

@@ -625,6 +625,7 @@ pub struct Rooted<V, Pre, A>:
     /// ties: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 1) == 1 and t.lower(1, 0) == 1`
     /// traps: when `u` and `v` are not joined by a tree edge
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 1) == 1 and t.lower(3, 1) == 3`
+    /// trap: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 0)`
     pub fn lower(self, u: V, v: V) -> V:
         let (c, p) = if dep[u] > dep[v]: (u, v) else: (v, u)
         if let q = par[c]: assert q == p

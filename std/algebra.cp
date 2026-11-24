@@ -59,6 +59,7 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
     /// cost: one call of `rev`
     /// traps: when the monoid was made without `rev:`
     /// example: `Monoid<Int>.of(+).reversed(5) == 5`
+    /// trap: `Monoid<Int>(0, +).reversed(5)`
     pub fn reversed(self, x: T) -> T = rev(x)
 
     /// `self` with the law `op(a, b) == op(b, a)` stated, so folds may reorder and lazy tags

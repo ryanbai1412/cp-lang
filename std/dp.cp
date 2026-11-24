@@ -310,6 +310,7 @@ pub fn knuth(n: 0.., cost: (Int, Int) -> Int) -> List<List<Int>>:
 /// ties: `aliens(2, lam => (0..=4).map(c => (val: (c - 2) * (c - 2) + lam * c, count: c)).min(by: p => (p.val, p.count))!) == 0`
 /// traps: when `k < 0`, when `lambdas` is empty, or when no `λ` in `lambdas` gives a count of at most `k`
 /// example: `aliens(5, lam => (0..=10).map(c => (val: (c - 3) * (c - 3) + lam * c, count: c)).min(by: p => (p.val, p.count))!) == 4`
+/// trap: `aliens(0, lam => (val: lam, count: 1), lambdas: 0..5)`
 pub fn aliens<L: Add + Sub + Mul>(k: 0.., solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L:
     assert k >= 0
     var lo: L = -1

@@ -656,11 +656,17 @@ impl Eq for Mat<T>:
         if not a.sentinel and not b.sentinel: return a.cells == b.cells
         a.data == b.data
 
+/// Entrywise; the shapes must match.
+///
+/// trap: `Mat<Int>.zeros(2, 2) + Mat<Int>.zeros(2, 3)`
 impl Add for Mat<T>:
     fn add(a, b):
         assert a.rows == b.rows and a.cols == b.cols
         Mat(a.rows, a.cols, [a.cells[i] + b.cells[i] for i in 0..a.cells.len])
 
+/// Entrywise; the shapes must match.
+///
+/// trap: `Mat<Int>.zeros(2, 2) - Mat<Int>.zeros(3, 2)`
 impl Sub for Mat<T>:
     fn sub(a, b):
         assert a.rows == b.rows and a.cols == b.cols
@@ -710,6 +716,9 @@ impl Mul for Mat<T>:
                 )
         Mat(r, c, acc, a.ring)
 
+/// `m ** e` for a square `m` and `e >= 0`, by repeated squaring.
+///
+/// trap: `Mat<Int>.zeros(2, 3) ** 2`
 impl Pow for Mat<T>:
     fn pow(a, e: Int) -> Mat<T>:
         assert a.rows == a.cols and e >= 0

@@ -710,6 +710,7 @@ pub struct PersistentArray<D, T>:
     /// empty: `domain E = 0..0; var p = PersistentArray<E, Int>(fill: 7); [p.get(p.base, i) for i in E] == []`
     /// traps: when both or neither of `a:` and `fill:` are given
     /// example: `var p = PersistentArray<0..3, Int>(fill: 7); p.get(p.base, 0) == 7`
+    /// trap: `PersistentArray<0..3, Int>()`
     pub fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>:
         var p = PersistentArray<D, T>([0], [0], [], 0)
         if let init = a:

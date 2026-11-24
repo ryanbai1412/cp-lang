@@ -60,6 +60,7 @@ pub struct Window<T, M>(op: M):
     /// when `at` is below the previous place
     /// example: `var w = Window(max); w.push(3); w.push(5); w.all == Some(5)`
     /// example: `var w = Window(max); w.push(4, at: 0); w.push(1, at: 2); w.expire(before: 1); w.all == Some(1)`
+    /// trap: `var w = Window(max); w.push(4, at: 5); w.push(6, at: 7); w.expire(before: 6); w.push(1, at: 3)`
     pub fn push(mut self, x: T, at: ?Int = None):
         if let k = at:
             assert keys.len == q.len and oldkeys.len == olds.len, "`push(x, at:)` on a window with unkeyed elements"

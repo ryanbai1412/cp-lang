@@ -83,6 +83,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
+    /// trap: `SegTree<Int, Int>(fill: 0, over: 0..10)`
     pub fn new<M, A: Acts<T, F>, O>(
         op: M = NoOp(),
         a: ?[D]T = None,
@@ -1073,6 +1074,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// order: cells keep the domains `R` and `C` of `a`
     /// traps: when both `a` and `fill` are given
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).all == 9`
+    /// trap: `domain R = 0..2; let g: [R, R]Int = 1; SegTree2D<R, R, Int>(+, a: g, fill: 1)`
     pub fn new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T>:
         let m = Monoid<T>.of(op)
         let (h, w) = (R.count, C.count)

@@ -2602,10 +2602,45 @@ fn sorted_set_and_bag_drain_after_before_and_random():
                 assert got == want
             assert [x for x in rs] == xs
 
-// A bag over 0..k against a count table, through enough keys for three B+tree levels: node
-// splits while it grows, borrows and merges while it shrinks to empty, and every query near
-// the 16- and 32-slot node boundaries.
+@test
+fn sorted_bag_btree_grows_and_shrinks_against_a_count_table():
+    let k = 1500
+    var b = SortedBag<Int>()
+    var cnt = [0 for _ in 0..k]
+    for x in 0..k:
+        b.add((x * 7) % k)
+        cnt[(x * 7) % k] += 1
+    check_bag_against_counts(b, cnt)
+    for step in 0..3000:
+        let x = rand(0, k - 1)
+        if rand(0, 3) == 0:
+            b.add_many(x, 2)
+            cnt[x] += 2
+        else:
+            assert b.remove(x) == (cnt[x] > 0)
+            if cnt[x] > 0: cnt[x] -= 1
+        if step % 1000 == 999: check_bag_against_counts(b, cnt)
+    for x in 0..k:
+        assert b.remove_all(x) == cnt[x]
+        cnt[x] = 0
+        if x % 500 == 0: check_bag_against_counts(b, cnt)
+    assert b.is_empty and b.cursor_first() == None and b.first == None
+    for x in (0..k).rev:
+        b.add(x)
+        cnt[x] = 1
+    check_bag_against_counts(b, cnt)
+    let mid = b.split_at(k / 3)
+    assert b.to_list() == (0..k / 3).collect() and mid.to_list() == (k / 3..k).collect()
+    b.join(mid)
+    check_bag_against_counts(b, cnt)
+    let top = b.split_at(k - 10)
+    assert top.to_list() == (k - 10..k).collect() and b.len == k - 10
+    b.join(top)
+    check_bag_against_counts(b, cnt)
 fn check_bag_against_counts(b: SortedBag<Int>, cnt: List<Int>):
+    // A bag over 0..k against a count table, through enough keys for three B+tree levels: node
+    // splits while it grows, borrows and merges while it shrinks to empty, and every query near
+    // the 16- and 32-slot node boundaries.
     var plain: List<Int> = []
     for x in 0..cnt.len:
         for _ in 0..cnt[x]: plain.push(x)
@@ -2660,42 +2695,6 @@ fn check_bag_against_counts(b: SortedBag<Int>, cnt: List<Int>):
         if x < cnt.len:
             assert b.count(x) == cnt[x]
             below += cnt[x]
-
-@test
-fn sorted_bag_btree_grows_and_shrinks_against_a_count_table():
-    let k = 1500
-    var b = SortedBag<Int>()
-    var cnt = [0 for _ in 0..k]
-    for x in 0..k:
-        b.add((x * 7) % k)
-        cnt[(x * 7) % k] += 1
-    check_bag_against_counts(b, cnt)
-    for step in 0..3000:
-        let x = rand(0, k - 1)
-        if rand(0, 3) == 0:
-            b.add_many(x, 2)
-            cnt[x] += 2
-        else:
-            assert b.remove(x) == (cnt[x] > 0)
-            if cnt[x] > 0: cnt[x] -= 1
-        if step % 1000 == 999: check_bag_against_counts(b, cnt)
-    for x in 0..k:
-        assert b.remove_all(x) == cnt[x]
-        cnt[x] = 0
-        if x % 500 == 0: check_bag_against_counts(b, cnt)
-    assert b.is_empty and b.cursor_first() == None and b.first == None
-    for x in (0..k).rev:
-        b.add(x)
-        cnt[x] = 1
-    check_bag_against_counts(b, cnt)
-    let mid = b.split_at(k / 3)
-    assert b.to_list() == (0..k / 3).collect() and mid.to_list() == (k / 3..k).collect()
-    b.join(mid)
-    check_bag_against_counts(b, cnt)
-    let top = b.split_at(k - 10)
-    assert top.to_list() == (k - 10..k).collect() and b.len == k - 10
-    b.join(top)
-    check_bag_against_counts(b, cnt)
 
 @test
 fn sorted_map_btree_set_remove_and_walk_against_a_table():
@@ -2895,6 +2894,30 @@ fn aff(f: (Int, Int), g: (Int, Int)) -> (Int, Int) = (
     (f.1 * g.0 + g.1) % AFF_MOD,
 )
 
+@test
+fn aug_sorted_bag_folds_stay_right_across_splits_and_merges():
+    let k = 1200
+    var b = AugSortedBag<Int, (Int, Int)>((f, g) => aff(f, g), (1, 0), x => (x % 7 + 2, x))
+    var cnt = [0 for _ in 0..k]
+    for x in 0..k:
+        b.add(x * 7 % k)
+        cnt[x * 7 % k] += 1
+    check_aug(b, cnt)
+    for step in 0..4000:
+        let x = rand(0, k - 1)
+        if rand(0, 2) == 0:
+            b.add(x)
+            cnt[x] += 1
+        else:
+            assert b.remove(x) == (cnt[x] > 0)
+            if cnt[x] > 0: cnt[x] -= 1
+        if step % 800 == 799: check_aug(b, cnt)
+    for x in 0..k:
+        while cnt[x] > 0:
+            assert b.remove(x)
+            cnt[x] -= 1
+        if x % 300 == 0: check_aug(b, cnt)
+    assert b.is_empty and b.all == (1, 0) and b.first == None
 fn aff_fold(have: List<Int>, ok: Int -> Bool) -> (Int, Int):
     var acc = (1, 0)
     for x in have:
@@ -2920,27 +2943,3 @@ fn check_aug(b: AugSortedBag<Int, (Int, Int)>, cnt: List<Int>):
         assert b.rank(lo) == have.count(x => x < lo)
         if lo < have.len: assert b.nth(lo) == Some(have[lo])
 
-@test
-fn aug_sorted_bag_folds_stay_right_across_splits_and_merges():
-    let k = 1200
-    var b = AugSortedBag<Int, (Int, Int)>((f, g) => aff(f, g), (1, 0), x => (x % 7 + 2, x))
-    var cnt = [0 for _ in 0..k]
-    for x in 0..k:
-        b.add(x * 7 % k)
-        cnt[x * 7 % k] += 1
-    check_aug(b, cnt)
-    for step in 0..4000:
-        let x = rand(0, k - 1)
-        if rand(0, 2) == 0:
-            b.add(x)
-            cnt[x] += 1
-        else:
-            assert b.remove(x) == (cnt[x] > 0)
-            if cnt[x] > 0: cnt[x] -= 1
-        if step % 800 == 799: check_aug(b, cnt)
-    for x in 0..k:
-        while cnt[x] > 0:
-            assert b.remove(x)
-            cnt[x] -= 1
-        if x % 300 == 0: check_aug(b, cnt)
-    assert b.is_empty and b.all == (1, 0) and b.first == None

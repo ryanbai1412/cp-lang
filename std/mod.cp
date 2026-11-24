@@ -170,6 +170,8 @@ impl Show for Mod<P>:
 
 /// One signed integer token of any length, reduced modulo `P`, so a
 /// 10^4-digit coefficient is `read<Mod<P>>()`. (R10.2.3)
+///
+/// trap: `read<Mod<998244353>>()` (stdin `1x`)
 impl Read for Mod<P>:
     fn read() -> Mod<P>:
         let s: Str = read()

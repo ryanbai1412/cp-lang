@@ -730,6 +730,7 @@ pub fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P>:
 /// traps: when `xs.len != ys.len`, or two `xs` are equal
 /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1, 2]; let ys: List<Z> = [1, 4, 9]; interpolate(xs, ys) == [Z(1), Z(2), Z(1)]`
 /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1]; let ys: List<Z> = [5, 5]; interpolate(xs, ys) == [Z(5), Z(0)]`
+/// trap: `type Z = Mod<998244353>; let xs: List<Z> = [Z(i % 65) for i in 0..66]; let ys: List<Z> = [Z(i) for i in 0..66]; interpolate(xs, ys)`
 pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>:
     let n = xs.len
     assert n == ys.len, "poly.interpolate requires equal-length xs and ys"
@@ -1046,6 +1047,9 @@ impl Neg for Poly<T>:
 impl Mul for Poly<T>:
     fn mul(a, b) = Poly(convolve(a.c, b.c))
 
+/// The quotient of polynomial long division; the divisor is not zero.
+///
+/// trap: `Poly<Int>([1, 2]) / Poly<Int>.zero`
 impl Div for Poly<T>:
     fn div(a, b):
         assert not b.is_zero(), "Poly division by the zero polynomial"

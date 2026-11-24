@@ -191,6 +191,9 @@ impl BitXor for Subset<B>:
 impl Sub for Subset<B>:
     fn sub(a, b) = Subset(a.bits & (b.bits ^ (U64(0) - U64(1))))
 
+/// A subset's position among the `2^n` subsets of `B`, for at most 25 values.
+///
+/// trap: `domain B = 0..26; Subset<B>.count`
 impl Index for Subset<B>:
     let count = subset_count(B.count)
     @get fn ord(self) -> Int = Int(bits)
