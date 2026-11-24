@@ -58,7 +58,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             };
             let span = expr.span.shift(self.base);
             let at = edit.0.start - expr.span.start;
-            let local = Span::new(at, at + edit.0.len() as u32);
+            let local = Span::new(at, at + edit.0.len());
             let Some(fixed) = cpl_diag::splice(span.text(self.src), vec![(local, edit.1.clone())])
             else {
                 return;
