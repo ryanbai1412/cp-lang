@@ -108,6 +108,29 @@ fn profile_charges_library_code_to_the_line_that_calls_it() {
 }
 
 #[test]
+fn a_sort_makes_the_same_comparisons_natively() {
+    // 20 and 13 elements: runs short enough to insertion-sort, then merges.
+    let file = scratch(
+        "sort_runs.cp",
+        "struct M(v: Int)\nimpl Ord for M:\n    fn lt(a, b) = a.v % 7 < b.v % 7\n\
+         impl Eq for M:\n    fn eq(a, b) = a.v % 7 == b.v % 7\n\
+         var ys = [M((k * 5) % 23) for k in 0..20]\nys.sort()\n\
+         let zs = [(k * 3) % 17 for k in 0..13].sorted(by: k => desc(M(k)))\n\
+         print([y.v for y in ys], zs)\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        assert!(hits(&out).contains(&(3, 107)), "{engine:?}: {out}");
+    }
+}
+
+#[test]
 fn profile_runs_on_the_vm_and_counts_bodies_it_would_inline() {
     // `mod5` is a modular op and a pure leaf, both of which the VM would
     // otherwise run without its statement.
