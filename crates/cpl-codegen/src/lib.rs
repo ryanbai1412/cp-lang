@@ -252,7 +252,7 @@ pub struct Lowered {
 }
 
 pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
-    let target = Target::default();
+    let target = judge_target();
     let prepared = prepared(program, &target);
     let (cpp, copies, called, written) = emit::Emitter::new(&prepared, &target).lowered();
     let mut closures = devirt::explain_closures(&prepared, &written);
@@ -273,9 +273,7 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
 /// Each heap value the judge build's C++ for `program` copies: the span
 /// of the source that is copied, what it is and why the copy must own it.
 pub fn explain_copies(program: &cpl_ir::Program) -> Vec<(cpl_diag::Span, String, &'static str)> {
-    let target = judge_target();
-    let program = prepared(program, &target);
-    emit::Emitter::new(&program, &target).copies()
+    explain_lowered(program).copies
 }
 
 /// [`emit`] for a judge.
