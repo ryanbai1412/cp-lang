@@ -610,6 +610,10 @@ class AtMax(unittest.TestCase):
     def test_slow_against_the_accepted_cpp(self):
         self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.5, 10), (0, b"1\n", 0.2, 10)), ["slow p --max"])
 
+    def test_an_accepted_cpp_that_fails_the_max_is_a_finding(self):
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 10), (139, b"", 0.01, 10)), ["reference-fails p --max"])
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.05, 10), None), ["reference-fails p --max"])
+
 
 class Limits(unittest.TestCase):
     def test_the_limits_line_and_the_default(self):

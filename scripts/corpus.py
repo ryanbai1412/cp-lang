@@ -909,6 +909,8 @@ def at_max(pkg, cpl, exe, orig, data):
             theirs = min(w[2] for w in wants)
             if mine >= FLOOR and mine > SLOWER * max(theirs, FLOOR):
                 found.append(f"slow {pid} --max")
+        else:
+            found.append(f"reference-fails {pid} --max")
     # On a box slower than the judge the accepted C++ itself runs past the
     # limit; the port then answers to the accepted C++'s time instead.
     if mine > max(ms / 1000, theirs or 0) or min(r[3] for r in runs) > mb:
