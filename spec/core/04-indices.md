@@ -76,7 +76,9 @@ print(Two.count, Two.first!.ord, [seen[Two.nth(k)] for k in 0..Two.count])
 ```
 
 The impl writes `count`, `ord` and `nth` under those names; `count` is sized
-like a domain declaration, from constants and `let`s but never a `var`. The
+like a domain declaration, from constants and `let`s but never a `var`, and
+it runs where the type is first used: a fn that is never called, or a branch
+not taken, never runs it. The
 pre-0.3 names `K`, `to_idx` and `from_idx` are errors that name their
 replacement. (R04.2.26)
 The type is then a domain like any other: `[Two]E` indexes by `t.ord`,

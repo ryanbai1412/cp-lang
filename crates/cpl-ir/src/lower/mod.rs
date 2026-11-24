@@ -380,13 +380,13 @@ impl Lowerer<'_> {
         for c in &mut closures {
             lw.expand_walks(&mut c.body);
         }
-        lw.size_library_domains(&mut main, true);
-        lw.size_library_domains(&mut setup, true);
+        lw.size_library_domains(&mut main, true, &lw.main_locals);
+        lw.size_library_domains(&mut setup, true, &lw.main_locals);
         for f in bodies.iter_mut().flatten() {
-            lw.size_library_domains(&mut f.body, false);
+            lw.size_library_domains(&mut f.body, false, &f.locals);
         }
         for c in &mut closures {
-            lw.size_library_domains(&mut c.body, false);
+            lw.size_library_domains(&mut c.body, false, &c.locals);
         }
         (lw.main_body, lw.setup_body, lw.bodies, lw.closures) = (main, setup, bodies, closures);
         // A mistake in the user's code often breaks the library code it asks

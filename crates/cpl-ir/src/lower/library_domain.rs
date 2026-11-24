@@ -3,6 +3,7 @@
 
 use super::call::Reduce;
 use super::*;
+use std::collections::BTreeSet;
 
 impl<'a> Lowerer<'a> {
     /// `S.nth(k)` from user code: `k` must lie in `0..S.count`. Walks call the
@@ -375,18 +376,18 @@ impl<'a> Lowerer<'a> {
 }
 
 impl Lowerer<'_> {
-    /// Sizes the library domain `id` to `len`: after every statement that
-    /// sets a domain or variable `len` reads, or once before `main` when it
-    /// reads none.
+    /// Sizes the library domain `id` to `len` where it is first used: a
+    /// statement that sets what `len` reads (or the preamble, when it reads
+    /// nothing) only marks it unsized, and the first use after that sizes
+    /// it, so a fn that is never called never runs `len` (R04.2.26).
     pub(super) fn size_library_domain(&mut self, id: DomainId, len: Expr) {
         let size = LibrarySize::Count(len, self.asked_at.at);
         if library_size_inputs(&size).is_empty() {
             let mut stmts = Vec::new();
             self.push_library_size(id, &size, &mut stmts);
             self.preamble_stmts.extend(stmts);
-        } else {
-            self.library_sizes.insert(id, size);
         }
+        self.library_sizes.insert(id, size);
     }
 
     /// Sizes each library domain that reads `input`, which a statement just
@@ -407,20 +408,112 @@ impl Lowerer<'_> {
         }
     }
 
+    /// Sizes `id`, or for a size that waits for its first use, marks it
+    /// unsized with a length of 0.
     pub(super) fn push_library_size(&self, id: DomainId, size: &LibrarySize, out: &mut Vec<Stmt>) {
         let LibrarySize::Count(len, span) = size;
-        let span = *span;
-        let int = |kind| Expr {
-            kind,
-            ty: Ty::Int,
-            span,
-        };
-        let len = len.clone();
+        let lazy = is_lazy(size);
         out.push(Stmt::DefDomain {
             id,
-            lo: int(ExprKind::Int(0)),
-            len,
+            lo: self.int_lit(0, *span),
+            len: if lazy {
+                self.int_lit(0, *span)
+            } else {
+                len.clone()
+            },
         });
+    }
+
+    /// `if D.len == 0: D = 0..len`, for `id` and the library domains its
+    /// size reads, the first time a body uses it.
+    fn size_on_use(&self, id: DomainId, out: &mut Vec<Stmt>, sized: &mut HashSet<DomainId>) {
+        let Some(size) = self.library_sizes.get(&id) else {
+            return;
+        };
+        if !sized.insert(id) {
+            return;
+        }
+        for input in library_size_inputs(size) {
+            if let SizeInput::Domain(d) = input {
+                self.size_on_use(d, out, sized);
+            }
+        }
+        let LibrarySize::Count(len, span) = size;
+        let span = *span;
+        let now = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
+        let unsized_ = self.mk(
+            ExprKind::Cmp(CmpOp::Eq, Box::new(now), Box::new(self.int_lit(0, span))),
+            Ty::Bool,
+            span,
+        );
+        let define = Stmt::DefDomain {
+            id,
+            lo: self.int_lit(0, span),
+            len: len.clone(),
+        };
+        out.push(Stmt::If(
+            unsized_,
+            Block {
+                stmts: vec![define],
+            },
+            Block::default(),
+        ));
+    }
+
+    /// Puts `size_on_use` before each statement of `block` that uses a lazily
+    /// sized library domain not sized yet on every path here. A loop is
+    /// sized before it, not on each turn.
+    fn size_on_uses(&self, block: &mut Block, locals: &[Local], sized: &mut HashSet<DomainId>) {
+        let lazy: HashSet<DomainId> = self
+            .library_sizes
+            .iter()
+            .filter(|(_, size)| is_lazy(size))
+            .map(|(&id, _)| id)
+            .collect();
+        if lazy.is_empty() {
+            return;
+        }
+        self.size_on_uses_in(block, locals, &lazy, sized);
+    }
+
+    fn size_on_uses_in(
+        &self,
+        block: &mut Block,
+        locals: &[Local],
+        lazy: &HashSet<DomainId>,
+        sized: &mut HashSet<DomainId>,
+    ) {
+        let mut stmts = Vec::with_capacity(block.stmts.len());
+        for mut stmt in std::mem::take(&mut block.stmts) {
+            let mut used = BTreeSet::new();
+            let looped = matches!(stmt, Stmt::While(..) | Stmt::For(..));
+            stmt_domains(&stmt, locals, looped, &mut used);
+            let defines = match &stmt {
+                Stmt::DefDomain { id, .. } | Stmt::DefDomainFromVal { id, .. } => Some(*id),
+                _ => None,
+            };
+            for d in used {
+                if Some(d) != defines && lazy.contains(&d) && !sized.contains(&d) {
+                    self.size_on_use(d, &mut stmts, sized);
+                }
+            }
+            if let Some(id) = defines {
+                sized.remove(&id);
+                stmts.push(stmt);
+                continue;
+            }
+            let mut after = sized.clone();
+            let mut inner = |b: &mut Block| {
+                let mut here = sized.clone();
+                self.size_on_uses_in(b, locals, lazy, &mut here);
+                after.retain(|d| here.contains(d));
+            };
+            walk::stmt_exprs_mut(&mut stmt, &mut |e| do_blocks_mut(e, &mut inner));
+            walk::stmt_blocks_mut(&mut stmt, &mut inner);
+            *sized = after;
+            stmts.push(stmt);
+        }
+        block.stmts = stmts;
     }
 
     /// Puts each library domain's sizing after every definition, in
@@ -428,7 +521,7 @@ impl Lowerer<'_> {
     /// Inserts the sizing of each library domain after the statements that
     /// set what it reads. `locals` is whether this body's slots are the
     /// ones top-level sizes read: true for `main` and the per-test setup.
-    pub(super) fn size_library_domains(&self, block: &mut Block, locals: bool) {
+    pub(super) fn size_library_domains(&self, block: &mut Block, locals: bool, slots: &[Local]) {
         if self.library_sizes.is_empty() {
             return;
         }
@@ -450,6 +543,7 @@ impl Lowerer<'_> {
             }
             b.stmts = stmts;
         });
+        self.size_on_uses(block, slots, &mut HashSet::new());
     }
 }
 
@@ -489,5 +583,88 @@ fn size_input_set(stmt: &Stmt, locals: bool) -> Option<SizeInput> {
             _ => None,
         },
         _ => None,
+    }
+}
+
+/// Whether a size waits for its first use: it reads no local of `main`, so
+/// any body can run it.
+fn is_lazy(size: &LibrarySize) -> bool {
+    !library_size_inputs(size)
+        .iter()
+        .any(|i| matches!(i, SizeInput::Local(_)))
+}
+
+/// Calls `f` on each `Do` block in `e`, not looking inside them.
+fn do_blocks_mut(e: &mut Expr, f: &mut dyn FnMut(&mut Block)) {
+    if let ExprKind::Do(block) = &mut e.kind {
+        f(block);
+        return;
+    }
+    walk::children_mut(e, &mut |child| do_blocks_mut(child, f));
+}
+
+/// The domains `stmt` uses in its own expressions and their types: all of
+/// it for a loop, and outside its `Do` blocks and arms otherwise.
+fn stmt_domains(stmt: &Stmt, locals: &[Local], whole: bool, out: &mut BTreeSet<DomainId>) {
+    fn expr(e: &Expr, locals: &[Local], whole: bool, out: &mut BTreeSet<DomainId>) {
+        ty_domains(&e.ty, out);
+        match &e.kind {
+            ExprKind::DomainLen(d) | ExprKind::DomainLo(d) | ExprKind::DomainVal(d) => {
+                out.insert(*d);
+            }
+            ExprKind::Do(block) if whole => {
+                for s in &block.stmts {
+                    stmt_domains(s, locals, true, out);
+                }
+            }
+            ExprKind::Do(_) => return,
+            _ => {}
+        }
+        walk::children(e, &mut |c| expr(c, locals, whole, out));
+    }
+    if let Stmt::Let(slot, _) = stmt {
+        if let Some(local) = locals.get(*slot) {
+            ty_domains(&local.ty, out);
+        }
+    }
+    walk::stmt_exprs(stmt, &mut |e| expr(e, locals, whole, out));
+    if whole {
+        walk::stmt_blocks(stmt, &mut |b| {
+            for s in &b.stmts {
+                stmt_domains(s, locals, true, out);
+            }
+        });
+    }
+}
+
+/// The domains a type is indexed or valued by.
+fn ty_domains(ty: &Ty, out: &mut BTreeSet<DomainId>) {
+    let dim = |d: &Dim, out: &mut BTreeSet<DomainId>| {
+        if let Dim::Pos(d) | Dim::Bound(d) | Dim::Sym(d) = d {
+            out.insert(*d);
+        }
+    };
+    match ty {
+        Ty::Pos(d) | Ty::Bound(d) => {
+            out.insert(*d);
+        }
+        Ty::Array { dims, elem } => {
+            dims.iter().for_each(|d| dim(d, out));
+            ty_domains(elem, out);
+        }
+        Ty::ListView(t, d) | Ty::Keyed(t, d) | Ty::MutView(t, d) => {
+            dim(d, out);
+            ty_domains(t, out);
+        }
+        Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
+            ty_domains(t, out)
+        }
+        Ty::Map(k, v) | Ty::HashMap(k, v) => {
+            ty_domains(k, out);
+            ty_domains(v, out);
+        }
+        Ty::Tuple(ts) | Ty::Fn(ts, _) => ts.iter().for_each(|t| ty_domains(t, out)),
+        Ty::Record(fs) => fs.iter().for_each(|(_, t)| ty_domains(t, out)),
+        _ => {}
     }
 }
