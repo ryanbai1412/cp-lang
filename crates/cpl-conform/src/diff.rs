@@ -88,9 +88,6 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
         if filter.is_some_and(|f| !id.contains(f)) {
             continue;
         }
-        if std::fs::read_to_string(&prob.spec_path).is_ok_and(|t| variants::same_as_port(&t)) {
-            continue;
-        }
         let smallest = prob
             .tests
             .into_iter()
@@ -392,27 +389,31 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         } else {
             variants::build_running(db, &path_str, &text, input)
         };
-        let Some((variant, _)) = built else {
-            return (id, skip("no probe checks"));
-        };
-        // Kept for reproducing a mismatch: `cpl run` it next to the port.
-        let dir = cache_dir.join("variants");
-        let written = dir.join(format!("{}.cp", id.replace('/', "_")));
-        if std::fs::create_dir_all(&dir)
-            .and_then(|_| std::fs::write(&written, &variant))
-            .is_ok()
-        {
-            run_path = written;
-        } else if interactor.is_some() {
-            return (
-                id,
-                CaseOutcome {
-                    status: "error".into(),
-                    detail: format!("cannot write {}", written.display()),
-                },
-            );
+        // With no probe that checks, the variant is the port itself: the corpus target
+        // diffs spec.cp, so this is the only diff (and g++ build) a port gets.
+        match built {
+            None => text,
+            Some((variant, _)) => {
+                // Kept for reproducing a mismatch: `cpl run` it next to the port.
+                let dir = cache_dir.join("variants");
+                let written = dir.join(format!("{}.cp", id.replace('/', "_")));
+                if std::fs::create_dir_all(&dir)
+                    .and_then(|_| std::fs::write(&written, &variant))
+                    .is_ok()
+                {
+                    run_path = written;
+                } else if interactor.is_some() {
+                    return (
+                        id,
+                        CaseOutcome {
+                            status: "error".into(),
+                            detail: format!("cannot write {}", written.display()),
+                        },
+                    );
+                }
+                variant
+            }
         }
-        variant
     } else {
         text
     };

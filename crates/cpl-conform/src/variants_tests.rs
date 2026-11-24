@@ -50,14 +50,6 @@ fn a_probe_that_traps_on_the_input_is_dropped() {
 }
 
 #[test]
-fn a_port_without_probe_sites_is_its_own_variant() {
-    let flat = "let n = 3\nprint(n + 1)\n";
-    assert!(super::same_as_port(flat));
-    let looped = "var s = 0\nfor i in 0..3:\n    s += i\nprint(s)\n";
-    assert!(!super::same_as_port(looped));
-}
-
-#[test]
 fn a_var_that_is_not_show_prints_through_yes_or_a_default() {
     let mut db = Session::new();
     let text = "var seen: [0..3]Bool = false\nvar best: [0..3]?Int = None\nfor i in 0..3:\n    seen[i] = true\n    best[i] = Some(i)\nprint(seen.count(b => b))\n";
