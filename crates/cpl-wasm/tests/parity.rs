@@ -148,6 +148,59 @@ fn check_matches_cpl_check() {
     }
 }
 
+/// The browser lints as `cpl lint` does: every lint, the prover-backed bounds
+/// rules and std's `@lint`s included, none compiled out of the wasm build.
+#[test]
+fn lint_matches_cpl_lint() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("lint-parity");
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
+    let mut playground = Playground::new();
+    let cases = [
+        ("clean", "let n: Int = read()\nprint(n * 2)\n"),
+        ("idiom", "let xs: List<Int> = read()\nvar t = 0\nfor x in xs: t += x\nprint(t)\n"),
+        (
+            "bounds",
+            "let n: Int = read()\nvar a: List<Int> = read()\nfor i in 0..n:\n    print(a[i])\n",
+        ),
+        (
+            "std_lint",
+            "var stack: List<Int> = read()\nwhile stack.len > 0:\n    let x = stack.pop()!\n    print(x)\n",
+        ),
+        ("syntax", "let n: Int = read(\nprint(n)\n"),
+    ];
+    let mut warned = 0;
+    for (case, source) in cases {
+        let path = dir.join(format!("{case}.cp"));
+        std::fs::write(&path, source).expect("a writable scratch file");
+        let name = path.to_str().expect("a UTF-8 path");
+
+        let cli = cpl_cli::run(&["lint", name]);
+        let lint = playground.lint(name, source);
+
+        // Each lint's headline and place. The totals differ, and the
+        // playground shows `cpl check`'s errors from `check`, not from `lint`.
+        let findings = |out: &str| -> Vec<String> {
+            let lines: Vec<&str> = out.lines().collect();
+            (lines.iter().enumerate())
+                .filter(|(_, l)| l.starts_with("warning["))
+                .flat_map(|(i, l)| [l.to_string(), lines.get(i + 1).unwrap_or(&"").to_string()])
+                .collect()
+        };
+        let web = findings(text(&lint, "stderr"));
+        let cli = findings(&format!(
+            "{}{}",
+            String::from_utf8_lossy(&cli.stdout),
+            cli.stderr
+        ));
+        assert_eq!(web, cli, "{case}");
+        warned += usize::from(web.iter().any(|l| l.starts_with("warning[")));
+    }
+    assert!(
+        warned >= 3,
+        "the cases must warn for the comparison to mean anything"
+    );
+}
+
 #[test]
 fn a_failed_run_keeps_its_output_and_says_where_it_failed() {
     let source = "print(1)\nlet a: List<Int> = [1, 2, 3]\nlet i: Int = read()\nprint(a[i])\n";

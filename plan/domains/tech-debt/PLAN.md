@@ -194,6 +194,6 @@ capped `tests.rs` files; derive corpus answers once tools' shared cache lands.
 | 5 | 24 files over 2,000 lines | `vm.rs` 15,367; `lower/{call,stmt,mod,expr}.rs` 6-13k | many; this lane moves |
 | 6 | Library type names known to IR and emitter | `lower/call.rs`, `lower/mod.rs:24`, `cpl-codegen/src/expr.rs:2780` | compiler + perf |
 | 7 | Std member catalog kept twice (checker list vs lowering match), stale rows | `crates/cpl-check/src/builtins.rs`, ignored test `crates/cpl-cli/tests/builtin_catalog.rs:32` | compiler + tools |
-| 8 | Browser lints compiled out, web and CLI disagree | `crates/cpl-lint/src/lib.rs:954`, `rules/bounds.rs:680` | lint-fmt |
+| 8 | Browser lints compiled out, web and CLI disagree | `crates/cpl-lint/src/lib.rs:954`, `rules/bounds.rs:680` | lint-fmt (done: cpl-lint has no cfg'd-out rules; `lint_matches_cpl_lint` in `crates/cpl-wasm/tests/parity.rs` pins web = CLI) |
 | 9 | Library source under `spec/`, 877 v0.2 ports, 57 stale branches | `std/`, `corpus/problems/*/port.cp` | this lane + stdlib/idioms |
 | 10 | Copied helpers across crates | `cpl-{fmt,lint}/src/cli.rs` `collect` = `cpl-doc/src/cli.rs:163`; `refutable`, `prefix_shape_struct` in check and ir | tools, lint-fmt, compiler |
