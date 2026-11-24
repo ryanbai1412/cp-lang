@@ -1,5 +1,6 @@
 pub mod conformance;
 pub mod corpus;
+mod dap;
 pub mod diff;
 pub mod docs;
 pub mod fuzz;

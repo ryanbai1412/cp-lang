@@ -15,8 +15,8 @@ Every rule for a conformance case, numbered so checks and reviews can cite it as
 A rule with no case can drift without anyone noticing. A rule that forbids
 something needs a program the checker must reject, with the code it must
 give, not only programs that follow the rule. Enforced by
-`scripts/conformance-coverage.py --check` and `spec/conformance/rule-gaps.txt`,
-which may only shrink.
+`scripts/conformance-coverage.py --check`, which fails on any rule missing
+the case it needs.
 
 ### conformance/R2. Work out the expected result from the spec, not from the compiler
 

@@ -141,7 +141,7 @@ fn cursor(text: &str, needle: &str) -> Result<(u32, u32), String> {
 }
 
 /// Splits `Content-Length` framed messages.
-fn frames(bytes: &[u8]) -> Result<Vec<String>, String> {
+pub(crate) fn frames(bytes: &[u8]) -> Result<Vec<String>, String> {
     let mut rest = bytes;
     let mut out = Vec::new();
     while let Some(end) = rest.windows(4).position(|w| w == b"\r\n\r\n") {
@@ -150,10 +150,10 @@ fn frames(bytes: &[u8]) -> Result<Vec<String>, String> {
             .lines()
             .find_map(|l| l.strip_prefix("Content-Length:"))
             .and_then(|n| n.trim().parse().ok())
-            .ok_or_else(|| format!("cpl lsp sent a frame without Content-Length: {head}"))?;
+            .ok_or_else(|| format!("the server sent a frame without Content-Length: {head}"))?;
         let body = rest
             .get(end + 4..end + 4 + len)
-            .ok_or("cpl lsp sent a short frame")?;
+            .ok_or("the server sent a short frame")?;
         out.push(String::from_utf8_lossy(body).into_owned());
         rest = &rest[end + 4 + len..];
     }

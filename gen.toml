@@ -43,7 +43,7 @@ tier = "pre-commit"
 
 [[gen]]
 name = "coverage"
-files = ["spec/conformance/COVERAGE.md", "spec/conformance/rule-gaps.txt"]
+files = ["spec/conformance/COVERAGE.md"]
 inputs = ["spec/core/*.md", "spec/lib/*.md", "std/*.cp", "spec/conformance/**/*.cp", "spec/lints.md"]
 write = ["scripts/conformance-coverage.py"]
 check = ["scripts/conformance-coverage.py", "--check"]

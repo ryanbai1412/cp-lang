@@ -123,7 +123,7 @@
     "crates/cpl-check/src/db.rs",
     "crates/cpl-interp/src/vm/exec/mod.rs"
   ],
-  "skip_lists": 243,
+  "skip_lists": 213,
   "dead_code_allows": 6,
   "external_crates": 5,
   "corpus_test_files": 1781,
@@ -154,6 +154,7 @@
   "prelude_gaps": 100,
   "permits": 0,
   "trait_gaps": 0,
+  "rule_gaps": 0,
   "idiom_lint_gaps": 0,
   "or_true": 45,
   "continue_on_error": 0,

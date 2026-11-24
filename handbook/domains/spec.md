@@ -113,7 +113,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Every rule is tested ([conformance/R1](../guidelines/conformance-checklist.md)) | rules with no case; forbidding rules with no reject case | ratchet in the gate | `scripts/conformance-coverage.py --check`, `spec/conformance/rule-gaps.txt` |
+| Every rule is tested ([conformance/R1](../guidelines/conformance-checklist.md)) | rules with no case; forbidding rules with no reject case | zero in the gate | `scripts/conformance-coverage.py --check` |
 | Every case cites something that exists | cites to unknown rules | gate | `cpl-conform --rules` |
 | Every diagnostic code is reachable | codes with no reject case | ratchet | `scripts/conformance-coverage.py --check` |
 | Feature combinations are tested (index types x consumers) ([conformance/R5](../guidelines/conformance-checklist.md)) | empty matrix cells | generated suite, gate | `scripts/conformance-matrix.py --check`, `spec/conformance/matrix.toml` |

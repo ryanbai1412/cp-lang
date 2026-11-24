@@ -56,7 +56,14 @@ copy in `cpl lsp --stdio` and prints what the server sends, one JSON
 message per line, with the document's URI as `<case>`: `diagnostics` (the
 published diagnostics), `formatting`, and `hover`, `completion` or
 `definition` at a needle's `|`, as in `// tool: lsp completion h.|` (the
-first non-comment line holding `h.`).
+first non-comment line holding `h.`). `// tool: dap <step>...` launches the
+copy in `cpl dap` and prints every response and event, one JSON message per
+line, with its path as `<case>`; the steps are `break:N` (line N, counted from after the
+header lines, as in `// expect: X at N`),
+`continue`, `next`, `stepIn`, `stepOut`, `stepBack`, `reverseContinue` and
+`eval:EXPR`. Each `// before: <tool args>` line runs that tool first in the
+same scratch directory, as `// tool:` would, and must exit 0: `// before: run
+--trace` writes the trace a `// tool: replay` case reads.
 
 They double as the spec's exercises and as the regression suite: the
 runner (`cpl-conform conformance`, in `crates/cpl-conform`) checks each expectation

@@ -1196,6 +1196,11 @@ def prelude_gaps(root: Path) -> list[str]:
     return _registered_entries(root, "prelude_gaps")
 
 
+def rule_gaps(root: Path) -> list[str]:
+    """Entries of spec/conformance/rule-gaps.txt, deleted: every rule has the cases it needs."""
+    return _registered_entries(root, "rule_gaps")
+
+
 def trait_gaps(root: Path) -> list[str]:
     """Entries of spec/conformance/trait-gaps.txt, deleted: every trait method has a case."""
     return _registered_entries(root, "trait_gaps")
@@ -1541,7 +1546,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "scripts/std-lint-baseline.txt": ("known_lists", "stdlib", "fix each std lint finding"),
     "spec/conformance/permits.txt": ("permits", "spec", "a case per permit"),
     "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "a case per prelude name"),
-    "spec/conformance/rule-gaps.txt": ("skip_lists", "spec", "a case per rule"),
+    "spec/conformance/rule-gaps.txt": ("rule_gaps", "spec", "deleted: conformance-coverage.py fails on any rule gap"),
     "spec/conformance/sig-gaps.txt": ("skip_lists", "spec", "a case per signature"),
     "spec/conformance/trait-gaps.txt": ("trait_gaps", "spec", "deleted: conformance-traits.py fails on any missing case"),
     "spec/idioms/lints-known.txt": ("idiom_lint_gaps", "idioms", "deleted: idioms-catalog.py fails on any finding"),
@@ -1587,6 +1592,7 @@ HARD_ZERO = frozenset({
     "plan_delta_lines",
     "trait_gaps",
     "idiom_lint_gaps",
+    "rule_gaps",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
@@ -1646,6 +1652,7 @@ COUNTERS = {
     "prelude_gaps": ("prelude names with no conformance case", prelude_gaps, True),
     "permits": ("entries of spec/conformance/permits.txt", permits, True),
     "trait_gaps": ("entries of spec/conformance/trait-gaps.txt", trait_gaps, True),
+    "rule_gaps": ("entries of spec/conformance/rule-gaps.txt", rule_gaps, True),
     "idiom_lint_gaps": ("entries of spec/idioms/lints-known.txt", idiom_lint_gaps, True),
     "or_true": ("`|| true` anywhere (scoreboard CI2)", or_true, True),
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),

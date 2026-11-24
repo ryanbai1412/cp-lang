@@ -318,20 +318,47 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
         let _ = std::fs::remove_dir_all(&dir);
         return run;
     }
-    let rest: Vec<String> = words.map(str::to_string).collect();
-    let placed = rest
-        .iter()
-        .any(|w| w.contains("{case}") || w.contains("{dir}"));
-    let mut argv = vec![sub.to_string()];
-    if !placed {
-        argv.push(copy.to_string_lossy().into_owned());
+    if sub == "dap" {
+        let header_lines = text
+            .lines()
+            .take_while(|l| l.trim_start().starts_with("//"))
+            .count() as u32;
+        let args: Vec<&str> = words.collect();
+        let run = crate::dap::session(&cpl, &copy, &header_input(text), header_lines, &args);
+        let _ = std::fs::remove_dir_all(&dir);
+        return run;
     }
-    argv.extend(rest.iter().map(|w| {
-        w.replace("{case}", &copy.to_string_lossy())
-            .replace("{dir}", &dir.to_string_lossy())
-    }));
+    let argv = |sub: &str, rest: Vec<&str>| {
+        let placed = rest
+            .iter()
+            .any(|w| w.contains("{case}") || w.contains("{dir}"));
+        let mut argv = vec![sub.to_string()];
+        if !placed {
+            argv.push(copy.to_string_lossy().into_owned());
+        }
+        argv.extend(rest.iter().map(|w| {
+            w.replace("{case}", &copy.to_string_lossy())
+                .replace("{dir}", &dir.to_string_lossy())
+        }));
+        argv
+    };
+    for before in header_values(text, "before:") {
+        let mut words = before.split_whitespace();
+        let first = words.next().ok_or("empty `// before:` header")?;
+        let mut cmd = Command::new(&cpl);
+        cmd.args(argv(first, words.collect())).current_dir(&dir);
+        let out = runner::run_piped(cmd, &header_input(text), runner::case_timeout())
+            .map_err(|e| format!("cpl {e}"))?;
+        if !out.status.success() {
+            let _ = std::fs::remove_dir_all(&dir);
+            return Err(format!(
+                "`// before: {before}` failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            ));
+        }
+    }
     let mut cmd = Command::new(&cpl);
-    cmd.args(&argv).current_dir(&dir);
+    cmd.args(argv(sub, words.collect())).current_dir(&dir);
     let out = runner::run_piped(cmd, &header_input(text), runner::case_timeout())
         .map_err(|e| format!("cpl {e}"))?;
     let rewritten = std::fs::read_to_string(&copy).unwrap_or_default();
