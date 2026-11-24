@@ -55,4 +55,13 @@ for i in 0..reps:
     s += cs.len // timed: grid.GridCols.len
     if rs.is_empty: s += 1 // timed: grid.GridRows.is_empty
     if cs.is_empty: s += 1 // timed: grid.GridCols.is_empty
+    s += rs.at(GR(i % 64)).len // timed: grid.GridRows.at
+// A line is a view, so `.len` reads no cell. Rows grow in `grid` and columns in `tall`, so a
+// line that copied would grow with n.
+domain TR = 0..n / 64
+domain TC = 0..64
+let tall: [TR, TC]Int = [TR, TC] (r, c) => r.ord + c.ord
+let ts = tall.cols
+for i in 0..reps:
+    s += ts.at(TC(i % 64)).len // timed: grid.GridCols.at
 print(s)

@@ -921,6 +921,7 @@ fn fields_untouched(seq: &Expr, body: &Block) -> bool {
             }));
         }
         ExprKind::MutSlice(place, _, _)
+        | ExprKind::MutLine(place, _, _)
         | ExprKind::Mutate(_, place, _)
         | ExprKind::Sort(place, _, _) => stores.push(place),
         _ => {}

@@ -669,6 +669,9 @@ pub enum ExprKind {
     Builtin(Builtin, Vec<Expr>),
     /// O(1) mutable slice view `(place, lo, hi)` into a `List<T>`, 1D `[D]T`, or `MutView<T>`.
     MutSlice(Box<Place>, Box<Expr>, Box<Expr>),
+    /// O(1) mutable view `(grid, at, axis)` of a 2D grid's row or column, the cells
+    /// [`Builtin::GridLine`] reads.
+    MutLine(Box<Place>, Box<Expr>, usize),
     /// A builtin that changes its receiver: `xs.push(x)`.
     Mutate(Mutation, Box<Place>, Vec<Expr>),
     /// Sort in place, naturally, by key expression, or by fn/Order value.
@@ -948,6 +951,9 @@ pub enum Builtin {
     KeySlice,
     /// `(seq, lo, hi)` -> the same cells keyed `lo..hi`; traps unless the lengths match.
     Rekey,
+    /// `(grid, at, axis)` -> row `at` (axis 1 whole) or column `at` (axis 0 whole) of a 2D
+    /// grid, keyed by the whole axis: a view of the grid's cells, not a copy (R04b.1.12).
+    GridLine,
     /// Explicit O(n) copy of a `Str` or `StrView` into an owned `Str`.
     ToStr,
     /// Explicit O(n) copy of a `List` or `ListView` into an owned `List`.

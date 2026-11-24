@@ -225,7 +225,9 @@ impl<'p> Devirt<'p> {
                             }
                         }
                     }
-                    ExprKind::MutSlice(place, ..) | ExprKind::Mutate(_, place, _) => {
+                    ExprKind::MutSlice(place, ..)
+                    | ExprKind::MutLine(place, ..)
+                    | ExprKind::Mutate(_, place, _) => {
                         place_fields(place, &mut unskippable);
                         key_structs(&place.ty, &mut whole);
                     }
@@ -417,6 +419,7 @@ impl<'p> Devirt<'p> {
                     }
                     ExprKind::Mutate(..) if pushes.contains(&(e as *const Expr)) => {}
                     ExprKind::MutSlice(place, ..)
+                    | ExprKind::MutLine(place, ..)
                     | ExprKind::Mutate(_, place, _)
                     | ExprKind::Sort(place, ..) => place_live(place, &mut live),
                     ExprKind::Closure(cid) => {

@@ -1166,6 +1166,12 @@ impl<'p> Emitter<'p> {
                 let hi = self.expr(hi).text;
                 Code::primary(format!("cpl::mut_slice({p}, {lo}, {hi})"))
             }
+            ExprKind::MutLine(place, at, axis) => {
+                self.need("grid_line");
+                let p = self.place(place);
+                let at = self.expr(at).text;
+                Code::primary(format!("cpl::mut_line({p}, {at}, {axis})"))
+            }
             ExprKind::Sort(place, sort_by, desc) => self.lambda("void", |this, out| {
                 this.sort_stmts(place, sort_by, desc.as_deref(), out)
             }),

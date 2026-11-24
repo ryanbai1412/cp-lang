@@ -36,6 +36,7 @@ impl<'p> Emitter<'p> {
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,

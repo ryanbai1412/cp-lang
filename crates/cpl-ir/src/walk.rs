@@ -99,6 +99,10 @@ macro_rules! walkers {
                     f(lo);
                     f(hi);
                 }
+                ExprKind::MutLine(place, at, _) => {
+                    $place(place, f);
+                    f(at);
+                }
                 ExprKind::Mutate(_, place, args) => {
                     $place(place, f);
                     args.$iter().for_each(f);
@@ -391,6 +395,7 @@ impl Effects {
                 }
             }
             ExprKind::MutSlice(place, _, _)
+            | ExprKind::MutLine(place, _, _)
             | ExprKind::Mutate(_, place, _)
             | ExprKind::Sort(place, _, _) => self.store(place),
             _ => {}
@@ -490,6 +495,7 @@ pub fn inside_list(
     deep_exprs(body, &mut |e| match &e.kind {
         ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => kept = false,
         ExprKind::MutSlice(place, _, _)
+        | ExprKind::MutLine(place, _, _)
         | ExprKind::Mutate(_, place, _)
         | ExprKind::Sort(place, ..) => kept &= !whole(place),
         _ => {}

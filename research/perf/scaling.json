@@ -6036,7 +6036,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.all",
-   "measured": 1.01,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6044,7 +6044,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.back",
-   "measured": 1.0,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6052,7 +6052,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.ccw",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -6060,7 +6060,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.cw",
-   "measured": 0.97,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6068,7 +6068,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.delta",
-   "measured": 1.01,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6076,7 +6076,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.down",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -6084,7 +6084,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.from",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -6092,7 +6092,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.left",
-   "measured": 0.98,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -6100,7 +6100,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.right",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -6108,7 +6108,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir4.up",
-   "measured": 1.0,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -6116,7 +6116,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir8.all",
-   "measured": 1.03,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -6124,7 +6124,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir8.back",
-   "measured": 1.05,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -6140,7 +6140,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir8.cw",
-   "measured": 1.06,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6148,7 +6148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir8.delta",
-   "measured": 0.99,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -6156,7 +6156,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.Dir8.from",
-   "measured": 1.02,
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/grid.cp::grid.GridCols.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "grid.GridCols.at",
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -6164,7 +6172,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.GridCols.is_empty",
-   "measured": 0.96,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6172,7 +6180,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.GridCols.len",
-   "measured": 1.0,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/grid.cp::grid.GridRows.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "grid.GridRows.at",
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6180,7 +6196,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.GridRows.is_empty",
-   "measured": 1.02,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -6188,7 +6204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.GridRows.len",
-   "measured": 0.97,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6196,7 +6212,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.adj4",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6204,7 +6220,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.adj8",
-   "measured": 0.99,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -6212,7 +6228,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.cols",
-   "measured": 0.95,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -6220,7 +6236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.down",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -6244,7 +6260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.right",
-   "measured": 1.01,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6252,7 +6268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.rows",
-   "measured": 0.94,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6260,7 +6276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.step",
-   "measured": 0.99,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -6268,7 +6284,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols}",
    "documented": 4.0,
    "fn": "grid.transposed",
-   "measured": 4.41,
+   "measured": 4.19,
    "n": 16384,
    "ok": true
   },
@@ -6276,7 +6292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "grid.up",
-   "measured": 0.99,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -17825,9 +17841,7 @@
   "dsu.PersistentDsuWithin.is_empty",
   "dsu.PersistentDsuWithin.items",
   "dsu.PersistentDsuWithin.len",
-  "grid.GridCols.at",
   "grid.GridCols.each",
-  "grid.GridRows.at",
   "grid.GridRows.each",
   "strings.Palindromes.items"
  ]

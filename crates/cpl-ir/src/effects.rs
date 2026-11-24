@@ -605,7 +605,9 @@ impl Reader<'_> {
                 touch.mutates = true;
                 touch.writes.insert(walk::root(place));
             }
-            ExprKind::MutSlice(place, _, _) | ExprKind::Sort(place, _, _) => {
+            ExprKind::MutSlice(place, _, _)
+            | ExprKind::MutLine(place, _, _)
+            | ExprKind::Sort(place, _, _) => {
                 touch.writes.insert(walk::root(place));
             }
             ExprKind::Do(block) => walk::deep_stmts(block, &mut |stmt| match stmt {

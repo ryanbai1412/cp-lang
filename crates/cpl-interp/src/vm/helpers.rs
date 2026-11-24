@@ -301,6 +301,7 @@ pub(super) fn quiet_node(e: &Expr) -> bool {
             | ExprKind::Closure(..)
             | ExprKind::Do(_)
             | ExprKind::MutSlice(..)
+            | ExprKind::MutLine(..)
             | ExprKind::Mutate(..)
             | ExprKind::Sort(..)
             | ExprKind::Print(..)

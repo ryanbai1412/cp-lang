@@ -691,7 +691,11 @@ impl<'a> Lowerer<'a> {
                 _ => None,
             },
             ExprKind::Builtin(
-                Builtin::ListSlice | Builtin::KeySlice | Builtin::Rekey | Builtin::ToList,
+                Builtin::ListSlice
+                | Builtin::KeySlice
+                | Builtin::Rekey
+                | Builtin::GridLine
+                | Builtin::ToList,
                 args,
             ) => args.first().and_then(|a| self.expr_range(a)),
             ExprKind::Do(blk) => match blk.stmts.last() {

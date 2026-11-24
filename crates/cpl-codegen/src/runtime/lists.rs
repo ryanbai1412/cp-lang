@@ -339,26 +339,27 @@ template <class T> struct ListView {
     size_t n = 0;
     bool rev = false;
     ll k0 = 0;
+    size_t st = 1;
     ListView() = default;
     ListView(const std::vector<T>& v, bool r = false) noexcept : ptr(v.data()), n(v.size()), rev(r) {}
     template <size_t K> ListView(const std::array<T, K>& v, bool r = false) noexcept : ptr(v.data()), n(K), rev(r) {}
-    ListView(const T* p, size_t sz, bool r = false, ll k = 0) noexcept : ptr(p), n(sz), rev(r), k0(k) {}
+    ListView(const T* p, size_t sz, bool r = false, ll k = 0, size_t s = 1) noexcept : ptr(p), n(sz), rev(r), k0(k), st(s) {}
     void cpl_list_view_tag() const {}
     size_t size() const noexcept { return n; }
     bool empty() const noexcept { return n == 0; }
-    const T& operator[](size_t i) const noexcept { return rev ? ptr[n - 1 - i] : ptr[i]; }
+    const T& operator[](size_t i) const noexcept { return ptr[(rev ? n - 1 - i : i) * st]; }
     const T& front() const noexcept { return (*this)[0]; }
     const T& back() const noexcept { return (*this)[n - 1]; }
-    ListView reversed() const noexcept { return ListView(ptr, n, !rev, k0); }
+    ListView reversed() const noexcept { return ListView(ptr, n, !rev, k0, st); }
     struct Iter {
-        const T* d; size_t i, n; bool rev;
-        const T& operator*() const noexcept { return rev ? d[n - 1 - i] : d[i]; }
+        const T* d; size_t i, n; bool rev; size_t st;
+        const T& operator*() const noexcept { return d[(rev ? n - 1 - i : i) * st]; }
         Iter& operator++() noexcept { ++i; return *this; }
         bool operator!=(const Iter& o) const noexcept { return i != o.i; }
         bool operator==(const Iter& o) const noexcept { return i == o.i; }
     };
-    Iter begin() const noexcept { return {ptr, 0, n, rev}; }
-    Iter end() const noexcept { return {ptr, n, n, rev}; }
+    Iter begin() const noexcept { return {ptr, 0, n, rev, st}; }
+    Iter end() const noexcept { return {ptr, n, n, rev, st}; }
     Iter rbegin() const noexcept { return reversed().begin(); }
     Iter rend() const noexcept { return reversed().end(); }
     int cmp(ListView o) const {
@@ -373,11 +374,11 @@ template <class T> struct ListView {
     friend bool operator>(ListView a, ListView b) { return a.cmp(b) > 0; }
     friend bool operator>=(ListView a, ListView b) { return a.cmp(b) >= 0; }
 };
-template <class T> ListView<T> list_slice(ListView<T> v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); size_t off = v.rev ? v.n - (size_t)hi : (size_t)lo; return ListView<T>(v.ptr + off, (size_t)(hi - lo), v.rev, v.k0 + (ll)off); }
+template <class T> ListView<T> list_slice(ListView<T> v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); size_t off = v.rev ? v.n - (size_t)hi : (size_t)lo; return ListView<T>(v.ptr + off * v.st, (size_t)(hi - lo), v.rev, v.k0 + (ll)off, v.st); }
 template <class T> ll key_lo(ListView<T> v) noexcept { return v.k0; }
 template <class T> ll key_pos(ListView<T> v, ll k) { ll i = k - v.k0, n = (ll)v.n; if (i < 0 || i >= n) key_fail(k, v.k0, n); return v.rev ? n - 1 - i : i; }
 template <class T> ll pos_key(ListView<T> v, ll p) noexcept { return v.k0 + (v.rev ? (ll)v.n - 1 - p : p); }
-template <class T> ListView<T> key_slice(ListView<T> v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (lo - v.k0), (size_t)(hi - lo), v.rev, lo); }
+template <class T> ListView<T> key_slice(ListView<T> v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (size_t)(lo - v.k0) * v.st, (size_t)(hi - lo), v.rev, lo, v.st); }
 template <class T> ListView<T> list_slice(const std::vector<T>& v, ll lo, ll hi) { return list_slice(ListView<T>(v), lo, hi); }
 template <class T, size_t K> ListView<T> list_slice(const std::array<T, K>& v, ll lo, ll hi) { return list_slice(ListView<T>(v), lo, hi); }
 template <class T, size_t K> ListView<T> key_slice(const std::array<T, K>& v, ll lo, ll hi) { return key_slice(ListView<T>(v), lo, hi); }
@@ -388,7 +389,7 @@ template <class T> ListView<T> list_rev(const std::vector<T>& v) noexcept { retu
 template <class T> ListView<T> list_rev(ListView<T> v) noexcept { return v.reversed(); }
 template <class T> std::vector<T> to_list(const std::vector<T>& v) { return v; }
 template <class T> std::vector<T> to_list(ListView<T> v) { std::vector<T> o; o.reserve(v.n); append_list_view(o, v); return o; }
-template <class T> void append_list_view(std::vector<T>& o, ListView<T> v) { if (!v.rev) o.insert(o.end(), v.ptr, v.ptr + v.n); else for (size_t i = v.n; i-- > 0;) o.push_back(v.ptr[i]); }
+template <class T> void append_list_view(std::vector<T>& o, ListView<T> v) { if (!v.rev && v.st == 1) o.insert(o.end(), v.ptr, v.ptr + v.n); else for (size_t i = 0; i < v.n; i++) o.push_back(v[i]); }
 template <class T> std::vector<T> list_concat(ListView<T> a, ListView<T> b) { std::vector<T> o; o.reserve(a.size() + b.size()); append_list_view(o, a); append_list_view(o, b); return o; }
 template <class T> std::vector<T> list_concat(ListView<T> a, const std::vector<T>& b) { return list_concat(a, ListView<T>(b)); }
 template <class T> std::vector<T> list_concat(const std::vector<T>& a, ListView<T> b) { return list_concat(ListView<T>(a), b); }
@@ -399,7 +400,7 @@ template <class T> std::optional<T> last(ListView<T> v) { return v.empty() ? std
 template <class T> T first_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
 template <class T> T last_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
 template <class T> std::vector<T> sorted(ListView<T> v) { auto o = to_list(v); sort_seq(o.begin(), o.end()); return o; }
-template <class T, class U> bool has(ListView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i] == x) return true; return false; }
+template <class T, class U> bool has(ListView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i * v.st] == x) return true; return false; }
 inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size()); for (u8 c : v) s.push_back((char)c); return s; }
 ",
     },
@@ -407,17 +408,20 @@ inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size
         name: "rekey",
         needs: &["list_view"],
         code: "\
-template <class T> ListView<T> rekey(ListView<T> v, ll lo, ll hi) { if (hi - lo != (ll)v.n) fail(\"rekey needs as many keys as cells\"); return ListView<T>(v.ptr, v.n, v.rev, lo); }
+template <class T> ListView<T> rekey(ListView<T> v, ll lo, ll hi) { if (hi - lo != (ll)v.n) fail(\"rekey needs as many keys as cells\"); return ListView<T>(v.ptr, v.n, v.rev, lo, v.st); }
 template <class T> ListView<T> rekey(const std::vector<T>& v, ll lo, ll hi) { return rekey(ListView<T>(v), lo, hi); }
 template <class T, size_t K> ListView<T> rekey(const std::array<T, K>& v, ll lo, ll hi) { return rekey(ListView<T>(v), lo, hi); }
 template <class T> struct Keyed : ListView<T> {
     std::vector<T> store;
+    // False when the cells belong to another value, as a grid's row or column does.
+    bool own = true;
     Keyed() = default;
     Keyed(std::vector<T> v, ll k) : store(std::move(v)) { this->ptr = store.data(); this->n = store.size(); this->k0 = k; }
-    Keyed(const Keyed& o) : ListView<T>(o), store(o.store) { this->ptr = store.data(); }
-    Keyed(Keyed&& o) noexcept : ListView<T>(o), store(std::move(o.store)) { this->ptr = store.data(); }
-    Keyed& operator=(const Keyed& o) { ListView<T>::operator=(o); store = o.store; this->ptr = store.data(); return *this; }
-    Keyed& operator=(Keyed&& o) noexcept { ListView<T>::operator=(o); store = std::move(o.store); this->ptr = store.data(); return *this; }
+    explicit Keyed(ListView<T> v) noexcept : ListView<T>(v), own(false) {}
+    Keyed(const Keyed& o) : ListView<T>(o), store(o.store), own(o.own) { if (own) this->ptr = store.data(); }
+    Keyed(Keyed&& o) noexcept : ListView<T>(o), store(std::move(o.store)), own(o.own) { if (own) this->ptr = store.data(); }
+    Keyed& operator=(const Keyed& o) { ListView<T>::operator=(o); store = o.store; own = o.own; if (own) this->ptr = store.data(); return *this; }
+    Keyed& operator=(Keyed&& o) noexcept { ListView<T>::operator=(o); store = std::move(o.store); own = o.own; if (own) this->ptr = store.data(); return *this; }
 };
 template <class T> Keyed<T> rekey_own(std::vector<T> v, ll lo, ll hi) { if (hi - lo != (ll)v.size()) fail(\"rekey needs as many keys as cells\"); return Keyed<T>(std::move(v), lo); }
 ",
@@ -426,46 +430,86 @@ template <class T> Keyed<T> rekey_own(std::vector<T> v, ll lo, ll hi) { if (hi -
         name: "mut_view",
         needs: &["fail", "sorted"],
         code: "\
-// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T` (pointer + length).
+// A random-access iterator over every `s`-th cell from `p`: a grid column when `s` > 1.
+template <class P> struct StepIt {
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = std::remove_cv_t<std::remove_pointer_t<P>>;
+    using difference_type = std::ptrdiff_t;
+    using pointer = P;
+    using reference = std::remove_pointer_t<P>&;
+    P p; difference_type i, s;
+    reference operator*() const noexcept { return p[i * s]; }
+    pointer operator->() const noexcept { return p + i * s; }
+    reference operator[](difference_type k) const noexcept { return p[(i + k) * s]; }
+    StepIt& operator++() noexcept { ++i; return *this; }
+    StepIt operator++(int) noexcept { StepIt t = *this; ++i; return t; }
+    StepIt& operator--() noexcept { --i; return *this; }
+    StepIt operator--(int) noexcept { StepIt t = *this; --i; return t; }
+    StepIt& operator+=(difference_type k) noexcept { i += k; return *this; }
+    StepIt& operator-=(difference_type k) noexcept { i -= k; return *this; }
+    friend StepIt operator+(StepIt a, difference_type k) noexcept { a.i += k; return a; }
+    friend StepIt operator+(difference_type k, StepIt a) noexcept { a.i += k; return a; }
+    friend StepIt operator-(StepIt a, difference_type k) noexcept { a.i -= k; return a; }
+    friend difference_type operator-(const StepIt& a, const StepIt& b) noexcept { return a.i - b.i; }
+    friend bool operator==(const StepIt& a, const StepIt& b) noexcept { return a.i == b.i; }
+    friend bool operator!=(const StepIt& a, const StepIt& b) noexcept { return a.i != b.i; }
+    friend bool operator<(const StepIt& a, const StepIt& b) noexcept { return a.i < b.i; }
+    friend bool operator>(const StepIt& a, const StepIt& b) noexcept { return a.i > b.i; }
+    friend bool operator<=(const StepIt& a, const StepIt& b) noexcept { return a.i <= b.i; }
+    friend bool operator>=(const StepIt& a, const StepIt& b) noexcept { return a.i >= b.i; }
+};
+// O(1) fixed-length mutable view into a `List<T>`, 1D `[D]T` or a grid's row or column
+// (pointer + length + stride).
 template <class T> struct MutView {
     using value_type = T;
     T* ptr = nullptr;
     size_t n = 0;
     ll k0 = 0;
+    size_t st = 1;
     MutView() = default;
-    MutView(T* p, size_t sz, ll k = 0) noexcept : ptr(p), n(sz), k0(k) {}
+    MutView(T* p, size_t sz, ll k = 0, size_t s = 1) noexcept : ptr(p), n(sz), k0(k), st(s) {}
     void cpl_list_view_tag() const {}
     size_t size() const noexcept { return n; }
     bool empty() const noexcept { return n == 0; }
     T* data() noexcept { return ptr; }
     const T* data() const noexcept { return ptr; }
-    T* begin() noexcept { return ptr; }
-    T* end() noexcept { return ptr + n; }
-    const T* begin() const noexcept { return ptr; }
-    const T* end() const noexcept { return ptr + n; }
-    T& operator[](size_t i) noexcept { return ptr[i]; }
-    const T& operator[](size_t i) const noexcept { return ptr[i]; }
+    StepIt<T*> begin() noexcept { return {ptr, 0, (std::ptrdiff_t)st}; }
+    StepIt<T*> end() noexcept { return {ptr, (std::ptrdiff_t)n, (std::ptrdiff_t)st}; }
+    StepIt<const T*> begin() const noexcept { return {ptr, 0, (std::ptrdiff_t)st}; }
+    StepIt<const T*> end() const noexcept { return {ptr, (std::ptrdiff_t)n, (std::ptrdiff_t)st}; }
+    T& operator[](size_t i) noexcept { return ptr[i * st]; }
+    const T& operator[](size_t i) const noexcept { return ptr[i * st]; }
     T& front() noexcept { return ptr[0]; }
     const T& front() const noexcept { return ptr[0]; }
-    T& back() noexcept { return ptr[n - 1]; }
-    const T& back() const noexcept { return ptr[n - 1]; }
+    T& back() noexcept { return ptr[(n - 1) * st]; }
+    const T& back() const noexcept { return ptr[(n - 1) * st]; }
 };
 template <class T> MutView<T> mut_slice(std::vector<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.size()) fail(\"slice outside the list\"); return MutView<T>(v.data() + (size_t)lo, (size_t)(hi - lo), lo); }
 template <class T, size_t N> MutView<T> mut_slice(std::array<T, N>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > N) fail(\"slice outside the list\"); return MutView<T>(v.data() + (size_t)lo, (size_t)(hi - lo), lo); }
-template <class T> MutView<T> mut_slice(MutView<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); return MutView<T>(v.ptr + (size_t)lo, (size_t)(hi - lo), v.k0 + lo); }
+template <class T> MutView<T> mut_slice(MutView<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); return MutView<T>(v.ptr + (size_t)lo * v.st, (size_t)(hi - lo), v.k0 + lo, v.st); }
 template <class T> ll key_lo(const MutView<T>& v) noexcept { return v.k0; }
 template <class T> ll key_pos(const MutView<T>& v, ll k) { ll i = k - v.k0, n = (ll)v.n; if (i < 0 || i >= n) key_fail(k, v.k0, n); return i; }
 template <class T> ll pos_key(const MutView<T>& v, ll p) noexcept { return v.k0 + p; }
-template <class T> ListView<T> key_slice(const MutView<T>& v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (lo - v.k0), (size_t)(hi - lo), false, lo); }
+template <class T> ListView<T> key_slice(const MutView<T>& v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (size_t)(lo - v.k0) * v.st, (size_t)(hi - lo), false, lo, v.st); }
 template <class T> T& at(MutView<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
 template <class T> const T& at(const MutView<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
-template <class T> std::vector<T> to_list(MutView<T> v) { return std::vector<T>(v.ptr, v.ptr + v.n); }
+template <class T> std::vector<T> to_list(MutView<T> v) { return std::vector<T>(v.begin(), v.end()); }
 template <class T> std::optional<T> first(MutView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.front()); }
 template <class T> std::optional<T> last(MutView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
 template <class T> T first_val(MutView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
 template <class T> T last_val(MutView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
 template <class T> std::vector<T> sorted(MutView<T> v) { auto o = to_list(v); sort_seq(o.begin(), o.end()); return o; }
-template <class T, class U> bool has(MutView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i] == x) return true; return false; }
+template <class T, class U> bool has(MutView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i * v.st] == x) return true; return false; }
+",
+    },
+    Piece {
+        name: "grid_line",
+        needs: &["grid", "rekey", "mut_view"],
+        code: "\
+// Row `at` (axis 1 whole) or column `at` (axis 0 whole) of a 2D grid: its cells, not a copy.
+template <class T> ListView<T> grid_cells(const Grid<T, 2>& g, ll at, ll axis) { size_t fixed = g.n[axis == 1 ? 0 : 1]; if ((unsigned long long)at >= fixed) fail(\"index outside the array\"); return axis == 1 ? ListView<T>(g.d.data() + (size_t)at * g.n[1], g.n[1]) : ListView<T>(g.d.data() + (size_t)at, g.n[0], false, 0, g.n[1]); }
+template <class T> Keyed<T> grid_line(const Grid<T, 2>& g, ll at, ll axis) { return Keyed<T>(grid_cells(g, at, axis)); }
+template <class T> MutView<T> mut_line(Grid<T, 2>& g, ll at, ll axis) { ListView<T> v = grid_cells(g, at, axis); return MutView<T>(g.d.data() + (v.ptr - g.d.data()), v.n, 0, v.st); }
 ",
     },
     Piece {

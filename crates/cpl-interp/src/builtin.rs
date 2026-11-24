@@ -651,7 +651,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Builtin::KeyLo => Value::Int(match &first {
                 Value::ListView(v) => v.first_key(),
                 Value::StrView(v) => v.lo as i64,
-                Value::MutView(v) => v.lo as i64,
+                Value::MutView(v) => v.key0,
                 _ => 0,
             }),
             Builtin::CutAfter | Builtin::CutBefore => {
@@ -659,7 +659,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (lo, len, rev) = match &first {
                     Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
                     Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
-                    Value::MutView(v) => (v.lo as i64, v.len as i64, false),
+                    Value::MutView(v) => (v.key0, v.len as i64, false),
                     Value::Array(a) => (0, a.len() as i64, false),
                     Value::List(items) => (0, items.len() as i64, false),
                     Value::Str(bytes) => (0, bytes.len() as i64, false),
@@ -682,7 +682,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (lo, len, rev) = match &first {
                     Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
                     Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
-                    Value::MutView(v) => (v.lo as i64, v.len as i64, false),
+                    Value::MutView(v) => (v.key0, v.len as i64, false),
                     Value::Range(lo, hi) => (*lo, hi.saturating_sub(*lo).max(0), false),
                     _ => return trap(span, "keys need a slice"),
                 };
@@ -704,6 +704,43 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 } else {
                     lo + if rev { len - 1 - at } else { at }
                 })
+            }
+            Builtin::GridLine => {
+                let at = values.next().unwrap_or_default().int();
+                let axis = values.next().unwrap_or_default().int();
+                let Value::Array(a) = first else {
+                    return trap(span, "internal: a grid line needs a 2D array");
+                };
+                let &[rows, cols] = &a.dims[..] else {
+                    return trap(span, "internal: a grid line needs a 2D array");
+                };
+                let (fixed, len) = if axis == 1 {
+                    (rows, cols)
+                } else {
+                    (cols, rows)
+                };
+                if at < 0 || at >= fixed {
+                    return trap(
+                        span,
+                        format!("index {at} is outside an axis of length {fixed}"),
+                    );
+                }
+                let cell = |k: i64| {
+                    if axis == 1 {
+                        at * cols + k
+                    } else {
+                        k * cols + at
+                    }
+                };
+                // A copy here, a view in C++: the grid is lent while the line lives, so
+                // no program can tell them apart.
+                let cells: Vec<Value> = (0..len)
+                    .map(|k| a.get_unchecked_val(cell(k) as usize))
+                    .collect();
+                Value::ListView(Rc::new(ListViewVal::whole(
+                    Rc::new(crate::value::Cells::from(cells)),
+                    false,
+                )))
             }
             Builtin::Rekey => {
                 let lo = values.next().unwrap_or_default().int();
@@ -745,7 +782,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let items = self.mut_view_to_vec(&mv, span)?;
                         let mut view =
                             ListViewVal::whole(Rc::new(crate::value::Cells::from(items)), false);
-                        view.shift = mv.lo as i64;
+                        view.shift = mv.key0;
                         Value::ListView(Rc::new(view))
                     }
                     other => other,

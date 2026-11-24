@@ -230,6 +230,7 @@ pub(crate) fn narrow_elems(
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,
@@ -341,11 +342,14 @@ pub(crate) fn narrow_elems(
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,
             ) => args.first().and_then(|a| expr_root(scope, a)),
-            ExprKind::MutSlice(place, _, _) => place_root(scope, place),
+            ExprKind::MutSlice(place, _, _) | ExprKind::MutLine(place, _, _) => {
+                place_root(scope, place)
+            }
             ExprKind::Do(blk) => match blk.stmts.last() {
                 Some(Stmt::Give(inner)) => expr_root(scope, inner),
                 _ => None,
@@ -494,6 +498,7 @@ pub(crate) fn narrow_elems(
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,
@@ -772,6 +777,7 @@ pub(crate) fn narrow_elems(
                 Builtin::ListSlice
                 | Builtin::KeySlice
                 | Builtin::Rekey
+                | Builtin::GridLine
                 | Builtin::ToList
                 | Builtin::Copy,
                 args,

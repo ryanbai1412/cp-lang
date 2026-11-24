@@ -290,6 +290,7 @@ fn none_fields(program: &Program) -> BTreeSet<(usize, usize)> {
             }
             (
                 ExprKind::MutSlice(place, ..)
+                | ExprKind::MutLine(place, ..)
                 | ExprKind::Mutate(_, place, _)
                 | ExprKind::Sort(place, ..),
                 _,

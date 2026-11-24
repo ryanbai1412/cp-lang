@@ -311,6 +311,67 @@ impl<'a> Lowerer<'a> {
         Some(dims[*axis]).filter(|d| !matches!(d, Dim::Int | Dim::IntFrom(_) | Dim::Sym(_)))
     }
 
+    /// `g[r]` or `g[.., c]` on a 2D grid whose axes are domains: a view of the grid's
+    /// cells, or a mutable one when the binding is written through, as a slice's is
+    /// (R05.3.3). `None` for any other piece, which is collected.
+    pub(super) fn grid_line(
+        &mut self,
+        base: &ast::Expr,
+        grid: &Expr,
+        indices: &[ast::Expr],
+        whole: &[usize],
+        span: Span,
+    ) -> Option<Expr> {
+        let Ty::Array { dims, elem } = &grid.ty else {
+            return None;
+        };
+        let (&[axis], &[d0, d1]) = (whole, dims.as_slice()) else {
+            return None;
+        };
+        let elem: &Ty = elem;
+        let dim = self.axis_key(whole, dims)?;
+        let ast::ExprKind::Range {
+            lo: None,
+            hi: None,
+            step: None,
+            ..
+        } = &indices[axis].kind
+        else {
+            return None;
+        };
+        let fixed = &indices[1 - axis];
+        let want = match [d0, d1][1 - axis] {
+            Dim::Pos(d) => Ty::Pos(d),
+            Dim::Bound(d) => Ty::Bound(d),
+            _ => return None,
+        };
+        // The grid is lowered before the index, as `g[r]` reads them.
+        let grid = if self.mut_slice_inits.contains(&self.span(span)) && self.is_mutable_place(base)
+        {
+            Err(self.place(base))
+        } else {
+            Ok(self.hoist_view_base(grid.clone(), span))
+        };
+        let at = self.expr(fixed, Some(&want));
+        let at = self.coerce(at, &want, fixed.span);
+        let at = self.cast(Cast::Ord, at, Ty::Int);
+        Some(match grid {
+            Err(place) => self.mk(
+                ExprKind::MutLine(Box::new(place), Box::new(at), axis),
+                Ty::MutView(Box::new(elem.clone()), dim),
+                span,
+            ),
+            Ok(grid) => {
+                let axis = self.int_lit(axis as i64, span);
+                self.mk(
+                    ExprKind::Builtin(Builtin::GridLine, vec![grid, at, axis]),
+                    Ty::Keyed(Box::new(elem.clone()), dim),
+                    span,
+                )
+            }
+        })
+    }
+
     /// The cells of one row or column of a grid, collected into `cells`,
     /// keyed by [`Self::axis_key`] from the position `first` holds: a row
     /// keeps the column domain.

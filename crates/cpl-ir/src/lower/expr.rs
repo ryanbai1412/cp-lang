@@ -331,6 +331,10 @@ impl<'a> Lowerer<'a> {
                         .filter(|&k| is_whole(&indices[k]))
                         .collect();
                     if !whole.is_empty() && !piece_cell && dims.len() == indices.len() {
+                        if let Some(line) = self.grid_line(base, &base_expr, indices, &whole, span)
+                        {
+                            return line;
+                        }
                         let (dims, elem) = (dims.clone(), (**elem).clone());
                         let first = self.axis_key(&whole, &dims).map(|_| self.temp(Ty::Int));
                         let cells = self.collected(elem, span, |lw, out, push| {

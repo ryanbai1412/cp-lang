@@ -755,7 +755,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     .any(|c| c.locals.iter().any(|l| matches!(l.ty, Ty::MutView(..))));
             if !has_mut_view {
                 let mut check = |e: &cpl_ir::Expr| {
-                    if matches!(e.kind, ExprKind::MutSlice(..)) || matches!(e.ty, Ty::MutView(..)) {
+                    if matches!(e.kind, ExprKind::MutSlice(..) | ExprKind::MutLine(..))
+                        || matches!(e.ty, Ty::MutView(..))
+                    {
                         has_mut_view = true;
                     }
                 };
@@ -1169,10 +1171,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
                 let part = self.part_of(place, &mut indices.into_iter());
-                let (target, base_lo, base_len) = match self.part(&part) {
-                    Some(Value::List(items)) => (part, 0usize, items.len()),
-                    Some(Value::Array(arr)) => (part, 0usize, arr.len()),
-                    Some(Value::MutView(mv)) => (mv.target.clone(), mv.lo, mv.len),
+                let (target, base_lo, base_len, step, key0) = match self.part(&part) {
+                    Some(Value::List(items)) => (part, 0usize, items.len(), 1, 0),
+                    Some(Value::Array(arr)) => (part, 0usize, arr.len(), 1, 0),
+                    Some(Value::MutView(mv)) => {
+                        (mv.target.clone(), mv.lo, mv.len, mv.step, mv.key0)
+                    }
                     Some(Value::Moved) => return trap(span, LENT),
                     _ => return trap(span, "slice expects a list or array"),
                 };
@@ -1184,8 +1188,42 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 Value::MutView(Rc::new(MutViewVal {
                     target,
-                    lo: base_lo + lo as usize,
+                    lo: base_lo + lo as usize * step,
                     len: (hi - lo) as usize,
+                    step,
+                    key0: key0 + lo,
+                }))
+            }
+            ExprKind::MutLine(place, at, axis) => {
+                let at = self.eval(at)?.int();
+                let mut indices = Vec::new();
+                self.indices(place, &mut indices)?;
+                let part = self.part_of(place, &mut indices.into_iter());
+                let (rows, cols) = match self.part(&part) {
+                    Some(Value::Array(arr)) if arr.dims.len() == 2 => {
+                        (arr.dims[0] as usize, arr.dims[1] as usize)
+                    }
+                    Some(Value::Moved) => return trap(span, LENT),
+                    _ => return trap(span, "internal: a grid line needs a 2D array"),
+                };
+                let (fixed, len, step) = if *axis == 1 {
+                    (rows, cols, 1)
+                } else {
+                    (cols, rows, cols)
+                };
+                let Some(at) = usize::try_from(at).ok().filter(|at| *at < fixed) else {
+                    return trap(
+                        span,
+                        format!("index {at} is outside an axis of length {fixed}"),
+                    );
+                };
+                let lo = if *axis == 1 { at * cols } else { at };
+                Value::MutView(Rc::new(MutViewVal {
+                    target: part,
+                    lo,
+                    len,
+                    step,
+                    key0: 0,
                 }))
             }
             ExprKind::Mutate(op, place, args) => {
@@ -1276,13 +1314,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             Value::List(items) => {
                                 let dst = Rc::make_mut(items);
                                 for (k, item) in items_vec.into_iter().enumerate() {
-                                    dst.set(mv.lo + k, item);
+                                    dst.set(mv.lo + k * mv.step, item);
                                 }
                             }
                             Value::Array(arr) => {
                                 let dst = Rc::make_mut(arr);
                                 for (k, item) in items_vec.into_iter().enumerate() {
-                                    dst.set(mv.lo + k, item);
+                                    dst.set(mv.lo + k * mv.step, item);
                                 }
                             }
                             _ => return trap(span, LENT),

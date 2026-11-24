@@ -252,6 +252,7 @@ fn pusher(id: usize, f: &Function, summary: &FnSummary) -> Option<usize> {
         match &e.kind {
             ExprKind::Mutate(_, place, _)
             | ExprKind::MutSlice(place, ..)
+            | ExprKind::MutLine(place, ..)
             | ExprKind::Sort(place, ..) => stored += usize::from(at_acc(place)),
             ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
                 stored += args
