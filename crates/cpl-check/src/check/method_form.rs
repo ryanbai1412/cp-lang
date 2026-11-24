@@ -287,13 +287,12 @@ impl Checker<'_> {
                 fit.retain(|(_, d)| takes_count(d, given));
             }
         }
-        match fit.len() {
-            0 => Pick::NoFit,
-            1 => {
-                let (key, def) = fit.pop().unwrap();
-                Pick::One(key, def)
-            }
-            _ => Pick::Ambiguous(fit.into_iter().map(|f| f.0).collect()),
+        if fit.len() > 1 {
+            return Pick::Ambiguous(fit.into_iter().map(|f| f.0).collect());
+        }
+        match fit.pop() {
+            None => Pick::NoFit,
+            Some((key, def)) => Pick::One(key, def),
         }
     }
 

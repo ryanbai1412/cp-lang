@@ -951,7 +951,7 @@ impl<'a> Checker<'a> {
                             param_tys,
                             body,
                             ..
-                        } if !params.is_empty() => self.quietly(|c| {
+                        } if let Some(param) = Pattern::single_param(params) => self.quietly(|c| {
                             c.push_scope();
                             let pty = param_tys
                                 .first()
@@ -959,12 +959,7 @@ impl<'a> Checker<'a> {
                                 .and_then(|t| t.as_ref())
                                 .map(|t| c.resolve_type(t))
                                 .unwrap_or_else(|| (**elem).clone());
-                            c.bind(
-                                &Pattern::single_param(params).expect("a parameter"),
-                                &pty,
-                                false,
-                                "param",
-                            );
+                            c.bind(&param, &pty, false, "param");
                             let ret = c.infer(body).widen();
                             c.pop_scope();
                             ret
@@ -1006,8 +1001,10 @@ impl<'a> Checker<'a> {
                                 param_tys,
                                 body,
                                 ..
-                            } if params.len() == 1
-                                || elem.param_fields().is_some_and(|f| f.len() == params.len()) =>
+                            } if let Some(param) = Pattern::single_param(params).filter(|_| {
+                                params.len() == 1
+                                    || elem.param_fields().is_some_and(|f| f.len() == params.len())
+                            }) =>
                             {
                                 self.quietly(|c| {
                                     c.push_scope();
@@ -1017,12 +1014,7 @@ impl<'a> Checker<'a> {
                                         .and_then(|t| t.as_ref())
                                         .map(|t| c.resolve_type(t))
                                         .unwrap_or_else(|| elem.clone());
-                                    c.bind(
-                                        &Pattern::single_param(params).expect("a parameter"),
-                                        &pty,
-                                        false,
-                                        "param",
-                                    );
+                                    c.bind(&param, &pty, false, "param");
                                     let ret = c.infer(body).widen();
                                     c.pop_scope();
                                     ret
@@ -1126,7 +1118,7 @@ impl<'a> Checker<'a> {
                                 param_tys,
                                 body,
                                 ..
-                            } if !params.is_empty() => {
+                            } if let Some(param) = Pattern::single_param(params) => {
                                 self.push_scope();
                                 let pty = param_tys
                                     .first()
@@ -1134,12 +1126,7 @@ impl<'a> Checker<'a> {
                                     .and_then(|o| o.as_ref())
                                     .map(|t| self.resolve_type(t))
                                     .unwrap_or_else(|| (**inner).clone());
-                                self.bind(
-                                    &Pattern::single_param(params).expect("a parameter"),
-                                    &pty,
-                                    false,
-                                    "param",
-                                );
+                                self.bind(&param, &pty, false, "param");
                                 let r = self.infer(body);
                                 self.pop_scope();
                                 r

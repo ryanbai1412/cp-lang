@@ -205,9 +205,9 @@ impl<'a> Checker<'a> {
                 let lo_ty = lo_ty.map(|t| self.unalias_bounds(t));
                 let hi_ty = hi_ty.map(|t| self.unalias_bounds(t));
                 let bounds_domain = |ty: &Option<Ty>| match ty {
-                    Some(Ty::Pos(d)) if d.ends_with(".cuts") => {
-                        Some((d.clone(), d.strip_suffix(".cuts").unwrap().to_string()))
-                    }
+                    Some(Ty::Pos(d)) => d
+                        .strip_suffix(".cuts")
+                        .map(|base| (d.clone(), base.to_string())),
                     Some(Ty::Named { name, args }) if name == "Cut" => match args.as_slice() {
                         [Ty::Pos(d)] => Some((format!("{d}.cuts"), d.clone())),
                         _ => None,

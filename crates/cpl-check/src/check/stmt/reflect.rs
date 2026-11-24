@@ -90,14 +90,13 @@ impl Checker<'_> {
         let mut first: Option<Ty> = None;
         for v in values {
             let ty = self.infer(&v.value);
-            let enum_mismatch = first.as_ref().is_some_and(|first| {
+            let mismatched = first.as_ref().filter(|first| {
                 !first.is_vague()
                     && !ty.is_vague()
-                    && *first != ty
+                    && **first != ty
                     && (variant_shapes.is_some() || self.variant_payloads(&ty).is_some())
             });
-            if enum_mismatch {
-                let first = first.as_ref().unwrap();
+            if let Some(first) = mismatched {
                 self.report(
                     v.value.span,
                     msgs::check::TYPE_MISMATCH_FIELDS_WALKS_VALUES_OF,

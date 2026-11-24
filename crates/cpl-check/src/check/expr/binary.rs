@@ -102,8 +102,7 @@ impl<'a> Checker<'a> {
             }
             // `total + ` mid-edit: the half that is there gives the whole.
             _ if matches!(rhs.kind, ExprKind::Missing) && left.is_numeric() => left.widen(),
-            _ if self.operator_trait(op, &left).is_some() => {
-                let (trait_name, owner) = self.operator_trait(op, &left).unwrap();
+            _ if let Some((trait_name, owner)) = self.operator_trait(op, &left) => {
                 let op_method = match op {
                     BinOp::Add => "add",
                     BinOp::Sub => "sub",
@@ -231,9 +230,9 @@ impl<'a> Checker<'a> {
             },
             _ if left.is_numeric() && right.is_numeric() => Ty::Float,
             BinOp::Add if left == Ty::Str && right == Ty::Str => Ty::Str,
-            BinOp::Add if seq_concat_elem(&left).is_some() && seq_concat_elem(&right).is_some() => {
-                let le = seq_concat_elem(&left).unwrap();
-                let re = seq_concat_elem(&right).unwrap();
+            BinOp::Add
+                if let (Some(le), Some(re)) = (seq_concat_elem(&left), seq_concat_elem(&right)) =>
+            {
                 if le == re || re.is_vague() {
                     Ty::Named {
                         name: "List".into(),

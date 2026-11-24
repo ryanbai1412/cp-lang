@@ -569,12 +569,12 @@ impl<'a> Checker<'a> {
                 lazy: p.lazy,
             });
         }
-        let ret = match (&f.ret, &f.body) {
-            (Some(ty), _) => self.resolve_type(ty),
+        let ret = match (&f.ret, &f.lends, &f.body) {
+            (Some(ty), _, _) => self.resolve_type(ty),
             // A projection's caller works with the value it lends.
-            (None, _) if f.lends.is_some() => self.resolve_type(&f.lends.as_ref().unwrap().ty),
-            (None, ast::FnBody::Expr(_)) => Ty::Unknown,
-            (None, _) => Ty::Unit,
+            (None, Some(lends), _) => self.resolve_type(&lends.ty),
+            (None, None, ast::FnBody::Expr(_)) => Ty::Unknown,
+            (None, None, _) => Ty::Unit,
         };
         self.scopes.pop();
         self.in_fn -= 1;

@@ -223,13 +223,9 @@ impl<'a> Checker<'a> {
             // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
             // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.
             Ty::Array { index, elem }
-                if matches!(index.as_slice(), [Ty::Named { name, args }] if matches!(name.as_str(), "Sym" | "Pair") && args.len() == 1)
-                    && !(indices.len() == 1 && self.fits(&index_tys[0], &index[0])) =>
+                if let Some(dom_ty) = pair_storage_domain(index)
+                    .filter(|_| !(indices.len() == 1 && self.fits(&index_tys[0], &index[0]))) =>
             {
-                let Ty::Named { args, .. } = &index[0] else {
-                    unreachable!()
-                };
-                let dom_ty = &args[0];
                 if indices.len() == 1
                     && (index_tys[0].is_vague()
                         || matches!(&index_tys[0], Ty::Tuple(items) if items.len() == 2))
@@ -289,13 +285,12 @@ impl<'a> Checker<'a> {
             // `[State]T` where `State = (V, K)` (a domain or a type): allow multi-index
             // `dp[v, k]` in addition to `dp[s]` and `dp[(v, k)]`.
             Ty::Array { index, elem }
-                if index.len() == 1
-                    && indices.len() > 1
-                    && self
-                        .axis_factors(&index[0])
-                        .is_some_and(|f| f.len() == indices.len()) =>
+                if let Some(wants) = index
+                    .first()
+                    .filter(|_| index.len() == 1 && indices.len() > 1)
+                    .and_then(|state| self.axis_factors(state))
+                    .filter(|f| f.len() == indices.len()) =>
             {
-                let wants = self.axis_factors(&index[0]).unwrap();
                 self.note_typed_index(expr, base, indices, &index_tys, &wants);
                 for ((got, want), index_expr) in index_tys.iter().zip(&wants).zip(indices) {
                     self.expect_fits(got, want, index_expr, |c, got, want| {
@@ -719,5 +714,18 @@ impl Checker<'_> {
                 "walk it (`for x in {w}`, `for (k, x) in {w}.items`), or `{w}.rebase` to count from 0"
             )),
         );
+    }
+}
+
+/// The `V` of `[Sym<V>]T` or `[Pair<V>]T` storage, by its index types.
+fn pair_storage_domain(index: &[Ty]) -> Option<&Ty> {
+    match index {
+        [Ty::Named { name, args }] if matches!(name.as_str(), "Sym" | "Pair") => {
+            match args.as_slice() {
+                [dom] => Some(dom),
+                _ => None,
+            }
+        }
+        _ => None,
     }
 }
