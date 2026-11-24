@@ -34,6 +34,9 @@ pub(crate) struct Declared {
     /// The first hole `from` calls a method on: the finding labels it when
     /// `to` writes no hole, so a record's `on` types check the receiver.
     receiver: Option<usize>,
+    /// Names `from` declares with a written type and `to` declares again
+    /// without one: the fix may change their type.
+    rebinds: Vec<String>,
     /// The module's public names `to` uses, each as the linted file spells
     /// it (`sq` -> `geo.sq` under `use mylib.geo`).
     spell: Vec<(String, String)>,
@@ -98,6 +101,18 @@ fn declare(
     let receiver = (0..from.len().saturating_sub(1))
         .filter(|&i| !labels[i] && from[i + 1].0 == K::Dot)
         .find_map(|i| decl.holes.iter().position(|h| *h == from[i].1));
+    let declared_in = |toks: &[(K, String)], typed: bool| -> Vec<String> {
+        (toks.windows(3))
+            .filter(|w| matches!(w[0].0, K::Let | K::Var) && w[1].0 == K::Ident)
+            .filter(|w| (w[2].0 == K::Colon) == typed)
+            .map(|w| w[1].1.clone())
+            .collect()
+    };
+    let to_toks = library_lint::run(&decl.to).map_or(Vec::new(), |r| r.0);
+    let to_names = declared_in(&to_toks, false);
+    let rebinds = (declared_in(&from, true).into_iter())
+        .filter(|n| to_names.contains(n))
+        .collect();
     Some(Declared {
         spell,
         lint: intern(&decl.name),
@@ -105,6 +120,7 @@ fn declare(
         stmt_holes,
         labels,
         receiver,
+        rebinds,
         decl,
         module: module.to_string(),
         from,
@@ -238,8 +254,8 @@ fn bound_names(toks: &[(K, String)]) -> Vec<String> {
     out
 }
 
-/// Every expression and statement of the file, and the statements of each
-/// block in order, in file positions.
+/// Every expression, type and statement of the file, and the statements of
+/// each block in order, in file positions.
 #[derive(Default)]
 struct Spans {
     base: u32,
@@ -455,7 +471,6 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             {
                 continue;
             }
-            taken.push(span);
             let first = before(span.start);
             let commented = (first..stop - 1).any(|i| {
                 file.src[toks[i].span.end as usize..toks[i + 1].span.start as usize].contains("//")
@@ -505,13 +520,68 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 let at = Span::new(toks[a].span.start, toks[b - 1].span.end);
                 diag = diag.with_label(at, format!("what `{}` takes", d.decl.fn_name));
             }
-            if !commented && d.lint.no_fix.is_none() {
-                diag.fix(format!("use `{}`", d.decl.suggests), span, fix);
+            let mut fixed = diag.clone();
+            fixed.fix(format!("use `{}`", d.decl.suggests), span, fix);
+            if !d.rebinds.is_empty()
+                && !rebinding_holds(
+                    file.src,
+                    &toks,
+                    &spans.blocks,
+                    &site,
+                    &d.rebinds,
+                    &names,
+                    &fixed,
+                )
+            {
+                continue;
             }
+            if !commented && d.lint.no_fix.is_none() {
+                diag = fixed;
+            }
+            taken.push(span);
             out.push(Finding { lint: d.lint, diag });
         }
     }
     out
+}
+
+/// Whether a fix that declares again a name the code declared (`var m:
+/// Map<K, Int> = Map()` -> `let m = xs.tally()`) keeps the program: the
+/// rest of the block uses the name only through a member or an index, never
+/// whole (`print(m)` prints a `Counter` in another order), and the fixed
+/// file checks as the code did (a `.first` a `Counter` lacks).
+fn rebinding_holds(
+    src: &str,
+    toks: &[Token],
+    blocks: &[Vec<Span>],
+    site: &[Span],
+    rebinds: &[String],
+    names: &[(String, String)],
+    diag: &cpl_diag::Diagnostic,
+) -> bool {
+    let last = site[site.len() - 1];
+    let end = (blocks.iter())
+        .filter(|b| b.contains(&last))
+        .filter_map(|b| b.last().map(|s| s.end))
+        .max()
+        .unwrap_or(last.end);
+    let text = |t: &Token| &src[t.span.start as usize..t.span.end as usize];
+    let rest: Vec<&Token> = (toks.iter())
+        .filter(|t| t.span.start >= last.end && t.span.end <= end)
+        .collect();
+    let whole = (rebinds.iter())
+        .filter_map(|n| names.iter().find(|(p, _)| p == n).map(|(_, u)| u.as_str()))
+        .any(|user| {
+            rest.iter().enumerate().any(|(i, t)| {
+                t.kind == K::Ident
+                    && text(t) == user
+                    && (i == 0 || rest[i - 1].kind != K::Dot)
+                    && !rest
+                        .get(i + 1)
+                        .is_some_and(|n| matches!(n.kind, K::Dot | K::LBracket))
+            })
+        });
+    !whole && crate::recheck::fix_keeps_verdict(src, diag)
 }
 
 struct Matcher<'a> {

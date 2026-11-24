@@ -39,6 +39,15 @@ thread_local! {
         std::cell::RefCell::new(cpl_check::Session::new());
 }
 
+/// Whether `diag`'s fix leaves how `src` checks as it was.
+pub(crate) fn fix_keeps_verdict(src: &str, diag: &Diagnostic) -> bool {
+    CHECKER.with_borrow_mut(|db| {
+        let before = verdict(db, src);
+        let found = std::slice::from_ref(diag);
+        !crate::fix::accepted(src, found, &mut |text, _| verdict(db, text) == before).is_empty()
+    })
+}
+
 pub(crate) fn keep_if_unchanged(
     diags: &mut Vec<Diagnostic>,
     src: &str,

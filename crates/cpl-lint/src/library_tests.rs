@@ -108,7 +108,7 @@ fn cp_toml_sets_a_library_lints_level() {
 /// Rule: R06.4.9, spec/core/06-control-functions.md.
 #[test]
 fn a_library_lint_matches_a_run_of_statements() {
-    let decl = "@lint(totals, from: \"var p = [0]\\nfor x in xs:\\n    p.push(p.last! + x)\", to: \"let p = totals(xs)\")\npub fn totals(xs: List<Int>) -> Int:\n    xs.len\n";
+    let decl = "@lint(totals, from: \"var p = [0]\\nfor x in xs:\\n    p.push(p.last! + x)\", to: \"let p = totals(xs)\")\npub fn totals(xs: List<Int>) -> List<Int> = xs\n";
     let found = |body: &str| -> Vec<(String, String)> {
         crate::lint(&format!("{decl}{body}"), &crate::Config::default())
             .into_iter()
@@ -119,7 +119,7 @@ fn a_library_lint_matches_a_run_of_statements() {
             .collect()
     };
     let run =
-        "let a = [3, 1, 4]\nvar s = [0]\nfor v in a:\n    s.push(s.last! + v)\nprint(s.len)\n";
+        "let a = [3, 1, 4]\nvar s = [0]\nfor v in a:\n    s.push(s.last! + v)\nprint(s.at(1))\n";
     // std declares the same run on `scan` (decision 512).
     assert_eq!(
         found(run),
@@ -459,4 +459,28 @@ fn std_lints_are_read_from_std_outline() {
         found.iter().any(|d| d.code.0 == "prefix_totals_list"),
         "{found:?}"
     );
+}
+
+/// A fix that declares again a name the code declared with a written type
+/// stands only where the rest of the block uses the name through a member
+/// or an index and the fixed file checks as before. Rule: R06.4.9.
+#[test]
+fn a_redeclaring_fix_needs_member_uses_that_still_check() {
+    let decl = "@lint(fill_by_hand, from: \"var m: Map<K, Int> = Map()\\nfor x in xs:\\n    m[x] += 1\", to: \"let m = fill(xs)\", holes: \"K\")\npub fn fill(xs: List<Int>) -> Counter<Int, Int> = xs.tally()\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "fill_by_hand")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let fill = "let a = [3, 1, 3]\nvar c: Map<Int, Int> = Map()\nfor v in a:\n    c[v] += 1\n";
+    assert_eq!(
+        found(&format!("{fill}print(c[3], c.len)\n")),
+        ["let c = fill(a)"]
+    );
+    // Whole, `c` prints in another order; `.first` is not a `Counter`'s.
+    for after in ["print(c)\n", "print(c.first)\n"] {
+        assert!(found(&format!("{fill}{after}")).is_empty(), "{after}");
+    }
 }

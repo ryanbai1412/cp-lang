@@ -204,7 +204,12 @@ library or by this spec:
   finding only where each listed hole (compared with `>=`, `>`, `<=` or `<`
   and an integer, comma-separated) is proven in bounds: it matched an
   integer literal, or code whose range type's ends lie in them (`k: 1..=10`
-  for `k >= 1`). `to` calls the fn by name, as
+  for `k >= 1`). When `from` declares
+  a name with a written type (`var m: Map<K, Int> = Map()`) and `to`
+  declares it again with no written type, the fix may change its type, so
+  the finding stands only where the rest of the block uses the name through
+  a member or an index, never whole (`print(m)`), and the file with the fix
+  checks as before. `to` calls the fn by name, as
   a method or getter (`xs.f`), as its compound assignment (`x max= e`,
   R01.6.4), or calls nothing and writes only operators the fn's
   one-expression body writes (`self % d` on `divmod`, whose body is
