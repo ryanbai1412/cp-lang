@@ -267,6 +267,8 @@ super::msgs! {
     /// R05.7.1: a parameter is lent, so a `var` can't take it from the caller.
     USE_AFTER_MOVE_VAR_FROM_LENT_PARAM = USE_AFTER_MOVE, "`{}` would take `{}` from the caller: a parameter is lent, never moved";
     UNRESOLVED_NAME_WAS_REPLACED_BY = UNRESOLVED_NAME, "`{}` was replaced by `{}`";
+    /// R02.7.1: a variant is spelled as its enum declares it.
+    UNRESOLVED_NAME_IS_A_VARIANT_SPELLED = UNRESOLVED_NAME, "no `{}` in scope; `{}` has the variant `{}`";
     ASSIGN_TO_LET_IS_NOT_A_VAR = ASSIGN_TO_LET, "`{}` is not a var, so it can't be {}";
     CPP_FN_S_WHOLE = UNSUPPORTED, "`@cpp(\"...\")` is a fn's whole body: `fn f(a: Int) -> Int = @cpp(\"return a;\")`";
     INT_INDEX_INTO_CUT = INT_INDEX_ON_CUT_TABLE, "`{}[{}]`: an `Int` index into a cut table can't say position or cut";

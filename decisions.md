@@ -9200,7 +9200,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 613. (reserved, stdlib)
 
-## 614. (reserved, compiler)
+## 614. A bare name in another case than an expected enum's unit variant gets that variant as a fix (compiler, 2026-11-24)
+
+- **Call.** Where an argument's parameter wants an enum and the argument is a bare name that is no value in scope, the checker looks it up among that enum's unit variants ignoring case. Spelled as declared it is the variant (R02.7.1); spelled otherwise (`gen<Rooted<V>>(shape: path)` from before `TreeShape`) it is E0201 with a `cpl fix` edit to the declared spelling (`shape: Path`). Coordinator ruling for Consumers of 2026-11-24.
+- **Why.** Rooted's shape became the std enum `TreeShape` (e9b2b7b44) instead of a compiler name table, so old source lost its spelling. Reading the variants from the enum's declaration migrates it with no table of old names, and works for any enum a std or user signature asks for.
+- **Reverse.** Drop the case-folded lookup; a misspelled variant is a bare unresolved-name error again.
 
 ## 615. (reserved, compiler)
 

@@ -43,7 +43,8 @@ impl<'a> Checker<'a> {
 
     /// An argument's type. A bare name that is no value in scope and is a
     /// unit variant of the enum its parameter wants is that variant, so
-    /// `gen<Rooted<V>>(shape: Path)` needs no `TreeShape.` (R02.7.1).
+    /// `gen<Rooted<V>>(shape: Path)` needs no `TreeShape.` (R02.7.1). Written
+    /// in another case (`shape: path`), it gets the variant's spelling as a fix.
     pub(crate) fn infer_arg(&mut self, at: &Expr, want: Option<&Ty>) -> Ty {
         if let (ExprKind::Name(name), Some(want @ Ty::Named { name: of, args })) = (&at.kind, want)
         {
@@ -52,11 +53,24 @@ impl<'a> Checker<'a> {
                     self.global(name).as_deref(),
                     Some(Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. })
                 );
-            let unit = |d: &Def| {
-                matches!(d, Def::Enum { variants, .. }
-                    if variants.iter().any(|(v, fields)| v == name && fields.is_empty()))
+            let variant = match self.type_def(of).as_deref() {
+                Some(Def::Enum { variants, .. }) if args.is_empty() && free => variants
+                    .iter()
+                    .find(|(v, fields)| fields.is_empty() && v.eq_ignore_ascii_case(name))
+                    .map(|(v, _)| v.clone()),
+                _ => None,
             };
-            if args.is_empty() && free && self.type_def(of).as_deref().is_some_and(unit) {
+            if let Some(variant) = variant {
+                if variant != *name {
+                    let msg = msgs::check::UNRESOLVED_NAME_IS_A_VARIANT_SPELLED;
+                    if let Some(diag) = self.report(at.span, msg, &[name, of, &variant]) {
+                        diag.help = Some(format!("write `{variant}` (or run `cpl fix`)"));
+                        diag.fixes.push(cpl_diag::Fix {
+                            title: format!("replace `{name}` with `{variant}`"),
+                            edits: vec![(at.span, variant.clone())],
+                        });
+                    }
+                }
                 return want.clone();
             }
         }
