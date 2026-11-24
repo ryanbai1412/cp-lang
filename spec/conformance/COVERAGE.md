@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3841 (3744 passing). Rules: 618.
+Cases: 3850 (3744 passing). Rules: 618.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 3841 (3744 passing). Rules: 618.
 - R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 203 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 28 rules, 84 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 97 rules, 268 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -345,7 +345,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.3 [4+ 1-]: **Combining two sequences pairs them by walk order, never by key.** This covers `==`, `<`,...
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
-- R04b.1.7 [9+ 4-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
+- R04b.1.7 [11+ 4-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
 - R04b.1.8 [1+ 1-]: , so `a.sorted().rev[0]` is an error whose fix is `.nth(0)`.
 - R04b.1.9 [2+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [3+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
@@ -1093,7 +1093,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **algebra** (61/69 named by a case)
   - uncovered: `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (166/166 named by a case)
-- **beats** (25/25 named by a case)
+- **beats** (26/26 named by a case)
 - **bitset** (106/107 named by a case)
   - uncovered: `BitTrieArena.node_count`
 - **deque** (42/42 named by a case)
@@ -1138,11 +1138,11 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `_gen_str`
 - **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (172/176 named by a case)
+- **tree** (173/177 named by a case)
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2444 of 2478 std items are named by a case.
+2446 of 2480 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
@@ -1163,6 +1163,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-02/str-len-and-charset-compose.cp
 - core-02/str-of-charset-escapes.cp
 - core-02/struct-literal-named-fields-any-order.cp
+- core-02/unit-is-ordered.cp
 - core-03/int-range-len-overflow-traps.cp
 - core-03/mod-array-fills-from-int-literal.cp
 - core-03/narrow-range-len-spans-32-bits.cp

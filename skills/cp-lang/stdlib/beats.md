@@ -38,6 +38,7 @@ Fields: `n: Int`.
 - `fn chmin(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`; Replace every `a[i]` in `r` with `min(a[i], x)`, then record a new version.; traps: when a non-empty `r` reaches outside `D`
 - `fn chmax(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\) amortized; \(O(\log^2 \lvert D \rvert)\) amortized when mixed with `add`; Replace every `a[i]` in `r` with `max(a[i], x)`, then record a new version.; traps: when a non-empty `r` reaches outside `D`
 - `fn add(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\); Add `x` to every `a[i]` in `r`, then record a new version.; traps: when a non-empty `r` reaches outside `D`
+- `fn to_array(self) -> [D]Int` — \(O(\lvert D \rvert)\); The current values in position order, with every pending tag applied as it walks; it reads the tree and writes nothing back.
 - `fn sum(mut self, r: Range<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum of the current values in `r`.; traps: when a non-empty `r` reaches outside `D`
 - `fn max_val(mut self, r: Range<D>) -> ?Int` — \(O(\log \lvert D \rvert)\); The greatest current value in `r`, or `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
 - `fn hist_max(mut self, r: Range<D>) -> ?Int` — \(O(\log \lvert D \rvert)\); The greatest value any position in `r` has held in any version, the initial one included; `None` when `r` is empty.; traps: when a non-empty `r` reaches outside `D`
