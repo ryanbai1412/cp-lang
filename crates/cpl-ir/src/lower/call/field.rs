@@ -1118,14 +1118,14 @@ impl<'a> Lowerer<'a> {
             .is_some_and(|at| items[at].check.exprs.past_rows.contains(&name))
     }
 
-    /// The fn the checker resolved `base.name(..)` to: the `Resolved` at
-    /// the method's name, the first one after `base` inside `span`.
-    pub(in crate::lower) fn resolved_method(
+    /// The module of the fn the checker resolved `base.name(..)` to, `""`
+    /// for this file's.
+    pub(in crate::lower) fn resolved_module(
         &self,
         name: &str,
         base: &ast::Expr,
         span: Span,
-    ) -> Option<Sym> {
+    ) -> Option<String> {
         let items = &self.mods[self.cur_mod].items;
         let item = &items[items
             .binary_search_by_key(&self.offset, |i| i.offset)
@@ -1134,7 +1134,18 @@ impl<'a> Lowerer<'a> {
             .filter(|(at, r)| at.start >= base.span.end && at.end <= span.end && r.name == name)
             .filter(|(_, r)| r.owner.is_none())
             .min_by_key(|(at, _)| at.start)?;
-        match found.module.as_str() {
+        Some(found.module.clone())
+    }
+
+    /// The fn the checker resolved `base.name(..)` to: the `Resolved` at
+    /// the method's name, the first one after `base` inside `span`.
+    pub(in crate::lower) fn resolved_method(
+        &self,
+        name: &str,
+        base: &ast::Expr,
+        span: Span,
+    ) -> Option<Sym> {
+        match self.resolved_module(name, base, span)?.as_str() {
             "" => self.get_sym(name),
             module => {
                 (self.get_sym(&cpl_check::method_key(name, module))).or_else(|| self.get_sym(name))

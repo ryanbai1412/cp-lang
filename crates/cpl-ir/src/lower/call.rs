@@ -301,6 +301,14 @@ impl<'a> Lowerer<'a> {
                 });
             }
         }
+        // The checker chose a program's own fn over std's: `fn sum(self:
+        // Range<Int>)` is the call, not the fold (R08.1.4).
+        let own_fn = self.resolved_module(&name.text, base, span);
+        if own_fn.is_some_and(|m| m != "prelude" && !m.starts_with("std.")) {
+            if let Some(call) = self.try_ufcs_call(&name.text, base, args, span, None, hint) {
+                return call;
+            }
+        }
         // A fold over a sequence reads as its method: `xs.sum()` is
         // `sum(xs)`, `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
         let seq_ty = self.probe_ty_silent(base);

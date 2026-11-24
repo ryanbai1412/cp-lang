@@ -1888,22 +1888,23 @@ fn a_use_goes_to_the_module_its_path_names_and_each_name_it_imports() {
 }
 
 #[test]
-fn a_files_own_method_beside_the_preludes_stays_ambiguous_and_goes_to_both() {
-    // Decision 486: the file's `sum` does not shadow std's generic one.
+fn a_files_concrete_method_beats_the_preludes_generic_one() {
+    // R08.1.4: `self: Range<Int>` meets `sum<S: Seq<T>>`'s bound, so it is the call.
     let mut db = Database::new();
     let src = "pub fn sum(self: Range<Int>) -> Int = 7\nprint((0..3).sum())\n";
     db.set_file("a.cp", src);
-    let codes: Vec<_> = db.diagnostics("a.cp").iter().map(|d| d.code).collect();
-    assert_eq!(codes, [cpl_diag::codes::AMBIGUOUS_METHOD]);
+    assert!(
+        db.diagnostics("a.cp").is_empty(),
+        "{:?}",
+        messages(&db.diagnostics("a.cp"))
+    );
     let at = src.find("sum()").unwrap() as u32 + 1;
     let paths: Vec<String> = db
         .definitions("a.cp", at)
         .into_iter()
         .map(|d| d.path)
         .collect();
-    assert_eq!(paths.len(), 2, "{paths:?}");
-    assert!(paths.iter().any(|p| p == "a.cp"), "{paths:?}");
-    assert!(paths.iter().any(|p| p.ends_with("seq.cp")), "{paths:?}");
+    assert_eq!(paths, ["a.cp"]);
 }
 
 #[test]

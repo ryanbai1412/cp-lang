@@ -1,4 +1,4 @@
-fn find(self: List<Int>, x: Int) -> Int:
+fn own_find(self: List<Int>, x: Int) -> Int:
     for (i, y) in self.items:
         if y == x: return i
     -1
@@ -9,7 +9,7 @@ struct P:
 
 let xs = [4, 7, 9]
 let s = "hello"
-print(xs.find(9) ?? -1, s.find("l") ?? -1, s.find("z") ?? -1)
+print(xs.own_find(9), xs.find(9) ?? -1, s.find("l") ?? -1, s.find("z") ?? -1)
 var ps = [P(1, 0), P(2, 1), P(1, 2), P(2, 3), P(1, 4)]
 ps.sort(by: p => desc(p.k))
 print([p.id for p in ps])

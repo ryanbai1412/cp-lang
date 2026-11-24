@@ -49,19 +49,6 @@ fn instance_of(to: &Ty, from: &Ty) -> bool {
     from.subst(&bindings) == *to
 }
 
-/// R08.1.4: `a` is more specific than `b` when `b`'s `self` binds to
-/// `a`'s and not the other way. A bare `self: S` is no shape, so it is
-/// never more or less specific than another.
-fn more_specific(a: &Option<Ty>, b: &Option<Ty>) -> bool {
-    let (Some(a), Some(b)) = (a, b) else {
-        return false;
-    };
-    !matches!(a, Ty::Param(_))
-        && !matches!(b, Ty::Param(_))
-        && instance_of(a, b)
-        && !instance_of(b, a)
-}
-
 /// A candidate's module, and its `#k` among one module's overloads.
 type Origin = (Option<String>, Option<String>);
 
@@ -111,7 +98,6 @@ impl Checker<'_> {
         let Some(mine_def) = self.global(&mine) else {
             return;
         };
-        let this = self_ty(&mine_def);
         for key in own.iter().filter(|k| **k != mine) {
             if !at(self, key).is_some_and(|i| i < here) {
                 continue;
@@ -123,8 +109,10 @@ impl Checker<'_> {
             if def_labels(&mine_def) != def_labels(&that_def) {
                 continue;
             }
-            let that = self_ty(&that_def);
-            if !more_specific(&this, &that) && !more_specific(&that, &this) {
+            if self.overlaps(&mine_def, &that_def)
+                && !self.beats(&mine_def, &that_def)
+                && !self.beats(&that_def, &mine_def)
+            {
                 self.report(
                     f.name.span,
                     msgs::check::OVERLOAD_BY_TYPE_A_SECOND_FN_WHOSE,
@@ -133,6 +121,126 @@ impl Checker<'_> {
                 return;
             }
         }
+    }
+
+    /// R08.1.4: `a` is more specific than `b` when `b`'s `self` binds to
+    /// `a`'s and not the other way, or `b`'s is a bare `self: S` whose
+    /// bounds `a`'s concrete `self` meets: `self: Str` beats `self: S` with
+    /// `S: Indexed<D, T>`.
+    fn beats(&mut self, a: &Def, b: &Def) -> bool {
+        let (Some(sa), Some(sb)) = (self_ty(a), self_ty(b)) else {
+            return false;
+        };
+        match (&sa, &sb) {
+            (Ty::Param(_), _) => false,
+            (_, Ty::Param(_)) => self.self_fits(&sa, b),
+            _ => instance_of(&sa, &sb) && !instance_of(&sb, &sa),
+        }
+    }
+
+    /// `def`'s positional parameter types once its `self` is `on`, with each
+    /// generic its bounds' trait arguments name bound from `on`: `x: T` of
+    /// `S: Indexed<D, T>` is `x: Char` on a `Str`.
+    fn params_on(&mut self, def: &Def, on: &Ty) -> Vec<Ty> {
+        let Def::Fn {
+            ty: Ty::Fn { params, .. },
+            bound_args,
+            ..
+        } = def
+        else {
+            return Vec::new();
+        };
+        let mut bindings = crate::ty::Bindings::default();
+        if let Some(first) = params.first() {
+            first.ty.unify(on, &mut bindings);
+        }
+        for (param, trait_name, want) in bound_args {
+            let Some(actual) = bindings.get(param).cloned() else {
+                continue;
+            };
+            if let Some(given) = self.trait_args_of(&actual, trait_name, want.len()) {
+                for (w, g) in want.iter().zip(&given) {
+                    w.unify(g, &mut bindings);
+                }
+            }
+        }
+        (params.iter().skip(1))
+            .filter(|p| !p.named_only)
+            .map(|p| p.ty.subst(&bindings))
+            .collect()
+    }
+
+    /// R08.1.4: whether one call can take both `a` and `b`: an argument count
+    /// both take, and each parameter's type the other's could be, once `b`'s
+    /// `self` is `a`'s and the other way. `find(self: Str, pat: Str)` and
+    /// `find<S: Indexed<D, T>, T>(self: S, x: T)` don't: on a `Str`, `x` is a `Char`.
+    fn overlaps(&mut self, a: &Def, b: &Def) -> bool {
+        let max = |d: &Def| match d {
+            Def::Fn {
+                ty: Ty::Fn { params, .. },
+                ..
+            } => params.len(),
+            _ => 0,
+        };
+        if !(0..=max(a).max(max(b))).any(|n| takes_count(a, n) && takes_count(b, n)) {
+            return false;
+        }
+        [(a, b), (b, a)].into_iter().all(|(a, b)| {
+            let Some(on) = self_ty(a) else {
+                return true;
+            };
+            if !on.mentions_param() && !self.self_fits(&on, b) {
+                return false;
+            }
+            let (pa, pb) = (self.params_on(a, &on), self.params_on(b, &on));
+            pa.iter().zip(&pb).all(|(x, y)| {
+                if self.bound_refuses(a, x, y) || self.bound_refuses(b, y, x) {
+                    return false;
+                }
+                x.mentions_param() || y.mentions_param() || self.fits(x, y) || self.fits(y, x)
+            })
+        })
+    }
+
+    /// Whether `def`'s parameter of generic type `x` can't be the other's
+    /// `y`, for a bound `y` lacks: `x: T` with `T: Eq` takes no `T -> Bool`.
+    fn bound_refuses(&mut self, def: &Def, x: &Ty, y: &Ty) -> bool {
+        let (Ty::Param(g), Def::Fn { bounds, .. }) = (x, def) else {
+            return false;
+        };
+        if matches!(y, Ty::Param(_)) {
+            return false;
+        }
+        let traits: Vec<String> = (bounds.iter())
+            .filter(|(p, _)| p == g)
+            .flat_map(|(_, t)| t.iter().cloned())
+            .collect();
+        traits.iter().any(|t| !self.implements_trait(y, t))
+    }
+
+    /// Whether `def`'s parameters, on `base`, take the types `args` have,
+    /// where both are known: `"ab".find('a')` is no call of `find(self: Str, pat: Str)`.
+    fn takes_arg_types(&mut self, def: &Def, base: &Ty, args: &[Arg]) -> bool {
+        let params = self.params_on(def, base);
+        let positional = args.iter().filter(|a| a.name.is_none());
+        positional.zip(params).all(|(arg, want)| {
+            if matches!(arg.value.kind, ExprKind::Lambda { .. }) {
+                let lambda = Ty::Fn {
+                    params: Vec::new(),
+                    ret: Box::new(Ty::Unknown),
+                };
+                return match want {
+                    Ty::Fn { .. } => true,
+                    Ty::Param(_) => !self.bound_refuses(def, &want, &lambda),
+                    _ => want.has_vague(),
+                };
+            }
+            if want.mentions_param() || want.has_vague() {
+                return true;
+            }
+            let got = self.quietly(|c| c.infer(&arg.value));
+            got.has_vague() || got.mentions_param() || self.fits(&got, &want)
+        })
     }
 
     /// The base of a field read is a value, not the callee, even of
@@ -281,10 +389,21 @@ impl Checker<'_> {
             let mut shadows = shadows.into_iter();
             fit.retain(|_| shadows.next().unwrap_or(false));
         }
+        // Of several, those whose parameters take the arguments' types.
+        if let Some(args) = args.filter(|_| fit.len() > 1) {
+            let defs: Vec<Arc<Def>> = fit.iter().map(|f| f.1.clone()).collect();
+            let takes: Vec<bool> = (defs.iter())
+                .map(|d| self.takes_arg_types(d, base, args))
+                .collect();
+            if takes.contains(&true) {
+                let mut takes = takes.into_iter();
+                fit.retain(|_| takes.next().unwrap_or(false));
+            }
+        }
         // R08.1.4: of the candidates, those no other is more specific than.
-        let selfs: Vec<Option<Ty>> = fit.iter().map(|f| self_ty(&f.1)).collect();
-        let beaten: Vec<bool> = (0..fit.len())
-            .map(|b| (0..fit.len()).any(|a| more_specific(&selfs[a], &selfs[b])))
+        let defs: Vec<Arc<Def>> = fit.iter().map(|f| f.1.clone()).collect();
+        let beaten: Vec<bool> = (0..defs.len())
+            .map(|b| (0..defs.len()).any(|a| a != b && self.beats(&defs[a], &defs[b])))
             .collect();
         let mut beaten = beaten.into_iter();
         fit.retain(|_| !beaten.next().unwrap_or(false));
@@ -920,6 +1039,49 @@ impl Checker<'_> {
             || (crate::builtins::BUILTIN_TYPES.iter())
                 .any(|b| b.name == name && b.members.is_some());
         catalogued && args.iter().all(|a| self.modelled(a))
+    }
+
+    /// E0701 (R08.1.4): an extension fn with a `self` of its own shape that
+    /// the receiver's own member always wins over is never called: `fn
+    /// sum(self: Range<Int>)` beside `Range.sum`.
+    pub(super) fn member_hides_extension(&mut self, callee: &Expr, args: &[Arg]) -> bool {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return false;
+        };
+        if self.method_candidates(&name.text).is_empty() {
+            return false;
+        }
+        let base_ty = self.quietly(|c| c.infer(base));
+        if base_ty.has_vague() {
+            return false;
+        }
+        let own = self.declares_member(&base_ty, &name.text)
+            || self.catalog_row(base, &name.text).is_some();
+        if !own {
+            return false;
+        }
+        let Pick::One(key, def) = self.pick_method_for(&base_ty, &name.text, Some(args)) else {
+            return false;
+        };
+        let library = !self.local_defs.contains_key(&key)
+            && (self.env.origin(&key)).is_some_and(|m| m == "prelude" || m.starts_with("std."));
+        if library || self_ty(&def).is_none_or(|s| matches!(s, Ty::Param(_))) {
+            return false;
+        }
+        let shown = self.quote(base.span);
+        let method = &name.text;
+        let ty = base_ty.to_string();
+        let member = format!("{}.{method}", ty.split('<').next().unwrap_or(&ty));
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::AMBIGUOUS_METHOD_NEVER_CALLS_THE_FN,
+            &[&shown, method, method, &member],
+        ) {
+            diag.help = Some(format!(
+                "rename the fn, or call it as a plain fn: `{method}({shown})`"
+            ));
+        }
+        true
     }
 
     /// E0701: two candidates fit the receiver equally well.

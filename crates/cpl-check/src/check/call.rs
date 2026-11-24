@@ -261,6 +261,12 @@ impl<'a> Checker<'a> {
         }
         self.sort_key_by_position(callee, args);
         let past_row = self.past_builtin_row(callee, args);
+        if !past_row && self.member_hides_extension(callee, args) {
+            for arg in args {
+                self.infer(&arg.value);
+            }
+            return Ty::Error;
+        }
         let library = past_row
             .then(|| self.method_form_call(call, callee, args))
             .flatten();

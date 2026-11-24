@@ -57,12 +57,22 @@ impl Ord for Frac:
   candidates, one is chosen when it is more specific than every other:
   `A` is more specific than `B` when `B`'s `self` binds to `A`'s and not
   the other way, so `self: Range<F64>` beats `self: Range<D>` and
-  `[V]List<V>` beats `[D]T`. A bare `self: S` (with `S: Seq`) has no
-  shape and is never more or less specific, so it and `self: Range<Int>`
-  are the same ambiguity error, as are two equally specific candidates
-  in different modules (E0701) or one module (E0702). The relation is the
-  same within a module and across modules. To give a type its own cost,
-  override the trait method instead (decision 486). (R08.1.4)
+  `[V]List<V>` beats `[D]T`. A concrete `self` beats a bare `self: S`
+  whose bounds it meets: `self: Str` beats `self: S` with
+  `S: Indexed<D, T>`, and `self: Range<Int>` beats std's `sum<S: Seq<T>>`.
+  Two bare `self: S` are never more or less specific. Two equally specific
+  candidates are an ambiguity error in different modules (E0701); in one
+  module the second declaration is E0702 when the two overlap, that is
+  when one call could take both: their full signatures unify, parameter
+  by parameter after `self`, with every bound met (`x: T` with `T: Eq`
+  takes no lambda, so it and `p: T -> Bool` don't overlap). The relation
+  is the same within a module and across modules. Members are found
+  before extension fns, so an extension fn with a `self` of its own
+  shape that a member of the receiver's type always wins over is never
+  called; that call is E0701, naming the member (`fn sum(self: List<Int>)`
+  beside `List.sum`), with help to rename the fn or call it as a plain
+  fn. To give a type its own cost, override the trait method instead
+  (decision 486). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,
   `Show`, `Read`, `Unwrap`). `Eq<Rhs = Self>` and `Ord<Rhs = Self>` take

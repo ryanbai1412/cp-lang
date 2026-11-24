@@ -195,6 +195,7 @@ super::msgs! {
     OVERLOAD_BY_TYPE_A_SECOND_FN_WHOSE = OVERLOAD_BY_TYPE, "a second `fn {}` whose `self` is no more and no less specific than the first one's: fns are not overloaded by their other parameters";
     TYPE_MISMATCH_SPLIT_TAKES_A_CHAR = TYPE_MISMATCH, "`split` takes a `Char` separator, but `{}` is a `Str`";
     AMBIGUOUS_METHOD_IS_AMBIGUOUS_EACH_GIVE = AMBIGUOUS_METHOD, "`{}.{}` is ambiguous: {} each give its type a `{}`";
+    AMBIGUOUS_METHOD_NEVER_CALLS_THE_FN = AMBIGUOUS_METHOD, "`{}.{}` never calls the `fn {}` that takes it: `{}` is the type's own member, and members are found before extension fns";
     USE_AFTER_MOVE_MOVES_HERE_IN_ONE = USE_AFTER_MOVE, "`{}` moves here in one round of the loop, so the next round finds it already moved";
     DROPPED_QUESTION_THE_RESULT_OF_IS = DROPPED_QUESTION, "the result of `{}` is dropped: `?` makes its expression `None`, it never returns early";
     PRIVATE_NAME_IS_PRIVATE_TO_THE = PRIVATE_NAME, "`{}` is private to the module that declares `{}`";
