@@ -108,22 +108,24 @@ pub struct Rooted<V, Pre, A>:
     /// Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or
     /// the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one missing key
     /// is the root.
+    /// A `par` with no root, empty or cyclic, traps.
     ///
     /// Several roots give a forest, as `forest` does, with the roots in key order. Children are in
     /// increasing key order.
     ///
     /// cost: \(O(n)\)
-    /// empty: a `par` with no root, empty or cyclic, traps
+    /// empty: `domain V = 0..2; let par: [V]?V = [Some(1), Some(0)]; Rooted.from_parents(par).size(0) == 2` (traps R0301)
     /// traps: when the parents have a cycle; `try_from_parents` is for input that may
     /// example: `domain V = 0..3; let par: [V]?V = [None, Some(0), Some(1)]; let t = Rooted.from_parents(par); t.depth(2) == 2 and t.parent(1) == Some(0)`
     pub fn from_parents(par: [V]?V) -> Rooted<V, _, _> = Rooted.try_from_parents(par)!
 
     /// `from_parents` for parents that may not form a forest: `None` when they have a cycle.
+    /// A `par` with no root, empty or cyclic, gives `None`.
     ///
     ///     let t = Rooted.try_from_parents(up) else: print("NO"); return
     ///
     /// cost: \(O(n)\)
-    /// empty: `None` when `par` has no root
+    /// empty: `domain V = 0..2; let par: [V]?V = [Some(1), Some(0)]; Rooted.try_from_parents(par) == None`
     /// traps: never
     /// example: `domain V = 0..2; let par: [V]?V = [Some(1), Some(0)]; Rooted.try_from_parents(par) == None`
     pub fn try_from_parents(par: [V]?V) -> ?Rooted<V, _, _>:
@@ -150,7 +152,7 @@ pub struct Rooted<V, Pre, A>:
     /// only within one tree (`root_of` tells).
     ///
     /// cost: \(O(n + m)\)
-    /// empty: `from: []` (the default) roots each component at its smallest vertex
+    /// empty: `domain V = 0..4; let adj: [V]List<V> = [[1], [0], [3], [2]]; let t = Rooted.forest(adj); t.roots.collect() == [0, 2]`
     /// traps: when `V` is empty
     /// example: `domain V = 0..4; let adj: [V]List<V> = [[1], [0], [3], [2]]; let t = Rooted.forest(adj, from: [2, 0]); t.roots.collect() == [2, 0] and t.root_of(1) == 0`
     pub fn forest(next: Next<V>, from: List<V> = []) -> Rooted<V, _, _> =
@@ -288,7 +290,7 @@ pub struct Rooted<V, Pre, A>:
     /// `SegTree` or `Fenwick` over `t.Pre`.
     ///
     /// cost: \(O(n)\)
-    /// empty: never empty; a tree has a vertex
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.reorder([7]).collect() == [7]`
     /// order: by `t.Pre`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reorder([10, 11, 12, 13, 14]).collect() == [10, 11, 13, 14, 12]`
@@ -298,7 +300,7 @@ pub struct Rooted<V, Pre, A>:
     /// nothing is allocated.
     ///
     /// cost: \(O(1)\) to start, \(O(1)\) per child
-    /// empty: nothing at a leaf
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(3).count() == 0`
     /// order: as `next` listed them
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(1).collect() == [3, 4] and t.children(2).count() == 0`
@@ -309,7 +311,7 @@ pub struct Rooted<V, Pre, A>:
     /// (`for a in t.child_arcs(v): up(a.to) + a.w`), so edge data needs no side array.
     ///
     /// cost: \(O(1)\) per child
-    /// empty: nothing at a leaf
+    /// empty: `domain V = 0..3; let es: [0..2](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Rooted(Graph.undirected(es), root: 0); t.child_arcs(2).count() == 0`
     /// order: child order
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Rooted(Graph.undirected(es), root: 0); t.child_arcs(1).map(a => a.to).collect() == [2]`
@@ -327,7 +329,7 @@ pub struct Rooted<V, Pre, A>:
     ///         up[c] = (up[v] * rest + 1) % m
     ///
     /// cost: \(O(k)\) calls of `f` and of `op`, \(O(k)\) memory
-    /// empty: nothing at a leaf
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.excl_fold(3, +, c => t.size(c)).count() == 0`
     /// order: child order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.excl_fold(0, +, c => t.size(c)).collect() == [(c: 1, rest: 1), (c: 2, rest: 3)]`
@@ -360,7 +362,7 @@ pub struct Rooted<V, Pre, A>:
     /// light edges above it, which is what small-to-large merging pays for.
     ///
     /// cost: \(O(\mathit{children})\)
-    /// empty: nothing at a leaf
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.light(3).count() == 0`
     /// order: child order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.light(0).collect() == [2] and t.light(1).collect() == [4]`
@@ -381,7 +383,7 @@ pub struct Rooted<V, Pre, A>:
     /// The vertices of `v`'s subtree in preorder, `v` first: `t.at[p] for p in t.sub(v)`.
     ///
     /// cost: \(O(\mathit{size}(v))\)
-    /// empty: never empty; it holds `v`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.subtree(3).collect() == [3]`
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.subtree(1).collect() == [1, 3, 4] and t.subtree(0).collect() == [0, 1, 3, 4, 2]`
@@ -392,7 +394,7 @@ pub struct Rooted<V, Pre, A>:
     /// the path from the root, such as a prefix maximum or a distance.
     ///
     /// cost: \(O(n)\) calls of `f`
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.down(0, (d, v) => d + 1) == [1]`
     /// order: keyed by `V`; `f` runs in `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.down(0, (d, v) => d + 1) == [1, 2, 2, 3, 3]`
@@ -410,7 +412,7 @@ pub struct Rooted<V, Pre, A>:
     /// fold in child order, so `op` need not commute; a leaf folds nothing and gets the identity.
     ///
     /// cost: \(O(n)\) calls of `lift`, `op` and `finish`
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.up(+, finish: (s, v) => s + 1) == [1]`
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.up(+, finish: (s, v) => s + 1) == [5, 3, 1, 1, 1]`
@@ -456,7 +458,7 @@ pub struct Rooted<V, Pre, A>:
     /// folds use prefixes and suffixes, so `op` needs no inverse.
     ///
     /// cost: \(O(n)\) calls of `lift` and `finish`, \(O(n)\) calls of `op`
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.reroot(+, finish: (s, v) => s + 1) == [1]`
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reroot(+, finish: (s, v) => s + 1) == [5, 5, 5, 5, 5]`
@@ -503,7 +505,7 @@ pub struct Rooted<V, Pre, A>:
     /// a leaf, if any, has class `Shape.first`.
     ///
     /// cost: \(O(n \log n)\)
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); let (domain S, of) = t.shapes(); S.count == 1`
     /// order: `of` keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let (domain S, of) = t.shapes(); of[3] == of[2] and of[1] != of[0] and S.count == 3`
@@ -521,7 +523,7 @@ pub struct Rooted<V, Pre, A>:
     /// The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
     ///
     /// cost: \(O(n)\); builds the array, while `t.size(v)` reads one size in \(O(1)\)
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.subtree_sizes == [1]`
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.subtree_sizes == [5, 3, 1, 1, 1]`
@@ -532,7 +534,7 @@ pub struct Rooted<V, Pre, A>:
     /// child's subtree is more than half.
     ///
     /// cost: \(O(\mathit{depth})\)
-    /// ties: of two centroids, the one nearer the root
+    /// ties: `domain P = 0..4; let adj: [P]List<P> = [[1], [0, 2], [1, 3], [2]]; Rooted(adj, root: 0).centroid() == 1`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.centroid() == 1`
     pub fn centroid(self) -> V:
@@ -550,7 +552,7 @@ pub struct Rooted<V, Pre, A>:
     /// vertices is even and one edge splits the tree in halves.
     ///
     /// cost: \(O(\mathit{depth})\)
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.centroids() == [0]`
     /// order: the one nearer the root first
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.centroids() == [1]`
@@ -569,7 +571,7 @@ pub struct Rooted<V, Pre, A>:
     /// each tree of a forest in turn. Iterative, so deep trees are safe.
     ///
     /// cost: \(O(1)\) to make, \(O(n)\) to walk
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); let want: List<Visit<V, V>> = [Visit.Enter(0, None), Visit.Exit(0, None)]; t.tour.collect() == want`
     /// order: `Enter` events in `t.Pre` order; `Exit(v, _)` right after the last event of `v`'s subtree
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let want: List<Visit<V, V>> = [Visit.Enter(0, None), Visit.Enter(1, Some(0)), Visit.Enter(3, Some(1)), Visit.Exit(3, Some(1)), Visit.Enter(4, Some(1)), Visit.Exit(4, Some(1)), Visit.Exit(1, Some(0)), Visit.Enter(2, Some(0)), Visit.Exit(2, Some(0)), Visit.Exit(0, None)]; t.tour.collect() == want`
@@ -588,7 +590,7 @@ pub struct Rooted<V, Pre, A>:
     /// The positions of `v`'s subtree, `v` first: one contiguous range of `t.Pre`.
     ///
     /// cost: \(O(1)\)
-    /// empty: never empty; it holds `t.pos(v)`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.sub(3).map(p => t.at[p]).collect() == [3]`
     /// order: increasing positions
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.sub(1).map(p => t.at[p]).collect() == [1, 3, 4]`
@@ -597,7 +599,7 @@ pub struct Rooted<V, Pre, A>:
     /// The positions of `v`'s descendants: `sub(v)` without `v`.
     ///
     /// cost: \(O(1)\)
-    /// empty: empty at a leaf
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.below(3).count() == 0`
     /// order: increasing positions
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.below(1).map(p => t.at[p]).collect() == [3, 4] and t.below(2).count() == 0`
@@ -611,9 +613,10 @@ pub struct Rooted<V, Pre, A>:
     pub fn is_anc(self, a: V, b: V) -> Bool = tin[b] in self.sub(a)
 
     /// The child end of the tree edge between `u` and `v`, in either order.
+    /// Exactly one end is the child, so there is no tie.
     ///
     /// cost: \(O(1)\)
-    /// ties: None; exactly one end is the child
+    /// ties: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 1) == 1 and t.lower(1, 0) == 1`
     /// traps: when `u` and `v` are not joined by a tree edge
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 1) == 1 and t.lower(3, 1) == 3`
     pub fn lower(self, u: V, v: V) -> V:
@@ -645,7 +648,7 @@ pub struct Rooted<V, Pre, A>:
     /// The simple path of vertices from `a` to `b`, both included.
     ///
     /// cost: \(O(\log n + \lvert \mathit{path} \rvert)\)
-    /// empty: never empty; `[a]` when `a == b`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.path(4, 4) == [4]`
     /// order: from `a` to `b`
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.path(3, 2) == [3, 1, 0, 2] and t.path(4, 4) == [4]`
@@ -668,9 +671,10 @@ pub struct Rooted<V, Pre, A>:
     /// A longest simple path in the tree holding `t.root`: `(len, u, v)` with
     /// `t.dist(u, v) == len` as large as it gets, found in one bottom-up sweep that joins, at each
     /// vertex, its two deepest child branches.
+    /// On ties it keeps the first longest path the sweep (children before parents, `t.Pre` reversed) meets.
     ///
     /// cost: \(O(n)\)
-    /// ties: the first longest path the sweep (children before parents, `t.Pre` reversed) meets
+    /// ties: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.diameter() == (len: 3, u: 2, v: 4)`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.diameter() == (len: 3, u: 2, v: 4)`
     pub fn diameter(self) -> (len: Int, u: V, v: V):
@@ -741,12 +745,13 @@ pub struct Rooted<V, Pre, A>:
         None
 
     /// The path from `a` to `b` as \(O(\log n)\) heavy-chain ranges of `t.Pre`, in path order.
+    /// With `edges` and `a == b` there are no chains; otherwise there is at least one.
     ///
     /// A `rising` range is walked from its high end to its low end. With `edges`, the highest vertex
     /// of the path is left out: for a value per edge, stored at the edge's lower end.
     ///
     /// cost: \(O(\log n)\) ranges
-    /// empty: with `edges` and `a == b`, nothing; otherwise never empty
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.chains(3, 3, edges: true).count() == 0 and t.chains(3, 3).count() == 1`
     /// order: from `a` to `b`
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.chains(3, 2).map(c => c.rising).collect() == [true, false] and t.chains(3, 2, edges: true).count() == 2`
@@ -767,7 +772,7 @@ pub struct Rooted<V, Pre, A>:
                 y = par[top[y]]!
         let skip = if edges: 1 else: 0
         if dep[x] >= dep[y]:
-            yield (range: tin[y].l(1 - skip)..tin[x].r, rising: true)
+            if not (edges and x == y): yield (range: tin[y].l(1 - skip)..tin[x].r, rising: true)
         else:
             yield (range: tin[x].l(1 - skip)..tin[y].r, rising: false)
         for r in falling.rev: yield (range: r, rising: false)
@@ -780,7 +785,7 @@ pub struct Rooted<V, Pre, A>:
     /// value at the lowest common ancestor is left out.
     ///
     /// cost: \(O(\log^2 n)\) with one structure
-    /// empty: the identity for `a == b` with `edges`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let seg = SegTree(+, t.reorder([1, 2, 4, 8, 16])); t.fold_path(3, 3, seg, edges: true) == 0`
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let seg = SegTree(+, t.reorder([1, 2, 4, 8, 16])); t.fold_path(3, 2, seg) == 15 and t.fold_path(3, 2, seg, edges: true) == 14`
     pub fn fold_path<S, T>(self, a: V, b: V, ds: S, edges: Bool = false) -> T:
@@ -796,7 +801,7 @@ pub struct Rooted<V, Pre, A>:
     /// left out.
     ///
     /// cost: \(O(\log^2 n)\)
-    /// empty: nothing changes for `a == b` with `edges`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var seg = SegTree(+, t.reorder([1, 2, 4, 8, 16]), act: add); t.apply_path(3, 3, mut seg, 5, edges: true); seg.all == 31`
     /// traps: when `a` and `b` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var seg = SegTree(+, t.reorder([0, 0, 0, 0, 0]), act: add); t.apply_path(3, 2, mut seg, 5); t.fold_path(3, 2, seg) == 20 and seg.fold(t.sub(1)) == 10`
     pub fn apply_path<S, F>(self, a: V, b: V, mut ds: S, tag: F, edges: Bool = false):
@@ -810,7 +815,7 @@ pub struct Rooted<V, Pre, A>:
     /// count once.
     ///
     /// cost: \(O(k \log k + k \log n)\) for k keys
-    /// empty: `keys` empty gives an empty `vt.K`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let vt = t.virtual([]); vt.at == []`
     /// order: `vt.K` in `t.Pre` order
     /// traps: when the keys are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let vt = t.virtual([4, 3]); vt.at == [1, 3, 4] and vt.key == [false, true, true] and vt.w == [0, 1, 1]`
@@ -857,7 +862,7 @@ pub struct Rooted<V, Pre, A>:
     /// `v`, its parent, and so on up to its root.
     ///
     /// cost: \(O(1)\) per vertex, \(O(\mathit{depth}(v))\) in all
-    /// empty: never empty; it starts with `v`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.ancestors(0).collect() == [0]`
     /// order: from `v` up
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.ancestors(3).collect() == [3, 1, 0]`
@@ -870,9 +875,10 @@ pub struct Rooted<V, Pre, A>:
             else: more = false
 
     /// The top of the heavy chain through `v`: the highest vertex reached by heavy edges.
+    /// The heavy children fix the chain, so there is no tie.
     ///
     /// cost: \(O(1)\)
-    /// ties: None; the heavy children fix the chain
+    /// ties: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.top(3) == 0 and t.top(4) == 4`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.top(3) == 0 and t.top(4) == 4 and t.top(2) == 2`
     pub fn top(self, v: V) -> V = top[v]
@@ -880,7 +886,7 @@ pub struct Rooted<V, Pre, A>:
     /// The heavy chain through `v` as one range of positions, its top first.
     ///
     /// cost: \(O(1)\)
-    /// empty: never empty
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.chain(2).map(p => t.at[p]).collect() == [2]`
     /// order: top first, down the chain
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.chain(3).map(p => t.at[p]).collect() == [0, 1, 3] and t.chain(2).count() == 1`
@@ -893,9 +899,10 @@ pub struct Rooted<V, Pre, A>:
     /// The subtree of `v` were the tree rooted at `root`, as at most two ranges of positions:
     /// `sub(v)` when `root` is outside it, all of `t.Pre` when `v == root`, and otherwise
     /// everything except the subtree of the child of `v` toward `root`.
+    /// Empty ranges are skipped, so one or two ranges come out.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: empty ranges are skipped, so one or two ranges come out
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.sub_at(0, 2).count() == 1`
     /// order: increasing positions
     /// traps: when `v` and `root` are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); [t.at[p] for r in t.sub_at(1, 3) for p in r] == [0, 1, 4, 2] and t.sub_at(1, 2).count() == 1`
@@ -936,7 +943,7 @@ pub struct Rooted<V, Pre, A>:
     /// are per edge rather than per vertex.
     ///
     /// cost: \(O(n)\) calls of `lift` and `finish`, \(O(n)\) calls of `op`
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.above(+, finish: (s, v) => s + 1) == [None]`
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.above(+, finish: (s, v) => s + 1) == [None, Some(2), Some(4), Some(4), Some(4)]`
@@ -983,7 +990,7 @@ pub struct Rooted<V, Pre, A>:
     /// vertices under changes.
     ///
     /// cost: \(O(\log n)\): at most four `dist` calls
-    /// ties: the first longest of `x`, `y`, `(x.u, y.u)`, `(x.u, y.v)`, `(x.v, y.u)`, `(x.v, y.v)`
+    /// ties: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.farthest(Some((len: 2, u: 3, v: 4)), Some((len: 0, u: 2, v: 2))) == Some((len: 3, u: 3, v: 2))`
     /// traps: when the vertices are in different trees of a forest
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.farthest(Some((len: 0, u: 3, v: 3)), Some((len: 0, u: 2, v: 2))) == Some((len: 3, u: 3, v: 2)) and t.farthest(None, None) == None`
     pub fn farthest(
@@ -1003,7 +1010,7 @@ pub struct Rooted<V, Pre, A>:
     /// descendants of `v` at one depth are one range.
     ///
     /// cost: \(O(n)\)
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.level(0).map(b => ly.at[b]).collect() == [0]`
     /// order: by depth, then `t.Pre`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.level(1).map(b => ly.at[b]).collect() == [1, 2]`
@@ -1033,7 +1040,7 @@ pub struct Rooted<V, Pre, A>:
     /// on subtrees.
     ///
     /// cost: \(O(n)\)
-    /// empty: never empty
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(0).count() == 2`
     /// order: `tour` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(1).count() == 6`
@@ -1061,7 +1068,7 @@ pub struct Rooted<V, Pre, A>:
     /// walks only the first tree.
     ///
     /// cost: \(O(1)\) per item
-    /// empty: never empty; `[r]` for a single vertex
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.euler_tour().collect() == [0]`
     /// order: walk order from the root
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.euler_tour().collect() == [0, 1, 3, 1, 4, 1, 0, 2, 0]`
@@ -1091,8 +1098,8 @@ pub struct Rooted<V, Pre, A>:
     /// child is the first in child order on ties.
     ///
     /// cost: \(O(n)\)
-    /// empty: never empty
-    /// ties: the first tallest child in child order
+    /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.long_paths().height == [0]`
+    /// ties: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.long_paths().deep[1] == Some(3)`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.height == [2, 1, 0, 0, 0] and lp.deep[1] == Some(3)`
     pub fn long_paths(self) -> LongPaths<V, _>:
@@ -1131,7 +1138,7 @@ pub struct Rooted<V, Pre, A>:
     /// (decision 126).
     ///
     /// cost: \(O(\mathit{size}(v))\), less when pruned
-    /// empty: never empty; it starts with `v`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.preorder(3).map(s => s.state).collect() == [3]`
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.preorder(1).map(s => (s.state, s.depth)).collect() == [(1, 0), (3, 1), (4, 1)]`
@@ -1171,7 +1178,7 @@ pub struct Centroids<V>:
     /// pieces taken in the order `next` lists `c`'s neighbours. Built without recursion.
     ///
     /// cost: \(O(n \log n)\) time and memory
-    /// ties: of two centroids in a piece, the one nearer the piece's root
+    /// ties: `domain P = 0..4; let adj: [P]List<P> = [[1], [0, 2], [1, 3], [2]]; Centroids(adj).root == 1`
     /// traps: when `next` is not a connected tree
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.root == 1 and cd.parent(2) == Some(0)`
     pub fn new(next: Next<V>) -> Centroids<V>:
@@ -1259,7 +1266,7 @@ pub struct Centroids<V>:
     /// 0, then up the centroid tree. At most log2 n + 1 entries, no allocation.
     ///
     /// cost: \(O(1)\) per entry, \(O(\log n)\) in all
-    /// empty: never empty; it starts with `(c: v, dist: 0)`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.ancestors(1).collect() == [(c: 1, dist: 0)]`
     /// order: nearest centroid first, up to `cd.root`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.ancestors(2).collect() == [(c: 2, dist: 0), (c: 0, dist: 1), (c: 1, dist: 2)]`
@@ -1271,7 +1278,7 @@ pub struct Centroids<V>:
     /// exactly the paths whose highest centroid is `c`.
     ///
     /// cost: \(O(\mathit{size}(c))\), the size of the piece
-    /// empty: never empty; it starts with `(v: c, dist: 0, branch: c)`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.piece(3).collect() == [(v: 3, dist: 0, branch: 3)]`
     /// order: breadth-first from `c`, neighbours in the order `next` lists them
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let cd = Centroids(adj); cd.piece(0).collect() == [(v: 0, dist: 0, branch: 0), (v: 2, dist: 1, branch: 2)] and cd.piece(1).count() == 5`
@@ -2091,7 +2098,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// absent.
     ///
     /// cost: \(O(n)\)
-    /// empty: `a: None` fills every vertex with the identity
+    /// empty: `domain V = 0..3; var lc = LinkCut<V, Int>(+); lc.get(2) == 0`
     /// traps: never
     /// example: `domain V = 0..3; var lc = LinkCut<V, Int>(+); lc.get(2) == 0 and not lc.connected(0, 1)`
     pub fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T>:
@@ -2351,7 +2358,7 @@ pub struct PreferredPaths<V>:
     /// `v` (`gained: None`), so the switches account for every path that changed.
     ///
     /// cost: amortized \(O(\log n)\) switches
-    /// empty: nothing when the root's preferred path already ends at `v`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var pp = PreferredPaths(t); let _ = pp.access(3).collect(); pp.access(3).count() == 0`
     /// order: bottom-up
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var pp = PreferredPaths(t); pp.access(3).collect() == [(lost: None, gained: Some(3)), (lost: None, gained: Some(1))] and pp.access(1).collect() == [(lost: Some(3), gained: None)]`
@@ -2423,7 +2430,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// is absent.
     ///
     /// cost: \(O(n)\)
-    /// empty: `a: None` fills every vertex with the identity
+    /// empty: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(add); lc.get(1) == 0`
     /// traps: never
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); lc.get(1) == 0`
     /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
@@ -2930,7 +2937,7 @@ pub struct PermTree<I, V, Node>:
     /// keeps extending in one direction builds left-deep, so `[0, 1, 2]` is `((0, 1), 2)`.
     ///
     /// cost: \(O(n)\)
-    /// empty: `I` must be nonempty
+    /// empty: `domain I = 0..0; let p: [I]I = []; let pt = PermTree(p); pt.span(pt.root) == 0..0` (traps R0401)
     /// traps: when `I` is empty, `I.count != V.count`, or `p` is not a bijection
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.kind[pt.root] == PermKind.Incr and pt.kind[pt.left(pt.root)] == PermKind.Decr`
     pub fn new(p: [I]V) -> PermTree<I, V, _>:
@@ -3041,7 +3048,7 @@ pub struct PermTree<I, V, Node>:
     /// The positions `v` covers, a nonempty range of `I`.
     ///
     /// cost: \(O(1)\)
-    /// empty: never empty
+    /// empty: `domain I = 0..1; let p: [I]I = [0]; let pt = PermTree(p); pt.span(pt.root) == 0..1`
     /// order: increasing positions
     /// traps: never
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.span(pt.root) == 0..3`
@@ -3050,7 +3057,7 @@ pub struct PermTree<I, V, Node>:
     /// From the least to the greatest value `v` covers: exactly its values unless `v` is `Partial`.
     ///
     /// cost: \(O(1)\)
-    /// empty: never empty
+    /// empty: `domain I = 0..1; let p: [I]I = [0]; let pt = PermTree(p); pt.vals(pt.root) == 0..1`
     /// order: increasing values
     /// traps: never
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.vals(pt.left(pt.root)) == 0..2 and pt.vals(pt.leaf(0)) == 1..2`
@@ -3192,7 +3199,7 @@ pub struct Layers<V, B>:
     /// Every vertex at depth `d`, in `t.Pre` order; empty past the deepest or below 0.
     ///
     /// cost: \(O(1)\)
-    /// empty: for `d` outside `0..=` the greatest depth
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.level(3).count() == 0 and ly.level(-1).count() == 0`
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.level(2).map(b => ly.at[b]).collect() == [3, 4] and ly.level(3).count() == 0`
@@ -3202,9 +3209,10 @@ pub struct Layers<V, B>:
 
     /// The descendants of `v` at depth `d`, counted from the root as in `level`, by binary search
     /// in `level(d)`; `v` itself when `d == depth(v)`.
+    /// There are none when `d < depth(v)`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: when there are None, including `d < depth(v)`
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.below(3, 1).count() == 0 and ly.below(3, 3).count() == 0`
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.below(1, 2).map(b => ly.at[b]).collect() == [3, 4] and ly.below(2, 2).count() == 0`
@@ -3240,7 +3248,7 @@ pub struct Events<V, P>:
     /// The events inside `v`'s subtree, `enter(v)` through `exit(v)`.
     ///
     /// cost: \(O(1)\)
-    /// empty: never empty; 2 * size(v) events
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(3).count() == 2`
     /// order: `tour` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); let want: List<Visit<V, V>> = [Visit.Enter(1, Some(0)), Visit.Enter(3, Some(1)), Visit.Exit(3, Some(1)), Visit.Enter(4, Some(1)), Visit.Exit(4, Some(1)), Visit.Exit(1, Some(0))]; ev.sub(1).map(p => ev.at[p]).collect() == want`
@@ -3254,7 +3262,7 @@ pub struct Events<V, P>:
     /// `extra` is their lowest common ancestor.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: never empty
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.path(3, 3).range.count() == 1`
     /// order: `tour` order
     /// traps: when `a` and `b` are in different trees
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.path(3, 2).range.count() == 5 and ev.path(3, 2).extra == Some(0) and ev.path(1, 4).extra == None`
@@ -3278,7 +3286,7 @@ pub struct LongPaths<V, L>:
     /// starts one later in the same buffer.
     ///
     /// cost: \(O(1)\)
-    /// empty: never empty
+    /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.slots(3).count() == 1`
     /// order: offset 0 first
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.slots(0).count() == 3 and lp.slots(2).count() == 1`
@@ -3489,7 +3497,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// Lone vertices with values `a`, or the identity of `op` everywhere when `a` is `None`.
     ///
     /// cost: \(O(n)\)
-    /// empty: `a: None` fills every vertex with the identity
+    /// empty: `domain V = 0..3; var et = EulerTourTree<V, Int>(+); et.get(1) == 0`
     /// traps: never
     /// example: `domain V = 0..3; var et = EulerTourTree<V, Int>(+); et.get(1) == 0 and et.len(1) == 1`
     pub fn new<M>(op: M, a: ?[V]T = None) -> EulerTourTree<V, T>:
@@ -3765,7 +3773,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// Lone vertices with values `a`, or the identity of `act.over` everywhere when `a` is `None`.
     ///
     /// cost: \(O(n)\)
-    /// empty: `a: None` fills every vertex with the identity
+    /// empty: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.get(1) == 0`
     /// traps: never
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); et.get(1) == 0`
     /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
@@ -3907,8 +3915,8 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
 /// `Rooted.from_parents`.
 ///
 /// cost: \(O(n)\), one stack pass
-/// empty: `[]` for an empty `a`
-/// ties: the leftmost of equal elements is higher
+/// empty: `domain D = 0..0; let a: [D]Int = []; cartesian_tree(a) == []`
+/// ties: `cartesian_tree([1, 1]) == [None, Some(0)]`
 /// order: keyed by `D`
 /// traps: never
 /// example: `cartesian_tree([3, 1, 2]) == [Some(1), None, Some(1)] and cartesian_tree([1, 1]) == [None, Some(0)]`
@@ -3952,12 +3960,13 @@ pub struct KruskalTree<V, N, W>:
     pub fn reach(self, v: V, limit: W) -> N = lift.climb(leaf[v], ok: x => w[x]! <= limit).at
 
     /// The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`.
+    /// The highest such node is unique, so there is no tie.
     ///
     /// `ok` gets the edge's key in the list given to `kruskal_tree`
     /// (`kt.top(v, ok: e => roads[e].alt > p)`). `ok` must hold on a prefix of the merge order.
     ///
     /// cost: \(O(\log n)\) calls of `ok`
-    /// ties: None; the highest such node is unique
+    /// ties: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.w[kt.top(1, e => es[e].w < 5)] == Some(3)`
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.w[kt.top(1, e => es[e].w < 5)] == Some(3) and kt.top(0, e => false) == kt.leaf[0]`
     pub fn top<E>(self, v: V, ok: E -> Bool) -> N = lift.climb(leaf[v], x => ok(E.nth(edge[x]))).at
@@ -3970,7 +3979,7 @@ pub struct KruskalTree<V, N, W>:
     /// is the one wanted.
     ///
     /// cost: \(O(n)\) calls of `op` and `leaf`
-    /// empty: never empty; every leaf has a value
+    /// empty: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.up(+, leaf: v => 1)[kt.leaf[0]] == 1`
     /// order: keyed by `N`
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); let c = kt.up(+, leaf: v => 1); c[kt.reach(2, 3)] == 2 and c[kt.leaf[0]] == 1`
@@ -4005,8 +4014,8 @@ pub struct KruskalTree<V, N, W>:
 /// `kt.reach(v, desc(p + 1))`: any `Ord` weight works, so no weight is ever negated.
 ///
 /// cost: \(O(m \log m)\) for m edges
-/// empty: no edges gives `V.count` lone leaves
-/// ties: equal weights merge in edge key order, as `kruskal`
+/// empty: `domain V = 0..3; let es: [0..0](u: V, v: V, w: Int) = []; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); N.count == 3`
+/// ties: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 1, v: 2, w: 1), (u: 0, v: 1, w: 1)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.tree.parent(kt.leaf[1]) == kt.tree.parent(kt.leaf[2])`
 /// traps: never
 /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); N.count == 5 and kt.bottleneck(0, 2) == Some(5)`
 pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
@@ -4045,7 +4054,7 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
 /// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
 ///
 /// cost: \(O(n)\)
-/// empty: `[]` when `V` has two vertices
+/// empty: `domain V = 0..2; let tr: Tree<V> = [(u: 0, v: 1)]; prufer(tr) == []`
 /// order: removal order
 /// traps: when `V` has fewer than two vertices, or `edges` is not a tree
 /// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 1, v: 3)]; prufer(tr) == [1, 1]`
@@ -4081,7 +4090,7 @@ pub fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>:
 /// neighbour)`, the last joining the two vertices left, smaller first.
 ///
 /// cost: \(O(n)\)
-/// empty: `[]` with two vertices gives the one edge `(u: 0, v: 1)` in `V` order
+/// empty: `domain V = 0..2; from_prufer<V>([]) == [(u: 0, v: 1)]`
 /// traps: when `code` does not have `V.count - 2` entries, or `V` has fewer than two vertices
 /// example: `domain V = 0..4; from_prufer<V>([1, 1]) == [(u: 0, v: 1), (u: 2, v: 1), (u: 1, v: 3)]`
 pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
