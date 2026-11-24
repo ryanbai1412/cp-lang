@@ -242,7 +242,13 @@ pub fn run_one(db: &mut Session, root: &Path, ex: &DocExample) -> CaseOutcome {
     }
 }
 
-fn run_unchecked(db: &mut Session, root: &Path, ex: &DocExample, code: &str) -> CaseOutcome {
+/// The example as a program, its virtual path and its lowering, or the diagnostics that stop it.
+pub(crate) fn compile_example(
+    db: &mut Session,
+    root: &Path,
+    ex: &DocExample,
+    code: &str,
+) -> Result<(String, String, runner::CompiledProgram), String> {
     let safe_id: String = ex
         .id
         .chars()
@@ -272,19 +278,26 @@ fn run_unchecked(db: &mut Session, root: &Path, ex: &DocExample, code: &str) -> 
             match res {
                 Ok(c) => c,
                 Err(CompileError::Diagnostics(d2)) => {
-                    return CaseOutcome {
-                        status: "error".into(),
-                        detail: runner::first_line_trimmed(&d2, 160),
-                    };
+                    return Err(runner::first_line_trimmed(&d2, 160));
                 }
             }
         }
         Err(CompileError::Diagnostics(d)) => {
             db.remove_file(&path_str);
+            return Err(runner::first_line_trimmed(&d, 160));
+        }
+    };
+    Ok((path_str, source, compiled))
+}
+
+fn run_unchecked(db: &mut Session, root: &Path, ex: &DocExample, code: &str) -> CaseOutcome {
+    let (path_str, source, compiled) = match compile_example(db, root, ex, code) {
+        Ok(built) => built,
+        Err(detail) => {
             return CaseOutcome {
                 status: "error".into(),
-                detail: runner::first_line_trimmed(&d, 160),
-            };
+                detail,
+            }
         }
     };
     let run = match runner::run_interp_bounded(

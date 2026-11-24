@@ -163,6 +163,21 @@ jobs:
       - name: DAP mutation score
         run: just mutation-score -p cpl-cli -f crates/cpl-cli/src/dap.rs --test dap --min 1.0 -o target/dap-mutants | tee -a "$GITHUB_STEP_SUMMARY"
 
+  # No undefined behaviour in emitted std code: every std conformance case
+  # and std doc example, as C++ under ASan, UBSan and _GLIBCXX_DEBUG, runs
+  # without a report (handbook/domains/stdlib.md).
+  std-sanitize:
+    name: std under sanitizers
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: release
+      - name: Std conformance and doc examples under ASan and UBSan
+        run: just std-sanitize
+
   # The editor's latency budgets on each OS, in the optimized build people
   # run. Its own job, so its release build doesn't lengthen the cli job.
   lsp-latency:

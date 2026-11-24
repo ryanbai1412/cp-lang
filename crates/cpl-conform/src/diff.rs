@@ -181,16 +181,25 @@ fn is_transient_gxx_failure(code: Option<i32>, stderr: &str) -> bool {
 }
 
 pub(crate) fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> {
-    std::fs::create_dir_all(cache_dir)
-        .map_err(|e| CppCompileError::Infra(format!("cannot create cache dir: {e}")))?;
     // `CPL_CONFORM_CXXFLAGS` replaces `-O2`, e.g. `-O1 -g -fsanitize=address,undefined`
     // to turn undefined behaviour in emitted C++ into a failing case.
-    // `-Werror=return-type`: a fn that falls off its end is undefined
-    // behaviour g++ only warns about; emitted C++ never does it.
     let flags = cpl_env::CONFORM_CXXFLAGS
         .text()
-        .unwrap_or_else(|| "-O2".into())
-        + " -Werror=return-type";
+        .unwrap_or_else(|| "-O2".into());
+    compile_cpp_with(cpp, cache_dir, &flags)
+}
+
+/// `compile_cpp` with `flags` in place of `-O2`.
+pub(crate) fn compile_cpp_with(
+    cpp: &str,
+    cache_dir: &Path,
+    flags: &str,
+) -> Result<PathBuf, CppCompileError> {
+    std::fs::create_dir_all(cache_dir)
+        .map_err(|e| CppCompileError::Infra(format!("cannot create cache dir: {e}")))?;
+    // `-Werror=return-type`: a fn that falls off its end is undefined
+    // behaviour g++ only warns about; emitted C++ never does it.
+    let flags = format!("{flags} -Werror=return-type");
     // `CPL_CXX_SYSTEM_KEY` fingerprints the compiler and system headers when the
     // cache outlives them (shared across checkouts and CI runs).
     let system = cpl_env::CXX_SYSTEM_KEY.text().unwrap_or_default();

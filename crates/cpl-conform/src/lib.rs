@@ -10,6 +10,7 @@ pub mod manifest;
 pub mod pin;
 pub mod rewrites;
 pub mod runner;
+pub mod sanitize;
 pub mod scoreboard;
 pub mod spec_blocks;
 pub mod variants;

@@ -32,6 +32,11 @@ coverage-matrix *args:
 mutation-score *args:
     uv run --quiet python scripts/mutation-score.py {{args}}
 
+# Every std conformance case and std doc example as C++ under ASan, UBSan and
+# _GLIBCXX_DEBUG; fails on any report (CI: ci-slow `std-sanitize`).
+std-sanitize *args:
+    cargo run --release -q -p cpl-conform -- sanitize {{args}}
+
 # LSP request latency, in release (CI: ci-slow `lsp-latency`).
 lsp-latency:
     cargo test --release -p cpl-lsp --test latency -- --nocapture

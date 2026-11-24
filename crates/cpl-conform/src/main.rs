@@ -24,6 +24,9 @@ suites:
                   generated programs (seeds START..START+COUNT, default
                   0 200) on the interpreter and the C++ at every --checks
                   level; findings are kept in target/fuzz/<seed>.cp
+  sanitize [FILTER]
+                  every std conformance case and std doc example, as C++
+                  under ASan, UBSan and _GLIBCXX_DEBUG; fails on any report
 
 options:
   --check         fail if any suite's pass count drops or a passing case regresses
@@ -68,6 +71,9 @@ fn main() -> ExitCode {
 
     if args.first().map(String::as_str) == Some("fuzz") {
         return fuzz(&args[1..]);
+    }
+    if args.first().map(String::as_str) == Some("sanitize") {
+        return sanitize(args.get(1).map(String::as_str));
     }
     let mut i = 0;
     while i < args.len() {
@@ -378,6 +384,42 @@ fn main() -> ExitCode {
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS
+    }
+}
+
+fn sanitize(filter: Option<&str>) -> ExitCode {
+    use cpl_conform::sanitize::Outcome;
+    let root = match find_repo_root() {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("cpl-conform: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let started = Instant::now();
+    let outcomes = cpl_conform::sanitize::run(&root, filter);
+    let mut clean = 0;
+    let mut findings = 0;
+    for (id, outcome) in &outcomes {
+        match outcome {
+            Outcome::Clean => clean += 1,
+            Outcome::NoCpp => {}
+            Outcome::Finding(f) => {
+                findings += 1;
+                println!("{id}: {f}");
+            }
+        }
+    }
+    println!(
+        "sanitize: {clean}/{} std cases and doc examples run clean under `{}` ({:.1}s)",
+        clean + findings,
+        cpl_conform::sanitize::FLAGS,
+        started.elapsed().as_secs_f64()
+    );
+    if findings == 0 && clean > 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
     }
 }
 

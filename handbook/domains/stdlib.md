@@ -201,7 +201,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Interpreter and C++ agree | `cpl-conform diff` disagreements on std | differential suite `cpl-conform diff`; side-effect variants in `crates/cpl-conform/src/variants.rs` |
 | Prints, walks and hash orders are deterministic | print-order disagreements between engines | `cpl-conform diff` side-effect variants |
 | Every trait method of every claimer works | uncovered (type, trait, method) triples | generated suite `scripts/spec-gate.py traits`, gap list only shrinks |
-| No undefined behaviour in emitted std code | sanitizer failures over std cases | sanitized C++ in `crates/cpl-cli/tests/differential.rs`; `missing` for the full std suite |
+| No undefined behaviour in emitted std code | sanitizer failures over std cases | `just std-sanitize` (`crates/cpl-conform/src/sanitize.rs`, ci-slow `std-sanitize`): every std conformance case and std doc example as C++ under ASan, UBSan and `_GLIBCXX_DEBUG`; sanitized C++ in `crates/cpl-cli/tests/differential.rs` |
 | A bug that escapes is caught next time | escaped std bugs with no row and no case | process: each escape adds its case and names the row that should have caught it |
 | Tests catch real bugs | mutation score of the std suites | every one-line mutant of the `std/*.cp` lines a push changes fails std's own `@test` fns, doc examples, `std-<file>/` or std-models cases, blocking in CI's `std-mutants` job: `scripts/mutation-score.py --std --since origin/main --min 1.0` |
 
