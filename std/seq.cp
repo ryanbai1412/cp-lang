@@ -1561,19 +1561,24 @@ pub struct Slice<S>(
     /// traps: never
     /// example: `[5, 6, 7][1..].keys == 1..3`
     /// order: increasing
-    @get pub fn keys<K>(self) -> Range<K> = todo
+    @get pub fn keys<K>(self) -> Range<K>:
+        if lo < hi: return src.keys[lo]..=src.keys[hi - 1]
+        if lo < src.len: return src.keys[lo]..src.keys[lo]
+        if src.len == 0: return src.keys
+        let k = src.keys[src.len - 1]
+        k..k
     /// The number of elements in the slice.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[1, 2, 3][1..].len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = hi - lo
     /// Whether the slice has no elements.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[1, 2][2..].is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = hi <= lo
 
     /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
     /// same elements without the keys.
