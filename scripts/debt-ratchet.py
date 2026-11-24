@@ -1151,6 +1151,30 @@ def corpus_no_tests(root: Path) -> list[str]:
         if problems.is_dir() else []
 
 
+def corpus_no_statement(root: Path) -> list[str]:
+    """Problem packages whose tests.toml has no statement sample inline (owner: Content, idioms).
+
+    Rule: problem-packages/R9 (handbook/guidelines/problem-packages-checklist.md#r9): a
+    package's cases start with its statement's samples as `input` cases. A package whose
+    statement can't be found has none, and can't have valid bounds or tests either, so it
+    is deleted (git history keeps it) rather than listed.
+    """
+    import tomllib
+    problems = root / "corpus" / "problems"
+    found = []
+    for d in sorted(problems.iterdir()) if problems.is_dir() else []:
+        if not (d / "meta.json").is_file():
+            continue
+        t = d / "tests.toml"
+        try:
+            cases = tomllib.loads(t.read_text(encoding="utf-8")).get("case", []) if t.is_file() else []
+        except tomllib.TOMLDecodeError:
+            cases = []
+        if not any("input" in c for c in cases):
+            found.append(d.relative_to(root).as_posix())
+    return found
+
+
 def corpus_test_files(root: Path) -> list[str]:
     """Literal test data committed under corpus/problems/*/tests/, samples included.
 
@@ -2271,6 +2295,8 @@ COUNTERS = {
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "corpus_no_max": ("non-interactive problem packages without a gen.py --max", corpus_no_max, True),
     "corpus_no_tests": ("problem packages without a tests.toml (Content)", corpus_no_tests, True),
+    "corpus_no_statement": ("problem packages without an inline statement sample (Content)",
+                            corpus_no_statement, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),

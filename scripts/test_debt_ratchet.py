@@ -70,6 +70,17 @@ class DebtRatchetTest(unittest.TestCase):
                     self._write(root, f"corpus/problems/{name}/{f}", "{}")
             self.assertEqual(dr.corpus_no_tests(root), ["corpus/problems/b"])
 
+    def test_corpus_no_statement_counts_packages_without_an_inline_sample(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample = '[[case]]\ninput = "1\\n"\n\n[[case]]\nseed = 1\nsize = 4\n'
+            for name, files in (("a", {"meta.json": "{}", "tests.toml": sample}),
+                                ("b", {"meta.json": "{}", "tests.toml": "[[case]]\nargs = [\"--max\"]\n"}),
+                                ("c", {"meta.json": "{}"}), ("d", {"notes.md": ""})):
+                for f, text in files.items():
+                    self._write(root, f"corpus/problems/{name}/{f}", text)
+            self.assertEqual(dr.corpus_no_statement(root), ["corpus/problems/b", "corpus/problems/c"])
+
     def test_corpus_no_max_counts_packages_without_a_max_mode(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

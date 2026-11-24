@@ -1,9 +1,9 @@
 {
   "max_rs_lines": 2000,
   "rs_file_size_allowlist": {
-    "crates/cpl-interp/src/lib.rs": 3341
+    "crates/cpl-interp/src/lib.rs": 3155
   },
-  "stdlib_todo": 7,
+  "stdlib_todo": 5,
   "rust_ignore": 0,
   "pending_tests": 0,
   "edition_refs": 0,
@@ -135,7 +135,7 @@
   "cpp_std_functions": 57,
   "cpp_sunk_copies": 16,
   "codegen_effect_guesses": 0,
-  "near_dup_fns": 10,
+  "near_dup_fns": 9,
   "consumer_rederived": 39,
   "rs_near_cap": [],
   "skip_lists": 34,
@@ -217,7 +217,7 @@
   "stress_engines": 2,
   "conformance_failing": 7,
   "conformance_wrong_output": 1,
-  "rust_idiom_lints": 77,
+  "rust_idiom_lints": 76,
   "scaling_mismatches": 0,
   "std_fns_unscaled": 156,
   "std_types_shown_empty": 4,
@@ -226,5 +226,6 @@
   "cpp_optional_copies": 9,
   "std_trait_matrix": 0,
   "corpus_no_tests": 109,
-  "silent_unknowns": 42493
+  "silent_unknowns": 42493,
+  "corpus_no_statement": 375
 }
