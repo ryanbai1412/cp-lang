@@ -200,12 +200,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
         let compiled = Rc::clone(&self.vm);
         let flow = if !feeding || compiled.main.traced {
-            if compiled.fns.get(id).is_some_and(Option::is_some) {
-                self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
-            } else {
-                self.fell_back(|| format!("fn:{}(uncompiled)", f.name), false);
-                self.block(&f.body)
-            }
+            // Only a judge fn has no chunk, and it stopped above.
+            self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
         } else {
             let why = if feeding { "feeding" } else { "part" };
             self.fell_back(|| format!("fn:{}({why})", f.name), false);

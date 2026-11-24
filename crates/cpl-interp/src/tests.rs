@@ -51,6 +51,15 @@ fn what_was_printed_before_a_failure_is_kept() {
 }
 
 #[test]
+fn a_call_of_a_cpp_body_stops_the_program() {
+    assert!(failure(
+        "fn pc(a: Int) -> Int = @cpp(\"return __builtin_popcountll(a);\")\nprint(pc(7))\n",
+        ""
+    )
+    .starts_with("this fn's body is C++ (`@cpp`)"));
+}
+
+#[test]
 fn indices_outside_their_container_stop_the_program() {
     assert_eq!(
         failure("let xs: List<Int> = [1, 2]\nprint(xs[5])\n", ""),
