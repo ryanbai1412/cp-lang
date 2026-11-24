@@ -9181,3 +9181,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Reverse.** Fold `spec_required_copies` back into `cpp_deep_copies` with a baseline of their sum.
 
 ## 607. (reserved, unknown)
+
+## 608. (reserved, stdlib)
