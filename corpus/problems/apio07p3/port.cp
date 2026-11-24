@@ -8,7 +8,8 @@
 //   over the 32 masks of the window starting at p. DP round the ring with the window's mask as
 //   state: fix the first window's mask, slide one pen at a time (drop the old pen, decide the
 //   new one) adding happy[p, mask], and end on the starting mask. O(32 * 32 * 2 * n).
-// Bounds: n: 10..=1e4; c: 1..=5e4; pen, x: 1..=n; fears, loves: 0..=5
+// Bounds: n: 10..=1e4; c: 1..=5e4; pen: 1..=n; fears, loves: 0..=5; fear: [fears]1..=n;
+//   love: [loves]1..=n
 let n: 10..=1e4 = read()
 let c: 1..=5e4 = read()
 domain Pen = 1..=n
@@ -21,22 +22,14 @@ for _ in 0..c:
     let pen: Pen = read()
     let fears: 0..=5 = read()
     let loves: 0..=5 = read()
-    var fear = View.empty
-    for _ in 0..fears:
-        let x: Pen = read()
-        fear = fear.with(Window.nth((x - pen) % n))
-    var love = View.empty
-    for _ in 0..loves:
-        let x: Pen = read()
-        love = love.with(Window.nth((x - pen) % n))
+    let fear = View.of(Window.nth((x - pen) % n) for x in read<[fears]Pen>())
+    let love = View.of(Window.nth((x - pen) % n) for x in read<[loves]Pen>())
     for gone in View:
         if not (gone & fear).is_empty or not (love - gone).is_empty: happy[pen, gone] += 1
 
 // the view one pen further on: drop the pen left behind, decide the new one
 fn slide(v: View, empty_new: Bool) -> View:
-    var kept = View.empty
-    for w in Window:
-        if let down = w.prev and v.contains(w): kept = kept.with(down)
+    let kept = v.shifted(-1)
     if empty_new: kept.with(Window.last!) else: kept
 
 // Fix the view at the first pen, slide once round the ring, and come back to it.

@@ -1,23 +1,20 @@
 # apio07p3
 
-Score: 3/5
+Score: 4/5
 Dream: 4/5
 
-Cold review of `port.cp` against the ideal under `## Dream` in `research/frictions/apio07p3.md`
-(there is no `dream.cp`), without the C++. `Window = 0..5` and `View = Subset<Window>` name
-the five-pen view, `happy: [Pen, View]Int` is the editorial's table, and the ring DP fixes the
-start view and checks `cur[start]` at the end with `[View]?Int`.
+Cold review of `port.cp` (the dream under `## Dream` in `research/frictions/apio07p3.md` is
+now the port), without the C++. `Window = 0..5` and `View = Subset<Window>` name the
+five-pen view, `happy: [Pen, View]Int` is the editorial's table, each child's sets are one
+`View.of(...)` over the read pens, `slide` is `shifted(-1)` plus the new pen, and the ring DP
+fixes the start view and checks `cur[start]` at the end with `[View]?Int`.
 
 ## Checklist failures
-- idiomatic-code/R4: the fear and love sets are read by two copies of the same loop.
-- idiomatic-code/R3: `slide` re-derives `Subset.shifted(-1)` as a loop over five positions.
+None. Short of 5/5 only because `(x - pen) % n` maps a pen to its window position by
+arithmetic; a cyclic pen domain would say it, which is a design item, not a port fault.
 
 ## Owed rewrites
-- `fn read_view(pen, count) -> View`, called twice.
-- `slide` on `v.shifted(-1)`.
+None.
 
 ## Language gaps
-- `Subset` is not a `collect` target (E0302, in the friction), so `read_view` keeps a `var`.
-
-## Dream notes
-It keeps one `var` loop for the collect gap; 4/5 until `Subset` collects.
+None open (`Subset.of`, 80bde58b9, closed the collect gap).
