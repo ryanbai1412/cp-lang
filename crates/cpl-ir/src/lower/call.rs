@@ -672,11 +672,10 @@ impl<'a> Lowerer<'a> {
                             decl.variants.iter().find(|v| v.name.text == name.text)
                         {
                             for (f, arg) in variant.fields.iter().zip(args) {
-                                let probed = self.probe_expr(&arg.value, None);
-                                if probed.ty != Ty::Error {
+                                if let Some(ty) = self.checked_ty(&arg.value) {
                                     self.unify_ast_ty(
                                         &f.1,
-                                        &probed.ty,
+                                        &ty,
                                         tpl_mod,
                                         &gen_names,
                                         &mut inferred,
