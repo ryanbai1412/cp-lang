@@ -26,9 +26,7 @@ impl<'a> Lowerer<'a> {
         if !matches!(arg.value.kind, ast::ExprKind::Name(_)) {
             return;
         }
-        let saved = self.diags.len();
-        let lowered = self.expr(&arg.value, None);
-        self.diags.truncate(saved);
+        let lowered = self.probe_expr(&arg.value, None);
         if let Some(info) = self.expr_range(&lowered) {
             let domains: Vec<String> = gen_names
                 .iter()

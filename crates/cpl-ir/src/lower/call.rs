@@ -497,9 +497,7 @@ impl<'a> Lowerer<'a> {
                                         span,
                                         None,
                                     );
-                                    let dlen = self.diags.len();
-                                    let probed = self.expr(&arg.value, None);
-                                    self.diags.truncate(dlen);
+                                    let probed = self.probe_expr(&arg.value, None);
                                     if probed.ty != Ty::Error {
                                         self.unify_ast_ty(
                                             pty,
@@ -593,9 +591,7 @@ impl<'a> Lowerer<'a> {
                             decl.variants.iter().find(|v| v.name.text == name.text)
                         {
                             for (f, arg) in variant.fields.iter().zip(args) {
-                                let dlen = self.diags.len();
-                                let probed = self.expr(&arg.value, None);
-                                self.diags.truncate(dlen);
+                                let probed = self.probe_expr(&arg.value, None);
                                 if probed.ty != Ty::Error {
                                     self.unify_ast_ty(
                                         &f.1,

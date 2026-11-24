@@ -2894,10 +2894,7 @@ impl<'a> Lowerer<'a> {
     /// Whether a lone index names a whole cell of a grid: a tuple or a
     /// product position. Lowered once to see its type; nothing is kept.
     fn indexes_whole_grid(&mut self, index: &ast::Expr) -> bool {
-        let diags = self.diags.len();
-        let value = self.expr(index, None);
-        self.diags.truncate(diags);
-        match value.ty {
+        match self.probe_expr(index, None).ty {
             Ty::Tuple(_) | Ty::Record(_) => true,
             Ty::Pos(p) => self.product_grid(p).is_some(),
             _ => false,

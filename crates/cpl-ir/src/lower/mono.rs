@@ -1763,9 +1763,7 @@ impl<'a> Lowerer<'a> {
                     let dom_id = if let Some(Sym::Domain(d)) = self.sym(&arg.value) {
                         Some(d)
                     } else {
-                        let saved_err = self.diags.len();
-                        let ev = self.expr(&arg.value, None);
-                        self.diags.truncate(saved_err);
+                        let ev = self.probe_expr(&arg.value, None);
                         if let ExprKind::DomainVal(d) = ev.kind {
                             Some(d)
                         } else {
@@ -2312,9 +2310,7 @@ impl<'a> Lowerer<'a> {
                 .or_else(|| args.get(pos).filter(|a| a.name.is_none()));
             if let Some(arg) = matched_arg {
                 let hint = self.trait_lambda_hint(pty, &arg.value, &inferred);
-                let dlen = self.diags.len();
-                let probed = self.expr(&arg.value, hint.as_ref());
-                self.diags.truncate(dlen);
+                let probed = self.probe_expr(&arg.value, hint.as_ref());
                 if probed.ty != Ty::Error {
                     trait_params.push((decl_idx, probed.ty));
                 }
@@ -2792,14 +2788,21 @@ impl<'a> Lowerer<'a> {
 
     /// Probes the concrete type of an expression without permanently emitting errors or side effects.
     pub(super) fn probe_ty_silent(&mut self, e: &ast::Expr) -> Option<Ty> {
+        let val = self.probe_expr(e, None);
+        (val.ty != Ty::Error).then_some(val.ty)
+    }
+
+    /// Lowers `e` only to learn about it: the statements it would hoist ahead of its
+    /// statement and the errors it would report are dropped, so the probe never runs.
+    pub(super) fn probe_expr(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
         let saved_diags = self.diags.len();
         let saved_cx = self.cx.clone();
         let saved_outer = self.outer_cxs.clone();
-        let val = self.expr(e, None);
+        let val = self.expr(e, hint);
         self.diags.truncate(saved_diags);
         self.cx = saved_cx;
         self.outer_cxs = saved_outer;
-        (val.ty != Ty::Error).then_some(val.ty)
+        val
     }
 
     fn probe_expr_ty(

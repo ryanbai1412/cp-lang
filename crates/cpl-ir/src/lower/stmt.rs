@@ -2685,10 +2685,8 @@ impl<'a> Lowerer<'a> {
                 if matches!(&base.kind, ast::ExprKind::Name(n) if n == var_name)
                     && indices.len() == 1
                 {
-                    let diag_len = self.diags.len();
-                    let kt = self.expr(&indices[0], None).ty;
-                    let vt = self.expr(value, None).ty;
-                    self.diags.truncate(diag_len);
+                    let kt = self.probe_expr(&indices[0], None).ty;
+                    let vt = self.probe_expr(value, None).ty;
                     let kt = if kt == Ty::Error { Ty::Int } else { kt };
                     let vt = if vt == Ty::Error { Ty::Int } else { vt };
                     return (kt, vt);

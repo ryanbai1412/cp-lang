@@ -576,9 +576,7 @@ impl<'a> Lowerer<'a> {
             return None;
         };
         {
-            let dlen = self.diags.len();
-            let probed = self.expr(&only.value, None);
-            self.diags.truncate(dlen);
+            let probed = self.probe_expr(&only.value, None);
             // So does an array over a plain range, `[0..m](u: V, v: V)`:
             // it names no edge domain either. And one of plain
             // tuples, `[E](V, V, W)`, whose cells have no `u` and `v`.
