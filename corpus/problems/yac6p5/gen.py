@@ -1,4 +1,6 @@
 import sys, random
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "1000000"]
 rng = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 seed = int(sys.argv[1])

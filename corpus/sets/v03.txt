@@ -335,6 +335,9 @@ oly20practice139
 sac22cc2p5
 sac22cc3p3
 sac22cc4jp4
+sac22cc4p4
+sdoi17r1p1
+tle17c5p6
 ucup4s24f
 ucup4s25b
 ucup4s25c
@@ -358,3 +361,4 @@ wtf26d
 yac1p1
 yac1p2
 yac6p4
+yac6p5

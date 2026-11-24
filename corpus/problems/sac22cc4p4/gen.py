@@ -2,6 +2,8 @@
 gives n = 1e6, |a| <= 1e9 picked by seed % 4: random values with random B <= T; B = 0, T = 2e9
 (every subarray, answer n(n + 1) / 2); alternating +-1e9 with B = T = 2e9; or a slow random walk."""
 import sys, random
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "100000"]
 
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2]); E = 10**9
 if S < 100000:

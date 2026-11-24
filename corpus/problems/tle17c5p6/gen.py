@@ -2,6 +2,8 @@
 gives n = 1e5, m = 2e5 picked by seed % 3: random gates over all lower wires; a deep chain (each
 gate reads the previous one, recursion depth m); or gates reading recent wires (output depends on x)."""
 import sys, random
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["1", "100000"]
 
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 if S < 100000:

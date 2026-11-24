@@ -1,4 +1,6 @@
 import sys, random
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "1000000"]
 # seed size: T queries; size >= 1e6 gives the worst case (T = 1000, n and m near 1e6)
 rng = random.Random(int(sys.argv[1])); S = min(int(sys.argv[2]), 10**6)
 big = S >= 10**6

@@ -7,6 +7,7 @@
 //   down the maximum: sort, try every split into a low and a high group, gather each at its
 //   median (prefix sums) and pay a turn per sheep in the low group looking down or in the high
 //   group looking up. Everyone at one spot needs no turns. Sum the two axes; O(N log N).
+// original: corpus/submissions/5149823.cpp
 
 let n: 2..=1e6 = read()
 struct Sheep:

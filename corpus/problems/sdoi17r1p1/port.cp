@@ -7,42 +7,37 @@
 //   n/T and m/T are constant on O(sqrt n) blocks, one power each: O(sqrt(n) log P).
 // original: corpus/submissions/5463988.cpp
 
-const P = 1000000007
-type Z = Mod<P>
+use std.prefix.{prefix_fold}
+
+type Z = Mod<1_000_000_007>
 
 let t: 1..=1000 = read()
-domain Ask = 0..t
-let asks: [Ask](n: 1..=1e6, m: 1..=1e6) = read()
-let top = [max(a.n, a.m) for a in asks].max()!
+let asks: [t](n: 1..=1e6, m: 1..=1e6) = read()
+let top = max(max(a.n, a.m) for a in asks)!
+let mu = Sieve(top).mobius_table()
 
-// Mobius function from smallest prime factors
-let sieve = Sieve(top)
-var mu = List.filled(top + 1, 1)
-for x in 2..=top:
-    let p = sieve.factor(x)[0].0
-    mu[x] = if x / p % p == 0: 0 else: -mu[x / p]
-
-var fib = List.filled(top + 2, Z.one)
-fib[0] = 0
+var fib = List.filled(top + 1, Z.zero)
+fib[1] = Z.one
 for i in 2..=top: fib[i] = fib[i - 1] + fib[i - 2]
 
-// g[T], then its prefix products and their inverses
+// g[T] = product over d | T of fib[d]^mu(T / d)
 var g = List.filled(top + 1, Z.one)
 for d in 1..=top:
-    let back = fib[d].inv
-    var mult = d
-    while mult <= top:
-        if mu[mult / d] == 1: g[mult] *= fib[d]
-        if mu[mult / d] == -1: g[mult] *= back
-        mult += d
-var upto = List.filled(top + 1, Z.one)
-for i in 1..=top: upto[i] = upto[i - 1] * g[i]
+    let (up, down) = (fib[d], fib[d].inv)
+    for k in (d..=top).step(d):
+        if mu[k / d] == 1: g[k] *= up
+        if mu[k / d] == -1: g[k] *= down
+let upto = prefix_fold(*, g)
 let undo = [x.inv for x in upto]
 
+// the product of g over l..=r
+fn span(l: Int, r: Int) -> Z = upto[r + 1] * undo[l]
+
 for a in asks:
-    var (answer, l) = (Z.one, 1)
+    var answer = Z.one
+    var l = 1
     while l <= min(a.n, a.m):
-        let r = min(a.n / (a.n / l), a.m / (a.m / l))  // last T with the same two quotients
-        answer *= (upto[r] * undo[l - 1]) ** ((a.n / l) * (a.m / l))
+        let r = min(a.n / (a.n / l), a.m / (a.m / l))  // the last T with both quotients of l
+        answer *= span(l, r) ** ((a.n / l) * (a.m / l))
         l = r + 1
     print(answer)
