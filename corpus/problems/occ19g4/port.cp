@@ -32,7 +32,7 @@ let past: [Goose]Y = [Goose] g => Y(min(v[g] + radius[g], top) + 1)
 let (start, stop) = ([Goose] g => u[g] - radius[g], [Goose] g => u[g] + radius[g])
 
 // largest radius first, ties by number
-let rank = Goose.sort(by: g => (-radius[g], g.ord)).inverse()
+let rank = Goose.sorted(by: g => (-radius[g], g.ord)).inverse()
 
 var bit = Fenwick<Y, Int>()
 var ans: [Goose]Int = 0
@@ -79,9 +79,9 @@ fn split(l: Int, r: Int, by_u: List<Goose>, by_start: List<Goose>, by_stop: List
 split(
     0,
     2 * n,
-    Goose.sort(by: g => u[g]),
-    Goose.sort(by: g => start[g]),
-    Goose.sort(by: g => stop[g]),
+    Goose.sorted(by: g => u[g]),
+    Goose.sorted(by: g => start[g]),
+    Goose.sorted(by: g => stop[g]),
 )
 
 for g in Goose: print(ans[g])

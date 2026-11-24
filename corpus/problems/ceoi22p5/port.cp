@@ -35,7 +35,7 @@ fn join(a: Crowd, b: Crowd) -> Crowd:
     )
 
 domain Rank = 0..n + m
-let by_pos = Person.sort(by: p => (at[p], p))
+let by_pos = Person.sorted(by: p => (at[p], p))
 let rank = ([Rank] r => by_pos[r.ord]).inverse()
 var line = SegTree<Rank, Crowd>(Monoid(Crowd(count: 0, left: 0, right: 0, twice: 0), join))
 

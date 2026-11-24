@@ -327,6 +327,8 @@ super::msgs! {
     MEMO_GENERIC = BAD_MEMO, "`@memo` can't remember the generic fn `{}`";
     MEMO_NO_VALUE = BAD_MEMO, "`@memo` has nothing to remember: `{}` gives no value";
     HAS_NO_WHAT_NAMED = UNKNOWN_ARG_NAME, "`{}` has no {} named `{}`";
+    NO_OVERLOAD_TAKES = UNKNOWN_ARG_NAME, "no `{}` takes {}: its overloads are {}";
+    FN_OF_ARITY_FOR_LABEL = TYPE_MISMATCH, "`{}:` takes a fn of {} argument, but this one takes {}";
     ARGS_BUT_MISSING = WRONG_ARG_COUNT, "`{}` {} {}{}, but {} {} missing";
     ARGS_BUT = WRONG_ARG_COUNT, "`{}` {} {}, but {}";
     EXPECTED_GOT_STEP = TYPE_MISMATCH, "expected {}, got {}: `{}` {}";

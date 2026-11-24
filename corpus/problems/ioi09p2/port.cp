@@ -16,7 +16,7 @@ domain Worker = 1..=n
 let ask: [Worker](s: 1..=2e4, q: 1..=2e4) = read()
 
 let rate: [Worker]Ratio = [Worker] i => Ratio.new(ask[i].s, ask[i].q)
-let by_rate = Worker.sort(by: i => rate[i])
+let by_rate = Worker.sorted(by: i => rate[i])
 
 // A plan hires `size` candidates, the rate setter `by` among them, with `points` of Q in all;
 // it bills by.s * points / by.q.

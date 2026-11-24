@@ -5,6 +5,7 @@
 use std.algebra.{Group}
 use std.marks.{Id}
 use std.persistent.{PArena}
+use std.seq.{sort}
 
 /// A point in the history of a structure that can step back in time, returned by `mark()`
 /// and taken by `undo_to`. Its own type, so it can't be mixed up with a count or an index.

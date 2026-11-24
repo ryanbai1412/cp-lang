@@ -15,7 +15,7 @@ domain I = 1..=n
 domain X = 1..=1e9
 let iv = read<[I]Range<X>>()
 
-let by_start = I.sort(by: i => iv[i].l)
+let by_start = I.sorted(by: i => iv[i].l)
 let soonest = by_start.map(i => Some((iv[i].r, i))).rev.scan(min)
 let starts = [iv[i].l for i in by_start]
 fn first_from(c: Cut<X>) -> ?I = soonest[starts.bsearch(l => l >= c)]?.1

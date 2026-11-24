@@ -51,7 +51,7 @@ for _ in 0..q:
 domain Version = 0..versions.len
 domain Slot = 0..versions.len
 var slot: [Version]Slot = Slot.first!
-for (s, v) in Version.sort(by: v => desc(versions[v.ord].a - versions[v.ord].b)).items:
+for (s, v) in Version.sorted(by: v => desc(versions[v.ord].a - versions[v.ord].b)).items:
     slot[v] = Slot.nth(s)
 let positive = versions.count(v => v.a > v.b)
 

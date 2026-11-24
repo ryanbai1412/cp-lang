@@ -277,6 +277,8 @@ use std.seq.{
     rotated_left,
     rotated_right,
     runs,
+    sort,
+    sorted,
     span,
     take_while,
     windows,

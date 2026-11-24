@@ -44,7 +44,7 @@ fn reach<S: Seq>(order: S, flip: Bool) -> [Val]0..N:
 let lo: [Val]Pos = reach(a, flip: false).map(r => Pos.nth(r))
 let hi: [Val]Pos = reach(a.rev, flip: true).map(r => Pos.nth(Pos.count - 1 - r))
 
-let by_lo = Val.sort(by: v => lo[v])
+let by_lo = Val.sorted(by: v => lo[v])
 var taken = 0
 var pq = MinHeap<(Pos, Val)>()
 var b: [Pos]Val = Val.first!

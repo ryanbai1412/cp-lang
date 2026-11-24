@@ -1141,7 +1141,7 @@ impl<'a> Taste<'a> {
     }
 
     /// Canonical domain/sequence spellings:
-    /// - `D.sorted(...)` -> `D.sort(...)`
+    /// - `D.sort(...)` -> `D.sorted(...)`: a domain is no place to sort in (decision 627)
     /// - `xs.first(where: p)` -> `xs.first(p)`
     fn domain_spelling(&mut self, expr: &Expr) {
         let ExprKind::Call { callee, args } = &expr.kind else {
@@ -1151,7 +1151,7 @@ impl<'a> Taste<'a> {
             return;
         };
         let calls = Calls::new(self.facts, self.base);
-        if calls.is(expr, std_fn::SORTED) {
+        if calls.unresolved(expr) == Some(std_fn::SORT) || calls.is(expr, std_fn::SORT) {
             if let ExprKind::Name(n) = &base.kind {
                 let domain = (self.facts).and_then(|f| f.type_of(base.span.shift(self.base)));
                 if matches!(
@@ -1160,10 +1160,10 @@ impl<'a> Taste<'a> {
                 ) {
                     let mut diag = msgs::lint::DOMAIN_SORTED
                         .warning(method.span, &[&n, &n])
-                        .with_help("domains sort with `.sort(by:)`, matching `xs.sort(by:)`");
+                        .with_help("`sort` changes a place in place; a domain's positions sorted are a new `List`, `.sorted(by:)`");
                     diag.fixes.push(Fix {
-                        title: "rename to `sort`".into(),
-                        edits: vec![(method.span, std_fn::SORT.into())],
+                        title: "rename to `sorted`".into(),
+                        edits: vec![(method.span, std_fn::SORTED.into())],
                     });
                     self.push(&DOMAIN_SPELLING, diag);
                     return;

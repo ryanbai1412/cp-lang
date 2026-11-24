@@ -26,7 +26,7 @@ assert floyd_warshall(mut hop)
 var d = [V, V] (i, j) => hop[i, j]!
 
 var pending: [V, V]List<Q> = []
-for i in Q.sort(by: i => queries[i].k): pending[queries[i].a, queries[i].b].push(i)
+for i in Q.sorted(by: i => queries[i].k): pending[queries[i].a, queries[i].b].push(i)
 
 var ans: [Q]0..=1e9 = 0
 for e in edges:

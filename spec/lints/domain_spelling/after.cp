@@ -1,4 +1,3 @@
 domain V = 1..=3
 let a: [V]Int = [3, 1, 2]
-let _ = V.sort(by: a)
-let _ = V.find(v => a[v] > 1)
+let _ = V.sorted(by: v => a[v])

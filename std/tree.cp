@@ -22,7 +22,7 @@ use std.math.{bit, bit_width}
 use std.rand.{Rng, shuffle}
 use std.range.{first_true}
 use std.segtree.{SegTree}
-use std.seq.{collect, dedup, get_or_insert, span}
+use std.seq.{collect, dedup, get_or_insert, span, sorted, sort}
 
 /// A BFS spanning tree rooted at `V.first`, as a `Rooted`.
 ///

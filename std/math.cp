@@ -730,7 +730,7 @@ pub fn factor(x: 1..) -> List<(Int, Int)>:
             let d = rho(m)
             todo.push(d)
             todo.push(m / d)
-    primes.sort()
+    sort_ints(mut primes, x => x)
     var out = List<(Int, Int)>()
     for p in primes:
         if not out.is_empty and out.last!.0 == p: out.last! = (p, out.last!.1 + 1)
@@ -772,7 +772,7 @@ pub fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>:
         for _ in 0..e:
             pk *= p
             for i in 0..cur: out.push(out[i] * pk)
-    out.sort()
+    sort_ints(mut out, x => x)
     out
 
 fn ext_gcd_x(a: Int, b: Int) -> (Int, Int):
@@ -2183,3 +2183,6 @@ fn mod_log_and_mod_sqrt_match_brute_force():
 /// `Int.MAX`, for `Int` tables that start "unreached" when `?Int` with `None` is not wanted.
 /// `min` treats it as its identity; adding to it overflows (a trap in checked builds).
 pub const inf: Int = 9_223_372_036_854_775_807
+
+// `std.seq.sort` for this module, which `std.seq` imports: the same primitive.
+fn sort_ints(mut xs: List<Int>, by: Int -> Int) = @intrinsic("sort")

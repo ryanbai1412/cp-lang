@@ -94,7 +94,34 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib, doc: Option<String>) ->
     // `f(a, by: k`: the argument named, else the one by position.
     let given = named_args(&text[paren + 1..arg_start]);
     let arg = text[arg_start..offset].trim_start();
-    // R06.1.6: every overload of the name, the one the labels fit active.
+    let (sigs, chosen) = overloads_fitting(cursor, std, callee_end, name, sig, &given, arg);
+    let mut active = 0;
+    let signatures: Vec<Value> = (sigs.iter().enumerate())
+        .map(|(i, sig)| {
+            let (value, at) = signature_json(sig, active_param(sig, &given, arg, commas));
+            if i == chosen {
+                active = at;
+            }
+            value
+        })
+        .collect();
+    Some(obj([
+        ("signatures", signatures.into()),
+        ("activeSignature", (chosen as u32).into()),
+        ("activeParameter", (active as u32).into()),
+    ]))
+}
+
+/// R06.1.6: every overload of the name, and which one the labels fit.
+pub(super) fn overloads_fitting(
+    cursor: &Cursor,
+    std: &mut StdLib,
+    callee_end: usize,
+    name: &str,
+    sig: Signature,
+    given: &[&str],
+    arg: &str,
+) -> (Vec<Signature>, usize) {
     let overloads = overloads(cursor, std, callee_end, name);
     let sigs = if overloads.len() > 1 {
         (overloads.into_iter())
@@ -121,39 +148,42 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib, doc: Option<String>) ->
             && labels.iter().all(|g| named(g))
     };
     let chosen = sigs.iter().position(fits).unwrap_or(0);
-    let mut active = 0;
-    let signatures: Vec<Value> = (sigs.iter().enumerate())
-        .map(|(i, sig)| {
-            let (value, at) = signature_json(sig, active_param(sig, &given, arg, commas));
-            if i == chosen {
-                active = at;
-            }
-            value
-        })
-        .collect();
-    Some(obj([
-        ("signatures", signatures.into()),
-        ("activeSignature", (chosen as u32).into()),
-        ("activeParameter", (active as u32).into()),
-    ]))
+    (sigs, chosen)
 }
 
 /// The fns a call's name may mean: its overloads (R06.1.6), as declared.
 fn overloads(cursor: &Cursor, std: &mut StdLib, callee_end: usize, name: &str) -> Vec<Entry> {
     let start = (callee_end - name.len()) as u32;
     let is_fn = |e: &Entry| e.name == name && matches!(e.kind, Kind::Fn | Kind::Method);
-    if cursor.analysis.text[..start as usize].ends_with('.') {
-        return receiver_type(cursor, start - 1).map_or(Vec::new(), |ty| {
+    let found: Vec<Entry> = if cursor.analysis.text[..start as usize].ends_with('.') {
+        receiver_type(cursor, start - 1).map_or(Vec::new(), |ty| {
             (members_of_ty(cursor, std, &ty).into_iter())
                 .map(|(e, _)| e)
                 .filter(is_fn)
                 .collect()
-        });
+        })
+    } else {
+        (outline_of(cursor.analysis).entries.iter())
+            .filter(|e| is_fn(e))
+            .cloned()
+            .collect()
+    };
+    if found.len() > 1 {
+        return found;
     }
-    (outline_of(cursor.analysis).entries.iter())
-        .filter(|e| is_fn(e))
-        .cloned()
-        .collect()
+    // A std name's overloads live in its module, which lists each once.
+    let modules: Vec<_> = (std.prelude(cursor.uri).iter())
+        .filter(|(_, n)| n == name)
+        .map(|(m, _)| m.clone())
+        .collect();
+    let from_std: Vec<Entry> = (modules.iter())
+        .filter_map(|m| std.module(cursor.uri, m))
+        .flat_map(|o| o.entries.iter().filter(|e| is_fn(e)).cloned().collect::<Vec<_>>())
+        .collect();
+    match from_std.len() > 1 {
+        true => from_std,
+        false => found,
+    }
 }
 
 /// One signature's LSP form, and the parameter `active` is.

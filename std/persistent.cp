@@ -9,7 +9,7 @@ use std.algebra.{Action, Monoid}
 use std.marks.{Id}
 use std.math.{splitmix64, bit_width}
 use std.range.{Len, ends}
-use std.seq.{deduped}
+use std.seq.{deduped, sorted}
 
 /// An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte
 /// `Id<T>`, and a node never changes after it is allocated, so every version that shares it stays
@@ -391,7 +391,7 @@ struct KthNode(left: 0..=2_000_000_000, right: 0..=2_000_000_000, cnt: 0..=2_000
 
 /// Static range k-th smallest and range rank queries over `[D]T`.
 /// Built in \(O(n \log n)\) using prefix versions of a persistent count tree; queries run in \(O(\log n)\).
-pub struct RangeKth<D, T>:
+pub struct RangeKth<D, T: Ord>:
     vals: List<T>
     // One list of nodes, so a query step reads one cache line per version, not three.
     nodes: List<KthNode>

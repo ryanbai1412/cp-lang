@@ -789,6 +789,17 @@ impl<'a> Lowerer<'a> {
                         let shown = self.show(ty);
                         self.help(words.replace("{T}", &shown));
                     }
+                    // The allocating twin, `sorted` beside `sort` (decision 627).
+                    let verb = &decl.name.text;
+                    let twin = [format!("{verb}ed"), format!("{verb}d")]
+                        .into_iter()
+                        .find(|t| cpl_check::std_self_heads().contains_key(t));
+                    if let Some(twin) = twin.filter(|_| tr_name.text == "IndexedMut") {
+                        let shown = self.show(ty);
+                        self.help(format!(
+                            "`{verb}` changes a place in place, and a `{shown}` is none: `{twin}` gives a new `List`"
+                        ));
+                    }
                     return self.err_expr(span);
                 }
             }

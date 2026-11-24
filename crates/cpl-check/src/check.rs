@@ -734,10 +734,15 @@ impl<'a> Checker<'a> {
             }
             _ => want.split('|').any(|w| w == ty.to_string()),
         };
+        // A place primitive changes its `mut` first parameter by the fn after it.
+        let place = p.kind() == cpl_rt::Kind::Place;
         let params_fit = f.params.len() == p.params().len()
-            && (f.params.iter().zip(p.params())).all(|(param, want)| {
-                self.local(&param.name.text)
-                    .is_some_and(|l| fits(&l.ty, want))
+            && (f.params.iter().zip(p.params()).enumerate()).all(|(i, (param, want))| {
+                self.local(&param.name.text).is_some_and(|l| match (place, i) {
+                    (true, 0) => param.mutable,
+                    (true, _) => matches!(l.ty, Ty::Fn { .. }),
+                    _ => fits(&l.ty, want),
+                })
             });
         if !params_fit || !fits(ret, p.result()) {
             self.report(
@@ -1351,8 +1356,11 @@ impl<'a> Checker<'a> {
     /// L0610: a `mut` parameter the body never changes. Its callers must
     /// pass a place as `mut` for nothing.
     pub(crate) fn unchanged_mut_params(&mut self, f: &cpl_syntax::ast::FnDecl) {
-        // What an unwritten body will change is not known yet.
-        if unwritten(f) {
+        // What an unwritten body will change is not known yet; an intrinsic
+        // changes its place in the runtime.
+        let intrinsic = matches!(&f.body, cpl_syntax::ast::FnBody::Expr(e)
+            if matches!(e.kind, cpl_syntax::ast::ExprKind::Intrinsic(_)));
+        if unwritten(f) || intrinsic {
             return;
         }
         let lends_mut = |name: &str| {

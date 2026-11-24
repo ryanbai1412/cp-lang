@@ -39,7 +39,7 @@ fn build_masks() -> [MaxVal]Mask:
     for a in Query: take(Set([a]))
     for (a, b) in Query.pairs: take(Set([a, b]))
     while out.len < MaxVal.count:
-        take(next_triple(Query.sort(by: q => desc(room[q])))!)
+        take(next_triple(Query.sorted(by: q => desc(room[q])))!)
     [MaxVal] v => out[v.ord]
 
 let masks = build_masks()

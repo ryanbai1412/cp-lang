@@ -20,7 +20,7 @@ var longest: [Kind]Int = 0
 for (len, kind) in fish: longest[kind] max= len
 // Kinds ranked by their longest fish; every count is credited to the top-ranked kind it uses.
 domain Rank = 0..kinds
-let order = Kind.sort(by: g => (longest[g], g))
+let order = Kind.sorted(by: g => (longest[g], g))
 var rank_of: [Kind]Rank = Rank.first!
 for (r, g) in order.items: rank_of[g] = Rank.nth(r)
 let top: [Rank]Int = [Rank] r => longest[order[r.ord]]

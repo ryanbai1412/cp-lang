@@ -109,3 +109,10 @@ Answered 2026-11-22 by the recommendation: decision 268, hard-fail; a named `--u
 
 ### stdlib: Q6 folds of an identity-less op are `?T` only through the op's type (needs compiler)
 Answered 2026-11-23 by (a): decision 456, associated types chosen by impl.
+
+### stdlib: Q7 `sort(by:)` and `sort(cmp:)` as two signatures need label-set resolution (needs compiler)
+R06.1.6 and W7 make a fn its name plus its labels, but the checker rejects a second `fn sort` with other labels (E0702), so std's one `sort` can't tell a passed `by:` from its default, and only the compiler's `sort` arm reports both at once (E0309, decision 87).
+Options: (a) resolve calls by label set: fns sharing a name have distinct required and named-only labels, a call takes the one whose labels match, and no match is the general named-argument error, whose text E0309's case keeps; (b) keep the compiler arm.
+Recommendation: (a): std writes `sort(mut self)`, `sort(mut self; by:)` and `sort(mut self; cmp:)` on the table's `sort` primitive, and the arm goes.
+How to reverse it: one signature again, with the arm.
+Meanwhile: (b).

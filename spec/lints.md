@@ -39,7 +39,7 @@ those, then run `just gen`. `cpl explain <code>` prints a lint's page.
 | L0508 | none_check_unwrap | `x != None and .. x!`: the check and the unwrap say one thing twice |
 | L0509 | free_fold | `sum(xs)`, `count(xs, p)` or `sort(mut xs)`: the method reads on the sequence |
 | L0511 | tree_order | `t.preorder` / `t.postorder`: iterate the preorder array `t.at` (`t.at.rev` for children first) |
-| L0512 | domain_spelling | `D.sorted(by:)` -> `D.sort(by:)`; `xs.first(where: p)` -> `xs.first(p)` |
+| L0512 | domain_spelling | `D.sort(by:)` -> `D.sorted(by:)`; `xs.first(where: p)` -> `xs.first(p)` |
 | L0514 | hand_rolled_range_tree | manual BIT (`p += p & -p`) or segment-tree (`2 * p` / `2 * p + 1`) loop: use `std.fenwick` / `std.segtree` / `std.lazy` |
 | L0516 | hand_rolled_string_algo | manual prefix-function, Z-function, polynomial hash, or trie loop: use `std.strings` |
 | L0517 | hand_rolled_dsu | manual parent-pointer path compression: use `std.dsu` |

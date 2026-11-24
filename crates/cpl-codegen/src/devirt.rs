@@ -440,6 +440,11 @@ impl<'p> Devirt<'p> {
         self.captureless_one(self.held.get(&Home::Param(id, slot)).copied())
     }
 
+    /// What parameter `slot` of fn `id` has been given, captures or not.
+    pub(crate) fn param_held(&self, id: FnId, slot: usize) -> Option<Held> {
+        self.held.get(&Home::Param(id, slot)).copied()
+    }
+
     /// Struct field `(struct_id, index)` is a single statically known closure
     /// that never escapes to a dynamic `std::function`, so its `std::function`
     /// storage is replaced by a 1-byte `bool` placeholder.

@@ -13,7 +13,7 @@
 let (n, m): (2..=200_000, 0..=200_000) = read()
 domain Elf = 1..=n
 let attack: [Elf]Int = read()
-let ord = Elf.sort(by: e => attack[e])
+let ord = Elf.sorted(by: e => attack[e])
 
 fn plan() -> ?List<(Elf, Elf)>:
     if 2 * m > n: return None

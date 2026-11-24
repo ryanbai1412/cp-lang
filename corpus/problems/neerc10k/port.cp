@@ -16,7 +16,7 @@ let g = Graph.undirected(edges)
 let k = max(g.deg(v) for v in V)! / 2 * 2 + 1  // the least odd k >= every degree
 let dist = bfs(g, from: [V.find(v => g.deg(v) < k)!])
 var colour: [V]?Int = None
-for u in V.sort(by: v => dist[v]!).rev:
+for u in V.sorted(by: v => dist[v]!).rev:
     let taken = Set(colour[v] for v in g.next(u))
     colour[u] = (1..=k).find(c => Some(c) not in taken)
 print(k)

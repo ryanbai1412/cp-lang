@@ -5,6 +5,7 @@
 //! which lowering reads.
 
 use super::*;
+use cpl_diag::habits;
 use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Arg, Expr, ExprKind};
 use std::sync::Arc;
@@ -17,6 +18,8 @@ enum Pick {
     Unsettled,
     /// The receiver's type is known and no candidate's `self` takes it.
     NoFit,
+    /// Overloads take the receiver, but none the call's labels (R06.1.6).
+    NoLabels(Vec<Arc<Def>>),
 }
 
 fn takes_self(def: &Def) -> bool {
@@ -266,12 +269,19 @@ impl Checker<'_> {
             return Pick::Unsettled;
         }
         let mut fit: Vec<(String, Arc<Def>)> = Vec::new();
+        let mut misses: Vec<Arc<Def>> = Vec::new();
         for (key, def) in self.method_candidates(name) {
-            if self.self_fits(base, &def)
-                && args.is_none_or(|args| takes_shapes(&def, args) && def_labels_fit(&def, args))
-            {
-                fit.push((key, def));
+            if !self.self_fits(base, &def) {
+                continue;
             }
+            match args {
+                Some(args) if !def_labels_fit(&def, args) => misses.push(def),
+                Some(args) if !takes_shapes(&def, args) => {}
+                _ => fit.push((key, def)),
+            }
+        }
+        if fit.is_empty() && misses.len() > 1 {
+            return Pick::NoLabels(misses);
         }
         // R11.2.3: a name a `use` imports shadows the prelude's, so the
         // prelude's candidates drop out beside one. A fn the file declares
@@ -328,7 +338,7 @@ impl Checker<'_> {
                 _ => false,
             }),
             Pick::Ambiguous(_) => Some(false),
-            Pick::Unsettled | Pick::NoFit => None,
+            Pick::Unsettled | Pick::NoFit | Pick::NoLabels(_) => None,
         }
     }
 
@@ -599,6 +609,10 @@ impl<'a> Checker<'a> {
         }
         let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
             Pick::NoFit => self.pick_method(&base_ty, &name.text),
+            Pick::NoLabels(defs) => {
+                self.no_fitting_overload(&name.text, name.span, &defs, args);
+                return Some(Ty::Error);
+            }
             pick => pick,
         };
         let key = match &pick {
@@ -609,12 +623,18 @@ impl<'a> Checker<'a> {
             }
             // `(m.get(0) ?? []).bsearch(f)` before the receiver is known: no
             // candidate is chosen by the order the fns were declared in.
+            // Label-set overloads of one fn still pick by their labels (decision 624).
             Pick::Unsettled
                 if base_ty.is_vague() && self.method_candidates(&name.text).len() > 1 =>
             {
-                return None;
+                let mut fitting = (self.method_candidates(&name.text).into_iter())
+                    .filter(|(_, d)| def_labels_fit(d, args));
+                match (fitting.next(), fitting.next()) {
+                    (Some((key, _)), None) => key,
+                    _ => return None,
+                }
             }
-            Pick::Unsettled | Pick::NoFit => {
+            Pick::Unsettled | Pick::NoFit | Pick::NoLabels(_) => {
                 self.method_candidates(&name.text).into_iter().next()?.0
             }
         };
@@ -631,9 +651,12 @@ impl<'a> Checker<'a> {
             || matches!(base_ty, Ty::Fn { .. })
             || base_ty.view_source().is_some();
         let fits = own_member || vague || !matches!(pick, Pick::NoFit);
+        // A `mut self` receiver is changed in place, as `sort(mut xs)` is.
+        let mut_self = matches!(&pick, Pick::One(_, def) if matches!(&**def,
+            Def::Fn { ty: Ty::Fn { params, .. }, .. } if params.first().is_some_and(|p| p.mutable)));
         let mut free_args = vec![Arg {
             name: None,
-            mutable: false,
+            mutable: mut_self,
             value: (**base).clone(),
         }];
         free_args.extend(args.iter().cloned());
@@ -663,6 +686,33 @@ impl<'a> Checker<'a> {
         // `sum` requires. A receiver of another shape has a member of its
         // own, `(0..10).step(3)`, that the free form says nothing of.
         let free_failed = !errors.is_empty();
+        // The one library fn the receiver picks fails as the free form does,
+        // `xs.sorted(x => -x)` passing a key no positional parameter takes.
+        let overflows = matches!(&pick, Pick::One(_, def) if positional_overflow(def, args));
+        if free_failed && !own_member && !vague && overflows {
+            let by_name = match &pick {
+                Pick::One(_, def) => self.by_name_fix(def, args),
+                _ => None,
+            };
+            for mut diag in (errors.iter().cloned()).filter(|d| d.code == codes::WRONG_ARG_COUNT) {
+                diag.message = (diag.message)
+                    .replace(&format!("`{key}`"), &format!("`{}`", name.text));
+                if let Some((help, at, label)) = &by_name {
+                    diag.help = Some(help.clone());
+                    diag.fixes.clear();
+                    diag.fix(help.clone(), *at, label.clone());
+                }
+                self.sink.push(diag);
+            }
+            return Some(Ty::Error);
+        }
+        if free_failed && !own_member && !vague {
+            if let Pick::One(_, def) = &pick {
+                if self.overload_arity_mismatch(&name.text, def, args) {
+                    return Some(Ty::Error);
+                }
+            }
+        }
         let missing: Vec<_> = (errors.into_iter())
             .filter(|d| d.code == codes::MISSING_IMPL)
             .collect();
@@ -1090,6 +1140,209 @@ pub(super) fn def_labels_fit(def: &Def, args: &[Arg]) -> bool {
         .collect();
     def_labels(def).iter().all(|r| given.contains(r))
         && given.iter().all(|g| params.iter().any(|p| p.name == *g))
+}
+
+impl Checker<'_> {
+    /// R06.1.6: no overload of `name` takes the call's labels; each is
+    /// named, with the labels to drop to call it.
+    pub(super) fn no_fitting_overload(
+        &mut self,
+        name: &str,
+        span: Span,
+        defs: &[Arc<Def>],
+        args: &[Arg],
+    ) {
+        let given: Vec<&str> = (args.iter())
+            .filter_map(|a| a.name.as_ref().map(|n| n.text.as_str()))
+            .collect();
+        let labels = |def: &Def| match def {
+            Def::Fn {
+                ty: Ty::Fn { params, .. },
+                ..
+            } => (params.iter())
+                .filter(|p| p.named_only)
+                .map(|p| p.name.clone())
+                .collect(),
+            _ => Vec::new(),
+        };
+        let quoted = |ls: &[&str]| {
+            let ls: Vec<String> = ls.iter().map(|l| format!("`{l}:`")).collect();
+            ls.join(" and ")
+        };
+        let sig = |def: &Def| {
+            let ls: Vec<String> = labels(def).iter().map(|l| format!("{l}:")).collect();
+            format!("`{name}({})`", ls.join(", "))
+        };
+        let sigs: Vec<String> = defs.iter().map(|d| sig(d)).collect();
+        let fixes: Vec<String> = (defs.iter())
+            .filter(|d| def_labels(d).iter().all(|r| given.contains(r)))
+            .map(|d| {
+                let has = labels(d);
+                let extra: Vec<&str> =
+                    given.iter().copied().filter(|g| !has.iter().any(|h| h == g)).collect();
+                format!("drop {} to call {}", quoted(&extra), sig(d))
+            })
+            .collect();
+        let help = match fixes.is_empty() {
+            true => format!("pass the labels of one of {}", sigs.join(" or ")),
+            false => fixes.join(", or "),
+        };
+        let known: Vec<String> = defs.iter().flat_map(|d| labels(d)).collect();
+        let stray = |want: &[&str]| {
+            (args.iter()).find(|a| {
+                (a.name.as_ref()).is_some_and(|n| {
+                    want.contains(&n.text.as_str()) && !known.contains(&n.text)
+                })
+            })
+        };
+        let keyed = known.iter().any(|l| l == "by");
+        let (reverse, python_key) = match keyed {
+            true => (stray(&["reverse", "desc"]), stray(&["key"])),
+            false => (None, None),
+        };
+        // Over the arguments, whose lambdas no overload gives types to.
+        let whole = match (args.first(), args.last()) {
+            (Some(a), Some(b)) => Span::new(
+                a.name.as_ref().map_or(a.value.span.start, |n| n.span.start),
+                b.value.span.end,
+            ),
+            _ => span,
+        };
+        let at = (reverse.or(python_key))
+            .and_then(|a| a.name.as_ref())
+            .map_or(whole, |n| n.span);
+        let shown = (name.to_string(), quoted(&given), sigs.join(" and "));
+        let mut diag = msgs::check::NO_OVERLOAD_TAKES
+            .error(at, &[&shown.0, &shown.1, &shown.2])
+            .with_help(help);
+        if let Some(rev) = reverse {
+            self.reverse_habit(&mut diag, rev, args);
+        } else if let Some(key) = python_key.and_then(|a| a.name.as_ref()) {
+            diag.help = Some(habits::ARG_NAME.say(&[&"by"]));
+            diag.fix(habits::WRITE.say(&[&"by"]), key.span, "by");
+        }
+        self.sink.push(diag);
+    }
+
+    /// `reverse: true` (Python's) or the dropped `desc: true` beside a `by:`
+    /// overload: largest first is a descending key (decision 290).
+    fn reverse_habit(&self, diag: &mut cpl_diag::Diagnostic, rev: &Arg, args: &[Arg]) {
+        let text = |s: Span| self.src.get(s.start as usize..s.end as usize).unwrap_or("");
+        let by = (args.iter()).find(|a| a.name.as_ref().is_some_and(|n| n.text == "by"));
+        let truthy = text(rev.value.span) == "true";
+        let at = rev.name.as_ref().map_or(rev.value.span, |n| n.span);
+        let wrapped = by.filter(|_| truthy).and_then(|by| {
+            let last = args.last().filter(|l| std::ptr::eq(*l, rev))?;
+            let before = args.get(args.len().checked_sub(2)?)?;
+            let (head, body) = text(by.value.span).split_once("=>")?;
+            let key = format!("{head}=> desc({})", body.trim());
+            let cut = Span::new(before.value.span.end, last.value.span.end);
+            Some(vec![(by.value.span, key), (cut, String::new())])
+        });
+        if let Some(edits) = wrapped {
+            diag.help = Some("`desc(key)` orders largest first".into());
+            diag.fixes.push(cpl_diag::Fix {
+                title: "wrap the key in `desc`".into(),
+                edits,
+            });
+        } else if by.is_some() {
+            diag.help = Some("wrap the key in `desc`: `by: x => desc(key)`".into());
+        } else if truthy {
+            diag.help = Some("`desc(x)` orders largest first".into());
+            diag.fix(
+                "write `by: x => desc(x)`",
+                Span::new(at.start, rev.value.span.end),
+                "by: x => desc(x)",
+            );
+        }
+    }
+
+    /// `rows.sort(by: (a, b) => ..)`: a lambda of `n` parameters for a label
+    /// whose fn takes another count, where another overload's label takes `n`.
+    pub(super) fn overload_arity_mismatch(&mut self, name: &str, def: &Def, args: &[Arg]) -> bool {
+        let fn_arity = |d: &Def, label: &str| match d {
+            Def::Fn {
+                ty: Ty::Fn { params, .. },
+                ..
+            } => params.iter().find(|p| p.named_only && p.name == label).and_then(|p| match &p.ty {
+                Ty::Fn { params, .. } => Some(params.len()),
+                _ => None,
+            }),
+            _ => None,
+        };
+        for arg in args {
+            let (Some(label), ExprKind::Lambda { params, .. }) = (&arg.name, &arg.value.kind) else {
+                continue;
+            };
+            let Some(wants) = fn_arity(def, &label.text).filter(|w| *w != params.len()) else {
+                continue;
+            };
+            let other = (self.method_candidates(name).into_iter()).find_map(|(_, d)| match &*d {
+                Def::Fn {
+                    ty: Ty::Fn { params: ps, .. },
+                    ..
+                } => (ps.iter())
+                    .filter(|p| p.named_only && p.name != label.text)
+                    .find(|p| matches!(&p.ty, Ty::Fn { params: f, .. } if f.len() == params.len()))
+                    .map(|p| p.name.clone()),
+                _ => None,
+            });
+            let Some(other) = other else {
+                continue;
+            };
+            let (w, n) = (wants.to_string(), params.len().to_string());
+            self.sink.push(
+                msgs::check::FN_OF_ARITY_FOR_LABEL
+                    .error(arg.value.span, &[&label.text, &w, &n])
+                    .with_help(format!(
+                        "`{name}({}:)` takes a fn of {w}, `{name}({other}:)` one of {n}: pass the one you mean",
+                        label.text
+                    )),
+            );
+            return true;
+        }
+        false
+    }
+}
+
+impl Checker<'_> {
+    /// `xs.sorted(x => -x)`: a lambda passed by position where `def`'s one
+    /// named-only fn parameter takes it; the fix names it.
+    fn by_name_fix(&self, def: &Def, args: &[Arg]) -> Option<(String, Span, String)> {
+        let Def::Fn {
+            ty: Ty::Fn { params, .. },
+            ..
+        } = def
+        else {
+            return None;
+        };
+        let mut fns = params.iter().filter(|p| p.named_only && matches!(p.ty, Ty::Fn { .. }));
+        let (Some(label), None) = (fns.next(), fns.next()) else {
+            return None;
+        };
+        let arg = (args.iter()).rfind(|a| a.name.is_none())?;
+        if !matches!(arg.value.kind, ExprKind::Lambda { .. }) {
+            return None;
+        }
+        let text = self.src.get(arg.value.span.start as usize..arg.value.span.end as usize)?;
+        let at = Span::new(arg.value.span.start, arg.value.span.start);
+        Some((format!("write `{}: {text}`", label.name), at, format!("{}: ", label.name)))
+    }
+}
+
+/// Whether `args` pass more positionals than `def` takes after `self`
+/// while `def` has named-only parameters, which a positional never binds.
+fn positional_overflow(def: &Def, args: &[Arg]) -> bool {
+    let Def::Fn {
+        ty: Ty::Fn { params, .. },
+        ..
+    } = def
+    else {
+        return false;
+    };
+    let after: Vec<_> = params.iter().skip(1).filter(|p| !p.named_only).collect();
+    let given = args.iter().filter(|a| a.name.is_none()).count();
+    params.iter().any(|p| p.named_only) && !after.iter().any(|p| p.variadic) && given > after.len()
 }
 
 fn takes_count(def: &Def, given: usize) -> bool {

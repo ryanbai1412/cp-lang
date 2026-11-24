@@ -19,7 +19,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 mod signature;
-use signature::{active_param, named_args, open_call, signature_of};
+use signature::{active_param, named_args, open_call, overloads_fitting, signature_of};
 pub use signature::{callee_start, parameter_hints, signature_help};
 
 /// Every `std/` module but the prelude.
@@ -474,8 +474,34 @@ fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String>
         if !name.is_empty() && !before.contains(['(', '[', '{']) {
             let sig = signature_of(cursor, std, item, callee_end, name)?;
             let given = named_args(&text[paren + 1..arg_start]);
+            let typed = text[arg_start..at].trim_start();
+            let (mut sigs, chosen) =
+                overloads_fitting(cursor, std, callee_end, name, sig, &given, typed);
+            let sig = sigs.swap_remove(chosen);
             let index = active_param(&sig, &given, text[arg_start..at].trim_start(), commas);
-            let ty = sig.params.get(index)?.ty.as_str();
+            let param = sig.params.get(index)?;
+            // The call's instantiation, `by: Int -> K` on a `List<Int>`, over the written `T -> K`.
+            let rel = callee_end as u32 - item.offset;
+            let checked = (item.check.hovers.iter().rev())
+                .find(|e| e.span.end == rel && e.name == name)
+                .and_then(|e| match &e.ty {
+                    Ty::Fn { params, .. } => Some(params),
+                    _ => None,
+                });
+            let inst = (checked.and_then(|ps| ps.iter().find(|p| p.name == param.name)))
+                .filter(|p| !p.ty.has_vague())
+                .map(|p| p.ty.to_string());
+            // A std fn over `self: S` with `S: Seq<T>` on a receiver: `T` is its element.
+            let over_seq = (checked.and_then(|ps| ps.iter().find(|p| p.name == "self")))
+                .is_some_and(|p| matches!(&p.ty, Ty::Param(g) if g.as_str() != "T"));
+            let start = callee_end - name.len();
+            let elem = (over_seq && text[..start].ends_with('.'))
+                .then(|| receiver_type(cursor, start as u32 - 1)?.seq_elem())
+                .flatten()
+                .map(|t| vec![("T".to_string(), t.to_string())])
+                .unwrap_or_default();
+            let ty = substitute(inst.as_deref().unwrap_or(param.ty.as_str()), &elem);
+            let ty = ty.as_str();
             // `cmp: ?((T, T) -> Bool) = None` takes the fn itself.
             let ty = ty.strip_prefix('?').map_or(ty, |inner| {
                 (inner.strip_prefix('(').and_then(|t| t.strip_suffix(')')))

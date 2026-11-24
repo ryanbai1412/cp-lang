@@ -11,7 +11,7 @@
 let n: 1..=5e5 = read()
 domain Weight = 1..=2 * n
 let mass: [Weight]1..=1e9 = read()
-let order = Weight.sort(by: w => mass[w])
+let order = Weight.sorted(by: w => mass[w])
 let pairs = [(order[i], order[i + n]) for i in 0..n]
 print(count(mass[a] != mass[b] for (a, b) in pairs))
 for (a, b) in pairs: print(a, b)

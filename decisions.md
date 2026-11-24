@@ -3857,6 +3857,7 @@ drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.
 - **Decision:** Add a `cmp: (a, b) => Bool` option to `sort` and `sorted` (mutually exclusive with `by:`, composing with `desc: true`), lowering through `SortBy::Fn { func, is_order: true }` to stable O(n log n) sorting (`cpl::sort_cmp` in C++, `checked_merge_sort_by` in the interpreter). In `cpl run` and `cpl build --checked` (`-DLOCAL`), non-strict-weak-order comparators trap on irreflexivity (`cmp(x, x)`), asymmetry (`cmp(a, b) && cmp(b, a)`), and post-sort order violations (intransitivity); release builds compile to zero-overhead `std::stable_sort`.
 - **Reason:** Exchange-argument sorts (`a.x * b.y < b.x * a.y`), angle sorts, and comparator-over-state sorts (like `cf2135f`) cannot be expressed as a single key and previously forced a wrapper struct + `impl Ord`. Named `cmp:` fits the options scheme, avoids UB in checked builds, and keeps release performance identical to C++.
 - **Reverse:** Remove the `cmp` arm from `sort_place` in `crates/cpl-ir/src/lower/call.rs` and `sort_cmp` in `crates/cpl-codegen/src/runtime.rs`.
+- **Superseded in part by 624:** `sort(by:)` and `sort(cmp:)` are now two std overloads told apart by their labels, so passing both is the no-fit E0310 in every call form, naming both overloads and the label to drop, in place of E0309.
 
 ## 88. Product domains `domain State = (V, K)` (2026-11-21)
 

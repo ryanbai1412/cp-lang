@@ -49,7 +49,7 @@ fn plan(u: Switch) -> [Switch]Steps:
         staircase(best)
     var out: [Switch]Steps = []
     var closer: [0..=extra]?Int = None
-    for a in Switch.sort(by: a => dist[u, a]):
+    for a in Switch.sorted(by: a => dist[u, a]):
         var at_a: [0..=extra]?Int = None
         for s in alone[a]: at_a[s.cores] = s.cost
         for j in 1..=extra: at_a[j] min= at_a[j - 1]

@@ -512,6 +512,31 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("cpl::sort_by{ties}({seq}, {kf}, {desc});"));
                 }
             }
+            SortBy::Fn { func, is_order: false } if self.known_key(func).is_some() => {
+                let (cid, key) = self.known_key(func).unwrap_or_else(|| unreachable!());
+                let def = &self.program.closures[cid];
+                if def.captures.is_empty()
+                    && matches!(key.kind, ExprKind::Local(s) if def.params.first() == Some(&s))
+                {
+                    return self.sort_stmts(place, &SortBy::Natural, None, out);
+                }
+                let f_text = self.expr(func).text;
+                let kf = self.temp();
+                self.line(out, &format!("auto {kf} = {f_text};"));
+                self.need("sorted");
+                let (a, b) = (self.temp(), self.temp());
+                let cmp = turned(format!("{kf}({a}) < {kf}({b})"), format!("{kf}({b}) < {kf}({a})"));
+                let elem = match &place.ty {
+                    Ty::List(t) | Ty::MutView(t, _) | Ty::Array { elem: t, .. } => Some((**t).clone()),
+                    _ => None,
+                };
+                let distinct = self.sites.is_none() && elem.as_ref().is_some_and(ties_by_value);
+                let sort = if distinct { "cpl::sort_distinct" } else { "cpl::stable_sort_lt" };
+                self.line(
+                    out,
+                    &format!("{sort}({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
+                );
+            }
             SortBy::Fn { func, is_order } => {
                 // The sort only calls its key, so a closure written there lends
                 // what it captures (see `crate::lend::only_called`).
@@ -543,6 +568,27 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+    }
+
+    /// The one closure a sort key `func` can be, with what it gives, when
+    /// that is a cheap pure key (a closure written there, or a parameter
+    /// the shared slot analysis shows holds only it).
+    fn known_key(&self, func: &Expr) -> Option<(cpl_ir::ClosureId, &'p Expr)> {
+        let cid = match func.kind {
+            ExprKind::Closure(cid) => cid,
+            ExprKind::Local(slot) => match self.devirt.param_held(self.fn_id?, slot) {
+                Some(crate::devirt::Held::One(cid)) => cid,
+                _ => return None,
+            },
+            _ => return None,
+        };
+        let program: &'p cpl_ir::Program = self.program;
+        let key = match program.closures[cid].body.stmts.as_slice() {
+            [Stmt::Return(Some(e)) | Stmt::Expr(e)] => e,
+            _ => return None,
+        };
+        let traps = self.target.checks != crate::Checks::None;
+        is_cheap_pure_key(self.sites.is_none().then_some(program), key, traps).then_some((cid, key))
     }
 
     fn if_stmt(

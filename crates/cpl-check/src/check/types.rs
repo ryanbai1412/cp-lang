@@ -588,6 +588,10 @@ impl<'a> Checker<'a> {
             (Some(ty), _, _) => self.resolve_type(ty),
             // A projection's caller works with the value it lends.
             (None, Some(lends), _) => self.resolve_type(&lends.ty),
+            // An intrinsic with no `->` gives nothing, as a place primitive's `()` (R12.14.2).
+            (None, None, ast::FnBody::Expr(e)) if matches!(e.kind, ast::ExprKind::Intrinsic(_)) => {
+                Ty::Unit
+            }
             (None, None, ast::FnBody::Expr(_)) => Ty::Unknown,
             (None, None, _) => Ty::Unit,
         };

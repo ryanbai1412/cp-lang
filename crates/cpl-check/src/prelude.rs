@@ -334,6 +334,12 @@ fn self_methods_in(text: &str) -> SelfMethods {
                 continue;
             }
             let getter = stmt.decorators.iter().any(|d| d.name.text == "get");
+            // An overload a label picks (R06.1.6) isn't what a bare `x.name` reads.
+            let labelled = (f.params[1..].iter())
+                .any(|p| p.named_only && p.default.is_none() && !p.variadic);
+            if labelled && !getter {
+                continue;
+            }
             match !getter && f.params[1..].iter().all(|p| p.default.is_some()) {
                 true => found.work.insert(f.name.text.clone()),
                 false => found.other.insert(f.name.text.clone()),
@@ -846,8 +852,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "last",
     "argmax",
     "argmin",
-    "sort",
-    "sorted",
     "swap",
     "copy",
     "rand",

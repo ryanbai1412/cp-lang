@@ -143,8 +143,10 @@ impl<'a> Checker<'a> {
     }
 
     pub(super) fn call_unrecorded(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
-        if let Some(picked) = self.overload_for(callee, args) {
-            return self.call_unrecorded(call, &picked, args);
+        match self.overload_for(callee, args) {
+            Some(Ok(picked)) => return self.call_unrecorded(call, &picked, args),
+            Some(Err(())) => return Ty::Error,
+            None => {}
         }
         if let ExprKind::Name(fn_name) = &callee.kind {
             if let Some(caps) = self
@@ -369,7 +371,7 @@ impl<'a> Checker<'a> {
     /// R06.1.6: the callee naming the overload of `name(..)` or
     /// `module.name(..)` whose labels the call gives, when the name has
     /// several and that one is not the first.
-    fn overload_for(&mut self, callee: &Expr, args: &[Arg]) -> Option<Expr> {
+    fn overload_for(&mut self, callee: &Expr, args: &[Arg]) -> Option<Result<Expr, ()>> {
         let (alias, name) = match &callee.kind {
             ExprKind::Name(name) if self.local(name).is_none() => (None, name.clone()),
             ExprKind::Field { base, name } => match &base.kind {
@@ -402,15 +404,22 @@ impl<'a> Checker<'a> {
         if keys.len() < 2 {
             return None;
         }
-        let fits: Vec<String> = (keys.into_iter())
-            .filter(|k| {
-                self.global(&path(k))
-                    .is_some_and(|d| super::method_form::def_labels_fit(&d, args))
-            })
+        let defs: Vec<(String, Arc<Def>)> = (keys.into_iter())
+            .filter_map(|k| self.global(&path(&k)).map(|d| (k, d)))
             .collect();
+        let fits: Vec<&String> = (defs.iter())
+            .filter(|(_, d)| super::method_form::def_labels_fit(d, args))
+            .map(|(k, _)| k)
+            .collect();
+        if fits.is_empty() && defs.len() > 1 {
+            let defs: Vec<Arc<Def>> = defs.into_iter().map(|(_, d)| d).collect();
+            self.no_fitting_overload(&path(&name), callee.span, &defs, args);
+            return Some(Err(()));
+        }
         let [one] = fits.as_slice() else {
             return None;
         };
+        let one = (*one).clone();
         if *one == name {
             return None;
         }
@@ -422,12 +431,23 @@ impl<'a> Checker<'a> {
                     span: name.span,
                 },
             },
-            _ => ExprKind::Name(one.clone()),
+            _ => ExprKind::Name(one),
         };
-        Some(Expr {
+        Some(Ok(Expr {
             kind,
             span: callee.span,
-        })
+        }))
+    }
+
+    /// The allocating twin of an in-place fn (decision 627): `sorted` beside
+    /// `sort`, `reversed` beside `reverse`, when it takes `over` without `IndexedMut`.
+    fn value_form(&mut self, fn_name: &str, over: &Ty) -> Option<(String, String)> {
+        let verb = crate::prelude::overload_part(fn_name).map_or(fn_name, |(n, _)| n);
+        let verb = verb.rsplit('.').next().unwrap_or(verb).split(' ').next().unwrap_or(verb);
+        let twins = [format!("{verb}ed"), format!("{verb}d")];
+        let twin = (twins.into_iter()).find(|t| crate::prelude::std_self_heads().contains_key(t))?;
+        let _ = over;
+        Some((verb.to_string(), twin))
     }
 
     /// `read<T>()` (optionally with `base:` / `none:` / `gen:`) is a `T`.
@@ -1157,9 +1177,6 @@ impl<'a> Checker<'a> {
                     self.require_mutable(base, "changed in place (needs `mut`)");
                     self.reverse_view_help(&name.text, base);
                 }
-                "sort" if matches!(base_ty, Ty::Domain(_)) => {
-                    return Some(Ty::list(elem));
-                }
                 _ => {}
             }
         }
@@ -1451,12 +1468,21 @@ impl<'a> Checker<'a> {
                                 for trait_name in traits {
                                     if !self.implements_trait(&bound_ty, &trait_name) {
                                         let help = self.unmet_bound_help(&bound_ty);
+                                        let value_form = (trait_name == "IndexedMut")
+                                            .then(|| self.value_form(fn_name, &bound_ty))
+                                            .flatten();
                                         if let Some(diag) = self.report(
                                             call.span,
                                             msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
                                             &[&bound_ty, &trait_name, &fn_name],
                                         ) {
                                             diag.help = help;
+                                            if let Some((verb, sibling)) = value_form {
+                                                diag.help = Some(format!(
+                                                    "`{verb}` changes a place in place, and a `{bound_ty}` is none: `{sibling}` gives a new `List`"
+                                                ));
+                                                diag.fix(format!("write `{sibling}`"), callee.span, sibling);
+                                            }
                                         }
                                     }
                                 }

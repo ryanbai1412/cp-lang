@@ -9,7 +9,7 @@
 use std.math.{splitmix64}
 use std.algebra.{desc}
 use std.range.{Len}
-use std.seq.{Seq, Track}
+use std.seq.{Seq, Track, sorted}
 
 // Slot states: 0 = empty, 1 = occupied; `remove` uses backward-shift deletion (no tombstones).
 /// Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.

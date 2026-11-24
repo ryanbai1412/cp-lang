@@ -5,6 +5,21 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
+    /// A place primitive's body: the IR node both engines run on the `mut`
+    /// place in slot 0, given the fn in slot 1. An order is a
+    /// `(T, T) -> Bool`; any other fn is a key.
+    fn place_intrinsic(&mut self, p: Prim, span: Span) -> Expr {
+        let target = self.local(0, span);
+        let func = self.local(1, span);
+        let is_order = matches!(&func.ty, Ty::Fn(ps, ret) if ps.len() == 2 && **ret == Ty::Bool);
+        let place = Place { kind: PlaceKind::Local(0), ty: target.ty, span };
+        let kind = match p {
+            Prim::Sort => ExprKind::Sort(Box::new(place), SortBy::Fn { func: Box::new(func), is_order }, None),
+            _ => ExprKind::Intrinsic(p, Vec::new()),
+        };
+        self.mk(kind, Ty::Unit, span)
+    }
+
     pub(in crate::lower) fn pattern_names(pat: &ast::Pattern, out: &mut HashSet<String>) {
         match &pat.kind {
             ast::PatternKind::Name(name) => {
@@ -204,7 +219,9 @@ impl<'a> Lowerer<'a> {
                 kind: ast::ExprKind::Intrinsic(name),
                 span,
             }) => {
-                if let Some(p) = Prim::from_id(name) {
+                if let Some(p) = Prim::from_id(name).filter(|p| p.kind() == cpl_rt::Kind::Place) {
+                    out.push(Stmt::Expr(self.place_intrinsic(p, *span)));
+                } else if let Some(p) = Prim::from_id(name) {
                     let n =
                         usize::from(self.sigs[id].receiver.is_some()) + self.sigs[id].params.len();
                     let args = (0..n).map(|slot| self.local(slot, *span)).collect();

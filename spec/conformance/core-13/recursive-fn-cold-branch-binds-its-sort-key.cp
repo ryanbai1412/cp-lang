@@ -14,7 +14,7 @@ fn plan(u: V) -> [V]Int:
         for (c, kid) in kid_plans: best += kid[v]
         best
     var out: [V]Int = 0
-    for a in V.sort(by: a => alone[a]):
+    for a in V.sorted(by: a => alone[a]):
         out[a] = alone[a] + u.label
     return out
 print(plan(V.first!)[V.first!])

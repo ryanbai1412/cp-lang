@@ -12,7 +12,7 @@
 use std.algebra.{Desc, desc}
 use std.math.{bit_width}
 use std.range.{Len}
-use std.seq.{Seq}
+use std.seq.{Seq, sort}
 
 /// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
 /// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the

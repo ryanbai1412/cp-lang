@@ -17,6 +17,16 @@ pub enum Prim {
     Clz,
     BitWidth,
     BitCeil,
+    /// `sort(mut xs, f)`: the stable sort, by a key fn or an order.
+    Sort,
+}
+
+/// What a primitive works on: scalars it is handed, or a `mut` place it
+/// changes, whose engines run the matching IR node.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    Scalar,
+    Place,
 }
 
 /// A scalar the interpreter hands to, and gets back from, a primitive.
@@ -87,7 +97,7 @@ const TO_INT: &str = "narrow";
 
 impl Prim {
     /// The table: each primitive, at its stable number.
-    pub const ALL: [Prim; 11] = [
+    pub const ALL: [Prim; 12] = [
         Prim::Popcount,
         Prim::Abs,
         Prim::Sqrt,
@@ -99,10 +109,11 @@ impl Prim {
         Prim::Clz,
         Prim::BitWidth,
         Prim::BitCeil,
+        Prim::Sort,
     ];
 
     /// Each primitive's name, as `@intrinsic("...")` writes it.
-    pub const IDS: [&'static str; 11] = [
+    pub const IDS: [&'static str; 12] = [
         "popcount",
         "abs",
         "sqrt",
@@ -114,6 +125,7 @@ impl Prim {
         "clz",
         "bit_width",
         "bit_ceil",
+        "sort",
     ];
 
     /// The primitive `@intrinsic(id)` names.
@@ -127,9 +139,18 @@ impl Prim {
         Prim::IDS[self as usize]
     }
 
-    /// The parameter types, `|` between the types one accepts.
+    /// Whether the primitive takes scalars or changes a `mut` place.
+    pub fn kind(self) -> Kind {
+        match self {
+            Prim::Sort => Kind::Place,
+            _ => Kind::Scalar,
+        }
+    }
+
+    /// The parameter types, `|` between the types one accepts; a place
+    /// primitive's are `mut` (its place) and `fn`.
     pub fn params(self) -> &'static [&'static str] {
-        const PARAMS: [&[&str]; 11] = [
+        const PARAMS: [&[&str]; 12] = [
             &["Int|U64"],
             &["Int|I128|F64"],
             &["Int|F64"],
@@ -141,13 +162,14 @@ impl Prim {
             &["Int|U64"],
             &["Int|U64"],
             &["Int"],
+            &["mut", "fn"],
         ];
         PARAMS[self as usize]
     }
 
     /// The result type, `|` between the types it may be.
     pub fn result(self) -> &'static str {
-        const RESULTS: [&str; 11] = [
+        const RESULTS: [&str; 12] = [
             "Int",
             "Int|I128|F64",
             "F64",
@@ -159,13 +181,17 @@ impl Prim {
             "Int",
             "Int",
             "Int",
+            "()",
         ];
         RESULTS[self as usize]
     }
 
     /// The cost as `cpl explain` and docs show it (R09 form).
     pub fn cost(self) -> &'static str {
-        "\\(O(1)\\)"
+        match self {
+            Prim::Sort => "\\(O(n \\log n)\\)",
+            _ => "\\(O(1)\\)",
+        }
     }
 
     /// What `cpl explain` and the trace say the primitive does.
@@ -184,6 +210,7 @@ impl Prim {
             Prim::Clz => "the 0 bits above the highest 1 bit, 64 for 0; one `lzcnt` with lzcnt",
             Prim::BitWidth => "the bits needed to write the word, 0 for 0",
             Prim::BitCeil => "the smallest power of two at least the value; traps above 2^62",
+            Prim::Sort => "the built-in stable sort of the place (`cpl::sort_by`), each key worked out once",
         }
     }
 
@@ -237,6 +264,10 @@ impl Prim {
                 const F: &[Cpp] = &[cpp("*", "cpl::bit_width($0)", Some("bits"))];
                 F
             }
+            Prim::Sort => {
+                const F: &[Cpp] = &[cpp("*", "cpl::sort_by($0, $1, false)", Some("sort_by"))];
+                F
+            }
             Prim::BitCeil => {
                 const F: &[Cpp] = &[cpp("*", "cpl::bit_ceil($0)", Some("bits"))];
                 F
@@ -272,6 +303,8 @@ impl Prim {
                 v if v <= 1 => 1,
                 _ => 1 << (64 - (w - 1).leading_zeros()),
             },
+            // A place primitive has no scalar run: the engines run its IR node.
+            Prim::Sort => return Ok(a),
             Prim::Abs => match a {
                 Scalar::Int(v) => v.checked_abs().ok_or(Fault::Overflow)?,
                 Scalar::I128(v) => {
@@ -319,7 +352,7 @@ mod tests {
     /// count in the commit that adds it.
     #[test]
     fn table_count() {
-        assert_eq!(Prim::ALL.len(), 11);
+        assert_eq!(Prim::ALL.len(), 12);
     }
 
     #[test]
@@ -339,6 +372,17 @@ mod tests {
             }
             assert_eq!(e.forms().last().map(|c| c.ty), Some("*"), "{}", e.id());
         }
+    }
+
+    #[test]
+    fn only_a_place_primitive_takes_a_mut_place() {
+        for e in Prim::ALL {
+            let place = e.kind() == Kind::Place;
+            assert_eq!(e.params().first() == Some(&"mut"), place, "{}", e.id());
+            assert_eq!(e.result() == "()", place, "{}", e.id());
+        }
+        assert_eq!(Prim::from_id("sort").map(Prim::kind), Some(Kind::Place));
+        assert_eq!(Prim::Sort.cpp("List", &["xs".into(), "by".into()]), "cpl::sort_by(xs, by, false)");
     }
 
     #[test]

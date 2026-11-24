@@ -472,51 +472,12 @@ impl<'a> Lowerer<'a> {
                 None => self.err_expr(span),
             },
             "laws_hold" => self.lower_laws_hold(args, span),
-            "sort" => {
-                if args.is_empty() {
-                    self.report(span, msgs::ir::WRONG_ARG_COUNT_SORT_TAKES_A_LIST, &[]);
-                    return self.err_expr(span);
-                }
-                let target = &args[0].value;
-                let place = self.place(target);
-                let elem = match &place.ty {
-                    Ty::List(e) | Ty::Array { elem: e, .. } => (**e).clone(),
-                    Ty::Error => return self.err_expr(span),
-                    other => {
-                        self.report(
-                            target.span,
-                            msgs::ir::BAD_OPERANDS_SORT_ORDERS_A_LIST,
-                            &[&self.show(other)],
-                        );
-                        if matches!(other, Ty::Range(_)) {
-                            self.help("a range has no cells to move; `sorted(r, by: ..)` gives the list in order, and `[x for x in r]` the list");
-                        }
-                        return self.err_expr(span);
-                    }
-                };
-                self.sort_place(place, &elem, &args[1..], span)
-            }
             "len" => {
                 let Some(exprs) = self.positional_any(name, args, 1, span) else {
                     return self.err_expr(span);
                 };
                 let value = self.expr(exprs[0], None);
                 self.len_of(value, span)
-            }
-            "sorted" => {
-                if args.is_empty() {
-                    self.report(span, msgs::ir::WRONG_ARG_COUNT_SORTED_TAKES_A_SEQUENCE, &[]);
-                    return self.err_expr(span);
-                }
-                let value = match self.walked(&args[0].value) {
-                    Some(values) => self.expr(&values, None),
-                    None => self.expr(&args[0].value, None),
-                };
-                if args.len() == 1 {
-                    self.sorted(value, span)
-                } else {
-                    self.sorted_by(value, &args[1..], span)
-                }
             }
             "argmax" | "argmin" if args.len() == 1 && self.lookup(name).is_none() => {
                 self.arg_extreme(name == "argmax", &args[0].value, span)
@@ -914,59 +875,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    pub(in crate::lower) fn sorted(&mut self, value: Expr, span: Span) -> Expr {
-        match &value.ty {
-            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
-                if !self.ordered(elem) {
-                    self.report(
-                        span,
-                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4,
-                        &[&self.show(elem)],
-                    );
-                    return self.err_expr(span);
-                }
-                let ty = Ty::list((**elem).clone());
-                self.mk_builtin(Builtin::Sorted, [value], ty, span)
-            }
-            Ty::Array { elem, .. } => {
-                let elem = elem.clone();
-                let list =
-                    self.mk_builtin(Builtin::ArrayToList, [value], Ty::List(elem.clone()), span);
-                self.mk_builtin(Builtin::Sorted, [list], Ty::List(elem), span)
-            }
-            Ty::Set(elem) | Ty::HashSet(elem) => {
-                // A set is walked in order already.
-                let ty = Ty::List(elem.clone());
-                self.mk_builtin(Builtin::Sorted, [value], ty, span)
-            }
-            // A range goes up already: its list is what it goes over.
-            Ty::Range(elem) => {
-                let elem = (**elem).clone();
-                self.walked_list(Iter::RangeVal(value, false), elem, span)
-            }
-            ty if let Some(elem) = ty.seq_elem() => {
-                if !self.ordered(&elem) {
-                    self.report(
-                        span,
-                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4,
-                        &[&self.show(&elem)],
-                    );
-                    return self.err_expr(span);
-                }
-                let list = self.walked_list(Iter::Seq(value, false), elem.clone(), span);
-                self.mk_builtin(Builtin::Sorted, [list], Ty::list(elem), span)
-            }
-            Ty::Error => value,
-            other => {
-                self.report(
-                    span,
-                    msgs::ir::TYPE_MISMATCH_SORTED_TAKES_A_LIST,
-                    &[&self.show(other)],
-                );
-                self.err_expr(span)
-            }
-        }
-    }
 
     /// Every position of a domain, first to last, as a list.
     pub(in crate::lower) fn positions(&mut self, d: DomainId, span: Span) -> Expr {
@@ -1059,71 +967,6 @@ impl<'a> Lowerer<'a> {
         self.walked_list(iter, elem, span)
     }
 
-    /// `sorted(xs, by: ...)`
-    pub(in crate::lower) fn sorted_by(
-        &mut self,
-        value: Expr,
-        args: &[ast::Arg],
-        span: Span,
-    ) -> Expr {
-        // `sorted(V, by: ...)`: the positions of a domain, in another order.
-        let value = match (value.kind, &value.ty) {
-            (ExprKind::DomainVal(d), _) => self.positions(d, span),
-            // `sorted(D.all, by: ...)`, `sorted(0..n, by: ...)`: a range
-            // written out is the list of what it goes over.
-            (ExprKind::Range { lo, hi }, Ty::Range(of)) => {
-                self.range_list(*lo, *hi, (**of).clone(), span)
-            }
-            (kind, Ty::Range(of)) => {
-                let of = (**of).clone();
-                let range = Expr { kind, ..value };
-                self.walked_list(Iter::RangeVal(range, false), of, span)
-            }
-            (kind, _) => Expr { kind, ..value },
-        };
-        let elem = match value.ty.clone() {
-            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => *e,
-            Ty::Array { elem, .. } => *elem,
-            Ty::Set(e) | Ty::HashSet(e) => *e,
-            ty if let Some(elem) = ty.seq_elem() => elem,
-            Ty::Error => return value,
-            other => {
-                self.report(
-                    span,
-                    msgs::ir::TYPE_MISMATCH_SORTED_TAKES_A_SEQUENCE,
-                    &[&self.show(&other)],
-                );
-                return self.err_expr(span);
-            }
-        };
-        let list_ty = Ty::list(elem.clone());
-        self.do_expr(Some(&list_ty), span, |lw, out| {
-            let init = match value.ty {
-                Ty::List(_) => lw.mk_builtin(Builtin::Copy, [value], list_ty.clone(), span),
-                Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..) => {
-                    lw.mk_builtin(Builtin::ToList, [value], list_ty.clone(), span)
-                }
-                Ty::Array { .. } => {
-                    lw.mk_builtin(Builtin::ArrayToList, [value], list_ty.clone(), span)
-                }
-                Ty::Set(_) | Ty::HashSet(_) => {
-                    lw.mk_builtin(Builtin::Sorted, [value], list_ty.clone(), span)
-                }
-                _ => lw.walked_list(Iter::Seq(value, false), elem.clone(), span),
-            };
-            let slot = lw.temp(list_ty.clone());
-            out.push_let(slot, init);
-            let place = Place {
-                kind: PlaceKind::Local(slot),
-                ty: list_ty.clone(),
-                span: lw.span(span),
-            };
-            let sort_expr = lw.sort_place(place, &elem, args, span);
-            out.push(Stmt::Expr(sort_expr));
-            let res = lw.local(slot, span);
-            out.push_give(res);
-        })
-    }
 
     /// The spec of a type that says everything `read()` needs on its own.
     /// `read_output()` of a value laid out as `spec`: a `read()` from

@@ -281,26 +281,6 @@ impl<'a> Lowerer<'a> {
         if name.text == "reach" && base_is_seq {
             return self.lower_reach(base, args, span);
         }
-        // `D.sort(...)`: sort all positions of domain `D` into a `List<D>`.
-        if name.text == "sort" {
-            if let Some(Sym::Domain(id)) = self.sym(base) {
-                let list = self.positions(id, span);
-                let list_ty = list.ty.clone();
-                let elem = Ty::Pos(id);
-                return self.do_expr(Some(&list_ty), span, |lw, out| {
-                    let slot = lw.temp(list_ty.clone());
-                    out.push_let(slot, list);
-                    let place = Place {
-                        kind: PlaceKind::Local(slot),
-                        ty: list_ty.clone(),
-                        span: lw.span(span),
-                    };
-                    let sort_expr = lw.sort_place(place, &elem, args, span);
-                    out.push(Stmt::Expr(sort_expr));
-                    out.push_give(lw.local(slot, span));
-                });
-            }
-        }
         // A fold over a sequence reads as its method: `xs.sum()` is
         // `sum(xs)`, `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
         let seq_ty = self.probe_ty_silent(base);
@@ -329,28 +309,6 @@ impl<'a> Lowerer<'a> {
             };
             match (args, name.text.as_str()) {
                 ([], "sum") => return self.reduce(Reduce::Sum, base, span),
-                (_, "sorted")
-                    if !matches!(
-                        seq_ty,
-                        Some(
-                            Ty::List(_)
-                                | Ty::ListView(_, _)
-                                | Ty::Keyed(_, _)
-                                | Ty::MutView(..)
-                                | Ty::Array { .. }
-                        )
-                    ) =>
-                {
-                    let value = match self.walked(base) {
-                        Some(values) => self.expr(&values, None),
-                        None => self.expr(base, None),
-                    };
-                    return if args.is_empty() {
-                        self.sorted(value, span)
-                    } else {
-                        self.sorted_by(value, args, span)
-                    };
-                }
                 ([], "min" | "max") if !matches!(seq_ty, Some(Ty::Set(_))) => {
                     return self.min_max_reduce(name.text == "max", base, true, span);
                 }

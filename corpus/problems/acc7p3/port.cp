@@ -15,7 +15,7 @@ let f: [U]0..=1e9 = read()
 let friends: [m](u: U, v: U) = read()
 
 // existing friendships are free links; after them, only neighbours by value are worth linking
-let by_value = U.sort(by: u => f[u])
+let by_value = U.sorted(by: u => f[u])
 let links = [(u:, v:, w: 0) for (u, v) in friends] +
     [(u:, v:, w: f[v] - f[u]) for (u, v) in by_value.adjacent]
 print(kruskal(links).total)

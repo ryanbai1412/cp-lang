@@ -1015,7 +1015,7 @@ fn domain_spelling_codemods() {
     let src = "\
 domain V = 1..=3
 let w: [V]Int = [3, 1, 2]
-let a = V.sorted(by: w)
+let a = V.sort(by: v => w[v])
 let b = V.first(where: v => w[v] > 1)
 ";
     assert_eq!(taste_codes(src), ["L0512", "L0512"]);
@@ -1024,7 +1024,7 @@ let b = V.first(where: v => w[v] > 1)
         "\
 domain V = 1..=3
 let w: [V]Int = [3, 1, 2]
-let a = V.sort(by: w)
+let a = V.sorted(by: v => w[v])
 let b = V.find(v => w[v] > 1)
 "
     );

@@ -1,1 +1,1 @@
-Domains follow the one-spelling sequence rules: sort a domain with `D.sort(by: key)` (matching `xs.sort(by: key)`), and search with `.find(p)`, the predicate positional (not `.first(where: p)`, decisions.md §182). `cpl fix` rewrites both.
+Domains follow the one-spelling sequence rules: a domain's positions sorted are a new `List`, `D.sorted(by: key)` (as `xs.sorted(by: key)`), since `sort` changes a place in place and a domain is none (decision 627); search with `.find(p)`, the predicate positional (not `.first(where: p)`, decisions.md §182). `cpl fix` rewrites both.

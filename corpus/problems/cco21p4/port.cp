@@ -35,7 +35,7 @@ fn peel():
         for a in into.out(v): drop(a.e, ans[v].map(x => max(a.r, x - a.p)))
 
 peel()
-for e in Road.sort(by: e => desc(roads[e].r)):
+for e in Road.sorted(by: e => desc(roads[e].r)):
     drop(e, Some(roads[e].r))
     peel()
 print(ans, none: -1)

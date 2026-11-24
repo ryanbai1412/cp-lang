@@ -18,7 +18,7 @@ domain I = 0..n
 let w: [I]1..=u = read()
 
 // a window of the lightest-first order: drop its lightest while it weighs over u
-let order = I.sort(by: i => (w[i], i))
+let order = I.sorted(by: i => (w[i], i))
 var (lo, total) = (0, 0)
 var picked = 0..0  // positions in order
 for (hi, i) in order.items:

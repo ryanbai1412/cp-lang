@@ -36,7 +36,7 @@ print(taken.sum(of: u => u.gain) - sum(x[c, Ticket(j)] for c in Colour for j in 
 var left: [Colour]Deque<Ticket> = [Colour] _ => Deque.of(Ticket.collect())
 var round: [Colour, Ticket]?Int = None
 for r in 0..k:
-    for (rank, c) in Colour.sort(by: c => desc(high[c])).items:
+    for (rank, c) in Colour.sorted(by: c => desc(high[c])).items:
         if rank < n / 2:
             high[c] -= 1
             round[c, left[c].pop()!] = r

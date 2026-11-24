@@ -736,15 +736,10 @@ impl<'a> Lowerer<'a> {
                 Some(_) => mutate(self, Mutation::Clear, Vec::new(), Ty::Unit),
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "sort") => {
-                self.sort(base, &elem, args, span)
-            }
-            (ty, "sorted") if ty.is_seq() || matches!(ty, Ty::Set(_) | Ty::HashSet(_)) => {
-                if args.is_empty() {
-                    self.sorted(value, span)
-                } else {
-                    self.sorted_by(value, args, span)
-                }
+            // A set's elements, as a sorted list: until `Set` is a `Seq`.
+            (Ty::Set(elem) | Ty::HashSet(elem), "sorted") if args.is_empty() => {
+                let ty = Ty::list((**elem).clone());
+                self.mk_builtin(Builtin::Sorted, [value], ty, span)
             }
             (
                 Ty::List(_)
@@ -1459,9 +1454,6 @@ impl<'a> Lowerer<'a> {
                 let at = self.mk_binary(op, ord, k, Ty::Int, span);
                 self.mk_builtin(Builtin::PosTryOrd(d), [at], Ty::opt(Ty::Pos(d)), span)
             }
-            // `Reversible.rev`: a value that is not a sequence and has no
-            // `rev` of its own is its own reverse.
-            (_, "rev") if args.is_empty() => value,
             _ => {
                 if let Some(fid) = self.value_impl_method(&ty, method) {
                     let mut all_args = vec![ast::Arg {

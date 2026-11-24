@@ -682,11 +682,8 @@ fn named_arguments_build_the_same_monoid_and_action():
 
 @test
 fn desc_reverses_one_part_of_a_key():
-    var xs = [(3, 1), (1, 2), (3, 0), (2, 2)]
-    xs.sort(by: p => (p.0, desc(p.1)))
-    assert xs == [(1, 2), (2, 2), (3, 1), (3, 0)]
-    xs.sort(by: p => desc(p))
-    assert xs == [(3, 1), (3, 0), (2, 2), (1, 2)]
+    assert (3, desc(1)) < (3, desc(0)) and (1, desc(2)) < (2, desc(2))
+    assert desc((3, 1)) < desc((3, 0)) and desc((2, 2)) < desc((1, 2))
     assert desc(2) < desc(1) and desc(1) == desc(1)
 
 struct Word(s: Str)
