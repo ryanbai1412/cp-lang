@@ -168,6 +168,9 @@ fn names(json: &str) -> Vec<Vec<String>> {
         .collect()
 }
 
+/// A tree-sitter capture: its start and end (row, byte column), and its name.
+type Capture = ((usize, usize), (usize, usize), String);
+
 /// tree-sitter's innermost highlight capture at each token start.
 fn tree_sitter(ts: &str, cases: &[Case], work: &Path) -> Vec<Vec<String>> {
     let grammar = root().join("editors/tree-sitter-cp");
@@ -189,8 +192,7 @@ fn tree_sitter(ts: &str, cases: &[Case], work: &Path) -> Vec<Vec<String>> {
         .arg("--paths")
         .arg(&list))
     .unwrap();
-    let mut captures: BTreeMap<String, Vec<((usize, usize), (usize, usize), String)>> =
-        BTreeMap::new();
+    let mut captures: BTreeMap<String, Vec<Capture>> = BTreeMap::new();
     let mut file = String::new();
     let num = |s: &str| s.trim().parse::<usize>().unwrap();
     for line in out.lines() {
