@@ -1,9 +1,6 @@
 # Idiomatic CP Lang: lint families (draft 1)
 
-Status: non-normative. This is taste guidance, not the language: `spec/core`, `spec/lib`,
-`std` and `spec/tools` define CP Lang, and where this file disagrees with them, they win.
-Whether it becomes Ryan's normative taste is open in `plan/QUESTIONS.md` (idioms). Changes go
-through the idioms lane; a lint in `spec/lints/` should cite the practice it serves.
+Status: non-normative taste guidance, on the terms `principles.md` sets out.
 
 The aim is an exhaustive first inventory: every pattern we can name
 today where legal code is non-idiomatic, slower than it looks, or a P0 bug waiting to happen.

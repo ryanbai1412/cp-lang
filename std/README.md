@@ -64,7 +64,7 @@ Ten area owners each own their part of section 4, write its design in
 `spec/lib/<area>.md` and build it; the coordinator owns sections 1
 to 3 (principles, naming, core features), the prelude budget (4.1), `std.spec`
 (4.15) and section 5, reviews every area design before it lands against the
-checklist in `spec/lib/rationale/README.md`, and routes each stdlib friction
+checklist in `research/design-history/stdlib-surveys/README.md`, and routes each stdlib friction
 in `research/frictions/` to the owner below. An item that spans two
 areas belongs to the area of the type it returns; a new intrinsic or
 core feature goes through section 3 and the core lane.
@@ -72,7 +72,7 @@ core feature goes through section 3 and the core lane.
 | Area | Owns | Done and next |
 |---|---|---|
 | sequences | 4.2 except the searches; the walk folds' library side; a `Seq`/`Indexed` trait | done: `_by` twins to `by:` with L0510, `.items` as the one enumerate, `Range` span traps that keep `bsearch_*` exact at any width, user `impl Ord` in the interpreter's `sorted`/`min`/`max`, `.len` typed so `0..xs.len` infers (decision 60), method `inverse` in 5 ports, `range:` on `reverse`/`rotate_*` (debt until mutable slice views, decision 76), `scan_in_place` with the mutator-vs-copy naming rule (decision 76.2), `argmax`/`prefix_n` in 5 ports, one `prefix(a)` with L0513 (decision 80), writable-from-docs fixes. `distinct`, `fold(f)`, `sort(cmp:)`, `reach(while:, cyclic:)` (`cf1284e`), `[D]T.map` keeping the domain (decision 104). Next: corpus audit for hand-rolled `argmax`/runs/compress/`next_permutation` with codemods, `by:` on `distinct`/`min`/`max` |
-| DP/search | 4.2 searches (`spec/lib/rationale/search.md`); `std.dp` | done: `monge_path` and generic `aliens` in `cf2183h` (decisions 56, 65), online LARSCH and filled `val`/`prev` (decision 74, `cf2183h` 0.9x to 1.4x the original), `std.slope` concave/convex slope trick (decision 81, `cf2084g2`), lint `L0520` hand-rolled answer search with `cpl fix` (51 corpus loops, 0 false positives, 42 port sites moved), `List.reserve` on the LARSCH level stacks (`cf2183h` seed 2 0.40 to 0.29 s), `if let` payloads read in place, dense enum and `?enum` `@memo` keys, `D.cuts` as a range of cuts, matched C++17 benches for every entry point (`bash bench/dp/run.sh`: p50 0.85x, max 1.20x), 48-byte `LazyTreap` nodes (decision 122) and in-place tag pushes (`std.slope` 1.37x to 1.24x), a 4-byte `knuth` split table (1.24x to 1.11x). Next: 4-byte `?(0..2^31)` child links once flows' bounded optional lands, a gated port for Li Chao or Knuth when one appears |
+| DP/search | 4.2 searches (`research/design-history/stdlib-surveys/search.md`); `std.dp` | done: `monge_path` and generic `aliens` in `cf2183h` (decisions 56, 65), online LARSCH and filled `val`/`prev` (decision 74, `cf2183h` 0.9x to 1.4x the original), `std.slope` concave/convex slope trick (decision 81, `cf2084g2`), lint `L0520` hand-rolled answer search with `cpl fix` (51 corpus loops, 0 false positives, 42 port sites moved), `List.reserve` on the LARSCH level stacks (`cf2183h` seed 2 0.40 to 0.29 s), `if let` payloads read in place, dense enum and `?enum` `@memo` keys, `D.cuts` as a range of cuts, matched C++17 benches for every entry point (`bash bench/dp/run.sh`: p50 0.85x, max 1.20x), 48-byte `LazyTreap` nodes (decision 122) and in-place tag pushes (`std.slope` 1.37x to 1.24x), a 4-byte `knuth` split table (1.24x to 1.11x). Next: 4-byte `?(0..2^31)` child links once flows' bounded optional lands, a gated port for Li Chao or Knuth when one appears |
 | number theory/combinatorics | 4.3 to 4.7 (`math`, `mod`, `ntt`, `matrix`, `rand`, hashing) | done: `Comb<M>` (decision 55), 32-bit `Mod<P>` by ranged-field narrowing (plus `U32`-field non-negativity proving raw `%` in `Mod::mul`), `cf2245f` 7.3x to 0.64x. `std.poly` (decision 69) at 1.06x matched C++, L0415 loop-invariant `Mod` divisor lint (decision 75). `eval`, `div_mod`, `prod_linear`, `taylor_shift`, `eval_all` (0.78x), `compose`, negative `pow`; `lib.math.poly` retired from ports. Generic `fwht`/`convolve_xor`/`convolve_subset`, `lagrange_at`/`interpolate`, one `factor` for every `Int` (decision 92), range-typed store checks (decision 100), 32-bit ranged array/2D/nested/tuple elements (decisions 106, 115), CSR `Adj` from pair/triple graphs (decision 110: `root_bench` 0.76x time, 1.14x memory), `divmod`, and `bench/math` matched C++17 suite (`p50=1.09x`, `max=1.17x`, 4.7–16.0 KB emitted; codegen-only notes in `research/frictions/bench-math.md`) |
 | containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`, `window`), `List` methods | done: heaps (`min_heap` 0.92x), potential DSU, 4 B/vertex single-array `Dsu` (`dsu` 1.15x wall / 1.10x user), `FlatMap` (0.95x), inline bounded `Bitset` (0.96x, decision 62), open-addressing `HashMap`/`HashSet` (0.64x–0.79x `gp_hash_table`, decision 85), `Map.keys`/`.values` O(1) views, `SortedSet` + `IntervalMap` in prelude (decisions 113, 117), `Set`/`Map.range(r)` zero-alloc `Iter::TreeRange` (`ordered_map_set` 0.96x), packed `BagNode` single-pass `SortedBag`/`SortedSet` (`sorted_range` 0.61x, `sorted_set` 1.26x vs PBDS `rb_tree_tag`), `drain(after:/before:, while:)` across `Set`/`SortedSet`/`SortedBag` via external parameter labels (`cf2262b`), single-iterator `IntervalMap.assign` (`interval_map` 0.56x, `cf2237h` 0.514 s / 0.321 s, decision 105), raw `List<T>` `Deque` + `Deque.reserve` (`deque` 1.14x), `List.reserve`, constant-length `std::array` lowering, `TimeTree.run`/`offline_over` (`cf2069f` RSS 356 to 146 MB), `Bitset.subset_sums` (`cf2187d` 4.3x faster), `Dsu.groups()`/`roots`/`values` (`cf2245e` 0.50 to 0.13 s); 13 matched C++17 benches (`bash bench/containers/run.sh`: p50 0.95x, max 1.26x) |
 | range structures | 4.10 | done: `Fenwick.first_ge` (decision 57), constant-init `LazySegTree`, `LazyTreap` (decision 68, matched 1.06x), `Flip`/`flip_action` with devirtualized combinators (decision 73), `LazySegTree` over `Cut<D>` (`cf2207f`), `cf2057d` 2.01x to 1.12x. Next: the 5 open high frictions, all core/codegen-side (`?Struct` niche, `MinHeap.pop`) |
@@ -282,7 +282,7 @@ off the files by `build.rs`, so a new `pub fn` needs no second edit).
 Free functions over `List<T>`, `[D]T`, and `Str`, the four-name sorted-lookup
 family, prefix/suffix/exclusive scans, permutations, monotone-stack and
 sliding-window helpers, coordinate compression, and binary/ternary searches.
-Full design and contest survey in `spec/lib/rationale/seq.md`. The searches return
+Full design and contest survey in `research/design-history/stdlib-surveys/seq.md`. The searches return
 the boundary, not a found flag: `(lo..hi).first_true(ok)` is the first `i`
 with `ok(i)` for a monotone `ok`, or `None`.
 
@@ -333,7 +333,7 @@ fn remove<T>(mut self: List<T>, i: Int) -> T              // O(n)
 @get fn argmin<D, T>(self: [D]T) -> ?D                    // O(n)
 ```
 
-[new] Designed in `spec/lib/rationale/seq.md`:
+[new] Designed in `research/design-history/stdlib-surveys/seq.md`:
 
 ```cp
 // Reductions and predicates
@@ -376,7 +376,7 @@ fn perm_pow<V>(p: [V]V, k: Int) -> [V]V        // O(n)
 fn inversions<T>(a: List<T>) -> Int            // O(n log n)
 
 // Binary/ternary search and four-name sorted lookup
-// (search on answers: spec/lib/rationale/dp.md; each returns a position of its
+// (search on answers: research/design-history/stdlib-surveys/dp.md; each returns a position of its
 // range's index space or none, never a sentinel)
 fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 // steps + 1 calls of ok; the least x in [lo, hi] with ok(x), to within
@@ -958,7 +958,7 @@ struct FlatMap<V> // [new] std.hashmap; O(1) expected open-addressing Int map
 Modules `std.algebra`, `std.fenwick`, `std.prefix`, `std.segtree`,
 `std.lazy`, `std.sparse`, plus [new] `std.window`, `std.mo`, and advanced
 structures (`std.persistent`, `std.beats`; `LiChao` is in `std.dp`, `MergeSortTree` in `std.segtree`).
-Full design, contest survey, laws and exemplars: `spec/lib/rationale/ranges.md`.
+Full design, contest survey, laws and exemplars: `research/design-history/stdlib-surveys/ranges.md`.
 
 The algebra is values, not traits: a `Monoid<T>` is an identity and an
 operation, an `Action<T, F>` a monoid of tags acting on one of values.
@@ -1117,7 +1117,7 @@ fn mo_order<D>(queries: List<Range<D>>) -> List<Int>                            
 fn mo_steps<D>(from: Range<D>, to: Range<D>) -> yields (pos: D, entering: Bool)                   // [new]
 ```
 
-Phase 2 additions (see `spec/lib/rationale/ranges.md` §3.8):
+Phase 2 additions (see `research/design-history/stdlib-surveys/ranges.md` §3.8):
 `MergeSortTree<D, T>` and `SparseSegTree<T>` (`std.segtree`),
 `PersistentSegTree<D, T>` + `Version` + `RangeKth<D, T>` (`std.persistent`),
 `BeatsSegTree<D>` (`std.beats`: `chmin`/`chmax`/`add`/`sum`/`min_val`/`max_val`),
@@ -1131,7 +1131,7 @@ and `LiChao` + `LiChaoTag<V>` (coordinated with the DP lane).
 heavy-first preorder positions `t.Pre` in which every subtree and every heavy
 chain is a range, so one range structure serves subtree and path queries;
 `Centroids<V>` a centroid decomposition. The design, laws and worked problems
-are in `spec/lib/rationale/trees.md`.
+are in `research/design-history/stdlib-surveys/trees.md`.
 
 ```cp
 type Tree<V> = [0..V.len - 1](u: V, v: V)
@@ -1217,7 +1217,7 @@ struct Functional<V>                              // O(n log n)
     fn orbit(self, v: V) -> Int          // O(1)
     fn jump_while(self, v: V, pred: V -> Bool, max_steps: Int = V.K)
         -> ?(V, Int)   // O(log n)
-struct Rooted<V, Pre>  // O(n) time and memory; spec/lib/rationale/trees.md
+struct Rooted<V, Pre>  // O(n) time and memory; research/design-history/stdlib-surveys/trees.md
     fn new<N>(adj: N, root: V)
     fn from_parents(par: [V]?V)  // O(n)
     fn weighted<N, A>(adj: N, root: V, len: A -> Int)
@@ -1976,7 +1976,7 @@ The structures and optimizations a DP calls by name; the recurrence stays
 in user code, and memoized recursion is `@memo` (core). Each optimization
 takes the cost as an operation and states its law, which `std.spec` checks
 (`monge_break`, `dnc_break`, `knuth_break`, `convexity_break`). Design,
-laws and worked problems: `spec/lib/rationale/dp.md`.
+laws and worked problems: `research/design-history/stdlib-surveys/dp.md`.
 
 ```cp
 // sliding-window optimum: std.window.MonoDeque (4.8)
@@ -2005,7 +2005,7 @@ fn subset_sums(xs: List<Int>) -> List<Int>  // O(2^n), sorted
 
 A concave (or convex) function on the integers `lo..=hi`, kept as its value
 at `lo` plus its slopes in a lazy treap. Laws and the worked port:
-`spec/lib/rationale/dp.md` §6.7.
+`research/design-history/stdlib-surveys/dp.md` §6.7.
 
 ```cp
 struct Concave

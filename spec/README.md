@@ -53,13 +53,14 @@ signatures and costs; these chapters are the model and the examples):
   round, *draft*, each headed by the 0.3 rules that override it.
 - `lib/random-stress.md`: `Rng`, generators of typed inputs, brutes and
   checkers. *draft*
-- `lib/rationale/`: the pre-round surveys for search, DP, graphs, trees,
-  ranges and sequences, superseded by the chapters above.
+- The pre-round surveys for search, DP, graphs, trees, ranges and
+  sequences, superseded by the chapters above, are history:
+  `research/design-history/stdlib-surveys/`.
 
 What Milestone 1 promises, section by section, and its known gaps:
 `SUBSET.md`.
 Why each area is the way it is, with the alternatives that lost:
-`RATIONALE.md`.
+`handbook/language/`.
 
 Tools, one contract per tool (`tools/`): CLI, judge profiles, stress and
 shrinking, explain, trace and debugger, fmt and lint, LSP, bundler.

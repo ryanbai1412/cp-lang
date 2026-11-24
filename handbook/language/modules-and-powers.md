@@ -5,7 +5,7 @@
 | Kind | Language design |
 | Owner | spec |
 | Leads | `spec/core/11-modules-prelude.md`, `spec/core/12-powers.md` |
-| Describes | `spec/core/11-modules-prelude.md`, `spec/core/12-powers.md`, `std/prelude.cp`, `spec/lib/rationale/`, `spec/conformance/core-11/`, `spec/conformance/core-12/` |
+| Describes | `spec/core/11-modules-prelude.md`, `spec/core/12-powers.md`, `std/prelude.cp`, `research/design-history/stdlib-surveys/`, `spec/conformance/core-11/`, `spec/conformance/core-12/` |
 
 How code is split into files and modules, which names a program sees
 without asking, and the mechanisms (powers) that let a library, the
@@ -227,7 +227,7 @@ with its implementation status beside it.
 
 ### What a library leaves to the contestant
 
-The stdlib's area designs (`spec/lib/rationale/`) apply one test to every
+The stdlib's area designs (`research/design-history/stdlib-surveys/`) apply one test to every
 candidate API: does it say something the editorial says, or does it hide
 the part that is the problem? The answer draws a stable line:
 
@@ -235,7 +235,7 @@ the part that is the problem? The answer draws a stable line:
   gain` is the editorial; the library offers only the optimizations
   (`knuth`, divide and conquer, convex hull) that take a cost operation.
   There is no `digit_dp` combinator, because the state differs every
-  time (`spec/lib/rationale/dp.md` §4).
+  time (`research/design-history/stdlib-surveys/dp.md` §4).
 - **Graphs**: algorithms take a protocol (`Next`: a vertex's outgoing
   arcs), so `Graph`, a function `V -> Seq` and an implicit grid are all
   graphs. The transition of a state search, and a DFS whose per-vertex
@@ -360,7 +360,7 @@ print(countdown(4).max()!, countdown(4).count(x => x > 2), countdown(4).sum())
 | The powers | `spec/core/12-powers.md` W1 to W16 |
 | Sequence capabilities and lending | W4, R12.4.1 to R12.4.13 |
 | Associated types, aliases, field traits, row bounds | W10a, R12.11.1 to R12.11.4 |
-| Stdlib area designs | `spec/lib/rationale/README.md`, `dp.md`, `graphs.md`, `trees.md` |
+| Stdlib area designs | `research/design-history/stdlib-surveys/README.md`, `dp.md`, `graphs.md`, `trees.md` |
 | Conformance cases | `spec/conformance/core-11/`, `spec/conformance/core-12/` |
 
 ## Changes

@@ -5,7 +5,7 @@
 | Kind | Language design |
 | Owner | spec |
 | Leads | `spec/core/00-overview.md` |
-| Describes | `spec/core/`, `spec/lib/`, `std/prelude.cp`, `spec/RATIONALE.md` |
+| Describes | `spec/core/`, `spec/lib/`, `std/prelude.cp` |
 
 CP Lang is a language for competitive programming that compiles to one
 C++17 file. This page is the whole design in one sitting: what it is for,
@@ -315,8 +315,13 @@ doc that gives its reasons.
 | Traits and generics | `spec/core/08-traits-generics.md` | [traits-and-generics.md](traits-and-generics.md) |
 | Contexts, checks, I/O | `spec/core/09-contexts-checks.md`, `10-io.md` | [checks-and-io.md](checks-and-io.md) |
 | Modules, prelude, powers | `spec/core/11-modules-prelude.md`, `12-powers.md` | [modules-and-powers.md](modules-and-powers.md) |
-| Lowering to C++ | `spec/core/13-lowering.md` | |
+| Lowering to C++ | `spec/core/13-lowering.md` | this page; decisions 31 (stack, layout, niches) and 52 (static closures) |
 | The standard library | `spec/lib/` | [std.md](std.md) |
+
+Every spec chapter, core and `lib/`, opens with a short overview ("The
+model in one paragraph"); the design doc for the area starts from it and
+says why. Debates older than the handbook are in
+`research/design-history/` (`decisions-design.md`, `style-decisions.md`).
 
 ## How math is written (decision 487)
 

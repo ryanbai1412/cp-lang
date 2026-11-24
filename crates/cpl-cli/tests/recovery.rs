@@ -477,7 +477,7 @@ fn plan_blocks() -> Vec<(String, String)> {
     for dir in [
         "spec/core",
         "spec/lib",
-        "spec/lib/rationale",
+        "research/design-history/stdlib-surveys",
         "spec/tools",
         "handbook/language",
     ] {

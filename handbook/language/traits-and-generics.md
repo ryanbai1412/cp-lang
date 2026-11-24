@@ -175,8 +175,7 @@ What an arc carries is a trait on the arc type (`Target<V>`,
 `WeightedNext<V, W>`. So `dijkstra` runs on an implicit grid graph with
 no adapter.
 
-**Lost.** Arcs stored in a side table (`spec/RATIONALE.md`, "Traits and
-generics"): rarely worth it, since `Next` carries arc capabilities.
+**Lost.** Arcs stored in a side table: rarely worth it, since `Next` carries arc capabilities.
 
 ### Conditional code and type arguments (R08.2.5, R08.2.9, decision 116)
 

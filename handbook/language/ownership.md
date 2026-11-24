@@ -76,21 +76,11 @@ print(w.sum())
 Swap the last two lines and it compiles: a lend lasts until its last use,
 not to the end of the block.
 
-What a contestant holds in their head is six sentences (chapter 5 §1):
-
-1. A variable owns its value; `let` can't change it, `var` can.
-2. Small values with no heap part copy; heap values (`List`, `Map`,
-   `Str`, `[D]T`, structs holding them) move, and copying one is
-   `.clone()`.
-3. A parameter is a lend of the caller's value: the callee can use it
-   but never keep it, and `mut` (written at both ends) lets it change it.
-4. A value built from a lend is itself lent: slices, views, generator
-   values, loop items, projection results, closures over local state.
-5. While a lent value is alive (until its last use) its sources are
-   frozen for writes, or untouchable if it is a `mut` lend; and it can
-   never be kept anywhere that outlives them.
-6. Each call is checked as one access to everything it touches: its
-   arguments and whatever the called fn or closure captures.
+What a contestant holds in their head is six sentences, stated in
+chapter 5 §1 ("The model in six sentences"): a variable owns its value;
+small values copy and heap values move; a parameter is a lend; what is
+built from a lend is lent; a live lend freezes its sources; and each call
+is one access to everything it touches.
 
 And one picture: every live lent value holds an arrow to the variables it
 borrows. A variable with an arrow at it is frozen (no writes under a read
@@ -551,9 +541,8 @@ forbid `find` on a `let` DSU and inside any read-only walk.
 
 Anything the compiler trusts without proof is an `@` attribute from this
 closed list, so `grep -E '@(cache|law|trusted|cpp)'` finds all of it.
-Codegen never optimizes on a promise (no `__restrict` from a `disjoint`
-law), which is what keeps a broken promise from becoming undefined
-behaviour.
+Nothing is optimized on a promise: a `disjoint` law emits no
+`__restrict`, so a broken promise cannot become undefined behaviour.
 
 ## What the compiler proves and what each build checks
 
@@ -625,8 +614,8 @@ explain them (chapter 5 §13a):
 
 1. `let` copies a plain element, lends a heap element and moves a
    variable. `let row = rows[i]` is a read lend of `rows` (R05.3.5).
-2. The mode is not in the type: `xs.filter(p)` is lent, `Filter(xs, p)`
-   owned; hover shows which.
+2. Lent or owned is not part of the type: `xs.filter(p)` is lent and
+   `Filter(xs, p)` owned, and hover tells them apart.
 3. Passing `mut seen` to a generator freezes `seen` for the value's life;
    capturing it in a nested generator freezes it only per walk.
 4. A later use extends a lend, so an added `print` can break a write in

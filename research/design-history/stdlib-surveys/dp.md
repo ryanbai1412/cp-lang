@@ -94,7 +94,7 @@ ordinary CP Lang over closures, generics and lists.
 ### 2.1 `std.seq`: search on answers
 
 The searches (`bsearch_first`/`_last`, `bsearch_real`, `ternary_*`,
-`parallel_bsearch`) have their own design, `spec/lib/rationale/search.md`.
+`parallel_bsearch`) have their own design, `research/design-history/stdlib-surveys/search.md`.
 
 ### 2.2 `std.dp` [new]: the DP toolkit
 

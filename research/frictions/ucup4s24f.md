@@ -25,7 +25,7 @@ window minimum is the DP area's sliding-window optimization.
   dp[i] = c[i - 1] + window.best!
   window.push(-i, dp[i])
   ```
-- **General fix:** `std.window.MonoDeque` (spec/lib/rationale/dp.md 2.2 points
+- **General fix:** `std.window.MonoDeque` (research/design-history/stdlib-surveys/dp.md 2.2 points
   every sliding-window DP at it). Landed; the port uses it.
 - **Severity:** medium (fixed)
 

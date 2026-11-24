@@ -28,7 +28,7 @@ change; `Deque`, `Bitset` and `DynBitset` cover the rest of the common
 shapes. `Marks` resets in \(O(1)\) per test, `FlatMap` and `Counter` hash,
 and `Compressed` maps raw values onto a domain so later tables are
 dense arrays (`core/04-indices.md`). The survey below says which contest
-jobs drove each choice; `RATIONALE.md` lists the decisions.
+jobs drove each choice; `handbook/language/std.md` says why.
 
 ## 1. Contest pattern survey
 

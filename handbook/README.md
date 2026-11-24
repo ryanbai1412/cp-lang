@@ -173,8 +173,8 @@ worked examples. These are also the source of the site's in-depth chapters.
 | `language/modules-and-powers.md` | `core/11`, `12` | spec |
 | `language/std.md` | `lib/*` | stdlib |
 
-They absorb `spec/RATIONALE.md`, `spec/lib/rationale/` and the design
-reasoning spread through `decisions.md`.
+They are the one home for why: `spec/` states rules and `decisions.md`
+records each call and how to reverse it.
 
 ### Design: why the toolchain is shaped this way
 

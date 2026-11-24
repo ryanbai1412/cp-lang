@@ -2,7 +2,7 @@
 
 Base: `main` at `6259cc162` (later than `79b4db75d`). Before this file was
 written the reader read only `spec/` (core 00-07 and 10, `lib/graphs-trees.md`
-parts, `lib/rationale/seq.md` §3.5) and root `std/` (`README.md`, `GAPS.md`,
+parts, `research/design-history/stdlib-surveys/seq.md` §3.5) and root `std/` (`README.md`, `GAPS.md`,
 signatures and docs in `fenwick.cp`, `graph.cp`, `tree.cp`, `heap.cp`,
 `segtree.cp`, `dsu.cp`, `strings.cp`, `mod.cp`). Statements came from the Luogu
 mirror (Codeforces returned a block page).
@@ -59,7 +59,7 @@ mirror (Codeforces returned a block page).
 |---|---|---|---|---|---|---|
 | H01 | missing-stdlib | `spec/core/04-indices.md` (domains), `lib/graphs-trees.md` | No sum/disjoint-union domain (`domain N = V + C`) for graphs whose vertices are two kinds of thing (stations and lines). | `domain N = 0..n + C.count` with `st(v) = N(v.ord)`, `line(c) = N(n + c.ord)`. | yes (graphs) | 02 |
 | H02 | contradiction | `std/strings.cp` `Palindromes` / `manacher` vs R07.4.1 | `manacher(s)` returns `Palindromes` over `Int` offsets (`is_palindrome(r)` takes an Int range), while every per-element string result is keyed like its input. | Pass a 0-based `l..r + 1` over a whole `Str`. | yes (strings) | 04 |
-| H03 | silent | `spec/core/07-sequences.md` R07.11.5, `spec/lib/rationale/seq.md` §3.5 | `compress(s)`: does it take any `Seq` or only a `List`? Core gives only `(domain C, comp)`; the methods (`at`, `try_at`) live only in the rationale. | `compress([r.c for r in es])` then `comp.at(x)`. | yes (sequences) | 02 |
+| H03 | silent | `spec/core/07-sequences.md` R07.11.5, `research/design-history/stdlib-surveys/seq.md` §3.5 | `compress(s)`: does it take any `Seq` or only a `List`? Core gives only `(domain C, comp)`; the methods (`at`, `try_at`) live only in the rationale. | `compress([r.c for r in es])` then `comp.at(x)`. | yes (sequences) | 02 |
 | H04 | silent | `spec/core/04-indices.md`, `spec/core/10-io.md` R10.1.1 | May a `domain` declared below `@!multitest` take its size from another fresh domain's `.count` (`0..n + C.count`)? | Yes. | yes | 02 |
 | H05 | contradiction | `std/GAPS.md` (graph, tree lines) vs `spec/lib/graphs-trees.md`, `spec/core/00-overview.md` example | GAPS says `Graph`, `bfs01`, `Rooted` resolve to Int-typed compiler built-ins in `cpl run`; the spec examples use them over declared domains. | Followed the spec: `bfs01(adj, from: [st(b)])` over `[N]List<(to: N, w: Int)>`, `Rooted(g, root: ...)` over `V`. | yes (graphs, trees) | 02, 09 |
 | H06 | contradiction | `std/README.md` §4.2 surface index vs `spec/core/04-indices.md`, ch07 | The surface index still lists `bsearch_first`/`bsearch_last`, `scan(xs, f) -> [D]T`, `runs(a) -> List<(val, len)>`, `Dsu` vs the user prompt's `DSU`; core uses `first_true`/`last_true`, `scan(op) -> Prefix`, `runs(by:)`. | Trusted core spec and the `.cp` stubs; used `scan(+)`, `scan(^)` as `Prefix` indexed by cuts. | yes (search, sequences) | 01, 06 |

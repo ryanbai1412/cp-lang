@@ -128,9 +128,8 @@ order, so `w.rev[k]` is error E0305, whose fix offers `w.rev.nth(k)`
 **Lost.** Both obvious readings of `a.rev[k]`. "The `k`th from the end"
 is what C++ and NumPy do; "the element at source key `k`" is what
 identity-everywhere suggests. Both looked right in code review, and one
-was always silently wrong, so neither is the meaning (spec/RATIONALE.md,
-"Sequences"). `zip(a, a.rev)` still pairs each element with its mirror,
-by walk position (R07.6.4).
+was always silently wrong, so neither is the meaning. `zip(a, a.rev)`
+still pairs each element with its mirror, by walk position (R07.6.4).
 
 The same rule settles a literal (decision 388): `w[x]` with `x` proven
 to be one of `w.keys` reads with no check, a literal that is not proven a

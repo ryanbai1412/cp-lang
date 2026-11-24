@@ -89,8 +89,8 @@ position is made from an `Int`, and from there on it is free.
 A check **never calls user code.** A checked build makes exactly the
 calls to user functions, closures and input that release makes, in the
 same order; a check only inspects values the program already computed.
-So an interactive query, a counter in a closure or a `@cache` sees the
-same history in both modes.
+Interactive queries, closure counters and `@cache` therefore see one
+history whichever mode built the program.
 
 Beyond traps, two facts are **promised** rather than checked: `law`
 declarations on operations and `@cache` correctness. Stress testing

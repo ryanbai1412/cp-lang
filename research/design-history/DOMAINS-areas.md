@@ -528,7 +528,7 @@ geometry, DP/search, sequences) each own their part of
 `plan/STDLIB.md` section 4, write `spec/lib/<area>.md` and build
 it; the table "Who owns what" there lists each area's queue. The
 coordinator owns sections 1 to 3, cross-area coherence and the prelude
-budget, reviews each design against `spec/lib/rationale/README.md`, and
+budget, reviews each design against `research/design-history/stdlib-surveys/README.md`, and
 routes frictions.
 **Bar.** Every item of `plan/STDLIB.md` marked [new] or [rename] has
 landed with tests; every public name is used by a port or an example;
