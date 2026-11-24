@@ -834,10 +834,7 @@ impl Database {
         let scope = Arc::new(scope);
         let items = Arc::new(items);
 
-        let checks: Vec<Arc<ItemCheck>> = if imported_module {
-            let empty = Arc::new(ItemCheck::default());
-            vec![empty; items.len()]
-        } else {
+        let checks: Vec<Arc<ItemCheck>> = {
             let mut ctx = FileCtx {
                 db: self,
                 file: id,
@@ -855,7 +852,20 @@ impl Database {
                 vars: None,
                 impl_names: None,
             };
-            (0..items.len()).map(|i| ctx.check_item(i)).collect()
+            let checks: Vec<Arc<ItemCheck>> = (0..items.len()).map(|i| ctx.check_item(i)).collect();
+            // A module's own findings are its author's; its importer sees its facts.
+            if imported_module {
+                (checks.into_iter())
+                    .map(|c| {
+                        Arc::new(ItemCheck {
+                            exprs: c.exprs.clone(),
+                            ..ItemCheck::default()
+                        })
+                    })
+                    .collect()
+            } else {
+                checks
+            }
         };
 
         // Diagnostics, one per root cause: the lexer's first, then each
