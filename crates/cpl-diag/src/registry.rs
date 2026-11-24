@@ -772,6 +772,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0321"),
+        title: "Negative literal key",
+        summary: "`a[-1]` with a negative literal key, which never wraps to the end.",
+        explanation: "Keys never wrap: `a[-1]` is not the last element as in Python, it is out of range. The last element is `a.last!` and the `k`-th from the end is `a[a.len - k]`. A computed negative key is not caught here; it traps at run time (R0101).",
+        trigger: "let a = [3, 1, 4]\nprint(a[-1])\n",
+        fix: "let a = [3, 1, 4]\nprint(a.last!)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0322"),
         title: "Field that stores its own type",
         summary: "A struct or enum field holds the type itself by value, directly or through an optional, tuple or other struct.",

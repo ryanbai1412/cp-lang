@@ -44,7 +44,7 @@ struct Hull<Id>:
     fn add(mut self, ch: Charge, id: Id):
         if pts.last.all(l => ch.q < l.ch.q):
             // Keep `idx + 1 < pts.len` so `pts[idx]` is never popped under the monotone query pointer.
-            pts.pop_while(l => idx + 1 < pts.len and never_weakest(pts[-2].ch, l.ch, ch))
+            pts.pop_while(l => idx + 1 < pts.len and never_weakest(pts[pts.len - 2].ch, l.ch, ch))
             pts.push((ch, id))
         self.advance(ch.x)
 

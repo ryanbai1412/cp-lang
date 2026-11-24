@@ -166,6 +166,8 @@ pub mod codes {
     pub const GROWING_INSTANTIATION: Code = Code("E0319");
     /// `pre[k]` with an `Int` `k` into a cut table on `Int` keys (R07.1.6, decision 507).
     pub const INT_INDEX_ON_CUT_TABLE: Code = Code("E0320");
+    /// `a[-1]`: a negative literal key, which never wraps (R07.2.17, decision 508).
+    pub const NEGATIVE_LITERAL_INDEX: Code = Code("E0321");
     /// A struct or enum field that stores the type itself (`l: ?N` in `N`).
     pub const RECURSIVE_FIELD: Code = Code("E0322");
 
