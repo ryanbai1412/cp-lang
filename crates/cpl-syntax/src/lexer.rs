@@ -286,17 +286,21 @@ impl<'a> Lexer<'a> {
         ];
         let io_line = (line.split(';').map(str::trim).filter(|s| !s.is_empty()))
             .all(|s| fast_io.iter().any(|p| s.starts_with(p)));
-        if io_line {
+        // Python's `input = sys.stdin.readline`.
+        let py_io = line
+            .split_once('=')
+            .is_some_and(|(l, r)| names(l) && !r.starts_with('=') && r.contains("sys.stdin"));
+        if io_line || py_io {
+            let message = match io_line {
+                true => "C++'s fast-I/O setup: CP Lang's `read()` and `print` are already fast",
+                false => "Python's fast-input setup: CP Lang's `read()` is already fast",
+            };
             let span = Span::new(begin as u32, line.len() as u32 + begin as u32);
             let whole = Span::new(begin as u32, (end + 1).min(self.src.len()) as u32);
             self.out.diagnostics.push(
-                Diagnostic::error(
-                    codes::REMOVED_SYNTAX,
-                    span,
-                    "C++'s fast-I/O setup: CP Lang's `read()` and `print` are already fast",
-                )
-                .with_help("remove the line")
-                .with_fix("remove the line", whole, ""),
+                Diagnostic::error(codes::REMOVED_SYNTAX, span, message)
+                    .with_help("remove the line")
+                    .with_fix("remove the line", whole, ""),
             );
             self.pos = end;
             return true;

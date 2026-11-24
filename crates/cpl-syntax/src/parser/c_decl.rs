@@ -128,6 +128,36 @@ pub(super) fn c_value(e: &str, ty: Option<&CType>) -> Option<String> {
     }
 }
 
+/// `vector<int>(n)` or `map<int, int>()` written as a value, at the start
+/// of `s`: its length, and the value in CP Lang.
+pub(super) fn c_temporary(s: &str) -> Option<(usize, String)> {
+    let mut depth = 0;
+    let close = s.char_indices().find_map(|(i, c)| {
+        match c {
+            '<' => depth += 1,
+            '>' => depth -= 1,
+            _ => {}
+        }
+        (c == '>' && depth == 0).then_some(i)
+    })?;
+    let ty = c_type(&s[..=close])?;
+    let args = s[close + 1..].strip_prefix('(')?;
+    depth = 1;
+    let end = args.char_indices().find_map(|(i, c)| {
+        match c {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            _ => {}
+        }
+        (depth == 0).then_some(i)
+    })?;
+    let value = match args[..end].trim() {
+        "" => ty.zero?,
+        a => c_construct(&ty, a)?,
+    };
+    Some((close + 2 + end + 1, value))
+}
+
 /// `(n)` or `(n, v)` after a vector type: `n` copies of `v` or of zero.
 pub(super) fn c_construct(ty: &CType, args: &str) -> Option<String> {
     let elem = ty.elem.as_deref()?;

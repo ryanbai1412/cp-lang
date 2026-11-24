@@ -706,6 +706,37 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// C++'s `vector<int>(n)` as a value: one error, fixed to `List.filled(n, 0)`.
+    pub(super) fn cpp_temporary(&mut self) -> Option<Expr> {
+        if self.peek_n(1) != T::Lt {
+            return None;
+        }
+        let start = self.tokens[self.pos].span.start;
+        let (len, value) = c_temporary(&self.src[start as usize..])?;
+        let at = self.rel(Span::new(start, start + len as u32));
+        let written = &self.src[start as usize..start as usize + len];
+        self.recovered(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                at,
+                format!("`{written}` is C++; CP Lang writes the value as `{value}`"),
+            )
+            .with_help(format!("write `{value}`"))
+            .with_fix(format!("write `{value}`"), at, value),
+        );
+        while self
+            .tokens
+            .get(self.pos)
+            .is_some_and(|t| t.span.start < start + len as u32)
+        {
+            self.bump();
+        }
+        Some(Expr {
+            kind: ExprKind::Error,
+            span: at,
+        })
+    }
+
     /// `xs[::-1]`: Python's reversed copy. One error with the `xs.rev` fix.
     fn reversed_slice(&mut self) -> Option<Expr> {
         let t = |k: usize| self.tokens.get(self.pos + k);
