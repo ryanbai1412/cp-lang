@@ -7,4 +7,4 @@ domain C = 0..c
 let grid = read<[R, C]Char>()
 let s = (R(0), C(0))
 let d = bfs(p => p.adj4.filter(q => grid[q] != ('#')), from: [s])
-print(d[(R(1), C(2))])
+print(d[(R(1), C(2))]!)

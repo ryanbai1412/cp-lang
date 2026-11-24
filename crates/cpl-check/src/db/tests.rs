@@ -336,10 +336,18 @@ fn a_bound_reaches_its_supers_methods_typed() {
 }
 
 #[test]
+fn a_read_through_a_struct_get_has_its_type() {
+    let src = "struct Node:\n    var n: Int\nstruct Pool:\n    _xs: List<Node>\n    pub fn at(mut self, i: Int) -> lends mut Node:\n        lend mut _xs[i]\n    pub fn get(self, i: Int) -> Int = _xs[i].n\nstruct Sparse<T>:\n    _xs: List<T>\n    pub fn get(self, i: Int) -> ?T = _xs.get(i)\nvar p = Pool([Node(5)])\np[0].n += 1\nlet a: Int = p[0] + 1\nlet s = Sparse([3])\nprint(a, p[0].abs, s[0] ?? -1)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    let printed = "struct Sparse<T>:\n    _xs: List<T>\n    pub fn get(self, i: Int) -> ?T = _xs.get(i)\nprint(Sparse([3])[0])\n";
+    assert_eq!(silent_unknowns_of(printed), (vec![], 1));
+}
+
+#[test]
 fn a_place_under_a_lends_mut_index_beside_a_get_is_typed() {
     let src = "struct C:\n    var n: Int\n    fn bump(mut self, by: Int):\n        n += by\nstruct Node:\n    var c: C\n    var kids: List<Int>\nstruct Pool:\n    _xs: List<Node>\n    pub fn at(mut self, i: Int) -> lends mut Node:\n        lend mut _xs[i]\n    pub fn get(self, i: Int) -> Int = _xs[i].c.n\nvar p = Pool([Node(C(1), [2])])\np[0].c.bump(4)\np[0].c.n = 2\np[0].kids[0] += 1\np[0].kids.push(3)\n";
     assert_eq!(silent_unknowns_of(src), (vec![], 0));
-    let read = format!("{src}let n: Int = p[0].abs()\n");
+    let read = format!("{src}let n: Int = p[0].abs\n");
     assert_eq!(silent_unknowns_of(&read).1, 0);
 }
 

@@ -8,7 +8,7 @@ domain V = 0..4
 let nxt = (u: V) => if u.ord < 3: [V(u.ord + 1)] else: []
 print(peel(nxt))
 let d = bfs(nxt, [V(0)])
-print(d[V(3)])
+print(d[V(3)]!)
 let (C:, comp:) = scc(nxt)
 print(C.count, components(nxt).comp[V(2)].ord)
 var w = [V, V] (a, b) => if b.ord == a.ord + 1: Some(2) else: None
