@@ -2001,6 +2001,12 @@ pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
 /// order: same cells, keyed by `keys`
 /// traps: when `keys.len != self.len`
 /// example: `[4, 5].rekey(10..12)[11] == 5`
+@lint(query_index_shift, from: "let i: 1..=n = read()", advice: "domain I = 1..=n", holes: "n", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (i, j): (1..=n, T) = read()", advice: "domain I = 1..=n", holes: "n, T", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (j, i): (T, 1..=n) = read()", advice: "domain I = 1..=n", holes: "n, T", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (i, j, k): (1..=n, T, U) = read()", advice: "domain I = 1..=n", holes: "n, T, U", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (j, i, k): (T, 1..=n, U) = read()", advice: "domain I = 1..=n", holes: "n, T, U", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (j, k, i): (T, U, 1..=n) = read()", advice: "domain I = 1..=n", holes: "n, T, U", also: "self[i - 1]")
 pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T:
     assert self.len == keys.len, "`rekey` needs one key per element"
     [K] k => self.nth(k.ord - keys.start.ord)
