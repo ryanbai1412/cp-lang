@@ -1,18 +1,11 @@
-//! C++ spellings that CP Lang names: a bit test (`manual_bit_test`), the last
-//! element by `len - 1` (`last_via_len`), the `i < j` pair loop
-//! (`manual_pair_loop`), the `% 10` / `/= 10` digit loop
-//! (`manual_digit_loop`), a hand-written fast power or Euclid
-//! (`hand_rolled_pow`, `hand_rolled_gcd`), and a slice compared with a
-//! pattern (`manual_starts_with`).
+//! C++ spellings that CP Lang names: a bit test (`manual_bit_test`) and the last
+//! element by `len - 1` (`last_via_len`).
 
 use crate::facts::Facts;
 use crate::is_std;
 use crate::std_fn;
-use crate::walk::{unparen, walk_expr, walk_stmt, Visitor};
-use crate::{
-    File, Finding, Lint, HAND_ROLLED_GCD, HAND_ROLLED_POW, LAST_VIA_LEN, MANUAL_BIT_TEST,
-    MANUAL_DIGIT_LOOP, MANUAL_PAIR_LOOP, MANUAL_STARTS_WITH,
-};
+use crate::walk::{unparen, Visitor};
+use crate::{File, Finding, Lint, LAST_VIA_LEN, MANUAL_BIT_TEST};
 use cpl_diag::msgs::{lint_rules, Msg};
 use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::*;
@@ -25,7 +18,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         facts: file.facts,
         targets: Vec::new(),
         fns: Vec::new(),
-        covered: Vec::new(),
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
@@ -40,8 +32,6 @@ struct Spelled<'a> {
     targets: Vec<Span>,
     /// Every function's name and body: a fix inside a function must not call it.
     fns: Vec<(String, Span)>,
-    /// Slice comparisons already reported with their length guard.
-    covered: Vec<Span>,
     out: Vec<Finding>,
 }
 
@@ -144,112 +134,6 @@ impl Spelled<'_> {
             Some((expr.span, fixed)),
         );
     }
-
-    /// `s[0..p.len] == p`, `s[i..i + p.len] == p` or `s[s.len - p.len..] == p`,
-    /// alone or behind its `p.len <= s.len` guard: `starts_with` / `ends_with`.
-    fn prefix_test(&mut self, expr: &Expr) {
-        if self.covered.contains(&expr.span.shift(self.base)) {
-            return;
-        }
-        let (cmp, guard) = match &expr.kind {
-            ExprKind::Binary {
-                op: BinOp::And,
-                lhs,
-                rhs,
-                ..
-            } => (unparen(rhs), Some(unparen(lhs))),
-            ExprKind::Compare { .. } => (expr, None),
-            _ => return,
-        };
-        let Some((s, fixed, guards)) = self.slice_eq(cmp) else {
-            return;
-        };
-        if let Some(g) = guard {
-            if !guards.iter().any(|want| self.text(g) == want) {
-                return;
-            }
-            self.covered.push(cmp.span.shift(self.base));
-        }
-        self.push(
-            &MANUAL_STARTS_WITH,
-            expr.span,
-            (
-                &lint_rules::MANUAL_STARTS_WITH,
-                &[&self.text(expr).to_string()],
-                format!(
-                    "write `{fixed}`; it is `false`, not a trap, when the pattern runs past the end"
-                ),
-            ),
-            Some((s.span, "the searched sequence")),
-            Some((expr.span, fixed)),
-        );
-    }
-
-    /// The sliced sequence, the call that replaces `cmp`, and the guards that
-    /// make the slice in range and the call drops.
-    fn slice_eq<'e>(&self, cmp: &'e Expr) -> Option<(&'e Expr, String, Vec<String>)> {
-        let ExprKind::Compare { first, rest } = &cmp.kind else {
-            return None;
-        };
-        let [(CmpOp::Eq, other)] = rest.as_slice() else {
-            return None;
-        };
-        let (slice, p) = match (&unparen(first).kind, &unparen(other).kind) {
-            (ExprKind::Index { .. }, _) => (unparen(first), unparen(other)),
-            (_, ExprKind::Index { .. }) => (unparen(other), unparen(first)),
-            _ => return None,
-        };
-        let ExprKind::Index { base: s, indices } = &slice.kind else {
-            return None;
-        };
-        let s: &Expr = s;
-        let [Expr {
-            kind:
-                ExprKind::Range {
-                    lo,
-                    hi,
-                    inclusive: false,
-                    step: None,
-                },
-            ..
-        }] = indices.as_slice()
-        else {
-            return None;
-        };
-        if !matches!(
-            p.kind,
-            ExprKind::Name(_) | ExprKind::Field { .. } | ExprKind::Str(_)
-        ) || !matches!(s.kind, ExprKind::Name(_) | ExprKind::Field { .. })
-        {
-            return None;
-        }
-        let (s_text, p_text) = (self.text(s), self.text(p));
-        let (s_len, p_len) = (format!("{s_text}.len"), format!("{p_text}.len"));
-        let lo_text = lo.as_deref().map(|e| self.text(e));
-        let hi_text = hi.as_deref().map(|e| self.text(e));
-        let fits = |need: &str| vec![format!("{need} <= {s_len}"), format!("{s_len} >= {need}")];
-        let zero = lo
-            .as_deref()
-            .is_none_or(|e| matches!(e.kind, ExprKind::Int(0)));
-        if zero && hi_text == Some(p_len.as_str()) {
-            return Some((s, format!("{s_text}.starts_with({p_text})"), fits(&p_len)));
-        }
-        if lo_text == Some(format!("{s_len} - {p_len}").as_str())
-            && (hi_text.is_none() || hi_text == Some(s_len.as_str()))
-        {
-            return Some((s, format!("{s_text}.ends_with({p_text})"), fits(&p_len)));
-        }
-        // `at:` traps outside `0..=s.len` where a guarded slice is `false`, so
-        // the guard stays.
-        let i = lo_text?;
-        (hi_text == Some(format!("{i} + {p_len}").as_str())).then(|| {
-            (
-                s,
-                format!("{s_text}.starts_with({p_text}, at: {i})"),
-                Vec::new(),
-            )
-        })
-    }
 }
 
 fn shifted(e: &Expr) -> Option<(&Expr, &Expr)> {
@@ -277,106 +161,7 @@ fn one_shl(e: &Expr) -> Option<&Expr> {
     }
 }
 
-fn pat_name(p: &Pattern) -> Option<&str> {
-    match &p.kind {
-        PatternKind::Name(n) => Some(n),
-        _ => None,
-    }
-}
-
-/// Every statement and expression under `stmts`, nested ones included.
-struct Each<S: FnMut(&Stmt), E: FnMut(&Expr)> {
-    stmt: S,
-    expr: E,
-}
-
-impl<S: FnMut(&Stmt), E: FnMut(&Expr)> Visitor for Each<S, E> {
-    fn stmt(&mut self, stmt: &Stmt) {
-        (self.stmt)(stmt)
-    }
-    fn expr(&mut self, expr: &Expr) {
-        (self.expr)(expr)
-    }
-}
-
-fn each(stmts: &[Stmt], stmt: impl FnMut(&Stmt), expr: impl FnMut(&Expr)) {
-    let mut v = Each { stmt, expr };
-    for s in stmts {
-        walk_stmt(&mut v, s);
-    }
-}
-
-fn body_stmts(decl: &FnDecl) -> Vec<Stmt> {
-    match &decl.body {
-        FnBody::Block(block) => block.stmts.clone(),
-        FnBody::Expr(e) => vec![Stmt {
-            kind: StmtKind::Expr(e.clone()),
-            span: e.span,
-            decorators: Vec::new(),
-            public: false,
-        }],
-        FnBody::None => Vec::new(),
-    }
-}
-
-/// `x /= 2`, `x >>= 1`, `x = x / 2` or `x = x >> 1`.
-fn halves(stmt: &Stmt, x: &str) -> bool {
-    let StmtKind::Assign { target, op, value } = &stmt.kind else {
-        return false;
-    };
-    if super::shapes::name(target) != Some(x) {
-        return false;
-    }
-    let by = |op: BinOp, v: &Expr| {
-        matches!(
-            (op, &v.kind),
-            (BinOp::Div, ExprKind::Int(2)) | (BinOp::Shr, ExprKind::Int(1))
-        )
-    };
-    match (op, &unparen(value).kind) {
-        (AssignOp::Binary(op), _) => by(*op, value),
-        (AssignOp::Set, ExprKind::Binary { op, lhs, rhs, .. }) => {
-            super::shapes::name(lhs) == Some(x) && by(*op, rhs)
-        }
-        _ => false,
-    }
-}
-
-/// `b = b * b % m`, `b = b * b` or `b *= b`.
-fn squares(stmt: &Stmt) -> bool {
-    let StmtKind::Assign { target, op, value } = &stmt.kind else {
-        return false;
-    };
-    let Some(b) = super::shapes::name(target) else {
-        return false;
-    };
-    if matches!(op, AssignOp::Binary(BinOp::Mul)) {
-        return super::shapes::name(value) == Some(b);
-    }
-    let mut found = false;
-    let mut v = Each {
-        stmt: |_: &Stmt| {},
-        expr: |e: &Expr| {
-            if let ExprKind::Binary {
-                op: BinOp::Mul,
-                lhs,
-                rhs,
-                ..
-            } = &e.kind
-            {
-                found |= super::shapes::name(lhs) == Some(b) && super::shapes::name(rhs) == Some(b);
-            }
-        },
-    };
-    walk_expr(&mut v, value);
-    matches!(op, AssignOp::Set) && found
-}
-
 impl Spelled<'_> {
-    fn text_pat(&self, p: &Pattern) -> &str {
-        p.span.shift(self.base).text(self.src)
-    }
-
     fn last_via_len(&mut self, expr: &Expr) {
         let ExprKind::Index { base, indices } = &expr.kind else {
             return;
@@ -416,269 +201,6 @@ impl Spelled<'_> {
             Some((expr.span, fixed)),
         );
     }
-
-    fn pair_loop(&mut self, outer: &Stmt) {
-        let StmtKind::For {
-            pat, iter, body, ..
-        } = &outer.kind
-        else {
-            return;
-        };
-        let (
-            Some(i),
-            ExprKind::Range {
-                lo, hi: Some(hi), ..
-            },
-        ) = (pat_name(pat), &iter.kind)
-        else {
-            return;
-        };
-        // `for j in i + 1..n` inside a loop over `i` is a triple, not a
-        // pair: `.pairs()` would restart `j` and drop `i`.
-        if !matches!(
-            lo.as_deref().map(|l| &unparen(l).kind),
-            None | Some(ExprKind::Int(_))
-        ) {
-            return;
-        }
-        // `.pairs()` replaces both loops, so any other work per `i` stays.
-        let [inner] = body.stmts.as_slice() else {
-            return;
-        };
-        {
-            let StmtKind::For {
-                pat: jpat,
-                iter: jiter,
-                ..
-            } = &inner.kind
-            else {
-                return;
-            };
-            let ExprKind::Range {
-                lo: Some(lo),
-                hi: Some(jhi),
-                ..
-            } = &jiter.kind
-            else {
-                return;
-            };
-            let ExprKind::Binary {
-                op: BinOp::Add,
-                lhs,
-                rhs,
-                ..
-            } = &unparen(lo).kind
-            else {
-                return;
-            };
-            if super::shapes::name(lhs) != Some(i)
-                || !matches!(rhs.kind, ExprKind::Int(1))
-                || self.text(jhi) != self.text(hi)
-                || pat_name(jpat).is_none()
-            {
-                return;
-            }
-            let StmtKind::For { body: jbody, .. } = &inner.kind else {
-                return;
-            };
-            let j = self.text_pat(jpat);
-            let Some(seq) = self.indexes_only(&body.stmts, inner, &jbody.stmts, [i, j]) else {
-                return;
-            };
-            let (i, j, jt) = (i.to_string(), j.to_string(), self.text(jiter).to_string());
-            self.push(
-                &MANUAL_PAIR_LOOP,
-                Span::new(inner.span.start, jiter.span.end),
-                (
-&lint_rules::MANUAL_PAIR_LOOP, &[&j, &jt, &i, &j],
-                    format!("write `for (x, y) in {seq}.pairs()`; the body reads `{seq}[{i}]` and `{seq}[{j}]` only"),
-                ),
-                None,
-                None,
-            );
-        }
-    }
-
-    /// The one sequence `outer` (less `inner`'s header) and `inner_body`
-    /// index by `names`, when they use the names for nothing else.
-    fn indexes_only(
-        &self,
-        outer: &[Stmt],
-        inner: &Stmt,
-        inner_body: &[Stmt],
-        names: [&str; 2],
-    ) -> Option<String> {
-        let (mut uses, mut indexed, mut seqs) = (Vec::new(), Vec::new(), Vec::new());
-        let mut visit = |e: &Expr| match &e.kind {
-            ExprKind::Name(n) if names.contains(&n.as_str()) => uses.push(e.span),
-            ExprKind::Index { base, indices } => {
-                if let [idx] = indices.as_slice() {
-                    if super::shapes::name(idx).is_some_and(|n| names.contains(&n)) {
-                        indexed.push(idx.span);
-                        seqs.push(base.span.shift(self.base).text(self.src).to_string());
-                    }
-                }
-            }
-            _ => {}
-        };
-        for s in outer {
-            if std::ptr::eq(s, inner) {
-                each(inner_body, |_| {}, &mut visit);
-            } else {
-                each(std::slice::from_ref(s), |_| {}, &mut visit);
-            }
-        }
-        seqs.dedup();
-        let only = uses
-            .iter()
-            .all(|u| indexed.iter().any(|x| x.start <= u.start && u.end <= x.end));
-        match seqs.as_slice() {
-            [seq] if only => Some(seq.clone()),
-            _ => None,
-        }
-    }
-
-    fn digit_loop(&mut self, stmt: &Stmt) {
-        let StmtKind::While {
-            cond: Cond::Expr(cond),
-            body,
-            ..
-        } = &stmt.kind
-        else {
-            return;
-        };
-        let ExprKind::Compare { first, rest } = &cond.kind else {
-            return;
-        };
-        let (Some(y), [(CmpOp::Gt | CmpOp::Ne, zero)]) =
-            (super::shapes::name(first), rest.as_slice())
-        else {
-            return;
-        };
-        if !matches!(zero.kind, ExprKind::Int(0)) {
-            return;
-        }
-        let base = body.stmts.iter().find_map(|s| {
-            let StmtKind::Assign { target, op, value } = &s.kind else {
-                return None;
-            };
-            if super::shapes::name(target) != Some(y) {
-                return None;
-            }
-            let b = match (op, &unparen(value).kind) {
-                (AssignOp::Binary(BinOp::Div), ExprKind::Int(b)) => *b,
-                (
-                    AssignOp::Set,
-                    ExprKind::Binary {
-                        op: BinOp::Div,
-                        lhs,
-                        rhs,
-                        ..
-                    },
-                ) if super::shapes::name(lhs) == Some(y) => match rhs.kind {
-                    ExprKind::Int(b) => b,
-                    _ => return None,
-                },
-                _ => return None,
-            };
-            (3..=36).contains(&b).then_some(b)
-        });
-        let Some(b) = base else {
-            return;
-        };
-        let call = if b == 10 {
-            format!("{y}.digits()")
-        } else {
-            format!("{y}.digits(base: {b})")
-        };
-        self.push(
-            &MANUAL_DIGIT_LOOP,
-            Span::new(stmt.span.start, cond.span.end),
-            (
-&lint_rules::MANUAL_DIGIT_LOOP, &[&y],
-                format!("write `for d in {call}` (lowest digit first), or `{call}.sum()` for the digit sum"),
-            ),
-            None,
-            None,
-        );
-    }
-
-    fn hand_rolled(&mut self, decl: &FnDecl) {
-        let stmts = body_stmts(decl);
-        let mut pow = false;
-        each(
-            &stmts,
-            |s| {
-                if let StmtKind::While {
-                    cond: Cond::Expr(cond),
-                    body,
-                    ..
-                } = &s.kind
-                {
-                    let x = match &cond.kind {
-                        ExprKind::Compare { first, .. } => super::shapes::name(first),
-                        _ => None,
-                    };
-                    pow |= x.is_some_and(|x| body.stmts.iter().any(|s| halves(s, x)))
-                        && body.stmts.iter().any(squares);
-                }
-            },
-            |_| {},
-        );
-        if pow {
-            self.push(
-                &HAND_ROLLED_POW,
-                decl.name.span,
-                (
-&lint_rules::HAND_ROLLED_POW, &[&decl.name.text],
-                    "call `pow_mod(b, e, m)` from `std.math`; with a fixed modulus, `Mod<P>` makes it `b ** e`".to_string(),
-                ),
-                None,
-                None,
-            );
-        }
-        let params: Vec<&str> = decl.params.iter().map(|p| p.name.text.as_str()).collect();
-        let [a, b] = params.as_slice() else {
-            return;
-        };
-        let mut euclid = false;
-        each(
-            &stmts,
-            |_| {},
-            |e| {
-                let ExprKind::Call { callee, args } = &e.kind else {
-                    return;
-                };
-                let [first, second] = args.as_slice() else {
-                    return;
-                };
-                let rem = match &unparen(&second.value).kind {
-                    ExprKind::Binary {
-                        op: BinOp::Rem,
-                        lhs,
-                        rhs,
-                        ..
-                    } => super::shapes::name(lhs) == Some(a) && super::shapes::name(rhs) == Some(b),
-                    _ => false,
-                };
-                euclid |= super::shapes::name(callee) == Some(&decl.name.text)
-                    && super::shapes::name(&first.value) == Some(b)
-                    && rem;
-            },
-        );
-        if euclid {
-            self.push(
-                &HAND_ROLLED_GCD,
-                decl.name.span,
-                (
-&lint_rules::HAND_ROLLED_GCD, &[&decl.name.text],
-                    format!("call `gcd({a}, {b})` from `std.math`; a fold over a list is `xs.fold(gcd)`"),
-                ),
-                None,
-                None,
-            );
-        }
-    }
 }
 
 impl Visitor for Spelled<'_> {
@@ -689,15 +211,11 @@ impl Visitor for Spelled<'_> {
         if let StmtKind::Fn(decl) = &stmt.kind {
             self.fns
                 .push((decl.name.text.clone(), stmt.span.shift(self.base)));
-            self.hand_rolled(decl);
         }
-        self.pair_loop(stmt);
-        self.digit_loop(stmt);
     }
 
     fn expr(&mut self, expr: &Expr) {
         self.bit_test(expr);
         self.last_via_len(expr);
-        self.prefix_test(expr);
     }
 }

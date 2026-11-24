@@ -14,6 +14,8 @@ use std.range.{last_true}
 /// example: `gcd(-4, 6) == 2`
 /// example: `gcd(0, -5) == 5`
 /// example: `gcd(0, 0) == 0`
+@lint(hand_rolled_gcd, from: "fn g(x: Int, y: Int) -> Int:\n    if y == 0:\n        return x\n    return g(y, x % y)", to: "gcd(x, y)")
+@lint(hand_rolled_gcd, from: "fn g(x: Int, y: Int) -> Int = if y == 0: x else: g(y, x % y)", to: "gcd(x, y)")
 pub fn gcd(a: Int, b: Int) -> Int:
     var (x, y) = (abs(a), abs(b))
     while y != 0: (x, y) = (y, x % y)
@@ -604,6 +606,7 @@ pub fn bit_len(x: Int) -> Int = bit_width(x)
 /// example: `1203.digits() == [3, 0, 2, 1]`
 /// example: `0.digits() == [0]`
 /// example: `10.digits(base: 2) == [0, 1, 0, 1]`
+@lint(manual_digit_loop, from: "while self > 0:\n    s += self % 10\n    self /= 10", to: "s += self.digits().sum()", holes: "s")
 pub fn digits(self: 0.., base: Int = 10) -> List<Int>:
     assert self >= 0 and base >= 2
     var (out, x) = ([self % base], self / base)
@@ -854,6 +857,7 @@ pub fn mul_mod(a: Int, b: Int, m: 1..) -> Int:
 /// example: `pow_mod(-2, 3, 7) == 6`
 /// example: `pow_mod(0, 0, 7) == 1`
 /// example: `pow_mod(5, 0, 1) == 0`
+@lint(hand_rolled_pow, from: "while e > 0:\n    if e % 2 == 1:\n        r = r * a % m\n    a = a * a % m\n    e /= 2", to: "r = r * pow_mod(a, e, m) % m", holes: "r")
 pub fn pow_mod(a: Int, e: 0.., m: Int) -> Int:
     var (acc, x, k) = (1 % m, a % m, e)
     while k > 0:

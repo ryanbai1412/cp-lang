@@ -25,8 +25,6 @@ super::msgs! {
     HAND_ROLLED_BINARY_LIFTING = "L0519", "hand-rolled binary lifting table";
     HAND_ROLLED_DSU = "L0517", "hand-rolled union-find (DSU) path compression";
     HAND_ROLLED_DSU_2 = "L0517", "hand-rolled union-find (DSU) `find` function";
-    HAND_ROLLED_GCD = "L0546", "`{}` is Euclid's algorithm, written by hand";
-    HAND_ROLLED_POW = "L0545", "`{}` is fast exponentiation by squaring, written by hand";
     HAND_ROLLED_PREFIX_SUM = "L0521", "`{}` is a running total built by hand: use `Prefix(...)`";
     HAND_ROLLED_SIEVE = "L0518", "hand-rolled prime/SPF sieve loop";
     INT_DIV_POSSIBLE_ZERO = "L0599", "`{}` can be 0 here (its bounds give `{}..={}`), and `{}` by 0 traps";
@@ -38,11 +36,8 @@ super::msgs! {
     LCA_BY_HAND = "L0555", "climbing `{}` by `{}` until `{}` matches is the LCA, by hand";
     LOOP_INVARIANT_MOD_DIV = "L0415", "loop-invariant `Mod` divisor `{}` computes an O(log P) inverse every iteration";
     MANUAL_BIT_TEST = "L0540", "`{}` tests one bit by hand";
-    MANUAL_DIGIT_LOOP = "L0544", "this loop takes `{}` apart digit by digit";
     MANUAL_HEAP_DRAIN = "L0588", "the top `{}` of `{}` popped one by one";
     MANUAL_MOD_REDUCE = "L0531", "`% {}` reduces a product by hand{}";
-    MANUAL_PAIR_LOOP = "L0543", "`for {} in {}` walks each pair `{} < {}` by hand";
-    MANUAL_STARTS_WITH = "L0592", "`{}` compares a slice with a pattern by hand";
     MAP_AS_MULTISET = "L0563", "`{}` counts the copies of each key by hand: it is a multiset";
     MAP_CONTAINS_THEN_INDEX = "L0594", "`{} in {}` is tested, then `{}[{}]` looks it up again";
     MAP_CONTAINS_THEN_INDEX_EXIT = "L0594", "`{} not in {}` exits, then `{}[{}]` looks it up again";

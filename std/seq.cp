@@ -649,6 +649,8 @@ pub fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
 /// traps: never
 /// example: `[1, 2, 3].pairs().count() == 3`
 /// see: `adjacent` for neighbours, `Pair<V>` for a table keyed by unordered pairs
+@lint(manual_pair_loop, from: "for i in 0..n:\n    for j in i + 1..n:\n        if self[i] + self[j] == t:\n            c += 1", to: "c += self.pairs().count(p => p.0 + p.1 == t)", holes: "n, t, c")
+@lint(manual_pair_loop, from: "for i in 0..self.len:\n    for j in i + 1..self.len:\n        if self[i] + self[j] == t:\n            c += 1", to: "c += self.pairs().count(p => p.0 + p.1 == t)", holes: "t, c")
 pub fn pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
     let xs: List<T> = List(self)
     for i in 0..xs.len:

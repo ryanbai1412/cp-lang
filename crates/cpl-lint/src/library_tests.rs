@@ -681,3 +681,23 @@ fn a_method_lint_fires_only_on_its_own_type() {
         .collect();
     assert_eq!(found, ["c.next()", "o.next()"]);
 }
+
+/// A library's lint keeps out of the program's own fn of its fn's name: the
+/// fix would make that fn call itself. Rule: R06.4.9.
+#[test]
+fn a_library_lint_keeps_out_of_the_program_s_fn_of_its_name() {
+    let dir = fixture("own-fn");
+    let src =
+        "use mylib.geo\nfn sq(y: Int) -> Int = y * y\nlet v: Int = read()\nprint(sq(v), v * v)\n";
+    std::fs::write(dir.join("main.cp"), src).unwrap();
+    let main = dir.join("main.cp").to_string_lossy().into_owned();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    cli::run(std::slice::from_ref(&main), &mut out, &mut err);
+    let report = String::from_utf8_lossy(&out).into_owned() + &String::from_utf8_lossy(&err);
+    assert_eq!(
+        report.matches("warning[square_by_hand]").count(),
+        1,
+        "{report}"
+    );
+    assert!(report.contains(":4:"), "{report}");
+}

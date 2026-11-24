@@ -36,6 +36,10 @@ pub fn repeat(self: Str, n: Len) -> Str:
 /// example: `"banana".starts_with("ban") == true`
 /// example: `"banana".starts_with("nan", at: 2) == true`
 /// example: `[1, 2, 3].starts_with([2]) == false`
+@lint(manual_starts_with, from: "pat.len <= self.len and self[0..pat.len] == pat", to: "self.starts_with(pat)")
+@lint(manual_starts_with, from: "self[0..pat.len] == pat", to: "self.starts_with(pat)")
+@lint(manual_starts_with, from: "at + pat.len <= self.len and self[at..at + pat.len] == pat", to: "self.starts_with(pat, at: at)")
+@lint(manual_starts_with, from: "self[at..at + pat.len] == pat", to: "self.starts_with(pat, at: at)")
 pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool:
     assert 0 <= at <= self.len, "`starts_with` needs `at` in `0..=self.len`"
     if at + pat.len > self.len: return false
@@ -52,6 +56,8 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
 /// traps: never
 /// example: `[1, 2, 3].ends_with([2, 3]) == true`
 /// example: `"banana".ends_with("nab") == false`
+@lint(manual_starts_with, from: "pat.len <= self.len and self[self.len - pat.len..] == pat", to: "self.ends_with(pat)")
+@lint(manual_starts_with, from: "self[self.len - pat.len..] == pat", to: "self.ends_with(pat)")
 pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
     let d = self.len - pat.len
     if d < 0: return false
