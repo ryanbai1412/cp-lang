@@ -19,34 +19,39 @@ let score: [Spot]Score = read()
 domain Cut = 0..=n  // number of attractions already seen
 
 fn most(score: [Spot]Score) -> Int:
-    var best: [Cut]Int = 0
-    // Suffix maxima over the previous block's cuts j: best[j] and best[j] + tail[j].
-    var plain: [Cut]Int = 0
-    var tailed: [Cut]Int = 0
+    // By offset t = i - lo - 1 in a block: best for this block, suffix maxima of the
+    // previous block's best[j] and best[j] + tail[j]; cut i - k sits at the same t there.
+    var best: [0..k]Int = 0
+    var plain: [0..k]Int = 0
+    var tailed: [0..k]Int = 0
     for lo in (0..n).step(k):
         let block = lo + 1..=min(lo + k, n)  // this block's cuts
         var head = 0
         for i in block:
             head max= score[Spot(i)]
-            let j = Cut(max(i - k, 0))  // the earliest cut the day may start from
-            best[Cut(i)] = if lo == 0: head else: max(tailed[j], plain[j] + head)
+            let t = i - lo - 1
+            best[t] = if lo == 0: head else: max(tailed[t], plain[t] + head)
         var (tail, run_plain, run_tailed) = (0, 0, 0)
         for j in block.rev:
-            run_plain max= best[Cut(j)]
-            run_tailed max= best[Cut(j)] + tail
-            plain[Cut(j)] = run_plain
-            tailed[Cut(j)] = run_tailed
+            let t = j - lo - 1
+            run_plain max= best[t]
+            run_tailed max= best[t] + tail
+            plain[t] = run_plain
+            tailed[t] = run_tailed
             tail max= score[Spot(j)]
-    best[Cut.last!]
+    best[(n - 1) % k]
 
 // Direct DP over (days, -total) per cut: fewest days first, then the largest total.
 @alt(most)
 fn most_quadratic(score: [Spot]Score) -> Int:
     var plan: [Cut](days: Int, loss: Int) = (days: 0, loss: 0)
     for i in 1..=n:
-        plan[Cut(i)] = min((days: plan[Cut(j)].days + 1,
-                            loss: plan[Cut(j)].loss - max(score[Spot(t)] for t in j + 1..=i)!)
-                           for j in max(i - k, 0)..i)!
+        plan[Cut(i)] = min(
+            (
+                days: plan[Cut(j)].days + 1,
+                loss: plan[Cut(j)].loss - max(score[Spot(t)] for t in j + 1..=i)!,
+            ) for j in max(i - k, 0)..i
+        )!
     -plan[Cut.last!].loss
 
 print(most(score))
