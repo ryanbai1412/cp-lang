@@ -116,6 +116,32 @@ template <class T, int K> Grid<T, K> grid(std::array<ll, K> n, const T& fill) {
 ",
     },
     Piece {
+        name: "zeros",
+        needs: &[],
+        code: "\
+}
+// new is malloc, as in libstdc++, so a vector can own calloc's cells, whose untouched pages stay unmapped.
+void* operator new(size_t n) { if (void* p = malloc(n ? n : 1)) return p; throw std::bad_alloc(); }
+void operator delete(void* p) noexcept { free(p); }
+void operator delete(void* p, size_t) noexcept { free(p); }
+namespace cpl {
+template <class T> std::vector<T> zeros(size_t n) {
+#ifdef __GLIBCXX__
+    struct Z : std::vector<T> { Z(size_t n) { auto& m = this->_M_impl; if (n && !(m._M_start = (T*)calloc(n, sizeof(T)))) throw std::bad_alloc(); m._M_finish = m._M_end_of_storage = m._M_start + n; } };
+    return Z(n);
+#endif
+    return std::vector<T>(n);
+}
+",
+    },
+    Piece {
+        name: "zero_grid",
+        needs: &["grid", "zeros"],
+        code: "\
+template <class T, int K> Grid<T, K> zero_grid(std::array<ll, K> n) { Grid<T, K> g; ll c = 1; for (int k = 0; k < K; k++) c *= g.n[k] = n[k]; g.d = zeros<T>(c); return g; }
+",
+    },
+    Piece {
         name: "pop",
         needs: &[],
         code: "\

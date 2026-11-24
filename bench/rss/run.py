@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Peak RSS of I/O-bound programs: each bench/rss/X.cp, built by `cpl build`,
+"""Peak RSS of I/O-bound and zero-filled programs: each bench/rss/X.cp, built by `cpl build`,
 against the matched X_hand.cpp (scanf/printf) on the same generated input,
 both with g++ -std=c++17 -O2, measured by scripts/corpus.py's launcher.
 
@@ -41,6 +41,7 @@ CASES = {
     "print_gen": lambda: "10000000\n",
     "print_list_sep": lambda: "10000000\n",
     "floor": lambda: "5\n",
+    "zero_fill": lambda: "5\n",  # 160 MB of cells, one touched
 }
 
 

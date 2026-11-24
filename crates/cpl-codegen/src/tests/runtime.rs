@@ -94,3 +94,23 @@ fn every_runtime_piece_comes_after_the_pieces_it_needs() {
         );
     }
 }
+
+#[test]
+fn a_zero_filled_table_comes_from_calloc() {
+    // `vector(n, 0)` writes every page; calloc's pages stay unmapped until used.
+    let out = cpp("var t: [80_000_000]0..=500 = 0\nt[7] = 3\nprint(t[7])\n");
+    assert!(out.contains("cpl::zeros<uint16_t>(80000000)"), "{out}");
+    assert!(out.contains("calloc(n, sizeof(T))"), "{out}");
+    let grid = cpp("let n: 1..=5000 = read()\ndomain R = 0..n\nvar g: [R, R]Int = 0\ng[R(0), R(0)] = n\nprint(g[R(0), R(0)])\n");
+    assert!(
+        grid.contains("cpl::zero_grid<ll, 2>({R_len, R_len})"),
+        "{grid}"
+    );
+    let small = cpp("var t: [1000]0..=500 = 0\nt[7] = 3\nprint(t[7])\n");
+    assert!(!small.contains("zeros<"), "{small}");
+    let ones = cpp("let n: 1..=9_000_000 = read()\nvar t: [n]Int = 1\nt[0] = n\nprint(t[0])\n");
+    assert!(!ones.contains("zeros<"), "{ones}");
+    let opts =
+        cpp("let n: 1..=9_000_000 = read()\nvar t: [n]?Int = None\nt[0] = n\nprint(t[0] ?? 0)\n");
+    assert!(!opts.contains("zeros<"), "{opts}");
+}

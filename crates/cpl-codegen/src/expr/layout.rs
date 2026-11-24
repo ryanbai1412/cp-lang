@@ -16,6 +16,79 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// Whether `dims` of `cell`s filled with `value` are all zero bytes and may
+    /// span pages, so calloc should make them.
+    pub fn zero_fill(&mut self, cell: &str, dims: &[DimSpec], value: Option<&Expr>) -> bool {
+        let value = value.map(|v| match &v.kind {
+            ExprKind::RangeCheck { value, .. } => value,
+            _ => v,
+        });
+        let zero = match value.map(|v| &v.kind) {
+            None | Some(ExprKind::Int(0) | ExprKind::Bool(false) | ExprKind::Char(0)) => true,
+            Some(ExprKind::Float(f)) => f.to_bits() == 0,
+            _ => false,
+        };
+        let bytes: i64 = match cell.trim_start_matches('u') {
+            "ll" | "double" | "int64_t" => 8,
+            "int" | "int32_t" => 4,
+            "int16_t" => 2,
+            "char" | "8" | "int8_t" => 1,
+            _ => return false,
+        };
+        let len = |d: &DimSpec| match d {
+            DimSpec::Pos(d) => self.facts.domain_max_len(*d),
+            DimSpec::Bound(d) => self.facts.domain_max_len(*d).map(|n| n + 1),
+            DimSpec::Sym(d) => self.facts.domain_max_len(*d).map(|n| n * (n + 1) / 2),
+            DimSpec::Enum(_) => None,
+            DimSpec::Int(len) | DimSpec::IntFrom(_, len) => match len.kind {
+                ExprKind::Int(n) => Some(n),
+                _ => None,
+            },
+        };
+        // Tables under malloc's mmap threshold come from its heap, where calloc
+        // writes them anyway; an unbounded length counts as one.
+        let big = dims
+            .iter()
+            .map(|d| len(d).unwrap_or(1))
+            .fold(bytes, i64::saturating_mul)
+            >= 1 << 18;
+        zero && big && {
+            self.need("zeros");
+            true
+        }
+    }
+
+    /// `dims` of `value` from calloc, when every cell is zero bytes.
+    pub fn zeros(&mut self, cell: &str, dims: &[DimSpec], value: Option<&Expr>) -> Option<Code> {
+        if !self.zero_fill(cell, dims, value) {
+            return None;
+        }
+        let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
+        if lens.len() > 1 {
+            self.need("zero_grid");
+        }
+        let zeros = match &lens[..] {
+            [n] => format!("cpl::zeros<{cell}>({n})"),
+            _ => format!(
+                "cpl::zero_grid<{cell}, {}>({{{}}})",
+                lens.len(),
+                lens.join(", ")
+            ),
+        };
+        // A checked zero keeps its check.
+        Some(Code::primary(match value {
+            Some(
+                v @ Expr {
+                    kind: ExprKind::RangeCheck { .. },
+                    ..
+                },
+            ) => {
+                format!("((void){}, {zeros})", self.expr(v).text)
+            }
+            _ => zeros,
+        }))
+    }
+
     /// The arguments of a 1-D vector's constructor: `n, value`.
     pub fn fill_args(&mut self, dims: &[DimSpec], value: Option<&Expr>) -> String {
         self.fill_args_with_layout(dims, value, None)
@@ -68,7 +141,9 @@ impl<'p> Emitter<'p> {
         };
         match &e.kind {
             ExprKind::Fill(dims, value) => {
-                if dims.len() == 1 {
+                if let Some(zeros) = self.zeros(&cpp_cell, dims, value.as_deref()) {
+                    zeros
+                } else if dims.len() == 1 {
                     let args = self.fill_args_with_layout(dims, value.as_deref(), Some(l));
                     Code::primary(format!("std::vector<{cpp_cell}>({args})"))
                 } else {

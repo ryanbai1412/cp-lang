@@ -559,6 +559,18 @@ impl<'p> Emitter<'p> {
                             }
                             return;
                         }
+                        let cell = cpp
+                            .strip_prefix("std::vector<")
+                            .and_then(|c| c.strip_suffix('>'))
+                            .unwrap_or_default()
+                            .to_string();
+                        if let Some(zeros) = (!reused)
+                            .then(|| self.zeros(&cell, dims, value.as_deref()))
+                            .flatten()
+                        {
+                            self.line(out, &format!("{cpp} {name} = {};", zeros.text));
+                            return;
+                        }
                         let args =
                             self.fill_args_with_layout(dims, value.as_deref(), elem_l.as_ref());
                         if reused {
