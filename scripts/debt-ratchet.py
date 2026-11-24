@@ -132,6 +132,14 @@ def _git(root: Path, *args: str, env: dict[str, str] | None = None) -> list[str]
     return out.stdout.splitlines() if out.returncode == 0 else []
 
 
+def std_gaps(root: Path) -> list[str]:
+    """Each open line of `std/GAPS.md` (a std body waiting on the compiler) as `std/GAPS.md:line`."""
+    p = root / "std" / "GAPS.md"
+    if not p.is_file():
+        return []
+    return [f"std/GAPS.md:{i}" for i, line in enumerate(_lines(p), 1) if line.startswith("- ")]
+
+
 def stdlib_todo(root: Path) -> list[str]:
     """Each `todo` stub as `path:line`, with ` @test` when it sits in an `@test` fn."""
     out = []
@@ -2745,6 +2753,7 @@ HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
 COUNTERS = {
     "stdlib_todo": ("stdlib todo stubs", stdlib_todo, True),
+    "std_gaps": ("open std/GAPS.md lines", std_gaps, True),
     "rust_ignore": ("Rust #[ignore] attributes", rust_ignore, True),
     "pending_tests": ("crates/cpl-cli/tests/pending/ files", pending_tests, True),
     "dead_code_allows": ("allow(dead_code) attributes", dead_code_allows, True),

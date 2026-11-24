@@ -1199,6 +1199,13 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--list", "stdlib_todo", "--root", str(root)]), 0)
             self.assertEqual(dr.main(["--list", "nope", "--root", str(root)]), 2)
 
+    def test_std_gaps_counts_each_open_line(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.assertEqual(dr.std_gaps(root), [])
+            self._write(root, "std/GAPS.md", "# Gaps\n\nWhy.\n\n- seq: a\n- tree: b\n")
+            self.assertEqual(dr.std_gaps(root), ["std/GAPS.md:5", "std/GAPS.md:6"])
+
     def test_stdlib_todo_marks_stubs_in_test_fns(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
