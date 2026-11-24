@@ -11,9 +11,8 @@ import { cpParser } from './cp-language';
 
 const repo = join(__dirname, '../../..');
 // Where the grammar is the one that's wrong, sent to tools (who own it): it
-// doesn't read `domain` in `fn f<domain I>()` or `yields` in `-> yields T` as
-// a keyword.
-const known = new Set(['domain: grammar other, editor keyword', 'yields: grammar other, editor keyword']);
+// doesn't read `yields` in `-> yields T` as a keyword.
+const known = new Set(['yields: grammar other, editor keyword']);
 type Class = 'keyword' | 'atom' | 'string' | 'comment' | 'number' | 'other';
 
 function grammarClass(scopes: string[]): Class {
