@@ -403,6 +403,11 @@ if [ "$mode" = commit ]; then
     # blocked by staleness it may not have caused.
     uv run --quiet python scripts/gen.py --check \
         || echo "WARNING: generated files are stale; run: just gen (CI's regen job also fixes them)" >&2
+    if [ -n "${sel_slices:-}" ]; then
+        step "touched-path slices: $sel_slices (scripts/affected.py, each under 20 s)"
+        uv run --quiet python scripts/affected.py --run-slices $sel_slices \
+            || fail "a touched-path slice failed or took over 20 s; the lines above name it, rerun: uv run scripts/affected.py --run-slices $sel_slices"
+    fi
     if [ -n "$sel_packages" ]; then
         read -ra pkgs <<<"$sel_packages"
         step "cargo fmt --check of the touched crates"
@@ -419,7 +424,7 @@ if [ "$mode" = commit ]; then
             fi
         done
         cargo nextest run --workspace --profile commit --no-fail-fast \
-            -E "($sel_filter) & not ($slow_filter)"
+            -E "($sel_filter) & not ($slow_filter)${sel_slice_filter:+ & not ($sel_slice_filter)}"
     fi
     if [ -n "${sel_data_filter:-}" ]; then
         step "tests that read the touched data files: $sel_data_filter"
@@ -652,7 +657,7 @@ uv run scripts/conformance-coverage.py --check ||
 
 step "conformance gaps: SUBSET.md generated, no gap past 48 h (scripts/spec-gate.py subset, gap-age)"
 uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"
-uv run --quiet python scripts/spec-gate.py gap-age --staged || fail "a conformance gap is past 48 h or re-dated; make the case pass"
+uv run --quiet python scripts/spec-gate.py gap-age --staged || fail "a conformance gap is past 48 h or re-dated; make the case pass, then rerun: uv run scripts/spec-gate.py gap-age --staged"
 
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"

@@ -1233,7 +1233,9 @@ def hardcoded_codes(root: Path) -> list[str]:
 def xfail_markers(root: Path) -> list[str]:
     """`xfail`/known-fail/expected-fail markers, `// gap:` lines on failing conformance
     cases (decision 515), and lines of known-fail lists (web a11y)."""
-    return _grep_all(root, r"xfail|known[-_]fail|expected[-_]fail", flags=("-i",)) + \
+    words = _grep_all(root, r"xfail|known[-_]fail|expected[-_]fail", ".", ":!decisions.md",
+                      ":!scripts/debt-ratchet.json", flags=("-i",))
+    return words + \
         _grep_all(root, r"^// gap:", "spec/conformance") + _registered_entries(root, "xfail_markers")
 
 

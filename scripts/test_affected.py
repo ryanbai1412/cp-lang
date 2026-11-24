@@ -99,6 +99,34 @@ class AffectedTest(unittest.TestCase):
         self.assertIn("all=0\n", out)
 
 
+    def test_std_and_vm_paths_select_their_owners_slices(self):
+        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings"])
+        self.assertEqual(self.sel("crates/cpl-interp/src/vm/run.rs")["slices"], ["vm-trace"])
+        self.assertEqual(self.sel("crates/cpl-fmt/src/lib.rs")["slices"], [])
+
+    def test_a_slice_filter_names_its_binaries_and_tests(self):
+        self.assertEqual(affected.slice_filter(["corpus-warnings"]),
+                         "(binary_id(cpl-lint) & test(=corpus_tests::corpus_warnings_only_go_down))")
+        self.assertEqual(affected.slice_filter(["vm-trace"]),
+                         "binary_id(cpl-cli::trace_goldens) | binary_id(cpl-cli::vm_fallbacks)")
+
+    def test_a_slice_takes_its_slowest_test(self):
+        out = ("        PASS [  14.789s] (2/3) cpl-cli::trace_goldens every_program\n"
+               "        PASS [   3.000s] (1/3) cpl-cli::vm_fallbacks shrink\n"
+               "        FAIL [  21.500s] (3/3) cpl-lint corpus_tests::corpus_warnings_only_go_down\n"
+               "        PASS [  30.000s] (3/3) cpl-lint other::test\n")
+        self.assertEqual(affected.slice_times(out, ["vm-trace", "corpus-warnings"]),
+                         {"vm-trace": 14.789, "corpus-warnings": 21.5})
+
+    def test_every_slice_has_an_owner_paths_and_tests(self):
+        names = [s[0] for s in affected.SLICES]
+        self.assertEqual(len(names), len(set(names)))
+        for name, owner, globs, tests in affected.SLICES:
+            self.assertTrue(owner and globs and tests, name)
+
+    def test_an_unknown_slice_is_refused(self):
+        self.assertEqual(affected.run_slices(["nope"]), 2)
+
     def test_base_selects_the_paths_changed_since_it(self):
         out = subprocess.run([sys.executable, os.path.join(affected.ROOT, "scripts", "affected.py"),
                               "--json", "--base", "HEAD"],

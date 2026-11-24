@@ -8653,7 +8653,7 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Call.** `std_checks::std_own_tests_pass` runs `cpl test` on every `std/*.cp` with an `@test` fn. A test that fails because of a gap outside std is listed in `KNOWN_FAILING_STD_TESTS` with its reason, which adds one skip-list entry (`std/mod.cp::a_modulus_read_at_run_time`, waiting on compiler's fn-local `let q` in `Mod(q)`). The test fails once a listed case passes, so the entry is dropped with the fix.
 - **Why.** Two std/strings.cp tests went stale after the R04b key migration and nothing went red; one named exception lets the gate land now instead of after the compiler fix.
 - **Reverse.** Delete `std_own_tests_pass`.
-- **Amended (2026-11-24).** The known-failures list is gone: it was empty, and a failing std `@test` now fails the gate with no exception (addendum 5, `xfail_markers`).
+- **Amended (2026-11-24).** The known-failures list is gone: it was empty, and a failing std `@test` now fails the gate with no exception (addendum 5, `xfail_markers`). The addendum-5 counters' first baselines were measured on a stale checkout; they are what 92620c64d itself measures: xfail_markers 51 (the decision-515 `// gap:` lines; decisions.md and the baseline file, which must name counters, are not markers), allow_attrs 42, stress_engines 5.
 
 ## 464. `?T` is not a `Seq` (spec, 2026-11-23)
 

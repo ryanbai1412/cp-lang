@@ -358,3 +358,15 @@ so both rebuilt the workspace from scratch.
 `TARGET_KEY: target-ci-v1`, fails
 `test_every_workflow_sets_rust_up_through_one_action`.
 *Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
+
+### ci/R39
+
+A touched path runs its owners' slice first: `SLICES` in
+`scripts/affected.py` names the tests (e.g. `std/` runs cpl-lint's
+`corpus_warnings_only_go_down` and the trace goldens), and a slice whose
+slowest test takes over 20 s fails the commit.
+*Why:* the commit tier is cut at 25 s, so a `std/` commit spent it on clippy
+and never reached the lint test it can break; main went red on it twice in
+30 minutes. *Example:* a std edit that raises L0550 fails
+`touched-path slices: vm-trace corpus-warnings`.
+*Enforced by:* `scripts/affected.py`, `scripts/test_affected.py`.

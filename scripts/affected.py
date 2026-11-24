@@ -4,6 +4,7 @@ Rule: handbook/guidelines/ci-checklist.md#cir3.
 
     affected.py [--json] [path ...]     default: the staged paths
     affected.py [--json] --base REV     the paths changed between REV and HEAD
+    affected.py --run-slices NAME ...   run touched-path slices, refusing one over 20 s
 
 A path under a crate selects that crate and, through nextest's `rdeps()`,
 every crate that depends on it. Prose selects nothing. Any path this file
@@ -16,6 +17,7 @@ make the commit tier slower, never let it miss a test. The land tier
 import fnmatch
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -35,6 +37,16 @@ DATA_TESTS = [(f"corpus/problems/*/{leaf}", "package(cpl-lint) & test(/corpus_wa
 # Editor files a crate embeds or its tests read; the rest are CI's editor jobs'.
 # Programs no test reads but that must still pass `cpl check`.
 CHECK_ONLY = ["research/acceptance/solutions/*.cp", "corpus/problems/*/perf.cp"]
+# Owner-named tests a touched path runs ahead of the rest of the commit tier,
+# each under SLICE_LIMIT_S warm (ci/R39): name, owner, paths, nextest
+# `binary_id[ test]` entries.
+SLICE_LIMIT_S = 20
+SLICES = [
+    ("vm-trace", "consumers (trace)", ["std/*", "crates/cpl-interp/*", "crates/cpl-ir/*"],
+     ["cpl-cli::trace_goldens", "cpl-cli::vm_fallbacks"]),
+    ("corpus-warnings", "consumers", ["std/*"],
+     ["cpl-lint corpus_tests::corpus_warnings_only_go_down"]),
+]
 EDITOR_CRATES = {"editors/neovim/": "cpl-cli", "editors/vscode/": "cpl-cli",
                  "editors/jetbrains/": "cpl-cli", "editors/tree-sitter-cp/": "cpl-cli",
                  "editors/lsp-matrix.json": "cpl-lsp"}
@@ -87,10 +99,53 @@ def ci_only(path):
     return path.endswith(".sh")
 
 
+def slice_filter(names):
+    """The nextest filter running the named slices' tests."""
+    parts = []
+    for name, _, _, tests in SLICES:
+        if name in names:
+            for t in tests:
+                binary, _, test = t.partition(" ")
+                parts.append(f"(binary_id({binary}) & test(={test}))" if test else f"binary_id({binary})")
+    return " | ".join(parts)
+
+
+def slice_times(output, names):
+    """Each named slice's time in a nextest run's output: its slowest test (they run in parallel)."""
+    times = {n: 0.0 for n in names}
+    for m in re.finditer(r"^\s*(?:PASS|FAIL|TIMEOUT|SIGSEGV|SIGABRT) \[\s*([\d.]+)s\] (?:\(\d+/\d+\) )?(\S+) (\S+)",
+                         output, re.M):
+        secs, binary, test = float(m[1]), m[2], m[3]
+        for name, _, _, tests in SLICES:
+            if name in times and any(t in (binary, f"{binary} {test}") for t in tests):
+                times[name] = max(times[name], secs)
+    return times
+
+
+def run_slices(names):
+    unknown = [n for n in names if n not in {s[0] for s in SLICES}]
+    if unknown:
+        print(f"affected: unknown slice {' '.join(unknown)}; one of {', '.join(s[0] for s in SLICES)}")
+        return 2
+    expr = slice_filter(names)
+    built = subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-run", "-E", expr], cwd=ROOT)
+    if built.returncode:
+        return built.returncode
+    run = subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "--status-level", "pass",
+                          "-E", expr], cwd=ROOT, capture_output=True, text=True)
+    sys.stdout.write(run.stdout + run.stderr)
+    owners = {s[0]: s[1] for s in SLICES}
+    slow = {n: t for n, t in slice_times(run.stdout + run.stderr, names).items() if t > SLICE_LIMIT_S}
+    for name, secs in slow.items():
+        print(f"affected: slice {name} took {secs:.1f}s, over the {SLICE_LIMIT_S} s limit; "
+              f"split it or ask its owner ({owners[name]}) for a faster test")
+    return run.returncode or (1 if slow else 0)
+
+
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
            "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
-           "check_files": [], "audit": False, "idioms_catalog": False}
+           "check_files": [], "audit": False, "idioms_catalog": False, "slices": []}
     packages, tests, data = set(), set(), []
     for path in paths:
         if path.startswith("corpus/problems/"):
@@ -130,6 +185,7 @@ def select(paths, dirs):
         else:
             sel.update(all=True, reason=path)
             break
+    sel["slices"] = [name for name, _, globs, _ in SLICES if any(matches(p, globs) for p in paths)]
     sel["packages"] = sorted(packages)
     sel["script_tests"] = sorted(tests)
     sel["data_filter"] = " | ".join(f"({e})" for e in data)
@@ -149,6 +205,8 @@ def changed_since(base):
 
 
 def main(argv):
+    if argv[:1] == ["--run-slices"]:
+        return run_slices(argv[1:])
     as_json = "--json" in argv
     argv = [a for a in argv if a != "--json"]
     if argv[:1] == ["--base"]:
@@ -172,6 +230,8 @@ def main(argv):
     print("check_files=" + " ".join(sel["check_files"]))
     print(f"audit={int(sel['audit'])}")
     print(f"idioms_catalog={int(sel['idioms_catalog'])}")
+    print("slices=" + " ".join(sel["slices"]))
+    print("slice_filter=" + slice_filter(sel["slices"]))
     return 0
 
 

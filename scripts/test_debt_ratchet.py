@@ -248,8 +248,8 @@ class DebtRatchetTest(unittest.TestCase):
                         'self.unsupported(span, "x");\nlet c = "E0501";\n')
             self._write(root, "crates/cpl-lsp/src/hover.rs",
                         'if t.starts_with("fn ") {}\nl.find(|l| l.starts_with("cost: O("));\nl.starts_with("use ");\n')
-            self._write(root, "crates/cpl-lint/src/lib.rs",
-                        "const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[\n    (&A, &B),\n    (&C, &D),\n];\n")
+            self._write(root, "crates/cpl-lint/src/typed.rs",
+                        "const TYPED: &[(&Lint, &Lint)] = &[\n    (&A, &B),\n    (&C, &D),\n];\n")
             self._write(root, ".github/workflows/ci.yml", "\n".join([
                 "jobs:", "  a:", "    continue-on-error: true", "    steps:",
                 "      - run: make || true", "        continue-on-error: true",
@@ -270,7 +270,7 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unwrap_input(root), ["crates/a/src/lib.rs:1"] * 3)
             self.assertEqual(len(dr.unsupported_sites(root)), 2)
             self.assertEqual(dr.lsp_string_types(root), ["crates/cpl-lsp/src/hover.rs:1", "crates/cpl-lsp/src/hover.rs:2"])
-            self.assertEqual(dr.lint_post_filters(root), ["crates/cpl-lint/src/lib.rs SUPERSEDED_BY"] * 2)
+            self.assertEqual(dr.lint_post_filters(root), ["crates/cpl-lint/src/typed.rs TYPED"] * 2)
             self.assertEqual(dr.or_true(root), [".github/workflows/ci.yml:5", ".github/workflows/ci.yml:9"])
             self.assertEqual(dr.continue_on_error(root), [".github/workflows/ci.yml:3", ".github/workflows/ci.yml:6"])
             self.assertEqual(dr.dream_unverified(root), ["corpus/problems/p/dream.cp"])
@@ -344,6 +344,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-stress/src/cli.rs", "Verdict::Ok\n")
             self._write(root, "crates/cpl-stress/src/judge.rs", "Verdict::Ok\n")
             self._write(root, "crates/b/src/lib.rs", "cpl_diag::fix::apply_fixes(x);\n// XFAIL\n")
+            self._write(root, "decisions.md", "the known-fail list is gone (xfail_markers)\n")
+            self._write(root, "scripts/debt-ratchet.json", '{"xfail_markers": 1}\n')
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.allow_attrs(root), ["crates/a/src/lib.rs:1"])
             self.assertEqual(dr.unsafe_blocks(root), ["crates/a/src/lib.rs:2"])

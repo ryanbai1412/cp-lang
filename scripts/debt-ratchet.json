@@ -175,17 +175,17 @@
   "corpus_known": 326,
   "site_rederived": 0,
   "browser_lsp_gaps": 17,
-  "allow_attrs": 41,
+  "allow_attrs": 42,
   "unsafe_blocks": 26,
   "cpl_env_reads": 45,
   "test_sleeps": 23,
   "ci_retries": 10,
   "hardcoded_codes": 1,
-  "xfail_markers": 14,
+  "xfail_markers": 51,
   "todo_fixme": 3,
   "web_skip_only": 1,
   "ts_ignore": 0,
   "habit_matchers": 123,
   "unchecked_fix_paths": 4,
-  "stress_engines": 4
+  "stress_engines": 5
 }
