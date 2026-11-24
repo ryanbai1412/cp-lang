@@ -23,14 +23,19 @@ impl<'a> Lowerer<'a> {
     ) {
         self.intern_grid_products(pty, concrete);
         self.unify_ast_ty(pty, concrete, tpl_mod, gen_names, env);
-        if !matches!(arg.value.kind, ast::ExprKind::Name(_)) {
-            return;
-        }
-        let lowered = self.probe_expr(&arg.value, None);
-        if let Some(info) = self.expr_range(&lowered) {
+        if let Some(info) = self.named_arg_range(arg) {
             let domains = domain_generics(decl, gen_names);
             bind_range_generics(pty, &info, gen_names, &domains, env);
         }
+    }
+
+    /// The range a named argument's value carries, as `expr_range` records it.
+    fn named_arg_range(&mut self, arg: &ast::Arg) -> Option<RangeInfo> {
+        if !matches!(arg.value.kind, ast::ExprKind::Name(_)) {
+            return None;
+        }
+        let lowered = self.probe_expr(&arg.value, None);
+        self.expr_range(&lowered)
     }
 
     /// Bind the element generic of a `Seq` bound (`T` of `S: Seq<T>`, or the generics of its
@@ -44,11 +49,7 @@ impl<'a> Lowerer<'a> {
         gen_names: &[String],
         env: &mut GenEnv,
     ) {
-        if !matches!(arg.value.kind, ast::ExprKind::Name(_)) {
-            return;
-        }
-        let lowered = self.probe_expr(&arg.value, None);
-        let Some(RangeInfo::Elem(inner)) = self.expr_range(&lowered) else {
+        let Some(RangeInfo::Elem(inner)) = self.named_arg_range(arg) else {
             return;
         };
         let domains = domain_generics(decl, gen_names);
