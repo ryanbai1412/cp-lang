@@ -221,6 +221,17 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-json` | one dependency-free JSON value and printer, shared by every tool that speaks JSON |
 | `cpl-wasm` | browser bindings over `cpl-check`, `cpl-interp`, `cpl-codegen`, `cpl-lint` and `cpl-lsp`; no logic of its own |
 
+### Crate rules
+
+`scripts/debt-ratchet.py` reads this table (`layer_violations`,
+`backend_std_names`, `consumer_rederived`); it keeps no copy.
+
+| Rule | Crates |
+|---|---|
+| back end (reads the IR, not the checker) | `cpl-ir`, `cpl-interp`, `cpl-codegen` |
+| consumer (asks the checker, never re-derives its facts) | `cpl-lint`, `cpl-lsp`, `cpl-cli`, `cpl-stress`, `cpl-codegen`, `cpl-wasm` |
+| forbidden edge | `cpl-codegen -> cpl-check`, `cpl-interp -> cpl-check`, `cpl-wasm -> cpl-cli`, `cpl-lint -> cpl-prover` |
+
 ## First-class concerns
 
 Each concern says what every phase must preserve, its budget, and the test

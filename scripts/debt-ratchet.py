@@ -67,15 +67,26 @@ ARCH_PATH_RE = re.compile(
     r"`((?:crates|scripts|spec|std|stdlib|web|site|editors|corpus|plan|bench|tools|"
     r"research|examples|proto|design)/[\w./-]+)`"
 )
-# Back ends read the IR, not the checker; the web build does not need the CLI;
-# lints read facts through the checker, not the prover.
-FORBIDDEN_EDGES = {
-    ("cpl-codegen", "cpl-check"),
-    ("cpl-interp", "cpl-check"),
-    ("cpl-wasm", "cpl-cli"),
-    ("cpl-lint", "cpl-prover"),
-}
-BACK_ENDS = ("cpl-ir", "cpl-interp", "cpl-codegen")
+ARCH_DOC = "handbook/design/architecture.md"
+
+
+def crate_rules(root: Path) -> dict[str, list[str]]:
+    """`### Crate rules` in architecture.md: rule (`back end`, `consumer`,
+    `forbidden edge`) -> its backticked crates or `a -> b` edges."""
+    doc = root / ARCH_DOC
+    if not doc.is_file():
+        return {}
+    m = re.search(r"^### Crate rules\n(.*?)(?=^#|\Z)", doc.read_text(encoding="utf-8"), re.S | re.M)
+    if not m:
+        raise SystemExit(f"debt-ratchet: {ARCH_DOC} has no `### Crate rules` table")
+    return {rule: re.findall(r"`([^`]+)`", cells)
+            for rule, cells in re.findall(r"^\|\s*([a-z][a-z ]*?)\s*(?:\([^)]*\))?\s*\|(.*)\|\s*$", m[1], re.M)}
+
+
+def forbidden_edges(root: Path) -> set[tuple[str, str]]:
+    return {tuple(e.split(" -> ", 1)) for e in crate_rules(root).get("forbidden edge", []) if " -> " in e}
+
+
 DUP_MIN_LINES = 6
 # Near copies: Jaccard similarity of 4-token shingles (numbers folded to `0`),
 # between fns in different crates; exact copies count under dup_fn_bodies.
@@ -83,7 +94,6 @@ NEAR_DUP_MIN = 0.75
 NEAR_DUP_COMMON = 30  # a shingle in more fns than this is boilerplate, not evidence
 TOKEN_RE = re.compile(r'"(?:\\.|[^"\\])*"|\d[\w.]*|\w+|\S')
 # Tools that read facts through cpl-check rather than recompute them.
-CONSUMERS = ("cpl-lint", "cpl-lsp", "cpl-cli", "cpl-stress", "cpl-codegen", "cpl-wasm")
 CORE_TYPES = {"Int", "Str", "Bool", "F64", "Char", "List", "Map", "Set", "Mod"}
 # Comparing text against a type name (`== "List"`, `"Int" =>`, `starts_with("Map")`).
 TYPE_CMP_RE = re.compile(
@@ -162,8 +172,10 @@ WRITTEN_TWICE_SKIP = ("plan/", "research/", "corpus/", "spec/conformance/", "dec
 # Copies a gate already compares with the source: the crate map (`crate_edges`), the std
 # lint baseline (scripts/std-lint-ratchet.py) and search's expected answers (the test fails
 # on an answer page the site no longer has).
+# The ratchet names crates only in the paths its gates read (stale_arch_paths
+# fails on a missing one) and in those gates' descriptions; crate rules are architecture.md's.
 WRITTEN_TWICE_CHECKED = {"handbook/design/architecture.md", "scripts/std-lint-baseline.txt",
-                         "web/tests/search-tasks.mjs"}
+                         "web/tests/search-tasks.mjs", "scripts/debt-ratchet.py"}
 
 
 def written_twice(root: Path) -> list[str]:
@@ -294,7 +306,7 @@ def idioms_evidenced_unlinted(root: Path) -> list[str]:
 
 
 def backend_std_names(root: Path) -> list[str]:
-    subdirs = [f"crates/{c}/src" for c in BACK_ENDS]
+    subdirs = [f"crates/{c}/src" for c in crate_rules(root).get("back end", [])]
     return [f"{_rel(root, p)}:{i} {m.group(1)}" for p in _rs_files(root, *subdirs, tests=False)
             for i, line in enumerate(_lines(p), 1) for m in STD_TYPE_RE.finditer(line)]
 
@@ -378,7 +390,7 @@ def consumer_rederived(root: Path) -> list[str]:
     for p in sorted((root / "std").glob("*.cp")):
         types.update(re.findall(r"^\s*pub\s+(?:struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
     out = []
-    for crate in CONSUMERS:
+    for crate in crate_rules(root).get("consumer", []):
         for p in _rs_files(root, f"crates/{crate}/src", tests=False):
             rel = _rel(root, p)
             if rel.endswith("_tests.rs"):
@@ -497,7 +509,7 @@ def dev_crate_edges(root: Path) -> list[str]:
 
 
 def layer_violations(root: Path) -> list[str]:
-    return [f"{a} -> {b}" for a, b in sorted(_crate_edges(root) & FORBIDDEN_EDGES)]
+    return [f"{a} -> {b}" for a, b in sorted(_crate_edges(root) & forbidden_edges(root))]
 
 
 def tree_walker(root: Path) -> list[str]:
@@ -781,7 +793,8 @@ def codegen_effect_guesses(root: Path) -> list[str]:
 
 
 def stale_arch_paths(root: Path) -> list[str]:
-    """Backticked repo paths in ARCHITECTURE docs that do not exist.
+    """Backticked repo paths in ARCHITECTURE docs, and the ratchet's own `crates/` paths,
+    that do not exist (a gate reading a moved file would count 0).
 
     Skips gitignored build output and the "Known debt" section, which may
     name a missing file on purpose.
@@ -800,6 +813,12 @@ def stale_arch_paths(root: Path) -> list[str]:
                 path = m.group(1).rstrip("/.")
                 if "*" not in path and "<" not in path and not (root / path).exists():
                     found.append((f"{_rel(root, d)}:{i}", path))
+    me = root / "scripts/debt-ratchet.py"
+    for i, line in enumerate(_lines(me) if me.is_file() else [], 1):
+        for m in re.finditer(r'"(crates/[\w./-]+)"', line):
+            path = m.group(1).rstrip("/.")
+            if "*" not in path and not (root / path).exists():
+                found.append((f"scripts/debt-ratchet.py:{i}", path))
     ignored = _git_ignored(root, sorted({p for _, p in found}))
     return [f"{where} {p}" for where, p in found if p not in ignored]
 

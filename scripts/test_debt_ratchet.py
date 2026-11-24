@@ -15,6 +15,17 @@ dr = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(dr)
 
 
+CRATE_RULES = """
+### Crate rules
+
+| Rule | Crates |
+|---|---|
+| back end (reads the IR) | `cpl-ir`, `cpl-interp`, `cpl-codegen` |
+| consumer | `cpl-lint`, `cpl-lsp`, `cpl-cli`, `cpl-stress`, `cpl-codegen`, `cpl-wasm` |
+| forbidden edge | `cpl-codegen -> cpl-check`, `cpl-lint -> cpl-prover` |
+"""
+
+
 class DebtRatchetTest(unittest.TestCase):
     def _make_repo(self, root: Path) -> None:
         (root / "crates/demo/src").mkdir(parents=True)
@@ -133,6 +144,25 @@ class DebtRatchetTest(unittest.TestCase):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text(text)
 
+    def test_crate_rules_come_from_architecture_md(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.assertEqual(dr.crate_rules(root), {})
+            self._write(root, "handbook/design/architecture.md", CRATE_RULES)
+            self.assertEqual(dr.crate_rules(root)["back end"], ["cpl-ir", "cpl-interp", "cpl-codegen"])
+            self.assertIn(("cpl-lint", "cpl-prover"), dr.forbidden_edges(root))
+            self._write(root, "handbook/design/architecture.md", "# no rules\n")
+            with self.assertRaises(SystemExit):
+                dr.crate_rules(root)
+        real = dr.crate_rules(dr.ROOT)
+        self.assertTrue(real["back end"] and real["consumer"] and real["forbidden edge"])
+
+    def test_stale_arch_paths_reads_the_ratchets_own_crate_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "scripts/debt-ratchet.py", 'X = ("crates/a/src/gone.rs", "crates/**/*.rs")\n')
+            self.assertEqual(dr.stale_arch_paths(root), ["scripts/debt-ratchet.py:1 crates/a/src/gone.rs"])
+
     def test_architecture_counters(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -148,7 +178,7 @@ class DebtRatchetTest(unittest.TestCase):
                         '[package]\nname = "cpl-lint"\n[dependencies]\ncpl-check = "0"\n'
                         '[target.\'cfg(not(target_arch = "wasm32"))\'.dependencies]\ncpl-prover = "0"\n'
                         '[dev-dependencies]\ncpl-cli = "0"\n')
-            self._write(root, "handbook/design/architecture.md", "`crates/cpl-lint` and `crates/gone/x.rs`\n")
+            self._write(root, "handbook/design/architecture.md", "`crates/cpl-lint` and `crates/gone/x.rs`\n" + CRATE_RULES)
             self._write(root, "std/zz.cp", "pub fn rotate(self: Int) -> Int = self\n")
             self._write(root, "crates/cpl-lint/src/rules/a.rs", 'if m == "rotate" || m == "tmp" {}\n')
             self._write(root, "crates/cpl-lint/src/rules/tests.rs", 'let _ = "rotate";\n')
@@ -822,6 +852,7 @@ class DebtRatchetTest(unittest.TestCase):
     def test_consumer_rederived(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
+            self._write(root, "handbook/design/architecture.md", CRATE_RULES)
             self._write(root, "std/heap.cp", "pub struct Heap<T> {}\n")
             self._write(root, "crates/cpl-lsp/src/a.rs",
                         'let db = Database::new();\n// Database::new()\nif t == "Heap" || t == "Foo" {}\n'
