@@ -216,3 +216,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: compiler associated types chosen by impl (decision 456)
 - core-08/impl-missing-an-associated-type.cp: compiler associated types chosen by impl (decision 456)
 - core-08/generic-body-cannot-assume-an-associated-type.cp: compiler associated types chosen by impl (decision 456)
+- core-05/for-over-a-bag-range-keeps-the-bag-lent.cp: compiler: a `for` header view of a `lends` method keeps the receiver lent
+- core-05/closure-capturing-a-view-keeps-its-source-lent.cp: compiler: a closure capturing a view keeps the source lent
+- std-bag/closure-captures-a-range-view.cp: compiler: a captured bag range view is typed `()`
+- core-07/fold-of-and-or-over-empty-uses-identity.cp: compiler: folds of bare `and`/`or` miss their identity
+- core-10/hash-containers-are-not-show.cp: compiler: hash containers not Show (decision 460)
+- core-02/enum-level-tags-is-removed.cp: compiler: enum-level `@tags` removed (decision 459)

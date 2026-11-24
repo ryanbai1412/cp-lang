@@ -304,6 +304,13 @@ print(t)
 could never be compared). Why: order is what "these two windows are
 equal" means; keys are what "where is it" means.
 
+An empty pattern matches at every key of the text and never at its end,
+since on a domain the end is a cut, not a key (`"ab".find_all("")` is
+`0 1`). `KmpAutomaton.find_all` is the one search that keeps `Int`
+positions (decision 461): it walks any `Seq`, streamed text included,
+and streamed text has no keys to return, so a match is its 0-based start
+in walk order. Keyed text uses `s.find_all(pat)`.
+
 ### Materializing renumbers; `.first`, `.last`, `.nth`
 
 **Chose:** `List(view)` and `Str(view)` build a new value with new keys

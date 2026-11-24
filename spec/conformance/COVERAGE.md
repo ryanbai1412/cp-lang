@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3188 (1093 passing). Rules: 606.
+Cases: 3192 (1093 passing). Rules: 607.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 153 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -22,7 +22,7 @@ Cases: 3188 (1093 passing). Rules: 606.
 - R07 (07-sequences.md): 91 rules, 221 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 30 rules, 98 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 19 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 20 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -57,7 +57,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R07 | 91 | 91 (100%) | 27 | 27 (100%) | 91 (100%) |
 | R08 | 30 | 30 (100%) | 11 | 11 (100%) | 30 (100%) |
 | R09 | 28 | 28 (100%) | 16 | 16 (100%) | 28 (100%) |
-| R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
+| R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 606 | 602 (99%) | 245 | 237 (96%) | 596 (98%) |
+| all | 607 | 603 (99%) | 246 | 238 (96%) | 597 (98%) |
 
 ## Rules
 
@@ -167,7 +167,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.6.5 [1+ 1-]: Named structs satisfy traits only through `impl`, including field traits (`impl Target<V> ...
 - R02.6.6 [1+ 1-]: `@get` on a read-only method whose other parameters all have defaults lets it be called wi...
 - R02.6.7 [2+ 0-]: Storage may reorder fields to remove padding; source order is what constructors, patterns ...
-- R02.7.2 [4+ 1-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
+- R02.7.2 [5+ 2-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
 - R02.7.3 [2+ 0-]: A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir` walks it.
 - R02.7.4 [1+ 2-]: `match` is exhaustive. Patterns match only the stored shape; there are no user-defined pat...
 - R02.7.6 [3+ 0-]: A record pattern names the fields it binds, `(to: u, w: c)`, and `..` skips the rest; `(to...
@@ -357,7 +357,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.4.4 [1+ 0-]: | An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that o...
 - R04b.4.5 [1+ 0-]: | Results back in the caller's keys | `table.rekey(s.keys)` | \(O(1)\) re-key
 - R04b.5.1 [3+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`; a match st...
-- R04b.5.2 [4+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`; an empty p...
+- R04b.5.2 [4+ 0-]: | `find_all`, `shift_and` | `yields Int` | `yields K`; an empty pattern matches at each ke...
 - R04b.5.3 [7+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
 - R04b.5.4 [1+ 0-]: | `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty
 - R04b.5.5 [1+ 0-]: | `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts
@@ -626,6 +626,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.3.5 [8+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [2+ 0-]: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
 - R10.3.7 [1+ 1-]: `?T` is not `Show`, like `Bool`: `print(x)` on a `?Int` is a compile error (E0606); write ...
+- R10.3.8 [1+ 1-]: `HashMap` and `HashSet` are not `Show`, like `?T`: walking one has no defined order (lib/c...
 
 ### R11: 11-modules-prelude.md
 
@@ -812,7 +813,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0409 Fn can end without a value: 2 case(s)
 - E0501 Unsupported construct in backend: 10 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
-- E0503 Removed syntax from an older version: 12 case(s)
+- E0503 Removed syntax from an older version: 13 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0505 Library lint that cannot be used: 6 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
@@ -820,7 +821,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 37 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
-- E0606 Missing trait implementation for operator: 25 case(s)
+- E0606 Missing trait implementation for operator: 26 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
 - E0608 Use of moved value: 16 case(s)
 - E0701 Ambiguous trait method: 2 case(s)

@@ -202,7 +202,8 @@ enum Ev:
   `@tag(1) Add(l: V, r: V)`); without it the token is the variant's name. Tags are distinct
   within the enum (E0407). A token set whose tokens carry nothing is a
   literal union (`"DR" | "DL"`, R02.2.2); when a payload follows the
-  token, it is an enum with `@tag` (decision 357). (R02.7.2)
+  token, it is an enum with `@tag` (decision 357). This is the one spelling:
+  an enum-level `@tags(...)` is E0503 naming `@tag` on each variant (decision 459). (R02.7.2)
 - A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir`
   walks it. (R02.7.3)
 - `match` is exhaustive. Patterns match only the stored shape; there are

@@ -286,6 +286,20 @@ Grids print the way they read; counts are never written for you. A
 goes through `yes(b)` and the profile's answer words; an optional has no
 spelling either, so the program says what absence prints as.
 
+**Hash containers don't print either (decision 460).** Walking a
+`HashMap` or `HashSet` has no defined order, so the interpreter and the
+C++ printed the same table in different orders, and a program that
+passed locally could print differently on the judge. The program writes
+the order it wants, `print(h.keys.sorted())`, which also shows the sort's
+cost. `Map` and `Set` print in key order as before, and an `Interner`
+prints in id order, the order it handed ids out.
+
+**An enum's tokens are a `@tag` on each variant (decision 459).** An
+enum-level `@tags("U", "D")` list was a second spelling of the same idea,
+and reading honoured only the per-variant one. The tag beside each
+variant is checked for duplicates and also works for a variant with a
+payload, which a positional list can't name.
+
 **Interaction is one query call (decision 165, 382).** `wire.ask` is
 print, flush, read as one call, because the blind attempts at
 interactive problems all wrote it that way and the ports spent three

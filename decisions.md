@@ -8556,3 +8556,22 @@ Tool gaps `lint expr Cpp` and `trace expr Cpp` are intended debt: a lint has not
 
 - **Call.** The deep-copy bound is 32, not 29: core-05's `map-entry-var-copies`, `copies-in-two-fns-stay-apart` and `match-payload-outlives-reassigning-its-scrutinee` (twice) exist to show a copy is required, and each needs one. A correction, not a weakening; every other copy still has to go.
 - **Reverse.** Lower the bound when a real copy is removed, or drop a case that no longer needs its copy.
+
+## 459. An enum's tokens are spelled `@tag` on each variant (spec, 2026-11-23)
+
+- **Call.** `@tag(lit)` on a variant (R02.7.2) is the one spelling, for payload-free enums too; the enum-level `@tags("a", "b")` of 3.11/431/554 is E0503 naming it.
+- **Why.** Two spellings for one idea, and reading honoured only one. The per-variant tag sits beside the name it reads as, is what the spec and every case use, and works for variants with payloads, which a positional list can't name.
+- **Reverse.** Accept `@tags(...)` before an enum as shorthand for a `@tag` on each variant in order.
+
+## 460. Hash containers are not `Show` (spec, 2026-11-23)
+
+- **Call.** `HashMap` and `HashSet` don't implement `Show`; `print(h)` is E0606 naming `print(h.keys.sorted())`. `Interner` prints in id order (R10.3.8).
+- **Why.** Walking one has no defined order (containers §2.8), so the interpreter (key order) and the C++ (hash order) printed different output, against goal 5. Making the order a choice the contestant writes keeps the O(n log n) sort visible.
+- **Reverse.** Make their `Show` print in key order in both engines, documented as O(n log n).
+
+## 461. `KmpAutomaton.find_all` keeps `Int` positions (spec, 2026-11-23)
+
+- **Call.** `KmpAutomaton.find_all` takes any `Seq` text and yields `Int` match starts, 0-based in walk order; it leaves R04b.5.2's `yields K` row.
+- **Why.** Its point is streaming text, which has no keys to yield; requiring `Indexed<K, T>` would drop that. Keyed text uses `s.find_all(pat)`, which yields `K`.
+- **Reverse.** Take `text: Indexed<K, T>` and yield `K`, giving up streamed text.
+
