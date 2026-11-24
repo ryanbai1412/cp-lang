@@ -13,6 +13,7 @@ pub mod registry;
 mod render;
 mod source;
 pub mod usage;
+pub mod view;
 
 pub use fix::{apply_fixes, splice};
 pub use registry::{lookup, CodeInfo, REGISTRY};

@@ -17,6 +17,7 @@ mod migrate;
 mod profile;
 mod replay;
 mod report;
+mod run_view;
 mod setup;
 mod sha256;
 mod submit;
@@ -395,6 +396,8 @@ struct RunArgs<'a> {
     time_limit: Option<std::time::Duration>,
     /// `--grader FILE`: the judge's grader, linked in to run `@grader` fns.
     grader: Option<&'a str>,
+    /// `--sample NAME`: what the editor's labels call the input.
+    sample: Option<&'a str>,
 }
 
 fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
@@ -456,6 +459,7 @@ impl<'a> RunArgs<'a> {
             live: false,
             time_limit: None,
             grader: None,
+            sample: None,
         };
         let mut paths = Vec::new();
         let mut iter = rest.iter().copied().peekable();
@@ -559,6 +563,11 @@ impl<'a> RunArgs<'a> {
                 "--grader" => {
                     args.grader = Some(iter.next().ok_or(
                         "`--grader` names the judge's grader: `cpl run a.cp --grader grader.cpp`",
+                    )?);
+                }
+                "--sample" => {
+                    args.sample = Some(iter.next().ok_or(
+                        "`--sample` names the input in the editor's labels: `cpl run a.cp --sample i1`",
                     )?);
                 }
                 "--time-limit" => {
@@ -1461,7 +1470,26 @@ fn observe_file(
             }
             error
         });
-        let _ = stdout.write_all(trace::run_report(&recording, &printed, millis, error).as_bytes());
+        let diagnostic = observed
+            .trap
+            .as_ref()
+            .map(|trap| trap.to_diagnostic(path, &lines));
+        let at = diagnostic.as_ref().map(|d| lines.line_col(d.span.start));
+        let mut panel = String::from_utf8_lossy(&printed).into_owned();
+        if let Some(trap) = &observed.trap {
+            panel += &render_trap(path, &compiled.text, trap);
+        }
+        let view = run_view::view(
+            run_view::sample_name(args.sample, args.input),
+            &recording.lives,
+            panel,
+            diagnostic
+                .as_ref()
+                .zip(at)
+                .map(|(d, at)| (d, at.line, at.col)),
+        );
+        let _ = stdout
+            .write_all(trace::run_report(&recording, &printed, millis, error, &view).as_bytes());
         return code;
     }
     let document = trace::single(path, &compiled.text, &recording);

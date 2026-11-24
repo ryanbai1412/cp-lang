@@ -116,9 +116,27 @@ checker lint has no `rule`). The site's lint pages read it.
 give a file a judge for `cpl stress`, each with its `@`, in one order.
 The editor's Stress lens and the site's Stress button read the same list.
 `cpl run --format json` prints `{"stdout", "time_ms", "values": [{"line",
-"name", "value"}]}`: what the program printed, how long it ran and the
-top-level `values` it ended with; with `--trace` it prints the trace
-instead (`tools/trace/trace-schema.json`).
+"name", "value"}], "error"?, "view": {"panel", "lines"?: [{"line", "kind", "label", "hover"?}],
+"diagnostic"?: {"line", "col"?, "code"?, "message", "help"?, "source"?}}}`: what the program printed, how long it ran and the
+top-level `values` it ended with, the trap as a diagnostic when it trapped, and the `view`: each
+line's values as a `live` line labelled with the sample (`--sample NAME`, else the input file's
+name: `i1: n = 2  m = 5`), and a trap as an `error` line and the `diagnostic`; with `--trace` it
+prints the trace instead (`tools/trace/trace-schema.json`).
+
+The view. Every report an editor shows (`--format json`) carries a `view`
+object the editor draws as is, built in Rust in one place
+(`cpl_diag::view`): `{"panel", "status"?: {"line", "ok", "label", "detail"?},
+"lines"?: [{"line", "kind", "label", "hover"?}], "diagnostic"?: {"line",
+"col"?, "code"?, "message", "help"?, "source"?}}`. `panel` is the output
+panel's text as the command's text output lays it out; `status` the verdict
+badge (`2 of 3 samples passed`, its `detail` the hover); each of `lines` a
+mark at the end of a source line, `kind` one of `error`, `differs`,
+`agrees`, `input`, `live`, strongest first, with its full `label` and a
+Markdown `hover`; `diagnostic` the one problem for the editor's problem
+list, `source` naming who reported it (`cpl (i1)`). Lines and columns are
+0-based. An editor only clips a label to its width; showing several
+reports, it keeps the strongest mark on each line and draws a status only
+on a line with no mark.
 `cpl vendor --json` prints `{"vendored": [{"module", "path"}]}`, one
 row per std module it copied.
 `cpl judges --json` prints `{"judges": [{"name", "title", "chosen",

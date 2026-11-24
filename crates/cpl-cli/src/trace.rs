@@ -148,6 +148,7 @@ pub fn run_report(
     stdout: &[u8],
     millis: u128,
     error: Option<cpl_json::Value>,
+    view: &cpl_diag::view::View,
 ) -> String {
     let mut out = cpl_json::write_with(|w| {
         w.object().key("values").array();
@@ -164,6 +165,7 @@ pub fn run_report(
         if let Some(error) = &error {
             w.key("error").value(error);
         }
+        view.write(w);
         w.end();
     });
     out.push('\n');
