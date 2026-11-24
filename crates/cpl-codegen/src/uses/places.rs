@@ -305,6 +305,15 @@ pub(crate) fn each_field<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr, usize
     });
 }
 
+/// Every payload read in `block`, at any depth: the read and its base.
+pub(crate) fn each_payload<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr, &'p Expr)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Payload(base, ..) = &e.kind {
+            f(e, base);
+        }
+    });
+}
+
 /// The base of every read of a part of a value in `block`, at any depth: an
 /// index, a field, a payload, a variant test or a length.
 pub(crate) fn each_part_base<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {

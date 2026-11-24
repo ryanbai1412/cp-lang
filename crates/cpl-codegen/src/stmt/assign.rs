@@ -85,6 +85,18 @@ impl<'p> Emitter<'p> {
                 return;
             }
         }
+        for (slot, ptr, own, at) in self
+            .rebinds
+            .get(&(place as *const Place))
+            .cloned()
+            .unwrap_or_default()
+        {
+            let moved = self.move_of(&self.locals()[slot].ty, &at);
+            self.line(
+                out,
+                &format!("if ({ptr} != &{own}) {{ {own} = {moved}; {ptr} = &{own}; }}"),
+            );
+        }
         self.mark_moved_entry(place, op, value);
         let marks = self.one_walk_entry(place, op, value, out);
         self.store(place, op, value, out);
