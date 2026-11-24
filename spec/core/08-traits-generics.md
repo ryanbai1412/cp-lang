@@ -98,7 +98,9 @@ impl Ord for Frac:
   generic `SegTree(op, a)` folds `T` over a monoid and `?T` over a closure
   (`max`/`min` are monoids with `Fold = T` over a bounded `T`, and `?T`
   otherwise, chosen by one impl with `if T: Bounded:`; decision 602)
-  (decision 456). A fn type is a type an impl may be for, and an impl may
+  (decision 456). A bare operator takes the impl for a struct with a
+  `@from_op` static fn (`Monoid.of` in std) and becomes that fn's call.
+  A fn type is a type an impl may be for, and an impl may
   cover every domain (`impl<domain D> Search for D`) beside one for a
   concrete type (`impl Search for F64`). A generic fn names the choice as
   `M.Name` (R08.2.7), and its body is checked against the bound alone

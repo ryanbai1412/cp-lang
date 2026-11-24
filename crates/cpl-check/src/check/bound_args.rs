@@ -269,9 +269,19 @@ impl Checker<'_> {
         }
     }
 
-    /// The `Monoid<..>` an impl of `trait_name<want..>` is for.
+    /// The struct an impl of `trait_name<want..>` is for whose `@from_op` method takes a bare
+    /// op, `Monoid<..>` in std.
     fn monoid_impl_for(&mut self, trait_name: &str, want: &[Ty]) -> Option<Ty> {
-        for (t, def) in self.env.impls("Monoid") {
+        let mut impls = Vec::new();
+        for target in self.env.impl_targets() {
+            if let Some(Def::Struct {
+                from_op: Some(_), ..
+            }) = self.type_def(&target).as_deref()
+            {
+                impls.extend(self.env.impls(&target));
+            }
+        }
+        for (t, def) in impls {
             if t.as_deref().and_then(|t| t.split('<').next()) != Some(trait_name) {
                 continue;
             }

@@ -218,7 +218,6 @@ fn is_op_text(t: &str) -> bool {
         "+", "*", "^", "|", "&", "min", "max", "gcd", "lcm", "or", "and",
     ];
     OPS.contains(&t)
-        || t.starts_with("Monoid")
         || t.starts_with("Semigroup(")
         || t.starts_with("each(")
         || t.contains(".monoid()")
@@ -291,6 +290,19 @@ fn fresh(src: &str, base: &str, skip: usize) -> String {
 }
 
 impl Checker<'_> {
+    /// Whether `t` builds a struct whose `@from_op` fn takes an op, `Monoid(0, f)` in std.
+    fn names_from_op_struct(&mut self, t: &str) -> bool {
+        let head = t.split(|c: char| !c.is_alphanumeric() && c != '_').next();
+        let def = head.and_then(|h| self.type_def(h));
+        matches!(
+            def.as_deref(),
+            Some(Def::Struct {
+                from_op: Some(_),
+                ..
+            })
+        )
+    }
+
     /// `suffix_fold(op, a)`, `a.prefix_excl(op)`, ..: a removed spelling whose name no longer
     /// resolves. Its error says so and carries the rewrite. True when it matched.
     /// `Pt(1, 2).dot(Pt(3, 4))` where `Pt` has no `dot` but the free `dot` in scope takes a
@@ -402,7 +414,10 @@ impl Checker<'_> {
             };
             let unnamed = args.iter().filter(|a| a.name.is_none()).count();
             let first = args.iter().find(|a| a.name.is_none());
-            let op_first = first.is_some_and(|a| is_op_text(self.text(a.value.span)));
+            let op_first = first.is_some_and(|a| {
+                let t = self.text(a.value.span);
+                is_op_text(t) || self.names_from_op_struct(t)
+            });
             let Some(row) = REMOVED.iter().find(|r| {
                 r.name == name
                     && r.method == receiver.is_some()

@@ -73,6 +73,9 @@ pub enum Def {
         value_domains: Vec<String>,
         projections: Vec<Projection>,
         cached_fields: Vec<String>,
+        /// The static method marked `@from_op`: a bare operator passed where this struct is
+        /// wanted becomes its call, `Monoid<T>.of(+)` (R08.1.9).
+        from_op: Option<String>,
         /// Each type parameter's trait bounds, `A: Target<V>`: the parameter's index,
         /// the trait, and each trait argument as the index of the parameter it names.
         generic_bounds: Vec<(usize, String, Vec<Option<usize>>)>,

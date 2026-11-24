@@ -30,6 +30,7 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
     /// example: `Monoid<Int>.of(+).id == 0`
     /// example: `Monoid<Int>.of(*).op(3, 4) == 12`
     /// example: `Monoid<?Int>.of(min).id == None`
+    @from_op
     pub fn of<M>(m: M) -> Monoid<T>:
         if same(m, +): return Monoid(T.zero, (a, b) => a + b, x => x)
         if same(m, *): return Monoid(T.one, (a, b) => a * b, x => x)

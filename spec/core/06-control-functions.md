@@ -168,6 +168,9 @@ library or by this spec:
   `let _ = f()` is the same drop and gets the same lint; to drop one on purpose, write
   `with lint(discarded_result: allow)`. Dropping a `?T` is an error (see
   R02.4.7). (R06.4.8)
+- `@from_op` on a struct's static fn (std's `Monoid.of`): a bare operator
+  (`+`, `max`) passed where that struct is wanted, or for a bound the struct
+  has an impl of, becomes a call of the fn (R08.1.9).
 - `@lint(name, from: "<code>", to: "<code>")` on a `pub fn`: a lint the
   library declares, so its users are told to call the fn where they write
   the code it replaces. `from` and `to` are plain strings: `to` is one

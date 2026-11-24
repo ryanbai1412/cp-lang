@@ -1037,6 +1037,14 @@ impl<'a> Checker<'a> {
                             .filter(|f| f.cached)
                             .map(|f| f.name.text.clone())
                             .collect(),
+                        from_op: s.methods.iter().find_map(|m| match &m.kind {
+                            ast::StmtKind::Fn(f)
+                                if m.decorators.iter().any(|d| d.name.text == "from_op") =>
+                            {
+                                Some(f.name.text.clone())
+                            }
+                            _ => None,
+                        }),
                     },
                 )]
             }

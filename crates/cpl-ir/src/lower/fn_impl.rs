@@ -94,19 +94,27 @@ impl<'a> Lowerer<'a> {
         tpl: (ModId, u32),
         inferred: &GenEnv,
     ) -> Option<Ty> {
-        let is_monoid = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::Named { name, .. } if name.text == "Monoid");
+        let lifts = self.op_lift_structs();
+        let is_monoid = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::Named { name, .. } if lifts.contains(&name.text));
         let ty = self.bound_impl_shape(bounds, param, tpl, inferred, is_monoid)?;
         self.monoid_struct(&ty).map(|_| ty)
     }
 
-    /// The `Monoid<T>` instance `ty` is, with its generic `of`.
+    /// The `@from_op` method of the generic struct `ty` is an instance of, which a bare op
+    /// passed where a `ty` is wanted goes through: `Monoid<T>.of`.
     fn monoid_struct(&self, ty: &Ty) -> Option<GenFnId> {
         let Ty::Struct(sid) = ty else { return None };
         let (gid, _) = self.structs[*sid].origin_gen.as_ref()?;
-        if self.gen_structs[*gid].decl.name.text != "Monoid" {
-            return None;
-        }
-        self.structs[*sid].gen_methods.get("of").copied()
+        let of = from_op_method(self.gen_structs[*gid].decl)?;
+        self.structs[*sid].gen_methods.get(of).copied()
+    }
+
+    /// The generic structs with a `@from_op` method.
+    fn op_lift_structs(&self) -> Vec<String> {
+        (self.gen_structs.iter())
+            .filter(|g| from_op_method(g.decl).is_some())
+            .map(|g| g.decl.name.text.clone())
+            .collect()
     }
 
     /// The operator `e` names when written bare (`+`, `max`), which
@@ -322,6 +330,7 @@ impl<'a> Lowerer<'a> {
         });
         let wants: Vec<(String, GenArg)> =
             wants.filter_map(|(a, w)| Some((a, w?.clone()))).collect();
+        let lifts = self.op_lift_structs();
         let bound_traits = decl.bounds.iter().filter(|b| b.name.text == param);
         for tr in bound_traits.flat_map(|b| &b.traits) {
             let ast::TypeKind::Named {
@@ -333,7 +342,7 @@ impl<'a> Lowerer<'a> {
             };
             for imp in &self.impls {
                 let is_monoid = matches!(&imp.target.kind,
-                    ast::TypeKind::Named { name, .. } if name.text == "Monoid");
+                    ast::TypeKind::Named { name, .. } if lifts.contains(&name.text));
                 if !is_monoid || imp.trait_name.as_deref() != Some(tr.text.as_str()) {
                     continue;
                 }
@@ -390,10 +399,11 @@ impl<'a> Lowerer<'a> {
     /// Whether `param`'s bound has an impl for `Monoid<..>`, which a bare op
     /// passed for it takes.
     pub(super) fn bound_has_monoid_impl(&self, bounds: &[ast::Bound], param: &str) -> bool {
+        let lifts = self.op_lift_structs();
         self.bound_has_impl(
             bounds,
             param,
-            |t| matches!(&t.kind, ast::TypeKind::Named { name, .. } if name.text == "Monoid"),
+            |t| matches!(&t.kind, ast::TypeKind::Named { name, .. } if lifts.contains(&name.text)),
         )
     }
 
@@ -475,4 +485,14 @@ fn bare_name(t: &ast::Type) -> Option<&str> {
         ast::TypeKind::Named { name, args } if args.is_empty() => Some(&name.text),
         _ => None,
     }
+}
+
+/// The name of `decl`'s method marked `@from_op`.
+fn from_op_method(decl: &ast::StructDecl) -> Option<&str> {
+    decl.methods.iter().find_map(|m| match &m.kind {
+        ast::StmtKind::Fn(f) if m.decorators.iter().any(|d| d.name.text == "from_op") => {
+            Some(f.name.text.as_str())
+        }
+        _ => None,
+    })
 }

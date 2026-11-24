@@ -157,6 +157,18 @@ impl Env for FileCtx<'_> {
             .collect()
     }
 
+    fn impl_targets(&mut self) -> Vec<String> {
+        self.record(DEP_NAMES, self.scope.names_fp);
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        let scope = self.scope.clone();
+        let by_target = self
+            .impl_names
+            .get_or_insert_with(|| impls_by_target(&scope));
+        let mut targets: Vec<String> = by_target.keys().cloned().collect();
+        targets.sort();
+        targets
+    }
+
     fn has_imports(&mut self) -> bool {
         self.record(DEP_IMPORTS, self.scope.imports_fp);
         self.scope.has_imports

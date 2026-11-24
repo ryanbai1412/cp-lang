@@ -271,6 +271,10 @@ const DECORATORS: &[(&str, &str)] = &[
         "the result may be dropped without the unused-result lint",
     ),
     (
+        "from_op",
+        "on a struct's static fn: a bare op passed where the struct is wanted goes through it",
+    ),
+    (
         "lint",
         "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint",
     ),

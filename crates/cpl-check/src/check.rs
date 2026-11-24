@@ -108,6 +108,10 @@ pub(crate) trait Env {
     /// Every impl for the type `target`, with the trait it implements
     /// (`None` for `impl Target:`).
     fn impls(&mut self, target: &str) -> Vec<(Option<String>, Arc<Def>)>;
+    /// Every type some impl is for.
+    fn impl_targets(&mut self) -> Vec<String> {
+        Vec::new()
+    }
     /// True if the file imports modules. They are not loaded yet, so names
     /// that are not found may come from them.
     fn has_imports(&mut self) -> bool;
