@@ -31,7 +31,7 @@ pub enum Def {
         trait_bounds: Vec<(String, String)>,
         /// `S: Seq<T>`: each bound's trait arguments, over the fn's
         /// generics, so a call binds `T` from the `S` it is given.
-        bound_args: Vec<(String, String, Vec<Ty>)>,
+        bound_args: BoundArgs,
         /// `of: T -> U = x => x`: the generic a defaulted identity lambda's
         /// result is, and the type it is when the call leaves it out.
         default_binds: Vec<(String, Ty)>,
@@ -120,6 +120,8 @@ pub enum Def {
         projections: Vec<Projection>,
         /// The type it is for, with the impl's generics as params.
         target: Ty,
+        /// Each generic's bound with its trait arguments: `S: Indexed<K, T>`.
+        bound_args: BoundArgs,
         /// The associated types it chooses, `type Found = ?Int` (R08.1.9).
         assoc: Vec<(String, Ty)>,
     },
@@ -370,3 +372,6 @@ pub(crate) fn guessed(stmt: &cpl_syntax::ast::Stmt) -> bool {
     let in_arg = |h: &cpl_diag::Span| holes.1.iter().any(|a| a.start <= h.start && h.end <= a.end);
     holes.0.iter().any(|h| h.end < e.span.end && !in_arg(h))
 }
+
+/// Each generic's bound with its trait arguments: `("S", "Indexed", [K, T])`.
+pub type BoundArgs = Vec<(String, String, Vec<Ty>)>;

@@ -1649,6 +1649,39 @@ pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(
 /// example: `[5, 6, 7][1..].nth(0) == 6`
 pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 
+impl<S: Indexed<K, T>, K, T> Seq<T> for Slice<S>:
+    fn iter(self) -> yields T:
+        for i in self.lo..self.hi: yield self.src.nth(i)
+
+impl<S: Indexed<K, T>, K, T> Sized for Slice<S>:
+    @get fn len(self) -> Int = self.hi - self.lo
+
+impl<S: Indexed<K, T>, K, T> Keyed<K, T> for Slice<S>:
+    fn items(self) -> yields (K, T):
+        for i in self.lo..self.hi: yield (self.src.keys.nth(i), self.src.nth(i))
+
+impl<S: Indexed<K, T>, K, T> Bidir<T> for Slice<S>:
+    fn iter_rev(self) -> yields T:
+        for i in (self.lo..self.hi).rev: yield self.src.nth(i)
+
+impl<S: Indexed<K, T>, K, T> Positional<T> for Slice<S>:
+    fn nth(self, k: Int) -> T:
+        assert 0 <= k < self.hi - self.lo, "nth(k) requires 0 <= k < len"
+        self.src.nth(self.lo + k)
+
+impl<S: Indexed<K, T>, K, T> Indexed<K, T> for Slice<S>:
+    fn at(self, i: K) -> T:
+        assert self.lo <= self.src.keys.ord(i) < self.hi, "the key is outside the slice"
+        self.src.at(i)
+    @get fn keys(self) -> Range<K> = self.src.keys.drop(self.lo).take(self.hi - self.lo)
+
+/// \(O(n)\). An owned copy of the slice's elements, in order.
+///
+/// cost: \(O(n)\)
+/// traps: never
+/// example: `[5, 6, 7][1..].to_list() == [6, 7]`
+pub fn to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T> = self.collect()
+
 /// \(O(1)\). `self` keyed by a fresh domain `0..len` of its own (`let t = w.rebase`, keys `t.Idx`),
 /// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
 ///

@@ -114,7 +114,7 @@ impl<'a> Checker<'a> {
                     Ty::Named { name, args }
                         if matches!(
                             name.as_str(),
-                            "Gen" | "Iter" | "Filter" | "Zip" | "Range" | "Slice" | "Map"
+                            "Gen" | "Iter" | "Filter" | "Zip" | "Range" | "Map"
                         ) && args.len() == 1 =>
                     {
                         args[0].clone()

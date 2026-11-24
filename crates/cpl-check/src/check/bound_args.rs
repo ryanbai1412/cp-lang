@@ -61,7 +61,7 @@ impl Checker<'_> {
     }
 
     /// The `(param, trait, args)` of each bound that gives its trait arguments.
-    pub(crate) fn bound_args(&mut self, bounds: &[ast::Bound]) -> Vec<(String, String, Vec<Ty>)> {
+    pub(crate) fn bound_args(&mut self, bounds: &[ast::Bound]) -> crate::def::BoundArgs {
         let mut out = Vec::new();
         for b in bounds {
             for t in &b.traits {
@@ -74,6 +74,22 @@ impl Checker<'_> {
             }
         }
         out
+    }
+
+    /// An `impl`'s trait arguments and its generics' bound arguments, as written.
+    pub(crate) fn impl_head_args(
+        &mut self,
+        trait_name: Option<&ast::Type>,
+        bounds: &[ast::Bound],
+    ) -> (Vec<Ty>, crate::def::BoundArgs) {
+        let trait_args = match trait_name.map(|t| &t.kind) {
+            Some(ast::TypeKind::Named { args, .. }) => args
+                .iter()
+                .map(|a| self.quietly(|c| c.resolve_type(a)))
+                .collect(),
+            _ => Vec::new(),
+        };
+        (trait_args, self.quietly(|c| c.bound_args(bounds)))
     }
 
     /// `Self` and the trait's own parameters, as bound `param: trait_name<..>` gives them.
@@ -125,24 +141,12 @@ impl Checker<'_> {
                 if !of_trait.iter().any(|g| free(g, bindings)) {
                     continue;
                 }
-                let found = self.env.impls(&name).into_iter().find_map(|(t, def)| {
-                    let named =
-                        t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name.as_str());
-                    match &*def {
-                        Def::Impl {
-                            trait_args, target, ..
-                        } if named => Some((trait_args.clone(), target.clone())),
-                        _ => None,
-                    }
-                });
-                let Some((trait_args, target)) = found else {
+                let Some(args) = self.trait_args_of(&on_ty, trait_name, of_trait.len()) else {
                     continue;
                 };
-                let mut on = crate::ty::Bindings::default();
-                target.unify(&on_ty, &mut on);
-                for (g, arg) in of_trait.iter().zip(trait_args) {
+                for (g, arg) in of_trait.iter().zip(args) {
                     if free(g, bindings) {
-                        bindings.insert(g.clone(), arg.subst(&on));
+                        bindings.insert(g.clone(), arg);
                     }
                 }
             }
@@ -217,12 +221,31 @@ impl Checker<'_> {
                 .map(|(_, d)| d);
             for def in written.into_iter().chain(listed) {
                 if let Def::Impl {
-                    trait_args, target, ..
+                    trait_args,
+                    target,
+                    bound_args,
+                    ..
                 } = &*def
                 {
                     if trait_args.len() == n {
                         let mut on = crate::ty::Bindings::default();
                         target.unify(ty, &mut on);
+                        // `impl<S: Indexed<K, T>, K, T> Seq<T> for Rebased<S>`: `T` is what `S` gives.
+                        for (param, bound, args) in bound_args {
+                            let Some(actual) = on.get(param).cloned() else {
+                                continue;
+                            };
+                            let Some(given) = self.trait_args_of(&actual, bound, args.len()) else {
+                                continue;
+                            };
+                            let mut solved = crate::ty::Bindings::default();
+                            for (want, got) in args.iter().zip(&given) {
+                                want.unify(got, &mut solved);
+                            }
+                            for (g, t) in solved {
+                                on.entry(g).or_insert(t);
+                            }
+                        }
                         return Some(trait_args.iter().map(|t| t.subst(&on)).collect());
                     }
                 }

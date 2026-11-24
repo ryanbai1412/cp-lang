@@ -1240,13 +1240,7 @@ impl<'a> Checker<'a> {
                 let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.quietly(|c| c.resolve_type(target));
                 self.self_ty = Some(self_ty.clone());
-                let trait_args: Vec<Ty> = match trait_name.as_ref().map(|t| &t.kind) {
-                    Some(TypeKind::Named { args, .. }) => args
-                        .iter()
-                        .map(|a| self.quietly(|c| c.resolve_type(a)))
-                        .collect(),
-                    _ => Vec::new(),
-                };
+                let (trait_args, bound_args) = self.impl_head_args(trait_name.as_ref(), bounds);
                 let out_ty: Option<Ty> = body.stmts.iter().find_map(|s| match &s.kind {
                     ast::StmtKind::TypeAlias { name, ty, .. } if name.text == "Out" => {
                         Some(self.quietly(|c| c.resolve_type(ty)))
@@ -1283,6 +1277,7 @@ impl<'a> Checker<'a> {
                         owned,
                         projections: self.projections(&body.stmts),
                         target: self_ty,
+                        bound_args,
                         assoc,
                     },
                 )]

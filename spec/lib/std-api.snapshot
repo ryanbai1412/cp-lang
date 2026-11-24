@@ -726,7 +726,7 @@ std/graph.cp: Functional.jump_while(self, v: V, pred: V -> Bool) -> ?V
 std/graph.cp: Functional.new(next: [V]V) -> Functional<V>
 std/graph.cp: Functional.on_cycle(self, v: V) -> Bool
 std/graph.cp: Functional.root_of(self, v: V) -> V
-std/graph.cp: Graph.at(self, u: V) -> lends Slice<A>
+std/graph.cp: Graph.at(self, u: V) -> lends Slice<List<A>>
 std/graph.cp: Graph.contains(self, u: V, v: V) -> Bool
 std/graph.cp: Graph.deg(self, u: V) -> Int
 std/graph.cp: Graph.directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..)

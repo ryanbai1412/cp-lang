@@ -710,8 +710,7 @@ impl<'a> Checker<'a> {
                     };
                 }
                 // A range's keys are its own elements (R04.4.31).
-                if name.text == "keys" && matches!(map.as_str(), "List" | "Slice" | "Str" | "Range")
-                {
+                if name.text == "keys" && matches!(map.as_str(), "List" | "Str" | "Range") {
                     let key = args.first().filter(|_| map == "Range").cloned();
                     return range_ty(key.unwrap_or(Ty::Int));
                 }
