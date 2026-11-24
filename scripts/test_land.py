@@ -434,6 +434,32 @@ class LandTest(unittest.TestCase):
     def lock_on_remote(self):
         return git(self.tmp, "ls-remote", str(self.tmp / "remote.git"), "refs/land/lock-v2").strip()
 
+    def test_a_waiter_names_the_holders_branch_step_and_last_beat(self):
+        repo = self.clone("lane")
+        empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
+        note = f"land-lock rival 7 {int(time.time()) - 5} infra feat@abc1234 pushing"
+        git(repo, "push", "-q", "origin", git(repo, "commit-tree", empty, "-m", note).strip() + ":refs/land/lock-v2")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_LOCK_WAIT="2")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertRegex(r.stderr, r"waiting for the land lock \(land-lock rival 7 \d+ infra feat@abc1234 pushing; beat [5-9]s ago\)")
+
+    def test_a_holders_lock_names_its_branch_head_and_step(self):
+        repo = self.clone("lane")
+        notes = self.tmp / "notes"
+        hook = self.tmp / "remote.git" / "hooks" / "post-receive"
+        hook.write_text("#!/bin/sh\nwhile read old new ref; do\n"
+                        f'  [ "$ref" != refs/land/lock-v2 ] || git log -1 --format=%s "$new" >>"{notes}" 2>/dev/null\n'
+                        "done\n")
+        hook.chmod(0o755)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        where = git(repo, "rev-parse", "--abbrev-ref", "HEAD").strip() + "@" + git(repo, "rev-parse", "--short", "HEAD").strip()
+        self.assertIn(f" infra {where} pushing", notes.read_text())
+
     def test_a_land_takes_the_land_lock_and_drops_it(self):
         repo = self.clone("lane")
         (repo / "pkg.txt").write_text("x\n")
@@ -965,7 +991,7 @@ exec {shutil.which("git")} "$@"
         r = self.land(repo, CPL_LAND_LOCK_STALE="1", CPL_LAND_LOCK_WAIT="2")
         self.assertNotEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("taking over", r.stderr)
-        self.assertIn("waiting for the land lock (land-lock other 1 unread infra)", r.stderr)
+        self.assertIn("waiting for the land lock (land-lock other 1 unread infra; no readable stamp)", r.stderr)
         self.assertIn("no land lock after", r.stderr)
         self.assertTrue(self.lock_on_remote().startswith(held), self.lock_on_remote())
 
