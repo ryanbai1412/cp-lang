@@ -1,4 +1,5 @@
 // Source: IOI 2006 (Pyramid), https://dmoj.ca/problem/ioi06p2
+// limits: 600 ms, 64 MB
 // Problem: an m x n grid (m, n <= 1000) of heights <= 100. Place an a x b pyramid base and,
 //   inside it with a wall at least 1 thick, a c x d chamber, maximising the base's sum minus
 //   the chamber's. Print the column and row of each one's upper-left corner.

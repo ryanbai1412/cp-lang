@@ -1,4 +1,5 @@
 // Source: IOI 2007 P3 (Sails), https://dmoj.ca/problem/ioi07p3
+// limits: 600 ms, 64 MB
 // Problem: N <= 1e5 masts, mast i of height H_i <= 1e5 with K_i <= H_i sails, at most one per
 //   unit height. A sail costs the number of sails behind it at its height. Print the least total.
 // Solution: only the count c at each height matters (total sum c(c - 1) / 2), not the mast order.

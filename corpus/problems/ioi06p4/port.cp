@@ -1,4 +1,5 @@
 // Source: IOI 2006 Day 2 (The Valley of Mexico), https://dmoj.ca/problem/ioi06p4
+// limits: 1000 ms, 64 MB
 // Problem: c <= 1000 cities numbered clockwise round a lake and n agreements (pairs of cities).
 //   Print a route that visits every city once, moving only between agreeing pairs along
 //   straight segments that never cross; print -1 if there is none.
@@ -7,9 +8,9 @@
 //   at l or r; it returns the next city (cw(r) or ccw(l)) from which the rest can be finished.
 //   Try every start, then follow the choices. O(c^2) states, O(1) each.
 // original: corpus/submissions/5032736.cpp
-// Bounds: n: 1..=1000; m: 0..=1e5; deals.a, deals.b: 1..=n
+// Bounds: n: 1..=1000; m: 0..=n * (n - 1) / 2; deals.a, deals.b: 1..=n
 let n: 1..=1000 = read()
-let m: 0..=1e5 = read()
+let m: 0..=n * (n - 1) / 2 = read()
 domain City = 1..=n
 let deals: [m](a: City, b: City) = read()
 
