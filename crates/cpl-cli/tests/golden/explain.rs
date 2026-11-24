@@ -56,27 +56,59 @@ fn explain_json_lists_each_copy_and_why() {
         .contains("changed later"));
 }
 
-/// A file's explanation names the sections it can't fill yet
-/// (plan/QUESTIONS.md tools-3), on a file with closures and on one with
-/// none.
+/// A file's explanation ends with the specializations its C++ takes and
+/// the bound behind each, and each index with whether the checked builds
+/// check it and, where they don't, why; `--json` has the same records.
 #[test]
-fn explain_a_file_names_the_sections_not_shown_yet() {
-    let dir = scratch("explain_not_shown");
+fn explain_shows_the_specializations_chosen_and_the_checks_left() {
+    let dir = scratch("explain_chosen_checked");
     std::fs::write(
-        dir.join("f.cp"),
-        "let xs = [3, 1, 2]\nprint(xs.map(x => x * 2))\n",
+        dir.join("a.cp"),
+        concat!(
+            "let n: 1..=1000 = read()\n",
+            "let xs: [0..n]Int = read()\n",
+            "let i: Int = read()\n",
+            "var k = [0, 0, 0, 0]\n",
+            "for j in 0..3: k[j + 1] -= k[j]\n",
+            "domain V = 0..n\n",
+            "var seen: [V]Bool = false\n",
+            "for v in V: seen[v] = true\n",
+            "print(xs[i], k[0], yes(seen[V(0)]))\n",
+        ),
     )
     .unwrap();
     std::fs::write(dir.join("plain.cp"), "print(1)\n").unwrap();
-    for file in ["f.cp", "plain.cp"] {
-        let out = cpl(&dir, &["explain", file]);
-        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
-        let stdout = text(&out.stdout);
-        assert!(
-            stdout.ends_with("Not shown yet:\n  specializations chosen\n  checks left per build\n"),
-            "{file}: {stdout}"
-        );
+    let out = cpl(&dir, &["explain", "a.cp"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let stdout = text(&out.stdout);
+    for line in [
+        "  [chosen] domain V -> `int` positions: a plain domain holds at most i32::MAX\n",
+        "  [no check] 5:16  k[j + 1] -> one check before its loop covers it\n",
+        "  [no check] 8:13  seen[v] -> its index's type keeps it in range\n",
+        "  [check] 9:7  xs[i]\n",
+        "  [check] 9:14  k[0]\n",
+    ] {
+        assert!(stdout.contains(line), "{line}{stdout}");
     }
+    assert!(!stdout.contains("Not shown yet"), "{stdout}");
+    let plain = text(&cpl(&dir, &["explain", "plain.cp"]).stdout);
+    assert!(
+        plain.ends_with(
+            "Specializations chosen for plain.cp: none\nChecks left per build for plain.cp: no index\n"
+        ),
+        "{plain}"
+    );
+    let json = cpl(&dir, &["explain", "a.cp", "--json"]);
+    let json = cpl_json::parse(&text(&json.stdout)).expect("JSON");
+    let rows = json.as_array().unwrap();
+    let has = |site: &str, lowering: &str| {
+        rows.iter().any(|e| {
+            e.at(&["site"]).as_str() == Some(site) && e.at(&["lowering"]).as_str() == Some(lowering)
+        })
+    };
+    assert!(has("9:7", "index_checked"), "{rows:?}");
+    assert!(has("8:13", "index_unchecked"), "{rows:?}");
+    assert!(has("", "specialization"), "{rows:?}");
 }
 
 /// The peak is reported against the memory limit of the file's judge

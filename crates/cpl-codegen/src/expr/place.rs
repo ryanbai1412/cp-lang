@@ -10,6 +10,18 @@ impl<'p> Emitter<'p> {
     /// `store` is true for the target of a plain `=`, where a map makes
     /// room for a new key.
     pub fn place_at(&mut self, place: &Place, store: bool) -> String {
+        let code = self.place_code(place, store);
+        if let PlaceKind::Index(base, indices) = &place.kind {
+            if !matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) {
+                let raw = matches!(base.kind, PlaceKind::Global(id) if self.program.raw_lists.contains(&id))
+                    || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _));
+                self.note_index(place.span, checks_at(&code), indices, raw);
+            }
+        }
+        code
+    }
+
+    fn place_code(&mut self, place: &Place, store: bool) -> String {
         if let Some(row) = self.cached_row(crate::rowcache::of_place(place)) {
             return row;
         }
@@ -174,4 +186,26 @@ impl<'p> Emitter<'p> {
             _ => code.text,
         }
     }
+}
+
+/// Whether `code`, a place's C++, is a checked index: its last call is
+/// `cpl::at(..)` or `.ck(..)`, or a lambda naming its indices calls `.ck`.
+fn checks_at(code: &str) -> bool {
+    if code.starts_with('[') {
+        return code.contains(".ck(");
+    }
+    let mut depth = 0;
+    for (i, c) in code.char_indices().rev() {
+        match c {
+            ')' => depth += 1,
+            '(' if depth == 1 => {
+                let head = &code[..i];
+                return head.ends_with("cpl::at") || head.ends_with(".ck");
+            }
+            '(' => depth -= 1,
+            _ if depth == 0 => return false,
+            _ => {}
+        }
+    }
+    false
 }

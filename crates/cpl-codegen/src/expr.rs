@@ -530,6 +530,15 @@ impl<'p> Emitter<'p> {
                     || (self.target.checks == crate::Checks::None
                         && !matches!(base_ty, Ty::Range(_)));
                 let checked = !proven(indices) && !raw_list;
+                if !matches!(base_ty, Ty::Map(..) | Ty::HashMap(..)) {
+                    let list = matches!(
+                        base_ty,
+                        Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)
+                    );
+                    let raw = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id))
+                        || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _));
+                    self.note_index(e.span, if list { !raw_list } else { checked }, indices, raw);
+                }
                 let joined = match base_ty {
                     Ty::Array { dims, .. }
                         if !checked

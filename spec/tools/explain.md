@@ -32,5 +32,10 @@ order), each heap value the judge build copies with why it must own it
 and at the input bounds for an array), where an optional keeps `None`,
 field offsets and padding, and the peak the fixed-size values take,
 naming those that grow; these are the checker's representation query,
-the numbers hover shows. It then lists what it cannot fill yet under
-`Not shown yet:` (specializations, checks; plan/QUESTIONS.md tools-3).
+the numbers hover shows. It ends with the specializations chosen (each
+domain's position width, `int` or `ll`, and the bound that chose it, and
+whether an array over it is a `std::array`) and the checks left per build:
+each index the file writes, marked `[check]` where `--checks traps` and
+`all` check it, or `[no check]` with why (its index's type keeps it in
+range, one check before its loop covers it, or it is a raw index);
+`--checks none`, the judge default, keeps no index check.

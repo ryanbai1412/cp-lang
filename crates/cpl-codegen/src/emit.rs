@@ -107,6 +107,8 @@ pub(crate) struct Emitter<'p> {
     pub capture_owns: std::collections::BTreeMap<(usize, usize), &'static str>,
     /// Each non-scalar value the C++ copies, for `cpl explain`.
     pub copies: Vec<crate::lend::Copied>,
+    /// Each index the file writes and whether its C++ checks it, for `cpl explain`.
+    pub index_checks: Vec<(cpl_diag::Span, crate::explain::Index)>,
     /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
     /// the file names, as bits.
     pub niche_types: std::cell::Cell<u16>,
@@ -312,6 +314,7 @@ impl<'p> Emitter<'p> {
             call_scoped: BTreeSet::new(),
             capture_owns: Default::default(),
             copies: Vec::new(),
+            index_checks: Vec::new(),
             niche_types: std::cell::Cell::new(0),
             used: BTreeSet::new(),
             top_names,

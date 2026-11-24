@@ -259,6 +259,10 @@ pub struct Lowered {
     pub closures: Vec<ClosureLowering>,
     pub copies: Vec<(cpl_diag::Span, String, &'static str)>,
     pub dropped: Vec<String>,
+    /// Each choice the C++ makes from a bound, as [`width::explained`] words it.
+    pub specializations: Vec<String>,
+    /// Each index the file writes, by span, in a build that keeps index checks.
+    pub checks: Vec<(cpl_diag::Span, explain::Index)>,
 }
 
 pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
@@ -273,10 +277,19 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
             }
         }
     }
+    let traps = Target {
+        checks: Checks::Traps,
+        ..judge_target()
+    };
+    let mut checks = emit::Emitter::new(&crate::prepared(program, &traps), &traps).index_checks();
+    checks.sort_by_key(|(span, index)| (span.start, span.end, *index));
+    checks.dedup_by_key(|(span, _)| (span.start, span.end));
     Lowered {
         closures,
         copies,
         dropped: devirt::dropped_fields(program, &cpp),
+        specializations: width::explained(&prepared),
+        checks,
     }
 }
 

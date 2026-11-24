@@ -28,6 +28,8 @@ pub fn report_with(
         closures: entries,
         copies,
         dropped,
+        specializations,
+        checks,
     } = crate::explain_lowered(program);
     let view_ops = explain_views(text, program);
     let sunk = explain_sunk(text, program);
@@ -80,7 +82,7 @@ pub fn report_with(
         if dropped.is_empty() && sunk.is_empty() && hashed.is_empty() && copies.is_empty() {
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
-        not_shown_yet(stdout);
+        chosen_and_checked(stdout, path, text, &specializations, &checks);
         return out;
     }
     if !entries.is_empty() {
@@ -175,19 +177,74 @@ pub fn report_with(
             let _ = writeln!(stdout, "  {line}:{col}  {desc}");
         }
     }
-    not_shown_yet(stdout);
+    chosen_and_checked(stdout, path, text, &specializations, &checks);
     out
 }
 
-/// The sections `spec/tools/explain.md` promises that no query fills yet
-/// (plan/QUESTIONS.md tools-3), named so nobody mistakes their absence for
-/// "nothing to report".
-const NOT_SHOWN_YET: &[&str] = &["specializations chosen", "checks left per build"];
+/// What the C++ does at one index the file writes, in a build that keeps
+/// index checks (`--checks traps` or `all`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Index {
+    Checked,
+    /// The index's type keeps it in range: a domain's position.
+    Typed,
+    /// One check before the loop stands for every round's.
+    Hoisted,
+    /// A raw index, which no build checks.
+    Raw,
+}
 
-fn not_shown_yet(stdout: &mut String) {
-    let _ = writeln!(stdout, "Not shown yet:");
-    for section in NOT_SHOWN_YET {
-        let _ = writeln!(stdout, "  {section}");
+impl Index {
+    /// Why the index has no check of its own; empty when it has one.
+    pub fn why(self) -> &'static str {
+        match self {
+            Index::Checked => "",
+            Index::Typed => "its index's type keeps it in range",
+            Index::Hoisted => "one check before its loop covers it",
+            Index::Raw => "a raw index, never checked",
+        }
+    }
+}
+
+/// The specializations the C++ takes and the bound behind each, and each
+/// index with whether the checked builds check it.
+fn chosen_and_checked(
+    stdout: &mut String,
+    path: &str,
+    text: &str,
+    specializations: &[String],
+    checks: &[(cpl_diag::Span, Index)],
+) {
+    if specializations.is_empty() {
+        let _ = writeln!(stdout, "Specializations chosen for {path}: none");
+    } else {
+        let _ = writeln!(stdout, "Specializations chosen for {path}:");
+        for chosen in specializations {
+            let _ = writeln!(stdout, "  [chosen] {chosen}");
+        }
+    }
+    if checks.is_empty() {
+        let _ = writeln!(stdout, "Checks left per build for {path}: no index");
+        return;
+    }
+    let _ = writeln!(
+        stdout,
+        "Checks left per build for {path}, by index (`--checks none`, the judge default, keeps none; `traps` and `all` keep each [check]):"
+    );
+    for (span, index) in checks {
+        let (line, col) = line_col(text, *span);
+        let shown = text
+            .get(span.start as usize..span.end as usize)
+            .and_then(|s| s.lines().next())
+            .unwrap_or("");
+        let _ = match index {
+            Index::Checked => writeln!(stdout, "  [check] {line}:{col}  {shown}"),
+            _ => writeln!(
+                stdout,
+                "  [no check] {line}:{col}  {shown} -> {}",
+                index.why()
+            ),
+        };
     }
 }
 

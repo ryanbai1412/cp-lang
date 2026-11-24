@@ -152,13 +152,25 @@ pub(crate) fn explain_file(
         for site in &dropped {
             rows.push(row(site, "dropped_field", DROPPED));
         }
-        for (span, what, why) in cpl_codegen::explain_copies(&compiled.program) {
-            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, span);
+        let lowered = cpl_codegen::explain_lowered(&compiled.program);
+        for (span, what, why) in &lowered.copies {
+            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
             rows.push(row(
                 &format!("{line}:{col}"),
                 "copy",
                 &format!("{what}: {why}"),
             ));
+        }
+        for chosen in &lowered.specializations {
+            rows.push(row("", "specialization", chosen));
+        }
+        for (span, index) in &lowered.checks {
+            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
+            let lowering = match index {
+                cpl_codegen::explain::Index::Checked => "index_checked",
+                _ => "index_unchecked",
+            };
+            rows.push(row(&format!("{line}:{col}"), lowering, index.why()));
         }
         for (name, rep) in crate::with_db(|db| cpl_lsp::explain::storage(db, path)).0 {
             let detail = format!("{}: {}", rep.ty, cpl_lsp::explain::describe(&rep));

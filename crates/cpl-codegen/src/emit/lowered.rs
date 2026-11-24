@@ -3,6 +3,7 @@
 use std::collections::BTreeSet;
 
 use super::Emitter;
+use cpl_ir::Expr;
 
 impl Emitter<'_> {
     /// One write's C++, with [`Emitter::copies`] and
@@ -20,6 +21,37 @@ impl Emitter<'_> {
         let copies = crate::lend::copy_sites(self.program, &self.copies);
         let direct = std::mem::take(&mut self.direct);
         (cpp, copies, direct, self.take_written())
+    }
+
+    /// Each index the written file has, and whether its C++ checks it.
+    pub fn index_checks(mut self) -> Vec<(cpl_diag::Span, crate::explain::Index)> {
+        self.write("", None);
+        std::mem::take(&mut self.index_checks)
+    }
+
+    /// Records the index at `span`: `checked` when its C++ checks it, and
+    /// otherwise why it needs no check. Library bodies' spans index their
+    /// own files, so their indices are left out.
+    pub(crate) fn note_index(
+        &mut self,
+        span: cpl_diag::Span,
+        checked: bool,
+        indices: &[Expr],
+        raw: bool,
+    ) {
+        if self
+            .fn_id
+            .is_some_and(|f| self.program.library_fns.get(f).copied().unwrap_or(false))
+        {
+            return;
+        }
+        let index = match () {
+            _ if checked => crate::explain::Index::Checked,
+            _ if raw => crate::explain::Index::Raw,
+            _ if crate::expr::proven(indices) => crate::explain::Index::Typed,
+            _ => crate::explain::Index::Hoisted,
+        };
+        self.index_checks.push((span, index));
     }
 
     /// The closures the written file calls by name, and what it defines.

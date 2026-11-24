@@ -74,3 +74,25 @@ pub(crate) fn pos_fn(program: &Program, cast: &Expr) -> &'static str {
         _ => "cpl::pos",
     }
 }
+
+/// Each domain's position width and the bound that chose it, and whether
+/// an array over it is a `std::array`, for `cpl explain`.
+pub(crate) fn explained(program: &Program) -> Vec<String> {
+    let facts = Facts::collect(program);
+    (0..program.domains.len())
+        .map(|d| {
+            let name = &program.domains[d];
+            let composite = program.products.get(d).is_some_and(Option::is_some)
+                || facts.domain_len_expr(d).is_some_and(counts_domains);
+            let width = match (is_wide(program, d), composite) {
+                (true, _) => "`ll` positions: its count multiplies other counts and no bound keeps it under i32::MAX",
+                (false, true) => "`int` positions: a bound keeps its count under i32::MAX",
+                (false, false) => "`int` positions: a plain domain holds at most i32::MAX",
+            };
+            match program.fixed_lens.get(d).copied().flatten() {
+                Some(n) => format!("domain {name} -> {width}; {n} on every run, so an array over it is a `std::array`"),
+                None => format!("domain {name} -> {width}"),
+            }
+        })
+        .collect()
+}
