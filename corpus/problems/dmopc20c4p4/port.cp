@@ -8,19 +8,21 @@
 //   and to every b between, i - j in all, so reopen the latest spare. Amortised O(n).
 // original: corpus/submissions/3485716.cpp
 let n: 1..=2e6 = read()
-var have = 0
-var cost = 0
-var spare: List<Int> = []
-var out: List<Int> = []
-for i in 0..n:
-    let a: 0..=i = read()
-    while have < a:
-        cost += i - spare.pop()!
-        have += 1
-    if a == have:
-        have += 1
+domain Throw = 0..n
+var holes = 0
+var total = 0
+// throws that landed in a hole but could have made one instead, latest last
+var spare: List<Throw> = []
+var totals: List<Int> = []
+for i in Throw:
+    let behind: 0..=Int(i) = read()
+    while holes < behind:
+        total += Int(i) - Int(spare.pop()!)
+        holes += 1
+    if behind == holes:
+        holes += 1
     else:
-        cost += have - a - 1
+        total += holes - behind - 1
         spare.push(i)
-    out.push(cost)
-print(out)
+    totals.push(total)
+print(totals)
