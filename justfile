@@ -42,8 +42,12 @@ cold-start:
 
 # The CLI's golden and contest tests (CI: ci.yml `cli`).
 test-cli:
-    cargo test -p cpl-cli --lib --test golden --test cli
+    cargo test -p cpl-cli --lib --test golden --test cli --test clipboard
     cargo test -p cpl-contest
+
+# `cpl b -c` through this OS's real clipboard and back (CI: ci.yml `cli`).
+clipboard-roundtrip cpl="target/debug/cpl":
+    bash scripts/clipboard-roundtrip.sh "{{cpl}}"
 
 # Each editor's smoke test against the built `cpl` (CI: ci.yml `neovim`, `editors`).
 neovim-smoke cpl="target/debug/cpl":

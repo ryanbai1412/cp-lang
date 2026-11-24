@@ -207,7 +207,7 @@ their front ends.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| `cpl b -c` puts the judge's file on the clipboard on every OS | OSes with a tested copy | the same suite on each OS | `crates/cpl-cli/tests/clipboard.rs` (each of the 6 tools stubbed alone on PATH gets the C++ byte for byte with its clipboard arguments; the first tool wins; none warns and keeps the file), in the CI `cli` job on Linux and macOS; a real clipboard round trip per OS: `missing` |
+| `cpl b -c` puts the judge's file on the clipboard on every OS | OSes with a tested copy | the same suite on each OS | `scripts/clipboard-roundtrip.sh` (just clipboard-roundtrip, in the CI `cli` job on Linux, macOS and Windows: cpl b -c with each real tool alone on PATH, pbcopy, clip, xclip and xsel on Xvfb, wl-copy on headless sway, then the OS's paste gives back a.cpp with its UTF-8 byte for byte, lines ending CRLF on Windows, whose clipboard stores text so); `crates/cpl-cli/tests/clipboard.rs` (each tool of this OS stubbed alone on PATH gets the C++ byte for byte with its clipboard arguments; the first tool wins; none warns and keeps the file); the cpl-cli unit test `each_os_gets_its_own_clipboard_tools` |
 | Submission problems are caught before pasting (size, failed samples, checks) | `submit` refusals tested | hand-written suite | `crates/cpl-cli/tests/golden/run.rs` |
 
 ### Every command (all journeys)

@@ -349,7 +349,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
@@ -357,12 +357,25 @@ jobs:
         with:
           shared-key: neovim
       # bash, so the first failing command fails the step: Windows' default
-      # PowerShell reports only the last command's status.
+      # PowerShell reports only the last command's status. Linux runs these
+      # in the gate.
       - name: CLI tests
+        if: runner.os != 'Linux'
         # Windows took 191 s; a hang here held main's only run slot for 35 min.
         timeout-minutes: 10
         shell: bash
         run: just test-cli
+      - name: Clipboard servers
+        if: runner.os == 'Linux'
+        run: |
+          . scripts/retry.sh
+          sudo rm -f /var/lib/man-db/auto-update
+          retry timeout 180 sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 xvfb xclip xsel wl-clipboard sway >/dev/null
+      # `cpl b -c` then each OS's paste tool gives back the file (tools.md, Submitting).
+      - name: Clipboard round trip
+        timeout-minutes: 10
+        shell: bash
+        run: cargo build -p cpl-cli && just clipboard-roundtrip
 
   # JetBrains: the plugin builds, and its tests run in a headless IDE against
   # the real `cpl` (file type, highlighting, the LSP server, run configurations).
