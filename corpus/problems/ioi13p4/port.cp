@@ -23,15 +23,16 @@ fn explore_cave() -> ([Switch]0..=1, [Switch]Door):
     var open: [Switch]0..=1 = 0
     var door: [Switch]?Door = None
     for d in Door:
-        // Settled switches hold their doors open; `free` are the rest.
+        // Settled switches hold their doors open; `free` are the rest, lent to `opens`.
         let free = [w for w in Switch if door[w] == None]
-        fn opens(k: Int, to: 0..=1) -> Bool:
+        let m = free.len
+        fn opens(free: List<Switch>, k: Int, to: 0..=1) -> Bool:
             var s = [Switch] w => if door[w] != None: open[w] else: 1 - to
             for w in free[..k]: s[w] = to
             if let first_closed = try_combination(s): first_closed > d else: true
         // Which position opens door d, then which free switch carries it.
-        let to = if opens(free.len, 0): 0 else: 1
-        let k = (1..=free.len).first_true(k => opens(k, to))!
+        let to = if opens(free, m, 0): 0 else: 1
+        let k = (1..=m).first_true(k => opens(free, k, to))!
         open[free[k - 1]] = to
         door[free[k - 1]] = Some(d)
     (open, [Switch] w => door[w]!)
