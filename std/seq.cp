@@ -1549,6 +1549,8 @@ pub struct Zipped<A, B, T, U>(
     pub second: B,
 )
 
+fn shorter(a: Int, b: Int) -> Int = if a < b: a else: b
+
 impl Seq<(T, U)> for Zipped<A: Seq<T>, B: Positional<U>, T, U>:
     fn iter(self) -> yields (T, U):
         var i = 0
@@ -1566,18 +1568,18 @@ impl Keyed<D, (T, U)> for Zipped<A: Keyed<D, T>, B: Positional<U>, T, U>:
             i += 1
 
 impl Sized for Zipped<A: Sized, B: Positional<U>, T, U>:
-    @get fn len(self) -> Int = min(first.len, second.len)
+    @get fn len(self) -> Int = shorter(first.len, second.len)
 
 impl Positional<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
     fn nth(self, k: Int) -> (T, U) = (first.nth(k), second.nth(k))
 
 impl Bidir<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
     fn iter_rev(self) -> yields (T, U):
-        for k in (0..min(first.len, second.len)).rev: yield (first.nth(k), second.nth(k))
+        for k in (0..shorter(first.len, second.len)).rev: yield (first.nth(k), second.nth(k))
 
 impl Indexed<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
     fn at(self, i: D) -> (T, U) = (first.at(i), second.nth(i.ord - first.keys.start.ord))
-    @get fn keys(self) -> Range<D> = first.keys.take(min(first.len, second.len))
+    @get fn keys(self) -> Range<D> = first.keys.take(shorter(first.len, second.len))
 
 /// \(O(1)\) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
 pub struct Rev<S>(base: S):
@@ -3413,7 +3415,7 @@ fn runs_with_by_groups_neighbours_with_the_same_key():
 fn windows_and_zip_walk_in_step():
     assert [w.to_list() for w in [1, 2, 3, 4].windows(2)] == [[1, 2], [2, 3], [3, 4]]
     assert [w.to_list() for w in [1, 2].windows(2)] == [[1, 2]] and [1, 2].windows(3).count() == 0
-    assert zip([1, 2, 3], ["a", "b"]) == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
+    assert zip([1, 2, 3], ["a", "b"]).collect() == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
 
 @test
 fn adjacent_and_with_prev_yield_neighbours():
