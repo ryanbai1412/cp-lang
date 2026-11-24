@@ -160,9 +160,45 @@ pub fn deep_copies(cpp: &str) -> usize {
 
 /// Each `std::function` the C++ declares: a fn value whose callee codegen
 /// could not pin down, called indirectly.
+///
+/// A big program's C++ may shorten the type to an alias
+/// (`template<class...T>using Qy=std::function<T...>;`): the alias line
+/// declares nothing, and each use of the alias counts.
 pub fn std_functions(cpp: &str) -> usize {
-    cpp.lines()
+    let code: Vec<&str> = cpp
+        .lines()
         .filter(|l| !l.trim_start().starts_with("//"))
-        .map(|l| l.matches("std::function<").count())
+        .collect();
+    let aliases: Vec<&str> = code.iter().filter_map(|l| function_alias(l)).collect();
+    code.iter()
+        .map(|l| match function_alias(l) {
+            Some(_) => 0,
+            None => {
+                l.matches("std::function<").count()
+                    + aliases.iter().map(|a| uses_of(l, a)).sum::<usize>()
+            }
+        })
         .sum()
+}
+
+/// `Qy` for `template<class...T>using Qy=std::function<T...>;` or `using Qy = std::function<..>;`.
+fn function_alias(line: &str) -> Option<&str> {
+    let (_, rest) = line.split_once("using ")?;
+    let (name, ty) = rest.split_once('=')?;
+    let name = name.trim();
+    let ident = !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_');
+    (ident && ty.trim_start().starts_with("std::function<")).then_some(name)
+}
+
+/// How many times `name<` appears in `line` as a whole identifier.
+fn uses_of(line: &str, name: &str) -> usize {
+    let pat = format!("{name}<");
+    line.match_indices(&pat)
+        .filter(|(at, _)| {
+            !line[..*at]
+                .chars()
+                .next_back()
+                .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == ':')
+        })
+        .count()
 }

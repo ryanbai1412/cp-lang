@@ -194,7 +194,7 @@ const DIRECTIVES: [(&str, Count); 2] = [
 
 /// The most `std::function`s the corpus may build to, summed over programs.
 const TOTALS: [(&str, Count, usize); 2] = [
-    ("std_functions", std_functions, 83),
+    ("std_functions", std_functions, 93),
     ("sunk_copies", sunk_copies, 16),
 ];
 
@@ -378,6 +378,15 @@ fn a_header_states_a_count_once_and_above_zero() {
     assert!(declared("// copies: two\n", "copies").is_err());
     assert!(declared("// copies: 1\n// copies: 1\n", "copies").is_err());
     assert_eq!(declared("// std_functions: 3\n", "std_functions"), Ok(3));
+}
+
+#[test]
+fn a_shortened_std_function_counts_at_each_use() {
+    let cpp = "template<class...T>using Qy=std::function<T...>;\n\
+               struct M { Qy<ll(ll, ll)> add; Qy<ll(ll, ll)> mul; };\n\
+               // Qy<ll()> in a comment\n\
+               std::function<void()> f; XQy<int> not_it;\n";
+    assert_eq!(std_functions(cpp), 3);
 }
 
 /// The `[copy]` lines `cpl explain` prints for `src`: each copy the judge
