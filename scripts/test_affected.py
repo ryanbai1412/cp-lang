@@ -194,6 +194,12 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual(missing, [], "map these in affected.SLICES:\n" + "\n".join(missing))
 
 
+    def test_every_front_end_crate_runs_the_trace_slice(self):
+        """A trace program goes through the parser, the checker and its messages before
+        lowering and the VM run it, so a change to any of them can stop it checking."""
+        for c in ("cpl-syntax", "cpl-diag", "cpl-check", "cpl-ir", "cpl-interp"):
+            self.assertIn("vm-trace", self.sel(f"crates/{c}/src/lib.rs")["slices"], c)
+
     def test_a_lint_or_checker_change_runs_the_corpus_warnings_slice(self):
         for path in ("crates/cpl-lint/src/rules.rs", "crates/cpl-check/src/lib.rs"):
             self.assertIn("corpus-warnings", self.sel(path)["slices"], path)

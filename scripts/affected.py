@@ -57,7 +57,9 @@ AUDIT_ONLY = [f"{PACKAGES}/*/{leaf}" for leaf in ("gen.py", "tests.toml", "sampl
 SLICE_LIMIT_S = 20
 SLICES = [
     ("vm-trace", "consumers (trace)",
-     ["std/*", "crates/cpl-interp/*", "crates/cpl-ir/*", "crates/cpl-cli/tests/programs/*",
+     ["std/*", "crates/cpl-syntax/*", "crates/cpl-diag/*", "crates/cpl-check/*",
+      "crates/cpl-ir/*", "crates/cpl-interp/*",
+      "crates/cpl-cli/tests/programs/*",
       "crates/cpl-cli/tests/vm_fallbacks*"],
      ["cpl-cli::trace_goldens", "cpl-cli::vm_fallbacks"]),
     ("corpus-warnings", "consumers",
