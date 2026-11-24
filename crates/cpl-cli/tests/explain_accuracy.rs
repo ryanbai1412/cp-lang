@@ -1248,3 +1248,32 @@ fn explain_types_a_bare_impl_param_by_its_trait() {
     assert!(text.contains("5:27  self.v * k"), "{text}");
     assert!(text.contains("7:22  a.v * k"), "{text}");
 }
+
+#[test]
+fn explain_types_a_user_trait_param_as_its_core_twin() {
+    let dir = std::env::temp_dir().join(format!("cpl-explain-twin-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("p.cp");
+    std::fs::write(
+        &src,
+        "trait Plus<Rhs>:\n    fn plus(a: Self, b: Rhs) -> Self\nstruct P(v: Int)\n\
+impl Plus<Int> for P:\n    fn plus(a, k) = P(a.v + k)\n\
+impl Add<Int> for P:\n    fn add(a, k) = P(a.v + k)\n\
+print(P.plus(P(2), 3).v, (P(2) + 3).v)\n",
+    )
+    .unwrap();
+    let explained = cpl_cli::run(&["explain", src.to_str().unwrap()]);
+    assert_eq!(explained.code, 0, "{}", explained.stderr);
+    let text = String::from_utf8_lossy(&explained.stdout);
+    let site = |pos: &str| {
+        text.lines()
+            .find(|l| l.contains(pos))
+            .map(|l| l.replacen(pos, "", 1))
+    };
+    let user = site("5:23  ");
+    assert!(
+        user.as_deref().is_some_and(|l| l.contains("a.v + k")),
+        "{text}"
+    );
+    assert_eq!(user, site("7:22  "), "{text}");
+}
