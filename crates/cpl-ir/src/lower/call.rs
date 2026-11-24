@@ -78,26 +78,48 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 for (p, arg) in mdecl.params.iter().zip(args) {
-                    if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
-                        if let Some(pty) = &p.ty {
-                            self.bind_range_domain(
+                    // `Lift.of((v: V) => ..)`: a lambda's written param types bind the
+                    // generics its fn-typed param names, before any default fills them.
+                    if let ast::ExprKind::Lambda { param_tys, .. } = &arg.value.kind {
+                        if let Some(ast::Type {
+                            kind:
+                                ast::TypeKind::Fn {
+                                    params: fn_params, ..
+                                },
+                            ..
+                        }) = &p.ty
+                        {
+                            for (fp, written) in fn_params.iter().zip(param_tys) {
+                                if let Some(written) = written {
+                                    let ty = self.resolve_ty(written);
+                                    self.unify_ast_ty(
+                                        fp,
+                                        &ty,
+                                        tpl_mod,
+                                        &all_gen_names,
+                                        &mut inferred,
+                                    );
+                                }
+                            }
+                        }
+                    } else if let Some(pty) = &p.ty {
+                        self.bind_range_domain(
+                            pty,
+                            &arg.value,
+                            &all_gen_names,
+                            &mut inferred,
+                            span,
+                            None,
+                        );
+                        let probed = self.probe_expr(&arg.value, None);
+                        if probed.ty != Ty::Error {
+                            self.unify_ast_ty(
                                 pty,
-                                &arg.value,
+                                &probed.ty,
+                                tpl_mod,
                                 &all_gen_names,
                                 &mut inferred,
-                                span,
-                                None,
                             );
-                            let probed = self.probe_expr(&arg.value, None);
-                            if probed.ty != Ty::Error {
-                                self.unify_ast_ty(
-                                    pty,
-                                    &probed.ty,
-                                    tpl_mod,
-                                    &all_gen_names,
-                                    &mut inferred,
-                                );
-                            }
                         }
                     }
                 }
