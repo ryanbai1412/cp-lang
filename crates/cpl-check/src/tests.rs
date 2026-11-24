@@ -1853,6 +1853,31 @@ fn a_method_a_use_imports_stands_in_front_of_the_preludes() {
 }
 
 #[test]
+fn a_use_goes_to_the_module_its_path_names_and_each_name_it_imports() {
+    let mut db = Database::with_loader(Box::new(Modules(vec![(
+        "lib.m",
+        "pub fn step() -> Int = 1\n",
+    )])));
+    let src = "use lib.m.{step}\nprint(step())\n";
+    db.set_file("a.cp", src);
+    let def = db
+        .definition_location("a.cp", src.find("m.").unwrap() as u32)
+        .unwrap();
+    assert_eq!((def.path.as_str(), def.span), ("lib.m.cp", Span::default()));
+    assert!(
+        db.definition_location("a.cp", 4).is_none(),
+        "`lib` alone is no module"
+    );
+    let def = db
+        .definition_location("a.cp", src.find("step}").unwrap() as u32)
+        .unwrap();
+    assert_eq!(
+        (def.path.as_str(), def.span),
+        ("lib.m.cp", Span::new(7, 11))
+    );
+}
+
+#[test]
 fn a_files_own_method_beside_the_preludes_stays_ambiguous_and_goes_to_both() {
     // Decision 486: the file's `sum` does not shadow std's generic one.
     let mut db = Database::new();

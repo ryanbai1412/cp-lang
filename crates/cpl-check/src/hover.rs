@@ -10,10 +10,11 @@
 
 use crate::builtins::builtin_member;
 use crate::check::{HoverEntry, Resolved};
-use crate::db::{Analysis, Database};
+use crate::db::{Analysis, Database, ItemSyntax};
 use crate::def::{DeclKind, Def};
 use crate::ty::{has_niche, human_bytes, human_int, size_of, struct_layout, struct_size, Ty};
 use cpl_diag::Span;
+use cpl_syntax::ast::{self, StmtKind};
 use std::sync::Arc;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -387,6 +388,9 @@ impl Database {
     pub fn definition_location(&mut self, path: &str, offset: u32) -> Option<Definition> {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
+        if let Some(module) = self.use_target(path, &item.syntax, at) {
+            return Some(module);
+        }
         let entry = innermost(&item.check.hovers, at)?;
         if entry.keyword == "field" {
             if let Some(owner) = &entry.owner {
@@ -445,6 +449,39 @@ impl Database {
             }
         }
         None
+    }
+
+    /// What a name in a `use` names: a segment of its path is the module
+    /// it reaches, at its first line (`graph` in `use std.graph.{Graph}` is
+    /// `std/graph.cp`), and an imported name is its declaration there.
+    fn use_target(&mut self, path: &str, syntax: &ItemSyntax, at: u32) -> Option<Definition> {
+        let inside = |n: &&ast::Name| n.span.start <= at && at < n.span.end;
+        let (parts, name) = syntax
+            .parsed
+            .stmts
+            .iter()
+            .find_map(|stmt| match &stmt.kind {
+                StmtKind::Use {
+                    path: parts, names, ..
+                } => {
+                    if let Some(name) = names.iter().find(inside) {
+                        return Some((parts.as_slice(), Some(&name.text)));
+                    }
+                    let end = parts.iter().position(|n| inside(&n))?;
+                    Some((&parts[..=end], None))
+                }
+                _ => None,
+            })?;
+        let parts: Vec<String> = parts.iter().map(|n| n.text.clone()).collect();
+        let module = self.load_module(path, &parts, Span::default(), &mut Vec::new())?;
+        let span = match name {
+            Some(name) => module.analysis.decl_span(name)?,
+            None => Span::default(),
+        };
+        Some(Definition {
+            path: module.path,
+            span,
+        })
     }
 
     /// Where the fn the checker picked for a member is declared.
