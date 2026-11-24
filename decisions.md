@@ -9382,3 +9382,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Reverse.** Delete the two std declarations, `Store` and the parser's `= @intrinsic` arm in `struct_decl`; the types are the floor's again.
 
 ## 641. (reserved, compiler)
+
+## 642. (reserved, compiler)
