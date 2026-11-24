@@ -9287,7 +9287,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 625. (reserved, compiler)
 
-## 626. (reserved, stdlib)
+## 626. `Subset` is plain std: GAPS:7 closes (stdlib, 2026-11-24)
+
+- **Call.** No compiler table names `Subset` any more: 9be132046 made `B.subsets` std's `@member(subsets)` and dropped the prelude rows, and both engines run `std/subset.cp`'s bodies (an edit to `Subset.len` in std changes `cpl run` and the C++ alike). So Q3 (a)'s move for `Subset` is done with no lowering moved and no C++ change, and GAPS:7, which said `cpl run` answers `Subset` calls itself, closes (std_gaps 5 -> 4, prelude_privilege tightened 24 -> 23 to what main measures). Stdlib's Q3 (a) ruling of 2026-11-24.
+- **Why.** Small core, no privileged stdlib, and a gap line must state what is true. The 55 conformance cases that name `Subset` or `.subsets` pass on both engines.
+- **Reverse.** Reopen GAPS:7 if a compiler table names `Subset` again.
 
 ## 627. (reserved, content)
 
