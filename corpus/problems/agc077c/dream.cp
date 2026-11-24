@@ -17,7 +17,7 @@
 // parity as `odd`. Summing these intervals gives [lo, hi] with the same parity
 // as `target`, so `lo <= target <= hi` is both necessary and sufficient.
 
-use std.graph.complement_components
+use std.graph.{components, complement}
 use std.graph.undirected_of_pairs
 
 @!multitest
@@ -40,9 +40,10 @@ let forbidden = undirected_of_pairs(List(edges))
 
 var lo = 0
 var hi = 0
-for comp in complement_components(forbidden):
-    let sz = comp.len
-    let odd = comp.count(v => odd_out[v])
+let (domain C, comp) = components(complement(forbidden))
+for group in comp.buckets():
+    let sz = group.len
+    let odd = group.count(v => odd_out[v])
     lo += odd % 2
     hi += sz - (sz - odd) % 2
 
