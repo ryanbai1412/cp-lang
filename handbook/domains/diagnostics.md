@@ -4,7 +4,7 @@
 |---|---|
 | Kind | Domain charter |
 | Owner | diagnostics |
-| Describes | `crates/cpl-diag/`, `spec/diagnostics.md`, `spec/checker-lints/`, `crates/cpl-ir/src/fix.rs`, `crates/cpl-lint/src/rules/proven/`, `crates/cpl-cli/tests/{diagnostics,catalogue,recovery,newcomer,runtime_errors,fix_behavior}.rs`, `cpl explain`, `cpl fix` |
+| Describes | `crates/cpl-diag/`, `crates/cpl-config/` (the one `cp.toml` reader), `spec/diagnostics.md`, `spec/checker-lints/`, `crates/cpl-ir/src/fix.rs`, `crates/cpl-lint/src/rules/proven/`, `crates/cpl-cli/tests/{diagnostics,catalogue,recovery,newcomer,runtime_errors,fix_behavior}.rs`, `cpl explain`, `cpl fix` |
 
 The diagnostics domain owns what CP Lang says when a program is wrong:
 compile errors, warnings from the checker and from declared bounds, runtime

@@ -22,6 +22,7 @@
   "direct_python": 0,
   "unrun_script_tests": 0,
   "crate_edges": [
+    "cpl-check -> cpl-config",
     "cpl-check -> cpl-diag",
     "cpl-check -> cpl-env",
     "cpl-check -> cpl-judge",
@@ -184,7 +185,7 @@
   "corpus_walkers": 0,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 0,
-  "config_schemas": 6,
+  "config_schemas": 5,
   "std_doc_parsers": 0,
   "edit_engines": 4,
   "codemods_outside_fix": 0,

@@ -15,6 +15,18 @@ pub fn project_dir(dir: &Path) -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
+/// The first `found(dir, text)` over each [`FILE`] at or above `dir`,
+/// nearest first, read through `read`: the disk, or the files a browser
+/// gives.
+pub fn find_map<T>(
+    dir: &Path,
+    read: &mut dyn FnMut(&Path) -> Option<String>,
+    mut found: impl FnMut(&Path, &str) -> Option<T>,
+) -> Option<T> {
+    dir.ancestors()
+        .find_map(|d| read(&d.join(FILE)).and_then(|text| found(d, &text)))
+}
+
 /// The nearest [`FILE`] at or above `source`'s folder, and its text.
 pub fn discover(source: &Path) -> Option<(PathBuf, String)> {
     let start = source.parent().unwrap_or(Path::new("."));
@@ -24,10 +36,11 @@ pub fn discover(source: &Path) -> Option<(PathBuf, String)> {
         start
     };
     let start = start.canonicalize().unwrap_or(start.to_path_buf());
-    start.ancestors().find_map(|dir| {
-        let file = dir.join(FILE);
-        std::fs::read_to_string(&file).ok().map(|text| (file, text))
-    })
+    find_map(
+        &start,
+        &mut |f| std::fs::read_to_string(f).ok(),
+        |dir, text| Some((dir.join(FILE), text.to_string())),
+    )
 }
 
 /// One line of a table: `key = value`, or a line that is not one.
@@ -114,6 +127,15 @@ pub const SCHEMA: &[Table] = &[
             ),
             ("*", "a lint or group name: its level"),
         ],
+    },
+    Table {
+        name: "libs",
+        reader: "cpl-check",
+        doc: "Libraries a program may `use`, each by the folder it is in.",
+        keys: &[(
+            "*",
+            "a library name: `\"path\"` or `{ path = \"path\" }`, relative to this file or `~/`",
+        )],
     },
 ];
 
