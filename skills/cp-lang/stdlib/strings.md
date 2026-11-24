@@ -101,7 +101,7 @@ Fields: `stride: Int`, `pre1: List<Int>`, `pre2: List<Int>`, `pow_r1: List<Int>`
 
 \(O(n)\) build, \(O(1)\) query.
 
-Fields: `base: U64`, `pre: List<U64>`, `pow: List<U64>`.
+Fields: `pre: List<U64>`, `pow: List<U64>`.
 
 - `fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61` — \(O(n)\); A single-modulus polynomial rolling hash of `seq` modulo the Mersenne prime `2^61 - 1`; call it as `RollingHash61(seq)`.; traps: when a given base is outside `2..2^61 - 1`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements hashed.
