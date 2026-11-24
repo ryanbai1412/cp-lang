@@ -33,9 +33,9 @@ runs:
       shell: bash
       run: rustup ${{ inputs.add }}
     - name: Install just (CI runs each check through its recipe)
-      uses: taiki-e/install-action@v2
+      uses: ./.github/actions/install-tools
       with:
-        tool: just
+        tools: just@1.59.0
     - uses: Swatinem/rust-cache@v2
       if: inputs.cache == 'true'
       with:

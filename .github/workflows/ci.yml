@@ -43,9 +43,9 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           target: ${{ matrix.part == 'checks' && 'clippy' || 'dev' }}
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/install-tools
         with:
-          tool: cargo-nextest
+          tools: cargo-nextest@0.9.152
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -57,12 +57,14 @@ jobs:
       - name: Compiler versions
         run: g++ --version | head -1 && rustc --version
       # A workflow GitHub can't parse fails with no jobs and nothing in any gate.
-      # install-action has no actionlint: in setup-rust it failed every job (exit 76).
+      - name: Install actionlint
+        if: matrix.part == 'checks'
+        uses: ./.github/actions/install-tools
+        with:
+          tools: actionlint@1.7.7
       - name: Workflow lint
         if: matrix.part == 'checks'
-        run: |
-          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7 "$HOME/.cargo/bin"
-          just workflow-lint
+        run: just workflow-lint
       # The cxx and corpus caches are saved once an hour, not once a run:
       # per-run saves passed GitHub's cache limit and evicted the warm ones.
       - name: Cache hour
@@ -174,9 +176,9 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           target: dev
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/install-tools
         with:
-          tool: cargo-nextest
+          tools: cargo-nextest@0.9.152
       - name: Build the test archive
         timeout-minutes: 15
         run: cargo nextest archive --workspace --archive-file nextest.tar.zst
@@ -218,9 +220,9 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           cache: false
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/install-tools
         with:
-          tool: cargo-nextest
+          tools: cargo-nextest@0.9.152
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

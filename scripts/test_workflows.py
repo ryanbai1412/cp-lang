@@ -148,8 +148,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertRegex(gate, r"if: matrix\.part == 'checks'\n +run: just workflow-lint\n")
         with open(os.path.join(ROOT, "justfile"), encoding="utf-8") as f:
             self.assertRegex(f.read(), r"\nworkflow-lint:\n.*shellcheck.*\n    actionlint\n")
-        with open(os.path.join(ROOT, ".github/actions/setup-rust/action.yml"), encoding="utf-8") as f:
-            self.assertRegex(f.read(), r"tool: just,actionlint\n")
+        self.assertRegex(gate, r"uses: \./\.github/actions/install-tools\n +with:\n +tools: actionlint@[0-9.]+\n")
 
     def test_blocking_jobs_cover_every_os(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:

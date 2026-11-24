@@ -45,9 +45,9 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/install-tools
         with:
-          tool: cargo-nextest
+          tools: cargo-nextest@0.9.152
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

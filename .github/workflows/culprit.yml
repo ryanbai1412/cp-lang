@@ -52,10 +52,10 @@ jobs:
         with:
           target: dev
           save-if: false
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/install-tools
         if: steps.range.outputs.fails != '0'
         with:
-          tool: cargo-nextest
+          tools: cargo-nextest@0.9.152
       - name: Bisect
         if: steps.range.outputs.fails != '0'
         run: |

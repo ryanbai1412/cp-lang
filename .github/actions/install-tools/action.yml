@@ -1,0 +1,41 @@
+name: install-tools
+description: >
+  The one way CI installs a tool: each pinned `name@version` is restored from
+  actions/cache, keyed on the OS, arch and versions, so a hit makes no network
+  call. Only a miss downloads, through scripts/retry.sh. debt-ratchet's
+  uncached_installs counts any install outside this action.
+inputs:
+  tools:
+    description: "Space-separated name@version: a crates.io crate, or actionlint@<version> (Linux x64)"
+    required: true
+runs:
+  using: composite
+  steps:
+    - id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cpl-tools
+        key: cpl-tools-${{ runner.os }}-${{ runner.arch }}-${{ inputs.tools }}
+    - name: Install ${{ inputs.tools }} (cache miss)
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        TOOLS: ${{ inputs.tools }}
+      run: |
+        . "$GITHUB_ACTION_PATH/../../../scripts/retry.sh"
+        mkdir -p ~/.cpl-tools/bin
+        for tool in $TOOLS; do
+          case $tool in
+            actionlint@*)
+              v=${tool#actionlint@}
+              fetch -o "$RUNNER_TEMP/actionlint.tgz" "https://github.com/rhysd/actionlint/releases/download/v$v/actionlint_${v}_linux_amd64.tar.gz"
+              tar -xzf "$RUNNER_TEMP/actionlint.tgz" -C ~/.cpl-tools/bin actionlint ;;
+            *) retry cargo install --locked --root ~/.cpl-tools "$tool" ;;
+          esac
+        done
+    - name: Put the tools on PATH
+      shell: bash
+      run: |
+        dir=$HOME/.cpl-tools/bin
+        if [ "$RUNNER_OS" = Windows ]; then dir=$(cygpath -w "$dir"); fi
+        echo "$dir" >> "$GITHUB_PATH"

@@ -427,6 +427,23 @@ class DebtRatchetTest(unittest.TestCase):
             with self.assertRaisesRegex(dr.MeasureError, "no cpl at"):
                 dr.corpus_fmt_dirty(root)
 
+    def test_uncached_installs_counts_installs_outside_install_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, ".github/workflows/w.yml", "jobs:\n  a:\n    steps:\n"
+                        "      - uses: taiki-e/install-action@v2\n"
+                        "      - run: cargo binstall just\n"
+                        "      - run: bash <(curl -sSfL https://example.com/download-actionlint.bash)\n"
+                        "      - uses: ./.github/actions/install-tools\n"
+                        "      - run: cargo build -p cpl-cli\n")
+            self._write(root, dr.INSTALL_ACTION, "runs:\n  steps:\n    - run: retry cargo install --locked --root d x\n")
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.uncached_installs(root), [".github/workflows/w.yml:4", ".github/workflows/w.yml:5",
+                                                          ".github/workflows/w.yml:6"])
+        self.assertIn("uncached_installs", dr.HARD_ZERO)
+        self.assertEqual(dr.uncached_installs(dr.ROOT if hasattr(dr, "ROOT") else Path(dr.__file__).resolve().parents[1]), [])
+
     def test_web_skip_only_reads_only_js_and_ts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1178,14 +1195,14 @@ class DebtRatchetTest(unittest.TestCase):
                 self.assertEqual(json.loads(ratchet.read_text())["skip_lists"], 5 if code else 4)
 
     def test_debt_already_on_main_is_not_this_changes_error(self):
-        base = {"near_dup_fns": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
-        main = {"near_dup_fns": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
+        base = {"unwrap_input": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
+        main = {"unwrap_input": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
         eff = dr.inherited_baseline(base, main)
-        same = {"near_dup_fns": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
+        same = {"unwrap_input": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
         self.assertEqual(dr.evaluate(same, eff)[0], [])
-        more = {"near_dup_fns": 13, "rs_file_size_allowlist": {"a.rs": 2201}}
+        more = {"unwrap_input": 13, "rs_file_size_allowlist": {"a.rs": 2201}}
         self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
-        self.assertEqual(base["near_dup_fns"], 10)
+        self.assertEqual(base["unwrap_input"], 10)
 
     def test_last_touched_never_blames_a_shallow_clones_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as d:

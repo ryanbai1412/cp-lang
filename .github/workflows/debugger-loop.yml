@@ -43,9 +43,9 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           shared-key: debugger-loop
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/install-tools
         with:
-          tool: cargo-nextest
+          tools: cargo-nextest@0.9.152
       - name: GCC as g++
         if: runner.os == 'macOS'
         run: |

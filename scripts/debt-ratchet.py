@@ -1828,6 +1828,7 @@ RETRY_FETCHES = {
     "git push race": r"(sh -c 'git pull -q --rebase origin main && git push |push( |$)|push_reservation,)",
     "chat completion": r"post_chat,",
     "gradle fetch": r"\./gradlew --no-daemon --init-script \S+ prefetch\b",
+    "cargo install": r"cargo install --locked --root ",
 }
 _RETRIED = re.compile(r"(?:^|[\s$(=])retry[ (](.*)")
 
@@ -2117,6 +2118,18 @@ def std_types_shown_empty(root: Path) -> list[str]:
 
 
 CONTINUE_RE = re.compile(r"^(\s*)(?:-\s+)?continue-on-error:\s*(.+?)\s*$")
+
+
+INSTALL_RE = re.compile(r"\s*(- )?uses: taiki-e/install-action|.*\bcargo b?install\b|.*download-\w+\.bash")
+INSTALL_ACTION = ".github/actions/install-tools/action.yml"
+
+
+def uncached_installs(root: Path) -> list[str]:
+    """Tool installs in a workflow or action outside .github/actions/install-tools, whose cache
+    hit makes no network call: an install on every run fails every job when its host is down
+    (run 45388976012: cargo-binstall exit 76 in setup-rust)."""
+    return [f"{rel}:{i}" for rel, i, line in _workflow_lines(root)
+            if rel != INSTALL_ACTION and INSTALL_RE.match(line)]
 
 
 def continue_on_error(root: Path) -> list[str]:
@@ -2674,6 +2687,7 @@ HARD_ZERO = frozenset({
     "lint_name_matchers",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
     "stdlib_todo",
+    "uncached_installs",
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
@@ -2799,6 +2813,7 @@ COUNTERS = {
     "corpus_lint_warnings": ("entries of crates/cpl-lint/corpus_warnings.txt", corpus_lint_warnings, True),
     "or_true": ("`|| true` anywhere (scoreboard CI2)", or_true, True),
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
+    "uncached_installs": ("CI tool installs outside the cached install-tools action (Factory)", uncached_installs, True),
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
     "std_types_shown_empty": ("std types a trace shows as `{}`: no pub field, no Show (Content)",
                               std_types_shown_empty, True),

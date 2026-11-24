@@ -228,9 +228,9 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.commit }}
       - uses: astral-sh/setup-uv@v6
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/install-tools
         with:
-          tool: just
+          tools: just@1.59.0
       - uses: actions/setup-node@v4
         with:
           node-version: "24"

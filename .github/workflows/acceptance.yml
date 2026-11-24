@@ -24,12 +24,14 @@ jobs:
         with:
           sparse-checkout: |
             justfile
+            .github/actions
+            scripts/retry.sh
             research/acceptance
             editors/lsp-*
           sparse-checkout-cone-mode: false
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/install-tools
         with:
-          tool: just
+          tools: just@1.59.0
       - name: Install from the site
         if: runner.os != 'Windows'
         run: curl -fsSL https://cp-lang.org/install.sh | sh
