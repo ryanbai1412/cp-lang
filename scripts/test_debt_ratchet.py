@@ -597,6 +597,16 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.browser_lsp_gaps(root), ["renameProvider"])
         self.assertNotIn("hoverProvider", dr.browser_lsp_gaps(dr.ROOT))
 
+    def test_site_spec_snippets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "web/content/landing/a.spec.cp", "let x = 1\n")
+            self._write(root, "web/content/landing/b.cp", "let x = 1\n")
+            self._write(root, "web/content/docs/c.mdx", "```cp run\nx\n```\n\n```cp status=spec\ny\n```\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.site_spec_snippets(root), ["web/content/docs/c.mdx:5", "web/content/landing/a.spec.cp"])
+
     def test_every_list_row_names_a_counter(self) -> None:
         for rel, (counter, owner, plan) in dr.LISTS.items():
             self.assertTrue(counter is None and plan.startswith("data:") or counter in dr.COUNTERS, rel)

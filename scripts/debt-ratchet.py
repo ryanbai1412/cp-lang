@@ -541,6 +541,19 @@ def browser_lsp_gaps(root: Path) -> list[str]:
     return sorted(advertised - used)
 
 
+def site_spec_snippets(root: Path) -> list[str]:
+    """Site programs the compiler doesn't accept yet: `*.spec.cp` files and `status=spec`
+    fences under web/content (web/scripts/gate.mjs). Each is a checker or std bug to fix."""
+    out = []
+    for rel in _git(root, "ls-files", "web/content"):
+        if rel.endswith(".spec.cp"):
+            out.append(rel)
+        elif rel.endswith((".md", ".mdx")) and (root / rel).is_file():
+            out += [f"{rel}:{i}" for i, line in enumerate(_lines(root / rel), 1)
+                    if re.match(r"\s*```cp\b.*\bstatus=spec\b", line)]
+    return out
+
+
 def _crate_edges(root: Path, kind: str = "dependencies") -> set[tuple[str, str]]:
     edges = set()
     for toml in sorted((root / "crates").glob("*/Cargo.toml")):
@@ -2176,6 +2189,7 @@ COUNTERS = {
     "consumer_rederived": ("tool sites re-deriving checker facts", consumer_rederived, True),
     "site_rederived": ("web/ sources re-deriving tool data", site_rederived, True),
     "browser_lsp_gaps": ("language-server capabilities the browser editor never asks for", browser_lsp_gaps, True),
+    "site_spec_snippets": ("site programs the compiler doesn't accept yet (.spec.cp, status=spec)", site_spec_snippets, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
