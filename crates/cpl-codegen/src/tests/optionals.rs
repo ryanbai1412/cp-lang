@@ -368,3 +368,15 @@ fn a_cell_fn_tested_by_its_caller_builds_no_opt_tuple() {
         "{p}"
     );
 }
+
+#[test]
+fn std_is_some_and_is_none_are_a_plain_has_value_check() {
+    let body = cpp(
+        "let n: Int = read()\nlet x: ?Int = if n > 0: Some(n) else: None\nprint(yes(x.is_some), yes(x.is_none))\n",
+    );
+    let solve = &body[body.find("void solve()").unwrap()..];
+    // std.opt's bodies are not called: each test is `has_value()` in place.
+    assert_eq!(solve.matches(".has_value()").count(), 2, "{solve}");
+    assert!(!body.contains("is_some_"), "{body}");
+    assert!(!body.contains("is_none_"), "{body}");
+}

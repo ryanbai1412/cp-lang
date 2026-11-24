@@ -205,13 +205,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
-        let file = format!("std/{module}.cp");
-        let sym = self
-            .path_to_mod
-            .iter()
-            .find(|(path, _)| path.replace('\\', "/").ends_with(&file))
-            .and_then(|(_, &m)| self.mod_syms[m].get(name).copied());
-        match sym {
+        match self.std_sym(module, name) {
             Some(Sym::GenFn(id)) => {
                 let explicit = self.resolve_gen_args(tys);
                 self.call_gen_fn(id, explicit, None, args, span)
@@ -219,6 +213,15 @@ impl<'a> Lowerer<'a> {
             Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
             _ => self.gen_error(cpl_diag::msgs::ir::GEN_NEEDS_MODULE.at(&[&module]), span),
         }
+    }
+
+    /// The fn `name` of the loaded module `std.<module>`.
+    pub(in crate::lower) fn std_sym(&self, module: &str, name: &str) -> Option<Sym> {
+        let file = format!("std/{module}.cp");
+        self.path_to_mod
+            .iter()
+            .find(|(path, _)| path.replace('\\', "/").ends_with(&file))
+            .and_then(|(_, &m)| self.mod_syms[m].get(name).copied())
     }
 
     fn gen_unsupported(&mut self, span: Span) -> Expr {

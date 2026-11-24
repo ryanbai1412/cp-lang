@@ -956,11 +956,6 @@ impl<'a> Lowerer<'a> {
                 });
                 self.mk_builtin(op, [value], ty, span)
             }
-            (Ty::Opt(_), "is_some") => self.mk_is_some(value, Ty::Bool, span),
-            (Ty::Opt(_), "is_none") => {
-                let some = self.mk_is_some(value, Ty::Bool, span);
-                self.mk_unary(UnOp::Not, some, Ty::Bool, span)
-            }
             // Default `Target::to` trait getter on plain values (e.g. vertices yielded by `u => adj[u]`).
             (_, "to") => value,
             // `Hashable::hash_token` of a position, until a blanket domain impl's getter reaches it.
@@ -1184,6 +1179,15 @@ impl<'a> Lowerer<'a> {
         if let Some(mark) = recv_mark {
             self.cx.pending.truncate(mark);
         }
+        if let Some(some) = self.opt_test(sym) {
+            let value = self.expr(base, None);
+            let test = self.mk_is_some(value, Ty::Bool, span);
+            return Some(if some {
+                test
+            } else {
+                self.mk_unary(UnOp::Not, test, Ty::Bool, span)
+            });
+        }
         let mut all_args = Vec::with_capacity(args.len() + 1);
         all_args.push(ast::Arg {
             name: None,
@@ -1199,6 +1203,18 @@ impl<'a> Lowerer<'a> {
             }
             _ => None,
         }
+    }
+
+    /// Whether `sym` is std.opt's `is_some` (`Some(true)`) or `is_none`
+    /// (`Some(false)`): a has-value test in place, not a call.
+    fn opt_test(&self, sym: Sym) -> Option<bool> {
+        let Sym::GenFn(id) = sym else {
+            return None;
+        };
+        let is = |name| matches!(self.std_sym("opt", name), Some(Sym::GenFn(g)) if g == id);
+        [("is_some", true), ("is_none", false)]
+            .into_iter()
+            .find_map(|(name, some)| is(name).then_some(some))
     }
     /// `xs.items` in a `for` or a comprehension: the loop counts through the indices and reads
     /// each element in place, so no list of pairs is built.
