@@ -2,6 +2,8 @@
 cards 1..4, at most 40 of each, summing to N - 1. size >= 350 gives the largest
 state spaces: up to 40 of each card with N - 1 >= 329 (at most 120 cards fit)."""
 import random, sys
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "350"]
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 while True:

@@ -4,73 +4,55 @@
 //   for stack 2. Print the lexicographically least op sequence (space-separated), or 0.
 // Solution: positions i < j cannot share a stack when a[i] < a[j] and some later value is
 //   below a[i]; the permutation is sortable iff this clash graph is bipartite. Colour each
-//   component with its earliest position on stack 1, then simulate greedily, trying b (when
-//   due), a, d, c in that order. O(n^2).
-// The clash graph is an adjacency list coloured by a hand-rolled walk, and the
-// script is built as a List<Char> printed with write: the prototype has no
-// two_color and no join.
+//   component with its earliest position on stack 1, then simulate: before each push pop
+//   every due value (stack 1 first), then push onto the colour's stack. O(n^2).
 // original: corpus/submissions/5185830.cpp
+use std.graph.{two_color}
+
 let n: 1..=1000 = read()
-let a: [0..n]Int = read()
+domain Pos = 0..n
+let a: [Pos]1..=n = read()
 
 // later[i]: the least value strictly after position i
-var later: [0..n]Int = n + 1
-for i in (0..n - 1).rev: later[i] = min(later[i + 1], a[i + 1])
+var later: [Pos]?Int = None
+for i in Pos.rev:
+    if let j = i.next:
+        later[i] = later[j]
+        later[i] min= a[j]
 
-// i < j clash (cannot share a stack) when a[i] < a[j] and something smaller
-// than a[i] still comes after j: a[j] would sit on a[i] when a[i] must leave
-var clash: [0..n]List<Int> = []
-for i in 0..n:
-    for j in i + 1..n:
-        if a[i] < a[j] and later[j] < a[i]:
-            clash[i].push(j)
-            clash[j].push(i)
+// i < j clash (cannot share a stack) when a[i] < a[j] and something smaller than a[i] still
+// comes after j: a[j] would sit on a[i] when a[i] must leave
+fn clash(i: Pos, j: Pos) -> Bool:
+    if j < i: return clash(j, i)
+    if let low = later[j]: a[i] < a[j] and low < a[i] else: false
+let apart = [Pos] i => [j for j in Pos if i != j and clash(i, j)]
 
-// the earliest position of every component goes to stack 0, the cheaper letters
-var side: [0..n]?Int = None
-var ok = true
-for s in 0..n:
-    if side[s] != None: continue
-    side[s] = 0
-    var todo: List<Int> = [s]
-    while let i = todo.pop():
-        for j in clash[i]:
-            if side[j] == None:
-                side[j] = 1 - side[i]!
-                todo.push(j)
-            elif side[j] == side[i]: ok = false
-
-// a stack only ever takes a value smaller than its top
-fn fits(stack: List<Int>, x: Int) -> Bool:
-    if let top = stack.last: return x < top
-    true
-
-if not ok: print(0)
-else:
-    var stack0: List<Int> = []
-    var stack1: List<Int> = []
-    var script: List<Char> = []
-    var (next, need) = (0, 1)
-    while need <= n:
-        // a pop that is due beats everything on its own stack; between the
-        // stacks the letters decide: a < b < c < d
-        if stack0.last == need:
-            stack0.pop()
-            script.push('b')
-            need += 1
-        elif next < n and side[next] == 0 and fits(stack0, a[next]):
-            stack0.push(a[next])
-            script.push('a')
-            next += 1
-        elif stack1.last == need:
+var (stack1, stack2) = (List<Int>(), List<Int>())
+var script: List<Char> = []
+var need = 1
+// pop every value that is due, stack 1 first: a due pop beats any push
+fn pop_due():
+    while true:
+        if stack1.last == need:
             stack1.pop()
+            script.push('b')
+        elif stack2.last == need:
+            stack2.pop()
             script.push('d')
-            need += 1
-        else:
-            stack1.push(a[next])
+        else: return
+        need += 1
+
+// the earliest position of every component colours `false`: stack 1, the cheaper letters
+if let second = two_color(apart):
+    for i in Pos:
+        pop_due()
+        if second[i]:
+            stack2.push(a[i])
             script.push('c')
-            next += 1
-    for i in 0..script.len:
-        if i > 0: print(" ", end: "")
-        print(script[i], end: "")
-    print("")
+        else:
+            stack1.push(a[i])
+            script.push('a')
+    pop_due()
+    print(" ".join(script))
+else:
+    print(0)
