@@ -1418,6 +1418,11 @@ pub(crate) enum Op {
         is_last: bool,
     },
 
+    /// `dst` = the zero value of `fill_tys[ty]`, what a `let` without a value holds.
+    ZeroV {
+        dst: u16,
+        ty: u16,
+    },
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     ConstV {
         dst: u16,

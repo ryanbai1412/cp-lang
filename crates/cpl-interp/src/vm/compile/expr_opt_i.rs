@@ -1,6 +1,6 @@
 use super::{Compiler, GiveTarget};
 use crate::vm::ir::*;
-use cpl_ir::{Builtin, Expr, ExprKind, Mutation, PlaceKind, Ty};
+use cpl_ir::{BinOp, Builtin, Expr, ExprKind, Mutation, PlaceKind, Ty};
 
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_expr_opt_i(&mut self, expr: &'p Expr) -> (u16, u16) {
@@ -731,6 +731,45 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     );
                     (dst_val, dst_some)
                 }
+            }
+            ExprKind::Binary(BinOp::Coalesce, lhs, rhs)
+                if ScalarKind::of_opt_ty(&lhs.ty, self.program).is_some() =>
+            {
+                let (dst_val, dst_some) = (self.alloc_i(), self.alloc_i());
+                let (lv, ls) = self.compile_expr_opt_i(lhs);
+                self.emit(
+                    Op::MoveI {
+                        dst: dst_val,
+                        src: lv,
+                    },
+                    lhs.span,
+                );
+                self.emit(
+                    Op::MoveI {
+                        dst: dst_some,
+                        src: ls,
+                    },
+                    lhs.span,
+                );
+                let j_done = self.emit(Op::JmpIfNonZero { reg: ls, target: 0 }, span);
+                let (rv, rs) = self.compile_expr_opt_i(rhs);
+                self.emit(
+                    Op::MoveI {
+                        dst: dst_val,
+                        src: rv,
+                    },
+                    rhs.span,
+                );
+                self.emit(
+                    Op::MoveI {
+                        dst: dst_some,
+                        src: rs,
+                    },
+                    rhs.span,
+                );
+                let end = self.ops.len() as u32;
+                self.patch(j_done, end);
+                (dst_val, dst_some)
             }
             ExprKind::If(cond, then_e, else_e) => {
                 if let Some(b) = Self::const_bool(cond) {

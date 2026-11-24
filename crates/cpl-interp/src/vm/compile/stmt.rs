@@ -613,7 +613,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 self.emit(Op::MoveV { dst, src: r }, expr.span);
                             }
                         } else {
-                            self.emit_fallback_stmt(stmt);
+                            let ty = self.fill_tys.len() as u16;
+                            self.fill_tys.push(&self.locals[*slot].ty);
+                            self.emit(Op::ZeroV { dst, ty }, Span::default());
                         }
                     }
                 }

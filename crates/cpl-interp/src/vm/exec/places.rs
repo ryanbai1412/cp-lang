@@ -1198,6 +1198,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::ConstV { dst, idx } => {
                 regs_v[dst as usize] = chunk.consts_v[idx as usize].clone();
             }
+            Op::ZeroV { dst, ty } => {
+                regs_v[dst as usize] = crate::zero(chunk.fill_tys[ty as usize], self.program);
+            }
             Op::Print { idx } => {
                 let spec = &chunk.prints[idx as usize];
                 let vals: Vec<Value> = spec
