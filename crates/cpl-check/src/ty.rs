@@ -751,13 +751,39 @@ impl Ty {
         if !listed {
             return bound;
         }
-        // `[D]T` where a list was given, or `D = Int` (R07.3.5), is that list's
-        // type, and one of its positions is an `Int`.
-        bound.map(&mut |ty| match ty {
+        bound.list_positions(bindings)
+    }
+
+    /// `[D]T` where a list was given, or `D = Int` (R07.3.5), is that list's
+    /// type, and one of its positions is an `Int`. A struct's own `D` stays:
+    /// `Arr([1, 2, 3])` is an `Arr<List>`, and so is its `Version<Arr<D>>`.
+    fn list_positions(&self, bindings: &Bindings) -> Ty {
+        let list_index = Ty::list_index();
+        self.map(&mut |ty| match ty {
             Ty::Array { index, elem } if *index == [Ty::list_index()] || *index == [Ty::Int] => {
                 Some(Ty::Named {
                     name: "List".to_string(),
                     args: vec![elem.subst(bindings)],
+                })
+            }
+            Ty::Named { name, args }
+                if !matches!(
+                    name.as_str(),
+                    "List" | "Range" | "Cut" | "Map" | "HashMap" | "Set"
+                ) && args.contains(&list_index) =>
+            {
+                Some(Ty::Named {
+                    name: name.clone(),
+                    args: args
+                        .iter()
+                        .map(|a| {
+                            if *a == list_index {
+                                a.clone()
+                            } else {
+                                a.list_positions(bindings)
+                            }
+                        })
+                        .collect(),
                 })
             }
             ty if *ty == list_index => Some(Ty::Int),
