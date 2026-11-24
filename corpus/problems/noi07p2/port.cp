@@ -18,7 +18,7 @@ let days: [Day](a: F64, b: F64, rate: F64) = read()
 
 let by_ratio = sorted(Day, by: d => days[d].a / days[d].b)
 let ratio = [days[d].a / days[d].b for d in by_ratio]
-var rank: [Day]Int = 0  // a day's place among the ratios
+var rank: [Day]0..n = 0  // a day's place among the ratios
 for (i, d) in by_ratio.items: rank[d] = i
 
 // a day's line over the ratio ranks: worth k * ratio + m
