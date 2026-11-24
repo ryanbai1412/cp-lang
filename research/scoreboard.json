@@ -706,7 +706,7 @@
         "core-04/rb1-q22-int-range-cut-is-value.cp": "pass",
         "core-04/rebase-fresh-domain.cp": "pass",
         "core-04/rebase-keys-dont-mix.cp": "pass",
-        "core-04/rebased-str-indexes-from-zero.cp": "fail",
+        "core-04/rebased-str-indexes-from-zero.cp": "pass",
         "core-04/record-fits-named-product.cp": "pass",
         "core-04/record-with-swapped-names-is-no-position.cp": "pass",
         "core-04/rekey-length-mismatch-traps.cp": "pass",
@@ -3815,10 +3815,10 @@
         }
       ],
       "counts": {
-        "fail": 7,
-        "pass": 3744
+        "fail": 6,
+        "pass": 3745
       },
-      "passed": 3744,
+      "passed": 3745,
       "total": 3751
     },
     "corpus": {
@@ -11808,7 +11808,7 @@
         "core/04b-keys.md#contest-code:6": "pass",
         "core/04b-keys.md#contest-code:7": "pass",
         "core/04b-keys.md#contest-code:8": "pass",
-        "core/04b-keys.md#contest-code:9": "error",
+        "core/04b-keys.md#contest-code:9": "pass",
         "core/04b-keys.md#library-code:1": "pass",
         "core/04b-keys.md#library-code:2": "pass",
         "core/04b-keys.md#library-code:3": "pass",
@@ -12153,10 +12153,10 @@
         }
       ],
       "counts": {
-        "error": 6,
-        "pass": 320
+        "error": 5,
+        "pass": 321
       },
-      "passed": 320,
+      "passed": 321,
       "strict_passed": 320,
       "total": 326
     }
