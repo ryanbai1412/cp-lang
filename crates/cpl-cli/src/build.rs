@@ -19,6 +19,8 @@ pub(crate) struct BuildOptions<'a> {
     pub size: bool,
     pub copy: bool,
     pub json: bool,
+    /// The C++ as codegen writes it, not fitted to the judge's size bar.
+    pub full: bool,
 }
 
 /// `cpl build`: one C++17 file for the judge.
@@ -36,6 +38,7 @@ pub(crate) fn build_file(
         size,
         copy,
         json,
+        full,
     } = *options;
     if checked && out == Some("-") {
         *stderr += "cpl: `--checked` builds a program from the C++ file, so it can't go to standard output\n";
@@ -75,16 +78,16 @@ pub(crate) fn build_file(
     };
     let mut sizes = Vec::new();
     let aim = profile.aim();
-    let cpp = match cpl_codegen::emit_aiming(
-        &compiled.program,
-        name,
-        &compiled.text,
-        (aim, limit),
-        &target,
-    ) {
+    let bar = if full {
+        (usize::MAX, usize::MAX)
+    } else {
+        (aim, limit)
+    };
+    let cpp = match cpl_codegen::emit_aiming(&compiled.program, name, &compiled.text, bar, &target)
+    {
         Ok(fitted) => {
             let left = fitted.left_out();
-            if !left.is_empty() {
+            if !full && !left.is_empty() {
                 let bar = format!("{aim}-byte target");
                 let args: &[&dyn std::fmt::Display] =
                     &[&path, &fitted.full, &bar, &profile.name, &left.join(", ")];

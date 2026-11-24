@@ -270,10 +270,16 @@ pub fn exec<S: AsRef<str>>(
             let size = rest.contains(&"--size");
             let copy = rest.contains(&"--copy");
             let json = rest.contains(&"--json");
+            let full = rest.contains(&"--full");
             let mut rest: Vec<&str> = rest
                 .iter()
                 .copied()
-                .filter(|arg| !matches!(*arg, "--checked" | "--size" | "--copy" | "--json"))
+                .filter(|arg| {
+                    !matches!(
+                        *arg,
+                        "--checked" | "--size" | "--copy" | "--json" | "--full"
+                    )
+                })
                 .collect();
             let judge = match take_judge(&mut rest, "build") {
                 Ok(judge) => judge,
@@ -301,6 +307,7 @@ pub fn exec<S: AsRef<str>>(
                 size,
                 copy,
                 json,
+                full,
             };
             build_file(file, &options, stdout, stderr)
         }

@@ -1052,3 +1052,24 @@ fn a_statement_whose_value_is_dropped_writes_no_unused_value() {
         run.stderr
     );
 }
+
+#[test]
+fn build_full_writes_the_cpp_unfitted_over_the_bar() {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-full");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let file = scratch.join("a.cp");
+    std::fs::write(&file, "var xs: List<Int> = [3, 1]\nxs.sort()\nprint(xs)\n").unwrap();
+    std::fs::write(
+        scratch.join("cp.toml"),
+        "[judge]\njudge = \"tiny\"\n\n[judge.tiny]\nextends = \"generic\"\nsource_kb = 1\n",
+    )
+    .unwrap();
+    let fitted = cpl_cli::run(&["build", file.to_str().unwrap(), "-o", "-"]);
+    assert_ne!(fitted.code, 0, "a 1 KB bar fits no runtime");
+    let out = cpl_cli::run(&["build", file.to_str().unwrap(), "--full", "-o", "-"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let cpp = String::from_utf8(out.stdout).unwrap();
+    assert!(comment_lines(&cpp) > 0, "{cpp}");
+    assert!(cpp.contains("\n  "), "kept its indentation:\n{cpp}");
+    assert!(!out.stderr.contains("left out"), "{}", out.stderr);
+}

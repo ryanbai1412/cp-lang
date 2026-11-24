@@ -90,6 +90,7 @@ pub(crate) const COMMANDS: &[Command] = &[
             "--checked",
             "--compiler",
             "--size",
+            "--full",
             "--copy",
             "--json",
         ]),
@@ -413,6 +414,8 @@ options:
   --size            say where the bytes go: header, runtime, library fns,
                     your code, by part and by piece (said anyway when the
                     file is over the judge's limit)
+  --full            write the C++ as codegen writes it, with its comments and
+                    names, however far over the judge's size bar, to read it
   -c, --copy        also put the C++ on the clipboard (pbcopy, wl-copy, xclip,
                     xsel or clip, else the command in CPL_CLIPBOARD)
   --json            print one JSON object once it is written: its `path`,
