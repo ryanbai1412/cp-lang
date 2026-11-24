@@ -908,8 +908,9 @@ pub struct MeldHeap<T>:
     /// traps: never
     /// example: `var h = MeldHeap.of([1]); let t = h.take(); h.is_empty and t.peek == Some(1)`
     pub fn take(mut self) -> MeldHeap<T>:
-        let out = MeldHeap(_pool:, _h:)
-        self.clear()
+        var out = MeldHeap(_pool: _pool.emptied())
+        swap(mut out._pool, mut _pool)
+        swap(mut out._h, mut _h)
         out
 
     /// Pop and return all elements in ascending order, leaving `self` empty.
@@ -1121,6 +1122,9 @@ pub struct MeldHeaps<T>:
     fn reset(mut self):
         _nodes = []
         _adds = []
+
+    // An empty pool ordered as this one is.
+    fn emptied(self) -> MeldHeaps<T> = MeldHeaps(lt:)
 
     fn check(self, h: Meld<T>):
         assert h._root < 0 or _nodes[h._root].stamp == h._stamp, "this `Meld` handle is a stale copy: its heap changed after the copy was taken"
@@ -1398,9 +1402,12 @@ pub struct MaxHeap<T>:
     pub fn push_all(mut self, items: Seq<T>):
         self.h.push_all([desc(x) for x in items])
 
-    /// Pop every element, largest first.
+    /// Pop and yield every element, largest first, leaving the heap empty.
     ///
-    /// cost: \(O(n \log n)\)
+    /// Each step is one `pop`. A loop that stops early leaves the elements not yet yielded in
+    /// the heap.
+    ///
+    /// cost: \(O(\log n)\) per step
     /// empty: `var h = MaxHeap<Int>(); h.drain().collect() == []`
     /// order: largest first; equal elements in no promised order
     /// traps: never
