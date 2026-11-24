@@ -1,5 +1,4 @@
 // expect: ok, output "1 2 3\n1 12 13\n7 7 3\n3\n3\n1 9 3\n2 1 3\nYES\nYES"
-// optional_copies: 2
 use std.lazy.{Rope}
 domain U = 0..3
 let a0: [U]Int = [1, 2, 3]

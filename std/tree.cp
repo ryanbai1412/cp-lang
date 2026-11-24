@@ -3846,14 +3846,14 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: never
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(0, 1); et.apply_tree(0, 3); et.to_array() == [3, 3, 0]`
     pub fn to_array(self) -> [V]T:
-        var out = val
+        var tags: List<F> = [act.id for _ in 0..V.count]
         var stack: List<(Int, F)> = [(x, act.id) for x in 0..lc.len if pa[x] == None]
         while let (x, f) = stack.pop():
-            if x < V.count: out[V.nth(x)] = act.apply(f, out[V.nth(x)], 1)
+            if x < V.count: tags[x] = f
             let g = act.compose(f, lz[x])
             if let c = lc[x]: stack.push((c, g))
             if let c = rc[x]: stack.push((c, g))
-        out
+        [V] v => act.apply(tags[v.ord], val[v], 1)
 
     /// The value at `v`, with every update to a tree or side holding it applied.
     ///
