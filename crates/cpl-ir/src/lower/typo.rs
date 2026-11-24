@@ -4,6 +4,18 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
+    /// On the error just reported for `.name` of a domain position: an arc
+    /// of a graph built from a list of pairs is the neighbour itself, with
+    /// no edge record around it to read `.e` from.
+    pub(super) fn position_member_hint(&mut self, ty: &Ty, name: &str) {
+        if matches!(ty, Ty::Pos(_)) && name == "e" {
+            self.help(
+                "this is the neighbour itself, and a graph built from a list of pairs numbers no edges; \
+                 for `.e`, give the edges a domain: `let edges: [E](u: V, v: V) = ...`, then `Graph.directed(edges)`",
+            );
+        }
+    }
+
     /// "a `List`", "an `Int`": the type with its article, for messages.
     pub(super) fn a_ty(&self, ty: &Ty) -> String {
         let shown = self.show(ty);

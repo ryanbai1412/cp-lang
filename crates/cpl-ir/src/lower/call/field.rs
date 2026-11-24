@@ -982,13 +982,8 @@ impl<'a> Lowerer<'a> {
                     &[&self.a_ty(&ty), &name.text],
                 );
                 self.member_typo(&ty, &name.text, name.span);
+                self.position_member_hint(&ty, &name.text);
                 match (&ty, name.text.as_str()) {
-                    // An arc of a graph built from a list of pairs is the
-                    // neighbour, with no record around it.
-                    (Ty::Pos(_), "e") => self.help(
-                        "this is the neighbour itself, and a graph built from a list of pairs numbers no edges; \
-                         for `.e`, give the edges a domain: `let edges: [E](u: V, v: V) = ...`, then `Graph.directed(edges)`",
-                    ),
                     (Ty::List(_), "indices") => self.help(
                         "a list is indexed by `Int` from 0: write `0..xs.len`; \
                          an array `[D]T` has `.indices`, the positions of `D`",
