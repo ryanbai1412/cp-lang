@@ -399,6 +399,7 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     // stack of surviving columns for rows 2^(l+1) - 1 apart, and `bat[l]` is
     // the stack slot the best column for level l's next odd row starts at.
     vals: List<K> = []
+    reached: Int = 0
     top: Int = -1
     sv: List<List<K>> = []
     sc: List<List<Int>> = []
@@ -411,7 +412,8 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     fn setup(mut self):
         if top >= 0: return
         assert nodes.len > 0
-        vals = [K.zero]
+        vals = List.filled(nodes.len, K.zero)
+        reached = 1
         top = 0
         while (2 << top) <= nodes.len - 1: top += 1
         sv = [[] for _ in 0..top]
@@ -430,9 +432,9 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.next() == (val: 2, prev: 1)`
     pub fn next(mut self) -> (val: K, prev: Int):
         self.setup()
-        assert vals.len < nodes.len, "`MongePath.next`: every node has been reached"
+        assert reached < nodes.len, "`MongePath.next`: every node has been reached"
         let rows = nodes.len - 1
-        let inp = vals.len - 1
+        let inp = reached - 1
         var l = 0
         var nv = K.zero
         var nc = 0
@@ -492,7 +494,8 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
                 if col == end: break
                 bat[l] += 1
             l -= 1
-        vals.push(nv)
+        vals[reached] = nv
+        reached += 1
         (val: nv, prev: nc)
     /// The optimum at node `i`, which must already be reached; `val(0)` is 0.
     ///
@@ -508,7 +511,7 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     /// traps: never
     /// example: `MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)).len == 1`
     @get pub fn len(self) -> Int:
-        if vals.len > 1: vals.len else: 1
+        if reached > 1: reached else: 1
 
 fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: List<Int>):
     if rows.is_empty: return
