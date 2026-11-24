@@ -1542,6 +1542,10 @@ impl<'a> Lowerer<'a> {
                             Some(b) => self.check_range(value, &b, arg.value.span),
                             None => value,
                         };
+                        let value = match declared.and_then(|t| self.const_param_cells(id, t)) {
+                            Some(cells) => self.check_fresh_cells(value, &cells, &arg.value),
+                            None => value,
+                        };
                         lowered.push(Arg::Value(value));
                     }
                 }
@@ -1807,11 +1811,9 @@ impl<'a> Lowerer<'a> {
                         self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty))
                     };
                     let v = self.field_keys(id, &decl.fields[i].ty, v, &arg.value);
-                    let v = match self
-                        .struct_field_range(id, i)
-                        .and_then(|r| r.scalar().cloned())
-                    {
-                        Some(b) => self.check_range(v, &b, arg.value.span),
+                    let v = match self.struct_field_range(id, i) {
+                        Some(RangeInfo::Scalar(b)) => self.check_range(v, &b, arg.value.span),
+                        Some(cells) => self.check_fresh_cells(v, &cells, &arg.value),
                         None => v,
                     };
                     values.push(v);

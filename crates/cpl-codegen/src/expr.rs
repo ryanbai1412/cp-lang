@@ -148,11 +148,28 @@ impl<'p> Emitter<'p> {
         ret: &Ty,
         build: impl FnOnce(&mut Self, Vec<Code>) -> Code,
     ) -> Code {
+        self.sequence_laid(operands, &[], ret, build)
+    }
+
+    /// `sequence`, building operand `i` in `layouts[i]`: a fresh list given
+    /// for a narrowed parameter is made in the parameter's cells.
+    pub fn sequence_laid(
+        &mut self,
+        operands: &[&Expr],
+        layouts: &[Option<cpl_ir::NarrowLayout>],
+        ret: &Ty,
+        build: impl FnOnce(&mut Self, Vec<Code>) -> Code,
+    ) -> Code {
+        let laid =
+            |this: &mut Self, i: usize, e: &Expr| match layouts.get(i).and_then(|l| l.as_ref()) {
+                Some(l) => this.expr_with_elem_layout(e, Some(l)),
+                None => this.expr(e),
+            };
         let touches: Vec<Touch> = operands.iter().map(|e| self.touch(e)).collect();
         let n = operands.len();
         let ordered = (0..n).any(|i| (i + 1..n).any(|j| touches[i].conflicts(&touches[j])));
         if !ordered {
-            let codes = operands.iter().map(|e| self.expr(e)).collect();
+            let codes = (0..n).map(|i| laid(self, i, operands[i])).collect();
             return build(self, codes);
         }
         let ret_text = self.ty(ret);
@@ -160,7 +177,7 @@ impl<'p> Emitter<'p> {
         self.lambda(&ret_text, |this, out| {
             let mut codes = Vec::with_capacity(n);
             for (i, e) in operands.iter().enumerate() {
-                let code = this.expr(e);
+                let code = laid(this, i, e);
                 if i + 1 == n
                     || this.is_fixed(e)
                     || matches!(e.kind, ExprKind::Str(_) | ExprKind::None)

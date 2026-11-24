@@ -516,7 +516,10 @@ impl<'a> Lowerer<'a> {
         if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(&spec) {
             return Some(self.check_range(val, &bounds, init.span));
         }
-        Some(val)
+        match self.range_info_from_ast(ty) {
+            Some(cells @ RangeInfo::Elem(_)) => Some(self.check_fresh_cells(val, &cells, init)),
+            _ => Some(val),
+        }
     }
 
     /// `var g: [0..n][0..4]Int = 0`: a literal fills every cell, and a

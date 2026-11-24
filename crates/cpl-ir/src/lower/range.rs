@@ -528,6 +528,60 @@ impl<'a> Lowerer<'a> {
 
     /// The range of fn `id`'s param declared `ty`, read in `id`'s own
     /// module, when its ends are constants and so mean the same at the call.
+    /// The range a parameter's declared cells hold (`xs: List<-5..=5>`),
+    /// when their bounds are constant.
+    pub(super) fn const_param_cells(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeInfo> {
+        let ast::TypeKind::Named { name, args } = &ty.kind else {
+            return None;
+        };
+        if name.text != "List" || args.len() != 1 {
+            return None;
+        }
+        match self.const_param_cells(id, &args[0]) {
+            Some(inner) => Some(RangeInfo::Elem(Box::new(inner))),
+            None => self
+                .const_param_range(id, &args[0])
+                .map(|b| RangeInfo::Elem(Box::new(RangeInfo::Scalar(b)))),
+        }
+    }
+
+    /// Checks each cell of a list literal against the range its destination
+    /// declares (`first([x])` for `xs: List<-5..=5>`): a literal's cells are
+    /// stored as given, so each is checked as a scalar would be.
+    pub(super) fn check_fresh_cells(
+        &mut self,
+        value: Expr,
+        info: &RangeInfo,
+        written: &ast::Expr,
+    ) -> Expr {
+        let RangeInfo::Elem(inner) = info else {
+            return value;
+        };
+        let cells = match &written.kind {
+            ast::ExprKind::List(cells) => &cells[..],
+            _ => &[],
+        };
+        match value.kind {
+            ExprKind::Tuple(items)
+                if matches!(value.ty, Ty::List(_)) && items.len() == cells.len() =>
+            {
+                let items = items
+                    .into_iter()
+                    .zip(cells)
+                    .map(|(item, cell)| match inner.as_ref() {
+                        RangeInfo::Scalar(b) => self.check_range(item, b, cell.span),
+                        nested => self.check_fresh_cells(item, nested, cell),
+                    })
+                    .collect();
+                Expr {
+                    kind: ExprKind::Tuple(items),
+                    ..value
+                }
+            }
+            kind => Expr { kind, ..value },
+        }
+    }
+
     pub(super) fn const_param_range(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeBounds> {
         let saved_m = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
         let saved_off = std::mem::replace(&mut self.offset, self.sigs[id].offset);

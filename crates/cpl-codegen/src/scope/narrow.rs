@@ -7,6 +7,18 @@ pub(crate) fn is_opt_int(ty: Option<&Ty>) -> bool {
     matches!(ty, Some(Ty::Opt(inner)) if **inner == Ty::Int)
 }
 
+/// A sequence built fresh where it is given, so it can be built in whatever
+/// layout its destination stores.
+pub(crate) fn is_fresh_list(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Fill(..) => true,
+        ExprKind::Tuple(_) if matches!(e.ty, Ty::List(_)) => true,
+        ExprKind::Builtin(Builtin::ListFilled, _) => true,
+        ExprKind::Read(spec) if matches!(spec.as_ref(), cpl_ir::Spec::Array { .. }) => true,
+        _ => false,
+    }
+}
+
 /// Ranged `Int` struct fields that can be stored as 32-bit integers (`uint32_t`/`int32_t`).
 /// Fields passed by `mut` reference or updated with a compound operator stay `ll`.
 pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir::IntWidth> {
@@ -370,15 +382,7 @@ pub(crate) fn narrow_elems(
         }
     }
 
-    fn is_fresh_adaptable(e: &Expr) -> bool {
-        match &e.kind {
-            ExprKind::Fill(..) => true,
-            ExprKind::Tuple(_) if matches!(e.ty, Ty::List(_)) => true,
-            ExprKind::Builtin(Builtin::ListFilled, _) => true,
-            ExprKind::Read(spec) if matches!(spec.as_ref(), cpl_ir::Spec::Array { .. }) => true,
-            _ => false,
-        }
-    }
+    use is_fresh_list as is_fresh_adaptable;
 
     fn widen_loc(loc: ElemLoc, narrow: &mut BTreeMap<ElemLoc, NarrowLayout>, changed: &mut bool) {
         if narrow.remove(&loc).is_some() {
