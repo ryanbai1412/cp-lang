@@ -4,22 +4,25 @@
 //! memory, say so before the judge does.
 
 use super::bounds::Bounds;
+use crate::facts::Facts;
 use crate::walk::Visitor;
 use crate::{File, Finding, MEMO_KEY_SPACE};
+use cpl_check::Ty;
 use cpl_diag::Diagnostic;
-use cpl_syntax::ast::{ExprKind, Stmt, StmtKind, TypeKind};
+use cpl_syntax::ast::{ExprKind, Stmt, StmtKind};
 
 /// The least one memo entry can take: an `Int` result.
 const BYTES_PER_ENTRY: u128 = 8;
 
-struct Memo {
+struct Memo<'a> {
     base: u32,
+    facts: Option<&'a Facts>,
     bounds: Bounds,
     memory_mb: u64,
     findings: Vec<Finding>,
 }
 
-impl Visitor for Memo {
+impl Visitor for Memo<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         let StmtKind::Fn(decl) = &stmt.kind else {
             return;
@@ -40,8 +43,12 @@ impl Visitor for Memo {
             .iter()
             .any(|arg| matches!(&arg.value.kind, ExprKind::Name(name) if name == "hash"));
         let dense = params.iter().all(|p| {
-            p.ty.as_ref()
-                .is_some_and(|ty| matches!(ty.kind, TypeKind::Named { .. }))
+            p.ty.is_some()
+                && self.facts.is_some_and(|f| {
+                    let at = p.name.span.shift(self.base);
+                    f.place_type(at)
+                        .is_some_and(|ty| !matches!(ty, Ty::Range { .. }))
+                })
         });
         if hashed || !dense {
             return;
@@ -119,6 +126,7 @@ fn bytes(n: u128) -> String {
 pub(crate) fn check(file: &File, memory_mb: u64) -> Vec<Finding> {
     let mut memo = Memo {
         base: 0,
+        facts: file.facts,
         bounds: Bounds::of(file),
         memory_mb,
         findings: Vec::new(),
