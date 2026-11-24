@@ -1,4 +1,5 @@
 // Source: Baltic OI 2018 Day 2 (Paths), https://dmoj.ca/problem/btoi18p6
+// limits: 3000 ms, 1024 MB
 // Problem: an undirected graph, n, m <= 3e5, each vertex coloured 1..k with k <= 5. Count the
 //   paths of at least two vertices whose colours are all distinct, each direction separately.
 // Solution: distinct colours make a path simple and at most k long. ways[s, v] counts paths
