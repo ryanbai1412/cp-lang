@@ -29,7 +29,7 @@ done
 body=$(cat "$src")
 case "$body" in *FAIL*) echo "error: FAIL" >&2; exit 1 ;; esac
 echo "warning: compiled" >&2
-printf 'bin %s %s\\n' "$*" "$body" > "$out"
+[ -z "$out" ] || printf 'bin %s %s\\n' "$*" "$body" > "$out"
 """
 
 
@@ -110,6 +110,16 @@ class CxxCacheTest(unittest.TestCase):
         self.assertEqual(self.read("x"), self.read("y"))
         self.assertIn("warning: compiled", r2.stderr)
         self.assertTrue(os.access(os.path.join(self.tmp.name, "y"), os.X_OK))
+
+    def test_a_syntax_check_is_kept_like_a_build(self):
+        r1 = self.gxx("-O2", "-fsyntax-only", self.src)
+        r2 = self.gxx("-O2", "-fsyntax-only", self.src)
+        self.assertEqual((r1.returncode, r2.returncode), (0, 0))
+        self.assertEqual(self.compiles(), 1)
+        self.assertIn("warning: compiled", r2.stderr)
+        self.gxx("-O0", "-fsyntax-only", self.src)
+        self.gxx("-O2", self.src, "-o", "x")
+        self.assertEqual(self.compiles(), 3)
 
     def test_a_changed_source_or_flag_compiles_again(self):
         self.gxx("-O2", self.src, "-o", "x")

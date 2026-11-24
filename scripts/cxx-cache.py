@@ -159,15 +159,17 @@ def main():
         print(key)
         return 0
     cache = os.environ.get("CPL_CXX_CACHE_DIR")
-    if (not cache or "-o" not in args or args.index("-o") + 1 >= len(args)
+    # A -fsyntax-only check writes nothing: its entry is an empty binary.
+    syntax = "-fsyntax-only" in args and "-o" not in args
+    if (not cache or not syntax and ("-o" not in args or args.index("-o") + 1 >= len(args))
             or any(os.environ.get(v) for v in SEARCH_ENV)
             or any(a.startswith(SEARCH_FLAGS) for a in args)):
         os.execv(gxx, [gxx] + args)
     sys_key = os.environ.get("CPL_CXX_SYSTEM_KEY") or system_key(gxx)
     if not sys_key:
         os.execv(gxx, [gxx] + args)
-    out_i = args.index("-o") + 1
-    out = args[out_i]
+    out_i = -1 if syntax else args.index("-o") + 1
+    out = None if syntax else args[out_i]
     stdin_bytes = None
     h = hashlib.sha256()
     st = os.stat(os.path.realpath(gxx))
@@ -208,7 +210,16 @@ def main():
         os.execv(gxx, [gxx] + args)
     key = h.hexdigest()
     entry = os.path.join(cache, key[:2], key)
-    if os.path.isfile(entry + ".bin"):
+    if syntax and os.path.isfile(entry + ".bin"):
+        try:
+            with open(entry + ".err", "rb") as f:
+                err = f.read()
+            os.utime(entry + ".bin")
+            sys.stderr.buffer.write(err)
+            return 0
+        except OSError:
+            pass
+    elif os.path.isfile(entry + ".bin"):
         tmp = f"{out}.cxx-cache-{os.getpid()}"
         try:
             with open(entry + ".err", "rb") as f:
@@ -227,11 +238,12 @@ def main():
                 pass
     r = subprocess.run([gxx] + args, input=stdin_bytes, stderr=subprocess.PIPE)
     sys.stderr.buffer.write(r.stderr)
-    if r.returncode == 0 and os.path.isfile(out):
+    if r.returncode == 0 and (syntax or os.path.isfile(out)):
         os.makedirs(os.path.dirname(entry), exist_ok=True)
         fd, tmp = tempfile.mkstemp(prefix=key + ".", suffix=".tmp", dir=os.path.dirname(entry))
         os.close(fd)
-        shutil.copyfile(out, tmp)
+        if not syntax:
+            shutil.copyfile(out, tmp)
         with open(tmp + ".err", "wb") as f:
             f.write(r.stderr)
         os.replace(tmp + ".err", entry + ".err")
