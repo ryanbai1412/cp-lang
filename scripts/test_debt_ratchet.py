@@ -267,6 +267,12 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "std/bag.cp", "pub struct Counter {}\n")
             self.assertEqual(dr.prelude_privilege(root), ["Counter", "sum"])
 
+    def test_cfg_test_skips_only_the_item_it_gates(self) -> None:
+        src = ["a.unwrap();", "#[cfg(test)]", "#[allow(x)]", "fn t() {", '    let s = "}";', "    t.unwrap();",
+               "}", "b.unwrap();", "#[cfg(test)]", "mod helpers;", "c.unwrap();", "#[cfg(test)]",
+               "mod tests {", "    fn x() { y.unwrap(); }", "}"]
+        self.assertEqual([i for i, _ in dr._ungated_lines(src)], [1, 8, 11])
+
     def test_ci_retries_spares_only_the_helper_and_failing_flakes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -1224,18 +1224,41 @@ NON_TEST_RS_PARTS = {"tests", "benches", "examples"}
 
 def _src_lines(root: Path, *subdirs: str) -> Iterator[tuple[str, int, str]]:
     """Non-test, non-comment Rust lines under `subdirs`: tests/, tests.rs, *_tests.rs,
-    build.rs and everything after a `#[cfg(test)]` are left out."""
+    build.rs and each item a `#[cfg(test)]` gates are left out; the rest of the file counts."""
     for p in _rs_files(root, *subdirs, tests=False):
         rel = _rel(root, p)
         parts = set(Path(rel).parts[:-1])
         if parts & NON_TEST_RS_PARTS or p.name == "build.rs" or p.name.endswith("_tests.rs") or p.name.startswith("tests_") \
                 or "/src/tests/" in rel:
             continue
-        for i, line in enumerate(_lines(p), 1):
-            if line.strip() == "#[cfg(test)]":
-                break
+        for i, line in _ungated_lines(_lines(p)):
             if not line.lstrip().startswith("//"):
                 yield rel, i, line
+
+
+RUST_LITERAL_RE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])\'')
+
+
+def _ungated_lines(lines: list[str]) -> Iterator[tuple[int, str]]:
+    """(line number, line) for every line outside a `#[cfg(test)]` item: the attribute,
+    the item's other attributes and the item through its closing brace or `;`."""
+    gated = opened = False
+    depth = 0
+    for i, line in enumerate(lines, 1):
+        s = line.strip()
+        if not gated:
+            if s == "#[cfg(test)]":
+                gated, opened, depth = True, False, 0
+            else:
+                yield i, line
+            continue
+        if not opened and (not s or s.startswith(("#[", "//"))):
+            continue
+        code = RUST_LITERAL_RE.sub('""', line.split("//")[0] if "\"" not in line else line)
+        depth += code.count("{") - code.count("}")
+        opened = opened or "{" in code
+        if (opened and depth <= 0) or (not opened and s.endswith(";")):
+            gated = False
 
 
 UNWRAP_RE = re.compile(r"\.unwrap\(\)|\.expect\(|\bpanic!\(|\bunreachable!\(")
