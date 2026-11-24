@@ -3168,9 +3168,6 @@ impl<'a> Checker<'a> {
                 self.note_view(expr, "slice");
                 ty.clone()
             }
-            Ty::Named { name, args } if name == "Rebased" && args.len() == 1 => {
-                self.element_ty(&args[0])
-            }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => {
                 self.list_index_by_position(base, indices, &index_tys);
                 args[0].clone()
