@@ -41,7 +41,6 @@ answer today (`crates/cpl-lsp/tests/completion_contexts.rs`), and over
 the corpus, recall is a ratchet below 100%
 (`crates/cpl-lsp/tests/completion_replay.rs`). The gaps, each a use case:
 
-- The value after `by:` isn't ranked by the parameter's type.
 - The browser editor is checked on 2 contexts, not all of them, and
   its loading and keyboard states are unchecked.
 - `with lint(` doesn't offer a library's own `@lint`s.

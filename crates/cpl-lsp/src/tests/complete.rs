@@ -390,6 +390,23 @@ fn completion_ranks_first_what_fits_the_expected_type() {
         best_fits(&format!("{ROAD}let r = Road(1, 2)\nlet b: Bool = r.|\n")),
         ["heavy"]
     );
+    // A fn wanted (`by:`, `cmp:`): the fns taking those parameters.
+    let fns = "fn key(x: Int) -> Int = -x\nfn later(a: Int, b: Int) -> Bool = a > b\nfn word(s: Str) -> Int = 1\nlet n = 3\nlet xs = [3, 1]\n";
+    fits(
+        format!("{fns}print(xs.sorted(by: |))\n"),
+        &["key"],
+        &["later", "word", "n"],
+    );
+    fits(
+        format!("{fns}print(xs.sorted(cmp: |))\n"),
+        &["later"],
+        &["key", "word", "n"],
+    );
+    fits(
+        format!("{fns}print(xs.map(|))\n"),
+        &["key"],
+        &["later", "n"],
+    );
     // Nothing expected: no ranking by type.
     assert_eq!(
         best_fits(&format!("{decls}print(|)\n")),

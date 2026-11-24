@@ -186,13 +186,7 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
             Kind::Struct | Kind::Enum | Kind::Domain | Kind::Trait | Kind::Alias => sort,
             _ => sort + 5,
         },
-        Some(want)
-            if type_of_entry(entry)
-                .or_else(|| inferred_type(cursor.analysis, entry))
-                .is_some_and(|ty| same_type(&ty, want)) =>
-        {
-            0
-        }
+        Some(want) if fits(cursor.analysis, entry, want) => 0,
         _ => sort + 1,
     };
     if head.ends_with('.') && !head.ends_with("..") {
@@ -448,6 +442,88 @@ fn inferred_type(analysis: &Analysis, entry: &Entry) -> Option<String> {
             .filter(|e| !e.ty.has_vague())
             .map(|e| e.ty.to_string())
     })
+}
+
+/// Whether `entry` gives a value of type `want`: the same type, or where a
+/// fn is wanted (`by: Int -> K`), a fn taking those parameters; a type
+/// parameter like `K` takes anything.
+fn fits(analysis: &Analysis, entry: &Entry, want: &str) -> bool {
+    let ty = type_of_entry(entry).or_else(|| inferred_type(analysis, entry));
+    if ty.as_deref().is_some_and(|ty| same_type(ty, want)) {
+        return true;
+    }
+    let Some((want_params, want_ret)) = fn_type(want) else {
+        return false;
+    };
+    let (params, ret) = match entry.kind {
+        Kind::Fn => (
+            entry.params.iter().map(|p| p.ty.as_str()).collect(),
+            ret_of(&entry.detail).unwrap_or(""),
+        ),
+        _ => match ty.as_deref().and_then(fn_type) {
+            Some(fn_ty) => fn_ty,
+            None => return false,
+        },
+    };
+    let loose = |have: &str, want: &str| {
+        have.is_empty() || same_type(have, want) || {
+            let mut chars = want.chars();
+            want.len() <= 2
+                && chars.next().is_some_and(|c| c.is_ascii_uppercase())
+                && chars.all(|c| c.is_ascii_alphanumeric())
+        }
+    };
+    params.len() == want_params.len()
+        && params.iter().zip(&want_params).all(|(h, w)| loose(h, w))
+        && loose(ret, want_ret)
+}
+
+/// `(A, B) -> R` as `([A, B], R)`; `A -> R` as `([A], R)`.
+fn fn_type(ty: &str) -> Option<(Vec<&str>, &str)> {
+    let bytes = ty.as_bytes();
+    let mut depth = 0i32;
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'-' if bytes.get(i + 1) == Some(&b'>') => {
+                if depth == 0 {
+                    let (from, to) = (ty[..i].trim(), ty[i + 2..].trim());
+                    let params = match from.strip_prefix('(').and_then(|f| f.strip_suffix(')')) {
+                        Some(inner) if !inner.trim().is_empty() => split_top(inner),
+                        Some(_) => Vec::new(),
+                        None => vec![from],
+                    };
+                    return Some((params, to));
+                }
+                i += 1;
+            }
+            b'(' | b'[' | b'{' | b'<' => depth += 1,
+            b')' | b']' | b'}' | b'>' => depth -= 1,
+            _ => {}
+        }
+        i += 1;
+    }
+    None
+}
+
+/// `inner` split at its top-level commas, each part trimmed.
+fn split_top(inner: &str) -> Vec<&str> {
+    let (mut parts, mut depth, mut start) = (Vec::new(), 0i32, 0);
+    let bytes = inner.as_bytes();
+    for (i, &b) in bytes.iter().enumerate() {
+        match b {
+            b'(' | b'[' | b'{' | b'<' => depth += 1,
+            b'>' if i > 0 && bytes[i - 1] == b'-' => {}
+            b')' | b']' | b'}' | b'>' => depth -= 1,
+            b',' if depth == 0 => {
+                parts.push(inner[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(inner[start..].trim());
+    parts
 }
 
 fn same_type(a: &str, b: &str) -> bool {

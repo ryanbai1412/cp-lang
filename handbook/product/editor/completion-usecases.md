@@ -68,8 +68,8 @@ Evidence: integration `crates/cpl-lsp/tests/completion_contexts.rs` (`completion
 
 ### complete/U12: what fits comes first
 Need: the right name on top when many are offered.
-Design: entries whose type is the one expected (an argument, an annotated `let`, an assignment) rank first.
-Milestone: M1-differentiating. Status: partial (the value after `by:` isn't ranked by the parameter's type)
+Design: entries whose type is the one expected (an argument, an annotated `let`, an assignment) rank first; where a fn is expected (`by:`, `cmp:`, `map`), the fns taking its parameters.
+Milestone: M1-differentiating. Status: supported
 Evidence: `crates/cpl-lsp/src/tests/complete.rs` (`completion_ranks_first_what_fits_the_expected_type`)
 
 ### complete/U13: completion while the file doesn't parse
