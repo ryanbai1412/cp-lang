@@ -2281,6 +2281,7 @@ HARD_ZERO = frozenset({
     "generate_gaps",
     "xfail_markers",
     "std_doc_parsers",
+    "std_types_shown_empty",
     "prelude_gaps",
     "json_outside_cpl_json", "rust_ignore", "dream_unverified", "trace_engine_refs", "lsp_string_types",
     "edit_engines",
