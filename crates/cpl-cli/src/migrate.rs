@@ -119,7 +119,10 @@ pub(crate) fn migrate(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &m
             cpl_json::to_string(&cpl_json::obj([("files", files)]))
         );
     } else if code == 0 {
-        let _ = writeln!(stdout, "{} files use the current spellings", files.len());
+        let _ = match files.len() {
+            1 => writeln!(stdout, "1 file uses the current spellings"),
+            n => writeln!(stdout, "{n} files use the current spellings"),
+        };
     }
     code
 }

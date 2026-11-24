@@ -127,7 +127,7 @@ fn migrate_rewrites_removed_spellings_under_a_folder() {
         .iter()
         .all(|f| f.at(&["changed"]).as_bool() == Some(false)));
     let plain = cpl(&dir, &["migrate", "lib"]);
-    assert_eq!(text(&plain.stdout), "1 files use the current spellings\n");
+    assert_eq!(text(&plain.stdout), "1 file uses the current spellings\n");
 }
 
 /// `cpl fetch` on a saved AtCoder page: creates the problem, then refreshes
