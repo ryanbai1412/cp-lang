@@ -500,7 +500,6 @@ impl<'a> Lowerer<'a> {
                 let value = self.expr(exprs[0], None);
                 self.len_of(value, span)
             }
-            "adjacency" => self.lower_adjacency(args, span),
             "sorted" => {
                 if args.is_empty() {
                     self.report(span, msgs::ir::WRONG_ARG_COUNT_SORTED_TAKES_A_SEQUENCE, &[]);

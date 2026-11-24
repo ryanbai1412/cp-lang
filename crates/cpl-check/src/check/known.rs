@@ -280,28 +280,6 @@ impl<'a> Checker<'a> {
                 }),
                 _ => None,
             },
-            ("adjacency", [edges, ..]) => {
-                let elem = self.element_ty(edges);
-                let v_ty = match &elem {
-                    Ty::Record(fields) => fields
-                        .iter()
-                        .find(|(n, _)| n == "u")
-                        .map(|(_, t)| t.clone()),
-                    Ty::Tuple(parts) if parts.len() >= 2 => Some(parts[0].clone()),
-                    _ => None,
-                };
-                if let Some(Ty::Pos(dom)) = v_ty {
-                    let cell = Ty::Named {
-                        name: "List".into(),
-                        args: vec![Ty::Pos(dom.clone())],
-                    };
-                    return Some(Ty::Array {
-                        index: vec![Ty::Pos(dom)],
-                        elem: Box::new(cell),
-                    });
-                }
-                None
-            }
             _ => None,
         }
     }

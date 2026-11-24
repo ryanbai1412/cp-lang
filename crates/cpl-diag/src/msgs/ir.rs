@@ -1,11 +1,6 @@
 //! Messages lowering to IR emits.
 
 super::msgs! {
-    WRONG_ARG_COUNT_ADJACENCY_TAKES_EDGES = WRONG_ARG_COUNT, "`adjacency` takes `(edges)`";
-    TYPE_MISMATCH_ADJACENCY_EDGES_MUST_HAVE = TYPE_MISMATCH, "`adjacency` edges must have `u` and `v` in the same vertex domain";
-    TYPE_MISMATCH_ADJACENCY_EDGES_MUST_BE = TYPE_MISMATCH, "`adjacency` edges must be `(u: V, v: V, ...)` or `(V, V)`";
-    TYPE_MISMATCH_ADJACENCY_EDGES_MUST_HAVE_2 = TYPE_MISMATCH, "`adjacency` edges must have endpoints in the same vertex domain";
-    TYPE_MISMATCH_ADJACENCY_EXPECTS_A_SEQUENCE = TYPE_MISMATCH, "`adjacency` expects a sequence of `(u: V, v: V, ...)` or `(V, V)` edges";
     BAD_OPERANDS_A_HAS_NO_ORDER = BAD_OPERANDS, "a `{}` has no order to count by";
     UNKNOWN_FIELD_MODULE_HAS_NO_MEMBER = UNKNOWN_FIELD, "module has no member `{}`";
     WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES = WRONG_ARG_COUNT, "the variant `{}` holds values: write `{}(...)`";
