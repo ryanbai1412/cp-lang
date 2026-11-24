@@ -7,12 +7,12 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3458 (3427 passing). Rules: 616.
+Cases: 3459 (3427 passing). Rules: 616.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 187 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 163 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 164 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 195 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -142,7 +142,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.1.2 [2+ 3-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [3+ 1-]: a **function value**: `fn` items (a static fn named through its type, `MaxSub.of`, include...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
-- R02.2.1 [3+ 3-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
+- R02.2.1 [4+ 3-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
 - R02.2.2 [2+ 1-]: Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has exactly those valu...
 - R02.3.1 [1+ 0-]: `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence capabilities of ...
 - R02.3.2 [4+ 2-]: `Str of "01?"` is a string whose characters come from the literal's alphabet. The alphabet...
