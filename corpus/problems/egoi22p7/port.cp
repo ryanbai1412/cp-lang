@@ -1,4 +1,5 @@
 // Source: EGOI 2022 Day 2 (Toy Design), https://dmoj.ca/problem/egoi22p7
+// limits: 1000 ms, 256 MB
 // Problem: interactive. n <= 200 pins with hidden wires (design 0). Connected(a, i, j) says
 //   whether pins i and j are joined in design a; if not, it creates a new design: a plus wire
 //   (i, j). Using at most max_ops = 1350 calls, describe any design whose connectivity equals

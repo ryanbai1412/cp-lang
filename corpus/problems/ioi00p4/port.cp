@@ -1,4 +1,5 @@
 // Source: IOI 2000 P4 (Walls), https://dmoj.ca/problem/ioi00p4
+// limits: 1000 ms, 16 MB
 // Problem: a plane graph of N <= 250 towns and walls; each of the M <= 200 regions is given by
 //   the towns round its border (the outer region last). L <= 30 club members live in given
 //   towns and may start in any region touching their town. Print the least total of walls

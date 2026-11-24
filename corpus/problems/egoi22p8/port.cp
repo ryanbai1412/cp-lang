@@ -1,4 +1,5 @@
 // Source: EGOI 2022 P8 (Rotation-Proof Cards), https://dmoj.ca/problem/egoi22p8
+// limits: 2000 ms, 512 MB
 // Problem: encode a number n <= 6.7e7 as a set of segments between dots of a 3x3 grid
 //   so that the card decodes to the same number after any 90-degree rotation; a second
 //   run decodes a drawn card back.
@@ -9,9 +10,8 @@
 //   rotation of the drawn card. O(28 * 128) per test.
 // Stdin protocol (both runs in one file, as in spec.cp): t, then per test 1 and n (encode:
 //   print the segment count and each segment as x1 y1 x2 y2) or 2, k and k segments (decode).
-// Bounds: kind: 1..=2
 // original: corpus/submissions/5202737.cpp
-// Bounds: kind: 1..=2; n: 1..=67_000_000; k: 0..=28
+// Bounds: kind: 1..=2; n: 1..=67_000_000; k: 0..=28; lines.a.r, lines.a.c, lines.b.r, lines.b.c: 0..=2
 
 type Dot = (r: 0..3, c: 0..3)
 type Seg = (a: Dot, b: Dot)  // a <= b
