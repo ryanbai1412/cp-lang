@@ -1320,7 +1320,7 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
 
 
 def corpus_known(root: Path) -> list[str]:
-    """Entries of corpus/audit- and generators-known.txt: ports a corpus check skips."""
+    """Entries of any corpus/*-known.txt: ports a corpus check skips."""
     return _registered_entries(root, "corpus_known")
 
 
@@ -1743,7 +1743,6 @@ def module_loaders(root: Path) -> list[str]:
 # entries (None for a data list that exempts nothing), its owner, and how it
 # goes away. A new list without a row here fails `unregistered_lists`.
 LISTS: dict[str, tuple[str | None, str, str]] = {
-    "corpus/generators-known.txt": ("corpus_known", "idioms", "write each generator"),
     "corpus/gold/GOLD.txt": (None, "idioms", "data: the gold set"),
     "corpus/newcomer/acceptance.txt": (None, "idioms", "data: newcomer acceptance expectations"),
     "corpus/sets/ecnerwala.txt": (None, "idioms", "data: a corpus set"),
@@ -1839,7 +1838,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "bench_lists", "scaling_mismatches",
+    "bench_lists", "scaling_mismatches", "corpus_test_files", "corpus_known",
     "own_databases", "module_loaders", "web_skip_only", "todo_fixme", "ci_retries", "or_true",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",

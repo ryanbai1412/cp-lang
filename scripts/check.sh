@@ -400,8 +400,6 @@ if [ "$mode" = commit ]; then
             || fail "scripts/corpus.py make failed; rerun it to see which package"
         uv run --quiet python scripts/corpus.py verify --changed staged --skip dream --cpl "$cpl" \
             || fail "a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
-        uv run --quiet python corpus/generators.py --check --changed staged --cpl "$cpl" \
-            || fail "a staged port's generator or answer disagrees with its accepted C++; the finding above names the port and test"
         mapfile -t dreams < <(git diff --cached --name-only --diff-filter=AMR -- 'corpus/problems/*/dream.cp' \
             | sed 's|^corpus/problems/||; s|/dream\.cp$||')
         if [ "${#dreams[@]}" -gt 0 ]; then

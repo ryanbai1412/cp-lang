@@ -45,14 +45,14 @@ with a stable id that audits and tests cite. The ideas behind them are in
 **Rule:** generated inputs satisfy every constraint in the statement.
 **Why:** an invalid input tests a case the judge never gives.
 **Example:** a validator that rejects `n = 0` when the statement says `1 <= n`.
-**Enforced by:** `corpus/generators.py` (`gen-fails`, `invalid-input`, `invalid-test`): the port's `read` types are the validator.
+**Enforced by:** `scripts/corpus.py verify` (`gen-fails`, `invalid-input`, `invalid-test`): the port's `read` types are the validator.
 
 ### problem-packages/R6
 
 **Rule:** the package has an input at the statement's bounds, shaped to be slowest for the obvious solution, judged on the C++ build.
 **Why:** the time limit is exercised, not assumed.
 **Example:** `max.py` in an acceptance judge.
-**Enforced by:** `research/acceptance/judge.py`; corpus: `corpus/generators.py`: `no-max`; on the `gen.py --max` input, `traps` (the checked C++, `--checks all`), `over-limit` (the judge C++ against the port's `// limits: T ms, M MB` line, default 2000 ms, 256 MB), `disagrees` and `slow` (against the accepted C++).
+**Enforced by:** `research/acceptance/judge.py`; corpus: `scripts/corpus.py verify` (`max`) and the `corpus_no_max` ratchet; on the `gen.py --max` input, `traps` (the checked C++, `--checks all`), `over-limit` (the judge C++ against the port's `// limits: T ms, M MB` line, default 2000 ms, 256 MB), `disagrees` and `slow` (against the accepted C++).
 
 ### problem-packages/R7
 

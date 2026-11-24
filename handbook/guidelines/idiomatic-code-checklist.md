@@ -80,7 +80,7 @@ a stable id that reviews, lints and tests cite. The ideas behind them are in
 **Rule:** a port runs within 1.1x of its matched C++ on a max input, or has a performance friction with the measurement.
 **Why:** a slow idiom is a design bug; the obvious way must be the fast way.
 **Example:** see `handbook/guidelines/performance.md` for how to measure.
-**Enforced by:** `corpus/generators.py` flags a port over 1.5x (the goal's max) on its `gen.py --max` input; perf's corpus bench tracks p50 against 1.1x; review.
+**Enforced by:** `scripts/corpus.py verify` (`max`) flags a port over 1.5x (the goal's max) on its `gen.py --max` input; perf's corpus bench tracks p50 against 1.1x; review.
 
 ### idiomatic-code/R11
 

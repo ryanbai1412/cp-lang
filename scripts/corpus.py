@@ -21,7 +21,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, functools, hashlib, importlib.util, json, os, re, shutil, subprocess, sys, tempfile, tomllib
+import argparse, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -180,10 +180,7 @@ def package_limits(pkg):
     """The problem's limits, from its port's `// limits:` line, so a dream is judged as the port is."""
     if not pkg.port:
         return []
-    spec = importlib.util.spec_from_file_location("generators", os.path.join(ROOT, "corpus", "generators.py"))
-    gens = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(gens)
-    ms, mb = gens.limits(pkg.port)
+    ms, mb = limits(pkg.port)
     return ["--time-limit", str(ms), "--memory-limit", str(mb)]
 
 
@@ -541,7 +538,8 @@ def rejects(cmd, data):
 
 def gen_out(pkg, args):
     try:
-        return pkg.case_input({"args": list(args)}, timeout=TIMEOUT).encode()
+        timeout = MAX_GEN_TIMEOUT if "--max" in args else TIMEOUT
+        return pkg.case_input({"args": list(args)}, timeout=timeout).encode()
     except (subprocess.SubprocessError, OSError):
         return None
 
@@ -606,26 +604,153 @@ def check_stress(pkg, ctx):
     return found
 
 
-def seconds(exe, data):
-    """The best of three wall times, so one busy moment on the machine doesn't count."""
-    import time
-    best = None
-    for _ in range(3):
-        start = time.perf_counter()
-        if run_out(exe, data) is None:
-            return None
-        best = min(best or 1e9, time.perf_counter() - start)
-    return best
-
-
 def has_max(pkg):
     return bool(pkg.gen) and "--max" in pkg.gen.read_text(errors="replace")
 
 
+CHECKED_SLOWER, MAX_GEN_TIMEOUT = 10, 120
+LIMITS = re.compile(r"^//\s*limits:\s*(\d+)\s*ms,\s*(\d+)\s*MB", re.M)
+MAX_GEN_TIMEOUT = 120
+CHECKED_SLOWER = 10
+
+
+def limits(port):
+    """The port's `// limits: T ms, M MB` line (what `cpl bench` reads), else the judge default."""
+    m = LIMITS.search(open(port).read())
+    return (int(m.group(1)), int(m.group(2))) if m else (2000, 256)
+
+
+# Runs argv[2:] with the judges' stack (Codeforces gives the whole memory
+# limit, so deep recursion at the max is legal) and writes its peak RSS to
+# argv[1]. A child's ru_maxrss starts at its parent's RSS before exec, so the
+# program must fork from this small process, not from the gate holding inputs.
+LAUNCHER = r"""
+#include <signal.h>
+#include <stdio.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
+int main(int argc, char **argv) {
+    struct rlimit r;
+    getrlimit(RLIMIT_STACK, &r);
+    r.rlim_cur = r.rlim_max;
+    setrlimit(RLIMIT_STACK, &r);
+    pid_t p = fork();
+    if (p < 0) return 125;
+    if (p == 0) { execv(argv[2], argv + 2); _exit(127); }
+    int st;
+    struct rusage u;
+    if (wait4(p, &st, 0, &u) < 0) return 125;
+    FILE *f = fopen(argv[1], "w");
+    if (f) { fprintf(f, "%ld\n", (long)u.ru_maxrss); fclose(f); }
+    if (WIFSIGNALED(st)) { signal(WTERMSIG(st), SIG_DFL); kill(getpid(), WTERMSIG(st)); }
+    return WEXITSTATUS(st);
+}
+"""
+
+
+def launcher():
+    """The measuring launcher, built once with g++ and cached by source."""
+    exe = os.path.join(ROOT, "target", "corpus-cxx", "measure-" + hashlib.sha256(LAUNCHER.encode()).hexdigest()[:16])
+    if not os.path.exists(exe):
+        os.makedirs(os.path.dirname(exe), exist_ok=True)
+        src, tmp = f"{exe}.{os.getpid()}.{threading.get_ident()}.cpp", f"{exe}.{os.getpid()}.{threading.get_ident()}"
+        with open(src, "w") as f:
+            f.write(LAUNCHER)
+        subprocess.run(["g++", "-O2", "-o", tmp, src], check=True, capture_output=True)
+        os.remove(src)
+        os.replace(tmp, exe)
+    return exe
+
+
+def measure(exe, data, timeout):
+    """(exit code, stdout, seconds, peak MB) of one run, or None on a timeout."""
+    with tempfile.TemporaryFile() as inp, tempfile.TemporaryFile() as out, \
+            tempfile.NamedTemporaryFile("r") as peak:
+        inp.write(data)
+        inp.seek(0)
+        start = time.perf_counter()
+        p = subprocess.Popen([launcher(), peak.name, os.path.abspath(exe)], stdin=inp, stdout=out,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
+        try:
+            code = p.wait(timeout)
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGKILL)
+            p.wait()
+            return None
+        took = time.perf_counter() - start
+        out.seek(0)
+        kb = int(peak.read() or 0) // (1024 if sys.platform == "darwin" else 1)
+        return code, out.read(), took, kb / 1024
+
+
+def checked(pid, port, cpl):
+    """The port's C++ with `--checks all`, built with g++ -O2 and cached by source; None if a step fails."""
+    cache = os.path.join(ROOT, "target", "corpus-generators")
+    os.makedirs(cache, exist_ok=True)
+    cpp = os.path.join(cache, f"{pid}.{os.getpid()}.{threading.get_ident()}.cpp")
+    try:
+        if subprocess.run([cpl, "build", "--judge", "codeforces", "--checks", "all", port, "-o", cpp], capture_output=True).returncode:
+            return None
+        exe = os.path.join(cache, hashlib.sha256(open(cpp, "rb").read()).hexdigest()[:16])
+        if not os.path.exists(exe):
+            tmp = f"{exe}.{os.getpid()}.{threading.get_ident()}.tmp"
+            if subprocess.run(["g++", "-std=c++17", "-O2", "-o", tmp, cpp], capture_output=True).returncode:
+                return None
+            os.replace(tmp, exe)
+        return exe
+    finally:
+        if os.path.exists(cpp):
+            os.remove(cpp)
+
+
+def agrees(d, data, got, want):
+    checker = os.path.join(d, "checker.py")
+    if not os.path.exists(checker):
+        return got.split() == want.split()
+    with tempfile.TemporaryDirectory() as tmp:
+        files = []
+        for name, blob in (("in", data), ("out", got), ("ans", want)):
+            files.append(os.path.join(tmp, name))
+            open(files[-1], "wb").write(blob)
+        return subprocess.run([sys.executable, checker, *files], capture_output=True).returncode == 0
+
+
+def at_max(pid, d, port, cpl, exe, orig, data):
+    """The findings of the max input: it passes the checked C++, fits the limits, matches the accepted C++."""
+    ms, mb = limits(port)
+    found = []
+    safe = checked(pid, port, cpl)
+    if not safe:
+        found.append(f"no-build {pid} -")
+    else:
+        r = measure(safe, data, max(TIMEOUT, CHECKED_SLOWER * ms / 1000))
+        if r is None or r[0] != 0:
+            found.append(f"traps {pid} --max")
+    if not exe:
+        return found
+    runs = [measure(exe, data, 2 * ms / 1000 + 1) for _ in range(3)]
+    if any(r is None or r[0] != 0 for r in runs):
+        return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
+    if min(r[2] for r in runs) > ms / 1000 or min(r[3] for r in runs) > mb:
+        found.append(f"over-limit {pid} --max")
+    if orig:
+        wants = [measure(orig, data, 4 * ms / 1000 + 1) for _ in range(3)]
+        if all(w is not None and w[0] == 0 for w in wants):
+            if not agrees(d, data, runs[0][1], wants[0][1]):
+                found.append(f"disagrees {pid} --max")
+            mine, theirs = min(r[2] for r in runs), min(w[2] for w in wants)
+            if mine >= FLOOR and mine > SLOWER * max(theirs, FLOOR):
+                found.append(f"slow {pid} --max")
+    return found
+
+
+
 def check_max(pkg, ctx):
-    """gen.py --max makes a valid maximum input and the port's C++ runs it within
-    1.5x the accepted C++ (problem-packages/R6). A missing --max is counted by
-    the `corpus_no_max` ratchet, not here."""
+    """gen.py --max makes a valid maximum input that the port's checked C++ runs
+    without a trap, its judge build runs within the `// limits:` time and memory,
+    and it matches the accepted C++ within 1.5x its time (problem-packages/R6).
+    A missing --max is counted by the `corpus_no_max` ratchet, not here."""
     if not pkg.port or not ctx.runs(pkg) or pkg.interactor or not has_max(pkg):
         return []
     data = gen_out(pkg, ("--max",))
@@ -636,12 +761,7 @@ def check_max(pkg, ctx):
         return [f"invalid-input {pkg.id} --max"]
     ref = pkg.reference()
     orig = built(ref) if ref else None
-    if exe and orig:
-        mine = seconds(exe, data)
-        theirs = seconds(orig, data) if mine is not None and mine >= FLOOR else None
-        if theirs is not None and mine > SLOWER * max(theirs, FLOOR):
-            return [f"slow {pkg.id} --max"]
-    return []
+    return at_max(pkg.id, str(pkg.dir), str(pkg.port), ctx.cpl, exe, orig, data)
 
 
 def check_size(pkg, ctx):

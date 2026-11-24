@@ -440,7 +440,8 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.or_true(root), ["web/install.sh:1"])
             self.assertEqual(dr.trace_engine_refs(root), ["crates/a/src/lib.rs:1"])
-            self.assertEqual(dr.corpus_known(root), ["corpus/generators-known.txt"] * 2)
+            with mock.patch.dict(dr.LISTS, {"corpus/generators-known.txt": ("corpus_known", "idioms", "fix each")}):
+                self.assertEqual(dr.corpus_known(root), ["corpus/generators-known.txt"] * 2)
             self.assertEqual(dr.rs_over_cap(root, 1), {"crates/a/src/big.rs": 2})
 
     def test_std_types_shown_empty(self) -> None:
