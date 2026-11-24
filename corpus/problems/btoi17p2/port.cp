@@ -10,11 +10,8 @@
 // original: corpus/submissions/4456186.cpp
 
 let (k, n, m, o): (Int, Int, Int, Int) = read()
-domain E = 0..m
 domain Q = 0..o
 domain Slot = 0..k
-let edges: [E](a: Int, b: Int, t: Int) = read()
-let queries: [Q](a: Int, b: Int) = read()
 
 let layers = ceil_div(n, k)
 let num_gaps = if layers > 1: layers - 1 else: 1
@@ -33,25 +30,15 @@ fn mat_mul(x: Mat, y: Mat) -> Mat:
         for mid in Slot:
             if let d1 = x[i, mid]:
                 for j in Slot:
-                    if let d2 = y[mid, j]:
-                        if let cur = out[i, j]:
-                            if d1 + d2 < cur: out[i, j] = d1 + d2
-                        else:
-                            out[i, j] = d1 + d2
+                    if let d2 = y[mid, j]: out[i, j] min= Some(d1 + d2)
     out
 
 let min_plus = Monoid<Mat>(id: mat_id(), op: (x, y) => mat_mul(x, y))
 
 var step: [Gap]Mat = [Gap] _ => mat_empty()
-for e in E:
-    let (a, b, t) = (edges[e].a, edges[e].b, edges[e].t)
-    let g = Gap(a / k)
-    let (sa, sb) = (Slot(a % k), Slot(b % k))
-    if let cur = step[g][sa, sb]:
-        if t < cur: step[g][sa, sb] = t
-    else:
-        step[g][sa, sb] = t
+for (a, b, t) in read<[m](Int, Int, Int)>(): step[Gap(a / k)][Slot(a % k), Slot(b % k)] min= Some(t)
 
+let queries: [Q](a: Int, b: Int) = read()
 let st = SegTree<Gap, Mat>(min_plus, step)
 for q in Q:
     let (a, b) = (queries[q].a, queries[q].b)
