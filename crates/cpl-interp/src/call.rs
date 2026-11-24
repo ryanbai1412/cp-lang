@@ -201,10 +201,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             self.fell_back(|| format!("fn:{}({why})", f.name), false);
             self.block(&f.body)
         };
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(dom_mark);
         self.in_closure = in_closure;
         if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
             tracer.leave_fn(entered);

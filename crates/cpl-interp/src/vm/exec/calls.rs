@@ -1124,10 +1124,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     self.unsuspend();
                     self.frameless_base = frameless;
-                    while self.saved_domains.len() > dom_mark {
-                        let (id, prev) = self.saved_domains.pop().unwrap();
-                        self.domains[id] = prev;
-                    }
+                    self.restore_domains(dom_mark);
                     self.return_regs_v(c_regs_v);
                     vm_regs_i.truncate(c_base_i);
                     self.in_closure = prev_in_closure;

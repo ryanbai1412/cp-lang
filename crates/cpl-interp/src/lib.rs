@@ -1023,6 +1023,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     // ----- expressions -----
 
+    /// Puts back the domain bounds saved since `mark`, newest first.
+    fn restore_domains(&mut self, mark: usize) {
+        let mark = mark.min(self.saved_domains.len());
+        for (id, prev) in self.saved_domains.drain(mark..).rev() {
+            self.domains[id] = prev;
+        }
+    }
+
     fn eval(&mut self, e: &'p Expr) -> Res<Value> {
         let span = e.span;
         Ok(match &e.kind {

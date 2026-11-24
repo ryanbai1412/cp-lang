@@ -1293,10 +1293,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.stack.truncate(self.base);
                     self.base = caller_base;
                 }
-                while self.saved_domains.len() > dom_mark {
-                    let (id, prev) = self.saved_domains.pop().unwrap();
-                    self.domains[id] = prev;
-                }
+                self.restore_domains(dom_mark);
                 self.unsuspend();
                 let mut back = Ok(());
                 for &(param, to) in &fc.muts {

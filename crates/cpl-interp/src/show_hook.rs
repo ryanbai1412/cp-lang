@@ -30,10 +30,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Some(vm) if self.on_vm(id) => self.run_fn_vm_waited(&vm, id, span, saved, dom_mark),
             _ => self.block(&f.body),
         };
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(dom_mark);
         self.frame_locals.pop();
         self.base = saved;
         let flow = flow?;

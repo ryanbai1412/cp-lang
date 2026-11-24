@@ -36,10 +36,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             self.saved_domains.push((d, self.domains[d]));
         }
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(dom_mark);
         self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         res
@@ -82,10 +79,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             self.saved_domains.push((d, self.domains[d]));
         }
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
+        self.restore_domains(dom_mark);
         if res.is_ok() && params.iter().any(|p| p.mutable) {
             let mut ii = 0usize;
             let mut iv = 0usize;

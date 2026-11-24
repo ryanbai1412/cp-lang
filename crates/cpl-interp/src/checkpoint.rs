@@ -1087,15 +1087,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         })
     }
 
-    /// The domains as they were before the newest `saved_domains` past
-    /// the first `to` were defined.
-    fn restore_domains(&mut self, to: usize) {
-        let to = to.min(self.saved_domains.len());
-        for (id, prev) in self.saved_domains.drain(to..).rev() {
-            self.domains[id] = prev;
-        }
-    }
-
     /// The call frame `k` of `frames` makes, from where it was; what it returns.
     fn resume_callee(
         &mut self,
