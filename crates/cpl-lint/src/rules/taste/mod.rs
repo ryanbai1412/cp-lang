@@ -40,6 +40,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         idents: idents(file.src),
         unchecked: unchecked_spans(file),
         findings: Vec::new(),
+        fn_spans: Vec::new(),
     };
     for (_, stmt) in file.top_level() {
         if let StmtKind::Fn(decl) = &stmt.kind {
@@ -59,6 +60,23 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         }
     }
     file.walk(&mut Declared(&mut rule.declared), |_, _| {});
+    struct FnSpans<'s> {
+        out: &'s mut Vec<(String, u32, u32)>,
+        base: u32,
+    }
+    impl Visitor for FnSpans<'_> {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Fn(decl) = &stmt.kind {
+                let at = stmt.span.shift(self.base);
+                self.out.push((decl.name.text.clone(), at.start, at.end));
+            }
+        }
+    }
+    let mut spans = FnSpans {
+        out: &mut rule.fn_spans,
+        base: 0,
+    };
+    file.walk(&mut spans, |v, base| v.base = base);
     let mut blocks = Blocks { taste: &mut rule };
     file.walk(&mut blocks, |b, base| b.taste.base = base);
     rule.findings.extend(hand_rolled_range_trees(file));
@@ -128,6 +146,9 @@ struct Taste<'a> {
     /// Every identifier-like word in the file, for picking fresh names.
     idents: HashSet<&'a str>,
     findings: Vec<Finding>,
+    /// Every fn's name and absolute span: a reduction's own body is the
+    /// loop it names.
+    fn_spans: Vec<(String, u32, u32)>,
 }
 
 impl<'a> Taste<'a> {
@@ -1321,6 +1342,14 @@ impl<'a> Taste<'a> {
         };
         // `let sum = sum(..)` names itself.
         if name == call {
+            return;
+        }
+        let at = decl.span.shift(self.base).start;
+        if self
+            .fn_spans
+            .iter()
+            .any(|(f, start, end)| f == call && *start <= at && at < *end)
+        {
             return;
         }
         let mut diag = Diagnostic::warning(

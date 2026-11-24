@@ -835,6 +835,14 @@ fn prefix_fix_never_calls_the_fn_it_is_in() {
 }
 
 #[test]
+fn a_reduction_s_own_body_is_the_loop_it_names() {
+    let own = "fn sum(xs: List<Int>) -> Int:\n    var out = 0\n    for x in xs: out += x\n    out\nprint(sum([1, 2]))\n";
+    assert!(!codes(own).contains(&"L0504"), "{:?}", codes(own));
+    let other = "fn total(xs: List<Int>) -> Int:\n    var out = 0\n    for x in xs: out += x\n    out\nprint(total([1, 2]))\n";
+    assert!(codes(other).contains(&"L0504"), "{:?}", codes(other));
+}
+
+#[test]
 fn loop_reductions_from_cco23p4_and_powers() {
     // proto/ports/scout_batch_36/cco23p4.cp: occurrences of a pattern.
     let count = "fn occ(w: Str, pat: Str) -> Int:\n    var res = 0\n    for i in 0..=w.len - pat.len:\n        if w[i..i + pat.len] == pat: res += 1\n    res\nprint(occ(\"aaa\", \"aa\"))\n";
