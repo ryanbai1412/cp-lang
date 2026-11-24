@@ -346,11 +346,17 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertFalse(dr.idiom_edit_stateable("x\n", "x\n"))
         adds_directive = ("let t: Int = read()\nfor _ in 0..t:\n    print(1)\n", "@!multitest\nprint(1)\n")
         self.assertFalse(dr.idiom_edit_stateable(*adds_directive))
+        core_only = ("if k in m:\n    m[k] += v\nelse:\n    m[k] = v\nif x >= 0 and x < n:\n    y = 1\n",
+                     "m[k] += v\nif 0 <= x < n:\n    y = 1\n")
+        self.assertFalse(dr.idiom_edit_stateable(*core_only))
+        self.assertTrue(dr.idiom_edit_stateable("print(sum(xs))\n", "print(xs.sum())\n"))
+        self.assertFalse(dr.idiom_edit_stateable("for i in 0..n:\n    s += a[i]\n", "for x in 0..n:\n    s += x\n"))
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
             for name, group, (before, after) in [("in_rust", "idiom", one_span), ("in_std", "idiom", one_span),
-                                                 ("style", "style", one_span), ("hard", "idiom", leaves_block)]:
+                                                 ("style", "style", one_span), ("hard", "idiom", leaves_block),
+                                                 ("core", "idiom", core_only)]:
                 self._write(root, f"spec/lints/{name}/lint.toml", f'group = "{group}"\n')
                 self._write(root, f"spec/lints/{name}/before.cp", before)
                 self._write(root, f"spec/lints/{name}/after.cp", after)
