@@ -130,6 +130,7 @@ reexec_if_land_changed() {
     [ -z "${lock_held:-}" ] || drop_lock
     [ -z "${queued:-}" ] || dequeue
     CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked CPL_LAND_TICKET=${ticket:-} \
+        CPL_LAND_RECHECKED=${rechecked:-} CPL_LAND_STEPS_RUNS=${steps_runs:-0} \
         exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
 }
 pull || exit 1
@@ -143,7 +144,9 @@ reexec_if_land_changed
 # rebased tip, staged against main, since passing the old gates says nothing about
 # the new ones (5 fixtures passed on an old base after cafd6ffbf's check landed).
 gate_paths="scripts .githooks gen.toml justfile"
-rechecked=
+# Once per land, across re-execs: 4a53bbd4's land reran the commit tier after each pull
+# that changed land.sh, and main changed it every few minutes (20+ min, no lock wait).
+rechecked=${CPL_LAND_RECHECKED:-}
 recheck() {
     moved=$(git diff --name-only "$checked" "$main_base" -- $gate_paths)
     checked=$main_base
@@ -198,7 +201,7 @@ fi
 # wasm check), on the rebased tip staged against main as the hook stages them,
 # and again on the new tip after a lost push race.
 pending_steps="$(git rev-parse --git-dir)/cpl-pending-steps"
-steps_runs=0
+steps_runs=${CPL_LAND_STEPS_RUNS:-0}
 run_pending_steps() {
     [ -s "$pending_steps" ] || return 0
     steps=$(sort -u "$pending_steps" | tr '\n' ',' | sed 's/,$//')

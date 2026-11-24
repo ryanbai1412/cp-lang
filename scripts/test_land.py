@@ -133,6 +133,23 @@ class LandTest(unittest.TestCase):
         hook.write_text("#!/bin/sh\n" + body)
         hook.chmod(0o755)
 
+    def test_a_re_exec_keeps_the_once_per_land_gate_rerun(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        self._hook(theirs, "echo gate: ran\n")
+        self.commit(theirs, "gate")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        # What a re-exec after a rerun passes on: 4a53bbd4's land reran the tier after each
+        # pull that changed land.sh (20+ min).
+        r = self.land(ours, CPL_LAND_RECHECKED="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("rerunning the commit tier", r.stderr)
+        self.assertIn("main changed the gates again", r.stderr)
+        exec_env = Path("scripts/land.sh").read_text().split("reexec_if_land_changed() {")[1].split("\n}")[0]
+        self.assertIn("CPL_LAND_RECHECKED=${rechecked:-}", exec_env)
+        self.assertIn("CPL_LAND_STEPS_RUNS=${steps_runs:-0}", exec_env)
+
     def test_a_rebase_past_a_gate_change_reruns_the_commit_tier_on_the_rebased_tip(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         # main's new gate: no staged file may be named bad.txt.
