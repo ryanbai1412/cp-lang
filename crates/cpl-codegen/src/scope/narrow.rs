@@ -524,7 +524,6 @@ pub(crate) fn narrow_elems(
                         | Mutation::Truncate
                         | Mutation::Reserve
                         | Mutation::Swap
-                        | Mutation::Remove
                 );
                 if safe_mut && is_narrowable_seq(&place.ty) {
                     if matches!(m, Mutation::Pop) {

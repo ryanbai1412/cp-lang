@@ -1,6 +1,12 @@
 # The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
 
 [[case]]
+input = "4\n6\n33\n69\n300\n"
+
+[[case]]
+input = "5\n90\n99\n106\n114\n169\n"
+
+[[case]]
 seed = 1
 size = 8
 

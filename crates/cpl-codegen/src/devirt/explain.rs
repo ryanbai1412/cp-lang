@@ -57,6 +57,8 @@ pub fn explain_closures(
                 ClosureMode::Unbuilt
             } else if matches!(fty, Ty::Opt(_)) {
                 erased(program, fty, "optional fn field that is read")
+            } else if let Some(closure) = devirt.field_functor(sid, idx) {
+                ClosureMode::StaticFunctor { closure }
             } else if devirt.field_elidable(sid, idx) {
                 let Some(Held::One(cid)) = devirt.held.get(&Home::Field(sid, idx)).copied() else {
                     continue;
@@ -66,7 +68,8 @@ pub fn explain_closures(
                 let reason = match devirt.held.get(&Home::Field(sid, idx)) {
                     Some(Held::One(_)) => "field escapes or is reassigned".to_string(),
                     Some(Held::Many) => {
-                        "multiple or capturing closures stored in field".to_string()
+                        "different closures, or one capturing a global, a var or a heap value, stored in field"
+                            .to_string()
                     }
                     None => "no closure stored in it is known here".to_string(),
                 };

@@ -14,7 +14,7 @@ The positions a `SegTree` runs over.
 
 Point update and range fold.
 
-Fields: `t: List<T>`, `lz: List<F>`, `has_lz: List<Bool>`, `span: List<Int>`, `size: Int`, `log: Int`, `act: ?Action<T, F>`.
+Fields: `t: List<T>`, `lz: List<F>`, `has_lz: List<Bool>`, `size: Int`, `log: Int`, `act: ?Action<T, F>`.
 
 - `fn new<M, A, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>` — \(O(\lvert D \rvert)\); \(O(\log(hi - lo))\) with `over: lo..hi`, which then makes at; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`; a tree
 - `fn apply(mut self, r: Range<D>, f: F)` — \(O(\log \lvert D \rvert)\); Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f` applied, through the action given to `act:`.; traps: when a non-empty `r` reaches outside `D`

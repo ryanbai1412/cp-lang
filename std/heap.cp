@@ -931,7 +931,8 @@ pub struct MeldHeap<T>:
 
 // One skew-heap node, 4-byte links so a node of a word-sized key fits half a cache line: its key
 // with every offset above it applied, its children, and the stamp of the handle whose root it
-// is. The offset a node still owes its children lives in the pool's `_adds`.
+// is. The offset a node still owes its children lives in the pool's `_adds`. A popped node is
+// free: `l` links it to the next free node and its stamp is -1, so no handle matches it.
 struct MeldNode<T>:
     var key: T
     var l: -1..=2_147_483_647
@@ -968,12 +969,16 @@ pub struct Meld<T>:
 ///
 /// Each heap is a `Meld<T>` handle. `meld` relinks nodes instead of copying them, so melding
 /// many heaps, one per vertex or component, costs no allocation beyond the nodes themselves.
+/// A popped element's node is reused by a later push, so the pool holds one node per element
+/// live at its peak, not one per element ever pushed.
 /// Use `MeldHeap` for a few heaps that own their nodes.
 pub struct MeldHeaps<T>:
     _nodes: List<MeldNode<T>> = []
     // Per-node pending offsets, parallel to `_nodes`; empty until the first `add_all`.
     _adds: List<?T> = []
     _stamps: Int = 0
+    // Head of the free nodes, linked through `l`; -1 when none is free.
+    _free: -1..=2_147_483_647 = -1
     lt: ?((T, T) -> Bool) = None
 
     /// An empty pool, optionally ordered by key extractor `by:`.
@@ -999,8 +1004,9 @@ pub struct MeldHeaps<T>:
             i += 2
         self.seal(if q.len > 0: q.last! else: -1, xs.len)
 
-    /// Preallocate room for `nodes` heap nodes in total (one per item ever pushed), so later
-    /// pushes do not regrow the pool. Changes no heap and no handle.
+    /// Preallocate room for `nodes` heap nodes in total (one per element live at once, as a
+    /// popped element's node is reused), so later pushes do not regrow the pool. Changes no heap
+    /// and no handle.
     ///
     /// cost: \(O(\mathit{nodes})\)
     /// traps: when `nodes < 0`
@@ -1057,6 +1063,8 @@ pub struct MeldHeaps<T>:
         self.push_down(t)
         _nodes[t].stamp = -1
         h = self.seal(self.merge(_nodes[t].l, _nodes[t].r), h._len - 1)
+        _nodes[t].l = _free
+        _free = t
         Some(_nodes[t].key)
 
     /// The heap holding `a` and `b`, as `MergeSegs.merge` is. Both are used up: their nodes now
@@ -1130,6 +1138,7 @@ pub struct MeldHeaps<T>:
     fn reset(mut self):
         _nodes = []
         _adds = []
+        _free = -1
 
     // An empty pool ordered as this one is.
     fn emptied(self) -> MeldHeaps<T> = MeldHeaps(lt:)
@@ -1148,6 +1157,11 @@ pub struct MeldHeaps<T>:
         a < b
 
     fn node(mut self, x: T) -> Int:
+        if _free >= 0:
+            let t = _free
+            _free = _nodes[t].l
+            _nodes[t] = MeldNode(x, -1, -1)
+            return t
         _nodes.push(MeldNode(x, -1, -1))
         if _adds.len > 0: _adds.push(None)
         _nodes.len - 1

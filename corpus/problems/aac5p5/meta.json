@@ -12,5 +12,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "DMOJ no longer serves the statement; tests.toml's samples and gen.py's bounds come from its 2022-02-23 Wayback snapshot. The reference is the accepted 4240171, which agrees with the statement samples and an independent O(H^2 V) brute on 400 generated cases."
 }

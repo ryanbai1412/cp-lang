@@ -40,28 +40,26 @@ elif (x + h * (h + 1) / 2 + t) % 2 == 1:
     p += s
 
 var need = (k * (k + 1) / 2 + t - p) / 2
-var fwd: List<Int> = []
-var back: List<Int> = []
-for s in (1..=k).rev:
-    if s <= need:
-        fwd.push(s)
-        need -= s
+var ahead = List.filled(k + 1, false)
+for s in (1..=k).rev if s <= need:
+    ahead[s] = true
+    need -= s
+// every size up to k is used once; the walk prints the largest forward or backward size left
+print(moves.len + k)
+for s in moves: print(s)
+var (i, j) = (k, k)
+while true:
+    while i > 0 and not ahead[i]: i -= 1
+    while j > 0 and ahead[j]: j -= 1
+    if i == 0 and j == 0: break
+    if j == 0 or (i > 0 and (p < t or (p == t and 2 * t <= n + 1))):
+        print(i)
+        p += i
+        i -= 1
     else:
-        back.push(s)
-var i = 0
-var j = 0
-while i < fwd.len or j < back.len:
-    if j == back.len or (i < fwd.len and (p < t or (p == t and 2 * t <= n + 1))):
-        moves.push(fwd[i])
-        p += fwd[i]
-        i += 1
-    else:
-        moves.push(-back[j])
-        p -= back[j]
-        j += 1
-
-print(moves.len)
-print(moves, sep: "\n")
+        print(-j)
+        p -= j
+        j -= 1
 
 @check
 fn check():

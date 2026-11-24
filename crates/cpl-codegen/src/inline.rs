@@ -39,8 +39,15 @@ impl<'p> Emitter<'p> {
         }
     }
     /// The declaration of `src` holding what `extend` appends: a list
-    /// literal goes in a stack array, where a `std::vector` would allocate.
-    pub(crate) fn extend_source(item: &Expr, src: &str, arg: &str, indent: usize) -> String {
+    /// literal goes in a stack array, where a `std::vector` would allocate,
+    /// and a source that can't be the list it grows is borrowed.
+    pub(crate) fn extend_source(
+        item: &Expr,
+        src: &str,
+        arg: &str,
+        indent: usize,
+        borrow: bool,
+    ) -> String {
         let literal = matches!((&item.kind, &item.ty), (ExprKind::Tuple(_), Ty::List(_)));
         let split = arg
             .strip_prefix("std::vector<")
@@ -48,6 +55,7 @@ impl<'p> Emitter<'p> {
             .and_then(|rest| rest.find(">{").map(|k| (&rest[..k], &rest[k + 1..])));
         match split {
             Some((cell, items)) => format!("{}const {cell} {src}[] = {items};\n", pad(indent)),
+            _ if borrow => format!("{}const auto& {src} = {arg};\n", pad(indent)),
             _ => format!("{}auto {src} = {arg};\n", pad(indent)),
         }
     }

@@ -258,6 +258,19 @@ print(i / d)
 }
 
 #[test]
+fn a_trap_in_a_large_state_reports_without_its_locals_in_time() {
+    // A 10^6-leaf segment tree: tracing the end again took 97 s on a 1 s
+    // run, so naming the locals gives up and the trap is reported alone.
+    let spec = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems/cco20p5/spec.cp");
+    let source = fs::read_to_string(spec).unwrap();
+    let started = std::time::Instant::now();
+    let (code, err) = run_stderr(&source, "1\nR 9 9\n");
+    assert_eq!(code, 3);
+    assert!(err.contains("error[R0301]"), "got:\n{err}");
+    assert!(started.elapsed().as_secs() < 30, "{:?}", started.elapsed());
+}
+
+#[test]
 fn golden_multitest_reports_case_number_and_call_stack() {
     let source = "\
 @!multitest

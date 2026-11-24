@@ -17,6 +17,9 @@
  ],
  "cpp_ac": 6,
  "artifacts": {
+  "original": [
+   "corpus/problems/noi07p6/orig.cpp"
+  ],
   "port": [
    "corpus/problems/noi07p6/port.cp"
   ]
@@ -25,5 +28,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the AC submission corpus/submissions/3821057.cpp: the first AC, 3756630 (like 3756646 and 3756979), prints a plan with more detectives than the optimum the checker requires (7 instead of the sample's 2)."
 }

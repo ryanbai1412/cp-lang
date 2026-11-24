@@ -31,24 +31,24 @@ Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose
 - `fn set(mut self, i: D, x: T)` — \(O(\log n)\) expected; Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.; traps: when `i` is outside `D`
 - `fn to_array(self) -> [D]T` — \(O(\lvert D \rvert)\); The current values in position order, with every pending tag and reversal merged in as it walks; it reads the tree and writes nothing back.
 
-## `struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>)`
+## `struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> T))`
 
 A sequence of `T` that folds any run with a monoid, under lazy range tags and range reversal: an implicit treap whose nodes keep each subtree's fold in both directions, so `reverse` is a swap of the two even when `op` does not commute.
 
 Fields: `val: List<T>`, `fwd: List<T>`, `bwd: List<T>`, `tag: List<?F>`, `rev: List<Bool>`, `rng: Rng`, `free: List<Int>`.
 
-- `fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>` — \(O(n)\) expected; The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a `Monoid(id, op)`, which need not commute.
+- `fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None, mirror: ?(T -> T) = None) -> SeqFold<T, F>` — \(O(n)\) expected; The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a `Monoid(id, op)`, which need not commute.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the sequence has no elements.
 - `@get fn items(self) -> yields T` — \(O(n)\) to make, \(O(1)\) per step; Each element in position order, with every tag and reversal applied; the treap is unchanged.
 - `@get fn total(self) -> T` — \(O(1)\); The fold of every element in order, with every tag and reversal applied.
 - `fn push(mut self, x: T)` — \(O(\log n)\) expected; Append `x` at the end.
 - `fn insert_at(mut self, pos: Int, x: T)` — \(O(\log n)\) expected; Insert `x` so that it becomes the element at position `pos`; `pos == len` appends.; traps: when `pos < 0` or `pos > len`
-- `fn insert_many(mut self, pos: Int, xs: List<T>)` — \(O(k + \log n)\) expected for `k` new elements; The element at position `pos`, with every tag and reversal applied.; traps: when `pos < 0` or `pos > len`
+- `fn insert_many(mut self, pos: Int, xs: List<T>)` — \(O(k + \log n)\) expected for `k` new elements; Insert `xs`, in order, before position `pos` (`pos == len` appends): they take positions `pos..pos + xs.len` and later elements move up by `xs.len`.; traps: when `pos < 0` or `pos > len`
 - `fn erase_range(mut self, r: Range<Int>)` — \(O(\lvert r \rvert + \log n)\) expected; Remove the elements at positions `r`; later elements move down by `r.len`.; traps: when a non-empty `r` reaches outside `0..len`
 - `fn split_at(mut self, k: Int) -> SeqFold<T, F>` — \(O(\mathit{len} - k + \log n)\) expected; Split off the elements at positions `k..len` into a new sequence with the same monoid and action, and return it; `self` keeps positions `0..k`.; traps: when `k < 0` or `k > len`
 - `fn splice(mut self, pos: Int, mut other: SeqFold<T, F>)` — \(O(m + \log n)\) expected for `m` moved elements; Move every element of `other` into `self` before position `pos`, in order, leaving `other` empty.; traps: when `pos < 0` or `pos > len`
-- `fn get(mut self, pos: Int) -> T`
+- `fn get(mut self, pos: Int) -> T` — \(O(\log n)\) expected; The element at position `pos`, with every tag and reversal applied.; traps: when `pos < 0` or `pos >= len`
 - `fn fold(mut self, r: Range<Int>) -> T` — \(O(\log n)\) expected; The fold of the elements at positions `r`, in order.; traps: when a non-empty `r` reaches outside `0..len`
 - `fn apply(mut self, r: Range<Int>, f: F)` — \(O(\log n)\) expected; Apply tag `f` to every element at positions `r`.; traps: when the sequence was built without `act:`, or a non-empty `r` reaches outside `0..len`
 - `fn reverse(mut self, r: Range<Int>)` — \(O(\log n)\) expected; Reverse the order of the elements at positions `r`.; traps: when a non-empty `r` reaches outside `0..len`

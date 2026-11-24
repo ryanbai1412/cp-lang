@@ -20,10 +20,20 @@ fn windows_writes_output_in_binary_mode() {
 }
 
 #[test]
-fn interactive_flushes_after_each_print() {
-    let said = "cpl::put_line(); cpl::flush(); fflush(stdout);";
-    assert!(cpp("@!interactive\nprint(1)\n").contains(said));
-    assert!(!cpp("print(1)\n").contains(said));
+fn interactive_flushes_before_each_read_not_after_each_print() {
+    let out = cpp("@!interactive\nfor _ in 0..3:\n    print(\"R\")\n    let x: Int = read()\n    print(x)\nprint(\"A\")\n");
+    let solve = out
+        .split("void solve()")
+        .nth(1)
+        .unwrap()
+        .split("}  // namespace prog")
+        .next()
+        .unwrap();
+    assert!(!solve.contains("flush"), "{solve}");
+    assert!(
+        out.contains("if (!out.empty()) { flush(); fflush(stdout); }"),
+        "{out}"
+    );
 }
 
 #[test]

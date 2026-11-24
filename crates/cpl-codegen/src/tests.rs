@@ -113,6 +113,59 @@ print(s, cnt[Side.Left])
 }
 
 #[test]
+fn an_array_over_a_constant_domain_is_a_std_array_in_every_position() {
+    let source = "\
+domain K = 0..3
+struct Sum:
+    c: [K]Int
+fn join(a: [K]Int, b: [K]Int) -> [K]Int = [K] k => a[k] + b[k]
+fn pick(p: ([K]Int, Int)) -> ?[K]Int = if p.1 > 0: Some(p.0) else: None
+let x: [K]Int = [K] k => k.ord
+let s = Sum(join(x, x))
+let o = pick((s.c, 1))
+print(join(x, x)[K(1)], s.c[K(2)], (o ?? x)[K(0)])
+";
+    let out = cpp(source);
+    let body = &out[out.find("namespace prog {").expect("prog")..];
+    assert!(
+        body.contains(
+            "std::array<ll, 3> join(const std::array<ll, 3>& a, const std::array<ll, 3>& b)"
+        ) && !body.contains("std::vector<"),
+        "params, returns, fields, tuples and optionals all hold the array inline:\n{body}"
+    );
+}
+
+#[test]
+fn extend_borrows_its_source_and_push_takes_a_dying_local() {
+    let body = body(
+        "let n: Int = read()\nvar stack: List<(val: Int, xs: List<Int>)> = []\nfor i in 0..n:\n    var xs = [i]\n    if stack.len > 0: xs.extend(stack[stack.len - 1].xs)\n    stack.push((i, xs))\nvar again: List<Int> = [1]\nagain.extend(again)\nprint(stack.len, again.len)\n",
+    );
+    assert!(body.contains("const auto& t0 = std::get<1>("), "{body}");
+    assert!(body.contains("{i, std::move(xs)}"), "{body}");
+    // A list grown by its own items reads a copy: inserting a vector's own range is undefined.
+    assert!(body.contains("auto t2 = again;"), "{body}");
+}
+
+#[test]
+fn a_loop_over_a_global_the_fn_never_writes_walks_it_in_place() {
+    let cpp = cpp(
+        "domain Val = 0..100\nvar divisors: [Val]List<Val> = [Val] _ => []\nvar a: [Val]Val = [Val] v => v\nvar hits: [Val]Int = [Val] _ => 0\nfn touch(p: Val):\n    for d in divisors[a[p]]:\n        hits[d] += 1\nfor v in Val:\n    divisors[v].push(v)\n    touch(v)\nprint(hits[Val(1)])\n",
+    );
+    let touch = &cpp[cpp.find("inline void touch").unwrap()..];
+    let touch = &touch[..touch.find("\n}\n").unwrap()];
+    assert!(touch.contains(": divisors[a[p]])"), "{touch}");
+    assert!(!touch.contains("std::vector"), "{touch}");
+}
+
+#[test]
+fn list_insert_and_remove_move_the_tail_once() {
+    let body = body("var a = [1, 3]\na.insert(1, 2)\nlet y = a.remove(0)\nprint(a, y)\n");
+    assert!(body.contains("cpl::list_insert(a, "), "{body}");
+    assert!(body.contains("cpl::list_remove(a, "), "{body}");
+    assert!(!body.contains("swap_at"), "{body}");
+}
+
+#[test]
 fn the_same_source_gives_the_same_bytes() {
     let source = "var m: Map<Str, Int> = []\nm[\"b\"] = 1\nm[\"a\"] = 2\nvar s: Set<Int> = []\ns.insert(3)\nprint(m, s)\n";
     assert_eq!(cpp(source), cpp(source));
@@ -169,9 +222,9 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     assert!(cpp.contains("struct CpHash"), "{cpp}");
     assert!(cpp.contains("splitmix64"), "{cpp}");
     assert!(cpp.contains("steady_clock"), "{cpp}");
-    // Fingerprinted slots at a load of at most 7/8, sized exactly, freeing the old table as a rehash walks it.
+    // Fingerprinted slots at a load of at most 3/4, sized exactly, freeing the old table as a rehash walks it.
     assert!(
-        cpp.contains("n + (n + 6) / 7") && cpp.contains("release_pages"),
+        cpp.contains("n + (n + 2) / 3") && cpp.contains("release_pages"),
         "{cpp}"
     );
     // Whatever the entry, so a Map<Str, _> doesn't hold both tables whole.
@@ -181,6 +234,15 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     );
     assert!(!cpp.contains("2 * (n + 1)"), "{cpp}");
     assert!(cpp.len() < 65536, "{} bytes", cpp.len());
+}
+
+#[test]
+fn a_one_field_struct_key_hashes_as_its_field() {
+    let cpp = cpp("struct H(v: Int)\nvar hm = HashMap<H, Int>()\nhm[H(4)] = 7\nprint(hm[H(4)])\n");
+    assert!(
+        cpp.contains("if constexpr (I == 0 && std::tuple_size<T>::value == 1) return (uint64_t)(*this)(std::get<0>(t));"),
+        "{cpp}"
+    );
 }
 
 #[test]
@@ -525,17 +587,57 @@ fn a_ranged_read_checks_its_bounds() {
 }
 
 #[test]
-fn the_program_runs_on_a_thread_with_the_profile_stack() {
+fn a_domain_read_takes_the_unsigned_scan() {
+    let cpp = cpp("let n: 1..=9 = read()\ndomain V = 1..=n\nlet v: V = read()\nprint(v)\n");
+    assert!(cpp.contains("cpl::read_pos(V_lo, V_len)"), "{cpp}");
+    assert!(!cpp.contains("cpl::pos(cpl::read_int()"), "{cpp}");
+}
+
+#[test]
+fn the_input_buffer_drops_what_was_read() {
+    let cpp = cpp("let n: Int = read()\nprint(n)\n");
+    assert!(cpp.contains("in.erase(0, keep)"), "{cpp}");
+    assert!(
+        cpp.contains("if (in_at + k >= in.size() && !more())"),
+        "{cpp}"
+    );
+}
+
+#[test]
+fn a_printed_sequence_streams_into_out() {
+    for src in [
+        "let n: 1..=9 = read()\nprint(0..n)\n",
+        "let n: 1..=9 = read()\nprint(i for i in 1..=n)\n",
+        "let n: 1..=9 = read()\nlet xs = [i * 7 - n for i in 0..n]\nprint(xs, sep: \"\\n\")\n",
+    ] {
+        let cpp = cpp(src);
+        let body = &cpp[cpp.find("void solve()").unwrap()..];
+        assert!(!body.contains("Capture"), "{body}");
+        assert!(!body.contains("-> std::vector<ll>"), "{body}");
+    }
+    let put = cpp("let s: Str = read()\nprint(s, 7)\n");
+    assert!(put.contains("out += s; spill(); }"), "{put}");
+    let put_int = &put[put.find("inline void put_int").unwrap()..];
+    assert!(
+        put_int[..put_int.find("\n}").unwrap()].contains("spill();"),
+        "{put}"
+    );
+}
+
+#[test]
+fn the_program_runs_with_the_profile_stack() {
     let source = "let n: Int = read()\nprint(n)\n";
     let cpp = cpp(source);
-    assert!(cpp.contains("a 1024 MB stack."), "{cpp}");
+    assert!(cpp.contains("Runs with a 1024 MB stack."), "{cpp}");
+    assert!(cpp.contains("setcontext(&u)"), "{cpp}");
     assert!(cpp.contains("static void cpl_main() {"), "{cpp}");
     assert!(cpp.contains("for (size_t n = (size_t)1024 << 20;"), "{cpp}");
     assert!(
         cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"),
         "{cpp}"
     );
-    assert!(cpp.contains("mallopt(M_ARENA_MAX, 1);"), "{cpp}");
+    // One thread, so glibc keeps malloc's single-thread fast path.
+    assert!(!cpp.contains("mallopt"), "{cpp}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
@@ -548,7 +650,7 @@ fn the_program_runs_on_a_thread_with_the_profile_stack() {
         cpp.contains("#ifdef _WIN32") && cpp.contains("CreateThread(0, n,"),
         "{cpp}"
     );
-    assert!(cpp.contains("#else\n#include <pthread.h>"), "{cpp}");
+    assert!(cpp.contains("#else\n#ifdef __GLIBC__"), "{cpp}");
     // No call depth is counted, in any build.
     assert!(!cpp.contains("depth"), "{cpp}");
 }
@@ -739,6 +841,15 @@ print(sq(7) + fact(5))
         "a recursive fn keeps a plain definition:\n{out}"
     );
     assert!(!out.contains("inline void solve("), "{out}");
+}
+#[test]
+fn a_fn_whose_name_ends_a_runtime_helper_is_still_inline() {
+    let out = cpp("let n: Int = read()
+fn add(x: Int, best: Int) -> Int = max(best, x * (n + 1) + x)
+print(add(n, 0))
+");
+    assert!(out.contains("cpl::iadd("), "{out}");
+    assert!(out.contains("inline ll add("), "{out}");
 }
 #[test]
 fn solve_only_globals_and_const_domain_lo_stay_internal_and_local() {

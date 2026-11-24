@@ -1,4 +1,8 @@
 # Seeded random cases from gen.py (SEED SIZE), then the --max case.
+
+[[case]]
+input = "2\n3 3\n1 3\n"
+
 [[case]]
 seed = 1
 size = 4

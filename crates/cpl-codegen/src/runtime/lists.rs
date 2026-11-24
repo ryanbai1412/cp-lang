@@ -17,6 +17,28 @@ template <class S> inline void swap_at(S& s, ll i, ll j) {
 ",
     },
     Piece {
+        name: "list_insert",
+        needs: &[],
+        code: "\
+// `xs.insert(i, x)`, `i` already held to `0..=len`: one move of the tail up.
+template <class S, class T> inline void list_insert(S& s, ll i, T&& x) {
+    s.insert(s.begin() + i, std::forward<T>(x));
+}
+",
+    },
+    Piece {
+        name: "list_remove",
+        needs: &[],
+        code: "\
+// `xs.remove(i)`, `i` already held to `0..len`: the element, then one move of the tail down.
+template <class S> inline typename S::value_type list_remove(S& s, ll i) {
+    typename S::value_type x = std::move(s[i]);
+    s.erase(s.begin() + i);
+    return x;
+}
+",
+    },
+    Piece {
         name: "truncate",
         needs: &[],
         code: "\
@@ -122,6 +144,7 @@ inline std::optional<u8> last(const std::string& s) { return s.empty() ? std::op
         needs: &[],
         code: "\
 template <class T, class U> bool has(const std::vector<T>& v, const U& x) { return std::find(v.begin(), v.end(), x) != v.end(); }
+template <class T, size_t K, class U> bool has(const std::array<T, K>& v, const U& x) { return std::find(v.begin(), v.end(), x) != v.end(); }
 ",
     },
     Piece {
@@ -135,6 +158,7 @@ template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = t
 template <class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
 template <class T> std::vector<T> sorted(std::vector<T> v) { sort_seq(v.begin(), v.end()); return v; }
 template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
+template <class T, size_t K> std::vector<T> sorted(const std::array<T, K>& a) { std::vector<T> v(a.begin(), a.end()); sort_seq(v.begin(), v.end()); return v; }
 ",
     },
     Piece {
@@ -142,6 +166,22 @@ template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vec
         needs: &[],
         code: "\
 template <class T> std::vector<T> reversed(std::vector<T> v) { std::reverse(v.begin(), v.end()); return v; }
+",
+    },
+    Piece {
+        name: "list_to_fixed",
+        needs: &["fail"],
+        code: "\
+// A list of exactly K cells as the `std::array` its fixed-size array type is held in;
+// cells move out of a list nothing else reads.
+template <size_t K, class V> auto list_to_fixed(V&& v) {
+    using T = typename std::decay_t<V>::value_type;
+    if (v.size() != K) fail(\"a list of another length than its array has\");
+    std::array<T, K> a;
+    if constexpr (std::is_rvalue_reference_v<V&&>) std::move(v.begin(), v.end(), a.begin());
+    else std::copy(v.begin(), v.end(), a.begin());
+    return a;
+}
 ",
     },
     Piece {
@@ -275,6 +315,7 @@ template <class T> T pop_val(std::vector<T>& v) { if (v.empty()) fail(\"pop from
         needs: &["fail"],
         code: "\
 template <class T> T first_val(const std::vector<T>& v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
+template <class T, size_t K> T first_val(const std::array<T, K>& v) { return v.front(); }
 inline u8 first_val(const std::string& s) { if (s.empty()) fail(\"the string is empty\"); return (u8)s.front(); }
 ",
     },
@@ -283,6 +324,7 @@ inline u8 first_val(const std::string& s) { if (s.empty()) fail(\"the string is 
         needs: &["fail"],
         code: "\
 template <class T> T last_val(const std::vector<T>& v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
+template <class T, size_t K> T last_val(const std::array<T, K>& v) { return v.back(); }
 inline u8 last_val(const std::string& s) { if (s.empty()) fail(\"the string is empty\"); return (u8)s.back(); }
 ",
     },
@@ -299,6 +341,7 @@ template <class T> struct ListView {
     ll k0 = 0;
     ListView() = default;
     ListView(const std::vector<T>& v, bool r = false) noexcept : ptr(v.data()), n(v.size()), rev(r) {}
+    template <size_t K> ListView(const std::array<T, K>& v, bool r = false) noexcept : ptr(v.data()), n(K), rev(r) {}
     ListView(const T* p, size_t sz, bool r = false, ll k = 0) noexcept : ptr(p), n(sz), rev(r), k0(k) {}
     void cpl_list_view_tag() const {}
     size_t size() const noexcept { return n; }
@@ -336,6 +379,10 @@ template <class T> ll key_pos(ListView<T> v, ll k) { ll i = k - v.k0, n = (ll)v.
 template <class T> ll pos_key(ListView<T> v, ll p) noexcept { return v.k0 + (v.rev ? (ll)v.n - 1 - p : p); }
 template <class T> ListView<T> key_slice(ListView<T> v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (lo - v.k0), (size_t)(hi - lo), v.rev, lo); }
 template <class T> ListView<T> list_slice(const std::vector<T>& v, ll lo, ll hi) { return list_slice(ListView<T>(v), lo, hi); }
+template <class T, size_t K> ListView<T> list_slice(const std::array<T, K>& v, ll lo, ll hi) { return list_slice(ListView<T>(v), lo, hi); }
+template <class T, size_t K> ListView<T> key_slice(const std::array<T, K>& v, ll lo, ll hi) { return key_slice(ListView<T>(v), lo, hi); }
+template <class T, size_t K> ListView<T> list_rev(const std::array<T, K>& v) noexcept { return ListView<T>(v, true); }
+template <class T, size_t K> std::vector<T> to_list(const std::array<T, K>& v) { return std::vector<T>(v.begin(), v.end()); }
 template <class T> ListView<T> key_slice(const std::vector<T>& v, ll lo, ll hi) { return key_slice(ListView<T>(v), lo, hi); }
 template <class T> ListView<T> list_rev(const std::vector<T>& v) noexcept { return ListView<T>(v, true); }
 template <class T> ListView<T> list_rev(ListView<T> v) noexcept { return v.reversed(); }
@@ -362,6 +409,7 @@ inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size
         code: "\
 template <class T> ListView<T> rekey(ListView<T> v, ll lo, ll hi) { if (hi - lo != (ll)v.n) fail(\"rekey needs as many keys as cells\"); return ListView<T>(v.ptr, v.n, v.rev, lo); }
 template <class T> ListView<T> rekey(const std::vector<T>& v, ll lo, ll hi) { return rekey(ListView<T>(v), lo, hi); }
+template <class T, size_t K> ListView<T> rekey(const std::array<T, K>& v, ll lo, ll hi) { return rekey(ListView<T>(v), lo, hi); }
 template <class T> struct Keyed : ListView<T> {
     std::vector<T> store;
     Keyed() = default;

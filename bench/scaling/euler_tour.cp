@@ -37,6 +37,7 @@ for i in 0..32 * n:
     if et.connected(a, b): s += 1 // timed: tree.EulerTourTree.connected
     s += et.len(a) // timed: tree.EulerTourTree.len
     et.set(a, i % 10) // timed: tree.EulerTourTree.set
+    et.set(b, i % 7) // timed: tree.EulerTourTree.set
     s += et.fold_sub(c, p) // timed: tree.EulerTourTree.fold_sub
     if lz.connected(a, b): s += 1 // timed: tree.LazyEulerTourTree.connected
     s += lz.len(a) // timed: tree.LazyEulerTourTree.len
@@ -45,6 +46,8 @@ for i in 0..32 * n:
     s += lz.fold_sub(c, p) // timed: tree.LazyEulerTourTree.fold_sub
     lz.apply_sub(c, p, 1) // timed: tree.LazyEulerTourTree.apply_sub
     s %= 1000000007
+for _ in 0..128:
+    s += lz.to_array()[V(n - 1)] // timed: tree.LazyEulerTourTree.to_array
 for i in 0..256 * n:
     s += et.get(V((i * 7919) % n)) // timed: tree.EulerTourTree.get
 for i in 0..128 * n:

@@ -6,11 +6,15 @@
   {"id": "3756903", "language": "CPP17", "result": "WA", "time": 0.033141553, "memory_kb": 3848.0, "file": "corpus/submissions/3756903.cpp"},
   {"id": "3756929", "language": "CPP17", "result": "WA", "time": 0.039961975, "memory_kb": 3848.0, "file": "corpus/submissions/3756929.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi07p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Output-only task with no accepted C++. orig.cpp: the wall is a minimum vertex cut between the border and the research cells (cell weight = a rising per-cell price plus its distance to the nearest battalion, so the cut fits the battalions), matched to battalions greedily by distance with pair swaps, then walked in along L-shaped paths where a blocked walker hands its job to the blocker, so the plan never costs more than the matching. It is valid on the sample, the ten official files and 300 generated maps, and optimal on 78 of 80 tiny maps against a breadth-first search over battalion placements (one move over on the other two). checker.py replays the moves and accepts any valid plan at most as long. Bounds come from the official surround1-10.in (up to 3000 x 60), since the statement gives none."
 }

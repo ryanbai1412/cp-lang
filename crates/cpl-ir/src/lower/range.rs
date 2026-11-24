@@ -1303,7 +1303,7 @@ impl<'a> Lowerer<'a> {
 
 impl<'a> Lowerer<'a> {
     /// Whether `ty`'s order calls a user `Ord` somewhere inside it.
-    fn user_ordered(&self, ty: &Ty) -> bool {
+    pub(super) fn user_ordered(&self, ty: &Ty) -> bool {
         match ty {
             Ty::Struct(id) => {
                 let def = &self.structs[*id].def;

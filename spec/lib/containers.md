@@ -298,10 +298,12 @@ agrees with brute-force 0/1 subset sums on random small weight multisets.
 > `first_true`/`last_true` (decision 137, `core/04-indices.md`), not
 > `first_true`/`last_true`. `drain(r)` is `drain_range(r)`.
 
-`SortedBag<K>` is backed by a randomized treap over flat arrays with a recycled
-free list (eliminating memory leaks on erase, fixing `cf2066e.md` #2) and parent
-pointers so a `BagCursor` steps to `prev` / `next` in \(O(1)\) amortized (fixing
-`cf2066e.md` #1). Each node stores `(key, pri, cnt, sub, left, right, parent)`.
+`SortedBag<K>` is backed by a B+tree of 32-slot nodes over flat arrays with a
+recycled free list (eliminating memory leaks on erase, fixing `cf2066e.md` #2)
+and linked leaves so a `BagCursor`, a leaf slot, steps to `prev` / `next` in
+\(O(1)\) (fixing `cf2066e.md` #1). A leaf slot stores `(key, value, count)`; an
+inner slot stores a separator, a child and the child's element count, which
+keeps `rank` and `nth` at \(O(\log n)\) (decision 558).
 
 <!-- signatures: std/bag.cp -->
 ```cp
@@ -350,14 +352,14 @@ struct SortedBag<K>                           // O(log n) ops, O(distinct) mem
     fn to_list(self) -> List<K>                          // O(n)
 ```
 
-`SortedSet<K>` wraps the same treap invariant with uniqueness (`add(x) -> Bool`
+`SortedSet<K>` wraps the same B+tree with uniqueness (`add(x) -> Bool`
 is false if already present) and exposes the exact same `first_ge`/`first_gt`/
 `range(r)` views, `rank`, `nth`, `first_true`/`last_true`, cursors, and
 `each`/`each_rev`. This directly solves `cf2262b.md` (collapsing `Set<I>`,
 `Map<Int, I>`, and `Fenwick<I, Int>` into one `SortedSet<I>`).
 
-Why not mutate `SortedBag` through a cursor (`erase(c)`)? Because a treap
-`split`/`merge` is already \(O(\log n)\) and invalidates structural paths; keeping
+Why not mutate `SortedBag` through a cursor (`erase(c)`)? Because a B+tree
+insert or erase shifts slots and splits or merges nodes, which moves entries; keeping
 cursors read-only handles that remain valid until the next mutation avoids
 dangling-cursor traps while giving \(O(1)\) amortized `prev`/`next` and \(O(1)\)
 `entries_rev()` walks (which is exactly what `cf2066e` needs).
@@ -596,7 +598,10 @@ declares, and each write returns a `Version<S>` that names the structure type
 An arena-stored value walks and prints through `x.within(ar)`, a lent view
 of it inside its arena that is a container like any other (`len`,
 `is_empty`, a walk and `Show`); copying nothing, it lives no longer than
-`x` or `ar`.
+`x` or `ar`. A version of a tree or array reads the same way through the
+structure that made it: the three implement `trait Versioned<D, T>` (`get`
+one position of a version), and `v.within(t)` is a container of the
+version's values in key order (decision 555).
 
 <!-- signatures: std/persistent.cp std/dsu.cp -->
 ```cp
@@ -619,6 +624,12 @@ struct PMultiset<D>                                                             
     // ==: O(1) by size and a 64-bit sum of fixed per-key weights
 
 struct Version<S>(root: Int)  // a version of tree or array type S; only S takes it
+
+trait Versioned<D, T>                                         // PersistentSegTree, PersistentLazySegTree, PersistentArray
+    fn get(self, v: Version<Self>, i: D) -> T                 // O(log |D|)
+
+impl<S: Versioned<D, T>, D: Domain, T> Version<S>
+    fn within(self, store: S) -> lends VersionWithin<S, D, T>  // O(1); len, is_empty, each, items (ascending D, O(|D| log |D|)), Show
 
 struct PersistentDsu<V>                                                         // one version of a union-find (std.dsu)
     fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>                      // O(n) time, 2n - 1 nodes
@@ -862,11 +873,8 @@ fn solve(span: Range<T>, live: List<Edge>):
 After landing the v1 surface above and rewriting the affected ports (`cf2066e`,
 `cf2237h`, `cf2187d`, `cf2262b`, `cf2147h`):
 
-- **B-tree `SortedBag` / `SortedSet` (optional):** `BagNode<K>` now packs
-  32-bit `pri`/`left`/`right`/`par` into one 40-byte cache line (`sorted_range`
-  `0.61x` vs C++ treap, `sorted_set` `1.26x` vs PBDS `rb_tree_tag`). Moving to
-  a cache-friendly B-tree would close the remaining 1.26x treap-depth gap vs
-  PBDS red-black trees if needed.
+- **B-tree `SortedBag` / `SortedSet`:** done (decision 558): a B+tree of
+  32-slot nodes replaced the treap, and `SortedMap` keeps its values in it.
 
 ---
 

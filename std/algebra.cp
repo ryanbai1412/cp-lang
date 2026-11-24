@@ -244,13 +244,6 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
             max(b.suf, a.suf + b.total),
         )
 
-    /// The summary of the same elements each multiplied by `k` (the same as `self * k`). Exact
-    /// because every maximum scales by a non-negative factor; the empty summary stays empty.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: when `k < 0`
-    /// example: `MaxSub.of(-3).scale(2).try_best == Some(-6)`
-    /// example: `MaxSub.of(-3).scale(0).try_best == Some(0)`
     /// The summary of the same elements in reverse order: the best prefix and suffix swap.
     ///
     /// cost: \(O(1)\)
@@ -258,6 +251,13 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// example: `(MaxSub.of(3) + MaxSub.of(-5)).reversed() == MaxSub.of(-5) + MaxSub.of(3)`
     pub fn reversed(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
 
+    /// The summary of the same elements each multiplied by `k` (the same as `self * k`). Exact
+    /// because every maximum scales by a non-negative factor; the empty summary stays empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `k < 0`
+    /// example: `MaxSub.of(-3).scale(2).try_best == Some(-6)`
+    /// example: `MaxSub.of(-3).scale(0).try_best == Some(0)`
     pub fn scale(self, k: Int) -> MaxSub:
         assert k >= 0
         if not has: self
@@ -554,15 +554,7 @@ fn bare_operators_bring_their_identity():
 fn a_monoid_of_your_own_is_a_pair():
     let cat = Monoid<Str>("", (a, b) => a + b)
     assert laws_hold(cat, ["", "ab", "c"])
-    assert ["ab", "c", "de"].fold(cat) == "abcde"
-    assert [1, 2, 3].fold(+) == 6
-    assert [1, 5, 3].fold(max) == 5
-    let xs = [12, 18, 30]
-    assert xs.fold(gcd) == 6
-    assert xs[1..].fold(gcd) == 6
-    let a: [0..3]Int = [12, 18, 30]
-    assert a.fold(gcd) == 6
-    assert (1..=4).fold(+) == 10
+    assert cat.op(cat.id, "ab") == "ab" and cat.op("ab", "c") == "abc"
 
 @test
 fn affine_action_laws():
@@ -635,7 +627,8 @@ fn max_sub_monoid_laws_and_kadane():
     assert laws_hold(MaxSub.monoid(), samples)
     assert MaxSub.zero.try_best == None
     let xs = [-3, 4, -1, 2, -5, 3, 2, -1]
-    let got = [MaxSub.of(x) for x in xs].fold(MaxSub.monoid())
+    var got = MaxSub.zero
+    for x in xs: got = MaxSub.join(got, MaxSub.of(x))
     var want = Int.MIN
     for l in 0..xs.len:
         var s = 0

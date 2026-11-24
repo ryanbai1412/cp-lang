@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The CI driver's decisions, tested (scripts/test_ci.py): which tests each tier
 leaves out, what a CPL_GATE_PART runs, and which checking scripts and spec gates
-each tier runs, and the --fast tier from its build on. scripts/check.sh evals
-`ci.py plan`, runs `ci.py steps <tier>` and hands the rest to `ci.py tail`.
+each tier runs, and every tier after the guards. scripts/check.sh is `ci.py check`:
+it sets up the C++ and stage caches, runs the guards, then the tier.
 
 CI splits --fast across parallel jobs (.github/workflows/ci.yml):
   checks            everything but the workspace tests, the conformance ratchet and fmt
@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import shlex
 import shutil
 import signal
 import subprocess
@@ -74,11 +73,11 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     out = {"kind": "checks", "suites": "", "shard": "", "partition": ""}
     if part in ("", "checks"):
         return out
-    if part == "fmt" or part == "conform" or part.startswith(("conform:", "tests:")):
+    if part in ("fmt", "corpus", "conform") or part.startswith(("conform:", "tests:")):
         if mode != "fast":
             raise ValueError(f"CPL_GATE_PART={part} needs --fast")
-    if part == "fmt":
-        out["kind"] = "fmt"
+    if part in ("fmt", "corpus"):
+        out["kind"] = part
     elif part == "conform" or part.startswith("conform:"):
         suites = part.partition(":")[2] or "all"
         suites, at, shard = suites.partition("@")
@@ -91,24 +90,8 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     elif part.startswith("tests:") and part != "tests:":
         out.update(kind="tests", partition=part.removeprefix("tests:"))
     else:
-        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, conform or tests:<partition>)")
+        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform or tests:<partition>)")
     return out
-
-
-def plan(mode: str, part: str) -> str:
-    """Shell assignments check.sh evals."""
-    g = gate_part(part, mode)
-    values = {
-        "slow_filter": slow_filter(),
-        "wall_filter": wall_filter(),
-        "gate_kind": g["kind"],
-        "conform_suites": g["suites"],
-        "conform_shard": g["shard"],
-        "part": g["partition"],
-    }
-    arrays = {"slow_tests": SLOW_TESTS}
-    return ("".join(f"{k}={shlex.quote(v)}\n" for k, v in values.items())
-            + "".join(f"{k}=({' '.join(map(shlex.quote, v))})\n" for k, v in arrays.items()))
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -167,14 +150,16 @@ STEPS = {
         Step("emitted C++ fits 32 KB and every bench program builds (bench/sizes.py --check)",
              ("bench/sizes.py", "--check", "--cpl", "{cpl}"),
              "a program is over the 32 KB bar or a bench program stopped building; see above", drop=": warning: "),
+        Step("I/O programs' peak RSS within a fixed chunk of scanf/printf's (bench/rss/run.py --check)",
+             ("bench/rss/run.py", "--check", "--cpl", "{cpl}"),
+             "an I/O program's peak RSS grows with its input or output; see above"),
         Step("g++ -O2 compile time of the bench programs within its bars (bench/compile_time.py --check)",
              ("bench/compile_time.py", "--check", "--cpl", "{cpl}"),
              "the bench programs' g++ -O2 time is over a bar in bench/compile_time.py; see above"),
         Step("every std fn with a case grows as its cost: says (bench/scaling.py --check)",
              ("bench/scaling.py", "--check", "--cpl", "{cpl}"),
              "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"),
-        gate("coverage", fail="rule coverage gate failed; see above, then rerun: uv run scripts/spec-gate.py coverage",
-             derived=True),
+        gate("coverage", fail="a rule lacks the case it needs; see above, then rerun: uv run scripts/spec-gate.py coverage"),
         gate("subset", fail=_stale("spec/SUBSET.md", "subset")),
         gate("matrix", fail="matrix gate failed; see above"),
         gate("widths", fail=_stale("spec/conformance/widths/", "widths")),
@@ -459,20 +444,152 @@ class Tail:
         self._jobs.clear()
 
     def __call__(self) -> int:
+        return self._guarded(self._tier)
+
+    def commit(self, sel: dict[str, str]) -> int:
+        """The commit tier: the checks scripts/affected.py's selection `sel` reaches."""
+        return self._guarded(lambda logs: self._commit(sel, logs))
+
+    def _guarded(self, body: Callable[[str], None]) -> int:
         # A killed tier stops its backgrounded jobs too: SIGTERM unwinds like Ctrl-C.
         signal.signal(signal.SIGTERM, _interrupt)
         with tempfile.TemporaryDirectory(prefix="cpl-tail-") as logs:
             try:
-                self._tier(logs)
+                body(logs)
             except Failed as e:
-                print(f"check: {e}", file=sys.stderr)
+                if str(e):
+                    print(f"check: {e}", file=sys.stderr)
                 return 1
             finally:
                 self.stop_all()
                 self.end_step()
         return 0
 
+    def wasm(self) -> None:
+        """The playground build. CI's site job builds cpl-wasm itself, and a lane box
+        without the wasm32 target warns and skips."""
+        self.step("cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)")
+        if os.environ.get("CI"):
+            print("skipped in CI: the site build job builds cpl-wasm")
+            return
+        lib = self.run(["rustc", "--print", "target-libdir", "--target", "wasm32-unknown-unknown"],
+                       cwd=ROOT, capture_output=True, text=True)
+        libdir = lib.stdout.strip() if lib.returncode == 0 else ""
+        if not libdir or not Path(libdir).is_dir():
+            print("WARNING: skipped; the wasm32 target is not installed (run: rustup target add wasm32-unknown-unknown)",
+                  file=sys.stderr)
+            return
+        env = {**os.environ, "RUSTFLAGS": f"{os.environ.get('RUSTFLAGS', '')} -D warnings"}
+        if self.call(["cargo", "check", "-q", "-p", "cpl-wasm", "--target", "wasm32-unknown-unknown"], env=env):
+            raise Failed("cpl-wasm does not check for wasm32; rerun:"
+                         " RUSTFLAGS=-Dwarnings cargo check -p cpl-wasm --target wasm32-unknown-unknown")
+
+    def _build(self) -> None:
+        self.step("cargo fmt --all --check")
+        if self.call(["cargo", "fmt", "--all", "--check"]):
+            raise Failed("Rust files are not formatted; run: cargo fmt --all")
+        self.step("cargo clippy --workspace --all-targets -- -D warnings")
+        if self.hit("clippy"):
+            print(CACHED)
+        elif self.call(["cargo", "clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]):
+            raise Failed("clippy found warnings; rerun: cargo clippy --workspace --all-targets -- -D warnings")
+        else:
+            self.save("clippy")
+        self.wasm()
+        self.step("cargo build -p cpl-cli -p cpl-conform (the binaries the checks below run)")
+        if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
+            raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
+
+    def _commit(self, sel: dict[str, str], logs: str) -> None:
+        self.step("checking scripts (scripts/ci.py steps commit)")
+        if run_steps("commit", self.cpl, run=self.run):
+            raise Failed("")
+        self.step("generated files current: skill pages, gap lists (scripts/gen.py --check)")
+        # CI's regen job regenerates stale files on main, so a commit isn't blocked by
+        # staleness it may not have caused; only the summary line, the rest is the job's.
+        gen = self.run([sys.executable, "scripts/gen.py", "--check"], cwd=ROOT, stdout=subprocess.PIPE,
+                       stderr=subprocess.STDOUT, text=True)
+        if gen.returncode:
+            print((gen.stdout.strip().splitlines() or [""])[-1].removesuffix("; run: just gen"))
+            print("note: not blocking, and no need to regenerate them: CI's regen job rewrites these on main")
+        if slices := sel.get("slices", "").split():
+            self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
+            if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
+                raise Failed("a touched-path slice failed or took over 20 s; the lines above name it, rerun:"
+                             f" uv run scripts/affected.py --run-slices {' '.join(slices)}")
+        not_slow = f" & not ({slow_filter()})"
+        if pkgs := sel.get("packages", "").split():
+            ps = [a for p in pkgs for a in ("-p", p)]
+            self.step("cargo fmt --check of the touched crates")
+            if self.call(["cargo", "fmt", "--check", *ps]):
+                raise Failed(f"Rust files are not formatted; run: cargo fmt {' '.join(ps)}")
+            self.step("cargo clippy of the touched crates and nextest of the crates they reach")
+            if self.call(["cargo", "clippy", "-q", *ps, "--all-targets", "--", "-D", "warnings"]):
+                raise Failed(f"clippy found warnings; rerun: cargo clippy {' '.join(ps)} --all-targets -- -D warnings")
+            tree = self.run(["cargo", "tree", "-q", "-p", "cpl-wasm", "--target", "wasm32-unknown-unknown", "-e",
+                             "normal", "--prefix", "none"], cwd=ROOT, capture_output=True, text=True)
+            if tree.returncode:
+                raise Failed(f"cargo tree -p cpl-wasm failed:\n{tree.stderr}")
+            if {line.split()[0] for line in tree.stdout.splitlines() if line.strip()} & set(pkgs):
+                self.wasm()
+            expr = f"({sel.get('filter', '')}){not_slow}"
+            if slice_filter := sel.get("slice_filter"):
+                expr += f" & not ({slice_filter})"
+            if self.call(["cargo", "nextest", "run", "--workspace", "--profile", "commit", "--no-fail-fast", "-E", expr]):
+                raise Failed(f"the touched crates' tests failed (named above); rerun: cargo nextest run --workspace -E '{expr}'")
+        if data := sel.get("data_filter"):
+            self.step(f"tests that read the touched data files: {data}")
+            expr = f"({data}){not_slow}"
+            if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr]):
+                raise Failed(f"tests that read the touched data files failed (named above); rerun: cargo nextest run --workspace -E '{expr}'")
+        if files := sel.get("check_files", "").split():
+            self.step("cpl check of the touched corpus programs")
+            self._cargo_build("cpl-cli")
+            for f in files:
+                if (ROOT / f).is_file() and self.call([self.cpl, "check", f]):
+                    raise Failed(f"{f} has check errors; cpl check's message above says how to fix it")
+        if sel.get("audit") == "1":
+            self.step("staged corpus packages pass every mode (scripts/corpus.py verify --changed staged)")
+            self._cargo_build("cpl-cli")
+            if self.call([sys.executable, "scripts/corpus.py", "make", "--changed", "staged"], stdout=subprocess.DEVNULL):
+                raise Failed("scripts/corpus.py make --changed staged failed; rerun it to see which package")
+            if self.call([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--skip", "dream,header,package", "--cpl", self.cpl]):
+                raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
+            staged = self.run(["git", "diff", "--cached", "--name-only", "--diff-filter=AMR", "--", "corpus/problems/*/dream.cp"], cwd=ROOT, capture_output=True, text=True)
+            if dreams := [Path(f).parent.name for f in staged.stdout.split()]:
+                self.step("staged dreams agree with the accepted C++ (scripts/corpus.py verify --check)")
+                if self.call([sys.executable, "scripts/corpus.py", "verify", "--check", "--cpl", self.cpl, *dreams]):
+                    raise Failed("a staged dream.cp disagrees with its accepted C++ or meta.json lacks its record;"
+                                 " run scripts/corpus.py verify <id> and stage meta.json")
+        if sel.get("idioms_catalog") == "1":
+            self.step("lint catalog names only real APIs (scripts/idioms-catalog.py --check)")
+            if self.call([sys.executable, "scripts/idioms-catalog.py", "--check"]):
+                raise Failed("a spec/idioms/lints.md row names an API std doesn't define; the finding above names the lint and the name")
+        if steps := sel.get("steps", "").split():
+            self.step(f"touched checking scripts (scripts/ci.py steps touched {' '.join(steps)})")
+            if run_steps("touched", self.cpl, run=self.run, only=set(steps)):
+                raise Failed("")
+        if tests := sel.get("script_tests", "").split():
+            self.step(f"script unit tests: {' '.join(tests)}")
+            home = tempfile.mkdtemp(prefix="cpl-home-", dir=logs)
+            if self.call([sys.executable, "-m", "unittest", *tests], env=bare_home(home)):
+                raise Failed(f"script unit tests failed (named above); rerun: uv run python -m unittest {' '.join(tests)}")
+        if cases := sel.get("conform_cases", "").split():
+            self.step("staged conformance cases (scripts/conform_staged.py)")
+            self._cargo_build("cpl-cli", "cpl-conform")
+            if self.call([sys.executable, "scripts/conform_staged.py", str(target_dir() / "debug/cpl-conform"), *cases]):
+                raise Failed("a staged conformance case fails; cpl-conform's message above says how to fix it")
+        if sel.get("site") == "1":
+            self.step("site snippet gate (node web/scripts/gate.mjs)")
+            if self.call(["node", "web/scripts/gate.mjs"]):
+                raise Failed("site snippet gate failed; rerun: node web/scripts/gate.mjs")
+
+    def _cargo_build(self, *pkgs: str) -> None:
+        if self.call(["cargo", "build", "-q", *(a for p in pkgs for a in ("-p", p))]):
+            raise Failed(f"cargo build {' '.join('-p ' + p for p in pkgs)} failed")
+
     def _tier(self, logs: str) -> None:
+        self._build()
         checks = self.gate_part == "checks"
         cpl_env = {**os.environ, "CPL": self.cpl}
         gate_rerun = f"site snippet gate failed; rerun: CPL={self.cpl} node web/scripts/gate.mjs"
@@ -497,10 +614,7 @@ class Tail:
         if recovery == "run":
             self.spawn("recovery", ["cargo", "test", "-q", "-p", "cpl-cli", "--test", "recovery"], logs)
 
-        self.step("every corpus package passes the static modes (scripts/corpus.py verify --no-run)")
-        if self.call([sys.executable, "scripts/corpus.py", "verify", "--no-run", "--only",
-                      "header,check,package,lint", "--cpl", self.cpl]):
-            raise Failed("a corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
+        self._corpus_static(checks)
         self.step("std/prelude.cp: name count")
         print(f"prelude: {prelude_names((ROOT / 'std/prelude.cp').read_text(encoding='utf-8'))} names")
 
@@ -570,8 +684,17 @@ class Tail:
         traps = open_traps((ROOT / "crates/cpl-cli/tests/known_traps.cp").read_text(encoding="utf-8"))
         print(f"\nknown_traps: {traps} open (crates/cpl-cli/tests/known_traps.cp)")
 
+    def _corpus_static(self, checks: bool = False) -> None:
+        self.step("every corpus package passes the static modes (scripts/corpus.py verify --no-run)")
+        if checks:
+            print("skipped: the CI corpus part runs it (CPL_GATE_PART=checks)")
+            return
+        if self.call([sys.executable, "scripts/corpus.py", "verify", "--no-run", "--only",
+                      "header,check,package,lint", "--cpl", self.cpl]):
+            raise Failed("a corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
+
     def part(self, since: float) -> int:
-        """A CI gate part other than checks (CPL_GATE_PART=conform..., tests:..., fmt);
+        """A CI gate part other than checks (CPL_GATE_PART=conform..., tests:..., fmt, corpus);
         `since` is when the gate started, for its closing line."""
         try:
             done = self._part(gate_part(self.gate_part, self.mode))
@@ -639,6 +762,11 @@ class Tail:
                     raise Failed("cpl fmt is unstable or changes meaning; rerun: scripts/fmt_check.py")
                 self.save("fmt_corpus")
             return "fmt part"
+        if g["kind"] == "corpus":
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli"]):
+                raise Failed("cargo build -p cpl-cli failed")
+            self._corpus_static()
+            return "corpus part"
         raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
 
     def _tests(self) -> None:
@@ -779,59 +907,195 @@ def _guard(mode: str, root: Path) -> None:
         raise Failed("\n".join(private) + f"\na lockfile resolves packages from a private mirror; rewrite its URLs to {NPM}")
 
 
+
+TIMING_EXTRA = ("every_corpus_program_and_conformance_case_is_served", "every_port_compiles_with_every_judges_flags")
+FAST_BUDGET_S = 180
+AUDIT_FIRST = "staged corpus packages: header and package (scripts/corpus.py verify --only header,package)"
+
+
+def selection(mode: str, run=subprocess.run) -> dict[str, str]:
+    """scripts/affected.py's touched-path selection: --land diffs the train against
+    CHECK_BASE (default origin/main), --commit the staged files."""
+    argv = [sys.executable, "scripts/affected.py"]
+    if mode == "land":
+        base = os.environ.get("CHECK_BASE") or run(["git", "rev-parse", "-q", "--verify", "origin/main"], cwd=ROOT,
+                                                   capture_output=True, text=True).stdout.strip()
+        if not base:
+            return {"all": "1", "reason": "no base to diff the train against"}
+        argv += ["--base", base]
+    done = run(argv, cwd=ROOT, capture_output=True, text=True)
+    if done.returncode:
+        raise Failed(f"scripts/affected.py failed; rerun: uv run {' '.join(argv[1:])}\n{done.stderr}")
+    return dict(line.split("=", 1) for line in done.stdout.splitlines() if "=" in line)
+
+
+def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir: str = "", manifest: str = "",
+             since: float | None = None, run=subprocess.run, tail_cls=None, clock=time.time) -> int:
+    """Every tier after check.sh's guards; `since` is when the gate started."""
+    tail_cls = tail_cls or Tail
+    since = clock() if since is None else since
+    times = [(int(clock() - since), "setup")]
+    # Tests that mix a timing budget into a correctness check skip the budget.
+    if mode not in ("full", "timing"):
+        os.environ["CPL_NO_WALL_CLOCK"] = "1"
+    try:
+        g = gate_part(part, mode)
+        if mode == "timing":
+            print("\n==> wall-clock budgets (reported, never blocking)", flush=True)
+            expr = " or ".join([wall_filter(), *(f"test(={t})" for t in TIMING_EXTRA)])
+            return run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr], cwd=ROOT).returncode
+        if g["kind"] != "checks":
+            return tail_cls(mode, part, cpl, cache_dir, manifest).part(since)
+        sel: dict[str, str] = {}
+        if mode in ("land", "commit"):
+            sel = selection(mode, run)
+            if mode == "commit" and sel.get("audit") == "1":
+                # Before anything that builds, --fast included, so the hook's time limit
+                # never skips these: they need no binary.
+                print(f"\n==> {AUDIT_FIRST}", flush=True)
+                t0 = clock()
+                if run([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--only", "header,package"],
+                       cwd=ROOT).returncode:
+                    raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode"
+                                 " and the package")
+                times.append((int(clock() - t0), AUDIT_FIRST))
+            if sel.get("all", "1") == "1":
+                print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; running --fast")
+                mode, sel = "fast", {}
+    except (Failed, ValueError) as e:
+        print(f"check: {e}", file=sys.stderr)
+        return 1
+    if mode == "commit":
+        tail = tail_cls("commit", cpl=cpl, run=run)
+        code = tail.commit(sel)
+    else:
+        tail = tail_cls(mode, part, cpl, cache_dir, manifest, sel.get("packages", ""), sel.get("filter", ""),
+                        sel.get("site", ""))
+        code = tail()
+    if code:
+        return 1
+    print("\nstep times (s):")
+    for secs, title in sorted(times + tail.times, key=lambda t: -t[0]):
+        if secs > 0:
+            print(f"{secs:5d}  {title}")
+    elapsed = int(clock() - since)
+    if mode == "commit":
+        print(f"\ncheck: commit-tier checks passed in {elapsed}s; CI runs --fast on every main tip")
+    elif mode in ("fast", "land"):
+        record = target_dir() / "gate-fast-time.json"
+        record.parent.mkdir(parents=True, exist_ok=True)
+        record.write_text(f'{{"mode":"{mode}","elapsed_s":{elapsed},"budget_s":{FAST_BUDGET_S}}}\n')
+        print(f"\ncheck: all {mode} checks passed in {elapsed}s (budget <= {FAST_BUDGET_S}s)")
+        # Wall time depends on the machine and on how warm the build is, so an overrun
+        # warns and stays recorded in the scoreboard instead of failing.
+        if elapsed > FAST_BUDGET_S:
+            print(f"check: WARNING: fast gate took {elapsed}s, over the {FAST_BUDGET_S}s (3 min) budget")
+    else:
+        print(f"\ncheck: all {mode} checks passed in {elapsed}s")
+    return 0
+
+CHECK_FLAGS = {"--fast": "fast", "--commit": "commit", "--land": "land", "--full": "full", "--timing": "timing"}
+CXX_CACHE_MAX_AGE_S = 8 * 86400
+
+
+def cxx_cache(target: Path, env, run=subprocess.run, clock=time.time) -> None:
+    """Point g++ at scripts/cxx-cache.py, which reuses a binary built from the same
+    source, flags and g++, and drop cached binaries unused for over a week."""
+    if env.get("CHECK_NO_CXX_CACHE", "0") == "1" or not shutil.which("g++", path=env.get("PATH")):
+        return
+    shim = target / "cxx-shim"
+    home_cache = Path(env.get("XDG_CACHE_HOME") or Path(env.get("HOME") or Path.home()) / ".cache")
+    cache = Path(env.get("CPL_CXX_CACHE_DIR") or home_cache / "cpl" / "cxx")
+    shim.mkdir(parents=True, exist_ok=True)
+    cache.mkdir(parents=True, exist_ok=True)
+    link = shim / "g++"
+    if link.is_symlink() or link.exists():
+        link.unlink()
+    link.symlink_to(ROOT / "scripts" / "cxx-cache.py")
+    env.update(CPL_CXX_SHIM_DIR=str(shim), CPL_CXX_CACHE_DIR=str(cache),
+               PATH=f"{shim}{os.pathsep}{env.get('PATH', '')}")
+    key = run(["g++", "--cpl-system-key"], env=dict(env), capture_output=True, text=True)
+    env["CPL_CXX_SYSTEM_KEY"] = key.stdout.rstrip("\n") if key.returncode == 0 else ""
+    probes = target / "judge-probes"
+    env["CPL_JUDGE_PROBE_DIR"] = str(probes)
+    shutil.rmtree(probes, ignore_errors=True)
+    now = clock()
+    for f in cache.rglob("*"):
+        if f.is_file() and not f.is_symlink() and now - f.stat().st_mtime >= CXX_CACHE_MAX_AGE_S:
+            f.unlink()
+
+
+def check(argv: list[str], env=None, run=subprocess.run, clock=time.time, guard_fn=None, gate_fn=None) -> int:
+    """scripts/check.sh: parse its flags, set up the C++ and stage caches, run the
+    guards, then the tier (`run_gate`)."""
+    env = os.environ if env is None else env
+    since = clock()
+    target = target_dir()
+    (target / "gate-fast-time.json").unlink(missing_ok=True)
+    mode, use_cache = "fast", env.get("CHECK_NO_CACHE", "0") != "1"
+    for arg in argv:
+        if arg in CHECK_FLAGS:
+            mode = CHECK_FLAGS[arg]
+        elif arg == "--no-cache":
+            use_cache = False
+        elif arg in ("-h", "--help"):
+            head = (ROOT / "scripts" / "check.sh").read_text(encoding="utf-8").splitlines()[1:25]
+            print("\n".join(re.sub(r"^# ?", "", line) for line in head if line.startswith("#")))
+            return 0
+        else:
+            print(f"check: unknown argument `{arg}`", file=sys.stderr)
+            return 2
+    use_cache = use_cache and mode != "full"
+    cache_dir = target / "check-cache"
+    if mode in ("fast", "land"):
+        cxx_cache(target, env, run, clock)
+    manifest = cache_dir / f"manifest.{os.getpid()}"
+    try:
+        if use_cache:
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            use_cache = run([sys.executable, "scripts/check_cache.py", "manifest", str(manifest)],
+                            cwd=ROOT, env=dict(env)).returncode == 0
+        if (guard_fn or guard)(mode):
+            return 1
+        if not shutil.which("cargo", path=env.get("PATH")):
+            print("check: `cargo` is not installed; see https://rustup.rs", file=sys.stderr)
+            return 1
+        return (gate_fn or run_gate)(mode, env.get("CPL_GATE_PART", ""), str(target / "debug" / "cpl"),
+                                     str(cache_dir), str(manifest) if use_cache else "", since)
+    finally:
+        manifest.unlink(missing_ok=True)
+        Path(f"{manifest}.reads").unlink(missing_ok=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("plan", help="print the tier's filters and gate part as shell assignments")
-    p.add_argument("--mode", choices=MODES, required=True)
-    p.add_argument("--gate-part", default="")
     g = sub.add_parser("steps", help="run a tier's checking scripts, spec gates among them")
     g.add_argument("tier", choices=sorted(STEPS) + ["touched"])
     g.add_argument("--cpl", default="target/debug/cpl")
     g.add_argument("scripts", nargs="*", help="with tier `touched`: the changed scripts whose steps run")
-    t = sub.add_parser("tail", help="run the --fast tier from its build on: the tests and what overlaps them")
-    t.add_argument("--mode", choices=MODES, required=True)
-    t.add_argument("--gate-part", default="")
-    t.add_argument("--cpl", default="target/debug/cpl")
-    t.add_argument("--cache-dir", default="")
-    t.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
-    t.add_argument("--sel-packages", default="")
-    t.add_argument("--sel-filter", default="")
-    t.add_argument("--sel-site", default="")
-    t.add_argument("--times", help="append each step's `seconds<TAB>title` here")
-    pt = sub.add_parser("part", help="run a CI gate part other than checks (CPL_GATE_PART)")
-    pt.add_argument("--mode", choices=MODES, required=True)
-    pt.add_argument("--gate-part", required=True)
-    pt.add_argument("--cpl", default="target/debug/cpl")
-    pt.add_argument("--cache-dir", default="")
-    pt.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
-    pt.add_argument("--since", type=float, default=time.time(), help="when the gate started (epoch seconds)")
+    gt = sub.add_parser("gate", help="run a tier after check.sh's guards")
+    gt.add_argument("--mode", choices=MODES, required=True)
+    gt.add_argument("--gate-part", default="")
+    gt.add_argument("--cpl", default="target/debug/cpl")
+    gt.add_argument("--cache-dir", default="")
+    gt.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
+    gt.add_argument("--since", type=float, default=None, help="when the gate started (epoch seconds)")
+    sub.add_parser("check", help="scripts/check.sh [--fast|--commit|--land|--full|--timing] [--no-cache]")
     gd = sub.add_parser("guard", help="the guards before the build: conflict markers, traces, secrets, lockfiles")
     gd.add_argument("--mode", choices=MODES, required=True)
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["check"]:
+        return check(argv[1:])
     args = ap.parse_args(argv)
     if args.cmd == "guard":
         return guard(args.mode)
-    if args.cmd == "part":
-        return Tail(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest).part(args.since)
-    if args.cmd == "tail":
-        tail = Tail(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest,
-                    args.sel_packages, args.sel_filter, args.sel_site)
-        code = tail()
-        if args.times:
-            with open(args.times, "a", encoding="utf-8") as f:
-                f.writelines(f"{secs}\t{title}\n" for secs, title in tail.times)
-        return code
+    if args.cmd == "gate":
+        return run_gate(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest, args.since)
     if args.cmd == "steps":
         if (args.tier == "touched") != bool(args.scripts):
             ap.error("name the changed scripts with `touched`, and only with it")
         return run_steps(args.tier, args.cpl, only=set(args.scripts) or None)
-    try:
-        sys.stdout.write(plan(args.mode, args.gate_part))
-    except ValueError as e:
-        print(f"check: {e}", file=sys.stderr)
-        return 1
-    return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

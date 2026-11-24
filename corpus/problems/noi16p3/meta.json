@@ -13,11 +13,15 @@
   {"id": "4785251", "language": "CPP17", "result": "RTE", "time": 9.753409801, "memory_kb": 120656.0, "file": "corpus/submissions/4785251.cpp"},
   {"id": "4785255", "language": "CPP17", "result": "RTE", "time": 10.715360508, "memory_kb": 198420.0, "file": "corpus/submissions/4785255.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi16p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission. orig.cpp was written for the corpus (Mobius sum over denominators coprime to k, Du's sieve) and matches an exhaustive brute on 300 random cases with n, m <= 40."
 }

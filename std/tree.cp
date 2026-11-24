@@ -16,7 +16,7 @@ use std.dp.{Step}
 use std.dsu.{Dsu}
 use std.graph.{Next, Target, Graph, Visit, Edged, dfs, Tree, arc_len}
 use std.math.{bit}
-use std.rand.{Rng}
+use std.rand.{Rng, shuffle}
 use std.range.{first_true}
 use std.segtree.{SegTree}
 use std.seq.{collect, dedup, get_or_insert, span}
@@ -3846,14 +3846,14 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: never
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(0, 1); et.apply_tree(0, 3); et.to_array() == [3, 3, 0]`
     pub fn to_array(self) -> [V]T:
-        var out = val
+        var tags: List<F> = [act.id for _ in 0..V.count]
         var stack: List<(Int, F)> = [(x, act.id) for x in 0..lc.len if pa[x] == None]
         while let (x, f) = stack.pop():
-            if x < V.count: out[V.nth(x)] = act.apply(f, out[V.nth(x)], 1)
+            if x < V.count: tags[x] = f
             let g = act.compose(f, lz[x])
             if let c = lc[x]: stack.push((c, g))
             if let c = rc[x]: stack.push((c, g))
-        out
+        [V] v => act.apply(tags[v.ord], val[v], 1)
 
     /// The value at `v`, with every update to a tree or side holding it applied.
     ///
@@ -4060,15 +4060,6 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
         ),
     )
 
-/// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
-/// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
-///
-/// cost: \(O(n)\)
-/// empty: `domain V = 0..2; let tr: Tree<V> = [(u: 0, v: 1)]; prufer(tr) == []`
-/// order: removal order
-/// traps: when `V` has fewer than two vertices, or `edges` is not a tree
-/// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 1, v: 3)]; prufer(tr) == [1, 1]`
-/// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 3)]; prufer(tr) == [1, 2]`
 @test
 fn a_kruskal_tree_reaches_what_the_light_edges_connect():
     domain V = 0..8
@@ -4089,6 +4080,15 @@ fn a_kruskal_tree_reaches_what_the_light_edges_connect():
     for a in V:
         for b in V: assert kt.bottleneck(a, b) == first[a.ord * V.count + b.ord]
 
+/// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
+/// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
+///
+/// cost: \(O(n)\)
+/// empty: `domain V = 0..2; let tr: Tree<V> = [(u: 0, v: 1)]; prufer(tr) == []`
+/// order: removal order
+/// traps: when `V` has fewer than two vertices, or `edges` is not a tree
+/// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 1, v: 3)]; prufer(tr) == [1, 1]`
+/// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 3)]; prufer(tr) == [1, 2]`
 pub fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>:
     assert V.count >= 2, "`prufer` needs at least two vertices"
     assert E.count == V.count - 1, "`prufer`: `edges` is not a tree"

@@ -8,20 +8,20 @@ pub(super) const PIECES: &[Piece] = &[
         name: "out",
         needs: &[],
         code: "\
-// Output is collected here and written once at the end.
+// Output, written out 64 KiB at a time, mid-line too.
 std::string out;
 #ifdef _WIN32
 // Binary mode, so Windows writes \\n as \\n, not \\r\\n: the same bytes on every OS.
 inline const int binary_stdout = _setmode(_fileno(stdout), _O_BINARY);
 #endif
-// Open `Capture`s: while one lives, `out` holds only what it collects, and
-// writing it out early would put it before what was printed first.
+// While a `Capture` lives, `out` holds only what it collects.
 inline int capturing = 0;
 inline void flush() { fwrite(out.data(), 1, out.size(), stdout); out.clear(); }
-inline void put_char(u8 c) { out.push_back((char)c); if (out.size() >= (1u << 16) && !capturing) flush(); }
-inline void put_str(const std::string& s) { out += s; }
-inline void put_str(const char* s) { out += s; }
-inline void put_line() { out.push_back('\\n'); if (out.size() >= (1u << 16) && !capturing) flush(); }
+inline void spill() { if (out.size() >= (1u << 16) && !capturing) flush(); }
+inline void put_char(u8 c) { out.push_back((char)c); spill(); }
+inline void put_str(const std::string& s) { out += s; spill(); }
+inline void put_str(const char* s) { out += s; spill(); }
+inline void put_line() { out.push_back('\\n'); spill(); }
 ",
     },
     Piece {
@@ -34,6 +34,7 @@ inline void put_int(ll x) {
   do { b[--i] = char('0' + u % 10); u /= 10; } while (u);
   if (x < 0) b[--i] = '-';
   out.append(b + i, (size_t)(24 - i));
+  spill();
 }
 ",
     },
@@ -45,6 +46,7 @@ inline void put_u64(unsigned long long x) {
   char b[24]; int i = 24;
   do { b[--i] = char('0' + x % 10); x /= 10; } while (x);
   out.append(b + i, (size_t)(24 - i));
+  spill();
 }
 ",
     },
@@ -58,6 +60,7 @@ inline void put_i128(__int128 x) {
     do { b[--at] = (char)('0' + (int)(u % 10)); u /= 10; } while (u);
     if (negative) b[--at] = '-';
     out.append(b + at, (size_t)(48 - at));
+    spill();
 }
 ",
     },
@@ -65,7 +68,7 @@ inline void put_i128(__int128 x) {
         name: "put_float",
         needs: &["out"],
         code: "\
-inline void put_float(double x, int digits) { char b[400]; out.append(b, (size_t)snprintf(b, sizeof b, \"%.*f\", digits, x)); }
+inline void put_float(double x, int digits) { char b[400]; out.append(b, (size_t)snprintf(b, sizeof b, \"%.*f\", digits, x)); spill(); }
 ",
     },
     Piece {
@@ -77,6 +80,7 @@ inline void put_padded(const char* s, size_t n, bool zero, size_t width) {
     bool neg = n > 0 && s[0] == '-';
     if (zero) { if (neg) out.push_back('-'); if (n < width) out.append(width - n, '0'); out.append(s + neg, n - neg); }
     else { if (n < width) out.append(width - n, ' '); out.append(s, n); }
+    spill();
 }
 inline void put_num(ll x, int base, bool zero, int width) {
     char b[72]; int n = 0; unsigned long long u = x < 0 ? 0ULL - (unsigned long long)x : (unsigned long long)x;
@@ -180,7 +184,18 @@ template <class... T, class... J> struct Judge<std::tuple<T...>, std::tuple<J...
 std::string in;
 size_t in_at = 0;
 inline bool is_space(char c) { return (unsigned char)c <= ' ' && (c == ' ' || (unsigned char)(c - '\\t') <= 4); }
-inline bool more() { if (!out.empty()) { flush(); fflush(stdout); } if (in_at >= in.size()) { in.clear(); in_at = 0; } char b[1 << 16]; ssize_t n = read(0, b, sizeof b); if (n <= 0) return false; in.append(b, (size_t)n); return true; }
+// Before a read the consumed prefix is dropped, all but the char before
+// `in_at` that `read_line` looks back at, so `in` stays one chunk plus the
+// token it is in the middle of, however long the input is.
+inline bool more() {
+    if (!out.empty()) { flush(); fflush(stdout); }
+    if (in_at > 1) { size_t keep = in_at - 1; in.erase(0, keep); in_at -= keep; }
+    size_t have = in.size();
+    in.resize(have + (1 << 16));
+    ssize_t n = read(0, &in[have], 1 << 16);
+    in.resize(have + (n > 0 ? (size_t)n : 0));
+    return n > 0;
+}
 inline void skip_space() { for (;;) { while (in_at < in.size() && is_space(in[in_at])) in_at++; if (in_at < in.size() || !more()) return; } }
 // Before a value is read: input that has run out stops the program, as it
 // stops `cpl run`. The input comes in pieces, so the rest of the value is
@@ -189,7 +204,8 @@ inline void need_input() {
     skip_space();
     if (in_at >= in.size()) fail(\"the input ended where a value was expected\");
     if (in.size() - in_at >= 512) return;
-    for (size_t i = in_at;; i++) { if (i >= in.size() && !more()) return; if (is_space(in[i])) return; }
+    // `more` moves the token to the front, so the scan counts from `in_at`.
+    for (size_t k = 0;; k++) { if (in_at + k >= in.size() && !more()) return; if (is_space(in[in_at + k])) return; }
 }
 // A number starts with a digit and ends at a space or the end, so `12x` is
 // not one. `in[in.size()]` is '\\0', so a digit scan stops there unchecked.
@@ -241,26 +257,32 @@ inline ll read_int() {
         needs: &["read_int", "fail"],
         code: "\
 // A range that starts at 0 or above has no sign to read and no -2^63 to
-// guard: up to 19 digits with a space after them, already in the buffer,
-// are read in one scan. Anything else takes `read_int`, which traps.
+// guard: up to 19 digits with a space after them are read in one scan,
+// after one refill when fewer than 32 chars are left. Anything else takes
+// `read_int`, which traps. `read_pos` is a domain's position read the same way.
+inline bool scan_nonneg(unsigned long long& x) {
+    while (in_at < in.size() && is_space(in[in_at])) in_at++;
+    if (in.size() - in_at < 32) need_input();
+    if (!digit(in[in_at])) return false;
+    const char* p = in.data() + in_at;
+    const char* e = p + std::min<size_t>(19, in.size() - in_at);
+    x = 0;
+    while (p < e && digit(*p)) x = x * 10 + (unsigned long long)(*p++ - '0');
+    if (p < in.data() + in.size() ? !is_space(*p) : p == e) return false;
+    in_at = (size_t)(p - in.data());
+    return true;
+}
 inline ll read_in(ll lo, ll hi) {
-    if (lo >= 0) {
-        while (in_at < in.size() && is_space(in[in_at])) in_at++;
-        if (in.size() - in_at >= 32 && digit(in[in_at])) {
-            const char* p = in.data() + in_at;
-            const char* e = p + 19;
-            unsigned long long x = 0;
-            while (p < e && digit(*p)) x = x * 10 + (unsigned long long)(*p++ - '0');
-            if (is_space(*p)) {
-                if (x < (unsigned long long)lo || x > (unsigned long long)hi) fail(\"a number in the input is outside its range\");
-                in_at = (size_t)(p - in.data());
-                return (ll)x;
-            }
-        }
-    }
-    ll x = read_int();
-    if (x < lo || x > hi) fail(\"a number in the input is outside its range\");
+    unsigned long long u;
+    ll x = lo >= 0 && scan_nonneg(u) ? (ll)u : read_int();
+    if (lo >= 0 ? (unsigned long long)x < (unsigned long long)lo || (unsigned long long)x > (unsigned long long)hi : x < lo || x > hi) fail(\"a number in the input is outside its range\");
     return x;
+}
+inline int read_pos(ll lo, ll len) {
+    unsigned long long u;
+    ll ord = lo >= 0 && scan_nonneg(u) ? (ll)(u - (unsigned long long)lo) : read_int() - lo;
+    if ((unsigned long long)ord >= (unsigned long long)len) fail(\"outside the domain\");
+    return (int)ord;
 }
 ",
     },

@@ -58,6 +58,7 @@ those, then run `just gen`. `cpl explain <code>` prints a lint's page.
 | L0530 | sentinel_table | `var memo: [D]Int = -1` tested with `== -1`: `[D]?Int` starting at `None` |
 | L0531 | manual_mod_reduce | `a * b % 1000000007` after each product: `type Z = Mod<1000000007>` |
 | L0532 | nested_list_grid | `[[0 for _ in 0..m] for _ in 0..n]`: `[n, m]Int = 0` |
+| L0533 | int_vertex_ids | `var deg: [0..=n]Int` indexed by `u: 1..=n`: `domain V = 1..=n`, read `u` as `V` and make the table `[V]Int` |
 | L0534 | grid_neighbour_step | `if r > 0: g[r - 1, c]`: `if let (pr, pc) = (r, c).step(Dir4.up())` |
 | L0535 | grid_bounds_check | `0 <= x and x < h and 0 <= y and y < w`: `(r, c).adj4` or `.step(d)` |
 | L0536 | sentinel_scalar | `var found = -1` / `var best = -10**18`: `var found: ?Int = None` |

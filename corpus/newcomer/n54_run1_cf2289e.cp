@@ -6,14 +6,14 @@ var kids: List<(Int, Int)> = []  // expect: read_loop
 for _ in 0..n - 1:
     let (x, y): (1..=m, 1..=m) = read()
     kids.push((x, y))
-var depth: [0..=m]Int = 0  // expect: missing int-node-ids
+var depth: [0..=m]Int = 0  // expect: int_vertex_ids
 for k in (n + 1..=m).rev:
     let (x, y) = kids[k - n - 1]
     depth[x] = depth[k] + 1  // expect: depth_by_hand
     depth[y] = depth[k] + 1
 var sets: List<SortedSet<Int>> = []
-var id: [0..=m]Int = 0
-var top: [0..=m]Int = 0
+var id: [0..=m]Int = 0  // expect: int_vertex_ids
+var top: [0..=m]Int = 0  // expect: int_vertex_ids
 for x in 1..=n:
     var s = SortedSet<Int>()
     s.add(x)

@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "7922157", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/7922157.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi24p1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission (the one C++ submission is an empty file that fails to compile). orig.cpp was written for the corpus (runs of close weights in a DSU, taking D ascending) and matches an exhaustive pairing brute on 400 random cases with N <= 9."
 }

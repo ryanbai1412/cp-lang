@@ -11,7 +11,9 @@ pub(crate) mod effects;
 
 use crate::lend::{copied_at_test, Tail};
 use crate::walk;
-use cpl_ir::{AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty};
+use cpl_ir::{
+    AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, Place, PlaceKind, Program, Stmt, Ty,
+};
 use effects::Touch;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -48,9 +50,6 @@ pub(crate) struct Uses {
     /// ([`dying_lets`]), and those of fns that read a global for the last
     /// time ([`dying_global_lets`]).
     pub(crate) dying: BTreeSet<*const Stmt>,
-    /// The `x = y` (or `Some(y)`) statements inside `if`s that read `y`
-    /// for the last time ([`dying_nested_assigns`]).
-    pub(crate) dying_assigns: BTreeSet<*const Stmt>,
 }
 
 impl Uses {
@@ -61,14 +60,12 @@ impl Uses {
             bindings: BTreeMap::new(),
             table,
             dying: dying_global_lets(program),
-            dying_assigns: BTreeSet::new(),
         };
         let bodies = [&program.setup, &program.main]
             .into_iter()
             .chain(program.fns.iter().map(|f| &f.body))
             .chain(program.closures.iter().map(|c| &c.body));
         for body in bodies {
-            dying_nested_assigns(program, body, &mut Vec::new(), &mut uses.dying_assigns);
             walk::blocks(body, &mut |block| {
                 for k in 0..block.stmts.len() {
                     uses.dying.extend(dying_lets(program, block, k));
@@ -241,11 +238,36 @@ pub(crate) fn live<'s>(program: &Program, rest: &'s [Stmt], slot: usize) -> &'s 
 /// dead after it: the block declared it (the next pass of a loop declares
 /// it afresh), no closure of the block can reach it, and no later
 /// statement mentions it. That read may move it.
-pub(crate) fn dead_after(program: &Program, block: &Block, k: usize, slot: usize) -> bool {
-    let declared = block.stmts[..k]
-        .iter()
-        .any(|stmt| matches!(stmt, Stmt::Let(s, _) if *s == slot));
+/// `outer` are the locals dead once `block`, a branch of an `if`, ends.
+pub(crate) fn dead_after(
+    program: &Program,
+    block: &Block,
+    k: usize,
+    slot: usize,
+    outer: &BTreeSet<usize>,
+) -> bool {
+    let declared = outer.contains(&slot)
+        || block.stmts[..k]
+            .iter()
+            .any(|stmt| matches!(stmt, Stmt::Let(s, _) if *s == slot));
     declared && unread_after(program, block, k, slot)
+}
+
+/// The locals dead once statement `k` of `block`, an `if`, ends: what
+/// each of its branches may move. `outer` is the same for `block`.
+pub(crate) fn dead_past(
+    program: &Program,
+    block: &Block,
+    k: usize,
+    outer: &BTreeSet<usize>,
+) -> BTreeSet<usize> {
+    let lets = block.stmts[..k].iter().filter_map(|stmt| match stmt {
+        Stmt::Let(s, _) => Some(*s),
+        _ => None,
+    });
+    (outer.iter().copied().chain(lets))
+        .filter(|&s| unread_after(program, block, k, s))
+        .collect()
 }
 
 /// True when nothing after statement `k` of `block`, nor a closure in it,
@@ -472,11 +494,17 @@ impl crate::emit::Emitter<'_> {
 /// time and may move it: `x = y` or `let x = y` (or `Some(y)`) with `y` dead after it
 /// (`uses::dead_after`), or a `let` whose source is set again before
 /// anything reads it.
-pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
+pub(crate) fn last_read(
+    program: &Program,
+    block: &Block,
+    k: usize,
+    outer: &BTreeSet<usize>,
+) -> bool {
     if let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] {
         if let ExprKind::Some(inner) = &value.kind {
             if let ExprKind::Local(slot) = inner.kind {
-                return walk::root(place) != (false, slot) && dead_after(program, block, k, slot);
+                return walk::root(place) != (false, slot)
+                    && dead_after(program, block, k, slot, outer);
             }
         }
     }
@@ -484,78 +512,67 @@ pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
         let init = match &init.kind {
             ExprKind::Some(inner) => &**inner,
             ExprKind::If(_, a, b) => match some_local(a).or(some_local(b)) {
-                Some(slot) => return dead_after(program, block, k, slot),
+                Some(slot) => return dead_after(program, block, k, slot, outer),
                 None => init,
             },
             _ => init,
         };
         return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
-            || place_dies(program, block, k, in_place(init));
+            || place_dies(program, block, k, in_place(init), outer);
     }
     let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
         return false;
     };
-    let (ExprKind::Local(slot), PlaceKind::Local(_) | PlaceKind::Global(_)) =
-        (&value.kind, &place.kind)
-    else {
+    let ExprKind::Local(slot) = &value.kind else {
         return false;
     };
-    walk::root(place) != (false, *slot) && dead_after(program, block, k, *slot)
+    field_store(place)
+        && walk::root(place) != (false, *slot)
+        && dead_after(program, block, k, *slot, outer)
 }
 
-/// The `x = y` and `x = Some(y)` statements nested in `if`s that read the
-/// local `y` for the last time: `y` is declared in an enclosing block with
-/// no loop between, and nothing after the statement, in its block or any
-/// out to that declaration, reads it
-/// (`for e in E: let w = walk(e); if ..: best = w`).
-fn dying_nested_assigns<'a>(
-    program: &Program,
-    block: &'a Block,
-    outer: &mut Vec<(&'a Block, usize)>,
-    out: &mut BTreeSet<*const Stmt>,
-) {
-    for (k, stmt) in block.stmts.iter().enumerate() {
-        match stmt {
-            Stmt::If(_, a, b) => {
-                outer.push((block, k));
-                dying_nested_assigns(program, a, outer, out);
-                dying_nested_assigns(program, b, outer, out);
-                outer.pop();
-            }
-            Stmt::While(.., body) | Stmt::For(.., body) => {
-                dying_nested_assigns(program, body, &mut Vec::new(), out);
-            }
-            Stmt::Assign(place, AssignOp::Set, value) if !outer.is_empty() => {
-                let src = match &value.kind {
-                    ExprKind::Local(slot)
-                        if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) =>
-                    {
-                        *slot
-                    }
-                    _ => match some_local(value) {
-                        Some(slot) => slot,
-                        None => continue,
-                    },
-                };
-                if walk::root(place) == (false, src) || !unread_after(program, block, k, src) {
-                    continue;
-                }
-                for &(b, j) in outer.iter().rev() {
-                    if !unread_after(program, b, j, src) {
-                        break;
-                    }
-                    if b.stmts[..j]
-                        .iter()
-                        .any(|s| matches!(s, Stmt::Let(slot, _) if *slot == src))
-                    {
-                        out.insert(stmt as *const Stmt);
-                        break;
-                    }
-                }
-            }
-            _ => {}
-        }
+/// A variable or a field path on one: `x`, `s.a.b`.
+fn field_store(place: &Place) -> bool {
+    match &place.kind {
+        PlaceKind::Local(_) | PlaceKind::Global(_) => true,
+        PlaceKind::Field(base, _) => field_store(base),
+        _ => false,
     }
+}
+
+/// The locals `xs.push(y)` or `xs.push((i, y))`, statement `k` of `block`,
+/// reads for the last time: the list takes them by move.
+pub(crate) fn pushed_last_reads(
+    program: &Program,
+    block: &Block,
+    k: usize,
+    outer: &BTreeSet<usize>,
+) -> Vec<*const Expr> {
+    let Stmt::Expr(e) = &block.stmts[k] else {
+        return Vec::new();
+    };
+    let ExprKind::Mutate(cpl_ir::Mutation::Push, place, args) = &e.kind else {
+        return Vec::new();
+    };
+    let items: Vec<&Expr> = match args.first().map(|a| &a.kind) {
+        Some(ExprKind::Tuple(items)) => items.iter().collect(),
+        Some(_) => args.iter().take(1).collect(),
+        None => Vec::new(),
+    };
+    let slot_of = |e: &Expr| match e.kind {
+        ExprKind::Local(slot) => Some(slot),
+        _ => None,
+    };
+    items
+        .iter()
+        .filter_map(|item| slot_of(item).map(|slot| (*item, slot)))
+        .filter(|&(_, slot)| {
+            walk::root(place) != (false, slot)
+                && items.iter().filter(|i| slot_of(i) == Some(slot)).count() == 1
+                && dead_after(program, block, k, slot, outer)
+        })
+        .map(|(item, _)| item as *const Expr)
+        .collect()
 }
 
 /// The local `y` of `Some(y)`.
@@ -587,12 +604,18 @@ fn field_path(e: &Expr) -> Option<(usize, Vec<usize>)> {
 /// reach the local, nothing after `k` sets it, and every later read of it
 /// leaves the path at a different field (`var acc = m.a.id` when only
 /// `m.a.op` and `m.n` are read later). That read may move it.
-fn place_dies(program: &Program, block: &Block, k: usize, init: &Expr) -> bool {
+pub(crate) fn place_dies(
+    program: &Program,
+    block: &Block,
+    k: usize,
+    init: &Expr,
+    outer: &BTreeSet<usize>,
+) -> bool {
     let Some((slot, fields)) = field_path(init) else {
         return false;
     };
     if fields.is_empty() {
-        return dead_after(program, block, k, slot);
+        return dead_after(program, block, k, slot, outer);
     }
     let declared = block.stmts[..k]
         .iter()
@@ -921,4 +944,11 @@ pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
         }
     }
     out
+}
+
+/// `xs.extend(src)` may read `src` in place when nothing in it can reach `xs`
+/// (inserting a vector's own range into it is undefined) or run other code.
+pub(crate) fn extend_borrows(place: &cpl_ir::Place, src: &Expr) -> bool {
+    let a = cpl_ir::effects::Access::of_expr(src);
+    !a.opaque && !a.values && !a.mutates && !a.reads.contains(&crate::walk::root(place))
 }

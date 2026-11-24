@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Judge for WAC6 P6: per factory sends "A B C", then each cane's colour, taking EMPTY k any
 number of times and then PLACE k or DISCARD; a bowl holds one colour. Full score needs at least
-43 canes kept in the bowls of every factory."""
+43 canes kept in the bowls of every factory of 100 (the statement's 10-cane sample has no bar)."""
 import os
 import sys
 
@@ -37,7 +37,7 @@ def drive(case_text, io):
                     raise RuntimeError(f"factory {f + 1}: {cane} into bowl {k} of {colour[k]}")
                 colour[k], held[k] = cane, held[k] + 1
                 break
-        if held[1] + held[2] < KEEP:
+        if len(canes) == 100 and held[1] + held[2] < KEEP:
             raise RuntimeError(f"factory {f + 1}: kept {held[1] + held[2]}, fewer than {KEEP}")
 
 

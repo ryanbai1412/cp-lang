@@ -241,6 +241,11 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Index { base, indices } => {
                 let mut base_place = self.place(base);
+                if let Some(n) = crate::lower::expr::nested_arity(&base_place.ty, indices.len()) {
+                    let inner =
+                        ast::Expr::indexed(base, &indices[..n], base.span.to(indices[n - 1].span));
+                    return self.place(&ast::Expr::indexed(&inner, &indices[n..], e.span));
+                }
                 if let [index] = indices.as_slice() {
                     if let Some(place) = self.slice_key_place(&base_place, index, e.span) {
                         return place;

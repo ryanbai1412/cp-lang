@@ -8779,7 +8779,7 @@ Reserved for call 5, which landed as decision 519.
 
 ## 514. Meldable heaps are skew heaps in one pool; `MeldHeap` wraps a pool (stdlib, 2026-11-24)
 
-- **Call.** `MeldHeaps<T>` is a pool of skew heaps with 4-byte links and an iterative top-down merge, so a long right spine never recurses; pending `add_all` offsets live in a side list that stays empty until the first `add_all`. `MeldHeap<T>` is one pool plus one `Meld<T>` handle, so the two types share one merge. A pool `meld` relinks in \(O(\log n)\) amortized; `MeldHeap.meld` copies the smaller heap's live nodes (\(O(k + \log n)\) amortized, small into large) and says so. cf2152h2's dream keeps every component in one pool: 0.21 s against 0.19 s for the C++ original on a 250k tree (1.1x), down from 0.30 s with one `MeldHeap` per vertex. `MeldHeaps.reserve(nodes)` preallocates the pool, as `Heap.reserve` does; with it, and one `push` per starting item instead of `of([x])`, the dream runs 175 ms against 164 ms for the original under the same g++ -O2 (1.07x).
+- **Call.** `MeldHeaps<T>` is a pool of skew heaps with 4-byte links and an iterative top-down merge, so a long right spine never recurses; pending `add_all` offsets live in a side list that stays empty until the first `add_all`. `MeldHeap<T>` is one pool plus one `Meld<T>` handle, so the two types share one merge. A pool `meld` relinks in \(O(\log n)\) amortized; `MeldHeap.meld` copies the smaller heap's live nodes (\(O(k + \log n)\) amortized, small into large) and says so. cf2152h2's dream keeps every component in one pool: 0.21 s against 0.19 s for the C++ original on a 250k tree (1.1x), down from 0.30 s with one `MeldHeap` per vertex. `MeldHeaps.reserve(nodes)` preallocates the pool, as `Heap.reserve` does; with it, and one `push` per starting item instead of `of([x])`, the dream runs 175 ms against 164 ms for the original under the same g++ -O2 (1.07x). A popped node goes on a free list (linked through `l`, stamp -1 so no handle matches it) and the next push takes it, so a pool holds its peak live element count, not every push: iati21a12, which pops and re-pushes lots at every vertex, went from 69 MB to 35 MB peak RSS against 35 MB for the accepted C++ (1.02x) and 0.06 s against 0.13 s. The pending-offset side list was already niched (`?Lot` is one `Lot`), so it stays.
 - **Why.** The old `MeldHeap.meld` copied the other heap's whole node list and claimed \(O(\log n)\). An owning heap cannot relink across two node lists, and owned recursive nodes are not coming (persistent and linked structures take a value-owned arena, decision 438's pool is that arena). Leftist ranks cost a cache miss per level for no gain over skew merging. Refines decision 438.
 - **Reverse.** Go back to leftist ranks in `MeldNode` and the recursive `merge`.
 
@@ -8947,7 +8947,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Each trie owned its own node `List`, so `absorb` copied the smaller trie node by node. On cf2261g's max that copy and the list growth were a third of the port's time, 1.8x the accepted C++, which merges tries in one shared pool. With shared nodes, each node visited by `absorb` retires one of `other`'s nodes, so any sequence of absorbs costs O(N W) in total instead of O(N W log N), and `cap` reserves the pool once.
 - **Reverse.** Give `BitTrie<W>` its own `nodes` list again, drop `BitTrieArena` and the arena parameters, and make `absorb` walk the smaller trie's nodes into the larger.
 
-## 555. (reserved, content)
+## 555. Every version store reads a version as `v.within(t)` (content, 2026-11-24)
+
+- **Call.** `PersistentSegTree`, `PersistentLazySegTree` and `PersistentArray` implement `trait Versioned<D, T>` (`get(v, i)`), and one generic `Version<S: Versioned<D, T>>.within(store: S) -> lends VersionWithin<S, D, T>` reads any version as a container: `len`, `is_empty`, `each` and `items` in ascending `D` order, and `Show`. It is the same `value.within(store)` spelling as `PMultiset` and `PersistentDsu` (decision 519's arenas), and the trait matrix checks `VersionWithin` like any container.
+- **Why.** Each tree's `Show` prints only its base version, so a later version had no walk and no print, and adding one per tree would have given three methods for one idea. One trait means a future version store gets the view by implementing `get`. A flipped `t.within(v)` was rejected because every other lent view takes the value as receiver.
+- **Reverse.** If a store can walk a version faster than `|D|` `get`s, give `Versioned` an `each` with that default and override it there.
 
 ## 556. The conform corpus ratchet times the max cases instead of judging them (idioms, 2026-11-24)
 
@@ -8961,7 +8965,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Nine `thread::sleep` polls (four `try_wait` loops, a memory watcher, a g++ backoff, two file watchers, a rate limit) each slept on their own schedule and lagged the event they waited for. A portable blocking file-change wait needs a crate, and external_crates is gated, so the file watch keeps its poll in one module, and the rate limit's sleep is the limit itself.
 - **Reverse.** If a file-notification crate is admitted, replace `files.rs`'s poll with it and drop it from `SLEEP_OWNERS`.
 
-## 558. (reserved, content)
+## 558. `SortedBag` is a B+tree of 32-slot nodes, and `SortedMap` keeps its values in it (stdlib, 2026-11-24)
+
+- **Call.** `SortedBag`, and through it `SortedSet` and `SortedMap`, sits on one private `KeyTree<K, V>` in `std/bag.cp`: a B+tree with 32 slots per node in one flat `slots` list (key, value, count) plus `kids`, separators that bound each child from below, linked leaves, and a floor of 8 slots per non-root node kept by merging or evening out with a sibling. While the root leaf is the only node it holds exactly its keys and keeps no node record or `kids`, so a bag of a few keys costs one allocation. A leaf slot holds a key, its value and its copy count; an inner slot holds its child's element count, so `rank`, `nth` and `range(r).len` stay \(O(\log n)\). A `BagCursor` is a leaf slot, so `key_of`, `count_of` and cursor steps are \(O(1)\). `first_true`/`last_true` call `ok` only on stored entries, the first entry of each child they probe. `SortedMap` stores each value beside its key instead of in a `HashMap` side table. The randomized treap is gone; `AugSortedBag`'s own treap is unchanged. Every public signature and documented cost stays.
+- **Why.** A treap search on etsr23r1p2's max case walked 21.3 nodes on average against 16.4 for `std::set`, each a likely cache miss, and the `SortedMap` side table hashed every key again. On that input the obvious `SortedSet` port went from 0.166 s to 0.111 s (the reference takes 0.105 s), and the `SortedMap` port from 0.187 s to 0.105 s.
+- **Reverse.** Put back the treap `SortedBag` and the `HashMap`-backed `SortedMap` from before this decision, if a workload shows the B+tree's \(O(B)\) slot shifts costing more than its shallower walks save.
 
 ## 560. A `Counter` shows in key order (stdlib, 2026-11-24)
 
@@ -8974,3 +8982,44 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** `stress_engines` is 1: `case.rs` `Roles::judge`, the one place a case gets its verdict. `Stress::build` (stress.rs) reads the file once and picks each role's `Runner` (solution, brute, gen, checker, interactor, cold): `Runner::InProcess` runs a lowered program in the VM (the browser, and `.cp` helpers), `Runner::Process` runs a native program (`.cpp`, `.py`, executables, the built C++). `Stress::run` owns the case loop (`stress_with`), narrowing and shrinking, what to explain, the retrace (`traced::trace`), the trap report and the `StressResult`. `cli::run_with` and `cpl-wasm`'s `Playground::stress` both call it; `judge_case`, `Sides`, `Engine`, `ProcessEngine`, `InterpEngine`, `stress_source` and `stress_with_cold` are deleted. `cli::run_with` keeps argument parsing, the bound-lint inputs and saved cases, and printing; `cpl` passes only the trace page renderer.
 - **Why.** 545 kept two front ends because the CLI spawns processes and the browser can't. That is a difference in how a program runs, not in the pipeline above it, so it belongs in the runner. Two front ends had already drifted twice (what to explain for interactors, `@alt(f)` divergences).
 - **Reverse.** None planned; a second front end or verdict picker raises `stress_engines` and fails the gate.
+
+## 563. Tower exponents are `Exp`, raised by `pow_exp`; `pow_tower` is the whole tower (stdlib, 2026-11-24)
+
+- **Call.** `std.math` adds `Exp(v, m)`, an exponent kept as `e` below `m` and `e % m + m` past it, made by `Exp.of(e, m)`; `pow_exp(a, x, m)` raises `a` by an exponent kept for `phi(m)` and returns one kept for `m`; `pow_tower(xs, m)` is `xs[0] ** xs[1] ** ... mod m`. Positions and cuts get `v.shift_saturating(k)`, `v.next(k)` that stops at the domain's ends instead of giving `None`.
+- **Why.** Towers mod `m` (etsr23r4p2, a^b^c problems) were hand-written totient chains with a reached-the-threshold flag beside each value. `pow_exp` sits beside `pow_mod` with the same argument order and only the exponent's type changes; `shift_saturating` is the clamped form of a step and pairs with the range-valued `shift`.
+- **Reverse.** Fold `Exp` into an `Int` exponent with a `phi:` argument on `pow_mod`, or rename `shift_saturating` to a `next(k, saturate: true)` option.
+
+## 564. An array over a fixed-size domain is a `std::array` wherever it is held (codegen, 2026-11-24)
+
+- **Call.** A domain whose count the program fixes (`domain K = 0..3`, folded from its one definition: literals, variables stored once, other such domains, `+ - * max min`) has a `static constexpr` length, and `[K]T` with at most `FIXED_MAX` (64) cells is a `std::array<T, N>` in every position: locals, globals, params, returns, struct fields, tuple and optional elements. `names::cty` decides it from the type alone (`Program.fixed_lens`), so no boundary converts between `std::vector` and `std::array`. A forward loop of at most 16 known rounds is unrolled.
+- **Why.** Small fixed summaries (a 3-counter Misra-Gries monoid in a SegTree, dmpg15g6) were `std::vector`s at fn boundaries and allocated on every merge, while the same array in a local was already a `std::array`. `bench/zero-cost/fixed_arrays` runs at the speed of four scalar counters.
+- **Reverse.** Return `std::vector` from `cty` for fixed lengths and delete `fixed_lens`; the location-based `scope::fixed_arrays` still covers locals and globals.
+
+## 565. `List.insert` and `List.remove` are one tail move, not a swap per step (codegen, 2026-11-24)
+
+- **Call.** Both are floor storage writes (decision 535), so they lower in the core like `push`: the index is held by an `assert` that keeps the std contract and its R0401 report (`0 <= i <= self.len`, `0 <= i < self.len`), then `Mutation::Insert`/`Remove` on the list. The C++ is `cpl::list_insert` (`vector::insert`) and `cpl::list_remove` (move the cell out, `vector::erase`), and the interpreter does the same `Vec::insert`/`Vec::remove`. The swap-per-step bodies in `std/seq.cp` are gone; the docs live in the `List` builtin rows.
+- **Why.** The std bodies paid a checked `swap_at` per moved cell: 200k front inserts took 29.8 s against 2.95 s with `vector::insert` (idioms 08c49b68). One block move is what a C++ contestant writes, and the bound the prover can show still drops the assert.
+- **Reverse.** Restore the two std bodies and delete the `(Ty::List(_), "insert" | "remove")` lowering arm and the two runtime pieces.
+
+
+## 566. `?T max=` is the max of the order `none` first; a built `Some` is not tested (codegen, 2026-11-24)
+
+- **Call.** `p max= r` on a `?T` whose `T` has a built-in order lowers to one `AssignOp::Max` on the optional: `none` sorts below every value, so keeping the larger is exactly "skip a `none` on the right, take any value over a `none` on the left". `min=` keeps its two tests, but when `r` is `Some(e)` it binds `e` and tests only `p`. A `Niche` whose `none` is negative (Int, I32, positions, bytes) compares by its raw scalar (`none_first`), so the C++ `std::max` on it is one signed compare with no branch; `?Bool` (`none` = 2) keeps the tested order.
+- **Why.** noi20p1's max-plus product spent its inner loop on `has_value` tests of a `Some` it had just built (idioms 99962d3b). Both engines already order `?T` with `none` first, so no new semantics are introduced.
+- **Reverse.** Drop the `AssignOp::Max` arm and the `Some(e)` binding in the `?T` `max=`/`min=` lowering (`lower/stmt.rs`) and `none_first` in `runtime/opt.rs`.
+
+## 568. (reserved, compiler)
+
+## 570. The conformance coverage report is a CI artifact, not a committed file (infra, 2026-11-24)
+
+- **Call.** `scripts/spec-gate.py coverage` still fails on a rule without the cases it needs, and writes its report to `target/spec/COVERAGE.md` (`--print` prints it). CI's checks job keeps it as the `conformance-coverage` artifact. `spec/conformance/COVERAGE.md` and its `gen.toml` entry are gone.
+- **Why.** Its case counts changed with every new case, so 425 of main's 521 regen commits on 2026-11-23/24 rewrote it, and spec rebases conflicted on it. A count nobody gates on belongs to the run that measured it.
+- **Reverse.** Commit the report again only for content that changes when coverage does (the gaps), never the counts.
+
+## 571. (reserved, content)
+
+## 572. The VS Code name tables and grammar are generated at compile time, not committed (infra, 2026-11-24)
+
+- **Call.** `editors/vscode/scripts/language-data.js` writes `src/languageTables.ts` (the six prelude and stdlib name tables) and `syntaxes/cp.tmLanguage.json` (the committed `syntaxes/cp.tmLanguage.in.json` with those names and the literal words filled in). Both are gitignored. The extension's `compile` and `bundle` run it, and so do the site's `postinstall`, `dev` and `prebuild`. The name-table half of `crates/cpl-cli/tests/vscode_sync.rs` is gone, since generated tables can't drift; `test/unit/languageData.test.ts` still checks the generator against `std/` and the prelude.
+- **Why.** Every new std name rewrote both files, so each made a regen commit (53 a day on 2026-11-23/24) and a rebase conflict for any lane editing the grammar.
+- **Reverse.** Commit them again only if a consumer must read them without Node.

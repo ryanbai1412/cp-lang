@@ -3,6 +3,7 @@
 //! `Concave` keeps `f` on `lo..=hi` as `f(lo)` plus the multiset of slopes
 //! `f(c + 1) - f(c)`, largest first, in a lazy treap; `Convex` is its mirror.
 use std.lazy.{LazyTreap}
+use std.range.{first_true}
 
 struct Slide(base: Int, step: Int)
 

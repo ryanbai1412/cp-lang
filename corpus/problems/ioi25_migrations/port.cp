@@ -40,7 +40,7 @@ fn phase_plan(n: Int) -> List<Phase>:
 
 fn signal(c: Int, from: Int) -> ?(Int, Int) =
     if c > 0: Some((from + (c - 1) / 4, (c - 1) % 4 + 1)) else: None
-fn heard(s: List<Int>, window: Range<Int>) -> Int =
+fn heard(s: List<0..=4>, window: Range<Int>) -> Int =
     window.first(j => s[j] != 0).map(j => 4 * (j - window.start) + s[j]) ?? 0
 
 fn block(xs: List<Int>, x: Int, size: Int) -> List<Int> = xs.drop(x * size).take(size).collect()
@@ -118,7 +118,6 @@ fn send_message(n: Int, at: 1..10_000, parent: 0..10_000) -> 0..=4:
 
 fn longest_path(s: List<0..=4>) -> (Int, Int):
     let n = s.len
-    let s = [Int(x) for x in s]
     var (p, q): (List<Int>, List<Int>) = ([], [])
     var next = 0
     for phase in phase_plan(n):
@@ -133,7 +132,8 @@ fn longest_path(s: List<0..=4>) -> (Int, Int):
 let n: 10_000..=10_000 = read()
 let parents: [n - 1]0..n = read()
 for i in 1..n: assert parents[i - 1] < i, "P[i] must be below i"
-let s = [0] + [Int(send_message(n, i, parents[i - 1])) for i in 1..n]
-print(s.drop(1).collect())
+var s: List<0..=4> = [0]
+for i in 1..n: s.push(send_message(n, i, parents[i - 1]))
+print(s.drop(1))
 let (a, b) = longest_path(s)
 print(a, b)

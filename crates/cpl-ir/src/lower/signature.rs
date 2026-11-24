@@ -80,11 +80,17 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].target,
                 self.impls[idx].body,
             );
-            if !matches!(&target.kind, ast::TypeKind::Named { args, .. } if args.is_empty())
-                && !matches!(&target.kind, ast::TypeKind::Fn { .. })
-            {
-                continue;
-            }
+            let head_env = match (t, &target.kind) {
+                (Ty::Struct(sid), ast::TypeKind::Named { args, .. }) if !args.is_empty() => {
+                    match self.struct_impl_env(idx, *sid) {
+                        Some(env) => Some(env),
+                        None => continue,
+                    }
+                }
+                (_, ast::TypeKind::Named { args, .. }) if args.is_empty() => None,
+                (_, ast::TypeKind::Fn { .. }) => None,
+                _ => continue,
+            };
             let alias = body.stmts.iter().find_map(|s| match &s.kind {
                 ast::StmtKind::TypeAlias {
                     name, generics, ty, ..
@@ -92,6 +98,16 @@ impl<'a> Lowerer<'a> {
                 _ => None,
             });
             let Some(alias) = alias else { continue };
+            if let Some(env) = head_env {
+                let saved = (
+                    std::mem::replace(&mut self.cur_mod, m),
+                    std::mem::replace(&mut self.offset, offset),
+                    std::mem::replace(&mut self.gen_env, env),
+                );
+                let found = self.resolve_ty(alias);
+                (self.cur_mod, self.offset, self.gen_env) = saved;
+                return Some(found);
+            }
             let Some(env) = self.fn_impl_env(m, target, t) else {
                 continue;
             };

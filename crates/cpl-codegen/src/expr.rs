@@ -8,7 +8,7 @@ use crate::names::{
     cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_bitset_ty, is_plain_enum,
 };
 use crate::walk;
-const FLOAT_DIGITS: &str = "10";
+pub(crate) const FLOAT_DIGITS: &str = "10";
 
 use cpl_ir::{
     Arg, BinOp, Builtin, Cast, CmpOp, DimSpec, Expr, ExprKind, FmtPiece, Mutation, NumKind, Place,
@@ -252,6 +252,13 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("{}({text})", self.ty(&e.ty)))
             }
             ExprKind::Local(_) if e.ty == Ty::Unit => Code::primary("void()"),
+            ExprKind::Local(slot)
+                if self.pushed_moves.contains(&(e as *const Expr))
+                    && !self.ref_bound.contains(slot)
+                    && crate::lend::holds_heap(self.program, &e.ty) =>
+            {
+                Code::primary(format!("std::move({})", self.names[*slot]))
+            }
             ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),
             ExprKind::Global(id) => match self.devirt.global_target(*id) {
                 Some(cid) => {
@@ -1012,6 +1019,21 @@ impl<'p> Emitter<'p> {
                             this.need("pop_val");
                             Code::primary(format!("cpl::pop_val({p})"))
                         }
+                        Mutation::Insert if matches!(place.ty, Ty::List(_)) => {
+                            this.need("list_insert");
+                            let v = match &narrow_elem {
+                                Some(cpl_ir::NarrowLayout::Seq(inner)) => {
+                                    this.expr_with_elem_layout(&args[1], Some(inner)).text
+                                }
+                                Some(l) => this.narrow_cell_value(&arg2, l),
+                                None => arg2,
+                            };
+                            Code::primary(format!("cpl::list_insert({p}, {arg}, {v})"))
+                        }
+                        Mutation::Remove if matches!(place.ty, Ty::List(_)) => {
+                            this.need("list_remove");
+                            Code::primary(format!("cpl::list_remove({p}, {arg})"))
+                        }
                         Mutation::Insert => Code::primary(format!("{p}.insert({arg}).second")),
                         Mutation::Remove => Code::new(format!("{p}.erase({arg}) != 0"), EQ),
                         Mutation::Clear => Code::primary(format!("{p}.clear()")),
@@ -1068,17 +1090,20 @@ impl<'p> Emitter<'p> {
                         Mutation::Extend => this.lambda("void", |this, out| {
                             let src = this.temp();
                             let r = this.temp();
-                            out.push_str(&Self::extend_source(&args[0], &src, &arg, this.indent));
+                            let borrow = crate::uses::extend_borrows(place, &args[0]);
+                            out.push_str(&Self::extend_source(
+                                &args[0],
+                                &src,
+                                &arg,
+                                this.indent,
+                                borrow,
+                            ));
                             out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
                             out.push_str(&format!(
                                 "{}{r}.insert({r}.end(), std::begin({src}), std::end({src}));\n",
                                 pad(this.indent)
                             ));
                         }),
-                        Mutation::Shuffle => {
-                            this.need("rng");
-                            Code::primary(format!("cpl::shuffle({p})"))
-                        }
                         Mutation::Fill if place.ty == Ty::Str => Code::primary(format!(
                             "std::fill({p}.begin(), {p}.end(), {})",
                             cast("char", &arg)
@@ -1242,6 +1267,9 @@ impl<'p> Emitter<'p> {
                     return Code::primary("(void)0");
                 };
                 let cell = elem_ty(program, self.niches, elem);
+                if let Some(k) = self.ty_fixed_len(&e.ty) {
+                    return self.expr_with_fixed_len(e, Some(k));
+                }
                 if dims.len() == 1 {
                     let args = self.fill_args(dims, value.as_deref());
                     Code::primary(format!("std::vector<{cell}>({args})"))

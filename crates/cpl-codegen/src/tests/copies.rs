@@ -507,3 +507,40 @@ print(t)
     assert!(cpp.contains("const SortedBag_Int_"), "{cpp}");
     assert!(cpp.contains("{&b, "), "{cpp}");
 }
+
+#[test]
+fn a_local_dead_after_its_if_moves_into_what_a_branch_stores() {
+    let out = cpp(concat!(
+        "struct H:\n    pub var xs: List<Int>\n",
+        "var best: ?List<Int> = None\n",
+        "var h = H([])\n",
+        "for i in 0..4:\n",
+        "    let w = [i, i]\n",
+        "    if i % 2 == 0: best = w\n",
+        "    else:\n",
+        "        let v = [i]\n",
+        "        if i == 3: h.xs = v\n",
+        "print(best!, h.xs)\n",
+    ));
+    assert!(
+        out.contains("best = std::optional<std::vector<ll>>(std::move(w));"),
+        "{out}"
+    );
+    assert!(out.contains("h.xs = std::move(v);"), "{out}");
+}
+
+#[test]
+fn a_local_dead_after_a_literal_moves_into_it() {
+    let out = cpp(concat!(
+        "struct W:\n    var n: Int\n    vals: List<Int>\n",
+        "fn make(a: List<Int>) -> W:\n",
+        "    let vals = [x * 2 for x in a]\n",
+        "    let n = vals.len\n",
+        "    var w = W(n, vals)\n",
+        "    w.n += w.vals[0]\n",
+        "    w\n",
+        "let a: List<Int> = read()\n",
+        "print(make(a).n)\n",
+    ));
+    assert!(out.contains("W{n, std::move(vals)}"), "{out}");
+}

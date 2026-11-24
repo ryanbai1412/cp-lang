@@ -2,8 +2,111 @@
 
 use super::*;
 
+/// A closure's lambda C++ in pieces, so a closure type can reuse its body.
+pub(crate) struct ClosureText {
+    captures: Vec<String>,
+    params: Vec<String>,
+    ret: String,
+    body: String,
+    /// The inner name of each capture, in `captures` order.
+    captured: Vec<String>,
+}
+
 impl<'p> Emitter<'p> {
     pub(crate) fn emit_closure(&mut self, cid: usize, skip_captures: bool) -> Code {
+        if !skip_captures && self.devirt.functor(cid) {
+            return self.functor_value(cid);
+        }
+        let t = self.closure_text(cid, skip_captures);
+        Code::primary(format!(
+            "[{}]({}) mutable -> {} {{\n{}",
+            t.captures.join(", "),
+            t.params.join(", "),
+            t.ret,
+            t.body
+        ))
+    }
+
+    /// `cpl_clN{a, b}`: closure `cid` built as its own type, each capture
+    /// copied as the lambda's `[a = a]` would.
+    fn functor_value(&mut self, cid: usize) -> Code {
+        let def = &self.program.closures[cid];
+        let parts: Vec<String> = def
+            .captures
+            .iter()
+            .map(|cap| self.names[cap.outer].clone())
+            .collect();
+        Code::primary(format!(
+            "{}{{{}}}",
+            crate::devirt::functor_name(cid),
+            parts.join(", ")
+        ))
+    }
+
+    /// `struct cpl_clN { .. }`: one mutable member per capture, as a
+    /// `mutable` lambda holds them, and a call operator defined later.
+    pub(crate) fn functor_decl(&self, cid: usize) -> String {
+        let def = &self.program.closures[cid];
+        let mut out = format!("struct {} {{\n", crate::devirt::functor_name(cid));
+        for (k, cap) in def.captures.iter().enumerate() {
+            let ty = &def.locals[cap.inner].ty;
+            out.push_str(&format!(
+                "    mutable {} c{k}{};\n",
+                self.ty(ty),
+                self.zero_init(ty)
+            ));
+        }
+        let params: Vec<String> = def
+            .params
+            .iter()
+            .map(|&slot| self.closure_param_ty(cid, slot))
+            .collect();
+        out.push_str(&format!(
+            "    {} operator()({}) const;\n}};\n",
+            self.ty(&def.ret),
+            params.join(", ")
+        ));
+        out
+    }
+
+    /// The call operator of `cpl_clN`: the lambda's body, each capture
+    /// named by a reference to its member.
+    pub(crate) fn functor_body(&mut self, cid: usize) -> String {
+        let t = self.closure_text(cid, true);
+        let aliases: String = t
+            .captured
+            .iter()
+            .enumerate()
+            .map(|(k, name)| {
+                format!(
+                    "{}[[maybe_unused]] auto& {name} = c{k};\n",
+                    pad(self.indent + 1)
+                )
+            })
+            .collect();
+        format!(
+            "inline {} {}::operator()({}) const {{\n{aliases}{}\n",
+            t.ret,
+            crate::devirt::functor_name(cid),
+            t.params.join(", "),
+            t.body
+        )
+    }
+
+    fn closure_param_ty(&self, cid: usize, slot: usize) -> String {
+        let def = &self.program.closures[cid];
+        let ty = &def.locals[slot].ty;
+        let cpp = self.value_ty(ty);
+        if def.muts.contains(&slot) {
+            format!("{cpp}&")
+        } else if ty.is_scalar() || self.caches_on_read(ty) {
+            cpp
+        } else {
+            format!("const {cpp}&")
+        }
+    }
+
+    fn closure_text(&mut self, cid: usize, skip_captures: bool) -> ClosureText {
         let def = &self.program.closures[cid];
         let rec_slot = self.rec_slot.take();
         // Prepare inner names for the closure's locals.
@@ -94,17 +197,13 @@ impl<'p> Emitter<'p> {
             }
         }
         for &slot in &def.params {
-            let ty = &def.locals[slot].ty;
-            let cpp = self.value_ty(ty);
-            let cpp = if def.muts.contains(&slot) {
-                format!("{cpp}&")
-            } else if ty.is_scalar() || self.caches_on_read(ty) {
-                cpp
-            } else {
-                format!("const {cpp}&")
-            };
-            params.push((cpp, inner_names[slot].clone()));
+            params.push((self.closure_param_ty(cid, slot), inner_names[slot].clone()));
         }
+        let captured: Vec<String> = def
+            .captures
+            .iter()
+            .map(|c| inner_names[c.inner].clone())
+            .collect();
 
         let ret_cpp = self.ty(&def.ret);
         let pre_visible = def.params.len() + def.captures.len();
@@ -189,11 +288,6 @@ impl<'p> Emitter<'p> {
                 }
             })
             .collect();
-        let text = format!(
-            "[{}]({}) mutable -> {ret_cpp} {{\n{text}",
-            cap_parts.join(", "),
-            param_parts.join(", ")
-        );
 
         // Restore enclosing emitter state.
         self.closure_id = saved_closure;
@@ -208,7 +302,13 @@ impl<'p> Emitter<'p> {
         self.break_targets = saved_brk;
         self.continue_targets = saved_cont;
 
-        Code::primary(text)
+        ClosureText {
+            captures: cap_parts,
+            params: param_parts,
+            ret: ret_cpp,
+            body: text,
+            captured,
+        }
     }
 }
 

@@ -38,23 +38,6 @@ for i in 0..reps:
 for i in 0..reps:
     let t = Interner<Int>() // timed: marks.Interner.new
     if t.is_empty: s += 1
-var t = Interner<Int>()
-for i in 0..reps:
-    s += t.id(i * 7919 % n) // timed: marks.Interner.id
-    s += t.get(i * 13 % n) ?? 0 // timed: marks.Interner.get
-    if t.contains(i * 17 % n): s += 1 // timed: marks.Interner.contains
-    s += t.key(i % t.len) // timed: marks.Interner.key
-    s += t.len // timed: marks.Interner.len
-    if t.is_empty: s += 1 // timed: marks.Interner.is_empty
-for i in 0..reps:
-    t.id(i)
-    t.clear() // timed: marks.Interner.clear
-var ub = Interner<(Int, Int)>()
-for i in 0..n: ub.id((i, i))
-for _ in 0..400:
-    var u = ub.clone()
-    u.reserve(4 * n) // timed: marks.Interner.reserve
-    s += u.len
 
 for _ in 0..1500:
     let ss = SparseSet<V>() // timed: marks.SparseSet.new
@@ -89,8 +72,4 @@ for i in 0..reps:
     a.clear() // timed: marks.Arena.clear
 var ab = Arena<(Int, Int)>()
 for i in 0..n: ab.alloc((i, i))
-for _ in 0..400:
-    var b = ab.clone()
-    b.reserve(4 * n) // timed: marks.Arena.reserve
-    s += b.len
 print(s)

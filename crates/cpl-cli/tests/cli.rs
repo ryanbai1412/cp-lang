@@ -1425,6 +1425,66 @@ fn programs_started_by_test_and_stress_get_the_hard_stack_cap() {
     assert!(stressed.status.success(), "{stressed:?}");
 }
 
+/// A brute still running when `cpl stress` is killed dies with it: in its
+/// own process group it misses the kill, and ran on for hours with ppid 1.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_brute_dies_with_the_stress_run_that_started_it() {
+    let path = scratch(
+        "orphan-brute",
+        "solve.cp",
+        b"let n: 0..=9 = read()\nprint(n)\n",
+    );
+    let dir = path.parent().unwrap().to_path_buf();
+    let alive = dir.join("alive");
+    let never = dir.join("never");
+    let made = Command::new("mkfifo")
+        .arg(&alive)
+        .arg(&never)
+        .status()
+        .unwrap();
+    assert!(made.success());
+    // It holds `alive` open for writing until it dies, and waits on `never`,
+    // which nothing writes.
+    let brute = dir.join("brute.sh");
+    std::fs::write(
+        &brute,
+        format!(
+            "#!/bin/sh\nexec 3>'{}'\nread line < '{}'\n",
+            alive.display(),
+            never.display()
+        ),
+    )
+    .unwrap();
+    let mut run = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("stress")
+        .arg(&path)
+        .arg("--brute")
+        .arg(&brute)
+        .args(["--cases", "1", "--time-limit", "60000"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        use std::io::Read;
+        let mut held = std::fs::File::open(&alive).unwrap();
+        let _ = tx.send("started");
+        let _ = held.read_to_end(&mut Vec::new());
+        let _ = tx.send("died");
+    });
+    let wait = std::time::Duration::from_secs(30);
+    assert_eq!(rx.recv_timeout(wait), Ok("started"));
+    run.kill().unwrap();
+    run.wait().unwrap();
+    assert_eq!(
+        rx.recv_timeout(wait),
+        Ok("died"),
+        "the brute outlived its stress run"
+    );
+}
+
 #[test]
 fn a_judge_without_threads_gets_a_plain_main_and_a_warning() {
     let path = scratch("judge-threads", "a.cp", b"// judge: olympiad\nprint(1)\n");

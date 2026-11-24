@@ -112,7 +112,7 @@ milestone = "M1"
 
 [[metric]]
 name = "catalogued codes with no conformance case"
-command = "awk '/^## Diagnostics/,/^## Core cases/' spec/conformance/COVERAGE.md | grep -c 'no case'"
+command = "uv run --quiet python scripts/spec-gate.py coverage --print 2>/dev/null | awk '/^## Diagnostics/,/^## Core cases/' | grep -c 'no case'"
 today = "2 (E0504, E0903)"
 target = "0 emitted codes"
 milestone = "M2"

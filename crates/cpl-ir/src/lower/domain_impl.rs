@@ -21,6 +21,21 @@ impl Lowerer<'_> {
             .then(|| name.text.clone())
     }
 
+    /// The method an impl gives a value of a non-struct type: a primitive's
+    /// own impl, a domain position's blanket impl, `?T`'s or a fn type's.
+    pub(super) fn value_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
+        if let Ty::Pos(_) = ty {
+            return self.domain_impl_method(ty.clone(), method);
+        }
+        let prim = self
+            .prim_methods
+            .iter()
+            .find(|(t, m, _)| t == ty && m == method);
+        prim.map(|p| p.2)
+            .or_else(|| self.optional_impl_method(ty, method))
+            .or_else(|| self.fn_impl_method(ty, method))
+    }
+
     /// `D.m(..)` with `D` a domain, or the cuts `V.cuts` of one: the method
     /// a blanket domain impl gives it.
     pub(super) fn domain_impl_method(&mut self, ty: Ty, method: &str) -> Option<FnId> {

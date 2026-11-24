@@ -13,6 +13,7 @@ use cpl_check::{
 use cpl_json::{obj, Value};
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, Stmt, StmtKind};
 use cpl_syntax::visit::{walk_stmt, Visitor};
+use cpl_syntax::TokenKind;
 use std::collections::BTreeMap;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -234,7 +235,7 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
     let expected = expected_type(cursor, std, offset - word.len());
     let wants_type = type_position(line, head);
     let wants_pattern = pattern_position(&text[..offset - word.len()]);
-    let in_test = in_test_fn(&text[..offset]);
+    let in_test = in_test_fn(cursor);
     let rank = |entry: &Entry, sort: u8| match &expected {
         _ if wants_pattern && entry.kind == Kind::Variant => 0,
         _ if in_test && entry.kind == Kind::Keyword && entry.name == "assert" => 0,
@@ -397,28 +398,25 @@ fn pattern_position(before: &str) -> bool {
     false
 }
 
-/// Inside the body of a top-level fn marked `@test`.
-fn in_test_fn(before: &str) -> bool {
-    let mut lines = before.lines().rev().skip(1);
-    while let Some(line) = lines.next() {
-        if line.starts_with(|c: char| !c.is_whitespace()) {
-            if line.starts_with("@test") {
-                return true;
-            }
-            if !line.starts_with("fn ") {
-                return false;
-            }
-            return lines
-                .find(|l| !l.trim().is_empty())
-                .is_some_and(|l| l.trim_start().starts_with("@test"));
-        }
-    }
-    false
+/// Inside a top-level fn marked `@test`.
+fn in_test_fn(cursor: &Cursor) -> bool {
+    item_at(cursor.analysis, cursor.offset).is_some_and(|item| {
+        item.syntax.parsed.stmts.iter().any(|stmt| {
+            matches!(stmt.kind, cpl_syntax::ast::StmtKind::Fn(_))
+                && stmt.decorators.iter().any(|d| d.name.text == "test")
+        })
+    })
 }
 
 fn type_position(line: &str, head: &str) -> bool {
     let head = head.trim_end_matches('?').trim_end();
-    if head.ends_with("->") {
+    let last = cpl_syntax::lex(head).tokens.into_iter().rev().find(|t| {
+        !matches!(
+            t.kind,
+            TokenKind::Newline | TokenKind::Dedent | TokenKind::Eof
+        )
+    });
+    if last.is_some_and(|t| t.kind == TokenKind::Arrow) {
         return true;
     }
     if let Some(before) = head.strip_suffix('<') {
@@ -513,8 +511,8 @@ fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String>
 fn type_of_entry(entry: &Entry) -> Option<String> {
     let detail = entry.detail.as_str();
     match entry.kind {
-        Kind::Fn | Kind::Method | Kind::Getter if ret_of(detail).is_some() => {
-            ret_of(detail).map(str::to_string)
+        Kind::Fn | Kind::Method | Kind::Getter if entry.ret().is_some() => {
+            entry.ret().map(str::to_string)
         }
         Kind::Field | Kind::Value | Kind::Const | Kind::Getter => {
             let rest = detail
@@ -560,7 +558,7 @@ fn fits(analysis: &Analysis, entry: &Entry, want: &str) -> bool {
     let (params, ret) = match entry.kind {
         Kind::Fn => (
             entry.params.iter().map(|p| p.ty.as_str()).collect(),
-            ret_of(&entry.detail).unwrap_or(""),
+            entry.ret().unwrap_or(""),
         ),
         _ => match ty.as_deref().and_then(fn_type) {
             Some(fn_ty) => fn_ty,
@@ -714,6 +712,7 @@ fn member_json(entry: &Entry, sort: u8) -> Value {
 fn plain(name: &str, kind: Kind, detail: String, doc: &str) -> Entry {
     Entry {
         name: name.to_string(),
+        ty: String::new(),
         kind,
         public: true,
         detail,
@@ -965,6 +964,8 @@ fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
         ExprKind::Str(_) => Ty::Str,
         ExprKind::Int(_) => Ty::Int,
         ExprKind::Bool(_) => Ty::Bool,
+        ExprKind::Char(_) => Ty::Char,
+        ExprKind::Float(_) => Ty::Float,
         ExprKind::Tuple(parts) => Ty::Tuple(
             parts
                 .iter()
@@ -1161,28 +1162,6 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
         }
     }
     out
-}
-
-/// `Int` in `fn f(g: Int -> Int) -> Int`: what follows the parameter list.
-fn ret_of(detail: &str) -> Option<&str> {
-    let open = detail.find('(')?;
-    let mut depth = 0i32;
-    for (i, c) in detail[open..].char_indices() {
-        match c {
-            '(' | '[' | '{' => depth += 1,
-            ')' | ']' | '}' => {
-                depth -= 1;
-                if depth == 0 {
-                    let rest = detail[open + i + 1..].trim_start();
-                    return rest
-                        .strip_prefix("->")
-                        .map(|r| r.trim().trim_end_matches(':').trim());
-                }
-            }
-            _ => {}
-        }
-    }
-    None
 }
 
 /// `S` in `fn runs<S: Indexed, T>(self: S, ..)`.
@@ -1404,6 +1383,7 @@ fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry
         .collect();
     Entry {
         name: member.name.to_string(),
+        ty: substitute(member.ret, bindings),
         kind: match member.kind {
             MemberKind::Get => Kind::Getter,
             MemberKind::Method => Kind::Method,

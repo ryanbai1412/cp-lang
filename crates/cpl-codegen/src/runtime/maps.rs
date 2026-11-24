@@ -111,7 +111,9 @@ struct CpHash {
     // A hash set: the same for any order of its elements, so equal sets hash equal.
     template <class S> auto operator()(const S& s) const -> decltype(s.count(*s.begin()), size_t()) { uint64_t h = salt() ^ s.size(); for (const auto& x : s) h += splitmix64((uint64_t)(*this)(x)); return (size_t)splitmix64(h); }
     template <class T, size_t I = 0> uint64_t hash_tuple(const T& t) const {
-        if constexpr (I == std::tuple_size<T>::value) return salt();
+        // One field (`Hash61(v: U64)`): the field's own hash, already salted and mixed.
+        if constexpr (I == 0 && std::tuple_size<T>::value == 1) return (uint64_t)(*this)(std::get<0>(t));
+        else if constexpr (I == std::tuple_size<T>::value) return salt();
         else return splitmix64(hash_tuple<T, I + 1>(t) ^ (uint64_t)(*this)(std::get<I>(t)));
     }
     template <class... Ts> size_t operator()(const std::tuple<Ts...>& t) const { return (size_t)hash_tuple(t); }
@@ -134,8 +136,9 @@ inline void release_pages(void* p, size_t bytes) {
     (void)p; (void)bytes;
 #endif
 }
-// The fewest slots that hold n entries at a load of at most 7/8 (at least 8).
-inline size_t hash_cap(size_t n) { return std::max<size_t>(8, n + (n + 6) / 7); }
+// The fewest slots that hold n entries at a load of at most 3/4 (at least 8): linear probing past
+// that walks long runs, most of all for a key that is absent.
+inline size_t hash_cap(size_t n) { return std::max<size_t>(8, n + (n + 2) / 3); }
 // The top 64 bits of a * b: maps a hash onto [0, cap) in order, for any cap.
 inline uint64_t mulhi(uint64_t a, uint64_t b) {
 #if defined(__SIZEOF_INT128__)
@@ -147,7 +150,7 @@ inline uint64_t mulhi(uint64_t a, uint64_t b) {
 }
 // Open addressing with linear probing over packed slots: a state byte (0 empty, else 0x80 and 7 bits
 // of the hash) and the entry, built only in a full slot, so a probe reads an entry only when the
-// fingerprint matches. The load stays at most 7/8 and `reserve` sizes exactly. An entry's home grows
+// fingerprint matches. The load stays at most 3/4 and `reserve` sizes exactly. An entry's home grows
 // with its hash, so a rehash walks the old table in the new one's order and frees it as it goes.
 // A fresh odd seed per table, so two tables put the same keys in unrelated orders: draining one
 // into another in slot order would otherwise insert in home order and pile up one probe run.

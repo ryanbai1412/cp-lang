@@ -372,6 +372,7 @@ impl<'a> Checker<'a> {
         };
         let quoted = self.quote(at.span);
         let origin = self.origin(at, &format!("declared as {}", got.with_article()));
+        let struct_of_tuple = self.struct_of_tuple(got, want, at);
         if let Some(diag) = self.error(code, at.span, text) {
             diag.labels.extend(origin);
             if let (true, Ty::Pos(domain)) = (got.is_int(), want) {
@@ -379,9 +380,58 @@ impl<'a> Checker<'a> {
                 diag.fixes.push(convert_to(domain, at.span));
             } else if let Some(help) = rename_fields(got, want) {
                 diag.help = Some(help);
+            } else if let Some((help, fix)) = struct_of_tuple {
+                diag.help = Some(help);
+                diag.fixes.extend(fix);
             }
         }
         self.char_literal_fix(got, want, at)
+    }
+
+    /// R08.1.6: a tuple is not a struct, even one with its fields' types.
+    /// The help builds the struct, and the fix does when that reads the
+    /// tuple once: a literal or a name.
+    fn struct_of_tuple(
+        &mut self,
+        got: &Ty,
+        want: &Ty,
+        at: &Expr,
+    ) -> Option<(String, Option<cpl_diag::Fix>)> {
+        let (Ty::Tuple(items), Ty::Named { name, .. }) = (got, want) else {
+            return None;
+        };
+        let def = self.type_def(name);
+        let Some(Def::Struct { fields, .. }) = def.as_deref() else {
+            return None;
+        };
+        if fields.len() != items.len() {
+            return None;
+        }
+        let quoted = self.quote(at.span);
+        let built = match &at.kind {
+            ExprKind::Tuple(_) => format!("{name}{quoted}"),
+            ExprKind::Name(_) => {
+                let parts: Vec<String> =
+                    (0..items.len()).map(|i| format!("{quoted}.{i}")).collect();
+                format!("{name}({})", parts.join(", "))
+            }
+            _ => {
+                return Some((
+                    format!(
+                        "a tuple is not a `{name}`: build a `{name}(..)` where `{quoted}` is made"
+                    ),
+                    None,
+                ));
+            }
+        };
+        let fix = cpl_diag::Fix {
+            title: format!("build a `{name}`"),
+            edits: vec![(at.span, built.clone())],
+        };
+        Some((
+            format!("a tuple is not a `{name}`: build one, `{built}`"),
+            Some(fix),
+        ))
     }
 }
 

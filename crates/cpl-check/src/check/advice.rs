@@ -814,6 +814,15 @@ impl Checker<'_> {
 
     /// `x in xs` on a list: `in` is sub-linear only, so a scan is spelled
     /// out as `xs.contains(x)`.
+    /// Whether `x in s` misses `Contains` (R12.4.7): a named type that neither implements it nor
+    /// declares a `contains` or `has` of its own, such as a list, a deque or a user `Seq`.
+    pub(super) fn lacks_contains(&mut self, ty: &Ty) -> bool {
+        matches!(ty, Ty::Named { .. })
+            && !self.implements_trait(ty, "Contains")
+            && !self.declares_member(ty, "contains")
+            && !self.declares_member(ty, "has")
+    }
+
     pub(super) fn list_in(&mut self, op: CmpOp, x: &Expr, xs: &Expr, ty: &Ty, alone: bool) {
         let message = format!("`in` requires `Contains`, which `{ty}` does not implement");
         let (l, r) = (self.text(x.span), self.text(xs.span));

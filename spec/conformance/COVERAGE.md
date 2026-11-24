@@ -7,20 +7,20 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3873 (3744 passing). Rules: 618.
+Cases: 3899 (3744 passing). Rules: 619.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 191 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 167 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 168 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 122 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 207 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 209 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 84 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 258 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 97 rules, 269 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 31 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 274 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 31 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 21 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -29,7 +29,7 @@ Cases: 3873 (3744 passing). Rules: 618.
 - Rbundle (bundle.md): 5 rules, 7 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rjudge (judge-profiles.md): 8 rules, 15 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rjudge (judge-profiles.md): 9 rules, 17 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlsp (lsp.md): 9 rules, 13 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 2 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -64,12 +64,12 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | Rbundle | 5 | 5 (100%) | 0 | 0 (0%) | 5 (100%) |
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
-| Rjudge | 8 | 8 (100%) | 5 | 5 (100%) | 8 (100%) |
+| Rjudge | 9 | 9 (100%) | 5 | 5 (100%) | 9 (100%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 9 | 9 (100%) | 2 | 2 (100%) | 9 (100%) |
 | Rstress | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rtrace | 6 | 6 (100%) | 4 | 4 (100%) | 6 (100%) |
-| all | 618 | 618 (100%) | 259 | 259 (100%) | 618 (100%) |
+| all | 619 | 619 (100%) | 259 | 259 (100%) | 619 (100%) |
 
 ## Rules
 
@@ -151,7 +151,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.4.2 [2+ 1-]: `T` converts to `?T` implicitly; the other way is explicit: `x ?? d` (lazy fallback), `x!`...
 - R02.4.3 [1+ 0-]: When `T` has a spare value (a niche), `?T` takes no more bytes than `T` (chapter 3). Other...
 - R02.4.4 [1+ 2-]: **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`, `None` if either side i...
-- R02.4.5 [2+ 2-]: **Ordering does not lift**: `?T` is not `Ord`, so `dp[j] + c < best` with an optional left...
+- R02.4.5 [3+ 2-]: **Ordering does not lift**: `?T` is not `Ord`, so `dp[j] + c < best` with an optional left...
 - R02.4.6 [4+ 0-]: `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None` target takes the ri...
 - R02.4.7 [2+ 4-]: **Postfix `x?`** propagates where operators don't reach: `a[x?]`, `f(x?)`, `x?.len`, `(dp[...
 - R02.4.8 [2+ 1-]: . `.all_some()` is the non-trapping form.
@@ -223,7 +223,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R04.2.23 [1+ 0-]: A **domain** is a finite, ordered index type. Its members are **positions**, which are `Or...
 - R04.2.25 [1+ 0-]: An array's axes may also be plain ranges, one per dimension: `[0..=n, 0..=k]Int` is indexe...
-- R04.2.1 [5+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
+- R04.2.1 [7+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | \(O(1)\)
 - R04.2.20 [7+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
@@ -453,7 +453,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R07: 07-sequences.md
 
 - R07.5.3 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]` on a slice whose keys start elsewhere...
-- R07.3.5 [9+ 4-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
+- R07.3.5 [10+ 4-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
 - R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [2+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has \(O(1)\) `.len`; ...
 - R07.1.3 [4+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
@@ -514,7 +514,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.6.2 [2+ 2-]: **A generator value is a closure you walk instead of call.** `let g = divisors(n)` stores ...
 - R07.6.3 [2+ 0-]: **Steering.** The yielded item may carry methods the generator reads after `yield` returns...
 - R07.6.4 [4+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
-- R07.7.1 [1+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
+- R07.7.1 [2+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
 - R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.drop_while(p)` | `Seq` |
 - R07.7.3 [6+ 0-]: | `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consumi...
 - R07.7.4 [4+ 1-]: | `chain(a, b, ...)` | `Seq` of each argument in turn, any number of them, as `min` and `m...
@@ -528,7 +528,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.11 [4+ 1-]: | `s.step(k)` | every k-th element, a `Stepped` view | ranges and indexed
 - R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
-- R07.9.2 [8+ 1-]: | `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bo...
+- R07.9.2 [10+ 1-]: | `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bo...
 - R07.9.3 [6+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty...
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
 - R07.9.5 [5+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
@@ -547,7 +547,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.12.6 [1+ 0-]: | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in...
 - R07.12.7 [1+ 0-]: | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rot...
 - R07.12.8 [1+ 0-]: | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ...
-- R07.12.9 [3+ 1-]: | `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)...
+- R07.12.9 [4+ 1-]: | `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)...
 - R07.12.10 [1+ 0-]: | `xs.push_id(x)` on a `List` | push `x` and give the index it landed on (the old length):...
 
 ### R08: 08-traits-generics.md
@@ -555,7 +555,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.5.2 [1+ 4-]: **Floats** are the other literals with a `.` or an exponent: `0.5`, `2.0`, `1.5e-9`. A lit...
 - R08.1.4 [7+ 4-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
 - R08.1.1 [14+ 2-]: A trait declares methods (with optional default bodies), associated types, field requireme...
-- R08.1.2 [8+ 2-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
+- R08.1.2 [9+ 2-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 2-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
 - R08.1.5 [2+ 1-]: Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with `Rhs` and `Out`, `Neg`...
 - R08.1.6 [1+ 1-]: **Derived impls are structural**: tuples, records, structs and enums get `Eq`, `Ord` (lexi...
@@ -571,7 +571,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.2.5 [4+ 3-]: Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static ca...
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
 - R08.2.8 [1+ 0-]: Return-type dispatch: a call may be resolved by its expected type (`read<T>()`).
-- R08.2.9 [7+ 0-]: **Conditional code** on a bound: `if T: Commutative: ... else: ...` chooses at compile tim...
+- R08.2.9 [8+ 0-]: **Conditional code** on a bound: `if T: Commutative: ... else: ...` chooses at compile tim...
 - R08.3.1 [2+ 1-]: A `law` is a Boolean property of a trait's operations. Implementing a trait promises its l...
 - R08.3.2 [1+ 0-]: Laws are never assumed by the type checker. They select documented, answer-preserving spec...
 - R08.3.3 [1+ 0-]: `cpl stress` samples laws on the values a program actually builds; `laws_hold(op, samples)...
@@ -725,6 +725,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rjudge.5 [1+ 1-]: Built in: `generic` (default), `codeforces`, `atcoder`, `cses`, `icpc`, `kattis`, `dmoj`, ...
 - Rjudge.1 [3+ 1-]: Chosen by `--judge`, else a `// judge: name` line, else `cp.toml`. `[judge.<name>]` tables...
 - Rjudge.2 [2+ 1-]: The C++ file's second line names the profile, its compiler command and its stack, so the f...
+- Rjudge.9 [2+ 1-]: ```toml [judge.school] extends = "icpc" stack_mb = 64 thread_stack_mb = 512        # 0 if ...
 - Rjudge.3 [2+ 2-]: `I128` on a profile without `__int128` is an error naming the judge
 - Rjudge.4 [2+ 1-]: Size: a warning above 32 KB (or half of a smaller `source_kb`), an error above 64 KB or `s...
 - Rjudge.6 [2+ 2-]: `time_ms` and `memory_mb` are a problem's limits when its `cp.toml` has no `[limits]`.
@@ -833,7 +834,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0505 Library lint that cannot be used: 7 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
-- E0602 Variable mutated while lent: 51 case(s)
+- E0602 Variable mutated while lent: 53 case(s)
 - E0603 Lent value escapes its scope: 39 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
@@ -910,6 +911,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0530 sentinel_table: **no case**
 - L0531 manual_mod_reduce: **no case**
 - L0532 nested_list_grid: **no case**
+- L0533 int_vertex_ids: **no case**
 - L0534 grid_neighbour_step: **no case**
 - L0535 grid_bounds_check: **no case**
 - L0536 sentinel_scalar: **no case**
@@ -992,7 +994,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 48 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 93 case(s)
+- R0401 Assertion failed: 94 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 5 case(s)
@@ -1000,7 +1002,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-86 of 228 testable codes have no negative case.
+87 of 229 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -1114,7 +1116,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **io** (5/5 named by a case)
 - **lazy** (47/47 named by a case)
 - **marks** (50/50 named by a case)
-- **math** (83/83 named by a case)
+- **math** (87/87 named by a case)
 - **matrix** (60/60 named by a case)
 - **mo** (6/6 named by a case)
 - **mod** (29/29 named by a case)
@@ -1123,10 +1125,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **pair** (5/5 named by a case)
 - **persistent** (52/52 named by a case)
 - **poly** (60/60 named by a case)
-- **prefix** (50/58 named by a case)
+- **prefix** (51/59 named by a case)
   - uncovered: `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
-- **range** (19/19 named by a case)
+- **range** (20/20 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (67/67 named by a case)
 - **seq** (236/239 named by a case)
@@ -1142,7 +1144,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2451 of 2485 std items are named by a case.
+2457 of 2491 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
@@ -1186,6 +1188,9 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-05/field-let-after-closure-captures-struct.cp
 - core-05/field-let-then-whole-struct-passed.cp
 - core-05/field-read-in-a-loop-is-not-moved.cp
+- core-05/lends-optional-projection.cp
+- core-05/lent-var-cursor-loop-keeps-the-loan.cp
+- core-05/lent-var-reassign-keeps-the-loan.cp
 - core-05/mut-call-copies-an-element-it-may-grow.cp
 - core-05/mut-cell-of-2d-array-as-argument.cp
 - core-05/nested-field-let-then-parent-read.cp

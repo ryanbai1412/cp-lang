@@ -837,7 +837,6 @@ pub struct LazyTreap<T, F>(
 pub struct Rope<D, T>:
     var n: Int
     mg: ?((T, T) -> T) = None
-    var base: ?[D]T = None
     val: List<T> = []
     tg: List<T> = []
     has: List<Bool> = []
@@ -924,7 +923,7 @@ pub struct Rope<D, T>:
 
     // `emit` order without `down`: `acc` is every ancestor's pending tag, newest first merged
     // in, and `flip` whether the ancestors' pending reversals leave this subtree reversed.
-    fn peek(self, t: Int, acc: ?T, flip: Bool, mut out: [D]T, mut k: Int):
+    fn peek(self, t: Int, acc: ?T, flip: Bool, mut out: List<T>):
         if t < 0: return
         var f: ?T = acc
         if has[t]:
@@ -934,14 +933,13 @@ pub struct Rope<D, T>:
                 f = Some(tg[t])
         let r = flip != rv[t]
         let (a, b) = if r: (rs[t], ls[t]) else: (ls[t], rs[t])
-        self.peek(a, f, r, mut out, mut k)
+        self.peek(a, f, r, mut out)
         var v = val[t]
         if let x = f:
             if let m = mg: v = m(x, v)
             else: v = x
-        out[D.nth(k)] = v
-        k += 1
-        self.peek(b, f, r, mut out, mut k)
+        out.push(v)
+        self.peek(b, f, r, mut out)
 
     /// A rope over `D` holding the values of `a`, or `fill` at every position.
     ///
@@ -957,19 +955,14 @@ pub struct Rope<D, T>:
     /// example: `var t = Rope<0..2, Int>(fill: 7); t.get(1) == 7`
     pub fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T>:
         var r = Rope<D, T>(n: 0, mg: merge)
-        if let x = a:
-            assert fill == None
-            r.base = Some(x)
-        else:
-            let arr: [D]T = fill!
-            r.base = Some(arr)
-        let src = r.base!
+        assert a == None or fill == None
         var stack: List<Int> = []
         for i in D:
             let t = r.val.len
+            let x: T = if let s = a: s[i] else: fill!
             r.seed = (r.seed * 1103515245 + 12345) % TWO_31
-            r.val.push(src[i])
-            r.tg.push(src[i])
+            r.val.push(x)
+            r.tg.push(x)
             r.has.push(false)
             r.rv.push(false)
             r.pri.push(r.seed)
@@ -1073,10 +1066,9 @@ pub struct Rope<D, T>:
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..2); r.to_array() == [2, 1, 3]`
     /// example: `var r = Rope([1, 2, 3, 4], merge: (t, x) => t + x); r.apply(0..3, 10); r.reverse(1..4); r.apply(2..4, 1); r.to_array() == [11, 4, 14, 13]`
     pub fn to_array(self) -> [D]T:
-        var out = base!
-        var k = 0
-        self.peek(root, None, false, mut out, mut k)
-        out
+        var out: List<T> = []
+        self.peek(root, None, false, mut out)
+        [D] i => out[i.ord]
 
 /// A sequence of `T` that folds any run with a monoid, under lazy range tags and range reversal:
 /// an implicit treap whose nodes keep each subtree's fold in both directions, so `reverse` is a
@@ -1168,11 +1160,6 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
         let (a, b) = self.cut(root, pos)
         root = self.join(self.join(a, self.leaf(x)), b)
 
-    /// The element at position `pos`, with every tag and reversal applied.
-    ///
-    /// cost: \(O(\log n)\) expected
-    /// traps: when `pos < 0` or `pos >= len`
-    /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); s.reverse(0..3); s.get(0) == 3`
     /// Insert `xs`, in order, before position `pos` (`pos == len` appends): they take positions
     /// `pos..pos + xs.len` and later elements move up by `xs.len`.
     ///
@@ -1235,6 +1222,11 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
         other.root = 0
         self.insert_many(pos, moved)
 
+    /// The element at position `pos`, with every tag and reversal applied.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `pos < 0` or `pos >= len`
+    /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); s.reverse(0..3); s.get(0) == 3`
     pub fn get(mut self, pos: Int) -> T:
         assert 0 <= pos < self.len, "`get` position out of range"
         self.fold(pos..pos + 1)

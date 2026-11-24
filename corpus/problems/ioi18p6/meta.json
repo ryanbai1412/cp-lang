@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "4728932", "language": "CPP17", "result": "RTE", "time": 6.447039612, "memory_kb": 392756.0, "file": "corpus/submissions/4728932.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi18p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission (the one C++ submission, 4728932, only handles small subtasks and overflows the stack). orig.cpp was written for the corpus (Cartesian tree, a segment tree of piecewise-linear costs, run on H and its mirror) and matches an O(N^2) brute on 1500 random cases and on seeds 1..5."
 }

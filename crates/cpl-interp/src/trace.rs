@@ -45,7 +45,8 @@ use snapshot::*;
 pub(crate) use snapshot::{args_json, MAX_EXACT};
 pub use trap::{shown, trap_config, trap_locals};
 pub use window::{
-    interactive, resumed_tail, resumed_tail_every, sent, tail, windowed, Replay, Timeline,
+    interactive, resumed_tail, resumed_tail_every, resumed_tail_until, sent, tail, windowed,
+    Replay, Timeline,
 };
 
 /// How a run is recorded.

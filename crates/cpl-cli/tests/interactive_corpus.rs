@@ -48,6 +48,62 @@ fn has(program: &str) -> bool {
     Command::new(program).arg("--version").output().is_ok()
 }
 
+fn name_of(dir: &Path) -> String {
+    dir.file_name().unwrap().to_string_lossy().to_string()
+}
+
+/// Runs `dir`'s port against its judge on every made case: how many runs,
+/// and what failed.
+fn judge_problem(dir: &Path, cpp: bool) -> (usize, Vec<String>) {
+    let name = name_of(dir);
+    let (mut runs, mut failures) = (0, Vec::new());
+    let mut cases: Vec<PathBuf> = Vec::new();
+    let made = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("interactive")
+        .join(&name);
+    std::fs::create_dir_all(&made).unwrap();
+    for (seed, size) in GENERATED {
+        let out = Command::new("python3")
+            .args(["gen.py", &seed.to_string(), &size.to_string()])
+            .current_dir(dir)
+            .output()
+            .expect("python3 runs");
+        assert!(out.status.success(), "{name}: gen.py {seed} {size} failed");
+        let case = made.join(format!("gen-{seed}-{size}.case"));
+        std::fs::write(&case, &out.stdout).unwrap();
+        cases.push(case);
+    }
+    let modes: &[&[&str]] = if cpp {
+        &[&["run"], &["run", "--release"]]
+    } else {
+        &[&["run"]]
+    };
+    for case in &cases {
+        for mode in modes {
+            runs += 1;
+            let mut judge = Command::new("python3");
+            judge
+                .arg("interactor.py")
+                .arg(case)
+                .arg("--")
+                .arg(env!("CARGO_BIN_EXE_cpl"))
+                .args(*mode)
+                .arg("port.cp")
+                .current_dir(dir);
+            let out = within(judge, Duration::from_secs(120));
+            if !out.status.success() {
+                failures.push(format!(
+                    "{name} {} (cpl {} port.cp): {}",
+                    case.file_name().unwrap().to_string_lossy(),
+                    mode.join(" "),
+                    String::from_utf8_lossy(&out.stderr).trim()
+                ));
+            }
+        }
+    }
+    (runs, failures)
+}
+
 #[test]
 fn every_interactive_port_satisfies_its_judge() {
     if !has("python3") {
@@ -61,59 +117,37 @@ fn every_interactive_port_satisfies_its_judge() {
         .filter(|dir| interactive(dir))
         .collect();
     names.sort();
-    let (mut runs, mut judged, mut failures, mut unjudged) = (0, 0, Vec::new(), Vec::new());
-    for dir in &names {
-        let name = dir.file_name().unwrap().to_string_lossy().to_string();
-        if !dir.join("interactor.py").exists() {
-            unjudged.push(name);
-            continue;
-        }
-        judged += 1;
-        let mut cases: Vec<PathBuf> = Vec::new();
-        let made = Path::new(env!("CARGO_TARGET_TMPDIR"))
-            .join("interactive")
-            .join(&name);
-        std::fs::create_dir_all(&made).unwrap();
-        for (seed, size) in GENERATED {
-            let out = Command::new("python3")
-                .args(["gen.py", &seed.to_string(), &size.to_string()])
-                .current_dir(dir)
-                .output()
-                .expect("python3 runs");
-            assert!(out.status.success(), "{name}: gen.py {seed} {size} failed");
-            let case = made.join(format!("gen-{seed}-{size}.case"));
-            std::fs::write(&case, &out.stdout).unwrap();
-            cases.push(case);
-        }
-        let modes: &[&[&str]] = if cpp {
-            &[&["run"], &["run", "--release"]]
-        } else {
-            &[&["run"]]
-        };
-        for case in &cases {
-            for mode in modes {
-                runs += 1;
-                let mut judge = Command::new("python3");
-                judge
-                    .arg("interactor.py")
-                    .arg(case)
-                    .arg("--")
-                    .arg(env!("CARGO_BIN_EXE_cpl"))
-                    .args(*mode)
-                    .arg("port.cp")
-                    .current_dir(dir);
-                let out = within(judge, Duration::from_secs(120));
-                if !out.status.success() {
-                    failures.push(format!(
-                        "{name} {} (cpl {} port.cp): {}",
-                        case.file_name().unwrap().to_string_lossy(),
-                        mode.join(" "),
-                        String::from_utf8_lossy(&out.stderr).trim()
-                    ));
-                }
-            }
-        }
-    }
+    let (judges, unjudged): (Vec<&PathBuf>, Vec<&PathBuf>) = names
+        .iter()
+        .partition(|dir| dir.join("interactor.py").exists());
+    let unjudged: Vec<String> = unjudged.iter().map(|dir| name_of(dir)).collect();
+    let judged = judges.len();
+    // Each problem's runs are independent and wait on python and the judge
+    // more than on a core, so the problems run side by side.
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let results: Vec<(usize, Vec<String>)> = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..threads.min(judged).max(1))
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut done = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(dir) = judges.get(i) else { break };
+                        done.push(judge_problem(dir, cpp));
+                    }
+                    done
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
+    });
+    let runs: usize = results.iter().map(|(runs, _)| runs).sum();
+    let mut failures: Vec<String> = results.into_iter().flat_map(|(_, f)| f).collect();
+    failures.sort();
     assert!(
         unjudged.is_empty(),
         "interactive problems need an interactor.py to be judged: {unjudged:?}"

@@ -234,7 +234,7 @@ pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties
 <!-- signatures: std/strings.cp -->
 ```python
 /// O(n·|p|). The first key where `p` starts, valid on the source of a slice.
-pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K
+pub fn search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K
 ```
 
 **Per-element tables are keyed like the input.** The algorithm runs on

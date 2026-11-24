@@ -91,7 +91,7 @@ Fields: `f: T -> U,`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the slice has no elements.
 - `@get fn items<K, T>(self) -> yields (K, T)` — \(O(\mathit{len})\)
 
-## `struct Rebased<S, Idx>(pub src: S, idx: Range<Idx>)`
+## `struct Rebased<S>(pub src: S)`
 
 The view `rebase` returns: `src` keyed by `Idx`, a fresh domain `0..src.len` of its own.
 
@@ -261,14 +261,12 @@ Fields: `k: Int,`.
 - `fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>` — \(O(\mathit{popped})\)
 - `fn clone<T>(self: T) -> T` — \(O(n)\) for a value of size \(n\), allocates for heap values; \(O(n)\), allocates.
 - `fn take_all<T>(mut self: List<T>) -> List<T>` — \(O(1)\); Move all elements out of `self` in \(O(1)\), leaving it empty.
-- `fn insert<T>(mut self: List<T>, i: Int, x: T)` — \(O(n - i)\); Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one.; traps: when `i` is not in `0..=self.len`
-- `fn remove<T>(mut self: List<T>, i: Int) -> T` — \(O(n - i)\); \(O(n)\).; traps: when `i` is not in `0..self.len`
 - `fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn take<S: Indexed>(self: S, k: Int) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn nth<S: Indexed, T>(self: S, k: Int) -> T` — \(O(1)\); traps: when `k` is not in `0..self.len`
-- `@get fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>` — \(O(1)\)
+- `@get fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S>` — \(O(1)\)
 - `fn step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).; traps: when `k < 1`
 - `@get fn even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
 - `@get fn odd<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).

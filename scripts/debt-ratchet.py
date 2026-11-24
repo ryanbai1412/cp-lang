@@ -2124,7 +2124,10 @@ def std_doc_parsers(root: Path) -> list[str]:
             if '"///' in line and _outside(rel, ("crates/cpl-syntax/", "crates/cpl-doc/"))]
 
 
-EDIT_ENGINE_RE = re.compile(r"\bfn apply_fixes\b|\bfn apply_edits\b|\.replace_range\(")
+# A text edit engine: the fix appliers by name, any fn that takes a
+# `&str` and `(Span, String)` edits, or an in-place `replace_range`.
+EDIT_ENGINE_RE = re.compile(
+    r"\bfn apply_fixes\b|\bfn apply_edits\b|\bfn \w+\([^)]*&str[^)]*\(Span, String\)|\.replace_range\(")
 
 
 def edit_engines(root: Path) -> list[str]:
@@ -2263,7 +2266,7 @@ HARD_ZERO = frozenset({
     "site_rederived", "browser_lsp_gaps",
     "unrun_script_tests",
     "permits", "written_twice",
-    "plan_delta_lines",
+    "plan_delta_lines", "idioms_evidenced_unlinted",
     "trait_gaps",
     "std_trait_matrix",
     "edge_labels_unrun",
@@ -2278,8 +2281,10 @@ HARD_ZERO = frozenset({
     "generate_gaps",
     "xfail_markers",
     "std_doc_parsers",
+    "std_types_shown_empty",
     "prelude_gaps",
-    "json_outside_cpl_json", "rust_ignore",
+    "json_outside_cpl_json", "rust_ignore", "dream_unverified", "trace_engine_refs", "lsp_string_types",
+    "edit_engines",
 })
 # Paid down to the one place the thing lives: above the floor fails, with no baseline.
 HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader

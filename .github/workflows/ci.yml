@@ -22,12 +22,12 @@ env:
 # queueing every commit; the infra sheriff bisects a red run's range. A newer
 # push to a pull request cancels the older run.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-queue-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # --fast split into parallel jobs (CPL_GATE_PART in scripts/check.sh): the
-  # checks, fmt_check, the conformance ratchet in suite shards (diff, cold after a codegen
+  # checks, the corpus packages' static modes, fmt_check, the conformance ratchet in suite shards (diff, cold after a codegen
   # change, split three ways), and the doctests. The workspace tests run in
   # `tests`, from the archive `tests-build` compiles once.
   gate:
@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [checks, fmt, "conform:conformance+spec-blocks", "conform:diff@1/3", "conform:diff@2/3", "conform:diff@3/3", "conform:corpus+docs", "tests:doc"]
+        part: [checks, corpus, fmt, "conform:conformance+spec-blocks", "conform:diff@1/3", "conform:diff@2/3", "conform:diff@3/3", "conform:corpus+docs", "tests:doc"]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -106,6 +106,13 @@ jobs:
         run: |
           timeout 680 scripts/check.sh --fast || { s=$?; [ "$s" != 124 ] \
             || echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; exit "$s"; }
+      # The rule coverage report (scripts/spec-gate.py coverage), kept per run, not committed.
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && matrix.part == 'checks' }}
+        with:
+          name: conformance-coverage
+          path: target/spec/COVERAGE.md
+          if-no-files-found: ignore
       - uses: actions/cache/save@v4
         if: ${{ always() && matrix.part == 'conform:corpus+docs' }}
         with:
@@ -376,7 +383,7 @@ jobs:
       - name: Tree-sitter grammar
         run: editors/tree-sitter-cp/smoke.sh
 
-  # A main push with stale generated files (skill pages, COVERAGE.md, fixed
+  # A main push with stale generated files (skill pages, gap lists, fixed
   # prelude gaps) or a machine-fixable clippy lint gets them regenerated and committed here, under the pushed
   # commit's Domain trailer, then CI is dispatched on the new tip: a push by
   # the Actions token starts no run by itself.

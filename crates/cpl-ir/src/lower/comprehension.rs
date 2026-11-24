@@ -398,6 +398,24 @@ impl Lowerer<'_> {
                 },
             }
         }
+        // `[K] _ => None` where an `[R, C][K]?Int` is wanted is the cell that
+        // fills the table (R04.4.27), so its body wants the cell's element.
+        if let Some(Ty::Array {
+            dims: want,
+            elem: cell,
+        }) = hint
+        {
+            if let Ty::Array {
+                dims: cell_dims, ..
+            } = &**cell
+            {
+                let shape: Vec<Dim> = dims.iter().map(DimSpec::dim).collect();
+                if shape != *want && shape == *cell_dims {
+                    let cell = (**cell).clone();
+                    return self.table(domains, params, body, Some(&cell), span);
+                }
+            }
+        }
         if groups.len() < dims.len() {
             let whole = Whole::Tuples(groups);
             return self.build_table(dims, params, body, elem.as_ref(), None, span, whole);

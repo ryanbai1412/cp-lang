@@ -544,3 +544,53 @@ fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
     assert!(outer.contains("cpl_each_inner2(n_2, "), "{outer}");
     assert!(!outer.contains("std::vector"), "{outer}");
 }
+
+#[test]
+fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
+    let src = concat!(
+        "struct Plus(z: Int):\n",
+        "    fn monoid(self) -> Monoid<Int> = Monoid(z, (a, b) => self.op(a, b))\n",
+        "impl Op<Int> for Plus:\n",
+        "    fn op(self, a: Int, b: Int) -> Int = a + b\n",
+        "let n: 1..=8 = read()\n",
+        "let m = Plus(n).monoid()\n",
+        "print(m.op(m.id, 2))\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("cpl_cl0 op;"), "{out}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained
+            .iter()
+            .any(|e| matches!(e.mode, crate::ClosureMode::StaticFunctor { closure: 0 })),
+        "{explained:?}"
+    );
+}
+
+#[test]
+fn a_struct_field_two_capturing_closures_reach_stays_std_function() {
+    let src = concat!(
+        "struct Op2(f: (Int, Int) -> Int)\n",
+        "fn run(k: Int):\n",
+        "    let ops = [Op2((a, b) => a + b + k), Op2((a, b) => a * b * k)]\n",
+        "    for o in ops: print(o.f(2, 3))\n",
+        "let k: 1..=8 = read()\n",
+        "run(k)\n",
+    );
+    let out = cpp(src);
+    assert!(out.contains("std::function<ll(ll, ll)> f;"), "{out}");
+    assert!(!out.contains("cpl_cl"), "{out}");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained.iter().any(|e| e.site == "struct Op2.f"
+            && matches!(&e.mode, crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("different closures"))),
+        "{explained:?}"
+    );
+}

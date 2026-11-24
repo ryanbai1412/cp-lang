@@ -76,6 +76,58 @@ pub struct PArena<T>:
 /// read through another.
 pub struct Version<S>(root: Int)
 
+/// A store of versions read one position at a time: `PersistentSegTree`, `PersistentLazySegTree`
+/// and `PersistentArray`. `v.within(store)` reads any version of one as a container.
+pub trait Versioned<D, T>:
+    /// The value at position `i` in version `v`.
+    fn get(self, v: Version<Self>, i: D) -> T
+
+impl<S: Versioned<D, T>, D: Domain, T> Version<S>:
+    /// This version read through `store`, the structure that made it, as a container of its values
+    /// in key order.
+    ///
+    /// cost: \(O(1)\); it lends `store` and copies nothing
+    /// traps: never; reading it traps when `store` did not make this version
+    /// example: `var p = PersistentArray(a: [1, 2, 3]); let v = p.set(p.base, 0, 9); v.within(p).each().collect() == [9, 2, 3]`
+    pub fn within(self, store: S) -> lends VersionWithin<S, D, T> = VersionWithin(store, self)
+
+/// One version of a `Versioned` store read through it, from `v.within(store)`. It lends the store,
+/// so it lives no longer than it and copies nothing.
+pub struct VersionWithin<S: Versioned<D, T>, D: Domain, T>(store: S, v: Version<S>):
+    /// The number of positions, `D.count`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var t = PersistentSegTree(+, a: [0, 0, 0]); t.base.within(t).len == 3`
+    @get pub fn len(self) -> Int = D.count
+
+    /// Whether `D` has no position.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var p = PersistentArray<0..0, Int>(fill: 0); p.base.within(p).is_empty`
+    @get pub fn is_empty(self) -> Bool = D.count == 0
+
+    /// Visit the value at every position.
+    ///
+    /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\)
+    /// empty: `var p = PersistentArray<0..0, Int>(fill: 0); p.base.within(p).each().collect() == []`
+    /// order: ascending `D` order
+    /// traps: when `store` did not make this version
+    /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 1, 7); v.within(t).each().collect() == [1, 7, 3]`
+    pub fn each(self) -> yields T:
+        for i in D: yield store.get(v, i)
+
+    /// Visit every position with its value.
+    ///
+    /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\)
+    /// empty: `var p = PersistentArray<0..0, Int>(fill: 0); p.base.within(p).items.collect() == []`
+    /// order: ascending `D` order
+    /// traps: when `store` did not make this version
+    /// example: `var p = PersistentArray(a: [4, 5]); [(i, x) for (i, x) in p.base.within(p).items] == [(0, 4), (1, 5)]`
+    @get pub fn items(self) -> yields (D, T):
+        for i in D: yield (i, store.get(v, i))
+
 /// Path-copying persistent segment tree over a domain `D` and monoid `Monoid<T>`.
 /// `set` and `update` return a new `Version` in \(O(\log n)\) time and memory; `fold` and `get` take \(O(\log n)\).
 pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
@@ -950,6 +1002,26 @@ impl Show for PArena<T>:
     fn show(a):
         var out = ""
         for x in a._xs:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl<D: Domain, T: Sub> Versioned<D, T> for PersistentSegTree<D, T>:
+    fn get(self, v: Version<PersistentSegTree<D, T>>, i: D) -> T = self.get(v, i)
+
+impl<D: Domain, T, F> Versioned<D, T> for PersistentLazySegTree<D, T, F>:
+    fn get(self, v: Version<PersistentLazySegTree<D, T, F>>, i: D) -> T = self.get(v, i)
+
+impl<D: Domain, T> Versioned<D, T> for PersistentArray<D, T>:
+    fn get(self, v: Version<PersistentArray<D, T>>, i: D) -> T = self.get(v, i)
+
+impl Show for VersionWithin<S, D, T>:
+    /// The version's values in key order, space-separated.
+    ///
+    /// example: `domain P = 0..3; var t = PersistentLazySegTree<P, Int, Int>(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [P] i => i.ord + 1); let v = t.apply(t.base, P(1)..=P(2), 1); "{v.within(t)}" == "1 3 4"`
+    fn show(w):
+        var out = ""
+        for x in w.each():
             if not out.is_empty: out += " "
             out += "{x}"
         out

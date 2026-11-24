@@ -510,7 +510,8 @@ fn run(lsp: &mut Lsp, case: &Case, uri: &str, tally: &mut Tally) {
         .iter()
         .find(|i| i.at(&["label"]).as_str() == Some(case.name.as_str()));
     tally.check("completion offers it", found.is_some(), &case.who, || {
-        format!("not offered in {typed:?}")
+        let line = typed[..case.at + keep].rsplit('\n').next().unwrap_or("");
+        format!("not offered after {line:?}")
     });
     if let Some(item) = found {
         let detail = item.at(&["detail"]).as_str().unwrap_or("");
@@ -619,7 +620,7 @@ fn every_builtin_member_hovers_signs_and_completes_with_its_parameters() {
 /// A std module's text with its top-level public names given a `_mine` (or
 /// `Mine`) suffix everywhere in the file, docs included, so the library's
 /// items don't meet std's through the prelude.
-fn own_names(text: &str) -> String {
+fn own_names(text: &str, module: &str) -> String {
     let doc = cpl_doc::extract(text, "mine.cp");
     let names: Vec<&str> = doc
         .items
@@ -640,6 +641,7 @@ fn own_names(text: &str) -> String {
         })
         .map(|i| i.name.as_str())
         .collect();
+    let (examined, own) = own_member_uses(text, module, &names);
     let bytes = text.as_bytes();
     let mut out = String::with_capacity(text.len() + 1024);
     let mut i = 0;
@@ -651,7 +653,27 @@ fn own_names(text: &str) -> String {
             }
             let word = &text[start..i];
             out.push_str(word);
-            if names.contains(&word) && !(start > 0 && is_word(bytes[start - 1])) {
+            // `D.count` is the domain parameter's own member, not the
+            // module's `count`.
+            let on_type = text[..start].strip_suffix('.').is_some_and(|before| {
+                let head = before.trim_end_matches(|c: char| c.is_ascii_alphanumeric() || c == '_');
+                let receiver = &before[head.len()..];
+                receiver.len() == 1 && receiver.starts_with(|c: char| c.is_ascii_uppercase())
+            });
+            // `w.map(.len)` on an option is the option's own `map`.
+            let built_in = text[..start].ends_with('.')
+                && cpl_check::BUILTIN_MEMBERS.iter().any(|m| m.name == word);
+            let on_type = match examined.contains(&start) {
+                true => !own.contains(&start),
+                false => on_type || built_in,
+            };
+            // `lo min= x` is the compound-assignment token, not a call.
+            let assigns = text[i..].starts_with('=') && !text[i..].starts_with("==");
+            if names.contains(&word)
+                && !on_type
+                && !assigns
+                && !(start > 0 && is_word(bytes[start - 1]))
+            {
                 let upper = word.starts_with(|c: char| c.is_ascii_uppercase());
                 out.push_str(if upper { "Mine" } else { "_mine" });
             }
@@ -662,6 +684,75 @@ fn own_names(text: &str) -> String {
         }
     }
     out
+}
+
+/// The `.name` uses of the module's own `names` in its doc examples, by byte
+/// offset in `text`, and those of them the checker resolves to the module's
+/// own declaration: `V(0).l` is a position's built-in `l`, not range's.
+fn own_member_uses(
+    text: &str,
+    module: &str,
+    names: &[&str],
+) -> (
+    std::collections::HashSet<usize>,
+    std::collections::HashSet<usize>,
+) {
+    let mut session = cpl_check::Session::new();
+    let head = format!("use std.{module}.{{{}}}\n", names.join(", "));
+    let (mut examined, mut own) = (
+        std::collections::HashSet::new(),
+        std::collections::HashSet::new(),
+    );
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        let mut rest = 0;
+        while line.trim_start().starts_with("///") {
+            let Some(open) = line[rest..].find('`').map(|o| rest + o + 1) else {
+                break;
+            };
+            let Some(len) = line[open..].find('`') else {
+                break;
+            };
+            let code = &line[open..open + len];
+            rest = open + len + 1;
+            let uses: Vec<usize> = names
+                .iter()
+                .flat_map(|n| {
+                    let dotted = format!(".{n}");
+                    let at: Vec<(usize, usize)> = code
+                        .match_indices(&dotted)
+                        .map(|(u, _)| (u + 1, n.len()))
+                        .collect();
+                    at
+                })
+                .filter(|&(u, n)| {
+                    !code[u + n..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_')
+                })
+                .map(|(u, _)| u)
+                .collect();
+            if uses.is_empty() {
+                continue;
+            }
+            let program = format!("{head}{}\n", code.replace("; ", "\n"));
+            session.set_file("/w/example.cp", program.as_str());
+            // Prose like `s.min()` names no value, so the checker can't say.
+            let checks = session
+                .diagnostics("/w/example.cp")
+                .iter()
+                .all(|d| d.severity != cpl_diag::Severity::Error);
+            for u in uses.into_iter().filter(|_| checks) {
+                let shift = code[..u].matches("; ").count();
+                let offset = (head.len() + u - shift + 1) as u32;
+                let def = session.definition_location("/w/example.cp", offset);
+                examined.insert(at + open + u);
+                if def.is_some_and(|d| d.path.ends_with(&format!("/{module}.cp"))) {
+                    own.insert(at + open + u);
+                }
+            }
+        }
+        at += line.len();
+    }
+    (examined, own)
 }
 
 /// A personal library (`cp.toml`'s `[libs]`) holding a copy of every std
@@ -680,7 +771,7 @@ fn a_personal_library_gets_what_std_gets() {
             let text = std::fs::read_to_string(&path).unwrap();
             std::fs::write(
                 dir.join("mine").join(path.file_name().unwrap()),
-                own_names(&text),
+                own_names(&text, &path.file_stem().unwrap().to_string_lossy()),
             )
             .unwrap();
         }

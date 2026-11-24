@@ -1,34 +1,39 @@
 // Codeforces 2229G: Roadworks, tuned.
 // port.cp's sweep, taking the next record by a two-way pointer step instead of building the
 // merge_sorted list of (value, side, index) up front, and scanning the other side's met records
-// with one pointer instead of first_true then a loop.
+// with one pointer instead of first_true then a loop. As in orig.cpp, the record lists are
+// reserved at n, fields and input are stored at their bounds, and paths are walked, not collected.
 
 enum Side: Left | Right
 fn flip(s: Side) -> Side = match s:
     Left => Side.Right
     Right => Side.Left
 
-struct House(x: Int, v: Int, d: Int, pref: Int)
+struct House(x: 0..=200_000, v: 1..=10 ** 9, d: 0..=1_000_200_000, pref: Int)
 
 @!multitest
 let (n, k): (1..=200_000, 1..=1_000_000_000) = read()
 domain Pos = 1..=n
 let x: Pos = read()
-let v: [Pos]Int = read()
-let road_d: [0..n - 1]Int = read()
+let v: [Pos]1..=10 ** 9 = read()
+let road_d: [0..n - 1]0..=10 ** 9 = read()
 
-fn records(path: List<Pos>) -> List<House>:
+fn records<Path>(path: Path) -> List<House>:
     var out: List<House> = []
+    out.reserve(n)
     var (pref, d) = (0, 0)
-    for (s, i) in path.items:
+    var prev: ?Pos = None
+    for i in path:
+        let s = abs(i - x)
         pref += v[i]
-        if s > 0: d = max(d + 1, road_d[min(i.ord, path[s - 1].ord)])
+        if let p = prev: d = max(d + 1, road_d[min(i.ord, p.ord)])
+        prev = i
         if out.is_empty or out.last!.v <= v[i]: out.push(House(s, v[i], d, pref))
     out
 
 let side: [Side]List<House> = [Side] s => match s:
-    Left => records((Pos.first!..=x).rev.collect())
-    Right => records((x..=Pos.last!).collect())
+    Left => records((Pos.first!..=x).rev)
+    Right => records(x..=Pos.last!)
 var val: [Side]List<Int> = [Side] _ => [0]
 var crossed: [Side]Int = 0
 var ans = v[x] * k

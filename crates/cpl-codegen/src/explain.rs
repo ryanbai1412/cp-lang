@@ -130,6 +130,15 @@ pub fn report_with(
                         entry.site
                     );
                 }
+                ClosureMode::StaticFunctor { closure } => {
+                    static_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [static: closure type] {} -> {} (its one closure's own type, no std::function)",
+                        entry.site,
+                        crate::devirt::functor_name(*closure)
+                    );
+                }
                 ClosureMode::FnPointer => {
                     static_count += 1;
                     let _ = writeln!(

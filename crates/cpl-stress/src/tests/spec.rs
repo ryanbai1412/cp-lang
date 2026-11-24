@@ -145,7 +145,6 @@ print(a, b, c)
         "let n: 1..=5 = read()\nprint(read() + n)\n",
         "let n: 1..=5 = read()\nlet a = [0..n] i => if i == 1: 0 else: read::<Int>()\n",
         "let n: 1..=5 = read()\nlet a = [read::<Int>() for x in 0..n if x > 1]\n",
-        "let n: 1..=5 = read()\nfor a in read<[n]1..=3>():\n    print(read::<Int>())\n",
     ] {
         assert!(InputSpec::from_source(src).is_err(), "{src}");
     }
@@ -190,6 +189,36 @@ for _ in 0..n:
             .iter()
             .all(|v| (0..n as i128).contains(v)));
         assert!(tokens[3 + 4 * n..].iter().all(|v| (40..=41).contains(v)));
+    }
+}
+
+#[test]
+fn a_loop_over_a_read_array_reads_the_array_then_a_pass_per_element() {
+    let src = "domain V = 0..5
+domain W = 0..3
+fn take<S: Seq<Int>>(xs: S) -> Int:
+    var s = 0
+    for x in xs: s += x
+    s
+print(take(x * 2 for x in read<[V]10..=19>()))
+for x in read<[W]20..=29>():
+    let y = read<30..=39>()
+    print(x + y + read::<40..=49>())
+";
+    let spec = InputSpec::from_source(src).unwrap_or_else(|e| panic!("{}", e.message));
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let tens: Vec<i128> = tokens.iter().map(|t| t / 10).collect();
+        assert_eq!(
+            tens,
+            [1, 1, 1, 1, 1, 2, 2, 2, 3, 4, 3, 4, 3, 4],
+            "{tokens:?}"
+        );
     }
 }
 

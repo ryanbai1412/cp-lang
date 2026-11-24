@@ -321,12 +321,7 @@ pub(crate) fn swap_in_part_brutes_of(src: &str, only: Option<&str>) -> Option<St
     if edits.is_empty() {
         return None;
     }
-    edits.sort_by_key(|(span, _)| std::cmp::Reverse(span.start));
-    let mut swapped = src.to_string();
-    for (span, text) in edits {
-        swapped.replace_range(span.start as usize..span.end as usize, &text);
-    }
-    Some(swapped)
+    cpl_diag::splice(src, edits)
 }
 
 /// Builds `swapped`, the file with its `@alt(f)` fns in place, from

@@ -113,7 +113,7 @@ impl<'a> Lowerer<'a> {
                 let mutators = self.mutators.clone();
                 let held = narrow::in_rhs(op, lhs, rhs, &mut |f, x| mutators.writes(f, x));
                 self.cx.present.extend(held.into_iter().map(String::from));
-                let r = self.expect(rhs, &Ty::Bool);
+                let r = self.worked_out_here(rhs.span, |lw| lw.expect(rhs, &Ty::Bool));
                 self.cx.present.truncate(past);
                 return self.mk(
                     ExprKind::Binary(op, Box::new(l), Box::new(r)),
@@ -187,7 +187,7 @@ impl<'a> Lowerer<'a> {
                     ast::ExprKind::None => &l.ty,
                     _ => &*inner,
                 };
-                let r = self.expr(rhs, Some(hint));
+                let r = self.worked_out_here(rhs.span, |lw| lw.expr(rhs, Some(hint)));
                 // `a ?? b ?? 0`: an optional default keeps the result optional.
                 let ty = if r.ty == l.ty { l.ty.clone() } else { *inner };
                 let r = self.coerce(r, &ty, rhs.span);

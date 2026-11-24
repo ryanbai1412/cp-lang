@@ -5,11 +5,15 @@
   {"id": "4277351", "language": "CPP17", "result": "RTE", "time": 3.571271268, "memory_kb": 784784.0, "file": "corpus/submissions/4277351.cpp"},
   {"id": "4277456", "language": "CPP17", "result": "RTE", "time": 3.490822998, "memory_kb": 784828.0, "file": "corpus/submissions/4277456.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noiwc17p2/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission on DMOJ, so orig.cpp is a corpus-written reference inside the statement's template: in-place radix sort, word-aligned bitset popcounts, and the parity-halved balance DP. It matches the four statement samples and a Python brute (sort, direct count, enumerating every '?') on 450 generated cases. --max is statement test 3 (sort 2e8 numbers, about 5 s and 790 MB)."
 }

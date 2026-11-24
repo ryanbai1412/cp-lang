@@ -7,11 +7,15 @@
   {"id": "4899520", "language": "CPP17", "result": "WA", "time": 9.060774309, "memory_kb": 3420.0, "file": "corpus/submissions/4899520.cpp"},
   {"id": "4899522", "language": "CPP17", "result": "WA", "time": 9.051301269, "memory_kb": 3420.0, "file": "corpus/submissions/4899522.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi99p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission. orig.cpp was written for the corpus (the least per-pile transfers from prefix excesses, then greedy rounds of the largest legal move); checker.py accepts any legal flattening in at most 10000 moves, and passes orig.cpp on 1500 random cases. The statement's sample output passes it too."
 }

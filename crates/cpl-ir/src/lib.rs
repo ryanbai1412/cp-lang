@@ -1007,8 +1007,6 @@ pub enum Mutation {
     Reserve,
     /// `xs.extend(other)` on a list.
     Extend,
-    /// `shuffle(mut xs)` on a list.
-    Shuffle,
     /// `a.fill(val)` on an array.
     Fill,
     /// `xs.take()`: gives the value and leaves an empty one, in O(1).
@@ -1379,6 +1377,10 @@ pub enum ElemLoc {
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct StructDef {
     pub name: String,
+    /// The name the program writes, `Pt` for `m1_Pt`; empty when `name` is.
+    pub source: String,
+    /// A generic instance's arguments, shown as `Pair<Int>`.
+    pub targs: Vec<Ty>,
     pub fields: Vec<(String, Ty)>,
     /// The fields that are a row of a length written as a number, `kid:
     /// [0..2]?Int`, by position: every value of the struct holds exactly
@@ -1418,6 +1420,9 @@ impl OrdHook {
 #[derive(Clone, PartialEq, Debug)]
 pub struct EnumDef {
     pub name: String,
+    /// As `StructDef::source`.
+    pub source: String,
+    pub targs: Vec<Ty>,
     pub variants: Vec<(String, Vec<Ty>)>,
     pub values: Vec<Option<i64>>,
     /// `@tag("Q") Ask`: the token a variant reads and prints as, when it
@@ -1446,6 +1451,9 @@ pub struct Global {
     pub span: Span,
 }
 
+/// The largest count whose arrays are held inline as a `std::array`.
+pub const FIXED_MAX: i64 = 64;
+
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Program {
     /// What the lowering found that is allowed but almost surely a
@@ -1473,6 +1481,10 @@ pub struct Program {
     /// sum domain with no proven bound under it. Filled in by the code
     /// generator.
     pub wide_domains: Vec<bool>,
+    /// By domain, its count when every run gives it the same one, at most
+    /// [`FIXED_MAX`]: an array over it is a `std::array`. Filled in by the
+    /// code generator.
+    pub fixed_lens: Vec<Option<u32>>,
     pub globals: Vec<Global>,
     pub fns: Vec<Function>,
     /// By [`FnId`]: whether the fn is an imported module's, not the file's.

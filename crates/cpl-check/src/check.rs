@@ -71,6 +71,10 @@ pub(crate) trait Env {
     fn origin(&mut self, _name: &str) -> Option<String> {
         None
     }
+    /// True if a `use` line imports the top-level `name` by name.
+    fn chosen(&mut self, _name: &str) -> bool {
+        false
+    }
     /// The struct or enum behind the type of a value, which may come from
     /// a module this file reaches without importing the type by name.
     fn type_def(&mut self, name: &str) -> Option<Arc<Def>>;
@@ -1800,17 +1804,6 @@ pub(crate) fn renamed_prefix_name(name: &str) -> Option<&'static str> {
         "prefix1" | "prefix2" | "prefix_n" => Some("prefix"),
         "Prefix1" | "Prefix2" | "PrefixN" => Some("Prefix"),
         "Diff1" | "Diff2" => Some("Diff"),
-        _ => None,
-    }
-}
-
-pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static str> {
-    match (name, arity) {
-        ("Prefix", 1) => Some("_PrefixList"),
-        ("Prefix", 3) => Some("_Prefix2"),
-        ("FillPrefix", 1) => Some("_FillPrefixList"),
-        ("FillPrefix", 3) => Some("_FillPrefix2"),
-        ("Diff", 3) => Some("_Diff2"),
         _ => None,
     }
 }

@@ -257,18 +257,18 @@ impl<'a> Checker<'a> {
                         && matches!((&index[0], &index[1]), (Ty::Pos(_), Ty::Pos(_))) =>
                 {
                     Some(Ty::Named {
-                        name: "_Prefix2".into(),
+                        name: crate::prelude::arity_key("Prefix", 3),
                         args: vec![index[0].clone(), index[1].clone(), (**elem).clone()],
                     })
                 }
                 Ty::Array { index, elem } if index.len() == 1 && index[0].is_int() => {
                     Some(Ty::Named {
-                        name: "_PrefixList".into(),
+                        name: crate::prelude::arity_key("Prefix", 1),
                         args: vec![(**elem).clone()],
                     })
                 }
                 Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(Ty::Named {
-                    name: "_PrefixList".into(),
+                    name: crate::prelude::arity_key("Prefix", 1),
                     args: vec![args[0].clone()],
                 }),
                 _ => None,
@@ -310,14 +310,24 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// The key of the struct `name` with `arity` type arguments, when it shares
+    /// its name with one of another arity (R02.11.4), else `name`.
+    pub(super) fn arity_name(&mut self, name: &str, arity: usize) -> String {
+        let key = crate::prelude::arity_key(name, arity);
+        match self.global(&key).as_deref() {
+            Some(Def::Struct { .. }) => key,
+            _ => name.to_string(),
+        }
+    }
+
     /// `Prefix(a)` on `a: [R, C]T` builds the family's 2-D shape.
     pub(super) fn grid_shape_call(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;
         };
-        let shape = prefix_shape_struct(name, 3)?;
+        let shape = crate::prelude::arity_key(name, 3);
         if self.local(name).is_some()
-            || self.global(shape).is_none()
+            || self.global(&shape).is_none()
             || args.len() != 1
             || args[0].name.is_some()
         {

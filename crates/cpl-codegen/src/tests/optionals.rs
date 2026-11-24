@@ -180,8 +180,11 @@ fn optional_mut_param_does_not_emit_optional_of_reference() {
         "print(f())\n",
     );
     let out = cpp(src);
-    assert!(!out.contains("std::optional<std::vector<char>&>"), "{out}");
-    assert!(out.contains("cpl::Lent<std::vector<char>>"), "{out}");
+    assert!(
+        !out.contains("std::optional<std::array<char, 2>&>"),
+        "{out}"
+    );
+    assert!(out.contains("cpl::Lent<std::array<char, 2>>"), "{out}");
 }
 
 #[test]
@@ -211,4 +214,19 @@ fn a_unit_optional_unwraps_as_its_flag() {
         "print(done.len, seen)\n",
     ));
     assert!(!out.contains("cpl::have("), "{out}");
+}
+
+#[test]
+fn opt_max_is_one_compare_and_min_tests_a_built_some_once() {
+    let body = cpp(
+        "let n: Int = read()\nvar hi: List<?Int> = [None for _ in 0..n]\nvar lo: List<?Int> = [None for _ in 0..n]\nfor i in 0..n:\n    hi[i % 3] max= Some(i + n)\n    lo[i % 3] min= Some(i + n)\nprint(hi[0] ?? -1, lo[0] ?? -1)\n",
+    );
+    // `none` sorts first, so `max=` is the order's max, and `Some(e)` needs no test.
+    assert!(body.contains("std::max<cpl::OptInt>("), "{body}");
+    assert!(
+        body.contains("static constexpr bool none_first = NONE < S(0);"),
+        "{body}"
+    );
+    let solve = &body[body.find("void solve()").unwrap()..];
+    assert_eq!(solve.matches(".has_value()").count(), 3, "{solve}");
 }

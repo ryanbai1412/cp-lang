@@ -70,7 +70,6 @@ use cpl_check::Analysis;
 use cpl_diag::{codes, Diagnostic, Span};
 use cpl_syntax::{ast, narrow};
 use mono::*;
-use prefix::prefix_shape_struct;
 use range::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -336,6 +335,8 @@ struct StructInfo<'a> {
     trait_methods: HashMap<(String, String), FnId>,
     op_methods: Vec<(String, Ty, FnId)>,
     gen_methods: HashMap<String, GenFnId>,
+    /// Impls whose params only the trait args name (`impl<T> Acts<T, T> for Plus`).
+    open_impls: Vec<usize>,
     getters: HashSet<String>,
     projections: HashMap<String, ProjectionInfo<'a>>,
     consts: HashMap<String, StructConst<'a>>,
@@ -761,6 +762,7 @@ struct Lowerer<'a> {
     announce_tests: bool,
 
     cx: FnCx,
+    open_impl_fns: HashMap<(StructId, usize, String, Vec<GenArg>), FnId>,
     outer_cxs: Vec<FnCx>,
     gen_env: GenEnv,
     /// The type wanted of the generic call being lowered, which fills a
@@ -899,6 +901,7 @@ impl<'a> Lowerer<'a> {
             written: Vec::new(),
             announce_tests: false,
             cx: FnCx::default(),
+            open_impl_fns: HashMap::new(),
             outer_cxs: Vec::new(),
             gen_env: HashMap::new(),
             call_hint: (None, None),
@@ -1345,6 +1348,7 @@ impl<'a> Lowerer<'a> {
             trait_methods: HashMap::new(),
             op_methods: Vec::new(),
             gen_methods: HashMap::new(),
+            open_impls: Vec::new(),
             getters: HashSet::new(),
             projections: HashMap::new(),
             consts: HashMap::new(),

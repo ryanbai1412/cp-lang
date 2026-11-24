@@ -49,6 +49,18 @@ impl Block {
 }
 
 impl Expr {
+    /// `base[indices]` over `span`: how a table of tables' `dp[r, c, k]`
+    /// splits into the cell `dp[r, c]` and its own index `k`.
+    pub fn indexed(base: &Expr, indices: &[Expr], span: Span) -> Expr {
+        Expr {
+            kind: ExprKind::Index {
+                base: Box::new(base.clone()),
+                indices: indices.to_vec(),
+            },
+            span,
+        }
+    }
+
     /// A bare generator argument, `max(x for x in xs)`, not a list
     /// comprehension `[x for x in xs]`, which starts at its `[`.
     pub fn is_generator(&self) -> bool {

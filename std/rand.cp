@@ -1,7 +1,19 @@
 //! Random numbers from a seed: the same seed gives the same numbers in `cpl run`
 //! and in the built C++. `Rng(seed)` is a splitmix64 stream: \(O(1)\) per draw.
 
-use std.seq.{collect}
+/// Shuffle `a` in place, uniformly (Fisher-Yates), drawing from the program's `rand` stream.
+///
+/// For `i` from `a.len - 1` down to `1`, swap positions `i` and `rand(0, i)`, so a run's seed
+/// fixes the order in `cpl run` and the built C++ alike. For a stream of your own, use
+/// `Rng.shuffle`.
+///
+/// cost: \(O(n)\)
+/// empty: `var a = List<Int>(); shuffle(mut a); a.len == 0`
+/// traps: never
+/// example: `var a = [3, 1, 2]; shuffle(mut a); a.sorted() == [1, 2, 3]`
+/// example: `var a = [9]; shuffle(mut a); a == [9]`
+pub fn shuffle<S: IndexedMut>(mut a: S):
+    for i in (1..a.len).rev: a.swap_idx(i, rand(0, i))
 
 pub struct Rng(s: U64):
     /// A deterministic stream of random bits seeded by `seed`.
@@ -119,7 +131,7 @@ pub struct Rng(s: U64):
     pub fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>:
         let n = from.len
         assert 0 <= k <= n
-        var pos = (0..n).collect()
+        var pos = List(0..n)
         for i in 0..k: pos.swap_idx(i, self.int(i, n - 1))
         [from.at(pos[i]) for i in 0..k]
 

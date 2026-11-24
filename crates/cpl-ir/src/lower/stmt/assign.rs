@@ -356,21 +356,29 @@ impl<'a> Lowerer<'a> {
                     }
                     let is_max = op == ast::AssignOp::Max;
                     let rhs = self.coerce(value, &place.ty, span);
-                    // `none` orders below every Int, so `?Int max=` is a plain max.
-                    if is_max && *inner == Ty::Int {
+                    if is_max && !self.user_ordered(&inner) {
+                        // `none` sorts below every value, so `max=` is the max of that order.
                         out.push(Stmt::Assign(place, AssignOp::Max, rhs));
                         return;
                     }
-                    let r_slot = self.temp(place.ty.clone());
-                    out.push(Stmt::Let(r_slot, Some(rhs)));
-                    let r_expr = self.local(r_slot, span);
-                    let r_some =
-                        self.mk(ExprKind::IsSome(Box::new(r_expr.clone())), Ty::Bool, span);
-                    let r_val = self.mk(
-                        ExprKind::Unwrap(Box::new(r_expr), false),
-                        (*inner).clone(),
-                        span,
-                    );
+                    let (r_some, r_val) = if let ExprKind::Some(x) = rhs.kind {
+                        // `p min= Some(e)`: the value is there, so only `p` is tested.
+                        let slot = self.temp((*inner).clone());
+                        out.push(Stmt::Let(slot, Some(*x)));
+                        (None, self.local(slot, span))
+                    } else {
+                        let r_slot = self.temp(place.ty.clone());
+                        out.push(Stmt::Let(r_slot, Some(rhs)));
+                        let r_expr = self.local(r_slot, span);
+                        let r_some =
+                            self.mk(ExprKind::IsSome(Box::new(r_expr.clone())), Ty::Bool, span);
+                        let r_val = self.mk(
+                            ExprKind::Unwrap(Box::new(r_expr), false),
+                            (*inner).clone(),
+                            span,
+                        );
+                        (Some(r_some), r_val)
+                    };
                     let p_expr = place_to_expr(&place);
                     let p_some =
                         self.mk(ExprKind::IsSome(Box::new(p_expr.clone())), Ty::Bool, span);
@@ -397,19 +405,19 @@ impl<'a> Lowerer<'a> {
                         AssignOp::Set,
                         self.mk(ExprKind::Some(Box::new(r_val)), Ty::Opt(inner), span),
                     );
-                    out.push(Stmt::If(
-                        r_some,
+                    let keep = Stmt::If(
+                        should_set,
                         Block {
-                            stmts: vec![Stmt::If(
-                                should_set,
-                                Block {
-                                    stmts: vec![set_stmt],
-                                },
-                                Block::default(),
-                            )],
+                            stmts: vec![set_stmt],
                         },
                         Block::default(),
-                    ));
+                    );
+                    out.push(match r_some {
+                        Some(r_some) => {
+                            Stmt::If(r_some, Block { stmts: vec![keep] }, Block::default())
+                        }
+                        None => keep,
+                    });
                     return;
                 }
                 // `best min= cand` with a `?T` on the right skips `none`.

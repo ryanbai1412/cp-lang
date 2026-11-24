@@ -208,7 +208,18 @@ impl Checker<'_> {
             read(c).filter(|t| c.sink.is_empty() && !t.has_vague() && !names_param(t))
         });
         settled.as_ref()?;
-        read(self)
+        // The read's hover is the value it reads, not the fn it calls.
+        let hovers = self.hovers.len();
+        let ty = read(self);
+        let mut at = hovers;
+        while at < self.hovers.len() {
+            if self.hovers[at].span == name.span {
+                self.hovers.remove(at);
+            } else {
+                at += 1;
+            }
+        }
+        ty
     }
 
     /// Whether `base` can be the `self` of the fn `def`: it fits the
@@ -298,6 +309,14 @@ impl Checker<'_> {
                 fit.push((key, def));
             }
         }
+        // R11.2.3: a name a `use` imports shadows the prelude's, so the
+        // prelude's candidates drop out beside one. A fn the file declares
+        // stands beside them, and specificity picks (decision 486).
+        let shadows: Vec<bool> = fit.iter().map(|f| self.env.chosen(&f.0)).collect();
+        if shadows.contains(&true) {
+            let mut shadows = shadows.into_iter();
+            fit.retain(|_| shadows.next().unwrap_or(false));
+        }
         // R08.1.4: of the candidates, those no other is more specific than.
         let selfs: Vec<Option<Ty>> = fit.iter().map(|f| self_ty(&f.1)).collect();
         let beaten: Vec<bool> = (0..fit.len())
@@ -327,6 +346,19 @@ impl Checker<'_> {
         match self.pick_method(base, name) {
             Pick::One(_, def) => Some(def),
             _ => self.only_candidate(name),
+        }
+    }
+
+    /// A member's hover type. A top-level fn met as a getter (`xs.first`),
+    /// which lowering calls, shows as the fn the receiver picked.
+    pub(super) fn shown_member(&mut self, ty: &Ty, name: &ast::Name) -> Ty {
+        let picked = self.chosen_methods.iter().any(|r| r.0 == name.span);
+        if *ty != Ty::Unknown || self.in_call_callee || !picked {
+            return ty.clone();
+        }
+        match self.chosen_method(name).as_deref() {
+            Some(Def::Fn { ty, .. }) => ty.clone(),
+            _ => Ty::Unknown,
         }
     }
 

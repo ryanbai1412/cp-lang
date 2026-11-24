@@ -1,6 +1,12 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
+input = "3 2\n2 1 0\n0 1 0\n"
+
+[[case]]
+input = "3 20\n1 1 1\n1 1 1\n"
+
+[[case]]
 seed = 1
 size = 4
 

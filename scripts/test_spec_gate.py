@@ -303,6 +303,21 @@ class GatesTest(unittest.TestCase):
         self.assertNotIn("01.3.5", cov.PERMITS)
         self.assertFalse((specgate.ROOT / "spec/conformance/permits.txt").exists())
 
+    def test_coverage_writes_its_report_outside_the_tree_or_prints_it(self):
+        import argparse
+        import contextlib
+        import io
+        from specgate import coverage as cov
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(cov, "REPORT", pathlib.Path(tmp) / "spec/COVERAGE.md"):
+            self.assertEqual(cov.run(argparse.Namespace(print=False)), [])
+            report = cov.REPORT.read_text()
+            self.assertTrue(report.startswith("# Conformance coverage\n"))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(cov.run(argparse.Namespace(print=True)), [])
+            self.assertEqual(out.getvalue(), report)
+        self.assertFalse((specgate.ROOT / "spec/conformance/COVERAGE.md").exists())
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

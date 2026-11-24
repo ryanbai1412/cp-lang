@@ -174,3 +174,40 @@ impl Checker<'_> {
             .is_some_and(|src| self.implements_trait_inner(&src.clone(), need, seen))
     }
 }
+
+impl Checker<'_> {
+    /// `v.tk` on a domain position: the member a blanket `impl<D: Domain> Tr for D` gives it,
+    /// written in the impl or a default of `Tr`; a `@get` reads as its value. Else `Unknown`.
+    pub(super) fn domain_impl_member(&mut self, pos: &Ty, name: &str) -> Ty {
+        for (trait_name, def) in self.env.impls("domain") {
+            let Def::Impl {
+                methods,
+                getters,
+                target,
+                ..
+            } = &*def
+            else {
+                continue;
+            };
+            let own = methods.iter().find(|(m, _)| m == name).map(|m| m.1.clone());
+            let found = own.or_else(|| {
+                let tr = trait_name.as_deref()?.split('<').next()?.to_string();
+                let Def::Trait { methods, .. } = &*self.type_def(&tr)? else {
+                    return None;
+                };
+                let members = self.trait_members(&methods.clone(), &def);
+                members.into_iter().find(|(m, _)| m == name).map(|m| m.1)
+            });
+            let Some(ty) = found else {
+                continue;
+            };
+            let mut on = crate::ty::Bindings::default();
+            target.unify(pos, &mut on);
+            return match ty.subst(&on) {
+                Ty::Fn { ret, .. } if getters.iter().any(|g| g == name) => *ret,
+                ty => ty,
+            };
+        }
+        Ty::Unknown
+    }
+}

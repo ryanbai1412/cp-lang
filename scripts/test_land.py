@@ -1,14 +1,18 @@
 """Tests for scripts/land.sh against a throwaway remote."""
 
+import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-GEN = "spec/conformance/COVERAGE.md"
+GEN = "spec/conformance/widths/int.cp"
+RATCHET = "scripts/debt-ratchet.json"
+INDEX = "corpus/index.json"
 
 
 def git(cwd, *args):
@@ -23,13 +27,22 @@ class LandTest(unittest.TestCase):
         git(self.tmp, "init", "-q", "--bare", "-b", "main", str(remote))
         seed = self.clone("seed")
         (seed / "scripts").mkdir()
-        for name in ("land.sh", "retry.sh"):
+        for name in ("land.sh", "retry.sh", "ratchet_merge.py"):
             shutil.copy(HERE / name, seed / "scripts" / name)
         # A regen.sh that dirties a file the rebase never saw: land must not run it.
         (seed / "scripts" / "regen.sh").write_text("#!/bin/sh\necho x >> other.txt\necho other.txt\n")
         (seed / "scripts" / "regen.sh").chmod(0o755)
+        # A corpus.py whose build counts the packages, as the real index does.
+        (seed / "scripts" / "corpus.py").write_text(
+            "import glob, json, os\n"
+            "n = len(glob.glob(os.path.join('corpus', 'pkgs', '*', 'meta.json')))\n"
+            "open('corpus/index.json', 'w').write(json.dumps({'count': n}) + '\\n')\n")
+        (seed / "corpus" / "pkgs" / "a").mkdir(parents=True)
+        (seed / "corpus" / "pkgs" / "a" / "meta.json").write_text("{}\n")
+        (seed / INDEX).write_text('{"count": 1}\n')
         (seed / GEN).parent.mkdir(parents=True)
         (seed / GEN).write_text("base\n")
+        (seed / RATCHET).write_text(json.dumps({"a": 5, "b": 5, "names": ["x", "y"]}, indent=2) + "\n")
         self.commit(seed, "seed")
         git(seed, "push", "-q", "origin", "HEAD:main")
 
@@ -62,6 +75,46 @@ class LandTest(unittest.TestCase):
         self.assertFalse((ours / "other.txt").exists())
         self.assertEqual(git(ours, "status", "--porcelain"), "")
         self.assertIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
+    def test_a_ratchet_conflict_keeps_both_sides_tightening(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / RATCHET).write_text(json.dumps({"a": 3, "b": 5, "names": ["x"]}, indent=2) + "\n")
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / RATCHET).write_text(json.dumps({"a": 5, "b": 4, "names": ["x", "y"]}, indent=2) + "\n")
+        (ours / "src.txt").write_text("source\n")
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads((ours / RATCHET).read_text()), {"a": 3, "b": 4, "names": ["x"]})
+        self.assertEqual(git(ours, "status", "--porcelain"), "")
+        self.assertIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
+    def test_a_corpus_index_conflict_is_rebuilt_from_both_sides_packages(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        for repo, pkg in ((theirs, "b"), (ours, "c")):
+            (repo / "corpus" / "pkgs" / pkg).mkdir()
+            (repo / "corpus" / "pkgs" / pkg / "meta.json").write_text("{}\n")
+            (repo / INDEX).write_text(json.dumps({"count": 2, "by": pkg}) + "\n")
+            self.commit(repo, pkg)
+            if repo == theirs:
+                git(theirs, "push", "-q", "origin", "HEAD:main")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads((ours / INDEX).read_text()), {"count": 3})
+        self.assertEqual(git(ours, "status", "--porcelain"), "")
+
+    def test_the_ratchet_merge_never_loosens(self):
+        sys.path.insert(0, str(HERE))
+        from ratchet_merge import merge
+        base = {"n": 5, "allow": {"f.rs": 2400, "g.rs": 2100}, "edges": ["a", "b"]}
+        ours = {"n": 4, "allow": {"f.rs": 2300, "g.rs": 2100}, "edges": ["a", "b", "c"]}
+        theirs = {"n": 3, "allow": {"f.rs": 2400}, "edges": ["a"], "new": 1}
+        self.assertEqual(merge(base, ours, theirs),
+                         {"n": 3, "allow": {"f.rs": 2300}, "edges": ["a", "c"], "new": 1})
+        raised = {"n": 9, "allow": {"f.rs": 2500, "g.rs": 2100}, "edges": ["a", "b"]}
+        for merged in (merge(base, raised, base), merge(base, base, raised)):
+            self.assertEqual(merged, base)
 
 
 if __name__ == "__main__":

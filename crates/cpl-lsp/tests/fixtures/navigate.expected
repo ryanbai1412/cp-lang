@@ -5,7 +5,7 @@
 here 2:4-2:9
 
 == definition @ 6:22
-(none)
+std/seq.cp 315:8-315:14
 
 == references @ 5:11
 here 2:4-2:9
@@ -13,7 +13,7 @@ here 5:9-5:14
 here 6:7-6:12
 
 == references @ 6:22
-(empty)
+here 6:20-6:26
 
 == documentHighlight @ 5:11
 2:4-2:9
@@ -21,7 +21,7 @@ here 6:7-6:12
 6:7-6:12
 
 == documentHighlight @ 6:22
-(empty)
+6:20-6:26
 
 == rename @ 5:11
 here 2:4-2:9 -> renamed
@@ -29,4 +29,4 @@ here 5:9-5:14 -> renamed
 here 6:7-6:12 -> renamed
 
 == rename @ 6:22
-(none)
+error: the name belongs to the standard library

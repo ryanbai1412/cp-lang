@@ -7688,17 +7688,6 @@
         "status": "D",
         "time": 0.521760652
     },
-    "3996075": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T06:15:34+00:00",
-        "language": "CPP17",
-        "memory": 16652.0,
-        "problem": "cmt21r3cxr",
-        "result": "TLE",
-        "status": "D",
-        "time": 23.983802093
-    },
     "3996076": {
         "case_points": 100.0,
         "case_total": 100.0,
@@ -7720,204 +7709,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.120467234
-    },
-    "3996954": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T16:48:29+00:00",
-        "language": "CPP17",
-        "memory": 95976.0,
-        "problem": "cmt21r3cxr",
-        "result": "TLE",
-        "status": "D",
-        "time": 14.455733479
-    },
-    "3997027": {
-        "case_points": 40.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T17:09:30+00:00",
-        "language": "CPP17",
-        "memory": 95960.0,
-        "problem": "cmt21r3cxr",
-        "result": "TLE",
-        "status": "D",
-        "time": 9.569258693
-    },
-    "3997045": {
-        "case_points": 40.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T17:21:41+00:00",
-        "language": "CPP17",
-        "memory": 95972.0,
-        "problem": "cmt21r3cxr",
-        "result": "TLE",
-        "status": "D",
-        "time": 9.568722301
-    },
-    "3997056": {
-        "case_points": 55.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T17:25:34+00:00",
-        "language": "CPP17",
-        "memory": 95972.0,
-        "problem": "cmt21r3cxr",
-        "result": "TLE",
-        "status": "D",
-        "time": 13.869185778
-    },
-    "3997135": {
-        "case_points": 55.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T17:43:47+00:00",
-        "language": "CPP17",
-        "memory": 88348.0,
-        "problem": "cmt21r3cxr",
-        "result": "TLE",
-        "status": "D",
-        "time": 24.810583281
-    },
-    "3997206": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T17:56:54+00:00",
-        "language": "CPP17",
-        "memory": 276412.0,
-        "problem": "cmt21r1xym",
-        "result": "AC",
-        "status": "D",
-        "time": 4.780549695
-    },
-    "3997362": {
-        "case_points": 65.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T18:46:52+00:00",
-        "language": "CPP17",
-        "memory": 58112.0,
-        "problem": "cmt21r3cxr",
-        "result": "TLE",
-        "status": "D",
-        "time": 51.935347878
-    },
-    "3997405": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T19:01:03+00:00",
-        "language": "CPP17",
-        "memory": 69044.0,
-        "problem": "cmt21r3cxr",
-        "result": "AC",
-        "status": "D",
-        "time": 49.420403971
-    },
-    "3997501": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T19:40:17+00:00",
-        "language": "CPP17",
-        "memory": 52784.0,
-        "problem": "cmt21r3cxr",
-        "result": "WA",
-        "status": "D",
-        "time": 1.910269744
-    },
-    "3997531": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T20:02:19+00:00",
-        "language": "CPP17",
-        "memory": 55552.0,
-        "problem": "cmt21r3cxr",
-        "result": "TLE",
-        "status": "D",
-        "time": 2.957284636
-    },
-    "3997538": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T20:06:42+00:00",
-        "language": "CPP17",
-        "memory": 77716.0,
-        "problem": "cmt21r3cxr",
-        "result": "AC",
-        "status": "D",
-        "time": 47.360561645
-    },
-    "3997541": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T20:07:10+00:00",
-        "language": "CPP17",
-        "memory": 77720.0,
-        "problem": "cmt21r3cxr",
-        "result": "AC",
-        "status": "D",
-        "time": 45.791886921
-    },
-    "3997969": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T22:50:26+00:00",
-        "language": "CPP17",
-        "memory": 49216.0,
-        "problem": "cmt21r3cxr",
-        "result": "WA",
-        "status": "D",
-        "time": 1.990327472
-    },
-    "3997981": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T22:53:52+00:00",
-        "language": "CPP17",
-        "memory": 77768.0,
-        "problem": "cmt21r3cxr",
-        "result": "AC",
-        "status": "D",
-        "time": 46.247191274
-    },
-    "3998068": {
-        "case_points": 15.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T23:15:37+00:00",
-        "language": "CPP17",
-        "memory": 35088.0,
-        "problem": "cmt21r3dyp",
-        "result": "RTE",
-        "status": "D",
-        "time": 5.567082837
-    },
-    "3998084": {
-        "case_points": 15.0,
-        "case_total": 100.0,
-        "date": "2021-10-31T23:18:12+00:00",
-        "language": "CPP17",
-        "memory": 36692.0,
-        "problem": "cmt21r3dyp",
-        "result": "WA",
-        "status": "D",
-        "time": 5.623674148
-    },
-    "3998645": {
-        "case_points": 15.0,
-        "case_total": 100.0,
-        "date": "2021-11-01T02:37:23+00:00",
-        "language": "CPP17",
-        "memory": 1111064.0,
-        "problem": "cmt21r3dyp",
-        "result": "MLE",
-        "status": "D",
-        "time": 6.639025722
-    },
-    "3998720": {
-        "case_points": 30.0,
-        "case_total": 100.0,
-        "date": "2021-11-01T03:10:23+00:00",
-        "language": "CPP17",
-        "memory": 36656.0,
-        "problem": "cmt21r3dyp",
-        "result": "WA",
-        "status": "D",
-        "time": 6.617260149
     },
     "4002876": {
         "case_points": 100.0,
@@ -7952,94 +7743,6 @@
         "status": "D",
         "time": 1.326926501
     },
-    "4003133": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2021-11-03T01:10:07+00:00",
-        "language": "CPP17",
-        "memory": 3520.0,
-        "problem": "cmt21r1lbc",
-        "result": "WA",
-        "status": "D",
-        "time": 0.04027952
-    },
-    "4003433": {
-        "case_points": 3.0,
-        "case_total": 100.0,
-        "date": "2021-11-03T02:48:55+00:00",
-        "language": "TEXT",
-        "memory": 1804.0,
-        "problem": "cmt21r1pjq",
-        "result": "WA",
-        "status": "D",
-        "time": 0.014522547
-    },
-    "4003536": {
-        "case_points": 3.0,
-        "case_total": 100.0,
-        "date": "2021-11-03T03:22:31+00:00",
-        "language": "CPP17",
-        "memory": 480740.0,
-        "problem": "cmt21r1pjq",
-        "result": "RTE",
-        "status": "D",
-        "time": 12.481151214
-    },
-    "4003541": {
-        "case_points": 9.0,
-        "case_total": 100.0,
-        "date": "2021-11-03T03:24:10+00:00",
-        "language": "CPP17",
-        "memory": 515508.0,
-        "problem": "cmt21r1pjq",
-        "result": "RTE",
-        "status": "D",
-        "time": 12.858201438
-    },
-    "4003586": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-03T03:40:02+00:00",
-        "language": "CPP17",
-        "memory": 523996.0,
-        "problem": "cmt21r1pjq",
-        "result": "RTE",
-        "status": "D",
-        "time": 10.066182942
-    },
-    "4003660": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2021-11-03T04:47:53+00:00",
-        "language": "CPP17",
-        "memory": 3348.0,
-        "problem": "cmt21r2ztr",
-        "result": "WA",
-        "status": "D",
-        "time": 0.014426094
-    },
-    "4003670": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2021-11-03T05:03:04+00:00",
-        "language": "CPP17",
-        "memory": 3296.0,
-        "problem": "cmt21r2ztr",
-        "result": "TLE",
-        "status": "D",
-        "time": 1.34221966
-    },
-    "4003676": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-03T05:11:29+00:00",
-        "language": "CPP17",
-        "memory": 3340.0,
-        "problem": "cmt21r2ztr",
-        "result": "WA",
-        "status": "D",
-        "time": 0.441570017
-    },
     "4004130": {
         "case_points": 88.0,
         "case_total": 100.0,
@@ -8062,380 +7765,6 @@
         "status": "D",
         "time": 1.56203746
     },
-    "4006013": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2021-11-04T05:01:12+00:00",
-        "language": "CPP17",
-        "memory": 937216.0,
-        "problem": "cmt21r2yg",
-        "result": "TLE",
-        "status": "D",
-        "time": 14.034711855
-    },
-    "4006014": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2021-11-04T05:03:20+00:00",
-        "language": "CPP17",
-        "memory": 937160.0,
-        "problem": "cmt21r2yg",
-        "result": "TLE",
-        "status": "D",
-        "time": 24.084664243
-    },
-    "4006019": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-04T05:08:52+00:00",
-        "language": "CPP17",
-        "memory": 150728.0,
-        "problem": "cmt21r2yg",
-        "result": "TLE",
-        "status": "D",
-        "time": 16.158906643
-    },
-    "4007873": {
-        "case_points": 50.0,
-        "case_total": 100.0,
-        "date": "2021-11-05T03:29:04+00:00",
-        "language": "CPP17",
-        "memory": 6808.0,
-        "problem": "cmt21r2zjr",
-        "result": "TLE",
-        "status": "D",
-        "time": 10.340334135
-    },
-    "4007887": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-11-05T03:44:39+00:00",
-        "language": "CPP17",
-        "memory": 6996.0,
-        "problem": "cmt21r2zjr",
-        "result": "AC",
-        "status": "D",
-        "time": 10.781508938
-    },
-    "4007901": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-11-05T04:00:09+00:00",
-        "language": "CPP17",
-        "memory": 6960.0,
-        "problem": "cmt21r2zjr",
-        "result": "AC",
-        "status": "D",
-        "time": 9.403073692
-    },
-    "4007955": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2021-11-05T04:36:59+00:00",
-        "language": "CPP17",
-        "memory": 142440.0,
-        "problem": "cmt21r2ztr",
-        "result": "WA",
-        "status": "D",
-        "time": 1.534889299
-    },
-    "4007958": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2021-11-05T04:39:01+00:00",
-        "language": "CPP17",
-        "memory": 176896.0,
-        "problem": "cmt21r2ztr",
-        "result": "TLE",
-        "status": "D",
-        "time": 4.485159149
-    },
-    "4007960": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-11-05T04:41:38+00:00",
-        "language": "CPP17",
-        "memory": 131100.0,
-        "problem": "cmt21r2ztr",
-        "result": "AC",
-        "status": "D",
-        "time": 4.840996403
-    },
-    "4010459": {
-        "case_points": 40.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T02:43:31+00:00",
-        "language": "CPP17",
-        "memory": 258104.0,
-        "problem": "cmt21r1lbc",
-        "result": "RTE",
-        "status": "D",
-        "time": 5.303439132
-    },
-    "4010527": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T02:59:10+00:00",
-        "language": "CPP17",
-        "memory": 377476.0,
-        "problem": "cmt21r1lbc",
-        "result": "AC",
-        "status": "D",
-        "time": 35.727166046
-    },
-    "4010749": {
-        "case_points": 4.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T04:58:22+00:00",
-        "language": "CPP17",
-        "memory": 3300.0,
-        "problem": "cmt21r5wwc",
-        "result": "WA",
-        "status": "D",
-        "time": 0.830291844
-    },
-    "4010750": {
-        "case_points": 4.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T04:59:46+00:00",
-        "language": "CPP17",
-        "memory": 3360.0,
-        "problem": "cmt21r5wwc",
-        "result": "WA",
-        "status": "D",
-        "time": 0.824472214
-    },
-    "4011563": {
-        "case_points": 6.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T15:35:53+00:00",
-        "language": "CPP17",
-        "memory": 3312.0,
-        "problem": "cmt21r5wwc",
-        "result": "WA",
-        "status": "D",
-        "time": 0.234685071
-    },
-    "4011572": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T15:38:07+00:00",
-        "language": "CPP17",
-        "memory": 3308.0,
-        "problem": "cmt21r5wwc",
-        "result": "WA",
-        "status": "D",
-        "time": 0.44104971
-    },
-    "4011796": {
-        "case_points": 25.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T17:15:53+00:00",
-        "language": "CPP17",
-        "memory": 514380.0,
-        "problem": "cmt21r4wcz",
-        "result": "RTE",
-        "status": "D",
-        "time": 5.848166211
-    },
-    "4011800": {
-        "case_points": 25.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T17:19:55+00:00",
-        "language": "CPP17",
-        "memory": 526928.0,
-        "problem": "cmt21r4wcz",
-        "result": "RTE",
-        "status": "D",
-        "time": 5.215459728
-    },
-    "4011891": {
-        "case_points": 40.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T17:56:27+00:00",
-        "language": "CPP17",
-        "memory": 42628.0,
-        "problem": "cmt21r4wcz",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.314615399
-    },
-    "4013279": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T23:10:31+00:00",
-        "language": "CPP17",
-        "memory": 12564.0,
-        "problem": "cmt21r2yg",
-        "result": "RTE",
-        "status": "D",
-        "time": 6.644369573
-    },
-    "4013457": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T23:26:31+00:00",
-        "language": "CPP17",
-        "memory": 12540.0,
-        "problem": "cmt21r2yg",
-        "result": "TLE",
-        "status": "D",
-        "time": 6.748749116
-    },
-    "4013576": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T23:43:16+00:00",
-        "language": "CPP17",
-        "memory": 358092.0,
-        "problem": "cmt21r2yg",
-        "result": "TLE",
-        "status": "D",
-        "time": 16.146890078
-    },
-    "4013579": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T23:43:37+00:00",
-        "language": "CPP17",
-        "memory": 12532.0,
-        "problem": "cmt21r2yg",
-        "result": "TLE",
-        "status": "D",
-        "time": 13.530618619
-    },
-    "4013668": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-06T23:59:10+00:00",
-        "language": "CPP17",
-        "memory": 14584.0,
-        "problem": "cmt21r2yg",
-        "result": "WA",
-        "status": "D",
-        "time": 3.154507993
-    },
-    "4013768": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T00:11:16+00:00",
-        "language": "CPP17",
-        "memory": 4.0,
-        "problem": "cmt21r2yg",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.011808131
-    },
-    "4013774": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T00:12:42+00:00",
-        "language": "CPP17",
-        "memory": 331796.0,
-        "problem": "cmt21r2yg",
-        "result": "TLE",
-        "status": "D",
-        "time": 15.081787706
-    },
-    "4013779": {
-        "case_points": 50.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T00:13:01+00:00",
-        "language": "CPP17",
-        "memory": 14636.0,
-        "problem": "cmt21r2yg",
-        "result": "WA",
-        "status": "D",
-        "time": 16.461505457
-    },
-    "4015295": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T14:52:54+00:00",
-        "language": "CPP17",
-        "memory": 26128.0,
-        "problem": "cmt21r3zlm",
-        "result": "WA",
-        "status": "D",
-        "time": 0.131679653
-    },
-    "4015300": {
-        "case_points": 5.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T14:54:19+00:00",
-        "language": "CPP17",
-        "memory": 26168.0,
-        "problem": "cmt21r3zlm",
-        "result": "WA",
-        "status": "D",
-        "time": 1.107482869
-    },
-    "4015377": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T15:12:44+00:00",
-        "language": "CPP17",
-        "memory": 27168.0,
-        "problem": "cmt21r3zlm",
-        "result": "WA",
-        "status": "D",
-        "time": 1.74168724
-    },
-    "4015487": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T15:34:12+00:00",
-        "language": "CPP17",
-        "memory": 27132.0,
-        "problem": "cmt21r3zlm",
-        "result": "WA",
-        "status": "D",
-        "time": 1.76717256
-    },
-    "4015568": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T15:47:20+00:00",
-        "language": "CPP17",
-        "memory": 11520.0,
-        "problem": "cmt21r3zlm",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.624359212
-    },
-    "4015788": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T16:22:49+00:00",
-        "language": "CPP17",
-        "memory": 27044.0,
-        "problem": "cmt21r3zlm",
-        "result": "WA",
-        "status": "D",
-        "time": 1.893625228
-    },
-    "4015809": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T16:27:37+00:00",
-        "language": "CPP17",
-        "memory": 27044.0,
-        "problem": "cmt21r3zlm",
-        "result": "WA",
-        "status": "D",
-        "time": 1.891904265
-    },
-    "4015841": {
-        "case_points": 35.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T16:38:26+00:00",
-        "language": "CPP17",
-        "memory": 27136.0,
-        "problem": "cmt21r3zlm",
-        "result": "WA",
-        "status": "D",
-        "time": 1.966439336
-    },
     "4016303": {
         "case_points": 65.0,
         "case_total": 100.0,
@@ -8446,72 +7775,6 @@
         "result": "WA",
         "status": "D",
         "time": 0.049757495
-    },
-    "4016354": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T18:21:13+00:00",
-        "language": "CPP17",
-        "memory": 122172.0,
-        "problem": "cmt21r2ztr",
-        "result": "TLE",
-        "status": "D",
-        "time": 2.213166925
-    },
-    "4016364": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T18:24:31+00:00",
-        "language": "CPP17",
-        "memory": 187408.0,
-        "problem": "cmt21r2ztr",
-        "result": "TLE",
-        "status": "D",
-        "time": 3.406660888
-    },
-    "4016385": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T18:28:41+00:00",
-        "language": "CPP17",
-        "memory": 193176.0,
-        "problem": "cmt21r2ztr",
-        "result": "TLE",
-        "status": "D",
-        "time": 3.286265995
-    },
-    "4016416": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T18:34:04+00:00",
-        "language": "CPP17",
-        "memory": 191524.0,
-        "problem": "cmt21r2ztr",
-        "result": "WA",
-        "status": "D",
-        "time": 3.965263173
-    },
-    "4016530": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-11-07T18:52:03+00:00",
-        "language": "CPP17",
-        "memory": 220832.0,
-        "problem": "cmt21r2ztr",
-        "result": "AC",
-        "status": "D",
-        "time": 8.817302263
-    },
-    "4041223": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2021-11-17T15:13:47+00:00",
-        "language": "CPP17",
-        "memory": 6712.0,
-        "problem": "cmt21peter2",
-        "result": "AC",
-        "status": "D",
-        "time": 1.930815794
     },
     "4051671": {
         "case_points": 15.0,
@@ -9370,17 +8633,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.064913807
-    },
-    "4121142": {
-        "case_points": 50.0,
-        "case_total": 50.0,
-        "date": "2021-12-19T18:36:20+00:00",
-        "language": "CPP17",
-        "memory": 8364.0,
-        "problem": "wossoly21s2",
-        "result": "AC",
-        "status": "D",
-        "time": 0.698327761
     },
     "4121186": {
         "case_points": 20.0,
@@ -11417,50 +10669,6 @@
         "status": "D",
         "time": 3.773425961
     },
-    "4192270": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-01-09T18:25:26+00:00",
-        "language": "CPP17",
-        "memory": 13528.0,
-        "problem": "cmt21r4djq",
-        "result": "WA",
-        "status": "D",
-        "time": 0.056451578
-    },
-    "4192271": {
-        "case_points": 4.0,
-        "case_total": 100.0,
-        "date": "2022-01-09T18:25:48+00:00",
-        "language": "CPP17",
-        "memory": 21724.0,
-        "problem": "cmt21r4djq",
-        "result": "WA",
-        "status": "D",
-        "time": 0.217063339
-    },
-    "4192276": {
-        "case_points": 4.0,
-        "case_total": 100.0,
-        "date": "2022-01-09T18:26:41+00:00",
-        "language": "CPP17",
-        "memory": 21688.0,
-        "problem": "cmt21r4djq",
-        "result": "WA",
-        "status": "D",
-        "time": 0.215530405
-    },
-    "4192304": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2022-01-09T18:36:43+00:00",
-        "language": "CPP17",
-        "memory": 21728.0,
-        "problem": "cmt21r4djq",
-        "result": "WA",
-        "status": "D",
-        "time": 0.240457628
-    },
     "4196130": {
         "case_points": 50.0,
         "case_total": 50.0,
@@ -12725,17 +11933,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.741524008
-    },
-    "4233198": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2022-01-22T05:07:14+00:00",
-        "language": "CPP17",
-        "memory": 4604.0,
-        "problem": "cmt21r8srf",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.194296478
     },
     "4233321": {
         "case_points": 5.0,
@@ -14222,17 +13419,6 @@
         "status": "D",
         "time": 15.826797675
     },
-    "4325034": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-02-12T16:42:16+00:00",
-        "language": "PYPY3",
-        "memory": 58288.0,
-        "problem": "shortest1",
-        "result": "AC",
-        "status": "D",
-        "time": 3.984083736
-    },
     "4325060": {
         "case_points": 0.0,
         "case_total": 15.0,
@@ -14639,83 +13825,6 @@
         "result": "AC",
         "status": "D",
         "time": 1.404986442
-    },
-    "4331805": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2022-02-13T15:31:32+00:00",
-        "language": "CPP17",
-        "memory": 3612.0,
-        "problem": "sac22cc3jp5",
-        "result": "WA",
-        "status": "D",
-        "time": 0.08869011
-    },
-    "4331815": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2022-02-13T15:32:14+00:00",
-        "language": "CPP17",
-        "memory": 3556.0,
-        "problem": "sac22cc3jp5",
-        "result": "WA",
-        "status": "D",
-        "time": 0.086978974
-    },
-    "4331837": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2022-02-13T15:34:54+00:00",
-        "language": "CPP17",
-        "memory": 3580.0,
-        "problem": "sac22cc3jp5",
-        "result": "WA",
-        "status": "D",
-        "time": 0.075424221
-    },
-    "4331886": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2022-02-13T15:41:36+00:00",
-        "language": "CPP17",
-        "memory": 3524.0,
-        "problem": "sac22cc3jp5",
-        "result": "WA",
-        "status": "D",
-        "time": 0.090355277
-    },
-    "4331893": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2022-02-13T15:42:30+00:00",
-        "language": "CPP17",
-        "memory": 3532.0,
-        "problem": "sac22cc3jp5",
-        "result": "WA",
-        "status": "D",
-        "time": 0.089083138
-    },
-    "4331900": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2022-02-13T15:43:39+00:00",
-        "language": "CPP17",
-        "memory": 3520.0,
-        "problem": "sac22cc3jp5",
-        "result": "WA",
-        "status": "D",
-        "time": 0.073456032
-    },
-    "4331904": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-02-13T15:44:36+00:00",
-        "language": "CPP17",
-        "memory": 3520.0,
-        "problem": "sac22cc3jp5",
-        "result": "AC",
-        "status": "D",
-        "time": 0.218828091
     },
     "4340797": {
         "case_points": 100.0,
@@ -15475,28 +14584,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.0
-    },
-    "4381786": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2022-02-28T01:00:22+00:00",
-        "language": "CPP17",
-        "memory": 114756.0,
-        "problem": "cmt21r1pjq",
-        "result": "WA",
-        "status": "D",
-        "time": 2.783389671
-    },
-    "4381789": {
-        "case_points": 36.0,
-        "case_total": 100.0,
-        "date": "2022-02-28T01:03:15+00:00",
-        "language": "CPP17",
-        "memory": 114780.0,
-        "problem": "cmt21r1pjq",
-        "result": "WA",
-        "status": "D",
-        "time": 3.628829014
     },
     "4411109": {
         "case_points": 0.0,
@@ -16983,39 +16070,6 @@
         "status": "D",
         "time": 0.320841495
     },
-    "4528036": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-04-27T03:46:23+00:00",
-        "language": "CPP17",
-        "memory": 3328.0,
-        "problem": "ctsc06p6",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.03507059
-    },
-    "4528040": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2022-04-27T03:51:22+00:00",
-        "language": "CPP17",
-        "memory": 3632.0,
-        "problem": "ctsc06p6",
-        "result": "RTE",
-        "status": "D",
-        "time": 12.238037811
-    },
-    "4528042": {
-        "case_points": 10.0,
-        "case_total": 100.0,
-        "date": "2022-04-27T03:51:54+00:00",
-        "language": "CPP17",
-        "memory": 3428.0,
-        "problem": "ctsc06p6",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.567773344
-    },
     "4528048": {
         "case_points": 0.0,
         "case_total": 100.0,
@@ -17268,17 +16322,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.982156868
-    },
-    "4529643": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-04-27T22:48:10+00:00",
-        "language": "CPP17",
-        "memory": 3312.0,
-        "problem": "ctsc06p6",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.621881478
     },
     "4529987": {
         "case_points": 50.0,
@@ -22505,83 +21548,6 @@
         "status": "D",
         "time": 84.219529935
     },
-    "4804174": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-29T23:30:05+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math03",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004208259
-    },
-    "4804180": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-08-29T23:36:50+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math03",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004216933
-    },
-    "4804203": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-29T23:48:09+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math04",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004261524
-    },
-    "4804228": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-29T23:58:24+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math04",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003762284
-    },
-    "4804250": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-30T00:06:28+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math04",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003652598
-    },
-    "4804276": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-30T00:23:38+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math04",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003869527
-    },
-    "4804284": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-08-30T00:25:38+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math04",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003573482
-    },
     "4804312": {
         "case_points": 1.0,
         "case_total": 1.0,
@@ -22603,50 +21569,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.112647132
-    },
-    "4806679": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-31T03:20:31+00:00",
-        "language": "TEXT",
-        "memory": 1904.0,
-        "problem": "math01",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003454218
-    },
-    "4806682": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-08-31T03:22:56+00:00",
-        "language": "TEXT",
-        "memory": 1904.0,
-        "problem": "math01",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003576449
-    },
-    "4806759": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-08-31T04:08:23+00:00",
-        "language": "TEXT",
-        "memory": 1904.0,
-        "problem": "math02",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003381267
-    },
-    "4806769": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-08-31T04:12:46+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math02",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003469622
     },
     "4806776": {
         "case_points": 150.0,
@@ -22670,149 +21592,6 @@
         "status": "D",
         "time": 0.02353736
     },
-    "4808724": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T02:35:22+00:00",
-        "language": "TEXT",
-        "memory": 1920.0,
-        "problem": "math01",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003365628
-    },
-    "4810219": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:00:31+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math05",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004158125
-    },
-    "4810223": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:08:52+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003517945
-    },
-    "4810226": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:10:02+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004033711
-    },
-    "4810230": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:15:47+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003477066
-    },
-    "4810241": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:20+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003442114
-    },
-    "4810242": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:25+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003306751
-    },
-    "4810243": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:31+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003368748
-    },
-    "4810244": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:36+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.00334423
-    },
-    "4810245": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:41+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004524959
-    },
-    "4810246": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:46+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004112602
-    },
-    "4810247": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:24:50+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004153521
-    },
-    "4810251": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:25:57+00:00",
-        "language": "TEXT",
-        "memory": 1944.0,
-        "problem": "math06",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003416327
-    },
     "4810274": {
         "case_points": 6.0,
         "case_total": 6.0,
@@ -22834,28 +21613,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.025784977
-    },
-    "4810294": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-01T23:58:06+00:00",
-        "language": "TEXT",
-        "memory": 1840.0,
-        "problem": "math06",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003489012
-    },
-    "4811880": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-02T23:30:42+00:00",
-        "language": "TEXT",
-        "memory": 1828.0,
-        "problem": "math07",
-        "result": "AC",
-        "status": "D",
-        "time": 0.00346895
     },
     "4811886": {
         "case_points": 100.0,
@@ -22901,17 +21658,6 @@
         "status": "D",
         "time": 5.259533811
     },
-    "4817718": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-05T22:45:19+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math08",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004716563
-    },
     "4817803": {
         "case_points": 200.0,
         "case_total": 200.0,
@@ -22933,94 +21679,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.457784327
-    },
-    "4817903": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-05T23:58:59+00:00",
-        "language": "TEXT",
-        "memory": 1896.0,
-        "problem": "math09",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003467183
-    },
-    "4819616": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:16:02+00:00",
-        "language": "TEXT",
-        "memory": 1852.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004145572
-    },
-    "4819625": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:22:00+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003959307
-    },
-    "4819632": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:28:27+00:00",
-        "language": "TEXT",
-        "memory": 1888.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004229657
-    },
-    "4819637": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:32:53+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003366143
-    },
-    "4819638": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:33:01+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003465679
-    },
-    "4819639": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:35:42+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003378698
-    },
-    "4819640": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-06T23:36:29+00:00",
-        "language": "TEXT",
-        "memory": 1916.0,
-        "problem": "math10",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003297787
     },
     "4819641": {
         "case_points": 3.0,
@@ -23154,28 +21812,6 @@
         "status": "D",
         "time": 6.226484329
     },
-    "4826965": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-10T18:36:09+00:00",
-        "language": "TEXT",
-        "memory": 1860.0,
-        "problem": "math11",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004258171
-    },
-    "4827101": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-10T19:07:16+00:00",
-        "language": "TEXT",
-        "memory": 1876.0,
-        "problem": "math12",
-        "result": "AC",
-        "status": "D",
-        "time": 0.00384084
-    },
     "4827139": {
         "case_points": 75.0,
         "case_total": 100.0,
@@ -23308,50 +21944,6 @@
         "status": "D",
         "time": 0.170871022
     },
-    "4829055": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T03:42:50+00:00",
-        "language": "TEXT",
-        "memory": 1928.0,
-        "problem": "math13",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003381214
-    },
-    "4829069": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T03:47:56+00:00",
-        "language": "TEXT",
-        "memory": 1900.0,
-        "problem": "math13",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003749494
-    },
-    "4829073": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T03:52:46+00:00",
-        "language": "TEXT",
-        "memory": 1892.0,
-        "problem": "math13",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004174465
-    },
-    "4829074": {
-        "case_points": 0.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T03:53:23+00:00",
-        "language": "TEXT",
-        "memory": 1900.0,
-        "problem": "math13",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003422411
-    },
     "4829127": {
         "case_points": 100.0,
         "case_total": 100.0,
@@ -23362,17 +21954,6 @@
         "result": "AC",
         "status": "D",
         "time": 0.211121953
-    },
-    "4829138": {
-        "case_points": 10.0,
-        "case_total": 10.0,
-        "date": "2022-09-11T04:30:05+00:00",
-        "language": "TEXT",
-        "memory": 1892.0,
-        "problem": "math13",
-        "result": "AC",
-        "status": "D",
-        "time": 0.004187951
     },
     "4829179": {
         "case_points": 0.0,
@@ -23835,28 +22416,6 @@
         "result": "AC",
         "status": "D",
         "time": 68.001642133
-    },
-    "4852075": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-09-18T19:23:10+00:00",
-        "language": "CPP17",
-        "memory": 19948.0,
-        "problem": "saspeed",
-        "result": "AC",
-        "status": "D",
-        "time": 1.477585441
-    },
-    "4852187": {
-        "case_points": 70.0,
-        "case_total": 100.0,
-        "date": "2022-09-18T19:36:41+00:00",
-        "language": "CPP17",
-        "memory": 23900.0,
-        "problem": "saspeed",
-        "result": "WA",
-        "status": "D",
-        "time": 35.197270021
     },
     "4896798": {
         "case_points": 0.0,
@@ -24429,138 +22988,6 @@
         "result": "WA",
         "status": "D",
         "time": 0.003550785
-    },
-    "4953262": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T03:39:54+00:00",
-        "language": "CPP17",
-        "memory": 67756.0,
-        "problem": "imo22p6checker",
-        "result": "AC",
-        "status": "D",
-        "time": 1.856164932
-    },
-    "4953295": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T03:53:59+00:00",
-        "language": "TEXT",
-        "memory": 1604.0,
-        "problem": "imo22p6checker",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004281313
-    },
-    "4953296": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T03:54:31+00:00",
-        "language": "TEXT",
-        "memory": 1604.0,
-        "problem": "imo22p6checker",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003779556
-    },
-    "4953298": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T03:55:27+00:00",
-        "language": "CPP17",
-        "memory": 3328.0,
-        "problem": "imo22p6checker",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003479649
-    },
-    "4953299": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T03:55:50+00:00",
-        "language": "CPP17",
-        "memory": 3388.0,
-        "problem": "imo22p6checker",
-        "result": "WA",
-        "status": "D",
-        "time": 0.00317685
-    },
-    "4953303": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T03:58:13+00:00",
-        "language": "CPP17",
-        "memory": 3360.0,
-        "problem": "imo22p6checker",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.068991344
-    },
-    "4953312": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T04:01:28+00:00",
-        "language": "CPP17",
-        "memory": 4420.0,
-        "problem": "imo22p6checker",
-        "result": "WA",
-        "status": "D",
-        "time": 0.014865149
-    },
-    "4953328": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T04:05:45+00:00",
-        "language": "CPP17",
-        "memory": 7324.0,
-        "problem": "imo22p6checker",
-        "result": "WA",
-        "status": "D",
-        "time": 0.095285958
-    },
-    "4953329": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T04:06:20+00:00",
-        "language": "CPP17",
-        "memory": 86512.0,
-        "problem": "imo22p6checker",
-        "result": "AC",
-        "status": "D",
-        "time": 2.858228599
-    },
-    "4953333": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T04:07:34+00:00",
-        "language": "CPP17",
-        "memory": 3376.0,
-        "problem": "imo22p6checker",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.072645047
-    },
-    "4954542": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-10-20T19:40:44+00:00",
-        "language": "CPP17",
-        "memory": 86560.0,
-        "problem": "imo22p6checker",
-        "result": "AC",
-        "status": "D",
-        "time": 2.236939427
-    },
-    "4955728": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-10-21T03:12:00+00:00",
-        "language": "CPP17",
-        "memory": 67888.0,
-        "problem": "imo22p6checker",
-        "result": "AC",
-        "status": "D",
-        "time": 1.162707465
     },
     "4963746": {
         "case_points": 0.0,
@@ -34638,116 +33065,6 @@
         "status": "D",
         "time": 50.440492478
     },
-    "5494240": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:34:33+00:00",
-        "language": "CPP17",
-        "memory": 3468.0,
-        "problem": "etsr23r1p1",
-        "result": "AC",
-        "status": "D",
-        "time": 0.044057198
-    },
-    "5494248": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:37:39+00:00",
-        "language": "CPP17",
-        "memory": 3508.0,
-        "problem": "etsr23r1p2",
-        "result": "AC",
-        "status": "D",
-        "time": 0.896260235
-    },
-    "5494270": {
-        "case_points": 12.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:46:47+00:00",
-        "language": "CPP17",
-        "memory": 3484.0,
-        "problem": "etsr23r1p3",
-        "result": "WA",
-        "status": "D",
-        "time": 0.080475754
-    },
-    "5494284": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:51:37+00:00",
-        "language": "CPP17",
-        "memory": 412740.0,
-        "problem": "etsr23r1p3",
-        "result": "RTE",
-        "status": "D",
-        "time": 21.054488396
-    },
-    "5494285": {
-        "case_points": 72.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:52:02+00:00",
-        "language": "CPP17",
-        "memory": 5724.0,
-        "problem": "etsr23r1p3",
-        "result": "TLE",
-        "status": "D",
-        "time": 8.817757577
-    },
-    "5494288": {
-        "case_points": 72.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:52:22+00:00",
-        "language": "CPP17",
-        "memory": 8016.0,
-        "problem": "etsr23r1p3",
-        "result": "TLE",
-        "status": "D",
-        "time": 14.830936124
-    },
-    "5494289": {
-        "case_points": 72.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:52:43+00:00",
-        "language": "CPP17",
-        "memory": 24716.0,
-        "problem": "etsr23r1p3",
-        "result": "TLE",
-        "status": "D",
-        "time": 18.899853088
-    },
-    "5494302": {
-        "case_points": 88.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:58:11+00:00",
-        "language": "CPP17",
-        "memory": 7580.0,
-        "problem": "etsr23r1p3",
-        "result": "WA",
-        "status": "D",
-        "time": 0.828753468
-    },
-    "5494303": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:58:22+00:00",
-        "language": "CPP17",
-        "memory": 11648.0,
-        "problem": "etsr23r1p3",
-        "result": "AC",
-        "status": "D",
-        "time": 1.223760034
-    },
-    "5494375": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T02:29:33+00:00",
-        "language": "CPP17",
-        "memory": 3376.0,
-        "problem": "etsr23r2p1",
-        "result": "AC",
-        "status": "D",
-        "time": 0.066829514
-    },
     "5494408": {
         "case_points": 60.0,
         "case_total": 100.0,
@@ -34791,17 +33108,6 @@
         "result": "AC",
         "status": "D",
         "time": 6.597845624
-    },
-    "5494453": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T03:11:29+00:00",
-        "language": "CPP17",
-        "memory": 3384.0,
-        "problem": "etsr23r2p3",
-        "result": "AC",
-        "status": "D",
-        "time": 0.083392705
     },
     "5494510": {
         "case_points": 100.0,
@@ -35232,17 +33538,6 @@
         "status": "D",
         "time": 44.177059481
     },
-    "5521224": {
-        "case_points": 0.0,
-        "case_total": 0.0,
-        "date": "2023-05-03T02:01:52+00:00",
-        "language": "CPP17",
-        "memory": null,
-        "problem": "etsr23r3p1",
-        "result": "CE",
-        "status": "CE",
-        "time": null
-    },
     "5521291": {
         "case_points": 36.0,
         "case_total": 100.0,
@@ -35275,149 +33570,6 @@
         "result": "AC",
         "status": "D",
         "time": 28.762865553
-    },
-    "5521304": {
-        "case_points": 5.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T02:52:09+00:00",
-        "language": "CPP17",
-        "memory": 3676.0,
-        "problem": "etsr23r3p2",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.021374377
-    },
-    "5521312": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:05:32+00:00",
-        "language": "CPP17",
-        "memory": 6708.0,
-        "problem": "etsr23r3p1",
-        "result": "WA",
-        "status": "D",
-        "time": 0.117702979
-    },
-    "5521315": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:06:11+00:00",
-        "language": "CPP17",
-        "memory": 6892.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.279654333
-    },
-    "5521317": {
-        "case_points": 20.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:07:07+00:00",
-        "language": "CPP17",
-        "memory": 6928.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 0.21552543
-    },
-    "5521324": {
-        "case_points": 5.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:11:46+00:00",
-        "language": "CPP17",
-        "memory": 34768.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 1.248897134
-    },
-    "5521363": {
-        "case_points": 37.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:26:22+00:00",
-        "language": "CPP17",
-        "memory": 172864.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 11.836085871
-    },
-    "5521366": {
-        "case_points": 37.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:27:14+00:00",
-        "language": "CPP17",
-        "memory": 574600.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 6.028356677
-    },
-    "5521370": {
-        "case_points": 37.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:28:11+00:00",
-        "language": "CPP17",
-        "memory": 574544.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 10.809965052
-    },
-    "5521382": {
-        "case_points": 37.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T03:33:23+00:00",
-        "language": "CPP17",
-        "memory": 574360.0,
-        "problem": "etsr23r3p1",
-        "result": "RTE",
-        "status": "D",
-        "time": 10.763193131
-    },
-    "5521410": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T04:06:39+00:00",
-        "language": "CPP17",
-        "memory": 3444.0,
-        "problem": "etsr23r4p1",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003589024
-    },
-    "5521412": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T04:06:56+00:00",
-        "language": "CPP17",
-        "memory": 3376.0,
-        "problem": "etsr23r4p1",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003766952
-    },
-    "5521416": {
-        "case_points": 0.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T04:08:00+00:00",
-        "language": "CPP17",
-        "memory": 3472.0,
-        "problem": "etsr23r4p1",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003540934
-    },
-    "5521420": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-05-03T04:27:18+00:00",
-        "language": "CPP17",
-        "memory": 3484.0,
-        "problem": "etsr23r4p1",
-        "result": "AC",
-        "status": "D",
-        "time": 5.776223223
     },
     "5521437": {
         "case_points": 10.0,
@@ -35517,17 +33669,6 @@
         "result": "TLE",
         "status": "D",
         "time": 4.065594376
-    },
-    "5527625": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-05-06T18:00:00+00:00",
-        "language": "CPP17",
-        "memory": 45412.0,
-        "problem": "etsr23r3p1",
-        "result": "AC",
-        "status": "D",
-        "time": 23.242310186
     },
     "5527725": {
         "case_points": 14.0,
@@ -35649,17 +33790,6 @@
         "result": "AC",
         "status": "D",
         "time": 18.379387051
-    },
-    "5529780": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-05-08T03:27:55+00:00",
-        "language": "CPP17",
-        "memory": 3552.0,
-        "problem": "etsr23r3p2",
-        "result": "AC",
-        "status": "D",
-        "time": 0.193837979
     },
     "5532652": {
         "case_points": 0.0,

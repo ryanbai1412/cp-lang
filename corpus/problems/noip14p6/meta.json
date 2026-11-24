@@ -36,7 +36,7 @@
  "notes": "Str.parse<Mod<P>>() under two primes; coef.eval(x)",
  "dream_stress": {
   "ok": true,
-  "cases": 18,
+  "cases": 21,
   "sha": "7bc78c397e3da250da3332eed7a66bd4bde3d8cb"
  }
 }

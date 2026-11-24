@@ -91,11 +91,16 @@ fn build(file: &Path, judge: &str) -> Result<String, String> {
     }
 }
 
-#[test]
-fn every_port_is_written_for_every_judge_within_its_limit() {
+/// Every port written for `judge` fits its limit and carries its stamp. One
+/// test per judge, so CI spreads the judges over its shards.
+fn written_within_limit(judge: &str) {
     let ports = ports();
     assert!(ports.len() >= 30, "{} ports", ports.len());
-    for profile in cpl_judge::builtins() {
+    let profile = cpl_judge::builtins()
+        .into_iter()
+        .find(|p| p.name == judge)
+        .unwrap_or_else(|| panic!("no judge `{judge}`"));
+    {
         let indexed: Vec<(usize, &PathBuf)> = ports.iter().enumerate().collect();
         let sizes = parallel(&indexed, |&(i, port)| {
             let cpp =
@@ -133,6 +138,33 @@ fn every_port_is_written_for_every_judge_within_its_limit() {
             sizes.iter().sum::<usize>()
         );
     }
+}
+
+macro_rules! judges {
+    ($($test:ident = $judge:literal),* $(,)?) => {
+        $(
+            #[test]
+            fn $test() {
+                written_within_limit($judge);
+            }
+        )*
+        #[test]
+        fn every_port_is_written_for_every_judge_within_its_limit_covers_every_judge() {
+            let names: Vec<String> = cpl_judge::builtins().into_iter().map(|p| p.name).collect();
+            assert_eq!(names, [$($judge),*]);
+        }
+    };
+}
+
+judges! {
+    every_port_is_written_for_every_judge_within_its_limit_generic = "generic",
+    every_port_is_written_for_every_judge_within_its_limit_codeforces = "codeforces",
+    every_port_is_written_for_every_judge_within_its_limit_atcoder = "atcoder",
+    every_port_is_written_for_every_judge_within_its_limit_cses = "cses",
+    every_port_is_written_for_every_judge_within_its_limit_icpc = "icpc",
+    every_port_is_written_for_every_judge_within_its_limit_kattis = "kattis",
+    every_port_is_written_for_every_judge_within_its_limit_dmoj = "dmoj",
+    every_port_is_written_for_every_judge_within_its_limit_usaco = "usaco",
 }
 
 fn compile(

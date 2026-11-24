@@ -322,6 +322,14 @@ bounds (`var i: 1..=n = read()`). (R02.10.2)
   position (`V(x)` traps out of range; `V.at(x)` is `?V`). (R02.11.2)
 - No inheritance, no subtyping, no overloading by argument type
   (decision 127), no user-defined implicit conversions. (R02.11.3)
+- Overloading a generic struct by arity is allowed: `struct Prefix<D, T>`
+  and `struct Prefix<R, C, T>` in one module are two types, and a written
+  `Prefix<A, B, C>` names the one with three parameters. Each has its own
+  constructor, methods and impls (`impl Show for Prefix<R, C, T>`); the
+  count of type arguments picks the struct, never an argument's type. A
+  bare `Prefix` or `Prefix(..)` with no type arguments is the module's
+  first declared. Two of one name and one arity is a duplicate (E0202).
+  (R02.11.4)
 
 ## 2.12 Why, compared with C++, Python and Rust
 

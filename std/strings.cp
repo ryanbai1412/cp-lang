@@ -1080,7 +1080,6 @@ fn sa_rank_lcp<S: Indexed>(s: S) -> (List<Int>, List<Int>, List<Int>):
 pub struct SuffixArray<T: Ord>:
     pub sa: List<Int>
     rank: List<Int>
-    pub lcp: List<Int>
     rmq: LinearRmq<Int, Int>
     dcum: List<Int>
     src: List<T>
@@ -1108,7 +1107,16 @@ pub struct SuffixArray<T: Ord>:
                 let shared = if r == 0: 0 else: lcp[r - 1]
                 dcum[r + 1] = dcum[r] + (n - sa[r]) - shared
         let src = [s.nth(i) for i in 0..n]
-        SuffixArray(sa, rank, lcp, LinearRmq(lcp), dcum, src)
+        SuffixArray(sa, rank, LinearRmq(lcp), dcum, src)
+
+    /// `lcp[r]`, the LCP of the suffixes of ranks `r` and `r + 1`, for `r` in `0..n - 1`; it is the
+    /// array the LCP queries' RMQ is built over, not a copy.
+    ///
+    /// cost: \(O(1)\), lent
+    /// empty: `SuffixArray("a").lcp == []`
+    /// traps: never
+    /// example: `SuffixArray("banana").lcp == [1, 3, 0, 0, 2]`
+    @get pub fn lcp(self) -> List<Int> = rmq.values
 
     /// The length `n` of the sequence the suffix array was built over.
     ///
@@ -1145,7 +1153,7 @@ pub struct SuffixArray<T: Ord>:
         assert 0 <= i and i <= n and 0 <= j and j <= n, "`lcp_between(i, j)` needs `0 <= i, j <= len`"
         if i == j: return n - i
         if i == n or j == n: return 0
-        lcp[self.arg_min(min(rank[i], rank[j]), max(rank[i], rank[j]))]
+        self.lcp[self.arg_min(min(rank[i], rank[j]), max(rank[i], rank[j]))]
 
     /// The ranks `lo..hi` of the suffixes that start with `pat`. When there are None it is the
     /// empty range at the rank where `pat` would sort.
@@ -1216,8 +1224,8 @@ pub struct SuffixArray<T: Ord>:
         let n = sa.len
         assert 0 <= i and i < n and 0 <= len and len <= n - i, "`lcp_range(i, len)` needs `0 <= i < n` and `0 <= len <= n - i`"
         let p = rank[i]
-        let left = (0..p).first_true(mid => lcp[self.arg_min(mid, p)] >= len) ?? p
-        let right = (p + 1..n).last_true(mid => lcp[self.arg_min(p, mid)] >= len) ?? p
+        let left = (0..p).first_true(mid => self.lcp[self.arg_min(mid, p)] >= len) ?? p
+        let right = (p + 1..n).last_true(mid => self.lcp[self.arg_min(p, mid)] >= len) ?? p
         left..right + 1
 
     /// The lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: `-1`, `0` or `1`. A proper
@@ -1256,7 +1264,7 @@ pub struct SuffixArray<T: Ord>:
     /// example: `SuffixArray("banana").lcp_of_ranks(3..4) == 6`
     pub fn lcp_of_ranks(self, r: Range<Int>) -> Int:
         assert 0 <= r.start and r.start < r.end and r.end <= sa.len, "`lcp_of_ranks(r)` needs a non-empty `r` within `0..len`"
-        if r.end - r.start == 1: sa.len - sa[r.start] else: lcp[self.arg_min(r.start, r.end - 1)]
+        if r.end - r.start == 1: sa.len - sa[r.start] else: self.lcp[self.arg_min(r.start, r.end - 1)]
 
     /// Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose
     /// adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are
@@ -1286,7 +1294,7 @@ pub struct SuffixArray<T: Ord>:
         let n = sa.len
         if k >= dcum[n]: return None
         let lo = (1..=n - 1).last_true(mid => dcum[mid] <= k) ?? 0
-        let shared = if lo == 0: 0 else: lcp[lo - 1]
+        let shared = if lo == 0: 0 else: self.lcp[lo - 1]
         Some(sa[lo]..sa[lo] + shared + (k - dcum[lo]) + 1)
 
 /// The suffix array of `s`; the same as `SuffixArray(s)`.
@@ -3506,6 +3514,7 @@ fn suffix_array_lcp_queries_cross_rmq_blocks():
         let s = random_word(len, 2) + [if k % 2 == 0: 'a' else: 'b' for k in 0..120]
         let n = s.len
         let sa = SuffixArray(s)
+        assert sa.lcp == [common_prefix(s, sa.sa[k], sa.sa[k + 1]) for k in 0..n - 1]
         for _ in 0..300:
             let (i, j) = (rand(0, n - 1), rand(0, n - 1))
             assert sa.lcp_between(i, j) == common_prefix(s, i, j)

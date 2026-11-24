@@ -1,5 +1,6 @@
 // Tuned: a sieve of Eratosthenes on a Bitset instead of `Sieve`, which keeps a smallest-factor
 //   table four bytes per number.
+//   The walk prints as it goes instead of collecting the permutation first.
 //
 // Source: DMOPC '21 Contest 5 P4 (Permutations & Primes), https://dmoj.ca/problem/dmopc21c5p4
 // Problem: given N, print a permutation of 1..N whose adjacent gaps |p[i+1] - p[i]| are all
@@ -35,8 +36,6 @@ else:
     let up = primes.find(a => total - a > a and is_prime(total - a))!
     let down = total - up
     var at = 1
-    var walk: List<Int> = []
-    for _ in 0..n:
-        walk.push(at)
+    for i in 1..=n:
+        print(at, end: if i == n: "\n" else: " ")
         at = if at + up <= n: at + up else: at - down
-    print(walk)

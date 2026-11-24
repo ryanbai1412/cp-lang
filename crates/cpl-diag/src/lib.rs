@@ -13,7 +13,7 @@ mod render;
 mod source;
 pub mod usage;
 
-pub use fix::apply_fixes;
+pub use fix::{apply_fixes, splice};
 pub use registry::{lookup, CodeInfo, REGISTRY};
 pub use render::{render, render_all};
 pub use source::{LineCol, LineIndex};

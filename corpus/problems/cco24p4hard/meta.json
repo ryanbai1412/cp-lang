@@ -10,5 +10,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The accepted C++ is the reference. Many strategies are valid, so checker.py checks the move rules and that every pair of rooms meets by time T, and requires S <= 15 (the CEMC full-marks bound; the hard version takes only full marks). The statement's sample has N = 5, which its own constraints rule out (the reference prints nothing for it), so tests.toml leaves it out. Statement: CEMC's 2024 CCO problem set and Luogu P11517 (the DMOJ page is behind Cloudflare from here)."
 }

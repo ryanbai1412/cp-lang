@@ -23,11 +23,17 @@ The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear
 - `fn mobius_table(self) -> List<Int>` — \(O(n)\); The Mobius function of every `0..=n`, with `mu[0] == 0` and `mu[1] == 1`.
 - `fn div_count_table(self) -> List<Int>` — \(O(n)\); The number of positive divisors of every `0..=n`, with `d[0] == 0`.
 - `fn div_sum_table(self) -> List<Int>` — \(O(n)\); The sum of the positive divisors of every `0..=n`, with `sigma[0] == 0`.; traps: when a sum overflows `Int`
-- `fn divisors(self, x: Int) -> yields Int` — \(O(\log x)\) to start, \(O(1)\) per divisor; The positive divisors of `x` in `1..=n`, built from the factorization, with no allocation.; traps: when `x` is outside `1..=n`
+- `fn divisors(self, x: Int) -> yields Int` — \(O(1)\) to start, \(O(\log x)\) amortized per divisor; The positive divisors of `x` in `1..=n`, built from the factorization, with no allocation.; traps: when `x` is outside `1..=n`
 
 ## `enum Sign: Neg`
 
 Which side of zero a number is on.
+
+## `struct Exp(pub v: Int, pub m: Int)`
+
+An exponent `e >= 0` kept small enough to reduce: `v` is `e` itself when `e < m`, else `e % m + m`.
+
+- `fn of(e: Int, m: Int) -> Exp` — \(O(1)\); `e` kept for the modulus `m`.; traps: when `e < 0` or `m < 1`
 
 ## `struct DirichletSum<T: Add + Sub + Mul + Div>`
 
@@ -91,6 +97,8 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `fn pow_mod(a: Int, e: Int, m: Int) -> Int` — \(O(\log e)\) multiplications, each \(O(1)\); `a ** e mod m`, in `0..m`, for `e >= 0` and `m >= 1`; `a ** 0` is `1 % m`.; traps: when `e < 0` or `m < 1`
 - `fn is_prime(x: Int) -> Bool` — \(O(\log^2 x)\); Is `x` prime?
 - `fn phi(x: Int) -> Int` — \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above; Euler's totient of `x >= 1`: how many of `1..=x` are coprime to `x`.; traps: when `x < 1`
+- `fn pow_exp(a: Int, x: Exp, m: Int) -> Exp` — \(O(\log x.v)\) multiplications, each \(O(1)\); `a ** e` kept for the modulus `m`, where `x` keeps `e` for `phi(m)`: `pow_exp(a, x, m).v % m` is `a ** e mod m`, and the result is the exponent the next modulus up, the `M` with `phi(M) == m`, raises by.; traps: when `a < 0` or `m < 1`
+- `fn pow_tower(xs: List<Int>, m: Int) -> Int` — \(O(k \log m)\) multiplications and \(O(\min(k, \log m))\) `phi` calls; The power tower `xs[0] ** (xs[1] ** (...; traps: when an entry is negative or `m < 1`
 - `fn primitive_root(p: Int) -> Int` — \(O(p^{1/4} \log p)\) expected to factor `p - 1`, then \(O(\log^2 p)\) per candidate; The smallest primitive root modulo the prime `p`: the least `g >= 1` whose powers reach every non-zero residue.; traps: when `p` is not prime
 - `fn mod_log(a: Int, b: Int, m: Int) -> ?Int` — \(O(\sqrt m)\); The least `x >= 0` with `a^x = b (mod m)`, or `None` if there is None.; traps: when `m < 1`
 - `fn mod_sqrt(a: Int, p: Int) -> ?Int` — \(O(\log^2 p)\); A square root `x` in `0..p` with `x * x = a (mod p)` for prime `p`, or `None` if `a` is a quadratic non-residue (Tonelli-Shanks).; traps: when `p` is not prime

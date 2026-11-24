@@ -92,76 +92,49 @@ pub fn strip_comment(line: &str) -> &str {
     line
 }
 
-/// A table of [`FILE`] and the keys its reader takes.
+/// A table of [`FILE`] and the keys its reader takes; `*` is any name the
+/// reader accepts.
 pub struct Table {
     pub name: &'static str,
-    /// The crate that reads it.
-    pub reader: &'static str,
-    pub doc: &'static str,
-    /// Each key and what it sets; `*` is any name the reader accepts.
-    pub keys: &'static [(&'static str, &'static str)],
+    pub keys: &'static [&'static str],
 }
 
-/// Every table a tool reads from [`FILE`].
-pub const SCHEMA: &[Table] = &[
-    Table {
-        name: "fmt",
-        reader: "cpl-fmt",
-        doc: "The layout `cpl fmt` writes.",
-        keys: &[
-            ("indent_width", "spaces per indent, 2 to 8 (default 4)"),
-            (
-                "line_width",
-                "the width a line wraps at, 40 to 200 (default 100)",
-            ),
-        ],
-    },
-    Table {
-        name: "lints",
-        reader: "cpl-lint",
-        doc: "Lint levels: each lint or group is \"allow\", \"warn\" or \"deny\".",
-        keys: &[
-            (
-                "memory_mb",
-                "the memory a solution may use, for memory lints",
-            ),
-            ("*", "a lint or group name: its level"),
-        ],
-    },
-    Table {
-        name: "libs",
-        reader: "cpl-check",
-        doc: "Libraries a program may `use`, each by the folder it is in.",
-        keys: &[(
-            "*",
-            "a library name: `\"path\"` or `{ path = \"path\" }`, relative to this file or `~/`",
-        )],
-    },
-    Table {
-        name: "limits",
-        reader: "cpl-contest",
-        doc: "A problem's limits, under its own `// limits:` line.",
-        keys: &[
-            ("time_ms", "the time limit in milliseconds"),
-            ("memory_mb", "the memory limit in megabytes"),
-        ],
-    },
-    Table {
-        name: "judge",
-        reader: "cpl-judge",
-        doc: "The judge profile a build targets, under `--judge` and `// judge:`.",
-        keys: &[("judge", "a profile's name in quotes")],
-    },
-    Table {
-        name: "judge.*",
-        reader: "cpl-judge",
-        doc: "Changes to a judge profile; one that isn't built in says what it `extends`.",
-        keys: &[
-            ("extends", "the built-in profile it starts from"),
-            ("*", "a profile key (spec/tools/judge-profiles.md)"),
-        ],
-    },
-];
+/// `SCHEMA` and, for the docs only (so not in cpl.wasm), what each table and
+/// key is for: `name by reader: doc { key => meaning }`.
+macro_rules! schema {
+    ($($name:literal by $reader:literal: $doc:literal { $($key:literal => $meaning:literal),* $(,)? })*) => {
+        /// Every table a tool reads from [`FILE`].
+        pub const SCHEMA: &[Table] = &[$(Table { name: $name, keys: &[$($key),*] }),*];
+        /// `SCHEMA`'s readers, docs and key meanings, in its order.
+        #[cfg(test)]
+        const DOCS: &[(&str, &str, &[&str])] = &[$(($reader, $doc, &[$($meaning),*])),*];
+    };
+}
+
+schema! {
+    "fmt" by "cpl-fmt": "The layout `cpl fmt` writes." {
+        "indent_width" => "spaces per indent, 2 to 8 (default 4)",
+        "line_width" => "the width a line wraps at, 40 to 200 (default 100)",
+    }
+    "lints" by "cpl-lint": "Lint levels: each lint or group is \"allow\", \"warn\" or \"deny\"." {
+        "memory_mb" => "the memory a solution may use, for memory lints",
+        "*" => "a lint or group name: its level",
+    }
+    "libs" by "cpl-check": "Libraries a program may `use`, each by the folder it is in." {
+        "*" => "a library name: `\"path\"` or `{ path = \"path\" }`, relative to this file or `~/`",
+    }
+    "limits" by "cpl-contest": "A problem's limits, under its own `// limits:` line." {
+        "time_ms" => "the time limit in milliseconds",
+        "memory_mb" => "the memory limit in megabytes",
+    }
+    "judge" by "cpl-judge": "The judge profile a build targets, under `--judge` and `// judge:`." {
+        "judge" => "a profile's name in quotes",
+    }
+    "judge.*" by "cpl-judge": "Changes to a judge profile; one that isn't built in says what it `extends`." {
+        "extends" => "the built-in profile it starts from",
+        "*" => "a profile key (spec/tools/judge-profiles.md)",
+    }
+}
 
 /// The table of `SCHEMA` a `[name]` header opens: `judge.fast` opens `judge.*`.
 pub fn schema_table(name: &str) -> Option<&'static Table> {
@@ -194,7 +167,7 @@ pub fn check(text: &str) -> Vec<(usize, String)> {
         let key = line.split_once('=').map_or(line, |(k, _)| k.trim());
         match table {
             None => out.push((index + 1, format!("`{key}` is outside any table"))),
-            Some(Some(t)) if !t.keys.iter().any(|(k, _)| *k == key || *k == "*") => {
+            Some(Some(t)) if !t.keys.iter().any(|k| *k == key || *k == "*") => {
                 out.push((index + 1, format!("`[{}]` has no key `{key}`", t.name)))
             }
             Some(_) => {}
@@ -215,11 +188,11 @@ mod tests {
              The nearest `cp.toml` at or above a program's folder configures the tools. \
              `cpl lint` reports a table or key not listed here.\n",
         );
-        for t in SCHEMA {
+        for (t, (reader, doc, meanings)) in SCHEMA.iter().zip(DOCS) {
             let name = t.name.replace('*', "<name>");
-            out += &format!("\n## `[{name}]`\n\n{} Read by `{}`.\n\n", t.doc, t.reader);
+            out += &format!("\n## `[{name}]`\n\n{doc} Read by `{reader}`.\n\n");
             out += "| Key | Meaning |\n|---|---|\n";
-            for (key, doc) in t.keys {
+            for (key, doc) in t.keys.iter().zip(*meanings) {
                 let key = if *key == "*" { "<name>" } else { key };
                 out += &format!("| `{key}` | {doc} |\n");
             }

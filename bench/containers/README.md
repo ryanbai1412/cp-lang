@@ -24,6 +24,7 @@ Summary across all 13 benchmarks (`bash bench/containers/run.sh`): **p50 = 0.95x
 | `hash_lookup` | 200k keys, 2M lookups (hit+miss) | `__gnu_pbds::gp_hash_table` (`splitmix64`) | 70.0 ms | 88.3 ms | **0.79x** |
 | `hash_antihash` | 250k multiples of `126271` & `64` | `__gnu_pbds::gp_hash_table` (`splitmix64`) | 42.2 ms | 66.3 ms | **0.64x** |
 | `hash_str_grow` | 300k `Str` inserts grown from empty + 300k lookups (half miss); peak RSS 21 MB (33 MB when a rehash kept the old `Str` table whole) | `__gnu_pbds::gp_hash_table<std::string, ll>` | 160 ms | 210 ms | **0.76x** |
+| `hash_counter` | 4M `Counter.add` on 1M one-field struct keys, a quarter of them `-1` (erase at 0) | `__gnu_pbds::gp_hash_table` (`splitmix64`), `insert` then erase at 0 | 135 ms | 205 ms | **0.66x** |
 | `bitset` | 200k-bit `subset_sums` + 200 `shift_or` + `&-chain` popcount | `std::bitset<200001>` | 8.1 ms | 8.4 ms | **0.96x** |
 | `flatmap` | 300k `FlatMap.set` + 1M `FlatMap.get` | `__gnu_pbds::gp_hash_table` (`splitmix64`) | 58.6 ms | 61.4 ms | **0.95x** |
 | `monodeque` | 2M sliding-window minimums (`w=1000`) | flat `vector<pair<int, ll>>` + head | 25.9 ms | 26.6 ms | **0.98x** |

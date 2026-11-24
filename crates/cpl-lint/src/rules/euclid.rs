@@ -57,9 +57,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 _ => (Span::new(e.span.end, added.span.end), String::new()),
             };
             let span = expr.span.shift(self.base);
-            let mut fixed = span.text(self.src).to_string();
-            let at = (edit.0.start - expr.span.start) as usize;
-            fixed.replace_range(at..at + edit.0.len() as usize, &edit.1);
+            let at = edit.0.start - expr.span.start;
+            let local = Span::new(at, at + edit.0.len());
+            let Some(fixed) = cpl_diag::splice(span.text(self.src), vec![(local, edit.1.clone())])
+            else {
+                return;
+            };
             let mut diag = Diagnostic::warning(
                 NEG_MOD_FIXUP.code,
                 span,

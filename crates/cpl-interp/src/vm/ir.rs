@@ -253,6 +253,13 @@ pub(crate) enum Op {
         a: u16,
         b: u16,
     },
+    /// `?Int max=` in registers: `None` orders below every `Int`.
+    MaxOptI {
+        val: u16,
+        some: u16,
+        b_val: u16,
+        b_some: u16,
+    },
     AbsI {
         dst: u16,
         a: u16,
@@ -1306,14 +1313,19 @@ pub(crate) enum Op {
     /// in `src` goes to the body as the tree-walker's `yield` sends it,
     /// the yielded local `back - 1` (if not 0) takes the loop variable
     /// back, the push to list `acc` (the `Assign` trace point `point`) is
-    /// reported, and the run goes on at `skip`. Otherwise the next op, a
-    /// fallback, pushes it.
+    /// reported, and the run goes on at `skip`. Otherwise the next ops
+    /// push it.
     FeedTree {
         src: u16,
         back: u16,
         acc: u16,
         point: u32,
         skip: u32,
+    },
+    /// To `target` where the tree-walker runs a fed loop eagerly: in a
+    /// closure, or in a generator a loop is being fed from.
+    JmpEager {
+        target: u32,
     },
     FeedBodyNext,
     FeedBodyBreak,
@@ -1569,6 +1581,16 @@ pub(crate) enum CapSrc {
 pub(crate) struct ClosureMakeSpec {
     pub cid: u32,
     pub caps: Vec<CapSrc>,
+}
+
+/// A traced chunk's fed loop: its call op runs the `yields` fn on the
+/// tree-walker's call path, which feeds each value to the body.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct TracedFeed<'p> {
+    pub id: cpl_ir::LoopId,
+    pub slot: Slot,
+    pub acc: usize,
+    pub body: &'p cpl_ir::Block,
 }
 
 #[derive(Clone, Debug)]

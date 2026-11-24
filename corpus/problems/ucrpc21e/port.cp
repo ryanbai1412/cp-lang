@@ -6,11 +6,11 @@
 // Solution: each time unit independently takes the better of the two mouths, so the answer
 //   is the sum over time of max(upper rate, lower rate). One event per interval endpoint
 //   (+worth at a, -worth at b + 1), sorted; the sweep adds gap * max rate. O((n + m) log).
-// Bounds: len: 1..=1e9; n, m: 0..=1e5; windows.a, windows.b: 1..=len
+// Bounds: len: 1..=1e9; n, m: 0..=1e5; windows.a, windows.b: 0..len
 // original: corpus/submissions/3944571.cpp
 let (len, n, m): (1..=1e9, 0..=1e5, 0..=1e5) = read()
 domain Mouth = [2]
-type Window = (a: 1..=len, b: 1..=len, rainbow: Bool)
+type Window = (a: 0..len, b: 0..len, rainbow: Bool)
 let windows: [Mouth]List<Window> = [List(read<[n]Window>()), List(read<[m]Window>())]
 
 let worth = (w: Window) => if w.rainbow: 3 else: 1
@@ -21,7 +21,7 @@ for mouth in Mouth:
         changes.push((at: w.b + 1, mouth:, d: -worth(w)))
 changes.sort()
 var rate: [Mouth]Int = 0
-var (score, last) = (0, 1)
+var (score, last) = (0, 0)
 for c in changes:
     score += (c.at - last) * rate.max()!
     rate[c.mouth] += c.d

@@ -266,7 +266,7 @@ pub(super) fn signature_of(
                             named_only: p.named_only,
                         })
                         .collect(),
-                    ret_of(&entry.detail).unwrap_or("").to_string(),
+                    entry.ret().unwrap_or("").to_string(),
                 ),
                 // A struct called as its constructor takes its fields.
                 Kind::Struct => (
@@ -274,15 +274,12 @@ pub(super) fn signature_of(
                         .members
                         .iter()
                         .filter(|m| m.kind == Kind::Field)
-                        .map(|m| {
-                            let ty = m.detail.split_once(": ").map_or("", |(_, t)| t);
-                            SigParam {
-                                name: m.name.clone(),
-                                ty: ty.to_string(),
-                                variadic: false,
-                                default: String::new(),
-                                named_only: false,
-                            }
+                        .map(|m| SigParam {
+                            name: m.name.clone(),
+                            ty: m.ty.clone(),
+                            variadic: false,
+                            default: String::new(),
+                            named_only: false,
                         })
                         .collect(),
                     entry.name.clone(),

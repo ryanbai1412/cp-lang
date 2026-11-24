@@ -84,7 +84,7 @@ inline ll parse_int(StrView s) { return std::stoll(s.to_str()); }
         name: "put_str_view",
         needs: &["out", "str_view"],
         code: "\
-inline void put_str(StrView s) { append_str_view(out, s); }
+inline void put_str(StrView s) { append_str_view(out, s); spill(); }
 ",
     },
     Piece {

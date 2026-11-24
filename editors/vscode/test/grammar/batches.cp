@@ -38,4 +38,4 @@ print(s.first, s.first(), m.pop_first(), s.find_all("bc"), step((r, c), d))
 //               ^^^^^ entity.name.function.method.cp
 //                          ^^^^^^^^^ entity.name.function.method.cp
 //                                         ^^^^^^^^ entity.name.function.method.cp
-//                                                         ^^^^ support.function.builtin.cp
+//                                                         ^^^^ support.function.stdlib.cp

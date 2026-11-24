@@ -37,9 +37,11 @@ template <class T, class S, S NONE> struct Niche {
     explicit operator std::optional<T>() const { return *this ? std::optional<T>(**this) : std::nullopt; }
     friend bool operator==(Niche a, Niche b) { return a.raw == b.raw; }
     friend bool operator!=(Niche a, Niche b) { return a.raw != b.raw; }
-    // `none` is below every value; when NONE is the least S, the raw order says so already.
+    // A negative `none` is below every value it stands for (positions and bytes are never
+    // negative, Int and I32 take the least), so the order is the raw one: no branch.
+    static constexpr bool none_first = NONE < S(0);
     friend bool operator<(Niche a, Niche b) {
-        if constexpr (NONE == std::numeric_limits<S>::min()) return a.raw < b.raw;
+        if constexpr (none_first) return a.raw < b.raw;
         else return b && (!a || *a < *b);
     }
 };
@@ -128,6 +130,35 @@ template <auto M> struct OptField {
         code: "\
 // An Int is never INT64_MIN, so that is `none`.
 using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;
+",
+    },
+    Piece {
+        name: "keep_max_plus",
+        needs: &["niche_int", "iarith"],
+        code: "\
+// `for l in lo..hi: if let w = row[l]: acc[l] max= Some(base + w)`. `none` is the least raw
+// value, so one branch-free pass does it and g++ can vectorise it; every add's overflow goes
+// into one flag, and a pass that overflowed runs again as written, so it traps as written.
+// The flag is a sign bit: an add overflowed when (base ^ s) & (w ^ s) is negative, and it made
+// `none`'s INT64_MIN when (z - 1) & ~z is, z being s ^ INT64_MIN; both stay plain ops g++ vectorises.
+inline void keep_max_plus(OptInt* acc, const OptInt* row, ll base, ll lo, ll hi) {
+    constexpr ll NO = std::numeric_limits<ll>::min();
+    ll* to = &acc[0].raw;
+    const ll* from = &row[0].raw;
+    ll bad = 0;
+    for (ll l = lo; l < hi; l++) {
+        ll w = from[l], s = (ll)((unsigned long long)base + (unsigned long long)w);
+        ll z = s ^ NO;
+        ll made_none = (ll)((unsigned long long)z - 1) & ~z;
+        ll wrapped = (base ^ s) & (w ^ s);
+        ll v = w != NO ? s : NO;
+        bad |= w != NO ? (wrapped | made_none) : 0;
+        to[l] = to[l] > v ? to[l] : v;
+    }
+    if (bad < 0)
+        for (ll l = lo; l < hi; l++)
+            if (row[l]) acc[l] = std::max(acc[l], OptInt(iadd(base, *row[l])));
+}
 ",
     },
     Piece {

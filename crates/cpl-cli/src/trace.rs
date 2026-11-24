@@ -42,6 +42,11 @@ pub fn html(trace_json: &str) -> String {
     fill(&page, "trace-data", trace_json)
 }
 
+/// The longest naming a trap's locals may take: retracing the run's end
+/// can cost far more than the run when its state is large, and the trap
+/// is reported without them past this.
+const TRAP_RETRACE: std::time::Duration = std::time::Duration::from_secs(3);
+
 /// The innermost call's locals where `program` trapped on `input`, from a
 /// second run, recorded; `None` when it has none or stops elsewhere.
 pub fn trap_locals(
@@ -56,7 +61,15 @@ pub fn trap_locals(
     }
     // Untraced again with checkpoints, and only the end traced from the last one.
     let config = cpl_interp::trace::trap_config(source);
-    let observed = cpl_interp::trace::resumed_tail(program, input, &mut std::io::sink(), config, 1);
+    let stop = cpl_interp::Stop::after(TRAP_RETRACE);
+    let observed = cpl_interp::trace::resumed_tail_until(
+        program,
+        input,
+        &mut std::io::sink(),
+        config,
+        1,
+        stop,
+    );
     (observed.trap?.message == trap.message).then_some(())?;
     let at = source.get(trap.span.start as usize..trap.span.end as usize);
     cpl_interp::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))

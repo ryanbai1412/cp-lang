@@ -6,10 +6,10 @@
 //   `earliest[v]` in the previous block, or one new road. best[c] = least roads for the towns
 //   from cut c on when a block starts at c. For a block starting at town i, the next block may
 //   start only at a cut from which no town has an earliest neighbour before i (it would have
-//   been found sooner): `later` is the suffix min of `earliest`, so the first such cut is a
-//   binary search. Scanning i down, a town whose earliest neighbour is i, or who has none,
-//   costs one road for every next-block start past it: a lazy SegTree of ?Int minimums with
-//   range add (cuts not yet solved are None). O((n + m) log n).
+//   been found sooner): `later` is the suffix min of `earliest`, and that first cut only moves
+//   left as i does, so one pointer finds it. Scanning i down, a town whose earliest neighbour
+//   is i, or who has none, costs one road for every next-block start past it: a lazy SegTree
+//   of ?Int minimums with range add (cuts not yet solved are None). O((n + m) log n).
 // original: corpus/submissions/4554642.cpp
 // Bounds: n: 2..=2e5; m: 1..=2e5; a, b: 1..=n
 let (n, m): (2..=2e5, 1..=2e5) = read()
@@ -27,9 +27,10 @@ for v in Town.rev: later[v.l] = min(later[v.r], earliest[v])
 let add_min = Action<?Int, Int>(0, (f, g) => f + g, (f, x, _) => x.map(y => y + f), over: Monoid<?Int>(None, min))
 var best = SegTree(add_min.over, [Town.cuts] c => if c == Town.cuts.last!: Some(0) else: None, act: add_min)
 let end = Town.cuts.last!
+var next = end
 for i in Town.drop(1).rev:
     for v in found_by[i]: best.apply(v.r..=end, 1)
     if earliest[i] == None: best.apply(i.r..=end, 1)
-    let next = Town.cuts((Int(i.r)..=n).first_true(k => later[Town.cuts(k)].is_none_or(e => e >= i))!)
+    while next > i.r and later[Town.cuts(Int(next) - 1)].is_none_or(e => e >= i): next = Town.cuts(Int(next) - 1)
     best.set(i.l, best.fold(next..=end))
 print(best.get(Town(2).l)!)

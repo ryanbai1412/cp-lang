@@ -8,5 +8,4 @@
 
 @!multitest
 let n: 1..=200_000 = read()
-let desc = (1..n).rev
-print(desc + [n] + desc.rev + [n])
+print((1..n).rev, n, 1..n, n)

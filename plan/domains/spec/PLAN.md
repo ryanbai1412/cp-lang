@@ -40,7 +40,7 @@ Workstreams 1-3 below are landed; 4-6 continue in the order above.
 ## Risks
 
 - Pass rate drops as coverage grows (new failing cases). That is the point; report cases added and cases passing separately.
-- Parallel lanes regenerate `COVERAGE.md`; conflicts are resolved by regenerating, never by hand.
+- The coverage report is built (`target/spec/COVERAGE.md`, CI artifact), not committed, so it never conflicts.
 - Rulings that need Ryan (QUESTIONS.md) could leave cases contradicting the spec; meanwhile the case follows the stated default and cites the question.
 - Ownership gap on `crates/cpl-conform` slows M1 and M2 tooling.
 

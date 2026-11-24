@@ -21,6 +21,7 @@ use std.dsu.{Dsu}
 use std.heap.{Heap, MinHeap}
 use std.math.{gcd}
 use std.opt.{is_none_or}
+use std.rand.{shuffle}
 use std.seq.{collect, reverse, count, map, Slice}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
@@ -145,7 +146,7 @@ pub type Digraph<V, E> = [E](u: V, v: V)
 /// A fixed graph in compressed sparse row form: n + 1 offsets and one arcs
 /// list, the arcs of each vertex contiguous and in input order. Immutable; a
 /// graph that grows is a `[V]List` of arcs, which is already a `Next`.
-pub struct Graph<V: Domain, A: Target<V>>:
+pub struct Graph<V: Domain, A: Target<V> = V>:
     pub start: [V.cuts]Int
     pub arcs: List<A>
 
@@ -253,17 +254,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g[0].len == 2 and g[1].len == 0`
     pub fn at(self, u: V) -> lends Slice<A> = arcs[start[u.ord]..start[u.ord + 1]]
-
-    /// The arcs out of `u`, lazily: the `Next` implementation.
-    ///
-    /// cost: \(O(1)\) to make, \(O(1)\) per arc
-    /// order: input order
-    /// traps: never
-    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
-    pub fn out(self, u: V) -> yields A:
-        unchecked:
-            for i in start[u.ord]..start[u.ord + 1]:
-                yield arcs[i]
 
     /// The weight matrix: `d[u, v]` is the least `.w` over the arcs `u -> v`, `None` without
     /// one. The diagonal holds the least loop weight, or `None`; `floyd_warshall` starts it at
@@ -460,6 +450,20 @@ pub struct Graph<V: Domain, A: Target<V>>:
                 src[tstart[arcs[i].to.ord]] = i
         let tarcs = src.map(i => reversed_arc(arcs[i], from[i])).collect()
         Graph<V, A>(start: tstart, arcs: tarcs)
+
+impl Next<V> for Graph<V, A>:
+    type Arc = A
+
+    /// The arcs out of `u`, lazily: the `Next` implementation.
+    ///
+    /// cost: \(O(1)\) to make, \(O(1)\) per arc
+    /// order: input order
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
+    fn out(self, u: V) -> yields A:
+        unchecked:
+            for i in start[u.ord]..start[u.ord + 1]:
+                yield arcs[i]
 
 /// Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the
 /// vertices in removal order.
@@ -2788,70 +2792,61 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 3)]; let (domain B, block) = blocks(Graph.undirected(es)); B.count == 2 and block[0] == block[1] and block[1] == block[2] and block[3] != block[0]`
 pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
-    let out = [V] u => [(to: a.to, e: a.e) for a in g.out(u)]
-    var tin: [V]?Int = None
+    var start: [V.cuts]Int = 0
+    var to = List<V>()
+    var eid = List<E>()
+    for u in V:
+        for a in g.out(u):
+            to.push(a.to)
+            eid.push(a.e)
+        start[u.r] = to.len
+    var next: [V]Int = [V] u => start[u.l]
+    var tin: [V]Int = -1
     var low: [V]Int = 0
+    var up: [V]?E = None
+    var raw: [E]Int = -1
+    var path = List<V>()
+    var open = List<E>()
     var timer = 0
-    var estk = List<E>()
-    var in_stk: [E]Bool = false
-    var raw: [E]?Int = None
     var nblocks = 0
-    var stk_v = List<V>()
-    var stk_pe = List<?E>()
-    var stk_i = List<Int>()
     for root in V:
-        if tin[root] != None: continue
+        if tin[root] >= 0: continue
         tin[root] = timer
         low[root] = timer
         timer += 1
-        stk_v.push(root)
-        stk_pe.push(None)
-        stk_i.push(0)
-        while stk_v.len > 0:
-            let top = stk_v.len - 1
-            let u = stk_v[top]
-            let i = stk_i[top]
-            if i < out[u].len:
-                stk_i[top] = i + 1
-                let a = out[u][i]
-                let v = a.to
-                let e = a.e
-                if v == u: continue
-                if stk_pe[top] == Some(e): continue
-                if tin[v] == None:
-                    in_stk[e] = true
-                    estk.push(e)
+        path.push(root)
+        while let u = path.last:
+            let i = next[u]
+            if i < start[u.r]:
+                next[u] = i + 1
+                let v = to[i]
+                let e = eid[i]
+                if v == u or up[u] == Some(e): continue
+                if tin[v] < 0:
+                    open.push(e)
+                    up[v] = Some(e)
                     tin[v] = timer
                     low[v] = timer
                     timer += 1
-                    stk_v.push(v)
-                    stk_pe.push(Some(e))
-                    stk_i.push(0)
-                elif tin[v]! < tin[u]!:
-                    if not in_stk[e]:
-                        in_stk[e] = true
-                        estk.push(e)
-                    low[u] min= tin[v]!
+                    path.push(v)
+                elif tin[v] < tin[u]:
+                    open.push(e)
+                    low[u] min= tin[v]
             else:
-                let pe = stk_pe[top]
-                stk_v.pop()
-                stk_pe.pop()
-                stk_i.pop()
-                if stk_v.len > 0:
-                    let p = stk_v.last!
+                path.pop()
+                if let p = path.last:
                     low[p] min= low[u]
-                    if low[u] >= tin[p]!:
-                        let pe_val = pe!
-                        while let x = estk.pop():
+                    if low[u] >= tin[p]:
+                        while let x = open.pop():
                             raw[x] = nblocks
-                            if x == pe_val: break
+                            if Some(x) == up[u]: break
                         nblocks += 1
     for e in E:
-        if raw[e] == None:
+        if raw[e] < 0:
             raw[e] = nblocks
             nblocks += 1
     domain B = 0..nblocks
-    (B, [E] e => B.nth(raw[e]!))
+    (B, [E] e => B.nth(raw[e]))
 
 /// The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that
 /// `missing.out(u)` does not reach. Its own `out(u)` is \(O(\lvert V \rvert)\), but
@@ -3819,14 +3814,15 @@ pub struct IncrementalBridges<V>:
 /// `V` order for an undirected one).
 pub struct Edge<V, E>(pub e: E, pub u: V, pub v: V)
 
-/// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
+/// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex. Each arc goes
+/// `u -> v` only; an arc may carry more fields, and `arcs` may be any walk (a filter view too).
 ///
 /// cost: \(O(n + m)\)
 /// empty: `domain V = 0..2; adjacency(List<(u: V, v: V)>()) == [[], []]`
 /// order: each vertex's arcs in input order
 /// traps: never
 /// example: `domain V = 0..3; adjacency([(u: V(0), v: V(2)), (u: V(0), v: V(1))])[0] == [2, 1]`
-pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>:
+pub fn adjacency<S: Seq<R>, R: (u: V, v: V, ..), V>(arcs: S) -> [V]List<V>:
     var adj: [V]List<V> = []
     for a in arcs: adj[a.u].push(a.v)
     adj
@@ -3952,6 +3948,20 @@ impl Show for Reweighted<V, E, A, W>:
             for a in r.out(u):
                 if not out.is_empty: out += " "
                 out += "{u}->{a.to}:{a.w}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for Only<V: Domain, G: Next<V>>:
+    /// Every kept arc as `u->v`, space-separated in vertex then arc order; `no arcs` for none.
+    ///
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; "{g.only(keep: v => v != 1)}" == "0->2"`
+    fn show(o):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for a in o.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{a.to}"
         if out.is_empty: return "no arcs"
         out
 

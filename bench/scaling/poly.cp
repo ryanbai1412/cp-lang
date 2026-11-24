@@ -28,7 +28,8 @@ for _ in 0..12:
     acc ^= bell_table<998_244_353>(n).len // timed: poly.bell_table
     acc ^= bernoulli_table<998_244_353>(n).len // timed: poly.bernoulli_table
     acc ^= partition_table<998_244_353>(n).len // timed: poly.partition_table
-acc ^= eval_all(a, xs).len // timed: poly.eval_all
+for _ in 0..2:
+    acc ^= eval_all(a, xs).len // timed: poly.eval_all
 acc ^= compose(a, z, n).len // timed: poly.compose
 acc ^= interpolate(xs, a).len // timed: poly.interpolate
 acc ^= compose_inv(z, n).len // timed: poly.compose_inv

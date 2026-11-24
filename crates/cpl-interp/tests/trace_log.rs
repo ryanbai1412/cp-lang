@@ -2,38 +2,10 @@
 //! step rebuilt from it is the step the run took.
 
 mod common;
+mod counting;
 use common::program;
 use cpl_interp::trace::{Recording, TraceConfig};
-use std::alloc::{GlobalAlloc, Layout, System};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
-
-/// Counts the bytes in use, so the budget is what the recording holds,
-/// not what it estimates.
-struct Counting;
-
-static IN_USE: AtomicUsize = AtomicUsize::new(0);
-
-unsafe impl GlobalAlloc for Counting {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        IN_USE.fetch_add(layout.size(), Ordering::Relaxed);
-        unsafe { System.alloc(layout) }
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        IN_USE.fetch_sub(layout.size(), Ordering::Relaxed);
-        unsafe { System.dealloc(ptr, layout) }
-    }
-
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, size: usize) -> *mut u8 {
-        IN_USE.fetch_add(size, Ordering::Relaxed);
-        IN_USE.fetch_sub(layout.size(), Ordering::Relaxed);
-        unsafe { System.realloc(ptr, layout, size) }
-    }
-}
-
-#[global_allocator]
-static COUNTING: Counting = Counting;
 
 fn record(source: &str, input: &str, config: TraceConfig) -> Recording {
     let config = TraceConfig {
@@ -458,11 +430,11 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             );
         });
         out.clear();
-        let before = IN_USE.load(Ordering::Relaxed);
+        let before = counting::usage().0;
         let observed =
             cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut out, Some(config));
         let rec = observed.recording.unwrap();
-        let held = IN_USE.load(Ordering::Relaxed) - before;
+        let held = counting::usage().0 - before;
         let mut back = std::time::Duration::ZERO;
         for k in [
             rec.len() - 1,

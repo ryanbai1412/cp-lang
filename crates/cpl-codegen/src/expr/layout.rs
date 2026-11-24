@@ -29,18 +29,22 @@ impl<'p> Emitter<'p> {
     ) -> String {
         let n = self.dim(&dims[0]);
         match value {
-            Some(v) => match layout {
-                Some(cpl_ir::NarrowLayout::Seq(inner)) => {
-                    let text = self.expr_with_elem_layout(v, Some(inner)).text;
-                    format!("{n}, {text}")
-                }
-                Some(l) => {
-                    let text = self.expr(v).text;
-                    format!("{n}, {}", self.narrow_cell_value(&text, l))
-                }
-                None => format!("{n}, {}", self.stored(v)),
-            },
+            Some(v) => format!("{n}, {}", self.fill_value(v, layout)),
             None => n,
+        }
+    }
+
+    /// A filled array's cell value, as the array's cells hold it.
+    pub fn fill_value(&mut self, v: &Expr, layout: Option<&cpl_ir::NarrowLayout>) -> String {
+        match layout {
+            Some(cpl_ir::NarrowLayout::Seq(inner)) => {
+                self.expr_with_elem_layout(v, Some(inner)).text
+            }
+            Some(l) => {
+                let text = self.expr(v).text;
+                self.narrow_cell_value(&text, l)
+            }
+            None => self.stored(v),
         }
     }
 

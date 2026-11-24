@@ -28,7 +28,6 @@ use std.algebra.{
     desc,
     each,
     flip,
-    fold,
     minmax,
     pow,
 }
@@ -196,6 +195,7 @@ use std.mo.{mo}
 use std.mod.{Comb, Mod}
 use std.opt.{and_then, is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}
+use std.rand.{shuffle}
 use std.range.{RingRange}
 use std.search.{
     split_best,

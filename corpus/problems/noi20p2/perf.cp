@@ -1,6 +1,6 @@
 // Tuned: the accepted C++'s pool of lazy affine segment trees over depths, merged by
-// multiplying, in plain lists: a node holds a pending x => x * mu + ad, so a vertex's own state
-// is one node instead of a std MergeTrees root-to-leaf path, and the merge hook is inline.
+// multiplying, in one reserved pool: a node holds a pending x => x * mu + ad, so a vertex's
+// own state is one node instead of a std MergeTrees root-to-leaf path, and the merge hook is inline.
 //
 // Source: NOI 2020 P2 (Destiny), https://dmoj.ca/problem/noi20p2
 // limits: 2000 ms, 1024 MB
@@ -24,57 +24,59 @@ let m: 1..=5e5 = read()
 domain P = 0..m
 let paths: [P](u: V, v: V) = read()
 
-let tree = Rooted(Graph<V, E>.undirected(edges), V.first!)
+let tree = Rooted(Graph.undirected(edges), V.first!)
 var top: [V]Int = -1  // the depth of the deepest pair top over v, -1 if none
 for p in P: top[paths[p].v] max= tree.depth(paths[p].u)
 
 // segment trees over depths 0..=n; node 0 is the all-zero tree
 type Node = 0..=1 << 26  // a pool index, stored narrow
-var (lc, rc): (List<Node>, List<Node>) = ([0], [0])
-var (mu, ad) = ([Z(0)], [Z(0)])
+struct Tree:  // children, and the pending x => x * mu + ad
+    var lc: Node
+    var rc: Node
+    var mu: Z
+    var ad: Z
+var pool = [Tree(0, 0, Z(0), Z(0))]
+pool.reserve(20 * n)  // the accepted C++'s pool size; a vertex adds O(log n) nodes
 fn alloc() -> Node:
-    lc.push(0)
-    rc.push(0)
-    mu.push(Z(1))
-    ad.push(Z(0))
-    lc.len - 1
-fn leaf(o: Int) -> Bool = lc[o] == 0 and rc[o] == 0
+    pool.push(Tree(0, 0, Z(1), Z(0)))
+    pool.len - 1
+fn leaf(o: Int) -> Bool = pool[o].lc == 0 and pool[o].rc == 0
 
 fn get(root: Int, at: Int) -> Z:
     var (o, lo, hi, k, b) = (root, 0, n, Z(1), Z(0))
     while o != 0:
-        (k, b) = (mu[o] * k, ad[o] * k + b)  // a node's map runs before its ancestors'
+        (k, b) = (pool[o].mu * k, pool[o].ad * k + b)  // a node's map runs before its ancestors'
         let mid = (lo + hi) / 2
         if at <= mid:
-            (o, hi) = (lc[o], mid)
+            (o, hi) = (pool[o].lc, mid)
         else:
-            (o, lo) = (rc[o], mid + 1)
+            (o, lo) = (pool[o].rc, mid + 1)
     b
 
 fn push_child(o: Int, c0: Int) -> Int:
     let c = if c0 == 0: alloc() else: c0
-    (mu[c], ad[c]) = (mu[c] * mu[o], ad[c] * mu[o] + ad[o])
+    (pool[c].mu, pool[c].ad) = (pool[c].mu * pool[o].mu, pool[c].ad * pool[o].mu + pool[o].ad)
     c
 fn push(o: Int):
-    if mu[o] == Z(1) and ad[o] == Z(0): return
-    let l = push_child(o, lc[o])
-    lc[o] = l
-    let r = push_child(o, rc[o])
-    rc[o] = r
-    (mu[o], ad[o]) = (Z(1), Z(0))
+    if pool[o].mu == Z(1) and pool[o].ad == Z(0): return
+    let l = push_child(o, pool[o].lc)
+    pool[o].lc = l
+    let r = push_child(o, pool[o].rc)
+    pool[o].rc = r
+    (pool[o].mu, pool[o].ad) = (Z(1), Z(0))
 
 fn mult(x: Int, y: Int) -> Int:
     let (a, b) = if leaf(y): (y, x) else: (x, y)
     if leaf(a):
-        let k = ad[a]  // a leaf is the constant its map gives 0
-        (mu[b], ad[b]) = (mu[b] * k, ad[b] * k)
+        let k = pool[a].ad  // a leaf is the constant its map gives 0
+        (pool[b].mu, pool[b].ad) = (pool[b].mu * k, pool[b].ad * k)
         return b
     push(a)
     push(b)
-    let l = mult(lc[a], lc[b])
-    lc[a] = l
-    let r = mult(rc[a], rc[b])
-    rc[a] = r
+    let l = mult(pool[a].lc, pool[b].lc)
+    pool[a].lc = l
+    let r = mult(pool[a].rc, pool[b].rc)
+    pool[a].rc = r
     a
 
 // zero depths 0..=upto
@@ -82,11 +84,11 @@ fn clear(o: Int, lo: Int, hi: Int, upto: Int) -> Int:
     if o == 0 or hi <= upto: return 0
     push(o)
     let mid = (lo + hi) / 2
-    let l = clear(lc[o], lo, mid, upto)
-    lc[o] = l
+    let l = clear(pool[o].lc, lo, mid, upto)
+    pool[o].lc = l
     if mid < upto:
-        let r = clear(rc[o], mid + 1, hi, upto)
-        rc[o] = r
+        let r = clear(pool[o].rc, mid + 1, hi, upto)
+        pool[o].rc = r
     o
 
 var dp: [V]Int = 0
@@ -97,11 +99,11 @@ for u in tree.at.rev:
         continue
     var lifted = Z(1)
     var own = alloc()
-    ad[own] += Z(1)
+    pool[own].ad += Z(1)
     for c in tree.children(u):
         lifted *= get(dp[c], tree.depth(u))
         own = mult(own, dp[c])
     if top[u] >= 0: own = clear(own, 0, n, top[u])
-    ad[own] += lifted
+    pool[own].ad += lifted
     dp[u] = own
 print(answer)

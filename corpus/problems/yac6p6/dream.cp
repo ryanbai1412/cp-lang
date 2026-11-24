@@ -2,94 +2,84 @@
 // (`0 <= kv <= 5`) for the minimum-cost down/right path from `(x1, y1)` to `(x2, y2)`
 // allowed to skip (pay 0 for) at most `kv` cells.
 //
-// Diagonal meet-in-the-middle:
-//   - If `x2 - x1 <= 3` and `y2 - y1 <= 3`, the rectangle has at most 16 cells, so
-//     we run `backward_dp(x1, y1, x2, y2)` directly on it.
-//   - Otherwise, let `rem = (x2.ord + y2.ord) % 3`. Every path from `(x1, y1)` to
-//     `(x2, y2)` crosses the anti-diagonal `r.ord + c.ord = x2.ord + y2.ord - rem`
-//     at some cell `(cx, cy)` with `cx in x1..=x2`, `cy in y1..=y2`, and
-//     `(x2 - cx) + (y2 - cy) = rem <= 2` (so `(x2, y2)` lies inside the `3 x 3` box
-//     below-right of `(cx, cy)`).
-//   - Bucketing queries by `(cx, cy)` (only cells with `(cx.ord + cy.ord) % 3 == 0`
-//     and at least one query are computed), each populated bucket runs one `3 x 3`
-//     forward suffix DP and one `cx x cy` backward prefix DP; summing `cx * cy`
-//     over non-empty buckets gives at most `(n^2 * m^2 / 12) * (MAXK + 1) + q * (MAXK + 1)`
-//     cell-state steps (and far fewer when queries touch few buckets).
+// Diagonal meet-in-the-middle, pivot diagonals every `L` steps:
+//   - Let `d` be the largest multiple of `L` with `d <= x2 + y2`. If `d < x1 + y1`, no
+//     pivot diagonal lies between the ends, so one backward DP over the (at most
+//     `L x L`) rectangle answers the query directly.
+//   - Otherwise every path crosses the anti-diagonal `r + c = d` at exactly one cell, so
+//     the query joins the bucket of each such cell inside its rectangle.
+//   - Each non-empty bucket runs one backward DP from its queries' smallest start to the
+//     pivot and one forward DP from the pivot to their largest end, and every query in it
+//     splits its skips between the two halves.
 
 const MAXK = 5
+const L = 16
 domain KDom = 0..=MAXK
-domain D3 = 0..3
 type Cell = [KDom]?Int
 
 let (n, m, q): (1..=200, 1..=200, 1..=200_000) = read()
 domain Row = 1..=n
 domain Col = 1..=m
 domain Q = 0..q
-let a: [Row, Col]Int = read()
+let a: [Row, Col](1..=1e9) = read()
 
 struct Query(x1: Row, y1: Col, x2: Row, y2: Col, kv: KDom, id: Q)
 var qans: [Q]?Int = None
 var buckets: [Row, Col]List<Query> = []
-fn empty_cell() -> Cell = [KDom] _ => None
-var dp: [Row, Col]Cell = empty_cell()
-var dp2: [D3, D3]Cell = empty_cell()
+// back[r, c, k]: the cheapest walk from (r, c) to the pivot, both paid, skipping at most k cells.
+var back: [Row, Col]Cell = [KDom] _ => None
+// ahead[r, c, k]: the cheapest walk from just after the pivot to (r, c), skipping at most k cells.
+var ahead: [Row, Col]Cell = [KDom] _ => None
 
-// Relax a cell's skip-cost table from one neighbour: either pay `cost` with the
-// same skip count `k`, or skip this cell using `k - 1` skips from the neighbour.
-fn relax(cur: Cell, from: Cell, cost: Int) -> Cell:
-    var out = cur
-    for k in KDom:
-        out[k] min= from[k] + cost
-        if let pk = k.prev: out[k] min= from[pk]
-    out
+// Through neighbour `next`: pay this cell's `cost` keeping `k` skips, or skip it with one of them.
+fn via(next: Cell, k: KDom, cost: Int) -> ?Int:
+    var best = next[k] + cost
+    if let pk = k.prev: best min= next[pk]
+    best
 
-fn backward_dp(x1: Row, y1: Col, x2: Row, y2: Col):
+fn back_dp(x1: Row, y1: Col, x2: Row, y2: Col):
     for r in (x1..=x2).rev:
         for c in (y1..=y2).rev:
             let cost = a[r, c]
-            if r == x2 and c == y2:
-                dp[r, c] = [KDom] k => if k == KDom.first: Some(cost) else: Some(0)
-            else:
-                var cell = empty_cell()
-                if let nr = r.next and nr <= x2: cell = relax(cell, dp[nr, c], cost)
-                if let nc = c.next and nc <= y2: cell = relax(cell, dp[r, nc], cost)
-                dp[r, c] = cell
+            for k in KDom:
+                if r == x2 and c == y2:
+                    back[r, c, k] = if k == KDom.first: Some(cost) else: Some(0)
+                    continue
+                var best: ?Int = None
+                if let nr = r.next and nr <= x2: best min= via(back[nr, c], k, cost)
+                if let nc = c.next and nc <= y2: best min= via(back[r, nc], k, cost)
+                back[r, c, k] = best
+
+fn ahead_dp(x1: Row, y1: Col, x2: Row, y2: Col):
+    for r in x1..=x2:
+        for c in y1..=y2:
+            let cost = a[r, c]
+            for k in KDom:
+                if r == x1 and c == y1:
+                    ahead[r, c, k] = Some(0)
+                    continue
+                var best: ?Int = None
+                if let pr = r.prev and pr >= x1: best min= via(ahead[pr, c], k, cost)
+                if let pc = c.prev and pc >= y1: best min= via(ahead[r, pc], k, cost)
+                ahead[r, c, k] = best
 
 for id in Q:
     let (x1, y1, x2, y2, kv): (Row, Col, Row, Col, KDom) = read()
-    if x2.ord - x1.ord <= 3 and y2.ord - y1.ord <= 3:
-        backward_dp(x1, y1, x2, y2)
-        let start = dp[x1, y1]
-        qans[id] = start[kv]
+    let d = Int(x2) + Int(y2) - (Int(x2) + Int(y2)) % L
+    if d < Int(x1) + Int(y1):
+        back_dp(x1, y1, x2, y2)
+        qans[id] = back[x1, y1, kv]
     else:
-        let rem = (x2.ord + y2.ord) % 3
-        for dx in 0..=rem:
-            let dy = rem - dx
-            if let cx = x2.offset(-dx), let cy = y2.offset(-dy) and cx >= x1 and cy >= y1:
-                buckets[cx, cy].push(Query(x1, y1, x2, y2, kv, id))
+        for x in max(Int(x1), d - Int(y2))..=min(Int(x2), d - Int(y1)):
+            buckets[Row(x), Col(d - x)].push(Query(x1, y1, x2, y2, kv, id))
 
 for cx in Row:
     for cy in Col if not buckets[cx, cy].is_empty:
-        // Forward 3x3 suffix DP starting after (cx, cy).
-        for dr in D3:
-            for dc in D3:
-                if let r = cx.offset(dr.ord), let c = cy.offset(dc.ord):
-                    if dr == D3.first and dc == D3.first:
-                        dp2[dr, dc] = [KDom] _ => Some(0)
-                    else:
-                        let cost = a[r, c]
-                        var cell = empty_cell()
-                        if let pr = dr.prev: cell = relax(cell, dp2[pr, dc], cost)
-                        if let pc = dc.prev: cell = relax(cell, dp2[dr, pc], cost)
-                        dp2[dr, dc] = cell
-
-        backward_dp(Row.first!, Col.first!, cx, cy)
-
-        for qr in buckets[cx, cy]:
-            let dr = D3.first!.offset(qr.x2.ord - cx.ord)!
-            let dc = D3.first!.offset(qr.y2.ord - cy.ord)!
-            for k in 0..=qr.kv.ord:
-                let (head, tail) = (dp[qr.x1, qr.y1], dp2[dr, dc])
-                qans[qr.id] min= head[KDom(k)] + tail[qr.kv.offset(-k)!]
+        let bucket = buckets[cx, cy]
+        back_dp(bucket.map(b => b.x1).min()!, bucket.map(b => b.y1).min()!, cx, cy)
+        ahead_dp(cx, cy, bucket.map(b => b.x2).max()!, bucket.map(b => b.y2).max()!)
+        for qr in bucket:
+            for k in KDom if k <= qr.kv:
+                qans[qr.id] min= back[qr.x1, qr.y1, k] + ahead[qr.x2, qr.y2, qr.kv.offset(-k.ord)!]
 
 for id in Q: print(qans[id]!)

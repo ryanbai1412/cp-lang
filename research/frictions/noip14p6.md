@@ -1,30 +1,33 @@
 # Friction Report: noip14p6
 
-## 1. Reading a huge integer modulo a prime
-- **Where:** `fn residue(s: [domain S]Char) -> Z` folds the digits and the sign by hand.
-- **What felt wrong:** "this decimal literal, mod P" is the whole reading step; the dream spells it
-  `s.parse<Mod<P>>()`.
+## 1. Reading a huge integer modulo several primes
+- **Where:** `fn residue<P>(s: Str) -> Mod<P>` folds the digits and the sign by hand, once per
+  modulus, from the coefficients kept as `Str`.
+- **What felt wrong:** "this decimal text, mod P" is the whole reading step; `read<Mod<P>>()`
+  does it for one modulus, but `Str.parse<T: Read>` is still `todo`, so the same text cannot be
+  read again under a second modulus.
 - **Goal it hurts:** express.
-- **Ideal code:** `let coef: [0..=n]Z = read()` reading arbitrary-length decimals straight into `Mod<P>`.
-- **General fix:** `read` and `parse` for `Mod<P>` from decimal text of any length.
+- **Ideal code:** `digits.map(s => s.parse<Z>()!)`, as in the dream.
+- **General fix:** implement `Str.parse<T: Read>` by reading from the string.
 - **Severity:** medium.
 
-## 2. One 61-bit prime instead of two 30-bit ones
-- **Where:** `type Z = Mod<2305843009213693951>`.
-- **What felt wrong:** nothing; the v0.2 port kept two residues in a `[0..2, 0..=n]Int` table to keep the
-  false-positive rate low. `Mod<P>` multiplies in 128 bits above 3.03e9, so one prime does the job of two.
-- **Severity:** none (a simplification).
-
 ## Measurements
-Stress: 8/8 tests pass; 30/30 agree with the v0.2 port and with AC 5205623 on planted-root polynomials; max (n = 100, m = 1e6, 10^4-digit coefficients) 0.68 s vs C++ 0.69 s, same output.
+The port evaluated all m candidates under 2^61 - 1 (O(n m), 0.91 s natively and 1003 ms under
+`cpl test` against the AC's 0.80 s). Sieving x by three primes near 10^4 first leaves only a
+handful of candidates: `--max` is 0.06 s and 4.0 MB natively (AC 5445671: 0.85 s, 5.5 MB) and
+91 ms under `cpl test`. 30/30 stress cases agree with the v0.2 port and with the AC, and eight
+m <= 10^6 seeds agree with the AC.
 
 ## Dream
 The ungated ideal (does not check today):
 
 ```cp
 let (n, m): (1..=100, 1..=1e6) = read()
-let coef: [0..=n]Mod<2305843009213693951> = read()
-let roots = [x for x in 1..=m if coef.eval(x) == 0]
+let digits: [0..=n]Str = read()
+// f(x) = f(x mod p) (mod p): each small prime rules out all but n / p of the x
+let sieves = primes_in(10_000, 10_100)[..3].map(p => (p:, root: [digits.map(s => s.parse<Mod(p)>()!).eval(r) == 0 for r in 0..p]))
+let exact = digits.map(s => s.parse<Mod<2305843009213693951>>()!)
+let roots = [x for x in 1..=m if sieves.all(s => s.root[x % s.p]) and exact.eval(x) == 0]
 print(roots.len)
 print(roots, sep: "\n")
 ```

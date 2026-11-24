@@ -41,7 +41,11 @@ impl<'a> Lowerer<'a> {
         }
         let id = self.structs.len();
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
-        let mangled = format!("{}_{}_{id}", decl.name.text, suffix.join("_"));
+        let mangled = format!(
+            "{}_{}_{id}",
+            decl.name.text.replace('\'', "_a"),
+            suffix.join("_")
+        );
 
         let mut env: GenEnv = HashMap::new();
         for (p, a) in decl.generics.iter().zip(&args) {
@@ -51,6 +55,8 @@ impl<'a> Lowerer<'a> {
         self.structs.push(StructInfo {
             def: StructDef {
                 name: mangled,
+                source: decl.name.text.clone(),
+                targs: shown_args(&args),
                 fields: Vec::new(),
                 ..Default::default()
             },
@@ -63,6 +69,7 @@ impl<'a> Lowerer<'a> {
             trait_methods: HashMap::new(),
             op_methods: Vec::new(),
             gen_methods: HashMap::new(),
+            open_impls: Vec::new(),
             getters: HashSet::new(),
             projections: HashMap::new(),
             consts: HashMap::new(),
@@ -252,9 +259,15 @@ impl<'a> Lowerer<'a> {
         let decl = self.gen_enums[gid].decl;
         let id = self.enums.len();
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
-        let mangled = format!("{}_{}_{id}", decl.name.text, suffix.join("_"));
+        let mangled = format!(
+            "{}_{}_{id}",
+            decl.name.text.replace('\'', "_a"),
+            suffix.join("_")
+        );
         self.enums.push(EnumDef {
             name: mangled,
+            source: decl.name.text.clone(),
+            targs: shown_args(&args),
             variants: Vec::new(),
             values: Vec::new(),
             tags: Vec::new(),
@@ -301,6 +314,10 @@ impl<'a> Lowerer<'a> {
             let Some(mut env) = self.impl_env_for(idx, sid) else {
                 continue;
             };
+            if !self.open_impl_params(idx, &env).is_empty() {
+                self.structs[sid].open_impls.push(idx);
+                continue;
+            }
 
             let saved_mod = std::mem::replace(&mut self.cur_mod, imp_mod);
             let saved_offset = std::mem::replace(&mut self.offset, imp_offset);
@@ -614,4 +631,17 @@ impl<'a> Lowerer<'a> {
         self.gen_env = saved_env;
         val
     }
+}
+
+/// A generic instance's arguments as types, for showing `Pair<Int>`; none
+/// when one is a number or an operator, which shows as the bare name.
+fn shown_args(args: &[GenArg]) -> Vec<Ty> {
+    args.iter()
+        .map(|a| match a {
+            GenArg::Ty(t) => Some(t.clone()),
+            GenArg::Domain(d) => Some(Ty::Pos(*d)),
+            _ => None,
+        })
+        .collect::<Option<_>>()
+        .unwrap_or_default()
 }

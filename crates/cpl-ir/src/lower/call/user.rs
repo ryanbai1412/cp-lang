@@ -475,7 +475,7 @@ impl<'a> Lowerer<'a> {
                     }
                     Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
                     Some(Sym::GenStruct(_))
-                        if prefix_shape_struct(name, 3).is_some()
+                        if self.get_sym(&cpl_check::arity_key(name, 3)).is_some()
                             && args.len() == 1
                             && args[0].name.is_none()
                             && matches!(
@@ -483,7 +483,7 @@ impl<'a> Lowerer<'a> {
                                 Some(Ty::Array { ref dims, .. }) if dims.len() == 2
                             ) =>
                     {
-                        self.grid_shape_ctor(prefix_shape_struct(name, 3).unwrap(), args, span)
+                        self.grid_shape_ctor(&cpl_check::arity_key(name, 3), args, span)
                     }
                     Some(Sym::GenStruct(gid)) => {
                         self.call_gen_struct(gid, Vec::new(), args, hint, span)
@@ -914,8 +914,8 @@ impl<'a> Lowerer<'a> {
                 return self.read_all(ty, args, span);
             }
         }
-        let lookup = prefix_shape_struct(name, types.len()).unwrap_or(name);
-        match self.get_sym(lookup) {
+        let lookup = self.arity_name(name, types.len());
+        match self.get_sym(&lookup) {
             Some(Sym::GenStruct(gid)) => {
                 let gargs = self.resolve_gen_args_for_struct(gid, types);
                 self.call_gen_struct(gid, gargs, args, hint, span)

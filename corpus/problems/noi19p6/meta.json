@@ -14,10 +14,14 @@
   {"id": "6058768", "language": "CPP17", "result": "AC", "time": 4.716748837, "memory_kb": 44656.0, "file": "corpus/submissions/6058768.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi19p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Grader-only problem. orig.cpp is accepted 6058768 with explore.h replaced by a stdin grader: it reads L_m L_q L_c, N M and the edges, answers modify/query/check, enforces the call limits and prints Correct or the first violation. gen.py picks the graph family from N mod 10 like the official subtasks."
 }

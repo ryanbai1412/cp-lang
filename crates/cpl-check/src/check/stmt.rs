@@ -361,6 +361,30 @@ impl<'a> Checker<'a> {
             {
                 self.begin_hold(stmt, name, init, &stmts[k + 1..]);
             }
+            match &stmt.kind {
+                StmtKind::Let {
+                    mutable: true,
+                    pat:
+                        Pattern {
+                            kind: PatternKind::Name(name),
+                            ..
+                        },
+                    init: Some(value),
+                    ..
+                } => self.begin_var_hold(stmt, name, value, &stmts[k + 1..]),
+                StmtKind::Assign {
+                    target,
+                    op: AssignOp::Set,
+                    value,
+                } => {
+                    if let ExprKind::Name(name) = &super::lends::unparen(target).kind {
+                        // The store replaces the value, and with it the loan it held.
+                        self.lends.holds.retain(|h| h.is_capture || h.name != *name);
+                        self.begin_var_hold(stmt, name.as_str(), value, &stmts[k + 1..]);
+                    }
+                }
+                _ => {}
+            }
             self.end_holds(stmt);
         }
         self.present.truncate(present);

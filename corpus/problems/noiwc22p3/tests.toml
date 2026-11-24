@@ -1,0 +1,18 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+# Interactive: each case is the interactor's hidden data (T = 1000 answers). The statement's
+# one sample is a play.cpp transcript, not hidden data, so it has no case here.
+
+[[case]]
+seed = 1
+size = 1
+
+[[case]]
+seed = 2
+size = 1
+
+[[case]]
+seed = 3
+size = 1
+
+[[case]]
+args = ["--max"]

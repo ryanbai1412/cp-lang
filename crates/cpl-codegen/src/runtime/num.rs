@@ -29,6 +29,28 @@ inline ll emod(ll a, ll b) {
 ",
     },
     Piece {
+        name: "divn",
+        needs: &[],
+        code: "\
+// A dividend known to be non-negative: C++'s own `/` and `%` are
+// Euclidean for any non-zero divisor.
+inline ll divn(ll a, ll b) {
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    return a / b;
+}
+",
+    },
+    Piece {
+        name: "modn",
+        needs: &[],
+        code: "\
+inline ll modn(ll a, ll b) {
+    if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    return a % b;
+}
+",
+    },
+    Piece {
         name: "divp",
         needs: &[],
         code: "\
@@ -284,17 +306,11 @@ inline ll rand_range(ll lo, ll hi, int site = __builtin_LINE()) {
     unsigned __int128 span = (unsigned __int128)((__int128)hi - (__int128)lo + 1);
     return (ll)((__int128)lo + (__int128)rng_below(span, site));
 }
-template <class T> void shuffle(std::vector<T>& v, int site = __builtin_LINE()) {
-    for (size_t i = v.size(); i-- > 1;) std::swap(v[i], v[(size_t)rng_below(i + 1, site)]);
-}
 #else
 inline ll rand_range(ll lo, ll hi) {
     unsigned __int128 span = (unsigned __int128)((__int128)hi - (__int128)lo + 1);
     uint64_t r = rng_next();
     return (ll)((uint64_t)lo + (span >> 64 ? r : r % (uint64_t)span));
-}
-template <class T> void shuffle(std::vector<T>& v) {
-    for (size_t i = v.size(); i-- > 1;) std::swap(v[i], v[(size_t)(rng_next() % (i + 1))]);
 }
 #endif
 ",

@@ -1,18 +1,18 @@
 // Source: CEOI 2009 P3 (Photo), https://dmoj.ca/problem/ceoi09p3
 // limits: 1000 ms, 512 MB
-// Problem: n <= 100 points (x, y), 0 <= x, y <= 1e5. Cover them all with the fewest rectangles
-//   that stand on the x-axis and have area A <= 2e6 (overlaps allowed); print that number. A point
-//   on the axis (y = 0) needs no rectangle, as in the accepted C++. Bounds from the Luogu mirror P5975.
+// Problem: n <= 100 points (x, y), 0 <= x <= 3e6, 1 <= y <= A. Cover them all with the fewest
+//   rectangles that stand on the x-axis and have area at most A <= 2e5 (overlaps allowed); print
+//   that number. Bounds from the official CEOI 2009 statement.
 // Solution: sort by x. cover(range, k) = fewest rectangles for the points of the range above the
 //   k-th compressed height. An end point at or below it is dropped; otherwise the leftmost
 //   point's rectangle spans it to some point i at the tallest height area / width allows, which
 //   only helps when it rises above k: 1 + cover(l..=i, that height) + cover(i+1..=r, k).
 //   O(n^4): n^2 ranges, n heights, n splits.
-// Bounds: n: 1..=100; area: 1..=2e6; pts.x, pts.y: 0..=1e5
+// Bounds: n: 1..=100; area: 1..=2e5; pts.x: 0..=3e6; pts.y: 1..=2e5
 let n: 1..=100 = read()
-let area: 1..=2e6 = read()
+let area: 1..=2e5 = read()
 domain P = 0..n
-type Pt = (x: 0..=1e5, y: 0..=1e5)
+type Pt = (x: 0..=3e6, y: 1..=2e5)
 var pts: [P]Pt = read()
 pts.sort()
 let (domain H, height) = compress([0] + pts.map(p => p.y).collect())

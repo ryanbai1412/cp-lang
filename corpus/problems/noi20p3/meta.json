@@ -14,10 +14,14 @@
   {"id": "6075539", "language": "CPP17", "result": "AC", "time": 31.442201818, "memory_kb": 128088.0, "file": "corpus/submissions/6075539.cpp"}
  ],
  "cpp_ac": 2,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi20p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is accepted 6075530 without its leading `#pragma GCC optimize(\"Ofast\")`/`target(\"avx2\")` block: under that target g++ 14 refuses to inline libstdc++'s allocator (target specific option mismatch), so neither AC builds as submitted. 6075530 and 6075539 both match a quadratic brute on 200 random cases with n <= 40."
 }

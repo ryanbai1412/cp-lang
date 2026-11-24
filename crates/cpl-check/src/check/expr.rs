@@ -133,7 +133,7 @@ impl<'a> Checker<'a> {
                     let right = side(self, right_expr);
                     any_vague |= right.is_vague();
                     if matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
-                        if matches!(&right, Ty::Named { name, .. } if name == "List") {
+                        if self.lacks_contains(&right) {
                             self.list_in(*op, left_expr, right_expr, &right, rest.len() == 1);
                         }
                     } else {
@@ -287,17 +287,12 @@ impl<'a> Checker<'a> {
             ExprKind::Generic { base, args } => {
                 let base_ty = self.infer(base);
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
-                // `Prefix<T>`, `Prefix<R, C, T>`, `Diff<R, C, T>`: shape-dispatched
-                // struct families resolve to their internal specialization.
+                // `Prefix<R, C, T>` beside `Prefix<D, T>`: the struct of that arity (R02.11.4).
                 if let ExprKind::Name(name) = &base.kind {
                     if self.local(name).is_none() {
-                        if let Some(shape) = prefix_shape_struct(name, args.len()) {
-                            if self.global(shape).is_some() {
-                                return Ty::Named {
-                                    name: shape.to_string(),
-                                    args,
-                                };
-                            }
+                        let key = crate::prelude::arity_key(name, args.len());
+                        if self.global(&key).is_some() {
+                            return Ty::Named { name: key, args };
                         }
                     }
                 }

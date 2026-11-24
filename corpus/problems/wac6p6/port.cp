@@ -9,7 +9,7 @@
 //   (any two colours total at least a + b). Else if b + c - 2a >= 46, discard each colour's
 //   first a canes and give a bowl to each colour that goes past a (at most two can). Else
 //   start with R and G in the bowls; the one colour that can pass b copies takes over R's bowl.
-//   O(100) per factory.
+//   O(A + B + C) per factory.
 // original: corpus/submissions/5122020.cpp
 // Bounds: tcs: 1..=10_000; counts: 0..=100
 let tcs: 1..=10_000 = read()
@@ -32,16 +32,16 @@ for _ in 0..tcs:
     var bowl: [Colour]?Bowl = None
     if a + b >= 46:
         (bowl[red], bowl[green]) = (Bowl(1), Bowl(2))
-        for _ in 0..100: put(bowl[cane()])
+        for _ in 0..a + b + c: put(bowl[cane()])
     elif b + c - 2 * a >= 46:
-        for _ in 0..100:
+        for _ in 0..a + b + c:
             let x = cane()
             seen[x] += 1
             if seen[x] > a and bowl[x] == None: bowl[x] = Bowl(1 + Colour.count(y => bowl[y] != None))
             put(if seen[x] > a: bowl[x] else: None)
     else:
         (bowl[red], bowl[green]) = (Bowl(1), Bowl(2))
-        for _ in 0..100:
+        for _ in 0..a + b + c:
             let x = cane()
             seen[x] += 1
             if seen[x] > b and bowl[x] == None:

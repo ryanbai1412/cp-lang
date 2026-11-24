@@ -15,6 +15,28 @@ fn cpl_bin() -> &'static str {
     env!("CARGO_BIN_EXE_cpl")
 }
 
+/// `cpl dap`, made to get SIGKILL when the thread that starts it ends, so a
+/// test killed mid-session (a timeout, a mutant that never answers) leaves no
+/// adapter behind. Linux has `setpriv`; elsewhere it is plain `cpl dap`.
+fn dap_command() -> Command {
+    let setpriv = ["/usr/bin/setpriv", "/bin/setpriv"]
+        .into_iter()
+        .find(|p| cfg!(target_os = "linux") && std::path::Path::new(p).is_file());
+    let mut cmd = match setpriv {
+        Some(setpriv) => {
+            let mut cmd = Command::new(setpriv);
+            cmd.args(["--pdeathsig", "KILL", "--", cpl_bin()]);
+            cmd
+        }
+        None => Command::new(cpl_bin()),
+    };
+    cmd.arg("dap")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    cmd
+}
+
 fn write_temp(name: &str, src: &str) -> PathBuf {
     let n = COUNTER.fetch_add(1, Ordering::Relaxed);
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("dap_tests");
@@ -33,13 +55,7 @@ struct DapClient {
 
 impl DapClient {
     fn spawn() -> Self {
-        let mut child = Command::new(cpl_bin())
-            .arg("dap")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("spawn cpl dap");
+        let mut child = dap_command().spawn().expect("spawn cpl dap");
         let stdin = child.stdin.take().unwrap();
         let mut stdout = BufReader::new(child.stdout.take().unwrap());
         let (sender, messages) = channel();
@@ -682,13 +698,7 @@ print(i / d)
 #[test]
 fn a_message_without_a_content_length_ends_the_session_with_exit_1() {
     use std::io::Write;
-    let mut child = Command::new(cpl_bin())
-        .arg("dap")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("spawn cpl dap");
+    let mut child = dap_command().spawn().expect("spawn cpl dap");
     let mut stdin = child.stdin.take().unwrap();
     stdin.write_all(b"Content-Type: x\r\n\r\n{}").unwrap();
     drop(stdin);
@@ -1592,4 +1602,26 @@ fn a_cut_run_that_now_ends_inside_what_it_kept_is_a_change() {
     let note = dap.recv_until("re-ran");
     assert!(note.contains("the run has ended"), "{note}");
     dap.finish();
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn an_adapter_dies_with_the_thread_that_started_it() {
+    use std::os::unix::process::ExitStatusExt;
+    // The thread ends only once the adapter answers, so it is past `setpriv`.
+    let mut dap = std::thread::spawn(|| {
+        let mut dap = DapClient::spawn();
+        dap.send("initialize", Some("{\"adapterID\":\"cpl\"}"));
+        let _ = dap.recv_until("\"command\":\"initialize\"");
+        dap
+    })
+    .join()
+    .unwrap();
+    // Its stdin is still open, so only the parent's end can stop it.
+    let status = dap.child.wait().unwrap();
+    assert_eq!(
+        status.signal(),
+        Some(9),
+        "cpl dap outlived its parent: {status}"
+    );
 }

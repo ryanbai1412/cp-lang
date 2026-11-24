@@ -10,13 +10,17 @@ impl Database {
     /// positions, checking its body if `path` was only imported.
     pub(crate) fn body_facts(&mut self, path: &str, at: Span) -> Option<Arc<crate::Facts>> {
         let file = self.files.get(path)?;
-        let (id, analysis) = (file.id, file.analysis.clone()?);
+        let checked = file.program.is_some();
+        let (id, analysis) = (
+            file.id,
+            file.program.clone().or_else(|| file.module.clone())?,
+        );
         let index = (analysis.items).partition_point(|item| item.span.end < at.start);
         let item = analysis
             .items
             .get(index)
             .filter(|i| i.span.touches(at.start))?;
-        let check = if file.analysis_checked {
+        let check = if checked {
             item.check.clone()
         } else {
             let mut ctx = FileCtx {

@@ -11,12 +11,12 @@
 // Bounds: n: 2..=250_000; p: 1..=n - 1
 const P = 998_244_353
 type Z = Mod<P>
-let comb = Comb<Z>()
 
 @!multitest
 let n: 2..=250_000 = read()
 
 var blocks: List<(r: Int, size: Int)> = []
+var num: Z = 1
 var den: Z = 1
 for i in 0..n - 1:
     let p: 1..=n - 1 = read()
@@ -24,6 +24,7 @@ for i in 0..n - 1:
     while let b = blocks.last and b.r >= p - 1:
         size += b.size
         blocks.pop()
+    num *= i + 1
     den *= size
     blocks.push((r: i, size:))
-print(comb.fact(n - 1) / den)
+print(num / den)

@@ -395,7 +395,8 @@ impl<'a> Checker<'a> {
                 return resolved;
             }
         }
-        let lookup_name = prefix_shape_struct(name, args.len()).unwrap_or(name);
+        let keyed = self.arity_name(name, args.len());
+        let lookup_name = keyed.as_str();
         if self.defining_aliases.iter().any(|a| a == lookup_name) {
             if let Some(def) = self.env.outer_global(lookup_name) {
                 return self.def_type(&def, lookup_name, span, args);
@@ -1715,18 +1716,7 @@ impl<'a> Checker<'a> {
                 Ty::Record(fields) => fields.iter().any(|(n, _)| n == "to"),
                 _ => false,
             },
-            "Weighted" => match ty {
-                Ty::Record(fields) => fields.iter().any(|(n, _)| n == "w"),
-                _ => false,
-            },
-            "Next" | "WeightedNext" | "EdgedNext" => match ty {
-                Ty::Array { .. } | Ty::Fn { .. } => true,
-                Ty::Named { name, .. } => matches!(
-                    name.as_str(),
-                    "Graph" | "RevGraph" | "FilteredGraph" | "Adj"
-                ),
-                _ => false,
-            },
+            "Next" | "WeightedNext" | "EdgedNext" => matches!(ty, Ty::Array { .. } | Ty::Fn { .. }),
             _ => match ty {
                 Ty::Record(fields) => self.meets_by_shape(fields, trait_name),
                 _ => false,
@@ -1807,6 +1797,11 @@ impl<'a> Checker<'a> {
                 }
                 if trait_name == "Ord" && matches!(name.as_str(), "HashMap" | "HashSet") {
                     return false;
+                }
+                // A cut or range compares by position, whatever its domain
+                // holds, as `Ty::Pos` and `Ty::Range` do.
+                if matches!(name.as_str(), "Cut" | "Range") {
+                    return true;
                 }
                 match self.type_def(name).as_deref().cloned() {
                     Some(Def::Struct {

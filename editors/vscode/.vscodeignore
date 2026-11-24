@@ -1,6 +1,7 @@
 **
 !out/src/extension.js
 !syntaxes/**
+syntaxes/*.in.json
 !snippets/**
 !language-configuration.json
 !package.json

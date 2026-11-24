@@ -230,6 +230,11 @@ impl<'a> Lowerer<'a> {
                     },
                     _ => raw_base,
                 };
+                if let Some(n) = nested_arity(&base_expr.ty, indices.len()) {
+                    let inner =
+                        ast::Expr::indexed(base, &indices[..n], base.span.to(indices[n - 1].span));
+                    return self.expr(&ast::Expr::indexed(&inner, &indices[n..], e.span), hint);
+                }
                 if let Ty::Struct(sid) = base_expr.ty {
                     if let Some(key_ty) = self.counter_key.get(&sid).cloned() {
                         if indices.len() != 1 {
@@ -767,4 +772,17 @@ fn strip_opt(ty: &Ty) -> Ty {
 /// A value block that can leave its fn or loop from inside: `x?`.
 fn leaves(e: &Expr) -> bool {
     matches!(&e.kind, ExprKind::Do(block) if block_leaves(block))
+}
+
+/// How many of `n` indices a table whose cells are arrays takes before the
+/// cell's own: `dp[r, c, k]` on `[R, C][K]T` takes 2 (R01.8.5).
+pub(in crate::lower) fn nested_arity(ty: &Ty, n: usize) -> Option<usize> {
+    let Ty::Array { dims, elem } = ty else {
+        return None;
+    };
+    let Ty::Array { dims: inner, .. } = &**elem else {
+        return None;
+    };
+    let sym = matches!(dims.as_slice(), [Dim::Sym(_)]);
+    (!sym && dims.len() < n && n <= dims.len() + inner.len()).then_some(dims.len())
 }

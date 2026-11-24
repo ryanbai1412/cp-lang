@@ -18,14 +18,12 @@ impl<'a> Lowerer<'a> {
                 } else {
                     let id = self.structs.len();
                     self.mod_syms[m].insert(decl.name.text.clone(), Sym::Struct(id));
-                    let sname = if m == 0 {
-                        decl.name.text.clone()
-                    } else {
-                        format!("m{m}_{}", decl.name.text)
-                    };
+                    let text = decl.name.text.replace('\'', "_a");
+                    let sname = if m == 0 { text } else { format!("m{m}_{text}") };
                     self.structs.push(StructInfo {
                         def: StructDef {
                             name: sname,
+                            source: decl.name.text.clone(),
                             fields: Vec::new(),
                             ..Default::default()
                         },
@@ -38,6 +36,7 @@ impl<'a> Lowerer<'a> {
                         trait_methods: HashMap::new(),
                         op_methods: Vec::new(),
                         gen_methods: HashMap::new(),
+                        open_impls: Vec::new(),
                         getters: HashSet::new(),
                         projections: HashMap::new(),
                         consts: HashMap::new(),
@@ -172,6 +171,8 @@ impl<'a> Lowerer<'a> {
                     };
                     self.enums.push(EnumDef {
                         name: ename,
+                        source: decl.name.text.clone(),
+                        targs: Vec::new(),
                         variants: Vec::new(),
                         values: Vec::new(),
                         tags: Vec::new(),
@@ -389,7 +390,7 @@ impl<'a> Lowerer<'a> {
                     name: name.text.clone(),
                     methods,
                     fields,
-                    generic: !generics.is_empty(),
+                    generics: generics.iter().map(|g| g.text.as_str()).collect(),
                     unimplemented,
                     alias_of,
                 });

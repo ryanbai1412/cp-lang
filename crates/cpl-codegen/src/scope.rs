@@ -359,7 +359,9 @@ pub(crate) fn rows(
     let mut rows = BTreeMap::new();
     for (id, def) in program.structs.iter().enumerate() {
         for (field, cells) in &def.fixed {
-            if matches!(&def.fields[*field].1, Ty::Array { dims, .. } if dims.len() == 1) {
+            if matches!(&def.fields[*field].1, Ty::Array { dims, .. }
+                if dims.len() == 1 && crate::names::fixed_len(program, &dims[0]).is_none())
+            {
                 rows.insert((id, *field), *cells);
             }
         }

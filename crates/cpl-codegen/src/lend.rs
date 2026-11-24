@@ -1279,21 +1279,44 @@ impl Emitter<'_> {
     /// Statement `k` of `block`, moving each variable it reads for the
     /// last time instead of copying it.
     pub(crate) fn stmt_owning(&mut self, block: &Block, k: usize, out: &mut String) {
-        self.moves_last = crate::uses::last_read(self.program, block, k)
+        let outer = (self.branch_dead.iter().rev())
+            .find(|(b, _)| std::ptr::eq(*b, block))
+            .map(|(_, dead)| dead.clone())
+            .unwrap_or_default();
+        let branches = match &block.stmts[k] {
+            Stmt::If(_, then, otherwise) => {
+                let dead = crate::uses::dead_past(self.program, block, k, &outer);
+                self.branch_dead.push((then as *const Block, dead.clone()));
+                self.branch_dead.push((otherwise as *const Block, dead));
+                2
+            }
+            _ => 0,
+        };
+        self.stmt_owning_in(block, k, &outer, out);
+        let kept = self.branch_dead.len() - branches;
+        self.branch_dead.truncate(kept);
+    }
+
+    fn stmt_owning_in(
+        &mut self,
+        block: &Block,
+        k: usize,
+        outer: &BTreeSet<usize>,
+        out: &mut String,
+    ) {
+        self.moves_last = crate::uses::last_read(self.program, block, k, outer)
             || self.takes_sunk_param(block, k)
-            || self.dies_here(&block.stmts[k])
-            || self
-                .uses
-                .dying_assigns
-                .contains(&(&block.stmts[k] as *const Stmt));
-        self.taken_items = self.taken_items(&block.stmts[k], &block.stmts[k + 1..]);
+            || self.dies_here(&block.stmts[k]);
+        self.taken_items = self.taken_items(block, k, outer);
         if self.reads_held(&block.stmts[k]) {
             self.moves_last = false;
             self.taken_items.clear();
         }
+        self.pushed_moves = crate::uses::pushed_last_reads(self.program, block, k, outer);
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
         self.taken_items.clear();
+        self.pushed_moves.clear();
     }
 
     /// Whether `stmt` reads a variable a lent struct field may point to,
@@ -1360,8 +1383,15 @@ impl Emitter<'_> {
     /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets
     /// before reading it, which nothing later in the literal reads either:
     /// moving them in leaves only the value `rest` overwrites.
-    fn taken_items(&self, stmt: &Stmt, rest: &[Stmt]) -> BTreeSet<*const Expr> {
-        let Stmt::Let(_, Some(init)) = stmt else {
+    fn taken_items(
+        &self,
+        block: &Block,
+        k: usize,
+        outer: &BTreeSet<usize>,
+    ) -> BTreeSet<*const Expr> {
+        let rest = &block.stmts[k + 1..];
+        let (Stmt::Let(_, Some(init)) | Stmt::Assign(_, AssignOp::Set, init)) = &block.stmts[k]
+        else {
             return BTreeSet::new();
         };
         let ExprKind::Tuple(items) = &init.kind else {
@@ -1380,7 +1410,8 @@ impl Emitter<'_> {
                     && !items[i + 1..]
                         .iter()
                         .any(|later| touches(&Stmt::Expr(later.clone()), &path))
-                    && overwritten_before_read(item, rest)
+                    && (overwritten_before_read(item, rest)
+                        || crate::uses::place_dies(self.program, block, k, item, outer))
             })
             .map(|(_, item)| item as *const Expr)
             .collect()

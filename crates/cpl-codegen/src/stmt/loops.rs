@@ -152,6 +152,93 @@ impl<'p> Emitter<'p> {
         true
     }
 
+    /// `for l in lo..hi: if let w = row[l]: acc[l] max= Some(base + w)` over two `?Int` rows,
+    /// the max-plus product's inner loop: on an AVX2 judge, one call to the runtime's
+    /// branch-free pass, which g++ vectorises. `None` when the loop is any other.
+    fn keep_max_plus(&mut self, slot: usize, iter: &Iter, body: &Block) -> Option<String> {
+        let Iter::Range {
+            lo,
+            hi,
+            step: None,
+            rev: false,
+            closed: false,
+        } = iter
+        else {
+            return None;
+        };
+        // Without AVX2 and O3 g++ won't vectorise it, and the branchy loop is faster.
+        if !self.target.avx2 || self.hoisted.contains(&slot) {
+            return None;
+        }
+        let [Stmt::Let(held, Some(read)), Stmt::If(test, then, other)] = body.stmts.as_slice()
+        else {
+            return None;
+        };
+        let local = |e: &Expr, want: usize| matches!(e.kind, ExprKind::Local(s) if s == want);
+        let ExprKind::Index(row, at) = &read.kind else {
+            return None;
+        };
+        let (ExprKind::Local(row_slot), [i]) = (&row.kind, at.as_slice()) else {
+            return None;
+        };
+        let ExprKind::IsSome(tested) = &test.kind else {
+            return None;
+        };
+        let [Stmt::Let(w, Some(unwrap)), Stmt::Assign(place, AssignOp::Max, value)] =
+            then.stmts.as_slice()
+        else {
+            return None;
+        };
+        let ExprKind::Unwrap(opened, _) = &unwrap.kind else {
+            return None;
+        };
+        let PlaceKind::Index(acc, at) = &place.kind else {
+            return None;
+        };
+        let (PlaceKind::Local(acc_slot), [j]) = (&acc.kind, at.as_slice()) else {
+            return None;
+        };
+        let ExprKind::Some(sum) = &value.kind else {
+            return None;
+        };
+        let ExprKind::Binary(BinOp::Add, a, b) = &sum.kind else {
+            return None;
+        };
+        let base = match (local(a, *w), local(b, *w)) {
+            (true, false) => b,
+            (false, true) => a,
+            _ => return None,
+        };
+        let ExprKind::Local(base_slot) = base.kind else {
+            return None;
+        };
+        let shaped = other.stmts.is_empty()
+            && local(i, slot)
+            && local(j, slot)
+            && local(tested, *held)
+            && local(opened, *held)
+            && acc_slot != row_slot
+            && base.ty == Ty::Int
+            && ![slot, *held, *w, *acc_slot, *row_slot].contains(&base_slot);
+        if !shaped {
+            return None;
+        }
+        for s in [*row_slot, *acc_slot] {
+            let ty = self.locals()[s].ty.clone();
+            let layout = self.elem_layout(cpl_ir::ElemLoc::Local(self.current_scope(), s));
+            if self.ty_with_elem_layout(&ty, layout) != "std::vector<cpl::OptInt>" {
+                return None;
+            }
+        }
+        self.need("keep_max_plus");
+        let acc = self.place(acc);
+        let (row, base) = (self.expr(row).text, self.expr(base).text);
+        let (lo, hi) = (self.expr(lo).text, self.expr(hi).text);
+        Some(format!(
+            "cpl::keep_max_plus({acc}.data(), {row}.data(), {base}, {lo}, {hi});"
+        ))
+    }
+
     pub(crate) fn for_stmt(
         &mut self,
         id: LoopId,
@@ -160,6 +247,10 @@ impl<'p> Emitter<'p> {
         body: &Block,
         out: &mut String,
     ) {
+        if let Some(call) = self.keep_max_plus(slot, iter, body) {
+            self.line(out, &call);
+            return;
+        }
         let ty = self.locals()[slot].ty.clone();
         let cpp = self.ty_with_elem_layout(
             &ty,
@@ -250,9 +341,24 @@ impl<'p> Emitter<'p> {
                                      {left} > 0; {left}--, {var} = ({cpp})(({wide}){var} + ({wide})({step}))) {{"
                                 )
                             }
-                            None if !closed => format!(
-                                "for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++) {{"
-                            ),
+                            None if !closed => {
+                                // A few rounds known before the program runs (a fixed domain's
+                                // positions) are unrolled, as a hand-written fixed array would be.
+                                let known = |e: &Expr| match &e.kind {
+                                    ExprKind::Int(n) => Some(*n),
+                                    ExprKind::DomainLen(d) => self.facts.constexpr_domain_len(*d),
+                                    _ => None,
+                                };
+                                let unroll = match (known(lo), known(hi)) {
+                                    (Some(lo), Some(hi)) if (1..=16).contains(&(hi - lo)) => {
+                                        format!("_Pragma(\"GCC unroll {}\") ", hi - lo)
+                                    }
+                                    _ => String::new(),
+                                };
+                                format!(
+                                    "{unroll}for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++) {{"
+                                )
+                            }
                             // Up to a last value that is not the largest
                             // of its type: `<=` ends the loop.
                             None if cpp == "int"
@@ -469,21 +575,20 @@ impl<'p> Emitter<'p> {
                 let effects = Touch::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
-                let untouched_by_body =
-                    |seq: &Expr| match walk::path_root(crate::uses::in_place(seq)) {
-                        Some((false, local)) => {
-                            !effects.writes.contains(&(false, local))
-                                || fields_untouched(crate::uses::in_place(seq), body)
-                        }
-                        Some((true, global)) => {
-                            !effects.writes.contains(&(true, global))
-                                && !effects
-                                    .calls
-                                    .iter()
-                                    .any(|f| self.uses.effects(*f).writes.contains(&global))
-                        }
-                        None => false,
-                    };
+                let untouched_by_body = |seq: &Expr| match held_root(crate::uses::in_place(seq)) {
+                    Some((false, local)) => {
+                        !effects.writes.contains(&(false, local))
+                            || fields_untouched(crate::uses::in_place(seq), body)
+                    }
+                    Some((true, global)) => {
+                        !effects.writes.contains(&(true, global))
+                            && !effects
+                                .calls
+                                .iter()
+                                .any(|f| self.uses.effects(*f).writes.contains(&global))
+                    }
+                    None => false,
+                };
                 let untouched = untouched_by_body(seq);
                 let lent = self.lent_coalesce(seq).filter(|(from, _)| match from {
                     crate::lend::Lender::Get(m, _) => untouched_by_body(m),
@@ -491,6 +596,9 @@ impl<'p> Emitter<'p> {
                 });
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                if !rev && self.read_streamed(id, seq, &format!("{cpp} {var}"), &first, body, out) {
+                    return;
+                }
                 if !rev && self.sink_loop(id, seq, &var, &cpp, &first, body, out) {
                     return;
                 }
@@ -630,5 +738,71 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+    }
+
+    /// `for x in read<[D]T>()` reads each `x` as its round begins, with no
+    /// array, when the body can neither trap, stop early, read nor print:
+    /// nothing can tell that from reading every value first.
+    fn read_streamed(
+        &mut self,
+        id: LoopId,
+        seq: &Expr,
+        decl: &str,
+        first: &[String],
+        body: &Block,
+        out: &mut String,
+    ) -> bool {
+        let ExprKind::Read(spec) = &seq.kind else {
+            return false;
+        };
+        let cpl_ir::Spec::Array { dims, elem } = spec.as_ref() else {
+            return false;
+        };
+        let scalar = match elem.as_ref() {
+            cpl_ir::Spec::Int { .. } => true,
+            cpl_ir::Spec::Plain(ty) => ty.is_scalar() && *ty != Ty::Char,
+            _ => false,
+        };
+        if dims.len() != 1 || !scalar {
+            return false;
+        }
+        let pushed = self.fused_pushes.last().map_or(usize::MAX, |(vec, _)| *vec);
+        let traps = self.target.checks != crate::Checks::None;
+        let call_ok = |e: &Expr| {
+            crate::uses::effects::pure_call(
+                self.program,
+                &self.devirt,
+                &self.sink_pure,
+                self.fn_id,
+                traps,
+                e,
+            )
+        };
+        if !crate::uses::effects::trap_free_stmts(&body.stmts, pushed, traps, &call_ok) {
+            return false;
+        }
+        let len = self.dim(&dims[0]);
+        let value = self.read(elem).text;
+        let (at, end) = (self.temp(), self.temp());
+        self.line(
+            out,
+            &format!("for (ll {at} = 0, {end} = {len}; {at} < {end}; {at}++) {{"),
+        );
+        let mut opening = vec![format!("{decl} = {value};")];
+        opening.extend(first.iter().cloned());
+        self.loop_body(id, &opening, body, out);
+        true
+    }
+}
+
+/// The variable a loop source is a place in, whatever its indices: they
+/// run once, before the loop binds the place, so only the variable must
+/// stay unchanged (`for d in divisors[a[p]]`).
+fn held_root(e: &Expr) -> Option<(bool, usize)> {
+    match &e.kind {
+        ExprKind::Local(slot) => Some((false, *slot)),
+        ExprKind::Global(id) => Some((true, *id)),
+        ExprKind::Field(base, _) | ExprKind::Index(base, _) => held_root(base),
+        _ => None,
     }
 }

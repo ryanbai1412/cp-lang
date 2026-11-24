@@ -1,6 +1,9 @@
 # The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
 
 [[case]]
+input = "abacabadabacaba\n4\na 7\ne 3\nbac 2\nabada 1\n"
+
+[[case]]
 seed = 1
 size = 1
 

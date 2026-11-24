@@ -36,10 +36,12 @@ fn join(a0: Rank, b0: Rank):
     (lo[root], hi[root]) = (min(lo[a], lo[b]), max(hi[a], hi[b]))
 
 // lcp[j] is the common prefix of ranks j and j + 1
-var meet_at: [0..n]List<Int> = []
-for j in 0..n - 1: meet_at[suffixes.lcp[j]].push(j)
+let meets = (0..n - 1).sorted(by: j => desc(suffixes.lcp[j]))
+var next = 0
 var answer: List<(Int, Int)> = []
 for r in (0..n).rev:
-    for j in meet_at[r]: join(Rank(j), Rank(j + 1))
+    while next < meets.len and suffixes.lcp[meets[next]] == r:
+        join(Rank(meets[next]), Rank(meets[next] + 1))
+        next += 1
     answer.push((pairs, best ?? 0))
 for (count, product) in answer.rev: print(count, product)

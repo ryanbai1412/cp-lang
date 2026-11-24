@@ -71,9 +71,6 @@ impl Lowerer<'_> {
                 between(self, value, lo, hi, false)
             }
             _ => {
-                if let Some(found) = self.std_contains(item, container, span) {
-                    return found;
-                }
                 let holder = self.expr(container, None);
                 if let Ty::Struct(sid) = holder.ty {
                     let s = &self.structs[sid];
@@ -149,46 +146,5 @@ impl Lowerer<'_> {
                 )
             }
         }
-    }
-    /// `x in c` on a struct with no `has` or `contains` of its own is `c.contains(x)`, resolved
-    /// like any call: std's `contains` over a `Seq`, so every sequence of an `Eq` element has `in`.
-    fn std_contains(
-        &mut self,
-        item: &ast::Expr,
-        container: &ast::Expr,
-        span: Span,
-    ) -> Option<Expr> {
-        let Some(Ty::Struct(sid)) = self.probe_ty_silent(container) else {
-            return None;
-        };
-        let s = &self.structs[sid];
-        let own = |m: &str| s.methods.contains_key(m) || s.gen_methods.contains_key(m);
-        if own("has") || own("contains") {
-            return None;
-        }
-        let name = ast::Name {
-            text: "contains".into(),
-            span: container.span,
-        };
-        let callee = ast::Expr {
-            kind: ast::ExprKind::Field {
-                base: Box::new(container.clone()),
-                name,
-            },
-            span: container.span,
-        };
-        let args = vec![ast::Arg {
-            name: None,
-            mutable: false,
-            value: item.clone(),
-        }];
-        let call = ast::Expr {
-            kind: ast::ExprKind::Call {
-                callee: Box::new(callee),
-                args,
-            },
-            span,
-        };
-        Some(self.expr(&call, None))
     }
 }

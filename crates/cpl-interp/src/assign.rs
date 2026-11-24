@@ -402,64 +402,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         let arg = arg_vals.first().cloned().unwrap_or(Value::Unit);
         let arg2 = arg_vals.get(1).cloned().unwrap_or(Value::Unit);
-        if op == Mutation::Shuffle {
-            let mut rng_state = self.rng_state;
-            let choices = self.choices.clone();
-            let mut below = |n: usize| {
-                draw_below(choices.as_deref(), &mut rng_state, n as u128, span.start) as usize
-            };
-            let mv_opt = match self.resolve(place, &mut indices.iter())? {
-                Value::MutView(mv) => Some(Rc::clone(mv)),
-                _ => None,
-            };
-            let res = if let Some(mv) = mv_opt {
-                match self.part_mut(&mv.target, span)? {
-                    Value::List(items) => {
-                        let v = Rc::make_mut(items);
-                        for i in (1..mv.len).rev() {
-                            let j = below(i + 1);
-                            v.swap(mv.lo + i, mv.lo + j);
-                        }
-                        Value::Unit
-                    }
-                    Value::Array(arr) => {
-                        let a = Rc::make_mut(arr);
-                        for i in (1..mv.len).rev() {
-                            let j = below(i + 1);
-                            a.swap(mv.lo + i, mv.lo + j);
-                        }
-                        Value::Unit
-                    }
-                    Value::Moved => return trap(span, LENT),
-                    _ => return trap(span, "internal: this value can't be shuffled"),
-                }
-            } else {
-                let cell = self.resolve(place, &mut indices.iter())?;
-                match cell {
-                    Value::Moved => return trap(span, LENT),
-                    Value::List(items) => {
-                        let v = Rc::make_mut(items);
-                        for i in (1..v.len()).rev() {
-                            let j = below(i + 1);
-                            v.swap(i, j);
-                        }
-                        Value::Unit
-                    }
-                    Value::Array(arr) => {
-                        let a = Rc::make_mut(arr);
-                        let n = a.len();
-                        for i in (1..n).rev() {
-                            let j = below(i + 1);
-                            a.swap(i, j);
-                        }
-                        Value::Unit
-                    }
-                    _ => return trap(span, "internal: this value can't be shuffled"),
-                }
-            };
-            self.rng_state = rng_state;
-            return Ok(res);
-        }
         let mv_opt = match self.resolve(place, &mut indices.iter())? {
             Value::MutView(mv) => Some(Rc::clone(mv)),
             _ => None,

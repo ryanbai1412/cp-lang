@@ -124,6 +124,9 @@ pub(crate) struct Scope {
     /// Every module this file reaches through `use`, its own imports first and theirs after. A
     /// type returned by an imported fn is looked up here even when this file never names it.
     pub modules: Vec<Module>,
+    /// The names `use` lines bring in by name: in method form they stand in
+    /// front of the prelude's of the name (R11.2.3).
+    pub chosen: crate::fx::HashSet<String>,
 }
 
 /// One name of `use std.algebra.{Monoid}`.
@@ -223,13 +226,23 @@ impl Analysis {
 struct FileState {
     id: u32,
     text: Arc<str>,
-    analysis: Option<Arc<Analysis>>,
-    /// True when `analysis` has run `check_item` on every item (false when
-    /// it was only analyzed on demand as an imported module).
-    analysis_checked: bool,
+    /// The file analyzed as a program: the prelude in scope and every item
+    /// checked.
+    program: Option<Arc<Analysis>>,
+    /// The file analyzed as a module a `use` reads: no prelude, signatures
+    /// only. A file can be both, and each importer must get this one
+    /// whoever asked first.
+    module: Option<Arc<Analysis>>,
     /// Read by the module loader, not given by `set_file`: the loader may
     /// replace its text.
     loaded: bool,
+}
+
+impl FileState {
+    fn forget(&mut self) {
+        self.program = None;
+        self.module = None;
+    }
 }
 
 struct SyntaxMemo {
@@ -333,15 +346,15 @@ impl Database {
             Some(file) => {
                 file.text = text;
                 file.loaded = loaded;
-                file.analysis = None;
-                file.analysis_checked = false;
+                file.forget();
                 // Only the files that import this one, directly or not, see
                 // the change; keeping the rest spares relexing the stdlib on
                 // every keystroke.
                 for file in self.files.values_mut() {
-                    if file.analysis.as_ref().is_some_and(|a| a.depends_on(path)) {
-                        file.analysis = None;
-                        file.analysis_checked = false;
+                    let stale =
+                        |a: &Option<Arc<Analysis>>| a.as_ref().is_some_and(|a| a.depends_on(path));
+                    if stale(&file.program) || stale(&file.module) {
+                        file.forget();
                     }
                 }
             }
@@ -353,8 +366,8 @@ impl Database {
                     FileState {
                         id,
                         text,
-                        analysis: None,
-                        analysis_checked: false,
+                        program: None,
+                        module: None,
                         loaded,
                     },
                 );
@@ -395,10 +408,23 @@ impl Database {
     /// Lexes, parses and checks a file, reusing everything an edit did not
     /// affect. Asking again without an edit returns the same `Analysis`.
     pub fn analyze(&mut self, path: &str) -> Option<Arc<Analysis>> {
-        let imported_module = !self.analyzing.is_empty();
+        self.analyze_as(path, false)
+    }
+
+    /// `analyze`, as a program or as the module a `use` reads.
+    pub(crate) fn analyze_as(
+        &mut self,
+        path: &str,
+        imported_module: bool,
+    ) -> Option<Arc<Analysis>> {
         let file = self.files.get(path)?;
-        if let Some(analysis) = &file.analysis {
-            if (imported_module || file.analysis_checked) && !self.reaches_open(analysis) {
+        let cached = if imported_module {
+            &file.module
+        } else {
+            &file.program
+        };
+        if let Some(analysis) = cached {
+            if !self.reaches_open(analysis) {
                 return Some(analysis.clone());
             }
         }
@@ -460,6 +486,7 @@ impl Database {
             };
             items.push(item);
         }
+        let items = arity::key_overloads(items);
 
         // The file's scope: the first declaration of a name wins, and later
         // ones are reported below.
@@ -553,8 +580,9 @@ impl Database {
         // gets it (spec 11.3); in 0.2 every module does. A `use` that failed
         // may have been meant to bring a name it lists, so the prelude
         // leaves those names alone (all of them for a glob).
-        let library = self.analyzing.len() > 1;
+        let library = imported_module;
         if !prelude_off && !library && !is_prelude(path) {
+            scope.chosen = scope.imports.keys().cloned().collect();
             // `type Mod = Mod<P>` names the prelude's `Mod` on its right.
             let declared: crate::fx::HashSet<&str> = items
                 .iter()
@@ -578,16 +606,18 @@ impl Database {
                     continue;
                 }
                 let mut prev_dot = false;
-                for tok in &lexed.tokens[range.tokens.0..range.tokens.1] {
+                let tokens = &lexed.tokens[range.tokens.0..range.tokens.1];
+                if walks::some_walk_needs_seq(tokens) {
+                    // std.seq is where `contains` and those `Seq` impls live.
+                    dot_ident_tokens.insert("contains");
+                }
+                for tok in tokens {
                     if tok.kind == cpl_syntax::TokenKind::Ident {
                         let s = &text[tok.span.start as usize..tok.span.end as usize];
                         ident_tokens.insert(s);
                         if prev_dot {
                             dot_ident_tokens.insert(s);
                         }
-                    } else if tok.kind == cpl_syntax::TokenKind::In {
-                        // `x in s` is `s.contains(x)`, std's for a `Seq` (R07.9.5).
-                        dot_ident_tokens.insert("contains");
                     } else if tok.kind == cpl_syntax::TokenKind::Str {
                         let s = &text[tok.span.start as usize..tok.span.end as usize];
                         if s.contains('{') {
@@ -802,7 +832,7 @@ impl Database {
                             .join("\n");
                         let sub_path = format!("{path}::mod::{}", name.text);
                         self.store(&sub_path, dedented.into(), true);
-                        if let Some(sub_analysis) = self.analyze(&sub_path) {
+                        if let Some(sub_analysis) = self.analyze_as(&sub_path, true) {
                             let body_base = range.span.start + (head.len() as u32) + 1;
                             for d in &sub_analysis.diagnostics {
                                 inline_mod_diags.push(d.clone().shift(body_base));
@@ -1263,8 +1293,12 @@ impl Database {
         self.cycle_floor = outer_floor.min(self.cycle_floor);
         if imports_ok && context_free {
             if let Some(file) = self.files.get_mut(path) {
-                file.analysis = Some(analysis.clone());
-                file.analysis_checked = !imported_module;
+                let slot = if imported_module {
+                    &mut file.module
+                } else {
+                    &mut file.program
+                };
+                *slot = Some(analysis.clone());
             }
         }
         Some(analysis)
@@ -1341,6 +1375,16 @@ impl Database {
                         },
                     );
                     scoping::add_overloads(scope, index, &name.text);
+                    for arity in 0..=8 {
+                        let key = crate::prelude::arity_key(&name.text, arity);
+                        if decl_of(&key).is_some_and(|d| d.public) {
+                            let import = Import {
+                                module: index,
+                                name: key.clone(),
+                            };
+                            scope.imports.insert(key, import);
+                        }
+                    }
                 }
                 Some(_) => diags.push(
                     Diagnostic::error(
@@ -1418,7 +1462,7 @@ impl Database {
             return None;
         }
         self.store(&path, text.into(), true);
-        let analysis = self.analyze(&path)?;
+        let analysis = self.analyze_as(&path, true)?;
         Some(Module {
             name,
             path,
@@ -1825,7 +1869,9 @@ fn declare_with_var(
 
 mod cycles;
 mod top_level;
+mod walks;
 use top_level::{padded_array, rewalk_kind, view_rereads, wide_array};
+mod arity;
 mod env;
 mod fields;
 mod rebind;

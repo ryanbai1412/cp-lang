@@ -17,7 +17,8 @@ let iv = read<[I]Range<X>>()
 
 let by_start = I.sort(by: i => iv[i].l)
 let soonest = by_start.map(i => Some((iv[i].r, i))).rev.scan(min)
-fn first_from(c: Cut<X>) -> ?I = soonest[by_start.bsearch(i => iv[i].l >= c)]?.1
+let starts = [iv[i].l for i in by_start]
+fn first_from(c: Cut<X>) -> ?I = soonest[starts.bsearch(l => l >= c)]?.1
 let chain = Lift<I, ()>.of(i => first_from(iv[i].r))
 fn fit(gap: Range<X>) -> Int:
     let u = first_from(gap.l) ?? return 0

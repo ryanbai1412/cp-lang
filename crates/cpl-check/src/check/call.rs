@@ -1038,7 +1038,7 @@ impl<'a> Checker<'a> {
                 "sorted" => {
                     return Some(Ty::list(elem));
                 }
-                "argmax" | "argmin" if !base_ty.is_keyed() => {
+                "argmax" | "argmin" if !self.implements_trait(&base_ty, "Keyed") => {
                     let message = format!(
                         "`{}` requires `Keyed`, but `{}` has type `{base_ty}`",
                         name.text,
@@ -1047,7 +1047,7 @@ impl<'a> Checker<'a> {
                     self.error(codes::MISSING_IMPL, name.span, message);
                     return Some(Ty::Error);
                 }
-                "sort" | "reverse" | "shuffle" if !matches!(base_ty, Ty::Domain(_)) => {
+                "sort" | "reverse" if !matches!(base_ty, Ty::Domain(_)) => {
                     // A read-only view (`xs.rev`) is reported once, as not writable.
                     if !base_ty.is_indexed_mut() && !self.is_readonly_view(base) {
                         let message = format!(
@@ -1537,7 +1537,7 @@ impl Checker<'_> {
             return Vec::new();
         };
         let Some((member, elem)) = self.catalog_row(base, &name.text) else {
-            return Vec::new();
+            return self.library_lambda_params(base, &name.text, args, arg);
         };
         let params = split_top(member.params);
         let slot = match &arg.name {
@@ -1566,6 +1566,37 @@ impl Checker<'_> {
             .iter()
             .map(|t| catalog_ty(t, &elem, &[]).unwrap_or(Ty::Unknown))
             .collect()
+    }
+
+    /// `xs.map(x => ..)` through a library fn: the lambda takes what the fn's
+    /// parameter does once its `self` is the receiver.
+    fn library_lambda_params(
+        &mut self,
+        base: &Expr,
+        name: &str,
+        args: &[Arg],
+        arg: &Arg,
+    ) -> Vec<Ty> {
+        let base_ty = self.quietly(|c| c.infer(base));
+        let Some(Ty::Fn { params, .. }) = self.quietly(|c| c.own_method(&base_ty, name)) else {
+            return Vec::new();
+        };
+        let slot = match &arg.name {
+            Some(given) => params.iter().find(|p| p.name == given.text),
+            None => (args.iter().filter(|a| a.name.is_none()))
+                .position(|a| std::ptr::eq(a, arg))
+                .and_then(|i| params.iter().filter(|p| !p.named_only).nth(i)),
+        };
+        match slot.map(|p| &p.ty) {
+            Some(Ty::Fn { params: takes, .. })
+                if takes
+                    .iter()
+                    .all(|t| !t.ty.has_vague() && !t.ty.mentions_param()) =>
+            {
+                takes.iter().map(|t| t.ty.clone()).collect()
+            }
+            _ => Vec::new(),
+        }
     }
 
     /// The catalog row for `base.name` on a built-in type, and the

@@ -92,6 +92,8 @@ pub(crate) struct Emitter<'p> {
     pub devirt: crate::devirt::Devirt<'p>,
     /// Closures called by name, each emitted once as a fn of the program.
     pub direct: BTreeSet<usize>,
+    /// Closures built as their own `cpl_clN` type, declared with the types.
+    pub functors: BTreeSet<usize>,
     /// The structs and fns the written file defines.
     written: lowered::Written,
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
@@ -167,6 +169,8 @@ pub(crate) struct Emitter<'p> {
     pub give_ref: bool,
     /// The fn being written returns `const T&`: its `return` of a place lends it.
     pub lends_result: bool,
+    /// The fns that return `const T&`, each with the parameter whose place it lends.
+    pub lent_roots: BTreeMap<cpl_ir::FnId, usize>,
     /// The `let`s the `Do` block being written as a lambda owns: they
     /// move into what it gives.
     pub give_owned: Option<BTreeSet<usize>>,
@@ -179,10 +183,14 @@ pub(crate) struct Emitter<'p> {
     /// The statement being written stores a local read for the last time,
     /// or `let`s a variable the next statements set before reading it.
     pub moves_last: bool,
+    /// Each `if` branch being written and the locals dead once it ends.
+    pub branch_dead: Vec<(*const Block, BTreeSet<usize>)>,
     /// Items of the struct or tuple a `let` builds that read a place the
     /// next statements set before reading it (`let out = T(xs); xs = []`):
     /// each is moved in, not copied.
     pub taken_items: BTreeSet<*const Expr>,
+    /// The locals the statement being written pushes for the last time.
+    pub pushed_moves: Vec<*const Expr>,
     pub pushers: BTreeMap<usize, usize>,
     /// The pushers that run to their end, never feeding a loop.
     pub eager: BTreeSet<usize>,
@@ -275,6 +283,7 @@ impl<'p> Emitter<'p> {
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
+            functors: BTreeSet::new(),
             written: Default::default(),
             borrow_closures: BTreeSet::new(),
             call_scoped: BTreeSet::new(),
@@ -320,11 +329,14 @@ impl<'p> Emitter<'p> {
             last_use_call: false,
             give_ref: false,
             lends_result: false,
+            lent_roots: BTreeMap::new(),
             give_owned: None,
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,
+            branch_dead: Vec::new(),
             taken_items: BTreeSet::new(),
+            pushed_moves: Vec::new(),
             pushers: BTreeMap::new(),
             eager: BTreeSet::new(),
             sinks: BTreeMap::new(),
@@ -596,8 +608,9 @@ impl<'p> Emitter<'p> {
     }
 
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
-    /// The fn's C++ signature, and whether it returns `const T&`.
-    fn signature(&self, f: &Function) -> (String, bool) {
+    /// The fn's C++ signature, and the parameter whose place it lends
+    /// when it returns `const T&`.
+    fn signature(&self, f: &Function) -> (String, Option<usize>) {
         let id = self.fn_id.expect("a fn");
         let mut named = crate::scope::named_params(&f.body, f.params.len());
         named.retain(|slot| !self.devirt.dead_local(Some(id), *slot));
@@ -670,8 +683,11 @@ impl<'p> Emitter<'p> {
         if self.devirt.returns_lambda(id) {
             ret = "auto".into();
         }
-        let lends = !self.devirt.returns_lambda(id) && self.lends_its_result(id, f, &by_ref);
-        if lends {
+        let lends = match self.devirt.returns_lambda(id) {
+            true => None,
+            false => self.lends_its_result(id, f, &by_ref),
+        };
+        if lends.is_some() {
             ret = format!("const {ret}&");
         }
         let signature = format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "));
@@ -680,11 +696,13 @@ impl<'p> Emitter<'p> {
 
     /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
     /// is, like a `@get` of a stored list, lends it: the caller reads it in place and copies
-    /// it only where it keeps it.
-    fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> bool {
+    /// it only where it keeps it. So does one that gives what such a fn lends from a place of
+    /// its own (`a.view` where `A.view` lends `xs`), through any chain of them. The answer is
+    /// the parameter the result is a place on.
+    fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> Option<usize> {
         use cpl_ir::{ElemLoc, ExprKind, NarrowLayout};
         let [Stmt::Return(Some(e))] = f.body.stmts.as_slice() else {
-            return false;
+            return None;
         };
         if f.ret.is_scalar()
             || f.ret == Ty::Unit
@@ -692,7 +710,7 @@ impl<'p> Emitter<'p> {
             || self.caches_on_read(&f.ret)
             || self.expr_elem_layout(e) != self.elem_layout(ElemLoc::FnRet(id))
         {
-            return false;
+            return None;
         }
         let mut at = e;
         loop {
@@ -707,8 +725,16 @@ impl<'p> Emitter<'p> {
                 {
                     base
                 }
-                ExprKind::Local(slot) => return !std::ptr::eq(at, e) && by_ref.contains(slot),
-                _ => return false,
+                ExprKind::Call(callee, args) => {
+                    match self.lent_roots.get(callee).map(|&s| &args[s]) {
+                        Some(cpl_ir::Arg::Value(arg)) => arg,
+                        _ => return None,
+                    }
+                }
+                ExprKind::Local(slot) => {
+                    return (!std::ptr::eq(at, e) && by_ref.contains(slot)).then_some(*slot)
+                }
+                _ => return None,
             };
         }
     }
@@ -743,7 +769,11 @@ impl<'p> Emitter<'p> {
             let ty = &locals[slot].ty;
             let loc = cpl_ir::ElemLoc::Local(scope, slot);
             let cpp = self.ty_for_loc(ty, loc);
-            let init = if self.fixed_array_len(loc).is_some() {
+            let init = if self
+                .fixed_array_len(loc)
+                .or_else(|| self.ty_fixed_len(ty))
+                .is_some()
+            {
                 "{}"
             } else {
                 self.zero_init(ty)
@@ -922,7 +952,10 @@ impl<'p> Emitter<'p> {
                 self.const_globals.insert(id);
                 continue;
             }
-            let is_fixed = self.fixed_array_len(loc).is_some();
+            let is_fixed = self
+                .fixed_array_len(loc)
+                .or_else(|| self.ty_fixed_len(&global.ty))
+                .is_some();
             let init = if is_fixed {
                 "{}"
             } else {
@@ -960,8 +993,11 @@ impl<'p> Emitter<'p> {
                 crate::Part::Yours
             };
             self.enter(Some(id), &f.body, f.params.len());
-            let (signature, lends) = self.signature(f);
-            self.lends_result = lends;
+            let (signature, root) = self.signature(f);
+            self.lends_result = root.is_some();
+            if let Some(slot) = root {
+                self.lent_roots.insert(id, slot);
+            }
             let hook = program.is_hook(id);
             protos.push(Proto {
                 name: fn_name(&f.name),
@@ -1055,7 +1091,11 @@ impl<'p> Emitter<'p> {
             self.hoisted_decls(&mut fns, f.params.len());
             self.block(&f.body, &mut fns);
             text::close_def(&mut fns, def_at, &self.names[..f.params.len()]);
-            if inline_hint(&fns[def_at..], &signature, &fn_name(&f.name)) {
+            if inline_hint(
+                &fns[def_at..],
+                &signature,
+                self.devirt.recursive_fns.contains(&id),
+            ) {
                 fns.insert_str(def_at + 1, "inline ");
             }
             let list_form =
@@ -1169,6 +1209,11 @@ impl<'p> Emitter<'p> {
         // Closures that are called by name (see `devirt`): emit dependencies
         // before callers so higher-order combinators (e.g. `flip_action`) can
         // call another `cpl_fnM` regardless of closure id order.
+        let mut functor_bodies = String::new();
+        for cid in self.functors.clone() {
+            self.enter(None, &program.closures[cid].body, 0);
+            functor_bodies.push_str(&self.functor_body(cid));
+        }
         let mut direct = String::new();
         let mut emitted_direct: BTreeSet<usize> = BTreeSet::new();
         let mut visiting: Vec<(usize, bool)> = Vec::new();
@@ -1211,6 +1256,7 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+        direct.push_str(&functor_bodies);
         // The pragma first: every float op rounds as the interpreter's does, never an FMA.
         // On an AVX2 judge the same pragma asks for O3 too: one optimize set for the library and
         // the program, or g++ won't inline one into the other.
@@ -1312,9 +1358,16 @@ impl<'p> Emitter<'p> {
                     || self.shows.iter().any(|s| names(s, name))
             };
             let has_lo = used_in(&lo_name);
-            let has_len = used_in(&len_name);
+            let mut has_len = used_in(&len_name);
             if !has_lo && !has_len {
                 continue;
+            }
+            if let Some(n) = self.facts.constexpr_domain_len(id).filter(|_| has_len) {
+                dom_vars.push_str(&format!("static constexpr ll {len_name} = {n};\n"));
+                has_len = false;
+                if !has_lo {
+                    continue;
+                }
             }
             if let Some(lo) = self.facts.const_domain_lo(id) {
                 if has_lo {
@@ -1432,7 +1485,7 @@ impl<'p> Emitter<'p> {
         }
         out.push_str("}  // namespace prog\n\n");
         out.push_str(match self.target.thread_stack {
-            Some(bytes) => format!("// Runs on a thread with a {} MB stack.\nstatic void cpl_main() {{\n", bytes >> 20),
+            Some(bytes) => format!("// Runs with a {} MB stack.\nstatic void cpl_main() {{\n", bytes >> 20),
             None => "// The judge allows no threads: the program has the stack `main` is given.\nint main() {\n".into(),
         }.as_str());
         // Each test case has its own query limit.
@@ -1508,8 +1561,8 @@ impl<'p> Emitter<'p> {
     }
 }
 
-/// `main` for a judge that allows threads: the program runs on one with
-/// the profile's stack, or the largest the judge reserves short of that.
+/// `main` for a judge that allows threads: the program runs with the
+/// profile's stack, or the largest the judge reserves short of that.
 /// The stack is address space: pages are committed as calls reach them.
 const THREAD_MAIN: &str = "\
 int main() {
@@ -1529,26 +1582,28 @@ static bool cpl_on(size_t n) {
 ";
 
 const POSIX_THREAD: &str = "
-#include <pthread.h>
-#if defined(__GLIBC__) && __GLIBC__ * 100 + __GLIBC_MINOR__ < 234
-#pragma weak pthread_create  // the judge may not link libpthread
-#define CPL_LINKED &pthread_create
-#else
-#define CPL_LINKED 1
-#endif
 #ifdef __GLIBC__
-#include <malloc.h>  // one arena: a thread's own is slower
-#endif
+#include <sys/mman.h>
+#include <ucontext.h>
+static bool cpl_on(size_t n) {
+    static ucontext_t u;
+    void* p = mmap(0, n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_NORESERVE, -1, 0);
+    if (p == MAP_FAILED || mprotect(p, 4096, PROT_NONE)) return false;
+    getcontext(&u);
+    u.uc_stack = {p, 0, n};
+    makecontext(&u, cpl_main, 0);
+    return setcontext(&u), false;
+}
+#else
+#include <pthread.h>
 static void* cpl_go(void*) { cpl_main(); return 0; }
 static bool cpl_on(size_t n) {
     pthread_attr_t a;
     pthread_t t;
-#ifdef __GLIBC__
-    mallopt(M_ARENA_MAX, 1);
-#endif
-    return CPL_LINKED && !pthread_attr_init(&a) && !pthread_attr_setstacksize(&a, n) &&
+    return !pthread_attr_init(&a) && !pthread_attr_setstacksize(&a, n) &&
            !pthread_create(&t, &a, cpl_go, 0) && (pthread_join(t, 0), true);
 }
+#endif
 ";
 
 /// Comparisons for the program's own types, from their fields in order.

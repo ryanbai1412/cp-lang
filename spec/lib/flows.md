@@ -282,7 +282,7 @@ use std.flow.{gomory_hu}
 domain V = read(1..=50)
 let m: 0..=choose2(V.count) = read()
 let edges = read<[m](u: V, v: V, w: 1..=1e6)>()
-let g = gomory_hu(edges).map(e => e.w).fold(gcd) ?? 0
+let g = gomory_hu(edges).map(e => e.w).fold(gcd)
 print(if g != 1: "one colour" else: "parity split")  // the split as in design/EXEMPLARS-PORTS.md
 ```
 

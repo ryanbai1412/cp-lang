@@ -18,11 +18,15 @@
   {"id": "4800429", "language": "PYPY3", "result": "WA", "time": 0.61473513, "memory_kb": 64220.0, "file": "corpus/submissions/4800429.py"},
   {"id": "4800437", "language": "PYPY3", "result": "AC", "time": 0.636078809, "memory_kb": 64820.0, "file": "corpus/submissions/4800437.py"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi16p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Output-only task; no accepted C++ submission. orig.cpp was written for the corpus and prints a computer per task, using the comparison, max and multiplication nodes freely (they only cost score). checker.py runs the printed computer on 40 seeded inputs per task, edge values included, rounding every node to 90 decimal places, and accepts any computer within 10^4 nodes whose outputs are within 10^-9; the statement's sample computer for task 1 passes and a one-node edit of it fails."
 }

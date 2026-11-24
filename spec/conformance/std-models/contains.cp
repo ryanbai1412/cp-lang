@@ -1,7 +1,7 @@
 // expect: ok, output "ok"
 // input: "7 300\n"
 // model: contains
-// `x in s` through std's `contains` against a hand loop over seeded random Deques and a user
+// std's O(n) `s.contains(x)` against a hand loop over seeded random Deques and a user
 // Seq of -4..=4 (length 0..=6), for every x in -5..=5. Reads `seed n`; prints the first miss.
 use std.rand.{Rng}
 use std.deque.{Deque}
@@ -26,6 +26,6 @@ for _ in 0..n:
         var want = false
         for y in xs:
             if y == x: want = true
-        if (x in dq) != want or (x in bag) != want:
+        if dq.contains(x) != want or bag.contains(x) != want:
             bad = "{xs} {x}"
 print(if bad == "": "ok" else: bad)

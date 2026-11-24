@@ -358,11 +358,6 @@ fn run(path: &Path) -> String {
                 .iter()
                 .find(|m| !m.at(&["id"]).is_null())
                 .unwrap_or_else(|| panic!("{}: no reply to {method}", path.display()));
-            assert!(
-                reply.at(&["error"]).is_null(),
-                "{}: {method} failed: {reply}",
-                path.display()
-            );
             match whole_file(method) {
                 true => out.push_str(&format!("\n== {method}\n")),
                 false => out.push_str(&format!(
@@ -370,7 +365,11 @@ fn run(path: &Path) -> String {
                     at(&position(&src, offset))
                 )),
             }
-            out.push_str(&render(method, reply.at(&["result"]), &uri));
+            // A refusal (renaming a std name) is an answer the snapshot pins.
+            match reply.at(&["error", "message"]).as_str() {
+                Some(why) => out.push_str(&format!("error: {why}")),
+                None => out.push_str(&render(method, reply.at(&["result"]), &uri)),
+            }
             out.push('\n');
         }
     }

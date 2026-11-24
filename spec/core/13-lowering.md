@@ -9,7 +9,7 @@ the generated C++17: what each form becomes, what it costs, and what
 
 Every program becomes one deterministic C++17 file, aiming under 32 KB
 and failing at 64 KB: a stamp, the runtime pieces used, the library
-instances used, then `main` on a thread with a large stack. Each form
+instances used, then `main` on a large stack. Each form
 has a stated C++ shape and cost, so what looks \(O(1)\) is \(O(1)\), and
 `cpl explain` shows the choices (widths, niches, specializations). The
 lowering adds no undefined behaviour to valid programs.
@@ -20,8 +20,9 @@ lowering adds no undefined behaviour to valid programs.
   used library instances, then `main`. Same source and pins give the
   same bytes. Warn above 32 KB (the target for every solution), fail at
   64 KB (profile-adjustable). (R13.1.1)
-- `main` starts a thread with the profile's stack (default 1 GB,
-  halving down to 8 MB) and runs the program on it. (R13.1.2)
+- `main` runs the program on the profile's stack (default 1 GB,
+  halving down to 8 MB): on glibc a reserved one `main` switches to,
+  elsewhere a thread's. (R13.1.2)
 - Input is one bulk `fread` and a hand-written parser; output is one
   buffer written at exit or flush. (R13.1.3)
 - Release builds compile with the profile's flags and emit no checks
@@ -58,7 +59,10 @@ the heap. Locals of plain types live in registers or the stack.
   name; there are no C++ templates in the output for language generics. (R13.3.1)
 - A function value with a known target is passed as an empty struct and
   inlined; captures are passed as references at each call (chapter 6).
-  There is no `std::function` and no indirect call. (R13.3.2)
+  There is no `std::function` and no indirect call. A struct fn field
+  only ever built from one capturing closure holds that closure as its own
+  type (a struct of its captures with a call operator); only a field that
+  different closures reach is erased, and `cpl explain` says which. (R13.3.2)
 - A non-recursive generator inlines its body with the loop body in place
   of `yield`. A recursive generator becomes a recursive function taking
   the loop body as a parameter; when the body can `break` or `return`, a

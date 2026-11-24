@@ -1,5 +1,5 @@
-// Tuned: slides live in plain Int grids (-1 where the piano can't be); every direction's lines
-// are one flat list of (cell, place) built once, and each line keeps one monotone deque of
+// Tuned: slides live in plain Int grids (-1 where the piano can't be); a generator walks each
+// direction's lines as (cell, place), and each line keeps one monotone deque of
 // (slide - place, place) in two plain lists, as the accepted C++ does, instead of a Window
 // beside a Deque.
 //
@@ -25,14 +25,14 @@ let q: 1..=200 = read()
 let hall: [Row, Col]Char = read()
 domain Tilt = 1..=q
 let tilts: [Tilt](from: Int, to: Int, way: 1..=4) = read()
-// every row or column of the hall, walked in each tilt's direction (1 N, 2 S, 3 W, 4 E), as
-// one list of (cell, place on its line); direction w's cells are cells[w * n * m..][..n * m]
-fn lines_of(way: Int) -> List<(r: Row, c: Col, i: Int)> = match way:
-    1 => [(r:, c:, i: n - r.label) for c in Col for r in Row.rev]
-    2 => [(r:, c:, i: r.label - 1) for c in Col for r in Row]
-    3 => [(r:, c:, i: m - c.label) for r in Row for c in Col.rev]
-    _ => [(r:, c:, i: c.label - 1) for r in Row for c in Col]
-let cells = lines_of(1) + lines_of(2) + lines_of(3) + lines_of(4)
+// every row or column of the hall, walked in a tilt's direction (1 N, 2 S, 3 W, 4 E), as
+// (cell, place on its line)
+fn lines_of(way: Int) -> yields (r: Row, c: Col, i: Int):
+    match way:
+        1 => for c in Col: for r in Row.rev: yield (r:, c:, i: n - r.label)
+        2 => for c in Col: for r in Row: yield (r:, c:, i: r.label - 1)
+        3 => for r in Row: for c in Col.rev: yield (r:, c:, i: m - c.label)
+        _ => for r in Row: for c in Col: yield (r:, c:, i: c.label - 1)
 var far: [Row, Col]Int = -1  // the longest slide that ends here, -1 if none
 far[start] = 0
 var next: [Row, Col]Int = -1
@@ -41,8 +41,7 @@ var (gain, place) = (List.filled(long, 0), List.filled(long, 0))  // the deque, 
 for (from, to, way) in tilts:
     let seconds = to - from + 1
     var (head, tail) = (0, 0)
-    for k in (way - 1) * n * m..way * n * m:
-        let (r, c, i) = cells[k]
+    for (r, c, i) in lines_of(way):
         if i == 0 or hall[r, c] == 'x': (head, tail) = (0, 0)
         if hall[r, c] == 'x':
             next[r, c] = -1

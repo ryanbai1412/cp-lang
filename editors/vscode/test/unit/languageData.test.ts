@@ -13,6 +13,7 @@ import {
     FILE_DIRECTIVES,
     KEYWORDS,
     LIBRARY_KEYWORDS,
+    BUILTIN_VALUES,
     PRELUDE_CONSTANTS,
     STDLIB_CONSTANTS,
     PRELUDE_TYPES,
@@ -134,6 +135,11 @@ test('every table entry is a name edition 0.3 ships: no phantom symbols', () => 
     assert.deepEqual(phantoms(PRELUDE_TYPES, name => real.builtinTypes.has(name)), [], 'PRELUDE_TYPES not in prelude.rs');
     assert.deepEqual(phantoms(STDLIB_TYPES, name => real.stdlibTypes.includes(name)), [], 'STDLIB_TYPES not declared in std/');
     assert.deepEqual(
+        phantoms(BUILTIN_VALUES, name => real.builtinValues.has(name)),
+        [],
+        'BUILTIN_VALUES not in prelude.rs',
+    );
+    assert.deepEqual(
         phantoms(PRELUDE_VALUES, name => real.builtinValues.has(name) || (fromPrelude(name) && real.stdlibFns.includes(name))),
         [],
         'PRELUDE_VALUES neither built in nor imported by std/prelude.cp',
@@ -197,6 +203,13 @@ test('stale v1 and removed v2.1 names stay out of the tables; decorators match 0
     }
 });
 
+test('a std fn the prelude imports is scoped std, not built in', async () => {
+    for (const word of PRELUDE_VALUES.filter(name => !BUILTIN_VALUES.includes(name))) {
+        const scopes = await scopesOf(`let v = ${word}(x)`, word);
+        assert.ok(!scopes.includes('support.function.builtin.cp'), `\`${word}\` is scoped ${JSON.stringify(scopes)}`);
+    }
+});
+
 test('the grammar lists the exact same prelude and stdlib tables as languageData.ts', () => {
     const alternation = (scope: string) => {
         const rule = new RegExp(`"name": "${scope}",\\s*"match": "[^"]*?\\(([A-Za-z0-9_|]+)\\)`).exec(grammarText);
@@ -205,8 +218,11 @@ test('the grammar lists the exact same prelude and stdlib tables as languageData
     };
     assert.deepEqual(sorted(alternation('support.type.builtin.cp')), sorted(PRELUDE_TYPES));
     assert.deepEqual(sorted(alternation('support.type.stdlib.cp')), sorted(STDLIB_TYPES));
-    assert.deepEqual(sorted(alternation('support.function.builtin.cp')), sorted(PRELUDE_VALUES));
-    assert.deepEqual(sorted(alternation('support.function.stdlib.cp')), sorted(STDLIB_VALUES));
+    assert.deepEqual(sorted(alternation('support.function.builtin.cp')), sorted(BUILTIN_VALUES));
+    assert.deepEqual(
+        sorted(alternation('support.function.stdlib.cp')),
+        sorted([...PRELUDE_VALUES.filter(name => !BUILTIN_VALUES.includes(name)), ...STDLIB_VALUES]),
+    );
     assert.deepEqual(sorted(alternation('support.constant.stdlib.cp')), sorted([...PRELUDE_CONSTANTS, ...STDLIB_CONSTANTS]));
 });
 

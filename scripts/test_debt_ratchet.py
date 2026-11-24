@@ -667,6 +667,12 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertEqual(dr.inherited_baseline({name: 0}, {name: 3})[name], 0)
 
+    def test_an_unverified_dream_fails_the_ratchet(self) -> None:
+        self.assertIn("dream_unverified", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"dream_unverified": 1}, {"dream_unverified": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
     def test_an_ignored_rust_test_fails_the_ratchet(self) -> None:
         self.assertIn("rust_ignore", dr.HARD_ZERO)
         errs, _, _ = dr.evaluate({"rust_ignore": 1}, {"rust_ignore": 0})

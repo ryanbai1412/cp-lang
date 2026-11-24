@@ -10,14 +10,14 @@
   {"id": "4823808", "language": "CPP17", "result": "RTE", "time": 21.441288083, "memory_kb": 201212.0, "file": "corpus/submissions/4823808.cpp"},
   {"id": "4823811", "language": "CPP17", "result": "TLE", "time": 21.84074188, "memory_kb": 193068.0, "file": "corpus/submissions/4823811.cpp"},
   {"id": "4825266", "language": "CPP17", "result": "AC", "time": 5.664740185, "memory_kb": 44204.0, "file": "corpus/submissions/4825266.cpp"},
-  {"id": "4825276", "language": "CPP17", "result": "AC", "time": 5.927255623, "memory_kb": 34004.0, "file": "corpus/submissions/4825276.cpp"},
-  {"id": "4825283", "language": "CPP17", "result": "AC", "time": 10.098274965, "memory_kb": 31704.0, "file": "corpus/submissions/4825283.cpp"}
+  {"id": "4825276", "language": "CPP17", "result": "AC", "time": 5.927255623, "memory_kb": 34004.0, "file": null},
+  {"id": "4825283", "language": "CPP17", "result": "AC", "time": 10.098274965, "memory_kb": 31704.0, "file": null}
  ],
- "cpp_ac": 3,
+ "cpp_ac": 1,
  "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "4825276 and 4825283 overflow graph[maxm = 1e4] and segfault on valid inputs (n >= 500 with k = 100, and for 4825283 also n = 1000 with k = 5), so they are no reference: their files are gone and their records stay. 4825266 matches an exhaustive brute (every placement of the k stones, every removal sequence) on 82 random cases with n <= 5 and r_i <= 5."
 }

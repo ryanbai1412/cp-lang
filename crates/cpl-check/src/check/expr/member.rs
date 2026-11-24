@@ -249,9 +249,10 @@ impl<'a> Checker<'a> {
                 self.old_copy_spelling(&base_ty, name);
             }
         }
+        let shown = self.shown_member(&ty, name);
         // A catalog method the call types later (`xs.sorted()`) is still
         // known here, by its catalog signature.
-        let known = match ty {
+        let known = match shown {
             Ty::Error => false,
             Ty::Unknown => owner
                 .as_deref()
@@ -262,7 +263,7 @@ impl<'a> Checker<'a> {
             self.hovers.push(HoverEntry {
                 span: name.span,
                 name: name.text.clone(),
-                ty: ty.clone(),
+                ty: shown,
                 keyword: "field",
                 decl: None,
                 owner,
@@ -1000,7 +1001,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                return Ty::Unknown;
+                return self.domain_impl_member(&base_ty, &name.text);
             }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {
@@ -1046,9 +1047,11 @@ impl<'a> Checker<'a> {
                 self.members_of(type_name)
                     .map(|members| (None, Vec::new(), members.members))
             }
+            // A fn type's impls answer their own members; any other name is a std fn
+            // taking it as `self` (`f.opt()`), resolved once std is loaded.
             Ty::Fn { .. } => {
                 let methods = self.fn_impl_members(&base_ty);
-                (!methods.is_empty()).then(|| (None, Vec::new(), methods))
+                (methods.iter().any(|(m, _)| *m == name.text)).then(|| (None, Vec::new(), methods))
             }
             _ => None,
         };

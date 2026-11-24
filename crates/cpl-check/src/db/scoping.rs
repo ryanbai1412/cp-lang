@@ -53,7 +53,7 @@ impl Database {
             return (None, None);
         }
         self.store(&path, text.into(), true);
-        let Some(analysis) = self.analyze(&path) else {
+        let Some(analysis) = self.analyze_as(&path, true) else {
             return (None, None);
         };
         let name = parts[..len].join(".");
@@ -69,8 +69,7 @@ impl Database {
     /// (`provide_std`): the next one loads its modules again.
     pub fn reload_modules(&mut self) {
         for file in self.files.values_mut() {
-            file.analysis = None;
-            file.analysis_checked = false;
+            file.forget();
         }
     }
 }
