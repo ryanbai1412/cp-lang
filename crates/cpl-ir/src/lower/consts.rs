@@ -30,7 +30,7 @@ impl Lowerer<'_> {
             // `const FAST = true`, then `if const FAST:`.
             ast::ExprKind::Name(name) => match self.get_sym(name) {
                 Some(Sym::ModConst(cid)) => self.eval_const_bool(self.mod_consts[cid].init),
-                _ => self.const_bools.get(name).copied(),
+                _ => self.const_bools.get(name).map(|v| *v != 0),
             },
             ast::ExprKind::Paren(inner) => self.eval_const_bool(inner),
             ast::ExprKind::Unary {

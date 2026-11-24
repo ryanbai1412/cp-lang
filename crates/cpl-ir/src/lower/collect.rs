@@ -333,7 +333,7 @@ impl<'a> Lowerer<'a> {
                         self.const_ints.insert(name.text.clone(), v);
                     }
                     if let Some(v) = self.eval_const_bool(init) {
-                        self.const_bools.insert(name.text.clone(), v);
+                        self.const_bools.insert(name.text.clone(), i64::from(v));
                     }
                     if m > 0 {
                         let mcid = self.mod_consts.len();

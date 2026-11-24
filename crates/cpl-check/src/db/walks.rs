@@ -21,6 +21,31 @@ pub(super) fn some_walk_needs_seq(tokens: &[Token]) -> bool {
     false
 }
 
+/// True when the tokens slice a sequence, `xs[a..b]`: a slice is std's
+/// `Slice<S>`, whose module the lowering reads the asserts of its methods from.
+pub(super) fn some_slice_needs_seq(tokens: &[Token]) -> bool {
+    // One bit per open bracket, innermost lowest: set for `xs[..]`, which
+    // indexes; `[0..3]T` and `[a..b]` after anything else are a type or a list.
+    let (mut open, mut prev) = (0u64, None);
+    for tok in tokens {
+        let after = prev.replace(tok.kind);
+        match tok.kind {
+            TokenKind::LBracket => {
+                let index = matches!(
+                    after,
+                    Some(TokenKind::Ident | TokenKind::RParen | TokenKind::RBracket)
+                );
+                open = open << 1 | u64::from(index);
+            }
+            TokenKind::LParen | TokenKind::LBrace => open <<= 1,
+            TokenKind::RBracket | TokenKind::RParen | TokenKind::RBrace => open >>= 1,
+            TokenKind::DotDot | TokenKind::DotDotEq if open & 1 == 1 => return true,
+            _ => {}
+        }
+    }
+    false
+}
+
 /// The `in` that heads the loop whose `for` comes just before `from`.
 fn loop_in(tokens: &[Token], from: usize) -> Option<usize> {
     let mut depth = 0i32;

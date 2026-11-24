@@ -406,7 +406,10 @@ impl<'p> Emitter<'p> {
                     _ => "key_slice",
                 };
                 if matches!(op, Builtin::Rekey) {
-                    self.need("rekey");
+                    self.need(match args[0].ty {
+                        Ty::Array { .. } => "rekey_array",
+                        _ => "rekey",
+                    });
                 }
                 let all: Vec<String> = (0..args.len()).map(|i| text(i).to_string()).collect();
                 Code::primary(format!("cpl::{name}({})", all.join(", ")))

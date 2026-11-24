@@ -815,7 +815,7 @@ impl<'a> Lowerer<'a> {
                         self.const_ints.insert(name.text.clone(), v);
                     }
                     if let ExprKind::Bool(v) = value.kind {
-                        self.const_bools.insert(name.text.clone(), v);
+                        self.const_bools.insert(name.text.clone(), i64::from(v));
                     }
                     self.declare(&name.text, value, false, out);
                 }

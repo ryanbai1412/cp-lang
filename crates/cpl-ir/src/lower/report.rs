@@ -352,7 +352,7 @@ impl<'a> Lowerer<'a> {
 
     /// The module, one-based line and innermost declaration holding `at`,
     /// a position in the current library module.
-    fn library_place(&self, module: usize, at: Span) -> Option<(String, u32, String)> {
+    pub(super) fn library_place(&self, module: usize, at: Span) -> Option<(String, u32, String)> {
         let analysis = *self.mods.get(module)?;
         let module = &self
             .mods
@@ -531,6 +531,16 @@ impl<'a> Lowerer<'a> {
     /// the condition compared, `i = 7, _cap = 4` (errors/R11). `None` when
     /// it compared none.
     pub(super) fn assert_values(&mut self, cond: &ast::Expr) -> Option<Expr> {
+        self.shown_values(cond, None)
+    }
+
+    /// [`Self::assert_values`] with each compared value taken from `given`
+    /// by its text, when given, rather than lowered.
+    pub(super) fn shown_values(
+        &mut self,
+        cond: &ast::Expr,
+        given: Option<&[(&str, Expr)]>,
+    ) -> Option<Expr> {
         let mut leaves = Vec::new();
         compared_values(cond, &mut leaves);
         let mut seen = std::collections::HashSet::new();
@@ -540,7 +550,13 @@ impl<'a> Lowerer<'a> {
             if !seen.insert(text.clone()) {
                 continue;
             }
-            let value = self.expr(leaf, None);
+            let value = match given {
+                None => self.expr(leaf, None),
+                Some(given) => match given.iter().find(|(t, _)| *t == text) {
+                    Some((_, v)) => v.clone(),
+                    None => continue,
+                },
+            };
             let Some(shown) = self.shown(value, leaf.span) else {
                 continue;
             };
