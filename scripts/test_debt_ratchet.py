@@ -599,6 +599,11 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(sorted(dr.bench_lists(root)), [
                 "bench/dp/notes.txt", "bench/oversize.txt", "bench/oversize.txt"])
 
+    def test_a_skip_list_entry_fails_the_ratchet(self) -> None:
+        self.assertIn("skip_lists", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"skip_lists": 1}, {"skip_lists": 0})
+        self.assertEqual(len(errs), 1)
+
     def test_skip_lists_count_entries_of_exemption_lists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1307,8 +1312,8 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertTrue(any("cpl-diag -> cpl-json" in n for n in notes))
 
     def test_evaluate_counters_and_edges(self) -> None:
-        baseline = {"near_dup_fns": 3, "skip_lists": 9, "crate_edges": ["a -> b", "a -> c"]}
-        actual = {"near_dup_fns": 4, "skip_lists": 9, "crate_edges": ["a -> b", "a -> d"]}
+        baseline = {"near_dup_fns": 3, "allow_attrs": 9, "crate_edges": ["a -> b", "a -> c"]}
+        actual = {"near_dup_fns": 4, "allow_attrs": 9, "crate_edges": ["a -> b", "a -> d"]}
         errs, _, notes = dr.evaluate(actual, baseline)
         self.assertEqual(len(errs), 2)
         self.assertIn("near-identical", errs[0])
@@ -1397,16 +1402,16 @@ class DebtRatchetTest(unittest.TestCase):
             (root / "scripts").mkdir()
             (root / "scripts/debt-ratchet.py").write_text(Path(dr.__file__).read_text(encoding="utf-8"))
             ratchet = root / "scripts/debt-ratchet.json"
-            ratchet.write_text(json.dumps({"skip_lists": 5, "rs_file_size_allowlist": {}}))
+            ratchet.write_text(json.dumps({"allow_attrs": 5, "rs_file_size_allowlist": {}}))
             git("add", ".")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
-            args = ["--update", "skip_lists", "--root", str(root), "--ratchet", str(ratchet)]
+            args = ["--update", "allow_attrs", "--root", str(root), "--ratchet", str(ratchet)]
             for count, code in ((7, 1), (4, 0)):
-                with mock.patch.object(dr, "measure", return_value={"skip_lists": count,
+                with mock.patch.object(dr, "measure", return_value={"allow_attrs": count,
                                                                       "rs_file_size_allowlist": {}}), \
                         mock.patch.dict(os.environ, {"CPL_RATCHET_BASE": "HEAD"}):
                     self.assertEqual(dr.main(args), code)
-                self.assertEqual(json.loads(ratchet.read_text())["skip_lists"], 5 if code else 4)
+                self.assertEqual(json.loads(ratchet.read_text())["allow_attrs"], 5 if code else 4)
 
     def test_debt_already_on_main_is_not_this_changes_error(self):
         base = {"ir_reinfer": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
