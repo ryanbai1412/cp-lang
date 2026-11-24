@@ -937,3 +937,18 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   so std can write `Rev.scan`/`Rev.runs` as blocks. Checked with a scratch block method in std:
   it walks the view's order with source keys, interp == C++, 0 VM fallbacks. The regression is
   Content's std-prefix/rev-scan-is-suffix-fold, which lands with the first block body.
+
+### P0 from Content and Factory (2026-11-23): `a.rev.scan(op)` folds suffixes on both engines
+
+- `a.rev.<m>` also finds `<m>` in an `impl Rev<..>:` block, the impl's target typing `self`
+  and its open names (`D`, `T` of `Rev<[D]T>`) binding from the receiver; before, the generic
+  `Seq.scan` answered, folding the reversed walk forward (a mirrored List table, `cba` for
+  `abc`). A method that writes its receiver's type binds from it the same way, in the checker
+  (`Members::member_ty`) too. A `List` source makes `D` a domain over its positions, as a
+  generic fn's `[D]T` does; a bare op given for `f: M` binds `M`.
+- Cases: core-07/prefix-scan-cuts, std-prefix/rev-scan-folds-right-of-each-cut,
+  std-prefix/rev-scan-all-reads-the-first-cut, std-seq/seq-u37-suffix-folds, plus the List and
+  non-commutative repros from std-unshadow (`14 9 8 4 3 0 14`, `abc bc`), interp == C++.
+  std-prefix/rev-scan-is-suffix-fold waits on its `s.cut(i)` rewrite (decision 507, E0320).
+- Parity program view_receiver_runs_once: `total` takes any `Seq`, since `.rev` is a `Rev<S>`
+  view and not a `List` (R07.3.2).

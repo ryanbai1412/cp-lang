@@ -26,6 +26,10 @@ impl<'a> Lowerer<'a> {
                     args.iter().for_each(|a| walk(l, m, a, out))
                 }
                 ast::TypeKind::Optional(t) | ast::TypeKind::Mut(t) => walk(l, m, t, out),
+                ast::TypeKind::Array { index, elem } => {
+                    index.iter().for_each(|i| walk(l, m, i, out));
+                    walk(l, m, elem, out);
+                }
                 ast::TypeKind::Fn { params, ret } => {
                     params.iter().for_each(|p| walk(l, m, p, out));
                     walk(l, m, ret, out);

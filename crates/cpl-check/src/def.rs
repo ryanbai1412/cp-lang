@@ -49,6 +49,9 @@ pub enum Def {
         mutators: Vec<String>,
         /// Methods that take `self`: `T.name` on the type itself doesn't reach them.
         receivers: Vec<String>,
+        /// The receiver type a method writes, `self: Rev<[D]T>`: its own
+        /// type parameters bind from the value it is called on.
+        selves: Vec<(String, Ty)>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
         projections: Vec<Projection>,

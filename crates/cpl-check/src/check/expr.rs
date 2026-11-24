@@ -1689,9 +1689,11 @@ impl<'a> Checker<'a> {
     /// Everything `value.name` can reach on a struct or enum: its fields,
     /// its methods (a `@get` method reads as its value), what its body
     /// owns, and the same from each impl for it.
-    pub(crate) fn members_of(&mut self, type_name: &str) -> Option<Members> {
-        let mut out = Members::default();
-        let add = |out: &mut Members, methods: &[(String, Ty)], getters: &[String]| {
+    pub(crate) fn members_of(&mut self, type_name: &str) -> Option<super::method_form::Members> {
+        let mut out = super::method_form::Members::default();
+        let add = |out: &mut super::method_form::Members,
+                   methods: &[(String, Ty)],
+                   getters: &[String]| {
             for (name, ty) in methods {
                 let ty = match ty {
                     Ty::Fn { ret, .. } if getters.contains(name) => (**ret).clone(),
@@ -1709,9 +1711,11 @@ impl<'a> Checker<'a> {
                 mutators,
                 owned,
                 projections,
+                selves,
                 ..
             }) => {
                 out.mutators.extend(mutators.iter().cloned());
+                out.selves = selves.clone();
                 out.generics = generics.clone();
                 out.fields = fields.clone();
                 add(&mut out, methods, getters);
@@ -2505,8 +2509,10 @@ impl<'a> Checker<'a> {
                         members.fields.iter().map(|f| f.name.clone()).collect(),
                         members
                             .members
-                            .into_iter()
-                            .map(|(m, ty)| (m, ty.subst(&bindings)))
+                            .iter()
+                            .map(|(m, ty)| {
+                                (m.clone(), members.member_ty(m, ty, &base_ty, &bindings))
+                            })
                             .collect::<Vec<_>>(),
                     )
                 })
@@ -3840,30 +3846,6 @@ fn convert_to(domain: &str, span: Span) -> cpl_diag::Fix {
 }
 
 /// What a struct or enum, with its impls, lets a value reach by name.
-#[derive(Default)]
-pub(crate) struct Members {
-    generics: Vec<String>,
-    pub(crate) fields: Vec<crate::ty::Param>,
-    pub(crate) members: Vec<(String, Ty)>,
-    pub(crate) projections: Vec<crate::def::Projection>,
-    /// The methods that take `mut self`.
-    pub(crate) mutators: Vec<String>,
-}
-
-impl Members {
-    /// What each type parameter is for a value of the type with `args`.
-    pub(crate) fn bindings(&self, args: &[Ty]) -> crate::ty::Bindings {
-        if args.len() != self.generics.len() {
-            return crate::ty::Bindings::default();
-        }
-        self.generics
-            .iter()
-            .cloned()
-            .zip(args.iter().cloned())
-            .collect()
-    }
-}
-
 pub(crate) fn plural(n: usize, one: &str, many: &str) -> String {
     format!("{n} {}", if n == 1 { one } else { many })
 }

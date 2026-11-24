@@ -19,51 +19,146 @@ impl<'a> Lowerer<'a> {
         let Some(gid) = self.view_struct("Rev") else {
             return Err(value);
         };
-        let (tpl_mod, tpl_offset, decl) = {
-            let t = &self.gen_structs[gid];
-            (t.mod_id, t.offset, t.decl)
-        };
-        let found = decl.methods.iter().find_map(|stmt| match &stmt.kind {
+        let decl = self.gen_structs[gid].decl;
+        let block_method = |stmt: &'a ast::Stmt| match &stmt.kind {
             ast::StmtKind::Fn(f) if f.name.text == name.text => match &f.body {
                 ast::FnBody::Expr(body) if body.leaves() => None,
                 ast::FnBody::Expr(_) | ast::FnBody::Block(_) => Some((f, &f.body)),
                 ast::FnBody::None => None,
             },
             _ => None,
+        };
+        // A method the struct declares types its own `self`; one in an
+        // `impl Rev<[D]T>:` block takes the impl's target, and its names.
+        let in_struct = decl.methods.iter().find_map(block_method).map(|(f, body)| {
+            let t = &self.gen_structs[gid];
+            let receiver = f.params.first().and_then(|p| p.ty.as_ref());
+            (f, body, t.mod_id, t.offset, receiver, Vec::new())
         });
-        let Some((f, body)) = found else {
+        let in_impl = || {
+            self.impls.iter().find_map(|imp| {
+                let on_view = matches!(&imp.target.kind,
+                    ast::TypeKind::Named { name, .. } if name.text == decl.name.text);
+                let (f, body) = imp
+                    .body
+                    .stmts
+                    .iter()
+                    .filter(|_| on_view)
+                    .find_map(block_method)?;
+                let names = self.impl_params(imp.mod_id, imp.target);
+                Some((f, body, imp.mod_id, imp.offset, Some(imp.target), names))
+            })
+        };
+        let Some((f, body, tpl_mod, tpl_offset, receiver, impl_names)) = in_struct.or_else(in_impl)
+        else {
             return Err(value);
         };
         let params: Vec<&ast::Param> = f.params.iter().skip(1).collect();
+        let gen_names: Vec<String> = (f.generics.iter().map(|g| g.text.clone()))
+            .chain(impl_names)
+            .collect();
+        let generic = |t: &ast::Type| gen_names.iter().any(|g| mono::ty_mentions(t, g));
         let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
         let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
-        let tys: Vec<Option<Ty>> = params
+        let mut tys: Vec<Option<Ty>> = params
             .iter()
-            .map(|p| p.ty.as_ref().map(|t| self.resolve_ty(t)))
+            .map(|p| {
+                p.ty.as_ref()
+                    .filter(|t| !generic(t))
+                    .map(|t| self.resolve_ty(t))
+            })
             .collect();
         self.cur_mod = saved_mod;
         self.offset = saved_offset;
+        // The method's own generics bind from its arguments, as a call of a
+        // generic fn does: `f: M` given `+` makes `M` that op.
+        let mut env = GenEnv::new();
+        // `self: Rev<[D]T>` binds `D` and `T` from the sequence the view reverses.
+        if let Some(ast::Type {
+            kind: ast::TypeKind::Named { name, args: of },
+            ..
+        }) = receiver
+        {
+            if let (true, [source]) = (name.text == decl.name.text, of.as_slice()) {
+                self.unify_ast_ty(source, &value.ty, tpl_mod, &gen_names, &mut env);
+                // A list is keyed by its own positions: `D` is a domain over
+                // them, as when a list is given for a generic fn's `[D]T`.
+                if let ast::TypeKind::Array { index, .. } = &source.kind {
+                    if let [ast::Type {
+                        kind: ast::TypeKind::Named { name: key, args },
+                        ..
+                    }] = index.as_slice()
+                    {
+                        if args.is_empty() && env.get(&key.text) == Some(&GenArg::Ty(Ty::Int)) {
+                            let d = self.range_domain_at(&key.text, 0, true, span, None);
+                            env.insert(key.text.clone(), GenArg::Domain(d));
+                        }
+                    }
+                }
+            }
+        }
+        let mut ops: Vec<(String, BareOp)> = Vec::new();
         let mut given = Vec::with_capacity(params.len());
         for (pos, (p, ty)) in params.iter().zip(&tys).enumerate() {
             let arg = args
                 .iter()
                 .find(|a| a.name.as_ref().is_some_and(|n| n.text == p.label_text()))
                 .or_else(|| args.get(pos).filter(|a| a.name.is_none()));
-            given.push(arg.map(|a| match ty {
+            let bare_gen = p.ty.as_ref().and_then(|t| match &t.kind {
+                ast::TypeKind::Named { name, args } if args.is_empty() => {
+                    gen_names.iter().find(|g| **g == name.text)
+                }
+                _ => None,
+            });
+            let op = arg.zip(bare_gen).and_then(|(a, g)| {
+                let at = (tpl_mod, tpl_offset, &env);
+                self.bare_op_for(&f.bounds, g, &a.value, at)
+                    .map(|op| (g, op))
+            });
+            if let Some((g, op)) = op {
+                if let GenArg::Op(op) = op {
+                    ops.push((p.name.text.clone(), op));
+                }
+                env.insert(g.clone(), op);
+                given.push(None);
+                continue;
+            }
+            let lowered = arg.map(|a| match ty {
                 Some(ty) => self.expect(&a.value, ty),
                 None => self.expr(&a.value, None),
-            }));
+            });
+            if let (Some(pat), Some(arg)) = (p.ty.as_ref().filter(|t| generic(t)), &lowered) {
+                self.unify_ast_ty(pat, &arg.ty, tpl_mod, &gen_names, &mut env);
+            }
+            given.push(lowered);
         }
         let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
         let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
-        let saved_env = std::mem::take(&mut self.gen_env);
+        let saved_env = std::mem::replace(&mut self.gen_env, env);
+        for (p, ty) in params.iter().zip(tys.iter_mut()) {
+            if let Some(t) = p.ty.as_ref().filter(|t| generic(t)) {
+                let bound = gen_names
+                    .iter()
+                    .filter(|g| mono::ty_mentions(t, g))
+                    .all(|g| self.gen_env.contains_key(g));
+                *ty = bound.then(|| self.resolve_ty(t));
+            }
+        }
         let saved_self = self.self_struct.take();
+        let saved_ops = self.cx.op_locals.clone();
         self.cx.scopes.push(HashMap::new());
         let this = self.temp(value.ty.clone());
         self.cx.view_rev.insert(this);
         self.cx.pending.push(Stmt::Let(this, Some(value)));
         self.bind_local("self", this);
+        let op_params: Vec<String> = ops.iter().map(|(name, _)| name.clone()).collect();
+        for (name, op) in ops {
+            self.cx.op_locals.insert(name, op);
+        }
         for ((p, ty), arg) in params.iter().zip(&tys).zip(given) {
+            if op_params.contains(&p.name.text) {
+                continue;
+            }
             let arg = match (arg, &p.default) {
                 (Some(arg), _) => arg,
                 (None, Some(default)) => match ty {
@@ -91,6 +186,7 @@ impl<'a> Lowerer<'a> {
             ast::FnBody::None => self.err_expr(span),
         };
         self.cx.scopes.pop();
+        self.cx.op_locals = saved_ops;
         self.cur_mod = saved_mod;
         self.offset = saved_offset;
         self.gen_env = saved_env;

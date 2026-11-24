@@ -6,6 +6,8 @@ use crate::def::DomainInfo;
 use crate::ty::{human_int, Param};
 use cpl_syntax::ast::{self, Expr, ExprKind, TypeKind};
 
+/// Types by the name they are filed under: a body's method signatures.
+type Named = Vec<(String, Ty)>;
 impl<'a> Checker<'a> {
     /// R04.2.11: for `P = (A, B)`, `[P]T` and `[A, B]T` are one type, kept
     /// as one index per factor.
@@ -818,9 +820,21 @@ impl<'a> Checker<'a> {
         &mut self,
         methods: &[ast::Stmt],
         self_ty: &Ty,
-    ) -> (Vec<(String, Ty)>, Vec<String>, Vec<String>) {
+    ) -> (Named, Vec<String>, Vec<String>) {
+        let (sigs, getters, mutators, _) = self.method_sigs_and_selves(methods, self_ty);
+        (sigs, getters, mutators)
+    }
+
+    /// `method_sigs`, with the type each method that writes `self: ..`
+    /// gives its receiver, in the method's own type parameters.
+    pub(crate) fn method_sigs_and_selves(
+        &mut self,
+        methods: &[ast::Stmt],
+        self_ty: &Ty,
+    ) -> (Named, Vec<String>, Vec<String>, Named) {
         let mut getters = Vec::new();
         let mut mutators = Vec::new();
+        let mut selves = Vec::new();
         let sigs = methods
             .iter()
             .filter_map(|m| match &m.kind {
@@ -834,12 +848,21 @@ impl<'a> Checker<'a> {
                     {
                         mutators.push(f.name.text.clone());
                     }
+                    let written = f.params.first().filter(|p| p.name.text == "self");
+                    if let Some(ty) = written.and_then(|p| p.ty.as_ref()) {
+                        let outer = self.generics.len();
+                        self.generics
+                            .extend(f.generics.iter().map(|g| g.text.clone()));
+                        let ty = self.resolve_type(ty);
+                        self.generics.truncate(outer);
+                        selves.push((f.name.text.clone(), ty));
+                    }
                     Some((f.name.text.clone(), self.fn_sig(f, Some(self_ty))))
                 }
                 _ => None,
             })
             .collect();
-        (sigs, getters, mutators)
+        (sigs, getters, mutators, selves)
     }
 
     /// The definitions a top-level statement gives to the names it declares.
@@ -1050,7 +1073,8 @@ impl<'a> Checker<'a> {
                     .filter(|f| f.mutable)
                     .map(|f| f.name.text.clone())
                     .collect();
-                let (methods, getters, mutators) = self.method_sigs(&s.methods, &self_ty);
+                let (methods, getters, mutators, selves) =
+                    self.method_sigs_and_selves(&s.methods, &self_ty);
                 self.leave_body(body);
                 // `fn new(..)` without `self` says how the struct is built.
                 let ctor = s.methods.iter().find_map(|m| match &m.kind {
@@ -1089,6 +1113,7 @@ impl<'a> Checker<'a> {
                         getters,
                         mutators,
                         receivers,
+                        selves,
                         owned,
                         projections: self.projections(&s.methods),
                         cached_fields: s

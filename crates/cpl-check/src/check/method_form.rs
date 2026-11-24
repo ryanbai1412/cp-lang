@@ -623,3 +623,47 @@ fn takes_shapes(def: &Def, args: &[Arg]) -> bool {
         }
     })
 }
+
+impl Members {
+    /// Method `method`'s type on `on`: `bindings`, plus what `on` binds the
+    /// method's own type parameters to when it writes its receiver's type
+    /// (`self: Rev<[D]T>` called on a `Rev<List<Int>>`).
+    pub(super) fn member_ty(
+        &self,
+        method: &str,
+        ty: &Ty,
+        on: &Ty,
+        bindings: &crate::ty::Bindings,
+    ) -> Ty {
+        let mut bindings = bindings.clone();
+        if let Some((_, takes)) = self.selves.iter().find(|(m, _)| m == method) {
+            takes.unify(on, &mut bindings);
+        }
+        ty.subst(&bindings)
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct Members {
+    pub(crate) generics: Vec<String>,
+    pub(crate) fields: Vec<crate::ty::Param>,
+    pub(crate) members: Vec<(String, Ty)>,
+    pub(crate) projections: Vec<crate::def::Projection>,
+    /// The methods that take `mut self`.
+    pub(crate) mutators: Vec<String>,
+    pub(crate) selves: Vec<(String, Ty)>,
+}
+
+impl Members {
+    /// What each type parameter is for a value of the type with `args`.
+    pub(crate) fn bindings(&self, args: &[Ty]) -> crate::ty::Bindings {
+        if args.len() != self.generics.len() {
+            return crate::ty::Bindings::default();
+        }
+        self.generics
+            .iter()
+            .cloned()
+            .zip(args.iter().cloned())
+            .collect()
+    }
+}
