@@ -234,6 +234,10 @@ STEPS = {
         gate("flakes", "--runs", "2", fail="a conformance case changed verdict between runs; see above"),
         gate("case-bugs", fail="a known-gap case fails because of the case itself (conformance/R3); fix the case"
              " named above, then rerun: uv run scripts/spec-gate.py case-bugs"),
+        Step("cargo test: the committed scoreboard ratchet",
+             ("cargo", "test", "-p", "cpl-conform", "--test", "ratchet", "--", "--exact",
+              "committed_scoreboard_ratchet"),
+             "a passing case regressed against research/scoreboard.json; rerun: cargo test -p cpl-conform --test ratchet"),
         Step("cargo test: every port compiled with every judge profile's flags",
              ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--", "--exact",
               "every_port_compiles_with_every_judges_flags"),

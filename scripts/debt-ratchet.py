@@ -787,6 +787,53 @@ def unrun_script_tests(root: Path) -> list[str]:
                   and not any(fnmatch.fnmatchcase(rel, g) for g in globs))
 
 
+_RUST_TEST = re.compile(r"#\[test\]\s*((?:#\[[^\]]*\]\s*)*)(?:pub\s+)?(?:async\s+)?fn\s+(\w+)")
+
+
+def tests_unrun(root: Path) -> list[str]:
+    """Workspace #[test]s no CI tier runs: ignored ones, every one when ci.yml's
+    hash:i/N partitions miss a part, a SLOW_TESTS one no ci.py step names (by name
+    or its whole `--test` binary), and
+    a wall-clock one when ci-slow.yml has no timing job."""
+    ci = root / "scripts/ci.py"
+    src = ci.read_text() if ci.is_file() else ""
+    lists: dict[str, tuple[str, ...]] = {}
+    for node in ast.parse(src).body if src else []:
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) \
+                and node.targets[0].id in ("SLOW_TESTS", "WALL_CLOCK_TESTS"):
+            lists[node.targets[0].id] = tuple(ast.literal_eval(node.value))
+            src = src.replace(ast.get_source_segment(src, node) or "", "")
+    yml = (root / ".github/workflows/ci.yml")
+    slow_yml = (root / ".github/workflows/ci-slow.yml")
+    main_ci = yml.read_text() if yml.is_file() else ""
+    slow_ci = slow_yml.read_text() if slow_yml.is_file() else ""
+    parts = {(int(i), int(n)) for i, n in re.findall(r"hash:(\d+)/(\d+)", main_ci)}
+    totals = {n for _, n in parts}
+    partitioned = len(totals) == 1 and {i for i, _ in parts} == set(range(1, max(totals) + 1))
+    full = "just check-full" in slow_ci
+    timing = "just check-timing" in slow_ci
+    slow = set(lists.get("SLOW_TESTS", ()))
+    wall = set(lists.get("WALL_CLOCK_TESTS", ()))
+    out = []
+    for rel in _git(root, "ls-files", "crates/*.rs"):
+        text = (root / rel).read_text(errors="replace")
+        for m in _RUST_TEST.finditer(text):
+            attrs, name = m[1], m[2]
+            where = f"{rel}::{name}"
+            if "#[ignore" in attrs:
+                out.append(f"{where} (ignored)")
+            elif name in wall:
+                if not timing:
+                    out.append(f"{where} (wall-clock, no timing job)")
+            elif name in slow:
+                binary = f'"--test", "{Path(rel).stem}"' if "/tests/" in rel else None
+                if not (f'"{name}"' in src and full or binary and binary in src):
+                    out.append(f"{where} (SLOW_TESTS, no --full step)")
+            elif not partitioned:
+                out.append(f"{where} (ci.yml's hash partitions miss a part)")
+    return sorted(out)
+
+
 def last_touched(root: Path, rel: str, n: int = 3) -> list[str]:
     """The last `n` commits to change `rel`, minus a shallow clone's boundary
     commit: it holds every file without having changed them, so naming it
@@ -2892,6 +2939,7 @@ HARD_ZERO = frozenset({
     "timeout_passes",
     "stress_engines",
     "unwrap_input",
+    "tests_unrun",
 })
 # Paid down to the one place the thing lives: above the floor fails, with no baseline.
 HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader
@@ -2942,6 +2990,7 @@ COUNTERS = {
     "reviews_uncapped": ("reviews scoring a port with no dream above 3 (idioms)", reviews_uncapped, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
+    "tests_unrun": ("workspace Rust tests no CI tier runs", tests_unrun, True),
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),
     "lint_dup_helpers": ("helper fns copied across lint rule files", lint_dup_helpers, True),
     "plan_delta_lines": ("lines of notes under plan/domains/*/delta", plan_delta_lines, True),

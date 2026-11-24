@@ -555,6 +555,28 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.unrun_script_tests(root), ["corpus/test_c.py", "tools/y/test_b.py"])
 
+    def test_tests_unrun(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "scripts/ci.py", 'SLOW_TESTS = ("named", "by_binary", "lost")\n'
+                        'WALL_CLOCK_TESTS = ("fast_enough",)\n'
+                        'STEPS = (("cargo", "test", "--exact", "named"), ("cargo", "test", "--test", "whole"))\n')
+            self._write(root, ".github/workflows/ci-slow.yml", "run: just check-full\n")
+            self._write(root, ".github/workflows/ci.yml", 'part: ["hash:1/2", "hash:2/2"]\n')
+            self._write(root, "crates/a/tests/t.rs", "#[test]\nfn plain() {}\n#[test]\n#[ignore]\nfn off() {}\n"
+                        "#[test]\nfn named() {}\n#[test]\nfn lost() {}\n#[test]\nfn fast_enough() {}\n")
+            self._write(root, "crates/a/tests/whole.rs", "#[test]\nfn by_binary() {}\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.tests_unrun(root), [
+                "crates/a/tests/t.rs::fast_enough (wall-clock, no timing job)",
+                "crates/a/tests/t.rs::lost (SLOW_TESTS, no --full step)",
+                "crates/a/tests/t.rs::off (ignored)",
+            ])
+            self._write(root, ".github/workflows/ci.yml", 'part: ["hash:1/2"]\n')
+            self.assertIn("crates/a/tests/t.rs::plain (ci.yml's hash partitions miss a part)", dr.tests_unrun(root))
+        self.assertIn("tests_unrun", dr.HARD_ZERO)
+
     def test_stale_arch_paths_skips_ignored_and_known_debt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

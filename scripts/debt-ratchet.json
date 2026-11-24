@@ -18,6 +18,7 @@
   "ports_unreported": 0,
   "direct_python": 0,
   "unrun_script_tests": 0,
+  "tests_unrun": 0,
   "crate_edges": [
     "cpl-check -> cpl-config",
     "cpl-check -> cpl-diag",
