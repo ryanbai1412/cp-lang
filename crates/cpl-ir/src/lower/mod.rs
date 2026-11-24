@@ -46,6 +46,7 @@ mod shown;
 mod stmt;
 mod type_call;
 mod typo;
+mod unify_ast;
 mod views;
 mod yields;
 pub use call::lower_sampling_laws;
