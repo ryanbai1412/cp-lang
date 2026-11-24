@@ -27,7 +27,7 @@ import {
   ViewPlugin,
   WidgetType,
 } from "@codemirror/view";
-import { compilerState, started } from "@/lib/cpl";
+import { compilerState, cpl, started } from "@/lib/cpl";
 import { LspDoc } from "@/lib/lsp";
 import { lspActions } from "./lsp-actions";
 
@@ -44,6 +44,8 @@ type Item = {
   insertText?: string;
   insertTextFormat?: number;
   textEdit?: { newText: string };
+  /** An item from a std module not given yet: its docs come from resolve. */
+  data?: { module?: string };
 };
 
 const kinds: Record<number, string> = {
@@ -242,6 +244,15 @@ export function intelligence(prefix: string, editable: boolean): Extension {
     const line = view.state.doc.line(n);
     return Math.min(line.from + p.character, line.to);
   };
+  // A std module's docs ship with its text, fetched the first time an item
+  // from it shows its info.
+  const resolveDocs = async (view: EditorView, item: Item) => {
+    await cpl.provideStd(item.data!.module!).catch(() => {});
+    const full = await LspDoc.request<Item>("completionItem/resolve", item)
+      .catch(() => null);
+    const doc = text(full?.documentation);
+    return doc ? markdown(doc) : null;
+  };
   const ask = <T>(
     view: EditorView,
     method: string,
@@ -401,7 +412,11 @@ export function intelligence(prefix: string, editable: boolean): Extension {
             insert && it.insertTextFormat === 2
               ? snippet(insert.replace(/\$(\d+)/g, "${$1}"))
               : insert,
-          info: doc ? () => markdown(doc) : undefined,
+          info: doc
+            ? () => markdown(doc)
+            : it.data?.module
+              ? () => resolveDocs(view, it)
+              : undefined,
         };
       },
     );

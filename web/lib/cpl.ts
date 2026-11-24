@@ -115,6 +115,31 @@ export function inOrder() {
 // A didChange waits on stdNeeded first, so without this a request sent just
 // after it could overtake it and be answered against the old text.
 const lspInOrder = inOrder();
+let lspServer: Worker | null = null;
+
+/** Sends one message to the worker's language server, giving it first the std modules the text it carries needs. */
+export type LspSend = (message: object) => Promise<unknown[]>;
+
+/**
+ * The only way to the language server: runs `task` with nothing else
+ * reaching the server until it settles, so each document is synced and
+ * asked about in one step. `fresh` is true on a server that has seen no
+ * message yet (the first, or one replacing a stopped worker), which the task
+ * must initialize and reopen every document on.
+ */
+export function lspTask<T>(task: (send: LspSend, fresh: boolean) => Promise<T>): Promise<T> {
+  return lspInOrder(() =>
+    call(async (w) => {
+      const send: LspSend = async (message) => {
+        await provideStd(w, documentText(message));
+        return w.lsp(message);
+      };
+      const fresh = w !== lspServer;
+      lspServer = w;
+      return task(send, fresh);
+    }),
+  );
+}
 
 /** The whole text an LSP notification opens or changes a document to. */
 export function documentText(message: object): string | undefined {
@@ -133,5 +158,4 @@ export const cpl = {
   explain: (src: string) => call((w) => w.explain(src), src),
   /** Fetches std module `module` and gives it to the compiler, e.g. before resolving its docs. */
   provideStd: (module: string) => call((w) => giveStd(w, module)),
-  lsp: (message: object) => lspInOrder(() => call((w) => w.lsp(message), documentText(message))),
 };

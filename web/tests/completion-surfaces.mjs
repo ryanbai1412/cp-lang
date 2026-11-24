@@ -84,6 +84,27 @@ await page.keyboard.press('Control+Space');
 await shows('after cpl.wasm comes back', (l) => l.includes('len'));
 console.log("cpl.wasm down: the menu says it didn't load, and Ctrl+Space recovers");
 
+// A std item from a module nothing has loaded yet shows its docs: typing
+// `Spa` loads std.sparse, but the menu also lists std.interval's
+// SparseIntervalMap, whose module (and so its docs) is fetched only when the
+// item shows its detail (completionItem/resolve).
+const fetched = [];
+page.on('request', (r) => r.url().endsWith('/wasm/std/interval.cp') && fetched.push(r.url()));
+await page.goto(base + '/play', { waitUntil: 'networkidle' });
+await typeAtEnd('\nlet t = Spa');
+await page.keyboard.press('Control+Space');
+await shows('a std name from a module not loaded yet', (l) => l.includes('SparseIntervalMap'));
+if (fetched.length) fail('std.interval was fetched before an item from it showed its detail');
+const selected = () => menu.locator('[aria-selected=true] .cm-completionLabel').innerText().catch(() => null);
+for (let i = 0; i < 12 && (await selected()) !== 'SparseIntervalMap'; i++) await page.keyboard.press('ArrowDown');
+if ((await selected()) !== 'SparseIntervalMap') fail(`ArrowDown never selected SparseIntervalMap (at ${await selected()})`);
+const info = page.locator('.cm-completionInfo');
+await info.filter({ hasText: 'Interval partition map' }).waitFor({ timeout: 20000 })
+  .catch(async () => fail(`SparseIntervalMap's detail shows ${JSON.stringify(await info.innerText().catch(() => null))}, not its docs`));
+if (fetched.length !== 1) fail(`std.interval was fetched ${fetched.length} times`);
+await page.keyboard.press('Escape');
+console.log('std item from a module not loaded yet: its detail fetches the module and shows its docs');
+
 // U32: on a phone the menu and its detail stay inside the screen.
 await page.setViewportSize({ width: 375, height: 740 });
 await page.goto(base + '/play', { waitUntil: 'networkidle' });
