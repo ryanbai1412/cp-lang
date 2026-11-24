@@ -1846,9 +1846,10 @@ fn setup_finds_a_jetbrains_ide_that_has_never_started() {
 /// `cpl` at `~/.cpl/bin` and no `cpl` is on the PATH. `cpl setup neovim` and
 /// `vim`, with no `--dir`, write where each editor loads a start package, and
 /// the client there (`cplang#path()`, which Neovim's `vim.lsp.start` and
-/// vim-lsp both run) finds that `cpl`, which then answers as `cpl lsp`. Vim
-/// already has yegappan/lsp, so setup downloads nothing (smoke_vim.sh covers
-/// the vim-lsp download).
+/// vim-lsp both run) finds that `cpl`, which then answers as `cpl lsp`. Vim's
+/// folder is whichever the Vim on the PATH reads (on Windows, `vimfiles` for
+/// native Vim, `.vim` for Git Bash's). Vim already has yegappan/lsp, so setup
+/// downloads nothing (smoke_vim.sh covers the vim-lsp download).
 #[test]
 fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
     let dir = scratch("setup-fresh-home");
@@ -1862,15 +1863,18 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
     std::fs::create_dir_all(toolchain.parent().unwrap()).unwrap();
     std::fs::copy(env!("CARGO_BIN_EXE_cpl"), &toolchain).unwrap();
     std::fs::write(home.join(".cpl/settings.toml"), "stable = \"edge-local\"\n").unwrap();
-    let vim_dir = home.join(if cfg!(windows) { "vimfiles" } else { ".vim" });
     let nvim_site = if cfg!(windows) {
         home.join("AppData/Local/nvim-data/site")
     } else {
         home.join(".local/share/nvim/site")
     };
-    let client = vim_dir.join("pack/plugins/start/lsp/autoload/lsp/lsp.vim");
-    std::fs::create_dir_all(client.parent().unwrap()).unwrap();
-    std::fs::write(&client, "").unwrap();
+    for vim_dir in [".vim", "vimfiles"] {
+        let client = home
+            .join(vim_dir)
+            .join("pack/plugins/start/lsp/autoload/lsp/lsp.vim");
+        std::fs::create_dir_all(client.parent().unwrap()).unwrap();
+        std::fs::write(&client, "").unwrap();
+    }
     let path = std::env::join_paths(
         std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
             .filter(|d| !d.join(exe).exists()),
@@ -1887,11 +1891,14 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
         }
         command.output().unwrap()
     };
-    let packages = [
-        ("neovim", nvim_site.join("pack/cpl/start/cplang")),
-        ("vim", vim_dir.join("pack/cpl/start/cplang")),
+    let runtime = [
+        "plugin/cplang.vim",
+        "ftdetect/cp.vim",
+        "autoload/cplang.vim",
+        "syntax/cp.vim",
     ];
-    for (editor, package) in &packages {
+    let mut packages = vec![];
+    for editor in ["neovim", "vim"] {
         let out = fresh(&installed, &["setup", editor]);
         assert_eq!(
             out.status.code(),
@@ -1899,37 +1906,47 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
             "{editor}: {}",
             text(&out.stderr)
         );
-        for file in [
-            "plugin/cplang.vim",
-            "ftdetect/cp.vim",
-            "autoload/cplang.vim",
-            "syntax/cp.vim",
-        ] {
-            assert!(
-                package.join(file).is_file(),
-                "{editor}: no {file} in {}",
-                package.display()
-            );
-        }
+        let candidates = match editor {
+            "neovim" => vec![nvim_site.clone()],
+            _ => vec![home.join(".vim"), home.join("vimfiles")],
+        };
+        let written: Vec<_> = candidates
+            .iter()
+            .map(|d| d.join("pack/cpl/start/cplang"))
+            .filter(|p| runtime.iter().all(|f| p.join(f).is_file()))
+            .collect();
+        assert_eq!(written.len(), 1, "{editor}: {}", text(&out.stdout));
+        packages.push((editor, written[0].clone()));
     }
     assert!(packages[0].1.join("plugin/cplang.lua").is_file());
     assert!(text(&fresh(&installed, &["setup", "vim"]).stdout)
         .contains("yegappan/lsp already installed"));
 
-    // The client each package gives the editor names the installed `cpl`.
-    // Not on Windows: the Vim on CI's Git Bash PATH reads ~/.vim, not the
-    // vimfiles native Vim reads (the neovim job runs native Vim there).
-    #[cfg(unix)]
+    // Vim opens a .cp file from each package, and the client's `cpl lsp`
+    // answers `initialize`.
+    std::fs::write(dir.join("a.cp"), "print(1)\n").unwrap();
+    std::fs::write(
+        dir.join("probe.vim"),
+        r#"let s:said = ['{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}',
+    \ '{"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}',
+    \ '{"jsonrpc":"2.0","method":"exit","params":null}']
+let s:input = join(map(s:said, {_, m -> 'Content-Length: ' . len(m) . "\r\n\r\n" . m}), '')
+let s:out = system(shellescape(cplang#path()) . ' lsp', s:input)
+call writefile([&filetype, cplang#path(), s:out =~# '"capabilities"' ? 'answers' : s:out], 'found')
+"#,
+    )
+    .unwrap();
     for (editor, package) in &packages {
-        std::fs::write(dir.join("a.cp"), "print(1)\n").unwrap();
         let _ = std::fs::remove_file(dir.join("found"));
-        let rtp = format!("set rtp^={}", package.display());
+        let rtp = format!(
+            "set rtp^={}",
+            package.display().to_string().replace('\\', "/")
+        );
         let pre: &[&str] = if *editor == "vim" {
-            &["-u", "NORC"]
+            &["-Nu", "NORC"]
         } else {
             &["-Nu", "NONE", "-c", &rtp]
         };
-        let probe = "call writefile([&filetype, cplang#path()], 'found')";
         let args = [
             pre,
             &[
@@ -1940,45 +1957,22 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
                 "filetype plugin on",
                 "-c",
                 "edit a.cp",
-                "-c",
-                probe,
-                "-c",
-                "qall!",
             ],
+            &["-S", "probe.vim", "-c", "qall!"],
         ]
         .concat();
-        fresh(Path::new("vim"), &args);
+        let out = fresh(Path::new("vim"), &args);
         let found = std::fs::read_to_string(dir.join("found")).unwrap_or_default();
-        assert_eq!(
-            found.lines().collect::<Vec<_>>(),
-            ["cp", installed.to_str().unwrap()],
-            "{editor}"
+        let found: Vec<_> = found.lines().map(|l| l.replace('\\', "/")).collect();
+        assert!(
+            found.len() == 3
+                && found[0] == "cp"
+                && found[1].trim_end_matches(".exe").ends_with(".cpl/bin/cpl")
+                && found[2] == "answers",
+            "{editor}: {found:?} {}",
+            text(&out.stderr)
         );
     }
-
-    use std::io::Write;
-    let mut server = Command::new(&installed)
-        .arg("lsp")
-        .env("PATH", &path)
-        .env("HOME", &home)
-        .env("USERPROFILE", &home)
-        .env("CPL_RELEASES_URL", "file:///no-network")
-        .env_remove("CPL_HOME")
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stdin = server.stdin.take().unwrap();
-    for body in [
-        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
-        r#"{"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}"#,
-        r#"{"jsonrpc":"2.0","method":"exit","params":null}"#,
-    ] {
-        write!(stdin, "Content-Length: {}\r\n\r\n{body}", body.len()).unwrap();
-    }
-    drop(stdin);
-    let said = text(&server.wait_with_output().unwrap().stdout);
-    assert!(said.contains(r#""capabilities""#), "{said}");
 }
 
 /// The contest flow from a Competitive Companion problem to the clipboard:

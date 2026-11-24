@@ -79,7 +79,8 @@ fn files(editor: &str) -> Option<Vec<(&'static str, &'static str)>> {
 }
 
 /// Where `editor` loads a start package from: Neovim's
-/// `stdpath('data')/site/pack`, Vim's `~/.vim/pack` (`~/vimfiles` on Windows).
+/// `stdpath('data')/site/pack`, Vim's first `packpath` folder (`~/.vim`, or
+/// `~/vimfiles` for Windows' native Vim).
 fn package_dir(editor: &str) -> Option<PathBuf> {
     let var = |name: &str| {
         std::env::var_os(name)
@@ -88,8 +89,8 @@ fn package_dir(editor: &str) -> Option<PathBuf> {
     };
     let home = cpl_check::home_dir();
     let site = match editor {
-        "vim" if cfg!(windows) => home?.join("vimfiles"),
-        "vim" => home?.join(".vim"),
+        "vim" => vim_user_dir()
+            .or_else(|| home.map(|h| h.join(if cfg!(windows) { "vimfiles" } else { ".vim" })))?,
         _ if cfg!(windows) => var("LOCALAPPDATA")?.join("nvim-data").join("site"),
         _ => var("XDG_DATA_HOME")
             .or_else(|| Some(home?.join(".local").join("share")))?
@@ -97,6 +98,31 @@ fn package_dir(editor: &str) -> Option<PathBuf> {
             .join("site"),
     };
     Some(site.join("pack").join("cpl").join("start").join("cplang"))
+}
+
+/// The folder the Vim on the PATH reads packages from, by asking it: on
+/// Windows that is `~/vimfiles` for native Vim but `~/.vim` for Git Bash's.
+fn vim_user_dir() -> Option<PathBuf> {
+    let out = std::process::Command::new("vim")
+        .args(["-Nu", "NONE", "-i", "NONE", "-Es"])
+        .args(["-c", "put =expand(split(&packpath, ',')[0])", "-c", "print"])
+        .args(["-c", "qall!"])
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    let said = String::from_utf8_lossy(&out.stdout);
+    let dir = said.lines().map(str::trim).rfind(|l| !l.is_empty())?;
+    if cfg!(windows) && dir.starts_with('/') {
+        // An MSYS Vim (Git Bash's) answers with its own path for the folder.
+        let out = std::process::Command::new("cygpath")
+            .args(["-w", dir])
+            .output()
+            .ok()?;
+        let native = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        return (out.status.success() && !native.is_empty()).then(|| PathBuf::from(native));
+    }
+    Some(PathBuf::from(dir))
 }
 
 pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
