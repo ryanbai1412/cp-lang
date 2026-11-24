@@ -1,6 +1,6 @@
 //! The source line a step is shown at.
 
-use super::{Tracer, View};
+use super::Tracer;
 use cpl_diag::{LineIndex, Span};
 use cpl_ir::Program;
 use std::cell::Cell;
@@ -16,10 +16,10 @@ impl Tracer {
     /// a step inside one is shown at the call in the file that is running
     /// it: the call site of the outermost of the imported fns on top of
     /// the stack.
-    pub(super) fn step_line(&self, view: &View, span: Span) -> u32 {
+    pub(super) fn step_line(&self, call_frames: &[(&str, Span)], span: Span) -> u32 {
         let mut at = span;
         if !self.library.is_empty() {
-            for (name, call) in view.call_frames.iter().rev() {
+            for (name, call) in call_frames.iter().rev() {
                 if !self.library.contains(*name) {
                     break;
                 }
@@ -51,9 +51,9 @@ pub(super) fn shown_names(program: &Program) -> HashMap<String, String> {
 
 impl Tracer {
     /// The step's call stack, under the names the source gives its fns.
-    pub(super) fn frame_of(&mut self, view: &View) -> u32 {
+    pub(super) fn frame_of(&mut self, call_frames: &[(&str, Span)]) -> u32 {
         let (shown, lines, last_line) = (&self.shown, &self.lines, &self.last_line);
-        let stack = view.call_frames.iter().map(|(name, at)| {
+        let stack = call_frames.iter().map(|(name, at)| {
             let name = shown.get(*name).map_or(*name, String::as_str);
             (name, line_at(lines, last_line, *at).max(1))
         });

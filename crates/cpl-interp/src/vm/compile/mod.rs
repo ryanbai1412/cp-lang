@@ -254,6 +254,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
             num_v: self.next_v as usize,
             num_local_v: self.num_local_v as usize,
             slot_map: self.slot_map,
+            named_locals: (self.locals.iter().enumerate())
+                .filter(|(_, l)| !matches!(l.name.as_bytes().first(), None | Some(b'_')))
+                .map(|(slot, l)| (slot, l.name.as_str(), matches!(l.ty, cpl_ir::Ty::Int)))
+                .collect(),
             param_count: 0,
             ret_kind: None,
             guarded_domains: Vec::new(),

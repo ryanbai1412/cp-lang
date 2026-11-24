@@ -281,8 +281,8 @@ impl Observer for Watch {
             t.debugged(view, at, name, text, json);
         }
     }
-    fn raw_write(&mut self, id: usize, view: &View, at: Span, path: &[usize]) -> bool {
-        self.live().is_some_and(|t| t.raw_write(id, view, at, path))
+    fn int_write(&mut self, write: &crate::trace::IntWrite) -> bool {
+        self.live().is_some_and(|t| t.int_write(write))
     }
     fn finish(self: Box<Self>, view: &View, failed: Option<(&str, Span)>) -> Option<Recording> {
         if let Some(stats) = self.stats {

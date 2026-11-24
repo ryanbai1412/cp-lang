@@ -1123,3 +1123,8 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   Profiler and VmStats are native only. The `show` texts a trace keeps
   now live in the interpreter's own `Value` map, per fn, instead of a
   second BTreeMap type whose code cost 5.3 KB.
+- 2026-11-24: a traced write to an `Int` global or cell whose frame holds
+  only exact `Int` locals records its step from the registers, through
+  `Tracer::int_write`, with no view; a chunk lists its named locals once
+  when it compiles. Recording 10M scalar steps: about 1.0 s to 0.87 s.
+  The 1.2x budget still needs fused raw trace events (next).

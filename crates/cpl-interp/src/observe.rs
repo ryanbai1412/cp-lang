@@ -127,9 +127,9 @@ pub(crate) trait Observer {
     fn assigned_global(&mut self, _view: &View, _at: Span, _id: usize) {}
     fn printed(&mut self, _view: &View, _at: Span, _text: &str) {}
     fn debugged(&mut self, _view: &View, _at: Span, _name: &str, _text: String, _json: String) {}
-    /// [`Observer::changed`] for an `Int` cell, with the locals raw in
-    /// [`View::raw`]; false asks for the full view instead.
-    fn raw_write(&mut self, _id: usize, _view: &View, _at: Span, _path: &[usize]) -> bool {
+    /// [`Observer::declared`] or [`Observer::changed`] for an `Int` global
+    /// or cell, with no view; false asks for the full view instead.
+    fn int_write(&mut self, _write: &trace::IntWrite) -> bool {
         false
     }
     /// Steps seen so far, kept or not.
@@ -258,8 +258,8 @@ impl Observer for Tracer {
     fn debugged(&mut self, view: &View, at: Span, name: &str, text: String, json: String) {
         Tracer::debugged(self, view, at, name, text, json)
     }
-    fn raw_write(&mut self, id: usize, view: &View, at: Span, path: &[usize]) -> bool {
-        Tracer::raw_write(self, id, view, at, path)
+    fn int_write(&mut self, write: &trace::IntWrite) -> bool {
+        Tracer::int_write(self, write)
     }
     fn finish(self: Box<Self>, view: &View, failed: Option<(&str, Span)>) -> Option<Recording> {
         Some(Tracer::finish(*self, view, failed))

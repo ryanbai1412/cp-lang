@@ -61,6 +61,8 @@ pub(crate) struct Chunk<'p> {
     pub num_v: usize,
     pub num_local_v: usize,
     pub slot_map: Vec<SlotLoc>,
+    /// The named locals a trace shows, by slot, and whether each is an `Int`.
+    pub named_locals: Vec<(usize, &'p str, bool)>,
     pub param_count: usize,
     pub ret_kind: Option<ScalarKind>,
     pub guarded_domains: Vec<cpl_ir::DomainId>,

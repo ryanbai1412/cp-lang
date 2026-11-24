@@ -160,9 +160,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     pub(crate) fn fill_shown(&mut self) {
         let program = self.program;
         let shows = |f: &Option<FnId>| f.is_some();
-        if !program.structs.iter().any(|s| shows(&s.show_fn))
-            && !program.enums.iter().any(|e| shows(&e.show_fn))
-        {
+        let any = *self.trace_show_tys.any.get_or_insert_with(|| {
+            program.structs.iter().any(|s| shows(&s.show_fn))
+                || program.enums.iter().any(|e| shows(&e.show_fn))
+        });
+        if !any {
             return;
         }
         let mut wanted = Vec::new();
@@ -251,6 +253,8 @@ pub(crate) struct ShowTys {
     tys: HashMap<Ty, bool>,
     globals: Option<Vec<usize>>,
     frame: Option<((*const cpl_ir::Local, usize), bool)>,
+    /// Whether any type has a `show` fn.
+    any: Option<bool>,
 }
 
 /// Whether a value of `ty` can hold one whose type has a `show` fn.

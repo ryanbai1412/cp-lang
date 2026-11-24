@@ -5,7 +5,7 @@ use crate::value::Value;
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Interp;
-use cpl_ir::{Place, PlaceKind, Ty};
+use cpl_ir::{Place, PlaceKind};
 use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
@@ -40,6 +40,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     tracer.globals_may_change();
                 }
             }
+            TracePoint::Cell(place, ref indices)
+                if self.trace_int_write(chunk, regs_i, regs_v, place, indices) => {}
             TracePoint::Cell(place, _) | TracePoint::Assign(place) if self.quiet_write(place) => {}
             TracePoint::Assign(place)
                 if matches!(place.kind, PlaceKind::Global(_))
@@ -47,7 +49,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             TracePoint::Cell(place, ref indices)
                 if self.trace_cell_unseen(place, regs_i, indices) => {}
             TracePoint::Cell(place, ref indices)
-                if self.trace_raw_cell(&chunk.slot_map, regs_i, regs_v, place, indices) => {}
+                if self.trace_raw_cell(chunk, regs_i, regs_v, place, indices) => {}
             ref point => {
                 // A local's step in a call that the tracer skips needs no
                 // view, so no copy of the registers to the stack.
@@ -175,41 +177,26 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         done
     }
 
-    /// Reports a write to `place` with the locals read straight from the
-    /// registers, when every local the step shows is a raw `Int`; returns
-    /// whether it did, or the caller must sync the stack and report it.
-    pub(super) fn trace_raw_cell(
-        &mut self,
-        slot_map: &[SlotLoc],
-        regs_i: &[i64],
-        regs_v: &[Value],
-        place: &'p Place,
-        indices: &[u16],
-    ) -> bool {
-        if !self.observed() || self.assignments() || self.lends() {
-            return false;
-        }
+    /// The named locals of the running frame, read straight from the
+    /// registers into `trace_raw`, when each is an exact `Int`.
+    fn raw_frame(&mut self, chunk: &Chunk<'p>, regs_i: &[i64], regs_v: &[Value]) -> bool {
         let mut raw = std::mem::take(&mut self.trace_raw);
         raw.clear();
         let base = self.base;
-        let locals = self.locals();
-        let all_raw = locals.iter().enumerate().all(|(slot, local)| {
-            if matches!(local.name.as_bytes().first(), None | Some(b'_')) {
-                return true;
-            }
+        let all_raw = chunk.named_locals.iter().all(|&(slot, name, int)| {
             let Some(held) = self.stack.get(base + slot) else {
                 return true;
             };
-            let value = match slot_map.get(slot) {
+            let value = match chunk.slot_map.get(slot) {
                 Some(SlotLoc::I(r, _)) if !matches!(held, Value::Unit) => {
-                    if !matches!(local.ty, Ty::Int) {
+                    if !int {
                         return false;
                     }
                     regs_i[*r as usize]
                 }
                 Some(SlotLoc::V(r)) if !matches!(regs_v[*r as usize], Value::Unit) => {
-                    match (&local.ty, &regs_v[*r as usize]) {
-                        (Ty::Int, Value::Int(v)) => *v,
+                    match (int, &regs_v[*r as usize]) {
+                        (true, Value::Int(v)) => *v,
                         _ => return false,
                     }
                 }
@@ -219,46 +206,102 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 },
                 Some(_) => return matches!(held, Value::Unit),
             };
-            raw.push((local.name.as_str(), value));
+            raw.push((name, value));
             value.unsigned_abs() <= crate::trace::MAX_EXACT
         });
-        if all_raw {
-            let mut path = std::mem::take(&mut self.trace_path);
-            path.clear();
-            for &r in indices {
-                path.push(regs_i[r as usize].max(0) as usize);
-            }
-            let depth = self.call_frames.len();
-            if (self.tracer.as_ref()).is_some_and(|t| t.keeps_step(depth)) {
-                self.fill_shown();
-            }
-            let mut tracer = self.tracer.take().expect("traced");
-            let view = crate::trace::View {
-                program: self.program,
-                globals: &self.globals,
-                domains: &self.domains,
-                locals: Vec::new(),
-                raw: Some(&raw),
-                depth: self.call_frames.len(),
-                call_frames: &self.call_frames,
-                shown: &self.trace_shown,
-                read: self.input.cursor(),
-            };
-            match &place.kind {
-                PlaceKind::Global(id) if tracer.raw_write(*id, &view, place.span, &[]) => {}
-                PlaceKind::Global(id) => tracer.declared(*id, &view, place.span),
-                _ => {
-                    let global = place.root_global().expect("a global's cell");
-                    if !tracer.raw_write(global, &view, place.span, &path) {
-                        tracer.changed(global, &view, place.span, &path);
-                    }
-                }
-            }
-            self.tracer = Some(tracer);
-            self.trace_path = path;
-        }
         self.trace_raw = raw;
         all_raw
+    }
+
+    /// The indices of a cell write, evaluated again into `trace_path`.
+    fn cell_path(&mut self, regs_i: &[i64], indices: &[u16]) -> Vec<usize> {
+        let mut path = std::mem::take(&mut self.trace_path);
+        path.clear();
+        path.extend(indices.iter().map(|&r| regs_i[r as usize].max(0) as usize));
+        path
+    }
+
+    /// A kept step for a write to an `Int` global or cell, recorded from
+    /// the registers with no view: false when the tracer needs one.
+    pub(super) fn trace_int_write(
+        &mut self,
+        chunk: &Chunk<'p>,
+        regs_i: &[i64],
+        regs_v: &[Value],
+        place: &'p Place,
+        indices: &[u16],
+    ) -> bool {
+        if !self.observed() || self.lends() {
+            return false;
+        }
+        let Some(id) = place.root_global() else {
+            return false;
+        };
+        if !self.raw_frame(chunk, regs_i, regs_v) {
+            return false;
+        }
+        let path = self.cell_path(regs_i, indices);
+        let global = &self.program.globals[id];
+        let write = crate::trace::IntWrite {
+            id,
+            path: &path,
+            value: &self.globals[id],
+            ty: &global.ty,
+            named: global.span.end != 0,
+            span: place.span,
+            raw: &self.trace_raw,
+            call_frames: &self.call_frames,
+        };
+        let done = (self.tracer.as_mut()).is_some_and(|tracer| tracer.int_write(&write));
+        self.trace_path = path;
+        done
+    }
+
+    /// A write to a global or a cell of one whose step the tracer takes
+    /// from a view of raw locals, when each is an exact `Int`.
+    pub(super) fn trace_raw_cell(
+        &mut self,
+        chunk: &Chunk<'p>,
+        regs_i: &[i64],
+        regs_v: &[Value],
+        place: &'p Place,
+        indices: &[u16],
+    ) -> bool {
+        if !self.observed() || self.assignments() || self.lends() {
+            return false;
+        }
+        if !self.raw_frame(chunk, regs_i, regs_v) {
+            return false;
+        }
+        let path = self.cell_path(regs_i, indices);
+        let depth = self.call_frames.len();
+        if (self.tracer.as_ref()).is_some_and(|t| t.keeps_step(depth)) {
+            self.fill_shown();
+        }
+        let raw = std::mem::take(&mut self.trace_raw);
+        let mut tracer = self.tracer.take().expect("traced");
+        let view = crate::trace::View {
+            program: self.program,
+            globals: &self.globals,
+            domains: &self.domains,
+            locals: Vec::new(),
+            raw: Some(&raw),
+            depth,
+            call_frames: &self.call_frames,
+            shown: &self.trace_shown,
+            read: self.input.cursor(),
+        };
+        match &place.kind {
+            PlaceKind::Global(id) => tracer.declared(*id, &view, place.span),
+            _ => {
+                let global = place.root_global().expect("a global's cell");
+                tracer.changed(global, &view, place.span, &path);
+            }
+        }
+        self.tracer = Some(tracer);
+        self.trace_path = path;
+        self.trace_raw = raw;
+        true
     }
 }
 

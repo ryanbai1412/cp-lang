@@ -2,7 +2,7 @@
 //! registers: the same log entries as [`Tracer::step`] and
 //! [`Tracer::declared`] / [`Tracer::changed`], with no `Value` view.
 
-use super::{int_item, string, Kind, Tracer, View, MAX_EXACT};
+use super::{int_item, string, Kind, Tracer, MAX_EXACT};
 use crate::value::Value;
 use cpl_diag::Span;
 use cpl_ir::Ty;
@@ -47,20 +47,22 @@ impl Tracer {
     }
 
     /// The step a VM write to `Int` global `id`, or to `Int` cell `path` of
-    /// it, makes when nothing filters steps and the locals are raw: what
-    /// [`Tracer::declared`] or [`Tracer::changed`] would record, with less
-    /// on the way. False when they must take it.
-    pub fn raw_write(&mut self, id: usize, view: &View, span: Span, path: &[usize]) -> bool {
-        let Some(raw) = view.raw else { return false };
-        if !self.unfiltered
-            || self.over_library()
+    /// it, makes when the step is kept, nothing filters steps and the
+    /// locals are raw: what [`Tracer::declared`] or [`Tracer::changed`]
+    /// would record, with no view on the way. False when they must take it.
+    pub(crate) fn int_write(&mut self, w: &IntWrite) -> bool {
+        let id = w.id;
+        if self.assignments
+            || self.skip != 0
+            || !self.unfiltered
             || self.finishing
             || self.case == Some(0)
             || !self.visible[id]
+            || !w.named
+            || self.all_touched
+            || !self.touched.is_empty()
+            || !self.recording(w.call_frames.len())
         {
-            return false;
-        }
-        if self.all_touched || !self.touched.is_empty() || view.program.globals[id].span.end == 0 {
             return false;
         }
         let Some(var) = self.of_global[id] else {
@@ -70,9 +72,8 @@ impl Tracer {
         if len >= self.max_steps || self.rec.log.bytes() >= self.max_bytes {
             return false;
         }
-        let (value, ty) = (&view.globals[id], &view.program.globals[id].ty);
-        match (self.kinds[var], path) {
-            (Kind::Scalar, []) => match (value, ty) {
+        match (self.kinds[var], w.path) {
+            (Kind::Scalar, []) => match (w.value, w.ty) {
                 (Value::Int(v), Ty::Int) if v.unsigned_abs() <= MAX_EXACT => {
                     self.rec.log.snapshot_if_due();
                     self.rec.log.set_int(var, *v);
@@ -80,7 +81,7 @@ impl Tracer {
                 _ => return false,
             },
             (Kind::Array, &[i]) => {
-                let Some(v) = int_item(value, ty, i) else {
+                let Some(v) = int_item(w.value, w.ty, i) else {
                     return false;
                 };
                 self.rec.log.snapshot_if_due();
@@ -90,9 +91,23 @@ impl Tracer {
             }
             _ => return false,
         }
-        self.raw_locals(raw);
-        let focus = (!path.is_empty()).then_some((id, path));
-        self.step_rest(view, span, None, None, focus);
+        self.raw_locals(w.raw);
+        let focus = (!w.path.is_empty()).then_some((id, w.path));
+        self.step_rest(w.call_frames, w.span, None, None, focus);
         true
     }
+}
+
+/// A VM write [`Tracer::int_write`] may record.
+pub(crate) struct IntWrite<'a> {
+    pub id: usize,
+    pub path: &'a [usize],
+    pub value: &'a Value,
+    pub ty: &'a Ty,
+    /// The source names the global.
+    pub named: bool,
+    pub span: Span,
+    /// The named locals, each an `Int`.
+    pub raw: &'a [(&'a str, i64)],
+    pub call_frames: &'a [(&'a str, Span)],
 }

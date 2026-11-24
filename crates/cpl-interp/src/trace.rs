@@ -24,6 +24,7 @@ mod last;
 mod lines;
 mod log;
 mod raw;
+pub(crate) use raw::IntWrite;
 mod show;
 mod snapshot;
 mod trap;
@@ -798,7 +799,7 @@ impl Tracer {
         };
         if let Some(raw) = view.raw {
             self.raw_locals(raw);
-            return self.step_rest(view, span, label, checkpoint, focus);
+            return self.step_rest(view.call_frames, span, label, checkpoint, focus);
         }
         let (mut names, mut ints) = (
             std::mem::take(&mut self.local_names),
@@ -834,7 +835,7 @@ impl Tracer {
             (self.local_names, self.local_ints) = (names, ints);
             self.json_locals(view);
         }
-        self.step_rest(view, span, label, checkpoint, focus);
+        self.step_rest(view.call_frames, span, label, checkpoint, focus);
     }
 
     fn json_locals(&mut self, view: &View) {
@@ -866,13 +867,13 @@ impl Tracer {
 
     fn step_rest(
         &mut self,
-        view: &View,
+        call_frames: &[(&str, Span)],
         span: Span,
         label: Option<String>,
         checkpoint: Option<&str>,
         focus: Option<(usize, &[usize])>,
     ) {
-        let line = self.step_line(view, span);
+        let line = self.step_line(call_frames, span);
         let focus = focus.and_then(|(global, path)| {
             let var = self.of_global[global]?;
             let fits = match self.kinds[var] {
@@ -883,7 +884,7 @@ impl Tracer {
             fits.then_some((var, path))
         });
         let checkpoint = checkpoint.map(|name| self.checkpoint(name));
-        let frame = self.record_frames.then(|| self.frame_of(view));
+        let frame = self.record_frames.then(|| self.frame_of(call_frames));
         let stage = self.stage_id();
         self.rec
             .log
@@ -1000,7 +1001,7 @@ impl Tracer {
         if !self.watched(&view.program.globals[id].name) || !self.recording(view.depth) {
             return;
         }
-        let line = self.step_line(view, span);
+        let line = self.step_line(view.call_frames, span);
         let stage = self.stage_id();
         let same = self.rec.log.last().is_some_and(|(last, note, at)| {
             last == line && note.is_none_or(|note| note.checkpoint.is_none()) && at == stage
@@ -1064,7 +1065,7 @@ impl Tracer {
         } else {
             render(&mut text, value, ty, view, Mode::Text);
         }
-        let line = self.step_line(view, span);
+        let line = self.step_line(view.call_frames, span);
         self.rec.assigned.push(Assigned {
             line,
             name: name.to_string(),
@@ -1099,7 +1100,7 @@ impl Tracer {
     /// `debug(...)` ran: `name` is its label or its arguments as written,
     /// `text` what it shows, and `json` the values as one JSON value.
     pub fn debugged(&mut self, view: &View, span: Span, name: &str, text: String, json: String) {
-        let line = self.step_line(view, span);
+        let line = self.step_line(view.call_frames, span);
         if !self.recording(view.depth) {
             return;
         }
@@ -1155,7 +1156,7 @@ impl Tracer {
                     && view.depth > 0
                     && self.last_step_at == (self.entries, view.depth)
                 {
-                    self.step_rest(view, span, label, None, None)
+                    self.step_rest(view.call_frames, span, label, None, None)
                 } else {
                     self.step(view, span, label, None, None)
                 }
