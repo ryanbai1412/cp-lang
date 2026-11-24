@@ -252,6 +252,24 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("pre-existing red", r.stderr)
 
+    def test_a_red_at_the_base_with_one_failing_case_refuses_a_second(self):
+        # 7a8dcef2's std-wide E0606 passed as main's red: std_own_tests_pass was red at
+        # the base on one file, and the change failed another inside the same test id.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\necho '        FAIL [   0.010s] cpl-cli::std_checks std_own_tests_pass'\n"
+            "cat cases*.txt | sed 's/^/cpl-finding: std_own_tests_pass /'\nexit 100\n")
+        (theirs / "cases.txt").write_text("std/a.cp:first +1\n")
+        self.commit(theirs, "main is red on one case")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "origin", "main")
+        (ours / "cases-ours.txt").write_text("std/b.cp:second +1\n")
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        r = subprocess.run(cmd, cwd=ours, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("std/b.cp:second (+0 there, +1 here)", r.stderr)
+        self.assertNotIn("pre-existing red", r.stderr)
+
     def test_a_base_that_doesnt_build_is_rebuilt_before_its_reds_count_as_new(self):
         # perf's ord: the base worktree lacked a test file ("couldn't find file"), the
         # base run failed to build, and two reds main had too refused the land.
@@ -278,7 +296,7 @@ class LandTest(unittest.TestCase):
         silent = []
         for f in (root / "crates").rglob("*.rs"):
             src = f.read_text()
-            for name in re.findall(r"fn (\w+_only_go_down)\(", src):
+            for name in re.findall(r"fn (\w+_only_go_down|std_errors_never_grow|std_own_tests_pass|every_program_runs_traced_and_untraced)\(", src):
                 if f"cpl-finding: {name} " not in src:
                     silent.append(f"{f.relative_to(root)}: {name}")
         self.assertEqual(silent, [], "print `cpl-finding: <test> <row> +<excess>` per grown row")

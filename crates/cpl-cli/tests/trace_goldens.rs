@@ -199,6 +199,12 @@ fn fnv64(bytes: &[u8]) -> u64 {
     })
 }
 
+/// The row scripts/new_reds.py judges a red at the base by: one per program and check,
+/// so a land that breaks another program still refuses.
+fn row(case: &str) -> String {
+    format!("cpl-finding: every_program_runs_traced_and_untraced {case} +1\n")
+}
+
 /// Each check on one sweep of both runs of every program.
 #[test]
 fn every_program_runs_traced_and_untraced() {
@@ -228,19 +234,25 @@ fn every_program_records_its_saved_trace(runs: &[Runs]) -> Result<(), String> {
             std::fs::write(&golden, &got).unwrap();
         }
         let Ok(want) = std::fs::read_to_string(&golden) else {
-            differ.push(format!("{} is not saved", golden.display()));
+            differ.push(format!(
+                "{}{} is not saved",
+                row(&golden.display().to_string()),
+                golden.display()
+            ));
             continue;
         };
         let want = want.replace("\r\n", "\n");
         if got.contains(CRASHED) || want.contains(CRASHED) {
+            let file = golden.file_name().unwrap().to_string_lossy();
             differ.push(format!(
-                "{}: cpl crashed, and a crash is never a saved trace",
-                golden.file_name().unwrap().to_string_lossy()
+                "{}{file}: cpl crashed, and a crash is never a saved trace",
+                row(&file)
             ));
         } else if got != want {
+            let file = golden.file_name().unwrap().to_string_lossy();
             differ.push(format!(
-                "{}:\n  {}",
-                golden.file_name().unwrap().to_string_lossy(),
+                "{}{file}:\n  {}",
+                row(&file),
                 trace_diff::classify(&got, &want).join("\n  ")
             ));
         }
@@ -274,7 +286,8 @@ fn a_traced_run_prints_what_an_untraced_run_prints(runs: &[Runs]) -> Result<(), 
         match traced_stdout(&traced.stdout) {
             Some(traced) if traced == untraced => {}
             Some(traced) => differ.push(format!(
-                "{name}: traced {traced:?}\n  untraced {untraced:?}"
+                "{}{name}: traced {traced:?}\n  untraced {untraced:?}",
+                row(&format!("{name}"))
             )),
             None => {}
         }
@@ -319,7 +332,8 @@ fn tree_walker_fallbacks_only_shrink(runs: &[Runs]) -> Result<(), String> {
     // Blessing seeds an empty list; after that it only removes lines.
     if !added.is_empty() && !(bless && baseline.is_empty()) {
         return Err(format!(
-            "{} new tree-walker fallback(s); move them onto the VM instead:\n  {}",
+            "{}{} new tree-walker fallback(s); move them onto the VM instead:\n  {}",
+            added.iter().map(|s| row(s)).collect::<String>(),
             added.len(),
             added
                 .iter()

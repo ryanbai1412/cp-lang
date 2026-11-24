@@ -56,8 +56,11 @@ fn std_errors_never_grow() {
     for (file, (errors, stderr)) in files.iter().zip(counts) {
         let limit = allowed.get(file).copied().unwrap_or(0);
         if errors > limit {
+            // One row per file, so a red at the base still refuses a land that grows
+            // another file (scripts/new_reds.py).
             grown.push(format!(
-                "{file}: {errors} errors, at most {limit}\n{stderr}"
+                "cpl-finding: std_errors_never_grow {file} +{}\n{file}: {errors} errors, at most {limit}\n{stderr}",
+                errors - limit
             ));
         } else if errors < limit {
             shrunk.push(format!("{file} {errors}"));
@@ -138,11 +141,14 @@ fn std_own_tests_pass() {
         if !summarized || (out.status.success() == !fails.is_empty()) {
             let stderr = String::from_utf8_lossy(&out.stderr);
             problems.push(format!(
-                "{file}: `cpl test` did not run its tests\n{stdout}{stderr}"
+                "cpl-finding: std_own_tests_pass {file}:not-run +1\n{file}: `cpl test` did not run its tests\n{stdout}{stderr}"
             ));
         }
         for line in fails {
-            problems.push(format!("FAIL {line}"));
+            let name = line.split_whitespace().next().unwrap_or(line);
+            problems.push(format!(
+                "cpl-finding: std_own_tests_pass {file}:{name} +1\nFAIL {line}"
+            ));
         }
     }
     assert!(
