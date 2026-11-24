@@ -123,7 +123,7 @@ impl Checker<'_> {
             return;
         }
         let mut named: Vec<(&String, &Ty)> = bindings.iter().collect();
-        named.sort_by(|a, b| a.0.cmp(b.0));
+        cpl_diag::sort_by_str_key(&mut named, |(name, _)| name.as_str());
         let bound: Vec<(String, Ty)> = (named.into_iter())
             .map(|(name, ty)| (name.clone(), self.settle(ty)))
             .collect();
