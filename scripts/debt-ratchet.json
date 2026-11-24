@@ -165,7 +165,7 @@
   "corpus_lint_warnings": 0,
   "or_true": 0,
   "continue_on_error": 0,
-  "dream_unverified": 120,
+  "dream_unverified": 111,
   "measure_broken": 0,
   "mono_unguarded": 0,
   "std_shadowed": 60,
