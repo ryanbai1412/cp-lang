@@ -33,6 +33,7 @@ use cpl_syntax::ast::{self, StmtKind};
 use cpl_syntax::{library_lint, ParsedItem};
 use std::sync::Arc;
 
+mod bodies;
 mod impls;
 use impls::{impls_by_target, ImplNames};
 

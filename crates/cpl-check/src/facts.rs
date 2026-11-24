@@ -3,6 +3,7 @@
 //! of re-deriving it from syntax. Built once per revision on first use, so
 //! `cpl lint`, the editor and `cpl fix` read the facts the checker reported from.
 
+use crate::db::ItemCheck;
 use crate::{Analysis, Revision, Ty, TypedIndex};
 use by_span::BySpan;
 use cpl_diag::Span;
@@ -90,26 +91,34 @@ pub struct Facts {
 
 impl Facts {
     pub fn from_analysis(analysis: &Analysis) -> Facts {
+        let items: Vec<(u32, &ItemCheck)> = (analysis.items.iter())
+            .map(|item| (item.offset, &*item.check))
+            .collect();
+        Facts::from_checks(analysis.revision, &items)
+    }
+
+    /// The facts of the checked items `items`, each at its file offset.
+    pub(crate) fn from_checks(revision: Revision, items: &[(u32, &ItemCheck)]) -> Facts {
         let mut facts = Facts {
-            revision: analysis.revision,
+            revision,
             ..Facts::default()
         };
         let (mut exprs, mut owners) = (Vec::new(), Vec::new());
-        for item in &analysis.items {
-            let shift = |s: Span| s.shift(item.offset);
-            for (span, ty) in &item.check.exprs.types {
+        for &(offset, check) in items {
+            let shift = |s: Span| s.shift(offset);
+            for (span, ty) in &check.exprs.types {
                 exprs.push((shift(*span), ty.clone()));
             }
-            for entry in &item.check.hovers {
+            for entry in &check.hovers {
                 facts.types.push((shift(entry.span), entry.ty.clone()));
                 if let ("field", Some(owner)) = (entry.keyword, &entry.owner) {
                     owners.push((shift(entry.span), owner.clone()));
                 }
             }
-            for (span, ty) in &item.check.shapes {
+            for (span, ty) in &check.shapes {
                 facts.types.push((shift(*span), ty.clone()));
             }
-            for t in &item.check.typed_indexes {
+            for t in &check.typed_indexes {
                 facts.typed_indexes.push(TypedIndex {
                     access: shift(t.access),
                     seq: shift(t.seq),
@@ -121,8 +130,8 @@ impl Facts {
         // By end, then start: `place_type` looks a place up by its end.
         facts.types.sort_by_key(|(s, _)| (s.end, s.start));
         let (mut callees, mut instantiations) = (Vec::new(), Vec::new());
-        for item in &analysis.items {
-            add_calls(item, &mut callees, &mut instantiations);
+        for &(offset, check) in items {
+            add_calls(offset, check, &mut callees, &mut instantiations);
         }
         // The last answer wins, but a vague re-check keeps a known one.
         facts.exprs = BySpan::merged(exprs, |kept, earlier| {
@@ -185,18 +194,19 @@ impl Facts {
 }
 
 fn add_calls(
-    item: &crate::AnalyzedItem,
+    offset: u32,
+    check: &ItemCheck,
     callees: &mut Vec<(Span, Callee)>,
     instantiations: &mut Vec<(Span, Vec<(String, Ty)>)>,
 ) {
-    let shift = |s: Span| s.shift(item.offset);
-    let resolved = BySpan::new((item.check.resolved.iter()).map(|(s, r)| (*s, r)).collect());
+    let shift = |s: Span| s.shift(offset);
+    let resolved = BySpan::new((check.resolved.iter()).map(|(s, r)| (*s, r)).collect());
     let owners = BySpan::new(
-        (item.check.hovers.iter())
+        (check.hovers.iter())
             .filter_map(|h| Some((h.span, h.owner.as_deref()?)))
             .collect(),
     );
-    for call in &item.check.exprs.calls {
+    for call in &check.exprs.calls {
         let found = resolved.get(call.name_span);
         let owner = match call.kind {
             CalleeKind::Method | CalleeKind::Getter => (found.and_then(|r| r.owner.clone()))
@@ -211,7 +221,7 @@ fn add_calls(
         };
         callees.push((shift(call.call), callee));
     }
-    for (call, bound) in &item.check.exprs.instantiations {
+    for (call, bound) in &check.exprs.instantiations {
         instantiations.push((shift(*call), bound.clone()));
     }
 }
