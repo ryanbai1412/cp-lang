@@ -13172,7 +13172,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.ancestor",
-   "measured": 1.01,
+   "measured": 1.05,
    "n": 2048,
    "ok": true
   },
@@ -13180,7 +13180,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.below",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 2048,
    "ok": true
   },
@@ -13188,7 +13188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.depth",
-   "measured": 0.95,
+   "measured": 0.99,
    "n": 2048,
    "ok": true
   },
@@ -13196,7 +13196,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.dist",
-   "measured": 1.23,
+   "measured": 1.14,
    "n": 2048,
    "ok": true
   },
@@ -13204,7 +13204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.is_anc",
-   "measured": 1.0,
+   "measured": 1.05,
    "n": 2048,
    "ok": true
   },
@@ -13212,7 +13212,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.jump",
-   "measured": 1.04,
+   "measured": 1.11,
    "n": 2048,
    "ok": true
   },
@@ -13220,7 +13220,7 @@
    "cost": "\\log^2 n",
    "documented": 1.4,
    "fn": "tree.Rooted.jump_while",
-   "measured": 0.99,
+   "measured": 1.05,
    "n": 2048,
    "ok": true
   },
@@ -13228,7 +13228,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.lca",
-   "measured": 1.2,
+   "measured": 1.26,
    "n": 2048,
    "ok": true
   },
@@ -13236,7 +13236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.lower",
-   "measured": 1.05,
+   "measured": 1.09,
    "n": 2048,
    "ok": true
   },
@@ -13252,7 +13252,15 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.on_path",
-   "measured": 1.06,
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/rooted_query.cp::tree.Rooted.orient": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "tree.Rooted.orient",
+   "measured": 1.09,
    "n": 2048,
    "ok": true
   },
@@ -13260,7 +13268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.parent",
-   "measured": 1.45,
+   "measured": 1.04,
    "n": 2048,
    "ok": true
   },
@@ -13268,7 +13276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.pos",
-   "measured": 0.95,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
@@ -13276,7 +13284,7 @@
    "cost": "\\log n",
    "documented": 1.18,
    "fn": "tree.Rooted.root_of",
-   "measured": 1.35,
+   "measured": 1.13,
    "n": 2048,
    "ok": true
   },
@@ -13284,7 +13292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.size",
-   "measured": 0.94,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
@@ -13292,7 +13300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.sub",
-   "measured": 0.95,
+   "measured": 1.04,
    "n": 2048,
    "ok": true
   },
@@ -13300,7 +13308,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "tree.Rooted.up_arc",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 2048,
    "ok": true
   },
@@ -19130,7 +19138,6 @@
   }
  },
  "unscaled": [
-  "strings.Palindromes.items",
-  "tree.Rooted.orient"
+  "strings.Palindromes.items"
  ]
 }
