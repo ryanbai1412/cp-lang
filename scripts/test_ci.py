@@ -532,6 +532,8 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(code, 0)
         node = [e for e in ev if e.startswith("node web/scripts/wasm-crates.mjs")]
         self.assertTrue(node[0].endswith("cpl.wasm --parent /w/sizes/t.json --touched cpl_check"), node)
+        warm = [e for e in ev if e.startswith("scripts/wasm-warm.sh --parent")]
+        self.assertTrue(warm and warm[0].endswith(" cpl-check"), warm)
         code, _, _, err, _, _ = self._commit(sel, outs=outs, codes={"node": 1})
         self.assertEqual(code, 1)
         self.assertIn("cpl.wasm's data segment or a touched crate is over its budget", err)

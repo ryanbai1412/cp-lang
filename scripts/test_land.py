@@ -809,6 +809,8 @@ class LandTest(unittest.TestCase):
         self.assertIn(f"node web/scripts/wasm-crates.mjs --sizes {out}/base/cpl.wasm", (self.tmp / "node.log").read_text())
         r = warm("--parent", "origin/main", "cpl-x")
         self.assertEqual((r.returncode, r.stdout.strip()), (0, str(out / "sizes" / f"{main_tree}.json")))
+        self.assertEqual(warm("--parent", "HEAD", "cpl_x").returncode, 2)
+        self.assertEqual(warm("--current", "cpl_x").returncode, 2)
         self.assertEqual(warm("--parent", "HEAD", "cpl-x").stdout.strip(), str(out / "sizes" / f'{git(ours, "rev-parse", "HEAD^{tree}").strip()}.json'))
         (ours / "crates" / "cpl-y").mkdir(parents=True)
         (ours / "crates" / "cpl-y" / "lib.rs").write_text("other crate\n")

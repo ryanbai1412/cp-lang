@@ -548,7 +548,9 @@ class Tail:
         # Held to the parent's sizes like land.sh's check: a crate main already has over
         # its budget refuses only if it grew, so a lane can still cut it back under.
         base = self.run(["git", "merge-base", "HEAD", "origin/main"], cwd=ROOT, capture_output=True, text=True)
-        parent = self.run(["scripts/wasm-warm.sh", "--parent", base.stdout.strip() or "HEAD", *crates],
+        # wasm-warm.sh takes the crates' directories: crates/cpl_ir matched no path, so any
+        # recorded build passed for the parent, even the change's own before its rebase.
+        parent = self.run(["scripts/wasm-warm.sh", "--parent", base.stdout.strip() or "HEAD", *pkgs],
                           cwd=ROOT, capture_output=True, text=True)
         held = ["--parent", parent.stdout.strip()] if parent.returncode == 0 and parent.stdout.strip() else []
         if not held:
