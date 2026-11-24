@@ -35,6 +35,7 @@ ccc17s4
 ccc20s4
 cco16p3
 cco21p3
+cco22p5
 ceoi18p1
 cf1146h
 cf1284e
