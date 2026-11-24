@@ -241,6 +241,18 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// `<true>` when the elements' order says two values are equal only
+    /// when they are the same value, so `std::sort` gives the stable sort's
+    /// output; a profile still counts the interpreter's comparisons.
+    pub(crate) fn same_sort(&self, elem: Option<&Ty>) -> &'static str {
+        let same = self.sites.is_none() && elem.is_some_and(|t| identity_order(self.program, t, 0));
+        if same {
+            "<true>"
+        } else {
+            ""
+        }
+    }
+
     pub fn sort_stmts(
         &mut self,
         place: &Place,
@@ -276,6 +288,11 @@ impl<'p> Emitter<'p> {
         match sort_by {
             SortBy::Natural => {
                 self.need("sorted");
+                let elem = match &place.ty {
+                    Ty::List(t) | Ty::MutView(t, _) | Ty::Array { elem: t, .. } => Some(&**t),
+                    _ => None,
+                };
+                let same = self.same_sort(elem);
                 let lt = match &desc {
                     None => String::new(),
                     Some(desc) => {
@@ -285,7 +302,7 @@ impl<'p> Emitter<'p> {
                 };
                 self.line(
                     out,
-                    &format!("cpl::sort_seq({seq}.begin(), {seq}.end(){lt});"),
+                    &format!("cpl::sort_seq{same}({seq}.begin(), {seq}.end(){lt});"),
                 );
             }
             SortBy::Key(slot, key) => {
@@ -1258,4 +1275,36 @@ fn reads_a_local(e: &Expr) -> bool {
     let mut found = matches!(e.kind, ExprKind::Local(_));
     crate::walk::children(e, &mut |child| found |= reads_a_local(child));
     found
+}
+
+/// True when `<` on `ty` is a total order whose ties are equal values: the
+/// derived order of integers, `Bool`, `Char`, positions, `Str` and what is
+/// made of them. `Float` (`-0.0` and `0.0`, NaN) and an `impl Ord` are not.
+pub(crate) fn identity_order(program: &cpl_ir::Program, ty: &Ty, depth: usize) -> bool {
+    let all = |tys: Vec<&Ty>| {
+        depth < 8
+            && tys
+                .into_iter()
+                .all(|t| identity_order(program, t, depth + 1))
+    };
+    match ty {
+        Ty::Unit | Ty::Int | Ty::I128 | Ty::U64 | Ty::Bool | Ty::Char | Ty::Str => true,
+        Ty::Pos(_) | Ty::Bound(_) => true,
+        Ty::Opt(t) => all(vec![&**t]),
+        Ty::Tuple(items) => all(items.iter().collect()),
+        Ty::Record(fields) => all(fields.iter().map(|f| &f.1).collect()),
+        Ty::Struct(id) => {
+            let s = &program.structs[*id];
+            s.ord.is_none()
+                && s.eq_fn.is_none()
+                && s.cached_fields.is_empty()
+                && all(s.fields.iter().map(|f| &f.1).collect())
+        }
+        Ty::Enum(id) => all(program.enums[*id]
+            .variants
+            .iter()
+            .flat_map(|v| &v.1)
+            .collect()),
+        _ => false,
+    }
 }

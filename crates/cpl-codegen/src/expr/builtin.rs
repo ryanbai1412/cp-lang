@@ -299,7 +299,13 @@ impl<'p> Emitter<'p> {
             Builtin::SetMax => helper(self, "set_max"),
             Builtin::Sorted => {
                 self.note_written_copy(e, args, crate::uses::SORTED);
-                helper(self, "sorted")
+                self.need("sorted");
+                let elem = match &e.ty {
+                    Ty::List(t) => Some(&**t),
+                    _ => None,
+                };
+                let same = self.same_sort(elem);
+                Code::primary(format!("cpl::sorted{same}({})", text(0)))
             }
             Builtin::Reach => {
                 self.need("reach");

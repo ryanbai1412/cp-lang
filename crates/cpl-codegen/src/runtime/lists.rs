@@ -182,10 +182,11 @@ template <class T, size_t K, class U> bool has(const std::array<T, K>& v, const 
 // holds the left half (n/2 cells, as in libstdc++'s stable_sort).
 template <class It, class B, class L> void merge_sort(It b, size_t lo, size_t hi, B buf, L& lt) { if (hi - lo <= 7) { for (size_t i = lo + 1; i < hi; i++) { auto x = std::move(b[i]); size_t j = i; for (; j > lo && lt(x, b[j - 1]); j--) b[j] = std::move(b[j - 1]); b[j] = std::move(x); } return; } size_t m = lo + (hi - lo) / 2; merge_sort(b, m, hi, buf, lt); merge_sort(b, lo, m, buf, lt); auto i = buf, im = std::move(b + lo, b + m, buf); auto j = b + m, jm = b + hi, k = b + lo; for (; i != im && j != jm; ++k) { if (lt(*j, *i)) { *k = std::move(*j); ++j; } else { *k = std::move(*i); ++i; } } std::move(i, im, k); }
 template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; size_t n = e - b; std::vector<V> buf(b, b + n / 2); merge_sort(b, 0, n, buf.begin(), lt); }
-template <class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
-template <class T> std::vector<T> sorted(std::vector<T> v) { sort_seq(v.begin(), v.end()); return v; }
-template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
-template <class T, size_t K> std::vector<T> sorted(const std::array<T, K>& a) { std::vector<T> v(a.begin(), a.end()); sort_seq(v.begin(), v.end()); return v; }
+// `Same`: elements that compare equal are the same value, so no order of them is told apart.
+template <bool Same = false, class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (Same || std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
+template <bool Same = false, class T> std::vector<T> sorted(std::vector<T> v) { sort_seq<Same>(v.begin(), v.end()); return v; }
+template <bool Same = false, class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
+template <bool Same = false, class T, size_t K> std::vector<T> sorted(const std::array<T, K>& a) { std::vector<T> v(a.begin(), a.end()); sort_seq<Same>(v.begin(), v.end()); return v; }
 ",
     },
     Piece {
@@ -432,7 +433,7 @@ template <class T> std::optional<T> first(ListView<T> v) { return v.empty() ? st
 template <class T> std::optional<T> last(ListView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
 template <class T> T first_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
 template <class T> T last_val(ListView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
-template <class T> std::vector<T> sorted(ListView<T> v) { auto o = to_list(v); sort_seq(o.begin(), o.end()); return o; }
+template <bool Same = false, class T> std::vector<T> sorted(ListView<T> v) { auto o = to_list(v); sort_seq<Same>(o.begin(), o.end()); return o; }
 template <class T, class U> bool has(ListView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i * v.st] == x) return true; return false; }
 inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size()); for (u8 c : v) s.push_back((char)c); return s; }
 ",
@@ -531,7 +532,7 @@ template <class T> std::optional<T> first(MutView<T> v) { return v.empty() ? std
 template <class T> std::optional<T> last(MutView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
 template <class T> T first_val(MutView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
 template <class T> T last_val(MutView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
-template <class T> std::vector<T> sorted(MutView<T> v) { auto o = to_list(v); sort_seq(o.begin(), o.end()); return o; }
+template <bool Same = false, class T> std::vector<T> sorted(MutView<T> v) { auto o = to_list(v); sort_seq<Same>(o.begin(), o.end()); return o; }
 template <class T, class U> bool has(MutView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i * v.st] == x) return true; return false; }
 ",
     },

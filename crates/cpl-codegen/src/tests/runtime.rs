@@ -174,3 +174,36 @@ fn a_sort_by_a_cell_compares_in_place() {
     assert!(ties.contains("cpl::stable_sort_lt(ord"), "{ties}");
     assert!(!ties.contains("cpl::sort_by("), "{ties}");
 }
+
+#[test]
+fn a_plain_sort_is_unstable_only_where_equal_means_the_same() {
+    // Equal tuples of integers are one value, so no order of them shows;
+    // a Float (-0.0 and 0.0) or an `impl Ord` can tie values that differ.
+    let src = |decl: &str, elem: &str| {
+        format!(
+            "{decl}var xs: List<{elem}> = []\nxs.sort()\nprint(xs.len)\nprint(sorted(xs).len)\n"
+        )
+    };
+    let same = cpp(&src("", "(Int, Bool, Char, Str, (a: Int, b: Int))"));
+    assert!(same.contains("cpl::sort_seq<true>(xs.begin()"), "{same}");
+    assert!(same.contains("cpl::sorted<true>(xs)"), "{same}");
+    let float = cpp(&src("", "(Int, F64)"));
+    let own = cpp(&src(
+        "struct P(a: Int, b: Int)\nimpl Ord for P:\n    fn lt(a, b) = a.a < b.a\n",
+        "P",
+    ));
+    for kept in [&float, &own] {
+        assert!(kept.contains("cpl::sort_seq(xs.begin()"), "{kept}");
+        assert!(kept.contains("cpl::sorted(xs)"), "{kept}");
+    }
+    let source = src("", "(Int, Int)");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source.as_str());
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let (profiled, _) = crate::emit_profiled(&program, "t.cp", &crate::Target::default(), "t.prof");
+    assert!(
+        profiled.contains("cpl::sort_seq(xs.begin()"),
+        "a profile counts the interpreter's comparisons: {profiled}"
+    );
+}
