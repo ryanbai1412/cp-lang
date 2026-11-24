@@ -1466,7 +1466,7 @@ pub struct Rev<S>():
     pub fn drop_last(self, k: Int = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
 
 impl Positional<T> for Rev<S: Indexed<D, T>>:
-    fn nth(self, k: Int) -> T = src.nth(src.len - 1 - k)
+    fn nth(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
 
 /// \(O(1)\) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
 pub struct Items<S>(

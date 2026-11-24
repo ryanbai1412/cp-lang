@@ -110,3 +110,46 @@ impl<'a> Checker<'a> {
         }
     }
 }
+
+impl Checker<'_> {
+    /// R08.1.3: `impl Sub for T` requires `impl Super for T`, with the impl's own `bounds` in scope.
+    pub(crate) fn impl_supertraits(
+        &mut self,
+        tr: &ast::Type,
+        target: &ast::Type,
+        bounds: &[ast::Bound],
+    ) {
+        let TypeKind::Named { name, .. } = &tr.kind else {
+            return;
+        };
+        let Some(Def::Trait { supers, .. }) = self.global(&name.text).as_deref().cloned() else {
+            return;
+        };
+        let outer = self.param_bounds.len();
+        self.param_bounds
+            .extend(super::types::extract_bounds(bounds));
+        let target_ty = self.resolve_type(target);
+        for sup in supers {
+            if !self.implements_trait(&target_ty, &sup) {
+                let (tr_text, target_text) = (self.quote(tr.span), self.quote(target.span));
+                let message = format!(
+                    "`impl {tr_text} for {target_text}` requires `impl {sup} for {target_text}`"
+                );
+                self.error(codes::MISSING_IMPL, tr.span, message);
+            }
+        }
+        self.param_bounds.truncate(outer);
+    }
+
+    /// A `.rev` view walks, sizes and reads by position as its source does (R07.3.5).
+    pub(super) fn rev_has(&mut self, ty: &Ty, trait_name: &str, seen: &mut Vec<String>) -> bool {
+        let need = match trait_name {
+            "Seq" | "Bidir" => "Bidir",
+            "Sized" => "Sized",
+            "Positional" => "Indexed",
+            _ => return false,
+        };
+        ty.rev_source()
+            .is_some_and(|src| self.implements_trait_inner(&src.clone(), need, seen))
+    }
+}

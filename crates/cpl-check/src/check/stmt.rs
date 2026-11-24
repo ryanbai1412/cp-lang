@@ -1381,6 +1381,7 @@ impl<'a> Checker<'a> {
                 }
 
                 if let Some(trait_name) = trait_name {
+                    self.impl_supertraits(trait_name, target, bounds);
                     self.impl_matches_trait(trait_name, target, &body.stmts);
                     if type_head(trait_name).as_deref() == Some("Index") {
                         self.index_size(&body.stmts);
@@ -2047,21 +2048,6 @@ impl<'a> Checker<'a> {
                 diag.help = Some(format!("write {impls} instead"));
             }
             return;
-        }
-        // Check supertrait requirements (R08.1.3): `impl Sub for T` requires `impl Super for T`.
-        if let ast::TypeKind::Named { name, .. } = &trait_ty.kind {
-            if let Some(Def::Trait { supers, .. }) = self.global(&name.text).as_deref().cloned() {
-                let target_ty = self.resolve_type(target);
-                for sup in supers {
-                    if !self.implements_trait(&target_ty, &sup) {
-                        let target_text = self.quote(target.span);
-                        let message = format!(
-                            "`impl {trait_text} for {target_text}` requires `impl {sup} for {target_text}`"
-                        );
-                        self.error(codes::MISSING_IMPL, trait_ty.span, message);
-                    }
-                }
-            }
         }
         let defined: Vec<&ast::Name> = body
             .iter()

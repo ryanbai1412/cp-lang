@@ -1628,7 +1628,7 @@ impl<'a> Checker<'a> {
         self.implements_trait_inner(ty, trait_name, &mut seen)
     }
 
-    fn implements_trait_inner(
+    pub(super) fn implements_trait_inner(
         &mut self,
         ty: &Ty,
         trait_name: &str,
@@ -1666,7 +1666,9 @@ impl<'a> Checker<'a> {
             Ty::Fn { .. } => Some("fn"),
             _ => None,
         };
-        if impl_key.is_some_and(|name| self.has_impl(name, trait_name)) {
+        if impl_key.is_some_and(|name| self.has_impl(name, trait_name))
+            || self.rev_has(ty, trait_name, seen)
+        {
             return true;
         }
         match trait_name {
