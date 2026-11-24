@@ -631,7 +631,7 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(order, sorted(order))
         self.assertEqual(ev.count("cargo build -q -p cpl-cli"), 2)
         # check.sh ran the header and package modes before anything built.
-        self.assertIn("scripts/corpus.py verify --changed staged --skip dream,header --cpl target/debug/cpl", ev)
+        self.assertIn("scripts/corpus.py verify --changed staged --base HEAD --skip dream,header --cpl target/debug/cpl", ev)
 
 
 class GateTest(unittest.TestCase):

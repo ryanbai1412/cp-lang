@@ -680,7 +680,8 @@ class Tail:
             self._cargo_build("cpl-cli")
             if self.call([sys.executable, "scripts/corpus.py", "make", "--changed", "staged", "--cpl", self.cpl], stdout=subprocess.DEVNULL):
                 raise Failed("scripts/corpus.py make --changed staged failed; rerun it to see which package")
-            if self.call([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--skip", "dream,header", "--cpl", self.cpl]):
+            if self.call([sys.executable, "scripts/corpus.py", "verify", "--changed", "staged", "--base", "HEAD", "--skip", "dream,header",
+                          "--cpl", self.cpl]):
                 raise Failed("a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package")
             staged = self.run(["git", "diff", "--cached", "--name-only", "--diff-filter=AMR", "--", "corpus/problems/*/dream.cp"], cwd=ROOT, capture_output=True, text=True)
             if dreams := [Path(f).parent.name for f in staged.stdout.split()]:

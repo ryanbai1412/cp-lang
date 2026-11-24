@@ -1399,5 +1399,35 @@ class OrphanSubmissionTest(unittest.TestCase):
             self.assertEqual(corpus.orphan_submissions({}), [])
 
 
+class AtBaseTest(unittest.TestCase):
+    """idioms' land was refused for yac6p6 08.in timing out, as it does with main's own port.cp:
+    verify --base refuses only a finding the base doesn't have."""
+
+    FOUND = ["interp-timeout yac6p6 08.in", "interp-timeout ioi13p3io 04.in"]
+
+    def _base(self, out, code=1, build=0):
+        calls = []
+        def run(argv, **kw):
+            calls.append(argv)
+            return subprocess.CompletedProcess(argv, build if argv[0] == "cargo" else code, out, "")
+        new_reds = types.SimpleNamespace(git=lambda *a, **k: "b" * 40, base_checkout=lambda common, rev: Path("/base"))
+        with mock.patch.dict(sys.modules, {"new_reds": new_reds,
+                                           "culprit": types.SimpleNamespace(describe=lambda sha, cwd: ("s", "idioms"))}), \
+                mock.patch("builtins.open", mock.mock_open()), mock.patch("sys.stderr", new_callable=io.StringIO) as err:
+            old = corpus.base_findings(self.FOUND, ["run"], "HEAD", "target/debug/cpl", run=run)
+        return old, err.getvalue(), calls
+
+    def test_a_finding_the_base_has_too_is_main_s(self):
+        old, err, calls = self._base("interp-timeout yac6p6 08.in\n")
+        self.assertEqual(old, {"interp-timeout yac6p6 08.in"})
+        self.assertIn("pre-existing red, owner idioms: interp-timeout yac6p6 08.in", err)
+        self.assertEqual(calls[0][-1], "cpl-cli")  # the candidate's debug build, not a release one
+        self.assertEqual(calls[1][3:7], ["ioi13p3io", "yac6p6", "--only", "run"])
+
+    def test_a_base_with_no_verdict_admits_nothing(self):
+        self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", build=101)[0], set())
+        self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", code=2)[0], set())
+
+
 if __name__ == "__main__":
     unittest.main()

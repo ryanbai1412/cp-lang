@@ -1645,10 +1645,46 @@ def verify(args):
     except InfraError as e:
         print(f"corpus: no verdict, the toolchain failed: {e}", file=sys.stderr)
         return 2
+    if opt("base") and found:
+        found = [f for f in found if f not in base_findings(found, modes, opt("base"), cpl)]
     for f in found:
         print(f)
     print(f"corpus: verified {len(wanted)} package(s) ({','.join(modes)}): {len(found)} finding(s)", file=sys.stderr)
     return 1 if found else 0
+
+
+def base_findings(found, modes, base, cpl, run=subprocess.run):
+    """The findings in `found` that the packages' files at `base` have too (main's red, its
+    owner routed, not refused); none when the base can't give a verdict (yac6p6's 08.in
+    timed out on main's own port.cp, and refused idioms' land)."""
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import new_reds
+    from culprit import describe
+    rev = new_reds.git("rev-parse", base, cwd=ROOT)
+    common = Path(new_reds.git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=ROOT))
+    ids = sorted({f.split()[1] for f in found if len(f.split()) > 1})
+    wt = new_reds.base_checkout(common, rev)
+    target = os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))
+    env = {**os.environ, "CARGO_TARGET_DIR": target}
+    print(f"corpus: rerunning {len(ids)} package(s) with findings at the base {rev[:9]}", file=sys.stderr)
+    profile = "debug" if "debug" in Path(cpl).parts else "release"  # the timeouts are the candidate's build's
+    build = ["cargo", "build", "-q", "-p", "cpl-cli", *(["--release"] if profile == "release" else [])]
+    if run(build, cwd=wt, env=env).returncode:
+        return set()
+    r = run([sys.executable, "scripts/corpus.py", "verify", *ids, "--only", ",".join(modes),
+             "--cpl", os.path.join(target, profile, "cpl")], cwd=wt, env=env, capture_output=True, text=True)
+    if r.returncode not in (0, 1):
+        return set()
+    old = set(r.stdout.splitlines()) & set(found)
+    with open(common / "cpl-preexisting-reds.log", "a") as log:
+        for f in sorted(old):
+            pkg = f.split()[1]
+            sha = new_reds.git("log", "-1", "--format=%H", rev, "--", f"corpus/problems/{pkg}", cwd=ROOT, check=False)
+            who = (describe(sha, ROOT)[1] if sha else "") or "unknown"
+            print(f"corpus: pre-existing red, owner {who}: {f} at the base {rev[:9]} too; main's culprit job "
+                  "routes it, not refusing", file=sys.stderr)
+            log.write(f"{rev} {who} corpus:{f}\n")
+    return old
 
 
 def canonical_id(problem):
@@ -1868,6 +1904,7 @@ def cli(argv):
     v.add_argument("ids", nargs="*", help="package ids (default: every package)")
     v.add_argument("--set", action="append", help="only the packages in corpus/sets/<SET>.txt")
     v.add_argument("--changed", metavar="BASE", help="only packages changed since BASE (a commit, or `staged`)")
+    v.add_argument("--base", metavar="REV", help="a finding the packages have at REV too is main's: reported, not failed")
     v.add_argument("--dreams", action="store_true", help="only packages with a dream.cp")
     v.add_argument("--only", help="comma-separated modes: " + ",".join(MODES))
     v.add_argument("--skip", help="comma-separated modes to leave out")
