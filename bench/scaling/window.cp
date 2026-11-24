@@ -19,6 +19,9 @@ for i in 0..8 * n:
         t.pop(i - 5) // timed: window.Tracked.pop
     s += w.all ?? 0 // timed: window.Window.all
     s += w.len // timed: window.Window.len
+    s += Int(w.is_empty) // timed: window.Window.is_empty
+    for x in w.items: // timed: window.Window.items
+        s += x // timed: window.Window.items
     s += t.state // timed: window.Tracked.state
 var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1))
 for i in 0..4 * n:
@@ -33,4 +36,7 @@ for i in 0..512:
     sw.move(D(lo)..D(lo + 4 * step)) // timed: window.Sweep.move
 for i in 0..8 * n:
     s += sw.range.len // timed: window.Sweep.range
+let ys = [i * 7919 % n for i in 0..n]
+for r in 0..32:
+    s += ys.window_fold(8, min).count(x => x >= 0) // timed: window.window_fold
 print(s)

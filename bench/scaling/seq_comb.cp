@@ -8,9 +8,8 @@ let few = ys.take(32)
 let la = [i for i in 0..n / 32]
 let lb = [i * 3 % (n / 32) for i in 0..n / 32]
 var s = 0
-for r in 0..4:
-    for (a, b) in ys.take(m).pairs(): // timed: seq.pairs
-        s += a ^ b // timed: seq.pairs
+for r in 0..48:
+    s += ys.take(2 * m).pairs().count(p => p.0 < p.1) // timed: seq.pairs
     for (a, b) in (0..m).index_pairs(): // timed: seq.index_pairs
         s += a ^ b // timed: seq.index_pairs
     for c in few.permutations(k: 3): // timed: seq.permutations
@@ -18,7 +17,7 @@ for r in 0..4:
 for r in 0..64:
     for c in ys.take(n / 64).combinations(2): // timed: seq.combinations
         s += c.len // timed: seq.combinations
-for r in 0..64:
+for r in 0..128:
     s += lcs(la, lb).len // timed: seq.lcs
 for r in 0..4:
     for sq in ys.take(m).subsequences(): // timed: seq.subsequences

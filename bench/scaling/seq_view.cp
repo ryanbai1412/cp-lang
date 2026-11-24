@@ -21,7 +21,11 @@ for r in 0..262144:
     s += st.at(k / 3 * 3) // timed: seq.Stepped.at
     let sk = st.keys // timed: seq.Stepped.keys
     s += sk.len // timed: seq.StepKeys.len
+    s += Int(st.is_empty) // timed: seq.Stepped.is_empty
     s += Int(sk.contains(k)) // timed: seq.StepKeys.contains
 for r in 0..1024:
-    s += ys.rev.scan(+).all // timed: seq.Rev<[D]T>.scan
+    s += ys.rev.scan(+).all // timed: seq.Rev.scan
+for r in 0..1024:
+    s += ys.take(n - 1).items.count(p => p.1 >= 0) // timed: seq.Slice.items
+    s += ys.step(1).each().count(x => x >= 0) // timed: seq.Stepped.each
 print(s)

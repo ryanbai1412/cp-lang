@@ -26,6 +26,9 @@ for i in 0..8 * n:
     s += g.start // timed: range.RingRange.start
     s += g.end // timed: range.RingRange.end
     if g.contains((i + 2) % n): s += 1 // timed: range.RingRange.contains
+    s += Int(g.is_empty) // timed: range.RingRange.is_empty
+for k in 0..64:
+    s += a.ring.span(k, n).each().count(x => x >= 0) // timed: range.RingRange.each
 for k in 0..32:
     for j in a.ring.span(k, n).keys: // timed: range.RingRange.keys
         s += j // timed: range.RingRange.keys

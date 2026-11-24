@@ -14,8 +14,10 @@ for rep in 0..4:
         s += ms.push(i, xs[i]) ?? 0 // timed: seq.MonoStack.push
         s += lis.push(xs[i]) // timed: seq.OnlineLis.push
 var full = OnlineLis<Int>()
+var up = MonoStack<Int, Int>()
 for y in ys:
     s += full.push(y)
+    s += up.push(y, n - y) ?? 0
 for r in 0..262144:
     let k = r % n
     s += ms.len // timed: seq.MonoStack.len
@@ -48,11 +50,18 @@ for r in 0..262144:
     s += rg.step(k, 5) // timed: seq.Ring.step
     s += rg.next(k) // timed: seq.Ring.next
     s += rg.prev(k) // timed: seq.Ring.prev
+    s += Int(cx.is_empty) // timed: seq.Compressed.is_empty
+    s += Int(rg.span(k, 5).is_empty) // timed: seq.RingSlice.is_empty
     s += rg.span(k, 5).len // timed: seq.Ring.span
 for r in 0..256:
     s += cx.slice(C.all).len // timed: seq.Compressed.slice
     s += compress(xs).1.len // timed: seq.compress
+for r in 0..512:
+    s += cx.items.count(p => p.1 >= 0) // timed: seq.Compressed.items
+    s += up.items.count(p => p.1 >= 0) // timed: seq.MonoStack.items
 for r in 0..128:
+    s += full.items.count() // timed: seq.OnlineLis.items
+    s += rg.span(r, n / 2).each().count() // timed: seq.RingSlice.each
     s += full.reconstruct().len // timed: seq.OnlineLis.reconstruct
 for r in 0..32:
     for i in rg.from(r): // timed: seq.Ring.from
